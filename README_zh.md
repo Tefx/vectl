@@ -1,5 +1,7 @@
 # vectl — AI 必须执行的计划
 
+[English](README.md)
+
 TODO.md 没法说"不"，vectl 可以。
 
 [![PyPI](https://img.shields.io/pypi/v/vectl)](https://pypi.org/project/vectl/)

@@ -1,9 +1,10 @@
 # vectl — Plans with teeth
 
+[中文文档](README_zh.md)
+
 TODO.md can't say no. vectl can.
 
 [![PyPI](https://img.shields.io/pypi/v/vectl)](https://pypi.org/project/vectl/)
-[![中文文档](https://img.shields.io/badge/docs-%E4%B8%AD%E6%96%87-blue)](README_zh.md)
 
 ```bash
 uvx vectl --help

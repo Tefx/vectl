@@ -1,4 +1,4 @@
-# vectl — Plans with teeth
+# vectl — DAG-enforced todo list for AI agents
 
 [中文文档](README_zh.md)
 

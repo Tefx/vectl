@@ -1,4 +1,4 @@
-# vectl — AI 必须执行的计划
+# vectl — 为 AI Agent 设计的 DAG 强制任务列表
 
 [English](README.md)
 

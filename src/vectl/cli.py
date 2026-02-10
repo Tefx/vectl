@@ -733,156 +733,8 @@ def show(
 # cli.4: guide (renamed from help-agent)
 # ---------------------------------------------------------------------------
 
-_GUIDE_STARTUP = """\
-# Agent Startup
-
-**Authority:** `plan.yaml` is the SINGLE source of truth.
-Conflict? Update plan or escalate. Do not guess.
-
-## Workflow
-1. `vectl status`           — Overview & progress
-2. `vectl next`             — Find available work
-3. `vectl claim <id>`       — Lock a step (one at a time)
-4. **Execute**              — Follow description + refs exactly
-5. `vectl complete <id> --evidence "..."` — Submit results
-6. `vectl next`             — Loop
-
-## Evidence (Strict)
-Required: Files changed, Verification (cmd + result), Gaps (skipped).
-> Ex: "Fixed auth.py. Ran pytest (PASS). No integration tests."
-
-## Tools
-Prefer MCP tools (vectl_*) if available. Rules are identical.
-"""
-
-_GUIDE_STUCK = """\
-# Unblocking Strategy
-
-## Rejected? (High Priority)
-1. `vectl next`             — Rejected items float to top
-2. `vectl show <id>`        — Read **rejection_reason**
-3. `vectl claim <id>`       — Re-claim & Fix
-4. `vectl complete`         — Submit with new evidence
-
-## Blocked? (Deps Missing)
-1. `vectl show <id>`        — Identify missing deps
-2. `vectl search <term>`    — Find the blocker
-3. **Pivot**                — Work on parallel steps
-
-## Lost?
-`vectl review` — Re-orient with full plan scan.
-"""
-
-_GUIDE_REVIEW = """\
-# Review & Validation
-
-## Situational Awareness
-1. `vectl review`           — Deep scan (L1:Valid → L4:Specs)
-2. `vectl review --all`     — Full history (audit trail)
-
-## Gatekeeping
-1. `vectl validate`         — Check structural integrity
-2. `vectl gate-check <ph>`  — Check phase completion
-3. `vectl validate --check-refs` — Audit file references
-
-> Always review before starting a complex phase.
-"""
-
-_GUIDE_PLANNING = """\
-# Architect Protocol
-
-## 1. Orient
-`vectl status` → `vectl review` (Context load)
-
-## 2. Mutate
-- `vectl add-phase --name "..."`
-- `vectl add-step --phase <p> --name "..." --after <dep>`
-- `vectl edit-step <id> --desc "..." --verify "..."`
-
-## 3. Verify
-- `vectl validate` (Mandatory before commit)
-- `vectl search <term>` (Check for dupes)
-"""
-
-
-_GUIDE_MIGRATION = """\
-# Migration: Existing Plan → plan.yaml
-
-If your project already has an implementation plan (markdown file, spreadsheet,
-issue tracker), use this workflow to migrate it into plan.yaml.
-
-## Prerequisites
-
-Run `vectl init --project <name>` first. This creates an empty plan.yaml and
-configures AGENTS.md.
-
-## Workflow
-
-1. **Read** the existing plan in full. Identify phases and steps.
-
-2. **Build** plan.yaml incrementally.
-
-   **CLI Users** (terminal):
-   - `vectl add-phase --phase-id <id> --name "<name>"`
-   - `vectl add-step --phase-id <id> --step-id <id> --name "<name>"`
-   - `vectl add-step ... --description "<desc>" --depends-on "dep1,dep2"`
-
-   **MCP Agents** (Claude/Cursor):
-   - Use `vectl_mutate` tool with `action="add-phase"` or `action="add-step"`.
-   - Arguments map 1:1 (e.g., `--depends-on` → `depends_on=["dep1", "dep2"]`).
-
-3. **Verify** with `vectl render` — compare against the original plan.
-   - Every phase accounted for?
-   - Every step accounted for?
-   - Dependencies correct?
-
-4. **Drop** content that belongs in AGENTS.md, not plan.yaml
-   (testing strategy, coding standards, architectural decisions).
-   plan.yaml tracks *what to do*. AGENTS.md tracks *how to do it*.
-
-5. **Archive** the old plan (e.g., move to `docs/_archive/`).
-   plan.yaml is now the single source of truth.
-
-## What Goes Where
-
-- **Phase headings** in source doc → `vectl add-phase` (or `vectl_mutate action=add-phase`)
-- **Step items** under each phase → `vectl add-step` (or `vectl_mutate action=add-step`)
-- **Dependencies** between steps → `--depends-on` (or `depends_on=[...]`)
-- **Context/descriptions** → `--description` / `--context`
-
-| Content                        | plan.yaml | AGENTS.md / docs/ |
-|--------------------------------|-----------|--------------------|
-| Phases, steps, dependencies    | ✅        | —                  |
-| Step descriptions & verification | ✅      | —                  |
-| Status tracking                | ✅        | —                  |
-| Coding standards & rules       | —         | ✅                 |
-| Testing strategy & tiers       | —         | ✅                 |
-| Architecture decisions         | —         | ✅ docs/           |
-
-## Tips
-
-- **Tip:** vectl searches parent directories for `plan.yaml` automatically.
-- Use `vectl review` after building to check for orphan deps or missing verifications.
-- Mark already-completed steps: `vectl complete <step-id> --evidence "pre-migration: done"`.
-- One phase at a time. Verify as you go — don't build the entire plan in one pass.
-"""
-
-
-_GUIDE_ALL = [
-    _GUIDE_STARTUP,
-    _GUIDE_STUCK,
-    _GUIDE_REVIEW,
-    _GUIDE_PLANNING,
-    _GUIDE_MIGRATION,
-]
-
-_GUIDE_TOPICS = {
-    "startup": _GUIDE_STARTUP,
-    "stuck": _GUIDE_STUCK,
-    "review": _GUIDE_REVIEW,
-    "planning": _GUIDE_PLANNING,
-    "migration": _GUIDE_MIGRATION,
-}
+from vectl.guide import GUIDE_ALL as _GUIDE_ALL
+from vectl.guide import GUIDE_TOPICS as _GUIDE_TOPICS
 
 
 @app.command("guide")
@@ -896,7 +748,7 @@ def guide_cmd(
     """Show agent onboarding guide."""
     if on is None:
         combined = "\n---\n\n".join(g.strip() for g in _GUIDE_ALL)
-        combined += "\n\n---\n*Use `vectl guide --on <topic>` to revisit one section.*"
+        combined += "\n\n---\n*Use `uvx vectl guide --on <topic>` to revisit one section.*"
         out.print(Markdown(combined))
     else:
         guide = _GUIDE_TOPICS.get(on)

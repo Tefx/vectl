@@ -1,4 +1,6 @@
-# vectl — Plans with teeth
+# vectl — DAG-enforced todo list for AI agents
+
+[中文文档](README_zh.md)
 
 TODO.md can't say no. vectl can.
 
@@ -39,7 +41,8 @@ This creates `plan.yaml` and adds a vectl section to your `AGENTS.md` (creates o
 
 ### 2. Connect Your Agent
 
-#### Claude Desktop / Cursor
+<details>
+<summary>⚡ Claude Desktop / Cursor</summary>
 
 ```json
 {
@@ -52,8 +55,10 @@ This creates `plan.yaml` and adds a vectl section to your `AGENTS.md` (creates o
   }
 }
 ```
+</details>
 
-#### OpenCode
+<details>
+<summary>⚡ OpenCode</summary>
 
 Add to your `opencode.jsonc`:
 
@@ -68,14 +73,15 @@ Add to your `opencode.jsonc`:
   }
 }
 ```
-
 See [OpenCode MCP docs](https://opencode.ai/docs/mcp-servers/) for details.
+</details>
 
-#### CLI Only (no MCP)
+<details>
+<summary>⌨️ CLI Only (no MCP)</summary>
 
 No setup needed — agents call `uvx vectl ...` directly.
 
-> **Note**: `vectl init` (Step 1) already creates or updates your `AGENTS.md` with the section below.
+> **Note**: `uvx vectl init` (Step 1) already creates or updates your `AGENTS.md` with the section below.
 > You only need the manual template if you skipped `init`.
 
 <details>
@@ -101,10 +107,20 @@ Quick view: `uvx vectl status`
 - Evidence is mandatory when completing (commands run + outputs + gaps).
 - Spec uncertainty: leave `# SPEC QUESTION: ...` in code, do not guess.
 ```
-
+</details>
 </details>
 
-### 3. The Workflow
+### 3. Migrate (Optional)
+
+If your project already tracks work in a markdown file, issue tracker, or spreadsheet, tell your agent:
+
+```
+Read the migration guide (via `uvx vectl guide --on migration` or `vectl_guide` MCP tool).
+Migrate our existing plan to plan.yaml.
+Prefer MCP tools (`vectl_mutate`, `vectl_guide`) over CLI if available.
+```
+
+### 4. The Workflow
 
 ```bash
 # ORIENT: Where are we?
@@ -149,13 +165,6 @@ uvx vectl render                    # Export plan as markdown
 uvx vectl diff                      # Changes since last commit
 uvx vectl log --last 5              # Recent plan mutations
 ```
-
-### Migrating an Existing Plan
-
-If your project already tracks work in a markdown file, issue tracker, or spreadsheet:
-
-1. Run `uvx vectl init --project <name>` to create an empty `plan.yaml`.
-2. Tell your agent: *"Read `vectl guide --on migration` and migrate our existing plan to plan.yaml."*
 
 ## Data Model (`plan.yaml`)
 

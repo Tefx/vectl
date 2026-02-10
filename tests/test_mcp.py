@@ -17,6 +17,7 @@ import yaml
 from vectl.mcp_server import (
     vectl_claim as _vectl_claim_tool,
     vectl_complete as _vectl_complete_tool,
+    vectl_guide as _vectl_guide_tool,
     vectl_lifecycle as _vectl_lifecycle_tool,
     vectl_mutate as _vectl_mutate_tool,
     vectl_review as _vectl_review_tool,
@@ -36,6 +37,7 @@ vectl_lifecycle = _vectl_lifecycle_tool.fn
 vectl_search = _vectl_search_tool.fn
 vectl_mutate = _vectl_mutate_tool.fn
 vectl_review = _vectl_review_tool.fn
+vectl_guide = _vectl_guide_tool.fn
 
 
 # ---------------------------------------------------------------------------
@@ -723,6 +725,73 @@ class TestVectlReview:
         try:
             result = vectl_review()
             assert "ERROR" in result
+        finally:
+            if old is None:
+                os.environ.pop("VECTL_PLAN_PATH", None)
+            else:
+                os.environ["VECTL_PLAN_PATH"] = old
+
+
+# ---------------------------------------------------------------------------
+# Tool 9: vectl_guide
+# ---------------------------------------------------------------------------
+
+
+class TestVectlGuide:
+    def test_all_topics_returned_by_default(self) -> None:
+        result = vectl_guide()
+        assert "Agent Startup" in result
+        assert "Unblocking Strategy" in result
+        assert "Review & Validation" in result
+        assert "Architect Protocol" in result
+        assert "Migration" in result
+
+    def test_specific_topic_startup(self) -> None:
+        result = vectl_guide(topic="startup")
+        assert "Agent Startup" in result
+        assert "Workflow" in result
+        # Should NOT contain other topics
+        assert "Unblocking Strategy" not in result
+
+    def test_specific_topic_stuck(self) -> None:
+        result = vectl_guide(topic="stuck")
+        assert "Unblocking Strategy" in result
+        assert "Rejected" in result
+
+    def test_specific_topic_review(self) -> None:
+        result = vectl_guide(topic="review")
+        assert "Review & Validation" in result
+        assert "Gatekeeping" in result
+
+    def test_specific_topic_planning(self) -> None:
+        result = vectl_guide(topic="planning")
+        assert "Architect Protocol" in result
+        assert "Mutate" in result
+
+    def test_specific_topic_migration(self) -> None:
+        result = vectl_guide(topic="migration")
+        assert "Migration" in result
+        assert "plan.yaml" in result
+
+    def test_invalid_topic_returns_error(self) -> None:
+        result = vectl_guide(topic="nonexistent")
+        assert "Error" in result
+        assert "nonexistent" in result
+        # Should list valid topics
+        assert "startup" in result
+        assert "migration" in result
+
+    def test_all_topics_has_separator(self) -> None:
+        result = vectl_guide()
+        assert "---" in result
+
+    def test_no_plan_file_needed(self) -> None:
+        """Guide tool should work without a plan file (pure content)."""
+        old = os.environ.get("VECTL_PLAN_PATH")
+        os.environ["VECTL_PLAN_PATH"] = "/nonexistent/path/plan.yaml"
+        try:
+            result = vectl_guide(topic="startup")
+            assert "Agent Startup" in result
         finally:
             if old is None:
                 os.environ.pop("VECTL_PLAN_PATH", None)

@@ -1481,9 +1481,29 @@ phases:
   steps:
   - id: backlog.expose-vectl-guide-via-mcp
     name: Expose vectl_guide via MCP
-    status: claimed
+    status: done
     description: 'Currently ''vectl guide'' is only available via CLI. Expose it as
       ''vectl_guide'' MCP tool so agents can read documentation directly. Args: topic
       (optional, default=''startup''). Topics: startup, rejection, planning, migration.'
     claimed_by: antigravity
     claimed_at: '2026-02-10T16:22:16.681987+00:00'
+    evidence: Implemented in commit 681820c. Added guide.py (shared constants), vectl_guide
+      MCP tool (#9), 9 tests in test_mcp.py. 571 tests pass. Published as v0.1.13.
+  - id: backlog.dag-visualization
+    name: DAG visualization command
+    status: pending
+    description: "Add `uvx vectl dag` command that visualizes the phase/step dependency\
+      \ graph.\n\n## Design\n- Generate Mermaid syntax from plan DAG (pure Python,\
+      \ always available)\n- Auto-detect `mermaid-ascii` binary via `shutil.which()`\n\
+      \  - Found → pipe Mermaid text through subprocess → render ASCII in terminal\n\
+      \  - Not found → output raw Mermaid text + install hint\n- `--mermaid` flag\
+      \ to force Mermaid output (for GitHub/Obsidian)\n\n## Scope\n- CLI: `vectl dag\
+      \ [--mermaid] [--phase <id>]`\n- MCP: `vectl_dag` tool (returns Mermaid text;\
+      \ terminal rendering is CLI-only)\n\n## Dependencies\n- Zero new Python dependencies\n\
+      - Optional: `mermaid-ascii` Go binary (graceful degradation if absent)\n\n##\
+      \ Files\n- `src/vectl/cli.py`: add `dag` command\n- `src/vectl/core.py`: add\
+      \ `generate_mermaid_dag()` function\n- `src/vectl/mcp_server.py`: add `vectl_dag`\
+      \ tool (#10)\n- `tests/test_cli.py`: dag command tests\n- `tests/test_mcp.py`:\
+      \ dag MCP tool tests\n- `docs/DESIGN.md`: update tool count (9 → 10)"
+    verification: uvx vectl dag outputs valid Mermaid syntax; if mermaid-ascii installed,
+      renders ASCII graph in terminal

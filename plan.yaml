@@ -1507,3 +1507,34 @@ phases:
       \ dag MCP tool tests\n- `docs/DESIGN.md`: update tool count (9 → 10)"
     verification: uvx vectl dag outputs valid Mermaid syntax; if mermaid-ascii installed,
       renders ASCII graph in terminal
+  - id: backlog.render-full-flag
+    name: render --full flag for untruncated descriptions
+    status: pending
+    description: 'Add `--full` flag to `uvx vectl render` that disables the 72-char
+      truncation in `_first_line()`.
+
+
+      ## Current behavior
+
+      `_first_line(text, max_len=72)` truncates step descriptions to first line, 72
+      chars max.
+
+
+      ## Desired behavior
+
+      - `uvx vectl render` — unchanged (truncated one-line summaries)
+
+      - `uvx vectl render --full` — show complete step descriptions, no truncation
+
+
+      ## Files
+
+      - `src/vectl/core.py`: pass `full` param through `render_plan()` → `_render_phase()`
+      → skip `_first_line()`
+
+      - `src/vectl/cli.py`: add `--full` option to `render` command
+
+      - `tests/test_render.py`: test truncated vs full output
+
+      - `tests/test_cli.py`: test CLI `--full` flag'
+    verification: uvx vectl render --full shows complete descriptions without truncation

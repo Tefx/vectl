@@ -196,6 +196,9 @@ def mcp() -> None:
 @app.command()
 def render(
     phase: Optional[str] = typer.Option(None, "--phase", help="Render only this phase."),
+    full: bool = typer.Option(
+        False, "--full", help="Show complete step descriptions (no truncation)."
+    ),
     output: Optional[Path] = typer.Option(
         None, "--output", "-o", help="Write to file instead of stdout."
     ),
@@ -205,11 +208,12 @@ def render(
 
     Stakeholder report: phase progress, step status, one-line descriptions.
     Omits operational detail (claimed_by, rejection_history, etc.).
+    Use --full to include complete step descriptions.
     """
     p, _, plan = _load(plan)
 
     try:
-        md = render_plan(p, phase_id=phase)
+        md = render_plan(p, phase_id=phase, full=full)
     except PlanError as e:
         _die(str(e))
         return  # unreachable

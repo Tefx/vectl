@@ -175,3 +175,73 @@ class TestFirstLine:
 
     def test_whitespace_only(self) -> None:
         assert _first_line("   \n  \n") == ""
+
+
+class TestRenderFull:
+    """Tests for render_plan with full=True."""
+
+    def _plan_with_long_description(self) -> Plan:
+        long_desc = (
+            "Implement vectl add-step --phase <id> --name <n> --description <d> "
+            "[--depends-on dep1,dep2] [--verification cmd] [--refs a,b]"
+        )
+        multi_line_desc = "First line of description.\nSecond line with details.\nThird line."
+        return Plan(
+            project="fulltest",
+            phases=[
+                Phase(
+                    id="p1",
+                    name="Phase One",
+                    status=PhaseStatus.IN_PROGRESS,
+                    steps=[
+                        Step(
+                            id="p1.long",
+                            name="Long Step",
+                            status=StepStatus.PENDING,
+                            description=long_desc,
+                        ),
+                        Step(
+                            id="p1.multi",
+                            name="Multi Line",
+                            status=StepStatus.PENDING,
+                            description=multi_line_desc,
+                        ),
+                        Step(
+                            id="p1.empty",
+                            name="No Desc",
+                            status=StepStatus.PENDING,
+                        ),
+                    ],
+                ),
+            ],
+        )
+
+    def test_default_truncates_long_description(self) -> None:
+        p = self._plan_with_long_description()
+        md = render_plan(p)
+        assert "…" in md  # truncation marker present
+
+    def test_full_no_truncation(self) -> None:
+        p = self._plan_with_long_description()
+        md = render_plan(p, full=True)
+        assert "…" not in md  # no truncation
+        assert "[--refs a,b]" in md  # full content preserved
+
+    def test_full_multiline_indented(self) -> None:
+        p = self._plan_with_long_description()
+        md = render_plan(p, full=True)
+        assert "  First line of description." in md
+        assert "  Second line with details." in md
+        assert "  Third line." in md
+
+    def test_full_step_without_description(self) -> None:
+        p = self._plan_with_long_description()
+        md = render_plan(p, full=True)
+        # Step with no description should still render fine
+        assert "**p1.empty** No Desc" in md
+
+    def test_full_with_phase_filter(self) -> None:
+        p = self._plan_with_long_description()
+        md = render_plan(p, phase_id="p1", full=True)
+        assert "…" not in md
+        assert "[--refs a,b]" in md

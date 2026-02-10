@@ -39,19 +39,10 @@ uvx vectl init --project my-project
 
 This creates `plan.yaml` and adds a vectl section to your `AGENTS.md` (creates one if needed).
 
-### 2. Migrate (Optional)
+### 2. Connect Your Agent
 
-If your project already tracks work in a markdown file, issue tracker, or spreadsheet, tell your agent:
-
-```
-Read the migration guide (via `vectl guide --on migration` or `vectl_guide` tool).
-Migrate our existing plan to plan.yaml.
-Prefer MCP tools (`vectl_add_step`, `vectl_add_phase`) over CLI if available.
-```
-
-### 3. Connect Your Agent
-
-#### Claude Desktop / Cursor
+<details>
+<summary>⚡ Claude Desktop / Cursor</summary>
 
 ```json
 {
@@ -64,8 +55,10 @@ Prefer MCP tools (`vectl_add_step`, `vectl_add_phase`) over CLI if available.
   }
 }
 ```
+</details>
 
-#### OpenCode
+<details>
+<summary>⚡ OpenCode</summary>
 
 Add to your `opencode.jsonc`:
 
@@ -80,10 +73,11 @@ Add to your `opencode.jsonc`:
   }
 }
 ```
-
 See [OpenCode MCP docs](https://opencode.ai/docs/mcp-servers/) for details.
+</details>
 
-#### CLI Only (no MCP)
+<details>
+<summary>⌨️ CLI Only (no MCP)</summary>
 
 No setup needed — agents call `uvx vectl ...` directly.
 
@@ -113,8 +107,18 @@ Quick view: `uvx vectl status`
 - Evidence is mandatory when completing (commands run + outputs + gaps).
 - Spec uncertainty: leave `# SPEC QUESTION: ...` in code, do not guess.
 ```
-
 </details>
+</details>
+
+### 3. Migrate (Optional)
+
+If your project already tracks work in a markdown file, issue tracker, or spreadsheet, tell your agent:
+
+```
+Read the migration guide (via `vectl guide --on migration` or `vectl_guide` tool).
+Migrate our existing plan to plan.yaml.
+Prefer MCP tools (`vectl_add_step`, `vectl_add_phase`) over CLI if available.
+```
 
 ### 4. The Workflow
 

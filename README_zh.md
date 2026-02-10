@@ -38,19 +38,10 @@ uvx vectl init --project my-project
 
 这会创建 `plan.yaml` 并自动配置 `AGENTS.md`（如果需要）。
 
-### 2. 迁移（可选）
+### 2. 连接 Agent
 
-如果你已经有 Markdown、Issue 或电子表格形式的计划，告诉你的 Agent：
-
-```
-阅读迁移指南（通过 `vectl guide --on migration` 或 `vectl_guide` 工具）。
-将现有的计划迁移到 plan.yaml。
-如果可用，优先使用 MCP 工具 (`vectl_add_step`, `vectl_add_phase`)，否则使用 CLI。
-```
-
-### 3. 连接 Agent
-
-#### Claude Desktop / Cursor
+<details>
+<summary>⚡ Claude Desktop / Cursor</summary>
 
 ```json
 {
@@ -63,8 +54,10 @@ uvx vectl init --project my-project
   }
 }
 ```
+</details>
 
-#### OpenCode
+<details>
+<summary>⚡ OpenCode</summary>
 
 添加到 `opencode.jsonc`：
 
@@ -79,10 +72,11 @@ uvx vectl init --project my-project
   }
 }
 ```
-
 详见 [OpenCode MCP 文档](https://opencode.ai/docs/mcp-servers/)。
+</details>
 
-#### 仅使用 CLI (无 MCP)
+<details>
+<summary>⌨️ 仅使用 CLI (无 MCP)</summary>
 
 无需配置 — Agent 直接调用 `uvx vectl ...`。
 
@@ -112,8 +106,18 @@ Quick view: `uvx vectl status`
 - Evidence is mandatory when completing (commands run + outputs + gaps).
 - Spec uncertainty: leave `# SPEC QUESTION: ...` in code, do not guess.
 ```
-
 </details>
+</details>
+
+### 3. 迁移（可选）
+
+如果你已经有 Markdown、Issue 或电子表格形式的计划，告诉你的 Agent：
+
+```
+阅读迁移指南（通过 `vectl guide --on migration` 或 `vectl_guide` 工具）。
+将现有的计划迁移到 plan.yaml。
+如果可用，优先使用 MCP 工具 (`vectl_add_step`, `vectl_add_phase`)，否则使用 CLI。
+```
 
 ### 4. 工作流
 

@@ -1654,6 +1654,106 @@ def _first_line(text: str, max_len: int = 72) -> str:
 
 
 # ---------------------------------------------------------------------------
+# DAG Visualization (Mermaid)
+# ---------------------------------------------------------------------------
+
+
+def generate_mermaid_dag(plan: Plan, phase_id: str | None = None) -> str:
+    """Generate Mermaid flowchart syntax from plan dependency graph.
+
+    Two-level zoom:
+    - Default (phase_id=None): nodes are phases, edges are phase depends_on.
+    - With phase_id: nodes are steps within that phase, edges are step depends_on.
+
+    Node labels include status icon and progress info.
+
+    Args:
+        plan: The plan to visualize.
+        phase_id: If provided, show step-level DAG for this phase.
+
+    Returns:
+        Mermaid flowchart string (LR direction).
+
+    Raises:
+        PlanError: If phase_id is provided but not found.
+
+    >>> from vectl.models import Plan, Phase, Step, PhaseStatus, StepStatus
+    >>> p = Plan(project="test", phases=[
+    ...     Phase(id="a", name="Alpha", status=PhaseStatus.DONE, steps=[
+    ...         Step(id="a.1", name="S1", status=StepStatus.DONE),
+    ...     ]),
+    ...     Phase(id="b", name="Beta", status=PhaseStatus.PENDING, depends_on=["a"], steps=[
+    ...         Step(id="b.1", name="S1", status=StepStatus.PENDING),
+    ...     ]),
+    ... ])
+    >>> mmd = generate_mermaid_dag(p)
+    >>> "flowchart LR" in mmd
+    True
+    >>> "a --> b" in mmd
+    True
+    """
+    if phase_id is not None:
+        return _mermaid_step_dag(plan, phase_id)
+    return _mermaid_phase_dag(plan)
+
+
+def _mermaid_phase_dag(plan: Plan) -> str:
+    """Generate phase-level Mermaid DAG."""
+    lines: list[str] = ["flowchart LR"]
+
+    for ph in plan.phases:
+        icon = _PHASE_ICON.get(ph.status, "?")
+        done = sum(1 for s in ph.steps if s.status in (StepStatus.DONE, StepStatus.SKIPPED))
+        total = len(ph.steps)
+        label = f"{icon} {ph.name} ({done}/{total})"
+        lines.append(f'  {ph.id}["{label}"]')
+
+    for ph in plan.phases:
+        for dep in ph.depends_on:
+            lines.append(f"  {dep} --> {ph.id}")
+
+    # Hint
+    lines.append("")
+    lines.append("%% Drill into a phase: uvx vectl dag --phase <id>")
+
+    return "\n".join(lines)
+
+
+def _mermaid_step_dag(plan: Plan, phase_id: str) -> str:
+    """Generate step-level Mermaid DAG for a single phase."""
+    ph = plan.find_phase(phase_id)
+    if ph is None:
+        raise PlanError(f"Phase '{phase_id}' not found.")
+
+    lines: list[str] = [f"flowchart LR"]
+
+    for step in ph.steps:
+        icon = _STEP_ICON.get(step.status, "?")
+        if _is_step_locked_shared(plan, ph, step):
+            icon = "🔒"
+        label = f"{icon} {step.name}"
+        lines.append(f'  {_mermaid_node_id(step.id)}["{label}"]')
+
+    for step in ph.steps:
+        for dep in step.depends_on:
+            lines.append(f"  {_mermaid_node_id(dep)} --> {_mermaid_node_id(step.id)}")
+
+    return "\n".join(lines)
+
+
+def _mermaid_node_id(step_id: str) -> str:
+    """Convert step ID to valid Mermaid node ID.
+
+    Mermaid node IDs cannot contain dots or certain special chars.
+    Replace dots and hyphens with underscores.
+
+    >>> _mermaid_node_id("core.validate-plan")
+    'core_validate_plan'
+    """
+    return step_id.replace(".", "_").replace("-", "_")
+
+
+# ---------------------------------------------------------------------------
 # Diff (compare two plan states)
 # ---------------------------------------------------------------------------
 

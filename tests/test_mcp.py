@@ -17,6 +17,7 @@ import yaml
 from vectl.mcp_server import (
     vectl_claim as _vectl_claim_tool,
     vectl_complete as _vectl_complete_tool,
+    vectl_dag as _vectl_dag_tool,
     vectl_guide as _vectl_guide_tool,
     vectl_lifecycle as _vectl_lifecycle_tool,
     vectl_mutate as _vectl_mutate_tool,
@@ -38,6 +39,7 @@ vectl_search = _vectl_search_tool.fn
 vectl_mutate = _vectl_mutate_tool.fn
 vectl_review = _vectl_review_tool.fn
 vectl_guide = _vectl_guide_tool.fn
+vectl_dag = _vectl_dag_tool.fn
 
 
 # ---------------------------------------------------------------------------
@@ -797,3 +799,36 @@ class TestVectlGuide:
                 os.environ.pop("VECTL_PLAN_PATH", None)
             else:
                 os.environ["VECTL_PLAN_PATH"] = old
+
+
+# ---------------------------------------------------------------------------
+# Tool 10: vectl_dag
+# ---------------------------------------------------------------------------
+
+
+class TestVectlDag:
+    def test_phase_dag_default(self, plan_file: Path) -> None:
+        result = vectl_dag()
+        assert "flowchart LR" in result
+        assert "Alpha Phase" in result
+        assert "Beta Phase" in result
+
+    def test_phase_dag_edges(self, plan_file: Path) -> None:
+        result = vectl_dag()
+        assert "alpha --> beta" in result
+
+    def test_step_dag(self, plan_file: Path) -> None:
+        result = vectl_dag(phase_id="alpha")
+        assert "flowchart LR" in result
+        assert "Alpha Step One" in result
+        assert "Alpha Step Two" in result
+        assert "a_1 --> a_2" in result
+
+    def test_step_dag_phase_not_found(self, plan_file: Path) -> None:
+        result = vectl_dag(phase_id="nope")
+        assert "Error" in result
+        assert "not found" in result
+
+    def test_drill_hint_in_phase_dag(self, plan_file: Path) -> None:
+        result = vectl_dag()
+        assert "uvx vectl dag --phase" in result

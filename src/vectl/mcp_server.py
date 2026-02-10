@@ -1,6 +1,6 @@
 """MCP server exposing vectl tools to agents.
 
-9 tools (8 consolidated per expert panel dec-001, plus guide):
+10 tools (8 consolidated per expert panel dec-001, plus guide and dag):
   1. vectl_status  — plan overview + next steps + mine
   2. vectl_show    — step/phase detail
   3. vectl_claim   — claim step (auto-claim supported)
@@ -10,6 +10,7 @@
   7. vectl_mutate  — add-step/edit-step/remove-step/move-step/edit-phase/add-phase
   8. vectl_review  — plan review + gate check
   9. vectl_guide   — agent onboarding guide (startup/stuck/review/planning/migration)
+ 10. vectl_dag     — dependency graph as Mermaid flowchart
 
 Each tool returns Markdown-formatted text.
 Plan path: resolved via shared plan_path.resolve_plan_path() —
@@ -734,6 +735,36 @@ def vectl_guide(topic: str | None = None) -> str:
         return f"**Error:** Unknown topic '{topic}'. Valid topics: {', '.join(VALID_TOPICS)}."
 
     return guide.strip()
+
+
+# ---------------------------------------------------------------------------
+# Tool 10: vectl_dag
+# ---------------------------------------------------------------------------
+
+
+@mcp.tool(
+    description=(
+        "Show dependency graph as Mermaid flowchart. "
+        "Default: phase-level DAG. Pass phase_id to drill into step-level DAG. "
+        "Returns Mermaid text (paste into GitHub/Obsidian to render)."
+    ),
+)
+def vectl_dag(phase_id: str | None = None) -> str:
+    """Show dependency graph as Mermaid flowchart.
+
+    Args:
+        phase_id: Optional phase ID. If provided, shows step-level DAG
+            within that phase. Otherwise shows phase-level DAG.
+    """
+    from vectl.core import generate_mermaid_dag
+
+    plan_path = resolve_plan_path()
+    plan, _ = load_plan(plan_path)
+
+    try:
+        return generate_mermaid_dag(plan, phase_id=phase_id)
+    except PlanError as e:
+        return f"**Error:** {e}"
 
 
 # ---------------------------------------------------------------------------

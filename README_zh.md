@@ -80,7 +80,7 @@ uvx vectl init --project my-project
 
 无需配置 — Agent 直接调用 `uvx vectl ...`。
 
-> **注**：`vectl init` (步骤 1) 已经自动创建或更新了 `AGENTS.md`。
+> **注**：`uvx vectl init` (步骤 1) 已经自动创建或更新了 `AGENTS.md`。
 > 只有跳过 `init` 时才需要手动添加以下内容。
 
 <details>
@@ -114,9 +114,9 @@ Quick view: `uvx vectl status`
 如果你已经有 Markdown、Issue 或电子表格形式的计划，告诉你的 Agent：
 
 ```
-阅读迁移指南（通过 `vectl guide --on migration`）。
+阅读迁移指南（通过 `uvx vectl guide --on migration` 或 MCP 工具 `vectl_guide`）。
 将现有的计划迁移到 plan.yaml。
-如果可用，优先使用 MCP 工具 (`vectl_add_step`, `vectl_add_phase`)，否则使用 CLI。
+如果可用，优先使用 MCP 工具 (`vectl_mutate`, `vectl_guide`)，否则使用 CLI。
 ```
 
 ### 4. 工作流

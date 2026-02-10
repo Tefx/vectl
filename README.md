@@ -81,7 +81,7 @@ See [OpenCode MCP docs](https://opencode.ai/docs/mcp-servers/) for details.
 
 No setup needed — agents call `uvx vectl ...` directly.
 
-> **Note**: `vectl init` (Step 1) already creates or updates your `AGENTS.md` with the section below.
+> **Note**: `uvx vectl init` (Step 1) already creates or updates your `AGENTS.md` with the section below.
 > You only need the manual template if you skipped `init`.
 
 <details>
@@ -115,9 +115,9 @@ Quick view: `uvx vectl status`
 If your project already tracks work in a markdown file, issue tracker, or spreadsheet, tell your agent:
 
 ```
-Read the migration guide (via `vectl guide --on migration`).
+Read the migration guide (via `uvx vectl guide --on migration` or `vectl_guide` MCP tool).
 Migrate our existing plan to plan.yaml.
-Prefer MCP tools (`vectl_add_step`, `vectl_add_phase`) over CLI if available.
+Prefer MCP tools (`vectl_mutate`, `vectl_guide`) over CLI if available.
 ```
 
 ### 4. The Workflow

@@ -1474,14 +1474,16 @@ phases:
       correct deprecated-alias code in plan_path.py and tests. No stale docs found.
 - id: backlog
   name: Backlog
-  status: pending
+  status: in_progress
   gate: Prioritized based on user/agent needs
   depends_on:
   - p0-parity
   steps:
   - id: backlog.expose-vectl-guide-via-mcp
     name: Expose vectl_guide via MCP
-    status: pending
+    status: claimed
     description: 'Currently ''vectl guide'' is only available via CLI. Expose it as
       ''vectl_guide'' MCP tool so agents can read documentation directly. Args: topic
       (optional, default=''startup''). Topics: startup, rejection, planning, migration.'
+    claimed_by: antigravity
+    claimed_at: '2026-02-10T16:22:16.681987+00:00'

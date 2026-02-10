@@ -66,7 +66,7 @@ models.py       (~300L)  — Enums, Pydantic models, dataclasses, exceptions
 io.py           (~110L)  — YAML IO + CAS
 core.py       (~1,570L)  — All business logic (validation, state machine, mutation, render, diff)
 cli.py        (~1,670L)  — Typer CLI commands (33 commands)
-mcp_server.py   (~660L)  — FastMCP server (8 tools)
+mcp_server.py   (~750L)  — FastMCP server (9 tools)
 ```
 
 ## Tests

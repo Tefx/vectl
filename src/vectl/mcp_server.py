@@ -1,6 +1,6 @@
 """MCP server exposing vectl tools to agents.
 
-8 consolidated tools per expert panel decision (dec-001):
+9 tools (8 consolidated per expert panel dec-001, plus guide):
   1. vectl_status  — plan overview + next steps + mine
   2. vectl_show    — step/phase detail
   3. vectl_claim   — claim step (auto-claim supported)
@@ -9,6 +9,7 @@
   6. vectl_search  — search plan
   7. vectl_mutate  — add-step/edit-step/remove-step/move-step/edit-phase/add-phase
   8. vectl_review  — plan review + gate check
+  9. vectl_guide   — agent onboarding guide (startup/stuck/review/planning/migration)
 
 Each tool returns Markdown-formatted text.
 Plan path: resolved via shared plan_path.resolve_plan_path() —
@@ -701,6 +702,38 @@ def vectl_review(
             parts.append(f"\n**Gate Check Error:** {e}")
 
     return "\n".join(parts)
+
+
+# ---------------------------------------------------------------------------
+# Tool 9: vectl_guide
+# ---------------------------------------------------------------------------
+
+
+@mcp.tool(
+    description=(
+        "Show agent onboarding guide. Topics: startup, stuck, review, planning, migration. "
+        "Returns Markdown guide text. Call with no arguments to get all topics."
+    ),
+)
+def vectl_guide(topic: str | None = None) -> str:
+    """Show agent onboarding guide.
+
+    Args:
+        topic: Optional topic to show. One of: startup, stuck, review, planning, migration.
+            If omitted, returns all topics combined.
+    """
+    from vectl.guide import GUIDE_ALL, GUIDE_TOPICS, VALID_TOPICS
+
+    if topic is None:
+        combined = "\n---\n\n".join(g.strip() for g in GUIDE_ALL)
+        combined += "\n\n---\n*Topics: " + ", ".join(VALID_TOPICS) + "*"
+        return combined
+
+    guide = GUIDE_TOPICS.get(topic)
+    if guide is None:
+        return f"**Error:** Unknown topic '{topic}'. Valid topics: {', '.join(VALID_TOPICS)}."
+
+    return guide.strip()
 
 
 # ---------------------------------------------------------------------------

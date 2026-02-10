@@ -1491,7 +1491,7 @@ phases:
       MCP tool (#9), 9 tests in test_mcp.py. 571 tests pass. Published as v0.1.13.
   - id: backlog.dag-visualization
     name: DAG visualization command
-    status: pending
+    status: claimed
     description: "Add `uvx vectl dag` command that visualizes the phase/step dependency\
       \ graph.\n\n## Design\n- Generate Mermaid syntax from plan DAG (pure Python,\
       \ always available)\n- Auto-detect `mermaid-ascii` binary via `shutil.which()`\n\
@@ -1507,6 +1507,8 @@ phases:
       \ dag MCP tool tests\n- `docs/DESIGN.md`: update tool count (9 → 10)"
     verification: uvx vectl dag outputs valid Mermaid syntax; if mermaid-ascii installed,
       renders ASCII graph in terminal
+    claimed_by: prometheus
+    claimed_at: '2026-02-10T17:25:42.899417+00:00'
   - id: backlog.render-full-flag
     name: render --full flag for untruncated descriptions
     status: done

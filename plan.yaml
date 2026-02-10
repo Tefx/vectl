@@ -1492,21 +1492,22 @@ phases:
   - id: backlog.dag-visualization
     name: DAG visualization command
     status: claimed
-    description: "Add `uvx vectl dag` command that visualizes the phase/step dependency\
-      \ graph.\n\n## Design\n- Generate Mermaid syntax from plan DAG (pure Python,\
-      \ always available)\n- Auto-detect `mermaid-ascii` binary via `shutil.which()`\n\
-      \  - Found → pipe Mermaid text through subprocess → render ASCII in terminal\n\
-      \  - Not found → output raw Mermaid text + install hint\n- `--mermaid` flag\
-      \ to force Mermaid output (for GitHub/Obsidian)\n\n## Scope\n- CLI: `vectl dag\
-      \ [--mermaid] [--phase <id>]`\n- MCP: `vectl_dag` tool (returns Mermaid text;\
-      \ terminal rendering is CLI-only)\n\n## Dependencies\n- Zero new Python dependencies\n\
-      - Optional: `mermaid-ascii` Go binary (graceful degradation if absent)\n\n##\
-      \ Files\n- `src/vectl/cli.py`: add `dag` command\n- `src/vectl/core.py`: add\
-      \ `generate_mermaid_dag()` function\n- `src/vectl/mcp_server.py`: add `vectl_dag`\
-      \ tool (#10)\n- `tests/test_cli.py`: dag command tests\n- `tests/test_mcp.py`:\
-      \ dag MCP tool tests\n- `docs/DESIGN.md`: update tool count (9 → 10)"
-    verification: uvx vectl dag outputs valid Mermaid syntax; if mermaid-ascii installed,
-      renders ASCII graph in terminal
+    description: "Add `uvx vectl dag` command that outputs Mermaid flowchart of the\
+      \ dependency graph.\n\n## Design Decisions\n- Output: raw Mermaid text only\
+      \ (paste into GitHub/Obsidian to render)\n- Two-level zoom:\n  - Default: nodes\
+      \ = Phases, edges = phase-level depends_on\n  - `--phase <id>`: nodes = Steps\
+      \ within that phase, edges = step-level depends_on\n- Node labels include status\
+      \ icon (✓/▶/○/\U0001F512) and progress (e.g. 3/5)\n- Zero external dependencies\
+      \ (no mermaid-ascii, no mmdc, no SVG)\n- MCP: `vectl_dag` tool (#10) returns\
+      \ Mermaid text, same two-level zoom\n\n## Scope\n- CLI: `uvx vectl dag [--phase\
+      \ <id>]`\n- MCP: `vectl_dag(phase_id: str | None)`\n- core.py: `generate_mermaid_dag(plan,\
+      \ phase_id)` pure function\n\n## Files\n- `src/vectl/core.py`: add `generate_mermaid_dag()`\n\
+      - `src/vectl/cli.py`: add `dag` command\n- `src/vectl/mcp_server.py`: add `vectl_dag`\
+      \ tool (#10)\n- `tests/test_cli.py`: dag CLI tests\n- `tests/test_mcp.py`: dag\
+      \ MCP tests\n- `tests/test_render.py`: dag core function tests\n- `docs/DESIGN.md`:\
+      \ update tool count (9 → 10)"
+    verification: uvx vectl dag outputs valid Mermaid flowchart syntax; --phase drills
+      into step-level DAG; 576+ tests pass
     claimed_by: prometheus
     claimed_at: '2026-02-10T17:25:42.899417+00:00'
   - id: backlog.render-full-flag

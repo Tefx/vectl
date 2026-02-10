@@ -1675,3 +1675,35 @@ class TestMine:
         assert result.exit_code == 0
         assert "No steps claimed" in result.output
         assert "vectl claim" in result.output  # hint to start work
+
+
+# ---------------------------------------------------------------------------
+# dag command
+# ---------------------------------------------------------------------------
+
+
+class TestDag:
+    def test_dag_phase_level(self, plan_file: Path) -> None:
+        result = runner.invoke(app, ["dag", "--plan", str(plan_file)])
+        assert result.exit_code == 0
+        assert "flowchart LR" in result.output
+        assert "Phase 1" in result.output
+        assert "Phase 2" in result.output
+        assert "p1 --> p2" in result.output
+
+    def test_dag_step_level(self, plan_file: Path) -> None:
+        result = runner.invoke(app, ["dag", "--phase", "p1", "--plan", str(plan_file)])
+        assert result.exit_code == 0
+        assert "flowchart LR" in result.output
+        assert "Step 1" in result.output
+        assert "Step 2" in result.output
+        assert "s1 --> s2" in result.output
+
+    def test_dag_phase_not_found(self, plan_file: Path) -> None:
+        result = runner.invoke(app, ["dag", "--phase", "nope", "--plan", str(plan_file)])
+        assert result.exit_code == 1
+        assert "not found" in result.output
+
+    def test_dag_has_drill_hint(self, plan_file: Path) -> None:
+        result = runner.invoke(app, ["dag", "--plan", str(plan_file)])
+        assert "uvx vectl dag --phase" in result.output

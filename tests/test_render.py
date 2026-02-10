@@ -2,7 +2,7 @@
 
 import pytest
 
-from vectl.core import render_plan, _first_line
+from vectl.core import render_plan, generate_mermaid_dag, _first_line
 from vectl.models import (
     Phase,
     PhaseStatus,
@@ -245,3 +245,113 @@ class TestRenderFull:
         md = render_plan(p, phase_id="p1", full=True)
         assert "…" not in md
         assert "[--refs a,b]" in md
+
+
+# ---------------------------------------------------------------------------
+# generate_mermaid_dag tests
+# ---------------------------------------------------------------------------
+
+
+class TestMermaidDag:
+    """Tests for generate_mermaid_dag()."""
+
+    @staticmethod
+    def _dag_plan() -> Plan:
+        return Plan(
+            project="dagtest",
+            phases=[
+                Phase(
+                    id="core",
+                    name="Core",
+                    status=PhaseStatus.DONE,
+                    steps=[
+                        Step(id="core.a", name="A", status=StepStatus.DONE),
+                        Step(id="core.b", name="B", status=StepStatus.DONE, depends_on=["core.a"]),
+                    ],
+                ),
+                Phase(
+                    id="cli",
+                    name="CLI",
+                    status=PhaseStatus.IN_PROGRESS,
+                    depends_on=["core"],
+                    steps=[
+                        Step(id="cli.x", name="X", status=StepStatus.PENDING),
+                        Step(id="cli.y", name="Y", status=StepStatus.PENDING, depends_on=["cli.x"]),
+                    ],
+                ),
+                Phase(
+                    id="mcp",
+                    name="MCP",
+                    status=PhaseStatus.LOCKED,
+                    depends_on=["core", "cli"],
+                    steps=[
+                        Step(id="mcp.z", name="Z", status=StepStatus.PENDING),
+                    ],
+                ),
+            ],
+        )
+
+    def test_phase_dag_has_flowchart_header(self) -> None:
+        mmd = generate_mermaid_dag(self._dag_plan())
+        assert mmd.startswith("flowchart LR")
+
+    def test_phase_dag_contains_all_phases(self) -> None:
+        mmd = generate_mermaid_dag(self._dag_plan())
+        assert 'core["✓ Core (2/2)"]' in mmd
+        assert 'cli["▶ CLI (0/2)"]' in mmd
+        assert 'mcp["🔒 MCP (0/1)"]' in mmd
+
+    def test_phase_dag_contains_edges(self) -> None:
+        mmd = generate_mermaid_dag(self._dag_plan())
+        assert "core --> cli" in mmd
+        assert "core --> mcp" in mmd
+        assert "cli --> mcp" in mmd
+
+    def test_phase_dag_has_hint(self) -> None:
+        mmd = generate_mermaid_dag(self._dag_plan())
+        assert "uvx vectl dag --phase" in mmd
+
+    def test_step_dag_has_flowchart_header(self) -> None:
+        mmd = generate_mermaid_dag(self._dag_plan(), phase_id="core")
+        assert mmd.startswith("flowchart LR")
+
+    def test_step_dag_contains_steps(self) -> None:
+        mmd = generate_mermaid_dag(self._dag_plan(), phase_id="core")
+        assert '["✓ A"]' in mmd
+        assert '["✓ B"]' in mmd
+
+    def test_step_dag_contains_edges(self) -> None:
+        mmd = generate_mermaid_dag(self._dag_plan(), phase_id="core")
+        assert "core_a --> core_b" in mmd
+
+    def test_step_dag_no_cross_phase_edges(self) -> None:
+        mmd = generate_mermaid_dag(self._dag_plan(), phase_id="cli")
+        assert "cli_x --> cli_y" in mmd
+        # No reference to core steps
+        assert "core" not in mmd
+
+    def test_step_dag_phase_not_found(self) -> None:
+        with pytest.raises(PlanError, match="not found"):
+            generate_mermaid_dag(self._dag_plan(), phase_id="nope")
+
+    def test_empty_plan(self) -> None:
+        p = Plan(project="empty", phases=[])
+        mmd = generate_mermaid_dag(p)
+        assert "flowchart LR" in mmd
+
+    def test_no_deps_no_edges(self) -> None:
+        p = Plan(
+            project="nodeps",
+            phases=[
+                Phase(id="a", name="A", status=PhaseStatus.PENDING, steps=[]),
+                Phase(id="b", name="B", status=PhaseStatus.PENDING, steps=[]),
+            ],
+        )
+        mmd = generate_mermaid_dag(p)
+        assert "-->" not in mmd
+
+    def test_mermaid_node_id_sanitization(self) -> None:
+        from vectl.core import _mermaid_node_id
+
+        assert _mermaid_node_id("core.validate-plan") == "core_validate_plan"
+        assert _mermaid_node_id("simple") == "simple"

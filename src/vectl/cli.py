@@ -762,6 +762,33 @@ def guide_cmd(
         out.print(Markdown(guide.strip()))
 
 
+@app.command()
+def dag(
+    phase: Optional[str] = typer.Option(
+        None, "--phase", help="Show step-level DAG within this phase."
+    ),
+    plan: Path | None = PlanOption,
+) -> None:
+    """Output dependency graph as Mermaid flowchart.
+
+    Default: phase-level DAG (nodes = phases, edges = depends_on).
+    With --phase: step-level DAG within that phase.
+
+    Paste output into GitHub/Obsidian to render as a diagram.
+    """
+    from vectl.core import generate_mermaid_dag
+
+    p, _, plan = _load(plan)
+
+    try:
+        mmd = generate_mermaid_dag(p, phase_id=phase)
+    except PlanError as e:
+        _die(str(e))
+        return  # unreachable
+
+    out.print(mmd)
+
+
 # ---------------------------------------------------------------------------
 # cli.5: claim + complete
 # ---------------------------------------------------------------------------

@@ -1509,7 +1509,7 @@ phases:
       renders ASCII graph in terminal
   - id: backlog.render-full-flag
     name: render --full flag for untruncated descriptions
-    status: claimed
+    status: done
     description: 'Add `--full` flag to `uvx vectl render` that disables the 72-char
       truncation in `_first_line()`.
 
@@ -1540,3 +1540,6 @@ phases:
     verification: uvx vectl render --full shows complete descriptions without truncation
     claimed_by: antigravity
     claimed_at: '2026-02-10T17:22:33.450708+00:00'
+    evidence: 'Commit 8442926. Added full param to render_plan/render_phase in core.py,
+      --full flag to CLI render command. 5 new tests in test_render.py. 576 tests
+      pass. Verified: uv run vectl render --phase backlog --full shows complete descriptions.'

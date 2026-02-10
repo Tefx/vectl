@@ -155,7 +155,11 @@ uvx vectl log --last 5              # Recent plan mutations
 If your project already tracks work in a markdown file, issue tracker, or spreadsheet:
 
 1. Run `uvx vectl init --project <name>` to create an empty `plan.yaml`.
-2. Tell your agent: *"Read `vectl guide --on migration` and migrate our existing plan to plan.yaml."*
+2. Tell your agent:
+
+```
+Read `vectl guide --on migration` and migrate our existing plan to plan.yaml.
+```
 
 ## Data Model (`plan.yaml`)
 

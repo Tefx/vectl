@@ -1686,7 +1686,7 @@ class TestDag:
     def test_dag_phase_level(self, plan_file: Path) -> None:
         result = runner.invoke(app, ["dag", "--plan", str(plan_file)])
         assert result.exit_code == 0
-        assert "flowchart LR" in result.output
+        assert "flowchart TD" in result.output
         assert "Phase 1" in result.output
         assert "Phase 2" in result.output
         assert "p1 --> p2" in result.output
@@ -1694,7 +1694,7 @@ class TestDag:
     def test_dag_step_level(self, plan_file: Path) -> None:
         result = runner.invoke(app, ["dag", "--phase", "p1", "--plan", str(plan_file)])
         assert result.exit_code == 0
-        assert "flowchart LR" in result.output
+        assert "flowchart TD" in result.output
         assert "Step 1" in result.output
         assert "Step 2" in result.output
         assert "s1 --> s2" in result.output

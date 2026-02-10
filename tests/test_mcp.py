@@ -809,7 +809,7 @@ class TestVectlGuide:
 class TestVectlDag:
     def test_phase_dag_default(self, plan_file: Path) -> None:
         result = vectl_dag()
-        assert "flowchart LR" in result
+        assert "flowchart TD" in result
         assert "Alpha Phase" in result
         assert "Beta Phase" in result
 
@@ -819,7 +819,7 @@ class TestVectlDag:
 
     def test_step_dag(self, plan_file: Path) -> None:
         result = vectl_dag(phase_id="alpha")
-        assert "flowchart LR" in result
+        assert "flowchart TD" in result
         assert "Alpha Step One" in result
         assert "Alpha Step Two" in result
         assert "a_1 --> a_2" in result

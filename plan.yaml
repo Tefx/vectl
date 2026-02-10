@@ -1474,7 +1474,7 @@ phases:
       correct deprecated-alias code in plan_path.py and tests. No stale docs found.
 - id: backlog
   name: Backlog
-  status: in_progress
+  status: done
   gate: Prioritized based on user/agent needs
   depends_on:
   - p0-parity
@@ -1491,7 +1491,7 @@ phases:
       MCP tool (#9), 9 tests in test_mcp.py. 571 tests pass. Published as v0.1.13.
   - id: backlog.dag-visualization
     name: DAG visualization command
-    status: claimed
+    status: done
     description: "Add `uvx vectl dag` command that outputs Mermaid flowchart of the\
       \ dependency graph.\n\n## Design Decisions\n- Output: raw Mermaid text only\
       \ (paste into GitHub/Obsidian to render)\n- Two-level zoom:\n  - Default: nodes\
@@ -1510,6 +1510,9 @@ phases:
       into step-level DAG; 576+ tests pass
     claimed_by: prometheus
     claimed_at: '2026-02-10T17:25:42.899417+00:00'
+    evidence: 'Implemented generate_mermaid_dag() in core.py, dag CLI command, vectl_dag
+      MCP tool (#10). Two-level zoom: phase-level default, --phase for step drill-down.
+      21 new tests (597 total passing). Zero external deps. Commit 47b3c68.'
   - id: backlog.render-full-flag
     name: render --full flag for untruncated descriptions
     status: done

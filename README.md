@@ -115,7 +115,7 @@ Quick view: `uvx vectl status`
 If your project already tracks work in a markdown file, issue tracker, or spreadsheet, tell your agent:
 
 ```
-Read the migration guide (via `vectl guide --on migration` or `vectl_guide` tool).
+Read the migration guide (via `vectl guide --on migration`).
 Migrate our existing plan to plan.yaml.
 Prefer MCP tools (`vectl_add_step`, `vectl_add_phase`) over CLI if available.
 ```

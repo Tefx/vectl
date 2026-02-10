@@ -1554,16 +1554,17 @@ _STEP_ICON = {
 }
 
 
-def render_plan(plan: Plan, phase_id: str | None = None) -> str:
+def render_plan(plan: Plan, phase_id: str | None = None, full: bool = False) -> str:
     """Render plan as Markdown stakeholder report.
 
     Deliberately less detail than review_plan: omits claimed_by, claimed_at,
     rejection_history. Shows phase progress, step status, and one-line
-    description summaries.
+    description summaries (unless ``full=True``).
 
     Args:
         plan: The plan to render.
         phase_id: If provided, render only this phase.
+        full: If True, show complete step descriptions without truncation.
 
     Returns:
         Markdown string.
@@ -1575,7 +1576,7 @@ def render_plan(plan: Plan, phase_id: str | None = None) -> str:
         ph = plan.find_phase(phase_id)
         if ph is None:
             raise PlanError(f"Phase '{phase_id}' not found.")
-        return _render_phase(plan, ph)
+        return _render_phase(plan, ph, full=full)
 
     lines: list[str] = [f"# {plan.project}\n"]
 
@@ -1594,16 +1595,21 @@ def render_plan(plan: Plan, phase_id: str | None = None) -> str:
 
     # Per-phase detail
     for ph in plan.phases:
-        lines.append(_render_phase(plan, ph))
+        lines.append(_render_phase(plan, ph, full=full))
 
     return "\n".join(lines)
 
 
-def _render_phase(plan: Plan, ph: Phase) -> str:
+def _render_phase(plan: Plan, ph: Phase, full: bool = False) -> str:
     """Render a single phase as Markdown section.
 
     Uses shared ``is_step_locked`` from *semantics* so lock icons are
     consistent across CLI, MCP, and ``render_plan`` output.
+
+    Args:
+        plan: The plan (for lock detection).
+        ph: The phase to render.
+        full: If True, show complete step descriptions without truncation.
     """
     done = sum(1 for s in ph.steps if s.status in (StepStatus.DONE, StepStatus.SKIPPED))
     total = len(ph.steps)
@@ -1621,9 +1627,15 @@ def _render_phase(plan: Plan, ph: Phase) -> str:
         si = _STEP_ICON.get(step.status, "?")
         if _is_step_locked_shared(plan, ph, step):
             si = "🔒"
-        summary = _first_line(step.description)
-        suffix = f" — {summary}" if summary else ""
-        lines.append(f"- {si} **{step.id}** {step.name}{suffix}")
+        if full and step.description.strip():
+            lines.append(f"- {si} **{step.id}** {step.name}")
+            # Indent full description under the bullet
+            for desc_line in step.description.strip().splitlines():
+                lines.append(f"  {desc_line}")
+        else:
+            summary = _first_line(step.description)
+            suffix = f" — {summary}" if summary else ""
+            lines.append(f"- {si} **{step.id}** {step.name}{suffix}")
 
     lines.append("")
     return "\n".join(lines)

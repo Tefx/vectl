@@ -89,6 +89,22 @@ issue tracker), use this workflow to migrate it into plan.yaml.
 Run `uvx vectl init --project <name>` first. This creates an empty plan.yaml and
 configures AGENTS.md.
 
+## Rules
+
+1. **Preserve language.** Use the same language as the original plan.
+   If the source is in Chinese, plan.yaml content stays in Chinese.
+
+2. **Respect structure.** Map the original plan's hierarchy into phases/steps
+   as directly as possible. Do not reorganize, merge, or split unless the
+   user requests it.
+
+3. **Copy, don't rephrase.** Use the original titles and descriptions verbatim.
+   Do not summarize, reword, or "improve" the text during migration.
+
+4. **Surface issues, don't silently fix.** If you detect dependency errors,
+   missing references, or structural inconsistencies, ask the user whether
+   to auto-fix. Only apply fixes after explicit confirmation.
+
 ## Workflow
 
 1. **Read** the existing plan in full. Identify phases and steps.

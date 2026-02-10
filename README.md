@@ -44,7 +44,9 @@ This creates `plan.yaml` and adds a vectl section to your `AGENTS.md` (creates o
 If your project already tracks work in a markdown file, issue tracker, or spreadsheet, tell your agent:
 
 ```
-Read `vectl guide --on migration` and migrate our existing plan to plan.yaml.
+Read the migration guide (via `vectl guide --on migration` or `vectl_guide` tool).
+Migrate our existing plan to plan.yaml.
+Prefer MCP tools (`vectl_add_step`, `vectl_add_phase`) over CLI if available.
 ```
 
 ### 3. Connect Your Agent

@@ -43,7 +43,9 @@ uvx vectl init --project my-project
 如果你已经有 Markdown、Issue 或电子表格形式的计划，告诉你的 Agent：
 
 ```
-阅读 `vectl guide --on migration` 并把我们现有的计划迁移到 plan.yaml。
+阅读迁移指南（通过 `vectl guide --on migration` 或 `vectl_guide` 工具）。
+将现有的计划迁移到 plan.yaml。
+如果可用，优先使用 MCP 工具 (`vectl_add_step`, `vectl_add_phase`)，否则使用 CLI。
 ```
 
 ### 3. 连接 Agent

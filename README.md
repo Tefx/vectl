@@ -37,7 +37,15 @@ uvx vectl init --project my-project
 
 This creates `plan.yaml` and adds a vectl section to your `AGENTS.md` (creates one if needed).
 
-### 2. Connect Your Agent
+### 2. Migrate (Optional)
+
+If your project already tracks work in a markdown file, issue tracker, or spreadsheet, tell your agent:
+
+```
+Read `vectl guide --on migration` and migrate our existing plan to plan.yaml.
+```
+
+### 3. Connect Your Agent
 
 #### Claude Desktop / Cursor
 
@@ -104,7 +112,7 @@ Quick view: `uvx vectl status`
 
 </details>
 
-### 3. The Workflow
+### 4. The Workflow
 
 ```bash
 # ORIENT: Where are we?
@@ -148,17 +156,6 @@ For all 33 commands (plan mutation, review, admin): `uvx vectl --help` or `uvx v
 uvx vectl render                    # Export plan as markdown
 uvx vectl diff                      # Changes since last commit
 uvx vectl log --last 5              # Recent plan mutations
-```
-
-### Migrating an Existing Plan
-
-If your project already tracks work in a markdown file, issue tracker, or spreadsheet:
-
-1. Run `uvx vectl init --project <name>` to create an empty `plan.yaml`.
-2. Tell your agent:
-
-```
-Read `vectl guide --on migration` and migrate our existing plan to plan.yaml.
 ```
 
 ## Data Model (`plan.yaml`)

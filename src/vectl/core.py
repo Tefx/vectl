@@ -1687,7 +1687,7 @@ def generate_mermaid_dag(plan: Plan, phase_id: str | None = None) -> str:
     ...     ]),
     ... ])
     >>> mmd = generate_mermaid_dag(p)
-    >>> "flowchart LR" in mmd
+    >>> "flowchart TD" in mmd
     True
     >>> "a --> b" in mmd
     True
@@ -1699,7 +1699,7 @@ def generate_mermaid_dag(plan: Plan, phase_id: str | None = None) -> str:
 
 def _mermaid_phase_dag(plan: Plan) -> str:
     """Generate phase-level Mermaid DAG."""
-    lines: list[str] = ["flowchart LR"]
+    lines: list[str] = ["flowchart TD"]
 
     for ph in plan.phases:
         icon = _PHASE_ICON.get(ph.status, "?")
@@ -1725,7 +1725,7 @@ def _mermaid_step_dag(plan: Plan, phase_id: str) -> str:
     if ph is None:
         raise PlanError(f"Phase '{phase_id}' not found.")
 
-    lines: list[str] = [f"flowchart LR"]
+    lines: list[str] = [f"flowchart TD"]
 
     for step in ph.steps:
         icon = _STEP_ICON.get(step.status, "?")

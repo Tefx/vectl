@@ -293,7 +293,7 @@ class TestMermaidDag:
 
     def test_phase_dag_has_flowchart_header(self) -> None:
         mmd = generate_mermaid_dag(self._dag_plan())
-        assert mmd.startswith("flowchart LR")
+        assert mmd.startswith("flowchart TD")
 
     def test_phase_dag_contains_all_phases(self) -> None:
         mmd = generate_mermaid_dag(self._dag_plan())
@@ -313,7 +313,7 @@ class TestMermaidDag:
 
     def test_step_dag_has_flowchart_header(self) -> None:
         mmd = generate_mermaid_dag(self._dag_plan(), phase_id="core")
-        assert mmd.startswith("flowchart LR")
+        assert mmd.startswith("flowchart TD")
 
     def test_step_dag_contains_steps(self) -> None:
         mmd = generate_mermaid_dag(self._dag_plan(), phase_id="core")
@@ -337,7 +337,7 @@ class TestMermaidDag:
     def test_empty_plan(self) -> None:
         p = Plan(project="empty", phases=[])
         mmd = generate_mermaid_dag(p)
-        assert "flowchart LR" in mmd
+        assert "flowchart TD" in mmd
 
     def test_no_deps_no_edges(self) -> None:
         p = Plan(

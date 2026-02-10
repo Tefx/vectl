@@ -1,0 +1,1908 @@
+"""CLI interface using Typer + Rich.
+
+Spec authority: tools/vectl/plan.yaml, phases cli_read + cli_write.
+"""
+
+from __future__ import annotations
+
+import os
+import sys
+from pathlib import Path
+from typing import Optional
+
+import typer
+from rich.console import Console
+from rich.markdown import Markdown
+from rich.markup import escape as _esc
+from rich.panel import Panel
+from rich.table import Table
+from rich.text import Text
+
+from vectl import __version__
+from vectl.plan_path import resolve_plan_path
+from vectl.semantics import is_step_locked
+from vectl.core import (
+    add_phase,
+    add_step,
+    add_steps_bulk,
+    claim_step,
+    complete_phase,
+    complete_step,
+    defer_step,
+    edit_phase,
+    edit_step,
+    gate_check as core_gate_check,
+    get_claimed_steps,
+    get_next_steps,
+    move_step,
+    reject_step,
+    remove_step,
+    review_plan,
+    render_plan,
+    diff_plans,
+    search_plan,
+    skip_phase,
+    skip_step,
+    unlock_phase,
+    update_checklist,
+    validate_plan,
+)
+from vectl.io import load_plan, save_plan
+from vectl.models import (
+    CASConflictError,
+    PhaseStatus,
+    Plan,
+    PlanError,
+    PlanIOError,
+    SkipReason,
+    Step,
+    StepStatus,
+)
+
+console = Console(stderr=True)
+out = Console()
+
+# ---------------------------------------------------------------------------
+# Status display helpers
+# ---------------------------------------------------------------------------
+
+_STEP_STATUS_STYLE = {
+    StepStatus.PENDING: ("○", "dim"),
+    StepStatus.CLAIMED: ("◉", "yellow"),
+    StepStatus.DONE: ("✓", "green"),
+    StepStatus.SKIPPED: ("⊘", "dim"),
+    StepStatus.REJECTED: ("✗", "red bold"),
+}
+
+_PHASE_STATUS_STYLE = {
+    PhaseStatus.LOCKED: ("🔒", "dim"),
+    PhaseStatus.PENDING: ("○", ""),
+    PhaseStatus.IN_PROGRESS: ("▶", "yellow"),
+    PhaseStatus.DONE: ("✓", "green"),
+}
+
+
+def _step_icon(status: StepStatus, locked: bool = False) -> Text:
+    if locked and status == StepStatus.PENDING:
+        return Text("🔒 locked", style="dim")
+    icon, style = _STEP_STATUS_STYLE[status]
+    return Text(f"{icon} {status.value}", style=style)
+
+
+def _phase_icon(status: PhaseStatus) -> Text:
+    icon, style = _PHASE_STATUS_STYLE[status]
+    return Text(f"{icon} {status.value}", style=style)
+
+
+def _one_line_summary(description: str, max_len: int = 72) -> str:
+    """Extract first meaningful line from description, truncated.
+
+    Skips empty lines and checklist markers. Returns empty string if
+    description is empty or only whitespace.
+    """
+    for line in description.strip().splitlines():
+        stripped = line.strip()
+        if not stripped:
+            continue
+        # Skip checklist items as summaries — they're usually not informative
+        if stripped.startswith("- ["):
+            continue
+        if len(stripped) > max_len:
+            return stripped[: max_len - 1] + "…"
+        return stripped
+    return ""
+
+
+# ---------------------------------------------------------------------------
+# Error handling
+# ---------------------------------------------------------------------------
+
+
+def _die(msg: str, code: int = 1) -> None:
+    console.print(f"[red bold]Error:[/] {msg}")
+    raise typer.Exit(code)
+
+
+def _load(plan_path: Path | None) -> tuple[Plan, str, Path]:
+    target = resolve_plan_path(plan_path)
+    try:
+        p, h = load_plan(target)
+        return p, h, target
+    except PlanIOError as e:
+        _die(str(e))
+        raise  # unreachable, for type checker
+
+
+def _save(plan: Plan, plan_path: Path, expected_hash: str) -> None:
+    try:
+        save_plan(plan, plan_path, expected_hash=expected_hash)
+    except CASConflictError:
+        _die(f"CAS conflict: {plan_path} was modified by another process. Retry.")
+
+
+# ---------------------------------------------------------------------------
+# Typer app
+# ---------------------------------------------------------------------------
+
+
+def _version_callback(value: bool) -> None:
+    if value:
+        out.print(f"vectl {__version__}")
+        raise typer.Exit()
+
+
+app = typer.Typer(
+    name="vectl",
+    help="Agentic Implementation Plan Manager.",
+    no_args_is_help=True,
+    rich_markup_mode="rich",
+)
+
+PlanOption = typer.Option(
+    None,
+    "--plan",
+    "-p",
+    help="Path to plan YAML file. Defaults to auto-discovery (walk-up). (env: VECTL_PLAN_PATH)",
+)
+
+
+# ---------------------------------------------------------------------------
+# cli.1: init + --version
+# ---------------------------------------------------------------------------
+
+
+@app.callback()
+def main(
+    version: bool = typer.Option(
+        False,
+        "--version",
+        "-V",
+        callback=_version_callback,
+        is_eager=True,
+        help="Show version and exit.",
+    ),
+) -> None:
+    """vectl: Agentic Implementation Plan Manager."""
+
+
+@app.command()
+def mcp() -> None:
+    """Start the MCP server (stdio mode)."""
+    from vectl.mcp_server import mcp
+
+    mcp.run()
+
+
+@app.command()
+def render(
+    phase: Optional[str] = typer.Option(None, "--phase", help="Render only this phase."),
+    output: Optional[Path] = typer.Option(
+        None, "--output", "-o", help="Write to file instead of stdout."
+    ),
+    plan: Path | None = PlanOption,
+) -> None:
+    """Render plan as Markdown (read-only export).
+
+    Stakeholder report: phase progress, step status, one-line descriptions.
+    Omits operational detail (claimed_by, rejection_history, etc.).
+    """
+    p, _, plan = _load(plan)
+
+    try:
+        md = render_plan(p, phase_id=phase)
+    except PlanError as e:
+        _die(str(e))
+        return  # unreachable
+
+    if output is not None:
+        output.write_text(md, encoding="utf-8")
+        console.print(f"[green]Written:[/] {output}")
+    else:
+        out.print(md)
+
+
+@app.command("diff")
+def diff_cmd(
+    ref: str = typer.Argument("HEAD", help="Git ref to compare against (default: HEAD)."),
+    plan: Path | None = PlanOption,
+) -> None:
+    """Show plan changes since a git ref (default: last commit).
+
+    Compares current plan.yaml against the version at the given git ref.
+    Shows added/removed phases and steps, status transitions, and modifications.
+    """
+    import subprocess as sp
+
+    p_new, _, plan = _load(plan)
+
+    # Get old plan from git
+    try:
+        result = sp.run(
+            ["git", "show", f"{ref}:./{plan.name}"],
+            capture_output=True,
+            text=True,
+            timeout=10,
+            cwd=str(plan.parent.resolve()),
+        )
+    except (sp.TimeoutExpired, OSError) as e:
+        _die(f"Git error: {e}")
+        return  # unreachable
+
+    if result.returncode != 0:
+        # Likely file didn't exist at that ref
+        if "does not exist" in result.stderr or "not exist" in result.stderr:
+            out.print(f"[dim]No plan.yaml at {ref} — showing current state as all new.[/]")
+            from vectl.models import Plan as PlanModel
+
+            p_old = PlanModel(project=p_new.project)
+        else:
+            _die(f"git show {ref}:./{plan.name} failed: {result.stderr.strip()}")
+            return  # unreachable
+    else:
+        import yaml
+        from vectl.models import Plan as PlanModel
+
+        try:
+            raw = yaml.safe_load(result.stdout)
+            p_old = PlanModel(**raw)
+        except Exception as e:
+            _die(f"Failed to parse plan at {ref}: {e}")
+            return  # unreachable
+
+    diff = diff_plans(p_old, p_new)
+
+    if not diff.has_changes:
+        out.print(f"[dim]No changes since {ref}.[/]")
+        return
+
+    out.print(f"[bold]Changes since {ref}:[/]\n")
+
+    if diff.phase_changes:
+        out.print("[bold]Phases:[/]")
+        for pc in diff.phase_changes:
+            if pc.kind == "added":
+                out.print(f"  [green]+[/] {pc.phase_id} — {pc.phase_name}")
+            elif pc.kind == "removed":
+                out.print(f"  [red]-[/] {pc.phase_id} — {pc.phase_name}")
+            elif pc.kind == "status_changed":
+                old_val = pc.old_status.value if pc.old_status else "?"
+                new_val = pc.new_status.value if pc.new_status else "?"
+                out.print(f"  [yellow]~[/] {pc.phase_id} — {old_val} → {new_val}")
+        out.print()
+
+    if diff.step_changes:
+        out.print("[bold]Steps:[/]")
+        for sc in diff.step_changes:
+            if sc.kind == "added":
+                out.print(f"  [green]+[/] {sc.step_id} — {sc.step_name} ({sc.phase_id})")
+            elif sc.kind == "removed":
+                out.print(f"  [red]-[/] {sc.step_id} — {sc.step_name} ({sc.phase_id})")
+            elif sc.kind == "status_changed":
+                old_val = sc.old_status.value if sc.old_status else "?"
+                new_val = sc.new_status.value if sc.new_status else "?"
+                out.print(f"  [yellow]~[/] {sc.step_id} — {old_val} → {new_val} ({sc.phase_id})")
+            elif sc.kind == "modified":
+                out.print(f"  [cyan]≈[/] {sc.step_id} — {sc.detail} ({sc.phase_id})")
+
+    total = len(diff.phase_changes) + len(diff.step_changes)
+    out.print(f"\n[dim]{total} change(s) total[/]")
+
+
+@app.command("log")
+def log_cmd(
+    last: int = typer.Option(
+        5, "--last", "-n", help="Number of recent commits to show (default: 5)."
+    ),
+    plan: Path | None = PlanOption,
+) -> None:
+    """Show recent plan mutations from git history.
+
+    Reads git log filtered to plan.yaml commits and shows what changed
+    in each commit. Reuses diff_plans for structured change detection.
+    """
+    import subprocess as sp
+
+    import yaml
+
+    plan_resolved = resolve_plan_path(plan)
+    plan_dir = str(plan_resolved.parent)
+
+    # Get recent commits that touched plan.yaml
+    try:
+        result = sp.run(
+            ["git", "log", f"-{last}", "--format=%H|%ai|%s", "--", plan_resolved.name],
+            capture_output=True,
+            text=True,
+            timeout=10,
+            cwd=plan_dir,
+        )
+    except (sp.TimeoutExpired, OSError) as e:
+        _die(f"Git error: {e}")
+        return  # unreachable
+
+    if result.returncode != 0:
+        _die(f"git log failed: {result.stderr.strip()}")
+        return  # unreachable
+
+    lines = [l.strip() for l in result.stdout.strip().splitlines() if l.strip()]
+    if not lines:
+        out.print("[dim]No git history for plan.yaml.[/]")
+        return
+
+    out.print(f"[bold]Plan history (last {len(lines)}):[/]\n")
+
+    for i, line in enumerate(lines):
+        parts = line.split("|", 2)
+        if len(parts) < 3:
+            continue
+        commit_hash, date, message = parts[0], parts[1], parts[2]
+        short_hash = commit_hash[:8]
+        short_date = date[:10]
+
+        out.print(f"  [bold cyan]{short_hash}[/] {short_date}  {message}")
+
+        # Compute diff for this commit vs its parent
+        parent_ref = f"{commit_hash}~1"
+
+        old_plan = _git_plan_at_ref(parent_ref, plan_resolved, plan_dir)
+        new_plan = _git_plan_at_ref(commit_hash, plan_resolved, plan_dir)
+
+        if old_plan is not None and new_plan is not None:
+            diff = diff_plans(old_plan, new_plan)
+            if diff.has_changes:
+                for pc in diff.phase_changes:
+                    if pc.kind == "added":
+                        out.print(f"    [green]+phase[/] {pc.phase_id} ({pc.phase_name})")
+                    elif pc.kind == "removed":
+                        out.print(f"    [red]-phase[/] {pc.phase_id}")
+                    elif pc.kind == "status_changed":
+                        old_v = pc.old_status.value if pc.old_status else "?"
+                        new_v = pc.new_status.value if pc.new_status else "?"
+                        out.print(f"    [yellow]~phase[/] {pc.phase_id}: {old_v} → {new_v}")
+                for sc in diff.step_changes:
+                    if sc.kind == "added":
+                        out.print(f"    [green]+step[/]  {sc.step_id} ({sc.step_name})")
+                    elif sc.kind == "removed":
+                        out.print(f"    [red]-step[/]  {sc.step_id}")
+                    elif sc.kind == "status_changed":
+                        old_v = sc.old_status.value if sc.old_status else "?"
+                        new_v = sc.new_status.value if sc.new_status else "?"
+                        out.print(f"    [yellow]~step[/]  {sc.step_id}: {old_v} → {new_v}")
+                    elif sc.kind == "modified":
+                        out.print(f"    [cyan]≈step[/]  {sc.step_id}: {sc.detail}")
+            else:
+                out.print("    [dim](no structural changes)[/]")
+        elif new_plan is not None and old_plan is None:
+            out.print("    [green](initial commit)[/]")
+        else:
+            out.print("    [dim](unable to parse)[/]")
+
+        if i < len(lines) - 1:
+            out.print()
+
+
+def _git_plan_at_ref(ref: str, plan_path: Path, cwd: str) -> Plan | None:
+    """Try to load plan.yaml at a given git ref. Returns None on failure."""
+    import subprocess as sp
+
+    import yaml
+
+    try:
+        result = sp.run(
+            ["git", "show", f"{ref}:./{plan_path.name}"],
+            capture_output=True,
+            text=True,
+            timeout=10,
+            cwd=cwd,
+        )
+    except (sp.TimeoutExpired, OSError):
+        return None
+
+    if result.returncode != 0:
+        return None
+
+    try:
+        raw = yaml.safe_load(result.stdout)
+        return Plan(**raw)
+    except Exception:
+        return None
+
+
+_AGENTS_MD_MARKER = "## Plan Tracking (vectl)"
+
+_AGENTS_MD_SNIPPET = """\
+## Plan Tracking (vectl)
+
+vectl tracks this repo's implementation plan as a structured `plan.yaml`:
+what to do next, who claimed it, and what counts as done (with verification evidence).
+
+Full guide: `uvx vectl guide`
+Quick view: `uvx vectl status`
+
+### CLI vs MCP
+- Source of truth: `plan.yaml` (channel-agnostic).
+- If MCP is available (IDE / Claude host), prefer MCP tools for plan operations.
+- Otherwise use CLI (`uvx vectl ...`).
+- Evidence requirements are identical across CLI and MCP.
+
+### Rules
+- One claimed step at a time.
+- Evidence is mandatory when completing (commands run + outputs + gaps).
+- Spec uncertainty: leave `# SPEC QUESTION: ...` in code, do not guess.
+"""
+
+
+def _ensure_agents_md(directory: Path) -> str:
+    """Create or append vectl section to AGENTS.md (or CLAUDE.md). Idempotent via marker detection.
+
+    Preference: AGENTS.md > CLAUDE.md > create AGENTS.md.
+
+    Returns:
+        A status message describing what was done.
+    """
+    agents_md = directory / "AGENTS.md"
+    claude_md = directory / "CLAUDE.md"
+
+    target = agents_md
+    if not agents_md.exists() and claude_md.exists():
+        target = claude_md
+
+    if not target.exists():
+        target.write_text(_AGENTS_MD_SNIPPET, encoding="utf-8")
+        return f"Created {target.name}"
+
+    content = target.read_text(encoding="utf-8")
+    if _AGENTS_MD_MARKER in content:
+        return f"{target.name} already has vectl section (skipped)"
+
+    with target.open("a", encoding="utf-8") as f:
+        f.write("\n\n" + _AGENTS_MD_SNIPPET)
+    return f"Appended vectl section to {target.name}"
+
+
+@app.command()
+def init(
+    project: str = typer.Option(..., "--project", prompt="Project name"),
+    plan: Path | None = PlanOption,
+) -> None:
+    """Create a new plan.yaml template and configure AGENTS.md."""
+    target = plan or Path("plan.yaml")
+    if target.exists():
+        _die(f"{target} already exists. Delete it first or use a different path.")
+
+    template = Plan(
+        project=project,
+        context=f"Implementation plan for {project}.",
+    )
+    save_plan(template, target)
+    out.print(f"[green]Created:[/] {target}")
+
+    # Ensure AGENTS.md has vectl section (idempotent)
+    agents_result = _ensure_agents_md(target.parent)
+    out.print(f"[green]AGENTS.md:[/] {agents_result}")
+
+    out.print()
+    out.print("[dim]→ vectl add-phase --phase-id <id> --name <name>   Add a phase[/]")
+    out.print("[dim]→ vectl guide                     Full onboarding guide[/]")
+
+
+# ---------------------------------------------------------------------------
+# cli.2: next
+# ---------------------------------------------------------------------------
+
+
+@app.command("next")
+def next_cmd(
+    detail: bool = typer.Option(False, "--detail", help="Show full descriptions inline."),
+    limit: int = typer.Option(3, "--limit", "-n", help="Max steps to show (default: 3)."),
+    all_steps: bool = typer.Option(False, "--all", help="Show all available steps."),
+    plan: Path | None = PlanOption,
+) -> None:
+    """Show claimable steps (what to work on next)."""
+    p, _, plan = _load(plan)
+
+    # Show strategy context if present
+    if p.context.strip():
+        out.print(Panel(p.context.strip(), title="Strategy", border_style="blue"))
+
+    steps = get_next_steps(p)
+    if not steps:
+        out.print("[dim]No claimable steps. All phases may be done or locked.[/]")
+        return
+
+    total = len(steps)
+    display_limit = total if all_steps else limit
+    visible = steps[:display_limit]
+
+    out.print("[bold]Next Steps[/]\n")
+
+    for i, step in enumerate(visible, 1):
+        # Find which phase this step belongs to
+        phase_id = ""
+        for phase in p.phases:
+            if any(s.id == step.id for s in phase.steps):
+                phase_id = phase.id
+                break
+
+        icon = _step_icon(step.status)
+        # One-line summary: first line of description, truncated
+        summary = _one_line_summary(step.description)
+
+        deps_str = f"  deps: {', '.join(step.depends_on)}" if step.depends_on else ""
+        summary_str = f"  {summary}" if summary else ""
+
+        out.print(
+            f"  {i}. {icon}  {_esc(step.id)} — {_esc(step.name)}  [dim]({_esc(phase_id)}){_esc(deps_str)}[/]"
+        )
+        if summary_str:
+            out.print(f"     [dim]{_esc(summary)}[/]")
+
+        if detail and step.description.strip():
+            out.print(Panel(Text(step.description.strip()), border_style="dim", padding=(0, 2)))
+            if step.verification:
+                out.print(f"     [green]Verify:[/] {_esc(step.verification)}")
+            if step.refs:
+                out.print(f"     [dim]Refs: {_esc(', '.join(step.refs))}[/]")
+            out.print()
+
+    hidden = total - len(visible)
+    if hidden > 0:
+        out.print(f"  [dim]... and {hidden} more[/]")
+
+    out.print()
+    out.print("[dim]→ vectl claim <id> --agent <name>   Claim a step[/]")
+    out.print("[dim]→ vectl show <id>                   Inspect before claiming[/]")
+    if hidden > 0:
+        out.print("[dim]→ vectl next --all                  Show all steps[/]")
+
+
+# ---------------------------------------------------------------------------
+# cli.3: status
+# ---------------------------------------------------------------------------
+
+
+@app.command()
+def status(
+    plan: Path | None = PlanOption,
+    phase: Optional[str] = typer.Option(None, "--phase", help="Show detail for a specific phase."),
+) -> None:
+    """Show plan status overview."""
+    p, _, plan = _load(plan)
+
+    if phase is not None:
+        _show_phase_detail(p, phase)
+        return
+
+    # Overview: all phases
+    table = Table(title=f"Plan: {p.project}", show_lines=True)
+    table.add_column("Phase", style="bold")
+    table.add_column("Name")
+    table.add_column("Status")
+    table.add_column("Progress")
+    table.add_column("Depends On")
+
+    for ph in p.phases:
+        total = len(ph.steps)
+        done = sum(1 for s in ph.steps if s.status in (StepStatus.DONE, StepStatus.SKIPPED))
+        bar = f"{done}/{total}"
+        if total > 0:
+            pct = done / total * 100
+            bar += f" ({pct:.0f}%)"
+
+        table.add_row(
+            _esc(ph.id),
+            _esc(ph.name),
+            _phase_icon(ph.status),
+            bar,
+            _esc(", ".join(ph.depends_on)) if ph.depends_on else "-",
+        )
+
+    out.print(table)
+    out.print()
+    out.print("[dim]→ vectl next                      See claimable steps[/]")
+    out.print("[dim]→ vectl show <phase>               Phase detail[/]")
+
+
+def _show_phase_detail(p: Plan, phase_id: str) -> None:
+    phase = next((ph for ph in p.phases if ph.id == phase_id), None)
+    if not phase:
+        _die(f"Phase '{phase_id}' not found.")
+        return  # unreachable
+
+    out.print(f"## Phase: {phase.name}", markup=False)
+    out.print(f"**Name:** {phase.name}", markup=False)
+    out.print(f"**Status:** {_phase_icon(phase.status)}")
+    if phase.depends_on:
+        out.print(f"**Depends on:** {', '.join(phase.depends_on)}", markup=False)
+
+    if phase.context:
+        out.print(f"**Context:** {phase.context}", markup=False)
+
+    if phase.gate:
+        out.print(f"\n**Gate:** {phase.gate}", markup=False)
+
+    out.print("\n### Steps\n")
+    for step in phase.steps:
+        locked = is_step_locked(p, phase, step)
+        icon = _step_icon(step.status, locked=locked)
+        out.print(f"  {icon} **{_esc(step.id)}** — {_esc(step.name)} ({_esc(phase.id)})")
+        if step.status == StepStatus.CLAIMED:
+            out.print(f"    [dim]Claimed by {_esc(step.claimed_by or '')}[/]")
+
+    out.print()
+
+
+def _show_step_detail(p: Plan, step_id: str) -> None:
+    found = p.find_step(step_id)
+    if not found:
+        _die(f"Step '{step_id}' not found.")
+        return  # unreachable
+    phase, step = found
+
+    out.print(f"## Step: {step.name}", markup=False)
+    out.print(f"**ID:** {step.id}", markup=False)
+    out.print(f"**Phase:** {phase.name} ({phase.id})", markup=False)
+
+    locked = is_step_locked(p, phase, step)
+    out.print(f"**Status:** {_step_icon(step.status, locked=locked)}")
+
+    if step.description:
+        out.print(f"\n**Description:**\n{step.description}", markup=False)
+
+    if step.depends_on:
+        out.print(f"**Depends On:** {', '.join(step.depends_on)}", markup=False)
+
+    if step.verification:
+        out.print(f"\n**Verification:**\n{step.verification}", markup=False)
+
+    if step.status == StepStatus.CLAIMED:
+        out.print(f"\n**Claimed By:** {step.claimed_by}", markup=False)
+        out.print(f"**At:** {step.claimed_at}", markup=False)
+
+    if step.evidence:
+        out.print(f"\n**Evidence:**\n{step.evidence}", markup=False)
+
+    if step.rejection_reason:
+        out.print("[red]**Rejection Reason:**[/]")
+        out.print(step.rejection_reason, markup=False)
+        if step.rejection_history:
+            last = step.rejection_history[-1]
+            if last.reviewer:
+                out.print(f"**Reviewer:** {last.reviewer}", markup=False)
+
+    out.print()
+    eid = _esc(step.id)
+    if step.status == StepStatus.PENDING:
+        out.print(f"[dim]→ vectl claim {eid} --agent <name>[/]")
+    elif step.status == StepStatus.CLAIMED:
+        out.print(f'[dim]→ vectl complete {eid} --evidence "..."[/]')
+        out.print(f"[dim]→ vectl defer {eid}                    Release claim[/]")
+    elif step.status == StepStatus.DONE:
+        out.print("[dim]→ vectl next                          Find more work[/]")
+        out.print(f'[dim]→ vectl reject {eid} --reason "..."     Reject for rework[/]')
+    elif step.status == StepStatus.SKIPPED:
+        out.print("[dim]→ vectl next                          Find more work[/]")
+    elif step.status == StepStatus.REJECTED:
+        out.print(f"[dim]→ vectl claim {eid} --agent <name>   Re-claim for rework[/]")
+
+
+@app.command()
+def show(
+    target: str = typer.Argument(..., help="Step ID or Phase ID."),
+    plan: Path | None = PlanOption,
+) -> None:
+    """Show details for a step or phase."""
+    p, _, _ = _load(plan)
+
+    # Try phase match
+    ph = p.find_phase(target)
+    if ph is not None:
+        _show_phase_detail(p, target)
+        return
+
+    # Try step match
+    found = p.find_step(target)
+    if found is not None:
+        _show_step_detail(p, target)
+        return
+
+    _die(f"'{target}' not found as step or phase.")
+
+
+# ---------------------------------------------------------------------------
+# cli.4: guide (renamed from help-agent)
+# ---------------------------------------------------------------------------
+
+_GUIDE_STARTUP = """\
+# Agent Startup
+
+**Authority:** `plan.yaml` is the SINGLE source of truth.
+Conflict? Update plan or escalate. Do not guess.
+
+## Workflow
+1. `vectl status`           — Overview & progress
+2. `vectl next`             — Find available work
+3. `vectl claim <id>`       — Lock a step (one at a time)
+4. **Execute**              — Follow description + refs exactly
+5. `vectl complete <id> --evidence "..."` — Submit results
+6. `vectl next`             — Loop
+
+## Evidence (Strict)
+Required: Files changed, Verification (cmd + result), Gaps (skipped).
+> Ex: "Fixed auth.py. Ran pytest (PASS). No integration tests."
+
+## Tools
+Prefer MCP tools (vectl_*) if available. Rules are identical.
+"""
+
+_GUIDE_STUCK = """\
+# Unblocking Strategy
+
+## Rejected? (High Priority)
+1. `vectl next`             — Rejected items float to top
+2. `vectl show <id>`        — Read **rejection_reason**
+3. `vectl claim <id>`       — Re-claim & Fix
+4. `vectl complete`         — Submit with new evidence
+
+## Blocked? (Deps Missing)
+1. `vectl show <id>`        — Identify missing deps
+2. `vectl search <term>`    — Find the blocker
+3. **Pivot**                — Work on parallel steps
+
+## Lost?
+`vectl review` — Re-orient with full plan scan.
+"""
+
+_GUIDE_REVIEW = """\
+# Review & Validation
+
+## Situational Awareness
+1. `vectl review`           — Deep scan (L1:Valid → L4:Specs)
+2. `vectl review --all`     — Full history (audit trail)
+
+## Gatekeeping
+1. `vectl validate`         — Check structural integrity
+2. `vectl gate-check <ph>`  — Check phase completion
+3. `vectl validate --check-refs` — Audit file references
+
+> Always review before starting a complex phase.
+"""
+
+_GUIDE_PLANNING = """\
+# Architect Protocol
+
+## 1. Orient
+`vectl status` → `vectl review` (Context load)
+
+## 2. Mutate
+- `vectl add-phase --name "..."`
+- `vectl add-step --phase <p> --name "..." --after <dep>`
+- `vectl edit-step <id> --desc "..." --verify "..."`
+
+## 3. Verify
+- `vectl validate` (Mandatory before commit)
+- `vectl search <term>` (Check for dupes)
+"""
+
+
+_GUIDE_MIGRATION = """\
+# Migration: Existing Plan → plan.yaml
+
+If your project already has an implementation plan (markdown file, spreadsheet,
+issue tracker), use this workflow to migrate it into plan.yaml.
+
+## Prerequisites
+
+Run `vectl init --project <name>` first. This creates an empty plan.yaml and
+configures AGENTS.md.
+
+## Workflow
+
+1. **Read** the existing plan in full. Identify phases and steps.
+
+2. **Build** plan.yaml incrementally.
+
+   **CLI Users** (terminal):
+   - `vectl add-phase --phase-id <id> --name "<name>"`
+   - `vectl add-step --phase-id <id> --step-id <id> --name "<name>"`
+   - `vectl add-step ... --description "<desc>" --depends-on "dep1,dep2"`
+
+   **MCP Agents** (Claude/Cursor):
+   - Use `vectl_mutate` tool with `action="add-phase"` or `action="add-step"`.
+   - Arguments map 1:1 (e.g., `--depends-on` → `depends_on=["dep1", "dep2"]`).
+
+3. **Verify** with `vectl render` — compare against the original plan.
+   - Every phase accounted for?
+   - Every step accounted for?
+   - Dependencies correct?
+
+4. **Drop** content that belongs in AGENTS.md, not plan.yaml
+   (testing strategy, coding standards, architectural decisions).
+   plan.yaml tracks *what to do*. AGENTS.md tracks *how to do it*.
+
+5. **Archive** the old plan (e.g., move to `docs/_archive/`).
+   plan.yaml is now the single source of truth.
+
+## What Goes Where
+
+- **Phase headings** in source doc → `vectl add-phase` (or `vectl_mutate action=add-phase`)
+- **Step items** under each phase → `vectl add-step` (or `vectl_mutate action=add-step`)
+- **Dependencies** between steps → `--depends-on` (or `depends_on=[...]`)
+- **Context/descriptions** → `--description` / `--context`
+
+| Content                        | plan.yaml | AGENTS.md / docs/ |
+|--------------------------------|-----------|--------------------|
+| Phases, steps, dependencies    | ✅        | —                  |
+| Step descriptions & verification | ✅      | —                  |
+| Status tracking                | ✅        | —                  |
+| Coding standards & rules       | —         | ✅                 |
+| Testing strategy & tiers       | —         | ✅                 |
+| Architecture decisions         | —         | ✅ docs/           |
+
+## Tips
+
+- **Tip:** vectl searches parent directories for `plan.yaml` automatically.
+- Use `vectl review` after building to check for orphan deps or missing verifications.
+- Mark already-completed steps: `vectl complete <step-id> --evidence "pre-migration: done"`.
+- One phase at a time. Verify as you go — don't build the entire plan in one pass.
+"""
+
+
+_GUIDE_ALL = [
+    _GUIDE_STARTUP,
+    _GUIDE_STUCK,
+    _GUIDE_REVIEW,
+    _GUIDE_PLANNING,
+    _GUIDE_MIGRATION,
+]
+
+_GUIDE_TOPICS = {
+    "startup": _GUIDE_STARTUP,
+    "stuck": _GUIDE_STUCK,
+    "review": _GUIDE_REVIEW,
+    "planning": _GUIDE_PLANNING,
+    "migration": _GUIDE_MIGRATION,
+}
+
+
+@app.command("guide")
+def guide_cmd(
+    on: Optional[str] = typer.Option(
+        None,
+        "--on",
+        help="Show one topic only: startup, stuck, review, planning, or migration.",
+    ),
+) -> None:
+    """Show agent onboarding guide."""
+    if on is None:
+        combined = "\n---\n\n".join(g.strip() for g in _GUIDE_ALL)
+        combined += "\n\n---\n*Use `vectl guide --on <topic>` to revisit one section.*"
+        out.print(Markdown(combined))
+    else:
+        guide = _GUIDE_TOPICS.get(on)
+        if guide is None:
+            _die(f"Unknown topic '{on}'. Use: startup, stuck, review, planning, migration.")
+            return  # unreachable, for type checker
+        out.print(Markdown(guide.strip()))
+
+
+# ---------------------------------------------------------------------------
+# cli.5: claim + complete
+# ---------------------------------------------------------------------------
+
+
+@app.command()
+def claim(
+    step_id: Optional[str] = typer.Argument(
+        None, help="Step ID to claim (auto-picks first available if omitted)."
+    ),
+    agent: str = typer.Option(
+        os.environ.get("VECTL_AGENT", "agent"),
+        "--by",
+        "--agent",
+        "-a",
+        help="Agent name. (env: VECTL_AGENT)",
+    ),
+    plan: Path | None = PlanOption,
+) -> None:
+    """Claim a step for work.
+
+    When step_id is omitted, automatically claims the first available step
+    from get_next_steps() (halves the common-path tool calls: next+claim → claim).
+    """
+    p, h, plan = _load(plan)
+
+    if step_id is None:
+        candidates = get_next_steps(p)
+        if not candidates:
+            _die("No claimable steps available. All phases may be done or locked.")
+        step_id = candidates[0].id
+        out.print(f"[dim]Auto-selected:[/] {step_id}")
+
+    try:
+        p = claim_step(p, step_id, agent)
+    except PlanError as e:
+        _die(str(e))
+    _save(p, plan, h)
+    out.print(f"[green]Claimed:[/] {step_id} by {agent}")
+
+    # Show full step spec (saves a show call)
+    found = p.find_step(step_id)
+    if found is not None:
+        phase_obj, step_obj = found
+        out.print()
+        _show_step_detail(p, step_id)
+
+
+@app.command()
+def complete(
+    step_id: str = typer.Argument(help="Step ID to complete."),
+    evidence: str = typer.Option(..., "--evidence", "-e", help="Evidence of completion."),
+    plan: Path | None = PlanOption,
+) -> None:
+    """Mark a step as done with evidence."""
+    p, h, plan = _load(plan)
+    try:
+        p = complete_step(p, step_id, evidence)
+    except PlanError as e:
+        _die(str(e))
+    _save(p, plan, h)
+    out.print(f"[green]Completed:[/] {step_id}")
+
+    # Show next available steps (saves a tool call)
+    next_steps = get_next_steps(p)
+    if next_steps:
+        out.print()
+        out.print("[bold]Next available:[/]")
+        for s in next_steps[:3]:
+            phase_id = ""
+            for ph in p.phases:
+                if any(ps.id == s.id for ps in ph.steps):
+                    phase_id = ph.id
+                    break
+            icon = _step_icon(s.status)
+            out.print(f"  {icon}  {s.id} — {s.name}  [dim]({phase_id})[/]")
+        if len(next_steps) > 3:
+            out.print(f"  [dim]... and {len(next_steps) - 3} more[/]")
+        out.print()
+        out.print("[dim]→ vectl claim <id> --agent <name>[/]")
+        out.print("[dim]→ vectl show <id>                  [/]")
+    else:
+        out.print("[dim]No more claimable steps.[/]")
+
+
+@app.command("complete-phase")
+def complete_phase_cmd(
+    phase_id: str = typer.Argument(help="Phase ID to complete."),
+    evidence: str = typer.Option(
+        ..., "--evidence", "-e", help="Evidence/audit note for phase completion."
+    ),
+    plan: Path | None = PlanOption,
+) -> None:
+    """Mark a phase as done with evidence.
+
+    Source:
+        - Eidos migration requires explicit phase completion to avoid dependency
+          deadlocks when importing historical step statuses.
+        - User instruction in this conversation: choose option B (extend tool
+          then test) before continuing migrate phase.
+    """
+    p, h, plan_path = _load(plan)
+    try:
+        p, unlocked = complete_phase(p, phase_id, evidence)
+    except PlanError as e:
+        _die(str(e))
+        return  # unreachable (typer exits), but keeps type-checkers honest
+
+    _save(p, plan_path, h)
+    out.print(f"[green]Completed phase:[/] {phase_id}")
+    if unlocked:
+        out.print(f"[green]Unlocked:[/] {', '.join(unlocked)}")
+    out.print()
+    out.print("[dim]→ vectl status                      See full plan[/]")
+    out.print("[dim]→ vectl next                        See claimable steps[/]")
+
+
+# ---------------------------------------------------------------------------
+# cli.6: defer + reject + skip
+# ---------------------------------------------------------------------------
+
+
+@app.command()
+def defer(
+    step_id: str = typer.Argument(help="Step ID to defer."),
+    plan: Path | None = PlanOption,
+) -> None:
+    """Return a claimed step to pending."""
+    p, h, plan = _load(plan)
+    try:
+        p = defer_step(p, step_id)
+    except PlanError as e:
+        _die(str(e))
+    _save(p, plan, h)
+    out.print(f"[yellow]Deferred:[/] {step_id}")
+    out.print()
+    out.print("[dim]→ vectl next                      Find new work[/]")
+
+
+@app.command()
+def reject(
+    step_id: str = typer.Argument(help="Step ID to reject."),
+    reason: str = typer.Option(..., "--reason", "-r", help="Rejection reason."),
+    reviewer: str = typer.Option(
+        "", "--by", "--reviewer", help="Reviewer name. (env: VECTL_AGENT)"
+    ),
+    plan: Path | None = PlanOption,
+) -> None:
+    """Reject a completed step, moving it back for rework."""
+    p, h, plan = _load(plan)
+    try:
+        p = reject_step(p, step_id, reason, reviewer)
+    except PlanError as e:
+        _die(str(e))
+    _save(p, plan, h)
+    out.print(f"[red]Rejected:[/] {step_id} — {reason}")
+    out.print()
+    out.print("[dim]→ vectl next                      Rejected steps appear first[/]")
+
+
+@app.command()
+def skip(
+    step_id: str = typer.Argument(help="Step ID to skip."),
+    reason: str = typer.Option(
+        ...,
+        "--reason",
+        "-r",
+        help="Reason for skipping: superseded, irrelevant, absorbed, deprioritized.",
+    ),
+    plan: Path | None = PlanOption,
+) -> None:
+    """Skip a step with a reason.
+
+    Valid reasons: superseded, irrelevant, absorbed, deprioritized.
+    """
+    p, h, plan = _load(plan)
+    try:
+        p = skip_step(p, step_id, reason)
+    except PlanError as e:
+        _die(str(e))
+    _save(p, plan, h)
+    out.print(f"[dim]Skipped:[/] {step_id} — {reason}")
+    out.print()
+    out.print("[dim]→ vectl next                      See remaining steps[/]")
+    out.print("[dim]→ vectl status                    Plan overview[/]")
+
+
+@app.command()
+def cancel(
+    step_id: str = typer.Argument(help="Step ID to cancel (alias for skip --reason irrelevant)."),
+    plan: Path | None = PlanOption,
+) -> None:
+    """Cancel a step (alias for skip --reason irrelevant)."""
+    p, h, plan = _load(plan)
+    try:
+        p = skip_step(p, step_id, SkipReason.IRRELEVANT.value)
+    except PlanError as e:
+        _die(str(e))
+    _save(p, plan, h)
+    out.print(f"[dim]Cancelled:[/] {step_id} — irrelevant")
+    out.print()
+    out.print("[dim]→ vectl next                      See remaining steps[/]")
+    out.print("[dim]→ vectl status                    Plan overview[/]")
+
+
+@app.command("skip-phase")
+def skip_phase_cmd(
+    phase_id: str = typer.Argument(help="Phase ID to skip."),
+    reason: str = typer.Option(
+        ...,
+        "--reason",
+        "-r",
+        help="Reason for skipping: superseded, irrelevant, absorbed, deprioritized.",
+    ),
+    plan: Path | None = PlanOption,
+) -> None:
+    """Skip all remaining steps in a phase.
+
+    Pending/rejected steps are skipped. Claimed steps are deferred first, then skipped.
+    Done/skipped steps are left unchanged. Phase auto-completes when all steps
+    are done or skipped.
+    """
+    p, h, plan = _load(plan)
+    skipped_ids: list[str] = []
+    try:
+        p, skipped_ids = skip_phase(p, phase_id, reason)
+    except PlanError as e:
+        _die(str(e))
+    _save(p, plan, h)
+    if skipped_ids:
+        out.print(f"[dim]Skipped phase:[/] {phase_id} — {reason}")
+        for sid in skipped_ids:
+            out.print(f"  [dim]↳[/] {sid}")
+    else:
+        out.print(f"[dim]Phase {phase_id}:[/] no steps to skip (all already done/skipped)")
+    out.print()
+    out.print("[dim]→ vectl next                      See remaining steps[/]")
+    out.print("[dim]→ vectl status                    Plan overview[/]")
+    out.print("[dim]→ vectl search <pattern>            Check consistency[/]")
+
+
+# ---------------------------------------------------------------------------
+# cli.7: update-checklist
+# ---------------------------------------------------------------------------
+
+
+@app.command("check")
+def check_cmd(
+    step_id: str = typer.Argument(help="Step ID containing the checklist."),
+    keyword: Optional[str] = typer.Argument(None, help="Keyword to toggle a checklist item."),
+    add: Optional[str] = typer.Option(None, "--add", help="Text for a new checklist item."),
+    plan: Path | None = PlanOption,
+) -> None:
+    """Toggle or add a checklist item in a step's description."""
+    p, h, plan = _load(plan)
+    try:
+        p = update_checklist(p, step_id, check=keyword, append=add)
+    except PlanError as e:
+        _die(str(e))
+    _save(p, plan, h)
+    out.print(f"[green]Updated checklist:[/] {step_id}")
+    out.print()
+    out.print("[dim]→ vectl show {id}[/]".format(id=step_id))
+
+
+# ---------------------------------------------------------------------------
+# cli.8: validate
+# ---------------------------------------------------------------------------
+
+
+@app.command()
+def validate(
+    plan: Path | None = PlanOption,
+    check_refs: bool = typer.Option(False, "--check-refs", help="Check that ref files exist."),
+) -> None:
+    """Validate plan structure and consistency."""
+    p, _, plan = _load(plan)
+
+    base_path = plan.parent if check_refs else None
+    errors = validate_plan(p, check_refs=check_refs, base_path=base_path)
+
+    if not errors:
+        out.print("[green bold]✓ Plan is valid.[/]")
+        out.print()
+        out.print("[dim]→ vectl status                    Plan overview[/]")
+        out.print("[dim]→ vectl next                      See claimable steps[/]")
+        return
+
+    errs = [e for e in errors if not e.is_warning]
+    warns = [e for e in errors if e.is_warning]
+
+    for e in errs:
+        out.print(f"  [red]ERROR:[/] {e.message}")
+    for w in warns:
+        out.print(f"  [yellow]WARN:[/]  {w.message}")
+
+    out.print()
+    out.print(f"[red]{len(errs)} error(s)[/], [yellow]{len(warns)} warning(s)[/]")
+
+    if errs:
+        raise typer.Exit(1)
+
+
+# ---------------------------------------------------------------------------
+# cli.9: add-step + add-phase (architect commands)
+# ---------------------------------------------------------------------------
+
+
+@app.command("add-step")
+def add_step_cmd(
+    phase: str = typer.Option(..., "--phase", help="Phase ID to add step to."),
+    name: str = typer.Option(..., "--name", help="Step name."),
+    desc: str = typer.Option("", "--desc", "--description", help="Step description."),
+    after: Optional[str] = typer.Option(
+        None, "--after", help="Comma-separated step IDs this depends on."
+    ),
+    verify: str = typer.Option("", "--verify", "--verification", help="Verification command."),
+    refs: Optional[str] = typer.Option(None, "--refs", help="Comma-separated ref paths."),
+    step_id: Optional[str] = typer.Option(None, "--id", help="Explicit step ID (auto if omitted)."),
+    import_status: Optional[str] = typer.Option(
+        None,
+        "--status",
+        help="Initial status for import: pending (default), done, skipped.",
+    ),
+    import_evidence: Optional[str] = typer.Option(
+        None,
+        "--evidence",
+        "-e",
+        help="Evidence (required when --status=done).",
+    ),
+    skipped_reason: Optional[str] = typer.Option(
+        None,
+        "--skipped-reason",
+        help="Skip reason (required when --status=skipped).",
+    ),
+    plan: Path | None = PlanOption,
+) -> None:
+    """Add a new step to a phase.
+
+    Supports importing steps with pre-set status for migration:
+      --status done --evidence "commit abc"
+      --status skipped --skipped-reason "absorbed into X"
+    """
+    p, h, plan = _load(plan)
+
+    depends_on = [d.strip() for d in after.split(",") if d.strip()] if after else None
+    refs_list = [r.strip() for r in refs.split(",") if r.strip()] if refs else None
+
+    # Parse import status
+    step_status: StepStatus | None = None
+    if import_status is not None:
+        try:
+            step_status = StepStatus(import_status)
+        except ValueError:
+            _die(f"Invalid status '{import_status}'. Must be one of: pending, done, skipped.")
+            return  # unreachable
+
+    try:
+        p, generated_id = add_step(
+            p,
+            phase,
+            name,
+            step_id=step_id,
+            description=desc,
+            depends_on=depends_on,
+            verification=verify,
+            refs=refs_list,
+            status=step_status,
+            evidence=import_evidence,
+            skipped_reason=skipped_reason,
+        )
+    except PlanError as e:
+        _die(str(e))
+        return  # unreachable, for type checker
+
+    _save(p, plan, h)
+
+    out.print(f"[green]Added step:[/] {generated_id} → phase [bold]{phase}[/]")
+
+    # Long slug warning (only for auto-generated IDs)
+    if step_id is None and len(generated_id) > 40:
+        out.print(f"[yellow]⚠ Slug is {len(generated_id)} chars. Use --id to set a shorter ID.[/]")
+
+    out.print()
+    out.print("[dim]→ vectl claim {id} --agent <name>   Claim this step[/]".format(id=generated_id))
+    out.print("[dim]→ vectl add-step --phase {ph}       Add another step[/]".format(ph=phase))
+    out.print("[dim]→ vectl status --phase {ph}         See all steps in phase[/]".format(ph=phase))
+    out.print("[dim]→ vectl search <pattern>            Check consistency[/]")
+
+
+@app.command("add-phase")
+def add_phase_cmd(
+    name: str = typer.Option(..., "--name", help="Phase name."),
+    after: Optional[str] = typer.Option(
+        None, "--after", help="Comma-separated phase IDs this depends on."
+    ),
+    gate: str = typer.Option("", "--gate", help="Gate criterion text."),
+    context: str = typer.Option("", "--context", "--ctx", help="Phase context/description."),
+    phase_id: Optional[str] = typer.Option(
+        None, "--id", help="Explicit phase ID (auto if omitted)."
+    ),
+    plan: Path | None = PlanOption,
+) -> None:
+    """Add a new phase to the plan."""
+    p, h, plan = _load(plan)
+
+    depends_on = [d.strip() for d in after.split(",") if d.strip()] if after else None
+
+    try:
+        p, generated_id = add_phase(
+            p,
+            name,
+            phase_id=phase_id,
+            depends_on=depends_on,
+            gate=gate,
+            context=context,
+        )
+    except PlanError as e:
+        _die(str(e))
+        return  # unreachable, for type checker
+
+    _save(p, plan, h)
+
+    # Show status based on auto-determined initial status
+    ph = p.find_phase(generated_id)
+    assert ph is not None  # just created it
+    status_icon = _phase_icon(ph.status)
+
+    out.print(f"[green]Added phase:[/] {generated_id} ({status_icon})")
+
+    # Long slug warning (only for auto-generated IDs)
+    if phase_id is None and len(generated_id) > 40:
+        out.print(f"[yellow]⚠ Slug is {len(generated_id)} chars. Use --id to set a shorter ID.[/]")
+
+    out.print()
+    out.print(
+        "[dim]→ vectl add-step --phase {id}       Add steps to this phase[/]".format(
+            id=generated_id
+        )
+    )
+    out.print("[dim]→ vectl status --phase {id}         Inspect phase[/]".format(id=generated_id))
+    out.print("[dim]→ vectl status                      See full plan[/]")
+
+
+# ---------------------------------------------------------------------------
+# cli.11: edit-step, remove-step, move-step (architect mutations)
+# ---------------------------------------------------------------------------
+
+
+@app.command("edit-step")
+def edit_step_cmd(
+    step_id: str = typer.Argument(help="Step ID to edit."),
+    name: Optional[str] = typer.Option(None, "--name", help="New step name."),
+    desc: Optional[str] = typer.Option(None, "--desc", "--description", help="New description."),
+    verify: Optional[str] = typer.Option(
+        None, "--verify", "--verification", help="New verification command."
+    ),
+    add_dep: Optional[str] = typer.Option(
+        None, "--add-dep", help="Comma-separated step IDs to add as dependencies."
+    ),
+    rm_dep: Optional[str] = typer.Option(
+        None, "--rm-dep", help="Comma-separated step IDs to remove from dependencies."
+    ),
+    plan: Path | None = PlanOption,
+) -> None:
+    """Edit a step's metadata."""
+    from vectl.core import _SENTINEL
+
+    p, h, plan = _load(plan)
+
+    add_deps = [d.strip() for d in add_dep.split(",") if d.strip()] if add_dep else None
+    rm_deps = [d.strip() for d in rm_dep.split(",") if d.strip()] if rm_dep else None
+
+    if name is None and desc is None and verify is None and not add_deps and not rm_deps:
+        _die(
+            "Nothing to edit. Provide at least one of --name, --desc, --verify, --add-dep, --rm-dep."
+        )
+        return  # unreachable
+
+    try:
+        p = edit_step(
+            p,
+            step_id,
+            name=name if name is not None else _SENTINEL,
+            description=desc if desc is not None else _SENTINEL,
+            verification=verify if verify is not None else _SENTINEL,
+            add_deps=add_deps,
+            remove_deps=rm_deps,
+        )
+    except PlanError as e:
+        _die(str(e))
+
+    _save(p, plan, h)
+
+    out.print(f"[green]Edited:[/] {step_id}")
+    out.print()
+    out.print("[dim]→ vectl show {id}[/]".format(id=step_id))
+    out.print("[dim]→ vectl search <pattern>            Check consistency[/]")
+
+
+@app.command("edit-phase")
+def edit_phase_cmd(
+    phase_id: str = typer.Argument(help="Phase ID to edit."),
+    name: Optional[str] = typer.Option(None, "--name", help="New phase name."),
+    context: Optional[str] = typer.Option(None, "--context", "--ctx", help="New context."),
+    gate: Optional[str] = typer.Option(None, "--gate", help="New gate criterion."),
+    add_dep: Optional[str] = typer.Option(
+        None, "--add-dep", help="Comma-separated phase IDs to add as dependencies."
+    ),
+    rm_dep: Optional[str] = typer.Option(
+        None, "--rm-dep", help="Comma-separated phase IDs to remove from dependencies."
+    ),
+    plan: Path | None = PlanOption,
+) -> None:
+    """Edit a phase's metadata."""
+    from vectl.core import _SENTINEL
+
+    p, h, plan = _load(plan)
+
+    add_deps = [d.strip() for d in add_dep.split(",") if d.strip()] if add_dep else None
+    rm_deps = [d.strip() for d in rm_dep.split(",") if d.strip()] if rm_dep else None
+
+    if name is None and context is None and gate is None and not add_deps and not rm_deps:
+        _die(
+            "Nothing to edit. Provide at least one of --name, --context, --gate, --add-dep, --rm-dep."
+        )
+        return  # unreachable
+
+    try:
+        p = edit_phase(
+            p,
+            phase_id,
+            name=name if name is not None else _SENTINEL,
+            context=context if context is not None else _SENTINEL,
+            gate=gate if gate is not None else _SENTINEL,
+            add_deps=add_deps,
+            remove_deps=rm_deps,
+        )
+    except PlanError as e:
+        _die(str(e))
+
+    _save(p, plan, h)
+
+    out.print(f"[green]Edited phase:[/] {phase_id}")
+    out.print()
+    out.print("[dim]→ vectl show {id}[/]".format(id=phase_id))
+    out.print("[dim]→ vectl search <pattern>              Check consistency[/]")
+
+
+@app.command("remove-step")
+def remove_step_cmd(
+    step_id: str = typer.Argument(help="Step ID to remove (must be pending)."),
+    force: bool = typer.Option(
+        False, "--force", help="Remove even if other steps depend on it (cleans up dep refs)."
+    ),
+    plan: Path | None = PlanOption,
+) -> None:
+    """Remove a pending step from its phase."""
+    p, h, plan = _load(plan)
+    try:
+        p = remove_step(p, step_id, force=force)
+    except PlanError as e:
+        _die(str(e))
+    _save(p, plan, h)
+    out.print(f"[yellow]Removed:[/] {step_id}")
+    if force:
+        out.print("[dim]  Dependency references cleaned up in remaining steps.[/]")
+    out.print()
+    out.print("[dim]→ vectl status                    Plan overview[/]")
+    out.print("[dim]→ vectl next                      See claimable steps[/]")
+    out.print("[dim]→ vectl search <pattern>            Check consistency[/]")
+
+
+@app.command("move-step")
+def move_step_cmd(
+    step_id: str = typer.Argument(help="Step ID to move (must be pending)."),
+    to_phase: str = typer.Option(..., "--to-phase", help="Target phase ID."),
+    plan: Path | None = PlanOption,
+) -> None:
+    """Move a pending step to a different phase."""
+    p, h, plan = _load(plan)
+
+    # Capture deps before move (move_step clears them — lossy operation)
+    found = p.find_step(step_id)
+    cleared_deps = list(found[1].depends_on) if found else []
+
+    try:
+        p = move_step(p, step_id, to_phase)
+    except PlanError as e:
+        _die(str(e))
+    _save(p, plan, h)
+    out.print(f"[green]Moved:[/] {step_id} → {to_phase}")
+    if cleared_deps:
+        out.print(f"[yellow]⚠ Cleared {len(cleared_deps)} dep(s):[/] {', '.join(cleared_deps)}")
+        out.print("[dim]  Dependencies are phase-scoped. Re-add in target phase if needed.[/]")
+    out.print()
+    out.print("[dim]→ vectl show {id}[/]".format(id=step_id))
+    out.print("[dim]→ vectl show {ph}[/]".format(ph=to_phase))
+    out.print("[dim]→ vectl search <pattern>            Check consistency[/]")
+
+
+# ---------------------------------------------------------------------------
+# cli.12: unlock (explicit phase unlock)
+# ---------------------------------------------------------------------------
+
+
+@app.command()
+def unlock(
+    phase_id: str = typer.Argument(help="Phase ID to unlock."),
+    evidence: str = typer.Option("", "--evidence", "-e", help="Evidence for unlocking."),
+    plan: Path | None = PlanOption,
+) -> None:
+    """Unlock a locked phase by validating all dependencies are done."""
+    p, h, plan = _load(plan)
+    try:
+        p = unlock_phase(p, phase_id)
+    except PlanError as e:
+        _die(str(e))
+    _save(p, plan, h)
+    out.print(f"[green]Unlocked:[/] {phase_id}")
+    if evidence:
+        out.print(f"[dim]Evidence: {evidence}[/]")
+    out.print()
+    out.print("[dim]→ vectl show {id}[/]".format(id=phase_id))
+    out.print("[dim]→ vectl next[/]")
+
+
+# ---------------------------------------------------------------------------
+# cli.13: add-steps (bulk from stdin)
+# ---------------------------------------------------------------------------
+
+
+@app.command("add-steps")
+def add_steps_cmd(
+    phase: str = typer.Option(..., "--phase", help="Phase ID to add steps to."),
+    plan: Path | None = PlanOption,
+) -> None:
+    """Batch add steps from stdin (YAML format).
+
+    Reads a YAML list from stdin. Each entry has:
+      - name (required)
+      - desc, after, verify, refs, id (optional)
+      - status: pending (default), done, skipped (optional, for import)
+      - evidence: required when status=done (optional)
+      - skipped_reason: required when status=skipped (optional)
+
+    Example input:
+      - name: "Step A"
+        desc: "Do thing A"
+        status: done
+        evidence: "commit abc"
+      - name: "Step B"
+        after: ["phase.step-a"]
+    """
+    import yaml
+
+    raw = sys.stdin.read()
+    if not raw.strip():
+        _die("No input from stdin. Pipe YAML step definitions.")
+        return  # unreachable
+
+    try:
+        data = yaml.safe_load(raw)
+    except yaml.YAMLError as e:
+        _die(f"Invalid YAML from stdin: {e}")
+        return  # unreachable
+
+    if not isinstance(data, list):
+        _die("Expected YAML list of step definitions from stdin.")
+        return  # unreachable
+
+    p, h, plan = _load(plan)
+    try:
+        p, generated_ids = add_steps_bulk(p, phase, data)
+    except PlanError as e:
+        _die(str(e))
+        return  # unreachable
+
+    _save(p, plan, h)
+
+    out.print(f"[green]Added {len(generated_ids)} step(s)[/] to phase [bold]{phase}[/]:")
+    for gid in generated_ids:
+        out.print(f"  • {gid}")
+    out.print()
+    out.print("[dim]→ vectl show {ph}         See all steps[/]".format(ph=phase))
+    out.print("[dim]→ vectl next              See claimable steps[/]")
+    out.print("[dim]→ vectl search <pattern>  Check consistency[/]")
+
+
+# ---------------------------------------------------------------------------
+# cli.14: search (plan-wide pattern search)
+# ---------------------------------------------------------------------------
+
+
+@app.command()
+def search(
+    pattern: str = typer.Argument(help="Pattern to search for (case-insensitive substring)."),
+    phase: Optional[str] = typer.Option(None, "--phase", help="Restrict to a specific phase."),
+    state: Optional[str] = typer.Option(
+        None, "--state", help="Filter by status (e.g. pending, done, claimed)."
+    ),
+    regex: bool = typer.Option(False, "--regex", help="Treat pattern as regex."),
+    plan: Path | None = PlanOption,
+) -> None:
+    """Search across phases and steps for a pattern."""
+    p, _, plan = _load(plan)
+
+    try:
+        matches = search_plan(p, pattern, phase_id=phase, state=state, use_regex=regex)
+    except PlanError as e:
+        _die(str(e))
+        return  # unreachable
+
+    if not matches:
+        out.print(f"[dim]No matches for '{pattern}'.[/]")
+        return
+
+    out.print(f"[bold]{len(matches)} match(es)[/] for [cyan]'{pattern}'[/]:\n")
+
+    # Group by phase
+    current_phase = ""
+    for m in matches:
+        if m.phase_id != current_phase:
+            current_phase = m.phase_id
+            out.print(f"  [bold blue]{current_phase}[/]")
+
+        if m.step_id:
+            out.print(f"    {m.step_id} [dim]({m.field})[/]: {m.snippet}")
+        else:
+            out.print(f"    [dim]phase.{m.field}[/]: {m.snippet}")
+
+    out.print()
+    out.print("[dim]→ vectl show <id>                   Inspect a match[/]")
+    out.print("[dim]→ vectl edit-step <id> --desc ...    Edit if needed[/]")
+
+
+# ---------------------------------------------------------------------------
+# mine: agent crash recovery
+# ---------------------------------------------------------------------------
+
+
+@app.command()
+def mine(
+    agent: Optional[str] = typer.Option(
+        None,
+        "--by",
+        "--agent",
+        "-a",
+        help="Agent name to filter by. (env: VECTL_AGENT)",
+    ),
+    show_all: bool = typer.Option(
+        False, "--all", help="Show all claimed steps regardless of agent."
+    ),
+    plan: Path | None = PlanOption,
+) -> None:
+    """Show steps currently claimed by an agent (crash recovery).
+
+    After a context reset, an agent can run this to find what it was working on.
+    Use --all to see all claimed steps across agents.
+    """
+    if not agent and not show_all:
+        agent = os.environ.get("VECTL_AGENT")
+    if not agent and not show_all:
+        _die("Provide --by <agent> or --all. (Or set VECTL_AGENT env var.)")
+
+    p, _, plan = _load(plan)
+    claimed = get_claimed_steps(p, agent=agent)
+
+    if not claimed:
+        label = "any agent" if show_all else f"'{agent}'"
+        out.print(f"[dim]No steps claimed by {label}.[/]")
+        out.print()
+        if not show_all:
+            out.print(
+                "[dim]→ vectl claim --by {a}              Auto-claim next step[/]".format(a=agent)
+            )
+        out.print("[dim]→ vectl mine --all                   Show all claimed steps[/]")
+        return
+
+    header = "all agents" if show_all else str(agent)
+    out.print(f"[bold]Steps claimed by {header}:[/]\n")
+    for phase_id, step in claimed:
+        claimed_label = f"  [dim][{step.claimed_by}][/]" if show_all else ""
+        out.print(f"  ◉  {step.id} — {step.name}  [dim]({phase_id})[/]{claimed_label}")
+        if step.description.strip():
+            summary = _one_line_summary(step.description)
+            if summary:
+                out.print(f"     [dim]{summary}[/]")
+        if step.claimed_at:
+            out.print(f"     [dim]Claimed at: {step.claimed_at}[/]")
+
+    out.print()
+    out.print("[dim]→ vectl show <id>                     Inspect step details[/]")
+    out.print('[dim]→ vectl complete <id> --evidence "..." Mark done[/]')
+    out.print("[dim]→ vectl defer <id>                    Release claim[/]")
+
+
+# ---------------------------------------------------------------------------
+# review: multi-layer plan review
+# ---------------------------------------------------------------------------
+
+
+@app.command()
+def review(
+    phase: Optional[str] = typer.Option(None, "--phase", help="Restrict review to a single phase."),
+    show_all: bool = typer.Option(False, "--all", help="Include DONE and LOCKED phases in detail."),
+    check_refs: bool = typer.Option(False, "--check-refs", help="Check that ref files exist."),
+    plan: Path | None = PlanOption,
+) -> None:
+    """Multi-layer plan review.
+
+    Layers:
+      L1: Validation checks (errors/warnings)
+      L2: Phase overview with progress
+      L3: Active phase detail (steps, deps, refs)
+      L4: Spec coverage (reverse index from refs)
+    """
+    p, _, plan = _load(plan)
+
+    # ── Compute review data ────────────────────────────────────────────
+    base_path = plan.parent if check_refs else None
+    result = review_plan(p, check_refs=check_refs, base_path=base_path, include_done=show_all)
+
+    # ── L1: Validation ──────────────────────────────────────────────────
+    out.print("[bold]L1: Validation[/]")
+    if not result.validation_issues:
+        out.print("  [green]✓ Plan is valid — 0 errors, 0 warnings[/]")
+    else:
+        for e in result.errors:
+            out.print(f"  [red]ERROR:[/] {_esc(e.message)}")
+        for w in result.warnings:
+            out.print(f"  [yellow]WARN:[/]  {_esc(w.message)}")
+        out.print(f"  [dim]{len(result.errors)} error(s), {len(result.warnings)} warning(s)[/]")
+    out.print()
+
+    # ── L2: Phase overview with progress ────────────────────────────────
+    out.print("[bold]L2: Phase Overview[/]")
+    for pp in result.phase_progress:
+        icon = _PHASE_STATUS_STYLE[pp.status][0]
+        bar_len = 20
+        filled = int(bar_len * pp.pct / 100)
+        bar = "█" * filled + "░" * (bar_len - filled)
+        out.print(f"  {icon} {pp.phase_id:<20s} [{bar}] {pp.done}/{pp.total} ({pp.pct:.0f}%)")
+
+    out.print(
+        f"\n  [bold]Overall: {result.total_done}/{result.total_steps} ({result.overall_pct:.0f}%)[/]"
+    )
+    out.print()
+
+    # ── L3: Active phase detail ─────────────────────────────────────────
+    out.print("[bold]L3: Active Phase Detail[/]")
+
+    if not result.active_phases:
+        if not show_all:
+            out.print("  [dim]No active phases. Use --all to include DONE/LOCKED.[/]")
+        else:
+            out.print("  [dim]No phases found.[/]")
+    else:
+        for ph in result.active_phases:
+            out.print(f"\n  [bold]{_esc(ph.id)}[/] — {_esc(ph.name)} ({ph.status.value})")
+            if ph.depends_on:
+                out.print(f"    deps: {_esc(', '.join(ph.depends_on))}")
+            if ph.gate:
+                out.print(f"    gate: [yellow]{_esc(ph.gate)}[/]")
+            for step in ph.steps:
+                if is_step_locked(p, ph, step):
+                    icon, style = ("🔒", "dim")
+                else:
+                    icon, style = _STEP_STATUS_STYLE[step.status]
+                # NOTE: Rich treats square brackets as markup tags. Step IDs often contain
+                # dots (e.g. "mig.1"), so "deps=[mig.1]" is parsed as markup and disappears.
+                # Use parentheses to keep deps/refs visible.
+                dep_info = f" deps=({_esc(', '.join(step.depends_on))})" if step.depends_on else ""
+                ref_info = f" refs=({_esc(', '.join(step.refs))})" if step.refs else ""
+                claimed = f" [yellow]@{_esc(step.claimed_by or '')}[/]" if step.claimed_by else ""
+                out.print(
+                    f"    [{style}]{icon}[/] {_esc(step.id)} — {_esc(step.name)}{claimed}{dep_info}{ref_info}"
+                )
+    out.print()
+
+    # ── L4: Spec coverage (refs reverse index) ──────────────────────────
+    out.print("[bold]L4: Spec Coverage[/]")
+
+    if not result.ref_index:
+        out.print("  [dim]No refs defined in any steps.[/]")
+    else:
+        for ref_path in sorted(result.ref_index):
+            step_ids = result.ref_index[ref_path]
+            out.print(f"  {_esc(ref_path)} ← {_esc(', '.join(step_ids))}")
+
+    out.print()
+    if result.errors:
+        out.print("[red bold]⚠ Fix validation errors before proceeding.[/]")
+        out.print("[dim]→ vectl validate --check-refs       Full validation[/]")
+    else:
+        out.print("[dim]→ vectl gate-check <phase>           Check phase gate readiness[/]")
+        out.print("[dim]→ vectl next                         See claimable steps[/]")
+
+    if result.errors:
+        raise typer.Exit(1)
+
+
+# ---------------------------------------------------------------------------
+# gate-check: phase gate readiness
+# ---------------------------------------------------------------------------
+
+
+@app.command("gate-check")
+def gate_check(
+    phase_id: str = typer.Argument(help="Phase ID to check gate readiness."),
+    plan: Path | None = PlanOption,
+) -> None:
+    """Check if a phase is ready to pass its gate.
+
+    Checks:
+    1. All steps done/skipped
+    2. Run gate_script if defined (subprocess, check exit code)
+    3. Print manual gate criteria
+    4. Recommend unlock if all pass
+    """
+    import subprocess as sp
+
+    p, _, plan = _load(plan)
+
+    try:
+        gc = core_gate_check(p, phase_id)
+    except PlanError as e:
+        _die(str(e))
+        return  # unreachable, for type checker
+
+    out.print(Panel(f"Gate Check: {gc.phase_id} — {gc.phase_name}", style="bold"))
+
+    all_pass = True
+
+    # ── Check 1: step completion ──────────────────────────────────────
+    if gc.steps_complete:
+        out.print(f"  [green]✓ Steps:[/] {gc.done_count}/{gc.total_count} complete")
+    else:
+        all_pass = False
+        out.print(
+            f"  [red]✗ Steps:[/] {gc.done_count}/{gc.total_count} complete — {len(gc.pending_steps)} remaining:"
+        )
+        for s in gc.pending_steps:
+            icon, style = _STEP_STATUS_STYLE[s.status]
+            out.print(f"    [{style}]{icon}[/] {s.id} — {s.name}")
+
+    # ── Check 2: gate_script (CLI-only, subprocess) ───────────────────
+    if gc.gate_script:
+        out.print(f"\n  Running gate script: [bold]{gc.gate_script}[/]")
+        try:
+            result = sp.run(
+                gc.gate_script,
+                shell=True,
+                capture_output=True,
+                text=True,
+                timeout=120,
+                cwd=str(plan.parent),
+            )
+            if result.returncode == 0:
+                out.print("  [green]✓ Gate script passed[/]")
+                if result.stdout.strip():
+                    for line in result.stdout.strip().splitlines()[:5]:
+                        out.print(f"    {line}")
+            else:
+                all_pass = False
+                out.print(f"  [red]✗ Gate script failed (exit {result.returncode})[/]")
+                if result.stderr.strip():
+                    for line in result.stderr.strip().splitlines()[:5]:
+                        out.print(f"    [red]{line}[/]")
+                if result.stdout.strip():
+                    for line in result.stdout.strip().splitlines()[:5]:
+                        out.print(f"    {line}")
+        except sp.TimeoutExpired:
+            all_pass = False
+            out.print("  [red]✗ Gate script timed out (120s)[/]")
+        except OSError as e:
+            all_pass = False
+            out.print(f"  [red]✗ Gate script error: {e}[/]")
+    else:
+        out.print("\n  [dim]No gate_script defined[/]")
+
+    # ── Check 3: manual gate criteria ─────────────────────────────────
+    if gc.gate_criterion:
+        out.print(f"\n  [yellow]Manual gate criterion:[/]")
+        out.print(f"  {gc.gate_criterion}")
+    else:
+        out.print("\n  [dim]No manual gate criterion[/]")
+
+    # ── Summary ───────────────────────────────────────────────────────
+    out.print()
+    if all_pass:
+        out.print("[green bold]✓ Phase is gate-ready.[/]")
+        if gc.downstream_locked:
+            out.print(f"  Downstream phases: {', '.join(gc.downstream_locked)}")
+            out.print(f"[dim]→ vectl complete will auto-unlock downstream phases[/]")
+        out.print("[dim]→ vectl status                       View plan overview[/]")
+    else:
+        out.print("[red bold]✗ Phase is NOT gate-ready.[/]")
+        out.print("[dim]→ vectl show <phase>                  Inspect phase details[/]")
+        out.print("[dim]→ vectl next                          See claimable steps[/]")

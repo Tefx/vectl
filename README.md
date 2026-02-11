@@ -1,6 +1,6 @@
 # vectl — DAG-enforced todo list for AI agents
 
-[中文文档](README_zh.md)
+[中文文档](README_zh.md) | [**Read the Introduction**](https://tefx.one/posts/vectl-intro/)
 
 TODO.md can't say no. vectl can.
 

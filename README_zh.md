@@ -1,6 +1,6 @@
 # vectl — 为 AI Agent 设计的 DAG 强制任务列表
 
-[English](README.md)
+[English](README.md) | [**Read the Introduction (tefx.one)**](https://tefx.one/posts/vectl-intro/)
 
 TODO.md 没法说"不"，vectl 可以。
 

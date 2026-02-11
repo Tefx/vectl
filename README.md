@@ -156,7 +156,27 @@ Next available:
 → vectl show <id>
 ```
 
-For all 33 commands (plan mutation, review, admin): `uvx vectl --help` or `uvx vectl guide`.
+### 5. Visualization
+
+See the DAG structure (output is Mermaid flowchart text, paste into GitHub/Obsidian to render):
+
+```bash
+uvx vectl dag              # High-level phase DAG (default)
+uvx vectl dag --phase core # Detailed step DAG within a phase
+```
+
+Output example (renders natively in GitHub):
+
+```mermaid
+flowchart TD
+  core["✓ Core Logic (5/5)"]
+  cli["✓ CLI (4/4)"]
+  mcp["▶ MCP Server (1/3)"]
+  core --> cli
+  cli --> mcp
+```
+
+For all 34 commands (plan mutation, review, admin): `uvx vectl --help` or `uvx vectl guide`.
 
 ### Human Oversight
 

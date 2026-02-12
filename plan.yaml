@@ -1549,3 +1549,191 @@ phases:
     evidence: 'Commit 8442926. Added full param to render_plan/render_phase in core.py,
       --full flag to CLI render command. 5 new tests in test_render.py. 576 tests
       pass. Verified: uv run vectl render --phase backlog --full shows complete descriptions.'
+- id: guidance-write
+  name: Guidance Authoring (No Manual YAML)
+  status: done
+  gate: CLI + MCP can author claim-time guidance without editing plan.yaml by hand
+  context: 'Feature request (2026-02-12): claim-time guidance.
+
+
+    Users want:
+
+    - Claim-time just-in-time guidance (refs + evidence template + project rules)
+
+    - Bounded output with explicit markers
+
+    - Must be disable-able
+
+    - Must work for both CLI and MCP
+
+    - Must be maintainable without manually editing plan.yaml
+
+    '
+  depends_on:
+  - p0-parity
+  steps:
+  - id: guidance-write.1
+    name: Core plan-level edit API
+    status: done
+    description: "Add a core mutation for plan-level fields so callers do not need\
+      \ to edit plan.yaml.\n\nScope:\n- Add `edit_plan(plan, *, project_guidance=...,\
+      \ strategy_ref=..., context=...) -> Plan`\n  using the existing sentinel pattern\
+      \ (`_SENTINEL`) for \"not provided\" vs \"set empty\".\n\nSource:\n- User instruction\
+      \ in this conversation: \"No manual YAML edits\" and \"sync CLI and MCP\".\n"
+    verification: uv run --group dev pytest -q
+    claimed_by: vectl-agent
+    claimed_at: '2026-02-12T13:54:07.277006+00:00'
+    evidence: 'Implemented core edit_plan() for plan-level metadata. Verified: uv
+      run --group dev pytest -q (634 passed).'
+  - id: guidance-write.2
+    name: MCP authoring via vectl_mutate edit-plan
+    status: done
+    description: 'Extend `vectl_mutate` to support `action="edit-plan"`.
+
+
+      Fields:
+
+      - `project_guidance`
+
+      - `strategy_ref`
+
+
+      Requirements:
+
+      - Structured, non-interactive (no prompts)
+
+      - CAS conflicts handled consistently
+
+      - Tests cover update + persistence
+
+
+      Source:
+
+      - FR R6 (MCP structured support) + user instruction "No manual YAML edits".
+
+      '
+    verification: uv run --group dev pytest -q
+    depends_on:
+    - guidance-write.1
+    claimed_by: vectl-agent
+    claimed_at: '2026-02-12T13:54:07.696297+00:00'
+    evidence: 'Added MCP vectl_mutate action=edit-plan and edit-step evidence_template
+      support. Verified: uv run --group dev pytest -q (634 passed).'
+  - id: guidance-write.3
+    name: CLI authoring command edit-plan
+    status: done
+    description: 'Add a CLI command to update plan-level guidance without editing
+      YAML.
+
+
+      Interface (recommended):
+
+      - `vectl edit-plan --project-guidance-file <path>`
+
+      - `vectl edit-plan --strategy-ref <value>`
+
+
+      Requirements:
+
+      - Keep stdout stable (support automation)
+
+      - Mirrors MCP capability
+
+
+      Source:
+
+      - User instruction in this conversation: "No manual YAML edits" and agreed recommended
+      `--*-file` approach.
+
+      '
+    verification: uv run --group dev pytest -q
+    depends_on:
+    - guidance-write.1
+    claimed_by: vectl-agent
+    claimed_at: '2026-02-12T13:54:08.082447+00:00'
+    evidence: 'Added CLI edit-plan with --*-file inputs to avoid manual YAML edits.
+      Verified: uv run --group dev pytest -q (634 passed).'
+  - id: guidance-write.4
+    name: CLI step evidence template authoring
+    status: done
+    description: 'Make CLI step authoring match MCP for step-level evidence templates.
+
+
+      Scope:
+
+      - `vectl add-step` supports `--evidence-template-file <path>` (and/or inline)
+
+      - `vectl edit-step` supports `--evidence-template-file <path>`
+
+
+      Source:
+
+      - FR R2 (step-level evidence template) + user instruction "sync CLI and MCP".
+
+      '
+    verification: uv run --group dev pytest -q
+    depends_on:
+    - guidance-write.3
+    claimed_by: vectl-agent
+    claimed_at: '2026-02-12T13:54:08.465726+00:00'
+    evidence: 'Added CLI add-step/edit-step evidence template authoring via --evidence-template*
+      options (parity with MCP). Verified: uv run --group dev pytest -q (634 passed).'
+  - id: guidance-write.5
+    name: AGENTS.md migration + upsert command
+    status: done
+    description: "Update the AGENTS.md snippet to describe claim-time guidance usage.\n\
+      Provide a safe, idempotent migration path (no manual edits).\n\nScope:\n- Introduce\
+      \ begin/end markers for the vectl block in AGENTS.md\n- Add a CLI command `vectl\
+      \ agents-md` (or equivalent)\n  that replaces the existing block if markers\
+      \ exist, otherwise appends\n- Update `vectl init` to call the upsert behavior\n\
+      \nSafety policy:\n- If a legacy block exists without markers, do not rewrite\
+      \ it; append the new block\n\nSource:\n- User instruction in this conversation:\
+      \ \"How to migrate AGENTS.md\" and agreed safe migration recommendation.\n"
+    verification: uv run --group dev pytest -q
+    depends_on:
+    - guidance-write.3
+    claimed_by: vectl-agent
+    claimed_at: '2026-02-12T13:54:33.949798+00:00'
+    evidence: 'Implemented AGENTS.md upsert markers and the agents-md CLI command;
+      updated init behavior and tests. Verified: uv run --group dev pytest -q (634
+      passed).'
+    rejection_reason: Evidence contained shell backticks; re-completing with literal
+      text.
+    rejection_history:
+    - reason: Evidence contained shell backticks; re-completing with literal text.
+      timestamp: '2026-02-12T13:54:33.650831+00:00'
+      reviewer: vectl-agent
+  - id: guidance-write.6
+    name: Update guide docs for guidance markers
+    status: done
+    description: 'Update `vectl guide` content to mention:
+
+      - claim-time Guidance markers
+
+      - bounded/truncated behavior
+
+      - how to disable (`--no-guidance` / `guidance=False`)
+
+
+      Source:
+
+      - FR R4/R5 + user requirement that agents rely on CLI/MCP as primary interface.
+
+      '
+    verification: uv run --group dev pytest -q
+    depends_on:
+    - guidance-write.5
+    claimed_by: vectl-agent
+    claimed_at: '2026-02-12T13:54:09.248277+00:00'
+    evidence: 'Updated vectl guide content to document claim-time guidance markers
+      and how to disable them. Verified: uv run --group dev pytest -q (634 passed).'
+  - id: guidance-write.7
+    name: Complete editing capability for step refs
+    status: done
+    description: Fill in detailed description for ref-editing step
+    verification: uv run --group dev pytest -q
+    claimed_by: vectl-agent
+    claimed_at: '2026-02-12T14:09:38.863936+00:00'
+    evidence: Implemented ref editing in core `edit_step` (add_refs, remove_refs,
+      refs), CLI `edit-step` (`--add-ref`, `--rm-ref`), and MCP `vectl_mutate`. Added
+      tests in `test_cli.py` and `test_mcp.py`. Verified with 636 passing tests.

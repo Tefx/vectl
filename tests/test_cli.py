@@ -93,7 +93,10 @@ class TestInit:
         assert agents_md.exists()
         content = agents_md.read_text()
         assert "## Plan Tracking (vectl)" in content
+        assert "<!-- VECTL:AGENTS:BEGIN -->" in content
+        assert "<!-- VECTL:AGENTS:END -->" in content
         assert "uvx vectl guide" in content
+        assert "VECTL:GUIDANCE:BEGIN" in content
 
     def test_init_appends_to_existing_agents_md(self, tmp_path: Path):
         path = tmp_path / "plan.yaml"
@@ -108,12 +111,80 @@ class TestInit:
     def test_init_agents_md_idempotent(self, tmp_path: Path):
         path = tmp_path / "plan.yaml"
         agents_md = tmp_path / "AGENTS.md"
-        agents_md.write_text("# My Project\n\n## Plan Tracking (vectl)\n\nAlready here.\n")
+        agents_md.write_text(
+            "# My Project\n\n<!-- VECTL:AGENTS:BEGIN -->\n## Plan Tracking (vectl)\n\nOld block.\n<!-- VECTL:AGENTS:END -->\n"
+        )
         result = runner.invoke(app, ["init", "--project", "myproject", "--plan", str(path)])
         assert result.exit_code == 0
         content = agents_md.read_text()
-        assert content.count("## Plan Tracking (vectl)") == 1
-        assert "skipped" in result.output.lower()
+        assert content.count("<!-- VECTL:AGENTS:BEGIN -->") == 1
+        assert content.count("<!-- VECTL:AGENTS:END -->") == 1
+        assert "updated" in result.output.lower() or "replaced" in result.output.lower()
+
+    def test_init_preserves_legacy_block_and_appends_new(self, tmp_path: Path):
+        """Legacy header without markers should be preserved; new block appended."""
+        path = tmp_path / "plan.yaml"
+        agents_md = tmp_path / "AGENTS.md"
+        agents_md.write_text("# My Project\n\n## Plan Tracking (vectl)\n\nLegacy text.\n")
+        result = runner.invoke(app, ["init", "--project", "myproject", "--plan", str(path)])
+        assert result.exit_code == 0
+        content = agents_md.read_text()
+        assert content.count("## Plan Tracking (vectl)") == 2
+        assert "legacy block preserved" in result.output.lower()
+
+    def test_agents_md_command_upserts(self, tmp_path: Path) -> None:
+        agents_md = tmp_path / "AGENTS.md"
+        agents_md.write_text("# Title\n\nExisting\n", encoding="utf-8")
+        result = runner.invoke(app, ["agents-md", "--dir", str(tmp_path)])
+        assert result.exit_code == 0
+        content = agents_md.read_text(encoding="utf-8")
+        assert "<!-- VECTL:AGENTS:BEGIN -->" in content
+
+
+class TestEditPlan:
+    def test_edit_plan_project_guidance_file(self, tmp_path: Path) -> None:
+        plan_path = tmp_path / "plan.yaml"
+        save_plan(Plan(project="p"), plan_path)
+
+        guidance_path = tmp_path / "guidance.md"
+        guidance_path.write_text("Rule A\nRule B\n", encoding="utf-8")
+
+        result = runner.invoke(
+            app,
+            [
+                "edit-plan",
+                "--project-guidance-file",
+                str(guidance_path),
+                "--plan",
+                str(plan_path),
+            ],
+        )
+        assert result.exit_code == 0
+
+        plan, _ = load_plan(plan_path)
+        assert "Rule A" in plan.project_guidance
+
+    def test_edit_plan_rejects_dual_inputs(self, tmp_path: Path) -> None:
+        plan_path = tmp_path / "plan.yaml"
+        save_plan(Plan(project="p"), plan_path)
+
+        guidance_path = tmp_path / "guidance.md"
+        guidance_path.write_text("X", encoding="utf-8")
+
+        result = runner.invoke(
+            app,
+            [
+                "edit-plan",
+                "--project-guidance",
+                "Inline",
+                "--project-guidance-file",
+                str(guidance_path),
+                "--plan",
+                str(plan_path),
+            ],
+        )
+        assert result.exit_code == 1
+        assert "only one" in result.output.lower()
 
 
 # ---------------------------------------------------------------------------
@@ -780,6 +851,35 @@ class TestAddStep:
         assert step.verification == "pytest -v"
         assert step.refs == ["src/foo.py", "docs/bar.md"]
 
+    def test_add_step_evidence_template_file(self, tmp_path: Path) -> None:
+        plan_path = tmp_path / "plan.yaml"
+        save_plan(Plan(project="p", phases=[Phase(id="p1", name="P1")]), plan_path)
+
+        tpl_path = tmp_path / "tpl.txt"
+        tpl_path.write_text("Artifact:\n- PR: <url>\n", encoding="utf-8")
+
+        result = runner.invoke(
+            app,
+            [
+                "add-step",
+                "--phase",
+                "p1",
+                "--name",
+                "With Template",
+                "--evidence-template-file",
+                str(tpl_path),
+                "--plan",
+                str(plan_path),
+            ],
+        )
+        assert result.exit_code == 0
+
+        plan, _ = load_plan(plan_path)
+        found = plan.find_step("p1.with-template")
+        assert found is not None
+        _, step = found
+        assert "PR" in step.evidence_template
+
     def test_phase_not_found(self, plan_file: Path) -> None:
         result = runner.invoke(
             app, ["add-step", "--phase", "nonexistent", "--name", "X", "--plan", str(plan_file)]
@@ -1102,6 +1202,48 @@ class TestEditStepCli:
         assert found is not None
         _, step = found
         assert "s1" in step.depends_on
+
+    def test_edit_evidence_template_inline(self, plan_file: Path) -> None:
+        result = runner.invoke(
+            app,
+            [
+                "edit-step",
+                "s1",
+                "--evidence-template",
+                "Artifact:\n- PR: <url>",
+                "--plan",
+                str(plan_file),
+            ],
+        )
+        assert result.exit_code == 0
+        plan, _ = load_plan(plan_file)
+        found = plan.find_step("s1")
+        assert found is not None
+        _, step = found
+        assert "PR" in step.evidence_template
+
+    def test_edit_add_rm_ref(self, plan_file: Path) -> None:
+        # Add ref
+        result = runner.invoke(
+            app, ["edit-step", "s1", "--add-ref", "docs/new.md", "--plan", str(plan_file)]
+        )
+        assert result.exit_code == 0
+        plan, _ = load_plan(plan_file)
+        found = plan.find_step("s1")
+        assert found is not None
+        _, step = found
+        assert "docs/new.md" in step.refs
+
+        # Remove ref
+        result = runner.invoke(
+            app, ["edit-step", "s1", "--rm-ref", "docs/new.md", "--plan", str(plan_file)]
+        )
+        assert result.exit_code == 0
+        plan, _ = load_plan(plan_file)
+        found = plan.find_step("s1")
+        assert found is not None
+        _, step = found
+        assert "docs/new.md" not in step.refs
 
     def test_edit_rm_dep(self, plan_file: Path) -> None:
         result = runner.invoke(app, ["edit-step", "s2", "--rm-dep", "s1", "--plan", str(plan_file)])

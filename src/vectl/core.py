@@ -606,6 +606,7 @@ def add_step(
     description: str = "",
     depends_on: list[str] | None = None,
     verification: str = "",
+    evidence_template: str = "",
     refs: list[str] | None = None,
     status: StepStatus | None = None,
     evidence: str | None = None,
@@ -622,6 +623,7 @@ def add_step(
         description: Step description/specification.
         depends_on: Step IDs this step depends on (within same phase).
         verification: Verification command.
+        evidence_template: Optional short template for completion evidence.
         refs: Reference file paths.
         status: Initial status. Only terminal states allowed: pending (default),
             done, skipped. Transient states (claimed, rejected) are not supported
@@ -684,6 +686,7 @@ def add_step(
         description=description,
         depends_on=deps,
         verification=verification,
+        evidence_template=evidence_template,
         refs=refs or [],
         evidence=evidence,
         skipped_reason=skipped_reason,
@@ -1042,10 +1045,14 @@ def edit_step(
     name: str | _Unset = _SENTINEL,
     description: str | _Unset = _SENTINEL,
     verification: str | _Unset = _SENTINEL,
+    evidence_template: str | _Unset = _SENTINEL,
     agent: str | None | _Unset = _SENTINEL,
     add_deps: list[str] | None = None,
     remove_deps: list[str] | None = None,
     depends_on: list[str] | _Unset = _SENTINEL,
+    add_refs: list[str] | None = None,
+    remove_refs: list[str] | None = None,
+    refs: list[str] | _Unset = _SENTINEL,
 ) -> Plan:
     """Edit an existing step's metadata.
 
@@ -1057,10 +1064,14 @@ def edit_step(
         name: New name (unchanged if not provided).
         description: New description (unchanged if not provided).
         verification: New verification command (unchanged if not provided).
+        evidence_template: New completion evidence template (unchanged if not provided).
         agent: New agent suggestion. Pass None to clear, string to set.
         add_deps: Step IDs to add to depends_on.
         remove_deps: Step IDs to remove from depends_on.
         depends_on: Set dependencies directly (overrides add_deps/remove_deps if provided).
+        add_refs: Reference strings to add to refs.
+        remove_refs: Reference strings to remove from refs.
+        refs: Set refs directly (overrides add_refs/remove_refs if provided).
 
     Returns:
         The updated plan.
@@ -1079,6 +1090,8 @@ def edit_step(
         step.description = str(description)
     if verification is not _SENTINEL:
         step.verification = str(verification)
+    if evidence_template is not _SENTINEL:
+        step.evidence_template = str(evidence_template)
     if agent is not _SENTINEL:
         step.agent = agent if agent is None else str(agent)  # type: ignore[assignment]
 
@@ -1091,7 +1104,6 @@ def edit_step(
             if dep not in existing_step_ids:
                 raise PlanError(f"Step depends_on '{dep}' not found in phase '{phase.id}'")
         step.depends_on = new_deps
-        return plan
 
     if add_deps:
         existing_step_ids = {s.id for s in phase.steps}
@@ -1105,6 +1117,19 @@ def edit_step(
         for dep in remove_deps:
             if dep in step.depends_on:
                 step.depends_on.remove(dep)
+
+    if refs is not _SENTINEL:
+        step.refs = list(refs)  # type: ignore
+
+    if add_refs:
+        for r in add_refs:
+            if r not in step.refs:
+                step.refs.append(r)
+
+    if remove_refs:
+        for r in remove_refs:
+            if r in step.refs:
+                step.refs.remove(r)
 
     return plan
 
@@ -1162,6 +1187,41 @@ def edit_phase(
             if dep in phase.depends_on:
                 phase.depends_on.remove(dep)
 
+    return plan
+
+
+def edit_plan(
+    plan: Plan,
+    *,
+    project_guidance: str | _Unset = _SENTINEL,
+    strategy_ref: str | _Unset = _SENTINEL,
+    context: str | _Unset = _SENTINEL,
+) -> Plan:
+    """Edit plan-level metadata.
+
+    Source:
+        - User instruction in this conversation (2026-02-12): "No manual YAML edits",
+          and "sync CLI and MCP" for claim-time guidance authoring.
+
+    Uses the existing sentinel pattern so callers can distinguish "not provided"
+    from "set to empty".
+
+    Args:
+        plan: The plan to modify.
+        project_guidance: Short project-level guidance shown at claim time.
+        strategy_ref: Strategy reference shown as a top-level ref.
+        context: Plan context string.
+
+    Returns:
+        The updated plan.
+    """
+
+    if project_guidance is not _SENTINEL:
+        plan.project_guidance = str(project_guidance)
+    if strategy_ref is not _SENTINEL:
+        plan.strategy_ref = str(strategy_ref)
+    if context is not _SENTINEL:
+        plan.context = str(context)
     return plan
 
 

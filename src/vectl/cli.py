@@ -467,9 +467,11 @@ Quick view: `uvx vectl status`
 - Spec uncertainty: leave `# SPEC QUESTION: ...` in code, do not guess.
 
 ### For Architects / Planners
-- To build the plan, use: `uvx vectl guide --on planning`
-- **Goal**: Create steps so clear that a Junior Dev could execute them without asking questions.
-- **Tools**: Use `--evidence-template` and `--refs` to constrain the worker's context and output.
+- **Design Mode**: Run `uvx vectl guide --on planning` to learn the Architect Protocol.
+- **Ambiguity = Failure**: Workers will hallucinate if steps are vague.
+- **Constraint Tools**:
+  - `--evidence-template`: Force workers to provide specific proof (e.g., "Paste logs here").
+  - `--refs`: Pin specific files (e.g., "src/auth.py") to the worker's context.
 {_AGENTS_MD_END}
 """
 

@@ -114,16 +114,13 @@ def _default_evidence_template() -> str:
 
     return (
         "Artifact:\n"
-        "- PR: <url>\n"
+        "- PR: <url> (or commit hash)\n"
         "\n"
         "Verification:\n"
-        "- <command(s) run + key output>\n"
+        "- Run: <cmd> -> <outcome>\n"
         "\n"
         "Spec link:\n"
-        "- <proposal/doc section>\n"
-        "\n"
-        "Known gaps/risks:\n"
-        "- <if any>\n"
+        "- <proposal/issue/doc section>\n"
     )
 
 

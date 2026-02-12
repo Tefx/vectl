@@ -81,13 +81,17 @@ See [OpenCode MCP docs](https://opencode.ai/docs/mcp-servers/) for details.
 
 No setup needed — agents call `uvx vectl ...` directly.
 
-> **Note**: `uvx vectl init` (Step 1) already creates or updates your `AGENTS.md` with the section below.
-> You only need the manual template if you skipped `init`.
+> **Note**: `uvx vectl init` (Step 1) already creates or updates your `AGENTS.md`.
+> If you need to update it later (e.g. to enable new guidance features), run:
+> ```bash
+> uvx vectl agents-md
+> ```
 
 <details>
-<summary>📋 AGENTS.md template (click to expand)</summary>
+<summary>📋 AGENTS.md template (reference)</summary>
 
 ```md
+<!-- VECTL:AGENTS:BEGIN -->
 ## Plan Tracking (vectl)
 
 vectl tracks this repo's implementation plan as a structured `plan.yaml`:
@@ -95,6 +99,12 @@ what to do next, who claimed it, and what counts as done (with verification evid
 
 Full guide: `uvx vectl guide`
 Quick view: `uvx vectl status`
+
+### Claim-time Guidance
+- `uvx vectl claim` may emit a bounded Guidance block delimited by:
+  - `--- VECTL:GUIDANCE:BEGIN ---`
+  - `--- VECTL:GUIDANCE:END ---`
+- For automation/CI: use `uvx vectl claim --no-guidance` to keep stdout clean.
 
 ### CLI vs MCP
 - Source of truth: `plan.yaml` (channel-agnostic).
@@ -106,6 +116,7 @@ Quick view: `uvx vectl status`
 - One claimed step at a time.
 - Evidence is mandatory when completing (commands run + outputs + gaps).
 - Spec uncertainty: leave `# SPEC QUESTION: ...` in code, do not guess.
+<!-- VECTL:AGENTS:END -->
 ```
 </details>
 </details>
@@ -130,12 +141,17 @@ uvx vectl status                    # Plan-wide progress dashboard
 uvx vectl next                      # Show claimable steps
 
 # CLAIM: I'm working on this.
-uvx vectl claim <step-id> --agent me  # Lock step, get full spec
+uvx vectl claim <step-id> --agent me  # Lock step, get full spec + guidance
 
-# WORK: (you write code, run tests)
+# GUIDANCE (displayed on claim):
+# --- VECTL:GUIDANCE:BEGIN ---
+# ... (refs, evidence template, project rules) ...
+# --- VECTL:GUIDANCE:END ---
+
+# WORK: (you write code, run tests, follow guidance)
 
 # COMPLETE: I proved it works.
-uvx vectl complete <step-id> --evidence "commit abc123, pytest passed"
+uvx vectl complete <step-id> --evidence "..." # Paste filled template here
 
 # REPEAT: What's unlocked now?
 uvx vectl next                      # See what the completion unlocked
@@ -156,7 +172,21 @@ Next available:
 → vectl show <id>
 ```
 
-### 5. Visualization
+### 5. Authoring & Guidance
+
+**No Manual YAML Edits**: Use CLI/MCP commands to build the plan safely.
+
+```bash
+# Add a step with an evidence template
+uvx vectl add-step --phase core --name "Auth" --evidence-template "Verif:\n- [ ] Login works"
+
+# Update project-level guidance (rules for all steps)
+uvx vectl edit-plan --project-guidance "Always verify with pytest."
+# OR read from a file (recommended for long rules)
+uvx vectl edit-plan --project-guidance-file docs/rules.md
+```
+
+### 6. Visualization
 
 See the DAG structure (output is Mermaid flowchart text, paste into GitHub/Obsidian to render):
 

@@ -64,6 +64,10 @@ class Step(BaseModel):
     status: StepStatus = StepStatus.PENDING
     description: str = ""
     verification: str = ""
+    # Feature request (2026-02-12): claim-time guidance.
+    # Source: user feature request "Output guidance when running vectl claim".
+    # R2: step-level evidence template needs a place to store short copy/paste text.
+    evidence_template: str = ""
     refs: list[str] = Field(default_factory=list)
     depends_on: list[str] = Field(default_factory=list)
     agent: str | None = None
@@ -108,6 +112,10 @@ class Plan(BaseModel):
     project: str
     strategy_ref: str = ""
     context: str = ""
+    # Feature request (2026-02-12): claim-time guidance.
+    # Source: user feature request "Output guidance when running vectl claim".
+    # R3: project-level guidance should be available at claim time.
+    project_guidance: str = ""
     phases: list[Phase] = Field(default_factory=list)
 
     # ---- helpers ----

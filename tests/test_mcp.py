@@ -193,9 +193,11 @@ class TestVectlShow:
 class TestVectlClaim:
     def test_claim_specific_step(self, plan_file: Path) -> None:
         result = vectl_claim(agent="bot", step_id="a.1")
-        assert "Claimed" in result
-        assert "a.1" in result
-        assert "bot" in result
+        assert result["ok"] is True
+        assert "Claimed" in result["markdown"]
+        assert "a.1" in result["markdown"]
+        assert "bot" in result["markdown"]
+        assert result["claimed"]["step_id"] == "a.1"
 
         data = _reload_plan(plan_file)
         step = data["phases"][0]["steps"][0]
@@ -204,17 +206,19 @@ class TestVectlClaim:
 
     def test_auto_claim(self, plan_file: Path) -> None:
         result = vectl_claim(agent="bot")
-        assert "Claimed" in result
+        assert result["ok"] is True
+        assert "Claimed" in result["markdown"]
         # Should auto-pick a.1 (first available, a.3 depends on a.1)
-        assert "a.1" in result
+        assert "a.1" in result["markdown"]
 
     def test_claim_error_on_dep_unmet(self, plan_file: Path) -> None:
         result = vectl_claim(agent="bot", step_id="a.2")
-        assert "Error" in result
+        assert result["ok"] is False
+        assert "Error" in result["markdown"]
 
     def test_claim_shows_affordance(self, plan_file: Path) -> None:
         result = vectl_claim(agent="bot", step_id="a.1")
-        assert "vectl_complete" in result
+        assert "vectl_complete" in result["markdown"]
 
 
 # ---------------------------------------------------------------------------
@@ -388,6 +392,41 @@ class TestVectlMutate:
         data = _reload_plan(plan_file)
         assert data["phases"][0]["steps"][0]["name"] == "Renamed Step"
 
+    def test_edit_step_evidence_template(self, plan_file: Path) -> None:
+        result = vectl_mutate(
+            action="edit-step",
+            step_id="a.1",
+            evidence_template="Artifact:\n- PR: <url>",
+        )
+        assert "Updated step" in result
+
+        data = _reload_plan(plan_file)
+        assert "evidence_template" in data["phases"][0]["steps"][0]
+        assert "PR" in data["phases"][0]["steps"][0]["evidence_template"]
+
+    def test_edit_step_refs(self, plan_file: Path) -> None:
+        # Add refs
+        result = vectl_mutate(
+            action="edit-step",
+            step_id="a.1",
+            add_refs=["docs/new.md"],
+        )
+        assert "Updated step" in result
+        data = _reload_plan(plan_file)
+        assert "docs/new.md" in data["phases"][0]["steps"][0]["refs"]
+
+        # Remove refs
+        result = vectl_mutate(
+            action="edit-step",
+            step_id="a.1",
+            remove_refs=["docs/new.md"],
+        )
+        assert "Updated step" in result
+        data = _reload_plan(plan_file)
+        # refs might be missing if empty
+        refs = data["phases"][0]["steps"][0].get("refs", [])
+        assert "docs/new.md" not in refs
+
     def test_edit_step_requires_id(self, plan_file: Path) -> None:
         result = vectl_mutate(action="edit-step", name="Foo")
         assert "Error" in result
@@ -450,6 +489,17 @@ class TestVectlMutate:
         result = vectl_mutate(action="edit-phase", name="Foo")
         assert "Error" in result
 
+    def test_edit_plan_project_guidance(self, plan_file: Path) -> None:
+        result = vectl_mutate(
+            action="edit-plan",
+            project_guidance="Rule A\nRule B",
+        )
+        assert "Updated plan" in result or "Updated plan metadata" in result
+
+        data = _reload_plan(plan_file)
+        assert "project_guidance" in data
+        assert "Rule A" in data["project_guidance"]
+
     def test_unknown_action(self, plan_file: Path) -> None:
         result = vectl_mutate(action="add-step", phase_id="alpha")  # type: ignore[arg-type]
         assert "Error" in result
@@ -480,7 +530,8 @@ class TestWorkflow:
 
         # 2. Claim a.1
         claim = vectl_claim(agent="bot", step_id="a.1")
-        assert "Claimed" in claim
+        assert claim["ok"] is True
+        assert "Claimed" in claim["markdown"]
 
         # 3. Status shows claimed
         status = vectl_status(agent="bot")
@@ -493,7 +544,8 @@ class TestWorkflow:
 
         # 5. Claim a.2 (now unblocked)
         claim2 = vectl_claim(agent="bot", step_id="a.2")
-        assert "Claimed" in claim2
+        assert claim2["ok"] is True
+        assert "Claimed" in claim2["markdown"]
 
         # 6. Complete a.2 → phase done, beta unlocked
         done2 = vectl_complete(step_id="a.2", evidence="All done")
@@ -511,8 +563,9 @@ class TestWorkflow:
 
         # Different agent can claim
         result = vectl_claim(agent="bot2", step_id="a.1")
-        assert "Claimed" in result
-        assert "bot2" in result
+        assert result["ok"] is True
+        assert "Claimed" in result["markdown"]
+        assert "bot2" in result["markdown"]
 
 
 # ---------------------------------------------------------------------------

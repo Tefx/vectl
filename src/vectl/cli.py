@@ -432,9 +432,15 @@ def _git_plan_at_ref(ref: str, plan_path: Path, cwd: str) -> Plan | None:
         return None
 
 
-_AGENTS_MD_MARKER = "## Plan Tracking (vectl)"
+_AGENTS_MD_LEGACY_HEADER = "## Plan Tracking (vectl)"
+_AGENTS_MD_BEGIN = "<!-- VECTL:AGENTS:BEGIN -->"
+_AGENTS_MD_END = "<!-- VECTL:AGENTS:END -->"
 
-_AGENTS_MD_SNIPPET = """\
+# Source:
+#   - User instruction in this conversation (2026-02-12): no manual YAML edits, and
+#     agreed safe AGENTS.md migration approach using begin/end markers.
+_AGENTS_MD_SNIPPET = f"""\
+{_AGENTS_MD_BEGIN}
 ## Plan Tracking (vectl)
 
 vectl tracks this repo's implementation plan as a structured `plan.yaml`:
@@ -442,6 +448,12 @@ what to do next, who claimed it, and what counts as done (with verification evid
 
 Full guide: `uvx vectl guide`
 Quick view: `uvx vectl status`
+
+### Claim-time Guidance
+- `uvx vectl claim` may emit a bounded Guidance block delimited by:
+  - `--- VECTL:GUIDANCE:BEGIN ---`
+  - `--- VECTL:GUIDANCE:END ---`
+- For automation/CI: use `uvx vectl claim --no-guidance` to keep stdout clean.
 
 ### CLI vs MCP
 - Source of truth: `plan.yaml` (channel-agnostic).
@@ -453,11 +465,16 @@ Quick view: `uvx vectl status`
 - One claimed step at a time.
 - Evidence is mandatory when completing (commands run + outputs + gaps).
 - Spec uncertainty: leave `# SPEC QUESTION: ...` in code, do not guess.
+{_AGENTS_MD_END}
 """
 
 
-def _ensure_agents_md(directory: Path) -> str:
-    """Create or append vectl section to AGENTS.md (or CLAUDE.md). Idempotent via marker detection.
+def _upsert_agents_md(directory: Path) -> str:
+    """Create or upsert vectl section in AGENTS.md (or CLAUDE.md).
+
+    Safety policy (agreed in this conversation, 2026-02-12):
+    - If begin/end markers exist, replace that block.
+    - If only legacy header exists (no markers), do not rewrite; append the new block.
 
     Preference: AGENTS.md > CLAUDE.md > create AGENTS.md.
 
@@ -476,12 +493,37 @@ def _ensure_agents_md(directory: Path) -> str:
         return f"Created {target.name}"
 
     content = target.read_text(encoding="utf-8")
-    if _AGENTS_MD_MARKER in content:
-        return f"{target.name} already has vectl section (skipped)"
+
+    begin = content.find(_AGENTS_MD_BEGIN)
+    end = content.find(_AGENTS_MD_END)
+    if begin != -1 and end != -1 and begin < end:
+        end_inclusive = end + len(_AGENTS_MD_END)
+        new_content = content[:begin].rstrip() + "\n\n" + _AGENTS_MD_SNIPPET + "\n"
+        new_content += content[end_inclusive:].lstrip()
+        target.write_text(new_content, encoding="utf-8")
+        return f"Updated {target.name} (replaced vectl block)"
+
+    if _AGENTS_MD_LEGACY_HEADER in content:
+        with target.open("a", encoding="utf-8") as f:
+            f.write("\n\n" + _AGENTS_MD_SNIPPET)
+        return f"Appended updated vectl block to {target.name} (legacy block preserved)"
 
     with target.open("a", encoding="utf-8") as f:
         f.write("\n\n" + _AGENTS_MD_SNIPPET)
     return f"Appended vectl section to {target.name}"
+
+
+@app.command("agents-md")
+def agents_md_cmd(
+    directory: Path = typer.Option(
+        Path("."),
+        "--dir",
+        help="Directory containing AGENTS.md/CLAUDE.md to update.",
+    ),
+) -> None:
+    """Upsert the vectl section in AGENTS.md (or CLAUDE.md)."""
+    result = _upsert_agents_md(directory)
+    out.print(result)
 
 
 @app.command()
@@ -502,7 +544,7 @@ def init(
     out.print(f"[green]Created:[/] {target}")
 
     # Ensure AGENTS.md has vectl section (idempotent)
-    agents_result = _ensure_agents_md(target.parent)
+    agents_result = _upsert_agents_md(target.parent)
     out.print(f"[green]AGENTS.md:[/] {agents_result}")
 
     out.print()
@@ -814,6 +856,11 @@ def claim(
         "-a",
         help="Agent name. (env: VECTL_AGENT)",
     ),
+    guidance: bool = typer.Option(
+        True,
+        "--guidance/--no-guidance",
+        help="Show claim-time Guidance block (refs + evidence template).",
+    ),
     plan: Path | None = PlanOption,
 ) -> None:
     """Claim a step for work.
@@ -836,6 +883,19 @@ def claim(
         _die(str(e))
     _save(p, plan, h)
     out.print(f"[green]Claimed:[/] {step_id} by {agent}")
+
+    # Feature request (2026-02-12): claim-time guidance.
+    # Source: user feature request "Output guidance when running vectl claim".
+    # R1/R4: clear markers + bounded content.
+    if guidance:
+        found = p.find_step(step_id)
+        if found is not None:
+            from vectl.claim_guidance import build_claim_guidance
+
+            phase_obj, step_obj = found
+            payload = build_claim_guidance(p, phase_obj, step_obj)
+            out.print()
+            out.print(payload.markdown, markup=False)
 
     # Show full step spec (saves a show call)
     found = p.find_step(step_id)
@@ -1116,6 +1176,16 @@ def add_step_cmd(
     ),
     verify: str = typer.Option("", "--verify", "--verification", help="Verification command."),
     refs: Optional[str] = typer.Option(None, "--refs", help="Comma-separated ref paths."),
+    evidence_template: str = typer.Option(
+        "",
+        "--evidence-template",
+        help="Optional short template for completion evidence (inline).",
+    ),
+    evidence_template_file: Optional[Path] = typer.Option(
+        None,
+        "--evidence-template-file",
+        help="Read the completion evidence template from a file.",
+    ),
     step_id: Optional[str] = typer.Option(None, "--id", help="Explicit step ID (auto if omitted)."),
     import_status: Optional[str] = typer.Option(
         None,
@@ -1151,6 +1221,14 @@ def add_step_cmd(
     depends_on = [d.strip() for d in after.split(",") if d.strip()] if after else None
     refs_list = [r.strip() for r in refs.split(",") if r.strip()] if refs else None
 
+    if evidence_template_file is not None and evidence_template:
+        _die("Use only one of --evidence-template or --evidence-template-file.")
+        return  # unreachable
+
+    template_val = evidence_template
+    if evidence_template_file is not None:
+        template_val = evidence_template_file.read_text(encoding="utf-8")
+
     # Parse import status
     step_status: StepStatus | None = None
     if import_status is not None:
@@ -1169,6 +1247,7 @@ def add_step_cmd(
             description=desc,
             depends_on=depends_on,
             verification=verify,
+            evidence_template=template_val,
             refs=refs_list,
             status=step_status,
             evidence=import_evidence,
@@ -1248,6 +1327,89 @@ def add_phase_cmd(
     out.print("[dim]→ vectl status                      See full plan[/]")
 
 
+@app.command("edit-plan")
+def edit_plan_cmd(
+    project_guidance: Optional[str] = typer.Option(
+        None,
+        "--project-guidance",
+        help="Project-level claim-time guidance (inline; use '' to clear).",
+    ),
+    project_guidance_file: Optional[Path] = typer.Option(
+        None,
+        "--project-guidance-file",
+        help="Read project-level guidance from a file.",
+    ),
+    strategy_ref: Optional[str] = typer.Option(
+        None,
+        "--strategy-ref",
+        help="Plan-level strategy reference (use '' to clear).",
+    ),
+    context: Optional[str] = typer.Option(
+        None,
+        "--context",
+        help="Plan context (inline; use '' to clear).",
+    ),
+    context_file: Optional[Path] = typer.Option(
+        None,
+        "--context-file",
+        help="Read plan context from a file.",
+    ),
+    plan: Path | None = PlanOption,
+) -> None:
+    """Edit plan-level metadata without manually editing plan.yaml.
+
+    Source:
+        - User instruction in this conversation (2026-02-12): "No manual YAML edits",
+          and agreed `--*-file` approach.
+    """
+    from vectl.core import _SENTINEL, edit_plan
+
+    if project_guidance_file is not None and project_guidance is not None:
+        _die("Use only one of --project-guidance or --project-guidance-file.")
+        return  # unreachable
+    if context_file is not None and context is not None:
+        _die("Use only one of --context or --context-file.")
+        return  # unreachable
+
+    if (
+        project_guidance is None
+        and project_guidance_file is None
+        and strategy_ref is None
+        and context is None
+        and context_file is None
+    ):
+        _die(
+            "Nothing to edit. Provide at least one of: --project-guidance, --project-guidance-file, "
+            "--strategy-ref, --context, --context-file."
+        )
+        return  # unreachable
+
+    p, h, plan_path = _load(plan)
+
+    pg_val = project_guidance
+    if project_guidance_file is not None:
+        pg_val = project_guidance_file.read_text(encoding="utf-8")
+
+    ctx_val = context
+    if context_file is not None:
+        ctx_val = context_file.read_text(encoding="utf-8")
+
+    try:
+        p = edit_plan(
+            p,
+            project_guidance=pg_val if pg_val is not None else _SENTINEL,
+            strategy_ref=strategy_ref if strategy_ref is not None else _SENTINEL,
+            context=ctx_val if ctx_val is not None else _SENTINEL,
+        )
+    except PlanError as e:
+        _die(str(e))
+        return  # unreachable
+
+    _save(p, plan_path, h)
+    out.print("[green]Updated plan metadata[/]")
+    out.print("[dim]→ vectl status                      See plan overview[/]")
+
+
 # ---------------------------------------------------------------------------
 # cli.11: edit-step, remove-step, move-step (architect mutations)
 # ---------------------------------------------------------------------------
@@ -1270,6 +1432,22 @@ def edit_step_cmd(
     rm_dep: Optional[str] = typer.Option(
         None, "--rm-dep", help="Comma-separated step IDs to remove from dependencies."
     ),
+    add_ref: Optional[str] = typer.Option(
+        None, "--add-ref", help="Comma-separated ref paths to add."
+    ),
+    rm_ref: Optional[str] = typer.Option(
+        None, "--rm-ref", help="Comma-separated ref paths to remove."
+    ),
+    evidence_template: Optional[str] = typer.Option(
+        None,
+        "--evidence-template",
+        help="New completion evidence template (inline; use '' to clear).",
+    ),
+    evidence_template_file: Optional[Path] = typer.Option(
+        None,
+        "--evidence-template-file",
+        help="Read the completion evidence template from a file.",
+    ),
     plan: Path | None = PlanOption,
 ) -> None:
     """Edit a step's metadata."""
@@ -1279,6 +1457,8 @@ def edit_step_cmd(
 
     add_deps = [d.strip() for d in add_dep.split(",") if d.strip()] if add_dep else None
     rm_deps = [d.strip() for d in rm_dep.split(",") if d.strip()] if rm_dep else None
+    add_refs = [r.strip() for r in add_ref.split(",") if r.strip()] if add_ref else None
+    rm_refs = [r.strip() for r in rm_ref.split(",") if r.strip()] if rm_ref else None
 
     if (
         name is None
@@ -1287,16 +1467,31 @@ def edit_step_cmd(
         and step_agent is None
         and not add_deps
         and not rm_deps
+        and not add_refs
+        and not rm_refs
+        and evidence_template is None
+        and evidence_template_file is None
     ):
         _die(
-            "Nothing to edit. Provide at least one of --name, --desc, --verify, --agent, --add-dep, --rm-dep."
+            "Nothing to edit. Provide at least one of --name, --desc, --verify, --agent, "
+            "--add-dep, --rm-dep, --add-ref, --rm-ref, --evidence-template, --evidence-template-file."
         )
+        return  # unreachable
+
+    if evidence_template_file is not None and evidence_template is not None:
+        _die("Use only one of --evidence-template or --evidence-template-file.")
         return  # unreachable
 
     # Agent: None means "not provided" (sentinel); "" means "clear"
     agent_val = _SENTINEL
     if step_agent is not None:
         agent_val = None if step_agent == "" else step_agent  # type: ignore[assignment]
+
+    template_val = _SENTINEL
+    if evidence_template_file is not None:
+        template_val = evidence_template_file.read_text(encoding="utf-8")  # type: ignore[assignment]
+    elif evidence_template is not None:
+        template_val = evidence_template  # type: ignore[assignment]
 
     try:
         p = edit_step(
@@ -1305,9 +1500,12 @@ def edit_step_cmd(
             name=name if name is not None else _SENTINEL,
             description=desc if desc is not None else _SENTINEL,
             verification=verify if verify is not None else _SENTINEL,
+            evidence_template=template_val,
             agent=agent_val,
             add_deps=add_deps,
             remove_deps=rm_deps,
+            add_refs=add_refs,
+            remove_refs=rm_refs,
         )
     except PlanError as e:
         _die(str(e))

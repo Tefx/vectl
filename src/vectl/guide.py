@@ -20,6 +20,14 @@ Conflict? Update plan or escalate. Do not guess.
 5. `uvx vectl complete <id> --evidence "..."` — Submit results
 6. `uvx vectl next`             — Loop
 
+## Claim-time Guidance
+`uvx vectl claim` may emit a bounded Guidance block delimited by:
+- `--- VECTL:GUIDANCE:BEGIN ---`
+- `--- VECTL:GUIDANCE:END ---`
+
+Use the included evidence template as the skeleton for completion evidence.
+For automation/CI, disable guidance with: `uvx vectl claim --no-guidance`.
+
 ## Evidence (Strict)
 Required: Files changed, Verification (cmd + result), Gaps (skipped).
 > Ex: "Fixed auth.py. Ran pytest (PASS). No integration tests."
@@ -71,6 +79,7 @@ GUIDE_PLANNING = """\
 - `uvx vectl add-phase --name "..."`
 - `uvx vectl add-step --phase <p> --name "..." --after <dep>`
 - `uvx vectl edit-step <id> --desc "..." --verify "..."`
+ - `uvx vectl edit-plan --project-guidance-file <path>`
 
 ## 3. Verify
 - `uvx vectl validate` (Mandatory before commit)

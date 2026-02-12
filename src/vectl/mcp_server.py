@@ -12,7 +12,11 @@
   9. vectl_guide   — agent onboarding guide (startup/stuck/review/planning/migration)
  10. vectl_dag     — dependency graph as Mermaid flowchart
 
-Each tool returns Markdown-formatted text.
+Tools generally return Markdown-formatted text.
+
+Feature request (2026-02-12): claim-time guidance ("Output guidance when running vectl claim").
+To satisfy FR R6 (structured guidance output), vectl_claim returns a structured
+payload including a Guidance object plus a Markdown rendition.
 Plan path: resolved via shared plan_path.resolve_plan_path() —
   VECTL_PLAN_PATH env var > VECTL_PLAN (deprecated) > walk-up > ./plan.yaml.
 """
@@ -25,6 +29,7 @@ from pathlib import Path
 from typing import Literal
 
 from fastmcp import FastMCP
+from pydantic import BaseModel
 
 from vectl.plan_path import resolve_plan_path
 from vectl.semantics import is_step_locked
@@ -38,6 +43,7 @@ from vectl.core import (
     complete_step,
     defer_step,
     edit_phase,
+    edit_plan,
     edit_step,
     gate_check,
     get_claimed_steps,
@@ -60,6 +66,8 @@ from vectl.models import (
     Step,
     StepStatus,
 )
+
+from vectl.claim_guidance import GuidancePayload, build_claim_guidance
 
 mcp = FastMCP(
     "vectl",
@@ -265,46 +273,106 @@ def vectl_show(id: str) -> str:
 # ---------------------------------------------------------------------------
 
 
+class ClaimStepData(BaseModel):
+    """Claimed step summary.
+
+    Source: FR R6 — MCP structured output should include guidance and step metadata.
+    """
+
+    step_id: str
+    step_name: str
+    phase_id: str
+    phase_name: str
+    claimed_by: str
+    suggested_agent: str | None = None
+
+
+class ClaimResult(BaseModel):
+    """Structured response for vectl_claim.
+
+    Source: FR R6 — return structured fields; clients can decide how to display.
+    """
+
+    ok: bool
+    markdown: str
+    claimed: ClaimStepData | None = None
+    guidance: GuidancePayload | None = None
+    error: str | None = None
+
+
 @mcp.tool(
     description=(
         "Claim a step for work. If step_id is omitted, auto-claims the first "
         "available step. Returns the claimed step details."
     ),
 )
-def vectl_claim(agent: str, step_id: str | None = None) -> str:
+def vectl_claim(agent: str, step_id: str | None = None, guidance: bool = True) -> dict:
     """Claim a step.
 
     Args:
         agent: Agent name claiming the step.
         step_id: Step ID to claim. If omitted, auto-selects first available.
+        guidance: If True, include claim-time guidance (refs + evidence template).
     """
     plan, expected_hash = _load()
 
     if step_id is None:
         available = get_next_steps(plan, agent=agent)
         if not available:
-            return "**Error:** No steps available to claim."
+            err = "No steps available to claim."
+            return ClaimResult(ok=False, markdown=f"**Error:** {err}", error=err).model_dump(
+                mode="json", exclude_none=True
+            )
         step_id = available[0].id
 
     try:
         plan = claim_step(plan, step_id, agent)
         _save(plan, expected_hash)
     except PlanError as e:
-        return f"**Error:** {e}"
+        err = str(e)
+        return ClaimResult(ok=False, markdown=f"**Error:** {err}", error=err).model_dump(
+            mode="json", exclude_none=True
+        )
 
     found = plan.find_step(step_id)
     if found:
         phase, step = found
-        suggested_line = f"**Suggested agent:** {step.agent}\n" if step.agent else ""
-        return (
-            f"**Claimed:** {step.id} — {step.name}\n"
-            f"**Phase:** {phase.id}\n"
-            f"**Claimed by:** {agent}\n"
-            f"{suggested_line}\n"
-            f"→ Use `vectl_complete` with evidence when done.\n"
-            f"→ Use `vectl_lifecycle` action=defer to release."
+
+        claimed = ClaimStepData(
+            step_id=step.id,
+            step_name=step.name,
+            phase_id=phase.id,
+            phase_name=phase.name,
+            claimed_by=agent,
+            suggested_agent=step.agent,
         )
-    return f"Claimed: {step_id}"
+
+        md_lines: list[str] = [
+            f"**Claimed:** {step.id} — {step.name}",
+            f"**Phase:** {phase.id}",
+            f"**Claimed by:** {agent}",
+        ]
+        if step.agent:
+            md_lines.append(f"**Suggested agent:** {step.agent}")
+        md_lines.append("")
+        md_lines.append("→ Use `vectl_complete` with evidence when done.")
+        md_lines.append("→ Use `vectl_lifecycle` action=defer to release.")
+        md_lines.append("")
+
+        gp: GuidancePayload | None = None
+        if guidance:
+            gp = build_claim_guidance(plan, phase, step)
+            md_lines.append(gp.markdown.rstrip())
+
+        markdown = "\n".join(md_lines).rstrip() + "\n"
+        return ClaimResult(ok=True, markdown=markdown, claimed=claimed, guidance=gp).model_dump(
+            mode="json", exclude_none=True
+        )
+
+    return ClaimResult(
+        ok=True,
+        markdown=f"Claimed: {step_id}\n",
+    ).model_dump(mode="json", exclude_none=True)
 
 
 # ---------------------------------------------------------------------------
@@ -478,22 +546,38 @@ def vectl_search(pattern: str, phase_id: str | None = None, regex: bool = False)
         "remove-step (remove a step, use force=true to clean dep refs), "
         "move-step (move step between phases), "
         "add-phase (add a new phase), "
-        "edit-phase (update phase fields). "
+        "edit-phase (update phase fields), "
+        "edit-plan (update plan-level metadata). "
         "After mutations, use vectl_search to verify consistency."
     ),
 )
 def vectl_mutate(
-    action: Literal["add-step", "edit-step", "remove-step", "move-step", "add-phase", "edit-phase"],
+    action: Literal[
+        "add-step",
+        "edit-step",
+        "remove-step",
+        "move-step",
+        "add-phase",
+        "edit-phase",
+        "edit-plan",
+    ],
     phase_id: str = "",
     step_id: str = "",
     name: str = "",
     description: str = "",
     depends_on: list[str] | None = None,
+    add_refs: list[str] | None = None,
+    remove_refs: list[str] | None = None,
+    refs: list[str] | None = None,
     target_phase: str = "",
     force: bool = False,
     gate: str = "",
     context: str = "",
     verification: str = "",
+    evidence_template: str = "",
+    project_guidance: str | None = None,
+    strategy_ref: str | None = None,
+    plan_context: str | None = None,
     status: str = "",
     evidence: str = "",
     skipped_reason: str = "",
@@ -509,11 +593,18 @@ def vectl_mutate(
         name: Name (for add-step, add-phase, edit-step, edit-phase).
         description: Description (for add-step, edit-step).
         depends_on: Dependencies (for add-step, add-phase).
+        add_refs: Refs to add (for edit-step).
+        remove_refs: Refs to remove (for edit-step).
+        refs: Refs to set (for edit-step, overrides add_refs/remove_refs).
         target_phase: Target phase (for move-step).
         force: Force remove (clean dep refs) for remove-step.
         gate: Gate criterion (for add-phase, edit-phase).
         context: Context (for edit-phase).
         verification: Verification (for add-step, edit-step).
+        evidence_template: Optional short template for completion evidence (for add-step, edit-step).
+        project_guidance: Project-level claim-time guidance (edit-plan only).
+        strategy_ref: Plan-level strategy ref (edit-plan only).
+        plan_context: Plan context (edit-plan only).
         status: Initial status for import (add-step only): pending, done, skipped.
         evidence: Evidence string (add-step only, required when status=done).
         skipped_reason: Skip reason (add-step only, required when status=skipped).
@@ -535,6 +626,7 @@ def vectl_mutate(
                 depends_on=depends_on or [],
                 step_id=step_id or None,
                 verification=verification,
+                evidence_template=evidence_template,
                 status=step_status,
                 evidence=evidence or None,
                 skipped_reason=skipped_reason or None,
@@ -551,8 +643,12 @@ def vectl_mutate(
                 name=name or _SENTINEL,
                 description=description or _SENTINEL,
                 verification=verification or _SENTINEL,
+                evidence_template=evidence_template or _SENTINEL,
                 agent=agent if agent else _SENTINEL,
                 depends_on=depends_on if depends_on is not None else _SENTINEL,
+                add_refs=add_refs,
+                remove_refs=remove_refs,
+                refs=refs if refs is not None else _SENTINEL,
             )
             msg = f"**Updated step:** {step_id}"
 
@@ -591,6 +687,17 @@ def vectl_mutate(
                 gate=gate or _SENTINEL,
             )
             msg = f"**Updated phase:** {phase_id}"
+
+        elif action == "edit-plan":
+            if project_guidance is None and strategy_ref is None and plan_context is None:
+                return "**Error:** Provide at least one of: project_guidance, strategy_ref, plan_context."
+            plan = edit_plan(
+                plan,
+                project_guidance=project_guidance if project_guidance is not None else _SENTINEL,
+                strategy_ref=strategy_ref if strategy_ref is not None else _SENTINEL,
+                context=plan_context if plan_context is not None else _SENTINEL,
+            )
+            msg = "**Updated plan metadata**"
 
         else:
             return f"**Error:** Unknown action '{action}'."

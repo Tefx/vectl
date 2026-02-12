@@ -442,4 +442,5 @@ class TestMcpClaimAutoSelectAgent:
         """Auto-claim should prioritize steps assigned to the claiming agent."""
         result = vectl_claim(agent="bob")
         # bob's step (a.2) should be auto-selected over alice's (a.1) and unassigned (a.3)
-        assert "a.2" in result
+        assert result["ok"] is True
+        assert "a.2" in result["markdown"]

@@ -81,14 +81,26 @@ GUIDE_PLANNING = """\
 - `uvx vectl edit-step <id> --desc "..." --verify "..." --evidence-template "..."`
 - `uvx vectl edit-plan --project-guidance-file <path>`
 
-## 3. Empathy (Required)
-Always add an `evidence_template` so the next agent knows exactly what to screenshot/paste.
-Example template:
-```text
-Verification:
-- Run: <cmd>
-- Output: <regex/value>
-```
+## 3. Intelligent Guidance (The "Why")
+Your goal is to make the *next* agent (the Worker) succeed without guessing.
+Ambiguity = Hallucination.
+
+### A. Evidence Templates (`--evidence-template`)
+**Prevent lazy completions.** Don't let workers say "Done". Force them to prove it.
+- **Bad**: (No template) → Worker says "Fixed the bug."
+- **Good**: Template requires specific command output.
+  ```text
+  ## Verification
+  - Command: `pytest tests/test_auth.py`
+  - Output: <paste output here>
+  - [ ] Confirmed 0 failures
+  ```
+
+### B. Context Pinning (`--refs`)
+**Stop searching, start working.** If you know which files need editing, tell the worker.
+- Use `--refs "src/auth.py,tests/test_auth.py"`
+- Result: Worker receives these file paths immediately upon claiming.
+- Benefit: Reduces token usage (no `find_file` loops) and prevents focus drift.
 
 ## 4. Verify
 - `uvx vectl validate` (Mandatory before commit)

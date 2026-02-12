@@ -465,6 +465,11 @@ Quick view: `uvx vectl status`
 - One claimed step at a time.
 - Evidence is mandatory when completing (commands run + outputs + gaps).
 - Spec uncertainty: leave `# SPEC QUESTION: ...` in code, do not guess.
+
+### For Architects / Planners
+- To build the plan, use: `uvx vectl guide --on planning`
+- **Goal**: Create steps so clear that a Junior Dev could execute them without asking questions.
+- **Tools**: Use `--evidence-template` and `--refs` to constrain the worker's context and output.
 {_AGENTS_MD_END}
 """
 

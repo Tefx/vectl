@@ -20,14 +20,17 @@ uvx vectl --help
 | ❌ **No verification**: "Done" = a checkbox ticked, no proof | ✅ Evidence required on completion |
 | ❌ **Context pollution**: Completed steps stay in context forever, diluting attention | ✅ Agents see only what matters now |
 
-## Core Philosophy
+## The Agent Control Plane
 
-1. **Active Gating**: Agents cannot skip phases or ignore dependencies. The tool enforces the DAG.
-2. **Context Efficiency**: Agents only see relevant steps (next actionable items), saving tokens.
-3. **Atomic State**: Updates are CAS-safe file operations. No stale tracker drift.
-4. **Affordance-Driven Output**: Every command output includes hints for what to do next.
-5. **Minimal Tool Calls**: The most common workflow (`claim → work → complete`) requires
-   the fewest possible interactions.
+vectl turns a passive "todo list" into an **active control plane** for autonomous agents.
+
+| Feature | Problem Solved | Mechanism |
+| :--- | :--- | :--- |
+| **Active Gating** | Agents skip dependencies or "guess" order. | **DAG Enforcement**: Blocked steps are invisible. Agents literally *cannot* claim out-of-order work. |
+| **Context Efficiency** | Agents re-read 500 lines of "Done" items. | **View Filtering**: `vectl next` returns *only* actionable steps. Zero token waste. |
+| **Anti-Hallucination** | Agents declare "Done" without checking. | **Evidence Protocol**: Completion requires proof (logs, screenshots) via `evidence_template`. |
+| **State Consistency** | Parallel agents overwrite `TODO.md`. | **CAS Atomic Writes**: File-based locking ensures no race conditions. |
+
 
 ## Quick Start
 
@@ -172,19 +175,35 @@ Next available:
 → vectl show <id>
 ```
 
-### 5. Authoring & Guidance
+### 5. Intelligent Guidance (The "Why")
 
-**No Manual YAML Edits**: Use CLI/MCP commands to build the plan safely.
+vectl allows Architects to inject **guidance** directly into the Worker's context at the moment of action.
+
+#### A. Evidence Templates (`--evidence-template`)
+Prevent "lazy completion" (e.g., "I fixed it"). Force the worker to prove success.
 
 ```bash
-# Add a step with an evidence template
-uvx vectl add-step --phase core --name "Auth" --evidence-template "Verif:\n- [ ] Login works"
-
-# Update project-level guidance (rules for all steps)
-uvx vectl edit-plan --project-guidance "Always verify with pytest."
-# OR read from a file (recommended for long rules)
-uvx vectl edit-plan --project-guidance-file docs/rules.md
+uvx vectl add-step ... --evidence-template "
+## Verification
+- Command: `pytest tests/auth/`
+- Output: [Paste 5 lines of output here]
+- [ ] Confirmed 0 failures
+"
 ```
+
+#### B. Context Pinning (`--refs`)
+Stop the "needle in a haystack" search. Tell the worker exactly where to look.
+
+```bash
+uvx vectl add-step ... --refs "src/auth.py,tests/test_auth.py"
+```
+
+When the worker runs `uvx vectl claim`, they receive:
+1. The Task (Step Description)
+2. The Context (Pinned Refs)
+3. The Standard (Evidence Template)
+
+**This creates a "Success Pit"**: The easiest path for the agent is the correct one.
 
 ### 6. Visualization
 

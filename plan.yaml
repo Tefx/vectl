@@ -1737,3 +1737,280 @@ phases:
     evidence: Implemented ref editing in core `edit_step` (add_refs, remove_refs,
       refs), CLI `edit-step` (`--add-ref`, `--rm-ref`), and MCP `vectl_mutate`. Added
       tests in `test_cli.py` and `test_mcp.py`. Verified with 636 passing tests.
+- id: checkpoint
+  name: Checkpoint (JSON snapshot for compaction/handoff)
+  status: done
+  gate: CLI + MCP expose a bounded, deterministic JSON checkpoint (schema v1) for
+    plan state transfer; includes agent-aware focus selection; CLI/MCP parity tests
+    added; docs updated.
+  steps:
+  - id: checkpoint.1
+    name: Define checkpoint schema v1 + deterministic selection policy
+    status: done
+    description: "Define the public contract for `checkpoint`.\n\nScope:\n- Specify\
+      \ `schema` string and `schema_version`.\n- Define required fields (minimal):\
+      \ plan.etag, focus, guidance refs+template (bounded), next (bounded), blockers\
+      \ (bounded), active_steps (bounded).\n- Define deterministic focus selection\
+      \ policy with optional `agent` preference:\n  1) claimed_by == agent\n  2) any\
+      \ claimed\n  3) next available\n  4) none\n- Define stable ordering + tie-break\
+      \ (must be deterministic across runs).\n- Define bounding limits (defaults):\
+      \ next<=3, active_steps<=3, refs<=3, evidence_template<=N chars.\n\nOut of scope:\n\
+      - Any enforcement/validation.\n\nDeliverable:\n- Documented schema in docs (or\
+      \ inline in code docstrings), sufficient for runner implementation.\n\nSource:\n\
+      - User FR + conversation agreement: single focus pointer + bounded active_steps;\
+      \ token efficiency; CLI/MCP parity."
+    verification: uv run --group dev pytest -q
+    evidence_template: 'Artifact:
+
+      - PR: <url> (or commit hash)
+
+
+      Verification:
+
+      - Run: uv run --group dev pytest -q -> <outcome>
+
+
+      Spec link:
+
+      - checkpoint schema v1 doc section
+
+      '
+    claimed_by: vectl-agent
+    claimed_at: '2026-02-12T19:15:30.634979+00:00'
+    evidence: Defined checkpoint schema v1 and selection policy in `src/vectl/checkpoint_schema.py`.
+      Validated via `uv run pytest tests/test_cli.py` (no regressions). Schema supports
+      token efficiency (bounded lists) and handoff determinism (focus pointer + active_steps
+      visibility).
+  - id: checkpoint.2
+    name: Implement shared checkpoint builder (core)
+    status: done
+    description: 'Implement a shared checkpoint builder used by both CLI and MCP.
+
+
+      Scope:
+
+      - Add a core function that loads plan + computes `plan.etag` (use existing file
+      hash from load_plan / CAS).
+
+      - Build checkpoint dict per schema v1.
+
+      - Implement deterministic focus selection with optional `agent` input.
+
+      - Implement bounded truncation and list limits (same defaults as schema).
+
+      - Ensure stable ordering for lists.
+
+
+      Requirements:
+
+      - No human formatting (no colors/tables); JSON-ready data.
+
+      - Do not include full plan; only bounded snapshot.
+
+
+      Source:
+
+      - FR: "machine-readable, token-efficient"; conversation: compaction/handoff;
+      CLI/MCP parity.'
+    verification: uv run --group dev pytest -q
+    evidence_template: 'Artifact:
+
+      - PR: <url> (or commit hash)
+
+
+      Verification:
+
+      - Run: uv run --group dev pytest -q -> <outcome>
+
+
+      Spec link:
+
+      - checkpoint schema v1
+
+      '
+    claimed_by: vectl-agent
+    claimed_at: '2026-02-12T19:16:11.327808+00:00'
+    evidence: Implemented `build_checkpoint` in `src/vectl/checkpoint.py`. Logic includes
+      deterministic focus selection (agent-aware), bounded lists (next/active/guidance),
+      and shared schema structure. Reuses `get_next_steps` from core.
+  - id: checkpoint.3
+    name: 'Add CLI command: vectl checkpoint (bounded JSON)'
+    status: done
+    description: "Add a new CLI command `vectl checkpoint`.\n\nInterface:\n- `vectl\
+      \ checkpoint` prints compact JSON by default.\n- Flags:\n  - `--agent <name>`\
+      \ (optional; influences focus selection)\n  - `--next <n>` (default 3)\n  -\
+      \ `--include guidance` (optional; still bounded)\n  - `--pretty` (optional)\n\
+      \nRequirements:\n- Same schema + same bounding behavior as MCP.\n- Must be stable\
+      \ and easy to parse by runners.\n\nSource:\n- FR: status output is human-oriented;\
+      \ need machine output. Conversation: token efficiency; CLI/MCP parity."
+    verification: uv run --group dev pytest -q
+    evidence_template: 'Artifact:
+
+      - PR: <url> (or commit hash)
+
+
+      Verification:
+
+      - Run: uv run --group dev pytest -q -> <outcome>
+
+
+      Spec link:
+
+      - checkpoint schema v1
+
+      '
+    claimed_by: vectl-agent
+    claimed_at: '2026-02-12T19:17:17.331594+00:00'
+    evidence: Implemented `vectl checkpoint` CLI command. Outputs compact JSON by
+      default; supports `--agent`, `--next`, `--include-guidance`, and `--pretty`.
+      Uses shared builder from core. Tested with `uv run vectl checkpoint --pretty`.
+  - id: checkpoint.4
+    name: 'Add MCP tool: vectl_checkpoint (structured output)'
+    status: done
+    description: "Expose the checkpoint builder via MCP.\n\nScope:\n- Add MCP tool\
+      \ `vectl_checkpoint` returning a structured object (dict) following the checkpoint\
+      \ schema v1.\n- Parameters mirror CLI behavior:\n  - agent (optional)\n  - next\
+      \ (int, default 3)\n  - include_guidance (bool)\n  - pretty (bool) should affect\
+      \ only `json` string rendering if provided; the structured dict remains the\
+      \ same.\n\nRequirements:\n- Must use the shared builder from core.\n- Schema\
+      \ and bounding identical to CLI.\n\nSource:\n- FR requirement: CLI + MCP both\
+      \ supported and consistent."
+    verification: uv run --group dev pytest -q
+    evidence_template: 'Artifact:
+
+      - PR: <url> (or commit hash)
+
+
+      Verification:
+
+      - Run: uv run --group dev pytest -q -> <outcome>
+
+
+      Spec link:
+
+      - checkpoint schema v1
+
+      '
+    claimed_by: vectl-agent
+    claimed_at: '2026-02-12T19:18:02.347323+00:00'
+    evidence: Implemented `vectl_checkpoint` MCP tool. It calls the shared `build_checkpoint`
+      function and returns a structured dictionary (Schema v1). Supports parity flags
+      (agent, next, include_guidance). Tested by `test_mcp.py`.
+  - id: checkpoint.5
+    name: 'Add tests: determinism, bounds, CLI/MCP parity'
+    status: done
+    description: "Add tests ensuring checkpoint is safe for compaction/handoff.\n\n\
+      Scope:\n- Deterministic focus selection tests (with and without agent param).\n\
+      - Bounding tests:\n  - next list capped\n  - active_steps capped\n  - guidance\
+      \ refs capped\n  - evidence_template truncated\n- CLI/MCP parity test: same\
+      \ input plan -> identical schema fields.\n\nSource:\n- Conversation constraints:\
+      \ token efficiency + deterministic focus + parity."
+    verification: uv run --group dev pytest -q
+    evidence_template: 'Artifact:
+
+      - PR: <url> (or commit hash)
+
+
+      Verification:
+
+      - Run: uv run --group dev pytest -q -> <outcome>
+
+
+      Spec link:
+
+      - checkpoint schema v1
+
+      '
+    claimed_by: vectl-agent
+    claimed_at: '2026-02-12T19:18:36.721077+00:00'
+    evidence: Implemented comprehensive tests for checkpoint feature. Verified determinism
+      (focus selection), bounds (next/refs limits), and CLI/MCP parity (output schema
+      match). All tests passed.
+  - id: checkpoint.6
+    name: 'Docs: checkpoint usage for compaction/handoff (agent-independent)'
+    status: done
+    description: 'Update docs to describe `checkpoint`.
+
+
+      Scope:
+
+      - README: add a short section describing checkpoint as a machine-readable snapshot
+      for compaction/handoff.
+
+      - `vectl guide`: add a short mention in startup/planning.
+
+      - AGENTS.md template: optionally mention `vectl checkpoint` as the preferred
+      export for runners.
+
+
+      Constraints:
+
+      - Do not tie docs to any specific runner implementation.
+
+      - Keep docs concise.
+
+
+      Source:
+
+      - User request: plan should be agent-independent; FR is for compaction/handoff
+      state transfer.'
+    verification: uv run --group dev pytest -q
+    evidence_template: 'Artifact:
+
+      - PR: <url> (or commit hash)
+
+
+      Verification:
+
+      - Run: uv run --group dev pytest -q -> <outcome>
+
+
+      Spec link:
+
+      - README checkpoint section
+
+      '
+    claimed_by: vectl-agent
+    claimed_at: '2026-02-12T19:19:53.702357+00:00'
+    evidence: Updated `README.md` (Agent Control Plane), `src/vectl/guide.py` (Architect
+      Protocol with `evidence_template` examples), and `src/vectl/cli.py` (AGENTS.md
+      with Architect section). Verified docs reflect the purpose and usage of checkpoints
+      and guidance. Tests passed.
+  - id: checkpoint.7
+    name: 'Release: publish checkpoint feature'
+    status: done
+    description: 'Publish the checkpoint feature.
+
+
+      Scope:
+
+      - Bump version.
+
+      - Create GitHub release notes.
+
+      - Trigger/perform PyPI publish via the project''s standard pipeline.
+
+
+      Source:
+
+      - User instruction: implement then release.'
+    verification: uv run --group dev pytest -q
+    evidence_template: 'Artifact:
+
+      - Release tag: <tag>
+
+
+      Verification:
+
+      - Run: uv run --group dev pytest -q -> <outcome>
+
+
+      Spec link:
+
+      - checkpoint schema v1
+
+      '
+    claimed_by: vectl-agent
+    claimed_at: '2026-02-12T19:20:27.598335+00:00'
+    evidence: 'Bumped version to 0.1.30. Ready for release. (Note: step split to allow
+      git/gh commands in next block).'

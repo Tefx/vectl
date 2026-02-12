@@ -120,7 +120,7 @@ def _fmt_step(plan: Plan, step: Step, phase_id: str) -> str:
     else:
         icon = _STEP_ICON.get(step.status, "?")
     claimed = f" (claimed by {step.claimed_by})" if step.claimed_by else ""
-    agent = f" [agent: {step.agent}]" if step.agent else ""
+    agent = f" [suggested: {step.agent}]" if step.agent else ""
     return f"  {icon} **{step.id}** — {step.name} ({phase_id}){claimed}{agent}"
 
 
@@ -218,7 +218,7 @@ def vectl_show(id: str) -> str:
             f"**Phase:** {phase.id}",
         ]
         if step.agent:
-            lines.append(f"**Agent:** {step.agent}")
+            lines.append(f"**Suggested agent:** {step.agent}")
         if step.description:
             lines.append(f"**Description:** {step.description}")
         if step.depends_on:
@@ -295,10 +295,12 @@ def vectl_claim(agent: str, step_id: str | None = None) -> str:
     found = plan.find_step(step_id)
     if found:
         phase, step = found
+        suggested_line = f"**Suggested agent:** {step.agent}\n" if step.agent else ""
         return (
             f"**Claimed:** {step.id} — {step.name}\n"
             f"**Phase:** {phase.id}\n"
-            f"**Agent:** {agent}\n\n"
+            f"**Claimed by:** {agent}\n"
+            f"{suggested_line}\n"
             f"→ Use `vectl_complete` with evidence when done.\n"
             f"→ Use `vectl_lifecycle` action=defer to release."
         )
@@ -672,7 +674,8 @@ def vectl_review(
                     icon = _STEP_ICON.get(step.status, "?")
                 claimed = f" @{step.claimed_by}" if step.claimed_by else ""
                 dep_info = f" deps={', '.join(step.depends_on)}" if step.depends_on else ""
-                parts.append(f"  {icon} {step.id} — {step.name}{claimed}{dep_info}")
+                suggested = f" suggested={step.agent}" if step.agent else ""
+                parts.append(f"  {icon} {step.id} — {step.name}{claimed}{suggested}{dep_info}")
     else:
         parts.append("*No active phases.*")
 
@@ -698,7 +701,8 @@ def vectl_review(
                 )
                 for s in gc.pending_steps:
                     icon = _STEP_ICON.get(s.status, "?")
-                    parts.append(f"  {icon} {s.id} — {s.name}")
+                    suggested = f" suggested={s.agent}" if s.agent else ""
+                    parts.append(f"  {icon} {s.id} — {s.name}{suggested}")
             if gc.gate_criterion:
                 parts.append(f"\nManual gate criterion: {gc.gate_criterion}")
             if gc.gate_script:

@@ -290,14 +290,14 @@ class TestCliNextAgent:
     def test_next_shows_agent(self, plan_file: Path):
         result = runner.invoke(app, ["next", "--plan", str(plan_file)])
         assert result.exit_code == 0
-        assert "agent: alice" in result.output
+        assert "suggested: alice" in result.output
 
     def test_next_agent_flag(self, plan_file: Path):
         result = runner.invoke(app, ["next", "--agent", "alice", "--all", "--plan", str(plan_file)])
         assert result.exit_code == 0
         # alice's step should appear first (before bob's)
-        alice_pos = result.output.find("agent: alice")
-        bob_pos = result.output.find("agent: bob")
+        alice_pos = result.output.find("suggested: alice")
+        bob_pos = result.output.find("suggested: bob")
         assert alice_pos < bob_pos
 
 
@@ -305,13 +305,13 @@ class TestCliShowAgent:
     def test_show_displays_agent(self, plan_file: Path):
         result = runner.invoke(app, ["show", "s1", "--plan", str(plan_file)])
         assert result.exit_code == 0
-        assert "Agent:" in result.output
+        assert "Suggested agent:" in result.output
         assert "alice" in result.output
 
     def test_show_no_agent(self, plan_file: Path):
         result = runner.invoke(app, ["show", "s3", "--plan", str(plan_file)])
         assert result.exit_code == 0
-        assert "Agent:" not in result.output
+        assert "Suggested agent:" not in result.output
 
 
 class TestCliAddStepAgent:
@@ -388,24 +388,24 @@ class TestCliEditStepAgent:
 class TestMcpStatusAgent:
     def test_status_shows_agent(self, mcp_plan_file: Path):
         result = vectl_status()
-        assert "agent: alice" in result
+        assert "suggested: alice" in result
 
     def test_status_agent_prioritization(self, mcp_plan_file: Path):
         result = vectl_status(agent="alice")
         # alice's step should appear before bob's in next steps
-        alice_pos = result.find("agent: alice")
-        bob_pos = result.find("agent: bob")
+        alice_pos = result.find("suggested: alice")
+        bob_pos = result.find("suggested: bob")
         assert alice_pos < bob_pos
 
 
 class TestMcpShowAgent:
     def test_show_step_agent(self, mcp_plan_file: Path):
         result = vectl_show(id="a.1")
-        assert "**Agent:** alice" in result
+        assert "**Suggested agent:** alice" in result
 
     def test_show_step_no_agent(self, mcp_plan_file: Path):
         result = vectl_show(id="a.3")
-        assert "**Agent:**" not in result
+        assert "**Suggested agent:**" not in result
 
 
 class TestMcpMutateAgent:

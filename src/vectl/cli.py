@@ -556,7 +556,7 @@ def next_cmd(
         summary = _one_line_summary(step.description)
 
         deps_str = f"  deps: {', '.join(step.depends_on)}" if step.depends_on else ""
-        agent_str = f"  agent: {step.agent}" if step.agent else ""
+        agent_str = f"  suggested: {step.agent}" if step.agent else ""
         summary_str = f"  {summary}" if summary else ""
 
         out.print(
@@ -653,7 +653,8 @@ def _show_phase_detail(p: Plan, phase_id: str) -> None:
     for step in phase.steps:
         locked = is_step_locked(p, phase, step)
         icon = _step_icon(step.status, locked=locked)
-        out.print(f"  {icon} **{_esc(step.id)}** — {_esc(step.name)} ({_esc(phase.id)})")
+        suggested = f"  [dim]suggested: {_esc(step.agent)}[/]" if step.agent else ""
+        out.print(f"  {icon} **{_esc(step.id)}** — {_esc(step.name)} ({_esc(phase.id)}){suggested}")
         if step.status == StepStatus.CLAIMED:
             out.print(f"    [dim]Claimed by {_esc(step.claimed_by or '')}[/]")
 
@@ -675,7 +676,7 @@ def _show_step_detail(p: Plan, step_id: str) -> None:
     out.print(f"**Status:** {_step_icon(step.status, locked=locked)}")
 
     if step.agent:
-        out.print(f"**Agent:** {step.agent}", markup=False)
+        out.print(f"**Suggested agent:** {step.agent}", markup=False)
 
     if step.description:
         out.print(f"\n**Description:**\n{step.description}", markup=False)
@@ -871,7 +872,8 @@ def complete(
                     phase_id = ph.id
                     break
             icon = _step_icon(s.status)
-            out.print(f"  {icon}  {s.id} — {s.name}  [dim]({phase_id})[/]")
+            suggested = f"  suggested: {_esc(s.agent)}" if s.agent else ""
+            out.print(f"  {icon}  {s.id} — {s.name}  [dim]({phase_id}){suggested}[/]")
         if len(next_steps) > 3:
             out.print(f"  [dim]... and {len(next_steps) - 3} more[/]")
         out.print()
@@ -1601,7 +1603,10 @@ def mine(
     out.print(f"[bold]Steps claimed by {header}:[/]\n")
     for phase_id, step in claimed:
         claimed_label = f"  [dim][{step.claimed_by}][/]" if show_all else ""
-        out.print(f"  ◉  {step.id} — {step.name}  [dim]({phase_id})[/]{claimed_label}")
+        suggested_label = f"  [dim]suggested: {step.agent}[/]" if step.agent else ""
+        out.print(
+            f"  ◉  {step.id} — {step.name}  [dim]({phase_id})[/]{claimed_label}{suggested_label}"
+        )
         if step.description.strip():
             summary = _one_line_summary(step.description)
             if summary:
@@ -1693,8 +1698,9 @@ def review(
                 dep_info = f" deps=({_esc(', '.join(step.depends_on))})" if step.depends_on else ""
                 ref_info = f" refs=({_esc(', '.join(step.refs))})" if step.refs else ""
                 claimed = f" [yellow]@{_esc(step.claimed_by or '')}[/]" if step.claimed_by else ""
+                suggested = f" [dim]suggested: {_esc(step.agent)}[/]" if step.agent else ""
                 out.print(
-                    f"    [{style}]{icon}[/] {_esc(step.id)} — {_esc(step.name)}{claimed}{dep_info}{ref_info}"
+                    f"    [{style}]{icon}[/] {_esc(step.id)} — {_esc(step.name)}{claimed}{suggested}{dep_info}{ref_info}"
                 )
     out.print()
 
@@ -1762,7 +1768,8 @@ def gate_check(
         )
         for s in gc.pending_steps:
             icon, style = _STEP_STATUS_STYLE[s.status]
-            out.print(f"    [{style}]{icon}[/] {s.id} — {s.name}")
+            suggested = f"  [dim]suggested: {s.agent}[/]" if s.agent else ""
+            out.print(f"    [{style}]{icon}[/] {s.id} — {s.name}{suggested}")
 
     # ── Check 2: gate_script (CLI-only, subprocess) ───────────────────
     if gc.gate_script:

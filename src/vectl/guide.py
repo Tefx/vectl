@@ -77,8 +77,8 @@ GUIDE_PLANNING = """\
 
 ## 2. Mutate
 - `uvx vectl add-phase --name "..."`
-- `uvx vectl add-step --phase <p> --name "..." --after <dep>`
-- `uvx vectl edit-step <id> --desc "..." --verify "..." --evidence-template "..."`
+- `uvx vectl add-step --phase <p> --name "..." --after <dep> --evidence-template "..."`
+- `uvx vectl edit-step <id> --desc "..." --verify "..." --refs "..."`
 - `uvx vectl edit-plan --project-guidance-file <path>`
 
 ## 3. Intelligent Guidance (The "Why")

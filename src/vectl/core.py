@@ -183,7 +183,7 @@ def _detect_cycle(graph: dict[str, list[str]]) -> list[str] | None:
 # ---------------------------------------------------------------------------
 
 
-def get_next_steps(plan: Plan) -> list[Step]:
+def get_next_steps(plan: Plan, agent: str | None = None) -> list[Step]:
     """Get all claimable steps across active phases.
 
     Returns steps that are:
@@ -191,7 +191,15 @@ def get_next_steps(plan: Plan) -> list[Step]:
     - Status is pending or rejected (rejected = needs rework, prioritized)
     - All step dependencies within the phase are done/skipped
 
-    Rejected steps appear first (priority).
+    Ordering (highest priority first):
+    1. Rejected steps (need rework)
+    2. Steps with ``step.agent`` matching the given *agent* (if provided)
+    3. Steps with no agent suggestion (``step.agent is None``)
+    4. Steps suggested for a different agent
+
+    Args:
+        plan: The plan to query.
+        agent: If provided, prioritize steps whose ``agent`` field matches.
     """
     active_phase_ids = _get_active_phase_ids(plan)
     result: list[Step] = []
@@ -209,8 +217,19 @@ def get_next_steps(plan: Plan) -> list[Step]:
             if all(dep in done_step_ids for dep in step.depends_on):
                 result.append(step)
 
-    # Rejected first, then pending
-    result.sort(key=lambda s: (0 if s.status == StepStatus.REJECTED else 1, s.id))
+    def _sort_key(s: Step) -> tuple[int, int, str]:
+        # Priority 0: rejected (needs rework)
+        status_rank = 0 if s.status == StepStatus.REJECTED else 1
+        # Agent affinity: 0 = matches, 1 = unassigned, 2 = different agent
+        if agent is None or s.agent is None:
+            agent_rank = 1
+        elif s.agent == agent:
+            agent_rank = 0
+        else:
+            agent_rank = 2
+        return (status_rank, agent_rank, s.id)
+
+    result.sort(key=_sort_key)
     return result
 
 
@@ -591,6 +610,7 @@ def add_step(
     status: StepStatus | None = None,
     evidence: str | None = None,
     skipped_reason: str | None = None,
+    agent: str | None = None,
 ) -> tuple[Plan, str]:
     """Add a new step to a phase.
 
@@ -608,6 +628,8 @@ def add_step(
             because they require runtime metadata (claimed_by, rejection_history).
         evidence: Evidence string. Required when status is done.
         skipped_reason: Skip reason. Required when status is skipped.
+        agent: Advisory agent suggestion — which agent should work on this step.
+            Not enforced; any agent can still claim any step.
 
     Returns:
         Tuple of (updated plan, generated step ID).
@@ -665,6 +687,7 @@ def add_step(
         refs=refs or [],
         evidence=evidence,
         skipped_reason=skipped_reason,
+        agent=agent,
     )
     phase.steps.append(step)
 
@@ -868,6 +891,14 @@ def add_steps_bulk(
                 f"Step {i}: cannot add step with status 'skipped' without skipped_reason"
             )
 
+        # Parse agent (optional advisory field)
+        agent_raw = entry.get("agent")
+        step_agent: str | None = None
+        if agent_raw is not None:
+            if not isinstance(agent_raw, str):
+                raise PlanError(f"Step {i}: 'agent' must be a string")
+            step_agent = agent_raw
+
         # Generate or validate step ID
         step_id_raw = entry.get("id")
         if step_id_raw is not None:
@@ -906,6 +937,7 @@ def add_steps_bulk(
                 "status": step_status,
                 "evidence": step_evidence,
                 "skipped_reason": step_skipped_reason,
+                "agent": step_agent,
             }
         )
 
@@ -947,6 +979,8 @@ def add_steps_bulk(
         assert p_evidence is None or isinstance(p_evidence, str)
         p_skipped_reason = p_entry["skipped_reason"]
         assert p_skipped_reason is None or isinstance(p_skipped_reason, str)
+        p_agent = p_entry["agent"]
+        assert p_agent is None or isinstance(p_agent, str)
 
         step = Step(
             id=step_id_val,
@@ -958,6 +992,7 @@ def add_steps_bulk(
             refs=step_refs or [],
             evidence=p_evidence,
             skipped_reason=p_skipped_reason,
+            agent=p_agent,
         )
         phase.steps.append(step)
         generated_ids.append(step_id_val)
@@ -1007,6 +1042,7 @@ def edit_step(
     name: str | _Unset = _SENTINEL,
     description: str | _Unset = _SENTINEL,
     verification: str | _Unset = _SENTINEL,
+    agent: str | None | _Unset = _SENTINEL,
     add_deps: list[str] | None = None,
     remove_deps: list[str] | None = None,
     depends_on: list[str] | _Unset = _SENTINEL,
@@ -1021,6 +1057,7 @@ def edit_step(
         name: New name (unchanged if not provided).
         description: New description (unchanged if not provided).
         verification: New verification command (unchanged if not provided).
+        agent: New agent suggestion. Pass None to clear, string to set.
         add_deps: Step IDs to add to depends_on.
         remove_deps: Step IDs to remove from depends_on.
         depends_on: Set dependencies directly (overrides add_deps/remove_deps if provided).
@@ -1042,6 +1079,8 @@ def edit_step(
         step.description = str(description)
     if verification is not _SENTINEL:
         step.verification = str(verification)
+    if agent is not _SENTINEL:
+        step.agent = agent if agent is None else str(agent)  # type: ignore[assignment]
 
     if depends_on is not _SENTINEL:
         # Validate dependencies

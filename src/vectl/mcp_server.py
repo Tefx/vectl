@@ -120,7 +120,8 @@ def _fmt_step(plan: Plan, step: Step, phase_id: str) -> str:
     else:
         icon = _STEP_ICON.get(step.status, "?")
     claimed = f" (claimed by {step.claimed_by})" if step.claimed_by else ""
-    return f"  {icon} **{step.id}** — {step.name} ({phase_id}){claimed}"
+    agent = f" [agent: {step.agent}]" if step.agent else ""
+    return f"  {icon} **{step.id}** — {step.name} ({phase_id}){claimed}{agent}"
 
 
 def _fmt_phase_summary(plan: Plan) -> str:
@@ -156,8 +157,8 @@ def vectl_status(agent: str | None = None) -> str:
 
     parts: list[str] = [_fmt_phase_summary(plan)]
 
-    # Next steps
-    available = get_next_steps(plan)
+    # Next steps (prioritized by agent if provided)
+    available = get_next_steps(plan, agent=agent)
     if available:
         parts.append("\n## Next Available Steps\n")
         for step in available[:3]:
@@ -216,6 +217,8 @@ def vectl_show(id: str) -> str:
             f"**Status:** {status}",
             f"**Phase:** {phase.id}",
         ]
+        if step.agent:
+            lines.append(f"**Agent:** {step.agent}")
         if step.description:
             lines.append(f"**Description:** {step.description}")
         if step.depends_on:
@@ -278,7 +281,7 @@ def vectl_claim(agent: str, step_id: str | None = None) -> str:
     plan, expected_hash = _load()
 
     if step_id is None:
-        available = get_next_steps(plan)
+        available = get_next_steps(plan, agent=agent)
         if not available:
             return "**Error:** No steps available to claim."
         step_id = available[0].id
@@ -492,6 +495,7 @@ def vectl_mutate(
     status: str = "",
     evidence: str = "",
     skipped_reason: str = "",
+    agent: str = "",
 ) -> str:
     """Modify plan structure.
 
@@ -511,6 +515,8 @@ def vectl_mutate(
         status: Initial status for import (add-step only): pending, done, skipped.
         evidence: Evidence string (add-step only, required when status=done).
         skipped_reason: Skip reason (add-step only, required when status=skipped).
+        agent: Advisory agent suggestion (add-step, edit-step). Which agent should
+            work on this step. Not enforced; any agent can still claim any step.
     """
     plan, expected_hash = _load()
 
@@ -530,6 +536,7 @@ def vectl_mutate(
                 status=step_status,
                 evidence=evidence or None,
                 skipped_reason=skipped_reason or None,
+                agent=agent or None,
             )
             msg = f"**Added step:** {new_id} to phase '{phase_id}'"
 
@@ -542,6 +549,7 @@ def vectl_mutate(
                 name=name or _SENTINEL,
                 description=description or _SENTINEL,
                 verification=verification or _SENTINEL,
+                agent=agent if agent else _SENTINEL,
                 depends_on=depends_on if depends_on is not None else _SENTINEL,
             )
             msg = f"**Updated step:** {step_id}"

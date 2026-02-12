@@ -155,7 +155,27 @@ Next available:
 → vectl show <id>
 ```
 
-完整 33 条命令（计划变更、Review、管理）：`uvx vectl --help` 或 `uvx vectl guide`。
+### 5. 可视化
+
+查看 DAG 结构（输出 Mermaid 流程图文本，粘贴到 GitHub/Obsidian 即可渲染）：
+
+```bash
+uvx vectl dag              # 阶段级 DAG（默认）
+uvx vectl dag --phase core # 阶段内步骤详细 DAG
+```
+
+输出示例（GitHub 原生渲染）：
+
+```mermaid
+flowchart TD
+  core["✓ Core Logic (5/5)"]
+  cli["✓ CLI (4/4)"]
+  mcp["▶ MCP Server (1/3)"]
+  core --> cli
+  cli --> mcp
+```
+
+完整 34 条命令（计划变更、Review、管理）：`uvx vectl --help` 或 `uvx vectl guide`。
 
 ### 人类监管
 

@@ -520,6 +520,9 @@ def next_cmd(
     detail: bool = typer.Option(False, "--detail", help="Show full descriptions inline."),
     limit: int = typer.Option(3, "--limit", "-n", help="Max steps to show (default: 3)."),
     all_steps: bool = typer.Option(False, "--all", help="Show all available steps."),
+    agent: Optional[str] = typer.Option(
+        None, "--agent", "-a", help="Prioritize steps suggested for this agent."
+    ),
     plan: Path | None = PlanOption,
 ) -> None:
     """Show claimable steps (what to work on next)."""
@@ -529,7 +532,7 @@ def next_cmd(
     if p.context.strip():
         out.print(Panel(p.context.strip(), title="Strategy", border_style="blue"))
 
-    steps = get_next_steps(p)
+    steps = get_next_steps(p, agent=agent)
     if not steps:
         out.print("[dim]No claimable steps. All phases may be done or locked.[/]")
         return
@@ -553,10 +556,11 @@ def next_cmd(
         summary = _one_line_summary(step.description)
 
         deps_str = f"  deps: {', '.join(step.depends_on)}" if step.depends_on else ""
+        agent_str = f"  agent: {step.agent}" if step.agent else ""
         summary_str = f"  {summary}" if summary else ""
 
         out.print(
-            f"  {i}. {icon}  {_esc(step.id)} — {_esc(step.name)}  [dim]({_esc(phase_id)}){_esc(deps_str)}[/]"
+            f"  {i}. {icon}  {_esc(step.id)} — {_esc(step.name)}  [dim]({_esc(phase_id)}){_esc(deps_str)}{_esc(agent_str)}[/]"
         )
         if summary_str:
             out.print(f"     [dim]{_esc(summary)}[/]")
@@ -669,6 +673,9 @@ def _show_step_detail(p: Plan, step_id: str) -> None:
 
     locked = is_step_locked(p, phase, step)
     out.print(f"**Status:** {_step_icon(step.status, locked=locked)}")
+
+    if step.agent:
+        out.print(f"**Agent:** {step.agent}", markup=False)
 
     if step.description:
         out.print(f"\n**Description:**\n{step.description}", markup=False)
@@ -816,7 +823,7 @@ def claim(
     p, h, plan = _load(plan)
 
     if step_id is None:
-        candidates = get_next_steps(p)
+        candidates = get_next_steps(p, agent=agent)
         if not candidates:
             _die("No claimable steps available. All phases may be done or locked.")
         step_id = candidates[0].id
@@ -1124,6 +1131,11 @@ def add_step_cmd(
         "--skipped-reason",
         help="Skip reason (required when --status=skipped).",
     ),
+    step_agent: Optional[str] = typer.Option(
+        None,
+        "--agent",
+        help="Advisory agent suggestion (which agent should work on this step).",
+    ),
     plan: Path | None = PlanOption,
 ) -> None:
     """Add a new step to a phase.
@@ -1159,6 +1171,7 @@ def add_step_cmd(
             status=step_status,
             evidence=import_evidence,
             skipped_reason=skipped_reason,
+            agent=step_agent,
         )
     except PlanError as e:
         _die(str(e))
@@ -1246,6 +1259,9 @@ def edit_step_cmd(
     verify: Optional[str] = typer.Option(
         None, "--verify", "--verification", help="New verification command."
     ),
+    step_agent: Optional[str] = typer.Option(
+        None, "--agent", help="New agent suggestion (use '' to clear)."
+    ),
     add_dep: Optional[str] = typer.Option(
         None, "--add-dep", help="Comma-separated step IDs to add as dependencies."
     ),
@@ -1262,11 +1278,23 @@ def edit_step_cmd(
     add_deps = [d.strip() for d in add_dep.split(",") if d.strip()] if add_dep else None
     rm_deps = [d.strip() for d in rm_dep.split(",") if d.strip()] if rm_dep else None
 
-    if name is None and desc is None and verify is None and not add_deps and not rm_deps:
+    if (
+        name is None
+        and desc is None
+        and verify is None
+        and step_agent is None
+        and not add_deps
+        and not rm_deps
+    ):
         _die(
-            "Nothing to edit. Provide at least one of --name, --desc, --verify, --add-dep, --rm-dep."
+            "Nothing to edit. Provide at least one of --name, --desc, --verify, --agent, --add-dep, --rm-dep."
         )
         return  # unreachable
+
+    # Agent: None means "not provided" (sentinel); "" means "clear"
+    agent_val = _SENTINEL
+    if step_agent is not None:
+        agent_val = None if step_agent == "" else step_agent  # type: ignore[assignment]
 
     try:
         p = edit_step(
@@ -1275,6 +1303,7 @@ def edit_step_cmd(
             name=name if name is not None else _SENTINEL,
             description=desc if desc is not None else _SENTINEL,
             verification=verify if verify is not None else _SENTINEL,
+            agent=agent_val,
             add_deps=add_deps,
             remove_deps=rm_deps,
         )

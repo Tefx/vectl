@@ -66,6 +66,7 @@ class Step(BaseModel):
     verification: str = ""
     refs: list[str] = Field(default_factory=list)
     depends_on: list[str] = Field(default_factory=list)
+    agent: str | None = None
     claimed_by: str | None = None
     claimed_at: str | None = None
     evidence: str | None = None

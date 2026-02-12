@@ -465,6 +465,13 @@ Quick view: `uvx vectl status`
 - One claimed step at a time.
 - Evidence is mandatory when completing (commands run + outputs + gaps).
 - Spec uncertainty: leave `# SPEC QUESTION: ...` in code, do not guess.
+
+### For Architects / Planners
+- **Design Mode**: Run `uvx vectl guide --on planning` to learn the Architect Protocol.
+- **Ambiguity = Failure**: Workers will hallucinate if steps are vague.
+- **Constraint Tools**:
+  - `--evidence-template`: Force workers to provide specific proof (e.g., "Paste logs here").
+  - `--refs`: Pin specific files (e.g., "src/auth.py") to the worker's context.
 {_AGENTS_MD_END}
 """
 

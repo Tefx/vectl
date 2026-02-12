@@ -78,10 +78,19 @@ GUIDE_PLANNING = """\
 ## 2. Mutate
 - `uvx vectl add-phase --name "..."`
 - `uvx vectl add-step --phase <p> --name "..." --after <dep>`
-- `uvx vectl edit-step <id> --desc "..." --verify "..."`
- - `uvx vectl edit-plan --project-guidance-file <path>`
+- `uvx vectl edit-step <id> --desc "..." --verify "..." --evidence-template "..."`
+- `uvx vectl edit-plan --project-guidance-file <path>`
 
-## 3. Verify
+## 3. Empathy (Required)
+Always add an `evidence_template` so the next agent knows exactly what to screenshot/paste.
+Example template:
+```text
+Verification:
+- Run: <cmd>
+- Output: <regex/value>
+```
+
+## 4. Verify
 - `uvx vectl validate` (Mandatory before commit)
 - `uvx vectl search <term>` (Check for dupes)
 """

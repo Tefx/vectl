@@ -709,9 +709,39 @@ def vectl_mutate(
     return msg + "\n\n→ Use `vectl_search` to verify plan consistency."
 
 
-# ---------------------------------------------------------------------------
-# Tool 8: vectl_review
-# ---------------------------------------------------------------------------
+@mcp.tool(
+    description=(
+        "Output machine-readable plan checkpoint (JSON). "
+        "Provides a deterministic, bounded snapshot for compaction and handoff."
+    ),
+)
+def vectl_checkpoint(
+    agent: str | None = None,
+    next: int = 3,
+    include_guidance: bool = False,
+    pretty: bool = False,
+) -> dict:
+    """Output machine-readable plan checkpoint (JSON).
+
+    Args:
+        agent: Agent name (affects focus selection).
+        next: Max next steps (default 3).
+        include_guidance: Include guidance refs/templates (default False).
+        pretty: Pretty-print JSON (only affects rendering if returned as str, here returns dict).
+    """
+    from vectl.checkpoint import build_checkpoint
+
+    plan, expected_hash = _load()
+
+    # Note: 'pretty' is accepted for CLI parity but ignored for the dict return
+    # since MCP clients handle formatting.
+    return build_checkpoint(
+        plan,
+        file_hash=expected_hash,
+        agent=agent,
+        next_limit=next,
+        include_guidance=include_guidance,
+    )
 
 
 @mcp.tool(

@@ -1168,6 +1168,50 @@ def validate(
         raise typer.Exit(1)
 
 
+@app.command()
+def checkpoint(
+    agent: Optional[str] = typer.Option(
+        os.environ.get("VECTL_AGENT"),
+        "--agent",
+        "-a",
+        help="Agent name (affects focus selection). (env: VECTL_AGENT)",
+    ),
+    next_limit: int = typer.Option(3, "--next", "-n", help="Max next steps."),
+    include_guidance: bool = typer.Option(
+        False, "--include-guidance", help="Include guidance (refs/templates)."
+    ),
+    pretty: bool = typer.Option(False, "--pretty", help="Pretty-print JSON."),
+    plan: Path | None = PlanOption,
+) -> None:
+    """Output machine-readable plan checkpoint (JSON).
+
+    Source: FR "vectl checkpoint".
+    Intent: Provide a deterministic, bounded snapshot for compaction/handoff.
+    """
+    import json
+    from vectl.checkpoint import build_checkpoint
+
+    p, h, _ = _load(plan)
+
+    data = build_checkpoint(
+        p,
+        file_hash=h,
+        agent=agent,
+        next_limit=next_limit,
+        include_guidance=include_guidance,
+    )
+
+    if pretty:
+        out.print(json.dumps(data, indent=2))
+    else:
+        # Print raw JSON string to stdout (not rich console) to avoid markup interference
+        # But wait, `out` is a Rich Console.
+        # For pure machine output, standard print is safer?
+        # But typer usually captures stdout.
+        # Let's use json.dumps and print it.
+        print(json.dumps(data))
+
+
 # ---------------------------------------------------------------------------
 # cli.9: add-step + add-phase (architect commands)
 # ---------------------------------------------------------------------------

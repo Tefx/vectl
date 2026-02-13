@@ -132,7 +132,7 @@ class TestCheckpointCore:
         res2 = runner.invoke(app, ["checkpoint", "--include-guidance", "--plan", str(path)])
         d2 = json.loads(res2.stdout)
         assert d2["guidance"]["evidence_template"] == "Template content"
-        assert d2["guidance"]["refs"] == ["ref1", "ref2"]
+        assert d2["guidance"]["read_before"] == ["ref1", "ref2"]  # Updated v1.1 key
 
 
 class TestCheckpointParity:

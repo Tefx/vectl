@@ -54,16 +54,15 @@ Schema v1.2 (JSON):
     "depends_on": ["<id>", ...]
   } | null,
   "guidance": {
-    "read_before": ["<path>", ...],
-    "evidence_template": "<text>",
-    "policy_banner": "<text>"
-  } | null,
-  "blockers": ["<step.id> depends_on <dep.id>", ...],
+     "read_before": ["<path>", ...],
+     "evidence_template": "<text>",
+     "policy_banner": "<text>"
+  } | undefined,  # Omitted unless include_guidance yields non-empty content
   "next": [
     { "step_id": "<id>", "name": "<name>" }, ...  # UPDATED in v1.2 (hints)
   ],
   "active_steps": [
-    { "step_id": "<id>", "owner": "<agent>", "status": "<status>" }
+    { "step_id": "<id>", "name": "<name>", "claimed_by": "<agent>", "status": "<status>" }
   ] | undefined,  # Omitted in lite mode IF active_steps == [focus]
   "active_steps_total": <int>,
   "active_steps_truncated": <bool>

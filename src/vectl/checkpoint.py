@@ -38,75 +38,19 @@ def build_checkpoint(
     focus_step = _select_focus(plan, agent)
 
     # 2. Build Focus Block
-    focus_data = None
-    guidance_data = None
-    blockers_data: list[str] = []
-    phase_data = None
-
-    if focus_step:
-        # Find phase
-        phase_obj = None
-        for ph in plan.phases:
-            if any(s.id == focus_step.id for s in ph.steps):
-                phase_obj = ph
-                break
-
-        if phase_obj:
-            ctx = (phase_obj.context or "").strip()
-            # Bounded context: v1.2 aggressive truncation
-            # 120 chars max for context summary
-            if len(ctx) > 120:
-                ctx = ctx[:119] + "…"
-            phase_data = {"id": phase_obj.id, "name": phase_obj.name, "context": ctx}
-
-        focus_data = {
-            "step_id": focus_step.id,
-            "name": focus_step.name,  # NEW v1.2
-            "status": focus_step.status.value,
-            "claimed_by": focus_step.claimed_by,
-            "depends_on": focus_step.depends_on,
-        }
-
-        if include_guidance:
-            # Build bounded guidance
-            refs = _dedupe([r.strip() for r in focus_step.refs if r.strip()])[:3]
-
-            # policy banner (project guidance)
-            policy = (plan.project_guidance or "").strip()
-            if len(policy) > 600:
-                policy = policy[:599] + "…"
-
-            tpl = (focus_step.evidence_template or "").strip()
-            if len(tpl) > 900:
-                tpl = tpl[:899] + "…"
-
-            guidance_data = {
-                "read_before": refs,
-                "evidence_template": tpl,
-                "policy_banner": policy,
-            }
-
-        # Blockers
-        if focus_step.depends_on:
-            blockers_data = [f"{focus_step.id} depends_on {dep}" for dep in focus_step.depends_on][
-                :3
-            ]
+    focus_data = _build_focus_block(focus_step)
+    phase_data = _build_phase_block(plan, focus_step)
+    guidance_data = (
+        _build_guidance_block(plan, focus_step) if (focus_step and include_guidance) else None
+    )
 
     # 3. Build Next (Bounded + Hints v1.2)
     next_candidates = get_next_steps(plan, agent=agent)
     next_data = [{"step_id": s.id, "name": s.name} for s in next_candidates[:next_limit]]
 
     # 4. Build Active Steps (Concurrency Visibility)
-    active_steps = []
     all_claimed = _get_all_claimed(plan)
-    for s in all_claimed[:3]:  # Max 3 active steps
-        active_steps.append(
-            {
-                "step_id": s.id,
-                "owner": s.claimed_by,
-                "status": s.status.value,
-            }
-        )
+    active_steps = _build_active_steps_block(all_claimed)
 
     # v1.2 Logic: Omit active_steps if redundant (contains only focus)
     show_active = True
@@ -116,16 +60,18 @@ def build_checkpoint(
         if not active_steps:
             show_active = False
 
-    result = {
+    result: dict[str, Any] = {
         "schema": "vectl.checkpoint/v1",
         # metadata inserted below if not lite
         "phase": phase_data,
         "focus": focus_data,
-        "guidance": guidance_data,
-        "blockers": blockers_data if blockers_data else [],
         "next": next_data,
         # active_steps inserted below if show_active
     }
+
+    # Token economy: omit guidance unless it contains non-empty content.
+    if guidance_data:
+        result["guidance"] = guidance_data
 
     if not lite:
         result["metadata"] = {
@@ -143,6 +89,80 @@ def build_checkpoint(
         result["active_steps_truncated"] = len(all_claimed) > 3
 
     return result
+
+
+def _build_focus_block(step: Step | None) -> dict[str, Any] | None:
+    if not step:
+        return None
+    return {
+        "step_id": step.id,
+        "name": step.name,
+        "status": step.status.value,
+        "claimed_by": step.claimed_by,
+        "depends_on": step.depends_on,
+    }
+
+
+def _build_phase_block(plan: Plan, focus_step: Step | None) -> dict[str, str] | None:
+    if not focus_step:
+        return None
+
+    phase_obj = None
+    for ph in plan.phases:
+        if any(s.id == focus_step.id for s in ph.steps):
+            phase_obj = ph
+            break
+
+    if not phase_obj:
+        return None
+
+    ctx = (phase_obj.context or "").strip()
+    if len(ctx) > 120:
+        ctx = ctx[:119] + "…"
+    return {"id": phase_obj.id, "name": phase_obj.name, "context": ctx}
+
+
+def _build_guidance_block(plan: Plan, focus_step: Step) -> dict[str, Any] | None:
+    refs = _dedupe([r.strip() for r in focus_step.refs if r.strip()])[:3]
+
+    policy = (plan.project_guidance or "").strip()
+    if len(policy) > 600:
+        policy = policy[:599] + "…"
+
+    tpl = (focus_step.evidence_template or "").strip()
+    if len(tpl) > 900:
+        tpl = tpl[:899] + "…"
+
+    guidance = {
+        "read_before": refs,
+        "evidence_template": tpl,
+        "policy_banner": policy,
+    }
+
+    if not any(
+        [
+            bool(refs),
+            bool(tpl.strip()),
+            bool(policy.strip()),
+        ]
+    ):
+        return None
+
+    return guidance
+
+
+def _build_active_steps_block(all_claimed: list[Step]) -> list[dict[str, Any]]:
+    active_steps: list[dict[str, Any]] = []
+    for s in all_claimed[:3]:
+        active_steps.append(
+            {
+                "step_id": s.id,
+                "name": s.name,
+                "claimed_by": s.claimed_by,
+                "status": s.status.value,
+            }
+        )
+    return active_steps
 
 
 def _select_focus(plan: Plan, agent: str | None) -> Step | None:

@@ -181,13 +181,28 @@ class TestCheckpointCore:
         # Without guidance
         res1 = runner.invoke(app, ["checkpoint", "--plan", str(path)])
         d1 = json.loads(res1.stdout)
-        assert d1["guidance"] is None
+        assert "guidance" not in d1
 
         # With guidance
         res2 = runner.invoke(app, ["checkpoint", "--include-guidance", "--plan", str(path)])
         d2 = json.loads(res2.stdout)
         assert d2["guidance"]["evidence_template"] == "Template content"
         assert d2["guidance"]["read_before"] == ["ref1", "ref2"]  # v1.1 key
+
+
+class TestCheckpointActiveSteps:
+    def test_active_steps_include_names_and_claimed_by(self, checkpoint_plan: Path) -> None:
+        result = runner.invoke(app, ["checkpoint", "--plan", str(checkpoint_plan)])
+        assert result.exit_code == 0
+        data = json.loads(result.stdout)
+
+        assert "active_steps" in data
+        assert len(data["active_steps"]) > 0
+        item = data["active_steps"][0]
+        assert "step_id" in item
+        assert "name" in item
+        assert "claimed_by" in item
+        assert "owner" not in item
 
 
 class TestCheckpointParity:

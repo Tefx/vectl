@@ -39,42 +39,61 @@ def build_checkpoint(
     focus_data = None
     guidance_data = None
     blockers_data: list[str] = []
+    phase_data = None
 
     if focus_step:
         # Find phase
-        phase_id = ""
+        phase_obj = None
         for ph in plan.phases:
             if any(s.id == focus_step.id for s in ph.steps):
-                phase_id = ph.id
+                phase_obj = ph
                 break
 
+        if phase_obj:
+            ctx = (phase_obj.context or "").strip()
+            if len(ctx) > 300:
+                ctx = ctx[:299] + "…"
+            phase_data = {"id": phase_obj.id, "name": phase_obj.name, "context": ctx}
+
         focus_data = {
-            "phase_id": phase_id,
             "step_id": focus_step.id,
             "status": focus_step.status.value,
             "claimed_by": focus_step.claimed_by,
+            "depends_on": focus_step.depends_on,
         }
 
         if include_guidance:
             # Build bounded guidance
-            refs = _dedupe(
-                ([plan.strategy_ref.strip()] if plan.strategy_ref.strip() else [])
-                + [r.strip() for r in focus_step.refs if r.strip()]
-            )[:3]
+            refs = _dedupe([r.strip() for r in focus_step.refs if r.strip()])[:3]
+
+            # policy banner (project guidance)
+            policy = (plan.project_guidance or "").strip()
+            if len(policy) > 600:
+                policy = policy[:599] + "…"
+
             tpl = (focus_step.evidence_template or "").strip()
             if len(tpl) > 900:
                 tpl = tpl[:899] + "…"
 
             guidance_data = {
-                "refs": refs,
+                "read_before": refs,
                 "evidence_template": tpl,
+                "policy_banner": policy,
             }
 
-        # Blockers (deps)
+        # Blockers (deps that are not done?)
+        # Current logic just lists deps.
+        # Ideally blockers should list *why* next steps are blocked, but for focus step
+        # blockers usually means "what I'm waiting on".
+        # But schema v1 had blockers separate from focus.
+        # In v1.1 we added focus.depends_on.
+        # Let's keep blockers for backward compat or general context?
+        # The schema v1.1 still has "blockers".
+        # Let's align with schema:
         if focus_step.depends_on:
             blockers_data = [f"{focus_step.id} depends_on {dep}" for dep in focus_step.depends_on][
                 :3
-            ]  # Bound blockers too
+            ]
 
     # 3. Build Next (Bounded)
     next_candidates = get_next_steps(plan, agent=agent)
@@ -100,6 +119,7 @@ def build_checkpoint(
             "project": plan.project,
             "etag": f"sha256:{file_hash}",
         },
+        "phase": phase_data,
         "focus": focus_data,
         "guidance": guidance_data,
         "blockers": blockers_data if blockers_data else [],

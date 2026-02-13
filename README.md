@@ -231,9 +231,8 @@ uvx vectl checkpoint --lite
 ```json
 {
   "schema": "vectl.checkpoint/v1",
-  "focus": { "step_id": "auth.01", "status": "claimed" },
-  "next": [{ "step_id": "auth.02", "name": "Implement Token" }],
-  "blockers": ["auth.01 depends_on core.05"]
+  "focus": { "step_id": "auth.01", "name": "Implement Login", "status": "claimed" },
+  "next": [{ "step_id": "auth.02", "name": "Implement Token" }]
 }
 ```
 

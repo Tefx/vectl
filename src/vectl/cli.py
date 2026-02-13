@@ -5,6 +5,7 @@ Spec authority: tools/vectl/plan.yaml, phases cli_read + cli_write.
 
 from __future__ import annotations
 
+import enum
 import os
 import sys
 from pathlib import Path
@@ -476,30 +477,73 @@ Quick view: `uvx vectl status`
 """
 
 
-def _upsert_agents_md(directory: Path) -> str:
-    """Create or upsert vectl section in AGENTS.md (or CLAUDE.md).
+class AgentsTarget(str, enum.Enum):
+    """Target file for the vectl agents-md section."""
+
+    auto = "auto"
+    agents = "agents"
+    claude = "claude"
+
+
+def _detect_agents_target(directory: Path, target: AgentsTarget = AgentsTarget.auto) -> Path:
+    """Detect the best target file for the vectl agents-md section.
+
+    Args:
+        directory: Project directory to scan.
+        target: Explicit override. ``auto`` uses detection heuristics.
+
+    Priority (when ``auto``):
+    1. Existing file with vectl markers → use it (stability over detection).
+    2. Existing file without markers → prefer AGENTS.md > CLAUDE.md.
+    3. Neither exists → .claude/ dir present → CLAUDE.md; otherwise AGENTS.md.
+    """
+    agents_md = directory / "AGENTS.md"
+    claude_md = directory / "CLAUDE.md"
+
+    if target is AgentsTarget.agents:
+        return agents_md
+    if target is AgentsTarget.claude:
+        return claude_md
+
+    # Auto mode: existing file with markers wins (don't break working setups)
+    for candidate in (agents_md, claude_md):
+        if candidate.exists():
+            content = candidate.read_text(encoding="utf-8")
+            if _AGENTS_MD_BEGIN in content:
+                return candidate
+
+    # Existing file without markers (append target)
+    if agents_md.exists():
+        return agents_md
+    if claude_md.exists():
+        return claude_md
+
+    # Fresh project: auto-detect Claude Code projects
+    if (directory / ".claude").is_dir():
+        return claude_md
+
+    return agents_md
+
+
+def _upsert_agents_md(directory: Path, target: AgentsTarget = AgentsTarget.auto) -> str:
+    """Create or upsert vectl section in AGENTS.md or CLAUDE.md.
 
     Safety policy (agreed in this conversation, 2026-02-12):
     - If begin/end markers exist, replace that block.
     - If only legacy header exists (no markers), do not rewrite; append the new block.
 
-    Preference: AGENTS.md > CLAUDE.md > create AGENTS.md.
+    Target selection delegated to ``_detect_agents_target()``.
 
     Returns:
         A status message describing what was done.
     """
-    agents_md = directory / "AGENTS.md"
-    claude_md = directory / "CLAUDE.md"
+    target_path = _detect_agents_target(directory, target)
 
-    target = agents_md
-    if not agents_md.exists() and claude_md.exists():
-        target = claude_md
+    if not target_path.exists():
+        target_path.write_text(_AGENTS_MD_SNIPPET, encoding="utf-8")
+        return f"Created {target_path.name}"
 
-    if not target.exists():
-        target.write_text(_AGENTS_MD_SNIPPET, encoding="utf-8")
-        return f"Created {target.name}"
-
-    content = target.read_text(encoding="utf-8")
+    content = target_path.read_text(encoding="utf-8")
 
     begin = content.find(_AGENTS_MD_BEGIN)
     end = content.find(_AGENTS_MD_END)
@@ -507,17 +551,17 @@ def _upsert_agents_md(directory: Path) -> str:
         end_inclusive = end + len(_AGENTS_MD_END)
         new_content = content[:begin].rstrip() + "\n\n" + _AGENTS_MD_SNIPPET + "\n"
         new_content += content[end_inclusive:].lstrip()
-        target.write_text(new_content, encoding="utf-8")
-        return f"Updated {target.name} (replaced vectl block)"
+        target_path.write_text(new_content, encoding="utf-8")
+        return f"Updated {target_path.name} (replaced vectl block)"
 
     if _AGENTS_MD_LEGACY_HEADER in content:
-        with target.open("a", encoding="utf-8") as f:
+        with target_path.open("a", encoding="utf-8") as f:
             f.write("\n\n" + _AGENTS_MD_SNIPPET)
-        return f"Appended updated vectl block to {target.name} (legacy block preserved)"
+        return f"Appended updated vectl block to {target_path.name} (legacy block preserved)"
 
-    with target.open("a", encoding="utf-8") as f:
+    with target_path.open("a", encoding="utf-8") as f:
         f.write("\n\n" + _AGENTS_MD_SNIPPET)
-    return f"Appended vectl section to {target.name}"
+    return f"Appended vectl section to {target_path.name}"
 
 
 @app.command("agents-md")
@@ -527,9 +571,14 @@ def agents_md_cmd(
         "--dir",
         help="Directory containing AGENTS.md/CLAUDE.md to update.",
     ),
+    target: AgentsTarget = typer.Option(
+        AgentsTarget.auto,
+        "--target",
+        help="Target file: auto (detect .claude/), agents (AGENTS.md), claude (CLAUDE.md).",
+    ),
 ) -> None:
-    """Upsert the vectl section in AGENTS.md (or CLAUDE.md)."""
-    result = _upsert_agents_md(directory)
+    """Upsert the vectl section in AGENTS.md or CLAUDE.md."""
+    result = _upsert_agents_md(directory, target)
     out.print(result)
 
 
@@ -537,8 +586,13 @@ def agents_md_cmd(
 def init(
     project: str = typer.Option(..., "--project", prompt="Project name"),
     plan: Path | None = PlanOption,
+    agents_target: AgentsTarget = typer.Option(
+        AgentsTarget.auto,
+        "--target",
+        help="Target file for agent instructions: auto, agents, claude.",
+    ),
 ) -> None:
-    """Create a new plan.yaml template and configure AGENTS.md."""
+    """Create a new plan.yaml template and configure AGENTS.md / CLAUDE.md."""
     target = plan or Path("plan.yaml")
     if target.exists():
         _die(f"{target} already exists. Delete it first or use a different path.")
@@ -550,9 +604,9 @@ def init(
     save_plan(template, target)
     out.print(f"[green]Created:[/] {target}")
 
-    # Ensure AGENTS.md has vectl section (idempotent)
-    agents_result = _upsert_agents_md(target.parent)
-    out.print(f"[green]AGENTS.md:[/] {agents_result}")
+    # Ensure AGENTS.md / CLAUDE.md has vectl section (idempotent)
+    agents_result = _upsert_agents_md(target.parent, agents_target)
+    out.print(f"[green]Agent instructions:[/] {agents_result}")
 
     out.print()
     out.print("[dim]→ vectl add-phase --phase-id <id> --name <name>   Add a phase[/]")

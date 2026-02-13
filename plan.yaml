@@ -2380,3 +2380,110 @@ phases:
     evidence: Implemented default `lite=True` logic and updated tests. Verified `metadata`
       is omitted by default in both CLI and MCP outputs. Parity tests confirmed consistent
       behavior.
+- id: claude-md
+  name: CLAUDE.md Auto-Detection for agents-md
+  status: in_progress
+  steps:
+  - id: claude-md.detection
+    name: Implement target detection logic
+    status: done
+    description: 'Refactor _upsert_agents_md() target selection: (1) If .claude/ dir
+      exists → prefer CLAUDE.md. (2) If existing AGENTS.md with markers → keep it
+      (don''t break working setups). (3) Neither exists → create based on .claude/
+      detection. Add helper _detect_agents_target(directory) -> Path.'
+    verification: 'Unit tests cover: .claude/ exists → creates CLAUDE.md; no .claude/
+      → creates AGENTS.md; existing AGENTS.md with markers → stays AGENTS.md even
+      if .claude/ present.'
+    claimed_by: antigravity
+    claimed_at: '2026-02-13T05:56:06.040203+00:00'
+    evidence: 'Artifact:
+
+      - Added `_detect_agents_target(directory) -> Path` helper in `src/vectl/cli.py`
+      (lines 479–507)
+
+      - Refactored `_upsert_agents_md()` to delegate target selection to the new helper
+
+
+      Detection priority:
+
+      1. Existing file with vectl markers → use it (stability)
+
+      2. Existing file without markers → AGENTS.md > CLAUDE.md
+
+      3. Neither exists + `.claude/` dir → CLAUDE.md
+
+      4. Neither exists, no `.claude/` → AGENTS.md
+
+
+      Verification:
+
+      - 8 new tests in `TestClaudeDetection` class (tests/test_cli.py) — all pass
+
+      - Full suite: 654 passed in 4.57s (was 646, +8 new)'
+  - id: claude-md.flag
+    name: Add --target CLI flag
+    status: done
+    description: Add --target {auto,agents,claude} option to agents-md and init commands.
+      'auto' (default) uses detection logic. 'agents' forces AGENTS.md. 'claude' forces
+      CLAUDE.md. Pass through to _upsert_agents_md().
+    verification: CLI help shows --target option. vectl agents-md --target claude
+      creates CLAUDE.md. vectl agents-md --target agents creates AGENTS.md.
+    depends_on:
+    - claude-md.detection
+    claimed_by: antigravity
+    claimed_at: '2026-02-13T05:59:13.501396+00:00'
+    evidence: "Artifact:\n- Added `AgentsTarget` enum (auto/agents/claude) to `src/vectl/cli.py`\n\
+      - `_detect_agents_target()` now accepts `target: AgentsTarget` parameter (auto\
+      \ delegates to heuristics, agents/claude force the file)\n- `agents_md_cmd`\
+      \ and `init` both accept `--target [auto|agents|claude]` (default: auto)\n-\
+      \ Fixed init output label: `AGENTS.md:` → `Agent instructions:` (agent-neutral)\n\
+      - Fixed Rich line-wrapping test flake (normalize whitespace before assertion)\n\
+      \nVerification:\n- `vectl agents-md --help` → shows `--target [auto|agents|claude]`\n\
+      - `vectl init --help` → shows `--target [auto|agents|claude]`  \n- pytest: 654\
+      \ passed in 4.20s"
+  - id: claude-md.guide
+    name: Update guide.py references
+    status: done
+    description: Update guide.py text to say 'AGENTS.md / CLAUDE.md' where it currently
+      says only 'AGENTS.md'. Keep factual — vectl auto-detects the target file.
+    verification: grep guide.py for standalone 'AGENTS.md' references — all should
+      be updated to mention both files.
+    depends_on:
+    - claude-md.detection
+    claimed_by: antigravity
+    claimed_at: '2026-02-13T06:01:53.702651+00:00'
+    evidence: "Artifact:\n- Updated 3 locations in `src/vectl/guide.py`:\n  1. Line\
+      \ 120: \"configures AGENTS.md\" → \"configures AGENTS.md (or CLAUDE.md for Claude\
+      \ Code projects)\"\n  2. Lines 158-160: \"AGENTS.md\" → \"AGENTS.md / CLAUDE.md\"\
+      \ in migration guide\n  3. Lines 172-179: Table header \"AGENTS.md / docs/\"\
+      \ → \"AGENTS.md / CLAUDE.md / docs/\"\n\nVerification:\n- pytest: 654 passed\
+      \ in 4.06s"
+  - id: claude-md.tests
+    name: Full test coverage
+    status: done
+    description: 'Add tests: (1) auto-detect .claude/ creates CLAUDE.md, (2) --target
+      flag overrides auto-detect, (3) existing markers preserved regardless of detection,
+      (4) init command respects detection. All 646+ existing tests still pass.'
+    verification: pytest passes with 0 failures. New tests exercise all detection
+      × flag combinations.
+    depends_on:
+    - claude-md.flag
+    claimed_by: antigravity
+    claimed_at: '2026-02-13T06:03:18.078606+00:00'
+    evidence: "Artifact:\n- 12 tests in `TestClaudeDetection` class covering all detection\
+      \ × flag combinations:\n  - 8 auto-detection tests (from detection step)\n \
+      \ - 4 new --target flag tests: agents force, claude force, override existing\
+      \ markers, init --target claude\n\nVerification:\n- pytest: 658 passed in 4.64s\
+      \ (was 654 before this phase, +12 new from detection + tests steps combined,\
+      \ +4 this step)"
+  - id: claude-md.release
+    name: Bump version and release
+    status: claimed
+    description: Bump to 0.1.35 in pyproject.toml. Commit, tag, push, create GitHub
+      release.
+    verification: gh release view v0.1.35 succeeds.
+    depends_on:
+    - claude-md.tests
+    - claude-md.guide
+    claimed_by: antigravity
+    claimed_at: '2026-02-13T06:05:02.603346+00:00'

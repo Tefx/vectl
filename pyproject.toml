@@ -1,6 +1,6 @@
 [project]
 name = "vectl"
-version = "0.1.34"
+version = "0.1.35"
 description = "Plans with teeth — TODO.md can't say no. vectl can."
 readme = "README.md"
 authors = [{name = "Tefx", email = "zhaomeng.zhu@gmail.com"}]

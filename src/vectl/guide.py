@@ -117,7 +117,7 @@ issue tracker), use this workflow to migrate it into plan.yaml.
 ## Prerequisites
 
 Run `uvx vectl init --project <name>` first. This creates an empty plan.yaml and
-configures AGENTS.md.
+configures AGENTS.md (or CLAUDE.md for Claude Code projects).
 
 ## Rules
 
@@ -155,9 +155,9 @@ configures AGENTS.md.
    - Every step accounted for?
    - Dependencies correct?
 
-4. **Drop** content that belongs in AGENTS.md, not plan.yaml
+4. **Drop** content that belongs in AGENTS.md / CLAUDE.md, not plan.yaml
    (testing strategy, coding standards, architectural decisions).
-   plan.yaml tracks *what to do*. AGENTS.md tracks *how to do it*.
+   plan.yaml tracks *what to do*. AGENTS.md / CLAUDE.md tracks *how to do it*.
 
 5. **Archive** the old plan (e.g., move to `docs/_archive/`).
    plan.yaml is now the single source of truth.
@@ -169,14 +169,13 @@ configures AGENTS.md.
 - **Dependencies** between steps → `--depends-on` (or `depends_on=[...]`)
 - **Context/descriptions** → `--description` / `--context`
 
-| Content                        | plan.yaml | AGENTS.md / docs/ |
-|--------------------------------|-----------|-------------------|
-| Phases, steps, dependencies    | ✅        | —                  |
-| Step descriptions & verification | ✅      | —                  |
-| Status tracking                | ✅        | —                  |
-| Coding standards & rules       | —         | ✅                 |
-| Testing strategy & tiers       | —         | ✅                 |
-| Architecture decisions         | —         | ✅ docs/           |
+| Content                        | plan.yaml | AGENTS.md / CLAUDE.md / docs/ |
+|--------------------------------|-----------|-------------------------------|\n| Phases, steps, dependencies    | ✅        | —                              |
+| Step descriptions & verification | ✅      | —                              |
+| Status tracking                | ✅        | —                              |
+| Coding standards & rules       | —         | ✅                             |
+| Testing strategy & tiers       | —         | ✅                             |
+| Architecture decisions         | —         | ✅ docs/                       |
 
 ## Tips
 

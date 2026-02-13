@@ -130,7 +130,9 @@ class TestInit:
         assert result.exit_code == 0
         content = agents_md.read_text()
         assert content.count("## Plan Tracking (vectl)") == 2
-        assert "legacy block preserved" in result.output.lower()
+        # Rich may wrap long lines; normalize whitespace for assertion
+        output_flat = " ".join(result.output.lower().split())
+        assert "legacy block preserved" in output_flat
 
     def test_agents_md_command_upserts(self, tmp_path: Path) -> None:
         agents_md = tmp_path / "AGENTS.md"
@@ -139,6 +141,152 @@ class TestInit:
         assert result.exit_code == 0
         content = agents_md.read_text(encoding="utf-8")
         assert "<!-- VECTL:AGENTS:BEGIN -->" in content
+
+
+class TestClaudeDetection:
+    """Tests for .claude/ auto-detection in _upsert_agents_md / agents-md."""
+
+    def test_fresh_project_with_claude_dir_creates_claude_md(self, tmp_path: Path) -> None:
+        """No AGENTS.md, no CLAUDE.md, but .claude/ dir → creates CLAUDE.md."""
+        (tmp_path / ".claude").mkdir()
+        result = runner.invoke(app, ["agents-md", "--dir", str(tmp_path)])
+        assert result.exit_code == 0
+        assert (tmp_path / "CLAUDE.md").exists()
+        assert not (tmp_path / "AGENTS.md").exists()
+        content = (tmp_path / "CLAUDE.md").read_text(encoding="utf-8")
+        assert "<!-- VECTL:AGENTS:BEGIN -->" in content
+
+    def test_fresh_project_without_claude_dir_creates_agents_md(self, tmp_path: Path) -> None:
+        """No .claude/ dir → creates AGENTS.md (backward compatible)."""
+        result = runner.invoke(app, ["agents-md", "--dir", str(tmp_path)])
+        assert result.exit_code == 0
+        assert (tmp_path / "AGENTS.md").exists()
+        assert not (tmp_path / "CLAUDE.md").exists()
+
+    def test_existing_agents_md_with_markers_preserved_despite_claude_dir(
+        self, tmp_path: Path
+    ) -> None:
+        """AGENTS.md has markers + .claude/ dir → stays on AGENTS.md (stability)."""
+        (tmp_path / ".claude").mkdir()
+        agents_md = tmp_path / "AGENTS.md"
+        agents_md.write_text(
+            "# Project\n\n<!-- VECTL:AGENTS:BEGIN -->\nOld block.\n<!-- VECTL:AGENTS:END -->\n",
+            encoding="utf-8",
+        )
+        result = runner.invoke(app, ["agents-md", "--dir", str(tmp_path)])
+        assert result.exit_code == 0
+        content = agents_md.read_text(encoding="utf-8")
+        assert content.count("<!-- VECTL:AGENTS:BEGIN -->") == 1
+        assert "Old block." not in content  # replaced
+        assert not (tmp_path / "CLAUDE.md").exists()
+
+    def test_existing_claude_md_with_markers_preserved(self, tmp_path: Path) -> None:
+        """CLAUDE.md has markers → stays on CLAUDE.md even without .claude/ dir."""
+        claude_md = tmp_path / "CLAUDE.md"
+        claude_md.write_text(
+            "# Claude\n\n<!-- VECTL:AGENTS:BEGIN -->\nOld.\n<!-- VECTL:AGENTS:END -->\n",
+            encoding="utf-8",
+        )
+        result = runner.invoke(app, ["agents-md", "--dir", str(tmp_path)])
+        assert result.exit_code == 0
+        content = claude_md.read_text(encoding="utf-8")
+        assert content.count("<!-- VECTL:AGENTS:BEGIN -->") == 1
+        assert not (tmp_path / "AGENTS.md").exists()
+
+    def test_existing_agents_md_without_markers_wins_over_claude_dir(self, tmp_path: Path) -> None:
+        """AGENTS.md exists (no markers) + .claude/ dir → appends to AGENTS.md."""
+        (tmp_path / ".claude").mkdir()
+        agents_md = tmp_path / "AGENTS.md"
+        agents_md.write_text("# My Project\n\nExisting.\n", encoding="utf-8")
+        result = runner.invoke(app, ["agents-md", "--dir", str(tmp_path)])
+        assert result.exit_code == 0
+        content = agents_md.read_text(encoding="utf-8")
+        assert "Existing." in content
+        assert "<!-- VECTL:AGENTS:BEGIN -->" in content
+        assert not (tmp_path / "CLAUDE.md").exists()
+
+    def test_init_creates_claude_md_when_claude_dir_present(self, tmp_path: Path) -> None:
+        """init command respects .claude/ detection."""
+        (tmp_path / ".claude").mkdir()
+        path = tmp_path / "plan.yaml"
+        result = runner.invoke(app, ["init", "--project", "myproject", "--plan", str(path)])
+        assert result.exit_code == 0
+        assert path.exists()
+        assert (tmp_path / "CLAUDE.md").exists()
+        assert not (tmp_path / "AGENTS.md").exists()
+        content = (tmp_path / "CLAUDE.md").read_text(encoding="utf-8")
+        assert "<!-- VECTL:AGENTS:BEGIN -->" in content
+
+    def test_both_files_exist_agents_with_markers_wins(self, tmp_path: Path) -> None:
+        """Both AGENTS.md (with markers) and CLAUDE.md exist → AGENTS.md wins."""
+        (tmp_path / ".claude").mkdir()
+        agents_md = tmp_path / "AGENTS.md"
+        agents_md.write_text(
+            "<!-- VECTL:AGENTS:BEGIN -->\nOld.\n<!-- VECTL:AGENTS:END -->\n",
+            encoding="utf-8",
+        )
+        claude_md = tmp_path / "CLAUDE.md"
+        claude_md.write_text("# Claude stuff\n", encoding="utf-8")
+        result = runner.invoke(app, ["agents-md", "--dir", str(tmp_path)])
+        assert result.exit_code == 0
+        agents_content = agents_md.read_text(encoding="utf-8")
+        claude_content = claude_md.read_text(encoding="utf-8")
+        assert "<!-- VECTL:AGENTS:BEGIN -->" in agents_content
+        assert "<!-- VECTL:AGENTS:BEGIN -->" not in claude_content
+
+    def test_both_files_exist_claude_with_markers_wins(self, tmp_path: Path) -> None:
+        """Both files exist, only CLAUDE.md has markers → CLAUDE.md wins."""
+        agents_md = tmp_path / "AGENTS.md"
+        agents_md.write_text("# Agents\n", encoding="utf-8")
+        claude_md = tmp_path / "CLAUDE.md"
+        claude_md.write_text(
+            "# Claude\n\n<!-- VECTL:AGENTS:BEGIN -->\nOld.\n<!-- VECTL:AGENTS:END -->\n",
+            encoding="utf-8",
+        )
+        result = runner.invoke(app, ["agents-md", "--dir", str(tmp_path)])
+        assert result.exit_code == 0
+        claude_content = claude_md.read_text(encoding="utf-8")
+        agents_content = agents_md.read_text(encoding="utf-8")
+        assert "<!-- VECTL:AGENTS:BEGIN -->" in claude_content
+        assert "<!-- VECTL:AGENTS:BEGIN -->" not in agents_content
+
+    def test_target_flag_agents_forces_agents_md(self, tmp_path: Path) -> None:
+        """--target agents creates AGENTS.md even when .claude/ dir present."""
+        (tmp_path / ".claude").mkdir()
+        result = runner.invoke(app, ["agents-md", "--dir", str(tmp_path), "--target", "agents"])
+        assert result.exit_code == 0
+        assert (tmp_path / "AGENTS.md").exists()
+        assert not (tmp_path / "CLAUDE.md").exists()
+
+    def test_target_flag_claude_forces_claude_md(self, tmp_path: Path) -> None:
+        """--target claude creates CLAUDE.md even without .claude/ dir."""
+        result = runner.invoke(app, ["agents-md", "--dir", str(tmp_path), "--target", "claude"])
+        assert result.exit_code == 0
+        assert (tmp_path / "CLAUDE.md").exists()
+        assert not (tmp_path / "AGENTS.md").exists()
+
+    def test_target_flag_overrides_existing_file_detection(self, tmp_path: Path) -> None:
+        """--target claude writes CLAUDE.md even when AGENTS.md with markers exists."""
+        agents_md = tmp_path / "AGENTS.md"
+        agents_md.write_text(
+            "<!-- VECTL:AGENTS:BEGIN -->\nOld.\n<!-- VECTL:AGENTS:END -->\n",
+            encoding="utf-8",
+        )
+        result = runner.invoke(app, ["agents-md", "--dir", str(tmp_path), "--target", "claude"])
+        assert result.exit_code == 0
+        assert (tmp_path / "CLAUDE.md").exists()
+        content = (tmp_path / "CLAUDE.md").read_text(encoding="utf-8")
+        assert "<!-- VECTL:AGENTS:BEGIN -->" in content
+
+    def test_init_target_flag_claude(self, tmp_path: Path) -> None:
+        """init --target claude creates CLAUDE.md regardless of .claude/ dir."""
+        path = tmp_path / "plan.yaml"
+        result = runner.invoke(
+            app, ["init", "--project", "p", "--plan", str(path), "--target", "claude"]
+        )
+        assert result.exit_code == 0
+        assert (tmp_path / "CLAUDE.md").exists()
+        assert not (tmp_path / "AGENTS.md").exists()
 
 
 class TestEditPlan:

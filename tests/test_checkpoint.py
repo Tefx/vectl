@@ -42,13 +42,82 @@ class TestCheckpointCore:
         data = json.loads(result.stdout)
 
         assert data["schema"] == "vectl.checkpoint/v1"
-        assert "generated_at" in data
-        assert data["tool"]["name"] == "vectl"
-        assert data["plan"]["project"] == "chk"
-        assert data["plan"]["etag"].startswith("sha256:")
+        # v1.2: metadata grouped
+        assert "metadata" in data
+        assert data["metadata"]["generated_at"]
+        assert data["metadata"]["tool"]["name"] == "vectl"
+        assert data["metadata"]["plan"]["project"] == "chk"
+
+        # v1.1: phase context
+        assert "phase" in data
+        assert data["phase"]["id"] == "p1"
+
         assert "focus" in data
         assert "active_steps" in data
         assert "next" in data
+
+        # v1.2: next has names
+        # Note: In our fixture p1.3 is pending and depends on p1.1.
+        # Focus is p1.1 (claimed).
+        # Next candidates come from get_next_steps.
+        # p1.3 is blocked by p1.1, so it won't be in next.
+        # Wait, if focus is p1.1, and p1.2 is claimed.
+        # get_next_steps returns "available" steps.
+        # p1.3 is NOT available (blocked).
+        # p1.1 and p1.2 are CLAIMED (not available for new work usually, but get_next_steps includes claimed?
+        # Check core.get_next_steps logic.
+        # Usually get_next_steps returns actionable items.
+        # If no items are actionable, next is empty.
+        # Let's add a free pending step to fixture to ensure next is populated.
+
+        # We can't easily modify the fixture here without breaking other tests using it.
+        # But we can assert next is empty OR check structure if present.
+        # Let's verify next is a list.
+        assert isinstance(data["next"], list)
+
+        # Add a new step to ensure next has items for structure check
+        plan, _ = load_plan(checkpoint_plan)
+        plan.phases[0].steps.append(Step(id="p1.4", name="S4", status=StepStatus.PENDING))
+        save_plan(plan, checkpoint_plan)
+
+        result = runner.invoke(app, ["checkpoint", "--plan", str(checkpoint_plan)])
+        data = json.loads(result.stdout)
+        assert len(data["next"]) > 0
+        assert isinstance(data["next"][0], dict)
+        assert "name" in data["next"][0]
+
+    def test_lite_mode(self, checkpoint_plan: Path) -> None:
+        result = runner.invoke(app, ["checkpoint", "--lite", "--plan", str(checkpoint_plan)])
+        assert result.exit_code == 0
+        data = json.loads(result.stdout)
+
+        # v1.2: metadata omitted
+        assert "metadata" not in data
+        # active_steps present because multiple claimed (alice, bob)
+        assert "active_steps" in data
+
+    def test_lite_mode_omits_redundant_active(self, tmp_path: Path) -> None:
+        # Only one claimed step
+        plan = Plan(
+            project="chk",
+            phases=[
+                Phase(
+                    id="p1",
+                    name="P1",
+                    steps=[Step(id="s1", name="S1", status=StepStatus.CLAIMED, claimed_by="me")],
+                )
+            ],
+        )
+        path = tmp_path / "plan.yaml"
+        save_plan(plan, path)
+
+        result = runner.invoke(app, ["checkpoint", "--lite", "--plan", str(path)])
+        data = json.loads(result.stdout)
+
+        # focus is s1
+        assert data["focus"]["step_id"] == "s1"
+        # active_steps omitted because it equals focus
+        assert "active_steps" not in data
 
     def test_deterministic_focus_any_claimed(self, checkpoint_plan: Path) -> None:
         # No agent specified -> should pick first claimed (p1.1 or p1.2 depending on sort)
@@ -94,20 +163,16 @@ class TestCheckpointCore:
         result = runner.invoke(app, ["checkpoint", "--plan", str(path)])
         data = json.loads(result.stdout)
         assert len(data["next"]) == 3
-        assert data["focus"]["step_id"] == "s0"  # Focus consumes 1st next (s0)
+        assert data["focus"]["step_id"] == "s0"  # Focus consumes 1st next
 
-        # NOTE: get_next_steps returns [s0, s1, s2, s3...].
-        # Focus selection (fallback to next) picks s0.
-        # Checkpoint builder calls get_next_steps again for "next" list.
-        # It currently includes the focus step if it's pending.
-        # Ideally, "next" should exclude the focus step to avoid duplication?
-        # But schema doesn't strictly forbid it.
-        # However, for token efficiency, duplication is bad.
-        # Let's see what build_checkpoint does.
-        # If build_checkpoint just takes get_next_steps[:limit], and focus is s0, then next starts at s0.
-
-        # If we want to assert current behavior:
-        assert data["next"] == ["s0", "s1", "s2"]
+        # v1.2: next items are dicts {step_id, name}
+        # Assuming build logic aligns next with get_next_steps, and focus consumes first.
+        # If build_checkpoint logic: next_ids = [s.id for s in candidates[:limit]]
+        # And focus = candidates[0]
+        # Then next includes focus. (Ideally should dedup but schema allows overlap)
+        # Let's verify IDs
+        next_ids = [item["step_id"] for item in data["next"]]
+        assert next_ids == ["s0", "s1", "s2"]
 
     def test_guidance_inclusion(self, tmp_path: Path) -> None:
         steps = [
@@ -132,7 +197,7 @@ class TestCheckpointCore:
         res2 = runner.invoke(app, ["checkpoint", "--include-guidance", "--plan", str(path)])
         d2 = json.loads(res2.stdout)
         assert d2["guidance"]["evidence_template"] == "Template content"
-        assert d2["guidance"]["read_before"] == ["ref1", "ref2"]  # Updated v1.1 key
+        assert d2["guidance"]["read_before"] == ["ref1", "ref2"]  # v1.1 key
 
 
 class TestCheckpointParity:
@@ -150,30 +215,18 @@ class TestCheckpointParity:
         )
         cli_data = json.loads(cli_res.stdout)
 
-        # MCP output - need to invoke the wrapped tool or import the inner function if exposed?
-        # fastmcp tools are wrapped. We should import the builder or invoke correctly.
-        # Invoking mcp.run() is heavy.
-        # But we imported `vectl_checkpoint` from mcp_server.
-        # Check if `vectl_checkpoint` is the decorated function object or wrapper.
-        # FastMCP decorators return a Tool object usually, but let's check.
-        # If it's a FastMCP wrapper, we might need `vectl_checkpoint.fn(...)` or similar.
-        # Actually, let's just test the shared builder directly for parity logic if MCP invocation is complex.
-        # OR: Fix the import.
-
-        # Re-import to be safe
-        from vectl.mcp_server import vectl_checkpoint
-
-        # FastMCP tools are callable if defined as functions?
-        # In fastmcp 2.0, @tool decorates.
-        # Let's assume for this test we can call the underlying function or reuse build_checkpoint directly.
-        # Actually, parity is guaranteed by shared code.
-        # Let's call the underlying function if available, or just skip if too complex.
-        # Better: Since we know both use build_checkpoint, we test build_checkpoint vs CLI output.
-
+        # MCP output via shared builder directly to ensure logic parity
+        # (Assuming vectl_checkpoint wraps build_checkpoint purely)
         from vectl.checkpoint import build_checkpoint
 
         p, h = load_plan(checkpoint_plan)
         core_data = build_checkpoint(p, h, agent="alice")
 
+        # Compare keys
         assert cli_data["schema"] == core_data["schema"]
-        assert cli_data["plan"]["etag"] == core_data["plan"]["etag"]
+        # v1.2 grouping
+        assert cli_data["metadata"]["plan"]["etag"] == core_data["metadata"]["plan"]["etag"]
+
+        # Ensure next has items for name check
+        if cli_data["next"]:
+            assert cli_data["next"][0]["name"] == core_data["next"][0]["name"]

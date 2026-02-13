@@ -719,6 +719,7 @@ def vectl_checkpoint(
     agent: str | None = None,
     next: int = 3,
     include_guidance: bool = False,
+    lite: bool = False,
     pretty: bool = False,
 ) -> dict:
     """Output machine-readable plan checkpoint (JSON).
@@ -727,6 +728,7 @@ def vectl_checkpoint(
         agent: Agent name (affects focus selection).
         next: Max next steps (default 3).
         include_guidance: Include guidance refs/templates (default False).
+        lite: Minimize output (omit metadata, redundant active_steps).
         pretty: Pretty-print JSON (only affects rendering if returned as str, here returns dict).
     """
     from vectl.checkpoint import build_checkpoint
@@ -741,6 +743,7 @@ def vectl_checkpoint(
         agent=agent,
         next_limit=next,
         include_guidance=include_guidance,
+        lite=lite,
     )
 
 

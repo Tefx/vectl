@@ -1739,7 +1739,7 @@ phases:
       tests in `test_cli.py` and `test_mcp.py`. Verified with 636 passing tests.
 - id: checkpoint
   name: Checkpoint (JSON snapshot for compaction/handoff)
-  status: done
+  status: in_progress
   gate: CLI + MCP expose a bounded, deterministic JSON checkpoint (schema v1) for
     plan state transfer; includes agent-aware focus selection; CLI/MCP parity tests
     added; docs updated.
@@ -2014,3 +2014,293 @@ phases:
     claimed_at: '2026-02-12T19:20:27.598335+00:00'
     evidence: 'Bumped version to 0.1.30. Ready for release. (Note: step split to allow
       git/gh commands in next block).'
+  - id: checkpoint.8
+    name: Upgrade checkpoint schema to v1.1 (Structured Guidance + Phase Context)
+    status: done
+    description: "Upgrade checkpoint schema to v1.1 based on user feedback.\n\nChanges:\n\
+      1. Add `phase` object (id, name, context) to provide high-level goal context.\n\
+      2. Add `focus.depends_on` list to signal required inputs/evidence reading.\n\
+      3. Structure `guidance`:\n   - `read_before` (was `refs`)\n   - `policy_banner`\
+      \ (project_guidance, bounded)\n   - `evidence_template` (unchanged)\n\nSource:\
+      \ User feedback \"Feedback on vectl checkpoint Output Schema\"."
+    verification: uv run --group dev pytest -q
+    evidence_template: 'Artifact:
+
+      - PR: <url> (or commit hash)
+
+
+      Verification:
+
+      - Run: uv run --group dev pytest -q tests/test_checkpoint.py -> <outcome>
+
+
+      Spec link:
+
+      - checkpoint schema v1.1 conversation
+
+      '
+    claimed_by: vectl-agent
+    claimed_at: '2026-02-13T03:17:49.937782+00:00'
+    evidence: Updated checkpoint schema to v1.1 in `src/vectl/checkpoint_schema.py`.
+      Added `phase` context object, `focus.depends_on`, and structured `guidance`
+      (read_before, policy_banner). This improves agentic context quality per feedback.
+  - id: checkpoint.9
+    name: Implement checkpoint v1.1 builder logic
+    status: done
+    description: 'Implement v1.1 changes in `build_checkpoint` (src/vectl/checkpoint.py).
+
+
+      Scope:
+
+      - Add `phase` object extraction (id, name, context bounded).
+
+      - Add `focus.depends_on` list.
+
+      - Rename `guidance.refs` to `guidance.read_before`.
+
+      - Add `guidance.policy_banner` (from plan.project_guidance, bounded).
+
+
+      Source: User feedback "Structured Guidance + Phase Context".'
+    verification: uv run --group dev pytest -q tests/test_checkpoint.py
+    evidence_template: 'Artifact:
+
+      - PR: <url> (or commit hash)
+
+
+      Verification:
+
+      - Run: uv run --group dev pytest -q tests/test_checkpoint.py -> <outcome>
+
+
+      Spec link:
+
+      - checkpoint schema v1.1
+
+      '
+    claimed_by: vectl-agent
+    claimed_at: '2026-02-13T03:18:32.994859+00:00'
+    evidence: Implemented checkpoint v1.1 logic in `src/vectl/checkpoint.py`. Added
+      `phase` object context, `focus.depends_on`, and structured `guidance` (read_before,
+      policy_banner). Logic handles bounds and optional fields correctly.
+  - id: checkpoint.10
+    name: Upgrade checkpoint schema to v1.2 (Next Hints + Lite Mode)
+    status: done
+    description: "Upgrade checkpoint schema to v1.2 based on user feedback \"LLM-Native\
+      \ & Token Economy\".\n\nChanges:\n1. **Next Action Hints**: `next` list items\
+      \ change from `str` to `{id: str, name: str}` to enable zero-shot reasoning.\n\
+      2. **Focus Self-Containment**: Add `name` to `focus` object.\n3. **Noise Reduction**:\n\
+      \   - Move `generated_at`, `tool`, `etag` into a `metadata` object.\n   - Introduce\
+      \ `lite` mode (default=False? Or new flag? Let's add `lite=True` support to\
+      \ builder).\n   - In `lite` mode, omit `metadata`.\n4. **Phase Context**: Truncate\
+      \ `phase.context` more aggressively (e.g. 1st line or 120 chars).\n5. **Redundancy**:\
+      \ If `active_steps` contains only the focus step, omit `active_steps` in `lite`\
+      \ mode.\n\nSource: User feedback \"Feedback on vectl checkpoint JSON Output\"\
+      ."
+    verification: uv run --group dev pytest -q tests/test_checkpoint.py
+    evidence_template: 'Artifact:
+
+      - PR: <url> (or commit hash)
+
+
+      Verification:
+
+      - Run: uv run --group dev pytest -q tests/test_checkpoint.py -> <outcome>
+
+
+      Spec link:
+
+      - checkpoint schema v1.2 conversation
+
+      '
+    claimed_by: vectl-agent
+    claimed_at: '2026-02-13T03:27:03.953657+00:00'
+    evidence: Updated `checkpoint_schema.py` to v1.2. Added `next` hints (id+name),
+      `focus.name`, and grouped `metadata`. Defined policies for Lite Mode (omit metadata,
+      omit redundant active_steps). This addresses token economy feedback.
+  - id: checkpoint.11
+    name: Implement checkpoint v1.2 builder logic (Lite Mode + Hints)
+    status: done
+    description: 'Implement v1.2 logic in `build_checkpoint` (core).
+
+
+      Scope:
+
+      - Add `lite: bool` argument to builder (defaults to False? Or True? Let''s check
+      CLI/MCP. Usually explicit flag).
+
+      - Refactor `metadata` generation (etag/tool/generated_at).
+
+      - Implement `next` hinting: fetch step names for next IDs.
+
+      - Implement `active_steps` redundancy check (omit if same as focus).
+
+      - Update `focus` object with `name`.
+
+      - Truncate `phase.context` to 120 chars.
+
+
+      Source: Schema v1.2.'
+    verification: uv run --group dev pytest -q tests/test_checkpoint.py
+    evidence_template: 'Artifact:
+
+      - PR: <url> (or commit hash)
+
+
+      Verification:
+
+      - Run: uv run --group dev pytest -q tests/test_checkpoint.py -> <outcome>
+
+
+      Spec link:
+
+      - checkpoint schema v1.2
+
+      '
+    claimed_by: vectl-agent
+    claimed_at: '2026-02-13T03:27:49.620384+00:00'
+    evidence: Implemented checkpoint v1.2 logic in `src/vectl/checkpoint.py`. Added
+      `lite` mode support (omits metadata, redundant active_steps), structured `next`
+      hints (id+name), `focus.name`, and grouped metadata. Updated tests required.
+  - id: checkpoint.12
+    name: Expose lite mode in CLI/MCP interfaces
+    status: done
+    description: 'Update CLI and MCP interfaces to support `lite` flag/parameter for
+      v1.2 schema.
+
+
+      Source: v1.2 schema requires `lite` option.'
+    verification: uv run --group dev pytest -q tests/test_checkpoint.py
+    evidence_template: 'Artifact:
+
+      - PR: <url> (or commit hash)
+
+
+      Verification:
+
+      - Run: uv run --group dev pytest -q tests/test_checkpoint.py -> <outcome>
+
+
+      Spec link:
+
+      - checkpoint schema v1.2
+
+      '
+    claimed_by: vectl-agent
+    claimed_at: '2026-02-13T03:28:49.231907+00:00'
+    evidence: Updated CLI `vectl checkpoint` and MCP `vectl_checkpoint` to support
+      `--lite` / `lite=True` argument. This exposes the v1.2 Noise Reduction logic.
+      Verified interface consistency.
+  - id: checkpoint.13
+    name: Add tests for checkpoint v1.2 (Lite/Hints/Grouping)
+    status: done
+    description: 'Add tests for v1.2 features.
+
+
+      Scope:
+
+      - Test `metadata` grouping and omission in lite mode.
+
+      - Test `active_steps` omission in lite mode when redundant.
+
+      - Test `next` hints (id+name structure).
+
+      - Test `focus.name` presence.
+
+      - Test `phase.context` truncation.
+
+
+      Source: v1.2 robustness.'
+    verification: uv run --group dev pytest -q tests/test_checkpoint.py
+    evidence_template: 'Artifact:
+
+      - PR: <url> (or commit hash)
+
+
+      Verification:
+
+      - Run: uv run --group dev pytest -q tests/test_checkpoint.py -> <outcome>
+
+
+      Spec link:
+
+      - checkpoint schema v1.2
+
+      '
+    claimed_by: vectl-agent
+    claimed_at: '2026-02-13T03:29:54.460459+00:00'
+    evidence: Added v1.2 tests in `tests/test_checkpoint.py`. Verified `lite` mode
+      grouping/omission, `next` hint structure, and `active_steps` redundancy check.
+      All tests passing.
+  - id: checkpoint.14
+    name: Update docs for checkpoint v1.2 (Hints + Lite)
+    status: done
+    description: 'Update docs (README, Guide, AGENTS.md template) to reflect v1.2
+      improvements.
+
+
+      Scope:
+
+      - Mention `next` hints (name included) enabling zero-shot reasoning.
+
+      - Mention `lite` mode for max token efficiency.
+
+      - Update schema examples.
+
+
+      Source: v1.2 release.'
+    verification: uv run --group dev pytest -q
+    evidence_template: 'Artifact:
+
+      - PR: <url> (or commit hash)
+
+
+      Verification:
+
+      - Run: uv run --group dev pytest -q -> <outcome>
+
+
+      Spec link:
+
+      - checkpoint schema v1.2
+
+      '
+    claimed_by: vectl-agent
+    claimed_at: '2026-02-13T03:32:05.462619+00:00'
+    evidence: Updated README.md to include a section on Context Injection (Compaction
+      & Handoff) using `vectl checkpoint`. Shows lite JSON example. Docs aligned with
+      v1.2 features. Tests passed. Ready for release.
+  - id: checkpoint.15
+    name: Release v0.1.32 (Checkpoint v1.2 Final)
+    status: claimed
+    description: 'Release the v1.2 checkpoint features.
+
+
+      Scope:
+
+      - Version bump (already at 0.1.31, maybe just re-confirm or use next patch if
+      needed? Actually v1.2 schema was released in 0.1.31 commit aa7d7a9. But we added
+      more features in step 11/12/13. We should bump to 0.1.32 to be clean).
+
+      - Create GH release.
+
+
+      Source: Completion of checkpoint phase.'
+    verification: uv run --group dev pytest -q
+    evidence_template: 'Artifact:
+
+      - Release tag: <tag>
+
+
+      Verification:
+
+      - Run: uv run --group dev pytest -q -> <outcome>
+
+
+      Spec link:
+
+      - checkpoint schema v1.2
+
+      '
+    claimed_by: vectl-agent
+    claimed_at: '2026-02-13T03:32:51.739462+00:00'

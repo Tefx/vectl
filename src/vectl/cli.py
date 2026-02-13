@@ -1180,6 +1180,9 @@ def checkpoint(
     include_guidance: bool = typer.Option(
         False, "--include-guidance", help="Include guidance (refs/templates)."
     ),
+    lite: bool = typer.Option(
+        False, "--lite", help="Minimize output (omit metadata, redundant info)."
+    ),
     pretty: bool = typer.Option(False, "--pretty", help="Pretty-print JSON."),
     plan: Path | None = PlanOption,
 ) -> None:
@@ -1199,16 +1202,13 @@ def checkpoint(
         agent=agent,
         next_limit=next_limit,
         include_guidance=include_guidance,
+        lite=lite,
     )
 
     if pretty:
         out.print(json.dumps(data, indent=2))
     else:
-        # Print raw JSON string to stdout (not rich console) to avoid markup interference
-        # But wait, `out` is a Rich Console.
-        # For pure machine output, standard print is safer?
-        # But typer usually captures stdout.
-        # Let's use json.dumps and print it.
+        # Print raw JSON string to stdout
         print(json.dumps(data))
 
 

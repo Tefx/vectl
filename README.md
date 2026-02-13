@@ -205,7 +205,41 @@ When the worker runs `uvx vectl claim`, they receive:
 
 **This creates a "Success Pit"**: The easiest path for the agent is the correct one.
 
-### 6. Visualization
+### 7. Authoring & Guidance
+
+**No Manual YAML Edits**: Use CLI/MCP commands to build the plan safely.
+
+```bash
+# Add a step with an evidence template
+uvx vectl add-step --phase core --name "Auth" --evidence-template "Verif:\n- [ ] Login works"
+
+# Update project-level guidance (rules for all steps)
+uvx vectl edit-plan --project-guidance "Always verify with pytest."
+# OR read from a file (recommended for long rules)
+uvx vectl edit-plan --project-guidance-file docs/rules.md
+```
+
+### 8. Context Injection (Compaction & Handoff)
+
+For agents needing to pass state (e.g. context window compaction or sub-agent handoff), use `checkpoint` to get a machine-readable, token-efficient snapshot.
+
+```bash
+uvx vectl checkpoint --lite
+```
+
+**Output (JSON):**
+```json
+{
+  "schema": "vectl.checkpoint/v1",
+  "focus": { "step_id": "auth.01", "status": "claimed" },
+  "next": [{ "step_id": "auth.02", "name": "Implement Token" }],
+  "blockers": ["auth.01 depends_on core.05"]
+}
+```
+
+This JSON is designed to be injected directly into an LLM's system prompt as the "Ground Truth".
+
+### 9. Visualization
 
 See the DAG structure (output is Mermaid flowchart text, paste into GitHub/Obsidian to render):
 

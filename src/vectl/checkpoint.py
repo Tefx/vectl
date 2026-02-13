@@ -19,8 +19,9 @@ def build_checkpoint(
     agent: str | None = None,
     next_limit: int = 3,
     include_guidance: bool = False,
+    lite: bool = False,
 ) -> dict[str, Any]:
-    """Build a checkpoint dictionary according to schema v1.
+    """Build a checkpoint dictionary according to schema v1.2.
 
     Args:
         plan: The plan object.
@@ -28,9 +29,10 @@ def build_checkpoint(
         agent: Optional agent name to influence focus selection.
         next_limit: Max number of next steps to include.
         include_guidance: Whether to include guidance (refs/template) in output.
+        lite: Minimize output (omit metadata, redundant active_steps).
 
     Returns:
-        A dictionary matching the checkpoint schema v1.
+        A dictionary matching the checkpoint schema v1.2.
     """
     # 1. Select Focus (Deterministic)
     focus_step = _select_focus(plan, agent)
@@ -51,12 +53,15 @@ def build_checkpoint(
 
         if phase_obj:
             ctx = (phase_obj.context or "").strip()
-            if len(ctx) > 300:
-                ctx = ctx[:299] + "…"
+            # Bounded context: v1.2 aggressive truncation
+            # 120 chars max for context summary
+            if len(ctx) > 120:
+                ctx = ctx[:119] + "…"
             phase_data = {"id": phase_obj.id, "name": phase_obj.name, "context": ctx}
 
         focus_data = {
             "step_id": focus_step.id,
+            "name": focus_step.name,  # NEW v1.2
             "status": focus_step.status.value,
             "claimed_by": focus_step.claimed_by,
             "depends_on": focus_step.depends_on,
@@ -81,23 +86,15 @@ def build_checkpoint(
                 "policy_banner": policy,
             }
 
-        # Blockers (deps that are not done?)
-        # Current logic just lists deps.
-        # Ideally blockers should list *why* next steps are blocked, but for focus step
-        # blockers usually means "what I'm waiting on".
-        # But schema v1 had blockers separate from focus.
-        # In v1.1 we added focus.depends_on.
-        # Let's keep blockers for backward compat or general context?
-        # The schema v1.1 still has "blockers".
-        # Let's align with schema:
+        # Blockers
         if focus_step.depends_on:
             blockers_data = [f"{focus_step.id} depends_on {dep}" for dep in focus_step.depends_on][
                 :3
             ]
 
-    # 3. Build Next (Bounded)
+    # 3. Build Next (Bounded + Hints v1.2)
     next_candidates = get_next_steps(plan, agent=agent)
-    next_ids = [s.id for s in next_candidates[:next_limit]]
+    next_data = [{"step_id": s.id, "name": s.name} for s in next_candidates[:next_limit]]
 
     # 4. Build Active Steps (Concurrency Visibility)
     active_steps = []
@@ -111,23 +108,41 @@ def build_checkpoint(
             }
         )
 
-    return {
+    # v1.2 Logic: Omit active_steps if redundant (contains only focus)
+    show_active = True
+    if lite:
+        if len(active_steps) == 1 and focus_step and active_steps[0]["step_id"] == focus_step.id:
+            show_active = False
+        if not active_steps:
+            show_active = False
+
+    result = {
         "schema": "vectl.checkpoint/v1",
-        "generated_at": _iso_now(),
-        "tool": {"name": "vectl", "version": __version__},
-        "plan": {
-            "project": plan.project,
-            "etag": f"sha256:{file_hash}",
-        },
+        # metadata inserted below if not lite
         "phase": phase_data,
         "focus": focus_data,
         "guidance": guidance_data,
         "blockers": blockers_data if blockers_data else [],
-        "next": next_ids,
-        "active_steps": active_steps,
-        "active_steps_total": len(all_claimed),
-        "active_steps_truncated": len(all_claimed) > 3,
+        "next": next_data,
+        # active_steps inserted below if show_active
     }
+
+    if not lite:
+        result["metadata"] = {
+            "generated_at": _iso_now(),
+            "tool": {"name": "vectl", "version": __version__},
+            "plan": {
+                "project": plan.project,
+                "etag": f"sha256:{file_hash}",
+            },
+        }
+
+    if show_active:
+        result["active_steps"] = active_steps
+        result["active_steps_total"] = len(all_claimed)
+        result["active_steps_truncated"] = len(all_claimed) > 3
+
+    return result
 
 
 def _select_focus(plan: Plan, agent: str | None) -> Step | None:

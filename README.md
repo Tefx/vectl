@@ -1,8 +1,8 @@
-# vectl — DAG-enforced todo list for AI agents
+# vectl — execution control plane for AI agents
 
 [中文文档](README_zh.md) | [**Read the Introduction**](https://tefx.one/posts/vectl-intro/)
 
-TODO.md can't say no. vectl can.
+**Structure agents. Save tokens.**
 
 [![PyPI](https://img.shields.io/pypi/v/vectl)](https://pypi.org/project/vectl/)
 
@@ -10,27 +10,45 @@ TODO.md can't say no. vectl can.
 uvx vectl --help
 ```
 
-## Why vectl?
+## Your Markdown Plan Is Wasting Tokens
 
-| Passive Markdown Plans | vectl |
+A 50-step markdown plan, 40 steps done:
+
+- The agent still **re-reads all 50 lines**. 40 completed steps are pure noise — eating context window, burning attention, costing you money.
+- `vectl next` **returns only 3 actionable steps**. Completed steps vanish. Blocked steps are invisible.
+
+The more steps you have, the worse it gets. 100 steps, 90 done? Markdown forces the agent to read 100 lines to find 10 useful ones. vectl gives it just those 10.
+
+And Markdown is linear. Three agents online at once? They queue up — because nothing tells them which steps can run in parallel.
+vectl's DAG makes parallelism possible: dependencies are explicit, `next` serves up **all** unblocked steps, three agents each claim one, zero conflicts.
+
+Token waste and serialization are just symptoms. The root defect is that **Markdown doesn't express dependencies**:
+
+| Markdown Plans | vectl |
 | :--- | :--- |
-| ❌ **Token explosion**: Agents re-read the entire plan every call — finished steps included | ✅ `next` returns only actionable steps |
-| ❌ **State drift**: Multiple agents edit the same file — silent overwrites, stale state | ✅ CAS-safe atomic writes — conflicts detected, never silent |
-| ❌ **No ordering**: Agents pick what to work on — dependencies skipped, work duplicated | ✅ DAG-enforced execution — blocked steps are invisible |
-| ❌ **No verification**: "Done" = a checkbox ticked, no proof | ✅ Evidence required on completion |
-| ❌ **Context pollution**: Completed steps stay in context forever, diluting attention | ✅ Agents see only what matters now |
+| ❌ **Full re-read every time**: agent reads all steps regardless of completion | ✅ Returns only actionable steps — done steps vanish |
+| ❌ **Implicit dependencies**: "Deploy DB" before "Config App" — agent can only guess if they're related | ✅ `depends_on: [db.deploy]` — explicit, no guessing |
+| ❌ **No safe parallelism**: without dependency info, multiple agents queue up or gamble | ✅ DAG makes parallelism computable — `next` returns all conflict-free steps |
+| ❌ **Manual dispatch**: "DB is done, go work on App now" | ✅ `next` automatically surfaces all unblocked steps |
+| ❌ **Silent overwrites**: two agents write the same file simultaneously | ✅ CAS optimistic locking — conflicts error out, never silently lost |
+| ❌ **Self-declared completion**: agent says "Done" and it's Done | ✅ Evidence required: what command, what output, where's the PR |
+| ❌ **Context amnesia**: new session = start from scratch | ✅ `checkpoint` generates a state snapshot — inject into new session, instant recovery |
 
-## The Agent Control Plane
+> TODO.md can't say no. vectl can.
 
-vectl turns a passive "todo list" into an **active control plane** for autonomous agents.
+## Control Plane, Not a Framework
 
-| Feature | Problem Solved | Mechanism |
+Agent frameworks manage how agents think. vectl manages **what agents see, when they see it, and what they must prove**.
+
+| Capability | Problem Solved | Mechanism |
 | :--- | :--- | :--- |
-| **Active Gating** | Agents skip dependencies or "guess" order. | **DAG Enforcement**: Blocked steps are invisible. Agents literally *cannot* claim out-of-order work. |
-| **Context Efficiency** | Agents re-read 500 lines of "Done" items. | **View Filtering**: `vectl next` returns *only* actionable steps. Zero token waste. |
-| **Anti-Hallucination** | Agents declare "Done" without checking. | **Evidence Protocol**: Completion requires proof (logs, screenshots) via `evidence_template`. |
-| **State Consistency** | Parallel agents overwrite `TODO.md`. | **CAS Atomic Writes**: File-based locking ensures no race conditions. |
-
+| **DAG Enforcement** | Agents skip dependencies, guess ordering | Blocked steps are invisible — agents literally *cannot* claim them |
+| **Safe Parallelism** | Multiple agents step on each other | `claim` locking + CAS atomic writes |
+| **Auto-Dispatch** | Someone must watch and assign tasks | `next` computes all unblocked steps and sorts them; rejected steps float to top |
+| **Token Budget** | Agent re-reads hundreds of completed lines | Hard limits across the board: next ≤3, context ≤120 chars, evidence ≤900 chars |
+| **Anti-Hallucination** | Agent says "Fixed" and moves on | `evidence_template` forces fill-in-the-blank proof: command, output, PR link |
+| **Context Compaction** | Long conversations cause agent amnesia | `checkpoint` generates a deterministic JSON snapshot — inject into new session for instant recovery |
+| **Agent Affinity** | Different agents are good at different tasks | Steps can suggest an agent; `next` sorts by affinity |
 
 ## Quick Start
 
@@ -40,7 +58,7 @@ vectl turns a passive "todo list" into an **active control plane** for autonomou
 uvx vectl init --project my-project
 ```
 
-This creates `plan.yaml` and adds a vectl section to your `AGENTS.md` (creates one if needed).
+Creates `plan.yaml` and auto-configures agent instructions (writes `CLAUDE.md` when `.claude/` directory is detected, otherwise `AGENTS.md`).
 
 ### 2. Connect Your Agent
 
@@ -84,44 +102,8 @@ See [OpenCode MCP docs](https://opencode.ai/docs/mcp-servers/) for details.
 
 No setup needed — agents call `uvx vectl ...` directly.
 
-> **Note**: `uvx vectl init` (Step 1) already creates or updates your `AGENTS.md`.
-> If you need to update it later (e.g. to enable new guidance features), run:
-> ```bash
-> uvx vectl agents-md
-> ```
-
-<details>
-<summary>📋 AGENTS.md template (reference)</summary>
-
-```md
-<!-- VECTL:AGENTS:BEGIN -->
-## Plan Tracking (vectl)
-
-vectl tracks this repo's implementation plan as a structured `plan.yaml`:
-what to do next, who claimed it, and what counts as done (with verification evidence).
-
-Full guide: `uvx vectl guide`
-Quick view: `uvx vectl status`
-
-### Claim-time Guidance
-- `uvx vectl claim` may emit a bounded Guidance block delimited by:
-  - `--- VECTL:GUIDANCE:BEGIN ---`
-  - `--- VECTL:GUIDANCE:END ---`
-- For automation/CI: use `uvx vectl claim --no-guidance` to keep stdout clean.
-
-### CLI vs MCP
-- Source of truth: `plan.yaml` (channel-agnostic).
-- If MCP is available (IDE / Claude host), prefer MCP tools for plan operations.
-- Otherwise use CLI (`uvx vectl ...`).
-- Evidence requirements are identical across CLI and MCP.
-
-### Rules
-- One claimed step at a time.
-- Evidence is mandatory when completing (commands run + outputs + gaps).
-- Spec uncertainty: leave `# SPEC QUESTION: ...` in code, do not guess.
-<!-- VECTL:AGENTS:END -->
-```
-</details>
+> `uvx vectl init` already creates/updates the agent instructions file.
+> To update later: `uvx vectl agents-md` (use `--target claude` if needed).
 </details>
 
 ### 3. Migrate (Optional)
@@ -175,12 +157,13 @@ Next available:
 → vectl show <id>
 ```
 
-### 5. Intelligent Guidance (The "Why")
+### 5. The "Success Pit"
 
-vectl allows Architects to inject **guidance** directly into the Worker's context at the moment of action.
+Architects embed guidance at plan design time. Agents receive it automatically when they claim a step.
 
-#### A. Evidence Templates (`--evidence-template`)
-Prevent "lazy completion" (e.g., "I fixed it"). Force the worker to prove success.
+#### Evidence Templates (Anti-Hallucination)
+
+Don't let agents say "I fixed it." Force them to prove it:
 
 ```bash
 uvx vectl add-step ... --evidence-template "
@@ -191,43 +174,24 @@ uvx vectl add-step ... --evidence-template "
 "
 ```
 
-#### B. Context Pinning (`--refs`)
-Stop the "needle in a haystack" search. Tell the worker exactly where to look.
+#### Context Pinning (Save Tokens)
+
+Stop the "needle in a haystack" search. Tell the agent exactly where to look:
 
 ```bash
 uvx vectl add-step ... --refs "src/auth.py,tests/test_auth.py"
 ```
 
-When the worker runs `uvx vectl claim`, they receive:
-1. The Task (Step Description)
-2. The Context (Pinned Refs)
-3. The Standard (Evidence Template)
+When the agent claims, it receives: **Task** (description) + **Context** (pinned refs) + **Standard** (evidence template).
 
-**This creates a "Success Pit"**: The easiest path for the agent is the correct one.
+### 6. Context Compaction
 
-### 7. Authoring & Guidance
-
-**No Manual YAML Edits**: Use CLI/MCP commands to build the plan safely.
-
-```bash
-# Add a step with an evidence template
-uvx vectl add-step --phase core --name "Auth" --evidence-template "Verif:\n- [ ] Login works"
-
-# Update project-level guidance (rules for all steps)
-uvx vectl edit-plan --project-guidance "Always verify with pytest."
-# OR read from a file (recommended for long rules)
-uvx vectl edit-plan --project-guidance-file docs/rules.md
-```
-
-### 8. Context Injection (Compaction & Handoff)
-
-For agents needing to pass state (e.g. context window compaction or sub-agent handoff), use `checkpoint` to get a machine-readable, token-efficient snapshot.
+Conversation too long? Agent handoff? `checkpoint` generates a minimal state snapshot:
 
 ```bash
 uvx vectl checkpoint --lite
 ```
 
-**Output (JSON):**
 ```json
 {
   "schema": "vectl.checkpoint/v1",
@@ -236,18 +200,14 @@ uvx vectl checkpoint --lite
 }
 ```
 
-This JSON is designed to be injected directly into an LLM's system prompt as the "Ground Truth".
+Inject this JSON into a new session's system prompt. The agent resumes instantly. Zero loss.
 
-### 9. Visualization
-
-See the DAG structure (output is Mermaid flowchart text, paste into GitHub/Obsidian to render):
+### 7. Visualization
 
 ```bash
 uvx vectl dag              # High-level phase DAG (default)
 uvx vectl dag --phase core # Detailed step DAG within a phase
 ```
-
-Output example (renders natively in GitHub):
 
 ```mermaid
 flowchart TD
@@ -284,8 +244,12 @@ phases:
         claimed_by: engineer-1
 ```
 
+A YAML file. In your git repo.
+
+No database. No SaaS. `git blame` it. Review it in PRs. `git diff` it.
+
 Full schema, ID rules, and ordering semantics: [docs/DESIGN.md](docs/DESIGN.md).
 
 ## Technical Details
 
-Architecture, CAS safety, and test coverage: [docs/DESIGN.md](docs/DESIGN.md).
+Architecture, CAS safety, and test coverage (658 tests, Hypothesis state machine verification): [docs/DESIGN.md](docs/DESIGN.md).

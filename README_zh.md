@@ -1,8 +1,8 @@
-# vectl — 为 AI Agent 设计的 DAG 强制任务列表
+# vectl — AI Agent 的执行控制面
 
-[English](README.md) | [**Read the Introduction (tefx.one)**](https://tefx.one/posts/vectl-intro/)
+[English](README.md) | [**介绍文章**](https://tefx.one/posts/vectl-intro/)
 
-TODO.md 没法说"不"，vectl 可以。
+**约束 agent 行为，压缩 agent 开销。**
 
 [![PyPI](https://img.shields.io/pypi/v/vectl)](https://pypi.org/project/vectl/)
 
@@ -10,23 +10,45 @@ TODO.md 没法说"不"，vectl 可以。
 uvx vectl --help
 ```
 
-## 为什么需要 vectl？
+## 你的 Markdown 计划正在浪费 Token
 
-| 被动式 Markdown 计划 | vectl |
+一个 50 步的 markdown 计划，完成 40 步后：
+
+- Agent 仍然**逐行重读全部 50 条**。40 条已完成的步骤是纯噪音——占 context window、消耗 attention、花你的钱。
+- `vectl next` **只返回 3 条可执行的步骤**。完成的消失，被阻塞的不可见。
+
+步骤越多，差距越大。100 步做完 90 步？Markdown 强迫 agent 读 100 行来找 10 行有用的。vectl 只给它那 10 行。
+
+而且 Markdown 是线性的。三个 agent 同时在线？它们只能排队——因为没有任何信息告诉它们哪些步骤可以并行。
+vectl 的 DAG 让并行成为可能：依赖关系是显式的，`next` 自动吐出**所有**已解锁的步骤，三个 agent 各领一个，互不冲突。
+
+Token 浪费和无法并行只是表面症状。Markdown 的根本缺陷是**它不表达依赖关系**：
+
+| Markdown 计划 | vectl |
 | :--- | :--- |
-| ❌ **Token 爆炸**：Agent 每次调用都重读整个计划（包括已完成步骤） | ✅ `next` 只返回当前可执行的步骤 |
-| ❌ **状态漂移**：多个 Agent 编辑同一文件 → 相互覆盖，状态过时 | ✅ CAS 安全原子写入 — 冲突必报错，绝不静默覆盖 |
-| ❌ **无序执行**：Agent 随意挑选任务 → 跳过依赖，重复工作 | ✅ DAG 强制顺序 — 被阻塞的步骤对 Agent 不可见 |
-| ❌ **无法验证**："完成" = 打个勾，没有任何证据 | ✅ 完成时强制要求提供证据 (Evidence) |
-| ❌ **上下文污染**：已完成步骤永久驻留，稀释注意力 | ✅ Agent 只关注当下 |
+| ❌ **每次全量读取**：不管做完多少，agent 都重读所有步骤 | ✅ 只返回可执行的步骤，完成即消失 |
+| ❌ **隐式依赖**："部署 DB"写在"配置 App"前面，agent 只能猜它们有没有关系 | ✅ `depends_on: [db.deploy]` —— 显式声明，不猜 |
+| ❌ **无法并行**：没有依赖信息，多 agent 只能排队或赌运气 | ✅ DAG 让并行可计算——`next` 返回所有无依赖冲突的步骤，多 agent 各领一个 |
+| ❌ **人工调度**："DB 好了，你去搞 App 吧" | ✅ `next` 自动吐出所有已解锁的步骤 |
+| ❌ **静默覆盖**：两个 agent 同时写同一个文件 | ✅ CAS 乐观锁 —— 冲突报错，不会静默丢失 |
+| ❌ **自我宣布完成**：agent 说 "Done" 就是 Done | ✅ 必须提交证据：跑了什么命令、输出是什么、PR 在哪 |
+| ❌ **对话太长就失忆**：换个会话一切从零开始 | ✅ `checkpoint` 一键生成状态快照，注入新会话即可恢复 |
 
-## 核心理念
+> TODO.md 没法说"不"。vectl 可以。
 
-1. **主动门控 (Active Gating)**：强制执行 DAG 依赖，禁止跳过阶段或步骤。
-2. **上下文效率 (Context Efficiency)**：Agent 只看到下一步要做什么，大幅节省 Token。
-3. **原子状态 (Atomic State)**：基于 CAS (Compare-And-Swap) 的文件操作，杜绝并发冲突。
-4. **行动暗示 (Affordance)**：每个命令的输出都包含"下一步做什么"的提示。
-5. **极简调用**: 最常用的工作流 (`认领 → 干活 → 完成`) 只需要最少的工具调用。
+## 控制面，不是框架
+
+Agent 框架管 agent 怎么想。vectl 管 **agent 看到什么、什么时候看到、必须证明什么**。
+
+| 能力 | 解决什么 | 怎么做 |
+| :--- | :--- | :--- |
+| **DAG 强制执行** | Agent 跳依赖、猜顺序 | 被阻塞的步骤对 agent 不可见，物理上无法领取 |
+| **安全并行** | 多 agent 互踩 | `claim` 锁定 + CAS 原子写入 |
+| **自动调度** | 需要人盯着分配任务 | `next` 自动计算已解锁步骤并排序；rejected 自动浮顶 |
+| **Token 预算** | Agent 重读大量已完成内容 | 全链路上限：next ≤3 条、context ≤120 字符、evidence ≤900 字符 |
+| **反幻觉** | Agent 说 "Fixed" 就完事了 | `evidence_template` 填空式证明：命令、输出、PR 链接 |
+| **上下文压缩** | 对话超长导致 agent 失忆 | `checkpoint` 生成确定性 JSON 快照，注入新会话即刻恢复 |
+| **Agent 亲和** | 不同 agent 擅长不同任务 | 步骤可标记建议 agent，`next` 按亲和度排序 |
 
 ## 快速开始
 
@@ -36,7 +58,7 @@ uvx vectl --help
 uvx vectl init --project my-project
 ```
 
-这会创建 `plan.yaml` 并自动配置 `AGENTS.md`（如果需要）。
+创建 `plan.yaml` 并自动配置 agent 指令文件（检测到 `.claude/` 目录时写 `CLAUDE.md`，否则写 `AGENTS.md`）。
 
 ### 2. 连接 Agent
 
@@ -59,8 +81,6 @@ uvx vectl init --project my-project
 <details>
 <summary>⚡ OpenCode</summary>
 
-添加到 `opencode.jsonc`：
-
 ```jsonc
 {
   "mcp": {
@@ -72,75 +92,55 @@ uvx vectl init --project my-project
   }
 }
 ```
-详见 [OpenCode MCP 文档](https://opencode.ai/docs/mcp-servers/)。
+参考 [OpenCode MCP 文档](https://opencode.ai/docs/mcp-servers/)。
 </details>
 
 <details>
-<summary>⌨️ 仅使用 CLI (无 MCP)</summary>
+<summary>⌨️ 纯 CLI（不用 MCP）</summary>
 
-无需配置 — Agent 直接调用 `uvx vectl ...`。
+不需要额外配置，agent 直接调用 `uvx vectl ...`。
 
-> **注**：`uvx vectl init` (步骤 1) 已经自动创建或更新了 `AGENTS.md`。
-> 只有跳过 `init` 时才需要手动添加以下内容。
-
-<details>
-<summary>📋 AGENTS.md 模板 (点击展开)</summary>
-
-```md
-## Plan Tracking (vectl)
-
-vectl tracks this repo's implementation plan as a structured `plan.yaml`:
-what to do next, who claimed it, and what counts as done (with verification evidence).
-
-Full guide: `uvx vectl guide`
-Quick view: `uvx vectl status`
-
-### CLI vs MCP
-- Source of truth: `plan.yaml` (channel-agnostic).
-- If MCP is available (IDE / Claude host), prefer MCP tools for plan operations.
-- Otherwise use CLI (`uvx vectl ...`).
-- Evidence requirements are identical across CLI and MCP.
-
-### Rules
-- One claimed step at a time.
-- Evidence is mandatory when completing (commands run + outputs + gaps).
-- Spec uncertainty: leave `# SPEC QUESTION: ...` in code, do not guess.
-```
-</details>
+> `uvx vectl init` 已自动创建/更新 agent 指令文件。
+> 后续更新：`uvx vectl agents-md`（可指定 `--target claude`）。
 </details>
 
-### 3. 迁移（可选）
+### 3. 迁移已有计划（可选）
 
-如果你已经有 Markdown、Issue 或电子表格形式的计划，告诉你的 Agent：
+如果项目已有 markdown / issue / spreadsheet 计划：
 
 ```
-阅读迁移指南（通过 `uvx vectl guide --on migration` 或 MCP 工具 `vectl_guide`）。
-将现有的计划迁移到 plan.yaml。
-如果可用，优先使用 MCP 工具 (`vectl_mutate`, `vectl_guide`)，否则使用 CLI。
+阅读迁移指南（`uvx vectl guide --on migration` 或 MCP 的 `vectl_guide` 工具）。
+把现有计划迁移到 plan.yaml。
+优先使用 MCP 工具（`vectl_mutate`、`vectl_guide`）。
 ```
 
 ### 4. 工作流
 
 ```bash
-# 定位: 我们在哪？
-uvx vectl status                    # 查看整体进度
+# 定位：做到哪了？
+uvx vectl status                    # 全局进度
 
-# 挑选: 能做什么？
-uvx vectl next                      # 查看可认领步骤
+# 选择：哪些可以做？
+uvx vectl next                      # 列出可领取的步骤（依赖已就绪的）
 
-# 认领: 我做这个。
-uvx vectl claim <step-id> --agent me  # 锁定步骤，获取完整 spec
+# 领取：我来做这个
+uvx vectl claim <step-id> --agent me  # 锁定步骤，获取指导
 
-# 干活: (写代码，跑测试...)
+# 指导（领取时自动注入）：
+# --- VECTL:GUIDANCE:BEGIN ---
+# 相关文件（refs）、evidence template、项目规则
+# --- VECTL:GUIDANCE:END ---
 
-# 完成: 搞定了。
-uvx vectl complete <step-id> --evidence "commit abc123, pytest passed"
+# 执行：写代码、跑测试
 
-# 重复: 下一步解锁了什么？
-uvx vectl next                      # 查看新解锁的步骤
+# 完成：证明它能用
+uvx vectl complete <step-id> --evidence "..."
+
+# 循环：看看解锁了什么
+uvx vectl next
 ```
 
-每个命令的输出都会提示下一步操作：
+每个命令输出结尾都有下一步提示：
 
 ```
 $ uvx vectl complete auth.user-model -e "commit abc: model + tests"
@@ -155,16 +155,57 @@ Next available:
 → vectl show <id>
 ```
 
-### 5. 可视化
+### 5. 让 Agent 掉进"成功陷阱"
 
-查看 DAG 结构（输出 Mermaid 流程图文本，粘贴到 GitHub/Obsidian 即可渲染）：
+Architect 设计计划时预埋指导，Agent 领取任务时自动注入上下文。
+
+#### Evidence Template（反幻觉）
+
+不让 agent 说"我修好了"。强制填空：
 
 ```bash
-uvx vectl dag              # 阶段级 DAG（默认）
-uvx vectl dag --phase core # 阶段内步骤详细 DAG
+uvx vectl add-step ... --evidence-template "
+## 验证
+- 命令: `pytest tests/auth/`
+- 输出: [粘贴 5 行]
+- [ ] 确认 0 failures
+"
 ```
 
-输出示例（GitHub 原生渲染）：
+#### Context Pinning（省 token）
+
+不让 agent 满项目找文件。告诉它看哪里：
+
+```bash
+uvx vectl add-step ... --refs "src/auth.py,tests/test_auth.py"
+```
+
+领取时 agent 收到：**任务**（描述）+ **上下文**（该看哪些文件）+ **标准**（什么算完成）。
+
+### 6. 上下文压缩
+
+对话太长？Agent 换班？`checkpoint` 生成最小化状态快照：
+
+```bash
+uvx vectl checkpoint --lite
+```
+
+```json
+{
+  "schema": "vectl.checkpoint/v1",
+  "focus": { "step_id": "auth.01", "name": "实现登录", "status": "claimed" },
+  "next": [{ "step_id": "auth.02", "name": "实现 Token" }]
+}
+```
+
+注入新会话的 system prompt，agent 立即恢复。无损。
+
+### 7. 可视化
+
+```bash
+uvx vectl dag              # Phase 级 DAG
+uvx vectl dag --phase core  # Step 级 DAG
+```
 
 ```mermaid
 flowchart TD
@@ -175,17 +216,17 @@ flowchart TD
   cli --> mcp
 ```
 
-完整 34 条命令（计划变更、Review、管理）：`uvx vectl --help` 或 `uvx vectl guide`。
+全部 34 个命令：`uvx vectl --help` 或 `uvx vectl guide`。
 
-### 人类监管
+### 人工监督
 
 ```bash
 uvx vectl render                    # 导出为 Markdown
-uvx vectl diff                      # 查看自上次提交以来的变更
-uvx vectl log --last 5              # 查看最近的计划变更记录
+uvx vectl diff                      # 自上次 commit 以来的变更
+uvx vectl log --last 5              # 最近 5 条计划变更
 ```
 
-## 数据模型 (`plan.yaml`)
+## 数据模型（`plan.yaml`）
 
 ```yaml
 version: 1
@@ -201,8 +242,12 @@ phases:
         claimed_by: engineer-1
 ```
 
-完整 schema、ID 规则和排序语义：[docs/DESIGN.md](docs/DESIGN.md).
+一个 YAML 文件。在你的 git repo 里。
+
+不需要数据库。不需要 SaaS。`git blame` 能查、PR 能 review、`git diff` 能追踪。
+
+完整 schema 和排序语义：[docs/DESIGN.md](docs/DESIGN.md)。
 
 ## 技术细节
 
-架构、CAS 安全机制和测试覆盖率：[docs/DESIGN.md](docs/DESIGN.md).
+架构、CAS 安全、测试覆盖（658 tests, Hypothesis 状态机验证）：[docs/DESIGN.md](docs/DESIGN.md)。

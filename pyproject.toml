@@ -1,7 +1,7 @@
 [project]
 name = "vectl"
 version = "0.1.35"
-description = "Plans with teeth — TODO.md can't say no. vectl can."
+description = "Execution control plane for AI agents — structure agents, save tokens."
 readme = "README.md"
 authors = [{name = "Tefx", email = "zhaomeng.zhu@gmail.com"}]
 license = { file = "LICENSE" }

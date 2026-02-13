@@ -2382,7 +2382,7 @@ phases:
       behavior.
 - id: claude-md
   name: CLAUDE.md Auto-Detection for agents-md
-  status: in_progress
+  status: done
   steps:
   - id: claude-md.detection
     name: Implement target detection logic
@@ -2478,7 +2478,7 @@ phases:
       \ +4 this step)"
   - id: claude-md.release
     name: Bump version and release
-    status: claimed
+    status: done
     description: Bump to 0.1.35 in pyproject.toml. Commit, tag, push, create GitHub
       release.
     verification: gh release view v0.1.35 succeeds.
@@ -2487,3 +2487,17 @@ phases:
     - claude-md.guide
     claimed_by: antigravity
     claimed_at: '2026-02-13T06:05:02.603346+00:00'
+    evidence: 'Artifact:
+
+      - Commit: fb4f36a
+
+      - Tag: v0.1.35
+
+      - Release: https://github.com/Tefx/vectl/releases/tag/v0.1.35
+
+
+      Verification:
+
+      - git push → Main, v0.1.35 tag pushed
+
+      - gh release create → https://github.com/Tefx/vectl/releases/tag/v0.1.35'

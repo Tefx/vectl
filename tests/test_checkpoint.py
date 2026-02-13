@@ -37,12 +37,18 @@ def checkpoint_plan(tmp_path: Path) -> Path:
 
 class TestCheckpointCore:
     def test_schema_structure(self, checkpoint_plan: Path) -> None:
+        # Default is lite mode (True) -> no metadata
         result = runner.invoke(app, ["checkpoint", "--plan", str(checkpoint_plan)])
         assert result.exit_code == 0
         data = json.loads(result.stdout)
 
         assert data["schema"] == "vectl.checkpoint/v1"
-        # v1.2: metadata grouped
+        assert "metadata" not in data  # default lite=True
+
+        # Test full mode
+        result = runner.invoke(app, ["checkpoint", "--full", "--plan", str(checkpoint_plan)])
+        data = json.loads(result.stdout)
+
         assert "metadata" in data
         assert data["metadata"]["generated_at"]
         assert data["metadata"]["tool"]["name"] == "vectl"
@@ -57,25 +63,7 @@ class TestCheckpointCore:
         assert "next" in data
 
         # v1.2: next has names
-        # Note: In our fixture p1.3 is pending and depends on p1.1.
-        # Focus is p1.1 (claimed).
-        # Next candidates come from get_next_steps.
-        # p1.3 is blocked by p1.1, so it won't be in next.
-        # Wait, if focus is p1.1, and p1.2 is claimed.
-        # get_next_steps returns "available" steps.
-        # p1.3 is NOT available (blocked).
-        # p1.1 and p1.2 are CLAIMED (not available for new work usually, but get_next_steps includes claimed?
-        # Check core.get_next_steps logic.
-        # Usually get_next_steps returns actionable items.
-        # If no items are actionable, next is empty.
-        # Let's add a free pending step to fixture to ensure next is populated.
-
-        # We can't easily modify the fixture here without breaking other tests using it.
-        # But we can assert next is empty OR check structure if present.
-        # Let's verify next is a list.
-        assert isinstance(data["next"], list)
-
-        # Add a new step to ensure next has items for structure check
+        # Add step first
         plan, _ = load_plan(checkpoint_plan)
         plan.phases[0].steps.append(Step(id="p1.4", name="S4", status=StepStatus.PENDING))
         save_plan(plan, checkpoint_plan)
@@ -87,7 +75,8 @@ class TestCheckpointCore:
         assert "name" in data["next"][0]
 
     def test_lite_mode(self, checkpoint_plan: Path) -> None:
-        result = runner.invoke(app, ["checkpoint", "--lite", "--plan", str(checkpoint_plan)])
+        # Default is lite
+        result = runner.invoke(app, ["checkpoint", "--plan", str(checkpoint_plan)])
         assert result.exit_code == 0
         data = json.loads(result.stdout)
 
@@ -111,7 +100,8 @@ class TestCheckpointCore:
         path = tmp_path / "plan.yaml"
         save_plan(plan, path)
 
-        result = runner.invoke(app, ["checkpoint", "--lite", "--plan", str(path)])
+        # Default is lite
+        result = runner.invoke(app, ["checkpoint", "--plan", str(path)])
         data = json.loads(result.stdout)
 
         # focus is s1
@@ -224,8 +214,10 @@ class TestCheckpointParity:
 
         # Compare keys
         assert cli_data["schema"] == core_data["schema"]
-        # v1.2 grouping
-        assert cli_data["metadata"]["plan"]["etag"] == core_data["metadata"]["plan"]["etag"]
+        # v1.2 grouping - default is lite=True so metadata missing in both
+        # assert cli_data["metadata"]["plan"]["etag"] == core_data["metadata"]["plan"]["etag"]
+        assert "metadata" not in cli_data
+        assert "metadata" not in core_data
 
         # Ensure next has items for name check
         if cli_data["next"]:

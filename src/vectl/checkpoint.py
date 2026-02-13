@@ -19,7 +19,7 @@ def build_checkpoint(
     agent: str | None = None,
     next_limit: int = 3,
     include_guidance: bool = False,
-    lite: bool = False,
+    lite: bool = True,
 ) -> dict[str, Any]:
     """Build a checkpoint dictionary according to schema v1.2.
 
@@ -29,7 +29,7 @@ def build_checkpoint(
         agent: Optional agent name to influence focus selection.
         next_limit: Max number of next steps to include.
         include_guidance: Whether to include guidance (refs/template) in output.
-        lite: Minimize output (omit metadata, redundant active_steps).
+        lite: Minimize output (omit metadata, redundant active_steps). Default True.
 
     Returns:
         A dictionary matching the checkpoint schema v1.2.

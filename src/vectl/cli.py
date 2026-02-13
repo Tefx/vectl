@@ -1181,7 +1181,7 @@ def checkpoint(
         False, "--include-guidance", help="Include guidance (refs/templates)."
     ),
     lite: bool = typer.Option(
-        False, "--lite", help="Minimize output (omit metadata, redundant info)."
+        True, "--lite/--full", help="Minimize output (omit metadata, redundant info)."
     ),
     pretty: bool = typer.Option(False, "--pretty", help="Pretty-print JSON."),
     plan: Path | None = PlanOption,

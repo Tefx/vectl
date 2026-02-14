@@ -1048,6 +1048,59 @@ class TestEditPhase:
         plan = edit_phase(plan, "p1", remove_deps=["p0"])
         assert "p0" not in plan.find_phase("p1").depends_on
 
+    def test_depends_on_override(self):
+        plan = Plan(
+            project="test",
+            phases=[
+                Phase(id="p0", name="Phase 0", status=PhaseStatus.DONE),
+                Phase(id="p1", name="Phase 1", depends_on=["p0"]),
+                Phase(id="p2", name="Phase 2"),
+            ],
+        )
+        plan = edit_phase(plan, "p1", depends_on=["p0", "p2"])
+        assert plan.find_phase("p1").depends_on == ["p0", "p2"]
+
+    def test_depends_on_override_clears(self):
+        plan = Plan(
+            project="test",
+            phases=[
+                Phase(id="p0", name="Phase 0", status=PhaseStatus.DONE),
+                Phase(id="p1", name="Phase 1", depends_on=["p0"]),
+            ],
+        )
+        plan = edit_phase(plan, "p1", depends_on=[])
+        assert plan.find_phase("p1").depends_on == []
+
+    def test_depends_on_override_invalid(self):
+        plan = Plan(
+            project="test",
+            phases=[
+                Phase(id="p0", name="Phase 0", status=PhaseStatus.DONE),
+                Phase(id="p1", name="Phase 1"),
+            ],
+        )
+        with pytest.raises(PlanError, match="not found"):
+            edit_phase(plan, "p1", depends_on=["nonexistent"])
+
+    def test_depends_on_override_self(self):
+        plan = _plan_with_phase()
+        with pytest.raises(PlanError, match="cannot depend on itself"):
+            edit_phase(plan, "p1", depends_on=["p1"])
+
+    def test_depends_on_overrides_add_remove(self):
+        """When depends_on is provided, add_deps/remove_deps still apply after."""
+        plan = Plan(
+            project="test",
+            phases=[
+                Phase(id="p0", name="Phase 0", status=PhaseStatus.DONE),
+                Phase(id="p1", name="Phase 1", depends_on=["p0"]),
+                Phase(id="p2", name="Phase 2"),
+            ],
+        )
+        # depends_on replaces, then add_deps appends
+        plan = edit_phase(plan, "p1", depends_on=["p0"], add_deps=["p2"])
+        assert plan.find_phase("p1").depends_on == ["p0", "p2"]
+
     def test_phase_not_found(self):
         plan = _plan_with_phase()
         with pytest.raises(PlanError, match="not found"):

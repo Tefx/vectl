@@ -489,6 +489,34 @@ class TestVectlMutate:
         result = vectl_mutate(action="edit-phase", name="Foo")
         assert "Error" in result
 
+    def test_edit_phase_depends_on(self, plan_file: Path) -> None:
+        """edit-phase with depends_on persists the change (bug fix verification)."""
+        # The plan has beta depending on alpha. Add a new phase and update beta's deps.
+        vectl_mutate(action="add-phase", name="Gamma Phase", phase_id="gamma")
+        result = vectl_mutate(
+            action="edit-phase",
+            phase_id="beta",
+            depends_on=["alpha", "gamma"],
+        )
+        assert "Updated phase" in result
+
+        data = _reload_plan(plan_file)
+        beta = next(p for p in data["phases"] if p["id"] == "beta")
+        assert sorted(beta["depends_on"]) == ["alpha", "gamma"]
+
+    def test_edit_phase_depends_on_clear(self, plan_file: Path) -> None:
+        """edit-phase with depends_on=[] clears all dependencies."""
+        result = vectl_mutate(
+            action="edit-phase",
+            phase_id="beta",
+            depends_on=[],
+        )
+        assert "Updated phase" in result
+
+        data = _reload_plan(plan_file)
+        beta = next(p for p in data["phases"] if p["id"] == "beta")
+        assert beta.get("depends_on", []) == []
+
     def test_edit_plan_project_guidance(self, plan_file: Path) -> None:
         result = vectl_mutate(
             action="edit-plan",

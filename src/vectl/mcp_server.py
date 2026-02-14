@@ -592,7 +592,7 @@ def vectl_mutate(
             as explicit --id for add-step/add-phase if provided.
         name: Name (for add-step, add-phase, edit-step, edit-phase).
         description: Description (for add-step, edit-step).
-        depends_on: Dependencies (for add-step, add-phase).
+        depends_on: Dependencies (for add-step, add-phase, edit-phase, edit-step).
         add_refs: Refs to add (for edit-step).
         remove_refs: Refs to remove (for edit-step).
         refs: Refs to set (for edit-step, overrides add_refs/remove_refs).
@@ -685,6 +685,7 @@ def vectl_mutate(
                 name=name or _SENTINEL,
                 context=context or _SENTINEL,
                 gate=gate or _SENTINEL,
+                depends_on=depends_on if depends_on is not None else _SENTINEL,
             )
             msg = f"**Updated phase:** {phase_id}"
 

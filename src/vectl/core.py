@@ -1141,6 +1141,7 @@ def edit_phase(
     name: str | _Unset = _SENTINEL,
     context: str | _Unset = _SENTINEL,
     gate: str | _Unset = _SENTINEL,
+    depends_on: list[str] | _Unset = _SENTINEL,
     add_deps: list[str] | None = None,
     remove_deps: list[str] | None = None,
 ) -> Plan:
@@ -1152,6 +1153,7 @@ def edit_phase(
         name: New name (unchanged if not provided).
         context: New context (unchanged if not provided).
         gate: New gate criterion (unchanged if not provided).
+        depends_on: Set dependencies directly (overrides add_deps/remove_deps if provided).
         add_deps: Phase IDs to add to depends_on.
         remove_deps: Phase IDs to remove from depends_on.
 
@@ -1159,7 +1161,7 @@ def edit_phase(
         The updated plan.
 
     Raises:
-        PlanError: If phase not found, or add_deps reference invalid phase IDs.
+        PlanError: If phase not found, or dependencies reference invalid phase IDs.
     """
     phase = plan.find_phase(phase_id)
     if phase is None:
@@ -1171,6 +1173,16 @@ def edit_phase(
         phase.context = str(context)
     if gate is not _SENTINEL:
         phase.gate = str(gate)
+
+    if depends_on is not _SENTINEL:
+        existing_phase_ids = {p.id for p in plan.phases}
+        new_deps = list(depends_on)  # type: ignore[arg-type]
+        for dep in new_deps:
+            if dep not in existing_phase_ids:
+                raise PlanError(f"Phase depends_on '{dep}' not found")
+            if dep == phase_id:
+                raise PlanError(f"Phase '{phase_id}' cannot depend on itself")
+        phase.depends_on = new_deps
 
     if add_deps:
         existing_phase_ids = {p.id for p in plan.phases}

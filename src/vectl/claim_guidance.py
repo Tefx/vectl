@@ -51,13 +51,18 @@ def build_claim_guidance(plan: Plan, phase: Phase, step: Step) -> GuidancePayloa
 
     evidence_template = (step.evidence_template or "").strip() or _default_evidence_template()
     project_guidance = (plan.project_guidance or "").strip()
+    # R1 Source: Bug report "vectl show <step> does not display parent phase description or context"
+    # Phase context carries operational guidance for all steps in the phase.
+    phase_context = (phase.context or "").strip()
 
     truncated = False
     evidence_template, t1 = _truncate_text(evidence_template, max_chars=900)
     project_guidance, t2 = _truncate_text(project_guidance, max_chars=600)
+    phase_context, t3 = _truncate_text(phase_context, max_chars=400)
     truncated = (
         t1
         or t2
+        or t3
         or (
             len(refs)
             < len(
@@ -74,6 +79,11 @@ def build_claim_guidance(plan: Plan, phase: Phase, step: Step) -> GuidancePayloa
         "## Guidance",
         "",
     ]
+
+    # R1 Source: Bug report - phase context should be visible in guidance block
+    if phase_context:
+        md_lines.extend(["### Phase context", phase_context.rstrip(), ""])
+
     if refs:
         md_lines.extend(["### Before you start", *[f"- {r}" for r in refs], ""])
 

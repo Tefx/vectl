@@ -1,6 +1,6 @@
 """MCP server exposing vectl tools to agents.
 
-10 tools (8 consolidated per expert panel dec-001, plus guide and dag):
+11 tools (8 consolidated per expert panel dec-001, plus guide, dag, and clipboard):
   1. vectl_status  — plan overview + next steps + mine
   2. vectl_show    — step/phase detail
   3. vectl_claim   — claim step (auto-claim supported)
@@ -11,6 +11,7 @@
   8. vectl_review  — plan review + gate check
   9. vectl_guide   — agent onboarding guide (startup/stuck/review/planning/migration)
  10. vectl_dag     — dependency graph as Mermaid flowchart
+ 11. vectl_clipboard — cross-agent communication (write/read/clear)
 
 Tools generally return Markdown-formatted text.
 
@@ -39,6 +40,9 @@ from vectl.core import (
     add_step,
     auto_unlock_phases,
     claim_step,
+    clipboard_clear,
+    clipboard_read,
+    clipboard_write,
     complete_phase,
     complete_step,
     defer_step,
@@ -60,6 +64,7 @@ from vectl.core import (
 from vectl.io import load_plan, save_plan
 from vectl.models import (
     CASConflictError,
+    Clipboard,
     PhaseStatus,
     Plan,
     PlanError,
@@ -918,6 +923,144 @@ def vectl_dag(phase_id: str | None = None) -> str:
         return generate_mermaid_dag(plan, phase_id=phase_id)
     except PlanError as e:
         return f"**Error:** {e}"
+
+
+# ---------------------------------------------------------------------------
+# Tool 11: vectl_clipboard
+# ---------------------------------------------------------------------------
+
+
+@mcp.tool(
+    description=(
+        "Cross-agent communication via plan clipboard. Actions: write, read, clear. "
+        "Write overwrites any existing content. Read returns empty if expired. "
+        "Use for handoffs, broadcasts, reviewer notes that don't follow DAG edges."
+    ),
+)
+def vectl_clipboard(
+    action: Literal["write", "read", "clear"],
+    author: str = "",
+    summary: str = "",
+    content: str = "",
+    ttl: int = 24,
+) -> str:
+    """Cross-agent communication via single-slot clipboard.
+
+    Args:
+        action: One of "write", "read", "clear".
+        author: Who is writing (required for write).
+        summary: One-line description (required for write, max 80 chars).
+        content: Payload (required for write, max 8000 chars).
+        ttl: Time-to-live in hours (default 24).
+
+    Returns:
+        Markdown-formatted result.
+    """
+    if action == "write":
+        return _clipboard_write(author, summary, content, ttl)
+    elif action == "read":
+        return _clipboard_read()
+    elif action == "clear":
+        return _clipboard_clear()
+    else:
+        return f"**Error:** Unknown action '{action}'. Valid actions: write, read, clear."
+
+
+def _clipboard_write(author: str, summary: str, content: str, ttl: int) -> str:
+    """Write to clipboard with CAS."""
+    try:
+        plan, expected_hash = _load()
+    except PlanError as e:
+        return f"**Error:** {e}"
+
+    try:
+        plan = clipboard_write(plan, author, summary, content, ttl)
+    except PlanError as e:
+        return f"**Error:** {e}"
+
+    try:
+        _save(plan, expected_hash)
+    except PlanError as e:
+        # CAS conflict - provide actionable message per RFC
+        if "CAS conflict" in str(e):
+            return (
+                "**Clipboard write conflict** — another agent modified the plan. "
+                "Re-read with `vectl_status` or `vectl_show`, then retry."
+            )
+        return f"**Error:** {e}"
+
+    cb = plan.clipboard
+    assert cb is not None  # We just wrote it
+    return (
+        f"**Clipboard written.**\n\n"
+        f"- **Author:** {cb.author}\n"
+        f"- **Summary:** {cb.summary}\n"
+        f"- **Expires:** {cb.expires_at}\n"
+    )
+
+
+def _clipboard_read() -> str:
+    """Read clipboard (pure read, no CAS)."""
+    try:
+        plan, _ = _load()
+    except PlanError as e:
+        return f"**Error:** {e}"
+
+    # Check for expired clipboard before reading
+    from vectl.core import _clipboard_expired
+
+    if plan.clipboard is None:
+        return "**Clipboard is empty.**"
+
+    if _clipboard_expired(plan.clipboard):
+        # Calculate hours since expiry
+        from datetime import datetime, timezone
+
+        try:
+            expires = datetime.fromisoformat(plan.clipboard.expires_at.replace("Z", "+00:00"))
+            hours_ago = (datetime.now(timezone.utc) - expires).total_seconds() / 3600
+            return (
+                "**Clipboard is empty.**\n"
+                f"*Note: previous clipboard by {plan.clipboard.author} "
+                f"expired {hours_ago:.1f}h ago.*"
+            )
+        except (ValueError, AttributeError):
+            return "**Clipboard is empty.**"
+
+    cb = plan.clipboard
+    return (
+        f"**Clipboard**\n\n"
+        f"- **Author:** {cb.author}\n"
+        f"- **Summary:** {cb.summary}\n"
+        f"- **Written:** {cb.written_at}\n"
+        f"- **Expires:** {cb.expires_at}\n\n"
+        f"**Content:**\n```\n{cb.content}\n```\n"
+    )
+
+
+def _clipboard_clear() -> str:
+    """Clear clipboard with CAS."""
+    try:
+        plan, expected_hash = _load()
+    except PlanError as e:
+        return f"**Error:** {e}"
+
+    if plan.clipboard is None:
+        return "**Clipboard was already empty.**"
+
+    plan = clipboard_clear(plan)
+
+    try:
+        _save(plan, expected_hash)
+    except PlanError as e:
+        if "CAS conflict" in str(e):
+            return (
+                "**Clipboard clear conflict** — another agent modified the plan. "
+                "Re-read with `vectl_status` or `vectl_show`, then retry."
+            )
+        return f"**Error:** {e}"
+
+    return "**Clipboard cleared.**"
 
 
 # ---------------------------------------------------------------------------

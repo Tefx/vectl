@@ -2,6 +2,7 @@
 
 import pytest
 from vectl.models import (
+    Clipboard,
     Phase,
     PhaseStatus,
     Plan,
@@ -154,3 +155,81 @@ class TestPlan:
         assert plan.find_phase("p2") is not None
         assert plan.find_phase("p2").name == "Phase 2"
         assert plan.find_phase("nope") is None
+
+
+class TestClipboard:
+    def test_minimal(self):
+        cb = Clipboard(
+            author="agent-1",
+            summary="Test summary",
+            content="Test content",
+            written_at="2026-02-16T10:00:00Z",
+            expires_at="2026-02-17T10:00:00Z",
+        )
+        assert cb.author == "agent-1"
+        assert cb.summary == "Test summary"
+        assert cb.content == "Test content"
+
+    def test_empty_author_rejected(self):
+        with pytest.raises(ValueError, match="author cannot be empty"):
+            Clipboard(
+                author="",
+                summary="Test",
+                content="Content",
+                written_at="2026-02-16T10:00:00Z",
+                expires_at="2026-02-17T10:00:00Z",
+            )
+
+    def test_whitespace_only_author_rejected(self):
+        with pytest.raises(ValueError, match="author cannot be empty"):
+            Clipboard(
+                author="   ",
+                summary="Test",
+                content="Content",
+                written_at="2026-02-16T10:00:00Z",
+                expires_at="2026-02-17T10:00:00Z",
+            )
+
+    def test_empty_content_rejected(self):
+        with pytest.raises(ValueError, match="content cannot be empty"):
+            Clipboard(
+                author="agent-1",
+                summary="Test",
+                content="",
+                written_at="2026-02-16T10:00:00Z",
+                expires_at="2026-02-17T10:00:00Z",
+            )
+
+    def test_whitespace_only_content_rejected(self):
+        with pytest.raises(ValueError, match="content cannot be empty"):
+            Clipboard(
+                author="agent-1",
+                summary="Test",
+                content="   \n\t  ",
+                written_at="2026-02-16T10:00:00Z",
+                expires_at="2026-02-17T10:00:00Z",
+            )
+
+
+class TestPlanClipboard:
+    def test_plan_without_clipboard(self):
+        plan = Plan(project="test")
+        assert plan.clipboard is None
+
+    def test_plan_with_clipboard(self):
+        cb = Clipboard(
+            author="agent-1",
+            summary="Handoff note",
+            content="Here's the design for phase 2",
+            written_at="2026-02-16T10:00:00Z",
+            expires_at="2026-02-17T10:00:00Z",
+        )
+        plan = Plan(project="test", clipboard=cb)
+        assert plan.clipboard is not None
+        assert plan.clipboard.author == "agent-1"
+
+    def test_backward_compat_plan_without_clipboard_field(self):
+        """Plan without clipboard field loads correctly (backward compatibility)."""
+        plan = Plan(project="test", phases=[Phase(id="p1", name="Phase 1")])
+        assert plan.clipboard is None
+        assert len(plan.phases) == 1

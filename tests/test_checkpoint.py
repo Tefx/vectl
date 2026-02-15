@@ -1,6 +1,7 @@
 """Tests for checkpoint generation (CLI and MCP)."""
 
 import json
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 import pytest
@@ -8,7 +9,7 @@ from typer.testing import CliRunner
 
 from vectl.cli import app
 from vectl.io import save_plan, load_plan
-from vectl.models import Plan, Phase, Step, StepStatus
+from vectl.models import Clipboard, Plan, Phase, Step, StepStatus
 from vectl.mcp_server import vectl_checkpoint
 
 runner = CliRunner()
@@ -237,3 +238,98 @@ class TestCheckpointParity:
         # Ensure next has items for name check
         if cli_data["next"]:
             assert cli_data["next"][0]["name"] == core_data["next"][0]["name"]
+
+
+class TestCheckpointClipboard:
+    """Tests for clipboard integration per RFC-clipboard.md."""
+
+    def test_clipboard_present_when_non_empty(self, tmp_path: Path) -> None:
+        """Clipboard summary appears in checkpoint when present and unexpired."""
+        now = datetime.now(timezone.utc)
+        future = now + timedelta(hours=24)
+
+        plan = Plan(
+            project="chk",
+            clipboard=Clipboard(
+                author="agent-1",
+                summary="Handoff note",
+                content="Full content here",
+                written_at=now.isoformat().replace("+00:00", "Z"),
+                expires_at=future.isoformat().replace("+00:00", "Z"),
+            ),
+            phases=[Phase(id="p1", name="P1", steps=[Step(id="s1", name="S1")])],
+        )
+        path = tmp_path / "plan.yaml"
+        save_plan(plan, path)
+
+        result = runner.invoke(app, ["checkpoint", "--plan", str(path)])
+        data = json.loads(result.stdout)
+
+        assert "clipboard" in data
+        assert data["clipboard"]["author"] == "agent-1"
+        assert data["clipboard"]["summary"] == "Handoff note"
+        assert "content" not in data["clipboard"]  # content NOT included
+
+    def test_clipboard_omitted_when_empty(self, tmp_path: Path) -> None:
+        """Clipboard key omitted when empty."""
+        plan = Plan(
+            project="chk",
+            phases=[Phase(id="p1", name="P1", steps=[Step(id="s1", name="S1")])],
+        )
+        path = tmp_path / "plan.yaml"
+        save_plan(plan, path)
+
+        result = runner.invoke(app, ["checkpoint", "--plan", str(path)])
+        data = json.loads(result.stdout)
+
+        assert "clipboard" not in data
+
+    def test_clipboard_omitted_when_expired(self, tmp_path: Path) -> None:
+        """Clipboard key omitted when expired."""
+        now = datetime.now(timezone.utc)
+        past = now - timedelta(hours=1)
+
+        plan = Plan(
+            project="chk",
+            clipboard=Clipboard(
+                author="agent-1",
+                summary="Old note",
+                content="Expired content",
+                written_at=past.isoformat().replace("+00:00", "Z"),
+                expires_at=past.isoformat().replace("+00:00", "Z"),
+            ),
+            phases=[Phase(id="p1", name="P1", steps=[Step(id="s1", name="S1")])],
+        )
+        path = tmp_path / "plan.yaml"
+        save_plan(plan, path)
+
+        result = runner.invoke(app, ["checkpoint", "--plan", str(path)])
+        data = json.loads(result.stdout)
+
+        assert "clipboard" not in data
+
+    def test_clipboard_present_in_full_mode(self, tmp_path: Path) -> None:
+        """Clipboard appears in both lite and non-lite modes."""
+        now = datetime.now(timezone.utc)
+        future = now + timedelta(hours=24)
+
+        plan = Plan(
+            project="chk",
+            clipboard=Clipboard(
+                author="agent-1",
+                summary="Handoff",
+                content="Content",
+                written_at=now.isoformat().replace("+00:00", "Z"),
+                expires_at=future.isoformat().replace("+00:00", "Z"),
+            ),
+            phases=[Phase(id="p1", name="P1", steps=[Step(id="s1", name="S1")])],
+        )
+        path = tmp_path / "plan.yaml"
+        save_plan(plan, path)
+
+        # Full mode
+        result = runner.invoke(app, ["checkpoint", "--full", "--plan", str(path)])
+        data = json.loads(result.stdout)
+
+        assert "clipboard" in data
+        assert "metadata" in data  # also verify full mode works

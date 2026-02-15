@@ -1997,3 +1997,142 @@ class TestDag:
     def test_dag_has_drill_hint(self, plan_file: Path) -> None:
         result = runner.invoke(app, ["dag", "--plan", str(plan_file)])
         assert "uvx vectl dag --phase" in result.output
+
+
+# ---------------------------------------------------------------------------
+# clipboard commands
+# ---------------------------------------------------------------------------
+
+
+class TestClipboardWrite:
+    def test_write_basic(self, plan_file: Path) -> None:
+        result = runner.invoke(
+            app,
+            [
+                "clipboard-write",
+                "--author",
+                "agent-1",
+                "--summary",
+                "Handoff note",
+                "--content",
+                "Here's the design",
+                "--plan",
+                str(plan_file),
+            ],
+        )
+        assert result.exit_code == 0
+        assert "Clipboard written" in result.output
+        assert "agent-1" in result.output
+
+    def test_write_empty_author_fails(self, plan_file: Path) -> None:
+        result = runner.invoke(
+            app,
+            [
+                "clipboard-write",
+                "--author",
+                "",
+                "--summary",
+                "Summary",
+                "--content",
+                "Content",
+                "--plan",
+                str(plan_file),
+            ],
+        )
+        assert result.exit_code == 1
+
+    def test_write_empty_content_fails(self, plan_file: Path) -> None:
+        result = runner.invoke(
+            app,
+            [
+                "clipboard-write",
+                "--author",
+                "agent",
+                "--summary",
+                "Summary",
+                "--content",
+                "",
+                "--plan",
+                str(plan_file),
+            ],
+        )
+        assert result.exit_code == 1
+
+    def test_write_custom_ttl(self, plan_file: Path) -> None:
+        result = runner.invoke(
+            app,
+            [
+                "clipboard-write",
+                "--author",
+                "agent",
+                "--summary",
+                "Summary",
+                "--content",
+                "Content",
+                "--ttl",
+                "48",
+                "--plan",
+                str(plan_file),
+            ],
+        )
+        assert result.exit_code == 0
+        assert "Clipboard written" in result.output
+
+
+class TestClipboardRead:
+    def test_read_basic(self, plan_file: Path) -> None:
+        # Write first
+        runner.invoke(
+            app,
+            [
+                "clipboard-write",
+                "--author",
+                "agent-1",
+                "--summary",
+                "Test note",
+                "--content",
+                "Test content",
+                "--plan",
+                str(plan_file),
+            ],
+        )
+        # Read
+        result = runner.invoke(app, ["clipboard-read", "--plan", str(plan_file)])
+        assert result.exit_code == 0
+        assert "Clipboard" in result.output
+        assert "agent-1" in result.output
+        assert "Test note" in result.output
+        assert "Test content" in result.output
+
+    def test_read_empty(self, plan_file: Path) -> None:
+        result = runner.invoke(app, ["clipboard-read", "--plan", str(plan_file)])
+        assert result.exit_code == 0
+        assert "empty" in result.output.lower()
+
+
+class TestClipboardClear:
+    def test_clear_basic(self, plan_file: Path) -> None:
+        # Write first
+        runner.invoke(
+            app,
+            [
+                "clipboard-write",
+                "--author",
+                "agent",
+                "--summary",
+                "Summary",
+                "--content",
+                "Content",
+                "--plan",
+                str(plan_file),
+            ],
+        )
+        # Clear
+        result = runner.invoke(app, ["clipboard-clear", "--plan", str(plan_file)])
+        assert result.exit_code == 0
+        assert "cleared" in result.output.lower()
+
+    def test_clear_already_empty(self, plan_file: Path) -> None:
+        result = runner.invoke(app, ["clipboard-clear", "--plan", str(plan_file)])
+        assert result.exit_code == 0
+        assert "already empty" in result.output.lower()

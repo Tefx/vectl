@@ -27,6 +27,9 @@ from vectl.core import (
     add_step,
     add_steps_bulk,
     claim_step,
+    clipboard_clear,
+    clipboard_read,
+    clipboard_write,
     complete_phase,
     complete_step,
     defer_step,
@@ -2128,3 +2131,95 @@ def gate_check(
         out.print("[red bold]✗ Phase is NOT gate-ready.[/]")
         out.print("[dim]→ vectl show <phase>                  Inspect phase details[/]")
         out.print("[dim]→ vectl next                          See claimable steps[/]")
+
+
+# ---------------------------------------------------------------------------
+# Clipboard Commands
+# ---------------------------------------------------------------------------
+
+
+@app.command("clipboard-write")
+def clipboard_write_cmd(
+    author: str = typer.Option(..., "--author", "-a", help="Who is writing."),
+    summary: str = typer.Option(..., "--summary", "-s", help="One-line description."),
+    content: str = typer.Option(..., "--content", "-c", help="Payload content."),
+    ttl: int = typer.Option(24, "--ttl", "-t", help="Time-to-live in hours (default 24)."),
+    plan: Path | None = PlanOption,
+) -> None:
+    """Write to the plan clipboard.
+
+    Overwrites any existing clipboard content. Use for cross-agent handoffs,
+    broadcasts, or notes that don't follow DAG edges.
+    """
+    p, h, plan = _load(plan)
+
+    try:
+        p = clipboard_write(p, author, summary, content, ttl)
+    except PlanError as e:
+        _die(str(e))
+
+    _save(p, plan, h)
+
+    cb = p.clipboard
+    assert cb is not None
+    out.print(f"[green]Clipboard written.[/]")
+    out.print(f"  Author: {cb.author}")
+    out.print(f"  Summary: {cb.summary}")
+    out.print(f"  Expires: {cb.expires_at}")
+
+
+@app.command("clipboard-read")
+def clipboard_read_cmd(
+    plan: Path | None = PlanOption,
+) -> None:
+    """Read the plan clipboard.
+
+    Returns clipboard content if present and unexpired. Shows empty message
+    if clipboard is empty or expired.
+    """
+    from vectl.core import _clipboard_expired
+
+    p, _, plan = _load(plan)
+
+    if p.clipboard is None:
+        out.print("[dim]Clipboard is empty.[/]")
+        return
+
+    if _clipboard_expired(p.clipboard):
+        from datetime import datetime, timezone
+
+        try:
+            expires = datetime.fromisoformat(p.clipboard.expires_at.replace("Z", "+00:00"))
+            hours_ago = (datetime.now(timezone.utc) - expires).total_seconds() / 3600
+            out.print(f"[dim]Clipboard is empty.[/]")
+            out.print(
+                f"[dim]Note: previous clipboard by {p.clipboard.author} expired {hours_ago:.1f}h ago.[/]"
+            )
+        except (ValueError, AttributeError):
+            out.print("[dim]Clipboard is empty.[/]")
+        return
+
+    cb = p.clipboard
+    out.print(Panel(f"Clipboard", style="bold"))
+    out.print(f"  [bold]Author:[/] {cb.author}")
+    out.print(f"  [bold]Summary:[/] {cb.summary}")
+    out.print(f"  [bold]Written:[/] {cb.written_at}")
+    out.print(f"  [bold]Expires:[/] {cb.expires_at}")
+    out.print()
+    out.print(Panel(cb.content, title="Content", border_style="dim"))
+
+
+@app.command("clipboard-clear")
+def clipboard_clear_cmd(
+    plan: Path | None = PlanOption,
+) -> None:
+    """Clear the plan clipboard."""
+    p, h, plan = _load(plan)
+
+    if p.clipboard is None:
+        out.print("[dim]Clipboard was already empty.[/]")
+        return
+
+    p = clipboard_clear(p)
+    _save(p, plan, h)
+    out.print("[green]Clipboard cleared.[/]")

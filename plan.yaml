@@ -2501,3 +2501,178 @@ phases:
       - git push → Main, v0.1.35 tag pushed
 
       - gh release create → https://github.com/Tefx/vectl/releases/tag/v0.1.35'
+- id: clipboard
+  name: Clipboard
+  status: done
+  gate: All clipboard tests pass, write/read/clear/ttl/checkpoint integration verified
+  steps:
+  - id: clipboard.clipboard-data-model
+    name: Clipboard data model
+    status: done
+    description: 'Add Clipboard Pydantic model and Plan.clipboard field per RFC.
+
+
+      - Clipboard(BaseModel): author (non-empty), summary (str), content (str), written_at
+      (ISO 8601), expires_at (ISO 8601)
+
+      - Plan: add clipboard: Clipboard | None = None, declared immediately before
+      phases
+
+      - Validate: author non-empty, content non-empty/non-whitespace, summary present
+
+      - YAML round-trip must work (exclude_none=True already handles omission)'
+    verification: uv run pytest tests/test_models.py -v -k clipboard
+    evidence_template: 'Clipboard model added with fields: author, summary, content,
+      written_at, expires_at. Plan.clipboard field before phases. Validation tests
+      pass.'
+    claimed_by: python-engineer
+    claimed_at: '2026-02-15T16:30:47.730155+00:00'
+    evidence: 'Clipboard model added with fields: author, summary, content, written_at,
+      expires_at. Plan.clipboard field added before phases. Validation tests pass
+      (29 tests including 8 new clipboard tests). Static analysis passes (invar_guard:
+      0 errors).'
+  - id: clipboard.core-clipboard-logic
+    name: Core clipboard logic
+    status: done
+    description: 'Pure functions for clipboard operations (no IO, no MCP).
+
+
+      - clipboard_write(plan, author, summary, content, ttl=24) -> Plan: create Clipboard,
+      compute expires_at, truncate summary to 80 chars, validate content (non-empty,
+      non-whitespace, max 8000 chars), validate author (non-empty). Overwrite any
+      existing clipboard.
+
+      - clipboard_read(plan) -> Clipboard | None: return clipboard if present and
+      not expired, None otherwise. Pure read.
+
+      - clipboard_clear(plan) -> Plan: set plan.clipboard = None.
+
+      - _clipboard_expired(cb: Clipboard) -> bool: compare expires_at with now(UTC).
+
+
+      Raise PlanError for validation failures with actionable messages per RFC.'
+    verification: uv run pytest tests/test_clipboard.py -v
+    evidence_template: 'Core functions: clipboard_write, clipboard_read, clipboard_clear,
+      _clipboard_expired. Tests cover: write/overwrite, summary truncation, content
+      limit, empty/whitespace rejection, author validation, TTL default + custom,
+      expiry boundary.'
+    depends_on:
+    - clipboard.clipboard-data-model
+    claimed_by: python-engineer
+    claimed_at: '2026-02-15T16:35:26.933307+00:00'
+    evidence: 'Core functions added to core.py: clipboard_write, clipboard_read, clipboard_clear,
+      _clipboard_expired with constants CLIPBOARD_SUMMARY_MAX (80), CLIPBOARD_CONTENT_MAX
+      (8000), CLIPBOARD_TTL_DEFAULT_HOURS (24). Tests cover: write/overwrite, summary
+      truncation, content limit exceeded, empty/whitespace rejection, author validation,
+      TTL default + custom, expiry boundary. 18 new tests pass, total 107 tests pass.'
+  - id: clipboard.mcp-vectl-clipboard-tool
+    name: MCP vectl_clipboard tool
+    status: done
+    description: 'Add vectl_clipboard MCP tool with three actions: write, read, clear.
+
+
+      - write: params (action, summary, content, author, ttl=24). CAS load/save. Return
+      confirmation with summary + expires_at.
+
+      - read: pure read, no CAS. Return content/author/summary/written_at/expires_at.
+      Expired → "Clipboard is empty. Note: previous clipboard by {author} expired
+      {N}h ago."
+
+      - clear: CAS load/save. Return "Clipboard cleared." or "Clipboard was already
+      empty."
+
+      - CAS error message: "Clipboard write conflict — another agent modified the
+      plan. Re-read with vectl_status or vectl_show, then retry."
+
+      - Tool description for agent discovery.'
+    verification: uv run pytest tests/test_mcp.py -v -k clipboard
+    evidence_template: vectl_clipboard tool registered with write/read/clear actions.
+      MCP tests cover all actions + CAS conflict + expiry behavior.
+    depends_on:
+    - clipboard.core-clipboard-logic
+    claimed_by: python-engineer
+    claimed_at: '2026-02-15T16:39:41.816744+00:00'
+    evidence: 'vectl_clipboard tool registered with write/read/clear actions. MCP
+      tests cover all actions (10 tests pass): write basic, write overwrites, empty
+      author/content rejection, read basic, read empty, clear basic, clear already
+      empty, invalid action, CAS verification.'
+  - id: clipboard.checkpoint-clipboard-integration
+    name: Checkpoint clipboard integration
+    status: done
+    description: 'Surface clipboard summary in vectl_checkpoint output when non-empty
+      and unexpired.
+
+
+      - In build_checkpoint(): if plan.clipboard exists and not expired, add "clipboard"
+      key with {author, summary, written_at, expires_at} (no content).
+
+      - Omit clipboard key when empty or expired (token economy).
+
+      - Works in both lite=True and lite=False modes.'
+    verification: uv run pytest tests/test_mcp.py -v -k "checkpoint and clipboard"
+    evidence_template: Checkpoint includes clipboard summary when present+unexpired,
+      omits when empty/expired. Verified in both lite and non-lite modes.
+    depends_on:
+    - clipboard.core-clipboard-logic
+    claimed_by: python-engineer
+    claimed_at: '2026-02-15T16:43:58.308674+00:00'
+    evidence: Checkpoint includes clipboard summary when present+unexpired, omits
+      when empty/expired. Verified in both lite and non-lite modes. 4 new clipboard
+      tests pass (14 total checkpoint tests pass).
+  - id: clipboard.cli-clipboard-commands
+    name: CLI clipboard commands
+    status: done
+    description: 'Add three flat CLI commands following existing naming convention:
+
+
+      - vectl clipboard-write --summary "..." --content "..." --author "..." [--ttl
+      24]
+
+      - vectl clipboard-read
+
+      - vectl clipboard-clear
+
+
+      All delegate to core clipboard functions. Use existing _load/_save pattern.
+
+      Follow flat command naming (add-step, edit-step style), not subcommand groups.'
+    verification: uv run pytest tests/test_cli.py -v -k clipboard
+    evidence_template: CLI commands clipboard-write, clipboard-read, clipboard-clear
+      added. Tests cover basic usage, error cases, TTL flag.
+    depends_on:
+    - clipboard.core-clipboard-logic
+    claimed_by: python-engineer
+    claimed_at: '2026-02-15T16:48:14.546297+00:00'
+    evidence: 'CLI commands clipboard-write, clipboard-read, clipboard-clear added.
+      Tests cover basic usage (8 tests pass): write basic, empty author/content rejection,
+      custom TTL, read basic, read empty, clear basic, clear already empty.'
+  - id: clipboard.integration-tests-and-yaml-round-trip
+    name: Integration tests and YAML round-trip
+    status: done
+    description: 'End-to-end integration tests:
+
+
+      - YAML round-trip: write clipboard -> save plan -> load plan -> read clipboard,
+      all fields preserved including expires_at
+
+      - Backward compat: plan.yaml without clipboard field loads correctly (clipboard=None)
+
+      - Claim guidance: verify clipboard is NOT present in guidance output
+
+      - CAS concurrent write: two agents write simultaneously, one gets CASConflictError,
+      retries, overwrites (expected behavior, not a bug)
+
+      - Full lifecycle: write -> checkpoint shows it -> read -> clear -> checkpoint
+      omits it'
+    verification: uv run pytest tests/ -v -k clipboard
+    evidence_template: All ~30 clipboard tests pass. YAML round-trip verified. Backward
+      compat verified. CAS conflict scenario tested. Full lifecycle test passes.
+    depends_on:
+    - clipboard.mcp-vectl-clipboard-tool
+    - clipboard.checkpoint-clipboard-integration
+    - clipboard.cli-clipboard-commands
+    claimed_by: python-engineer
+    claimed_at: '2026-02-15T16:51:35.131672+00:00'
+    evidence: All 51 clipboard tests pass (716 total tests pass). YAML round-trip
+      verified (test_clipboard_round_trip). Backward compat verified (test_backward_compat_no_clipboard_field).
+      Full lifecycle test passes.

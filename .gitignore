@@ -6,3 +6,5 @@ dist/
 .hypothesis/
 .ruff_cache/
 uv.lock
+
+.serena/

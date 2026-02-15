@@ -778,6 +778,11 @@ def _show_step_detail(p: Plan, step_id: str) -> None:
     out.print(f"**ID:** {step.id}", markup=False)
     out.print(f"**Phase:** {phase.name} ({phase.id})", markup=False)
 
+    # R1 Source: Bug report "vectl show <step> does not display parent phase description or context"
+    # Phase context carries operational guidance for all steps in the phase.
+    if phase.context:
+        out.print(f"**Phase Context:** {phase.context}", markup=False)
+
     locked = is_step_locked(p, phase, step)
     out.print(f"**Status:** {_step_icon(step.status, locked=locked)}")
 

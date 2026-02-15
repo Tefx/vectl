@@ -1,10 +1,17 @@
 """Tests for core.4: State Machine & Query Logic."""
 
+import datetime
+
 import pytest
 
 from vectl.core import (
+    CLIPBOARD_CONTENT_MAX,
+    CLIPBOARD_SUMMARY_MAX,
     auto_unlock_phases,
     claim_step,
+    clipboard_clear,
+    clipboard_read,
+    clipboard_write,
     complete_phase,
     complete_step,
     defer_step,
@@ -16,6 +23,7 @@ from vectl.core import (
     skip_step,
 )
 from vectl.models import (
+    Clipboard,
     Phase,
     PhaseStatus,
     Plan,
@@ -610,3 +618,169 @@ class TestSearchPlan:
         results = search_plan(plan, "Pydantic")
         assert len(results) == 1
         assert "Pydantic" in results[0].snippet
+
+
+# ---------------------------------------------------------------------------
+# Clipboard
+# ---------------------------------------------------------------------------
+
+
+class TestClipboardWrite:
+    def test_basic_write(self):
+        plan = Plan(project="test")
+        plan = clipboard_write(plan, "agent-1", "Handoff note", "Here's the design")
+        assert plan.clipboard is not None
+        assert plan.clipboard.author == "agent-1"
+        assert plan.clipboard.summary == "Handoff note"
+        assert plan.clipboard.content == "Here's the design"
+
+    def test_overwrite_existing(self):
+        plan = Plan(project="test")
+        plan = clipboard_write(plan, "agent-1", "First", "Content 1")
+        plan = clipboard_write(plan, "agent-2", "Second", "Content 2")
+        assert plan.clipboard.author == "agent-2"
+        assert plan.clipboard.summary == "Second"
+
+    def test_summary_truncation(self):
+        plan = Plan(project="test")
+        long_summary = "x" * 100
+        plan = clipboard_write(plan, "agent", long_summary, "content")
+        assert len(plan.clipboard.summary) == CLIPBOARD_SUMMARY_MAX
+        assert plan.clipboard.summary.endswith("…")
+
+    def test_content_limit_exceeded(self):
+        plan = Plan(project="test")
+        long_content = "x" * (CLIPBOARD_CONTENT_MAX + 1)
+        with pytest.raises(PlanError, match="exceeds.*char limit"):
+            clipboard_write(plan, "agent", "Summary", long_content)
+
+    def test_empty_content_rejected(self):
+        plan = Plan(project="test")
+        with pytest.raises(PlanError, match="cannot be empty"):
+            clipboard_write(plan, "agent", "Summary", "")
+
+    def test_whitespace_only_content_rejected(self):
+        plan = Plan(project="test")
+        with pytest.raises(PlanError, match="whitespace-only"):
+            clipboard_write(plan, "agent", "Summary", "   \n\t  ")
+
+    def test_empty_author_rejected(self):
+        plan = Plan(project="test")
+        with pytest.raises(PlanError, match="author cannot be empty"):
+            clipboard_write(plan, "", "Summary", "Content")
+
+    def test_whitespace_only_author_rejected(self):
+        plan = Plan(project="test")
+        with pytest.raises(PlanError, match="author cannot be empty"):
+            clipboard_write(plan, "   ", "Summary", "Content")
+
+    def test_custom_ttl(self):
+        plan = Plan(project="test")
+        plan = clipboard_write(plan, "agent", "Summary", "Content", ttl=48)
+        # Verify expires_at is roughly 48 hours in the future
+        from vectl.core import _clipboard_expired
+
+        assert not _clipboard_expired(plan.clipboard)
+
+    def test_default_ttl_is_24h(self):
+        plan = Plan(project="test")
+        plan = clipboard_write(plan, "agent", "Summary", "Content")
+        # Default TTL is 24 hours
+        from vectl.core import CLIPBOARD_TTL_DEFAULT_HOURS
+
+        assert CLIPBOARD_TTL_DEFAULT_HOURS == 24
+
+
+class TestClipboardRead:
+    def test_read_basic(self):
+        plan = Plan(project="test")
+        plan = clipboard_write(plan, "agent-1", "Summary", "Content")
+        cb = clipboard_read(plan)
+        assert cb is not None
+        assert cb.author == "agent-1"
+
+    def test_read_empty_clipboard(self):
+        plan = Plan(project="test")
+        cb = clipboard_read(plan)
+        assert cb is None
+
+    def test_read_expired_clipboard(self):
+        plan = Plan(project="test")
+        # Create expired clipboard manually
+        past = (
+            (datetime.datetime.now(datetime.timezone.utc) - datetime.timedelta(hours=1))
+            .isoformat()
+            .replace("+00:00", "Z")
+        )
+        plan.clipboard = Clipboard(
+            author="agent",
+            summary="Old",
+            content="Expired content",
+            written_at=past,
+            expires_at=past,
+        )
+        cb = clipboard_read(plan)
+        assert cb is None  # Expired, treated as empty
+
+
+class TestClipboardClear:
+    def test_clear_basic(self):
+        plan = Plan(project="test")
+        plan = clipboard_write(plan, "agent", "Summary", "Content")
+        assert plan.clipboard is not None
+        plan = clipboard_clear(plan)
+        assert plan.clipboard is None
+
+    def test_clear_already_empty(self):
+        plan = Plan(project="test")
+        plan = clipboard_clear(plan)
+        assert plan.clipboard is None
+
+
+class TestClipboardExpiry:
+    def test_not_expired(self):
+        plan = Plan(project="test")
+        plan = clipboard_write(plan, "agent", "Summary", "Content", ttl=24)
+        from vectl.core import _clipboard_expired
+
+        assert not _clipboard_expired(plan.clipboard)
+
+    def test_expired(self):
+        plan = Plan(project="test")
+        # Create expired clipboard
+        past = (
+            (datetime.datetime.now(datetime.timezone.utc) - datetime.timedelta(hours=1))
+            .isoformat()
+            .replace("+00:00", "Z")
+        )
+        plan.clipboard = Clipboard(
+            author="agent",
+            summary="Old",
+            content="Expired",
+            written_at=past,
+            expires_at=past,
+        )
+        from vectl.core import _clipboard_expired
+
+        assert _clipboard_expired(plan.clipboard)
+
+    def test_expiry_boundary(self):
+        """Test clipboard just expired vs not yet expired."""
+        from vectl.core import _clipboard_expired
+
+        now = datetime.datetime.now(datetime.timezone.utc)
+        now_iso = now.isoformat().replace("+00:00", "Z")
+
+        # Just expired (1 second ago)
+        just_expired = (now - datetime.timedelta(seconds=1)).isoformat().replace("+00:00", "Z")
+        cb_expired = Clipboard(
+            author="a", summary="s", content="c", written_at=now_iso, expires_at=just_expired
+        )
+        assert _clipboard_expired(cb_expired)
+
+        # Not yet expired (1 second in future)
+        not_yet = (now + datetime.timedelta(seconds=1)).isoformat().replace("+00:00", "Z")
+        cb_valid = Clipboard(
+            author="a", summary="s", content="c", written_at=now_iso, expires_at=not_yet
+        )
+        assert not _clipboard_expired(cb_valid)

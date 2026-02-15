@@ -6,6 +6,7 @@ from pathlib import Path
 from vectl.io import load_plan, save_plan
 from vectl.models import (
     CASConflictError,
+    Clipboard,
     Phase,
     PhaseStatus,
     Plan,
@@ -113,3 +114,63 @@ class TestCAS:
         hash_ = save_plan(sample_plan, path, expected_hash="anything")
         assert path.exists()
         assert isinstance(hash_, str)
+
+
+class TestClipboardRoundTrip:
+    """Tests for clipboard YAML round-trip per RFC-clipboard.md."""
+
+    def test_clipboard_round_trip(self, tmp_path: Path) -> None:
+        """Write -> save -> load -> read preserves all fields including expires_at."""
+        plan = Plan(
+            project="test",
+            clipboard=Clipboard(
+                author="agent-1",
+                summary="Handoff note",
+                content="Multi-line\ncontent\nhere",
+                written_at="2026-02-16T10:00:00Z",
+                expires_at="2026-02-17T10:00:00Z",
+            ),
+            phases=[Phase(id="p1", name="P1", steps=[Step(id="s1", name="S1")])],
+        )
+        path = tmp_path / "plan.yaml"
+        save_plan(plan, path)
+
+        loaded, _ = load_plan(path)
+        assert loaded.clipboard is not None
+        assert loaded.clipboard.author == "agent-1"
+        assert loaded.clipboard.summary == "Handoff note"
+        assert loaded.clipboard.content == "Multi-line\ncontent\nhere"
+        assert loaded.clipboard.written_at == "2026-02-16T10:00:00Z"
+        assert loaded.clipboard.expires_at == "2026-02-17T10:00:00Z"
+
+    def test_clipboard_omitted_when_none(self, tmp_path: Path) -> None:
+        """clipboard: null should be omitted from YAML (exclude_none=True)."""
+        plan = Plan(
+            project="test",
+            clipboard=None,
+            phases=[Phase(id="p1", name="P1", steps=[Step(id="s1", name="S1")])],
+        )
+        path = tmp_path / "plan.yaml"
+        save_plan(plan, path)
+
+        yaml_content = path.read_text()
+        assert "clipboard" not in yaml_content
+
+    def test_backward_compat_no_clipboard_field(self, tmp_path: Path) -> None:
+        """Plan without clipboard field loads correctly (backward compatibility)."""
+        yaml_content = """
+project: test
+phases:
+  - id: p1
+    name: Phase 1
+    steps:
+      - id: s1
+        name: Step 1
+"""
+        path = tmp_path / "plan.yaml"
+        path.write_text(yaml_content)
+
+        plan, _ = load_plan(path)
+        assert plan.project == "test"
+        assert plan.clipboard is None
+        assert len(plan.phases) == 1

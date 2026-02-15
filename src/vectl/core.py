@@ -3,12 +3,13 @@
 from __future__ import annotations
 
 import re
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from enum import Enum
 from pathlib import Path
 
 from vectl.models import (
     AmbiguousMatchError,
+    Clipboard,
     DiffResult,
     GateCheckResult,
     NoMatchError,
@@ -1976,3 +1977,150 @@ def diff_plans(old: Plan, new: Plan) -> DiffResult:
             )
 
     return DiffResult(phase_changes=phase_changes, step_changes=step_changes)
+
+
+# ---------------------------------------------------------------------------
+# Clipboard
+# ---------------------------------------------------------------------------
+
+# Constants per RFC-clipboard.md
+CLIPBOARD_SUMMARY_MAX = 80
+CLIPBOARD_CONTENT_MAX = 8000
+CLIPBOARD_TTL_DEFAULT_HOURS = 24
+
+
+def _clipboard_expired(cb: Clipboard) -> bool:
+    """Check if a clipboard entry has expired.
+
+    Args:
+        cb: Clipboard entry to check.
+
+    Returns:
+        True if the clipboard has expired, False otherwise.
+
+    >>> from vectl.models import Clipboard
+    >>> import datetime
+    >>> # Expired (past)
+    >>> past = (datetime.datetime.now(datetime.timezone.utc) - datetime.timedelta(hours=1)).isoformat()
+    >>> cb = Clipboard(author="a", summary="s", content="c", written_at=past, expires_at=past)
+    >>> _clipboard_expired(cb)
+    True
+    """
+    try:
+        expires = datetime.fromisoformat(cb.expires_at.replace("Z", "+00:00"))
+        return datetime.now(timezone.utc) > expires
+    except (ValueError, AttributeError):
+        # Malformed timestamp - treat as expired
+        return True
+
+
+def clipboard_write(
+    plan: Plan,
+    author: str,
+    summary: str,
+    content: str,
+    ttl: int = CLIPBOARD_TTL_DEFAULT_HOURS,
+) -> Plan:
+    """Write to the plan clipboard.
+
+    Overwrites any existing clipboard content.
+
+    Args:
+        plan: The plan to modify.
+        author: Who is writing (non-empty).
+        summary: One-line description (truncated to 80 chars if longer).
+        content: Payload (max 8000 chars, non-empty).
+        ttl: Time-to-live in hours (default 24).
+
+    Returns:
+        Modified plan with clipboard set.
+
+    Raises:
+        PlanError: If author/content is empty, or content exceeds 8000 chars.
+
+    >>> p = Plan(project="test")
+    >>> p = clipboard_write(p, "agent-1", "Summary", "Content here", ttl=12)
+    >>> p.clipboard is not None
+    True
+    >>> p.clipboard.author
+    'agent-1'
+    """
+    # Validate author
+    if not author or not author.strip():
+        raise PlanError("Clipboard author cannot be empty")
+
+    # Validate content
+    if not content or not content.strip():
+        raise PlanError("Clipboard content cannot be empty or whitespace-only")
+
+    if len(content) > CLIPBOARD_CONTENT_MAX:
+        raise PlanError(
+            f"Content exceeds {CLIPBOARD_CONTENT_MAX} char limit ({len(content)} chars). "
+            "Shorten or split into step evidence."
+        )
+
+    # Truncate summary (soft limit - agents are bad at counting)
+    if len(summary) > CLIPBOARD_SUMMARY_MAX:
+        summary = summary[: CLIPBOARD_SUMMARY_MAX - 1] + "…"
+
+    # Compute timestamps
+    now = datetime.now(timezone.utc)
+    expires = now + timedelta(hours=ttl)
+
+    plan.clipboard = Clipboard(
+        author=author.strip(),
+        summary=summary,
+        content=content,
+        written_at=now.isoformat().replace("+00:00", "Z"),
+        expires_at=expires.isoformat().replace("+00:00", "Z"),
+    )
+
+    return plan
+
+
+def clipboard_read(plan: Plan) -> Clipboard | None:
+    """Read the plan clipboard.
+
+    Pure read - no side effects, no CAS needed.
+
+    Args:
+        plan: The plan to read from.
+
+    Returns:
+        Clipboard if present and not expired, None otherwise.
+
+    >>> p = Plan(project="test")
+    >>> clipboard_read(p) is None
+    True
+    >>> p = clipboard_write(p, "agent", "Sum", "Content")
+    >>> cb = clipboard_read(p)
+    >>> cb is not None
+    True
+    """
+    if plan.clipboard is None:
+        return None
+
+    if _clipboard_expired(plan.clipboard):
+        return None
+
+    return plan.clipboard
+
+
+def clipboard_clear(plan: Plan) -> Plan:
+    """Clear the plan clipboard.
+
+    Args:
+        plan: The plan to modify.
+
+    Returns:
+        Modified plan with clipboard cleared.
+
+    >>> p = clipboard_write(Plan(project="test"), "a", "s", "c")
+    >>> p.clipboard is not None
+    True
+    >>> p = clipboard_clear(p)
+    >>> p.clipboard is None
+    True
+    """
+    plan.clipboard = None
+    return plan

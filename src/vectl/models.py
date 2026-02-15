@@ -105,6 +105,34 @@ class Phase(BaseModel):
     steps: list[Step] = Field(default_factory=list)
 
 
+# ---------------------------------------------------------------------------
+# Clipboard
+# ---------------------------------------------------------------------------
+
+
+class Clipboard(BaseModel):
+    """Single-slot clipboard for cross-agent communication.
+
+    RFC: docs/RFC-clipboard.md
+    Used for ad-hoc information that doesn't follow DAG edges:
+    cross-tool handoff, cross-phase broadcasts, reviewer notes.
+    """
+
+    author: str
+    summary: str
+    content: str
+    written_at: str  # ISO 8601 timestamp
+    expires_at: str  # ISO 8601 timestamp, server-computed from TTL
+
+    @model_validator(mode="after")
+    def _validate_fields(self) -> Clipboard:
+        if not self.author or not self.author.strip():
+            raise ValueError("Clipboard author cannot be empty")
+        if not self.content or not self.content.strip():
+            raise ValueError("Clipboard content cannot be empty or whitespace-only")
+        return self
+
+
 class Plan(BaseModel):
     """Top-level plan document."""
 
@@ -116,6 +144,10 @@ class Plan(BaseModel):
     # Source: user feature request "Output guidance when running vectl claim".
     # R3: project-level guidance should be available at claim time.
     project_guidance: str = ""
+    # RFC: docs/RFC-clipboard.md
+    # Single-slot clipboard for cross-agent handoff/broadcast.
+    # Placed before phases so it appears first in YAML output.
+    clipboard: Clipboard | None = None
     phases: list[Phase] = Field(default_factory=list)
 
     # ---- helpers ----

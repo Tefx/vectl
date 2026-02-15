@@ -8,7 +8,7 @@ from __future__ import annotations
 
 from typing import Any, Optional
 
-from vectl.core import get_next_steps
+from vectl.core import _clipboard_expired, get_next_steps
 from vectl.models import Plan, Step, StepStatus
 from vectl import __version__
 
@@ -63,6 +63,7 @@ def build_checkpoint(
     result: dict[str, Any] = {
         "schema": "vectl.checkpoint/v1",
         # metadata inserted below if not lite
+        # clipboard inserted below if present and unexpired
         "phase": phase_data,
         "focus": focus_data,
         "next": next_data,
@@ -72,6 +73,11 @@ def build_checkpoint(
     # Token economy: omit guidance unless it contains non-empty content.
     if guidance_data:
         result["guidance"] = guidance_data
+
+    # Clipboard: include summary only when present and unexpired (RFC-clipboard.md)
+    clipboard_data = _build_clipboard_block(plan)
+    if clipboard_data:
+        result["clipboard"] = clipboard_data
 
     if not lite:
         result["metadata"] = {
@@ -218,3 +224,27 @@ def _iso_now() -> str:
     from datetime import datetime, timezone
 
     return datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
+
+
+def _build_clipboard_block(plan: Plan) -> dict[str, str] | None:
+    """Build clipboard block for checkpoint if present and unexpired.
+
+    Per RFC-clipboard.md:
+    - Include summary only (no content) when present and unexpired.
+    - Omit clipboard key when empty or expired (token economy).
+
+    Returns:
+        Dict with author, summary, written_at, expires_at; or None.
+    """
+    if plan.clipboard is None:
+        return None
+
+    if _clipboard_expired(plan.clipboard):
+        return None
+
+    return {
+        "author": plan.clipboard.author,
+        "summary": plan.clipboard.summary,
+        "written_at": plan.clipboard.written_at,
+        "expires_at": plan.clipboard.expires_at,
+    }

@@ -48,6 +48,7 @@ Agent 框架管 agent 怎么想。vectl 管 **agent 看到什么、什么时候�
 | **Token 预算** | Agent 重读大量已完成内容 | 全链路上限：next ≤3 条、context ≤120 字符、evidence ≤900 字符 |
 | **反幻觉** | Agent 说 "Fixed" 就完事了 | `evidence_template` 填空式证明：命令、输出、PR 链接 |
 | **上下文压缩** | 对话超长导致 agent 失忆 | `checkpoint` 生成确定性 JSON 快照，注入新会话即刻恢复 |
+| **交接便条** | 跨 host/跨会话状态丢失 | `clipboard-write/read/clear` 把短便条存进 `plan.yaml`（带 TTL） |
 | **Agent 亲和** | 不同 agent 擅长不同任务 | 步骤可标记建议 agent，`next` 按亲和度排序 |
 
 ## 快速开始
@@ -59,6 +60,8 @@ uvx vectl init --project my-project
 ```
 
 创建 `plan.yaml` 并自动配置 agent 指令文件（检测到 `.claude/` 目录时写 `CLAUDE.md`，否则写 `AGENTS.md`）。
+
+> 建议把 `plan.yaml` 和 `AGENTS.md`/`CLAUDE.md` 一起提交：前者是状态机，后者是 agent 的入口。
 
 ### 2. 连接 Agent
 
@@ -108,6 +111,8 @@ uvx vectl init --project my-project
 
 `vectl init` 和 `vectl agents-md` 用于管理 repo 里的 agent 指令文件。
 
+这个文件就是 agent 的“入口”：它会指向 `uvx vectl guide` 的各个 topic，并写清楚规则（一次只能 claim 一个 step、complete 必须给 evidence、spec 不确定不要猜）。
+
 ```bash
 uvx vectl agents-md                 # 更新 AGENTS.md / CLAUDE.md 的 vectl 区块
 uvx vectl agents-md --target claude # 强制写入 CLAUDE.md
@@ -125,147 +130,44 @@ uvx vectl agents-md --target claude # 强制写入 CLAUDE.md
 
 ### 4. 工作流
 
-```bash
-# 定位：做到哪了？
-uvx vectl status                    # 全局进度
-
-# 选择：哪些可以做？
-uvx vectl next                      # 列出可领取的步骤（依赖已就绪的）
-
-# 领取：我来做这个
-uvx vectl claim <step-id> --agent me  # 锁定步骤，获取指导
-
-# 指导（领取时自动注入）：
-# --- VECTL:GUIDANCE:BEGIN ---
-# 相关文件（refs）、evidence template、项目规则
-# --- VECTL:GUIDANCE:END ---
-
-# 执行：写代码、跑测试
-
-# 完成：证明它能用
-uvx vectl complete <step-id> --evidence "..."
-
-# 循环：看看解锁了什么
-uvx vectl next
-```
-
-每个命令输出结尾都有下一步提示：
-
-```
-$ uvx vectl complete auth.user-model -e "commit abc: model + tests"
-
-Completed: auth.user-model
-
-Next available:
-  ○ pending  auth.session-token — Session Token  (auth)
-  ○ pending  auth.permissions — Permission Model  (auth)
-
-→ vectl claim <id> --agent <name>
-→ vectl show <id>
-```
-
-### 5. 让 Agent 掉进"成功陷阱"
-
-Architect 设计计划时预埋指导，Agent 领取任务时自动注入上下文。
-
-#### Evidence Template（反幻觉）
-
-不让 agent 说"我修好了"。强制填空：
+保持简单：
 
 ```bash
-uvx vectl add-step ... --evidence-template "
-## 验证
-- 命令: `pytest tests/auth/`
-- 输出: [粘贴 5 行]
-- [ ] 确认 0 failures
-"
+uvx vectl status                               # 定位：做到哪了？
+uvx vectl next                                 # 选择：哪些能做？
+uvx vectl claim <step-id> --agent <name>       # 拿到 spec + refs + evidence template
+uvx vectl complete <step-id> --evidence "..."  # 提交证据（粘贴填好的模板）
 ```
 
-#### Context Pinning（省 token）
+其他内容都在 guide：
 
-不让 agent 满项目找文件。告诉它看哪里：
+- Architect 协议：`uvx vectl guide --on planning`
+- 卡住了：`uvx vectl guide --on stuck`
+- Review / 校验：`uvx vectl guide --on review`
+- 迁移：`uvx vectl guide --on migration`
+
+## 交接：Clipboard（便条）vs Checkpoint（状态）
+
+当你在不同 agent host 之间切换（Claude Code ↔ Cursor ↔ OpenCode），或多 agent 交接工作时，建议两个都用：
+
+- **Clipboard**：短、可读的交接便条，直接存进 `plan.yaml`（带 TTL）。
+- **Checkpoint**：更像“机器状态摘要”，用于注入下一次会话。
+
+### Clipboard（交接首选）
 
 ```bash
-uvx vectl add-step ... --refs "src/auth.py,tests/test_auth.py"
+uvx vectl clipboard-write --author agent-a --summary "改了什么" --content "怎么验证 / 看哪里"
+uvx vectl clipboard-read
+uvx vectl clipboard-clear
 ```
 
-领取时 agent 收到：**任务**（描述）+ **上下文**（该看哪些文件）+ **标准**（什么算完成）。
-
-### 6. 上下文压缩
-
-对话太长？Agent 换班？`checkpoint` 生成最小化状态快照：
+### Checkpoint
 
 ```bash
 uvx vectl checkpoint
 ```
 
-```json
-{
-  "schema": "vectl.checkpoint/v1",
-  "focus": { "step_id": "auth.01", "name": "实现登录", "status": "claimed" },
-  "next": [{ "step_id": "auth.02", "name": "实现 Token" }]
-}
-```
-
-注入新会话的 system prompt，agent 立即恢复。无损。
-
-### 7. 可视化
-
-```bash
-uvx vectl dag              # Phase 级 DAG
-uvx vectl dag --phase core  # Step 级 DAG
-```
-
-```mermaid
-flowchart TD
-  core["✓ Core Logic (5/5)"]
-  cli["✓ CLI (4/4)"]
-  mcp["▶ MCP Server (1/3)"]
-  core --> cli
-  cli --> mcp
-```
-
-全部 34 个命令：`uvx vectl --help` 或 `uvx vectl guide`。
-
-### 8. 跨 Agent 通信
-
-Agent 之间可以通过 plan clipboard 留便条——无需外部基础设施。
-
-```bash
-# Agent A 留交接便条
-uvx vectl clipboard-write \
-  --author agent-a \
-  --summary "数据库已迁移" \
-  --content "测试前先执行 migrations/002.sql。回滚看 README。"
-
-# Agent B 读取
-uvx vectl clipboard-read
-
-# 处理完清除
-uvx vectl clipboard-clear
-```
-
-内容保存在 `plan.yaml` 中，TTL 默认 24 小时。
-
-### 9. 崩溃恢复
-
-Agent 崩溃或会话过期？快速找回它 claim 了哪些步骤：
-
-```bash
-uvx vectl mine --agent engineer-1
-```
-
-显示该 agent 当前 claim 的所有步骤。如需重新 claim：`vectl claim <step>`。
-
-### 人工监督
-
-```bash
-uvx vectl review                    # 多层 review（L1 校验 → L4 spec coverage）
-uvx vectl gate-check <phase-id>     # 检查 phase 是否满足 gate
-uvx vectl render                    # 导出为 Markdown
-uvx vectl diff                      # 自上次 commit 以来的变更
-uvx vectl log --last 5              # 最近 5 条计划变更
-```
+把 JSON 粘到下一次会话的 system prompt 里。
 
 ## 数据模型（`plan.yaml`）
 

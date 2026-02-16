@@ -449,6 +449,7 @@ def vectl_lifecycle(
     reason: str = "",
     evidence: str = "",
     reviewer: str = "",
+    force: bool = False,
 ) -> str:
     """Change step/phase lifecycle state.
 
@@ -459,6 +460,8 @@ def vectl_lifecycle(
             must be: superseded, irrelevant, absorbed, deprioritized.
         evidence: Required for complete-phase.
         reviewer: Optional reviewer name for reject.
+        force: For skip-phase, allow skipping a locked phase with remaining steps.
+            Empty phases (0 steps) are always allowed regardless of lock.
     """
     plan, expected_hash = _load()
 
@@ -479,7 +482,7 @@ def vectl_lifecycle(
         elif action == "skip-phase":
             if not reason:
                 return "**Error:** reason is required for skip-phase."
-            plan, skipped_ids = skip_phase(plan, id, reason)
+            plan, skipped_ids = skip_phase(plan, id, reason, force=force)
             msg = f"**Skipped phase '{id}':** {len(skipped_ids)} steps skipped"
             if skipped_ids:
                 msg += "\n" + "\n".join(f"  - {sid}" for sid in skipped_ids)

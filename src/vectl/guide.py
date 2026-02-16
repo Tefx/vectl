@@ -50,6 +50,22 @@ GUIDE_STUCK = """\
 2. `uvx vectl search <term>`    — Find the blocker
 3. **Pivot**                — Work on parallel steps
 
+## Phase Restructuring? (Merging/Splitting Phases)
+When consolidating phases (e.g., merging "fix" and "retest" into one "remediation" phase),
+you may move all steps out of a phase, leaving it empty. To clean up:
+
+1. `uvx vectl skip-phase <empty-phase> -r superseded`
+
+**Rules:**
+- Empty locked phases (0 steps) can always be skipped — the lock protects nothing
+- Locked phases with remaining steps require `--force`:
+  `uvx vectl skip-phase <locked-phase> -r superseded --force`
+- Use reason `superseded` for merged/absorbed phases
+- Use reason `absorbed` when steps moved to another phase
+- Use reason `irrelevant` when requirements changed
+
+**MCP Agents:** Use `vectl_lifecycle(action="skip-phase", id="<phase>", reason="superseded", force=True)`
+
 ## Lost?
 `uvx vectl review` — Re-orient with full plan scan.
 """
@@ -80,6 +96,8 @@ GUIDE_PLANNING = """\
 - `uvx vectl add-step --phase <p> --name "..." --after <dep> --evidence-template "..."`
 - `uvx vectl edit-step <id> --desc "..." --verify "..." --refs "..."`
 - `uvx vectl edit-plan --project-guidance-file <path>`
+- `uvx vectl move-step <step> --target-phase <phase>` — Move step between phases
+- `uvx vectl skip-phase <phase> -r superseded` — Clean up empty/merged phases
 
 ## 3. Intelligent Guidance (The "Why")
 Your goal is to make the *next* agent (the Worker) succeed without guessing.
@@ -102,7 +120,16 @@ Ambiguity = Hallucination.
 - Result: Worker receives these file paths immediately upon claiming.
 - Benefit: Reduces token usage (no `find_file` loops) and prevents focus drift.
 
-## 4. Verify
+## 4. Restructuring Phases
+When reorganizing phases for better dependency granularity:
+
+1. **Move steps** to target phase: `uvx vectl move-step <step> --target-phase <target>`
+2. **Skip the now-empty phase**: `uvx vectl skip-phase <empty> -r superseded`
+3. **For locked phases**: Empty ones skip freely; non-empty need `--force`
+
+> Why? Lock protects work. Zero steps = zero work = nothing to protect.
+
+## 5. Verify
 - `uvx vectl validate` (Mandatory before commit)
 - `uvx vectl search <term>` (Check for dupes)
 """
@@ -170,7 +197,8 @@ configures AGENTS.md (or CLAUDE.md for Claude Code projects).
 - **Context/descriptions** → `--description` / `--context`
 
 | Content                        | plan.yaml | AGENTS.md / CLAUDE.md / docs/ |
-|--------------------------------|-----------|-------------------------------|\n| Phases, steps, dependencies    | ✅        | —                              |
+|--------------------------------|-----------|-------------------------------|
+| Phases, steps, dependencies    | ✅        | —                              |
 | Step descriptions & verification | ✅      | —                              |
 | Status tracking                | ✅        | —                              |
 | Coding standards & rules       | —         | ✅                             |

@@ -442,10 +442,36 @@ class TestSkipPhase:
         plan, _ = skip_phase(plan, "p1", "irrelevant")
         assert plan.phases[1].status == PhaseStatus.PENDING  # p2 unlocked
 
-    def test_skip_locked_phase_fails(self):
+    def test_skip_locked_phase_with_steps_fails(self):
+        """Locked phase with steps cannot be skipped without --force."""
         plan = _simple_plan()
         with pytest.raises(PlanError, match="locked"):
             skip_phase(plan, "p2", "irrelevant")
+
+    def test_skip_locked_phase_with_steps_force_allowed(self):
+        """Locked phase with steps can be skipped with force=True."""
+        plan = _simple_plan()
+        plan, skipped = skip_phase(plan, "p2", "irrelevant", force=True)
+        assert skipped == ["s4"]
+        assert plan.phases[1].status == PhaseStatus.DONE
+
+    def test_skip_empty_locked_phase_allowed(self):
+        """Empty locked phase can be skipped (lock protects nothing)."""
+        plan = _simple_plan()
+        # Add an empty locked phase
+        plan.phases.append(
+            Phase(
+                id="p3",
+                name="Empty Locked Phase",
+                status=PhaseStatus.LOCKED,
+                depends_on=["p1"],
+                steps=[],
+            )
+        )
+        # Should succeed without force
+        plan, skipped = skip_phase(plan, "p3", "superseded")
+        assert skipped == []
+        assert plan.find_phase("p3").status == PhaseStatus.DONE
 
     def test_skip_done_phase_fails(self):
         plan = _simple_plan()

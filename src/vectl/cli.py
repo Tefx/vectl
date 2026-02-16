@@ -1141,6 +1141,12 @@ def skip_phase_cmd(
         "-r",
         help="Reason for skipping: superseded, irrelevant, absorbed, deprioritized.",
     ),
+    force: bool = typer.Option(
+        False,
+        "--force",
+        "-f",
+        help="Allow skipping a locked phase with remaining steps.",
+    ),
     plan: Path | None = PlanOption,
 ) -> None:
     """Skip all remaining steps in a phase.
@@ -1148,11 +1154,14 @@ def skip_phase_cmd(
     Pending/rejected steps are skipped. Claimed steps are deferred first, then skipped.
     Done/skipped steps are left unchanged. Phase auto-completes when all steps
     are done or skipped.
+
+    Locked phases with 0 steps can always be skipped (the lock protects nothing).
+    Use --force to skip a locked phase that still has remaining steps.
     """
     p, h, plan = _load(plan)
     skipped_ids: list[str] = []
     try:
-        p, skipped_ids = skip_phase(p, phase_id, reason)
+        p, skipped_ids = skip_phase(p, phase_id, reason, force=force)
     except PlanError as e:
         _die(str(e))
     _save(p, plan, h)
@@ -1161,7 +1170,7 @@ def skip_phase_cmd(
         for sid in skipped_ids:
             out.print(f"  [dim]↳[/] {sid}")
     else:
-        out.print(f"[dim]Phase {phase_id}:[/] no steps to skip (all already done/skipped)")
+        out.print(f"[dim]Phase {phase_id}:[/] no steps to skip (all already done/skipped or empty)")
     out.print()
     out.print("[dim]→ vectl next                      See remaining steps[/]")
     out.print("[dim]→ vectl status                    Plan overview[/]")

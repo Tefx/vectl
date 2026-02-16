@@ -48,6 +48,7 @@ Agent frameworks manage how agents think. vectl manages **what agents see, when 
 | **Token Budget** | Agent re-reads hundreds of completed lines | Hard limits across the board: next ≤3, context ≤120 chars, evidence ≤900 chars |
 | **Anti-Hallucination** | Agent says "Fixed" and moves on | `evidence_template` forces fill-in-the-blank proof: command, output, PR link |
 | **Context Compaction** | Long conversations cause agent amnesia | `checkpoint` generates a deterministic JSON snapshot — inject into new session for instant recovery |
+| **Handoff Notes** | Agents lose state between hosts/sessions | `clipboard-write/read/clear` stores short notes in `plan.yaml` (with TTL) |
 | **Agent Affinity** | Different agents are good at different tasks | Steps can suggest an agent; `next` sorts by affinity |
 
 ## Quick Start
@@ -59,6 +60,8 @@ uvx vectl init --project my-project
 ```
 
 Creates `plan.yaml` and auto-configures agent instructions (writes `CLAUDE.md` when `.claude/` directory is detected, otherwise `AGENTS.md`).
+
+> Commit `plan.yaml` + `AGENTS.md`/`CLAUDE.md` together. The plan is the state machine; the instructions file is the agent entry point.
 
 ### 2. Connect Your Agent
 
@@ -110,6 +113,8 @@ No setup needed — agents call `uvx vectl ...` directly.
 
 `vectl init` and `vectl agents-md` manage the agent instruction file in your repo.
 
+That file is the *entry point* for agents: it points to `uvx vectl guide` topics and sets the rules (one claimed step at a time, evidence required, don't guess specs).
+
 ```bash
 uvx vectl agents-md                 # Update AGENTS.md / CLAUDE.md with vectl section
 uvx vectl agents-md --target claude # Force CLAUDE.md
@@ -127,147 +132,44 @@ Prefer MCP tools (`vectl_mutate`, `vectl_guide`) over CLI if available.
 
 ### 4. The Workflow
 
-```bash
-# ORIENT: Where are we?
-uvx vectl status                    # Plan-wide progress dashboard
-
-# PICK: What's available?
-uvx vectl next                      # Show claimable steps
-
-# CLAIM: I'm working on this.
-uvx vectl claim <step-id> --agent me  # Lock step, get full spec + guidance
-
-# GUIDANCE (displayed on claim):
-# --- VECTL:GUIDANCE:BEGIN ---
-# ... (refs, evidence template, project rules) ...
-# --- VECTL:GUIDANCE:END ---
-
-# WORK: (you write code, run tests, follow guidance)
-
-# COMPLETE: I proved it works.
-uvx vectl complete <step-id> --evidence "..." # Paste filled template here
-
-# REPEAT: What's unlocked now?
-uvx vectl next                      # See what the completion unlocked
-```
-
-Every command output ends with hints for the next action:
-
-```
-$ uvx vectl complete auth.user-model -e "commit abc: model + tests"
-
-Completed: auth.user-model
-
-Next available:
-  ○ pending  auth.session-token — Session Token  (auth)
-  ○ pending  auth.permissions — Permission Model  (auth)
-
-→ vectl claim <id> --agent <name>
-→ vectl show <id>
-```
-
-### 5. The "Success Pit"
-
-Architects embed guidance at plan design time. Agents receive it automatically when they claim a step.
-
-#### Evidence Templates (Anti-Hallucination)
-
-Don't let agents say "I fixed it." Force them to prove it:
+Keep it simple:
 
 ```bash
-uvx vectl add-step ... --evidence-template "
-## Verification
-- Command: `pytest tests/auth/`
-- Output: [Paste 5 lines of output here]
-- [ ] Confirmed 0 failures
-"
+uvx vectl status                               # Where are we?
+uvx vectl next                                 # What can run now?
+uvx vectl claim <step-id> --agent <name>       # Get spec + pinned refs + evidence template
+uvx vectl complete <step-id> --evidence "..."  # Prove it (paste filled template)
 ```
 
-#### Context Pinning (Save Tokens)
+Everything else is in the guide:
 
-Stop the "needle in a haystack" search. Tell the agent exactly where to look:
+- Architect protocol: `uvx vectl guide --on planning`
+- Getting unstuck: `uvx vectl guide --on stuck`
+- Review / validation: `uvx vectl guide --on review`
+- Migration: `uvx vectl guide --on migration`
+
+## Handoffs: Clipboard (Notes) vs Checkpoint (State)
+
+If you're switching agent hosts (Claude Code ↔ Cursor ↔ OpenCode) or handing work between agents, use both:
+
+- **Clipboard**: short, human-readable notes that live in `plan.yaml` (with TTL).
+- **Checkpoint**: compact, machine-readable state snapshot for context injection.
+
+### Clipboard (recommended for handoffs)
 
 ```bash
-uvx vectl add-step ... --refs "src/auth.py,tests/test_auth.py"
+uvx vectl clipboard-write --author agent-a --summary "What changed" --content "How to verify / where to look"
+uvx vectl clipboard-read
+uvx vectl clipboard-clear
 ```
 
-When the agent claims, it receives: **Task** (description) + **Context** (pinned refs) + **Standard** (evidence template).
-
-### 6. Context Compaction
-
-Conversation too long? Agent handoff? `checkpoint` generates a minimal state snapshot:
+### Checkpoint
 
 ```bash
 uvx vectl checkpoint
 ```
 
-```json
-{
-  "schema": "vectl.checkpoint/v1",
-  "focus": { "step_id": "auth.01", "name": "Implement Login", "status": "claimed" },
-  "next": [{ "step_id": "auth.02", "name": "Implement Token" }]
-}
-```
-
-Inject this JSON into a new session's system prompt. The agent resumes instantly. Zero loss.
-
-### 7. Visualization
-
-```bash
-uvx vectl dag              # High-level phase DAG (default)
-uvx vectl dag --phase core # Detailed step DAG within a phase
-```
-
-```mermaid
-flowchart TD
-  core["✓ Core Logic (5/5)"]
-  cli["✓ CLI (4/4)"]
-  mcp["▶ MCP Server (1/3)"]
-  core --> cli
-  cli --> mcp
-```
-
-For all 34 commands (plan mutation, review, admin): `uvx vectl --help` or `uvx vectl guide`.
-
-### 8. Cross-Agent Communication
-
-Agents can leave notes for each other via the plan clipboard — no external infrastructure needed.
-
-```bash
-# Agent A leaves a handoff note
-uvx vectl clipboard-write \
-  --author agent-a \
-  --summary "DB schema migrated" \
-  --content "Run migrations/002.sql before testing. See README for rollback."
-
-# Agent B reads the note
-uvx vectl clipboard-read
-
-# Clear after consumption
-uvx vectl clipboard-clear
-```
-
-Content lives in `plan.yaml`. TTL defaults to 24 hours.
-
-### 9. Crash Recovery
-
-Agent crashed or session expired? Find what it claimed without hunting through logs:
-
-```bash
-uvx vectl mine --agent engineer-1
-```
-
-Shows all steps currently claimed by that agent. Reclaim with `vectl claim <step>` if needed.
-
-### Human Oversight
-
-```bash
-uvx vectl review                    # Multi-layer review (L1 validation → L4 spec coverage)
-uvx vectl gate-check <phase-id>     # Check if a phase is ready to pass its gate
-uvx vectl render                    # Export plan as markdown
-uvx vectl diff                      # Changes since last commit
-uvx vectl log --last 5              # Recent plan mutations
-```
+Paste the JSON into the next session's system prompt.
 
 ## Data Model (`plan.yaml`)
 

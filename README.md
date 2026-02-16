@@ -106,6 +106,15 @@ No setup needed — agents call `uvx vectl ...` directly.
 > To update later: `uvx vectl agents-md` (use `--target claude` if needed).
 </details>
 
+#### Agent Instruction Files
+
+`vectl init` and `vectl agents-md` manage the agent instruction file in your repo.
+
+```bash
+uvx vectl agents-md                 # Update AGENTS.md / CLAUDE.md with vectl section
+uvx vectl agents-md --target claude # Force CLAUDE.md
+```
+
 ### 3. Migrate (Optional)
 
 If your project already tracks work in a markdown file, issue tracker, or spreadsheet, tell your agent:
@@ -189,7 +198,7 @@ When the agent claims, it receives: **Task** (description) + **Context** (pinned
 Conversation too long? Agent handoff? `checkpoint` generates a minimal state snapshot:
 
 ```bash
-uvx vectl checkpoint --lite
+uvx vectl checkpoint
 ```
 
 ```json
@@ -253,6 +262,8 @@ Shows all steps currently claimed by that agent. Reclaim with `vectl claim <step
 ### Human Oversight
 
 ```bash
+uvx vectl review                    # Multi-layer review (L1 validation → L4 spec coverage)
+uvx vectl gate-check <phase-id>     # Check if a phase is ready to pass its gate
 uvx vectl render                    # Export plan as markdown
 uvx vectl diff                      # Changes since last commit
 uvx vectl log --last 5              # Recent plan mutations

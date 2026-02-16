@@ -104,6 +104,15 @@ uvx vectl init --project my-project
 > 后续更新：`uvx vectl agents-md`（可指定 `--target claude`）。
 </details>
 
+#### Agent 指令文件
+
+`vectl init` 和 `vectl agents-md` 用于管理 repo 里的 agent 指令文件。
+
+```bash
+uvx vectl agents-md                 # 更新 AGENTS.md / CLAUDE.md 的 vectl 区块
+uvx vectl agents-md --target claude # 强制写入 CLAUDE.md
+```
+
 ### 3. 迁移已有计划（可选）
 
 如果项目已有 markdown / issue / spreadsheet 计划：
@@ -187,7 +196,7 @@ uvx vectl add-step ... --refs "src/auth.py,tests/test_auth.py"
 对话太长？Agent 换班？`checkpoint` 生成最小化状态快照：
 
 ```bash
-uvx vectl checkpoint --lite
+uvx vectl checkpoint
 ```
 
 ```json
@@ -251,6 +260,8 @@ uvx vectl mine --agent engineer-1
 ### 人工监督
 
 ```bash
+uvx vectl review                    # 多层 review（L1 校验 → L4 spec coverage）
+uvx vectl gate-check <phase-id>     # 检查 phase 是否满足 gate
 uvx vectl render                    # 导出为 Markdown
 uvx vectl diff                      # 自上次 commit 以来的变更
 uvx vectl log --last 5              # 最近 5 条计划变更

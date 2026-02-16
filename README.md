@@ -157,10 +157,34 @@ If you're switching agent hosts (Claude Code ↔ Cursor ↔ OpenCode) or handing
 
 ### Clipboard (recommended for handoffs)
 
+Use this when you want to pass **actionable notes** between agent hosts/sessions without creating extra files.
+
+Example: Claude Code did a detailed code review, found a few small issues, and you want OpenCode (GLM-5) to patch them.
+Drop the review notes into the clipboard — the other agent reads and applies.
+
 ```bash
-uvx vectl clipboard-write --author agent-a --summary "What changed" --content "How to verify / where to look"
+uvx vectl clipboard-write \
+  --author "claude-code" \
+  --summary "Code review: small fixes" \
+  --content "
+Target: src/foo.py
+
+Issues:
+- Rename X to Y (see comment in function bar)
+- Add missing test for edge case Z
+- Run: uv run pytest tests/test_foo.py
+"
+
 uvx vectl clipboard-read
 uvx vectl clipboard-clear
+```
+
+MCP equivalent:
+
+```python
+vectl_clipboard(action="write", author="claude-code", summary="Code review: small fixes", content="...")
+vectl_clipboard(action="read")
+vectl_clipboard(action="clear")
 ```
 
 ### Checkpoint

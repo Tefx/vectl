@@ -155,10 +155,34 @@ uvx vectl complete <step-id> --evidence "..."  # 提交证据（粘贴填好的�
 
 ### Clipboard（交接首选）
 
+当你想在不同 agent host / 不同会话之间传递**可执行的信息**，但又不想为了这点事到处写文件时，用 clipboard。
+
+例子：Claude Code 做了详细代码审查，发现几个小问题，想交给 OpenCode 的 GLM-5 去修。
+把 review 要点塞进 clipboard，另一个 agent 读出来直接改。
+
 ```bash
-uvx vectl clipboard-write --author agent-a --summary "改了什么" --content "怎么验证 / 看哪里"
+uvx vectl clipboard-write \
+  --author "claude-code" \
+  --summary "代码审查：小修" \
+  --content "
+目标：src/foo.py
+
+问题清单：
+- X 改名为 Y（见 bar() 的注释）
+- 补一个覆盖边界条件 Z 的测试
+- 验证：uv run pytest tests/test_foo.py
+"
+
 uvx vectl clipboard-read
 uvx vectl clipboard-clear
+```
+
+MCP 等价调用：
+
+```python
+vectl_clipboard(action="write", author="claude-code", summary="代码审查：小修", content="...")
+vectl_clipboard(action="read")
+vectl_clipboard(action="clear")
 ```
 
 ### Checkpoint

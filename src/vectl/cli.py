@@ -62,6 +62,7 @@ from vectl.models import (
     Step,
     StepStatus,
 )
+from vectl.dashboard import generate_dashboard
 
 console = Console(stderr=True)
 out = Console()
@@ -2237,3 +2238,55 @@ def clipboard_clear_cmd(
     p = clipboard_clear(p)
     _save(p, plan, h)
     out.print("[green]Clipboard cleared.[/]")
+
+
+# ---------------------------------------------------------------------------
+# Dashboard command
+# ---------------------------------------------------------------------------
+
+
+@app.command()
+def dashboard(
+    output: Path = typer.Option(
+        Path("plan-dashboard.html"),
+        "--out",
+        "-o",
+        help="Output file path for the HTML dashboard.",
+    ),
+    open_browser: bool = typer.Option(
+        False,
+        "--open",
+        help="Open the dashboard in a browser after generation.",
+    ),
+    plan: Path | None = PlanOption,
+) -> None:
+    """Generate a static HTML dashboard for visual project overview.
+
+    Creates a single-file HTML page with:
+    - Phase navigation sidebar
+    - Progress bars and status pills
+    - Step tables with expandable details
+    - Dependency graph visualization (DAG)
+
+    Open the generated file in any browser to view. No server required.
+    """
+    import webbrowser
+
+    p, _, _ = _load(plan)
+
+    try:
+        html = generate_dashboard(p)
+    except Exception as e:
+        _die(f"Failed to generate dashboard: {e}")
+        return
+
+    # Ensure parent directory exists
+    output.parent.mkdir(parents=True, exist_ok=True)
+    output.write_text(html, encoding="utf-8")
+    console.print(f"[green]Dashboard written to:[/] {output.resolve()}")
+
+    if open_browser:
+        # Use file:// URL for local file
+        file_url = output.resolve().as_uri()
+        webbrowser.open(file_url)
+        console.print(f"[dim]Opening in browser...[/]")

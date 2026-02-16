@@ -141,6 +141,21 @@ uvx vectl claim <step-id> --agent <name>       # Get spec + pinned refs + eviden
 uvx vectl complete <step-id> --evidence "..."  # Prove it (paste filled template)
 ```
 
+### 5. Dashboard (Static HTML)
+
+Generate a single-file HTML dashboard (Overview + DAG) for quick visual inspection:
+
+```bash
+uvx vectl dashboard --open
+
+# Or write to a custom path
+uvx vectl dashboard --out /tmp/plan-dashboard.html
+```
+
+Notes:
+- Output is a local HTML file (no server).
+- The DAG view loads Mermaid.js from a CDN (network required for that tab).
+
 Everything else is in the guide:
 
 - Architect protocol: `uvx vectl guide --on planning`

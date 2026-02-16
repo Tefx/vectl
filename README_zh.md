@@ -139,6 +139,21 @@ uvx vectl claim <step-id> --agent <name>       # 拿到 spec + refs + evidence t
 uvx vectl complete <step-id> --evidence "..."  # 提交证据（粘贴填好的模板）
 ```
 
+### 5. Dashboard（静态 HTML）
+
+生成一个单文件的 HTML Dashboard（Overview + DAG），用于快速目视检查：
+
+```bash
+uvx vectl dashboard --open
+
+# 或写到自定义路径
+uvx vectl dashboard --out /tmp/plan-dashboard.html
+```
+
+说明：
+- 输出是本地 HTML 文件（不需要 server）。
+- DAG 视图会从 CDN 加载 Mermaid.js（该 tab 需要网络）。
+
 其他内容都在 guide：
 
 - Architect 协议：`uvx vectl guide --on planning`

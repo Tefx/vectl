@@ -8,3 +8,6 @@ dist/
 uv.lock
 
 .serena/
+
+# Default output of `vectl dashboard` (see plan spec: dashboard.cli-dashboard-command)
+plan-dashboard.html

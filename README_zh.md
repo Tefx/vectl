@@ -218,6 +218,36 @@ flowchart TD
 
 全部 34 个命令：`uvx vectl --help` 或 `uvx vectl guide`。
 
+### 8. 跨 Agent 通信
+
+Agent 之间可以通过 plan clipboard 留便条——无需外部基础设施。
+
+```bash
+# Agent A 留交接便条
+uvx vectl clipboard-write \
+  --author agent-a \
+  --summary "数据库已迁移" \
+  --content "测试前先执行 migrations/002.sql。回滚看 README。"
+
+# Agent B 读取
+uvx vectl clipboard-read
+
+# 处理完清除
+uvx vectl clipboard-clear
+```
+
+内容保存在 `plan.yaml` 中，TTL 默认 24 小时。
+
+### 9. 崩溃恢复
+
+Agent 崩溃或会话过期？快速找回它 claim 了哪些步骤：
+
+```bash
+uvx vectl mine --agent engineer-1
+```
+
+显示该 agent 当前 claim 的所有步骤。如需重新 claim：`vectl claim <step>`。
+
 ### 人工监督
 
 ```bash
@@ -234,6 +264,9 @@ project: my-project
 phases:
   - id: auth
     name: Auth Module
+    context: |
+      所有 auth 步骤需遵循 OWASP 规范。
+      测试时同时验证合法和伪造 JWT。
     depends_on: [core]
     steps:
       - id: auth.user-model
@@ -245,6 +278,8 @@ phases:
 一个 YAML 文件。在你的 git repo 里。
 
 不需要数据库。不需要 SaaS。`git blame` 能查、PR 能 review、`git diff` 能追踪。
+
+**Phase Context**：在 phase 上设置 `context`，可以为该 phase 下的所有步骤提供统一指导。当 agent 执行 `vectl show <step>` 或 `vectl claim` 时，phase context 会自动显示在输出中。
 
 完整 schema 和排序语义：[docs/DESIGN.md](docs/DESIGN.md)。
 

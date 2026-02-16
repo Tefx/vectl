@@ -220,6 +220,36 @@ flowchart TD
 
 For all 34 commands (plan mutation, review, admin): `uvx vectl --help` or `uvx vectl guide`.
 
+### 8. Cross-Agent Communication
+
+Agents can leave notes for each other via the plan clipboard — no external infrastructure needed.
+
+```bash
+# Agent A leaves a handoff note
+uvx vectl clipboard-write \
+  --author agent-a \
+  --summary "DB schema migrated" \
+  --content "Run migrations/002.sql before testing. See README for rollback."
+
+# Agent B reads the note
+uvx vectl clipboard-read
+
+# Clear after consumption
+uvx vectl clipboard-clear
+```
+
+Content lives in `plan.yaml`. TTL defaults to 24 hours.
+
+### 9. Crash Recovery
+
+Agent crashed or session expired? Find what it claimed without hunting through logs:
+
+```bash
+uvx vectl mine --agent engineer-1
+```
+
+Shows all steps currently claimed by that agent. Reclaim with `vectl claim <step>` if needed.
+
 ### Human Oversight
 
 ```bash
@@ -236,6 +266,9 @@ project: my-project
 phases:
   - id: auth
     name: Auth Module
+    context: |
+      All auth steps must follow OWASP guidelines.
+      Test with both valid and malformed JWTs.
     depends_on: [core]
     steps:
       - id: auth.user-model
@@ -247,6 +280,8 @@ phases:
 A YAML file. In your git repo.
 
 No database. No SaaS. `git blame` it. Review it in PRs. `git diff` it.
+
+**Phase Context**: Set `context` on a phase to give agents guidance that applies to all steps within it. When an agent runs `vectl show <step>` or `vectl claim`, phase context appears automatically in the output.
 
 Full schema, ID rules, and ordering semantics: [docs/DESIGN.md](docs/DESIGN.md).
 

@@ -307,6 +307,13 @@ class TestVectlLifecycle:
         assert "Skipped phase" in result
         assert "2 steps skipped" in result
 
+    def test_skip_locked_phase_with_force(self, plan_file: Path) -> None:
+        """Locked phase can be skipped with force=True."""
+        result = vectl_lifecycle(action="skip-phase", id="beta", reason="superseded", force=True)
+        assert "Skipped phase" in result
+        reloaded = _reload_plan(plan_file)
+        assert reloaded["phases"][1]["status"] == PhaseStatus.DONE.value
+
     def test_complete_phase_historical(self, plan_file: Path) -> None:
         """Historical migration: explicitly complete a phase when steps are terminal."""
         # Make alpha's steps terminal without going through claim/complete

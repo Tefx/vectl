@@ -443,7 +443,9 @@ def skip_step(plan: Plan, step_id: str, reason: str) -> Plan:
     return plan
 
 
-def skip_phase(plan: Plan, phase_id: str, reason: str) -> tuple[Plan, list[str]]:
+def skip_phase(
+    plan: Plan, phase_id: str, reason: str, force: bool = False
+) -> tuple[Plan, list[str]]:
     """Skip all remaining steps in a phase.
 
     For each step in the phase:
@@ -458,12 +460,15 @@ def skip_phase(plan: Plan, phase_id: str, reason: str) -> tuple[Plan, list[str]]
         plan: The plan to modify.
         phase_id: ID of the phase to skip.
         reason: Must be a valid SkipReason value.
+        force: If True, allow skipping a locked phase with remaining steps.
+            Empty phases (0 steps) are always allowed to skip regardless of lock.
 
     Returns:
         Tuple of (updated plan, list of step IDs that were skipped).
 
     Raises:
-        PlanError: If phase not found, invalid reason, or phase is LOCKED/DONE.
+        PlanError: If phase not found, invalid reason, or phase is LOCKED
+            (unless empty or force=True) or DONE.
     """
     # Validate reason against enum
     valid_reasons = [r.value for r in SkipReason]
@@ -477,7 +482,16 @@ def skip_phase(plan: Plan, phase_id: str, reason: str) -> tuple[Plan, list[str]]
         raise PlanError(f"Phase '{phase_id}' not found")
 
     if phase.status == PhaseStatus.LOCKED:
-        raise PlanError(f"Phase '{phase_id}' is locked — unlock it first or wait for dependencies")
+        # Empty phases can always be skipped - lock protects nothing
+        if len(phase.steps) == 0:
+            pass  # Allow skip
+        elif force:
+            pass  # Force override - allow skip with warning (caller should warn)
+        else:
+            raise PlanError(
+                f"Phase '{phase_id}' is locked — unlock it first, wait for dependencies, "
+                f"or use --force to override"
+            )
 
     if phase.status == PhaseStatus.DONE:
         raise PlanError(f"Phase '{phase_id}' is already done")
@@ -495,8 +509,9 @@ def skip_phase(plan: Plan, phase_id: str, reason: str) -> tuple[Plan, list[str]]
         step.skipped_reason = reason
         skipped_ids.append(step.id)
 
-    # Auto-update phase if all steps done/skipped
-    if phase.steps and all(s.status in (StepStatus.DONE, StepStatus.SKIPPED) for s in phase.steps):
+    # Auto-update phase if all steps done/skipped (or empty phase)
+    non_terminal = [s for s in phase.steps if s.status not in (StepStatus.DONE, StepStatus.SKIPPED)]
+    if not non_terminal:
         phase.status = PhaseStatus.DONE
         auto_unlock_phases(plan)
 

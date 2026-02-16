@@ -1,6 +1,6 @@
 [project]
 name = "vectl"
-version = "0.2.1"
+version = "0.3.0"
 description = "Execution control plane for AI agents — structure agents, save tokens."
 readme = "README.md"
 authors = [{name = "Tefx", email = "zhaomeng.zhu@gmail.com"}]
@@ -43,12 +43,18 @@ dev = [
     "hypothesis>=6.151.5",
     "pytest>=9.0",
     "pytest-cov>=7.0",
+    "playwright>=1.40.0",
+    "pytest-playwright>=0.7.0",
 ]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 python_files = ["test_*.py"]
 addopts = "-v --tb=short"
+markers = [
+    "playwright: marks tests that require Playwright browser (deselect with '-m \"not playwright\"')",
+    "network: marks tests that require network (for CDN resources)",
+]
 
 [tool.ruff]
 line-length = 100

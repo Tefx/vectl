@@ -62,6 +62,7 @@ from vectl.models import (
     Step,
     StepStatus,
 )
+from vectl.dashboard import generate_dashboard
 
 console = Console(stderr=True)
 out = Console()
@@ -1141,6 +1142,12 @@ def skip_phase_cmd(
         "-r",
         help="Reason for skipping: superseded, irrelevant, absorbed, deprioritized.",
     ),
+    force: bool = typer.Option(
+        False,
+        "--force",
+        "-f",
+        help="Allow skipping a locked phase with remaining steps.",
+    ),
     plan: Path | None = PlanOption,
 ) -> None:
     """Skip all remaining steps in a phase.
@@ -1148,11 +1155,14 @@ def skip_phase_cmd(
     Pending/rejected steps are skipped. Claimed steps are deferred first, then skipped.
     Done/skipped steps are left unchanged. Phase auto-completes when all steps
     are done or skipped.
+
+    Locked phases with 0 steps can always be skipped (the lock protects nothing).
+    Use --force to skip a locked phase that still has remaining steps.
     """
     p, h, plan = _load(plan)
     skipped_ids: list[str] = []
     try:
-        p, skipped_ids = skip_phase(p, phase_id, reason)
+        p, skipped_ids = skip_phase(p, phase_id, reason, force=force)
     except PlanError as e:
         _die(str(e))
     _save(p, plan, h)
@@ -1161,7 +1171,7 @@ def skip_phase_cmd(
         for sid in skipped_ids:
             out.print(f"  [dim]↳[/] {sid}")
     else:
-        out.print(f"[dim]Phase {phase_id}:[/] no steps to skip (all already done/skipped)")
+        out.print(f"[dim]Phase {phase_id}:[/] no steps to skip (all already done/skipped or empty)")
     out.print()
     out.print("[dim]→ vectl next                      See remaining steps[/]")
     out.print("[dim]→ vectl status                    Plan overview[/]")
@@ -2228,3 +2238,55 @@ def clipboard_clear_cmd(
     p = clipboard_clear(p)
     _save(p, plan, h)
     out.print("[green]Clipboard cleared.[/]")
+
+
+# ---------------------------------------------------------------------------
+# Dashboard command
+# ---------------------------------------------------------------------------
+
+
+@app.command()
+def dashboard(
+    output: Path = typer.Option(
+        Path("plan-dashboard.html"),
+        "--out",
+        "-o",
+        help="Output file path for the HTML dashboard.",
+    ),
+    open_browser: bool = typer.Option(
+        False,
+        "--open",
+        help="Open the dashboard in a browser after generation.",
+    ),
+    plan: Path | None = PlanOption,
+) -> None:
+    """Generate a static HTML dashboard for visual project overview.
+
+    Creates a single-file HTML page with:
+    - Phase navigation sidebar
+    - Progress bars and status pills
+    - Step tables with expandable details
+    - Dependency graph visualization (DAG)
+
+    Open the generated file in any browser to view. No server required.
+    """
+    import webbrowser
+
+    p, _, _ = _load(plan)
+
+    try:
+        html = generate_dashboard(p)
+    except Exception as e:
+        _die(f"Failed to generate dashboard: {e}")
+        return
+
+    # Ensure parent directory exists
+    output.parent.mkdir(parents=True, exist_ok=True)
+    output.write_text(html, encoding="utf-8")
+    console.print(f"[green]Dashboard written to:[/] {output.resolve()}")
+
+    if open_browser:
+        # Use file:// URL for local file
+        file_url = output.resolve().as_uri()
+        webbrowser.open(file_url)
+        console.print(f"[dim]Opening in browser...[/]")

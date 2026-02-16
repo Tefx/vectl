@@ -831,6 +831,15 @@ class TestSkipPhase:
         plan, _ = load_plan(plan_file)
         assert plan.phases[1].status == PhaseStatus.PENDING
 
+    def test_skip_phase_locked_with_force(self, plan_file: Path):
+        """Locked phase can be skipped with --force."""
+        result = runner.invoke(
+            app, ["skip-phase", "p2", "--reason", "irrelevant", "--force", "--plan", str(plan_file)]
+        )
+        assert result.exit_code == 0
+        plan, _ = load_plan(plan_file)
+        assert plan.phases[1].status == PhaseStatus.DONE
+
 
 # ---------------------------------------------------------------------------
 # cli.7: check (renamed from update-checklist)

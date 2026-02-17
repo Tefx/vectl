@@ -17,7 +17,7 @@ from typing import Final
 
 from pydantic import BaseModel
 
-from vectl.models import Phase, Plan, Step
+from vectl.models import AffinityMode, Phase, Plan, Step
 
 
 GUIDANCE_BEGIN: Final[str] = "--- VECTL:GUIDANCE:BEGIN ---"
@@ -99,6 +99,28 @@ def build_claim_guidance(plan: Plan, phase: Phase, step: Step) -> GuidancePayloa
 
     if project_guidance:
         md_lines.extend(["### Project rules", project_guidance.rstrip(), ""])
+
+    # RFC: docs/RFC-affinity.md
+    # Include affinity note when step has exclusive affinity
+    if step.agent:
+        effective_affinity = step.affinity or plan.default_affinity
+        if effective_affinity == AffinityMode.EXCLUSIVE:
+            md_lines.extend(
+                [
+                    "### Affinity",
+                    f"This step has **exclusive affinity** for '{step.agent}'.",
+                    "Only this agent should claim it, or use `force=true` to override.",
+                    "",
+                ]
+            )
+        elif effective_affinity == AffinityMode.SUGGESTED and step.agent:
+            md_lines.extend(
+                [
+                    "### Affinity",
+                    f"This step is **suggested** for '{step.agent}'.",
+                    "",
+                ]
+            )
 
     if truncated:
         md_lines.append("*(Guidance truncated to stay bounded.)*\n")

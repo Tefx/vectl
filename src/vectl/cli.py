@@ -53,6 +53,8 @@ from vectl.core import (
 )
 from vectl.io import load_plan, save_plan
 from vectl.models import (
+    AffinityError,
+    AffinityMode,
     CASConflictError,
     PhaseStatus,
     Plan,
@@ -665,9 +667,14 @@ def next_cmd(
         deps_str = f"  deps: {', '.join(step.depends_on)}" if step.depends_on else ""
         agent_str = f"  suggested: {step.agent}" if step.agent else ""
         summary_str = f"  {summary}" if summary else ""
+        # RFC: docs/RFC-affinity.md
+        # Show exclusive affinity icon
+        affinity_icon = ""
+        if step.agent and (step.affinity or p.default_affinity) == AffinityMode.EXCLUSIVE:
+            affinity_icon = " 🔐"
 
         out.print(
-            f"  {i}. {icon}  {_esc(step.id)} — {_esc(step.name)}  [dim]({_esc(phase_id)}){_esc(deps_str)}{_esc(agent_str)}[/]"
+            f"  {i}. {icon}  {_esc(step.id)} — {_esc(step.name)}  [dim]({_esc(phase_id)}){_esc(deps_str)}{_esc(agent_str)}[/]{affinity_icon}"
         )
         if summary_str:
             out.print(f"     [dim]{_esc(summary)}[/]")
@@ -761,9 +768,20 @@ def _show_phase_detail(p: Plan, phase_id: str) -> None:
         locked = is_step_locked(p, phase, step)
         icon = _step_icon(step.status, locked=locked)
         suggested = f"  [dim]suggested: {_esc(step.agent)}[/]" if step.agent else ""
-        out.print(f"  {icon} **{_esc(step.id)}** — {_esc(step.name)} ({_esc(phase.id)}){suggested}")
+        # RFC: docs/RFC-affinity.md
+        # Show exclusive affinity icon
+        affinity_icon = ""
+        if step.agent and (step.affinity or p.default_affinity) == AffinityMode.EXCLUSIVE:
+            affinity_icon = " 🔐"
+        out.print(
+            f"  {icon} **{_esc(step.id)}** — {_esc(step.name)} ({_esc(phase.id)}){suggested}{affinity_icon}"
+        )
         if step.status == StepStatus.CLAIMED:
             out.print(f"    [dim]Claimed by {_esc(step.claimed_by or '')}[/]")
+            # RFC: docs/RFC-affinity.md
+            # Show affinity override warning
+            if step.affinity_override:
+                out.print(f"    [yellow]⚠ Affinity overridden[/]")
 
     out.print()
 
@@ -789,6 +807,20 @@ def _show_step_detail(p: Plan, step_id: str) -> None:
 
     if step.agent:
         out.print(f"**Suggested agent:** {step.agent}", markup=False)
+        # RFC: docs/RFC-affinity.md
+        # Show affinity mode when agent is set
+        effective_affinity = step.affinity or p.default_affinity
+        affinity_str = effective_affinity.value if effective_affinity else "suggested"
+        out.print(f"**Affinity:** {affinity_str}", markup=False)
+
+    # RFC: docs/RFC-affinity.md
+    # Show affinity override status if present
+    if step.affinity_override:
+        out.print("[yellow]**Affinity Override:** true[/]")
+        if step.affinity_override_by:
+            out.print(f"**Overridden by:** {step.affinity_override_by}", markup=False)
+        if step.affinity_override_at:
+            out.print(f"**At:** {step.affinity_override_at}", markup=False)
 
     if step.description:
         out.print(f"\n**Description:**\n{step.description}", markup=False)
@@ -931,14 +963,23 @@ def claim(
         "--guidance/--no-guidance",
         help="Show claim-time Guidance block (refs + evidence template).",
     ),
+    force: bool = typer.Option(
+        False,
+        "--force",
+        "-f",
+        help="Override exclusive affinity violations (sets audit trail).",
+    ),
     plan: Path | None = PlanOption,
 ) -> None:
     """Claim a step for work.
 
     When step_id is omitted, automatically claims the first available step
     from get_next_steps() (halves the common-path tool calls: next+claim → claim).
+
+    RFC: docs/RFC-affinity.md
+    Enforces agent affinity. Use --force to override exclusive affinity.
     """
-    p, h, plan = _load(plan)
+    p, h, plan_path = _load(plan)
 
     if step_id is None:
         candidates = get_next_steps(p, agent=agent)
@@ -948,11 +989,27 @@ def claim(
         out.print(f"[dim]Auto-selected:[/] {step_id}")
 
     try:
-        p = claim_step(p, step_id, agent)
+        p, result = claim_step(p, step_id, agent, force=force)
     except PlanError as e:
         _die(str(e))
-    _save(p, plan, h)
+
+    # RFC: docs/RFC-affinity.md
+    # Display affinity warning/override messages
+    if result.warning_message:
+        if result.affinity_override:
+            out.print(f"[yellow]⚠️  {result.warning_message}[/]")
+        else:
+            out.print(f"[yellow]⚠️  Affinity warning: {result.warning_message}[/]")
+
+    _save(p, plan_path, h)
     out.print(f"[green]Claimed:[/] {step_id} by {agent}")
+
+    # Show affinity override in claim summary if applicable
+    if result.affinity_override:
+        step = p.find_step(step_id)
+        if step:
+            step_obj = step[1]
+            out.print(f"  [dim]Affinity Override: true (by {step_obj.affinity_override_by})[/]")
 
     # Feature request (2026-02-12): claim-time guidance.
     # Source: user feature request "Output guidance when running vectl claim".

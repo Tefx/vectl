@@ -152,6 +152,8 @@ uvx vectl dashboard --open
 uvx vectl dashboard --out /tmp/plan-dashboard.html
 ```
 
+![Dashboard Overview](docs/dashboard-overview.png)
+
 Notes:
 - Output is a local HTML file (no server).
 - The DAG view loads Mermaid.js from a CDN (network required for that tab).

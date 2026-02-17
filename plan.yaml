@@ -3179,3 +3179,262 @@ phases:
       Spec link:
 
       - docs/RFC-dashboard.md'
+- id: affinity
+  name: Agent Affinity Enforcement
+  status: done
+  gate: All affinity tests pass; existing claim tests unaffected
+  steps:
+  - id: affinity.design-rfc
+    name: Design RFC
+    status: done
+    description: "Create `docs/RFC-affinity.md` documenting the agent affinity feature.\n\
+      \nContents:\n- Problem statement: blind-tester scenario, workflow discipline\n\
+      - Decision record: default=suggested, opt-in exclusive, --force escape hatch\n\
+      - Data model changes: Step.affinity (suggested|exclusive), Plan.default_affinity\n\
+      - Claim behavior matrix:\n  | agent field | affinity | claimed_by matches |\
+      \ result |\n  | empty | any | — | allow (no check) |\n  | set | suggested |\
+      \ no | warn + allow |\n  | set | exclusive | no | reject (require --force) |\n\
+      \  | set | exclusive | yes | allow |\n- Force override: sets `affinity_override:\
+      \ true` on step for audit trail\n- CLI UX: warning format, error format, exit\
+      \ codes\n- MCP UX: structured `affinity_warning` field in claim response\n-\
+      \ Backward compatibility: no agent field → no enforcement, zero friction"
+    verification: RFC reviewed and consistent with implementation steps
+    claimed_by: python-engineer
+    claimed_at: '2026-02-17T16:31:39.379740+00:00'
+    evidence: 'Artifact:
+
+      - Created: docs/RFC-affinity.md (12099 bytes)
+
+
+      Verification:
+
+      - File created with comprehensive RFC covering all implementation steps
+
+      - RFC sections: Problem Statement, Decision Record, Data Model Changes, Claim
+      Behavior Matrix, Force Override Mechanism, CLI UX, MCP UX, YAML Examples, Backward
+      Compatibility, Implementation Scope, Non-Goals
+
+
+      Spec link:
+
+      - docs/RFC-affinity.md
+
+
+      RFC reviewed and consistent with implementation steps:
+
+      - affinity.data-model-changes: Covers AffinityMode enum, Step.affinity, Plan.default_affinity,
+      affinity_override fields, YAML round-trip
+
+      - affinity.core-claim-enforcement-logic: Covers claim behavior matrix, affinity
+      resolution, force override
+
+      - affinity.cli-integration: Covers --force flag, warning/error formats, exit
+      codes
+
+      - affinity.mcp-integration: Covers force param, affinity_warning and affinity_override
+      response fields
+
+      - affinity.tests: Covers ~25 test scenarios listed'
+  - id: affinity.data-model-changes
+    name: Data model changes
+    status: done
+    description: "Update `src/vectl/models.py`:\n\n1. Add `Affinity` enum:\n   - SUGGESTED\
+      \ = \"suggested\"\n   - EXCLUSIVE = \"exclusive\"\n\n2. Add field to `Step`:\n\
+      \   - `affinity: Affinity | None = None`\n   - None means \"use plan default\"\
+      \n\n3. Add field to `Plan`:\n   - `default_affinity: Affinity = Affinity.SUGGESTED`\n\
+      \n4. Add field to `Step`:\n   - `affinity_override: bool = False`\n   - Set\
+      \ to True when --force overrides exclusive affinity\n\n5. YAML round-trip: affinity=None\
+      \ and affinity_override=False should be omitted (exclude_none/exclude_defaults\
+      \ pattern).\n\nBackward compat: existing plan.yaml files without these fields\
+      \ load correctly with defaults."
+    verification: uv run pytest tests/test_models.py -v
+    depends_on:
+    - affinity.design-rfc
+    claimed_by: python-engineer
+    claimed_at: '2026-02-17T16:35:45.188847+00:00'
+    evidence: "Artifact:\n- Modified: src/vectl/models.py\n  - Added AffinityMode\
+      \ enum (suggested, exclusive)\n  - Added Step.affinity, Step.affinity_override,\
+      \ Step.affinity_override_by, Step.affinity_override_at fields\n  - Added Plan.default_affinity\
+      \ field\n- Modified: src/vectl/io.py\n  - Updated _clean_dict to omit default\
+      \ affinity fields for cleaner YAML output:\n    - affinity=None (handled by\
+      \ exclude_none)\n    - affinity_override=False (omit from YAML)\n    - affinity_override_by=None,\
+      \ affinity_override_at=None (handled by exclude_none)\n    - default_affinity=\"\
+      suggested\" (omit default value)\n\nVerification:\n- Run: uv run pytest tests/test_models.py\
+      \ -v -> 29 passed\n- Run: uv run pytest tests/ -q -> 792 passed\n- Verified\
+      \ YAML round-trip: affinity fields serialize/deserialize correctly\n- Verified\
+      \ backward compat: old plans without affinity fields load correctly with defaults\n\
+      \nSpec link:\n- docs/RFC-affinity.md (Data Model Changes section)"
+  - id: affinity.core-claim-enforcement-logic
+    name: Core claim enforcement logic
+    status: done
+    description: "Update `src/vectl/core.py` `claim_step()`:\n\n1. Resolve effective\
+      \ affinity: `step.affinity or plan.default_affinity`\n2. If step.agent is set\
+      \ and agent_name != step.agent:\n   - If effective affinity == SUGGESTED: proceed\
+      \ but return warning metadata\n   - If effective affinity == EXCLUSIVE: raise\
+      \ PlanError unless force=True\n3. Add `force: bool = False` parameter to `claim_step()`\n\
+      4. When force=True on exclusive mismatch: allow claim, set `step.affinity_override\
+      \ = True`\n5. Return type enhancement: `claim_step()` returns `(Plan, ClaimResult)`\
+      \ where ClaimResult is a dataclass with `affinity_warning: bool`, `warning_message:\
+      \ str | None`\n\nNew exception or error path:\n- `AffinityError(PlanError)`\
+      \ with message: \"Step {id} has exclusive affinity for '{agent}'. Use --force\
+      \ to override.\""
+    verification: uv run pytest tests/test_logic.py -v -k affinity
+    depends_on:
+    - affinity.data-model-changes
+    claimed_by: python-engineer
+    claimed_at: '2026-02-17T16:53:05.390626+00:00'
+    evidence: "Artifact:\n- Modified: src/vectl/models.py\n  - Added AffinityError\
+      \ exception class\n- Modified: src/vectl/core.py\n  - Added ClaimResult dataclass\
+      \ with affinity_warning, warning_message, affinity_override fields\n  - Updated\
+      \ claim_step() signature: added force parameter, returns tuple[Plan, ClaimResult]\n\
+      \  - Implemented affinity resolution logic: step.affinity or plan.default_affinity\n\
+      \  - Implemented claim behavior matrix per RFC\n- Modified: src/vectl/cli.py\n\
+      \  - Added --force flag to claim command\n  - Added affinity warning/override\
+      \ message output\n- Modified: src/vectl/mcp_server.py\n  - Added AffinityWarningData,\
+      \ AffinityOverrideData response models\n  - Extended ClaimStepData with affinity_override\
+      \ field\n  - Added force parameter to vectl_claim tool\n  - Added error_code=\"\
+      affinity_violation\" for exclusive affinity rejection\n- Modified: tests/test_logic.py\n\
+      \  - Added 8 affinity tests in TestAffinityClaim class\n- Modified: tests/test_properties.py\n\
+      \  - Updated to handle new claim_step return type\n\nVerification:\n- Run: uv\
+      \ run pytest tests/test_logic.py -v -k affinity -> 8 passed\n- Run: uv run pytest\
+      \ tests/ -q -> 800 passed\n\nSpec link:\n- docs/RFC-affinity.md (Claim Behavior\
+      \ Matrix, CLI UX, MCP UX sections)"
+  - id: affinity.cli-integration
+    name: CLI integration
+    status: done
+    description: "Update `src/vectl/cli.py`:\n\n1. `vectl claim` command:\n   - Add\
+      \ `--force` flag (default False)\n   - On suggested affinity warning: print\
+      \ yellow warning via Rich, proceed, exit 0\n   - On exclusive affinity mismatch\
+      \ without --force: print red error, exit 1\n   - On exclusive affinity mismatch\
+      \ with --force: print yellow warning \"Overriding exclusive affinity (recorded)\"\
+      , proceed, exit 0\n   - Warning format: \"⚠ Step {id} is suggested for '{agent}'.\
+      \ Claiming as '{claimed_by}'.\"\n   - Error format: \"✗ Step {id} has exclusive\
+      \ affinity for '{agent}'. Use --force to override.\"\n\n2. `vectl show` command:\n\
+      \   - Display affinity field when set (e.g., \"Affinity: exclusive\")\n   -\
+      \ Display affinity_override: true as \"⚠ Affinity overridden\" if present\n\n\
+      3. `vectl status` / `vectl next`:\n   - Show exclusive icon (e.g., \U0001F510\
+      ) next to steps with exclusive affinity in step listings"
+    verification: vectl claim --help shows --force flag; manual test with exclusive
+      step
+    depends_on:
+    - affinity.core-claim-enforcement-logic
+    claimed_by: python-engineer
+    claimed_at: '2026-02-17T17:07:29.717651+00:00'
+    evidence: "Artifact:\n- Modified: src/vectl/cli.py\n  - Added AffinityMode import\n\
+      \  - Updated _show_step_detail: display affinity mode, affinity_override status\n\
+      \  - Updated _show_phase_detail: show exclusive icon (\U0001F510) for steps\
+      \ with exclusive affinity, show affinity override warning\n  - Updated next_cmd:\
+      \ show exclusive icon for steps with exclusive affinity\n  - claim command already\
+      \ had --force flag from core-claim-enforcement-logic step\n\nVerification:\n\
+      - Run: uv run vectl claim --help -> shows --force flag\n- Run: vectl next ->\
+      \ shows \U0001F510 icon for exclusive steps\n- Run: vectl show <exclusive-step>\
+      \ -> shows \"Affinity: exclusive\"\n- Run: vectl claim <exclusive-step> --agent\
+      \ wrong -> exit 1, error message\n- Run: vectl claim <exclusive-step> --agent\
+      \ wrong --force -> exit 0, warning shown\n- Run: uv run pytest tests/ -q ->\
+      \ 800 passed\n\nSpec link:\n- docs/RFC-affinity.md (CLI UX section)"
+  - id: affinity.mcp-integration
+    name: MCP integration
+    status: done
+    description: "Update `src/vectl/mcp_server.py` `vectl_claim` tool:\n\n1. Add `force:\
+      \ bool = False` parameter to vectl_claim\n2. On suggested affinity warning:\
+      \ include in response markdown:\n   \"⚠ **Affinity warning:** Step {id} is suggested\
+      \ for '{agent}'. Claimed as '{claimed_by}'.\"\n   Add `affinity_warning: true`\
+      \ to structured response metadata\n3. On exclusive affinity mismatch without\
+      \ force: return error message:\n   \"✗ Step {id} has exclusive affinity for\
+      \ '{agent}'. Pass force=true to override.\"\n4. On exclusive with force: include\
+      \ override notice in response\n5. Claim guidance (claim_guidance.py): if step\
+      \ has exclusive affinity, include note in guidance:\n   \"This step has exclusive\
+      \ affinity for '{agent}'.\""
+    verification: uv run pytest tests/test_mcp.py -v -k affinity
+    depends_on:
+    - affinity.core-claim-enforcement-logic
+    claimed_by: python-engineer
+    claimed_at: '2026-02-17T17:11:30.027563+00:00'
+    evidence: "Artifact:\n- Modified: src/vectl/mcp_server.py\n  - Fixed condition\
+      \ for setting affinity_override_data in response (check warning_message, not\
+      \ affinity_warning)\n- Modified: src/vectl/claim_guidance.py\n  - Added AffinityMode\
+      \ import\n  - Added affinity note in guidance when step has exclusive/suggested\
+      \ affinity\n- Modified: tests/test_mcp.py\n  - Added TestAffinity class with\
+      \ 6 MCP affinity tests\n\nVerification:\n- Run: uv run pytest tests/test_mcp.py\
+      \ -v -k affinity -> 6 passed\n- Run: uv run pytest tests/ -q -> 806 passed\n\
+      \nSpec link:\n- docs/RFC-affinity.md (MCP UX section)"
+  - id: affinity.tests
+    name: Tests
+    status: done
+    description: 'Comprehensive tests for affinity enforcement:
+
+
+      **Model tests (test_models.py):**
+
+      - Affinity enum values
+
+      - Step with affinity=None loads correctly (backward compat)
+
+      - Plan with default_affinity loads correctly
+
+      - YAML round-trip: affinity/affinity_override omitted when default
+
+      - Existing plan.yaml without affinity fields loads without error
+
+
+      **Core logic tests (test_logic.py or test_affinity.py):**
+
+      - claim_step with suggested affinity + matching agent → no warning
+
+      - claim_step with suggested affinity + mismatched agent → warning, claim succeeds
+
+      - claim_step with exclusive affinity + matching agent → claim succeeds
+
+      - claim_step with exclusive affinity + mismatched agent → AffinityError raised
+
+      - claim_step with exclusive + mismatched + force=True → claim succeeds, affinity_override=True
+
+      - claim_step with no agent field → no affinity check regardless of affinity
+      setting
+
+      - claim_step with step affinity=None → falls back to plan.default_affinity
+
+      - claim_step with step affinity overrides plan default
+
+      - default_affinity=exclusive + step has agent → exclusive behavior
+
+      - default_affinity=suggested + step affinity=exclusive → exclusive wins
+
+
+      **CLI tests (test_cli.py):**
+
+      - claim with suggested warning shows warning text, exit 0
+
+      - claim with exclusive mismatch shows error, exit 1
+
+      - claim with exclusive + --force shows warning, exit 0
+
+      - show command displays affinity field
+
+
+      **MCP tests (test_mcp.py):**
+
+      - vectl_claim with affinity warning includes warning in response
+
+      - vectl_claim with exclusive mismatch returns error
+
+      - vectl_claim with exclusive + force=true succeeds'
+    verification: uv run pytest tests/ -v -k affinity
+    depends_on:
+    - affinity.cli-integration
+    - affinity.mcp-integration
+    claimed_by: python-engineer
+    claimed_at: '2026-02-17T17:18:29.675325+00:00'
+    evidence: "Artifact:\n- Modified: tests/test_models.py\n  - Added AffinityMode\
+      \ import\n  - Added TestAffinityMode: enum values, all values\n  - Added TestStepAffinity:\
+      \ affinity=None default, affinity=exclusive, affinity_override fields\n  - Added\
+      \ TestPlanAffinity: default_affinity defaults to SUGGESTED, can be EXCLUSIVE\n\
+      \  - Added TestAffinityBackwardCompat: existing plan without affinity fields\
+      \ loads correctly\n- Modified: tests/test_logic.py\n  - Added AffinityError,\
+      \ AffinityMode imports\n  - Added TestAffinityClaim: 8 tests for core claim\
+      \ behavior\n- Modified: tests/test_mcp.py\n  - Added TestAffinity: 6 tests for\
+      \ MCP claim behavior\n- Modified: tests/test_cli.py\n  - Added AffinityMode\
+      \ import\n  - Added affinity_plan_file fixture\n  - Added TestAffinityCli: 6\
+      \ tests for CLI claim/show/next behavior\n\nVerification:\n- Run: uv run pytest\
+      \ tests/ -v -k affinity -> 29 passed\n- Run: uv run pytest tests/ -q -> 821\
+      \ passed\n\nSpec link:\n- docs/RFC-affinity.md (comprehensive test coverage)"

@@ -8,6 +8,8 @@ from enum import Enum
 from pathlib import Path
 
 from vectl.models import (
+    AffinityError,
+    AffinityMode,
     AmbiguousMatchError,
     Clipboard,
     DiffResult,
@@ -255,8 +257,59 @@ def get_claimed_steps(plan: Plan, agent: str | None = None) -> list[tuple[str, S
     return results
 
 
-def claim_step(plan: Plan, step_id: str, agent_name: str) -> Plan:
-    """Claim a step for work."""
+# ---------------------------------------------------------------------------
+# Claim Result Dataclass
+# ---------------------------------------------------------------------------
+
+
+class ClaimResult:
+    """Result of a claim operation with affinity metadata.
+
+    RFC: docs/RFC-affinity.md
+    Used to communicate affinity warnings/errors to CLI and MCP layers.
+    """
+
+    def __init__(
+        self,
+        *,
+        affinity_warning: bool = False,
+        warning_message: str | None = None,
+        affinity_override: bool = False,
+    ) -> None:
+        self.affinity_warning = affinity_warning
+        self.warning_message = warning_message
+        self.affinity_override = affinity_override
+
+    def __repr__(self) -> str:
+        return (
+            f"ClaimResult(affinity_warning={self.affinity_warning}, "
+            f"warning_message={self.warning_message!r}, "
+            f"affinity_override={self.affinity_override})"
+        )
+
+
+def claim_step(
+    plan: Plan, step_id: str, agent_name: str, *, force: bool = False
+) -> tuple[Plan, ClaimResult]:
+    """Claim a step for work.
+
+    RFC: docs/RFC-affinity.md
+    Enforces agent affinity when step.agent is set.
+
+    Args:
+        plan: The plan to modify.
+        step_id: ID of the step to claim.
+        agent_name: Name of the agent claiming the step.
+        force: If True, override exclusive affinity violations.
+
+    Returns:
+        Tuple of (modified plan, claim result with affinity metadata).
+
+    Raises:
+        PlanError: Step not found, wrong status, inactive phase, or unmet deps.
+        AffinityError: Exclusive affinity violation when force=False.
+    """
+    result = ClaimResult()
     found = plan.find_step(step_id)
     if found is None:
         raise PlanError(f"Step '{step_id}' not found")
@@ -276,6 +329,35 @@ def claim_step(plan: Plan, step_id: str, agent_name: str) -> Plan:
     if unmet:
         raise PlanError(f"Step '{step_id}' has unmet dependencies: {unmet}")
 
+    # RFC: docs/RFC-affinity.md
+    # Check affinity when step.agent is set
+    if step.agent is not None and step.agent != agent_name:
+        # Resolve effective affinity: step.affinity overrides plan.default_affinity
+        effective_affinity = step.affinity or plan.default_affinity
+
+        if effective_affinity == AffinityMode.SUGGESTED:
+            # Warn but allow
+            result.affinity_warning = True
+            result.warning_message = (
+                f"Step '{step_id}' suggests agent '{step.agent}' "
+                f"but is being claimed by '{agent_name}'. "
+                f"Proceeding (affinity: suggested)"
+            )
+        elif effective_affinity == AffinityMode.EXCLUSIVE:
+            if force:
+                # Override with audit trail
+                step.affinity_override = True
+                step.affinity_override_by = agent_name
+                step.affinity_override_at = datetime.now(timezone.utc).isoformat()
+                result.affinity_override = True
+                result.warning_message = (
+                    f"Affinity override: step '{step_id}' has exclusive affinity for '{step.agent}'. "
+                    f"Overridden by --force. Audit trail recorded."
+                )
+            else:
+                # Reject
+                raise AffinityError(step_id, step.agent, agent_name)
+
     step.status = StepStatus.CLAIMED
     step.claimed_by = agent_name
     step.claimed_at = datetime.now(timezone.utc).isoformat()
@@ -284,7 +366,7 @@ def claim_step(plan: Plan, step_id: str, agent_name: str) -> Plan:
     if phase.status in (PhaseStatus.PENDING, PhaseStatus.LOCKED):
         phase.status = PhaseStatus.IN_PROGRESS
 
-    return plan
+    return plan, result
 
 
 def complete_step(plan: Plan, step_id: str, evidence: str) -> Plan:

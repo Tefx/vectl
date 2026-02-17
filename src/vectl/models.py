@@ -43,6 +43,17 @@ class PhaseStatus(str, Enum):
     DONE = "done"
 
 
+class AffinityMode(str, Enum):
+    """Agent affinity enforcement mode for steps.
+
+    RFC: docs/RFC-affinity.md
+    Controls whether agent suggestions are enforced during claim.
+    """
+
+    SUGGESTED = "suggested"  # Warn on non-matching agent, allow claim
+    EXCLUSIVE = "exclusive"  # Reject non-matching agent unless --force
+
+
 # ---------------------------------------------------------------------------
 # Models
 # ---------------------------------------------------------------------------
@@ -71,12 +82,20 @@ class Step(BaseModel):
     refs: list[str] = Field(default_factory=list)
     depends_on: list[str] = Field(default_factory=list)
     agent: str | None = None
+    # RFC: docs/RFC-affinity.md
+    # Agent affinity enforcement mode. None inherits from plan.default_affinity.
+    affinity: AffinityMode | None = None
     claimed_by: str | None = None
     claimed_at: str | None = None
     evidence: str | None = None
     skipped_reason: str | None = None
     rejection_reason: str | None = None
     rejection_history: list[RejectionEntry] = Field(default_factory=list)
+    # RFC: docs/RFC-affinity.md
+    # Audit trail for --force override of exclusive affinity.
+    affinity_override: bool = False
+    affinity_override_by: str | None = None
+    affinity_override_at: str | None = None
 
     @model_validator(mode="after")
     def _validate_status_fields(self) -> Step:
@@ -148,6 +167,9 @@ class Plan(BaseModel):
     # Single-slot clipboard for cross-agent handoff/broadcast.
     # Placed before phases so it appears first in YAML output.
     clipboard: Clipboard | None = None
+    # RFC: docs/RFC-affinity.md
+    # Plan-level default affinity mode for steps without explicit affinity.
+    default_affinity: AffinityMode = AffinityMode.SUGGESTED
     phases: list[Phase] = Field(default_factory=list)
 
     # ---- helpers ----
@@ -204,6 +226,22 @@ class PlanValidationIssue:
 
 class PlanError(Exception):
     """Raised when a plan operation fails."""
+
+
+class AffinityError(PlanError):
+    """Raised when an exclusive affinity violation occurs during claim.
+
+    RFC: docs/RFC-affinity.md
+    """
+
+    def __init__(self, step_id: str, expected_agent: str, claiming_agent: str) -> None:
+        self.step_id = step_id
+        self.expected_agent = expected_agent
+        self.claiming_agent = claiming_agent
+        super().__init__(
+            f"Step '{step_id}' has exclusive affinity for '{expected_agent}'. "
+            f"Use --force to override."
+        )
 
 
 class AmbiguousMatchError(PlanError):

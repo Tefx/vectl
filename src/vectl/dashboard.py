@@ -692,25 +692,8 @@ DASHBOARD_HTML_TEMPLATE = """<!DOCTYPE html>
       background: var(--bg-primary);
       padding: var(--spacing-sm);
       border-radius: 4px;
-      white-space: pre-wrap;
       font-size: 0.875rem;
       margin-bottom: var(--spacing-sm);
-    }
-
-    .step-detail__checkbox {
-      display: flex;
-      align-items: center;
-      gap: var(--spacing-sm);
-      color: var(--text-secondary);
-    }
-
-    .step-detail__checkbox input {
-      accent-color: var(--color-done);
-    }
-
-    .step-detail__checkbox--checked {
-      color: var(--color-done);
-      text-decoration: line-through;
     }
 
     .step-detail__rejection {
@@ -814,6 +797,161 @@ DASHBOARD_HTML_TEMPLATE = """<!DOCTYPE html>
       }
     }
 
+    /* Markdown Content Styling */
+    .md-content {
+      line-height: 1.6;
+    }
+    .md-content p {
+      margin: 0.5em 0;
+    }
+    .md-content ul, .md-content ol {
+      margin: 0.5em 0;
+      padding-left: 1.5em;
+    }
+    .md-content li {
+      margin: 0.25em 0;
+    }
+    .md-content code {
+      font-family: var(--font-mono);
+      background: var(--bg-tertiary);
+      padding: 0.125em 0.375em;
+      border-radius: 3px;
+      font-size: 0.875em;
+    }
+    .md-content pre {
+      background: var(--bg-tertiary);
+      border: 1px solid var(--border-color);
+      border-radius: 6px;
+      padding: var(--spacing-sm);
+      margin: var(--spacing-sm) 0;
+      overflow-x: auto;
+    }
+    .md-content pre code {
+      background: transparent;
+      padding: 0;
+      font-size: 0.8125rem;
+      line-height: 1.5;
+    }
+    .md-content blockquote {
+      border-left: 3px solid var(--border-color);
+      margin: var(--spacing-sm) 0;
+      padding-left: var(--spacing-sm);
+      color: var(--text-secondary);
+    }
+    .md-content h1, .md-content h2, .md-content h3,
+    .md-content h4, .md-content h5, .md-content h6 {
+      margin: var(--spacing-sm) 0;
+      font-weight: 600;
+    }
+    .md-content a {
+      color: var(--color-claimed);
+      text-decoration: none;
+    }
+    .md-content a:hover {
+      text-decoration: underline;
+    }
+    .md-content table {
+      border-collapse: collapse;
+      margin: var(--spacing-sm) 0;
+      width: 100%;
+    }
+    .md-content th, .md-content td {
+      border: 1px solid var(--border-color);
+      padding: var(--spacing-xs) var(--spacing-sm);
+      text-align: left;
+    }
+    .md-content th {
+      background: var(--bg-tertiary);
+      font-weight: 600;
+    }
+    .md-content hr {
+      border: none;
+      border-top: 1px solid var(--border-color);
+      margin: var(--spacing-md) 0;
+    }
+    .md-content input[type="checkbox"] {
+      accent-color: var(--color-done);
+      margin-right: 0.5em;
+    }
+
+    /* Highlight.js theme overrides for dark mode */
+    @media (prefers-color-scheme: dark) {
+      .md-content pre {
+        background: #1f2937;
+        border-color: #374151;
+      }
+      .md-content code {
+        background: #374151;
+      }
+    }
+
+    /* Highlight.js GitHub Theme (inline) */
+    .hljs { background: #f6f8fa; color: #24292f; }
+    .hljs-doctag,
+    .hljs-keyword,
+    .hljs-meta .hljs-keyword,
+    .hljs-template-tag,
+    .hljs-template-variable,
+    .hljs-type,
+    .hljs-variable.language_ { color: #d73a49; }
+    .hljs-title,
+    .hljs-title.class_,
+    .hljs-title.class_.inherited__,
+    .hljs-title.function_ { color: #6f42c1; }
+    .hljs-attr,
+    .hljs-attribute,
+    .hljs-literal,
+    .hljs-meta,
+    .hljs-number,
+    .hljs-operator,
+    .hljs-variable,
+    .hljs-selector-attr,
+    .hljs-selector-class,
+    .hljs-selector-id { color: #005cc5; }
+    .hljs-regexp,
+    .hljs-string,
+    .hljs-meta .hljs-string { color: #032f62; }
+    .hljs-built_in,
+    .hljs-symbol { color: #e36209; }
+    .hljs-comment,
+    .hljs-code,
+    .hljs-formula { color: #6a737d; }
+    .hljs-name,
+    .hljs-quote,
+    .hljs-selector-tag,
+    .hljs-selector-pseudo { color: #22863a; }
+    .hljs-subst { color: #24292f; }
+    .hljs-section { color: #005cc5; font-weight: bold; }
+    .hljs-bullet { color: #735c0f; }
+    .hljs-emphasis { color: #24292f; font-style: italic; }
+    .hljs-strong { color: #24292f; font-weight: bold; }
+    .hljs-addition { color: #22863a; background-color: #f0fff4; }
+    .hljs-deletion { color: #b31d28; background-color: #ffeef0; }
+
+    @media (prefers-color-scheme: dark) {
+      .hljs { background: #1f2937; color: #e5e7eb; }
+      .hljs-doctag, .hljs-keyword, .hljs-meta .hljs-keyword,
+      .hljs-template-tag, .hljs-template-variable, .hljs-type,
+      .hljs-variable.language_ { color: #f97583; }
+      .hljs-title, .hljs-title.class_, .hljs-title.class_.inherited__,
+      .hljs-title.function_ { color: #b392f0; }
+      .hljs-attr, .hljs-attribute, .hljs-literal, .hljs-meta, .hljs-number,
+      .hljs-operator, .hljs-variable, .hljs-selector-attr,
+      .hljs-selector-class, .hljs-selector-id { color: #79b8ff; }
+      .hljs-regexp, .hljs-string, .hljs-meta .hljs-string { color: #9ecbff; }
+      .hljs-built_in, .hljs-symbol { color: #ffab70; }
+      .hljs-comment, .hljs-code, .hljs-formula { color: #6a737d; }
+      .hljs-name, .hljs-quote, .hljs-selector-tag,
+      .hljs-selector-pseudo { color: #85e89d; }
+      .hljs-subst { color: #e5e7eb; }
+      .hljs-section { color: #79b8ff; }
+      .hljs-bullet { color: #ffe484; }
+      .hljs-emphasis { color: #e5e7eb; font-style: italic; }
+      .hljs-strong { color: #e5e7eb; font-weight: bold; }
+      .hljs-addition { color: #85e89d; background-color: #144620; }
+      .hljs-deletion { color: #f97583; background-color: #631e1e; }
+    }
+
     /* Utility Classes */
     .hidden { display: none !important; }
     .sr-only {
@@ -898,6 +1036,8 @@ DASHBOARD_HTML_TEMPLATE = """<!DOCTYPE html>
   <script>
     const DATA = {{json_data}};
   </script>
+  <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/highlight.js@11.11.1/lib/highlight.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.min.js"></script>
   <script>
     // Dashboard rendering logic
@@ -905,6 +1045,46 @@ DASHBOARD_HTML_TEMPLATE = """<!DOCTYPE html>
 
     (function() {
       'use strict';
+
+      // --- Markdown Configuration ---
+      function initMarkdown() {
+        if (typeof marked === 'undefined') {
+          console.error('marked.js not loaded');
+          return false;
+        }
+        marked.setOptions({
+          gfm: true,
+          breaks: true,
+          highlight: function(code, lang) {
+            if (typeof hljs === 'undefined') return code;
+            if (lang && hljs.getLanguage(lang)) {
+              try {
+                return hljs.highlight(code, { language: lang }).value;
+              } catch (e) { /* fallthrough */ }
+            }
+            // Auto-detect language
+            try {
+              return hljs.highlightAuto(code).value;
+            } catch (e) {
+              return code;
+            }
+          }
+        });
+        return true;
+      }
+
+      function renderMarkdown(text) {
+        if (!text) return '';
+        // marked.js handles HTML escaping internally
+        try {
+          return marked.parse(text);
+        } catch (e) {
+          // Fallback to escaped text if parsing fails
+          const div = document.createElement('div');
+          div.textContent = text;
+          return div.innerHTML;
+        }
+      }
 
       // --- Status Icon Mapping ---
       const PHASE_ICONS = {
@@ -1233,14 +1413,13 @@ DASHBOARD_HTML_TEMPLATE = """<!DOCTYPE html>
           `;
         }
 
-        // Description with checkbox rendering
+        // Description with Markdown rendering
         if (step.description) {
-          const descWithCheckboxes = renderDescriptionWithCheckboxes(step.description);
           html += `
             <div class="step-detail__row">
               <span class="step-detail__label">Description:</span>
             </div>
-            <div class="step-detail__description">${descWithCheckboxes}</div>
+            <div class="step-detail__description md-content">${renderMarkdown(step.description)}</div>
           `;
         }
 
@@ -1259,8 +1438,8 @@ DASHBOARD_HTML_TEMPLATE = """<!DOCTYPE html>
           html += `
             <div class="step-detail__row">
               <span class="step-detail__label">Verification:</span>
-              <span class="step-detail__value"><code>${escapeHtml(step.verification)}</code></span>
             </div>
+            <div class="step-detail__description md-content">${renderMarkdown(step.verification)}</div>
           `;
         }
 
@@ -1279,8 +1458,8 @@ DASHBOARD_HTML_TEMPLATE = """<!DOCTYPE html>
           html += `
             <div class="step-detail__row">
               <span class="step-detail__label">Evidence:</span>
-              <span class="step-detail__value">${escapeHtml(step.evidence)}</span>
             </div>
+            <div class="step-detail__description md-content">${renderMarkdown(step.evidence)}</div>
           `;
         }
 
@@ -1306,17 +1485,6 @@ DASHBOARD_HTML_TEMPLATE = """<!DOCTYPE html>
           `;
         }
 
-        return html;
-      }
-
-      function renderDescriptionWithCheckboxes(desc) {
-        // Convert markdown checkboxes to HTML
-        let html = escapeHtml(desc);
-        // Match - [x] or - [ ] at start of line
-        html = html.replace(/^- \\[x\\] (.*)$/gm, '<div class="step-detail__checkbox step-detail__checkbox--checked"><input type="checkbox" checked disabled> $1</div>');
-        html = html.replace(/^- \\[ \\] (.*)$/gm, '<div class="step-detail__checkbox"><input type="checkbox" disabled> $1</div>');
-        // Preserve newlines
-        html = html.replace(/\\n/g, '<br>');
         return html;
       }
 
@@ -1492,6 +1660,7 @@ DASHBOARD_HTML_TEMPLATE = """<!DOCTYPE html>
 
       // --- Initialize ---
       function init() {
+        initMarkdown();
         renderSidebar();
         renderPhaseCards();
         setupTabs();

@@ -533,7 +533,8 @@ class TestDashboardHtmlTemplate:
         """CSS includes step detail panel styles."""
         assert "step-detail" in DASHBOARD_HTML_TEMPLATE
         assert "step-detail__rejection" in DASHBOARD_HTML_TEMPLATE
-        assert "step-detail__checkbox" in DASHBOARD_HTML_TEMPLATE
+        assert "md-content" in DASHBOARD_HTML_TEMPLATE
+        assert 'md-content input[type="checkbox"]' in DASHBOARD_HTML_TEMPLATE
 
     def test_template_has_progress_bar_styles(self) -> None:
         """CSS includes progress bar component styles."""
@@ -716,7 +717,7 @@ class TestGenerateDashboard:
         assert "○ 1" in html  # pending
 
     def test_output_is_single_html_file(self) -> None:
-        """Output is a complete single HTML file with no external dependencies."""
+        """Output is a complete single HTML file with no external CSS dependencies."""
         plan = Plan(
             project="standalone",
             phases=[],
@@ -727,12 +728,18 @@ class TestGenerateDashboard:
         assert html.startswith("<!DOCTYPE html>")
         assert "</html>" in html
 
-        # Check no external CSS/JS files (except Mermaid CDN which is expected)
+        # Check no external CSS files (styles must be inline)
         assert '<link rel="stylesheet"' not in html
-        # Mermaid CDN is the only external script and is expected
+
+        # External scripts are expected: marked.js, highlight.js, mermaid.js
         script_srcs = [line for line in html.split("\n") if '<script src="' in line]
-        assert len(script_srcs) == 1
-        assert "mermaid" in script_srcs[0]
+        script_urls = [s.strip() for s in script_srcs]
+        # At minimum, mermaid should be present
+        assert any("mermaid" in s for s in script_urls)
+        # marked.js for markdown rendering
+        assert any("marked" in s for s in script_urls)
+        # highlight.js for code syntax highlighting
+        assert any("highlight.js" in s for s in script_urls)
 
     def test_parses_as_valid_html(self) -> None:
         """Generated HTML parses without errors."""

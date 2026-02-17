@@ -127,7 +127,7 @@ class PlanStateMachine(RuleBasedStateMachine):
             return "__none__"
         # Pick first available (Hypothesis explores order via other rules)
         step = available[0]
-        self.plan = claim_step(self.plan, step.id, "test-agent")
+        self.plan, _ = claim_step(self.plan, step.id, "test-agent")
         self._check_invariants()
         return step.id
 
@@ -182,7 +182,7 @@ class PlanStateMachine(RuleBasedStateMachine):
         if len(available) < 2:
             return
         step = available[-1]
-        self.plan = claim_step(self.plan, step.id, "test-agent-2")
+        self.plan, _ = claim_step(self.plan, step.id, "test-agent-2")
         self._check_invariants()
 
     @rule()

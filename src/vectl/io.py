@@ -105,6 +105,19 @@ def _clean_dict(d: dict[str, Any]) -> dict[str, Any]:
                 result[k] = cleaned_dict
         elif v == "" and k not in ("project", "name", "id", "description"):
             continue
+        # RFC: docs/RFC-affinity.md
+        # Exclude default affinity fields for cleaner YAML.
+        # affinity: None is already handled by exclude_none=True in _plan_to_dict.
+        # affinity_override: False means "no override" → omit from YAML.
+        elif k == "affinity_override" and v is False:
+            continue
+        elif k == "affinity_override_by" and v is None:
+            continue
+        elif k == "affinity_override_at" and v is None:
+            continue
+        # default_affinity: "suggested" is the default → omit from YAML
+        elif k == "default_affinity" and v == "suggested":
+            continue
         else:
             result[k] = v
     return result

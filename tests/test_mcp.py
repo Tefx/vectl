@@ -606,6 +606,144 @@ class TestWorkflow:
 
 
 # ---------------------------------------------------------------------------
+# RFC: docs/RFC-affinity.md — MCP Affinity Tests
+# ---------------------------------------------------------------------------
+
+
+def _make_affinity_plan_dict(
+    *,
+    agent: str | None = None,
+    affinity: str | None = None,
+    plan_default: str = "suggested",
+) -> dict:
+    """Create a plan with affinity settings for testing."""
+    step: dict = {"id": "s1", "name": "Step 1"}
+    if agent:
+        step["agent"] = agent
+    if affinity:
+        step["affinity"] = affinity
+    return {
+        "project": "test-affinity",
+        "default_affinity": plan_default,
+        "phases": [
+            {
+                "id": "p1",
+                "name": "Phase 1",
+                "status": "pending",
+                "steps": [step],
+            }
+        ],
+    }
+
+
+class TestAffinity:
+    """Tests for agent affinity enforcement in MCP."""
+
+    @pytest.fixture
+    def affinity_plan_file(self, tmp_path: Path) -> Iterator[Path]:
+        """Create a temp plan file with affinity settings."""
+        plan_file = tmp_path / "plan.yaml"
+        plan_dict = _make_affinity_plan_dict()
+        plan_file.write_text(yaml.dump(plan_dict))
+        old = os.environ.get("VECTL_PLAN_PATH")
+        os.environ["VECTL_PLAN_PATH"] = str(plan_file)
+        try:
+            yield plan_file
+        finally:
+            if old is None:
+                os.environ.pop("VECTL_PLAN_PATH", None)
+            else:
+                os.environ["VECTL_PLAN_PATH"] = old
+
+    @pytest.fixture
+    def exclusive_plan_file(self, tmp_path: Path) -> Iterator[Path]:
+        """Create a temp plan file with exclusive affinity."""
+        plan_file = tmp_path / "plan.yaml"
+        plan_dict = _make_affinity_plan_dict(agent="blind-tester", affinity="exclusive")
+        plan_file.write_text(yaml.dump(plan_dict))
+        old = os.environ.get("VECTL_PLAN_PATH")
+        os.environ["VECTL_PLAN_PATH"] = str(plan_file)
+        try:
+            yield plan_file
+        finally:
+            if old is None:
+                os.environ.pop("VECTL_PLAN_PATH", None)
+            else:
+                os.environ["VECTL_PLAN_PATH"] = old
+
+    def test_claim_no_agent_no_check(self, affinity_plan_file: Path) -> None:
+        """No agent field -> no affinity check."""
+        result = vectl_claim(agent="any-agent", step_id="s1")
+        assert result["ok"] is True
+        assert result.get("affinity_warning") is None
+
+    def test_claim_suggested_warns(self, tmp_path: Path) -> None:
+        """Suggested affinity mismatch -> warn but allow."""
+        plan_file = tmp_path / "plan.yaml"
+        plan_dict = _make_affinity_plan_dict(agent="blind-tester", affinity="suggested")
+        plan_file.write_text(yaml.dump(plan_dict))
+        old = os.environ.get("VECTL_PLAN_PATH")
+        os.environ["VECTL_PLAN_PATH"] = str(plan_file)
+        try:
+            result = vectl_claim(agent="python-engineer", step_id="s1")
+            assert result["ok"] is True
+            assert result.get("affinity_warning") is not None
+            assert "blind-tester" in result["affinity_warning"]["message"]
+            assert "python-engineer" in result["affinity_warning"]["message"]
+        finally:
+            if old is None:
+                os.environ.pop("VECTL_PLAN_PATH", None)
+            else:
+                os.environ["VECTL_PLAN_PATH"] = old
+
+    def test_claim_exclusive_rejects(self, exclusive_plan_file: Path) -> None:
+        """Exclusive affinity mismatch -> reject."""
+        result = vectl_claim(agent="python-engineer", step_id="s1")
+        assert result["ok"] is False
+        assert result.get("error_code") == "affinity_violation"
+        assert "exclusive affinity" in result["error"]
+
+    def test_claim_exclusive_force_allows(self, exclusive_plan_file: Path) -> None:
+        """Exclusive affinity mismatch with force -> allow + audit trail."""
+        result = vectl_claim(agent="python-engineer", step_id="s1", force=True)
+        assert result["ok"] is True
+        assert result.get("affinity_override") is not None
+        assert "override" in result["affinity_override"]["message"].lower()
+
+        # Verify audit trail in plan
+        data = _reload_plan(exclusive_plan_file)
+        step = data["phases"][0]["steps"][0]
+        assert step.get("affinity_override") is True
+        assert step.get("affinity_override_by") == "python-engineer"
+
+    def test_claim_exclusive_matching_agent_allows(self, exclusive_plan_file: Path) -> None:
+        """Exclusive affinity with matching agent -> allow."""
+        result = vectl_claim(agent="blind-tester", step_id="s1")
+        assert result["ok"] is True
+        assert result.get("affinity_warning") is None
+        assert result.get("affinity_override") is None
+
+    def test_claim_guidance_shows_affinity(self, tmp_path: Path) -> None:
+        """Claim guidance includes affinity note for exclusive steps."""
+        plan_file = tmp_path / "plan.yaml"
+        plan_dict = _make_affinity_plan_dict(agent="blind-tester", affinity="exclusive")
+        plan_file.write_text(yaml.dump(plan_dict))
+        old = os.environ.get("VECTL_PLAN_PATH")
+        os.environ["VECTL_PLAN_PATH"] = str(plan_file)
+        try:
+            result = vectl_claim(agent="blind-tester", step_id="s1", guidance=True)
+            assert result["ok"] is True
+            # Guidance should mention exclusive affinity
+            assert "exclusive" in result["markdown"].lower()
+            assert "blind-tester" in result["markdown"]
+        finally:
+            if old is None:
+                os.environ.pop("VECTL_PLAN_PATH", None)
+            else:
+                os.environ["VECTL_PLAN_PATH"] = old
+
+
+# ---------------------------------------------------------------------------
 # Fixtures for review tool tests
 # ---------------------------------------------------------------------------
 

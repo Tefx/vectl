@@ -9,7 +9,7 @@ from typer.testing import CliRunner
 from vectl.cli import app
 from vectl import __version__
 from vectl.io import load_plan, save_plan
-from vectl.models import Phase, PhaseStatus, Plan, Step, StepStatus
+from vectl.models import AffinityMode, Phase, PhaseStatus, Plan, Step, StepStatus
 
 runner = CliRunner()
 
@@ -2145,3 +2145,101 @@ class TestClipboardClear:
         result = runner.invoke(app, ["clipboard-clear", "--plan", str(plan_file)])
         assert result.exit_code == 0
         assert "already empty" in result.output.lower()
+
+
+# ---------------------------------------------------------------------------
+# RFC: docs/RFC-affinity.md — CLI Affinity Tests
+# ---------------------------------------------------------------------------
+
+
+@pytest.fixture
+def affinity_plan_file(tmp_path: Path) -> Path:
+    """Create a plan with affinity settings for CLI testing."""
+    plan = Plan(
+        project="affinity-test",
+        default_affinity=AffinityMode.SUGGESTED,
+        phases=[
+            Phase(
+                id="p1",
+                name="Phase 1",
+                status=PhaseStatus.PENDING,
+                steps=[
+                    Step(id="s1", name="No Agent Step"),
+                    Step(id="s2", name="Suggested Step", agent="blind-tester"),
+                    Step(
+                        id="s3",
+                        name="Exclusive Step",
+                        agent="blind-tester",
+                        affinity=AffinityMode.EXCLUSIVE,
+                    ),
+                ],
+            )
+        ],
+    )
+    path = tmp_path / "plan.yaml"
+    save_plan(plan, path)
+    return path
+
+
+class TestAffinityCli:
+    def test_claim_no_agent_no_check(self, affinity_plan_file: Path) -> None:
+        """Claim step without agent field -> no affinity check."""
+        result = runner.invoke(
+            app, ["claim", "s1", "--agent", "anyone", "--plan", str(affinity_plan_file)]
+        )
+        assert result.exit_code == 0
+        assert "Claimed" in result.output
+
+    def test_claim_suggested_mismatch_warns(self, affinity_plan_file: Path) -> None:
+        """Claim with suggested affinity mismatch -> warning, exit 0."""
+        result = runner.invoke(
+            app,
+            ["claim", "s2", "--agent", "python-engineer", "--plan", str(affinity_plan_file)],
+        )
+        assert result.exit_code == 0
+        assert "Affinity warning" in result.output
+        assert "blind-tester" in result.output
+
+    def test_claim_exclusive_mismatch_rejects(self, affinity_plan_file: Path) -> None:
+        """Claim with exclusive mismatch -> error, exit 1."""
+        result = runner.invoke(
+            app,
+            ["claim", "s3", "--agent", "python-engineer", "--plan", str(affinity_plan_file)],
+        )
+        assert result.exit_code == 1
+        assert "exclusive affinity" in result.output.lower()
+
+    def test_claim_exclusive_force_allows(self, affinity_plan_file: Path) -> None:
+        """Claim with exclusive + --force -> warning, exit 0."""
+        result = runner.invoke(
+            app,
+            [
+                "claim",
+                "s3",
+                "--agent",
+                "python-engineer",
+                "--force",
+                "--plan",
+                str(affinity_plan_file),
+            ],
+        )
+        assert result.exit_code == 0
+        assert "Affinity override" in result.output
+        # Verify audit trail
+        plan, _ = load_plan(affinity_plan_file)
+        _, step = plan.find_step("s3")
+        assert step.affinity_override is True
+
+    def test_show_displays_affinity(self, affinity_plan_file: Path) -> None:
+        """Show command displays affinity field."""
+        result = runner.invoke(app, ["show", "s3", "--plan", str(affinity_plan_file)])
+        assert result.exit_code == 0
+        assert "Affinity:" in result.output
+        assert "exclusive" in result.output.lower()
+
+    def test_next_shows_exclusive_icon(self, affinity_plan_file: Path) -> None:
+        """Next command shows exclusive icon for steps with exclusive affinity."""
+        result = runner.invoke(app, ["next", "--plan", str(affinity_plan_file)])
+        assert result.exit_code == 0
+        # s3 has exclusive affinity, should show 🔐
+        assert "🔐" in result.output

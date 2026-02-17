@@ -63,6 +63,7 @@ from vectl.core import (
 )
 from vectl.io import load_plan, save_plan
 from vectl.models import (
+    AffinityError,
     CASConflictError,
     Clipboard,
     PhaseStatus,
@@ -290,6 +291,32 @@ class ClaimStepData(BaseModel):
     phase_name: str
     claimed_by: str
     suggested_agent: str | None = None
+    affinity_override: bool = False
+
+
+class AffinityWarningData(BaseModel):
+    """Affinity warning details.
+
+    RFC: docs/RFC-affinity.md
+    Returned when claim proceeds despite affinity mismatch.
+    """
+
+    step_agent: str
+    claiming_agent: str
+    affinity: str
+    message: str
+
+
+class AffinityOverrideData(BaseModel):
+    """Affinity override details.
+
+    RFC: docs/RFC-affinity.md
+    Returned when --force overrides exclusive affinity.
+    """
+
+    overridden_agent: str
+    override_by: str
+    message: str
 
 
 class ClaimResult(BaseModel):
@@ -302,22 +329,32 @@ class ClaimResult(BaseModel):
     markdown: str
     claimed: ClaimStepData | None = None
     guidance: GuidancePayload | None = None
+    affinity_warning: AffinityWarningData | None = None
+    affinity_override: AffinityOverrideData | None = None
     error: str | None = None
+    error_code: str | None = None
 
 
 @mcp.tool(
     description=(
         "Claim a step for work. If step_id is omitted, auto-claims the first "
-        "available step. Returns the claimed step details."
+        "available step. Returns the claimed step details. "
+        "RFC: docs/RFC-affinity.md — enforces agent affinity, use force=true to override."
     ),
 )
-def vectl_claim(agent: str, step_id: str | None = None, guidance: bool = True) -> dict:
+def vectl_claim(
+    agent: str, step_id: str | None = None, guidance: bool = True, force: bool = False
+) -> dict:
     """Claim a step.
 
     Args:
         agent: Agent name claiming the step.
         step_id: Step ID to claim. If omitted, auto-selects first available.
         guidance: If True, include claim-time guidance (refs + evidence template).
+        force: If True, override exclusive affinity violations (sets audit trail).
+
+    Returns:
+        Structured result with claimed step, affinity warnings, and guidance.
     """
     plan, expected_hash = _load()
 
@@ -331,8 +368,18 @@ def vectl_claim(agent: str, step_id: str | None = None, guidance: bool = True) -
         step_id = available[0].id
 
     try:
-        plan = claim_step(plan, step_id, agent)
+        plan, result = claim_step(plan, step_id, agent, force=force)
         _save(plan, expected_hash)
+    except AffinityError as e:
+        # RFC: docs/RFC-affinity.md
+        # Exclusive affinity violation
+        err = str(e)
+        return ClaimResult(
+            ok=False,
+            markdown=f"**Affinity Error:** {err}",
+            error=err,
+            error_code="affinity_violation",
+        ).model_dump(mode="json", exclude_none=True)
     except PlanError as e:
         err = str(e)
         return ClaimResult(ok=False, markdown=f"**Error:** {err}", error=err).model_dump(
@@ -350,6 +397,7 @@ def vectl_claim(agent: str, step_id: str | None = None, guidance: bool = True) -
             phase_name=phase.name,
             claimed_by=agent,
             suggested_agent=step.agent,
+            affinity_override=step.affinity_override,
         )
 
         md_lines: list[str] = [
@@ -364,15 +412,43 @@ def vectl_claim(agent: str, step_id: str | None = None, guidance: bool = True) -
         md_lines.append("→ Use `vectl_lifecycle` action=defer to release.")
         md_lines.append("")
 
+        # RFC: docs/RFC-affinity.md
+        # Build affinity warning/override data
+        affinity_warning_data: AffinityWarningData | None = None
+        affinity_override_data: AffinityOverrideData | None = None
+
+        if result.warning_message:
+            if result.affinity_override:
+                affinity_override_data = AffinityOverrideData(
+                    overridden_agent=step.agent or "",
+                    override_by=agent,
+                    message=result.warning_message,
+                )
+                md_lines.append(f"⚠️ **Affinity Override:** {result.warning_message}")
+            elif result.affinity_warning:
+                affinity_warning_data = AffinityWarningData(
+                    step_agent=step.agent or "",
+                    claiming_agent=agent,
+                    affinity="suggested",
+                    message=result.warning_message,
+                )
+                md_lines.append(f"⚠️ **Affinity Warning:** {result.warning_message}")
+            md_lines.append("")
+
         gp: GuidancePayload | None = None
         if guidance:
             gp = build_claim_guidance(plan, phase, step)
             md_lines.append(gp.markdown.rstrip())
 
         markdown = "\n".join(md_lines).rstrip() + "\n"
-        return ClaimResult(ok=True, markdown=markdown, claimed=claimed, guidance=gp).model_dump(
-            mode="json", exclude_none=True
-        )
+        return ClaimResult(
+            ok=True,
+            markdown=markdown,
+            claimed=claimed,
+            guidance=gp,
+            affinity_warning=affinity_warning_data,
+            affinity_override=affinity_override_data,
+        ).model_dump(mode="json", exclude_none=True)
 
     return ClaimResult(
         ok=True,

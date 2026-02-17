@@ -2,6 +2,7 @@
 
 import pytest
 from vectl.models import (
+    AffinityMode,
     Clipboard,
     Phase,
     PhaseStatus,
@@ -233,3 +234,77 @@ class TestPlanClipboard:
         plan = Plan(project="test", phases=[Phase(id="p1", name="Phase 1")])
         assert plan.clipboard is None
         assert len(plan.phases) == 1
+
+
+# ---------------------------------------------------------------------------
+# RFC: docs/RFC-affinity.md — Affinity Model Tests
+# ---------------------------------------------------------------------------
+
+
+class TestAffinityMode:
+    def test_enum_values(self):
+        from vectl.models import AffinityMode
+
+        assert AffinityMode.SUGGESTED.value == "suggested"
+        assert AffinityMode.EXCLUSIVE.value == "exclusive"
+
+    def test_all_values(self):
+        from vectl.models import AffinityMode
+
+        values = [e.value for e in AffinityMode]
+        assert "suggested" in values
+        assert "exclusive" in values
+
+
+class TestStepAffinity:
+    def test_step_affinity_none_default(self):
+        """Step with affinity=None loads correctly."""
+        step = Step(id="s1", name="Step 1")
+        assert step.affinity is None
+
+    def test_step_affinity_exclusive(self):
+        """Step with affinity=exclusive."""
+        step = Step(id="s1", name="Step 1", affinity=AffinityMode.EXCLUSIVE)
+        assert step.affinity == AffinityMode.EXCLUSIVE
+
+    def test_step_affinity_override_fields_default(self):
+        """Step affinity_override fields default to False/None."""
+        step = Step(id="s1", name="Step 1")
+        assert step.affinity_override is False
+        assert step.affinity_override_by is None
+        assert step.affinity_override_at is None
+
+    def test_step_affinity_override_set(self):
+        """Step affinity_override can be set."""
+        step = Step(
+            id="s1",
+            name="Step 1",
+            affinity_override=True,
+            affinity_override_by="human",
+            affinity_override_at="2026-02-18T10:00:00Z",
+        )
+        assert step.affinity_override is True
+        assert step.affinity_override_by == "human"
+
+
+class TestPlanAffinity:
+    def test_plan_default_affinity_suggested(self):
+        """Plan default_affinity defaults to SUGGESTED."""
+        plan = Plan(project="test")
+        assert plan.default_affinity == AffinityMode.SUGGESTED
+
+    def test_plan_default_affinity_exclusive(self):
+        """Plan default_affinity can be set to EXCLUSIVE."""
+        plan = Plan(project="test", default_affinity=AffinityMode.EXCLUSIVE)
+        assert plan.default_affinity == AffinityMode.EXCLUSIVE
+
+
+class TestAffinityBackwardCompat:
+    def test_existing_plan_without_affinity_loads(self):
+        """Existing plan.yaml without affinity fields loads without error."""
+        plan = Plan(
+            project="test", phases=[Phase(id="p1", name="P1", steps=[Step(id="s1", name="S1")])]
+        )
+        assert plan.default_affinity == AffinityMode.SUGGESTED
+        assert plan.phases[0].steps[0].affinity is None
+        assert plan.phases[0].steps[0].affinity_override is False

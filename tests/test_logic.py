@@ -23,6 +23,8 @@ from vectl.core import (
     skip_step,
 )
 from vectl.models import (
+    AffinityError,
+    AffinityMode,
     Clipboard,
     Phase,
     PhaseStatus,
@@ -173,7 +175,7 @@ class TestAutoUnlockPhases:
 class TestClaimStep:
     def test_claim_pending(self):
         plan = _simple_plan()
-        plan = claim_step(plan, "s1", "agent-1")
+        plan, _ = claim_step(plan, "s1", "agent-1")
         assert plan.phases[0].steps[0].status == StepStatus.CLAIMED
         assert plan.phases[0].steps[0].claimed_by == "agent-1"
         assert plan.phases[0].steps[0].claimed_at is not None
@@ -181,19 +183,19 @@ class TestClaimStep:
     def test_claim_updates_phase_to_in_progress(self):
         plan = _simple_plan()
         assert plan.phases[0].status == PhaseStatus.PENDING
-        plan = claim_step(plan, "s1", "agent-1")
+        plan, _ = claim_step(plan, "s1", "agent-1")
         assert plan.phases[0].status == PhaseStatus.IN_PROGRESS
 
     def test_claim_rejected_step(self):
         plan = _simple_plan()
         plan.phases[0].steps[0].status = StepStatus.REJECTED
         plan.phases[0].steps[0].rejection_reason = "Bad"
-        plan = claim_step(plan, "s1", "agent-2")
+        plan, _ = claim_step(plan, "s1", "agent-2")
         assert plan.phases[0].steps[0].status == StepStatus.CLAIMED
 
     def test_claim_already_claimed_fails(self):
         plan = _simple_plan()
-        plan = claim_step(plan, "s1", "agent-1")
+        plan, _ = claim_step(plan, "s1", "agent-1")
         with pytest.raises(PlanError, match="cannot be claimed"):
             claim_step(plan, "s1", "agent-2")
 
@@ -223,7 +225,7 @@ class TestClaimStep:
 class TestCompleteStep:
     def test_complete_claimed(self):
         plan = _simple_plan()
-        plan = claim_step(plan, "s1", "agent-1")
+        plan, _ = claim_step(plan, "s1", "agent-1")
         plan = complete_step(plan, "s1", "commit abc")
         assert plan.phases[0].steps[0].status == StepStatus.DONE
         assert plan.phases[0].steps[0].evidence == "commit abc"
@@ -236,11 +238,11 @@ class TestCompleteStep:
     def test_complete_all_steps_completes_phase(self):
         plan = _simple_plan()
         # Complete s1 and s3 (no deps), then s2 (depends on s1)
-        plan = claim_step(plan, "s1", "a")
+        plan, _ = claim_step(plan, "s1", "a")
         plan = complete_step(plan, "s1", "e")
-        plan = claim_step(plan, "s3", "a")
+        plan, _ = claim_step(plan, "s3", "a")
         plan = complete_step(plan, "s3", "e")
-        plan = claim_step(plan, "s2", "a")
+        plan, _ = claim_step(plan, "s2", "a")
         plan = complete_step(plan, "s2", "e")
         assert plan.phases[0].status == PhaseStatus.DONE
 
@@ -248,11 +250,11 @@ class TestCompleteStep:
         """Completing last step in a phase should auto-unlock dependent phases."""
         plan = _simple_plan()
         # p2 depends on p1. Complete all steps in p1.
-        plan = claim_step(plan, "s1", "a")
+        plan, _ = claim_step(plan, "s1", "a")
         plan = complete_step(plan, "s1", "e")
-        plan = claim_step(plan, "s3", "a")
+        plan, _ = claim_step(plan, "s3", "a")
         plan = complete_step(plan, "s3", "e")
-        plan = claim_step(plan, "s2", "a")
+        plan, _ = claim_step(plan, "s2", "a")
         plan = complete_step(plan, "s2", "e")
 
         assert plan.phases[0].status == PhaseStatus.DONE
@@ -265,7 +267,7 @@ class TestCompleteStep:
 class TestDeferStep:
     def test_defer_claimed(self):
         plan = _simple_plan()
-        plan = claim_step(plan, "s1", "agent-1")
+        plan, _ = claim_step(plan, "s1", "agent-1")
         plan = defer_step(plan, "s1")
         assert plan.phases[0].steps[0].status == StepStatus.PENDING
         assert plan.phases[0].steps[0].claimed_by is None
@@ -280,7 +282,7 @@ class TestDeferStep:
 class TestRejectStep:
     def test_reject_done(self):
         plan = _simple_plan()
-        plan = claim_step(plan, "s1", "agent-1")
+        plan, _ = claim_step(plan, "s1", "agent-1")
         plan = complete_step(plan, "s1", "evidence")
         plan = reject_step(plan, "s1", "Missing tests", "reviewer-1")
         assert plan.phases[0].steps[0].status == StepStatus.REJECTED
@@ -320,13 +322,13 @@ class TestSkipStep:
 
     def test_skip_claimed(self):
         plan = _simple_plan()
-        plan = claim_step(plan, "s1", "agent-1")
+        plan, _ = claim_step(plan, "s1", "agent-1")
         plan = skip_step(plan, "s1", "deprioritized")
         assert plan.phases[0].steps[0].status == StepStatus.SKIPPED
 
     def test_skip_done_fails(self):
         plan = _simple_plan()
-        plan = claim_step(plan, "s1", "a")
+        plan, _ = claim_step(plan, "s1", "a")
         plan = complete_step(plan, "s1", "e")
         with pytest.raises(PlanError, match="cannot be skipped"):
             skip_step(plan, "s1", "irrelevant")
@@ -360,16 +362,16 @@ class TestSkipStep:
 class TestGetClaimedSteps:
     def test_returns_claimed_by_agent(self):
         plan = _simple_plan()
-        plan = claim_step(plan, "s1", "agent-1")
-        plan = claim_step(plan, "s3", "agent-2")
+        plan, _ = claim_step(plan, "s1", "agent-1")
+        plan, _ = claim_step(plan, "s3", "agent-2")
         results = get_claimed_steps(plan, agent="agent-1")
         assert len(results) == 1
         assert results[0][1].id == "s1"
 
     def test_returns_all_claimed_when_no_agent(self):
         plan = _simple_plan()
-        plan = claim_step(plan, "s1", "agent-1")
-        plan = claim_step(plan, "s3", "agent-2")
+        plan, _ = claim_step(plan, "s1", "agent-1")
+        plan, _ = claim_step(plan, "s3", "agent-2")
         results = get_claimed_steps(plan)
         assert len(results) == 2
 
@@ -380,7 +382,7 @@ class TestGetClaimedSteps:
 
     def test_includes_phase_id(self):
         plan = _simple_plan()
-        plan = claim_step(plan, "s1", "a")
+        plan, _ = claim_step(plan, "s1", "a")
         results = get_claimed_steps(plan, agent="a")
         phase_id, step = results[0]
         assert phase_id == "p1"
@@ -406,7 +408,7 @@ class TestSkipPhase:
     def test_skip_defers_claimed_first(self):
         """Claimed steps are deferred then skipped."""
         plan = _simple_plan()
-        plan = claim_step(plan, "s1", "agent-1")
+        plan, _ = claim_step(plan, "s1", "agent-1")
         plan, skipped = skip_phase(plan, "p1", "deprioritized")
         assert "s1" in skipped
         step_s1 = plan.phases[0].steps[0]
@@ -416,7 +418,7 @@ class TestSkipPhase:
     def test_skip_preserves_done_steps(self):
         """Already-done steps are left unchanged."""
         plan = _simple_plan()
-        plan = claim_step(plan, "s1", "a")
+        plan, _ = claim_step(plan, "s1", "a")
         plan = complete_step(plan, "s1", "evidence")
         plan, skipped = skip_phase(plan, "p1", "irrelevant")
         assert "s1" not in skipped
@@ -427,10 +429,10 @@ class TestSkipPhase:
         """Phase with done + claimed + pending steps."""
         plan = _simple_plan()
         # s1: done
-        plan = claim_step(plan, "s1", "a")
+        plan, _ = claim_step(plan, "s1", "a")
         plan = complete_step(plan, "s1", "e")
         # s3: claimed
-        plan = claim_step(plan, "s3", "b")
+        plan, _ = claim_step(plan, "s3", "b")
         # s2: pending (blocked by s1, but skip doesn't care about deps)
         plan, skipped = skip_phase(plan, "p1", "absorbed")
         assert set(skipped) == {"s2", "s3"}
@@ -810,3 +812,93 @@ class TestClipboardExpiry:
             author="a", summary="s", content="c", written_at=now_iso, expires_at=not_yet
         )
         assert not _clipboard_expired(cb_valid)
+
+
+# ---------------------------------------------------------------------------
+# RFC: docs/RFC-affinity.md — Affinity Tests
+# ---------------------------------------------------------------------------
+
+
+class TestAffinityClaim:
+    """Tests for agent affinity enforcement during claim."""
+
+    def _plan_with_step(
+        self,
+        agent: str | None = None,
+        affinity: AffinityMode | None = None,
+        plan_default: AffinityMode = AffinityMode.SUGGESTED,
+    ) -> Plan:
+        """Helper to create a plan with a single step."""
+        step = Step(id="s1", name="Step 1", agent=agent, affinity=affinity)
+        phase = Phase(id="p1", name="Phase 1", status=PhaseStatus.PENDING, steps=[step])
+        return Plan(project="test", default_affinity=plan_default, phases=[phase])
+
+    def test_claim_no_agent_field_no_check(self):
+        """No agent field on step -> no affinity check."""
+        plan = self._plan_with_step(agent=None)
+        plan, result = claim_step(plan, "s1", "any-agent")
+        assert result.affinity_warning is False
+        assert result.warning_message is None
+
+    def test_claim_agent_matches_no_warning(self):
+        """Agent matches step.agent -> no warning."""
+        plan = self._plan_with_step(agent="python-engineer")
+        plan, result = claim_step(plan, "s1", "python-engineer")
+        assert result.affinity_warning is False
+        assert result.warning_message is None
+
+    def test_claim_suggested_mismatch_warns(self):
+        """Suggested affinity mismatch -> warn but allow."""
+        plan = self._plan_with_step(agent="blind-tester", affinity=AffinityMode.SUGGESTED)
+        plan, result = claim_step(plan, "s1", "python-engineer")
+        assert result.affinity_warning is True
+        assert "blind-tester" in result.warning_message
+        assert "python-engineer" in result.warning_message
+
+    def test_claim_exclusive_mismatch_rejects(self):
+        """Exclusive affinity mismatch -> reject."""
+        plan = self._plan_with_step(agent="blind-tester", affinity=AffinityMode.EXCLUSIVE)
+        with pytest.raises(AffinityError, match="exclusive affinity"):
+            claim_step(plan, "s1", "python-engineer")
+
+    def test_claim_exclusive_mismatch_force_allows(self):
+        """Exclusive affinity mismatch with force -> allow + audit trail."""
+        plan = self._plan_with_step(agent="blind-tester", affinity=AffinityMode.EXCLUSIVE)
+        plan, result = claim_step(plan, "s1", "python-engineer", force=True)
+        assert result.affinity_override is True
+        assert "override" in result.warning_message.lower()
+        # Check step has override fields
+        step = plan.phases[0].steps[0]
+        assert step.affinity_override is True
+        assert step.affinity_override_by == "python-engineer"
+        assert step.affinity_override_at is not None
+
+    def test_claim_uses_plan_default_affinity(self):
+        """Step without affinity uses plan.default_affinity."""
+        # Plan default is EXCLUSIVE
+        plan = self._plan_with_step(
+            agent="gate-reviewer", affinity=None, plan_default=AffinityMode.EXCLUSIVE
+        )
+        # Step has no affinity set, should use plan default -> EXCLUSIVE
+        with pytest.raises(AffinityError, match="exclusive affinity"):
+            claim_step(plan, "s1", "python-engineer")
+
+    def test_claim_step_affinity_overrides_plan_default(self):
+        """Step affinity overrides plan default."""
+        # Plan default is EXCLUSIVE, but step is SUGGESTED
+        plan = self._plan_with_step(
+            agent="blind-tester",
+            affinity=AffinityMode.SUGGESTED,
+            plan_default=AffinityMode.EXCLUSIVE,
+        )
+        # Should warn, not reject (step affinity wins)
+        plan, result = claim_step(plan, "s1", "python-engineer")
+        assert result.affinity_warning is True
+        assert result.affinity_override is False
+
+    def test_claim_exclusive_matches_allows(self):
+        """Exclusive affinity with matching agent -> allow."""
+        plan = self._plan_with_step(agent="blind-tester", affinity=AffinityMode.EXCLUSIVE)
+        plan, result = claim_step(plan, "s1", "blind-tester")
+        assert result.affinity_warning is False
+        assert result.warning_message is None

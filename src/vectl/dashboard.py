@@ -466,6 +466,14 @@ DASHBOARD_HTML_TEMPLATE = """<!DOCTYPE html>
       white-space: nowrap;
     }
 
+    .phase-nav__id {
+      font-family: var(--font-mono);
+      font-size: 0.7rem;
+      color: var(--text-muted);
+      display: block;
+      line-height: 1.2;
+    }
+
     .phase-nav__progress {
       font-size: 0.75rem;
       color: var(--text-muted);
@@ -541,6 +549,14 @@ DASHBOARD_HTML_TEMPLATE = """<!DOCTYPE html>
       flex: 1;
       font-weight: 600;
       color: var(--text-primary);
+    }
+
+    .phase-card__id {
+      font-family: var(--font-mono);
+      font-size: 0.75rem;
+      font-weight: 400;
+      color: var(--text-muted);
+      margin-right: 0.35em;
     }
 
     .phase-card__progress-text {
@@ -1180,7 +1196,9 @@ DASHBOARD_HTML_TEMPLATE = """<!DOCTYPE html>
             <li class="phase-nav__item">
               <a href="#phase-${escapeHtml(phase.id)}" class="phase-nav__link ${lockedClass}" data-phase-id="${escapeHtml(phase.id)}">
                 <span class="phase-nav__icon ${iconClass}">${icon}</span>
-                <span class="phase-nav__name">${escapeHtml(phase.name)}</span>
+                <span class="phase-nav__name">
+                  <span class="phase-nav__id">${escapeHtml(phase.id)}</span>${escapeHtml(phase.name)}
+                </span>
                 <span class="phase-nav__progress">${phase.progress.done}/${phase.progress.total}</span>
               </a>
             </li>
@@ -1239,7 +1257,7 @@ DASHBOARD_HTML_TEMPLATE = """<!DOCTYPE html>
               <div class="phase-card__header">
                 <span class="phase-card__collapse-icon">▼</span>
                 <span class="phase-card__status-icon ${iconClass}">${icon}</span>
-                <span class="phase-card__name">${escapeHtml(phase.name)}</span>
+                <span class="phase-card__name"><span class="phase-card__id">${escapeHtml(phase.id)}</span>${escapeHtml(phase.name)}</span>
                 <span class="phase-card__progress-text">${phase.progress.done}/${phase.progress.total} (${phase.progress.pct}%)</span>
                 <div class="phase-card__progress-bar">
                   <div class="phase-card__progress-fill" style="width: ${phase.progress.pct}%"></div>

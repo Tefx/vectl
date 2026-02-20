@@ -1,6 +1,6 @@
 """MCP server exposing vectl tools to agents.
 
-11 tools (8 consolidated per expert panel dec-001, plus guide, dag, and clipboard):
+14 tools (8 consolidated per expert panel dec-001, plus guide, dag, clipboard, init, render, and check):
   1. vectl_status  — plan overview + next steps + mine
   2. vectl_show    — step/phase detail
   3. vectl_claim   — claim step (auto-claim supported)
@@ -10,8 +10,11 @@
   7. vectl_mutate  — add-step/edit-step/remove-step/move-step/edit-phase/add-phase
   8. vectl_review  — plan review + gate check
   9. vectl_guide   — agent onboarding guide (startup/stuck/review/planning/migration)
- 10. vectl_dag     — dependency graph as Mermaid flowchart
- 11. vectl_clipboard — cross-agent communication (write/read/clear)
+  10. vectl_dag    — dependency graph as Mermaid flowchart
+  11. vectl_clipboard — cross-agent communication (write/read/clear)
+  12. vectl_init   — initialize new vectl project (create plan.yaml + AGENTS.md/CLAUDE.md)
+  13. vectl_render — render plan as Markdown stakeholder report
+  14. vectl_check  — toggle/add checklist items in step descriptions
 
 Tools generally return Markdown-formatted text.
 
@@ -36,8 +39,10 @@ from vectl.plan_path import resolve_plan_path
 from vectl.semantics import is_step_locked
 from vectl.core import (
     _SENTINEL,
+    AgentsTarget,
     add_phase,
     add_step,
+    add_steps_bulk,
     auto_unlock_phases,
     claim_step,
     clipboard_clear,
@@ -46,6 +51,7 @@ from vectl.core import (
     complete_phase,
     complete_step,
     defer_step,
+    detect_agents_target,
     edit_phase,
     edit_plan,
     edit_step,
@@ -55,17 +61,23 @@ from vectl.core import (
     move_step,
     reject_step,
     remove_step,
+    render_plan,
     review_plan,
     search_plan,
     skip_phase,
     skip_step,
+    update_checklist,
+    upsert_agents_md,
     validate_plan,
 )
 from vectl.io import load_plan, save_plan
 from vectl.models import (
     AffinityError,
+    AmbiguousMatchError,
     CASConflictError,
     Clipboard,
+    InitResult,
+    NoMatchError,
     PhaseStatus,
     Plan,
     PlanError,
@@ -626,6 +638,7 @@ def vectl_search(pattern: str, phase_id: str | None = None, regex: bool = False)
     description=(
         "Modify plan structure. Actions: "
         "add-step (add a new step to a phase), "
+        "add-steps (add multiple steps in batch), "
         "edit-step (update step fields), "
         "remove-step (remove a step, use force=true to clean dep refs), "
         "move-step (move step between phases), "
@@ -638,6 +651,7 @@ def vectl_search(pattern: str, phase_id: str | None = None, regex: bool = False)
 def vectl_mutate(
     action: Literal[
         "add-step",
+        "add-steps",
         "edit-step",
         "remove-step",
         "move-step",
@@ -666,12 +680,13 @@ def vectl_mutate(
     evidence: str = "",
     skipped_reason: str = "",
     agent: str = "",
+    steps: list[dict] | None = None,
 ) -> str:
     """Modify plan structure.
 
     Args:
         action: The mutation action to perform.
-        phase_id: Phase ID (for add-step, add-phase, edit-phase).
+        phase_id: Phase ID (for add-step, add-steps, add-phase, edit-phase).
         step_id: Step ID (for edit-step, remove-step, move-step). Also used
             as explicit --id for add-step/add-phase if provided.
         name: Name (for add-step, add-phase, edit-step, edit-phase).
@@ -694,6 +709,10 @@ def vectl_mutate(
         skipped_reason: Skip reason (add-step only, required when status=skipped).
         agent: Advisory agent suggestion (add-step, edit-step). Which agent should
             work on this step. Not enforced; any agent can still claim any step.
+        steps: List of step dicts for add-steps (batch add). Each dict supports:
+            name (required), description/desc, depends_on/after, verification/verify,
+            refs, status (pending/done/skipped), evidence, skipped_reason, agent, id.
+            For intra-batch refs, use short slugs (e.g. "step-a" instead of "phase.step-a").
     """
     plan, expected_hash = _load()
 
@@ -717,6 +736,58 @@ def vectl_mutate(
                 agent=agent or None,
             )
             msg = f"**Added step:** {new_id} to phase '{phase_id}'"
+
+        elif action == "add-steps":
+            if not phase_id:
+                return "**Error:** phase_id required for add-steps."
+            if steps is None:
+                return "**Error:** steps required for add-steps."
+            # Translate MCP parameter names to internal names
+            normalized_steps: list[dict[str, object]] = []
+            for i, entry in enumerate(steps):
+                if not isinstance(entry, dict):
+                    return f"**Error:** Step {i} must be a dict."
+                name_val = entry.get("name")
+                if not name_val:
+                    return f"**Error:** Step {i}: 'name' is required."
+                step_dict: dict[str, object] = {"name": name_val}
+                # description/desc
+                if "description" in entry:
+                    step_dict["desc"] = entry["description"]
+                elif "desc" in entry:
+                    step_dict["desc"] = entry["desc"]
+                # depends_on/after -> after for internal
+                if "depends_on" in entry:
+                    step_dict["after"] = entry["depends_on"]
+                elif "after" in entry:
+                    step_dict["after"] = entry["after"]
+                # verification/verify
+                if "verification" in entry:
+                    step_dict["verify"] = entry["verification"]
+                elif "verify" in entry:
+                    step_dict["verify"] = entry["verify"]
+                # refs
+                if "refs" in entry:
+                    step_dict["refs"] = entry["refs"]
+                # status
+                if "status" in entry:
+                    step_dict["status"] = entry["status"]
+                # evidence
+                if "evidence" in entry:
+                    step_dict["evidence"] = entry["evidence"]
+                # skipped_reason
+                if "skipped_reason" in entry:
+                    step_dict["skipped_reason"] = entry["skipped_reason"]
+                # agent
+                if "agent" in entry:
+                    step_dict["agent"] = entry["agent"]
+                # id
+                if "id" in entry:
+                    step_dict["id"] = entry["id"]
+                normalized_steps.append(step_dict)
+            plan, generated_ids = add_steps_bulk(plan, phase_id, normalized_steps)
+            msg = f"**Added {len(generated_ids)} step(s) to phase '{phase_id}':\n"
+            msg += "\n".join(f"  - {sid}" for sid in generated_ids)
 
         elif action == "edit-step":
             if not step_id:
@@ -1140,6 +1211,183 @@ def _clipboard_clear() -> str:
         return f"**Error:** {e}"
 
     return "**Clipboard cleared.**"
+
+
+# ---------------------------------------------------------------------------
+# Tool 12: vectl_init
+# ---------------------------------------------------------------------------
+
+
+@mcp.tool(
+    description=(
+        "Initialize a new vectl project. Creates plan.yaml and optionally "
+        "configures AGENTS.md/CLAUDE.md with vectl instructions. "
+        "Use this to start tracking a new project with vectl."
+    ),
+)
+def vectl_init(
+    project: str,
+    plan_path: str | None = None,
+    agents_target: Literal["auto", "agents", "claude"] = "auto",
+) -> dict:
+    """Initialize a new vectl project.
+
+    Creates a minimal plan.yaml and optionally upserts AGENTS.md/CLAUDE.md
+    with vectl instructions.
+
+    Args:
+        project: Project name (required).
+        plan_path: Path for plan.yaml. Defaults to ./plan.yaml.
+        agents_target: Target for agent instructions file:
+            - "auto": Auto-detect (AGENTS.md or CLAUDE.md based on .claude/ dir)
+            - "agents": Always use AGENTS.md
+            - "claude": Always use CLAUDE.md
+
+    Returns:
+        Structured InitResult with created paths and status.
+    """
+    from pathlib import Path
+
+    # Resolve plan path
+    if plan_path:
+        target = Path(plan_path)
+    else:
+        target = Path("plan.yaml")
+
+    # Check if plan already exists
+    if target.exists():
+        return InitResult(
+            ok=False,
+            plan_path=str(target),
+            message=f"Plan file already exists: {target}",
+            error="Plan file already exists. Delete it first or use a different path.",
+        ).model_dump(mode="json", exclude_none=True)
+
+    # Create minimal plan template
+    template = Plan(
+        project=project,
+        context=f"Implementation plan for {project}.",
+    )
+
+    # Create parent directory if needed
+    target.parent.mkdir(parents=True, exist_ok=True)
+
+    # Save plan (no CAS for new file)
+    try:
+        save_plan(template, target)
+    except Exception as e:
+        return InitResult(
+            ok=False,
+            plan_path=str(target),
+            message=f"Failed to create plan: {e}",
+            error=str(e),
+        ).model_dump(mode="json", exclude_none=True)
+
+    # Upsert AGENTS.md/CLAUDE.md
+    target_enum = AgentsTarget(agents_target)
+    agents_message, agents_filename = upsert_agents_md(target.parent, target_enum)
+
+    return InitResult(
+        ok=True,
+        plan_path=str(target),
+        agents_target=agents_filename,
+        message=f"Created {target}. {agents_message}.",
+    ).model_dump(mode="json", exclude_none=True)
+
+
+# ---------------------------------------------------------------------------
+# Tool 13: vectl_render
+# ---------------------------------------------------------------------------
+
+
+@mcp.tool(
+    description=(
+        "Render plan as Markdown report. Shows phase progress, step status, "
+        "and one-line descriptions. Use --full for complete step descriptions. "
+        "Use --phase to filter to a specific phase."
+    ),
+)
+def vectl_render(
+    phase_id: str | None = None,
+    full: bool = False,
+) -> str:
+    """Render plan as Markdown stakeholder report.
+
+    Args:
+        phase_id: Optional phase ID to filter to a specific phase.
+        full: If True, show complete step descriptions without truncation.
+
+    Returns:
+        Markdown-formatted progress report.
+    """
+    plan, _ = _load()
+
+    try:
+        return render_plan(plan, phase_id=phase_id, full=full)
+    except PlanError as e:
+        return f"**Error:** {e}"
+
+
+# ---------------------------------------------------------------------------
+# Tool 14: vectl_check
+# ---------------------------------------------------------------------------
+
+
+@mcp.tool(
+    description=(
+        "Toggle or add a checklist item in a step's description. "
+        "Use 'keyword' to toggle an existing item by keyword match. "
+        "Use 'add' to append a new unchecked item. "
+        "Operates on markdown checklists: '- [ ] item' / '- [x] item'."
+    ),
+)
+def vectl_check(
+    step_id: str,
+    keyword: str | None = None,
+    add: str | None = None,
+) -> str:
+    """Toggle or add a checklist item in a step's description.
+
+    Args:
+        step_id: Step ID containing the checklist.
+        keyword: Keyword to toggle a checklist item. Finds the checklist item
+            containing this keyword (case-insensitive) and toggles its checked state.
+        add: Text for a new unchecked checklist item to append.
+
+    Returns:
+        Markdown-formatted result showing the updated checklist.
+    """
+    if keyword is None and add is None:
+        return "**Error:** Must provide either 'keyword' or 'add'."
+
+    plan, expected_hash = _load()
+
+    try:
+        plan = update_checklist(plan, step_id, check=keyword, append=add)
+        _save(plan, expected_hash)
+    except NoMatchError as e:
+        return f"**Error:** No checklist item matches keyword '{e.keyword}'."
+    except AmbiguousMatchError as e:
+        lines = [f"**Error:** Keyword '{e.keyword}' matches multiple items:"]
+        for item in e.candidates:
+            lines.append(f"  - {item}")
+        lines.append("\nUse a more specific keyword to match exactly one item.")
+        return "\n".join(lines)
+    except PlanError as e:
+        return f"**Error:** {e}"
+
+    # Show updated step
+    found = plan.find_step(step_id)
+    if found:
+        phase, step = found
+        lines = [f"**Updated checklist:** {step_id}\n"]
+        if step.description:
+            lines.append("```markdown")
+            lines.append(step.description.rstrip())
+            lines.append("```")
+        return "\n".join(lines)
+
+    return f"**Updated checklist:** {step_id}"
 
 
 # ---------------------------------------------------------------------------

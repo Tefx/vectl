@@ -16,12 +16,14 @@ import yaml
 
 from vectl.mcp_server import (
     vectl_claim as _vectl_claim_tool,
+    vectl_check as _vectl_check_tool,
     vectl_clipboard as _vectl_clipboard_tool,
     vectl_complete as _vectl_complete_tool,
     vectl_dag as _vectl_dag_tool,
     vectl_guide as _vectl_guide_tool,
     vectl_lifecycle as _vectl_lifecycle_tool,
     vectl_mutate as _vectl_mutate_tool,
+    vectl_render as _vectl_render_tool,
     vectl_review as _vectl_review_tool,
     vectl_search as _vectl_search_tool,
     vectl_show as _vectl_show_tool,
@@ -42,6 +44,8 @@ vectl_review = _vectl_review_tool.fn
 vectl_guide = _vectl_guide_tool.fn
 vectl_dag = _vectl_dag_tool.fn
 vectl_clipboard = _vectl_clipboard_tool.fn
+vectl_check = _vectl_check_tool.fn
+vectl_render = _vectl_render_tool.fn
 
 
 # ---------------------------------------------------------------------------
@@ -548,6 +552,238 @@ class TestVectlMutate:
             name="Hint Step",
         )
         assert "vectl_search" in result
+
+    # add-steps action tests
+
+    def test_add_steps_basic(self, plan_file: Path) -> None:
+        """Add multiple steps in a batch."""
+        result = vectl_mutate(
+            action="add-steps",
+            phase_id="alpha",
+            steps=[
+                {"name": "Step A", "description": "First batch step"},
+                {"name": "Step B", "description": "Second batch step"},
+            ],
+        )
+        assert "Added 2 step" in result
+        assert "alpha" in result
+
+        data = _reload_plan(plan_file)
+        step_names = [s["name"] for s in data["phases"][0]["steps"]]
+        assert "Step A" in step_names
+        assert "Step B" in step_names
+
+    def test_add_steps_requires_phase_id(self, plan_file: Path) -> None:
+        """add-steps requires phase_id."""
+        result = vectl_mutate(
+            action="add-steps",
+            steps=[{"name": "Step A"}],
+        )
+        assert "Error" in result
+        assert "phase_id" in result
+
+    def test_add_steps_requires_steps(self, plan_file: Path) -> None:
+        """add-steps requires steps parameter."""
+        result = vectl_mutate(
+            action="add-steps",
+            phase_id="alpha",
+            steps=None,
+        )
+        assert "Error" in result
+        assert "steps" in result
+
+    def test_add_steps_empty_list(self, plan_file: Path) -> None:
+        """add-steps with empty list returns gracefully."""
+        result = vectl_mutate(
+            action="add-steps",
+            phase_id="alpha",
+            steps=[],
+        )
+        # Empty list should succeed with 0 steps added
+        assert "Added 0 step" in result
+
+    def test_add_steps_with_dependencies(self, plan_file: Path) -> None:
+        """add-steps with intra-batch dependencies using short slugs."""
+        result = vectl_mutate(
+            action="add-steps",
+            phase_id="alpha",
+            steps=[
+                {"name": "Batch A", "id": "alpha.batch-a"},
+                {"name": "Batch B", "after": ["batch-a"]},  # short slug ref
+            ],
+        )
+        assert "Added 2 step" in result
+
+        data = _reload_plan(plan_file)
+        batch_b = next(s for s in data["phases"][0]["steps"] if "batch-b" in s["id"])
+        assert "alpha.batch-a" in batch_b.get("depends_on", [])
+
+    def test_add_steps_with_full_dep_refs(self, plan_file: Path) -> None:
+        """add-steps with full ID dependency references."""
+        result = vectl_mutate(
+            action="add-steps",
+            phase_id="alpha",
+            steps=[
+                {"name": "Batch X", "id": "alpha.batch-x"},
+                {"name": "Batch Y", "depends_on": ["alpha.batch-x"]},
+            ],
+        )
+        assert "Added 2 step" in result
+
+        data = _reload_plan(plan_file)
+        batch_y = next(s for s in data["phases"][0]["steps"] if "batch-y" in s["id"])
+        assert "alpha.batch-x" in batch_y.get("depends_on", [])
+
+    def test_add_steps_with_done_status(self, plan_file: Path) -> None:
+        """add-steps with status=done requires evidence."""
+        result = vectl_mutate(
+            action="add-steps",
+            phase_id="alpha",
+            steps=[
+                {"name": "Already Done", "status": "done", "evidence": "Was completed earlier"},
+            ],
+        )
+        assert "Added 1 step" in result
+
+        data = _reload_plan(plan_file)
+        step = next(s for s in data["phases"][0]["steps"] if "already-done" in s["id"])
+        assert step["status"] == "done"
+        assert "completed earlier" in step["evidence"]
+
+    def test_add_steps_done_requires_evidence(self, plan_file: Path) -> None:
+        """add-steps with status=done but no evidence fails."""
+        result = vectl_mutate(
+            action="add-steps",
+            phase_id="alpha",
+            steps=[
+                {"name": "Bad Done", "status": "done"},
+            ],
+        )
+        assert "Error" in result
+        assert "evidence" in result.lower()
+
+    def test_add_steps_with_skipped_status(self, plan_file: Path) -> None:
+        """add-steps with status=skipped requires skipped_reason."""
+        result = vectl_mutate(
+            action="add-steps",
+            phase_id="alpha",
+            steps=[
+                {"name": "Skip Me", "status": "skipped", "skipped_reason": "absorbed"},
+            ],
+        )
+        assert "Added 1 step" in result
+
+        data = _reload_plan(plan_file)
+        step = next(s for s in data["phases"][0]["steps"] if "skip-me" in s["id"])
+        assert step["status"] == "skipped"
+
+    def test_add_steps_skip_requires_reason(self, plan_file: Path) -> None:
+        """add-steps with status=skipped but no reason fails."""
+        result = vectl_mutate(
+            action="add-steps",
+            phase_id="alpha",
+            steps=[
+                {"name": "Bad Skip", "status": "skipped"},
+            ],
+        )
+        assert "Error" in result
+        assert "skipped_reason" in result.lower()
+
+    def test_add_steps_with_refs(self, plan_file: Path) -> None:
+        """add-steps with file refs."""
+        result = vectl_mutate(
+            action="add-steps",
+            phase_id="alpha",
+            steps=[
+                {"name": "With Refs", "refs": ["docs/api.md", "src/main.py"]},
+            ],
+        )
+        assert "Added 1 step" in result
+
+        data = _reload_plan(plan_file)
+        step = next(s for s in data["phases"][0]["steps"] if "with-refs" in s["id"])
+        assert "docs/api.md" in step.get("refs", [])
+        assert "src/main.py" in step.get("refs", [])
+
+    def test_add_steps_with_agent(self, plan_file: Path) -> None:
+        """add-steps with advisory agent suggestion."""
+        result = vectl_mutate(
+            action="add-steps",
+            phase_id="alpha",
+            steps=[
+                {"name": "Agent Step", "agent": "@coder"},
+            ],
+        )
+        assert "Added 1 step" in result
+
+        data = _reload_plan(plan_file)
+        step = next(s for s in data["phases"][0]["steps"] if "agent-step" in s["id"])
+        assert step["agent"] == "@coder"
+
+    def test_add_steps_with_verification(self, plan_file: Path) -> None:
+        """add-steps with verification field (verify alias)."""
+        result = vectl_mutate(
+            action="add-steps",
+            phase_id="alpha",
+            steps=[
+                {"name": "Verify Step", "verification": "Run tests"},
+            ],
+        )
+        assert "Added 1 step" in result
+
+        data = _reload_plan(plan_file)
+        step = next(s for s in data["phases"][0]["steps"] if "verify-step" in s["id"])
+        assert step.get("verification") == "Run tests"
+
+    def test_add_steps_with_verify_alias(self, plan_file: Path) -> None:
+        """add-steps with verify alias for verification."""
+        result = vectl_mutate(
+            action="add-steps",
+            phase_id="alpha",
+            steps=[
+                {"name": "Verify Alias", "verify": "Check output"},
+            ],
+        )
+        assert "Added 1 step" in result
+
+        data = _reload_plan(plan_file)
+        step = next(s for s in data["phases"][0]["steps"] if "verify-alias" in s["id"])
+        assert step.get("verification") == "Check output"
+
+    def test_add_steps_with_desc_alias(self, plan_file: Path) -> None:
+        """add-steps with desc alias for description."""
+        result = vectl_mutate(
+            action="add-steps",
+            phase_id="alpha",
+            steps=[
+                {"name": "Desc Alias", "desc": "Using desc shorthand"},
+            ],
+        )
+        assert "Added 1 step" in result
+
+        data = _reload_plan(plan_file)
+        step = next(s for s in data["phases"][0]["steps"] if "desc-alias" in s["id"])
+        assert step.get("description") == "Using desc shorthand"
+
+    def test_add_steps_invalid_phase(self, plan_file: Path) -> None:
+        """add-steps to non-existent phase fails."""
+        result = vectl_mutate(
+            action="add-steps",
+            phase_id="nonexistent",
+            steps=[{"name": "Step A"}],
+        )
+        assert "Error" in result
+        assert "not found" in result.lower()
+
+    def test_add_steps_missing_name(self, plan_file: Path) -> None:
+        """add-steps entry without name fails."""
+        result = vectl_mutate(
+            action="add-steps",
+            phase_id="alpha",
+            steps=[{"description": "No name provided"}],
+        )
+        assert "Error" in result
+        assert "name" in result.lower()
 
 
 # ---------------------------------------------------------------------------
@@ -1159,3 +1395,492 @@ class TestVectlClipboardCAS:
                 os.environ.pop("VECTL_PLAN_PATH", None)
             else:
                 os.environ["VECTL_PLAN_PATH"] = old
+
+
+class TestVectlInit:
+    """Tests for vectl_init MCP tool."""
+
+    def test_init_creates_plan_and_agents_md(self, tmp_path: Path) -> None:
+        """Basic init creates plan.yaml and AGENTS.md."""
+        from vectl.mcp_server import vectl_init as _vectl_init_tool
+
+        vectl_init = _vectl_init_tool.fn
+
+        old_cwd = os.getcwd()
+        old_plan = os.environ.get("VECTL_PLAN_PATH")
+        try:
+            os.chdir(tmp_path)
+            os.environ.pop("VECTL_PLAN_PATH", None)
+
+            result = vectl_init(project="test-project")
+
+            assert result["ok"] is True
+            assert result["plan_path"] == "plan.yaml"
+            assert result["agents_target"] == "AGENTS.md"
+            assert "Created" in result["message"]
+            assert (tmp_path / "plan.yaml").exists()
+            assert (tmp_path / "AGENTS.md").exists()
+
+            # Verify plan content
+            plan_data = yaml.safe_load((tmp_path / "plan.yaml").read_text())
+            assert plan_data["project"] == "test-project"
+
+            # Verify AGENTS.md has vectl markers
+            agents_content = (tmp_path / "AGENTS.md").read_text()
+            assert "<!-- VECTL:AGENTS:BEGIN -->" in agents_content
+        finally:
+            os.chdir(old_cwd)
+            if old_plan is None:
+                os.environ.pop("VECTL_PLAN_PATH", None)
+            else:
+                os.environ["VECTL_PLAN_PATH"] = old_plan
+
+    def test_init_refuses_existing_plan(self, tmp_path: Path) -> None:
+        """Init refuses to overwrite an existing plan.yaml."""
+        from vectl.mcp_server import vectl_init as _vectl_init_tool
+
+        vectl_init = _vectl_init_tool.fn
+
+        old_cwd = os.getcwd()
+        old_plan = os.environ.get("VECTL_PLAN_PATH")
+        try:
+            os.chdir(tmp_path)
+            os.environ.pop("VECTL_PLAN_PATH", None)
+
+            # Create plan first
+            (tmp_path / "plan.yaml").write_text("project: existing\n")
+
+            result = vectl_init(project="new-project")
+
+            assert result["ok"] is False
+            assert "already exists" in result["error"]
+        finally:
+            os.chdir(old_cwd)
+            if old_plan is None:
+                os.environ.pop("VECTL_PLAN_PATH", None)
+            else:
+                os.environ["VECTL_PLAN_PATH"] = old_plan
+
+    def test_init_custom_plan_path(self, tmp_path: Path) -> None:
+        """Init respects custom plan_path parameter."""
+        from vectl.mcp_server import vectl_init as _vectl_init_tool
+
+        vectl_init = _vectl_init_tool.fn
+
+        old_cwd = os.getcwd()
+        old_plan = os.environ.get("VECTL_PLAN_PATH")
+        try:
+            os.chdir(tmp_path)
+            os.environ.pop("VECTL_PLAN_PATH", None)
+
+            custom_path = tmp_path / "subdir" / "custom-plan.yaml"
+            result = vectl_init(project="custom-project", plan_path=str(custom_path))
+
+            assert result["ok"] is True
+            assert custom_path.exists()
+            assert "subdir" in result["plan_path"]
+        finally:
+            os.chdir(old_cwd)
+            if old_plan is None:
+                os.environ.pop("VECTL_PLAN_PATH", None)
+            else:
+                os.environ["VECTL_PLAN_PATH"] = old_plan
+
+    def test_init_claude_md_with_claude_dir(self, tmp_path: Path) -> None:
+        """Init creates CLAUDE.md when .claude/ dir exists."""
+        from vectl.mcp_server import vectl_init as _vectl_init_tool
+
+        vectl_init = _vectl_init_tool.fn
+
+        old_cwd = os.getcwd()
+        old_plan = os.environ.get("VECTL_PLAN_PATH")
+        try:
+            os.chdir(tmp_path)
+            os.environ.pop("VECTL_PLAN_PATH", None)
+            (tmp_path / ".claude").mkdir()
+
+            result = vectl_init(project="claude-project")
+
+            assert result["ok"] is True
+            assert result["agents_target"] == "CLAUDE.md"
+            assert (tmp_path / "CLAUDE.md").exists()
+            assert not (tmp_path / "AGENTS.md").exists()
+        finally:
+            os.chdir(old_cwd)
+            if old_plan is None:
+                os.environ.pop("VECTL_PLAN_PATH", None)
+            else:
+                os.environ["VECTL_PLAN_PATH"] = old_plan
+
+    def test_init_explicit_agents_target(self, tmp_path: Path) -> None:
+        """Init respects explicit agents_target='claude'."""
+        from vectl.mcp_server import vectl_init as _vectl_init_tool
+
+        vectl_init = _vectl_init_tool.fn
+
+        old_cwd = os.getcwd()
+        old_plan = os.environ.get("VECTL_PLAN_PATH")
+        try:
+            os.chdir(tmp_path)
+            os.environ.pop("VECTL_PLAN_PATH", None)
+
+            result = vectl_init(project="explicit-claude", agents_target="claude")
+
+            assert result["ok"] is True
+            assert result["agents_target"] == "CLAUDE.md"
+            assert (tmp_path / "CLAUDE.md").exists()
+        finally:
+            os.chdir(old_cwd)
+            if old_plan is None:
+                os.environ.pop("VECTL_PLAN_PATH", None)
+            else:
+                os.environ["VECTL_PLAN_PATH"] = old_plan
+
+    def test_init_appends_to_existing_agents_md(self, tmp_path: Path) -> None:
+        """Init appends vectl section to existing AGENTS.md."""
+        from vectl.mcp_server import vectl_init as _vectl_init_tool
+
+        vectl_init = _vectl_init_tool.fn
+
+        old_cwd = os.getcwd()
+        old_plan = os.environ.get("VECTL_PLAN_PATH")
+        try:
+            os.chdir(tmp_path)
+            os.environ.pop("VECTL_PLAN_PATH", None)
+
+            # Create existing AGENTS.md
+            (tmp_path / "AGENTS.md").write_text("# My Project\n\nExisting content.\n")
+
+            result = vectl_init(project="test-project")
+
+            assert result["ok"] is True
+            content = (tmp_path / "AGENTS.md").read_text()
+            assert "Existing content." in content
+            assert "<!-- VECTL:AGENTS:BEGIN -->" in content
+        finally:
+            os.chdir(old_cwd)
+            if old_plan is None:
+                os.environ.pop("VECTL_PLAN_PATH", None)
+            else:
+                os.environ["VECTL_PLAN_PATH"] = old_plan
+
+    def test_init_idempotent_agents_md(self, tmp_path: Path) -> None:
+        """Init is idempotent - running twice on same AGENTS.md updates block."""
+        from vectl.mcp_server import vectl_init as _vectl_init_tool
+
+        vectl_init = _vectl_init_tool.fn
+
+        old_cwd = os.getcwd()
+        old_plan = os.environ.get("VECTL_PLAN_PATH")
+        try:
+            os.chdir(tmp_path)
+            os.environ.pop("VECTL_PLAN_PATH", None)
+
+            # First run creates everything
+            result1 = vectl_init(project="test-project")
+            assert result1["ok"] is True
+            assert (tmp_path / "plan.yaml").exists()
+
+            # Manually reset to test idempotent AGENTS.md behavior
+            (tmp_path / "plan.yaml").unlink()
+
+            # Create AGENTS.md with markers
+            agents = tmp_path / "AGENTS.md"
+            agents.write_text(
+                "# Project\n\n"
+                "<!-- VECTL:AGENTS:BEGIN -->\n"
+                "## Plan Tracking (vectl)\n\n"
+                "Old content.\n"
+                "<!-- VECTL:AGENTS:END -->\n"
+            )
+
+            # Second init with new plan path
+            result2 = vectl_init(project="test-project-2", plan_path="plan2.yaml")
+            assert result2["ok"] is True
+
+            # Check that markers appear exactly once (idempotent replacement)
+            content = agents.read_text()
+            assert content.count("<!-- VECTL:AGENTS:BEGIN -->") == 1
+            assert content.count("<!-- VECTL:AGENTS:END -->") == 1
+            assert "Old content." not in content  # Replaced, not doubled
+        finally:
+            os.chdir(old_cwd)
+            if old_plan is None:
+                os.environ.pop("VECTL_PLAN_PATH", None)
+            else:
+                os.environ["VECTL_PLAN_PATH"] = old_plan
+
+
+# ---------------------------------------------------------------------------
+# Tests for vectl_check
+# ---------------------------------------------------------------------------
+
+
+class TestVectlCheck:
+    """Tests for vectl_check MCP tool."""
+
+    def _make_plan_with_checklist(self, tmp_path: Path, description: str) -> Path:
+        """Create a plan file with a step containing a checklist."""
+        plan_dict = {
+            "project": "test-check",
+            "phases": [
+                {
+                    "id": "p1",
+                    "name": "Phase One",
+                    "status": "pending",
+                    "steps": [
+                        {
+                            "id": "p1.s1",
+                            "name": "Step with checklist",
+                            "status": "pending",
+                            "description": description,
+                        },
+                        {
+                            "id": "p1.s2",
+                            "name": "Another step",
+                            "status": "pending",
+                            "description": "No checklist here",
+                        },
+                    ],
+                }
+            ],
+        }
+        plan_file = tmp_path / "plan.yaml"
+        plan_file.write_text(yaml.dump(plan_dict))
+        return plan_file
+
+    def test_toggle_checklist_item(self, tmp_path: Path) -> None:
+        """Toggle a checklist item from unchecked to checked."""
+        plan_file = self._make_plan_with_checklist(
+            tmp_path, "Checklist:\n- [ ] Do validation\n- [ ] Write tests\n"
+        )
+
+        old_plan = os.environ.get("VECTL_PLAN_PATH")
+        try:
+            os.environ["VECTL_PLAN_PATH"] = str(plan_file)
+
+            result = vectl_check(step_id="p1.s1", keyword="validation")
+
+            assert "Updated checklist" in result
+            assert "p1.s1" in result
+            assert "- [x] Do validation" in result
+
+            # Verify persistence
+            data = yaml.safe_load(plan_file.read_text())
+            desc = data["phases"][0]["steps"][0]["description"]
+            assert "- [x] Do validation" in desc
+            assert "- [ ] Write tests" in desc
+        finally:
+            if old_plan is None:
+                os.environ.pop("VECTL_PLAN_PATH", None)
+            else:
+                os.environ["VECTL_PLAN_PATH"] = old_plan
+
+    def test_toggle_checked_to_unchecked(self, tmp_path: Path) -> None:
+        """Toggle a checked item back to unchecked."""
+        plan_file = self._make_plan_with_checklist(
+            tmp_path, "Items:\n- [x] Already done\n- [ ] Not yet\n"
+        )
+
+        old_plan = os.environ.get("VECTL_PLAN_PATH")
+        try:
+            os.environ["VECTL_PLAN_PATH"] = str(plan_file)
+
+            result = vectl_check(step_id="p1.s1", keyword="Already")
+
+            assert "- [ ] Already done" in result
+
+            # Verify persistence
+            data = yaml.safe_load(plan_file.read_text())
+            desc = data["phases"][0]["steps"][0]["description"]
+            assert "- [ ] Already done" in desc
+        finally:
+            if old_plan is None:
+                os.environ.pop("VECTL_PLAN_PATH", None)
+            else:
+                os.environ["VECTL_PLAN_PATH"] = old_plan
+
+    def test_add_checklist_item(self, tmp_path: Path) -> None:
+        """Add a new unchecked checklist item."""
+        plan_file = self._make_plan_with_checklist(tmp_path, "Checklist:\n- [ ] Existing\n")
+
+        old_plan = os.environ.get("VECTL_PLAN_PATH")
+        try:
+            os.environ["VECTL_PLAN_PATH"] = str(plan_file)
+
+            result = vectl_check(step_id="p1.s1", add="New item")
+
+            assert "- [ ] New item" in result
+
+            # Verify persistence
+            data = yaml.safe_load(plan_file.read_text())
+            desc = data["phases"][0]["steps"][0]["description"]
+            assert "- [ ] Existing" in desc
+            assert "- [ ] New item" in desc
+        finally:
+            if old_plan is None:
+                os.environ.pop("VECTL_PLAN_PATH", None)
+            else:
+                os.environ["VECTL_PLAN_PATH"] = old_plan
+
+    def test_both_toggle_and_add(self, tmp_path: Path) -> None:
+        """Both toggle an item and add a new one."""
+        plan_file = self._make_plan_with_checklist(tmp_path, "- [ ] Existing item\n")
+
+        old_plan = os.environ.get("VECTL_PLAN_PATH")
+        try:
+            os.environ["VECTL_PLAN_PATH"] = str(plan_file)
+
+            result = vectl_check(step_id="p1.s1", keyword="Existing", add="New item")
+
+            assert "- [x] Existing item" in result
+            assert "- [ ] New item" in result
+        finally:
+            if old_plan is None:
+                os.environ.pop("VECTL_PLAN_PATH", None)
+            else:
+                os.environ["VECTL_PLAN_PATH"] = old_plan
+
+    def test_error_no_keyword_or_add(self, tmp_path: Path) -> None:
+        """Error when neither keyword nor add is provided."""
+        plan_file = self._make_plan_with_checklist(tmp_path, "- [ ] Item\n")
+
+        old_plan = os.environ.get("VECTL_PLAN_PATH")
+        try:
+            os.environ["VECTL_PLAN_PATH"] = str(plan_file)
+
+            result = vectl_check(step_id="p1.s1")
+
+            assert "Error" in result
+            assert "keyword" in result.lower() or "add" in result.lower()
+        finally:
+            if old_plan is None:
+                os.environ.pop("VECTL_PLAN_PATH", None)
+            else:
+                os.environ["VECTL_PLAN_PATH"] = old_plan
+
+    def test_error_no_match(self, tmp_path: Path) -> None:
+        """Error when keyword doesn't match any checklist item."""
+        plan_file = self._make_plan_with_checklist(tmp_path, "- [ ] Something\n")
+
+        old_plan = os.environ.get("VECTL_PLAN_PATH")
+        try:
+            os.environ["VECTL_PLAN_PATH"] = str(plan_file)
+
+            result = vectl_check(step_id="p1.s1", keyword="nonexistent")
+
+            assert "Error" in result
+            assert "nonexistent" in result
+        finally:
+            if old_plan is None:
+                os.environ.pop("VECTL_PLAN_PATH", None)
+            else:
+                os.environ["VECTL_PLAN_PATH"] = old_plan
+
+    def test_error_ambiguous_match(self, tmp_path: Path) -> None:
+        """Error when keyword matches multiple items."""
+        plan_file = self._make_plan_with_checklist(tmp_path, "- [ ] Test alpha\n- [ ] Test beta\n")
+
+        old_plan = os.environ.get("VECTL_PLAN_PATH")
+        try:
+            os.environ["VECTL_PLAN_PATH"] = str(plan_file)
+
+            result = vectl_check(step_id="p1.s1", keyword="Test")
+
+            assert "Error" in result
+            assert "multiple" in result.lower()
+            assert "Test alpha" in result
+            assert "Test beta" in result
+        finally:
+            if old_plan is None:
+                os.environ.pop("VECTL_PLAN_PATH", None)
+            else:
+                os.environ["VECTL_PLAN_PATH"] = old_plan
+
+    def test_error_step_not_found(self, tmp_path: Path) -> None:
+        """Error when step doesn't exist."""
+        plan_file = self._make_plan_with_checklist(tmp_path, "- [ ] Item\n")
+
+        old_plan = os.environ.get("VECTL_PLAN_PATH")
+        try:
+            os.environ["VECTL_PLAN_PATH"] = str(plan_file)
+
+            result = vectl_check(step_id="nonexistent", keyword="Item")
+
+            assert "Error" in result
+            assert "not found" in result.lower()
+        finally:
+            if old_plan is None:
+                os.environ.pop("VECTL_PLAN_PATH", None)
+            else:
+                os.environ["VECTL_PLAN_PATH"] = old_plan
+
+
+# ---------------------------------------------------------------------------
+# Tests for vectl_render
+# ---------------------------------------------------------------------------
+
+
+class TestVectlRender:
+    """Tests for vectl_render MCP tool."""
+
+    def test_render_basic(self, plan_file: Path) -> None:
+        """Basic render returns markdown with plan structure."""
+        result = vectl_render()
+        assert "test-mcp" in result
+        assert "alpha" in result
+        assert "beta" in result
+
+    def test_render_includes_phase_table(self, plan_file: Path) -> None:
+        """Render includes a summary table with phase progress."""
+        result = vectl_render()
+        assert "| Status | Phase |" in result
+        assert "|--------|-------|" in result
+
+    def test_render_includes_step_details(self, plan_file: Path) -> None:
+        """Render includes step details under each phase."""
+        result = vectl_render()
+        assert "a.1" in result
+        assert "a.2" in result
+        assert "Alpha Step One" in result
+
+    def test_render_phase_filter(self, plan_file: Path) -> None:
+        """Render with phase_id shows only that phase."""
+        result = vectl_render(phase_id="alpha")
+        assert "alpha" in result
+        assert "Alpha Phase" in result
+        # Should NOT show beta phase steps
+        assert "b.1" not in result
+        # Should NOT have the summary table when filtering to single phase
+        assert "| Status | Phase |" not in result
+
+    def test_render_full_mode(self, plan_file: Path) -> None:
+        """Render with full=True includes complete descriptions."""
+        result_full = vectl_render(full=True)
+        result_default = vectl_render(full=False)
+
+        # Full mode should include the full description (multi-line indentation)
+        # The description in the test plan is "First step description"
+        # In full mode, descriptions are indented under the step bullet
+        assert "First step description" in result_full
+        # In default mode, the description is shown as a one-liner after the step name
+        assert "First step description" in result_default or "—" in result_default
+
+    def test_render_invalid_phase(self, plan_file: Path) -> None:
+        """Error handling for invalid phase_id."""
+        result = vectl_render(phase_id="nonexistent")
+        assert "Error" in result
+        assert "nonexistent" in result.lower() or "not found" in result.lower()
+
+    def test_render_shows_gate(self, plan_file: Path) -> None:
+        """Render includes gate when present."""
+        result = vectl_render()
+        # Beta phase has a gate in the test plan
+        assert "Gate" in result
+        assert "All alpha tests pass" in result
+
+    def test_render_shows_context(self, plan_file: Path) -> None:
+        """Render includes phase context when present."""
+        result = vectl_render()
+        # Alpha phase has context "First phase context"
+        assert "First phase context" in result

@@ -2221,3 +2221,149 @@ def clipboard_clear(plan: Plan) -> Plan:
     """
     plan.clipboard = None
     return plan
+
+
+# ---------------------------------------------------------------------------
+# Init / Project Initialization
+# ---------------------------------------------------------------------------
+
+_AGENTS_MD_LEGACY_HEADER = "## Plan Tracking (vectl)"
+_AGENTS_MD_BEGIN = "<!-- VECTL:AGENTS:BEGIN -->"
+_AGENTS_MD_END = "<!-- VECTL:AGENTS:END -->"
+
+# Source:
+#   - User instruction in cli.py conversation (2026-02-12): no manual YAML edits, and
+#     agreed safe AGENTS.md migration approach using begin/end markers.
+_AGENTS_MD_SNIPPET = f"""\
+{_AGENTS_MD_BEGIN}
+## Plan Tracking (vectl)
+
+vectl tracks this repo's implementation plan as a structured `plan.yaml`:
+what to do next, who claimed it, and what counts as done (with verification evidence).
+
+Full guide: `uvx vectl guide`
+Quick view: `uvx vectl status`
+
+### Claim-time Guidance
+- `uvx vectl claim` may emit a bounded Guidance block delimited by:
+  - `--- VECTL:GUIDANCE:BEGIN ---`
+  - `--- VECTL:GUIDANCE:END ---`
+- For automation/CI: use `uvx vectl claim --no-guidance` to keep stdout clean.
+
+### CLI vs MCP
+- Source of truth: `plan.yaml` (channel-agnostic).
+- If MCP is available (IDE / Claude host), prefer MCP tools for plan operations.
+- Otherwise use CLI (`uvx vectl ...`).
+- Evidence requirements are identical across CLI and MCP.
+
+### Rules
+- One claimed step at a time.
+- Evidence is mandatory when completing (commands run + outputs + gaps).
+- Spec uncertainty: leave `# SPEC QUESTION: ...` in code, do not guess.
+
+### For Architects / Planners
+- **Design Mode**: Run `uvx vectl guide --on planning` to learn the Architect Protocol.
+- **Ambiguity = Failure**: Workers will hallucinate if steps are vague.
+- **Constraint Tools**:
+  - `--evidence-template`: Force workers to provide specific proof (e.g., "Paste logs here").
+  - `--refs`: Pin specific files (e.g., "src/auth.py") to the worker's context.
+{_AGENTS_MD_END}
+"""
+
+
+class AgentsTarget(str, Enum):
+    """Target file for the vectl agents-md section."""
+
+    auto = "auto"
+    agents = "agents"
+    claude = "claude"
+
+
+def detect_agents_target(directory: Path, target: AgentsTarget = AgentsTarget.auto) -> Path:
+    """Detect the best target file for the vectl agents-md section.
+
+    Args:
+        directory: Project directory to scan.
+        target: Explicit override. ``auto`` uses detection heuristics.
+
+    Priority (when ``auto``):
+    1. Existing file with vectl markers → use it (stability over detection).
+    2. Existing file without markers → prefer AGENTS.md > CLAUDE.md.
+    3. Neither exists → .claude/ dir present → CLAUDE.md; otherwise AGENTS.md.
+
+    Returns:
+        Path to the target file (may not exist yet).
+    """
+    agents_md = directory / "AGENTS.md"
+    claude_md = directory / "CLAUDE.md"
+
+    if target is AgentsTarget.agents:
+        return agents_md
+    if target is AgentsTarget.claude:
+        return claude_md
+
+    # Auto mode: existing file with markers wins (don't break working setups)
+    for candidate in (agents_md, claude_md):
+        if candidate.exists():
+            content = candidate.read_text(encoding="utf-8")
+            if _AGENTS_MD_BEGIN in content:
+                return candidate
+
+    # Existing file without markers (append target)
+    if agents_md.exists():
+        return agents_md
+    if claude_md.exists():
+        return claude_md
+
+    # Fresh project: auto-detect Claude Code projects
+    if (directory / ".claude").is_dir():
+        return claude_md
+
+    return agents_md
+
+
+def upsert_agents_md(directory: Path, target: AgentsTarget = AgentsTarget.auto) -> tuple[str, str]:
+    """Create or upsert vectl section in AGENTS.md or CLAUDE.md.
+
+    Safety policy (agreed in cli.py conversation, 2026-02-12):
+    - If begin/end markers exist, replace that block.
+    - If only legacy header exists (no markers), do not rewrite; append the new block.
+
+    Target selection delegated to ``detect_agents_target()``.
+
+    Args:
+        directory: Project directory containing AGENTS.md/CLAUDE.md.
+        target: Explicit target override or auto-detect.
+
+    Returns:
+        Tuple of (status_message, target_filename).
+        Status message describes what was done.
+    """
+    target_path = detect_agents_target(directory, target)
+
+    if not target_path.exists():
+        target_path.write_text(_AGENTS_MD_SNIPPET, encoding="utf-8")
+        return f"Created {target_path.name}", target_path.name
+
+    content = target_path.read_text(encoding="utf-8")
+
+    begin = content.find(_AGENTS_MD_BEGIN)
+    end = content.find(_AGENTS_MD_END)
+    if begin != -1 and end != -1 and begin < end:
+        end_inclusive = end + len(_AGENTS_MD_END)
+        new_content = content[:begin].rstrip() + "\n\n" + _AGENTS_MD_SNIPPET + "\n"
+        new_content += content[end_inclusive:].lstrip()
+        target_path.write_text(new_content, encoding="utf-8")
+        return f"Updated {target_path.name} (replaced vectl block)", target_path.name
+
+    if _AGENTS_MD_LEGACY_HEADER in content:
+        with target_path.open("a", encoding="utf-8") as f:
+            f.write("\n\n" + _AGENTS_MD_SNIPPET)
+        return (
+            f"Appended updated vectl block to {target_path.name} (legacy block preserved)",
+            target_path.name,
+        )
+
+    with target_path.open("a", encoding="utf-8") as f:
+        f.write("\n\n" + _AGENTS_MD_SNIPPET)
+    return f"Appended vectl section to {target_path.name}", target_path.name

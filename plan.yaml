@@ -3438,3 +3438,379 @@ phases:
       \ tests for CLI claim/show/next behavior\n\nVerification:\n- Run: uv run pytest\
       \ tests/ -v -k affinity -> 29 passed\n- Run: uv run pytest tests/ -q -> 821\
       \ passed\n\nSpec link:\n- docs/RFC-affinity.md (comprehensive test coverage)"
+- id: mcp-parity
+  name: MCP Parity (CLI→MCP Gap Closure)
+  status: done
+  gate: 'All MCP parity features exposed and tested: vectl_init, vectl_render, vectl_check,
+    and add-steps action'
+  depends_on:
+  - mcp
+  steps:
+  - id: mcp-parity.add-vectl-init-mcp-tool
+    name: Add vectl_init MCP tool
+    status: done
+    description: "Expose `vectl init` functionality to MCP.\n\n**Current Gap:** \n\
+      Agents cannot initialize new vectl projects. The `init` command creates plan.yaml\
+      \ and configures AGENTS.md/CLAUDE.md, which is essential for autonomous project\
+      \ setup.\n\n**Implementation:**\n- Add `vectl_init(project: str, plan_path:\
+      \ str | None = None, agents_target: str = \"auto\")` MCP tool\n- Returns: creation\
+      \ status and next-step guidance\n- Core logic already exists in `cli.py:init()`\
+      \ and can be extracted to `core.py` for reuse\n\n**Acceptance:**\n- Agent can\
+      \ create a new plan via MCP tool\n- Returns structured result with created paths\n\
+      - Handles existing file gracefully (error, not overwrite)"
+    verification: MCP tool callable, creates plan.yaml, returns success message
+    agent: python-engineer
+    claimed_by: vectl-orchestrator
+    claimed_at: '2026-02-20T05:38:02.968545+00:00'
+    evidence: '**Artifact:**
+
+      - Implementation in src/vectl/mcp_server.py, src/vectl/core.py, src/vectl/models.py
+
+      - Tests in tests/test_mcp.py (TestVectlInit class, 7 tests)
+
+
+      **Verification:**
+
+      - All 284 existing tests pass
+
+      - 7 new tests for vectl_init pass
+
+      - Type checking with pyright passes (0 errors)
+
+
+      **Implementation:**
+
+      - Added `vectl_init(project, plan_path, agents_target)` MCP tool
+
+      - Returns `InitResult` structured dict with ok, plan_path, agents_target, message
+
+      - Reused logic from CLI by extracting to core.py
+
+      - Handles existing file gracefully (error, not overwrite)'
+  - id: mcp-parity.add-vectl-render-mcp-tool
+    name: Add vectl_render MCP tool
+    status: done
+    description: 'Expose `vectl render` functionality to MCP.
+
+
+      **Current Gap:**
+
+      Agents cannot generate stakeholder-readable Markdown reports. The `render` command
+      exports plan progress as clean Markdown (omitting operational metadata like
+      claimed_by, rejection_history).
+
+
+      **Implementation:**
+
+      - Add `vectl_render(phase_id: str | None = None, full: bool = False)` MCP tool
+
+      - Returns: Markdown string (same as CLI output)
+
+      - Core logic already in `core.py:render_plan()`, just needs MCP wrapper
+
+
+      **Acceptance:**
+
+      - Agent can request progress report via MCP
+
+      - Output matches CLI `vectl render` format
+
+      - Phase filtering works correctly'
+    verification: MCP tool callable, returns Markdown report
+    agent: python-engineer
+    claimed_by: vectl-orchestrator
+    claimed_at: '2026-02-20T05:47:05.257994+00:00'
+    evidence: '**Artifact:**
+
+      - Implementation in src/vectl/mcp_server.py (vectl_render function, lines 1234-1264)
+
+      - Added render_plan to imports
+
+
+      **Verification:**
+
+      - Import test passes
+
+      - 38 render-related tests pass
+
+      - Tool registration verified
+
+
+      **Implementation:**
+
+      - Added `vectl_render(phase_id, full)` MCP tool
+
+      - Returns Markdown string directly
+
+      - Wraps existing `render_plan()` from core.py
+
+      - Phase filtering and full description mode supported'
+  - id: mcp-parity.add-vectl-check-mcp-tool
+    name: Add vectl_check MCP tool
+    status: done
+    description: 'Expose `vectl check` functionality to MCP.
+
+
+      **Current Gap:**
+
+      Agents cannot conveniently toggle checklist items in step descriptions. The
+      `check` command parses markdown checklists (`- [ ]` / `- [x]`) and toggles by
+      keyword.
+
+
+      **Current Workaround:**
+
+      Agents can use `vectl_mutate(action="edit-step")` to replace the entire description,
+      but this:
+
+      1. Requires reading current description first
+
+      2. Is error-prone (might lose formatting)
+
+      3. Lacks semantic precision (toggle vs replace)
+
+
+      **Implementation:**
+
+      - Add `vectl_check(step_id: str, keyword: str | None = None, add: str | None
+      = None)` MCP tool
+
+      - Returns: updated step info
+
+      - Core logic in `core.py:update_checklist()`, just needs MCP wrapper
+
+
+      **Acceptance:**
+
+      - Agent can toggle checklist items by keyword
+
+      - Agent can add new checklist items
+
+      - Returns structured result with updated step'
+    verification: MCP tool callable, toggles checklist items correctly
+    agent: python-engineer
+    claimed_by: vectl-orchestrator
+    claimed_at: '2026-02-20T05:50:14.648707+00:00'
+    evidence: '**Artifact:**
+
+      - Implementation in src/vectl/mcp_server.py (vectl_check function)
+
+      - Tests in tests/test_mcp.py (TestVectlCheck class, 8 tests)
+
+
+      **Verification:**
+
+      - pyright: 0 errors, 0 warnings
+
+      - pytest tests/test_mcp.py::TestVectlCheck: 8 passed
+
+      - pytest tests/test_mcp.py: 113 passed
+
+      - pytest tests/test_checklist.py: 12 passed
+
+
+      **Implementation:**
+
+      - Added `vectl_check(step_id, keyword, add)` MCP tool
+
+      - Toggles checklist items by keyword
+
+      - Adds new unchecked items
+
+      - Returns markdown-formatted result with updated checklist'
+  - id: mcp-parity.add-tests-for-mcp-parity-tools
+    name: Add tests for MCP parity tools
+    status: done
+    description: 'Add test coverage for new MCP tools and add-steps action.
+
+
+      **Scope:**
+
+      - Unit tests for `vectl_init` MCP tool (file creation, existing file error)
+
+      - Unit tests for `vectl_render` MCP tool (markdown output, phase filtering)
+
+      - Unit tests for `vectl_check` MCP tool (toggle checklist, add item)
+
+      - Unit tests for `vectl_mutate(action="add-steps")` (batch creation, intra-batch
+      deps, atomic rollback)
+
+
+      **Location:**
+
+      - `tests/test_mcp_parity.py` (new file) or extend `tests/test_mcp_server.py`
+
+
+      **Acceptance:**
+
+      - All four new features have corresponding tests
+
+      - Edge cases covered (missing args, invalid inputs, cycle detection)
+
+      - Tests pass with `uv run pytest`'
+    verification: '`uv run pytest tests/test_mcp_parity.py` passes'
+    depends_on:
+    - mcp-parity.add-vectl-init-mcp-tool
+    - mcp-parity.add-vectl-render-mcp-tool
+    - mcp-parity.add-vectl-check-mcp-tool
+    - mcp-parity.add-add-steps-action-to-vectl-mutate
+    agent: integration-verifier
+    claimed_by: vectl-orchestrator
+    claimed_at: '2026-02-20T06:00:47.808054+00:00'
+    evidence: '**Verification Results:**
+
+      - All 178 tests pass
+
+      - All tests use real file I/O (L2 Real Wiring verification)
+
+
+      **Feature Coverage:**
+
+      1. `vectl_init`: 7 tests - fully covered (create, existing file, custom path,
+      claude detection, idempotent)
+
+      2. `vectl_render`: Core `render_plan()` has 35 tests - MCP wrapper is 5-line
+      trivial delegation, acceptable gap
+
+      3. `vectl_check`: 8 MCP tests + 12 core tests - fully covered (toggle, add,
+      errors)
+
+      4. `add-steps`: 19 MCP tests + 23 core tests - comprehensive coverage (batch,
+      deps, status import, validation)
+
+
+      **Gap Analysis:**
+
+      - Only gap: vectl_render MCP wrapper has no direct tests
+
+      - Mitigation: Core function fully tested, wrapper is trivial delegation
+
+      - Recommendation: Acceptable as-is, or add 2-3 MCP-level tests for completeness'
+  - id: mcp-parity.add-add-steps-action-to-vectl-mutate
+    name: Add add-steps action to vectl_mutate
+    status: done
+    description: 'Add `add-steps` action to `vectl_mutate` MCP tool for batch step
+      creation.
+
+
+      **Current Gap:**
+
+      - `vectl_mutate(action="add-step")` only adds one step at a time
+
+      - Agents creating multiple steps (e.g., from PRD) must call repeatedly
+
+      - CLI has `vectl add-steps` for batch YAML input, but MCP has no equivalent
+
+
+      **Implementation:**
+
+      - Add `add-steps` to `vectl_mutate` action literal
+
+      - Add `steps: list[dict] | None = None` parameter
+
+      - Each dict entry: `name` (required), `description`, `depends_on`, `verification`,
+      `status`, `evidence`, `agent` (optional)
+
+      - Reuse `core.py:add_steps_bulk()` logic (two-pass reference resolution)
+
+      - Returns: list of created step IDs
+
+
+      **Acceptance:**
+
+      - Agent can create multiple steps in single call
+
+      - Intra-batch dependency resolution works (short slug → full ID)
+
+      - Error handling: atomic rollback on validation failure
+
+      - Consistent with CLI `vectl add-steps` semantics'
+    verification: MCP tool accepts add-steps action, creates multiple steps atomically
+    agent: python-engineer
+    claimed_by: vectl-orchestrator
+    claimed_at: '2026-02-20T05:53:54.452920+00:00'
+    evidence: '**Artifact:**
+
+      - Implementation in src/vectl/mcp_server.py (add-steps action in vectl_mutate)
+
+      - Tests in tests/test_mcp.py (17 new tests for add-steps)
+
+
+      **Verification:**
+
+      - All 853 tests pass
+
+      - 17 new tests for add-steps action
+
+
+      **Implementation:**
+
+      - Added `add-steps` to vectl_mutate action Literal
+
+      - Added `steps: list[dict] | None` parameter
+
+      - Parameter aliases: description/desc, depends_on/after, verification/verify
+
+      - Delegates to existing `add_steps_bulk()` from core.py
+
+      - Intra-batch short slug reference resolution
+
+      - Atomic rollback on cycle detection
+
+      - Status validation (done requires evidence, skipped requires reason)'
+  - id: mcp-parity.fix-vectl-render-mcp-wrapper-tests
+    name: Fix vectl_render MCP wrapper tests
+    status: done
+    description: 'Add MCP-level tests for vectl_render wrapper.
+
+
+      **Gap:**
+
+      The vectl_render MCP tool has no direct tests. While core `render_plan()` has
+      35 tests, the MCP wrapper is untested. This is a minor gap but should be fixed
+      for completeness.
+
+
+      **Tests to add:**
+
+      - Basic render (returns markdown)
+
+      - Phase filter (phase_id parameter)
+
+      - Error handling (invalid phase_id)
+
+
+      **Location:** `tests/test_mcp.py`'
+    verification: '`uv run pytest tests/test_mcp.py -k render` passes'
+    agent: integration-verifier
+    claimed_by: vectl-orchestrator
+    claimed_at: '2026-02-20T06:07:22.385147+00:00'
+    evidence: '**Artifact:**
+
+      - 8 tests added to tests/test_mcp.py for vectl_render
+
+
+      **Verification:**
+
+      - `uv run pytest tests/test_mcp.py -k render -v`: 8 passed
+
+      - `uv run pytest tests/test_mcp.py -v`: 138 passed
+
+
+      **Tests Added:**
+
+      - test_render_basic — returns markdown with plan structure
+
+      - test_render_includes_phase_table — summary table with phase progress
+
+      - test_render_includes_step_details — step details under each phase
+
+      - test_render_phase_filter — phase_id parameter filtering
+
+      - test_render_full_mode — full=True for complete descriptions
+
+      - test_render_invalid_phase — error handling
+
+      - test_render_shows_gate — gate inclusion
+
+      - test_render_shows_context — context inclusion'

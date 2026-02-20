@@ -379,3 +379,22 @@ class DiffResult:
     @property
     def has_changes(self) -> bool:
         return bool(self.phase_changes or self.step_changes)
+
+
+# ---------------------------------------------------------------------------
+# Init Result
+# ---------------------------------------------------------------------------
+
+
+class InitResult(BaseModel):
+    """Result of initializing a new vectl project.
+
+    Source: Task mcp-parity.add-vectl-init-mcp-tool
+    Returned by vectl_init MCP tool for structured client handling.
+    """
+
+    ok: bool
+    plan_path: str
+    agents_target: str | None = None  # Which file was updated (AGENTS.md or CLAUDE.md)
+    message: str
+    error: str | None = None

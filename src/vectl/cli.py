@@ -476,6 +476,20 @@ Quick view: `uvx vectl status`
 - Otherwise use CLI (`uvx vectl ...`).
 - Evidence requirements are identical across CLI and MCP.
 
+### plan.yaml — Managed File (DO NOT EDIT DIRECTLY)
+
+`plan.yaml` is exclusively owned by vectl. Direct edits (Edit, Write, sed, or
+any file tool) **will** corrupt plan state — vectl performs CAS writes, lock
+recalculation, and schema validation on every save, none of which run on direct
+edits.
+
+**To modify plan state, ONLY use:**
+- CLI: `uvx vectl claim`, `uvx vectl complete`, `uvx vectl mutate`, etc.
+- MCP: `vectl_claim`, `vectl_complete`, `vectl_mutate`, etc.
+
+If a vectl command fails, report the error — do **not** edit `plan.yaml`
+directly as a workaround. Use `uvx vectl guide stuck` for troubleshooting.
+
 ### Rules
 - One claimed step at a time.
 - Evidence is mandatory when completing (commands run + outputs + gaps).

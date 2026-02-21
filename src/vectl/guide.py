@@ -34,6 +34,14 @@ Required: Files changed, Verification (cmd + result), Gaps (skipped).
 
 ## Tools
 Prefer MCP tools (vectl_*) if available. Rules are identical.
+
+## Agent Instructions (AGENTS.md / CLAUDE.md)
+`vectl init` injects a vectl section into AGENTS.md or CLAUDE.md.
+To update an existing project to the latest template:
+```
+uvx vectl agents-md          # auto-detect target file
+uvx vectl agents-md --target claude   # force CLAUDE.md
+```
 """
 
 GUIDE_STUCK = """\

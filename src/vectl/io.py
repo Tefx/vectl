@@ -12,6 +12,17 @@ import yaml
 
 from vectl.models import CASConflictError, Plan, PlanIOError
 
+_PLAN_YAML_HEADER = """\
+# =============================================================
+# MANAGED FILE — DO NOT EDIT DIRECTLY
+# This file is owned by vectl. Direct edits bypass CAS write
+# protection, lock recalculation, and schema validation.
+#
+# Use: uvx vectl <command>  OR  vectl_* MCP tools
+# Docs: uvx vectl guide
+# =============================================================
+"""
+
 
 def _file_hash(path: Path) -> str:
     """Compute SHA-256 of file contents."""
@@ -57,7 +68,8 @@ def save_plan(plan: Plan, path: Path | str, expected_hash: str | None = None) ->
 
     # Serialize
     data = _plan_to_dict(plan)
-    content = yaml.dump(data, default_flow_style=False, allow_unicode=True, sort_keys=False)
+    yaml_body = yaml.dump(data, default_flow_style=False, allow_unicode=True, sort_keys=False)
+    content = _PLAN_YAML_HEADER + yaml_body
 
     # Atomic write: temp file + rename
     dir_ = path.parent

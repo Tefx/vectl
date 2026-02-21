@@ -47,6 +47,8 @@ from vectl.core import (
     search_plan,
     skip_phase,
     skip_step,
+    format_lock_changes,
+    recalc_lock_status,
     unlock_phase,
     update_checklist,
     validate_plan,
@@ -141,6 +143,12 @@ def _load(plan_path: Path | None) -> tuple[Plan, str, Path]:
 
 
 def _save(plan: Plan, plan_path: Path, expected_hash: str) -> None:
+    # recalc_lock_status is the "save hook": ensures lock consistency on every
+    # write. See also: mcp_server._save() which mirrors this pattern.
+    changed_ids = recalc_lock_status(plan)
+    msg = format_lock_changes(changed_ids, plan)
+    if msg:
+        print(msg)
     try:
         save_plan(plan, plan_path, expected_hash=expected_hash)
     except CASConflictError:
@@ -992,6 +1000,7 @@ def claim(
         p, result = claim_step(p, step_id, agent, force=force)
     except PlanError as e:
         _die(str(e))
+        return  # unreachable, but satisfies Pyright
 
     # RFC: docs/RFC-affinity.md
     # Display affinity warning/override messages
@@ -1823,6 +1832,54 @@ def unlock(
     out.print()
     out.print("[dim]→ vectl show {id}[/]".format(id=phase_id))
     out.print("[dim]→ vectl next[/]")
+
+
+# ---------------------------------------------------------------------------
+# recalc-lock: repair lock/pending status for all phases
+# Source: vectl plan step cli-recalc-lock (task specification).
+# ---------------------------------------------------------------------------
+
+
+@app.command("recalc-lock")
+def recalc_lock(
+    dry_run: bool = typer.Option(
+        False,
+        "--dry-run",
+        help="Show what would change without saving.",
+    ),
+    plan: Path | None = PlanOption,
+) -> None:
+    """Recalculate LOCKED/PENDING status for all phases.
+
+    Walks every phase and reapplies dependency rules: phases whose
+    dependencies are not all DONE become LOCKED; phases whose dependencies
+    are all DONE (or have none) become PENDING. DONE and IN_PROGRESS phases
+    are never affected.
+
+    Normally vectl maintains lock status automatically on every write. Use
+    this command only for human diagnosis after direct YAML edits that may
+    have left lock status inconsistent.
+
+    For each phase whose status changes, prints a line of the form:
+        [vectl] Lock status updated: phase-a (pending)
+
+    --dry-run previews what would change without saving the plan file.
+    """
+    p, h, plan_path = _load(plan)
+
+    if dry_run:
+        # Operate on a deep copy so the original plan is not mutated.
+        p_copy = p.model_copy(deep=True)
+        changed = recalc_lock_status(p_copy)
+        msg = format_lock_changes(changed, p_copy)
+        out.print(msg if msg else "[vectl] Lock status is consistent. No changes needed.")
+    else:
+        changed = recalc_lock_status(p)
+        msg = format_lock_changes(changed, p)
+        # _save() calls recalc_lock_status() again internally (idempotent —
+        # returns [] on second pass) to satisfy the save-hook invariant.
+        _save(p, plan_path, h)
+        out.print(msg if msg else "[vectl] Lock status is consistent. No changes needed.")
 
 
 # ---------------------------------------------------------------------------

@@ -17,6 +17,7 @@ from vectl.core import (
     defer_step,
     get_claimed_steps,
     get_next_steps,
+    recalc_lock_status,
     reject_step,
     search_plan,
     skip_phase,
@@ -473,7 +474,9 @@ class TestSkipPhase:
         # Should succeed without force
         plan, skipped = skip_phase(plan, "p3", "superseded")
         assert skipped == []
-        assert plan.find_phase("p3").status == PhaseStatus.DONE
+        p3 = plan.find_phase("p3")
+        assert p3 is not None
+        assert p3.status == PhaseStatus.DONE
 
     def test_skip_done_phase_fails(self):
         plan = _simple_plan()
@@ -666,15 +669,19 @@ class TestClipboardWrite:
         plan = Plan(project="test")
         plan = clipboard_write(plan, "agent-1", "First", "Content 1")
         plan = clipboard_write(plan, "agent-2", "Second", "Content 2")
-        assert plan.clipboard.author == "agent-2"
-        assert plan.clipboard.summary == "Second"
+        cb = plan.clipboard
+        assert cb is not None
+        assert cb.author == "agent-2"
+        assert cb.summary == "Second"
 
     def test_summary_truncation(self):
         plan = Plan(project="test")
         long_summary = "x" * 100
         plan = clipboard_write(plan, "agent", long_summary, "content")
-        assert len(plan.clipboard.summary) == CLIPBOARD_SUMMARY_MAX
-        assert plan.clipboard.summary.endswith("…")
+        cb = plan.clipboard
+        assert cb is not None
+        assert len(cb.summary) == CLIPBOARD_SUMMARY_MAX
+        assert cb.summary.endswith("…")
 
     def test_content_limit_exceeded(self):
         plan = Plan(project="test")
@@ -708,7 +715,9 @@ class TestClipboardWrite:
         # Verify expires_at is roughly 48 hours in the future
         from vectl.core import _clipboard_expired
 
-        assert not _clipboard_expired(plan.clipboard)
+        cb = plan.clipboard
+        assert cb is not None
+        assert not _clipboard_expired(cb)
 
     def test_default_ttl_is_24h(self):
         plan = Plan(project="test")
@@ -771,7 +780,9 @@ class TestClipboardExpiry:
         plan = clipboard_write(plan, "agent", "Summary", "Content", ttl=24)
         from vectl.core import _clipboard_expired
 
-        assert not _clipboard_expired(plan.clipboard)
+        cb = plan.clipboard
+        assert cb is not None
+        assert not _clipboard_expired(cb)
 
     def test_expired(self):
         plan = Plan(project="test")
@@ -790,7 +801,9 @@ class TestClipboardExpiry:
         )
         from vectl.core import _clipboard_expired
 
-        assert _clipboard_expired(plan.clipboard)
+        cb = plan.clipboard
+        assert cb is not None
+        assert _clipboard_expired(cb)
 
     def test_expiry_boundary(self):
         """Test clipboard just expired vs not yet expired."""
@@ -852,8 +865,10 @@ class TestAffinityClaim:
         plan = self._plan_with_step(agent="blind-tester", affinity=AffinityMode.SUGGESTED)
         plan, result = claim_step(plan, "s1", "python-engineer")
         assert result.affinity_warning is True
-        assert "blind-tester" in result.warning_message
-        assert "python-engineer" in result.warning_message
+        msg = result.warning_message
+        assert msg is not None
+        assert "blind-tester" in msg
+        assert "python-engineer" in msg
 
     def test_claim_exclusive_mismatch_rejects(self):
         """Exclusive affinity mismatch -> reject."""
@@ -866,7 +881,9 @@ class TestAffinityClaim:
         plan = self._plan_with_step(agent="blind-tester", affinity=AffinityMode.EXCLUSIVE)
         plan, result = claim_step(plan, "s1", "python-engineer", force=True)
         assert result.affinity_override is True
-        assert "override" in result.warning_message.lower()
+        msg = result.warning_message
+        assert msg is not None
+        assert "override" in msg.lower()
         # Check step has override fields
         step = plan.phases[0].steps[0]
         assert step.affinity_override is True
@@ -902,3 +919,411 @@ class TestAffinityClaim:
         plan, result = claim_step(plan, "s1", "blind-tester")
         assert result.affinity_warning is False
         assert result.warning_message is None
+
+
+# ---------------------------------------------------------------------------
+# recalc_lock_status
+# ---------------------------------------------------------------------------
+
+
+class TestRecalcLockStatus:
+    """Unit tests for recalc_lock_status — all 4 status transition rules."""
+
+    # ------------------------------------------------------------------
+    # Rule 1: DONE phases stay DONE
+    # ------------------------------------------------------------------
+
+    def test_rule1_done_phase_not_changed(self) -> None:
+        """DONE phase with unmet deps is never regressed."""
+        plan = Plan(
+            project="test",
+            phases=[
+                Phase(id="p1", name="P1", status=PhaseStatus.PENDING),
+                Phase(
+                    id="p2",
+                    name="P2",
+                    status=PhaseStatus.DONE,
+                    depends_on=["p1"],  # dep is PENDING, not DONE
+                ),
+            ],
+        )
+        changed = recalc_lock_status(plan)
+        assert "p2" not in changed
+        ph = plan.find_phase("p2")
+        assert ph is not None
+        assert ph.status == PhaseStatus.DONE
+
+    def test_rule1_done_phase_without_deps_not_changed(self) -> None:
+        """DONE phase with no dependencies is untouched."""
+        plan = Plan(
+            project="test",
+            phases=[
+                Phase(id="p1", name="P1", status=PhaseStatus.DONE),
+            ],
+        )
+        changed = recalc_lock_status(plan)
+        assert changed == []
+        ph = plan.find_phase("p1")
+        assert ph is not None
+        assert ph.status == PhaseStatus.DONE
+
+    def test_rule1_done_phase_with_done_deps_stays_done(self) -> None:
+        """DONE phase whose dependencies are also DONE is never regressed."""
+        plan = Plan(
+            project="test",
+            phases=[
+                Phase(id="p1", name="P1", status=PhaseStatus.DONE),
+                Phase(
+                    id="p2",
+                    name="P2",
+                    status=PhaseStatus.DONE,
+                    depends_on=["p1"],  # dep is DONE
+                ),
+            ],
+        )
+        changed = recalc_lock_status(plan)
+        assert "p2" not in changed
+        ph = plan.find_phase("p2")
+        assert ph is not None
+        assert ph.status == PhaseStatus.DONE
+
+    # ------------------------------------------------------------------
+    # Rule 2: IN_PROGRESS phases stay IN_PROGRESS
+    # ------------------------------------------------------------------
+
+    def test_rule2_in_progress_with_unmet_deps_not_locked(self) -> None:
+        """IN_PROGRESS phase with unsatisfied deps is not interrupted."""
+        plan = Plan(
+            project="test",
+            phases=[
+                Phase(id="p1", name="P1", status=PhaseStatus.PENDING),
+                Phase(
+                    id="p2",
+                    name="P2",
+                    status=PhaseStatus.IN_PROGRESS,
+                    depends_on=["p1"],  # dep not done
+                ),
+            ],
+        )
+        changed = recalc_lock_status(plan)
+        assert "p2" not in changed
+        ph = plan.find_phase("p2")
+        assert ph is not None
+        assert ph.status == PhaseStatus.IN_PROGRESS
+
+    def test_rule2_in_progress_with_met_deps_not_changed(self) -> None:
+        """IN_PROGRESS phase with satisfied deps is also left alone."""
+        plan = Plan(
+            project="test",
+            phases=[
+                Phase(id="p1", name="P1", status=PhaseStatus.DONE),
+                Phase(
+                    id="p2",
+                    name="P2",
+                    status=PhaseStatus.IN_PROGRESS,
+                    depends_on=["p1"],
+                ),
+            ],
+        )
+        changed = recalc_lock_status(plan)
+        assert changed == []
+        ph = plan.find_phase("p2")
+        assert ph is not None
+        assert ph.status == PhaseStatus.IN_PROGRESS
+
+    # ------------------------------------------------------------------
+    # Rule 3: PENDING with unmet deps → LOCKED
+    # ------------------------------------------------------------------
+
+    def test_rule3_pending_with_unmet_dep_becomes_locked(self) -> None:
+        """PENDING phase whose dependency is not DONE is locked."""
+        plan = Plan(
+            project="test",
+            phases=[
+                Phase(id="p1", name="P1", status=PhaseStatus.PENDING),
+                Phase(
+                    id="p2",
+                    name="P2",
+                    status=PhaseStatus.PENDING,
+                    depends_on=["p1"],
+                ),
+            ],
+        )
+        changed = recalc_lock_status(plan)
+        assert "p2" in changed
+        ph = plan.find_phase("p2")
+        assert ph is not None
+        assert ph.status == PhaseStatus.LOCKED
+
+    def test_rule3_pending_with_in_progress_dep_becomes_locked(self) -> None:
+        """PENDING phase whose dependency is IN_PROGRESS (not DONE) is locked."""
+        plan = Plan(
+            project="test",
+            phases=[
+                Phase(id="p1", name="P1", status=PhaseStatus.IN_PROGRESS),
+                Phase(
+                    id="p2",
+                    name="P2",
+                    status=PhaseStatus.PENDING,
+                    depends_on=["p1"],
+                ),
+            ],
+        )
+        changed = recalc_lock_status(plan)
+        assert "p2" in changed
+        ph = plan.find_phase("p2")
+        assert ph is not None
+        assert ph.status == PhaseStatus.LOCKED
+
+    def test_rule3_pending_with_all_deps_done_not_locked(self) -> None:
+        """PENDING phase with all deps DONE is left PENDING (rule 3 does not fire)."""
+        plan = Plan(
+            project="test",
+            phases=[
+                Phase(id="p1", name="P1", status=PhaseStatus.DONE),
+                Phase(
+                    id="p2",
+                    name="P2",
+                    status=PhaseStatus.PENDING,
+                    depends_on=["p1"],
+                ),
+            ],
+        )
+        changed = recalc_lock_status(plan)
+        assert changed == []
+        ph = plan.find_phase("p2")
+        assert ph is not None
+        assert ph.status == PhaseStatus.PENDING
+
+    def test_rule3_pending_without_deps_not_locked(self) -> None:
+        """PENDING phase with no dependencies is never locked by this function."""
+        plan = Plan(
+            project="test",
+            phases=[
+                Phase(id="p1", name="P1", status=PhaseStatus.PENDING),
+            ],
+        )
+        changed = recalc_lock_status(plan)
+        assert changed == []
+        ph = plan.find_phase("p1")
+        assert ph is not None
+        assert ph.status == PhaseStatus.PENDING
+
+    def test_rule3_partially_unmet_deps_becomes_locked(self) -> None:
+        """PENDING phase is locked even when only one of multiple deps is unmet."""
+        plan = Plan(
+            project="test",
+            phases=[
+                Phase(id="p1", name="P1", status=PhaseStatus.DONE),
+                Phase(id="p2", name="P2", status=PhaseStatus.PENDING),
+                Phase(
+                    id="p3",
+                    name="P3",
+                    status=PhaseStatus.PENDING,
+                    depends_on=["p1", "p2"],  # p2 is not DONE
+                ),
+            ],
+        )
+        changed = recalc_lock_status(plan)
+        assert "p3" in changed
+        ph = plan.find_phase("p3")
+        assert ph is not None
+        assert ph.status == PhaseStatus.LOCKED
+
+    # ------------------------------------------------------------------
+    # Rule 4: LOCKED with all deps DONE → PENDING
+    # ------------------------------------------------------------------
+
+    def test_rule4_locked_with_all_deps_done_becomes_pending(self) -> None:
+        """LOCKED phase whose deps are all DONE is unlocked to PENDING."""
+        plan = Plan(
+            project="test",
+            phases=[
+                Phase(id="p1", name="P1", status=PhaseStatus.DONE),
+                Phase(
+                    id="p2",
+                    name="P2",
+                    status=PhaseStatus.LOCKED,
+                    depends_on=["p1"],
+                ),
+            ],
+        )
+        changed = recalc_lock_status(plan)
+        assert "p2" in changed
+        ph = plan.find_phase("p2")
+        assert ph is not None
+        assert ph.status == PhaseStatus.PENDING
+
+    def test_rule4_locked_with_unmet_deps_stays_locked(self) -> None:
+        """LOCKED phase with unmet deps stays LOCKED."""
+        plan = Plan(
+            project="test",
+            phases=[
+                Phase(id="p1", name="P1", status=PhaseStatus.PENDING),
+                Phase(
+                    id="p2",
+                    name="P2",
+                    status=PhaseStatus.LOCKED,
+                    depends_on=["p1"],
+                ),
+            ],
+        )
+        changed = recalc_lock_status(plan)
+        assert changed == []
+        ph = plan.find_phase("p2")
+        assert ph is not None
+        assert ph.status == PhaseStatus.LOCKED
+
+    def test_rule4_locked_with_multiple_deps_all_done_becomes_pending(self) -> None:
+        """LOCKED phase unlocks only when ALL multiple deps are DONE."""
+        plan = Plan(
+            project="test",
+            phases=[
+                Phase(id="p1", name="P1", status=PhaseStatus.DONE),
+                Phase(id="p2", name="P2", status=PhaseStatus.DONE),
+                Phase(
+                    id="p3",
+                    name="P3",
+                    status=PhaseStatus.LOCKED,
+                    depends_on=["p1", "p2"],
+                ),
+            ],
+        )
+        changed = recalc_lock_status(plan)
+        assert "p3" in changed
+        ph = plan.find_phase("p3")
+        assert ph is not None
+        assert ph.status == PhaseStatus.PENDING
+
+    def test_rule4_locked_with_one_unmet_of_multiple_deps_stays_locked(self) -> None:
+        """LOCKED phase with at least one unmet dep stays LOCKED."""
+        plan = Plan(
+            project="test",
+            phases=[
+                Phase(id="p1", name="P1", status=PhaseStatus.DONE),
+                Phase(id="p2", name="P2", status=PhaseStatus.PENDING),
+                Phase(
+                    id="p3",
+                    name="P3",
+                    status=PhaseStatus.LOCKED,
+                    depends_on=["p1", "p2"],
+                ),
+            ],
+        )
+        changed = recalc_lock_status(plan)
+        assert changed == []
+        ph = plan.find_phase("p3")
+        assert ph is not None
+        assert ph.status == PhaseStatus.LOCKED
+
+    # ------------------------------------------------------------------
+    # Return value: list of changed phase IDs
+    # ------------------------------------------------------------------
+
+    def test_returns_empty_list_when_no_changes(self) -> None:
+        """Returns an empty list when no phase statuses are changed."""
+        plan = Plan(
+            project="test",
+            phases=[
+                Phase(id="p1", name="P1", status=PhaseStatus.DONE),
+                Phase(
+                    id="p2",
+                    name="P2",
+                    status=PhaseStatus.LOCKED,
+                    depends_on=["p1"],
+                ),
+            ],
+        )
+        # p2 should unlock — call once to apply
+        recalc_lock_status(plan)
+        # Second call: state is already consistent, no changes
+        changed_again = recalc_lock_status(plan)
+        assert changed_again == []
+
+    def test_returns_all_changed_phase_ids_in_plan_order(self) -> None:
+        """All changed phases are reported, in plan order."""
+        plan = Plan(
+            project="test",
+            phases=[
+                Phase(id="p1", name="P1", status=PhaseStatus.PENDING),
+                Phase(
+                    id="p2",
+                    name="P2",
+                    status=PhaseStatus.PENDING,
+                    depends_on=["p1"],
+                ),
+                Phase(
+                    id="p3",
+                    name="P3",
+                    status=PhaseStatus.PENDING,
+                    depends_on=["p1"],
+                ),
+            ],
+        )
+        changed = recalc_lock_status(plan)
+        # p2 and p3 should both be locked; p1 has no deps so stays PENDING
+        assert changed == ["p2", "p3"]
+        ph = plan.find_phase("p1")
+        assert ph is not None
+        assert ph.status == PhaseStatus.PENDING
+        ph = plan.find_phase("p2")
+        assert ph is not None
+        assert ph.status == PhaseStatus.LOCKED
+        ph = plan.find_phase("p3")
+        assert ph is not None
+        assert ph.status == PhaseStatus.LOCKED
+
+    def test_idempotent_on_already_consistent_plan(self) -> None:
+        """A plan already in consistent state produces no changes."""
+        plan = Plan(
+            project="test",
+            phases=[
+                Phase(id="p1", name="P1", status=PhaseStatus.DONE),
+                Phase(
+                    id="p2",
+                    name="P2",
+                    status=PhaseStatus.PENDING,
+                    depends_on=["p1"],
+                ),
+            ],
+        )
+        changed = recalc_lock_status(plan)
+        assert changed == []
+
+    # ------------------------------------------------------------------
+    # Circular dependency: must not hang or raise
+    # ------------------------------------------------------------------
+
+    def test_circular_dep_does_not_loop(self) -> None:
+        """Mutual dependency (A depends on B, B depends on A) must not cause
+        an infinite loop.  recalc_lock_status iterates the phase list once
+        using a static snapshot of DONE ids, so it terminates in O(N).
+        Both phases have unmet deps (neither is DONE) so each PENDING phase
+        becomes LOCKED; the function returns a list (never hangs).
+        """
+        plan = Plan(
+            project="test",
+            phases=[
+                Phase(
+                    id="phA",
+                    name="Phase A",
+                    status=PhaseStatus.PENDING,
+                    depends_on=["phB"],
+                ),
+                Phase(
+                    id="phB",
+                    name="Phase B",
+                    status=PhaseStatus.PENDING,
+                    depends_on=["phA"],
+                ),
+            ],
+        )
+        # Must complete (no hang) and return a list
+        changed = recalc_lock_status(plan)
+        assert isinstance(changed, list)
+        # Both phases have unmet deps → both are locked
+        ph_a = plan.find_phase("phA")
+        ph_b = plan.find_phase("phB")
+        assert ph_a is not None and ph_a.status == PhaseStatus.LOCKED
+        assert ph_b is not None and ph_b.status == PhaseStatus.LOCKED
+        assert set(changed) == {"phA", "phB"}

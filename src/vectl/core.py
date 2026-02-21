@@ -625,6 +625,12 @@ def auto_unlock_phases(plan: Plan) -> list[str]:
 
     Mutator function — call when state changes should be persisted.
     Returns list of phase IDs that were unlocked.
+
+    Note:
+        This function only applies Rule 4 (LOCKED → PENDING). It does NOT
+        enforce Rule 3 (PENDING → LOCKED) or the non-regression rules for
+        DONE and IN_PROGRESS phases. For full bidirectional consistency
+        enforcement, prefer :func:`recalc_lock_status` instead.
     """
     done_phase_ids = {p.id for p in plan.phases if p.status == PhaseStatus.DONE}
     unlocked: list[str] = []
@@ -634,6 +640,82 @@ def auto_unlock_phases(plan: Plan) -> list[str]:
                 phase.status = PhaseStatus.PENDING
                 unlocked.append(phase.id)
     return unlocked
+
+
+def recalc_lock_status(plan: Plan) -> list[str]:
+    """Recalculate LOCKED/PENDING status for all phases based on dependency state.
+
+    Applies the following rules in order (first matching rule wins):
+    1. DONE phases stay DONE — never regressed.
+    2. IN_PROGRESS phases stay IN_PROGRESS — active work is never interrupted.
+    3. PENDING phases with at least one unmet dependency → LOCKED.
+    4. LOCKED phases with all dependencies DONE → PENDING.
+
+    A phase has "unmet dependencies" when at least one phase in its
+    ``depends_on`` list is not in DONE status. A phase with an empty
+    ``depends_on`` list has no dependencies and is therefore never locked
+    by this function (rule 3 is a no-op for dependency-free phases).
+
+    Source: vectl plan step core-recalc (task specification).
+
+    Args:
+        plan: The plan to update in place.
+
+    Returns:
+        List of phase IDs whose status was changed by this call, in plan order.
+    """
+    done_phase_ids: set[str] = {p.id for p in plan.phases if p.status == PhaseStatus.DONE}
+    changed: list[str] = []
+
+    for phase in plan.phases:
+        # Rule 1: DONE phases are immutable.
+        if phase.status == PhaseStatus.DONE:
+            continue
+
+        # Rule 2: IN_PROGRESS phases are not interrupted.
+        if phase.status == PhaseStatus.IN_PROGRESS:
+            continue
+
+        if phase.status == PhaseStatus.PENDING:
+            # Rule 3: PENDING with unmet deps → LOCKED.
+            # Only applies when the phase actually declares dependencies.
+            if phase.depends_on and not all(dep in done_phase_ids for dep in phase.depends_on):
+                phase.status = PhaseStatus.LOCKED
+                changed.append(phase.id)
+
+        elif phase.status == PhaseStatus.LOCKED:
+            # Rule 4: LOCKED with all deps DONE → PENDING.
+            # A LOCKED phase with no declared deps is a data anomaly;
+            # we unlock it unconditionally (no dep constraint to enforce).
+            if not phase.depends_on or all(dep in done_phase_ids for dep in phase.depends_on):
+                phase.status = PhaseStatus.PENDING
+                changed.append(phase.id)
+
+    return changed
+
+
+def format_lock_changes(changed: list[str], plan: Plan) -> str:
+    """Format a human-readable lock-status change message.
+
+    Args:
+        changed: Phase IDs returned by recalc_lock_status().
+        plan: The plan (after recalc mutation) used to look up new statuses.
+
+    Returns:
+        A non-empty informational string when changes occurred, e.g.
+        "[vectl] Lock status updated: phase-a (pending), phase-b (locked)".
+        Empty string when ``changed`` is empty.
+    """
+    if not changed:
+        return ""
+    phase_index = {p.id: p for p in plan.phases}
+    parts = ", ".join(
+        f"{pid} ({phase_index[pid].status.value.lower()})"
+        if pid in phase_index
+        else pid
+        for pid in changed
+    )
+    return f"[vectl] Lock status updated: {parts}"
 
 
 # ---------------------------------------------------------------------------

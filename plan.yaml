@@ -3814,3 +3814,268 @@ phases:
       - test_render_shows_gate — gate inclusion
 
       - test_render_shows_context — context inclusion'
+- id: lock-consistency
+  name: Lock Consistency Auto-Fix
+  status: done
+  gate: All lock consistency tests pass; manual YAML edits auto-corrected on save;
+    docs updated
+  depends_on:
+  - mcp-parity
+  steps:
+  - id: core-recalc
+    name: Implement recalc_lock_status() in core.py
+    status: done
+    description: 'Implement `recalc_lock_status(plan: Plan) -> list[str]` in core.py.
+
+
+      Returns list of phase IDs whose status was changed.
+
+
+      Rules:
+
+      1. DONE phases stay DONE (no change)
+
+      2. IN_PROGRESS phases stay IN_PROGRESS (no change)
+
+      3. PENDING phases with unmet dependencies → LOCKED
+
+      4. LOCKED phases with all dependencies DONE → PENDING
+
+
+      Touch paths: src/vectl/core.py
+
+      Verification: L1: unit tests for all status transitions'
+    agent: python-engineer
+    claimed_by: python-engineer
+    claimed_at: '2026-02-21T08:11:51.841244+00:00'
+    evidence: 'Implemented `recalc_lock_status(plan: Plan) -> list[str]` in src/vectl/core.py
+      with all 4 rules. Added 16 unit tests in TestRecalcLockStatus class. Fixed pre-existing
+      Pyright diagnostics in test_logic.py (Optional member access on find_phase/clipboard,
+      str|None operator issues). All 104 tests pass.'
+  - id: cli-save-autofix
+    name: CLI _save() auto-recalc with informational log
+    status: done
+    description: "Modify CLI `_save()` to call `recalc_lock_status()` before persisting.\n\
+      \nOn change, print informational message (NOT warning):\n  [vectl] Lock status\
+      \ updated: phase-a (pending), phase-b (pending)\n\nTouch paths: src/vectl/cli.py"
+    depends_on:
+    - core-recalc
+    agent: python-engineer
+    claimed_by: python-engineer
+    claimed_at: '2026-02-21T08:26:52.124877+00:00'
+    evidence: 'Modified CLI _save() in src/vectl/cli.py to call recalc_lock_status()
+      before persisting. Prints informational message "[vectl] Lock status updated:
+      ..." when changes occur. 877 tests pass.'
+  - id: mcp-save-autafix
+    name: MCP _save() auto-recalc with informational log
+    status: done
+    description: "Modify MCP `_save()` to call `recalc_lock_status()` before persisting.\n\
+      \nOn change, include informational message in response:\n  [vectl] Lock status\
+      \ updated: phase-a (pending), phase-b (pending)\n\nTouch paths: src/vectl/mcp_server.py"
+    depends_on:
+    - core-recalc
+    agent: python-engineer
+    claimed_by: python-engineer
+    claimed_at: '2026-02-21T08:26:52.750269+00:00'
+    evidence: Modified MCP _save() in src/vectl/mcp_server.py to return str (lock
+      notice). Calls recalc_lock_status() before save_plan(). Updated all 7 call sites
+      to incorporate the notice into their response markdown. 877 tests pass.
+  - id: cli-recalc-lock
+    name: Add vectl recalc-lock CLI command
+    status: done
+    description: "Add `vectl recalc-lock` CLI command for explicit lock status fix.\n\
+      \nUsage:\n  vectl recalc-lock          # Fix lock status immediately\n  vectl\
+      \ recalc-lock --dry-run # Show what would change\n\nThis is CLI-only (not exposed\
+      \ via MCP). For human operators to diagnose.\n\nTouch paths: src/vectl/cli.py"
+    depends_on:
+    - core-recalc
+    agent: python-engineer
+    claimed_by: python-engineer
+    claimed_at: '2026-02-21T08:26:53.177578+00:00'
+    evidence: Added `vectl recalc-lock` command to src/vectl/cli.py with --dry-run
+      support. Uses model_copy(deep=True) for dry-run isolation. Output format matches
+      spec. 877 tests pass.
+  - id: test-edge-done
+    name: 'Test: DONE phases stay DONE'
+    status: done
+    description: 'Test that DONE phases are never modified by recalc_lock_status.
+
+
+      - DONE phase with DONE deps → stays DONE
+
+      - DONE phase with PENDING deps → stays DONE (no regression)
+
+
+      Verification: L1: pytest passes'
+    depends_on:
+    - core-recalc
+    agent: integration-verifier
+    claimed_by: integration-verifier
+    claimed_at: '2026-02-21T08:30:39.420921+00:00'
+    evidence: Added test_rule1_done_phase_with_done_deps_stays_done (missing case).
+      Existing tests covered DONE+PENDING and DONE+no-deps. 17 tests pass total.
+  - id: test-edge-inprogress
+    name: 'Test: IN_PROGRESS phases stay IN_PROGRESS'
+    status: done
+    description: 'Test that IN_PROGRESS phases are never modified by recalc_lock_status.
+
+
+      - IN_PROGRESS phase stays IN_PROGRESS regardless of deps
+
+
+      Verification: L1: pytest passes'
+    depends_on:
+    - core-recalc
+    agent: integration-verifier
+    claimed_by: integration-verifier
+    claimed_at: '2026-02-21T08:30:40.093398+00:00'
+    evidence: 'Verified: test_rule2_in_progress_with_unmet_deps_not_locked and test_rule2_in_progress_with_met_deps_not_changed
+      already exist in TestRecalcLockStatus. Both cases covered. 16 tests pass.'
+  - id: test-edge-circular
+    name: 'Test: circular deps no infinite loop'
+    status: done
+    description: 'Test that circular dependencies don''t cause infinite loops in recalc_lock_status.
+
+
+      - Phase A depends on B, B depends on A
+
+      - recalc_lock_status should handle gracefully (error or skip)
+
+
+      Verification: L1: pytest passes'
+    depends_on:
+    - core-recalc
+    agent: integration-verifier
+    claimed_by: integration-verifier
+    claimed_at: '2026-02-21T08:30:40.578833+00:00'
+    evidence: Added test_circular_dep_does_not_loop. Implementation uses single-pass
+      with static snapshot — structurally immune to infinite loops. Circular A↔B both
+      become LOCKED. 18 tests pass.
+  - id: test-roundtrip
+    name: 'Test: save→load preserves corrected lock status'
+    status: done
+    description: 'Test that save→load roundtrip preserves corrected lock status.
+
+
+      1. Create plan with inconsistent lock status
+
+      2. Save (triggers auto-fix)
+
+      3. Load
+
+      4. Verify lock status is correct
+
+
+      Verification: L1: pytest passes'
+    depends_on:
+    - cli-save-autofix
+    - mcp-save-autafix
+    agent: integration-verifier
+    claimed_by: integration-verifier
+    claimed_at: '2026-02-21T08:32:24.347697+00:00'
+    evidence: Added TestLockStatusRoundtrip class in tests/test_io.py with 2 real-filesystem
+      integration tests (PENDING→LOCKED and LOCKED→PENDING roundtrips via tmp_path).
+      881 tests pass, no regressions.
+  - id: test-manual-yaml-edit
+    name: 'Test: manual YAML edits get corrected on save'
+    status: done
+    description: 'Test that manually edited YAML with wrong lock status gets corrected.
+
+
+      1. Create plan.yaml with PENDING phase that should be LOCKED
+
+      2. Load plan
+
+      3. Perform any write operation (claim, complete, etc.)
+
+      4. Verify lock status is corrected and message shown
+
+
+      Verification: L1: pytest passes'
+    depends_on:
+    - cli-save-autofix
+    agent: integration-verifier
+    claimed_by: integration-verifier
+    claimed_at: '2026-02-21T08:32:24.868595+00:00'
+    evidence: 'Created tests/test_manual_yaml_edit.py with TestManualYamlEditLockCorrection
+      (3 tests): PENDING→LOCKED, LOCKED→PENDING, DONE preserved. All use real tmp_path
+      I/O. 884 tests pass.'
+  - id: test-autofix-message
+    name: 'Test: informational message format correct'
+    status: done
+    description: "Test that auto-fix message follows informational format (not warning).\n\
+      \nGood format:\n  [vectl] Lock status updated: phase-a (pending)\n\nBad format\
+      \ (warning creates cognitive load):\n  [vectl] Warning: Lock inconsistency detected\n\
+      \nVerification: L1: pytest passes, message pattern assertion"
+    depends_on:
+    - cli-save-autofix
+    agent: integration-verifier
+    claimed_by: integration-verifier
+    claimed_at: '2026-02-21T08:32:25.751590+00:00'
+    evidence: Created tests/test_autofix_message.py with 8 tests (4 CLI + 4 MCP).
+      Verifies "[vectl] Lock status updated:" format, no "Warning:" in output, no
+      message when plan is consistent. 892 tests pass.
+  - id: update-mcp-docs
+    name: Update MCP tool documentation
+    status: done
+    description: 'Update MCP tool descriptions to mention auto-recalc behavior.
+
+
+      Add to relevant tool descriptions:
+
+      "Lock consistency is maintained automatically. After any write operation
+
+      (claim, complete, mutate), lock status is recalculated."
+
+
+      Touch paths: src/vectl/mcp_server.py (docstrings)'
+    depends_on:
+    - mcp-save-autafix
+    agent: doc-reviewer
+    claimed_by: doc-reviewer
+    claimed_at: '2026-02-21T08:35:23.203457+00:00'
+    evidence: Added lock consistency note to vectl_claim, vectl_complete, vectl_lifecycle,
+      vectl_mutate docstrings in mcp_server.py. 892 tests pass.
+  - id: update-cli-docs
+    name: Update CLI documentation
+    status: done
+    description: 'Document `vectl recalc-lock` command in CLI help.
+
+
+      Document informational message format in docs.
+
+      Explain when to use recalc-lock (for diagnosis, normally not needed).
+
+
+      Touch paths: src/vectl/cli.py (docstrings), README.md'
+    depends_on:
+    - cli-recalc-lock
+    agent: doc-reviewer
+    claimed_by: doc-reviewer
+    claimed_at: '2026-02-21T08:35:22.696036+00:00'
+    evidence: 'Improved recalc-lock docstring in cli.py: added "when to use it" guidance,
+      message format example, and --dry-run documentation. No logic changes.'
+  - id: update-README
+    name: Update README with lock consistency section
+    status: done
+    description: 'Add "Lock Consistency" section to README explaining:
+
+
+      1. Lock status is automatically maintained
+
+      2. After any write operation, lock status is recalculated
+
+      3. No action required from agents
+
+      4. `vectl recalc-lock` is for human operators only'
+    depends_on:
+    - core-recalc
+    - cli-save-autofix
+    - mcp-save-autafix
+    - cli-recalc-lock
+    agent: doc-reviewer
+    claimed_by: doc-reviewer
+    claimed_at: '2026-02-21T08:35:22.126661+00:00'
+    evidence: Added "Lock Consistency" section to README.md between Data Model and
+      Technical Details sections. Explains auto-recalc, message format, and vectl
+      recalc-lock for manual repair.

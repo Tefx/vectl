@@ -174,3 +174,119 @@ phases:
         assert plan.project == "test"
         assert plan.clipboard is None
         assert len(plan.phases) == 1
+
+
+class TestLockStatusRoundtrip:
+    """Integration tests: save→load roundtrip preserves corrected lock status.
+
+    The CLI _save() calls recalc_lock_status() before writing to disk.
+    These tests exercise the full save→load path using real files (tmp_path)
+    and no mocks at the I/O boundary.
+    """
+
+    def test_pending_phase_with_unmet_dep_is_locked_after_roundtrip(
+        self, tmp_path: Path
+    ) -> None:
+        """A PENDING phase whose dependency is not DONE is corrected to LOCKED on save
+        and the corrected status survives the load, confirming the roundtrip preserves
+        the recalculated lock status.
+
+        Scenario
+        --------
+        p1: PENDING (no deps)
+        p2: PENDING, depends_on=["p1"]   ← inconsistent: should be LOCKED
+
+        After _save() equivalent (recalc + save_plan) the plan on disk must have
+        p2 as LOCKED.  load_plan must then return LOCKED for p2.
+        """
+        from vectl.core import recalc_lock_status
+        from vectl.io import load_plan, save_plan
+
+        plan = Plan(
+            project="roundtrip-test",
+            phases=[
+                Phase(
+                    id="p1",
+                    name="Phase 1",
+                    status=PhaseStatus.PENDING,
+                    steps=[Step(id="s1", name="Step 1")],
+                ),
+                Phase(
+                    id="p2",
+                    name="Phase 2",
+                    # Deliberately wrong: should be LOCKED because p1 is not DONE
+                    status=PhaseStatus.PENDING,
+                    depends_on=["p1"],
+                    steps=[Step(id="s2", name="Step 2")],
+                ),
+            ],
+        )
+
+        # Precondition: the plan is inconsistent before save
+        assert plan.phases[1].status == PhaseStatus.PENDING, (
+            "precondition: p2 starts as PENDING (inconsistent)"
+        )
+
+        # Replicate what CLI _save() does: recalc then write
+        recalc_lock_status(plan)
+        path = tmp_path / "plan.yaml"
+        save_plan(plan, path)
+
+        # Load from disk — status must have survived the roundtrip
+        loaded, _ = load_plan(path)
+
+        assert loaded.phases[1].status == PhaseStatus.LOCKED, (
+            f"expected p2 to be LOCKED after roundtrip, got {loaded.phases[1].status}"
+        )
+
+    def test_locked_phase_with_all_deps_done_is_unlocked_after_roundtrip(
+        self, tmp_path: Path
+    ) -> None:
+        """A LOCKED phase whose dependency is DONE is corrected to PENDING on save
+        and survives the roundtrip.
+
+        Scenario
+        --------
+        p1: DONE
+        p2: LOCKED, depends_on=["p1"]   ← inconsistent: should be PENDING
+
+        After recalc + save_plan the plan on disk must have p2 as PENDING.
+        load_plan must return PENDING for p2.
+        """
+        from vectl.core import recalc_lock_status
+        from vectl.io import load_plan, save_plan
+
+        plan = Plan(
+            project="roundtrip-unlock-test",
+            phases=[
+                Phase(
+                    id="p1",
+                    name="Phase 1",
+                    status=PhaseStatus.DONE,
+                    steps=[Step(id="s1", name="Step 1")],
+                ),
+                Phase(
+                    id="p2",
+                    name="Phase 2",
+                    # Deliberately wrong: dep is DONE so this should be PENDING
+                    status=PhaseStatus.LOCKED,
+                    depends_on=["p1"],
+                    steps=[Step(id="s2", name="Step 2")],
+                ),
+            ],
+        )
+
+        # Precondition
+        assert plan.phases[1].status == PhaseStatus.LOCKED, (
+            "precondition: p2 starts as LOCKED (inconsistent)"
+        )
+
+        recalc_lock_status(plan)
+        path = tmp_path / "plan.yaml"
+        save_plan(plan, path)
+
+        loaded, _ = load_plan(path)
+
+        assert loaded.phases[1].status == PhaseStatus.PENDING, (
+            f"expected p2 to be PENDING after roundtrip, got {loaded.phases[1].status}"
+        )

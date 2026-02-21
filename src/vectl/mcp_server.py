@@ -59,6 +59,8 @@ from vectl.core import (
     get_claimed_steps,
     get_next_steps,
     move_step,
+    format_lock_changes,
+    recalc_lock_status,
     reject_step,
     remove_step,
     render_plan,
@@ -125,11 +127,25 @@ def _load() -> tuple[Plan, str]:
     return load_plan(_plan_path())
 
 
-def _save(plan: Plan, expected_hash: str) -> None:
-    """Save plan with CAS.
+def _save(plan: Plan, expected_hash: str) -> str:
+    """Save plan with CAS, recalculating lock status before writing.
 
-    Raises a user-friendly error on CAS conflict (concurrent edit detected).
+    Calls recalc_lock_status() before persisting to ensure phase lock/pending
+    transitions are applied on every write. Source: vectl plan step mcp-save-autafix.
+
+    Args:
+        plan: The plan to persist (mutated in place by recalc_lock_status).
+        expected_hash: CAS hash from the load that produced this plan.
+
+    Returns:
+        Informational message string when lock status changed, empty string otherwise.
+
+    Raises:
+        PlanError: User-friendly error on CAS conflict (concurrent edit detected).
     """
+    # recalc_lock_status is the "save hook": ensures lock consistency on every
+    # write. See also: cli._save() which mirrors this pattern.
+    changed = recalc_lock_status(plan)
     try:
         save_plan(plan, _plan_path(), expected_hash)
     except CASConflictError:
@@ -137,6 +153,7 @@ def _save(plan: Plan, expected_hash: str) -> None:
             "CAS conflict: plan.yaml was modified by another process since you loaded it. "
             "Re-read with `vectl_status` or `vectl_show`, then retry your mutation."
         )
+    return format_lock_changes(changed, plan)
 
 
 def _fmt_step(plan: Plan, step: Step, phase_id: str) -> str:
@@ -359,6 +376,8 @@ def vectl_claim(
 ) -> dict:
     """Claim a step.
 
+    Lock consistency is maintained automatically. After any write operation, lock status is recalculated.
+
     Args:
         agent: Agent name claiming the step.
         step_id: Step ID to claim. If omitted, auto-selects first available.
@@ -379,9 +398,10 @@ def vectl_claim(
             )
         step_id = available[0].id
 
+    lock_notice: str = ""
     try:
         plan, result = claim_step(plan, step_id, agent, force=force)
-        _save(plan, expected_hash)
+        lock_notice = _save(plan, expected_hash)
     except AffinityError as e:
         # RFC: docs/RFC-affinity.md
         # Exclusive affinity violation
@@ -453,6 +473,8 @@ def vectl_claim(
             md_lines.append(gp.markdown.rstrip())
 
         markdown = "\n".join(md_lines).rstrip() + "\n"
+        if lock_notice:
+            markdown = markdown.rstrip("\n") + f"\n\n{lock_notice}\n"
         return ClaimResult(
             ok=True,
             markdown=markdown,
@@ -462,9 +484,12 @@ def vectl_claim(
             affinity_override=affinity_override_data,
         ).model_dump(mode="json", exclude_none=True)
 
+    fallback_markdown = f"Claimed: {step_id}\n"
+    if lock_notice:
+        fallback_markdown = fallback_markdown.rstrip("\n") + f"\n\n{lock_notice}\n"
     return ClaimResult(
         ok=True,
-        markdown=f"Claimed: {step_id}\n",
+        markdown=fallback_markdown,
     ).model_dump(mode="json", exclude_none=True)
 
 
@@ -482,6 +507,8 @@ def vectl_claim(
 def vectl_complete(step_id: str, evidence: str) -> str:
     """Complete a step.
 
+    Lock consistency is maintained automatically. After any write operation, lock status is recalculated.
+
     Args:
         step_id: The step ID to complete.
         evidence: Description of what was done and verification.
@@ -490,7 +517,7 @@ def vectl_complete(step_id: str, evidence: str) -> str:
 
     try:
         plan = complete_step(plan, step_id, evidence)
-        _save(plan, expected_hash)
+        lock_notice = _save(plan, expected_hash)
     except PlanError as e:
         return f"**Error:** {e}"
 
@@ -513,6 +540,8 @@ def vectl_complete(step_id: str, evidence: str) -> str:
         if len(available) > 3:
             parts.append(f"  ... and {len(available) - 3} more")
 
+    if lock_notice:
+        parts.append(f"\n{lock_notice}")
     return "\n".join(parts)
 
 
@@ -540,6 +569,8 @@ def vectl_lifecycle(
     force: bool = False,
 ) -> str:
     """Change step/phase lifecycle state.
+
+    Lock consistency is maintained automatically. After any write operation, lock status is recalculated.
 
     Args:
         action: One of: defer, reject, skip, skip-phase, complete-phase.
@@ -583,10 +614,12 @@ def vectl_lifecycle(
                 msg += "\n" + "\n".join(f"  - {pid}" for pid in unlocked)
         else:
             return f"**Error:** Unknown action '{action}'. Use: defer, reject, skip, skip-phase, complete-phase."
-        _save(plan, expected_hash)
+        lock_notice = _save(plan, expected_hash)
     except PlanError as e:
         return f"**Error:** {e}"
 
+    if lock_notice:
+        msg += f"\n\n{lock_notice}"
     return msg
 
 
@@ -683,6 +716,8 @@ def vectl_mutate(
     steps: list[dict] | None = None,
 ) -> str:
     """Modify plan structure.
+
+    Lock consistency is maintained automatically. After any write operation, lock status is recalculated.
 
     Args:
         action: The mutation action to perform.
@@ -858,11 +893,14 @@ def vectl_mutate(
         else:
             return f"**Error:** Unknown action '{action}'."
 
-        _save(plan, expected_hash)
+        lock_notice = _save(plan, expected_hash)
     except PlanError as e:
         return f"**Error:** {e}"
 
-    return msg + "\n\n→ Use `vectl_search` to verify plan consistency."
+    result = msg + "\n\n→ Use `vectl_search` to verify plan consistency."
+    if lock_notice:
+        result += f"\n\n{lock_notice}"
+    return result
 
 
 @mcp.tool(
@@ -1129,7 +1167,7 @@ def _clipboard_write(author: str, summary: str, content: str, ttl: int) -> str:
         return f"**Error:** {e}"
 
     try:
-        _save(plan, expected_hash)
+        lock_notice = _save(plan, expected_hash)
     except PlanError as e:
         # CAS conflict - provide actionable message per RFC
         if "CAS conflict" in str(e):
@@ -1141,12 +1179,15 @@ def _clipboard_write(author: str, summary: str, content: str, ttl: int) -> str:
 
     cb = plan.clipboard
     assert cb is not None  # We just wrote it
-    return (
+    result = (
         f"**Clipboard written.**\n\n"
         f"- **Author:** {cb.author}\n"
         f"- **Summary:** {cb.summary}\n"
         f"- **Expires:** {cb.expires_at}\n"
     )
+    if lock_notice:
+        result += f"\n{lock_notice}\n"
+    return result
 
 
 def _clipboard_read() -> str:
@@ -1201,7 +1242,7 @@ def _clipboard_clear() -> str:
     plan = clipboard_clear(plan)
 
     try:
-        _save(plan, expected_hash)
+        lock_notice = _save(plan, expected_hash)
     except PlanError as e:
         if "CAS conflict" in str(e):
             return (
@@ -1210,6 +1251,8 @@ def _clipboard_clear() -> str:
             )
         return f"**Error:** {e}"
 
+    if lock_notice:
+        return f"**Clipboard cleared.**\n\n{lock_notice}"
     return "**Clipboard cleared.**"
 
 
@@ -1364,7 +1407,7 @@ def vectl_check(
 
     try:
         plan = update_checklist(plan, step_id, check=keyword, append=add)
-        _save(plan, expected_hash)
+        lock_notice = _save(plan, expected_hash)
     except NoMatchError as e:
         return f"**Error:** No checklist item matches keyword '{e.keyword}'."
     except AmbiguousMatchError as e:
@@ -1385,8 +1428,12 @@ def vectl_check(
             lines.append("```markdown")
             lines.append(step.description.rstrip())
             lines.append("```")
+        if lock_notice:
+            lines.append(f"\n{lock_notice}")
         return "\n".join(lines)
 
+    if lock_notice:
+        return f"**Updated checklist:** {step_id}\n\n{lock_notice}"
     return f"**Updated checklist:** {step_id}"
 
 

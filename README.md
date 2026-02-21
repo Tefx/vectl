@@ -239,6 +239,16 @@ No database. No SaaS. `git blame` it. Review it in PRs. `git diff` it.
 
 Full schema, ID rules, and ordering semantics: [docs/DESIGN.md](docs/DESIGN.md).
 
+## Lock Consistency
+
+Lock status is automatically maintained — agents do not need to manage it. After any write operation (`claim`, `complete`, `mutate`, etc.), vectl recalculates lock status automatically. When a recalculation changes a phase's lock state, vectl emits an informational message:
+
+```
+[vectl] Lock status updated: phase-a (pending)
+```
+
+If you edit `plan.yaml` directly (outside of vectl commands), run `uvx vectl recalc-lock` to manually diagnose and repair any lock inconsistencies.
+
 ## Technical Details
 
 Architecture, CAS safety, and test coverage (658 tests, Hypothesis state machine verification): [docs/DESIGN.md](docs/DESIGN.md).

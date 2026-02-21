@@ -50,6 +50,18 @@ GUIDE_STUCK = """\
 2. `uvx vectl search <term>`    — Find the blocker
 3. **Pivot**                — Work on parallel steps
 
+> **Lock status is automatic.** Completing upstream steps unlocks
+> downstream phases on the next write — no manual intervention needed.
+
+## Lock Status Wrong? (After Manual YAML Edit)
+If you (or a tool) edited `plan.yaml` directly and lock status looks wrong:
+```
+uvx vectl recalc-lock           # fix immediately
+uvx vectl recalc-lock --dry-run # preview changes first
+```
+Under normal agent workflow this is never needed — lock status recalculates
+on every `claim`, `complete`, or `mutate`.
+
 ## Phase Restructuring? (Merging/Splitting Phases)
 When consolidating phases (e.g., merging "fix" and "retest" into one "remediation" phase),
 you may move all steps out of a phase, leaving it empty. To clean up:

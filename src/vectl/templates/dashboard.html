@@ -397,6 +397,27 @@
       margin-right: 0.35em;
     }
 
+    .phase-copy-btn {
+      all: unset;
+      cursor: pointer;
+      font-size: 0.7rem;
+      padding: 1px 5px;
+      margin-left: 0.25em;
+      border-radius: 3px;
+      color: var(--text-muted);
+      background: var(--bg-tertiary);
+      transition: background-color 0.15s, color 0.15s;
+      vertical-align: middle;
+    }
+    .phase-copy-btn:hover {
+      background: var(--border-color);
+      color: var(--text-secondary);
+    }
+    .phase-copy-btn--copied {
+      background: var(--color-done-bg) !important;
+      color: var(--color-done) !important;
+    }
+
     .phase-card__progress-text {
       font-size: 0.875rem;
       color: var(--text-secondary);
@@ -1098,7 +1119,7 @@
               <div class="phase-card__header">
                 <span class="phase-card__collapse-icon">▼</span>
                 <span class="phase-card__status-icon ${iconClass}">${icon}</span>
-                <span class="phase-card__name"><span class="phase-card__id">${escapeHtml(phase.id)}</span>${escapeHtml(phase.name)}</span>
+                <span class="phase-card__name"><span class="phase-card__id">${escapeHtml(phase.id)}</span><button class="phase-copy-btn" data-copy-phase="${escapeHtml(phase.id)}" type="button">copy</button>${escapeHtml(phase.name)}</span>
                 <span class="phase-card__progress-text">${phase.progress.done}/${phase.progress.total} (${phase.progress.pct}%)</span>
                 <div class="phase-card__progress-bar">
                   <div class="phase-card__progress-fill" style="width: ${phase.progress.pct}%"></div>
@@ -1128,8 +1149,29 @@
 
       function setupPhaseCardInteractions() {
         document.querySelectorAll('.phase-card__header').forEach(header => {
-          header.addEventListener('click', () => {
+          header.addEventListener('click', (e) => {
+            if (e.target.closest('.phase-copy-btn')) return;
             togglePhaseCard(header);
+          });
+        });
+
+        document.querySelectorAll('.phase-copy-btn').forEach(btn => {
+          btn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            const id = btn.dataset.copyPhase;
+            const ta = document.createElement('textarea');
+            ta.value = id;
+            ta.style.cssText = 'position:fixed;opacity:0';
+            document.body.appendChild(ta);
+            ta.select();
+            document.execCommand('copy');
+            document.body.removeChild(ta);
+            btn.classList.add('phase-copy-btn--copied');
+            btn.textContent = '\u2713';
+            setTimeout(() => {
+              btn.textContent = 'copy';
+              btn.classList.remove('phase-copy-btn--copied');
+            }, 1200);
           });
         });
       }

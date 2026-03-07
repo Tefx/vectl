@@ -5054,3 +5054,240 @@ phases:
     - src/vectl/mcp_server.py
     depends_on:
     - orphan-surface
+- id: worktree-support
+  name: Worktree Support
+  status: pending
+  steps:
+  - id: worktree-support.wt-detect
+    name: wt-detect
+    status: pending
+    description: "Add worktree detection to resolve_plan_path() in plan_path.py.\n\
+      \nFile: src/vectl/plan_path.py\nFunction: resolve_plan_path()\n\nChange: Between\
+      \ step 3 (deprecated env var) and step 4 (walk-up discovery), insert worktree\
+      \ detection logic:\n\n1. Run `git rev-parse --git-common-dir` and `git rev-parse\
+      \ --git-dir` from cwd.\n2. If both succeed and git_dir != git_common_dir, this\
+      \ is a linked worktree.\n3. For linked worktrees: run `git -C <common_dir> rev-parse\
+      \ --show-toplevel` to get the main worktree root.\n4. Return main_root / 'plan.yaml'.\n\
+      5. If any git command fails (not a git repo, git not installed), fall through\
+      \ to existing walk-up discovery.\n\nPseudocode from ADR:\n```python\ngit_common_dir\
+      \ = git rev-parse --git-common-dir\ngit_dir = git rev-parse --git-dir\nif git_dir\
+      \ != git_common_dir:\n    main_root = git -C <common_dir> rev-parse --show-toplevel\n\
+      \    return main_root / 'plan.yaml'\n```\n\nUse subprocess.run with capture_output=True,\
+      \ text=True (same pattern as resolve_state_path).\nHandle OSError and non-zero\
+      \ return codes gracefully -- fall through to walk-up.\n\nAlso add a helper function\
+      \ `is_linked_worktree() -> tuple[bool, Path | None]` that returns (True, main_worktree_root)\
+      \ or (False, None). This helper will be reused by the mutate guard in the next\
+      \ step.\n\nPattern: Follow the subprocess.run usage in resolve_state_path()\
+      \ (same file, lines 87-100).\n\nNon-goals: Do NOT change resolve_state_path().\
+      \ Do NOT change VECTL_PLAN_PATH precedence (it already takes priority before\
+      \ this new logic)."
+    verification: '- `is_linked_worktree()` function exists and is importable
+
+      - `resolve_plan_path()` includes worktree detection between env-var and walk-up
+      steps
+
+      - VECTL_PLAN_PATH still has highest precedence (explicit > env > worktree >
+      walk-up)
+
+      - Graceful fallback when git is unavailable or cwd is not a git repo
+
+      - No changes to resolve_state_path()'
+    refs:
+    - src/vectl/plan_path.py
+    - docs/ADR-worktree-support.md
+    agent: python-executor
+  - id: worktree-support.wt-mutate-guard
+    name: wt-mutate-guard
+    status: pending
+    description: "Add a linked-worktree guard that blocks mutate operations in linked\
+      \ worktrees.\n\nFiles: src/vectl/mcp_server.py (function vectl_mutate, line\
+      \ ~756), src/vectl/cli.py (mutate CLI handler)\n\nChange: At the top of each\
+      \ mutate entry point, before any plan loading or mutation logic:\n\n1. Import\
+      \ `is_linked_worktree` from `vectl.plan_path`.\n2. Call `is_linked_worktree()`.\
+      \ If it returns (True, main_root):\n   - Raise an error (or return error string\
+      \ for MCP) with an actionable message.\n   - Message template: 'Mutate blocked:\
+      \ running in a linked worktree. Plan mutations must be performed in the main\
+      \ worktree at {main_root}. Override: set VECTL_PLAN_PATH={main_root}/plan.yaml'\n\
+      3. If VECTL_PLAN_PATH is already set (env var), skip the guard (the user has\
+      \ explicitly opted in via the escape hatch).\n\nFor MCP (mcp_server.py): Return\
+      \ the error as a string result (same pattern as other error returns in that\
+      \ function).\nFor CLI (cli.py): Use click.ClickException or sys.exit with the\
+      \ error message.\n\nPattern: Follow the existing error-return pattern in vectl_mutate()\
+      \ in mcp_server.py (search for 'return' statements that return error strings).\n\
+      \nNon-goals: Do NOT guard read-only operations (status, show, search, claim,\
+      \ complete). Only guard mutate (structural plan.yaml writes)."
+    verification: '- Mutate in MCP returns actionable error when called from linked
+      worktree
+
+      - Mutate in CLI exits with actionable error when called from linked worktree
+
+      - Error message includes main worktree path and VECTL_PLAN_PATH override instruction
+
+      - Guard is skipped when VECTL_PLAN_PATH is set
+
+      - Read-only operations (status, show, claim, complete) are NOT guarded'
+    refs:
+    - src/vectl/mcp_server.py
+    - src/vectl/cli.py
+    - src/vectl/plan_path.py
+    - docs/ADR-worktree-support.md
+    depends_on:
+    - worktree-support.wt-detect
+    agent: python-executor
+  - id: worktree-support.wt-tests-resolve
+    name: wt-tests-resolve
+    status: pending
+    description: "Add unit tests for worktree detection in resolve_plan_path().\n\n\
+      File: tests/test_plan_path.py\nClass: TestWorktreeDetection (new class)\n\n\
+      Tests to add:\n\n1. test_linked_worktree_resolves_to_main_root\n   - Mock git\
+      \ rev-parse --git-dir returning '/repo/.git/worktrees/feature-x'\n   - Mock\
+      \ git rev-parse --git-common-dir returning '/repo/.git'\n   - Mock git -C /repo/.git\
+      \ rev-parse --show-toplevel returning '/repo'\n   - Assert resolve_plan_path()\
+      \ returns Path('/repo/plan.yaml')\n\n2. test_main_worktree_uses_walkup\n   -\
+      \ Mock git-dir == git-common-dir (both return '.git')\n   - Assert resolve_plan_path()\
+      \ falls through to walk-up discovery (not redirected)\n\n3. test_git_not_available_falls_through\n\
+      \   - Mock subprocess.run raising OSError\n   - Assert resolve_plan_path() falls\
+      \ through to walk-up discovery\n\n4. test_git_fails_falls_through\n   - Mock\
+      \ subprocess.run returning non-zero exit code\n   - Assert resolve_plan_path()\
+      \ falls through to walk-up\n\n5. test_env_var_overrides_worktree_detection\n\
+      \   - Set VECTL_PLAN_PATH env var\n   - Assert resolve_plan_path() returns the\
+      \ env var path (subprocess.run not called)\n\n6. test_is_linked_worktree_returns_true_with_main_root\n\
+      \   - Test the helper directly: linked worktree returns (True, Path('/repo'))\n\
+      \n7. test_is_linked_worktree_returns_false_in_main_worktree\n   - Test the helper\
+      \ directly: main worktree returns (False, None)\n\nPattern: Follow the existing\
+      \ mock patterns in TestResolveStatePath (same file, lines 166+). Use unittest.mock.patch\
+      \ on subprocess.run.\n\nTest file: tests/test_plan_path.py (extend existing\
+      \ file)"
+    verification: '- All 7 new tests pass: pytest tests/test_plan_path.py::TestWorktreeDetection
+      -v
+
+      - Existing tests in test_plan_path.py still pass
+
+      - No import errors'
+    refs:
+    - tests/test_plan_path.py
+    - src/vectl/plan_path.py
+    depends_on:
+    - worktree-support.wt-detect
+    agent: python-executor
+  - id: worktree-support.wt-tests-guard
+    name: wt-tests-guard
+    status: pending
+    description: "Add unit tests for the mutate guard in linked worktrees.\n\nFile:\
+      \ tests/test_plan_path.py (new class TestMutateWorktreeGuard) or tests/test_worktree.py\
+      \ if cleaner separation is preferred.\n\nTests to add:\n\n1. test_mcp_mutate_blocked_in_linked_worktree\n\
+      \   - Mock is_linked_worktree() returning (True, Path('/repo'))\n   - Ensure\
+      \ VECTL_PLAN_PATH is NOT set\n   - Call vectl_mutate (or the guard function\
+      \ directly)\n   - Assert error message contains main worktree path and VECTL_PLAN_PATH\
+      \ override\n\n2. test_mcp_mutate_allowed_in_main_worktree\n   - Mock is_linked_worktree()\
+      \ returning (False, None)\n   - Assert mutate proceeds (no guard error)\n\n\
+      3. test_mcp_mutate_allowed_with_env_override\n   - Mock is_linked_worktree()\
+      \ returning (True, Path('/repo'))\n   - Set VECTL_PLAN_PATH env var\n   - Assert\
+      \ mutate proceeds (guard skipped)\n\n4. test_cli_mutate_blocked_in_linked_worktree\n\
+      \   - Same as test 1 but for the CLI entry point\n   - Assert click.ClickException\
+      \ or SystemExit with actionable message\n\n5. test_cli_mutate_allowed_with_env_override\n\
+      \   - Same as test 3 but for CLI\n\nPattern: For MCP tests, follow patterns\
+      \ in tests/test_mcp.py. For CLI tests, follow patterns in tests/test_cli.py.\
+      \ Mock at the is_linked_worktree level (not subprocess) since that helper is\
+      \ already tested in wt-tests-resolve.\n\nThe guard function itself may be a\
+      \ shared helper importable from plan_path.py (e.g., `assert_not_linked_worktree()`),\
+      \ making it easy to test in isolation."
+    verification: '- All 5 new tests pass
+
+      - Existing tests in affected test files still pass
+
+      - No import errors'
+    refs:
+    - tests/test_plan_path.py
+    - tests/test_mcp.py
+    - tests/test_cli.py
+    - src/vectl/plan_path.py
+    depends_on:
+    - worktree-support.wt-mutate-guard
+    agent: python-executor
+  - id: worktree-support.wt-verify
+    name: wt-verify
+    status: pending
+    description: 'As an INDEPENDENT TESTER (integration-verifier), validate the worktree
+      support implementation from a fresh perspective.
+
+
+      YOUR GOAL IS TO FIND PROBLEMS, not to confirm it works.
+
+
+      Test for:
+
+      - Happy path: resolve_plan_path() returns main worktree plan.yaml when in linked
+      worktree
+
+      - Happy path: mutate blocked in linked worktree with actionable error
+
+      - Edge cases: git not available, non-git directory, VECTL_PLAN_PATH override
+
+      - Error scenarios: malformed git output, permission errors
+
+      - Regression: all existing tests in test_plan_path.py, test_smoke.py, test_cli.py,
+      test_mcp.py still pass
+
+
+      Document ALL findings. A test that discovers issues is a SUCCESS.
+
+
+      Independence Level: L1'
+    verification: '- Full test suite passes: pytest tests/ -v
+
+      - No regressions in existing functionality
+
+      - Edge cases verified
+
+      - Evidence of independent review provided'
+    refs:
+    - tests/test_plan_path.py
+    - src/vectl/plan_path.py
+    - src/vectl/mcp_server.py
+    - src/vectl/cli.py
+    depends_on:
+    - worktree-support.wt-tests-resolve
+    - worktree-support.wt-tests-guard
+    agent: integration-verifier
+  - id: worktree-support.wt-gate
+    name: wt-gate
+    status: pending
+    description: 'As an INDEPENDENT REVIEWER (gate-reviewer), assess whether the worktree-support
+      phase meets the quality bar for completion.
+
+
+      YOU ARE THE QUALITY GATE. Your job is to BLOCK progress if quality is insufficient,
+      not to rubber-stamp completion.
+
+
+      Review criteria:
+
+      1. Completeness: All 4 implementation steps executed with evidence?
+
+      2. Evidence Quality: Evidence is specific, verifiable, not vague?
+
+      3. Known Issues: All blockers resolved? Tech debt documented?
+
+      4. ADR Conformance: Implementation matches ADR-worktree-support.md decisions?
+
+      5. Cross-cutting: No regressions in existing plan path resolution?
+
+
+      Independence: You MUST NOT be the same agent as any implementation step in this
+      phase.'
+    verification: '- All phase steps completed successfully
+
+      - Evidence collected and reviewed
+
+      - No unresolved blockers
+
+      - ADR decisions correctly implemented
+
+      - Ready for use'
+    refs:
+    - docs/ADR-worktree-support.md
+    - src/vectl/plan_path.py
+    depends_on:
+    - worktree-support.wt-verify
+    agent: gate-reviewer

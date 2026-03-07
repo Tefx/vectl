@@ -1778,6 +1778,93 @@ class TestAddPhase:
 
 
 # ---------------------------------------------------------------------------
+# Linked worktree guard tests
+# ---------------------------------------------------------------------------
+# Note: These tests mock at is_linked_worktree level (not subprocess)
+
+
+class TestLinkedWorktreeGuard:
+    """Tests for linked worktree guard in CLI mutate commands."""
+
+    @pytest.fixture
+    def linked_worktree_env(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> tuple[Path, Path]:
+        """Create a plan file and simulate a linked worktree environment."""
+        # Create a main worktree with plan.yaml
+        main_root = tmp_path / "main_worktree"
+        main_root.mkdir()
+        plan_file = main_root / "plan.yaml"
+        save_plan(Plan(project="test", phases=[Phase(id="p1", name="P1")]), plan_file)
+
+        # Create linked worktree directory
+        linked_root = tmp_path / "linked_worktree"
+        linked_root.mkdir()
+
+        # Mock is_linked_worktree to return (True, main_root)
+        monkeypatch.setattr(
+            "vectl.cli.is_linked_worktree",
+            lambda: (True, main_root),
+        )
+
+        # Ensure VECTL_PLAN_PATH is NOT set
+        monkeypatch.delenv("VECTL_PLAN_PATH", raising=False)
+
+        return plan_file, linked_root
+
+    def test_cli_mutate_blocked_in_linked_worktree(
+        self, linked_worktree_env: tuple[Path, Path], monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """CLI mutate commands are blocked when running in a linked worktree."""
+        plan_file, _ = linked_worktree_env
+        main_root = plan_file.parent
+
+        # Try add-step - should be blocked
+        result = runner.invoke(
+            app,
+            ["add-step", "--phase", "p1", "--name", "Blocked Step", "--plan", str(plan_file)],
+        )
+        assert result.exit_code != 0
+        assert "Mutate blocked" in result.output
+        assert "linked worktree" in result.output
+        # Check that main_root path (or at least the folder name) is in the output
+        assert main_root.name in result.output
+
+    def test_cli_mutate_allowed_with_env_override(
+        self, linked_worktree_env: tuple[Path, Path], monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """CLI mutate commands work with VECTL_PLAN_PATH set (escape hatch)."""
+        plan_file, _ = linked_worktree_env
+
+        # Set VECTL_PLAN_PATH to override the guard
+        monkeypatch.setenv("VECTL_PLAN_PATH", str(plan_file))
+
+        # Try add-step - should proceed despite being in linked worktree
+        result = runner.invoke(
+            app,
+            ["add-step", "--phase", "p1", "--name", "Override Step", "--plan", str(plan_file)],
+        )
+        assert result.exit_code == 0
+        assert "Mutate blocked" not in result.output
+        assert "Added step" in result.output
+
+    def test_cli_mutate_blocked_when_main_root_unresolved(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """Malformed worktree probe still blocks mutation with actionable message."""
+        monkeypatch.setattr("vectl.cli.is_linked_worktree", lambda: (True, None))
+        monkeypatch.delenv("VECTL_PLAN_PATH", raising=False)
+
+        result = runner.invoke(app, ["add-phase", "--name", "Blocked Phase"])
+
+        assert result.exit_code != 0
+        assert "Mutate blocked" in result.output
+        assert "linked worktree" in result.output
+        assert "VECTL_PLAN_PATH" in result.output
+        assert "Plan file not found" not in result.output
+
+
+# ---------------------------------------------------------------------------
 # cli.12: unlock
 # ---------------------------------------------------------------------------
 

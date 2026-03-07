@@ -280,19 +280,24 @@ class TestWorktreeDetection:
         main_plan = main_root / "plan.yaml"
         main_plan.write_text("project: main\nphases: []\n")
 
-        # Mock is_linked_worktree to return (True, main_root)
-        monkeypatch.setattr(
-            "vectl.plan_path.is_linked_worktree",
-            lambda: (True, main_root),
-        )
         # Ensure no env vars and no local plan.yaml
         monkeypatch.delenv(ENV_PLAN_PATH, raising=False)
         monkeypatch.delenv(ENV_PLAN_PATH_DEPRECATED, raising=False)
 
         subdir = tmp_path / "linked_worktree" / "sub"
         subdir.mkdir(parents=True)
+
+        def mock_run(*args, **kwargs):
+            cmd = args[0] if args else kwargs.get("args", [])
+            if "--git-common-dir" in cmd:
+                return CompletedProcess([], 0, "../../main_worktree/.git\n", "")
+            if "--git-dir" in cmd:
+                return CompletedProcess([], 0, "../../main_worktree/.git/worktrees/w1\n", "")
+            raise AssertionError(f"Unexpected command: {cmd}")
+
         with patch("vectl.plan_path.Path.cwd", return_value=subdir):
-            result = resolve_plan_path()
+            with patch("vectl.plan_path.subprocess.run", side_effect=mock_run):
+                result = resolve_plan_path()
 
         assert result == main_plan
 
@@ -300,11 +305,6 @@ class TestWorktreeDetection:
         self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
     ) -> None:
         """In main worktree (not linked), resolve_plan_path uses walkup discovery."""
-        # Mock is_linked_worktree to return (False, None) - main worktree
-        monkeypatch.setattr(
-            "vectl.plan_path.is_linked_worktree",
-            lambda: (False, None),
-        )
         monkeypatch.delenv(ENV_PLAN_PATH, raising=False)
         monkeypatch.delenv(ENV_PLAN_PATH_DEPRECATED, raising=False)
 
@@ -314,8 +314,17 @@ class TestWorktreeDetection:
         subdir = tmp_path / "sub" / "dir"
         subdir.mkdir(parents=True)
 
+        def mock_run(*args, **kwargs):
+            cmd = args[0] if args else kwargs.get("args", [])
+            if "--git-common-dir" in cmd:
+                return CompletedProcess([], 0, ".git\n", "")
+            if "--git-dir" in cmd:
+                return CompletedProcess([], 0, ".git\n", "")
+            raise AssertionError(f"Unexpected command: {cmd}")
+
         with patch("vectl.plan_path.Path.cwd", return_value=subdir):
-            result = resolve_plan_path()
+            with patch("vectl.plan_path.subprocess.run", side_effect=mock_run):
+                result = resolve_plan_path()
 
         assert result == plan_file
 
@@ -422,3 +431,118 @@ class TestWorktreeDetection:
 
         assert is_linked is False
         assert main_root is None
+
+    def test_is_linked_worktree_normalizes_relative_common_dir(self, tmp_path: Path) -> None:
+        """Linked worktree detection handles relative common-dir output."""
+        main_root = tmp_path / "main"
+        linked_root = tmp_path / "linked"
+        main_root.mkdir()
+        linked_root.mkdir()
+
+        def mock_run(*args, **kwargs):
+            cmd = args[0] if args else kwargs.get("args", [])
+            if "--git-common-dir" in cmd:
+                return CompletedProcess([], 0, "../main/.git\n", "")
+            if "--git-dir" in cmd:
+                return CompletedProcess(
+                    [], 0, str(main_root / ".git" / "worktrees" / "linked") + "\n", ""
+                )
+            raise AssertionError(f"Unexpected command: {cmd}")
+
+        with patch("vectl.plan_path.Path.cwd", return_value=linked_root):
+            with patch("vectl.plan_path.subprocess.run", side_effect=mock_run):
+                is_linked, resolved_main_root = is_linked_worktree()
+
+        assert is_linked is True
+        assert resolved_main_root == main_root
+
+    def test_is_linked_worktree_malformed_git_output_fails_closed(self) -> None:
+        """Malformed git output is treated as linked-without-root (fail closed)."""
+
+        def mock_run(*args, **kwargs):
+            cmd = args[0] if args else kwargs.get("args", [])
+            if "--git-common-dir" in cmd:
+                return CompletedProcess([], 0, "\n", "")
+            if "--git-dir" in cmd:
+                return CompletedProcess([], 0, ".git/worktrees/w1\n", "")
+            raise AssertionError(f"Unexpected command: {cmd}")
+
+        with patch("vectl.plan_path.subprocess.run", side_effect=mock_run):
+            is_linked, main_root = is_linked_worktree()
+
+        assert is_linked is True
+        assert main_root is None
+
+
+class TestWorktreeResolutionRegressions:
+    def test_linked_worktree_prefers_valid_main_plan_over_local(self, tmp_path: Path) -> None:
+        main_root = tmp_path / "main"
+        linked_root = tmp_path / "linked"
+        nested = linked_root / "sub"
+        main_root.mkdir()
+        nested.mkdir(parents=True)
+
+        main_plan = main_root / "plan.yaml"
+        main_plan.write_text("project: main\nphases: []\n")
+        local_plan = linked_root / "plan.yaml"
+        local_plan.write_text("project: local\nphases: []\n")
+
+        def mock_run(*args, **kwargs):
+            cmd = args[0] if args else kwargs.get("args", [])
+            if "--git-common-dir" in cmd:
+                return CompletedProcess([], 0, "../../main/.git\n", "")
+            if "--git-dir" in cmd:
+                return CompletedProcess([], 0, "../../main/.git/worktrees/w1\n", "")
+            raise AssertionError(f"Unexpected command: {cmd}")
+
+        with patch("vectl.plan_path.Path.cwd", return_value=nested):
+            with patch("vectl.plan_path.subprocess.run", side_effect=mock_run):
+                result = resolve_plan_path()
+
+        assert result == main_plan
+
+    def test_linked_worktree_stale_main_plan_falls_back_to_local_walkup(
+        self, tmp_path: Path
+    ) -> None:
+        main_root = tmp_path / "main"
+        linked_root = tmp_path / "linked"
+        nested = linked_root / "sub"
+        main_root.mkdir()
+        nested.mkdir(parents=True)
+
+        local_plan = linked_root / "plan.yaml"
+        local_plan.write_text("project: local\nphases: []\n")
+
+        def mock_run(*args, **kwargs):
+            cmd = args[0] if args else kwargs.get("args", [])
+            if "--git-common-dir" in cmd:
+                return CompletedProcess([], 0, "../../main/.git\n", "")
+            if "--git-dir" in cmd:
+                return CompletedProcess([], 0, "../../main/.git/worktrees/w1\n", "")
+            raise AssertionError(f"Unexpected command: {cmd}")
+
+        with patch("vectl.plan_path.Path.cwd", return_value=nested):
+            with patch("vectl.plan_path.subprocess.run", side_effect=mock_run):
+                result = resolve_plan_path()
+
+        assert result == local_plan
+
+    def test_malformed_git_output_uses_absolute_fallback(self, tmp_path: Path) -> None:
+        """Malformed git output must not return a relative fallback path."""
+        cwd = tmp_path / "linked"
+        cwd.mkdir()
+
+        def mock_run(*args, **kwargs):
+            cmd = args[0] if args else kwargs.get("args", [])
+            if "--git-common-dir" in cmd:
+                return CompletedProcess([], 0, "\n", "")
+            if "--git-dir" in cmd:
+                return CompletedProcess([], 0, "../.git/worktrees/w1\n", "")
+            raise AssertionError(f"Unexpected command: {cmd}")
+
+        with patch("vectl.plan_path.Path.cwd", return_value=cwd):
+            with patch("vectl.plan_path.subprocess.run", side_effect=mock_run):
+                result = resolve_plan_path()
+
+        assert result == cwd / "plan.yaml"
+        assert result.is_absolute()

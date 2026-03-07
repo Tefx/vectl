@@ -20,6 +20,7 @@ CLI and MCP could target different plan files.
 from __future__ import annotations
 
 import os
+import subprocess
 import warnings
 from pathlib import Path
 
@@ -70,3 +71,26 @@ def resolve_plan_path(explicit: Path | None = None) -> Path:
 
     # 5. Fallback: ./plan.yaml (may not exist)
     return Path("plan.yaml")
+
+
+def resolve_state_path(plan_path: Path | None = None) -> Path:
+    """Resolve the state.json path for a plan.
+
+    Resolution strategy:
+      1. Resolve git-common-dir via `git rev-parse --git-common-dir`.
+      2. If git fails, fall back to `.vectl/state.json` under the plan directory.
+    """
+    if plan_path is None:
+        plan_path = resolve_plan_path()
+
+    git_result = subprocess.run(
+        ["git", "rev-parse", "--git-common-dir"],
+        capture_output=True,
+        text=True,
+        cwd=plan_path.parent,
+    )
+
+    if git_result.returncode == 0:
+        return Path(git_result.stdout.strip()) / "vectl" / "state.json"
+
+    return plan_path.parent / ".vectl" / "state.json"

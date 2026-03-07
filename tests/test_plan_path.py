@@ -15,6 +15,7 @@ from __future__ import annotations
 import os
 import warnings
 from pathlib import Path
+from subprocess import CompletedProcess
 from unittest.mock import patch
 
 import pytest
@@ -22,6 +23,7 @@ import pytest
 from vectl.plan_path import (
     ENV_PLAN_PATH,
     ENV_PLAN_PATH_DEPRECATED,
+    resolve_state_path,
     resolve_plan_path,
 )
 
@@ -161,3 +163,61 @@ class TestCLIMCPParity:
         import vectl.mcp_server as mcp_mod
 
         assert getattr(mcp_mod, "resolve_plan_path") is resolve_plan_path
+
+
+class TestResolveStatePath:
+    """resolve_state_path follows git and non-git location strategy."""
+
+    def test_in_git_repo_uses_git_common_dir(self) -> None:
+        plan_path = Path("/tmp/project/plan.yaml")
+        with patch(
+            "vectl.plan_path.subprocess.run",
+            return_value=CompletedProcess([], 0, "/common/git\n", ""),
+        ) as mock_run:
+            result = resolve_state_path(plan_path)
+
+        assert result == Path("/common/git") / "vectl" / "state.json"
+        mock_run.assert_called_once_with(
+            ["git", "rev-parse", "--git-common-dir"],
+            capture_output=True,
+            text=True,
+            cwd=plan_path.parent,
+        )
+
+    def test_non_git_repo_falls_back_to_vectl_dir(self) -> None:
+        plan_path = Path("/tmp/project/plan.yaml")
+        with patch(
+            "vectl.plan_path.subprocess.run",
+            return_value=CompletedProcess([], 1, "", "not a git repository"),
+        ) as mock_run:
+            result = resolve_state_path(plan_path)
+
+        assert result == plan_path.parent / ".vectl" / "state.json"
+        mock_run.assert_called_once_with(
+            ["git", "rev-parse", "--git-common-dir"],
+            capture_output=True,
+            text=True,
+            cwd=plan_path.parent,
+        )
+
+    def test_uses_plan_path_directory(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        def resolve_plan_path_mock() -> Path:
+            return Path("/different/plan.yaml")
+
+        monkeypatch.setattr(
+            "vectl.plan_path.resolve_plan_path",
+            resolve_plan_path_mock,
+        )
+        with patch(
+            "vectl.plan_path.subprocess.run",
+            return_value=CompletedProcess([], 0, "  /common/git  \n", ""),
+        ) as mock_run:
+            result = resolve_state_path()
+
+        assert result == Path("/common/git") / "vectl" / "state.json"
+        mock_run.assert_called_once_with(
+            ["git", "rev-parse", "--git-common-dir"],
+            capture_output=True,
+            text=True,
+            cwd=Path("/different").resolve(),
+        )

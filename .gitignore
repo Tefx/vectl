@@ -16,3 +16,7 @@ plan-dashboard.html
 .lattice/
 
 .coverage
+
+.playwright-mcp/
+
+.DS_Store

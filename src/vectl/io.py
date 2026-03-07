@@ -12,6 +12,7 @@ from typing import Any
 import yaml
 
 from vectl.models import CASConflictError, PhaseState, Plan, PlanIOError, PlanState, StepState
+from vectl.plan_path import resolve_state_path
 
 _PLAN_YAML_HEADER = """\
 # =============================================================
@@ -122,9 +123,12 @@ def save_state(
 
 
 def load_plan(path: Path | str) -> tuple[Plan, str]:
-    """Load plan from YAML file.
+    """Load plan from YAML file and merge companion state if present.
 
     Returns (Plan, file_hash) for CAS.
+
+    If a companion ``state.json`` exists and contains mutable runtime state,
+    the returned plan is merged with state values before returning.
     """
     path = Path(path)
     if not path.exists():
@@ -141,6 +145,17 @@ def load_plan(path: Path | str) -> tuple[Plan, str]:
         plan = Plan(**raw)
     except Exception as e:
         raise PlanIOError(f"Invalid plan structure: {e}") from e
+
+    state, _ = load_state(resolve_state_path(path))
+    has_state = (
+        bool(state.steps)
+        or bool(state.phases)
+        or state.clipboard is not None
+        or bool(state.plan_id)
+    )
+    if has_state:
+        plan = merge_plan(plan, state)
+
     return plan, file_hash
 
 

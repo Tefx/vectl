@@ -2,7 +2,9 @@
 
 from __future__ import annotations
 
+import json
 import pytest
+import yaml
 from pathlib import Path
 from typer.testing import CliRunner
 
@@ -10,6 +12,7 @@ from vectl.cli import app
 from vectl import __version__
 from vectl.io import load_plan, save_plan
 from vectl.models import AffinityMode, Phase, PhaseStatus, Plan, Step, StepStatus
+from vectl.plan_path import resolve_state_path
 
 runner = CliRunner()
 
@@ -50,6 +53,110 @@ def plan_file(tmp_path: Path) -> Path:
     )
     path = tmp_path / "plan.yaml"
     save_plan(plan, path)
+    return path
+
+
+def _legacy_migration_plan_dict() -> dict:
+    """Create a legacy fixture with runtime state embedded in plan.yaml."""
+    return {
+        "version": 1,
+        "project": "migration-test",
+        "plan_id": "migration-plan-001",
+        "clipboard": {
+            "author": "reviewer",
+            "summary": "Handoff",
+            "content": "Legacy clipboard content preserved via state.",
+            "written_at": "2026-03-01T09:00:00Z",
+            "expires_at": "2026-03-31T09:00:00Z",
+        },
+        "phases": [
+            {
+                "id": "phase-a",
+                "name": "Phase A",
+                "status": "done",
+                "evidence": "Phase completed",
+                "steps": [
+                    {
+                        "id": "phase-a.step1",
+                        "name": "Step with all state",
+                        "status": "done",
+                        "description": "Legacy step 1",
+                        "claimed_by": "python-engineer",
+                        "claimed_at": "2026-02-21T08:11:51.841244+00:00",
+                        "evidence": "Implemented feature X.",
+                        "skipped_reason": "irrelevant",
+                        "rejection_reason": "Testing reject via CLI",
+                        "rejection_history": [
+                            {
+                                "reason": "Testing reject via CLI",
+                                "timestamp": "2026-02-09T04:46:23.870176+00:00",
+                                "reviewer": "cli-tester",
+                            }
+                        ],
+                        "affinity_override": True,
+                        "affinity_override_by": "cli-tester",
+                        "affinity_override_at": "2026-02-21T08:26:00.000000+00:00",
+                    },
+                    {
+                        "id": "phase-a.step2",
+                        "name": "Step with rejection history",
+                        "status": "rejected",
+                        "description": "Legacy step 2",
+                        "claimed_by": "legacy-agent",
+                        "claimed_at": "2026-02-09T04:46:06.123164+00:00",
+                        "evidence": "Legacy rejection",
+                        "skipped_reason": "absorbed",
+                        "rejection_reason": "Testing reject via CLI",
+                        "rejection_history": [
+                            {
+                                "reason": "Testing reject via CLI",
+                                "timestamp": "2026-02-09T04:46:23.870176+00:00",
+                                "reviewer": "cli-tester",
+                            }
+                        ],
+                        "affinity_override": False,
+                        "affinity_override_by": "legacy-agent",
+                        "affinity_override_at": "2026-02-21T08:26:52.124877+00:00",
+                    },
+                ],
+            },
+            {
+                "id": "phase-b",
+                "name": "Phase B",
+                "status": "pending",
+                "depends_on": ["phase-a"],
+                "steps": [
+                    {
+                        "id": "phase-b.step1",
+                        "name": "Pending step",
+                        "status": "pending",
+                        "claimed_by": "legacy-worker",
+                        "claimed_at": "2026-03-01T12:00:00Z",
+                        "evidence": "Legacy pending placeholder.",
+                        "skipped_reason": "absorbed",
+                        "rejection_reason": "Legacy pending rejection.",
+                        "rejection_history": [
+                            {
+                                "reason": "Warm-up",
+                                "timestamp": "2026-03-01T11:00:00Z",
+                                "reviewer": "planner",
+                            }
+                        ],
+                        "affinity_override": False,
+                        "affinity_override_by": "planner",
+                        "affinity_override_at": "2026-03-01T12:00:00Z",
+                    }
+                ],
+            },
+        ],
+    }
+
+
+@pytest.fixture
+def legacy_plan_file(tmp_path: Path) -> Path:
+    """Create a legacy plan with embedded state fields."""
+    path = tmp_path / "plan.yaml"
+    path.write_text(yaml.dump(_legacy_migration_plan_dict()), encoding="utf-8")
     return path
 
 
@@ -2243,3 +2350,107 @@ class TestAffinityCli:
         assert result.exit_code == 0
         # s3 has exclusive affinity, should show 🔐
         assert "🔐" in result.output
+
+
+class TestCliSplitStateIntegration:
+    def test_claim_creates_state_json(self, plan_file: Path) -> None:
+        state_path = resolve_state_path(plan_file)
+        assert not state_path.exists()
+
+        result = runner.invoke(app, ["claim", "s1", "--agent", "bot", "--plan", str(plan_file)])
+        assert result.exit_code == 0
+        assert state_path.exists()
+
+    def test_complete_updates_state_and_definition_unchanged(self, plan_file: Path) -> None:
+        before = plan_file.read_text(encoding="utf-8")
+
+        claim_result = runner.invoke(
+            app, ["claim", "s1", "--agent", "bot", "--plan", str(plan_file)]
+        )
+        assert claim_result.exit_code == 0
+
+        complete_result = runner.invoke(
+            app,
+            ["complete", "s1", "--evidence", "integration-evidence", "--plan", str(plan_file)],
+        )
+        assert complete_result.exit_code == 0
+
+        assert plan_file.read_text(encoding="utf-8") == before
+
+        state_payload = json.loads(resolve_state_path(plan_file).read_text(encoding="utf-8"))
+        completed = state_payload["steps"]["s1"]
+        assert completed["status"] == StepStatus.DONE.value
+        assert completed["evidence"] == "integration-evidence"
+
+    def test_mutation_updates_plan_and_state_files(self, plan_file: Path) -> None:
+        state_path = resolve_state_path(plan_file)
+        before = plan_file.read_text(encoding="utf-8")
+
+        result = runner.invoke(
+            app,
+            ["add-step", "--phase", "p1", "--name", "Persisted Step", "--plan", str(plan_file)],
+        )
+        assert result.exit_code == 0
+
+        after = plan_file.read_text(encoding="utf-8")
+        assert after != before
+        assert "persisted-step" in after
+        assert state_path.exists()
+
+        state_payload = json.loads(state_path.read_text(encoding="utf-8"))
+        assert "p1.persisted-step" in state_payload["steps"]
+
+    def test_status_is_read_only_no_state_write(self, plan_file: Path) -> None:
+        state_path = resolve_state_path(plan_file)
+        assert not state_path.exists()
+
+        result = runner.invoke(app, ["status", "--plan", str(plan_file)])
+        assert result.exit_code == 0
+        assert not state_path.exists()
+
+    def test_legacy_migration_writes_full_state_json(self, legacy_plan_file: Path) -> None:
+        result = runner.invoke(
+            app,
+            ["claim", "phase-b.step1", "--agent", "bot", "--plan", str(legacy_plan_file)],
+        )
+        assert result.exit_code == 0
+
+        state_path = resolve_state_path(legacy_plan_file)
+        assert state_path.exists()
+        payload = json.loads(state_path.read_text(encoding="utf-8"))
+
+        assert payload["plan_id"] == "migration-plan-001"
+        assert set(payload["phases"].keys()) == {"phase-a", "phase-b"}
+        assert set(payload["steps"].keys()) == {"phase-a.step1", "phase-a.step2", "phase-b.step1"}
+        assert payload["clipboard"]["author"] == "reviewer"
+        assert payload["steps"]["phase-a.step2"]["rejection_history"] == [
+            {
+                "reason": "Testing reject via CLI",
+                "timestamp": "2026-02-09T04:46:23.870176+00:00",
+                "reviewer": "cli-tester",
+            }
+        ]
+
+    def test_resolve_state_path_tmp_non_git_fallback(self, tmp_path: Path) -> None:
+        plan_path = tmp_path / "plan.yaml"
+        save_plan(
+            Plan(
+                project="fallback-test",
+                phases=[
+                    Phase(
+                        id="p1",
+                        name="Phase 1",
+                        status=PhaseStatus.PENDING,
+                        steps=[Step(id="s1", name="Step 1")],
+                    )
+                ],
+            ),
+            plan_path,
+        )
+
+        expected = tmp_path / ".vectl" / "state.json"
+        assert resolve_state_path(plan_path) == expected
+
+        result = runner.invoke(app, ["claim", "s1", "--agent", "bot", "--plan", str(plan_path)])
+        assert result.exit_code == 0
+        assert expected.exists()

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import hashlib
+import json
 import os
 import tempfile
 from pathlib import Path
@@ -10,7 +11,7 @@ from typing import Any
 
 import yaml
 
-from vectl.models import CASConflictError, Plan, PlanIOError
+from vectl.models import CASConflictError, Plan, PlanIOError, PlanState
 
 _PLAN_YAML_HEADER = """\
 # =============================================================
@@ -27,6 +28,97 @@ _PLAN_YAML_HEADER = """\
 def _file_hash(path: Path) -> str:
     """Compute SHA-256 of file contents."""
     return hashlib.sha256(path.read_bytes()).hexdigest()
+
+
+def load_state(path: Path | str) -> tuple[PlanState, str]:
+    """Load plan state from JSON file.
+
+    Returns `(PlanState, file_hash)` for CAS semantics.
+    If the file does not exist, returns an empty state with empty hash.
+    """
+    path = Path(path)
+    if not path.exists():
+        return PlanState(plan_id=""), ""
+
+    content = path.read_text(encoding="utf-8")
+    file_hash = hashlib.sha256(content.encode()).hexdigest()
+    try:
+        raw = json.loads(content)
+    except json.JSONDecodeError as e:
+        raise PlanIOError(f"Invalid JSON in {path}: {e}") from e
+    if not isinstance(raw, dict):
+        raise PlanIOError(f"State file must be a JSON mapping, got {type(raw).__name__}")
+    try:
+        state = PlanState(**raw)
+    except Exception as e:
+        raise PlanIOError(f"Invalid state structure: {e}") from e
+    return state, file_hash
+
+
+def _state_to_json(state: PlanState) -> str:
+    """Serialize state to deterministic JSON output for state.json."""
+    payload = state.model_dump(mode="json", exclude_none=True)
+    return json.dumps(payload, indent=2, ensure_ascii=False)
+
+
+def _merge_state_for_cas_retry(base: PlanState, our_state: PlanState) -> PlanState:
+    """Merge state updates for CAS retries using per-key LWW semantics.
+
+    Last-writer-wins semantics are applied for step and phase keys:
+    entries from `our_state` overwrite `base` values for matching keys.
+    """
+    merged_steps = dict(base.steps)
+    merged_steps.update(our_state.steps)
+
+    merged_phases = dict(base.phases)
+    merged_phases.update(our_state.phases)
+
+    return PlanState(
+        plan_id=our_state.plan_id or base.plan_id,
+        steps=merged_steps,
+        phases=merged_phases,
+        clipboard=our_state.clipboard or base.clipboard,
+    )
+
+
+def save_state(
+    state: PlanState, path: Path | str, expected_hash: str | None = None, max_retries: int = 3
+) -> str:
+    """Save state JSON atomically with CAS.
+
+    Returns file hash on success.
+    """
+    path = Path(path)
+    attempt = 0
+
+    while True:
+        current_hash = _file_hash(path) if path.exists() else ""
+        if expected_hash is not None and path.exists() and expected_hash != current_hash:
+            if attempt >= max_retries:
+                raise CASConflictError(path)
+            attempt += 1
+            current_state, current_hash = load_state(path)
+            state = _merge_state_for_cas_retry(current_state, state)
+            expected_hash = current_hash
+            continue
+
+        data = _state_to_json(state)
+
+        dir_ = path.parent
+        dir_.mkdir(parents=True, exist_ok=True)
+        fd, tmp_path = tempfile.mkstemp(dir=str(dir_), suffix=".tmp")
+        try:
+            os.write(fd, data.encode("utf-8"))
+            os.close(fd)
+            os.replace(tmp_path, str(path))
+        except Exception:
+            try:
+                os.unlink(tmp_path)
+            except OSError:
+                pass
+            raise
+
+        return hashlib.sha256(data.encode()).hexdigest()
 
 
 def load_plan(path: Path | str) -> tuple[Plan, str]:

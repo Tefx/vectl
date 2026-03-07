@@ -1,17 +1,22 @@
 """Tests for core.2: YAML IO with CAS."""
 
-import pytest
+import json
 from pathlib import Path
 
-from vectl.io import load_plan, save_plan
+import pytest
+
+from vectl.io import load_plan, load_state, save_plan, save_state
 from vectl.models import (
     CASConflictError,
     Clipboard,
     Phase,
+    PhaseState,
     PhaseStatus,
     Plan,
     PlanIOError,
+    PlanState,
     Step,
+    StepState,
     StepStatus,
 )
 
@@ -32,6 +37,20 @@ def sample_plan():
                 ],
             ),
         ],
+    )
+
+
+@pytest.fixture
+def sample_state() -> PlanState:
+    return PlanState(
+        plan_id="plan-state-1",
+        steps={
+            "core.1": StepState(status=StepStatus.CLAIMED, claimed_by="agent-a"),
+            "core.2": StepState(status=StepStatus.DONE, evidence="ok"),
+        },
+        phases={
+            "core": PhaseState(status=PhaseStatus.IN_PROGRESS, evidence="phase"),
+        },
     )
 
 
@@ -184,9 +203,7 @@ class TestLockStatusRoundtrip:
     and no mocks at the I/O boundary.
     """
 
-    def test_pending_phase_with_unmet_dep_is_locked_after_roundtrip(
-        self, tmp_path: Path
-    ) -> None:
+    def test_pending_phase_with_unmet_dep_is_locked_after_roundtrip(self, tmp_path: Path) -> None:
         """A PENDING phase whose dependency is not DONE is corrected to LOCKED on save
         and the corrected status survives the load, confirming the roundtrip preserves
         the recalculated lock status.
@@ -290,3 +307,85 @@ class TestLockStatusRoundtrip:
         assert loaded.phases[1].status == PhaseStatus.PENDING, (
             f"expected p2 to be PENDING after roundtrip, got {loaded.phases[1].status}"
         )
+
+
+class TestLoadState:
+    def test_load_state_file_exists(self, tmp_path: Path, sample_state: PlanState):
+        path = tmp_path / "state.json"
+        path.write_text(
+            json.dumps(sample_state.model_dump(mode="json", exclude_none=True), indent=2),
+            encoding="utf-8",
+        )
+
+        state, file_hash = load_state(path)
+        assert state == sample_state
+        assert isinstance(file_hash, str)
+        assert len(file_hash) == 64
+
+    def test_load_state_file_missing(self, tmp_path: Path):
+        state, file_hash = load_state(tmp_path / "missing.json")
+        assert state == PlanState(plan_id="")
+        assert file_hash == ""
+
+
+class TestSaveState:
+    def test_save_state_basic_write(self, tmp_path: Path, sample_state: PlanState):
+        path = tmp_path / "nested" / "dir" / "state.json"
+        file_hash = save_state(sample_state, path)
+
+        assert path.exists()
+        assert isinstance(file_hash, str)
+        assert len(file_hash) == 64
+        assert save_state(sample_state, path, expected_hash=file_hash)
+
+        reloaded = PlanState(**json.loads(path.read_text(encoding="utf-8")))
+        assert reloaded == sample_state
+
+    def test_save_state_cas_conflict(self, tmp_path: Path, sample_state: PlanState):
+        path = tmp_path / "state.json"
+        save_state(sample_state, path)
+
+        with pytest.raises(CASConflictError):
+            save_state(sample_state, path, expected_hash="wrong", max_retries=0)
+
+    def test_save_state_auto_retry(self, tmp_path: Path, sample_state: PlanState):
+        path = tmp_path / "state.json"
+        base_hash = save_state(sample_state, path)
+
+        external_state = PlanState(
+            plan_id="plan-state-1",
+            steps={
+                "core.1": StepState(status=StepStatus.CLAIMED, claimed_by="agent-external"),
+                "core.2": StepState(status=StepStatus.DONE),
+                "core.3": StepState(status=StepStatus.PENDING),
+            },
+            phases={
+                "core": PhaseState(status=PhaseStatus.PENDING, evidence="concurrent"),
+            },
+        )
+        save_state(external_state, path, expected_hash=base_hash)
+
+        local_update = sample_state.model_copy(deep=True)
+        local_update.steps["core.1"] = StepState(
+            status=StepStatus.DONE,
+            claimed_by="agent-local",
+            claimed_at="2026-03-07T00:00:00Z",
+            evidence="local update",
+        )
+        local_update.steps["core.3"] = StepState(
+            status=StepStatus.CLAIMED, claimed_by="agent-local"
+        )
+        local_update.phases["core"] = PhaseState(
+            status=PhaseStatus.IN_PROGRESS,
+            evidence="local phase",
+        )
+
+        final_hash = save_state(local_update, path, expected_hash=base_hash, max_retries=3)
+
+        saved_state, _ = load_state(path)
+        assert final_hash
+        assert saved_state.steps["core.1"].status == StepStatus.DONE
+        assert saved_state.steps["core.2"].status == StepStatus.DONE
+        assert saved_state.steps["core.3"].status == StepStatus.CLAIMED
+        assert saved_state.phases["core"].status == PhaseStatus.IN_PROGRESS
+        assert saved_state.phases["core"].evidence == "local phase"

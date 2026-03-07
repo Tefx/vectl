@@ -84,7 +84,8 @@ you may move all steps out of a phase, leaving it empty. To clean up:
 - Use reason `absorbed` when steps moved to another phase
 - Use reason `irrelevant` when requirements changed
 
-**MCP Agents:** Use `vectl_lifecycle(action="skip-phase", id="<phase>", reason="superseded", force=True)`
+**MCP Agents:**
+Use `vectl_lifecycle(action="skip-phase", id="<phase>", reason="superseded", force=True)`
 
 ## Lost?
 `uvx vectl review` — Re-orient with full plan scan.

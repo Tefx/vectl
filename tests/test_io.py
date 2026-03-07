@@ -429,7 +429,7 @@ class TestCorruptedBackupHandling:
             "  - name: Phase\n"
             "    steps:\n"
             "      - name: Step\n"
-            "        depends_on: [undefined!!]\n"  # Invalid YAML syntax - will parse but cause pydantic error
+            "        depends_on: [undefined!!]\n"  # Invalid YAML syntax - parse error
         )
 
         with pytest.raises(PlanIOError, match="Invalid"):

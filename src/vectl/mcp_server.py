@@ -208,12 +208,13 @@ def _save_both(plan: Plan, expected_def_hash: str, expected_state_hash: str) -> 
     """Save merged plan to split definition/state stores.
 
     Recalculates lock status on the merged/full plan before writing definition+state.
-    Definition is written first so a plan.yaml CAS conflict cannot leave orphaned
-    state.json entries.
+    State is written first (has auto-retry, more likely to succeed). If state
+    succeeds but definition CAS fails, the next _load() still works correctly
+    because merge_plan applies state.json values over plan.yaml defaults.
     """
     changed = recalc_lock_status(plan)
-    def_notice = _save_definition(plan, expected_def_hash, recalc_locks=False)
     state_notice = _save_state(plan, expected_state_hash, recalc_locks=False)
+    def_notice = _save_definition(plan, expected_def_hash, recalc_locks=False)
     lock_notice = format_lock_changes(changed, plan)
     return "\n\n".join(part for part in (lock_notice, state_notice, def_notice) if part)
 

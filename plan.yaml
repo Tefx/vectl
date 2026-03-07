@@ -6044,3 +6044,795 @@ phases:
 - id: x
   name: x
   status: pending
+- id: engineering-health
+  name: Engineering Health Stabilization
+  status: pending
+  steps:
+  - id: engineering-health.baseline-capture-and-categorize
+    name: baseline-capture-and-categorize
+    status: pending
+    description: 'Capture a deterministic baseline for current engineering-health
+      debt and convert it into a bounded cleanup map.
+
+
+      Scope:
+
+      - `uv run ruff check .`
+
+      - `uv run pyright`
+
+      - `uv run mypy .`
+
+
+      Tasks:
+
+      - Record exact command lines, tool versions, and raw failure counts
+
+      - Group findings by tool, module cluster, and failure category
+
+      - Separate mechanical issues from design-sensitive issues
+
+      - Produce a bounded batch proposal for the next cleanup steps, including files
+      most likely in `src/vectl/`, `tests/`, and `pyproject.toml`
+
+      - Call out blockers to deterministic reruns (for example missing stubs, config
+      gaps, or environment-sensitive discovery)
+
+
+      Constraints:
+
+      - Planning/analysis only; no code changes in this step
+
+      - Keep categories convergent and small enough for a single worker pass per batch
+
+      - Agent source: default'
+    verification: '- Baseline report includes exact counts for ruff, pyright, and
+      mypy
+
+      - Each finding is assigned to a named category/module batch
+
+      - Proposed batches are finite and ordered for stable-first execution
+
+      - Determinism risks are explicitly listed, not deferred implicitly'
+    evidence_template: '## Baseline Capture
+
+
+      **Commands**:
+
+      ```
+
+      uv run ruff check .
+
+      uv run pyright
+
+      uv run mypy .
+
+      ```
+
+
+      **Counts by tool**:
+
+      - ruff: <count>
+
+      - pyright: <count>
+
+      - mypy: <count>
+
+
+      **Categories**:
+
+      - <tool/category/module>: <count> — <files>
+
+
+      **Determinism risks**:
+
+      - <risk>
+
+
+      **Recommended bounded batches**:
+
+      1. <batch>
+
+      2. <batch>
+
+      3. <batch>'
+    agent: python-senior
+  - id: engineering-health.quality-gate-policy-decision
+    name: quality-gate-policy-decision
+    status: pending
+    description: "Decide and document the engineering-health quality-gate policy that\
+      \ downstream global checks must satisfy.\n\nInputs:\n- `engineering-health.baseline-capture-and-categorize`\
+      \ evidence\n- Current CI surface in `.github/workflows/test.yml`\n- Existing\
+      \ lint/type expectations in `pyproject.toml`\n\nDecision required:\n- Choose\
+      \ one explicit policy for future quality gates:\n  1. full-repo: `ruff check\
+      \ .`, `pyright`, and `mypy .` must pass repo-wide, or\n  2. scoped: the gate\
+      \ is limited to named paths/tools with a documented expansion path to full-repo\n\
+      \nAcceptance criteria for this step:\n- The chosen policy names the exact commands\n\
+      - The chosen policy names the exact paths if scoped\n- The chosen policy defines\
+      \ what counts as deterministic success on rerun\n- The chosen policy defines\
+      \ what residual debt is temporarily out of scope and why\n- The chosen policy\
+      \ states when the repo can move from scoped to full-repo\n\nConstraints:\n-\
+      \ Make the narrowest policy that is still honest and enforceable\n- Avoid open-ended\
+      \ language such as 'eventually' or 'as needed'\n- Agent source: default"
+    verification: '- Policy outcome is a single explicit choice: full-repo or scoped
+
+      - Acceptance criteria are concrete enough for an independent verifier to rerun
+      without interpretation
+
+      - Scope boundaries and residual debt are documented explicitly
+
+      - Chosen policy is compatible with the bounded cleanup batches in this phase'
+    evidence_template: '## Quality Gate Policy
+
+
+      **Chosen policy**: <full-repo|scoped>
+
+
+      **Commands**:
+
+      ```
+
+      <exact commands>
+
+      ```
+
+
+      **Scope**:
+
+      - Paths: <exact paths or ''repo-wide''>
+
+      - Tool expectations: <which tools must pass>
+
+
+      **Deterministic success rule**:
+
+      - <rerun rule>
+
+
+      **Residual debt explicitly out of scope**:
+
+      - <item>
+
+
+      **Expansion trigger to full-repo**:
+
+      - <condition>'
+    depends_on:
+    - engineering-health.baseline-capture-and-categorize
+    agent: python-senior
+  - id: engineering-health.fix-batch-1-ruff-hygiene
+    name: fix-batch-1-ruff-hygiene
+    status: pending
+    description: 'Apply the first minimal-scope cleanup batch for repo-wide ruff debt,
+      focused on the most mechanical findings from the baseline.
+
+
+      Expected batch shape:
+
+      - import sorting / grouping
+
+      - unused imports or unused local symbols
+
+      - other low-risk hygiene violations that do not change behavior
+
+
+      Primary touch surface:
+
+      - `src/vectl/`
+
+      - `tests/`
+
+      - `pyproject.toml` only if baseline proves a purely mechanical config correction
+      is required
+
+
+      Constraints:
+
+      - Keep this batch mechanical and behavior-preserving
+
+      - Do not mix in pyright/mypy-specific refactors unless required for the same
+      edited line
+
+      - If a finding is design-sensitive or spills into API/behavior choices, leave
+      it for the later type-focused batches
+
+      - Agent source: default'
+    verification: '- Targeted ruff categories selected from the baseline are fixed
+
+      - Re-run evidence shows the selected ruff categories no longer fail on the edited
+      paths
+
+      - No new pyright or mypy regressions are introduced on the edited paths'
+    evidence_template: '## Ruff Batch 1
+
+
+      **Files changed**:
+
+      - <path>
+
+
+      **Categories addressed**:
+
+      - <category>
+
+
+      **Targeted verification commands**:
+
+      ```
+
+      uv run ruff check <edited paths>
+
+      uv run pyright <narrow path set if supported>
+
+      uv run mypy <narrow path set>
+
+      ```
+
+
+      **Observed output**:
+
+      ```
+
+      <paste actual output>
+
+      ```'
+    depends_on:
+    - engineering-health.quality-gate-policy-decision
+    agent: python-executor
+  - id: engineering-health.verify-batch-1-ruff-hygiene
+    name: verify-batch-1-ruff-hygiene
+    status: pending
+    description: 'As an INDEPENDENT TESTER (`integration-verifier`), validate the
+      first engineering-health cleanup batch from a fresh perspective.
+
+
+      YOUR GOAL IS TO FIND PROBLEMS, not to confirm it works.
+
+
+      Test for:
+
+      - Happy path: the selected mechanical ruff findings on edited paths are gone
+
+      - Edge cases: formatting/import cleanup did not leave adjacent lint findings
+      behind
+
+      - Error scenarios: pyright or mypy regressions were introduced while fixing
+      lint-only debt
+
+
+      Document all findings. A test that discovers issues is a success.
+
+      Independence Level: L1
+
+      Agent source: default'
+    verification: '- Independent re-run of the targeted ruff checks matches the implementation
+      claim
+
+      - Independent spot-check confirms no new type-check regressions on edited paths
+
+      - Evidence lists any remaining repo-wide debt outside this batch without broadening
+      scope'
+    evidence_template: '## Verification Report
+
+
+      **Tester**: integration-verifier
+
+      **Scope**: engineering-health batch 1
+
+      **Independence Level**: L1
+
+
+      ### Commands executed
+
+      ```
+
+      uv run ruff check <edited paths>
+
+      uv run pyright <narrow path set if supported>
+
+      uv run mypy <narrow path set>
+
+      ```
+
+
+      ### Findings
+
+      | Severity | Description | Location | Reproduction |
+
+      | --- | --- | --- | --- |
+
+      | blocker | <issue> | <path> | <command> |
+
+
+      ### Verdict
+
+      - PASS | ISSUES_FOUND | INCOMPLETE'
+    depends_on:
+    - engineering-health.fix-batch-1-ruff-hygiene
+    agent: integration-verifier
+  - id: engineering-health.fix-batch-2-type-core-surfaces
+    name: fix-batch-2-type-core-surfaces
+    status: pending
+    description: 'Apply the second minimal-scope cleanup batch for the highest-value
+      pyright and mypy issues on core product surfaces.
+
+
+      Primary focus:
+
+      - `src/vectl/core.py`
+
+      - `src/vectl/cli.py`
+
+      - `src/vectl/mcp_server.py`
+
+      - `src/vectl/models.py`
+
+      - `src/vectl/io.py`
+
+      - `src/vectl/plan_path.py`
+
+
+      Expected issue classes:
+
+      - incorrect or missing annotations
+
+      - reachable obvious narrowing problems
+
+      - stale helper signatures or import typing mismatches discovered by the baseline
+
+
+      Constraints:
+
+      - Keep this batch bounded to core surfaces named above
+
+      - Prefer annotation, local refactor, and helper cleanup that preserves runtime
+      behavior
+
+      - Defer test-only typing debt and missing third-party stubs to the final cleanup
+      batch unless directly required here
+
+      - Agent source: default'
+    verification: '- Targeted pyright and mypy errors selected for this batch are
+      resolved on the core surfaces
+
+      - Verification evidence names exactly which diagnostics remain and confirms
+      they belong to later batches or out-of-scope residual debt
+
+      - Narrow reruns are deterministic on the edited paths'
+    evidence_template: '## Type Cleanup Batch 2
+
+
+      **Files changed**:
+
+      - <path>
+
+
+      **Diagnostics addressed**:
+
+      - pyright: <codes/count>
+
+      - mypy: <codes/count>
+
+
+      **Verification commands**:
+
+      ```
+
+      uv run pyright <core surface paths if supported>
+
+      uv run mypy <core surface paths>
+
+      ```
+
+
+      **Remaining diagnostics intentionally deferred**:
+
+      - <diagnostic>'
+    depends_on:
+    - engineering-health.verify-batch-1-ruff-hygiene
+    agent: python-executor
+  - id: engineering-health.verify-batch-2-type-core-surfaces
+    name: verify-batch-2-type-core-surfaces
+    status: pending
+    description: 'As an INDEPENDENT TESTER (`integration-verifier`), validate the
+      core-surface pyright/mypy cleanup batch from a fresh perspective.
+
+
+      YOUR GOAL IS TO FIND PROBLEMS, not to confirm it works.
+
+
+      Test for:
+
+      - Happy path: addressed pyright and mypy diagnostics are no longer reproducible
+      on the edited core surfaces
+
+      - Edge cases: typing fixes did not create new import, narrowing, or interface
+      drift nearby
+
+      - Error scenarios: targeted lint/type commands still produce unstable or environment-sensitive
+      results
+
+
+      Document all findings. A test that discovers issues is a success.
+
+      Independence Level: L1
+
+      Agent source: default'
+    verification: '- Independent rerun confirms the named core-surface pyright/mypy
+      diagnostics are gone
+
+      - Evidence records any remaining deterministic failures and assigns them to
+      the next batch or policy residuals
+
+      - Any newly introduced lint or type regressions on edited files are reported
+      explicitly'
+    evidence_template: '## Verification Report
+
+
+      **Tester**: integration-verifier
+
+      **Scope**: engineering-health batch 2
+
+      **Independence Level**: L1
+
+
+      ### Commands executed
+
+      ```
+
+      uv run pyright <core surface paths if supported>
+
+      uv run mypy <core surface paths>
+
+      ```
+
+
+      ### Findings
+
+      | Severity | Description | Location | Reproduction |
+
+      | --- | --- | --- | --- |
+
+      | blocker | <issue> | <path> | <command> |
+
+
+      ### Verdict
+
+      - PASS | ISSUES_FOUND | INCOMPLETE'
+    depends_on:
+    - engineering-health.fix-batch-2-type-core-surfaces
+    agent: integration-verifier
+  - id: engineering-health.fix-batch-3-tests-stubs-and-tail
+    name: fix-batch-3-tests-stubs-and-tail
+    status: pending
+    description: 'Apply the final bounded cleanup batch for remaining engineering-health
+      debt in tests, typing support, and residual configuration/stub gaps.
+
+
+      Primary focus:
+
+      - `tests/`
+
+      - local typing shims or config updates required for deterministic mypy/pyright
+      runs
+
+      - any small tail diagnostics explicitly deferred by batch 2
+
+
+      Expected issue classes:
+
+      - test typing issues
+
+      - missing stubs or local ignore/config decisions that are necessary and documented
+
+      - small residual ruff/pyright/mypy items that fit in a single convergence pass
+
+
+      Constraints:
+
+      - Keep this batch convergent: one pass to remove the documented tail, not a
+      new exploratory sweep
+
+      - Any remaining debt after this step must be captured as explicit policy residuals,
+      not silently carried forward
+
+      - Agent source: default'
+    verification: '- Remaining planned test/stub/config diagnostics are resolved or
+      explicitly recorded as accepted policy residuals
+
+      - Deterministic reruns exist for the exact commands affected by stub/config
+      changes
+
+      - This batch closes the cleanup chain; it does not create a new open-ended backlog
+      inside the phase'
+    evidence_template: '## Type Cleanup Batch 3
+
+
+      **Files changed**:
+
+      - <path>
+
+
+      **Tail diagnostics closed**:
+
+      - <diagnostic>
+
+
+      **Config or stub decisions**:
+
+      - <decision>
+
+
+      **Verification commands**:
+
+      ```
+
+      uv run ruff check <edited paths>
+
+      uv run pyright
+
+      uv run mypy .
+
+      ```
+
+
+      **Residual debt, if any, and policy linkage**:
+
+      - <item>'
+    depends_on:
+    - engineering-health.verify-batch-2-type-core-surfaces
+    agent: python-executor
+  - id: engineering-health.verify-batch-3-tests-stubs-and-tail
+    name: verify-batch-3-tests-stubs-and-tail
+    status: pending
+    description: 'As an INDEPENDENT TESTER (`integration-verifier`), validate the
+      final bounded engineering-health cleanup batch from a fresh perspective.
+
+
+      YOUR GOAL IS TO FIND PROBLEMS, not to confirm it works.
+
+
+      Test for:
+
+      - Happy path: residual planned diagnostics are resolved or explicitly justified
+      by the chosen policy
+
+      - Edge cases: config or stub changes behave deterministically on rerun
+
+      - Error scenarios: the final tail cleanup accidentally broadens scope or leaves
+      unstable command behavior
+
+
+      Document all findings. A test that discovers issues is a success.
+
+      Independence Level: L1
+
+      Agent source: default'
+    verification: '- Independent rerun confirms the final planned tail diagnostics
+      are closed or explicitly accepted by policy
+
+      - Any nondeterministic config/stub behavior is reported as a blocker to final
+      validation
+
+      - Evidence cleanly separates closed debt from accepted residual scope'
+    evidence_template: '## Verification Report
+
+
+      **Tester**: integration-verifier
+
+      **Scope**: engineering-health batch 3
+
+      **Independence Level**: L1
+
+
+      ### Commands executed
+
+      ```
+
+      uv run ruff check <edited paths>
+
+      uv run pyright
+
+      uv run mypy .
+
+      ```
+
+
+      ### Findings
+
+      | Severity | Description | Location | Reproduction |
+
+      | --- | --- | --- | --- |
+
+      | blocker | <issue> | <path> | <command> |
+
+
+      ### Verdict
+
+      - PASS | ISSUES_FOUND | INCOMPLETE'
+    depends_on:
+    - engineering-health.fix-batch-3-tests-stubs-and-tail
+    agent: integration-verifier
+  - id: engineering-health.final-policy-validation
+    name: final-policy-validation
+    status: pending
+    description: 'As an INDEPENDENT TESTER (`integration-verifier`), run the chosen
+      engineering-health quality-gate policy end to end and confirm it passes deterministically.
+
+
+      YOUR GOAL IS TO FIND PROBLEMS, not to confirm it works.
+
+
+      Inputs:
+
+      - Policy from `engineering-health.quality-gate-policy-decision`
+
+      - Verified cleanup evidence from batches 1-3
+
+
+      Test for:
+
+      - Happy path: the exact policy commands pass on a clean rerun without interpretation
+
+      - Edge cases: rerunning the same commands produces the same result twice in
+      succession
+
+      - Error scenarios: residual repo-wide debt still leaks into the chosen scope,
+      or scoped policy is underspecified
+
+
+      Document all findings. A test that discovers issues is a success.
+
+      Independence Level: L1
+
+      Agent source: default'
+    verification: '- Main path: the exact commands from the chosen policy pass end
+      to end
+
+      - Failure path: a second identical rerun is captured to prove deterministic
+      pass behavior rather than one-off success
+
+      - Proof: evidence states whether the chosen policy is full-repo or scoped and
+      shows that no unspecified path/tool assumptions were needed'
+    evidence_template: '## Integration Evidence
+
+
+      **Command or test exercising the full policy path**:
+
+      ```
+
+      <exact policy command sequence>
+
+      ```
+
+
+      **First run actual output**:
+
+      ```
+
+      <paste stdout/stderr>
+
+      ```
+
+
+      **Second run actual output**:
+
+      ```
+
+      <paste stdout/stderr>
+
+      ```
+
+
+      **Policy exercised**: <full-repo|scoped>
+
+      **Path exercised**: <tool invocation> -> <covered paths>'
+    depends_on:
+    - engineering-health.verify-batch-3-tests-stubs-and-tail
+    agent: integration-verifier
+  - id: engineering-health.freeze-for-gate-review
+    name: freeze-for-gate-review
+    status: pending
+    description: 'Freeze snapshot for the engineering-health gate review.
+
+
+      Tasks:
+
+      - Record `git rev-parse HEAD`
+
+      - Record `git status --short` and confirm no new code changes are made after
+      the snapshot is declared
+
+      - Record the Python/uv environment used for the final validation commands
+
+      - State explicitly that no code changes are allowed until `engineering-health.engineering-health-gate`
+      completes
+
+
+      This is a freeze/control step for gate evidence only; it does not change product
+      code.'
+    verification: '- Freeze evidence includes commit SHA, clean/dirty status declaration,
+      and environment declaration
+
+      - Freeze evidence explicitly states that no code changes are allowed until the
+      subsequent gate review completes
+
+      - Snapshot is taken after final policy validation evidence exists'
+    depends_on:
+    - engineering-health.final-policy-validation
+    agent: general
+  - id: engineering-health.engineering-health-gate
+    name: gate
+    status: pending
+    description: 'As an INDEPENDENT REVIEWER (`gate-reviewer`), assess whether the
+      engineering-health phase meets the quality bar for proceeding.
+
+
+      YOU ARE THE QUALITY GATE. Your job is to block progress if quality is insufficient,
+      not to rubber-stamp completion.
+
+
+      Review criteria:
+
+      1. Completeness: all planned engineering-health steps executed
+
+      2. Evidence quality: baseline, policy, batch verification, and final validation
+      evidence are specific and reproducible
+
+      3. Known issues: residual lint/type debt is either resolved or explicitly accepted
+      by the chosen policy
+
+      4. Determinism: the chosen policy passed twice without hidden assumptions
+
+
+      Finding issues during gate review is valuable. It prevents historical quality
+      debt from re-blocking future phases.
+
+      Independence: You MUST NOT be the same agent as any implementation step in this
+      phase.
+
+      Agent source: default'
+    verification: '- All engineering-health steps completed successfully
+
+      - Evidence collected and reviewed
+
+      - No unresolved blockers remain against the chosen quality-gate policy
+
+      - Ready for downstream phases to rely on the documented policy'
+    evidence_template: '## Gate Review Report
+
+
+      **Reviewer**: gate-reviewer
+
+      **Phase**: engineering-health
+
+
+      ### Step-by-step review
+
+      | Step ID | Status | Evidence Quality | Concerns |
+
+      | --- | --- | --- | --- |
+
+      | <step> | ✅/⚠️/❌ | excellent/adequate/insufficient/missing | <notes> |
+
+
+      ### Gate decision
+
+      - OPEN | BLOCKED
+
+
+      ### Blocking issues
+
+      - <issue>'
+    depends_on:
+    - engineering-health.baseline-capture-and-categorize
+    - engineering-health.quality-gate-policy-decision
+    - engineering-health.fix-batch-1-ruff-hygiene
+    - engineering-health.verify-batch-1-ruff-hygiene
+    - engineering-health.fix-batch-2-type-core-surfaces
+    - engineering-health.verify-batch-2-type-core-surfaces
+    - engineering-health.fix-batch-3-tests-stubs-and-tail
+    - engineering-health.verify-batch-3-tests-stubs-and-tail
+    - engineering-health.final-policy-validation
+    - engineering-health.freeze-for-gate-review
+    agent: gate-reviewer

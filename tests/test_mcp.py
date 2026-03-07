@@ -1092,6 +1092,93 @@ class TestVectlMutateLinkedWorktreeGuard:
 
 
 # ---------------------------------------------------------------------------
+# Linked worktree implicit entry-path resolution tests (MCP)
+# ---------------------------------------------------------------------------
+# Tests for implicit MCP entry-path resolution when in linked worktree.
+
+
+class TestVectlMcpLinkedWorktreeImplicitResolution:
+    """Tests for implicit entry-path resolution in MCP linked worktrees (no explicit path)."""
+
+    @pytest.fixture
+    def linked_worktree_mcp_env(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> tuple[Path, Path]:
+        """Create main and linked worktree for MCP implicit resolution testing."""
+        # Create main worktree with plan.yaml
+        main_root = tmp_path / "main_worktree"
+        main_root.mkdir()
+        plan_file = main_root / "plan.yaml"
+        plan_file.write_text(yaml.dump(_make_plan_dict()))
+
+        # Create linked worktree directory
+        linked_root = tmp_path / "linked_worktree"
+        linked_root.mkdir()
+
+        # Ensure VECTL_PLAN_PATH is NOT set
+        monkeypatch.delenv("VECTL_PLAN_PATH", raising=False)
+
+        # Mock resolve_plan_path to return the main worktree's plan
+        monkeypatch.setattr(
+            "vectl.mcp_server.resolve_plan_path",
+            lambda: plan_file,
+        )
+
+        return plan_file, linked_root
+
+    def test_mcp_status_resolves_to_main_worktree_plan_without_explicit_path(
+        self, linked_worktree_mcp_env: tuple[Path, Path], monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """MCP vectl_status resolves to main worktree's plan when running in linked worktree."""
+        plan_file, linked_root = linked_worktree_mcp_env
+
+        # Call vectl_status WITHOUT explicit plan path - should auto-resolve to main worktree
+        result = vectl_status()
+
+        # Should succeed and find the plan in main worktree
+        assert "alpha" in result  # phase exists in _make_plan_dict()
+        assert "linked worktree" not in result.lower()
+
+    def test_mcp_claim_resolves_to_main_worktree_plan_without_explicit_path(
+        self, linked_worktree_mcp_env: tuple[Path, Path], monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """MCP vectl_claim resolves to main worktree's plan when running in linked worktree."""
+        plan_file, linked_root = linked_worktree_mcp_env
+
+        # Call vectl_claim WITHOUT explicit plan path - should auto-resolve
+        result = vectl_claim(agent="test-agent", step_id="a.1")
+
+        # Should succeed and find the step in main worktree's plan
+        assert result.get("ok") is True or "a.1" in str(result)
+        assert "linked worktree" not in str(result).lower()
+
+    def test_mcp_mutate_with_explicit_plan_allowed_in_linked_worktree(
+        self, linked_worktree_mcp_env: tuple[Path, Path], monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """MCP vectl_mutate with explicit plan path is allowed in linked worktree."""
+        plan_file, linked_root = linked_worktree_mcp_env
+
+        # Set explicit path
+        monkeypatch.setenv("VECTL_PLAN_PATH", str(plan_file))
+
+        # Also mock is_linked_worktree to return (True, main_root)
+        monkeypatch.setattr(
+            "vectl.mcp_server.is_linked_worktree",
+            lambda: (True, plan_file.parent),
+        )
+
+        # Call vectl_mutate - should proceed because VECTL_PLAN_PATH is set
+        result = vectl_mutate(
+            action="add-step",
+            phase_id="alpha",
+            name="New Step",
+        )
+
+        assert "Mutate blocked" not in result
+        assert "Added step" in result
+
+
+# ---------------------------------------------------------------------------
 # Integration: multi-step workflow
 # ---------------------------------------------------------------------------
 

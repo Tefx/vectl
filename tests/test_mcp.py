@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import os
 import json
+import subprocess
 from collections.abc import Iterator
 from pathlib import Path
 
@@ -37,7 +38,7 @@ from vectl.mcp_server import (
     vectl_show as _vectl_show_tool,
     vectl_status as _vectl_status_tool,
 )
-from vectl.models import PhaseStatus, PlanError, StepStatus
+from vectl.models import PhaseStatus, PlanError, PlanIOError, StepStatus
 
 # FastMCP @mcp.tool() wraps functions in FunctionTool objects.
 # Access the underlying callable via .fn for direct testing.
@@ -965,6 +966,251 @@ class TestVectlMutate:
 
 
 # ---------------------------------------------------------------------------
+# RFC: Linked worktree guard tests
+# ---------------------------------------------------------------------------
+
+
+class TestVectlMutateLinkedWorktreeGuard:
+    """Tests for linked worktree guard in vectl_mutate."""
+
+    @pytest.fixture
+    def linked_worktree_file(self, tmp_path: Path) -> Iterator[tuple[Path, Path]]:
+        """Create a plan file and simulate a linked worktree."""
+        # Create a main worktree with plan.yaml
+        main_root = tmp_path / "main_worktree"
+        main_root.mkdir()
+        plan_file = main_root / "plan.yaml"
+        plan_file.write_text(yaml.dump(_make_plan_dict()))
+
+        # Create linked worktree directory
+        linked_root = tmp_path / "linked_worktree"
+        linked_root.mkdir()
+
+        # Set env to simulate running from linked worktree (no VECTL_PLAN_PATH)
+        old = os.environ.get("VECTL_PLAN_PATH")
+        os.environ.pop("VECTL_PLAN_PATH", None)
+
+        yield plan_file, linked_root
+
+        # Cleanup
+        if old is not None:
+            os.environ["VECTL_PLAN_PATH"] = old
+        else:
+            os.environ.pop("VECTL_PLAN_PATH", None)
+
+    def test_mcp_mutate_blocked_in_linked_worktree(
+        self, linked_worktree_file: tuple[Path, Path], monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """vectl_mutate is blocked when running in a linked worktree."""
+        plan_file, linked_root = linked_worktree_file
+
+        # Mock is_linked_worktree to return (True, main_root)
+        main_root = plan_file.parent
+        monkeypatch.setattr(
+            "vectl.mcp_server.is_linked_worktree",
+            lambda: (True, main_root),
+        )
+
+        # Ensure VECTL_PLAN_PATH is NOT set
+        monkeypatch.delenv("VECTL_PLAN_PATH", raising=False)
+
+        # Call vectl_mutate - should be blocked
+        result = vectl_mutate(
+            action="add-step",
+            phase_id="alpha",
+            name="Blocked Step",
+        )
+
+        assert "Mutate blocked" in result
+        assert "linked worktree" in result
+        assert str(main_root) in result
+        assert "Plan file not found" not in result
+
+    def test_mcp_mutate_allowed_in_main_worktree(
+        self, linked_worktree_file: tuple[Path, Path], monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """vectl_mutate is allowed when not in a linked worktree."""
+        plan_file, linked_root = linked_worktree_file
+
+        # Set up the environment to use the plan file
+        monkeypatch.setenv("VECTL_PLAN_PATH", str(plan_file))
+
+        # Mock is_linked_worktree to return (False, None)
+        monkeypatch.setattr(
+            "vectl.mcp_server.is_linked_worktree",
+            lambda: (False, None),
+        )
+
+        # Call vectl_mutate - should proceed
+        result = vectl_mutate(
+            action="add-step",
+            phase_id="alpha",
+            name="Allowed Step",
+        )
+
+        assert "Mutate blocked" not in result
+        assert "Added step" in result
+
+    def test_mcp_mutate_allowed_with_env_override(
+        self, linked_worktree_file: tuple[Path, Path], monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """vectl_mutate is allowed with VECTL_PLAN_PATH set (escape hatch)."""
+        plan_file, linked_root = linked_worktree_file
+
+        # Mock is_linked_worktree to return (True, main_root)
+        main_root = plan_file.parent
+        monkeypatch.setattr(
+            "vectl.mcp_server.is_linked_worktree",
+            lambda: (True, main_root),
+        )
+
+        # Set VECTL_PLAN_PATH to override the guard
+        monkeypatch.setenv("VECTL_PLAN_PATH", str(plan_file))
+
+        # Call vectl_mutate - should proceed despite being in linked worktree
+        result = vectl_mutate(
+            action="add-step",
+            phase_id="alpha",
+            name="Override Step",
+        )
+
+        assert "Mutate blocked" not in result
+        assert "Added step" in result
+
+    def test_mcp_mutate_blocked_when_main_root_unresolved(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """Malformed worktree probe still blocks mutation with actionable message."""
+        monkeypatch.setattr("vectl.mcp_server.is_linked_worktree", lambda: (True, None))
+        monkeypatch.delenv("VECTL_PLAN_PATH", raising=False)
+
+        result = vectl_mutate(action="add-phase", name="Blocked")
+
+        assert "Mutate blocked" in result
+        assert "linked worktree" in result
+        assert "VECTL_PLAN_PATH" in result
+        assert "Plan file not found" not in result
+
+
+# ---------------------------------------------------------------------------
+# Linked worktree implicit entry-path resolution tests (MCP)
+# ---------------------------------------------------------------------------
+# Tests for implicit MCP entry-path resolution when in linked worktree.
+
+
+class TestVectlMcpLinkedWorktreeImplicitResolution:
+    """Tests for implicit entry-path resolution in MCP linked worktrees (no explicit path)."""
+
+    @pytest.fixture
+    def linked_worktree_mcp_env(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> tuple[Path, Path]:
+        """Create main and linked worktree for MCP implicit resolution testing."""
+        # Create main worktree with plan.yaml
+        main_root = tmp_path / "main_worktree"
+        main_root.mkdir()
+        plan_file = main_root / "plan.yaml"
+        plan_file.write_text(yaml.dump(_make_plan_dict()))
+
+        # Create linked worktree directory
+        linked_root = tmp_path / "linked_worktree"
+        linked_root.mkdir()
+
+        # Ensure VECTL_PLAN_PATH is NOT set
+        monkeypatch.delenv("VECTL_PLAN_PATH", raising=False)
+
+        # Mock resolve_plan_path to return the main worktree's plan
+        monkeypatch.setattr(
+            "vectl.mcp_server.resolve_plan_path",
+            lambda: plan_file,
+        )
+
+        return plan_file, linked_root
+
+    def test_mcp_status_resolves_to_main_worktree_plan_without_explicit_path(
+        self, linked_worktree_mcp_env: tuple[Path, Path], monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """MCP vectl_status resolves to main worktree's plan when running in linked worktree."""
+        plan_file, linked_root = linked_worktree_mcp_env
+
+        # Call vectl_status WITHOUT explicit plan path - should auto-resolve to main worktree
+        result = vectl_status()
+
+        # Should succeed and find the plan in main worktree
+        assert "alpha" in result  # phase exists in _make_plan_dict()
+        assert "linked worktree" not in result.lower()
+
+    def test_mcp_claim_resolves_to_main_worktree_plan_without_explicit_path(
+        self, linked_worktree_mcp_env: tuple[Path, Path], monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """MCP vectl_claim resolves to main worktree's plan when running in linked worktree."""
+        plan_file, linked_root = linked_worktree_mcp_env
+
+        # Call vectl_claim WITHOUT explicit plan path - should auto-resolve
+        result = vectl_claim(agent="test-agent", step_id="a.1")
+
+        # Should succeed and find the step in main worktree's plan
+        assert result.get("ok") is True or "a.1" in str(result)
+        assert "linked worktree" not in str(result).lower()
+
+    def test_mcp_mutate_with_explicit_plan_allowed_in_linked_worktree(
+        self, linked_worktree_mcp_env: tuple[Path, Path], monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """MCP vectl_mutate with explicit plan path is allowed in linked worktree."""
+        plan_file, linked_root = linked_worktree_mcp_env
+
+        # Set explicit path
+        monkeypatch.setenv("VECTL_PLAN_PATH", str(plan_file))
+
+        # Also mock is_linked_worktree to return (True, main_root)
+        monkeypatch.setattr(
+            "vectl.mcp_server.is_linked_worktree",
+            lambda: (True, plan_file.parent),
+        )
+
+        # Call vectl_mutate - should proceed because VECTL_PLAN_PATH is set
+        result = vectl_mutate(
+            action="add-step",
+            phase_id="alpha",
+            name="New Step",
+        )
+
+        assert "Mutate blocked" not in result
+        assert "Added step" in result
+
+    def test_mcp_status_fails_closed_on_malformed_worktree_without_walkup(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """Malformed linked-worktree probe fails closed to cwd sentinel path."""
+        main_root = tmp_path / "main_worktree"
+        main_root.mkdir()
+        (main_root / "plan.yaml").write_text(yaml.dump(_make_plan_dict()))
+
+        linked_root = main_root / "linked_worktree"
+        linked_root.mkdir()
+        monkeypatch.chdir(linked_root)
+        monkeypatch.delenv("VECTL_PLAN_PATH", raising=False)
+
+        def fake_run(
+            cmd: list[str], *, capture_output: bool, text: bool, cwd: Path
+        ) -> subprocess.CompletedProcess[str]:
+            if cmd == ["git", "rev-parse", "--git-common-dir"]:
+                return subprocess.CompletedProcess(cmd, 0, stdout=".git\n", stderr="")
+            if cmd == ["git", "rev-parse", "--git-dir"]:
+                # Malformed linked-worktree metadata: empty git-dir output.
+                return subprocess.CompletedProcess(cmd, 0, stdout="", stderr="")
+            raise AssertionError(f"Unexpected git command: {cmd}")
+
+        monkeypatch.setattr("vectl.plan_path.subprocess.run", fake_run)
+
+        with pytest.raises(
+            PlanIOError,
+            match=r"Plan file not found: .*linked_worktree/plan\.yaml",
+        ):
+            vectl_status()
+
+
+# ---------------------------------------------------------------------------
 # Integration: multi-step workflow
 # ---------------------------------------------------------------------------
 
@@ -1778,11 +2024,11 @@ class TestMcpSplitStateIntegration:
         assert reloaded.clipboard.author == "reviewer"
         assert reloaded.clipboard.summary == "Handoff"
 
-    def test_save_both_plan_cas_conflict_still_persists_state(
+    def test_save_both_plan_cas_conflict_does_not_persist_state(
         self, legacy_plan_file: Path
     ) -> None:
-        """State is written first (has auto-retry). If definition CAS fails,
-        state.json is already persisted. Next _load() merges correctly."""
+        """Definition is written first. If definition CAS fails, state.json
+        is NOT written, preventing orphaned state entries."""
         plan, def_hash, state_hash = _vectl_load()
         assert state_hash == ""
 
@@ -1796,12 +2042,7 @@ class TestMcpSplitStateIntegration:
         with pytest.raises(PlanError, match="CAS conflict: plan.yaml"):
             _vectl_save_both(plan, def_hash, state_hash)
 
-        # State is written first, so it persists even when definition CAS fails
-        assert state_path.exists()
-
-        # Next load works correctly: state.json merged over re-read plan.yaml
-        reloaded, _, _ = _vectl_load()
-        assert reloaded.phases[0].steps[0].status.value == plan.phases[0].steps[0].status.value
+        assert not state_path.exists()
 
 
 class TestVectlInit:

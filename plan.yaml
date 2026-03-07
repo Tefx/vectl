@@ -4032,7 +4032,7 @@ phases:
   gate: Full test suite passes; lazy migration E2E verified; zero regressions; existing
     plan.yaml serves as migration test case
   depends_on:
-  - ss-cli
+  - ss-fixes
   steps:
   - id: ss-integration.lazy-migration-e2e
     name: lazy-migration-e2e
@@ -4348,3 +4348,1246 @@ phases:
       explicitly identifies regressions covering stale-state precedence plus one additional
       persistence failure mode'
     agent: python-senior
+  - id: ss-integration.gate-fix-lint-hygiene
+    name: gate-fix-lint-hygiene
+    status: pending
+    description: 'Fix: Resolve ruff hygiene failures found during `ss-integration.ss-integration-gate`
+      for the state-separation migration surfaces only.
+
+
+      Scope:
+
+      - `src/vectl/cli.py`
+
+      - `src/vectl/mcp_server.py`
+
+      - `tests/test_smoke.py`
+
+      - any directly related files in the same migration scope only if required to
+      clear the same lint findings
+
+
+      Tasks:
+
+      - Fix import sorting (`I001`)
+
+      - Remove unused imports (`F401`)
+
+      - Resolve long-line violations (`E501`) without changing behavior
+
+      - Keep the change set limited to lint hygiene and regression-safe formatting/cleanup
+      on touched migration surfaces
+
+      - Do not broaden scope into unrelated refactors or feature behavior changes
+
+
+      Verification focus for the worker:
+
+      - Ruff passes for the affected files
+
+      - Existing migration-related tests used by this phase still pass after cleanup'
+    verification: '- Main path: targeted `ruff check` passes for `src/vectl/cli.py`,
+      `src/vectl/mcp_server.py`, `tests/test_smoke.py`, and any directly related touched
+      files
+
+      - Regression path: rerun the focused migration/smoke tests covering these surfaces
+      to confirm cleanup is behavior-preserving
+
+      - Proof: evidence includes the exact ruff command, the exact regression test
+      command, and actual output snippets'
+    depends_on:
+    - ss-integration.ss-integration-gate
+    agent: python-executor
+  - id: ss-integration.gate-retest-lint-hygiene
+    name: gate-retest-lint-hygiene
+    status: pending
+    description: 'Re-test after `ss-integration.gate-fix-lint-hygiene`: independently
+      verify that the ruff failures found during `ss-integration.ss-integration-gate`
+      are cleared and that the ss-integration migration surfaces remain regression-safe.
+
+
+      As an INDEPENDENT REVIEWER (`gate-reviewer`), validate the focused lint/remediation
+      outcome from a fresh perspective.
+
+
+      Test for:
+
+      - Happy path: targeted `ruff check` is clean on the affected migration surfaces
+
+      - Edge cases: directly related touched files in the same migration scope are
+      also clean if they were updated during the fix
+
+      - Error scenarios: no regression is introduced in the migration/smoke coverage
+      used by this phase
+
+
+      Keep scope focused to lint hygiene and regression checks for ss-integration
+      touched surfaces. Finding additional issues is a successful verification outcome.'
+    verification: '- Independent re-check: run targeted `ruff check` against `src/vectl/cli.py`,
+      `src/vectl/mcp_server.py`, `tests/test_smoke.py`, and any directly related files
+      changed by the fix
+
+      - Independent regression check: run the focused migration/smoke regression command
+      used by this phase and capture output
+
+      - Evidence must include actual commands, actual output, and any remaining findings
+      or confirmation that none remain'
+    depends_on:
+    - ss-integration.gate-fix-lint-hygiene
+    agent: gate-reviewer
+  - id: ss-integration.gate-retest-lint-hygiene-fix-followup
+    name: gate-retest-lint-hygiene-fix-followup
+    status: pending
+    description: 'Fix: Resolve the additional ruff findings reported by `ss-integration.gate-retest-lint-hygiene`
+      in the same migration surfaces only.
+
+
+      Scope (do not expand beyond this unless a directly related import location must
+      change to clear the same finding):
+
+      - `src/vectl/cli.py`
+
+      - `src/vectl/mcp_server.py`
+
+      - `tests/test_smoke.py`
+
+
+      Issue to address:
+
+      - Targeted `uv run ruff check src/vectl/cli.py src/vectl/mcp_server.py tests/test_smoke.py`
+      reported 14 findings beyond the previously handled `I001`/`F401`/`E501` set,
+      including `B008`, `E402`, and `B904`
+
+      - Focused migration tests already passed; keep all changes behavior-preserving
+
+
+      Requirements:
+
+      - Fix only the reported lint findings in the scoped files
+
+      - Preserve runtime behavior and migration semantics exactly
+
+      - Do not broaden into unrelated cleanup, feature work, or refactors
+
+      - If a lint fix requires a code-shape change, keep it minimal and regression-safe
+
+      - Rerun the focused regression test command covering these migration surfaces
+      after the fix
+
+
+      Out of scope:
+
+      - unrelated lint cleanup in other files
+
+      - behavioral changes to CLI, MCP server, or smoke-test expectations'
+    verification: '- Main path: targeted `uv run ruff check src/vectl/cli.py src/vectl/mcp_server.py
+      tests/test_smoke.py` clears the newly reported findings, including `B008`, `E402`,
+      and `B904`
+
+      - Regression path: rerun the focused migration/smoke regression command used
+      by this phase and confirm it still passes after the lint-only cleanup
+
+      - Proof: evidence includes exact commands, actual output, and confirmation that
+      scope stayed limited to the listed files (or directly related import-touch only
+      if required)'
+    evidence_template: '## Fix Evidence
+
+
+      **Priority**: MEDIUM
+
+      **Scope**: `src/vectl/cli.py`, `src/vectl/mcp_server.py`, `tests/test_smoke.py`
+
+
+      **Lint command**:
+
+      ```
+
+      uv run ruff check src/vectl/cli.py src/vectl/mcp_server.py tests/test_smoke.py
+
+      ```
+
+
+      **Regression command**:
+
+      ```
+
+      <focused migration/smoke regression command>
+
+      ```
+
+
+      **Behavior-preserving notes**:
+
+      - Describe each code-shape change made for lint compliance
+
+      - State why behavior is unchanged
+
+
+      **Actual output**:
+
+      ```
+
+      <paste command output>
+
+      ```'
+    depends_on:
+    - ss-integration.gate-retest-lint-hygiene
+    agent: python-executor
+  - id: ss-integration.gate-retest-lint-hygiene-retest-followup
+    name: gate-retest-lint-hygiene-retest-followup
+    status: pending
+    description: 'Re-test after `ss-integration.gate-retest-lint-hygiene-fix-followup`:
+      independently verify that the follow-up lint findings are cleared without changing
+      behavior on the same migration surfaces.
+
+
+      As an INDEPENDENT REVIEWER (`gate-reviewer`), validate the follow-up remediation
+      from a fresh perspective.
+
+
+      Test for:
+
+      - Happy path: targeted `ruff check` is clean for `src/vectl/cli.py`, `src/vectl/mcp_server.py`,
+      and `tests/test_smoke.py`
+
+      - Edge cases: any directly related file touched solely to support the same scoped
+      lint fix is also clean
+
+      - Error scenarios: the focused migration/smoke regression command still passes,
+      confirming the cleanup remained behavior-preserving
+
+
+      Keep scope limited to the reported lint follow-up only. Finding additional issues
+      is a successful verification outcome.'
+    verification: '- Independent re-check: run `uv run ruff check src/vectl/cli.py
+      src/vectl/mcp_server.py tests/test_smoke.py` and include any directly related
+      file touched by the fix if applicable
+
+      - Independent regression check: rerun the focused migration/smoke regression
+      command used by this phase and capture output
+
+      - Evidence must include actual commands, actual output, and any remaining findings
+      or confirmation that none remain'
+    evidence_template: '## Verification Report
+
+
+      **Tester**: `gate-reviewer` (independent of implementation)
+
+      **Priority**: MEDIUM
+
+      **Scope**: follow-up lint remediation for `src/vectl/cli.py`, `src/vectl/mcp_server.py`,
+      `tests/test_smoke.py`
+
+      **Independence Level**: L1
+
+
+      ### Commands executed
+
+      ```
+
+      uv run ruff check src/vectl/cli.py src/vectl/mcp_server.py tests/test_smoke.py
+
+      <focused migration/smoke regression command>
+
+      ```
+
+
+      ### Actual output
+
+      ```
+
+      <paste stdout/stderr>
+
+      ```
+
+
+      ### Findings
+
+      - Remaining lint findings: <none or list>
+
+      - Regression outcome: <pass/fail with evidence>
+
+
+      ### Verdict
+
+      - PASS if lint is clean and focused regression still passes
+
+      - ISSUES_FOUND if any remaining lint or regression issue is detected'
+    depends_on:
+    - ss-integration.gate-retest-lint-hygiene-fix-followup
+    agent: gate-reviewer
+- id: ss-fixes
+  name: Split-State Fixes (Gate Review Remediation)
+  status: pending
+  gate: All four issues (B1, S1, S2, G3) resolved; pytest collection succeeds; no
+    ruff F401 in cli.py
+  depends_on:
+  - ss-cli
+  steps:
+  - id: ss-fixes.fix-test-manual-yaml-import
+    name: fix-test-manual-yaml-import
+    status: pending
+    description: "B1 BLOCKER: Fix broken import in tests/test_manual_yaml_edit.py\
+      \ that prevents ALL 944 tests from running.\n\nProblem:\n- Line 21 imports `_save`\
+      \ from `vectl.cli`, but `_save` was removed during ss-cli.\n- The old `_save(plan,\
+      \ plan_path, file_hash)` is replaced by split-state save helpers: `_save_state`,\
+      \ `_save_definition`, `_save_both`.\n- This causes pytest collection failure\
+      \ across the entire test suite.\n\nFile: tests/test_manual_yaml_edit.py\n\n\
+      Tasks:\n1. Replace `from vectl.cli import _save, app` (line 21) with `from vectl.cli\
+      \ import _save_both, app`.\n2. Update all three call sites in `TestManualYamlEditLockCorrection`\
+      \ (lines 81, 126, 163):\n   - Old: `_save(plan, plan_path, file_hash)`\n   -\
+      \ New: `_save_both(plan, plan_path, file_hash, \"\")`\n   - The 4th argument\
+      \ is `expected_state_hash` -- use empty string `\"\"` because these tests write\
+      \ raw YAML with no companion state.json, so CAS should be skipped on first state\
+      \ write.\n3. Verify that `load_plan(plan_path)` still returns `(plan, file_hash)`\
+      \ as a 2-tuple (it does -- io.load_plan returns definition hash only).\n4. Verify\
+      \ the `TestRecalcLockDryRun` class (lines 177-227) does NOT use `_save` and\
+      \ needs no changes (it uses `runner.invoke` only).\n\nPattern to follow: See\
+      \ how `_save_both` is called in cli.py (line 206+). Signature: `_save_both(plan,\
+      \ plan_path, expected_def_hash, expected_state_hash)`.\n\nNon-goals:\n- Do NOT\
+      \ change any other test files.\n- Do NOT modify production code.\n- Do NOT change\
+      \ test logic or assertions -- only the import and call signature."
+    verification: '- Run: uv run pytest tests/test_manual_yaml_edit.py -v
+
+      - All 5 tests pass (3 in TestManualYamlEditLockCorrection, 2 in TestRecalcLockDryRun)
+
+      - Run: uv run pytest --collect-only 2>&1 | tail -5
+
+      - Pytest collection succeeds across the full suite (no import errors)
+
+      - Evidence: paste both command outputs'
+    refs:
+    - tests/test_manual_yaml_edit.py
+    - src/vectl/cli.py:206-235
+    agent: python-executor
+  - id: ss-fixes.fix-double-merge-in-load
+    name: fix-double-merge-in-load
+    status: pending
+    description: "S1 SHOULD_FIX: Eliminate redundant double-merge in CLI and MCP `_load()`\
+      \ paths without changing split-state load semantics.\n\nRisk: persistence /\
+      \ merge / split-state refactor across `src/vectl/io.py`, `src/vectl/cli.py`,\
+      \ and `src/vectl/mcp_server.py`; hidden regressions here would silently change\
+      \ precedence on load.\n\nImplementation objective:\n- Add `load_plan_definition(path)`\
+      \ in `src/vectl/io.py` that loads only the YAML plan definition and returns\
+      \ `(Plan, def_hash)` with no state merge.\n- Refactor `io.load_plan()` to call\
+      \ `load_plan_definition()` and then merge external state exactly once, preserving\
+      \ its current public behavior for backward compatibility.\n- Update CLI `_load()`\
+      \ and MCP `_load()` to use `load_plan_definition()` plus their existing explicit\
+      \ state/hash handling so those paths no longer perform a redundant second merge.\n\
+      - Export `load_plan_definition` if needed by the module's public surface.\n\n\
+      Failure-mode checklist (must be covered explicitly):\n- Relative vs absolute\
+      \ path behavior remains unchanged for plan and state resolution in CLI and MCP\
+      \ load paths.\n- Missing `state.json` fallback remains unchanged: first load\
+      \ with no external state still uses embedded `plan.yaml` state exactly as before.\n\
+      - Explicit clear / null overwrite semantics are preserved by the single-merge\
+      \ path; removing duplicate merge must not resurrect cleared values from embedded\
+      \ state.\n- Stale embedded state vs newer external `state.json` precedence remains\
+      \ unchanged: `state.json` still wins wherever split-state semantics already\
+      \ require it.\n- Partial-write / CAS-conflict behavior is out of scope for this\
+      \ step; do not change save-side or conflict-handling code while refactoring\
+      \ load paths.\n\nState semantics to preserve:\n- Last-writer-wins on load remains\
+      \ external `state.json` over embedded `plan.yaml` state when both exist.\n-\
+      \ Definition content and hash calculation must be preserved exactly for callers\
+      \ that depend on `def_hash` stability.\n- Backward-compatible legacy behavior\
+      \ means `io.load_plan()` continues returning the same merged result as before\
+      \ for existing callers.\n\nConcrete regression requirements:\n- Add or update\
+      \ focused regression tests for `src/vectl/io.py`, `src/vectl/cli.py`, and `src/vectl/mcp_server.py`\
+      \ covering:\n  1. stale embedded state does not override newer `state.json`\n\
+      \  2. missing `state.json` fallback / first-load behavior is unchanged\n  3.\
+      \ `load_plan_definition() + merge` produces the same merged result as legacy\
+      \ `load_plan()` semantics\n  4. CLI and MCP `_load()` paths do not double-merge\
+      \ while preserving merged-result equivalence\n- Use exact targeted tests where\
+      \ practical; otherwise create a dedicated regression module that names each\
+      \ case above explicitly.\n\nScope guardrails:\n- In scope: load-path refactor,\
+      \ helper introduction, call-site migration for CLI/MCP `_load()` only, and focused\
+      \ regressions proving semantic equivalence.\n- Out of scope: save paths, merge\
+      \ algorithm changes, compatibility wrappers beyond `io.load_plan()`, and unrelated\
+      \ helper cleanup.\n\nRefs:\n- `src/vectl/io.py:125-159`\n- `src/vectl/cli.py:143-164`\n\
+      - `src/vectl/mcp_server.py:133-159`"
+    verification: '- Main path: targeted regression tests for `load_plan_definition()`,
+      `io.load_plan()`, CLI `_load()`, and MCP `_load()` pass and show merged results
+      are equivalent to pre-refactor behavior with only one merge in CLI/MCP paths.
+
+      - Failure path: targeted regression proves stale embedded `plan.yaml` state
+      never overrides `state.json`, and separate regression proves missing `state.json`
+      fallback / first-load behavior is unchanged.
+
+      - Proof of migration scope: search or test evidence shows CLI and MCP `_load()`
+      use `load_plan_definition()` rather than `load_plan()`; no legacy double-merge
+      call pattern remains in those paths.
+
+      - Smoke proof: `uv run python -c "from vectl.io import load_plan_definition,
+      load_plan; print(''import ok'')"` succeeds.
+
+      - Evidence must paste actual command output for both the happy-path equivalence
+      check and the highest-risk failure-path precedence check.'
+    evidence_template: '## Load Refactor Evidence
+
+
+      **Files touched**:
+
+      - `src/vectl/io.py`
+
+      - `src/vectl/cli.py`
+
+      - `src/vectl/mcp_server.py`
+
+      - `<targeted test file(s)>`
+
+
+      **Targeted commands**:
+
+      ```
+
+      <exact pytest command(s) for the stale-state precedence regression>
+
+      <exact pytest command(s) for missing-state first-load regression>
+
+      <exact pytest command(s) or assertions proving CLI/MCP merged-result equivalence
+      without double-merge>
+
+      ```
+
+
+      **Main-path output**:
+
+      ```
+
+      <paste actual output showing the single-merge refactor passes>
+
+      ```
+
+
+      **Highest-risk failure-path output**:
+
+      ```
+
+      <paste actual output showing stale embedded state does not override state.json>
+
+      ```
+
+
+      **Scope proof**:
+
+      - `load_plan_definition()` added and imported where needed
+
+      - CLI `_load()` no longer calls `load_plan()` directly
+
+      - MCP `_load()` no longer calls `load_plan()` directly
+
+      - `io.load_plan()` backward-compatible merged behavior preserved
+
+
+      **Open gaps / follow-up**:
+
+      - <none or explicit remaining risk>
+
+      '
+    refs:
+    - src/vectl/io.py:125-159
+    - src/vectl/cli.py:143-164
+    - src/vectl/mcp_server.py:133-159
+    - tests/test_manual_yaml_edit.py
+    depends_on:
+    - ss-fixes.fix-test-manual-yaml-import
+    agent: python-senior
+  - id: ss-fixes.fix-unused-imports-cli
+    name: fix-unused-imports-cli
+    status: pending
+    description: "S2 SHOULD_FIX: Remove unused imports in `src/vectl/cli.py` flagged\
+      \ by ruff F401.\n\nFile: `src/vectl/cli.py`\n\nRequired cleanup:\n1. Remove\
+      \ these three known unused imports:\n   - `clipboard_read` from `vectl.core`\n\
+      \   - `AffinityError` from `vectl.models`\n   - `Step` from `vectl.models`\n\
+      2. If `uv run ruff check src/vectl/cli.py --select F401` still reports additional\
+      \ unused imports in this same file, remove only the minimal additional unused\
+      \ import(s) required to make that command pass (for example, any remaining `yaml`\
+      \ F401 in `src/vectl/cli.py` if still unused).\n\nConstraints:\n- Scope is limited\
+      \ to `src/vectl/cli.py` only.\n- Do not change runtime logic, command behavior,\
+      \ or imports in any other file.\n- Do not reorganize imports except as required\
+      \ by deleting unused names.\n\nCompletion standard:\n- The file imports cleanly\
+      \ after the removals.\n- The targeted ruff command reports zero F401 violations\
+      \ for the whole file, not just the three named imports."
+    verification: '- Run: `uv run ruff check src/vectl/cli.py --select F401`
+
+      - Expectation: zero F401 violations in `src/vectl/cli.py`
+
+      - Run: `uv run python -c "import vectl.cli; print(''ok'')"`
+
+      - Expectation: prints `ok` with no import error
+
+      - Run: `uv run pytest tests/test_smoke.py -v`
+
+      - Expectation: CLI smoke tests pass
+
+      - Evidence: paste the full output of all three commands'
+    refs:
+    - src/vectl/cli.py:25-76
+    - src/vectl/cli.py:424
+    depends_on:
+    - ss-fixes.fix-test-manual-yaml-import
+    agent: python-executor
+  - id: ss-fixes.add-save-routing-docs
+    name: add-save-routing-docs
+    status: pending
+    description: 'G3 SUGGESTION: Add a docstring/comment block documenting the save
+      routing taxonomy near the save helpers in cli.py.
+
+
+      File: src/vectl/cli.py
+
+
+      Insert a comment block immediately before `_save_state()` (line 167) documenting
+      which CLI commands use which save function. The comment should explain:
+
+
+      ```python
+
+      # ---------------------------------------------------------------------------
+
+      # Save routing taxonomy
+
+      # ---------------------------------------------------------------------------
+
+      # Split-state persistence uses three save helpers. Each CLI command calls
+
+      # exactly one of these depending on what it mutates:
+
+      #
+
+      #   _save_state(plan, plan_path, expected_state_hash)
+
+      #     Writes state.json only. Used by commands that mutate runtime state
+
+      #     without changing the plan definition (claim, complete, defer, reject,
+
+      #     skip, clipboard-write, clipboard-clear, recalc-lock).
+
+      #
+
+      #   _save_definition(plan, plan_path, expected_def_hash)
+
+      #     Writes plan.yaml only. Used by commands that change plan structure
+
+      #     without touching runtime state (currently unused standalone; reserved
+
+      #     for future definition-only mutations).
+
+      #
+
+      #   _save_both(plan, plan_path, expected_def_hash, expected_state_hash)
+
+      #     Writes both state.json and plan.yaml atomically. Used by commands
+
+      #     that mutate both definition and state (mutate, init, review).
+
+      #
+
+      # All three call recalc_lock_status() before writing.
+
+      # ---------------------------------------------------------------------------
+
+      ```
+
+
+      Verify the taxonomy is accurate by grepping for call sites of each helper and
+      confirming the mapping. If any command uses a different helper than described,
+      update the comment to match reality.
+
+
+      Non-goals:
+
+      - Do NOT change any code logic.
+
+      - Do NOT add docstrings to the helper functions themselves (they already have
+      them).'
+    verification: "- The comment block is present before _save_state in cli.py\n-\
+      \ Grep confirms the taxonomy matches actual call sites:\n  - grep '_save_state('\
+      \ src/vectl/cli.py | wc -l\n  - grep '_save_definition(' src/vectl/cli.py |\
+      \ wc -l  \n  - grep '_save_both(' src/vectl/cli.py | wc -l\n- Evidence: paste\
+      \ the comment block and grep counts"
+    refs:
+    - src/vectl/cli.py:167-235
+    depends_on:
+    - ss-fixes.fix-unused-imports-cli
+    agent: python-executor
+  - id: ss-fixes.ss-fixes-verify
+    name: ss-fixes-verify
+    status: pending
+    description: 'As an INDEPENDENT TESTER (integration-verifier), validate all ss-fixes
+      remediation work.
+
+
+      YOUR GOAL IS TO FIND PROBLEMS, not to confirm it works.
+
+
+      Test for:
+
+      1. B1 (blocker): pytest collection succeeds across full suite -- run `uv run
+      pytest --collect-only` and confirm no import errors.
+
+      2. B1 (regression): `uv run pytest tests/test_manual_yaml_edit.py -v` -- all
+      5 tests pass.
+
+      3. S1 (double-merge): Confirm `load_plan_definition` exists in io.py and is
+      used by cli.py and mcp_server.py _load(). Confirm `load_plan()` still works
+      for external callers.
+
+      4. S2 (unused imports): `uv run ruff check src/vectl/cli.py --select F401` --
+      zero violations for the three removed imports.
+
+      5. G3 (docs): Save routing comment block exists and is accurate.
+
+      6. Full regression: `uv run pytest tests/ -x -q` -- no new failures introduced.
+
+
+      Independence Level: L1
+
+
+      Document ALL findings. A test that discovers issues is a SUCCESS.'
+    verification: '- Full pytest suite passes or pre-existing failures only
+
+      - All four fix areas verified independently
+
+      - Evidence covers each finding area with actual command output'
+    depends_on:
+    - ss-fixes.fix-double-merge-in-load
+    - ss-fixes.fix-unused-imports-cli
+    - ss-fixes.add-save-routing-docs
+    agent: integration-verifier
+  - id: ss-fixes.ss-fixes-gate
+    name: ss-fixes.gate
+    status: pending
+    description: 'As an INDEPENDENT REVIEWER (gate-reviewer), assess whether the ss-fixes
+      phase meets the quality bar for proceeding to ss-integration.
+
+
+      YOU ARE THE QUALITY GATE. Your job is to BLOCK progress if quality is insufficient.
+
+
+      Review criteria:
+
+      1. Completeness: All four fixes (B1, S1, S2, G3) executed?
+
+      2. Evidence Quality: Verification step produced specific, verifiable evidence?
+
+      3. Known Issues: All blockers resolved? Any new issues introduced?
+
+      4. Regression: Full test suite status is acceptable?
+
+
+      Independence: You MUST NOT be the same agent as any implementation step in this
+      phase (python-executor).'
+    verification: '- All phase steps completed successfully
+
+      - Evidence collected and reviewed
+
+      - No unresolved blockers
+
+      - Ready for ss-integration phase'
+    depends_on:
+    - ss-fixes.ss-fixes-verify
+    agent: gate-reviewer
+- id: divergence-guard
+  name: Plan Divergence Detection & Recovery
+  status: pending
+  steps:
+  - id: orphan-detect
+    name: Orphan state detection on load
+    status: pending
+    description: "In merge_plan() or _load(), compare state.json phase/step keys against\
+      \ plan.yaml structure. Log warning for any orphan entries (state exists but\
+      \ no matching definition). Return orphan info so callers can surface it.\n\n\
+      File: src/vectl/io.py\nFunction: detect_orphan_state(plan_def: Plan, state:\
+      \ PlanState) -> list[OrphanEntry]\n  - OrphanEntry: dataclass with kind (\"\
+      phase\"|\"step\"), id, phase_id (if step)\n\nPattern: Follow merge_plan() iteration\
+      \ at io.py:286 — iterate state.phases and state.steps, compare against plan_def\
+      \ structure.\n\nTests: tests/test_io.py::test_orphan_detect_extra_phase\n  \
+      \     tests/test_io.py::test_orphan_detect_extra_step\n       tests/test_io.py::test_orphan_detect_clean_state_no_warning"
+    verification: '- Run: pytest tests/test_io.py -k orphan -v
+
+      - state.json with extra phase key not in plan.yaml returns orphan entry
+
+      - state.json with extra step key not in plan.yaml returns orphan entry
+
+      - Clean state (no extras) returns empty list, no false positives
+
+      - No regressions: pytest tests/test_io.py -v passes'
+    refs:
+    - src/vectl/io.py
+    - src/vectl/models.py
+    agent: python-executor
+  - id: orphan-surface
+    name: Surface orphan warnings in CLI and MCP
+    status: pending
+    description: "When orphans detected during _load(): CLI prints warning to stderr,\
+      \ MCP returns notice in response metadata. Include count and phase/step IDs.\n\
+      \nFiles:\n  - src/vectl/cli.py: in _load() or status/next commands, call detect_orphan_state()\
+      \ and print stderr warning if non-empty\n  - src/vectl/mcp_server.py: in _load(),\
+      \ call detect_orphan_state() and prepend notice to response if non-empty\n\n\
+      Pattern: Follow existing warning patterns in cli.py (e.g. lock recalculation\
+      \ notices). For MCP, follow notice prepend pattern used by _save_both() lock\
+      \ notices.\n\nWarning format:\n  \"⚠ Divergence detected: N orphan state entries\
+      \ (phase: X, step: Y, ...). Run 'vectl validate' for details.\"\n\nTests: tests/test_cli.py::test_orphan_warning_shown_on_status\n\
+      \       tests/test_mcp.py::test_orphan_notice_in_mcp_response"
+    verification: '- Run: pytest tests/test_cli.py -k orphan -v
+
+      - Manual test: create divergent state.json (extra keys), run ''vectl status'',
+      confirm warning on stderr
+
+      - MCP: call vectl_status with divergent state, confirm notice in response
+
+      - No warning when state is clean'
+    refs:
+    - src/vectl/cli.py
+    - src/vectl/mcp_server.py
+    depends_on:
+    - orphan-detect
+    agent: python-executor
+  - id: def-backup
+    name: Backup plan.yaml to .git/vectl/ on save
+    status: pending
+    description: "After successful _save_definition(), copy plan.yaml content to .git/vectl/plan.yaml.bak.\
+      \ This backup survives git reset --hard since it's inside .git/. Single-worktree\
+      \ only for now.\n\nFile: src/vectl/io.py\nFunction: _backup_definition(plan_path:\
+      \ Path) -> None\n  - Resolve .git dir (handle worktree case: skip backup if\
+      \ linked worktree)\n  - Create .git/vectl/ directory if needed\n  - Copy plan.yaml\
+      \ content to .git/vectl/plan.yaml.bak atomically (write tmp + rename)\n\nCall\
+      \ site: _save_definition() in both cli.py and mcp_server.py — call _backup_definition()\
+      \ after successful write.\n\nPattern: Follow _save_definition() file-write pattern\
+      \ in io.py for atomic write.\n\nTests: tests/test_io.py::test_backup_created_on_save\n\
+      \       tests/test_io.py::test_backup_matches_plan_content\n       tests/test_io.py::test_backup_skipped_in_linked_worktree\n\
+      \       tests/test_io.py::test_backup_creates_directory"
+    verification: '- Run: pytest tests/test_io.py -k backup -v
+
+      - After save, .git/vectl/plan.yaml.bak exists and matches plan.yaml content
+
+      - Backup directory created automatically if missing
+
+      - Backup skipped gracefully in linked worktree (no error)
+
+      - No regressions: pytest tests/test_io.py -v passes'
+    refs:
+    - src/vectl/io.py
+    agent: python-executor
+  - id: recover-cmd
+    name: Recovery command from backup
+    status: pending
+    description: "Add 'vectl recover' CLI command and MCP tool. When orphans detected\
+      \ and backup exists: show diff between current plan.yaml and backup, offer to\
+      \ restore from backup. Requires user confirmation in CLI (--yes to skip).\n\n\
+      Files:\n  - src/vectl/core.py: recover_from_backup(plan_path, backup_path) ->\
+      \ RecoverResult\n    - Compare current plan.yaml vs backup\n    - Return diff\
+      \ summary (phases/steps added/removed)\n  - src/vectl/cli.py: @app.command(\"\
+      recover\") with --yes flag\n  - src/vectl/mcp_server.py: vectl_recover() tool\
+      \ (no confirmation needed in MCP, agent is trusted)\n\nPattern: Follow existing\
+      \ CLI command pattern (e.g. validate command at cli.py:1423). For MCP, follow\
+      \ vectl_mutate() pattern.\n\nTests: tests/test_core.py::test_recover_restores_from_backup\n\
+      \       tests/test_core.py::test_recover_no_backup_error\n       tests/test_cli.py::test_recover_command_shows_diff"
+    verification: '- Run: pytest tests/ -k recover -v
+
+      - Simulate divergence (delete phases from plan.yaml), run ''vectl recover'',
+      verify phases restored from backup
+
+      - No backup available: clear error message, exit 1
+
+      - CLI without --yes: prompts for confirmation
+
+      - MCP: returns diff summary and restores without prompt'
+    refs:
+    - src/vectl/cli.py
+    - src/vectl/mcp_server.py
+    - src/vectl/core.py
+    depends_on:
+    - orphan-detect
+    - def-backup
+    agent: python-executor
+  - id: check-integration
+    name: Integrate divergence check into vectl check
+    status: pending
+    description: "Extend existing 'vectl validate' command to include orphan detection\
+      \ as an additional validation check. Report orphan count, list affected phase/step\
+      \ IDs, and suggest 'vectl recover' if backup available.\n\nFiles:\n  - src/vectl/core.py:\
+      \ in validate_plan(), add orphan detection check using detect_orphan_state()\n\
+      \    - Requires loading state.json alongside plan.yaml — add optional state\
+      \ parameter\n    - Orphans reported as PlanValidationIssue with is_warning=True\n\
+      \  - src/vectl/cli.py: in validate() command, pass state to validate_plan()\
+      \ when available\n  - src/vectl/mcp_server.py: if vectl_validate exists, pass\
+      \ state similarly\n\nPattern: Follow existing validate_plan() check pattern\
+      \ at core.py:44 — append PlanValidationIssue entries.\n\nNote: The target command\
+      \ is 'vectl validate' (not 'vectl check' which is a checklist toggle command).\n\
+      \nTests: tests/test_core.py::test_validate_detects_orphans\n       tests/test_core.py::test_validate_clean_plan_no_orphan_warning\n\
+      \       tests/test_cli.py::test_validate_shows_orphan_warning"
+    verification: '- Run: pytest tests/ -k "validate and orphan" -v
+
+      - vectl validate on clean plan: no orphan warning
+
+      - vectl validate on divergent plan (state.json has extra keys): reports orphans
+      as warnings with actionable message
+
+      - Suggests ''vectl recover'' when backup exists
+
+      - No regressions: pytest tests/test_core.py -v passes'
+    refs:
+    - src/vectl/core.py
+    - src/vectl/cli.py
+    - src/vectl/mcp_server.py
+    depends_on:
+    - orphan-surface
+    agent: python-executor
+  - id: divergence-guard.dg-verify
+    name: dg-verify
+    status: pending
+    description: 'As an INDEPENDENT TESTER (integration-verifier), validate the divergence-guard
+      implementation from a fresh perspective.
+
+
+      YOUR GOAL IS TO FIND PROBLEMS, not to confirm it works.
+
+
+      Test for:
+
+      - Happy path: detect_orphan_state() correctly identifies extra phase/step keys
+      in state.json
+
+      - Happy path: CLI status/next shows orphan warning on stderr when divergence
+      exists
+
+      - Happy path: backup created at .git/vectl/plan.yaml.bak after save
+
+      - Happy path: ''vectl recover'' restores plan.yaml from backup
+
+      - Happy path: ''vectl validate'' reports orphans as warnings
+
+      - Edge cases: empty state.json, state.json with no orphans, missing .git directory,
+      no backup file
+
+      - Error scenarios: corrupted backup file, permission errors on .git/vectl/
+
+      - Regression: all existing tests pass (pytest tests/ -v)
+
+
+      Document ALL findings. A test that discovers issues is a SUCCESS.
+
+
+      Independence Level: L1'
+    verification: '- Full test suite passes: pytest tests/ -v
+
+      - Orphan detection tests pass: pytest tests/ -k orphan -v
+
+      - Backup tests pass: pytest tests/ -k backup -v
+
+      - Recovery tests pass: pytest tests/ -k recover -v
+
+      - Validate integration tests pass: pytest tests/ -k "validate and orphan" -v
+
+      - No regressions in existing functionality
+
+      - Evidence of independent review provided'
+    depends_on:
+    - orphan-detect
+    - orphan-surface
+    - def-backup
+    - recover-cmd
+    - check-integration
+    agent: integration-verifier
+  - id: divergence-guard.dg-gate
+    name: dg-gate
+    status: pending
+    description: 'As an INDEPENDENT REVIEWER (gate-reviewer), assess whether the divergence-guard
+      phase meets the quality bar for completion.
+
+
+      YOU ARE THE QUALITY GATE. Your job is to BLOCK progress if quality is insufficient,
+      not to rubber-stamp completion.
+
+
+      Review criteria:
+
+      1. Completeness: All 5 implementation steps executed with evidence?
+
+      2. Evidence Quality: Evidence is specific, verifiable, not vague?
+
+      3. Known Issues: All blockers resolved? Tech debt documented?
+
+      4. Orphan Detection: Correctly identifies divergent state without false positives?
+
+      5. Backup/Recovery: Backup created reliably, recovery restores correctly?
+
+      6. Validate Integration: Orphan check integrated into vectl validate?
+
+      7. Cross-cutting: No regressions in existing plan operations?
+
+
+      Independence: You MUST NOT be the same agent as any implementation step in this
+      phase.'
+    verification: '- All phase steps completed successfully
+
+      - Evidence collected and reviewed
+
+      - No unresolved blockers
+
+      - Orphan detection, backup, recovery, and validate integration all verified
+
+      - No regressions in existing functionality
+
+      - Ready for use'
+    depends_on:
+    - divergence-guard.dg-verify
+    agent: gate-reviewer
+- id: worktree-support
+  name: Worktree Support
+  status: pending
+  steps:
+  - id: worktree-support.wt-detect
+    name: wt-detect
+    status: pending
+    description: "Add worktree detection to resolve_plan_path() in plan_path.py.\n\
+      \nFile: src/vectl/plan_path.py\nFunction: resolve_plan_path()\n\nChange: Between\
+      \ step 3 (deprecated env var) and step 4 (walk-up discovery), insert worktree\
+      \ detection logic:\n\n1. Run `git rev-parse --git-common-dir` and `git rev-parse\
+      \ --git-dir` from cwd.\n2. If both succeed and git_dir != git_common_dir, this\
+      \ is a linked worktree.\n3. For linked worktrees: run `git -C <common_dir> rev-parse\
+      \ --show-toplevel` to get the main worktree root.\n4. Return main_root / 'plan.yaml'.\n\
+      5. If any git command fails (not a git repo, git not installed), fall through\
+      \ to existing walk-up discovery.\n\nPseudocode from ADR:\n```python\ngit_common_dir\
+      \ = git rev-parse --git-common-dir\ngit_dir = git rev-parse --git-dir\nif git_dir\
+      \ != git_common_dir:\n    main_root = git -C <common_dir> rev-parse --show-toplevel\n\
+      \    return main_root / 'plan.yaml'\n```\n\nUse subprocess.run with capture_output=True,\
+      \ text=True (same pattern as resolve_state_path).\nHandle OSError and non-zero\
+      \ return codes gracefully -- fall through to walk-up.\n\nAlso add a helper function\
+      \ `is_linked_worktree() -> tuple[bool, Path | None]` that returns (True, main_worktree_root)\
+      \ or (False, None). This helper will be reused by the mutate guard in the next\
+      \ step.\n\nPattern: Follow the subprocess.run usage in resolve_state_path()\
+      \ (same file, lines 87-100).\n\nNon-goals: Do NOT change resolve_state_path().\
+      \ Do NOT change VECTL_PLAN_PATH precedence (it already takes priority before\
+      \ this new logic)."
+    verification: '- `is_linked_worktree()` function exists and is importable
+
+      - `resolve_plan_path()` includes worktree detection between env-var and walk-up
+      steps
+
+      - VECTL_PLAN_PATH still has highest precedence (explicit > env > worktree >
+      walk-up)
+
+      - Graceful fallback when git is unavailable or cwd is not a git repo
+
+      - No changes to resolve_state_path()'
+    refs:
+    - src/vectl/plan_path.py
+    - docs/ADR-worktree-support.md
+    agent: python-executor
+  - id: worktree-support.wt-mutate-guard
+    name: wt-mutate-guard
+    status: pending
+    description: "Add a linked-worktree guard that blocks mutate operations in linked\
+      \ worktrees.\n\nFiles: src/vectl/mcp_server.py (function vectl_mutate, line\
+      \ ~756), src/vectl/cli.py (mutate CLI handler)\n\nChange: At the top of each\
+      \ mutate entry point, before any plan loading or mutation logic:\n\n1. Import\
+      \ `is_linked_worktree` from `vectl.plan_path`.\n2. Call `is_linked_worktree()`.\
+      \ If it returns (True, main_root):\n   - Raise an error (or return error string\
+      \ for MCP) with an actionable message.\n   - Message template: 'Mutate blocked:\
+      \ running in a linked worktree. Plan mutations must be performed in the main\
+      \ worktree at {main_root}. Override: set VECTL_PLAN_PATH={main_root}/plan.yaml'\n\
+      3. If VECTL_PLAN_PATH is already set (env var), skip the guard (the user has\
+      \ explicitly opted in via the escape hatch).\n\nFor MCP (mcp_server.py): Return\
+      \ the error as a string result (same pattern as other error returns in that\
+      \ function).\nFor CLI (cli.py): Use click.ClickException or sys.exit with the\
+      \ error message.\n\nPattern: Follow the existing error-return pattern in vectl_mutate()\
+      \ in mcp_server.py (search for 'return' statements that return error strings).\n\
+      \nNon-goals: Do NOT guard read-only operations (status, show, search, claim,\
+      \ complete). Only guard mutate (structural plan.yaml writes)."
+    verification: '- Mutate in MCP returns actionable error when called from linked
+      worktree
+
+      - Mutate in CLI exits with actionable error when called from linked worktree
+
+      - Error message includes main worktree path and VECTL_PLAN_PATH override instruction
+
+      - Guard is skipped when VECTL_PLAN_PATH is set
+
+      - Read-only operations (status, show, claim, complete) are NOT guarded'
+    refs:
+    - src/vectl/mcp_server.py
+    - src/vectl/cli.py
+    - src/vectl/plan_path.py
+    - docs/ADR-worktree-support.md
+    depends_on:
+    - worktree-support.wt-detect
+    agent: python-executor
+  - id: worktree-support.wt-tests-resolve
+    name: wt-tests-resolve
+    status: pending
+    description: "Add unit tests for worktree detection in resolve_plan_path().\n\n\
+      File: tests/test_plan_path.py\nClass: TestWorktreeDetection (new class)\n\n\
+      Tests to add:\n\n1. test_linked_worktree_resolves_to_main_root\n   - Mock git\
+      \ rev-parse --git-dir returning '/repo/.git/worktrees/feature-x'\n   - Mock\
+      \ git rev-parse --git-common-dir returning '/repo/.git'\n   - Mock git -C /repo/.git\
+      \ rev-parse --show-toplevel returning '/repo'\n   - Assert resolve_plan_path()\
+      \ returns Path('/repo/plan.yaml')\n\n2. test_main_worktree_uses_walkup\n   -\
+      \ Mock git-dir == git-common-dir (both return '.git')\n   - Assert resolve_plan_path()\
+      \ falls through to walk-up discovery (not redirected)\n\n3. test_git_not_available_falls_through\n\
+      \   - Mock subprocess.run raising OSError\n   - Assert resolve_plan_path() falls\
+      \ through to walk-up discovery\n\n4. test_git_fails_falls_through\n   - Mock\
+      \ subprocess.run returning non-zero exit code\n   - Assert resolve_plan_path()\
+      \ falls through to walk-up\n\n5. test_env_var_overrides_worktree_detection\n\
+      \   - Set VECTL_PLAN_PATH env var\n   - Assert resolve_plan_path() returns the\
+      \ env var path (subprocess.run not called)\n\n6. test_is_linked_worktree_returns_true_with_main_root\n\
+      \   - Test the helper directly: linked worktree returns (True, Path('/repo'))\n\
+      \n7. test_is_linked_worktree_returns_false_in_main_worktree\n   - Test the helper\
+      \ directly: main worktree returns (False, None)\n\nPattern: Follow the existing\
+      \ mock patterns in TestResolveStatePath (same file, lines 166+). Use unittest.mock.patch\
+      \ on subprocess.run.\n\nTest file: tests/test_plan_path.py (extend existing\
+      \ file)"
+    verification: '- All 7 new tests pass: pytest tests/test_plan_path.py::TestWorktreeDetection
+      -v
+
+      - Existing tests in test_plan_path.py still pass
+
+      - No import errors'
+    refs:
+    - tests/test_plan_path.py
+    - src/vectl/plan_path.py
+    depends_on:
+    - worktree-support.wt-detect
+    agent: python-executor
+  - id: worktree-support.wt-tests-guard
+    name: wt-tests-guard
+    status: pending
+    description: "Add unit tests for the mutate guard in linked worktrees.\n\nFile:\
+      \ tests/test_plan_path.py (new class TestMutateWorktreeGuard) or tests/test_worktree.py\
+      \ if cleaner separation is preferred.\n\nTests to add:\n\n1. test_mcp_mutate_blocked_in_linked_worktree\n\
+      \   - Mock is_linked_worktree() returning (True, Path('/repo'))\n   - Ensure\
+      \ VECTL_PLAN_PATH is NOT set\n   - Call vectl_mutate (or the guard function\
+      \ directly)\n   - Assert error message contains main worktree path and VECTL_PLAN_PATH\
+      \ override\n\n2. test_mcp_mutate_allowed_in_main_worktree\n   - Mock is_linked_worktree()\
+      \ returning (False, None)\n   - Assert mutate proceeds (no guard error)\n\n\
+      3. test_mcp_mutate_allowed_with_env_override\n   - Mock is_linked_worktree()\
+      \ returning (True, Path('/repo'))\n   - Set VECTL_PLAN_PATH env var\n   - Assert\
+      \ mutate proceeds (guard skipped)\n\n4. test_cli_mutate_blocked_in_linked_worktree\n\
+      \   - Same as test 1 but for the CLI entry point\n   - Assert click.ClickException\
+      \ or SystemExit with actionable message\n\n5. test_cli_mutate_allowed_with_env_override\n\
+      \   - Same as test 3 but for CLI\n\nPattern: For MCP tests, follow patterns\
+      \ in tests/test_mcp.py. For CLI tests, follow patterns in tests/test_cli.py.\
+      \ Mock at the is_linked_worktree level (not subprocess) since that helper is\
+      \ already tested in wt-tests-resolve.\n\nThe guard function itself may be a\
+      \ shared helper importable from plan_path.py (e.g., `assert_not_linked_worktree()`),\
+      \ making it easy to test in isolation."
+    verification: '- All 5 new tests pass
+
+      - Existing tests in affected test files still pass
+
+      - No import errors'
+    refs:
+    - tests/test_plan_path.py
+    - tests/test_mcp.py
+    - tests/test_cli.py
+    - src/vectl/plan_path.py
+    depends_on:
+    - worktree-support.wt-mutate-guard
+    agent: python-executor
+  - id: worktree-support.wt-verify
+    name: wt-verify
+    status: pending
+    description: 'As an INDEPENDENT TESTER (integration-verifier), validate the worktree
+      support implementation from a fresh perspective.
+
+
+      YOUR GOAL IS TO FIND PROBLEMS, not to confirm it works.
+
+
+      Test for:
+
+      - Happy path: resolve_plan_path() returns main worktree plan.yaml when in linked
+      worktree
+
+      - Happy path: mutate blocked in linked worktree with actionable error
+
+      - Edge cases: git not available, non-git directory, VECTL_PLAN_PATH override
+
+      - Error scenarios: malformed git output, permission errors
+
+      - Regression: all existing tests in test_plan_path.py, test_smoke.py, test_cli.py,
+      test_mcp.py still pass
+
+
+      Document ALL findings. A test that discovers issues is a SUCCESS.
+
+
+      Independence Level: L1'
+    verification: '- Full test suite passes: pytest tests/ -v
+
+      - No regressions in existing functionality
+
+      - Edge cases verified
+
+      - Evidence of independent review provided'
+    refs:
+    - tests/test_plan_path.py
+    - src/vectl/plan_path.py
+    - src/vectl/mcp_server.py
+    - src/vectl/cli.py
+    depends_on:
+    - worktree-support.wt-tests-resolve
+    - worktree-support.wt-tests-guard
+    agent: integration-verifier
+  - id: worktree-support.wt-gate
+    name: wt-gate
+    status: pending
+    description: 'As an INDEPENDENT REVIEWER (gate-reviewer), assess whether the worktree-support
+      phase meets the quality bar for completion.
+
+
+      YOU ARE THE QUALITY GATE. Your job is to BLOCK progress if quality is insufficient,
+      not to rubber-stamp completion.
+
+
+      Review criteria:
+
+      1. Completeness: All 4 implementation steps executed with evidence?
+
+      2. Evidence Quality: Evidence is specific, verifiable, not vague?
+
+      3. Known Issues: All blockers resolved? Tech debt documented?
+
+      4. ADR Conformance: Implementation matches ADR-worktree-support.md decisions?
+
+      5. Cross-cutting: No regressions in existing plan path resolution?
+
+
+      Independence: You MUST NOT be the same agent as any implementation step in this
+      phase.'
+    verification: '- All phase steps completed successfully
+
+      - Evidence collected and reviewed
+
+      - No unresolved blockers
+
+      - ADR decisions correctly implemented
+
+      - Ready for use'
+    refs:
+    - docs/ADR-worktree-support.md
+    - src/vectl/plan_path.py
+    depends_on:
+    - worktree-support.wt-verify-retest
+    agent: gate-reviewer
+  - id: worktree-support.wt-verify-fix
+    name: wt-verify.fix
+    status: pending
+    description: '[HIGH] Fix linked worktree plan-path and mutate-guard regressions
+      found by `worktree-support.wt-verify`.
+
+
+      Scope:
+
+      - `src/vectl/plan_path.py`
+
+      - `src/vectl/cli.py`
+
+      - `src/vectl/mcp_server.py`
+
+      - `tests/test_plan_path.py`
+
+      - `tests/test_cli.py`
+
+      - `tests/test_mcp.py`
+
+
+      Required outcomes:
+
+      - Real linked-worktree happy path resolves the main worktree `plan.yaml` instead
+      of returning `(False, None)`.
+
+      - Linked-worktree mutate flows in CLI/MCP block with an actionable worktree
+      guard message rather than `Plan file not found: plan.yaml`.
+
+      - Malformed git output does not trigger unsafe relative fallback behavior.
+
+
+      Failure-mode checklist:
+
+      - relative vs absolute path behavior in linked worktrees
+
+      - missing-file fallback behavior when git output is malformed or incomplete
+
+      - explicit guard behavior for mutate operations in CLI and MCP entrypoints
+
+      - stale-definition vs new-state precedence for resolved plan path vs local fallback
+
+      - malformed-output / partial-resolution path must fail closed, not silently
+      continue
+
+
+      State semantics:
+
+      - Last-writer-wins does not apply here; path resolution must deterministically
+      prefer the resolved main-worktree plan path when valid.
+
+      - Existing explicit `VECTL_PLAN_PATH` override behavior must be preserved exactly.
+
+      - Backward-compatible legacy behavior includes non-git and main-worktree resolution
+      paths continuing to work unchanged.
+
+
+      Regression coverage required:
+
+      - Add/update focused regressions in `tests/test_plan_path.py` for real linked-worktree
+      resolution and malformed git output.
+
+      - Add/update focused regressions in `tests/test_cli.py` and `tests/test_mcp.py`
+      for actionable mutate-block messaging.
+
+
+      Out of scope:
+
+      - No unrelated CLI/MCP UX changes beyond the actionable block path.
+
+      - No broader plan storage redesign or git workflow changes.'
+    verification: '- Main path: targeted regressions for linked-worktree resolution
+      and CLI/MCP mutate blocking pass
+
+      - Failure path: focused regression covers malformed git output and proves fail-closed
+      behavior without unsafe relative fallback
+
+      - Proof: actionable block message is returned from both CLI and MCP entrypoints,
+      and override/non-git legacy behavior remains covered'
+    depends_on:
+    - worktree-support.wt-verify
+    agent: python-senior
+  - id: worktree-support.wt-verify-retest
+    name: wt-verify.retest
+    status: pending
+    description: 'As an INDEPENDENT TESTER (integration-verifier), re-validate the
+      linked-worktree fix from a fresh perspective after `worktree-support.wt-verify-fix`.
+
+
+      YOUR GOAL IS TO FIND REMAINING PROBLEMS, not to confirm it works.
+
+
+      Re-test for:
+
+      - Happy path: real linked worktree resolves the main worktree `plan.yaml`
+
+      - Happy path: linked-worktree mutate flows in CLI and MCP return the actionable
+      block message
+
+      - Error scenarios: malformed git output fails closed and does not allow unsafe
+      relative fallback
+
+      - Regression: existing override, non-git, and main-worktree behaviors remain
+      intact
+
+
+      Document ALL findings. A test that discovers issues is a SUCCESS.
+
+      Independence Level: L1'
+    verification: '- Run focused linked-worktree resolution and mutate-guard regressions
+      for plan path, CLI, and MCP
+
+      - Confirm main path passes and malformed-git failure path is exercised with
+      explicit evidence
+
+      - Report any remaining blocker/should_fix findings with reproduction details'
+    depends_on:
+    - worktree-support.wt-verify-fix
+    agent: integration-verifier

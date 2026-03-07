@@ -10,6 +10,7 @@ from typer.testing import CliRunner
 from vectl.cli import app
 from vectl.io import save_plan, load_plan
 from vectl.models import Clipboard, Plan, Phase, Step, StepStatus
+from vectl.plan_path import resolve_state_path
 from vectl.mcp_server import vectl_checkpoint
 
 runner = CliRunner()
@@ -333,3 +334,38 @@ class TestCheckpointClipboard:
 
         assert "clipboard" in data
         assert "metadata" in data  # also verify full mode works
+
+    def test_clipboard_clear_writes_split_state_null_override(self, tmp_path: Path) -> None:
+        """Clearing clipboard must hide legacy YAML clipboard via state override."""
+        now = datetime.now(timezone.utc)
+        future = now + timedelta(hours=24)
+
+        plan = Plan(
+            project="chk",
+            clipboard=Clipboard(
+                author="agent-1",
+                summary="legacy clipboard",
+                content="legacy content",
+                written_at=now.isoformat().replace("+00:00", "Z"),
+                expires_at=future.isoformat().replace("+00:00", "Z"),
+            ),
+            phases=[Phase(id="p1", name="P1", steps=[Step(id="s1", name="S1")])],
+        )
+        path = tmp_path / "plan.yaml"
+        save_plan(plan, path)
+
+        clear_result = runner.invoke(app, ["clipboard-clear", "--plan", str(path)])
+        assert clear_result.exit_code == 0
+
+        checkpoint_result = runner.invoke(app, ["checkpoint", "--plan", str(path)])
+        assert checkpoint_result.exit_code == 0
+        checkpoint = json.loads(checkpoint_result.stdout)
+        assert "clipboard" not in checkpoint
+
+        # Source: src/vectl/io.py::merge_plan applies state.clipboard over YAML.
+        # clear writes clipboard=None (omitted in JSON), but steps/phases make
+        # state document non-empty so merge still applies and clears clipboard.
+        state_path = resolve_state_path(path)
+        assert state_path.exists()
+        state_payload = json.loads(state_path.read_text(encoding="utf-8"))
+        assert "clipboard" not in state_payload

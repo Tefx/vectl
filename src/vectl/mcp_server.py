@@ -343,23 +343,23 @@ def vectl_show(id: str) -> str:
         return "\n".join(lines)
 
     # Try phase
-    phase = plan.find_phase(id)
-    if phase:
+    phase_obj = plan.find_phase(id)
+    if phase_obj:
         lines = [
-            f"## Phase: {phase.id}",
-            f"**Name:** {phase.name}",
-            f"**Status:** {_STATUS_ICON.get(phase.status, '?')} {phase.status.value}",
+            f"## Phase: {phase_obj.id}",
+            f"**Name:** {phase_obj.name}",
+            f"**Status:** {_STATUS_ICON.get(phase_obj.status, '?')} {phase_obj.status.value}",
         ]
-        if phase.depends_on:
-            lines.append(f"**Depends on:** {', '.join(phase.depends_on)}")
-        if phase.context:
-            lines.append(f"**Context:** {phase.context}")
-        if phase.gate:
-            lines.append(f"**Gate:** {phase.gate}")
-        if phase.steps:
+        if phase_obj.depends_on:
+            lines.append(f"**Depends on:** {', '.join(phase_obj.depends_on)}")
+        if phase_obj.context:
+            lines.append(f"**Context:** {phase_obj.context}")
+        if phase_obj.gate:
+            lines.append(f"**Gate:** {phase_obj.gate}")
+        if phase_obj.steps:
             lines.append("\n### Steps\n")
-            for step in phase.steps:
-                lines.append(_fmt_step(plan, step, phase.id))
+            for step in phase_obj.steps:
+                lines.append(_fmt_step(plan, step, phase_obj.id))
         return "\n".join(lines)
 
     return f"**Error:** '{id}' not found as step or phase."

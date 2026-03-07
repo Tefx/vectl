@@ -23,6 +23,7 @@ from __future__ import annotations
 import os
 import subprocess
 import warnings
+from dataclasses import dataclass
 from pathlib import Path
 
 # Canonical environment variable name
@@ -32,55 +33,84 @@ ENV_PLAN_PATH = "VECTL_PLAN_PATH"
 ENV_PLAN_PATH_DEPRECATED = "VECTL_PLAN"
 
 
+@dataclass(frozen=True)
+class _WorktreeProbe:
+    is_git_repo: bool
+    is_linked: bool
+    main_root: Path | None
+    malformed: bool
+
+
+def _normalize_git_path(raw: str, cwd: Path) -> Path | None:
+    """Normalize git path output to an absolute path.
+
+    Returns None for empty/malformed path output.
+    """
+    value = raw.strip()
+    if not value:
+        return None
+
+    path = Path(value)
+    if not path.is_absolute():
+        path = cwd / path
+    return path.resolve()
+
+
+def _probe_worktree_layout() -> _WorktreeProbe:
+    """Probe git worktree layout with fail-closed malformed detection."""
+    cwd = Path.cwd()
+
+    try:
+        common_result = subprocess.run(
+            ["git", "rev-parse", "--git-common-dir"],
+            capture_output=True,
+            text=True,
+            cwd=cwd,
+        )
+        dir_result = subprocess.run(
+            ["git", "rev-parse", "--git-dir"],
+            capture_output=True,
+            text=True,
+            cwd=cwd,
+        )
+    except OSError:
+        # git not installed
+        return _WorktreeProbe(is_git_repo=False, is_linked=False, main_root=None, malformed=False)
+
+    if common_result.returncode != 0 or dir_result.returncode != 0:
+        # Not a git repo or git command failed
+        return _WorktreeProbe(is_git_repo=False, is_linked=False, main_root=None, malformed=False)
+
+    git_common_dir = _normalize_git_path(common_result.stdout, cwd)
+    git_dir = _normalize_git_path(dir_result.stdout, cwd)
+    if git_common_dir is None or git_dir is None:
+        # Probe says git repo but returned unusable paths.
+        return _WorktreeProbe(is_git_repo=True, is_linked=True, main_root=None, malformed=True)
+
+    if git_dir == git_common_dir:
+        return _WorktreeProbe(is_git_repo=True, is_linked=False, main_root=None, malformed=False)
+
+    # Linked worktree. main root should be parent of <main>/.git
+    if git_common_dir.name != ".git":
+        return _WorktreeProbe(is_git_repo=True, is_linked=True, main_root=None, malformed=True)
+
+    return _WorktreeProbe(
+        is_git_repo=True,
+        is_linked=True,
+        main_root=git_common_dir.parent,
+        malformed=False,
+    )
+
+
 def is_linked_worktree() -> tuple[bool, Path | None]:
     """Detect if current directory is a linked git worktree.
 
     Returns:
         tuple: (True, main_worktree_root) if linked worktree, (False, None) otherwise.
     """
-    try:
-        # Get git-common-dir and git-dir from current working directory
-        common_result = subprocess.run(
-            ["git", "rev-parse", "--git-common-dir"],
-            capture_output=True,
-            text=True,
-            cwd=Path.cwd(),
-        )
-        dir_result = subprocess.run(
-            ["git", "rev-parse", "--git-dir"],
-            capture_output=True,
-            text=True,
-            cwd=Path.cwd(),
-        )
-    except OSError:
-        # git not installed
-        return (False, None)
-
-    if common_result.returncode != 0 or dir_result.returncode != 0:
-        # Not a git repo or git command failed
-        return (False, None)
-
-    git_common_dir = Path(common_result.stdout.strip())
-    git_dir = Path(dir_result.stdout.strip())
-
-    # If git_dir == git_common_dir, this is the main repo, not a linked worktree
-    if git_dir == git_common_dir:
-        return (False, None)
-
-    # This is a linked worktree - get the main worktree root
-    try:
-        # Use git-common-dir as the reference for the main worktree
-        main_result = subprocess.run(
-            ["git", "-C", str(git_common_dir), "rev-parse", "--show-toplevel"],
-            capture_output=True,
-            text=True,
-        )
-        if main_result.returncode == 0:
-            main_root = Path(main_result.stdout.strip())
-            return (True, main_root)
-    except OSError:
-        pass
-
+    probe = _probe_worktree_layout()
+    if probe.is_linked:
+        return (True, probe.main_root)
     return (False, None)
 
 
@@ -113,9 +143,11 @@ def resolve_plan_path(explicit: Path | None = None) -> Path:
         return Path(env_deprecated)
 
     # 4. Worktree detection: check if we're in a linked worktree
-    is_worktree, main_root = is_linked_worktree()
-    if is_worktree and main_root is not None:
-        return main_root / "plan.yaml"
+    probe = _probe_worktree_layout()
+    if probe.is_linked and probe.main_root is not None:
+        candidate = probe.main_root / "plan.yaml"
+        if candidate.exists():
+            return candidate
 
     # 5. Walk-up discovery
     current = Path.cwd()
@@ -128,6 +160,9 @@ def resolve_plan_path(explicit: Path | None = None) -> Path:
         current = current.parent
 
     # 6. Fallback: ./plan.yaml (may not exist)
+    # Fail-closed for malformed git probe: never return a relative fallback path.
+    if probe.malformed:
+        return Path.cwd() / "plan.yaml"
     return Path("plan.yaml")
 
 

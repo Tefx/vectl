@@ -834,6 +834,12 @@ def vectl_mutate(
                 f"Plan mutations must be performed in the main worktree at {main_root}. "
                 f"Override: set VECTL_PLAN_PATH={main_root}/plan.yaml"
             )
+        if is_linked and main_root is None:
+            return (
+                "Mutate blocked: linked worktree detected but main worktree root "
+                "could not be resolved from git output. "
+                "Set VECTL_PLAN_PATH to the main worktree plan.yaml and retry."
+            )
 
     plan, expected_def_hash, expected_state_hash = _load()
 

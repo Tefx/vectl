@@ -149,11 +149,17 @@ def _check_not_linked_worktree() -> None:
         return  # Escape hatch: explicit path set
 
     is_linked, main_root = is_linked_worktree()
-    if is_linked and main_root is not None:
+    if is_linked:
+        if main_root is not None:
+            _die(
+                f"Mutate blocked: running in a linked worktree. "
+                f"Plan mutations must be performed in the main worktree at {main_root}. "
+                f"Override: set VECTL_PLAN_PATH={main_root}/plan.yaml"
+            )
         _die(
-            f"Mutate blocked: running in a linked worktree. "
-            f"Plan mutations must be performed in the main worktree at {main_root}. "
-            f"Override: set VECTL_PLAN_PATH={main_root}/plan.yaml"
+            "Mutate blocked: linked worktree detected but main worktree root "
+            "could not be resolved from git output. "
+            "Set VECTL_PLAN_PATH to the main worktree plan.yaml and retry."
         )
 
 

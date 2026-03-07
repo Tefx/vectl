@@ -20,3 +20,9 @@ plan-dashboard.html
 .playwright-mcp/
 
 .DS_Store
+
+.mcp.json
+
+CLAUDE.md
+
+.opencode/

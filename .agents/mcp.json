@@ -1,0 +1,9 @@
+{
+  "mcpServers": {
+    "vectl": {
+      "type": "stdio",
+      "command": "uv",
+      "args": ["run", "vectl", "mcp"]
+    }
+  }
+}

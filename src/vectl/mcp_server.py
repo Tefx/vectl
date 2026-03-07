@@ -23,7 +23,9 @@ Feature request (2026-02-12): claim-time guidance ("Output guidance when running
 To satisfy FR R6 (structured guidance output), vectl_claim returns a structured
 payload including a Guidance object plus a Markdown rendition.
 Plan path: resolved via shared plan_path.resolve_plan_path() —
-  VECTL_PLAN_PATH env var > VECTL_PLAN (deprecated) > walk-up > ./plan.yaml.
+  explicit/override path > VECTL_PLAN_PATH > VECTL_PLAN (deprecated) >
+  linked-worktree main-root plan path (no local walk-up fallback) >
+  walk-up > ./plan.yaml.
 """
 
 from __future__ import annotations

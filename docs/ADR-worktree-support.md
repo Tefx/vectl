@@ -47,6 +47,11 @@ else:
 
 Using `git rev-parse --show-toplevel` from the common dir is more robust than assuming `git_common_dir.parent` (which fails for bare repos, `--separate-git-dir`, submodules).
 
+Linked-worktree fallback semantics:
+- If linked-worktree main root resolves successfully, vectl returns `<main_root>/plan.yaml` deterministically even if the file is missing.
+- vectl does **not** fall back to linked-worktree/local walk-up discovery in that case (prevents stale local plan selection).
+- If linked-worktree probe is malformed/partial, vectl fails closed to an absolute `cwd/plan.yaml` sentinel path.
+
 `VECTL_PLAN_PATH` remains as an escape hatch (already exists, highest precedence in resolution chain).
 
 ### Code Changes

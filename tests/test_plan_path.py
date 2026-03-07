@@ -4,8 +4,9 @@ Verifies the canonical precedence chain:
   1. explicit parameter
   2. VECTL_PLAN_PATH env var
   3. VECTL_PLAN env var (deprecated, warns)
-  4. walk-up discovery
-  5. ./plan.yaml fallback
+  4. linked-worktree main-root plan path
+  5. walk-up discovery
+  6. ./plan.yaml fallback
 
 Source: p0-parity.2-plan-path-tests step — lock path semantics with parity tests.
 """
@@ -277,6 +278,7 @@ class TestWorktreeDetection:
         # Create main worktree with plan.yaml
         main_root = tmp_path / "main_worktree"
         main_root.mkdir()
+        (main_root / ".git").mkdir()
         main_plan = main_root / "plan.yaml"
         main_plan.write_text("project: main\nphases: []\n")
 
@@ -293,6 +295,8 @@ class TestWorktreeDetection:
                 return CompletedProcess([], 0, "../../main_worktree/.git\n", "")
             if "--git-dir" in cmd:
                 return CompletedProcess([], 0, "../../main_worktree/.git/worktrees/w1\n", "")
+            if "--show-toplevel" in cmd:
+                return CompletedProcess([], 0, "../../main_worktree\n", "")
             raise AssertionError(f"Unexpected command: {cmd}")
 
         with patch("vectl.plan_path.Path.cwd", return_value=subdir):
@@ -391,26 +395,30 @@ class TestWorktreeDetection:
 
         assert result == env_plan_path
 
-    def test_is_linked_worktree_returns_true_with_main_root(self) -> None:
+    def test_is_linked_worktree_returns_true_with_main_root(self, tmp_path: Path) -> None:
         """is_linked_worktree returns (True, main_root) when in linked worktree."""
+
+        main_root = tmp_path / "main"
+        main_git = main_root / ".git"
+        main_root.mkdir()
+        main_git.mkdir()
 
         # Mock git commands: git-common-dir differs from git-dir (indicates linked worktree)
         def mock_run(*args, **kwargs):
             cmd = args[0] if args else kwargs.get("args", [])
             if "--git-common-dir" in cmd:
-                return CompletedProcess([], 0, "/main/.git\n", "")
+                return CompletedProcess([], 0, str(main_git) + "\n", "")
             if "--git-dir" in cmd:
-                return CompletedProcess([], 0, "/main/.git/worktrees/linked\n", "")
+                return CompletedProcess([], 0, str(main_git / "worktrees" / "linked") + "\n", "")
             if "--show-toplevel" in cmd:
-                return CompletedProcess([], 0, "/main\n", "")
+                return CompletedProcess([], 0, str(main_root) + "\n", "")
             raise AssertionError(f"Unexpected command: {cmd}")
 
         with patch("vectl.plan_path.subprocess.run", side_effect=mock_run):
             is_linked, main_root = is_linked_worktree()
 
         assert is_linked is True
-        assert main_root is not None
-        assert "main" in str(main_root)
+        assert main_root == (tmp_path / "main").resolve()
 
     def test_is_linked_worktree_returns_false_in_main_worktree(
         self,
@@ -437,6 +445,7 @@ class TestWorktreeDetection:
         main_root = tmp_path / "main"
         linked_root = tmp_path / "linked"
         main_root.mkdir()
+        (main_root / ".git").mkdir()
         linked_root.mkdir()
 
         def mock_run(*args, **kwargs):
@@ -447,6 +456,8 @@ class TestWorktreeDetection:
                 return CompletedProcess(
                     [], 0, str(main_root / ".git" / "worktrees" / "linked") + "\n", ""
                 )
+            if "--show-toplevel" in cmd:
+                return CompletedProcess([], 0, "../main\n", "")
             raise AssertionError(f"Unexpected command: {cmd}")
 
         with patch("vectl.plan_path.Path.cwd", return_value=linked_root):
@@ -480,6 +491,7 @@ class TestWorktreeResolutionRegressions:
         linked_root = tmp_path / "linked"
         nested = linked_root / "sub"
         main_root.mkdir()
+        (main_root / ".git").mkdir()
         nested.mkdir(parents=True)
 
         main_plan = main_root / "plan.yaml"
@@ -493,6 +505,8 @@ class TestWorktreeResolutionRegressions:
                 return CompletedProcess([], 0, "../../main/.git\n", "")
             if "--git-dir" in cmd:
                 return CompletedProcess([], 0, "../../main/.git/worktrees/w1\n", "")
+            if "--show-toplevel" in cmd:
+                return CompletedProcess([], 0, "../../main\n", "")
             raise AssertionError(f"Unexpected command: {cmd}")
 
         with patch("vectl.plan_path.Path.cwd", return_value=nested):
@@ -501,13 +515,14 @@ class TestWorktreeResolutionRegressions:
 
         assert result == main_plan
 
-    def test_linked_worktree_stale_main_plan_falls_back_to_local_walkup(
+    def test_linked_worktree_missing_main_plan_does_not_fall_back_to_local_walkup(
         self, tmp_path: Path
     ) -> None:
         main_root = tmp_path / "main"
         linked_root = tmp_path / "linked"
         nested = linked_root / "sub"
         main_root.mkdir()
+        (main_root / ".git").mkdir()
         nested.mkdir(parents=True)
 
         local_plan = linked_root / "plan.yaml"
@@ -519,18 +534,23 @@ class TestWorktreeResolutionRegressions:
                 return CompletedProcess([], 0, "../../main/.git\n", "")
             if "--git-dir" in cmd:
                 return CompletedProcess([], 0, "../../main/.git/worktrees/w1\n", "")
+            if "--show-toplevel" in cmd:
+                return CompletedProcess([], 0, "../../main\n", "")
             raise AssertionError(f"Unexpected command: {cmd}")
 
         with patch("vectl.plan_path.Path.cwd", return_value=nested):
             with patch("vectl.plan_path.subprocess.run", side_effect=mock_run):
                 result = resolve_plan_path()
 
-        assert result == local_plan
+        assert result == main_root / "plan.yaml"
 
     def test_malformed_git_output_uses_absolute_fallback(self, tmp_path: Path) -> None:
-        """Malformed git output must not return a relative fallback path."""
-        cwd = tmp_path / "linked"
-        cwd.mkdir()
+        """Malformed git output must fail closed and not walk up parent plans."""
+        cwd = tmp_path / "linked" / "sub"
+        cwd.mkdir(parents=True)
+        stale_parent_plan = tmp_path / "linked" / "plan.yaml"
+        stale_parent_plan.parent.mkdir(exist_ok=True)
+        stale_parent_plan.write_text("project: stale\nphases: []\n")
 
         def mock_run(*args, **kwargs):
             cmd = args[0] if args else kwargs.get("args", [])
@@ -546,3 +566,28 @@ class TestWorktreeResolutionRegressions:
 
         assert result == cwd / "plan.yaml"
         assert result.is_absolute()
+
+    def test_linked_worktree_uses_main_plan_path_even_if_file_missing(self, tmp_path: Path) -> None:
+        """Linked worktree resolution is deterministic on ADR-selected main root."""
+        main_root = tmp_path / "main"
+        linked_root = tmp_path / "linked"
+        nested = linked_root / "sub"
+        main_root.mkdir()
+        (main_root / ".git").mkdir()
+        nested.mkdir(parents=True)
+
+        def mock_run(*args, **kwargs):
+            cmd = args[0] if args else kwargs.get("args", [])
+            if "--git-common-dir" in cmd:
+                return CompletedProcess([], 0, "../../main/.git\n", "")
+            if "--git-dir" in cmd:
+                return CompletedProcess([], 0, "../../main/.git/worktrees/w1\n", "")
+            if "--show-toplevel" in cmd:
+                return CompletedProcess([], 0, "../../main\n", "")
+            raise AssertionError(f"Unexpected command: {cmd}")
+
+        with patch("vectl.plan_path.Path.cwd", return_value=nested):
+            with patch("vectl.plan_path.subprocess.run", side_effect=mock_run):
+                result = resolve_plan_path()
+
+        assert result == main_root / "plan.yaml"

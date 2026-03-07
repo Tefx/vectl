@@ -90,14 +90,31 @@ def _probe_worktree_layout() -> _WorktreeProbe:
     if git_dir == git_common_dir:
         return _WorktreeProbe(is_git_repo=True, is_linked=False, main_root=None, malformed=False)
 
-    # Linked worktree. main root should be parent of <main>/.git
-    if git_common_dir.name != ".git":
+    # Linked worktree. Resolve canonical main root from the common dir
+    # using git itself (ADR robustness decision), not path heuristics.
+    if not git_common_dir.exists() or not git_common_dir.is_dir():
+        return _WorktreeProbe(is_git_repo=True, is_linked=True, main_root=None, malformed=True)
+
+    try:
+        toplevel_result = subprocess.run(
+            ["git", "-C", str(git_common_dir), "rev-parse", "--show-toplevel"],
+            capture_output=True,
+            text=True,
+            cwd=cwd,
+        )
+    except OSError:
+        return _WorktreeProbe(is_git_repo=True, is_linked=True, main_root=None, malformed=True)
+    if toplevel_result.returncode != 0:
+        return _WorktreeProbe(is_git_repo=True, is_linked=True, main_root=None, malformed=True)
+
+    main_root = _normalize_git_path(toplevel_result.stdout, cwd)
+    if main_root is None:
         return _WorktreeProbe(is_git_repo=True, is_linked=True, main_root=None, malformed=True)
 
     return _WorktreeProbe(
         is_git_repo=True,
         is_linked=True,
-        main_root=git_common_dir.parent,
+        main_root=main_root,
         malformed=False,
     )
 
@@ -142,12 +159,15 @@ def resolve_plan_path(explicit: Path | None = None) -> Path:
         )
         return Path(env_deprecated)
 
-    # 4. Worktree detection: check if we're in a linked worktree
+    # 4. Worktree detection
     probe = _probe_worktree_layout()
-    if probe.is_linked and probe.main_root is not None:
-        candidate = probe.main_root / "plan.yaml"
-        if candidate.exists():
-            return candidate
+    if probe.is_linked:
+        if probe.main_root is not None:
+            # ADR: linked worktrees resolve deterministically to main-root plan path.
+            # Do not fall back to local walk-up when this file is missing.
+            return probe.main_root / "plan.yaml"
+        # Fail closed for malformed/partial linked-worktree resolution.
+        return Path.cwd() / "plan.yaml"
 
     # 5. Walk-up discovery
     current = Path.cwd()
@@ -160,9 +180,6 @@ def resolve_plan_path(explicit: Path | None = None) -> Path:
         current = current.parent
 
     # 6. Fallback: ./plan.yaml (may not exist)
-    # Fail-closed for malformed git probe: never return a relative fallback path.
-    if probe.malformed:
-        return Path.cwd() / "plan.yaml"
     return Path("plan.yaml")
 
 

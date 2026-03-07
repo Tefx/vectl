@@ -4987,3 +4987,70 @@ phases:
     depends_on:
     - ss-fixes.ss-fixes-verify
     agent: gate-reviewer
+- id: divergence-guard
+  name: Plan Divergence Detection & Recovery
+  status: pending
+  steps:
+  - id: orphan-detect
+    name: Orphan state detection on load
+    status: pending
+    description: In merge_plan() or _load(), compare state.json phase/step keys against
+      plan.yaml structure. Log warning for any orphan entries (state exists but no
+      matching definition). Return orphan info so callers can surface it.
+    verification: 'Unit test: state.json with extra phase/step keys not in plan.yaml
+      triggers warning. No false positives on clean state.'
+    refs:
+    - src/vectl/io.py
+    - src/vectl/models.py
+  - id: orphan-surface
+    name: Surface orphan warnings in CLI and MCP
+    status: pending
+    description: 'When orphans detected: CLI prints warning to stderr, MCP returns
+      notice in response. Include count and phase/step IDs. Add ''vectl check'' integration
+      to report orphans.'
+    verification: 'Manual test: create divergent state, run ''vectl status'' and MCP
+      status, both show orphan warning.'
+    refs:
+    - src/vectl/cli.py
+    - src/vectl/mcp_server.py
+    depends_on:
+    - orphan-detect
+  - id: def-backup
+    name: Backup plan.yaml to .git/vectl/ on save
+    status: pending
+    description: After successful _save_definition(), copy plan.yaml content to .git/vectl/plan.yaml.bak.
+      This backup survives git reset --hard since it's inside .git/. Single-worktree
+      only for now.
+    verification: 'Unit test: after save, .git/vectl/plan.yaml.bak exists and matches
+      plan.yaml content.'
+    refs:
+    - src/vectl/io.py
+  - id: recover-cmd
+    name: Recovery command from backup
+    status: pending
+    description: 'Add ''vectl recover'' CLI command and MCP tool. When orphans detected
+      and backup exists: show diff between current plan.yaml and backup, offer to
+      restore from backup. Requires user confirmation in CLI.'
+    verification: 'Integration test: simulate divergence (delete phases from plan.yaml),
+      run recover, verify phases restored from backup.'
+    refs:
+    - src/vectl/cli.py
+    - src/vectl/mcp_server.py
+    - src/vectl/core.py
+    depends_on:
+    - orphan-detect
+    - def-backup
+  - id: check-integration
+    name: Integrate divergence check into vectl check
+    status: pending
+    description: Extend existing 'vectl check' to include orphan detection as a check
+      item. Report orphan count, list affected phases/steps, and suggest 'vectl recover'
+      if backup available.
+    verification: 'vectl check on clean plan: no orphan warning. On divergent plan:
+      reports orphans with actionable message.'
+    refs:
+    - src/vectl/core.py
+    - src/vectl/cli.py
+    - src/vectl/mcp_server.py
+    depends_on:
+    - orphan-surface

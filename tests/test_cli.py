@@ -1961,32 +1961,37 @@ class TestLinkedWorktreeImplicitResolution:
     def test_cli_fails_closed_on_malformed_worktree_without_stale_local_fallback(
         self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
     ) -> None:
-        """Malformed worktree metadata fails closed without falling back to stale local plan."""
-        # Create a stale local plan in linked worktree directory
-        linked_root = tmp_path / "linked_worktree"
-        linked_root.mkdir()
-        stale_plan = linked_root / "plan.yaml"
-        stale_plan.write_text("project: stale\nphases: []\n")
+        """Malformed linked-worktree probe fails closed to cwd sentinel path.
 
+        When linked-worktree detection returns is_linked=True but main_root is None
+        (malformed/partial state), resolve_plan_path returns cwd/plan.yaml as sentinel.
+        This path does NOT exist, so CLI must fail closed rather than silently succeed.
+        """
         # Ensure VECTL_PLAN_PATH is NOT set
         monkeypatch.delenv("VECTL_PLAN_PATH", raising=False)
 
-        # Mock resolve_plan_path to simulate malformed worktree probe:
-        # returns cwd/plan.yaml (absolute fallback) instead of walking up
+        # Mock resolve_plan_path to simulate malformed linked-worktree:
+        # is_linked=True but main_root=None triggers cwd/plan.yaml fallback sentinel.
+        # This sentinel path does NOT exist in the test, so CLI must fail.
         monkeypatch.setattr(
             "vectl.cli.resolve_plan_path",
             lambda explicit=None: (
-                tmp_path / "linked_worktree" / "plan.yaml" if explicit is None else explicit
+                tmp_path / "plan.yaml"  # sentinel path that doesn't exist
+                if explicit is None
+                else explicit
             ),
         )
 
-        # Run status - should fail because the plan doesn't have phases (or just return what's there)
+        # Run status - should fail because the sentinel plan file doesn't exist (fail closed)
         result = runner.invoke(app, ["status"])
 
-        # Should NOT fall back to stale local plan; instead uses absolute cwd/plan.yaml fallback
-        # The plan has no phases, so should still render but with empty/warning state
-        # Key: it does NOT walk up and find parent plans
-        assert result.exit_code == 0 or "No phases" in result.output
+        # Fail-closed: command must fail when plan file is not found
+        # This catches precedence drift where CLI might silently succeed on missing plan
+        assert result.exit_code != 0, (
+            f"Expected non-zero exit code for missing plan file, got {result.exit_code}. "
+            "This indicates precedence drift - command should fail closed."
+        )
+        assert "Plan file not found" in result.output or "not found" in result.output.lower()
 
 
 # ---------------------------------------------------------------------------

@@ -5,7 +5,15 @@ from pathlib import Path
 
 import pytest
 
-from vectl.io import load_plan, load_state, save_plan, save_state
+from vectl.io import (
+    extract_state,
+    load_plan,
+    load_state,
+    merge_plan,
+    save_plan,
+    save_state,
+    strip_state,
+)
 from vectl.models import (
     CASConflictError,
     Clipboard,
@@ -15,10 +23,77 @@ from vectl.models import (
     Plan,
     PlanIOError,
     PlanState,
+    RejectionEntry,
     Step,
     StepState,
     StepStatus,
 )
+
+
+def make_plan_for_state_tests() -> Plan:
+    return Plan(
+        project="state-test",
+        plan_id="plan-123",
+        clipboard=Clipboard(
+            author="agent-ops",
+            summary="handoff",
+            content="state extraction test",
+            written_at="2026-01-01T00:00:00Z",
+            expires_at="2026-01-02T00:00:00Z",
+        ),
+        phases=[
+            Phase(
+                id="core",
+                name="Core phase",
+                status=PhaseStatus.IN_PROGRESS,
+                evidence="phase evidence",
+                steps=[
+                    Step(id="s_pending", name="Pending", status=StepStatus.PENDING),
+                    Step(
+                        id="s_claimed",
+                        name="Claimed",
+                        status=StepStatus.CLAIMED,
+                        claimed_by="agent-a",
+                    ),
+                    Step(
+                        id="s_done",
+                        name="Done",
+                        status=StepStatus.DONE,
+                        description="done step description",
+                        verification="run done checks",
+                        refs=["docs/done.md"],
+                        depends_on=["s_claimed"],
+                        evidence="done evidence",
+                    ),
+                    Step(
+                        id="s_skipped",
+                        name="Skipped",
+                        status=StepStatus.SKIPPED,
+                        skipped_reason="not needed",
+                    ),
+                    Step(
+                        id="s_rejected",
+                        name="Rejected",
+                        status=StepStatus.REJECTED,
+                        rejection_reason="bad approach",
+                    ),
+                ],
+            ),
+            Phase(
+                id="qa",
+                name="QA",
+                status=PhaseStatus.LOCKED,
+                evidence=None,
+                steps=[
+                    Step(
+                        id="s2_pending",
+                        name="Another",
+                        status=StepStatus.PENDING,
+                    ),
+                ],
+            ),
+        ],
+    )
 
 
 @pytest.fixture
@@ -327,6 +402,15 @@ class TestLoadState:
         assert state == PlanState(plan_id="")
         assert file_hash == ""
 
+    def test_load_state_roundtrip(self, tmp_path: Path, sample_state: PlanState):
+        path = tmp_path / "state.json"
+        saved_hash = save_state(sample_state, path)
+
+        loaded_state, loaded_hash = load_state(path)
+
+        assert loaded_state == sample_state
+        assert loaded_hash == saved_hash
+
 
 class TestSaveState:
     def test_save_state_basic_write(self, tmp_path: Path, sample_state: PlanState):
@@ -389,3 +473,262 @@ class TestSaveState:
         assert saved_state.steps["core.3"].status == StepStatus.CLAIMED
         assert saved_state.phases["core"].status == PhaseStatus.IN_PROGRESS
         assert saved_state.phases["core"].evidence == "local phase"
+
+    def test_save_state_auto_retry_with_clipboard_clear(
+        self, tmp_path: Path, sample_state: PlanState
+    ):
+        path = tmp_path / "state.json"
+        base_state = sample_state.model_copy(deep=True)
+        base_state.clipboard = Clipboard(
+            author="agent-base",
+            summary="base summary",
+            content="before clear",
+            written_at="2026-03-01T00:00:00Z",
+            expires_at="2026-03-02T00:00:00Z",
+        )
+        base_hash = save_state(base_state, path)
+
+        external_state = PlanState(
+            plan_id="plan-state-1",
+            steps={"core.1": StepState(status=StepStatus.CLAIMED, claimed_by="agent-external")},
+            phases={"core": PhaseState(status=PhaseStatus.PENDING, evidence="concurrent")},
+            clipboard=Clipboard(
+                author="agent-external",
+                summary="external overwrite",
+                content="still present",
+                written_at="2026-03-01T01:00:00Z",
+                expires_at="2026-03-02T01:00:00Z",
+            ),
+        )
+        save_state(external_state, path, expected_hash=base_hash)
+
+        local_update = base_state.model_copy(deep=True)
+        local_update.clipboard = None
+        local_update.steps["core.3"] = StepState(
+            status=StepStatus.CLAIMED, claimed_by="agent-local"
+        )
+
+        final_hash = save_state(local_update, path, expected_hash=base_hash, max_retries=3)
+
+        saved_state, _ = load_state(path)
+        assert final_hash
+        assert saved_state.clipboard is None
+        assert saved_state.steps["core.3"].status == StepStatus.CLAIMED
+        assert saved_state.steps["core.3"].claimed_by == "agent-local"
+
+    def test_save_state_creates_parent_dirs(self, tmp_path: Path, sample_state: PlanState):
+        path = tmp_path / "a" / "deep" / "path" / "state.json"
+
+        save_state(sample_state, path)
+
+        assert path.exists()
+
+    def test_save_state_atomic_cleanup_on_replace_error(
+        self, tmp_path: Path, sample_state: PlanState, monkeypatch: pytest.MonkeyPatch
+    ):
+        path = tmp_path / "state.json"
+
+        def _boom_replace(src: str, dst: str) -> None:
+            raise OSError("replace failed")
+
+        monkeypatch.setattr("vectl.io.os.replace", _boom_replace)
+
+        with pytest.raises(OSError, match="replace failed"):
+            save_state(sample_state, path)
+
+        assert not path.exists()
+        assert list(tmp_path.glob("*.tmp")) == []
+
+
+class TestStateExtractionAndMerge:
+    def test_extract_state_empty_plan(self) -> None:
+        plan = Plan(project="empty-project")
+        state = extract_state(plan)
+        assert state == PlanState(plan_id="", steps={}, phases={}, clipboard=None)
+
+    def test_extract_state_collects_mutable_fields(self) -> None:
+        plan = make_plan_for_state_tests()
+        state = extract_state(plan)
+
+        assert state.plan_id == "plan-123"
+        assert state.clipboard == plan.clipboard
+        assert set(state.steps) == {
+            "s_pending",
+            "s_claimed",
+            "s_done",
+            "s_skipped",
+            "s_rejected",
+            "s2_pending",
+        }
+        assert state.steps["s_claimed"].status == StepStatus.CLAIMED
+        assert state.steps["s_claimed"].claimed_by == "agent-a"
+        assert state.steps["s_skipped"].skipped_reason == "not needed"
+        assert state.steps["s_rejected"].rejection_reason == "bad approach"
+        assert state.phases["core"].status == PhaseStatus.IN_PROGRESS
+        assert state.phases["core"].evidence == "phase evidence"
+
+    def test_extract_state_copies_rejection_history(self) -> None:
+        plan = Plan(
+            project="history-test",
+            phases=[
+                Phase(
+                    id="core",
+                    name="Core",
+                    steps=[
+                        Step(
+                            id="s_rejected",
+                            name="Rejected",
+                            status=StepStatus.REJECTED,
+                            rejection_reason="bad approach",
+                            rejection_history=[
+                                RejectionEntry(
+                                    reason="old rejection",
+                                    timestamp="2026-01-01T00:00:00Z",
+                                    reviewer="reviewer-1",
+                                )
+                            ],
+                        )
+                    ],
+                )
+            ],
+        )
+        state = extract_state(plan)
+
+        plan_rejections = plan.phases[0].steps[0].rejection_history
+        state_rejections = state.steps["s_rejected"].rejection_history
+
+        assert state_rejections == plan_rejections
+        assert state_rejections is not plan_rejections
+
+        plan_rejections.append(
+            RejectionEntry(
+                reason="later rejection",
+                timestamp="2026-01-05T00:00:00Z",
+                reviewer="reviewer-2",
+            )
+        )
+        assert len(state_rejections) == 1
+
+    def test_strip_state_resets_mutable_fields(self) -> None:
+        original = make_plan_for_state_tests()
+        stripped = strip_state(original)
+
+        assert original is not stripped
+        assert stripped.clipboard is None
+        assert all(phase.status == PhaseStatus.PENDING for phase in stripped.phases)
+        assert all(
+            step.status == StepStatus.PENDING for phase in stripped.phases for step in phase.steps
+        )
+        assert all(step.claimed_by is None for phase in stripped.phases for step in phase.steps)
+        assert all(step.claimed_at is None for phase in stripped.phases for step in phase.steps)
+        assert all(step.evidence is None for phase in stripped.phases for step in phase.steps)
+        assert all(step.skipped_reason is None for phase in stripped.phases for step in phase.steps)
+        assert all(
+            step.rejection_reason is None for phase in stripped.phases for step in phase.steps
+        )
+        assert all(
+            step.rejection_history == [] for phase in stripped.phases for step in phase.steps
+        )
+        assert all(
+            step.affinity_override is False for phase in stripped.phases for step in phase.steps
+        )
+        assert all(
+            step.affinity_override_by is None for phase in stripped.phases for step in phase.steps
+        )
+        assert all(
+            step.affinity_override_at is None for phase in stripped.phases for step in phase.steps
+        )
+        assert all(phase.evidence is None for phase in stripped.phases)
+
+        # Plan definition fields are preserved
+        assert stripped.project == original.project
+        assert [phase.id for phase in stripped.phases] == [phase.id for phase in original.phases]
+        assert [phase.name for phase in stripped.phases] == [
+            phase.name for phase in original.phases
+        ]
+        assert stripped.phases[0].steps[2].description == original.phases[0].steps[2].description
+        assert stripped.phases[0].steps[2].verification == original.phases[0].steps[2].verification
+        assert stripped.phases[0].steps[2].refs == original.phases[0].steps[2].refs
+        assert stripped.phases[0].steps[2].depends_on == original.phases[0].steps[2].depends_on
+
+        # Original plan remains unchanged
+        assert original.clipboard is not None
+        assert original.phases[0].status == PhaseStatus.IN_PROGRESS
+        assert original.phases[0].steps[1].status == StepStatus.CLAIMED
+
+    def test_merge_plan(self) -> None:
+        plan_def = make_plan_for_state_tests()
+        plan_def.phases[0].steps[0].claimed_by = "before"
+        plan_def.phases[0].steps[0].status = StepStatus.CLAIMED
+
+        state = PlanState(
+            plan_id="plan-123",
+            clipboard=Clipboard(
+                author="agent-b",
+                summary="merged",
+                content="from state",
+                written_at="2026-01-03T00:00:00Z",
+                expires_at="2026-01-04T00:00:00Z",
+            ),
+            steps={
+                "s_claimed": StepState(
+                    status=StepStatus.REJECTED,
+                    rejection_reason="now rejected",
+                    rejection_history=[],
+                    claimed_by=None,
+                ),
+                "s_done": StepState(
+                    status=StepStatus.SKIPPED,
+                    skipped_reason="obsolete",
+                ),
+            },
+            phases={
+                "core": PhaseState(status=PhaseStatus.DONE, evidence="merged phase"),
+            },
+        )
+
+        merged = merge_plan(plan_def, state)
+
+        assert merged.plan_id == "plan-123"
+        assert merged.clipboard == state.clipboard
+        assert merged.phases[0].status == PhaseStatus.DONE
+        assert merged.phases[0].evidence == "merged phase"
+        assert merged.phases[1].status == PhaseStatus.LOCKED
+        assert merged.phases[1].evidence is None
+        assert merged.phases[0].steps[1].status == StepStatus.REJECTED
+        assert merged.phases[0].steps[1].rejection_reason == "now rejected"
+        assert merged.phases[0].steps[2].status == StepStatus.SKIPPED
+        assert merged.phases[0].steps[2].skipped_reason == "obsolete"
+
+    def test_merge_plan_partial_state(self) -> None:
+        plan_def = make_plan_for_state_tests()
+        state = PlanState(
+            plan_id="plan-123",
+            steps={"s_claimed": StepState(status=StepStatus.DONE, claimed_by="agent-merge")},
+            phases={},
+        )
+
+        merged = merge_plan(plan_def, state)
+
+        assert merged.phases[0].steps[1].status == StepStatus.DONE
+        assert merged.phases[0].steps[0].status == StepStatus.PENDING
+        assert merged.clipboard is None
+
+    def test_merge_plan_can_clear_clipboard(self) -> None:
+        plan_def = make_plan_for_state_tests()
+        state = PlanState(
+            plan_id="plan-123",
+            steps={},
+            phases={},
+            clipboard=None,
+        )
+
+        merged = merge_plan(plan_def, state)
+
+        assert merged.clipboard is None
+
+    def test_merge_plan_roundtrip_invariant(self) -> None:
+        original = make_plan_for_state_tests()
+        normalized = merge_plan(strip_state(original), extract_state(original))
+
+        assert normalized == original

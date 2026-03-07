@@ -11,7 +11,7 @@ from typing import Any
 
 import yaml
 
-from vectl.models import CASConflictError, Plan, PlanIOError, PlanState
+from vectl.models import CASConflictError, PhaseState, Plan, PlanIOError, PlanState, StepState
 
 _PLAN_YAML_HEADER = """\
 # =============================================================
@@ -64,7 +64,7 @@ def _state_to_json(state: PlanState) -> str:
 def _merge_state_for_cas_retry(base: PlanState, our_state: PlanState) -> PlanState:
     """Merge state updates for CAS retries using per-key LWW semantics.
 
-    Last-writer-wins semantics are applied for step and phase keys:
+    Last-writer-wins semantics are applied for step, phase, and clipboard keys:
     entries from `our_state` overwrite `base` values for matching keys.
     """
     merged_steps = dict(base.steps)
@@ -77,7 +77,7 @@ def _merge_state_for_cas_retry(base: PlanState, our_state: PlanState) -> PlanSta
         plan_id=our_state.plan_id or base.plan_id,
         steps=merged_steps,
         phases=merged_phases,
-        clipboard=our_state.clipboard or base.clipboard,
+        clipboard=our_state.clipboard,
     )
 
 
@@ -187,6 +187,81 @@ def _plan_to_dict(plan: Plan) -> dict[str, Any]:
     data = plan.model_dump(mode="json", exclude_none=True, exclude_defaults=False)
     # Remove empty lists and empty strings for cleaner YAML
     return _clean_dict(data)
+
+
+def extract_state(plan: Plan) -> PlanState:
+    """Extract mutable runtime state from a plan into a separate state object."""
+
+    step_states = {
+        step.id: StepState(
+            status=step.status,
+            claimed_by=step.claimed_by,
+            claimed_at=step.claimed_at,
+            evidence=step.evidence,
+            skipped_reason=step.skipped_reason,
+            rejection_reason=step.rejection_reason,
+            rejection_history=step.rejection_history,
+            affinity_override=step.affinity_override,
+            affinity_override_by=step.affinity_override_by,
+            affinity_override_at=step.affinity_override_at,
+        )
+        for phase in plan.phases
+        for step in phase.steps
+    }
+
+    phase_states = {
+        phase.id: PhaseState(status=phase.status, evidence=phase.evidence) for phase in plan.phases
+    }
+
+    return PlanState(
+        plan_id=plan.plan_id or "",
+        steps=step_states,
+        phases=phase_states,
+        clipboard=plan.clipboard,
+    )
+
+
+def strip_state(plan: Plan) -> Plan:
+    """Return a copy of the plan with mutable runtime state reset to defaults."""
+
+    stripped = plan.model_copy(deep=True)
+
+    for i, phase in enumerate(stripped.phases):
+        reset_phase = PhaseState()
+        stripped_phase = phase.model_copy(update=reset_phase.model_dump(mode="json"))
+        for j, step in enumerate(stripped_phase.steps):
+            reset_step = StepState()
+            stripped_step = step.model_copy(update=reset_step.model_dump(mode="json"))
+            stripped_phase.steps[j] = stripped_step
+        stripped.phases[i] = stripped_phase
+
+    stripped.clipboard = None
+    return stripped
+
+
+def merge_plan(plan_def: Plan, state: PlanState) -> Plan:
+    """Merge a state document into a plan definition."""
+
+    merged = plan_def.model_copy(deep=True)
+
+    if state.plan_id:
+        merged = merged.model_copy(update={"plan_id": state.plan_id})
+
+    for i, phase in enumerate(merged.phases):
+        phase_state = state.phases.get(phase.id)
+        if phase_state:
+            merged_phase = phase.model_copy(update=phase_state.model_dump(mode="json"))
+            merged.phases[i] = merged_phase
+
+        for j, step in enumerate(merged.phases[i].steps):
+            step_state = state.steps.get(step.id)
+            if step_state:
+                merged_step = step.model_copy(update=step_state.model_dump(mode="json"))
+                merged.phases[i].steps[j] = merged_step
+
+    merged = merged.model_copy(update={"clipboard": state.clipboard})
+
+    return merged
 
 
 def _clean_dict(d: dict[str, Any]) -> dict[str, Any]:

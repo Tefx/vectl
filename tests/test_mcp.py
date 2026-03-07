@@ -8,13 +8,21 @@ pointing to a temporary plan file.
 from __future__ import annotations
 
 import os
+import json
 from collections.abc import Iterator
 from pathlib import Path
+
+from vectl.io import extract_state, load_state, merge_plan
+from vectl.models import Plan
+from vectl.plan_path import resolve_state_path
 
 import pytest
 import yaml
 
 from vectl.mcp_server import (
+    _load as _vectl_load,
+    _save_both as _vectl_save_both,
+    _save_state as _vectl_save_state,
     vectl_claim as _vectl_claim_tool,
     vectl_check as _vectl_check_tool,
     vectl_clipboard as _vectl_clipboard_tool,
@@ -29,7 +37,7 @@ from vectl.mcp_server import (
     vectl_show as _vectl_show_tool,
     vectl_status as _vectl_status_tool,
 )
-from vectl.models import PhaseStatus, StepStatus
+from vectl.models import PhaseStatus, PlanError, StepStatus
 
 # FastMCP @mcp.tool() wraps functions in FunctionTool objects.
 # Access the underlying callable via .fn for direct testing.
@@ -104,6 +112,144 @@ def _make_plan_dict(
     }
 
 
+def _legacy_migration_plan_dict() -> dict:
+    """Create a migration fixture with embedded state in the plan body."""
+    return {
+        "version": 1,
+        "project": "migration-test",
+        "plan_id": "migration-plan-001",
+        "clipboard": {
+            "author": "reviewer",
+            "summary": "Handoff",
+            "content": "Legacy clipboard content preserved via state.",
+            "written_at": "2026-03-01T09:00:00Z",
+            "expires_at": "2026-03-31T09:00:00Z",
+        },
+        "phases": [
+            {
+                "id": "phase-a",
+                "name": "Phase A",
+                "status": "done",
+                "evidence": "Phase completed",
+                "steps": [
+                    {
+                        "id": "phase-a.step1",
+                        "name": "Step with all state",
+                        "status": "done",
+                        "description": "Legacy step 1",
+                        "claimed_by": "python-engineer",
+                        "claimed_at": "2026-02-21T08:11:51.841244+00:00",
+                        "evidence": "Implemented feature X.",
+                        "skipped_reason": "irrelevant",
+                        "rejection_reason": "Testing reject via MCP",
+                        "rejection_history": [
+                            {
+                                "reason": "Testing reject via MCP",
+                                "timestamp": "2026-02-09T04:46:23.870176+00:00",
+                                "reviewer": "mcp-tester",
+                            }
+                        ],
+                        "affinity_override": True,
+                        "affinity_override_by": "mcp-tester",
+                        "affinity_override_at": "2026-02-21T08:26:00.000000+00:00",
+                    },
+                    {
+                        "id": "phase-a.step2",
+                        "name": "Step with rejection history",
+                        "status": "rejected",
+                        "description": "Legacy step 2",
+                        "claimed_by": "mcp-test-agent",
+                        "claimed_at": "2026-02-09T04:46:06.123164+00:00",
+                        "evidence": "Legacy rejection",
+                        "skipped_reason": "absorbed",
+                        "rejection_reason": "Testing reject via MCP",
+                        "rejection_history": [
+                            {
+                                "reason": "Testing reject via MCP",
+                                "timestamp": "2026-02-09T04:46:23.870176+00:00",
+                                "reviewer": "mcp-tester",
+                            }
+                        ],
+                        "affinity_override": False,
+                        "affinity_override_by": "legacy-agent",
+                        "affinity_override_at": "2026-02-21T08:26:52.124877+00:00",
+                    },
+                    {
+                        "id": "phase-a.step3",
+                        "name": "Step with affinity override",
+                        "status": "skipped",
+                        "description": "Legacy step 3",
+                        "claimed_by": "other-agent",
+                        "claimed_at": "2026-02-21T08:26:52.124877+00:00",
+                        "evidence": "Completed with override.",
+                        "skipped_reason": "irrelevant",
+                        "rejection_reason": "No-op",
+                        "rejection_history": [],
+                        "affinity_override": True,
+                        "affinity_override_by": "planner",
+                        "affinity_override_at": "2026-02-21T08:26:52.124877+00:00",
+                    },
+                ],
+            },
+            {
+                "id": "phase-b",
+                "name": "Phase B",
+                "status": "pending",
+                "depends_on": ["phase-a"],
+                "steps": [
+                    {
+                        "id": "phase-b.step1",
+                        "name": "Pending step",
+                        "status": "pending",
+                        "claimed_by": "legacy-worker",
+                        "claimed_at": "2026-03-01T12:00:00Z",
+                        "evidence": "Legacy pending placeholder.",
+                        "skipped_reason": "absorbed",
+                        "rejection_reason": "Legacy pending rejection.",
+                        "rejection_history": [
+                            {
+                                "reason": "Warm-up",
+                                "timestamp": "2026-03-01T11:00:00Z",
+                                "reviewer": "planner",
+                            }
+                        ],
+                        "affinity_override": False,
+                        "affinity_override_by": "planner",
+                        "affinity_override_at": "2026-03-01T12:00:00Z",
+                    }
+                ],
+            },
+        ],
+    }
+
+
+def _legacy_migration_plan_file(tmp_path: Path) -> Path:
+    """Create and return a plan file with embedded state fields."""
+    plan_file = tmp_path / "plan.yaml"
+    plan_file.write_text(yaml.dump(_legacy_migration_plan_dict()))
+    return plan_file
+
+
+def _state_json_path(plan_file: Path) -> Path:
+    """Return state path for a plan path and verify it is under that plan."""
+    return resolve_state_path(plan_file)
+
+
+@pytest.fixture()
+def legacy_plan_file(tmp_path: Path) -> Iterator[Path]:
+    """Create a legacy plan file with embedded state and set VECTL_PLAN_PATH."""
+    plan_file = _legacy_migration_plan_file(tmp_path)
+    old = os.environ.get("VECTL_PLAN_PATH")
+    os.environ["VECTL_PLAN_PATH"] = str(plan_file)
+    try:
+        yield plan_file
+    finally:
+        if old is None:
+            os.environ.pop("VECTL_PLAN_PATH", None)
+        else:
+            os.environ["VECTL_PLAN_PATH"] = old
+
+
 @pytest.fixture()
 def plan_file(tmp_path: Path) -> Iterator[Path]:
     """Create a temp plan file and set VECTL_PLAN_PATH."""
@@ -119,8 +265,40 @@ def plan_file(tmp_path: Path) -> Iterator[Path]:
 
 
 def _reload_plan(path: Path) -> dict:
-    """Re-read the plan file as dict."""
-    return yaml.safe_load(path.read_text())
+    """Re-read the effective plan state as dict.
+
+    The active MCP implementation keeps mutable runtime fields (status, evidence,
+    claims, etc.) in a companion state.json. This helper merges that state back
+    into plan.yaml so tests can inspect the effective plan.
+    """
+    plan_data = yaml.safe_load(path.read_text())
+
+    state_path = resolve_state_path(path)
+    state, _ = load_state(state_path)
+    if not state.steps and not state.phases and state.clipboard is None and not state.plan_id:
+        return plan_data
+
+    plan = Plan.model_validate(plan_data)
+    merged = merge_plan(plan, state)
+    return merged.model_dump(mode="json")
+
+
+def _read_state_json(path: Path) -> dict:
+    """Load companion state.json payload as a plain dictionary."""
+    state_path = _state_json_path(path)
+    if not state_path.exists():
+        return {}
+    return json.loads(state_path.read_text())
+
+
+def _legacy_step_ids(plan_data: dict[str, object] | None = None) -> set[str]:
+    """Collect step IDs from a legacy migration fixture."""
+    data = plan_data if plan_data is not None else _legacy_migration_plan_dict()
+    step_ids: set[str] = set()
+    for phase in data["phases"]:  # type: ignore[operator]
+        for step in phase["steps"]:  # type: ignore[index]
+            step_ids.add(step["id"])  # type: ignore[index]
+    return step_ids
 
 
 # ---------------------------------------------------------------------------
@@ -1395,6 +1573,228 @@ class TestVectlClipboardCAS:
                 os.environ.pop("VECTL_PLAN_PATH", None)
             else:
                 os.environ["VECTL_PLAN_PATH"] = old
+
+
+class TestMcpSplitStateIntegration:
+    """Migration-safe behavior for MCP split-state refactor."""
+
+    def test_claim_creates_state_json(self, legacy_plan_file: Path) -> None:
+        result = vectl_claim(agent="bot", step_id="phase-b.step1")
+        assert result["ok"] is True
+
+        state_path = _state_json_path(legacy_plan_file)
+        assert state_path.exists()
+
+    def test_claim_state_json_contents(self, legacy_plan_file: Path) -> None:
+        vectl_claim(agent="bot", step_id="phase-b.step1")
+
+        state_payload = _read_state_json(legacy_plan_file)
+        assert state_payload["steps"]["phase-b.step1"]["status"] == StepStatus.CLAIMED.value
+        assert state_payload["steps"]["phase-b.step1"]["claimed_by"] == "bot"
+        assert "claimed_at" in state_payload["steps"]["phase-b.step1"]
+
+    def test_complete_updates_state_json_plan_yaml_unchanged(self, legacy_plan_file: Path) -> None:
+        vectl_claim(agent="bot", step_id="phase-b.step1")
+        vectl_complete(step_id="phase-b.step1", evidence="Legacy step completed")
+
+        state_payload = _read_state_json(legacy_plan_file)
+        completed = state_payload["steps"]["phase-b.step1"]
+        assert completed["status"] == StepStatus.DONE.value
+        assert completed["evidence"] == "Legacy step completed"
+
+        plan_data = yaml.safe_load(legacy_plan_file.read_text())
+        step_data = plan_data["phases"][1]["steps"][0]
+        assert step_data["status"] == "pending"
+        assert step_data["claimed_by"] == "legacy-worker"
+
+    def test_mutate_updates_both_files(self, legacy_plan_file: Path) -> None:
+        result = vectl_mutate(
+            action="add-step",
+            phase_id="phase-b",
+            name="Persisted Step",
+        )
+        assert "Added step" in result
+
+        assert _state_json_path(legacy_plan_file).exists()
+        plan_data = yaml.safe_load(legacy_plan_file.read_text())
+        assert any(
+            "persisted-step" in step.get("id", "") for step in plan_data["phases"][1]["steps"]
+        )
+
+        for phase in plan_data["phases"]:
+            assert "claimed_by" not in phase
+            assert "evidence" not in phase
+            assert "rejection_reason" not in phase
+            for step in phase["steps"]:
+                for field in (
+                    "claimed_by",
+                    "claimed_at",
+                    "evidence",
+                    "skipped_reason",
+                    "rejection_reason",
+                    "rejection_history",
+                    "affinity_override",
+                    "affinity_override_by",
+                    "affinity_override_at",
+                ):
+                    assert field not in step
+
+        reloaded = _reload_plan(legacy_plan_file)
+        assert any("persisted-step" in step["id"] for step in reloaded["phases"][1]["steps"])
+
+    def test_read_only_tools_no_state_write(self, plan_file: Path) -> None:
+        state_path = _state_json_path(plan_file)
+        assert not state_path.exists()
+
+        vectl_status()
+        assert not state_path.exists()
+
+        vectl_show(id="a.1")
+        assert not state_path.exists()
+
+    def test_migration_roundtrip_all_state_fields(self, legacy_plan_file: Path) -> None:
+        plan, _def_hash, state_hash = _vectl_load()
+        assert state_hash == ""
+
+        plan_dict = plan.model_dump(mode="json")
+        fixture = _legacy_migration_plan_dict()
+
+        assert plan.project == fixture["project"]
+        assert plan.plan_id == fixture["plan_id"]
+
+        assert len(plan.phases) == len(fixture["phases"])
+        assert plan.clipboard is not None
+
+        plan_state = extract_state(plan)
+        assert set(plan_state.steps.keys()) == _legacy_step_ids(fixture)
+        assert set(plan_state.phases.keys()) == {"phase-a", "phase-b"}
+
+        for phase in fixture["phases"]:
+            for step in phase["steps"]:
+                state = plan_state.steps[step["id"]]
+                assert state.status.value == step["status"]
+                assert state.claimed_by == step["claimed_by"]
+                assert state.claimed_at == step["claimed_at"]
+                assert state.evidence == step["evidence"]
+                assert state.skipped_reason == step["skipped_reason"]
+                assert state.rejection_reason == step["rejection_reason"]
+                assert [entry.model_dump(mode="json") for entry in state.rejection_history] == step[
+                    "rejection_history"
+                ]
+                assert state.affinity_override == step["affinity_override"]
+                assert state.affinity_override_by == step["affinity_override_by"]
+                assert state.affinity_override_at == step["affinity_override_at"]
+
+        _vectl_save_state(plan, state_hash)
+        reloaded_plan, _, reloaded_state_hash = _vectl_load()
+
+        assert reloaded_plan.model_dump(mode="json") == plan_dict
+        assert reloaded_state_hash != ""
+
+    def test_migration_state_json_has_all_steps(self, legacy_plan_file: Path) -> None:
+        vectl_claim(agent="bot", step_id="phase-b.step1")
+
+        payload = _read_state_json(legacy_plan_file)
+        steps = set(payload["steps"].keys())
+        assert steps == _legacy_step_ids()
+
+        expected = {
+            step["id"]: step
+            for phase in _legacy_migration_plan_dict()["phases"]
+            for step in phase["steps"]
+        }
+        assert (
+            payload["steps"]["phase-a.step2"]["rejection_history"]
+            == expected["phase-a.step2"]["rejection_history"]
+        )
+
+    def test_migration_stale_plan_yaml_ignored(self, legacy_plan_file: Path) -> None:
+        vectl_claim(agent="bot", step_id="phase-b.step1")
+
+        plan_data = yaml.safe_load(legacy_plan_file.read_text())
+        stale_step = plan_data["phases"][1]["steps"][0]
+        stale_step["status"] = "done"
+        stale_step["claimed_by"] = "stale-agent"
+        stale_step["evidence"] = "stale-state"
+        legacy_plan_file.write_text(yaml.dump(plan_data))
+
+        reloaded, _, _ = _vectl_load()
+        reloaded_step_pair = reloaded.find_step("phase-b.step1")
+        assert reloaded_step_pair is not None
+        _, reloaded_step = reloaded_step_pair
+        assert reloaded_step.status == StepStatus.CLAIMED
+        assert reloaded_step.claimed_by == "bot"
+
+    def test_migration_definition_write_strips_state(self, legacy_plan_file: Path) -> None:
+        vectl_claim(agent="bot", step_id="phase-b.step1")
+
+        result = vectl_mutate(
+            action="add-step",
+            phase_id="phase-b",
+            name="Strip Me",
+        )
+        assert "Added step" in result
+
+        plan_data = yaml.safe_load(legacy_plan_file.read_text())
+        for phase in plan_data["phases"]:
+            assert "claimed_by" not in phase
+            assert "evidence" not in phase
+            for step in phase["steps"]:
+                for field in (
+                    "claimed_by",
+                    "claimed_at",
+                    "evidence",
+                    "skipped_reason",
+                    "rejection_reason",
+                    "rejection_history",
+                    "affinity_override",
+                    "affinity_override_by",
+                    "affinity_override_at",
+                ):
+                    assert field not in step
+
+        payload = _read_state_json(legacy_plan_file)
+        assert "phase-b.step1" in payload["steps"]
+        assert payload["steps"]["phase-b.step1"]["status"] == StepStatus.CLAIMED.value
+
+        reloaded = _reload_plan(legacy_plan_file)
+        assert any("strip-me" in step["id"] for step in reloaded["phases"][1]["steps"])
+
+    def test_migration_clipboard_roundtrip(self, legacy_plan_file: Path) -> None:
+        plan, _, state_hash = _vectl_load()
+        _vectl_save_state(plan, state_hash)
+
+        payload = _read_state_json(legacy_plan_file)
+        assert payload["clipboard"]["author"] == "reviewer"
+
+        result = vectl_mutate(action="edit-plan", project_guidance="Clipboard check")
+        assert "Updated plan" in result
+
+        plan_data = yaml.safe_load(legacy_plan_file.read_text())
+        assert "clipboard" not in plan_data
+
+        reloaded, _, _ = _vectl_load()
+        assert reloaded.clipboard is not None
+        assert reloaded.clipboard.author == "reviewer"
+        assert reloaded.clipboard.summary == "Handoff"
+
+    def test_save_both_plan_cas_conflict_does_not_persist_state(
+        self, legacy_plan_file: Path
+    ) -> None:
+        plan, def_hash, state_hash = _vectl_load()
+        assert state_hash == ""
+
+        state_path = _state_json_path(legacy_plan_file)
+        assert not state_path.exists()
+
+        plan_data = yaml.safe_load(legacy_plan_file.read_text())
+        plan_data["context"] = "concurrent edit to trigger CAS conflict"
+        legacy_plan_file.write_text(yaml.dump(plan_data))
+
+        with pytest.raises(PlanError, match="CAS conflict: plan.yaml"):
+            _vectl_save_both(plan, def_hash, state_hash)
+
+        assert not state_path.exists()
 
 
 class TestVectlInit:

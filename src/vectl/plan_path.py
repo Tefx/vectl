@@ -53,7 +53,7 @@ def resolve_plan_path(explicit: Path | None = None) -> Path:
     # 3. Deprecated alias: VECTL_PLAN (warn)
     if env_deprecated := os.environ.get(ENV_PLAN_PATH_DEPRECATED):
         warnings.warn(
-            f"VECTL_PLAN is deprecated, use VECTL_PLAN_PATH instead.",
+            "VECTL_PLAN is deprecated, use VECTL_PLAN_PATH instead.",
             DeprecationWarning,
             stacklevel=2,
         )
@@ -83,14 +83,20 @@ def resolve_state_path(plan_path: Path | None = None) -> Path:
     if plan_path is None:
         plan_path = resolve_plan_path()
 
-    git_result = subprocess.run(
-        ["git", "rev-parse", "--git-common-dir"],
-        capture_output=True,
-        text=True,
-        cwd=plan_path.parent,
-    )
+    try:
+        git_result = subprocess.run(
+            ["git", "rev-parse", "--git-common-dir"],
+            capture_output=True,
+            text=True,
+            cwd=plan_path.parent,
+        )
+    except OSError:
+        return plan_path.parent / ".vectl" / "state.json"
 
     if git_result.returncode == 0:
-        return Path(git_result.stdout.strip()) / "vectl" / "state.json"
+        git_common_dir = Path(git_result.stdout.strip())
+        if not git_common_dir.is_absolute():
+            git_common_dir = plan_path.parent / git_common_dir
+        return git_common_dir / "vectl" / "state.json"
 
     return plan_path.parent / ".vectl" / "state.json"

@@ -228,10 +228,28 @@ def strip_state(plan: Plan) -> Plan:
 
     for i, phase in enumerate(stripped.phases):
         reset_phase = PhaseState()
-        stripped_phase = phase.model_copy(update=reset_phase.model_dump(mode="json"))
+        stripped_phase = phase.model_copy(
+            update={
+                "status": reset_phase.status,
+                "evidence": reset_phase.evidence,
+            }
+        )
         for j, step in enumerate(stripped_phase.steps):
             reset_step = StepState()
-            stripped_step = step.model_copy(update=reset_step.model_dump(mode="json"))
+            stripped_step = step.model_copy(
+                update={
+                    "status": reset_step.status,
+                    "claimed_by": reset_step.claimed_by,
+                    "claimed_at": reset_step.claimed_at,
+                    "evidence": reset_step.evidence,
+                    "skipped_reason": reset_step.skipped_reason,
+                    "rejection_reason": reset_step.rejection_reason,
+                    "rejection_history": reset_step.rejection_history,
+                    "affinity_override": reset_step.affinity_override,
+                    "affinity_override_by": reset_step.affinity_override_by,
+                    "affinity_override_at": reset_step.affinity_override_at,
+                }
+            )
             stripped_phase.steps[j] = stripped_step
         stripped.phases[i] = stripped_phase
 
@@ -250,13 +268,31 @@ def merge_plan(plan_def: Plan, state: PlanState) -> Plan:
     for i, phase in enumerate(merged.phases):
         phase_state = state.phases.get(phase.id)
         if phase_state:
-            merged_phase = phase.model_copy(update=phase_state.model_dump(mode="json"))
+            merged_phase = phase.model_copy(
+                update={
+                    "status": phase_state.status,
+                    "evidence": phase_state.evidence,
+                }
+            )
             merged.phases[i] = merged_phase
 
         for j, step in enumerate(merged.phases[i].steps):
             step_state = state.steps.get(step.id)
             if step_state:
-                merged_step = step.model_copy(update=step_state.model_dump(mode="json"))
+                merged_step = step.model_copy(
+                    update={
+                        "status": step_state.status,
+                        "claimed_by": step_state.claimed_by,
+                        "claimed_at": step_state.claimed_at,
+                        "evidence": step_state.evidence,
+                        "skipped_reason": step_state.skipped_reason,
+                        "rejection_reason": step_state.rejection_reason,
+                        "rejection_history": step_state.rejection_history,
+                        "affinity_override": step_state.affinity_override,
+                        "affinity_override_by": step_state.affinity_override_by,
+                        "affinity_override_at": step_state.affinity_override_at,
+                    }
+                )
                 merged.phases[i].steps[j] = merged_step
 
     merged = merged.model_copy(update={"clipboard": state.clipboard})

@@ -674,7 +674,13 @@ class TestStateExtractionAndMerge:
                 "s_claimed": StepState(
                     status=StepStatus.REJECTED,
                     rejection_reason="now rejected",
-                    rejection_history=[],
+                    rejection_history=[
+                        RejectionEntry(
+                            reason="rejected in merge",
+                            timestamp="2026-03-01T00:00:00Z",
+                            reviewer="reviewer-a",
+                        )
+                    ],
                     claimed_by=None,
                 ),
                 "s_done": StepState(
@@ -697,6 +703,8 @@ class TestStateExtractionAndMerge:
         assert merged.phases[1].evidence is None
         assert merged.phases[0].steps[1].status == StepStatus.REJECTED
         assert merged.phases[0].steps[1].rejection_reason == "now rejected"
+        assert merged.phases[0].steps[1].rejection_history
+        assert isinstance(merged.phases[0].steps[1].rejection_history[0], RejectionEntry)
         assert merged.phases[0].steps[2].status == StepStatus.SKIPPED
         assert merged.phases[0].steps[2].skipped_reason == "obsolete"
 

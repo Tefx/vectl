@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import os
 import json
+import subprocess
 from collections.abc import Iterator
 from pathlib import Path
 
@@ -37,7 +38,7 @@ from vectl.mcp_server import (
     vectl_show as _vectl_show_tool,
     vectl_status as _vectl_status_tool,
 )
-from vectl.models import PhaseStatus, PlanError, StepStatus
+from vectl.models import PhaseStatus, PlanError, PlanIOError, StepStatus
 
 # FastMCP @mcp.tool() wraps functions in FunctionTool objects.
 # Access the underlying callable via .fn for direct testing.
@@ -1176,6 +1177,37 @@ class TestVectlMcpLinkedWorktreeImplicitResolution:
 
         assert "Mutate blocked" not in result
         assert "Added step" in result
+
+    def test_mcp_status_fails_closed_on_malformed_worktree_without_walkup(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """Malformed linked-worktree probe fails closed to cwd sentinel path."""
+        main_root = tmp_path / "main_worktree"
+        main_root.mkdir()
+        (main_root / "plan.yaml").write_text(yaml.dump(_make_plan_dict()))
+
+        linked_root = main_root / "linked_worktree"
+        linked_root.mkdir()
+        monkeypatch.chdir(linked_root)
+        monkeypatch.delenv("VECTL_PLAN_PATH", raising=False)
+
+        def fake_run(
+            cmd: list[str], *, capture_output: bool, text: bool, cwd: Path
+        ) -> subprocess.CompletedProcess[str]:
+            if cmd == ["git", "rev-parse", "--git-common-dir"]:
+                return subprocess.CompletedProcess(cmd, 0, stdout=".git\n", stderr="")
+            if cmd == ["git", "rev-parse", "--git-dir"]:
+                # Malformed linked-worktree metadata: empty git-dir output.
+                return subprocess.CompletedProcess(cmd, 0, stdout="", stderr="")
+            raise AssertionError(f"Unexpected git command: {cmd}")
+
+        monkeypatch.setattr("vectl.plan_path.subprocess.run", fake_run)
+
+        with pytest.raises(
+            PlanIOError,
+            match=r"Plan file not found: .*linked_worktree/plan\.yaml",
+        ):
+            vectl_status()
 
 
 # ---------------------------------------------------------------------------

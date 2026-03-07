@@ -24,8 +24,9 @@ To satisfy FR R6 (structured guidance output), vectl_claim returns a structured
 payload including a Guidance object plus a Markdown rendition.
 Plan path: resolved via shared plan_path.resolve_plan_path() —
   explicit/override path > VECTL_PLAN_PATH > VECTL_PLAN (deprecated) >
-  linked-worktree main-root plan path (no local walk-up fallback) >
-  walk-up > ./plan.yaml.
+  linked-worktree main-root plan path (no local walk-up fallback, even when
+  missing) > malformed linked-worktree probe fail-closed sentinel
+  (absolute cwd/plan.yaml, no walk-up) > walk-up > ./plan.yaml.
 """
 
 from __future__ import annotations

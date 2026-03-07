@@ -9,6 +9,7 @@ import enum
 import os
 import sys
 from pathlib import Path
+from typing import Any
 
 import typer
 from rich.console import Console
@@ -55,6 +56,7 @@ from vectl.dashboard import generate_dashboard
 from vectl.guide import GUIDE_ALL as _GUIDE_ALL
 from vectl.guide import GUIDE_TOPICS as _GUIDE_TOPICS
 from vectl.io import (
+    _resolve_git_dir,
     extract_state,
     load_plan_definition,
     load_state,
@@ -1432,10 +1434,14 @@ def validate(
     check_refs: bool = typer.Option(False, "--check-refs", help="Check that ref files exist."),
 ) -> None:
     """Validate plan structure and consistency."""
-    p, _, _, plan_path = _load(plan)
+    p, _, state_hash, plan_path = _load(plan)
+    state_path = resolve_state_path(plan_path)
+    state, _ = load_state(state_path)
 
     base_path = plan_path.parent if check_refs else None
-    errors = validate_plan(p, check_refs=check_refs, base_path=base_path)
+    errors = validate_plan(
+        p, check_refs=check_refs, base_path=base_path, state=state if state_hash else None
+    )
 
     if not errors:
         out.print("[green bold]✓ Plan is valid.[/]")
@@ -1457,6 +1463,55 @@ def validate(
 
     if errs:
         raise typer.Exit(1)
+
+
+@app.command()
+def recover(
+    plan: Path | None = PlanOption,
+    yes: bool = typer.Option(False, "--yes", "-y", help="Skip confirmation prompt."),
+) -> None:
+    """Recover plan from backup in .git/vectl/plan.yaml.bak.
+
+    Restores the plan to a previous state from the backup file.
+    Shows a diff of what will change before applying.
+    """
+    from vectl.core import recover_from_backup
+
+    p, _, _, plan_path = _load(plan)
+
+    # Find backup path
+    git_dir = _resolve_git_dir(plan_path)
+    if git_dir is None:
+        _die("Not in a git repository or in a linked worktree")
+
+    assert git_dir is not None  # Type narrowing for pyright
+    backup_path = git_dir / "vectl" / "plan.yaml.bak"
+    if not backup_path.exists():
+        _die(f"Backup not found: {backup_path}")
+
+    # Show diff and apply recovery
+    result: Any = None
+    try:
+        result = recover_from_backup(plan_path, backup_path)
+    except PlanError as e:
+        _die(str(e))
+    except PlanIOError as e:
+        _die(str(e))
+
+    assert result is not None
+    out.print("[bold]Recovery diff:[/]")
+    out.print(result.diff_summary)
+    diff_output = result.diff_summary
+
+    if not yes:
+        out.print()
+        confirm = typer.prompt("Restore plan.yaml from backup? (y/N)", default="n")
+        if confirm.lower() != "y":
+            out.print("[yellow]Cancelled.[/]")
+            return
+
+    out.print("[green]Plan restored from backup.[/]")
+    out.print(diff_output)
 
 
 @app.command()

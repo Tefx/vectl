@@ -401,3 +401,52 @@ def _clean_dict(d: dict[str, Any]) -> dict[str, Any]:
         else:
             result[k] = v
     return result
+
+
+def _resolve_git_dir(plan_path: Path) -> Path | None:
+    """Resolve the .git directory for a plan file's parent directory.
+
+    Returns None if not in a git repo or if in a linked worktree.
+    """
+    from vectl.plan_path import is_linked_worktree
+
+    # Check if we're in a linked worktree - don't backup there
+    is_linked, _ = is_linked_worktree()
+    if is_linked:
+        return None
+
+    # Find .git directory
+    current = plan_path.parent.resolve()
+    while current != current.parent:
+        git_dir = current / ".git"
+        if git_dir.exists() and git_dir.is_dir():
+            return git_dir
+        current = current.parent
+    return None
+
+
+def _backup_definition(plan_path: Path) -> Path | None:
+    """Create a backup of the plan definition in .git/vectl/plan.yaml.bak.
+
+    Returns the backup path if successful, None if skipped.
+
+    Raises:
+        OSError: If backup fails due to permissions or IO issues.
+    """
+    # Check if we're in a linked worktree - skip backup
+    git_dir = _resolve_git_dir(plan_path)
+    if git_dir is None:
+        return None
+
+    # Create backup directory
+    vectl_dir = git_dir / "vectl"
+    vectl_dir.mkdir(parents=True, exist_ok=True)
+
+    # Read current plan content
+    content = plan_path.read_text(encoding="utf-8")
+
+    # Write backup
+    backup_path = vectl_dir / "plan.yaml.bak"
+    backup_path.write_text(content, encoding="utf-8")
+
+    return backup_path

@@ -1537,6 +1537,83 @@ def vectl_check(
 
 
 # ---------------------------------------------------------------------------
+# Tool 15: vectl_recover
+# ---------------------------------------------------------------------------
+
+
+def _resolve_git_dir(path: Path) -> Path | None:
+    """Resolve the .git directory for a plan file's parent directory.
+
+    Returns None if not in a git repo or if in a linked worktree.
+    """
+    from vectl.plan_path import is_linked_worktree
+
+    # Check if we're in a linked worktree - don't backup there
+    is_linked, _ = is_linked_worktree()
+    if is_linked:
+        return None
+
+    # Find .git directory
+    current = path.parent.resolve()
+    while current != current.parent:
+        git_dir = current / ".git"
+        if git_dir.exists() and git_dir.is_dir():
+            return git_dir
+        current = current.parent
+    return None
+
+
+@mcp.tool(
+    description=(
+        "Recover plan from a backup file in .git/vectl/plan.yaml.bak. "
+        "Use this to restore the plan to a previous state after unwanted changes. "
+        "Returns a diff showing what changed."
+    ),
+)
+def vectl_recover() -> dict:
+    """Recover plan from backup.
+
+    Attempts to restore plan.yaml from .git/vectl/plan.yaml.bak.
+    Returns diff summary and confirmation.
+
+    Returns:
+        Dict with recovery result details.
+    """
+    from vectl.core import recover_from_backup
+
+    plan_file = _plan_path()
+
+    # Find backup path
+    git_dir = _resolve_git_dir(plan_file)
+    if git_dir is None:
+        return {
+            "ok": False,
+            "restored": False,
+            "diff_summary": "",
+            "error": "Not in a git repository or in a linked worktree",
+        }
+
+    backup_path = git_dir / "vectl" / "plan.yaml.bak"
+
+    try:
+        result = recover_from_backup(plan_file, backup_path)
+    except Exception as e:
+        return {
+            "ok": False,
+            "restored": False,
+            "diff_summary": "",
+            "error": str(e),
+        }
+
+    return {
+        "ok": result.ok,
+        "restored": result.restored,
+        "diff_summary": result.diff_summary,
+        "error": result.error,
+    }
+
+
+# ---------------------------------------------------------------------------
 # Entry point
 # ---------------------------------------------------------------------------
 

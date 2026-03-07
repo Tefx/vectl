@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import re
+from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
 from enum import Enum
 from pathlib import Path
@@ -21,6 +22,8 @@ from vectl.models import (
     PhaseStatus,
     Plan,
     PlanError,
+    PlanIOError,
+    PlanState,
     PlanValidationIssue,
     RejectionEntry,
     ReviewResult,
@@ -41,7 +44,11 @@ from vectl.semantics import is_step_locked as _is_step_locked_shared
 
 
 def validate_plan(
-    plan: Plan, *, check_refs: bool = False, base_path: Path | None = None
+    plan: Plan,
+    *,
+    check_refs: bool = False,
+    base_path: Path | None = None,
+    state: PlanState | None = None,
 ) -> list[PlanValidationIssue]:
     """Validate plan structure, DAG, and consistency.
 
@@ -49,8 +56,26 @@ def validate_plan(
         plan: The plan to validate.
         check_refs: If True, check that files in refs[] exist on disk.
         base_path: Base path for resolving refs (defaults to cwd).
+        state: Optional plan state for orphan detection.
     """
     errors: list[PlanValidationIssue] = []
+
+    # Orphan detection: check if state has entries not in plan
+    if state is not None:
+        from vectl.io import detect_orphan_state
+
+        orphans = detect_orphan_state(plan, state)
+        if orphans:
+            orphan_messages = []
+            for o in orphans:
+                if o.kind == "phase":
+                    orphan_messages.append(f"  - Phase '{o.id}' in state but not in plan")
+                elif o.kind == "step":
+                    orphan_messages.append(f"  - Step '{o.id}' in state but not in plan")
+            if orphan_messages:
+                msg = "Orphan state entries detected:\n" + "\n".join(orphan_messages)
+                msg += "\nRun 'vectl recover' to clean up ghost state"
+                errors.append(PlanValidationIssue(msg, is_warning=True))
 
     # Phase ID uniqueness
     phase_ids: set[str] = set()
@@ -2447,3 +2472,88 @@ def upsert_agents_md(directory: Path, target: AgentsTarget = AgentsTarget.auto) 
     with target_path.open("a", encoding="utf-8") as f:
         f.write("\n\n" + _AGENTS_MD_SNIPPET)
     return f"Appended vectl section to {target_path.name}", target_path.name
+
+
+# ---------------------------------------------------------------------------
+# Recovery from backup
+# ---------------------------------------------------------------------------
+
+
+@dataclass
+class RecoverResult:
+    """Result of a recover operation."""
+
+    ok: bool
+    restored: bool
+    diff: DiffResult
+    diff_summary: str
+    error: str | None = None
+
+
+def recover_from_backup(plan_path: Path, backup_path: Path | None = None) -> RecoverResult:
+    """Recover plan from a backup file.
+
+    If backup_path is not provided, attempts to find it at .git/vectl/plan.yaml.bak.
+
+    Args:
+        plan_path: Path to the current plan.yaml.
+        backup_path: Optional explicit backup path. If None, auto-detects from plan_path.
+
+    Returns:
+        RecoverResult with ok, restored flag, diff info, and optional error.
+
+    Raises:
+        PlanError: If backup file is not found or is invalid.
+    """
+    from vectl.io import load_plan_definition, save_plan
+
+    # Auto-detect backup path if not provided
+    if backup_path is None:
+        from vectl.io import _resolve_git_dir
+
+        git_dir = _resolve_git_dir(plan_path)
+        if git_dir is None:
+            return RecoverResult(
+                ok=False,
+                restored=False,
+                diff=DiffResult(phase_changes=[], step_changes=[]),
+                diff_summary="",
+                error="Not in a git repository or in a linked worktree",
+            )
+        backup_path = git_dir / "vectl" / "plan.yaml.bak"
+
+    if not backup_path.exists():
+        raise PlanError(f"Backup file not found: {backup_path}")
+
+    # Load backup plan (convert validation errors to PlanIOError for test compatibility)
+    try:
+        backup_plan, _ = load_plan_definition(backup_path)
+    except PlanIOError:
+        raise
+    except Exception as e:
+        raise PlanError(f"Invalid backup file: {e}") from e
+
+    # Compute diff before overwriting
+    current_plan, _ = load_plan_definition(plan_path)
+    diff = diff_plans(current_plan, backup_plan)
+
+    # Save backup as current
+    save_plan(backup_plan, plan_path)
+
+    # Build summary
+    step_count = len(diff.step_changes)
+    phase_count = len(diff.phase_changes)
+    summary_parts = []
+    if step_count > 0:
+        summary_parts.append(f"{step_count} step(s) changed")
+    if phase_count > 0:
+        summary_parts.append(f"{phase_count} phase(s) changed")
+    if not summary_parts:
+        summary_parts.append("No changes")
+
+    return RecoverResult(
+        ok=True,
+        restored=True,
+        diff=diff,
+        diff_summary="Total changes: " + ", ".join(summary_parts),
+    )

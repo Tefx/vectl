@@ -122,6 +122,18 @@ def _plan_with_phase(
     return Plan(project="test", phases=phases)
 
 
+def _must_find_step(plan: Plan, step_id: str) -> Step:
+    found = plan.find_step(step_id)
+    assert found is not None
+    return found[1]
+
+
+def _must_find_phase(plan: Plan, phase_id: str) -> Phase:
+    phase = plan.find_phase(phase_id)
+    assert phase is not None
+    return phase
+
+
 class TestAddStep:
     def test_basic_auto_id(self) -> None:
         plan = _plan_with_phase()
@@ -416,19 +428,19 @@ class TestEditStep:
     def test_edit_name(self) -> None:
         plan = _plan_with_phase(steps=[Step(id="s1", name="Old Name")])
         plan = edit_step(plan, "s1", name="New Name")
-        _, step = plan.find_step("s1")
+        step = _must_find_step(plan, "s1")
         assert step.name == "New Name"
 
     def test_edit_description(self) -> None:
         plan = _plan_with_phase(steps=[Step(id="s1", name="S")])
         plan = edit_step(plan, "s1", description="Updated desc")
-        _, step = plan.find_step("s1")
+        step = _must_find_step(plan, "s1")
         assert step.description == "Updated desc"
 
     def test_edit_verification(self) -> None:
         plan = _plan_with_phase(steps=[Step(id="s1", name="S")])
         plan = edit_step(plan, "s1", verification="pytest -v")
-        _, step = plan.find_step("s1")
+        step = _must_find_step(plan, "s1")
         assert step.verification == "pytest -v"
 
     def test_add_dep(self) -> None:
@@ -439,7 +451,7 @@ class TestEditStep:
             ]
         )
         plan = edit_step(plan, "s2", add_deps=["s1"])
-        _, step = plan.find_step("s2")
+        step = _must_find_step(plan, "s2")
         assert step.depends_on == ["s1"]
 
     def test_add_dep_invalid(self) -> None:
@@ -455,7 +467,7 @@ class TestEditStep:
             ]
         )
         plan = edit_step(plan, "s2", add_deps=["s1"])
-        _, step = plan.find_step("s2")
+        step = _must_find_step(plan, "s2")
         assert step.depends_on == ["s1"]  # no duplicates
 
     def test_remove_dep(self) -> None:
@@ -466,13 +478,13 @@ class TestEditStep:
             ]
         )
         plan = edit_step(plan, "s2", remove_deps=["s1"])
-        _, step = plan.find_step("s2")
+        step = _must_find_step(plan, "s2")
         assert step.depends_on == []
 
     def test_remove_dep_nonexistent_is_noop(self) -> None:
         plan = _plan_with_phase(steps=[Step(id="s1", name="S")])
         plan = edit_step(plan, "s1", remove_deps=["nonexistent"])
-        _, step = plan.find_step("s1")
+        step = _must_find_step(plan, "s1")
         assert step.depends_on == []
 
     def test_step_not_found(self) -> None:
@@ -483,7 +495,7 @@ class TestEditStep:
     def test_multiple_edits(self) -> None:
         plan = _plan_with_phase(steps=[Step(id="s1", name="Old", description="old")])
         plan = edit_step(plan, "s1", name="New", description="new", verification="check")
-        _, step = plan.find_step("s1")
+        step = _must_find_step(plan, "s1")
         assert step.name == "New"
         assert step.description == "new"
         assert step.verification == "check"
@@ -723,7 +735,7 @@ class TestAddStepsBulk:
             ],
         )
         assert len(ids) == 1
-        _, step = plan.find_step(ids[0])
+        step = _must_find_step(plan, ids[0])
         assert step.name == "Step A"
         assert step.description == "Description A"
         assert step.verification == "pytest -v"
@@ -737,7 +749,7 @@ class TestAddStepsBulk:
             "p1",
             [
                 {"name": "Step A"},
-                {"name": "Step B", "after": [ids[0]] if False else []},
+                {"name": "Step B", "after": []},
             ],
         )
         # The above doesn't test deps since we don't know the ID ahead of time.
@@ -751,7 +763,7 @@ class TestAddStepsBulk:
                 {"name": "Step B", "after": ["p1.step-a"]},
             ],
         )
-        _, step_b = plan2.find_step(ids2[1])
+        step_b = _must_find_step(plan2, ids2[1])
         assert "p1.step-a" in step_b.depends_on
 
     def test_bulk_explicit_ids(self) -> None:
@@ -793,7 +805,7 @@ class TestAddStepsBulk:
                 {"name": "B", "after": "p1.a"},
             ],
         )
-        _, step_b = plan.find_step(ids[1])
+        step_b = _must_find_step(plan, ids[1])
         assert "p1.a" in step_b.depends_on
 
     def test_bulk_intra_batch_short_slug_ref(self) -> None:
@@ -809,9 +821,9 @@ class TestAddStepsBulk:
             ],
         )
         assert len(ids) == 3
-        _, step_b = plan.find_step(ids[1])
+        step_b = _must_find_step(plan, ids[1])
         assert "p1.step-a" in step_b.depends_on
-        _, step_c = plan.find_step(ids[2])
+        step_c = _must_find_step(plan, ids[2])
         assert "p1.step-a" in step_c.depends_on
         assert "p1.step-b" in step_c.depends_on
 
@@ -843,7 +855,7 @@ class TestAddStepsBulk:
             ],
         )
         assert len(ids) == 2
-        _, step_b = plan.find_step(ids[1])
+        step_b = _must_find_step(plan, ids[1])
         assert "p1.existing" in step_b.depends_on
         assert "p1.new-a" in step_b.depends_on
 
@@ -1003,17 +1015,17 @@ class TestEditPhase:
     def test_edit_name(self):
         plan = _plan_with_phase()
         plan = edit_phase(plan, "p1", name="Renamed Phase")
-        assert plan.find_phase("p1").name == "Renamed Phase"
+        assert _must_find_phase(plan, "p1").name == "Renamed Phase"
 
     def test_edit_context(self):
         plan = _plan_with_phase()
         plan = edit_phase(plan, "p1", context="New context info")
-        assert plan.find_phase("p1").context == "New context info"
+        assert _must_find_phase(plan, "p1").context == "New context info"
 
     def test_edit_gate(self):
         plan = _plan_with_phase()
         plan = edit_phase(plan, "p1", gate="mypy + pytest pass")
-        assert plan.find_phase("p1").gate == "mypy + pytest pass"
+        assert _must_find_phase(plan, "p1").gate == "mypy + pytest pass"
 
     def test_add_dep(self):
         plan = Plan(
@@ -1024,7 +1036,7 @@ class TestEditPhase:
             ],
         )
         plan = edit_phase(plan, "p1", add_deps=["p0"])
-        assert "p0" in plan.find_phase("p1").depends_on
+        assert "p0" in _must_find_phase(plan, "p1").depends_on
 
     def test_add_dep_invalid(self):
         plan = _plan_with_phase()
@@ -1045,7 +1057,7 @@ class TestEditPhase:
             ],
         )
         plan = edit_phase(plan, "p1", remove_deps=["p0"])
-        assert "p0" not in plan.find_phase("p1").depends_on
+        assert "p0" not in _must_find_phase(plan, "p1").depends_on
 
     def test_depends_on_override(self):
         plan = Plan(
@@ -1057,7 +1069,7 @@ class TestEditPhase:
             ],
         )
         plan = edit_phase(plan, "p1", depends_on=["p0", "p2"])
-        assert plan.find_phase("p1").depends_on == ["p0", "p2"]
+        assert _must_find_phase(plan, "p1").depends_on == ["p0", "p2"]
 
     def test_depends_on_override_clears(self):
         plan = Plan(
@@ -1068,7 +1080,7 @@ class TestEditPhase:
             ],
         )
         plan = edit_phase(plan, "p1", depends_on=[])
-        assert plan.find_phase("p1").depends_on == []
+        assert _must_find_phase(plan, "p1").depends_on == []
 
     def test_depends_on_override_invalid(self):
         plan = Plan(
@@ -1098,7 +1110,7 @@ class TestEditPhase:
         )
         # depends_on replaces, then add_deps appends
         plan = edit_phase(plan, "p1", depends_on=["p0"], add_deps=["p2"])
-        assert plan.find_phase("p1").depends_on == ["p0", "p2"]
+        assert _must_find_phase(plan, "p1").depends_on == ["p0", "p2"]
 
     def test_phase_not_found(self):
         plan = _plan_with_phase()

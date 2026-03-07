@@ -328,9 +328,17 @@ def _legacy_step_ids(plan_data: dict[str, object] | None = None) -> set[str]:
     """Collect step IDs from a legacy migration fixture."""
     data = plan_data if plan_data is not None else _legacy_migration_plan_dict()
     step_ids: set[str] = set()
-    for phase in data["phases"]:  # type: ignore[operator]
-        for step in phase["steps"]:  # type: ignore[index]
-            step_ids.add(step["id"])  # type: ignore[index]
+    phases_obj = data.get("phases")
+    assert isinstance(phases_obj, list)
+    for phase_obj in phases_obj:
+        assert isinstance(phase_obj, dict)
+        steps_obj = phase_obj.get("steps")
+        assert isinstance(steps_obj, list)
+        for step_obj in steps_obj:
+            assert isinstance(step_obj, dict)
+            step_id_obj = step_obj.get("id")
+            assert isinstance(step_id_obj, str)
+            step_ids.add(step_id_obj)
     return step_ids
 
 
@@ -2701,14 +2709,16 @@ class TestVectlRecover:
         # Make the backup directory read-only to simulate permission error
         os.chmod(vectl_dir, 0o444)
         try:
-            # The function may raise PermissionError or return error dict depending on where it fails
+            # May raise PermissionError or return an error dict,
+            # depending on where recovery fails.
             try:
                 result = vectl_recover()
                 # If it returns, verify it has an error
                 assert result["ok"] is False
                 assert "error" in result
             except PermissionError:
-                # PermissionError is also acceptable behavior - the test verifies permission errors cause failures
+                # PermissionError is acceptable: permission failures
+                # must surface as a failed recovery path.
                 pass
         finally:
             os.chmod(vectl_dir, 0o755)

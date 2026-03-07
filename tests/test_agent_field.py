@@ -2,7 +2,8 @@
 
 Covers:
   - Model: Step.agent default + serialization
-  - Core: get_next_steps agent prioritization, add_step with agent, edit_step with agent, add_steps_bulk
+  - Core: get_next_steps agent prioritization, add_step with agent, edit_step
+    with agent, add_steps_bulk
   - CLI: next --agent, show displays agent, add-step --agent, edit-step --agent
   - MCP: vectl_status, vectl_show, vectl_mutate (add-step/edit-step), vectl_claim auto-select
 """
@@ -248,7 +249,7 @@ class TestAddStepsBulkAgent:
             project="t",
             phases=[Phase(id="p1", name="P1")],
         )
-        steps = [
+        steps: list[dict[str, object]] = [
             {"name": "Step A", "agent": "alice"},
             {"name": "Step B", "agent": "bob"},
             {"name": "Step C"},

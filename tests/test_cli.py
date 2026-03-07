@@ -18,6 +18,18 @@ from vectl.plan_path import resolve_state_path
 runner = CliRunner()
 
 
+def _must_find_step(plan: Plan, step_id: str) -> Step:
+    found = plan.find_step(step_id)
+    assert found is not None
+    return found[1]
+
+
+def _must_find_phase(plan: Plan, phase_id: str) -> Phase:
+    phase = plan.find_phase(phase_id)
+    assert phase is not None
+    return phase
+
+
 @pytest.fixture
 def plan_file(tmp_path: Path) -> Path:
     """Create a plan.yaml for testing."""
@@ -220,7 +232,11 @@ class TestInit:
         path = tmp_path / "plan.yaml"
         agents_md = tmp_path / "AGENTS.md"
         agents_md.write_text(
-            "# My Project\n\n<!-- VECTL:AGENTS:BEGIN -->\n## Plan Tracking (vectl)\n\nOld block.\n<!-- VECTL:AGENTS:END -->\n"
+            "# My Project\n\n"
+            "<!-- VECTL:AGENTS:BEGIN -->\n"
+            "## Plan Tracking (vectl)\n\n"
+            "Old block.\n"
+            "<!-- VECTL:AGENTS:END -->\n"
         )
         result = runner.invoke(app, ["init", "--project", "myproject", "--plan", str(path)])
         assert result.exit_code == 0
@@ -688,7 +704,7 @@ class TestClaim:
         assert "s1" in result.output
         assert "Step 1" in result.output
         plan, _ = load_plan(plan_file)
-        _, step = plan.find_step("s1")
+        step = _must_find_step(plan, "s1")
         assert step.status == StepStatus.CLAIMED
         assert step.claimed_by == "bot-1"
 
@@ -825,7 +841,7 @@ class TestDefer:
         assert result.exit_code == 0
         assert "Deferred" in result.output
         plan, _ = load_plan(plan_file)
-        _, step = plan.find_step("s1")
+        step = _must_find_step(plan, "s1")
         assert step.status == StepStatus.PENDING
 
     def test_defer_pending_fails(self, plan_file: Path):
@@ -843,7 +859,7 @@ class TestReject:
         assert result.exit_code == 0
         assert "Rejected" in result.output
         plan, _ = load_plan(plan_file)
-        _, step = plan.find_step("s1")
+        step = _must_find_step(plan, "s1")
         assert step.status == StepStatus.REJECTED
 
     def test_reject_pending_fails(self, plan_file: Path):
@@ -859,7 +875,7 @@ class TestSkip:
         assert result.exit_code == 0
         assert "Skipped" in result.output
         plan, _ = load_plan(plan_file)
-        _, step = plan.find_step("s1")
+        step = _must_find_step(plan, "s1")
         assert step.status == StepStatus.SKIPPED
         assert step.skipped_reason == "superseded"
 
@@ -883,7 +899,7 @@ class TestSkip:
         assert result.exit_code == 0
         assert "Cancelled" in result.output
         plan, _ = load_plan(plan_file)
-        _, step = plan.find_step("s1")
+        step = _must_find_step(plan, "s1")
         assert step.status == StepStatus.SKIPPED
         assert step.skipped_reason == "irrelevant"
 
@@ -928,9 +944,9 @@ class TestSkipPhase:
         )
         assert result.exit_code == 0
         plan, _ = load_plan(plan_file)
-        _, s1 = plan.find_step("s1")
+        s1 = _must_find_step(plan, "s1")
         assert s1.status == StepStatus.DONE  # preserved
-        _, s2 = plan.find_step("s2")
+        s2 = _must_find_step(plan, "s2")
         assert s2.status == StepStatus.SKIPPED
 
     def test_skip_phase_cascades_unlock(self, plan_file: Path):
@@ -959,14 +975,14 @@ class TestCheck:
         result = runner.invoke(app, ["check", "s3", "Item A", "--plan", str(plan_file)])
         assert result.exit_code == 0
         plan, _ = load_plan(plan_file)
-        _, step = plan.find_step("s3")
+        step = _must_find_step(plan, "s3")
         assert "[x] Item A" in step.description
 
     def test_add_item(self, plan_file: Path):
         result = runner.invoke(app, ["check", "s3", "--add", "New item", "--plan", str(plan_file)])
         assert result.exit_code == 0
         plan, _ = load_plan(plan_file)
-        _, step = plan.find_step("s3")
+        step = _must_find_step(plan, "s3")
         assert "[ ] New item" in step.description
 
     def test_no_args_fails(self, plan_file: Path):
@@ -1245,7 +1261,7 @@ class TestFullLifecycle:
 
         # Phase should be done
         plan, _ = load_plan(plan_file)
-        assert plan.find_phase("p1").status == PhaseStatus.DONE
+        assert _must_find_phase(plan, "p1").status == PhaseStatus.DONE
 
         # p2 should now be unlocked (auto-unlock)
         result = runner.invoke(app, ["next", "--plan", str(plan_file)])
@@ -1405,6 +1421,9 @@ class TestLongSlugWarning:
 
     def test_add_step_explicit_id_no_warning(self, plan_file: Path) -> None:
         """Explicit --id never triggers warning even if long."""
+        long_name = (
+            "This Is A Very Long Step Name That Will Generate A Slug Exceeding Forty Characters"
+        )
         result = runner.invoke(
             app,
             [
@@ -1412,7 +1431,7 @@ class TestLongSlugWarning:
                 "--phase",
                 "p1",
                 "--name",
-                "This Is A Very Long Step Name That Will Generate A Slug Exceeding Forty Characters",
+                long_name,
                 "--id",
                 "p1.short",
                 "--plan",
@@ -2124,10 +2143,10 @@ class TestLinkedWorktreeImplicitResolution:
         linked_worktree_resolution_env: tuple[Path, Path, Path],
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
-        """CLI status resolves to main worktree's plan when running from linked worktree without --plan."""
+        """CLI status resolves to main worktree plan without --plan."""
         plan_file, linked_root, main_root = linked_worktree_resolution_env
 
-        # Run status WITHOUT --plan flag - should auto-resolve to main worktree via mocked resolve_plan_path
+        # Run status without --plan; resolve_plan_path is mocked to main worktree.
         result = runner.invoke(app, ["status"], catch_exceptions=False)
 
         # Should succeed and find the plan in main worktree
@@ -2141,7 +2160,7 @@ class TestLinkedWorktreeImplicitResolution:
         linked_worktree_resolution_env: tuple[Path, Path, Path],
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
-        """CLI claim resolves to main worktree's plan when running from linked worktree without --plan."""
+        """CLI claim resolves to main worktree plan without --plan."""
         plan_file, linked_root, main_root = linked_worktree_resolution_env
 
         # Run claim WITHOUT --plan flag - should auto-resolve to main worktree
@@ -2763,7 +2782,7 @@ class TestAffinityCli:
         assert "Affinity override" in result.output
         # Verify audit trail
         plan, _ = load_plan(affinity_plan_file)
-        _, step = plan.find_step("s3")
+        step = _must_find_step(plan, "s3")
         assert step.affinity_override is True
 
     def test_show_displays_affinity(self, affinity_plan_file: Path) -> None:

@@ -62,3 +62,23 @@ target-version = "py310"
 
 [tool.ruff.lint]
 select = ["E", "W", "F", "I", "UP", "B"]
+
+[tool.mypy]
+python_version = "3.10"
+ignore_missing_imports = true
+
+[[tool.mypy.overrides]]
+module = [
+    "yaml",
+    "typer",
+    "typer.*",
+    "rich",
+    "rich.*",
+    "fastmcp",
+    "pytest",
+    "hypothesis",
+    "hypothesis.*",
+    "playwright",
+    "playwright.*",
+]
+ignore_missing_imports = true

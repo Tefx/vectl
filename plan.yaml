@@ -5591,3 +5591,456 @@ phases:
     depends_on:
     - worktree-support.wt-verify-fix
     agent: integration-verifier
+  - id: worktree-support.wt-gate-fix
+    name: wt-gate-fix
+    status: pending
+    description: '[HIGH] Fix the gate blockers and follow-up drift reported by `worktree-support.wt-gate`
+      for worktree-support phase completion.
+
+
+      prior_loop: [worktree-support.wt-verify-fix, worktree-support.wt-verify-retest]
+
+      remaining_blocker: ADR conformance mismatch in `src/vectl/plan_path.py` main-root
+      resolution heuristic versus `docs/ADR-worktree-support.md`, plus linked-worktree
+      fallback/docstring drift that could reintroduce stale local plan behavior.
+
+      why_new_loop: The prior verify remediation closed execution-level regressions,
+      but the phase gate found unresolved semantic conformance and documentation drift
+      that require a narrower follow-up pass.
+
+
+      Scope (limit to gate closure only):
+
+      - `src/vectl/plan_path.py`
+
+      - `src/vectl/mcp_server.py`
+
+      - `docs/ADR-worktree-support.md`
+
+      - `tests/test_plan_path.py`
+
+      - `tests/test_cli.py`
+
+      - `tests/test_mcp.py`
+
+
+      Required outcomes:
+
+      - Main-root resolution in `src/vectl/plan_path.py` matches the ADR robustness
+      decision exactly.
+
+      - Linked-worktree fallback does not silently reintroduce stale local-plan behavior
+      when the main plan is unavailable.
+
+      - `src/vectl/mcp_server.py` module docstring reflects the actual linked-worktree
+      precedence/behavior.
+
+      - Targeted tests and ADR/doc alignment cover the blocker and both should-fix
+      findings without expanding scope into broader storage or git workflow redesign.
+
+
+      Failure-mode checklist:
+
+      - relative vs absolute path behavior for linked-worktree main-root resolution
+
+      - missing-file fallback behavior when main plan is unavailable
+
+      - explicit clear / null overwrite semantics for any path-selection or fallback
+      decision text introduced in docs or helpers
+
+      - stale-definition vs new-state precedence between main-worktree plan resolution
+      and any local fallback path
+
+      - partial-resolution / malformed-git / unavailable-main-plan behavior must fail
+      safely and predictably
+
+
+      State semantics:
+
+      - Last-writer-wins does not apply; path resolution must deterministically honor
+      the ADR-selected main-root source when valid.
+
+      - Explicit `VECTL_PLAN_PATH` override behavior must be preserved exactly.
+
+      - Backward-compatible legacy behavior means main-worktree and non-git discovery
+      still behave as before, while linked-worktree fallback must not prefer a stale
+      local plan over the canonical main plan.
+
+
+      Regression coverage required:
+
+      - Add/update focused regressions in `tests/test_plan_path.py` for ADR-conformant
+      main-root resolution and unavailable-main-plan fallback handling.
+
+      - Add/update focused regressions in `tests/test_cli.py` and `tests/test_mcp.py`
+      only where behavior or messaging changes are observable.
+
+      - Include a focused regression proving the highest-risk failure path: main plan
+      unavailable in a linked worktree does not silently fall back to stale local
+      state unless the ADR explicitly permits it.
+
+
+      Out of scope:
+
+      - No unrelated CLI/MCP UX cleanup.
+
+      - No broader rewrite of plan/state resolution outside worktree-support gate
+      closure.'
+    verification: '- Main path: targeted regressions for ADR-conformant linked-worktree
+      main-root resolution and MCP/CLI observable behavior pass
+
+      - Failure path: focused regression proves unavailable-main-plan / malformed-resolution
+      handling does not reintroduce stale local-plan fallback
+
+      - Proof: `docs/ADR-worktree-support.md`, `src/vectl/plan_path.py`, and `src/vectl/mcp_server.py`
+      describe the same precedence behavior
+
+      - Proof: no additional call-site or fallback-path changes were introduced beyond
+      the scoped files above'
+    depends_on:
+    - worktree-support.wt-gate
+    agent: python-senior
+  - id: worktree-support.wt-gate-retest
+    name: wt-gate-retest
+    status: pending
+    description: 'As an INDEPENDENT REVIEWER (`gate-reviewer`), re-check the worktree-support
+      gate findings after `worktree-support.wt-gate-fix`.
+
+
+      YOUR GOAL IS TO FIND REMAINING PROBLEMS, not to confirm it works.
+
+
+      Re-check for:
+
+      - ADR conformance: `src/vectl/plan_path.py` main-root resolution matches `docs/ADR-worktree-support.md`
+
+      - Failure behavior: linked-worktree main-plan-unavailable cases do not drift
+      into stale local-plan fallback unless explicitly documented
+
+      - Documentation drift: `src/vectl/mcp_server.py` docstring and observable precedence
+      behavior agree
+
+      - Regression safety: targeted tests in `tests/test_plan_path.py`, `tests/test_cli.py`,
+      and `tests/test_mcp.py` cover both the main path and the highest-risk failure
+      path
+
+
+      Document all findings. A review that discovers issues is a SUCCESS.
+
+      Independence Level: L1'
+    verification: '- Review targeted evidence from the fix step plus the exact regression
+      outputs for `tests/test_plan_path.py`, `tests/test_cli.py`, and `tests/test_mcp.py`
+
+      - Confirm blocker closure and classify any remaining gaps as blocker/should_fix/suggestion
+
+      - Confirm ADR, code, and docstring precedence language are aligned'
+    depends_on:
+    - worktree-support.wt-gate-fix
+    agent: gate-reviewer
+  - id: worktree-support.wt-gate-rereview
+    name: wt-gate-rereview
+    status: pending
+    description: 'Gate review: final worktree-support phase re-review after bounded
+      follow-up remediation.
+
+
+      As an INDEPENDENT REVIEWER (`gate-reviewer`), assess whether the worktree-support
+      phase now meets the quality bar for completion after `worktree-support.wt-gate-followup-retest-3`.
+
+
+      Review criteria:
+
+      1. The original gate blocker remains closed.
+
+      2. The follow-up should-fix gap on `tests/test_cli.py` malformed-worktree fail-closed
+      boundary detection is resolved without broadening scope.
+
+      3. Evidence for both the main path and highest-risk failure path is specific
+      and verifiable.
+
+      4. The phase is ready to complete without relying on pre-remediation gate results.
+
+
+      Independence: You MUST NOT be the same agent as the remediation implementation
+      step.'
+    verification: '- All required remediation/retest steps completed successfully
+
+      - Original blocker remains resolved
+
+      - CLI malformed-worktree assertion hardening gap closed with concrete fail-closed
+      boundary proof
+
+      - Evidence quality acceptable for bounded, test-only stabilization
+
+      - Ready for worktree-support phase completion'
+    depends_on:
+    - worktree-support.wt-gate-followup-retest-3
+    agent: gate-reviewer
+  - id: worktree-support.wt-gate-followup-fix
+    name: wt-gate-followup-fix
+    status: pending
+    description: '[MEDIUM] Fix the non-blocking follow-up gaps reported by `worktree-support.wt-gate-retest`.
+
+
+      prior_loop: `worktree-support.wt-gate-fix`, `worktree-support.wt-gate-retest`
+
+      remaining_blocker: ADR/doc/code drift on malformed linked-worktree fail-closed
+      semantics and limited linked-worktree stale-local-fallback E2E entry-path coverage.
+
+      why_new_loop: The prior remediation closed the blocker, but these narrower stability/documentation
+      regressions remain and are better handled with a minimal phase-scoped follow-up
+      instead of broadening the earlier fix.
+
+
+      Scope:
+
+      - `src/vectl/mcp_server.py`: update precedence/docstring language so malformed
+      linked-worktree metadata explicitly documents fail-closed behavior and matches
+      ADR/code.
+
+      - `tests/test_cli.py` or `tests/test_plan_path.py`: add the smallest targeted
+      CLI/MCP entry-path regression coverage for linked-worktree stale-local-fallback
+      safety when `--plan`/`VECTL_PLAN_PATH` are not explicitly set.
+
+      - `tests/test_mcp.py`: only if needed to cover the MCP entry path without broad
+      refactor.
+
+
+      Constraints:
+
+      - Keep changes minimal and phase-scoped.
+
+      - Stability-first; avoid broad refactor or unrelated cleanup.
+
+      - Out of scope: wider plan-path redesign, broader CLI/MCP harness changes, or
+      unrelated doc rewrites.'
+    verification: '- Main path: targeted regression tests covering implicit CLI/MCP
+      entry-path resolution in linked worktrees pass.
+
+      - Failure path: regression coverage proves malformed linked-worktree metadata
+      fails closed and does not silently fall back to stale local plan selection.
+
+      - Proof: `src/vectl/mcp_server.py` wording aligns with `docs/ADR-worktree-support.md`
+      and observable precedence behavior; exact targeted test names/commands are recorded
+      in evidence.'
+    depends_on:
+    - worktree-support.wt-gate-retest
+    agent: python-executor
+  - id: worktree-support.wt-gate-followup-retest
+    name: wt-gate-followup-retest
+    status: pending
+    description: 'As an INDEPENDENT TESTER (`integration-verifier`), re-validate the
+      worktree-support follow-up fixes from a fresh perspective.
+
+
+      YOUR GOAL IS TO FIND REMAINING PROBLEMS, not to confirm it works.
+
+
+      Test for:
+
+      - Doc/ADR/code alignment: malformed linked-worktree fail-closed semantics are
+      explicitly documented and match behavior.
+
+      - Entry-path safety: CLI and MCP paths without explicit `--plan`/`VECTL_PLAN_PATH`
+      do not drift into stale local fallback in linked worktrees.
+
+      - Regression safety: targeted coverage stays minimal and phase-scoped without
+      broad behavior changes.
+
+
+      Document all findings. A retest that discovers issues is a SUCCESS.
+
+      Independence Level: L1'
+    verification: '- Review exact targeted regression outputs for the added/updated
+      CLI, plan-path, and MCP tests.
+
+      - Confirm malformed linked-worktree cases fail closed in the exercised entry
+      paths.
+
+      - Confirm `src/vectl/mcp_server.py` precedence text now matches ADR and tested
+      behavior.
+
+      - Classify any remaining gaps as blocker/should_fix/suggestion.'
+    depends_on:
+    - worktree-support.wt-gate-followup-fix
+    agent: integration-verifier
+  - id: worktree-support.wt-gate-followup-fix-2
+    name: wt-gate-followup-fix-2
+    status: pending
+    description: '[HIGH] Stability-first remediation for remaining gate follow-up
+      issues reported by `worktree-support.wt-gate-followup-retest`.
+
+
+      prior_loop: `worktree-support.wt-gate-followup-fix`, `worktree-support.wt-gate-followup-retest`
+
+      remaining_blocker: `src/vectl/mcp_server.py` precedence documentation does not
+      explicitly encode ADR fail-closed malformed linked-worktree sentinel semantics,
+      and MCP malformed entry-path coverage is still indirect at the entry-point level.
+
+      why_new_loop: The previous follow-up closed adjacent gaps, but this blocker
+      is specifically about explicit ADR wording plus entry-point proof; extending
+      the prior loop would blur evidence, so a narrow second remediation loop is safer.
+
+
+      Scope:
+
+      - `src/vectl/mcp_server.py`: make the precedence/docstring text explicitly state
+      malformed linked-worktree sentinel handling is fail-closed per ADR.
+
+      - `tests/test_mcp.py`: add a direct MCP entry-point regression asserting malformed
+      entry-path handling at the boundary, without broad harness changes.
+
+      - `tests/test_cli.py`: only tighten the malformed entry-path assertion if it
+      can be done as an adjacent minimal edit; otherwise leave behavior unchanged
+      and document why.
+
+
+      Constraints:
+
+      - Stability-first and minimal edits only.
+
+      - Keep the remediation phase-scoped; avoid broad harness redesign.
+
+      - Out of scope: plan-path redesign, compatibility-layer changes, or unrelated
+      CLI/MCP cleanup.'
+    verification: '- Main path: targeted MCP/CLI linked-worktree regressions still
+      pass with explicit ADR-aligned precedence wording.
+
+      - Failure path: a direct MCP entry-point regression proves malformed linked-worktree
+      entry-path/sentinel input fails closed and does not silently fall back.
+
+      - Proof: `src/vectl/mcp_server.py` now explicitly documents fail-closed malformed
+      sentinel semantics; any CLI assertion tightening is adjacent-only and recorded
+      if deferred.'
+    depends_on:
+    - worktree-support.wt-gate-followup-retest
+    agent: python-senior
+  - id: worktree-support.wt-gate-followup-retest-2
+    name: wt-gate-followup-retest-2
+    status: pending
+    description: 'As an INDEPENDENT TESTER (`integration-verifier`), re-validate the
+      narrow remediation from `worktree-support.wt-gate-followup-fix-2` from a fresh
+      perspective.
+
+
+      YOUR GOAL IS TO FIND REMAINING PROBLEMS, not to confirm it works.
+
+
+      Test for:
+
+      - ADR/doc/code alignment: `src/vectl/mcp_server.py` explicitly documents malformed
+      linked-worktree sentinel semantics as fail-closed and matches observable behavior.
+
+      - Entry-point proof: MCP malformed entry-path handling is asserted directly
+      at the boundary level, not only through helper-level coverage.
+
+      - Stability-first scope control: no broad harness redesign or unrelated precedence
+      behavior drift was introduced.
+
+      - CLI suggestion handling: any malformed entry-path assertion tightening is
+      either validated as safely narrowed or explicitly justified as deferred.
+
+
+      Document all findings. A retest that discovers issues is a SUCCESS.
+
+      Independence Level: L1'
+    verification: '- Review exact targeted regression output for the added/updated
+      MCP entry-point tests and any adjacent CLI assertion edits.
+
+      - Confirm malformed linked-worktree entry-path/sentinel cases fail closed in
+      the exercised MCP boundary path.
+
+      - Confirm `src/vectl/mcp_server.py` precedence language explicitly matches ADR
+      fail-closed semantics.
+
+      - Classify any remaining gaps as blocker/should_fix/suggestion.'
+    depends_on:
+    - worktree-support.wt-gate-followup-fix-2
+    agent: integration-verifier
+  - id: worktree-support.wt-gate-followup-fix-3
+    name: wt-gate-followup-fix-3
+    status: pending
+    description: '[MEDIUM] Minimal test-only stabilization for the should-fix issue
+      reported by `worktree-support.wt-gate-followup-retest-2`.
+
+
+      prior_loop: `worktree-support.wt-gate-followup-fix-2`, `worktree-support.wt-gate-followup-retest-2`
+
+      remaining_blocker: `tests/test_cli.py` malformed-worktree assertion is still
+      permissive enough to under-detect precedence regressions at the fail-closed
+      boundary.
+
+      why_new_loop: The prior remediation intentionally left the CLI assertion unchanged;
+      this narrow follow-up closes the remaining detection gap without redesigning
+      behavior or expanding scope.
+
+
+      Scope:
+
+      - `tests/test_cli.py`: tighten the malformed-worktree assertion to a concrete
+      fail-closed boundary expectation that will fail closed on precedence drift.
+
+
+      Constraints:
+
+      - Test-only stabilization; no product behavior changes.
+
+      - Phase-scoped only; no CLI/MCP behavior redesign.
+
+      - Keep the retry loop bounded and convergent with a single narrow assertion
+      hardening.
+
+      - Out of scope: helper refactors, harness redesign, or additional precedence-policy
+      changes.'
+    verification: '- Main path: the targeted CLI malformed-worktree test asserts a
+      concrete fail-closed boundary outcome rather than a permissive partial match.
+
+      - Failure path: a precedence regression that reintroduces fallback or weak boundary
+      handling would make the tightened assertion fail.
+
+      - Proof: only `tests/test_cli.py` changes for this remediation scope, with no
+      behavior redesign or unrelated harness edits.'
+    depends_on:
+    - worktree-support.wt-gate-followup-retest-2
+    agent: python-executor
+  - id: worktree-support.wt-gate-followup-retest-3
+    name: wt-gate-followup-retest-3
+    status: pending
+    description: 'As an INDEPENDENT TESTER (`integration-verifier`), re-validate the
+      narrow CLI assertion hardening from `worktree-support.wt-gate-followup-fix-3`
+      from a fresh perspective.
+
+
+      YOUR GOAL IS TO FIND REMAINING PROBLEMS, not to confirm it works.
+
+
+      Test for:
+
+      - Concrete fail-closed boundary proof: `tests/test_cli.py` now checks a specific
+      malformed-worktree outcome that detects precedence drift.
+
+      - Minimal-scope discipline: the remediation stays test-only and does not smuggle
+      in behavior changes or harness redesign.
+
+      - Convergent retry loop: the new assertion closes the identified gap instead
+      of creating another permissive variant.
+
+
+      Document all findings. A retest that discovers issues is a SUCCESS.
+
+      Independence Level: L1'
+    verification: '- Review the exact diff and targeted test output for `tests/test_cli.py`
+      malformed-worktree coverage.
+
+      - Confirm the tightened assertion fails closed against precedence regressions
+      rather than accepting permissive fallback behavior.
+
+      - Confirm the change is test-only and phase-scoped.
+
+      - Classify any remaining gaps as blocker/should_fix/suggestion.'
+    depends_on:
+    - worktree-support.wt-gate-followup-fix-3
+    agent: integration-verifier
+- id: x
+  name: x
+  status: pending

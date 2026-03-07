@@ -1,0 +1,14 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(git:*)",
+      "Bash(python:*)",
+      "Bash(.venv/bin/python:*)",
+      "Bash(which vectl 2>&1 || .venv/bin/vectl dashboard 2>&1)",
+      "mcp__plugin_playwright_playwright__browser_navigate",
+      "mcp__plugin_playwright_playwright__browser_click",
+      "Bash(.venv/bin/vectl dashboard:*)",
+      "Bash(kill %1:*)"
+    ]
+  }
+}

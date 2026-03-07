@@ -2,7 +2,7 @@
 
 [中文文档](README_zh.md) | [**Read the Introduction**](https://tefx.one/posts/vectl-intro/)
 
-**Structure agents. Save tokens.**
+**Structure agents. Enforce discipline.**
 
 [![PyPI](https://img.shields.io/pypi/v/vectl)](https://pypi.org/project/vectl/)
 [![License](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
@@ -11,29 +11,22 @@
 uvx vectl --help
 ```
 
-## Your Markdown Plan Is Wasting Tokens
+## Markdown Can't Control Your Agent
 
-A 50-step markdown plan, 40 steps done:
+A 200-step plan in TODO.md. You expect the agent to follow the order, check off completed items, and never skip ahead.
 
-- The agent still **re-reads all 50 lines**. 40 completed steps are pure noise — eating context window, burning attention, costing you money.
-- `vectl next` **returns only 3 actionable steps**. Completed steps vanish. Blocked steps are invisible.
+In practice? **Agents treat TODO.md as a suggestion, not a rule.** They skip steps, forget to mark things done, or get lost in a 1000-line plan and redo work that's already finished. The more you try to hint at structure with comments, bold text, and separators, the worse it gets — because Markdown is just natural language text, and agents have zero obligation to obey it.
 
-The more steps you have, the worse it gets. 100 steps, 90 done? Markdown forces the agent to read 100 lines to find 10 useful ones. vectl gives it just those 10.
+The core problem: **TODO.md is advice, not enforcement. You can't force an agent to claim a step before starting, or submit evidence before marking it complete.**
 
-And Markdown is linear. Three agents online at once? They queue up — because nothing tells them which steps can run in parallel.
-vectl's DAG makes parallelism possible: dependencies are explicit, `next` serves up **all** unblocked steps, three agents each claim one, zero conflicts.
+This is a structural defect in Markdown, not a flaw in your agent:
 
-Token waste and serialization are just symptoms. The root defect is that **Markdown doesn't express dependencies**:
+- **No enforcement**: you can't prevent agents from skipping steps or require proof of completion
+- **No dependencies**: "Deploy DB" before "Config App" — the agent can only guess the ordering, and nothing stops it from guessing wrong
+- **Multi-agent conflicts**: multiple agents online with no coordination — they can't tell which steps are parallelizable, and simultaneous edits silently overwrite each other
+- **Completion by self-declaration**: the agent says "Done" and that's it — you can't require it to prove tests actually passed
 
-| Markdown Plans | vectl |
-| :--- | :--- |
-| ❌ **Full re-read every time**: agent reads all steps regardless of completion | ✅ Returns only actionable steps — done steps vanish |
-| ❌ **Implicit dependencies**: "Deploy DB" before "Config App" — agent can only guess if they're related | ✅ `depends_on: [db.deploy]` — explicit, no guessing |
-| ❌ **No safe parallelism**: without dependency info, multiple agents queue up or gamble | ✅ DAG makes parallelism computable — `next` returns all conflict-free steps |
-| ❌ **Manual dispatch**: "DB is done, go work on App now" | ✅ `next` automatically surfaces all unblocked steps |
-| ❌ **Silent overwrites**: two agents write the same file simultaneously | ✅ CAS optimistic locking — conflicts error out, never silently lost |
-| ❌ **Self-declared completion**: agent says "Done" and it's Done | ✅ Evidence required: what command, what output, where's the PR |
-| ❌ **Context amnesia**: new session = start from scratch | ✅ `checkpoint` generates a state snapshot — inject into new session, instant recovery |
+These problems are tolerable at 10-20 steps. At hundreds of steps with multiple agents, TODO.md falls apart completely.
 
 > TODO.md can't say no. vectl can.
 
@@ -44,10 +37,10 @@ Agent frameworks manage how agents think. vectl manages **what agents see, when 
 | Capability | Problem Solved | Mechanism |
 | :--- | :--- | :--- |
 | **DAG Enforcement** | Agents skip dependencies, guess ordering | Blocked steps are invisible — agents literally *cannot* claim them |
+| **Evidence Required** | Agent says "Fixed" and moves on | `evidence_template` forces fill-in-the-blank proof: command, output, PR link |
 | **Safe Parallelism** | Multiple agents step on each other | `claim` locking + CAS atomic writes |
 | **Auto-Dispatch** | Someone must watch and assign tasks | `next` computes all unblocked steps and sorts them; rejected steps float to top |
 | **Token Budget** | Agent re-reads hundreds of completed lines | Hard limits across the board: next ≤3, context ≤120 chars, evidence ≤900 chars |
-| **Anti-Hallucination** | Agent says "Fixed" and moves on | `evidence_template` forces fill-in-the-blank proof: command, output, PR link |
 | **Context Compaction** | Long conversations cause agent amnesia | `checkpoint` generates a deterministic JSON snapshot — inject into new session for instant recovery |
 | **Handoff Notes** | Agents lose state between hosts/sessions | `clipboard-write/read/clear` stores short notes in `plan.yaml` (with TTL) |
 | **Agent Affinity** | Different agents are good at different tasks | Steps can suggest an agent; `next` sorts by affinity |
@@ -60,51 +53,50 @@ Agent frameworks manage how agents think. vectl manages **what agents see, when 
 uvx vectl init --project my-project
 ```
 
-Creates `plan.yaml` and auto-configures agent instructions (writes `CLAUDE.md` when `.claude/` directory is detected, otherwise `AGENTS.md`).
+Creates `plan.yaml` and appends a vectl section to the agent instruction file (`CLAUDE.md` or `AGENTS.md`). If the file already exists, your existing content is preserved — vectl only adds its own section.
 
 > Commit `plan.yaml` + `AGENTS.md`/`CLAUDE.md` together. The plan is the state machine; the instructions file is the agent entry point.
 
 ### 2. Connect Your Agent
 
+Recommended: connect via MCP for structured tool access.
+
 <details>
-<summary>⚡ Claude Desktop / Cursor</summary>
+<summary>⚡ MCP (recommended)</summary>
 
 ```json
 {
   "mcpServers": {
     "vectl": {
       "command": "uvx",
-      "args": ["vectl", "mcp"],
-      "env": { "VECTL_PLAN_PATH": "/absolute/path/to/plan.yaml" }
+      "args": ["vectl", "mcp"]
     }
   }
 }
 ```
-</details>
 
-<details>
-<summary>⚡ OpenCode</summary>
+vectl exposes 14 MCP tools. Agents call `vectl_status`, `vectl_claim`, `vectl_complete`, etc. directly — structured data in, structured data out.
 
-Add to your `opencode.jsonc`:
+For OpenCode, add to your `opencode.jsonc`:
 
 ```jsonc
 {
   "mcp": {
     "vectl": {
       "type": "local",
-      "command": ["uvx", "vectl", "mcp"],
-      "environment": { "VECTL_PLAN_PATH": "/absolute/path/to/plan.yaml" }
+      "command": ["uvx", "vectl", "mcp"]
     }
   }
 }
 ```
+
 See [OpenCode MCP docs](https://opencode.ai/docs/mcp-servers/) for details.
 </details>
 
 <details>
-<summary>⌨️ CLI Only (no MCP)</summary>
+<summary>⌨️ CLI (no MCP)</summary>
 
-No setup needed — agents call `uvx vectl ...` directly.
+No setup needed — agents call `uvx vectl ...` directly. Works everywhere, but agents must parse text output instead of structured data.
 
 > `uvx vectl init` already creates/updates the agent instructions file.
 > To update later: `uvx vectl agents-md` (use `--target claude` if needed).
@@ -121,7 +113,11 @@ uvx vectl agents-md                 # Update AGENTS.md / CLAUDE.md with vectl se
 uvx vectl agents-md --target claude # Force CLAUDE.md
 ```
 
-### 3. Migrate (Optional)
+### 3. Write the Plan
+
+Tell your agent what you need — it will generate and modify the plan through vectl's `mutate` tool. **Do not hand-edit `plan.yaml` or let agents edit it directly** — all modifications must go through vectl tools to ensure validation, lock recalculation, and concurrency safety.
+
+### 4. Migrate (Optional)
 
 If your project already tracks work in a markdown file, issue tracker, or spreadsheet, tell your agent:
 
@@ -131,33 +127,18 @@ Migrate our existing plan to plan.yaml.
 Prefer MCP tools (`vectl_mutate`, `vectl_guide`) over CLI if available.
 ```
 
-### 4. The Workflow
+### 5. Monitor Progress
 
-Keep it simple:
-
-```bash
-uvx vectl status                               # Where are we?
-uvx vectl next                                 # What can run now?
-uvx vectl claim <step-id> --agent <name>       # Get spec + pinned refs + evidence template
-uvx vectl complete <step-id> --evidence "..."  # Prove it (paste filled template)
-```
-
-### 5. Dashboard (Static HTML)
-
-Generate a single-file HTML dashboard (Overview + DAG) for quick visual inspection:
+As a user, your main job is to **review progress** and **make decisions**:
 
 ```bash
-uvx vectl dashboard --open
-
-# Or write to a custom path
-uvx vectl dashboard --out /tmp/plan-dashboard.html
+uvx vectl render            # Markdown progress report
+uvx vectl dashboard --open  # Visual HTML dashboard (static, no server)
 ```
 
 ![Dashboard Overview](docs/dashboard-overview.png)
 
-Notes:
-- Output is a local HTML file (no server).
-- The DAG view loads Mermaid.js from a CDN (network required for that tab).
+The dashboard includes progress overview, phase status, and DAG dependency graphs. Open in any browser — no server required. The DAG view loads Mermaid.js from a CDN (network required for that tab).
 
 Everything else is in the guide:
 
@@ -168,7 +149,7 @@ Everything else is in the guide:
 
 ## Handoffs: Clipboard (Notes) vs Checkpoint (State)
 
-If you're switching agent hosts (Claude Code ↔ Cursor ↔ OpenCode) or handing work between agents, use both:
+If you're switching agent hosts (Claude Code ↔ OpenCode ↔ Claude Desktop) or handing work between agents, use both:
 
 - **Clipboard**: short, human-readable notes that live in `plan.yaml` (with TTL).
 - **Checkpoint**: compact, machine-readable state snapshot for context injection.
@@ -177,7 +158,7 @@ If you're switching agent hosts (Claude Code ↔ Cursor ↔ OpenCode) or handing
 
 Use this when you want to pass **actionable notes** between agent hosts/sessions without creating extra files.
 
-Example: Claude Code did a detailed code review, found a few small issues, and you want OpenCode (GLM-5) to patch them.
+Example: Claude Code did a detailed code review, found a few small issues, and you want OpenCode to patch them.
 Drop the review notes into the clipboard — the other agent reads and applies.
 
 ```bash
@@ -252,4 +233,4 @@ If you edit `plan.yaml` directly (outside of vectl commands), run `uvx vectl rec
 
 ## Technical Details
 
-Architecture, CAS safety, and test coverage (658 tests, Hypothesis state machine verification): [docs/DESIGN.md](docs/DESIGN.md).
+Architecture, CAS safety, and test coverage (Hypothesis state machine verification): [docs/DESIGN.md](docs/DESIGN.md).

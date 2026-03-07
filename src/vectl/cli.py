@@ -20,7 +20,7 @@ from rich.table import Table
 from rich.text import Text
 
 from vectl import __version__
-from vectl.plan_path import resolve_plan_path
+from vectl.plan_path import resolve_plan_path, resolve_state_path
 from vectl.semantics import is_step_locked
 from vectl.core import (
     add_phase,
@@ -53,7 +53,15 @@ from vectl.core import (
     update_checklist,
     validate_plan,
 )
-from vectl.io import load_plan, save_plan
+from vectl.io import (
+    extract_state,
+    load_plan,
+    load_state,
+    merge_plan,
+    save_plan,
+    save_state,
+    strip_state,
+)
 from vectl.models import (
     AffinityError,
     AffinityMode,
@@ -132,27 +140,102 @@ def _die(msg: str, code: int = 1) -> None:
     raise typer.Exit(code)
 
 
-def _load(plan_path: Path | None) -> tuple[Plan, str, Path]:
+def _load(plan_path: Path | None) -> tuple[Plan, str, str, Path]:
+    """Load merged plan with separate definition/state hashes for CAS."""
+
     target = resolve_plan_path(plan_path)
     try:
-        p, h = load_plan(target)
-        return p, h, target
+        plan_def, def_hash = load_plan(target)
+        state_path = resolve_state_path(target)
+        state, state_hash = load_state(state_path)
     except PlanIOError as e:
         _die(str(e))
         raise  # unreachable, for type checker
 
+    has_state = (
+        bool(state.steps)
+        or bool(state.phases)
+        or state.clipboard is not None
+        or bool(state.plan_id)
+    )
+    if state_hash and has_state:
+        return merge_plan(plan_def, state), def_hash, state_hash, target
 
-def _save(plan: Plan, plan_path: Path, expected_hash: str) -> None:
-    # recalc_lock_status is the "save hook": ensures lock consistency on every
-    # write. See also: mcp_server._save() which mirrors this pattern.
+    return plan_def, def_hash, "", target
+
+
+def _save_state(plan: Plan, plan_path: Path, expected_state_hash: str) -> None:
+    """Save state-only data to state.json with CAS semantics."""
+
     changed_ids = recalc_lock_status(plan)
-    msg = format_lock_changes(changed_ids, plan)
-    if msg:
-        print(msg)
+
+    state = extract_state(plan)
+    state_path = resolve_state_path(plan_path)
+    cas_hash = expected_state_hash if expected_state_hash else None
     try:
-        save_plan(plan, plan_path, expected_hash=expected_hash)
+        save_state(state, state_path, cas_hash)
     except CASConflictError:
-        _die(f"CAS conflict: {plan_path} was modified by another process. Retry.")
+        _die(
+            "CAS conflict: state.json was modified by another process since you loaded it. "
+            "Re-read with `vectl status` or `vectl show`, then retry your mutation."
+        )
+
+    notice = format_lock_changes(changed_ids, plan)
+    if notice:
+        print(notice)
+
+
+def _save_definition(plan: Plan, plan_path: Path, expected_def_hash: str) -> None:
+    """Save definition-only data to plan.yaml with CAS semantics."""
+
+    changed_ids = recalc_lock_status(plan)
+    stripped = strip_state(plan)
+    try:
+        save_plan(stripped, plan_path, expected_hash=expected_def_hash)
+    except CASConflictError:
+        _die(
+            "CAS conflict: plan.yaml was modified by another process since you loaded it. "
+            "Re-read with `vectl status` or `vectl show`, then retry your mutation."
+        )
+
+    notice = format_lock_changes(changed_ids, plan)
+    if notice:
+        print(notice)
+
+
+def _save_both(
+    plan: Plan,
+    plan_path: Path,
+    expected_def_hash: str,
+    expected_state_hash: str,
+) -> None:
+    """Save both state and definition with one lock recalculation."""
+
+    changed_ids = recalc_lock_status(plan)
+
+    state_path = resolve_state_path(plan_path)
+    state = extract_state(plan)
+    stripped = strip_state(plan)
+
+    try:
+        save_state(state, state_path, expected_state_hash or None)
+    except CASConflictError:
+        _die(
+            "CAS conflict: state.json was modified by another process since you loaded it. "
+            "Re-read with `vectl status` or `vectl show`, then retry your mutation."
+        )
+
+    try:
+        save_plan(stripped, plan_path, expected_def_hash)
+    except CASConflictError:
+        _die(
+            "CAS conflict: plan.yaml was modified by another process since you loaded it. "
+            "Re-read with `vectl status` or `vectl show`, then retry your mutation."
+        )
+
+    notice = format_lock_changes(changed_ids, plan)
+    if notice:
+        print(notice)
 
 
 # ---------------------------------------------------------------------------
@@ -225,7 +308,7 @@ def render(
     Omits operational detail (claimed_by, rejection_history, etc.).
     Use --full to include complete step descriptions.
     """
-    p, _, plan = _load(plan)
+    p, _, _, plan_path = _load(plan)
 
     try:
         md = render_plan(p, phase_id=phase, full=full)
@@ -252,7 +335,7 @@ def diff_cmd(
     """
     import subprocess as sp
 
-    p_new, _, plan = _load(plan)
+    p_new, _, _, plan = _load(plan)
 
     # Get old plan from git
     try:
@@ -657,7 +740,7 @@ def next_cmd(
     plan: Path | None = PlanOption,
 ) -> None:
     """Show claimable steps (what to work on next)."""
-    p, _, plan = _load(plan)
+    p, _, _, _ = _load(plan)
 
     # Show strategy context if present
     if p.context.strip():
@@ -731,7 +814,7 @@ def status(
     phase: Optional[str] = typer.Option(None, "--phase", help="Show detail for a specific phase."),
 ) -> None:
     """Show plan status overview."""
-    p, _, plan = _load(plan)
+    p, _, _, _ = _load(plan)
 
     if phase is not None:
         _show_phase_detail(p, phase)
@@ -890,7 +973,7 @@ def show(
     plan: Path | None = PlanOption,
 ) -> None:
     """Show details for a step or phase."""
-    p, _, _ = _load(plan)
+    p, _, _, _ = _load(plan)
 
     # Try phase match
     ph = p.find_phase(target)
@@ -952,7 +1035,7 @@ def dag(
     """
     from vectl.core import generate_mermaid_dag
 
-    p, _, plan = _load(plan)
+    p, _, _, _ = _load(plan)
 
     try:
         mmd = generate_mermaid_dag(p, phase_id=phase)
@@ -1001,7 +1084,7 @@ def claim(
     RFC: docs/RFC-affinity.md
     Enforces agent affinity. Use --force to override exclusive affinity.
     """
-    p, h, plan_path = _load(plan)
+    p, def_h, state_h, plan_path = _load(plan)
 
     if step_id is None:
         candidates = get_next_steps(p, agent=agent)
@@ -1024,7 +1107,7 @@ def claim(
         else:
             out.print(f"[yellow]⚠️  Affinity warning: {result.warning_message}[/]")
 
-    _save(p, plan_path, h)
+    _save_state(p, plan_path, state_h)
     out.print(f"[green]Claimed:[/] {step_id} by {agent}")
 
     # Show affinity override in claim summary if applicable
@@ -1062,12 +1145,12 @@ def complete(
     plan: Path | None = PlanOption,
 ) -> None:
     """Mark a step as done with evidence."""
-    p, h, plan = _load(plan)
+    p, def_h, state_h, plan_path = _load(plan)
     try:
         p = complete_step(p, step_id, evidence)
     except PlanError as e:
         _die(str(e))
-    _save(p, plan, h)
+    _save_state(p, plan_path, state_h)
     out.print(f"[green]Completed:[/] {step_id}")
 
     # Show next available steps (saves a tool call)
@@ -1109,14 +1192,14 @@ def complete_phase_cmd(
         - User instruction in this conversation: choose option B (extend tool
           then test) before continuing migrate phase.
     """
-    p, h, plan_path = _load(plan)
+    p, def_h, state_h, plan_path = _load(plan)
     try:
         p, unlocked = complete_phase(p, phase_id, evidence)
     except PlanError as e:
         _die(str(e))
         return  # unreachable (typer exits), but keeps type-checkers honest
 
-    _save(p, plan_path, h)
+    _save_state(p, plan_path, state_h)
     out.print(f"[green]Completed phase:[/] {phase_id}")
     if unlocked:
         out.print(f"[green]Unlocked:[/] {', '.join(unlocked)}")
@@ -1136,12 +1219,12 @@ def defer(
     plan: Path | None = PlanOption,
 ) -> None:
     """Return a claimed step to pending."""
-    p, h, plan = _load(plan)
+    p, def_h, state_h, plan_path = _load(plan)
     try:
         p = defer_step(p, step_id)
     except PlanError as e:
         _die(str(e))
-    _save(p, plan, h)
+    _save_state(p, plan_path, state_h)
     out.print(f"[yellow]Deferred:[/] {step_id}")
     out.print()
     out.print("[dim]→ vectl next                      Find new work[/]")
@@ -1157,12 +1240,12 @@ def reject(
     plan: Path | None = PlanOption,
 ) -> None:
     """Reject a completed step, moving it back for rework."""
-    p, h, plan = _load(plan)
+    p, def_h, state_h, plan_path = _load(plan)
     try:
         p = reject_step(p, step_id, reason, reviewer)
     except PlanError as e:
         _die(str(e))
-    _save(p, plan, h)
+    _save_state(p, plan_path, state_h)
     out.print(f"[red]Rejected:[/] {step_id} — {reason}")
     out.print()
     out.print("[dim]→ vectl next                      Rejected steps appear first[/]")
@@ -1183,12 +1266,12 @@ def skip(
 
     Valid reasons: superseded, irrelevant, absorbed, deprioritized.
     """
-    p, h, plan = _load(plan)
+    p, def_h, state_h, plan_path = _load(plan)
     try:
         p = skip_step(p, step_id, reason)
     except PlanError as e:
         _die(str(e))
-    _save(p, plan, h)
+    _save_state(p, plan_path, state_h)
     out.print(f"[dim]Skipped:[/] {step_id} — {reason}")
     out.print()
     out.print("[dim]→ vectl next                      See remaining steps[/]")
@@ -1201,12 +1284,12 @@ def cancel(
     plan: Path | None = PlanOption,
 ) -> None:
     """Cancel a step (alias for skip --reason irrelevant)."""
-    p, h, plan = _load(plan)
+    p, def_h, state_h, plan_path = _load(plan)
     try:
         p = skip_step(p, step_id, SkipReason.IRRELEVANT.value)
     except PlanError as e:
         _die(str(e))
-    _save(p, plan, h)
+    _save_state(p, plan_path, state_h)
     out.print(f"[dim]Cancelled:[/] {step_id} — irrelevant")
     out.print()
     out.print("[dim]→ vectl next                      See remaining steps[/]")
@@ -1239,13 +1322,13 @@ def skip_phase_cmd(
     Locked phases with 0 steps can always be skipped (the lock protects nothing).
     Use --force to skip a locked phase that still has remaining steps.
     """
-    p, h, plan = _load(plan)
+    p, def_h, state_h, plan_path = _load(plan)
     skipped_ids: list[str] = []
     try:
         p, skipped_ids = skip_phase(p, phase_id, reason, force=force)
     except PlanError as e:
         _die(str(e))
-    _save(p, plan, h)
+    _save_state(p, plan_path, state_h)
     if skipped_ids:
         out.print(f"[dim]Skipped phase:[/] {phase_id} — {reason}")
         for sid in skipped_ids:
@@ -1271,12 +1354,12 @@ def check_cmd(
     plan: Path | None = PlanOption,
 ) -> None:
     """Toggle or add a checklist item in a step's description."""
-    p, h, plan = _load(plan)
+    p, def_h, state_h, plan_path = _load(plan)
     try:
         p = update_checklist(p, step_id, check=keyword, append=add)
     except PlanError as e:
         _die(str(e))
-    _save(p, plan, h)
+    _save_definition(p, plan_path, def_h)
     out.print(f"[green]Updated checklist:[/] {step_id}")
     out.print()
     out.print("[dim]→ vectl show {id}[/]".format(id=step_id))
@@ -1293,9 +1376,9 @@ def validate(
     check_refs: bool = typer.Option(False, "--check-refs", help="Check that ref files exist."),
 ) -> None:
     """Validate plan structure and consistency."""
-    p, _, plan = _load(plan)
+    p, _, _, plan_path = _load(plan)
 
-    base_path = plan.parent if check_refs else None
+    base_path = plan_path.parent if check_refs else None
     errors = validate_plan(p, check_refs=check_refs, base_path=base_path)
 
     if not errors:
@@ -1346,11 +1429,11 @@ def checkpoint(
     import json
     from vectl.checkpoint import build_checkpoint
 
-    p, h, _ = _load(plan)
+    p, def_h, state_h, _ = _load(plan)
 
     data = build_checkpoint(
         p,
-        file_hash=h,
+        file_hash=def_h,
         agent=agent,
         next_limit=next_limit,
         include_guidance=include_guidance,
@@ -1419,7 +1502,7 @@ def add_step_cmd(
       --status done --evidence "commit abc"
       --status skipped --skipped-reason "absorbed into X"
     """
-    p, h, plan = _load(plan)
+    p, def_h, state_h, plan_path = _load(plan)
 
     depends_on = [d.strip() for d in after.split(",") if d.strip()] if after else None
     refs_list = [r.strip() for r in refs.split(",") if r.strip()] if refs else None
@@ -1461,7 +1544,7 @@ def add_step_cmd(
         _die(str(e))
         return  # unreachable, for type checker
 
-    _save(p, plan, h)
+    _save_both(p, plan_path, def_h, state_h)
 
     out.print(f"[green]Added step:[/] {generated_id} → phase [bold]{phase}[/]")
 
@@ -1490,7 +1573,7 @@ def add_phase_cmd(
     plan: Path | None = PlanOption,
 ) -> None:
     """Add a new phase to the plan."""
-    p, h, plan = _load(plan)
+    p, def_h, state_h, plan_path = _load(plan)
 
     depends_on = [d.strip() for d in after.split(",") if d.strip()] if after else None
 
@@ -1507,7 +1590,7 @@ def add_phase_cmd(
         _die(str(e))
         return  # unreachable, for type checker
 
-    _save(p, plan, h)
+    _save_both(p, plan_path, def_h, state_h)
 
     # Show status based on auto-determined initial status
     ph = p.find_phase(generated_id)
@@ -1587,7 +1670,7 @@ def edit_plan_cmd(
         )
         return  # unreachable
 
-    p, h, plan_path = _load(plan)
+    p, def_h, state_h, plan_path = _load(plan)
 
     pg_val = project_guidance
     if project_guidance_file is not None:
@@ -1608,7 +1691,7 @@ def edit_plan_cmd(
         _die(str(e))
         return  # unreachable
 
-    _save(p, plan_path, h)
+    _save_both(p, plan_path, def_h, state_h)
     out.print("[green]Updated plan metadata[/]")
     out.print("[dim]→ vectl status                      See plan overview[/]")
 
@@ -1656,7 +1739,7 @@ def edit_step_cmd(
     """Edit a step's metadata."""
     from vectl.core import _SENTINEL
 
-    p, h, plan = _load(plan)
+    p, def_h, state_h, plan_path = _load(plan)
 
     add_deps = [d.strip() for d in add_dep.split(",") if d.strip()] if add_dep else None
     rm_deps = [d.strip() for d in rm_dep.split(",") if d.strip()] if rm_dep else None
@@ -1713,7 +1796,7 @@ def edit_step_cmd(
     except PlanError as e:
         _die(str(e))
 
-    _save(p, plan, h)
+    _save_both(p, plan_path, def_h, state_h)
 
     out.print(f"[green]Edited:[/] {step_id}")
     out.print()
@@ -1738,7 +1821,7 @@ def edit_phase_cmd(
     """Edit a phase's metadata."""
     from vectl.core import _SENTINEL
 
-    p, h, plan = _load(plan)
+    p, def_h, state_h, plan_path = _load(plan)
 
     add_deps = [d.strip() for d in add_dep.split(",") if d.strip()] if add_dep else None
     rm_deps = [d.strip() for d in rm_dep.split(",") if d.strip()] if rm_dep else None
@@ -1762,7 +1845,7 @@ def edit_phase_cmd(
     except PlanError as e:
         _die(str(e))
 
-    _save(p, plan, h)
+    _save_both(p, plan_path, def_h, state_h)
 
     out.print(f"[green]Edited phase:[/] {phase_id}")
     out.print()
@@ -1779,12 +1862,12 @@ def remove_step_cmd(
     plan: Path | None = PlanOption,
 ) -> None:
     """Remove a pending step from its phase."""
-    p, h, plan = _load(plan)
+    p, def_h, state_h, plan_path = _load(plan)
     try:
         p = remove_step(p, step_id, force=force)
     except PlanError as e:
         _die(str(e))
-    _save(p, plan, h)
+    _save_both(p, plan_path, def_h, state_h)
     out.print(f"[yellow]Removed:[/] {step_id}")
     if force:
         out.print("[dim]  Dependency references cleaned up in remaining steps.[/]")
@@ -1801,7 +1884,7 @@ def move_step_cmd(
     plan: Path | None = PlanOption,
 ) -> None:
     """Move a pending step to a different phase."""
-    p, h, plan = _load(plan)
+    p, def_h, state_h, plan_path = _load(plan)
 
     # Capture deps before move (move_step clears them — lossy operation)
     found = p.find_step(step_id)
@@ -1811,7 +1894,7 @@ def move_step_cmd(
         p = move_step(p, step_id, to_phase)
     except PlanError as e:
         _die(str(e))
-    _save(p, plan, h)
+    _save_both(p, plan_path, def_h, state_h)
     out.print(f"[green]Moved:[/] {step_id} → {to_phase}")
     if cleared_deps:
         out.print(f"[yellow]⚠ Cleared {len(cleared_deps)} dep(s):[/] {', '.join(cleared_deps)}")
@@ -1834,12 +1917,12 @@ def unlock(
     plan: Path | None = PlanOption,
 ) -> None:
     """Unlock a locked phase by validating all dependencies are done."""
-    p, h, plan = _load(plan)
+    p, def_h, state_h, plan_path = _load(plan)
     try:
         p = unlock_phase(p, phase_id)
     except PlanError as e:
         _die(str(e))
-    _save(p, plan, h)
+    _save_state(p, plan_path, state_h)
     out.print(f"[green]Unlocked:[/] {phase_id}")
     if evidence:
         out.print(f"[dim]Evidence: {evidence}[/]")
@@ -1879,7 +1962,7 @@ def recalc_lock(
 
     --dry-run previews what would change without saving the plan file.
     """
-    p, h, plan_path = _load(plan)
+    p, def_h, state_h, plan_path = _load(plan)
 
     if dry_run:
         # Operate on a deep copy so the original plan is not mutated.
@@ -1890,9 +1973,9 @@ def recalc_lock(
     else:
         changed = recalc_lock_status(p)
         msg = format_lock_changes(changed, p)
-        # _save() calls recalc_lock_status() again internally (idempotent —
+        # _save_both() recalculates lock status again internally (idempotent —
         # returns [] on second pass) to satisfy the save-hook invariant.
-        _save(p, plan_path, h)
+        _save_both(p, plan_path, def_h, state_h)
         out.print(msg if msg else "[vectl] Lock status is consistent. No changes needed.")
 
 
@@ -1940,14 +2023,14 @@ def add_steps_cmd(
         _die("Expected YAML list of step definitions from stdin.")
         return  # unreachable
 
-    p, h, plan = _load(plan)
+    p, def_h, state_h, plan_path = _load(plan)
     try:
         p, generated_ids = add_steps_bulk(p, phase, data)
     except PlanError as e:
         _die(str(e))
         return  # unreachable
 
-    _save(p, plan, h)
+    _save_both(p, plan_path, def_h, state_h)
 
     out.print(f"[green]Added {len(generated_ids)} step(s)[/] to phase [bold]{phase}[/]:")
     for gid in generated_ids:
@@ -1974,7 +2057,7 @@ def search(
     plan: Path | None = PlanOption,
 ) -> None:
     """Search across phases and steps for a pattern."""
-    p, _, plan = _load(plan)
+    p, _, _, _ = _load(plan)
 
     try:
         matches = search_plan(p, pattern, phase_id=phase, state=state, use_regex=regex)
@@ -2034,7 +2117,7 @@ def mine(
     if not agent and not show_all:
         _die("Provide --by <agent> or --all. (Or set VECTL_AGENT env var.)")
 
-    p, _, plan = _load(plan)
+    p, _, _, _ = _load(plan)
     claimed = get_claimed_steps(p, agent=agent)
 
     if not claimed:
@@ -2089,10 +2172,10 @@ def review(
       L3: Active phase detail (steps, deps, refs)
       L4: Spec coverage (reverse index from refs)
     """
-    p, _, plan = _load(plan)
+    p, _, _, plan_path = _load(plan)
 
     # ── Compute review data ────────────────────────────────────────────
-    base_path = plan.parent if check_refs else None
+    base_path = plan_path.parent if check_refs else None
     result = review_plan(p, check_refs=check_refs, base_path=base_path, include_done=show_all)
 
     # ── L1: Validation ──────────────────────────────────────────────────
@@ -2195,7 +2278,7 @@ def gate_check(
     """
     import subprocess as sp
 
-    p, _, plan = _load(plan)
+    p, _, _, plan_path = _load(plan)
 
     try:
         gc = core_gate_check(p, phase_id)
@@ -2230,7 +2313,7 @@ def gate_check(
                 capture_output=True,
                 text=True,
                 timeout=120,
-                cwd=str(plan.parent),
+                cwd=str(plan_path.parent),
             )
             if result.returncode == 0:
                 out.print("  [green]✓ Gate script passed[/]")
@@ -2294,14 +2377,14 @@ def clipboard_write_cmd(
     Overwrites any existing clipboard content. Use for cross-agent handoffs,
     broadcasts, or notes that don't follow DAG edges.
     """
-    p, h, plan = _load(plan)
+    p, def_h, state_h, plan_path = _load(plan)
 
     try:
         p = clipboard_write(p, author, summary, content, ttl)
     except PlanError as e:
         _die(str(e))
 
-    _save(p, plan, h)
+    _save_state(p, plan_path, state_h)
 
     cb = p.clipboard
     assert cb is not None
@@ -2322,7 +2405,7 @@ def clipboard_read_cmd(
     """
     from vectl.core import _clipboard_expired
 
-    p, _, plan = _load(plan)
+    p, _, _, _ = _load(plan)
 
     if p.clipboard is None:
         out.print("[dim]Clipboard is empty.[/]")
@@ -2357,14 +2440,14 @@ def clipboard_clear_cmd(
     plan: Path | None = PlanOption,
 ) -> None:
     """Clear the plan clipboard."""
-    p, h, plan = _load(plan)
+    p, def_h, state_h, plan_path = _load(plan)
 
     if p.clipboard is None:
         out.print("[dim]Clipboard was already empty.[/]")
         return
 
     p = clipboard_clear(p)
-    _save(p, plan, h)
+    _save_state(p, plan_path, state_h)
     out.print("[green]Clipboard cleared.[/]")
 
 
@@ -2400,7 +2483,7 @@ def dashboard(
     """
     import webbrowser
 
-    p, _, _ = _load(plan)
+    p, _, _, _ = _load(plan)
 
     try:
         html = generate_dashboard(p)

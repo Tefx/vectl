@@ -20,6 +20,7 @@ CLI and MCP could target different plan files.
 from __future__ import annotations
 
 import os
+import subprocess
 import warnings
 from pathlib import Path
 
@@ -52,7 +53,7 @@ def resolve_plan_path(explicit: Path | None = None) -> Path:
     # 3. Deprecated alias: VECTL_PLAN (warn)
     if env_deprecated := os.environ.get(ENV_PLAN_PATH_DEPRECATED):
         warnings.warn(
-            f"VECTL_PLAN is deprecated, use VECTL_PLAN_PATH instead.",
+            "VECTL_PLAN is deprecated, use VECTL_PLAN_PATH instead.",
             DeprecationWarning,
             stacklevel=2,
         )
@@ -70,3 +71,32 @@ def resolve_plan_path(explicit: Path | None = None) -> Path:
 
     # 5. Fallback: ./plan.yaml (may not exist)
     return Path("plan.yaml")
+
+
+def resolve_state_path(plan_path: Path | None = None) -> Path:
+    """Resolve the state.json path for a plan.
+
+    Resolution strategy:
+      1. Resolve git-common-dir via `git rev-parse --git-common-dir`.
+      2. If git fails, fall back to `.vectl/state.json` under the plan directory.
+    """
+    if plan_path is None:
+        plan_path = resolve_plan_path()
+
+    try:
+        git_result = subprocess.run(
+            ["git", "rev-parse", "--git-common-dir"],
+            capture_output=True,
+            text=True,
+            cwd=plan_path.parent,
+        )
+    except OSError:
+        return plan_path.parent / ".vectl" / "state.json"
+
+    if git_result.returncode == 0:
+        git_common_dir = Path(git_result.stdout.strip())
+        if not git_common_dir.is_absolute():
+            git_common_dir = plan_path.parent / git_common_dir
+        return git_common_dir / "vectl" / "state.json"
+
+    return plan_path.parent / ".vectl" / "state.json"

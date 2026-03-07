@@ -998,6 +998,219 @@ class TestValidate:
         assert result.exit_code == 1
         assert "ERROR" in result.output
 
+    def test_validate_shows_orphan_warning(self, tmp_path: Path) -> None:
+        """Validate command shows orphan warning when state has extra entries."""
+        from vectl.io import save_state
+        from vectl.models import PhaseState, PlanState, StepState
+
+        # Create a plan
+        plan = Plan(
+            project="orphan-test",
+            phases=[
+                Phase(id="core", name="Core", steps=[Step(id="s1", name="Step 1")]),
+            ],
+        )
+        plan_path = tmp_path / "plan.yaml"
+        save_plan(plan, plan_path)
+
+        # Create state with orphan entries
+        state = PlanState(
+            plan_id="orphan-test",
+            phases={
+                "core": PhaseState(status=PhaseStatus.PENDING),
+                "orphan_phase": PhaseState(status=PhaseStatus.DONE),  # orphan
+            },
+            steps={
+                "s1": StepState(status=StepStatus.PENDING),
+                "orphan_step": StepState(status=StepStatus.CLAIMED, claimed_by="agent-x"),  # orphan
+            },
+        )
+        state_path = resolve_state_path(plan_path)
+        state_path.parent.mkdir(parents=True, exist_ok=True)
+        save_state(state, state_path)
+
+        # Run validate - should show orphan warning
+        result = runner.invoke(app, ["validate", "--plan", str(plan_path)])
+        assert result.exit_code == 0  # orphan warnings don't cause failure
+        assert "orphan" in result.output.lower()
+        assert "orphan_phase" in result.output
+        assert "orphan_step" in result.output
+        assert "vectl recover" in result.output
+
+
+class TestRecover:
+    def test_recover_command_shows_diff(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        plan_path = tmp_path / "plan.yaml"
+        backup_root = tmp_path / ".git"
+        backup_path = backup_root / "vectl" / "plan.yaml.bak"
+
+        current = Plan(
+            project="recover-cli",
+            phases=[Phase(id="p1", name="Phase 1", steps=[Step(id="p1.s1", name="Current")])],
+        )
+        backup = Plan(
+            project="recover-cli",
+            phases=[Phase(id="p1", name="Phase 1", steps=[Step(id="p1.s1", name="Backup")])],
+        )
+        save_plan(current, plan_path)
+        backup_path.parent.mkdir(parents=True, exist_ok=True)
+        save_plan(backup, backup_path)
+
+        state_path = resolve_state_path(plan_path)
+        state_path.parent.mkdir(parents=True, exist_ok=True)
+        state_path.write_text(
+            json.dumps(
+                {
+                    "plan_id": "",
+                    "steps": {"ghost.step": {"status": "pending"}},
+                    "phases": {},
+                }
+            ),
+            encoding="utf-8",
+        )
+
+        monkeypatch.setattr("vectl.cli._resolve_git_dir", lambda _path: backup_root)
+
+        result = runner.invoke(app, ["recover", "--plan", str(plan_path)], input="n\n")
+
+        assert result.exit_code == 0
+        assert "Recovery diff" in result.output
+        assert "Restore plan.yaml from backup" in result.output
+        assert "cancelled" in result.output.lower()
+
+    def test_recover_command_no_backup_exit_1(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        plan_path = tmp_path / "plan.yaml"
+        backup_root = tmp_path / ".git"
+
+        current = Plan(
+            project="recover-cli",
+            phases=[Phase(id="p1", name="Phase 1", steps=[Step(id="p1.s1", name="Current")])],
+        )
+        save_plan(current, plan_path)
+
+        state_path = resolve_state_path(plan_path)
+        state_path.parent.mkdir(parents=True, exist_ok=True)
+        state_path.write_text(
+            json.dumps(
+                {
+                    "plan_id": "",
+                    "steps": {"ghost.step": {"status": "pending"}},
+                    "phases": {},
+                }
+            ),
+            encoding="utf-8",
+        )
+
+        monkeypatch.setattr("vectl.cli._resolve_git_dir", lambda _path: backup_root)
+
+        result = runner.invoke(app, ["recover", "--yes", "--plan", str(plan_path)])
+
+        assert result.exit_code == 1
+        assert "Backup not found" in result.output
+
+    def test_recover_command_corrupted_backup_shows_error(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """Recover command shows error when backup file is corrupted."""
+        import os
+
+        plan_path = tmp_path / "plan.yaml"
+        backup_root = tmp_path / ".git"
+        backup_path = backup_root / "vectl" / "plan.yaml.bak"
+
+        current = Plan(
+            project="recover-cli",
+            phases=[Phase(id="p1", name="Phase 1", steps=[Step(id="p1.s1", name="Current")])],
+        )
+        save_plan(current, plan_path)
+        backup_path.parent.mkdir(parents=True, exist_ok=True)
+
+        # Write corrupted backup content
+        backup_path.write_text("invalid: yaml [[[[")
+
+        state_path = resolve_state_path(plan_path)
+        state_path.parent.mkdir(parents=True, exist_ok=True)
+        state_path.write_text(
+            json.dumps(
+                {
+                    "plan_id": "",
+                    "steps": {"ghost.step": {"status": "pending"}},
+                    "phases": {},
+                }
+            ),
+            encoding="utf-8",
+        )
+
+        monkeypatch.setattr("vectl.cli._resolve_git_dir", lambda _path: backup_root)
+
+        result = runner.invoke(app, ["recover", "--yes", "--plan", str(plan_path)])
+
+        assert result.exit_code == 1
+        assert "Invalid" in result.output
+
+    def test_recover_command_permission_error_on_backup_dir(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """Recover command shows error when .git/vectl has permission issues."""
+        import os
+
+        plan_path = tmp_path / "plan.yaml"
+        backup_root = tmp_path / ".git"
+        backup_path = backup_root / "vectl" / "plan.yaml.bak"
+        vectl_dir = backup_root / "vectl"
+
+        current = Plan(
+            project="recover-cli",
+            phases=[Phase(id="p1", name="Phase 1", steps=[Step(id="p1.s1", name="Current")])],
+        )
+        backup = Plan(
+            project="recover-cli",
+            phases=[Phase(id="p1", name="Phase 1", steps=[Step(id="p1.s1", name="Backup")])],
+        )
+        save_plan(current, plan_path)
+        vectl_dir.mkdir(parents=True, exist_ok=True)
+        save_plan(backup, backup_path)
+
+        state_path = resolve_state_path(plan_path)
+        state_path.parent.mkdir(parents=True, exist_ok=True)
+        state_path.write_text(
+            json.dumps(
+                {
+                    "plan_id": "",
+                    "steps": {"ghost.step": {"status": "pending"}},
+                    "phases": {},
+                }
+            ),
+            encoding="utf-8",
+        )
+
+        monkeypatch.setattr("vectl.cli._resolve_git_dir", lambda _path: backup_root)
+
+        # Make vectl_dir read-only to simulate permission error
+        os.chmod(vectl_dir, 0o444)
+        try:
+            result = runner.invoke(app, ["recover", "--yes", "--plan", str(plan_path)])
+
+            # Should fail with permission-related error or non-zero exit code
+            assert result.exit_code == 1
+            # The error message may be in output or as exception
+            has_error = (
+                result.output
+                and (
+                    "Permission denied" in result.output.lower() or "error" in result.output.lower()
+                )
+            ) or result.exception is not None
+            assert has_error, (
+                f"Expected error but got output={result.output!r}, exception={result.exception!r}"
+            )
+        finally:
+            # Restore permissions for cleanup
+            os.chmod(vectl_dir, 0o755)
+
 
 # ---------------------------------------------------------------------------
 # Full lifecycle: claim → complete → next unblocks

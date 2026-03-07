@@ -32,6 +32,7 @@ from vectl.mcp_server import (
     vectl_guide as _vectl_guide_tool,
     vectl_lifecycle as _vectl_lifecycle_tool,
     vectl_mutate as _vectl_mutate_tool,
+    vectl_recover as _vectl_recover_tool,
     vectl_render as _vectl_render_tool,
     vectl_review as _vectl_review_tool,
     vectl_search as _vectl_search_tool,
@@ -55,6 +56,7 @@ vectl_dag = _vectl_dag_tool.fn
 vectl_clipboard = _vectl_clipboard_tool.fn
 vectl_check = _vectl_check_tool.fn
 vectl_render = _vectl_render_tool.fn
+vectl_recover = _vectl_recover_tool.fn
 
 
 # ---------------------------------------------------------------------------
@@ -2532,3 +2534,155 @@ class TestVectlRender:
         result = vectl_render()
         # Alpha phase has context "First phase context"
         assert "First phase context" in result
+
+
+class TestVectlRecover:
+    def test_recover_restores_without_prompt(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        plan_file = tmp_path / "plan.yaml"
+        backup_git = tmp_path / ".git"
+        backup_path = backup_git / "vectl" / "plan.yaml.bak"
+
+        current_plan = _make_plan_dict()
+        current_plan["phases"][0]["steps"][0]["name"] = "Current Name"
+        backup_plan = _make_plan_dict()
+        backup_plan["phases"][0]["steps"][0]["name"] = "Backup Name"
+
+        plan_file.write_text(yaml.dump(current_plan), encoding="utf-8")
+        backup_path.parent.mkdir(parents=True, exist_ok=True)
+        backup_path.write_text(yaml.dump(backup_plan), encoding="utf-8")
+
+        state_path = resolve_state_path(plan_file)
+        state_path.parent.mkdir(parents=True, exist_ok=True)
+        state_path.write_text(
+            json.dumps(
+                {
+                    "plan_id": "",
+                    "steps": {"ghost.step": {"status": "pending"}},
+                    "phases": {},
+                }
+            ),
+            encoding="utf-8",
+        )
+
+        old_plan = os.environ.get("VECTL_PLAN_PATH")
+        os.environ["VECTL_PLAN_PATH"] = str(plan_file)
+        monkeypatch.setattr("vectl.mcp_server._resolve_git_dir", lambda _path: backup_git)
+        try:
+            result = vectl_recover()
+        finally:
+            if old_plan is None:
+                os.environ.pop("VECTL_PLAN_PATH", None)
+            else:
+                os.environ["VECTL_PLAN_PATH"] = old_plan
+
+        assert result["ok"] is True
+        assert result["restored"] is True
+        assert "diff_summary" in result
+
+        restored_raw = yaml.safe_load(plan_file.read_text(encoding="utf-8"))
+        assert restored_raw["phases"][0]["steps"][0]["name"] == "Backup Name"
+
+    def test_recover_corrupted_backup_returns_error(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """MCP recover returns error when backup file is corrupted."""
+        import os
+
+        plan_file = tmp_path / "plan.yaml"
+        backup_git = tmp_path / ".git"
+        backup_path = backup_git / "vectl" / "plan.yaml.bak"
+
+        current_plan = _make_plan_dict()
+        current_plan["phases"][0]["steps"][0]["name"] = "Current Name"
+
+        plan_file.write_text(yaml.dump(current_plan), encoding="utf-8")
+        backup_path.parent.mkdir(parents=True, exist_ok=True)
+
+        # Write corrupted backup content
+        backup_path.write_text("invalid: yaml [[[[")
+
+        state_path = resolve_state_path(plan_file)
+        state_path.parent.mkdir(parents=True, exist_ok=True)
+        state_path.write_text(
+            json.dumps(
+                {
+                    "plan_id": "",
+                    "steps": {"ghost.step": {"status": "pending"}},
+                    "phases": {},
+                }
+            ),
+            encoding="utf-8",
+        )
+
+        old_plan = os.environ.get("VECTL_PLAN_PATH")
+        os.environ["VECTL_PLAN_PATH"] = str(plan_file)
+        monkeypatch.setattr("vectl.mcp_server._resolve_git_dir", lambda _path: backup_git)
+        try:
+            result = vectl_recover()
+        finally:
+            if old_plan is None:
+                os.environ.pop("VECTL_PLAN_PATH", None)
+            else:
+                os.environ["VECTL_PLAN_PATH"] = old_plan
+
+        assert result["ok"] is False
+        assert "error" in result
+        assert "Invalid" in result["error"]
+
+    def test_recover_permission_error_returns_error(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """MCP recover returns error when .git/vectl has permission issues."""
+        import os
+
+        plan_file = tmp_path / "plan.yaml"
+        backup_git = tmp_path / ".git"
+        backup_path = backup_git / "vectl" / "plan.yaml.bak"
+        vectl_dir = backup_git / "vectl"
+
+        current_plan = _make_plan_dict()
+        current_plan["phases"][0]["steps"][0]["name"] = "Current Name"
+        backup_plan = _make_plan_dict()
+        backup_plan["phases"][0]["steps"][0]["name"] = "Backup Name"
+
+        plan_file.write_text(yaml.dump(current_plan), encoding="utf-8")
+        vectl_dir.mkdir(parents=True, exist_ok=True)
+        backup_path.write_text(yaml.dump(backup_plan), encoding="utf-8")
+
+        state_path = resolve_state_path(plan_file)
+        state_path.parent.mkdir(parents=True, exist_ok=True)
+        state_path.write_text(
+            json.dumps(
+                {
+                    "plan_id": "",
+                    "steps": {"ghost.step": {"status": "pending"}},
+                    "phases": {},
+                }
+            ),
+            encoding="utf-8",
+        )
+
+        old_plan = os.environ.get("VECTL_PLAN_PATH")
+        os.environ["VECTL_PLAN_PATH"] = str(plan_file)
+        monkeypatch.setattr("vectl.mcp_server._resolve_git_dir", lambda _path: backup_git)
+
+        # Make the backup directory read-only to simulate permission error
+        os.chmod(vectl_dir, 0o444)
+        try:
+            # The function may raise PermissionError or return error dict depending on where it fails
+            try:
+                result = vectl_recover()
+                # If it returns, verify it has an error
+                assert result["ok"] is False
+                assert "error" in result
+            except PermissionError:
+                # PermissionError is also acceptable behavior - the test verifies permission errors cause failures
+                pass
+        finally:
+            os.chmod(vectl_dir, 0o755)
+            if old_plan is None:
+                os.environ.pop("VECTL_PLAN_PATH", None)
+            else:
+                os.environ["VECTL_PLAN_PATH"] = old_plan

@@ -6,6 +6,7 @@ from pathlib import Path
 import pytest
 
 from vectl.io import (
+    _backup_definition,
     detect_orphan_state,
     extract_state,
     load_plan,
@@ -313,6 +314,188 @@ class TestCAS:
         hash_ = save_plan(sample_plan, path, expected_hash="anything")
         assert path.exists()
         assert isinstance(hash_, str)
+
+
+class TestDefinitionBackup:
+    def test_backup_created_on_save(self, tmp_path: Path, sample_plan: Plan) -> None:
+        repo_root = tmp_path / "repo"
+        repo_root.mkdir()
+        (repo_root / ".git").mkdir()
+        plan_path = repo_root / "plan.yaml"
+
+        save_plan(sample_plan, plan_path)
+        _backup_definition(plan_path)
+
+        backup_path = repo_root / ".git" / "vectl" / "plan.yaml.bak"
+        assert backup_path.exists()
+
+    def test_backup_matches_plan_content(self, tmp_path: Path, sample_plan: Plan) -> None:
+        repo_root = tmp_path / "repo"
+        repo_root.mkdir()
+        (repo_root / ".git").mkdir()
+        plan_path = repo_root / "plan.yaml"
+
+        save_plan(sample_plan, plan_path)
+        _backup_definition(plan_path)
+
+        backup_path = repo_root / ".git" / "vectl" / "plan.yaml.bak"
+        assert backup_path.read_text(encoding="utf-8") == plan_path.read_text(encoding="utf-8")
+
+    def test_backup_skipped_in_linked_worktree(self, tmp_path: Path, sample_plan: Plan) -> None:
+        repo_root = tmp_path / "repo"
+        repo_root.mkdir()
+        (repo_root / ".git").write_text(
+            "gitdir: /tmp/shared/.git/worktrees/repo\n", encoding="utf-8"
+        )
+        plan_path = repo_root / "plan.yaml"
+
+        save_plan(sample_plan, plan_path)
+        _backup_definition(plan_path)
+
+        backup_path = repo_root / ".git" / "vectl" / "plan.yaml.bak"
+        assert not backup_path.exists()
+
+    def test_backup_creates_directory(self, tmp_path: Path, sample_plan: Plan) -> None:
+        repo_root = tmp_path / "repo"
+        repo_root.mkdir()
+        (repo_root / ".git").mkdir()
+        plan_path = repo_root / "plan.yaml"
+
+        save_plan(sample_plan, plan_path)
+        _backup_definition(plan_path)
+
+        backup_dir = repo_root / ".git" / "vectl"
+        assert backup_dir.exists()
+        assert backup_dir.is_dir()
+
+    def test_backup_permission_error_raises(self, tmp_path: Path, sample_plan: Plan) -> None:
+        """Backup fails gracefully when .git/vectl is not writable."""
+        import os
+
+        repo_root = tmp_path / "repo"
+        repo_root.mkdir()
+        git_dir = repo_root / ".git"
+        git_dir.mkdir()
+        vectl_dir = git_dir / "vectl"
+        vectl_dir.mkdir()
+        plan_path = repo_root / "plan.yaml"
+
+        save_plan(sample_plan, plan_path)
+
+        # Make vectl_dir read-only (simulate permission error)
+        os.chmod(vectl_dir, 0o444)
+        try:
+            # _backup_definition should raise an error
+            with pytest.raises(OSError):
+                _backup_definition(plan_path)
+        finally:
+            # Restore permissions for cleanup
+            os.chmod(vectl_dir, 0o755)
+
+    def test_backup_read_permission_error_raises(self, tmp_path: Path, sample_plan: Plan) -> None:
+        """Backup fails when plan.yaml is not readable."""
+        import os
+
+        repo_root = tmp_path / "repo"
+        repo_root.mkdir()
+        git_dir = repo_root / ".git"
+        git_dir.mkdir()
+        plan_path = repo_root / "plan.yaml"
+
+        save_plan(sample_plan, plan_path)
+
+        # Remove read permission from plan.yaml
+        os.chmod(plan_path, 0o000)
+        try:
+            # _backup_definition should raise an error when plan is unreadable
+            with pytest.raises(OSError):
+                _backup_definition(plan_path)
+        finally:
+            # Restore permissions for cleanup
+            os.chmod(plan_path, 0o644)
+
+
+class TestCorruptedBackupHandling:
+    """Tests for corrupted/unreadable/invalid backup file handling."""
+
+    def test_load_corrupted_yaml_backup(self, tmp_path: Path) -> None:
+        """Loading a backup with invalid YAML raises PlanIOError."""
+        backup_path = tmp_path / "plan.yaml.bak"
+
+        # Write corrupted YAML content - this is valid YAML but invalid plan structure
+        backup_path.write_text(
+            "project: test\n"
+            "phases:\n"
+            "  - name: Phase\n"
+            "    steps:\n"
+            "      - name: Step\n"
+            "        depends_on: [undefined!!]\n"  # Invalid YAML syntax - will parse but cause pydantic error
+        )
+
+        with pytest.raises(PlanIOError, match="Invalid"):
+            load_plan_definition(backup_path)
+
+    def test_load_invalid_plan_structure_backup(self, tmp_path: Path) -> None:
+        """Loading a backup with invalid plan structure raises PlanIOError."""
+        backup_path = tmp_path / "plan.yaml.bak"
+
+        # Write YAML that parses but has invalid plan structure
+        backup_path.write_text(
+            "project: test\nphases: 'not-a-list'\n"  # phases must be a list
+        )
+
+        with pytest.raises(PlanIOError, match="Invalid plan structure"):
+            load_plan_definition(backup_path)
+
+    def test_load_empty_backup_file(self, tmp_path: Path) -> None:
+        """Loading an empty backup file raises PlanIOError."""
+        backup_path = tmp_path / "plan.yaml.bak"
+        backup_path.write_text("")
+
+        with pytest.raises(PlanIOError, match="must be"):
+            load_plan_definition(backup_path)
+
+    def test_load_binary_backup_file(self, tmp_path: Path) -> None:
+        """Loading a binary backup file raises PlanIOError."""
+        backup_path = tmp_path / "plan.yaml.bak"
+        backup_path.write_bytes(b"\x00\x01\x02\x03\xff\xfe\xfd")
+
+        with pytest.raises((PlanIOError, UnicodeDecodeError)):
+            load_plan_definition(backup_path)
+
+    def test_recover_from_corrupted_backup(self, tmp_path: Path) -> None:
+        """Recovering from a corrupted backup raises PlanIOError."""
+        from vectl.core import recover_from_backup
+
+        plan_path = tmp_path / "plan.yaml"
+        backup_path = tmp_path / "plan.yaml.bak"
+
+        # Create a minimal valid plan first
+        plan = Plan(project="test", phases=[Phase(id="p1", name="P1", steps=[])])
+        save_plan(plan, plan_path)
+
+        # Write corrupted backup
+        backup_path.write_text("invalid: yaml content [[[")
+
+        with pytest.raises(PlanIOError, match="Invalid"):
+            recover_from_backup(plan_path, backup_path)
+
+    def test_recover_from_empty_backup(self, tmp_path: Path) -> None:
+        """Recovering from an empty backup raises PlanIOError."""
+        from vectl.core import recover_from_backup
+
+        plan_path = tmp_path / "plan.yaml"
+        backup_path = tmp_path / "plan.yaml.bak"
+
+        # Create a minimal valid plan first
+        plan = Plan(project="test", phases=[Phase(id="p1", name="P1", steps=[])])
+        save_plan(plan, plan_path)
+
+        # Write empty backup
+        backup_path.write_text("")
+
+        with pytest.raises(PlanIOError, match="must be|Invalid"):
+            recover_from_backup(plan_path, backup_path)
 
 
 class TestClipboardRoundTrip:

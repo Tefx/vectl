@@ -10,8 +10,9 @@ Resolution order:
   1. explicit parameter (--plan flag or function arg)
   2. VECTL_PLAN_PATH env var
   3. VECTL_PLAN env var (deprecated, warns)
-  4. walk-up discovery (find plan.yaml in parent dirs)
-  5. ./plan.yaml (fallback, may not exist)
+  4. linked worktree detection (find main worktree's plan.yaml)
+  5. walk-up discovery (find plan.yaml in parent dirs)
+  6. ./plan.yaml (fallback, may not exist)
 
 Source: p0-parity.1-plan-path step — expert P0 finding:
 CLI and MCP could target different plan files.
@@ -29,6 +30,58 @@ ENV_PLAN_PATH = "VECTL_PLAN_PATH"
 
 # Deprecated alias (kept for backward compatibility)
 ENV_PLAN_PATH_DEPRECATED = "VECTL_PLAN"
+
+
+def is_linked_worktree() -> tuple[bool, Path | None]:
+    """Detect if current directory is a linked git worktree.
+
+    Returns:
+        tuple: (True, main_worktree_root) if linked worktree, (False, None) otherwise.
+    """
+    try:
+        # Get git-common-dir and git-dir from current working directory
+        common_result = subprocess.run(
+            ["git", "rev-parse", "--git-common-dir"],
+            capture_output=True,
+            text=True,
+            cwd=Path.cwd(),
+        )
+        dir_result = subprocess.run(
+            ["git", "rev-parse", "--git-dir"],
+            capture_output=True,
+            text=True,
+            cwd=Path.cwd(),
+        )
+    except OSError:
+        # git not installed
+        return (False, None)
+
+    if common_result.returncode != 0 or dir_result.returncode != 0:
+        # Not a git repo or git command failed
+        return (False, None)
+
+    git_common_dir = Path(common_result.stdout.strip())
+    git_dir = Path(dir_result.stdout.strip())
+
+    # If git_dir == git_common_dir, this is the main repo, not a linked worktree
+    if git_dir == git_common_dir:
+        return (False, None)
+
+    # This is a linked worktree - get the main worktree root
+    try:
+        # Use git-common-dir as the reference for the main worktree
+        main_result = subprocess.run(
+            ["git", "-C", str(git_common_dir), "rev-parse", "--show-toplevel"],
+            capture_output=True,
+            text=True,
+        )
+        if main_result.returncode == 0:
+            main_root = Path(main_result.stdout.strip())
+            return (True, main_root)
+    except OSError:
+        pass
+
+    return (False, None)
 
 
 def resolve_plan_path(explicit: Path | None = None) -> Path:
@@ -59,7 +112,12 @@ def resolve_plan_path(explicit: Path | None = None) -> Path:
         )
         return Path(env_deprecated)
 
-    # 4. Walk-up discovery
+    # 4. Worktree detection: check if we're in a linked worktree
+    is_worktree, main_root = is_linked_worktree()
+    if is_worktree and main_root is not None:
+        return main_root / "plan.yaml"
+
+    # 5. Walk-up discovery
     current = Path.cwd()
     while True:
         candidate = current / "plan.yaml"
@@ -69,7 +127,7 @@ def resolve_plan_path(explicit: Path | None = None) -> Path:
             break
         current = current.parent
 
-    # 5. Fallback: ./plan.yaml (may not exist)
+    # 6. Fallback: ./plan.yaml (may not exist)
     return Path("plan.yaml")
 
 

@@ -11,7 +11,15 @@ from typing import Any
 
 import yaml
 
-from vectl.models import CASConflictError, PhaseState, Plan, PlanIOError, PlanState, StepState
+from vectl.models import (
+    CASConflictError,
+    OrphanEntry,
+    PhaseState,
+    Plan,
+    PlanIOError,
+    PlanState,
+    StepState,
+)
 from vectl.plan_path import resolve_state_path
 
 _PLAN_YAML_HEADER = """\
@@ -324,6 +332,37 @@ def merge_plan(plan_def: Plan, state: PlanState) -> Plan:
     merged = merged.model_copy(update={"clipboard": state.clipboard})
 
     return merged
+
+
+def detect_orphan_state(plan_def: Plan, state: PlanState) -> list[OrphanEntry]:
+    """Detect orphan state entries that exist in state but have no matching definition in plan.yaml.
+
+    Compares the phase/step keys in state.json against the plan.yaml structure.
+    Returns a list of OrphanEntry objects for any entries in state that don't have
+    a matching phase or step in the plan definition.
+    """
+    orphans: list[OrphanEntry] = []
+
+    # Collect all valid phase IDs from plan definition
+    valid_phase_ids: set[str] = {phase.id for phase in plan_def.phases}
+
+    # Collect all valid step IDs from plan definition, mapping to their phase
+    valid_step_ids: dict[str, str] = {}  # step_id -> phase_id
+    for phase in plan_def.phases:
+        for step in phase.steps:
+            valid_step_ids[step.id] = phase.id
+
+    # Check for orphan phases (in state but not in plan definition)
+    for phase_id in state.phases:
+        if phase_id not in valid_phase_ids:
+            orphans.append(OrphanEntry(kind="phase", id=phase_id, phase_id=None))
+
+    # Check for orphan steps (in state but not in plan definition)
+    for step_id in state.steps:
+        if step_id not in valid_step_ids:
+            orphans.append(OrphanEntry(kind="step", id=step_id, phase_id=None))
+
+    return orphans
 
 
 def _clean_dict(d: dict[str, Any]) -> dict[str, Any]:

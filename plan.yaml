@@ -4994,45 +4994,105 @@ phases:
   - id: orphan-detect
     name: Orphan state detection on load
     status: pending
-    description: In merge_plan() or _load(), compare state.json phase/step keys against
-      plan.yaml structure. Log warning for any orphan entries (state exists but no
-      matching definition). Return orphan info so callers can surface it.
-    verification: 'Unit test: state.json with extra phase/step keys not in plan.yaml
-      triggers warning. No false positives on clean state.'
+    description: "In merge_plan() or _load(), compare state.json phase/step keys against\
+      \ plan.yaml structure. Log warning for any orphan entries (state exists but\
+      \ no matching definition). Return orphan info so callers can surface it.\n\n\
+      File: src/vectl/io.py\nFunction: detect_orphan_state(plan_def: Plan, state:\
+      \ PlanState) -> list[OrphanEntry]\n  - OrphanEntry: dataclass with kind (\"\
+      phase\"|\"step\"), id, phase_id (if step)\n\nPattern: Follow merge_plan() iteration\
+      \ at io.py:286 — iterate state.phases and state.steps, compare against plan_def\
+      \ structure.\n\nTests: tests/test_io.py::test_orphan_detect_extra_phase\n  \
+      \     tests/test_io.py::test_orphan_detect_extra_step\n       tests/test_io.py::test_orphan_detect_clean_state_no_warning"
+    verification: '- Run: pytest tests/test_io.py -k orphan -v
+
+      - state.json with extra phase key not in plan.yaml returns orphan entry
+
+      - state.json with extra step key not in plan.yaml returns orphan entry
+
+      - Clean state (no extras) returns empty list, no false positives
+
+      - No regressions: pytest tests/test_io.py -v passes'
     refs:
     - src/vectl/io.py
     - src/vectl/models.py
+    agent: python-executor
   - id: orphan-surface
     name: Surface orphan warnings in CLI and MCP
     status: pending
-    description: 'When orphans detected: CLI prints warning to stderr, MCP returns
-      notice in response. Include count and phase/step IDs. Add ''vectl check'' integration
-      to report orphans.'
-    verification: 'Manual test: create divergent state, run ''vectl status'' and MCP
-      status, both show orphan warning.'
+    description: "When orphans detected during _load(): CLI prints warning to stderr,\
+      \ MCP returns notice in response metadata. Include count and phase/step IDs.\n\
+      \nFiles:\n  - src/vectl/cli.py: in _load() or status/next commands, call detect_orphan_state()\
+      \ and print stderr warning if non-empty\n  - src/vectl/mcp_server.py: in _load(),\
+      \ call detect_orphan_state() and prepend notice to response if non-empty\n\n\
+      Pattern: Follow existing warning patterns in cli.py (e.g. lock recalculation\
+      \ notices). For MCP, follow notice prepend pattern used by _save_both() lock\
+      \ notices.\n\nWarning format:\n  \"⚠ Divergence detected: N orphan state entries\
+      \ (phase: X, step: Y, ...). Run 'vectl validate' for details.\"\n\nTests: tests/test_cli.py::test_orphan_warning_shown_on_status\n\
+      \       tests/test_mcp.py::test_orphan_notice_in_mcp_response"
+    verification: '- Run: pytest tests/test_cli.py -k orphan -v
+
+      - Manual test: create divergent state.json (extra keys), run ''vectl status'',
+      confirm warning on stderr
+
+      - MCP: call vectl_status with divergent state, confirm notice in response
+
+      - No warning when state is clean'
     refs:
     - src/vectl/cli.py
     - src/vectl/mcp_server.py
     depends_on:
     - orphan-detect
+    agent: python-executor
   - id: def-backup
     name: Backup plan.yaml to .git/vectl/ on save
     status: pending
-    description: After successful _save_definition(), copy plan.yaml content to .git/vectl/plan.yaml.bak.
-      This backup survives git reset --hard since it's inside .git/. Single-worktree
-      only for now.
-    verification: 'Unit test: after save, .git/vectl/plan.yaml.bak exists and matches
-      plan.yaml content.'
+    description: "After successful _save_definition(), copy plan.yaml content to .git/vectl/plan.yaml.bak.\
+      \ This backup survives git reset --hard since it's inside .git/. Single-worktree\
+      \ only for now.\n\nFile: src/vectl/io.py\nFunction: _backup_definition(plan_path:\
+      \ Path) -> None\n  - Resolve .git dir (handle worktree case: skip backup if\
+      \ linked worktree)\n  - Create .git/vectl/ directory if needed\n  - Copy plan.yaml\
+      \ content to .git/vectl/plan.yaml.bak atomically (write tmp + rename)\n\nCall\
+      \ site: _save_definition() in both cli.py and mcp_server.py — call _backup_definition()\
+      \ after successful write.\n\nPattern: Follow _save_definition() file-write pattern\
+      \ in io.py for atomic write.\n\nTests: tests/test_io.py::test_backup_created_on_save\n\
+      \       tests/test_io.py::test_backup_matches_plan_content\n       tests/test_io.py::test_backup_skipped_in_linked_worktree\n\
+      \       tests/test_io.py::test_backup_creates_directory"
+    verification: '- Run: pytest tests/test_io.py -k backup -v
+
+      - After save, .git/vectl/plan.yaml.bak exists and matches plan.yaml content
+
+      - Backup directory created automatically if missing
+
+      - Backup skipped gracefully in linked worktree (no error)
+
+      - No regressions: pytest tests/test_io.py -v passes'
     refs:
     - src/vectl/io.py
+    agent: python-executor
   - id: recover-cmd
     name: Recovery command from backup
     status: pending
-    description: 'Add ''vectl recover'' CLI command and MCP tool. When orphans detected
-      and backup exists: show diff between current plan.yaml and backup, offer to
-      restore from backup. Requires user confirmation in CLI.'
-    verification: 'Integration test: simulate divergence (delete phases from plan.yaml),
-      run recover, verify phases restored from backup.'
+    description: "Add 'vectl recover' CLI command and MCP tool. When orphans detected\
+      \ and backup exists: show diff between current plan.yaml and backup, offer to\
+      \ restore from backup. Requires user confirmation in CLI (--yes to skip).\n\n\
+      Files:\n  - src/vectl/core.py: recover_from_backup(plan_path, backup_path) ->\
+      \ RecoverResult\n    - Compare current plan.yaml vs backup\n    - Return diff\
+      \ summary (phases/steps added/removed)\n  - src/vectl/cli.py: @app.command(\"\
+      recover\") with --yes flag\n  - src/vectl/mcp_server.py: vectl_recover() tool\
+      \ (no confirmation needed in MCP, agent is trusted)\n\nPattern: Follow existing\
+      \ CLI command pattern (e.g. validate command at cli.py:1423). For MCP, follow\
+      \ vectl_mutate() pattern.\n\nTests: tests/test_core.py::test_recover_restores_from_backup\n\
+      \       tests/test_core.py::test_recover_no_backup_error\n       tests/test_cli.py::test_recover_command_shows_diff"
+    verification: '- Run: pytest tests/ -k recover -v
+
+      - Simulate divergence (delete phases from plan.yaml), run ''vectl recover'',
+      verify phases restored from backup
+
+      - No backup available: clear error message, exit 1
+
+      - CLI without --yes: prompts for confirmation
+
+      - MCP: returns diff summary and restores without prompt'
     refs:
     - src/vectl/cli.py
     - src/vectl/mcp_server.py
@@ -5040,20 +5100,140 @@ phases:
     depends_on:
     - orphan-detect
     - def-backup
+    agent: python-executor
   - id: check-integration
     name: Integrate divergence check into vectl check
     status: pending
-    description: Extend existing 'vectl check' to include orphan detection as a check
-      item. Report orphan count, list affected phases/steps, and suggest 'vectl recover'
-      if backup available.
-    verification: 'vectl check on clean plan: no orphan warning. On divergent plan:
-      reports orphans with actionable message.'
+    description: "Extend existing 'vectl validate' command to include orphan detection\
+      \ as an additional validation check. Report orphan count, list affected phase/step\
+      \ IDs, and suggest 'vectl recover' if backup available.\n\nFiles:\n  - src/vectl/core.py:\
+      \ in validate_plan(), add orphan detection check using detect_orphan_state()\n\
+      \    - Requires loading state.json alongside plan.yaml — add optional state\
+      \ parameter\n    - Orphans reported as PlanValidationIssue with is_warning=True\n\
+      \  - src/vectl/cli.py: in validate() command, pass state to validate_plan()\
+      \ when available\n  - src/vectl/mcp_server.py: if vectl_validate exists, pass\
+      \ state similarly\n\nPattern: Follow existing validate_plan() check pattern\
+      \ at core.py:44 — append PlanValidationIssue entries.\n\nNote: The target command\
+      \ is 'vectl validate' (not 'vectl check' which is a checklist toggle command).\n\
+      \nTests: tests/test_core.py::test_validate_detects_orphans\n       tests/test_core.py::test_validate_clean_plan_no_orphan_warning\n\
+      \       tests/test_cli.py::test_validate_shows_orphan_warning"
+    verification: '- Run: pytest tests/ -k "validate and orphan" -v
+
+      - vectl validate on clean plan: no orphan warning
+
+      - vectl validate on divergent plan (state.json has extra keys): reports orphans
+      as warnings with actionable message
+
+      - Suggests ''vectl recover'' when backup exists
+
+      - No regressions: pytest tests/test_core.py -v passes'
     refs:
     - src/vectl/core.py
     - src/vectl/cli.py
     - src/vectl/mcp_server.py
     depends_on:
     - orphan-surface
+    agent: python-executor
+  - id: divergence-guard.dg-verify
+    name: dg-verify
+    status: pending
+    description: 'As an INDEPENDENT TESTER (integration-verifier), validate the divergence-guard
+      implementation from a fresh perspective.
+
+
+      YOUR GOAL IS TO FIND PROBLEMS, not to confirm it works.
+
+
+      Test for:
+
+      - Happy path: detect_orphan_state() correctly identifies extra phase/step keys
+      in state.json
+
+      - Happy path: CLI status/next shows orphan warning on stderr when divergence
+      exists
+
+      - Happy path: backup created at .git/vectl/plan.yaml.bak after save
+
+      - Happy path: ''vectl recover'' restores plan.yaml from backup
+
+      - Happy path: ''vectl validate'' reports orphans as warnings
+
+      - Edge cases: empty state.json, state.json with no orphans, missing .git directory,
+      no backup file
+
+      - Error scenarios: corrupted backup file, permission errors on .git/vectl/
+
+      - Regression: all existing tests pass (pytest tests/ -v)
+
+
+      Document ALL findings. A test that discovers issues is a SUCCESS.
+
+
+      Independence Level: L1'
+    verification: '- Full test suite passes: pytest tests/ -v
+
+      - Orphan detection tests pass: pytest tests/ -k orphan -v
+
+      - Backup tests pass: pytest tests/ -k backup -v
+
+      - Recovery tests pass: pytest tests/ -k recover -v
+
+      - Validate integration tests pass: pytest tests/ -k "validate and orphan" -v
+
+      - No regressions in existing functionality
+
+      - Evidence of independent review provided'
+    depends_on:
+    - orphan-detect
+    - orphan-surface
+    - def-backup
+    - recover-cmd
+    - check-integration
+    agent: integration-verifier
+  - id: divergence-guard.dg-gate
+    name: dg-gate
+    status: pending
+    description: 'As an INDEPENDENT REVIEWER (gate-reviewer), assess whether the divergence-guard
+      phase meets the quality bar for completion.
+
+
+      YOU ARE THE QUALITY GATE. Your job is to BLOCK progress if quality is insufficient,
+      not to rubber-stamp completion.
+
+
+      Review criteria:
+
+      1. Completeness: All 5 implementation steps executed with evidence?
+
+      2. Evidence Quality: Evidence is specific, verifiable, not vague?
+
+      3. Known Issues: All blockers resolved? Tech debt documented?
+
+      4. Orphan Detection: Correctly identifies divergent state without false positives?
+
+      5. Backup/Recovery: Backup created reliably, recovery restores correctly?
+
+      6. Validate Integration: Orphan check integrated into vectl validate?
+
+      7. Cross-cutting: No regressions in existing plan operations?
+
+
+      Independence: You MUST NOT be the same agent as any implementation step in this
+      phase.'
+    verification: '- All phase steps completed successfully
+
+      - Evidence collected and reviewed
+
+      - No unresolved blockers
+
+      - Orphan detection, backup, recovery, and validate integration all verified
+
+      - No regressions in existing functionality
+
+      - Ready for use'
+    depends_on:
+    - divergence-guard.dg-verify
+    agent: gate-reviewer
 - id: worktree-support
   name: Worktree Support
   status: pending
@@ -5289,5 +5469,125 @@ phases:
     - docs/ADR-worktree-support.md
     - src/vectl/plan_path.py
     depends_on:
-    - worktree-support.wt-verify
+    - worktree-support.wt-verify-retest
     agent: gate-reviewer
+  - id: worktree-support.wt-verify-fix
+    name: wt-verify.fix
+    status: pending
+    description: '[HIGH] Fix linked worktree plan-path and mutate-guard regressions
+      found by `worktree-support.wt-verify`.
+
+
+      Scope:
+
+      - `src/vectl/plan_path.py`
+
+      - `src/vectl/cli.py`
+
+      - `src/vectl/mcp_server.py`
+
+      - `tests/test_plan_path.py`
+
+      - `tests/test_cli.py`
+
+      - `tests/test_mcp.py`
+
+
+      Required outcomes:
+
+      - Real linked-worktree happy path resolves the main worktree `plan.yaml` instead
+      of returning `(False, None)`.
+
+      - Linked-worktree mutate flows in CLI/MCP block with an actionable worktree
+      guard message rather than `Plan file not found: plan.yaml`.
+
+      - Malformed git output does not trigger unsafe relative fallback behavior.
+
+
+      Failure-mode checklist:
+
+      - relative vs absolute path behavior in linked worktrees
+
+      - missing-file fallback behavior when git output is malformed or incomplete
+
+      - explicit guard behavior for mutate operations in CLI and MCP entrypoints
+
+      - stale-definition vs new-state precedence for resolved plan path vs local fallback
+
+      - malformed-output / partial-resolution path must fail closed, not silently
+      continue
+
+
+      State semantics:
+
+      - Last-writer-wins does not apply here; path resolution must deterministically
+      prefer the resolved main-worktree plan path when valid.
+
+      - Existing explicit `VECTL_PLAN_PATH` override behavior must be preserved exactly.
+
+      - Backward-compatible legacy behavior includes non-git and main-worktree resolution
+      paths continuing to work unchanged.
+
+
+      Regression coverage required:
+
+      - Add/update focused regressions in `tests/test_plan_path.py` for real linked-worktree
+      resolution and malformed git output.
+
+      - Add/update focused regressions in `tests/test_cli.py` and `tests/test_mcp.py`
+      for actionable mutate-block messaging.
+
+
+      Out of scope:
+
+      - No unrelated CLI/MCP UX changes beyond the actionable block path.
+
+      - No broader plan storage redesign or git workflow changes.'
+    verification: '- Main path: targeted regressions for linked-worktree resolution
+      and CLI/MCP mutate blocking pass
+
+      - Failure path: focused regression covers malformed git output and proves fail-closed
+      behavior without unsafe relative fallback
+
+      - Proof: actionable block message is returned from both CLI and MCP entrypoints,
+      and override/non-git legacy behavior remains covered'
+    depends_on:
+    - worktree-support.wt-verify
+    agent: python-senior
+  - id: worktree-support.wt-verify-retest
+    name: wt-verify.retest
+    status: pending
+    description: 'As an INDEPENDENT TESTER (integration-verifier), re-validate the
+      linked-worktree fix from a fresh perspective after `worktree-support.wt-verify-fix`.
+
+
+      YOUR GOAL IS TO FIND REMAINING PROBLEMS, not to confirm it works.
+
+
+      Re-test for:
+
+      - Happy path: real linked worktree resolves the main worktree `plan.yaml`
+
+      - Happy path: linked-worktree mutate flows in CLI and MCP return the actionable
+      block message
+
+      - Error scenarios: malformed git output fails closed and does not allow unsafe
+      relative fallback
+
+      - Regression: existing override, non-git, and main-worktree behaviors remain
+      intact
+
+
+      Document ALL findings. A test that discovers issues is a SUCCESS.
+
+      Independence Level: L1'
+    verification: '- Run focused linked-worktree resolution and mutate-guard regressions
+      for plan path, CLI, and MCP
+
+      - Confirm main path passes and malformed-git failure path is exercised with
+      explicit evidence
+
+      - Report any remaining blocker/should_fix findings with reproduction details'
+    depends_on:
+    - worktree-support.wt-verify-fix
+    agent: integration-verifier

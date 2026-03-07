@@ -122,13 +122,11 @@ def save_state(
         return hashlib.sha256(data.encode()).hexdigest()
 
 
-def load_plan(path: Path | str) -> tuple[Plan, str]:
-    """Load plan from YAML file and merge companion state if present.
+def load_plan_definition(path: Path | str) -> tuple[Plan, str]:
+    """Load plan definition from YAML file only.
 
     Returns (Plan, file_hash) for CAS.
-
-    If a companion ``state.json`` exists and contains mutable runtime state,
-    the returned plan is merged with state values before returning.
+    Does not merge companion ``state.json`` runtime state.
     """
     path = Path(path)
     if not path.exists():
@@ -145,6 +143,19 @@ def load_plan(path: Path | str) -> tuple[Plan, str]:
         plan = Plan(**raw)
     except Exception as e:
         raise PlanIOError(f"Invalid plan structure: {e}") from e
+    return plan, file_hash
+
+
+def load_plan(path: Path | str) -> tuple[Plan, str]:
+    """Load plan from YAML file and merge companion state if present.
+
+    Returns (Plan, file_hash) for CAS.
+
+    If a companion ``state.json`` exists and contains mutable runtime state,
+    the returned plan is merged with state values before returning.
+    """
+    path = Path(path)
+    plan, file_hash = load_plan_definition(path)
 
     state, _ = load_state(resolve_state_path(path))
     has_state = (

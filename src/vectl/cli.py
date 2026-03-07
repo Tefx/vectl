@@ -9,7 +9,6 @@ import enum
 import os
 import sys
 from pathlib import Path
-from typing import Optional
 
 import typer
 from rich.console import Console
@@ -20,42 +19,44 @@ from rich.table import Table
 from rich.text import Text
 
 from vectl import __version__
-from vectl.plan_path import resolve_plan_path, resolve_state_path
-from vectl.semantics import is_step_locked
 from vectl.core import (
     add_phase,
     add_step,
     add_steps_bulk,
     claim_step,
     clipboard_clear,
-    clipboard_read,
     clipboard_write,
     complete_phase,
     complete_step,
     defer_step,
+    diff_plans,
     edit_phase,
     edit_step,
-    gate_check as core_gate_check,
+    format_lock_changes,
     get_claimed_steps,
     get_next_steps,
     move_step,
+    recalc_lock_status,
     reject_step,
     remove_step,
-    review_plan,
     render_plan,
-    diff_plans,
+    review_plan,
     search_plan,
     skip_phase,
     skip_step,
-    format_lock_changes,
-    recalc_lock_status,
     unlock_phase,
     update_checklist,
     validate_plan,
 )
+from vectl.core import (
+    gate_check as core_gate_check,
+)
+from vectl.dashboard import generate_dashboard
+from vectl.guide import GUIDE_ALL as _GUIDE_ALL
+from vectl.guide import GUIDE_TOPICS as _GUIDE_TOPICS
 from vectl.io import (
     extract_state,
-    load_plan,
+    load_plan_definition,
     load_state,
     merge_plan,
     save_plan,
@@ -63,7 +64,6 @@ from vectl.io import (
     strip_state,
 )
 from vectl.models import (
-    AffinityError,
     AffinityMode,
     CASConflictError,
     PhaseStatus,
@@ -71,10 +71,10 @@ from vectl.models import (
     PlanError,
     PlanIOError,
     SkipReason,
-    Step,
     StepStatus,
 )
-from vectl.dashboard import generate_dashboard
+from vectl.plan_path import resolve_plan_path, resolve_state_path
+from vectl.semantics import is_step_locked
 
 console = Console(stderr=True)
 out = Console()
@@ -145,7 +145,7 @@ def _load(plan_path: Path | None) -> tuple[Plan, str, str, Path]:
 
     target = resolve_plan_path(plan_path)
     try:
-        plan_def, def_hash = load_plan(target)
+        plan_def, def_hash = load_plan_definition(target)
         state_path = resolve_state_path(target)
         state, state_hash = load_state(state_path)
     except PlanIOError as e:
@@ -164,6 +164,15 @@ def _load(plan_path: Path | None) -> tuple[Plan, str, str, Path]:
     return plan_def, def_hash, "", target
 
 
+# Save routing taxonomy for this CLI module:
+# - _save_state: persists state-only files (state.json) for commands that only mutate
+#   runtime state: claim, complete, complete-phase, defer, reject, skip, cancel,
+#   skip-phase, unlock, clipboard-write, and clipboard-clear.
+# - _save_definition: persists definition-only data (plan.yaml, state-stripped)
+#   for checklist-only edits.
+# - _save_both: persists both definition and state together for structural/metadata
+#   edits: add-step, add-phase, edit-plan, edit-step, edit-phase, remove-step,
+#   move-step, recalc-lock, and add-steps.
 def _save_state(plan: Plan, plan_path: Path, expected_state_hash: str) -> None:
     """Save state-only data to state.json with CAS semantics."""
 
@@ -263,6 +272,45 @@ PlanOption = typer.Option(
     help="Path to plan YAML file. Defaults to auto-discovery (walk-up). (env: VECTL_PLAN_PATH)",
 )
 
+# B008-compliant singleton options (defined at module level to avoid function call in defaults)
+RenderOutputOption = typer.Option(None, "--output", "-o", help="Write to file instead of stdout.")
+AgentsMdDirOption = typer.Option(
+    Path("."),
+    "--dir",
+    help="Directory containing AGENTS.md/CLAUDE.md to update.",
+)
+AgentsMdTargetOption = typer.Option(
+    "auto",
+    "--target",
+    help="Target file: auto (detect .claude/), agents (AGENTS.md), claude (CLAUDE.md).",
+)
+InitTargetOption = typer.Option(
+    "auto",
+    "--target",
+    help="Target file for agent instructions: auto, agents, claude.",
+)
+EvidenceTemplateFileOption = typer.Option(
+    None,
+    "--evidence-template-file",
+    help="Read the completion evidence template from a file.",
+)
+ProjectGuidanceFileOption = typer.Option(
+    None,
+    "--project-guidance-file",
+    help="Read project-level guidance from a file.",
+)
+ContextFileOption = typer.Option(
+    None,
+    "--context-file",
+    help="Read plan context from a file.",
+)
+DashboardOutputOption = typer.Option(
+    Path("plan-dashboard.html"),
+    "--out",
+    "-o",
+    help="Output file path for the HTML dashboard.",
+)
+
 
 # ---------------------------------------------------------------------------
 # cli.1: init + --version
@@ -293,13 +341,11 @@ def mcp() -> None:
 
 @app.command()
 def render(
-    phase: Optional[str] = typer.Option(None, "--phase", help="Render only this phase."),
+    phase: str | None = typer.Option(None, "--phase", help="Render only this phase."),
     full: bool = typer.Option(
         False, "--full", help="Show complete step descriptions (no truncation)."
     ),
-    output: Optional[Path] = typer.Option(
-        None, "--output", "-o", help="Write to file instead of stdout."
-    ),
+    output: Path | None = RenderOutputOption,
     plan: Path | None = PlanOption,
 ) -> None:
     """Render plan as Markdown (read-only export).
@@ -362,6 +408,7 @@ def diff_cmd(
             return  # unreachable
     else:
         import yaml
+
         from vectl.models import Plan as PlanModel
 
         try:
@@ -424,8 +471,6 @@ def log_cmd(
     """
     import subprocess as sp
 
-    import yaml
-
     plan_resolved = resolve_plan_path(plan)
     plan_dir = str(plan_resolved.parent)
 
@@ -446,7 +491,7 @@ def log_cmd(
         _die(f"git log failed: {result.stderr.strip()}")
         return  # unreachable
 
-    lines = [l.strip() for l in result.stdout.strip().splitlines() if l.strip()]
+    lines = [line.strip() for line in result.stdout.strip().splitlines() if line.strip()]
     if not lines:
         out.print("[dim]No git history for plan.yaml.[/]")
         return
@@ -677,19 +722,11 @@ def _upsert_agents_md(directory: Path, target: AgentsTarget = AgentsTarget.auto)
 
 @app.command("agents-md")
 def agents_md_cmd(
-    directory: Path = typer.Option(
-        Path("."),
-        "--dir",
-        help="Directory containing AGENTS.md/CLAUDE.md to update.",
-    ),
-    target: AgentsTarget = typer.Option(
-        AgentsTarget.auto,
-        "--target",
-        help="Target file: auto (detect .claude/), agents (AGENTS.md), claude (CLAUDE.md).",
-    ),
+    directory: Path = AgentsMdDirOption,
+    target: str = AgentsMdTargetOption,
 ) -> None:
     """Upsert the vectl section in AGENTS.md or CLAUDE.md."""
-    result = _upsert_agents_md(directory, target)
+    result = _upsert_agents_md(directory, AgentsTarget(target))
     out.print(result)
 
 
@@ -697,11 +734,7 @@ def agents_md_cmd(
 def init(
     project: str = typer.Option(..., "--project", prompt="Project name"),
     plan: Path | None = PlanOption,
-    agents_target: AgentsTarget = typer.Option(
-        AgentsTarget.auto,
-        "--target",
-        help="Target file for agent instructions: auto, agents, claude.",
-    ),
+    agents_target: str = InitTargetOption,
 ) -> None:
     """Create a new plan.yaml template and configure AGENTS.md / CLAUDE.md."""
     target = plan or Path("plan.yaml")
@@ -716,7 +749,7 @@ def init(
     out.print(f"[green]Created:[/] {target}")
 
     # Ensure AGENTS.md / CLAUDE.md has vectl section (idempotent)
-    agents_result = _upsert_agents_md(target.parent, agents_target)
+    agents_result = _upsert_agents_md(target.parent, AgentsTarget(agents_target))
     out.print(f"[green]Agent instructions:[/] {agents_result}")
 
     out.print()
@@ -734,7 +767,7 @@ def next_cmd(
     detail: bool = typer.Option(False, "--detail", help="Show full descriptions inline."),
     limit: int = typer.Option(3, "--limit", "-n", help="Max steps to show (default: 3)."),
     all_steps: bool = typer.Option(False, "--all", help="Show all available steps."),
-    agent: Optional[str] = typer.Option(
+    agent: str | None = typer.Option(
         None, "--agent", "-a", help="Prioritize steps suggested for this agent."
     ),
     plan: Path | None = PlanOption,
@@ -779,7 +812,8 @@ def next_cmd(
             affinity_icon = " 🔐"
 
         out.print(
-            f"  {i}. {icon}  {_esc(step.id)} — {_esc(step.name)}  [dim]({_esc(phase_id)}){_esc(deps_str)}{_esc(agent_str)}[/]{affinity_icon}"
+            f"  {i}. {icon}  {_esc(step.id)} — {_esc(step.name)}  "
+            f"[dim]({_esc(phase_id)}){_esc(deps_str)}{_esc(agent_str)}[/]{affinity_icon}"
         )
         if summary_str:
             out.print(f"     [dim]{_esc(summary)}[/]")
@@ -811,7 +845,7 @@ def next_cmd(
 @app.command()
 def status(
     plan: Path | None = PlanOption,
-    phase: Optional[str] = typer.Option(None, "--phase", help="Show detail for a specific phase."),
+    phase: str | None = typer.Option(None, "--phase", help="Show detail for a specific phase."),
 ) -> None:
     """Show plan status overview."""
     p, _, _, _ = _load(plan)
@@ -879,14 +913,15 @@ def _show_phase_detail(p: Plan, phase_id: str) -> None:
         if step.agent and (step.affinity or p.default_affinity) == AffinityMode.EXCLUSIVE:
             affinity_icon = " 🔐"
         out.print(
-            f"  {icon} **{_esc(step.id)}** — {_esc(step.name)} ({_esc(phase.id)}){suggested}{affinity_icon}"
+            f"  {icon} **{_esc(step.id)}** — {_esc(step.name)} "
+            f"({_esc(phase.id)}){suggested}{affinity_icon}"
         )
         if step.status == StepStatus.CLAIMED:
             out.print(f"    [dim]Claimed by {_esc(step.claimed_by or '')}[/]")
             # RFC: docs/RFC-affinity.md
             # Show affinity override warning
             if step.affinity_override:
-                out.print(f"    [yellow]⚠ Affinity overridden[/]")
+                out.print("    [yellow]⚠ Affinity overridden[/]")
 
     out.print()
 
@@ -994,13 +1029,10 @@ def show(
 # cli.4: guide (renamed from help-agent)
 # ---------------------------------------------------------------------------
 
-from vectl.guide import GUIDE_ALL as _GUIDE_ALL
-from vectl.guide import GUIDE_TOPICS as _GUIDE_TOPICS
-
 
 @app.command("guide")
 def guide_cmd(
-    on: Optional[str] = typer.Option(
+    on: str | None = typer.Option(
         None,
         "--on",
         help="Show one topic only: startup, stuck, review, planning, or migration.",
@@ -1021,7 +1053,7 @@ def guide_cmd(
 
 @app.command()
 def dag(
-    phase: Optional[str] = typer.Option(
+    phase: str | None = typer.Option(
         None, "--phase", help="Show step-level DAG within this phase."
     ),
     plan: Path | None = PlanOption,
@@ -1053,7 +1085,7 @@ def dag(
 
 @app.command()
 def claim(
-    step_id: Optional[str] = typer.Argument(
+    step_id: str | None = typer.Argument(
         None, help="Step ID to claim (auto-picks first available if omitted)."
     ),
     agent: str = typer.Option(
@@ -1349,8 +1381,8 @@ def skip_phase_cmd(
 @app.command("check")
 def check_cmd(
     step_id: str = typer.Argument(help="Step ID containing the checklist."),
-    keyword: Optional[str] = typer.Argument(None, help="Keyword to toggle a checklist item."),
-    add: Optional[str] = typer.Option(None, "--add", help="Text for a new checklist item."),
+    keyword: str | None = typer.Argument(None, help="Keyword to toggle a checklist item."),
+    add: str | None = typer.Option(None, "--add", help="Text for a new checklist item."),
     plan: Path | None = PlanOption,
 ) -> None:
     """Toggle or add a checklist item in a step's description."""
@@ -1362,7 +1394,7 @@ def check_cmd(
     _save_definition(p, plan_path, def_h)
     out.print(f"[green]Updated checklist:[/] {step_id}")
     out.print()
-    out.print("[dim]→ vectl show {id}[/]".format(id=step_id))
+    out.print(f"[dim]→ vectl show {step_id}[/]")
 
 
 # ---------------------------------------------------------------------------
@@ -1405,7 +1437,7 @@ def validate(
 
 @app.command()
 def checkpoint(
-    agent: Optional[str] = typer.Option(
+    agent: str | None = typer.Option(
         os.environ.get("VECTL_AGENT"),
         "--agent",
         "-a",
@@ -1427,6 +1459,7 @@ def checkpoint(
     Intent: Provide a deterministic, bounded snapshot for compaction/handoff.
     """
     import json
+
     from vectl.checkpoint import build_checkpoint
 
     p, def_h, state_h, _ = _load(plan)
@@ -1457,39 +1490,35 @@ def add_step_cmd(
     phase: str = typer.Option(..., "--phase", help="Phase ID to add step to."),
     name: str = typer.Option(..., "--name", help="Step name."),
     desc: str = typer.Option("", "--desc", "--description", help="Step description."),
-    after: Optional[str] = typer.Option(
+    after: str | None = typer.Option(
         None, "--after", help="Comma-separated step IDs this depends on."
     ),
     verify: str = typer.Option("", "--verify", "--verification", help="Verification command."),
-    refs: Optional[str] = typer.Option(None, "--refs", help="Comma-separated ref paths."),
+    refs: str | None = typer.Option(None, "--refs", help="Comma-separated ref paths."),
     evidence_template: str = typer.Option(
         "",
         "--evidence-template",
         help="Optional short template for completion evidence (inline).",
     ),
-    evidence_template_file: Optional[Path] = typer.Option(
-        None,
-        "--evidence-template-file",
-        help="Read the completion evidence template from a file.",
-    ),
-    step_id: Optional[str] = typer.Option(None, "--id", help="Explicit step ID (auto if omitted)."),
-    import_status: Optional[str] = typer.Option(
+    evidence_template_file: Path | None = EvidenceTemplateFileOption,
+    step_id: str | None = typer.Option(None, "--id", help="Explicit step ID (auto if omitted)."),
+    import_status: str | None = typer.Option(
         None,
         "--status",
         help="Initial status for import: pending (default), done, skipped.",
     ),
-    import_evidence: Optional[str] = typer.Option(
+    import_evidence: str | None = typer.Option(
         None,
         "--evidence",
         "-e",
         help="Evidence (required when --status=done).",
     ),
-    skipped_reason: Optional[str] = typer.Option(
+    skipped_reason: str | None = typer.Option(
         None,
         "--skipped-reason",
         help="Skip reason (required when --status=skipped).",
     ),
-    step_agent: Optional[str] = typer.Option(
+    step_agent: str | None = typer.Option(
         None,
         "--agent",
         help="Advisory agent suggestion (which agent should work on this step).",
@@ -1553,23 +1582,21 @@ def add_step_cmd(
         out.print(f"[yellow]⚠ Slug is {len(generated_id)} chars. Use --id to set a shorter ID.[/]")
 
     out.print()
-    out.print("[dim]→ vectl claim {id} --agent <name>   Claim this step[/]".format(id=generated_id))
-    out.print("[dim]→ vectl add-step --phase {ph}       Add another step[/]".format(ph=phase))
-    out.print("[dim]→ vectl status --phase {ph}         See all steps in phase[/]".format(ph=phase))
+    out.print(f"[dim]→ vectl claim {generated_id} --agent <name>   Claim this step[/]")
+    out.print(f"[dim]→ vectl add-step --phase {phase}       Add another step[/]")
+    out.print(f"[dim]→ vectl status --phase {phase}         See all steps in phase[/]")
     out.print("[dim]→ vectl search <pattern>            Check consistency[/]")
 
 
 @app.command("add-phase")
 def add_phase_cmd(
     name: str = typer.Option(..., "--name", help="Phase name."),
-    after: Optional[str] = typer.Option(
+    after: str | None = typer.Option(
         None, "--after", help="Comma-separated phase IDs this depends on."
     ),
     gate: str = typer.Option("", "--gate", help="Gate criterion text."),
     context: str = typer.Option("", "--context", "--ctx", help="Phase context/description."),
-    phase_id: Optional[str] = typer.Option(
-        None, "--id", help="Explicit phase ID (auto if omitted)."
-    ),
+    phase_id: str | None = typer.Option(None, "--id", help="Explicit phase ID (auto if omitted)."),
     plan: Path | None = PlanOption,
 ) -> None:
     """Add a new phase to the plan."""
@@ -1604,42 +1631,30 @@ def add_phase_cmd(
         out.print(f"[yellow]⚠ Slug is {len(generated_id)} chars. Use --id to set a shorter ID.[/]")
 
     out.print()
-    out.print(
-        "[dim]→ vectl add-step --phase {id}       Add steps to this phase[/]".format(
-            id=generated_id
-        )
-    )
-    out.print("[dim]→ vectl status --phase {id}         Inspect phase[/]".format(id=generated_id))
+    out.print(f"[dim]→ vectl add-step --phase {generated_id}       Add steps to this phase[/]")
+    out.print(f"[dim]→ vectl status --phase {generated_id}         Inspect phase[/]")
     out.print("[dim]→ vectl status                      See full plan[/]")
 
 
 @app.command("edit-plan")
 def edit_plan_cmd(
-    project_guidance: Optional[str] = typer.Option(
+    project_guidance: str | None = typer.Option(
         None,
         "--project-guidance",
         help="Project-level claim-time guidance (inline; use '' to clear).",
     ),
-    project_guidance_file: Optional[Path] = typer.Option(
-        None,
-        "--project-guidance-file",
-        help="Read project-level guidance from a file.",
-    ),
-    strategy_ref: Optional[str] = typer.Option(
+    project_guidance_file: Path | None = ProjectGuidanceFileOption,
+    strategy_ref: str | None = typer.Option(
         None,
         "--strategy-ref",
         help="Plan-level strategy reference (use '' to clear).",
     ),
-    context: Optional[str] = typer.Option(
+    context: str | None = typer.Option(
         None,
         "--context",
         help="Plan context (inline; use '' to clear).",
     ),
-    context_file: Optional[Path] = typer.Option(
-        None,
-        "--context-file",
-        help="Read plan context from a file.",
-    ),
+    context_file: Path | None = ContextFileOption,
     plan: Path | None = PlanOption,
 ) -> None:
     """Edit plan-level metadata without manually editing plan.yaml.
@@ -1665,8 +1680,8 @@ def edit_plan_cmd(
         and context_file is None
     ):
         _die(
-            "Nothing to edit. Provide at least one of: --project-guidance, --project-guidance-file, "
-            "--strategy-ref, --context, --context-file."
+            "Nothing to edit. Provide at least one of: --project-guidance, "
+            "--project-guidance-file, --strategy-ref, --context, --context-file."
         )
         return  # unreachable
 
@@ -1704,36 +1719,30 @@ def edit_plan_cmd(
 @app.command("edit-step")
 def edit_step_cmd(
     step_id: str = typer.Argument(help="Step ID to edit."),
-    name: Optional[str] = typer.Option(None, "--name", help="New step name."),
-    desc: Optional[str] = typer.Option(None, "--desc", "--description", help="New description."),
-    verify: Optional[str] = typer.Option(
+    name: str | None = typer.Option(None, "--name", help="New step name."),
+    desc: str | None = typer.Option(None, "--desc", "--description", help="New description."),
+    verify: str | None = typer.Option(
         None, "--verify", "--verification", help="New verification command."
     ),
-    step_agent: Optional[str] = typer.Option(
+    step_agent: str | None = typer.Option(
         None, "--agent", help="New agent suggestion (use '' to clear)."
     ),
-    add_dep: Optional[str] = typer.Option(
+    add_dep: str | None = typer.Option(
         None, "--add-dep", help="Comma-separated step IDs to add as dependencies."
     ),
-    rm_dep: Optional[str] = typer.Option(
+    rm_dep: str | None = typer.Option(
         None, "--rm-dep", help="Comma-separated step IDs to remove from dependencies."
     ),
-    add_ref: Optional[str] = typer.Option(
-        None, "--add-ref", help="Comma-separated ref paths to add."
-    ),
-    rm_ref: Optional[str] = typer.Option(
+    add_ref: str | None = typer.Option(None, "--add-ref", help="Comma-separated ref paths to add."),
+    rm_ref: str | None = typer.Option(
         None, "--rm-ref", help="Comma-separated ref paths to remove."
     ),
-    evidence_template: Optional[str] = typer.Option(
+    evidence_template: str | None = typer.Option(
         None,
         "--evidence-template",
         help="New completion evidence template (inline; use '' to clear).",
     ),
-    evidence_template_file: Optional[Path] = typer.Option(
-        None,
-        "--evidence-template-file",
-        help="Read the completion evidence template from a file.",
-    ),
+    evidence_template_file: Path | None = EvidenceTemplateFileOption,
     plan: Path | None = PlanOption,
 ) -> None:
     """Edit a step's metadata."""
@@ -1760,7 +1769,8 @@ def edit_step_cmd(
     ):
         _die(
             "Nothing to edit. Provide at least one of --name, --desc, --verify, --agent, "
-            "--add-dep, --rm-dep, --add-ref, --rm-ref, --evidence-template, --evidence-template-file."
+            "--add-dep, --rm-dep, --add-ref, --rm-ref, --evidence_template, "
+            "--evidence_template_file."
         )
         return  # unreachable
 
@@ -1800,20 +1810,20 @@ def edit_step_cmd(
 
     out.print(f"[green]Edited:[/] {step_id}")
     out.print()
-    out.print("[dim]→ vectl show {id}[/]".format(id=step_id))
+    out.print(f"[dim]→ vectl show {step_id}[/]")
     out.print("[dim]→ vectl search <pattern>            Check consistency[/]")
 
 
 @app.command("edit-phase")
 def edit_phase_cmd(
     phase_id: str = typer.Argument(help="Phase ID to edit."),
-    name: Optional[str] = typer.Option(None, "--name", help="New phase name."),
-    context: Optional[str] = typer.Option(None, "--context", "--ctx", help="New context."),
-    gate: Optional[str] = typer.Option(None, "--gate", help="New gate criterion."),
-    add_dep: Optional[str] = typer.Option(
+    name: str | None = typer.Option(None, "--name", help="New phase name."),
+    context: str | None = typer.Option(None, "--context", "--ctx", help="New context."),
+    gate: str | None = typer.Option(None, "--gate", help="New gate criterion."),
+    add_dep: str | None = typer.Option(
         None, "--add-dep", help="Comma-separated phase IDs to add as dependencies."
     ),
-    rm_dep: Optional[str] = typer.Option(
+    rm_dep: str | None = typer.Option(
         None, "--rm-dep", help="Comma-separated phase IDs to remove from dependencies."
     ),
     plan: Path | None = PlanOption,
@@ -1828,7 +1838,8 @@ def edit_phase_cmd(
 
     if name is None and context is None and gate is None and not add_deps and not rm_deps:
         _die(
-            "Nothing to edit. Provide at least one of --name, --context, --gate, --add-dep, --rm-dep."
+            "Nothing to edit. Provide at least one of --name, --context, --gate, "
+            "--add-dep, --rm-dep."
         )
         return  # unreachable
 
@@ -1849,7 +1860,7 @@ def edit_phase_cmd(
 
     out.print(f"[green]Edited phase:[/] {phase_id}")
     out.print()
-    out.print("[dim]→ vectl show {id}[/]".format(id=phase_id))
+    out.print(f"[dim]→ vectl show {phase_id}[/]")
     out.print("[dim]→ vectl search <pattern>              Check consistency[/]")
 
 
@@ -1900,8 +1911,8 @@ def move_step_cmd(
         out.print(f"[yellow]⚠ Cleared {len(cleared_deps)} dep(s):[/] {', '.join(cleared_deps)}")
         out.print("[dim]  Dependencies are phase-scoped. Re-add in target phase if needed.[/]")
     out.print()
-    out.print("[dim]→ vectl show {id}[/]".format(id=step_id))
-    out.print("[dim]→ vectl show {ph}[/]".format(ph=to_phase))
+    out.print(f"[dim]→ vectl show {step_id}[/]")
+    out.print(f"[dim]→ vectl show {to_phase}[/]")
     out.print("[dim]→ vectl search <pattern>            Check consistency[/]")
 
 
@@ -1927,7 +1938,7 @@ def unlock(
     if evidence:
         out.print(f"[dim]Evidence: {evidence}[/]")
     out.print()
-    out.print("[dim]→ vectl show {id}[/]".format(id=phase_id))
+    out.print(f"[dim]→ vectl show {phase_id}[/]")
     out.print("[dim]→ vectl next[/]")
 
 
@@ -2036,7 +2047,7 @@ def add_steps_cmd(
     for gid in generated_ids:
         out.print(f"  • {gid}")
     out.print()
-    out.print("[dim]→ vectl show {ph}         See all steps[/]".format(ph=phase))
+    out.print(f"[dim]→ vectl show {phase}         See all steps[/]")
     out.print("[dim]→ vectl next              See claimable steps[/]")
     out.print("[dim]→ vectl search <pattern>  Check consistency[/]")
 
@@ -2049,8 +2060,8 @@ def add_steps_cmd(
 @app.command()
 def search(
     pattern: str = typer.Argument(help="Pattern to search for (case-insensitive substring)."),
-    phase: Optional[str] = typer.Option(None, "--phase", help="Restrict to a specific phase."),
-    state: Optional[str] = typer.Option(
+    phase: str | None = typer.Option(None, "--phase", help="Restrict to a specific phase."),
+    state: str | None = typer.Option(
         None, "--state", help="Filter by status (e.g. pending, done, claimed)."
     ),
     regex: bool = typer.Option(False, "--regex", help="Treat pattern as regex."),
@@ -2095,7 +2106,7 @@ def search(
 
 @app.command()
 def mine(
-    agent: Optional[str] = typer.Option(
+    agent: str | None = typer.Option(
         None,
         "--by",
         "--agent",
@@ -2125,9 +2136,7 @@ def mine(
         out.print(f"[dim]No steps claimed by {label}.[/]")
         out.print()
         if not show_all:
-            out.print(
-                "[dim]→ vectl claim --by {a}              Auto-claim next step[/]".format(a=agent)
-            )
+            out.print(f"[dim]→ vectl claim --by {agent}              Auto-claim next step[/]")
         out.print("[dim]→ vectl mine --all                   Show all claimed steps[/]")
         return
 
@@ -2159,7 +2168,7 @@ def mine(
 
 @app.command()
 def review(
-    phase: Optional[str] = typer.Option(None, "--phase", help="Restrict review to a single phase."),
+    phase: str | None = typer.Option(None, "--phase", help="Restrict review to a single phase."),
     show_all: bool = typer.Option(False, "--all", help="Include DONE and LOCKED phases in detail."),
     check_refs: bool = typer.Option(False, "--check-refs", help="Check that ref files exist."),
     plan: Path | None = PlanOption,
@@ -2200,7 +2209,8 @@ def review(
         out.print(f"  {icon} {pp.phase_id:<20s} [{bar}] {pp.done}/{pp.total} ({pp.pct:.0f}%)")
 
     out.print(
-        f"\n  [bold]Overall: {result.total_done}/{result.total_steps} ({result.overall_pct:.0f}%)[/]"
+        f"\n  [bold]Overall: {result.total_done}/{result.total_steps} "
+        f"({result.overall_pct:.0f}%)[/]"
     )
     out.print()
 
@@ -2232,7 +2242,8 @@ def review(
                 claimed = f" [yellow]@{_esc(step.claimed_by or '')}[/]" if step.claimed_by else ""
                 suggested = f" [dim]suggested: {_esc(step.agent)}[/]" if step.agent else ""
                 out.print(
-                    f"    [{style}]{icon}[/] {_esc(step.id)} — {_esc(step.name)}{claimed}{suggested}{dep_info}{ref_info}"
+                    f"    [{style}]{icon}[/] {_esc(step.id)} — {_esc(step.name)}"
+                    f"{claimed}{suggested}{dep_info}{ref_info}"
                 )
     out.print()
 
@@ -2296,7 +2307,8 @@ def gate_check(
     else:
         all_pass = False
         out.print(
-            f"  [red]✗ Steps:[/] {gc.done_count}/{gc.total_count} complete — {len(gc.pending_steps)} remaining:"
+            f"  [red]✗ Steps:[/] {gc.done_count}/{gc.total_count} complete — "
+            f"{len(gc.pending_steps)} remaining:"
         )
         for s in gc.pending_steps:
             icon, style = _STEP_STATUS_STYLE[s.status]
@@ -2340,7 +2352,7 @@ def gate_check(
 
     # ── Check 3: manual gate criteria ─────────────────────────────────
     if gc.gate_criterion:
-        out.print(f"\n  [yellow]Manual gate criterion:[/]")
+        out.print("\n  [yellow]Manual gate criterion:[/]")
         out.print(f"  {gc.gate_criterion}")
     else:
         out.print("\n  [dim]No manual gate criterion[/]")
@@ -2351,7 +2363,7 @@ def gate_check(
         out.print("[green bold]✓ Phase is gate-ready.[/]")
         if gc.downstream_locked:
             out.print(f"  Downstream phases: {', '.join(gc.downstream_locked)}")
-            out.print(f"[dim]→ vectl complete will auto-unlock downstream phases[/]")
+            out.print("[dim]→ vectl complete will auto-unlock downstream phases[/]")
         out.print("[dim]→ vectl status                       View plan overview[/]")
     else:
         out.print("[red bold]✗ Phase is NOT gate-ready.[/]")
@@ -2388,7 +2400,7 @@ def clipboard_write_cmd(
 
     cb = p.clipboard
     assert cb is not None
-    out.print(f"[green]Clipboard written.[/]")
+    out.print("[green]Clipboard written.[/]")
     out.print(f"  Author: {cb.author}")
     out.print(f"  Summary: {cb.summary}")
     out.print(f"  Expires: {cb.expires_at}")
@@ -2417,16 +2429,17 @@ def clipboard_read_cmd(
         try:
             expires = datetime.fromisoformat(p.clipboard.expires_at.replace("Z", "+00:00"))
             hours_ago = (datetime.now(timezone.utc) - expires).total_seconds() / 3600
-            out.print(f"[dim]Clipboard is empty.[/]")
+            out.print("[dim]Clipboard is empty.[/]")
             out.print(
-                f"[dim]Note: previous clipboard by {p.clipboard.author} expired {hours_ago:.1f}h ago.[/]"
+                f"[dim]Note: previous clipboard by {p.clipboard.author} expired "
+                f"{hours_ago:.1f}h ago.[/]"
             )
         except (ValueError, AttributeError):
             out.print("[dim]Clipboard is empty.[/]")
         return
 
     cb = p.clipboard
-    out.print(Panel(f"Clipboard", style="bold"))
+    out.print(Panel("Clipboard", style="bold"))
     out.print(f"  [bold]Author:[/] {cb.author}")
     out.print(f"  [bold]Summary:[/] {cb.summary}")
     out.print(f"  [bold]Written:[/] {cb.written_at}")
@@ -2458,12 +2471,7 @@ def clipboard_clear_cmd(
 
 @app.command()
 def dashboard(
-    output: Path = typer.Option(
-        Path("plan-dashboard.html"),
-        "--out",
-        "-o",
-        help="Output file path for the HTML dashboard.",
-    ),
+    output: Path = DashboardOutputOption,
     open_browser: bool = typer.Option(
         False,
         "--open",
@@ -2500,4 +2508,4 @@ def dashboard(
         # Use file:// URL for local file
         file_url = output.resolve().as_uri()
         webbrowser.open(file_url)
-        console.print(f"[dim]Opening in browser...[/]")
+        console.print("[dim]Opening in browser...[/]")

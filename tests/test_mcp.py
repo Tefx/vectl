@@ -1778,11 +1778,11 @@ class TestMcpSplitStateIntegration:
         assert reloaded.clipboard.author == "reviewer"
         assert reloaded.clipboard.summary == "Handoff"
 
-    def test_save_both_plan_cas_conflict_still_persists_state(
+    def test_save_both_plan_cas_conflict_does_not_persist_state(
         self, legacy_plan_file: Path
     ) -> None:
-        """State is written first (has auto-retry). If definition CAS fails,
-        state.json is already persisted. Next _load() merges correctly."""
+        """Definition is written first. If definition CAS fails, state.json
+        is NOT written, preventing orphaned state entries."""
         plan, def_hash, state_hash = _vectl_load()
         assert state_hash == ""
 
@@ -1796,12 +1796,7 @@ class TestMcpSplitStateIntegration:
         with pytest.raises(PlanError, match="CAS conflict: plan.yaml"):
             _vectl_save_both(plan, def_hash, state_hash)
 
-        # State is written first, so it persists even when definition CAS fails
-        assert state_path.exists()
-
-        # Next load works correctly: state.json merged over re-read plan.yaml
-        reloaded, _, _ = _vectl_load()
-        assert reloaded.phases[0].steps[0].status.value == plan.phases[0].steps[0].status.value
+        assert not state_path.exists()
 
 
 class TestVectlInit:

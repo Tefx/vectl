@@ -1,6 +1,7 @@
 """MCP server exposing vectl tools to agents.
 
-14 tools (8 consolidated per expert panel dec-001, plus guide, dag, clipboard, init, render, and check):
+14 tools (8 consolidated per expert panel dec-001, plus guide, dag, clipboard,
+init, render, and check):
   1. vectl_status  — plan overview + next steps + mine
   2. vectl_show    — step/phase detail
   3. vectl_claim   — claim step (auto-claim supported)
@@ -27,39 +28,33 @@ Plan path: resolved via shared plan_path.resolve_plan_path() —
 
 from __future__ import annotations
 
-import os
-from enum import Enum
 from pathlib import Path
 from typing import Literal
 
 from fastmcp import FastMCP
 from pydantic import BaseModel
 
-from vectl.plan_path import resolve_plan_path, resolve_state_path
-from vectl.semantics import is_step_locked
+from vectl.claim_guidance import GuidancePayload, build_claim_guidance
 from vectl.core import (
     _SENTINEL,
     AgentsTarget,
     add_phase,
     add_step,
     add_steps_bulk,
-    auto_unlock_phases,
     claim_step,
     clipboard_clear,
-    clipboard_read,
     clipboard_write,
     complete_phase,
     complete_step,
     defer_step,
-    detect_agents_target,
     edit_phase,
     edit_plan,
     edit_step,
+    format_lock_changes,
     gate_check,
     get_claimed_steps,
     get_next_steps,
     move_step,
-    format_lock_changes,
     recalc_lock_status,
     reject_step,
     remove_step,
@@ -70,11 +65,10 @@ from vectl.core import (
     skip_step,
     update_checklist,
     upsert_agents_md,
-    validate_plan,
 )
 from vectl.io import (
     extract_state,
-    load_plan,
+    load_plan_definition,
     load_state,
     merge_plan,
     save_plan,
@@ -85,7 +79,6 @@ from vectl.models import (
     AffinityError,
     AmbiguousMatchError,
     CASConflictError,
-    Clipboard,
     InitResult,
     NoMatchError,
     PhaseStatus,
@@ -94,8 +87,8 @@ from vectl.models import (
     Step,
     StepStatus,
 )
-
-from vectl.claim_guidance import GuidancePayload, build_claim_guidance
+from vectl.plan_path import resolve_plan_path, resolve_state_path
+from vectl.semantics import is_step_locked
 
 mcp = FastMCP(
     "vectl",
@@ -141,7 +134,7 @@ def _load() -> tuple[Plan, str, str]:
         (merged_plan, definition_hash, state_hash)
     """
     plan_path = _plan_path()
-    plan_def, def_hash = load_plan(plan_path)
+    plan_def, def_hash = load_plan_definition(plan_path)
 
     state_path = resolve_state_path(plan_path)
     state, state_hash = load_state(state_path)
@@ -179,11 +172,11 @@ def _save_state(plan: Plan, expected_state_hash: str, *, recalc_locks: bool = Tr
     cas_hash: str | None = expected_state_hash if expected_state_hash != "" else None
     try:
         save_state(state, state_path, cas_hash)
-    except CASConflictError:
+    except CASConflictError as err:
         raise PlanError(
             "CAS conflict: state.json was modified by another process since you loaded it. "
             "Re-read with `vectl_status` or `vectl_show`, then retry your mutation."
-        )
+        ) from err
     return format_lock_changes(changed, plan)
 
 
@@ -196,11 +189,11 @@ def _save_definition(plan: Plan, expected_def_hash: str, *, recalc_locks: bool =
     stripped = strip_state(plan)
     try:
         save_plan(stripped, _plan_path(), expected_def_hash)
-    except CASConflictError:
+    except CASConflictError as err:
         raise PlanError(
             "CAS conflict: plan.yaml was modified by another process since you loaded it. "
             "Re-read with `vectl_status` or `vectl_show`, then retry your mutation."
-        )
+        ) from err
     return format_lock_changes(changed, plan)
 
 
@@ -208,13 +201,13 @@ def _save_both(plan: Plan, expected_def_hash: str, expected_state_hash: str) -> 
     """Save merged plan to split definition/state stores.
 
     Recalculates lock status on the merged/full plan before writing definition+state.
-    State is written first (has auto-retry, more likely to succeed). If state
-    succeeds but definition CAS fails, the next _load() still works correctly
-    because merge_plan applies state.json values over plan.yaml defaults.
+    Definition is written first so a plan.yaml CAS conflict cannot leave orphaned
+    state.json entries (structural additions like new phases/steps would be in
+    state.json but missing from plan.yaml, making them invisible to merge_plan).
     """
     changed = recalc_lock_status(plan)
-    state_notice = _save_state(plan, expected_state_hash, recalc_locks=False)
     def_notice = _save_definition(plan, expected_def_hash, recalc_locks=False)
+    state_notice = _save_state(plan, expected_state_hash, recalc_locks=False)
     lock_notice = format_lock_changes(changed, plan)
     return "\n\n".join(part for part in (lock_notice, state_notice, def_notice) if part)
 
@@ -238,7 +231,10 @@ def _fmt_phase_summary(plan: Plan) -> str:
         icon = _STATUS_ICON.get(p.status, "?")
         deps = ", ".join(p.depends_on) if p.depends_on else "—"
         lines.append(f"| {icon} {p.status.value} | {p.id} | {p.name} | {done}/{total} | {deps} |")
-    header = "| Status | Phase | Name | Progress | Depends On |\n|--------|-------|------|----------|------------|"
+    header = (
+        "| Status | Phase | Name | Progress | Depends On |\n"
+        "|--------|-------|------|----------|------------|"
+    )
     return f"## Plan: {plan.project}\n\n{header}\n" + "\n".join(lines)
 
 
@@ -439,7 +435,8 @@ def vectl_claim(
 ) -> dict:
     """Claim a step.
 
-    Lock consistency is maintained automatically. After any write operation, lock status is recalculated.
+    Lock consistency is maintained automatically. After any write operation, lock
+    status is recalculated.
 
     Args:
         agent: Agent name claiming the step.
@@ -570,7 +567,8 @@ def vectl_claim(
 def vectl_complete(step_id: str, evidence: str) -> str:
     """Complete a step.
 
-    Lock consistency is maintained automatically. After any write operation, lock status is recalculated.
+    Lock consistency is maintained automatically. After any write operation, lock
+    status is recalculated.
 
     Args:
         step_id: The step ID to complete.
@@ -633,7 +631,8 @@ def vectl_lifecycle(
 ) -> str:
     """Change step/phase lifecycle state.
 
-    Lock consistency is maintained automatically. After any write operation, lock status is recalculated.
+    Lock consistency is maintained automatically. After any write operation, lock
+    status is recalculated.
 
     Args:
         action: One of: defer, reject, skip, skip-phase, complete-phase.
@@ -660,7 +659,10 @@ def vectl_lifecycle(
             lock_notice = _save_state(plan, expected_state_hash)
         elif action == "skip":
             if not reason:
-                return "**Error:** reason is required for skip (superseded/irrelevant/absorbed/deprioritized)."
+                return (
+                    "**Error:** reason is required for skip "
+                    "(superseded/irrelevant/absorbed/deprioritized)."
+                )
             plan = skip_step(plan, id, reason)
             msg = f"**Skipped:** {id} — {reason}"
             lock_notice = _save_state(plan, expected_state_hash)
@@ -681,7 +683,10 @@ def vectl_lifecycle(
                 msg += "\n" + "\n".join(f"  - {pid}" for pid in unlocked)
             lock_notice = _save_both(plan, expected_def_hash, expected_state_hash)
         else:
-            return f"**Error:** Unknown action '{action}'. Use: defer, reject, skip, skip-phase, complete-phase."
+            return (
+                f"**Error:** Unknown action '{action}'. Use: defer, reject, skip, "
+                "skip-phase, complete-phase."
+            )
     except PlanError as e:
         return f"**Error:** {e}"
 
@@ -784,7 +789,8 @@ def vectl_mutate(
 ) -> str:
     """Modify plan structure.
 
-    Lock consistency is maintained automatically. After any write operation, lock status is recalculated.
+    Lock consistency is maintained automatically. After any write operation, lock
+    status is recalculated.
 
     Args:
         action: The mutation action to perform.
@@ -802,7 +808,8 @@ def vectl_mutate(
         gate: Gate criterion (for add-phase, edit-phase).
         context: Context (for edit-phase).
         verification: Verification (for add-step, edit-step).
-        evidence_template: Optional short template for completion evidence (for add-step, edit-step).
+        evidence_template: Optional short template for completion evidence
+            (for add-step, edit-step).
         project_guidance: Project-level claim-time guidance (edit-plan only).
         strategy_ref: Plan-level strategy ref (edit-plan only).
         plan_context: Plan context (edit-plan only).
@@ -948,7 +955,10 @@ def vectl_mutate(
 
         elif action == "edit-plan":
             if project_guidance is None and strategy_ref is None and plan_context is None:
-                return "**Error:** Provide at least one of: project_guidance, strategy_ref, plan_context."
+                return (
+                    "**Error:** Provide at least one of: project_guidance, strategy_ref, "
+                    "plan_context."
+                )
             plan = edit_plan(
                 plan,
                 project_guidance=project_guidance if project_guidance is not None else _SENTINEL,
@@ -1098,7 +1108,8 @@ def vectl_review(
                 parts.append(f"✓ Steps: {gc.done_count}/{gc.total_count} complete")
             else:
                 parts.append(
-                    f"✗ Steps: {gc.done_count}/{gc.total_count} — {len(gc.pending_steps)} remaining:"
+                    f"✗ Steps: {gc.done_count}/{gc.total_count} — "
+                    f"{len(gc.pending_steps)} remaining:"
                 )
                 for s in gc.pending_steps:
                     icon = _STEP_ICON.get(s.status, "?")
@@ -1108,7 +1119,8 @@ def vectl_review(
                 parts.append(f"\nManual gate criterion: {gc.gate_criterion}")
             if gc.gate_script:
                 parts.append(
-                    f"\n⚠ gate_script defined ({gc.gate_script}) but not executable via MCP. Use CLI `vectl gate-check`."
+                    f"\n⚠ gate_script defined ({gc.gate_script}) but not executable via MCP. "
+                    "Use CLI `vectl gate-check`."
                 )
             if gc.downstream_locked:
                 parts.append(f"\nDownstream phases: {', '.join(gc.downstream_locked)}")

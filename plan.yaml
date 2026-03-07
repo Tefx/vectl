@@ -21,7 +21,7 @@ context: 'Bootstrapping vectl development.
 phases:
 - id: core
   name: Core Logic
-  status: done
+  status: pending
   gate: All core unit tests pass
   context: 'Foundation layer. Pydantic models, atomic YAML IO,
 
@@ -33,7 +33,7 @@ phases:
   steps:
   - id: core.1
     name: Pydantic Data Models
-    status: done
+    status: pending
     description: 'Define all data models in core.py:
 
       - StepStatus enum (pending, claimed, done, skipped, rejected)
@@ -54,7 +54,7 @@ phases:
     - tools/vectl/README.md
   - id: core.2
     name: YAML IO with CAS
-    status: done
+    status: pending
     description: 'Implement in core.py:
 
       - load_plan(path) -> Plan: Read YAML, parse to Pydantic
@@ -71,7 +71,7 @@ phases:
     - core.1
   - id: core.3
     name: DAG Validation
-    status: done
+    status: pending
     description: "Implement in core.py:\n- validate_plan(plan) -> list[Error]:\n \
       \ - Phase DAG: cycle detection, valid depends_on refs\n  - Step DAG: cycle detection\
       \ within phase, valid depends_on refs\n  - ID uniqueness (phase IDs, step IDs\
@@ -83,7 +83,7 @@ phases:
     - core.1
   - id: core.4
     name: State Machine & Query Logic
-    status: done
+    status: pending
     description: "Implement in core.py:\n- get_next_steps(plan) -> list[Step]:\n \
       \ Find all claimable steps across active phases.\n  Respect phase DAG (locked\
       \ phases excluded).\n  Respect step DAG (blocked steps excluded).\n  Highlight\
@@ -100,7 +100,7 @@ phases:
     - core.3
   - id: core.5
     name: Checklist Operations
-    status: done
+    status: pending
     description: "Implement in core.py:\n- update_checklist(plan, step_id, check=None,\
       \ append=None) -> Plan:\n  If check: fuzzy match checklist item in description,\
       \ toggle [x].\n  If append: add new \"- [ ] item\" to description.\n  Fuzzy\
@@ -112,7 +112,7 @@ phases:
     - core.2
 - id: cli_read
   name: CLI Read Commands
-  status: done
+  status: pending
   gate: All CLI read commands work against real plan.yaml
   context: 'Read-only CLI using Typer + Rich.
 
@@ -124,7 +124,7 @@ phases:
   steps:
   - id: cli.1
     name: CLI Scaffold + Init
-    status: done
+    status: pending
     description: 'Create cli.py with Typer app.
 
       Implement: vectl init
@@ -137,12 +137,9 @@ phases:
 
       '
     verification: vectl init --help && vectl --version
-    claimed_by: vectl-engineer
-    claimed_at: '2026-02-08T11:14:04.218477+00:00'
-    evidence: 'commit ab1a38f: Typer app + init + --version'
   - id: cli.2
     name: Next Command
-    status: done
+    status: pending
     description: 'Implement: vectl next
 
       - Load plan.yaml from current directory (or --plan flag)
@@ -161,12 +158,9 @@ phases:
     verification: vectl next (against tools/vectl/plan.yaml)
     depends_on:
     - cli.1
-    claimed_by: vectl-engineer
-    claimed_at: '2026-02-08T11:14:04.508364+00:00'
-    evidence: 'commit ab1a38f: vectl next with strategy panel'
   - id: cli.3
     name: Status Command
-    status: done
+    status: pending
     description: 'Implement: vectl status
 
       - Show all phases with progress bars
@@ -183,12 +177,9 @@ phases:
     verification: vectl status (against tools/vectl/plan.yaml)
     depends_on:
     - cli.1
-    claimed_by: vectl-engineer
-    claimed_at: '2026-02-08T11:14:04.788492+00:00'
-    evidence: 'commit ab1a38f: vectl status overview + --phase detail'
   - id: cli.4
     name: Help-Agent Command
-    status: done
+    status: pending
     description: 'Implement: vectl help-agent [--context startup|rejection|planning]
 
       - startup: Check-in workflow (next → claim → work → complete)
@@ -203,12 +194,9 @@ phases:
     verification: vectl help-agent --context startup
     depends_on:
     - cli.1
-    claimed_by: vectl-engineer
-    claimed_at: '2026-02-08T11:14:05.062791+00:00'
-    evidence: 'commit ab1a38f: help-agent startup/rejection/planning'
 - id: cli_write
   name: CLI Mutation Commands
-  status: done
+  status: pending
   gate: 'Bootstrap achieved: vectl manages its own plan.yaml'
   context: 'Write commands. After this phase, vectl is self-hosting.
 
@@ -220,7 +208,7 @@ phases:
   steps:
   - id: cli.5
     name: Claim & Complete
-    status: done
+    status: pending
     description: 'Implement: vectl claim <step_id> [--agent <name>]
 
       Implement: vectl complete <step_id> --evidence <text>
@@ -229,12 +217,9 @@ phases:
 
       '
     verification: vectl claim core.1 --agent test && vectl defer core.1
-    claimed_by: vectl-engineer
-    claimed_at: '2026-02-08T11:14:20.609133+00:00'
-    evidence: 'commit ab1a38f: claim + complete commands, 32 CLI tests'
   - id: cli.6
     name: Defer, Reject, Skip
-    status: done
+    status: pending
     description: 'Implement: vectl defer <step_id>
 
       Implement: vectl reject <step_id> --reason <text> [--reviewer <name>]
@@ -245,12 +230,9 @@ phases:
     verification: uv run pytest tools/vectl/tests/test_cli.py -v
     depends_on:
     - cli.5
-    claimed_by: vectl-engineer
-    claimed_at: '2026-02-08T11:14:20.901582+00:00'
-    evidence: 'commit ab1a38f: defer + reject + skip commands'
   - id: cli.7
     name: Update Checklist
-    status: done
+    status: pending
     description: 'Implement: vectl update-checklist <step_id> --check <keyword>
 
       Implement: vectl update-checklist <step_id> --append <text>
@@ -261,12 +243,9 @@ phases:
     verification: uv run pytest tools/vectl/tests/test_cli.py -v
     depends_on:
     - cli.5
-    claimed_by: vectl-engineer
-    claimed_at: '2026-02-08T11:14:21.178647+00:00'
-    evidence: 'commit ab1a38f: update-checklist --check/--append'
   - id: cli.8
     name: Validate Command
-    status: done
+    status: pending
     description: 'Implement: vectl validate
 
       - Run all validation checks from core
@@ -277,31 +256,24 @@ phases:
 
       '
     verification: vectl validate (against tools/vectl/plan.yaml)
-    claimed_by: vectl-engineer
-    claimed_at: '2026-02-08T11:14:21.456876+00:00'
-    evidence: 'commit ab1a38f: validate with --check-refs, exit code 1 on errors'
 - id: cli_architect
   name: CLI Architect Commands
-  status: done
+  status: pending
   gate: Architect can fully manage plan structure via CLI
   depends_on:
   - cli_write
   steps:
   - id: arch.1
     name: Add Step & Add Steps (Bulk)
-    status: done
+    status: pending
     description: "Implement: vectl add-step --phase <id> --name <n> --description\
       \ <d>\n  [--depends-on <ids>] [--verification <cmd>] [--refs <refs>]\nImplement:\
       \ vectl add-steps --phase <id> (reads simplified YAML from stdin)\nAuto-generate\
       \ step IDs.\n"
     verification: uv run pytest tools/vectl/tests/test_architect.py -v
-    claimed_by: antigravity
-    claimed_at: '2026-02-08T13:56:10.443702+00:00'
-    evidence: add_step() in core.py + add-step CLI command. 50 tests (35 core + 15
-      CLI). Commit 58ebaab.
   - id: arch.2
     name: Edit, Remove, Move Step
-    status: done
+    status: pending
     description: 'Implement: vectl edit-step <id> [--name] [--description] [--add-dep]
       [--remove-dep]
 
@@ -313,50 +285,37 @@ phases:
     verification: uv run pytest tools/vectl/tests/test_architect.py -v
     depends_on:
     - arch.1
-    claimed_by: antigravity
-    claimed_at: '2026-02-08T15:58:31.710403+00:00'
-    evidence: edit-step, remove-step, move-step. Commit 3a62b46. 206 tests.
   - id: arch.3
     name: Add Phase & Unlock
-    status: done
+    status: pending
     description: "Implement: vectl add-phase --name <n> [--depends-on <ids>] [--gate\
       \ <text>]\nImplement: vectl unlock <phase_id> [--evidence <text>]\n  Validates\
       \ all depends_on phases are done.\n"
     verification: uv run pytest tools/vectl/tests/test_architect.py -v
-    claimed_by: antigravity
-    claimed_at: '2026-02-08T15:32:04.415577+00:00'
-    evidence: add_phase() in core.py + add-phase CLI command. 11 core + 8 CLI tests.
-      Commit 58ebaab.
   - id: cli_architect.bulk-add-steps-from-stdin
     name: bulk add-steps from stdin
-    status: done
+    status: pending
     description: vectl add-steps --phase <id> reads simplified YAML from stdin. Deferred
       from arch.1 scope.
     depends_on:
     - arch.2
-    claimed_by: antigravity
-    claimed_at: '2026-02-08T16:06:19.918610+00:00'
-    evidence: add-steps from stdin YAML. Commit 375d60f. 231 tests.
   - id: cli_architect.unlock-command
     name: unlock command
-    status: done
+    status: pending
     description: vectl unlock <phase_id> --evidence <text>. Validates all depends_on
       phases are done. Deferred from arch.3 scope.
     depends_on:
     - arch.2
-    claimed_by: antigravity
-    claimed_at: '2026-02-08T16:06:19.302638+00:00'
-    evidence: unlock command. Commit 375d60f. 231 tests.
 - id: review
   name: Review & Gate Commands
-  status: done
+  status: pending
   gate: Review output matches design spec
   depends_on:
   - cli_write
   steps:
   - id: rev.1
     name: Review Command
-    status: done
+    status: pending
     description: 'Implement: vectl review [--phase <id>] [--all]
 
       Output layers:
@@ -371,13 +330,9 @@ phases:
 
       '
     verification: vectl review (against tools/vectl/plan.yaml)
-    claimed_by: claude
-    claimed_at: '2026-02-09T03:14:42.174995+00:00'
-    evidence: review command with 4 layers (L1-L4), 10 tests in test_review.py. Commit
-      7ead17c.
   - id: rev.2
     name: Gate Check Command
-    status: done
+    status: pending
     description: 'Implement: vectl gate-check <phase_id>
 
       - Check all steps done/skipped
@@ -390,13 +345,9 @@ phases:
 
       '
     verification: uv run pytest tools/vectl/tests/test_gate.py -v
-    claimed_by: claude
-    claimed_at: '2026-02-09T03:14:42.334167+00:00'
-    evidence: gate-check command with step/script/criteria checks, 8 tests in test_review.py.
-      Commit 7ead17c.
 - id: mcp
   name: MCP Server
-  status: done
+  status: pending
   gate: MCP tools callable from agent environment
   depends_on:
   - cli_architect
@@ -404,7 +355,7 @@ phases:
   steps:
   - id: mcp.1
     name: FastMCP Server
-    status: done
+    status: pending
     description: 'Implement mcp_server.py using fastmcp.
 
       Expose all core functions as MCP tools.
@@ -415,13 +366,9 @@ phases:
 
       '
     verification: uv run pytest tools/vectl/tests/test_mcp.py -v
-    claimed_by: claude
-    claimed_at: '2026-02-09T03:06:18.423073+00:00'
-    evidence: mcp_server.py with 7 FastMCP tools, 46 tests in test_mcp.py, 368 total
-      passing. Commit 0256467.
 - id: migrate
   name: Eidos Migration
-  status: done
+  status: pending
   gate: Eidos agents use vectl for all plan management
   context: 'Migrate Eidos from IMPLEMENTATION-PLAN.md to plan.yaml.
 
@@ -433,7 +380,7 @@ phases:
   steps:
   - id: mig.1
     name: Create Eidos plan.yaml
-    status: done
+    status: pending
     description: 1. Run `vectl init --project Eidos` (creates plan.yaml template +
       appends AGENTS.md with vectl section). 2. Manually read IMPLEMENTATION-PLAN.md
       section by section, populate plan.yaml via add-phase/add-step or direct edit.
@@ -443,15 +390,9 @@ phases:
       (L1-L3) and Test Tiers, directory listing is stale, CI matrix is aspirational.
       IMPLEMENTATION-PLAN.md is NOT modified. Human review the generated plan.
     verification: vectl validate && vectl status
-    claimed_by: assistant
-    claimed_at: '2026-02-09T18:52:17.678514+00:00'
-    evidence: 'Migrated IMPLEMENTATION-PLAN.md to plan.yaml: 26 phases (0-32 + post-review),
-      305 steps total. 25 phases done, 1 active (phase-33 at 43%). Stub Manifest extracted
-      to docs/STUB-MANIFEST.md. Plan validates: 0 errors, 0 warnings. Overall progress:
-      297/305 (97%).'
   - id: mig.2
     name: Content quality review of generated plan.yaml
-    status: done
+    status: pending
     description: 'Review generated plan.yaml for content quality. Checklist: (1) Phase
       count matches IMPLEMENTATION-PLAN.md, (2) Step count matches (~89 rows), (3)
       Dependencies preserved (Blocking column -> depends_on), (4) Phase boundaries
@@ -462,31 +403,18 @@ phases:
     verification: vectl validate && vectl review
     depends_on:
     - mig.1
-    claimed_by: assistant
-    claimed_at: '2026-02-10T04:26:22.551044+00:00'
-    evidence: 'Content quality review PASSED. Phase count: 34 (matches source). Step
-      count: 321 = 296 (Progress Tracker) + 25 (Post-Phase 7 archive). Phase 6 truncation
-      bug found and fixed: 16 missing steps (6.12d-6.16i) restored. Dependencies verified
-      for key chains (5→3+4, 13→4+12, etc.). Phase boundaries correct: only Phase
-      33 pending. Stub Manifest extracted to docs/STUB-MANIFEST.md. Validation: 0
-      errors, 0 warnings.'
   - id: mig.3
     name: Clean up AGENTS.md prohibition
-    status: done
+    status: pending
     description: 'Delete the prohibition line (L191: "Do NOT use tools/vectl/") from
       AGENTS.md. The vectl usage section is already appended by vectl init in mig.1.'
     verification: '! grep ''Do NOT use tools/vectl'' AGENTS.md && grep ''Plan Tracking
       (vectl)'' AGENTS.md'
     depends_on:
     - mig.1
-    claimed_by: assistant
-    claimed_at: '2026-02-10T04:25:45.858611+00:00'
-    evidence: 'Removed prohibition line from AGENTS.md L191. Verified: grep confirms
-      no ''Do NOT use tools/vectl'' + ''Plan Tracking (vectl)'' section exists. Committed
-      df21560.'
   - id: mig.4
     name: Rewrite IMPLEMENTATION-PLAN.md references in AGENTS.md
-    status: done
+    status: pending
     description: 'Replace 13 IMPLEMENTATION-PLAN.md references in AGENTS.md. Four
       categories:
 
@@ -517,17 +445,9 @@ phases:
     depends_on:
     - mig.2
     - mig.3
-    claimed_by: assistant
-    claimed_at: '2026-02-10T04:33:37.315548+00:00'
-    evidence: 'All 13 IMPLEMENTATION-PLAN.md references in AGENTS.md rewritten: (A)
-      4 pointer swaps to plan.yaml/vectl, (B) 2 process swaps (gate review → vectl
-      show, task → vectl add-step), (C) Table Editing Protocol section deleted (24
-      lines, obsolete with vectl), (D) 4 retrofit template fixes (Stub Manifest →
-      docs/STUB-MANIFEST.md, Phase refs → plan.yaml step IDs). Verification: grep
-      IMPLEMENTATION-PLAN AGENTS.md → 0 matches.'
   - id: mig.5
     name: Archive IMPLEMENTATION-PLAN.md
-    status: done
+    status: pending
     description: Move docs/IMPLEMENTATION-PLAN.md to docs/_archive/IMPLEMENTATION-PLAN.md.
       Verify vectl status still works against plan.yaml. plan.yaml becomes single
       source of truth.
@@ -535,129 +455,84 @@ phases:
       && vectl status
     depends_on:
     - mig.4
-    claimed_by: assistant
-    claimed_at: '2026-02-10T04:35:02.289255+00:00'
-    evidence: 'Archived: git mv docs/IMPLEMENTATION-PLAN.md → docs/_archive/IMPLEMENTATION-PLAN.md.
-      Operational references updated: (1) .pre-commit-config.yaml: updated Stub Manifest
-      pointer, removed obsolete progress-tracker-integrity hook. (2) .opencode/agent/eidos-gate-reviewer.md:
-      3 refs → plan.yaml/STUB-MANIFEST.md. (3) .opencode/agent/eidos-engineer.md:
-      2 refs → vectl commands. (4) docs/STUB-MANIFEST.md: source line updated. Source
-      code docstrings (tests/*.py, packages/**/*.py) left as historical provenance
-      — they are ''Spec Source'' comments, not live links. vectl status confirms plan.yaml
-      still works.'
 - id: cli-ux-enhancements
   name: CLI UX Enhancements
-  status: done
+  status: pending
   depends_on:
   - cli_write
   steps:
   - id: cli-ux-enhancements.show-command
     name: show command
-    status: done
+    status: pending
     description: 'Universal inspect: vectl show <id> works for both steps (id contains
       dot) and phases (no dot). Replaces status --phase.'
-    claimed_by: antigravity
-    claimed_at: '2026-02-08T15:52:23.887841+00:00'
-    evidence: show command + _show_step_detail helper. 7 tests. Reusable for claim-full-spec.
   - id: cli-ux-enhancements.claim-returns-full-spec
     name: claim returns full spec
-    status: done
+    status: pending
     description: claim with no args auto-picks highest priority step. Always returns
       full step spec (description, deps, verification, refs).
-    claimed_by: antigravity
-    claimed_at: '2026-02-08T15:56:49.040264+00:00'
-    evidence: claim now shows full step detail. Commit a4f0e1c.
   - id: cli-ux-enhancements.next-with-summary
     name: next with summary
-    status: done
+    status: pending
     description: next shows one-line summaries inline. --detail flag for full descriptions.
-    claimed_by: antigravity
-    claimed_at: '2026-02-08T16:12:52.336889+00:00'
-    evidence: next with summaries + --detail flag. Commit f7c9249. 234 tests.
   - id: cli-ux-enhancements.complete-returns-next
     name: complete returns next
-    status: done
+    status: pending
     description: After completing a step, output lists next available steps (saves
       a tool call).
-    claimed_by: antigravity
-    claimed_at: '2026-02-08T15:55:22.348087+00:00'
-    evidence: complete now shows next available steps inline. Commit 6c1497f.
   - id: cli-ux-enhancements.affordance-hints-on-all-commands
     name: affordance hints on all commands
-    status: done
+    status: pending
     description: Every command output ends with hints for what to do next.
     depends_on:
     - cli-ux-enhancements.show-command
     - cli-ux-enhancements.claim-returns-full-spec
     - cli-ux-enhancements.next-with-summary
     - cli-ux-enhancements.complete-returns-next
-    claimed_by: antigravity
-    claimed_at: '2026-02-08T16:14:44.297372+00:00'
-    evidence: All 17 commands have affordance hints. Commit b0505ed. 234 tests.
 - id: cli-refactoring
   name: CLI Refactoring
-  status: done
+  status: pending
   depends_on:
   - cli-ux-enhancements
   steps:
   - id: cli-refactoring.rename-update-checklist-to-check
     name: rename update-checklist to check
-    status: done
+    status: pending
     description: update-checklist STEP --check keyword -> check STEP keyword. check
       STEP --add text for append.
     depends_on:
     - flag-alias-unification
-    claimed_by: claude
-    claimed_at: '2026-02-09T03:21:38.020249+00:00'
-    evidence: Renamed to 'check' with positional keyword, --add flag. 386 tests pass.
-      Commit 8f23c3b.
   - id: cli-refactoring.rename-help-agent-to-guide
     name: rename help-agent to guide
-    status: done
+    status: pending
     description: help-agent --context X -> guide --on startup|stuck|review.
     depends_on:
     - flag-alias-unification
-    claimed_by: claude
-    claimed_at: '2026-02-09T03:22:56.645987+00:00'
-    evidence: Renamed to guide --on startup|stuck|review|planning. 387 tests pass.
-      Commit b60f793.
   - id: cli-refactoring.unify-actor-flags-and-env-vars
     name: unify actor flags and env vars
-    status: done
+    status: pending
     description: --agent/--reviewer -> --by. VECTL_AGENT env var default. VECTL_PLAN
       env var for plan path.
     depends_on:
     - flag-alias-unification
-    claimed_by: claude
-    claimed_at: '2026-02-09T03:24:33.064152+00:00'
-    evidence: --by flag with --agent alias. VECTL_AGENT and VECTL_PLAN env vars. 387
-      tests pass. Commit b3a1c37.
   - id: cli-refactoring.shorten-flag-names
     name: shorten flag names
-    status: done
+    status: pending
     description: --depends-on -> --after, --description -> --desc, --verification
       -> --verify globally.
     depends_on:
     - flag-alias-unification
-    claimed_by: claude
-    claimed_at: '2026-02-09T03:25:51.754708+00:00'
-    evidence: 'Already done: --after (since cli_architect), --desc/--description and
-      --verify/--verification aliases (since flag-alias-unification). 387 tests pass.'
   - id: flag-alias-unification
     name: Flag alias unification
-    status: done
+    status: pending
     description: 'Accept both short and long forms for all flags: --desc/--description,
       --ctx/--context, --verify/--verification. Must be done BEFORE renames so renames
       become non-breaking changes. Uses Typer multiple option names feature.'
     verification: Both --desc and --description work on add-step; both --ctx and --context
       work on add-phase; tests pass
-    claimed_by: claude
-    claimed_at: '2026-02-09T03:19:31.716965+00:00'
-    evidence: 'Typer multi-name aliases: --desc/--description, --verify/--verification,
-      --context/--ctx. 386 tests pass. Commit d753c7f.'
 - id: correctness-fixes
   name: Correctness Fixes
-  status: done
+  status: pending
   gate: uv run pytest tests/ -v passes, auto-unlock persists correctly
   context: 'P0: Fix CQS violation in _get_active_phase_ids and cascade unlock on complete.
     All three experts flagged as correctness bugs.'
@@ -666,20 +541,15 @@ phases:
   steps:
   - id: correctness-fixes.fix-cqs-violation-in-get-active-phase-ids
     name: Fix CQS Violation in _get_active_phase_ids
-    status: done
+    status: pending
     description: Split _get_active_phase_ids into pure query (no mutation) + explicit
       auto_unlock_phases(). Query returns active/eligible phase IDs without mutating
       phase.status. All three experts flagged as correctness bug, not tech debt.
     verification: 'vectl next and vectl status agree on lock state; new test: test_get_active_does_not_mutate;
       pytest tests/test_logic.py passes'
-    claimed_by: antigravity
-    claimed_at: '2026-02-08T19:20:58.085086+00:00'
-    evidence: 'Implemented in commit 7838f3e: split _get_active_phase_ids into pure
-      query + auto_unlock_phases() mutator. Tests: test_get_next_steps_does_not_mutate_phase_status
-      + 3 TestAutoUnlockPhases tests pass.'
   - id: correctness-fixes.cascade-unlock-on-complete
     name: Cascade Unlock on Complete
-    status: done
+    status: pending
     description: When complete_step() finishes last step in phase (triggering DONE),
       call auto_unlock_phases() to persist downstream unlocks to disk. Currently unlocks
       only happen in memory via get_next_steps().
@@ -687,14 +557,9 @@ phases:
       in status; new test: test_complete_cascades_unlock; all tests pass'
     depends_on:
     - correctness-fixes.fix-cqs-violation-in-get-active-phase-ids
-    claimed_by: antigravity
-    claimed_at: '2026-02-08T19:34:30.501244+00:00'
-    evidence: 'Implemented in commit 3f5c33e: complete_step() and skip_step() now
-      call auto_unlock_phases(plan) after setting phase to DONE. Tests: test_complete_cascades_unlock_to_downstream
-      + updated CLI tests pass.'
 - id: code-hygiene
   name: Code Hygiene
-  status: done
+  status: pending
   gate: mypy passes, no star imports in core.py
   context: 'P1: Remove star imports, fix sentinel type safety, add move-step dep warning.
     SE Expert recommendations.'
@@ -703,7 +568,7 @@ phases:
   steps:
   - id: code-hygiene.remove-star-import-re-exports-from-core-py
     name: Remove Star Import Re-exports from core.py
-    status: done
+    status: pending
     description: 'Delete the `from vectl.io import *` and `from vectl.models import
       *` lines
 
@@ -713,13 +578,9 @@ phases:
 
       '
     verification: grep -c 'import \*' src/vectl/core.py returns 0; all tests pass
-    claimed_by: antigravity
-    claimed_at: '2026-02-08T19:36:12.752839+00:00'
-    evidence: 'Commit 2cb193e: removed star imports. grep -c ''import *'' returns
-      0. 239 tests pass.'
   - id: code-hygiene.fix-sentinel-type-safety
     name: Fix Sentinel Type Safety
-    status: done
+    status: pending
     description: 'Replace _SENTINEL object pattern with _Unset Enum for proper mypy
       narrowing.
 
@@ -729,13 +590,9 @@ phases:
 
       '
     verification: mypy src/vectl/core.py passes; edit_step tests still pass
-    claimed_by: antigravity
-    claimed_at: '2026-02-08T19:36:48.602765+00:00'
-    evidence: 'Commit 0c2ead0: _SENTINEL replaced with _Unset enum. edit_step now
-      typed as str | _Unset. CLI uses explicit args. 239 tests pass.'
   - id: code-hygiene.add-move-step-dependency-warning
     name: Add move-step Dependency Warning
-    status: done
+    status: pending
     description: 'move_step() silently clears depends_on when moving between phases
       (lossy operation).
 
@@ -743,22 +600,14 @@ phases:
 
       '
     verification: move-step output shows "Cleared N dependencies" when deps exist
-    claimed_by: antigravity
-    claimed_at: '2026-02-08T19:38:07.422558+00:00'
-    evidence: 'Commit 68978f9: CLI move-step now warns about cleared deps. 2 new tests.
-      241 pass.'
   - id: code-hygiene.update-docs-visibility
     name: update-docs-visibility
-    status: done
+    status: pending
     description: Update tools/vectl/README.md with actual commands. Add entry to root
       AGENTS.md marking vectl as experimental/dogfood-only.
-    claimed_by: antigravity
-    claimed_at: '2026-02-08T19:39:29.645337+00:00'
-    evidence: 'Commit 95c1e0d: README rewritten with actual commands. AGENTS.md has
-      vectl prohibited-action entry.'
 - id: agent-ux
   name: Agent UX
-  status: done
+  status: pending
   gate: all new commands tested, affordance hints complete
   context: 'P2: Auto-claim without args, hint completeness for all states, mine/resume
     command. LLM Agent Expert recommendations.'
@@ -767,7 +616,7 @@ phases:
   steps:
   - id: agent-ux.auto-claim-without-arguments
     name: Auto-Claim Without Arguments
-    status: done
+    status: pending
     description: 'Make step_id optional in claim command. When omitted, call get_next_steps()
 
       and auto-claim the first available step. LLM Agent Expert P1 recommendation
@@ -778,12 +627,9 @@ phases:
       '
     verification: vectl claim --agent test auto-picks first available step; tests
       pass
-    claimed_by: prometheus
-    claimed_at: '2026-02-09T02:21:56.062618+00:00'
-    evidence: 306 tests pass (2 new auto-claim tests). Commit e0632ea
   - id: agent-ux.hint-completeness-for-all-step-states
     name: Hint Completeness for All Step States
-    status: done
+    status: pending
     description: 'Add affordance hints for DONE, SKIPPED, REJECTED step states in
       show/status output.
 
@@ -794,13 +640,9 @@ phases:
 
       '
     verification: show on done/skipped/rejected steps shows appropriate hints
-    claimed_by: prometheus
-    claimed_at: '2026-02-09T02:25:28.797036+00:00'
-    evidence: 317 tests pass (4 new hint tests for done/claimed/skipped/rejected).
-      Commit bc77e51
   - id: agent-ux.mine-command-for-agent-recovery
     name: Mine Command for Agent Recovery
-    status: done
+    status: pending
     description: 'Add `vectl mine --agent <name>` command showing currently claimed
       steps for a given agent.
 
@@ -812,13 +654,9 @@ phases:
       '
     verification: vectl mine --agent X shows claimed steps; uv run pytest tests/test_cli.py
       passes
-    claimed_by: prometheus
-    claimed_at: '2026-02-09T02:23:12.786161+00:00'
-    evidence: '313 tests pass (4 core + 3 CLI mine tests). Commit 22480e1. Dogfood:
-      mine --agent prometheus correctly shows claimed step.'
   - id: agent-ux.next-limit-default
     name: next --limit default
-    status: done
+    status: pending
     description: 'Cap next output to 3 items by default. Add --limit N flag and --all
       flag.
 
@@ -829,13 +667,9 @@ phases:
       '
     verification: vectl next shows at most 3 items; --limit 5 shows 5; --all shows
       everything; tests pass
-    claimed_by: prometheus
-    claimed_at: '2026-02-09T02:20:15.530220+00:00'
-    evidence: '304 tests pass (4 new limit tests). Commit 7f7692f. Dogfood: --all,
-      -n 2, default all work.'
   - id: agent-ux.long-slug-warning
     name: Long slug warning
-    status: done
+    status: pending
     description: 'When auto-generated slug exceeds 40 chars, print affordance hint
 
       suggesting --id override for shorter manual ID.
@@ -845,12 +679,9 @@ phases:
       '
     verification: add-step with long name shows "Slug is N chars. Use --id to set
       shorter" hint
-    claimed_by: prometheus
-    claimed_at: '2026-02-09T02:26:59.631200+00:00'
-    evidence: 321 tests pass (4 new slug warning tests). Commit 8ba0bba
 - id: quality
   name: Quality
-  status: done
+  status: pending
   gate: hypothesis tests pass, no naming collisions
   context: 'P3: Property-based testing for state machine, rename ValidationError to
     avoid shadowing. Diamond-pattern convergence point.'
@@ -861,7 +692,7 @@ phases:
   steps:
   - id: quality.property-based-state-machine-tests
     name: Property-Based State Machine Tests
-    status: done
+    status: pending
     description: 'Add Hypothesis stateful tests for the plan state machine. Golden
       property:
 
@@ -873,13 +704,9 @@ phases:
 
       '
     verification: uv run pytest tests/test_properties.py -v passes with >100 examples
-    claimed_by: claude
-    claimed_at: '2026-02-09T03:02:43.953374+00:00'
-    evidence: 322 tests pass (200 Hypothesis examples, 0 failing). Found+fixed REJECTED→SKIPPED
-      gap. Commit bd41b13
   - id: quality.rename-validationerror-to-avoid-shadowing
     name: Rename ValidationError to Avoid Shadowing
-    status: done
+    status: pending
     description: 'Rename ValidationError to PlanValidationIssue or DiagnosticMessage.
 
       Current name shadows pydantic.ValidationError and common ValueError pattern.
@@ -888,13 +715,9 @@ phases:
 
       '
     verification: grep -r ValidationError shows only new name; all tests pass
-    claimed_by: claude
-    claimed_at: '2026-02-09T03:01:52.113746+00:00'
-    evidence: 321 tests pass. grep shows 0 remaining ValidationError refs. Commit
-      df85efa
 - id: command-enrichment
   name: Command Enrichment
-  status: done
+  status: pending
   gate: all enriched commands tested, skip --reason works
   context: Enrich existing commands for complex operations. Must complete BEFORE mcp
     phase — MCP tools should mirror enriched semantics, not bare originals.
@@ -903,7 +726,7 @@ phases:
   steps:
   - id: command-enrichment.remove-step-force-flag
     name: remove-step --force flag
-    status: done
+    status: pending
     description: 'Add --force flag to remove-step that cleans up dependency references
 
       instead of erroring when other steps depend on the target.
@@ -913,13 +736,9 @@ phases:
       '
     verification: remove-step X --force succeeds when Y depends on X; Y.depends_on
       no longer contains X; tests pass
-    claimed_by: antigravity
-    claimed_at: '2026-02-08T19:48:15.765954+00:00'
-    evidence: 'Commit a52f95c: remove-step --force cleans dep refs. 2 new tests. 271
-      pass.'
   - id: command-enrichment.add-steps-bulk-reference-resolution
     name: add-steps bulk reference resolution
-    status: done
+    status: pending
     description: 'Two-pass processing for add-steps bulk so steps in the same batch
       can
 
@@ -932,13 +751,9 @@ phases:
       '
     verification: add-steps with intra-batch 'after' references works; cycle detection
       still works; tests pass
-    claimed_by: antigravity
-    claimed_at: '2026-02-08T19:55:59.477300+00:00'
-    evidence: '280 tests pass (4 new: short slug ref, cycle rollback, mixed deps,
-      unknown dep). Commit 6240100'
   - id: command-enrichment.skip-reason-enum-and-cancel-alias
     name: skip --reason enum and cancel alias
-    status: done
+    status: pending
     description: 'Add required --reason flag to skip command with enum values:
 
       superseded, irrelevant, absorbed, deprioritized.
@@ -950,13 +765,9 @@ phases:
       '
     verification: vectl skip X --reason superseded works; vectl cancel X works; reason
       appears in show output
-    claimed_by: antigravity
-    claimed_at: '2026-02-08T19:53:41.316114+00:00'
-    evidence: 'commit b05ad29: SkipReason enum (superseded/irrelevant/absorbed/deprioritized),
-      skip_step validates, cancel CLI alias, 5 new tests, 276 total passing'
   - id: skip-phase
     name: skip-phase command
-    status: done
+    status: pending
     description: 'Compound command that skips all pending steps in a phase.
 
       For claimed steps: defer first, then skip.
@@ -970,44 +781,31 @@ phases:
       steps deferred then skipped; phase becomes done
     depends_on:
     - command-enrichment.skip-reason-enum-and-cancel-alias
-    claimed_by: prometheus
-    claimed_at: '2026-02-08T20:01:38.625216+00:00'
-    evidence: 294 tests pass (9 core + 5 CLI tests for skip-phase). Commit f779c11
   - id: command-enrichment.edit-phase-command
     name: edit-phase command
-    status: done
+    status: pending
     description: 'Add edit-phase command mirroring edit-step: --name, --context, --gate,
       --add-dep, --rm-dep. Currently no way to modify phase metadata after creation
       — forced to hand-edit YAML, breaking the abstraction. Dogfooding observation
       #10.'
     verification: vectl edit-phase mcp --add-dep X works; vectl edit-phase mcp --context
       'new' works; tests pass
-    claimed_by: antigravity
-    claimed_at: '2026-02-08T19:45:40.475982+00:00'
-    evidence: 'Commit 480e2d2: edit_phase() + CLI. 12 new tests. 269 pass.'
   - id: command-enrichment.search-command
     name: search-command
-    status: done
+    status: pending
     description: 'Implement ''vectl search <pattern>'' to find patterns in phases
       (context/gate) and steps (name/desc/context). Output grouped by phase. Default:
       all phases, all states, case-insensitive. Options: --phase, --state, --regex.'
-    claimed_by: antigravity
-    claimed_at: '2026-02-08T19:41:29.771213+00:00'
-    evidence: 'Commit 9e0eb42: search_plan() + CLI ''vectl search''. 15 new tests.
-      256 pass.'
   - id: command-enrichment.add-search-hints
     name: add-search-hints
-    status: done
+    status: pending
     description: Add affordance hints to mutation commands (edit-step, add-step, remove-step,
       etc.) suggesting 'vectl search' for consistency checks.
     depends_on:
     - command-enrichment.search-command
-    claimed_by: prometheus
-    claimed_at: '2026-02-08T20:04:59.640242+00:00'
-    evidence: 300 tests pass (6 new search hint CLI tests). Commit a425568
 - id: mcp-testing
   name: MCP Testing & Fixes
-  status: done
+  status: pending
   gate: All MCP tools tested end-to-end, bugs fixed, tests pass
   context: 'Test MCP server via MCP tools. Fix bugs: (1) status/complete show [:5]
     next steps instead of [:3]. (2) mine lacks --all flag. (3) Verify claim/complete/lifecycle/mutate/search
@@ -1017,19 +815,15 @@ phases:
   steps:
   - id: mcpt.1
     name: Fix next-steps limit in status and complete
-    status: done
+    status: pending
     description: MCP vectl_status shows [:5] next steps (line 140 mcp_server.py) —
       should be [:3] consistent with next --limit default. Also CLI complete command
       uses [:5]. Fix both to [:3].
     verification: uv run pytest tests/test_mcp.py tests/test_cli.py -v passes; vectl_status
       shows at most 3 next steps
-    claimed_by: antigravity
-    claimed_at: '2026-02-09T04:43:42.365422+00:00'
-    evidence: Fixed [:5] to [:3] in mcp_server.py (lines 140,144) and cli.py (lines
-      567,575). 170 tests pass.
   - id: mcpt.2
     name: Add mine --all flag
-    status: done
+    status: pending
     description: Add --all flag to mine command. When set, skip --by requirement and
       pass agent=None to get_claimed_steps(). Shows all claimed steps across agents.
       Useful when agent does not know its own name.
@@ -1037,62 +831,39 @@ phases:
       works; uv run pytest tests/test_cli.py -v passes
     depends_on:
     - mcpt.1
-    claimed_by: antigravity
-    claimed_at: '2026-02-09T04:44:29.258054+00:00'
-    evidence: mine --all flag added. --by now optional (falls back to VECTL_AGENT
-      env, or requires --all). --all mode shows [agent_name] per step. 124 CLI tests
-      pass.
   - id: mcpt.3
     name: Verify MCP write tools end-to-end
-    status: done
+    status: pending
     description: Test claim/complete/lifecycle/mutate/search MCP tools against real
       plan.yaml. Verify CAS (compare-and-swap) works through MCP. Verify that changes
       made via MCP are visible to subsequent MCP calls.
     verification: All 7 MCP tools tested with real plan.yaml; changes persist correctly
     depends_on:
     - mcpt.2
-    claimed_by: antigravity
-    claimed_at: '2026-02-09T04:45:36.704783+00:00'
-    evidence: 'All 7 MCP tools tested e2e: status, show, claim, complete, lifecycle
-      (defer/reject/skip), search, mutate (add-step/remove-step). CAS works. Persistence
-      verified across calls. 387 tests pass.'
   - id: mcpt.smoke
     name: MCP smoke test step (temp)
-    status: skipped
+    status: pending
     description: Temporary step for MCP write tool e2e verification. Delete after
       testing.
-    claimed_by: mcp-test-agent
-    claimed_at: '2026-02-09T04:46:06.123164+00:00'
-    skipped_reason: irrelevant
-    rejection_reason: Testing reject via MCP
-    rejection_history:
-    - reason: Testing reject via MCP
-      timestamp: '2026-02-09T04:46:23.870176+00:00'
-      reviewer: mcp-tester
 - id: mcp-review
   name: MCP Review & Gate Check
-  status: done
+  status: pending
   gate: vectl_review MCP tool returns review data and gate-check results
   depends_on:
   - mcp-testing
   steps:
   - id: mcp-r.1
     name: Extract review data logic to core
-    status: done
+    status: pending
     description: 'Create review_plan() in core.py that returns structured review data
       (dataclass). Fields: validation_issues, phase_progress list, active_phase details,
       ref_index (spec coverage). CLI review command refactored to call this instead
       of inline logic.'
     verification: uv run pytest tests/test_review.py -v passes; cli review output
       unchanged
-    claimed_by: antigravity
-    claimed_at: '2026-02-09T05:07:44.521843+00:00'
-    evidence: review_plan() and gate_check() extracted to core.py as pure data functions.
-      ReviewResult, PhaseProgress, GateCheckResult dataclasses added to models.py.
-      CLI refactored to use them. 387 tests pass.
   - id: mcp-r.2
     name: Extract gate-check data logic to core
-    status: done
+    status: pending
     description: 'Create gate_check() in core.py returning structured gate readiness
       data (pure data, no subprocess). Returns: steps_complete bool, done/total counts,
       pending steps, gate criterion. CLI gate-check calls this for data, runs gate_script
@@ -1101,14 +872,9 @@ phases:
       unchanged
     depends_on:
     - mcp-r.1
-    claimed_by: antigravity
-    claimed_at: '2026-02-09T05:13:06.635946+00:00'
-    evidence: Already done in mcp-r.1 commit — gate_check() was extracted alongside
-      review_plan(). CLI gate-check refactored to use core_gate_check(). 387 tests
-      pass.
   - id: mcp-r.3
     name: Add vectl_review MCP tool
-    status: done
+    status: pending
     description: 'Add 8th MCP tool: vectl_review. Parameters: phase_id (optional),
       check_refs (bool). Returns Markdown: validation summary, phase progress, active
       phase detail, spec coverage, gate readiness when phase_id given. gate_script
@@ -1117,17 +883,9 @@ phases:
       review markdown
     depends_on:
     - mcp-r.2
-    claimed_by: antigravity
-    claimed_at: '2026-02-09T05:13:21.194609+00:00'
-    evidence: 'vectl_review MCP tool implemented + 37 new tests added (22 core + 15
-      MCP). 424/424 pass in 2.8s. Core: review_plan() tested for phase progress, totals,
-      active phases, include_done, ref_index, validation issues, skipped-as-done,
-      empty plan. gate_check() tested for ready/not-ready, criterion, gate_script,
-      downstream, PlanError on invalid phase. MCP: all 4 layers verified, gate check
-      with/without phase_id, gate_script warning, validation errors.'
 - id: human-oversight
   name: Human Oversight
-  status: done
+  status: pending
   gate: render + diff + log commands work end-to-end
   context: 'Expert consensus: biggest gap is change audit (diff/log), not rendering.
     render is P2 convenience, diff/log is P1 supervision.'
@@ -1136,19 +894,15 @@ phases:
   steps:
   - id: ho.1
     name: vectl render (yaml→markdown export)
-    status: done
+    status: pending
     description: 'One-way export: plan.yaml → stdout Markdown. Stakeholder report,
       not YAML mirror. Flags: --phase <id> (filter), -o <file> (write to file). Deliberately
       less detail than vectl review (omit claimed_by, claimed_at, rejection_history).
       Core logic in core.py, CLI in cli.py. ~50-80 lines.'
     verification: vectl render | head && vectl render --phase core | head
-    claimed_by: eidos-engineer
-    claimed_at: '2026-02-09T12:08:27.849060+00:00'
-    evidence: render_plan() in core.py, render command in cli.py. 19 tests in test_render.py.
-      443/443 pass.
   - id: ho.2
     name: vectl diff (plan changes since last commit)
-    status: done
+    status: pending
     description: 'Show what changed in plan.yaml since last git commit. Uses git diff
       on plan.yaml, then renders human-readable summary: added/removed/modified steps,
       status transitions, new phases. Core logic in core.py (pure function: old_plan,
@@ -1156,13 +910,9 @@ phases:
     verification: vectl diff
     depends_on:
     - ho.1
-    claimed_by: eidos-engineer
-    claimed_at: '2026-02-09T12:08:33.374894+00:00'
-    evidence: diff_plans() pure function in core.py, diff CLI command with git integration.
-      13 tests in test_diff.py. 456/456 pass.
   - id: ho.3
     name: vectl log (recent plan mutations)
-    status: done
+    status: pending
     description: 'Show last N mutations with context. Reads git log filtered to plan.yaml
       commits, extracts step/phase changes per commit. Flags: --last N (default 5).
       Core logic: parse git log + diff per commit → structured MutationEntry list.
@@ -1170,45 +920,31 @@ phases:
     verification: vectl log --last 3
     depends_on:
     - ho.2
-    claimed_by: eidos-engineer
-    claimed_at: '2026-02-09T12:11:10.994054+00:00'
-    evidence: log CLI command with git integration, reuses diff_plans. 456/456 tests
-      pass.
 - id: migration-ux
   name: Migration UX Fixes
-  status: done
+  status: pending
   gate: Full migration workflow succeeds end-to-end without manual intervention
   steps:
   - id: mux.1
     name: Fix guide CLI syntax + table rendering
-    status: done
+    status: pending
     description: Guide --on migration uses 'vectl mutate add-phase' (MCP action name)
       instead of 'vectl add-phase' (actual CLI syntax). Also fix init output hint
       and error message topic list. Replace markdown table in guide with list format
       (Rich renders tables poorly).
     verification: vectl guide --on migration | grep 'vectl add-phase' && ! vectl guide
       --on migration | grep 'vectl mutate'
-    claimed_by: vectl-agent
-    claimed_at: '2026-02-09T16:08:10.583656+00:00'
-    evidence: Updated _GUIDE_MIGRATION in cli.py to split CLI/MCP workflows and use
-      correct syntax. Updated init output hint to use correct CLI syntax (--phase-id).
-      Verified with vectl guide --on migration output check.
   - id: mux.2
     name: 'edit-step: support clearing depends_on via sentinel'
-    status: done
+    status: pending
     description: 'core edit_step() only has add_deps/remove_deps — no way to clear
       all deps. Add depends_on: list[str] | _Unset = _SENTINEL to match name/description
       pattern. [] = clear, ["a"] = replace. When depends_on is set, add_deps/remove_deps
       are ignored. Fix MCP layer to pass through.'
     verification: pytest tests/ -k 'edit_step and clear' -v
-    claimed_by: vectl-agent
-    claimed_at: '2026-02-09T16:10:51.094246+00:00'
-    evidence: 'Updated core.edit_step to accept depends_on sentinel. Updated mcp_server.vectl_mutate
-      to pass depends_on through. Verified behavior with manual script: clear deps
-      ([]), set deps ([''x'']), and ignore sentinel (None).'
   - id: mux.3
     name: Auto-discover plan.yaml (walk-up + env var)
-    status: done
+    status: pending
     description: 'Auto-discover plan.yaml by walking up parent directories (like git
       finds .git). Support VECTL_PLAN env var. Precedence: --plan flag > VECTL_PLAN
       env > walk-up > ./plan.yaml. Add one-liner tip to guide.'
@@ -1216,15 +952,9 @@ phases:
       vectl status
     depends_on:
     - mux.1
-    claimed_by: vectl-agent
-    claimed_at: '2026-02-09T16:12:07.103026+00:00'
-    evidence: Implemented auto-discovery logic for plan.yaml (explicit > env > walk-up
-      > default). Updated all CLI commands to use _resolve_plan via _load refactor.
-      Added manual test manual_md.py to verify AGENTS.md/CLAUDE.md precedence logic
-      in init. Verified existing tests pass.
 - id: p0-parity
   name: P0 Parity & Config Unification
-  status: done
+  status: pending
   gate: CLI + MCP share identical plan resolution, derived lock/claim semantics, and
     conflict/hint behavior.
   depends_on:
@@ -1232,7 +962,7 @@ phases:
   steps:
   - id: p0-parity.1-plan-path
     name: Unify plan path resolution + env var names
-    status: done
+    status: pending
     description: 'Introduce shared resolver `vectl/plan_path.py::resolve_plan_path()`
       and make both CLI and MCP use it.
 
@@ -1254,12 +984,9 @@ phases:
       mkdir -p vectl_path_test/a/b && cd vectl_path_test && uv run --directory /Users/tefx/Projects/Edios/tools/vectl
       vectl init --project path && cd a/b && uv run --directory /Users/tefx/Projects/Edios/tools/vectl
       vectl status >/dev/null)
-    evidence: Created src/vectl/plan_path.py with resolve_plan_path(). Wired CLI and
-      MCP to use it. Deprecated VECTL_PLAN alias with DeprecationWarning. 523 tests
-      pass.
   - id: p0-parity.2-plan-path-tests
     name: Lock path semantics with parity tests
-    status: done
+    status: pending
     description: 'Add dedicated tests that assert CLI and MCP resolve the same plan
       path under identical cwd/env conditions.
 
@@ -1279,11 +1006,9 @@ phases:
     verification: uv run pytest tools/vectl/tests/test_plan_path.py -q
     depends_on:
     - p0-parity.1-plan-path
-    evidence: Created tests/test_plan_path.py — 13 tests covering precedence, walk-up
-      discovery, deprecated env warning, CLI/MCP resolver identity. All pass.
   - id: p0-parity.3-derived-semantics
     name: Centralize derived semantics (locked/claimable)
-    status: done
+    status: pending
     description: 'Create shared derived semantics API (e.g., `vectl/semantics.py`)
       that computes StepDerived(claimable, blocked, reasons, unmet_deps).
 
@@ -1310,12 +1035,9 @@ phases:
       -q
     depends_on:
     - p0-parity.1-plan-path
-    evidence: Created src/vectl/semantics.py with BlockReason enum, StepDerived dataclass,
-      derive_step(), is_step_locked(). Wired CLI, MCP, and core render to use shared
-      semantics. Removed old _is_locked helpers. 523 tests pass.
   - id: p0-parity.4-semantic-parity-tests
     name: Cross-surface semantic agreement tests
-    status: done
+    status: pending
     description: 'Add fixtures + tests asserting that for the same plan state:
 
       - CLI `next` lists exactly the steps that `claim` would accept
@@ -1339,13 +1061,9 @@ phases:
     verification: uv run pytest tools/vectl/tests -k 'parity or semantic' -q
     depends_on:
     - p0-parity.3-derived-semantics
-    evidence: Created tests/test_semantics.py — 32 tests covering derive_step for
-      all statuses, dep resolution, phase active check, semantic parity (derive_step().claimable
-      == get_next_steps() membership for 9 configs), CLI/MCP/core import identity.
-      All pass.
   - id: p0-parity.5-mcp-cas-conflicts
     name: Standardize MCP CAS conflict handling
-    status: done
+    status: pending
     description: 'Catch CASConflictError in MCP mutation paths (claim/complete/lifecycle/mutate/save)
       and return a deterministic, actionable error payload.
 
@@ -1360,12 +1078,9 @@ phases:
     verification: uv run pytest tools/vectl/tests -k 'cas' -q
     depends_on:
     - p0-parity.1-plan-path
-    evidence: MCP _save() catches CASConflictError and raises PlanError with actionable
-      message suggesting vectl_status/vectl_show retry. All 4 mutation tools (claim/complete/lifecycle/mutate)
-      have _save() inside try/except PlanError. 523 tests pass.
   - id: p0-parity.6-channel-pure-hints
     name: Make hints channel-pure + remove fake commands
-    status: done
+    status: pending
     description: 'Ensure CLI outputs only suggest real CLI commands; MCP outputs only
       suggest MCP tool names.
 
@@ -1382,12 +1097,9 @@ phases:
       /Users/tefx/Projects/Edios/tools/vectl vectl --help >/dev/null
     depends_on:
     - p0-parity.1-plan-path
-    evidence: Audited all MCP and CLI hint strings. MCP hints reference MCP tool names
-      only. CLI hints reference real CLI commands only. One intentional CLI reference
-      in MCP (gate_script not executable via MCP) is correct. No fake commands found.
   - id: p0-parity.7-mcp-review-parity
     name: Bring MCP review feature parity (include_done, deps, locks)
-    status: done
+    status: pending
     description: 'Extend MCP `vectl_review` parameters to match key CLI review capabilities
       where it affects agent decision-making (e.g., include_done/locked phases). Ensure
       it uses the shared derived semantics for lock status and shows deps.
@@ -1398,11 +1110,9 @@ phases:
     verification: uv run pytest tools/vectl/tests -k 'mcp and review' -q
     depends_on:
     - p0-parity.3-derived-semantics
-    evidence: Added include_done parameter to MCP vectl_review, matching CLI --all
-      flag. Already uses shared is_step_locked from semantics.py. 523 tests pass.
   - id: p0-parity.8-system-smoke
     name: 'System smoke: run all CLI commands + MCP tools checklist'
-    status: done
+    status: pending
     description: 'Create and execute a deterministic system smoke checklist (10–20
       commands) covering:
 
@@ -1428,13 +1138,9 @@ phases:
     - p0-parity.5-mcp-cas-conflicts
     - p0-parity.6-channel-pure-hints
     - p0-parity.7-mcp-review-parity
-    evidence: Created tests/test_smoke.py — 11 tests covering plan path from nested
-      dir, env var override, locked phase steps not in next, dep-blocked steps, lock
-      icons in review/show, claim-complete workflow, include_done review, search,
-      validate. All pass.
   - id: p1-output-hygiene
     name: 'Output hygiene: prevent Rich/markup swallowing user text'
-    status: done
+    status: pending
     description: 'Eliminate remaining Rich markup hazards in CLI outputs when printing
       user-authored fields (description/context/gate/verification/evidence) that may
       contain `[ ]` checklists or bracketed text.
@@ -1455,13 +1161,9 @@ phases:
       -q
     depends_on:
     - p0-parity.3-derived-semantics
-    evidence: Applied _esc() and markup=False across all CLI output paths — _show_step_detail,
-      _show_phase_detail, status table, review L1/L3/L4, step hints. Created tests/test_output_hygiene.py
-      — 8 regression tests with bracket-heavy content (checklists, [mig.1] IDs, fake
-      markup). All pass.
   - id: p2-doc-consistency
     name: 'Doc/meta consistency: align tool counts + canonical env var'
-    status: done
+    status: pending
     description: 'Update internal docs/comments to match actual MCP tool set and canonical
       env var naming.
 
@@ -1477,29 +1179,22 @@ phases:
     verification: uv run pytest tools/vectl/tests -q
     depends_on:
     - p0-parity.1-plan-path
-    evidence: Audited all references. README already uses VECTL_PLAN_PATH. MCP docstring
-      updated to 8 tools with correct env var docs. All VECTL_PLAN references are
-      correct deprecated-alias code in plan_path.py and tests. No stale docs found.
 - id: backlog
   name: Backlog
-  status: done
+  status: pending
   gate: Prioritized based on user/agent needs
   depends_on:
   - p0-parity
   steps:
   - id: backlog.expose-vectl-guide-via-mcp
     name: Expose vectl_guide via MCP
-    status: done
+    status: pending
     description: 'Currently ''vectl guide'' is only available via CLI. Expose it as
       ''vectl_guide'' MCP tool so agents can read documentation directly. Args: topic
       (optional, default=''startup''). Topics: startup, rejection, planning, migration.'
-    claimed_by: antigravity
-    claimed_at: '2026-02-10T16:22:16.681987+00:00'
-    evidence: Implemented in commit 681820c. Added guide.py (shared constants), vectl_guide
-      MCP tool (#9), 9 tests in test_mcp.py. 571 tests pass. Published as v0.1.13.
   - id: backlog.dag-visualization
     name: DAG visualization command
-    status: done
+    status: pending
     description: "Add `uvx vectl dag` command that outputs Mermaid flowchart of the\
       \ dependency graph.\n\n## Design Decisions\n- Output: raw Mermaid text only\
       \ (paste into GitHub/Obsidian to render)\n- Two-level zoom:\n  - Default: nodes\
@@ -1516,14 +1211,9 @@ phases:
       \ update tool count (9 → 10)"
     verification: uvx vectl dag outputs valid Mermaid flowchart syntax; --phase drills
       into step-level DAG; 576+ tests pass
-    claimed_by: prometheus
-    claimed_at: '2026-02-10T17:25:42.899417+00:00'
-    evidence: 'Implemented generate_mermaid_dag() in core.py, dag CLI command, vectl_dag
-      MCP tool (#10). Two-level zoom: phase-level default, --phase for step drill-down.
-      21 new tests (597 total passing). Zero external deps. Commit 47b3c68.'
   - id: backlog.render-full-flag
     name: render --full flag for untruncated descriptions
-    status: done
+    status: pending
     description: 'Add `--full` flag to `uvx vectl render` that disables the 72-char
       truncation in `_first_line()`.
 
@@ -1552,14 +1242,9 @@ phases:
 
       - `tests/test_cli.py`: test CLI `--full` flag'
     verification: uvx vectl render --full shows complete descriptions without truncation
-    claimed_by: antigravity
-    claimed_at: '2026-02-10T17:22:33.450708+00:00'
-    evidence: 'Commit 8442926. Added full param to render_plan/render_phase in core.py,
-      --full flag to CLI render command. 5 new tests in test_render.py. 576 tests
-      pass. Verified: uv run vectl render --phase backlog --full shows complete descriptions.'
 - id: guidance-write
   name: Guidance Authoring (No Manual YAML)
-  status: done
+  status: pending
   gate: CLI + MCP can author claim-time guidance without editing plan.yaml by hand
   context: 'Feature request (2026-02-12): claim-time guidance.
 
@@ -1582,20 +1267,16 @@ phases:
   steps:
   - id: guidance-write.1
     name: Core plan-level edit API
-    status: done
+    status: pending
     description: "Add a core mutation for plan-level fields so callers do not need\
       \ to edit plan.yaml.\n\nScope:\n- Add `edit_plan(plan, *, project_guidance=...,\
       \ strategy_ref=..., context=...) -> Plan`\n  using the existing sentinel pattern\
       \ (`_SENTINEL`) for \"not provided\" vs \"set empty\".\n\nSource:\n- User instruction\
       \ in this conversation: \"No manual YAML edits\" and \"sync CLI and MCP\".\n"
     verification: uv run --group dev pytest -q
-    claimed_by: vectl-agent
-    claimed_at: '2026-02-12T13:54:07.277006+00:00'
-    evidence: 'Implemented core edit_plan() for plan-level metadata. Verified: uv
-      run --group dev pytest -q (634 passed).'
   - id: guidance-write.2
     name: MCP authoring via vectl_mutate edit-plan
-    status: done
+    status: pending
     description: 'Extend `vectl_mutate` to support `action="edit-plan"`.
 
 
@@ -1623,13 +1304,9 @@ phases:
     verification: uv run --group dev pytest -q
     depends_on:
     - guidance-write.1
-    claimed_by: vectl-agent
-    claimed_at: '2026-02-12T13:54:07.696297+00:00'
-    evidence: 'Added MCP vectl_mutate action=edit-plan and edit-step evidence_template
-      support. Verified: uv run --group dev pytest -q (634 passed).'
   - id: guidance-write.3
     name: CLI authoring command edit-plan
-    status: done
+    status: pending
     description: 'Add a CLI command to update plan-level guidance without editing
       YAML.
 
@@ -1657,13 +1334,9 @@ phases:
     verification: uv run --group dev pytest -q
     depends_on:
     - guidance-write.1
-    claimed_by: vectl-agent
-    claimed_at: '2026-02-12T13:54:08.082447+00:00'
-    evidence: 'Added CLI edit-plan with --*-file inputs to avoid manual YAML edits.
-      Verified: uv run --group dev pytest -q (634 passed).'
   - id: guidance-write.4
     name: CLI step evidence template authoring
-    status: done
+    status: pending
     description: 'Make CLI step authoring match MCP for step-level evidence templates.
 
 
@@ -1682,13 +1355,9 @@ phases:
     verification: uv run --group dev pytest -q
     depends_on:
     - guidance-write.3
-    claimed_by: vectl-agent
-    claimed_at: '2026-02-12T13:54:08.465726+00:00'
-    evidence: 'Added CLI add-step/edit-step evidence template authoring via --evidence-template*
-      options (parity with MCP). Verified: uv run --group dev pytest -q (634 passed).'
   - id: guidance-write.5
     name: AGENTS.md migration + upsert command
-    status: done
+    status: pending
     description: "Update the AGENTS.md snippet to describe claim-time guidance usage.\n\
       Provide a safe, idempotent migration path (no manual edits).\n\nScope:\n- Introduce\
       \ begin/end markers for the vectl block in AGENTS.md\n- Add a CLI command `vectl\
@@ -1700,20 +1369,9 @@ phases:
     verification: uv run --group dev pytest -q
     depends_on:
     - guidance-write.3
-    claimed_by: vectl-agent
-    claimed_at: '2026-02-12T13:54:33.949798+00:00'
-    evidence: 'Implemented AGENTS.md upsert markers and the agents-md CLI command;
-      updated init behavior and tests. Verified: uv run --group dev pytest -q (634
-      passed).'
-    rejection_reason: Evidence contained shell backticks; re-completing with literal
-      text.
-    rejection_history:
-    - reason: Evidence contained shell backticks; re-completing with literal text.
-      timestamp: '2026-02-12T13:54:33.650831+00:00'
-      reviewer: vectl-agent
   - id: guidance-write.6
     name: Update guide docs for guidance markers
-    status: done
+    status: pending
     description: 'Update `vectl guide` content to mention:
 
       - claim-time Guidance markers
@@ -1731,30 +1389,21 @@ phases:
     verification: uv run --group dev pytest -q
     depends_on:
     - guidance-write.5
-    claimed_by: vectl-agent
-    claimed_at: '2026-02-12T13:54:09.248277+00:00'
-    evidence: 'Updated vectl guide content to document claim-time guidance markers
-      and how to disable them. Verified: uv run --group dev pytest -q (634 passed).'
   - id: guidance-write.7
     name: Complete editing capability for step refs
-    status: done
+    status: pending
     description: Fill in detailed description for ref-editing step
     verification: uv run --group dev pytest -q
-    claimed_by: vectl-agent
-    claimed_at: '2026-02-12T14:09:38.863936+00:00'
-    evidence: Implemented ref editing in core `edit_step` (add_refs, remove_refs,
-      refs), CLI `edit-step` (`--add-ref`, `--rm-ref`), and MCP `vectl_mutate`. Added
-      tests in `test_cli.py` and `test_mcp.py`. Verified with 636 passing tests.
 - id: checkpoint
   name: Checkpoint (JSON snapshot for compaction/handoff)
-  status: done
+  status: pending
   gate: CLI + MCP expose a bounded, deterministic JSON checkpoint (schema v1) for
     plan state transfer; includes agent-aware focus selection; CLI/MCP parity tests
     added; docs updated.
   steps:
   - id: checkpoint.1
     name: Define checkpoint schema v1 + deterministic selection policy
-    status: done
+    status: pending
     description: "Define the public contract for `checkpoint`.\n\nScope:\n- Specify\
       \ `schema` string and `schema_version`.\n- Define required fields (minimal):\
       \ plan.etag, focus, guidance refs+template (bounded), next (bounded), blockers\
@@ -1783,15 +1432,9 @@ phases:
       - checkpoint schema v1 doc section
 
       '
-    claimed_by: vectl-agent
-    claimed_at: '2026-02-12T19:15:30.634979+00:00'
-    evidence: Defined checkpoint schema v1 and selection policy in `src/vectl/checkpoint_schema.py`.
-      Validated via `uv run pytest tests/test_cli.py` (no regressions). Schema supports
-      token efficiency (bounded lists) and handoff determinism (focus pointer + active_steps
-      visibility).
   - id: checkpoint.2
     name: Implement shared checkpoint builder (core)
-    status: done
+    status: pending
     description: 'Implement a shared checkpoint builder used by both CLI and MCP.
 
 
@@ -1836,14 +1479,9 @@ phases:
       - checkpoint schema v1
 
       '
-    claimed_by: vectl-agent
-    claimed_at: '2026-02-12T19:16:11.327808+00:00'
-    evidence: Implemented `build_checkpoint` in `src/vectl/checkpoint.py`. Logic includes
-      deterministic focus selection (agent-aware), bounded lists (next/active/guidance),
-      and shared schema structure. Reuses `get_next_steps` from core.
   - id: checkpoint.3
     name: 'Add CLI command: vectl checkpoint (bounded JSON)'
-    status: done
+    status: pending
     description: "Add a new CLI command `vectl checkpoint`.\n\nInterface:\n- `vectl\
       \ checkpoint` prints compact JSON by default.\n- Flags:\n  - `--agent <name>`\
       \ (optional; influences focus selection)\n  - `--next <n>` (default 3)\n  -\
@@ -1867,14 +1505,9 @@ phases:
       - checkpoint schema v1
 
       '
-    claimed_by: vectl-agent
-    claimed_at: '2026-02-12T19:17:17.331594+00:00'
-    evidence: Implemented `vectl checkpoint` CLI command. Outputs compact JSON by
-      default; supports `--agent`, `--next`, `--include-guidance`, and `--pretty`.
-      Uses shared builder from core. Tested with `uv run vectl checkpoint --pretty`.
   - id: checkpoint.4
     name: 'Add MCP tool: vectl_checkpoint (structured output)'
-    status: done
+    status: pending
     description: "Expose the checkpoint builder via MCP.\n\nScope:\n- Add MCP tool\
       \ `vectl_checkpoint` returning a structured object (dict) following the checkpoint\
       \ schema v1.\n- Parameters mirror CLI behavior:\n  - agent (optional)\n  - next\
@@ -1899,14 +1532,9 @@ phases:
       - checkpoint schema v1
 
       '
-    claimed_by: vectl-agent
-    claimed_at: '2026-02-12T19:18:02.347323+00:00'
-    evidence: Implemented `vectl_checkpoint` MCP tool. It calls the shared `build_checkpoint`
-      function and returns a structured dictionary (Schema v1). Supports parity flags
-      (agent, next, include_guidance). Tested by `test_mcp.py`.
   - id: checkpoint.5
     name: 'Add tests: determinism, bounds, CLI/MCP parity'
-    status: done
+    status: pending
     description: "Add tests ensuring checkpoint is safe for compaction/handoff.\n\n\
       Scope:\n- Deterministic focus selection tests (with and without agent param).\n\
       - Bounding tests:\n  - next list capped\n  - active_steps capped\n  - guidance\
@@ -1929,14 +1557,9 @@ phases:
       - checkpoint schema v1
 
       '
-    claimed_by: vectl-agent
-    claimed_at: '2026-02-12T19:18:36.721077+00:00'
-    evidence: Implemented comprehensive tests for checkpoint feature. Verified determinism
-      (focus selection), bounds (next/refs limits), and CLI/MCP parity (output schema
-      match). All tests passed.
   - id: checkpoint.6
     name: 'Docs: checkpoint usage for compaction/handoff (agent-independent)'
-    status: done
+    status: pending
     description: 'Update docs to describe `checkpoint`.
 
 
@@ -1978,15 +1601,9 @@ phases:
       - README checkpoint section
 
       '
-    claimed_by: vectl-agent
-    claimed_at: '2026-02-12T19:19:53.702357+00:00'
-    evidence: Updated `README.md` (Agent Control Plane), `src/vectl/guide.py` (Architect
-      Protocol with `evidence_template` examples), and `src/vectl/cli.py` (AGENTS.md
-      with Architect section). Verified docs reflect the purpose and usage of checkpoints
-      and guidance. Tests passed.
   - id: checkpoint.7
     name: 'Release: publish checkpoint feature'
-    status: done
+    status: pending
     description: 'Publish the checkpoint feature.
 
 
@@ -2018,13 +1635,9 @@ phases:
       - checkpoint schema v1
 
       '
-    claimed_by: vectl-agent
-    claimed_at: '2026-02-12T19:20:27.598335+00:00'
-    evidence: 'Bumped version to 0.1.30. Ready for release. (Note: step split to allow
-      git/gh commands in next block).'
   - id: checkpoint.8
     name: Upgrade checkpoint schema to v1.1 (Structured Guidance + Phase Context)
-    status: done
+    status: pending
     description: "Upgrade checkpoint schema to v1.1 based on user feedback.\n\nChanges:\n\
       1. Add `phase` object (id, name, context) to provide high-level goal context.\n\
       2. Add `focus.depends_on` list to signal required inputs/evidence reading.\n\
@@ -2047,14 +1660,9 @@ phases:
       - checkpoint schema v1.1 conversation
 
       '
-    claimed_by: vectl-agent
-    claimed_at: '2026-02-13T03:17:49.937782+00:00'
-    evidence: Updated checkpoint schema to v1.1 in `src/vectl/checkpoint_schema.py`.
-      Added `phase` context object, `focus.depends_on`, and structured `guidance`
-      (read_before, policy_banner). This improves agentic context quality per feedback.
   - id: checkpoint.9
     name: Implement checkpoint v1.1 builder logic
-    status: done
+    status: pending
     description: 'Implement v1.1 changes in `build_checkpoint` (src/vectl/checkpoint.py).
 
 
@@ -2086,14 +1694,9 @@ phases:
       - checkpoint schema v1.1
 
       '
-    claimed_by: vectl-agent
-    claimed_at: '2026-02-13T03:18:32.994859+00:00'
-    evidence: Implemented checkpoint v1.1 logic in `src/vectl/checkpoint.py`. Added
-      `phase` object context, `focus.depends_on`, and structured `guidance` (read_before,
-      policy_banner). Logic handles bounds and optional fields correctly.
   - id: checkpoint.10
     name: Upgrade checkpoint schema to v1.2 (Next Hints + Lite Mode)
-    status: done
+    status: pending
     description: "Upgrade checkpoint schema to v1.2 based on user feedback \"LLM-Native\
       \ & Token Economy\".\n\nChanges:\n1. **Next Action Hints**: `next` list items\
       \ change from `str` to `{id: str, name: str}` to enable zero-shot reasoning.\n\
@@ -2121,14 +1724,9 @@ phases:
       - checkpoint schema v1.2 conversation
 
       '
-    claimed_by: vectl-agent
-    claimed_at: '2026-02-13T03:27:03.953657+00:00'
-    evidence: Updated `checkpoint_schema.py` to v1.2. Added `next` hints (id+name),
-      `focus.name`, and grouped `metadata`. Defined policies for Lite Mode (omit metadata,
-      omit redundant active_steps). This addresses token economy feedback.
   - id: checkpoint.11
     name: Implement checkpoint v1.2 builder logic (Lite Mode + Hints)
-    status: done
+    status: pending
     description: 'Implement v1.2 logic in `build_checkpoint` (core).
 
 
@@ -2165,14 +1763,9 @@ phases:
       - checkpoint schema v1.2
 
       '
-    claimed_by: vectl-agent
-    claimed_at: '2026-02-13T03:27:49.620384+00:00'
-    evidence: Implemented checkpoint v1.2 logic in `src/vectl/checkpoint.py`. Added
-      `lite` mode support (omits metadata, redundant active_steps), structured `next`
-      hints (id+name), `focus.name`, and grouped metadata. Updated tests required.
   - id: checkpoint.12
     name: Expose lite mode in CLI/MCP interfaces
-    status: done
+    status: pending
     description: 'Update CLI and MCP interfaces to support `lite` flag/parameter for
       v1.2 schema.
 
@@ -2194,14 +1787,9 @@ phases:
       - checkpoint schema v1.2
 
       '
-    claimed_by: vectl-agent
-    claimed_at: '2026-02-13T03:28:49.231907+00:00'
-    evidence: Updated CLI `vectl checkpoint` and MCP `vectl_checkpoint` to support
-      `--lite` / `lite=True` argument. This exposes the v1.2 Noise Reduction logic.
-      Verified interface consistency.
   - id: checkpoint.13
     name: Add tests for checkpoint v1.2 (Lite/Hints/Grouping)
-    status: done
+    status: pending
     description: 'Add tests for v1.2 features.
 
 
@@ -2235,14 +1823,9 @@ phases:
       - checkpoint schema v1.2
 
       '
-    claimed_by: vectl-agent
-    claimed_at: '2026-02-13T03:29:54.460459+00:00'
-    evidence: Added v1.2 tests in `tests/test_checkpoint.py`. Verified `lite` mode
-      grouping/omission, `next` hint structure, and `active_steps` redundancy check.
-      All tests passing.
   - id: checkpoint.14
     name: Update docs for checkpoint v1.2 (Hints + Lite)
-    status: done
+    status: pending
     description: 'Update docs (README, Guide, AGENTS.md template) to reflect v1.2
       improvements.
 
@@ -2273,14 +1856,9 @@ phases:
       - checkpoint schema v1.2
 
       '
-    claimed_by: vectl-agent
-    claimed_at: '2026-02-13T03:32:05.462619+00:00'
-    evidence: Updated README.md to include a section on Context Injection (Compaction
-      & Handoff) using `vectl checkpoint`. Shows lite JSON example. Docs aligned with
-      v1.2 features. Tests passed. Ready for release.
   - id: checkpoint.15
     name: Release v0.1.32 (Checkpoint v1.2 Final)
-    status: done
+    status: pending
     description: Release v0.1.33 (Checkpoint v1.2 Default Lite).
     verification: uv run --group dev pytest -q
     evidence_template: 'Artifact:
@@ -2298,13 +1876,9 @@ phases:
       - checkpoint schema v1.2
 
       '
-    claimed_by: vectl-agent
-    claimed_at: '2026-02-13T03:32:51.739462+00:00'
-    evidence: Released v0.1.33. (Step was already claimed, just completing with new
-      intent).
   - id: checkpoint.16
     name: Change checkpoint default to Lite Mode (Noise-free)
-    status: done
+    status: pending
     description: 'Make `lite` mode the default for `vectl checkpoint`.
 
 
@@ -2345,15 +1919,9 @@ phases:
       - checkpoint default lite conversation
 
       '
-    claimed_by: vectl-agent
-    claimed_at: '2026-02-13T04:02:26.291968+00:00'
-    evidence: Updated `vectl checkpoint` default behavior to `lite=True`. CLI now
-      has `--lite/--full` (default lite), MCP `vectl_checkpoint` defaults to `lite=True`.
-      Core builder also defaults to True. This ensures noise-free output by default
-      for Agents.
   - id: checkpoint.17
     name: Test default lite mode
-    status: done
+    status: pending
     description: 'Add tests for default lite mode.
 
 
@@ -2383,18 +1951,13 @@ phases:
       - checkpoint default lite
 
       '
-    claimed_by: vectl-agent
-    claimed_at: '2026-02-13T04:03:25.978342+00:00'
-    evidence: Implemented default `lite=True` logic and updated tests. Verified `metadata`
-      is omitted by default in both CLI and MCP outputs. Parity tests confirmed consistent
-      behavior.
 - id: claude-md
   name: CLAUDE.md Auto-Detection for agents-md
-  status: done
+  status: pending
   steps:
   - id: claude-md.detection
     name: Implement target detection logic
-    status: done
+    status: pending
     description: 'Refactor _upsert_agents_md() target selection: (1) If .claude/ dir
       exists → prefer CLAUDE.md. (2) If existing AGENTS.md with markers → keep it
       (don''t break working setups). (3) Neither exists → create based on .claude/
@@ -2402,35 +1965,9 @@ phases:
     verification: 'Unit tests cover: .claude/ exists → creates CLAUDE.md; no .claude/
       → creates AGENTS.md; existing AGENTS.md with markers → stays AGENTS.md even
       if .claude/ present.'
-    claimed_by: antigravity
-    claimed_at: '2026-02-13T05:56:06.040203+00:00'
-    evidence: 'Artifact:
-
-      - Added `_detect_agents_target(directory) -> Path` helper in `src/vectl/cli.py`
-      (lines 479–507)
-
-      - Refactored `_upsert_agents_md()` to delegate target selection to the new helper
-
-
-      Detection priority:
-
-      1. Existing file with vectl markers → use it (stability)
-
-      2. Existing file without markers → AGENTS.md > CLAUDE.md
-
-      3. Neither exists + `.claude/` dir → CLAUDE.md
-
-      4. Neither exists, no `.claude/` → AGENTS.md
-
-
-      Verification:
-
-      - 8 new tests in `TestClaudeDetection` class (tests/test_cli.py) — all pass
-
-      - Full suite: 654 passed in 4.57s (was 646, +8 new)'
   - id: claude-md.flag
     name: Add --target CLI flag
-    status: done
+    status: pending
     description: Add --target {auto,agents,claude} option to agents-md and init commands.
       'auto' (default) uses detection logic. 'agents' forces AGENTS.md. 'claude' forces
       CLAUDE.md. Pass through to _upsert_agents_md().
@@ -2438,37 +1975,18 @@ phases:
       creates CLAUDE.md. vectl agents-md --target agents creates AGENTS.md.
     depends_on:
     - claude-md.detection
-    claimed_by: antigravity
-    claimed_at: '2026-02-13T05:59:13.501396+00:00'
-    evidence: "Artifact:\n- Added `AgentsTarget` enum (auto/agents/claude) to `src/vectl/cli.py`\n\
-      - `_detect_agents_target()` now accepts `target: AgentsTarget` parameter (auto\
-      \ delegates to heuristics, agents/claude force the file)\n- `agents_md_cmd`\
-      \ and `init` both accept `--target [auto|agents|claude]` (default: auto)\n-\
-      \ Fixed init output label: `AGENTS.md:` → `Agent instructions:` (agent-neutral)\n\
-      - Fixed Rich line-wrapping test flake (normalize whitespace before assertion)\n\
-      \nVerification:\n- `vectl agents-md --help` → shows `--target [auto|agents|claude]`\n\
-      - `vectl init --help` → shows `--target [auto|agents|claude]`  \n- pytest: 654\
-      \ passed in 4.20s"
   - id: claude-md.guide
     name: Update guide.py references
-    status: done
+    status: pending
     description: Update guide.py text to say 'AGENTS.md / CLAUDE.md' where it currently
       says only 'AGENTS.md'. Keep factual — vectl auto-detects the target file.
     verification: grep guide.py for standalone 'AGENTS.md' references — all should
       be updated to mention both files.
     depends_on:
     - claude-md.detection
-    claimed_by: antigravity
-    claimed_at: '2026-02-13T06:01:53.702651+00:00'
-    evidence: "Artifact:\n- Updated 3 locations in `src/vectl/guide.py`:\n  1. Line\
-      \ 120: \"configures AGENTS.md\" → \"configures AGENTS.md (or CLAUDE.md for Claude\
-      \ Code projects)\"\n  2. Lines 158-160: \"AGENTS.md\" → \"AGENTS.md / CLAUDE.md\"\
-      \ in migration guide\n  3. Lines 172-179: Table header \"AGENTS.md / docs/\"\
-      \ → \"AGENTS.md / CLAUDE.md / docs/\"\n\nVerification:\n- pytest: 654 passed\
-      \ in 4.06s"
   - id: claude-md.tests
     name: Full test coverage
-    status: done
+    status: pending
     description: 'Add tests: (1) auto-detect .claude/ creates CLAUDE.md, (2) --target
       flag overrides auto-detect, (3) existing markers preserved regardless of detection,
       (4) init command respects detection. All 646+ existing tests still pass.'
@@ -2476,47 +1994,23 @@ phases:
       × flag combinations.
     depends_on:
     - claude-md.flag
-    claimed_by: antigravity
-    claimed_at: '2026-02-13T06:03:18.078606+00:00'
-    evidence: "Artifact:\n- 12 tests in `TestClaudeDetection` class covering all detection\
-      \ × flag combinations:\n  - 8 auto-detection tests (from detection step)\n \
-      \ - 4 new --target flag tests: agents force, claude force, override existing\
-      \ markers, init --target claude\n\nVerification:\n- pytest: 658 passed in 4.64s\
-      \ (was 654 before this phase, +12 new from detection + tests steps combined,\
-      \ +4 this step)"
   - id: claude-md.release
     name: Bump version and release
-    status: done
+    status: pending
     description: Bump to 0.1.35 in pyproject.toml. Commit, tag, push, create GitHub
       release.
     verification: gh release view v0.1.35 succeeds.
     depends_on:
     - claude-md.tests
     - claude-md.guide
-    claimed_by: antigravity
-    claimed_at: '2026-02-13T06:05:02.603346+00:00'
-    evidence: 'Artifact:
-
-      - Commit: fb4f36a
-
-      - Tag: v0.1.35
-
-      - Release: https://github.com/Tefx/vectl/releases/tag/v0.1.35
-
-
-      Verification:
-
-      - git push → Main, v0.1.35 tag pushed
-
-      - gh release create → https://github.com/Tefx/vectl/releases/tag/v0.1.35'
 - id: clipboard
   name: Clipboard
-  status: done
+  status: pending
   gate: All clipboard tests pass, write/read/clear/ttl/checkpoint integration verified
   steps:
   - id: clipboard.clipboard-data-model
     name: Clipboard data model
-    status: done
+    status: pending
     description: 'Add Clipboard Pydantic model and Plan.clipboard field per RFC.
 
 
@@ -2533,15 +2027,9 @@ phases:
     evidence_template: 'Clipboard model added with fields: author, summary, content,
       written_at, expires_at. Plan.clipboard field before phases. Validation tests
       pass.'
-    claimed_by: python-engineer
-    claimed_at: '2026-02-15T16:30:47.730155+00:00'
-    evidence: 'Clipboard model added with fields: author, summary, content, written_at,
-      expires_at. Plan.clipboard field added before phases. Validation tests pass
-      (29 tests including 8 new clipboard tests). Static analysis passes (invar_guard:
-      0 errors).'
   - id: clipboard.core-clipboard-logic
     name: Core clipboard logic
-    status: done
+    status: pending
     description: 'Pure functions for clipboard operations (no IO, no MCP).
 
 
@@ -2566,16 +2054,9 @@ phases:
       expiry boundary.'
     depends_on:
     - clipboard.clipboard-data-model
-    claimed_by: python-engineer
-    claimed_at: '2026-02-15T16:35:26.933307+00:00'
-    evidence: 'Core functions added to core.py: clipboard_write, clipboard_read, clipboard_clear,
-      _clipboard_expired with constants CLIPBOARD_SUMMARY_MAX (80), CLIPBOARD_CONTENT_MAX
-      (8000), CLIPBOARD_TTL_DEFAULT_HOURS (24). Tests cover: write/overwrite, summary
-      truncation, content limit exceeded, empty/whitespace rejection, author validation,
-      TTL default + custom, expiry boundary. 18 new tests pass, total 107 tests pass.'
   - id: clipboard.mcp-vectl-clipboard-tool
     name: MCP vectl_clipboard tool
-    status: done
+    status: pending
     description: 'Add vectl_clipboard MCP tool with three actions: write, read, clear.
 
 
@@ -2598,15 +2079,9 @@ phases:
       MCP tests cover all actions + CAS conflict + expiry behavior.
     depends_on:
     - clipboard.core-clipboard-logic
-    claimed_by: python-engineer
-    claimed_at: '2026-02-15T16:39:41.816744+00:00'
-    evidence: 'vectl_clipboard tool registered with write/read/clear actions. MCP
-      tests cover all actions (10 tests pass): write basic, write overwrites, empty
-      author/content rejection, read basic, read empty, clear basic, clear already
-      empty, invalid action, CAS verification.'
   - id: clipboard.checkpoint-clipboard-integration
     name: Checkpoint clipboard integration
-    status: done
+    status: pending
     description: 'Surface clipboard summary in vectl_checkpoint output when non-empty
       and unexpired.
 
@@ -2622,14 +2097,9 @@ phases:
       omits when empty/expired. Verified in both lite and non-lite modes.
     depends_on:
     - clipboard.core-clipboard-logic
-    claimed_by: python-engineer
-    claimed_at: '2026-02-15T16:43:58.308674+00:00'
-    evidence: Checkpoint includes clipboard summary when present+unexpired, omits
-      when empty/expired. Verified in both lite and non-lite modes. 4 new clipboard
-      tests pass (14 total checkpoint tests pass).
   - id: clipboard.cli-clipboard-commands
     name: CLI clipboard commands
-    status: done
+    status: pending
     description: 'Add three flat CLI commands following existing naming convention:
 
 
@@ -2649,14 +2119,9 @@ phases:
       added. Tests cover basic usage, error cases, TTL flag.
     depends_on:
     - clipboard.core-clipboard-logic
-    claimed_by: python-engineer
-    claimed_at: '2026-02-15T16:48:14.546297+00:00'
-    evidence: 'CLI commands clipboard-write, clipboard-read, clipboard-clear added.
-      Tests cover basic usage (8 tests pass): write basic, empty author/content rejection,
-      custom TTL, read basic, read empty, clear basic, clear already empty.'
   - id: clipboard.integration-tests-and-yaml-round-trip
     name: Integration tests and YAML round-trip
-    status: done
+    status: pending
     description: 'End-to-end integration tests:
 
 
@@ -2679,19 +2144,14 @@ phases:
     - clipboard.mcp-vectl-clipboard-tool
     - clipboard.checkpoint-clipboard-integration
     - clipboard.cli-clipboard-commands
-    claimed_by: python-engineer
-    claimed_at: '2026-02-15T16:51:35.131672+00:00'
-    evidence: All 51 clipboard tests pass (716 total tests pass). YAML round-trip
-      verified (test_clipboard_round_trip). Backward compat verified (test_backward_compat_no_clipboard_field).
-      Full lifecycle test passes.
 - id: dashboard
   name: Static HTML Dashboard
-  status: done
+  status: pending
   gate: vectl dashboard generates valid HTML; all tests pass
   steps:
   - id: dashboard.dashboard-data-serializer
     name: Dashboard data serializer
-    status: done
+    status: pending
     description: 'Create `src/vectl/dashboard.py` with `build_dashboard_data(plan:
       Plan) -> dict`.
 
@@ -2724,26 +2184,9 @@ phases:
 
       - Status enums from models.py'
     verification: uv run pytest tests/test_dashboard.py -v -k data
-    claimed_by: python-engineer
-    claimed_at: '2026-02-16T16:49:24.555713+00:00'
-    evidence: 'Artifact:
-
-      - src/vectl/dashboard.py: build_dashboard_data() function
-
-      - tests/test_dashboard.py: 11 unit tests
-
-
-      Verification:
-
-      - Run: uv run pytest tests/test_dashboard.py -v -k data -> 11 passed
-
-
-      Spec link:
-
-      - docs/RFC-dashboard.md lines 196-242 (Data Serialization section)'
   - id: dashboard.html-template-with-css
     name: HTML template with CSS
-    status: done
+    status: pending
     description: 'Create the HTML template (as a string constant or file in src/vectl/)
       with:
 
@@ -2795,28 +2238,9 @@ phases:
       No JavaScript in this step — CSS + HTML structure only.'
     verification: Template string renders valid HTML (checked by test parsing output
       with html.parser)
-    claimed_by: python-engineer
-    claimed_at: '2026-02-16T16:52:36.402732+00:00'
-    evidence: 'Artifact:
-
-      - src/vectl/dashboard.py: DASHBOARD_HTML_TEMPLATE constant (CSS-only, no JS)
-
-      - tests/test_dashboard.py: 24 additional tests for HTML template validity
-
-
-      Verification:
-
-      - Run: uv run pytest tests/test_dashboard.py -v -> 35 passed
-
-
-      Spec link:
-
-      - docs/RFC-dashboard.md lines 249-274 (HTML Template section)
-
-      - docs/RFC-dashboard.md lines 69-192 (Layout zones, color system)'
   - id: dashboard.javascript-rendering-logic
     name: JavaScript rendering logic
-    status: done
+    status: pending
     description: "Add inline JavaScript to the HTML template that renders the dashboard\
       \ from the embedded DATA object.\n\nOverview tab:\n- Render header: project\
       \ name, progress bar (width = done_pct%), stat pills from summary counts\n-\
@@ -2843,20 +2267,9 @@ phases:
     depends_on:
     - dashboard.dashboard-data-serializer
     - dashboard.html-template-with-css
-    claimed_by: python-engineer
-    claimed_at: '2026-02-16T16:57:41.156293+00:00'
-    evidence: "Artifact:\n- src/vectl/dashboard.py: Added inline JavaScript (~300\
-      \ lines) to DASHBOARD_HTML_TEMPLATE\n  - DATA object placeholder ({{json_data}})\n\
-      \  - Mermaid.js CDN (v11)\n  - Overview tab: sidebar, phase cards, step table,\
-      \ step detail panel\n  - DAG tab: Mermaid initialization, phase/step DAG rendering\n\
-      \  - Search filtering\n  - Tab switching, scroll spy, collapsible cards\n\n\
-      - tests/test_dashboard.py: Added 10 tests for JavaScript presence and features\n\
-      \nVerification:\n- Run: uv run pytest tests/test_dashboard.py -v -> 41 passed,\
-      \ 0 warnings\n\nSpec link:\n- docs/RFC-dashboard.md Zone 3a (Overview) and Zone\
-      \ 3b (DAG)"
   - id: dashboard.generate-dashboard-function
     name: generate_dashboard function
-    status: done
+    status: pending
     description: 'Add `generate_dashboard(plan: Plan) -> str` to `src/vectl/dashboard.py`.
 
 
@@ -2883,20 +2296,9 @@ phases:
     verification: uv run pytest tests/test_dashboard.py -v -k generate
     depends_on:
     - dashboard.javascript-rendering-logic
-    claimed_by: python-engineer
-    claimed_at: '2026-02-16T17:03:31.444731+00:00'
-    evidence: "Artifact:\n- src/vectl/dashboard.py: Added generate_dashboard(plan:\
-      \ Plan) -> str function\n  - Calls build_dashboard_data() to get JSON-safe dict\n\
-      \  - Serializes with json.dumps(ensure_ascii=False, indent=None)\n  - Escapes\
-      \ </script> sequences for XSS prevention\n  - Injects json_data, project, progress_pct,\
-      \ summary counts into template\n\n- tests/test_dashboard.py: Added TestGenerateDashboard\
-      \ class with 12 tests\n\nVerification:\n- Run: uv run pytest tests/test_dashboard.py\
-      \ -v -k generate -> 12 passed\n- Run: uv run pytest tests/test_dashboard.py\
-      \ -v -> 52 passed\n\nSpec link:\n- docs/RFC-dashboard.md lines 249-274 (HTML\
-      \ Template section)"
   - id: dashboard.cli-dashboard-command
     name: CLI dashboard command
-    status: done
+    status: pending
     description: 'Add `vectl dashboard` command to `src/vectl/cli.py`.
 
 
@@ -2926,20 +2328,9 @@ phases:
       valid HTML file
     depends_on:
     - dashboard.generate-dashboard-function
-    claimed_by: python-engineer
-    claimed_at: '2026-02-16T17:07:15.415572+00:00'
-    evidence: "Artifact:\n- src/vectl/cli.py: Added `dashboard` command with --out\
-      \ and --open options\n  - Import: from vectl.dashboard import generate_dashboard\n\
-      \  - Command: vectl dashboard [--out PATH] [--open] [--plan PATH]\n  - Uses\
-      \ webbrowser.open() for --open functionality\n\nVerification:\n- Run: uv run\
-      \ vectl dashboard --help -> Shows options correctly\n- Run: uv run vectl dashboard\
-      \ --out /tmp/test-dashboard.html -> \"Dashboard written to: /private/tmp/test-dashboard.html\"\
-      \n- File verification: head/tail shows valid HTML structure\n- Run: uv run pytest\
-      \ tests/test_dashboard.py -v -> 52 passed\n\nSpec link:\n- docs/RFC-dashboard.md\
-      \ lines 42-48 (CLI Interface section)"
   - id: dashboard.tests
     name: Tests
-    status: done
+    status: pending
     description: 'Create `tests/test_dashboard.py` with comprehensive tests:
 
 
@@ -2986,18 +2377,9 @@ phases:
     verification: uv run pytest tests/test_dashboard.py -v
     depends_on:
     - dashboard.cli-dashboard-command
-    claimed_by: python-engineer
-    claimed_at: '2026-02-16T17:09:48.712897+00:00'
-    evidence: "Artifact:\n- tests/test_dashboard.py: Comprehensive test suite with\
-      \ 57 tests\n  - TestBuildDashboardData: 11 tests for data serialization\n  -\
-      \ TestDashboardHtmlTemplate: 30 tests for HTML/CSS/JS template\n  - TestGenerateDashboard:\
-      \ 13 tests for HTML generation\n  - TestDashboardCLI: 4 tests for CLI command\n\
-      \n- src/vectl/cli.py: Fixed parent directory creation for dashboard output\n\
-      \nVerification:\n- Run: uv run pytest tests/test_dashboard.py -v -> 57 passed\n\
-      \nSpec link:\n- docs/RFC-dashboard.md (full specification)"
   - id: dashboard.playwright-ui-tests
     name: Playwright UI tests
-    status: done
+    status: pending
     description: 'Create `tests/test_dashboard_ui.py` with Playwright-based browser
       tests for the dashboard.
 
@@ -3145,56 +2527,14 @@ phases:
 
       - 10.4 test_many_phases_sidebar_scrolls'
     verification: uv run pytest -m playwright tests/test_dashboard_ui.py -v
-    claimed_by: python-engineer
-    claimed_at: '2026-02-16T17:30:25.129759+00:00'
-    evidence: 'Artifact:
-
-      - tests/test_dashboard_ui.py: 14 Playwright UI tests
-
-      - pyproject.toml: Added playwright and pytest-playwright dependencies
-
-
-      Test categories covered:
-
-      - Page Load & Structure (6 tests)
-
-      - Phase Card Expand/Collapse (3 tests)
-
-      - Step Table & Detail (4 tests)
-
-      - Tab Switching
-
-      - Search Filtering
-
-      - Sidebar Navigation
-
-      - DAG Visualization
-
-      - Responsive Layout
-
-      - Theme/Color
-
-      - Edge Cases
-
-
-      Verification:
-
-      - Run: uv run pytest -m playwright tests/test_dashboard_ui.py -v -> 14 passed
-
-      - Run: uv run pytest tests/test_dashboard.py -v -> 57 passed
-
-
-      Spec link:
-
-      - docs/RFC-dashboard.md'
 - id: affinity
   name: Agent Affinity Enforcement
-  status: done
+  status: pending
   gate: All affinity tests pass; existing claim tests unaffected
   steps:
   - id: affinity.design-rfc
     name: Design RFC
-    status: done
+    status: pending
     description: "Create `docs/RFC-affinity.md` documenting the agent affinity feature.\n\
       \nContents:\n- Problem statement: blind-tester scenario, workflow discipline\n\
       - Decision record: default=suggested, opt-in exclusive, --force escape hatch\n\
@@ -3207,45 +2547,9 @@ phases:
       \ codes\n- MCP UX: structured `affinity_warning` field in claim response\n-\
       \ Backward compatibility: no agent field → no enforcement, zero friction"
     verification: RFC reviewed and consistent with implementation steps
-    claimed_by: python-engineer
-    claimed_at: '2026-02-17T16:31:39.379740+00:00'
-    evidence: 'Artifact:
-
-      - Created: docs/RFC-affinity.md (12099 bytes)
-
-
-      Verification:
-
-      - File created with comprehensive RFC covering all implementation steps
-
-      - RFC sections: Problem Statement, Decision Record, Data Model Changes, Claim
-      Behavior Matrix, Force Override Mechanism, CLI UX, MCP UX, YAML Examples, Backward
-      Compatibility, Implementation Scope, Non-Goals
-
-
-      Spec link:
-
-      - docs/RFC-affinity.md
-
-
-      RFC reviewed and consistent with implementation steps:
-
-      - affinity.data-model-changes: Covers AffinityMode enum, Step.affinity, Plan.default_affinity,
-      affinity_override fields, YAML round-trip
-
-      - affinity.core-claim-enforcement-logic: Covers claim behavior matrix, affinity
-      resolution, force override
-
-      - affinity.cli-integration: Covers --force flag, warning/error formats, exit
-      codes
-
-      - affinity.mcp-integration: Covers force param, affinity_warning and affinity_override
-      response fields
-
-      - affinity.tests: Covers ~25 test scenarios listed'
   - id: affinity.data-model-changes
     name: Data model changes
-    status: done
+    status: pending
     description: "Update `src/vectl/models.py`:\n\n1. Add `Affinity` enum:\n   - SUGGESTED\
       \ = \"suggested\"\n   - EXCLUSIVE = \"exclusive\"\n\n2. Add field to `Step`:\n\
       \   - `affinity: Affinity | None = None`\n   - None means \"use plan default\"\
@@ -3258,23 +2562,9 @@ phases:
     verification: uv run pytest tests/test_models.py -v
     depends_on:
     - affinity.design-rfc
-    claimed_by: python-engineer
-    claimed_at: '2026-02-17T16:35:45.188847+00:00'
-    evidence: "Artifact:\n- Modified: src/vectl/models.py\n  - Added AffinityMode\
-      \ enum (suggested, exclusive)\n  - Added Step.affinity, Step.affinity_override,\
-      \ Step.affinity_override_by, Step.affinity_override_at fields\n  - Added Plan.default_affinity\
-      \ field\n- Modified: src/vectl/io.py\n  - Updated _clean_dict to omit default\
-      \ affinity fields for cleaner YAML output:\n    - affinity=None (handled by\
-      \ exclude_none)\n    - affinity_override=False (omit from YAML)\n    - affinity_override_by=None,\
-      \ affinity_override_at=None (handled by exclude_none)\n    - default_affinity=\"\
-      suggested\" (omit default value)\n\nVerification:\n- Run: uv run pytest tests/test_models.py\
-      \ -v -> 29 passed\n- Run: uv run pytest tests/ -q -> 792 passed\n- Verified\
-      \ YAML round-trip: affinity fields serialize/deserialize correctly\n- Verified\
-      \ backward compat: old plans without affinity fields load correctly with defaults\n\
-      \nSpec link:\n- docs/RFC-affinity.md (Data Model Changes section)"
   - id: affinity.core-claim-enforcement-logic
     name: Core claim enforcement logic
-    status: done
+    status: pending
     description: "Update `src/vectl/core.py` `claim_step()`:\n\n1. Resolve effective\
       \ affinity: `step.affinity or plan.default_affinity`\n2. If step.agent is set\
       \ and agent_name != step.agent:\n   - If effective affinity == SUGGESTED: proceed\
@@ -3289,27 +2579,9 @@ phases:
     verification: uv run pytest tests/test_logic.py -v -k affinity
     depends_on:
     - affinity.data-model-changes
-    claimed_by: python-engineer
-    claimed_at: '2026-02-17T16:53:05.390626+00:00'
-    evidence: "Artifact:\n- Modified: src/vectl/models.py\n  - Added AffinityError\
-      \ exception class\n- Modified: src/vectl/core.py\n  - Added ClaimResult dataclass\
-      \ with affinity_warning, warning_message, affinity_override fields\n  - Updated\
-      \ claim_step() signature: added force parameter, returns tuple[Plan, ClaimResult]\n\
-      \  - Implemented affinity resolution logic: step.affinity or plan.default_affinity\n\
-      \  - Implemented claim behavior matrix per RFC\n- Modified: src/vectl/cli.py\n\
-      \  - Added --force flag to claim command\n  - Added affinity warning/override\
-      \ message output\n- Modified: src/vectl/mcp_server.py\n  - Added AffinityWarningData,\
-      \ AffinityOverrideData response models\n  - Extended ClaimStepData with affinity_override\
-      \ field\n  - Added force parameter to vectl_claim tool\n  - Added error_code=\"\
-      affinity_violation\" for exclusive affinity rejection\n- Modified: tests/test_logic.py\n\
-      \  - Added 8 affinity tests in TestAffinityClaim class\n- Modified: tests/test_properties.py\n\
-      \  - Updated to handle new claim_step return type\n\nVerification:\n- Run: uv\
-      \ run pytest tests/test_logic.py -v -k affinity -> 8 passed\n- Run: uv run pytest\
-      \ tests/ -q -> 800 passed\n\nSpec link:\n- docs/RFC-affinity.md (Claim Behavior\
-      \ Matrix, CLI UX, MCP UX sections)"
   - id: affinity.cli-integration
     name: CLI integration
-    status: done
+    status: pending
     description: "Update `src/vectl/cli.py`:\n\n1. `vectl claim` command:\n   - Add\
       \ `--force` flag (default False)\n   - On suggested affinity warning: print\
       \ yellow warning via Rich, proceed, exit 0\n   - On exclusive affinity mismatch\
@@ -3326,23 +2598,9 @@ phases:
       step
     depends_on:
     - affinity.core-claim-enforcement-logic
-    claimed_by: python-engineer
-    claimed_at: '2026-02-17T17:07:29.717651+00:00'
-    evidence: "Artifact:\n- Modified: src/vectl/cli.py\n  - Added AffinityMode import\n\
-      \  - Updated _show_step_detail: display affinity mode, affinity_override status\n\
-      \  - Updated _show_phase_detail: show exclusive icon (\U0001F510) for steps\
-      \ with exclusive affinity, show affinity override warning\n  - Updated next_cmd:\
-      \ show exclusive icon for steps with exclusive affinity\n  - claim command already\
-      \ had --force flag from core-claim-enforcement-logic step\n\nVerification:\n\
-      - Run: uv run vectl claim --help -> shows --force flag\n- Run: vectl next ->\
-      \ shows \U0001F510 icon for exclusive steps\n- Run: vectl show <exclusive-step>\
-      \ -> shows \"Affinity: exclusive\"\n- Run: vectl claim <exclusive-step> --agent\
-      \ wrong -> exit 1, error message\n- Run: vectl claim <exclusive-step> --agent\
-      \ wrong --force -> exit 0, warning shown\n- Run: uv run pytest tests/ -q ->\
-      \ 800 passed\n\nSpec link:\n- docs/RFC-affinity.md (CLI UX section)"
   - id: affinity.mcp-integration
     name: MCP integration
-    status: done
+    status: pending
     description: "Update `src/vectl/mcp_server.py` `vectl_claim` tool:\n\n1. Add `force:\
       \ bool = False` parameter to vectl_claim\n2. On suggested affinity warning:\
       \ include in response markdown:\n   \"⚠ **Affinity warning:** Step {id} is suggested\
@@ -3356,19 +2614,9 @@ phases:
     verification: uv run pytest tests/test_mcp.py -v -k affinity
     depends_on:
     - affinity.core-claim-enforcement-logic
-    claimed_by: python-engineer
-    claimed_at: '2026-02-17T17:11:30.027563+00:00'
-    evidence: "Artifact:\n- Modified: src/vectl/mcp_server.py\n  - Fixed condition\
-      \ for setting affinity_override_data in response (check warning_message, not\
-      \ affinity_warning)\n- Modified: src/vectl/claim_guidance.py\n  - Added AffinityMode\
-      \ import\n  - Added affinity note in guidance when step has exclusive/suggested\
-      \ affinity\n- Modified: tests/test_mcp.py\n  - Added TestAffinity class with\
-      \ 6 MCP affinity tests\n\nVerification:\n- Run: uv run pytest tests/test_mcp.py\
-      \ -v -k affinity -> 6 passed\n- Run: uv run pytest tests/ -q -> 806 passed\n\
-      \nSpec link:\n- docs/RFC-affinity.md (MCP UX section)"
   - id: affinity.tests
     name: Tests
-    status: done
+    status: pending
     description: 'Comprehensive tests for affinity enforcement:
 
 
@@ -3431,24 +2679,9 @@ phases:
     depends_on:
     - affinity.cli-integration
     - affinity.mcp-integration
-    claimed_by: python-engineer
-    claimed_at: '2026-02-17T17:18:29.675325+00:00'
-    evidence: "Artifact:\n- Modified: tests/test_models.py\n  - Added AffinityMode\
-      \ import\n  - Added TestAffinityMode: enum values, all values\n  - Added TestStepAffinity:\
-      \ affinity=None default, affinity=exclusive, affinity_override fields\n  - Added\
-      \ TestPlanAffinity: default_affinity defaults to SUGGESTED, can be EXCLUSIVE\n\
-      \  - Added TestAffinityBackwardCompat: existing plan without affinity fields\
-      \ loads correctly\n- Modified: tests/test_logic.py\n  - Added AffinityError,\
-      \ AffinityMode imports\n  - Added TestAffinityClaim: 8 tests for core claim\
-      \ behavior\n- Modified: tests/test_mcp.py\n  - Added TestAffinity: 6 tests for\
-      \ MCP claim behavior\n- Modified: tests/test_cli.py\n  - Added AffinityMode\
-      \ import\n  - Added affinity_plan_file fixture\n  - Added TestAffinityCli: 6\
-      \ tests for CLI claim/show/next behavior\n\nVerification:\n- Run: uv run pytest\
-      \ tests/ -v -k affinity -> 29 passed\n- Run: uv run pytest tests/ -q -> 821\
-      \ passed\n\nSpec link:\n- docs/RFC-affinity.md (comprehensive test coverage)"
 - id: mcp-parity
   name: MCP Parity (CLI→MCP Gap Closure)
-  status: done
+  status: pending
   gate: 'All MCP parity features exposed and tested: vectl_init, vectl_render, vectl_check,
     and add-steps action'
   depends_on:
@@ -3456,7 +2689,7 @@ phases:
   steps:
   - id: mcp-parity.add-vectl-init-mcp-tool
     name: Add vectl_init MCP tool
-    status: done
+    status: pending
     description: "Expose `vectl init` functionality to MCP.\n\n**Current Gap:** \n\
       Agents cannot initialize new vectl projects. The `init` command creates plan.yaml\
       \ and configures AGENTS.md/CLAUDE.md, which is essential for autonomous project\
@@ -3468,36 +2701,9 @@ phases:
       - Handles existing file gracefully (error, not overwrite)"
     verification: MCP tool callable, creates plan.yaml, returns success message
     agent: python-engineer
-    claimed_by: vectl-orchestrator
-    claimed_at: '2026-02-20T05:38:02.968545+00:00'
-    evidence: '**Artifact:**
-
-      - Implementation in src/vectl/mcp_server.py, src/vectl/core.py, src/vectl/models.py
-
-      - Tests in tests/test_mcp.py (TestVectlInit class, 7 tests)
-
-
-      **Verification:**
-
-      - All 284 existing tests pass
-
-      - 7 new tests for vectl_init pass
-
-      - Type checking with pyright passes (0 errors)
-
-
-      **Implementation:**
-
-      - Added `vectl_init(project, plan_path, agents_target)` MCP tool
-
-      - Returns `InitResult` structured dict with ok, plan_path, agents_target, message
-
-      - Reused logic from CLI by extracting to core.py
-
-      - Handles existing file gracefully (error, not overwrite)'
   - id: mcp-parity.add-vectl-render-mcp-tool
     name: Add vectl_render MCP tool
-    status: done
+    status: pending
     description: 'Expose `vectl render` functionality to MCP.
 
 
@@ -3526,36 +2732,9 @@ phases:
       - Phase filtering works correctly'
     verification: MCP tool callable, returns Markdown report
     agent: python-engineer
-    claimed_by: vectl-orchestrator
-    claimed_at: '2026-02-20T05:47:05.257994+00:00'
-    evidence: '**Artifact:**
-
-      - Implementation in src/vectl/mcp_server.py (vectl_render function, lines 1234-1264)
-
-      - Added render_plan to imports
-
-
-      **Verification:**
-
-      - Import test passes
-
-      - 38 render-related tests pass
-
-      - Tool registration verified
-
-
-      **Implementation:**
-
-      - Added `vectl_render(phase_id, full)` MCP tool
-
-      - Returns Markdown string directly
-
-      - Wraps existing `render_plan()` from core.py
-
-      - Phase filtering and full description mode supported'
   - id: mcp-parity.add-vectl-check-mcp-tool
     name: Add vectl_check MCP tool
-    status: done
+    status: pending
     description: 'Expose `vectl check` functionality to MCP.
 
 
@@ -3597,38 +2776,9 @@ phases:
       - Returns structured result with updated step'
     verification: MCP tool callable, toggles checklist items correctly
     agent: python-engineer
-    claimed_by: vectl-orchestrator
-    claimed_at: '2026-02-20T05:50:14.648707+00:00'
-    evidence: '**Artifact:**
-
-      - Implementation in src/vectl/mcp_server.py (vectl_check function)
-
-      - Tests in tests/test_mcp.py (TestVectlCheck class, 8 tests)
-
-
-      **Verification:**
-
-      - pyright: 0 errors, 0 warnings
-
-      - pytest tests/test_mcp.py::TestVectlCheck: 8 passed
-
-      - pytest tests/test_mcp.py: 113 passed
-
-      - pytest tests/test_checklist.py: 12 passed
-
-
-      **Implementation:**
-
-      - Added `vectl_check(step_id, keyword, add)` MCP tool
-
-      - Toggles checklist items by keyword
-
-      - Adds new unchecked items
-
-      - Returns markdown-formatted result with updated checklist'
   - id: mcp-parity.add-tests-for-mcp-parity-tools
     name: Add tests for MCP parity tools
-    status: done
+    status: pending
     description: 'Add test coverage for new MCP tools and add-steps action.
 
 
@@ -3663,40 +2813,9 @@ phases:
     - mcp-parity.add-vectl-check-mcp-tool
     - mcp-parity.add-add-steps-action-to-vectl-mutate
     agent: integration-verifier
-    claimed_by: vectl-orchestrator
-    claimed_at: '2026-02-20T06:00:47.808054+00:00'
-    evidence: '**Verification Results:**
-
-      - All 178 tests pass
-
-      - All tests use real file I/O (L2 Real Wiring verification)
-
-
-      **Feature Coverage:**
-
-      1. `vectl_init`: 7 tests - fully covered (create, existing file, custom path,
-      claude detection, idempotent)
-
-      2. `vectl_render`: Core `render_plan()` has 35 tests - MCP wrapper is 5-line
-      trivial delegation, acceptable gap
-
-      3. `vectl_check`: 8 MCP tests + 12 core tests - fully covered (toggle, add,
-      errors)
-
-      4. `add-steps`: 19 MCP tests + 23 core tests - comprehensive coverage (batch,
-      deps, status import, validation)
-
-
-      **Gap Analysis:**
-
-      - Only gap: vectl_render MCP wrapper has no direct tests
-
-      - Mitigation: Core function fully tested, wrapper is trivial delegation
-
-      - Recommendation: Acceptable as-is, or add 2-3 MCP-level tests for completeness'
   - id: mcp-parity.add-add-steps-action-to-vectl-mutate
     name: Add add-steps action to vectl_mutate
-    status: done
+    status: pending
     description: 'Add `add-steps` action to `vectl_mutate` MCP tool for batch step
       creation.
 
@@ -3735,40 +2854,9 @@ phases:
       - Consistent with CLI `vectl add-steps` semantics'
     verification: MCP tool accepts add-steps action, creates multiple steps atomically
     agent: python-engineer
-    claimed_by: vectl-orchestrator
-    claimed_at: '2026-02-20T05:53:54.452920+00:00'
-    evidence: '**Artifact:**
-
-      - Implementation in src/vectl/mcp_server.py (add-steps action in vectl_mutate)
-
-      - Tests in tests/test_mcp.py (17 new tests for add-steps)
-
-
-      **Verification:**
-
-      - All 853 tests pass
-
-      - 17 new tests for add-steps action
-
-
-      **Implementation:**
-
-      - Added `add-steps` to vectl_mutate action Literal
-
-      - Added `steps: list[dict] | None` parameter
-
-      - Parameter aliases: description/desc, depends_on/after, verification/verify
-
-      - Delegates to existing `add_steps_bulk()` from core.py
-
-      - Intra-batch short slug reference resolution
-
-      - Atomic rollback on cycle detection
-
-      - Status validation (done requires evidence, skipped requires reason)'
   - id: mcp-parity.fix-vectl-render-mcp-wrapper-tests
     name: Fix vectl_render MCP wrapper tests
-    status: done
+    status: pending
     description: 'Add MCP-level tests for vectl_render wrapper.
 
 
@@ -3791,40 +2879,9 @@ phases:
       **Location:** `tests/test_mcp.py`'
     verification: '`uv run pytest tests/test_mcp.py -k render` passes'
     agent: integration-verifier
-    claimed_by: vectl-orchestrator
-    claimed_at: '2026-02-20T06:07:22.385147+00:00'
-    evidence: '**Artifact:**
-
-      - 8 tests added to tests/test_mcp.py for vectl_render
-
-
-      **Verification:**
-
-      - `uv run pytest tests/test_mcp.py -k render -v`: 8 passed
-
-      - `uv run pytest tests/test_mcp.py -v`: 138 passed
-
-
-      **Tests Added:**
-
-      - test_render_basic — returns markdown with plan structure
-
-      - test_render_includes_phase_table — summary table with phase progress
-
-      - test_render_includes_step_details — step details under each phase
-
-      - test_render_phase_filter — phase_id parameter filtering
-
-      - test_render_full_mode — full=True for complete descriptions
-
-      - test_render_invalid_phase — error handling
-
-      - test_render_shows_gate — gate inclusion
-
-      - test_render_shows_context — context inclusion'
 - id: lock-consistency
   name: Lock Consistency Auto-Fix
-  status: done
+  status: pending
   gate: All lock consistency tests pass; manual YAML edits auto-corrected on save;
     docs updated
   depends_on:
@@ -3832,7 +2889,7 @@ phases:
   steps:
   - id: core-recalc
     name: Implement recalc_lock_status() in core.py
-    status: done
+    status: pending
     description: 'Implement `recalc_lock_status(plan: Plan) -> list[str]` in core.py.
 
 
@@ -3854,43 +2911,27 @@ phases:
 
       Verification: L1: unit tests for all status transitions'
     agent: python-engineer
-    claimed_by: python-engineer
-    claimed_at: '2026-02-21T08:11:51.841244+00:00'
-    evidence: 'Implemented `recalc_lock_status(plan: Plan) -> list[str]` in src/vectl/core.py
-      with all 4 rules. Added 16 unit tests in TestRecalcLockStatus class. Fixed pre-existing
-      Pyright diagnostics in test_logic.py (Optional member access on find_phase/clipboard,
-      str|None operator issues). All 104 tests pass.'
   - id: cli-save-autofix
     name: CLI _save() auto-recalc with informational log
-    status: done
+    status: pending
     description: "Modify CLI `_save()` to call `recalc_lock_status()` before persisting.\n\
       \nOn change, print informational message (NOT warning):\n  [vectl] Lock status\
       \ updated: phase-a (pending), phase-b (pending)\n\nTouch paths: src/vectl/cli.py"
     depends_on:
     - core-recalc
     agent: python-engineer
-    claimed_by: python-engineer
-    claimed_at: '2026-02-21T08:26:52.124877+00:00'
-    evidence: 'Modified CLI _save() in src/vectl/cli.py to call recalc_lock_status()
-      before persisting. Prints informational message "[vectl] Lock status updated:
-      ..." when changes occur. 877 tests pass.'
   - id: mcp-save-autafix
     name: MCP _save() auto-recalc with informational log
-    status: done
+    status: pending
     description: "Modify MCP `_save()` to call `recalc_lock_status()` before persisting.\n\
       \nOn change, include informational message in response:\n  [vectl] Lock status\
       \ updated: phase-a (pending), phase-b (pending)\n\nTouch paths: src/vectl/mcp_server.py"
     depends_on:
     - core-recalc
     agent: python-engineer
-    claimed_by: python-engineer
-    claimed_at: '2026-02-21T08:26:52.750269+00:00'
-    evidence: Modified MCP _save() in src/vectl/mcp_server.py to return str (lock
-      notice). Calls recalc_lock_status() before save_plan(). Updated all 7 call sites
-      to incorporate the notice into their response markdown. 877 tests pass.
   - id: cli-recalc-lock
     name: Add vectl recalc-lock CLI command
-    status: done
+    status: pending
     description: "Add `vectl recalc-lock` CLI command for explicit lock status fix.\n\
       \nUsage:\n  vectl recalc-lock          # Fix lock status immediately\n  vectl\
       \ recalc-lock --dry-run # Show what would change\n\nThis is CLI-only (not exposed\
@@ -3898,14 +2939,9 @@ phases:
     depends_on:
     - core-recalc
     agent: python-engineer
-    claimed_by: python-engineer
-    claimed_at: '2026-02-21T08:26:53.177578+00:00'
-    evidence: Added `vectl recalc-lock` command to src/vectl/cli.py with --dry-run
-      support. Uses model_copy(deep=True) for dry-run isolation. Output format matches
-      spec. 877 tests pass.
   - id: test-edge-done
     name: 'Test: DONE phases stay DONE'
-    status: done
+    status: pending
     description: 'Test that DONE phases are never modified by recalc_lock_status.
 
 
@@ -3918,13 +2954,9 @@ phases:
     depends_on:
     - core-recalc
     agent: integration-verifier
-    claimed_by: integration-verifier
-    claimed_at: '2026-02-21T08:30:39.420921+00:00'
-    evidence: Added test_rule1_done_phase_with_done_deps_stays_done (missing case).
-      Existing tests covered DONE+PENDING and DONE+no-deps. 17 tests pass total.
   - id: test-edge-inprogress
     name: 'Test: IN_PROGRESS phases stay IN_PROGRESS'
-    status: done
+    status: pending
     description: 'Test that IN_PROGRESS phases are never modified by recalc_lock_status.
 
 
@@ -3935,13 +2967,9 @@ phases:
     depends_on:
     - core-recalc
     agent: integration-verifier
-    claimed_by: integration-verifier
-    claimed_at: '2026-02-21T08:30:40.093398+00:00'
-    evidence: 'Verified: test_rule2_in_progress_with_unmet_deps_not_locked and test_rule2_in_progress_with_met_deps_not_changed
-      already exist in TestRecalcLockStatus. Both cases covered. 16 tests pass.'
   - id: test-edge-circular
     name: 'Test: circular deps no infinite loop'
-    status: done
+    status: pending
     description: 'Test that circular dependencies don''t cause infinite loops in recalc_lock_status.
 
 
@@ -3954,14 +2982,9 @@ phases:
     depends_on:
     - core-recalc
     agent: integration-verifier
-    claimed_by: integration-verifier
-    claimed_at: '2026-02-21T08:30:40.578833+00:00'
-    evidence: Added test_circular_dep_does_not_loop. Implementation uses single-pass
-      with static snapshot — structurally immune to infinite loops. Circular A↔B both
-      become LOCKED. 18 tests pass.
   - id: test-roundtrip
     name: 'Test: save→load preserves corrected lock status'
-    status: done
+    status: pending
     description: 'Test that save→load roundtrip preserves corrected lock status.
 
 
@@ -3979,14 +3002,9 @@ phases:
     - cli-save-autofix
     - mcp-save-autafix
     agent: integration-verifier
-    claimed_by: integration-verifier
-    claimed_at: '2026-02-21T08:32:24.347697+00:00'
-    evidence: Added TestLockStatusRoundtrip class in tests/test_io.py with 2 real-filesystem
-      integration tests (PENDING→LOCKED and LOCKED→PENDING roundtrips via tmp_path).
-      881 tests pass, no regressions.
   - id: test-manual-yaml-edit
     name: 'Test: manual YAML edits get corrected on save'
-    status: done
+    status: pending
     description: 'Test that manually edited YAML with wrong lock status gets corrected.
 
 
@@ -4003,14 +3021,9 @@ phases:
     depends_on:
     - cli-save-autofix
     agent: integration-verifier
-    claimed_by: integration-verifier
-    claimed_at: '2026-02-21T08:32:24.868595+00:00'
-    evidence: 'Created tests/test_manual_yaml_edit.py with TestManualYamlEditLockCorrection
-      (3 tests): PENDING→LOCKED, LOCKED→PENDING, DONE preserved. All use real tmp_path
-      I/O. 884 tests pass.'
   - id: test-autofix-message
     name: 'Test: informational message format correct'
-    status: done
+    status: pending
     description: "Test that auto-fix message follows informational format (not warning).\n\
       \nGood format:\n  [vectl] Lock status updated: phase-a (pending)\n\nBad format\
       \ (warning creates cognitive load):\n  [vectl] Warning: Lock inconsistency detected\n\
@@ -4018,14 +3031,9 @@ phases:
     depends_on:
     - cli-save-autofix
     agent: integration-verifier
-    claimed_by: integration-verifier
-    claimed_at: '2026-02-21T08:32:25.751590+00:00'
-    evidence: Created tests/test_autofix_message.py with 8 tests (4 CLI + 4 MCP).
-      Verifies "[vectl] Lock status updated:" format, no "Warning:" in output, no
-      message when plan is consistent. 892 tests pass.
   - id: update-mcp-docs
     name: Update MCP tool documentation
-    status: done
+    status: pending
     description: 'Update MCP tool descriptions to mention auto-recalc behavior.
 
 
@@ -4040,13 +3048,9 @@ phases:
     depends_on:
     - mcp-save-autafix
     agent: doc-reviewer
-    claimed_by: doc-reviewer
-    claimed_at: '2026-02-21T08:35:23.203457+00:00'
-    evidence: Added lock consistency note to vectl_claim, vectl_complete, vectl_lifecycle,
-      vectl_mutate docstrings in mcp_server.py. 892 tests pass.
   - id: update-cli-docs
     name: Update CLI documentation
-    status: done
+    status: pending
     description: 'Document `vectl recalc-lock` command in CLI help.
 
 
@@ -4059,13 +3063,9 @@ phases:
     depends_on:
     - cli-recalc-lock
     agent: doc-reviewer
-    claimed_by: doc-reviewer
-    claimed_at: '2026-02-21T08:35:22.696036+00:00'
-    evidence: 'Improved recalc-lock docstring in cli.py: added "when to use it" guidance,
-      message format example, and --dry-run documentation. No logic changes.'
   - id: update-README
     name: Update README with lock consistency section
-    status: done
+    status: pending
     description: 'Add "Lock Consistency" section to README explaining:
 
 
@@ -4082,20 +3082,15 @@ phases:
     - mcp-save-autafix
     - cli-recalc-lock
     agent: doc-reviewer
-    claimed_by: doc-reviewer
-    claimed_at: '2026-02-21T08:35:22.126661+00:00'
-    evidence: Added "Lock Consistency" section to README.md between Data Model and
-      Technical Details sections. Explains auto-recalc, message format, and vectl
-      recalc-lock for manual repair.
 - id: ss-models
   name: State Models & Plan ID
-  status: done
+  status: pending
   gate: All new state model unit tests pass; StepState/PhaseState/PlanState serializable;
     Plan.plan_id field accepted by existing load/save
   steps:
   - id: ss-models.add-state-models
     name: add-state-models
-    status: done
+    status: pending
     description: "Add three new Pydantic models to src/vectl/models.py for separated\
       \ state representation.\n\nNew models to add (place after Clipboard, before\
       \ Plan):\n\n```python\nclass StepState(BaseModel):\n    \"\"\"Mutable runtime\
@@ -4127,35 +3122,9 @@ phases:
     verification: 'L1: pytest tests/test_models.py -v -- new models instantiate correctly
       with defaults and with explicit values'
     agent: python-executor
-    claimed_by: python-executor
-    claimed_at: '2026-03-07T07:11:03.052444+00:00'
-    evidence: 'Artifact:
-
-      - PR: local working tree change (not committed)
-
-      - Files changed: src/vectl/models.py (added StepState, PhaseState, PlanState
-      after Clipboard and before Plan)
-
-
-      Verification:
-
-      - Run: uv run pytest tests/test_models.py -v -> passed (38 passed, 0 failed)
-
-
-      Spec link:
-
-      - plan step ss-models.add-state-models
-
-
-      Notes:
-
-      - tools/vectl/README.md was not found at the provided path in this workspace.
-
-      - pytest/python were unavailable directly in PATH; verification ran successfully
-      via uv run.'
   - id: ss-models.add-plan-id
     name: add-plan-id
-    status: done
+    status: pending
     description: "Add plan_id field to the existing Plan model in src/vectl/models.py.\n\
       \nChange:\n```python\nclass Plan(BaseModel):\n    \"\"\"Top-level plan document.\"\
       \"\"\n    version: int = 1\n    project: str\n    plan_id: str | None = None\
@@ -4174,41 +3143,9 @@ phases:
     depends_on:
     - ss-models.add-state-models
     agent: python-executor
-    claimed_by: python-executor
-    claimed_at: '2026-03-07T07:12:02.065375+00:00'
-    evidence: 'Artifact:
-
-      - PR: not committed (local working tree)
-
-      - Files changed: src/vectl/models.py (added `plan_id: str | None = None` in
-      Plan model after `project` and before `strategy_ref`)
-
-
-      Verification:
-
-      - Run: uv run pytest tests/test_models.py -v -> passed (38 passed, 0 failed)
-
-      - Run: uv run python - <<''PY''
-
-      from vectl.models import Plan
-
-      p1 = Plan(project=''test'')
-
-      p2 = Plan(project=''test'', plan_id=''abc'')
-
-      print(p1.plan_id)
-
-      print(p2.plan_id)
-
-      PY -> output `None` then `abc`
-
-
-      Spec link:
-
-      - plan step ss-models.add-plan-id'
   - id: ss-models.unit-tests
     name: unit-tests
-    status: done
+    status: pending
     description: "Write comprehensive unit tests for the new state models (StepState,\
       \ PhaseState, PlanState) and the Plan.plan_id field.\n\nTest file: tests/test_models.py\
       \ (append to existing file)\n\nTests to add:\n\n1. StepState tests:\n   - test_step_state_defaults:\
@@ -4233,20 +3170,9 @@ phases:
     depends_on:
     - ss-models.add-plan-id
     agent: integration-verifier
-    claimed_by: integration-verifier
-    claimed_at: '2026-03-07T07:12:52.057454+00:00'
-    evidence: "Artifact:\n- PR: not created (local working tree)\n- Files changed:\
-      \ tests/test_models.py\n\nVerification:\n- Run: uv run pytest tests/test_models.py\
-      \ -v -> passed (52 passed in 0.15s)\n- Added/validated test groups:\n  - TestStepState\
-      \ (defaults, explicit values, model_dump/model_validate roundtrip, rejection_history\
-      \ with RejectionEntry)\n  - TestPhaseState (defaults, explicit values)\n  -\
-      \ TestPlanState (empty, populated steps/phases dicts, clipboard, roundtrip)\n\
-      \  - TestPlanPlanId (default None, explicit value, backward-compatible parse\
-      \ without plan_id)\n\nSpec link:\n- plan step ss-models.unit-tests\n\nNotes:\n\
-      - Provided guidance ref `tools/vectl/README.md` is not present in this workspace."
   - id: ss-models.ss-models-gate
     name: ss-models.gate
-    status: done
+    status: pending
     description: 'Gate review: Verify ss-models phase completion and quality.
 
 
@@ -4270,53 +3196,9 @@ phases:
     depends_on:
     - ss-models.unit-tests
     agent: gate-reviewer
-    claimed_by: gate-reviewer
-    claimed_at: '2026-03-07T07:14:58.903384+00:00'
-    evidence: 'Artifact:
-
-      - PR: 5666cf1502f8ca77aac7c8df2715060a2464a773
-
-
-      Verification:
-
-      - Run: git diff -- src/vectl/models.py tests/test_models.py -> scope limited
-      to these two files
-
-      - Inspect: src/vectl/models.py:155 -> StepState exists with expected mutable
-      runtime fields/defaults
-
-      - Inspect: src/vectl/models.py:170 -> PhaseState exists with expected fields/defaults
-
-      - Inspect: src/vectl/models.py:177 -> PlanState exists with required plan_id/steps/phases/clipboard
-
-      - Inspect: src/vectl/models.py:195 -> Plan.plan_id added as `str | None = None`
-
-      - Inspect: tests/test_models.py:317 -> TestStepState covers defaults, explicit
-      values, rejection history, serialization roundtrip
-
-      - Inspect: tests/test_models.py:394 -> TestPhaseState covers defaults and explicit
-      values
-
-      - Inspect: tests/test_models.py:406 -> TestPlanState covers empty/populated/clipboard/roundtrip
-
-      - Inspect: tests/test_models.py:483 -> TestPlanPlanId covers default None, explicit
-      value, backward-compatible parse
-
-      - Run: uv run pytest tests/test_models.py -v -> PASS (52 passed in 0.13s)
-
-
-      Spec link:
-
-      - plan step ss-models.ss-models-gate review criteria (completeness, plan_id
-      default, tests pass, no regression, conventions)
-
-
-      Assessment:
-
-      - Gate PASS. ss-models phase is ready for ss-io.'
 - id: ss-io
   name: State IO Layer
-  status: done
+  status: pending
   gate: All IO unit tests pass; state roundtrip (save/load) works; merge/extract/strip
     are inverses; CAS + auto-retry works
   depends_on:
@@ -4324,7 +3206,7 @@ phases:
   steps:
   - id: ss-io.state-path
     name: state-path
-    status: done
+    status: pending
     description: "Add resolve_state_path() function to src/vectl/plan_path.py.\n\n\
       New function:\n```python\ndef resolve_state_path(plan_path: Path | None = None)\
       \ -> Path:\n    \"\"\"Resolve the state.json path for a given plan.\n    \n\
@@ -4345,39 +3227,9 @@ phases:
     verification: 'L1: pytest tests/test_plan_path.py -v -- test that resolve_state_path
       returns correct path for git repos and non-git dirs'
     agent: python-executor
-    claimed_by: python-executor
-    claimed_at: '2026-03-07T07:40:25.986107+00:00'
-    evidence: "Artifact:\n- PR: none (not committed)\n- Files changed: src/vectl/plan_path.py,\
-      \ tests/test_plan_path.py\n\nVerification:\n- Run: uv run pytest tests/test_plan_path.py\
-      \ -v -> 19 passed, 0 failed\n- Run: uv run ruff check src/vectl/plan_path.py\
-      \ tests/test_plan_path.py -> All checks passed\n- Run: cd /tmp && uv run --directory\
-      \ /Users/tefx/Projects/vectl python -c \"from pathlib import Path; from subprocess\
-      \ import CompletedProcess; from unittest.mock import patch; from vectl.plan_path\
-      \ import resolve_state_path; plan = Path('/tmp/outside-repo/plan.yaml'); with\
-      \ patch('vectl.plan_path.subprocess.run', return_value=CompletedProcess([],\
-      \ 0, '.git\\n', '')): print(resolve_state_path(plan))\" -> /tmp/outside-repo/.git/vectl/state.json\n\
-      \nSpec link:\n- plan step ss-io.state-path\n\nRework details:\n- On successful\
-      \ `git rev-parse --git-common-dir`, `resolve_state_path` now normalizes the\
-      \ git-common-dir path:\n  - parse stdout path\n  - if relative, anchor to `plan_path.parent`\n\
-      \  - then append `/vectl/state.json`\n- Added regression coverage for relative\
-      \ git-common-dir output (`.git`) to ensure correct anchoring independent of\
-      \ caller cwd."
-    rejection_reason: Gate repro from non-repo cwd shows resolve_state_path mishandles
-      relative git-common-dir output ('.git') by not anchoring to plan directory;
-      requires fix + regression test.
-    rejection_history:
-    - reason: Gate found resolve_state_path does not fall back when git invocation
-        raises (e.g., FileNotFoundError), and related test lint issues in tests/test_plan_path.py.
-      timestamp: '2026-03-07T07:30:58.232780+00:00'
-      reviewer: vectl-orchestrator
-    - reason: Gate repro from non-repo cwd shows resolve_state_path mishandles relative
-        git-common-dir output ('.git') by not anchoring to plan directory; requires
-        fix + regression test.
-      timestamp: '2026-03-07T07:40:17.913897+00:00'
-      reviewer: vectl-orchestrator
   - id: ss-io.state-io
     name: state-io
-    status: done
+    status: pending
     description: "Add load_state() and save_state() functions to src/vectl/io.py.\n\
       \nNew functions:\n```python\ndef load_state(path: Path | str) -> tuple[PlanState,\
       \ str]:\n    \"\"\"Load state from JSON file.\n    \n    Returns (PlanState,\
@@ -4409,31 +3261,9 @@ phases:
     depends_on:
     - ss-io.state-path
     agent: python-executor
-    claimed_by: python-executor
-    claimed_at: '2026-03-07T07:32:57.033206+00:00'
-    evidence: "Artifact:\n- PR: not created in this run (local changes)\n- Files changed:\
-      \ src/vectl/io.py, tests/test_io.py\n\nVerification:\n- Run: uv run pytest tests/test_io.py\
-      \ -v -> 32 passed\n- Run: uv run ruff check src/vectl/io.py tests/test_io.py\
-      \ -> All checks passed\n\nSpec link:\n- plan step ss-io.state-io\n\nRework details:\n\
-      - Fixed CAS auto-retry merge semantics in `_merge_state_for_cas_retry`:\n  -\
-      \ changed clipboard merge from fallback (`our_state.clipboard or base.clipboard`)\
-      \ to strict last-writer-wins (`clipboard=our_state.clipboard`), preserving explicit\
-      \ clears (`None`).\n- Updated helper docstring to include clipboard in LWW semantics.\n\
-      - Added regression test `test_save_state_auto_retry_with_clipboard_clear` verifying\
-      \ explicit clipboard clear survives CAS retry under concurrent update.\n\nGaps/Notes:\n\
-      - Guidance ref `tools/vectl/README.md` may not exist at provided path in this\
-      \ workspace."
-    rejection_reason: 'Gate found CAS retry merge bug in save_state: explicit clipboard
-      clear can be lost due to truthy fallback merge logic (`our_state.clipboard or
-      base.clipboard`).'
-    rejection_history:
-    - reason: 'Gate found CAS retry merge bug in save_state: explicit clipboard clear
-        can be lost due to truthy fallback merge logic (`our_state.clipboard or base.clipboard`).'
-      timestamp: '2026-03-07T07:32:46.121449+00:00'
-      reviewer: vectl-orchestrator
   - id: ss-io.merge-extract-strip
     name: merge-extract-strip
-    status: done
+    status: pending
     description: "Add merge_plan(), extract_state(), and strip_state() functions to\
       \ src/vectl/io.py.\n\nNew functions:\n```python\ndef extract_state(plan: Plan)\
       \ -> PlanState:\n    \"\"\"Extract mutable state fields from a Plan into a PlanState.\n\
@@ -4475,59 +3305,9 @@ phases:
     depends_on:
     - ss-io.state-io
     agent: python-executor
-    claimed_by: python-executor
-    claimed_at: '2026-03-07T07:34:06.121231+00:00'
-    evidence: 'Artifact:
-
-      - PR: commit d29ad8b
-
-      - Files changed: src/vectl/io.py, tests/test_io.py
-
-
-      Verification:
-
-      - Run: uv run pytest tests/test_io.py -v -> 33 passed
-
-      - Run: uv run ruff check src/vectl/io.py tests/test_io.py -> All checks passed
-
-
-      Spec link:
-
-      - plan step ss-io.merge-extract-strip
-
-      - docs/RFC-clipboard.md (clipboard split-state handling semantics)
-
-
-      Rework details:
-
-      - Updated `merge_plan()` to always apply clipboard from state via `model_copy(update={"clipboard":
-      state.clipboard})`, removing guard that skipped updates when `state.clipboard
-      is None`.
-
-      - This enables explicit clipboard clear (`None`) and prevents stale clipboard
-      retention.
-
-      - Updated test expectations for partial state merge to reflect last-writer-wins
-      clipboard semantics.
-
-      - Added `test_merge_plan_can_clear_clipboard` regression coverage.
-
-
-      Notes:
-
-      - Change keeps functions pure and maintains roundtrip-focused test coverage.'
-    rejection_reason: 'Gate found clipboard clear semantics bug: merge_plan cannot
-      clear clipboard when state.clipboard=None; CAS retry merge in save_state loses
-      explicit clear intent due to `our_state.clipboard or base.clipboard`.'
-    rejection_history:
-    - reason: 'Gate found clipboard clear semantics bug: merge_plan cannot clear clipboard
-        when state.clipboard=None; CAS retry merge in save_state loses explicit clear
-        intent due to `our_state.clipboard or base.clipboard`.'
-      timestamp: '2026-03-07T07:31:05.479988+00:00'
-      reviewer: vectl-orchestrator
   - id: ss-io.unit-tests
     name: unit-tests
-    status: done
+    status: pending
     description: 'Write comprehensive unit tests for all ss-io functions: resolve_state_path,
       load_state, save_state, merge_plan, extract_state, strip_state.
 
@@ -4616,58 +3396,9 @@ phases:
     - ss-io.merge-extract-strip
     - ss-io.state-path
     agent: integration-verifier
-    claimed_by: integration-verifier
-    claimed_at: '2026-03-07T07:47:07.525313+00:00'
-    evidence: 'Artifact:
-
-      - PR: commit d29ad8b
-
-      - Test files validated/updated: tests/test_io.py, tests/test_plan_path.py
-
-
-      Verification:
-
-      - Run: uv run pytest tests/test_io.py tests/test_plan_path.py -v -> PASS (52
-      passed)
-
-      - Run: uv run ruff check tests/test_io.py tests/test_plan_path.py -> All checks
-      passed
-
-
-      Spec link:
-
-      - plan step ss-io.unit-tests
-
-
-      Coverage confirmation:
-
-      - includes relative git-common-dir anchoring regression test in resolve_state_path
-      suite
-
-      - includes CAS auto-retry clipboard-clear regression coverage
-
-      - includes merge_plan clipboard clear semantics coverage
-
-      - full ss-io test scope remains passing after rework.
-
-
-      Notes:
-
-      - No blocker/should-fix issues detected in this run.'
-    rejection_reason: Gate found missing regression coverage for relative git-common-dir
-      output (e.g., '.git') in resolve_state_path tests.
-    rejection_history:
-    - reason: Gate identified missing regression coverage for clipboard-clear behavior
-        and resolve_state_path subprocess exception path; tests require update.
-      timestamp: '2026-03-07T07:30:58.446000+00:00'
-      reviewer: vectl-orchestrator
-    - reason: Gate found missing regression coverage for relative git-common-dir output
-        (e.g., '.git') in resolve_state_path tests.
-      timestamp: '2026-03-07T07:39:54.035295+00:00'
-      reviewer: vectl-orchestrator
   - id: ss-io.ss-io-gate
     name: ss-io.gate
-    status: done
+    status: pending
     description: 'Gate review: Verify ss-io phase completion and quality.
 
 
@@ -4693,24 +3424,9 @@ phases:
     depends_on:
     - ss-io.unit-tests
     agent: gate-reviewer
-    claimed_by: gate-reviewer
-    claimed_at: '2026-03-07T07:48:14.143428+00:00'
-    evidence: "Artifact:\n- PR: commit d29ad8b5df2ff2fb94e122ecea2ca25548e62b22\n\
-      - Scoped files reviewed: src/vectl/io.py, src/vectl/plan_path.py, tests/test_io.py,\
-      \ tests/test_plan_path.py\n\nVerification:\n- Run: git diff -- src/vectl/io.py\
-      \ src/vectl/plan_path.py tests/test_io.py tests/test_plan_path.py -> scoped\
-      \ diffs confirmed\n- Run: uv run pytest tests/test_io.py tests/test_plan_path.py\
-      \ -> PASS (52 passed)\n- Run: uv run ruff check src/vectl/io.py src/vectl/plan_path.py\
-      \ tests/test_io.py tests/test_plan_path.py -> PASS (All checks passed)\n- Code\
-      \ inspection:\n  - resolve_state_path handles non-git and git invocation failures\
-      \ and anchors relative git-common-dir to plan directory\n  - load_state/save_state\
-      \ CAS + auto-retry behavior present\n  - extract_state/strip_state/merge_plan\
-      \ roundtrip invariant tests present and passing\n\nSpec link:\n- plan step ss-io.ss-io-gate\
-      \ review criteria 1-6\n\nAssessment:\n- Gate PASS. ss-io phase ready for ss-mcp\
-      \ integration."
 - id: ss-mcp
   name: MCP Server Refactor
-  status: done
+  status: pending
   gate: All MCP tools work correctly with split state; lazy migration transparent;
     existing test suite passes
   depends_on:
@@ -4718,7 +3434,7 @@ phases:
   steps:
   - id: ss-mcp.load-save-refactor
     name: load-save-refactor
-    status: done
+    status: pending
     description: "Refactor the MCP server's _load(), _save() and add new _save_state()/_save_definition()/_save_both()\
       \ in src/vectl/mcp_server.py.\n\nThis is the core architectural change for state\
       \ separation in the MCP layer.\n\nCurrent signatures:\n```python\ndef _load()\
@@ -4775,69 +3491,9 @@ phases:
     verification: 'L1: existing MCP tests still compile (no import errors); new functions
       exist and are callable'
     agent: python-senior
-    claimed_by: python-senior
-    claimed_at: '2026-03-07T08:19:49.196775+00:00'
-    evidence: 'Artifact:
-
-      - PR: not created (local changes)
-
-      - File changed: src/vectl/mcp_server.py
-
-
-      Verification:
-
-      - Run: uv run python -m py_compile src/vectl/mcp_server.py -> PASS
-
-      - Run: rg -n "_save\(" src/vectl/mcp_server.py -> no matches for legacy `_save(`
-      usage
-
-      - Run: rg -n "_save_state\(|_save_definition\(|_save_both\(" src/vectl/mcp_server.py
-      -> active split-save call paths confirmed
-
-      - Run: uv run pytest tests/test_mcp.py -k "split_state or migration or save_both
-      or cas" -q -> PASS (8 passed)
-
-
-      Spec link:
-
-      - plan step ss-mcp.load-save-refactor
-
-
-      Rework details:
-
-      - Removed dead legacy helper `def _save(plan, expected_hash)` from `src/vectl/mcp_server.py`
-      (no remaining callsites).
-
-      - Kept write paths routed through `_save_state`, `_save_definition`, `_save_both`.
-
-      - Preserved prior CAS-orphan and lock-notice behavior fixes.
-
-
-      Notes:
-
-      - Non-fatal pydantic serializer warnings still appear in migration-focused test
-      output.'
-    rejection_reason: 'Gate criterion 12: remove dead legacy `_save()` helper from
-      src/vectl/mcp_server.py; no remaining callsites should remain and helper should
-      be deleted.'
-    rejection_history:
-    - reason: _save_both writes state.json before plan.yaml; on definition CAS conflict
-        it leaves orphaned state (partial side effect). Needs conflict-safe ordering/rollback
-        strategy.
-      timestamp: '2026-03-07T08:10:44.211383+00:00'
-      reviewer: vectl-orchestrator
-    - reason: _save_state/_save_both path dropped recalc lock notice propagation,
-        causing MCP autofix message regressions (tests/test_autofix_message). Restore
-        lock notice semantics in split-save functions.
-      timestamp: '2026-03-07T08:14:59.417898+00:00'
-      reviewer: vectl-orchestrator
-    - reason: 'Gate criterion 12: remove dead legacy `_save()` helper from src/vectl/mcp_server.py;
-        no remaining callsites should remain and helper should be deleted.'
-      timestamp: '2026-03-07T08:19:45.566942+00:00'
-      reviewer: vectl-orchestrator
   - id: ss-mcp.state-only-tools
     name: state-only-tools
-    status: done
+    status: pending
     description: 'Adapt state-only MCP tools to use _save_state() instead of _save()
       in src/vectl/mcp_server.py.
 
@@ -4906,27 +3562,9 @@ phases:
     depends_on:
     - ss-mcp.load-save-refactor
     agent: python-executor
-    claimed_by: python-executor
-    claimed_at: '2026-03-07T07:53:23.229112+00:00'
-    evidence: "Artifact:\n- PR: none (not committed)\n- Files changed: src/vectl/mcp_server.py\n\
-      \nVerification:\n- Run: uv run python -m py_compile src/vectl/mcp_server.py\
-      \ -> PASS\n- Run: uv run python - <<'PY' ... AST save-call scan ... PY -> PASS\n\
-      \  - `vectl_claim`: only `_save_state`\n  - `vectl_complete`: only `_save_state`\n\
-      \  - `vectl_lifecycle` branches defer/reject/skip/skip-phase: `_save_state`\n\
-      \  - `_clipboard_write`/`_clipboard_clear`: `_save_state`\n  - `vectl_lifecycle`\
-      \ complete-phase branch still uses `_save` (not in this step scope)\n- Run:\
-      \ uv run python - <<'PY' ... targeted behavior checks for claim/complete/lifecycle/clipboard\
-      \ ... PY -> PASS\n\nSpec link:\n- plan step ss-mcp.state-only-tools\n\nImplementation\
-      \ proof points:\n- `_load()` unpacking updated to 3-tuple in state-only tools.\n\
-      - State-only tools now persist via `_save_state(plan, expected_state_hash)`.\n\
-      - No `_save()` calls remain in the targeted state-only functions/branches.\n\
-      \nNotes:\n- Out-of-scope discovered issues for `ss-mcp.integration-tests`: multiple\
-      \ legacy tests in `tests/test_mcp.py` still assert runtime state from `plan.yaml`\
-      \ directly and fail under split-state persistence until read-path/tests are\
-      \ fully adapted."
   - id: ss-mcp.definition-and-mixed-tools
     name: definition-and-mixed-tools
-    status: done
+    status: pending
     description: "Adapt definition-changing and read-only MCP tools to use the new\
       \ _load()/_save_definition()/_save_both() in src/vectl/mcp_server.py.\n\nTools\
       \ to adapt:\n\n1. **Definition-only writes** (use _save_definition or _save_both):\n\
@@ -4959,27 +3597,9 @@ phases:
     depends_on:
     - ss-mcp.state-only-tools
     agent: python-executor
-    claimed_by: python-executor
-    claimed_at: '2026-03-07T07:56:15.706459+00:00'
-    evidence: "Updated MCP split-state migration in `src/vectl/mcp_server.py`:\n-\
-      \ `_load()` now returns `(Plan, definition_hash, state_hash)` with lazy merge\
-      \ path and keeps legacy behavior when no state.json content.\n- Added `_save_state`\
-      \ and `_save_definition` for split CAS writes; `_save_both` writes state + definition\
-      \ and lock notices.\n- Migrated all definition/mutation/read tools to new tuple\
-      \ unpacking and split saves:\n  - Mutations switched to `_save_both` for definition-and-state\
-      \ writes (`vectl_mutate`, `vectl_check`, mixed operations in `vectl_lifecycle`,\
-      \ and check-related checklist edits).\n  - Runtime-only tools use `_save_state`\
-      \ (`vectl_claim`, `vectl_complete`, `vectl_clipboard*`, lifecycle non-definition\
-      \ actions).\n  - Read-only tools now unpack `_load()` placeholders (`vectl_status`,\
-      \ `vectl_show`, `vectl_search`, `vectl_review`, `vectl_render`, `vectl_dag`,\
-      \ `vectl_checkpoint`).\n- Verified there are no remaining `_save(plan, expected_hash)`\
-      \ call sites in `mcp_server.py` (only legacy `_save` helper remains, unused).\n\
-      Validation:\n- `uv run pytest tests/test_mscp.py -q` executed and passed all\
-      \ 138 tests.\n- `grep` checks confirmed `_load()` usage and write-call migrations\
-      \ in MCP server.\n"
   - id: ss-mcp.integration-tests
     name: integration-tests
-    status: done
+    status: pending
     description: "Verify all MCP tools work correctly under the split-state regime.\
       \ This is the CRITICAL migration safety checkpoint -- once this phase completes,\
       \ vectl's own plan.yaml will be migrated on the next state operation.\n\nTest\
@@ -5108,32 +3728,9 @@ phases:
     depends_on:
     - ss-mcp.definition-and-mixed-tools
     agent: integration-verifier
-    claimed_by: integration-verifier
-    claimed_at: '2026-03-07T08:05:08.820212+00:00'
-    evidence: "Artifact:\n- PR: not created (workspace changes)\n- Integration tests\
-      \ exercised in: tests/test_mcp.py (including TestMcpSplitStateIntegration)\n\
-      \nVerification:\n- Run: uv run pytest -v tests/test_mcp.py -> PASS (148 passed,\
-      \ 37 warnings, 0 failed)\n- Split-state integration cases all PASS:\n  - test_claim_creates_state_json\n\
-      \  - test_claim_state_json_contents\n  - test_complete_updates_state_json_plan_yaml_unchanged\n\
-      \  - test_mutate_updates_both_files\n  - test_read_only_tools_no_state_write\n\
-      \  - test_migration_roundtrip_all_state_fields\n  - test_migration_state_json_has_all_steps\n\
-      \  - test_migration_stale_plan_yaml_ignored\n  - test_migration_definition_write_strips_state\n\
-      \  - test_migration_clipboard_roundtrip\n\nSpec link:\n- plan step ss-mcp.integration-tests\n\
-      \nMigration round-trip checklist:\n- [x] all state field types preserved (status,\
-      \ claimed_by, claimed_at, evidence, skipped_reason, rejection_reason, rejection_history,\
-      \ affinity_override, affinity_override_by, affinity_override_at)\n- [x] state.json\
-      \ contains ALL steps on first state write\n- [x] state.json precedence over\
-      \ residual/stale plan.yaml state\n- [x] definition write strips state from plan.yaml\n\
-      - [x] clipboard migration roundtrip correct\n- [x] reload after migration matches\
-      \ original merged state\n\nPath exercised:\n- Legacy plan.yaml embedded state\
-      \ -> `_load()` fallback -> `_save_state()` creates state.json -> `_load()` uses\
-      \ state.json -> `_save_definition()` strips definition file\n\nnotes:\n  suggestions:\n\
-      \    - Non-fatal `PydanticSerializationUnexpectedValue` warnings observed during\
-      \ test run; consider follow-up cleanup to reduce warning noise.\n  tech_debt:\
-      \ []"
   - id: ss-mcp.ss-mcp-gate
     name: ss-mcp.gate
-    status: done
+    status: pending
     description: "Gate review: Verify ss-mcp phase completion and quality. THIS IS\
       \ THE MIGRATION SAFETY GATE -- once this passes, vectl's own plan.yaml will\
       \ be migrated on the next state operation (claim/complete/lifecycle/clipboard).\n\
@@ -5165,23 +3762,6 @@ phases:
     depends_on:
     - ss-mcp.integration-tests
     agent: gate-reviewer
-    claimed_by: gate-reviewer
-    claimed_at: '2026-03-07T08:22:06.372013+00:00'
-    evidence: "Artifact:\n- PR: d29ad8b5df2ff2fb94e122ecea2ca25548e62b22\n\nVerification:\n\
-      - Run: uv run pytest tests/test_mcp.py -v -> PASS (149 passed)\n- Run: uv run\
-      \ pytest tests/test_autofix_message.py -k \"McpAutofixMessage\" -v -> PASS (4\
-      \ passed, 4 deselected)\n- Run: code checks in src/vectl/mcp_server.py confirm\
-      \ criteria 6-10:\n  - `_load() -> tuple[Plan, str, str]` signature present\n\
-      \  - state-only writes route through `_save_state`\n  - definition writes route\
-      \ through `_save_both`\n  - read-only tools use `plan, _, _ = _load()`\n  -\
-      \ no legacy `_save(plan, hash)` helper/calls remain\n\nSpec link:\n- plan step\
-      \ ss-mcp.ss-mcp-gate criteria 1-12\n\nGate assessment:\n- PASS on migration\
-      \ safety criteria (1-5): all required migration roundtrip and precedence/strip\
-      \ tests pass, including CAS-conflict non-orphan regression.\n- PASS on architecture\
-      \ correctness (6-10).\n- PASS on regression safety (11-12): MCP suite green;\
-      \ autofix-message regression tests green; no dead legacy `_save` code remains.\n\
-      \nNotes:\n- Non-blocking pydantic serialization warnings observed in test output;\
-      \ no gate criteria violated."
 - id: ss-cli
   name: CLI Layer Adaptation
   status: pending
@@ -5448,123 +4028,52 @@ phases:
     agent: ' '
 - id: ss-integration
   name: Cross-Module Integration
-  status: locked
+  status: pending
   gate: Full test suite passes; lazy migration E2E verified; zero regressions; existing
     plan.yaml serves as migration test case
   depends_on:
   - ss-cli
   steps:
-  - id: ss-integration.adapt-remaining-tests
-    name: adapt-remaining-tests
-    status: pending
-    description: 'Adapt all remaining test files to work with the split-state regime.
-
-
-      Test files to audit and potentially update:
-
-      - tests/test_checklist.py -- uses load_plan/save_plan, may need fixture updates
-
-      - tests/test_diff.py -- compares plan states, verify diff logic still works
-
-      - tests/test_output_hygiene.py -- output format tests, likely no change needed
-
-      - tests/test_review.py -- review functions work on Plan objects, likely no change
-
-      - tests/test_semantics.py -- semantic checks on Plan objects, likely no change
-
-      - tests/test_smoke.py -- smoke tests, may invoke CLI or MCP, needs audit
-
-      - tests/test_validation.py -- validation on Plan objects, likely no change
-
-      - tests/test_render.py -- render functions, likely no change
-
-      - tests/test_agent_field.py -- agent field tests, likely no change
-
-      - tests/test_architect.py -- architect tests, needs audit
-
-      - tests/test_checkpoint.py -- checkpoint creates JSON snapshots, needs audit
-
-      - tests/test_dashboard_ui.py -- dashboard tests, likely no change
-
-      - tests/test_properties.py -- property-based tests, needs audit
-
-      - tests/test_autofix_message.py -- autofix message tests, likely no change
-
-      - tests/test_manual_yaml_edit.py -- manual YAML edit tests, IMPORTANT: this
-      test verifies that manual edits to plan.yaml get corrected on save. With state
-      separation, state fields in plan.yaml should be ignored (state comes from state.json).
-      This test may need significant rework.
-
-
-      For each test file:
-
-      1. Check if it directly calls load_plan/save_plan -- if so, these still work
-      (they handle plan.yaml)
-
-      2. Check if it creates Plan objects with embedded state -- these still work
-      (Plan model unchanged)
-
-      3. Check if it invokes CLI commands or MCP tools that now have different _load/_save
-      signatures -- these tests may need fixture updates
-
-      4. Check if it asserts on plan.yaml content after writes -- these may need to
-      also check state.json
-
-
-      Key principle: Most tests should work WITHOUT changes because:
-
-      - The Plan model is unchanged (state fields still exist on Step/Phase)
-
-      - Pure logic functions (validate_plan, search_plan, etc.) operate on Plan objects
-
-      - Only tests that do file I/O and check file contents may need updates
-
-
-      File: tests/*.py (multiple files)
-
-      Pattern: Run each test file individually, fix any failures, move to next'
-    verification: 'L1: uv run pytest tests/ -v --ignore=tests/test_mcp.py --ignore=tests/test_cli.py
-      -- all non-MCP/CLI tests pass (those were already verified in earlier phases)'
-    agent: python-executor
   - id: ss-integration.lazy-migration-e2e
     name: lazy-migration-e2e
     status: pending
     description: "End-to-end verification of lazy migration using the existing plan.yaml\
       \ as a natural test case.\n\nThe existing /Users/tefx/Projects/vectl/plan.yaml\
-      \ contains extensive embedded state: 29 phases, all with status=done, hundreds\
-      \ of steps with status, claimed_by, claimed_at, evidence fields. This is the\
-      \ perfect real-world test case for lazy migration.\n\nE2E test scenario (write\
-      \ as a test in tests/test_migration_e2e.py):\n\n1. **Phase 1: Read legacy plan**\n\
+      \ contains extensive embedded state and is the real-world migration fixture.\n\
+      \nFailure-mode checklist:\n- relative vs absolute state path behavior in tmp\
+      \ non-git directories\n- missing-file fallback before first state write\n- stale\
+      \ embedded plan.yaml state must not override fresher state.json\n- first state\
+      \ write must fan out all step state, not just the touched step\n- definition\
+      \ write must not orphan or lose runtime state\n\nE2E test scenario (write as\
+      \ a test in tests/test_migration_e2e.py):\n\n1. Phase 1: Read legacy plan\n\
       \   - Copy the real plan.yaml to a temp directory\n   - Load via the new _load()\
       \ (or load_plan + merge logic)\n   - Verify all state is present in the merged\
-      \ plan (all steps have their statuses)\n   - Verify no state.json exists yet\n\
-      \n2. **Phase 2: First state write**\n   - Perform a state-mutating operation\
-      \ (e.g. claim a step, or directly call save_state)\n   - Verify state.json was\
-      \ created in the correct location (.vectl/state.json for non-git tmp dir)\n\
-      \   - Verify state.json contains ALL step states (not just the one that was\
-      \ mutated)\n   - Verify plan.yaml is UNCHANGED (state still embedded -- only\
-      \ stripped on definition write)\n\n3. **Phase 3: Read with state.json present**\n\
-      \   - Load the plan again\n   - Verify _load() uses state.json for state (not\
-      \ plan.yaml's embedded fields)\n   - Verify the merged plan has all correct\
-      \ statuses\n\n4. **Phase 4: Definition write strips state**\n   - Perform a\
-      \ definition-mutating operation (e.g. add a step, or directly call save with\
-      \ strip)\n   - Verify plan.yaml no longer contains status/claimed_by/evidence\
-      \ fields (stripped)\n   - Verify state.json still has all the state\n   - Verify\
-      \ loading the plan again produces the same merged result\n\n5. **Phase 5: Verify\
-      \ the existing plan.yaml is a valid test case**\n   - The actual plan.yaml at\
-      \ /Users/tefx/Projects/vectl/plan.yaml should be loadable\n   - extract_state()\
-      \ should produce a PlanState with all the embedded state\n   - strip_state()\
-      \ should produce a clean definition-only plan\n   - merge_plan(strip_state(plan),\
-      \ extract_state(plan)) should equal the original plan\n\nEvidence template (integration\
-      \ step):\n## Integration Evidence\n\n**Command or test exercising the full path**:\n\
-      ```\nuv run pytest tests/test_migration_e2e.py -v\n```\n\n**Actual output**\
-      \ (paste, not 'tests pass'):\n```\n<stdout/stderr or test runner output>\n```\n\
-      \n**Path exercised**: Legacy plan.yaml (embedded state) -> _load() -> state.json\
-      \ creation -> plan.yaml strip -> re-load verification"
+      \ plan\n   - Verify no state.json exists yet\n\n2. Phase 2: First state write\n\
+      \   - Perform a state-mutating operation\n   - Verify state.json was created\
+      \ in the correct location (.vectl/state.json for non-git tmp dir)\n   - Verify\
+      \ state.json contains ALL step states\n   - Verify plan.yaml is unchanged at\
+      \ this point\n\n3. Phase 3: Read with state.json present\n   - Load the plan\
+      \ again\n   - Verify _load() uses state.json for state precedence over embedded\
+      \ plan.yaml fields\n   - Verify the merged plan has all correct statuses\n\n\
+      4. Phase 4: Definition write strips state\n   - Perform a definition-mutating\
+      \ operation\n   - Verify plan.yaml no longer contains runtime state fields\n\
+      \   - Verify state.json still has all runtime state\n   - Verify loading again\
+      \ produces the same merged result\n\n5. Phase 5: Existing plan.yaml as fixture\n\
+      \   - The actual plan.yaml in this repo should be loadable\n   - extract_state()\
+      \ should produce a PlanState with all embedded state\n   - strip_state() should\
+      \ produce a clean definition-only plan\n   - merge_plan(strip_state(plan), extract_state(plan))\
+      \ should equal the original plan\n\nEvidence template (integration step):\n\
+      ## Integration Evidence\n\n**Command or test exercising the full path**:\n```\n\
+      uv run pytest tests/test_migration_e2e.py -v\n```\n\n**Actual output** (paste,\
+      \ not 'tests pass'):\n```\n<stdout/stderr or test runner output>\n```\n\n**Path\
+      \ exercised**: Legacy plan.yaml (embedded state) -> _load() -> state.json creation\
+      \ -> plan.yaml strip -> re-load verification"
     verification: 'L2: uv run pytest tests/test_migration_e2e.py -v -- all 5 E2E phases
-      pass; existing plan.yaml roundtrips correctly'
+      pass; evidence explicitly proves state.json precedence over stale embedded state
+      and first-write full-state fanout'
     depends_on:
-    - ss-integration.adapt-remaining-tests
+    - ss-integration.adapt-remaining-tests-audit-and-fix-low-risk
+    - ss-integration.adapt-remaining-tests-manual-yaml-and-smoke
     agent: integration-verifier
   - id: ss-integration.full-suite
     name: full-suite
@@ -5573,7 +4082,7 @@ phases:
       entire codebase.
 
 
-      This is the final quality gate before the project can be considered complete.
+      This is the final suite check before the project can be considered complete.
 
 
       Command: uv run pytest tests/ -v
@@ -5586,52 +4095,26 @@ phases:
 
       1. Document the failure clearly (test name, error message, traceback)
 
-      2. Categorize: is this a pre-existing failure or a regression from state separation?
+      2. Categorize: pre-existing failure or regression from state separation
 
       3. If regression: this step is BLOCKED until a fix step is created and the fix
       verified
 
-      4. If pre-existing: document as known issue, not a blocker for state separation
+      4. If pre-existing: document it explicitly and justify why it is not caused
+      by state separation
 
 
       Also verify:
 
-      - No new warnings introduced (compare warning count before/after)
+      - no new warning class introduced by the split-state work
 
-      - Import graph is clean (no circular imports from new state model imports)
+      - import graph remains clean (no circular imports from state model / IO / CLI
+      / MCP refactors)
 
-      - Test coverage has not decreased (if coverage tooling is configured)
-
-
-      Evidence template:
-
-      ## Full Suite Evidence
-
-
-      **Command**:
-
-      ```
-
-      uv run pytest tests/ -v
-
-      ```
-
-
-      **Result**: X passed, Y failed, Z errors
-
-
-      **Failures (if any)**:
-
-      ```
-
-      <failure details>
-
-      ```
-
-
-      **Regression analysis**: <pre-existing vs new>'
-    verification: 'L2: uv run pytest tests/ -v -- all tests pass; zero regressions
-      from state separation work'
+      - migration E2E coverage remains green before considering the suite result sufficient'
+    verification: 'L2: uv run pytest tests/ -v -- all tests pass; evidence includes
+      exact pass/fail counts, any warning-class delta, and explicit regression analysis
+      for every non-pass result'
     depends_on:
     - ss-integration.lazy-migration-e2e
     agent: integration-verifier
@@ -5660,7 +4143,18 @@ phases:
 
       6. Code quality: no dead code, no leftover TODOs, clean imports
 
-      7. The existing plan.yaml (this file!) will be correctly migrated on first use
+      7. The existing plan.yaml (this file) will be correctly migrated on first use
+
+      8. Explicit-clear / null overwrite semantics are evidenced and do not retain
+      stale values
+
+      9. state.json precedence over stale embedded plan.yaml state is evidenced
+
+      10. Partial-write / CAS-conflict behavior cannot leave orphaned or divergent
+      runtime state
+
+      11. No legacy helper residue remains unless intentionally retained with compatibility
+      rationale
 
 
       Final checklist:
@@ -5685,9 +4179,172 @@ phases:
 
       - [ ] Lazy migration works end-to-end
 
-      - [ ] Full test suite passes'
-    verification: Final gate review completed; state separation is production-ready;
-      all quality criteria met
+      - [ ] Full test suite passes
+
+      - [ ] Explicit-clear semantics verified
+
+      - [ ] Stale-state precedence verified
+
+      - [ ] Partial-write safety verified
+
+      - [ ] Legacy helper cleanup verified'
+    verification: Final gate review completed; migration-specific checks cover explicit
+      clear semantics, stale-state precedence, partial-write/CAS safety, and legacy
+      helper residue; all quality criteria met
     depends_on:
     - ss-integration.full-suite
     agent: gate-reviewer
+  - id: ss-integration.adapt-remaining-tests-audit-and-fix-low-risk
+    name: adapt-remaining-tests.audit-and-fix-low-risk
+    status: pending
+    description: 'Audit and adapt the remaining lower-risk test files for split-state
+      compatibility.
+
+
+      Scope:
+
+      - tests/test_checklist.py
+
+      - tests/test_diff.py
+
+      - tests/test_output_hygiene.py
+
+      - tests/test_review.py
+
+      - tests/test_semantics.py
+
+      - tests/test_validation.py
+
+      - tests/test_render.py
+
+      - tests/test_agent_field.py
+
+      - tests/test_dashboard_ui.py
+
+      - tests/test_properties.py
+
+      - tests/test_autofix_message.py
+
+
+      Tasks:
+
+      1. Run each target file (or a grouped subset) and identify any failures caused
+      by split-state persistence.
+
+      2. Update assertions and fixtures only where the split between plan definition
+      and runtime state changes expected persistence behavior.
+
+      3. Keep pure Plan-object tests unchanged unless they truly depend on persisted
+      file layout.
+
+
+      Non-goals:
+
+      - Do NOT handle manual YAML compatibility semantics, smoke command migration
+      behavior, architect workflow persistence, or checkpoint file-content migration
+      here.
+
+      - Do NOT broaden into CLI/MCP implementation changes; report them if discovered.
+
+
+      Verification must include both:
+
+      - Main path: targeted pytest for the audited files passes.
+
+      - Failure path: at least one focused regression proves that a test asserting
+      persisted runtime state was intentionally adapted for split-state semantics
+      where needed.
+
+
+      Suggested grouping commands:
+
+      - uv run pytest tests/test_checklist.py tests/test_diff.py tests/test_review.py
+      tests/test_semantics.py tests/test_validation.py tests/test_render.py -v
+
+      - uv run pytest tests/test_agent_field.py tests/test_dashboard_ui.py tests/test_properties.py
+      tests/test_autofix_message.py tests/test_output_hygiene.py -v'
+    verification: 'L1: grouped pytest commands over the listed low-risk files pass;
+      evidence names any adapted assertions and why split-state semantics required
+      them'
+    agent: python-executor
+  - id: ss-integration.adapt-remaining-tests-manual-yaml-and-smoke
+    name: adapt-remaining-tests.manual-yaml-and-smoke
+    status: pending
+    description: 'Adapt the remaining high-risk integration-facing test files for
+      split-state compatibility.
+
+
+      Scope:
+
+      - tests/test_manual_yaml_edit.py
+
+      - tests/test_smoke.py
+
+      - tests/test_architect.py
+
+      - tests/test_checkpoint.py
+
+
+      Failure-mode checklist:
+
+      - relative vs absolute path behavior for companion state file resolution
+
+      - missing-file and legacy embedded-state fallback behavior
+
+      - explicit clear / null overwrite semantics when persisted state is separated
+      from plan.yaml
+
+      - stale plan.yaml embedded state must not override newer state.json data
+
+      - partial-write / CAS-conflict behavior must not leave orphaned or divergent
+      persisted state
+
+
+      State semantics:
+
+      - state.json is the runtime source of truth after migration begins
+
+      - plan.yaml preserves definition data and may temporarily retain legacy embedded
+      state until a definition write strips it
+
+      - backward-compatible behavior means legacy plan.yaml fixtures still load and
+      migrate transparently on first state write
+
+
+      Tasks:
+
+      1. Audit the four target files for assertions that inspect persisted plan.yaml/runtime
+      state behavior.
+
+      2. Update fixtures and assertions to reflect split-state persistence while preserving
+      user-visible command behavior.
+
+      3. Add focused regression coverage for any migrated behavior involving manual
+      YAML edits, smoke flows, checkpoint contents, or architect mutations.
+
+
+      Out-of-scope guardrail:
+
+      - Do NOT adapt the full remaining test tree here.
+
+      - Do NOT modify production persistence semantics in this step; if tests reveal
+      product defects, report them.
+
+
+      Verification must include both:
+
+      - Main path: targeted pytest over the four scoped files passes.
+
+      - Failure path: focused regressions cover stale embedded-state precedence and
+      one persistence edge such as explicit clear, non-git fallback, or CAS/orphan
+      behavior.
+
+
+      Suggested command:
+
+      - uv run pytest tests/test_manual_yaml_edit.py tests/test_smoke.py tests/test_architect.py
+      tests/test_checkpoint.py -v'
+    verification: 'L1/L2: targeted pytest over the four scoped files passes; evidence
+      explicitly identifies regressions covering stale-state precedence plus one additional
+      persistence failure mode'
+    agent: python-senior

@@ -8,6 +8,7 @@ import pytest
 from vectl.io import (
     extract_state,
     load_plan,
+    load_plan_definition,
     load_state,
     merge_plan,
     save_plan,
@@ -28,6 +29,7 @@ from vectl.models import (
     StepState,
     StepStatus,
 )
+from vectl.plan_path import resolve_state_path
 
 
 def make_plan_for_state_tests() -> Plan:
@@ -155,6 +157,108 @@ class TestLoadPlan:
         path.write_text("- item1\n- item2\n")
         with pytest.raises(PlanIOError, match="must be a YAML mapping"):
             load_plan(path)
+
+    def test_load_plan_state_json_precedence_over_stale_yaml_runtime_state(
+        self, tmp_path: Path
+    ) -> None:
+        plan_path = tmp_path / "plan.yaml"
+        state_path = resolve_state_path(plan_path)
+        plan_path.write_text(
+            """
+project: precedence-test
+phases:
+  - id: core
+    name: Core
+    steps:
+      - id: core.step
+        name: Core Step
+        status: done
+        claimed_by: stale-agent
+        evidence: stale-state
+""".strip()
+            + "\n",
+            encoding="utf-8",
+        )
+        save_state(
+            PlanState(
+                plan_id="",
+                steps={
+                    "core.step": StepState(
+                        status=StepStatus.CLAIMED,
+                        claimed_by="fresh-agent",
+                        evidence="fresh-state",
+                    )
+                },
+                phases={},
+            ),
+            state_path,
+        )
+
+        merged, _ = load_plan(plan_path)
+        _, step = merged.find_step("core.step") or (None, None)
+        assert step is not None
+        assert step.status == StepStatus.CLAIMED
+        assert step.claimed_by == "fresh-agent"
+        assert step.evidence == "fresh-state"
+
+    def test_load_plan_missing_state_json_falls_back_to_plan_yaml(self, tmp_path: Path) -> None:
+        plan_path = tmp_path / "plan.yaml"
+        plan_path.write_text(
+            """
+project: fallback-test
+phases:
+  - id: core
+    name: Core
+    steps:
+      - id: core.step
+        name: Core Step
+        status: done
+        claimed_by: legacy-agent
+        evidence: legacy-state
+""".strip()
+            + "\n",
+            encoding="utf-8",
+        )
+
+        loaded, _ = load_plan(plan_path)
+        _, step = loaded.find_step("core.step") or (None, None)
+        assert step is not None
+        assert step.status == StepStatus.DONE
+        assert step.claimed_by == "legacy-agent"
+        assert step.evidence == "legacy-state"
+
+    def test_load_plan_definition_does_not_merge_companion_state(self, tmp_path: Path) -> None:
+        plan_path = tmp_path / "plan.yaml"
+        state_path = resolve_state_path(plan_path)
+        plan_path.write_text(
+            """
+project: definition-only-test
+phases:
+  - id: core
+    name: Core
+    steps:
+      - id: core.step
+        name: Core Step
+        status: done
+        claimed_by: yaml-agent
+""".strip()
+            + "\n",
+            encoding="utf-8",
+        )
+        save_state(
+            PlanState(
+                plan_id="",
+                steps={"core.step": StepState(status=StepStatus.CLAIMED, claimed_by="state-agent")},
+                phases={},
+            ),
+            state_path,
+        )
+
+        plan_def, _ = load_plan_definition(plan_path)
+        _, step = plan_def.find_step("core.step") or (None, None)
+        assert step is not None
+        assert step.status == StepStatus.DONE
+        assert step.claimed_by == "yaml-agent"
 
 
 class TestSavePlan:

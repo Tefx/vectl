@@ -87,7 +87,7 @@ from vectl.models import (
     Step,
     StepStatus,
 )
-from vectl.plan_path import resolve_plan_path, resolve_state_path
+from vectl.plan_path import is_linked_worktree, resolve_plan_path, resolve_state_path
 from vectl.semantics import is_step_locked
 
 mcp = FastMCP(
@@ -823,6 +823,18 @@ def vectl_mutate(
             refs, status (pending/done/skipped), evidence, skipped_reason, agent, id.
             For intra-batch refs, use short slugs (e.g. "step-a" instead of "phase.step-a").
     """
+    # Guard: block mutations in linked worktrees
+    import os
+
+    if not os.environ.get("VECTL_PLAN_PATH"):
+        is_linked, main_root = is_linked_worktree()
+        if is_linked and main_root is not None:
+            return (
+                f"Mutate blocked: running in a linked worktree. "
+                f"Plan mutations must be performed in the main worktree at {main_root}. "
+                f"Override: set VECTL_PLAN_PATH={main_root}/plan.yaml"
+            )
+
     plan, expected_def_hash, expected_state_hash = _load()
 
     try:

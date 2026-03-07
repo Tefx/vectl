@@ -350,8 +350,8 @@ def claim_step(
                 step.affinity_override_at = datetime.now(timezone.utc).isoformat()
                 result.affinity_override = True
                 result.warning_message = (
-                    f"Affinity override: step '{step_id}' has exclusive affinity for '{step.agent}'. "
-                    f"Overridden by --force. Audit trail recorded."
+                    f"Affinity override: step '{step_id}' has exclusive affinity for "
+                    f"'{step.agent}'. Overridden by --force. Audit trail recorded."
                 )
             else:
                 # Reject
@@ -709,9 +709,7 @@ def format_lock_changes(changed: list[str], plan: Plan) -> str:
         return ""
     phase_index = {p.id: p for p in plan.phases}
     parts = ", ".join(
-        f"{pid} ({phase_index[pid].status.value.lower()})"
-        if pid in phase_index
-        else pid
+        f"{pid} ({phase_index[pid].status.value.lower()})" if pid in phase_index else pid
         for pid in changed
     )
     return f"[vectl] Lock status updated: {parts}"
@@ -1040,7 +1038,7 @@ def add_steps_bulk(
                 raise PlanError(
                     f"Step {i}: invalid status '{status_raw}'. "
                     f"Must be one of: pending, done, skipped"
-                )
+                ) from None
             if step_status not in _IMPORTABLE_STATUSES:
                 raise PlanError(
                     f"Step {i}: cannot add step with status '{step_status.value}': "
@@ -2179,7 +2177,8 @@ def _clipboard_expired(cb: Clipboard) -> bool:
     >>> from vectl.models import Clipboard
     >>> import datetime
     >>> # Expired (past)
-    >>> past = (datetime.datetime.now(datetime.timezone.utc) - datetime.timedelta(hours=1)).isoformat()
+    >>> past = (datetime.datetime.now(datetime.timezone.utc) -
+    ...         datetime.timedelta(hours=1)).isoformat()
     >>> cb = Clipboard(author="a", summary="s", content="c", written_at=past, expires_at=past)
     >>> _clipboard_expired(cb)
     True

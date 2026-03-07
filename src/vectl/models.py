@@ -441,7 +441,8 @@ class InitResult(BaseModel):
 
 @dataclass
 class OrphanEntry:
-    """An orphan state entry that exists in state.json but has no matching definition in plan.yaml."""
+    """An orphan state entry that exists in state.json but has no matching
+    definition in plan.yaml."""
 
     kind: str  # "phase" or "step"
     id: str

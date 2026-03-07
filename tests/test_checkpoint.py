@@ -8,10 +8,9 @@ import pytest
 from typer.testing import CliRunner
 
 from vectl.cli import app
-from vectl.io import save_plan, load_plan
-from vectl.models import Clipboard, Plan, Phase, Step, StepStatus
+from vectl.io import load_plan, save_plan
+from vectl.models import Clipboard, Phase, Plan, Step, StepStatus
 from vectl.plan_path import resolve_state_path
-from vectl.mcp_server import vectl_checkpoint
 
 runner = CliRunner()
 

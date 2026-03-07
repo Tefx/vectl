@@ -18,11 +18,13 @@ from typer.testing import CliRunner
 
 from vectl.cli import app
 from vectl.io import save_plan
-from vectl.models import Phase, PhaseStatus, Plan, Step
 from vectl.mcp_server import (
     vectl_claim as _vectl_claim_tool,
+)
+from vectl.mcp_server import (
     vectl_complete as _vectl_complete_tool,
 )
+from vectl.models import Phase, PhaseStatus, Plan, Step
 
 runner = CliRunner()
 
@@ -207,7 +209,6 @@ class TestMcpAutofixMessage:
 
     def test_no_autofix_message_when_consistent(self, tmp_path: Path) -> None:
         """When plan is consistent, _save() returns empty string for autofix."""
-        import yaml
         from vectl.io import save_plan
         from vectl.models import Phase, PhaseStatus, Plan, Step
 

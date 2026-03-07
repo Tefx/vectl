@@ -7,39 +7,69 @@ pointing to a temporary plan file.
 
 from __future__ import annotations
 
-import os
 import json
+import os
 import subprocess
 from collections.abc import Iterator
 from pathlib import Path
 
-from vectl.io import extract_state, load_state, merge_plan
-from vectl.models import Plan
-from vectl.plan_path import resolve_state_path
-
 import pytest
 import yaml
 
+from vectl.io import extract_state, load_state, merge_plan
 from vectl.mcp_server import (
     _load as _vectl_load,
+)
+from vectl.mcp_server import (
     _save_both as _vectl_save_both,
+)
+from vectl.mcp_server import (
     _save_state as _vectl_save_state,
-    vectl_claim as _vectl_claim_tool,
+)
+from vectl.mcp_server import (
     vectl_check as _vectl_check_tool,
+)
+from vectl.mcp_server import (
+    vectl_claim as _vectl_claim_tool,
+)
+from vectl.mcp_server import (
     vectl_clipboard as _vectl_clipboard_tool,
+)
+from vectl.mcp_server import (
     vectl_complete as _vectl_complete_tool,
+)
+from vectl.mcp_server import (
     vectl_dag as _vectl_dag_tool,
+)
+from vectl.mcp_server import (
     vectl_guide as _vectl_guide_tool,
+)
+from vectl.mcp_server import (
     vectl_lifecycle as _vectl_lifecycle_tool,
+)
+from vectl.mcp_server import (
     vectl_mutate as _vectl_mutate_tool,
+)
+from vectl.mcp_server import (
     vectl_recover as _vectl_recover_tool,
+)
+from vectl.mcp_server import (
     vectl_render as _vectl_render_tool,
+)
+from vectl.mcp_server import (
     vectl_review as _vectl_review_tool,
+)
+from vectl.mcp_server import (
     vectl_search as _vectl_search_tool,
+)
+from vectl.mcp_server import (
     vectl_show as _vectl_show_tool,
+)
+from vectl.mcp_server import (
     vectl_status as _vectl_status_tool,
 )
-from vectl.models import PhaseStatus, PlanError, PlanIOError, StepStatus
+from vectl.models import PhaseStatus, Plan, PlanError, PlanIOError, StepStatus
+from vectl.plan_path import resolve_state_path
 
 # FastMCP @mcp.tool() wraps functions in FunctionTool objects.
 # Access the underlying callable via .fn for direct testing.

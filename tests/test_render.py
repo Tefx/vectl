@@ -2,7 +2,7 @@
 
 import pytest
 
-from vectl.core import render_plan, generate_mermaid_dag, _first_line
+from vectl.core import _first_line, generate_mermaid_dag, render_plan
 from vectl.models import (
     Phase,
     PhaseStatus,

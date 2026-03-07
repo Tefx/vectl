@@ -13,7 +13,6 @@ from vectl.io import load_plan, save_plan
 from vectl.models import (
     GateCheckResult,
     Phase,
-    PhaseProgress,
     PhaseStatus,
     Plan,
     PlanError,

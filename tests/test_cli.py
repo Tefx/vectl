@@ -3,13 +3,14 @@
 from __future__ import annotations
 
 import json
+from pathlib import Path
+
 import pytest
 import yaml
-from pathlib import Path
 from typer.testing import CliRunner
 
-from vectl.cli import app
 from vectl import __version__
+from vectl.cli import app
 from vectl.io import load_plan, save_plan
 from vectl.models import AffinityMode, Phase, PhaseStatus, Plan, Step, StepStatus
 from vectl.plan_path import resolve_state_path
@@ -1116,7 +1117,6 @@ class TestRecover:
         self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
     ) -> None:
         """Recover command shows error when backup file is corrupted."""
-        import os
 
         plan_path = tmp_path / "plan.yaml"
         backup_root = tmp_path / ".git"
@@ -1222,7 +1222,6 @@ class TestFullLifecycle:
         """s2 depends on s1. After completing s1, s2 should appear in next."""
         # s2 should NOT be next initially
         result = runner.invoke(app, ["next", "--plan", str(plan_file)])
-        lines = result.output
         # s2 should not appear as a claimable step (it's blocked)
         # We can't assert "s2 not in output" because it might appear in dep columns
 

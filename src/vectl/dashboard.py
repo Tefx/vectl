@@ -13,7 +13,7 @@ from datetime import datetime, timezone
 from importlib.resources import files
 
 from vectl.core import generate_mermaid_dag
-from vectl.models import Phase, PhaseStatus, Plan, Step, StepStatus
+from vectl.models import Phase, Plan, Step, StepStatus
 from vectl.semantics import is_step_locked
 
 

@@ -21,6 +21,7 @@ from vectl.models import (
     PhaseStatus,
     Plan,
     PlanError,
+    PlanValidationIssue,
     RejectionEntry,
     ReviewResult,
     SearchMatch,
@@ -28,13 +29,11 @@ from vectl.models import (
     Step,
     StepChange,
     StepStatus,
-    PlanValidationIssue,
 )
 
 # Lazy import to avoid circular — semantics imports models, core imports models.
 # is_step_locked is only used in render, which is late-bound.
 from vectl.semantics import is_step_locked as _is_step_locked_shared
-
 
 # ---------------------------------------------------------------------------
 # DAG Validation
@@ -2016,7 +2015,7 @@ def _mermaid_step_dag(plan: Plan, phase_id: str) -> str:
     if ph is None:
         raise PlanError(f"Phase '{phase_id}' not found.")
 
-    lines: list[str] = [f"flowchart TD"]
+    lines: list[str] = ["flowchart TD"]
 
     for step in ph.steps:
         icon = _STEP_ICON.get(step.status, "?")

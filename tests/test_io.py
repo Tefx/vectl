@@ -66,6 +66,7 @@ def make_plan_for_state_tests() -> Plan:
                         id="s_done",
                         name="Done",
                         status=StepStatus.DONE,
+                        done_at="2026-01-01T12:00:00Z",
                         description="done step description",
                         verification="run done checks",
                         refs=["docs/done.md"],
@@ -1200,6 +1201,7 @@ class TestStateExtractionAndMerge:
         }
         assert state.steps["s_claimed"].status == StepStatus.CLAIMED
         assert state.steps["s_claimed"].claimed_by == "agent-a"
+        assert state.steps["s_done"].done_at == "2026-01-01T12:00:00Z"
         assert state.steps["s_skipped"].skipped_reason == "not needed"
         assert state.steps["s_rejected"].rejection_reason == "bad approach"
         assert state.phases["core"].status == PhaseStatus.IN_PROGRESS
@@ -1259,6 +1261,7 @@ class TestStateExtractionAndMerge:
         )
         assert all(step.claimed_by is None for phase in stripped.phases for step in phase.steps)
         assert all(step.claimed_at is None for phase in stripped.phases for step in phase.steps)
+        assert all(step.done_at is None for phase in stripped.phases for step in phase.steps)
         assert all(step.evidence is None for phase in stripped.phases for step in phase.steps)
         assert all(step.skipped_reason is None for phase in stripped.phases for step in phase.steps)
         assert all(
@@ -1323,6 +1326,7 @@ class TestStateExtractionAndMerge:
                 ),
                 "s_done": StepState(
                     status=StepStatus.SKIPPED,
+                    done_at="2026-03-02T00:00:00Z",
                     skipped_reason="obsolete",
                 ),
             },
@@ -1344,6 +1348,7 @@ class TestStateExtractionAndMerge:
         assert merged.phases[0].steps[1].rejection_history
         assert isinstance(merged.phases[0].steps[1].rejection_history[0], RejectionEntry)
         assert merged.phases[0].steps[2].status == StepStatus.SKIPPED
+        assert merged.phases[0].steps[2].done_at == "2026-03-02T00:00:00Z"
         assert merged.phases[0].steps[2].skipped_reason == "obsolete"
 
     def test_merge_plan_partial_state(self) -> None:
@@ -1378,6 +1383,68 @@ class TestStateExtractionAndMerge:
         normalized = merge_plan(strip_state(original), extract_state(original))
 
         assert normalized == original
+
+    def test_merge_plan_state_done_at_precedence_over_stale_definition(self) -> None:
+        plan_def = make_plan_for_state_tests()
+        plan_def.phases[0].steps[2].done_at = "2020-01-01T00:00:00Z"
+
+        state = PlanState(
+            plan_id="",
+            steps={
+                "s_done": StepState(
+                    status=StepStatus.DONE,
+                    done_at="2026-03-08T00:00:00Z",
+                )
+            },
+            phases={},
+        )
+
+        merged = merge_plan(plan_def, state)
+
+        assert merged.phases[0].steps[2].done_at == "2026-03-08T00:00:00Z"
+
+    def test_merge_plan_state_can_clear_done_at(self) -> None:
+        plan_def = make_plan_for_state_tests()
+        plan_def.phases[0].steps[2].done_at = "2026-01-01T12:00:00Z"
+
+        state = PlanState(
+            plan_id="",
+            steps={
+                "s_done": StepState(
+                    status=StepStatus.DONE,
+                    done_at=None,
+                )
+            },
+            phases={},
+        )
+
+        merged = merge_plan(plan_def, state)
+
+        assert merged.phases[0].steps[2].done_at is None
+
+    def test_merge_plan_backward_compatible_when_done_at_missing_in_state_json(
+        self, tmp_path: Path
+    ) -> None:
+        plan_def = make_plan_for_state_tests()
+        plan_def.phases[0].steps[2].done_at = "2026-01-01T12:00:00Z"
+
+        state_path = tmp_path / "state.json"
+        state_path.write_text(
+            json.dumps(
+                {
+                    "plan_id": "",
+                    "steps": {"s_done": {"status": "done"}},
+                    "phases": {},
+                }
+            ),
+            encoding="utf-8",
+        )
+
+        state, _ = load_state(state_path)
+        merged = merge_plan(plan_def, state)
+
+        assert state.steps["s_done"].done_at is None
+        assert merged.phases[0].steps[2].done_at is None
 
 
 class TestOrphanDetection:

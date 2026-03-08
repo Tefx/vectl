@@ -15985,3 +15985,67 @@ phases:
     - unified-state-gate-review-remediation.s2-io-field-cleanup
     - unified-state-gate-review-remediation.s3-field-level-merge
     agent: integration-verifier
+  - id: unified-state-gate-review-remediation.gate
+    name: gate
+    status: pending
+    description: 'As an INDEPENDENT REVIEWER (gate-reviewer), assess whether the unified-state-gate-review-remediation
+      phase meets the quality bar for completion.
+
+
+      YOU ARE THE QUALITY GATE. Your job is to BLOCK progress if quality is insufficient.
+
+
+      Review criteria:
+
+      1. Completeness: All 5 implementation steps executed with evidence?
+
+      2. Evidence Quality: Evidence is specific, verifiable, not vague?
+
+      3. SF items resolved: Migration warning added, lifecycle extracted?
+
+      4. S items resolved: mypy added, io cleanup done, field-level merge works?
+
+      5. Test suite: Full suite passes, no regressions?
+
+      6. Integration: verify-remediation step passed with detailed evidence?
+
+
+      Independence: You MUST NOT be the same agent as any implementation step in this
+      phase.'
+    verification: All steps completed. Evidence reviewed. No blocking issues remain.
+    evidence_template: '## Gate Review Report
+
+
+      **Reviewer**: gate-reviewer (independent of phase implementation)
+
+      **Phase**: unified-state-gate-review-remediation
+
+
+      ### Step-by-Step Review
+
+
+      | Step ID | Status | Evidence Quality | Concerns |
+
+      |---------|--------|------------------|----------|
+
+      | sf1-migration-overwrite-warning | ... | ... | ... |
+
+      | sf2-extract-lifecycle | ... | ... | ... |
+
+      | s1-add-mypy-devdep | ... | ... | ... |
+
+      | s2-io-field-cleanup | ... | ... | ... |
+
+      | s3-field-level-merge | ... | ... | ... |
+
+      | verify-remediation | ... | ... | ... |
+
+
+      ### Gate Decision
+
+      - [ ] OPEN: Phase passes gate, all remediation items resolved
+
+      - [ ] BLOCKED: Issues must be resolved before completion'
+    depends_on:
+    - unified-state-gate-review-remediation.verify-remediation
+    agent: gate-reviewer

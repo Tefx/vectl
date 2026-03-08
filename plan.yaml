@@ -16228,7 +16228,7 @@ phases:
 
       - [ ] BLOCKED: Issues must be resolved before completion'
     depends_on:
-    - unified-state-gate-review-remediation.verify-remediation
+    - unified-state-gate-review-remediation.verify-remediation-retest-affinity-cleanup
     agent: gate-reviewer
   - id: unified-state-gate-review-remediation.verify-remediation-fix-affinity-cleanup
     name: verify-remediation-fix-affinity-cleanup

@@ -144,13 +144,21 @@ def _die(msg: str, code: int = 1) -> None:
     raise typer.Exit(code)
 
 
-def _check_not_linked_worktree() -> None:
+def _check_not_linked_worktree(plan: Path | None = None) -> None:
     """Guard: block mutations in linked worktrees.
 
-    Raises typer.Exit if running in a linked worktree without VECTL_PLAN_PATH set.
+    Raises typer.Exit if running in a linked worktree without explicit plan path.
+    Explicit path can be provided via:
+      - VECTL_PLAN_PATH environment variable
+      - --plan CLI option
     """
+    # Escape hatch: explicit path via env var
     if os.environ.get("VECTL_PLAN_PATH"):
-        return  # Escape hatch: explicit path set
+        return
+
+    # Escape hatch: explicit path via --plan option
+    if plan is not None:
+        return
 
     is_linked, main_root = is_linked_worktree()
     if is_linked:
@@ -1442,7 +1450,7 @@ def check_cmd(
     plan: Path | None = PlanOption,
 ) -> None:
     """Toggle or add a checklist item in a step's description."""
-    _check_not_linked_worktree()
+    _check_not_linked_worktree(plan)
     p, def_h, state_h, plan_path = _load(plan)
     try:
         p = update_checklist(p, step_id, check=keyword, append=add)
@@ -1648,7 +1656,7 @@ def add_step_cmd(
       --status done --evidence "commit abc"
       --status skipped --skipped-reason "absorbed into X"
     """
-    _check_not_linked_worktree()
+    _check_not_linked_worktree(plan)
     p, def_h, state_h, plan_path = _load(plan)
 
     depends_on = [d.strip() for d in after.split(",") if d.strip()] if after else None
@@ -1718,7 +1726,7 @@ def add_phase_cmd(
     plan: Path | None = PlanOption,
 ) -> None:
     """Add a new phase to the plan."""
-    _check_not_linked_worktree()
+    _check_not_linked_worktree(plan)
     p, def_h, state_h, plan_path = _load(plan)
 
     depends_on = [d.strip() for d in after.split(",") if d.strip()] if after else None
@@ -1782,7 +1790,7 @@ def edit_plan_cmd(
         - User instruction in this conversation (2026-02-12): "No manual YAML edits",
           and agreed `--*-file` approach.
     """
-    _check_not_linked_worktree()
+    _check_not_linked_worktree(plan)
     from vectl.core import _SENTINEL, edit_plan
 
     if project_guidance_file is not None and project_guidance is not None:
@@ -1866,7 +1874,7 @@ def edit_step_cmd(
     plan: Path | None = PlanOption,
 ) -> None:
     """Edit a step's metadata."""
-    _check_not_linked_worktree()
+    _check_not_linked_worktree(plan)
     from vectl.core import _SENTINEL
 
     p, def_h, state_h, plan_path = _load(plan)
@@ -1950,7 +1958,7 @@ def edit_phase_cmd(
     plan: Path | None = PlanOption,
 ) -> None:
     """Edit a phase's metadata."""
-    _check_not_linked_worktree()
+    _check_not_linked_worktree(plan)
     from vectl.core import _SENTINEL
 
     p, def_h, state_h, plan_path = _load(plan)
@@ -1995,7 +2003,7 @@ def remove_step_cmd(
     plan: Path | None = PlanOption,
 ) -> None:
     """Remove a pending step from its phase."""
-    _check_not_linked_worktree()
+    _check_not_linked_worktree(plan)
     p, def_h, state_h, plan_path = _load(plan)
     try:
         p = remove_step(p, step_id, force=force)
@@ -2018,7 +2026,7 @@ def move_step_cmd(
     plan: Path | None = PlanOption,
 ) -> None:
     """Move a pending step to a different phase."""
-    _check_not_linked_worktree()
+    _check_not_linked_worktree(plan)
     p, def_h, state_h, plan_path = _load(plan)
 
     # Capture deps before move (move_step clears them — lossy operation)
@@ -2141,7 +2149,7 @@ def add_steps_cmd(
       - name: "Step B"
         after: ["phase.step-a"]
     """
-    _check_not_linked_worktree()
+    _check_not_linked_worktree(plan)
     import yaml
 
     raw = sys.stdin.read()

@@ -8735,7 +8735,8 @@ phases:
 
       Review criteria:
 
-      1. Completeness: All 5 implementation steps executed?
+      1. Completeness: All original Phase 3 implementation steps plus the bounded
+      remediation chain executed?
 
       2. MCP server: _load() returns (plan, def_hash) only. All saves go through _save_plan()
       with commit.
@@ -8744,30 +8745,261 @@ phases:
 
       4. Orphan detection: Fully removed from io.py, core.py, models.py.
 
-      5. Split-state functions: Fully removed from io.py, models.py. No dangling imports.
+      5. Split-state artifacts: `resolve_state_path()` and companion `state.json`
+      fallback logic are removed from production unified-state paths, or any remaining
+      compatibility surface is explicitly justified and tested.
 
-      6. Validate/recover: Updated for unified state.
+      6. Source-of-truth alignment: repo is aligned to the chosen code -> ADR direction;
+      companion `state.json` is ignored rather than merged, and ADR/comments/tests/gate
+      text no longer claim first-load migration or `.migrated` rename semantics.
 
-      7. No regressions: Full test suite passes.
+      7. Validate/recover: Updated for unified state without stale split-state assumptions.
 
-      8. REALISM CHECK: At least one actual CLI command and one MCP tool invocation
-      showing plan.yaml git commit after operation.
+      8. No regressions: Focused regressions pass and evidence covers both the authoritative
+      `plan.yaml` path and the leftover-companion-state failure path.
+
+      9. REALISM CHECK: Evidence includes actual focused command output demonstrating
+      the ignore-state posture and helper cleanup, not only a generic test summary.
 
 
       Note: claims-path production wiring for claim/complete/defer is intentionally
       excluded from this phase gate because it is remediated earlier in unified-state-core
       and must be complete before this phase begins.'
-    verification: All Phase 3 steps completed. Evidence reviewed. Full test suite
-      passes. No references to state.json in non-migration code. Ready for Phase 4.
+    verification: '- All original Phase 3 steps and remediation steps completed
+
+      - Evidence reviewed for code -> ADR ignore-state alignment
+
+      - Focused regressions prove companion `state.json` is ignored and does not migrate,
+      rename, or override `plan.yaml`
+
+      - `resolve_state_path()` removal or explicit bounded compatibility status is
+      verified with file evidence
+
+      - Remediation freeze evidence is present and the snapshot was reviewed clean
+
+      - Ready for Phase 4 only if no unresolved blockers remain'
     refs:
     - docs/ADR-unified-state.md
+    - src/vectl/plan_path.py
+    - tests/test_cli.py
+    - tests/test_mcp.py
     depends_on:
     - unified-state-cli-mcp.rewrite-mcp-load-save
     - unified-state-cli-mcp.rewrite-cli-load-save
     - unified-state-cli-mcp.remove-orphan-detection
     - unified-state-cli-mcp.remove-deprecated-state-functions
     - unified-state-cli-mcp.update-validate-recover
+    - unified-state-cli-mcp.align-ignore-state-posture
+    - unified-state-cli-mcp.retest-ignore-state-posture
+    - unified-state-cli-mcp.freeze-before-gate-remediation
     agent: gate-reviewer
+  - id: unified-state-cli-mcp.align-ignore-state-posture
+    name: Align ADR and helper cleanup for ignore-state posture
+    status: pending
+    description: 'Resolve the gate blockers by making the unified-state source of
+      truth explicit: align the repo to the existing ignore-state posture (code ->
+      ADR), not the abandoned lazy-migration design.
+
+
+      Scope:
+
+      - `docs/ADR-unified-state.md`
+
+      - `src/vectl/plan_path.py`
+
+      - any narrow comments/tests/gate wording that still describe `state.json` merge-on-load
+      or `.migrated` rename behavior
+
+
+      Required outcomes:
+
+      - Choose one source of truth and implement it consistently: companion `.git/vectl/state.json`
+      is ignored by current unified-state code and that posture becomes the documented
+      compatibility contract.
+
+      - Remove `resolve_state_path()` from `src/vectl/plan_path.py`, or prove it remains
+      only behind an explicitly scoped compatibility boundary with active call sites
+      named. Preferred outcome: remove the helper and eliminate remaining production
+      references.
+
+      - Remove stale split-state fallback wording such as `.vectl/state.json` fallback
+      comments when no runtime behavior depends on it.
+
+
+      Failure-mode checklist:
+
+      - relative vs absolute path behavior after helper removal or call-site rewrite
+      remains correct for `resolve_plan_path()` and `resolve_claims_path()`
+
+      - missing-file fallback behavior is explicit: absence of companion `state.json`
+      does not trigger migration, warning-only behavior is documented if applicable
+
+      - explicit clear / null overwrite semantics are unchanged because no runtime
+      state is imported from `state.json`
+
+      - stale-definition vs new-state precedence is explicit: `plan.yaml` remains
+      authoritative; ignored companion state must not override inline plan state
+
+      - partial-write / CAS-conflict behavior is explicit: no new dual-write or migration
+      write path is introduced by this fix
+
+
+      State semantics bullets:
+
+      - last-writer-wins applies only to committed `plan.yaml` updates under the existing
+      unified-state write path
+
+      - claims in `.git/vectl/claims.json` remain ephemeral and unchanged
+
+      - backward-compatible legacy behavior is limited to safely tolerating a leftover
+      companion `state.json` without reading or mutating it, unless the implementation
+      intentionally removes even that residual mention and updates docs/tests accordingly
+
+
+      Concrete regressions to add/update:
+
+      - targeted regression for `src/vectl/plan_path.py` proving no production helper
+      still resolves companion `state.json`
+
+      - targeted regression for legacy companion `state.json` presence proving unified-state
+      load path ignores it and preserves `plan.yaml` state
+
+      - targeted regression for docs/comments/gate wording alignment where the old
+      migration-on-first-load semantics were previously asserted
+
+
+      Out of scope guardrail:
+
+      - do not reintroduce split-state migration machinery, dual-write, or broad IO
+      rewrites
+
+      - do not redesign claims storage or phase boundaries
+
+      - keep changes focused on ADR/code-comment/test/gate alignment plus helper usage
+      removal'
+    verification: '- Main path: targeted tests for plan-path and unified-state load
+      behavior pass with the chosen ignore-state contract
+
+      - Failure path: regression test proves leftover companion `state.json` does
+      not migrate, override, or rename anything, and no `.vectl/state.json` fallback
+      helper remains in production code unless explicitly justified in the step evidence
+
+      - Proof: no legacy `resolve_state_path()` call pattern remains where removal
+      scope requires cleanup; ADR, comments, and gate language all match the chosen
+      code -> ADR alignment'
+    depends_on:
+    - unified-state-cli-mcp.rewrite-mcp-load-save
+    - unified-state-cli-mcp.rewrite-cli-load-save
+    - unified-state-cli-mcp.remove-orphan-detection
+    - unified-state-cli-mcp.remove-deprecated-state-functions
+    - unified-state-cli-mcp.update-validate-recover
+    agent: python-senior
+  - id: unified-state-cli-mcp.retest-ignore-state-posture
+    name: Independent retest of ignore-state compatibility and helper removal
+    status: pending
+    description: 'As an INDEPENDENT TESTER (integration-verifier), validate the bounded
+      remediation for unified-state CLI/MCP gate blockers from a fresh perspective.
+
+
+      YOUR GOAL IS TO FIND PROBLEMS, not to confirm it works.
+
+
+      Test for:
+
+      - Happy path: unified-state CLI/MCP behavior works with `plan.yaml` as the only
+      durable source of truth
+
+      - Edge cases: legacy companion `state.json` present beside a plan, relative/absolute
+      plan path resolution, non-git temp directories if any fixture still covers them
+
+      - Error scenarios: stale docs/comments/tests still asserting merge-on-load or
+      `.migrated` rename semantics; lingering production references to `resolve_state_path()`
+      or `.vectl/state.json` fallback
+
+      - Compatibility: ignore-state posture is explicit, consistent, and bounded;
+      no silent migration side effects occur
+
+
+      Document ALL findings. A test that discovers issues is a SUCCESS.
+
+      A test that finds nothing must justify the coverage achieved.
+
+
+      Independence Level: L1'
+    verification: '- Run focused regression coverage for ADR/code/test alignment and
+      plan-path cleanup
+
+      - Provide explicit evidence for the main path (`plan.yaml` authoritative, companion
+      state ignored) and the highest-risk failure path (leftover `state.json` does
+      not migrate, rename, or override state)
+
+      - Confirm helper usage/removal status with concrete file evidence, not a generic
+      ''tests pass'' statement'
+    evidence_template: "## Verification Report\n\n**Tester**: integration-verifier\
+      \ (independent of implementation)\n**Scope**: unified-state ignore-state remediation\n\
+      **Independence Level**: L1\n**Timestamp**: <ISO 8601>\n\n### Test Execution\n\
+      - Commands executed:\n  ```\n  <actual focused test commands>\n  ```\n- Output\
+      \ summary: <key results>\n\n### Issues Found\n\nFinding issues is the primary\
+      \ value of verification.\n\n| Severity   | Description   | Location        \
+      \        | Reproduction |\n| ---------- | ------------- | -----------------------\
+      \ | ------------ |\n| blocker    | <issue>       | <file:line or command>  |\
+      \ <steps>      |\n| should_fix | <issue>       | <location>              | <steps>\
+      \      |\n| suggestion | <improvement> | <context>               | -       \
+      \     |\n| tech_debt  | <known debt>  | <location>              | -        \
+      \    |\n\n### Coverage Assessment\n- Happy path verified: ✅/❌\n- Edge cases\
+      \ tested: <count>\n- Highest-risk failure path verified: leftover companion\
+      \ `state.json` does not migrate, rename, or override `plan.yaml`\n- Helper status\
+      \ verified: `resolve_state_path()` removed or explicitly justified with active\
+      \ call sites\n- NOT tested: <areas not covered and why>\n\n### Verdict\n- [\
+      \ ] PASS\n- [ ] ISSUES_FOUND\n- [ ] INCOMPLETE\n\n**Confidence**: high/medium/low"
+    depends_on:
+    - unified-state-cli-mcp.align-ignore-state-posture
+    agent: integration-verifier
+  - id: unified-state-cli-mcp.freeze-before-gate-remediation
+    name: Freeze remediation snapshot before gate
+    status: pending
+    description: 'Freeze: lock the remediation snapshot before the phase gate reviews
+      the bounded ignore-state repair.
+
+
+      Requirements:
+
+      - Record `git rev-parse HEAD`
+
+      - Record `git status --short` and verify the remediation snapshot is clean
+
+      - Record environment/context used for the focused retest
+
+      - State explicitly that no code changes are allowed until `unified-state-cli-mcp.gate`
+      completes
+
+
+      Scope is limited to the remediation chain for ADR/code alignment and helper
+      cleanup.'
+    verification: '- Snapshot evidence includes `git rev-parse HEAD`
+
+      - Working tree status recorded and clean for the remediation snapshot
+
+      - Environment declaration captured
+
+      - Explicit freeze statement recorded: no code changes after freeze until gate
+      completes'
+    evidence_template: '## Freeze Evidence
+
+
+      - Commit: `<git rev-parse HEAD>`
+
+      - Working tree: `<git status --short>`
+
+      - Environment: <python version / relevant env>
+
+      - Freeze statement: no code changes after this point until `unified-state-cli-mcp.gate`
+      completes
+
+      '
+    depends_on:
+    - unified-state-cli-mcp.retest-ignore-state-posture
+    agent: integration-verifier
 - id: unified-state-migration
   name: 'Unified State: Migration'
   status: pending

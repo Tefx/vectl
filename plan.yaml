@@ -15316,7 +15316,7 @@ phases:
       removing failing path that produced `(True, None)` and incorrect local fallback.'
   - id: unified-state-verification.multi-agent-worktree-test-retest
     name: multi-agent-worktree-test-retest
-    status: pending
+    status: claimed
     description: 'Re-test the linked-worktree main-root resolution blocker after `unified-state-verification.multi-agent-worktree-test-fix`.
 
 
@@ -15357,6 +15357,8 @@ phases:
     depends_on:
     - unified-state-verification.multi-agent-worktree-test-fix
     agent: integration-verifier
+    claimed_by: integration-verifier
+    claimed_at: '2026-03-08T16:55:41.842651+00:00'
 - id: test-collection-remediation
   name: Test Collection Remediation
   status: done

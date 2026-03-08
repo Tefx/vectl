@@ -21,7 +21,7 @@ Sub-agents repeatedly executed `git restore plan.yaml`, rolling back plan struct
 
 ### Retire state.json. Unify state back into plan.yaml.
 
-Completion status (`status`, `evidence`, `done_at`, `claimed_by`) moves back into `plan.yaml` as inline fields on each step. Every write operation (`complete`, `mutate`, `init`) is immediately followed by `git commit --only --no-verify plan.yaml`.
+Completion status (`status`, `evidence`, `done_at`, `claimed_by`) moves back into `plan.yaml` as inline fields on each step. Every write operation (`complete`, `mutate`, `init`) is immediately followed by `git commit --only --no-verify plan.yaml` (best-effort: if commit fails — e.g. not a git repo — the plan file is still written successfully; only rollback protection is lost).
 
 Claims (ephemeral coordination) move to `.git/vectl/claims.json`, protected by `flock()`.
 

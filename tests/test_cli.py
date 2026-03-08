@@ -14,7 +14,7 @@ from vectl.claims import load_claims
 from vectl.cli import app
 from vectl.io import load_plan_definition as load_plan, load_plan_definition, save_plan
 from vectl.models import AffinityMode, Phase, PhaseStatus, Plan, Step, StepStatus
-from vectl.plan_path import resolve_claims_path, resolve_state_path
+from vectl.plan_path import resolve_claims_path
 
 runner = CliRunner()
 
@@ -29,6 +29,10 @@ def _must_find_phase(plan: Plan, phase_id: str) -> Phase:
     phase = plan.find_phase(phase_id)
     assert phase is not None
     return phase
+
+
+def _companion_state_path(plan_path: Path) -> Path:
+    return plan_path.parent / ".vectl" / "state.json"
 
 
 @pytest.fixture
@@ -1082,23 +1086,21 @@ class TestValidate:
         save_plan(plan, plan_path)
 
         # Stale split-state file should not affect load shape/contents.
-        stale_state_path = tmp_path / ".vectl" / "state.json"
+        stale_state_path = _companion_state_path(plan_path)
         stale_state_path.parent.mkdir(parents=True, exist_ok=True)
-        stale_state_path.write_text(
-            json.dumps(
-                {
-                    "plan_id": "orphan-test",
-                    "phases": {"orphan_phase": {"status": "done"}},
-                    "steps": {"orphan_step": {"status": "claimed", "claimed_by": "agent-x"}},
-                }
-            ),
-            encoding="utf-8",
-        )
+        stale_payload = {
+            "plan_id": "orphan-test",
+            "phases": {"orphan_phase": {"status": "done"}},
+            "steps": {"orphan_step": {"status": "claimed", "claimed_by": "agent-x"}},
+        }
+        stale_state_path.write_text(json.dumps(stale_payload), encoding="utf-8")
 
         loaded_plan, def_hash, target = _load(plan_path)
         assert loaded_plan.project == "orphan-test"
         assert def_hash
         assert target == plan_path
+        assert json.loads(stale_state_path.read_text(encoding="utf-8")) == stale_payload
+        assert not stale_state_path.with_suffix(".json.migrated").exists()
 
 
 class TestRecover:
@@ -1121,7 +1123,7 @@ class TestRecover:
         backup_path.parent.mkdir(parents=True, exist_ok=True)
         save_plan(backup, backup_path)
 
-        state_path = resolve_state_path(plan_path)
+        state_path = _companion_state_path(plan_path)
         state_path.parent.mkdir(parents=True, exist_ok=True)
         state_path.write_text(
             json.dumps(
@@ -1160,7 +1162,7 @@ class TestRecover:
         )
         save_plan(current, plan_path)
 
-        state_path = resolve_state_path(plan_path)
+        state_path = _companion_state_path(plan_path)
         state_path.parent.mkdir(parents=True, exist_ok=True)
         state_path.write_text(
             json.dumps(
@@ -1199,7 +1201,7 @@ class TestRecover:
         # Write corrupted backup content
         backup_path.write_text("invalid: yaml [[[[")
 
-        state_path = resolve_state_path(plan_path)
+        state_path = _companion_state_path(plan_path)
         state_path.parent.mkdir(parents=True, exist_ok=True)
         state_path.write_text(
             json.dumps(
@@ -1242,7 +1244,7 @@ class TestRecover:
         vectl_dir.mkdir(parents=True, exist_ok=True)
         save_plan(backup, backup_path)
 
-        state_path = resolve_state_path(plan_path)
+        state_path = _companion_state_path(plan_path)
         state_path.parent.mkdir(parents=True, exist_ok=True)
         state_path.write_text(
             json.dumps(

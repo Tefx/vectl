@@ -261,8 +261,8 @@ def _legacy_migration_plan_file(tmp_path: Path) -> Path:
 
 
 def _state_json_path(plan_file: Path) -> Path:
-    """Return state path for a plan path and verify it is under that plan."""
-    return plan_file.with_name("state.json")
+    """Return legacy companion state path used only for ignore regressions."""
+    return plan_file.parent / ".vectl" / "state.json"
 
 
 @pytest.fixture()
@@ -297,14 +297,6 @@ def plan_file(tmp_path: Path) -> Iterator[Path]:
 def _reload_plan(path: Path) -> dict:
     """Re-read plan.yaml contents as dict."""
     return yaml.safe_load(path.read_text())
-
-
-def _read_state_json(path: Path) -> dict:
-    """Load companion state.json payload as a plain dictionary."""
-    state_path = _state_json_path(path)
-    if not state_path.exists():
-        return {}
-    return json.loads(state_path.read_text())
 
 
 def _legacy_step_ids(plan_data: dict[str, object] | None = None) -> set[str]:
@@ -1879,6 +1871,7 @@ class TestMcpUnifiedPlanPath:
 
     def test_load_ignores_stray_state_json(self, plan_file: Path) -> None:
         stray_state = _state_json_path(plan_file)
+        stray_state.parent.mkdir(parents=True, exist_ok=True)
         stray_state.write_text(json.dumps({"steps": {"a.1": {"status": "done"}}}))
 
         plan, _ = _vectl_load()
@@ -1886,6 +1879,8 @@ class TestMcpUnifiedPlanPath:
         assert found is not None
         _, step = found
         assert step.status == StepStatus.PENDING
+        assert stray_state.exists()
+        assert not stray_state.with_suffix(".json.migrated").exists()
 
     def test_save_plan_cas_conflict_raises_plan_error(self, plan_file: Path) -> None:
         plan, def_hash = _vectl_load()

@@ -9217,25 +9217,121 @@ phases:
 
       Review criteria:
 
-      1. The fix step stayed within scope (collection repair only, test intent preserved).
+      1. The collection repair stayed within scope and restored collectability.
 
-      2. Independent retest evidence includes both full repository collection and
-      targeted module collection/execution.
+      2. The runtime remediation resolved the three `tests/test_agent_field.py` CLI
+      failures without weakening intended linked-worktree guard semantics.
 
-      3. Any remaining failures are clearly classified as non-collection follow-up,
-      if applicable.
+      3. Independent retest evidence includes both the original collection checks
+      and the targeted runtime commands for the regression bundle.
 
-      4. No dependency edge was introduced that blocks `unified-state-core`.'
-    verification: '- Evidence confirms scoped fix only in the three targeted test
-      modules
+      4. Any remaining failures are clearly classified as non-phase follow-up, if
+      applicable.
+
+      5. No dependency edge was introduced that blocks `unified-state-core`.'
+    verification: '- Evidence confirms scoped fixes only for collection repair plus
+      the targeted CLI runtime follow-up
 
       - Independent retest includes `pytest --collect-only tests -q`
 
       - Independent retest includes targeted collect-only and targeted execution for
-      the three modules
+      the three-module bundle
+
+      - Independent retest includes `uv run pytest tests/test_agent_field.py -q`
+
+      - Independent retest includes `uv run pytest tests/test_agent_field.py tests/test_autofix_message.py
+      tests/test_mcp.py -q`
 
       - Phase remains independent of `unified-state-core` critical-path steps'
     depends_on:
     - test-collection-remediation.fix-fn-collection-errors
     - test-collection-remediation.retest-full-collection-and-targeted-modules
+    - test-collection-remediation.fix-cli-agent-field-runtime
+    - test-collection-remediation.retest-agent-field-runtime-and-regression-bundle
     agent: gate-reviewer
+  - id: test-collection-remediation.fix-cli-agent-field-runtime
+    name: Fix CLI agent-field runtime regressions
+    status: pending
+    description: "Fix: targeted runtime remediation for `tests/test_agent_field.py`\
+      \ after collection recovery.\n\nPriority: MEDIUM (`should_fix`).\n\nIssue:\n\
+      - Collection now passes, but targeted runtime still fails for:\n  - `TestCliAddStepAgent::test_add_step_with_agent`\n\
+      \  - `TestCliEditStepAgent::test_edit_step_set_agent`\n  - `TestCliEditStepAgent::test_edit_step_clear_agent`\n\
+      - Failure shape: expected exit code `0`, got `SystemExit(1)`.\n- Likely surface:\
+      \ linked-worktree guard interaction with CLI mutate flow when `--plan` is explicitly\
+      \ provided.\n\nTasks:\n- Diagnose whether the regression is in CLI invocation\
+      \ assumptions, mutate-path guard behavior, or test setup drift.\n- Update the\
+      \ implementation and/or targeted test assumptions so explicit `--plan` CLI mutate\
+      \ flows succeed in these tests while preserving the intended linked-worktree\
+      \ guard semantics for implicit or disallowed worktree mutations.\n- Keep scope\
+      \ limited to this targeted runtime regression; do not broaden into `unified-state-core`\
+      \ or unrelated CLI behavior.\n\nRemediation loop metadata:\n- prior_loop: [`test-collection-remediation.fix-fn-collection-errors`,\
+      \ `test-collection-remediation.retest-full-collection-and-targeted-modules`]\n\
+      - remaining_blocker: targeted CLI runtime still exits with `SystemExit(1)` in\
+      \ three agent-field tests after collection repair.\n- why_new_loop: the prior\
+      \ loop restored collectability, but it did not resolve runtime behavior for\
+      \ explicit `--plan` mutate commands under worktree-guard coverage.\n\nOut of\
+      \ scope:\n- Any dependency edge that blocks `unified-state-core`\n- Reworking\
+      \ linked-worktree guard semantics beyond what is required for the explicit-plan\
+      \ CLI path"
+    verification: '- Root cause is identified in the CLI mutate path and the scoped
+      fix preserves intended linked-worktree guard behavior
+
+      - The three named tests in `tests/test_agent_field.py` are updated or made to
+      pass for the correct reason
+
+      - Evidence explains why explicit `--plan` remains allowed (or what assumption
+      changed) without weakening the guard for disallowed paths'
+    depends_on:
+    - test-collection-remediation.retest-full-collection-and-targeted-modules
+    agent: python-executor
+  - id: test-collection-remediation.retest-agent-field-runtime-and-regression-bundle
+    name: Retest agent-field runtime and regression bundle
+    status: pending
+    description: 'As an INDEPENDENT TESTER (`integration-verifier`), validate that
+      the targeted CLI agent-field runtime regression is fixed without regressing
+      the linked-worktree guard semantics covered by the surrounding tests.
+
+
+      YOUR GOAL IS TO FIND PROBLEMS, not to confirm it works.
+
+
+      Test for:
+
+      - Happy path: `tests/test_agent_field.py` passes end-to-end under the CLI test
+      runner.
+
+      - Regression bundle: `tests/test_agent_field.py`, `tests/test_autofix_message.py`,
+      and `tests/test_mcp.py` still pass together.
+
+      - Guard integrity: any remaining failures are classified clearly as runtime
+      behavior vs guard-semantic regression.
+
+
+      Independence Level: L1
+
+
+      Dependency rationale:
+
+      - Depends only on the targeted runtime fix step in this auxiliary phase.
+
+      - Does not gate or serialize `unified-state-core`.'
+    verification: '- Run: `uv run pytest tests/test_agent_field.py -q`
+
+      - Run: `uv run pytest tests/test_agent_field.py tests/test_autofix_message.py
+      tests/test_mcp.py -q`
+
+      - Evidence states whether the three previously failing CLI tests now pass and
+      whether any remaining failures indicate a linked-worktree guard regression'
+    evidence_template: "## Verification Report\n\n**Tester**: integration-verifier\
+      \ (independent of implementation)\n**Scope**: Targeted CLI agent-field runtime\
+      \ regression and adjacent regression bundle\n**Independence Level**: L1\n\n\
+      ### Test Execution\n- Commands executed:\n  ```\n  uv run pytest tests/test_agent_field.py\
+      \ -q\n  uv run pytest tests/test_agent_field.py tests/test_autofix_message.py\
+      \ tests/test_mcp.py -q\n  ```\n- Actual output:\n  ```\n  <paste stdout/stderr>\n\
+      \  ```\n\n### Focus Checks\n- Previously failing tests:\n  - TestCliAddStepAgent::test_add_step_with_agent\n\
+      \  - TestCliEditStepAgent::test_edit_step_set_agent\n  - TestCliEditStepAgent::test_edit_step_clear_agent\n\
+      - Guard semantics preserved: <yes/no with brief evidence>\n\n### Verdict\n-\
+      \ [ ] PASS\n- [ ] ISSUES_FOUND\n- [ ] INCOMPLETE"
+    depends_on:
+    - test-collection-remediation.fix-cli-agent-field-runtime
+    agent: integration-verifier

@@ -68,7 +68,7 @@ from vectl.mcp_server import (
 from vectl.mcp_server import (
     vectl_status as _vectl_status_tool,
 )
-from vectl.models import PhaseStatus, Plan, PlanError, PlanIOError, StepStatus
+from vectl.models import Phase, PhaseStatus, Plan, PlanError, PlanIOError, Step, StepStatus
 from vectl.plan_path import resolve_state_path
 
 # FastMCP @mcp.tool() wraps functions in FunctionTool objects.
@@ -2083,6 +2083,134 @@ class TestMcpSplitStateIntegration:
             _vectl_save_both(plan, def_hash, state_hash)
 
         assert not state_path.exists()
+
+
+class TestMcpOrphanDetection:
+    """Tests for orphan detection in MCP _load()."""
+
+    def test_load_logs_orphan_warning(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """_load logs orphan warnings when state has extra entries."""
+        import logging
+        import os
+
+        from vectl.io import save_plan, save_state
+        from vectl.models import PhaseState, PhaseStatus, PlanState, StepState
+
+        # Set up plan path
+        plan_path = tmp_path / "plan.yaml"
+        os.environ["VECTL_PLAN_PATH"] = str(plan_path)
+
+        # Create a plan
+        plan = Plan(
+            project="orphan-test",
+            phases=[
+                Phase(id="core", name="Core", steps=[Step(id="s1", name="Step 1")]),
+            ],
+        )
+        save_plan(plan, plan_path)
+
+        # Create state with orphan entries
+        state = PlanState(
+            plan_id="orphan-test",
+            phases={
+                "core": PhaseState(status=PhaseStatus.PENDING),
+                "orphan_phase": PhaseState(status=PhaseStatus.DONE),  # orphan
+            },
+            steps={
+                "s1": StepState(status=StepStatus.PENDING),
+                "orphan_step": StepState(status=StepStatus.CLAIMED, claimed_by="agent-x"),  # orphan
+            },
+        )
+        state_path = resolve_state_path(plan_path)
+        state_path.parent.mkdir(parents=True, exist_ok=True)
+        save_state(state, state_path)
+
+        # Set up logging capture
+        log_records: list[logging.LogRecord] = []
+        handler = logging.Handler()
+        handler.emit = lambda record: log_records.append(record)
+
+        logger = logging.getLogger("vectl.mcp")
+        logger.addHandler(handler)
+        logger.setLevel(logging.WARNING)
+
+        try:
+            # Call _load - should not raise, but should log warnings
+            merged_plan, def_hash, state_hash = _vectl_load()
+
+            # Verify the plan was merged successfully (orphan warning doesn't block)
+            assert merged_plan.project == "orphan-test"
+
+            # Check that orphan warnings were logged
+            orphan_warnings = [
+                r for r in log_records if "Orphan" in r.message or "orphan" in r.message.lower()
+            ]
+            assert len(orphan_warnings) > 0
+        finally:
+            logger.removeHandler(handler)
+            os.environ.pop("VECTL_PLAN_PATH", None)
+
+    def test_load_no_warning_on_clean_state(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """_load shows no orphan warning when state matches plan."""
+        import logging
+        import os
+
+        from vectl.io import save_plan, save_state
+        from vectl.models import PhaseState, PhaseStatus, PlanState, StepState
+
+        # Set up plan path
+        plan_path = tmp_path / "plan.yaml"
+        os.environ["VECTL_PLAN_PATH"] = str(plan_path)
+
+        # Create a plan
+        plan = Plan(
+            project="clean-test",
+            phases=[
+                Phase(id="core", name="Core", steps=[Step(id="s1", name="Step 1")]),
+            ],
+        )
+        save_plan(plan, plan_path)
+
+        # Create clean state (no orphans)
+        state = PlanState(
+            plan_id="clean-test",
+            phases={
+                "core": PhaseState(status=PhaseStatus.PENDING),
+            },
+            steps={
+                "s1": StepState(status=StepStatus.PENDING),
+            },
+        )
+        state_path = resolve_state_path(plan_path)
+        state_path.parent.mkdir(parents=True, exist_ok=True)
+        save_state(state, state_path)
+
+        # Set up logging capture
+        log_records: list[logging.LogRecord] = []
+        handler = logging.Handler()
+        handler.emit = lambda record: log_records.append(record)
+
+        logger = logging.getLogger("vectl.mcp")
+        logger.addHandler(handler)
+        logger.setLevel(logging.WARNING)
+
+        try:
+            # Call _load - should not raise and should not log orphan warnings
+            merged_plan, def_hash, state_hash = _vectl_load()
+
+            # Verify the plan was merged successfully
+            assert merged_plan.project == "clean-test"
+
+            # Check that NO orphan warnings were logged
+            orphan_warnings = [r for r in log_records if "Orphan" in r.message]
+            assert len(orphan_warnings) == 0
+        finally:
+            logger.removeHandler(handler)
+            os.environ.pop("VECTL_PLAN_PATH", None)
 
 
 class TestVectlInit:

@@ -72,6 +72,7 @@ from vectl.core import (
 from vectl.io import (
     _backup_definition,
     _resolve_git_dir,
+    detect_orphan_state,
     extract_state,
     load_plan_definition,
     load_state,
@@ -138,6 +139,8 @@ def _load() -> tuple[Plan, str, str]:
     Returns:
         (merged_plan, definition_hash, state_hash)
     """
+    import logging
+
     plan_path = _plan_path()
     plan_def, def_hash = load_plan_definition(plan_path)
 
@@ -151,7 +154,20 @@ def _load() -> tuple[Plan, str, str]:
         or bool(state.plan_id)
     )
     if state_hash and has_state:
-        return merge_plan(plan_def, state), def_hash, state_hash
+        merged = merge_plan(plan_def, state)
+
+        # Detect orphan state entries and log notice (but don't block load)
+        orphans = detect_orphan_state(plan_def, state)
+        if orphans:
+            logger = logging.getLogger("vectl.mcp")
+            for o in orphans:
+                if o.kind == "phase":
+                    logger.warning("Orphan phase '%s' in state but not in plan", o.id)
+                elif o.kind == "step":
+                    logger.warning("Orphan step '%s' in state but not in plan", o.id)
+            logger.warning("Run 'vectl recover' to clean up ghost state")
+
+        return merged, def_hash, state_hash
 
     # Legacy mode: no state document yet.
     return plan_def, def_hash, ""

@@ -58,6 +58,7 @@ from vectl.guide import GUIDE_TOPICS as _GUIDE_TOPICS
 from vectl.io import (
     _backup_definition,
     _resolve_git_dir,
+    detect_orphan_state,
     extract_state,
     load_plan_definition,
     load_state,
@@ -185,7 +186,20 @@ def _load(plan_path: Path | None) -> tuple[Plan, str, str, Path]:
         or bool(state.plan_id)
     )
     if state_hash and has_state:
-        return merge_plan(plan_def, state), def_hash, state_hash, target
+        merged = merge_plan(plan_def, state)
+
+        # Detect orphan state entries and warn (but don't block load)
+        orphans = detect_orphan_state(plan_def, state)
+        if orphans:
+            print("Warning: orphan state entries detected:", file=sys.stderr)
+            for o in orphans:
+                if o.kind == "phase":
+                    print(f"  - Phase '{o.id}' in state but not in plan", file=sys.stderr)
+                elif o.kind == "step":
+                    print(f"  - Step '{o.id}' in state but not in plan", file=sys.stderr)
+            print("Run 'vectl recover' to clean up ghost state", file=sys.stderr)
+
+        return merged, def_hash, state_hash, target
 
     return plan_def, def_hash, "", target
 

@@ -15269,6 +15269,49 @@ phases:
     depends_on:
     - unified-state-verification.multi-agent-worktree-test
     agent: python-senior
+  - id: unified-state-verification.multi-agent-worktree-test-retest
+    name: multi-agent-worktree-test-retest
+    status: pending
+    description: 'Re-test the linked-worktree main-root resolution blocker after `unified-state-verification.multi-agent-worktree-test-fix`.
+
+
+      As an INDEPENDENT TESTER (`integration-verifier`), validate from a fresh perspective
+      that linked worktrees now resolve the shared main-root `plan.yaml` under real
+      `git worktree add` conditions.
+
+
+      Run both focused regressions and a live worktree probe.
+
+
+      Required evidence:
+
+      - Focused test command(s) covering `tests/test_plan_path.py`
+
+      - Actual live probe using a temporary linked worktree created with `git worktree
+      add`
+
+      - Captured output showing `is_linked_worktree()` and `resolve_plan_path(None)`
+      now resolve to the main-root plan path under absolute-path rev-parse outputs
+
+      - Any residual mismatch between explicit-path, non-linked, and linked-worktree
+      behaviors
+
+
+      A retest that still finds divergence is successful verification evidence and
+      must document the remaining blocker precisely.'
+    verification: '- Main path: rerun the live linked-worktree probe and show `resolve_plan_path(None)`
+      resolves to the main-root `plan.yaml`
+
+      - Failure path: rerun the prior broken absolute-path scenario and confirm it
+      no longer returns `(True, None)` leading to local-plan fallback
+
+      - Focused tests: relevant `tests/test_plan_path.py` regressions pass with pasted
+      command output
+
+      - Evidence includes actual command transcripts/output, not a summary'
+    depends_on:
+    - unified-state-verification.multi-agent-worktree-test-fix
+    agent: integration-verifier
 - id: test-collection-remediation
   name: Test Collection Remediation
   status: done

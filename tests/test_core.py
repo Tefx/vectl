@@ -14,7 +14,6 @@ from vectl.core import (
     complete_step,
     defer_step,
     preview_recovery,
-    recover_from_backup,
     validate_plan,
 )
 from vectl.io import load_plan_definition, save_plan
@@ -49,13 +48,13 @@ def test_recover_restores_from_backup(tmp_path: Path) -> None:
     _write_plan(plan_path, "Current Name")
     _write_plan(backup_path, "Backup Name")
 
-    result = recover_from_backup(plan_path, backup_path)
+    result = preview_recovery(plan_path, backup_path)
+    apply_recovery(backup_path, plan_path)
 
     restored_plan, _ = load_plan_definition(plan_path)
     restored = restored_plan.find_step("p1.s1")
     assert restored is not None
     assert restored[1].name == "Backup Name"
-    assert result.restored is True
     assert len(result.diff.step_changes) == 1
     assert "Total changes:" in result.diff_summary
 
@@ -97,7 +96,7 @@ def test_recover_no_backup_error(tmp_path: Path) -> None:
     _write_plan(plan_path, "Current Name")
 
     with pytest.raises(PlanError, match="Backup file not found"):
-        recover_from_backup(plan_path, missing_backup)
+        apply_recovery(missing_backup, plan_path)
 
 
 # ---------------------------------------------------------------------------

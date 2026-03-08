@@ -2303,33 +2303,6 @@ def clipboard_write(
     return plan
 
 
-def clipboard_read(plan: Plan) -> Clipboard | None:
-    """Read the plan clipboard.
-
-    Pure read - no side effects, no CAS needed.
-
-    Args:
-        plan: The plan to read from.
-
-    Returns:
-        Clipboard if present and not expired, None otherwise.
-
-    >>> p = Plan(project="test")
-    >>> clipboard_read(p) is None
-    True
-    >>> p = clipboard_write(p, "agent", "Sum", "Content")
-    >>> cb = clipboard_read(p)
-    >>> cb is not None
-    True
-    """
-    if plan.clipboard is None:
-        return None
-
-    if _clipboard_expired(plan.clipboard):
-        return None
-
-    return plan.clipboard
-
 
 def clipboard_clear(plan: Plan) -> Plan:
     """Clear the plan clipboard.
@@ -2581,46 +2554,3 @@ def apply_recovery(backup_path: Path, plan_path: Path) -> None:
     save_plan(backup_plan, plan_path)
 
 
-def recover_from_backup(plan_path: Path, backup_path: Path | None = None) -> RecoverResult:
-    """Recover plan from a backup file.
-
-    If backup_path is not provided, attempts to find it at .git/vectl/plan.yaml.bak.
-
-    Args:
-        plan_path: Path to the current plan.yaml.
-        backup_path: Optional explicit backup path. If None, auto-detects from plan_path.
-
-    Returns:
-        RecoverResult with ok, restored flag, diff info, and optional error.
-
-    Raises:
-        PlanError: If backup file is not found or is invalid.
-    """
-    # Auto-detect backup path if not provided
-    if backup_path is None:
-        from vectl.io import _resolve_git_dir
-
-        git_dir = _resolve_git_dir(plan_path)
-        if git_dir is None:
-            return RecoverResult(
-                ok=False,
-                restored=False,
-                diff=DiffResult(phase_changes=[], step_changes=[]),
-                diff_summary="",
-                error="Not in a git repository or in a linked worktree",
-            )
-        backup_path = git_dir / "vectl" / "plan.yaml.bak"
-
-    if not backup_path.exists():
-        raise PlanError(f"Backup file not found: {backup_path}")
-
-    preview = preview_recovery(plan_path, backup_path)
-    apply_recovery(backup_path, plan_path)
-
-    return RecoverResult(
-        ok=preview.ok,
-        restored=True,
-        diff=preview.diff,
-        diff_summary=preview.diff_summary,
-        error=preview.error,
-    )

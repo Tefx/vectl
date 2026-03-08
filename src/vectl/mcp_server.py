@@ -1617,19 +1617,21 @@ def vectl_recover() -> dict:
 
 
 class _ToolWrapper:
-    """Compatibility shim for tests expecting FunctionTool with .fn attribute.
+    """Compatibility shim for tests that import MCP tool symbols.
 
-    Old FastMCP returned FunctionTool objects with a .fn attribute pointing
-    to the wrapped callable. Current FastMCP returns plain functions.
-    This shim provides backward compatibility for tests.
+    FastMCP's @mcp.tool() returns FunctionTool objects (not plain callables).
+    This shim unwraps FunctionTool.fn to get the actual function, making
+    the symbol both callable and exposing .fn for tests that use it.
     """
 
-    def __init__(self, fn: Callable[..., Any]) -> None:
-        object.__setattr__(self, "_fn", fn)
+    def __init__(self, fn: Any) -> None:
+        # Unwrap FunctionTool to get the actual callable
+        actual = getattr(fn, "fn", fn)
+        object.__setattr__(self, "_fn", actual)
 
     @property
     def fn(self) -> Callable[..., Any]:
-        """Return the wrapped function for test compatibility."""
+        """Return the underlying callable."""
         return object.__getattribute__(self, "_fn")
 
     def __call__(self, *args: Any, **kwargs: Any) -> Any:

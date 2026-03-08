@@ -16733,3 +16733,36 @@ phases:
     depends_on:
     - claim-consistency-recovery.repair-claims-command
     agent: python-executor
+  - id: claim-consistency-recovery.freeze-for-integration
+    name: freeze-for-integration
+    status: pending
+    description: 'Freeze the repaired claim-consistency snapshot before independent
+      integration verification.
+
+
+      Required freeze evidence:
+
+      - Record `git rev-parse HEAD`
+
+      - Record `git status --short` and confirm the tree is clean for the verification
+      snapshot
+
+      - Record the verification environment (CLI path / MCP harness entry point /
+      temp repo fixture assumptions)
+
+      - State explicitly that no code changes are allowed until `claim-consistency-recovery.integration-verify`
+      completes
+
+
+      Purpose:
+
+      - Prevent the high-risk persistence and CLI/MCP verification evidence from drifting
+      while the independent tester is running.'
+    verification: '- Freeze evidence contains commit SHA, clean status output, environment
+      declaration, and an explicit no-code-change statement
+
+      - The snapshot includes the repair command and diagnostics surfaces to be exercised
+      by the independent verifier'
+    depends_on:
+    - claim-consistency-recovery.targeted-regression-tests
+    agent: python-executor

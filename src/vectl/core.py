@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import re
+import logging
 from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
 from enum import Enum
@@ -33,11 +34,19 @@ from vectl.models import (
     StepChange,
     StepStatus,
 )
-from vectl.claims import acquire_claim, cleanup_stale_claims, get_current_branch
+from vectl.claims import (
+    acquire_claim,
+    cleanup_stale_claims,
+    get_current_branch,
+    release_claim,
+)
 
 # Lazy import to avoid circular — semantics imports models, core imports models.
 # is_step_locked is only used in render, which is late-bound.
 from vectl.semantics import is_step_locked as _is_step_locked_shared
+
+
+_logger = logging.getLogger(__name__)
 
 # ---------------------------------------------------------------------------
 # DAG Validation
@@ -407,7 +416,7 @@ def claim_step(
     return plan, result
 
 
-def complete_step(plan: Plan, step_id: str, evidence: str) -> Plan:
+def complete_step(plan: Plan, step_id: str, evidence: str, claims_path: Path | None = None) -> Plan:
     """Mark a step as done with evidence."""
     found = plan.find_step(step_id)
     if found is None:
@@ -420,8 +429,19 @@ def complete_step(plan: Plan, step_id: str, evidence: str) -> Plan:
             f"must be claimed first)"
         )
 
+    if claims_path is not None:
+        branch = get_current_branch()
+        released = release_claim(step_id, branch, claims_path)
+        if not released:
+            _logger.warning(
+                "Claim not found while completing step '%s' on branch '%s' (may have expired)",
+                step_id,
+                branch,
+            )
+
     step.status = StepStatus.DONE
     step.evidence = evidence
+    step.done_at = datetime.now(timezone.utc).isoformat()
 
     # Auto-update phase if all steps done/skipped
     if all(s.status in (StepStatus.DONE, StepStatus.SKIPPED) for s in phase.steps):

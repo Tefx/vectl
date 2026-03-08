@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from datetime import datetime, timezone
 from pathlib import Path
 
 import pytest
@@ -10,6 +11,7 @@ from vectl.claims import load_claims
 from vectl.core import (
     apply_recovery,
     claim_step,
+    complete_step,
     preview_recovery,
     recover_from_backup,
     validate_plan,
@@ -240,3 +242,36 @@ def test_claim_step_calls_cleanup_stale_claims(
     claim_step(plan, "p1.s1", "agent-1", claims_path=claims_path)
 
     assert called["path"] == claims_path
+
+
+def test_complete_step_sets_done_at_timestamp() -> None:
+    plan = _claimable_plan()
+    claim_step(plan, "p1.s1", "agent-1")
+
+    updated_plan = complete_step(plan, "p1.s1", "evidence text")
+    done_step = updated_plan.phases[0].steps[0]
+
+    assert done_step.status == StepStatus.DONE
+    assert done_step.evidence == "evidence text"
+    assert done_step.done_at is not None
+    parsed_done_at = datetime.fromisoformat(done_step.done_at)
+    assert parsed_done_at.tzinfo is not None
+    assert parsed_done_at.utcoffset() == timezone.utc.utcoffset(parsed_done_at)
+
+
+def test_complete_step_releases_claim_from_claims_json(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    plan = _claimable_plan()
+    claims_path = tmp_path / "claims.json"
+
+    monkeypatch.setattr("vectl.core.get_current_branch", lambda: "feature/test-branch")
+
+    claim_step(plan, "p1.s1", "agent-1", claims_path=claims_path)
+    claims_before = load_claims(claims_path)
+    assert "feature/test-branch:p1.s1" in claims_before
+
+    complete_step(plan, "p1.s1", "evidence text", claims_path=claims_path)
+
+    claims_after = load_claims(claims_path)
+    assert "feature/test-branch:p1.s1" not in claims_after

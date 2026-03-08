@@ -15889,3 +15889,49 @@ phases:
     verification: pytest tests/test_io.py -v passes. No hardcoded field name strings
       remain in the affinity cleanup logic of _plan_to_dict/_clean_dict.
     agent: python-executor
+  - id: unified-state-gate-review-remediation.s3-field-level-merge
+    name: s3-field-level-merge
+    status: pending
+    description: 'Implement field-level merge in merge driver.
+
+
+      In src/vectl/merge_driver.py, change step comparison from full-payload to field-level
+      granularity. When both sides modify the same step, compare each field independently.
+      Only mark conflict if the same field was changed by both sides to different
+      values. If different fields were changed, merge them (take ours for fields we
+      changed, theirs for fields they changed, base for unchanged).
+
+
+      Current behavior (merge_driver.py lines 166-175):
+
+      - _step_state_signature compares full _step_payload (model_dump of entire step)
+
+      - If both sides changed and signatures differ, immediate conflict
+
+
+      New behavior:
+
+      - When both sides changed a step, iterate over each field in the step payload
+
+      - For each field: compare base vs ours vs theirs independently
+
+      - If field changed by only one side: take that side''s value (clean merge)
+
+      - If field changed by both sides to same value: take either (clean merge)
+
+      - If field changed by both sides to different values: conflict on that step
+
+
+      Tests to update:
+
+      - test_merge_non_conflicting_property_changes: should now assert exit_code ==
+      0 (clean merge) instead of 1
+
+      - Add test: same-field conflict still returns exit_code 1
+
+      - Add test: mixed scenario (some fields conflict, some don''t) returns exit_code
+      1'
+    verification: pytest tests/test_merge_driver.py -v passes. Different-property
+      changes on same step merge cleanly (exit 0). Same-property changes to different
+      values conflict (exit 1).
+    agent: python-senior

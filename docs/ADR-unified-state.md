@@ -49,7 +49,7 @@ plan.yaml                    # structure + completion (git-tracked)
 |----------|-------|
 | Storage | `.git/vectl/claims.json` (untracked) |
 | Key | `(branch, step_id)` |
-| Protection | `flock()` on claims.json |
+| Protection | `flock()` on sidecar `.git/vectl/claims.json.lock` |
 | TTL | 2 hours; lazy cleanup on each `vectl claim` call |
 | Release | Explicit via `vectl unclaim` / `vectl defer`, or TTL expiry |
 | Worktree sharing | Yes (`.git/` shared via `--git-common-dir`) |
@@ -61,14 +61,14 @@ Claims are ephemeral coordination (like PID files), not durable record. Loss on 
 
 ```
 vectl complete <step>:
-  1. flock(claims.json) → validate claim → remove claim entry → unlock
+  1. flock(claims.json.lock) → validate claim → remove claim entry → unlock
   2. read plan.yaml
   3. set step.status = "done", step.evidence = "...", step.done_at = now()
   4. write plan.yaml (tempfile + rename)
   5. git commit --only --no-verify plan.yaml -m "[vectl] complete <step>"
 
 vectl claim <step>:
-  1. flock(claims.json) → check no existing claim → write claim → unlock
+  1. flock(claims.json.lock) → check no existing claim → write claim → unlock
   2. (plan.yaml not modified)
 
 vectl mutate <args>:

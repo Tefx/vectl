@@ -161,7 +161,7 @@ def test_merge_non_conflicting_step_additions(tmp_path: Path) -> None:
 
 
 def test_merge_non_conflicting_property_changes(tmp_path: Path) -> None:
-    """Test that different properties changed on the same step conflict (step-level granularity)."""
+    """Test that different properties changed on the same step merge cleanly."""
     base = Plan(
         project="merge-test",
         phases=[
@@ -189,15 +189,18 @@ def test_merge_non_conflicting_property_changes(tmp_path: Path) -> None:
     _write_plan(theirs_path, theirs)
 
     exit_code = merge_plans(str(base_path), str(ours_path), str(theirs_path))
-    # Full step payload is compared - different properties = conflict
-    assert exit_code == 1
+    assert exit_code == 0
 
-    ours_content = ours_path.read_text(encoding="utf-8")
-    assert "<<<<<<< ours" in ours_content
+    merged, _ = load_plan_definition(ours_path)
+    merged_step = merged.phases[0].steps[0]
+    assert merged_step.status == StepStatus.DONE
+    assert merged_step.evidence == "our evidence"
+    assert merged_step.description == "Added description"
+    assert merged_step.refs == ["file.py"]
 
 
-def test_merge_step_status_and_different_property_conflict(tmp_path: Path) -> None:
-    """Test conflict when same step status changed AND different property changed."""
+def test_merge_same_property_conflict(tmp_path: Path) -> None:
+    """Test conflict when both sides change the same field to different values."""
     base = Plan(
         project="merge-test",
         phases=[
@@ -210,10 +213,10 @@ def test_merge_step_status_and_different_property_conflict(tmp_path: Path) -> No
     )
 
     ours = base.model_copy(deep=True)
-    ours.phases[0].steps[0].status = StepStatus.DONE
+    ours.phases[0].steps[0].description = "Ours description"
 
     theirs = base.model_copy(deep=True)
-    theirs.phases[0].steps[0].description = "Changed description"
+    theirs.phases[0].steps[0].description = "Theirs description"
 
     base_path = tmp_path / "base.yaml"
     ours_path = tmp_path / "ours.yaml"
@@ -223,7 +226,44 @@ def test_merge_step_status_and_different_property_conflict(tmp_path: Path) -> No
     _write_plan(theirs_path, theirs)
 
     exit_code = merge_plans(str(base_path), str(ours_path), str(theirs_path))
-    # Since the full step payload is compared, different properties = conflict
+    assert exit_code == 1
+
+    ours_content = ours_path.read_text(encoding="utf-8")
+    assert "<<<<<<< ours" in ours_content
+
+
+def test_merge_mixed_step_changes_conflict_when_any_field_conflicts(tmp_path: Path) -> None:
+    """Test mixed scenario: mergeable fields plus one same-field conflict returns conflict."""
+    base = Plan(
+        project="merge-test",
+        phases=[
+            Phase(
+                id="phase-1",
+                name="Phase 1",
+                steps=[
+                    Step(id="s1", name="Step 1", description=""),
+                    Step(id="s2", name="Step 2", description=""),
+                ],
+            ),
+        ],
+    )
+
+    ours = base.model_copy(deep=True)
+    ours.phases[0].steps[0].status = StepStatus.DONE
+    ours.phases[0].steps[1].description = "ours description"
+
+    theirs = base.model_copy(deep=True)
+    theirs.phases[0].steps[0].description = "theirs description"
+    theirs.phases[0].steps[1].description = "their conflicting description"
+
+    base_path = tmp_path / "base.yaml"
+    ours_path = tmp_path / "ours.yaml"
+    theirs_path = tmp_path / "theirs.yaml"
+    _write_plan(base_path, base)
+    _write_plan(ours_path, ours)
+    _write_plan(theirs_path, theirs)
+
+    exit_code = merge_plans(str(base_path), str(ours_path), str(theirs_path))
     assert exit_code == 1
 
     ours_content = ours_path.read_text(encoding="utf-8")
@@ -378,8 +418,8 @@ def test_merge_step_moved_between_phases(tmp_path: Path) -> None:
     assert merged.phases[1].steps[0].id == "s1"
 
 
-def test_merge_step_move_and_status_update_conflict(tmp_path: Path) -> None:
-    """Test conflict when one side moves a step and the other updates its status."""
+def test_merge_step_move_and_status_update(tmp_path: Path) -> None:
+    """Test merge when one side moves a step and the other updates its status."""
     base = Plan(
         project="merge-test",
         phases=[
@@ -403,14 +443,15 @@ def test_merge_step_move_and_status_update_conflict(tmp_path: Path) -> None:
     _write_plan(theirs_path, theirs)
 
     exit_code = merge_plans(str(base_path), str(ours_path), str(theirs_path))
-    assert exit_code == 1
+    assert exit_code == 0
 
-    ours_content = ours_path.read_text(encoding="utf-8")
-    assert "<<<<<<< ours" in ours_content
+    merged, _ = load_plan_definition(ours_path)
+    assert merged.phases[1].steps[0].id == "s1"
+    assert merged.phases[1].steps[0].status == StepStatus.DONE
 
 
-def test_merge_step_status_update_and_move_conflict(tmp_path: Path) -> None:
-    """Test conflict when one side updates status and the other moves the same step."""
+def test_merge_step_status_update_and_move(tmp_path: Path) -> None:
+    """Test merge when one side updates status and the other moves the same step."""
     base = Plan(
         project="merge-test",
         phases=[
@@ -434,10 +475,11 @@ def test_merge_step_status_update_and_move_conflict(tmp_path: Path) -> None:
     _write_plan(theirs_path, theirs)
 
     exit_code = merge_plans(str(base_path), str(ours_path), str(theirs_path))
-    assert exit_code == 1
+    assert exit_code == 0
 
-    ours_content = ours_path.read_text(encoding="utf-8")
-    assert "<<<<<<< ours" in ours_content
+    merged, _ = load_plan_definition(ours_path)
+    assert merged.phases[1].steps[0].id == "s1"
+    assert merged.phases[1].steps[0].status == StepStatus.DONE
 
 
 def test_merge_identical_changes_no_conflict(tmp_path: Path) -> None:

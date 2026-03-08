@@ -15,6 +15,7 @@ from vectl.io import load_plan_definition
 from vectl.models import Phase, Plan, PlanIOError, Step
 
 _T = TypeVar("_T")
+_MISSING = object()
 
 
 def _ordered_union(*sequences: Sequence[str]) -> list[str]:
@@ -88,6 +89,55 @@ def _step_state_signature(
     return payload, phase_id
 
 
+def _three_way_mapping(
+    base: dict[str, Any] | None,
+    ours: dict[str, Any] | None,
+    theirs: dict[str, Any] | None,
+) -> tuple[dict[str, Any] | None, bool]:
+    if ours == theirs:
+        return ours, False
+    if base == ours:
+        return theirs, False
+    if base == theirs:
+        return ours, False
+    if ours is None or theirs is None:
+        return ours, True
+
+    base_map = {} if base is None else base
+    merged: dict[str, Any] = {}
+    field_order = _ordered_union(list(base_map), list(ours), list(theirs))
+
+    for field in field_order:
+        base_value = base_map.get(field, _MISSING)
+        ours_value = ours.get(field, _MISSING)
+        theirs_value = theirs.get(field, _MISSING)
+
+        ours_changed = ours_value != base_value
+        theirs_changed = theirs_value != base_value
+
+        if ours_changed and theirs_changed and ours_value != theirs_value:
+            return ours, True
+
+        merged_value = base_value
+        if ours_changed:
+            merged_value = ours_value
+        elif theirs_changed:
+            merged_value = theirs_value
+
+        if merged_value is not _MISSING:
+            merged[field] = merged_value
+
+    return merged, False
+
+
+def _step_state_fields(step: Step | None, phase_id: str | None) -> dict[str, Any] | None:
+    if step is None:
+        return None
+    payload = _step_payload(step)
+    payload["_phase_id"] = phase_id
+    return payload
+
+
 def merge_plans(base_path: str, ours_path: str, theirs_path: str) -> int:
     """Merge plan YAML files for git merge-driver integration.
 
@@ -147,38 +197,10 @@ def merge_plans(base_path: str, ours_path: str, theirs_path: str) -> int:
     merged_step_phase: dict[str, str] = {}
     merged_step_order = _ordered_union(base_step_order, ours_step_order, theirs_step_order)
     for step_id in merged_step_order:
-        base_step_signature = _step_state_signature(
-            base_steps.get(step_id),
-            base_step_phase.get(step_id),
-        )
-        ours_step_signature = _step_state_signature(
-            ours_steps.get(step_id),
-            ours_step_phase.get(step_id),
-        )
-        theirs_step_signature = _step_state_signature(
-            theirs_steps.get(step_id),
-            theirs_step_phase.get(step_id),
-        )
-
-        ours_step_changed = ours_step_signature != base_step_signature
-        theirs_step_changed = theirs_step_signature != base_step_signature
-
-        if (
-            ours_step_changed
-            and theirs_step_changed
-            and ours_step_signature != theirs_step_signature
-        ):
-            try:
-                _write_conflict_markers(ours_file, ours_raw, theirs_raw)
-            except OSError:
-                return 1
-            return 1
-
-        merged_step, conflict = _three_way(
-            base_steps.get(step_id),
-            ours_steps.get(step_id),
-            theirs_steps.get(step_id),
-            payload=_step_payload,
+        merged_step_fields, conflict = _three_way_mapping(
+            _step_state_fields(base_steps.get(step_id), base_step_phase.get(step_id)),
+            _step_state_fields(ours_steps.get(step_id), ours_step_phase.get(step_id)),
+            _step_state_fields(theirs_steps.get(step_id), theirs_step_phase.get(step_id)),
         )
         if conflict:
             try:
@@ -186,15 +208,20 @@ def merge_plans(base_path: str, ours_path: str, theirs_path: str) -> int:
             except OSError:
                 return 1
             return 1
-        if merged_step is None:
+        if merged_step_fields is None:
             continue
 
-        merged_phase_id, phase_conflict = _three_way(
-            base_step_phase.get(step_id),
-            ours_step_phase.get(step_id),
-            theirs_step_phase.get(step_id),
-        )
-        if phase_conflict or merged_phase_id is None:
+        merged_phase_id = merged_step_fields.pop("_phase_id", None)
+        if merged_phase_id is None:
+            try:
+                _write_conflict_markers(ours_file, ours_raw, theirs_raw)
+            except OSError:
+                return 1
+            return 1
+
+        try:
+            merged_step = Step.model_validate(merged_step_fields)
+        except ValueError:
             try:
                 _write_conflict_markers(ours_file, ours_raw, theirs_raw)
             except OSError:

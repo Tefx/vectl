@@ -4,9 +4,11 @@ from __future__ import annotations
 
 import hashlib
 import json
+import logging
 import os
 import subprocess
 import tempfile
+import time
 from pathlib import Path
 from typing import Any
 
@@ -33,6 +35,8 @@ _PLAN_YAML_HEADER = """\
 # Docs: uvx vectl guide
 # =============================================================
 """
+
+_LOGGER = logging.getLogger(__name__)
 
 
 def _file_hash(path: Path) -> str:
@@ -185,7 +189,7 @@ def save_plan(
     expected_hash: str | None = None,
     commit_message: str | None = None,
 ) -> str:
-    """Save plan to YAML file atomically, then git-commit.
+    """Save plan to YAML file atomically.
 
     If expected_hash is provided, performs CAS check.
     Returns the new file hash.
@@ -221,35 +225,52 @@ def save_plan(
 
     new_hash = hashlib.sha256(content.encode()).hexdigest()
 
-    # Auto-commit plan.yaml to protect against agent git-restore rollback.
-    # Uses --only to avoid committing other staged files.
-    _git_commit_plan(path, commit_message)
+    if commit_message is not None:
+        _git_commit_plan(path, commit_message)
 
     return new_hash
 
 
-def _git_commit_plan(path: Path, message: str | None = None) -> None:
-    """Commit plan.yaml immediately after write.
+def _git_commit_plan(plan_path: Path, message: str) -> bool:
+    """Best-effort git commit for ``plan_path`` after a successful write."""
 
-    Best-effort: if git commit fails (not a repo, nothing to commit, etc.),
-    the plan file is still written — we just lose rollback protection.
-    """
-    msg = message or "[vectl] update plan"
-    try:
-        subprocess.run(
-            ["git", "add", "--", str(path)],
-            cwd=str(path.parent),
-            capture_output=True,
-            timeout=10,
+    command = ["git", "commit", "--only", "--no-verify", plan_path.name, "-m", message]
+
+    for attempt in range(2):
+        try:
+            result = subprocess.run(
+                command,
+                cwd=str(plan_path.parent),
+                capture_output=True,
+                text=True,
+                timeout=10,
+            )
+        except FileNotFoundError as exc:
+            _LOGGER.warning("Git unavailable for %s: %s", plan_path, exc)
+            return False
+        except (subprocess.TimeoutExpired, OSError) as exc:
+            _LOGGER.warning("Git commit failed for %s: %s", plan_path, exc)
+            return False
+
+        if result.returncode == 0:
+            return True
+
+        stderr = result.stderr or ""
+        if attempt == 0 and result.returncode == 1 and "index.lock" in stderr:
+            time.sleep(0.1)
+            continue
+
+        output = stderr.strip() or (result.stdout or "").strip() or "no output"
+        _LOGGER.warning(
+            "Git commit failed for %s with exit code %s: %s",
+            plan_path,
+            result.returncode,
+            output,
         )
-        subprocess.run(
-            ["git", "commit", "--only", "--no-verify", "--", str(path), "-m", msg],
-            cwd=str(path.parent),
-            capture_output=True,
-            timeout=10,
-        )
-    except (subprocess.TimeoutExpired, FileNotFoundError, OSError):
-        pass
+        return False
+
+    _LOGGER.warning("Git commit failed for %s due to persistent index.lock contention", plan_path)
+    return False
 
 
 def _plan_to_dict(plan: Plan) -> dict[str, Any]:

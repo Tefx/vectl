@@ -14990,7 +14990,7 @@ phases:
       - Downstream verification/gate dependencies rewired through new retest chain."
   - id: unified-state-verification.full-test-suite-retest-fix
     name: full-test-suite-retest-fix
-    status: claimed
+    status: done
     description: 'HIGH-priority blocker remediation for the collection failures discovered
       by `unified-state-verification.full-test-suite-retest`.
 
@@ -15049,6 +15049,36 @@ phases:
     agent: python-executor
     claimed_by: python-executor
     claimed_at: '2026-03-08T16:37:24.184107+00:00'
+    done_at: '2026-03-08T16:44:21.775714+00:00'
+    evidence: 'Commit hash(es): 90b4fb65d95a19b23ece0d054d70ea88343d71cc
+
+      Files changed:
+
+      - src/vectl/mcp_server.py
+
+      Verification:
+
+      - Run: uv run pytest tests/test_agent_field.py tests/test_autofix_message.py
+      tests/test_mcp.py -q
+
+      - Result: PASS - 192 passed
+
+      - Run: uv run mypy src/vectl/
+
+      - Result: PASS - no issues found
+
+      - Run: uv run ruff check src/vectl/
+
+      - Result: PASS - all checks passed
+
+      Spec link:
+
+      - unified-state-verification.full-test-suite-retest-fix
+
+      Gaps/Notes:
+
+      - Added minimal MCP tool wrapper compatibility shim exposing `.fn` while preserving
+      function behavior, resolving collection/runtime `.fn` expectation failures.'
   - id: unified-state-verification.full-test-suite-retest-retest
     name: full-test-suite-retest-retest
     status: pending

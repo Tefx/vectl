@@ -33,6 +33,7 @@ from vectl.models import (
     StepChange,
     StepStatus,
 )
+from vectl.claims import acquire_claim, cleanup_stale_claims, get_current_branch
 
 # Lazy import to avoid circular — semantics imports models, core imports models.
 # is_step_locked is only used in render, which is late-bound.
@@ -313,7 +314,12 @@ class ClaimResult:
 
 
 def claim_step(
-    plan: Plan, step_id: str, agent_name: str, *, force: bool = False
+    plan: Plan,
+    step_id: str,
+    agent_name: str,
+    *,
+    force: bool = False,
+    claims_path: Path | None = None,
 ) -> tuple[Plan, ClaimResult]:
     """Claim a step for work.
 
@@ -325,6 +331,7 @@ def claim_step(
         step_id: ID of the step to claim.
         agent_name: Name of the agent claiming the step.
         force: If True, override exclusive affinity violations.
+        claims_path: Optional claims store path for branch-scoped coordination.
 
     Returns:
         Tuple of (modified plan, claim result with affinity metadata).
@@ -381,6 +388,13 @@ def claim_step(
             else:
                 # Reject
                 raise AffinityError(step_id, step.agent, agent_name)
+
+    if claims_path is not None:
+        cleanup_stale_claims(claims_path)
+        branch = get_current_branch()
+        acquired = acquire_claim(step_id, branch, agent_name, claims_path)
+        if not acquired:
+            raise PlanError(f"Step '{step_id}' is already claimed on branch '{branch}'")
 
     step.status = StepStatus.CLAIMED
     step.claimed_by = agent_name

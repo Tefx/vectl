@@ -702,6 +702,37 @@ def agents_md_cmd(
     out.print(result)
 
 
+def _upsert_gitattributes(directory: Path) -> str:
+    """Configure .gitattributes with plan.yaml merge driver (idempotent).
+
+    Returns:
+        A status message describing what was done.
+    """
+    gitattributes_path = directory / ".gitattributes"
+
+    # Build the target line
+    target_line = "plan.yaml merge=vectl"
+
+    if not gitattributes_path.exists():
+        gitattributes_path.write_text(f"{target_line}\n", encoding="utf-8")
+        return "Created .gitattributes with plan.yaml merge driver"
+
+    content = gitattributes_path.read_text(encoding="utf-8")
+
+    # Check if plan.yaml merge driver is already configured
+    for line in content.splitlines():
+        stripped = line.strip()
+        # Match lines like "plan.yaml merge=vectl" or "plan.yaml merge=vectl " (with trailing space)
+        if stripped.startswith("plan.yaml") and "merge=vectl" in stripped:
+            # Already configured
+            return ".gitattributes already has plan.yaml merge driver"
+
+    # Append the configuration
+    with gitattributes_path.open("a", encoding="utf-8") as f:
+        f.write(f"\n{target_line}\n")
+    return "Updated .gitattributes with plan.yaml merge driver"
+
+
 @app.command()
 def init(
     project: str = typer.Option(..., "--project", prompt="Project name"),
@@ -723,6 +754,10 @@ def init(
     # Ensure AGENTS.md / CLAUDE.md has vectl section (idempotent)
     agents_result = _upsert_agents_md(target.parent, AgentsTarget(agents_target))
     out.print(f"[green]Agent instructions:[/] {agents_result}")
+
+    # Configure .gitattributes with plan.yaml merge driver (idempotent)
+    gitattr_result = _upsert_gitattributes(target.parent)
+    out.print(f"[green]Git attributes:[/] {gitattr_result}")
 
     out.print()
     out.print("[dim]→ vectl add-phase --phase-id <id> --name <name>   Add a phase[/]")

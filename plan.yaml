@@ -14863,7 +14863,7 @@ phases:
     agent: gate-reviewer
   - id: unified-state-verification.full-test-suite-fix
     name: full-test-suite-fix
-    status: claimed
+    status: done
     description: "Fix the issues discovered by `unified-state-verification.full-test-suite`\
       \ so the full verification suite can run cleanly.\n\nScope:\n- Standardize repository\
       \ verification command invocation where pytest is called from plan/test guidance;\
@@ -14893,6 +14893,47 @@ phases:
     agent: python-senior
     claimed_by: python-senior
     claimed_at: '2026-03-08T16:29:17.793836+00:00'
+    done_at: '2026-03-08T16:33:32.580645+00:00'
+    evidence: 'Commit hash(es): b1f054564cc0b379173f31a1d1171838ae17f4dd
+
+      Files changed:
+
+      - src/vectl/claims.py
+
+      - src/vectl/cli.py
+
+      - src/vectl/core.py
+
+      - src/vectl/merge_driver.py
+
+      - src/vectl/migration.py
+
+      - tests/test_dashboard.py
+
+      - tests/test_dashboard_ui.py
+
+      Verification:
+
+      - Run: uv run mypy src/vectl/
+
+      - Result: PASS - no issues found in 17 source files
+
+      - Run: uv run ruff check src/vectl/
+
+      - Result: PASS - all checks passed
+
+      - Run: rg -n "uv run pytest tests/ -v --tb=short" tests/test_dashboard.py tests/test_dashboard_ui.py
+
+      - Result: PASS - verification command references normalized to managed-env invocation
+
+      Spec link:
+
+      - unified-state-verification.full-test-suite-fix
+
+      Gaps/Notes:
+
+      - Closed original verifier findings: datetime.UTC typing issue, int|None assignment,
+      merge_driver callable annotations, and I001/UP035 lint errors in reported files.'
   - id: unified-state-verification.full-test-suite-retest
     name: full-test-suite-retest
     status: pending

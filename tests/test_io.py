@@ -2,12 +2,14 @@
 
 import json
 import os
+import subprocess
 from pathlib import Path
 
 import pytest
 
 from vectl.io import (
     _backup_definition,
+    _git_commit_plan,
     detect_orphan_state,
     extract_state,
     load_plan,
@@ -284,6 +286,87 @@ class TestSavePlan:
         assert len(loaded.phases) == len(sample_plan.phases)
         assert loaded.phases[0].steps[0].id == sample_plan.phases[0].steps[0].id
         assert loaded.phases[0].steps[1].depends_on == ["s1"]
+
+    def test_save_with_commit_message_creates_git_commit(
+        self, tmp_path: Path, sample_plan: Plan
+    ) -> None:
+        repo_root = tmp_path / "repo"
+        repo_root.mkdir()
+
+        for command in (
+            ["git", "init"],
+            ["git", "config", "user.email", "test@example.com"],
+            ["git", "config", "user.name", "Test User"],
+        ):
+            result = subprocess.run(command, cwd=repo_root, capture_output=True, text=True)
+            assert result.returncode == 0, result.stderr
+
+        plan_path = repo_root / "plan.yaml"
+        save_plan(sample_plan, plan_path)
+
+        for command in (
+            ["git", "add", "plan.yaml"],
+            ["git", "commit", "-m", "seed"],
+        ):
+            result = subprocess.run(command, cwd=repo_root, capture_output=True, text=True)
+            assert result.returncode == 0, result.stderr
+
+        updated = sample_plan.model_copy(deep=True)
+        updated.context = "Updated context"
+        save_plan(updated, plan_path, commit_message="update plan")
+
+        commit_count = subprocess.run(
+            ["git", "rev-list", "--count", "HEAD"],
+            cwd=repo_root,
+            capture_output=True,
+            text=True,
+        )
+        assert commit_count.returncode == 0, commit_count.stderr
+        assert commit_count.stdout.strip() == "2"
+
+        latest_subject = subprocess.run(
+            ["git", "log", "-1", "--pretty=%s"],
+            cwd=repo_root,
+            capture_output=True,
+            text=True,
+        )
+        assert latest_subject.returncode == 0, latest_subject.stderr
+        assert latest_subject.stdout.strip() == "update plan"
+
+    def test_git_commit_plan_retries_once_on_index_lock_contention(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        calls: list[list[str]] = []
+        sleep_calls: list[float] = []
+
+        def fake_run(
+            command: list[str], cwd: str, capture_output: bool, text: bool, timeout: int
+        ) -> subprocess.CompletedProcess[str]:
+            assert cwd == str(tmp_path)
+            assert capture_output is True
+            assert text is True
+            assert timeout == 10
+            calls.append(command)
+            if len(calls) == 1:
+                return subprocess.CompletedProcess(
+                    args=command,
+                    returncode=1,
+                    stdout="",
+                    stderr="fatal: Unable to create '.git/index.lock': File exists.",
+                )
+            return subprocess.CompletedProcess(args=command, returncode=0, stdout="", stderr="")
+
+        monkeypatch.setattr("vectl.io.subprocess.run", fake_run)
+        monkeypatch.setattr("vectl.io.time.sleep", lambda seconds: sleep_calls.append(seconds))
+
+        result = _git_commit_plan(tmp_path / "plan.yaml", "retry message")
+
+        assert result is True
+        assert calls == [
+            ["git", "commit", "--only", "--no-verify", "plan.yaml", "-m", "retry message"],
+            ["git", "commit", "--only", "--no-verify", "plan.yaml", "-m", "retry message"],
+        ]
+        assert sleep_calls == [0.1]
 
 
 class TestCAS:

@@ -16560,3 +16560,48 @@ phases:
     depends_on:
     - claim-consistency-recovery.anima-incident-reproducer
     agent: python-senior
+  - id: claim-consistency-recovery.claim-rejection-diagnostics
+    name: claim-rejection-diagnostics
+    status: pending
+    description: 'Improve claim-rejection UX so operators can immediately understand
+      when an existing claim record is blocking work.
+
+
+      Scope:
+
+      - Update the shared claim-conflict diagnostic path in `src/vectl/core.py`/`src/vectl/lifecycle.py`
+      (where the conflict is surfaced) and wire the richer message through both `src/vectl/cli.py`
+      and `src/vectl/mcp_server.py`.
+
+      - When a claim is rejected because an existing claim record already exists,
+      surface the branch key, step id, claimant/owner data if available, and an actionable
+      next step such as inspecting the step and running `vectl repair claims --dry-run`.
+
+      - Keep the message channel-appropriate: CLI text should be human-readable; MCP
+      responses should preserve structured, machine-consumable detail.
+
+
+      Boundaries:
+
+      - This step is diagnostics/UX only; it must not mutate repair semantics.
+
+      - Do not add broad wording churn across unrelated command paths.
+
+
+      Tests:
+
+      - Add focused CLI and MCP assertions in `tests/test_cli.py` and `tests/test_mcp.py`
+      for existing-claim rejection output.'
+    verification: '- CLI tests assert the rejection includes the existing claim key/details
+      and an actionable recovery hint
+
+      - MCP tests assert the same conflict is exposed in structured form without losing
+      machine-readability
+
+      - Targeted commands: `uv run pytest tests/test_cli.py -k claim_reject -v` and
+      `uv run pytest tests/test_mcp.py -k claim_reject -v`
+
+      - Evidence includes the exact before/after diagnostic text or payload fields'
+    depends_on:
+    - claim-consistency-recovery.atomic-plan-save-locking
+    agent: python-executor

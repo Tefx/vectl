@@ -6,7 +6,6 @@ Spec authority: tools/vectl/plan.yaml, phases cli_read + cli_write.
 from __future__ import annotations
 
 import enum
-import logging
 import os
 import sys
 from pathlib import Path
@@ -81,8 +80,6 @@ from vectl.semantics import is_step_locked
 
 console = Console(stderr=True)
 out = Console()
-_LOGGER = logging.getLogger(__name__)
-
 # ---------------------------------------------------------------------------
 # Status display helpers
 # ---------------------------------------------------------------------------
@@ -176,20 +173,13 @@ def _check_not_linked_worktree(plan: Path | None = None) -> None:
 
 
 def _load(plan_path: Path | None) -> tuple[Plan, str, Path]:
-    """Load plan.yaml and return plan with CAS hash."""
+    """Load plan.yaml and return plan with CAS hash.
+
+    Source: docs/ADR-unified-state.md migration posture.
+    Normal load path reads unified inline state from plan.yaml only.
+    """
 
     target = resolve_plan_path(plan_path)
-    legacy_state_path = resolve_state_path(target)
-    if legacy_state_path.exists():
-        migration = migrate_from_split_state(target)
-        if not migration.already_migrated:
-            _LOGGER.info(
-                "Migrated legacy state.json into plan.yaml (steps=%d, phases=%d)",
-                migration.migrated_steps,
-                migration.migrated_phases,
-            )
-            for warning in migration.warnings:
-                _LOGGER.warning(warning)
 
     try:
         plan_def, def_hash = load_plan_definition(target)

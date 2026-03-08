@@ -213,3 +213,31 @@ def resolve_state_path(plan_path: Path | None = None) -> Path:
         return git_common_dir / "vectl" / "state.json"
 
     return plan_path.parent / ".vectl" / "state.json"
+
+
+def resolve_claims_path(plan_path: Path | None = None) -> Path:
+    """Resolve the claims.json path for a plan.
+
+    Claims are ephemeral and shared across linked worktrees via git-common-dir.
+    See docs/ADR-unified-state.md.
+    """
+    if plan_path is None:
+        plan_path = resolve_plan_path()
+
+    try:
+        git_result = subprocess.run(
+            ["git", "rev-parse", "--git-common-dir"],
+            capture_output=True,
+            text=True,
+            cwd=plan_path.parent,
+        )
+    except OSError:
+        return plan_path.parent / ".vectl" / "claims.json"
+
+    if git_result.returncode == 0:
+        git_common_dir = Path(git_result.stdout.strip())
+        if not git_common_dir.is_absolute():
+            git_common_dir = plan_path.parent / git_common_dir
+        return git_common_dir / "vectl" / "claims.json"
+
+    return plan_path.parent / ".vectl" / "claims.json"

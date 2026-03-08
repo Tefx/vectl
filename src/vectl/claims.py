@@ -15,6 +15,7 @@ import fcntl
 from pydantic import BaseModel
 
 from vectl.models import PlanError
+from vectl.plan_path import resolve_claims_path as _resolve_claims_path
 
 
 class ClaimEntry(BaseModel):
@@ -122,23 +123,7 @@ def _locked_claims_file(claims_path: Path) -> Iterator[None]:
 
 def resolve_claims_path(plan_path: Path) -> Path:
     """Resolve claims.json location shared by linked worktrees when possible."""
-    try:
-        git_result = subprocess.run(
-            ["git", "rev-parse", "--git-common-dir"],
-            capture_output=True,
-            text=True,
-            cwd=plan_path.parent,
-        )
-    except OSError:
-        return plan_path.parent / ".vectl" / "claims.json"
-
-    if git_result.returncode == 0:
-        git_common_dir = Path(git_result.stdout.strip())
-        if not git_common_dir.is_absolute():
-            git_common_dir = plan_path.parent / git_common_dir
-        return git_common_dir / "vectl" / "claims.json"
-
-    return plan_path.parent / ".vectl" / "claims.json"
+    return _resolve_claims_path(plan_path)
 
 
 def load_claims(claims_path: Path) -> dict[str, ClaimEntry]:

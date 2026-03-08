@@ -77,7 +77,12 @@ from vectl.models import (
     SkipReason,
     StepStatus,
 )
-from vectl.plan_path import is_linked_worktree, resolve_plan_path, resolve_state_path
+from vectl.plan_path import (
+    is_linked_worktree,
+    resolve_claims_path,
+    resolve_plan_path,
+    resolve_state_path,
+)
 from vectl.semantics import is_step_locked
 
 console = Console(stderr=True)
@@ -1190,7 +1195,13 @@ def claim(
         out.print(f"[dim]Auto-selected:[/] {step_id}")
 
     try:
-        p, result = claim_step(p, step_id, agent, force=force)
+        p, result = claim_step(
+            p,
+            step_id,
+            agent,
+            force=force,
+            claims_path=resolve_claims_path(plan_path),
+        )
     except PlanError as e:
         _die(str(e))
         return  # unreachable, but satisfies Pyright
@@ -1243,7 +1254,7 @@ def complete(
     """Mark a step as done with evidence."""
     p, def_h, state_h, plan_path = _load(plan)
     try:
-        p = complete_step(p, step_id, evidence)
+        p = complete_step(p, step_id, evidence, claims_path=resolve_claims_path(plan_path))
     except PlanError as e:
         _die(str(e))
     _save_state(p, plan_path, state_h)
@@ -1317,7 +1328,7 @@ def defer(
     """Return a claimed step to pending."""
     p, def_h, state_h, plan_path = _load(plan)
     try:
-        p = defer_step(p, step_id)
+        p = defer_step(p, step_id, claims_path=resolve_claims_path(plan_path))
     except PlanError as e:
         _die(str(e))
     _save_state(p, plan_path, state_h)

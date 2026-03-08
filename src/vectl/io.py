@@ -17,6 +17,7 @@ from vectl.models import (
     CASConflictError,
     Plan,
     PlanIOError,
+    Step,
 )
 
 _PLAN_YAML_HEADER = """\
@@ -168,6 +169,30 @@ def _plan_to_dict(plan: Plan) -> dict[str, Any]:
 
 def _clean_dict(d: dict[str, Any]) -> dict[str, Any]:
     """Remove empty/default values for cleaner YAML output."""
+    # Get field defaults from Pydantic models for affinity cleanup logic
+    step_fields = Step.model_fields
+    plan_fields = Plan.model_fields
+
+    # Step affinity fields and their defaults
+    step_affinity_override = step_fields.get("affinity_override")
+    step_affinity_override_by = step_fields.get("affinity_override_by")
+    step_affinity_override_at = step_fields.get("affinity_override_at")
+
+    # Plan default_affinity field and its default
+    plan_default_affinity = plan_fields.get("default_affinity")
+
+    # Set of affinity field names to check (derived from model)
+    affinity_fields = {
+        name: field.default
+        for name, field in (
+            ("affinity_override", step_affinity_override),
+            ("affinity_override_by", step_affinity_override_by),
+            ("affinity_override_at", step_affinity_override_at),
+            ("default_affinity", plan_default_affinity),
+        )
+        if field is not None
+    }
+
     result: dict[str, Any] = {}
     for k, v in d.items():
         if isinstance(v, list):
@@ -188,16 +213,8 @@ def _clean_dict(d: dict[str, Any]) -> dict[str, Any]:
             continue
         # RFC: docs/RFC-affinity.md
         # Exclude default affinity fields for cleaner YAML.
-        # affinity: None is already handled by exclude_none=True in _plan_to_dict.
         # affinity_override: False means "no override" → omit from YAML.
-        elif k == "affinity_override" and v is False:
-            continue
-        elif k == "affinity_override_by" and v is None:
-            continue
-        elif k == "affinity_override_at" and v is None:
-            continue
-        # default_affinity: "suggested" is the default → omit from YAML
-        elif k == "default_affinity" and v == "suggested":
+        elif k in affinity_fields and v == affinity_fields[k]:
             continue
         else:
             result[k] = v

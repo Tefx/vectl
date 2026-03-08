@@ -71,22 +71,22 @@ from vectl.mcp_server import (
 from vectl.models import Phase, PhaseStatus, Plan, PlanError, PlanIOError, Step, StepStatus
 from vectl.plan_path import resolve_state_path
 
-# FastMCP @mcp.tool() wraps functions in FunctionTool objects.
-# Access the underlying callable via .fn for direct testing.
-vectl_status = _vectl_status_tool.fn
-vectl_show = _vectl_show_tool.fn
-vectl_claim = _vectl_claim_tool.fn
-vectl_complete = _vectl_complete_tool.fn
-vectl_lifecycle = _vectl_lifecycle_tool.fn
-vectl_search = _vectl_search_tool.fn
-vectl_mutate = _vectl_mutate_tool.fn
-vectl_review = _vectl_review_tool.fn
-vectl_guide = _vectl_guide_tool.fn
-vectl_dag = _vectl_dag_tool.fn
-vectl_clipboard = _vectl_clipboard_tool.fn
-vectl_check = _vectl_check_tool.fn
-vectl_render = _vectl_render_tool.fn
-vectl_recover = _vectl_recover_tool.fn
+# FastMCP @mcp.tool() returns plain functions in FastMCP 3.x.
+# Access the underlying callable directly for testing.
+vectl_status = _vectl_status_tool
+vectl_show = _vectl_show_tool
+vectl_claim = _vectl_claim_tool
+vectl_complete = _vectl_complete_tool
+vectl_lifecycle = _vectl_lifecycle_tool
+vectl_search = _vectl_search_tool
+vectl_mutate = _vectl_mutate_tool
+vectl_review = _vectl_review_tool
+vectl_guide = _vectl_guide_tool
+vectl_dag = _vectl_dag_tool
+vectl_clipboard = _vectl_clipboard_tool
+vectl_check = _vectl_check_tool
+vectl_render = _vectl_render_tool
+vectl_recover = _vectl_recover_tool
 
 
 # ---------------------------------------------------------------------------
@@ -2232,7 +2232,7 @@ class TestVectlInit:
         """Basic init creates plan.yaml and AGENTS.md."""
         from vectl.mcp_server import vectl_init as _vectl_init_tool
 
-        vectl_init = _vectl_init_tool.fn
+        vectl_init = _vectl_init_tool
 
         old_cwd = os.getcwd()
         old_plan = os.environ.get("VECTL_PLAN_PATH")
@@ -2267,7 +2267,7 @@ class TestVectlInit:
         """Init refuses to overwrite an existing plan.yaml."""
         from vectl.mcp_server import vectl_init as _vectl_init_tool
 
-        vectl_init = _vectl_init_tool.fn
+        vectl_init = _vectl_init_tool
 
         old_cwd = os.getcwd()
         old_plan = os.environ.get("VECTL_PLAN_PATH")
@@ -2293,7 +2293,7 @@ class TestVectlInit:
         """Init respects custom plan_path parameter."""
         from vectl.mcp_server import vectl_init as _vectl_init_tool
 
-        vectl_init = _vectl_init_tool.fn
+        vectl_init = _vectl_init_tool
 
         old_cwd = os.getcwd()
         old_plan = os.environ.get("VECTL_PLAN_PATH")
@@ -2318,7 +2318,7 @@ class TestVectlInit:
         """Init creates CLAUDE.md when .claude/ dir exists."""
         from vectl.mcp_server import vectl_init as _vectl_init_tool
 
-        vectl_init = _vectl_init_tool.fn
+        vectl_init = _vectl_init_tool
 
         old_cwd = os.getcwd()
         old_plan = os.environ.get("VECTL_PLAN_PATH")
@@ -2344,7 +2344,7 @@ class TestVectlInit:
         """Init respects explicit agents_target='claude'."""
         from vectl.mcp_server import vectl_init as _vectl_init_tool
 
-        vectl_init = _vectl_init_tool.fn
+        vectl_init = _vectl_init_tool
 
         old_cwd = os.getcwd()
         old_plan = os.environ.get("VECTL_PLAN_PATH")
@@ -2368,7 +2368,7 @@ class TestVectlInit:
         """Init appends vectl section to existing AGENTS.md."""
         from vectl.mcp_server import vectl_init as _vectl_init_tool
 
-        vectl_init = _vectl_init_tool.fn
+        vectl_init = _vectl_init_tool
 
         old_cwd = os.getcwd()
         old_plan = os.environ.get("VECTL_PLAN_PATH")
@@ -2396,7 +2396,7 @@ class TestVectlInit:
         """Init is idempotent - running twice on same AGENTS.md updates block."""
         from vectl.mcp_server import vectl_init as _vectl_init_tool
 
-        vectl_init = _vectl_init_tool.fn
+        vectl_init = _vectl_init_tool
 
         old_cwd = os.getcwd()
         old_plan = os.environ.get("VECTL_PLAN_PATH")

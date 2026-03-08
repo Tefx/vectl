@@ -28,9 +28,9 @@ from vectl.models import Phase, PhaseStatus, Plan, Step
 
 runner = CliRunner()
 
-# Unwrap FastMCP FunctionTool wrappers.
-vectl_claim = _vectl_claim_tool.fn  # pyright: ignore[reportFunctionMemberAccess]
-vectl_complete = _vectl_complete_tool.fn  # pyright: ignore[reportFunctionMemberAccess]
+# FastMCP tools are plain functions in FastMCP 3.x
+vectl_claim = _vectl_claim_tool
+vectl_complete = _vectl_complete_tool
 
 
 # ---------------------------------------------------------------------------
@@ -117,9 +117,7 @@ class TestCliAutofixMessage:
         assert result.exit_code == 0, f"Unexpected exit: {result.output}"
         assert "[vectl] Lock status updated:" in result.output
 
-    def test_autofix_message_contains_phase_and_status(
-        self, inconsistent_plan_file: Path
-    ) -> None:
+    def test_autofix_message_contains_phase_and_status(self, inconsistent_plan_file: Path) -> None:
         """Message includes the phase ID and its new status in parentheses."""
         result = runner.invoke(
             app,
@@ -160,9 +158,7 @@ class TestCliAutofixMessage:
         path = tmp_path / "plan.yaml"
         save_plan(consistent, path)
 
-        result = runner.invoke(
-            app, ["claim", "s1", "--agent", "bot", "--plan", str(path)]
-        )
+        result = runner.invoke(app, ["claim", "s1", "--agent", "bot", "--plan", str(path)])
         assert result.exit_code == 0, f"Unexpected exit: {result.output}"
         assert "[vectl] Lock status updated:" not in result.output
 
@@ -175,9 +171,7 @@ class TestCliAutofixMessage:
 class TestMcpAutofixMessage:
     """MCP _save() returns an informational [vectl] string, never a warning."""
 
-    def test_autofix_message_returned(
-        self, mcp_inconsistent_plan_file: Path
-    ) -> None:
+    def test_autofix_message_returned(self, mcp_inconsistent_plan_file: Path) -> None:
         """_save() return value contains [vectl] Lock status updated: …"""
         # Claiming a.1 triggers MCP _save().
         claim = vectl_claim(agent="bot", step_id="a.1")
@@ -196,9 +190,7 @@ class TestMcpAutofixMessage:
         assert "phase-c" in markdown
         assert "(pending)" in markdown
 
-    def test_autofix_message_not_a_warning(
-        self, mcp_inconsistent_plan_file: Path
-    ) -> None:
+    def test_autofix_message_not_a_warning(self, mcp_inconsistent_plan_file: Path) -> None:
         """MCP return value must NOT contain any warning-style prefix."""
         claim = vectl_claim(agent="bot", step_id="a.1")
         assert claim["ok"] is True, f"Claim failed: {claim}"

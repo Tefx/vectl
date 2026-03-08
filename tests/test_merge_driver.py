@@ -378,6 +378,68 @@ def test_merge_step_moved_between_phases(tmp_path: Path) -> None:
     assert merged.phases[1].steps[0].id == "s1"
 
 
+def test_merge_step_move_and_status_update_conflict(tmp_path: Path) -> None:
+    """Test conflict when one side moves a step and the other updates its status."""
+    base = Plan(
+        project="merge-test",
+        phases=[
+            Phase(id="phase-1", name="Phase 1", steps=[Step(id="s1", name="Step 1")]),
+            Phase(id="phase-2", name="Phase 2", steps=[]),
+        ],
+    )
+
+    ours = base.model_copy(deep=True)
+    ours.phases[0].steps = []
+    ours.phases[1].steps = [Step(id="s1", name="Step 1")]
+
+    theirs = base.model_copy(deep=True)
+    theirs.phases[0].steps[0].status = StepStatus.DONE
+
+    base_path = tmp_path / "base.yaml"
+    ours_path = tmp_path / "ours.yaml"
+    theirs_path = tmp_path / "theirs.yaml"
+    _write_plan(base_path, base)
+    _write_plan(ours_path, ours)
+    _write_plan(theirs_path, theirs)
+
+    exit_code = merge_plans(str(base_path), str(ours_path), str(theirs_path))
+    assert exit_code == 1
+
+    ours_content = ours_path.read_text(encoding="utf-8")
+    assert "<<<<<<< ours" in ours_content
+
+
+def test_merge_step_status_update_and_move_conflict(tmp_path: Path) -> None:
+    """Test conflict when one side updates status and the other moves the same step."""
+    base = Plan(
+        project="merge-test",
+        phases=[
+            Phase(id="phase-1", name="Phase 1", steps=[Step(id="s1", name="Step 1")]),
+            Phase(id="phase-2", name="Phase 2", steps=[]),
+        ],
+    )
+
+    ours = base.model_copy(deep=True)
+    ours.phases[0].steps[0].status = StepStatus.DONE
+
+    theirs = base.model_copy(deep=True)
+    theirs.phases[0].steps = []
+    theirs.phases[1].steps = [Step(id="s1", name="Step 1")]
+
+    base_path = tmp_path / "base.yaml"
+    ours_path = tmp_path / "ours.yaml"
+    theirs_path = tmp_path / "theirs.yaml"
+    _write_plan(base_path, base)
+    _write_plan(ours_path, ours)
+    _write_plan(theirs_path, theirs)
+
+    exit_code = merge_plans(str(base_path), str(ours_path), str(theirs_path))
+    assert exit_code == 1
+
+    ours_content = ours_path.read_text(encoding="utf-8")
+    assert "<<<<<<< ours" in ours_content
+
+
 def test_merge_identical_changes_no_conflict(tmp_path: Path) -> None:
     """Test that identical changes on both sides don't cause conflict."""
     base = Plan(

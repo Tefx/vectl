@@ -14322,7 +14322,7 @@ phases:
       - Behavior is idempotent and preserves existing .gitattributes content.'
   - id: unified-state-merge-driver.merge-driver-tests
     name: Merge driver tests
-    status: claimed
+    status: done
     description: 'Integration tests for the merge driver.
 
 
@@ -14369,6 +14369,27 @@ phases:
     agent: python-executor
     claimed_by: python-executor
     claimed_at: '2026-03-08T15:40:38.577446+00:00'
+    done_at: '2026-03-08T16:05:51.634954+00:00'
+    evidence: 'Commit hash(es): 70537d3bdbc69042df3c14e01a509a700d1c3274
+
+      Files changed:
+
+      - tests/test_merge_driver.py
+
+      Verification:
+
+      - Run: uv run pytest tests/test_merge_driver.py -v
+
+      - Result: PASS - 11 passed
+
+      Spec link:
+
+      - docs/ADR-unified-state.md
+
+      Gaps/Notes:
+
+      - Expanded coverage includes non-conflicting additions, property-change conflicts,
+      deletions, step moves between phases, and identical-change scenarios.'
   - id: unified-state-merge-driver.gate
     name: 'Gate: Multi-User Merge Driver'
     status: pending

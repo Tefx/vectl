@@ -15182,6 +15182,93 @@ phases:
 
       - Full verification suite now clean after blocker fix; no additional issues
       detected.'
+  - id: unified-state-verification.multi-agent-worktree-test-fix
+    name: multi-agent-worktree-test-fix
+    status: pending
+    description: 'HIGH priority blocker fix: correct linked-worktree main-root resolution
+      semantics used by unified-state plan discovery.
+
+
+      Issue:
+
+      - Live `git worktree add` probing shows `is_linked_worktree()` returns `(True,
+      None)` under absolute-path `git rev-parse` output.
+
+      - `resolve_plan_path(None)` then falls back to the local linked-worktree `plan.yaml`
+      instead of the shared main-root `plan.yaml`.
+
+      - This violates unified-state/worktree semantics and risks divergent state across
+      worktrees.
+
+
+      Scope:
+
+      - Fix `src/vectl/plan_path.py` main-root detection and `resolve_plan_path()`
+      fallback/preference behavior for linked worktrees.
+
+      - Update any directly coupled call sites/tests only where needed to preserve
+      the corrected shared-root semantics.
+
+
+      Failure-mode checklist:
+
+      - absolute vs relative `git rev-parse --show-toplevel` and common-dir outputs
+      resolve to the true main-root plan path
+
+      - missing-file fallback behavior is explicit when the main-root plan file is
+      absent
+
+      - explicit `resolve_plan_path(explicit=...)` behavior remains authoritative
+      and is not silently overwritten
+
+      - stale-definition vs new-state precedence is preserved: linked worktrees read
+      the main-root shared plan when no explicit path is provided
+
+      - partial-detection failure (`is_linked_worktree()` returning linked with missing
+      root) does not silently route to the local worktree plan path
+
+
+      State semantics:
+
+      - Last-writer-wins remains whatever git/plan writes already enforce; this fix
+      only corrects which shared plan path is targeted in linked worktrees
+
+      - Preserve exact behavior for explicit user-supplied plan paths and non-linked
+      worktrees
+
+      - Backward-compatible legacy behavior means standalone repos and explicit path
+      resolution continue to resolve exactly as before
+
+
+      Regression coverage required:
+
+      - Update focused regressions in `tests/test_plan_path.py` for absolute-path
+      linked-worktree detection and main-root resolution
+
+      - Add or update a regression covering the highest-risk failure path: linked
+      worktree detected but root resolution would otherwise be `None`
+
+      - Confirm live-probe scenario now resolves the main-root plan path, not the
+      local linked-worktree path
+
+
+      Out of scope:
+
+      - No new worktree feature expansion beyond correcting main-root resolution semantics
+
+      - No unrelated CLI/MCP behavior changes except those strictly required by the
+      fixed shared plan-path contract'
+    verification: '- Main path: targeted regressions for `is_linked_worktree()` and
+      `resolve_plan_path()` pass with absolute-path worktree outputs
+
+      - Failure path: regression proves linked-worktree detection cannot fall through
+      to local worktree `plan.yaml` when shared-root semantics should apply
+
+      - Proof: implementation evidence identifies the exact resolved path before/after
+      the fix and confirms no legacy explicit-path behavior regressed'
+    depends_on:
+    - unified-state-verification.multi-agent-worktree-test
+    agent: python-senior
 - id: test-collection-remediation
   name: Test Collection Remediation
   status: done

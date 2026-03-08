@@ -9111,3 +9111,131 @@ phases:
     - unified-state-verification.multi-agent-worktree-test
     - unified-state-verification.migration-roundtrip-test
     agent: gate-reviewer
+- id: test-collection-remediation
+  name: Test Collection Remediation
+  status: pending
+  gate: Full pytest collection succeeds, and the targeted modules `tests/test_agent_field.py`,
+    `tests/test_autofix_message.py`, and `tests/test_mcp.py` collect and run without
+    changing intended test coverage.
+  steps:
+  - id: test-collection-remediation.fix-fn-collection-errors
+    name: Fix pytest collection errors from `.fn` access
+    status: pending
+    description: 'Fix only the pytest collection failures caused by direct `.fn` attribute
+      access in `tests/test_agent_field.py`, `tests/test_autofix_message.py`, and
+      `tests/test_mcp.py`.
+
+
+      Scope boundaries:
+
+      - Preserve test intent and existing behavioral assertions.
+
+      - Limit code changes to the minimum needed to restore collection for these modules.
+
+      - Do not broaden this into unrelated MCP/test refactors, API redesign, or assertion
+      rewrites outside what collection repair requires.
+
+      - If helper access patterns must change, keep equivalent callable coverage and
+      document the replacement seam used by the tests.
+
+
+      Touch paths:
+
+      - `tests/test_agent_field.py`
+
+      - `tests/test_autofix_message.py`
+
+      - `tests/test_mcp.py`
+
+
+      Conflict control:
+
+      - Isolated to the three failing test modules; no dependency edge to `unified-state-core`
+      so the unified-state critical path remains runnable in parallel.'
+    verification: '- Targeted collection passes: `pytest --collect-only tests/test_agent_field.py
+      tests/test_autofix_message.py tests/test_mcp.py -q`
+
+      - No new scope creep beyond collection repair is introduced in unrelated test
+      modules.'
+    agent: python-executor
+  - id: test-collection-remediation.retest-full-collection-and-targeted-modules
+    name: Retest full collection and targeted modules
+    status: pending
+    description: 'As an INDEPENDENT TESTER (`integration-verifier`), validate that
+      the `.fn` collection-error remediation restores collectability without changing
+      the intent of the targeted test modules.
+
+
+      Test for:
+
+      - Happy path: repository-wide pytest collection completes.
+
+      - Targeted scope: `tests/test_agent_field.py`, `tests/test_autofix_message.py`,
+      and `tests/test_mcp.py` all collect and execute.
+
+      - Regression guard: failures, if any, are limited to actual test behavior rather
+      than collection-time attribute errors.
+
+
+      Independence Level: L1
+
+
+      Dependency rationale:
+
+      - Depends only on the fix step in this auxiliary phase.
+
+      - Does not gate or serialize `unified-state-core`.'
+    verification: '- Full collection: `pytest --collect-only tests -q`
+
+      - Targeted collection: `pytest --collect-only tests/test_agent_field.py tests/test_autofix_message.py
+      tests/test_mcp.py -q`
+
+      - Targeted execution: `pytest tests/test_agent_field.py tests/test_autofix_message.py
+      tests/test_mcp.py -q`'
+    evidence_template: "## Verification Report\n\n**Tester**: integration-verifier\
+      \ (independent of implementation)\n**Scope**: pytest collection remediation\
+      \ for `.fn` access errors\n**Independence Level**: L1\n\n### Test Execution\n\
+      - Commands executed:\n  ```\n  pytest --collect-only tests -q\n  pytest --collect-only\
+      \ tests/test_agent_field.py tests/test_autofix_message.py tests/test_mcp.py\
+      \ -q\n  pytest tests/test_agent_field.py tests/test_autofix_message.py tests/test_mcp.py\
+      \ -q\n  ```\n- Actual output: paste key collection and targeted-module results\n\
+      \n### Issues Found\n- Document any remaining collection failures separately\
+      \ from runtime test failures.\n\n### Verdict\n- PASS if full collection succeeds\
+      \ and the targeted modules collect/run without `.fn` collection errors\n- ISSUES_FOUND\
+      \ if new or remaining failures are discovered\n- INCOMPLETE if commands could\
+      \ not be run"
+    depends_on:
+    - test-collection-remediation.fix-fn-collection-errors
+    agent: integration-verifier
+  - id: test-collection-remediation.gate
+    name: Gate review for test collection remediation
+    status: pending
+    description: 'As an INDEPENDENT REVIEWER (`gate-reviewer`), assess whether the
+      test-collection-remediation phase meets the quality bar for closure without
+      blocking the unified-state critical path.
+
+
+      Review criteria:
+
+      1. The fix step stayed within scope (collection repair only, test intent preserved).
+
+      2. Independent retest evidence includes both full repository collection and
+      targeted module collection/execution.
+
+      3. Any remaining failures are clearly classified as non-collection follow-up,
+      if applicable.
+
+      4. No dependency edge was introduced that blocks `unified-state-core`.'
+    verification: '- Evidence confirms scoped fix only in the three targeted test
+      modules
+
+      - Independent retest includes `pytest --collect-only tests -q`
+
+      - Independent retest includes targeted collect-only and targeted execution for
+      the three modules
+
+      - Phase remains independent of `unified-state-core` critical-path steps'
+    depends_on:
+    - test-collection-remediation.fix-fn-collection-errors
+    - test-collection-remediation.retest-full-collection-and-targeted-modules
+    agent: gate-reviewer

@@ -504,7 +504,7 @@ def complete_phase(plan: Plan, phase_id: str, evidence: str) -> tuple[Plan, list
     return plan, unlocked
 
 
-def defer_step(plan: Plan, step_id: str) -> Plan:
+def defer_step(plan: Plan, step_id: str, claims_path: Path | None = None) -> Plan:
     """Return a claimed step to pending."""
     found = plan.find_step(step_id)
     if found is None:
@@ -513,6 +513,16 @@ def defer_step(plan: Plan, step_id: str) -> Plan:
 
     if step.status != StepStatus.CLAIMED:
         raise PlanError(f"Step '{step_id}' cannot be deferred (status: {step.status.value})")
+
+    if claims_path is not None:
+        branch = get_current_branch()
+        released = release_claim(step_id, branch, claims_path)
+        if not released:
+            _logger.warning(
+                "Claim not found while deferring step '%s' on branch '%s' (may have expired)",
+                step_id,
+                branch,
+            )
 
     step.status = StepStatus.PENDING
     step.claimed_by = None

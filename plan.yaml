@@ -15865,7 +15865,7 @@ phases:
     claimed_at: '2026-03-08T17:41:28.725245+00:00'
   - id: unified-state-gate-review-remediation.s2-io-field-cleanup
     name: s2-io-field-cleanup
-    status: pending
+    status: claimed
     description: 'Replace hardcoded field names in _plan_to_dict.
 
 
@@ -15891,6 +15891,8 @@ phases:
     verification: pytest tests/test_io.py -v passes. No hardcoded field name strings
       remain in the affinity cleanup logic of _plan_to_dict/_clean_dict.
     agent: python-executor
+    claimed_by: python-executor
+    claimed_at: '2026-03-08T17:41:29.249367+00:00'
   - id: unified-state-gate-review-remediation.s3-field-level-merge
     name: s3-field-level-merge
     status: pending

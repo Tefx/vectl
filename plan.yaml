@@ -7732,6 +7732,277 @@ phases:
     - unified-state-models-io.save-plan-git-commit
     - unified-state-models-io.confirm-inline-serialization
     agent: gate-reviewer
+  - id: unified-state-models-io.unified-state-models-io-fix-done-at-split-state-io
+    name: unified-state-models-io.fix-done-at-split-state-io
+    status: pending
+    description: 'HIGH priority blocker remediation.
+
+
+      Fix blocker from `unified-state-models-io.gate`: preserve `done_at` across split-state
+      IO paths in `src/vectl/io.py`.
+
+
+      Scope:
+
+      - Update `extract_state()` to include `done_at` when extracting mutable state.
+
+      - Update `strip_state()` so `done_at` is removed only from the plan-side structure
+      and preserved in extracted state payloads.
+
+      - Update `merge_plan()` so `done_at` round-trips correctly when state is merged
+      back into the plan.
+
+      - Add focused regression tests covering extract/strip/merge behavior for `done_at`.
+
+
+      Failure-mode checklist:
+
+      - Relative vs absolute path behavior remains unchanged for IO entry points.
+
+      - Missing-file fallback behavior remains unchanged when state sidecars are absent.
+
+      - Explicit clear / null overwrite semantics for `done_at` are tested and documented
+      in assertions.
+
+      - Stale-definition vs new-state precedence for `done_at` is covered in merge
+      regression tests.
+
+      - Partial-write / CAS-conflict behavior is out of scope for this fix and must
+      not be broadened here.
+
+
+      State semantics:
+
+      - Last-writer-wins applies to merged mutable state when `done_at` is present
+      in extracted state.
+
+      - `done_at` must be preserved exactly across extract -> strip -> merge round-trips.
+
+      - Backward-compatible legacy behavior means plans without `done_at` still load
+      and merge without errors.
+
+
+      Out of scope:
+
+      - Claims lock ADR mismatch.
+
+      - Broad refactors to claims/state IO beyond `done_at` preservation.
+
+      - Save/commit behavior and CAS retry logic.'
+    verification: '- Main path: run `pytest tests -k ''done_at and (extract_state
+      or strip_state or merge_plan or io or state)'' -v` and show the targeted cases
+      covering extract/strip/merge round-trips.
+
+      - Failure path: include a focused regression proving `done_at` is not lost when
+      extracted state is merged back over plan data, including explicit null/clear
+      semantics if supported by current models.
+
+      - Proof: no split-state helper path under the fix scope omits `done_at` where
+      mutable step state is extracted or merged.'
+    evidence_template: '## done_at IO Fix Evidence
+
+
+      **Files changed**
+
+      - `src/vectl/io.py`
+
+      - `<targeted test files>`
+
+
+      **Regression coverage added/updated**
+
+      - `<exact test names covering extract_state>`
+
+      - `<exact test names covering strip_state>`
+
+      - `<exact test names covering merge_plan>`
+
+
+      **Exact commands run**
+
+      ```bash
+
+      pytest tests -k ''done_at and (extract_state or strip_state or merge_plan or
+      io or state)'' -v
+
+      ```
+
+
+      **Actual output**
+
+      ```text
+
+      <paste pytest output>
+
+      ```
+
+
+      **State-semantics proof**
+
+      - Main path: <how `done_at` survives extract -> strip -> merge>
+
+      - Failure path: <how stale/new state precedence or explicit clear was verified>
+
+      - Backward compatibility: <legacy no-`done_at` case covered or unchanged>
+
+      '
+    depends_on:
+    - unified-state-models-io.gate
+    agent: python-senior
+  - id: unified-state-models-io.retest-done-at-io-gate
+    name: retest-done-at-io-gate
+    status: pending
+    description: 'Independent retest for the `done_at` split-state IO blocker after
+      `unified-state-models-io.unified-state-models-io-fix-done-at-split-state-io`.
+
+
+      As an INDEPENDENT TESTER (`gate-reviewer`), validate from a fresh perspective
+      that:
+
+      - `extract_state()`, `strip_state()`, and `merge_plan()` now preserve `done_at`
+      correctly.
+
+      - Targeted IO/state regressions pass.
+
+      - Gate-critical evidence for the Phase 1 blocker is now sufficient to unblock
+      progression.
+
+
+      YOUR GOAL IS TO FIND PROBLEMS, not to confirm it works.
+
+
+      Test for:
+
+      - Happy path: `done_at` survives extract -> strip -> merge round-trip.
+
+      - Edge cases: missing `done_at`, legacy plan data, explicit clear/null semantics
+      if supported.
+
+      - Error scenarios: merge precedence causing silent loss or semantic divergence.
+
+
+      Finding issues is a successful verification outcome and should be reported explicitly.'
+    verification: '- Run targeted IO/state verification: `pytest tests -k ''done_at
+      and (extract_state or strip_state or merge_plan or io or state)'' -v`.
+
+      - Recheck the gate-critical blocker only: verify evidence shows `done_at` is
+      preserved in all three split-state helpers and no unresolved data-loss risk
+      remains.
+
+      - If issues remain, report exact failing path and reproduction instead of passing
+      the step.'
+    evidence_template: '## Retest Report
+
+
+      **Tester**: `gate-reviewer` (independent of implementation)
+
+      **Scope**: `done_at` preservation across split-state IO helpers
+
+
+      **Commands executed**
+
+      ```bash
+
+      pytest tests -k ''done_at and (extract_state or strip_state or merge_plan or
+      io or state)'' -v
+
+      ```
+
+
+      **Actual output**
+
+      ```text
+
+      <paste pytest output>
+
+      ```
+
+
+      **Gate-critical review**
+
+      - `extract_state()`: <pass/fail + evidence>
+
+      - `strip_state()`: <pass/fail + evidence>
+
+      - `merge_plan()`: <pass/fail + evidence>
+
+      - Remaining blocker? <yes/no; if yes, exact reason>
+
+
+      **Verdict**
+
+      - PASS | ISSUES_FOUND | INCOMPLETE
+
+      '
+    depends_on:
+    - unified-state-models-io.unified-state-models-io-fix-done-at-split-state-io
+    agent: gate-reviewer
+  - id: unified-state-models-io.followup-claims-lock-adr-alignment
+    name: followup-claims-lock-adr-alignment
+    status: pending
+    description: 'MEDIUM priority, non-blocking follow-up.
+
+
+      Align claims lock behavior and ADR text.
+
+
+      Resolve the SHOULD_FIX mismatch noted by `unified-state-models-io.gate`:
+
+      - implementation currently uses a sidecar `.lock` file for claims locking
+
+      - ADR text says `flock(claims.json)`
+
+
+      Determine whether the source of truth should be the ADR or the implementation,
+      then make the smaller correct alignment change and add/update focused tests
+      or ADR text accordingly.
+
+
+      Non-goal: do not reopen the `done_at` blocker or broaden scope into unrelated
+      IO refactors.'
+    verification: '- Show whether alignment was done in spec, implementation, or both.
+
+      - Run focused claims-lock verification matching the chosen alignment path.
+
+      - Provide exact before/after mismatch resolution evidence; this step is MEDIUM
+      priority and non-blocking for the `done_at` blocker.'
+    evidence_template: '## Claims Lock Alignment Evidence
+
+
+      **Mismatch resolved by**: <ADR update | implementation update | both>
+
+
+      **Reasoning**
+
+      - <why this is the correct source of truth>
+
+
+      **Commands run**
+
+      ```bash
+
+      <exact focused command(s)>
+
+      ```
+
+
+      **Actual output**
+
+      ```text
+
+      <paste output>
+
+      ```
+
+
+      **Result**
+
+      - ADR and implementation now agree on: <locking behavior>
+
+      '
+    depends_on:
+    - unified-state-models-io.retest-done-at-io-gate
+    agent: python-senior
 - id: unified-state-core
   name: 'Unified State: Core Logic Adaptation'
   status: pending

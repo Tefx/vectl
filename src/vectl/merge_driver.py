@@ -80,6 +80,13 @@ def _build_step_index(plan: Plan) -> tuple[dict[str, Step], dict[str, str], list
     return by_id, phase_by_step, order
 
 
+def _step_state_signature(
+    step: Step | None, phase_id: str | None
+) -> tuple[dict[str, Any] | None, str | None]:
+    payload = None if step is None else _step_payload(step)
+    return payload, phase_id
+
+
 def merge_plans(base_path: str, ours_path: str, theirs_path: str) -> int:
     """Merge plan YAML files for git merge-driver integration.
 
@@ -139,6 +146,33 @@ def merge_plans(base_path: str, ours_path: str, theirs_path: str) -> int:
     merged_step_phase: dict[str, str] = {}
     merged_step_order = _ordered_union(base_step_order, ours_step_order, theirs_step_order)
     for step_id in merged_step_order:
+        base_step_signature = _step_state_signature(
+            base_steps.get(step_id),
+            base_step_phase.get(step_id),
+        )
+        ours_step_signature = _step_state_signature(
+            ours_steps.get(step_id),
+            ours_step_phase.get(step_id),
+        )
+        theirs_step_signature = _step_state_signature(
+            theirs_steps.get(step_id),
+            theirs_step_phase.get(step_id),
+        )
+
+        ours_step_changed = ours_step_signature != base_step_signature
+        theirs_step_changed = theirs_step_signature != base_step_signature
+
+        if (
+            ours_step_changed
+            and theirs_step_changed
+            and ours_step_signature != theirs_step_signature
+        ):
+            try:
+                _write_conflict_markers(ours_file, ours_raw, theirs_raw)
+            except OSError:
+                return 1
+            return 1
+
         merged_step, conflict = _three_way(
             base_steps.get(step_id),
             ours_steps.get(step_id),

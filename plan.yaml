@@ -16329,7 +16329,7 @@ phases:
       - Scope held to targeted cleanup logic and focused regression tests.'
   - id: unified-state-gate-review-remediation.verify-remediation-retest-affinity-cleanup
     name: verify-remediation-retest-affinity-cleanup
-    status: pending
+    status: claimed
     description: 'As an INDEPENDENT TESTER (`integration-verifier`), re-run remediation
       validation after the affinity cleanup fix.
 
@@ -16362,3 +16362,5 @@ phases:
     depends_on:
     - unified-state-gate-review-remediation.verify-remediation-fix-affinity-cleanup
     agent: integration-verifier
+    claimed_by: integration-verifier
+    claimed_at: '2026-03-08T18:04:57.157934+00:00'

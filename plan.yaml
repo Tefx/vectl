@@ -16329,7 +16329,7 @@ phases:
       - Scope held to targeted cleanup logic and focused regression tests.'
   - id: unified-state-gate-review-remediation.verify-remediation-retest-affinity-cleanup
     name: verify-remediation-retest-affinity-cleanup
-    status: claimed
+    status: done
     description: 'As an INDEPENDENT TESTER (`integration-verifier`), re-run remediation
       validation after the affinity cleanup fix.
 
@@ -16364,3 +16364,44 @@ phases:
     agent: integration-verifier
     claimed_by: integration-verifier
     claimed_at: '2026-03-08T18:04:57.157934+00:00'
+    done_at: '2026-03-08T18:08:03.880782+00:00'
+    evidence: 'Artifact:
+
+      - Commit hash(es): none (verification-only task; no file modifications)
+
+
+      Verification:
+
+      - Run: uv run pytest -v tests/test_io.py -k "AffinityCleanup" -> 3 passed, 23
+      deselected
+
+      - Run: uv run pytest -v tests/test_io.py -> 26 passed
+
+      - Run: uv run mypy src/vectl/ -> Success: no issues found in 18 source files
+
+      - Run: uv run python -c "from vectl.io import _clean_dict; consts={c for c in
+      _clean_dict.__code__.co_consts if isinstance(c,str)}; print(''has_affinity_literal='',
+      ''affinity'' in consts); print(''has_default_affinity_literal='', ''default_affinity''
+      in consts)" -> has_affinity_literal=False, has_default_affinity_literal=False
+
+      - Run: rg -n "\"default_affinity\"|\"affinity\"|''default_affinity''|''affinity''"
+      src/vectl/io.py -> only helper-level string use outside targeted _clean_dict
+      cleanup block
+
+
+      Spec link:
+
+      - unified-state-gate-review-remediation.verify-remediation-retest-affinity-cleanup
+
+
+      Files changed:
+
+      - none
+
+
+      Gaps/Notes:
+
+      - S-2 blocker cleared; no blocking issues found in scoped retest.
+
+      - Suggestion recorded by verifier: no additional remediation needed for this
+      scope.'

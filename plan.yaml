@@ -14298,7 +14298,7 @@ phases:
     claimed_at: '2026-03-08T15:40:38.123548+00:00'
   - id: unified-state-merge-driver.merge-driver-tests
     name: Merge driver tests
-    status: pending
+    status: claimed
     description: 'Integration tests for the merge driver.
 
 
@@ -14343,6 +14343,8 @@ phases:
     depends_on:
     - unified-state-merge-driver.implement-merge-driver
     agent: python-executor
+    claimed_by: python-executor
+    claimed_at: '2026-03-08T15:40:38.577446+00:00'
   - id: unified-state-merge-driver.gate
     name: 'Gate: Multi-User Merge Driver'
     status: pending

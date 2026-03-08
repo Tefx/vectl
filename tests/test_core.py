@@ -12,6 +12,7 @@ from vectl.core import (
     apply_recovery,
     claim_step,
     complete_step,
+    defer_step,
     preview_recovery,
     recover_from_backup,
     validate_plan,
@@ -272,6 +273,24 @@ def test_complete_step_releases_claim_from_claims_json(
     assert "feature/test-branch:p1.s1" in claims_before
 
     complete_step(plan, "p1.s1", "evidence text", claims_path=claims_path)
+
+    claims_after = load_claims(claims_path)
+    assert "feature/test-branch:p1.s1" not in claims_after
+
+
+def test_defer_step_releases_claim_from_claims_json(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    plan = _claimable_plan()
+    claims_path = tmp_path / "claims.json"
+
+    monkeypatch.setattr("vectl.core.get_current_branch", lambda: "feature/test-branch")
+
+    claim_step(plan, "p1.s1", "agent-1", claims_path=claims_path)
+    claims_before = load_claims(claims_path)
+    assert "feature/test-branch:p1.s1" in claims_before
+
+    defer_step(plan, "p1.s1", claims_path=claims_path)
 
     claims_after = load_claims(claims_path)
     assert "feature/test-branch:p1.s1" not in claims_after

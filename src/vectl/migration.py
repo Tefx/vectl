@@ -38,6 +38,18 @@ _PHASE_MIGRATION_FIELDS: tuple[str, ...] = (
     "evidence",
 )
 
+_STEP_OVERWRITE_WARNING_DEFAULTS: dict[str, Any] = {
+    "status": "pending",
+    "evidence": None,
+    "done_at": None,
+}
+
+
+def _normalize_step_field_value(field: str, value: Any) -> Any:
+    if field == "status" and hasattr(value, "value"):
+        return value.value
+    return value
+
 
 @dataclass(frozen=True)
 class MigrationResult:
@@ -94,6 +106,19 @@ def _merge_step(step: Step, step_state: dict[str, Any]) -> Step:
     merged = step.model_dump(mode="python")
     for field in _STEP_MIGRATION_FIELDS:
         if field in step_state:
+            default_value = _STEP_OVERWRITE_WARNING_DEFAULTS.get(field)
+            if field in _STEP_OVERWRITE_WARNING_DEFAULTS:
+                inline_value = _normalize_step_field_value(field, getattr(step, field))
+                state_value = _normalize_step_field_value(field, step_state[field])
+                if inline_value != default_value and state_value != inline_value:
+                    _LOGGER.warning(
+                        "state.json overwriting inline plan.yaml step value: "
+                        "step_id=%s field=%s plan_value=%r state_value=%r",
+                        step.id,
+                        field,
+                        inline_value,
+                        state_value,
+                    )
             merged[field] = step_state[field]
     return Step.model_validate(merged)
 

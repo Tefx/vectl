@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import logging
 import subprocess
 from pathlib import Path
 
@@ -118,6 +119,26 @@ def test_migrate_plan_has_inline_status_state_wins(tmp_path: Path) -> None:
     assert result.migrated_steps == 1
     assert loaded.find_step("phase-a.step1")[1].status == StepStatus.CLAIMED
     assert loaded.find_step("phase-a.step1")[1].claimed_by == "state"
+
+
+def test_migrate_warns_on_inline_step_value_overwrite(tmp_path: Path, caplog) -> None:
+    plan = _base_plan()
+    found = plan.find_step("phase-a.step1")
+    assert found is not None
+    found[1].status = StepStatus.DONE
+
+    plan_path = tmp_path / "plan.yaml"
+    save_plan(plan, plan_path)
+    _write_state(
+        plan_path, {"steps": {"phase-a.step1": {"status": "claimed", "claimed_by": "state"}}}
+    )
+
+    caplog.set_level(logging.WARNING, logger="vectl.migration")
+    migrate_from_split_state(plan_path)
+
+    assert "state.json overwriting inline plan.yaml step value" in caplog.text
+    assert "step_id=phase-a.step1" in caplog.text
+    assert "field=status" in caplog.text
 
 
 def test_migrate_empty_state(tmp_path: Path) -> None:

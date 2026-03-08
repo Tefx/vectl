@@ -90,25 +90,16 @@ def _probe_worktree_layout() -> _WorktreeProbe:
     if git_dir == git_common_dir:
         return _WorktreeProbe(is_git_repo=True, is_linked=False, main_root=None, malformed=False)
 
-    # Linked worktree. Resolve canonical main root from the common dir
-    # using git itself (ADR robustness decision), not path heuristics.
+    # Linked worktree. Resolve canonical main root from git-common-dir.
+    # In linked layouts git-common-dir points to main_root/.git.
     if not git_common_dir.exists() or not git_common_dir.is_dir():
         return _WorktreeProbe(is_git_repo=True, is_linked=True, main_root=None, malformed=True)
 
-    try:
-        toplevel_result = subprocess.run(
-            ["git", "-C", str(git_common_dir), "rev-parse", "--show-toplevel"],
-            capture_output=True,
-            text=True,
-            cwd=cwd,
-        )
-    except OSError:
-        return _WorktreeProbe(is_git_repo=True, is_linked=True, main_root=None, malformed=True)
-    if toplevel_result.returncode != 0:
+    if git_common_dir.name != ".git":
         return _WorktreeProbe(is_git_repo=True, is_linked=True, main_root=None, malformed=True)
 
-    main_root = _normalize_git_path(toplevel_result.stdout, cwd)
-    if main_root is None:
+    main_root = git_common_dir.parent
+    if not main_root.exists() or not main_root.is_dir():
         return _WorktreeProbe(is_git_repo=True, is_linked=True, main_root=None, malformed=True)
 
     return _WorktreeProbe(
@@ -183,12 +174,11 @@ def resolve_plan_path(explicit: Path | None = None) -> Path:
     return Path("plan.yaml")
 
 
-def resolve_state_path(plan_path: Path | None = None) -> Path:
-    """Resolve the state.json path for a plan.
+def resolve_claims_path(plan_path: Path | None = None) -> Path:
+    """Resolve the claims.json path for a plan.
 
-    Resolution strategy:
-      1. Resolve git-common-dir via `git rev-parse --git-common-dir`.
-      2. If git fails, fall back to `.vectl/state.json` under the plan directory.
+    Claims are ephemeral and shared across linked worktrees via git-common-dir.
+    See docs/ADR-unified-state.md.
     """
     if plan_path is None:
         plan_path = resolve_plan_path()
@@ -201,12 +191,12 @@ def resolve_state_path(plan_path: Path | None = None) -> Path:
             cwd=plan_path.parent,
         )
     except OSError:
-        return plan_path.parent / ".vectl" / "state.json"
+        return plan_path.parent / ".vectl" / "claims.json"
 
     if git_result.returncode == 0:
         git_common_dir = Path(git_result.stdout.strip())
         if not git_common_dir.is_absolute():
             git_common_dir = plan_path.parent / git_common_dir
-        return git_common_dir / "vectl" / "state.json"
+        return git_common_dir / "vectl" / "claims.json"
 
-    return plan_path.parent / ".vectl" / "state.json"
+    return plan_path.parent / ".vectl" / "claims.json"

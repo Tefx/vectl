@@ -16,15 +16,12 @@ from pathlib import Path
 import pytest
 import yaml
 
-from vectl.io import extract_state, load_state, merge_plan
+from vectl.claims import load_claims
 from vectl.mcp_server import (
     _load as _vectl_load,
 )
 from vectl.mcp_server import (
-    _save_both as _vectl_save_both,
-)
-from vectl.mcp_server import (
-    _save_state as _vectl_save_state,
+    _save_plan as _vectl_save_plan,
 )
 from vectl.mcp_server import (
     vectl_check as _vectl_check_tool,
@@ -68,11 +65,11 @@ from vectl.mcp_server import (
 from vectl.mcp_server import (
     vectl_status as _vectl_status_tool,
 )
+from vectl.migration import migrate_from_split_state
 from vectl.models import Phase, PhaseStatus, Plan, PlanError, PlanIOError, Step, StepStatus
-from vectl.plan_path import resolve_state_path
+from vectl.plan_path import resolve_claims_path
 
-# FastMCP @mcp.tool() wraps functions in FunctionTool objects.
-# Access the underlying callable via .fn for direct testing.
+# FastMCP @mcp.tool() returns FunctionTool objects; unwrap to get the callable.
 vectl_status = _vectl_status_tool.fn
 vectl_show = _vectl_show_tool.fn
 vectl_claim = _vectl_claim_tool.fn
@@ -264,8 +261,8 @@ def _legacy_migration_plan_file(tmp_path: Path) -> Path:
 
 
 def _state_json_path(plan_file: Path) -> Path:
-    """Return state path for a plan path and verify it is under that plan."""
-    return resolve_state_path(plan_file)
+    """Return legacy companion state path used only for ignore regressions."""
+    return plan_file.parent / ".vectl" / "state.json"
 
 
 @pytest.fixture()
@@ -298,30 +295,8 @@ def plan_file(tmp_path: Path) -> Iterator[Path]:
 
 
 def _reload_plan(path: Path) -> dict:
-    """Re-read the effective plan state as dict.
-
-    The active MCP implementation keeps mutable runtime fields (status, evidence,
-    claims, etc.) in a companion state.json. This helper merges that state back
-    into plan.yaml so tests can inspect the effective plan.
-    """
-    plan_data = yaml.safe_load(path.read_text())
-
-    state_path = resolve_state_path(path)
-    state, _ = load_state(state_path)
-    if not state.steps and not state.phases and state.clipboard is None and not state.plan_id:
-        return plan_data
-
-    plan = Plan.model_validate(plan_data)
-    merged = merge_plan(plan, state)
-    return merged.model_dump(mode="json")
-
-
-def _read_state_json(path: Path) -> dict:
-    """Load companion state.json payload as a plain dictionary."""
-    state_path = _state_json_path(path)
-    if not state_path.exists():
-        return {}
-    return json.loads(state_path.read_text())
+    """Re-read plan.yaml contents as dict."""
+    return yaml.safe_load(path.read_text())
 
 
 def _legacy_step_ids(plan_data: dict[str, object] | None = None) -> set[str]:
@@ -499,6 +474,19 @@ class TestVectlLifecycle:
 
         data = _reload_plan(plan_file)
         assert data["phases"][0]["steps"][0]["status"] == "pending"
+
+    def test_claim_and_defer_use_claims_store(self, plan_file: Path) -> None:
+        claims_path = resolve_claims_path(plan_file)
+
+        claim_result = vectl_claim(agent="bot", step_id="a.1")
+        assert claim_result["ok"] is True
+        claims_after_claim = load_claims(claims_path)
+        assert len(claims_after_claim) == 1
+        assert next(iter(claims_after_claim.values())).step_id == "a.1"
+
+        defer_result = vectl_lifecycle(action="defer", id="a.1")
+        assert "Deferred" in defer_result
+        assert load_claims(claims_path) == {}
 
     def test_reject_done_step(self, plan_file: Path) -> None:
         vectl_claim(agent="bot", step_id="a.1")
@@ -1861,74 +1849,83 @@ class TestVectlClipboardCAS:
                 os.environ["VECTL_PLAN_PATH"] = old
 
 
-class TestMcpSplitStateIntegration:
-    """Migration-safe behavior for MCP split-state refactor."""
+class TestMcpUnifiedPlanPath:
+    """Unified load/save behavior uses plan.yaml only."""
 
-    def test_claim_creates_state_json(self, legacy_plan_file: Path) -> None:
+    def test_claim_persists_to_plan_yaml_only(self, legacy_plan_file: Path) -> None:
         result = vectl_claim(agent="bot", step_id="phase-b.step1")
         assert result["ok"] is True
 
-        state_path = _state_json_path(legacy_plan_file)
-        assert state_path.exists()
-
-    def test_claim_state_json_contents(self, legacy_plan_file: Path) -> None:
-        vectl_claim(agent="bot", step_id="phase-b.step1")
-
-        state_payload = _read_state_json(legacy_plan_file)
-        assert state_payload["steps"]["phase-b.step1"]["status"] == StepStatus.CLAIMED.value
-        assert state_payload["steps"]["phase-b.step1"]["claimed_by"] == "bot"
-        assert "claimed_at" in state_payload["steps"]["phase-b.step1"]
-
-    def test_complete_updates_state_json_plan_yaml_unchanged(self, legacy_plan_file: Path) -> None:
-        vectl_claim(agent="bot", step_id="phase-b.step1")
-        vectl_complete(step_id="phase-b.step1", evidence="Legacy step completed")
-
-        state_payload = _read_state_json(legacy_plan_file)
-        completed = state_payload["steps"]["phase-b.step1"]
-        assert completed["status"] == StepStatus.DONE.value
-        assert completed["evidence"] == "Legacy step completed"
-
-        plan_data = yaml.safe_load(legacy_plan_file.read_text())
+        plan_data = _reload_plan(legacy_plan_file)
         step_data = plan_data["phases"][1]["steps"][0]
-        assert step_data["status"] == "pending"
-        assert step_data["claimed_by"] == "legacy-worker"
+        assert step_data["status"] == StepStatus.CLAIMED.value
+        assert step_data["claimed_by"] == "bot"
 
-    def test_mutate_updates_both_files(self, legacy_plan_file: Path) -> None:
-        result = vectl_mutate(
-            action="add-step",
-            phase_id="phase-b",
-            name="Persisted Step",
+        assert not _state_json_path(legacy_plan_file).exists()
+
+    def test_load_returns_definition_plan_hash_only(self, plan_file: Path) -> None:
+        plan, def_hash = _vectl_load()
+        assert plan.project == "test-mcp"
+        assert isinstance(def_hash, str)
+        assert def_hash
+
+    def test_load_ignores_state_json_until_explicit_migration(self, plan_file: Path) -> None:
+        stray_state = _state_json_path(plan_file)
+        stray_state.parent.mkdir(parents=True, exist_ok=True)
+        stray_state.write_text(
+            json.dumps(
+                {
+                    "steps": {
+                        "a.1": {"status": "done", "evidence": "migrated by mcp"},
+                        "ghost.step": {"status": "claimed", "claimed_by": "ghost"},
+                    },
+                    "phases": {"alpha": {"status": "in_progress"}},
+                }
+            ),
+            encoding="utf-8",
         )
-        assert "Added step" in result
 
-        assert _state_json_path(legacy_plan_file).exists()
-        plan_data = yaml.safe_load(legacy_plan_file.read_text())
-        assert any(
-            "persisted-step" in step.get("id", "") for step in plan_data["phases"][1]["steps"]
-        )
+        plan, _ = _vectl_load()
+        found = plan.find_step("a.1")
+        assert found is not None
+        _, step = found
+        assert step.status == StepStatus.PENDING
+        assert step.evidence is None
+        phase = plan.find_phase("alpha")
+        assert phase is not None
+        assert phase.status == PhaseStatus.PENDING
 
-        for phase in plan_data["phases"]:
-            assert "claimed_by" not in phase
-            assert "evidence" not in phase
-            assert "rejection_reason" not in phase
-            for step in phase["steps"]:
-                for field in (
-                    "claimed_by",
-                    "claimed_at",
-                    "evidence",
-                    "skipped_reason",
-                    "rejection_reason",
-                    "rejection_history",
-                    "affinity_override",
-                    "affinity_override_by",
-                    "affinity_override_at",
-                ):
-                    assert field not in step
+        assert stray_state.exists()
+        assert not stray_state.with_suffix(".json.migrated").exists()
 
-        reloaded = _reload_plan(legacy_plan_file)
-        assert any("persisted-step" in step["id"] for step in reloaded["phases"][1]["steps"])
+        migration = migrate_from_split_state(plan_file)
+        assert migration.migrated_steps == 1
+        assert migration.migrated_phases == 1
+        assert not migration.already_migrated
 
-    def test_read_only_tools_no_state_write(self, plan_file: Path) -> None:
+        migrated_plan, _ = _vectl_load()
+        found = migrated_plan.find_step("a.1")
+        assert found is not None
+        _, step = found
+        assert step.status == StepStatus.DONE
+        assert step.evidence == "migrated by mcp"
+        phase = migrated_plan.find_phase("alpha")
+        assert phase is not None
+        assert phase.status == PhaseStatus.IN_PROGRESS
+        assert not stray_state.exists()
+        assert stray_state.with_suffix(".json.migrated").exists()
+
+    def test_save_plan_cas_conflict_raises_plan_error(self, plan_file: Path) -> None:
+        plan, def_hash = _vectl_load()
+
+        plan_data = yaml.safe_load(plan_file.read_text())
+        plan_data["context"] = "concurrent edit to trigger CAS conflict"
+        plan_file.write_text(yaml.dump(plan_data))
+
+        with pytest.raises(PlanError, match="CAS conflict: plan.yaml"):
+            _vectl_save_plan(plan, def_hash, "mcp: cas test")
+
+    def test_read_only_tools_do_not_write_state_json(self, plan_file: Path) -> None:
         state_path = _state_json_path(plan_file)
         assert not state_path.exists()
 
@@ -1937,292 +1934,6 @@ class TestMcpSplitStateIntegration:
 
         vectl_show(id="a.1")
         assert not state_path.exists()
-
-    def test_migration_roundtrip_all_state_fields(self, legacy_plan_file: Path) -> None:
-        plan, _def_hash, state_hash = _vectl_load()
-        assert state_hash == ""
-
-        plan_dict = plan.model_dump(mode="json")
-        fixture = _legacy_migration_plan_dict()
-
-        assert plan.project == fixture["project"]
-        assert plan.plan_id == fixture["plan_id"]
-
-        assert len(plan.phases) == len(fixture["phases"])
-        assert plan.clipboard is not None
-
-        plan_state = extract_state(plan)
-        assert set(plan_state.steps.keys()) == _legacy_step_ids(fixture)
-        assert set(plan_state.phases.keys()) == {"phase-a", "phase-b"}
-
-        for phase in fixture["phases"]:
-            for step in phase["steps"]:
-                state = plan_state.steps[step["id"]]
-                assert state.status.value == step["status"]
-                assert state.claimed_by == step["claimed_by"]
-                assert state.claimed_at == step["claimed_at"]
-                assert state.evidence == step["evidence"]
-                assert state.skipped_reason == step["skipped_reason"]
-                assert state.rejection_reason == step["rejection_reason"]
-                assert [entry.model_dump(mode="json") for entry in state.rejection_history] == step[
-                    "rejection_history"
-                ]
-                assert state.affinity_override == step["affinity_override"]
-                assert state.affinity_override_by == step["affinity_override_by"]
-                assert state.affinity_override_at == step["affinity_override_at"]
-
-        _vectl_save_state(plan, state_hash)
-        reloaded_plan, _, reloaded_state_hash = _vectl_load()
-
-        assert reloaded_plan.model_dump(mode="json") == plan_dict
-        assert reloaded_state_hash != ""
-
-    def test_migration_state_json_has_all_steps(self, legacy_plan_file: Path) -> None:
-        vectl_claim(agent="bot", step_id="phase-b.step1")
-
-        payload = _read_state_json(legacy_plan_file)
-        steps = set(payload["steps"].keys())
-        assert steps == _legacy_step_ids()
-
-        expected = {
-            step["id"]: step
-            for phase in _legacy_migration_plan_dict()["phases"]
-            for step in phase["steps"]
-        }
-        assert (
-            payload["steps"]["phase-a.step2"]["rejection_history"]
-            == expected["phase-a.step2"]["rejection_history"]
-        )
-
-    def test_migration_stale_plan_yaml_ignored(self, legacy_plan_file: Path) -> None:
-        vectl_claim(agent="bot", step_id="phase-b.step1")
-
-        plan_data = yaml.safe_load(legacy_plan_file.read_text())
-        stale_step = plan_data["phases"][1]["steps"][0]
-        stale_step["status"] = "done"
-        stale_step["claimed_by"] = "stale-agent"
-        stale_step["evidence"] = "stale-state"
-        legacy_plan_file.write_text(yaml.dump(plan_data))
-
-        reloaded, _, _ = _vectl_load()
-        reloaded_step_pair = reloaded.find_step("phase-b.step1")
-        assert reloaded_step_pair is not None
-        _, reloaded_step = reloaded_step_pair
-        assert reloaded_step.status == StepStatus.CLAIMED
-        assert reloaded_step.claimed_by == "bot"
-
-    def test_migration_definition_write_strips_state(self, legacy_plan_file: Path) -> None:
-        vectl_claim(agent="bot", step_id="phase-b.step1")
-
-        result = vectl_mutate(
-            action="add-step",
-            phase_id="phase-b",
-            name="Strip Me",
-        )
-        assert "Added step" in result
-
-        plan_data = yaml.safe_load(legacy_plan_file.read_text())
-        for phase in plan_data["phases"]:
-            assert "claimed_by" not in phase
-            assert "evidence" not in phase
-            for step in phase["steps"]:
-                for field in (
-                    "claimed_by",
-                    "claimed_at",
-                    "evidence",
-                    "skipped_reason",
-                    "rejection_reason",
-                    "rejection_history",
-                    "affinity_override",
-                    "affinity_override_by",
-                    "affinity_override_at",
-                ):
-                    assert field not in step
-
-        payload = _read_state_json(legacy_plan_file)
-        assert "phase-b.step1" in payload["steps"]
-        assert payload["steps"]["phase-b.step1"]["status"] == StepStatus.CLAIMED.value
-
-        reloaded = _reload_plan(legacy_plan_file)
-        assert any("strip-me" in step["id"] for step in reloaded["phases"][1]["steps"])
-
-    def test_migration_clipboard_roundtrip(self, legacy_plan_file: Path) -> None:
-        plan, _, state_hash = _vectl_load()
-        _vectl_save_state(plan, state_hash)
-
-        payload = _read_state_json(legacy_plan_file)
-        assert payload["clipboard"]["author"] == "reviewer"
-
-        result = vectl_mutate(action="edit-plan", project_guidance="Clipboard check")
-        assert "Updated plan" in result
-
-        plan_data = yaml.safe_load(legacy_plan_file.read_text())
-        assert "clipboard" not in plan_data
-
-        reloaded, _, _ = _vectl_load()
-        assert reloaded.clipboard is not None
-        assert reloaded.clipboard.author == "reviewer"
-        assert reloaded.clipboard.summary == "Handoff"
-
-    def test_save_both_plan_cas_conflict_does_not_persist_state(
-        self, legacy_plan_file: Path
-    ) -> None:
-        """Definition is written first. If definition CAS fails, state.json
-        is NOT written, preventing orphaned state entries."""
-        plan, def_hash, state_hash = _vectl_load()
-        assert state_hash == ""
-
-        state_path = _state_json_path(legacy_plan_file)
-        assert not state_path.exists()
-
-        plan_data = yaml.safe_load(legacy_plan_file.read_text())
-        plan_data["context"] = "concurrent edit to trigger CAS conflict"
-        legacy_plan_file.write_text(yaml.dump(plan_data))
-
-        with pytest.raises(PlanError, match="CAS conflict: plan.yaml"):
-            _vectl_save_both(plan, def_hash, state_hash)
-
-        assert not state_path.exists()
-
-
-class TestMcpOrphanDetection:
-    """Tests for orphan detection in MCP _load()."""
-
-    def test_load_logs_orphan_warning(
-        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-    ) -> None:
-        """_load logs orphan warnings when state has extra entries."""
-        import logging
-        import os
-
-        from vectl.io import save_plan, save_state
-        from vectl.models import PhaseState, PhaseStatus, PlanState, StepState
-
-        # Set up plan path
-        plan_path = tmp_path / "plan.yaml"
-        os.environ["VECTL_PLAN_PATH"] = str(plan_path)
-
-        # Create a plan
-        plan = Plan(
-            project="orphan-test",
-            phases=[
-                Phase(id="core", name="Core", steps=[Step(id="s1", name="Step 1")]),
-            ],
-        )
-        save_plan(plan, plan_path)
-
-        # Create state with orphan entries
-        state = PlanState(
-            plan_id="orphan-test",
-            phases={
-                "core": PhaseState(status=PhaseStatus.PENDING),
-                "orphan_phase": PhaseState(status=PhaseStatus.DONE),  # orphan
-            },
-            steps={
-                "s1": StepState(status=StepStatus.PENDING),
-                "orphan_step": StepState(status=StepStatus.CLAIMED, claimed_by="agent-x"),  # orphan
-            },
-        )
-        state_path = resolve_state_path(plan_path)
-        state_path.parent.mkdir(parents=True, exist_ok=True)
-        save_state(state, state_path)
-
-        # Set up logging capture
-        log_records: list[logging.LogRecord] = []
-
-        class ListHandler(logging.Handler):
-            """Custom handler that appends records to a list."""
-
-            def emit(self, record: logging.LogRecord) -> None:
-                log_records.append(record)
-
-        handler = ListHandler()
-
-        logger = logging.getLogger("vectl.mcp")
-        logger.addHandler(handler)
-        logger.setLevel(logging.WARNING)
-
-        try:
-            # Call _load - should not raise, but should log warnings
-            merged_plan, def_hash, state_hash = _vectl_load()
-
-            # Verify the plan was merged successfully (orphan warning doesn't block)
-            assert merged_plan.project == "orphan-test"
-
-            # Check that orphan warnings were logged
-            orphan_warnings = [
-                r for r in log_records if "Orphan" in r.message or "orphan" in r.message.lower()
-            ]
-            assert len(orphan_warnings) > 0
-        finally:
-            logger.removeHandler(handler)
-            os.environ.pop("VECTL_PLAN_PATH", None)
-
-    def test_load_no_warning_on_clean_state(
-        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-    ) -> None:
-        """_load shows no orphan warning when state matches plan."""
-        import logging
-        import os
-
-        from vectl.io import save_plan, save_state
-        from vectl.models import PhaseState, PhaseStatus, PlanState, StepState
-
-        # Set up plan path
-        plan_path = tmp_path / "plan.yaml"
-        os.environ["VECTL_PLAN_PATH"] = str(plan_path)
-
-        # Create a plan
-        plan = Plan(
-            project="clean-test",
-            phases=[
-                Phase(id="core", name="Core", steps=[Step(id="s1", name="Step 1")]),
-            ],
-        )
-        save_plan(plan, plan_path)
-
-        # Create clean state (no orphans)
-        state = PlanState(
-            plan_id="clean-test",
-            phases={
-                "core": PhaseState(status=PhaseStatus.PENDING),
-            },
-            steps={
-                "s1": StepState(status=StepStatus.PENDING),
-            },
-        )
-        state_path = resolve_state_path(plan_path)
-        state_path.parent.mkdir(parents=True, exist_ok=True)
-        save_state(state, state_path)
-
-        # Set up logging capture
-        log_records: list[logging.LogRecord] = []
-
-        class ListHandler(logging.Handler):
-            """Custom handler that appends records to a list."""
-
-            def emit(self, record: logging.LogRecord) -> None:
-                log_records.append(record)
-
-        handler = ListHandler()
-
-        logger = logging.getLogger("vectl.mcp")
-        logger.addHandler(handler)
-        logger.setLevel(logging.WARNING)
-
-        try:
-            # Call _load - should not raise and should not log orphan warnings
-            merged_plan, def_hash, state_hash = _vectl_load()
-
-            # Verify the plan was merged successfully
-            assert merged_plan.project == "clean-test"
-
-            # Check that NO orphan warnings were logged
-            orphan_warnings = [r for r in log_records if "Orphan" in r.message]
-            assert len(orphan_warnings) == 0
-        finally:
-            logger.removeHandler(handler)
-            os.environ.pop("VECTL_PLAN_PATH", None)
 
 
 class TestVectlInit:
@@ -2731,7 +2442,7 @@ class TestVectlRecover:
         backup_path.parent.mkdir(parents=True, exist_ok=True)
         backup_path.write_text(yaml.dump(backup_plan), encoding="utf-8")
 
-        state_path = resolve_state_path(plan_file)
+        state_path = _state_json_path(plan_file)
         state_path.parent.mkdir(parents=True, exist_ok=True)
         state_path.write_text(
             json.dumps(
@@ -2781,7 +2492,7 @@ class TestVectlRecover:
         # Write corrupted backup content
         backup_path.write_text("invalid: yaml [[[[")
 
-        state_path = resolve_state_path(plan_file)
+        state_path = _state_json_path(plan_file)
         state_path.parent.mkdir(parents=True, exist_ok=True)
         state_path.write_text(
             json.dumps(
@@ -2829,7 +2540,7 @@ class TestVectlRecover:
         vectl_dir.mkdir(parents=True, exist_ok=True)
         backup_path.write_text(yaml.dump(backup_plan), encoding="utf-8")
 
-        state_path = resolve_state_path(plan_file)
+        state_path = _state_json_path(plan_file)
         state_path.parent.mkdir(parents=True, exist_ok=True)
         state_path.write_text(
             json.dumps(

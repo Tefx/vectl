@@ -20,7 +20,7 @@ from typer.testing import CliRunner
 
 from vectl.cli import app
 from vectl.core import add_step, add_steps_bulk, edit_step, get_next_steps
-from vectl.io import load_plan, save_plan
+from vectl.io import load_plan_definition as load_plan, save_plan
 from vectl.mcp_server import (
     vectl_claim as _vectl_claim_tool,
 )
@@ -35,7 +35,7 @@ from vectl.mcp_server import (
 )
 from vectl.models import Phase, PhaseStatus, Plan, Step, StepStatus
 
-# FastMCP unwrap
+# FastMCP tools are FunctionTool objects; unwrap to get the callable
 vectl_status = _vectl_status_tool.fn
 vectl_show = _vectl_show_tool.fn
 vectl_claim = _vectl_claim_tool.fn

@@ -7,25 +7,20 @@ and CAS conflict handling.
 
 from __future__ import annotations
 
-import json
 from pathlib import Path
 
 import pytest
 from typer.testing import CliRunner
 
 from vectl.cli import app
-from vectl.io import save_plan, save_state
+from vectl.io import save_plan
 from vectl.models import (
     Phase,
-    PhaseState,
     PhaseStatus,
     Plan,
-    PlanState,
     Step,
-    StepState,
     StepStatus,
 )
-from vectl.plan_path import resolve_state_path
 
 runner = CliRunner()
 
@@ -95,14 +90,12 @@ class TestPlanPathFromNestedDir:
         assert "smoke-test" in result.output
 
 
-class TestSplitStatePersistence:
-    """Companion state behavior stays stable across path + precedence modes."""
+class TestPlanPathResolution:
+    """Plan path behavior stays stable across path modes."""
 
-    def test_relative_and_absolute_plan_path_share_companion_state(
+    def test_relative_and_absolute_plan_path_share_plan_yaml(
         self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
     ) -> None:
-        # Source: src/vectl/plan_path.py::resolve_state_path fallback rule
-        # for non-git dirs -> <plan_dir>/.vectl/state.json.
         plan = Plan(
             project="state-path",
             phases=[Phase(id="p1", name="P1", steps=[Step(id="p1.s1", name="S1")])],
@@ -117,54 +110,9 @@ class TestSplitStatePersistence:
         )
         assert rel_result.exit_code == 0
 
-        state_path = tmp_path / ".vectl" / "state.json"
-        assert state_path.exists()
-        state_doc = json.loads(state_path.read_text(encoding="utf-8"))
-        assert state_doc["steps"]["p1.s1"]["claimed_by"] == "rel-agent"
-
         abs_result = runner.invoke(app, ["show", "p1.s1", "--plan", str(plan_path.resolve())])
         assert abs_result.exit_code == 0
         assert "**Claimed By:** rel-agent" in abs_result.output
-
-    def test_state_json_overrides_stale_embedded_runtime_fields(self, tmp_path: Path) -> None:
-        # Source: src/vectl/io.py::load_plan + merge_plan apply state.json over
-        # legacy embedded runtime fields in plan.yaml.
-        plan_path = tmp_path / "plan.yaml"
-        plan_path.write_text(
-            """\
-project: stale-precedence
-phases:
-  - id: p1
-    name: P1
-    status: pending
-    steps:
-      - id: p1.s1
-        name: S1
-        status: claimed
-        claimed_by: legacy-agent
-""",
-            encoding="utf-8",
-        )
-
-        state_path = resolve_state_path(plan_path)
-        save_state(
-            PlanState(
-                plan_id="",
-                steps={
-                    "p1.s1": StepState(
-                        status=StepStatus.CLAIMED,
-                        claimed_by="fresh-agent",
-                    )
-                },
-                phases={"p1": PhaseState(status=PhaseStatus.PENDING)},
-            ),
-            state_path,
-        )
-
-        show_result = runner.invoke(app, ["show", "p1.s1", "--plan", str(plan_path)])
-        assert show_result.exit_code == 0
-        assert "**Claimed By:** fresh-agent" in show_result.output
-        assert "legacy-agent" not in show_result.output
 
     def test_env_var_overrides_walk_up(
         self, multi_phase_plan: Path, monkeypatch: pytest.MonkeyPatch

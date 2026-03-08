@@ -8,9 +8,24 @@ from datetime import datetime, timedelta, timezone
 from enum import Enum
 from pathlib import Path
 
+from vectl.claims import (
+    acquire_claim,
+    cleanup_stale_claims,
+    get_current_branch,
+    release_claim,
+)
+from vectl.lifecycle import (
+    ClaimResult,
+    claim_step,
+    complete_phase,
+    complete_step,
+    defer_step,
+    get_claimed_steps,
+    reject_step,
+    skip_phase,
+    skip_step,
+)
 from vectl.models import (
-    AffinityError,
-    AffinityMode,
     AmbiguousMatchError,
     Clipboard,
     DiffResult,
@@ -23,12 +38,9 @@ from vectl.models import (
     Plan,
     PlanError,
     PlanIOError,
-    PlanState,
     PlanValidationIssue,
-    RejectionEntry,
     ReviewResult,
     SearchMatch,
-    SkipReason,
     Step,
     StepChange,
     StepStatus,
@@ -48,7 +60,6 @@ def validate_plan(
     *,
     check_refs: bool = False,
     base_path: Path | None = None,
-    state: PlanState | None = None,
 ) -> list[PlanValidationIssue]:
     """Validate plan structure, DAG, and consistency.
 
@@ -56,26 +67,8 @@ def validate_plan(
         plan: The plan to validate.
         check_refs: If True, check that files in refs[] exist on disk.
         base_path: Base path for resolving refs (defaults to cwd).
-        state: Optional plan state for orphan detection.
     """
     errors: list[PlanValidationIssue] = []
-
-    # Orphan detection: check if state has entries not in plan
-    if state is not None:
-        from vectl.io import detect_orphan_state
-
-        orphans = detect_orphan_state(plan, state)
-        if orphans:
-            orphan_messages = []
-            for o in orphans:
-                if o.kind == "phase":
-                    orphan_messages.append(f"  - Phase '{o.id}' in state but not in plan")
-                elif o.kind == "step":
-                    orphan_messages.append(f"  - Step '{o.id}' in state but not in plan")
-            if orphan_messages:
-                msg = "Orphan state entries detected:\n" + "\n".join(orphan_messages)
-                msg += "\nRun 'vectl recover' to clean up ghost state"
-                errors.append(PlanValidationIssue(msg, is_warning=True))
 
     # Phase ID uniqueness
     phase_ids: set[str] = set()
@@ -258,370 +251,6 @@ def get_next_steps(plan: Plan, agent: str | None = None) -> list[Step]:
 
     result.sort(key=_sort_key)
     return result
-
-
-def get_claimed_steps(plan: Plan, agent: str | None = None) -> list[tuple[str, Step]]:
-    """Get all currently claimed steps, optionally filtered by agent.
-
-    Args:
-        plan: The plan to query.
-        agent: If provided, only return steps claimed by this agent.
-
-    Returns:
-        List of (phase_id, step) tuples for claimed steps.
-    """
-    results: list[tuple[str, Step]] = []
-    for phase in plan.phases:
-        for step in phase.steps:
-            if step.status != StepStatus.CLAIMED:
-                continue
-            if agent is not None and step.claimed_by != agent:
-                continue
-            results.append((phase.id, step))
-    return results
-
-
-# ---------------------------------------------------------------------------
-# Claim Result Dataclass
-# ---------------------------------------------------------------------------
-
-
-class ClaimResult:
-    """Result of a claim operation with affinity metadata.
-
-    RFC: docs/RFC-affinity.md
-    Used to communicate affinity warnings/errors to CLI and MCP layers.
-    """
-
-    def __init__(
-        self,
-        *,
-        affinity_warning: bool = False,
-        warning_message: str | None = None,
-        affinity_override: bool = False,
-    ) -> None:
-        self.affinity_warning = affinity_warning
-        self.warning_message = warning_message
-        self.affinity_override = affinity_override
-
-    def __repr__(self) -> str:
-        return (
-            f"ClaimResult(affinity_warning={self.affinity_warning}, "
-            f"warning_message={self.warning_message!r}, "
-            f"affinity_override={self.affinity_override})"
-        )
-
-
-def claim_step(
-    plan: Plan, step_id: str, agent_name: str, *, force: bool = False
-) -> tuple[Plan, ClaimResult]:
-    """Claim a step for work.
-
-    RFC: docs/RFC-affinity.md
-    Enforces agent affinity when step.agent is set.
-
-    Args:
-        plan: The plan to modify.
-        step_id: ID of the step to claim.
-        agent_name: Name of the agent claiming the step.
-        force: If True, override exclusive affinity violations.
-
-    Returns:
-        Tuple of (modified plan, claim result with affinity metadata).
-
-    Raises:
-        PlanError: Step not found, wrong status, inactive phase, or unmet deps.
-        AffinityError: Exclusive affinity violation when force=False.
-    """
-    result = ClaimResult()
-    found = plan.find_step(step_id)
-    if found is None:
-        raise PlanError(f"Step '{step_id}' not found")
-    phase, step = found
-
-    if step.status not in (StepStatus.PENDING, StepStatus.REJECTED):
-        raise PlanError(f"Step '{step_id}' cannot be claimed (status: {step.status.value})")
-
-    # Check phase is active
-    active_ids = _get_active_phase_ids(plan)
-    if phase.id not in active_ids:
-        raise PlanError(f"Step '{step_id}' is in inactive phase '{phase.id}'")
-
-    # Check step deps
-    done_ids = {s.id for s in phase.steps if s.status in (StepStatus.DONE, StepStatus.SKIPPED)}
-    unmet = [dep for dep in step.depends_on if dep not in done_ids]
-    if unmet:
-        raise PlanError(f"Step '{step_id}' has unmet dependencies: {unmet}")
-
-    # RFC: docs/RFC-affinity.md
-    # Check affinity when step.agent is set
-    if step.agent is not None and step.agent != agent_name:
-        # Resolve effective affinity: step.affinity overrides plan.default_affinity
-        effective_affinity = step.affinity or plan.default_affinity
-
-        if effective_affinity == AffinityMode.SUGGESTED:
-            # Warn but allow
-            result.affinity_warning = True
-            result.warning_message = (
-                f"Step '{step_id}' suggests agent '{step.agent}' "
-                f"but is being claimed by '{agent_name}'. "
-                f"Proceeding (affinity: suggested)"
-            )
-        elif effective_affinity == AffinityMode.EXCLUSIVE:
-            if force:
-                # Override with audit trail
-                step.affinity_override = True
-                step.affinity_override_by = agent_name
-                step.affinity_override_at = datetime.now(timezone.utc).isoformat()
-                result.affinity_override = True
-                result.warning_message = (
-                    f"Affinity override: step '{step_id}' has exclusive affinity for "
-                    f"'{step.agent}'. Overridden by --force. Audit trail recorded."
-                )
-            else:
-                # Reject
-                raise AffinityError(step_id, step.agent, agent_name)
-
-    step.status = StepStatus.CLAIMED
-    step.claimed_by = agent_name
-    step.claimed_at = datetime.now(timezone.utc).isoformat()
-
-    # Auto-update phase to in_progress (handles both PENDING and LOCKED-but-eligible)
-    if phase.status in (PhaseStatus.PENDING, PhaseStatus.LOCKED):
-        phase.status = PhaseStatus.IN_PROGRESS
-
-    return plan, result
-
-
-def complete_step(plan: Plan, step_id: str, evidence: str) -> Plan:
-    """Mark a step as done with evidence."""
-    found = plan.find_step(step_id)
-    if found is None:
-        raise PlanError(f"Step '{step_id}' not found")
-    phase, step = found
-
-    if step.status != StepStatus.CLAIMED:
-        raise PlanError(
-            f"Step '{step_id}' cannot be completed (status: {step.status.value}, "
-            f"must be claimed first)"
-        )
-
-    step.status = StepStatus.DONE
-    step.evidence = evidence
-
-    # Auto-update phase if all steps done/skipped
-    if all(s.status in (StepStatus.DONE, StepStatus.SKIPPED) for s in phase.steps):
-        phase.status = PhaseStatus.DONE
-        # Cascade: unlock downstream phases whose deps are now satisfied
-        auto_unlock_phases(plan)
-
-    return plan
-
-
-def complete_phase(plan: Plan, phase_id: str, evidence: str) -> tuple[Plan, list[str]]:
-    """Mark a phase as DONE with evidence.
-
-    This is intended for historical migration/import workflows where steps may
-    already be terminal (done/skipped) without having been claimed.
-
-    Source: Eidos migrate phase needs explicit phase completion to avoid
-    dependency deadlocks during import (user instruction: extend vectl first,
-    then migrate; plus expert recommendation to keep phase completion explicit).
-
-    Args:
-        plan: The plan to modify.
-        phase_id: Phase ID to complete.
-        evidence: Evidence/audit note for why the phase is considered complete.
-
-    Returns:
-        Tuple of (updated plan, list of phase IDs unlocked by this completion).
-
-    Raises:
-        PlanError: If phase not found, has unmet dependencies, or contains
-            any non-terminal steps.
-    """
-    if not evidence:
-        raise PlanError("Phase evidence is required for completion")
-
-    phase = plan.find_phase(phase_id)
-    if phase is None:
-        raise PlanError(f"Phase '{phase_id}' not found")
-    if phase.status == PhaseStatus.DONE:
-        raise PlanError(f"Phase '{phase_id}' is already done")
-
-    # Require explicit dependency completion to preserve lock semantics.
-    unmet_deps: list[str] = []
-    for dep_id in phase.depends_on:
-        dep = plan.find_phase(dep_id)
-        if dep is None or dep.status != PhaseStatus.DONE:
-            unmet_deps.append(dep_id)
-    if unmet_deps:
-        raise PlanError(f"Phase '{phase_id}' depends_on phases not done: {unmet_deps}")
-
-    non_terminal = [s for s in phase.steps if s.status not in (StepStatus.DONE, StepStatus.SKIPPED)]
-    if non_terminal:
-        details = [f"{s.id}({s.status.value})" for s in non_terminal]
-        raise PlanError(f"Phase '{phase_id}' has non-terminal steps: {details}")
-
-    phase.status = PhaseStatus.DONE
-    phase.evidence = evidence
-
-    unlocked = auto_unlock_phases(plan)
-    return plan, unlocked
-
-
-def defer_step(plan: Plan, step_id: str) -> Plan:
-    """Return a claimed step to pending."""
-    found = plan.find_step(step_id)
-    if found is None:
-        raise PlanError(f"Step '{step_id}' not found")
-    _, step = found
-
-    if step.status != StepStatus.CLAIMED:
-        raise PlanError(f"Step '{step_id}' cannot be deferred (status: {step.status.value})")
-
-    step.status = StepStatus.PENDING
-    step.claimed_by = None
-    step.claimed_at = None
-    return plan
-
-
-def reject_step(plan: Plan, step_id: str, reason: str, reviewer: str = "") -> Plan:
-    """Reject a completed step, moving it back for rework."""
-    found = plan.find_step(step_id)
-    if found is None:
-        raise PlanError(f"Step '{step_id}' not found")
-    phase, step = found
-
-    if step.status != StepStatus.DONE:
-        raise PlanError(
-            f"Step '{step_id}' cannot be rejected (status: {step.status.value}, must be done)"
-        )
-
-    step.status = StepStatus.REJECTED
-    step.rejection_reason = reason
-    step.rejection_history.append(
-        RejectionEntry(
-            reason=reason,
-            timestamp=datetime.now(timezone.utc).isoformat(),
-            reviewer=reviewer,
-        )
-    )
-    step.evidence = None
-
-    # Phase can't be done if a step is rejected
-    if phase.status == PhaseStatus.DONE:
-        phase.status = PhaseStatus.IN_PROGRESS
-
-    return plan
-
-
-def skip_step(plan: Plan, step_id: str, reason: str) -> Plan:
-    """Skip a step with a reason.
-
-    The reason must be a valid SkipReason value: superseded, irrelevant,
-    absorbed, or deprioritized.
-    """
-    # Validate reason against enum
-    valid_reasons = [r.value for r in SkipReason]
-    if reason not in valid_reasons:
-        raise PlanError(
-            f"Invalid skip reason '{reason}'. Must be one of: {', '.join(valid_reasons)}"
-        )
-
-    found = plan.find_step(step_id)
-    if found is None:
-        raise PlanError(f"Step '{step_id}' not found")
-    phase, step = found
-
-    if step.status not in (StepStatus.PENDING, StepStatus.CLAIMED, StepStatus.REJECTED):
-        raise PlanError(f"Step '{step_id}' cannot be skipped (status: {step.status.value})")
-
-    step.status = StepStatus.SKIPPED
-    step.skipped_reason = reason
-
-    # Auto-update phase if all steps done/skipped
-    if all(s.status in (StepStatus.DONE, StepStatus.SKIPPED) for s in phase.steps):
-        phase.status = PhaseStatus.DONE
-        # Cascade: unlock downstream phases whose deps are now satisfied
-        auto_unlock_phases(plan)
-
-    return plan
-
-
-def skip_phase(
-    plan: Plan, phase_id: str, reason: str, force: bool = False
-) -> tuple[Plan, list[str]]:
-    """Skip all remaining steps in a phase.
-
-    For each step in the phase:
-    - PENDING / REJECTED → SKIPPED with reason
-    - CLAIMED → deferred to PENDING first, then SKIPPED
-    - DONE / SKIPPED → left unchanged
-
-    After processing, phase auto-completes if all steps are DONE/SKIPPED,
-    triggering ``auto_unlock_phases`` for downstream phases.
-
-    Args:
-        plan: The plan to modify.
-        phase_id: ID of the phase to skip.
-        reason: Must be a valid SkipReason value.
-        force: If True, allow skipping a locked phase with remaining steps.
-            Empty phases (0 steps) are always allowed to skip regardless of lock.
-
-    Returns:
-        Tuple of (updated plan, list of step IDs that were skipped).
-
-    Raises:
-        PlanError: If phase not found, invalid reason, or phase is LOCKED
-            (unless empty or force=True) or DONE.
-    """
-    # Validate reason against enum
-    valid_reasons = [r.value for r in SkipReason]
-    if reason not in valid_reasons:
-        raise PlanError(
-            f"Invalid skip reason '{reason}'. Must be one of: {', '.join(valid_reasons)}"
-        )
-
-    phase = plan.find_phase(phase_id)
-    if phase is None:
-        raise PlanError(f"Phase '{phase_id}' not found")
-
-    if phase.status == PhaseStatus.LOCKED:
-        # Empty phases can always be skipped - lock protects nothing
-        if len(phase.steps) == 0:
-            pass  # Allow skip
-        elif force:
-            pass  # Force override - allow skip with warning (caller should warn)
-        else:
-            raise PlanError(
-                f"Phase '{phase_id}' is locked — unlock it first, wait for dependencies, "
-                f"or use --force to override"
-            )
-
-    if phase.status == PhaseStatus.DONE:
-        raise PlanError(f"Phase '{phase_id}' is already done")
-
-    skipped_ids: list[str] = []
-    for step in phase.steps:
-        if step.status in (StepStatus.DONE, StepStatus.SKIPPED):
-            continue
-        # Claimed → defer first
-        if step.status == StepStatus.CLAIMED:
-            step.claimed_by = None
-            step.claimed_at = None
-        # PENDING, REJECTED, or just-deferred CLAIMED → SKIPPED
-        step.status = StepStatus.SKIPPED
-        step.skipped_reason = reason
-        skipped_ids.append(step.id)
-
-    # Auto-update phase if all steps done/skipped (or empty phase)
-    non_terminal = [s for s in phase.steps if s.status not in (StepStatus.DONE, StepStatus.SKIPPED)]
-    if not non_terminal:
-        phase.status = PhaseStatus.DONE
-        auto_unlock_phases(plan)
-
-    return plan, skipped_ids
 
 
 def _get_active_phase_ids(plan: Plan) -> set[str]:
@@ -2280,34 +1909,6 @@ def clipboard_write(
     return plan
 
 
-def clipboard_read(plan: Plan) -> Clipboard | None:
-    """Read the plan clipboard.
-
-    Pure read - no side effects, no CAS needed.
-
-    Args:
-        plan: The plan to read from.
-
-    Returns:
-        Clipboard if present and not expired, None otherwise.
-
-    >>> p = Plan(project="test")
-    >>> clipboard_read(p) is None
-    True
-    >>> p = clipboard_write(p, "agent", "Sum", "Content")
-    >>> cb = clipboard_read(p)
-    >>> cb is not None
-    True
-    """
-    if plan.clipboard is None:
-        return None
-
-    if _clipboard_expired(plan.clipboard):
-        return None
-
-    return plan.clipboard
-
-
 def clipboard_clear(plan: Plan) -> Plan:
     """Clear the plan clipboard.
 
@@ -2556,48 +2157,3 @@ def apply_recovery(backup_path: Path, plan_path: Path) -> None:
 
     backup_plan, _ = load_plan_definition(backup_path)
     save_plan(backup_plan, plan_path)
-
-
-def recover_from_backup(plan_path: Path, backup_path: Path | None = None) -> RecoverResult:
-    """Recover plan from a backup file.
-
-    If backup_path is not provided, attempts to find it at .git/vectl/plan.yaml.bak.
-
-    Args:
-        plan_path: Path to the current plan.yaml.
-        backup_path: Optional explicit backup path. If None, auto-detects from plan_path.
-
-    Returns:
-        RecoverResult with ok, restored flag, diff info, and optional error.
-
-    Raises:
-        PlanError: If backup file is not found or is invalid.
-    """
-    # Auto-detect backup path if not provided
-    if backup_path is None:
-        from vectl.io import _resolve_git_dir
-
-        git_dir = _resolve_git_dir(plan_path)
-        if git_dir is None:
-            return RecoverResult(
-                ok=False,
-                restored=False,
-                diff=DiffResult(phase_changes=[], step_changes=[]),
-                diff_summary="",
-                error="Not in a git repository or in a linked worktree",
-            )
-        backup_path = git_dir / "vectl" / "plan.yaml.bak"
-
-    if not backup_path.exists():
-        raise PlanError(f"Backup file not found: {backup_path}")
-
-    preview = preview_recovery(plan_path, backup_path)
-    apply_recovery(backup_path, plan_path)
-
-    return RecoverResult(
-        ok=preview.ok,
-        restored=True,
-        diff=preview.diff,
-        diff_summary=preview.diff_summary,
-        error=preview.error,
-    )

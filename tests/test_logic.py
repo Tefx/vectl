@@ -10,7 +10,7 @@ from vectl.core import (
     auto_unlock_phases,
     claim_step,
     clipboard_clear,
-    clipboard_read,
+    _clipboard_expired,
     clipboard_write,
     complete_phase,
     complete_step,
@@ -732,14 +732,13 @@ class TestClipboardRead:
     def test_read_basic(self):
         plan = Plan(project="test")
         plan = clipboard_write(plan, "agent-1", "Summary", "Content")
-        cb = clipboard_read(plan)
-        assert cb is not None
-        assert cb.author == "agent-1"
+        assert plan.clipboard is not None
+        assert not _clipboard_expired(plan.clipboard)
+        assert plan.clipboard.author == "agent-1"
 
     def test_read_empty_clipboard(self):
         plan = Plan(project="test")
-        cb = clipboard_read(plan)
-        assert cb is None
+        assert plan.clipboard is None
 
     def test_read_expired_clipboard(self):
         plan = Plan(project="test")
@@ -756,8 +755,7 @@ class TestClipboardRead:
             written_at=past,
             expires_at=past,
         )
-        cb = clipboard_read(plan)
-        assert cb is None  # Expired, treated as empty
+        assert _clipboard_expired(plan.clipboard)  # Expired
 
 
 class TestClipboardClear:

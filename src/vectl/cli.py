@@ -24,27 +24,19 @@ from vectl.core import (
     add_phase,
     add_step,
     add_steps_bulk,
-    claim_step,
     clipboard_clear,
     clipboard_write,
-    complete_phase,
-    complete_step,
-    defer_step,
     diff_plans,
     edit_phase,
     edit_step,
     format_lock_changes,
-    get_claimed_steps,
     get_next_steps,
     move_step,
     recalc_lock_status,
-    reject_step,
     remove_step,
     render_plan,
     review_plan,
     search_plan,
-    skip_phase,
-    skip_step,
     unlock_phase,
     update_checklist,
     validate_plan,
@@ -56,16 +48,21 @@ from vectl.dashboard import generate_dashboard
 from vectl.guide import GUIDE_ALL as _GUIDE_ALL
 from vectl.guide import GUIDE_TOPICS as _GUIDE_TOPICS
 from vectl.io import (
-    _backup_definition,
     _resolve_git_dir,
-    detect_orphan_state,
-    extract_state,
     load_plan_definition,
-    load_state,
-    merge_plan,
     save_plan,
-    save_state,
-    strip_state,
+)
+from vectl.merge_driver import merge_plans
+from vectl.migration import migrate_from_split_state, resolve_state_path
+from vectl.lifecycle import (
+    claim_step,
+    complete_phase,
+    complete_step,
+    defer_step,
+    get_claimed_steps,
+    reject_step,
+    skip_phase,
+    skip_step,
 )
 from vectl.models import (
     AffinityMode,
@@ -77,12 +74,15 @@ from vectl.models import (
     SkipReason,
     StepStatus,
 )
-from vectl.plan_path import is_linked_worktree, resolve_plan_path, resolve_state_path
+from vectl.plan_path import (
+    is_linked_worktree,
+    resolve_claims_path,
+    resolve_plan_path,
+)
 from vectl.semantics import is_step_locked
 
 console = Console(stderr=True)
 out = Console()
-
 # ---------------------------------------------------------------------------
 # Status display helpers
 # ---------------------------------------------------------------------------
@@ -144,13 +144,21 @@ def _die(msg: str, code: int = 1) -> None:
     raise typer.Exit(code)
 
 
-def _check_not_linked_worktree() -> None:
+def _check_not_linked_worktree(plan: Path | None = None) -> None:
     """Guard: block mutations in linked worktrees.
 
-    Raises typer.Exit if running in a linked worktree without VECTL_PLAN_PATH set.
+    Raises typer.Exit if running in a linked worktree without explicit plan path.
+    Explicit path can be provided via:
+      - VECTL_PLAN_PATH environment variable
+      - --plan CLI option
     """
+    # Escape hatch: explicit path via env var
     if os.environ.get("VECTL_PLAN_PATH"):
-        return  # Escape hatch: explicit path set
+        return
+
+    # Escape hatch: explicit path via --plan option
+    if plan is not None:
+        return
 
     is_linked, main_root = is_linked_worktree()
     if is_linked:
@@ -167,136 +175,36 @@ def _check_not_linked_worktree() -> None:
         )
 
 
-def _load(plan_path: Path | None) -> tuple[Plan, str, str, Path]:
-    """Load merged plan with separate definition/state hashes for CAS."""
+def _load(plan_path: Path | None) -> tuple[Plan, str, Path]:
+    """Load plan.yaml and return plan with CAS hash.
+
+    Source: docs/ADR-unified-state.md migration posture.
+    Normal load path reads unified inline state from plan.yaml only.
+    """
 
     target = resolve_plan_path(plan_path)
+
     try:
         plan_def, def_hash = load_plan_definition(target)
-        state_path = resolve_state_path(target)
-        state, state_hash = load_state(state_path)
     except PlanIOError as e:
         _die(str(e))
         raise  # unreachable, for type checker
 
-    has_state = (
-        bool(state.steps)
-        or bool(state.phases)
-        or state.clipboard is not None
-        or bool(state.plan_id)
-    )
-    if state_hash and has_state:
-        merged = merge_plan(plan_def, state)
-
-        # Detect orphan state entries and warn (but don't block load)
-        orphans = detect_orphan_state(plan_def, state)
-        if orphans:
-            print("Warning: orphan state entries detected:", file=sys.stderr)
-            for o in orphans:
-                if o.kind == "phase":
-                    print(f"  - Phase '{o.id}' in state but not in plan", file=sys.stderr)
-                elif o.kind == "step":
-                    print(f"  - Step '{o.id}' in state but not in plan", file=sys.stderr)
-            print("Run 'vectl recover' to clean up ghost state", file=sys.stderr)
-
-        return merged, def_hash, state_hash, target
-
-    return plan_def, def_hash, "", target
+    return plan_def, def_hash, target
 
 
-# Save routing taxonomy for this CLI module:
-# - _save_state: persists state-only files (state.json) for commands that only mutate
-#   runtime state: claim, complete, complete-phase, defer, reject, skip, cancel,
-#   skip-phase, unlock, clipboard-write, and clipboard-clear.
-# - _save_definition: persists definition-only data (plan.yaml, state-stripped)
-#   for checklist-only edits.
-# - _save_both: persists both definition and state together for structural/metadata
-#   edits: add-step, add-phase, edit-plan, edit-step, edit-phase, remove-step,
-#   move-step, recalc-lock, and add-steps.
-def _save_state(plan: Plan, plan_path: Path, expected_state_hash: str) -> None:
-    """Save state-only data to state.json with CAS semantics."""
+def _save_plan(plan: Plan, plan_path: Path, expected_def_hash: str, msg: str) -> None:
+    """Save plan.yaml with CAS semantics and lock recalculation."""
 
     changed_ids = recalc_lock_status(plan)
 
-    state = extract_state(plan)
-    state_path = resolve_state_path(plan_path)
-    cas_hash = expected_state_hash if expected_state_hash else None
     try:
-        save_state(state, state_path, cas_hash)
-    except CASConflictError:
-        _die(
-            "CAS conflict: state.json was modified by another process since you loaded it. "
-            "Re-read with `vectl status` or `vectl show`, then retry your mutation."
-        )
-
-    notice = format_lock_changes(changed_ids, plan)
-    if notice:
-        print(notice)
-
-
-def _save_definition(plan: Plan, plan_path: Path, expected_def_hash: str) -> None:
-    """Save definition-only data to plan.yaml with CAS semantics."""
-
-    changed_ids = recalc_lock_status(plan)
-    stripped = strip_state(plan)
-    try:
-        save_plan(stripped, plan_path, expected_hash=expected_def_hash)
+        save_plan(plan, plan_path, expected_hash=expected_def_hash, commit_message=msg)
     except CASConflictError:
         _die(
             "CAS conflict: plan.yaml was modified by another process since you loaded it. "
             "Re-read with `vectl status` or `vectl show`, then retry your mutation."
         )
-
-    # Create backup after successful save (non-blocking)
-    try:
-        _backup_definition(plan_path)
-    except OSError as e:
-        import sys
-
-        print(f"Warning: backup failed: {e}", file=sys.stderr)
-
-    notice = format_lock_changes(changed_ids, plan)
-    if notice:
-        print(notice)
-
-
-def _save_both(
-    plan: Plan,
-    plan_path: Path,
-    expected_def_hash: str,
-    expected_state_hash: str,
-) -> None:
-    """Save both state and definition with one lock recalculation."""
-
-    changed_ids = recalc_lock_status(plan)
-
-    state_path = resolve_state_path(plan_path)
-    state = extract_state(plan)
-    stripped = strip_state(plan)
-
-    try:
-        save_state(state, state_path, expected_state_hash or None)
-    except CASConflictError:
-        _die(
-            "CAS conflict: state.json was modified by another process since you loaded it. "
-            "Re-read with `vectl status` or `vectl show`, then retry your mutation."
-        )
-
-    try:
-        save_plan(stripped, plan_path, expected_def_hash)
-    except CASConflictError:
-        _die(
-            "CAS conflict: plan.yaml was modified by another process since you loaded it. "
-            "Re-read with `vectl status` or `vectl show`, then retry your mutation."
-        )
-
-    # Create backup after successful definition save (non-blocking)
-    try:
-        _backup_definition(plan_path)
-    except OSError as e:
-        import sys
-
-        print(f"Warning: backup failed: {e}", file=sys.stderr)
 
     notice = format_lock_changes(changed_ids, plan)
     if notice:
@@ -395,6 +303,16 @@ def mcp() -> None:
     mcp.run()
 
 
+@app.command("merge-driver", hidden=True)
+def merge_driver_cmd(
+    base: str = typer.Argument(..., help="Git merge-base file path (%O)."),
+    ours: str = typer.Argument(..., help="Git ours file path (%A)."),
+    theirs: str = typer.Argument(..., help="Git theirs file path (%B)."),
+) -> None:
+    """Git merge-driver entrypoint for plan.yaml merges."""
+    raise typer.Exit(merge_plans(base, ours, theirs))
+
+
 @app.command()
 def render(
     phase: str | None = typer.Option(None, "--phase", help="Render only this phase."),
@@ -410,7 +328,7 @@ def render(
     Omits operational detail (claimed_by, rejection_history, etc.).
     Use --full to include complete step descriptions.
     """
-    p, _, _, plan_path = _load(plan)
+    p, _, plan_path = _load(plan)
 
     try:
         md = render_plan(p, phase_id=phase, full=full)
@@ -437,7 +355,7 @@ def diff_cmd(
     """
     import subprocess as sp
 
-    p_new, _, _, plan = _load(plan)
+    p_new, _, plan = _load(plan)
 
     # Get old plan from git
     try:
@@ -786,6 +704,37 @@ def agents_md_cmd(
     out.print(result)
 
 
+def _upsert_gitattributes(directory: Path) -> str:
+    """Configure .gitattributes with plan.yaml merge driver (idempotent).
+
+    Returns:
+        A status message describing what was done.
+    """
+    gitattributes_path = directory / ".gitattributes"
+
+    # Build the target line
+    target_line = "plan.yaml merge=vectl"
+
+    if not gitattributes_path.exists():
+        gitattributes_path.write_text(f"{target_line}\n", encoding="utf-8")
+        return "Created .gitattributes with plan.yaml merge driver"
+
+    content = gitattributes_path.read_text(encoding="utf-8")
+
+    # Check if plan.yaml merge driver is already configured
+    for line in content.splitlines():
+        stripped = line.strip()
+        # Match lines like "plan.yaml merge=vectl" or "plan.yaml merge=vectl " (with trailing space)
+        if stripped.startswith("plan.yaml") and "merge=vectl" in stripped:
+            # Already configured
+            return ".gitattributes already has plan.yaml merge driver"
+
+    # Append the configuration
+    with gitattributes_path.open("a", encoding="utf-8") as f:
+        f.write(f"\n{target_line}\n")
+    return "Updated .gitattributes with plan.yaml merge driver"
+
+
 @app.command()
 def init(
     project: str = typer.Option(..., "--project", prompt="Project name"),
@@ -808,6 +757,10 @@ def init(
     agents_result = _upsert_agents_md(target.parent, AgentsTarget(agents_target))
     out.print(f"[green]Agent instructions:[/] {agents_result}")
 
+    # Configure .gitattributes with plan.yaml merge driver (idempotent)
+    gitattr_result = _upsert_gitattributes(target.parent)
+    out.print(f"[green]Git attributes:[/] {gitattr_result}")
+
     out.print()
     out.print("[dim]→ vectl add-phase --phase-id <id> --name <name>   Add a phase[/]")
     out.print("[dim]→ vectl guide                     Full onboarding guide[/]")
@@ -829,7 +782,7 @@ def next_cmd(
     plan: Path | None = PlanOption,
 ) -> None:
     """Show claimable steps (what to work on next)."""
-    p, _, _, _ = _load(plan)
+    p, _, _ = _load(plan)
 
     # Show strategy context if present
     if p.context.strip():
@@ -904,7 +857,7 @@ def status(
     phase: str | None = typer.Option(None, "--phase", help="Show detail for a specific phase."),
 ) -> None:
     """Show plan status overview."""
-    p, _, _, _ = _load(plan)
+    p, _, _ = _load(plan)
 
     if phase is not None:
         _show_phase_detail(p, phase)
@@ -1064,7 +1017,7 @@ def show(
     plan: Path | None = PlanOption,
 ) -> None:
     """Show details for a step or phase."""
-    p, _, _, _ = _load(plan)
+    p, _, _ = _load(plan)
 
     # Try phase match
     ph = p.find_phase(target)
@@ -1123,7 +1076,7 @@ def dag(
     """
     from vectl.core import generate_mermaid_dag
 
-    p, _, _, _ = _load(plan)
+    p, _, _ = _load(plan)
 
     try:
         mmd = generate_mermaid_dag(p, phase_id=phase)
@@ -1172,7 +1125,7 @@ def claim(
     RFC: docs/RFC-affinity.md
     Enforces agent affinity. Use --force to override exclusive affinity.
     """
-    p, def_h, state_h, plan_path = _load(plan)
+    p, def_h, plan_path = _load(plan)
 
     if step_id is None:
         candidates = get_next_steps(p, agent=agent)
@@ -1182,7 +1135,13 @@ def claim(
         out.print(f"[dim]Auto-selected:[/] {step_id}")
 
     try:
-        p, result = claim_step(p, step_id, agent, force=force)
+        p, result = claim_step(
+            p,
+            step_id,
+            agent,
+            force=force,
+            claims_path=resolve_claims_path(plan_path),
+        )
     except PlanError as e:
         _die(str(e))
         return  # unreachable, but satisfies Pyright
@@ -1195,7 +1154,7 @@ def claim(
         else:
             out.print(f"[yellow]⚠️  Affinity warning: {result.warning_message}[/]")
 
-    _save_state(p, plan_path, state_h)
+    _save_plan(p, plan_path, def_h, f"vectl: claim {step_id} by {agent}")
     out.print(f"[green]Claimed:[/] {step_id} by {agent}")
 
     # Show affinity override in claim summary if applicable
@@ -1233,12 +1192,12 @@ def complete(
     plan: Path | None = PlanOption,
 ) -> None:
     """Mark a step as done with evidence."""
-    p, def_h, state_h, plan_path = _load(plan)
+    p, def_h, plan_path = _load(plan)
     try:
-        p = complete_step(p, step_id, evidence)
+        p = complete_step(p, step_id, evidence, claims_path=resolve_claims_path(plan_path))
     except PlanError as e:
         _die(str(e))
-    _save_state(p, plan_path, state_h)
+    _save_plan(p, plan_path, def_h, f"vectl: complete {step_id}")
     out.print(f"[green]Completed:[/] {step_id}")
 
     # Show next available steps (saves a tool call)
@@ -1280,14 +1239,14 @@ def complete_phase_cmd(
         - User instruction in this conversation: choose option B (extend tool
           then test) before continuing migrate phase.
     """
-    p, def_h, state_h, plan_path = _load(plan)
+    p, def_h, plan_path = _load(plan)
     try:
         p, unlocked = complete_phase(p, phase_id, evidence)
     except PlanError as e:
         _die(str(e))
         return  # unreachable (typer exits), but keeps type-checkers honest
 
-    _save_state(p, plan_path, state_h)
+    _save_plan(p, plan_path, def_h, f"vectl: complete phase {phase_id}")
     out.print(f"[green]Completed phase:[/] {phase_id}")
     if unlocked:
         out.print(f"[green]Unlocked:[/] {', '.join(unlocked)}")
@@ -1307,12 +1266,12 @@ def defer(
     plan: Path | None = PlanOption,
 ) -> None:
     """Return a claimed step to pending."""
-    p, def_h, state_h, plan_path = _load(plan)
+    p, def_h, plan_path = _load(plan)
     try:
-        p = defer_step(p, step_id)
+        p = defer_step(p, step_id, claims_path=resolve_claims_path(plan_path))
     except PlanError as e:
         _die(str(e))
-    _save_state(p, plan_path, state_h)
+    _save_plan(p, plan_path, def_h, f"vectl: defer {step_id}")
     out.print(f"[yellow]Deferred:[/] {step_id}")
     out.print()
     out.print("[dim]→ vectl next                      Find new work[/]")
@@ -1328,12 +1287,12 @@ def reject(
     plan: Path | None = PlanOption,
 ) -> None:
     """Reject a completed step, moving it back for rework."""
-    p, def_h, state_h, plan_path = _load(plan)
+    p, def_h, plan_path = _load(plan)
     try:
         p = reject_step(p, step_id, reason, reviewer)
     except PlanError as e:
         _die(str(e))
-    _save_state(p, plan_path, state_h)
+    _save_plan(p, plan_path, def_h, f"vectl: reject {step_id}")
     out.print(f"[red]Rejected:[/] {step_id} — {reason}")
     out.print()
     out.print("[dim]→ vectl next                      Rejected steps appear first[/]")
@@ -1354,12 +1313,12 @@ def skip(
 
     Valid reasons: superseded, irrelevant, absorbed, deprioritized.
     """
-    p, def_h, state_h, plan_path = _load(plan)
+    p, def_h, plan_path = _load(plan)
     try:
         p = skip_step(p, step_id, reason)
     except PlanError as e:
         _die(str(e))
-    _save_state(p, plan_path, state_h)
+    _save_plan(p, plan_path, def_h, f"vectl: skip {step_id}")
     out.print(f"[dim]Skipped:[/] {step_id} — {reason}")
     out.print()
     out.print("[dim]→ vectl next                      See remaining steps[/]")
@@ -1372,12 +1331,12 @@ def cancel(
     plan: Path | None = PlanOption,
 ) -> None:
     """Cancel a step (alias for skip --reason irrelevant)."""
-    p, def_h, state_h, plan_path = _load(plan)
+    p, def_h, plan_path = _load(plan)
     try:
         p = skip_step(p, step_id, SkipReason.IRRELEVANT.value)
     except PlanError as e:
         _die(str(e))
-    _save_state(p, plan_path, state_h)
+    _save_plan(p, plan_path, def_h, f"vectl: cancel {step_id}")
     out.print(f"[dim]Cancelled:[/] {step_id} — irrelevant")
     out.print()
     out.print("[dim]→ vectl next                      See remaining steps[/]")
@@ -1410,13 +1369,13 @@ def skip_phase_cmd(
     Locked phases with 0 steps can always be skipped (the lock protects nothing).
     Use --force to skip a locked phase that still has remaining steps.
     """
-    p, def_h, state_h, plan_path = _load(plan)
+    p, def_h, plan_path = _load(plan)
     skipped_ids: list[str] = []
     try:
         p, skipped_ids = skip_phase(p, phase_id, reason, force=force)
     except PlanError as e:
         _die(str(e))
-    _save_state(p, plan_path, state_h)
+    _save_plan(p, plan_path, def_h, f"vectl: skip phase {phase_id}")
     if skipped_ids:
         out.print(f"[dim]Skipped phase:[/] {phase_id} — {reason}")
         for sid in skipped_ids:
@@ -1442,13 +1401,13 @@ def check_cmd(
     plan: Path | None = PlanOption,
 ) -> None:
     """Toggle or add a checklist item in a step's description."""
-    _check_not_linked_worktree()
-    p, def_h, state_h, plan_path = _load(plan)
+    _check_not_linked_worktree(plan)
+    p, def_h, plan_path = _load(plan)
     try:
         p = update_checklist(p, step_id, check=keyword, append=add)
     except PlanError as e:
         _die(str(e))
-    _save_definition(p, plan_path, def_h)
+    _save_plan(p, plan_path, def_h, f"vectl: update checklist {step_id}")
     out.print(f"[green]Updated checklist:[/] {step_id}")
     out.print()
     out.print(f"[dim]→ vectl show {step_id}[/]")
@@ -1465,14 +1424,10 @@ def validate(
     check_refs: bool = typer.Option(False, "--check-refs", help="Check that ref files exist."),
 ) -> None:
     """Validate plan structure and consistency."""
-    p, _, state_hash, plan_path = _load(plan)
-    state_path = resolve_state_path(plan_path)
-    state, _ = load_state(state_path)
+    p, _, plan_path = _load(plan)
 
     base_path = plan_path.parent if check_refs else None
-    errors = validate_plan(
-        p, check_refs=check_refs, base_path=base_path, state=state if state_hash else None
-    )
+    errors = validate_plan(p, check_refs=check_refs, base_path=base_path)
 
     if not errors:
         out.print("[green bold]✓ Plan is valid.[/]")
@@ -1496,6 +1451,60 @@ def validate(
         raise typer.Exit(1)
 
 
+@app.command("migrate")
+def migrate_cmd(
+    plan: Path | None = PlanOption,
+    yes: bool = typer.Option(False, "--yes", "-y", help="Skip confirmation prompt."),
+) -> None:
+    """Migrate legacy split-state runtime data into unified plan.yaml.
+
+    Source: docs/ADR-unified-state.md (explicit migration phase requirement).
+    """
+    plan_path = resolve_plan_path(plan)
+    state_path = resolve_state_path(plan_path)
+    migrated_path = state_path.with_suffix(".json.migrated")
+
+    if not state_path.exists():
+        if migrated_path.exists():
+            out.print(f"[green]Already migrated:[/] {migrated_path}")
+            return
+        out.print(f"[yellow]No legacy state file found:[/] {state_path}")
+        return
+
+    out.print("[bold]Migration preview[/]")
+    out.print(f"  plan: {plan_path}")
+    out.print(f"  legacy state: {state_path}")
+    out.print(f"  backup target: {migrated_path}")
+
+    if not yes:
+        out.print()
+        confirm = typer.prompt("Run split-state migration now? (y/N)", default="n")
+        if confirm.lower() != "y":
+            out.print("[yellow]Cancelled.[/]")
+            return
+
+    try:
+        result = migrate_from_split_state(plan_path)
+    except PlanIOError as e:
+        _die(str(e))
+        return  # unreachable, keeps type-checkers honest
+
+    if result.already_migrated:
+        out.print(f"[green]Already migrated:[/] {migrated_path}")
+        return
+
+    out.print(
+        "[green]Migration complete:[/] "
+        f"steps={result.migrated_steps}, phases={result.migrated_phases}"
+    )
+    out.print(f"[dim]Backup:[/] {migrated_path}")
+
+    if result.warnings:
+        out.print("[yellow]Warnings:[/]")
+        for warning in result.warnings:
+            out.print(f"  - {warning}")
+
+
 @app.command()
 def recover(
     plan: Path | None = PlanOption,
@@ -1508,7 +1517,7 @@ def recover(
     """
     from vectl.core import apply_recovery, preview_recovery
 
-    p, _, _, plan_path = _load(plan)
+    p, _, plan_path = _load(plan)
 
     # Find backup path
     git_dir = _resolve_git_dir(plan_path)
@@ -1550,6 +1559,9 @@ def recover(
 
     out.print("[green]Plan restored from backup.[/]")
     out.print(diff_output)
+    out.print()
+    out.print("[dim]Note: For git-based recovery, use `git log --all --follow --plan.yaml`[/]")
+    out.print("[dim]to find commits and `git show <ref>:plan.yaml` to preview.[/]")
 
 
 @app.command()
@@ -1579,7 +1591,7 @@ def checkpoint(
 
     from vectl.checkpoint import build_checkpoint
 
-    p, def_h, state_h, _ = _load(plan)
+    p, def_h, _ = _load(plan)
 
     data = build_checkpoint(
         p,
@@ -1648,8 +1660,8 @@ def add_step_cmd(
       --status done --evidence "commit abc"
       --status skipped --skipped-reason "absorbed into X"
     """
-    _check_not_linked_worktree()
-    p, def_h, state_h, plan_path = _load(plan)
+    _check_not_linked_worktree(plan)
+    p, def_h, plan_path = _load(plan)
 
     depends_on = [d.strip() for d in after.split(",") if d.strip()] if after else None
     refs_list = [r.strip() for r in refs.split(",") if r.strip()] if refs else None
@@ -1691,7 +1703,7 @@ def add_step_cmd(
         _die(str(e))
         return  # unreachable, for type checker
 
-    _save_both(p, plan_path, def_h, state_h)
+    _save_plan(p, plan_path, def_h, f"vectl: add step {generated_id}")
 
     out.print(f"[green]Added step:[/] {generated_id} → phase [bold]{phase}[/]")
 
@@ -1718,8 +1730,8 @@ def add_phase_cmd(
     plan: Path | None = PlanOption,
 ) -> None:
     """Add a new phase to the plan."""
-    _check_not_linked_worktree()
-    p, def_h, state_h, plan_path = _load(plan)
+    _check_not_linked_worktree(plan)
+    p, def_h, plan_path = _load(plan)
 
     depends_on = [d.strip() for d in after.split(",") if d.strip()] if after else None
 
@@ -1736,7 +1748,7 @@ def add_phase_cmd(
         _die(str(e))
         return  # unreachable, for type checker
 
-    _save_both(p, plan_path, def_h, state_h)
+    _save_plan(p, plan_path, def_h, f"vectl: add phase {generated_id}")
 
     # Show status based on auto-determined initial status
     ph = p.find_phase(generated_id)
@@ -1782,7 +1794,7 @@ def edit_plan_cmd(
         - User instruction in this conversation (2026-02-12): "No manual YAML edits",
           and agreed `--*-file` approach.
     """
-    _check_not_linked_worktree()
+    _check_not_linked_worktree(plan)
     from vectl.core import _SENTINEL, edit_plan
 
     if project_guidance_file is not None and project_guidance is not None:
@@ -1805,7 +1817,7 @@ def edit_plan_cmd(
         )
         return  # unreachable
 
-    p, def_h, state_h, plan_path = _load(plan)
+    p, def_h, plan_path = _load(plan)
 
     pg_val = project_guidance
     if project_guidance_file is not None:
@@ -1826,7 +1838,7 @@ def edit_plan_cmd(
         _die(str(e))
         return  # unreachable
 
-    _save_both(p, plan_path, def_h, state_h)
+    _save_plan(p, plan_path, def_h, "vectl: edit plan metadata")
     out.print("[green]Updated plan metadata[/]")
     out.print("[dim]→ vectl status                      See plan overview[/]")
 
@@ -1866,10 +1878,10 @@ def edit_step_cmd(
     plan: Path | None = PlanOption,
 ) -> None:
     """Edit a step's metadata."""
-    _check_not_linked_worktree()
+    _check_not_linked_worktree(plan)
     from vectl.core import _SENTINEL
 
-    p, def_h, state_h, plan_path = _load(plan)
+    p, def_h, plan_path = _load(plan)
 
     add_deps = [d.strip() for d in add_dep.split(",") if d.strip()] if add_dep else None
     rm_deps = [d.strip() for d in rm_dep.split(",") if d.strip()] if rm_dep else None
@@ -1927,7 +1939,7 @@ def edit_step_cmd(
     except PlanError as e:
         _die(str(e))
 
-    _save_both(p, plan_path, def_h, state_h)
+    _save_plan(p, plan_path, def_h, f"vectl: edit step {step_id}")
 
     out.print(f"[green]Edited:[/] {step_id}")
     out.print()
@@ -1950,10 +1962,10 @@ def edit_phase_cmd(
     plan: Path | None = PlanOption,
 ) -> None:
     """Edit a phase's metadata."""
-    _check_not_linked_worktree()
+    _check_not_linked_worktree(plan)
     from vectl.core import _SENTINEL
 
-    p, def_h, state_h, plan_path = _load(plan)
+    p, def_h, plan_path = _load(plan)
 
     add_deps = [d.strip() for d in add_dep.split(",") if d.strip()] if add_dep else None
     rm_deps = [d.strip() for d in rm_dep.split(",") if d.strip()] if rm_dep else None
@@ -1978,7 +1990,7 @@ def edit_phase_cmd(
     except PlanError as e:
         _die(str(e))
 
-    _save_both(p, plan_path, def_h, state_h)
+    _save_plan(p, plan_path, def_h, f"vectl: edit phase {phase_id}")
 
     out.print(f"[green]Edited phase:[/] {phase_id}")
     out.print()
@@ -1995,13 +2007,13 @@ def remove_step_cmd(
     plan: Path | None = PlanOption,
 ) -> None:
     """Remove a pending step from its phase."""
-    _check_not_linked_worktree()
-    p, def_h, state_h, plan_path = _load(plan)
+    _check_not_linked_worktree(plan)
+    p, def_h, plan_path = _load(plan)
     try:
         p = remove_step(p, step_id, force=force)
     except PlanError as e:
         _die(str(e))
-    _save_both(p, plan_path, def_h, state_h)
+    _save_plan(p, plan_path, def_h, f"vectl: remove step {step_id}")
     out.print(f"[yellow]Removed:[/] {step_id}")
     if force:
         out.print("[dim]  Dependency references cleaned up in remaining steps.[/]")
@@ -2018,8 +2030,8 @@ def move_step_cmd(
     plan: Path | None = PlanOption,
 ) -> None:
     """Move a pending step to a different phase."""
-    _check_not_linked_worktree()
-    p, def_h, state_h, plan_path = _load(plan)
+    _check_not_linked_worktree(plan)
+    p, def_h, plan_path = _load(plan)
 
     # Capture deps before move (move_step clears them — lossy operation)
     found = p.find_step(step_id)
@@ -2029,7 +2041,7 @@ def move_step_cmd(
         p = move_step(p, step_id, to_phase)
     except PlanError as e:
         _die(str(e))
-    _save_both(p, plan_path, def_h, state_h)
+    _save_plan(p, plan_path, def_h, f"vectl: move step {step_id} to {to_phase}")
     out.print(f"[green]Moved:[/] {step_id} → {to_phase}")
     if cleared_deps:
         out.print(f"[yellow]⚠ Cleared {len(cleared_deps)} dep(s):[/] {', '.join(cleared_deps)}")
@@ -2052,12 +2064,12 @@ def unlock(
     plan: Path | None = PlanOption,
 ) -> None:
     """Unlock a locked phase by validating all dependencies are done."""
-    p, def_h, state_h, plan_path = _load(plan)
+    p, def_h, plan_path = _load(plan)
     try:
         p = unlock_phase(p, phase_id)
     except PlanError as e:
         _die(str(e))
-    _save_state(p, plan_path, state_h)
+    _save_plan(p, plan_path, def_h, f"vectl: unlock phase {phase_id}")
     out.print(f"[green]Unlocked:[/] {phase_id}")
     if evidence:
         out.print(f"[dim]Evidence: {evidence}[/]")
@@ -2097,7 +2109,7 @@ def recalc_lock(
 
     --dry-run previews what would change without saving the plan file.
     """
-    p, def_h, state_h, plan_path = _load(plan)
+    p, def_h, plan_path = _load(plan)
 
     if dry_run:
         # Operate on a deep copy so the original plan is not mutated.
@@ -2108,9 +2120,7 @@ def recalc_lock(
     else:
         changed = recalc_lock_status(p)
         msg = format_lock_changes(changed, p)
-        # _save_both() recalculates lock status again internally (idempotent —
-        # returns [] on second pass) to satisfy the save-hook invariant.
-        _save_both(p, plan_path, def_h, state_h)
+        _save_plan(p, plan_path, def_h, "vectl: recalc lock status")
         out.print(msg if msg else "[vectl] Lock status is consistent. No changes needed.")
 
 
@@ -2141,7 +2151,7 @@ def add_steps_cmd(
       - name: "Step B"
         after: ["phase.step-a"]
     """
-    _check_not_linked_worktree()
+    _check_not_linked_worktree(plan)
     import yaml
 
     raw = sys.stdin.read()
@@ -2159,14 +2169,14 @@ def add_steps_cmd(
         _die("Expected YAML list of step definitions from stdin.")
         return  # unreachable
 
-    p, def_h, state_h, plan_path = _load(plan)
+    p, def_h, plan_path = _load(plan)
     try:
         p, generated_ids = add_steps_bulk(p, phase, data)
     except PlanError as e:
         _die(str(e))
         return  # unreachable
 
-    _save_both(p, plan_path, def_h, state_h)
+    _save_plan(p, plan_path, def_h, f"vectl: add steps to phase {phase}")
 
     out.print(f"[green]Added {len(generated_ids)} step(s)[/] to phase [bold]{phase}[/]:")
     for gid in generated_ids:
@@ -2193,7 +2203,7 @@ def search(
     plan: Path | None = PlanOption,
 ) -> None:
     """Search across phases and steps for a pattern."""
-    p, _, _, _ = _load(plan)
+    p, _, _ = _load(plan)
 
     try:
         matches = search_plan(p, pattern, phase_id=phase, state=state, use_regex=regex)
@@ -2253,7 +2263,7 @@ def mine(
     if not agent and not show_all:
         _die("Provide --by <agent> or --all. (Or set VECTL_AGENT env var.)")
 
-    p, _, _, _ = _load(plan)
+    p, _, _ = _load(plan)
     claimed = get_claimed_steps(p, agent=agent)
 
     if not claimed:
@@ -2306,7 +2316,7 @@ def review(
       L3: Active phase detail (steps, deps, refs)
       L4: Spec coverage (reverse index from refs)
     """
-    p, _, _, plan_path = _load(plan)
+    p, _, plan_path = _load(plan)
 
     # ── Compute review data ────────────────────────────────────────────
     base_path = plan_path.parent if check_refs else None
@@ -2414,7 +2424,7 @@ def gate_check(
     """
     import subprocess as sp
 
-    p, _, _, plan_path = _load(plan)
+    p, _, plan_path = _load(plan)
 
     try:
         gc = core_gate_check(p, phase_id)
@@ -2514,14 +2524,14 @@ def clipboard_write_cmd(
     Overwrites any existing clipboard content. Use for cross-agent handoffs,
     broadcasts, or notes that don't follow DAG edges.
     """
-    p, def_h, state_h, plan_path = _load(plan)
+    p, def_h, plan_path = _load(plan)
 
     try:
         p = clipboard_write(p, author, summary, content, ttl)
     except PlanError as e:
         _die(str(e))
 
-    _save_state(p, plan_path, state_h)
+    _save_plan(p, plan_path, def_h, f"vectl: clipboard write by {author}")
 
     cb = p.clipboard
     assert cb is not None
@@ -2542,7 +2552,7 @@ def clipboard_read_cmd(
     """
     from vectl.core import _clipboard_expired
 
-    p, _, _, _ = _load(plan)
+    p, _, _ = _load(plan)
 
     if p.clipboard is None:
         out.print("[dim]Clipboard is empty.[/]")
@@ -2578,14 +2588,14 @@ def clipboard_clear_cmd(
     plan: Path | None = PlanOption,
 ) -> None:
     """Clear the plan clipboard."""
-    p, def_h, state_h, plan_path = _load(plan)
+    p, def_h, plan_path = _load(plan)
 
     if p.clipboard is None:
         out.print("[dim]Clipboard was already empty.[/]")
         return
 
     p = clipboard_clear(p)
-    _save_state(p, plan_path, state_h)
+    _save_plan(p, plan_path, def_h, "vectl: clipboard clear")
     out.print("[green]Clipboard cleared.[/]")
 
 
@@ -2616,7 +2626,7 @@ def dashboard(
     """
     import webbrowser
 
-    p, _, _, _ = _load(plan)
+    p, _, _ = _load(plan)
 
     try:
         html = generate_dashboard(p)

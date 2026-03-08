@@ -26,3 +26,7 @@ plan-dashboard.html
 CLAUDE.md
 
 .opencode/
+
+.gemini/
+GEMINI.md
+.vectl/

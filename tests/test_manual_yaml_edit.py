@@ -18,10 +18,9 @@ from pathlib import Path
 import pytest
 from typer.testing import CliRunner
 
-from vectl.cli import _load, _save_both, app
-from vectl.io import load_plan, load_plan_definition, load_state, save_plan
-from vectl.models import CASConflictError, Phase, PhaseStatus, Plan, Step, StepStatus
-from vectl.plan_path import resolve_state_path
+from vectl.cli import _save_plan, app
+from vectl.io import load_plan_definition as load_plan, save_plan
+from vectl.models import Phase, PhaseStatus, Plan, Step, StepStatus
 
 runner = CliRunner()
 
@@ -79,7 +78,7 @@ phases:
         )
 
         # _save() calls recalc_lock_status() then save_plan().
-        _save_both(plan, plan_path, file_hash, "")
+        _save_plan(plan, plan_path, file_hash, "lock correction")
 
         # Reload from disk and verify correction persisted.
         corrected_plan, _ = load_plan(plan_path)
@@ -124,7 +123,7 @@ phases:
         )
 
         # _save() corrects it.
-        _save_both(plan, plan_path, file_hash, "")
+        _save_plan(plan, plan_path, file_hash, "lock correction")
 
         # Reload and verify.
         corrected_plan, _ = load_plan(plan_path)
@@ -161,7 +160,7 @@ phases:
         )
 
         plan, file_hash = load_plan(plan_path)
-        _save_both(plan, plan_path, file_hash, "")
+        _save_plan(plan, plan_path, file_hash, "lock correction")
 
         corrected_plan, _ = load_plan(plan_path)
         phase2 = next(p for p in corrected_plan.phases if p.id == "phase2")
@@ -221,84 +220,3 @@ phases:
         assert result.exit_code == 0, f"Unexpected exit: {result.output}"
         assert "Lock status updated:" in result.output
         assert "phase2" in result.output
-
-
-class TestSplitPersistenceFallbacks:
-    """Coverage for legacy fallback and split-write conflict behavior."""
-
-    def test_missing_state_file_falls_back_to_legacy_embedded_runtime(self, tmp_path: Path) -> None:
-        # Source: src/vectl/cli.py::_load legacy-mode branch when state.json is
-        # missing/empty; source: src/vectl/io.py::load_plan_definition parses raw YAML.
-        plan_path = tmp_path / "plan.yaml"
-        _write_yaml(
-            plan_path,
-            """\
-project: legacy-fallback
-phases:
-  - id: p1
-    name: P1
-    steps:
-      - id: p1.s1
-        name: S1
-        status: claimed
-        claimed_by: legacy-agent
-""",
-        )
-
-        state_path = resolve_state_path(plan_path)
-        assert not state_path.exists()
-
-        result = runner.invoke(app, ["show", "p1.s1", "--plan", str(plan_path)])
-        assert result.exit_code == 0
-        assert "**Claimed By:** legacy-agent" in result.output
-
-    def test_partial_write_conflict_keeps_merged_runtime_consistent(self, tmp_path: Path) -> None:
-        # Source: src/vectl/cli.py::_save_both writes state first, then definition.
-        # If definition CAS fails, state is still authoritative via merge on load.
-        plan_path = tmp_path / "plan.yaml"
-        save_plan(
-            Plan(
-                project="split-conflict",
-                phases=[
-                    Phase(id="p1", name="P1", steps=[Step(id="p1.s1", name="S1")]),
-                ],
-            ),
-            plan_path,
-        )
-
-        plan, def_hash, state_hash, _ = _load(plan_path)
-        found = plan.find_step("p1.s1")
-        assert found is not None
-        _, step = found
-        step.status = StepStatus.CLAIMED
-        step.claimed_by = "conflict-agent"
-
-        import vectl.cli as cli_mod
-
-        real_save_plan = cli_mod.save_plan
-
-        def fail_definition_save(*args, **kwargs):
-            raise CASConflictError(plan_path)
-
-        cli_mod.save_plan = fail_definition_save
-        try:
-            with pytest.raises(Exception) as exc:
-                _save_both(plan, plan_path, def_hash, state_hash)
-            assert getattr(exc.value, "exit_code", None) == 1
-        finally:
-            cli_mod.save_plan = real_save_plan
-
-        merged, _ = load_plan(plan_path)
-        merged_found = merged.find_step("p1.s1")
-        assert merged_found is not None
-        assert merged_found[1].status == StepStatus.CLAIMED
-        assert merged_found[1].claimed_by == "conflict-agent"
-
-        definition_only, _ = load_plan_definition(plan_path)
-        def_found = definition_only.find_step("p1.s1")
-        assert def_found is not None
-        assert def_found[1].status == StepStatus.PENDING
-        assert def_found[1].claimed_by is None
-
-        state_doc, _ = load_state(resolve_state_path(plan_path))
-        assert state_doc.steps["p1.s1"].claimed_by == "conflict-agent"

@@ -21,7 +21,7 @@ Sub-agents repeatedly executed `git restore plan.yaml`, rolling back plan struct
 
 ### Retire state.json. Unify state back into plan.yaml.
 
-Completion status (`status`, `evidence`, `done_at`, `claimed_by`) moves back into `plan.yaml` as inline fields on each step. Every write operation (`complete`, `mutate`, `init`) is immediately followed by `git commit --only --no-verify plan.yaml`.
+Completion status (`status`, `evidence`, `done_at`, `claimed_by`) moves back into `plan.yaml` as inline fields on each step. Every write operation (`complete`, `mutate`, `init`) is immediately followed by `git commit --only --no-verify plan.yaml` (best-effort: if commit fails — e.g. not a git repo — the plan file is still written successfully; only rollback protection is lost).
 
 Claims (ephemeral coordination) move to `.git/vectl/claims.json`, protected by `flock()`.
 
@@ -49,7 +49,7 @@ plan.yaml                    # structure + completion (git-tracked)
 |----------|-------|
 | Storage | `.git/vectl/claims.json` (untracked) |
 | Key | `(branch, step_id)` |
-| Protection | `flock()` on claims.json |
+| Protection | `flock()` on sidecar `.git/vectl/claims.json.lock` |
 | TTL | 2 hours; lazy cleanup on each `vectl claim` call |
 | Release | Explicit via `vectl unclaim` / `vectl defer`, or TTL expiry |
 | Worktree sharing | Yes (`.git/` shared via `--git-common-dir`) |
@@ -61,14 +61,14 @@ Claims are ephemeral coordination (like PID files), not durable record. Loss on 
 
 ```
 vectl complete <step>:
-  1. flock(claims.json) → validate claim → remove claim entry → unlock
+  1. flock(claims.json.lock) → validate claim → remove claim entry → unlock
   2. read plan.yaml
   3. set step.status = "done", step.evidence = "...", step.done_at = now()
   4. write plan.yaml (tempfile + rename)
   5. git commit --only --no-verify plan.yaml -m "[vectl] complete <step>"
 
 vectl claim <step>:
-  1. flock(claims.json) → check no existing claim → write claim → unlock
+  1. flock(claims.json.lock) → check no existing claim → write claim → unlock
   2. (plan.yaml not modified)
 
 vectl mutate <args>:
@@ -93,28 +93,32 @@ Concurrent CLI + MCP writes: `git commit` uses git's own `index.lock` for mutual
 
 Git forbids two worktrees on the same branch. Claude Code creates temporary branches for worktree agents. Therefore "multi-agent same branch" does not occur in worktree scenarios — it is always multi-agent on different branches sharing the same `.git/`.
 
-## Migration
+## Migration / Compatibility Posture
 
 ### From pre-v0.6 (single plan.yaml with inline state)
 
 No migration needed. The format is forward-compatible — pre-v0.6 plans already have status fields inline.
 
-### From v0.6+ (split plan.yaml + state.json)
+### From v0.6+ split-state leftovers (`state.json` companions)
 
-Automatic on first `_load()`:
-1. Detect `.git/vectl/state.json` exists
-2. Read state entries (status, evidence, claimed_by, done_at)
-3. Merge into plan.yaml by step_id
-4. `git commit --only --no-verify plan.yaml -m "[vectl] migrate: merge state into plan"`
-5. Rename `state.json` → `state.json.migrated` (backup)
-6. Log: "Migrated N steps from state.json into plan.yaml"
+Unified-state runtime does not read, merge, rename, or mutate companion `state.json` files during normal operation.
+Any leftover `.vectl/state.json` or `.git/vectl/state.json` files are treated as inert artifacts and are ignored by the normal runtime path.
 
-Edge cases:
-- Orphan state entries (step in state but not plan) → skip, warn
-- plan.yaml already has status fields → state.json values take precedence
-- Empty state.json → skip, delete
+**Migration phase (explicit):** For projects with active state.json that need to be migrated to unified plan.yaml, migration is run explicitly via `vectl migrate` (CLI) or `vectl.migration.migrate_from_split_state()` (API). This migration path:
+- Reads active `state.json` companion file
+- Migrates step/phase status into plan.yaml inline fields
+- Creates `state.json.migrated` backup file
+- Creates a git commit with migrated state
 
-Rollback: `mv state.json.migrated state.json` + `git restore plan.yaml`
+**Normal unified runtime path:** The `_load()` function (used by both CLI and MCP) does NOT run migration automatically. It reads only from `plan.yaml` inline state.
+
+**Pre-migration path:** Before migration runs, stale `state.json` files are ignored by the unified runtime.
+
+**Post-migration path:** After migration completes, the `state.json.migrated` backup is never read by the unified runtime.
+
+This two-path design ensures:
+- Normal operation: no accidental state.json reading (no data corruption)
+- Migration: explicit, one-time conversion with backup
 
 ## Multi-user Merge Strategy (Phase 3)
 

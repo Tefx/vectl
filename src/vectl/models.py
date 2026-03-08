@@ -85,6 +85,7 @@ class Step(BaseModel):
     affinity: AffinityMode | None = None
     claimed_by: str | None = None
     claimed_at: str | None = None
+    done_at: str | None = None
     evidence: str | None = None
     skipped_reason: str | None = None
     rejection_reason: str | None = None
@@ -148,41 +149,6 @@ class Clipboard(BaseModel):
         if not self.content or not self.content.strip():
             raise ValueError("Clipboard content cannot be empty or whitespace-only")
         return self
-
-
-class StepState(BaseModel):
-    """Mutable runtime state for a single step, stored in state.json."""
-
-    status: StepStatus = StepStatus.PENDING
-    claimed_by: str | None = None
-    claimed_at: str | None = None
-    evidence: str | None = None
-    skipped_reason: str | None = None
-    rejection_reason: str | None = None
-    rejection_history: list[RejectionEntry] = Field(default_factory=list)
-    affinity_override: bool = False
-    affinity_override_by: str | None = None
-    affinity_override_at: str | None = None
-
-
-class PhaseState(BaseModel):
-    """Mutable runtime state for a phase, stored in state.json."""
-
-    status: PhaseStatus = PhaseStatus.PENDING
-    evidence: str | None = None
-
-
-class PlanState(BaseModel):
-    """Top-level state document stored in .git/vectl/state.json.
-
-    Contains all mutable runtime state separated from the plan definition.
-    The plan_id field links this state to a specific plan definition.
-    """
-
-    plan_id: str
-    steps: dict[str, StepState] = Field(default_factory=dict)
-    phases: dict[str, PhaseState] = Field(default_factory=dict)
-    clipboard: Clipboard | None = None
 
 
 class Plan(BaseModel):
@@ -432,18 +398,3 @@ class InitResult(BaseModel):
     agents_target: str | None = None  # Which file was updated (AGENTS.md or CLAUDE.md)
     message: str
     error: str | None = None
-
-
-# ---------------------------------------------------------------------------
-# Orphan Detection
-# ---------------------------------------------------------------------------
-
-
-@dataclass
-class OrphanEntry:
-    """An orphan state entry that exists in state.json but has no matching
-    definition in plan.yaml."""
-
-    kind: str  # "phase" or "step"
-    id: str
-    phase_id: str | None = None  # Only set for step orphans

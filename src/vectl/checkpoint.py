@@ -10,7 +10,8 @@ from typing import Any
 
 from vectl import __version__
 from vectl.core import _clipboard_expired, get_next_steps
-from vectl.models import Plan, Step, StepStatus
+from vectl.lifecycle import get_claimed_steps
+from vectl.models import Plan, Step
 
 
 def build_checkpoint(
@@ -202,12 +203,7 @@ def _select_focus(plan: Plan, agent: str | None) -> Step | None:
 
 
 def _get_all_claimed(plan: Plan) -> list[Step]:
-    claimed = []
-    for ph in plan.phases:
-        for s in ph.steps:
-            if s.status == StepStatus.CLAIMED:
-                claimed.append(s)
-    return claimed
+    return [step for _, step in get_claimed_steps(plan)]
 
 
 def _dedupe(items: list[str]) -> list[str]:

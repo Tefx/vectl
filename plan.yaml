@@ -8151,6 +8151,196 @@ phases:
     - unified-state-core.adapt-defer-step
     - unified-state-core.deprecate-split-state-functions
     agent: gate-reviewer
+  - id: unified-state-core.unified-state-core-fix-production-claims-path-wiring
+    name: unified-state-core.fix-production-claims-path-wiring
+    status: pending
+    description: 'HIGH priority remediation for the gate finding: wire production
+      claims_path resolution into the existing core claim/complete/defer entry points
+      without pulling forward the broader unified-state-cli-mcp load/save rewrite.
+
+
+      Scope:
+
+      - File cluster: src/vectl/cli.py, src/vectl/mcp_server.py, src/vectl/plan_path.py
+
+      - Add production call sites for resolve_claims_path() where CLI and MCP production
+      paths invoke claim_step(), complete_step(), and defer_step().
+
+      - Pass the resolved claims_path into those core calls for the current production
+      entry points only.
+
+      - Cover CLI claim/complete/defer and MCP claim/complete plus lifecycle defer
+      paths that currently call core without claims_path.
+
+
+      Out of scope:
+
+      - No _load/_save rewrite, no state.json elimination, no commit-path refactor,
+      no orphan-detection removal.
+
+      - Do not absorb broader Phase 3 CLI/MCP adaptation work; this step is only the
+      minimum wiring needed to satisfy the failed core gate.
+
+
+      Acceptance:
+
+      - resolve_claims_path() has real production call sites in CLI and MCP paths.
+
+      - Production claim/complete/defer flows pass claims_path into the existing core
+      helpers.
+
+      - No new duplicate claims-path helpers are introduced; use the shared resolver.
+
+      - A focused regression test covers at least one CLI path and one MCP path reaching
+      claims.json-backed behavior.'
+    verification: '- Main path: targeted tests prove CLI and MCP production entry
+      points now resolve claims_path and pass it through to core claim_step/complete_step/defer_step.
+
+      - Failure path: regression proves the pre-fix omission is closed by asserting
+      claims.json is exercised through production wiring, not only direct core unit
+      tests.
+
+      - Proof: grep or focused test evidence shows resolve_claims_path is now called
+      from production CLI and MCP code paths only within this minimal remediation
+      scope.'
+    evidence_template: '## Remediation Evidence
+
+
+      **Scope fixed**: CLI/MCP production claims_path wiring into core claim/complete/defer
+
+
+      **Files changed**:
+
+      - <path>
+
+
+      **Production call paths wired**:
+
+      - CLI: <entry point> -> resolve_claims_path -> <core helper>
+
+      - MCP: <entry point> -> resolve_claims_path -> <core helper>
+
+
+      **Focused tests**:
+
+      ```text
+
+      <paste exact targeted test commands>
+
+      ```
+
+
+      **Why Phase 3 scope was not absorbed**:
+
+      - <one line for each deferred broader rewrite item>
+
+      '
+    depends_on:
+    - unified-state-core.gate
+    agent: python-senior
+  - id: unified-state-core.freeze-production-claims-path-retest
+    name: freeze-production-claims-path-retest
+    status: pending
+    description: 'Freeze for L2 remediation verification of production claims_path
+      wiring.
+
+
+      Before independent retest:
+
+      - record `git rev-parse HEAD`
+
+      - confirm `git status` is clean
+
+      - record env/tooling declaration used for CLI and MCP verification
+
+      - state that no code changes are allowed until the subsequent retest completes
+
+
+      This freeze exists only to stabilize evidence for the remediation chain after
+      unified-state-core.gate.'
+    verification: '- Freeze evidence includes commit SHA, clean working tree, environment
+      declaration, and an explicit no-code-changes statement for the retest window.'
+    depends_on:
+    - unified-state-core.unified-state-core-fix-production-claims-path-wiring
+    agent: integration-verifier
+  - id: unified-state-core.retest-production-claims-path-wiring
+    name: retest-production-claims-path-wiring
+    status: pending
+    description: 'As an INDEPENDENT TESTER (integration-verifier), validate the repaired
+      production claims_path wiring from a fresh perspective.
+
+
+      YOUR GOAL IS TO FIND PROBLEMS, not to confirm it works.
+
+
+      Test for:
+
+      - Happy path: CLI claim/complete/defer and MCP claim/complete plus lifecycle
+      defer resolve claims_path and exercise claims.json behavior through production
+      entry points.
+
+      - Edge cases: the wiring reaches existing core helpers rather than duplicate
+      wrappers.
+
+      - Error scenarios: a production-path invocation without the new plumbing would
+      fail to touch claims.json; verify that gap is now closed.
+
+
+      Document ALL findings. A test that discovers issues is a SUCCESS.
+
+      A test that finds nothing must justify the coverage achieved.
+
+
+      Independence Level: L2'
+    verification: '- Main path: at least one real CLI invocation and one real MCP
+      tool invocation prove production call paths exercise claims.json behavior after
+      claims_path resolution.
+
+      - Failure path: targeted regression demonstrates the wired path would have missed
+      claims.json before remediation and now reaches resolve_claims_path + core helpers
+      end-to-end.
+
+      - Proof: actual command/output evidence is pasted, not summarized, and names
+      the path exercised from entry point to core helper.'
+    evidence_template: '## Integration Evidence
+
+
+      **Command or test exercising the full path**:
+
+      ```text
+
+      <paste exact CLI command>
+
+      <paste exact MCP invocation>
+
+      ```
+
+
+      **Actual output**:
+
+      ```text
+
+      <paste stdout/stderr or test runner output>
+
+      ```
+
+
+      **Path exercised**:
+
+      - CLI: <entry point> -> resolve_claims_path -> <core helper> -> claims.json
+
+      - MCP: <entry point> -> resolve_claims_path -> <core helper> -> claims.json
+
+
+      **Findings**:
+
+      - blocker | should_fix | suggestion | tech_debt
+
+      '
+    depends_on:
+    - unified-state-core.unified-state-core-fix-production-claims-path-wiring
+    - unified-state-core.freeze-production-claims-path-retest
+    agent: integration-verifier
 - id: unified-state-cli-mcp
   name: 'Unified State: CLI & MCP Adaptation'
   status: pending
@@ -8241,13 +8431,9 @@ phases:
       clipboard clear''
 
 
-      Also add claims_path plumbing:
-
-      - In vectl_claim: resolve claims_path, pass to claim_step()
-
-      - In vectl_complete: resolve claims_path, pass to complete_step()
-
-      - In vectl_lifecycle defer: resolve claims_path, pass to defer_step()
+      Claims-path production wiring for claim/complete/defer is intentionally out
+      of scope here; it is covered by unified-state-core.unified-state-core-fix-production-claims-path-wiring
+      as gate remediation.
 
 
       Update _load() call sites: all ~15 callers that unpack (plan, _, state_hash)
@@ -8261,8 +8447,8 @@ phases:
       Integration evidence required: actual MCP tool invocation showing plan.yaml
       commit after operation.'
     verification: pytest tests/test_mcp.py -v passes. MCP tools write to plan.yaml
-      with git commit. No references to state.json in mcp_server.py. Claims plumbing
-      works for claim/complete/defer.
+      with git commit. No references to state.json in mcp_server.py. Claims-path production
+      wiring remains excluded from this step because it is satisfied by unified-state-core.unified-state-core-fix-production-claims-path-wiring.
     refs:
     - src/vectl/mcp_server.py
     - src/vectl/io.py
@@ -8364,7 +8550,9 @@ phases:
       clear''
 
 
-      Also add claims_path plumbing for claim/complete/defer.
+      Claims-path production wiring for claim/complete/defer is intentionally out
+      of scope here; it is covered by unified-state-core.unified-state-core-fix-production-claims-path-wiring
+      as gate remediation.
 
 
       Update _load() call sites: all callers that unpack (plan, def_h, state_h, plan_path)
@@ -8377,8 +8565,8 @@ phases:
 
       Integration evidence required: actual CLI command showing plan.yaml commit.'
     verification: pytest tests/test_cli.py -v passes. CLI writes to plan.yaml with
-      git commit. No references to state.json in cli.py. Claims plumbing works for
-      claim/complete/defer.
+      git commit. No references to state.json in cli.py. Claims-path production wiring
+      remains excluded from this step because it is satisfied by unified-state-core.unified-state-core-fix-production-claims-path-wiring.
     refs:
     - src/vectl/cli.py
     - src/vectl/io.py
@@ -8550,7 +8738,7 @@ phases:
       1. Completeness: All 5 implementation steps executed?
 
       2. MCP server: _load() returns (plan, def_hash) only. All saves go through _save_plan()
-      with commit. Claims plumbing works.
+      with commit.
 
       3. CLI: Same transformation as MCP. All saves produce git commits.
 
@@ -8563,7 +8751,12 @@ phases:
       7. No regressions: Full test suite passes.
 
       8. REALISM CHECK: At least one actual CLI command and one MCP tool invocation
-      showing plan.yaml git commit after operation.'
+      showing plan.yaml git commit after operation.
+
+
+      Note: claims-path production wiring for claim/complete/defer is intentionally
+      excluded from this phase gate because it is remediated earlier in unified-state-core
+      and must be complete before this phase begins.'
     verification: All Phase 3 steps completed. Evidence reviewed. Full test suite
       passes. No references to state.json in non-migration code. Ready for Phase 4.
     refs:

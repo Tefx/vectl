@@ -72,14 +72,8 @@ from vectl.core import (
 from vectl.io import (
     _backup_definition,
     _resolve_git_dir,
-    detect_orphan_state,
-    extract_state,
     load_plan_definition,
-    load_state,
-    merge_plan,
     save_plan,
-    save_state,
-    strip_state,
 )
 from vectl.models import (
     AffinityError,
@@ -97,7 +91,6 @@ from vectl.plan_path import (
     is_linked_worktree,
     resolve_claims_path,
     resolve_plan_path,
-    resolve_state_path,
 )
 from vectl.semantics import is_step_locked
 
@@ -134,58 +127,29 @@ def _plan_path() -> Path:
     return resolve_plan_path()
 
 
-def _load() -> tuple[Plan, str, str]:
-    """Load merged plan with separate definition/state hashes for CAS.
-
-    Lazy migration behavior:
-      - If state.json exists and contains state, merge it into plan.yaml.
-      - If state.json is missing/empty, return legacy plan from plan.yaml.
+def _load() -> tuple[Plan, str]:
+    """Load plan and definition hash from plan.yaml only.
 
     Returns:
-        (merged_plan, definition_hash, state_hash)
+        (plan, definition_hash)
     """
-    import logging
-
     plan_path = _plan_path()
-    plan_def, def_hash = load_plan_definition(plan_path)
-
-    state_path = resolve_state_path(plan_path)
-    state, state_hash = load_state(state_path)
-
-    has_state = (
-        bool(state.steps)
-        or bool(state.phases)
-        or state.clipboard is not None
-        or bool(state.plan_id)
-    )
-    if state_hash and has_state:
-        merged = merge_plan(plan_def, state)
-
-        # Detect orphan state entries and log notice (but don't block load)
-        orphans = detect_orphan_state(plan_def, state)
-        if orphans:
-            logger = logging.getLogger("vectl.mcp")
-            for o in orphans:
-                if o.kind == "phase":
-                    logger.warning("Orphan phase '%s' in state but not in plan", o.id)
-                elif o.kind == "step":
-                    logger.warning("Orphan step '%s' in state but not in plan", o.id)
-            logger.warning("Run 'vectl recover' to clean up ghost state")
-
-        return merged, def_hash, state_hash
-
-    # Legacy mode: no state document yet.
-    return plan_def, def_hash, ""
+    return load_plan_definition(plan_path)
 
 
-def _save_state(plan: Plan, expected_state_hash: str, *, recalc_locks: bool = True) -> str:
-    """Save mutable runtime state with CAS semantics.
-
-    If expected_state_hash is empty, CAS is skipped (first state write).
+def _save_plan(
+    plan: Plan,
+    expected_def_hash: str,
+    commit_message: str,
+    *,
+    recalc_locks: bool = True,
+) -> str:
+    """Save plan.yaml with CAS semantics.
 
     Args:
-        plan: The merged plan to persist state from.
-        expected_state_hash: CAS hash for state.json; empty skips CAS.
+        plan: The plan to persist.
+        expected_def_hash: CAS hash for plan.yaml.
+        commit_message: Git commit message for best-effort plan commit.
         recalc_locks: Recompute phase lock status before save and include
             lock-change notice in return value.
     """
@@ -193,29 +157,14 @@ def _save_state(plan: Plan, expected_state_hash: str, *, recalc_locks: bool = Tr
     if recalc_locks:
         changed = recalc_lock_status(plan)
 
-    state_path = resolve_state_path(_plan_path())
-    state = extract_state(plan)
-    cas_hash: str | None = expected_state_hash if expected_state_hash != "" else None
-    try:
-        save_state(state, state_path, cas_hash)
-    except CASConflictError as err:
-        raise PlanError(
-            "CAS conflict: state.json was modified by another process since you loaded it. "
-            "Re-read with `vectl_status` or `vectl_show`, then retry your mutation."
-        ) from err
-    return format_lock_changes(changed, plan)
-
-
-def _save_definition(plan: Plan, expected_def_hash: str, *, recalc_locks: bool = True) -> str:
-    """Save definition-only plan.yaml with CAS semantics."""
-    changed: list[str] = []
-    if recalc_locks:
-        changed = recalc_lock_status(plan)
-
-    stripped = strip_state(plan)
     plan_path = _plan_path()
     try:
-        save_plan(stripped, plan_path, expected_def_hash)
+        save_plan(
+            plan,
+            plan_path,
+            expected_hash=expected_def_hash,
+            commit_message=commit_message,
+        )
     except CASConflictError as err:
         raise PlanError(
             "CAS conflict: plan.yaml was modified by another process since you loaded it. "
@@ -232,21 +181,6 @@ def _save_definition(plan: Plan, expected_def_hash: str, *, recalc_locks: bool =
         logging.warning("Backup failed", exc_info=True)
 
     return format_lock_changes(changed, plan)
-
-
-def _save_both(plan: Plan, expected_def_hash: str, expected_state_hash: str) -> str:
-    """Save merged plan to split definition/state stores.
-
-    Recalculates lock status on the merged/full plan before writing definition+state.
-    Definition is written first so a plan.yaml CAS conflict cannot leave orphaned
-    state.json entries (structural additions like new phases/steps would be in
-    state.json but missing from plan.yaml, making them invisible to merge_plan).
-    """
-    changed = recalc_lock_status(plan)
-    def_notice = _save_definition(plan, expected_def_hash, recalc_locks=False)
-    state_notice = _save_state(plan, expected_state_hash, recalc_locks=False)
-    lock_notice = format_lock_changes(changed, plan)
-    return "\n\n".join(part for part in (lock_notice, state_notice, def_notice) if part)
 
 
 def _fmt_step(plan: Plan, step: Step, phase_id: str) -> str:
@@ -292,7 +226,7 @@ def vectl_status(agent: str | None = None) -> str:
     Args:
         agent: If provided, also show steps claimed by this agent.
     """
-    plan, _, _ = _load()
+    plan, _ = _load()
 
     parts: list[str] = [_fmt_phase_summary(plan)]
 
@@ -339,7 +273,7 @@ def vectl_show(id: str) -> str:
     Args:
         id: Step ID (e.g. 'phase.step') or phase ID (e.g. 'phase').
     """
-    plan, _, _ = _load()
+    plan, _ = _load()
 
     # Try step first
     found = plan.find_step(id)
@@ -484,7 +418,7 @@ def vectl_claim(
     Returns:
         Structured result with claimed step, affinity warnings, and guidance.
     """
-    plan, _, expected_state_hash = _load()
+    plan, expected_def_hash = _load()
     claims_path = resolve_claims_path(_plan_path())
 
     if step_id is None:
@@ -499,7 +433,11 @@ def vectl_claim(
     lock_notice: str = ""
     try:
         plan, result = claim_step(plan, step_id, agent, force=force, claims_path=claims_path)
-        lock_notice = _save_state(plan, expected_state_hash)
+        lock_notice = _save_plan(
+            plan,
+            expected_def_hash,
+            f"mcp: claim step {step_id} by {agent}",
+        )
     except AffinityError as e:
         # RFC: docs/RFC-affinity.md
         # Exclusive affinity violation
@@ -612,12 +550,16 @@ def vectl_complete(step_id: str, evidence: str) -> str:
         step_id: The step ID to complete.
         evidence: Description of what was done and verification.
     """
-    plan, _, expected_state_hash = _load()
+    plan, expected_def_hash = _load()
     claims_path = resolve_claims_path(_plan_path())
 
     try:
         plan = complete_step(plan, step_id, evidence, claims_path=claims_path)
-        lock_notice = _save_state(plan, expected_state_hash)
+        lock_notice = _save_plan(
+            plan,
+            expected_def_hash,
+            f"mcp: complete step {step_id}",
+        )
     except PlanError as e:
         return f"**Error:** {e}"
 
@@ -683,20 +625,28 @@ def vectl_lifecycle(
         force: For skip-phase, allow skipping a locked phase with remaining steps.
             Empty phases (0 steps) are always allowed regardless of lock.
     """
-    plan, expected_def_hash, expected_state_hash = _load()
+    plan, expected_def_hash = _load()
     claims_path = resolve_claims_path(_plan_path())
 
     try:
         if action == "defer":
             plan = defer_step(plan, id, claims_path=claims_path)
             msg = f"**Deferred:** {id} → back to pending"
-            lock_notice = _save_state(plan, expected_state_hash)
+            lock_notice = _save_plan(
+                plan,
+                expected_def_hash,
+                f"mcp: defer step {id}",
+            )
         elif action == "reject":
             if not reason:
                 return "**Error:** reason is required for reject."
             plan = reject_step(plan, id, reason, reviewer)
             msg = f"**Rejected:** {id} — {reason}"
-            lock_notice = _save_state(plan, expected_state_hash)
+            lock_notice = _save_plan(
+                plan,
+                expected_def_hash,
+                f"mcp: reject step {id}",
+            )
         elif action == "skip":
             if not reason:
                 return (
@@ -705,7 +655,11 @@ def vectl_lifecycle(
                 )
             plan = skip_step(plan, id, reason)
             msg = f"**Skipped:** {id} — {reason}"
-            lock_notice = _save_state(plan, expected_state_hash)
+            lock_notice = _save_plan(
+                plan,
+                expected_def_hash,
+                f"mcp: skip step {id}",
+            )
         elif action == "skip-phase":
             if not reason:
                 return "**Error:** reason is required for skip-phase."
@@ -713,7 +667,11 @@ def vectl_lifecycle(
             msg = f"**Skipped phase '{id}':** {len(skipped_ids)} steps skipped"
             if skipped_ids:
                 msg += "\n" + "\n".join(f"  - {sid}" for sid in skipped_ids)
-            lock_notice = _save_state(plan, expected_state_hash)
+            lock_notice = _save_plan(
+                plan,
+                expected_def_hash,
+                f"mcp: skip phase {id}",
+            )
         elif action == "complete-phase":
             if not evidence:
                 return "**Error:** evidence is required for complete-phase."
@@ -721,7 +679,11 @@ def vectl_lifecycle(
             msg = f"**Completed phase '{id}':** {len(unlocked)} phase(s) unlocked"
             if unlocked:
                 msg += "\n" + "\n".join(f"  - {pid}" for pid in unlocked)
-            lock_notice = _save_both(plan, expected_def_hash, expected_state_hash)
+            lock_notice = _save_plan(
+                plan,
+                expected_def_hash,
+                f"mcp: complete phase {id}",
+            )
         else:
             return (
                 f"**Error:** Unknown action '{action}'. Use: defer, reject, skip, "
@@ -754,7 +716,7 @@ def vectl_search(pattern: str, phase_id: str | None = None, regex: bool = False)
         phase_id: Restrict search to a specific phase.
         regex: If True, interpret pattern as regex.
     """
-    plan, _, _ = _load()
+    plan, _ = _load()
 
     try:
         matches = search_plan(plan, pattern, phase_id=phase_id, use_regex=regex)
@@ -881,7 +843,7 @@ def vectl_mutate(
                 "Set VECTL_PLAN_PATH to the main worktree plan.yaml and retry."
             )
 
-    plan, expected_def_hash, expected_state_hash = _load()
+    plan, expected_def_hash = _load()
 
     try:
         if action == "add-step":
@@ -1028,7 +990,12 @@ def vectl_mutate(
         else:
             return f"**Error:** Unknown action '{action}'."
 
-        lock_notice = _save_both(plan, expected_def_hash, expected_state_hash)
+        commit_target = step_id or phase_id or action
+        lock_notice = _save_plan(
+            plan,
+            expected_def_hash,
+            f"mcp: mutate {action} {commit_target}",
+        )
     except PlanError as e:
         return f"**Error:** {e}"
 
@@ -1062,7 +1029,7 @@ def vectl_checkpoint(
     """
     from vectl.checkpoint import build_checkpoint
 
-    plan, expected_def_hash, expected_state_hash = _load()
+    plan, expected_def_hash = _load()
 
     # Note: 'pretty' is accepted for CLI parity but ignored for the dict return
     # since MCP clients handle formatting.
@@ -1095,7 +1062,7 @@ def vectl_review(
         check_refs: If true, verify that ref file paths exist on disk.
         include_done: If true, include DONE and LOCKED phases in L3 detail.
     """
-    plan, _, _ = _load()
+    plan, _ = _load()
     base_path = _plan_path().parent if check_refs else None
     result = review_plan(
         plan, check_refs=check_refs, base_path=base_path, include_done=include_done
@@ -1241,7 +1208,7 @@ def vectl_dag(phase_id: str | None = None) -> str:
     """
     from vectl.core import generate_mermaid_dag
 
-    plan, _, _ = _load()
+    plan, _ = _load()
 
     try:
         return generate_mermaid_dag(plan, phase_id=phase_id)
@@ -1293,7 +1260,7 @@ def vectl_clipboard(
 def _clipboard_write(author: str, summary: str, content: str, ttl: int) -> str:
     """Write to clipboard with CAS."""
     try:
-        plan, _, expected_state_hash = _load()
+        plan, expected_def_hash = _load()
     except PlanError as e:
         return f"**Error:** {e}"
 
@@ -1303,7 +1270,11 @@ def _clipboard_write(author: str, summary: str, content: str, ttl: int) -> str:
         return f"**Error:** {e}"
 
     try:
-        lock_notice = _save_state(plan, expected_state_hash)
+        lock_notice = _save_plan(
+            plan,
+            expected_def_hash,
+            f"mcp: write clipboard by {author}",
+        )
     except PlanError as e:
         # CAS conflict - provide actionable message per RFC
         if "CAS conflict" in str(e):
@@ -1329,7 +1300,7 @@ def _clipboard_write(author: str, summary: str, content: str, ttl: int) -> str:
 def _clipboard_read() -> str:
     """Read clipboard (pure read, no CAS)."""
     try:
-        plan, _, _ = _load()
+        plan, _ = _load()
     except PlanError as e:
         return f"**Error:** {e}"
 
@@ -1368,7 +1339,7 @@ def _clipboard_read() -> str:
 def _clipboard_clear() -> str:
     """Clear clipboard with CAS."""
     try:
-        plan, _, expected_state_hash = _load()
+        plan, expected_def_hash = _load()
     except PlanError as e:
         return f"**Error:** {e}"
 
@@ -1378,7 +1349,11 @@ def _clipboard_clear() -> str:
     plan = clipboard_clear(plan)
 
     try:
-        lock_notice = _save_state(plan, expected_state_hash)
+        lock_notice = _save_plan(
+            plan,
+            expected_def_hash,
+            "mcp: clear clipboard",
+        )
     except PlanError as e:
         if "CAS conflict" in str(e):
             return (
@@ -1499,7 +1474,7 @@ def vectl_render(
     Returns:
         Markdown-formatted progress report.
     """
-    plan, _, _ = _load()
+    plan, _ = _load()
 
     try:
         return render_plan(plan, phase_id=phase_id, full=full)
@@ -1539,11 +1514,15 @@ def vectl_check(
     if keyword is None and add is None:
         return "**Error:** Must provide either 'keyword' or 'add'."
 
-    plan, expected_def_hash, expected_state_hash = _load()
+    plan, expected_def_hash = _load()
 
     try:
         plan = update_checklist(plan, step_id, check=keyword, append=add)
-        lock_notice = _save_both(plan, expected_def_hash, expected_state_hash)
+        lock_notice = _save_plan(
+            plan,
+            expected_def_hash,
+            f"mcp: update checklist {step_id}",
+        )
     except NoMatchError as e:
         return f"**Error:** No checklist item matches keyword '{e.keyword}'."
     except AmbiguousMatchError as e:

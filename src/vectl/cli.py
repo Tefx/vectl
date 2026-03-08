@@ -71,6 +71,7 @@ from vectl.models import (
     StepStatus,
 )
 from vectl.migration import migrate_from_split_state, resolve_state_path
+from vectl.merge_driver import merge_plans
 from vectl.plan_path import (
     is_linked_worktree,
     resolve_claims_path,
@@ -298,6 +299,16 @@ def mcp() -> None:
     from vectl.mcp_server import mcp
 
     mcp.run()
+
+
+@app.command("merge-driver", hidden=True)
+def merge_driver_cmd(
+    base: str = typer.Argument(..., help="Git merge-base file path (%O)."),
+    ours: str = typer.Argument(..., help="Git ours file path (%A)."),
+    theirs: str = typer.Argument(..., help="Git theirs file path (%B)."),
+) -> None:
+    """Git merge-driver entrypoint for plan.yaml merges."""
+    raise typer.Exit(merge_plans(base, ours, theirs))
 
 
 @app.command()

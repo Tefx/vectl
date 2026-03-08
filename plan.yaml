@@ -14417,14 +14417,23 @@ phases:
       5. Tests: All 8 merge scenarios pass?
 
       6. No regressions: Full test suite passes?'
-    verification: All Phase 5 steps completed. Merge driver works correctly. Full
-      test suite passes. Ready for Phase 6.
+    verification: '- All Phase 5 implementation and retest steps completed successfully
+
+      - Merge driver conflicts on same-step dual-side edits, including move+payload
+      mixed modification
+
+      - gitattributes wiring still intact
+
+      - Focused merge-driver regressions and existing suite evidence reviewed
+
+      - Ready for the next phase only after retest evidence is acceptable'
     refs:
     - docs/ADR-unified-state.md
     depends_on:
     - unified-state-merge-driver.implement-merge-driver
     - unified-state-merge-driver.add-gitattributes-config
     - unified-state-merge-driver.merge-driver-tests
+    - unified-state-merge-driver.retest-move-payload-conflict
     agent: gate-reviewer
     claimed_by: gate-reviewer
     claimed_at: '2026-03-08T16:06:01.932083+00:00'

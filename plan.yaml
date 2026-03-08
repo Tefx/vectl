@@ -14739,7 +14739,7 @@ phases:
       - Downstream steps rewired to depend on retest chain before phase gate."
   - id: unified-state-verification.multi-agent-worktree-test
     name: Multi-agent worktree scenario test
-    status: pending
+    status: claimed
     description: 'As an INDEPENDENT TESTER (integration-verifier), manually test the
       multi-agent worktree scenario.
 
@@ -14787,6 +14787,8 @@ phases:
     depends_on:
     - unified-state-verification.full-test-suite-retest-retest
     agent: integration-verifier
+    claimed_by: integration-verifier
+    claimed_at: '2026-03-08T16:46:28.593009+00:00'
   - id: unified-state-verification.migration-roundtrip-test
     name: Migration roundtrip test
     status: pending

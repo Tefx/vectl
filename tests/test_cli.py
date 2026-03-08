@@ -10,10 +10,11 @@ import yaml
 from typer.testing import CliRunner
 
 from vectl import __version__
+from vectl.claims import load_claims
 from vectl.cli import app
 from vectl.io import load_plan, load_plan_definition, save_plan
 from vectl.models import AffinityMode, Phase, PhaseStatus, Plan, Step, StepStatus
-from vectl.plan_path import resolve_state_path
+from vectl.plan_path import resolve_claims_path, resolve_state_path
 
 runner = CliRunner()
 
@@ -763,6 +764,25 @@ class TestComplete:
         result = runner.invoke(app, ["complete", "s1", "--evidence", "x", "--plan", str(plan_file)])
         assert result.exit_code == 1
         assert "claimed" in result.output.lower()
+
+    def test_claim_and_complete_use_claims_store(self, plan_file: Path) -> None:
+        claims_path = resolve_claims_path(plan_file)
+
+        claim_result = runner.invoke(
+            app,
+            ["claim", "s1", "--agent", "bot-1", "--plan", str(plan_file)],
+        )
+        assert claim_result.exit_code == 0
+        claims_after_claim = load_claims(claims_path)
+        assert len(claims_after_claim) == 1
+        assert next(iter(claims_after_claim.values())).step_id == "s1"
+
+        complete_result = runner.invoke(
+            app,
+            ["complete", "s1", "--evidence", "commit abc", "--plan", str(plan_file)],
+        )
+        assert complete_result.exit_code == 0
+        assert load_claims(claims_path) == {}
 
 
 class TestCompletePhase:

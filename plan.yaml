@@ -15762,7 +15762,7 @@ phases:
   steps:
   - id: unified-state-gate-review-remediation.sf1-migration-overwrite-warning
     name: sf1-migration-overwrite-warning
-    status: claimed
+    status: done
     description: 'Add warning when migration overwrites inline state.
 
 
@@ -15787,6 +15787,37 @@ phases:
     agent: python-executor
     claimed_by: python-senior
     claimed_at: '2026-03-08T17:41:30.248656+00:00'
+    done_at: '2026-03-08T17:54:45.246718+00:00'
+    evidence: 'Artifact:
+
+      - Worker commit: 94fe922
+
+      - Orchestrator squash commit: fb675f4
+
+
+      Verification:
+
+      - Run: .venv/bin/pytest tests/test_migration.py -v -> 11 passed
+
+      - Includes: test_migrate_warns_on_inline_step_value_overwrite
+
+
+      Spec link:
+
+      - unified-state-gate-review-remediation.sf1-migration-overwrite-warning
+
+
+      Files changed:
+
+      - src/vectl/migration.py
+
+      - tests/test_migration.py
+
+
+      Gaps/Notes:
+
+      - Added warning in _merge_step before overwriting non-default inline status/evidence/done_at
+      values with state.json values.'
   - id: unified-state-gate-review-remediation.sf2-extract-lifecycle
     name: sf2-extract-lifecycle
     status: claimed

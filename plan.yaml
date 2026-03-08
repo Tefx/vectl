@@ -14570,7 +14570,7 @@ phases:
       (move+payload/status) with focused regression coverage.'
   - id: unified-state-merge-driver.retest-move-payload-conflict
     name: Retest merge-driver mixed-modification conflict
-    status: pending
+    status: claimed
     description: 'As an INDEPENDENT TESTER (integration-verifier), validate the merge-driver
       blocker fix from a fresh perspective.
 
@@ -14620,6 +14620,8 @@ phases:
     depends_on:
     - unified-state-merge-driver.fix-move-payload-conflict
     agent: integration-verifier
+    claimed_by: integration-verifier
+    claimed_at: '2026-03-08T16:15:55.922754+00:00'
 - id: unified-state-verification
   name: 'Unified State: Verification & Final Gate'
   status: locked

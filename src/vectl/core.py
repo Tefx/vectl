@@ -67,6 +67,9 @@ def validate_plan(
         check_refs: If True, check that files in refs[] exist on disk.
         base_path: Base path for resolving refs (defaults to cwd).
         state: Optional plan state for orphan detection.
+
+            Deprecated: split-state is retired. See docs/ADR-unified-state.md.
+            Will be removed after unified-state Phase 3.
     """
     errors: list[PlanValidationIssue] = []
 

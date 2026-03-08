@@ -186,6 +186,9 @@ def resolve_plan_path(explicit: Path | None = None) -> Path:
 def resolve_state_path(plan_path: Path | None = None) -> Path:
     """Resolve the state.json path for a plan.
 
+    Deprecated: split-state is retired. See docs/ADR-unified-state.md.
+    Will be removed after unified-state Phase 3.
+
     Resolution strategy:
       1. Resolve git-common-dir via `git rev-parse --git-common-dir`.
       2. If git fails, fall back to `.vectl/state.json` under the plan directory.

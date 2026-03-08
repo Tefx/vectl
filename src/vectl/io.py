@@ -47,6 +47,9 @@ def _file_hash(path: Path) -> str:
 def load_state(path: Path | str) -> tuple[PlanState, str]:
     """Load plan state from JSON file.
 
+    Deprecated: split-state is retired. See docs/ADR-unified-state.md.
+    Will be removed after unified-state Phase 3.
+
     Returns `(PlanState, file_hash)` for CAS semantics.
     If the file does not exist, returns an empty state with empty hash.
     """
@@ -70,13 +73,20 @@ def load_state(path: Path | str) -> tuple[PlanState, str]:
 
 
 def _state_to_json(state: PlanState) -> str:
-    """Serialize state to deterministic JSON output for state.json."""
+    """Serialize state to deterministic JSON output for state.json.
+
+    Deprecated: split-state is retired. See docs/ADR-unified-state.md.
+    Will be removed after unified-state Phase 3.
+    """
     payload = state.model_dump(mode="json", exclude_none=True)
     return json.dumps(payload, indent=2, ensure_ascii=False)
 
 
 def _merge_state_for_cas_retry(base: PlanState, our_state: PlanState) -> PlanState:
     """Merge state updates for CAS retries using per-key LWW semantics.
+
+    Deprecated: split-state is retired. See docs/ADR-unified-state.md.
+    Will be removed after unified-state Phase 3.
 
     Last-writer-wins semantics are applied for step, phase, and clipboard keys:
     entries from `our_state` overwrite `base` values for matching keys.
@@ -99,6 +109,9 @@ def save_state(
     state: PlanState, path: Path | str, expected_hash: str | None = None, max_retries: int = 3
 ) -> str:
     """Save state JSON atomically with CAS.
+
+    Deprecated: split-state is retired. See docs/ADR-unified-state.md.
+    Will be removed after unified-state Phase 3.
 
     Returns file hash on success.
     """
@@ -288,7 +301,11 @@ def _plan_to_dict(plan: Plan) -> dict[str, Any]:
 
 
 def extract_state(plan: Plan) -> PlanState:
-    """Extract mutable runtime state from a plan into a separate state object."""
+    """Extract mutable runtime state from a plan into a separate state object.
+
+    Deprecated: split-state is retired. See docs/ADR-unified-state.md.
+    Will be removed after unified-state Phase 3.
+    """
 
     step_states = {
         step.id: StepState(
@@ -321,7 +338,11 @@ def extract_state(plan: Plan) -> PlanState:
 
 
 def strip_state(plan: Plan) -> Plan:
-    """Return a copy of the plan with mutable runtime state reset to defaults."""
+    """Return a copy of the plan with mutable runtime state reset to defaults.
+
+    Deprecated: split-state is retired. See docs/ADR-unified-state.md.
+    Will be removed after unified-state Phase 3.
+    """
 
     stripped = plan.model_copy(deep=True)
 
@@ -358,7 +379,11 @@ def strip_state(plan: Plan) -> Plan:
 
 
 def merge_plan(plan_def: Plan, state: PlanState) -> Plan:
-    """Merge a state document into a plan definition."""
+    """Merge a state document into a plan definition.
+
+    Deprecated: split-state is retired. See docs/ADR-unified-state.md.
+    Will be removed after unified-state Phase 3.
+    """
 
     merged = plan_def.model_copy(deep=True)
 
@@ -403,6 +428,9 @@ def merge_plan(plan_def: Plan, state: PlanState) -> Plan:
 
 def detect_orphan_state(plan_def: Plan, state: PlanState) -> list[OrphanEntry]:
     """Detect orphan state entries that exist in state but have no matching definition in plan.yaml.
+
+    Deprecated: split-state is retired. See docs/ADR-unified-state.md.
+    Will be removed after unified-state Phase 3.
 
     Compares the phase/step keys in state.json against the plan.yaml structure.
     Returns a list of OrphanEntry objects for any entries in state that don't have

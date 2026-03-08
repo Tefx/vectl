@@ -16521,3 +16521,42 @@ phases:
       - Evidence states which fixture or race harness is used and why it exercises
       the real concurrent path'
     agent: python-executor
+  - id: claim-consistency-recovery.atomic-plan-save-locking
+    name: atomic-plan-save-locking
+    status: pending
+    description: "Harden the plan persistence path so claim-visible state cannot be\
+      \ reverted by a concurrent writer.\n\nFiles:\n- `src/vectl/io.py`\n- `src/vectl/claims.py`\
+      \ only if the save/claim critical section boundary must be shared explicitly\n\
+      - Focused regressions in `tests/test_io.py`\n\nAcceptance requirements (high\
+      \ risk: persistence/state semantics):\n- Failure-mode checklist:\n  - relative\
+      \ vs absolute plan path resolution still targets the same lock and plan file\n\
+      \  - missing-file fallback preserves current bootstrap/load behavior and does\
+      \ not create partial state\n  - explicit clear/null writes still persist intentionally\
+      \ cleared fields instead of being dropped by cleanup logic\n  - stale-definition\
+      \ vs new-state precedence is explicit when two writers race on the same plan\
+      \ hash\n  - partial-write / CAS-conflict behavior is deterministic: either serialized\
+      \ success or surfaced conflict, never silent last-writer-wins reversion\n- State\
+      \ semantics:\n  - last-writer-wins is NOT acceptable for the claim-visible plan\
+      \ write window being fixed here\n  - the plan content that passed CAS inside\
+      \ the lock must be preserved exactly for that write\n  - backward-compatible\
+      \ behavior for non-racing single-writer saves must remain unchanged\n- Concrete\
+      \ regressions:\n  - update/add the exact `tests/test_io.py` regressions proving\
+      \ CAS+write occurs inside one plan-file critical section\n  - keep the anima\
+      \ reproducer green against the repaired path\n- Out of scope:\n  - introducing\
+      \ a broader storage redesign beyond the current `plan.yaml` + `.git/vectl/claims.json`\
+      \ model\n  - changing unrelated mutation semantics outside the save/claim critical\
+      \ section"
+    verification: '- Main path: targeted IO tests prove the repaired save path preserves
+      claimed state under concurrent writers
+
+      - Failure path: a regression test covers the highest-risk race from the anima
+      incident and at least one surfaced CAS-conflict path
+
+      - Proof: evidence names every production save entry point that reaches the locked
+      CAS+write section and confirms no bypass remains
+
+      - Targeted command: `uv run pytest tests/test_io.py -k ''claim or atomic or
+      anima'' -v`'
+    depends_on:
+    - claim-consistency-recovery.anima-incident-reproducer
+    agent: python-senior

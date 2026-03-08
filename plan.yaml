@@ -16646,3 +16646,42 @@ phases:
     depends_on:
     - claim-consistency-recovery.claim-rejection-diagnostics
     agent: python-senior
+  - id: claim-consistency-recovery.operator-recovery-docs
+    name: operator-recovery-docs
+    status: pending
+    description: 'Document the operator recovery workflow for ghost claims and split-brain
+      claim state.
+
+
+      Scope:
+
+      - Update the primary user-facing docs (`README.md`, `src/vectl/guide.py`, and/or
+      `docs/DESIGN.md`) with a concise recovery runbook.
+
+      - Cover: symptom recognition, when to use `vectl repair claims --dry-run`, how
+      to scope with `--step`, what `--json` is for, and when a repo is healthy/no-op.
+
+      - Include the anima-style mismatch as the motivating example: claim rejected
+      due to an existing claim while `show/status` disagree.
+
+
+      Boundaries:
+
+      - Keep the doc update tightly focused on recovery and diagnostics.
+
+      - Do not rewrite unrelated architecture sections.
+
+
+      Deliverable:
+
+      - A copy-pasteable operator sequence for safe recovery and post-repair verification.'
+    verification: '- Docs include an explicit ghost-claim recovery runbook with `--dry-run`,
+      `--step`, and follow-up verification commands
+
+      - CLI help/guide text matches the implemented command spelling and flags exactly
+
+      - Evidence lists the updated doc locations and the exact recovery sequence now
+      documented'
+    depends_on:
+    - claim-consistency-recovery.repair-claims-command
+    agent: python-executor

@@ -14847,7 +14847,7 @@ phases:
     refs:
     - docs/ADR-unified-state.md
     depends_on:
-    - unified-state-verification.full-test-suite
+    - unified-state-verification.full-test-suite-retest
     - unified-state-verification.multi-agent-worktree-test
     - unified-state-verification.migration-roundtrip-test
     agent: gate-reviewer

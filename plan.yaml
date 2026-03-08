@@ -14739,7 +14739,7 @@ phases:
       - Downstream steps rewired to depend on retest chain before phase gate."
   - id: unified-state-verification.multi-agent-worktree-test
     name: Multi-agent worktree scenario test
-    status: claimed
+    status: done
     description: 'As an INDEPENDENT TESTER (integration-verifier), manually test the
       multi-agent worktree scenario.
 
@@ -14789,6 +14789,18 @@ phases:
     agent: integration-verifier
     claimed_by: integration-verifier
     claimed_at: '2026-03-08T16:46:28.593009+00:00'
+    done_at: '2026-03-08T16:52:02.238860+00:00'
+    evidence: "Commit hash(es): none (verify-only)\nFiles changed:\n- none\nVerification:\n\
+      - Run: uv run pytest -v tests/test_plan_path.py tests/test_merge_driver.py tests/test_claims.py\
+      \ tests/test_init_gitattributes.py\n- Result: PASS - 49 passed\n- Run: live\
+      \ linked-worktree probe with real `git worktree add` scenario\n- Result: FAIL\
+      \ - `is_linked_worktree()` reported `(True, None)` and `resolve_plan_path(None)`\
+      \ resolved to local worktree plan path instead of main-root plan path\nSpec\
+      \ link:\n- docs/ADR-unified-state.md\nGaps/Notes:\n- Blocker detected: linked-worktree\
+      \ main-root resolution semantics inconsistent under real probe; planner remediation\
+      \ chain added:\n  - unified-state-verification.multi-agent-worktree-test-fix\n\
+      \  - unified-state-verification.multi-agent-worktree-test-retest\n- Gate dependencies\
+      \ rewired through new retest chain."
   - id: unified-state-verification.migration-roundtrip-test
     name: Migration roundtrip test
     status: done

@@ -14440,7 +14440,7 @@ phases:
     claimed_at: '2026-03-08T16:06:01.932083+00:00'
   - id: unified-state-merge-driver.fix-move-payload-conflict
     name: Fix same-step mixed-modification conflict
-    status: pending
+    status: claimed
     description: 'HIGH PRIORITY blocker fix for merge-driver same-step conflict detection.
 
 
@@ -14538,6 +14538,8 @@ phases:
     depends_on:
     - unified-state-merge-driver.merge-driver-tests
     agent: python-senior
+    claimed_by: python-senior
+    claimed_at: '2026-03-08T16:13:00.817906+00:00'
   - id: unified-state-merge-driver.retest-move-payload-conflict
     name: Retest merge-driver mixed-modification conflict
     status: pending

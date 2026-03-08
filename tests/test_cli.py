@@ -11,7 +11,7 @@ from typer.testing import CliRunner
 
 from vectl import __version__
 from vectl.cli import app
-from vectl.io import load_plan, save_plan
+from vectl.io import load_plan, load_plan_definition, save_plan
 from vectl.models import AffinityMode, Phase, PhaseStatus, Plan, Step, StepStatus
 from vectl.plan_path import resolve_state_path
 
@@ -1096,6 +1096,11 @@ class TestRecover:
         assert "Recovery diff" in result.output
         assert "Restore plan.yaml from backup" in result.output
         assert "cancelled" in result.output.lower()
+
+        restored_plan, _ = load_plan_definition(plan_path)
+        restored = restored_plan.find_step("p1.s1")
+        assert restored is not None
+        assert restored[1].name == "Current"
 
     def test_recover_command_no_backup_exit_1(
         self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch

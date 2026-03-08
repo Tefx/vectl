@@ -1475,7 +1475,7 @@ def recover(
     Restores the plan to a previous state from the backup file.
     Shows a diff of what will change before applying.
     """
-    from vectl.core import recover_from_backup
+    from vectl.core import apply_recovery, preview_recovery
 
     p, _, _, plan_path = _load(plan)
 
@@ -1489,10 +1489,10 @@ def recover(
     if not backup_path.exists():
         _die(f"Backup not found: {backup_path}")
 
-    # Show diff and apply recovery
+    # Preview diff without writing
     result: Any = None
     try:
-        result = recover_from_backup(plan_path, backup_path)
+        result = preview_recovery(plan_path, backup_path)
     except PlanError as e:
         _die(str(e))
     except PlanIOError as e:
@@ -1509,6 +1509,13 @@ def recover(
         if confirm.lower() != "y":
             out.print("[yellow]Cancelled.[/]")
             return
+
+    try:
+        apply_recovery(backup_path, plan_path)
+    except PlanError as e:
+        _die(str(e))
+    except PlanIOError as e:
+        _die(str(e))
 
     out.print("[green]Plan restored from backup.[/]")
     out.print(diff_output)

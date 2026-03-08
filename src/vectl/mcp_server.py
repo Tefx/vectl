@@ -1579,7 +1579,7 @@ def vectl_recover() -> dict:
     Returns:
         Dict with recovery result details.
     """
-    from vectl.core import recover_from_backup
+    from vectl.core import apply_recovery, preview_recovery
 
     plan_file = _plan_path()
 
@@ -1596,7 +1596,8 @@ def vectl_recover() -> dict:
     backup_path = git_dir / "vectl" / "plan.yaml.bak"
 
     try:
-        result = recover_from_backup(plan_file, backup_path)
+        result = preview_recovery(plan_file, backup_path)
+        apply_recovery(backup_path, plan_file)
     except Exception as e:
         return {
             "ok": False,
@@ -1607,7 +1608,7 @@ def vectl_recover() -> dict:
 
     return {
         "ok": result.ok,
-        "restored": result.restored,
+        "restored": True,
         "diff_summary": result.diff_summary,
         "error": result.error,
     }

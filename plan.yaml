@@ -14851,6 +14851,36 @@ phases:
     - unified-state-verification.multi-agent-worktree-test
     - unified-state-verification.migration-roundtrip-test
     agent: gate-reviewer
+  - id: unified-state-verification.full-test-suite-fix
+    name: full-test-suite-fix
+    status: pending
+    description: "Fix the issues discovered by `unified-state-verification.full-test-suite`\
+      \ so the full verification suite can run cleanly.\n\nScope:\n- Standardize repository\
+      \ verification command invocation where pytest is called from plan/test guidance;\
+      \ prefer `uv run pytest tests/ -v --tb=short` so the repo uses the managed environment\
+      \ instead of relying on shell PATH.\n- Resolve the 4 reported mypy errors in:\n\
+      \  - `src/vectl/claims.py` (`datetime.UTC` attr-defined)\n  - `src/vectl/migration.py`\
+      \ (`int | None` assignment)\n  - `src/vectl/merge_driver.py` (callable arg-type\
+      \ x2)\n- Resolve the 5 reported ruff issues, including `I001` and `UP035`, in:\n\
+      \  - `src/vectl/claims.py`\n  - `src/vectl/cli.py`\n  - `src/vectl/core.py`\n\
+      \  - `src/vectl/merge_driver.py`\n\nOut of scope:\n- No feature changes beyond\
+      \ tool-invocation normalization and static-analysis cleanups.\n- Do not broaden\
+      \ migration/merge behavior unless required to satisfy the reported type/lint\
+      \ findings.\n\nDeliverable:\n- Code and/or plan-facing command references updated\
+      \ so the repository-standard pytest invocation is explicit.\n- Mypy and ruff\
+      \ findings above are eliminated."
+    verification: '- Targeted proof shows the updated pytest invocation for this repo
+      is `uv run pytest tests/ -v --tb=short` (or equivalent repo-standard managed-environment
+      command).
+
+      - `uv run mypy src/vectl/` reports 0 errors for the affected files.
+
+      - `uv run ruff check src/vectl/` reports 0 findings for the affected files.
+
+      - Evidence lists each fixed file and the original verifier finding it closed.'
+    depends_on:
+    - unified-state-verification.full-test-suite
+    agent: python-senior
 - id: test-collection-remediation
   name: Test Collection Remediation
   status: done

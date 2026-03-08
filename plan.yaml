@@ -15752,3 +15752,10 @@ phases:
 
       - Previously failing 3 CLI tests now pass; no linked-worktree guard regression
       surfaced in this bundle.'
+- id: unified-state-gate-review-remediation
+  name: 'Unified State: Gate Review Remediation'
+  status: pending
+  gate: All should-fix and suggestion items from unified-state gate review resolved.
+    Full test suite passes. mypy runs clean.
+  depends_on:
+  - unified-state-verification

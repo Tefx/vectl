@@ -93,28 +93,21 @@ Concurrent CLI + MCP writes: `git commit` uses git's own `index.lock` for mutual
 
 Git forbids two worktrees on the same branch. Claude Code creates temporary branches for worktree agents. Therefore "multi-agent same branch" does not occur in worktree scenarios — it is always multi-agent on different branches sharing the same `.git/`.
 
-## Migration
+## Migration / Compatibility Posture
 
 ### From pre-v0.6 (single plan.yaml with inline state)
 
 No migration needed. The format is forward-compatible — pre-v0.6 plans already have status fields inline.
 
-### From v0.6+ (split plan.yaml + state.json)
+### From v0.6+ split-state leftovers (`state.json` companions)
 
-Automatic on first `_load()`:
-1. Detect `.git/vectl/state.json` exists
-2. Read state entries (status, evidence, claimed_by, done_at)
-3. Merge into plan.yaml by step_id
-4. `git commit --only --no-verify plan.yaml -m "[vectl] migrate: merge state into plan"`
-5. Rename `state.json` → `state.json.migrated` (backup)
-6. Log: "Migrated N steps from state.json into plan.yaml"
+Unified-state runtime does not read, merge, rename, or mutate companion `state.json` files.
+Any leftover `.vectl/state.json` or `.git/vectl/state.json` files are treated as inert artifacts and are ignored.
 
-Edge cases:
-- Orphan state entries (step in state but not plan) → skip, warn
-- plan.yaml already has status fields → state.json values take precedence
-- Empty state.json → skip, delete
-
-Rollback: `mv state.json.migrated state.json` + `git restore plan.yaml`
+Implications:
+- No automatic first-load migration runs in `_load()`.
+- No `state.json.migrated` rename backup is produced.
+- Inline `plan.yaml` state is always the only runtime source of truth.
 
 ## Multi-user Merge Strategy (Phase 3)
 

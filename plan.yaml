@@ -15081,7 +15081,7 @@ phases:
       function behavior, resolving collection/runtime `.fn` expectation failures.'
   - id: unified-state-verification.full-test-suite-retest-retest
     name: full-test-suite-retest-retest
-    status: pending
+    status: claimed
     description: 'Re-run the full independent verification suite after `unified-state-verification.full-test-suite-retest-fix`.
 
 
@@ -15121,6 +15121,8 @@ phases:
     depends_on:
     - unified-state-verification.full-test-suite-retest-fix
     agent: integration-verifier
+    claimed_by: integration-verifier
+    claimed_at: '2026-03-08T16:44:30.396814+00:00'
 - id: test-collection-remediation
   name: Test Collection Remediation
   status: done

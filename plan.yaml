@@ -14528,6 +14528,58 @@ phases:
     depends_on:
     - unified-state-merge-driver.merge-driver-tests
     agent: python-senior
+  - id: unified-state-merge-driver.retest-move-payload-conflict
+    name: Retest merge-driver mixed-modification conflict
+    status: pending
+    description: 'As an INDEPENDENT TESTER (integration-verifier), validate the merge-driver
+      blocker fix from a fresh perspective.
+
+
+      YOUR GOAL IS TO FIND PROBLEMS, not to confirm it works.
+
+
+      Test for:
+
+      - Happy path: non-conflicting merge-driver scenarios still auto-merge correctly
+
+      - Edge cases: same-step move+payload mixed modification conflicts, same-step
+      payload/status conflicts, identical changes on both sides
+
+      - Error scenarios: malformed YAML and missing-file conflict handling remain
+      intact
+
+
+      Document ALL findings. A test that discovers issues is a SUCCESS.
+
+      A test that finds nothing must justify the coverage achieved.
+
+
+      Independence Level: L2'
+    verification: '- Run focused merge-driver tests covering move+payload conflict
+      and existing merge-driver regressions
+
+      - Collect actual command output, not a summary
+
+      - Confirm the blocker path conflicts with exit 1 and prior non-conflicting scenarios
+      still pass
+
+      - Report any remaining ambiguity in same-step modification detection'
+    evidence_template: "## Verification Report\n\n**Tester**: integration-verifier\
+      \ (independent of implementation)\n**Scope**: merge-driver same-step conflict\
+      \ handling\n**Independence Level**: L2\n\n### Test Execution\n- Commands executed:\n\
+      \  ```\n  uv run pytest tests/test_merge_driver.py -k 'move or conflict or merge_driver'\
+      \ -v\n  ```\n- Output summary: <paste key results>\n\n### Issues Found\n\nFinding\
+      \ issues is the primary value of verification.\n\n| Severity | Description |\
+      \ Location | Reproduction |\n| --- | --- | --- | --- |\n| blocker | <issue>\
+      \ | <file:line or scenario> | <steps> |\n| should_fix | <issue> | <location>\
+      \ | <steps> |\n\n### Coverage Assessment\n- Happy path verified: ✅/❌\n- Edge\
+      \ cases tested: move+payload conflict, same-step payload conflict, malformed\
+      \ input, regression scenarios\n- NOT tested: <areas not covered and why>\n\n\
+      ### Verdict\n- [ ] PASS\n- [ ] ISSUES_FOUND\n- [ ] INCOMPLETE\n\n**Confidence**:\
+      \ high/medium/low"
+    depends_on:
+    - unified-state-merge-driver.fix-move-payload-conflict
+    agent: integration-verifier
 - id: unified-state-verification
   name: 'Unified State: Verification & Final Gate'
   status: locked

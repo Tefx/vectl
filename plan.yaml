@@ -9217,7 +9217,102 @@ phases:
     - unified-state-migration.auto-detect-on-load
     - unified-state-migration.migration-edge-case-tests
     - unified-state-migration.migration-cli-command
+    - unified-state-migration.align-adr-migration-contract
     agent: gate-reviewer
+  - id: unified-state-migration.align-adr-migration-contract
+    name: align-adr-migration-contract
+    status: pending
+    description: 'Reconcile the migration contract language with the active migration
+      behavior introduced in this phase.
+
+
+      Scope:
+
+      - Update docs/ADR wording so this phase explicitly documents active migration
+      from `state.json` -> `plan.yaml`.
+
+      - Limit any `ignore-state` wording to the pre-migration phase and to normal
+      unified runtime paths after migration, so no text implies that migration-phase
+      behavior ignores `state.json`.
+
+      - Add or adjust focused docs/tests assertions covering the contract boundary:
+      migration paths actively consume legacy state, while non-migration unified runtime
+      paths do not.
+
+      - Remove or rewrite contradictory wording/assertions rather than layering new
+      caveats on top.
+
+
+      Refs:
+
+      - docs/ADR-unified-state.md
+
+      - tests/test_migration.py
+
+      - any focused docs/tests that still encode the prior ignore-state remediation
+      language
+
+
+      Out of scope:
+
+      - Changing the migration algorithm itself
+
+      - Adding new CLI/MCP wiring beyond contract documentation and focused assertions'
+    verification: '- Update ADR/docs text so migration-phase behavior and normal unified
+      runtime behavior are explicitly distinguished
+
+      - Focused tests/docs assertions cover both sides of the contract: active migration
+      path uses legacy state; non-migration unified runtime path does not
+
+      - No remaining contradictory ignore-state wording or assertions in the scoped
+      refs'
+    evidence_template: '## Contract Alignment Evidence
+
+
+      **Docs updated**:
+
+      - List each updated file/section clarifying migration-phase vs normal runtime
+      behavior
+
+
+      **Contradictions removed**:
+
+      - Quote or summarize each prior `ignore-state` statement/assertion that was
+      narrowed or replaced
+
+
+      **Focused verification**:
+
+      ```bash
+
+      <exact test/doc assertion command(s)>
+
+      ```
+
+
+      **Observed result**:
+
+      ```text
+
+      <paste relevant output>
+
+      ```
+
+
+      **Contract proof**:
+
+      - Migration path explicitly documented/tested as active `state.json` -> `plan.yaml`
+      alignment in this phase
+
+      - Ignore-state wording explicitly limited to pre-migration / normal unified
+      runtime paths
+
+      - Note any remaining follow-up gaps, or state `none`
+
+      '
+    depends_on:
+    - unified-state-migration.implement-migration-function
+    agent: python-executor
 - id: unified-state-merge-driver
   name: 'Unified State: Multi-User Merge Driver'
   status: pending

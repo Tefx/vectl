@@ -9,7 +9,6 @@ import enum
 import os
 import sys
 from pathlib import Path
-from typing import Any
 
 import typer
 from rich.console import Console
@@ -21,6 +20,7 @@ from rich.text import Text
 
 from vectl import __version__
 from vectl.core import (
+    RecoverResult,
     add_phase,
     add_step,
     add_steps_bulk,
@@ -1490,7 +1490,7 @@ def recover(
         _die(f"Backup not found: {backup_path}")
 
     # Preview diff without writing
-    result: Any = None
+    result: RecoverResult | None = None
     try:
         result = preview_recovery(plan_path, backup_path)
     except PlanError as e:

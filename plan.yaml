@@ -16116,7 +16116,7 @@ phases:
       only on same-field divergent edits.'
   - id: unified-state-gate-review-remediation.verify-remediation
     name: verify-remediation
-    status: claimed
+    status: done
     description: 'As an INDEPENDENT TESTER (integration-verifier), validate all remediation
       items from a fresh perspective.
 
@@ -16166,6 +16166,25 @@ phases:
     agent: integration-verifier
     claimed_by: integration-verifier
     claimed_at: '2026-03-08T17:55:10.000802+00:00'
+    done_at: '2026-03-08T18:01:21.798415+00:00'
+    evidence: "## Verification Report\n\n**Tester**: integration-verifier (independent\
+      \ of implementation)\n**Scope**: All 5 remediation items\n**Independence Level**:\
+      \ L1\n\n### Test Execution\n- Full test suite: `uv run pytest -v` -> 1014 passed\
+      \ in 69.82s\n- mypy check: `uv run mypy src/vectl/` -> Success: no issues found\
+      \ in 18 source files\n- core.py line count: `wc -l src/vectl/core.py` -> 2159\n\
+      \n### Item-by-Item Verification\n- SF-1 Migration warning: PASS\n- SF-2 Lifecycle\
+      \ extraction: PASS\n- S-1 mypy devdep: PASS\n- S-2 io field cleanup: FAIL (hardcoded\
+      \ affinity/default_affinity field-name literals remain in targeted cleanup logic)\n\
+      - S-3 field-level merge: PASS\n\n### Issues Found\n- Severity: blocker\n  Description:\
+      \ S-2 acceptance not met; hardcoded affinity/default_affinity field-name literals\
+      \ remain\n  Location: src/vectl/io.py\n  Reproduction: `grep -nE '\"affinity_override\"\
+      |\"affinity_override_by\"|\"affinity_override_at\"|\"default_affinity\"' src/vectl/io.py`\
+      \ -> matches remain in targeted block\n\nFollow-up actions:\n- Planner added\
+      \ remediation chain:\n  - unified-state-gate-review-remediation.verify-remediation-fix-affinity-cleanup\n\
+      \  - unified-state-gate-review-remediation.verify-remediation-retest-affinity-cleanup\n\
+      - Gate rewired to depend on retest chain.\n\nSpec link:\n- unified-state-gate-review-remediation.verify-remediation\n\
+      \nGaps/Notes:\n- Verification step intentionally completed with blocker evidence\
+      \ to drive fix/retest workflow."
   - id: unified-state-gate-review-remediation.gate
     name: gate
     status: pending

@@ -15839,3 +15839,25 @@ phases:
     verification: Full test suite passes (pytest). core.py under 2200 LOC. All lifecycle
       functions importable from both vectl.core and vectl.lifecycle modules.
     agent: python-senior
+  - id: unified-state-gate-review-remediation.s1-add-mypy-devdep
+    name: s1-add-mypy-devdep
+    status: pending
+    description: 'Add mypy to dev dependencies.
+
+
+      In pyproject.toml, add mypy to [dependency-groups] dev list. Run uv run mypy
+      src/vectl/ and document any issues. Fix type errors if straightforward, otherwise
+      document with inline comments.
+
+
+      File: pyproject.toml
+
+      Location: [dependency-groups] dev (line 42)
+
+      Change: Add "mypy>=1.0" to the dev list
+
+
+      Verification command: uv run mypy src/vectl/'
+    verification: uv run mypy src/vectl/ runs without crash. Any remaining type errors
+      documented.
+    agent: python-executor

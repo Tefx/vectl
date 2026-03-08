@@ -16470,3 +16470,6 @@ phases:
 
       - Suggestion recorded by verifier: no additional remediation needed for this
       scope.'
+- id: claim-consistency-recovery
+  name: Claim Consistency Recovery
+  status: pending

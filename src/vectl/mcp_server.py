@@ -93,7 +93,12 @@ from vectl.models import (
     Step,
     StepStatus,
 )
-from vectl.plan_path import is_linked_worktree, resolve_plan_path, resolve_state_path
+from vectl.plan_path import (
+    is_linked_worktree,
+    resolve_claims_path,
+    resolve_plan_path,
+    resolve_state_path,
+)
 from vectl.semantics import is_step_locked
 
 mcp = FastMCP(
@@ -480,6 +485,7 @@ def vectl_claim(
         Structured result with claimed step, affinity warnings, and guidance.
     """
     plan, _, expected_state_hash = _load()
+    claims_path = resolve_claims_path(_plan_path())
 
     if step_id is None:
         available = get_next_steps(plan, agent=agent)
@@ -492,7 +498,7 @@ def vectl_claim(
 
     lock_notice: str = ""
     try:
-        plan, result = claim_step(plan, step_id, agent, force=force)
+        plan, result = claim_step(plan, step_id, agent, force=force, claims_path=claims_path)
         lock_notice = _save_state(plan, expected_state_hash)
     except AffinityError as e:
         # RFC: docs/RFC-affinity.md
@@ -607,9 +613,10 @@ def vectl_complete(step_id: str, evidence: str) -> str:
         evidence: Description of what was done and verification.
     """
     plan, _, expected_state_hash = _load()
+    claims_path = resolve_claims_path(_plan_path())
 
     try:
-        plan = complete_step(plan, step_id, evidence)
+        plan = complete_step(plan, step_id, evidence, claims_path=claims_path)
         lock_notice = _save_state(plan, expected_state_hash)
     except PlanError as e:
         return f"**Error:** {e}"
@@ -677,10 +684,11 @@ def vectl_lifecycle(
             Empty phases (0 steps) are always allowed regardless of lock.
     """
     plan, expected_def_hash, expected_state_hash = _load()
+    claims_path = resolve_claims_path(_plan_path())
 
     try:
         if action == "defer":
-            plan = defer_step(plan, id)
+            plan = defer_step(plan, id, claims_path=claims_path)
             msg = f"**Deferred:** {id} → back to pending"
             lock_notice = _save_state(plan, expected_state_hash)
         elif action == "reject":

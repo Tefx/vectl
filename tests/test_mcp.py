@@ -16,6 +16,7 @@ from pathlib import Path
 import pytest
 import yaml
 
+from vectl.claims import load_claims
 from vectl.io import extract_state, load_state, merge_plan
 from vectl.mcp_server import (
     _load as _vectl_load,
@@ -69,7 +70,7 @@ from vectl.mcp_server import (
     vectl_status as _vectl_status_tool,
 )
 from vectl.models import Phase, PhaseStatus, Plan, PlanError, PlanIOError, Step, StepStatus
-from vectl.plan_path import resolve_state_path
+from vectl.plan_path import resolve_claims_path, resolve_state_path
 
 # FastMCP @mcp.tool() returns plain functions in FastMCP 3.x.
 # Access the underlying callable directly for testing.
@@ -499,6 +500,19 @@ class TestVectlLifecycle:
 
         data = _reload_plan(plan_file)
         assert data["phases"][0]["steps"][0]["status"] == "pending"
+
+    def test_claim_and_defer_use_claims_store(self, plan_file: Path) -> None:
+        claims_path = resolve_claims_path(plan_file)
+
+        claim_result = vectl_claim(agent="bot", step_id="a.1")
+        assert claim_result["ok"] is True
+        claims_after_claim = load_claims(claims_path)
+        assert len(claims_after_claim) == 1
+        assert next(iter(claims_after_claim.values())).step_id == "a.1"
+
+        defer_result = vectl_lifecycle(action="defer", id="a.1")
+        assert "Deferred" in defer_result
+        assert load_claims(claims_path) == {}
 
     def test_reject_done_step(self, plan_file: Path) -> None:
         vectl_claim(agent="bot", step_id="a.1")

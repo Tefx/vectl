@@ -14406,17 +14406,18 @@ phases:
 
       Review criteria:
 
-      1. Completeness: All 3 implementation steps executed?
+      1. Completeness: All implementation, fix, and retest steps executed?
 
       2. Merge driver: Resolves non-conflicting step-level changes automatically?
 
-      3. Conflict detection: Same-step edits flagged correctly?
+      3. Conflict detection: Same-step edits flagged correctly, including move+payload
+      mixed modification?
 
       4. gitattributes: vectl init configures merge driver?
 
-      5. Tests: All 8 merge scenarios pass?
+      5. Tests: Focused blocker regression and existing merge-driver regressions pass?
 
-      6. No regressions: Full test suite passes?'
+      6. No regressions: Full test evidence is acceptable for the phase'
     verification: '- All Phase 5 implementation and retest steps completed successfully
 
       - Merge driver conflicts on same-step dual-side edits, including move+payload

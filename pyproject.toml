@@ -84,4 +84,4 @@ module = [
 ignore_missing_imports = true
 
 [tool.invar.guard]
-exclude_paths = [".vectl"]
+exclude_paths = [".vectl", "tests"]

@@ -6836,3 +6836,552 @@ phases:
     - engineering-health.final-policy-validation
     - engineering-health.freeze-for-gate-review
     agent: gate-reviewer
+  - id: engineering-health.gate-remediation-fix-ruff-and-evidence
+    name: gate-remediation-fix-ruff-and-evidence
+    status: pending
+    description: 'Remediation fix: resolve the 7 residual Ruff findings reported by
+      `engineering-health.engineering-health-gate` and close the reproducibility gap
+      from `engineering-health.verify-batch-1-ruff-hygiene`.
+
+
+      Scope:
+
+      - `src/vectl/guide.py`
+
+      - `tests/test_dashboard_ui.py`
+
+      - `tests/test_io.py`
+
+      - the evidence wording/output path used to remove the placeholder `<edited paths>`
+      weakness, or explicitly document why evidence patching is unnecessary after
+      the fresh rerun
+
+
+      prior_loop:
+
+      - engineering-health.verify-batch-1-ruff-hygiene
+
+      - engineering-health.engineering-health-gate
+
+      remaining_blocker:
+
+      - residual Ruff `E501`/`E402` findings remain and prior verification evidence
+      is not fully reproducible because it used a placeholder path token
+
+      why_new_loop:
+
+      - the original batch-1 verification surfaced adjacent Ruff debt but did not
+      eliminate the remaining findings or produce a reproducible final evidence trail
+      for gate review
+
+
+      Tasks:
+
+      - fix the remaining Ruff violations in the listed files
+
+      - make the rerun evidence reproducible by naming exact commands and exact path
+      scope, or explicitly document why no evidence patch is required once the fresh
+      verify step supersedes the placeholder output
+
+      - keep scope limited to residual lint closure and evidence reproducibility for
+      this gate remediation
+
+
+      Out of scope:
+
+      - unrelated repo-wide lint/type debt outside the listed files
+
+      - reopening earlier batch scopes beyond what is needed to close the residual
+      Ruff and evidence issues'
+    verification: '- `uv run ruff check src/vectl/guide.py tests/test_dashboard_ui.py
+      tests/test_io.py` passes with no residual `E501`/`E402` findings
+
+      - Remediation notes state the exact command/path scope used for reproducible
+      evidence, or explicitly justify why the fresh verification step makes patching
+      prior evidence unnecessary
+
+      - No unrelated repo-wide cleanup is added to this loop'
+    depends_on:
+    - engineering-health.engineering-health-gate
+    agent: python-executor
+  - id: engineering-health.gate-remediation-verify-ruff-and-evidence
+    name: gate-remediation-verify-ruff-and-evidence
+    status: pending
+    description: 'As an INDEPENDENT TESTER (`integration-verifier`), validate the
+      engineering-health gate remediation from a fresh perspective.
+
+
+      YOUR GOAL IS TO FIND PROBLEMS, not to confirm it works.
+
+
+      Test for:
+
+      - Happy path: the 7 residual Ruff findings in `src/vectl/guide.py`, `tests/test_dashboard_ui.py`,
+      and `tests/test_io.py` are gone
+
+      - Edge cases: no nearby `E501`/`E402` issues remain in those files after the
+      remediation edits
+
+      - Error scenarios: the reproducibility gap is still present because the evidence
+      still relies on `<edited paths>` or another placeholder instead of exact commands/path
+      scope
+
+
+      Document all findings. A test that discovers issues is a success.
+
+      Independence Level: L1'
+    verification: '- Independently run `uv run ruff check src/vectl/guide.py tests/test_dashboard_ui.py
+      tests/test_io.py`
+
+      - Confirm the verification evidence uses exact commands and exact path scope,
+      or explicitly records that the new rerun evidence supersedes the placeholder
+      from `engineering-health.verify-batch-1-ruff-hygiene`
+
+      - Record any remaining findings and whether they are blocker/should_fix'
+    depends_on:
+    - engineering-health.gate-remediation-fix-ruff-and-evidence
+    agent: integration-verifier
+  - id: engineering-health.gate-remediation-gate-rerun
+    name: gate-remediation-gate-rerun
+    status: pending
+    description: 'As an INDEPENDENT REVIEWER (`gate-reviewer`), re-run the engineering-health
+      phase gate after remediation so the final phase gate cannot bypass the residual
+      Ruff and evidence-reproducibility fixes.
+
+
+      YOU ARE THE QUALITY GATE. Your job is to block progress if quality is still
+      insufficient, not to rubber-stamp completion.
+
+
+      Review criteria:
+
+      1. The original gate findings are either resolved or explicitly accepted with
+      reproducible evidence
+
+      2. `engineering-health.gate-remediation-fix-ruff-and-evidence` and `engineering-health.gate-remediation-verify-ruff-and-evidence`
+      both completed with specific, reproducible evidence
+
+      3. No downstream completion path bypasses the remediation verify step
+
+      4. Remaining lint debt, if any, is explicitly documented and policy-consistent
+
+
+      Finding issues during gate review is valuable. It prevents residual engineering-health
+      debt from being hidden by an earlier gate attempt.
+
+      Independence: You MUST NOT be the same agent as any implementation step in this
+      remediation loop.
+
+
+      prior_loop:
+
+      - engineering-health.engineering-health-gate
+
+      - engineering-health.gate-remediation-fix-ruff-and-evidence
+
+      - engineering-health.gate-remediation-verify-ruff-and-evidence
+
+      remaining_blocker:
+
+      - final phase completion must be gated on the remediation verify result rather
+      than the original gate attempt alone
+
+      why_new_loop:
+
+      - the original gate already executed as the issue-discovery checkpoint, so a
+      separate rerun gate is required to preserve the requested dependency chain without
+      creating a cycle'
+    verification: '- Review the original gate findings plus the remediation fix/verify
+      evidence
+
+      - Confirm the verify step reran the affected Ruff command with exact paths and
+      documented the evidence-gap disposition
+
+      - Block phase completion if remediation evidence is missing, non-reproducible,
+      or still shows unresolved should-fix items that were in scope'
+    depends_on:
+    - engineering-health.gate-remediation-verify-ruff-and-evidence
+    agent: gate-reviewer
+- id: dg-remediation
+  name: Divergence Guard Gate Remediation
+  status: pending
+  steps:
+  - id: dg-remediation.wire-backup-into-save
+    name: wire-backup-into-save
+    status: pending
+    description: "BLOCKING-1: Wire `_backup_definition()` into both save paths so\
+      \ backups are actually created.\n\nThe function `_backup_definition()` at `src/vectl/io.py:428`\
+      \ exists but is never called from any save path, making the entire backup/recovery\
+      \ pipeline non-functional.\n\n## Changes Required\n\n### 1. `src/vectl/cli.py`\
+      \ — `_save_definition()` (line 222)\nAfter the successful `save_plan()` call\
+      \ at line 228, add a try/except block that calls `_backup_definition(plan_path)`.\
+      \ Errors must be logged to stderr via `console.print()` but must NOT raise or\
+      \ block the save.\n\n```python\n# After line 228: save_plan(stripped, plan_path,\
+      \ expected_hash=expected_def_hash)\ntry:\n    from vectl.io import _backup_definition\n\
+      \    _backup_definition(plan_path)\nexcept Exception as exc:\n    import sys\n\
+      \    print(f\"Warning: backup failed: {exc}\", file=sys.stderr)\n```\n\n###\
+      \ 2. `src/vectl/mcp_server.py` — `_save_definition()` (line 186)\nAfter the\
+      \ successful `save_plan()` call at line 194, add an equivalent try/except block:\n\
+      \n```python\n# After line 194: save_plan(stripped, _plan_path(), expected_def_hash)\n\
+      try:\n    from vectl.io import _backup_definition\n    _backup_definition(_plan_path())\n\
+      except Exception:\n    pass  # MCP: silently ignore backup failures\n```\n\n\
+      ## Out of Scope\n- Modifying `_backup_definition()` itself (that is covered\
+      \ by SHOULD_FIX-3 step)\n- Wiring into `_save_both()` or `_save_state()` (backup\
+      \ is definition-layer only)\n\n## Tests\n- Add test in `tests/test_io.py`: mock\
+      \ `save_plan`, call `_save_definition`, assert `_backup_definition` was invoked\n\
+      - Add test: when `_backup_definition` raises OSError, `_save_definition` still\
+      \ completes without error\n- Existing `test_backup_definition_*` tests in `tests/test_io.py`\
+      \ remain valid"
+    verification: '- `grep -n ''_backup_definition'' src/vectl/cli.py src/vectl/mcp_server.py`
+      shows calls in both _save_definition functions
+
+      - pytest tests/test_io.py -v -k backup passes
+
+      - New test proves backup failure does not block save
+
+      - ruff check src/vectl/cli.py src/vectl/mcp_server.py passes'
+    refs:
+    - src/vectl/cli.py:222-238
+    - src/vectl/mcp_server.py:186-200
+    - src/vectl/io.py:428-452
+    agent: python-executor
+  - id: dg-remediation.fix-recover-confirmation-order
+    name: fix-recover-confirmation-order
+    status: pending
+    description: "BLOCKING-2: Split `recover_from_backup()` so preview happens BEFORE\
+      \ overwrite.\n\nCurrently `recover_from_backup()` at `src/vectl/core.py:2541`\
+      \ calls `save_plan()` immediately, and CLI's confirmation prompt at `cli.py:1508`\
+      \ happens AFTER the restore. The plan is already overwritten before the user\
+      \ can decline.\n\n## Changes Required\n\n### 1. `src/vectl/core.py` — Split\
+      \ `recover_from_backup()` into two functions\n\n**a) `preview_recovery(plan_path,\
+      \ backup_path) -> RecoverResult`**\n- Load backup plan (line 2530)\n- Load current\
+      \ plan (line 2537)\n- Compute diff (line 2538)\n- Build summary (lines 2543-2558)\n\
+      - Return RecoverResult with `restored=False` (preview only, nothing written)\n\
+      - Do NOT call `save_plan()`\n\n**b) `apply_recovery(backup_path, plan_path)\
+      \ -> None`**\n- Load backup plan\n- Call `save_plan(backup_plan, plan_path)`\n\
+      - This is the destructive operation, called only after user confirms\n\nKeep\
+      \ the original `recover_from_backup()` as a convenience wrapper that calls both\
+      \ (for MCP and `--yes` paths).\n\n### 2. `src/vectl/cli.py` — Update `recover`\
+      \ command (lines 1492-1514)\n\nReplace the current flow:\n```python\n# OLD:\
+      \ result = recover_from_backup(plan_path, backup_path)  # writes!\n#      show\
+      \ diff\n#      ask confirmation  # too late!\n\n# NEW:\nresult = preview_recovery(plan_path,\
+      \ backup_path)  # read-only\nout.print(\"[bold]Recovery diff:[/]\")\nout.print(result.diff_summary)\n\
+      if not yes:\n    confirm = typer.prompt(\"Restore plan.yaml from backup? (y/N)\"\
+      , default=\"n\")\n    if confirm.lower() != \"y\":\n        out.print(\"[yellow]Cancelled.[/]\"\
+      )\n        return\napply_recovery(backup_path, plan_path)\nout.print(\"[green]Plan\
+      \ restored from backup.[/]\")\n```\n\n### 3. `src/vectl/mcp_server.py` — Update\
+      \ `vectl_recover` tool\nThe MCP recover tool should also use the split API.\
+      \ If it auto-applies (no interactive prompt), it can call `recover_from_backup()`\
+      \ directly (the wrapper).\n\n## Failure-mode checklist\n- CAS conflict during\
+      \ apply_recovery: should raise, user retries\n- Backup file deleted between\
+      \ preview and apply: apply_recovery raises PlanIOError\n- Concurrent modification\
+      \ between preview and apply: CAS in save_plan catches it\n\n## Tests\n- Update\
+      \ existing `test_recover_*` tests to cover the split API\n- Add test: `preview_recovery`\
+      \ does NOT modify plan.yaml (read file before/after, assert identical)\n- Add\
+      \ test: `apply_recovery` writes the backup content\n- Add test: full flow preview\
+      \ -> confirm -> apply works end-to-end"
+    verification: '- preview_recovery() does not write to disk (test asserts file
+      unchanged)
+
+      - apply_recovery() writes backup content correctly
+
+      - CLI recover command asks confirmation BEFORE any write
+
+      - Existing recover tests still pass
+
+      - ruff + mypy pass on changed files'
+    refs:
+    - src/vectl/core.py:2526-2559
+    - src/vectl/cli.py:1492-1514
+    - src/vectl/mcp_server.py:1540-1600
+    agent: python-senior
+  - id: dg-remediation.orphan-detection-on-load
+    name: orphan-detection-on-load
+    status: pending
+    description: "SHOULD_FIX-1: Add orphan detection warnings during `_load()` in\
+      \ both CLI and MCP.\n\nSpec `orphan-surface` requires: 'When orphans detected\
+      \ during _load(): CLI prints warning to stderr, MCP returns notice in response\
+      \ metadata.' Currently orphan detection only runs during explicit `vectl validate`.\n\
+      \n## Changes Required\n\n### 1. `src/vectl/cli.py` — `_load()` (line 168)\n\
+      After merging plan+state (line 187), call `detect_orphan_state(plan_def, state)`.\
+      \ If orphans found, print a warning to stderr. Do NOT block loading.\n\n```python\n\
+      # After line 187: return merge_plan(plan_def, state), def_hash, state_hash,\
+      \ target\n# Insert before the return:\nfrom vectl.io import detect_orphan_state\n\
+      orphans = detect_orphan_state(plan_def, state)\nif orphans:\n    import sys\n\
+      \    msgs = [f\"  - {o.kind.title()} '{o.id}' in state but not in plan\" for\
+      \ o in orphans]\n    print(f\"Warning: {len(orphans)} orphan state entries detected:\\\
+      n\" + \"\\n\".join(msgs), file=sys.stderr)\n    print(\"Run 'vectl recover'\
+      \ to clean up.\", file=sys.stderr)\n```\n\n### 2. `src/vectl/mcp_server.py`\
+      \ — `_load()` (line 129)\nAfter merging (line 152), call `detect_orphan_state(plan_def,\
+      \ state)`. Store orphan notices in a module-level variable or return them as\
+      \ part of the tuple for tools to include in response metadata.\n\nSimplest approach:\
+      \ add orphan warnings to the return tuple or use `import logging; logger.warning(...)`.\
+      \ Since MCP responses are structured, logging is acceptable for the initial\
+      \ fix.\n\n## Out of Scope\n- Changing the `detect_orphan_state()` function itself\n\
+      - Adding automatic cleanup on load\n\n## Tests\n- Add test: `_load()` with orphan\
+      \ state entries prints warning to stderr (capture stderr)\n- Add test: `_load()`\
+      \ with no orphans produces no warning\n- Existing orphan detection tests remain\
+      \ valid"
+    verification: '- _load() in cli.py calls detect_orphan_state after merge
+
+      - _load() in mcp_server.py calls detect_orphan_state after merge
+
+      - Warning output visible on stderr when orphans exist
+
+      - No warning when no orphans
+
+      - pytest passes, ruff passes'
+    refs:
+    - src/vectl/cli.py:168-189
+    - src/vectl/mcp_server.py:129-155
+    - src/vectl/io.py:337
+    agent: python-executor
+  - id: dg-remediation.dedup-resolve-git-dir
+    name: dedup-resolve-git-dir
+    status: pending
+    description: 'SHOULD_FIX-2: Remove duplicated `_resolve_git_dir()` from mcp_server.py,
+      import from io.py.
+
+
+      `_resolve_git_dir()` is defined identically in both `src/vectl/io.py:406` and
+      `src/vectl/mcp_server.py:1544`. The mcp_server.py copy should import from io.py
+      instead.
+
+
+      ## Changes Required
+
+
+      ### 1. `src/vectl/mcp_server.py`
+
+      - Delete the `_resolve_git_dir()` function definition at lines 1544-1564
+
+      - At the call site (line 1587), import from io.py: `from vectl.io import _resolve_git_dir`
+
+      - Or add the import at the top of the file with other io imports
+
+
+      ### 2. Verify `io.py` version is identical
+
+      - Both functions at `io.py:406` and `mcp_server.py:1544` should be identical.
+      Confirm before deleting.
+
+
+      ## Tests
+
+      - Run existing recover/backup tests to confirm nothing breaks
+
+      - grep confirms only one definition of _resolve_git_dir remains (in io.py)'
+    verification: '- grep -rn ''_resolve_git_dir'' src/vectl/ shows definition only
+      in io.py
+
+      - mcp_server.py imports _resolve_git_dir from io
+
+      - All existing tests pass
+
+      - ruff check passes'
+    refs:
+    - src/vectl/mcp_server.py:1544-1564
+    - src/vectl/io.py:406-425
+    agent: python-executor
+  - id: dg-remediation.atomic-backup-write
+    name: atomic-backup-write
+    status: pending
+    description: "SHOULD_FIX-3: Make backup write atomic using tempfile + rename pattern.\n\
+      \nAt `src/vectl/io.py:450`, `backup_path.write_text(content)` is non-atomic.\
+      \ Spec requires 'Copy plan.yaml content to .git/vectl/plan.yaml.bak atomically\
+      \ (write tmp + rename)'.\n\n## Changes Required\n\n### `src/vectl/io.py` — `_backup_definition()`\
+      \ (lines 448-450)\nReplace:\n```python\nbackup_path = vectl_dir / \"plan.yaml.bak\"\
+      \nbackup_path.write_text(content, encoding=\"utf-8\")\n```\n\nWith:\n```python\n\
+      import tempfile\nbackup_path = vectl_dir / \"plan.yaml.bak\"\nfd, tmp_path =\
+      \ tempfile.mkstemp(dir=str(vectl_dir), suffix=\".tmp\")\ntry:\n    with os.fdopen(fd,\
+      \ \"w\", encoding=\"utf-8\") as f:\n        f.write(content)\n    Path(tmp_path).replace(backup_path)\n\
+      except BaseException:\n    Path(tmp_path).unlink(missing_ok=True)\n    raise\n\
+      ```\n\nNote: `os` import is already present in io.py. `tempfile` may need to\
+      \ be added.\n\n## Pattern Reference\nThis is the same atomic write pattern used\
+      \ by `save_plan()` in io.py (around line 200). Follow that exact pattern.\n\n\
+      ## Tests\n- Existing `test_backup_definition_*` tests still pass\n- Add test:\
+      \ simulate crash during write (mock os.fdopen to raise), verify no partial .bak\
+      \ file left behind"
+    verification: '- _backup_definition uses tempfile + rename pattern
+
+      - No direct write_text call on backup_path
+
+      - Existing backup tests pass
+
+      - New test for crash-safety passes
+
+      - ruff check passes'
+    refs:
+    - src/vectl/io.py:428-452
+    - src/vectl/io.py:181-220
+    agent: python-executor
+  - id: dg-remediation.recover-result-typing
+    name: recover-result-typing
+    status: pending
+    description: 'SUGGESTION-1: Replace `result: Any = None` with proper typing in
+      CLI recover command.
+
+
+      At `src/vectl/cli.py:1493`, `result: Any = None` should use `RecoverResult |
+      None = None` for type safety.
+
+
+      ## Changes Required
+
+
+      ### `src/vectl/cli.py` line 1493
+
+      Replace:
+
+      ```python
+
+      result: Any = None
+
+      ```
+
+      With:
+
+      ```python
+
+      result: RecoverResult | None = None
+
+      ```
+
+
+      Ensure `RecoverResult` is imported from `vectl.core` (check existing imports
+      at top of file).
+
+
+      Note: This step should be coordinated with `fix-recover-confirmation-order`
+      since that step rewrites the same code block. If that step lands first, apply
+      this typing improvement to the rewritten code instead.
+
+
+      ## Tests
+
+      - mypy src/vectl/cli.py passes
+
+      - ruff check passes'
+    verification: '- No `Any` type annotation for result variable in recover command
+
+      - RecoverResult imported and used
+
+      - mypy passes
+
+      - ruff passes'
+    refs:
+    - src/vectl/cli.py:1493
+    depends_on:
+    - dg-remediation.fix-recover-confirmation-order
+    agent: python-executor
+  - id: dg-remediation.verify-remediation
+    name: verify-remediation
+    status: pending
+    description: 'As an INDEPENDENT TESTER (integration-verifier), validate all remediation
+      fixes from a fresh perspective.
+
+
+      YOUR GOAL IS TO FIND PROBLEMS, not to confirm things work.
+
+
+      Test for:
+
+
+      1. **BLOCKING-1 (backup wiring)**: Execute a plan mutation via CLI and MCP paths,
+      verify .git/vectl/plan.yaml.bak is created. Verify backup failure (e.g., read-only
+      .git dir) does not block save.
+
+
+      2. **BLOCKING-2 (recover confirmation)**: Run `vectl recover` and verify the
+      confirmation prompt appears BEFORE any file modification. Check plan.yaml timestamp/content
+      is unchanged until after confirmation.
+
+
+      3. **SHOULD_FIX-1 (orphan detection)**: Create a state.json with orphan entries,
+      run any vectl command that triggers _load(), verify stderr warning appears.
+
+
+      4. **SHOULD_FIX-2 (dedup)**: grep confirms _resolve_git_dir is defined only
+      in io.py.
+
+
+      5. **SHOULD_FIX-3 (atomic backup)**: Verify _backup_definition uses tempfile+rename
+      pattern.
+
+
+      6. **SUGGESTION-1 (typing)**: Verify no `Any` annotation in recover command.
+
+
+      7. **Full test suite**: `pytest tests/ -x -q` passes with no regressions.
+
+
+      Independence Level: L1
+
+
+      Document ALL findings. A test that discovers issues is a SUCCESS.'
+    verification: '- All 6 fixes verified independently
+
+      - Full test suite passes
+
+      - No regressions found
+
+      - Issues documented with severity'
+    refs:
+    - src/vectl/io.py
+    - src/vectl/cli.py
+    - src/vectl/mcp_server.py
+    - src/vectl/core.py
+    depends_on:
+    - dg-remediation.wire-backup-into-save
+    - dg-remediation.fix-recover-confirmation-order
+    - dg-remediation.orphan-detection-on-load
+    - dg-remediation.dedup-resolve-git-dir
+    - dg-remediation.atomic-backup-write
+    - dg-remediation.recover-result-typing
+    agent: integration-verifier
+  - id: dg-remediation.dg-remediation-gate
+    name: dg-remediation.gate
+    status: pending
+    description: 'As an INDEPENDENT REVIEWER (gate-reviewer), assess whether the dg-remediation
+      phase meets the quality bar.
+
+
+      YOU ARE THE QUALITY GATE. Your job is to BLOCK progress if quality is insufficient.
+
+
+      Review criteria:
+
+      1. **Completeness**: All 6 fix steps + verification step completed?
+
+      2. **Evidence Quality**: Evidence is specific, verifiable, not vague?
+
+      3. **Blocking issues resolved**: Both BLOCKING-1 (dead backup code) and BLOCKING-2
+      (premature restore) confirmed fixed with proof?
+
+      4. **Should-fix items resolved**: Orphan detection, dedup, atomic write all
+      addressed?
+
+      5. **No regressions**: Full test suite passes?
+
+      6. **Cross-cutting**: No new linting/typing issues introduced?
+
+
+      Independence: You MUST NOT be the same agent as any implementation step in this
+      phase.'
+    verification: '- All phase steps completed successfully
+
+      - Evidence collected and reviewed for each fix
+
+      - Both blockers confirmed resolved with proof
+
+      - No unresolved issues
+
+      - Ready for release'
+    refs:
+    - src/vectl/io.py
+    - src/vectl/cli.py
+    - src/vectl/mcp_server.py
+    - src/vectl/core.py
+    depends_on:
+    - dg-remediation.verify-remediation
+    agent: gate-reviewer

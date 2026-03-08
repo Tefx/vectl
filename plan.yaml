@@ -16251,7 +16251,7 @@ phases:
     agent: gate-reviewer
   - id: unified-state-gate-review-remediation.verify-remediation-fix-affinity-cleanup
     name: verify-remediation-fix-affinity-cleanup
-    status: pending
+    status: claimed
     description: 'Fix blocker from `unified-state-gate-review-remediation.verify-remediation`:
       remove remaining hardcoded `affinity` / `default_affinity` field-name literals
       from the targeted cleanup logic in `src/vectl/io.py` and switch that cleanup
@@ -16292,6 +16292,8 @@ phases:
     depends_on:
     - unified-state-gate-review-remediation.verify-remediation
     agent: python-senior
+    claimed_by: python-senior
+    claimed_at: '2026-03-08T18:01:44.512188+00:00'
   - id: unified-state-gate-review-remediation.verify-remediation-retest-affinity-cleanup
     name: verify-remediation-retest-affinity-cleanup
     status: pending

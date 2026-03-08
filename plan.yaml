@@ -14798,7 +14798,7 @@ phases:
     refs:
     - docs/ADR-unified-state.md
     depends_on:
-    - unified-state-verification.full-test-suite
+    - unified-state-verification.full-test-suite-retest
     agent: integration-verifier
   - id: unified-state-verification.gate
     name: 'Final gate: Unified State Architecture'

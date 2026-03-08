@@ -14936,7 +14936,7 @@ phases:
       merge_driver callable annotations, and I001/UP035 lint errors in reported files.'
   - id: unified-state-verification.full-test-suite-retest
     name: full-test-suite-retest
-    status: pending
+    status: claimed
     description: 'Re-run the full independent verification suite after `unified-state-verification.full-test-suite-fix`
       and report clean results.
 
@@ -14976,6 +14976,8 @@ phases:
     depends_on:
     - unified-state-verification.full-test-suite-fix
     agent: integration-verifier
+    claimed_by: integration-verifier
+    claimed_at: '2026-03-08T16:33:42.244782+00:00'
 - id: test-collection-remediation
   name: Test Collection Remediation
   status: done

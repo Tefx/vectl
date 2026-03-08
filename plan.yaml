@@ -15789,7 +15789,7 @@ phases:
     claimed_at: '2026-03-08T17:41:30.248656+00:00'
   - id: unified-state-gate-review-remediation.sf2-extract-lifecycle
     name: sf2-extract-lifecycle
-    status: pending
+    status: claimed
     description: 'Extract claim lifecycle into lifecycle.py.
 
 
@@ -15841,6 +15841,8 @@ phases:
     verification: Full test suite passes (pytest). core.py under 2200 LOC. All lifecycle
       functions importable from both vectl.core and vectl.lifecycle modules.
     agent: python-senior
+    claimed_by: python-senior
+    claimed_at: '2026-03-08T17:41:30.755884+00:00'
   - id: unified-state-gate-review-remediation.s1-add-mypy-devdep
     name: s1-add-mypy-devdep
     status: claimed

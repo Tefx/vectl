@@ -167,31 +167,19 @@ def _plan_to_dict(plan: Plan) -> dict[str, Any]:
     return _clean_dict(data)
 
 
+def _affinity_default_fields() -> dict[str, Any]:
+    """Return affinity-related model fields with their defaults."""
+    affinity_defaults: dict[str, Any] = {}
+    for model in (Step, Plan):
+        for field_name, field in model.model_fields.items():
+            if "affinity" in field_name:
+                affinity_defaults[field_name] = field.default
+    return affinity_defaults
+
+
 def _clean_dict(d: dict[str, Any]) -> dict[str, Any]:
     """Remove empty/default values for cleaner YAML output."""
-    # Get field defaults from Pydantic models for affinity cleanup logic
-    step_fields = Step.model_fields
-    plan_fields = Plan.model_fields
-
-    # Step affinity fields and their defaults
-    step_affinity_override = step_fields.get("affinity_override")
-    step_affinity_override_by = step_fields.get("affinity_override_by")
-    step_affinity_override_at = step_fields.get("affinity_override_at")
-
-    # Plan default_affinity field and its default
-    plan_default_affinity = plan_fields.get("default_affinity")
-
-    # Set of affinity field names to check (derived from model)
-    affinity_fields = {
-        name: field.default
-        for name, field in (
-            ("affinity_override", step_affinity_override),
-            ("affinity_override_by", step_affinity_override_by),
-            ("affinity_override_at", step_affinity_override_at),
-            ("default_affinity", plan_default_affinity),
-        )
-        if field is not None
-    }
+    affinity_fields = _affinity_default_fields()
 
     result: dict[str, Any] = {}
     for k, v in d.items():

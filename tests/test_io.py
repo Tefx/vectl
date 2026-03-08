@@ -1,5 +1,7 @@
 """Tests for YAML I/O, CAS behavior, and backup handling."""
 
+import ast
+import inspect
 import os
 import subprocess
 from pathlib import Path
@@ -8,11 +10,13 @@ import pytest
 
 from vectl.io import (
     _backup_definition,
+    _clean_dict,
     _git_commit_plan,
     load_plan_definition as load_plan,
     save_plan,
 )
 from vectl.models import (
+    AffinityMode,
     CASConflictError,
     Clipboard,
     Phase,
@@ -172,6 +176,76 @@ class TestSavePlan:
             ["git", "commit", "--only", "--no-verify", "plan.yaml", "-m", "retry message"],
         ]
         assert sleep_calls == [0.1]
+
+
+class TestAffinityCleanup:
+    def test_clean_dict_omits_affinity_defaults_from_models(self) -> None:
+        payload = {
+            "default_affinity": Plan.model_fields["default_affinity"].default,
+            "phases": [
+                {
+                    "steps": [
+                        {
+                            "id": "s1",
+                            "name": "Step 1",
+                            "affinity_override": Step.model_fields["affinity_override"].default,
+                            "affinity_override_by": Step.model_fields[
+                                "affinity_override_by"
+                            ].default,
+                            "affinity_override_at": Step.model_fields[
+                                "affinity_override_at"
+                            ].default,
+                        }
+                    ]
+                }
+            ],
+        }
+
+        cleaned = _clean_dict(payload)
+        step = cleaned["phases"][0]["steps"][0]
+
+        assert "default_affinity" not in cleaned
+        assert "affinity_override" not in step
+        assert "affinity_override_by" not in step
+        assert "affinity_override_at" not in step
+
+    def test_clean_dict_preserves_non_default_affinity_values(self) -> None:
+        payload = {
+            "default_affinity": AffinityMode.EXCLUSIVE,
+            "phases": [
+                {
+                    "steps": [
+                        {
+                            "id": "s1",
+                            "name": "Step 1",
+                            "affinity_override": True,
+                            "affinity_override_by": "planner",
+                            "affinity_override_at": "2026-03-08T10:00:00Z",
+                        }
+                    ]
+                }
+            ],
+        }
+
+        cleaned = _clean_dict(payload)
+        step = cleaned["phases"][0]["steps"][0]
+
+        assert cleaned["default_affinity"] == AffinityMode.EXCLUSIVE
+        assert step["affinity_override"] is True
+        assert step["affinity_override_by"] == "planner"
+        assert step["affinity_override_at"] == "2026-03-08T10:00:00Z"
+
+    def test_clean_dict_avoids_hardcoded_affinity_field_name_literals(self) -> None:
+        source = inspect.getsource(_clean_dict)
+        tree = ast.parse(source)
+        string_constants = {
+            node.value
+            for node in ast.walk(tree)
+            if isinstance(node, ast.Constant) and isinstance(node.value, str)
+        }
+
+        assert "affinity_override" not in string_constants
+        assert "default_affinity" not in string_constants
 
 
 class TestCAS:

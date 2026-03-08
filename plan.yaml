@@ -15316,7 +15316,7 @@ phases:
       removing failing path that produced `(True, None)` and incorrect local fallback.'
   - id: unified-state-verification.multi-agent-worktree-test-retest
     name: multi-agent-worktree-test-retest
-    status: claimed
+    status: done
     description: 'Re-test the linked-worktree main-root resolution blocker after `unified-state-verification.multi-agent-worktree-test-fix`.
 
 
@@ -15359,6 +15359,36 @@ phases:
     agent: integration-verifier
     claimed_by: integration-verifier
     claimed_at: '2026-03-08T16:55:41.842651+00:00'
+    done_at: '2026-03-08T16:57:52.209798+00:00'
+    evidence: 'Commit hash(es): none (verify-only)
+
+      Files changed:
+
+      - none
+
+      Verification:
+
+      - Run: uv run pytest -v tests/test_plan_path.py -k "absolute or fallback"
+
+      - Result: PASS - 4 passed
+
+      - Run: uv run python live git worktree add probe script
+
+      - Result: PASS - linked_worktree=True, main_root resolved, and resolve_plan_path(None)
+      matched main-root plan path (not linked local plan)
+
+      - Run: git status --short
+
+      - Result: clean worktree
+
+      Spec link:
+
+      - docs/ADR-unified-state.md
+
+      Gaps/Notes:
+
+      - Independent retest confirms linked-worktree main-root resolution fix under
+      absolute-path git outputs and fallback scenarios.'
 - id: test-collection-remediation
   name: Test Collection Remediation
   status: done

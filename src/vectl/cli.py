@@ -1452,6 +1452,9 @@ def recover(
 
     out.print("[green]Plan restored from backup.[/]")
     out.print(diff_output)
+    out.print()
+    out.print("[dim]Note: For git-based recovery, use `git log --all --follow --plan.yaml`[/]")
+    out.print("[dim]to find commits and `git show <ref>:plan.yaml` to preview.[/]")
 
 
 @app.command()

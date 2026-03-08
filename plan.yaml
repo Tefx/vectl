@@ -7564,6 +7564,8 @@ phases:
     refs:
     - src/vectl/models.py
     - docs/ADR-unified-state.md
+    depends_on:
+    - unified-state-models-io.add-done-at-field
     agent: python-executor
   - id: unified-state-models-io.implement-claims-io
     name: Implement claims.json IO
@@ -7839,6 +7841,8 @@ phases:
     - src/vectl/core.py
     - src/vectl/plan_path.py
     - docs/ADR-unified-state.md
+    depends_on:
+    - unified-state-core.adapt-claim-to-claims-json
     agent: python-executor
   - id: unified-state-core.gate
     name: 'Gate: Core Logic Adaptation'

@@ -14791,7 +14791,7 @@ phases:
     claimed_at: '2026-03-08T16:46:28.593009+00:00'
   - id: unified-state-verification.migration-roundtrip-test
     name: Migration roundtrip test
-    status: claimed
+    status: done
     description: "As an INDEPENDENT TESTER (integration-verifier), test the full migration\
       \ roundtrip.\n\nScenario 1: v0.6 split-state -> unified\n1. Create a plan.yaml\
       \ with 3 phases, 8 steps (all status=pending in yaml)\n2. Create .git/vectl/state.json\
@@ -14814,6 +14814,32 @@ phases:
     agent: integration-verifier
     claimed_by: integration-verifier
     claimed_at: '2026-03-08T16:46:29.542976+00:00'
+    done_at: '2026-03-08T16:50:10.941364+00:00'
+    evidence: 'Commit hash(es): none (verify-only)
+
+      Files changed:
+
+      - none
+
+      Verification:
+
+      - Run: uv run pytest -v tests/test_migration.py
+
+      - Result: PASS - 10 passed
+
+      - Run: uv run pytest -v tests/test_cli.py tests/test_mcp.py -k "validate_ignores_split_state_orphans
+      or load_ignores_legacy_state_until_explicit_migration or load_ignores_state_json_until_explicit_migration"
+
+      - Result: PASS - 3 passed
+
+      Spec link:
+
+      - docs/ADR-unified-state.md
+
+      Gaps/Notes:
+
+      - Migration roundtrip expectations and idempotency verified through focused
+      migration and runtime contract tests; no additional issues found.'
   - id: unified-state-verification.gate
     name: 'Final gate: Unified State Architecture'
     status: pending

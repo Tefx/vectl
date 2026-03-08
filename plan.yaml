@@ -15037,6 +15037,48 @@ phases:
     depends_on:
     - unified-state-verification.full-test-suite-retest
     agent: python-executor
+  - id: unified-state-verification.full-test-suite-retest-retest
+    name: full-test-suite-retest-retest
+    status: pending
+    description: 'Re-run the full independent verification suite after `unified-state-verification.full-test-suite-retest-fix`.
+
+
+      As an INDEPENDENT TESTER (`integration-verifier`), validate from a fresh perspective
+      that the `.fn` collection blockers are resolved and no static-analysis regressions
+      were introduced.
+
+
+      Commands to run:
+
+      1. `uv run pytest tests/ -v --tb=short`
+
+      2. `uv run mypy src/vectl/`
+
+      3. `uv run ruff check src/vectl/`
+
+
+      Report:
+
+      - Actual command output for each command
+
+      - Whether collection now succeeds for the previously failing tests
+
+      - Any residual regressions or new failures
+
+
+      A retest that finds remaining issues is still useful evidence and must document
+      them precisely.'
+    verification: '- `uv run pytest tests/ -v --tb=short` completes successfully with
+      collection succeeding and no failures.
+
+      - `uv run mypy src/vectl/` completes with 0 errors.
+
+      - `uv run ruff check src/vectl/` completes with 0 findings.
+
+      - Evidence includes pasted command output, not just a summary.'
+    depends_on:
+    - unified-state-verification.full-test-suite-retest-fix
+    agent: integration-verifier
 - id: test-collection-remediation
   name: Test Collection Remediation
   status: done

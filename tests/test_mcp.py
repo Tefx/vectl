@@ -8,6 +8,7 @@ pointing to a temporary plan file.
 from __future__ import annotations
 
 import json
+import logging
 import os
 import subprocess
 from collections.abc import Iterator
@@ -1869,18 +1870,44 @@ class TestMcpUnifiedPlanPath:
         assert isinstance(def_hash, str)
         assert def_hash
 
-    def test_load_ignores_stray_state_json(self, plan_file: Path) -> None:
+    def test_load_auto_migrates_legacy_state_once(
+        self, plan_file: Path, caplog: pytest.LogCaptureFixture
+    ) -> None:
         stray_state = _state_json_path(plan_file)
         stray_state.parent.mkdir(parents=True, exist_ok=True)
-        stray_state.write_text(json.dumps({"steps": {"a.1": {"status": "done"}}}))
+        stray_state.write_text(
+            json.dumps(
+                {
+                    "steps": {
+                        "a.1": {"status": "done", "evidence": "migrated by mcp"},
+                        "ghost.step": {"status": "claimed", "claimed_by": "ghost"},
+                    },
+                    "phases": {"alpha": {"status": "in_progress"}},
+                }
+            ),
+            encoding="utf-8",
+        )
+
+        caplog.set_level(logging.INFO)
 
         plan, _ = _vectl_load()
         found = plan.find_step("a.1")
         assert found is not None
         _, step = found
-        assert step.status == StepStatus.PENDING
-        assert stray_state.exists()
-        assert not stray_state.with_suffix(".json.migrated").exists()
+        assert step.status == StepStatus.DONE
+        assert step.evidence == "migrated by mcp"
+        phase = plan.find_phase("alpha")
+        assert phase is not None
+        assert phase.status == PhaseStatus.IN_PROGRESS
+
+        assert not stray_state.exists()
+        assert stray_state.with_suffix(".json.migrated").exists()
+        assert "Migrated legacy state.json into plan.yaml (steps=1, phases=1)" in caplog.text
+        assert "Orphan step in state.json not present in plan.yaml: ghost.step" in caplog.text
+
+        caplog.clear()
+        _vectl_load()
+        assert "Migrated legacy state.json into plan.yaml" not in caplog.text
 
     def test_save_plan_cas_conflict_raises_plan_error(self, plan_file: Path) -> None:
         plan, def_hash = _vectl_load()

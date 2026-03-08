@@ -290,6 +290,14 @@ def _save_both(
             "Re-read with `vectl status` or `vectl show`, then retry your mutation."
         )
 
+    # Create backup after successful definition save (non-blocking)
+    try:
+        _backup_definition(plan_path)
+    except OSError as e:
+        import sys
+
+        print(f"Warning: backup failed: {e}", file=sys.stderr)
+
     notice = format_lock_changes(changed_ids, plan)
     if notice:
         print(notice)

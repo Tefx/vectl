@@ -460,9 +460,16 @@ class TestDefinitionBackup:
 class TestBackupWiredIntoSave:
     """Tests proving backup is called during save and backup failure doesn't block save."""
 
+    @staticmethod
+    def _seed_save_both_inputs(plan: Plan, plan_path: Path) -> tuple[str, str]:
+        def_hash = save_plan(strip_state(plan), plan_path)
+        state_hash = save_state(extract_state(plan), resolve_state_path(plan_path))
+        return def_hash, state_hash
+
     def test_backup_called_on_save_definition_cli(self, tmp_path: Path, sample_plan: Plan) -> None:
         """Backup should be created when save_definition is called in CLI."""
         from unittest.mock import patch
+        from vectl import cli
 
         repo_root = tmp_path / "repo"
         repo_root.mkdir()
@@ -473,14 +480,104 @@ class TestBackupWiredIntoSave:
         hash_ = save_plan(sample_plan, plan_path)
 
         # Track if _backup_definition was called
-        with patch("vectl.io._backup_definition") as mock_backup:
+        with patch("vectl.cli._backup_definition") as mock_backup:
             mock_backup.return_value = repo_root / ".git" / "vectl" / "plan.yaml.bak"
-            # Import and call the CLI's _save_definition
-            from vectl import cli
-
             cli._save_definition(sample_plan, plan_path, hash_)
 
             mock_backup.assert_called_once_with(plan_path)
+
+    def test_save_both_creates_missing_backup_on_absolute_plan_path(
+        self, tmp_path: Path, sample_plan: Plan, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """CLI structural save path writes .git/vectl/plan.yaml.bak."""
+        from vectl import cli
+
+        repo_root = tmp_path / "repo"
+        repo_root.mkdir()
+        (repo_root / ".git").mkdir()
+        plan_path = repo_root / "plan.yaml"
+        backup_path = repo_root / ".git" / "vectl" / "plan.yaml.bak"
+        monkeypatch.setattr("vectl.plan_path.is_linked_worktree", lambda: (False, None))
+
+        working_plan = sample_plan.model_copy(deep=True)
+        working_plan.phases[0].steps[0].status = StepStatus.CLAIMED
+        working_plan.phases[0].steps[0].claimed_by = "agent-a"
+        def_hash, state_hash = self._seed_save_both_inputs(working_plan, plan_path)
+
+        # Structural mutation path should trigger _save_both
+        working_plan.phases[0].steps.append(Step(id="s3", name="Step 3"))
+        assert not backup_path.exists()
+
+        cli._save_both(working_plan, plan_path, def_hash, state_hash)
+
+        assert backup_path.exists()
+        assert backup_path.read_text(encoding="utf-8") == plan_path.read_text(encoding="utf-8")
+
+        # Definition/state split: backup stores definition snapshot, merged plan keeps state precedence
+        backup_plan, _ = load_plan_definition(backup_path)
+        _, backup_step = backup_plan.find_step("s1") or (None, None)
+        assert backup_step is not None
+        assert backup_step.claimed_by is None
+
+        merged_plan, _ = load_plan(plan_path)
+        _, merged_step = merged_plan.find_step("s1") or (None, None)
+        assert merged_step is not None
+        assert merged_step.claimed_by == "agent-a"
+
+    def test_save_both_creates_backup_with_repo_relative_plan_path(
+        self, tmp_path: Path, sample_plan: Plan, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """Backup path resolution works when CLI saves with relative plan path."""
+        from vectl import cli
+
+        repo_root = tmp_path / "repo"
+        repo_root.mkdir()
+        (repo_root / ".git").mkdir()
+        plan_path = repo_root / "plan.yaml"
+        relative_plan_path = Path("plan.yaml")
+        monkeypatch.setattr("vectl.plan_path.is_linked_worktree", lambda: (False, None))
+
+        def_hash, state_hash = self._seed_save_both_inputs(sample_plan, plan_path)
+        mutated = sample_plan.model_copy(deep=True)
+        mutated.phases[0].steps.append(Step(id="s3", name="Step 3"))
+
+        monkeypatch.chdir(repo_root)
+        cli._save_both(mutated, relative_plan_path, def_hash, state_hash)
+
+        assert (repo_root / ".git" / "vectl" / "plan.yaml.bak").exists()
+
+    def test_save_both_backup_failure_is_non_blocking_and_recoverable(
+        self, tmp_path: Path, sample_plan: Plan, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """Failed backup attempt does not abort save and later saves still work."""
+        from unittest.mock import patch
+
+        from vectl import cli
+
+        repo_root = tmp_path / "repo"
+        repo_root.mkdir()
+        (repo_root / ".git").mkdir()
+        plan_path = repo_root / "plan.yaml"
+        backup_path = repo_root / ".git" / "vectl" / "plan.yaml.bak"
+        monkeypatch.setattr("vectl.plan_path.is_linked_worktree", lambda: (False, None))
+
+        working_plan = sample_plan.model_copy(deep=True)
+        def_hash, state_hash = self._seed_save_both_inputs(working_plan, plan_path)
+
+        working_plan.phases[0].steps.append(Step(id="s3", name="Step 3"))
+        with patch("vectl.cli._backup_definition", side_effect=OSError("disk full")):
+            cli._save_both(working_plan, plan_path, def_hash, state_hash)
+
+        saved_after_failure, _ = load_plan_definition(plan_path)
+        assert saved_after_failure.find_step("s3") is not None
+
+        new_def_hash = load_plan_definition(plan_path)[1]
+        new_state_hash = load_state(resolve_state_path(plan_path))[1]
+        working_plan.phases[0].steps.append(Step(id="s4", name="Step 4"))
+        cli._save_both(working_plan, plan_path, new_def_hash, new_state_hash)
+
+        assert backup_path.exists()
+        assert backup_path.read_text(encoding="utf-8") == plan_path.read_text(encoding="utf-8")
 
     def test_backup_called_on_save_definition_mcp(self, tmp_path: Path, sample_plan: Plan) -> None:
         """Backup should be created when save_definition is called in MCP server."""
@@ -511,6 +608,7 @@ class TestBackupWiredIntoSave:
     ) -> None:
         """Backup failure should not prevent save from succeeding in CLI."""
         from unittest.mock import patch
+        from vectl import cli
 
         repo_root = tmp_path / "repo"
         repo_root.mkdir()
@@ -521,11 +619,8 @@ class TestBackupWiredIntoSave:
         hash_ = save_plan(sample_plan, plan_path)
 
         # Simulate backup failure
-        with patch("vectl.io._backup_definition") as mock_backup:
+        with patch("vectl.cli._backup_definition") as mock_backup:
             mock_backup.side_effect = OSError("Permission denied")
-            # Import and call the CLI's _save_definition - should not raise
-            from vectl import cli
-
             # This should NOT raise even though backup fails
             cli._save_definition(sample_plan, plan_path, hash_)
 

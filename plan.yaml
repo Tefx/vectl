@@ -14570,7 +14570,7 @@ phases:
       (move+payload/status) with focused regression coverage.'
   - id: unified-state-merge-driver.retest-move-payload-conflict
     name: Retest merge-driver mixed-modification conflict
-    status: claimed
+    status: done
     description: 'As an INDEPENDENT TESTER (integration-verifier), validate the merge-driver
       blocker fix from a fresh perspective.
 
@@ -14622,6 +14622,32 @@ phases:
     agent: integration-verifier
     claimed_by: integration-verifier
     claimed_at: '2026-03-08T16:15:55.922754+00:00'
+    done_at: '2026-03-08T16:17:08.620146+00:00'
+    evidence: 'Commit hash(es): none (verify-only)
+
+      Files changed:
+
+      - none
+
+      Verification:
+
+      - Run: uv run pytest -q tests/test_merge_driver.py -k "move_and_status_update_conflict
+      or status_update_and_move_conflict"
+
+      - Result: PASS - 2 passed
+
+      - Run: uv run pytest -q tests/test_merge_driver.py
+
+      - Result: PASS - 13 passed
+
+      Spec link:
+
+      - docs/ADR-unified-state.md
+
+      Gaps/Notes:
+
+      - Independent verification confirms mixed move+payload same-step dual-side edits
+      now hit conflict path and baseline merge-driver regressions remain green.'
 - id: unified-state-verification
   name: 'Unified State: Verification & Final Gate'
   status: locked

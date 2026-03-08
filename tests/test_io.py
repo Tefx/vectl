@@ -401,7 +401,14 @@ class TestCAS:
 
 
 class TestDefinitionBackup:
-    def test_backup_created_on_save(self, tmp_path: Path, sample_plan: Plan) -> None:
+    @staticmethod
+    def _force_not_linked_worktree(monkeypatch: pytest.MonkeyPatch) -> None:
+        monkeypatch.setattr("vectl.plan_path.is_linked_worktree", lambda: (False, None))
+
+    def test_backup_created_on_save(
+        self, tmp_path: Path, sample_plan: Plan, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        self._force_not_linked_worktree(monkeypatch)
         repo_root = tmp_path / "repo"
         repo_root.mkdir()
         (repo_root / ".git").mkdir()
@@ -413,7 +420,10 @@ class TestDefinitionBackup:
         backup_path = repo_root / ".git" / "vectl" / "plan.yaml.bak"
         assert backup_path.exists()
 
-    def test_backup_matches_plan_content(self, tmp_path: Path, sample_plan: Plan) -> None:
+    def test_backup_matches_plan_content(
+        self, tmp_path: Path, sample_plan: Plan, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        self._force_not_linked_worktree(monkeypatch)
         repo_root = tmp_path / "repo"
         repo_root.mkdir()
         (repo_root / ".git").mkdir()
@@ -439,7 +449,10 @@ class TestDefinitionBackup:
         backup_path = repo_root / ".git" / "vectl" / "plan.yaml.bak"
         assert not backup_path.exists()
 
-    def test_backup_creates_directory(self, tmp_path: Path, sample_plan: Plan) -> None:
+    def test_backup_creates_directory(
+        self, tmp_path: Path, sample_plan: Plan, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        self._force_not_linked_worktree(monkeypatch)
         repo_root = tmp_path / "repo"
         repo_root.mkdir()
         (repo_root / ".git").mkdir()
@@ -452,9 +465,13 @@ class TestDefinitionBackup:
         assert backup_dir.exists()
         assert backup_dir.is_dir()
 
-    def test_backup_permission_error_raises(self, tmp_path: Path, sample_plan: Plan) -> None:
+    def test_backup_permission_error_raises(
+        self, tmp_path: Path, sample_plan: Plan, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
         """Backup fails gracefully when .git/vectl is not writable."""
         import os
+
+        self._force_not_linked_worktree(monkeypatch)
 
         repo_root = tmp_path / "repo"
         repo_root.mkdir()
@@ -476,9 +493,13 @@ class TestDefinitionBackup:
             # Restore permissions for cleanup
             os.chmod(vectl_dir, 0o755)
 
-    def test_backup_read_permission_error_raises(self, tmp_path: Path, sample_plan: Plan) -> None:
+    def test_backup_read_permission_error_raises(
+        self, tmp_path: Path, sample_plan: Plan, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
         """Backup fails when plan.yaml is not readable."""
         import os
+
+        self._force_not_linked_worktree(monkeypatch)
 
         repo_root = tmp_path / "repo"
         repo_root.mkdir()
@@ -499,11 +520,13 @@ class TestDefinitionBackup:
             os.chmod(plan_path, 0o644)
 
     def test_backup_crash_safety_no_temp_file_left_behind(
-        self, tmp_path: Path, sample_plan: Plan
+        self, tmp_path: Path, sample_plan: Plan, monkeypatch: pytest.MonkeyPatch
     ) -> None:
         """Ensure no temp file is left behind if write fails mid-operation."""
         import errno
         from unittest.mock import patch
+
+        self._force_not_linked_worktree(monkeypatch)
 
         repo_root = tmp_path / "repo"
         repo_root.mkdir()

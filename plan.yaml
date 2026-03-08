@@ -14785,7 +14785,7 @@ phases:
     refs:
     - docs/ADR-unified-state.md
     depends_on:
-    - unified-state-verification.full-test-suite-retest
+    - unified-state-verification.full-test-suite-retest-retest
     agent: integration-verifier
   - id: unified-state-verification.migration-roundtrip-test
     name: Migration roundtrip test

@@ -31,8 +31,9 @@ Plan path: resolved via shared plan_path.resolve_plan_path() —
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from pathlib import Path
-from typing import Literal
+from typing import Any, Literal
 
 from fastmcp import FastMCP
 from pydantic import BaseModel
@@ -1608,6 +1609,84 @@ def vectl_recover() -> dict:
         "diff_summary": result.diff_summary,
         "error": result.error,
     }
+
+
+# ---------------------------------------------------------------------------
+# Test compatibility shim
+# ---------------------------------------------------------------------------
+
+
+class _ToolWrapper:
+    """Compatibility shim for tests expecting FunctionTool with .fn attribute.
+
+    Old FastMCP returned FunctionTool objects with a .fn attribute pointing
+    to the wrapped callable. Current FastMCP returns plain functions.
+    This shim provides backward compatibility for tests.
+    """
+
+    def __init__(self, fn: Callable[..., Any]) -> None:
+        object.__setattr__(self, "_fn", fn)
+
+    @property
+    def fn(self) -> Callable[..., Any]:
+        """Return the wrapped function for test compatibility."""
+        return object.__getattribute__(self, "_fn")
+
+    def __call__(self, *args: Any, **kwargs: Any) -> Any:
+        return object.__getattribute__(self, "_fn")(*args, **kwargs)
+
+    def __getattr__(self, name: str) -> Any:
+        return getattr(object.__getattribute__(self, "_fn"), name)
+
+
+# Wrap all tool functions for test compatibility
+_vectl_status_tool = vectl_status
+vectl_status = _ToolWrapper(vectl_status)
+
+_vectl_show_tool = vectl_show
+vectl_show = _ToolWrapper(vectl_show)
+
+_vectl_claim_tool = vectl_claim
+vectl_claim = _ToolWrapper(vectl_claim)
+
+_vectl_complete_tool = vectl_complete
+vectl_complete = _ToolWrapper(vectl_complete)
+
+_vectl_lifecycle_tool = vectl_lifecycle
+vectl_lifecycle = _ToolWrapper(vectl_lifecycle)
+
+_vectl_search_tool = vectl_search
+vectl_search = _ToolWrapper(vectl_search)
+
+_vectl_mutate_tool = vectl_mutate
+vectl_mutate = _ToolWrapper(vectl_mutate)
+
+_vectl_review_tool = vectl_review
+vectl_review = _ToolWrapper(vectl_review)
+
+_vectl_guide_tool = vectl_guide
+vectl_guide = _ToolWrapper(vectl_guide)
+
+_vectl_dag_tool = vectl_dag
+vectl_dag = _ToolWrapper(vectl_dag)
+
+_vectl_clipboard_tool = vectl_clipboard
+vectl_clipboard = _ToolWrapper(vectl_clipboard)
+
+_vectl_init_tool = vectl_init
+vectl_init = _ToolWrapper(vectl_init)
+
+_vectl_render_tool = vectl_render
+vectl_render = _ToolWrapper(vectl_render)
+
+_vectl_check_tool = vectl_check
+vectl_check = _ToolWrapper(vectl_check)
+
+_vectl_recover_tool = vectl_recover
+vectl_recover = _ToolWrapper(vectl_recover)
+
+_vectl_checkpoint_tool = vectl_checkpoint
+vectl_checkpoint = _ToolWrapper(vectl_checkpoint)
 
 
 # ---------------------------------------------------------------------------

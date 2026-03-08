@@ -151,3 +151,14 @@ def test_branch_isolation(tmp_path: Path) -> None:
     claims = load_claims(claims_path)
     assert "feature/a:core.step" not in claims
     assert "feature/b:core.step" in claims
+
+
+def test_claims_use_sidecar_lock_file(tmp_path: Path) -> None:
+    claims_path = tmp_path / "claims.json"
+    lock_path = claims_path.parent / f"{claims_path.name}.lock"
+    assert lock_path.exists() is False
+
+    assert acquire_claim("core.step", "feature/test", "agent-a", claims_path) is True
+
+    assert lock_path.exists() is True
+    assert release_claim("core.step", "feature/test", claims_path) is True

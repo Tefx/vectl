@@ -15935,3 +15935,53 @@ phases:
       changes on same step merge cleanly (exit 0). Same-property changes to different
       values conflict (exit 1).
     agent: python-senior
+  - id: unified-state-gate-review-remediation.verify-remediation
+    name: verify-remediation
+    status: pending
+    description: 'As an INDEPENDENT TESTER (integration-verifier), validate all remediation
+      items from a fresh perspective.
+
+
+      YOUR GOAL IS TO FIND PROBLEMS, not to confirm it works.
+
+
+      Test for:
+
+      - Full test suite passes (pytest)
+
+      - mypy runs on src/vectl/ without crash
+
+      - core.py is under 2200 LOC after lifecycle extraction
+
+      - Migration warning test exists and passes
+
+      - Field-level merge driver tests pass
+
+      - io.py no longer has hardcoded affinity field names
+
+      - All lifecycle functions importable from both vectl.core and vectl.lifecycle
+
+
+      Independence Level: L1'
+    verification: Full test suite passes. mypy runs. core.py under 2200 LOC. All remediation
+      items verified with specific evidence.
+    evidence_template: "## Verification Report\n\n**Tester**: integration-verifier\
+      \ (independent of implementation)\n**Scope**: All 5 remediation items\n**Independence\
+      \ Level**: L1\n\n### Test Execution\n- Full test suite:\n  ```\n  <pytest output\
+      \ summary>\n  ```\n- mypy check:\n  ```\n  <uv run mypy src/vectl/ output>\n\
+      \  ```\n- core.py line count:\n  ```\n  <wc -l src/vectl/core.py>\n  ```\n\n\
+      ### Item-by-Item Verification\n\n| Item | Status | Evidence |\n|------|--------|----------|\n\
+      | SF-1: Migration warning | pass/fail | test name + output |\n| SF-2: Lifecycle\
+      \ extraction | pass/fail | core.py LOC + import check |\n| S-1: mypy devdep\
+      \ | pass/fail | mypy runs |\n| S-2: io field cleanup | pass/fail | grep for\
+      \ hardcoded names |\n| S-3: Field-level merge | pass/fail | test names + output\
+      \ |\n\n### Issues Found\n\n| Severity | Description | Location | Reproduction\
+      \ |\n|----------|-------------|----------|--------------|\n| ... | ... | ...\
+      \ | ... |\n\n### Verdict\n- [ ] PASS\n- [ ] ISSUES_FOUND\n- [ ] INCOMPLETE"
+    depends_on:
+    - unified-state-gate-review-remediation.sf1-migration-overwrite-warning
+    - unified-state-gate-review-remediation.sf2-extract-lifecycle
+    - unified-state-gate-review-remediation.s1-add-mypy-devdep
+    - unified-state-gate-review-remediation.s2-io-field-cleanup
+    - unified-state-gate-review-remediation.s3-field-level-merge
+    agent: integration-verifier

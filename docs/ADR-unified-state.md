@@ -101,13 +101,24 @@ No migration needed. The format is forward-compatible — pre-v0.6 plans already
 
 ### From v0.6+ split-state leftovers (`state.json` companions)
 
-Unified-state runtime does not read, merge, rename, or mutate companion `state.json` files.
-Any leftover `.vectl/state.json` or `.git/vectl/state.json` files are treated as inert artifacts and are ignored.
+Unified-state runtime does not read, merge, rename, or mutate companion `state.json` files during normal operation.
+Any leftover `.vectl/state.json` or `.git/vectl/state.json` files are treated as inert artifacts and are ignored by the normal runtime path.
 
-Implications:
-- No automatic first-load migration runs in `_load()`.
-- No `state.json.migrated` rename backup is produced.
-- Inline `plan.yaml` state is always the only runtime source of truth.
+**Migration phase (explicit):** For projects with active state.json that need to be migrated to unified plan.yaml, an explicit migration function `vectl.migration.migrate_from_split_state()` is provided. This function:
+- Reads active `state.json` companion file
+- Migrates step/phase status into plan.yaml inline fields
+- Creates `state.json.migrated` backup file
+- Creates a git commit with migrated state
+
+**Normal unified runtime path:** The `_load()` function (used by both CLI and MCP) does NOT run migration automatically. It reads only from `plan.yaml` inline state.
+
+**Pre-migration path:** Before migration runs, stale `state.json` files are ignored by the unified runtime.
+
+**Post-migration path:** After migration completes, the `state.json.migrated` backup is never read by the unified runtime.
+
+This two-path design ensures:
+- Normal operation: no accidental state.json reading (no data corruption)
+- Migration: explicit, one-time conversion with backup
 
 ## Multi-user Merge Strategy (Phase 3)
 

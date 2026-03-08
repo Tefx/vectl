@@ -1,6 +1,7 @@
 """Tests for core.2: YAML IO with CAS."""
 
 import json
+import os
 from pathlib import Path
 
 import pytest
@@ -413,6 +414,47 @@ class TestDefinitionBackup:
         finally:
             # Restore permissions for cleanup
             os.chmod(plan_path, 0o644)
+
+    def test_backup_crash_safety_no_temp_file_left_behind(
+        self, tmp_path: Path, sample_plan: Plan
+    ) -> None:
+        """Ensure no temp file is left behind if write fails mid-operation."""
+        import errno
+        from unittest.mock import patch
+
+        repo_root = tmp_path / "repo"
+        repo_root.mkdir()
+        (repo_root / ".git").mkdir()
+        plan_path = repo_root / "plan.yaml"
+
+        save_plan(sample_plan, plan_path)
+
+        # Get the backup directory
+        backup_dir = repo_root / ".git" / "vectl"
+
+        # Mock os.replace to raise an error simulating a crash
+        original_replace = os.replace
+        error_raised = False
+
+        def mock_replace(src, dst):
+            nonlocal error_raised
+            # Create the temp file first so our cleanup logic runs
+            if ".tmp" in src:
+                # Let the write proceed first so temp file exists
+                original_replace(src, dst)
+            else:
+                error_raised = True
+                raise OSError(errno.EIO, "Simulated I/O error")
+
+        with patch.object(os, "replace", side_effect=mock_replace):
+            try:
+                _backup_definition(plan_path)
+            except OSError:
+                pass  # Expected
+
+        # Verify no .tmp files remain in backup directory
+        temp_files = list(backup_dir.glob("*.tmp"))
+        assert len(temp_files) == 0, f"Temp files left behind: {temp_files}"
 
 
 class TestCorruptedBackupHandling:

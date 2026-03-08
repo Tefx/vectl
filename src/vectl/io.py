@@ -445,8 +445,20 @@ def _backup_definition(plan_path: Path) -> Path | None:
     # Read current plan content
     content = plan_path.read_text(encoding="utf-8")
 
-    # Write backup
+    # Atomic write: temp file + rename
     backup_path = vectl_dir / "plan.yaml.bak"
-    backup_path.write_text(content, encoding="utf-8")
+    dir_ = vectl_dir
+    fd, tmp_path = tempfile.mkstemp(dir=str(dir_), suffix=".tmp")
+    try:
+        os.write(fd, content.encode("utf-8"))
+        os.close(fd)
+        os.replace(tmp_path, str(backup_path))
+    except Exception:
+        # Clean up temp file on error
+        try:
+            os.unlink(tmp_path)
+        except OSError:
+            pass
+        raise
 
     return backup_path

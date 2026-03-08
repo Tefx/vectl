@@ -14210,7 +14210,7 @@ phases:
   steps:
   - id: unified-state-merge-driver.implement-merge-driver
     name: Implement merge driver
-    status: claimed
+    status: done
     description: "Implement the vectl merge-driver for step-level YAML merge resolution.\n\
       \nCreate new file: src/vectl/merge_driver.py\n\nFunction: merge_plans(base_path:\
       \ str, ours_path: str, theirs_path: str) -> int\n\nAlgorithm (per ADR):\n1.\
@@ -14241,6 +14241,34 @@ phases:
     agent: python-senior
     claimed_by: python-senior
     claimed_at: '2026-03-08T15:35:25.087524+00:00'
+    done_at: '2026-03-08T15:40:31.178172+00:00'
+    evidence: 'Commit hash(es): cbd7600, 76365f7
+
+      Files changed:
+
+      - src/vectl/merge_driver.py
+
+      - src/vectl/cli.py
+
+      - tests/test_merge_driver.py
+
+      Verification:
+
+      - Run: uv run pytest tests/test_merge_driver.py -v
+
+      - Result: PASS - 2 passed
+
+      Spec link:
+
+      - docs/ADR-unified-state.md
+
+      Gaps/Notes:
+
+      - Implemented 3-way step/phase merge with conflict detection, graceful parse/missing-file
+      failure return 1, writes only to ours_path.
+
+      - Added hidden `vectl merge-driver %O %A %B` CLI command with exit code passthrough
+      (0 merged / 1 conflict).'
   - id: unified-state-merge-driver.add-gitattributes-config
     name: Add .gitattributes configuration to vectl init
     status: pending

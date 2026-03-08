@@ -2490,6 +2490,74 @@ class RecoverResult:
     error: str | None = None
 
 
+def preview_recovery(plan_path: Path, backup_path: Path) -> RecoverResult:
+    """Preview recovery diff without writing to disk.
+
+    Args:
+        plan_path: Path to the current plan.yaml.
+        backup_path: Path to backup plan file.
+
+    Returns:
+        RecoverResult with diff information and restored=False.
+
+    Raises:
+        PlanError: If backup file is not found or invalid.
+        PlanIOError: If plan or backup cannot be loaded.
+    """
+    from vectl.io import load_plan_definition
+
+    if not backup_path.exists():
+        raise PlanError(f"Backup file not found: {backup_path}")
+
+    # Load backup plan (convert non-IO validation errors for compatibility)
+    try:
+        backup_plan, _ = load_plan_definition(backup_path)
+    except PlanIOError:
+        raise
+    except Exception as e:
+        raise PlanError(f"Invalid backup file: {e}") from e
+
+    current_plan, _ = load_plan_definition(plan_path)
+    diff = diff_plans(current_plan, backup_plan)
+
+    step_count = len(diff.step_changes)
+    phase_count = len(diff.phase_changes)
+    summary_parts: list[str] = []
+    if step_count > 0:
+        summary_parts.append(f"{step_count} step(s) changed")
+    if phase_count > 0:
+        summary_parts.append(f"{phase_count} phase(s) changed")
+    if not summary_parts:
+        summary_parts.append("No changes")
+
+    return RecoverResult(
+        ok=True,
+        restored=False,
+        diff=diff,
+        diff_summary="Total changes: " + ", ".join(summary_parts),
+    )
+
+
+def apply_recovery(backup_path: Path, plan_path: Path) -> None:
+    """Apply recovery by overwriting plan_path with backup contents.
+
+    Args:
+        backup_path: Path to backup plan file.
+        plan_path: Destination plan path to overwrite.
+
+    Raises:
+        PlanError: If backup file is not found.
+        PlanIOError: If backup cannot be loaded or destination cannot be written.
+    """
+    from vectl.io import load_plan_definition, save_plan
+
+    if not backup_path.exists():
+        raise PlanError(f"Backup file not found: {backup_path}")
+
+    backup_plan, _ = load_plan_definition(backup_path)
+    save_plan(backup_plan, plan_path)
+
+
 def recover_from_backup(plan_path: Path, backup_path: Path | None = None) -> RecoverResult:
     """Recover plan from a backup file.
 
@@ -2505,8 +2573,6 @@ def recover_from_backup(plan_path: Path, backup_path: Path | None = None) -> Rec
     Raises:
         PlanError: If backup file is not found or is invalid.
     """
-    from vectl.io import load_plan_definition, save_plan
-
     # Auto-detect backup path if not provided
     if backup_path is None:
         from vectl.io import _resolve_git_dir
@@ -2525,35 +2591,13 @@ def recover_from_backup(plan_path: Path, backup_path: Path | None = None) -> Rec
     if not backup_path.exists():
         raise PlanError(f"Backup file not found: {backup_path}")
 
-    # Load backup plan (convert validation errors to PlanIOError for test compatibility)
-    try:
-        backup_plan, _ = load_plan_definition(backup_path)
-    except PlanIOError:
-        raise
-    except Exception as e:
-        raise PlanError(f"Invalid backup file: {e}") from e
-
-    # Compute diff before overwriting
-    current_plan, _ = load_plan_definition(plan_path)
-    diff = diff_plans(current_plan, backup_plan)
-
-    # Save backup as current
-    save_plan(backup_plan, plan_path)
-
-    # Build summary
-    step_count = len(diff.step_changes)
-    phase_count = len(diff.phase_changes)
-    summary_parts = []
-    if step_count > 0:
-        summary_parts.append(f"{step_count} step(s) changed")
-    if phase_count > 0:
-        summary_parts.append(f"{phase_count} phase(s) changed")
-    if not summary_parts:
-        summary_parts.append("No changes")
+    preview = preview_recovery(plan_path, backup_path)
+    apply_recovery(backup_path, plan_path)
 
     return RecoverResult(
-        ok=True,
+        ok=preview.ok,
         restored=True,
-        diff=diff,
-        diff_summary="Total changes: " + ", ".join(summary_parts),
+        diff=preview.diff,
+        diff_summary=preview.diff_summary,
+        error=preview.error,
     )

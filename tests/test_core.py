@@ -6,7 +6,7 @@ from pathlib import Path
 
 import pytest
 
-from vectl.core import recover_from_backup, validate_plan
+from vectl.core import apply_recovery, preview_recovery, recover_from_backup, validate_plan
 from vectl.io import load_plan_definition, save_plan
 from vectl.models import (
     Phase,
@@ -51,6 +51,37 @@ def test_recover_restores_from_backup(tmp_path: Path) -> None:
     assert result.restored is True
     assert len(result.diff.step_changes) == 1
     assert "Total changes:" in result.diff_summary
+
+
+def test_preview_recovery_does_not_write_plan(tmp_path: Path) -> None:
+    plan_path = tmp_path / "plan.yaml"
+    backup_path = tmp_path / "plan.yaml.bak"
+
+    _write_plan(plan_path, "Current Name")
+    _write_plan(backup_path, "Backup Name")
+    before = plan_path.read_text(encoding="utf-8")
+
+    result = preview_recovery(plan_path, backup_path)
+
+    after = plan_path.read_text(encoding="utf-8")
+    assert before == after
+    assert result.restored is False
+    assert len(result.diff.step_changes) == 1
+
+
+def test_apply_recovery_writes_backup_content(tmp_path: Path) -> None:
+    plan_path = tmp_path / "plan.yaml"
+    backup_path = tmp_path / "plan.yaml.bak"
+
+    _write_plan(plan_path, "Current Name")
+    _write_plan(backup_path, "Backup Name")
+
+    apply_recovery(backup_path, plan_path)
+
+    restored_plan, _ = load_plan_definition(plan_path)
+    restored = restored_plan.find_step("p1.s1")
+    assert restored is not None
+    assert restored[1].name == "Backup Name"
 
 
 def test_recover_no_backup_error(tmp_path: Path) -> None:

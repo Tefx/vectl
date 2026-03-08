@@ -14271,7 +14271,7 @@ phases:
       (0 merged / 1 conflict).'
   - id: unified-state-merge-driver.add-gitattributes-config
     name: Add .gitattributes configuration to vectl init
-    status: claimed
+    status: done
     description: "Update vectl init to configure the merge driver.\n\nFile: src/vectl/core.py\
       \ (init logic) or wherever vectl init is implemented\nFile: src/vectl/cli.py\
       \ (init command)\n\nChanges to vectl init:\n1. After creating plan.yaml, add\
@@ -14296,6 +14296,30 @@ phases:
     agent: python-executor
     claimed_by: python-executor
     claimed_at: '2026-03-08T15:40:38.123548+00:00'
+    done_at: '2026-03-08T16:05:50.292544+00:00'
+    evidence: 'Commit hash(es): b618578
+
+      Files changed:
+
+      - src/vectl/cli.py
+
+      - tests/test_init_gitattributes.py
+
+      Verification:
+
+      - Run: uv run pytest tests/test_init_gitattributes.py -v
+
+      - Result: PASS - 3 passed
+
+      Spec link:
+
+      - docs/ADR-unified-state.md
+
+      Gaps/Notes:
+
+      - Init now configures plan.yaml merge-driver entry in .gitattributes.
+
+      - Behavior is idempotent and preserves existing .gitattributes content.'
   - id: unified-state-merge-driver.merge-driver-tests
     name: Merge driver tests
     status: claimed

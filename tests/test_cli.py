@@ -1035,119 +1035,70 @@ class TestValidate:
         assert result.exit_code == 1
         assert "ERROR" in result.output
 
-    def test_validate_shows_orphan_warning(self, tmp_path: Path) -> None:
-        """Validate command shows orphan warning when state has extra entries."""
-        from vectl.io import save_state
-        from vectl.models import PhaseState, PlanState, StepState
-
-        # Create a plan
+    def test_validate_ignores_split_state_orphans(self, tmp_path: Path) -> None:
+        """Validate only checks unified plan.yaml state."""
         plan = Plan(
             project="orphan-test",
-            phases=[
-                Phase(id="core", name="Core", steps=[Step(id="s1", name="Step 1")]),
-            ],
+            phases=[Phase(id="core", name="Core", steps=[Step(id="s1", name="Step 1")])],
         )
         plan_path = tmp_path / "plan.yaml"
         save_plan(plan, plan_path)
 
-        # Create state with orphan entries
-        state = PlanState(
-            plan_id="orphan-test",
-            phases={
-                "core": PhaseState(status=PhaseStatus.PENDING),
-                "orphan_phase": PhaseState(status=PhaseStatus.DONE),  # orphan
-            },
-            steps={
-                "s1": StepState(status=StepStatus.PENDING),
-                "orphan_step": StepState(status=StepStatus.CLAIMED, claimed_by="agent-x"),  # orphan
-            },
+        # Stale split-state file should be ignored by unified CLI path.
+        stale_state_path = tmp_path / ".vectl" / "state.json"
+        stale_state_path.parent.mkdir(parents=True, exist_ok=True)
+        stale_state_path.write_text(
+            json.dumps(
+                {
+                    "plan_id": "orphan-test",
+                    "phases": {
+                        "core": {"status": "pending"},
+                        "orphan_phase": {"status": "done"},
+                    },
+                    "steps": {
+                        "s1": {"status": "pending"},
+                        "orphan_step": {"status": "claimed", "claimed_by": "agent-x"},
+                    },
+                }
+            ),
+            encoding="utf-8",
         )
-        state_path = resolve_state_path(plan_path)
-        state_path.parent.mkdir(parents=True, exist_ok=True)
-        save_state(state, state_path)
 
-        # Run validate - should show orphan warning
         result = runner.invoke(app, ["validate", "--plan", str(plan_path)])
-        assert result.exit_code == 0  # orphan warnings don't cause failure
-        assert "orphan" in result.output.lower()
-        assert "orphan_phase" in result.output
-        assert "orphan_step" in result.output
-        assert "vectl recover" in result.output
+        assert result.exit_code == 0
+        assert "valid" in result.output.lower()
+        assert "orphan" not in result.output.lower()
 
-    def test_load_shows_orphan_warning(self, tmp_path: Path) -> None:
-        """_load shows orphan warning when state has extra entries."""
+    def test_load_uses_plan_yaml_only(self, tmp_path: Path) -> None:
+        """_load returns plan + hash + path from plan.yaml only."""
         from vectl.cli import _load
-        from vectl.io import save_plan, save_state
-        from vectl.models import PhaseState, PhaseStatus, PlanState, StepState
+        from vectl.io import save_plan
 
-        # Create a plan
         plan = Plan(
             project="orphan-test",
-            phases=[
-                Phase(id="core", name="Core", steps=[Step(id="s1", name="Step 1")]),
-            ],
+            phases=[Phase(id="core", name="Core", steps=[Step(id="s1", name="Step 1")])],
         )
         plan_path = tmp_path / "plan.yaml"
         save_plan(plan, plan_path)
 
-        # Create state with orphan entries
-        state = PlanState(
-            plan_id="orphan-test",
-            phases={
-                "core": PhaseState(status=PhaseStatus.PENDING),
-                "orphan_phase": PhaseState(status=PhaseStatus.DONE),  # orphan
-            },
-            steps={
-                "s1": StepState(status=StepStatus.PENDING),
-                "orphan_step": StepState(status=StepStatus.CLAIMED, claimed_by="agent-x"),  # orphan
-            },
+        # Stale split-state file should not affect load shape/contents.
+        stale_state_path = tmp_path / ".vectl" / "state.json"
+        stale_state_path.parent.mkdir(parents=True, exist_ok=True)
+        stale_state_path.write_text(
+            json.dumps(
+                {
+                    "plan_id": "orphan-test",
+                    "phases": {"orphan_phase": {"status": "done"}},
+                    "steps": {"orphan_step": {"status": "claimed", "claimed_by": "agent-x"}},
+                }
+            ),
+            encoding="utf-8",
         )
-        state_path = resolve_state_path(plan_path)
-        state_path.parent.mkdir(parents=True, exist_ok=True)
-        save_state(state, state_path)
 
-        # Call _load directly (it prints warnings to stderr)
-        merged_plan, def_hash, state_hash, target = _load(plan_path)
-
-        # Verify the plan was merged successfully (orphan warning doesn't block)
-        assert merged_plan.project == "orphan-test"
-        # Note: Cannot easily capture stderr in this test, but we verify no exception
-
-    def test_load_no_warning_on_clean_state(self, tmp_path: Path) -> None:
-        """_load shows no orphan warning when state matches plan."""
-        from vectl.cli import _load
-        from vectl.io import save_plan, save_state
-        from vectl.models import PhaseState, PhaseStatus, PlanState, StepState
-
-        # Create a plan
-        plan = Plan(
-            project="clean-test",
-            phases=[
-                Phase(id="core", name="Core", steps=[Step(id="s1", name="Step 1")]),
-            ],
-        )
-        plan_path = tmp_path / "plan.yaml"
-        save_plan(plan, plan_path)
-
-        # Create clean state (no orphans)
-        state = PlanState(
-            plan_id="clean-test",
-            phases={
-                "core": PhaseState(status=PhaseStatus.PENDING),
-            },
-            steps={
-                "s1": StepState(status=StepStatus.PENDING),
-            },
-        )
-        state_path = resolve_state_path(plan_path)
-        state_path.parent.mkdir(parents=True, exist_ok=True)
-        save_state(state, state_path)
-
-        # Call _load directly - should not raise or print warnings
-        merged_plan, def_hash, state_hash, target = _load(plan_path)
-
-        # Verify the plan was merged successfully
-        assert merged_plan.project == "clean-test"
+        loaded_plan, def_hash, target = _load(plan_path)
+        assert loaded_plan.project == "orphan-test"
+        assert def_hash
+        assert target == plan_path
 
 
 class TestRecover:
@@ -2146,14 +2097,14 @@ class TestLinkedWorktreeGuard:
     def test_cli_mutate_blocked_in_linked_worktree(
         self, linked_worktree_env: tuple[Path, Path], monkeypatch: pytest.MonkeyPatch
     ) -> None:
-        """CLI mutate commands are blocked when running in a linked worktree."""
+        """CLI mutate commands are blocked in linked worktree without explicit plan."""
         plan_file, _ = linked_worktree_env
         main_root = plan_file.parent
 
         # Try add-step - should be blocked
         result = runner.invoke(
             app,
-            ["add-step", "--phase", "p1", "--name", "Blocked Step", "--plan", str(plan_file)],
+            ["add-step", "--phase", "p1", "--name", "Blocked Step"],
         )
         assert result.exit_code != 0
         assert "Mutate blocked" in result.output
@@ -2900,18 +2851,17 @@ class TestAffinityCli:
         assert "🔐" in result.output
 
 
-class TestCliSplitStateIntegration:
-    def test_claim_creates_state_json(self, plan_file: Path) -> None:
-        state_path = resolve_state_path(plan_file)
-        assert not state_path.exists()
-
+class TestCliUnifiedStateIntegration:
+    def test_claim_updates_plan_yaml(self, plan_file: Path) -> None:
         result = runner.invoke(app, ["claim", "s1", "--agent", "bot", "--plan", str(plan_file)])
         assert result.exit_code == 0
-        assert state_path.exists()
 
-    def test_complete_updates_state_and_definition_unchanged(self, plan_file: Path) -> None:
-        before = plan_file.read_text(encoding="utf-8")
+        plan, _ = load_plan(plan_file)
+        step = _must_find_step(plan, "s1")
+        assert step.status == StepStatus.CLAIMED
+        assert step.claimed_by == "bot"
 
+    def test_complete_updates_plan_yaml(self, plan_file: Path) -> None:
         claim_result = runner.invoke(
             app, ["claim", "s1", "--agent", "bot", "--plan", str(plan_file)]
         )
@@ -2923,15 +2873,12 @@ class TestCliSplitStateIntegration:
         )
         assert complete_result.exit_code == 0
 
-        assert plan_file.read_text(encoding="utf-8") == before
+        plan, _ = load_plan(plan_file)
+        step = _must_find_step(plan, "s1")
+        assert step.status == StepStatus.DONE
+        assert step.evidence == "integration-evidence"
 
-        state_payload = json.loads(resolve_state_path(plan_file).read_text(encoding="utf-8"))
-        completed = state_payload["steps"]["s1"]
-        assert completed["status"] == StepStatus.DONE.value
-        assert completed["evidence"] == "integration-evidence"
-
-    def test_mutation_updates_plan_and_state_files(self, plan_file: Path) -> None:
-        state_path = resolve_state_path(plan_file)
+    def test_mutation_updates_plan_yaml_only(self, plan_file: Path) -> None:
         before = plan_file.read_text(encoding="utf-8")
 
         result = runner.invoke(
@@ -2943,62 +2890,31 @@ class TestCliSplitStateIntegration:
         after = plan_file.read_text(encoding="utf-8")
         assert after != before
         assert "persisted-step" in after
-        assert state_path.exists()
 
-        state_payload = json.loads(state_path.read_text(encoding="utf-8"))
-        assert "p1.persisted-step" in state_payload["steps"]
-
-    def test_status_is_read_only_no_state_write(self, plan_file: Path) -> None:
-        state_path = resolve_state_path(plan_file)
-        assert not state_path.exists()
-
+    def test_status_is_read_only_for_plan_yaml(self, plan_file: Path) -> None:
+        before = plan_file.read_text(encoding="utf-8")
         result = runner.invoke(app, ["status", "--plan", str(plan_file)])
         assert result.exit_code == 0
-        assert not state_path.exists()
+        after = plan_file.read_text(encoding="utf-8")
+        assert after == before
 
-    def test_legacy_migration_writes_full_state_json(self, legacy_plan_file: Path) -> None:
+    def test_legacy_migration_preserves_embedded_runtime_state(
+        self, legacy_plan_file: Path
+    ) -> None:
         result = runner.invoke(
             app,
             ["claim", "phase-b.step1", "--agent", "bot", "--plan", str(legacy_plan_file)],
         )
         assert result.exit_code == 0
 
-        state_path = resolve_state_path(legacy_plan_file)
-        assert state_path.exists()
-        payload = json.loads(state_path.read_text(encoding="utf-8"))
+        plan, _ = load_plan(legacy_plan_file)
+        assert plan.plan_id == "migration-plan-001"
+        assert plan.clipboard is not None
+        assert plan.clipboard.author == "reviewer"
 
-        assert payload["plan_id"] == "migration-plan-001"
-        assert set(payload["phases"].keys()) == {"phase-a", "phase-b"}
-        assert set(payload["steps"].keys()) == {"phase-a.step1", "phase-a.step2", "phase-b.step1"}
-        assert payload["clipboard"]["author"] == "reviewer"
-        assert payload["steps"]["phase-a.step2"]["rejection_history"] == [
-            {
-                "reason": "Testing reject via CLI",
-                "timestamp": "2026-02-09T04:46:23.870176+00:00",
-                "reviewer": "cli-tester",
-            }
-        ]
-
-    def test_resolve_state_path_tmp_non_git_fallback(self, tmp_path: Path) -> None:
-        plan_path = tmp_path / "plan.yaml"
-        save_plan(
-            Plan(
-                project="fallback-test",
-                phases=[
-                    Phase(
-                        id="p1",
-                        name="Phase 1",
-                        status=PhaseStatus.PENDING,
-                        steps=[Step(id="s1", name="Step 1")],
-                    )
-                ],
-            ),
-            plan_path,
-        )
-
-        expected = tmp_path / ".vectl" / "state.json"
-        assert resolve_state_path(plan_path) == expected
-
-        result = runner.invoke(app, ["claim", "s1", "--agent", "bot", "--plan", str(plan_path)])
-        assert result.exit_code == 0
-        assert expected.exists()
+        step = _must_find_step(plan, "phase-a.step2")
+        assert len(step.rejection_history) == 1
+        rejection = step.rejection_history[0]
+        assert rejection.reason == "Testing reject via CLI"
+        assert rejection.timestamp == "2026-02-09T04:46:23.870176+00:00"
+        assert rejection.reviewer == "cli-tester"

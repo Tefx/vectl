@@ -7385,3 +7385,90 @@ phases:
     depends_on:
     - dg-remediation.verify-remediation
     agent: gate-reviewer
+  - id: dg-remediation.fix-cli-backup-path
+    name: fix-cli-backup-path
+    status: pending
+    description: Fix CLI save-path backup creation so plan mutations write `.git/vectl/plan.yaml.bak`
+      on the real mutation path without changing unrelated behavior.
+    verification: '- Targeted regression for CLI definition-save backup path passes
+
+      - Real mutation path writes `.git/vectl/plan.yaml.bak`
+
+      - No unrelated save/recover behavior changes'
+    refs:
+    - src/vectl/cli.py
+    - tests/test_io.py
+    depends_on:
+    - dg-remediation.verify-remediation
+    agent: python-executor
+  - id: dg-remediation.retest-cli-backup-path
+    name: retest-cli-backup-path
+    status: pending
+    description: Independently retest the CLI backup-path remediation and confirm
+      the former blocker stays resolved in targeted coverage plus suite-level regression
+      coverage.
+    verification: '- Run the former failing CLI backup-path regression test
+
+      - Confirm the remediation no longer blocks broader test coverage
+
+      - Record whether any regression remains'
+    refs:
+    - tests/test_io.py
+    depends_on:
+    - dg-remediation.fix-cli-backup-path
+    agent: integration-verifier
+  - id: dg-remediation.fix-gate-lint-and-type-blockers
+    name: fix-gate-lint-and-type-blockers
+    status: pending
+    description: Fix the Ruff and mypy blockers surfaced by the rejected phase gate,
+      limited to static-quality issues needed to close the phase cleanly without changing
+      production behavior.
+    verification: '- `uv run ruff check .` passes
+
+      - `uv run mypy .` passes
+
+      - Changes are limited to lint/type hygiene; production behavior is unchanged'
+    refs:
+    - tests/test_io.py
+    - tests/test_mcp.py
+    depends_on:
+    - dg-remediation.dg-remediation-gate
+    agent: python-executor
+  - id: dg-remediation.retest-gate-lint-and-type-blockers
+    name: retest-gate-lint-and-type-blockers
+    status: pending
+    description: As an independent verifier, rerun the static-quality checks after
+      the lint/type remediation and report whether the rejected gate blockers are
+      fully cleared.
+    verification: '- `uv run ruff check .` passes from a fresh verification pass
+
+      - `uv run mypy .` passes from a fresh verification pass
+
+      - Report any remaining blocker or confidence gap'
+    refs:
+    - tests/test_io.py
+    - tests/test_mcp.py
+    depends_on:
+    - dg-remediation.fix-gate-lint-and-type-blockers
+    agent: integration-verifier
+  - id: dg-remediation.dg-remediation-gate-rerun
+    name: dg-remediation-gate-rerun
+    status: pending
+    description: 'Gate rerun after the prior rejection: independently review the remediation
+      chain and decide whether the `dg-remediation` phase can now close cleanly.'
+    verification: '- Prior gate rejection is superseded only if the lint/type remediation
+      and independent retest evidence are complete
+
+      - Confirm the earlier CLI backup-path blocker remains resolved in the restored
+      chain
+
+      - Decide OPEN vs BLOCKED for clean phase closure'
+    refs:
+    - src/vectl/cli.py
+    - src/vectl/io.py
+    - src/vectl/mcp_server.py
+    - tests/test_io.py
+    - tests/test_mcp.py
+    depends_on:
+    - dg-remediation.retest-gate-lint-and-type-blockers
+    agent: gate-reviewer

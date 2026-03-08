@@ -16473,3 +16473,51 @@ phases:
 - id: claim-consistency-recovery
   name: Claim Consistency Recovery
   status: pending
+  steps:
+  - id: claim-consistency-recovery.anima-incident-reproducer
+    name: anima-incident-reproducer
+    status: pending
+    description: 'Encode the anima orchestrator/worktree failure as a deterministic
+      reproducer before changing production behavior.
+
+
+      Scope:
+
+      - Add a focused regression harness that recreates the observed split-brain symptom:
+      one writer leaves `.git/vectl/claims.json` with `main:<step_id>` while a later
+      concurrent write leaves `plan.yaml`/derived step state visible as pending.
+
+      - Prefer a process/thread-level test over a synthetic unit mock so the race
+      is exercised through the real save/claim path.
+
+      - Capture the concrete downstream symptoms in assertions: `claim` rejects with
+      an existing branch claim, `show`/`status` read pending, and `complete` refuses
+      because the step is not recognized as claimed.
+
+
+      Files/patterns to use:
+
+      - `tests/test_io.py` for the race harness and persistence assertions
+
+      - `tests/test_cli.py` or `tests/test_mcp.py` only if a thin symptom-level assertion
+      is needed on top of the IO reproducer
+
+      - Reuse existing temp repo/worktree fixtures rather than inventing a new harness
+
+
+      Out of scope:
+
+      - Fixing the bug in this step
+
+      - Broad CLI wording changes beyond what is required to prove the reproducer'
+    verification: '- Add at least one deterministic reproducer test that fails against
+      the pre-fix behavior and would have caught the anima incident
+
+      - Targeted command: `uv run pytest tests/test_io.py -k anima_incident -v`
+
+      - If a CLI/MCP symptom test is added, it names the exact mismatch (`claim` rejected
+      while `show/status` read pending and `complete` says claim missing)
+
+      - Evidence states which fixture or race harness is used and why it exercises
+      the real concurrent path'
+    agent: python-executor

@@ -1413,6 +1413,60 @@ def validate(
         raise typer.Exit(1)
 
 
+@app.command("migrate")
+def migrate_cmd(
+    plan: Path | None = PlanOption,
+    yes: bool = typer.Option(False, "--yes", "-y", help="Skip confirmation prompt."),
+) -> None:
+    """Migrate legacy split-state runtime data into unified plan.yaml.
+
+    Source: docs/ADR-unified-state.md (explicit migration phase requirement).
+    """
+    plan_path = resolve_plan_path(plan)
+    state_path = resolve_state_path(plan_path)
+    migrated_path = state_path.with_suffix(".json.migrated")
+
+    if not state_path.exists():
+        if migrated_path.exists():
+            out.print(f"[green]Already migrated:[/] {migrated_path}")
+            return
+        out.print(f"[yellow]No legacy state file found:[/] {state_path}")
+        return
+
+    out.print("[bold]Migration preview[/]")
+    out.print(f"  plan: {plan_path}")
+    out.print(f"  legacy state: {state_path}")
+    out.print(f"  backup target: {migrated_path}")
+
+    if not yes:
+        out.print()
+        confirm = typer.prompt("Run split-state migration now? (y/N)", default="n")
+        if confirm.lower() != "y":
+            out.print("[yellow]Cancelled.[/]")
+            return
+
+    try:
+        result = migrate_from_split_state(plan_path)
+    except PlanIOError as e:
+        _die(str(e))
+        return  # unreachable, keeps type-checkers honest
+
+    if result.already_migrated:
+        out.print(f"[green]Already migrated:[/] {migrated_path}")
+        return
+
+    out.print(
+        "[green]Migration complete:[/] "
+        f"steps={result.migrated_steps}, phases={result.migrated_phases}"
+    )
+    out.print(f"[dim]Backup:[/] {migrated_path}")
+
+    if result.warnings:
+        out.print("[yellow]Warnings:[/]")
+        for warning in result.warnings:
+            out.print(f"  - {warning}")
+
+
 @app.command()
 def recover(
     plan: Path | None = PlanOption,

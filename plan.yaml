@@ -16273,3 +16273,38 @@ phases:
     depends_on:
     - unified-state-gate-review-remediation.verify-remediation
     agent: python-senior
+  - id: unified-state-gate-review-remediation.verify-remediation-retest-affinity-cleanup
+    name: verify-remediation-retest-affinity-cleanup
+    status: pending
+    description: 'As an INDEPENDENT TESTER (`integration-verifier`), re-run remediation
+      validation after the affinity cleanup fix.
+
+
+      Retest intent:
+
+      - Re-run targeted `io` tests for the cleanup path in `src/vectl/io.py`
+
+      - Re-check the original `verify-remediation` acceptance, including that `io.py`
+      no longer contains hardcoded affinity field names in the cleanup logic
+
+      - Confirm the remediation blocker for S-2 is resolved from a fresh perspective
+
+
+      Acceptance criteria:
+
+      - Targeted `io` tests pass against the fixed cleanup path
+
+      - The original `verify-remediation` criteria relevant to S-2 pass again
+
+      - Evidence includes actual commands/output and explicitly states whether any
+      hardcoded affinity field-name usage remains in the targeted cleanup block'
+    verification: '- Main path: targeted `io` tests pass for affinity cleanup behavior
+
+      - Failure path: verification checks the targeted cleanup block for reintroduced
+      hardcoded affinity/default-affinity field-name literals
+
+      - Full `verify-remediation` criteria are re-evaluated and evidence is recorded
+      with concrete command output'
+    depends_on:
+    - unified-state-gate-review-remediation.verify-remediation-fix-affinity-cleanup
+    agent: integration-verifier

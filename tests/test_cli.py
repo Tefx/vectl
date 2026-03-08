@@ -1128,6 +1128,121 @@ class TestValidate:
         assert "Migrated legacy state.json into plan.yaml" not in caplog.text
 
 
+class TestMigrate:
+    def test_migrate_no_state_message(self, tmp_path: Path) -> None:
+        plan_path = tmp_path / "plan.yaml"
+        save_plan(
+            Plan(
+                project="migration-cli",
+                phases=[Phase(id="core", name="Core", steps=[Step(id="s1", name="S1")])],
+            ),
+            plan_path,
+        )
+
+        result = runner.invoke(app, ["migrate", "--plan", str(plan_path), "--yes"])
+
+        assert result.exit_code == 0
+        assert "No legacy state file found" in result.output
+
+    def test_migrate_already_migrated_message(self, tmp_path: Path) -> None:
+        plan_path = tmp_path / "plan.yaml"
+        save_plan(
+            Plan(
+                project="migration-cli",
+                phases=[Phase(id="core", name="Core", steps=[Step(id="s1", name="S1")])],
+            ),
+            plan_path,
+        )
+
+        state_path = _companion_state_path(plan_path)
+        state_path.parent.mkdir(parents=True, exist_ok=True)
+        state_path.with_suffix(".json.migrated").write_text("done", encoding="utf-8")
+
+        result = runner.invoke(app, ["migrate", "--plan", str(plan_path), "--yes"])
+
+        assert result.exit_code == 0
+        assert "Already migrated" in result.output
+
+    def test_migrate_preview_and_confirm_path(self, tmp_path: Path) -> None:
+        plan_path = tmp_path / "plan.yaml"
+        save_plan(
+            Plan(
+                project="migration-cli",
+                phases=[Phase(id="core", name="Core", steps=[Step(id="s1", name="S1")])],
+            ),
+            plan_path,
+        )
+        state_path = _companion_state_path(plan_path)
+        state_path.parent.mkdir(parents=True, exist_ok=True)
+        state_path.write_text(json.dumps({"steps": {"s1": {"status": "done"}}}), encoding="utf-8")
+
+        result = runner.invoke(app, ["migrate", "--plan", str(plan_path)], input="n\n")
+
+        assert result.exit_code == 0
+        assert "Migration preview" in result.output
+        assert "legacy state" in result.output
+        assert "Run split-state migration now?" in result.output
+        assert "Cancelled" in result.output
+        assert state_path.exists()
+
+    def test_migrate_runs_and_shows_summary(self, tmp_path: Path) -> None:
+        plan_path = tmp_path / "plan.yaml"
+        save_plan(
+            Plan(
+                project="migration-cli",
+                phases=[Phase(id="core", name="Core", steps=[Step(id="s1", name="S1")])],
+            ),
+            plan_path,
+        )
+        state_path = _companion_state_path(plan_path)
+        state_path.parent.mkdir(parents=True, exist_ok=True)
+        state_path.write_text(json.dumps({"steps": {"s1": {"status": "done"}}}), encoding="utf-8")
+
+        result = runner.invoke(app, ["migrate", "--plan", str(plan_path), "-y"])
+
+        assert result.exit_code == 0
+        assert "Migration complete" in result.output
+        assert "steps=1" in result.output
+        assert "phases=0" in result.output
+        assert state_path.with_suffix(".json.migrated").exists()
+
+        migrated_plan, _ = load_plan_definition(plan_path)
+        migrated = migrated_plan.find_step("s1")
+        assert migrated is not None
+        assert migrated[1].status == StepStatus.DONE
+
+    def test_migrate_shows_orphan_warnings(self, tmp_path: Path) -> None:
+        plan_path = tmp_path / "plan.yaml"
+        save_plan(
+            Plan(
+                project="migration-cli",
+                phases=[Phase(id="core", name="Core", steps=[Step(id="s1", name="S1")])],
+            ),
+            plan_path,
+        )
+        state_path = _companion_state_path(plan_path)
+        state_path.parent.mkdir(parents=True, exist_ok=True)
+        state_path.write_text(
+            json.dumps(
+                {
+                    "steps": {
+                        "s1": {"status": "done"},
+                        "ghost.step": {"status": "claimed", "claimed_by": "ghost"},
+                    },
+                    "phases": {"ghost-phase": {"status": "done"}},
+                }
+            ),
+            encoding="utf-8",
+        )
+
+        result = runner.invoke(app, ["migrate", "--plan", str(plan_path), "--yes"])
+
+        assert result.exit_code == 0
+        assert "Warnings" in result.output
+        assert "Orphan step" in result.output
+        assert "Orphan phase" in result.output
+
+
 class TestRecover:
     def test_recover_command_shows_diff(
         self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch

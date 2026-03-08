@@ -15820,7 +15820,7 @@ phases:
       values with state.json values.'
   - id: unified-state-gate-review-remediation.sf2-extract-lifecycle
     name: sf2-extract-lifecycle
-    status: claimed
+    status: done
     description: 'Extract claim lifecycle into lifecycle.py.
 
 
@@ -15874,6 +15874,52 @@ phases:
     agent: python-senior
     claimed_by: python-senior
     claimed_at: '2026-03-08T17:41:30.755884+00:00'
+    done_at: '2026-03-08T17:54:46.825852+00:00'
+    evidence: 'Artifact:
+
+      - Worker commit: 472c38590adfca0b3a369429578217b49cb9d024
+
+      - Orchestrator squash commit: 88fa3ec
+
+
+      Verification:
+
+      - Run: uv run pytest -> 1012 passed in 44.88s
+
+      - Run: uv run python -c "from vectl.core import claim_step, complete_step, complete_phase,
+      defer_step, reject_step, skip_step, skip_phase, get_claimed_steps; from vectl.lifecycle
+      import claim_step as l_claim_step, complete_step as l_complete_step, complete_phase
+      as l_complete_phase, defer_step as l_defer_step, reject_step as l_reject_step,
+      skip_step as l_skip_step, skip_phase as l_skip_phase, get_claimed_steps as l_get_claimed_steps;
+      print(''ok'')" -> ok
+
+      - Run: wc -l src/vectl/core.py -> 2159
+
+
+      Spec link:
+
+      - unified-state-gate-review-remediation.sf2-extract-lifecycle
+
+
+      Files changed:
+
+      - src/vectl/core.py
+
+      - src/vectl/lifecycle.py
+
+      - src/vectl/cli.py
+
+      - src/vectl/mcp_server.py
+
+      - src/vectl/checkpoint.py
+
+      - tests/test_lifecycle_imports.py
+
+
+      Gaps/Notes:
+
+      - Extracted lifecycle APIs to lifecycle.py and retained backward-compatible
+      imports from core.py.'
   - id: unified-state-gate-review-remediation.s1-add-mypy-devdep
     name: s1-add-mypy-devdep
     status: done

@@ -16230,3 +16230,46 @@ phases:
     depends_on:
     - unified-state-gate-review-remediation.verify-remediation
     agent: gate-reviewer
+  - id: unified-state-gate-review-remediation.verify-remediation-fix-affinity-cleanup
+    name: verify-remediation-fix-affinity-cleanup
+    status: pending
+    description: 'Fix blocker from `unified-state-gate-review-remediation.verify-remediation`:
+      remove remaining hardcoded `affinity` / `default_affinity` field-name literals
+      from the targeted cleanup logic in `src/vectl/io.py` and switch that cleanup
+      path to fully model-derived access patterns.
+
+
+      Scope:
+
+      - File: `src/vectl/io.py`
+
+      - Replace direct field-name string usage in cleanup comparisons and mapping
+      logic for affinity/default-affinity handling
+
+      - Preserve existing cleanup semantics and backward-compatible behavior
+
+      - Add or adjust focused tests that prove the targeted cleanup block behaves
+      correctly and guard against reintroducing hardcoded affinity literals there
+
+
+      Acceptance criteria:
+
+      - The targeted cleanup block in `src/vectl/io.py` no longer uses direct `affinity`
+      / `default_affinity` string literals for model field comparisons or mapping
+      decisions
+
+      - Cleanup behavior remains correct for affinity-related normalization/cleanup
+      cases covered by focused tests
+
+      - Regression coverage exists for the targeted cleanup block so future hardcoded
+      literal reintroduction is caught'
+    verification: '- Focused `io` tests cover the targeted cleanup path and pass
+
+      - Added/updated regression test proves the cleanup block derives affinity field
+      access from the model rather than hardcoded literals
+
+      - Evidence names the exact test command(s) run and the targeted cleanup scenario
+      covered'
+    depends_on:
+    - unified-state-gate-review-remediation.verify-remediation
+    agent: python-senior

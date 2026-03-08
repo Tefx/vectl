@@ -9191,25 +9191,34 @@ phases:
 
       Review criteria:
 
-      1. Completeness: All 4 implementation steps executed?
+      1. Completeness: all required migration and contract-reconciliation steps executed?
 
-      2. Migration function: Handles all edge cases (orphans, empty state, already
-      migrated, inline overrides)?
+      2. Migration function: explicit migration handles edge cases (orphans, empty
+      state, already migrated, inline overrides)?
 
-      3. Auto-detect: _load() in both cli.py and mcp_server.py triggers migration
-      on state.json presence?
+      3. Load contract: CLI `_load()` and MCP `_load()` ignore leftover `state.json`
+      during normal runtime and read only `plan.yaml` inline state.
 
-      4. Edge case tests: All 10 test cases pass?
+      4. Focused tests: reconciliation tests for CLI, MCP, and explicit migration
+      behavior pass.
 
-      5. CLI command: vectl migrate works for manual migration?
+      5. CLI command: `vectl migrate` works for manual migration.
 
-      6. Idempotency: Re-running migration is safe?
+      6. Idempotency: re-running explicit migration is safe.
 
-      7. Git commit: Migration produces a proper commit?
+      7. Git commit: explicit migration still produces the expected commit behavior.
 
-      8. No regressions: Full test suite passes?'
-    verification: All Phase 4 steps completed. Evidence reviewed. Migration works
-      for all edge cases. Full test suite passes. Ready for Phase 5.
+      8. No regressions: focused migration/runtime suite and any required follow-on
+      checks pass.'
+    verification: '- All Phase 4 steps completed
+
+      - Evidence reviewed for explicit migration and normal `_load()` behavior
+
+      - CLI and MCP `_load()` contract matches ADR and focused tests
+
+      - Focused migration/runtime regressions pass
+
+      - Ready for Phase 5 only after reconciliation evidence is complete'
     refs:
     - docs/ADR-unified-state.md
     depends_on:
@@ -9218,6 +9227,7 @@ phases:
     - unified-state-migration.migration-edge-case-tests
     - unified-state-migration.migration-cli-command
     - unified-state-migration.align-adr-migration-contract
+    - unified-state-migration.retest-load-contract
     agent: gate-reviewer
   - id: unified-state-migration.align-adr-migration-contract
     name: align-adr-migration-contract
@@ -9313,6 +9323,153 @@ phases:
     depends_on:
     - unified-state-migration.implement-migration-function
     agent: python-executor
+  - id: unified-state-migration.reconcile-load-contract
+    name: Reconcile load contract
+    status: pending
+    description: 'HIGH priority blocker fix: choose explicit migration as the single
+      source of truth and reconcile the ADR, runtime, and focused tests around that
+      contract.
+
+
+      Chosen direction:
+
+      - Keep `vectl migrate` / `migrate_from_split_state()` as the only migration
+      path.
+
+      - Remove normal auto-migrate-on-load behavior from CLI and MCP `_load()`.
+
+      - Keep unified runtime semantics: `_load()` reads only `plan.yaml`; leftover
+      `state.json` is inert until explicit migration is invoked.
+
+
+      Acceptance criteria:
+
+      - `src/vectl/cli.py:_load()` does not call `migrate_from_split_state()` and
+      does not rename, merge, or mutate legacy `state.json` during normal load.
+
+      - `src/vectl/mcp_server.py:_load()` does not call `migrate_from_split_state()`
+      and does not rename, merge, or mutate legacy `state.json` during normal load.
+
+      - `vectl migrate` remains the explicit migration entry point and still exercises
+      `migrate_from_split_state()` correctly.
+
+      - ADR wording, focused runtime tests, and migration tests all encode the same
+      contract with no contradictory assertions.
+
+
+      Failure-mode checklist:
+
+      - relative vs absolute plan path resolution still finds the correct legacy state
+      location for explicit migration
+
+      - missing-file fallback keeps `_load()` on the plan-only path with no migration
+      side effects
+
+      - explicit clear / null overwrite semantics remain handled only inside explicit
+      migration logic
+
+      - stale-definition vs new-state precedence remains documented only for explicit
+      migration merges, not normal runtime
+
+      - partial-write / CAS-conflict behavior stays confined to explicit migration
+      save/rename flow
+
+
+      State semantics:
+
+      - Last-writer-wins applies only when explicit migration merges legacy state
+      into `plan.yaml`.
+
+      - Normal `_load()` must preserve existing inline `plan.yaml` state exactly.
+
+      - Backward-compatible legacy behavior means users can still migrate old split-state
+      repos, but only through the explicit migration path.
+
+
+      Out of scope:
+
+      - redesigning the migration algorithm beyond removing load-time auto-migration
+      wiring
+
+      - adding new migration sources beyond legacy `state.json` companions'
+    verification: '- Main path: focused tests prove CLI and MCP `_load()` ignore leftover
+      `state.json` and load inline `plan.yaml` state only
+
+      - Failure path: focused regression tests prove explicit `vectl migrate` / `migrate_from_split_state()`
+      still handles legacy state resolution and merge semantics correctly
+
+      - Proof: no `_load()` call path in `src/vectl/cli.py` or `src/vectl/mcp_server.py`
+      still invokes `migrate_from_split_state()` after the fix'
+    depends_on:
+    - unified-state-migration.implement-migration-function
+    - unified-state-migration.auto-detect-on-load
+    - unified-state-migration.migration-cli-command
+    - unified-state-migration.align-adr-migration-contract
+    agent: python-senior
+  - id: unified-state-migration.retest-load-contract
+    name: Retest load contract
+    status: pending
+    description: 'As an INDEPENDENT TESTER (integration-verifier), validate the reconciled
+      unified-state migration contract from a fresh perspective.
+
+
+      YOUR GOAL IS TO FIND PROBLEMS, not to confirm it works.
+
+
+      Chosen contract under test:
+
+      - CLI `_load()` ignores leftover legacy `state.json` during normal runtime.
+
+      - MCP `_load()` ignores leftover legacy `state.json` during normal runtime.
+
+      - Explicit migration remains available only through `vectl migrate` / `migrate_from_split_state()`.
+
+
+      Test for:
+
+      - Happy path: CLI and MCP load inline `plan.yaml` state without touching companion
+      `state.json`.
+
+      - Edge cases: relative and absolute plan paths, missing legacy state, pre-existing
+      `state.json.migrated`, inline state already present.
+
+      - Error scenarios: explicit migration still handles merge precedence and does
+      not regress rename/backup behavior.
+
+
+      Document ALL findings. A test that discovers issues is a SUCCESS.
+
+      A test that finds nothing must justify the coverage achieved.
+
+
+      Independence Level: L2'
+    verification: '- Run focused tests covering `tests/test_cli.py` and `tests/test_mcp.py`
+      `_load()` semantics plus `tests/test_migration.py` explicit migration behavior
+
+      - Confirm runtime evidence that leftover `state.json` is ignored on normal `_load()`
+      in both CLI and MCP
+
+      - Confirm migration evidence that explicit migration still merges legacy state
+      and produces expected backup/runtime results'
+    evidence_template: "## Verification Report\n\n**Tester**: integration-verifier\
+      \ (independent of implementation)\n**Scope**: unified-state load contract reconciliation\n\
+      **Independence Level**: L2\n**Timestamp**: <ISO 8601>\n\n### Test Execution\n\
+      - Commands executed:\n  ```\n  <actual focused test commands>\n  ```\n- Output\
+      \ summary: <key results>\n\n### Issues Found\n\nFinding issues is the primary\
+      \ value of verification.\n\n| Severity   | Description   | Location        \
+      \        | Reproduction |\n| ---------- | ------------- | -----------------------\
+      \ | ------------ |\n| blocker    | <issue>       | <file:line or endpoint> |\
+      \ <steps>      |\n| should_fix | <issue>       | <location>              | <steps>\
+      \      |\n| suggestion | <improvement> | <context>               | -       \
+      \     |\n| tech_debt  | <known debt>  | <location>              | -        \
+      \    |\n\n### Coverage Assessment\n- CLI `_load()` ignores legacy state: ✅/❌\n\
+      - MCP `_load()` ignores legacy state: ✅/❌\n- Explicit migration path verified:\
+      \ ✅/❌\n- NOT tested: <areas not covered and why>\n\n### Verdict\n- [ ] **PASS**:\
+      \ No issues found (coverage justified above)\n- [ ] **ISSUES_FOUND**: See issues\
+      \ table above\n- [ ] **INCOMPLETE**: <reason>\n\n**Confidence**: high/medium/low"
+    depends_on:
+    - unified-state-migration.reconcile-load-contract
+    agent: integration-verifier
 - id: unified-state-merge-driver
   name: 'Unified State: Multi-User Merge Driver'
   status: pending

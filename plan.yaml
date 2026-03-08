@@ -15861,3 +15861,31 @@ phases:
     verification: uv run mypy src/vectl/ runs without crash. Any remaining type errors
       documented.
     agent: python-executor
+  - id: unified-state-gate-review-remediation.s2-io-field-cleanup
+    name: s2-io-field-cleanup
+    status: pending
+    description: 'Replace hardcoded field names in _plan_to_dict.
+
+
+      In src/vectl/io.py _plan_to_dict(), replace hardcoded string comparisons for
+      affinity field exclusion (lines 193-201) with model-derived field names. Use
+      Step.model_fields or similar Pydantic v2 API to get default values and field
+      names programmatically.
+
+
+      File: src/vectl/io.py
+
+      Function: _clean_dict (called by _plan_to_dict)
+
+      Lines: 193-201 (affinity_override, affinity_override_by, affinity_override_at,
+      default_affinity checks)
+
+
+      Pattern: Instead of `k == "affinity_override" and v is False`, derive the default
+      from Step.model_fields["affinity_override"].default and compare against it.
+
+
+      Reference: src/vectl/models.py for Step model field definitions'
+    verification: pytest tests/test_io.py -v passes. No hardcoded field name strings
+      remain in the affinity cleanup logic of _plan_to_dict/_clean_dict.
+    agent: python-executor

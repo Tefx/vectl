@@ -85,6 +85,7 @@ class Step(BaseModel):
     affinity: AffinityMode | None = None
     claimed_by: str | None = None
     claimed_at: str | None = None
+    done_at: str | None = None
     evidence: str | None = None
     skipped_reason: str | None = None
     rejection_reason: str | None = None
@@ -156,6 +157,7 @@ class StepState(BaseModel):
     status: StepStatus = StepStatus.PENDING
     claimed_by: str | None = None
     claimed_at: str | None = None
+    done_at: str | None = None
     evidence: str | None = None
     skipped_reason: str | None = None
     rejection_reason: str | None = None

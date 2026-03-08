@@ -99,6 +99,22 @@ class TestStep:
         assert step.refs == ["docs/auth.md#user"]
         assert step.depends_on == ["auth.0"]
 
+    def test_done_at_default_none(self):
+        """Step default done_at=None."""
+        step = Step(id="s1", name="Do thing")
+        assert step.done_at is None
+
+    def test_done_at_with_timestamp(self):
+        """Step done_at with timestamp string accepted."""
+        step = Step(id="s1", name="Do thing", done_at="2026-03-08T10:00:00Z")
+        assert step.done_at == "2026-03-08T10:00:00Z"
+
+    def test_done_at_none_with_status_done(self):
+        """Step with status=done and done_at=None remains valid (backward compatibility)."""
+        step = Step(id="s1", name="Do thing", status=StepStatus.DONE)
+        assert step.status == StepStatus.DONE
+        assert step.done_at is None
+
 
 class TestPhase:
     def test_minimal(self):

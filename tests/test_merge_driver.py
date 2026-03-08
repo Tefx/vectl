@@ -161,7 +161,7 @@ def test_merge_non_conflicting_step_additions(tmp_path: Path) -> None:
 
 
 def test_merge_non_conflicting_property_changes(tmp_path: Path) -> None:
-    """Test that different properties changed on the same step merge cleanly."""
+    """Test that different properties changed on the same step conflict (step-level granularity)."""
     base = Plan(
         project="merge-test",
         phases=[

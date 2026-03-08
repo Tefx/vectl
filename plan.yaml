@@ -14978,6 +14978,65 @@ phases:
     agent: integration-verifier
     claimed_by: integration-verifier
     claimed_at: '2026-03-08T16:33:42.244782+00:00'
+  - id: unified-state-verification.full-test-suite-retest-fix
+    name: full-test-suite-retest-fix
+    status: pending
+    description: 'HIGH-priority blocker remediation for the collection failures discovered
+      by `unified-state-verification.full-test-suite-retest`.
+
+
+      Repair the targeted `.fn` compatibility break so `uv run pytest tests/ -v --tb=short`
+      can collect and execute tests again without changing intended tool behavior.
+
+
+      Blockers to resolve:
+
+      - `tests/test_agent_field.py`: `_vectl_status_tool.fn` expected, object is a
+      function without `.fn`
+
+      - `tests/test_autofix_message.py`: `_vectl_claim_tool.fn` expected, object is
+      a function without `.fn`
+
+      - `tests/test_mcp.py`: `_vectl_status_tool.fn` expected, object is a function
+      without `.fn`
+
+
+      Scope:
+
+      - Fix the targeted tests and/or runtime shim around vectl MCP tool wrappers
+      so the historical `.fn` access pattern is supported where required.
+
+      - Preserve current callable behavior and avoid unrelated API changes.
+
+      - Keep mypy and ruff clean while making the compatibility repair.
+
+
+      Out of scope:
+
+      - No broader MCP/tool-wrapper redesign.
+
+      - No changes to unrelated verification scenarios.
+
+
+      Verification focus for the implementer:
+
+      - The three collection blockers are removed.
+
+      - Behavior remains compatible for direct callable use and `.fn` access.
+
+      - Static checks stay clean after the targeted repair.'
+    verification: '- Targeted compatibility repair implemented for the `.fn` collection
+      failures.
+
+      - `uv run pytest tests/test_agent_field.py tests/test_autofix_message.py tests/test_mcp.py
+      -v --tb=short` collects and runs without AttributeError.
+
+      - `uv run mypy src/vectl/` remains clean.
+
+      - `uv run ruff check src/vectl/` remains clean.'
+    depends_on:
+    - unified-state-verification.full-test-suite-retest
+    agent: python-executor
 - id: test-collection-remediation
   name: Test Collection Remediation
   status: done

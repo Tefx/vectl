@@ -43,7 +43,7 @@ def create_rich_test_plan() -> Plan:
                         name="First Done Step",
                         status=StepStatus.DONE,
                         description="This is a done step\n- [x] task1\n- [x] task2",
-                        verification="pytest tests/",
+                        verification="uv run pytest tests/ -v --tb=short",
                         depends_on=[],
                         agent="agent-1",
                         claimed_by="alice",

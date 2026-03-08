@@ -7472,3 +7472,1367 @@ phases:
     depends_on:
     - dg-remediation.retest-gate-lint-and-type-blockers
     agent: gate-reviewer
+- id: unified-state-models-io
+  name: 'Unified State: Model & IO Foundation'
+  status: pending
+  gate: All model changes, claims IO, save_plan commit behavior, and serialization
+    changes are correct and tested. pytest tests/ passes.
+  context: 'ADR: docs/ADR-unified-state.md. Retire split-state (plan.yaml + state.json),
+    unify mutable state back into plan.yaml with git-commit-after-write. This phase
+    adds the done_at field, implements claims.json IO, and modifies save_plan to git-commit.
+    Supersedes: dg-remediation phase (divergence guard is moot when there is only
+    one state file — no plan/state divergence possible). Also supersedes: ss-models,
+    ss-io, ss-mcp, ss-cli, ss-fixes, ss-integration phases (split-state architecture
+    being retired).'
+  steps:
+  - id: unified-state-models-io.add-done-at-field
+    name: Add done_at field to Step model
+    status: pending
+    description: 'Add `done_at: str | None = None` field to the Step model in models.py.
+
+
+      The ADR specifies this field is set on completion (ISO 8601 timestamp).
+
+
+      File: src/vectl/models.py
+
+      Class: Step (line ~68)
+
+      Field: done_at: str | None = None (add after claimed_at, line ~87)
+
+
+      Do NOT add a model_validator requiring done_at when status==DONE — pre-migration
+      plans will not have this field, and backward compatibility must be preserved.
+      The field is set by complete_step() in core.py (Phase 2).
+
+
+      Also update StepState model to include done_at field (for migration compatibility
+      during the transition period).
+
+
+      Pattern: Follow the existing claimed_at field pattern.
+
+
+      Tests to add/update:
+
+      - tests/test_models.py: Step can be instantiated with done_at=None (default)
+
+      - tests/test_models.py: Step can be instantiated with done_at=''2026-03-08T00:00:00Z''
+
+      - tests/test_models.py: Step with status=done and done_at=None is valid (backward
+      compat)'
+    verification: pytest tests/test_models.py -v passes. Step model accepts done_at
+      field. No regressions.
+    refs:
+    - src/vectl/models.py
+    - docs/ADR-unified-state.md
+    agent: python-executor
+  - id: unified-state-models-io.deprecate-state-models
+    name: Deprecate split-state models
+    status: pending
+    description: 'Mark StepState, PhaseState, PlanState, and OrphanEntry classes in
+      models.py as deprecated.
+
+
+      File: src/vectl/models.py
+
+      Classes:
+
+      - StepState (line ~153): Add deprecation docstring
+
+      - PhaseState (line ~168): Add deprecation docstring
+
+      - PlanState (line ~175): Add deprecation docstring
+
+      - OrphanEntry (line ~442): Add deprecation docstring
+
+
+      Deprecation text: ''Deprecated: will be removed after unified-state migration.
+      See docs/ADR-unified-state.md.''
+
+
+      Do NOT remove these classes — downstream code (io.py, cli.py, mcp_server.py,
+      core.py) still references them until Phase 2-3. This is documentation-only.
+
+
+      Pattern: Add ''.. deprecated::'' note at the start of each docstring.
+
+
+      No test changes needed — this is purely docstring annotation.'
+    verification: pytest tests/test_models.py -v passes. Deprecation notices present
+      in docstrings. No functional changes.
+    refs:
+    - src/vectl/models.py
+    - docs/ADR-unified-state.md
+    agent: python-executor
+  - id: unified-state-models-io.implement-claims-io
+    name: Implement claims.json IO
+    status: pending
+    description: "Implement claims.json IO module for ephemeral claim coordination.\n\
+      \nCreate new file: src/vectl/claims.py\n\nData model:\n```python\nclass ClaimEntry(BaseModel):\n\
+      \    agent: str\n    claimed_at: str  # ISO 8601\n    branch: str\n    step_id:\
+      \ str\n```\n\nFunctions to implement:\n\n1. `resolve_claims_path(plan_path:\
+      \ Path) -> Path`\n   - Resolve to `.git/vectl/claims.json` using git-common-dir\n\
+      \   - Fallback: `<plan_dir>/.vectl/claims.json`\n   - Pattern: Follow resolve_state_path()\
+      \ in plan_path.py\n\n2. `load_claims(claims_path: Path) -> dict[str, ClaimEntry]`\n\
+      \   - Key format: `<branch>:<step_id>` (string key for JSON compat)\n   - Missing\
+      \ file: return empty dict (not an error)\n   - Use flock for read consistency\n\
+      \n3. `save_claims(claims: dict[str, ClaimEntry], claims_path: Path) -> None`\n\
+      \   - flock + tempfile + rename (atomic write)\n   - Create parent dirs if needed\n\
+      \n4. `acquire_claim(step_id: str, branch: str, agent: str, claims_path: Path)\
+      \ -> bool`\n   - flock(claims_path)\n   - Check no existing non-stale claim\
+      \ for (branch, step_id)\n   - Write claim entry\n   - Return True on success,\
+      \ raise PlanError if already claimed\n   - Calls cleanup_stale_claims() first\
+      \ (lazy TTL)\n\n5. `release_claim(step_id: str, branch: str, claims_path: Path)\
+      \ -> bool`\n   - flock + remove entry + save\n   - Return True if released,\
+      \ False if not found\n\n6. `cleanup_stale_claims(claims_path: Path, ttl_hours:\
+      \ float = 2.0) -> int`\n   - Remove entries older than TTL\n   - Return count\
+      \ of removed entries\n\n7. `get_current_branch() -> str`\n   - Run `git rev-parse\
+      \ --abbrev-ref HEAD`\n   - Fallback: 'unknown' if not in git repo\n\nFailure-mode\
+      \ checklist:\n- Missing claims.json: create empty on first access\n- Stale claim\
+      \ (TTL expired): treated as absent, cleaned up lazily\n- flock contention: fcntl.flock\
+      \ blocks (LOCK_EX), no timeout needed for typical use\n- Concurrent acquire:\
+      \ flock serializes; second writer sees first writer's claim\n- Partial write:\
+      \ tempfile + rename pattern (atomic)\n- Non-git environment: fallback path resolution\n\
+      \nCreate tests: tests/test_claims.py\n- test_acquire_release_claim\n- test_stale_claim_cleanup\n\
+      - test_concurrent_claims (same step, different branches OK)\n- test_missing_claims_file\n\
+      - test_branch_isolation"
+    verification: pytest tests/test_claims.py -v passes. All claim operations work
+      with flock. Branch-aware key isolation verified.
+    refs:
+    - src/vectl/plan_path.py
+    - src/vectl/io.py
+    - docs/ADR-unified-state.md
+    agent: python-senior
+  - id: unified-state-models-io.save-plan-git-commit
+    name: Add git-commit to save_plan
+    status: pending
+    description: "Modify save_plan() in io.py to execute `git commit --only --no-verify\
+      \ plan.yaml` after successful atomic write.\n\nFile: src/vectl/io.py\nFunction:\
+      \ save_plan() (line ~181)\n\nChanges:\n1. Add `commit_message: str | None =\
+      \ None` parameter to save_plan()\n2. After successful atomic write (os.replace),\
+      \ if commit_message is not None:\n   a. Run: `git commit --only --no-verify\
+      \ plan.yaml -m \"<commit_message>\"`\n   b. Working directory: plan_path.parent\n\
+      \   c. If git commit fails with exit code 1 and stderr contains 'index.lock':\n\
+      \      - Sleep 0.1s, retry once\n   d. If git commit fails for other reasons\
+      \ (e.g., nothing to commit because\n      file content unchanged): log warning,\
+      \ do not raise\n   e. If git is not available: log warning, do not raise (non-git\
+      \ envs)\n3. Return the new file hash (existing behavior preserved)\n\nImplement\
+      \ helper: `_git_commit_plan(plan_path: Path, message: str) -> bool`\n- Returns\
+      \ True if commit succeeded, False otherwise\n- Uses subprocess.run with capture_output=True\n\
+      - Timeout: 10 seconds\n\nState semantics:\n- save_plan writes the FULL plan\
+      \ (callers may still call strip_state before — that is their responsibility\
+      \ until Phase 3 changes call sites)\n- CAS check happens before write (existing\
+      \ behavior preserved)\n- git commit is the durability guarantee\n- If commit_message\
+      \ is None, no git commit (backward compat for tests)\n\nOut-of-scope: Changing\
+      \ callers to stop calling strip_state() — that is Phase 3.\n\nTests to update\
+      \ in tests/test_io.py:\n- Existing save_plan tests should still pass (commit_message\
+      \ defaults to None)\n- Add test: save_plan with commit_message produces a git\
+      \ commit (requires tmp git repo fixture)\n- Add test: save_plan retry on index.lock\
+      \ contention"
+    verification: pytest tests/test_io.py -v passes. save_plan with commit_message
+      creates git commit. Existing tests unbroken (commit_message=None by default).
+    refs:
+    - src/vectl/io.py
+    - docs/ADR-unified-state.md
+    agent: python-senior
+  - id: unified-state-models-io.confirm-inline-serialization
+    name: Confirm plan-to-dict serializes inline state
+    status: pending
+    description: 'Verify and document that _plan_to_dict() and _clean_dict() in io.py
+      correctly serialize the mutable state fields (status, evidence, claimed_by,
+      claimed_at, done_at, skipped_reason, rejection_reason, rejection_history) when
+      they are present on Step objects.
+
+
+      File: src/vectl/io.py
+
+      Functions: _plan_to_dict() (line ~219), _clean_dict() (line ~368)
+
+
+      Current behavior analysis:
+
+      - _plan_to_dict() calls plan.model_dump(mode=''json'', exclude_none=True, exclude_defaults=False)
+
+      - This ALREADY serializes status, evidence, claimed_by etc. when present
+
+      - _clean_dict() removes empty strings and empty lists but preserves non-empty
+      values
+
+      - status field: StepStatus.PENDING is the default, so exclude_defaults=False
+      means it IS serialized
+
+
+      Required changes:
+
+      1. Verify done_at is correctly handled by _clean_dict() (it is None by default,
+      excluded by exclude_none=True — correct)
+
+      2. Add a round-trip test: create Plan with steps having status=done, evidence=''proof'',
+      done_at=''2026-03-08T00:00:00Z'', save to YAML via save_plan, reload via load_plan_definition,
+      verify all fields preserved
+
+      3. Document in a code comment that _plan_to_dict now serializes full state (post
+      unified-state migration)
+
+
+      This step confirms that the serialization layer is already compatible with inline
+      state — no behavioral changes needed, only verification and documentation.
+
+
+      Pattern: Add test to tests/test_io.py
+
+      Test name: test_roundtrip_inline_state_fields'
+    verification: pytest tests/test_io.py::test_roundtrip_inline_state_fields -v passes.
+      Round-trip preserves status, evidence, done_at, claimed_by fields.
+    refs:
+    - src/vectl/io.py
+    depends_on:
+    - unified-state-models-io.add-done-at-field
+    agent: python-executor
+  - id: unified-state-models-io.gate
+    name: 'Gate: Model & IO Foundation'
+    status: pending
+    description: 'Gate review for Phase 1 (unified-state-models-io).
+
+
+      As an INDEPENDENT REVIEWER (gate-reviewer), assess whether the Model & IO Foundation
+      phase meets the quality bar for proceeding to the Core Logic Adaptation phase.
+
+
+      YOU ARE THE QUALITY GATE. Your job is to BLOCK progress if quality is insufficient.
+
+
+      Review criteria:
+
+      1. Completeness: All 5 implementation steps executed?
+
+      2. Evidence Quality: Evidence is specific, verifiable, not vague?
+
+      3. done_at field: Added to Step model, backward compatible?
+
+      4. claims.json IO: flock-protected, branch-aware, TTL cleanup works?
+
+      5. save_plan git commit: Produces commits, retry on contention, backward compat
+      (None message = no commit)?
+
+      6. Inline serialization: Round-trip verified for all mutable fields?
+
+      7. No regressions: Full test suite passes?'
+    verification: All Phase 1 steps completed. Evidence reviewed. pytest tests/ -v
+      passes with 0 failures. No unresolved blockers. Ready for Phase 2.
+    refs:
+    - docs/ADR-unified-state.md
+    depends_on:
+    - unified-state-models-io.add-done-at-field
+    - unified-state-models-io.deprecate-state-models
+    - unified-state-models-io.implement-claims-io
+    - unified-state-models-io.save-plan-git-commit
+    - unified-state-models-io.confirm-inline-serialization
+    agent: gate-reviewer
+- id: unified-state-core
+  name: 'Unified State: Core Logic Adaptation'
+  status: pending
+  gate: Core logic correctly uses claims.json for ephemeral claims, writes completion
+    into plan.yaml inline. All core tests pass.
+  depends_on:
+  - unified-state-models-io
+  steps:
+  - id: unified-state-core.adapt-claim-to-claims-json
+    name: Adapt claim_step for claims.json
+    status: pending
+    description: "Modify claim_step() in core.py to use the new claims module for\
+      \ ephemeral coordination.\n\nFile: src/vectl/core.py\nFunction: claim_step()\
+      \ (line ~315)\n\nCurrent behavior:\n- Sets step.status = CLAIMED, step.claimed_by\
+      \ = agent, step.claimed_at = now()\n- Callers persist via _save_state() to state.json\n\
+      \nNew behavior:\n1. Accept optional `claims_path: Path | None = None` parameter\n\
+      2. If claims_path is provided:\n   a. Call cleanup_stale_claims(claims_path)\
+      \ at start (lazy TTL per ADR)\n   b. Get current branch via get_current_branch()\n\
+      \   c. Call acquire_claim(step_id, branch, agent, claims_path)\n   d. If acquire\
+      \ fails (already claimed by another agent): raise PlanError\n3. Set step.status\
+      \ = CLAIMED, step.claimed_by = agent, step.claimed_at = now() (EXISTING behavior\
+      \ preserved)\n4. Auto-update phase to in_progress (EXISTING behavior preserved)\n\
+      5. Return (plan, ClaimResult) (EXISTING return type preserved)\n\nThe dual-write\
+      \ (claims.json + plan model) is intentional:\n- claims.json: ephemeral coordination\
+      \ lock (survives git restore)\n- plan.yaml inline status: durable record (committed\
+      \ by caller)\n\nIf claims_path is None, skip claims.json operations (backward\
+      \ compat for tests that don't set up a git repo).\n\nAffinity logic: UNCHANGED.\
+      \ All affinity checks remain as-is.\n\nTests to update in tests/test_core.py:\n\
+      - Existing claim tests should pass (claims_path defaults to None)\n- Add test:\
+      \ claim_step with claims_path writes to claims.json\n- Add test: claim_step\
+      \ calls cleanup_stale_claims"
+    verification: pytest tests/test_core.py -v passes. claim_step with claims_path
+      writes to both claims.json and plan model. Existing tests unbroken.
+    refs:
+    - src/vectl/core.py
+    - src/vectl/claims.py
+    - docs/ADR-unified-state.md
+    agent: python-senior
+  - id: unified-state-core.adapt-complete-step
+    name: Adapt complete_step for claims.json + done_at
+    status: pending
+    description: "Modify complete_step() in core.py to release the claim and set done_at.\n\
+      \nFile: src/vectl/core.py\nFunction: complete_step() (line ~396)\n\nCurrent\
+      \ behavior:\n- Sets step.status = DONE, step.evidence = evidence\n- Auto-completes\
+      \ phase if all steps done/skipped\n\nNew behavior:\n1. Accept optional `claims_path:\
+      \ Path | None = None` parameter\n2. If claims_path is provided:\n   a. Get current\
+      \ branch via get_current_branch()\n   b. Call release_claim(step_id, branch,\
+      \ claims_path)\n   c. If release returns False (no claim found): log warning\
+      \ but proceed\n      (claim may have expired via TTL, which is correct behavior\
+      \ per ADR)\n3. Set step.done_at = datetime.now(timezone.utc).isoformat() (NEW)\n\
+      4. Set step.status = DONE, step.evidence = evidence (EXISTING)\n5. Auto-complete\
+      \ phase + cascade unlock (EXISTING)\n\nIf claims_path is None, skip claims.json\
+      \ release (backward compat).\n\nPattern: Follow the claims_path optionality\
+      \ pattern from adapt-claim-to-claims-json.\n\nTests to update in tests/test_core.py:\n\
+      - Existing complete tests should pass (claims_path=None)\n- Add test: complete_step\
+      \ sets done_at timestamp\n- Add test: complete_step releases claim from claims.json"
+    verification: pytest tests/test_core.py -v passes. complete_step sets done_at
+      and releases claim. Existing tests unbroken.
+    refs:
+    - src/vectl/core.py
+    - src/vectl/claims.py
+    depends_on:
+    - unified-state-core.adapt-claim-to-claims-json
+    agent: python-executor
+  - id: unified-state-core.adapt-defer-step
+    name: Adapt defer_step for claims.json
+    status: pending
+    description: "Modify defer_step() in core.py to release the claim from claims.json.\n\
+      \nFile: src/vectl/core.py\nFunction: defer_step() (line ~473)\n\nCurrent behavior:\n\
+      - Sets step.status = PENDING, clears claimed_by/claimed_at\n\nNew behavior:\n\
+      1. Accept optional `claims_path: Path | None = None` parameter\n2. If claims_path\
+      \ is provided:\n   a. Get current branch via get_current_branch()\n   b. Call\
+      \ release_claim(step_id, branch, claims_path)\n3. Set step.status = PENDING,\
+      \ clear claimed_by/claimed_at (EXISTING)\n\nIf claims_path is None, skip claims.json\
+      \ release (backward compat).\n\nPattern: Same as complete_step.\n\nTests to\
+      \ update in tests/test_core.py:\n- Existing defer tests should pass (claims_path=None)\n\
+      - Add test: defer_step releases claim from claims.json"
+    verification: pytest tests/test_core.py -v passes. defer_step releases claim.
+      Existing tests unbroken.
+    refs:
+    - src/vectl/core.py
+    - src/vectl/claims.py
+    depends_on:
+    - unified-state-core.adapt-claim-to-claims-json
+    agent: python-executor
+  - id: unified-state-core.deprecate-split-state-functions
+    name: Deprecate split-state IO functions
+    status: pending
+    description: "Mark the following functions in io.py as deprecated with docstring\
+      \ annotations. Do NOT remove yet — callers in cli.py and mcp_server.py still\
+      \ use them until Phase 3.\n\nFile: src/vectl/io.py\nFunctions to mark deprecated:\n\
+      - load_state() (line ~42)\n- save_state() (line ~93)\n- extract_state() (line\
+      \ ~226)\n- strip_state() (line ~258)\n- merge_plan() (line ~294)\n- detect_orphan_state()\
+      \ (line ~337)\n- _state_to_json() (line ~67)\n- _merge_state_for_cas_retry()\
+      \ (line ~73)\n\nFile: src/vectl/plan_path.py\nFunction to mark deprecated:\n\
+      - resolve_state_path() (line ~186) — keep for Phase 4 migration, but mark deprecated\n\
+      \nFile: src/vectl/core.py\nParameter to mark deprecated:\n- validate_plan():\
+      \ the `state: PlanState | None = None` parameter (line ~51)\n  Add docstring\
+      \ note: 'state parameter is deprecated; orphan detection is N/A with unified\
+      \ state'\n\nDeprecation text for each: 'Deprecated: split-state is retired.\
+      \ See docs/ADR-unified-state.md. Will be removed after unified-state Phase 3.'\n\
+      \nThis is documentation-only. No behavioral changes. No test changes needed."
+    verification: pytest tests/ -v passes. Deprecation notices present in all listed
+      function docstrings. No functional changes.
+    refs:
+    - src/vectl/io.py
+    - src/vectl/core.py
+    - src/vectl/plan_path.py
+    - docs/ADR-unified-state.md
+    agent: python-executor
+  - id: unified-state-core.gate
+    name: 'Gate: Core Logic Adaptation'
+    status: pending
+    description: 'Gate review for Phase 2 (unified-state-core).
+
+
+      As an INDEPENDENT REVIEWER (gate-reviewer), assess whether the Core Logic Adaptation
+      phase meets the quality bar for proceeding to the CLI & MCP Adaptation phase.
+
+
+      Review criteria:
+
+      1. Completeness: All 4 implementation steps executed?
+
+      2. claim_step: Uses claims.json when claims_path provided, backward compat when
+      None?
+
+      3. complete_step: Releases claim, sets done_at, backward compat?
+
+      4. defer_step: Releases claim, backward compat?
+
+      5. Deprecation: All split-state functions marked deprecated?
+
+      6. No regressions: Full test suite passes?
+
+      7. Tests: New tests for claims integration in core functions?'
+    verification: All Phase 2 steps completed. Evidence reviewed. pytest tests/ -v
+      passes. No unresolved blockers. Ready for Phase 3.
+    refs:
+    - docs/ADR-unified-state.md
+    depends_on:
+    - unified-state-core.adapt-claim-to-claims-json
+    - unified-state-core.adapt-complete-step
+    - unified-state-core.adapt-defer-step
+    - unified-state-core.deprecate-split-state-functions
+    agent: gate-reviewer
+- id: unified-state-cli-mcp
+  name: 'Unified State: CLI & MCP Adaptation'
+  status: pending
+  gate: Full test suite passes. No references to state.json in non-migration code.
+    CLI and MCP write only to plan.yaml (with git commit).
+  depends_on:
+  - unified-state-core
+  steps:
+  - id: unified-state-cli-mcp.rewrite-mcp-load-save
+    name: Rewrite MCP load/save for unified state
+    status: pending
+    description: 'Rewrite _load(), _save_state(), _save_definition(), and _save_both()
+      in mcp_server.py to eliminate state.json.
+
+
+      File: src/vectl/mcp_server.py
+
+
+      ### _load() rewrite (line ~132)
+
+      Old: loads plan_def + state.json, merges, returns (plan, def_hash, state_hash)
+
+      New: loads plan.yaml directly via load_plan_definition(), returns (plan, def_hash)
+
+      - Drop state_hash from return tuple
+
+      - Remove state merge logic
+
+      - Remove orphan detection
+
+      - Remove imports: load_state, merge_plan, detect_orphan_state, resolve_state_path
+
+
+      ### _save_state() -> rename to _save_plan() (line ~176)
+
+      Old: extracts state, saves to state.json with CAS
+
+      New: calls save_plan(plan, plan_path, expected_hash=def_hash, commit_message=msg)
+
+      - Accept commit_message parameter
+
+      - Recalc locks before save (existing behavior)
+
+      - Remove: extract_state, save_state imports
+
+      - Returns lock change notice string (existing behavior)
+
+
+      ### Remove _save_definition() (line ~204)
+
+      No longer needed — all writes go through unified _save_plan().
+
+
+      ### Remove _save_both() (line ~232)
+
+      No longer needed — single save path.
+
+
+      ### Update ALL call sites (~15 sites):
+
+      - vectl_claim (line ~496): _save_state -> _save_plan with ''[vectl] claim <step_id>''
+
+      - vectl_complete (line ~613): _save_state -> _save_plan with ''[vectl] complete
+      <step_id>''
+
+      - vectl_lifecycle defer (line ~685): _save_state -> _save_plan with ''[vectl]
+      defer <id>''
+
+      - vectl_lifecycle reject (line ~691): _save_state -> _save_plan with ''[vectl]
+      reject <id>''
+
+      - vectl_lifecycle skip (line ~700): _save_state -> _save_plan with ''[vectl]
+      skip <id>''
+
+      - vectl_lifecycle skip-phase (line ~708): _save_state -> _save_plan with ''[vectl]
+      skip-phase <id>''
+
+      - vectl_lifecycle complete-phase (line ~716): _save_both -> _save_plan with
+      ''[vectl] complete-phase <id>''
+
+      - vectl_mutate (line ~1023): _save_both -> _save_plan with ''[vectl] mutate:
+      <action>''
+
+      - vectl_clipboard write (line ~1298): _save_state -> _save_plan with ''[vectl]
+      clipboard write''
+
+      - vectl_clipboard clear (line ~1373): _save_state -> _save_plan with ''[vectl]
+      clipboard clear''
+
+
+      Also add claims_path plumbing:
+
+      - In vectl_claim: resolve claims_path, pass to claim_step()
+
+      - In vectl_complete: resolve claims_path, pass to complete_step()
+
+      - In vectl_lifecycle defer: resolve claims_path, pass to defer_step()
+
+
+      Update _load() call sites: all ~15 callers that unpack (plan, _, state_hash)
+      must be updated to (plan, def_hash).
+
+
+      Remove unused imports: save_state, load_state, extract_state, merge_plan, strip_state,
+      detect_orphan_state, resolve_state_path
+
+
+      Integration evidence required: actual MCP tool invocation showing plan.yaml
+      commit after operation.'
+    verification: pytest tests/test_mcp.py -v passes. MCP tools write to plan.yaml
+      with git commit. No references to state.json in mcp_server.py. Claims plumbing
+      works for claim/complete/defer.
+    refs:
+    - src/vectl/mcp_server.py
+    - src/vectl/io.py
+    - src/vectl/claims.py
+    - docs/ADR-unified-state.md
+    agent: python-senior
+  - id: unified-state-cli-mcp.rewrite-cli-load-save
+    name: Rewrite CLI load/save for unified state
+    status: pending
+    description: 'Rewrite _load(), _save_state(), _save_definition(), and _save_both()
+      in cli.py to eliminate state.json.
+
+
+      File: src/vectl/cli.py
+
+
+      ### _load() rewrite (line ~170)
+
+      Old: loads plan_def + state.json, merges, returns (plan, def_hash, state_hash,
+      plan_path)
+
+      New: loads plan.yaml directly via load_plan_definition(), returns (plan, def_hash,
+      plan_path)
+
+      - Drop state_hash from return tuple
+
+      - Remove state merge logic, orphan detection
+
+      - Remove imports: load_state, merge_plan, detect_orphan_state, resolve_state_path
+
+
+      ### _save_state() -> rename to _save_plan() (line ~216)
+
+      Old: extracts state, saves to state.json
+
+      New: calls save_plan(plan, plan_path, expected_hash=def_hash, commit_message=msg)
+
+      - Accept commit_message parameter
+
+      - Recalc locks before save
+
+
+      ### Remove _save_definition() (line ~237)
+
+      No longer needed.
+
+
+      ### Remove _save_both() (line ~263)
+
+      No longer needed.
+
+
+      ### Update ALL call sites (~20 sites):
+
+      - claim (line ~1198): _save_state -> _save_plan with ''[vectl] claim <step_id>''
+
+      - complete (line ~1241): _save_state -> _save_plan with ''[vectl] complete <step_id>''
+
+      - complete-phase (line ~1290): _save_state -> _save_plan with ''[vectl] complete-phase
+      <phase_id>''
+
+      - defer (line ~1315): _save_state -> _save_plan with ''[vectl] defer <step_id>''
+
+      - reject (line ~1336): _save_state -> _save_plan with ''[vectl] reject <step_id>''
+
+      - skip (line ~1362): _save_state -> _save_plan with ''[vectl] skip <step_id>''
+
+      - cancel (line ~1380): _save_state -> _save_plan with ''[vectl] skip <step_id>''
+
+      - skip-phase (line ~1419): _save_state -> _save_plan with ''[vectl] skip-phase
+      <phase_id>''
+
+      - check (line ~1451): _save_definition -> _save_plan with ''[vectl] check <step_id>''
+
+      - add-step (line ~1694): _save_both -> _save_plan with ''[vectl] mutate: add-step''
+
+      - add-phase (line ~1739): _save_both -> _save_plan with ''[vectl] mutate: add-phase''
+
+      - edit-plan (line ~1829): _save_both -> _save_plan with ''[vectl] mutate: edit-plan''
+
+      - edit-step (line ~1930): _save_both -> _save_plan with ''[vectl] mutate: edit-step''
+
+      - remove-step (line ~1981): _save_both -> _save_plan with ''[vectl] mutate:
+      remove-step''
+
+      - move-step (line ~2004): _save_both -> _save_plan with ''[vectl] mutate: move-step''
+
+      - recalc-lock (line ~2032): _save_both -> _save_plan with ''[vectl] mutate:
+      recalc-lock''
+
+      - add-steps (line ~2113): _save_both -> _save_plan with ''[vectl] mutate: add-steps''
+
+      - unlock (line ~2060): _save_state -> _save_plan with ''[vectl] unlock <phase_id>''
+
+      - clipboard-write (line ~2524): _save_state -> _save_plan with ''[vectl] clipboard
+      write''
+
+      - clipboard-clear (line ~2588): _save_state -> _save_plan with ''[vectl] clipboard
+      clear''
+
+
+      Also add claims_path plumbing for claim/complete/defer.
+
+
+      Update _load() call sites: all callers that unpack (plan, def_h, state_h, plan_path)
+      must be updated to (plan, def_h, plan_path).
+
+
+      Remove unused imports: save_state, load_state, extract_state, merge_plan, strip_state,
+      detect_orphan_state, resolve_state_path
+
+
+      Integration evidence required: actual CLI command showing plan.yaml commit.'
+    verification: pytest tests/test_cli.py -v passes. CLI writes to plan.yaml with
+      git commit. No references to state.json in cli.py. Claims plumbing works for
+      claim/complete/defer.
+    refs:
+    - src/vectl/cli.py
+    - src/vectl/io.py
+    - src/vectl/claims.py
+    - docs/ADR-unified-state.md
+    agent: python-senior
+  - id: unified-state-cli-mcp.remove-orphan-detection
+    name: Remove orphan detection
+    status: pending
+    description: "Remove orphan detection logic that is no longer needed with unified\
+      \ state.\n\nFile: src/vectl/io.py\n- Remove detect_orphan_state() function (line\
+      \ ~337-365)\n- Remove OrphanEntry import if only used here\n\nFile: src/vectl/core.py\n\
+      - Remove orphan detection block from validate_plan() (lines ~63-78)\n- Remove\
+      \ `from vectl.io import detect_orphan_state` lazy import\n- Remove `state: PlanState\
+      \ | None = None` parameter from validate_plan() signature\n  (or keep as deprecated\
+      \ no-op for backward compat — prefer removal since this is a breaking internal\
+      \ API change and all callers are updated in this phase)\n\nFile: src/vectl/models.py\n\
+      - Remove OrphanEntry class (line ~442-450)\n\nFile: tests/test_io.py\n- Remove\
+      \ tests for detect_orphan_state (search for 'orphan' in test file)\n\nFile:\
+      \ tests/test_validation.py\n- Remove tests that use state parameter in validate_plan\n\
+      \nFile: tests/test_core.py\n- Update any validate_plan calls that pass state\
+      \ parameter\n\nAfter removal, grep for 'orphan' and 'OrphanEntry' across src/\
+      \ to confirm no remaining references."
+    verification: pytest tests/ -v passes. No references to detect_orphan_state, OrphanEntry
+      in src/vectl/. grep -r 'OrphanEntry' src/ returns empty.
+    refs:
+    - src/vectl/io.py
+    - src/vectl/core.py
+    - src/vectl/models.py
+    - tests/test_io.py
+    - tests/test_validation.py
+    depends_on:
+    - unified-state-cli-mcp.rewrite-mcp-load-save
+    - unified-state-cli-mcp.rewrite-cli-load-save
+    agent: python-executor
+  - id: unified-state-cli-mcp.remove-deprecated-state-functions
+    name: Remove deprecated split-state functions
+    status: pending
+    description: 'Remove the split-state functions that are no longer called by any
+      caller after Phase 3.1/3.2.
+
+
+      File: src/vectl/io.py — Remove:
+
+      - load_state() (line ~42-64)
+
+      - save_state() (line ~93-130)
+
+      - extract_state() (line ~226-255)
+
+      - strip_state() (line ~258-291)
+
+      - merge_plan() (line ~294-334)
+
+      - _state_to_json() (line ~67-70)
+
+      - _merge_state_for_cas_retry() (line ~73-90)
+
+      - load_plan() (line ~157-178) — this was the merged loader; load_plan_definition()
+      is the replacement
+
+
+      File: src/vectl/models.py — Remove:
+
+      - StepState class (line ~153-165)
+
+      - PhaseState class (line ~168-172)
+
+      - PlanState class (line ~175-186)
+
+
+      File: src/vectl/plan_path.py:
+
+      - Keep resolve_state_path() — needed by Phase 4 migration module
+
+      - But move it to src/vectl/migration.py or mark clearly as migration-only
+
+
+      File: tests/test_io.py — Remove:
+
+      - Tests for load_state, save_state, extract_state, strip_state, merge_plan,
+      load_plan (merged)
+
+      - Keep tests for load_plan_definition, save_plan, CAS, _clean_dict, _backup_definition
+
+
+      After removal, verify:
+
+      - grep -r ''StepState\|PhaseState\|PlanState\|load_state\|save_state\|extract_state\|strip_state\|merge_plan\|load_plan[^_]''
+      src/vectl/ returns only migration.py references (if any)
+
+      - All imports in __init__.py or other modules are cleaned up'
+    verification: pytest tests/ -v passes. Removed functions not referenced in src/vectl/
+      (except migration). No import errors.
+    refs:
+    - src/vectl/io.py
+    - src/vectl/models.py
+    - src/vectl/plan_path.py
+    - tests/test_io.py
+    depends_on:
+    - unified-state-cli-mcp.remove-orphan-detection
+    agent: python-executor
+  - id: unified-state-cli-mcp.update-validate-recover
+    name: Update validate and recover commands
+    status: pending
+    description: 'Update vectl validate and vectl recover commands for unified state.
+
+
+      File: src/vectl/cli.py
+
+
+      ### validate command (line ~1462)
+
+      Old: loads state.json separately, passes state to validate_plan()
+
+      New: just loads plan.yaml, calls validate_plan(plan) without state parameter
+
+      - Remove: load_state(state_path) call
+
+      - Remove: state parameter from validate_plan() call
+
+      - Remove: resolve_state_path import if no longer used
+
+
+      ### recover command (line ~1500)
+
+      Old: recovers from .git/vectl/plan.yaml.bak file
+
+      New: since plan.yaml is now committed after every write, recovery options are:
+
+      1. Keep backup-based recovery as-is (it still works — backup is made after save_plan)
+
+      2. Add a hint: ''plan.yaml is git-committed; you can also use git log/revert''
+
+
+      Prefer option 1 (keep existing behavior) + add informational message.
+
+      The _backup_definition() function in io.py can remain as defense-in-depth.
+
+
+      ### vectl_review in mcp_server.py
+
+      Already uses _load() which is updated in step 3.1. No additional changes needed—
+      just verify it works.
+
+
+      Also update vectl_check (MCP) if it uses _save_definition — it should now use
+      _save_plan.'
+    verification: pytest tests/test_cli.py -v passes. vectl validate works without
+      state.json. vectl recover still works from backup.
+    refs:
+    - src/vectl/cli.py
+    - src/vectl/mcp_server.py
+    depends_on:
+    - unified-state-cli-mcp.rewrite-cli-load-save
+    agent: python-executor
+  - id: unified-state-cli-mcp.gate
+    name: 'Gate: CLI & MCP Adaptation'
+    status: pending
+    description: 'Gate review for Phase 3 (unified-state-cli-mcp).
+
+
+      As an INDEPENDENT REVIEWER (gate-reviewer), assess whether the CLI & MCP Adaptation
+      phase meets the quality bar for proceeding to the Migration phase.
+
+
+      Review criteria:
+
+      1. Completeness: All 5 implementation steps executed?
+
+      2. MCP server: _load() returns (plan, def_hash) only. All saves go through _save_plan()
+      with commit. Claims plumbing works.
+
+      3. CLI: Same transformation as MCP. All saves produce git commits.
+
+      4. Orphan detection: Fully removed from io.py, core.py, models.py.
+
+      5. Split-state functions: Fully removed from io.py, models.py. No dangling imports.
+
+      6. Validate/recover: Updated for unified state.
+
+      7. No regressions: Full test suite passes.
+
+      8. REALISM CHECK: At least one actual CLI command and one MCP tool invocation
+      showing plan.yaml git commit after operation.'
+    verification: All Phase 3 steps completed. Evidence reviewed. Full test suite
+      passes. No references to state.json in non-migration code. Ready for Phase 4.
+    refs:
+    - docs/ADR-unified-state.md
+    depends_on:
+    - unified-state-cli-mcp.rewrite-mcp-load-save
+    - unified-state-cli-mcp.rewrite-cli-load-save
+    - unified-state-cli-mcp.remove-orphan-detection
+    - unified-state-cli-mcp.remove-deprecated-state-functions
+    - unified-state-cli-mcp.update-validate-recover
+    agent: gate-reviewer
+- id: unified-state-migration
+  name: 'Unified State: Migration'
+  status: pending
+  gate: 'Migration works for all edge cases. Roundtrip tested: pre-v0.6 inline, v0.6+
+    split-state, empty state, orphan entries. Idempotent re-run is safe.'
+  depends_on:
+  - unified-state-cli-mcp
+  steps:
+  - id: unified-state-migration.implement-migration-function
+    name: Implement migration function
+    status: pending
+    description: "Implement the state.json to plan.yaml migration function.\n\nCreate\
+      \ new file: src/vectl/migration.py\n\nFunction: migrate_from_split_state(plan_path:\
+      \ Path) -> MigrationResult\n\n```python\n@dataclass\nclass MigrationResult:\n\
+      \    migrated_steps: int\n    migrated_phases: int\n    skipped_orphans: list[str]\
+      \  # step/phase IDs in state but not plan\n    warnings: list[str]\n    already_migrated:\
+      \ bool  # True if state.json.migrated already exists\n```\n\nAlgorithm (per\
+      \ ADR):\n1. Resolve state.json path via resolve_state_path(plan_path)\n2. If\
+      \ state.json does not exist: return MigrationResult(0, 0, [], [], False)\n3.\
+      \ If state.json.migrated already exists: return MigrationResult(already_migrated=True)\n\
+      4. Load state.json (using the existing load_state function, which we keep accessible\
+      \ via direct import for migration)\n5. If state is empty (no steps, no phases,\
+      \ no clipboard): delete state.json, return\n6. Load plan.yaml via load_plan_definition(plan_path)\n\
+      7. For each step in state.steps:\n   a. Find matching step in plan by step_id\n\
+      \   b. If not found: add to skipped_orphans, log warning, continue\n   c. If\
+      \ found: merge fields (status, claimed_by, claimed_at, evidence, skipped_reason,\
+      \ rejection_reason, rejection_history, affinity_override fields)\n   d. State\
+      \ values take precedence over plan.yaml values (per ADR)\n8. For each phase\
+      \ in state.phases:\n   a. Find matching phase in plan by phase_id\n   b. If\
+      \ not found: add to skipped_orphans, log warning, continue\n   c. If found:\
+      \ merge fields (status, evidence)\n9. If state.clipboard is not None: set plan.clipboard\
+      \ = state.clipboard\n10. Save merged plan.yaml via save_plan(plan, plan_path,\
+      \ commit_message='[vectl] migrate: merge state into plan')\n11. Rename state.json\
+      \ -> state.json.migrated\n12. Return MigrationResult with counts\n\nEdge cases:\n\
+      - Orphan entries: skip with warning (do not fail)\n- Plan already has status\
+      \ fields: state.json values override\n- Empty state.json: skip, delete file\n\
+      - state.json.migrated already exists: skip (idempotent)\n- Partial failure:\
+      \ if save_plan succeeds but rename fails, next run detects state.json still\
+      \ exists and re-runs (idempotent because state values override)\n\nNote: This\
+      \ module needs access to load_state and PlanState from the old split-state code.\
+      \ Import them directly rather than through the public API (they may be removed\
+      \ from io.py by Phase 3). Consider copying the minimal load_state logic inline\
+      \ or importing before removal.\n\nIMPORTANT: This step should be implemented\
+      \ AFTER Phase 3 removes the old functions. The migration module should contain\
+      \ its own minimal state.json reader (JSON load + dict parse) rather than depending\
+      \ on the removed load_state function."
+    verification: pytest tests/test_migration.py -v passes. Migration function handles
+      all edge cases. Idempotent re-run is safe.
+    refs:
+    - src/vectl/io.py
+    - src/vectl/plan_path.py
+    - docs/ADR-unified-state.md
+    agent: python-senior
+  - id: unified-state-migration.auto-detect-on-load
+    name: Auto-detect state.json on load
+    status: pending
+    description: "Add auto-detection to _load() in both cli.py and mcp_server.py:\
+      \ if state.json exists on disk at load time, call migrate_from_split_state()\
+      \ automatically.\n\nFile: src/vectl/cli.py, function _load()\nFile: src/vectl/mcp_server.py,\
+      \ function _load()\n\nAt the start of _load(), before loading plan.yaml:\n1.\
+      \ Resolve potential state.json path (use plan_path.parent-based resolution or\
+      \ inline git-common-dir check)\n2. If state.json exists:\n   a. Import and call\
+      \ migrate_from_split_state(plan_path)\n   b. Log result: 'Migrated N steps from\
+      \ state.json into plan.yaml'\n   c. If orphans found: log warnings\n   d. If\
+      \ already_migrated: skip silently\n3. Proceed with normal load_plan_definition()\n\
+      \nThis is a one-time transparent migration. After migration, state.json is renamed\
+      \ to state.json.migrated, so subsequent loads skip the check.\n\nPerformance:\
+      \ The existence check (Path.exists()) is negligible. No overhead on normal loads."
+    verification: Starting vectl with a legacy state.json triggers auto-migration.
+      Subsequent loads are fast (no migration needed). pytest tests/ -v passes.
+    refs:
+    - src/vectl/cli.py
+    - src/vectl/mcp_server.py
+    - src/vectl/migration.py
+    depends_on:
+    - unified-state-migration.implement-migration-function
+    agent: python-executor
+  - id: unified-state-migration.migration-edge-case-tests
+    name: Migration edge case tests
+    status: pending
+    description: 'Comprehensive tests for the migration function.
+
+
+      Create: tests/test_migration.py
+
+
+      Test cases:
+
+      1. test_migrate_normal: state.json with 3 steps (done, claimed, pending) ->
+      merged into plan.yaml
+
+      2. test_migrate_orphan_steps: state has step ''foo.bar'' that does not exist
+      in plan -> skipped, warning logged
+
+      3. test_migrate_orphan_phases: state has phase ''deleted-phase'' not in plan
+      -> skipped
+
+      4. test_migrate_plan_has_inline_status: plan.yaml already has status=done on
+      step, state.json has status=claimed -> state.json value wins (claimed)
+
+      5. test_migrate_empty_state: state.json exists but is empty ({}) -> deleted,
+      no migration
+
+      6. test_migrate_already_migrated: state.json.migrated exists -> returns already_migrated=True,
+      no action
+
+      7. test_migrate_no_state_file: state.json does not exist -> returns 0 migrated,
+      no error
+
+      8. test_migrate_idempotent: run migration twice, second run is no-op (state.json
+      renamed on first run)
+
+      9. test_migrate_clipboard: state.json has clipboard entry -> merged into plan.yaml
+
+      10. test_migrate_creates_git_commit: migration produces a git commit with message
+      ''[vectl] migrate: merge state into plan''
+
+
+      Each test should set up a temporary directory with plan.yaml and optionally
+      state.json, run migration, verify results.
+
+
+      Fixture: tmp_plan_with_state(tmp_path) -> creates plan.yaml + .git/vectl/state.json'
+    verification: pytest tests/test_migration.py -v passes. All 10 test cases cover
+      the edge cases from the ADR.
+    refs:
+    - src/vectl/migration.py
+    - docs/ADR-unified-state.md
+    depends_on:
+    - unified-state-migration.implement-migration-function
+    agent: python-executor
+  - id: unified-state-migration.migration-cli-command
+    name: Add vectl migrate CLI command
+    status: pending
+    description: 'Add explicit ''vectl migrate'' CLI command for manual migration.
+
+
+      File: src/vectl/cli.py
+
+
+      Command: vectl migrate
+
+      Options:
+
+      - --plan: Path to plan.yaml (standard PlanOption)
+
+      - --yes / -y: Skip confirmation prompt
+
+
+      Behavior:
+
+      1. Resolve plan path
+
+      2. Check if state.json exists
+
+      3. If not: print ''No state.json found. Nothing to migrate.'' and exit
+
+      4. If state.json.migrated exists: print ''Already migrated.'' and exit
+
+      5. Show preview: ''Found state.json with N step entries, M phase entries. Migrate
+      into plan.yaml?''
+
+      6. If --yes or user confirms: run migrate_from_split_state()
+
+      7. Print summary: ''Migrated N steps, M phases. state.json renamed to state.json.migrated.''
+
+      8. If orphans: print warnings
+
+
+      This provides a manual alternative to auto-detection for users who prefer explicit
+      control.'
+    verification: vectl migrate with legacy state.json shows preview and migrates
+      on confirmation. vectl migrate without state.json reports nothing to do.
+    refs:
+    - src/vectl/cli.py
+    - src/vectl/migration.py
+    depends_on:
+    - unified-state-migration.implement-migration-function
+    agent: python-executor
+  - id: unified-state-migration.gate
+    name: 'Gate: Migration'
+    status: pending
+    description: 'Gate review for Phase 4 (unified-state-migration).
+
+
+      As an INDEPENDENT REVIEWER (gate-reviewer), assess whether the Migration phase
+      meets the quality bar for proceeding to the Merge Driver phase.
+
+
+      Review criteria:
+
+      1. Completeness: All 4 implementation steps executed?
+
+      2. Migration function: Handles all edge cases (orphans, empty state, already
+      migrated, inline overrides)?
+
+      3. Auto-detect: _load() in both cli.py and mcp_server.py triggers migration
+      on state.json presence?
+
+      4. Edge case tests: All 10 test cases pass?
+
+      5. CLI command: vectl migrate works for manual migration?
+
+      6. Idempotency: Re-running migration is safe?
+
+      7. Git commit: Migration produces a proper commit?
+
+      8. No regressions: Full test suite passes?'
+    verification: All Phase 4 steps completed. Evidence reviewed. Migration works
+      for all edge cases. Full test suite passes. Ready for Phase 5.
+    refs:
+    - docs/ADR-unified-state.md
+    depends_on:
+    - unified-state-migration.implement-migration-function
+    - unified-state-migration.auto-detect-on-load
+    - unified-state-migration.migration-edge-case-tests
+    - unified-state-migration.migration-cli-command
+    agent: gate-reviewer
+- id: unified-state-merge-driver
+  name: 'Unified State: Multi-User Merge Driver'
+  status: pending
+  gate: Merge driver resolves non-conflicting step-level changes automatically. Conflicting
+    same-step edits are flagged for human resolution. vectl init configures .gitattributes
+    and git merge driver.
+  depends_on:
+  - unified-state-migration
+  steps:
+  - id: unified-state-merge-driver.implement-merge-driver
+    name: Implement merge driver
+    status: pending
+    description: "Implement the vectl merge-driver for step-level YAML merge resolution.\n\
+      \nCreate new file: src/vectl/merge_driver.py\n\nFunction: merge_plans(base_path:\
+      \ str, ours_path: str, theirs_path: str) -> int\n\nAlgorithm (per ADR):\n1.\
+      \ Parse base (O), ours (A), theirs (B) as YAML -> Plan objects\n   - Use load_plan_definition()\
+      \ for each\n   - Handle parse errors gracefully (return 1 = conflict)\n2. Build\
+      \ step index for each plan: dict[step_id -> Step]\n3. Build phase index for\
+      \ each plan: dict[phase_id -> Phase]\n4. For each step_id in union(base, ours,\
+      \ theirs):\n   a. If step only in ours or only in theirs: keep (addition)\n\
+      \   b. If step in base but removed in one side: respect deletion\n   c. If step\
+      \ modified in ours only: use ours version\n   d. If step modified in theirs\
+      \ only: use theirs version\n   e. If step modified in BOTH sides (different\
+      \ from base): CONFLICT\n      - Write conflict markers to ours file\n      -\
+      \ Return 1\n5. For phase-level changes: same logic (add/remove/modify)\n6. For\
+      \ plan-level metadata (project, context, etc.): ours wins\n7. Write merged result\
+      \ to ours_path (A) per git merge driver convention\n8. Return 0 (success) or\
+      \ 1 (conflict)\n\n'Modified' detection: compare step.model_dump() for equality.\n\
+      \nAlso add CLI command:\n\nFile: src/vectl/cli.py\nCommand: vectl merge-driver\
+      \ %O %A %B\n- Positional args: base, ours, theirs (file paths)\n- Calls merge_plans()\n\
+      - Exit code: 0 (merged) or 1 (conflict)\n- This is called by git, not by users\
+      \ directly\n\nConstraints:\n- Must handle malformed YAML gracefully (return\
+      \ 1)\n- Must handle missing files gracefully (return 1)\n- Must be fast (called\
+      \ during git merge)\n- Must not modify base or theirs files\n- Must not produce\
+      \ git commits (git handles that)"
+    verification: pytest tests/test_merge_driver.py -v passes. Merge driver resolves
+      non-conflicting changes. Conflicts produce exit code 1.
+    refs:
+    - docs/ADR-unified-state.md
+    agent: python-senior
+  - id: unified-state-merge-driver.add-gitattributes-config
+    name: Add .gitattributes configuration to vectl init
+    status: pending
+    description: "Update vectl init to configure the merge driver.\n\nFile: src/vectl/core.py\
+      \ (init logic) or wherever vectl init is implemented\nFile: src/vectl/cli.py\
+      \ (init command)\n\nChanges to vectl init:\n1. After creating plan.yaml, add\
+      \ to .gitattributes:\n   `plan.yaml merge=vectl`\n   - Create .gitattributes\
+      \ if it does not exist\n   - Append line if .gitattributes exists but does not\
+      \ contain the entry\n   - Skip if entry already present\n2. Run: `git config\
+      \ merge.vectl.driver \"uvx vectl merge-driver %O %A %B\"`\n   - This configures\
+      \ the local repo's merge driver\n3. Log: 'Configured merge driver: plan.yaml\
+      \ merge=vectl'\n\nAlso update vectl_init MCP tool if it has separate init logic.\n\
+      \nEdge cases:\n- .gitattributes exists with other entries: append, don't overwrite\n\
+      - .gitattributes already has plan.yaml merge=vectl: skip (idempotent)\n- Not\
+      \ in a git repo: skip git config, warn\n- git config fails: warn but don't fail\
+      \ init"
+    verification: vectl init creates correct .gitattributes entry and git config.
+      Idempotent on re-run.
+    refs:
+    - src/vectl/cli.py
+    - src/vectl/core.py
+    - docs/ADR-unified-state.md
+    depends_on:
+    - unified-state-merge-driver.implement-merge-driver
+    agent: python-executor
+  - id: unified-state-merge-driver.merge-driver-tests
+    name: Merge driver tests
+    status: pending
+    description: 'Integration tests for the merge driver.
+
+
+      Create: tests/test_merge_driver.py
+
+
+      Test cases:
+
+      1. test_merge_different_steps_completed: User A completes step X, User B completes
+      step Y -> auto-merged, both steps done
+
+      2. test_merge_same_step_conflict: User A and B both complete the same step with
+      different evidence -> conflict (exit 1)
+
+      3. test_merge_add_step_and_complete: User A adds new step, User B completes
+      existing step -> auto-merged
+
+      4. test_merge_structural_and_state: User A adds phase, User B completes step
+      in existing phase -> auto-merged
+
+      5. test_merge_step_removed_one_side: Base has step, ours removes it, theirs
+      modifies it -> conflict
+
+      6. test_merge_step_added_both_sides_different: Both add different steps -> auto-merged
+      (no conflict)
+
+      7. test_merge_malformed_yaml: One side has invalid YAML -> returns 1
+
+      8. test_merge_empty_base: Fresh plan, both sides add content -> auto-merged
+
+
+      Each test creates three temp files (base, ours, theirs), calls merge_plans(),
+      checks return code and merged output.
+
+
+      Fixture: create_plan_yaml(tmp_path, plan: Plan) -> Path'
+    verification: pytest tests/test_merge_driver.py -v passes. All 8 merge scenarios
+      produce correct results.
+    refs:
+    - src/vectl/merge_driver.py
+    - docs/ADR-unified-state.md
+    depends_on:
+    - unified-state-merge-driver.implement-merge-driver
+    agent: python-executor
+  - id: unified-state-merge-driver.gate
+    name: 'Gate: Multi-User Merge Driver'
+    status: pending
+    description: 'Gate review for Phase 5 (unified-state-merge-driver).
+
+
+      As an INDEPENDENT REVIEWER (gate-reviewer), assess whether the Merge Driver
+      phase meets the quality bar.
+
+
+      Note: This phase is DEFERRABLE. If it is skipped (via vectl lifecycle skip-phase),
+      the gate is skipped too.
+
+
+      Review criteria:
+
+      1. Completeness: All 3 implementation steps executed?
+
+      2. Merge driver: Resolves non-conflicting step-level changes automatically?
+
+      3. Conflict detection: Same-step edits flagged correctly?
+
+      4. gitattributes: vectl init configures merge driver?
+
+      5. Tests: All 8 merge scenarios pass?
+
+      6. No regressions: Full test suite passes?'
+    verification: All Phase 5 steps completed. Merge driver works correctly. Full
+      test suite passes. Ready for Phase 6.
+    refs:
+    - docs/ADR-unified-state.md
+    depends_on:
+    - unified-state-merge-driver.implement-merge-driver
+    - unified-state-merge-driver.add-gitattributes-config
+    - unified-state-merge-driver.merge-driver-tests
+    agent: gate-reviewer
+- id: unified-state-verification
+  name: 'Unified State: Verification & Final Gate'
+  status: pending
+  gate: All tests pass. Migration verified both directions. Multi-agent worktree scenario
+    documented with actual evidence. No regressions.
+  depends_on:
+  - unified-state-merge-driver
+  steps:
+  - id: unified-state-verification.full-test-suite
+    name: Full test suite verification
+    status: pending
+    description: 'As an INDEPENDENT TESTER (integration-verifier), run the complete
+      test suite and verify zero failures.
+
+
+      YOUR GOAL IS TO FIND PROBLEMS, not to confirm it works.
+
+
+      Commands to run:
+
+      1. pytest tests/ -v --tb=short
+
+      2. If any failures: document exact failure, file, test name, error message
+
+      3. Run type checking: mypy src/vectl/ or pyright
+
+      4. Run linting: ruff check src/vectl/
+
+
+      Test for:
+
+      - All existing tests pass (no regressions from unified-state changes)
+
+      - New tests (test_claims.py, test_migration.py, test_merge_driver.py) pass
+
+      - No import errors from removed modules
+
+      - No references to state.json in non-migration code
+
+
+      Document ALL findings. A test that discovers issues is a SUCCESS.'
+    verification: pytest tests/ -v passes with 0 failures. mypy/ruff clean. No regressions.
+      Evidence includes full test output.
+    refs:
+    - tests/
+    agent: integration-verifier
+  - id: unified-state-verification.multi-agent-worktree-test
+    name: Multi-agent worktree scenario test
+    status: pending
+    description: 'As an INDEPENDENT TESTER (integration-verifier), manually test the
+      multi-agent worktree scenario.
+
+
+      Scenario:
+
+      1. Create a test plan with 2 phases, 4 steps
+
+      2. Run `vectl init` in main worktree
+
+      3. Create a linked worktree: `git worktree add ../test-wt -b test-branch`
+
+      4. In main worktree: `vectl claim step-1 --agent agent-A`
+
+      5. In linked worktree: verify claims.json shows agent-A''s claim (branch-aware)
+
+      6. In main worktree: `vectl complete step-1 --evidence ''done''`
+
+      7. Verify: plan.yaml in main has step-1 as done (committed)
+
+      8. Verify: plan.yaml in linked worktree does NOT have step-1 as done (different
+      branch)
+
+      9. In linked worktree: verify claims.json no longer has agent-A''s claim
+
+      10. Cleanup: `git worktree remove ../test-wt`
+
+
+      Key assertions:
+
+      - Claims are branch-aware: (branch, step_id) key isolation
+
+      - plan.yaml state is branch-isolated (each branch has its own committed plan)
+
+      - claims.json is shared via .git/ (worktree common dir)
+
+      - Mutate guard still blocks mutations in linked worktrees
+
+
+      Document actual commands and output for each step.'
+    verification: Worktree scenario completed with actual commands and output. Branch
+      isolation verified. Claims are branch-aware. Evidence includes command transcripts.
+    refs:
+    - docs/ADR-unified-state.md
+    depends_on:
+    - unified-state-verification.full-test-suite
+    agent: integration-verifier
+  - id: unified-state-verification.migration-roundtrip-test
+    name: Migration roundtrip test
+    status: pending
+    description: "As an INDEPENDENT TESTER (integration-verifier), test the full migration\
+      \ roundtrip.\n\nScenario 1: v0.6 split-state -> unified\n1. Create a plan.yaml\
+      \ with 3 phases, 8 steps (all status=pending in yaml)\n2. Create .git/vectl/state.json\
+      \ with completion state for 4 steps\n3. Run any vectl command (triggers auto-migration)\n\
+      4. Verify: plan.yaml now contains inline status for all 4 completed steps\n\
+      5. Verify: state.json renamed to state.json.migrated\n6. Verify: git log shows\
+      \ '[vectl] migrate: merge state into plan' commit\n7. Run vectl status — shows\
+      \ correct completion state\n\nScenario 2: pre-v0.6 inline -> no migration needed\n\
+      1. Create a plan.yaml with inline status fields (no state.json)\n2. Run vectl\
+      \ status\n3. Verify: no migration occurs, works normally\n\nScenario 3: rollback\n\
+      1. After migration, verify rollback works:\n   mv state.json.migrated state.json\
+      \ && git restore plan.yaml\n2. Run vectl status — triggers re-migration\n3.\
+      \ Verify: same result as scenario 1\n\nDocument actual commands and output."
+    verification: Migration roundtrip verified for v0.6 split-state, pre-v0.6 inline,
+      and rollback scenarios. Evidence includes command transcripts and git log output.
+    refs:
+    - docs/ADR-unified-state.md
+    depends_on:
+    - unified-state-verification.full-test-suite
+    agent: integration-verifier
+  - id: unified-state-verification.gate
+    name: 'Final gate: Unified State Architecture'
+    status: pending
+    description: 'FINAL GATE REVIEW for the entire unified-state architecture.
+
+
+      As an INDEPENDENT REVIEWER (gate-reviewer), assess whether the unified-state
+      architecture meets the quality bar for production use.
+
+
+      YOU ARE THE QUALITY GATE. Your job is to BLOCK release if quality is insufficient.
+
+
+      Review criteria:
+
+      1. ADR compliance: All decisions in docs/ADR-unified-state.md implemented?
+
+      2. Test suite: All tests pass (existing + new)?
+
+      3. Migration: v0.6 split-state and pre-v0.6 inline both work?
+
+      4. Multi-agent: Worktree scenario verified with actual evidence?
+
+      5. Claims: Branch-aware, TTL cleanup, flock protection?
+
+      6. Git commits: Every vectl write produces a commit?
+
+      7. No state.json: No references in production code (except migration module)?
+
+      8. Merge driver: Works for non-conflicting changes (if Phase 5 not skipped)?
+
+      9. Backward compatibility: Pre-v0.6 plans load correctly?
+
+      10. Performance: No noticeable slowdown from git commits?
+
+
+      Phase 5 exception: If the merge driver phase was skipped, note it but do not
+      block the gate.
+
+
+      Finding issues during gate review is VALUABLE.'
+    verification: Final gate passed. All 10 criteria verified. Unified-state architecture
+      is production-ready. Evidence report includes full test output, migration roundtrip,
+      and worktree scenario.
+    refs:
+    - docs/ADR-unified-state.md
+    depends_on:
+    - unified-state-verification.full-test-suite
+    - unified-state-verification.multi-agent-worktree-test
+    - unified-state-verification.migration-roundtrip-test
+    agent: gate-reviewer

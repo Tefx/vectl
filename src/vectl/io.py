@@ -5,6 +5,7 @@ from __future__ import annotations
 import hashlib
 import json
 import os
+import subprocess
 import tempfile
 from pathlib import Path
 from typing import Any
@@ -178,8 +179,13 @@ def load_plan(path: Path | str) -> tuple[Plan, str]:
     return plan, file_hash
 
 
-def save_plan(plan: Plan, path: Path | str, expected_hash: str | None = None) -> str:
-    """Save plan to YAML file atomically.
+def save_plan(
+    plan: Plan,
+    path: Path | str,
+    expected_hash: str | None = None,
+    commit_message: str | None = None,
+) -> str:
+    """Save plan to YAML file atomically, then git-commit.
 
     If expected_hash is provided, performs CAS check.
     Returns the new file hash.
@@ -213,7 +219,38 @@ def save_plan(plan: Plan, path: Path | str, expected_hash: str | None = None) ->
             pass
         raise
 
-    return hashlib.sha256(content.encode()).hexdigest()
+    new_hash = hashlib.sha256(content.encode()).hexdigest()
+
+    # Auto-commit plan.yaml to protect against agent git-restore rollback.
+    # Uses --only to avoid committing other staged files.
+    _git_commit_plan(path, commit_message)
+
+    return new_hash
+
+
+def _git_commit_plan(path: Path, message: str | None = None) -> None:
+    """Commit plan.yaml immediately after write.
+
+    Best-effort: if git commit fails (not a repo, nothing to commit, etc.),
+    the plan file is still written — we just lose rollback protection.
+    """
+    msg = message or "[vectl] update plan"
+    try:
+        subprocess.run(
+            ["git", "add", "--", str(path)],
+            cwd=str(path.parent),
+            capture_output=True,
+            timeout=10,
+        )
+        subprocess.run(
+            ["git", "commit", "--only", "--no-verify", "--", str(path),
+             "-m", msg],
+            cwd=str(path.parent),
+            capture_output=True,
+            timeout=10,
+        )
+    except (subprocess.TimeoutExpired, FileNotFoundError, OSError):
+        pass
 
 
 def _plan_to_dict(plan: Plan) -> dict[str, Any]:

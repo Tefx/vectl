@@ -14428,6 +14428,106 @@ phases:
     agent: gate-reviewer
     claimed_by: gate-reviewer
     claimed_at: '2026-03-08T16:06:01.932083+00:00'
+  - id: unified-state-merge-driver.fix-move-payload-conflict
+    name: Fix same-step mixed-modification conflict
+    status: pending
+    description: 'HIGH PRIORITY blocker fix for merge-driver same-step conflict detection.
+
+
+      Update `src/vectl/merge_driver.py` so the ADR rule is enforced: if the same
+      step is modified on both sides relative to base, the merge must conflict (exit
+      1), including the mixed case where one side moves the step between phases and
+      the other side changes that step payload/status.
+
+
+      Failure-mode checklist:
+
+      - relative vs absolute path behavior must remain unchanged for merge-driver
+      file inputs
+
+      - missing-file fallback still returns conflict/exit 1
+
+      - explicit clear / null overwrite semantics for step fields must not silently
+      mask a dual-side modification
+
+      - stale-definition vs new-state precedence must not auto-merge a moved step
+      when the same step payload/status also changed on the other side
+
+      - partial-write / conflict path must preserve conflict signaling and avoid emitting
+      a false clean merge
+
+
+      State semantics:
+
+      - last-writer-wins does NOT apply when both sides modify the same step
+
+      - exact preservation is required for one-sided changes and non-overlapping step
+      edits
+
+      - backward-compatible behavior keeps auto-merge only for distinct-step or identical
+      same-step changes
+
+
+      Regression scope:
+
+      - update focused merge-driver logic in `src/vectl/merge_driver.py`
+
+      - include call-site compatibility only within the current merge-driver code
+      path; no unrelated CLI or init refactor
+
+      - out of scope: changing ADR policy, expanding merge behavior beyond same-step
+      conflict detection, or broad plan-merge redesign'
+    verification: '- Main path: focused tests show non-conflicting different-step
+      merges still succeed
+
+      - Failure path: regression test proves move+payload mixed modification on the
+      same step returns exit 1
+
+      - Proof: same-step dual modifications no longer auto-merge anywhere in merge-driver
+      scope
+
+      - Focused merge-driver regression suite updated for the blocker and existing
+      same-step conflict behavior
+
+      - HIGH priority blocker addressed with no unintended change to gitattributes
+      wiring'
+    evidence_template: '## Fix Evidence
+
+
+      **Changed logic**: `src/vectl/merge_driver.py`
+
+      **ADR rule enforced**: same-step dual modification => conflict / exit 1
+
+
+      **Focused tests added or updated**:
+
+      - `tests/test_merge_driver.py::<test for move+payload conflict>`
+
+      - `tests/test_merge_driver.py::<existing regression names updated>`
+
+
+      **Main-path proof**:
+
+      ```
+
+      <exact pytest command and output>
+
+      ```
+
+
+      **Failure-path proof**:
+
+      ```
+
+      <exact pytest command and output showing move+payload conflict returns 1>
+
+      ```
+
+
+      **Out of scope kept**: <note any deferred broader redesign>'
+    depends_on:
+    - unified-state-merge-driver.merge-driver-tests
+    agent: python-senior
 - id: unified-state-verification
   name: 'Unified State: Verification & Final Gate'
   status: locked

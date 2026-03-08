@@ -20,7 +20,7 @@ from typer.testing import CliRunner
 
 from vectl.cli import app
 from vectl.core import add_step, add_steps_bulk, edit_step, get_next_steps
-from vectl.io import load_plan, save_plan
+from vectl.io import load_plan_definition as load_plan, save_plan
 from vectl.mcp_server import (
     vectl_claim as _vectl_claim_tool,
 )

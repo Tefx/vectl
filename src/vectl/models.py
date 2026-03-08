@@ -151,56 +151,6 @@ class Clipboard(BaseModel):
         return self
 
 
-class StepState(BaseModel):
-    """Mutable runtime state for a single step, stored in state.json.
-
-    .. deprecated::
-        Will be removed after unified-state migration.
-        See docs/ADR-unified-state.md.
-    """
-
-    status: StepStatus = StepStatus.PENDING
-    claimed_by: str | None = None
-    claimed_at: str | None = None
-    done_at: str | None = None
-    evidence: str | None = None
-    skipped_reason: str | None = None
-    rejection_reason: str | None = None
-    rejection_history: list[RejectionEntry] = Field(default_factory=list)
-    affinity_override: bool = False
-    affinity_override_by: str | None = None
-    affinity_override_at: str | None = None
-
-
-class PhaseState(BaseModel):
-    """Mutable runtime state for a phase, stored in state.json.
-
-    .. deprecated::
-        Will be removed after unified-state migration.
-        See docs/ADR-unified-state.md.
-    """
-
-    status: PhaseStatus = PhaseStatus.PENDING
-    evidence: str | None = None
-
-
-class PlanState(BaseModel):
-    """Top-level state document stored in .git/vectl/state.json.
-
-    Contains all mutable runtime state separated from the plan definition.
-    The plan_id field links this state to a specific plan definition.
-
-    .. deprecated::
-        Will be removed after unified-state migration.
-        See docs/ADR-unified-state.md.
-    """
-
-    plan_id: str
-    steps: dict[str, StepState] = Field(default_factory=dict)
-    phases: dict[str, PhaseState] = Field(default_factory=dict)
-    clipboard: Clipboard | None = None
-
-
 class Plan(BaseModel):
     """Top-level plan document."""
 

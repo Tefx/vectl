@@ -8,9 +8,8 @@ import pytest
 from typer.testing import CliRunner
 
 from vectl.cli import app
-from vectl.io import load_plan, save_plan
+from vectl.io import load_plan_definition as load_plan, save_plan
 from vectl.models import Clipboard, Phase, Plan, Step, StepStatus
-from vectl.plan_path import resolve_state_path
 
 runner = CliRunner()
 
@@ -334,8 +333,8 @@ class TestCheckpointClipboard:
         assert "clipboard" in data
         assert "metadata" in data  # also verify full mode works
 
-    def test_clipboard_clear_writes_split_state_null_override(self, tmp_path: Path) -> None:
-        """Clearing clipboard must hide legacy YAML clipboard via state override."""
+    def test_clipboard_clear_updates_plan_yaml(self, tmp_path: Path) -> None:
+        """Clearing clipboard must remove clipboard from checkpoint output."""
         now = datetime.now(timezone.utc)
         future = now + timedelta(hours=24)
 
@@ -361,10 +360,5 @@ class TestCheckpointClipboard:
         checkpoint = json.loads(checkpoint_result.stdout)
         assert "clipboard" not in checkpoint
 
-        # Source: src/vectl/io.py::merge_plan applies state.clipboard over YAML.
-        # clear writes clipboard=None (omitted in JSON), but steps/phases make
-        # state document non-empty so merge still applies and clears clipboard.
-        state_path = resolve_state_path(path)
-        assert state_path.exists()
-        state_payload = json.loads(state_path.read_text(encoding="utf-8"))
-        assert "clipboard" not in state_payload
+        saved_plan, _ = load_plan(path)
+        assert saved_plan.clipboard is None

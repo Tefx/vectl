@@ -12,7 +12,7 @@ from typer.testing import CliRunner
 from vectl import __version__
 from vectl.claims import load_claims
 from vectl.cli import app
-from vectl.io import load_plan, load_plan_definition, save_plan
+from vectl.io import load_plan_definition as load_plan, load_plan_definition, save_plan
 from vectl.models import AffinityMode, Phase, PhaseStatus, Plan, Step, StepStatus
 from vectl.plan_path import resolve_claims_path, resolve_state_path
 

@@ -16251,7 +16251,7 @@ phases:
     agent: gate-reviewer
   - id: unified-state-gate-review-remediation.verify-remediation-fix-affinity-cleanup
     name: verify-remediation-fix-affinity-cleanup
-    status: claimed
+    status: done
     description: 'Fix blocker from `unified-state-gate-review-remediation.verify-remediation`:
       remove remaining hardcoded `affinity` / `default_affinity` field-name literals
       from the targeted cleanup logic in `src/vectl/io.py` and switch that cleanup
@@ -16294,6 +16294,39 @@ phases:
     agent: python-senior
     claimed_by: python-senior
     claimed_at: '2026-03-08T18:01:44.512188+00:00'
+    done_at: '2026-03-08T18:04:44.748332+00:00'
+    evidence: 'Artifact:
+
+      - Worker commit: 2112d9cef425369c51e0645c40d68b4e234b9511
+
+      - Orchestrator squash commit: 1d0499b
+
+
+      Verification:
+
+      - Run: uv run pytest -v tests/test_io.py -k "AffinityCleanup" -> 3 passed, 23
+      deselected in 3.63s
+
+      - Scenario covered: targeted cleanup path omits model-default affinity fields,
+      preserves non-default affinity values, and regression guard fails if _clean_dict
+      reintroduces hardcoded "affinity_override" or "default_affinity" literals
+
+
+      Spec link:
+
+      - unified-state-gate-review-remediation.verify-remediation-fix-affinity-cleanup
+
+
+      Files changed:
+
+      - src/vectl/io.py
+
+      - tests/test_io.py
+
+
+      Gaps/Notes:
+
+      - Scope held to targeted cleanup logic and focused regression tests.'
   - id: unified-state-gate-review-remediation.verify-remediation-retest-affinity-cleanup
     name: verify-remediation-retest-affinity-cleanup
     status: pending

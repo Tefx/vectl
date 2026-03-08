@@ -15759,3 +15759,29 @@ phases:
     Full test suite passes. mypy runs clean.
   depends_on:
   - unified-state-verification
+  steps:
+  - id: unified-state-gate-review-remediation.sf1-migration-overwrite-warning
+    name: sf1-migration-overwrite-warning
+    status: pending
+    description: 'Add warning when migration overwrites inline state.
+
+
+      In src/vectl/migration.py _merge_step(), add a warning log when state.json overwrites
+      a non-default inline value in plan.yaml. Check if the step already has a non-default
+      status/evidence/done_at before overwriting. Use Python''s logging module or
+      print a warning string. Add a test in test_migration.py that verifies the warning
+      is emitted when plan.yaml has inline status that gets overwritten.
+
+
+      File: src/vectl/migration.py
+
+      Function: _merge_step (lines 93-98)
+
+      Pattern: Check step.status != "pending" (or other defaults) before overwriting,
+      emit warning via logging.warning().
+
+
+      Tests: tests/test_migration.py - add test_merge_step_warns_on_overwrite'
+    verification: pytest tests/test_migration.py -v passes. New test verifies warning
+      on overwrite.
+    agent: python-executor

@@ -1500,3 +1500,62 @@ class TestOrphanDetection:
         assert ("phase", "orphan_phase_2") in orphan_ids
         assert ("step", "orphan_step_1") in orphan_ids
         assert ("step", "orphan_step_2") in orphan_ids
+
+
+class TestRoundtripInlineStateFields:
+    """Tests for unified-state (inline) field roundtrip per ADR-unified-state.md.
+
+    After ADR-unified-state.md, mutable runtime state (status, done_at, claimed_by,
+    evidence, etc.) is stored inline in plan.yaml rather than in separate state.json.
+    This test verifies the roundtrip preserves all mutable fields.
+    """
+
+    def test_roundtrip_inline_state_fields(self, tmp_path: Path) -> None:
+        """Write -> save -> load preserves all mutable step fields including done_at."""
+        plan = Plan(
+            project="inline-state-test",
+            phases=[
+                Phase(
+                    id="core",
+                    name="Core Phase",
+                    steps=[
+                        Step(
+                            id="core.step1",
+                            name="Done Step",
+                            status=StepStatus.DONE,
+                            claimed_by="test-agent",
+                            claimed_at="2026-03-07T00:00:00Z",
+                            done_at="2026-03-08T00:00:00Z",
+                            evidence="test evidence",
+                        ),
+                        Step(
+                            id="core.step2",
+                            name="Claimed Step",
+                            status=StepStatus.CLAIMED,
+                            claimed_by="agent-2",
+                            claimed_at="2026-03-08T12:00:00Z",
+                        ),
+                    ],
+                ),
+            ],
+        )
+
+        path = tmp_path / "plan.yaml"
+        save_plan(plan, path)
+
+        loaded, _ = load_plan(path)
+
+        # Verify first step (done)
+        step1 = loaded.phases[0].steps[0]
+        assert step1.status == StepStatus.DONE
+        assert step1.claimed_by == "test-agent"
+        assert step1.claimed_at == "2026-03-07T00:00:00Z"
+        assert step1.done_at == "2026-03-08T00:00:00Z"
+        assert step1.evidence == "test evidence"
+
+        # Verify second step (claimed)
+        step2 = loaded.phases[0].steps[1]
+        assert step2.status == StepStatus.CLAIMED
+        assert step2.claimed_by == "agent-2"
+        assert step2.claimed_at == "2026-03-08T12:00:00Z"
+        assert step2.done_at is None

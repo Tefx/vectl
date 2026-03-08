@@ -274,7 +274,14 @@ def _git_commit_plan(plan_path: Path, message: str) -> bool:
 
 
 def _plan_to_dict(plan: Plan) -> dict[str, Any]:
-    """Convert Plan to a clean dict for YAML serialization."""
+    """Convert Plan to a clean dict for YAML serialization.
+
+    Per ADR-unified-state.md: all mutable runtime state (status, done_at, claimed_by,
+    claimed_at, evidence, skipped_reason, rejection_reason, rejection_history,
+    affinity_override, affinity_override_by, affinity_override_at) is stored inline
+    in plan.yaml. This function serializes all fields - state separation (state.json)
+    is no longer used; done_at=None is excluded via exclude_none=True.
+    """
     data = plan.model_dump(mode="json", exclude_none=True, exclude_defaults=False)
     # Remove empty lists and empty strings for cleaner YAML
     return _clean_dict(data)

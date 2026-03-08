@@ -16187,7 +16187,7 @@ phases:
       \ to drive fix/retest workflow."
   - id: unified-state-gate-review-remediation.gate
     name: gate
-    status: pending
+    status: claimed
     description: 'As an INDEPENDENT REVIEWER (gate-reviewer), assess whether the unified-state-gate-review-remediation
       phase meets the quality bar for completion.
 
@@ -16249,6 +16249,8 @@ phases:
     depends_on:
     - unified-state-gate-review-remediation.verify-remediation-retest-affinity-cleanup
     agent: gate-reviewer
+    claimed_by: gate-reviewer
+    claimed_at: '2026-03-08T18:08:21.546808+00:00'
   - id: unified-state-gate-review-remediation.verify-remediation-fix-affinity-cleanup
     name: verify-remediation-fix-affinity-cleanup
     status: done

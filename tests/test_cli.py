@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import logging
 from pathlib import Path
 
 import pytest
@@ -1073,8 +1074,10 @@ class TestValidate:
         assert "valid" in result.output.lower()
         assert "orphan" not in result.output.lower()
 
-    def test_load_uses_plan_yaml_only(self, tmp_path: Path) -> None:
-        """_load returns plan + hash + path from plan.yaml only."""
+    def test_load_auto_migrates_legacy_state_once(
+        self, tmp_path: Path, caplog: pytest.LogCaptureFixture
+    ) -> None:
+        """_load migrates legacy state.json once, then skips silently."""
         from vectl.cli import _load
         from vectl.io import save_plan
 
@@ -1085,22 +1088,44 @@ class TestValidate:
         plan_path = tmp_path / "plan.yaml"
         save_plan(plan, plan_path)
 
-        # Stale split-state file should not affect load shape/contents.
-        stale_state_path = _companion_state_path(plan_path)
-        stale_state_path.parent.mkdir(parents=True, exist_ok=True)
-        stale_payload = {
-            "plan_id": "orphan-test",
-            "phases": {"orphan_phase": {"status": "done"}},
-            "steps": {"orphan_step": {"status": "claimed", "claimed_by": "agent-x"}},
-        }
-        stale_state_path.write_text(json.dumps(stale_payload), encoding="utf-8")
+        state_path = _companion_state_path(plan_path)
+        state_path.parent.mkdir(parents=True, exist_ok=True)
+        state_path.write_text(
+            json.dumps(
+                {
+                    "steps": {
+                        "s1": {"status": "done", "evidence": "migrated evidence"},
+                        "ghost.step": {"status": "claimed", "claimed_by": "ghost"},
+                    },
+                    "phases": {"core": {"status": "in_progress"}},
+                }
+            ),
+            encoding="utf-8",
+        )
+
+        caplog.set_level(logging.INFO)
 
         loaded_plan, def_hash, target = _load(plan_path)
         assert loaded_plan.project == "orphan-test"
         assert def_hash
         assert target == plan_path
-        assert json.loads(stale_state_path.read_text(encoding="utf-8")) == stale_payload
-        assert not stale_state_path.with_suffix(".json.migrated").exists()
+
+        migrated_step = loaded_plan.find_step("s1")
+        assert migrated_step is not None
+        assert migrated_step[1].status == StepStatus.DONE
+        assert migrated_step[1].evidence == "migrated evidence"
+        migrated_phase = loaded_plan.find_phase("core")
+        assert migrated_phase is not None
+        assert migrated_phase.status == PhaseStatus.IN_PROGRESS
+
+        assert not state_path.exists()
+        assert state_path.with_suffix(".json.migrated").exists()
+        assert "Migrated legacy state.json into plan.yaml (steps=1, phases=1)" in caplog.text
+        assert "Orphan step in state.json not present in plan.yaml: ghost.step" in caplog.text
+
+        caplog.clear()
+        _load(plan_path)
+        assert "Migrated legacy state.json into plan.yaml" not in caplog.text
 
 
 class TestRecover:

@@ -15785,3 +15785,57 @@ phases:
     verification: pytest tests/test_migration.py -v passes. New test verifies warning
       on overwrite.
     agent: python-executor
+  - id: unified-state-gate-review-remediation.sf2-extract-lifecycle
+    name: sf2-extract-lifecycle
+    status: pending
+    description: 'Extract claim lifecycle into lifecycle.py.
+
+
+      Extract claim_step, complete_step, defer_step, reject_step, skip_step, complete_phase,
+      skip_phase, and related helpers from src/vectl/core.py into new src/vectl/lifecycle.py.
+      Add backward-compatible re-exports in core.py so existing imports don''t break.
+      Update direct imports in cli.py, mcp_server.py, and test files where beneficial.
+      Target: core.py under 2200 lines after extraction.
+
+
+      Functions to extract (from core.py):
+
+      - claim_step (line 304)
+
+      - complete_step (line 398)
+
+      - complete_phase (line 434)
+
+      - defer_step (line 486)
+
+      - reject_step (line 512)
+
+      - skip_step (line 542)
+
+      - skip_phase (line 575)
+
+      - get_claimed_steps (line 252) - closely related helper
+
+      - Any private helpers used exclusively by the above functions
+
+
+      Backward compatibility:
+
+      - core.py MUST re-export all extracted functions so `from vectl.core import
+      claim_step` still works
+
+      - lifecycle.py should import shared types/models from models.py directly
+
+
+      Import update targets:
+
+      - src/vectl/cli.py (lines 22, 52)
+
+      - src/vectl/mcp_server.py (line 42)
+
+      - src/vectl/checkpoint.py (line 12)
+
+      - tests/ files that import lifecycle functions'
+    verification: Full test suite passes (pytest). core.py under 2200 LOC. All lifecycle
+      functions importable from both vectl.core and vectl.lifecycle modules.
+    agent: python-senior

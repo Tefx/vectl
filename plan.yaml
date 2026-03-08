@@ -16834,3 +16834,88 @@ phases:
     depends_on:
     - claim-consistency-recovery.freeze-for-integration
     agent: integration-verifier
+  - id: claim-consistency-recovery.gate
+    name: gate
+    status: pending
+    description: 'As an INDEPENDENT REVIEWER (`gate-reviewer`), assess whether the
+      claim-consistency-recovery phase meets the quality bar for completion.
+
+
+      YOU ARE THE QUALITY GATE. Your job is to BLOCK progress if quality is insufficient,
+      especially for persistence correctness and operator recovery.
+
+
+      Review criteria:
+
+      1. Completeness: all implementation, reproducer, test, doc, freeze, and verification
+      steps executed?
+
+      2. Atomicity: the plan save/claim critical section is serialized and the anima
+      reproducer is covered?
+
+      3. Recovery: `vectl repair claims` semantics, flags, and scope are documented
+      and tested?
+
+      4. Diagnostics: CLI and MCP rejection paths give actionable detail without breaking
+      machine readability?
+
+      5. Evidence quality: integration evidence includes real command/output, not
+      vague summaries?
+
+      6. Safety: no unresolved data-consistency blocker remains for already-broken
+      repos?
+
+
+      Independence: you MUST NOT be the same agent as any implementation step in this
+      phase.'
+    verification: '- All phase steps completed with specific evidence
+
+      - Independent integration evidence shows a real ghost-claim recovery flow and
+      a normal claim/complete flow
+
+      - The chosen reconciliation policy for `repair claims` is explicit, tested,
+      and documented
+
+      - No blocker remains where `claim`, `show/status`, and `complete` can disagree
+      for the same repaired repo state'
+    evidence_template: '## Gate Review Report
+
+
+      **Reviewer**: gate-reviewer
+
+      **Phase**: claim-consistency-recovery
+
+
+      ### Step Review
+
+      - Reproducer coverage present and meaningful
+
+      - Atomic locking change bounded and tested
+
+      - Diagnostics UX verified for CLI and MCP
+
+      - Repair command semantics/flags documented and tested
+
+      - Integration evidence contains actual command/output
+
+
+      ### Gate Decision
+
+      - [ ] OPEN
+
+      - [ ] BLOCKED
+
+
+      **Blocking issues**: <list>
+
+      **Required follow-up**: <list>'
+    depends_on:
+    - claim-consistency-recovery.anima-incident-reproducer
+    - claim-consistency-recovery.atomic-plan-save-locking
+    - claim-consistency-recovery.claim-rejection-diagnostics
+    - claim-consistency-recovery.repair-claims-command
+    - claim-consistency-recovery.operator-recovery-docs
+    - claim-consistency-recovery.targeted-regression-tests
+    - claim-consistency-recovery.freeze-for-integration
+    - claim-consistency-recovery.integration-verify
+    agent: gate-reviewer

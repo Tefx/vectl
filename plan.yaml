@@ -14201,7 +14201,7 @@ phases:
       idempotent.'
 - id: unified-state-merge-driver
   name: 'Unified State: Multi-User Merge Driver'
-  status: in_progress
+  status: done
   gate: Merge driver resolves non-conflicting step-level changes automatically. Conflicting
     same-step edits are flagged for human resolution. vectl init configures .gitattributes
     and git merge driver.
@@ -14392,7 +14392,7 @@ phases:
       deletions, step moves between phases, and identical-change scenarios.'
   - id: unified-state-merge-driver.gate
     name: 'Gate: Multi-User Merge Driver'
-    status: claimed
+    status: done
     description: 'Gate review for Phase 5 (unified-state-merge-driver).
 
 
@@ -14438,6 +14438,37 @@ phases:
     agent: gate-reviewer
     claimed_by: gate-reviewer
     claimed_at: '2026-03-08T16:06:01.932083+00:00'
+    done_at: '2026-03-08T16:21:46.223003+00:00'
+    evidence: 'Commit hash(es): none (verify-only gate)
+
+      Files changed:
+
+      - none
+
+      Verification:
+
+      - Run: uv run pytest tests/test_merge_driver.py -v
+
+      - Result: PASS - 13 passed
+
+      - Run: uv run pytest tests/test_init_gitattributes.py -v
+
+      - Result: PASS - 3 passed
+
+      - Run: uv run python merge-driver conflict scenario invoking `vectl merge-driver
+      <base> <ours> <theirs>`
+
+      - Result: PASS - return code 1 and conflict markers written to ours file
+
+      Spec link:
+
+      - docs/ADR-unified-state.md
+
+      Gaps/Notes:
+
+      - PASS: implementation, fix, retest chain complete; mixed move+payload same-step
+      conflicts are correctly rejected; gitattributes init wiring verified idempotent;
+      no blocker issues found.'
   - id: unified-state-merge-driver.fix-move-payload-conflict
     name: Fix same-step mixed-modification conflict
     status: done
@@ -14650,7 +14681,7 @@ phases:
       now hit conflict path and baseline merge-driver regressions remain green.'
 - id: unified-state-verification
   name: 'Unified State: Verification & Final Gate'
-  status: locked
+  status: pending
   gate: All tests pass. Migration verified both directions. Multi-agent worktree scenario
     documented with actual evidence. No regressions.
   depends_on:

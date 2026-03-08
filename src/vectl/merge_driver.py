@@ -5,8 +5,9 @@ Source: docs/ADR-unified-state.md (Multi-user merge strategy, Phase 3).
 
 from __future__ import annotations
 
+from collections.abc import Callable, Sequence
 from pathlib import Path
-from typing import Any, Callable, Sequence, TypeVar
+from typing import Any, TypeVar
 
 import yaml
 
@@ -41,7 +42,7 @@ def _three_way(
     base: _T | None,
     ours: _T | None,
     theirs: _T | None,
-    payload: Callable[[_T], Any] | None = None,
+    payload: Callable[[Any], Any] | None = None,
 ) -> tuple[_T | None, bool]:
     def normalize(value: _T | None) -> Any:
         if value is None:

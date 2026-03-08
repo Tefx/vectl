@@ -169,15 +169,15 @@ def migrate_from_split_state(plan_path: Path) -> MigrationResult:
     for phase_id, raw_phase_state in phases_state.items():
         if not isinstance(raw_phase_state, dict):
             raise PlanIOError(f"Legacy state for phase '{phase_id}' must be a JSON object")
-        phase_i = phase_index.get(phase_id)
-        if phase_i is None:
+        phase_pos = phase_index.get(phase_id)
+        if phase_pos is None:
             message = f"Orphan phase in state.json not present in plan.yaml: {phase_id}"
             skipped_orphans.append(phase_id)
             warnings.append(message)
             _LOGGER.warning(message)
             continue
 
-        plan.phases[phase_i] = _merge_phase(plan.phases[phase_i], raw_phase_state)
+        plan.phases[phase_pos] = _merge_phase(plan.phases[phase_pos], raw_phase_state)
         migrated_phases += 1
 
     if clipboard_state is not None:

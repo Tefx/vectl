@@ -2,16 +2,16 @@
 
 from __future__ import annotations
 
+import fcntl
 import json
 import os
 import subprocess
 import tempfile
+from collections.abc import Iterator
 from contextlib import contextmanager
-from datetime import UTC, datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
-from typing import Iterator
 
-import fcntl
 from pydantic import BaseModel
 
 from vectl.models import PlanError
@@ -32,7 +32,7 @@ def _claim_key(branch: str, step_id: str) -> str:
 
 
 def _now_iso() -> str:
-    return datetime.now(UTC).isoformat().replace("+00:00", "Z")
+    return datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
 
 
 def _parse_iso8601(timestamp: str) -> datetime | None:
@@ -46,15 +46,15 @@ def _parse_iso8601(timestamp: str) -> datetime | None:
     except ValueError:
         return None
     if parsed.tzinfo is None:
-        return parsed.replace(tzinfo=UTC)
-    return parsed.astimezone(UTC)
+        return parsed.replace(tzinfo=timezone.utc)
+    return parsed.astimezone(timezone.utc)
 
 
 def _is_stale(entry: ClaimEntry, ttl_hours: float) -> bool:
     parsed = _parse_iso8601(entry.claimed_at)
     if parsed is None:
         return True
-    return datetime.now(UTC) - parsed > timedelta(hours=ttl_hours)
+    return datetime.now(timezone.utc) - parsed > timedelta(hours=ttl_hours)
 
 
 def _validate_claims_mapping(raw: object) -> dict[str, ClaimEntry]:

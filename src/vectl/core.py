@@ -2,13 +2,19 @@
 
 from __future__ import annotations
 
-import re
 import logging
+import re
 from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
 from enum import Enum
 from pathlib import Path
 
+from vectl.claims import (
+    acquire_claim,
+    cleanup_stale_claims,
+    get_current_branch,
+    release_claim,
+)
 from vectl.models import (
     AffinityError,
     AffinityMode,
@@ -33,17 +39,10 @@ from vectl.models import (
     StepChange,
     StepStatus,
 )
-from vectl.claims import (
-    acquire_claim,
-    cleanup_stale_claims,
-    get_current_branch,
-    release_claim,
-)
 
 # Lazy import to avoid circular — semantics imports models, core imports models.
 # is_step_locked is only used in render, which is late-bound.
 from vectl.semantics import is_step_locked as _is_step_locked_shared
-
 
 _logger = logging.getLogger(__name__)
 

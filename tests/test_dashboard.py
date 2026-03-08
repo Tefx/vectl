@@ -145,7 +145,7 @@ class TestBuildDashboardData:
                             name="First Step",
                             status=StepStatus.CLAIMED,
                             description="Do the thing\n- [x] task1\n- [ ] task2",
-                            verification="pytest tests/",
+                            verification="uv run pytest tests/ -v --tb=short",
                             depends_on=[],
                             agent="bob",
                             claimed_by="alice",
@@ -172,7 +172,7 @@ class TestBuildDashboardData:
         assert step["status"] == "claimed"
         assert step["locked"] is False
         assert "task1" in step["description"]
-        assert step["verification"] == "pytest tests/"
+        assert step["verification"] == "uv run pytest tests/ -v --tb=short"
         assert step["agent"] == "bob"
         assert step["claimed_by"] == "alice"
         assert step["claimed_at"] == "2026-02-15T10:30:00Z"

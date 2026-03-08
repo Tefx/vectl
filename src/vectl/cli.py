@@ -60,6 +60,8 @@ from vectl.io import (
     load_plan_definition,
     save_plan,
 )
+from vectl.merge_driver import merge_plans
+from vectl.migration import migrate_from_split_state, resolve_state_path
 from vectl.models import (
     AffinityMode,
     CASConflictError,
@@ -70,8 +72,6 @@ from vectl.models import (
     SkipReason,
     StepStatus,
 )
-from vectl.migration import migrate_from_split_state, resolve_state_path
-from vectl.merge_driver import merge_plans
 from vectl.plan_path import (
     is_linked_worktree,
     resolve_claims_path,

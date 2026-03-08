@@ -16685,3 +16685,51 @@ phases:
     depends_on:
     - claim-consistency-recovery.repair-claims-command
     agent: python-executor
+  - id: claim-consistency-recovery.targeted-regression-tests
+    name: targeted-regression-tests
+    status: pending
+    description: 'Consolidate focused regression coverage for the repaired claim-consistency
+      flow across IO, CLI, MCP, and recovery surfaces.
+
+
+      Scope:
+
+      - Fill any remaining targeted gaps after the implementation steps land.
+
+      - Keep the suite bounded and high-signal: one reproducer path, one atomicity
+      regression, one diagnostics regression, and one repair-command regression per
+      surface.
+
+      - Favor existing test files and fixtures over broad new integration scaffolding.
+
+
+      Required coverage matrix:
+
+      - `tests/test_io.py`: concurrent claim/save atomicity and ghost-claim reproducer
+
+      - `tests/test_cli.py`: claim rejection diagnostics and `repair claims` flag
+      behavior
+
+      - `tests/test_mcp.py`: structured diagnostics and repair parity if MCP exposure
+      is added
+
+      - `tests/test_claims.py`: reconciliation helper behavior and scoped preservation
+      semantics
+
+
+      Out of scope:
+
+      - Running the full repository test suite
+
+      - Adding duplicate tests that only restate implementation details'
+    verification: '- The coverage matrix above exists with named tests or explicit
+      `pytest -k` selectors for each surface
+
+      - Targeted command bundle: `uv run pytest tests/test_io.py tests/test_cli.py
+      tests/test_mcp.py tests/test_claims.py -k ''claim or repair or anima'' -v`
+
+      - Evidence states which gaps were added in this step versus already covered
+      earlier'
+    depends_on:
+    - claim-consistency-recovery.repair-claims-command
+    agent: python-executor

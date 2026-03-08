@@ -469,6 +469,7 @@ class TestBackupWiredIntoSave:
     def test_backup_called_on_save_definition_cli(self, tmp_path: Path, sample_plan: Plan) -> None:
         """Backup should be created when save_definition is called in CLI."""
         from unittest.mock import patch
+
         from vectl import cli
 
         repo_root = tmp_path / "repo"
@@ -513,7 +514,8 @@ class TestBackupWiredIntoSave:
         assert backup_path.exists()
         assert backup_path.read_text(encoding="utf-8") == plan_path.read_text(encoding="utf-8")
 
-        # Definition/state split: backup stores definition snapshot, merged plan keeps state precedence
+        # Definition/state split: backup stores definition snapshot,
+        # merged plan keeps state precedence
         backup_plan, _ = load_plan_definition(backup_path)
         _, backup_step = backup_plan.find_step("s1") or (None, None)
         assert backup_step is not None
@@ -608,6 +610,7 @@ class TestBackupWiredIntoSave:
     ) -> None:
         """Backup failure should not prevent save from succeeding in CLI."""
         from unittest.mock import patch
+
         from vectl import cli
 
         repo_root = tmp_path / "repo"

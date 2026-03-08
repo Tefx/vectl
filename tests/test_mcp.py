@@ -2129,8 +2129,14 @@ class TestMcpOrphanDetection:
 
         # Set up logging capture
         log_records: list[logging.LogRecord] = []
-        handler = logging.Handler()
-        handler.emit = lambda record: log_records.append(record)
+
+        class ListHandler(logging.Handler):
+            """Custom handler that appends records to a list."""
+
+            def emit(self, record: logging.LogRecord) -> None:
+                log_records.append(record)
+
+        handler = ListHandler()
 
         logger = logging.getLogger("vectl.mcp")
         logger.addHandler(handler)
@@ -2191,8 +2197,14 @@ class TestMcpOrphanDetection:
 
         # Set up logging capture
         log_records: list[logging.LogRecord] = []
-        handler = logging.Handler()
-        handler.emit = lambda record: log_records.append(record)
+
+        class ListHandler(logging.Handler):
+            """Custom handler that appends records to a list."""
+
+            def emit(self, record: logging.LogRecord) -> None:
+                log_records.append(record)
+
+        handler = ListHandler()
 
         logger = logging.getLogger("vectl.mcp")
         logger.addHandler(handler)

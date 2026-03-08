@@ -14881,6 +14881,48 @@ phases:
     depends_on:
     - unified-state-verification.full-test-suite
     agent: python-senior
+  - id: unified-state-verification.full-test-suite-retest
+    name: full-test-suite-retest
+    status: pending
+    description: 'Re-run the full independent verification suite after `unified-state-verification.full-test-suite-fix`
+      and report clean results.
+
+
+      As an INDEPENDENT TESTER (`integration-verifier`), validate from a fresh perspective
+      that the remediation actually resolves the reported issues.
+
+
+      Commands to run:
+
+      1. `uv run pytest tests/ -v --tb=short`
+
+      2. `uv run mypy src/vectl/`
+
+      3. `uv run ruff check src/vectl/`
+
+
+      Report:
+
+      - Actual command output for each command
+
+      - Whether the PATH mismatch is resolved by the standardized invocation
+
+      - Whether any new regressions or residual warnings/errors remain
+
+
+      A retest that finds remaining issues is still useful evidence and must document
+      them precisely.'
+    verification: '- `uv run pytest tests/ -v --tb=short` completes successfully with
+      0 failures.
+
+      - `uv run mypy src/vectl/` completes with 0 errors.
+
+      - `uv run ruff check src/vectl/` completes with 0 findings.
+
+      - Evidence includes pasted command output, not just a summary.'
+    depends_on:
+    - unified-state-verification.full-test-suite-fix
+    agent: integration-verifier
 - id: test-collection-remediation
   name: Test Collection Remediation
   status: done

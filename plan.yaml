@@ -15898,7 +15898,7 @@ phases:
       in mcp_server wrapper assignments via targeted type ignore comments.'
   - id: unified-state-gate-review-remediation.s2-io-field-cleanup
     name: s2-io-field-cleanup
-    status: claimed
+    status: done
     description: 'Replace hardcoded field names in _plan_to_dict.
 
 
@@ -15926,6 +15926,33 @@ phases:
     agent: python-executor
     claimed_by: python-executor
     claimed_at: '2026-03-08T17:41:29.249367+00:00'
+    done_at: '2026-03-08T17:54:42.263866+00:00'
+    evidence: 'Artifact:
+
+      - Worker commit: cb54d435a5d8ee28460f3c635a1a539e36592c5f
+
+      - Orchestrator squash commit: f9504f9
+
+
+      Verification:
+
+      - Run: uv run pytest tests/test_io.py -v -> 23 passed in 0.32s
+
+
+      Spec link:
+
+      - unified-state-gate-review-remediation.s2-io-field-cleanup
+
+
+      Files changed:
+
+      - src/vectl/io.py
+
+
+      Gaps/Notes:
+
+      - Replaced hardcoded affinity cleanup comparison logic with model-derived defaults
+      from Step.model_fields; field-name keys remain for model field lookup only.'
   - id: unified-state-gate-review-remediation.s3-field-level-merge
     name: s3-field-level-merge
     status: claimed

@@ -14990,7 +14990,7 @@ phases:
       - Downstream verification/gate dependencies rewired through new retest chain."
   - id: unified-state-verification.full-test-suite-retest-fix
     name: full-test-suite-retest-fix
-    status: pending
+    status: claimed
     description: 'HIGH-priority blocker remediation for the collection failures discovered
       by `unified-state-verification.full-test-suite-retest`.
 
@@ -15047,6 +15047,8 @@ phases:
     depends_on:
     - unified-state-verification.full-test-suite-retest
     agent: python-executor
+    claimed_by: python-executor
+    claimed_at: '2026-03-08T16:37:24.184107+00:00'
   - id: unified-state-verification.full-test-suite-retest-retest
     name: full-test-suite-retest-retest
     status: pending

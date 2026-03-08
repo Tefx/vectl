@@ -31,7 +31,6 @@ Plan path: resolved via shared plan_path.resolve_plan_path() —
 
 from __future__ import annotations
 
-import logging
 from pathlib import Path
 from typing import Literal
 
@@ -88,15 +87,12 @@ from vectl.models import (
     Step,
     StepStatus,
 )
-from vectl.migration import migrate_from_split_state, resolve_state_path
 from vectl.plan_path import (
     is_linked_worktree,
     resolve_claims_path,
     resolve_plan_path,
 )
 from vectl.semantics import is_step_locked
-
-_LOGGER = logging.getLogger(__name__)
 
 mcp = FastMCP(
     "vectl",
@@ -134,22 +130,12 @@ def _plan_path() -> Path:
 def _load() -> tuple[Plan, str]:
     """Load plan and definition hash from plan.yaml only.
 
+    Source: docs/ADR-unified-state.md migration posture.
+
     Returns:
         (plan, definition_hash)
     """
     plan_path = _plan_path()
-    legacy_state_path = resolve_state_path(plan_path)
-    if legacy_state_path.exists():
-        migration = migrate_from_split_state(plan_path)
-        if not migration.already_migrated:
-            _LOGGER.info(
-                "Migrated legacy state.json into plan.yaml (steps=%d, phases=%d)",
-                migration.migrated_steps,
-                migration.migrated_phases,
-            )
-            for warning in migration.warnings:
-                _LOGGER.warning(warning)
-
     return load_plan_definition(plan_path)
 
 

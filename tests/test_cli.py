@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import json
-import logging
 from pathlib import Path
 
 import pytest
@@ -1074,10 +1073,8 @@ class TestValidate:
         assert "valid" in result.output.lower()
         assert "orphan" not in result.output.lower()
 
-    def test_load_auto_migrates_legacy_state_once(
-        self, tmp_path: Path, caplog: pytest.LogCaptureFixture
-    ) -> None:
-        """_load migrates legacy state.json once, then skips silently."""
+    def test_load_ignores_legacy_state_until_explicit_migration(self, tmp_path: Path) -> None:
+        """_load reads inline plan.yaml state and ignores leftover state.json."""
         from vectl.cli import _load
         from vectl.io import save_plan
 
@@ -1103,8 +1100,6 @@ class TestValidate:
             encoding="utf-8",
         )
 
-        caplog.set_level(logging.INFO)
-
         loaded_plan, def_hash, target = _load(plan_path)
         assert loaded_plan.project == "orphan-test"
         assert def_hash
@@ -1112,20 +1107,14 @@ class TestValidate:
 
         migrated_step = loaded_plan.find_step("s1")
         assert migrated_step is not None
-        assert migrated_step[1].status == StepStatus.DONE
-        assert migrated_step[1].evidence == "migrated evidence"
+        assert migrated_step[1].status == StepStatus.PENDING
+        assert migrated_step[1].evidence is None
         migrated_phase = loaded_plan.find_phase("core")
         assert migrated_phase is not None
-        assert migrated_phase.status == PhaseStatus.IN_PROGRESS
+        assert migrated_phase.status == PhaseStatus.PENDING
 
-        assert not state_path.exists()
-        assert state_path.with_suffix(".json.migrated").exists()
-        assert "Migrated legacy state.json into plan.yaml (steps=1, phases=1)" in caplog.text
-        assert "Orphan step in state.json not present in plan.yaml: ghost.step" in caplog.text
-
-        caplog.clear()
-        _load(plan_path)
-        assert "Migrated legacy state.json into plan.yaml" not in caplog.text
+        assert state_path.exists()
+        assert not state_path.with_suffix(".json.migrated").exists()
 
 
 class TestMigrate:

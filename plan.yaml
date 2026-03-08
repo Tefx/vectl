@@ -16605,3 +16605,44 @@ phases:
     depends_on:
     - claim-consistency-recovery.atomic-plan-save-locking
     agent: python-executor
+  - id: claim-consistency-recovery.repair-claims-command
+    name: repair-claims-command
+    status: pending
+    description: "Add an operator recovery command for already-broken repos: `vectl\
+      \ repair claims` with `--dry-run`, `--step`, and `--json`.\n\nFiles:\n- `src/vectl/cli.py`\n\
+      - `src/vectl/mcp_server.py` if MCP exposure is required for parity\n- shared\
+      \ reconciliation logic in `src/vectl/core.py`, `src/vectl/lifecycle.py`, or\
+      \ a dedicated helper under `src/vectl/claims.py`\n- focused regressions in `tests/test_cli.py`,\
+      \ `tests/test_mcp.py`, and/or `tests/test_claims.py`\n\nAcceptance requirements\
+      \ (high risk: persistence/state semantics):\n- Failure-mode checklist:\n  -\
+      \ relative vs absolute repo/plan paths resolve the same `.git/vectl/claims.json`\
+      \ and target plan\n  - missing-file fallback is explicit for absent `claims.json`\
+      \ and absent/invalid step ids\n  - explicit clear semantics are defined: actual\
+      \ repair may clear ghost claims or restore claim-visible state only when the\
+      \ policy says so; dry-run must never mutate\n  - stale-definition vs new-state\
+      \ precedence is explicit when `plan.yaml` and `claims.json` disagree\n  - partial-write\
+      \ / interrupted-repair behavior is atomic and leaves the repo in one coherent\
+      \ post-command state\n- State semantics:\n  - the command must emit a deterministic\
+      \ reconciliation policy for active claim mismatches, not ad hoc best effort\n\
+      \  - scoped repair with `--step` must preserve every unrelated claim entry exactly\n\
+      \  - backward-compatible healthy repos remain no-op under both normal mode and\
+      \ `--dry-run`\n- Concrete regressions:\n  - add focused tests for dry-run preview,\
+      \ step-scoped repair, JSON output shape, and the ghost-claim/split-brain case\
+      \ from the anima incident\n  - cover both the main recovery path and the highest-risk\
+      \ disagreement path\n- Out of scope:\n  - cross-machine claim coordination\n\
+      \  - a new long-lived background repair daemon or storage redesign"
+    verification: '- Main path: targeted tests prove `vectl repair claims --dry-run`,
+      `--step`, and `--json` behave as specified on healthy and broken repos
+
+      - Failure path: a regression test covers a ghost-claim disagreement and shows
+      the repaired repo makes `claim`/`show`/`status`/`complete` agree again
+
+      - Proof: evidence states the chosen reconciliation policy and demonstrates that
+      unrelated claims are preserved during `--step` repair
+
+      - Targeted commands: `uv run pytest tests/test_cli.py -k repair_claims -v`,
+      `uv run pytest tests/test_mcp.py -k repair_claims -v`, and `uv run pytest tests/test_claims.py
+      -k repair -v`'
+    depends_on:
+    - claim-consistency-recovery.claim-rejection-diagnostics
+    agent: python-senior

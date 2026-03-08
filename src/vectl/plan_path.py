@@ -90,25 +90,16 @@ def _probe_worktree_layout() -> _WorktreeProbe:
     if git_dir == git_common_dir:
         return _WorktreeProbe(is_git_repo=True, is_linked=False, main_root=None, malformed=False)
 
-    # Linked worktree. Resolve canonical main root from the common dir
-    # using git itself (ADR robustness decision), not path heuristics.
+    # Linked worktree. Resolve canonical main root from git-common-dir.
+    # In linked layouts git-common-dir points to main_root/.git.
     if not git_common_dir.exists() or not git_common_dir.is_dir():
         return _WorktreeProbe(is_git_repo=True, is_linked=True, main_root=None, malformed=True)
 
-    try:
-        toplevel_result = subprocess.run(
-            ["git", "-C", str(git_common_dir), "rev-parse", "--show-toplevel"],
-            capture_output=True,
-            text=True,
-            cwd=cwd,
-        )
-    except OSError:
-        return _WorktreeProbe(is_git_repo=True, is_linked=True, main_root=None, malformed=True)
-    if toplevel_result.returncode != 0:
+    if git_common_dir.name != ".git":
         return _WorktreeProbe(is_git_repo=True, is_linked=True, main_root=None, malformed=True)
 
-    main_root = _normalize_git_path(toplevel_result.stdout, cwd)
-    if main_root is None:
+    main_root = git_common_dir.parent
+    if not main_root.exists() or not main_root.is_dir():
         return _WorktreeProbe(is_git_repo=True, is_linked=True, main_root=None, malformed=True)
 
     return _WorktreeProbe(

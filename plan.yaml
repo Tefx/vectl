@@ -14392,7 +14392,7 @@ phases:
       deletions, step moves between phases, and identical-change scenarios.'
   - id: unified-state-merge-driver.gate
     name: 'Gate: Multi-User Merge Driver'
-    status: pending
+    status: claimed
     description: 'Gate review for Phase 5 (unified-state-merge-driver).
 
 
@@ -14426,6 +14426,8 @@ phases:
     - unified-state-merge-driver.add-gitattributes-config
     - unified-state-merge-driver.merge-driver-tests
     agent: gate-reviewer
+    claimed_by: gate-reviewer
+    claimed_at: '2026-03-08T16:06:01.932083+00:00'
 - id: unified-state-verification
   name: 'Unified State: Verification & Final Gate'
   status: locked

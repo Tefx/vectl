@@ -5,10 +5,8 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from enum import Enum
 from pathlib import Path
-from typing import Any
 
 from pydantic import BaseModel, Field, model_validator
-
 
 # ---------------------------------------------------------------------------
 # Enums
@@ -434,3 +432,18 @@ class InitResult(BaseModel):
     agents_target: str | None = None  # Which file was updated (AGENTS.md or CLAUDE.md)
     message: str
     error: str | None = None
+
+
+# ---------------------------------------------------------------------------
+# Orphan Detection
+# ---------------------------------------------------------------------------
+
+
+@dataclass
+class OrphanEntry:
+    """An orphan state entry that exists in state.json but has no matching
+    definition in plan.yaml."""
+
+    kind: str  # "phase" or "step"
+    id: str
+    phase_id: str | None = None  # Only set for step orphans

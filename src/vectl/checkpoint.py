@@ -6,11 +6,11 @@ Intent: Provide a deterministic, bounded snapshot of the plan state.
 
 from __future__ import annotations
 
-from typing import Any, Optional
+from typing import Any
 
+from vectl import __version__
 from vectl.core import _clipboard_expired, get_next_steps
 from vectl.models import Plan, Step, StepStatus
-from vectl import __version__
 
 
 def build_checkpoint(

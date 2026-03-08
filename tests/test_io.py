@@ -1,11 +1,14 @@
 """Tests for core.2: YAML IO with CAS."""
 
 import json
+import os
 from pathlib import Path
 
 import pytest
 
 from vectl.io import (
+    _backup_definition,
+    detect_orphan_state,
     extract_state,
     load_plan,
     load_plan_definition,
@@ -312,6 +315,431 @@ class TestCAS:
         hash_ = save_plan(sample_plan, path, expected_hash="anything")
         assert path.exists()
         assert isinstance(hash_, str)
+
+
+class TestDefinitionBackup:
+    def test_backup_created_on_save(self, tmp_path: Path, sample_plan: Plan) -> None:
+        repo_root = tmp_path / "repo"
+        repo_root.mkdir()
+        (repo_root / ".git").mkdir()
+        plan_path = repo_root / "plan.yaml"
+
+        save_plan(sample_plan, plan_path)
+        _backup_definition(plan_path)
+
+        backup_path = repo_root / ".git" / "vectl" / "plan.yaml.bak"
+        assert backup_path.exists()
+
+    def test_backup_matches_plan_content(self, tmp_path: Path, sample_plan: Plan) -> None:
+        repo_root = tmp_path / "repo"
+        repo_root.mkdir()
+        (repo_root / ".git").mkdir()
+        plan_path = repo_root / "plan.yaml"
+
+        save_plan(sample_plan, plan_path)
+        _backup_definition(plan_path)
+
+        backup_path = repo_root / ".git" / "vectl" / "plan.yaml.bak"
+        assert backup_path.read_text(encoding="utf-8") == plan_path.read_text(encoding="utf-8")
+
+    def test_backup_skipped_in_linked_worktree(self, tmp_path: Path, sample_plan: Plan) -> None:
+        repo_root = tmp_path / "repo"
+        repo_root.mkdir()
+        (repo_root / ".git").write_text(
+            "gitdir: /tmp/shared/.git/worktrees/repo\n", encoding="utf-8"
+        )
+        plan_path = repo_root / "plan.yaml"
+
+        save_plan(sample_plan, plan_path)
+        _backup_definition(plan_path)
+
+        backup_path = repo_root / ".git" / "vectl" / "plan.yaml.bak"
+        assert not backup_path.exists()
+
+    def test_backup_creates_directory(self, tmp_path: Path, sample_plan: Plan) -> None:
+        repo_root = tmp_path / "repo"
+        repo_root.mkdir()
+        (repo_root / ".git").mkdir()
+        plan_path = repo_root / "plan.yaml"
+
+        save_plan(sample_plan, plan_path)
+        _backup_definition(plan_path)
+
+        backup_dir = repo_root / ".git" / "vectl"
+        assert backup_dir.exists()
+        assert backup_dir.is_dir()
+
+    def test_backup_permission_error_raises(self, tmp_path: Path, sample_plan: Plan) -> None:
+        """Backup fails gracefully when .git/vectl is not writable."""
+        import os
+
+        repo_root = tmp_path / "repo"
+        repo_root.mkdir()
+        git_dir = repo_root / ".git"
+        git_dir.mkdir()
+        vectl_dir = git_dir / "vectl"
+        vectl_dir.mkdir()
+        plan_path = repo_root / "plan.yaml"
+
+        save_plan(sample_plan, plan_path)
+
+        # Make vectl_dir read-only (simulate permission error)
+        os.chmod(vectl_dir, 0o444)
+        try:
+            # _backup_definition should raise an error
+            with pytest.raises(OSError):
+                _backup_definition(plan_path)
+        finally:
+            # Restore permissions for cleanup
+            os.chmod(vectl_dir, 0o755)
+
+    def test_backup_read_permission_error_raises(self, tmp_path: Path, sample_plan: Plan) -> None:
+        """Backup fails when plan.yaml is not readable."""
+        import os
+
+        repo_root = tmp_path / "repo"
+        repo_root.mkdir()
+        git_dir = repo_root / ".git"
+        git_dir.mkdir()
+        plan_path = repo_root / "plan.yaml"
+
+        save_plan(sample_plan, plan_path)
+
+        # Remove read permission from plan.yaml
+        os.chmod(plan_path, 0o000)
+        try:
+            # _backup_definition should raise an error when plan is unreadable
+            with pytest.raises(OSError):
+                _backup_definition(plan_path)
+        finally:
+            # Restore permissions for cleanup
+            os.chmod(plan_path, 0o644)
+
+    def test_backup_crash_safety_no_temp_file_left_behind(
+        self, tmp_path: Path, sample_plan: Plan
+    ) -> None:
+        """Ensure no temp file is left behind if write fails mid-operation."""
+        import errno
+        from unittest.mock import patch
+
+        repo_root = tmp_path / "repo"
+        repo_root.mkdir()
+        (repo_root / ".git").mkdir()
+        plan_path = repo_root / "plan.yaml"
+
+        save_plan(sample_plan, plan_path)
+
+        # Get the backup directory
+        backup_dir = repo_root / ".git" / "vectl"
+
+        # Mock os.replace to raise an error simulating a crash
+        original_replace = os.replace
+        error_raised = False
+
+        def mock_replace(src, dst):
+            nonlocal error_raised
+            # Create the temp file first so our cleanup logic runs
+            if ".tmp" in src:
+                # Let the write proceed first so temp file exists
+                original_replace(src, dst)
+            else:
+                error_raised = True
+                raise OSError(errno.EIO, "Simulated I/O error")
+
+        with patch.object(os, "replace", side_effect=mock_replace):
+            try:
+                _backup_definition(plan_path)
+            except OSError:
+                pass  # Expected
+
+        # Verify no .tmp files remain in backup directory
+        temp_files = list(backup_dir.glob("*.tmp"))
+        assert len(temp_files) == 0, f"Temp files left behind: {temp_files}"
+
+
+class TestBackupWiredIntoSave:
+    """Tests proving backup is called during save and backup failure doesn't block save."""
+
+    @staticmethod
+    def _seed_save_both_inputs(plan: Plan, plan_path: Path) -> tuple[str, str]:
+        def_hash = save_plan(strip_state(plan), plan_path)
+        state_hash = save_state(extract_state(plan), resolve_state_path(plan_path))
+        return def_hash, state_hash
+
+    def test_backup_called_on_save_definition_cli(self, tmp_path: Path, sample_plan: Plan) -> None:
+        """Backup should be created when save_definition is called in CLI."""
+        from unittest.mock import patch
+
+        from vectl import cli
+
+        repo_root = tmp_path / "repo"
+        repo_root.mkdir()
+        (repo_root / ".git").mkdir()
+        plan_path = repo_root / "plan.yaml"
+
+        # Save the plan first to get its hash
+        hash_ = save_plan(sample_plan, plan_path)
+
+        # Track if _backup_definition was called
+        with patch("vectl.cli._backup_definition") as mock_backup:
+            mock_backup.return_value = repo_root / ".git" / "vectl" / "plan.yaml.bak"
+            cli._save_definition(sample_plan, plan_path, hash_)
+
+            mock_backup.assert_called_once_with(plan_path)
+
+    def test_save_both_creates_missing_backup_on_absolute_plan_path(
+        self, tmp_path: Path, sample_plan: Plan, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """CLI structural save path writes .git/vectl/plan.yaml.bak."""
+        from vectl import cli
+
+        repo_root = tmp_path / "repo"
+        repo_root.mkdir()
+        (repo_root / ".git").mkdir()
+        plan_path = repo_root / "plan.yaml"
+        backup_path = repo_root / ".git" / "vectl" / "plan.yaml.bak"
+        monkeypatch.setattr("vectl.plan_path.is_linked_worktree", lambda: (False, None))
+
+        working_plan = sample_plan.model_copy(deep=True)
+        working_plan.phases[0].steps[0].status = StepStatus.CLAIMED
+        working_plan.phases[0].steps[0].claimed_by = "agent-a"
+        def_hash, state_hash = self._seed_save_both_inputs(working_plan, plan_path)
+
+        # Structural mutation path should trigger _save_both
+        working_plan.phases[0].steps.append(Step(id="s3", name="Step 3"))
+        assert not backup_path.exists()
+
+        cli._save_both(working_plan, plan_path, def_hash, state_hash)
+
+        assert backup_path.exists()
+        assert backup_path.read_text(encoding="utf-8") == plan_path.read_text(encoding="utf-8")
+
+        # Definition/state split: backup stores definition snapshot,
+        # merged plan keeps state precedence
+        backup_plan, _ = load_plan_definition(backup_path)
+        _, backup_step = backup_plan.find_step("s1") or (None, None)
+        assert backup_step is not None
+        assert backup_step.claimed_by is None
+
+        merged_plan, _ = load_plan(plan_path)
+        _, merged_step = merged_plan.find_step("s1") or (None, None)
+        assert merged_step is not None
+        assert merged_step.claimed_by == "agent-a"
+
+    def test_save_both_creates_backup_with_repo_relative_plan_path(
+        self, tmp_path: Path, sample_plan: Plan, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """Backup path resolution works when CLI saves with relative plan path."""
+        from vectl import cli
+
+        repo_root = tmp_path / "repo"
+        repo_root.mkdir()
+        (repo_root / ".git").mkdir()
+        plan_path = repo_root / "plan.yaml"
+        relative_plan_path = Path("plan.yaml")
+        monkeypatch.setattr("vectl.plan_path.is_linked_worktree", lambda: (False, None))
+
+        def_hash, state_hash = self._seed_save_both_inputs(sample_plan, plan_path)
+        mutated = sample_plan.model_copy(deep=True)
+        mutated.phases[0].steps.append(Step(id="s3", name="Step 3"))
+
+        monkeypatch.chdir(repo_root)
+        cli._save_both(mutated, relative_plan_path, def_hash, state_hash)
+
+        assert (repo_root / ".git" / "vectl" / "plan.yaml.bak").exists()
+
+    def test_save_both_backup_failure_is_non_blocking_and_recoverable(
+        self, tmp_path: Path, sample_plan: Plan, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """Failed backup attempt does not abort save and later saves still work."""
+        from unittest.mock import patch
+
+        from vectl import cli
+
+        repo_root = tmp_path / "repo"
+        repo_root.mkdir()
+        (repo_root / ".git").mkdir()
+        plan_path = repo_root / "plan.yaml"
+        backup_path = repo_root / ".git" / "vectl" / "plan.yaml.bak"
+        monkeypatch.setattr("vectl.plan_path.is_linked_worktree", lambda: (False, None))
+
+        working_plan = sample_plan.model_copy(deep=True)
+        def_hash, state_hash = self._seed_save_both_inputs(working_plan, plan_path)
+
+        working_plan.phases[0].steps.append(Step(id="s3", name="Step 3"))
+        with patch("vectl.cli._backup_definition", side_effect=OSError("disk full")):
+            cli._save_both(working_plan, plan_path, def_hash, state_hash)
+
+        saved_after_failure, _ = load_plan_definition(plan_path)
+        assert saved_after_failure.find_step("s3") is not None
+
+        new_def_hash = load_plan_definition(plan_path)[1]
+        new_state_hash = load_state(resolve_state_path(plan_path))[1]
+        working_plan.phases[0].steps.append(Step(id="s4", name="Step 4"))
+        cli._save_both(working_plan, plan_path, new_def_hash, new_state_hash)
+
+        assert backup_path.exists()
+        assert backup_path.read_text(encoding="utf-8") == plan_path.read_text(encoding="utf-8")
+
+    def test_backup_called_on_save_definition_mcp(self, tmp_path: Path, sample_plan: Plan) -> None:
+        """Backup should be created when save_definition is called in MCP server."""
+        from unittest.mock import patch
+
+        repo_root = tmp_path / "repo"
+        repo_root.mkdir()
+        (repo_root / ".git").mkdir()
+        plan_path = repo_root / "plan.yaml"
+
+        # Save the plan first to get its hash
+        hash_ = save_plan(sample_plan, plan_path)
+
+        # Patch _plan_path to return our temp path
+        with patch("vectl.mcp_server._plan_path", return_value=plan_path):
+            # Track if _backup_definition was called
+            with patch("vectl.mcp_server._backup_definition") as mock_backup:
+                mock_backup.return_value = repo_root / ".git" / "vectl" / "plan.yaml.bak"
+                # Import and call the MCP server's _save_definition
+                from vectl import mcp_server
+
+                mcp_server._save_definition(sample_plan, hash_, recalc_locks=False)
+
+                mock_backup.assert_called_once()
+
+    def test_backup_failure_does_not_block_save_cli(
+        self, tmp_path: Path, sample_plan: Plan
+    ) -> None:
+        """Backup failure should not prevent save from succeeding in CLI."""
+        from unittest.mock import patch
+
+        from vectl import cli
+
+        repo_root = tmp_path / "repo"
+        repo_root.mkdir()
+        (repo_root / ".git").mkdir()
+        plan_path = repo_root / "plan.yaml"
+
+        # Save the plan first to get its hash
+        hash_ = save_plan(sample_plan, plan_path)
+
+        # Simulate backup failure
+        with patch("vectl.cli._backup_definition") as mock_backup:
+            mock_backup.side_effect = OSError("Permission denied")
+            # This should NOT raise even though backup fails
+            cli._save_definition(sample_plan, plan_path, hash_)
+
+            # Verify save actually worked
+            assert plan_path.exists()
+
+    def test_backup_failure_does_not_block_save_mcp(
+        self, tmp_path: Path, sample_plan: Plan
+    ) -> None:
+        """Backup failure should not prevent save from succeeding in MCP server."""
+        from unittest.mock import patch
+
+        repo_root = tmp_path / "repo"
+        repo_root.mkdir()
+        (repo_root / ".git").mkdir()
+        plan_path = repo_root / "plan.yaml"
+
+        # Save the plan first to get its hash
+        hash_ = save_plan(sample_plan, plan_path)
+
+        # Patch _plan_path to return our temp path
+        with patch("vectl.mcp_server._plan_path", return_value=plan_path):
+            # Simulate backup failure
+            with patch("vectl.mcp_server._backup_definition") as mock_backup:
+                mock_backup.side_effect = OSError("Permission denied")
+                # Import and call the MCP server's _save_definition - should not raise
+                from vectl import mcp_server
+
+                # This should NOT raise even though backup fails
+                result = mcp_server._save_definition(sample_plan, hash_, recalc_locks=False)
+
+                # Result should be a string (the lock changes notice)
+                assert isinstance(result, str)
+
+
+class TestCorruptedBackupHandling:
+    """Tests for corrupted/unreadable/invalid backup file handling."""
+
+    def test_load_corrupted_yaml_backup(self, tmp_path: Path) -> None:
+        """Loading a backup with invalid YAML raises PlanIOError."""
+        backup_path = tmp_path / "plan.yaml.bak"
+
+        # Write corrupted YAML content - this is valid YAML but invalid plan structure
+        backup_path.write_text(
+            "project: test\n"
+            "phases:\n"
+            "  - name: Phase\n"
+            "    steps:\n"
+            "      - name: Step\n"
+            "        depends_on: [undefined!!]\n"  # Invalid YAML syntax - parse error
+        )
+
+        with pytest.raises(PlanIOError, match="Invalid"):
+            load_plan_definition(backup_path)
+
+    def test_load_invalid_plan_structure_backup(self, tmp_path: Path) -> None:
+        """Loading a backup with invalid plan structure raises PlanIOError."""
+        backup_path = tmp_path / "plan.yaml.bak"
+
+        # Write YAML that parses but has invalid plan structure
+        backup_path.write_text(
+            "project: test\nphases: 'not-a-list'\n"  # phases must be a list
+        )
+
+        with pytest.raises(PlanIOError, match="Invalid plan structure"):
+            load_plan_definition(backup_path)
+
+    def test_load_empty_backup_file(self, tmp_path: Path) -> None:
+        """Loading an empty backup file raises PlanIOError."""
+        backup_path = tmp_path / "plan.yaml.bak"
+        backup_path.write_text("")
+
+        with pytest.raises(PlanIOError, match="must be"):
+            load_plan_definition(backup_path)
+
+    def test_load_binary_backup_file(self, tmp_path: Path) -> None:
+        """Loading a binary backup file raises PlanIOError."""
+        backup_path = tmp_path / "plan.yaml.bak"
+        backup_path.write_bytes(b"\x00\x01\x02\x03\xff\xfe\xfd")
+
+        with pytest.raises((PlanIOError, UnicodeDecodeError)):
+            load_plan_definition(backup_path)
+
+    def test_recover_from_corrupted_backup(self, tmp_path: Path) -> None:
+        """Recovering from a corrupted backup raises PlanIOError."""
+        from vectl.core import recover_from_backup
+
+        plan_path = tmp_path / "plan.yaml"
+        backup_path = tmp_path / "plan.yaml.bak"
+
+        # Create a minimal valid plan first
+        plan = Plan(project="test", phases=[Phase(id="p1", name="P1", steps=[])])
+        save_plan(plan, plan_path)
+
+        # Write corrupted backup
+        backup_path.write_text("invalid: yaml content [[[")
+
+        with pytest.raises(PlanIOError, match="Invalid"):
+            recover_from_backup(plan_path, backup_path)
+
+    def test_recover_from_empty_backup(self, tmp_path: Path) -> None:
+        """Recovering from an empty backup raises PlanIOError."""
+        from vectl.core import recover_from_backup
+
+        plan_path = tmp_path / "plan.yaml"
+        backup_path = tmp_path / "plan.yaml.bak"
+
+        # Create a minimal valid plan first
+        plan = Plan(project="test", phases=[Phase(id="p1", name="P1", steps=[])])
+        save_plan(plan, plan_path)
+
+        # Write empty backup
+        backup_path.write_text("")
+
+        with pytest.raises(PlanIOError, match="must be|Invalid"):
+            recover_from_backup(plan_path, backup_path)
 
 
 class TestClipboardRoundTrip:
@@ -844,3 +1272,125 @@ class TestStateExtractionAndMerge:
         normalized = merge_plan(strip_state(original), extract_state(original))
 
         assert normalized == original
+
+
+class TestOrphanDetection:
+    """Tests for orphan state detection in detect_orphan_state()."""
+
+    def test_orphan_detect_extra_phase(self) -> None:
+        """State with extra phase key returns orphan entry."""
+        plan_def = Plan(
+            project="orphan-test",
+            phases=[
+                Phase(id="core", name="Core", steps=[Step(id="s1", name="Step 1")]),
+            ],
+        )
+        state = PlanState(
+            plan_id="orphan-test",
+            phases={
+                "core": PhaseState(status=PhaseStatus.PENDING),
+                # This phase doesn't exist in plan definition
+                "orphan_phase": PhaseState(status=PhaseStatus.DONE),
+            },
+            steps={
+                "s1": StepState(status=StepStatus.PENDING),
+            },
+        )
+
+        orphans = detect_orphan_state(plan_def, state)
+
+        assert len(orphans) == 1
+        assert orphans[0].kind == "phase"
+        assert orphans[0].id == "orphan_phase"
+        assert orphans[0].phase_id is None
+
+    def test_orphan_detect_extra_step(self) -> None:
+        """State with extra step key returns orphan entry."""
+        plan_def = Plan(
+            project="orphan-test",
+            phases=[
+                Phase(id="core", name="Core", steps=[Step(id="s1", name="Step 1")]),
+            ],
+        )
+        state = PlanState(
+            plan_id="orphan-test",
+            phases={
+                "core": PhaseState(status=PhaseStatus.PENDING),
+            },
+            steps={
+                "s1": StepState(status=StepStatus.PENDING),
+                # This step doesn't exist in plan definition
+                "orphan_step": StepState(status=StepStatus.CLAIMED, claimed_by="agent-x"),
+            },
+        )
+
+        orphans = detect_orphan_state(plan_def, state)
+
+        assert len(orphans) == 1
+        assert orphans[0].kind == "step"
+        assert orphans[0].id == "orphan_step"
+        assert orphans[0].phase_id is None
+
+    def test_orphan_detect_clean_state_no_warning(self) -> None:
+        """Clean state with no orphan entries returns empty list."""
+        plan_def = Plan(
+            project="orphan-test",
+            phases=[
+                Phase(
+                    id="core",
+                    name="Core",
+                    steps=[
+                        Step(id="s1", name="Step 1"),
+                        Step(id="s2", name="Step 2"),
+                    ],
+                ),
+                Phase(id="qa", name="QA", steps=[Step(id="s3", name="Step 3")]),
+            ],
+        )
+        state = PlanState(
+            plan_id="orphan-test",
+            phases={
+                "core": PhaseState(status=PhaseStatus.PENDING),
+                "qa": PhaseState(status=PhaseStatus.LOCKED),
+            },
+            steps={
+                "s1": StepState(status=StepStatus.PENDING),
+                "s2": StepState(status=StepStatus.CLAIMED, claimed_by="agent-a"),
+                "s3": StepState(status=StepStatus.PENDING),
+            },
+        )
+
+        orphans = detect_orphan_state(plan_def, state)
+
+        assert orphans == []
+
+    def test_orphan_detect_multiple_orphans(self) -> None:
+        """State with multiple orphan entries returns all of them."""
+        plan_def = Plan(
+            project="orphan-test",
+            phases=[
+                Phase(id="core", name="Core", steps=[Step(id="s1", name="Step 1")]),
+            ],
+        )
+        state = PlanState(
+            plan_id="orphan-test",
+            phases={
+                "core": PhaseState(status=PhaseStatus.PENDING),
+                "orphan_phase_1": PhaseState(status=PhaseStatus.DONE),
+                "orphan_phase_2": PhaseState(status=PhaseStatus.DONE),
+            },
+            steps={
+                "s1": StepState(status=StepStatus.PENDING),
+                "orphan_step_1": StepState(status=StepStatus.CLAIMED),
+                "orphan_step_2": StepState(status=StepStatus.DONE),
+            },
+        )
+
+        orphans = detect_orphan_state(plan_def, state)
+
+        assert len(orphans) == 4
+        orphan_ids = [(o.kind, o.id) for o in orphans]
+        assert ("phase", "orphan_phase_1") in orphan_ids
+        assert ("phase", "orphan_phase_2") in orphan_ids
+        assert ("step", "orphan_step_1") in orphan_ids
+        assert ("step", "orphan_step_2") in orphan_ids

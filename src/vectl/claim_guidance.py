@@ -19,7 +19,6 @@ from pydantic import BaseModel
 
 from vectl.models import AffinityMode, Phase, Plan, Step
 
-
 GUIDANCE_BEGIN: Final[str] = "--- VECTL:GUIDANCE:BEGIN ---"
 GUIDANCE_END: Final[str] = "--- VECTL:GUIDANCE:END ---"
 

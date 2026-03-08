@@ -1,6 +1,5 @@
 """Tests for core.3: DAG Validation."""
 
-import pytest
 
 from vectl.core import validate_plan
 from vectl.models import (
@@ -9,7 +8,6 @@ from vectl.models import (
     Plan,
     Step,
     StepStatus,
-    PlanValidationIssue,
 )
 
 

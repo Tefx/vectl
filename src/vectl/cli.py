@@ -20,6 +20,7 @@ from rich.text import Text
 
 from vectl import __version__
 from vectl.core import (
+    RecoverResult,
     add_phase,
     add_step,
     add_steps_bulk,
@@ -55,6 +56,9 @@ from vectl.dashboard import generate_dashboard
 from vectl.guide import GUIDE_ALL as _GUIDE_ALL
 from vectl.guide import GUIDE_TOPICS as _GUIDE_TOPICS
 from vectl.io import (
+    _backup_definition,
+    _resolve_git_dir,
+    detect_orphan_state,
     extract_state,
     load_plan_definition,
     load_state,
@@ -182,7 +186,20 @@ def _load(plan_path: Path | None) -> tuple[Plan, str, str, Path]:
         or bool(state.plan_id)
     )
     if state_hash and has_state:
-        return merge_plan(plan_def, state), def_hash, state_hash, target
+        merged = merge_plan(plan_def, state)
+
+        # Detect orphan state entries and warn (but don't block load)
+        orphans = detect_orphan_state(plan_def, state)
+        if orphans:
+            print("Warning: orphan state entries detected:", file=sys.stderr)
+            for o in orphans:
+                if o.kind == "phase":
+                    print(f"  - Phase '{o.id}' in state but not in plan", file=sys.stderr)
+                elif o.kind == "step":
+                    print(f"  - Step '{o.id}' in state but not in plan", file=sys.stderr)
+            print("Run 'vectl recover' to clean up ghost state", file=sys.stderr)
+
+        return merged, def_hash, state_hash, target
 
     return plan_def, def_hash, "", target
 
@@ -230,6 +247,14 @@ def _save_definition(plan: Plan, plan_path: Path, expected_def_hash: str) -> Non
             "Re-read with `vectl status` or `vectl show`, then retry your mutation."
         )
 
+    # Create backup after successful save (non-blocking)
+    try:
+        _backup_definition(plan_path)
+    except OSError as e:
+        import sys
+
+        print(f"Warning: backup failed: {e}", file=sys.stderr)
+
     notice = format_lock_changes(changed_ids, plan)
     if notice:
         print(notice)
@@ -264,6 +289,14 @@ def _save_both(
             "CAS conflict: plan.yaml was modified by another process since you loaded it. "
             "Re-read with `vectl status` or `vectl show`, then retry your mutation."
         )
+
+    # Create backup after successful definition save (non-blocking)
+    try:
+        _backup_definition(plan_path)
+    except OSError as e:
+        import sys
+
+        print(f"Warning: backup failed: {e}", file=sys.stderr)
 
     notice = format_lock_changes(changed_ids, plan)
     if notice:
@@ -1432,10 +1465,14 @@ def validate(
     check_refs: bool = typer.Option(False, "--check-refs", help="Check that ref files exist."),
 ) -> None:
     """Validate plan structure and consistency."""
-    p, _, _, plan_path = _load(plan)
+    p, _, state_hash, plan_path = _load(plan)
+    state_path = resolve_state_path(plan_path)
+    state, _ = load_state(state_path)
 
     base_path = plan_path.parent if check_refs else None
-    errors = validate_plan(p, check_refs=check_refs, base_path=base_path)
+    errors = validate_plan(
+        p, check_refs=check_refs, base_path=base_path, state=state if state_hash else None
+    )
 
     if not errors:
         out.print("[green bold]✓ Plan is valid.[/]")
@@ -1457,6 +1494,62 @@ def validate(
 
     if errs:
         raise typer.Exit(1)
+
+
+@app.command()
+def recover(
+    plan: Path | None = PlanOption,
+    yes: bool = typer.Option(False, "--yes", "-y", help="Skip confirmation prompt."),
+) -> None:
+    """Recover plan from backup in .git/vectl/plan.yaml.bak.
+
+    Restores the plan to a previous state from the backup file.
+    Shows a diff of what will change before applying.
+    """
+    from vectl.core import apply_recovery, preview_recovery
+
+    p, _, _, plan_path = _load(plan)
+
+    # Find backup path
+    git_dir = _resolve_git_dir(plan_path)
+    if git_dir is None:
+        _die("Not in a git repository or in a linked worktree")
+
+    assert git_dir is not None  # Type narrowing for pyright
+    backup_path = git_dir / "vectl" / "plan.yaml.bak"
+    if not backup_path.exists():
+        _die(f"Backup not found: {backup_path}")
+
+    # Preview diff without writing
+    result: RecoverResult | None = None
+    try:
+        result = preview_recovery(plan_path, backup_path)
+    except PlanError as e:
+        _die(str(e))
+    except PlanIOError as e:
+        _die(str(e))
+
+    assert result is not None
+    out.print("[bold]Recovery diff:[/]")
+    out.print(result.diff_summary)
+    diff_output = result.diff_summary
+
+    if not yes:
+        out.print()
+        confirm = typer.prompt("Restore plan.yaml from backup? (y/N)", default="n")
+        if confirm.lower() != "y":
+            out.print("[yellow]Cancelled.[/]")
+            return
+
+    try:
+        apply_recovery(backup_path, plan_path)
+    except PlanError as e:
+        _die(str(e))
+    except PlanIOError as e:
+        _die(str(e))
+
+    out.print("[green]Plan restored from backup.[/]")
+    out.print(diff_output)
 
 
 @app.command()

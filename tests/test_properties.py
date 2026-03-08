@@ -10,13 +10,10 @@ dependencies.
 
 from __future__ import annotations
 
-import copy
-
 from hypothesis import settings
 from hypothesis.stateful import Bundle, RuleBasedStateMachine, rule
 
 from vectl.core import (
-    auto_unlock_phases,
     claim_step,
     complete_step,
     defer_step,

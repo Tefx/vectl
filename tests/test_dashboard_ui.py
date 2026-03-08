@@ -6,14 +6,9 @@ Run with: uv run pytest -m playwright tests/test_dashboard_ui.py -v
 Source: RFC-dashboard.md
 """
 
-import pytest
-
-# Mark all tests as Playwright tests so they don't run in normal pytest
-pytestmark = pytest.mark.playwright
-
-# Import after marking to allow pytest to collect properly
 from pathlib import Path
 
+import pytest
 from playwright.sync_api import Page, expect
 
 from vectl.dashboard import generate_dashboard
@@ -25,6 +20,9 @@ from vectl.models import (
     Step,
     StepStatus,
 )
+
+# Mark all tests as Playwright tests so they don't run in normal pytest
+pytestmark = pytest.mark.playwright
 
 
 def create_rich_test_plan() -> Plan:
@@ -77,7 +75,12 @@ def create_rich_test_plan() -> Plan:
                         id="in-progress-phase.1",
                         name="Claimed Step",
                         status=StepStatus.CLAIMED,
-                        description="A step that's been claimed\n- [x] analyzed\n- [ ] implemented\n- [ ] tested",
+                        description=(
+                            "A step that's been claimed\n"
+                            "- [x] analyzed\n"
+                            "- [ ] implemented\n"
+                            "- [ ] tested"
+                        ),
                         verification="pytest -v",
                         depends_on=[],
                         agent="engineer",

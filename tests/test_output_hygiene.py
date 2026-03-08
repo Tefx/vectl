@@ -6,13 +6,14 @@ Ensures that user-supplied text containing Rich markup-like characters
 
 from __future__ import annotations
 
-import pytest
 from pathlib import Path
+
+import pytest
 from typer.testing import CliRunner
 
 from vectl.cli import app
 from vectl.io import save_plan
-from vectl.models import Phase, PhaseStatus, Plan, Step, StepStatus
+from vectl.models import Phase, PhaseStatus, Plan, Step
 
 runner = CliRunner()
 

@@ -2,7 +2,8 @@
 
 Covers:
   - Model: Step.agent default + serialization
-  - Core: get_next_steps agent prioritization, add_step with agent, edit_step with agent, add_steps_bulk
+  - Core: get_next_steps agent prioritization, add_step with agent, edit_step
+    with agent, add_steps_bulk
   - CLI: next --agent, show displays agent, add-step --agent, edit-step --agent
   - MCP: vectl_status, vectl_show, vectl_mutate (add-step/edit-step), vectl_claim auto-select
 """
@@ -18,12 +19,18 @@ import yaml
 from typer.testing import CliRunner
 
 from vectl.cli import app
-from vectl.core import add_step, add_steps_bulk, edit_step, get_next_steps, _SENTINEL
+from vectl.core import add_step, add_steps_bulk, edit_step, get_next_steps
 from vectl.io import load_plan, save_plan
 from vectl.mcp_server import (
     vectl_claim as _vectl_claim_tool,
+)
+from vectl.mcp_server import (
     vectl_mutate as _vectl_mutate_tool,
+)
+from vectl.mcp_server import (
     vectl_show as _vectl_show_tool,
+)
+from vectl.mcp_server import (
     vectl_status as _vectl_status_tool,
 )
 from vectl.models import Phase, PhaseStatus, Plan, Step, StepStatus
@@ -242,7 +249,7 @@ class TestAddStepsBulkAgent:
             project="t",
             phases=[Phase(id="p1", name="P1")],
         )
-        steps = [
+        steps: list[dict[str, object]] = [
             {"name": "Step A", "agent": "alice"},
             {"name": "Step B", "agent": "bob"},
             {"name": "Step C"},

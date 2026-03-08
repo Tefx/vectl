@@ -1,6 +1,5 @@
 """Tests for diff_plans (ho.2: plan change detection)."""
 
-import pytest
 
 from vectl.core import diff_plans
 from vectl.models import (

@@ -415,10 +415,10 @@ class TestWorktreeDetection:
             raise AssertionError(f"Unexpected command: {cmd}")
 
         with patch("vectl.plan_path.subprocess.run", side_effect=mock_run):
-            is_linked, main_root = is_linked_worktree()
+            is_linked, resolved_main_root = is_linked_worktree()
 
         assert is_linked is True
-        assert main_root == (tmp_path / "main").resolve()
+        assert resolved_main_root == (tmp_path / "main").resolve()
 
     def test_is_linked_worktree_returns_false_in_main_worktree(
         self,

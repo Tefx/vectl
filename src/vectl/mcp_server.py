@@ -70,6 +70,9 @@ from vectl.core import (
     upsert_agents_md,
 )
 from vectl.io import (
+    _backup_definition,
+    _resolve_git_dir,
+    detect_orphan_state,
     extract_state,
     load_plan_definition,
     load_state,
@@ -136,6 +139,8 @@ def _load() -> tuple[Plan, str, str]:
     Returns:
         (merged_plan, definition_hash, state_hash)
     """
+    import logging
+
     plan_path = _plan_path()
     plan_def, def_hash = load_plan_definition(plan_path)
 
@@ -149,7 +154,20 @@ def _load() -> tuple[Plan, str, str]:
         or bool(state.plan_id)
     )
     if state_hash and has_state:
-        return merge_plan(plan_def, state), def_hash, state_hash
+        merged = merge_plan(plan_def, state)
+
+        # Detect orphan state entries and log notice (but don't block load)
+        orphans = detect_orphan_state(plan_def, state)
+        if orphans:
+            logger = logging.getLogger("vectl.mcp")
+            for o in orphans:
+                if o.kind == "phase":
+                    logger.warning("Orphan phase '%s' in state but not in plan", o.id)
+                elif o.kind == "step":
+                    logger.warning("Orphan step '%s' in state but not in plan", o.id)
+            logger.warning("Run 'vectl recover' to clean up ghost state")
+
+        return merged, def_hash, state_hash
 
     # Legacy mode: no state document yet.
     return plan_def, def_hash, ""
@@ -190,13 +208,24 @@ def _save_definition(plan: Plan, expected_def_hash: str, *, recalc_locks: bool =
         changed = recalc_lock_status(plan)
 
     stripped = strip_state(plan)
+    plan_path = _plan_path()
     try:
-        save_plan(stripped, _plan_path(), expected_def_hash)
+        save_plan(stripped, plan_path, expected_def_hash)
     except CASConflictError as err:
         raise PlanError(
             "CAS conflict: plan.yaml was modified by another process since you loaded it. "
             "Re-read with `vectl_status` or `vectl_show`, then retry your mutation."
         ) from err
+
+    # Create backup after successful save (non-blocking)
+    try:
+        _backup_definition(plan_path)
+    except OSError:
+        # Log via standard logging, backup failure should not block save
+        import logging
+
+        logging.warning("Backup failed", exc_info=True)
+
     return format_lock_changes(changed, plan)
 
 
@@ -343,23 +372,23 @@ def vectl_show(id: str) -> str:
         return "\n".join(lines)
 
     # Try phase
-    phase = plan.find_phase(id)
-    if phase:
+    phase_obj = plan.find_phase(id)
+    if phase_obj:
         lines = [
-            f"## Phase: {phase.id}",
-            f"**Name:** {phase.name}",
-            f"**Status:** {_STATUS_ICON.get(phase.status, '?')} {phase.status.value}",
+            f"## Phase: {phase_obj.id}",
+            f"**Name:** {phase_obj.name}",
+            f"**Status:** {_STATUS_ICON.get(phase_obj.status, '?')} {phase_obj.status.value}",
         ]
-        if phase.depends_on:
-            lines.append(f"**Depends on:** {', '.join(phase.depends_on)}")
-        if phase.context:
-            lines.append(f"**Context:** {phase.context}")
-        if phase.gate:
-            lines.append(f"**Gate:** {phase.gate}")
-        if phase.steps:
+        if phase_obj.depends_on:
+            lines.append(f"**Depends on:** {', '.join(phase_obj.depends_on)}")
+        if phase_obj.context:
+            lines.append(f"**Context:** {phase_obj.context}")
+        if phase_obj.gate:
+            lines.append(f"**Gate:** {phase_obj.gate}")
+        if phase_obj.steps:
             lines.append("\n### Steps\n")
-            for step in phase.steps:
-                lines.append(_fmt_step(plan, step, phase.id))
+            for step in phase_obj.steps:
+                lines.append(_fmt_step(plan, step, phase_obj.id))
         return "\n".join(lines)
 
     return f"**Error:** '{id}' not found as step or phase."
@@ -1534,6 +1563,62 @@ def vectl_check(
     if lock_notice:
         return f"**Updated checklist:** {step_id}\n\n{lock_notice}"
     return f"**Updated checklist:** {step_id}"
+
+
+# ---------------------------------------------------------------------------
+# Tool 15: vectl_recover
+# ---------------------------------------------------------------------------
+
+
+@mcp.tool(
+    description=(
+        "Recover plan from a backup file in .git/vectl/plan.yaml.bak. "
+        "Use this to restore the plan to a previous state after unwanted changes. "
+        "Returns a diff showing what changed."
+    ),
+)
+def vectl_recover() -> dict:
+    """Recover plan from backup.
+
+    Attempts to restore plan.yaml from .git/vectl/plan.yaml.bak.
+    Returns diff summary and confirmation.
+
+    Returns:
+        Dict with recovery result details.
+    """
+    from vectl.core import apply_recovery, preview_recovery
+
+    plan_file = _plan_path()
+
+    # Find backup path
+    git_dir = _resolve_git_dir(plan_file)
+    if git_dir is None:
+        return {
+            "ok": False,
+            "restored": False,
+            "diff_summary": "",
+            "error": "Not in a git repository or in a linked worktree",
+        }
+
+    backup_path = git_dir / "vectl" / "plan.yaml.bak"
+
+    try:
+        result = preview_recovery(plan_file, backup_path)
+        apply_recovery(backup_path, plan_file)
+    except Exception as e:
+        return {
+            "ok": False,
+            "restored": False,
+            "diff_summary": "",
+            "error": str(e),
+        }
+
+    return {
+        "ok": result.ok,
+        "restored": True,
+        "diff_summary": result.diff_summary,
+        "error": result.error,
+    }
 
 
 # ---------------------------------------------------------------------------

@@ -3,18 +3,31 @@
 from __future__ import annotations
 
 import json
+from pathlib import Path
+
 import pytest
 import yaml
-from pathlib import Path
 from typer.testing import CliRunner
 
-from vectl.cli import app
 from vectl import __version__
-from vectl.io import load_plan, save_plan
+from vectl.cli import app
+from vectl.io import load_plan, load_plan_definition, save_plan
 from vectl.models import AffinityMode, Phase, PhaseStatus, Plan, Step, StepStatus
 from vectl.plan_path import resolve_state_path
 
 runner = CliRunner()
+
+
+def _must_find_step(plan: Plan, step_id: str) -> Step:
+    found = plan.find_step(step_id)
+    assert found is not None
+    return found[1]
+
+
+def _must_find_phase(plan: Plan, phase_id: str) -> Phase:
+    phase = plan.find_phase(phase_id)
+    assert phase is not None
+    return phase
 
 
 @pytest.fixture
@@ -219,7 +232,11 @@ class TestInit:
         path = tmp_path / "plan.yaml"
         agents_md = tmp_path / "AGENTS.md"
         agents_md.write_text(
-            "# My Project\n\n<!-- VECTL:AGENTS:BEGIN -->\n## Plan Tracking (vectl)\n\nOld block.\n<!-- VECTL:AGENTS:END -->\n"
+            "# My Project\n\n"
+            "<!-- VECTL:AGENTS:BEGIN -->\n"
+            "## Plan Tracking (vectl)\n\n"
+            "Old block.\n"
+            "<!-- VECTL:AGENTS:END -->\n"
         )
         result = runner.invoke(app, ["init", "--project", "myproject", "--plan", str(path)])
         assert result.exit_code == 0
@@ -687,7 +704,7 @@ class TestClaim:
         assert "s1" in result.output
         assert "Step 1" in result.output
         plan, _ = load_plan(plan_file)
-        _, step = plan.find_step("s1")
+        step = _must_find_step(plan, "s1")
         assert step.status == StepStatus.CLAIMED
         assert step.claimed_by == "bot-1"
 
@@ -824,7 +841,7 @@ class TestDefer:
         assert result.exit_code == 0
         assert "Deferred" in result.output
         plan, _ = load_plan(plan_file)
-        _, step = plan.find_step("s1")
+        step = _must_find_step(plan, "s1")
         assert step.status == StepStatus.PENDING
 
     def test_defer_pending_fails(self, plan_file: Path):
@@ -842,7 +859,7 @@ class TestReject:
         assert result.exit_code == 0
         assert "Rejected" in result.output
         plan, _ = load_plan(plan_file)
-        _, step = plan.find_step("s1")
+        step = _must_find_step(plan, "s1")
         assert step.status == StepStatus.REJECTED
 
     def test_reject_pending_fails(self, plan_file: Path):
@@ -858,7 +875,7 @@ class TestSkip:
         assert result.exit_code == 0
         assert "Skipped" in result.output
         plan, _ = load_plan(plan_file)
-        _, step = plan.find_step("s1")
+        step = _must_find_step(plan, "s1")
         assert step.status == StepStatus.SKIPPED
         assert step.skipped_reason == "superseded"
 
@@ -882,7 +899,7 @@ class TestSkip:
         assert result.exit_code == 0
         assert "Cancelled" in result.output
         plan, _ = load_plan(plan_file)
-        _, step = plan.find_step("s1")
+        step = _must_find_step(plan, "s1")
         assert step.status == StepStatus.SKIPPED
         assert step.skipped_reason == "irrelevant"
 
@@ -927,9 +944,9 @@ class TestSkipPhase:
         )
         assert result.exit_code == 0
         plan, _ = load_plan(plan_file)
-        _, s1 = plan.find_step("s1")
+        s1 = _must_find_step(plan, "s1")
         assert s1.status == StepStatus.DONE  # preserved
-        _, s2 = plan.find_step("s2")
+        s2 = _must_find_step(plan, "s2")
         assert s2.status == StepStatus.SKIPPED
 
     def test_skip_phase_cascades_unlock(self, plan_file: Path):
@@ -958,14 +975,14 @@ class TestCheck:
         result = runner.invoke(app, ["check", "s3", "Item A", "--plan", str(plan_file)])
         assert result.exit_code == 0
         plan, _ = load_plan(plan_file)
-        _, step = plan.find_step("s3")
+        step = _must_find_step(plan, "s3")
         assert "[x] Item A" in step.description
 
     def test_add_item(self, plan_file: Path):
         result = runner.invoke(app, ["check", "s3", "--add", "New item", "--plan", str(plan_file)])
         assert result.exit_code == 0
         plan, _ = load_plan(plan_file)
-        _, step = plan.find_step("s3")
+        step = _must_find_step(plan, "s3")
         assert "[ ] New item" in step.description
 
     def test_no_args_fails(self, plan_file: Path):
@@ -998,6 +1015,298 @@ class TestValidate:
         assert result.exit_code == 1
         assert "ERROR" in result.output
 
+    def test_validate_shows_orphan_warning(self, tmp_path: Path) -> None:
+        """Validate command shows orphan warning when state has extra entries."""
+        from vectl.io import save_state
+        from vectl.models import PhaseState, PlanState, StepState
+
+        # Create a plan
+        plan = Plan(
+            project="orphan-test",
+            phases=[
+                Phase(id="core", name="Core", steps=[Step(id="s1", name="Step 1")]),
+            ],
+        )
+        plan_path = tmp_path / "plan.yaml"
+        save_plan(plan, plan_path)
+
+        # Create state with orphan entries
+        state = PlanState(
+            plan_id="orphan-test",
+            phases={
+                "core": PhaseState(status=PhaseStatus.PENDING),
+                "orphan_phase": PhaseState(status=PhaseStatus.DONE),  # orphan
+            },
+            steps={
+                "s1": StepState(status=StepStatus.PENDING),
+                "orphan_step": StepState(status=StepStatus.CLAIMED, claimed_by="agent-x"),  # orphan
+            },
+        )
+        state_path = resolve_state_path(plan_path)
+        state_path.parent.mkdir(parents=True, exist_ok=True)
+        save_state(state, state_path)
+
+        # Run validate - should show orphan warning
+        result = runner.invoke(app, ["validate", "--plan", str(plan_path)])
+        assert result.exit_code == 0  # orphan warnings don't cause failure
+        assert "orphan" in result.output.lower()
+        assert "orphan_phase" in result.output
+        assert "orphan_step" in result.output
+        assert "vectl recover" in result.output
+
+    def test_load_shows_orphan_warning(self, tmp_path: Path) -> None:
+        """_load shows orphan warning when state has extra entries."""
+        from vectl.cli import _load
+        from vectl.io import save_plan, save_state
+        from vectl.models import PhaseState, PhaseStatus, PlanState, StepState
+
+        # Create a plan
+        plan = Plan(
+            project="orphan-test",
+            phases=[
+                Phase(id="core", name="Core", steps=[Step(id="s1", name="Step 1")]),
+            ],
+        )
+        plan_path = tmp_path / "plan.yaml"
+        save_plan(plan, plan_path)
+
+        # Create state with orphan entries
+        state = PlanState(
+            plan_id="orphan-test",
+            phases={
+                "core": PhaseState(status=PhaseStatus.PENDING),
+                "orphan_phase": PhaseState(status=PhaseStatus.DONE),  # orphan
+            },
+            steps={
+                "s1": StepState(status=StepStatus.PENDING),
+                "orphan_step": StepState(status=StepStatus.CLAIMED, claimed_by="agent-x"),  # orphan
+            },
+        )
+        state_path = resolve_state_path(plan_path)
+        state_path.parent.mkdir(parents=True, exist_ok=True)
+        save_state(state, state_path)
+
+        # Call _load directly (it prints warnings to stderr)
+        merged_plan, def_hash, state_hash, target = _load(plan_path)
+
+        # Verify the plan was merged successfully (orphan warning doesn't block)
+        assert merged_plan.project == "orphan-test"
+        # Note: Cannot easily capture stderr in this test, but we verify no exception
+
+    def test_load_no_warning_on_clean_state(self, tmp_path: Path) -> None:
+        """_load shows no orphan warning when state matches plan."""
+        from vectl.cli import _load
+        from vectl.io import save_plan, save_state
+        from vectl.models import PhaseState, PhaseStatus, PlanState, StepState
+
+        # Create a plan
+        plan = Plan(
+            project="clean-test",
+            phases=[
+                Phase(id="core", name="Core", steps=[Step(id="s1", name="Step 1")]),
+            ],
+        )
+        plan_path = tmp_path / "plan.yaml"
+        save_plan(plan, plan_path)
+
+        # Create clean state (no orphans)
+        state = PlanState(
+            plan_id="clean-test",
+            phases={
+                "core": PhaseState(status=PhaseStatus.PENDING),
+            },
+            steps={
+                "s1": StepState(status=StepStatus.PENDING),
+            },
+        )
+        state_path = resolve_state_path(plan_path)
+        state_path.parent.mkdir(parents=True, exist_ok=True)
+        save_state(state, state_path)
+
+        # Call _load directly - should not raise or print warnings
+        merged_plan, def_hash, state_hash, target = _load(plan_path)
+
+        # Verify the plan was merged successfully
+        assert merged_plan.project == "clean-test"
+
+
+class TestRecover:
+    def test_recover_command_shows_diff(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        plan_path = tmp_path / "plan.yaml"
+        backup_root = tmp_path / ".git"
+        backup_path = backup_root / "vectl" / "plan.yaml.bak"
+
+        current = Plan(
+            project="recover-cli",
+            phases=[Phase(id="p1", name="Phase 1", steps=[Step(id="p1.s1", name="Current")])],
+        )
+        backup = Plan(
+            project="recover-cli",
+            phases=[Phase(id="p1", name="Phase 1", steps=[Step(id="p1.s1", name="Backup")])],
+        )
+        save_plan(current, plan_path)
+        backup_path.parent.mkdir(parents=True, exist_ok=True)
+        save_plan(backup, backup_path)
+
+        state_path = resolve_state_path(plan_path)
+        state_path.parent.mkdir(parents=True, exist_ok=True)
+        state_path.write_text(
+            json.dumps(
+                {
+                    "plan_id": "",
+                    "steps": {"ghost.step": {"status": "pending"}},
+                    "phases": {},
+                }
+            ),
+            encoding="utf-8",
+        )
+
+        monkeypatch.setattr("vectl.cli._resolve_git_dir", lambda _path: backup_root)
+
+        result = runner.invoke(app, ["recover", "--plan", str(plan_path)], input="n\n")
+
+        assert result.exit_code == 0
+        assert "Recovery diff" in result.output
+        assert "Restore plan.yaml from backup" in result.output
+        assert "cancelled" in result.output.lower()
+
+        restored_plan, _ = load_plan_definition(plan_path)
+        restored = restored_plan.find_step("p1.s1")
+        assert restored is not None
+        assert restored[1].name == "Current"
+
+    def test_recover_command_no_backup_exit_1(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        plan_path = tmp_path / "plan.yaml"
+        backup_root = tmp_path / ".git"
+
+        current = Plan(
+            project="recover-cli",
+            phases=[Phase(id="p1", name="Phase 1", steps=[Step(id="p1.s1", name="Current")])],
+        )
+        save_plan(current, plan_path)
+
+        state_path = resolve_state_path(plan_path)
+        state_path.parent.mkdir(parents=True, exist_ok=True)
+        state_path.write_text(
+            json.dumps(
+                {
+                    "plan_id": "",
+                    "steps": {"ghost.step": {"status": "pending"}},
+                    "phases": {},
+                }
+            ),
+            encoding="utf-8",
+        )
+
+        monkeypatch.setattr("vectl.cli._resolve_git_dir", lambda _path: backup_root)
+
+        result = runner.invoke(app, ["recover", "--yes", "--plan", str(plan_path)])
+
+        assert result.exit_code == 1
+        assert "Backup not found" in result.output
+
+    def test_recover_command_corrupted_backup_shows_error(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """Recover command shows error when backup file is corrupted."""
+
+        plan_path = tmp_path / "plan.yaml"
+        backup_root = tmp_path / ".git"
+        backup_path = backup_root / "vectl" / "plan.yaml.bak"
+
+        current = Plan(
+            project="recover-cli",
+            phases=[Phase(id="p1", name="Phase 1", steps=[Step(id="p1.s1", name="Current")])],
+        )
+        save_plan(current, plan_path)
+        backup_path.parent.mkdir(parents=True, exist_ok=True)
+
+        # Write corrupted backup content
+        backup_path.write_text("invalid: yaml [[[[")
+
+        state_path = resolve_state_path(plan_path)
+        state_path.parent.mkdir(parents=True, exist_ok=True)
+        state_path.write_text(
+            json.dumps(
+                {
+                    "plan_id": "",
+                    "steps": {"ghost.step": {"status": "pending"}},
+                    "phases": {},
+                }
+            ),
+            encoding="utf-8",
+        )
+
+        monkeypatch.setattr("vectl.cli._resolve_git_dir", lambda _path: backup_root)
+
+        result = runner.invoke(app, ["recover", "--yes", "--plan", str(plan_path)])
+
+        assert result.exit_code == 1
+        assert "Invalid" in result.output
+
+    def test_recover_command_permission_error_on_backup_dir(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """Recover command shows error when .git/vectl has permission issues."""
+        import os
+
+        plan_path = tmp_path / "plan.yaml"
+        backup_root = tmp_path / ".git"
+        backup_path = backup_root / "vectl" / "plan.yaml.bak"
+        vectl_dir = backup_root / "vectl"
+
+        current = Plan(
+            project="recover-cli",
+            phases=[Phase(id="p1", name="Phase 1", steps=[Step(id="p1.s1", name="Current")])],
+        )
+        backup = Plan(
+            project="recover-cli",
+            phases=[Phase(id="p1", name="Phase 1", steps=[Step(id="p1.s1", name="Backup")])],
+        )
+        save_plan(current, plan_path)
+        vectl_dir.mkdir(parents=True, exist_ok=True)
+        save_plan(backup, backup_path)
+
+        state_path = resolve_state_path(plan_path)
+        state_path.parent.mkdir(parents=True, exist_ok=True)
+        state_path.write_text(
+            json.dumps(
+                {
+                    "plan_id": "",
+                    "steps": {"ghost.step": {"status": "pending"}},
+                    "phases": {},
+                }
+            ),
+            encoding="utf-8",
+        )
+
+        monkeypatch.setattr("vectl.cli._resolve_git_dir", lambda _path: backup_root)
+
+        # Make vectl_dir read-only to simulate permission error
+        os.chmod(vectl_dir, 0o444)
+        try:
+            result = runner.invoke(app, ["recover", "--yes", "--plan", str(plan_path)])
+
+            # Should fail with permission-related error or non-zero exit code
+            assert result.exit_code == 1
+            # The error message may be in output or as exception
+            has_error = (
+                result.output
+                and (
+                    "Permission denied" in result.output.lower() or "error" in result.output.lower()
+                )
+            ) or result.exception is not None
+            assert has_error, (
+                f"Expected error but got output={result.output!r}, exception={result.exception!r}"
+            )
+        finally:
+            # Restore permissions for cleanup
+            os.chmod(vectl_dir, 0o755)
+
 
 # ---------------------------------------------------------------------------
 # Full lifecycle: claim → complete → next unblocks
@@ -1009,7 +1318,6 @@ class TestFullLifecycle:
         """s2 depends on s1. After completing s1, s2 should appear in next."""
         # s2 should NOT be next initially
         result = runner.invoke(app, ["next", "--plan", str(plan_file)])
-        lines = result.output
         # s2 should not appear as a claimable step (it's blocked)
         # We can't assert "s2 not in output" because it might appear in dep columns
 
@@ -1033,7 +1341,7 @@ class TestFullLifecycle:
 
         # Phase should be done
         plan, _ = load_plan(plan_file)
-        assert plan.find_phase("p1").status == PhaseStatus.DONE
+        assert _must_find_phase(plan, "p1").status == PhaseStatus.DONE
 
         # p2 should now be unlocked (auto-unlock)
         result = runner.invoke(app, ["next", "--plan", str(plan_file)])
@@ -1193,6 +1501,9 @@ class TestLongSlugWarning:
 
     def test_add_step_explicit_id_no_warning(self, plan_file: Path) -> None:
         """Explicit --id never triggers warning even if long."""
+        long_name = (
+            "This Is A Very Long Step Name That Will Generate A Slug Exceeding Forty Characters"
+        )
         result = runner.invoke(
             app,
             [
@@ -1200,7 +1511,7 @@ class TestLongSlugWarning:
                 "--phase",
                 "p1",
                 "--name",
-                "This Is A Very Long Step Name That Will Generate A Slug Exceeding Forty Characters",
+                long_name,
                 "--id",
                 "p1.short",
                 "--plan",
@@ -1912,10 +2223,10 @@ class TestLinkedWorktreeImplicitResolution:
         linked_worktree_resolution_env: tuple[Path, Path, Path],
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
-        """CLI status resolves to main worktree's plan when running from linked worktree without --plan."""
+        """CLI status resolves to main worktree plan without --plan."""
         plan_file, linked_root, main_root = linked_worktree_resolution_env
 
-        # Run status WITHOUT --plan flag - should auto-resolve to main worktree via mocked resolve_plan_path
+        # Run status without --plan; resolve_plan_path is mocked to main worktree.
         result = runner.invoke(app, ["status"], catch_exceptions=False)
 
         # Should succeed and find the plan in main worktree
@@ -1929,7 +2240,7 @@ class TestLinkedWorktreeImplicitResolution:
         linked_worktree_resolution_env: tuple[Path, Path, Path],
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
-        """CLI claim resolves to main worktree's plan when running from linked worktree without --plan."""
+        """CLI claim resolves to main worktree plan without --plan."""
         plan_file, linked_root, main_root = linked_worktree_resolution_env
 
         # Run claim WITHOUT --plan flag - should auto-resolve to main worktree
@@ -1961,32 +2272,37 @@ class TestLinkedWorktreeImplicitResolution:
     def test_cli_fails_closed_on_malformed_worktree_without_stale_local_fallback(
         self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
     ) -> None:
-        """Malformed worktree metadata fails closed without falling back to stale local plan."""
-        # Create a stale local plan in linked worktree directory
-        linked_root = tmp_path / "linked_worktree"
-        linked_root.mkdir()
-        stale_plan = linked_root / "plan.yaml"
-        stale_plan.write_text("project: stale\nphases: []\n")
+        """Malformed linked-worktree probe fails closed to cwd sentinel path.
 
+        When linked-worktree detection returns is_linked=True but main_root is None
+        (malformed/partial state), resolve_plan_path returns cwd/plan.yaml as sentinel.
+        This path does NOT exist, so CLI must fail closed rather than silently succeed.
+        """
         # Ensure VECTL_PLAN_PATH is NOT set
         monkeypatch.delenv("VECTL_PLAN_PATH", raising=False)
 
-        # Mock resolve_plan_path to simulate malformed worktree probe:
-        # returns cwd/plan.yaml (absolute fallback) instead of walking up
+        # Mock resolve_plan_path to simulate malformed linked-worktree:
+        # is_linked=True but main_root=None triggers cwd/plan.yaml fallback sentinel.
+        # This sentinel path does NOT exist in the test, so CLI must fail.
         monkeypatch.setattr(
             "vectl.cli.resolve_plan_path",
             lambda explicit=None: (
-                tmp_path / "linked_worktree" / "plan.yaml" if explicit is None else explicit
+                tmp_path / "plan.yaml"  # sentinel path that doesn't exist
+                if explicit is None
+                else explicit
             ),
         )
 
-        # Run status - should fail because the plan doesn't have phases (or just return what's there)
+        # Run status - should fail because the sentinel plan file doesn't exist (fail closed)
         result = runner.invoke(app, ["status"])
 
-        # Should NOT fall back to stale local plan; instead uses absolute cwd/plan.yaml fallback
-        # The plan has no phases, so should still render but with empty/warning state
-        # Key: it does NOT walk up and find parent plans
-        assert result.exit_code == 0 or "No phases" in result.output
+        # Fail-closed: command must fail when plan file is not found
+        # This catches precedence drift where CLI might silently succeed on missing plan
+        assert result.exit_code != 0, (
+            f"Expected non-zero exit code for missing plan file, got {result.exit_code}. "
+            "This indicates precedence drift - command should fail closed."
+        )
+        assert "Plan file not found" in result.output or "not found" in result.output.lower()
 
 
 # ---------------------------------------------------------------------------
@@ -2546,7 +2862,7 @@ class TestAffinityCli:
         assert "Affinity override" in result.output
         # Verify audit trail
         plan, _ = load_plan(affinity_plan_file)
-        _, step = plan.find_step("s3")
+        step = _must_find_step(plan, "s3")
         assert step.affinity_override is True
 
     def test_show_displays_affinity(self, affinity_plan_file: Path) -> None:

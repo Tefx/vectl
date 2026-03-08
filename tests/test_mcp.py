@@ -7,38 +7,69 @@ pointing to a temporary plan file.
 
 from __future__ import annotations
 
-import os
 import json
+import os
 import subprocess
 from collections.abc import Iterator
 from pathlib import Path
 
-from vectl.io import extract_state, load_state, merge_plan
-from vectl.models import Plan
-from vectl.plan_path import resolve_state_path
-
 import pytest
 import yaml
 
+from vectl.io import extract_state, load_state, merge_plan
 from vectl.mcp_server import (
     _load as _vectl_load,
+)
+from vectl.mcp_server import (
     _save_both as _vectl_save_both,
+)
+from vectl.mcp_server import (
     _save_state as _vectl_save_state,
-    vectl_claim as _vectl_claim_tool,
+)
+from vectl.mcp_server import (
     vectl_check as _vectl_check_tool,
+)
+from vectl.mcp_server import (
+    vectl_claim as _vectl_claim_tool,
+)
+from vectl.mcp_server import (
     vectl_clipboard as _vectl_clipboard_tool,
+)
+from vectl.mcp_server import (
     vectl_complete as _vectl_complete_tool,
+)
+from vectl.mcp_server import (
     vectl_dag as _vectl_dag_tool,
+)
+from vectl.mcp_server import (
     vectl_guide as _vectl_guide_tool,
+)
+from vectl.mcp_server import (
     vectl_lifecycle as _vectl_lifecycle_tool,
+)
+from vectl.mcp_server import (
     vectl_mutate as _vectl_mutate_tool,
+)
+from vectl.mcp_server import (
+    vectl_recover as _vectl_recover_tool,
+)
+from vectl.mcp_server import (
     vectl_render as _vectl_render_tool,
+)
+from vectl.mcp_server import (
     vectl_review as _vectl_review_tool,
+)
+from vectl.mcp_server import (
     vectl_search as _vectl_search_tool,
+)
+from vectl.mcp_server import (
     vectl_show as _vectl_show_tool,
+)
+from vectl.mcp_server import (
     vectl_status as _vectl_status_tool,
 )
-from vectl.models import PhaseStatus, PlanError, PlanIOError, StepStatus
+from vectl.models import Phase, PhaseStatus, Plan, PlanError, PlanIOError, Step, StepStatus
+from vectl.plan_path import resolve_state_path
 
 # FastMCP @mcp.tool() wraps functions in FunctionTool objects.
 # Access the underlying callable via .fn for direct testing.
@@ -55,6 +86,7 @@ vectl_dag = _vectl_dag_tool.fn
 vectl_clipboard = _vectl_clipboard_tool.fn
 vectl_check = _vectl_check_tool.fn
 vectl_render = _vectl_render_tool.fn
+vectl_recover = _vectl_recover_tool.fn
 
 
 # ---------------------------------------------------------------------------
@@ -296,9 +328,17 @@ def _legacy_step_ids(plan_data: dict[str, object] | None = None) -> set[str]:
     """Collect step IDs from a legacy migration fixture."""
     data = plan_data if plan_data is not None else _legacy_migration_plan_dict()
     step_ids: set[str] = set()
-    for phase in data["phases"]:  # type: ignore[operator]
-        for step in phase["steps"]:  # type: ignore[index]
-            step_ids.add(step["id"])  # type: ignore[index]
+    phases_obj = data.get("phases")
+    assert isinstance(phases_obj, list)
+    for phase_obj in phases_obj:
+        assert isinstance(phase_obj, dict)
+        steps_obj = phase_obj.get("steps")
+        assert isinstance(steps_obj, list)
+        for step_obj in steps_obj:
+            assert isinstance(step_obj, dict)
+            step_id_obj = step_obj.get("id")
+            assert isinstance(step_id_obj, str)
+            step_ids.add(step_id_obj)
     return step_ids
 
 
@@ -2045,6 +2085,146 @@ class TestMcpSplitStateIntegration:
         assert not state_path.exists()
 
 
+class TestMcpOrphanDetection:
+    """Tests for orphan detection in MCP _load()."""
+
+    def test_load_logs_orphan_warning(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """_load logs orphan warnings when state has extra entries."""
+        import logging
+        import os
+
+        from vectl.io import save_plan, save_state
+        from vectl.models import PhaseState, PhaseStatus, PlanState, StepState
+
+        # Set up plan path
+        plan_path = tmp_path / "plan.yaml"
+        os.environ["VECTL_PLAN_PATH"] = str(plan_path)
+
+        # Create a plan
+        plan = Plan(
+            project="orphan-test",
+            phases=[
+                Phase(id="core", name="Core", steps=[Step(id="s1", name="Step 1")]),
+            ],
+        )
+        save_plan(plan, plan_path)
+
+        # Create state with orphan entries
+        state = PlanState(
+            plan_id="orphan-test",
+            phases={
+                "core": PhaseState(status=PhaseStatus.PENDING),
+                "orphan_phase": PhaseState(status=PhaseStatus.DONE),  # orphan
+            },
+            steps={
+                "s1": StepState(status=StepStatus.PENDING),
+                "orphan_step": StepState(status=StepStatus.CLAIMED, claimed_by="agent-x"),  # orphan
+            },
+        )
+        state_path = resolve_state_path(plan_path)
+        state_path.parent.mkdir(parents=True, exist_ok=True)
+        save_state(state, state_path)
+
+        # Set up logging capture
+        log_records: list[logging.LogRecord] = []
+
+        class ListHandler(logging.Handler):
+            """Custom handler that appends records to a list."""
+
+            def emit(self, record: logging.LogRecord) -> None:
+                log_records.append(record)
+
+        handler = ListHandler()
+
+        logger = logging.getLogger("vectl.mcp")
+        logger.addHandler(handler)
+        logger.setLevel(logging.WARNING)
+
+        try:
+            # Call _load - should not raise, but should log warnings
+            merged_plan, def_hash, state_hash = _vectl_load()
+
+            # Verify the plan was merged successfully (orphan warning doesn't block)
+            assert merged_plan.project == "orphan-test"
+
+            # Check that orphan warnings were logged
+            orphan_warnings = [
+                r for r in log_records if "Orphan" in r.message or "orphan" in r.message.lower()
+            ]
+            assert len(orphan_warnings) > 0
+        finally:
+            logger.removeHandler(handler)
+            os.environ.pop("VECTL_PLAN_PATH", None)
+
+    def test_load_no_warning_on_clean_state(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """_load shows no orphan warning when state matches plan."""
+        import logging
+        import os
+
+        from vectl.io import save_plan, save_state
+        from vectl.models import PhaseState, PhaseStatus, PlanState, StepState
+
+        # Set up plan path
+        plan_path = tmp_path / "plan.yaml"
+        os.environ["VECTL_PLAN_PATH"] = str(plan_path)
+
+        # Create a plan
+        plan = Plan(
+            project="clean-test",
+            phases=[
+                Phase(id="core", name="Core", steps=[Step(id="s1", name="Step 1")]),
+            ],
+        )
+        save_plan(plan, plan_path)
+
+        # Create clean state (no orphans)
+        state = PlanState(
+            plan_id="clean-test",
+            phases={
+                "core": PhaseState(status=PhaseStatus.PENDING),
+            },
+            steps={
+                "s1": StepState(status=StepStatus.PENDING),
+            },
+        )
+        state_path = resolve_state_path(plan_path)
+        state_path.parent.mkdir(parents=True, exist_ok=True)
+        save_state(state, state_path)
+
+        # Set up logging capture
+        log_records: list[logging.LogRecord] = []
+
+        class ListHandler(logging.Handler):
+            """Custom handler that appends records to a list."""
+
+            def emit(self, record: logging.LogRecord) -> None:
+                log_records.append(record)
+
+        handler = ListHandler()
+
+        logger = logging.getLogger("vectl.mcp")
+        logger.addHandler(handler)
+        logger.setLevel(logging.WARNING)
+
+        try:
+            # Call _load - should not raise and should not log orphan warnings
+            merged_plan, def_hash, state_hash = _vectl_load()
+
+            # Verify the plan was merged successfully
+            assert merged_plan.project == "clean-test"
+
+            # Check that NO orphan warnings were logged
+            orphan_warnings = [r for r in log_records if "Orphan" in r.message]
+            assert len(orphan_warnings) == 0
+        finally:
+            logger.removeHandler(handler)
+            os.environ.pop("VECTL_PLAN_PATH", None)
+
+
 class TestVectlInit:
     """Tests for vectl_init MCP tool."""
 
@@ -2532,3 +2712,157 @@ class TestVectlRender:
         result = vectl_render()
         # Alpha phase has context "First phase context"
         assert "First phase context" in result
+
+
+class TestVectlRecover:
+    def test_recover_restores_without_prompt(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        plan_file = tmp_path / "plan.yaml"
+        backup_git = tmp_path / ".git"
+        backup_path = backup_git / "vectl" / "plan.yaml.bak"
+
+        current_plan = _make_plan_dict()
+        current_plan["phases"][0]["steps"][0]["name"] = "Current Name"
+        backup_plan = _make_plan_dict()
+        backup_plan["phases"][0]["steps"][0]["name"] = "Backup Name"
+
+        plan_file.write_text(yaml.dump(current_plan), encoding="utf-8")
+        backup_path.parent.mkdir(parents=True, exist_ok=True)
+        backup_path.write_text(yaml.dump(backup_plan), encoding="utf-8")
+
+        state_path = resolve_state_path(plan_file)
+        state_path.parent.mkdir(parents=True, exist_ok=True)
+        state_path.write_text(
+            json.dumps(
+                {
+                    "plan_id": "",
+                    "steps": {"ghost.step": {"status": "pending"}},
+                    "phases": {},
+                }
+            ),
+            encoding="utf-8",
+        )
+
+        old_plan = os.environ.get("VECTL_PLAN_PATH")
+        os.environ["VECTL_PLAN_PATH"] = str(plan_file)
+        monkeypatch.setattr("vectl.mcp_server._resolve_git_dir", lambda _path: backup_git)
+        try:
+            result = vectl_recover()
+        finally:
+            if old_plan is None:
+                os.environ.pop("VECTL_PLAN_PATH", None)
+            else:
+                os.environ["VECTL_PLAN_PATH"] = old_plan
+
+        assert result["ok"] is True
+        assert result["restored"] is True
+        assert "diff_summary" in result
+
+        restored_raw = yaml.safe_load(plan_file.read_text(encoding="utf-8"))
+        assert restored_raw["phases"][0]["steps"][0]["name"] == "Backup Name"
+
+    def test_recover_corrupted_backup_returns_error(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """MCP recover returns error when backup file is corrupted."""
+        import os
+
+        plan_file = tmp_path / "plan.yaml"
+        backup_git = tmp_path / ".git"
+        backup_path = backup_git / "vectl" / "plan.yaml.bak"
+
+        current_plan = _make_plan_dict()
+        current_plan["phases"][0]["steps"][0]["name"] = "Current Name"
+
+        plan_file.write_text(yaml.dump(current_plan), encoding="utf-8")
+        backup_path.parent.mkdir(parents=True, exist_ok=True)
+
+        # Write corrupted backup content
+        backup_path.write_text("invalid: yaml [[[[")
+
+        state_path = resolve_state_path(plan_file)
+        state_path.parent.mkdir(parents=True, exist_ok=True)
+        state_path.write_text(
+            json.dumps(
+                {
+                    "plan_id": "",
+                    "steps": {"ghost.step": {"status": "pending"}},
+                    "phases": {},
+                }
+            ),
+            encoding="utf-8",
+        )
+
+        old_plan = os.environ.get("VECTL_PLAN_PATH")
+        os.environ["VECTL_PLAN_PATH"] = str(plan_file)
+        monkeypatch.setattr("vectl.mcp_server._resolve_git_dir", lambda _path: backup_git)
+        try:
+            result = vectl_recover()
+        finally:
+            if old_plan is None:
+                os.environ.pop("VECTL_PLAN_PATH", None)
+            else:
+                os.environ["VECTL_PLAN_PATH"] = old_plan
+
+        assert result["ok"] is False
+        assert "error" in result
+        assert "Invalid" in result["error"]
+
+    def test_recover_permission_error_returns_error(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """MCP recover returns error when .git/vectl has permission issues."""
+        import os
+
+        plan_file = tmp_path / "plan.yaml"
+        backup_git = tmp_path / ".git"
+        backup_path = backup_git / "vectl" / "plan.yaml.bak"
+        vectl_dir = backup_git / "vectl"
+
+        current_plan = _make_plan_dict()
+        current_plan["phases"][0]["steps"][0]["name"] = "Current Name"
+        backup_plan = _make_plan_dict()
+        backup_plan["phases"][0]["steps"][0]["name"] = "Backup Name"
+
+        plan_file.write_text(yaml.dump(current_plan), encoding="utf-8")
+        vectl_dir.mkdir(parents=True, exist_ok=True)
+        backup_path.write_text(yaml.dump(backup_plan), encoding="utf-8")
+
+        state_path = resolve_state_path(plan_file)
+        state_path.parent.mkdir(parents=True, exist_ok=True)
+        state_path.write_text(
+            json.dumps(
+                {
+                    "plan_id": "",
+                    "steps": {"ghost.step": {"status": "pending"}},
+                    "phases": {},
+                }
+            ),
+            encoding="utf-8",
+        )
+
+        old_plan = os.environ.get("VECTL_PLAN_PATH")
+        os.environ["VECTL_PLAN_PATH"] = str(plan_file)
+        monkeypatch.setattr("vectl.mcp_server._resolve_git_dir", lambda _path: backup_git)
+
+        # Make the backup directory read-only to simulate permission error
+        os.chmod(vectl_dir, 0o444)
+        try:
+            # May raise PermissionError or return an error dict,
+            # depending on where recovery fails.
+            try:
+                result = vectl_recover()
+                # If it returns, verify it has an error
+                assert result["ok"] is False
+                assert "error" in result
+            except PermissionError:
+                # PermissionError is acceptable: permission failures
+                # must surface as a failed recovery path.
+                pass
+        finally:
+            os.chmod(vectl_dir, 0o755)
+            if old_plan is None:
+                os.environ.pop("VECTL_PLAN_PATH", None)
+            else:
+                os.environ["VECTL_PLAN_PATH"] = old_plan

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import re
+from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
 from enum import Enum
 from pathlib import Path
@@ -21,6 +22,9 @@ from vectl.models import (
     PhaseStatus,
     Plan,
     PlanError,
+    PlanIOError,
+    PlanState,
+    PlanValidationIssue,
     RejectionEntry,
     ReviewResult,
     SearchMatch,
@@ -28,13 +32,11 @@ from vectl.models import (
     Step,
     StepChange,
     StepStatus,
-    PlanValidationIssue,
 )
 
 # Lazy import to avoid circular — semantics imports models, core imports models.
 # is_step_locked is only used in render, which is late-bound.
 from vectl.semantics import is_step_locked as _is_step_locked_shared
-
 
 # ---------------------------------------------------------------------------
 # DAG Validation
@@ -42,7 +44,11 @@ from vectl.semantics import is_step_locked as _is_step_locked_shared
 
 
 def validate_plan(
-    plan: Plan, *, check_refs: bool = False, base_path: Path | None = None
+    plan: Plan,
+    *,
+    check_refs: bool = False,
+    base_path: Path | None = None,
+    state: PlanState | None = None,
 ) -> list[PlanValidationIssue]:
     """Validate plan structure, DAG, and consistency.
 
@@ -50,8 +56,26 @@ def validate_plan(
         plan: The plan to validate.
         check_refs: If True, check that files in refs[] exist on disk.
         base_path: Base path for resolving refs (defaults to cwd).
+        state: Optional plan state for orphan detection.
     """
     errors: list[PlanValidationIssue] = []
+
+    # Orphan detection: check if state has entries not in plan
+    if state is not None:
+        from vectl.io import detect_orphan_state
+
+        orphans = detect_orphan_state(plan, state)
+        if orphans:
+            orphan_messages = []
+            for o in orphans:
+                if o.kind == "phase":
+                    orphan_messages.append(f"  - Phase '{o.id}' in state but not in plan")
+                elif o.kind == "step":
+                    orphan_messages.append(f"  - Step '{o.id}' in state but not in plan")
+            if orphan_messages:
+                msg = "Orphan state entries detected:\n" + "\n".join(orphan_messages)
+                msg += "\nRun 'vectl recover' to clean up ghost state"
+                errors.append(PlanValidationIssue(msg, is_warning=True))
 
     # Phase ID uniqueness
     phase_ids: set[str] = set()
@@ -351,8 +375,8 @@ def claim_step(
                 step.affinity_override_at = datetime.now(timezone.utc).isoformat()
                 result.affinity_override = True
                 result.warning_message = (
-                    f"Affinity override: step '{step_id}' has exclusive affinity for '{step.agent}'. "
-                    f"Overridden by --force. Audit trail recorded."
+                    f"Affinity override: step '{step_id}' has exclusive affinity for "
+                    f"'{step.agent}'. Overridden by --force. Audit trail recorded."
                 )
             else:
                 # Reject
@@ -710,9 +734,7 @@ def format_lock_changes(changed: list[str], plan: Plan) -> str:
         return ""
     phase_index = {p.id: p for p in plan.phases}
     parts = ", ".join(
-        f"{pid} ({phase_index[pid].status.value.lower()})"
-        if pid in phase_index
-        else pid
+        f"{pid} ({phase_index[pid].status.value.lower()})" if pid in phase_index else pid
         for pid in changed
     )
     return f"[vectl] Lock status updated: {parts}"
@@ -1041,7 +1063,7 @@ def add_steps_bulk(
                 raise PlanError(
                     f"Step {i}: invalid status '{status_raw}'. "
                     f"Must be one of: pending, done, skipped"
-                )
+                ) from None
             if step_status not in _IMPORTABLE_STATUSES:
                 raise PlanError(
                     f"Step {i}: cannot add step with status '{step_status.value}': "
@@ -2016,7 +2038,7 @@ def _mermaid_step_dag(plan: Plan, phase_id: str) -> str:
     if ph is None:
         raise PlanError(f"Phase '{phase_id}' not found.")
 
-    lines: list[str] = [f"flowchart TD"]
+    lines: list[str] = ["flowchart TD"]
 
     for step in ph.steps:
         icon = _STEP_ICON.get(step.status, "?")
@@ -2180,7 +2202,8 @@ def _clipboard_expired(cb: Clipboard) -> bool:
     >>> from vectl.models import Clipboard
     >>> import datetime
     >>> # Expired (past)
-    >>> past = (datetime.datetime.now(datetime.timezone.utc) - datetime.timedelta(hours=1)).isoformat()
+    >>> past = (datetime.datetime.now(datetime.timezone.utc) -
+    ...         datetime.timedelta(hours=1)).isoformat()
     >>> cb = Clipboard(author="a", summary="s", content="c", written_at=past, expires_at=past)
     >>> _clipboard_expired(cb)
     True
@@ -2449,3 +2472,132 @@ def upsert_agents_md(directory: Path, target: AgentsTarget = AgentsTarget.auto) 
     with target_path.open("a", encoding="utf-8") as f:
         f.write("\n\n" + _AGENTS_MD_SNIPPET)
     return f"Appended vectl section to {target_path.name}", target_path.name
+
+
+# ---------------------------------------------------------------------------
+# Recovery from backup
+# ---------------------------------------------------------------------------
+
+
+@dataclass
+class RecoverResult:
+    """Result of a recover operation."""
+
+    ok: bool
+    restored: bool
+    diff: DiffResult
+    diff_summary: str
+    error: str | None = None
+
+
+def preview_recovery(plan_path: Path, backup_path: Path) -> RecoverResult:
+    """Preview recovery diff without writing to disk.
+
+    Args:
+        plan_path: Path to the current plan.yaml.
+        backup_path: Path to backup plan file.
+
+    Returns:
+        RecoverResult with diff information and restored=False.
+
+    Raises:
+        PlanError: If backup file is not found or invalid.
+        PlanIOError: If plan or backup cannot be loaded.
+    """
+    from vectl.io import load_plan_definition
+
+    if not backup_path.exists():
+        raise PlanError(f"Backup file not found: {backup_path}")
+
+    # Load backup plan (convert non-IO validation errors for compatibility)
+    try:
+        backup_plan, _ = load_plan_definition(backup_path)
+    except PlanIOError:
+        raise
+    except Exception as e:
+        raise PlanError(f"Invalid backup file: {e}") from e
+
+    current_plan, _ = load_plan_definition(plan_path)
+    diff = diff_plans(current_plan, backup_plan)
+
+    step_count = len(diff.step_changes)
+    phase_count = len(diff.phase_changes)
+    summary_parts: list[str] = []
+    if step_count > 0:
+        summary_parts.append(f"{step_count} step(s) changed")
+    if phase_count > 0:
+        summary_parts.append(f"{phase_count} phase(s) changed")
+    if not summary_parts:
+        summary_parts.append("No changes")
+
+    return RecoverResult(
+        ok=True,
+        restored=False,
+        diff=diff,
+        diff_summary="Total changes: " + ", ".join(summary_parts),
+    )
+
+
+def apply_recovery(backup_path: Path, plan_path: Path) -> None:
+    """Apply recovery by overwriting plan_path with backup contents.
+
+    Args:
+        backup_path: Path to backup plan file.
+        plan_path: Destination plan path to overwrite.
+
+    Raises:
+        PlanError: If backup file is not found.
+        PlanIOError: If backup cannot be loaded or destination cannot be written.
+    """
+    from vectl.io import load_plan_definition, save_plan
+
+    if not backup_path.exists():
+        raise PlanError(f"Backup file not found: {backup_path}")
+
+    backup_plan, _ = load_plan_definition(backup_path)
+    save_plan(backup_plan, plan_path)
+
+
+def recover_from_backup(plan_path: Path, backup_path: Path | None = None) -> RecoverResult:
+    """Recover plan from a backup file.
+
+    If backup_path is not provided, attempts to find it at .git/vectl/plan.yaml.bak.
+
+    Args:
+        plan_path: Path to the current plan.yaml.
+        backup_path: Optional explicit backup path. If None, auto-detects from plan_path.
+
+    Returns:
+        RecoverResult with ok, restored flag, diff info, and optional error.
+
+    Raises:
+        PlanError: If backup file is not found or is invalid.
+    """
+    # Auto-detect backup path if not provided
+    if backup_path is None:
+        from vectl.io import _resolve_git_dir
+
+        git_dir = _resolve_git_dir(plan_path)
+        if git_dir is None:
+            return RecoverResult(
+                ok=False,
+                restored=False,
+                diff=DiffResult(phase_changes=[], step_changes=[]),
+                diff_summary="",
+                error="Not in a git repository or in a linked worktree",
+            )
+        backup_path = git_dir / "vectl" / "plan.yaml.bak"
+
+    if not backup_path.exists():
+        raise PlanError(f"Backup file not found: {backup_path}")
+
+    preview = preview_recovery(plan_path, backup_path)
+    apply_recovery(backup_path, plan_path)
+
+    return RecoverResult(
+        ok=preview.ok,
+        restored=True,
+        diff=preview.diff,
+        diff_summary=preview.diff_summary,
+        error=preview.error,
+    )

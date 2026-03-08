@@ -3,13 +3,11 @@
 Source: RFC-dashboard.md
 """
 
+from html.parser import HTMLParser
 from pathlib import Path
 from typing import Any
 
-import pytest
-from html.parser import HTMLParser
-
-from vectl.dashboard import build_dashboard_data, DASHBOARD_HTML_TEMPLATE, generate_dashboard
+from vectl.dashboard import DASHBOARD_HTML_TEMPLATE, build_dashboard_data, generate_dashboard
 from vectl.models import (
     Phase,
     PhaseStatus,
@@ -872,7 +870,6 @@ phases: []
     def test_dashboard_default_output(self, tmp_path: Any) -> None:
         """Default output is plan-dashboard.html in current directory."""
         import subprocess
-        import os
 
         plan_file = tmp_path / "plan.yaml"
         plan_file.write_text("""

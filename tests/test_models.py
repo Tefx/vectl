@@ -1,6 +1,7 @@
 """Tests for core.1: Pydantic Data Models."""
 
 import pytest
+
 from vectl.models import (
     AffinityMode,
     Clipboard,

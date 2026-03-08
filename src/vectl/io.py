@@ -5,13 +5,22 @@ from __future__ import annotations
 import hashlib
 import json
 import os
+import subprocess
 import tempfile
 from pathlib import Path
 from typing import Any
 
 import yaml
 
-from vectl.models import CASConflictError, PhaseState, Plan, PlanIOError, PlanState, StepState
+from vectl.models import (
+    CASConflictError,
+    OrphanEntry,
+    PhaseState,
+    Plan,
+    PlanIOError,
+    PlanState,
+    StepState,
+)
 from vectl.plan_path import resolve_state_path
 
 _PLAN_YAML_HEADER = """\
@@ -170,8 +179,13 @@ def load_plan(path: Path | str) -> tuple[Plan, str]:
     return plan, file_hash
 
 
-def save_plan(plan: Plan, path: Path | str, expected_hash: str | None = None) -> str:
-    """Save plan to YAML file atomically.
+def save_plan(
+    plan: Plan,
+    path: Path | str,
+    expected_hash: str | None = None,
+    commit_message: str | None = None,
+) -> str:
+    """Save plan to YAML file atomically, then git-commit.
 
     If expected_hash is provided, performs CAS check.
     Returns the new file hash.
@@ -205,7 +219,38 @@ def save_plan(plan: Plan, path: Path | str, expected_hash: str | None = None) ->
             pass
         raise
 
-    return hashlib.sha256(content.encode()).hexdigest()
+    new_hash = hashlib.sha256(content.encode()).hexdigest()
+
+    # Auto-commit plan.yaml to protect against agent git-restore rollback.
+    # Uses --only to avoid committing other staged files.
+    _git_commit_plan(path, commit_message)
+
+    return new_hash
+
+
+def _git_commit_plan(path: Path, message: str | None = None) -> None:
+    """Commit plan.yaml immediately after write.
+
+    Best-effort: if git commit fails (not a repo, nothing to commit, etc.),
+    the plan file is still written — we just lose rollback protection.
+    """
+    msg = message or "[vectl] update plan"
+    try:
+        subprocess.run(
+            ["git", "add", "--", str(path)],
+            cwd=str(path.parent),
+            capture_output=True,
+            timeout=10,
+        )
+        subprocess.run(
+            ["git", "commit", "--only", "--no-verify", "--", str(path),
+             "-m", msg],
+            cwd=str(path.parent),
+            capture_output=True,
+            timeout=10,
+        )
+    except (subprocess.TimeoutExpired, FileNotFoundError, OSError):
+        pass
 
 
 def _plan_to_dict(plan: Plan) -> dict[str, Any]:
@@ -326,6 +371,37 @@ def merge_plan(plan_def: Plan, state: PlanState) -> Plan:
     return merged
 
 
+def detect_orphan_state(plan_def: Plan, state: PlanState) -> list[OrphanEntry]:
+    """Detect orphan state entries that exist in state but have no matching definition in plan.yaml.
+
+    Compares the phase/step keys in state.json against the plan.yaml structure.
+    Returns a list of OrphanEntry objects for any entries in state that don't have
+    a matching phase or step in the plan definition.
+    """
+    orphans: list[OrphanEntry] = []
+
+    # Collect all valid phase IDs from plan definition
+    valid_phase_ids: set[str] = {phase.id for phase in plan_def.phases}
+
+    # Collect all valid step IDs from plan definition, mapping to their phase
+    valid_step_ids: dict[str, str] = {}  # step_id -> phase_id
+    for phase in plan_def.phases:
+        for step in phase.steps:
+            valid_step_ids[step.id] = phase.id
+
+    # Check for orphan phases (in state but not in plan definition)
+    for phase_id in state.phases:
+        if phase_id not in valid_phase_ids:
+            orphans.append(OrphanEntry(kind="phase", id=phase_id, phase_id=None))
+
+    # Check for orphan steps (in state but not in plan definition)
+    for step_id in state.steps:
+        if step_id not in valid_step_ids:
+            orphans.append(OrphanEntry(kind="step", id=step_id, phase_id=None))
+
+    return orphans
+
+
 def _clean_dict(d: dict[str, Any]) -> dict[str, Any]:
     """Remove empty/default values for cleaner YAML output."""
     result: dict[str, Any] = {}
@@ -362,3 +438,64 @@ def _clean_dict(d: dict[str, Any]) -> dict[str, Any]:
         else:
             result[k] = v
     return result
+
+
+def _resolve_git_dir(plan_path: Path) -> Path | None:
+    """Resolve the .git directory for a plan file's parent directory.
+
+    Returns None if not in a git repo or if in a linked worktree.
+    """
+    from vectl.plan_path import is_linked_worktree
+
+    # Check if we're in a linked worktree - don't backup there
+    is_linked, _ = is_linked_worktree()
+    if is_linked:
+        return None
+
+    # Find .git directory
+    current = plan_path.parent.resolve()
+    while current != current.parent:
+        git_dir = current / ".git"
+        if git_dir.exists() and git_dir.is_dir():
+            return git_dir
+        current = current.parent
+    return None
+
+
+def _backup_definition(plan_path: Path) -> Path | None:
+    """Create a backup of the plan definition in .git/vectl/plan.yaml.bak.
+
+    Returns the backup path if successful, None if skipped.
+
+    Raises:
+        OSError: If backup fails due to permissions or IO issues.
+    """
+    # Check if we're in a linked worktree - skip backup
+    git_dir = _resolve_git_dir(plan_path)
+    if git_dir is None:
+        return None
+
+    # Create backup directory
+    vectl_dir = git_dir / "vectl"
+    vectl_dir.mkdir(parents=True, exist_ok=True)
+
+    # Read current plan content
+    content = plan_path.read_text(encoding="utf-8")
+
+    # Atomic write: temp file + rename
+    backup_path = vectl_dir / "plan.yaml.bak"
+    dir_ = vectl_dir
+    fd, tmp_path = tempfile.mkstemp(dir=str(dir_), suffix=".tmp")
+    try:
+        os.write(fd, content.encode("utf-8"))
+        os.close(fd)
+        os.replace(tmp_path, str(backup_path))
+    except Exception:
+        # Clean up temp file on error
+        try:
+            os.unlink(tmp_path)
+        except OSError:
+            pass
+        raise
+
+    return backup_path

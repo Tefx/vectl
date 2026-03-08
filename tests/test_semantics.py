@@ -12,7 +12,6 @@ from vectl.core import get_next_steps
 from vectl.models import Phase, PhaseStatus, Plan, Step, StepStatus
 from vectl.semantics import BlockReason, StepDerived, derive_step, is_step_locked
 
-
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------

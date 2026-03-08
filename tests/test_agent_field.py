@@ -35,11 +35,11 @@ from vectl.mcp_server import (
 )
 from vectl.models import Phase, PhaseStatus, Plan, Step, StepStatus
 
-# FastMCP tools are plain functions in FastMCP 3.x
-vectl_status = _vectl_status_tool
-vectl_show = _vectl_show_tool
-vectl_claim = _vectl_claim_tool
-vectl_mutate = _vectl_mutate_tool
+# FastMCP tools are FunctionTool objects; unwrap to get the callable
+vectl_status = _vectl_status_tool.fn
+vectl_show = _vectl_show_tool.fn
+vectl_claim = _vectl_claim_tool.fn
+vectl_mutate = _vectl_mutate_tool.fn
 
 runner = CliRunner()
 

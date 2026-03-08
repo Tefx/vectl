@@ -28,9 +28,9 @@ from vectl.models import Phase, PhaseStatus, Plan, Step
 
 runner = CliRunner()
 
-# FastMCP tools are plain functions in FastMCP 3.x
-vectl_claim = _vectl_claim_tool
-vectl_complete = _vectl_complete_tool
+# FastMCP @mcp.tool() returns FunctionTool objects; unwrap to get the callable.
+vectl_claim = _vectl_claim_tool.fn
+vectl_complete = _vectl_complete_tool.fn
 
 
 # ---------------------------------------------------------------------------

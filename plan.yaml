@@ -16766,3 +16766,71 @@ phases:
     depends_on:
     - claim-consistency-recovery.targeted-regression-tests
     agent: python-executor
+  - id: claim-consistency-recovery.integration-verify
+    name: integration-verify
+    status: pending
+    description: 'As an INDEPENDENT TESTER (`integration-verifier`), validate the
+      claim-consistency repair from a fresh perspective.
+
+
+      YOUR GOAL IS TO FIND PROBLEMS, not to confirm it works.
+
+
+      Test for:
+
+      - Happy path: a normal claim/complete flow still works after the locking change
+
+      - Edge cases: anima-style ghost-claim mismatch, `repair claims --dry-run`, and
+      step-scoped repair
+
+      - Error scenarios: existing-claim rejection surfaces actionable diagnostics
+      in both CLI and MCP
+
+      - Recovery semantics: after repair, `claim`, `show/status`, and `complete` agree
+      again on the repaired step state
+
+
+      Independence Level: L2'
+    verification: '- Main path: run targeted real-path CLI and MCP verification for
+      claim -> diagnostics -> repair -> complete
+
+      - Failure path: independently recreate or simulate the ghost-claim disagreement
+      and verify the repair flow resolves it without collateral mutation
+
+      - Proof: evidence includes actual command/output for at least one CLI invocation
+      and one MCP invocation, not just `tests pass`
+
+      - Suggested commands include a real `vectl repair claims --dry-run --json` exercise
+      and an MCP tool call sequence covering the same mismatch'
+    evidence_template: '## Integration Evidence
+
+
+      **Command or test exercising the full path**:
+
+      ```
+
+      <exact CLI command(s) and MCP tool call sequence>
+
+      ```
+
+
+      **Actual output**:
+
+      ```
+
+      <stdout/stderr or tool output>
+
+      ```
+
+
+      **Path exercised**: `src/vectl/io.py` -> claim/reconcile logic -> `src/vectl/cli.py`
+      and/or `src/vectl/mcp_server.py`
+
+
+      **Mismatch scenario covered**: <ghost claim / scoped repair / dry-run>
+
+
+      **Result**: <did claim/show/status/complete agree after repair?>'
+    depends_on:
+    - claim-consistency-recovery.freeze-for-integration
+    agent: integration-verifier

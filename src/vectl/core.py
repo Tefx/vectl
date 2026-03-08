@@ -24,7 +24,6 @@ from vectl.models import (
     Plan,
     PlanError,
     PlanIOError,
-    PlanState,
     PlanValidationIssue,
     RejectionEntry,
     ReviewResult,
@@ -58,7 +57,6 @@ def validate_plan(
     *,
     check_refs: bool = False,
     base_path: Path | None = None,
-    state: PlanState | None = None,
 ) -> list[PlanValidationIssue]:
     """Validate plan structure, DAG, and consistency.
 
@@ -66,29 +64,8 @@ def validate_plan(
         plan: The plan to validate.
         check_refs: If True, check that files in refs[] exist on disk.
         base_path: Base path for resolving refs (defaults to cwd).
-        state: Optional plan state for orphan detection.
-
-            Deprecated: split-state is retired. See docs/ADR-unified-state.md.
-            Will be removed after unified-state Phase 3.
     """
     errors: list[PlanValidationIssue] = []
-
-    # Orphan detection: check if state has entries not in plan
-    if state is not None:
-        from vectl.io import detect_orphan_state
-
-        orphans = detect_orphan_state(plan, state)
-        if orphans:
-            orphan_messages = []
-            for o in orphans:
-                if o.kind == "phase":
-                    orphan_messages.append(f"  - Phase '{o.id}' in state but not in plan")
-                elif o.kind == "step":
-                    orphan_messages.append(f"  - Step '{o.id}' in state but not in plan")
-            if orphan_messages:
-                msg = "Orphan state entries detected:\n" + "\n".join(orphan_messages)
-                msg += "\nRun 'vectl recover' to clean up ghost state"
-                errors.append(PlanValidationIssue(msg, is_warning=True))
 
     # Phase ID uniqueness
     phase_ids: set[str] = set()

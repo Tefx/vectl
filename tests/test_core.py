@@ -20,13 +20,10 @@ from vectl.core import (
 from vectl.io import load_plan_definition, save_plan
 from vectl.models import (
     Phase,
-    PhaseState,
     PhaseStatus,
     Plan,
     PlanError,
-    PlanState,
     Step,
-    StepState,
     StepStatus,
 )
 
@@ -104,93 +101,67 @@ def test_recover_no_backup_error(tmp_path: Path) -> None:
 
 
 # ---------------------------------------------------------------------------
-# Orphan detection tests for validate_plan
+# Validate plan tests
 # ---------------------------------------------------------------------------
 
 
-def test_validate_detects_orphans() -> None:
-    """Validate detects orphan state entries and reports them as warnings."""
+def test_validate_plan_validates_dag() -> None:
+    """Validate plan structure correctly validates DAG structure."""
     plan = Plan(
-        project="orphan-test",
-        phases=[
-            Phase(id="core", name="Core", steps=[Step(id="s1", name="Step 1")]),
-        ],
-    )
-    state = PlanState(
-        plan_id="orphan-test",
-        phases={
-            "core": PhaseState(status=PhaseStatus.PENDING),
-            # This phase doesn't exist in plan definition
-            "orphan_phase": PhaseState(status=PhaseStatus.DONE),
-        },
-        steps={
-            "s1": StepState(status=StepStatus.PENDING),
-            # This step doesn't exist in plan definition
-            "orphan_step": StepState(status=StepStatus.CLAIMED, claimed_by="agent-x"),
-        },
-    )
-
-    errors = validate_plan(plan, state=state)
-
-    # Should have one warning with orphan detection info
-    assert len(errors) == 1
-    assert errors[0].is_warning is True
-    assert "orphan" in errors[0].message.lower()
-    assert "orphan_phase" in errors[0].message
-    assert "orphan_step" in errors[0].message
-    assert "vectl recover" in errors[0].message
-
-
-def test_validate_clean_plan_no_orphan_warning() -> None:
-    """Validate on clean plan (no orphans) produces no orphan warning."""
-    plan = Plan(
-        project="clean-test",
+        project="dag-test",
         phases=[
             Phase(
                 id="core",
                 name="Core",
                 steps=[
                     Step(id="s1", name="Step 1"),
-                    Step(id="s2", name="Step 2"),
+                    Step(id="s2", name="Step 2", depends_on=["s1"]),
                 ],
             ),
-            Phase(id="qa", name="QA", steps=[Step(id="s3", name="Step 3")]),
-        ],
-    )
-    state = PlanState(
-        plan_id="clean-test",
-        phases={
-            "core": PhaseState(status=PhaseStatus.PENDING),
-            "qa": PhaseState(status=PhaseStatus.LOCKED),
-        },
-        steps={
-            "s1": StepState(status=StepStatus.PENDING),
-            "s2": StepState(status=StepStatus.CLAIMED, claimed_by="agent-a"),
-            "s3": StepState(status=StepStatus.PENDING),
-        },
-    )
-
-    errors = validate_plan(plan, state=state)
-
-    # No orphan warnings should be present
-    orphan_warnings = [e for e in errors if "orphan" in e.message.lower()]
-    assert len(orphan_warnings) == 0
-
-
-def test_validate_without_state_param() -> None:
-    """Validate works when state parameter is not provided (None)."""
-    plan = Plan(
-        project="no-state-test",
-        phases=[
-            Phase(id="core", name="Core", steps=[Step(id="s1", name="Step 1")]),
         ],
     )
 
-    # Call without state parameter - should not raise
     errors = validate_plan(plan)
 
     assert len(errors) == 0
-    assert errors == []
+
+
+def test_validate_plan_detects_duplicate_phase_ids() -> None:
+    """Validate plan detects duplicate phase IDs."""
+    plan = Plan(
+        project="duplicate-test",
+        phases=[
+            Phase(id="core", name="Core"),
+            Phase(id="core", name="Core Duplicate"),  # Duplicate!
+        ],
+    )
+
+    errors = validate_plan(plan)
+
+    assert len(errors) == 1
+    assert "Duplicate phase ID" in errors[0].message
+
+
+def test_validate_plan_detects_duplicate_step_ids() -> None:
+    """Validate plan detects duplicate step IDs within a phase."""
+    plan = Plan(
+        project="duplicate-test",
+        phases=[
+            Phase(
+                id="core",
+                name="Core",
+                steps=[
+                    Step(id="s1", name="Step 1"),
+                    Step(id="s1", name="Step 1 Duplicate"),  # Duplicate!
+                ],
+            ),
+        ],
+    )
+
+    errors = validate_plan(plan)
+
+    assert len(errors) == 1
+    assert "Duplicate step ID" in errors[0].message
 
 
 def _claimable_plan() -> Plan:

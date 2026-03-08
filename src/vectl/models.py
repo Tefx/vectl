@@ -448,23 +448,3 @@ class InitResult(BaseModel):
     agents_target: str | None = None  # Which file was updated (AGENTS.md or CLAUDE.md)
     message: str
     error: str | None = None
-
-
-# ---------------------------------------------------------------------------
-# Orphan Detection
-# ---------------------------------------------------------------------------
-
-
-@dataclass
-class OrphanEntry:
-    """An orphan state entry that exists in state.json but has no matching
-    definition in plan.yaml.
-
-    .. deprecated::
-        Will be removed after unified-state migration.
-        See docs/ADR-unified-state.md.
-    """
-
-    kind: str  # "phase" or "step"
-    id: str
-    phase_id: str | None = None  # Only set for step orphans

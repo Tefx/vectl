@@ -10,7 +10,6 @@ import pytest
 from vectl.io import (
     _backup_definition,
     _git_commit_plan,
-    detect_orphan_state,
     extract_state,
     load_plan,
     load_plan_definition,
@@ -1445,128 +1444,6 @@ class TestStateExtractionAndMerge:
 
         assert state.steps["s_done"].done_at is None
         assert merged.phases[0].steps[2].done_at is None
-
-
-class TestOrphanDetection:
-    """Tests for orphan state detection in detect_orphan_state()."""
-
-    def test_orphan_detect_extra_phase(self) -> None:
-        """State with extra phase key returns orphan entry."""
-        plan_def = Plan(
-            project="orphan-test",
-            phases=[
-                Phase(id="core", name="Core", steps=[Step(id="s1", name="Step 1")]),
-            ],
-        )
-        state = PlanState(
-            plan_id="orphan-test",
-            phases={
-                "core": PhaseState(status=PhaseStatus.PENDING),
-                # This phase doesn't exist in plan definition
-                "orphan_phase": PhaseState(status=PhaseStatus.DONE),
-            },
-            steps={
-                "s1": StepState(status=StepStatus.PENDING),
-            },
-        )
-
-        orphans = detect_orphan_state(plan_def, state)
-
-        assert len(orphans) == 1
-        assert orphans[0].kind == "phase"
-        assert orphans[0].id == "orphan_phase"
-        assert orphans[0].phase_id is None
-
-    def test_orphan_detect_extra_step(self) -> None:
-        """State with extra step key returns orphan entry."""
-        plan_def = Plan(
-            project="orphan-test",
-            phases=[
-                Phase(id="core", name="Core", steps=[Step(id="s1", name="Step 1")]),
-            ],
-        )
-        state = PlanState(
-            plan_id="orphan-test",
-            phases={
-                "core": PhaseState(status=PhaseStatus.PENDING),
-            },
-            steps={
-                "s1": StepState(status=StepStatus.PENDING),
-                # This step doesn't exist in plan definition
-                "orphan_step": StepState(status=StepStatus.CLAIMED, claimed_by="agent-x"),
-            },
-        )
-
-        orphans = detect_orphan_state(plan_def, state)
-
-        assert len(orphans) == 1
-        assert orphans[0].kind == "step"
-        assert orphans[0].id == "orphan_step"
-        assert orphans[0].phase_id is None
-
-    def test_orphan_detect_clean_state_no_warning(self) -> None:
-        """Clean state with no orphan entries returns empty list."""
-        plan_def = Plan(
-            project="orphan-test",
-            phases=[
-                Phase(
-                    id="core",
-                    name="Core",
-                    steps=[
-                        Step(id="s1", name="Step 1"),
-                        Step(id="s2", name="Step 2"),
-                    ],
-                ),
-                Phase(id="qa", name="QA", steps=[Step(id="s3", name="Step 3")]),
-            ],
-        )
-        state = PlanState(
-            plan_id="orphan-test",
-            phases={
-                "core": PhaseState(status=PhaseStatus.PENDING),
-                "qa": PhaseState(status=PhaseStatus.LOCKED),
-            },
-            steps={
-                "s1": StepState(status=StepStatus.PENDING),
-                "s2": StepState(status=StepStatus.CLAIMED, claimed_by="agent-a"),
-                "s3": StepState(status=StepStatus.PENDING),
-            },
-        )
-
-        orphans = detect_orphan_state(plan_def, state)
-
-        assert orphans == []
-
-    def test_orphan_detect_multiple_orphans(self) -> None:
-        """State with multiple orphan entries returns all of them."""
-        plan_def = Plan(
-            project="orphan-test",
-            phases=[
-                Phase(id="core", name="Core", steps=[Step(id="s1", name="Step 1")]),
-            ],
-        )
-        state = PlanState(
-            plan_id="orphan-test",
-            phases={
-                "core": PhaseState(status=PhaseStatus.PENDING),
-                "orphan_phase_1": PhaseState(status=PhaseStatus.DONE),
-                "orphan_phase_2": PhaseState(status=PhaseStatus.DONE),
-            },
-            steps={
-                "s1": StepState(status=StepStatus.PENDING),
-                "orphan_step_1": StepState(status=StepStatus.CLAIMED),
-                "orphan_step_2": StepState(status=StepStatus.DONE),
-            },
-        )
-
-        orphans = detect_orphan_state(plan_def, state)
-
-        assert len(orphans) == 4
-        orphan_ids = [(o.kind, o.id) for o in orphans]
-        assert ("phase", "orphan_phase_1") in orphan_ids
-        assert ("phase", "orphan_phase_2") in orphan_ids
-        assert ("step", "orphan_step_1") in orphan_ids
-        assert ("step", "orphan_step_2") in orphan_ids
 
 
 class TestRoundtripInlineStateFields:

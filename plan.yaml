@@ -15955,7 +15955,7 @@ phases:
       from Step.model_fields; field-name keys remain for model field lookup only.'
   - id: unified-state-gate-review-remediation.s3-field-level-merge
     name: s3-field-level-merge
-    status: claimed
+    status: done
     description: 'Implement field-level merge in merge driver.
 
 
@@ -16001,6 +16001,42 @@ phases:
     agent: python-senior
     claimed_by: python-senior
     claimed_at: '2026-03-08T17:41:29.764465+00:00'
+    done_at: '2026-03-08T17:54:43.963085+00:00'
+    evidence: 'Artifact:
+
+      - Worker commit: c456c86
+
+      - Orchestrator squash commit: 93d5b26
+
+
+      Verification:
+
+      - Run: uv run pytest tests/test_merge_driver.py -v -> 14 passed
+
+      - Confirmed: non-conflicting different-property edits on same step merge cleanly
+      (exit 0)
+
+      - Confirmed: same-property divergent edits conflict (exit 1)
+
+      - Confirmed: mixed scenario with any same-field divergence conflicts (exit 1)
+
+
+      Spec link:
+
+      - unified-state-gate-review-remediation.s3-field-level-merge
+
+
+      Files changed:
+
+      - src/vectl/merge_driver.py
+
+      - tests/test_merge_driver.py
+
+
+      Gaps/Notes:
+
+      - Implemented per-field comparison/merge semantics for changed steps; conflict
+      only on same-field divergent edits.'
   - id: unified-state-gate-review-remediation.verify-remediation
     name: verify-remediation
     status: pending

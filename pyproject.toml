@@ -45,6 +45,7 @@ dev = [
     "pytest-cov>=7.0",
     "playwright>=1.40.0",
     "pytest-playwright>=0.7.0",
+    "mypy>=1.0",
 ]
 
 [tool.pytest.ini_options]

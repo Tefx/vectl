@@ -1643,52 +1643,52 @@ class _ToolWrapper:
 
 # Wrap all tool functions for test compatibility
 _vectl_status_tool = vectl_status
-vectl_status = _ToolWrapper(vectl_status)
+vectl_status = _ToolWrapper(vectl_status)  # type: ignore[assignment]
 
 _vectl_show_tool = vectl_show
-vectl_show = _ToolWrapper(vectl_show)
+vectl_show = _ToolWrapper(vectl_show)  # type: ignore[assignment]
 
 _vectl_claim_tool = vectl_claim
-vectl_claim = _ToolWrapper(vectl_claim)
+vectl_claim = _ToolWrapper(vectl_claim)  # type: ignore[assignment]
 
 _vectl_complete_tool = vectl_complete
-vectl_complete = _ToolWrapper(vectl_complete)
+vectl_complete = _ToolWrapper(vectl_complete)  # type: ignore[assignment]
 
 _vectl_lifecycle_tool = vectl_lifecycle
-vectl_lifecycle = _ToolWrapper(vectl_lifecycle)
+vectl_lifecycle = _ToolWrapper(vectl_lifecycle)  # type: ignore[assignment]
 
 _vectl_search_tool = vectl_search
-vectl_search = _ToolWrapper(vectl_search)
+vectl_search = _ToolWrapper(vectl_search)  # type: ignore[assignment]
 
 _vectl_mutate_tool = vectl_mutate
-vectl_mutate = _ToolWrapper(vectl_mutate)
+vectl_mutate = _ToolWrapper(vectl_mutate)  # type: ignore[assignment]
 
 _vectl_review_tool = vectl_review
-vectl_review = _ToolWrapper(vectl_review)
+vectl_review = _ToolWrapper(vectl_review)  # type: ignore[assignment]
 
 _vectl_guide_tool = vectl_guide
-vectl_guide = _ToolWrapper(vectl_guide)
+vectl_guide = _ToolWrapper(vectl_guide)  # type: ignore[assignment]
 
 _vectl_dag_tool = vectl_dag
-vectl_dag = _ToolWrapper(vectl_dag)
+vectl_dag = _ToolWrapper(vectl_dag)  # type: ignore[assignment]
 
 _vectl_clipboard_tool = vectl_clipboard
-vectl_clipboard = _ToolWrapper(vectl_clipboard)
+vectl_clipboard = _ToolWrapper(vectl_clipboard)  # type: ignore[assignment]
 
 _vectl_init_tool = vectl_init
-vectl_init = _ToolWrapper(vectl_init)
+vectl_init = _ToolWrapper(vectl_init)  # type: ignore[assignment]
 
 _vectl_render_tool = vectl_render
-vectl_render = _ToolWrapper(vectl_render)
+vectl_render = _ToolWrapper(vectl_render)  # type: ignore[assignment]
 
 _vectl_check_tool = vectl_check
-vectl_check = _ToolWrapper(vectl_check)
+vectl_check = _ToolWrapper(vectl_check)  # type: ignore[assignment]
 
 _vectl_recover_tool = vectl_recover
-vectl_recover = _ToolWrapper(vectl_recover)
+vectl_recover = _ToolWrapper(vectl_recover)  # type: ignore[assignment]
 
 _vectl_checkpoint_tool = vectl_checkpoint
-vectl_checkpoint = _ToolWrapper(vectl_checkpoint)
+vectl_checkpoint = _ToolWrapper(vectl_checkpoint)  # type: ignore[assignment]
 
 
 # ---------------------------------------------------------------------------

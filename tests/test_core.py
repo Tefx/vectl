@@ -6,7 +6,14 @@ from pathlib import Path
 
 import pytest
 
-from vectl.core import apply_recovery, preview_recovery, recover_from_backup, validate_plan
+from vectl.claims import load_claims
+from vectl.core import (
+    apply_recovery,
+    claim_step,
+    preview_recovery,
+    recover_from_backup,
+    validate_plan,
+)
 from vectl.io import load_plan_definition, save_plan
 from vectl.models import (
     Phase,
@@ -181,3 +188,55 @@ def test_validate_without_state_param() -> None:
 
     assert len(errors) == 0
     assert errors == []
+
+
+def _claimable_plan() -> Plan:
+    return Plan(
+        project="claim-test",
+        phases=[
+            Phase(
+                id="p1",
+                name="Phase 1",
+                status=PhaseStatus.PENDING,
+                steps=[Step(id="p1.s1", name="Step 1")],
+            )
+        ],
+    )
+
+
+def test_claim_step_with_claims_path_writes_claim_entry(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    plan = _claimable_plan()
+    claims_path = tmp_path / "claims.json"
+
+    monkeypatch.setattr("vectl.core.get_current_branch", lambda: "feature/test-branch")
+
+    updated_plan, _ = claim_step(plan, "p1.s1", "agent-1", claims_path=claims_path)
+    assert updated_plan.phases[0].steps[0].status == StepStatus.CLAIMED
+
+    claims = load_claims(claims_path)
+    assert "feature/test-branch:p1.s1" in claims
+    claim = claims["feature/test-branch:p1.s1"]
+    assert claim.agent == "agent-1"
+    assert claim.branch == "feature/test-branch"
+    assert claim.step_id == "p1.s1"
+
+
+def test_claim_step_calls_cleanup_stale_claims(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    plan = _claimable_plan()
+    claims_path = tmp_path / "claims.json"
+    called: dict[str, Path] = {}
+
+    def _cleanup_spy(path: Path, ttl_hours: float = 2.0) -> int:
+        called["path"] = path
+        return 0
+
+    monkeypatch.setattr("vectl.core.cleanup_stale_claims", _cleanup_spy)
+    monkeypatch.setattr("vectl.core.get_current_branch", lambda: "feature/test-branch")
+
+    claim_step(plan, "p1.s1", "agent-1", claims_path=claims_path)
+
+    assert called["path"] == claims_path

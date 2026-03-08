@@ -14863,7 +14863,7 @@ phases:
     agent: gate-reviewer
   - id: unified-state-verification.full-test-suite-fix
     name: full-test-suite-fix
-    status: pending
+    status: claimed
     description: "Fix the issues discovered by `unified-state-verification.full-test-suite`\
       \ so the full verification suite can run cleanly.\n\nScope:\n- Standardize repository\
       \ verification command invocation where pytest is called from plan/test guidance;\
@@ -14891,6 +14891,8 @@ phases:
     depends_on:
     - unified-state-verification.full-test-suite
     agent: python-senior
+    claimed_by: python-senior
+    claimed_at: '2026-03-08T16:29:17.793836+00:00'
   - id: unified-state-verification.full-test-suite-retest
     name: full-test-suite-retest
     status: pending

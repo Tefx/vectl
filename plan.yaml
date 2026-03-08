@@ -14791,7 +14791,7 @@ phases:
     claimed_at: '2026-03-08T16:46:28.593009+00:00'
   - id: unified-state-verification.migration-roundtrip-test
     name: Migration roundtrip test
-    status: pending
+    status: claimed
     description: "As an INDEPENDENT TESTER (integration-verifier), test the full migration\
       \ roundtrip.\n\nScenario 1: v0.6 split-state -> unified\n1. Create a plan.yaml\
       \ with 3 phases, 8 steps (all status=pending in yaml)\n2. Create .git/vectl/state.json\
@@ -14812,6 +14812,8 @@ phases:
     depends_on:
     - unified-state-verification.full-test-suite-retest-retest
     agent: integration-verifier
+    claimed_by: integration-verifier
+    claimed_at: '2026-03-08T16:46:29.542976+00:00'
   - id: unified-state-verification.gate
     name: 'Final gate: Unified State Architecture'
     status: pending

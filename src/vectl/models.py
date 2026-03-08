@@ -152,7 +152,12 @@ class Clipboard(BaseModel):
 
 
 class StepState(BaseModel):
-    """Mutable runtime state for a single step, stored in state.json."""
+    """Mutable runtime state for a single step, stored in state.json.
+
+    .. deprecated::
+        Will be removed after unified-state migration.
+        See docs/ADR-unified-state.md.
+    """
 
     status: StepStatus = StepStatus.PENDING
     claimed_by: str | None = None
@@ -168,7 +173,12 @@ class StepState(BaseModel):
 
 
 class PhaseState(BaseModel):
-    """Mutable runtime state for a phase, stored in state.json."""
+    """Mutable runtime state for a phase, stored in state.json.
+
+    .. deprecated::
+        Will be removed after unified-state migration.
+        See docs/ADR-unified-state.md.
+    """
 
     status: PhaseStatus = PhaseStatus.PENDING
     evidence: str | None = None
@@ -179,6 +189,10 @@ class PlanState(BaseModel):
 
     Contains all mutable runtime state separated from the plan definition.
     The plan_id field links this state to a specific plan definition.
+
+    .. deprecated::
+        Will be removed after unified-state migration.
+        See docs/ADR-unified-state.md.
     """
 
     plan_id: str
@@ -444,7 +458,12 @@ class InitResult(BaseModel):
 @dataclass
 class OrphanEntry:
     """An orphan state entry that exists in state.json but has no matching
-    definition in plan.yaml."""
+    definition in plan.yaml.
+
+    .. deprecated::
+        Will be removed after unified-state migration.
+        See docs/ADR-unified-state.md.
+    """
 
     kind: str  # "phase" or "step"
     id: str

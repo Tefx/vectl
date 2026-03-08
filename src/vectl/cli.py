@@ -56,6 +56,7 @@ from vectl.dashboard import generate_dashboard
 from vectl.guide import GUIDE_ALL as _GUIDE_ALL
 from vectl.guide import GUIDE_TOPICS as _GUIDE_TOPICS
 from vectl.io import (
+    _backup_definition,
     _resolve_git_dir,
     extract_state,
     load_plan_definition,
@@ -231,6 +232,14 @@ def _save_definition(plan: Plan, plan_path: Path, expected_def_hash: str) -> Non
             "CAS conflict: plan.yaml was modified by another process since you loaded it. "
             "Re-read with `vectl status` or `vectl show`, then retry your mutation."
         )
+
+    # Create backup after successful save (non-blocking)
+    try:
+        _backup_definition(plan_path)
+    except OSError as e:
+        import sys
+
+        print(f"Warning: backup failed: {e}", file=sys.stderr)
 
     notice = format_lock_changes(changed_ids, plan)
     if notice:

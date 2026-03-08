@@ -457,6 +457,110 @@ class TestDefinitionBackup:
         assert len(temp_files) == 0, f"Temp files left behind: {temp_files}"
 
 
+class TestBackupWiredIntoSave:
+    """Tests proving backup is called during save and backup failure doesn't block save."""
+
+    def test_backup_called_on_save_definition_cli(self, tmp_path: Path, sample_plan: Plan) -> None:
+        """Backup should be created when save_definition is called in CLI."""
+        from unittest.mock import patch
+
+        repo_root = tmp_path / "repo"
+        repo_root.mkdir()
+        (repo_root / ".git").mkdir()
+        plan_path = repo_root / "plan.yaml"
+
+        # Save the plan first to get its hash
+        hash_ = save_plan(sample_plan, plan_path)
+
+        # Track if _backup_definition was called
+        with patch("vectl.io._backup_definition") as mock_backup:
+            mock_backup.return_value = repo_root / ".git" / "vectl" / "plan.yaml.bak"
+            # Import and call the CLI's _save_definition
+            from vectl import cli
+
+            cli._save_definition(sample_plan, plan_path, hash_)
+
+            mock_backup.assert_called_once_with(plan_path)
+
+    def test_backup_called_on_save_definition_mcp(self, tmp_path: Path, sample_plan: Plan) -> None:
+        """Backup should be created when save_definition is called in MCP server."""
+        from unittest.mock import patch
+
+        repo_root = tmp_path / "repo"
+        repo_root.mkdir()
+        (repo_root / ".git").mkdir()
+        plan_path = repo_root / "plan.yaml"
+
+        # Save the plan first to get its hash
+        hash_ = save_plan(sample_plan, plan_path)
+
+        # Patch _plan_path to return our temp path
+        with patch("vectl.mcp_server._plan_path", return_value=plan_path):
+            # Track if _backup_definition was called
+            with patch("vectl.mcp_server._backup_definition") as mock_backup:
+                mock_backup.return_value = repo_root / ".git" / "vectl" / "plan.yaml.bak"
+                # Import and call the MCP server's _save_definition
+                from vectl import mcp_server
+
+                mcp_server._save_definition(sample_plan, hash_, recalc_locks=False)
+
+                mock_backup.assert_called_once()
+
+    def test_backup_failure_does_not_block_save_cli(
+        self, tmp_path: Path, sample_plan: Plan
+    ) -> None:
+        """Backup failure should not prevent save from succeeding in CLI."""
+        from unittest.mock import patch
+
+        repo_root = tmp_path / "repo"
+        repo_root.mkdir()
+        (repo_root / ".git").mkdir()
+        plan_path = repo_root / "plan.yaml"
+
+        # Save the plan first to get its hash
+        hash_ = save_plan(sample_plan, plan_path)
+
+        # Simulate backup failure
+        with patch("vectl.io._backup_definition") as mock_backup:
+            mock_backup.side_effect = OSError("Permission denied")
+            # Import and call the CLI's _save_definition - should not raise
+            from vectl import cli
+
+            # This should NOT raise even though backup fails
+            cli._save_definition(sample_plan, plan_path, hash_)
+
+            # Verify save actually worked
+            assert plan_path.exists()
+
+    def test_backup_failure_does_not_block_save_mcp(
+        self, tmp_path: Path, sample_plan: Plan
+    ) -> None:
+        """Backup failure should not prevent save from succeeding in MCP server."""
+        from unittest.mock import patch
+
+        repo_root = tmp_path / "repo"
+        repo_root.mkdir()
+        (repo_root / ".git").mkdir()
+        plan_path = repo_root / "plan.yaml"
+
+        # Save the plan first to get its hash
+        hash_ = save_plan(sample_plan, plan_path)
+
+        # Patch _plan_path to return our temp path
+        with patch("vectl.mcp_server._plan_path", return_value=plan_path):
+            # Simulate backup failure
+            with patch("vectl.mcp_server._backup_definition") as mock_backup:
+                mock_backup.side_effect = OSError("Permission denied")
+                # Import and call the MCP server's _save_definition - should not raise
+                from vectl import mcp_server
+
+                # This should NOT raise even though backup fails
+                result = mcp_server._save_definition(sample_plan, hash_, recalc_locks=False)
+
+                # Result should be a string (the lock changes notice)
+                assert isinstance(result, str)
+
+
 class TestCorruptedBackupHandling:
     """Tests for corrupted/unreadable/invalid backup file handling."""
 

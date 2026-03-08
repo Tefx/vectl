@@ -70,6 +70,7 @@ from vectl.core import (
     upsert_agents_md,
 )
 from vectl.io import (
+    _backup_definition,
     _resolve_git_dir,
     extract_state,
     load_plan_definition,
@@ -191,13 +192,24 @@ def _save_definition(plan: Plan, expected_def_hash: str, *, recalc_locks: bool =
         changed = recalc_lock_status(plan)
 
     stripped = strip_state(plan)
+    plan_path = _plan_path()
     try:
-        save_plan(stripped, _plan_path(), expected_def_hash)
+        save_plan(stripped, plan_path, expected_def_hash)
     except CASConflictError as err:
         raise PlanError(
             "CAS conflict: plan.yaml was modified by another process since you loaded it. "
             "Re-read with `vectl_status` or `vectl_show`, then retry your mutation."
         ) from err
+
+    # Create backup after successful save (non-blocking)
+    try:
+        _backup_definition(plan_path)
+    except OSError:
+        # Log via standard logging, backup failure should not block save
+        import logging
+
+        logging.warning("Backup failed", exc_info=True)
+
     return format_lock_changes(changed, plan)
 
 

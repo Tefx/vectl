@@ -70,6 +70,7 @@ from vectl.core import (
     upsert_agents_md,
 )
 from vectl.io import (
+    _resolve_git_dir,
     extract_state,
     load_plan_definition,
     load_state,
@@ -1539,28 +1540,6 @@ def vectl_check(
 # ---------------------------------------------------------------------------
 # Tool 15: vectl_recover
 # ---------------------------------------------------------------------------
-
-
-def _resolve_git_dir(path: Path) -> Path | None:
-    """Resolve the .git directory for a plan file's parent directory.
-
-    Returns None if not in a git repo or if in a linked worktree.
-    """
-    from vectl.plan_path import is_linked_worktree
-
-    # Check if we're in a linked worktree - don't backup there
-    is_linked, _ = is_linked_worktree()
-    if is_linked:
-        return None
-
-    # Find .git directory
-    current = path.parent.resolve()
-    while current != current.parent:
-        git_dir = current / ".git"
-        if git_dir.exists() and git_dir.is_dir():
-            return git_dir
-        current = current.parent
-    return None
 
 
 @mcp.tool(

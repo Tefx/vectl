@@ -16646,7 +16646,7 @@ phases:
       - Kept anima incident reproducer tests green under repaired path.'
   - id: claim-consistency-recovery.claim-rejection-diagnostics
     name: claim-rejection-diagnostics
-    status: pending
+    status: claimed
     description: 'Improve claim-rejection UX so operators can immediately understand
       when an existing claim record is blocking work.
 
@@ -16689,6 +16689,8 @@ phases:
     depends_on:
     - claim-consistency-recovery.atomic-plan-save-locking
     agent: python-executor
+    claimed_by: python-executor
+    claimed_at: '2026-03-09T02:06:29.852540+00:00'
   - id: claim-consistency-recovery.repair-claims-command
     name: repair-claims-command
     status: pending

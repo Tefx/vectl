@@ -111,6 +111,24 @@ def save_plan(
     return new_hash
 
 
+def _write_plan_content(path: Path, content: str) -> None:
+    """Persist serialized plan content via temp file + atomic rename."""
+    dir_ = path.parent
+    dir_.mkdir(parents=True, exist_ok=True)
+    fd, tmp_path = tempfile.mkstemp(dir=str(dir_), suffix=".tmp")
+    try:
+        os.write(fd, content.encode("utf-8"))
+        os.close(fd)
+        os.replace(tmp_path, str(path))
+    except Exception:
+        # Clean up temp file on error
+        try:
+            os.unlink(tmp_path)
+        except OSError:
+            pass
+        raise
+
+
 def _git_commit_plan(plan_path: Path, message: str) -> bool:
     """Best-effort git commit for ``plan_path`` after a successful write."""
 

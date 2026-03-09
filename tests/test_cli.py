@@ -788,6 +788,88 @@ class TestComplete:
         assert complete_result.exit_code == 0
         assert load_claims(claims_path) == {}
 
+    def test_split_brain_claim_exists_but_plan_shows_pending(self, plan_file: Path) -> None:
+        """CLI-level reproducer: claims.json has claim but plan.yaml shows pending.
+
+        This demonstrates the split-brain symptom at CLI level:
+        - Manual manipulation of claims.json creates inconsistency
+        - CLI claim command fails with 'already claimed' (reads claims.json)
+        - But plan.yaml shows the step as PENDING (not CLAIMED)
+        - CLI complete command fails because it reads plan.yaml status
+        """
+        import os
+        import subprocess
+        import tempfile
+        from vectl.claims import ClaimEntry, save_claims, resolve_claims_path, get_current_branch
+        from vectl.io import load_plan_definition as load_plan
+
+        # Need to work in a git repo for get_current_branch() to work
+        repo_root = plan_file.parent
+        if not (repo_root / ".git").exists():
+            # Create .git directory to make it a git repo
+            (repo_root / ".git").mkdir()
+            subprocess.run(["git", "init"], cwd=repo_root, capture_output=True)
+            subprocess.run(
+                ["git", "config", "user.email", "test@test.com"],
+                cwd=repo_root,
+                capture_output=True,
+            )
+            subprocess.run(
+                ["git", "config", "user.name", "Test"],
+                cwd=repo_root,
+                capture_output=True,
+            )
+            subprocess.run(
+                ["git", "commit", "--allow-empty", "-m", "init"],
+                cwd=repo_root,
+                capture_output=True,
+            )
+
+        # Get branch
+        original_cwd = os.getcwd()
+        os.chdir(repo_root)
+        branch_name = get_current_branch()
+        os.chdir(original_cwd)
+
+        # Manually add claim to claims.json without updating plan.yaml
+        claims_path = resolve_claims_path(plan_file)
+        claims_path.parent.mkdir(parents=True, exist_ok=True)
+        save_claims(
+            {
+                f"{branch_name}:s1": ClaimEntry(
+                    step_id="s1",
+                    branch=branch_name,
+                    agent="agent-a",
+                    claimed_at="2026-03-09T00:00:00Z",
+                )
+            },
+            claims_path,
+        )
+
+        # Verify split-brain state
+        plan, _ = load_plan(plan_file)
+        step = _must_find_step(plan, "s1")
+        assert step.status == StepStatus.PENDING, "Precondition: plan shows PENDING"
+
+        # Symptom: claim command fails with "already claimed"
+        # because it checks claims.json first
+        os.chdir(repo_root)
+        try:
+            claim_result = runner.invoke(
+                app, ["claim", "s1", "--agent", "agent-b", "--plan", str(plan_file)]
+            )
+            assert claim_result.exit_code == 1
+            assert "already claimed" in claim_result.output.lower()
+        finally:
+            os.chdir(original_cwd)
+
+        # Symptom: complete command fails because plan shows PENDING
+        complete_result = runner.invoke(
+            app, ["complete", "s1", "--evidence", "evidence", "--plan", str(plan_file)]
+        )
+        assert complete_result.exit_code == 1
+        assert "claimed" in complete_result.output.lower()
+
 
 class TestCompletePhase:
     def test_complete_phase_historical_success(self, plan_file: Path) -> None:

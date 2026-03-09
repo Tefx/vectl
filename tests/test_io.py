@@ -4,6 +4,8 @@ import ast
 import inspect
 import os
 import subprocess
+import threading
+import time
 from pathlib import Path
 
 import pytest
@@ -12,6 +14,7 @@ from vectl.io import (
     _backup_definition,
     _clean_dict,
     _git_commit_plan,
+    _write_plan_content,
     load_plan_definition as load_plan,
     save_plan,
 )
@@ -476,3 +479,204 @@ class TestBackupCrashSafety:
 
         temp_files = list(backup_dir.glob("*.tmp"))
         assert len(temp_files) == 0
+
+
+class TestAnimaIncidentReproducer:
+    """Reproducer for the anima orchestrator/worktree split-brain incident.
+
+    Symptom: One writer leaves `.git/vectl/claims.json` with `main:<step_id>`
+    while a later concurrent write leaves `plan.yaml`/derived step state visible
+    as pending.
+
+    This test creates the split-brain state and verifies the downstream symptoms:
+    - claim rejects with an existing branch claim (false positive)
+    - show reads pending (inconsistent with claims.json)
+    - complete refuses because step is not recognized as claimed
+    """
+
+    def test_split_brain_claim_rejects_but_plan_shows_pending(
+        self, tmp_path: Path, sample_plan: Plan, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """Reproducer: claims.json has claim but plan.yaml shows step as pending.
+
+        This simulates the race condition where:
+        1. Writer A acquires claim in claims.json
+        2. Writer B tries to claim same step but fails (CAS conflict, worktree issue, etc.)
+        3. Result: claims.json has entry, plan.yaml doesn't reflect claim
+
+        This test demonstrates the downstream symptoms:
+        - claim rejects with "already claimed" from claims.json check
+        - but plan.yaml shows step as PENDING (not CLAIMED)
+        - complete refuses because plan.yaml step is not CLAIMED
+        """
+        import os
+        from vectl.claims import ClaimEntry, acquire_claim, load_claims, save_claims
+        from vectl.lifecycle import claim_step, complete_step
+        from vectl.plan_path import resolve_claims_path
+        from vectl.claims import get_current_branch
+
+        # Setup: create a git repo so get_current_branch() works
+        repo_root = tmp_path / "repo"
+        repo_root.mkdir()
+        subprocess.run(["git", "init"], cwd=repo_root, capture_output=True)
+        subprocess.run(
+            ["git", "config", "user.email", "test@test.com"],
+            cwd=repo_root,
+            capture_output=True,
+        )
+        subprocess.run(
+            ["git", "config", "user.name", "Test"],
+            cwd=repo_root,
+            capture_output=True,
+        )
+        subprocess.run(
+            ["git", "commit", "--allow-empty", "-m", "init"],
+            cwd=repo_root,
+            capture_output=True,
+        )
+
+        # Change to the repo directory so get_current_branch() returns the correct name
+        original_cwd = os.getcwd()
+        os.chdir(repo_root)
+        try:
+            # Get the actual branch name from vectl's get_current_branch()
+            branch_name = get_current_branch()
+        finally:
+            os.chdir(original_cwd)
+
+        plan_path = repo_root / "plan.yaml"
+        save_plan(sample_plan, plan_path)
+        claims_path = resolve_claims_path(plan_path)
+
+        # Simulate split-brain: manually add claim to claims.json without
+        # updating plan.yaml (simulates the race condition)
+        claims_path.parent.mkdir(parents=True, exist_ok=True)
+        save_claims(
+            {
+                f"{branch_name}:s1": ClaimEntry(
+                    step_id="s1",
+                    branch=branch_name,
+                    agent="agent-a",
+                    claimed_at="2026-03-09T00:00:00Z",
+                )
+            },
+            claims_path,
+        )
+
+        # Verify split-brain state exists
+        claims = load_claims(claims_path)
+        key = f"{branch_name}:s1"
+        assert key in claims, "Precondition: claims.json should have claim entry"
+
+        plan_loaded, _ = load_plan(plan_path)
+        found = plan_loaded.find_step("s1")
+        assert found is not None
+        _, step = found
+        assert step.status == StepStatus.PENDING, (
+            "Precondition: plan.yaml should show step as PENDING"
+        )
+
+        # Symptom 1: claim_step should fail because it checks claims.json first
+        # even though plan.yaml shows PENDING - this is the inconsistency
+        os.chdir(repo_root)
+        try:
+            plan_to_claim, _ = load_plan(plan_path)
+            with pytest.raises(Exception) as exc_info:
+                claim_step(plan_to_claim, "s1", "agent-b", claims_path=claims_path)
+
+            assert "already claimed" in str(exc_info.value).lower()
+        finally:
+            os.chdir(original_cwd)
+
+        # Symptom 2: complete_step should fail because plan.yaml shows PENDING
+        # (even though claims.json has the claim)
+        original_plan, _ = load_plan(plan_path)
+        with pytest.raises(Exception) as exc_info:
+            complete_step(original_plan, "s1", "evidence")
+
+        assert "claimed" in str(exc_info.value).lower()
+
+    def test_concurrent_claim_vs_plan_write_race(
+        self, tmp_path: Path, sample_plan: Plan, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """Race harness: concurrent claim acquisition vs plan.yaml save failure.
+
+        This test exercises the real concurrent path where:
+        1. Thread A acquires claim in claims.json (succeeds)
+        2. Thread B writes plan.yaml but fails (CAS conflict or worktree issue)
+        3. Result: split-brain state
+
+        The test verifies that after such a race:
+        - claims.json contains the claim entry
+        - plan.yaml step status is PENDING (not CLAIMED)
+        """
+        from vectl.claims import acquire_claim, load_claims, save_claims
+        from vectl.plan_path import resolve_claims_path
+
+        plan_path = tmp_path / "plan.yaml"
+        save_plan(sample_plan, plan_path)
+        claims_path = resolve_claims_path(plan_path)
+        claims_path.parent.mkdir(parents=True, exist_ok=True)
+
+        seed_hash = save_plan(sample_plan, plan_path)
+
+        # Track execution order
+        events: dict[str, threading.Event] = {
+            "claim_acquired": threading.Event(),
+            "plan_save_started": threading.Event(),
+            "done": threading.Event(),
+        }
+        errors: dict[str, Exception] = {}
+
+        # Thread A: acquires claim successfully
+        def thread_a_claim() -> None:
+            try:
+                acquire_claim("s1", "main", "agent-a", claims_path)
+                events["claim_acquired"].set()
+                # Wait for thread B to start its save
+                events["plan_save_started"].wait(timeout=2.0)
+                time.sleep(0.1)  # Let thread B complete its write
+            except Exception as exc:
+                errors["thread_a"] = exc
+
+        # Thread B: tries to save plan but fails due to CAS conflict
+        # (simulating worktree issue or race)
+        def thread_b_save() -> None:
+            try:
+                events["claim_acquired"].wait(timeout=2.0)
+                events["plan_save_started"].set()
+
+                # Modify the plan (simulating a claim update)
+                plan = sample_plan.model_copy(deep=True)
+                found_step = plan.find_step("s1")
+                assert found_step is not None
+                _, step = found_step
+                step.status = StepStatus.CLAIMED
+                step.claimed_by = "agent-a"
+
+                # But use wrong hash to simulate CAS conflict / failure
+                save_plan(plan, plan_path, expected_hash="wrong-hash")
+            except Exception as exc:
+                errors["thread_b"] = exc
+
+        thread1 = threading.Thread(target=thread_a_claim, name="thread-claim")
+        thread2 = threading.Thread(target=thread_b_save, name="thread-save")
+
+        thread1.start()
+        thread2.start()
+        thread1.join(timeout=5.0)
+        thread2.join(timeout=5.0)
+
+        # Verify split-brain state
+        claims = load_claims(claims_path)
+        assert "main:s1" in claims, "claims.json should have claim entry (thread A succeeded)"
+
+        plan_loaded, _ = load_plan(plan_path)
+        found_step = plan_loaded.find_step("s1")
+        assert found_step is not None
+        _, step = found_step
+        assert step.status == StepStatus.PENDING, (
+            "plan.yaml should show PENDING (thread B failed due to CAS)"
+        )
+
+        # This is the split-brain: claims.json says claimed, plan.yaml says pending

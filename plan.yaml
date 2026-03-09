@@ -17190,7 +17190,7 @@ phases:
       routes should-fix items into fix/retest plan steps per workflow.'
   - id: claim-consistency-recovery.gate
     name: gate
-    status: pending
+    status: claimed
     description: 'As an INDEPENDENT REVIEWER (`gate-reviewer`), assess whether the
       claim-consistency-recovery phase meets the quality bar for completion.
 
@@ -17277,6 +17277,8 @@ phases:
     - claim-consistency-recovery.integration-verify
     - claim-consistency-recovery.integration-verify-retest
     agent: gate-reviewer
+    claimed_by: gate-reviewer
+    claimed_at: '2026-03-09T04:00:55.587987+00:00'
   - id: claim-consistency-recovery.integration-verify-fix
     name: integration-verify-fix
     status: done

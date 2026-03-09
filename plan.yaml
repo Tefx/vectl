@@ -17279,7 +17279,7 @@ phases:
     agent: gate-reviewer
   - id: claim-consistency-recovery.integration-verify-fix
     name: integration-verify-fix
-    status: pending
+    status: claimed
     description: 'Bounded remediation for issues found during `claim-consistency-recovery.integration-verify`.
 
 
@@ -17340,6 +17340,8 @@ phases:
     depends_on:
     - claim-consistency-recovery.integration-verify
     agent: python-senior
+    claimed_by: python-senior
+    claimed_at: '2026-03-09T03:52:35.976193+00:00'
   - id: claim-consistency-recovery.integration-verify-retest
     name: integration-verify-retest
     status: pending

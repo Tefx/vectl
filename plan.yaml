@@ -17190,7 +17190,7 @@ phases:
       routes should-fix items into fix/retest plan steps per workflow.'
   - id: claim-consistency-recovery.gate
     name: gate
-    status: claimed
+    status: done
     description: 'As an INDEPENDENT REVIEWER (`gate-reviewer`), assess whether the
       claim-consistency-recovery phase meets the quality bar for completion.
 
@@ -17279,6 +17279,50 @@ phases:
     agent: gate-reviewer
     claimed_by: gate-reviewer
     claimed_at: '2026-03-09T04:00:55.587987+00:00'
+    done_at: '2026-03-09T04:09:10.518799+00:00'
+    evidence: '## Gate Review Report (initial)
+
+
+      Decision: BLOCKED
+
+
+      Blocking issues detected by independent gate-reviewer:
+
+      - `uv run ruff check src tests` -> 49 lint failures in scoped claim-consistency
+      touch surfaces.
+
+      - `uv run mypy src/vectl` -> `src/vectl/mcp_server.py:514` name redefinition
+      (`md_lines` no-redef).
+
+
+      Evidence highlights:
+
+      - Reproducer, atomic lock hardening, diagnostics, repair command, docs, and
+      integration flows were otherwise validated.
+
+      - Independent gate deemed blockers actionable and phase-local enough for bounded
+      remediation.
+
+
+      Remediation actions created immediately after blocked gate:
+
+      - claim-consistency-recovery.fix-gate-lint-and-type-blockers
+
+      - claim-consistency-recovery.retest-gate-lint-and-type-blockers
+
+      - claim-consistency-recovery.gate-rerun
+
+
+      Dependency chain:
+
+      - gate -> fix-gate-lint-and-type-blockers -> retest-gate-lint-and-type-blockers
+      -> gate-rerun
+
+
+      Notes:
+
+      - Original gate record retained as blocked-review evidence; phase completion
+      now requires successful gate-rerun after remediation.'
   - id: claim-consistency-recovery.integration-verify-fix
     name: integration-verify-fix
     status: done

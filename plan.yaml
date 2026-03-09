@@ -16837,7 +16837,7 @@ phases:
       tests.'
   - id: claim-consistency-recovery.operator-recovery-docs
     name: operator-recovery-docs
-    status: pending
+    status: claimed
     description: 'Document the operator recovery workflow for ghost claims and split-brain
       claim state.
 
@@ -16874,6 +16874,8 @@ phases:
     depends_on:
     - claim-consistency-recovery.repair-claims-command
     agent: python-executor
+    claimed_by: python-executor
+    claimed_at: '2026-03-09T02:39:19.932018+00:00'
   - id: claim-consistency-recovery.targeted-regression-tests
     name: targeted-regression-tests
     status: pending

@@ -17708,7 +17708,7 @@ phases:
       steps per workflow.'
   - id: claim-consistency-recovery.gate-rerun
     name: gate-rerun
-    status: pending
+    status: claimed
     description: 'As an INDEPENDENT REVIEWER (`gate-reviewer`), rerun the claim-consistency-recovery
       phase gate after the bounded lint/type remediation chain completes.
 
@@ -17795,6 +17795,8 @@ phases:
     depends_on:
     - claim-consistency-recovery.retest-gate-lint-and-type-blockers-retest
     agent: gate-reviewer
+    claimed_by: gate-reviewer
+    claimed_at: '2026-03-09T05:33:04.644515+00:00'
   - id: claim-consistency-recovery.retest-gate-lint-and-type-blockers-fix
     name: retest-gate-lint-and-type-blockers-fix
     status: done

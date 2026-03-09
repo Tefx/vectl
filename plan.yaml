@@ -17381,7 +17381,7 @@ phases:
       coverage.'
   - id: claim-consistency-recovery.integration-verify-retest
     name: integration-verify-retest
-    status: pending
+    status: claimed
     description: 'As an INDEPENDENT TESTER (`integration-verifier`), re-run the claim-consistency
       recovery integration verification after the focused remediation.
 
@@ -17411,3 +17411,5 @@ phases:
     depends_on:
     - claim-consistency-recovery.integration-verify-fix
     agent: integration-verifier
+    claimed_by: integration-verifier
+    claimed_at: '2026-03-09T03:57:55.872092+00:00'

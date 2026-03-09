@@ -17593,3 +17593,77 @@ phases:
     depends_on:
     - claim-consistency-recovery.fix-gate-lint-and-type-blockers
     agent: integration-verifier
+  - id: claim-consistency-recovery.gate-rerun
+    name: gate-rerun
+    status: pending
+    description: 'As an INDEPENDENT REVIEWER (`gate-reviewer`), rerun the claim-consistency-recovery
+      phase gate after the bounded lint/type remediation chain completes.
+
+
+      YOU ARE THE QUALITY GATE. Confirm the original concrete blockers are resolved
+      without broadening scope beyond claim-consistency work.
+
+
+      Review criteria:
+
+      1. The original gate blockers from `ruff` and `mypy` are either resolved or
+      precisely re-characterized
+
+      2. The remediation stayed limited to claim-consistency files/paths
+
+      3. Retest evidence includes real command/output for both checks
+
+      4. No new blocker is introduced that invalidates the claim-consistency recovery
+      evidence already accepted
+
+
+      Acceptance criteria:
+
+      - Review the original blocked gate evidence plus the remediation and retest
+      evidence
+
+      - Decide OPEN only if the bounded hygiene blockers are resolved and evidence
+      quality is specific
+
+      - If still blocked, name the exact residual blocker and whether it is in-scope'
+    verification: '- All remediation-chain steps completed with specific evidence
+
+      - Original blocked findings from `uv run ruff check src tests` and `uv run mypy
+      src/vectl` are re-evaluated using the new retest output
+
+      - Phase completion now requires this rerun gate step in addition to the earlier
+      blocked gate record'
+    evidence_template: '## Gate Review Report
+
+
+      **Reviewer**: gate-reviewer
+
+      **Phase**: claim-consistency-recovery
+
+
+      ### Blocker Recheck
+
+      - Ruff blocker status: resolved | still_blocked
+
+      - Mypy `md_lines` no-redef status: resolved | still_blocked
+
+      - Scope remained bounded to claim-consistency paths: yes/no
+
+
+      ### Evidence Review
+
+      - Original blocked gate consulted: yes/no
+
+      - Remediation evidence adequate: yes/no
+
+      - Retest output specific and reproducible: yes/no
+
+
+      ### Gate Decision
+
+      - OPEN | BLOCKED
+
+      - Residual blocker(s): <list or none>'
+    depends_on:
+    - claim-consistency-recovery.retest-gate-lint-and-type-blockers
+    agent: gate-reviewer

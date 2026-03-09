@@ -16742,7 +16742,7 @@ phases:
       - Step scope held to diagnostics/UX only (no repair semantics mutation).'
   - id: claim-consistency-recovery.repair-claims-command
     name: repair-claims-command
-    status: claimed
+    status: done
     description: "Add an operator recovery command for already-broken repos: `vectl\
       \ repair claims` with `--dry-run`, `--step`, and `--json`.\n\nFiles:\n- `src/vectl/cli.py`\n\
       - `src/vectl/mcp_server.py` if MCP exposure is required for parity\n- shared\
@@ -16783,6 +16783,58 @@ phases:
     agent: python-senior
     claimed_by: python-senior
     claimed_at: '2026-03-09T02:30:38.635843+00:00'
+    done_at: '2026-03-09T02:39:06.330638+00:00'
+    evidence: 'Artifact:
+
+      - Worker commit: 4b99f6c
+
+      - Orchestrator squash commit: 7eb7951
+
+
+      Verification:
+
+      - Run: uv run pytest tests/test_cli.py -k repair_claims -v -> 3 passed, 205
+      deselected
+
+      - Run: uv run pytest tests/test_mcp.py -k repair_claims -v -> 3 passed, 156
+      deselected
+
+      - Run: uv run pytest tests/test_claims.py -k repair -v -> 5 passed, 6 deselected
+
+
+      Spec link:
+
+      - claim-consistency-recovery.repair-claims-command
+
+
+      Files changed:
+
+      - src/vectl/claims.py
+
+      - src/vectl/cli.py
+
+      - src/vectl/mcp_server.py
+
+      - tests/test_claims.py
+
+      - tests/test_cli.py
+
+      - tests/test_mcp.py
+
+
+      Gaps/Notes:
+
+      - Implemented `vectl repair claims` with `--dry-run`, `--step`, and `--json`
+      semantics.
+
+      - Deterministic reconciliation policy: plan claim-visible state is authoritative
+      for current branch; repair restores missing claimed entries, removes ghost/non-claimed
+      entries, updates stale claim fields, and preserves out-of-scope entries.
+
+      - Step-scoped preservation validated by targeted CLI/MCP/unit tests.
+
+      - Dry-run non-mutation and relative/absolute plan-path parity validated by targeted
+      tests.'
   - id: claim-consistency-recovery.operator-recovery-docs
     name: operator-recovery-docs
     status: pending

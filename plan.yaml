@@ -17456,3 +17456,61 @@ phases:
 
       - Suggestion: continue treating this as phase-scoped verification evidence rather
       than a broad coverage certification.'
+  - id: claim-consistency-recovery.fix-gate-lint-and-type-blockers
+    name: fix-gate-lint-and-type-blockers
+    status: pending
+    description: 'Fix the concrete gate blockers only within the claim-consistency
+      recovery surface.
+
+
+      Scope boundary:
+
+      - Limit edits to newly introduced or directly affected claim-consistency files
+      and tests
+
+      - Prioritize `src/vectl/claims.py`, `src/vectl/mcp_server.py`, and claim-consistency
+      regression tests / helpers only when needed to clear the reported issues
+
+      - Do not perform unrelated repo-wide lint cleanup
+
+
+      Required outcomes:
+
+      - Resolve the reported `ruff` failures that originate from claim-consistency
+      modifications, including line-length, import order, and unused-import issues
+      in the touched claim-consistency paths
+
+      - Resolve the `mypy` `no-redef` blocker at `src/vectl/mcp_server.py:514` (`md_lines`)
+      without changing unrelated MCP behavior
+
+      - Preserve the claim-consistency recovery behavior already covered by reproducer,
+      repair, and regression evidence
+
+
+      Acceptance criteria:
+
+      - `uv run ruff check src tests` is clean for the bounded claim-consistency touched
+      paths, with no new suppressions added unless narrowly justified in evidence
+
+      - `uv run mypy src/vectl` no longer reports the `md_lines` redefinition error
+      and introduces no new claim-consistency type errors
+
+      - Evidence explicitly lists the files changed and explains why each change is
+      in-scope for claim-consistency remediation'
+    verification: '- Main path: targeted edits remove the gate-reported lint and type
+      blockers in claim-consistency files only
+
+      - Failure path: evidence shows unrelated existing repo hygiene issues were not
+      swept in under this remediation
+
+      - Proof: changed-file list stays bounded to claim-consistency surfaces and the
+      reported `md_lines` no-redef issue is eliminated'
+    evidence_template: "## Remediation Evidence\n\n**Bounded scope**:\n- Files changed:\n\
+      \  - <path>\n- Why each file is in-scope for claim-consistency remediation:\n\
+      \  - <reason>\n\n**Lint/type blockers addressed**:\n- Ruff issues fixed: <list>\n\
+      - Mypy issue fixed: `src/vectl/mcp_server.py:514` `md_lines` no-redef\n\n**Non-goals\
+      \ respected**:\n- Unrelated repo-wide cleanup avoided: yes/no\n- Any intentionally\
+      \ deferred unrelated findings: <list or none>"
+    depends_on:
+    - claim-consistency-recovery.gate
+    agent: python-senior

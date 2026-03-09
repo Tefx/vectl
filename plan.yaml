@@ -16566,7 +16566,7 @@ phases:
       no production behavior change performed in this step.'
   - id: claim-consistency-recovery.atomic-plan-save-locking
     name: atomic-plan-save-locking
-    status: pending
+    status: claimed
     description: "Harden the plan persistence path so claim-visible state cannot be\
       \ reverted by a concurrent writer.\n\nFiles:\n- `src/vectl/io.py`\n- `src/vectl/claims.py`\
       \ only if the save/claim critical section boundary must be shared explicitly\n\
@@ -16603,6 +16603,8 @@ phases:
     depends_on:
     - claim-consistency-recovery.anima-incident-reproducer
     agent: python-senior
+    claimed_by: python-senior
+    claimed_at: '2026-03-09T01:56:05.074900+00:00'
   - id: claim-consistency-recovery.claim-rejection-diagnostics
     name: claim-rejection-diagnostics
     status: pending

@@ -17788,3 +17788,62 @@ phases:
     depends_on:
     - claim-consistency-recovery.retest-gate-lint-and-type-blockers
     agent: python-senior
+  - id: claim-consistency-recovery.retest-gate-lint-and-type-blockers-retest
+    name: retest-gate-lint-and-type-blockers-retest
+    status: pending
+    description: 'As an INDEPENDENT TESTER (`integration-verifier`), re-run the gate-blocking
+      hygiene checks after the second bounded claim-consistency lint remediation.
+
+
+      YOUR GOAL IS TO FIND REMAINING PROBLEMS, not to confirm success.
+
+
+      Remediation consolidation:
+
+      - prior_loop: claim-consistency-recovery.fix-gate-lint-and-type-blockers, claim-consistency-recovery.retest-gate-lint-and-type-blockers,
+      claim-consistency-recovery.retest-gate-lint-and-type-blockers-fix
+
+      - remaining_blocker: gate rerun is blocked until lint evidence proves the claim-consistency
+      touched surfaces are clean or isolates any residual failures as unrelated legacy
+      debt
+
+      - why_new_loop: the original retest established that `mypy` passes but `ruff`
+      still fails globally; this retest must now prove whether the bounded surface
+      is unblocked even if unrelated global debt remains
+
+
+      Scope:
+
+      - Re-run `uv run mypy src/vectl`
+
+      - Re-run global `uv run ruff check src tests` for attribution
+
+      - Re-run scoped lint on `src/vectl/cli.py src/vectl/core.py src/vectl/lifecycle.py
+      tests/test_claims.py tests/test_cli.py tests/test_io.py tests/test_mcp.py`
+
+
+      Acceptance criteria:
+
+      - `uv run mypy src/vectl` still passes
+
+      - Scoped `ruff` command for the bounded claim-consistency surfaces passes
+
+      - If global `uv run ruff check src tests` still fails, evidence explicitly classifies
+      the remaining failures as unrelated legacy debt outside the bounded gate-path
+      surface
+
+      - Provide actual command output excerpts that clearly separate scoped pass from
+      global residual debt'
+    verification: '- Main path: `uv run mypy src/vectl` passes and scoped `uv run
+      ruff check src/vectl/cli.py src/vectl/core.py src/vectl/lifecycle.py tests/test_claims.py
+      tests/test_cli.py tests/test_io.py tests/test_mcp.py` passes
+
+      - Failure path: if `uv run ruff check src tests` still fails, evidence lists
+      the residual failing files and confirms they are outside the bounded claim-consistency
+      surface
+
+      - Proof: retest evidence distinguishes scoped gate-path success from unrelated
+      global debt using actual command/output excerpts'
+    depends_on:
+    - claim-consistency-recovery.retest-gate-lint-and-type-blockers-fix
+    agent: integration-verifier

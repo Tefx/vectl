@@ -16742,7 +16742,7 @@ phases:
       - Step scope held to diagnostics/UX only (no repair semantics mutation).'
   - id: claim-consistency-recovery.repair-claims-command
     name: repair-claims-command
-    status: pending
+    status: claimed
     description: "Add an operator recovery command for already-broken repos: `vectl\
       \ repair claims` with `--dry-run`, `--step`, and `--json`.\n\nFiles:\n- `src/vectl/cli.py`\n\
       - `src/vectl/mcp_server.py` if MCP exposure is required for parity\n- shared\
@@ -16781,6 +16781,8 @@ phases:
     depends_on:
     - claim-consistency-recovery.claim-rejection-diagnostics
     agent: python-senior
+    claimed_by: python-senior
+    claimed_at: '2026-03-09T02:30:38.635843+00:00'
   - id: claim-consistency-recovery.operator-recovery-docs
     name: operator-recovery-docs
     status: pending

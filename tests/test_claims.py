@@ -13,8 +13,8 @@ from vectl.claims import (
     acquire_claim,
     cleanup_stale_claims,
     load_claims,
-    repair_claims,
     release_claim,
+    repair_claims,
     resolve_claims_path,
     save_claims,
 )

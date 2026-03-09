@@ -13,7 +13,8 @@ from typer.testing import CliRunner
 from vectl import __version__
 from vectl.claims import ClaimEntry, load_claims, save_claims
 from vectl.cli import app
-from vectl.io import load_plan_definition as load_plan, load_plan_definition, save_plan
+from vectl.io import load_plan_definition, save_plan
+from vectl.io import load_plan_definition as load_plan
 from vectl.models import AffinityMode, Phase, PhaseStatus, Plan, Step, StepStatus
 from vectl.plan_path import resolve_claims_path
 
@@ -716,8 +717,9 @@ class TestClaim:
 
     def test_claim_reject_with_existing_claim_shows_diagnostics(self, plan_file: Path) -> None:
         """Claim rejection due to existing claim shows rich diagnostics."""
-        import subprocess
         import os
+        import subprocess
+
         from vectl.claims import get_current_branch
 
         # Need to work in a git repo for get_current_branch() to work
@@ -1160,8 +1162,8 @@ class TestComplete:
         """
         import os
         import subprocess
-        import tempfile
-        from vectl.claims import ClaimEntry, save_claims, resolve_claims_path, get_current_branch
+
+        from vectl.claims import ClaimEntry, get_current_branch, resolve_claims_path, save_claims
         from vectl.io import load_plan_definition as load_plan
 
         # Need to work in a git repo for get_current_branch() to work

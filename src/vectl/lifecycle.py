@@ -13,7 +13,6 @@ from pathlib import Path
 from vectl.models import (
     AffinityError,
     AffinityMode,
-    Phase,
     PhaseStatus,
     Plan,
     PlanError,

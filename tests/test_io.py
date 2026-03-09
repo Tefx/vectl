@@ -15,8 +15,10 @@ from vectl.io import (
     _clean_dict,
     _git_commit_plan,
     _write_plan_content,
-    load_plan_definition as load_plan,
     save_plan,
+)
+from vectl.io import (
+    load_plan_definition as load_plan,
 )
 from vectl.models import (
     AffinityMode,
@@ -566,10 +568,15 @@ class TestAnimaIncidentReproducer:
         """
         import os
         from datetime import datetime, timezone
-        from vectl.claims import ClaimEntry, acquire_claim, load_claims, save_claims
+
+        from vectl.claims import (
+            ClaimEntry,
+            get_current_branch,
+            load_claims,
+            save_claims,
+        )
         from vectl.lifecycle import claim_step, complete_step
         from vectl.plan_path import resolve_claims_path
-        from vectl.claims import get_current_branch
 
         # Setup: create a git repo so get_current_branch() works
         repo_root = tmp_path / "repo"
@@ -666,7 +673,7 @@ class TestAnimaIncidentReproducer:
         - claims.json contains the claim entry
         - plan.yaml step status is PENDING (not CLAIMED)
         """
-        from vectl.claims import acquire_claim, load_claims, save_claims
+        from vectl.claims import acquire_claim, load_claims
         from vectl.plan_path import resolve_claims_path
 
         plan_path = tmp_path / "plan.yaml"
@@ -674,7 +681,7 @@ class TestAnimaIncidentReproducer:
         claims_path = resolve_claims_path(plan_path)
         claims_path.parent.mkdir(parents=True, exist_ok=True)
 
-        seed_hash = save_plan(sample_plan, plan_path)
+        save_plan(sample_plan, plan_path)
 
         # Track execution order
         events: dict[str, threading.Event] = {

@@ -16,8 +16,8 @@ from pathlib import Path
 import pytest
 import yaml
 
-from vectl.claims import load_claims
 from vectl.claims import get_current_branch as _claims_current_branch
+from vectl.claims import load_claims
 from vectl.mcp_server import (
     _load as _vectl_load,
 )
@@ -52,10 +52,10 @@ from vectl.mcp_server import (
     vectl_recover as _vectl_recover_tool,
 )
 from vectl.mcp_server import (
-    vectl_repair_claims as _vectl_repair_claims_tool,
+    vectl_render as _vectl_render_tool,
 )
 from vectl.mcp_server import (
-    vectl_render as _vectl_render_tool,
+    vectl_repair_claims as _vectl_repair_claims_tool,
 )
 from vectl.mcp_server import (
     vectl_review as _vectl_review_tool,
@@ -70,7 +70,7 @@ from vectl.mcp_server import (
     vectl_status as _vectl_status_tool,
 )
 from vectl.migration import migrate_from_split_state
-from vectl.models import Phase, PhaseStatus, Plan, PlanError, PlanIOError, Step, StepStatus
+from vectl.models import PhaseStatus, PlanError, PlanIOError, StepStatus
 from vectl.plan_path import resolve_claims_path
 
 # FastMCP @mcp.tool() returns FunctionTool objects; unwrap to get the callable.
@@ -429,8 +429,8 @@ class TestVectlClaim:
         self, plan_file: Path
     ) -> None:
         """Claim rejection due to existing claim returns structured error data."""
-        import subprocess
         import os
+        import subprocess
 
         # Need to work in a git repo for get_current_branch() to work
         repo_root = plan_file.parent

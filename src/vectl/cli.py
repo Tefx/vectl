@@ -20,6 +20,7 @@ from rich.table import Table
 from rich.text import Text
 
 from vectl import __version__
+from vectl.claims import repair_claims
 from vectl.core import (
     RecoverResult,
     add_phase,
@@ -46,7 +47,6 @@ from vectl.core import (
     gate_check as core_gate_check,
 )
 from vectl.dashboard import generate_dashboard
-from vectl.claims import repair_claims
 from vectl.guide import GUIDE_ALL as _GUIDE_ALL
 from vectl.guide import GUIDE_TOPICS as _GUIDE_TOPICS
 from vectl.io import (
@@ -54,11 +54,9 @@ from vectl.io import (
     load_plan_definition,
     save_plan,
 )
-from vectl.merge_driver import merge_plans
-from vectl.migration import migrate_from_split_state, resolve_state_path
 from vectl.lifecycle import (
-    claim_step,
     ClaimConflictError,
+    claim_step,
     complete_phase,
     complete_step,
     defer_step,
@@ -67,6 +65,8 @@ from vectl.lifecycle import (
     skip_phase,
     skip_step,
 )
+from vectl.merge_driver import merge_plans
+from vectl.migration import migrate_from_split_state, resolve_state_path
 from vectl.models import (
     AffinityMode,
     CASConflictError,
@@ -1201,7 +1201,7 @@ def claim(
         # Rich claim conflict diagnostics with actionable next step
         console.print(f"[red bold]Error:[/] {e}")
         console.print()
-        console.print(f"[bold]Claim Details:[/]")
+        console.print("[bold]Claim Details:[/]")
         console.print(f"  Step ID:    {e.step_id}")
         console.print(f"  Branch:     {e.branch}")
         console.print(f"  Claimed by: {e.claimant}")
@@ -1209,9 +1209,9 @@ def claim(
         console.print()
         console.print("[bold]Next Steps:[/]")
         console.print(f"  1. Inspect the step: [cyan]vectl show {e.step_id}[/]")
-        console.print(f"  2. If this claim is stale, you can repair claims with:")
-        console.print(f"     [cyan]vectl repair claims --dry-run[/]")
-        raise typer.Exit(1)
+        console.print("  2. If this claim is stale, you can repair claims with:")
+        console.print("     [cyan]vectl repair claims --dry-run[/]")
+        raise typer.Exit(1) from None
     except PlanError as e:
         _die(str(e))
         return  # unreachable, but satisfies Pyright

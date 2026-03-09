@@ -8,24 +8,6 @@ from datetime import datetime, timedelta, timezone
 from enum import Enum
 from pathlib import Path
 
-from vectl.claims import (
-    acquire_claim,
-    cleanup_stale_claims,
-    get_claim_info,
-    get_current_branch,
-    release_claim,
-)
-from vectl.lifecycle import (
-    ClaimResult,
-    claim_step,
-    complete_phase,
-    complete_step,
-    defer_step,
-    get_claimed_steps,
-    reject_step,
-    skip_phase,
-    skip_step,
-)
 from vectl.models import (
     AmbiguousMatchError,
     Clipboard,

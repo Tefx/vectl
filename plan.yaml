@@ -17904,7 +17904,7 @@ phases:
       - No out-of-scope file modifications were made.'
   - id: claim-consistency-recovery.retest-gate-lint-and-type-blockers-retest
     name: retest-gate-lint-and-type-blockers-retest
-    status: claimed
+    status: done
     description: "As an INDEPENDENT TESTER (`integration-verifier`), re-run the gate-blocking\
       \ hygiene checks after the second bounded claim-consistency lint remediation.\n\
       \nYOUR GOAL IS TO FIND REMAINING IN-SCOPE PROBLEMS, not to re-open unrelated\
@@ -17997,3 +17997,41 @@ phases:
     agent: integration-verifier
     claimed_by: integration-verifier
     claimed_at: '2026-03-09T05:29:23.622585+00:00'
+    done_at: '2026-03-09T05:32:53.594206+00:00'
+    evidence: 'Verification retest evidence:
+
+
+      - Run: uv run mypy src/vectl -> PASS (no issues found in 18 source files)
+
+      - Run: uv run ruff check src/vectl/cli.py src/vectl/core.py src/vectl/lifecycle.py
+      tests/test_claims.py tests/test_cli.py tests/test_io.py tests/test_mcp.py ->
+      PASS (scoped claim-consistency surfaces clean)
+
+      - Run: uv run ruff check src tests -> FAIL (12 residual errors in out-of-scope
+      legacy files: src/vectl/io.py and non-claim-centric test files)
+
+
+      Attribution:
+
+      - Scoped claim-consistency gate-path hygiene is clean.
+
+      - Remaining global lint failures are explicit legacy debt outside bounded phase
+      scope.
+
+
+      Planner consolidation applied:
+
+      - Updated this step and gate-rerun criteria to treat global ruff as attribution-only
+      evidence while keeping scoped claim-consistency lint+mypy as blocking criteria.
+
+
+      Spec link:
+
+      - claim-consistency-recovery.retest-gate-lint-and-type-blockers-retest
+
+
+      Notes:
+
+      - No code changes in retest branch (verification-only).
+
+      - Evidence now explicitly separates scoped pass from global unrelated debt.'

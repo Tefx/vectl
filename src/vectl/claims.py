@@ -9,12 +9,13 @@ import subprocess
 import tempfile
 from collections.abc import Iterator
 from contextlib import contextmanager
+from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 from pydantic import BaseModel
 
-from vectl.models import PlanError
+from vectl.models import Plan, PlanError, StepStatus
 from vectl.plan_path import resolve_claims_path as _resolve_claims_path
 
 
@@ -25,6 +26,54 @@ class ClaimEntry(BaseModel):
     branch: str
     agent: str
     claimed_at: str
+
+
+@dataclass(frozen=True)
+class RepairAction:
+    """Single deterministic reconciliation action."""
+
+    action: str
+    key: str
+    reason: str
+    before: ClaimEntry | None
+    after: ClaimEntry | None
+
+
+@dataclass(frozen=True)
+class RepairClaimsResult:
+    """Result payload for `repair claims` reconciliation."""
+
+    dry_run: bool
+    branch: str
+    plan_path: str
+    claims_path: str
+    policy: str
+    step_scope: str | None
+    missing_claims_file: bool
+    changed: bool
+    actions: tuple[RepairAction, ...]
+
+    def to_dict(self) -> dict[str, object]:
+        return {
+            "dry_run": self.dry_run,
+            "branch": self.branch,
+            "plan_path": self.plan_path,
+            "claims_path": self.claims_path,
+            "policy": self.policy,
+            "step_scope": self.step_scope,
+            "missing_claims_file": self.missing_claims_file,
+            "changed": self.changed,
+            "actions": [
+                {
+                    "action": action.action,
+                    "key": action.key,
+                    "reason": action.reason,
+                    "before": action.before.model_dump(mode="json") if action.before else None,
+                    "after": action.after.model_dump(mode="json") if action.after else None,
+                }
+                for action in self.actions
+            ],
+        }
 
 
 def _claim_key(branch: str, step_id: str) -> str:
@@ -224,3 +273,118 @@ def get_current_branch() -> str:
 
     branch = result.stdout.strip()
     return branch or "unknown"
+
+
+def repair_claims(
+    plan: Plan,
+    plan_path: Path,
+    claims_path: Path,
+    *,
+    dry_run: bool = False,
+    step_id: str | None = None,
+) -> RepairClaimsResult:
+    """Reconcile claims.json against plan.yaml for current branch.
+
+    Deterministic policy (task authority: claim-consistency-recovery.repair-claims-command):
+    - plan.yaml is source of truth for claim-visible state
+    - claims entries for current branch are repaired to match plan step status/owner
+    - out-of-scope claims (other branches, or non-target steps in --step mode) are preserved
+    """
+
+    if step_id is not None and plan.find_step(step_id) is None:
+        raise PlanError(f"Step '{step_id}' not found")
+
+    policy = (
+        "plan_precedence: for current branch, ensure claims entry exists iff step is claimed in plan; "
+        "for matching keys, plan claimed_by/claimed_at overwrite stale claims fields; "
+        "outside branch/scope entries are preserved byte-for-byte in memory"
+    )
+
+    branch = get_current_branch()
+    missing_file = not claims_path.exists()
+    plan_steps = {step.id: step for phase in plan.phases for step in phase.steps}
+
+    desired_for_branch: dict[str, ClaimEntry] = {}
+    for step in plan_steps.values():
+        if step.status != StepStatus.CLAIMED:
+            continue
+        if step.claimed_by is None:
+            continue
+        key = _claim_key(branch, step.id)
+        desired_for_branch[key] = ClaimEntry(
+            step_id=step.id,
+            branch=branch,
+            agent=step.claimed_by,
+            claimed_at=step.claimed_at or _now_iso(),
+        )
+
+    actions: list[RepairAction] = []
+
+    with _locked_claims_file(claims_path):
+        claims = _read_claims_file(claims_path)
+
+        scoped_keys: set[str]
+        if step_id is not None:
+            scoped_keys = {_claim_key(branch, step_id)}
+        else:
+            scoped_keys = {key for key, entry in claims.items() if entry.branch == branch} | set(
+                desired_for_branch.keys()
+            )
+
+        for key in sorted(scoped_keys):
+            before = claims.get(key)
+            desired = desired_for_branch.get(key)
+
+            if before is not None and desired is None:
+                claims.pop(key, None)
+                actions.append(
+                    RepairAction(
+                        action="remove",
+                        key=key,
+                        reason="ghost_claim_or_non_claimed_step",
+                        before=before,
+                        after=None,
+                    )
+                )
+                continue
+
+            if before is None and desired is not None:
+                claims[key] = desired
+                actions.append(
+                    RepairAction(
+                        action="restore",
+                        key=key,
+                        reason="plan_claimed_missing_in_claims",
+                        before=None,
+                        after=desired,
+                    )
+                )
+                continue
+
+            if before is not None and desired is not None and before != desired:
+                claims[key] = desired
+                actions.append(
+                    RepairAction(
+                        action="update",
+                        key=key,
+                        reason="stale_claim_entry_plan_precedence",
+                        before=before,
+                        after=desired,
+                    )
+                )
+
+        changed = len(actions) > 0
+        if changed and not dry_run:
+            _write_claims_file(claims_path, claims)
+
+    return RepairClaimsResult(
+        dry_run=dry_run,
+        branch=branch,
+        plan_path=str(plan_path.resolve()),
+        claims_path=str(claims_path.resolve()),
+        policy=policy,
+        step_scope=step_id,
+        missing_claims_file=missing_file,
+        changed=changed,
+        actions=tuple(actions),
+    )

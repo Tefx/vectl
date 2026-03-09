@@ -811,6 +811,159 @@ class TestClaim:
         assert "No claimable steps" in result.output
 
 
+class TestRepairClaimsCLI:
+    def _init_repo(self, repo: Path) -> str:
+        sp.run(["git", "init"], cwd=repo, check=True, capture_output=True, text=True)
+        sp.run(["git", "config", "user.email", "test@example.com"], cwd=repo, check=True)
+        sp.run(["git", "config", "user.name", "Test User"], cwd=repo, check=True)
+        (repo / ".gitkeep").write_text("x", encoding="utf-8")
+        sp.run(["git", "add", ".gitkeep"], cwd=repo, check=True)
+        sp.run(
+            ["git", "commit", "-m", "init"], cwd=repo, check=True, capture_output=True, text=True
+        )
+        branch = sp.run(
+            ["git", "rev-parse", "--abbrev-ref", "HEAD"],
+            cwd=repo,
+            check=True,
+            capture_output=True,
+            text=True,
+        ).stdout.strip()
+        return branch
+
+    def test_repair_claims_relative_and_absolute_plan_paths_share_claims_target(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        repo = tmp_path / "repo"
+        repo.mkdir()
+        self._init_repo(repo)
+
+        plan_path = repo / "plan.yaml"
+        save_plan(Plan(project="repair", phases=[Phase(id="p1", name="P1", steps=[])]), plan_path)
+
+        monkeypatch.chdir(repo)
+        rel = runner.invoke(app, ["repair", "claims", "--dry-run", "--json", "--plan", "plan.yaml"])
+        abs_result = runner.invoke(
+            app,
+            ["repair", "claims", "--dry-run", "--json", "--plan", str(plan_path)],
+        )
+
+        assert rel.exit_code == 0
+        assert abs_result.exit_code == 0
+        rel_payload = json.loads(rel.output)
+        abs_payload = json.loads(abs_result.output)
+        assert rel_payload["claims_path"] == abs_payload["claims_path"]
+        assert rel_payload["plan_path"] == abs_payload["plan_path"]
+        assert rel_payload["changed"] is False
+        assert abs_payload["changed"] is False
+
+    def test_repair_claims_step_scope_preserves_unrelated_claims(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        repo = tmp_path / "repo"
+        repo.mkdir()
+        branch = self._init_repo(repo)
+
+        plan_path = repo / "plan.yaml"
+        save_plan(
+            Plan(
+                project="repair",
+                phases=[
+                    Phase(
+                        id="p1",
+                        name="P1",
+                        steps=[
+                            Step(id="s1", name="S1", status=StepStatus.PENDING),
+                            Step(
+                                id="s2",
+                                name="S2",
+                                status=StepStatus.CLAIMED,
+                                claimed_by="agent-plan",
+                                claimed_at="2026-03-09T10:00:00Z",
+                            ),
+                        ],
+                    )
+                ],
+            ),
+            plan_path,
+        )
+
+        claims_path = resolve_claims_path(plan_path)
+        untouched = ClaimEntry(
+            step_id="s2",
+            branch=branch,
+            agent="keep-me",
+            claimed_at="2026-03-09T09:00:00Z",
+        )
+        save_claims(
+            {
+                f"{branch}:s1": ClaimEntry(
+                    step_id="s1",
+                    branch=branch,
+                    agent="ghost",
+                    claimed_at="2026-03-08T00:00:00Z",
+                ),
+                f"{branch}:s2": untouched,
+            },
+            claims_path,
+        )
+
+        monkeypatch.chdir(repo)
+        result = runner.invoke(
+            app,
+            ["repair", "claims", "--step", "s1", "--json", "--plan", str(plan_path)],
+        )
+        assert result.exit_code == 0
+        payload = json.loads(result.output)
+        assert payload["changed"] is True
+        assert [a["key"] for a in payload["actions"]] == [f"{branch}:s1"]
+
+        repaired = load_claims(claims_path)
+        assert repaired[f"{branch}:s2"] == untouched
+
+    def test_repair_claims_missing_file_fallback_and_invalid_step(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        repo = tmp_path / "repo"
+        repo.mkdir()
+        self._init_repo(repo)
+
+        plan_path = repo / "plan.yaml"
+        save_plan(
+            Plan(
+                project="repair",
+                phases=[
+                    Phase(
+                        id="p1",
+                        name="P1",
+                        steps=[
+                            Step(
+                                id="s1",
+                                name="S1",
+                                status=StepStatus.CLAIMED,
+                                claimed_by="agent-plan",
+                                claimed_at="2026-03-09T10:00:00Z",
+                            )
+                        ],
+                    )
+                ],
+            ),
+            plan_path,
+        )
+
+        monkeypatch.chdir(repo)
+        ok = runner.invoke(app, ["repair", "claims", "--json", "--plan", str(plan_path)])
+        assert ok.exit_code == 0
+        payload = json.loads(ok.output)
+        assert payload["missing_claims_file"] is True
+
+        bad = runner.invoke(
+            app,
+            ["repair", "claims", "--step", "missing.step", "--plan", str(plan_path)],
+        )
+        assert bad.exit_code == 1
+        assert "not found" in bad.output.lower()
+
+
 class TestComplete:
     def test_complete_step(self, plan_file: Path):
         # First claim

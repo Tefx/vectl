@@ -39,6 +39,7 @@ from fastmcp import FastMCP
 from pydantic import BaseModel
 
 from vectl.claim_guidance import GuidancePayload, build_claim_guidance
+from vectl.claims import repair_claims
 from vectl.core import (
     _SENTINEL,
     AgentsTarget,
@@ -1650,6 +1651,37 @@ def vectl_recover() -> dict:
     }
 
 
+@mcp.tool(
+    description=(
+        "Repair claims.json consistency against plan.yaml for current branch. "
+        "Supports dry-run and optional step-scoped repair."
+    ),
+)
+def vectl_repair_claims(dry_run: bool = False, step_id: str | None = None) -> dict:
+    """Repair claims store by deterministic reconciliation with plan state."""
+    plan, _ = _load()
+    plan_path = _plan_path()
+    claims_path = resolve_claims_path(plan_path)
+
+    try:
+        result = repair_claims(
+            plan,
+            plan_path,
+            claims_path,
+            dry_run=dry_run,
+            step_id=step_id,
+        )
+    except PlanError as e:
+        return {
+            "ok": False,
+            "error": str(e),
+        }
+
+    payload = result.to_dict()
+    payload["ok"] = True
+    return payload
+
+
 # ---------------------------------------------------------------------------
 # Test compatibility shim
 # ---------------------------------------------------------------------------
@@ -1725,6 +1757,9 @@ vectl_check = _ToolWrapper(vectl_check)  # type: ignore[assignment]
 
 _vectl_recover_tool = vectl_recover
 vectl_recover = _ToolWrapper(vectl_recover)  # type: ignore[assignment]
+
+_vectl_repair_claims_tool = vectl_repair_claims
+vectl_repair_claims = _ToolWrapper(vectl_repair_claims)  # type: ignore[assignment]
 
 _vectl_checkpoint_tool = vectl_checkpoint
 vectl_checkpoint = _ToolWrapper(vectl_checkpoint)  # type: ignore[assignment]

@@ -17,6 +17,7 @@ import pytest
 import yaml
 
 from vectl.claims import load_claims
+from vectl.claims import get_current_branch as _claims_current_branch
 from vectl.mcp_server import (
     _load as _vectl_load,
 )
@@ -49,6 +50,9 @@ from vectl.mcp_server import (
 )
 from vectl.mcp_server import (
     vectl_recover as _vectl_recover_tool,
+)
+from vectl.mcp_server import (
+    vectl_repair_claims as _vectl_repair_claims_tool,
 )
 from vectl.mcp_server import (
     vectl_render as _vectl_render_tool,
@@ -84,6 +88,7 @@ vectl_clipboard = _vectl_clipboard_tool.fn
 vectl_check = _vectl_check_tool.fn
 vectl_render = _vectl_render_tool.fn
 vectl_recover = _vectl_recover_tool.fn
+vectl_repair_claims = _vectl_repair_claims_tool.fn
 
 
 # ---------------------------------------------------------------------------
@@ -492,6 +497,77 @@ class TestVectlClaim:
             assert "vectl_show" in result["markdown"]
         finally:
             os.chdir(original_cwd)
+
+
+class TestRepairClaimsMcp:
+    def test_repair_claims_dry_run_preview(self, plan_file: Path) -> None:
+        branch = _claims_current_branch()
+        claims_path = resolve_claims_path(plan_file)
+        claims_path.parent.mkdir(parents=True, exist_ok=True)
+        claims_path.write_text(
+            json.dumps(
+                {
+                    f"{branch}:a.1": {
+                        "step_id": "a.1",
+                        "branch": branch,
+                        "agent": "ghost",
+                        "claimed_at": "2026-03-09T00:00:00Z",
+                    }
+                }
+            ),
+            encoding="utf-8",
+        )
+        before = claims_path.read_text(encoding="utf-8")
+
+        result = vectl_repair_claims(dry_run=True)
+
+        assert result["ok"] is True
+        assert result["dry_run"] is True
+        assert result["changed"] is True
+        assert claims_path.read_text(encoding="utf-8") == before
+
+    def test_repair_claims_step_scope_preserves_unrelated_entries(self, plan_file: Path) -> None:
+        branch = _claims_current_branch()
+        claims_path = resolve_claims_path(plan_file)
+        claims_path.parent.mkdir(parents=True, exist_ok=True)
+        claims_path.write_text(
+            json.dumps(
+                {
+                    f"{branch}:a.1": {
+                        "step_id": "a.1",
+                        "branch": branch,
+                        "agent": "ghost",
+                        "claimed_at": "2026-03-09T00:00:00Z",
+                    },
+                    f"{branch}:b.1": {
+                        "step_id": "b.1",
+                        "branch": branch,
+                        "agent": "keep",
+                        "claimed_at": "2026-03-09T00:00:00Z",
+                    },
+                },
+                indent=2,
+            ),
+            encoding="utf-8",
+        )
+
+        result = vectl_repair_claims(step_id="a.1")
+
+        assert result["ok"] is True
+        assert [a["key"] for a in result["actions"]] == [f"{branch}:a.1"]
+        claims = load_claims(claims_path)
+        assert f"{branch}:a.1" not in claims
+        assert claims[f"{branch}:b.1"].agent == "keep"
+
+    def test_repair_claims_output_shape_and_policy(self, plan_file: Path) -> None:
+        result = vectl_repair_claims(dry_run=True)
+
+        assert result["ok"] is True
+        assert "policy" in result
+        assert "plan_precedence" in result["policy"]
+        assert "claims_path" in result
+        assert "plan_path" in result
+        assert "actions" in result
 
 
 # ---------------------------------------------------------------------------

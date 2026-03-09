@@ -6,6 +6,7 @@ Spec authority: tools/vectl/plan.yaml, phases cli_read + cli_write.
 from __future__ import annotations
 
 import enum
+import json
 import os
 import sys
 from pathlib import Path
@@ -45,6 +46,7 @@ from vectl.core import (
     gate_check as core_gate_check,
 )
 from vectl.dashboard import generate_dashboard
+from vectl.claims import repair_claims
 from vectl.guide import GUIDE_ALL as _GUIDE_ALL
 from vectl.guide import GUIDE_TOPICS as _GUIDE_TOPICS
 from vectl.io import (
@@ -229,6 +231,9 @@ app = typer.Typer(
     no_args_is_help=True,
     rich_markup_mode="rich",
 )
+
+repair_app = typer.Typer(help="Operator recovery commands.")
+app.add_typer(repair_app, name="repair")
 
 PlanOption = typer.Option(
     None,
@@ -2138,6 +2143,73 @@ def recalc_lock(
         msg = format_lock_changes(changed, p)
         _save_plan(p, plan_path, def_h, "vectl: recalc lock status")
         out.print(msg if msg else "[vectl] Lock status is consistent. No changes needed.")
+
+
+# ---------------------------------------------------------------------------
+# cli.12b: repair claims (operator recovery)
+# Source: claim-consistency-recovery.repair-claims-command
+# ---------------------------------------------------------------------------
+
+
+@repair_app.command("claims")
+def repair_claims_cmd(
+    dry_run: bool = typer.Option(
+        False,
+        "--dry-run",
+        help="Preview reconciliation without writing claims.json.",
+    ),
+    step: str | None = typer.Option(
+        None,
+        "--step",
+        help="Repair only this step's claim on current branch.",
+    ),
+    as_json: bool = typer.Option(
+        False,
+        "--json",
+        help="Emit machine-readable JSON output.",
+    ),
+    plan: Path | None = PlanOption,
+) -> None:
+    """Repair claims.json consistency against plan.yaml (current branch scope)."""
+    p, _, plan_path = _load(plan)
+    claims_path = resolve_claims_path(plan_path)
+
+    try:
+        result = repair_claims(
+            p,
+            plan_path,
+            claims_path,
+            dry_run=dry_run,
+            step_id=step,
+        )
+    except PlanError as e:
+        _die(str(e))
+        return
+
+    payload = result.to_dict()
+
+    if as_json:
+        typer.echo(json.dumps(payload, sort_keys=True))
+        return
+
+    mode = "[dry-run]" if dry_run else ""
+    out.print(f"[bold]Repair claims {mode}[/]")
+    out.print(f"Policy: {result.policy}")
+    out.print(f"Branch: {result.branch}")
+    out.print(f"Plan: {result.plan_path}")
+    out.print(f"Claims: {result.claims_path}")
+    if result.step_scope is not None:
+        out.print(f"Scope: step={result.step_scope}")
+    if result.missing_claims_file:
+        out.print("Claims file was missing; fallback started from empty map.")
+
+    if not result.actions:
+        out.print("No claim inconsistencies detected.")
+        return
+
+    out.print(f"Applied actions: {len(result.actions)}")
+    for action in result.actions:
+        out.print(f"- {action.action}: {action.key} ({action.reason})")
 
 
 # ---------------------------------------------------------------------------

@@ -17578,7 +17578,7 @@ phases:
       \ attribution.\n- Claim-consistency recovery behavior preserved."
   - id: claim-consistency-recovery.retest-gate-lint-and-type-blockers
     name: retest-gate-lint-and-type-blockers
-    status: claimed
+    status: done
     description: 'As an INDEPENDENT TESTER (`integration-verifier`), re-run the gate-blocking
       hygiene checks after the bounded claim-consistency remediation.
 
@@ -17657,6 +17657,55 @@ phases:
     agent: integration-verifier
     claimed_by: integration-verifier
     claimed_at: '2026-03-09T05:23:16.555856+00:00'
+    done_at: '2026-03-09T05:26:55.114662+00:00'
+    evidence: '## Verification Report
+
+
+      Tester: integration-verifier
+
+      Scope: claim-consistency lint/type remediation retest
+
+
+      Commands and outcomes:
+
+      - Run: uv run ruff check src tests -> FAIL (`Found 47 errors`, 45 auto-fixable)
+
+      - Run: uv run mypy src/vectl -> PASS (`Success: no issues found in 18 source
+      files`)
+
+
+      Attribution:
+
+      - Remaining claim-consistency-surface failures include paths in src/vectl/cli.py,
+      src/vectl/core.py, src/vectl/lifecycle.py and claim-adjacent tests.
+
+      - Additional lint debt appears in unrelated legacy test files (e.g. tests/test_manual_yaml_edit.py,
+      tests/test_checkpoint.py, tests/test_review.py, tests/test_logic.py, tests/test_agent_field.py).
+
+
+      Spec link:
+
+      - claim-consistency-recovery.retest-gate-lint-and-type-blockers
+
+
+      Issue classification:
+
+      - blocker: ruff gate remains red, preventing gate-rerun acceptance.
+
+
+      Remediation chain created:
+
+      - claim-consistency-recovery.retest-gate-lint-and-type-blockers-fix
+
+      - claim-consistency-recovery.retest-gate-lint-and-type-blockers-retest
+
+      - gate-rerun rewired to depend on retest-gate-lint-and-type-blockers-retest
+
+
+      Notes:
+
+      - Step completed with blocker evidence and planner-generated follow-up fix/retest
+      steps per workflow.'
   - id: claim-consistency-recovery.gate-rerun
     name: gate-rerun
     status: pending

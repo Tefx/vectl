@@ -17890,59 +17890,93 @@ phases:
   - id: claim-consistency-recovery.retest-gate-lint-and-type-blockers-retest
     name: retest-gate-lint-and-type-blockers-retest
     status: claimed
-    description: 'As an INDEPENDENT TESTER (`integration-verifier`), re-run the gate-blocking
-      hygiene checks after the second bounded claim-consistency lint remediation.
+    description: "As an INDEPENDENT TESTER (`integration-verifier`), re-run the gate-blocking\
+      \ hygiene checks after the second bounded claim-consistency lint remediation.\n\
+      \nYOUR GOAL IS TO FIND REMAINING IN-SCOPE PROBLEMS, not to re-open unrelated\
+      \ repo-wide lint debt.\n\nRemediation consolidation:\n- prior_loop: claim-consistency-recovery.fix-gate-lint-and-type-blockers,\
+      \ claim-consistency-recovery.retest-gate-lint-and-type-blockers, claim-consistency-recovery.retest-gate-lint-and-type-blockers-fix\n\
+      - remaining_blocker: gate rerun still needs auditable proof that claim-consistency\
+      \ surfaces are clean and that any residual global lint failures are outside\
+      \ this phase scope\n- why_new_loop: the prior retest path kept treating repo-wide\
+      \ `ruff` debt as a blocker even after scoped claim-consistency checks were clean;\
+      \ this retest now serves as an attribution checkpoint, not a demand for repo-wide\
+      \ cleanup\n\nScope:\n- Required pass commands:\n  - `uv run mypy src/vectl`\n\
+      \  - `uv run ruff check src/vectl/cli.py src/vectl/core.py src/vectl/lifecycle.py\
+      \ tests/test_claims.py tests/test_cli.py tests/test_io.py tests/test_mcp.py`\n\
+      - Attribution-only command:\n  - `uv run ruff check src tests`\n\nAcceptance\
+      \ criteria:\n- `uv run mypy src/vectl` passes\n- Scoped `ruff` command for the\
+      \ bounded claim-consistency surfaces passes\n- If global `uv run ruff check\
+      \ src tests` fails, evidence records the failing files as explicit legacy lint\
+      \ debt outside the claim-consistency scope; that debt is REQUIRED evidence but\
+      \ is not, by itself, a blocker for this phase\n- Evidence states whether any\
+      \ residual failure touches a claim-consistency file; if yes, the retest reports\
+      \ an in-scope blocker; if no, the retest reports scoped hygiene success plus\
+      \ out-of-scope global debt note\n- Provide actual command output excerpts that\
+      \ clearly separate scoped pass from global residual debt"
+    verification: '- Required blocker check: `uv run mypy src/vectl` passes and scoped
+      `uv run ruff check src/vectl/cli.py src/vectl/core.py src/vectl/lifecycle.py
+      tests/test_claims.py tests/test_cli.py tests/test_io.py tests/test_mcp.py` passes
+
+      - Attribution check: if `uv run ruff check src tests` fails, evidence lists
+      each residual failing file and marks whether it is inside or outside claim-consistency
+      scope
+
+      - Decision rule: residual lint failures outside the scoped claim-consistency
+      files are recorded as explicit non-blocking phase debt; any residual failure
+      inside scope remains a blocker
+
+      - Proof: retest evidence distinguishes scoped required passes, global attribution
+      output, and the final in-scope vs out-of-scope blocker decision using actual
+      command/output excerpts'
+    evidence_template: '## Retest Attribution Report
 
 
-      YOUR GOAL IS TO FIND REMAINING PROBLEMS, not to confirm success.
+      **Required pass commands**:
+
+      ```bash
+
+      uv run mypy src/vectl
+
+      uv run ruff check src/vectl/cli.py src/vectl/core.py src/vectl/lifecycle.py
+      tests/test_claims.py tests/test_cli.py tests/test_io.py tests/test_mcp.py
+
+      ```
 
 
-      Remediation consolidation:
+      **Attribution-only command**:
 
-      - prior_loop: claim-consistency-recovery.fix-gate-lint-and-type-blockers, claim-consistency-recovery.retest-gate-lint-and-type-blockers,
-      claim-consistency-recovery.retest-gate-lint-and-type-blockers-fix
+      ```bash
 
-      - remaining_blocker: gate rerun is blocked until lint evidence proves the claim-consistency
-      touched surfaces are clean or isolates any residual failures as unrelated legacy
-      debt
+      uv run ruff check src tests
 
-      - why_new_loop: the original retest established that `mypy` passes but `ruff`
-      still fails globally; this retest must now prove whether the bounded surface
-      is unblocked even if unrelated global debt remains
+      ```
 
 
-      Scope:
+      **Scoped result**:
 
-      - Re-run `uv run mypy src/vectl`
+      - mypy: PASS|FAIL
 
-      - Re-run global `uv run ruff check src tests` for attribution
-
-      - Re-run scoped lint on `src/vectl/cli.py src/vectl/core.py src/vectl/lifecycle.py
-      tests/test_claims.py tests/test_cli.py tests/test_io.py tests/test_mcp.py`
+      - scoped ruff: PASS|FAIL
 
 
-      Acceptance criteria:
+      **Residual global lint debt**:
 
-      - `uv run mypy src/vectl` still passes
+      | File | In claim-consistency scope? | Blocking for this phase? |
 
-      - Scoped `ruff` command for the bounded claim-consistency surfaces passes
+      | ---- | --------------------------- | ------------------------ |
 
-      - If global `uv run ruff check src tests` still fails, evidence explicitly classifies
-      the remaining failures as unrelated legacy debt outside the bounded gate-path
-      surface
+      | <path> | yes/no | yes/no |
 
-      - Provide actual command output excerpts that clearly separate scoped pass from
-      global residual debt'
-    verification: '- Main path: `uv run mypy src/vectl` passes and scoped `uv run
-      ruff check src/vectl/cli.py src/vectl/core.py src/vectl/lifecycle.py tests/test_claims.py
-      tests/test_cli.py tests/test_io.py tests/test_mcp.py` passes
 
-      - Failure path: if `uv run ruff check src tests` still fails, evidence lists
-      the residual failing files and confirms they are outside the bounded claim-consistency
-      surface
+      **Decision**:
 
-      - Proof: retest evidence distinguishes scoped gate-path success from unrelated
-      global debt using actual command/output excerpts'
+      - [ ] Scoped claim-consistency hygiene is clean
+
+      - [ ] Residual global lint debt is recorded as out-of-scope note only
+
+      - [ ] In-scope blocker remains (must name exact file/path)
+
+      '
     depends_on:
     - claim-consistency-recovery.retest-gate-lint-and-type-blockers-fix
     agent: integration-verifier

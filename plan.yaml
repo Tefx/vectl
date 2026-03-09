@@ -17502,7 +17502,7 @@ phases:
       than a broad coverage certification.'
   - id: claim-consistency-recovery.fix-gate-lint-and-type-blockers
     name: fix-gate-lint-and-type-blockers
-    status: pending
+    status: claimed
     description: 'Fix the concrete gate blockers only within the claim-consistency
       recovery surface.
 
@@ -17558,6 +17558,8 @@ phases:
     depends_on:
     - claim-consistency-recovery.gate
     agent: python-senior
+    claimed_by: python-senior
+    claimed_at: '2026-03-09T05:20:08.400581+00:00'
   - id: claim-consistency-recovery.retest-gate-lint-and-type-blockers
     name: retest-gate-lint-and-type-blockers
     status: pending

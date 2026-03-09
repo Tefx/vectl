@@ -52,6 +52,29 @@ class ClaimResult:
         )
 
 
+class ClaimConflictError(PlanError):
+    """Raised when a claim attempt fails due to an existing claim record.
+
+    Contains structured information about the conflicting claim for diagnostic purposes.
+    """
+
+    def __init__(
+        self,
+        step_id: str,
+        branch: str,
+        claimant: str,
+        claimed_at: str,
+    ) -> None:
+        self.step_id = step_id
+        self.branch = branch
+        self.claimant = claimant
+        self.claimed_at = claimed_at
+        super().__init__(
+            f"Step '{step_id}' is already claimed on branch '{branch}' "
+            f"by '{claimant}' (claimed at {claimed_at})"
+        )
+
+
 def get_claimed_steps(plan: Plan, agent: str | None = None) -> list[tuple[str, Step]]:
     """Get all currently claimed steps, optionally filtered by agent.
 
@@ -142,11 +165,22 @@ def claim_step(
                 raise AffinityError(step_id, step.agent, agent_name)
 
     if claims_path is not None:
-        acquire_claim, cleanup_stale_claims, get_current_branch, _ = _claims_api()
-        cleanup_stale_claims(claims_path)
+        acquire_claim, cleanup_stale_claims, get_current_branch, _, get_claim_info = _claims_api()
         branch = get_current_branch()
+        # Check for existing claim before attempting to acquire (cleanup stale first)
+        existing = get_claim_info(step_id, branch, claims_path)
+        if existing is not None:
+            raise ClaimConflictError(
+                step_id=step_id,
+                branch=branch,
+                claimant=existing.agent,
+                claimed_at=existing.claimed_at,
+            )
+        # Also run cleanup to ensure stale claims are removed
+        cleanup_stale_claims(claims_path)
         acquired = acquire_claim(step_id, branch, agent_name, claims_path)
         if not acquired:
+            # Fallback if race condition between check and acquire
             raise PlanError(f"Step '{step_id}' is already claimed on branch '{branch}'")
 
     step.status = StepStatus.CLAIMED
@@ -392,7 +426,7 @@ def _validate_skip_reason(reason: str) -> None:
 def _release_claim_if_needed(step_id: str, claims_path: Path | None, *, action: str) -> None:
     if claims_path is None:
         return
-    _, _, get_current_branch, release_claim = _claims_api()
+    _, _, get_current_branch, release_claim, _ = _claims_api()
     branch = get_current_branch()
     released = release_claim(step_id, branch, claims_path)
     if not released:
@@ -426,4 +460,5 @@ def _claims_api():
         core.cleanup_stale_claims,
         core.get_current_branch,
         core.release_claim,
+        core.get_claim_info,
     )

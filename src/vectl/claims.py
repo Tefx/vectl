@@ -156,6 +156,19 @@ def cleanup_stale_claims(claims_path: Path, ttl_hours: float = 2.0) -> int:
         return len(stale_keys)
 
 
+def get_claim_info(step_id: str, branch: str, claims_path: Path) -> ClaimEntry | None:
+    """Get claim entry for a specific step on a branch.
+
+    Returns the ClaimEntry if it exists, regardless of staleness.
+    This function does NOT filter by staleness - use this to check if ANY claim exists.
+    The caller is responsible for deciding how to handle stale claims.
+    """
+    key = _claim_key(branch, step_id)
+    with _locked_claims_file(claims_path):
+        claims = _read_claims_file(claims_path)
+        return claims.get(key)
+
+
 def acquire_claim(step_id: str, branch: str, agent: str, claims_path: Path) -> bool:
     """Acquire a branch-scoped claim for a step.
 

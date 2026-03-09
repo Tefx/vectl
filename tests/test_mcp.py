@@ -420,6 +420,79 @@ class TestVectlClaim:
         result = vectl_claim(agent="bot", step_id="a.1")
         assert "vectl_complete" in result["markdown"]
 
+    def test_claim_reject_with_existing_claim_returns_structured_error(
+        self, plan_file: Path
+    ) -> None:
+        """Claim rejection due to existing claim returns structured error data."""
+        import subprocess
+        import os
+
+        # Need to work in a git repo for get_current_branch() to work
+        repo_root = plan_file.parent
+        if not (repo_root / ".git").exists():
+            (repo_root / ".git").mkdir()
+            subprocess.run(["git", "init"], cwd=repo_root, capture_output=True)
+            subprocess.run(
+                ["git", "config", "user.email", "test@test.com"],
+                cwd=repo_root,
+                capture_output=True,
+            )
+            subprocess.run(
+                ["git", "config", "user.name", "Test"],
+                cwd=repo_root,
+                capture_output=True,
+            )
+            subprocess.run(
+                ["git", "commit", "--allow-empty", "-m", "init"],
+                cwd=repo_root,
+                capture_output=True,
+            )
+
+        # Get branch
+        original_cwd = os.getcwd()
+        os.chdir(repo_root)
+        try:
+            from vectl.claims import (
+                ClaimEntry,
+                get_current_branch,
+                resolve_claims_path,
+                save_claims,
+            )
+
+            branch_name = get_current_branch()
+
+            # Create an existing claim
+            claims_path = resolve_claims_path(plan_file)
+            claims_path.parent.mkdir(parents=True, exist_ok=True)
+            save_claims(
+                {
+                    f"{branch_name}:a.1": ClaimEntry(
+                        step_id="a.1",
+                        branch=branch_name,
+                        agent="agent-a",
+                        claimed_at="2026-03-09T00:00:00Z",
+                    )
+                },
+                claims_path,
+            )
+
+            # Try to claim the same step with a different agent
+            result = vectl_claim(agent="agent-b", step_id="a.1")
+
+            assert result["ok"] is False
+            assert result["error_code"] == "claim_conflict"
+            # Check for structured conflict data
+            assert result["claim_conflict"] is not None
+            assert result["claim_conflict"]["step_id"] == "a.1"
+            assert result["claim_conflict"]["branch"] == branch_name
+            assert result["claim_conflict"]["claimant"] == "agent-a"
+            # Check markdown includes actionable info
+            assert "Claim Conflict" in result["markdown"]
+            assert "agent-a" in result["markdown"]
+            assert "vectl_show" in result["markdown"]
+        finally:
+            os.chdir(original_cwd)
+
 
 # ---------------------------------------------------------------------------
 # Tool 4: vectl_complete

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import subprocess as sp
 from pathlib import Path
 
 import pytest
@@ -10,7 +11,7 @@ import yaml
 from typer.testing import CliRunner
 
 from vectl import __version__
-from vectl.claims import load_claims
+from vectl.claims import ClaimEntry, load_claims, save_claims
 from vectl.cli import app
 from vectl.io import load_plan_definition as load_plan, load_plan_definition, save_plan
 from vectl.models import AffinityMode, Phase, PhaseStatus, Plan, Step, StepStatus
@@ -712,6 +713,71 @@ class TestClaim:
         step = _must_find_step(plan, "s1")
         assert step.status == StepStatus.CLAIMED
         assert step.claimed_by == "bot-1"
+
+    def test_claim_reject_with_existing_claim_shows_diagnostics(self, plan_file: Path) -> None:
+        """Claim rejection due to existing claim shows rich diagnostics."""
+        import subprocess
+        import os
+        from vectl.claims import get_current_branch
+
+        # Need to work in a git repo for get_current_branch() to work
+        repo_root = plan_file.parent
+        if not (repo_root / ".git").exists():
+            # Create .git directory to make it a git repo
+            (repo_root / ".git").mkdir()
+            subprocess.run(["git", "init"], cwd=repo_root, capture_output=True)
+            subprocess.run(
+                ["git", "config", "user.email", "test@test.com"],
+                cwd=repo_root,
+                capture_output=True,
+            )
+            subprocess.run(
+                ["git", "config", "user.name", "Test"],
+                cwd=repo_root,
+                capture_output=True,
+            )
+            subprocess.run(
+                ["git", "commit", "--allow-empty", "-m", "init"],
+                cwd=repo_root,
+                capture_output=True,
+            )
+
+        # Get branch
+        original_cwd = os.getcwd()
+        os.chdir(repo_root)
+        branch_name = get_current_branch()
+
+        try:
+            # Create an existing claim
+            claims_path = resolve_claims_path(plan_file)
+            claims_path.parent.mkdir(parents=True, exist_ok=True)
+            save_claims(
+                {
+                    f"{branch_name}:s1": ClaimEntry(
+                        step_id="s1",
+                        branch=branch_name,
+                        agent="agent-a",
+                        claimed_at="2026-03-09T00:00:00Z",
+                    )
+                },
+                claims_path,
+            )
+
+            # Try to claim the same step with a different agent
+            claim_result = runner.invoke(
+                app, ["claim", "s1", "--agent", "agent-b", "--plan", str(plan_file)]
+            )
+
+            assert claim_result.exit_code == 1
+            # Check for rich diagnostics
+            assert "Claim Details:" in claim_result.output
+            assert "s1" in claim_result.output
+            assert branch_name in claim_result.output
+            assert "agent-a" in claim_result.output  # The original claimant
+            # Check for actionable next steps
+            assert "vectl show s1" in claim_result.output
+        finally:
+            os.chdir(original_cwd)
 
     def test_claim_nonexistent(self, plan_file: Path):
         result = runner.invoke(app, ["claim", "nope", "--plan", str(plan_file)])

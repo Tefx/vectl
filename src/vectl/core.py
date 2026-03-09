@@ -11,6 +11,7 @@ from pathlib import Path
 from vectl.claims import (
     acquire_claim,
     cleanup_stale_claims,
+    get_claim_info,
     get_current_branch,
     release_claim,
 )

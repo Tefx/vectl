@@ -56,6 +56,7 @@ from vectl.merge_driver import merge_plans
 from vectl.migration import migrate_from_split_state, resolve_state_path
 from vectl.lifecycle import (
     claim_step,
+    ClaimConflictError,
     complete_phase,
     complete_step,
     defer_step,
@@ -1142,6 +1143,21 @@ def claim(
             force=force,
             claims_path=resolve_claims_path(plan_path),
         )
+    except ClaimConflictError as e:
+        # Rich claim conflict diagnostics with actionable next step
+        console.print(f"[red bold]Error:[/] {e}")
+        console.print()
+        console.print(f"[bold]Claim Details:[/]")
+        console.print(f"  Step ID:    {e.step_id}")
+        console.print(f"  Branch:     {e.branch}")
+        console.print(f"  Claimed by: {e.claimant}")
+        console.print(f"  Claimed at: {e.claimed_at}")
+        console.print()
+        console.print("[bold]Next Steps:[/]")
+        console.print(f"  1. Inspect the step: [cyan]vectl show {e.step_id}[/]")
+        console.print(f"  2. If this claim is stale, you can repair claims with:")
+        console.print(f"     [cyan]vectl repair claims --dry-run[/]")
+        raise typer.Exit(1)
     except PlanError as e:
         _die(str(e))
         return  # unreachable, but satisfies Pyright

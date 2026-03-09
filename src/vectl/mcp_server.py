@@ -82,6 +82,7 @@ from vectl.models import (
 )
 from vectl.lifecycle import (
     claim_step,
+    ClaimConflictError,
     complete_phase,
     complete_step,
     defer_step,
@@ -397,6 +398,17 @@ class ClaimResult(BaseModel):
     affinity_override: AffinityOverrideData | None = None
     error: str | None = None
     error_code: str | None = None
+    # Claim conflict details for existing-claim rejection
+    claim_conflict: ClaimConflictData | None = None
+
+
+class ClaimConflictData(BaseModel):
+    """Structured data about an existing claim that blocked a claim attempt."""
+
+    step_id: str
+    branch: str
+    claimant: str
+    claimed_at: str
 
 
 @mcp.tool(
@@ -443,6 +455,31 @@ def vectl_claim(
             expected_def_hash,
             f"mcp: claim step {step_id} by {agent}",
         )
+    except ClaimConflictError as e:
+        # Claim conflict: existing claim record blocking this attempt
+        conflict_data = ClaimConflictData(
+            step_id=e.step_id,
+            branch=e.branch,
+            claimant=e.claimant,
+            claimed_at=e.claimed_at,
+        )
+        err = str(e)
+        md_lines = [
+            f"**Claim Conflict:** {e.step_id} is already claimed on branch '{e.branch}'",
+            f"**Claimed by:** {e.claimant}",
+            f"**Claimed at:** {e.claimed_at}",
+            "",
+            "**Next Steps:**",
+            f"1. Inspect: `vectl_show` step_id={e.step_id}",
+            "2. If stale, repair claims: `vectl repair claims --dry-run`",
+        ]
+        return ClaimResult(
+            ok=False,
+            markdown="\n".join(md_lines),
+            error=err,
+            error_code="claim_conflict",
+            claim_conflict=conflict_data,
+        ).model_dump(mode="json", exclude_none=True)
     except AffinityError as e:
         # RFC: docs/RFC-affinity.md
         # Exclusive affinity violation

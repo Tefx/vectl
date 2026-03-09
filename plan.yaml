@@ -17782,7 +17782,7 @@ phases:
     agent: gate-reviewer
   - id: claim-consistency-recovery.retest-gate-lint-and-type-blockers-fix
     name: retest-gate-lint-and-type-blockers-fix
-    status: pending
+    status: claimed
     description: 'Fix the remaining gate-blocking lint issues only on claim-consistency-touched
       surfaces so the gate path can be unblocked without expanding into repo-wide
       cleanup.
@@ -17837,6 +17837,8 @@ phases:
     depends_on:
     - claim-consistency-recovery.retest-gate-lint-and-type-blockers
     agent: python-senior
+    claimed_by: python-senior
+    claimed_at: '2026-03-09T05:27:13.653107+00:00'
   - id: claim-consistency-recovery.retest-gate-lint-and-type-blockers-retest
     name: retest-gate-lint-and-type-blockers-retest
     status: pending

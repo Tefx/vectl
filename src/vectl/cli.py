@@ -201,8 +201,18 @@ def _save_plan(plan: Plan, plan_path: Path, expected_def_hash: str, msg: str) ->
 
     changed_ids = recalc_lock_status(plan)
 
+    # Source: claim-consistency-recovery.integration-verify-fix Issue 1.
+    # When --plan targets a different repo/worktree, write should still succeed
+    # quietly without misleading git pathspec/autosave warnings.
+    commit_message = msg if _should_autosave_commit(plan_path) else None
+
     try:
-        save_plan(plan, plan_path, expected_hash=expected_def_hash, commit_message=msg)
+        save_plan(
+            plan,
+            plan_path,
+            expected_hash=expected_def_hash,
+            commit_message=commit_message,
+        )
     except CASConflictError:
         _die(
             "CAS conflict: plan.yaml was modified by another process since you loaded it. "
@@ -212,6 +222,43 @@ def _save_plan(plan: Plan, plan_path: Path, expected_def_hash: str, msg: str) ->
     notice = format_lock_changes(changed_ids, plan)
     if notice:
         print(notice)
+
+
+def _git_toplevel_for(path: Path) -> Path | None:
+    """Return git toplevel for a path, or None when unavailable."""
+    import subprocess as sp
+
+    try:
+        result = sp.run(
+            ["git", "rev-parse", "--show-toplevel"],
+            cwd=str(path),
+            capture_output=True,
+            text=True,
+            timeout=5,
+        )
+    except (OSError, sp.TimeoutExpired):
+        return None
+
+    if result.returncode != 0:
+        return None
+
+    resolved = result.stdout.strip()
+    if not resolved:
+        return None
+
+    return Path(resolved).resolve()
+
+
+def _should_autosave_commit(plan_path: Path) -> bool:
+    """Allow autosave commit only when plan is in current repo/worktree."""
+    cwd_repo = _git_toplevel_for(Path.cwd())
+    plan_repo = _git_toplevel_for(plan_path.parent.resolve())
+    return cwd_repo is not None and plan_repo is not None and cwd_repo == plan_repo
+
+
+def _is_claim_consistency_scoped_gate(phase_id: str) -> bool:
+    """Return True when scoped verification note should be shown."""
+    return phase_id == "claim-consistency-recovery"
 
 
 # ---------------------------------------------------------------------------
@@ -2454,6 +2501,11 @@ def review(
                 out.print(f"    deps: {_esc(', '.join(ph.depends_on))}")
             if ph.gate:
                 out.print(f"    gate: [yellow]{_esc(ph.gate)}[/]")
+                if _is_claim_consistency_scoped_gate(ph.id):
+                    out.print(
+                        "    [dim]scoped verification evidence: targeted integration run only "
+                        "(not full package-wide coverage proof)[/]"
+                    )
             for step in ph.steps:
                 if is_step_locked(p, ph, step):
                     icon, style = ("🔒", "dim")
@@ -2579,6 +2631,12 @@ def gate_check(
     if gc.gate_criterion:
         out.print("\n  [yellow]Manual gate criterion:[/]")
         out.print(f"  {gc.gate_criterion}")
+        if _is_claim_consistency_scoped_gate(gc.phase_id):
+            # Source: claim-consistency-recovery.integration-verify-fix Issue 2.
+            out.print(
+                "  [dim]Scoped verification evidence: interpret targeted integration "
+                "output as scoped signal only (not full package-wide coverage proof).[/]"
+            )
     else:
         out.print("\n  [dim]No manual gate criterion[/]")
 

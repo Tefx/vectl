@@ -1007,6 +1007,148 @@ class TestComplete:
         assert complete_result.exit_code == 0
         assert load_claims(claims_path) == {}
 
+    def test_claim_complete_with_external_plan_avoids_misleading_autosave_noise(
+        self, tmp_path: Path, caplog: pytest.LogCaptureFixture
+    ) -> None:
+        """External --plan claim/complete should not emit pathspec/autosave warning noise."""
+        external_repo = tmp_path / "external-repo"
+        external_repo.mkdir()
+
+        for command in (
+            ["git", "init"],
+            ["git", "config", "user.email", "test@example.com"],
+            ["git", "config", "user.name", "Test User"],
+        ):
+            result = sp.run(command, cwd=external_repo, capture_output=True, text=True)
+            assert result.returncode == 0, result.stderr
+
+        external_plan = external_repo / "plan.yaml"
+        save_plan(
+            Plan(
+                project="external-plan",
+                phases=[
+                    Phase(
+                        id="p1",
+                        name="Phase 1",
+                        status=PhaseStatus.PENDING,
+                        steps=[Step(id="s1", name="Step 1")],
+                    )
+                ],
+            ),
+            external_plan,
+        )
+
+        caplog.set_level("WARNING", logger="vectl.io")
+        claim_result = runner.invoke(
+            app,
+            ["claim", "s1", "--agent", "bot-1", "--plan", str(external_plan)],
+        )
+        assert claim_result.exit_code == 0
+        assert "Claimed" in claim_result.output
+
+        complete_result = runner.invoke(
+            app,
+            ["complete", "s1", "--evidence", "scoped run", "--plan", str(external_plan)],
+        )
+        assert complete_result.exit_code == 0
+        assert "Completed" in complete_result.output
+        assert "pathspec" not in caplog.text.lower()
+        assert "git add" not in caplog.text.lower()
+
+    def test_claim_in_repo_preserves_autosave_commit_behavior(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """In-repo plan mutation still autosaves via git commit."""
+        repo = tmp_path / "repo"
+        repo.mkdir()
+
+        for command in (
+            ["git", "init"],
+            ["git", "config", "user.email", "test@example.com"],
+            ["git", "config", "user.name", "Test User"],
+        ):
+            result = sp.run(command, cwd=repo, capture_output=True, text=True)
+            assert result.returncode == 0, result.stderr
+
+        plan_path = repo / "plan.yaml"
+        save_plan(
+            Plan(
+                project="in-repo-plan",
+                phases=[
+                    Phase(
+                        id="p1",
+                        name="Phase 1",
+                        status=PhaseStatus.PENDING,
+                        steps=[Step(id="s1", name="Step 1")],
+                    )
+                ],
+            ),
+            plan_path,
+        )
+
+        for command in (["git", "add", "plan.yaml"], ["git", "commit", "-m", "seed"]):
+            result = sp.run(command, cwd=repo, capture_output=True, text=True)
+            assert result.returncode == 0, result.stderr
+
+        monkeypatch.chdir(repo)
+        result = runner.invoke(app, ["claim", "s1", "--agent", "bot-1", "--plan", str(plan_path)])
+        assert result.exit_code == 0
+
+        commit_count = sp.run(
+            ["git", "rev-list", "--count", "HEAD"],
+            cwd=repo,
+            capture_output=True,
+            text=True,
+        )
+        assert commit_count.returncode == 0
+        assert commit_count.stdout.strip() == "2"
+
+        latest_subject = sp.run(
+            ["git", "log", "-1", "--pretty=%s"],
+            cwd=repo,
+            capture_output=True,
+            text=True,
+        )
+        assert latest_subject.returncode == 0
+        assert latest_subject.stdout.strip() == "vectl: claim s1 by bot-1"
+
+    def test_gate_check_claim_consistency_shows_scoped_verification_note(
+        self, tmp_path: Path
+    ) -> None:
+        """claim-consistency gate output must mark targeted evidence as scoped."""
+        plan_path = tmp_path / "plan.yaml"
+        save_plan(
+            Plan(
+                project="gate-scope",
+                phases=[
+                    Phase(
+                        id="claim-consistency-recovery",
+                        name="Claim Consistency Recovery",
+                        status=PhaseStatus.PENDING,
+                        gate="Targeted integration verify evidence.",
+                        steps=[
+                            Step(
+                                id="s1",
+                                name="Done step",
+                                status=StepStatus.DONE,
+                                evidence="historical verification",
+                            )
+                        ],
+                    )
+                ],
+            ),
+            plan_path,
+        )
+
+        result = runner.invoke(
+            app, ["gate-check", "claim-consistency-recovery", "--plan", str(plan_path)]
+        )
+
+        assert result.exit_code == 0
+        out_lower = result.output.lower()
+        assert "scoped verification evidence" in out_lower
+        assert "not full package-wide coverage proof" in out_lower
+
     def test_split_brain_claim_exists_but_plan_shows_pending(self, plan_file: Path) -> None:
         """CLI-level reproducer: claims.json has claim but plan.yaml shows pending.
 

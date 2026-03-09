@@ -16837,7 +16837,7 @@ phases:
       tests.'
   - id: claim-consistency-recovery.operator-recovery-docs
     name: operator-recovery-docs
-    status: claimed
+    status: done
     description: 'Document the operator recovery workflow for ghost claims and split-brain
       claim state.
 
@@ -16876,6 +16876,50 @@ phases:
     agent: python-executor
     claimed_by: python-executor
     claimed_at: '2026-03-09T02:39:19.932018+00:00'
+    done_at: '2026-03-09T02:48:00.295920+00:00'
+    evidence: 'Artifact:
+
+      - Worker commit: 3f1d0b3
+
+      - Orchestrator squash commit: 9f40f93
+
+
+      Verification:
+
+      - Run: uv run pytest tests/test_cli.py -k repair_claims -v -> 3 passed
+
+      - Run: uvx --from . vectl guide --on recovery -> recovery guide topic renders
+      with runbook and flags
+
+      - Run: uvx --from . vectl repair claims --dry-run -> dry-run output and policy
+      summary shown
+
+
+      Spec link:
+
+      - claim-consistency-recovery.operator-recovery-docs
+
+
+      Files changed:
+
+      - README.md
+
+      - docs/DESIGN.md
+
+      - src/vectl/guide.py
+
+      - src/vectl/cli.py
+
+
+      Gaps/Notes:
+
+      - Added focused ghost-claim/split-brain operator runbook including symptom recognition,
+      `--dry-run`, `--step`, `--json`, and post-repair verification sequence.
+
+      - Included anima-style mismatch example and no-op healthy-repo guidance.
+
+      - Updated guide discoverability (`recovery` topic) without broad unrelated doc
+      churn.'
   - id: claim-consistency-recovery.targeted-regression-tests
     name: targeted-regression-tests
     status: claimed

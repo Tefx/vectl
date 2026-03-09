@@ -17167,6 +17167,9 @@ phases:
       - The chosen reconciliation policy for `repair claims` is explicit, tested,
       and documented
 
+      - Scoped claim-consistency integration evidence is explicitly labeled as scoped
+      verification, not a broad-package/full-suite coverage audit
+
       - No blocker remains where `claim`, `show/status`, and `complete` can disagree
       for the same repaired repo state'
     evidence_template: '## Gate Review Report
@@ -17209,6 +17212,7 @@ phases:
     - claim-consistency-recovery.targeted-regression-tests
     - claim-consistency-recovery.freeze-for-integration
     - claim-consistency-recovery.integration-verify
+    - claim-consistency-recovery.integration-verify-retest
     agent: gate-reviewer
   - id: claim-consistency-recovery.integration-verify-fix
     name: integration-verify-fix

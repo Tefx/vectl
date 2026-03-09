@@ -17279,7 +17279,7 @@ phases:
     agent: gate-reviewer
   - id: claim-consistency-recovery.integration-verify-fix
     name: integration-verify-fix
-    status: claimed
+    status: done
     description: 'Bounded remediation for issues found during `claim-consistency-recovery.integration-verify`.
 
 
@@ -17342,6 +17342,43 @@ phases:
     agent: python-senior
     claimed_by: python-senior
     claimed_at: '2026-03-09T03:52:35.976193+00:00'
+    done_at: '2026-03-09T03:57:40.834735+00:00'
+    evidence: 'Artifact:
+
+      - Worker commit: 8aa0207
+
+      - Orchestrator squash commit: 96bfb0b
+
+
+      Verification:
+
+      - Run: uv run pytest tests/test_cli.py -k "external_plan_avoids_misleading_autosave_noise
+      or in_repo_preserves_autosave_commit_behavior or gate_check_claim_consistency_shows_scoped_verification_note"
+      -v -> 3 passed, 208 deselected
+
+
+      Spec link:
+
+      - claim-consistency-recovery.integration-verify-fix
+
+
+      Files changed:
+
+      - src/vectl/cli.py
+
+      - tests/test_cli.py
+
+
+      Gaps/Notes:
+
+      - External `--plan` mutation flow now avoids misleading git autosave/pathspec
+      failure noise when write succeeds.
+
+      - In-repo autosave behavior preserved and asserted via regression test.
+
+      - Added explicit scoped-verification note for claim-consistency recovery gate/review
+      surfaces to avoid misreading targeted integration evidence as full package-wide
+      coverage.'
   - id: claim-consistency-recovery.integration-verify-retest
     name: integration-verify-retest
     status: pending

@@ -17502,7 +17502,7 @@ phases:
       than a broad coverage certification.'
   - id: claim-consistency-recovery.fix-gate-lint-and-type-blockers
     name: fix-gate-lint-and-type-blockers
-    status: claimed
+    status: done
     description: 'Fix the concrete gate blockers only within the claim-consistency
       recovery surface.
 
@@ -17560,6 +17560,22 @@ phases:
     agent: python-senior
     claimed_by: python-senior
     claimed_at: '2026-03-09T05:20:08.400581+00:00'
+    done_at: '2026-03-09T05:23:07.167195+00:00'
+    evidence: "## Remediation Evidence\n\nArtifact:\n- Worker commit: 3ed0ca26965e60b489edf607f8cacc31cfe4dee6\n\
+      - Orchestrator squash commit: 5631bab\n\nBounded scope:\n- Files changed:\n\
+      \  - src/vectl/claims.py\n  - src/vectl/mcp_server.py\n- Why in-scope:\n  -\
+      \ Both are claim-consistency recovery surfaces directly referenced by gate blockers\
+      \ (ruff E501 and mypy no-redef in claim conflict / repair command paths).\n\n\
+      Lint/type blockers addressed:\n- Ruff fixed in bounded files (line-length/format/import-order\
+      \ in touched paths).\n- Mypy blocker fixed: `src/vectl/mcp_server.py:514` `md_lines`\
+      \ no-redef eliminated.\n\nVerification:\n- Run: uv run ruff check src tests\
+      \ -> FAIL (47 remaining issues outside bounded claim-consistency scope)\n- Run:\
+      \ uv run mypy src/vectl -> PASS (no issues found in 18 source files)\n- Run:\
+      \ uv run ruff check src/vectl/claims.py src/vectl/mcp_server.py -> PASS\n\n\
+      Spec link:\n- claim-consistency-recovery.fix-gate-lint-and-type-blockers\n\n\
+      Gaps/Notes:\n- Non-goal respected: no broad repo-wide cleanup attempted.\n-\
+      \ Remaining ruff issues are unrelated/out-of-scope and are reported for retest\
+      \ attribution.\n- Claim-consistency recovery behavior preserved."
   - id: claim-consistency-recovery.retest-gate-lint-and-type-blockers
     name: retest-gate-lint-and-type-blockers
     status: pending

@@ -17719,15 +17719,19 @@ phases:
 
       Review criteria:
 
-      1. The original gate blockers from `ruff` and `mypy` are either resolved or
-      precisely re-characterized
+      1. Scoped claim-consistency hygiene is clean: `uv run mypy src/vectl` passes
+      and the scoped claim-consistency `ruff` command passes
 
-      2. The remediation stayed limited to claim-consistency files/paths
+      2. Any remaining `uv run ruff check src tests` failures are explicitly recorded
+      and classified as legacy debt outside the claim-consistency scope
 
-      3. Retest evidence includes real command/output for both checks
+      3. No unresolved blocker remains in any claim-consistency-touched file/path
 
-      4. No new blocker is introduced that invalidates the claim-consistency recovery
-      evidence already accepted
+      4. Retest evidence includes real command/output for both the required scoped
+      checks and the attribution-only global lint run
+
+      5. The rerun does not silently waive in-scope hygiene failures under the label
+      of global debt
 
 
       Acceptance criteria:
@@ -17735,48 +17739,59 @@ phases:
       - Review the original blocked gate evidence plus the remediation and retest
       evidence
 
-      - Decide OPEN only if the bounded hygiene blockers are resolved and evidence
-      quality is specific
+      - Decide OPEN if and only if the scoped claim-consistency lint + mypy requirements
+      pass, all residual global lint failures are explicitly recorded as out-of-scope
+      debt, and no claim-consistency blocker remains
 
-      - If still blocked, name the exact residual blocker and whether it is in-scope'
+      - Treat unrelated global lint debt outside the bounded claim-consistency scope
+      as non-blocking for this phase once it is explicitly documented in the evidence
+
+      - If still blocked, name the exact residual in-scope blocker and cite the file/path
+      that keeps the phase closed'
     verification: '- All remediation-chain steps completed with specific evidence
 
       - Original blocked findings from `uv run ruff check src tests` and `uv run mypy
-      src/vectl` are re-evaluated using the new retest output
+      src/vectl` are re-evaluated using the revised retest output
 
-      - Phase completion now requires this rerun gate step in addition to the earlier
-      blocked gate record'
-    evidence_template: '## Gate Review Report
+      - Gate decision requires: scoped `mypy` pass, scoped claim-consistency `ruff`
+      pass, explicit note of residual out-of-scope global lint debt if present, and
+      zero unresolved claim-consistency blockers
 
-
-      **Reviewer**: gate-reviewer
-
-      **Phase**: claim-consistency-recovery
-
-
-      ### Blocker Recheck
-
-      - Ruff blocker status: resolved | still_blocked
-
-      - Mypy `md_lines` no-redef status: resolved | still_blocked
-
-      - Scope remained bounded to claim-consistency paths: yes/no
+      - Residual global lint debt outside claim-consistency scope must be recorded
+      in the gate report as non-blocking phase debt, not silently ignored'
+    evidence_template: '## Gate Rerun Decision
 
 
-      ### Evidence Review
+      **Required scoped checks**:
 
-      - Original blocked gate consulted: yes/no
+      - `uv run mypy src/vectl`: PASS|FAIL
 
-      - Remediation evidence adequate: yes/no
+      - `uv run ruff check src/vectl/cli.py src/vectl/core.py src/vectl/lifecycle.py
+      tests/test_claims.py tests/test_cli.py tests/test_io.py tests/test_mcp.py`:
+      PASS|FAIL
 
-      - Retest output specific and reproducible: yes/no
+
+      **Residual global lint debt note**:
+
+      | File | Why out of scope for claim-consistency phase | Blocking? |
+
+      | ---- | -------------------------------------------- | --------- |
+
+      | <path> | <reason> | no |
 
 
-      ### Gate Decision
+      **In-scope blocker review**:
 
-      - OPEN | BLOCKED
+      - Remaining claim-consistency blockers: none | <list exact files>
 
-      - Residual blocker(s): <list or none>'
+
+      **Gate decision**:
+
+      - [ ] OPEN: scoped hygiene clean; residual global debt documented and non-blocking
+
+      - [ ] BLOCKED: unresolved in-scope claim-consistency blocker remains
+
+      '
     depends_on:
     - claim-consistency-recovery.retest-gate-lint-and-type-blockers-retest
     agent: gate-reviewer

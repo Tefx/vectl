@@ -17782,7 +17782,7 @@ phases:
     agent: gate-reviewer
   - id: claim-consistency-recovery.retest-gate-lint-and-type-blockers-fix
     name: retest-gate-lint-and-type-blockers-fix
-    status: claimed
+    status: done
     description: 'Fix the remaining gate-blocking lint issues only on claim-consistency-touched
       surfaces so the gate path can be unblocked without expanding into repo-wide
       cleanup.
@@ -17839,6 +17839,54 @@ phases:
     agent: python-senior
     claimed_by: python-senior
     claimed_at: '2026-03-09T05:27:13.653107+00:00'
+    done_at: '2026-03-09T05:29:10.222878+00:00'
+    evidence: 'Artifact:
+
+      - Worker commit: d47b509
+
+      - Orchestrator squash commit: c4ec2c8
+
+
+      Verification:
+
+      - Run: uv run ruff check src tests -> FAIL (12 remaining errors outside bounded
+      scope)
+
+      - Run: uv run ruff check src/vectl/cli.py src/vectl/core.py src/vectl/lifecycle.py
+      tests/test_claims.py tests/test_cli.py tests/test_io.py tests/test_mcp.py ->
+      PASS
+
+
+      Spec link:
+
+      - claim-consistency-recovery.retest-gate-lint-and-type-blockers-fix
+
+
+      Files changed:
+
+      - src/vectl/cli.py
+
+      - src/vectl/core.py
+
+      - src/vectl/lifecycle.py
+
+      - tests/test_claims.py
+
+      - tests/test_cli.py
+
+      - tests/test_io.py
+
+      - tests/test_mcp.py
+
+
+      Gaps/Notes:
+
+      - In-scope claim-consistency lint blockers resolved for bounded surfaces.
+
+      - Global ruff still reports unrelated legacy debt in out-of-scope files (src/vectl/io.py
+      and several non-claim tests); explicitly preserved by design.
+
+      - No out-of-scope file modifications were made.'
   - id: claim-consistency-recovery.retest-gate-lint-and-type-blockers-retest
     name: retest-gate-lint-and-type-blockers-retest
     status: pending

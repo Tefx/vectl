@@ -17731,3 +17731,60 @@ phases:
     depends_on:
     - claim-consistency-recovery.retest-gate-lint-and-type-blockers
     agent: gate-reviewer
+  - id: claim-consistency-recovery.retest-gate-lint-and-type-blockers-fix
+    name: retest-gate-lint-and-type-blockers-fix
+    status: pending
+    description: 'Fix the remaining gate-blocking lint issues only on claim-consistency-touched
+      surfaces so the gate path can be unblocked without expanding into repo-wide
+      cleanup.
+
+
+      Remediation consolidation:
+
+      - prior_loop: claim-consistency-recovery.fix-gate-lint-and-type-blockers, claim-consistency-recovery.retest-gate-lint-and-type-blockers
+
+      - remaining_blocker: `uv run ruff check src tests` still reports 47 errors,
+      and the retest is blocked until claim-consistency-surface lint failures are
+      either fixed or cleanly separated from unrelated legacy debt
+
+      - why_new_loop: the prior bounded remediation cleared type blockers and some
+      targeted lint issues, but the retest evidence shows additional in-scope lint
+      failures remain mixed with unrelated test-file debt; this needs one more strictly
+      bounded pass before gate rerun
+
+
+      Scope boundary:
+
+      - Limit edits to claim-consistency touched surfaces needed for the blocked gate
+      path: `src/vectl/cli.py`, `src/vectl/core.py`, `src/vectl/lifecycle.py`, `tests/test_claims.py`,
+      `tests/test_cli.py`, `tests/test_io.py`, `tests/test_mcp.py`
+
+      - Do not perform unrelated repo-wide lint cleanup or opportunistic formatting
+      outside those files
+
+      - If unrelated legacy lint debt still causes global `ruff check src tests` to
+      fail, preserve it as out-of-scope and make the separation explicit in evidence
+
+
+      Acceptance criteria:
+
+      - In-scope `ruff` findings on the bounded claim-consistency surfaces are resolved
+      without broadening file scope
+
+      - Evidence distinguishes claim-consistency scoped lint status from unrelated
+      global repo debt
+
+      - Changed-file evidence stays limited to the bounded claim-consistency surfaces
+      unless a directly imported helper/test fixture in the same path cluster is strictly
+      required and justified'
+    verification: '- Main path: scoped lint passes for the bounded claim-consistency
+      files needed by the blocked gate path
+
+      - Failure path: evidence explicitly shows whether any remaining global `ruff
+      check src tests` failures are unrelated legacy debt outside the bounded surface
+
+      - Proof: changed-file list and command output make the scoped pass vs global
+      debt distinction auditable'
+    depends_on:
+    - claim-consistency-recovery.retest-gate-lint-and-type-blockers
+    agent: python-senior

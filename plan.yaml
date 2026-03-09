@@ -17381,7 +17381,7 @@ phases:
       coverage.'
   - id: claim-consistency-recovery.integration-verify-retest
     name: integration-verify-retest
-    status: claimed
+    status: done
     description: 'As an INDEPENDENT TESTER (`integration-verifier`), re-run the claim-consistency
       recovery integration verification after the focused remediation.
 
@@ -17413,3 +17413,44 @@ phases:
     agent: integration-verifier
     claimed_by: integration-verifier
     claimed_at: '2026-03-09T03:57:55.872092+00:00'
+    done_at: '2026-03-09T04:00:39.285332+00:00'
+    evidence: 'Artifact:
+
+      - Commit hash(es): none (read-only retest; no code changes)
+
+
+      Verification:
+
+      - Run: uv run pytest -v tests/test_cli.py::TestComplete::test_claim_complete_with_external_plan_avoids_misleading_autosave_noise
+      tests/test_cli.py::TestComplete::test_gate_check_claim_consistency_shows_scoped_verification_note
+      -> 2 passed
+
+      - Run: uv run vectl claim s1 --agent bot-1 --plan <external-plan> --no-guidance
+      -> Claimed successfully; no misleading git pathspec/autosave warning output
+
+      - Run: uv run vectl complete s1 --evidence "scoped verification evidence" --plan
+      <external-plan> -> Completed successfully
+
+      - Run: uv run vectl gate-check claim-consistency-recovery --plan <external-plan>
+      -> output includes explicit scoped-verification interpretation note (not full
+      package-wide coverage proof)
+
+
+      Spec link:
+
+      - claim-consistency-recovery.integration-verify-retest
+
+
+      Files changed:
+
+      - none
+
+
+      Gaps/Notes:
+
+      - Retest was intentionally scoped to claim-consistency objectives after fix
+      step; no residual defects observed in external --plan claim/complete flow or
+      scoped-evidence wording.
+
+      - Suggestion: continue treating this as phase-scoped verification evidence rather
+      than a broad coverage certification.'

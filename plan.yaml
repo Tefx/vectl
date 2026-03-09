@@ -17578,7 +17578,7 @@ phases:
       \ attribution.\n- Claim-consistency recovery behavior preserved."
   - id: claim-consistency-recovery.retest-gate-lint-and-type-blockers
     name: retest-gate-lint-and-type-blockers
-    status: pending
+    status: claimed
     description: 'As an INDEPENDENT TESTER (`integration-verifier`), re-run the gate-blocking
       hygiene checks after the bounded claim-consistency remediation.
 
@@ -17655,6 +17655,8 @@ phases:
     depends_on:
     - claim-consistency-recovery.fix-gate-lint-and-type-blockers
     agent: integration-verifier
+    claimed_by: integration-verifier
+    claimed_at: '2026-03-09T05:23:16.555856+00:00'
   - id: claim-consistency-recovery.gate-rerun
     name: gate-rerun
     status: pending

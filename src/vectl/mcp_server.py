@@ -69,6 +69,17 @@ from vectl.io import (
     load_plan_definition,
     save_plan,
 )
+from vectl.lifecycle import (
+    ClaimConflictError,
+    claim_step,
+    complete_phase,
+    complete_step,
+    defer_step,
+    get_claimed_steps,
+    reject_step,
+    skip_phase,
+    skip_step,
+)
 from vectl.models import (
     AffinityError,
     AmbiguousMatchError,
@@ -80,17 +91,6 @@ from vectl.models import (
     PlanError,
     Step,
     StepStatus,
-)
-from vectl.lifecycle import (
-    claim_step,
-    ClaimConflictError,
-    complete_phase,
-    complete_step,
-    defer_step,
-    get_claimed_steps,
-    reject_step,
-    skip_phase,
-    skip_step,
 )
 from vectl.plan_path import (
     is_linked_worktree,
@@ -465,7 +465,7 @@ def vectl_claim(
             claimed_at=e.claimed_at,
         )
         err = str(e)
-        md_lines = [
+        conflict_md_lines = [
             f"**Claim Conflict:** {e.step_id} is already claimed on branch '{e.branch}'",
             f"**Claimed by:** {e.claimant}",
             f"**Claimed at:** {e.claimed_at}",
@@ -476,7 +476,7 @@ def vectl_claim(
         ]
         return ClaimResult(
             ok=False,
-            markdown="\n".join(md_lines),
+            markdown="\n".join(conflict_md_lines),
             error=err,
             error_code="claim_conflict",
             claim_conflict=conflict_data,

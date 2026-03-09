@@ -295,7 +295,8 @@ def repair_claims(
         raise PlanError(f"Step '{step_id}' not found")
 
     policy = (
-        "plan_precedence: for current branch, ensure claims entry exists iff step is claimed in plan; "
+        "plan_precedence: for current branch, ensure claims entry exists iff "
+        "step is claimed in plan; "
         "for matching keys, plan claimed_by/claimed_at overwrite stale claims fields; "
         "outside branch/scope entries are preserved byte-for-byte in memory"
     )

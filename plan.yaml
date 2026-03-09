@@ -16922,7 +16922,7 @@ phases:
       churn.'
   - id: claim-consistency-recovery.targeted-regression-tests
     name: targeted-regression-tests
-    status: claimed
+    status: done
     description: 'Consolidate focused regression coverage for the repaired claim-consistency
       flow across IO, CLI, MCP, and recovery surfaces.
 
@@ -16970,6 +16970,19 @@ phases:
     agent: python-executor
     claimed_by: python-executor
     claimed_at: '2026-03-09T02:39:20.428819+00:00'
+    done_at: '2026-03-09T02:48:07.967036+00:00'
+    evidence: "Artifact:\n- Worker commit(s): none new (step validated existing targeted\
+      \ matrix on current branch)\n- Orchestrator merge result: no-op squash (targeted-regression-tests\
+      \ branch had no additional content beyond main at merge time)\n\nVerification:\n\
+      - Run: uv run pytest tests/test_io.py tests/test_cli.py tests/test_mcp.py tests/test_claims.py\
+      \ -k 'claim or repair or anima' -v -> 62 passed, 345 deselected in 3.89s\n\n\
+      Spec link:\n- claim-consistency-recovery.targeted-regression-tests\n\nFiles\
+      \ changed:\n- none\n\nGaps/Notes:\n- Coverage matrix confirmed present and green:\n\
+      \  - tests/test_io.py: concurrent claim/save atomicity + ghost-claim reproducer\n\
+      \  - tests/test_cli.py: claim rejection diagnostics + repair claims flag behavior\n\
+      \  - tests/test_mcp.py: structured diagnostics + repair parity\n  - tests/test_claims.py:\
+      \ reconciliation policy + scoped preservation\n- This step served as consolidation/verification\
+      \ of targeted coverage after implementation steps; no new gaps remained to fill."
   - id: claim-consistency-recovery.freeze-for-integration
     name: freeze-for-integration
     status: pending

@@ -16476,7 +16476,7 @@ phases:
   steps:
   - id: claim-consistency-recovery.anima-incident-reproducer
     name: anima-incident-reproducer
-    status: claimed
+    status: done
     description: 'Encode the anima orchestrator/worktree failure as a deterministic
       reproducer before changing production behavior.
 
@@ -16523,6 +16523,47 @@ phases:
     agent: python-executor
     claimed_by: python-executor
     claimed_at: '2026-03-09T01:33:08.108053+00:00'
+    done_at: '2026-03-09T01:55:49.110545+00:00'
+    evidence: 'Artifact:
+
+      - Worker commit: 3d824cf
+
+      - Orchestrator squash commit: 5d4ab9b
+
+
+      Verification:
+
+      - Run: uv run pytest tests/test_io.py -k "AnimaIncident" -v -> 2 passed
+
+      - Run: uv run pytest tests/test_io.py tests/test_claims.py tests/test_cli.py::TestComplete
+      -v -> 38 passed
+
+      - Run: uv run pytest tests/test_cli.py::TestComplete::test_split_brain_claim_exists_but_plan_shows_pending
+      -v -> 1 passed
+
+
+      Spec link:
+
+      - claim-consistency-recovery.anima-incident-reproducer
+
+
+      Files changed:
+
+      - src/vectl/io.py
+
+      - tests/test_io.py
+
+      - tests/test_cli.py
+
+
+      Gaps/Notes:
+
+      - Added deterministic reproducer assertions covering split-brain symptom: claim
+      rejected due to existing claims.json entry while plan-visible step remains pending
+      and complete rejects for non-claimed status.
+
+      - Harness uses real git repo execution paths and concurrent behavior surface;
+      no production behavior change performed in this step.'
   - id: claim-consistency-recovery.atomic-plan-save-locking
     name: atomic-plan-save-locking
     status: pending

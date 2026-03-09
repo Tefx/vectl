@@ -17057,7 +17057,7 @@ phases:
       diagnostics, and repair command) for downstream independent verification.'
   - id: claim-consistency-recovery.integration-verify
     name: integration-verify
-    status: claimed
+    status: done
     description: 'As an INDEPENDENT TESTER (`integration-verifier`), validate the
       claim-consistency repair from a fresh perspective.
 
@@ -17125,6 +17125,69 @@ phases:
     agent: integration-verifier
     claimed_by: integration-verifier
     claimed_at: '2026-03-09T02:50:55.195027+00:00'
+    done_at: '2026-03-09T03:52:25.794610+00:00'
+    evidence: '## Integration Verification (Independent)
+
+
+      Artifact:
+
+      - Commit hash(es): none (read-only verification; no code changes)
+
+
+      Verification:
+
+      - Run: uv run pytest -v tests/test_cli.py::TestClaim::test_claim_reject_with_existing_claim_shows_diagnostics
+      tests/test_cli.py::TestRepairClaimsCLI::test_repair_claims_step_scope_preserves_unrelated_claims
+      tests/test_cli.py::TestComplete::test_claim_and_complete_use_claims_store tests/test_cli.py::TestComplete::test_split_brain_claim_exists_but_plan_shows_pending
+      tests/test_mcp.py::TestVectlClaim::test_claim_reject_with_existing_claim_returns_structured_error
+      tests/test_mcp.py::TestRepairClaimsMcp::test_repair_claims_dry_run_preview tests/test_mcp.py::TestRepairClaimsMcp::test_repair_claims_step_scope_preserves_unrelated_entries
+      tests/test_mcp.py::TestVectlComplete::test_complete_claimed_step -> 8 passed
+
+      - Run: uvx --from <worktree> vectl repair claims --dry-run --json --plan <temp-plan>
+      -> JSON preview showed ghost-claim actions without mutation
+
+      - Run: uvx --from <worktree> vectl repair claims --step alpha.s1 --json --plan
+      <temp-plan> + follow-up claims readback -> only scoped entry repaired; unrelated
+      claim preserved
+
+      - Run: uvx --from <worktree> vectl claim alpha.s2 --agent challenger --plan
+      <temp-plan> -> actionable claim-conflict diagnostics shown (Claim Details +
+      Next Steps)
+
+      - Run: post-repair flow (`repair --step alpha.s2` then `claim/show/complete`)
+      -> state agreement restored (claim succeeds, show/status claimed, complete done)
+
+      - MCP evidence: vectl_vectl_show + vectl_vectl_status outputs captured for active
+      phase/step state
+
+
+      Spec link:
+
+      - claim-consistency-recovery.integration-verify
+
+
+      Issues Found (should_fix):
+
+      - CLI external `--plan` mutation paths emit misleading git autosave/pathspec
+      failure noise even when mutation succeeds.
+
+      - Scoped integration evidence can be misread as broad package-wide coverage
+      proof without explicit scope wording.
+
+
+      Follow-up remediation chain created:
+
+      - claim-consistency-recovery.integration-verify-fix (depends_on: claim-consistency-recovery.integration-verify)
+
+      - claim-consistency-recovery.integration-verify-retest (depends_on: claim-consistency-recovery.integration-verify-fix)
+
+      - claim-consistency-recovery.gate updated to depend on claim-consistency-recovery.integration-verify-retest
+
+
+      Gaps/Notes:
+
+      - This completion captures independent verification findings and explicitly
+      routes should-fix items into fix/retest plan steps per workflow.'
   - id: claim-consistency-recovery.gate
     name: gate
     status: pending

@@ -16472,11 +16472,11 @@ phases:
       scope.'
 - id: claim-consistency-recovery
   name: Claim Consistency Recovery
-  status: pending
+  status: in_progress
   steps:
   - id: claim-consistency-recovery.anima-incident-reproducer
     name: anima-incident-reproducer
-    status: pending
+    status: claimed
     description: 'Encode the anima orchestrator/worktree failure as a deterministic
       reproducer before changing production behavior.
 
@@ -16521,6 +16521,8 @@ phases:
       - Evidence states which fixture or race harness is used and why it exercises
       the real concurrent path'
     agent: python-executor
+    claimed_by: python-executor
+    claimed_at: '2026-03-09T01:33:08.108053+00:00'
   - id: claim-consistency-recovery.atomic-plan-save-locking
     name: atomic-plan-save-locking
     status: pending

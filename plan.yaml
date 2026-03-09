@@ -17273,3 +17273,35 @@ phases:
     depends_on:
     - claim-consistency-recovery.integration-verify
     agent: python-senior
+  - id: claim-consistency-recovery.integration-verify-retest
+    name: integration-verify-retest
+    status: pending
+    description: 'As an INDEPENDENT TESTER (`integration-verifier`), re-run the claim-consistency
+      recovery integration verification after the focused remediation.
+
+
+      Retest both original findings without broadening scope beyond this phase:
+
+      - verify external `--plan` claim/complete succeeds without misleading git autosave/pathspec
+      failure noise
+
+      - verify evidence and gate interpretation clearly label this run as scoped claim-consistency
+      verification, not full-suite coverage
+
+
+      Finding remaining issues is still a successful retest outcome if evidence is
+      specific.'
+    verification: '- Run the targeted real-path claim-consistency integration flow
+      again after the fix
+
+      - Include at least one CLI invocation exercising external `--plan` behavior
+      and capture actual output showing absence of misleading git pathspec/autosave
+      failure text
+
+      - Confirm gate/evidence surfaces now state scoped verification semantics explicitly
+
+      - Report whether any residual issue remains for claim/complete behavior or scoped-evidence
+      interpretation'
+    depends_on:
+    - claim-consistency-recovery.integration-verify-fix
+    agent: integration-verifier

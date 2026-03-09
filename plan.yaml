@@ -17729,7 +17729,7 @@ phases:
 
       - Residual blocker(s): <list or none>'
     depends_on:
-    - claim-consistency-recovery.retest-gate-lint-and-type-blockers
+    - claim-consistency-recovery.retest-gate-lint-and-type-blockers-retest
     agent: gate-reviewer
   - id: claim-consistency-recovery.retest-gate-lint-and-type-blockers-fix
     name: retest-gate-lint-and-type-blockers-fix

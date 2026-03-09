@@ -277,6 +277,61 @@ class TestCAS:
         assert path.exists()
         assert isinstance(hash_, str)
 
+    def test_atomic_cas_and_write_are_serialized_under_plan_lock(
+        self, tmp_path: Path, sample_plan: Plan, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        path = tmp_path / "plan.yaml"
+        seed_hash = save_plan(sample_plan, path)
+
+        first_plan = sample_plan.model_copy(deep=True)
+        first_plan.context = "writer-1"
+        second_plan = sample_plan.model_copy(deep=True)
+        second_plan.context = "writer-2"
+
+        first_write_started = threading.Event()
+        original_write = _write_plan_content
+
+        def delayed_first_write(target_path: Path, content: str) -> None:
+            if not first_write_started.is_set():
+                first_write_started.set()
+                time.sleep(0.2)
+            original_write(target_path, content)
+
+        monkeypatch.setattr("vectl.io._write_plan_content", delayed_first_write)
+
+        results: dict[str, str] = {}
+        errors: dict[str, Exception] = {}
+
+        def writer_one() -> None:
+            try:
+                save_plan(first_plan, path, expected_hash=seed_hash)
+                results["writer_one"] = "saved"
+            except Exception as exc:
+                errors["writer_one"] = exc
+
+        def writer_two() -> None:
+            try:
+                save_plan(second_plan, path, expected_hash=seed_hash)
+                results["writer_two"] = "saved"
+            except Exception as exc:
+                errors["writer_two"] = exc
+
+        thread_one = threading.Thread(target=writer_one, name="writer-one")
+        thread_two = threading.Thread(target=writer_two, name="writer-two")
+
+        thread_one.start()
+        assert first_write_started.wait(timeout=1.0), "writer one did not reach write phase"
+        thread_two.start()
+
+        thread_one.join(timeout=2.0)
+        thread_two.join(timeout=2.0)
+
+        assert results.get("writer_one") == "saved"
+        assert isinstance(errors.get("writer_two"), CASConflictError)
+
+        final_plan, _ = load_plan(path)
+        assert final_plan.context == "writer-1"
+
 
 class TestDefinitionBackup:
     @staticmethod
@@ -510,6 +565,7 @@ class TestAnimaIncidentReproducer:
         - complete refuses because plan.yaml step is not CLAIMED
         """
         import os
+        from datetime import datetime, timezone
         from vectl.claims import ClaimEntry, acquire_claim, load_claims, save_claims
         from vectl.lifecycle import claim_step, complete_step
         from vectl.plan_path import resolve_claims_path
@@ -557,7 +613,7 @@ class TestAnimaIncidentReproducer:
                     step_id="s1",
                     branch=branch_name,
                     agent="agent-a",
-                    claimed_at="2026-03-09T00:00:00Z",
+                    claimed_at=datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"),
                 )
             },
             claims_path,

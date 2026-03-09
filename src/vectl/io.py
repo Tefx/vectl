@@ -8,6 +8,9 @@ import os
 import subprocess
 import tempfile
 import time
+import fcntl
+from collections.abc import Iterator
+from contextlib import contextmanager
 from pathlib import Path
 from typing import Any
 
@@ -76,6 +79,36 @@ def save_plan(
     """
     path = Path(path)
 
+    with _locked_plan_file(path):
+        return _save_plan_locked(
+            plan,
+            path,
+            expected_hash=expected_hash,
+            commit_message=commit_message,
+        )
+
+
+@contextmanager
+def _locked_plan_file(path: Path) -> Iterator[None]:
+    """Serialize CAS+write access for a specific plan file."""
+    path.parent.mkdir(parents=True, exist_ok=True)
+    lock_path = path.parent / f"{path.name}.lock"
+    with lock_path.open("a+b") as lock_file:
+        fcntl.flock(lock_file.fileno(), fcntl.LOCK_EX)
+        try:
+            yield
+        finally:
+            fcntl.flock(lock_file.fileno(), fcntl.LOCK_UN)
+
+
+def _save_plan_locked(
+    plan: Plan,
+    path: Path,
+    expected_hash: str | None = None,
+    commit_message: str | None = None,
+) -> str:
+    """Save plan assuming caller already holds the plan-file lock."""
+
     # CAS check
     if expected_hash is not None and path.exists():
         current_hash = _file_hash(path)
@@ -87,21 +120,7 @@ def save_plan(
     yaml_body = yaml.dump(data, default_flow_style=False, allow_unicode=True, sort_keys=False)
     content = _PLAN_YAML_HEADER + yaml_body
 
-    # Atomic write: temp file + rename
-    dir_ = path.parent
-    dir_.mkdir(parents=True, exist_ok=True)
-    fd, tmp_path = tempfile.mkstemp(dir=str(dir_), suffix=".tmp")
-    try:
-        os.write(fd, content.encode("utf-8"))
-        os.close(fd)
-        os.replace(tmp_path, str(path))
-    except Exception:
-        # Clean up temp file on error
-        try:
-            os.unlink(tmp_path)
-        except OSError:
-            pass
-        raise
+    _write_plan_content(path, content)
 
     new_hash = hashlib.sha256(content.encode()).hexdigest()
 

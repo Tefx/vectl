@@ -231,6 +231,110 @@ Lock status is automatically maintained — agents do not need to manage it. Aft
 
 If you edit `plan.yaml` directly (outside of vectl commands), run `uvx vectl recalc-lock` to manually diagnose and repair any lock inconsistencies.
 
+## Claim Recovery (Ghost Claims & Split-Brain)
+
+When claim state diverges from plan state, you may encounter errors like:
+```
+Step 'foo.bar' is already claimed on branch 'main'
+```
+But `vectl show foo.bar` shows it unclaimed — or shows a different owner. This is a **ghost claim** or **split-brain** state.
+
+### Symptom Recognition
+
+| Symptom | Likely Cause |
+|---------|-------------|
+| Claim rejected, `show` says unclaimed | Ghost claim in `claims.json` (stale or orphaned entry) |
+| Claim rejected, `show` shows different owner | Split-brain: claims.json and plan.yaml disagree |
+| `status` shows claimed, but no agent is working | Stale claim entry (agent crashed/left) |
+
+### Recovery Commands
+
+```bash
+# 1. Diagnose: preview what would change (safe, read-only)
+uvx vectl repair claims --dry-run
+
+# 2. Diagnose with JSON (machine-parseable output)
+uvx vectl repair claims --dry-run --json
+
+# 3. Repair all claims on current branch
+uvx vectl repair claims
+
+# 4. Repair only a specific step (scoped repair)
+uvx vectl repair claims --step foo.bar
+
+# 5. Verify: check status again
+uvx vectl status
+uvx vectl show <step-id>
+```
+
+### Flags Explained
+
+| Flag | Purpose |
+|------|---------|
+| `--dry-run` | Preview changes without writing. Always run this first. |
+| `--step <id>` | Repair only this step's claim. Preserves all other claims. |
+| `--json` | Machine-readable output. Useful for scripting/CI. |
+
+### Policy
+
+`vectl repair claims` follows **plan precedence**:
+- `plan.yaml` is the source of truth for claim-visible state
+- For current branch, claims.json is repaired to match plan step status/owner
+- Out-of-scope entries (other branches, unrelated steps) are preserved
+
+### When Repo is Healthy (No-Op)
+
+If the repo is consistent, `--dry-run` shows:
+```
+Policy: plan_precedence: ...
+changed: false
+actions: []
+```
+
+This means claims.json matches plan.yaml — no repair needed.
+
+### Anima-Style Example
+
+```bash
+# You try to claim but get rejected
+$ uvx vectl claim auth.user-model
+Error: Step 'auth.user-model' is already claimed on branch 'main'
+
+# But status shows something different
+$ uvx vectl show auth.user-model
+status: pending
+claimed_by: null
+```
+
+**Recovery**:
+```bash
+# Preview the fix
+$ uvx vectl repair claims --dry-run --json
+{
+  "changed": true,
+  "actions": [
+    {"action": "remove", "key": "main:auth.user-model", "reason": "ghost_claim_or_non_claimed_step"}
+  ]
+}
+
+# Apply the fix
+$ uvx vectl repair claims
+[vectl] Repair claims (main)
+  removed: main:auth.user-model
+
+# Now claim works
+$ uvx vectl claim auth.user-model
+```
+
+### Post-Repair Verification
+
+After running repair, always verify:
+```bash
+uvx vectl status              # Confirm expected claim state
+uvx vectl show <step-id>      # Check specific step
+uvx vectl repair claims --dry-run  # Should now show no changes
+```
+
 ## Technical Details
 
 Architecture, CAS safety, and test coverage (Hypothesis state machine verification): [docs/DESIGN.md](docs/DESIGN.md).

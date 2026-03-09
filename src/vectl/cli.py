@@ -1050,7 +1050,7 @@ def guide_cmd(
     on: str | None = typer.Option(
         None,
         "--on",
-        help="Show one topic only: startup, stuck, review, planning, or migration.",
+        help="Show one topic only: startup, stuck, recovery, review, planning, or migration.",
     ),
 ) -> None:
     """Show agent onboarding guide."""
@@ -1061,7 +1061,9 @@ def guide_cmd(
     else:
         guide = _GUIDE_TOPICS.get(on)
         if guide is None:
-            _die(f"Unknown topic '{on}'. Use: startup, stuck, review, planning, migration.")
+            _die(
+                f"Unknown topic '{on}'. Use: startup, stuck, recovery, review, planning, migration."
+            )
             return  # unreachable, for type checker
         out.print(Markdown(guide.strip()))
 

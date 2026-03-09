@@ -17210,3 +17210,66 @@ phases:
     - claim-consistency-recovery.freeze-for-integration
     - claim-consistency-recovery.integration-verify
     agent: gate-reviewer
+  - id: claim-consistency-recovery.integration-verify-fix
+    name: integration-verify-fix
+    status: pending
+    description: 'Bounded remediation for issues found during `claim-consistency-recovery.integration-verify`.
+
+
+      prior_loop: [claim-consistency-recovery.integration-verify]
+
+      remaining_blocker: misleading CLI git autosave failure noise for external `--plan`
+      paths, plus ambiguous interpretation of scoped integration evidence as broad-package
+      coverage
+
+      why_new_loop: the original independent verification step correctly found two
+      non-blocking gaps; they require a focused phase-local remediation before gate
+      review can rely on the evidence.
+
+
+      Scope is limited to the `claim-consistency-recovery` phase surfaces.
+
+
+      Issue 1: Fix CLI mutation autosave/git-add handling so `claim`/`complete` succeeds
+      quietly when `--plan` points outside the current repository/worktree. Do not
+      emit misleading `git add plan.yaml`/`pathspec` failure noise when the vectl
+      operation itself succeeds. If helper behavior in `src/vectl/io.py` participates
+      in autosave path resolution, update it only as needed for this path-scope fix.
+
+
+      Issue 2: Make scoped verification semantics explicit in the claim-consistency
+      recovery gate/evidence surfaces. Targeted integration runs for this phase must
+      be interpreted as scoped claim-consistency evidence, not as a full broad-package
+      coverage audit.
+
+
+      Acceptance criteria:
+
+      - External `--plan` mutation flow no longer emits misleading git pathspec/autosave
+      failure noise when the write succeeds.
+
+      - The fix preserves existing in-repo autosave behavior for normal repo-local
+      plan paths.
+
+      - Claim-consistency gate or adjacent evidence criteria explicitly state that
+      the targeted run is scoped verification and must not be read as full-suite coverage
+      proof.
+
+      - Changes stay within claim-consistency-recovery surfaces (CLI/io handling plus
+      claim-consistency verification/gate criteria docs/tests).'
+    verification: '- Main path: targeted regression covers successful `claim`/`complete`
+      with `--plan` outside the active repo/worktree and confirms no misleading git
+      pathspec failure text is emitted
+
+      - Failure path: regression or assertion proves repo-local autosave behavior
+      still performs the expected git add/autosave handling for in-repo plan paths
+
+      - Scoped evidence path: targeted tests/docs assertions show claim-consistency
+      gate interpretation explicitly treats this integration run as scoped evidence
+      rather than broad coverage audit
+
+      - Proof: updated tests or assertions name the external-plan case and the scoped-verification
+      note/guard explicitly'
+    depends_on:
+    - claim-consistency-recovery.integration-verify
+    agent: python-senior

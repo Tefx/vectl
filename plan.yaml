@@ -17514,3 +17514,82 @@ phases:
     depends_on:
     - claim-consistency-recovery.gate
     agent: python-senior
+  - id: claim-consistency-recovery.retest-gate-lint-and-type-blockers
+    name: retest-gate-lint-and-type-blockers
+    status: pending
+    description: 'As an INDEPENDENT TESTER (`integration-verifier`), re-run the gate-blocking
+      hygiene checks after the bounded claim-consistency remediation.
+
+
+      YOUR GOAL IS TO FIND REMAINING PROBLEMS, not to confirm success.
+
+
+      Scope:
+
+      - Re-run `ruff` and `mypy` against the same surfaces implicated by the blocked
+      gate
+
+      - Confirm the remediation stayed bounded to claim-consistency paths
+
+      - Report any remaining or newly exposed blocker separately from unrelated repo
+      debt
+
+
+      Acceptance criteria:
+
+      - Execute `uv run ruff check src tests` and `uv run mypy src/vectl`
+
+      - Report whether any remaining failures still map to claim-consistency files
+      versus unrelated repo debt
+
+      - Provide actual command output excerpts, not only a pass/fail summary'
+    verification: '- Main path: `uv run ruff check src tests` and `uv run mypy src/vectl`
+      are re-run and outputs recorded
+
+      - Failure path: if blockers remain, evidence identifies exact remaining claim-consistency
+      paths and reproduction lines
+
+      - Proof: coverage explains whether the remediation remained bounded or leaked
+      into broader cleanup'
+    evidence_template: '## Verification Report
+
+
+      **Tester**: integration-verifier
+
+      **Scope**: claim-consistency lint/type remediation retest
+
+      **Commands executed**:
+
+      ```bash
+
+      uv run ruff check src tests
+
+      uv run mypy src/vectl
+
+      ```
+
+
+      **Actual output excerpts**:
+
+      ```text
+
+      <paste key stdout/stderr>
+
+      ```
+
+
+      **Attribution**:
+
+      - Remaining claim-consistency blockers: <list or none>
+
+      - Unrelated existing repo debt observed: <list or none>
+
+      - Scope remained bounded: yes/no
+
+
+      **Verdict**:
+
+      - PASS | ISSUES_FOUND | INCOMPLETE'
+    depends_on:
+    - claim-consistency-recovery.fix-gate-lint-and-type-blockers
+    agent: integration-verifier

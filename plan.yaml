@@ -17889,7 +17889,7 @@ phases:
       - No out-of-scope file modifications were made.'
   - id: claim-consistency-recovery.retest-gate-lint-and-type-blockers-retest
     name: retest-gate-lint-and-type-blockers-retest
-    status: pending
+    status: claimed
     description: 'As an INDEPENDENT TESTER (`integration-verifier`), re-run the gate-blocking
       hygiene checks after the second bounded claim-consistency lint remediation.
 
@@ -17946,3 +17946,5 @@ phases:
     depends_on:
     - claim-consistency-recovery.retest-gate-lint-and-type-blockers-fix
     agent: integration-verifier
+    claimed_by: integration-verifier
+    claimed_at: '2026-03-09T05:29:23.622585+00:00'

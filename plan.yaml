@@ -18411,3 +18411,8 @@ phases:
     depends_on:
     - freeze-for-gate
     agent: gate-reviewer
+- id: claim-consistency-worktree-matrix
+  name: 'Claim Consistency Hardening: Worktree Matrix'
+  status: locked
+  depends_on:
+  - claim-consistency-diagnostics

@@ -18380,7 +18380,7 @@ phases:
       - missing worktree `.vectl/worktrees/freeze-for-integration`'
   - id: integration-verify
     name: Integration Verify
-    status: pending
+    status: claimed
     description: "End-to-end integration verification of claim flow.\n\n- Execute\
       \ full claim flow through CLI:\n  - `vectl claim <step>` succeeds\n  - `vectl\
       \ claim <step>` on same step by different agent reports true conflict\n  - Ghost\
@@ -18399,6 +18399,8 @@ phases:
     depends_on:
     - freeze-for-integration
     agent: integration-verifier
+    claimed_by: integration-verifier
+    claimed_at: '2026-03-11T14:14:27.062786+00:00'
   - id: gate
     name: Gate Check
     status: pending

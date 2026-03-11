@@ -21770,7 +21770,7 @@ phases:
       \ exclusions**\n- none for this batched stabilization scope."
   - id: release-0-6-1-stabilization.independent-retest-release-candidate
     name: independent-retest-release-candidate
-    status: pending
+    status: claimed
     description: 'As an independent verifier, re-test the repaired 0.6.1 candidate
       from a fresh perspective and try to find remaining release blockers.
 
@@ -21891,6 +21891,8 @@ phases:
     depends_on:
     - release-0-6-1-stabilization.fix-batch-claim-wiring-collection-and-lint
     agent: integration-verifier
+    claimed_by: integration-verifier
+    claimed_at: '2026-03-11T19:11:19.090389+00:00'
   - id: release-0-6-1-stabilization.freeze-for-release-gate
     name: freeze-for-release-gate
     status: pending

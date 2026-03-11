@@ -21911,7 +21911,7 @@ phases:
       - `release-0-6-1-stabilization.independent-retest-version-alignment-to-0-6-1`"
   - id: release-0-6-1-stabilization.freeze-for-release-gate
     name: freeze-for-release-gate
-    status: pending
+    status: claimed
     description: 'Freeze the release-stabilization snapshot before gate review.
 
 
@@ -21974,6 +21974,8 @@ phases:
     depends_on:
     - release-0-6-1-stabilization.independent-retest-version-alignment-to-0-6-1
     agent: general
+    claimed_by: general
+    claimed_at: '2026-03-11T19:26:22.929977+00:00'
   - id: release-0-6-1-stabilization.gate
     name: gate
     status: pending

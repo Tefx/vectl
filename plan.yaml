@@ -18481,7 +18481,7 @@ phases:
     agent: gate-reviewer
   - id: integration-verify-fix-all
     name: Fix All Integration Verify Blockers
-    status: pending
+    status: claimed
     description: 'Fix ALL issues found by `integration-verify` — fix ALL of these,
       not just the first.
 
@@ -18655,6 +18655,8 @@ phases:
     depends_on:
     - integration-verify
     agent: python-executor
+    claimed_by: python-executor
+    claimed_at: '2026-03-11T14:20:17.936924+00:00'
   - id: integration-verify-retest
     name: Retest Integration Verify Blockers
     status: pending

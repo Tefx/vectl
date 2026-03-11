@@ -21770,7 +21770,7 @@ phases:
       \ exclusions**\n- none for this batched stabilization scope."
   - id: release-0-6-1-stabilization.independent-retest-release-candidate
     name: independent-retest-release-candidate
-    status: claimed
+    status: done
     description: 'As an independent verifier, re-test the repaired 0.6.1 candidate
       from a fresh perspective and try to find remaining release blockers.
 
@@ -21893,6 +21893,22 @@ phases:
     agent: integration-verifier
     claimed_by: integration-verifier
     claimed_at: '2026-03-11T19:11:19.090389+00:00'
+    done_at: '2026-03-11T19:17:41.715408+00:00'
+    evidence: "## Independent Retest Report\n\n**Commands executed**\n```bash\nuv\
+      \ run pytest -q\nuv run pytest -q tests/test_core.py tests/test_logic.py tests/test_properties.py\
+      \ tests/test_lifecycle_imports.py tests/test_cli.py::TestClaimMismatchVisibility::test_status_shows_ghost_claims_count\n\
+      uv run ruff check .\nuv run mypy src\nuv build\npython3 -m venv .tmp/vectl-0.6.1-smoke\
+      \ && .tmp/vectl-0.6.1-smoke/bin/python -m pip install --upgrade pip && WHEEL=$(ls\
+      \ dist/*.whl) && .tmp/vectl-0.6.1-smoke/bin/python -m pip install \"$WHEEL\"\
+      \ && .tmp/vectl-0.6.1-smoke/bin/vectl --version\n```\n\n**Results**\n- pytest\
+      \ full: PASS (`1038 passed`)\n- focused regression bundle: PASS (`121 passed`)\n\
+      - ruff: PASS\n- mypy: PASS\n- build/install/version smoke: ISSUE FOUND\n  -\
+      \ built wheel: `dist/vectl-0.6.0-py3-none-any.whl`\n  - installed CLI output:\
+      \ `vectl 0.6.0`\n\n**Issues found**\n- blocker:\n  - release candidate version\
+      \ mismatch: expected 0.6.1 candidate, but build artifact/installed CLI still\
+      \ report 0.6.0.\n- should_fix:\n  - none\n\n**Confidence**\n- high for blocker\
+      \ validity\n\nBatched remediation created:\n- `release-0-6-1-stabilization.fix-batch-version-alignment-to-0-6-1`\n\
+      - `release-0-6-1-stabilization.independent-retest-version-alignment-to-0-6-1`"
   - id: release-0-6-1-stabilization.freeze-for-release-gate
     name: freeze-for-release-gate
     status: pending

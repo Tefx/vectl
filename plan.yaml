@@ -22234,7 +22234,7 @@ phases:
       - none'
   - id: release-0-6-1-stabilization.independent-retest-version-alignment-to-0-6-1
     name: independent-retest-version-alignment-to-0-6-1
-    status: claimed
+    status: done
     description: 'As an INDEPENDENT TESTER (integration-verifier), validate the repaired
       0.6.1 release-candidate version surfaces from a fresh perspective.
 
@@ -22316,3 +22316,57 @@ phases:
     agent: integration-verifier
     claimed_by: integration-verifier
     claimed_at: '2026-03-11T19:23:46.456801+00:00'
+    done_at: '2026-03-11T19:26:01.508109+00:00'
+    evidence: '## Verification Report
+
+      **Tester**: integration-verifier
+
+      **Scope**: release candidate version alignment to 0.6.1
+
+
+      ### Test Execution
+
+      - Commands executed:
+
+      ```
+
+      rm -rf dist .tmp/vectl-0.6.1-version-smoke
+
+      uv build
+
+      python -m venv .tmp/vectl-0.6.1-version-smoke && .tmp/vectl-0.6.1-version-smoke/bin/python
+      -m pip install --upgrade pip && .tmp/vectl-0.6.1-version-smoke/bin/python -m
+      pip install dist/vectl-0.6.1-py3-none-any.whl && .tmp/vectl-0.6.1-version-smoke/bin/vectl
+      --version
+
+      python3 -m venv .tmp/vectl-0.6.1-version-smoke && .tmp/vectl-0.6.1-version-smoke/bin/python
+      -m pip install --upgrade pip && .tmp/vectl-0.6.1-version-smoke/bin/python -m
+      pip install dist/vectl-0.6.1-py3-none-any.whl && .tmp/vectl-0.6.1-version-smoke/bin/vectl
+      --version
+
+      uv run pytest -q tests/test_cli.py -k version
+
+      ```
+
+
+      ### Issues Found
+
+      | Severity | Description | Location | Reproduction |
+
+      | --- | --- | --- | --- |
+
+      | none | original smoke command used `python` (missing in PATH); equivalent
+      `python3 -m venv` succeeded and validated artifact/version output | release
+      retest worktree | rerun smoke with python3 |
+
+      | none | build artifact is `dist/vectl-0.6.1-py3-none-any.whl` and installed
+      venv output is `vectl 0.6.1` | dist + venv smoke | `uv build` + venv install
+      |
+
+      | none | version-focused tests pass | `tests/test_cli.py` | `uv run pytest -q
+      tests/test_cli.py -k version` |
+
+
+      ### Verdict
+
+      - PASS'

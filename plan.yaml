@@ -19967,7 +19967,7 @@ phases:
     agent: integration-verifier
   - id: update-operator-docs
     name: Update Operator Docs
-    status: pending
+    status: claimed
     description: "Update operator documentation for claim consistency.\n\n- Update\
       \ `README.md` and `docs/DESIGN.md`:\n  - Document manual repair as escape hatch,\
       \ not primary path\n  - Document automatic reconciliation as primary\n  - Document\
@@ -19976,6 +19976,8 @@ phases:
       - Docs state automatic reconciliation is primary\n- Worktree/path caveats documented\n\
       - Targeted command: `uvx --from . vectl guide --on recovery`"
     agent: doc-reviewer
+    claimed_by: doc-reviewer
+    claimed_at: '2026-03-11T16:23:23.287228+00:00'
   - id: freeze-for-gate
     name: Freeze for Gate
     status: pending

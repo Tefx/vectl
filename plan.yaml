@@ -19222,7 +19222,7 @@ phases:
       - none'
   - id: claim-consistency-hardening-core.gate-retest
     name: gate-retest
-    status: pending
+    status: claimed
     description: 'Re-test ALL batched gate blockers after `gate-fix-all` from an independent
       gate perspective.
 
@@ -19276,6 +19276,8 @@ phases:
     depends_on:
     - claim-consistency-hardening-core.gate-fix-all
     agent: gate-reviewer
+    claimed_by: gate-reviewer
+    claimed_at: '2026-03-11T14:50:59.538328+00:00'
 - id: claim-consistency-hardening-mutate
   name: 'Claim Consistency Hardening: Mutate'
   status: locked

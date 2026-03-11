@@ -20165,7 +20165,7 @@ phases:
       - Freeze snapshot captured successfully; no file modifications.'
   - id: claim-consistency-diagnostics.gate
     name: Gate Check
-    status: pending
+    status: claimed
     description: 'Review diagnostics gate.
 
 
@@ -20180,6 +20180,8 @@ phases:
     depends_on:
     - freeze-for-gate
     agent: gate-reviewer
+    claimed_by: gate-reviewer
+    claimed_at: '2026-03-11T17:15:59.078263+00:00'
   - id: fix-diagnostics-mismatch-visibility
     name: 'Batched Fix: Diagnostics Mismatch Visibility'
     status: done

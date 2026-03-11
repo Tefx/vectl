@@ -18906,6 +18906,190 @@ phases:
       ### Verdict
 
       - PASS'
+  - id: claim-consistency-hardening-core.gate-fix-all
+    name: gate-fix-all
+    status: pending
+    description: 'Fix ALL blockers found by the core hardening gate.
+
+
+      ## prior_loop
+
+      - integration-verify-fix-all
+
+      - integration-verify-retest
+
+
+      ## remaining_blocker
+
+      The phase gate still reports four blocking defects: broken `vectl.core` compatibility
+      imports, failing quality gates, branch resolution scoped to cwd instead of the
+      target plan repo, and stale-claim cleanup running after the conflict check.
+
+
+      ## why_new_loop
+
+      The earlier integration remediation loop stabilized pre-gate integration checks,
+      but it did not cover the gate-only regressions in compatibility exports, repo-scoped
+      branch lookup, and stale-claim ordering. This follow-up loop batches the remaining
+      gate blockers into one implementation pass to avoid fragmented rework.
+
+
+      ## Blockers to Fix (ALL of these, not just the first)
+
+
+      ### B1: Core import compatibility break (`vectl.core` missing lifecycle exports)
+
+      Locations:
+
+      - `tests/test_core.py:11`
+
+      - `tests/test_logic.py:7`
+
+      - `tests/test_properties.py:16`
+
+      - `tests/test_lifecycle_imports.py:6`
+
+      Remediation:
+
+      - Restore backwards-compatible re-exports in `src/vectl/core.py` OR migrate
+      all importers comprehensively.
+
+      - Ensure broad test collection passes, not just the listed files.
+
+      Grep hint:
+
+      - `rg -n "from vectl\.core import \(" tests -S`
+
+      IMPORTANT:
+
+      - Search for sibling importers beyond the listed locations and eliminate partial
+      compatibility fixes.
+
+
+      ### B2: Quality gates fail (`ruff` + `pyright`), branch not shippable
+
+      Locations:
+
+      - `src/vectl/core.py:11`
+
+      - `src/vectl/io.py:3`
+
+      - `tests/test_manual_yaml_edit.py:18`
+
+      - `tests/test_agent_field.py:11`
+
+      Remediation:
+
+      - Fix all `ruff` violations and `pyright` errors introduced by this branch.
+
+      - Verify the full quality command pair passes after code changes.
+
+      Grep hint:
+
+      - `ruff check src tests && pyright`
+
+      IMPORTANT:
+
+      - Treat branch-wide lint/type stability as part of done; do not stop after fixing
+      only one file.
+
+
+      ### B3: Branch resolution not scoped to target plan repo
+
+      Locations:
+
+      - `src/vectl/claims.py:260`
+
+      - `src/vectl/lifecycle.py:168`
+
+      - `src/vectl/lifecycle.py:429`
+
+      Remediation:
+
+      - Scope branch resolution to the plan repo or pass an explicit branch from the
+      plan-path context.
+
+      - Add a regression for external `--plan` while cwd is in a different repo.
+
+      Grep hint:
+
+      - `rg -n "get_current_branch\(" src/vectl -S`
+
+      IMPORTANT:
+
+      - Search for all branch-resolution call sites and align them; do not patch only
+      one caller.
+
+
+      ### B4: Stale-claim cleanup order incorrect
+
+      Locations:
+
+      - `src/vectl/lifecycle.py:170`
+
+      - `src/vectl/lifecycle.py:179`
+
+      Remediation:
+
+      - Run stale cleanup before conflict checks OR make the conflict check staleness-aware.
+
+      - Add an expired-claim regression proving a new claim succeeds after cleanup.
+
+      Grep hint:
+
+      - `rg -n "existing = get_claim_info\(" src/vectl/lifecycle.py -S`
+
+      IMPORTANT:
+
+      - Verify both the main claim path and the expired-claim failure path.
+
+
+      ## Should-fix checklist (include in same pass if feasible)
+
+      - [ ] S1: address the POSIX-only `fcntl` portability gap in `io.py` / `claims.py`
+
+      - [ ] S2: narrow `repair_claims` policy text so it does not promise byte-for-byte
+      preservation it cannot guarantee
+
+      - [ ] S3: reconcile the `acquire_claim` boolean vs exception contract mismatch
+
+
+      ## Known risks / systemic search requirements
+
+      - Branch and claim fixes touch shared lifecycle/state semantics; search all
+      sibling helpers and callers before concluding the patch is complete.
+
+      - Compatibility work in `src/vectl/core.py` must preserve legacy imports while
+      avoiding new lint/type regressions.
+
+      - Quality cleanup must leave the branch shippable, not merely locally patched.
+
+
+      ## Completion Criteria
+
+      - ALL blockers B1-B4 fixed, not just the first blocker addressed
+
+      - Sibling search completed for each blocker family using the grep hints above
+
+      - Regressions added for repo-scoped branch resolution and expired-claim cleanup
+
+      - Broad collection, lint, and type-check evidence is ready for independent retest
+
+      - Should-fix items S1-S3 either resolved or explicitly documented with rationale
+      if deferred'
+    verification: '- Each blocker family resolved with targeted regressions and sibling-search
+      evidence
+
+      - Main path: compatibility imports, repo-scoped branch resolution, and stale-claim
+      success path verified
+
+      - Failure path: expired-claim regression and external `--plan` different-repo
+      regression verified
+
+      - Quality path: `ruff check src tests && pyright` passes before handoff to retest'
+    depends_on:
+    - gate
+    agent: python-senior
 - id: claim-consistency-hardening-mutate
   name: 'Claim Consistency Hardening: Mutate'
   status: locked

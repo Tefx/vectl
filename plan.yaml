@@ -22234,7 +22234,7 @@ phases:
       - none'
   - id: release-0-6-1-stabilization.independent-retest-version-alignment-to-0-6-1
     name: independent-retest-version-alignment-to-0-6-1
-    status: pending
+    status: claimed
     description: 'As an INDEPENDENT TESTER (integration-verifier), validate the repaired
       0.6.1 release-candidate version surfaces from a fresh perspective.
 
@@ -22314,3 +22314,5 @@ phases:
     depends_on:
     - release-0-6-1-stabilization.fix-batch-version-alignment-to-0-6-1
     agent: integration-verifier
+    claimed_by: integration-verifier
+    claimed_at: '2026-03-11T19:23:46.456801+00:00'

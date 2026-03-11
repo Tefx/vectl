@@ -21382,7 +21382,7 @@ phases:
       \nCommit hash(es):\n- ad5653c"
 - id: release-0-6-1-stabilization
   name: 0.6.1 Release Stabilization
-  status: in_progress
+  status: done
   gate: 'Release readiness requires: baseline failures reproduced and recorded; batched
     fixes applied with sibling-search evidence; independent retest proves `uv run
     pytest -q`, `uv run ruff check .`, and `uv run mypy src` succeed; claim API import/wiring
@@ -21995,7 +21995,7 @@ phases:
       completes.'
   - id: release-0-6-1-stabilization.gate
     name: gate
-    status: claimed
+    status: done
     description: 'As an independent gate reviewer, decide whether Main is trustworthy
       enough for a 0.6.0 user to upgrade to the 0.6.1 candidate.
 
@@ -22105,6 +22105,24 @@ phases:
     agent: gate-reviewer
     claimed_by: gate-reviewer
     claimed_at: '2026-03-11T19:27:30.670825+00:00'
+    done_at: '2026-03-11T19:36:00.417440+00:00'
+    evidence: "gate_verdict: \"OPEN\"\nscope: \"release-0-6-1-stabilization.gate\"\
+      \nfindings:\n  blockers: []\n  should_fix:\n    - root_cause: \"evidence quality\
+      \ gap: some earlier step evidence summarized sibling-search/stack traces without\
+      \ raw pasted command output\"\n      locations:\n        - \"release-0-6-1-stabilization.baseline-reproduce-main-failures\"\
+      \n        - \"release-0-6-1-stabilization.fix-batch-claim-wiring-collection-and-lint\"\
+      \n      remediation: \"in future stabilization loops, include verbatim failing\
+      \ stack traces and sibling-search `rg` outputs (or attach log paths)\"\n   \
+      \   grep_hint: \"uv run vectl show <step-id>\"\n      sibling_count: 2\n  suggestions:\n\
+      \    - \"consider logging silent exception swallow in `src/vectl/dashboard.py`\"\
+      \n    - \"consider clarifying no-op pass branch in `src/vectl/core.py` search\
+      \ state filter\"\n  tech_debt:\n    - \"standardize/log temp-file delete pass\
+      \ paths in io/claims\"\nverification_summary:\n  - \"independent rerun passed:\
+      \ `uv run ruff check .`, `uv run mypy src`, `uv run pytest -q`\"\n  - \"branch-context\
+      \ mismatch regression passed: `tests/test_cli.py::TestClaimMismatchVisibility::test_status_shows_ghost_claims_count`\"\
+      \n  - \"release smoke passed: `uv build` produced 0.6.1 wheel and installed\
+      \ wheel reports `vectl 0.6.1`\"\n  - \"CLI validate smoke passed\"\nrecommendation:\
+      \ \"OPEN; release stabilization criteria satisfied.\""
   - id: release-0-6-1-stabilization.fix-batch-version-alignment-to-0-6-1
     name: fix-batch-version-alignment-to-0-6-1
     status: done

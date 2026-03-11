@@ -19522,7 +19522,7 @@ phases:
       - No stale claim failure observed; unrelated-claim preservation scenarios passed.'
   - id: claim-consistency-hardening-mutate.gate
     name: Gate Check
-    status: pending
+    status: claimed
     description: 'Review mutate hardening gate.
 
 
@@ -19539,6 +19539,8 @@ phases:
     depends_on:
     - claim-consistency-hardening-mutate.integration-verify
     agent: gate-reviewer
+    claimed_by: gate-reviewer
+    claimed_at: '2026-03-11T15:51:44.033721+00:00'
 - id: claim-consistency-diagnostics
   name: 'Claim Consistency Hardening: Diagnostics'
   status: locked

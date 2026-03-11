@@ -19345,7 +19345,7 @@ phases:
       - none"
   - id: add-orphan-claim-regression-matrix
     name: Add Orphan Claim Regression Matrix
-    status: pending
+    status: claimed
     description: "Add orphan claim regression matrix.\n\n- Create focused tests for:\n\
       \  - Remove-step leaves no orphan claim\n  - Move-step transfers or cleans claim\
       \ appropriately\n  - Edit-step affecting identity/status/deps triggers reconciliation\n\
@@ -19359,6 +19359,8 @@ phases:
     depends_on:
     - implement-mutation-aware-reconciliation
     agent: python-senior
+    claimed_by: python-senior
+    claimed_at: '2026-03-11T15:26:49.391497+00:00'
   - id: freeze-for-integration
     name: Freeze for Integration
     status: pending

@@ -18211,3 +18211,8 @@ phases:
     depends_on:
     - integration-verify
     agent: gate-reviewer
+- id: claim-consistency-hardening-mutate
+  name: 'Claim Consistency Hardening: Mutate'
+  status: locked
+  depends_on:
+  - claim-consistency-hardening-core

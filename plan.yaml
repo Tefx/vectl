@@ -20612,7 +20612,7 @@ phases:
       \ ✅\n- non-misleading output verified: ✅\n\n### Verdict\n- PASS"
   - id: claim-consistency-diagnostics.fix-gate-blockers-batched
     name: fix-gate-blockers-batched
-    status: pending
+    status: claimed
     description: 'Fix ALL blockers and should-fix findings from `claim-consistency-diagnostics.gate`
       in one batched remediation step.
 
@@ -20838,6 +20838,8 @@ phases:
     depends_on:
     - claim-consistency-diagnostics.gate
     agent: python-senior
+    claimed_by: python-senior
+    claimed_at: '2026-03-11T17:27:14.325783+00:00'
   - id: claim-consistency-diagnostics.retest-gate-blockers-batched
     name: retest-gate-blockers-batched
     status: pending

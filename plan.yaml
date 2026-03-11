@@ -18957,7 +18957,7 @@ phases:
       - PASS'
   - id: claim-consistency-hardening-core.gate-fix-all
     name: gate-fix-all
-    status: claimed
+    status: done
     description: 'Fix ALL blockers found by the core hardening gate.
 
 
@@ -19141,6 +19141,85 @@ phases:
     agent: python-senior
     claimed_by: python-senior
     claimed_at: '2026-03-11T14:41:21.668772+00:00'
+    done_at: '2026-03-11T14:50:45.756381+00:00'
+    evidence: 'Artifact:
+
+      - Commit hash(es): 4f7b16a0c8d1ad502281771d0ada8c17c7a88d82
+
+
+      Verification:
+
+      - Run: `PYTHONPATH=src .venv/bin/pytest -q tests/test_core.py::test_claim_step_calls_cleanup_stale_claims
+      tests/test_core.py::test_claim_step_cleans_stale_entry_before_conflict_check
+      tests/test_cli.py::TestClaim::test_claim_uses_target_plan_repo_for_branch_resolution`
+      -> `3 passed`
+
+      - Run: `PYTHONPATH=src .venv/bin/pytest -q tests/test_core.py tests/test_logic.py::TestClaimStep
+      tests/test_claims.py tests/test_cli.py::TestClaim::test_claim_uses_target_plan_repo_for_branch_resolution`
+      -> `33 passed`
+
+      - Run: `ruff check src tests && pyright` -> `All checks passed; 0 errors, 0
+      warnings`
+
+
+      Spec link:
+
+      - claim-consistency-hardening-core.gate-fix-all
+
+
+      Files changed:
+
+      - src/vectl/claims.py
+
+      - src/vectl/cli.py
+
+      - src/vectl/core.py
+
+      - src/vectl/io.py
+
+      - src/vectl/lifecycle.py
+
+      - src/vectl/mcp_server.py
+
+      - tests/test_agent_field.py
+
+      - tests/test_checkpoint.py
+
+      - tests/test_claims.py
+
+      - tests/test_cli.py
+
+      - tests/test_core.py
+
+      - tests/test_logic.py
+
+      - tests/test_manual_yaml_edit.py
+
+      - tests/test_migration.py
+
+      - tests/test_review.py
+
+
+      Gaps/Notes:
+
+      - B1 resolved: restored `vectl.core` compatibility exports for lifecycle/claims
+      APIs.
+
+      - B2 resolved: ruff/pyright blockers cleared.
+
+      - B3 resolved: repo-scoped branch detection added and threaded through CLI/MCP
+      claim flows, with external `--plan` regression.
+
+      - B4 resolved: stale cleanup now precedes conflict check; regression added for
+      expired-claim path.
+
+      - S1-S3 resolved in this pass: portable lock fallback, policy wording alignment,
+      and acquire-claim contract alignment.
+
+
+      discovered_issues:
+
+      - none'
   - id: claim-consistency-hardening-core.gate-retest
     name: gate-retest
     status: pending

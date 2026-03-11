@@ -22065,7 +22065,7 @@ phases:
     depends_on:
     - release-0-6-1-stabilization.baseline-reproduce-main-failures
     - release-0-6-1-stabilization.fix-batch-claim-wiring-collection-and-lint
-    - release-0-6-1-stabilization.independent-retest-release-candidate
+    - release-0-6-1-stabilization.independent-retest-version-alignment-to-0-6-1
     - release-0-6-1-stabilization.freeze-for-release-gate
     agent: gate-reviewer
   - id: release-0-6-1-stabilization.fix-batch-version-alignment-to-0-6-1

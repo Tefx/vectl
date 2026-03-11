@@ -19305,13 +19305,13 @@ phases:
       \ and verified green; proceed to phase completion.\""
 - id: claim-consistency-hardening-mutate
   name: 'Claim Consistency Hardening: Mutate'
-  status: pending
+  status: in_progress
   depends_on:
   - claim-consistency-hardening-core
   steps:
   - id: implement-mutation-aware-reconciliation
     name: Implement Mutation-Aware Reconciliation
-    status: pending
+    status: claimed
     description: "Implement mutation-aware reconciliation hooks.\n\n- Identify mutation\
       \ operations that can orphan or affect claims:\n  - `vectl_mutate` remove-step,\
       \ move-step, edit-step (affecting identity/status/deps)\n  - `vectl_lifecycle`\
@@ -19326,6 +19326,8 @@ phases:
       \ current-branch keys\n- Targeted command: `uv run pytest tests/test_claims.py\
       \ tests/test_mcp.py -k reconcile -v`"
     agent: python-senior
+    claimed_by: python-senior
+    claimed_at: '2026-03-11T15:19:39.627441+00:00'
   - id: add-orphan-claim-regression-matrix
     name: Add Orphan Claim Regression Matrix
     status: pending

@@ -18249,7 +18249,7 @@ phases:
       - none'
   - id: add-race-regressions
     name: Add Race Condition Regressions
-    status: pending
+    status: claimed
     description: "Add deterministic race condition regression tests.\n\n- Extend `tests/test_io.py`\
       \ with race harnesses covering:\n  - Ghost-claim false positive (claims.json\
       \ has entry, plan shows pending)\n  - Save/CAS race where plan write fails after\
@@ -18263,6 +18263,8 @@ phases:
     depends_on:
     - wire-auto-repair-into-claim-save-paths
     agent: python-senior
+    claimed_by: python-senior
+    claimed_at: '2026-03-11T14:05:42.708482+00:00'
   - id: freeze-for-integration
     name: Freeze for Integration
     status: pending

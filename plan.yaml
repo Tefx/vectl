@@ -22414,3 +22414,54 @@ phases:
   status: pending
   depends_on:
   - release-0-6-1-stabilization
+  steps:
+  - id: version-bump-0-6-2.bump-canonical-version-and-install-local
+    name: Bump canonical version to 0.6.2 and verify local install
+    status: pending
+    description: 'Update the canonical project version to 0.6.2, keep the runtime
+      version surface aligned, run targeted version checks, then install the tool
+      locally from this repo in a fresh virtual environment and verify `vectl --version`
+      prints `vectl 0.6.2`.
+
+
+      Scope:
+
+      - Canonical version source: `pyproject.toml`
+
+      - Runtime version surface: `src/vectl/__init__.py`, `src/vectl/cli.py`
+
+      - Version test coverage: `tests/test_cli.py`
+
+
+      Execution requirements:
+
+      1. Update the canonical project version to `0.6.2`.
+
+      2. Adjust any directly affected version surfaces needed so source/runtime output
+      matches `0.6.2`.
+
+      3. Run targeted version checks only.
+
+      4. Create a fresh venv, install from the local repo with `pip install -e .`,
+      and verify the installed CLI reports `vectl 0.6.2`.
+
+
+      Out of scope:
+
+      - Broader release stabilization
+
+      - Full test suite or release gate work'
+    verification: '- Run: `python -c "from vectl import __version__; print(__version__)"`
+      -> `0.6.2`
+
+      - Run: `uv run pytest tests/test_cli.py::TestVersion::test_version_flag -q`
+
+      - Run: `uv run pytest tests/test_cli.py::TestVersion::test_version_subcommand
+      -q`
+
+      - Run: `rm -rf .tmp/vectl-0.6.2-local && python3 -m venv .tmp/vectl-0.6.2-local
+      && .tmp/vectl-0.6.2-local/bin/python -m pip install --upgrade pip && .tmp/vectl-0.6.2-local/bin/python
+      -m pip install -e . && .tmp/vectl-0.6.2-local/bin/vectl --version`
+
+      - Verify the final command prints exactly `vectl 0.6.2`'
+    agent: python-executor

@@ -21569,7 +21569,7 @@ phases:
       \ matrix for batched remediation."
   - id: release-0-6-1-stabilization.fix-batch-claim-wiring-collection-and-lint
     name: fix-batch-claim-wiring-collection-and-lint
-    status: pending
+    status: claimed
     description: 'Stabilize the 0.6.1 candidate by fixing the full observed failure
       batch, not one-off symptoms.
 
@@ -21739,6 +21739,8 @@ phases:
     depends_on:
     - release-0-6-1-stabilization.baseline-reproduce-main-failures
     agent: python-senior
+    claimed_by: python-senior
+    claimed_at: '2026-03-11T19:01:24.484004+00:00'
   - id: release-0-6-1-stabilization.independent-retest-release-candidate
     name: independent-retest-release-candidate
     status: pending

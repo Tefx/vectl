@@ -19911,7 +19911,7 @@ phases:
   steps:
   - id: surface-mismatch-state-in-status-show
     name: Surface Mismatch in Status/Show
-    status: claimed
+    status: done
     description: "Surface claim mismatch state in status and show commands.\n\n- Add\
       \ mismatch detection output to `vectl status` and `vectl show` commands.\n-\
       \ When plan.yaml and claims.json disagree for a step:\n  - Show pending vs claimed\
@@ -19924,6 +19924,43 @@ phases:
     agent: python-executor
     claimed_by: python-executor
     claimed_at: '2026-03-11T16:23:18.576552+00:00'
+    done_at: '2026-03-11T16:32:12.897081+00:00'
+    evidence: 'Artifact:
+
+      - Commit hash(es): 21131974190c598ded87e77eb2a4ffa15505159e
+
+
+      Verification:
+
+      - Run: `uv run pytest tests/test_cli.py -k status -v` -> 15 passed
+
+      - Run: `uv run pytest tests/test_mcp.py::TestVectlShow -v` -> 5 passed
+
+
+      Spec link:
+
+      - surface-mismatch-state-in-status-show
+
+
+      Files changed:
+
+      - src/vectl/claims.py
+
+      - src/vectl/cli.py
+
+      - src/vectl/mcp_server.py
+
+
+      Gaps/Notes:
+
+      - Added mismatch detection output to CLI status/show and MCP status/show surfaces.
+
+      - Added scoped mismatch indicator and auto-repair notice path.
+
+
+      discovered_issues:
+
+      - none'
   - id: align-repair-and-conflict-messaging
     name: Align Repair/Conflict Messaging
     status: pending

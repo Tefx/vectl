@@ -22174,3 +22174,85 @@ phases:
     depends_on:
     - release-0-6-1-stabilization.independent-retest-release-candidate
     agent: python-executor
+  - id: release-0-6-1-stabilization.independent-retest-version-alignment-to-0-6-1
+    name: independent-retest-version-alignment-to-0-6-1
+    status: pending
+    description: 'As an INDEPENDENT TESTER (integration-verifier), validate the repaired
+      0.6.1 release-candidate version surfaces from a fresh perspective.
+
+
+      YOUR GOAL IS TO FIND PROBLEMS, not to confirm it works.
+
+
+      Test for:
+
+      - Happy path: `uv build` emits a wheel whose filename reports `0.6.1`
+
+      - Edge cases: source-tree `--version` and installed-wheel `--version` both report
+      `vectl 0.6.1`
+
+      - Error scenarios: stale installed-distribution metadata or mirrored version
+      surfaces still leak `0.6.0`
+
+      - Regression safety: focused CLI version tests still pass after the version-source
+      fix
+
+
+      Commands to run exactly:
+
+      - `rm -rf dist .tmp/vectl-0.6.1-version-smoke`
+
+      - `uv build`
+
+      - `python -m venv .tmp/vectl-0.6.1-version-smoke && .tmp/vectl-0.6.1-version-smoke/bin/python
+      -m pip install --upgrade pip && .tmp/vectl-0.6.1-version-smoke/bin/python -m
+      pip install dist/vectl-0.6.1-py3-none-any.whl && .tmp/vectl-0.6.1-version-smoke/bin/vectl
+      --version`
+
+      - `uv run pytest -q tests/test_cli.py -k version`
+
+
+      Acceptance targets:
+
+      - `uv build` produces `dist/vectl-0.6.1-py3-none-any.whl`
+
+      - installed wheel smoke prints exactly `vectl 0.6.1`
+
+      - targeted version regression tests pass
+
+      - any remaining version mismatch is written up as blocker/should-fix with exact
+      reproduction
+
+
+      Independence Level: L2'
+    verification: '- All commands above are executed and their real output is captured
+
+      - `uv build` emits a 0.6.1 wheel filename
+
+      - fresh venv install from the built wheel prints `vectl 0.6.1`
+
+      - `uv run pytest -q tests/test_cli.py -k version` exits 0 or an equivalent explicitly
+      documented targeted version suite exits 0
+
+      - Any remaining issue is written up as blocker/should-fix with exact reproduction'
+    evidence_template: "## Verification Report\n\n**Tester**: integration-verifier\
+      \ (independent of implementation)\n**Scope**: release candidate version alignment\
+      \ to 0.6.1\n**Independence Level**: L2\n**Timestamp**: <ISO 8601>\n\n### Test\
+      \ Execution\n- Commands executed:\n  ```\n  rm -rf dist .tmp/vectl-0.6.1-version-smoke\n\
+      \  uv build\n  python -m venv .tmp/vectl-0.6.1-version-smoke && .tmp/vectl-0.6.1-version-smoke/bin/python\
+      \ -m pip install --upgrade pip && .tmp/vectl-0.6.1-version-smoke/bin/python\
+      \ -m pip install dist/vectl-0.6.1-py3-none-any.whl && .tmp/vectl-0.6.1-version-smoke/bin/vectl\
+      \ --version\n  uv run pytest -q tests/test_cli.py -k version\n  ```\n- Output\
+      \ summary: <key results>\n\n### Issues Found\n| Severity   | Description   |\
+      \ Location                | Reproduction |\n| ---------- | ------------- | -----------------------\
+      \ | ------------ |\n| blocker    | <issue>       | <file:line or surface>  |\
+      \ <steps>      |\n| should_fix | <issue>       | <location>              | <steps>\
+      \      |\n| suggestion | <improvement> | <context>               | -       \
+      \     |\n| tech_debt  | <known debt>  | <location>              | -        \
+      \    |\n\n### Coverage Assessment\n- Wheel filename verified: ✅/❌\n- Installed\
+      \ CLI version verified: ✅/❌\n- Targeted version tests verified: ✅/❌\n- NOT tested:\
+      \ <areas not covered and why>\n\n### Verdict\n- [ ] PASS\n- [ ] ISSUES_FOUND\n\
+      - [ ] INCOMPLETE\n\n**Confidence**: high/medium/low"
+    depends_on:
+    - release-0-6-1-stabilization.fix-batch-version-alignment-to-0-6-1
+    agent: integration-verifier

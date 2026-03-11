@@ -20311,6 +20311,145 @@ phases:
     depends_on:
     - verify-diagnostics
     agent: python-executor
+  - id: retest-diagnostics-mismatch-visibility
+    name: 'Retest: Diagnostics Mismatch Visibility'
+    status: pending
+    description: 'As an INDEPENDENT TESTER (`integration-verifier`), validate the
+      diagnostics visibility changes from a fresh perspective.
+
+
+      YOUR GOAL IS TO FIND PROBLEMS, not to confirm it works.
+
+
+      Test for:
+
+      - Baseline path: `vectl status` and `vectl show` output stays clean and scoped
+      when plan/claims state is healthy
+
+      - Mismatch path: both views show an explicit mismatch-detected message between
+      plan and claims state
+
+      - Repair guidance: auto-repair notice/instruction appears when applicable and
+      is understandable to an operator
+
+      - Non-misleading output: messaging does not overstate corruption and does not
+      appear in unrelated views
+
+
+      Document ALL findings. A test that discovers issues is a SUCCESS.
+
+      Independence Level: L1
+
+
+      spec_refs:
+
+      - Derived from verification findings for `verify-diagnostics`
+
+      touch_paths:
+
+      - CLI read commands exercised through `src/vectl/cli.py`
+
+      - test harness in `tests/test_cli.py` / `tests/test_autofix_message.py`
+
+      harness_refs:
+
+      - real CLI invocation via Typer runner and/or direct `vectl` command output
+      capture'
+    verification: '- Demonstrate baseline and mismatch scenario outputs with pasted
+      real command output
+
+      - Confirm explicit mismatch message appears in both `vectl status` and `vectl
+      show`
+
+      - Confirm auto-repair notice appears when applicable and is understandable
+
+      - Confirm baseline output does not show misleading mismatch/repair messaging'
+    evidence_template: '## Verification Report
+
+
+      **Tester**: integration-verifier (independent of implementation)
+
+      **Scope**: mismatch diagnostics visibility in `vectl status` and `vectl show`
+
+      **Independence Level**: L1
+
+      **Timestamp**: <ISO 8601>
+
+
+      ### Test Execution
+
+      - Commands executed:
+
+      ```text
+
+      <exact baseline command>
+
+      <exact mismatch command(s)>
+
+      ```
+
+      - Output summary: <key results>
+
+
+      ### Real Command Output
+
+
+      **Baseline output**:
+
+      ```text
+
+      <paste actual `vectl status` / `vectl show` output>
+
+      ```
+
+
+      **Mismatch output**:
+
+      ```text
+
+      <paste actual `vectl status` / `vectl show` output>
+
+      ```
+
+
+      ### Issues Found
+
+      | Severity | Description | Location | Reproduction |
+
+      | --- | --- | --- | --- |
+
+      | blocker/should_fix/suggestion/tech_debt | <issue or none> | <location> | <steps>
+      |
+
+
+      ### Coverage Assessment
+
+      - `vectl status` baseline verified: ✅/❌
+
+      - `vectl status` mismatch verified: ✅/❌
+
+      - `vectl show` baseline verified: ✅/❌
+
+      - `vectl show` mismatch verified: ✅/❌
+
+      - Auto-repair message understandable: ✅/❌
+
+      - NOT tested: <areas not covered and why>
+
+
+      ### Verdict
+
+      - [ ] PASS
+
+      - [ ] ISSUES_FOUND
+
+      - [ ] INCOMPLETE
+
+
+      **Confidence**: high/medium/low'
+    depends_on:
+    - fix-diagnostics-mismatch-visibility
+    agent: integration-verifier
 - id: claim-consistency-worktree-matrix
   name: 'Claim Consistency Hardening: Worktree Matrix'
   status: locked

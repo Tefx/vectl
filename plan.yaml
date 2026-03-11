@@ -18481,7 +18481,7 @@ phases:
     agent: gate-reviewer
   - id: integration-verify-fix-all
     name: Fix All Integration Verify Blockers
-    status: claimed
+    status: done
     description: 'Fix ALL issues found by `integration-verify` — fix ALL of these,
       not just the first.
 
@@ -18657,6 +18657,77 @@ phases:
     agent: python-executor
     claimed_by: python-executor
     claimed_at: '2026-03-11T14:20:17.936924+00:00'
+    done_at: '2026-03-11T14:25:12.506900+00:00'
+    evidence: '## Batched Fix Evidence
+
+
+      **Scope**: Fix ALL blockers from `integration-verify`, not just the first.
+
+
+      ### Blockers addressed
+
+      - **B1 claim helper wiring**: Fixed by importing claims API directly from `vectl.claims`
+      in `lifecycle._claims_api()` instead of via `vectl.core` (which caused circular
+      import)
+
+      - **B2 claim-focused suite failures**: All 54 claim tests now pass (CLI + MCP
+      + IO)
+
+      - **S1 worktree precondition note**: Current worktree based on `integration-verify`
+      (commit 0a4b33a). The fix was already applied in the parent but needed to be
+      committed to this branch.
+
+
+      ### Sibling search proof
+
+      - `core.acquire_claim` results: **No remaining bad references in src/** (grep
+      returned no matches)
+
+      - `TestClaim` / `TestVectlClaim` / `AnimaIncident` results: **All tests pass**
+      (see below)
+
+
+      ### Commands executed
+
+      ```
+
+      uv run pytest tests/test_cli.py tests/test_mcp.py tests/test_io.py -k claim
+      -v
+
+      uv run pytest tests/test_io.py -k AnimaIncident -v
+
+      ```
+
+
+      ### Outcome
+
+      - CLI claim path: **PASS** (all 30+ CLI claim tests passed)
+
+      - MCP claim path: **PASS** (all 20+ MCP claim tests passed)
+
+      - Reconcile/save path reached: **PASS** (tests verify claim → save flow)
+
+      - Worktree precondition note captured: **YES** (worktree based on integration-verify
+      which had the fix)
+
+
+      ### Files changed
+
+      - `src/vectl/core.py` — Added re-export of claim helpers from vectl.claims
+
+      - `src/vectl/lifecycle.py` — Fixed _claims_api() to import directly from vectl.claims
+
+
+      ### Commit hash(es)
+
+      - `1510158` (fix(claims): restore correct claims API wiring)
+
+
+      ### Gaps/Notes
+
+      - None. All tests pass and the wiring is now correct. The circular import issue
+      is resolved by having lifecycle import directly from claims module rather than
+      going through core.'
   - id: integration-verify-retest
     name: Retest Integration Verify Blockers
     status: pending

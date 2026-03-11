@@ -19482,6 +19482,23 @@ phases:
     depends_on:
     - add-orphan-claim-regression-matrix
     agent: python-executor
+  - id: claim-consistency-hardening-mutate.integration-verify
+    name: Integration Verify
+    status: pending
+    description: "End-to-end integration verification of mutation reconciliation.\n\
+      \n- Execute mutation commands:\n  - Claim step, then remove step - verify claim\
+      \ is cleaned\n  - Claim step, then move step to different phase - verify claim\
+      \ follows or is cleaned\n  - Reject/defer/skip steps with claims - verify reconciliation\n\
+      - Execute through MCP tools.\n- Paste actual command output.\n\nVerification:\n\
+      - No stale `already claimed` failure after rewiring/removal scenarios\n- Unrelated\
+      \ claims remain intact\n- Targeted command: `uv run pytest tests/test_mcp.py\
+      \ tests/test_cli.py -k mutate -v`"
+    verification: '- Real mutation command outputs
+
+      - No stale claim failures after mutations'
+    depends_on:
+    - claim-consistency-hardening-mutate.freeze-for-integration
+    agent: integration-verifier
 - id: claim-consistency-diagnostics
   name: 'Claim Consistency Hardening: Diagnostics'
   status: locked

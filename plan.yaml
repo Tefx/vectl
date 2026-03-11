@@ -21382,7 +21382,7 @@ phases:
       \nCommit hash(es):\n- ad5653c"
 - id: release-0-6-1-stabilization
   name: 0.6.1 Release Stabilization
-  status: pending
+  status: in_progress
   gate: 'Release readiness requires: baseline failures reproduced and recorded; batched
     fixes applied with sibling-search evidence; independent retest proves `uv run
     pytest -q`, `uv run ruff check .`, and `uv run mypy src` succeed; claim API import/wiring
@@ -21393,7 +21393,7 @@ phases:
   steps:
   - id: release-0-6-1-stabilization.baseline-reproduce-main-failures
     name: baseline-reproduce-main-failures
-    status: pending
+    status: claimed
     description: 'As an independent verifier, capture the current Main-branch 0.6.1
       stabilization baseline before any fixes.
 
@@ -21540,6 +21540,8 @@ phases:
 
       '
     agent: integration-verifier
+    claimed_by: integration-verifier
+    claimed_at: '2026-03-11T18:58:51.673102+00:00'
   - id: release-0-6-1-stabilization.fix-batch-claim-wiring-collection-and-lint
     name: fix-batch-claim-wiring-collection-and-lint
     status: pending

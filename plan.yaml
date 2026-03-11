@@ -19905,13 +19905,13 @@ phases:
       \ | n/a |\n\n**Verdict**:\n- PASS"
 - id: claim-consistency-diagnostics
   name: 'Claim Consistency Hardening: Diagnostics'
-  status: pending
+  status: in_progress
   depends_on:
   - claim-consistency-hardening-mutate
   steps:
   - id: surface-mismatch-state-in-status-show
     name: Surface Mismatch in Status/Show
-    status: pending
+    status: claimed
     description: "Surface claim mismatch state in status and show commands.\n\n- Add\
       \ mismatch detection output to `vectl status` and `vectl show` commands.\n-\
       \ When plan.yaml and claims.json disagree for a step:\n  - Show pending vs claimed\
@@ -19922,6 +19922,8 @@ phases:
       \ displayed when applicable\n- Targeted commands:\n  - `uv run pytest tests/test_cli.py\
       \ -k status -v`\n  - `uv run pytest tests/test_mcp.py -k show -v`"
     agent: python-executor
+    claimed_by: python-executor
+    claimed_at: '2026-03-11T16:23:18.576552+00:00'
   - id: align-repair-and-conflict-messaging
     name: Align Repair/Conflict Messaging
     status: pending

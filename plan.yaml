@@ -20592,6 +20592,234 @@ phases:
       \ verified: ✅\n- `vectl status` mismatch verified: ✅\n- `vectl show` baseline\
       \ verified: ✅\n- `vectl show` mismatch verified: ✅\n- auto-repair notice verified:\
       \ ✅\n- non-misleading output verified: ✅\n\n### Verdict\n- PASS"
+  - id: claim-consistency-diagnostics.fix-gate-blockers-batched
+    name: fix-gate-blockers-batched
+    status: pending
+    description: 'Fix ALL blockers and should-fix findings from `claim-consistency-diagnostics.gate`
+      in one batched remediation step.
+
+
+      ## Blockers to Fix (ALL of these, not just the first)
+
+
+      ### B1: Claim API wiring broken in lifecycle read surfaces
+
+      Locations: `src/vectl/lifecycle.py`, `src/vectl/core.py`, CLI read-path call
+      sites under `src/vectl/cli.py` and any shared diagnostics helpers reached from
+      status/show.
+
+      Remediation: Restore a consistent claim API surface for lifecycle diagnostics
+      so `_claims_api()` no longer depends on missing or stale `vectl.core.acquire_claim`-family
+      symbols in the integrated tree. Either reintroduce compatible exports/imports
+      at the core boundary or complete a comprehensive migration of all lifecycle/read-path
+      callers to the canonical claims API. Avoid partial dual wiring.
+
+      Grep hint: `rg -n "_claims_api|acquire_claim|claim_step|claims_api|lifecycle"
+      src/vectl tests`
+
+      IMPORTANT: Search for sibling lifecycle/read-path call sites beyond the first
+      traceback so CLI failures and downstream test failures are fixed systemically.
+
+
+      ### B2: Import compatibility regression blocks broad test collection
+
+      Locations: `src/vectl/core.py`, compatibility/re-export surfaces used by tests,
+      and broad-suite import sites expecting `claim_step` from `vectl.core`.
+
+      Remediation: Restore compatibility imports/exports expected by the current integrated
+      tree, or complete the migration so broad-suite imports no longer require the
+      legacy `claim_step` path. The result must eliminate pytest collection failures
+      without leaving split-brain public APIs.
+
+      Grep hint: `rg -n "from vectl\.core import .*claim_step|import claim_step|claim_step\("
+      src/vectl tests`
+
+      IMPORTANT: Search for all import surfaces and compatibility shims, not just
+      the first failing module.
+
+
+      ### B3: Diagnostics branch context may resolve from caller worktree instead
+      of plan root
+
+      Locations: branch/context helpers in `src/vectl/lifecycle.py`, `src/vectl/io.py`,
+      `src/vectl/cli.py`, and any helper providing `get_current_branch()` or mismatch
+      context.
+
+      Remediation: Ensure diagnostics branch resolution and mismatch checks are scoped
+      to the plan-root context, not the caller worktree/cwd context. Mismatch messaging
+      must compare against the correct plan-root branch identity in both status and
+      show paths.
+
+      Grep hint: `rg -n "get_current_branch|branch.*mismatch|worktree|plan root|cwd|git
+      rev-parse" src/vectl tests`
+
+      IMPORTANT: Search for sibling branch/context call paths so status/show/diagnostic
+      helpers stay aligned.
+
+
+      ### B4: Ruff/lint gate failing across touched surfaces
+
+      Locations: all files touched by B1-B3 plus related tests/docs/helpers.
+
+      Remediation: Clean `ruff` issues across the full touched surface, including
+      unused symbols, import ordering, and any lint fallout from compatibility restorations
+      or branch-context refactors.
+
+      Grep hint: `uv run ruff check src/vectl tests`
+
+      IMPORTANT: Fix lint at the root cause rather than adding dead compatibility
+      code.
+
+
+      ## Should-fix items to include in the same batch
+
+
+      ### S1: Status/show mismatch visibility should tolerate malformed claims data
+
+      Locations: read-only diagnostics surfaces in `src/vectl/cli.py`, `src/vectl/lifecycle.py`,
+      and claims loading helpers.
+
+      Remediation: Harden read-only mismatch/status/show paths so corrupted or malformed
+      claims data is surfaced as scoped diagnostic information rather than crashing
+      operator-facing read commands.
+
+      Grep hint: `rg -n "status|show|claims.*load|mismatch|exception|corrupt|malformed"
+      src/vectl tests`
+
+      IMPORTANT: Preserve non-misleading output; diagnostics should explain degraded
+      visibility without implying successful repair.
+
+
+      ### S2: Operator-facing wording should clarify branch/context scope
+
+      Locations: CLI messaging/docs for mismatch diagnostics, likely `src/vectl/cli.py`,
+      `src/vectl/guide.py`, and any nearby docs/tests asserting wording.
+
+      Remediation: Update wording where needed so operators understand that mismatch
+      context is evaluated relative to the plan-root/plan-scoped branch context.
+
+      Grep hint: `rg -n "mismatch|branch|worktree|plan-root|plan root|context" src/vectl
+      tests README.md docs`
+
+      IMPORTANT: Keep wording aligned across status/show and supporting guidance.
+
+
+      ## Failure-mode checklist
+
+      - relative vs absolute path behavior for plan-root branch resolution
+
+      - missing-file fallback behavior for claims diagnostics paths
+
+      - explicit clear / null overwrite semantics are preserved when restoring compatibility
+      exports/imports
+
+      - stale-definition vs new-state precedence is explicit when choosing compatibility
+      shim vs comprehensive migration
+
+      - partial-write / split wiring behavior does not leave CLI diagnostics on mixed
+      claim APIs
+
+
+      ## State semantics
+
+      - Last-writer-wins remains limited to existing claims state semantics; this
+      step must not invent new precedence rules.
+
+      - Plan-root scoped branch identity must be preserved exactly for mismatch diagnostics.
+
+      - Backward-compatible legacy behavior means broad-suite imports and CLI read
+      diagnostics continue working while migration/comprehensive cleanup is completed
+      deliberately, not accidentally broken.
+
+
+      ## Completion Criteria
+
+      - `_claims_api()` and all lifecycle/read-path diagnostics use a consistent,
+      existing claim API surface
+
+      - Broad pytest collection no longer fails on missing `claim_step`/compatibility
+      imports
+
+      - Branch mismatch diagnostics use plan-root scoped branch resolution in status/show
+
+      - Read-only mismatch/status/show handling degrades gracefully on malformed claims
+      data
+
+      - `uv run ruff check .` passes for the touched remediation surface and repo-level
+      lint gate is green
+
+      - Operator-facing wording is accurate and non-misleading about branch/context
+      scope
+
+
+      spec_refs:
+
+      - Derived from findings reported for `claim-consistency-diagnostics.gate`
+
+      - Repo anchors: `src/vectl/lifecycle.py`, `src/vectl/core.py`, `src/vectl/cli.py`,
+      `tests/test_cli.py`
+
+      touch_paths:
+
+      - `src/vectl/lifecycle.py`
+
+      - `src/vectl/core.py`
+
+      - `src/vectl/cli.py`
+
+      - branch/context helpers under `src/vectl/`
+
+      - `tests/test_cli.py`
+
+      - broad-suite tests importing `claim_step` from `vectl.core`
+
+      - docs/help surfaces if wording updates are required
+
+      harness_refs:
+
+      - CLI runner and read-path diagnostics coverage in `tests/test_cli.py`
+
+      - broad `uv run pytest` suite for import collection + lifecycle wiring coverage
+
+      - `uv run ruff check .`
+
+      known_risks:
+
+      - This repo has prior rework around claim/state path parity and hidden split-brain
+      behavior; fix wiring systemically rather than adding a narrow shim.
+
+      - Branch/worktree diagnostics are sensitive to cwd-vs-plan-root resolution;
+      verify relative/absolute path behavior explicitly.
+
+      - Compatibility import restoration can reintroduce stale helpers unless precedence
+      and migration scope are made explicit.
+
+      out_of_scope:
+
+      - No new claim semantics beyond restoring consistency and scoped diagnostics
+      correctness.
+
+      - No unrelated mutation-flow redesign outside compatibility restoration/comprehensive
+      migration required for these blockers.
+
+      - No new worktree-matrix feature expansion beyond what is needed to make diagnostics
+      truthful and testable.'
+    verification: '- Main path: targeted tests for lifecycle/diagnostics wiring and
+      CLI read paths pass
+
+      - Failure path: regression coverage proves malformed claims data does not crash
+      `status`/`show`, and branch-context mismatch uses plan-root scoped resolution
+
+      - Proof: no stale `acquire_claim`/`claim_step` compatibility gap remains where
+      migration scope requires removal or explicit compatibility preservation
+
+      - Repo gate: `uv run ruff check .` is clean after remediation
+
+      - Broad confidence: `uv run pytest` no longer fails collection on claim API/import
+      regressions'
+    depends_on:
+    - claim-consistency-diagnostics.gate
+    agent: python-senior
 - id: claim-consistency-worktree-matrix
   name: 'Claim Consistency Hardening: Worktree Matrix'
   status: locked

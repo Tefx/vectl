@@ -18312,7 +18312,7 @@ phases:
 
       - none'
   - id: freeze-for-integration
-    name: Freeze for Integration
+    name: claim-consistency-hardening-mutate.freeze-for-integration
     status: done
     description: 'Freeze snapshot before integration verification.
 

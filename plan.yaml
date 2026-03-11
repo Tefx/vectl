@@ -19522,7 +19522,7 @@ phases:
       - No stale claim failure observed; unrelated-claim preservation scenarios passed.'
   - id: claim-consistency-hardening-mutate.gate
     name: Gate Check
-    status: claimed
+    status: done
     description: 'Review mutate hardening gate.
 
 
@@ -19541,6 +19541,39 @@ phases:
     agent: gate-reviewer
     claimed_by: gate-reviewer
     claimed_at: '2026-03-11T15:51:44.033721+00:00'
+    done_at: '2026-03-11T16:10:31.753099+00:00'
+    evidence: "gate_verdict: \"REJECT\"\nscope: \"claim-consistency-hardening-mutate.gate\"\
+      \nfindings:\n  blockers:\n    - root_cause: \"Mutate integration verification\
+      \ did not prove integrated implementation+tests tree; matrix assertions conflicted\
+      \ with auto-reconciliation semantics.\"\n      locations:\n        - tests/test_cli.py:2501\n\
+      \        - tests/test_cli.py:2523\n        - tests/test_cli.py:2541\n      \
+      \  - tests/test_mcp.py:1184\n        - tests/test_mcp.py:1200\n        - tests/test_mcp.py:1214\n\
+      \        - src/vectl/cli.py:1272\n        - src/vectl/mcp_server.py:1061\n \
+      \     remediation: \"Run integrated verification on a single tree containing\
+      \ implementation + matrix tests; align assertions to immediate auto-reconciliation\
+      \ state (no manual repair dependency).\"\n      grep_hint: \"rg -n \\\"\\[action\\\
+      [\\\\\\\"key\\\\\\\"\\] for action in (payload|repair)\\[\\\\\\\"actions\\\\\
+      \\\"\\]\\]\\\" tests/test_{cli,mcp}.py\"\n      sibling_count: 8\n  should_fix:\n\
+      \    - root_cause: \"Unused MCP reconciliation locals trigger ruff F841.\"\n\
+      \      locations:\n        - src/vectl/mcp_server.py:597\n        - src/vectl/mcp_server.py:598\n\
+      \      remediation: \"Remove or use locals and keep ruff clean.\"\n      grep_hint:\
+      \ \"rg -n \\\"reconcile_kind: Literal\\[\\\\\\\"step\\\\\\\", \\\\\\\"branch\\\
+      \\\\\"\\]\\\" src/vectl/mcp_server.py\"\n      sibling_count: 2\n    - root_cause:\
+      \ \"CLI mutate tests insufficiently assert auto-reconcile behavior.\"\n    \
+      \  locations:\n        - src/vectl/cli.py:2106\n        - tests/test_cli.py:2501\n\
+      \      remediation: \"Add/adjust CLI mutate tests to assert immediate cleanup\
+      \ + other-branch preservation.\"\n      grep_hint: \"rg -n \\\"TestMutateClaimReconciliationCli|repair\\\
+      \\s*=\\\\s*runner\\\\.invoke\\(app, \\\\\\[\\\\\\\"repair\\\\\\\"\\\" tests/test_cli.py\"\
+      \n      sibling_count: 2\n  suggestions:\n    - \"Surface reconciliation I/O\
+      \ failures deterministically in CLI/MCP mutate paths.\"\n  tech_debt:\n    -\
+      \ \"Unify mutate-time reconciliation contract vs repair-command contract in\
+      \ tests/docs.\"\nverification_summary:\n  - \"Gate reviewer reported REJECT\
+      \ with blocker and should-fix items.\"\n  - \"Created batched remediation chain\
+      \ via planner for all findings.\"\nnotes:\n  suggestions:\n    - \"Surface reconciliation\
+      \ I/O failures deterministically in CLI/MCP mutate paths.\"\n  tech_debt:\n\
+      \    - \"Unify mutate-time reconciliation contract vs repair-command contract\
+      \ in tests/docs.\"\n\nfix_steps_created:\n- claim-consistency-hardening-mutate.fix-gate-blockers-integrated-auto-reconcile\n\
+      - claim-consistency-hardening-mutate.retest-gate-blockers-integrated-auto-reconcile"
   - id: claim-consistency-hardening-mutate.fix-gate-blockers-integrated-auto-reconcile
     name: fix-gate-blockers-integrated-auto-reconcile
     status: pending

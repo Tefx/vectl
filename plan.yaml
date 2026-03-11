@@ -21712,3 +21712,126 @@ phases:
     depends_on:
     - release-0-6-1-stabilization.baseline-reproduce-main-failures
     agent: python-senior
+  - id: release-0-6-1-stabilization.independent-retest-release-candidate
+    name: independent-retest-release-candidate
+    status: pending
+    description: 'As an independent verifier, re-test the repaired 0.6.1 candidate
+      from a fresh perspective and try to find remaining release blockers.
+
+
+      Independence Level: L2
+
+
+      Test for:
+
+      - Happy path: full test collection and execution completes via `uv run pytest
+      -q`
+
+      - Edge cases: focused claim lifecycle import surfaces and branch-aware mismatch
+      visibility
+
+      - Error scenarios: stale claim API wiring, fallback-to-main assumptions, install
+      smoke mismatch between package metadata and CLI version output
+
+      - Release hygiene: Ruff clean, mypy stays green, wheel installs locally and
+      reports the candidate version
+
+
+      Commands to run exactly:
+
+      - `uv run pytest -q`
+
+      - `uv run pytest -q tests/test_core.py tests/test_logic.py tests/test_properties.py
+      tests/test_lifecycle_imports.py tests/test_cli.py::TestClaimMismatchVisibility::test_status_shows_ghost_claims_count`
+
+      - `uv run ruff check .`
+
+      - `uv run mypy src`
+
+      - `uv build`
+
+      - `python -m venv .tmp/vectl-0.6.1-smoke && .tmp/vectl-0.6.1-smoke/bin/python
+      -m pip install --upgrade pip && .tmp/vectl-0.6.1-smoke/bin/python -m pip install
+      dist/vectl-0.6.1-py3-none-any.whl && .tmp/vectl-0.6.1-smoke/bin/vectl --version`
+
+
+      Acceptance targets:
+
+      - Full pytest collection health restored
+
+      - Ruff clean for entire repo
+
+      - No claim API import/wiring regression remains
+
+      - Branch-context mismatch visibility regression stays green using `get_current_branch()`
+      semantics
+
+      - Installability/version sanity proves the local wheel prints `vectl 0.6.1`
+
+
+      This step succeeds by producing hard evidence, whether it finds blockers or
+      clears the candidate.'
+    verification: '- All commands above are executed and their real output is captured
+
+      - `uv run pytest -q` exits 0
+
+      - `uv run ruff check .` exits 0
+
+      - `uv run mypy src` exits 0
+
+      - Local wheel install succeeds and `vectl --version` prints `vectl 0.6.1`
+
+      - Any remaining issue is written up as blocker/should-fix with exact reproduction'
+    evidence_template: '## Independent Retest Report
+
+
+      **Commands executed**
+
+      ```
+
+      uv run pytest -q
+
+      uv run pytest -q tests/test_core.py tests/test_logic.py tests/test_properties.py
+      tests/test_lifecycle_imports.py tests/test_cli.py::TestClaimMismatchVisibility::test_status_shows_ghost_claims_count
+
+      uv run ruff check .
+
+      uv run mypy src
+
+      uv build
+
+      python -m venv .tmp/vectl-0.6.1-smoke && .tmp/vectl-0.6.1-smoke/bin/python -m
+      pip install --upgrade pip && .tmp/vectl-0.6.1-smoke/bin/python -m pip install
+      dist/vectl-0.6.1-py3-none-any.whl && .tmp/vectl-0.6.1-smoke/bin/vectl --version
+
+      ```
+
+
+      **Results**
+
+      - pytest full:
+
+      - focused regression bundle:
+
+      - ruff:
+
+      - mypy:
+
+      - build/install/version smoke:
+
+
+      **Issues found**
+
+      - blocker:
+
+      - should_fix:
+
+
+      **Confidence**
+
+      - high/medium/low
+
+      '
+    depends_on:
+    - release-0-6-1-stabilization.fix-batch-claim-wiring-collection-and-lint
+    agent: integration-verifier

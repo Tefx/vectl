@@ -22068,3 +22068,109 @@ phases:
     - release-0-6-1-stabilization.independent-retest-release-candidate
     - release-0-6-1-stabilization.freeze-for-release-gate
     agent: gate-reviewer
+  - id: release-0-6-1-stabilization.fix-batch-version-alignment-to-0-6-1
+    name: fix-batch-version-alignment-to-0-6-1
+    status: pending
+    description: 'Fix ALL blockers found by the independent release-candidate retest
+      for version alignment, not just the first symptom.
+
+
+      prior_loop:
+
+      - release-0-6-1-stabilization.fix-batch-claim-wiring-collection-and-lint
+
+      - release-0-6-1-stabilization.independent-retest-release-candidate
+
+      remaining_blocker: Release candidate still builds and reports 0.6.0 instead
+      of 0.6.1.
+
+      why_new_loop: The prior stabilization loop cleared test/lint/type-check issues,
+      but independent install smoke proved the release version surfaces are still
+      split between canonical build metadata and runtime CLI/package version reporting.
+
+
+      ## Blockers to Fix (ALL of these, not just the first)
+
+
+      ### B1: release candidate version mismatch
+
+      Evidence:
+
+      - `uv build` produced `dist/vectl-0.6.0-py3-none-any.whl`
+
+      - fresh venv install from the built wheel reported `vectl 0.6.0`
+
+      - expected release candidate for this phase is `0.6.1`
+
+
+      Likely remediation scope:
+
+      - make one canonical 0.6.1 version source authoritative for build metadata
+
+      - align mirrored runtime version surfaces used by CLI/package reporting so local
+      source, built wheel, and installed CLI all agree
+
+      - remove or replace any stale dynamic lookup path that can read an already-installed
+      0.6.0 distribution while this repo source is building 0.6.1
+
+
+      Likely touch paths:
+
+      - `pyproject.toml`
+
+      - `src/vectl/__init__.py`
+
+      - `src/vectl/cli.py`
+
+      - `src/vectl/checkpoint.py`
+
+      - `tests/test_cli.py`
+
+      - any focused version regression test file needed by the chosen fix
+
+
+      Systemic search instructions:
+
+      - `rg "0\\.6\\.0|0\\.6\\.1|__version__|_pkg_version\\(|importlib\\.metadata|version\s*="
+      pyproject.toml src tests`
+
+      - `rg "--version|vectl \{__version__\}|tool.:..version" src tests`
+
+      - inspect sibling version/reporting surfaces beyond the failing CLI path; do
+      not stop after fixing one file
+
+
+      Completion criteria:
+
+      - canonical metadata/build source is unambiguously 0.6.1
+
+      - runtime package version surface used by CLI is aligned to 0.6.1 in editable/source
+      and installed-wheel contexts
+
+      - no stale 0.6.0 literal or dynamic package-metadata fallback remains in the
+      supported release path
+
+      - targeted version regression coverage updated or added to prove the supported
+      version-reporting contract
+
+
+      Out of scope guardrail:
+
+      - do not broaden into unrelated release automation or packaging refactors
+
+      - do not change non-version release semantics beyond what is required to make
+      build artifact and CLI version output agree on 0.6.1'
+    verification: '- Sibling search evidence covers canonical metadata source and
+      all mirrored runtime/reporting surfaces
+
+      - Main path: targeted version tests for the chosen version source and CLI/reporting
+      path pass
+
+      - Failure path: regression proves the repo source no longer resolves a stale
+      installed 0.6.0 distribution for `vectl --version`
+
+      - Proof: build/install smoke is expected to pass in the follow-up independent
+      retest, with no remaining supported path reporting 0.6.0'
+    depends_on:
+    - release-0-6-1-stabilization.independent-retest-release-candidate
+    agent: python-executor

@@ -20148,7 +20148,7 @@ phases:
     agent: gate-reviewer
   - id: fix-diagnostics-mismatch-visibility
     name: 'Batched Fix: Diagnostics Mismatch Visibility'
-    status: claimed
+    status: done
     description: 'Fix ALL issues found by `verify-diagnostics` for mismatch visibility
       in CLI read surfaces.
 
@@ -20329,6 +20329,72 @@ phases:
     agent: python-executor
     claimed_by: python-senior
     claimed_at: '2026-03-11T17:04:42.709168+00:00'
+    done_at: '2026-03-11T17:10:27.237437+00:00'
+    evidence: '## Batched Fix Evidence
+
+      **Files changed**:
+
+      - src/vectl/cli.py
+
+      - tests/test_cli.py
+
+
+      **All blockers addressed**:
+
+      - B1 status mismatch indicator: Added `check_mismatch`-backed detection in `status`;
+      explicit `⚠ Claim state mismatch detected` appears only when mismatches exist.
+
+      - B2 show mismatch explanation: Added step/phase mismatch explanation block
+      in `show` with explicit reasons (`pending in plan.yaml but claimed in claims
+      store` / `claimed in plan.yaml but missing in claims store`).
+
+      - B3 auto-repair notice/instruction: Added clear repair guidance in both `status`
+      and `show` mismatch paths (`vectl repair claims --dry-run` then `vectl repair
+      claims`).
+
+      - B4 visibility semantics tests: Added baseline-clean and mismatch-visible tests
+      in `TestStatus` and `TestShow`.
+
+
+      **Sibling search evidence**:
+
+      - `rg -n "def status|def show|_show_step_detail|_show_phase_detail|auto.?fix|repair"
+      src/vectl tests` -> relevant sibling surfaces reviewed and aligned.
+
+
+      **Targeted tests run**:
+
+      ```text
+
+      uv run pytest -q tests/test_cli.py -k "status_baseline_keeps_output_clean or
+      status_shows_mismatch_indicator_and_repair_notice or show_baseline_keeps_output_clean
+      or show_step_explains_mismatch_and_repair_notice"
+
+      ```
+
+
+      **Result**:
+
+      ```text
+
+      4 passed, 216 deselected in 4.03s
+
+      ```
+
+
+      Spec link:
+
+      - fix-diagnostics-mismatch-visibility
+
+
+      Commit hash(es):
+
+      - 26ad213
+
+
+      discovered_issues:
+
+      - none'
   - id: retest-diagnostics-mismatch-visibility
     name: 'Retest: Diagnostics Mismatch Visibility'
     status: pending

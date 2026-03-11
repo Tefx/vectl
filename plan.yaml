@@ -19090,6 +19090,62 @@ phases:
     depends_on:
     - gate
     agent: python-senior
+  - id: claim-consistency-hardening-core.gate-retest
+    name: gate-retest
+    status: pending
+    description: 'Re-test ALL batched gate blockers after `gate-fix-all` from an independent
+      gate perspective.
+
+
+      Re-verify these blockers explicitly:
+
+      - B1: `vectl.core` compatibility imports are restored or all importers are comprehensively
+      migrated
+
+      - B2: branch is shippable because `ruff` and `pyright` both pass
+
+      - B3: branch resolution follows the target plan repo even when `--plan` points
+      outside the current cwd repo
+
+      - B4: stale claims are cleaned up before conflict rejection, and expired claims
+      can be reclaimed successfully
+
+
+      Retest scope:
+
+      - Re-run full commands, not spot checks
+
+      - Confirm regressions exist for the external `--plan` different-repo scenario
+      and the expired-claim success path
+
+      - Confirm no blocker remains before phase progression continues
+
+
+      Independence requirement:
+
+      - This retest is the gate follow-up and must review the implementation from
+      a fresh, independent perspective.'
+    verification: '- `rg -n "from vectl\.core import \(" tests -S`
+
+      - `pytest tests/test_core.py tests/test_logic.py tests/test_properties.py tests/test_lifecycle_imports.py
+      -q`
+
+      - `ruff check src tests`
+
+      - `pyright`
+
+      - `rg -n "get_current_branch\(" src/vectl -S`
+
+      - targeted regression command for external `--plan` while cwd is a different
+      repo
+
+      - targeted regression command for expired-claim cleanup / successful reclaim
+
+      - Evidence must state whether B1, B2, B3, and B4 are each resolved, with actual
+      command results'
+    depends_on:
+    - claim-consistency-hardening-core.gate-fix-all
+    agent: gate-reviewer
 - id: claim-consistency-hardening-mutate
   name: 'Claim Consistency Hardening: Mutate'
   status: locked

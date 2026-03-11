@@ -18422,6 +18422,182 @@ phases:
     depends_on:
     - integration-verify
     agent: gate-reviewer
+  - id: integration-verify-fix-all
+    name: Fix All Integration Verify Blockers
+    status: pending
+    description: 'Fix ALL issues found by `integration-verify` — fix ALL of these,
+      not just the first.
+
+
+      ## Blockers to Fix (ALL of these, not just the first)
+
+
+      ### B1: Claim path fails early with `AttributeError: module ''vectl.core'' has
+      no attribute ''acquire_claim''`
+
+      Locations:
+
+      - `src/vectl/lifecycle.py`: `_claims_api` references `core.acquire_claim`
+
+      - CLI path fails at `src/vectl/cli.py` claim command through `lifecycle.claim_step`
+
+      - MCP path fails at `src/vectl/mcp_server.py` `vectl_claim` through `lifecycle.claim_step`
+
+      Remediation:
+
+      - Restore correct claims API wiring so `claim_step` obtains `acquire_claim`
+      / `release_claim` / `cleanup_stale_claims` / `get_claim_info` from the correct
+      module.
+
+      - Ensure both CLI and MCP claim paths execute successfully and reach reconcile/save
+      path.
+
+      Grep hint:
+
+      - `core.acquire_claim`
+
+
+      ### B2: Integration claim suite is red due to B1 (`36 failed / 18 passed` for
+      claim-focused run)
+
+      Locations:
+
+      - `tests/test_cli.py` claim tests
+
+      - `tests/test_mcp.py` claim tests
+
+      - `tests/test_io.py` Anima incident reproducer
+
+      Remediation:
+
+      - Fix root cause B1 and make all claim-focused tests pass.
+
+      - Search for sibling failures and shared helper assumptions beyond the first
+      failing test.
+
+      Grep hints:
+
+      - `TestClaim`
+
+      - `TestVectlClaim`
+
+      - `AnimaIncident`
+
+
+      ### S1: Worktree creation assumption mismatch observed during verification (`.vectl/worktrees/integration-verify`
+      missing initially)
+
+      Remediation:
+
+      - Document or handle verifier precondition for isolated worktree execution in
+      step evidence notes.
+
+      - This is non-blocking for the code-path fix, but evidence must capture the
+      precondition clearly so retest results are interpretable.
+
+      Grep hint:
+
+      - `.vectl/worktrees/integration-verify`
+
+
+      ## Systemic sibling search instructions
+
+      - Do not stop at the first bad reference. Search for sibling claim-API wiring
+      call sites and any helper imports/indirections that still assume claim helpers
+      live under `vectl.core`.
+
+      - Search the CLI, MCP, lifecycle, and claim helper surfaces for related acquire/release/get-info/cleanup
+      wiring mismatches before closing the step.
+
+      - Confirm the claim-focused tests listed above cover all affected paths after
+      the wiring repair.
+
+
+      ## Targeted verification commands
+
+      - `uv run pytest tests/test_cli.py tests/test_mcp.py tests/test_io.py -k claim
+      -v`
+
+      - `uv run pytest tests/test_io.py -k AnimaIncident -v`
+
+      - If needed for sibling search evidence, use targeted grep/ripgrep for the hints
+      above and paste the results into evidence.
+
+      '
+    verification: '- Root cause B1 fixed: no remaining bad claim-helper wiring where
+      `claim_step` resolves claim APIs from the wrong module
+
+      - Claim-focused suite passes: `uv run pytest tests/test_cli.py tests/test_mcp.py
+      tests/test_io.py -k claim -v`
+
+      - Anima incident reproducer passes: `uv run pytest tests/test_io.py -k AnimaIncident
+      -v`
+
+      - Evidence includes sibling-search results for `core.acquire_claim`, `TestClaim`,
+      `TestVectlClaim`, `AnimaIncident`
+
+      - Evidence notes document the worktree precondition mismatch for `.vectl/worktrees/integration-verify`
+      and whether any handling/documentation was added'
+    evidence_template: '## Batched Fix Evidence
+
+
+      **Scope**: Fix ALL blockers from `integration-verify`, not just the first.
+
+
+      ### Blockers addressed
+
+      - B1 claim helper wiring
+
+      - B2 claim-focused suite failures
+
+      - S1 worktree precondition note/handling
+
+
+      ### Sibling search proof
+
+      - `core.acquire_claim` results:
+
+      ```
+
+      <paste results>
+
+      ```
+
+      - `TestClaim` / `TestVectlClaim` / `AnimaIncident` results:
+
+      ```
+
+      <paste results>
+
+      ```
+
+
+      ### Commands executed
+
+      ```
+
+      uv run pytest tests/test_cli.py tests/test_mcp.py tests/test_io.py -k claim
+      -v
+
+      uv run pytest tests/test_io.py -k AnimaIncident -v
+
+      ```
+
+
+      ### Outcome
+
+      - CLI claim path: <pass/fail>
+
+      - MCP claim path: <pass/fail>
+
+      - Reconcile/save path reached: <evidence>
+
+      - Worktree precondition note captured: <yes/no>
+
+      '
+    depends_on:
+    - integration-verify
+    agent: python-executor
 - id: claim-consistency-hardening-mutate
   name: 'Claim Consistency Hardening: Mutate'
   status: locked

@@ -19741,3 +19741,22 @@ phases:
     depends_on:
     - add-cross-worktree-path-parity-regressions
     agent: python-executor
+  - id: claim-consistency-worktree-matrix.integration-verify
+    name: Integration Verify
+    status: pending
+    description: "End-to-end integration verification of worktree matrix.\n\n- Execute\
+      \ matrix of:\n  - Main worktree claim flow\n  - Linked worktree claim flow (if\
+      \ available, or simulate)\n  - Explicit `--plan` / VECTL_PLAN_PATH override\n\
+      - Verify path resolution for all scenarios.\n- Paste actual command output for\
+      \ full matrix.\n\nVerification:\n- At least one real linked-worktree or simulated\
+      \ equivalent path\n- Path exercised: `resolve_claims_path -> claim/mutate/status/show`\n\
+      - No path resolution regressions\n- Targeted command: `uv run pytest tests/test_plan_path.py\
+      \ tests/test_io.py tests/test_cli.py -k worktree -v`"
+    verification: '- Real command output for full matrix
+
+      - At least one real/simulated worktree path
+
+      - `resolve_claims_path` exercised correctly'
+    depends_on:
+    - claim-consistency-worktree-matrix.freeze-for-integration
+    agent: integration-verifier

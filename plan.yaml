@@ -20820,6 +20820,149 @@ phases:
     depends_on:
     - claim-consistency-diagnostics.gate
     agent: python-senior
+  - id: claim-consistency-diagnostics.retest-gate-blockers-batched
+    name: retest-gate-blockers-batched
+    status: pending
+    description: 'As an INDEPENDENT TESTER (`integration-verifier`), re-validate the
+      full batched remediation from `claim-consistency-diagnostics.gate`.
+
+
+      YOUR GOAL IS TO FIND PROBLEMS, not to confirm it works.
+
+
+      Test for:
+
+      - Broad suite health: claim API wiring/import compatibility no longer breaks
+      collection or CLI read paths
+
+      - Diagnostics correctness: `status` and `show` use plan-root scoped branch resolution
+      and do not misreport mismatch state
+
+      - Failure handling: malformed claims data is surfaced gracefully in read-only
+      diagnostics instead of crashing
+
+      - Hygiene: lint is clean across the touched remediation surface
+
+      - Operator clarity: branch/context wording is accurate and non-misleading
+
+
+      Document ALL findings. A test that discovers issues is a SUCCESS.
+
+      Independence Level: L2
+
+
+      spec_refs:
+
+      - Derived from gate blockers/should-fix findings for `claim-consistency-diagnostics.gate`
+
+      touch_paths:
+
+      - CLI/lifecycle/core diagnostics paths under `src/vectl/`
+
+      - broad test suite and `tests/test_cli.py`
+
+      harness_refs:
+
+      - `uv run pytest`
+
+      - `uv run pytest tests/test_cli.py`
+
+      - `uv run ruff check .`'
+    verification: '- Run `uv run pytest` broad suite; if bounded instead, justify
+      why full broad run is impossible and show the exact bounded command set covers
+      the original collection/wiring failures
+
+      - Run `uv run pytest tests/test_cli.py` with explicit coverage of claim/status/show
+      paths
+
+      - Run `uv run ruff check .`
+
+      - Provide pasted proof that mismatch behavior in `status`/`show` still works,
+      uses plan-root scoped context, and is non-misleading under both healthy and
+      malformed-claims scenarios
+
+      - Report any remaining compatibility imports, branch-context inconsistencies,
+      or read-only diagnostics crashes as findings'
+    evidence_template: '## Retest Report
+
+
+      **Tester**: integration-verifier (independent)
+
+      **Scope**: Batched remediation for `claim-consistency-diagnostics.gate`
+
+      **Independence Level**: L2
+
+      **Timestamp**: <ISO 8601>
+
+
+      ### Commands executed
+
+      ```bash
+
+      uv run pytest
+
+      uv run pytest tests/test_cli.py
+
+      uv run ruff check .
+
+      ```
+
+
+      ### Diagnostics proof
+
+      - Healthy state output (`status` / `show`):
+
+      ```text
+
+      <paste actual output>
+
+      ```
+
+      - Mismatch state output with plan-root scoped branch context:
+
+      ```text
+
+      <paste actual output>
+
+      ```
+
+      - Malformed claims data behavior (must not crash read-only diagnostics):
+
+      ```text
+
+      <paste actual output>
+
+      ```
+
+
+      ### Findings
+
+      | Severity | Description | Location | Reproduction |
+
+      | --- | --- | --- | --- |
+
+      | blocker | <issue> | <file:line or command path> | <steps> |
+
+      | should_fix | <issue> | <location> | <steps> |
+
+      | suggestion | <improvement> | <context> | - |
+
+      | tech_debt | <known debt> | <location> | - |
+
+
+      ### Verdict
+
+      - [ ] PASS
+
+      - [ ] ISSUES_FOUND
+
+      - [ ] INCOMPLETE
+
+
+      **Confidence**: high/medium/low'
+    depends_on:
+    - claim-consistency-diagnostics.fix-gate-blockers-batched
+    agent: integration-verifier
 - id: claim-consistency-worktree-matrix
   name: 'Claim Consistency Hardening: Worktree Matrix'
   status: locked

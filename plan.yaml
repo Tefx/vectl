@@ -19311,7 +19311,7 @@ phases:
   steps:
   - id: implement-mutation-aware-reconciliation
     name: Implement Mutation-Aware Reconciliation
-    status: claimed
+    status: done
     description: "Implement mutation-aware reconciliation hooks.\n\n- Identify mutation\
       \ operations that can orphan or affect claims:\n  - `vectl_mutate` remove-step,\
       \ move-step, edit-step (affecting identity/status/deps)\n  - `vectl_lifecycle`\
@@ -19328,6 +19328,21 @@ phases:
     agent: python-senior
     claimed_by: python-senior
     claimed_at: '2026-03-11T15:19:39.627441+00:00'
+    done_at: '2026-03-11T15:26:41.366020+00:00'
+    evidence: "Artifact:\n- Commit hash(es): 5cc05d9\n\nVerification:\n- Run: `uv\
+      \ run pytest tests/test_claims.py tests/test_mcp.py -k reconcile -v` -> PASSED\
+      \ (`5 passed, 170 deselected`)\n- Run: `git status --short` -> clean working\
+      \ tree (no pending changes)\n\nSpec link:\n- implement-mutation-aware-reconciliation\n\
+      \nFiles changed:\n- src/vectl/claims.py\n- src/vectl/cli.py\n- src/vectl/mcp_server.py\n\
+      - tests/test_claims.py\n- tests/test_mcp.py\n\nGaps/Notes:\n- Added `reconcile_step_scope()`\
+      \ and `reconcile_branch_scope()` in claims layer; step-scope supports missing\
+      \ step IDs for post-remove cleanup.\n- Wired scoped reconciliation after relevant\
+      \ mutations/transitions in CLI and MCP entry points:\n  - step-scope: complete/defer/reject/skip/cancel,\
+      \ mutate edit-step/remove-step/move-step\n  - branch-scope: complete-phase/skip-phase,\
+      \ mutate edit-phase\n- Added reconcile-focused unit coverage for orphan cleanup\
+      \ after remove/move/edit and branch-scoped isolation.\n- NOT done: full test\
+      \ suite/lint/type checks beyond required targeted reconcile tests.\n\ndiscovered_issues:\n\
+      - none"
   - id: add-orphan-claim-regression-matrix
     name: Add Orphan Claim Regression Matrix
     status: pending

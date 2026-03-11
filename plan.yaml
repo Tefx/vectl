@@ -21569,7 +21569,7 @@ phases:
       \ matrix for batched remediation."
   - id: release-0-6-1-stabilization.fix-batch-claim-wiring-collection-and-lint
     name: fix-batch-claim-wiring-collection-and-lint
-    status: claimed
+    status: done
     description: 'Stabilize the 0.6.1 candidate by fixing the full observed failure
       batch, not one-off symptoms.
 
@@ -21741,6 +21741,33 @@ phases:
     agent: python-senior
     claimed_by: python-senior
     claimed_at: '2026-03-11T19:01:24.484004+00:00'
+    done_at: '2026-03-11T19:10:56.527713+00:00'
+    evidence: "## Fix Batch Evidence\n\n**Sibling search run**\n```bash\nrg \"claim_step|complete_step|defer_step|reject_step|skip_step\"\
+      \ src tests\nrg \"_claims_api|acquire_claim|get_current_branch|ghost_claims_count\"\
+      \ src tests\nuv run ruff check .\n```\n- Search and baseline lint matrix used\
+      \ to scope batch fix across runtime + tests.\n\n**Files changed**\n- Runtime:\n\
+      \  - `src/vectl/core.py`\n  - `src/vectl/cli.py`\n  - `src/vectl/io.py`\n- Tests:\n\
+      \  - `tests/test_cli.py`\n  - `tests/test_agent_field.py`\n  - `tests/test_checkpoint.py`\n\
+      \  - `tests/test_logic.py`\n  - `tests/test_manual_yaml_edit.py`\n  - `tests/test_review.py`\n\
+      \n**Regression coverage added/updated**\n- claim import surface:\n  - restored\
+      \ `vectl.core` compatibility wrappers for lifecycle APIs (`claim_step`, `complete_step`,\
+      \ `defer_step`, `reject_step`, `skip_step`, `skip_phase`, `complete_phase`,\
+      \ `get_claimed_steps`) and claims APIs (`acquire_claim`, `release_claim`, `get_claim_info`,\
+      \ `get_current_branch`, `cleanup_stale_claims`).\n- lifecycle wiring:\n  - `_claims_api()`\
+      \ path remains coherent via restored core compatibility surface while preserving\
+      \ branch-aware claims flow.\n- branch-context mismatch visibility:\n  - CLI\
+      \ status ghost-claim count now uses branch-aware path via `get_current_branch()`\
+      \ + `resolve_claims_path(plan_path)` with no hardcoded `main` assumption.\n\
+      \  - targeted regression included: `tests/test_cli.py::TestClaimMismatchVisibility::test_status_shows_ghost_claims_count`.\n\
+      \n**Risk checks**\n- claims-path behavior:\n  - preserved `resolve_claims_path(plan_path)`\
+      \ semantics.\n- missing-file fallback:\n  - status mismatch helper safely handles\
+      \ missing claims file.\n- CAS/conflict behavior impact:\n  - no mutation to\
+      \ `save_plan` CAS logic or claim conflict arbitration semantics.\n\n**Verification**\n\
+      - Run: `uv run pytest -q` -> `1038 passed in 28.08s`\n- Run: `uv run ruff check\
+      \ .` -> `All checks passed`\n- Run: `uv run mypy src` -> `Success: no issues\
+      \ found in 18 source files`\n- Run: `uv run pytest -q tests/test_cli.py::TestClaimMismatchVisibility::test_status_shows_ghost_claims_count`\
+      \ -> `1 passed in 0.25s`\n\n**Commit hash(es)**\n- `f476e25`\n\n**Remaining\
+      \ exclusions**\n- none for this batched stabilization scope."
   - id: release-0-6-1-stabilization.independent-retest-release-candidate
     name: independent-retest-release-candidate
     status: pending

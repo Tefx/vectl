@@ -21380,3 +21380,13 @@ phases:
       \  2 passed, 209 deselected\n  ```\n- Conflict rationale: isolated metadata/version\
       \ surfaces only; no broader release changes\n\nFiles changed:\n- pyproject.toml\n\
       \nCommit hash(es):\n- ad5653c"
+- id: release-0-6-1-stabilization
+  name: 0.6.1 Release Stabilization
+  status: pending
+  gate: 'Release readiness requires: baseline failures reproduced and recorded; batched
+    fixes applied with sibling-search evidence; independent retest proves `uv run
+    pytest -q`, `uv run ruff check .`, and `uv run mypy src` succeed; claim API import/wiring
+    and branch-context mismatch visibility regressions are covered by focused tests;
+    local wheel install prints `vectl 0.6.1`.'
+  depends_on:
+  - version-bump

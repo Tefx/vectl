@@ -18168,7 +18168,7 @@ phases:
       - none'
   - id: wire-auto-repair-into-claim-save-paths
     name: Wire Auto-Repair into Claim/Save Paths
-    status: claimed
+    status: done
     description: "Integrate scoped auto-repair into claim and save paths.\n\n- Modify\
       \ `claim_step()` in `lifecycle.py` to:\n  1. Detect existing claim in claims.json\n\
       \  2. If claim exists but plan shows pending, run `reconcile_step_scope()`\n\
@@ -18187,6 +18187,66 @@ phases:
     agent: python-senior
     claimed_by: python-senior
     claimed_at: '2026-03-11T13:52:31.579539+00:00'
+    done_at: '2026-03-11T14:05:30.389309+00:00'
+    evidence: 'Artifact:
+
+      - Commit hash(es): 68d1069
+
+
+      Verification:
+
+      - Run: `uv run pytest tests/test_io.py -k AnimaIncident -v` -> PASSED (3 passed,
+      27 deselected)
+
+      - Run: `uv run pytest tests/test_cli.py tests/test_mcp.py -k claim -v` -> PASSED
+      (55 passed, 318 deselected)
+
+
+      Spec link:
+
+      - wire-auto-repair-into-claim-save-paths
+
+
+      Files changed:
+
+      - src/vectl/lifecycle.py
+
+      - src/vectl/claims.py
+
+      - src/vectl/cli.py
+
+      - src/vectl/mcp_server.py
+
+      - tests/test_io.py
+
+      - tests/test_cli.py
+
+      - tests/test_mcp.py
+
+
+      Gaps/Notes:
+
+      - Implemented claim-time auto-repair flow with bounded single retry: detect
+      existing claim -> scoped `reconcile_step_scope()` on pending step -> one retry
+      -> success or structured error (`ClaimConflictError` vs `ClaimRepairError`).
+
+      - Wired structured repair-failure handling through CLI and MCP without breaking
+      existing claim interfaces; MCP now returns `error_code=claim_repair_failed`
+      plus `claim_repair_failure`.
+
+      - Updated ghost-claim scenario at `tests/test_io.py:554` to validate auto-repair
+      success.
+
+      - Added integration coverage for both success and final-error paths, including
+      bounded retry assertions (repair attempt count == 1).
+
+      - Did not modify `plan.yaml`, `.git/vectl/claims.json`, or vectl orchestrator
+      state files.
+
+
+      discovered_issues:
+
+      - none'
   - id: add-race-regressions
     name: Add Race Condition Regressions
     status: pending

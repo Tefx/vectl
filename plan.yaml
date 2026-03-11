@@ -21080,7 +21080,7 @@ phases:
   steps:
   - id: add-cross-worktree-path-parity-regressions
     name: Add Cross-Worktree Path Parity Regressions
-    status: claimed
+    status: done
     description: "Add cross-worktree path parity regression tests.\n\n- Create regression\
       \ tests for:\n  - Main worktree vs linked worktree claim resolution\n  - Explicit\
       \ `--plan` / VECTL_PLAN_PATH override\n  - All flows resolve to same shared\
@@ -21095,6 +21095,51 @@ phases:
     agent: python-senior
     claimed_by: python-senior
     claimed_at: '2026-03-11T17:49:47.798293+00:00'
+    done_at: '2026-03-11T17:57:24.194918+00:00'
+    evidence: 'Artifact:
+
+      - Commit hash(es): ce45209a563f9250910faddc9c1880d9f23de4a3
+
+
+      Verification:
+
+      - Run: `uv run pytest tests/test_plan_path.py tests/test_io.py -k worktree -v`
+      -> PASSED (19 passed, 43 deselected)
+
+      - Run: `uv run pytest tests/test_cli.py -k CliPathParityRegressions -v` -> PASSED
+      (2 passed, 222 deselected)
+
+      - Run: `uv run pytest tests/test_mcp.py -k McpPlanClaimsPathParityRegressions
+      -v` -> PASSED (4 passed, 166 deselected)
+
+
+      Spec link:
+
+      - add-cross-worktree-path-parity-regressions
+
+
+      Files changed:
+
+      - src/vectl/mcp_server.py
+
+      - tests/test_plan_path.py
+
+      - tests/test_io.py
+
+      - tests/test_cli.py
+
+      - tests/test_mcp.py
+
+
+      Gaps/Notes:
+
+      - Implemented MCP path-parity hardening by threading one resolved `plan_path`
+      through load/save/claims-repair flow for status/show/claim/mutate.
+
+      - Added regressions for main-vs-linked worktree claims-path equivalence, explicit
+      `--plan`/`VECTL_PLAN_PATH` parity, and mutate auto-repair path consistency.
+
+      - No orchestrator state files modified.'
   - id: claim-consistency-worktree-matrix.freeze-for-integration
     name: Freeze for Integration
     status: pending

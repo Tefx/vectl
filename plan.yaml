@@ -21292,13 +21292,13 @@ phases:
       \ keys\"\nrecommendation: \"Proceed; path parity and branch scoping validated.\""
 - id: version-bump
   name: Version Bump
-  status: pending
+  status: in_progress
   depends_on:
   - claim-consistency-worktree-matrix
   steps:
   - id: version-bump.update-version
     name: Update canonical project version
-    status: pending
+    status: claimed
     description: 'Bump the project version in the canonical metadata file and keep
       any directly related exposed references consistent if present.
 
@@ -21368,3 +21368,5 @@ phases:
       \  ```\n- Conflict rationale: isolated metadata/version surfaces only; no broader\
       \ release changes"
     agent: python-executor
+    claimed_by: python-executor
+    claimed_at: '2026-03-11T18:32:55.198601+00:00'

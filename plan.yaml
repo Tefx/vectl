@@ -18094,13 +18094,13 @@ phases:
       - Evidence now explicitly separates scoped pass from global unrelated debt.'
 - id: claim-consistency-hardening-core
   name: 'Claim Consistency Hardening: Core'
-  status: pending
+  status: in_progress
   depends_on:
   - claim-consistency-recovery
   steps:
   - id: define-scoped-reconcile-contract
     name: Define Scoped Reconcile Contract
-    status: pending
+    status: claimed
     description: "Define the contract for claim-time scoped mismatch detection and\
       \ targeted repair.\n\n- Add `ClaimConsistencyGuard` protocol or helper in `claims.py`\
       \ with:\n  - `reconcile_step_scope(plan, plan_path, claims_path, step_id)` ->\
@@ -18115,6 +18115,8 @@ phases:
       \ entries\n- Targeted command: `uv run pytest tests/test_claims.py -k reconcile\
       \ -v`"
     agent: python-senior
+    claimed_by: python-senior
+    claimed_at: '2026-03-11T13:48:16.348748+00:00'
   - id: wire-auto-repair-into-claim-save-paths
     name: Wire Auto-Repair into Claim/Save Paths
     status: pending

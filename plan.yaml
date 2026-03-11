@@ -18419,8 +18419,19 @@ phases:
 
 
       No file changes.'
+    verification: '- Review evidence from `integration-verify` remediation loop
+
+      - Confirm B1 claim-helper wiring is fixed across CLI and MCP claim paths
+
+      - Confirm B2 claim-focused suite is green with pasted command output
+
+      - Confirm S1 worktree precondition is documented/handled in evidence notes
+
+      - Confirm no blocker remains
+
+      - Cross-cutting focus: lock ordering, retry boundedness, plan authority'
     depends_on:
-    - integration-verify
+    - integration-verify-retest
     agent: gate-reviewer
   - id: integration-verify-fix-all
     name: Fix All Integration Verify Blockers

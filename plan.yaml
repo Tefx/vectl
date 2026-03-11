@@ -19624,6 +19624,23 @@ phases:
     depends_on:
     - freeze-for-gate
     agent: gate-reviewer
+  - id: claim-consistency-diagnostics.gate
+    name: Gate Check
+    status: pending
+    description: 'Review diagnostics gate.
+
+
+      - Verify operator clarity in docs and CLI output
+
+      - Confirm no hidden split-brain state
+
+      - Review depth: STANDARD
+
+
+      No file changes.'
+    depends_on:
+    - freeze-for-gate
+    agent: gate-reviewer
 - id: claim-consistency-worktree-matrix
   name: 'Claim Consistency Hardening: Worktree Matrix'
   status: locked

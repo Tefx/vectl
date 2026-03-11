@@ -20148,7 +20148,7 @@ phases:
     agent: gate-reviewer
   - id: fix-diagnostics-mismatch-visibility
     name: 'Batched Fix: Diagnostics Mismatch Visibility'
-    status: claimed
+    status: pending
     description: 'Fix ALL issues found by `verify-diagnostics` for mismatch visibility
       in CLI read surfaces.
 
@@ -20327,8 +20327,6 @@ phases:
     depends_on:
     - verify-diagnostics
     agent: python-executor
-    claimed_by: python-executor
-    claimed_at: '2026-03-11T16:52:51.589174+00:00'
   - id: retest-diagnostics-mismatch-visibility
     name: 'Retest: Diagnostics Mismatch Visibility'
     status: pending

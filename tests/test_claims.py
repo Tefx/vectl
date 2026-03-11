@@ -10,6 +10,7 @@ import pytest
 
 from vectl.claims import (
     ClaimEntry,
+    RepairStatus,
     acquire_claim,
     cleanup_stale_claims,
     load_claims,
@@ -306,3 +307,112 @@ def test_repair_claims_split_brain_plan_precedence_updates_entry(
     claims = load_claims(claims_path)
     assert claims["feature/test:s2"].agent == "agent-plan"
     assert claims["feature/test:s2"].claimed_at == "2026-03-09T10:00:00Z"
+
+
+def test_repair_claims_status_repair_attempted(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Test that repair_attempted status is returned when changes are made."""
+    plan_path = tmp_path / "plan.yaml"
+    # Use a plan with only PENDING steps (no claimed steps)
+    plan = Plan(
+        project="repair-test",
+        phases=[
+            Phase(
+                id="core",
+                name="Core",
+                steps=[
+                    Step(id="s1", name="Step 1", status=StepStatus.PENDING),
+                ],
+            )
+        ],
+    )
+    from vectl.io import save_plan as save_plan_func
+
+    save_plan_func(plan, plan_path)
+
+    claims_path = tmp_path / "claims.json"
+    # Save a stale claim entry that doesn't exist in plan
+    save_claims(
+        {
+            "feature/test:ghost": ClaimEntry(
+                step_id="ghost",
+                branch="feature/test",
+                agent="stale-agent",
+                claimed_at="2026-03-01T00:00:00Z",
+            )
+        },
+        claims_path,
+    )
+    monkeypatch.setattr("vectl.claims.get_current_branch", lambda: "feature/test")
+
+    result = repair_claims(plan, plan_path, claims_path)
+
+    assert result.status == RepairStatus.REPAIR_ATTEMPTED
+    assert result.changed is True
+    assert len(result.actions) == 1
+    assert result.actions[0].action == "remove"
+
+
+def test_repair_claims_status_repair_succeeded(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Test that repair_succeeded status is returned when no changes needed."""
+    plan_path = tmp_path / "plan.yaml"
+    # Use a plan with only PENDING steps (no claimed steps to repair)
+    plan = Plan(
+        project="repair-test",
+        phases=[
+            Phase(
+                id="core",
+                name="Core",
+                steps=[
+                    Step(id="s1", name="Step 1", status=StepStatus.PENDING),
+                ],
+            )
+        ],
+    )
+    from vectl.io import save_plan as save_plan_func
+
+    save_plan_func(plan, plan_path)
+
+    claims_path = tmp_path / "claims.json"
+    # No claims file - nothing to repair
+    monkeypatch.setattr("vectl.claims.get_current_branch", lambda: "feature/test")
+
+    result = repair_claims(plan, plan_path, claims_path, dry_run=True)
+
+    assert result.status == RepairStatus.REPAIR_SUCCEEDED
+    assert result.changed is False
+    assert len(result.actions) == 0
+
+
+def test_repair_claims_status_in_output(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    """Test that status is included in to_dict output."""
+    plan_path = tmp_path / "plan.yaml"
+    # Use a plan with only PENDING steps (no claimed steps)
+    plan = Plan(
+        project="repair-test",
+        phases=[
+            Phase(
+                id="core",
+                name="Core",
+                steps=[
+                    Step(id="s1", name="Step 1", status=StepStatus.PENDING),
+                ],
+            )
+        ],
+    )
+    from vectl.io import save_plan as save_plan_func
+
+    save_plan_func(plan, plan_path)
+
+    claims_path = tmp_path / "claims.json"
+    # No claims file - nothing to repair
+    monkeypatch.setattr("vectl.claims.get_current_branch", lambda: "feature/test")
+
+    result = repair_claims(plan, plan_path, claims_path, dry_run=True)
+    payload = result.to_dict()
+
+    assert "status" in payload
+    assert payload["status"] == RepairStatus.REPAIR_SUCCEEDED.value

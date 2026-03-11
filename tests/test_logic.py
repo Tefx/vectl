@@ -7,10 +7,10 @@ import pytest
 from vectl.core import (
     CLIPBOARD_CONTENT_MAX,
     CLIPBOARD_SUMMARY_MAX,
+    _clipboard_expired,
     auto_unlock_phases,
     claim_step,
     clipboard_clear,
-    _clipboard_expired,
     clipboard_write,
     complete_phase,
     complete_step,

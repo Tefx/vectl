@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import enum
 import fcntl
 import json
 import os
@@ -17,6 +18,18 @@ from pydantic import BaseModel
 
 from vectl.models import Plan, PlanError, StepStatus
 from vectl.plan_path import resolve_claims_path as _resolve_claims_path
+
+
+class RepairStatus(str, enum.Enum):
+    """Message types for repair operations.
+
+    Provides consistent structured output for both MCP and CLI interfaces.
+    """
+
+    REPAIR_ATTEMPTED = "repair_attempted"
+    REPAIR_SUCCEEDED = "repair_succeeded"
+    REPAIR_SKIPPED = "repair_skipped"
+    RETRY_EXHAUSTED = "retry_exhausted"
 
 
 class ClaimEntry(BaseModel):
@@ -52,6 +65,7 @@ class RepairClaimsResult:
     missing_claims_file: bool
     changed: bool
     actions: tuple[RepairAction, ...]
+    status: RepairStatus = RepairStatus.REPAIR_SUCCEEDED
 
     def to_dict(self) -> dict[str, object]:
         return {
@@ -63,6 +77,7 @@ class RepairClaimsResult:
             "step_scope": self.step_scope,
             "missing_claims_file": self.missing_claims_file,
             "changed": self.changed,
+            "status": self.status.value,
             "actions": [
                 {
                     "action": action.action,
@@ -378,6 +393,12 @@ def repair_claims(
         if changed and not dry_run:
             _write_claims_file(claims_path, claims)
 
+    # Determine repair status based on outcome
+    if not actions:
+        repair_status = RepairStatus.REPAIR_SUCCEEDED
+    else:
+        repair_status = RepairStatus.REPAIR_ATTEMPTED
+
     return RepairClaimsResult(
         dry_run=dry_run,
         branch=branch,
@@ -388,4 +409,5 @@ def repair_claims(
         missing_claims_file=missing_file,
         changed=changed,
         actions=tuple(actions),
+        status=repair_status,
     )

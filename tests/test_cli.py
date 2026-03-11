@@ -3494,3 +3494,222 @@ class TestCliUnifiedStateIntegration:
         assert rejection.reason == "Testing reject via CLI"
         assert rejection.timestamp == "2026-02-09T04:46:23.870176+00:00"
         assert rejection.reviewer == "cli-tester"
+
+
+# ---------------------------------------------------------------------------
+# Tests for B1-B4: Claim mismatch visibility
+# ---------------------------------------------------------------------------
+
+
+class TestClaimMismatchVisibility:
+    """Tests for claim.json vs plan.yaml mismatch visibility (B1-B4)."""
+
+    def test_status_baseline_clean_when_no_mismatch(self, plan_file: Path) -> None:
+        """B4 baseline: Status output is clean when no mismatch exists."""
+        result = runner.invoke(app, ["status", "--plan", str(plan_file)])
+        assert result.exit_code == 0
+        # Should NOT show mismatch warning
+        assert "Claim mismatch detected" not in result.output
+        assert "vectl repair claims" not in result.output
+
+    def test_show_baseline_clean_when_no_mismatch(self, plan_file: Path) -> None:
+        """B4 baseline: Show output is clean when no mismatch exists."""
+        result = runner.invoke(app, ["show", "s1", "--plan", str(plan_file)])
+        assert result.exit_code == 0
+        # Should NOT show mismatch warning for non-claimed step
+        assert "⚠" not in result.output
+
+    def test_status_shows_mismatch_indicator(self, tmp_path: Path) -> None:
+        """B1: Status shows explicit mismatch indicator when mismatch exists."""
+        # Create plan with a claimed step
+        plan = Plan(
+            project="mismatch-test",
+            phases=[
+                Phase(
+                    id="p1",
+                    name="Phase 1",
+                    status=PhaseStatus.PENDING,
+                    steps=[
+                        Step(
+                            id="s1",
+                            name="Step 1",
+                            status=StepStatus.CLAIMED,
+                            claimed_by="test-agent",
+                            claimed_at="2026-03-01T10:00:00Z",
+                        ),
+                    ],
+                ),
+            ],
+        )
+        plan_path = tmp_path / "plan.yaml"
+        save_plan(plan, plan_path)
+
+        # Run status - should show mismatch indicator
+        result = runner.invoke(app, ["status", "--plan", str(plan_path)])
+        assert result.exit_code == 0
+        assert "Claim mismatch detected" in result.output
+        assert "branch-scoped" in result.output.lower()
+
+    def test_status_shows_ghost_claims_count(self, tmp_path: Path) -> None:
+        """B1: Status shows ghost claims count when present."""
+        plan = Plan(
+            project="ghost-test",
+            phases=[
+                Phase(
+                    id="p1",
+                    name="Phase 1",
+                    status=PhaseStatus.PENDING,
+                    steps=[Step(id="s1", name="Step 1")],
+                ),
+            ],
+        )
+        plan_path = tmp_path / "plan.yaml"
+        save_plan(plan, plan_path)
+
+        # Use the same branch resolution path as CLI status/show.
+        from vectl.claims import get_current_branch
+
+        branch = get_current_branch()
+
+        # Create claims.json with a ghost claim (matching current branch)
+        claims_path = plan_path.parent / ".vectl" / "claims.json"
+        claims_path.parent.mkdir(parents=True, exist_ok=True)
+        import json
+
+        claims_path.write_text(
+            json.dumps(
+                {
+                    f"{branch}:s1": {
+                        "step_id": "s1",
+                        "branch": branch,
+                        "agent": "ghost-agent",
+                        "claimed_at": "2026-03-01T10:00:00Z",
+                    }
+                }
+            ),
+            encoding="utf-8",
+        )
+
+        result = runner.invoke(app, ["status", "--plan", str(plan_path)])
+        assert result.exit_code == 0
+        assert "Ghost claims" in result.output
+        assert "1" in result.output
+
+    def test_status_shows_stale_plan_claims_count(self, tmp_path: Path) -> None:
+        """B1: Status shows stale plan claims count when present."""
+        plan = Plan(
+            project="stale-test",
+            phases=[
+                Phase(
+                    id="p1",
+                    name="Phase 1",
+                    status=PhaseStatus.PENDING,
+                    steps=[
+                        Step(
+                            id="s1",
+                            name="Step 1",
+                            status=StepStatus.CLAIMED,
+                            claimed_by="test-agent",
+                            claimed_at="2026-03-01T10:00:00Z",
+                        ),
+                    ],
+                ),
+            ],
+        )
+        plan_path = tmp_path / "plan.yaml"
+        save_plan(plan, plan_path)
+
+        # Ensure no claims.json entry exists
+        claims_path = plan_path.parent / ".vectl" / "claims.json"
+        if claims_path.exists():
+            claims_path.unlink()
+
+        result = runner.invoke(app, ["status", "--plan", str(plan_path)])
+        assert result.exit_code == 0
+        assert "Stale plan claims" in result.output
+        assert "1" in result.output
+
+    def test_status_shows_repair_instructions(self, tmp_path: Path) -> None:
+        """B3: Status shows repair instructions when mismatch exists."""
+        plan = Plan(
+            project="repair-test",
+            phases=[
+                Phase(
+                    id="p1",
+                    name="Phase 1",
+                    status=PhaseStatus.PENDING,
+                    steps=[
+                        Step(
+                            id="s1",
+                            name="Step 1",
+                            status=StepStatus.CLAIMED,
+                            claimed_by="test-agent",
+                            claimed_at="2026-03-01T10:00:00Z",
+                        ),
+                    ],
+                ),
+            ],
+        )
+        plan_path = tmp_path / "plan.yaml"
+        save_plan(plan, plan_path)
+
+        result = runner.invoke(app, ["status", "--plan", str(plan_path)])
+        assert result.exit_code == 0
+        assert "vectl repair claims --dry-run" in result.output
+        assert "vectl repair claims" in result.output
+
+    def test_show_step_explains_mismatch(self, tmp_path: Path) -> None:
+        """B2: Show step explains mismatch when detected."""
+        plan = Plan(
+            project="show-mismatch-test",
+            phases=[
+                Phase(
+                    id="p1",
+                    name="Phase 1",
+                    status=PhaseStatus.PENDING,
+                    steps=[
+                        Step(
+                            id="s1",
+                            name="Step 1",
+                            status=StepStatus.CLAIMED,
+                            claimed_by="test-agent",
+                            claimed_at="2026-03-01T10:00:00Z",
+                        ),
+                    ],
+                ),
+            ],
+        )
+        plan_path = tmp_path / "plan.yaml"
+        save_plan(plan, plan_path)
+
+        # Ensure no claims.json entry exists - this creates stale plan claim
+        claims_path = plan_path.parent / ".vectl" / "claims.json"
+        if claims_path.exists():
+            claims_path.unlink()
+
+        result = runner.invoke(app, ["show", "s1", "--plan", str(plan_path)])
+        assert result.exit_code == 0
+        # B2: Show should explain the mismatch
+        assert "missing from claims.json" in result.output
+
+    def test_show_step_clean_for_non_claimed(self, tmp_path: Path) -> None:
+        """B4: Show step is clean when step is not claimed."""
+        plan = Plan(
+            project="clean-show",
+            phases=[
+                Phase(
+                    id="p1",
+                    name="Phase 1",
+                    status=PhaseStatus.PENDING,
+                    steps=[Step(id="s1", name="Step 1", status=StepStatus.PENDING)],
+                ),
+            ],
+        )
+        plan_path = tmp_path / "plan.yaml"
+        save_plan(plan, plan_path)
+
+        result = runner.invoke(app, ["show", "s1", "--plan", str(plan_path)])
+        assert result.exit_code == 0
+        # Should not show mismatch warning for non-claimed steps
+        assert "missing from claims.json" not in result.output
+        assert "ghost" not in result.output.lower()

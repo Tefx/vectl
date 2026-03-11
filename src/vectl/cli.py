@@ -261,6 +261,39 @@ def _is_claim_consistency_scoped_gate(phase_id: str) -> bool:
     return phase_id == "claim-consistency-recovery"
 
 
+def _check_claim_mismatch(p: Plan, plan_path: Path) -> tuple[bool, list[str], list[str]]:
+    """Check for claims.json vs plan.yaml mismatch.
+
+    Returns:
+        Tuple of (has_mismatch, ghost_claims, stale_plan_claims)
+        - ghost_claims: claims entries with no corresponding claimed step in plan
+        - stale_plan_claims: claimed steps in plan with no entry in claims.json
+    """
+    from vectl.claims import get_current_branch, load_claims, resolve_claims_path
+
+    claims_path = resolve_claims_path(plan_path)
+    claims = load_claims(claims_path)
+    branch = get_current_branch()
+
+    # Build current branch's claimed steps from plan
+    plan_claimed: set[str] = set()
+    for phase in p.phases:
+        for step in phase.steps:
+            if step.status == StepStatus.CLAIMED and step.claimed_by:
+                plan_claimed.add(f"{branch}:{step.id}")
+
+    # Find ghost claims (in claims but not claimed in plan)
+    ghost_claims = [
+        key for key in claims if key.startswith(f"{branch}:") and key not in plan_claimed
+    ]
+
+    # Find stale plan claims (claimed in plan but not in claims)
+    stale_plan_claims = [key.split(":", 1)[1] for key in plan_claimed if key not in claims]
+
+    has_mismatch = bool(ghost_claims or stale_plan_claims)
+    return has_mismatch, ghost_claims, stale_plan_claims
+
+
 # ---------------------------------------------------------------------------
 # Typer app
 # ---------------------------------------------------------------------------
@@ -910,11 +943,14 @@ def status(
     phase: str | None = typer.Option(None, "--phase", help="Show detail for a specific phase."),
 ) -> None:
     """Show plan status overview."""
-    p, _, _ = _load(plan)
+    p, _, plan_path = _load(plan)
 
     if phase is not None:
         _show_phase_detail(p, phase)
         return
+
+    # Check for claims.json vs plan.yaml mismatch
+    has_mismatch, ghost_claims, stale_plan_claims = _check_claim_mismatch(p, plan_path)
 
     # Overview: all phases
     table = Table(title=f"Plan: {p.project}", show_lines=True)
@@ -941,6 +977,24 @@ def status(
         )
 
     out.print(table)
+
+    # B1: Show mismatch indicator when detected
+    if has_mismatch:
+        out.print()
+        out.print("[yellow]⚠ Claim mismatch detected (branch-scoped):[/]")
+        if ghost_claims:
+            out.print(
+                "  [dim]Ghost claims (in claims.json but not claimed in plan):[/] "
+                f"{len(ghost_claims)}"
+            )
+        if stale_plan_claims:
+            out.print(
+                "  [dim]Stale plan claims (claimed in plan but missing from claims.json):[/] "
+                f"{len(stale_plan_claims)}"
+            )
+        out.print("[dim]  → Run `vectl repair claims --dry-run` to preview repair[/]")
+        out.print("[dim]  → Run `vectl repair claims` to auto-repair[/]")
+
     out.print()
     out.print("[dim]→ vectl next                      See claimable steps[/]")
     out.print("[dim]→ vectl show <phase>               Phase detail[/]")
@@ -988,12 +1042,28 @@ def _show_phase_detail(p: Plan, phase_id: str) -> None:
     out.print()
 
 
-def _show_step_detail(p: Plan, step_id: str) -> None:
+def _show_step_detail(p: Plan, step_id: str, plan_path: Path | None = None) -> None:
     found = p.find_step(step_id)
     if not found:
         _die(f"Step '{step_id}' not found.")
         return  # unreachable
     phase, step = found
+
+    # B2: Check for mismatch for this specific step
+    mismatch_info = ""
+    if plan_path is not None and step.status == StepStatus.CLAIMED:
+        has_mismatch, ghost_claims, stale_plan_claims = _check_claim_mismatch(p, plan_path)
+        if has_mismatch:
+            from vectl.claims import get_current_branch
+
+            branch = get_current_branch()
+            step_key = f"{branch}:{step_id}"
+            if step_key in ghost_claims:
+                mismatch_info = (
+                    "⚠ Claim exists in claims.json but step is not claimed in plan (ghost)"
+                )
+            elif step_key not in ghost_claims and step_id in stale_plan_claims:
+                mismatch_info = "⚠ Step is claimed in plan but missing from claims.json"
 
     out.print(f"## Step: {step.name}", markup=False)
     out.print(f"**ID:** {step.id}", markup=False)
@@ -1006,6 +1076,10 @@ def _show_step_detail(p: Plan, step_id: str) -> None:
 
     locked = is_step_locked(p, phase, step)
     out.print(f"**Status:** {_step_icon(step.status, locked=locked)}")
+
+    # B2: Show mismatch explanation when detected
+    if mismatch_info:
+        out.print(f"[yellow]{mismatch_info}[/]")
 
     if step.agent:
         out.print(f"**Suggested agent:** {step.agent}", markup=False)
@@ -1070,7 +1144,7 @@ def show(
     plan: Path | None = PlanOption,
 ) -> None:
     """Show details for a step or phase."""
-    p, _, _ = _load(plan)
+    p, _, plan_path = _load(plan)
 
     # Try phase match
     ph = p.find_phase(target)
@@ -1081,7 +1155,7 @@ def show(
     # Try step match
     found = p.find_step(target)
     if found is not None:
-        _show_step_detail(p, target)
+        _show_step_detail(p, target, plan_path=plan_path)
         return
 
     _die(f"'{target}' not found as step or phase.")
@@ -1252,7 +1326,7 @@ def claim(
     if found is not None:
         phase_obj, step_obj = found
         out.print()
-        _show_step_detail(p, step_id)
+        _show_step_detail(p, step_id, plan_path=plan_path)
 
 
 @app.command()
@@ -2220,6 +2294,7 @@ def repair_claims_cmd(
     plan: Path | None = PlanOption,
 ) -> None:
     """Repair claims.json consistency against plan.yaml (current branch scope)."""
+
     p, _, plan_path = _load(plan)
     claims_path = resolve_claims_path(plan_path)
 
@@ -2243,6 +2318,7 @@ def repair_claims_cmd(
 
     mode = "[dry-run]" if dry_run else ""
     out.print(f"[bold]Repair claims {mode}[/]")
+    out.print(f"Status: {result.status.value}")
     out.print(f"Policy: {result.policy}")
     out.print(f"Branch: {result.branch}")
     out.print(f"Plan: {result.plan_path}")

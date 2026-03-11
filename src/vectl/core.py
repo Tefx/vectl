@@ -8,6 +8,8 @@ from datetime import datetime, timedelta, timezone
 from enum import Enum
 from pathlib import Path
 
+from vectl import claims as _claims
+from vectl import lifecycle as _lifecycle
 from vectl.models import (
     AmbiguousMatchError,
     Clipboard,
@@ -32,6 +34,74 @@ from vectl.models import (
 # Lazy import to avoid circular — semantics imports models, core imports models.
 # is_step_locked is only used in render, which is late-bound.
 from vectl.semantics import is_step_locked as _is_step_locked_shared
+
+
+def claim_step(
+    plan: Plan,
+    step_id: str,
+    agent_name: str,
+    *,
+    force: bool = False,
+    claims_path: Path | None = None,
+) -> tuple[Plan, _lifecycle.ClaimResult]:
+    return _lifecycle.claim_step(
+        plan,
+        step_id,
+        agent_name,
+        force=force,
+        claims_path=claims_path,
+    )
+
+
+def complete_step(plan: Plan, step_id: str, evidence: str, claims_path: Path | None = None) -> Plan:
+    return _lifecycle.complete_step(plan, step_id, evidence, claims_path=claims_path)
+
+
+def complete_phase(plan: Plan, phase_id: str, evidence: str) -> tuple[Plan, list[str]]:
+    return _lifecycle.complete_phase(plan, phase_id, evidence)
+
+
+def defer_step(plan: Plan, step_id: str, claims_path: Path | None = None) -> Plan:
+    return _lifecycle.defer_step(plan, step_id, claims_path=claims_path)
+
+
+def reject_step(plan: Plan, step_id: str, reason: str, reviewer: str = "") -> Plan:
+    return _lifecycle.reject_step(plan, step_id, reason, reviewer)
+
+
+def skip_step(plan: Plan, step_id: str, reason: str) -> Plan:
+    return _lifecycle.skip_step(plan, step_id, reason)
+
+
+def skip_phase(
+    plan: Plan, phase_id: str, reason: str, force: bool = False
+) -> tuple[Plan, list[str]]:
+    return _lifecycle.skip_phase(plan, phase_id, reason, force=force)
+
+
+def get_claimed_steps(plan: Plan, agent: str | None = None) -> list[tuple[str, Step]]:
+    return _lifecycle.get_claimed_steps(plan, agent)
+
+
+def acquire_claim(step_id: str, branch: str, agent: str, claims_path: Path) -> bool:
+    return _claims.acquire_claim(step_id, branch, agent, claims_path)
+
+
+def cleanup_stale_claims(claims_path: Path, ttl_hours: float = 2.0) -> int:
+    return _claims.cleanup_stale_claims(claims_path, ttl_hours=ttl_hours)
+
+
+def get_current_branch() -> str:
+    return _claims.get_current_branch()
+
+
+def release_claim(step_id: str, branch: str, claims_path: Path) -> bool:
+    return _claims.release_claim(step_id, branch, claims_path)
+
+
+def get_claim_info(step_id: str, branch: str, claims_path: Path) -> _claims.ClaimEntry | None:
+    return _claims.get_claim_info(step_id, branch, claims_path)
+
 
 # ---------------------------------------------------------------------------
 # DAG Validation

@@ -2,13 +2,13 @@
 
 from __future__ import annotations
 
+import fcntl
 import hashlib
 import logging
 import os
 import subprocess
 import tempfile
 import time
-import fcntl
 from collections.abc import Iterator
 from contextlib import contextmanager
 from pathlib import Path

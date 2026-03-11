@@ -20113,7 +20113,7 @@ phases:
       - none'
   - id: freeze-for-gate
     name: Freeze for Gate
-    status: claimed
+    status: done
     description: 'Freeze snapshot before diagnostics gate.
 
 
@@ -20131,6 +20131,38 @@ phases:
     agent: python-executor
     claimed_by: python-executor
     claimed_at: '2026-03-11T17:14:25.179752+00:00'
+    done_at: '2026-03-11T17:15:46.571969+00:00'
+    evidence: 'Artifact:
+
+      - Commit hash(es): none (freeze step)
+
+
+      Verification:
+
+      - Run: `git rev-parse HEAD` -> `26ad21325a9f65ee16df7be4d935d7f213af7b29`
+
+      - Run: `git status --porcelain` -> empty (clean)
+
+      - Run: `python3 --version` -> `Python 3.14.3`
+
+      - Run: `uname -a` -> `Darwin ... arm64`
+
+      - Run: `pwd` -> `/Users/tefx/Projects/vectl/.vectl/worktrees/freeze-for-gate`
+
+
+      Spec link:
+
+      - freeze-for-gate
+
+
+      Files changed:
+
+      - none
+
+
+      Gaps/Notes:
+
+      - Freeze snapshot captured successfully; no file modifications.'
   - id: claim-consistency-diagnostics.gate
     name: Gate Check
     status: pending

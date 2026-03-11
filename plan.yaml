@@ -20020,7 +20020,7 @@ phases:
       - Pre-existing unrelated mutate test instability reported by worker'
   - id: verify-diagnostics
     name: Verify Diagnostics
-    status: pending
+    status: claimed
     description: 'Verify diagnostics are visible and understandable.
 
 
@@ -20044,6 +20044,8 @@ phases:
     depends_on:
     - align-repair-and-conflict-messaging
     agent: integration-verifier
+    claimed_by: integration-verifier
+    claimed_at: '2026-03-11T16:46:45.745913+00:00'
   - id: update-operator-docs
     name: Update Operator Docs
     status: done

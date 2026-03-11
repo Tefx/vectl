@@ -18216,3 +18216,92 @@ phases:
   status: locked
   depends_on:
   - claim-consistency-hardening-core
+  steps:
+  - id: implement-mutation-aware-reconciliation
+    name: Implement Mutation-Aware Reconciliation
+    status: pending
+    description: "Implement mutation-aware reconciliation hooks.\n\n- Identify mutation\
+      \ operations that can orphan or affect claims:\n  - `vectl_mutate` remove-step,\
+      \ move-step, edit-step (affecting identity/status/deps)\n  - `vectl_lifecycle`\
+      \ reject, defer, skip, complete transitions\n  - Phase rewiring operations\n\
+      - For each mutating operation, add scoped reconciliation call after the mutation\
+      \ completes:\n  - `reconcile_step_scope()` for step-level operations\n  - `reconcile_branch_scope()`\
+      \ for phase-level operations\n- Ensure reconciliation only touches current branch\
+      \ and affected steps.\n- Wire through CLI and MCP entry points.\n\nFiles:\n\
+      - `src/vectl/cli.py`\n- `src/vectl/mcp_server.py`\n- `src/vectl/claims.py`\n\
+      - `src/vectl/lifecycle.py`\n\nVerification:\n- Unit tests proving orphaned claims\
+      \ are cleaned after remove/move/edit\n- Prove scoped reconciliation only touches\
+      \ current-branch keys\n- Targeted command: `uv run pytest tests/test_claims.py\
+      \ tests/test_mcp.py -k reconcile -v`"
+    agent: python-senior
+  - id: add-orphan-claim-regression-matrix
+    name: Add Orphan Claim Regression Matrix
+    status: pending
+    description: "Add orphan claim regression matrix.\n\n- Create focused tests for:\n\
+      \  - Remove-step leaves no orphan claim\n  - Move-step transfers or cleans claim\
+      \ appropriately\n  - Edit-step affecting identity/status/deps triggers reconciliation\n\
+      \  - Phase rewiring does not leave stale claims\n  - Partial-write/CAS-conflict\
+      \ behavior: cleanup or preserve correctly\n- Cover both CLI and MCP paths.\n\
+      - Include failure-path regression for interrupted operations.\n\nFiles:\n- `tests/test_mcp.py`\n\
+      - `tests/test_cli.py`\n- `tests/test_io.py`\n\nVerification:\n- All mutation\
+      \ operations have reconciliation coverage\n- Orphan claim scenarios pass\n-\
+      \ Prove unrelated claims are preserved\n- Targeted command: `uv run pytest tests/test_mcp.py\
+      \ tests/test_cli.py tests/test_io.py -k mutate -v`"
+    depends_on:
+    - implement-mutation-aware-reconciliation
+    agent: python-senior
+  - id: freeze-for-integration
+    name: Freeze for Integration
+    status: pending
+    description: 'Freeze snapshot before mutate integration verification.
+
+
+      - Capture `git rev-parse HEAD`
+
+      - Capture clean `git status`
+
+      - Declare environment
+
+      - Confirm no code changes until integration verify completes
+
+
+      No file changes.'
+    depends_on:
+    - add-orphan-claim-regression-matrix
+    agent: python-executor
+  - id: integration-verify
+    name: Integration Verify
+    status: pending
+    description: "End-to-end integration verification of mutation reconciliation.\n\
+      \n- Execute mutation commands:\n  - Claim step, then remove step - verify claim\
+      \ is cleaned\n  - Claim step, then move step to different phase - verify claim\
+      \ follows or is cleaned\n  - Reject/defer/skip steps with claims - verify reconciliation\n\
+      - Execute through MCP tools.\n- Paste actual command output.\n\nVerification:\n\
+      - No stale `already claimed` failure after rewiring/removal scenarios\n- Unrelated\
+      \ claims remain intact\n- Targeted command: `uv run pytest tests/test_mcp.py\
+      \ tests/test_cli.py -k mutate -v`"
+    verification: '- Real mutation command outputs
+
+      - No stale claim failures after mutations'
+    depends_on:
+    - freeze-for-integration
+    agent: integration-verifier
+  - id: gate
+    name: Gate Check
+    status: pending
+    description: 'Review mutate hardening gate.
+
+
+      - Verify all evidence quality
+
+      - Confirm no mutation path bypasses reconciliation
+
+      - Cross-cutting focus: orphan claim cleanup, scope preservation, no hidden bypass
+
+      - Review depth: THOROUGH
+
+
+      No file changes.'
+    depends_on:
+    - integration-verify
+    agent: gate-reviewer

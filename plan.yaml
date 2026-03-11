@@ -18094,7 +18094,7 @@ phases:
       - Evidence now explicitly separates scoped pass from global unrelated debt.'
 - id: claim-consistency-hardening-core
   name: 'Claim Consistency Hardening: Core'
-  status: in_progress
+  status: done
   depends_on:
   - claim-consistency-recovery
   steps:
@@ -19222,7 +19222,7 @@ phases:
       - none'
   - id: claim-consistency-hardening-core.gate-retest
     name: gate-retest
-    status: claimed
+    status: done
     description: 'Re-test ALL batched gate blockers after `gate-fix-all` from an independent
       gate perspective.
 
@@ -19278,9 +19278,34 @@ phases:
     agent: gate-reviewer
     claimed_by: gate-reviewer
     claimed_at: '2026-03-11T14:50:59.538328+00:00'
+    done_at: '2026-03-11T15:10:34.151394+00:00'
+    evidence: "gate_retest_verdict: \"PASS\"\nblocker_status:\n  B1: \"resolved\"\n\
+      \  B2: \"resolved\"\n  B3: \"resolved\"\n  B4: \"resolved\"\nverification:\n\
+      \  - cmd: 'rg -n \"from vectl\\.core import \\(\" tests -S'\n    result: |\n\
+      \      tests/test_core.py:11:from vectl.core import (\n      tests/test_logic.py:7:from\
+      \ vectl.core import (\n      tests/test_properties.py:16:from vectl.core import\
+      \ (\n      tests/test_architect.py:5:from vectl.core import (\n  - cmd: \"pytest\
+      \ tests/test_core.py tests/test_logic.py tests/test_properties.py tests/test_lifecycle_imports.py\
+      \ -q\"\n    result: \"121 passed in 1.52s\"\n  - cmd: \"ruff check src tests\"\
+      \n    result: \"All checks passed!\"\n  - cmd: \"pyright\"\n    result: \"0\
+      \ errors, 0 warnings, 0 informations\"\n  - cmd: 'rg -n \"get_current_branch\\\
+      (\" src/vectl -S'\n    result: |\n      src/vectl/claims.py:269:def get_current_branch(repo_path:\
+      \ Path | None = None) -> str:\n      src/vectl/claims.py:313:    branch = get_current_branch(plan_path.parent)\n\
+      \      src/vectl/lifecycle.py:170:        branch = get_current_branch(repo_path)\n\
+      \      src/vectl/lifecycle.py:445:    branch = get_current_branch(repo_path)\n\
+      \  - cmd: \"targeted regression: external --plan in different cwd repo\"\n \
+      \   result: |\n      B3_repoA_branch=branch-a\n      B3_repoB_branch=branch-b\n\
+      \      B3_claims_keys ['branch-a:s1']\n      B3_entry branch-a:s1 branch= branch-a\
+      \ agent= alice\n  - cmd: \"targeted regression: expired-claim cleanup + successful\
+      \ reclaim\"\n    result: |\n      B4_pre_claims {'b4:s1': {'agent': 'stale-agent',\
+      \ 'branch': 'b4', 'claimed_at': '2000-01-01T00:00:00Z', 'step_id': 's1'}}\n\
+      \      B4_post_claims {'b4:s1': {'agent': 'bob', 'branch': 'b4', 'claimed_at':\
+      \ '2026-03-11T15:09:33.799079Z', 'step_id': 's1'}}\nfindings:\n  blockers: []\n\
+      \  should_fix: []\n  suggestions: []\nrecommendation: \"PASS: B1-B4 retested\
+      \ and verified green; proceed to phase completion.\""
 - id: claim-consistency-hardening-mutate
   name: 'Claim Consistency Hardening: Mutate'
-  status: locked
+  status: pending
   depends_on:
   - claim-consistency-hardening-core
   steps:

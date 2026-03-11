@@ -21259,7 +21259,7 @@ phases:
       - No issues found.'
   - id: claim-consistency-worktree-matrix.gate
     name: Gate Check
-    status: pending
+    status: claimed
     description: 'Review worktree matrix gate.
 
 
@@ -21279,3 +21279,5 @@ phases:
     depends_on:
     - claim-consistency-worktree-matrix.integration-verify
     agent: gate-reviewer
+    claimed_by: gate-reviewer
+    claimed_at: '2026-03-11T18:09:34.212063+00:00'

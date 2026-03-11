@@ -20397,7 +20397,7 @@ phases:
       - none'
   - id: retest-diagnostics-mismatch-visibility
     name: 'Retest: Diagnostics Mismatch Visibility'
-    status: claimed
+    status: done
     description: 'As an INDEPENDENT TESTER (`integration-verifier`), validate the
       diagnostics visibility changes from a fresh perspective.
 
@@ -20536,6 +20536,26 @@ phases:
     agent: integration-verifier
     claimed_by: integration-verifier
     claimed_at: '2026-03-11T17:10:41.412085+00:00'
+    done_at: '2026-03-11T17:14:11.867196+00:00'
+    evidence: "## Verification Report\n**Tester**: integration-verifier\n**Scope**:\
+      \ mismatch diagnostics visibility in `vectl status` and `vectl show`\n\n###\
+      \ Test Execution\n- Commands executed:\n```text\nuv run vectl status --plan\
+      \ /tmp/vectl-retest-diagnostics-mismatch-visibility/plan.yaml\nuv run vectl\
+      \ show s1 --plan /tmp/vectl-retest-diagnostics-mismatch-visibility/plan.yaml\n\
+      (then seeded claims mismatch)\nuv run vectl status --plan /tmp/vectl-retest-diagnostics-mismatch-visibility/plan.yaml\n\
+      uv run vectl show s1 --plan /tmp/vectl-retest-diagnostics-mismatch-visibility/plan.yaml\n\
+      ```\n\n### Real Command Output\n**Baseline output**:\n- `status` shows normal\
+      \ phase table with no mismatch warning\n- `show s1` shows normal pending step\
+      \ output\n\n**Mismatch output**:\n- `status` shows explicit: `⚠ Claim state\
+      \ mismatch detected`\n- `status` shows repair guidance:\n  - `vectl repair claims\
+      \ --dry-run`\n  - `vectl repair claims`\n- `show s1` shows explicit mismatch\
+      \ details:\n  - `Step is pending in plan.yaml but claimed in claims store.`\n\
+      - `show s1` also shows same auto-repair guidance\n\n### Issues Found\n| Severity\
+      \ | Description | Location | Reproduction |\n| --- | --- | --- | --- |\n| none\
+      \ | none | n/a | n/a |\n\n### Coverage Assessment\n- `vectl status` baseline\
+      \ verified: ✅\n- `vectl status` mismatch verified: ✅\n- `vectl show` baseline\
+      \ verified: ✅\n- `vectl show` mismatch verified: ✅\n- auto-repair notice verified:\
+      \ ✅\n- non-misleading output verified: ✅\n\n### Verdict\n- PASS"
 - id: claim-consistency-worktree-matrix
   name: 'Claim Consistency Hardening: Worktree Matrix'
   status: locked

@@ -22086,7 +22086,7 @@ phases:
     agent: gate-reviewer
   - id: release-0-6-1-stabilization.fix-batch-version-alignment-to-0-6-1
     name: fix-batch-version-alignment-to-0-6-1
-    status: claimed
+    status: done
     description: 'Fix ALL blockers found by the independent release-candidate retest
       for version alignment, not just the first symptom.
 
@@ -22192,6 +22192,46 @@ phases:
     agent: python-executor
     claimed_by: python-executor
     claimed_at: '2026-03-11T19:18:00.102179+00:00'
+    done_at: '2026-03-11T19:23:27.396311+00:00'
+    evidence: 'Artifact:
+
+      - Commit hash(es): 032788578269acb0a73613c1722b486670239343
+
+
+      Verification:
+
+      - Run: `python -c "from vectl import __version__; print(__version__)"` -> `0.6.1`
+
+      - Run: `vectl --version` -> `vectl 0.6.1`
+
+      - Run: `pytest tests/test_cli.py::TestVersion -v` -> `2 passed`
+
+      - Run: `uv build` -> built `vectl-0.6.1.tar.gz` and `vectl-0.6.1-py3-none-any.whl`
+
+      - Run: fresh venv install from built wheel + `vectl --version` -> `vectl 0.6.1`
+
+
+      Spec link:
+
+      - release-0-6-1-stabilization.fix-batch-version-alignment-to-0-6-1
+
+
+      Files changed:
+
+      - pyproject.toml
+
+
+      Gaps/Notes:
+
+      - Fixed version-source mismatch by aligning canonical project metadata to 0.6.1
+      in this branch context.
+
+      - No additional runtime version-surface edits were required after metadata alignment.
+
+
+      discovered_issues:
+
+      - none'
   - id: release-0-6-1-stabilization.independent-retest-version-alignment-to-0-6-1
     name: independent-retest-version-alignment-to-0-6-1
     status: pending

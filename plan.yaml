@@ -18730,7 +18730,7 @@ phases:
       going through core.'
   - id: integration-verify-retest
     name: Retest Integration Verify Blockers
-    status: pending
+    status: claimed
     description: 'As an INDEPENDENT TESTER (`integration-verifier`), re-run end-to-end
       verification for ALL issues previously reported by `integration-verify`.
 
@@ -18835,6 +18835,8 @@ phases:
     depends_on:
     - integration-verify-fix-all
     agent: integration-verifier
+    claimed_by: integration-verifier
+    claimed_at: '2026-03-11T14:25:20.492575+00:00'
 - id: claim-consistency-hardening-mutate
   name: 'Claim Consistency Hardening: Mutate'
   status: locked

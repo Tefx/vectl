@@ -18957,7 +18957,7 @@ phases:
       - PASS'
   - id: claim-consistency-hardening-core.gate-fix-all
     name: gate-fix-all
-    status: pending
+    status: claimed
     description: 'Fix ALL blockers found by the core hardening gate.
 
 
@@ -19139,6 +19139,8 @@ phases:
     depends_on:
     - gate
     agent: python-senior
+    claimed_by: python-senior
+    claimed_at: '2026-03-11T14:41:21.668772+00:00'
   - id: claim-consistency-hardening-core.gate-retest
     name: gate-retest
     status: pending

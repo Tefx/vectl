@@ -19760,3 +19760,25 @@ phases:
     depends_on:
     - claim-consistency-worktree-matrix.freeze-for-integration
     agent: integration-verifier
+  - id: claim-consistency-worktree-matrix.gate
+    name: Gate Check
+    status: pending
+    description: 'Review worktree matrix gate.
+
+
+      - Verify all evidence quality
+
+      - Confirm path parity across worktrees
+
+      - Confirm branch scoping preserved
+
+      - Cross-cutting focus: path parity, branch scoping, ghost-claim recovery under
+      concurrency
+
+      - Review depth: THOROUGH
+
+
+      No file changes.'
+    depends_on:
+    - claim-consistency-worktree-matrix.integration-verify
+    agent: gate-reviewer

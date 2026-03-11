@@ -18598,6 +18598,113 @@ phases:
     depends_on:
     - integration-verify
     agent: python-executor
+  - id: integration-verify-retest
+    name: Retest Integration Verify Blockers
+    status: pending
+    description: 'As an INDEPENDENT TESTER (`integration-verifier`), re-run end-to-end
+      verification for ALL issues previously reported by `integration-verify`.
+
+
+      YOUR GOAL IS TO FIND REMAINING PROBLEMS, not to confirm only the first blocker
+      is fixed.
+
+
+      Re-test ALL of these:
+
+      - B1: CLI and MCP claim paths no longer fail with `AttributeError: module ''vectl.core''
+      has no attribute ''acquire_claim''`
+
+      - B2: Claim-focused suite is green across `tests/test_cli.py`, `tests/test_mcp.py`,
+      and `tests/test_io.py` (`TestClaim`, `TestVectlClaim`, `AnimaIncident`)
+
+      - S1: Evidence clearly documents or handles the isolated-worktree precondition
+      around `.vectl/worktrees/integration-verify`
+
+
+      Required path proof:
+
+      - CLI: exercise claim flow through `src/vectl/cli.py`
+
+      - MCP: exercise `vectl_claim` through `src/vectl/mcp_server.py`
+
+      - Show the path reaches `lifecycle.claim_step` and the reconcile/save path without
+      the bad claim-helper lookup
+
+
+      Document ALL findings. A retest that discovers residual issues is a SUCCESSFUL
+      verification step.'
+    verification: '- Re-run `uv run pytest tests/test_cli.py tests/test_mcp.py tests/test_io.py
+      -k claim -v` and paste actual output
+
+      - Re-run `uv run pytest tests/test_io.py -k AnimaIncident -v` and paste actual
+      output
+
+      - Confirm no remaining matches for the bad wiring pattern `core.acquire_claim`
+      in affected claim path code, or explain any legitimate residual reference
+
+      - Confirm CLI and MCP claim flows both execute successfully and reach reconcile/save
+      path
+
+      - Confirm evidence notes include the worktree precondition status for `.vectl/worktrees/integration-verify`'
+    evidence_template: '## Retest Report
+
+
+      **Tester**: integration-verifier (independent of fix implementation)
+
+      **Scope**: ALL blockers from `integration-verify`
+
+
+      ### Commands executed
+
+      ```
+
+      uv run pytest tests/test_cli.py tests/test_mcp.py tests/test_io.py -k claim
+      -v
+
+      uv run pytest tests/test_io.py -k AnimaIncident -v
+
+      ```
+
+
+      ### Blocker status
+
+      - B1 bad claim-helper wiring: <fixed/not fixed>
+
+      - B2 claim-focused suite: <pass/fail with counts>
+
+      - S1 worktree precondition evidence: <documented/handled/missing>
+
+
+      ### Path evidence
+
+      - CLI path: <evidence>
+
+      - MCP path: <evidence>
+
+      - Reconcile/save path reached: <evidence>
+
+
+      ### Findings
+
+      | Severity | Description | Location | Reproduction |
+
+      | --- | --- | --- | --- |
+
+      | blocker/should_fix/suggestion | <fill> | <fill> | <fill> |
+
+
+      ### Verdict
+
+      - [ ] PASS
+
+      - [ ] ISSUES_FOUND
+
+      - [ ] INCOMPLETE
+
+      '
+    depends_on:
+    - integration-verify-fix-all
+    agent: integration-verifier
 - id: claim-consistency-hardening-mutate
   name: 'Claim Consistency Hardening: Mutate'
   status: locked

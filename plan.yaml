@@ -18416,3 +18416,79 @@ phases:
   status: locked
   depends_on:
   - claim-consistency-diagnostics
+  steps:
+  - id: add-cross-worktree-path-parity-regressions
+    name: Add Cross-Worktree Path Parity Regressions
+    status: pending
+    description: "Add cross-worktree path parity regression tests.\n\n- Create regression\
+      \ tests for:\n  - Main worktree vs linked worktree claim resolution\n  - Explicit\
+      \ `--plan` / VECTL_PLAN_PATH override\n  - All flows resolve to same shared\
+      \ claims store:\n    - `resolve_claims_path -> claim/mutate/status/show`\n-\
+      \ Cover `plan.yaml` path parity with `claims.json` path.\n- Verify auto-repair\
+      \ works correctly under all path configurations.\n\nFiles:\n- `src/vectl/claims.py`\n\
+      - `src/vectl/cli.py`\n- `src/vectl/mcp_server.py`\n- `tests/test_plan_path.py`\n\
+      - `tests/test_io.py`\n- `tests/test_cli.py`\n- `tests/test_mcp.py`\n\nVerification:\n\
+      - Regression matrix covers main worktree, linked worktree, explicit --plan\n\
+      - Prove all paths resolve to correct shared claims store\n- Targeted command:\
+      \ `uv run pytest tests/test_plan_path.py tests/test_io.py -k worktree -v`"
+    agent: python-senior
+  - id: freeze-for-integration
+    name: Freeze for Integration
+    status: pending
+    description: 'Freeze snapshot before worktree matrix integration verification.
+
+
+      - Capture `git rev-parse HEAD`
+
+      - Capture clean `git status`
+
+      - Declare environment including worktree configuration
+
+      - Explicit worktree/env declaration
+
+
+      No file changes.'
+    depends_on:
+    - add-cross-worktree-path-parity-regressions
+    agent: python-executor
+  - id: integration-verify
+    name: Integration Verify
+    status: pending
+    description: "End-to-end integration verification of worktree matrix.\n\n- Execute\
+      \ matrix of:\n  - Main worktree claim flow\n  - Linked worktree claim flow (if\
+      \ available, or simulate)\n  - Explicit `--plan` / VECTL_PLAN_PATH override\n\
+      - Verify path resolution for all scenarios.\n- Paste actual command output for\
+      \ full matrix.\n\nVerification:\n- At least one real linked-worktree or simulated\
+      \ equivalent path\n- Path exercised: `resolve_claims_path -> claim/mutate/status/show`\n\
+      - No path resolution regressions\n- Targeted command: `uv run pytest tests/test_plan_path.py\
+      \ tests/test_io.py tests/test_cli.py -k worktree -v`"
+    verification: '- Real command output for full matrix
+
+      - At least one real/simulated worktree path
+
+      - `resolve_claims_path` exercised correctly'
+    depends_on:
+    - freeze-for-integration
+    agent: integration-verifier
+  - id: gate
+    name: Gate Check
+    status: pending
+    description: 'Review worktree matrix gate.
+
+
+      - Verify all evidence quality
+
+      - Confirm path parity across worktrees
+
+      - Confirm branch scoping preserved
+
+      - Cross-cutting focus: path parity, branch scoping, ghost-claim recovery under
+      concurrency
+
+      - Review depth: THOROUGH
+
+
+      No file changes.'
+    depends_on:
+    - integration-verify
+    agent: gate-reviewer

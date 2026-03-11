@@ -19541,6 +19541,132 @@ phases:
     agent: gate-reviewer
     claimed_by: gate-reviewer
     claimed_at: '2026-03-11T15:51:44.033721+00:00'
+  - id: claim-consistency-hardening-mutate.fix-gate-blockers-integrated-auto-reconcile
+    name: fix-gate-blockers-integrated-auto-reconcile
+    status: pending
+    description: 'Fix ALL issues reported by `claim-consistency-hardening-mutate.gate`,
+      not just the first blocker.
+
+
+      prior_loop:
+
+      - `claim-consistency-hardening-mutate.integration-verify`
+
+      - `claim-consistency-hardening-mutate.gate`
+
+      remaining_blocker: Integrated mutate verification is not trustworthy because
+      CLI/MCP reconciliation assertions still encode the old manual-repair flow, the
+      verification evidence came from a tests-only commit instead of a single integrated
+      tree, and the MCP hook still carries unused locals that can fail Ruff.
+
+      why_new_loop: The gate findings span one root integration blocker plus two should-fix
+      follow-ups across CLI, MCP, and tests; editing prior evidence is insufficient
+      because the implementation and regression matrix must be rerun together on one
+      branch/tree after semantic alignment.
+
+
+      ## Blockers to Fix (ALL of these, not just the first)
+
+
+      ### B1: integration evidence invalid/incomplete due to commit mismatch and conflicting
+      test expectations
+
+      Locations: `tests/test_cli.py:2501`, `tests/test_cli.py:2523`, `tests/test_cli.py:2541`,
+      `tests/test_mcp.py:1184`, `tests/test_mcp.py:1200`, `tests/test_mcp.py:1214`,
+      `src/vectl/cli.py:1272`, `src/vectl/mcp_server.py:1061`
+
+      Remediation:
+
+      - integrate the implementation commit and regression matrix updates on a single
+      branch/tree before collecting evidence
+
+      - update CLI and MCP mutate matrix assertions so they validate post-mutation
+      auto-reconciled state immediately after remove/move/edit/edit-phase, with no
+      manual `repair` dependency in the expected path
+
+      - preserve other-branch claims while removing or relocating only in-scope claims
+
+      - rerun mutate verification for CLI, MCP, and IO on the integrated tree and
+      capture one coherent evidence set
+
+      Grep hint: `rg -n "\[action\[\"key\"\] for action in (payload|repair)\[\"actions\"\]\]"
+      tests/test_{cli,mcp}.py`
+
+      IMPORTANT: Search for sibling assertions and reconciliation call sites beyond
+      the listed locations.
+
+
+      ### S1: MCP reconcile hook unused locals causing Ruff failure
+
+      Locations: `src/vectl/mcp_server.py:597`, `src/vectl/mcp_server.py:598`
+
+      Remediation:
+
+      - remove or intentionally use `reconcile_kind` / `reconcile_step_id`
+
+      - ensure Ruff is clean for the MCP reconciliation path after the change
+
+      Grep hint: `rg -n "reconcile_kind: Literal\[\"step\", \"branch\"\]" src/vectl/mcp_server.py`
+
+
+      ### S2: CLI mutate tests do not directly assert auto-reconcile behavior in implementation
+      path
+
+      Locations: `src/vectl/cli.py:2106`, `tests/test_cli.py:2501`
+
+      Remediation:
+
+      - add or adjust CLI mutate tests so the implementation path directly proves
+      claims are cleaned immediately after remove/move/edit/edit-phase
+
+      - assert other-branch claims are preserved while in-branch claims are auto-reconciled
+
+      - keep expectations aligned with the production implementation path instead
+      of a later manual repair flow
+
+      Grep hint: `rg -n "TestMutateClaimReconciliationCli|repair\s*=\s*runner\.invoke\(app,
+      \[\"repair\"" tests/test_cli.py`
+
+
+      ## Completion Criteria
+
+      - ALL issues above are fixed in one integrated tree
+
+      - tests and assertions reflect auto-reconciliation semantics, not manual repair
+      semantics
+
+      - integrated CLI/MCP/IO verification is rerunnable from the same branch/tree
+
+      - sibling search completed for each blocker pattern
+
+      - no new instances of the listed anti-patterns remain
+
+
+      Known risk focus:
+
+      - stale manual-repair expectations reappearing in sibling test cases
+
+      - branch-scope preservation regressions while cleaning in-scope claims
+
+      - split evidence gathered from mismatched commits instead of the integrated
+      tree'
+    verification: '- `rg -n "\[action\[\"key\"\] for action in (payload|repair)\[\"actions\"\]\]"
+      tests/test_{cli,mcp}.py` shows only expectations compatible with immediate auto-reconciliation
+
+      - `rg -n "reconcile_kind: Literal\[\"step\", \"branch\"\]" src/vectl/mcp_server.py`
+      no longer leaves unused-locals Ruff debt
+
+      - Main path: targeted CLI/MCP mutate tests prove post-mutation auto-reconciled
+      state on the integrated tree
+
+      - Failure path: regression coverage proves other-branch claims are preserved
+      while in-scope claims are reconciled immediately
+
+      - Proof: integrated verification commands and outputs come from one branch/tree
+      that contains both implementation and regression matrix updates'
+    depends_on:
+    - claim-consistency-hardening-mutate.gate
+    agent: python-senior
 - id: claim-consistency-diagnostics
   name: 'Claim Consistency Hardening: Diagnostics'
   status: locked

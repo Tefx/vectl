@@ -21393,7 +21393,7 @@ phases:
   steps:
   - id: release-0-6-1-stabilization.baseline-reproduce-main-failures
     name: baseline-reproduce-main-failures
-    status: claimed
+    status: done
     description: 'As an independent verifier, capture the current Main-branch 0.6.1
       stabilization baseline before any fixes.
 
@@ -21542,6 +21542,31 @@ phases:
     agent: integration-verifier
     claimed_by: integration-verifier
     claimed_at: '2026-03-11T18:58:51.673102+00:00'
+    done_at: '2026-03-11T19:01:08.040958+00:00'
+    evidence: "## Baseline Capture\n\n**Commands executed**\n```\nuv run pytest -q\n\
+      uv run ruff check .\nuv run mypy src\nuv run pytest -q tests/test_cli.py::TestClaimMismatchVisibility::test_status_shows_ghost_claims_count\n\
+      ```\n\n**Pytest collection failures**\n- Modules hit:\n  - `tests/test_core.py`\n\
+      \  - `tests/test_logic.py`\n  - `tests/test_properties.py`\n- Import stack summary:\n\
+      \  - all three fail during import with `ImportError: cannot import name 'claim_step'\
+      \ from 'vectl.core'`\n  - trigger sites: `tests/test_core.py:11`, `tests/test_logic.py:7`,\
+      \ `tests/test_properties.py:16`\n  - session summary: `collected 918 items /\
+      \ 3 errors`\n\n**Ruff findings**\n- Total count: 12\n- By file/rule:\n  - `src/vectl/io.py`:\
+      \ `I001` x1\n  - `tests/test_agent_field.py`: `I001` x1\n  - `tests/test_checkpoint.py`:\
+      \ `I001` x1\n  - `tests/test_logic.py`: `I001` x1\n  - `tests/test_manual_yaml_edit.py`:\
+      \ `I001` x1, `F401` x6\n  - `tests/test_review.py`: `I001` x1\n\n**Mypy control\
+      \ result**\n- Pass/fail: PASS (`Success: no issues found in 18 source files`)\n\
+      \n**Branch-context targeted regression**\n- Pass/fail: FAIL (test node not found)\n\
+      - Notes:\n  - `ERROR: not found: ...tests/test_cli.py::TestClaimMismatchVisibility::test_status_shows_ghost_claims_count`\n\
+      \  - `collected 0 items`\n\n**Sibling-search handoff**\n- claim/import wiring\
+      \ files:\n  - `src/vectl/lifecycle.py`\n  - `src/vectl/claims.py`\n  - `src/vectl/cli.py`\n\
+      \  - `src/vectl/mcp_server.py`\n  - `tests/test_core.py`\n  - `tests/test_logic.py`\n\
+      \  - `tests/test_properties.py`\n  - `tests/test_io.py`\n  - `tests/test_claims.py`\n\
+      \  - `tests/test_cli.py`\n  - `tests/test_mcp.py`\n  - `tests/test_lifecycle_imports.py`\n\
+      - lint hygiene files:\n  - `src/vectl/io.py`\n  - `tests/test_agent_field.py`\n\
+      \  - `tests/test_checkpoint.py`\n  - `tests/test_logic.py`\n  - `tests/test_manual_yaml_edit.py`\n\
+      \  - `tests/test_review.py`\n\nGaps/Notes:\n- Baseline step succeeded as issue-capture\
+      \ step; failures were expected and are now documented with concrete module/rule\
+      \ matrix for batched remediation."
   - id: release-0-6-1-stabilization.fix-batch-claim-wiring-collection-and-lint
     name: fix-batch-claim-wiring-collection-and-lint
     status: pending

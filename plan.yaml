@@ -19758,7 +19758,7 @@ phases:
       - none'
   - id: claim-consistency-hardening-mutate.retest-gate-blockers-integrated-auto-reconcile
     name: retest-gate-blockers-integrated-auto-reconcile
-    status: pending
+    status: claimed
     description: 'As an INDEPENDENT TESTER (`integration-verifier`), re-validate ALL
       issues raised by `claim-consistency-hardening-mutate.gate` after the batched
       remediation step.
@@ -19870,6 +19870,8 @@ phases:
     depends_on:
     - claim-consistency-hardening-mutate.fix-gate-blockers-integrated-auto-reconcile
     agent: integration-verifier
+    claimed_by: integration-verifier
+    claimed_at: '2026-03-11T16:19:24.797781+00:00'
 - id: claim-consistency-diagnostics
   name: 'Claim Consistency Hardening: Diagnostics'
   status: locked

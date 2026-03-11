@@ -18305,3 +18305,8 @@ phases:
     depends_on:
     - integration-verify
     agent: gate-reviewer
+- id: claim-consistency-diagnostics
+  name: 'Claim Consistency Hardening: Diagnostics'
+  status: locked
+  depends_on:
+  - claim-consistency-hardening-mutate

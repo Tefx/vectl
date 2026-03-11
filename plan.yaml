@@ -19470,7 +19470,7 @@ phases:
       not found'
   - id: claim-consistency-hardening-mutate.integration-verify
     name: Integration Verify
-    status: claimed
+    status: done
     description: "End-to-end integration verification of mutation reconciliation.\n\
       \n- Execute mutation commands:\n  - Claim step, then remove step - verify claim\
       \ is cleaned\n  - Claim step, then move step to different phase - verify claim\
@@ -19487,6 +19487,39 @@ phases:
     agent: integration-verifier
     claimed_by: integration-verifier
     claimed_at: '2026-03-11T15:41:55.380467+00:00'
+    done_at: '2026-03-11T15:48:46.289840+00:00'
+    evidence: 'Artifact:
+
+      - Commit hash(es): none (verify-only)
+
+
+      Verification:
+
+      - Run: `pwd && git rev-parse --abbrev-ref HEAD` -> `/Users/tefx/Projects/vectl/.vectl/worktrees/claim-consistency-hardening-mutate.integration-verify`;
+      `vectl/step-claim-consistency-hardening-mutate.integration-verify`
+
+      - Run: `uv run pytest tests/test_mcp.py tests/test_cli.py -k mutate -v` -> `55
+      passed, 325 deselected in 11.67s`
+
+      - Run: `git status --short` -> clean worktree
+
+
+      Spec link:
+
+      - claim-consistency-hardening-mutate.integration-verify
+
+
+      Files changed:
+
+      - none
+
+
+      Gaps/Notes:
+
+      - Targeted mutate verification passed for both MCP and CLI paths, including
+      claim reconciliation matrix cases.
+
+      - No stale claim failure observed; unrelated-claim preservation scenarios passed.'
   - id: claim-consistency-hardening-mutate.gate
     name: Gate Check
     status: pending

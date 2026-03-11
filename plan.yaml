@@ -21995,7 +21995,7 @@ phases:
       completes.'
   - id: release-0-6-1-stabilization.gate
     name: gate
-    status: pending
+    status: claimed
     description: 'As an independent gate reviewer, decide whether Main is trustworthy
       enough for a 0.6.0 user to upgrade to the 0.6.1 candidate.
 
@@ -22103,6 +22103,8 @@ phases:
     - release-0-6-1-stabilization.independent-retest-version-alignment-to-0-6-1
     - release-0-6-1-stabilization.freeze-for-release-gate
     agent: gate-reviewer
+    claimed_by: gate-reviewer
+    claimed_at: '2026-03-11T19:27:30.670825+00:00'
   - id: release-0-6-1-stabilization.fix-batch-version-alignment-to-0-6-1
     name: fix-batch-version-alignment-to-0-6-1
     status: done

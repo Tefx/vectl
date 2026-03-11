@@ -20020,7 +20020,7 @@ phases:
       - Pre-existing unrelated mutate test instability reported by worker'
   - id: verify-diagnostics
     name: Verify Diagnostics
-    status: claimed
+    status: done
     description: 'Verify diagnostics are visible and understandable.
 
 
@@ -20046,6 +20046,22 @@ phases:
     agent: integration-verifier
     claimed_by: integration-verifier
     claimed_at: '2026-03-11T16:46:45.745913+00:00'
+    done_at: '2026-03-11T16:52:36.650417+00:00'
+    evidence: "Artifact:\n- Commit hash(es): none (verify-only)\n\nVerification:\n\
+      - Run: `uvx vectl status --phase claim-consistency-diagnostics && uvx vectl\
+      \ show verify-diagnostics` -> baseline shown (`in_progress` phase, step `claimed`)\n\
+      - Run: mismatch scenario using temporary altered plan copy with `uvx vectl status\
+      \ -p .tmp-mismatch-plan.yaml ...` and `uvx vectl show ... -p .tmp-mismatch-plan.yaml`\
+      \ -> state changed to `locked`, but no explicit mismatch diagnostic text or\
+      \ auto-repair notice surfaced\n\nSpec link:\n- verify-diagnostics\n\nFiles changed:\n\
+      - none\n\nGaps/Notes:\n- Step completed as issue-detection verification.\n-\
+      \ Detected diagnostics visibility gap: mismatch and auto-repair notice not explicitly\
+      \ visible/understandable in status/show output.\n- Batched remediation chain\
+      \ created:\n  - `fix-diagnostics-mismatch-visibility`\n  - `retest-diagnostics-mismatch-visibility`\n\
+      - Downstream `freeze-for-gate` rewired to depend on retest.\n\ndiscovered_issues:\n\
+      - `vectl status`/`vectl show` missing explicit mismatch indicator under mismatched\
+      \ plan/claims\n- `vectl status`/`vectl show` missing understandable auto-repair\
+      \ notice"
   - id: update-operator-docs
     name: Update Operator Docs
     status: done

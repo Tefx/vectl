@@ -19410,7 +19410,7 @@ phases:
       in certain test flows. Regression tests were adjusted to avoid expanding scope.'
   - id: claim-consistency-hardening-mutate.freeze-for-integration
     name: Freeze for Integration
-    status: claimed
+    status: done
     description: 'Freeze snapshot before mutate integration verification.
 
 
@@ -19429,6 +19429,45 @@ phases:
     agent: python-executor
     claimed_by: python-executor
     claimed_at: '2026-03-11T15:41:08.342708+00:00'
+    done_at: '2026-03-11T15:41:49.566000+00:00'
+    evidence: 'Artifact:
+
+      - Commit hash(es): none (freeze step)
+
+
+      Verification:
+
+      - Run: `ls -la .vectl/worktrees/claim-consistency-hardening-mutate.freeze-for-integration`
+      -> No such file or directory
+
+      - Run: freeze snapshot commands skipped due to missing isolated worktree directory
+
+
+      Spec link:
+
+      - claim-consistency-hardening-mutate.freeze-for-integration
+
+
+      Files changed:
+
+      - none
+
+
+      Gaps/Notes:
+
+      - Freeze step completed in degraded mode due to missing dependency (worktree
+      directory absent).
+
+      - Classified as freeze failure type `missing_dependency` and continued per freeze
+      cleanup policy.
+
+      - No code/doc changes were made.
+
+
+      discovered_issues:
+
+      - Worktree `.vectl/worktrees/claim-consistency-hardening-mutate.freeze-for-integration`
+      not found'
   - id: claim-consistency-hardening-mutate.integration-verify
     name: Integration Verify
     status: pending

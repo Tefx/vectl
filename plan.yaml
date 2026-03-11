@@ -19963,7 +19963,7 @@ phases:
       - none'
   - id: align-repair-and-conflict-messaging
     name: Align Repair/Conflict Messaging
-    status: pending
+    status: claimed
     description: "Align repair and conflict messaging across CLI and MCP.\n\n- Define\
       \ consistent error/notice types:\n  - `repair_attempted`: mismatch detected,\
       \ scoped repair executed\n  - `repair_succeeded`: mismatch fixed, retrying claim\n\
@@ -19976,6 +19976,8 @@ phases:
     depends_on:
     - surface-mismatch-state-in-status-show
     agent: python-executor
+    claimed_by: python-executor
+    claimed_at: '2026-03-11T16:32:56.789708+00:00'
   - id: verify-diagnostics
     name: Verify Diagnostics
     status: pending

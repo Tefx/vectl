@@ -19905,7 +19905,7 @@ phases:
       \ | n/a |\n\n**Verdict**:\n- PASS"
 - id: claim-consistency-diagnostics
   name: 'Claim Consistency Hardening: Diagnostics'
-  status: in_progress
+  status: done
   depends_on:
   - claim-consistency-hardening-mutate
   steps:
@@ -20915,7 +20915,7 @@ phases:
       - S2 resolved: operator wording clarifies branch/context scope.'
   - id: claim-consistency-diagnostics.retest-gate-blockers-batched
     name: retest-gate-blockers-batched
-    status: claimed
+    status: done
     description: 'As an INDEPENDENT TESTER (`integration-verifier`), re-validate the
       full batched remediation from `claim-consistency-diagnostics.gate`.
 
@@ -21058,9 +21058,23 @@ phases:
     agent: integration-verifier
     claimed_by: integration-verifier
     claimed_at: '2026-03-11T17:43:18.135284+00:00'
+    done_at: '2026-03-11T17:49:33.550684+00:00'
+    evidence: "Retest target: claim-consistency-diagnostics.retest-gate-blockers-batched\n\
+      Isolation respected in worktree: `.vectl/worktrees/claim-consistency-diagnostics.retest-gate-blockers-batched`\n\
+      \nVerification:\n- Run: `uv run pytest` -> `1061 passed in 82.82s`\n- Run: `uv\
+      \ run pytest tests/test_cli.py` -> `222 passed in 30.96s`\n- Run: `uv run ruff\
+      \ check .` -> `All checks passed`\n\nDiagnostics proof (real outputs):\n- Healthy\
+      \ status/show:\n  - no mismatch warning\n  - no diagnostics-unavailable warning\n\
+      - Mismatch status/show:\n  - explicit mismatch message appears\n  - repair guidance\
+      \ appears (`vectl repair claims --dry-run` ...)\n  - includes scoped context\
+      \ language\n- Malformed claims status/show:\n  - read-only command continues\n\
+      \  - explicit diagnostics-unavailable warning shown\n\nPlan-root branch-context\
+      \ proof:\n- Harness with different caller branch vs plan-root branch confirms\
+      \ diagnostics scope uses plan-root git context branch, not caller cwd branch.\n\
+      \nVerdict:\n- PASS; no blocker/should-fix findings."
 - id: claim-consistency-worktree-matrix
   name: 'Claim Consistency Hardening: Worktree Matrix'
-  status: locked
+  status: pending
   depends_on:
   - claim-consistency-diagnostics
   steps:

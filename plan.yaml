@@ -21195,7 +21195,7 @@ phases:
       - Freeze snapshot captured successfully; worktree clean.'
   - id: claim-consistency-worktree-matrix.integration-verify
     name: Integration Verify
-    status: pending
+    status: claimed
     description: "End-to-end integration verification of worktree matrix.\n\n- Execute\
       \ matrix of:\n  - Main worktree claim flow\n  - Linked worktree claim flow (if\
       \ available, or simulate)\n  - Explicit `--plan` / VECTL_PLAN_PATH override\n\
@@ -21212,6 +21212,8 @@ phases:
     depends_on:
     - claim-consistency-worktree-matrix.freeze-for-integration
     agent: integration-verifier
+    claimed_by: integration-verifier
+    claimed_at: '2026-03-11T18:07:34.444867+00:00'
   - id: claim-consistency-worktree-matrix.gate
     name: Gate Check
     status: pending

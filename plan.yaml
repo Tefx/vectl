@@ -20110,7 +20110,7 @@ phases:
 
       No file changes.'
     depends_on:
-    - verify-diagnostics
+    - retest-diagnostics-mismatch-visibility
     - update-operator-docs
     agent: python-executor
   - id: claim-consistency-diagnostics.gate

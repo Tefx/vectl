@@ -21956,7 +21956,7 @@ phases:
 
       '
     depends_on:
-    - release-0-6-1-stabilization.independent-retest-release-candidate
+    - release-0-6-1-stabilization.independent-retest-version-alignment-to-0-6-1
     agent: general
   - id: release-0-6-1-stabilization.gate
     name: gate

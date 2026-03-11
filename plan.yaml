@@ -18730,7 +18730,7 @@ phases:
       going through core.'
   - id: integration-verify-retest
     name: Retest Integration Verify Blockers
-    status: claimed
+    status: done
     description: 'As an INDEPENDENT TESTER (`integration-verifier`), re-run end-to-end
       verification for ALL issues previously reported by `integration-verify`.
 
@@ -18837,6 +18837,73 @@ phases:
     agent: integration-verifier
     claimed_by: integration-verifier
     claimed_at: '2026-03-11T14:25:20.492575+00:00'
+    done_at: '2026-03-11T14:29:40.966905+00:00'
+    evidence: '## Retest Report
+
+
+      **Tester**: integration-verifier (independent of fix implementation)
+
+      **Scope**: ALL blockers from `integration-verify`
+
+
+      ### Commands executed
+
+      ```bash
+
+      $ uv run pytest tests/test_cli.py tests/test_mcp.py tests/test_io.py -k claim
+      -v
+
+      ... 54 passed, 345 deselected ...
+
+
+      $ uv run pytest tests/test_io.py -k AnimaIncident -v
+
+      ... 2 passed, 27 deselected ...
+
+
+      $ grep core.acquire_claim (code scan)
+
+      - src/: no matches
+
+      - *.py repo-wide: no matches
+
+      ```
+
+
+      ### Blocker status
+
+      - B1 bad claim-helper wiring: fixed
+
+      - B2 claim-focused suite: pass (54 passed, 345 deselected; focused rerun 2 passed,
+      27 deselected)
+
+      - S1 worktree precondition evidence: documented and handled
+
+
+      ### Path evidence
+
+      - CLI path: `src/vectl/cli.py:1193` -> `claim_step(...)`; then `src/vectl/cli.py:1227`
+      -> `_save_plan(...)` and `save_plan(...)` at `src/vectl/cli.py:210`.
+
+      - MCP path: `src/vectl/mcp_server.py:453` -> `claim_step(...)`; then `src/vectl/mcp_server.py:454`
+      -> `_save_plan(...)` and `save_plan(...)` at `src/vectl/mcp_server.py:169`.
+
+      - Reconcile/save path reached with passing persistence assertions in claim tests.
+
+
+      ### Findings
+
+      | Severity | Description | Location | Reproduction |
+
+      | --- | --- | --- | --- |
+
+      | suggestion | `core.acquire_claim` appears only in historical narrative text,
+      not executable code | `plan.yaml` history entries | code scan above |
+
+
+      ### Verdict
+
+      - PASS'
 - id: claim-consistency-hardening-mutate
   name: 'Claim Consistency Hardening: Mutate'
   status: locked

@@ -21911,7 +21911,7 @@ phases:
       - `release-0-6-1-stabilization.independent-retest-version-alignment-to-0-6-1`"
   - id: release-0-6-1-stabilization.freeze-for-release-gate
     name: freeze-for-release-gate
-    status: claimed
+    status: done
     description: 'Freeze the release-stabilization snapshot before gate review.
 
 
@@ -21976,6 +21976,23 @@ phases:
     agent: general
     claimed_by: general
     claimed_at: '2026-03-11T19:26:22.929977+00:00'
+    done_at: '2026-03-11T19:27:10.683280+00:00'
+    evidence: '## Freeze Snapshot
+
+      - Worktree: `/Users/tefx/Projects/vectl/.vectl/worktrees/release-0-6-1-stabilization.freeze-for-release-gate`
+
+      - `git rev-parse HEAD`: `032788578269acb0a73613c1722b486670239343`
+
+      - `git status --short`: clean (no output)
+
+      - `python --version`: unavailable (`command not found`)
+
+      - `python3 --version` (fallback): `Python 3.14.3`
+
+      - `uv --version`: `uv 0.10.9 (Homebrew 2026-03-06)`
+
+      - Freeze statement: no code changes from this snapshot until `release-0-6-1-stabilization.gate`
+      completes.'
   - id: release-0-6-1-stabilization.gate
     name: gate
     status: pending

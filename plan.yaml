@@ -19470,7 +19470,7 @@ phases:
       not found'
   - id: claim-consistency-hardening-mutate.integration-verify
     name: Integration Verify
-    status: pending
+    status: claimed
     description: "End-to-end integration verification of mutation reconciliation.\n\
       \n- Execute mutation commands:\n  - Claim step, then remove step - verify claim\
       \ is cleaned\n  - Claim step, then move step to different phase - verify claim\
@@ -19485,6 +19485,8 @@ phases:
     depends_on:
     - claim-consistency-hardening-mutate.freeze-for-integration
     agent: integration-verifier
+    claimed_by: integration-verifier
+    claimed_at: '2026-03-11T15:41:55.380467+00:00'
   - id: claim-consistency-hardening-mutate.gate
     name: Gate Check
     status: pending

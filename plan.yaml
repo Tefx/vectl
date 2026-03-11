@@ -18313,7 +18313,7 @@ phases:
       - none'
   - id: freeze-for-integration
     name: Freeze for Integration
-    status: claimed
+    status: done
     description: 'Freeze snapshot before integration verification.
 
 
@@ -18332,6 +18332,52 @@ phases:
     agent: python-executor
     claimed_by: python-executor
     claimed_at: '2026-03-11T14:12:06.699396+00:00'
+    done_at: '2026-03-11T14:14:17.936443+00:00'
+    evidence: 'Artifact:
+
+      - Commit hash(es): none (freeze step)
+
+
+      Verification:
+
+      - Run: `ls -la .vectl/worktrees/` -> existing worktrees listed; `.vectl/worktrees/freeze-for-integration`
+      missing
+
+      - Run: `git rev-parse HEAD` (fallback from main worktree attempt) -> `fb52410ce210cf92a423d2b3e889d31023459fdb`
+
+      - Run: `git status` (fallback from main worktree attempt) -> dirty tree observed
+      (`src/vectl/core.py`, `src/vectl/lifecycle.py`, `tests/test_core.py`)
+
+      - Run: `python3 --version` -> `Python 3.14.3`
+
+      - Run: `uname -a` -> `Darwin ...`
+
+
+      Spec link:
+
+      - freeze-for-integration
+
+
+      Files changed:
+
+      - none
+
+
+      Gaps/Notes:
+
+      - Freeze step executed in degraded mode: dedicated worktree `.vectl/worktrees/freeze-for-integration`
+      was not present, so strict isolation freeze capture could not be completed.
+
+      - Classified as freeze failure type `missing_dependency` (worktree missing).
+
+      - No code/doc modifications were made for this step.
+
+      - Proceeding to integration verification per freeze auto-cleanup/continue policy.
+
+
+      discovered_issues:
+
+      - missing worktree `.vectl/worktrees/freeze-for-integration`'
   - id: integration-verify
     name: Integration Verify
     status: pending

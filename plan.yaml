@@ -19667,6 +19667,120 @@ phases:
     depends_on:
     - claim-consistency-hardening-mutate.gate
     agent: python-senior
+  - id: claim-consistency-hardening-mutate.retest-gate-blockers-integrated-auto-reconcile
+    name: retest-gate-blockers-integrated-auto-reconcile
+    status: pending
+    description: 'As an INDEPENDENT TESTER (`integration-verifier`), re-validate ALL
+      issues raised by `claim-consistency-hardening-mutate.gate` after the batched
+      remediation step.
+
+
+      YOUR GOAL IS TO FIND REMAINING PROBLEMS, not to confirm it works.
+
+
+      Scope:
+
+      - B1 blocker: integrated CLI/MCP/IO mutate verification must run on a single
+      branch/tree containing both implementation and regression matrix updates
+
+      - S1 should-fix: MCP reconcile hook must be Ruff-clean with no unused-local
+      regression
+
+      - S2 should-fix: CLI mutate tests must directly assert immediate auto-reconcile
+      behavior and branch-scope preservation in the implementation path
+
+
+      Test for:
+
+      - Happy path: remove/move/edit/edit-phase auto-reconcile in-scope claims immediately
+
+      - Edge cases: other-branch claims remain intact while same-branch stale claims
+      are cleaned
+
+      - Error scenarios: no evidence assembled from mismatched commits; no lingering
+      manual-repair expectation in assertions
+
+      - Static hygiene: Ruff remains clean for the MCP reconcile hook
+
+
+      Document ALL findings. A retest that discovers issues is a SUCCESS.'
+    verification: '- Run the integrated mutate verification on the single repaired
+      tree for CLI, MCP, and IO; evidence must show the implementation commit and
+      regression matrix are present together
+
+      - Confirm targeted tests around `tests/test_cli.py:2501`, `tests/test_cli.py:2523`,
+      `tests/test_cli.py:2541`, `tests/test_mcp.py:1184`, `tests/test_mcp.py:1200`,
+      and `tests/test_mcp.py:1214` now validate immediate auto-reconciled state without
+      `repair`-flow dependency
+
+      - Confirm branch-scope preservation: regression evidence shows other-branch
+      claims survive while in-scope claims are cleaned immediately
+
+      - Run Ruff or equivalent targeted static check covering `src/vectl/mcp_server.py`
+      and confirm the unused-local issue is gone
+
+      - Fail if evidence comes from split commits/trees or if any blocker/should-fix
+      item remains unresolved'
+    evidence_template: '## Retest Evidence
+
+
+      **Integrated tree proof**:
+
+      - `git rev-parse HEAD`: <commit>
+
+      - Evidence that implementation + test matrix updates are both present on this
+      tree: <files/tests inspected>
+
+
+      **Exact commands executed**:
+
+      ```
+
+      <paste CLI/MCP/IO verification commands>
+
+      <paste Ruff command>
+
+      ```
+
+
+      **Actual output**:
+
+      ```
+
+      <paste key stdout/stderr or test runner output>
+
+      ```
+
+
+      **Issue checklist**:
+
+      - [ ] B1 fixed: integrated single-tree evidence and auto-reconcile assertions
+      verified
+
+      - [ ] S1 fixed: MCP reconcile hook Ruff-clean
+
+      - [ ] S2 fixed: CLI tests directly assert auto-reconcile behavior in implementation
+      path
+
+      - [ ] other-branch claims preserved
+
+
+      **Findings**:
+
+      | Severity | Description | Location | Reproduction |
+
+      | --- | --- | --- | --- |
+
+      | blocker/should_fix/suggestion | <issue or none> | <file:line or command> |
+      <steps> |
+
+
+      **Verdict**:
+
+      - PASS | ISSUES_FOUND | INCOMPLETE'
+    depends_on:
+    - claim-consistency-hardening-mutate.fix-gate-blockers-integrated-auto-reconcile
+    agent: integration-verifier
 - id: claim-consistency-diagnostics
   name: 'Claim Consistency Hardening: Diagnostics'
   status: locked

@@ -19463,6 +19463,25 @@ phases:
     depends_on:
     - integration-verify
     agent: gate-reviewer
+  - id: claim-consistency-hardening-mutate.freeze-for-integration
+    name: Freeze for Integration
+    status: pending
+    description: 'Freeze snapshot before mutate integration verification.
+
+
+      - Capture `git rev-parse HEAD`
+
+      - Capture clean `git status`
+
+      - Declare environment
+
+      - Confirm no code changes until integration verify completes
+
+
+      No file changes.'
+    depends_on:
+    - add-orphan-claim-regression-matrix
+    agent: python-executor
 - id: claim-consistency-diagnostics
   name: 'Claim Consistency Hardening: Diagnostics'
   status: locked

@@ -19576,7 +19576,7 @@ phases:
       - claim-consistency-hardening-mutate.retest-gate-blockers-integrated-auto-reconcile"
   - id: claim-consistency-hardening-mutate.fix-gate-blockers-integrated-auto-reconcile
     name: fix-gate-blockers-integrated-auto-reconcile
-    status: claimed
+    status: done
     description: 'Fix ALL issues reported by `claim-consistency-hardening-mutate.gate`,
       not just the first blocker.
 
@@ -19702,6 +19702,60 @@ phases:
     agent: python-senior
     claimed_by: python-senior
     claimed_at: '2026-03-11T16:10:41.454521+00:00'
+    done_at: '2026-03-11T16:19:05.098130+00:00'
+    evidence: 'Artifact:
+
+      - Commit hash(es): ff177a3
+
+
+      Verification:
+
+      - Run: `rg -n "\[action\[\"key\"\] for action in (payload|repair)\[\"actions\"\]\]"
+      tests/test_{cli,mcp}.py` -> no matches
+
+      - Run: `rg -n "reconcile_kind: Literal\[\"step\", \"branch\"\]" src/vectl/mcp_server.py`
+      -> matches at `src/vectl/mcp_server.py:196` and `src/vectl/mcp_server.py:921`
+
+      - Run: `uv run ruff check src/vectl/cli.py src/vectl/mcp_server.py tests/test_cli.py
+      tests/test_mcp.py` -> All checks passed
+
+      - Run: `uv run pytest -q tests/test_cli.py -k TestMutateClaimReconciliationCli
+      && uv run pytest -q tests/test_mcp.py -k TestVectlMutateClaimReconciliationMatrix
+      && uv run pytest -q tests/test_io.py -k TestMutateRepairClaimsWriteInterruption`
+      -> CLI 5 passed; MCP 5 passed; IO 1 passed
+
+
+      Spec link:
+
+      - claim-consistency-hardening-mutate.fix-gate-blockers-integrated-auto-reconcile
+
+
+      Files changed:
+
+      - src/vectl/cli.py
+
+      - src/vectl/mcp_server.py
+
+      - tests/test_cli.py
+
+      - tests/test_mcp.py
+
+
+      Gaps/Notes:
+
+      - B1 resolved: mutate assertions and code paths aligned to immediate auto-reconciliation
+      semantics; other-branch claims preserved while in-scope claims reconciled.
+
+      - S1 resolved: MCP reconcile locals now used via helper hook, removing unused-local
+      lint debt.
+
+      - S2 resolved: CLI mutate tests directly assert implementation-path auto-reconcile
+      behavior.
+
+
+      discovered_issues:
+
+      - none'
   - id: claim-consistency-hardening-mutate.retest-gate-blockers-integrated-auto-reconcile
     name: retest-gate-blockers-integrated-auto-reconcile
     status: pending

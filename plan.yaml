@@ -19722,3 +19722,22 @@ phases:
     depends_on:
     - integration-verify
     agent: gate-reviewer
+  - id: claim-consistency-worktree-matrix.freeze-for-integration
+    name: Freeze for Integration
+    status: pending
+    description: 'Freeze snapshot before worktree matrix integration verification.
+
+
+      - Capture `git rev-parse HEAD`
+
+      - Capture clean `git status`
+
+      - Declare environment including worktree configuration
+
+      - Explicit worktree/env declaration
+
+
+      No file changes.'
+    depends_on:
+    - add-cross-worktree-path-parity-regressions
+    agent: python-executor

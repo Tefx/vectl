@@ -20397,7 +20397,7 @@ phases:
       - none'
   - id: retest-diagnostics-mismatch-visibility
     name: 'Retest: Diagnostics Mismatch Visibility'
-    status: pending
+    status: claimed
     description: 'As an INDEPENDENT TESTER (`integration-verifier`), validate the
       diagnostics visibility changes from a fresh perspective.
 
@@ -20534,6 +20534,8 @@ phases:
     depends_on:
     - fix-diagnostics-mismatch-visibility
     agent: integration-verifier
+    claimed_by: integration-verifier
+    claimed_at: '2026-03-11T17:10:41.412085+00:00'
 - id: claim-consistency-worktree-matrix
   name: 'Claim Consistency Hardening: Worktree Matrix'
   status: locked

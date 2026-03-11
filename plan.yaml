@@ -18310,3 +18310,104 @@ phases:
   status: locked
   depends_on:
   - claim-consistency-hardening-mutate
+  steps:
+  - id: surface-mismatch-state-in-status-show
+    name: Surface Mismatch in Status/Show
+    status: pending
+    description: "Surface claim mismatch state in status and show commands.\n\n- Add\
+      \ mismatch detection output to `vectl status` and `vectl show` commands.\n-\
+      \ When plan.yaml and claims.json disagree for a step:\n  - Show pending vs claimed\
+      \ mismatch indicator\n  - Include auto-repair notice if repair was attempted\n\
+      \  - Show scoped diagnostic detail without claiming success silently\n- Wire\
+      \ through CLI and MCP output paths.\n\nFiles:\n- `src/vectl/cli.py`\n- `src/vectl/mcp_server.py`\n\
+      \nVerification:\n- Output tests show mismatch visibility\n- Auto-repair notice\
+      \ displayed when applicable\n- Targeted commands:\n  - `uv run pytest tests/test_cli.py\
+      \ -k status -v`\n  - `uv run pytest tests/test_mcp.py -k show -v`"
+    agent: python-executor
+  - id: align-repair-and-conflict-messaging
+    name: Align Repair/Conflict Messaging
+    status: pending
+    description: "Align repair and conflict messaging across CLI and MCP.\n\n- Define\
+      \ consistent error/notice types:\n  - `repair_attempted`: mismatch detected,\
+      \ scoped repair executed\n  - `repair_succeeded`: mismatch fixed, retrying claim\n\
+      \  - `repair_skipped`: no mismatch found\n  - `retry_exhausted`: repair succeeded\
+      \ but claim still conflicts (true conflict)\n- Ensure structured output for\
+      \ MCP (JSON payload) and human-readable for CLI.\n\nFiles:\n- `src/vectl/cli.py`\n\
+      - `src/vectl/mcp_server.py`\n- `src/vectl/claims.py`\n\nVerification:\n- Structured\
+      \ error tests for all message types\n- Targeted command: `uv run pytest tests/test_cli.py\
+      \ tests/test_mcp.py -k repair -v`"
+    depends_on:
+    - surface-mismatch-state-in-status-show
+    agent: python-executor
+  - id: verify-diagnostics
+    name: Verify Diagnostics
+    status: pending
+    description: 'Verify diagnostics are visible and understandable.
+
+
+      - Execute `vectl status` and `vectl show` with mismatched state.
+
+      - Verify mismatch indicator is visible.
+
+      - Verify auto-repair notice is understandable.
+
+      - Paste actual output.
+
+
+      Verification:
+
+      - Real command output pasted showing mismatch visibility
+
+      - Targeted command: `vectl status; vectl show <step> with mismatched state`'
+    verification: '- Real output pasted
+
+      - Mismatch visible and understandable'
+    depends_on:
+    - align-repair-and-conflict-messaging
+    agent: integration-verifier
+  - id: update-operator-docs
+    name: Update Operator Docs
+    status: pending
+    description: "Update operator documentation for claim consistency.\n\n- Update\
+      \ `README.md` and `docs/DESIGN.md`:\n  - Document manual repair as escape hatch,\
+      \ not primary path\n  - Document automatic reconciliation as primary\n  - Document\
+      \ worktree/path caveats\n- Align with `src/vectl/guide.py` recovery topic.\n\
+      \nFiles:\n- `README.md`\n- `docs/DESIGN.md`\n- `src/vectl/guide.py`\n\nVerification:\n\
+      - Docs state automatic reconciliation is primary\n- Worktree/path caveats documented\n\
+      - Targeted command: `uvx --from . vectl guide --on recovery`"
+    agent: doc-reviewer
+  - id: freeze-for-gate
+    name: Freeze for Gate
+    status: pending
+    description: 'Freeze snapshot before diagnostics gate.
+
+
+      - Capture `git rev-parse HEAD`
+
+      - Capture clean `git status`
+
+      - Declare environment
+
+
+      No file changes.'
+    depends_on:
+    - verify-diagnostics
+    - update-operator-docs
+    agent: python-executor
+  - id: gate
+    name: Gate Check
+    status: pending
+    description: 'Review diagnostics gate.
+
+
+      - Verify operator clarity in docs and CLI output
+
+      - Confirm no hidden split-brain state
+
+      - Review depth: STANDARD
+
+
+      No file changes.'
+    depends_on:
+    - freeze-for-gate
+    agent: gate-reviewer

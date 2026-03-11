@@ -20165,7 +20165,7 @@ phases:
       - Freeze snapshot captured successfully; no file modifications.'
   - id: claim-consistency-diagnostics.gate
     name: Gate Check
-    status: claimed
+    status: done
     description: 'Review diagnostics gate.
 
 
@@ -20182,6 +20182,24 @@ phases:
     agent: gate-reviewer
     claimed_by: gate-reviewer
     claimed_at: '2026-03-11T17:15:59.078263+00:00'
+    done_at: '2026-03-11T17:26:57.572394+00:00'
+    evidence: "gate_verdict: \"REJECT\"\nscope: \"claim-consistency-diagnostics.gate\"\
+      \nfindings:\n  blockers:\n    - \"`uv run pytest` collection errors from missing\
+      \ `claim_step` import compatibility in `vectl.core` surfaces.\"\n    - \"`_claims_api()`\
+      \ wiring in `src/vectl/lifecycle.py` referencing `vectl.core.acquire_claim`\
+      \ family causes CLI/test failures in this integrated tree.\"\n    - \"Diagnostics\
+      \ branch-context risk: mismatch comparisons may use caller worktree branch context\
+      \ instead of plan-root context.\"\n    - \"`ruff check .` reports multiple failures\
+      \ (unused/import-order) in current integrated tree.\"\n  should_fix:\n    -\
+      \ \"status/show mismatch path should handle malformed claims store gracefully\"\
+      \n    - \"operator-facing mismatch messaging should clarify branch/context scope\"\
+      \n  suggestions:\n    - \"Improve mismatch text to explicitly identify plan.yaml\
+      \ vs claims store and context branch used\"\n  tech_debt: []\nverification_summary:\n\
+      \  - \"gate reviewer ran broad pytest, CLI pytest, ruff, and targeted code-path\
+      \ review\"\n  - \"gate returned REJECT with blockers + should-fix list\"\nrecommendation:\
+      \ \"Do not pass diagnostics gate until batched remediation and independent retest\
+      \ complete.\"\n\nfix_steps_created:\n- claim-consistency-diagnostics.fix-gate-blockers-batched\n\
+      - claim-consistency-diagnostics.retest-gate-blockers-batched"
   - id: fix-diagnostics-mismatch-visibility
     name: 'Batched Fix: Diagnostics Mismatch Visibility'
     status: done

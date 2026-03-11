@@ -18092,3 +18092,8 @@ phases:
       - No code changes in retest branch (verification-only).
 
       - Evidence now explicitly separates scoped pass from global unrelated debt.'
+- id: claim-consistency-hardening-core
+  name: 'Claim Consistency Hardening: Core'
+  status: pending
+  depends_on:
+  - claim-consistency-recovery

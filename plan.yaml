@@ -18168,7 +18168,7 @@ phases:
       - none'
   - id: wire-auto-repair-into-claim-save-paths
     name: Wire Auto-Repair into Claim/Save Paths
-    status: pending
+    status: claimed
     description: "Integrate scoped auto-repair into claim and save paths.\n\n- Modify\
       \ `claim_step()` in `lifecycle.py` to:\n  1. Detect existing claim in claims.json\n\
       \  2. If claim exists but plan shows pending, run `reconcile_step_scope()`\n\
@@ -18185,6 +18185,8 @@ phases:
     depends_on:
     - define-scoped-reconcile-contract
     agent: python-senior
+    claimed_by: python-senior
+    claimed_at: '2026-03-11T13:52:31.579539+00:00'
   - id: add-race-regressions
     name: Add Race Condition Regressions
     status: pending

@@ -21540,3 +21540,175 @@ phases:
 
       '
     agent: integration-verifier
+  - id: release-0-6-1-stabilization.fix-batch-claim-wiring-collection-and-lint
+    name: fix-batch-claim-wiring-collection-and-lint
+    status: pending
+    description: 'Stabilize the 0.6.1 candidate by fixing the full observed failure
+      batch, not one-off symptoms.
+
+
+      Objective:
+
+      - Restore a coherent claim lifecycle import/wiring contract across runtime code
+      and tests.
+
+      - Clear the pytest collection ImportError caused by `claim_step` import expectations.
+
+      - Clear all current Ruff findings.
+
+      - Preserve the branch-aware mismatch visibility behavior proven by `get_current_branch()`.
+
+      - Keep 0.6.1 packaging/version behavior sane for a local upgrade path.
+
+
+      Known risks from project history:
+
+      - Persistence and coordination surfaces (`lifecycle.py`, `claims.py`, `io.py`,
+      CLI claim/status paths) are prone to stale wiring and path/branch assumption
+      regressions.
+
+      - Claim-related fixes often succeed in one entry point while leaving sibling
+      imports or test helpers stale elsewhere.
+
+
+      Failure-mode checklist (must be handled explicitly):
+
+      - relative vs absolute claims-path behavior when lifecycle helpers resolve branch-aware
+      claim state
+
+      - missing-file fallback behavior for claims storage and status rendering paths
+
+      - explicit clear / null overwrite semantics for claim metadata handoff if helper
+      signatures change
+
+      - stale-definition vs new-state precedence between public import surfaces (`vectl.core`,
+      `vectl.lifecycle`, `vectl.claims`) and the live claims.json behavior
+
+      - partial-write / CAS-conflict behavior is unchanged and not regressed by any
+      import or helper refactor
+
+
+      State semantics:
+
+      - Last-writer-wins remains whatever the current claims store enforces today;
+      do not invent new arbitration rules in this stabilization pass.
+
+      - Exact behavior that must be preserved: ghost-claim visibility counts are computed
+      for the current branch, not by assuming `main`; claim acquisition still flows
+      through the branch-aware claims store.
+
+      - Backward-compatible legacy behavior for this release candidate means either
+      a stable compatibility import path is restored intentionally or all internal/test
+      consumers are migrated consistently with no split public contract left behind.
+
+
+      Required sibling search before editing:
+
+      - `rg "claim_step|complete_step|defer_step|reject_step|skip_step" src tests`
+
+      - `rg "_claims_api|acquire_claim|get_current_branch|ghost_claims_count" src
+      tests`
+
+      - `uv run ruff check .`
+
+      - Review every Ruff-hit file in the baseline, not just `src/vectl/cli.py`.
+
+
+      Concrete regression scope to add or update:
+
+      - `tests/test_core.py`
+
+      - `tests/test_logic.py`
+
+      - `tests/test_properties.py`
+
+      - `tests/test_cli.py::TestClaimMismatchVisibility::test_status_shows_ghost_claims_count`
+
+      - `tests/test_lifecycle_imports.py`
+
+      - Any focused regression needed to prove the supported `claim_step` import surface
+      and lifecycle wiring path
+
+
+      Out of scope guardrail:
+
+      - Do not redesign claim ownership semantics, merge policy, or release process.
+
+      - Do not broaden this step into unrelated refactors beyond the failing import/lint/installability
+      surfaces.
+
+      - If a larger compatibility wrapper strategy is needed, keep it minimal and
+      release-focused.
+
+
+      Deliverables:
+
+      - Batched code/test fixes covering collection, Ruff, and claim wiring together.
+
+      - Updated focused regressions proving branch-context behavior and supported
+      claim API wiring.
+
+      - No remaining known sibling files with stale import/order/unused issues from
+      this batch.'
+    verification: '- Main path: targeted regression commands for claim wiring and
+      mismatch visibility pass
+
+      - Main path: `uv run ruff check .` is clean for the full repo
+
+      - Failure path: at least one focused regression covers branch-aware mismatch
+      visibility or claim import/wiring fallback behavior
+
+      - Proof: sibling-search evidence shows no remaining stale claim API import pattern
+      or unaddressed Ruff-hit sibling from the baseline scope
+
+      - Proof: CAS/claims path behavior is unchanged outside the release-stabilization
+      scope'
+    evidence_template: '## Fix Batch Evidence
+
+
+      **Sibling search run**
+
+      ```
+
+      rg "claim_step|complete_step|defer_step|reject_step|skip_step" src tests
+
+      rg "_claims_api|acquire_claim|get_current_branch|ghost_claims_count" src tests
+
+      uv run ruff check .
+
+      ```
+
+
+      **Files changed**
+
+      - Runtime:
+
+      - Tests:
+
+
+      **Regression coverage added/updated**
+
+      - claim import surface:
+
+      - lifecycle wiring:
+
+      - branch-context mismatch visibility:
+
+
+      **Risk checks**
+
+      - claims-path behavior:
+
+      - missing-file fallback:
+
+      - CAS/conflict behavior impact:
+
+
+      **Remaining exclusions**
+
+      - None / explain
+
+      '
+    depends_on:
+    - release-0-6-1-stabilization.baseline-reproduce-main-failures
+    agent: python-senior

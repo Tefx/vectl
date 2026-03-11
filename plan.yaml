@@ -21900,3 +21900,113 @@ phases:
     depends_on:
     - release-0-6-1-stabilization.independent-retest-release-candidate
     agent: general
+  - id: release-0-6-1-stabilization.gate
+    name: gate
+    status: pending
+    description: 'As an independent gate reviewer, decide whether Main is trustworthy
+      enough for a 0.6.0 user to upgrade to the 0.6.1 candidate.
+
+
+      review_depth: THOROUGH
+
+      review_depth_rationale:
+
+      - Phase touches claim/coordination wiring across runtime and tests
+
+      - The failure batch spans collection, lint, runtime branch context, and packaging
+      sanity
+
+      - Confidence recovery for the upgrade path requires stronger-than-usual evidence
+      quality
+
+
+      cross_cutting_focus:
+
+      - Public claim API/import contract is internally consistent across `vectl.core`,
+      `vectl.lifecycle`, and `vectl.claims`
+
+      - Branch-aware ghost-claim mismatch visibility does not regress to a hard-coded
+      `main` assumption
+
+      - Ruff cleanliness and pytest collection health were fixed comprehensively,
+      not one file at a time
+
+      - Local install smoke really proves a 0.6.1 artifact is runnable
+
+
+      Gate criteria:
+
+      1. Baseline evidence is concrete and complete
+
+      2. Fix step includes sibling-search proof and no obvious stale import/lint siblings
+      remain
+
+      3. Independent retest shows `uv run pytest -q`, `uv run ruff check .`, and `uv
+      run mypy src` all passing
+
+      4. Release smoke shows a locally installed wheel prints `vectl 0.6.1`
+
+      5. No unresolved blocker remains for claim wiring, collection health, or branch-context
+      mismatch visibility
+
+
+      Finding issues is valuable: block the release if evidence is weak or any blocker
+      remains.'
+    verification: '- Review all step evidence in this phase
+
+      - Confirm the freeze snapshot matches the retested candidate
+
+      - Open the gate only if all gate criteria above are satisfied
+
+      - If blocked, enumerate every blocker with file/test/command references and
+      grep hints for sibling search'
+    evidence_template: '## Release Stabilization Gate Review
+
+
+      **Phase under review**: `release-0-6-1-stabilization`
+
+
+      **Step evidence review**
+
+      - baseline:
+
+      - fix batch:
+
+      - independent retest:
+
+      - freeze:
+
+
+      **Gate checks**
+
+      - pytest full healthy: yes/no
+
+      - ruff clean: yes/no
+
+      - mypy clean: yes/no
+
+      - claim API/import contract consistent: yes/no
+
+      - branch-context regression covered: yes/no
+
+      - local install/version smoke passed: yes/no
+
+
+      **Issues identified**
+
+      - blocker:
+
+      - should_fix:
+
+
+      **Decision**
+
+      - OPEN / BLOCKED
+
+      '
+    depends_on:
+    - release-0-6-1-stabilization.baseline-reproduce-main-failures
+    - release-0-6-1-stabilization.fix-batch-claim-wiring-collection-and-lint
+    - release-0-6-1-stabilization.independent-retest-release-candidate
+    - release-0-6-1-stabilization.freeze-for-release-gate
+    agent: gate-reviewer

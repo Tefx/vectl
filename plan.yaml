@@ -22411,13 +22411,13 @@ phases:
       - PASS'
 - id: version-bump-0-6-2
   name: Version Bump 0.6.2
-  status: pending
+  status: in_progress
   depends_on:
   - release-0-6-1-stabilization
   steps:
   - id: version-bump-0-6-2.bump-canonical-version-and-install-local
     name: Bump canonical version to 0.6.2 and verify local install
-    status: pending
+    status: claimed
     description: 'Update the canonical project version to 0.6.2, keep the runtime
       version surface aligned, run targeted version checks, then install the tool
       locally from this repo in a fresh virtual environment and verify `vectl --version`
@@ -22465,3 +22465,5 @@ phases:
 
       - Verify the final command prints exactly `vectl 0.6.2`'
     agent: python-executor
+    claimed_by: python-executor
+    claimed_at: '2026-03-11T19:45:05.873260+00:00'

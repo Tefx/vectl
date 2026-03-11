@@ -19305,7 +19305,7 @@ phases:
       \ and verified green; proceed to phase completion.\""
 - id: claim-consistency-hardening-mutate
   name: 'Claim Consistency Hardening: Mutate'
-  status: in_progress
+  status: done
   depends_on:
   - claim-consistency-hardening-core
   steps:
@@ -19758,7 +19758,7 @@ phases:
       - none'
   - id: claim-consistency-hardening-mutate.retest-gate-blockers-integrated-auto-reconcile
     name: retest-gate-blockers-integrated-auto-reconcile
-    status: claimed
+    status: done
     description: 'As an INDEPENDENT TESTER (`integration-verifier`), re-validate ALL
       issues raised by `claim-consistency-hardening-mutate.gate` after the batched
       remediation step.
@@ -19872,9 +19872,40 @@ phases:
     agent: integration-verifier
     claimed_by: integration-verifier
     claimed_at: '2026-03-11T16:19:24.797781+00:00'
+    done_at: '2026-03-11T16:23:00.360208+00:00'
+    evidence: "## Retest Evidence\n**Integrated tree proof**:\n- `git rev-parse HEAD`:\
+      \ `ff177a38dd141d934390db656ff5580985181d29`\n- Implementation + matrix present\
+      \ on same tree:\n  - `src/vectl/cli.py:227` `_auto_reconcile_mutation_claims`\
+      \ with mutate invocations at `src/vectl/cli.py:2044`, `src/vectl/cli.py:2120`,\
+      \ `src/vectl/cli.py:2149`\n  - `src/vectl/mcp_server.py:193` `_auto_reconcile_mutation_claims`\
+      \ with mutate invocation at `src/vectl/mcp_server.py:1077`\n  - matrix tests\
+      \ at `tests/test_cli.py:2463` and `tests/test_mcp.py:1145`\n\n**Exact commands\
+      \ executed**:\n```bash\ngit rev-parse HEAD\nrg -n \"_auto_reconcile_mutation_claims|reconcile_kind=\\\
+      \"step\\\"|test_mutate_move_step_auto_reconciles_via_implementation_path|TestVectlMutateClaimReconciliationMatrix|TestMutateClaimReconciliationCli\"\
+      \ src/vectl/cli.py src/vectl/mcp_server.py tests/test_cli.py tests/test_mcp.py\n\
+      rg -n \"manual repair|manual-repair|repair-claims|vectl_repair_claims|run repair\"\
+      \ tests/test_cli.py tests/test_mcp.py tests/test_io.py src/vectl/cli.py src/vectl/mcp_server.py\n\
+      uv run pytest -v tests/test_cli.py::TestMutateClaimReconciliationCli::test_mutate_move_step_auto_reconciles_via_implementation_path\
+      \ tests/test_cli.py::TestMutateClaimReconciliationCli::test_mutate_edit_step_dep_change_auto_reconciles_target\
+      \ tests/test_cli.py::TestMutateClaimReconciliationCli::test_mutate_remove_step_auto_reconciles_target_preserves_unrelated\
+      \ tests/test_mcp.py::TestVectlMutateClaimReconciliationMatrix::test_mutate_move_step_auto_reconciles_via_implementation_path\
+      \ tests/test_mcp.py::TestVectlMutateClaimReconciliationMatrix::test_mutate_edit_step_dep_change_auto_reconciles_target\
+      \ tests/test_mcp.py::TestVectlMutateClaimReconciliationMatrix::test_mutate_remove_step_auto_reconciles_target_preserves_unrelated\
+      \ tests/test_io.py::TestMutateRepairClaimsWriteInterruption::test_mutate_repair_interrupted_write_preserves_existing_claims\n\
+      uv run pytest -v tests/test_claims.py::test_repair_claims_step_scope_preserves_unrelated_entries\
+      \ tests/test_mcp.py::TestRepairClaimsMcp::test_repair_claims_step_scope_preserves_unrelated_entries\n\
+      ruff check src/vectl/mcp_server.py tests/test_mcp.py tests/test_cli.py tests/test_io.py\n\
+      ```\n\n**Actual output**:\n- targeted integrated set: `7 passed in 10.09s`\n\
+      - branch-scope preservation set: `2 passed in 2.67s`\n- ruff: `All checks passed!`\n\
+      - manual-repair grep did not show old dependency assertions in targeted mutate\
+      \ matrix lines (`tests/test_cli.py:2501/2523/2541`, `tests/test_mcp.py:1184/1200/1214`)\n\
+      \n**Issue checklist**:\n- [x] B1 fixed\n- [x] S1 fixed\n- [x] S2 fixed\n- [x]\
+      \ other-branch claims preserved\n\n**Findings**:\n| Severity | Description |\
+      \ Location | Reproduction |\n| --- | --- | --- | --- |\n| none | none | n/a\
+      \ | n/a |\n\n**Verdict**:\n- PASS"
 - id: claim-consistency-diagnostics
   name: 'Claim Consistency Hardening: Diagnostics'
-  status: locked
+  status: pending
   depends_on:
   - claim-consistency-hardening-mutate
   steps:

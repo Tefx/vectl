@@ -21142,7 +21142,7 @@ phases:
       - No orchestrator state files modified.'
   - id: claim-consistency-worktree-matrix.freeze-for-integration
     name: Freeze for Integration
-    status: pending
+    status: claimed
     description: 'Freeze snapshot before worktree matrix integration verification.
 
 
@@ -21159,6 +21159,8 @@ phases:
     depends_on:
     - add-cross-worktree-path-parity-regressions
     agent: python-executor
+    claimed_by: python-executor
+    claimed_at: '2026-03-11T18:06:31.459500+00:00'
   - id: claim-consistency-worktree-matrix.integration-verify
     name: Integration Verify
     status: pending

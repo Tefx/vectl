@@ -18100,7 +18100,7 @@ phases:
   steps:
   - id: define-scoped-reconcile-contract
     name: Define Scoped Reconcile Contract
-    status: claimed
+    status: done
     description: "Define the contract for claim-time scoped mismatch detection and\
       \ targeted repair.\n\n- Add `ClaimConsistencyGuard` protocol or helper in `claims.py`\
       \ with:\n  - `reconcile_step_scope(plan, plan_path, claims_path, step_id)` ->\
@@ -18117,6 +18117,55 @@ phases:
     agent: python-senior
     claimed_by: python-senior
     claimed_at: '2026-03-11T13:48:16.348748+00:00'
+    done_at: '2026-03-11T13:52:20.716797+00:00'
+    evidence: 'Artifact:
+
+      - Commit hash(es): 8890b89
+
+
+      Verification:
+
+      - Run: `uv run pytest tests/test_claims.py -k reconcile -v` -> 4 passed, 11
+      deselected (`test_reconcile_detect_mismatch_missing_claim`, `test_reconcile_detect_mismatch_stale_claim`,
+      `test_reconcile_step_scope_preserves_out_of_scope_entry_bytes`, `test_reconcile_branch_scope_preserves_other_branch_claim_bytes`)
+
+      - Run: `uv run pytest tests/test_claims.py -v` -> 15 passed, 0 failed
+
+
+      Spec link:
+
+      - define-scoped-reconcile-contract
+
+
+      Files changed:
+
+      - `src/vectl/claims.py`
+
+      - `src/vectl/models.py`
+
+      - `tests/test_claims.py`
+
+
+      Gaps/Notes:
+
+      - Added `ClaimConsistencyGuard` protocol contract and concrete `JsonClaimConsistencyGuard`
+      with `reconcile_step_scope`, `reconcile_branch_scope`, and `detect_mismatch`.
+
+      - Added `Mismatch`, `ReconcileAction`, and `ReconcileResult` models in `src/vectl/models.py`.
+
+      - Enforced plan precedence in scoped reconcile logic (`plan.yaml` authoritative
+      for claim-visible state).
+
+      - Added reconcile-focused unit tests for mismatch detection and scoped preservation,
+      including byte-level entry fragment checks for out-of-scope keys.
+
+      - Did not modify `plan.yaml`, `.git/vectl/claims.json`, or vectl orchestration
+      state files.
+
+
+      discovered_issues:
+
+      - none'
   - id: wire-auto-repair-into-claim-save-paths
     name: Wire Auto-Repair into Claim/Save Paths
     status: pending

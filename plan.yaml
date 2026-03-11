@@ -21074,7 +21074,7 @@ phases:
       \nVerdict:\n- PASS; no blocker/should-fix findings."
 - id: claim-consistency-worktree-matrix
   name: 'Claim Consistency Hardening: Worktree Matrix'
-  status: in_progress
+  status: done
   depends_on:
   - claim-consistency-diagnostics
   steps:
@@ -21259,7 +21259,7 @@ phases:
       - No issues found.'
   - id: claim-consistency-worktree-matrix.gate
     name: Gate Check
-    status: claimed
+    status: done
     description: 'Review worktree matrix gate.
 
 
@@ -21281,3 +21281,12 @@ phases:
     agent: gate-reviewer
     claimed_by: gate-reviewer
     claimed_at: '2026-03-11T18:09:34.212063+00:00'
+    done_at: '2026-03-11T18:20:48.851684+00:00'
+    evidence: "gate_verdict: \"PASS\"\nscope: \"claim-consistency-worktree-matrix.gate\"\
+      \nfindings:\n  blockers: []\n  should_fix: []\n  suggestions:\n    - \"Add at\
+      \ least one non-mocked integration test exercising real git worktree + CLI/MCP\
+      \ entrypoints end-to-end for plan/claims parity.\"\n  tech_debt: []\nverification_summary:\n\
+      \  - \"`uv run --group dev pytest -q` passed (`1070 passed in 41.71s`)\"\n \
+      \ - \"`uvx ruff check .` passed\"\n  - \"`uv run --group dev mypy src` passed\"\
+      \n  - \"worktree harness confirmed main/linked claims path equality and branch-scoped\
+      \ keys\"\nrecommendation: \"Proceed; path parity and branch scoping validated.\""

@@ -18097,3 +18097,117 @@ phases:
   status: pending
   depends_on:
   - claim-consistency-recovery
+  steps:
+  - id: define-scoped-reconcile-contract
+    name: Define Scoped Reconcile Contract
+    status: pending
+    description: "Define the contract for claim-time scoped mismatch detection and\
+      \ targeted repair.\n\n- Add `ClaimConsistencyGuard` protocol or helper in `claims.py`\
+      \ with:\n  - `reconcile_step_scope(plan, plan_path, claims_path, step_id)` ->\
+      \ ReconcileResult\n  - `reconcile_branch_scope(plan, plan_path, claims_path)`\
+      \ -> ReconcileResult\n  - `detect_mismatch(plan, claims_path, step_id, branch)`\
+      \ -> Mismatch | None\n- Define `ReconcileResult` and `Mismatch` models with\
+      \ clear fields.\n- Ensure plan precedence authority: plan.yaml is source of\
+      \ truth for claim-visible state.\n- Prove preservation of unrelated branch claims\
+      \ and out-of-scope keys byte-for-byte.\n\nFiles:\n- `src/vectl/claims.py`\n\
+      - `src/vectl/models.py` (new models)\n\nVerification:\n- Unit tests for mismatch\
+      \ detection logic\n- Unit tests for scoped reconciliation preserving out-of-scope\
+      \ entries\n- Targeted command: `uv run pytest tests/test_claims.py -k reconcile\
+      \ -v`"
+    agent: python-senior
+  - id: wire-auto-repair-into-claim-save-paths
+    name: Wire Auto-Repair into Claim/Save Paths
+    status: pending
+    description: "Integrate scoped auto-repair into claim and save paths.\n\n- Modify\
+      \ `claim_step()` in `lifecycle.py` to:\n  1. Detect existing claim in claims.json\n\
+      \  2. If claim exists but plan shows pending, run `reconcile_step_scope()`\n\
+      \  3. Retry claim once after successful repair\n  4. If repair fails or claim\
+      \ still conflicts, return structured error (true conflict vs repair failure)\n\
+      - Ensure bounded retry (max 1 retry after repair).\n- Wire through CLI (`cli.py`)\
+      \ and MCP (`mcp_server.py`) to preserve existing interfaces.\n\nFiles:\n- `src/vectl/lifecycle.py`\n\
+      - `src/vectl/cli.py`\n- `src/vectl/mcp_server.py`\n- `src/vectl/claims.py`\n\
+      \nVerification:\n- Integration tests: claim-time mismatch detection -> targeted\
+      \ repair -> bounded retry -> success/final error\n- Test ghost-claim false positive\
+      \ scenario from `tests/test_io.py:554`\n- Targeted commands:\n  - `uv run pytest\
+      \ tests/test_io.py -k AnimaIncident -v`\n  - `uv run pytest tests/test_cli.py\
+      \ tests/test_mcp.py -k claim -v`"
+    depends_on:
+    - define-scoped-reconcile-contract
+    agent: python-senior
+  - id: add-race-regressions
+    name: Add Race Condition Regressions
+    status: pending
+    description: "Add deterministic race condition regression tests.\n\n- Extend `tests/test_io.py`\
+      \ with race harnesses covering:\n  - Ghost-claim false positive (claims.json\
+      \ has entry, plan shows pending)\n  - Save/CAS race where plan write fails after\
+      \ claim acquired\n  - Highest-risk failure path where repair must not clobber\
+      \ unrelated claims\n- Cover lock ordering between plan CAS/save and claims lock.\n\
+      - Cover bounded retry exit conditions.\n\nFiles:\n- `tests/test_io.py`\n- `tests/test_core.py`\n\
+      - `tests/test_mcp.py`\n\nVerification:\n- All race regressions pass deterministically\n\
+      - Prove ghost-claim scenario auto-heals\n- Prove repair does not clobber unrelated\
+      \ branch claims\n- Targeted command: `uv run pytest tests/test_io.py tests/test_core.py\
+      \ tests/test_mcp.py -k race -v`"
+    depends_on:
+    - wire-auto-repair-into-claim-save-paths
+    agent: python-senior
+  - id: freeze-for-integration
+    name: Freeze for Integration
+    status: pending
+    description: 'Freeze snapshot before integration verification.
+
+
+      - Capture `git rev-parse HEAD`
+
+      - Capture clean `git status`
+
+      - Declare environment (Python version, OS)
+
+      - Confirm no code changes until integration verify completes
+
+
+      No file changes.'
+    depends_on:
+    - add-race-regressions
+    agent: python-executor
+  - id: integration-verify
+    name: Integration Verify
+    status: pending
+    description: "End-to-end integration verification of claim flow.\n\n- Execute\
+      \ full claim flow through CLI:\n  - `vectl claim <step>` succeeds\n  - `vectl\
+      \ claim <step>` on same step by different agent reports true conflict\n  - Ghost\
+      \ claim scenario: manually corrupt claims.json, then `vectl claim` auto-heals\n\
+      - Execute through MCP: `vectl_claim` tool\n- Verify path exercised: `claim_step\
+      \ -> reconcile if needed -> _save_plan -> claims persisted`\n- Paste actual\
+      \ command output, not summary.\n\nVerification:\n- Paste exact `pytest` commands\
+      \ and output\n- At least one real ghost-claim auto-heal scenario\n- Targeted\
+      \ command: `uv run pytest tests/test_cli.py tests/test_mcp.py tests/test_io.py\
+      \ -k claim -v`"
+    verification: '- Real command output pasted
+
+      - Ghost-claim auto-heal demonstrated
+
+      - Both CLI and MCP paths exercised'
+    depends_on:
+    - freeze-for-integration
+    agent: integration-verifier
+  - id: gate
+    name: Gate Check
+    status: pending
+    description: 'Review core hardening gate.
+
+
+      - Verify all evidence quality
+
+      - Confirm no blocker remains
+
+      - Confirm manual `repair claims` is no longer primary recovery path
+
+      - Cross-cutting focus: lock ordering, retry boundedness, plan authority
+
+      - Review depth: THOROUGH
+
+
+      No file changes.'
+    depends_on:
+    - integration-verify
+    agent: gate-reviewer

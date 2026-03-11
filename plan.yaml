@@ -20113,7 +20113,7 @@ phases:
       - none'
   - id: freeze-for-gate
     name: Freeze for Gate
-    status: pending
+    status: claimed
     description: 'Freeze snapshot before diagnostics gate.
 
 
@@ -20129,6 +20129,8 @@ phases:
     - retest-diagnostics-mismatch-visibility
     - update-operator-docs
     agent: python-executor
+    claimed_by: python-executor
+    claimed_at: '2026-03-11T17:14:25.179752+00:00'
   - id: claim-consistency-diagnostics.gate
     name: Gate Check
     status: pending

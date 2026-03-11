@@ -18449,7 +18449,7 @@ phases:
       - Gate dependency rewired to require retest before gate.'
   - id: gate
     name: Gate Check
-    status: claimed
+    status: done
     description: 'Review core hardening gate.
 
 
@@ -18481,6 +18481,55 @@ phases:
     agent: gate-reviewer
     claimed_by: gate-reviewer
     claimed_at: '2026-03-11T14:29:50.698454+00:00'
+    done_at: '2026-03-11T14:41:13.065832+00:00'
+    evidence: "gate_verdict: \"REJECT\"\nscope: \"claim-consistency-hardening-core.gate\"\
+      \nfindings:\n  blockers:\n    - root_cause: \"Core lifecycle API extraction\
+      \ broke import-compatibility: `vectl.core` no longer exports lifecycle functions\
+      \ expected by tests and downstream users.\"\n      locations: [\"tests/test_core.py:11\"\
+      , \"tests/test_logic.py:7\", \"tests/test_properties.py:16\", \"tests/test_lifecycle_imports.py:6\"\
+      ]\n      remediation: \"Restore backwards-compatible re-exports in `src/vectl/core.py`\
+      \ (or migrate all importers) and confirm broad pytest collection passes.\"\n\
+      \      grep_hint: \"rg -n \\\"from vectl\\\\.core import \\\\\\(\\\" tests -S\"\
+      \n      sibling_count: 4\n    - root_cause: \"Automated quality gates fail (ruff\
+      \ + pyright), indicating branch not shippable as-is.\"\n      locations: [\"\
+      src/vectl/core.py:11\", \"src/vectl/io.py:3\", \"tests/test_manual_yaml_edit.py:18\"\
+      , \"tests/test_agent_field.py:11\"]\n      remediation: \"Fix ruff + pyright\
+      \ errors and re-run broad verification.\"\n      grep_hint: \"ruff check src\
+      \ tests && pyright\"\n      sibling_count: 17\n    - root_cause: \"`get_current_branch()`\
+      \ not scoped to target plan repo; external --plan can use wrong branch key from\
+      \ cwd repo.\"\n      locations: [\"src/vectl/claims.py:260\", \"src/vectl/lifecycle.py:168\"\
+      , \"src/vectl/lifecycle.py:429\"]\n      remediation: \"Scope branch resolution\
+      \ to plan repo (git -C <plan repo>) and add regression for external --plan in\
+      \ different cwd repo.\"\n      grep_hint: \"rg -n \\\"get_current_branch\\\\\
+      (\\\" src/vectl -S\"\n      sibling_count: 3\n    - root_cause: \"Stale-claim\
+      \ cleanup order is wrong: existing claim checked before cleanup, so stale entries\
+      \ can block claims.\"\n      locations: [\"src/vectl/lifecycle.py:170\", \"\
+      src/vectl/lifecycle.py:179\"]\n      remediation: \"Run cleanup before conflict\
+      \ check or make conflict check stale-aware; add expired-claim regression.\"\n\
+      \      grep_hint: \"rg -n \\\"existing = get_claim_info\\\\(\\\" src/vectl/lifecycle.py\
+      \ -S\"\n      sibling_count: 1\n  should_fix:\n    - root_cause: \"POSIX-only\
+      \ `fcntl` portability gap\"\n      locations: [\"src/vectl/io.py:11\", \"src/vectl/claims.py:5\"\
+      ]\n      remediation: \"Document POSIX-only support or implement cross-platform\
+      \ lock/fallback.\"\n      grep_hint: \"rg -n \\\"^import fcntl\\\" src/vectl\
+      \ -S\"\n      sibling_count: 2\n    - root_cause: \"`repair_claims()` policy\
+      \ text overpromises byte-for-byte preservation\"\n      locations: [\"src/vectl/claims.py:297\"\
+      , \"src/vectl/claims.py:379\"]\n      remediation: \"Align policy text with\
+      \ behavior or implement true preservation.\"\n      grep_hint: \"rg -n \\\"\
+      byte-for-byte\\\" -S src/vectl/claims.py\"\n      sibling_count: 2\n    - root_cause:\
+      \ \"`acquire_claim()` bool/exception contract mismatch\"\n      locations: [\"\
+      src/vectl/claims.py:221\", \"src/vectl/lifecycle.py:180\"]\n      remediation:\
+      \ \"Unify contract and preserve structured conflict diagnostics.\"\n      grep_hint:\
+      \ \"rg -n \\\"acquired = acquire_claim\\\" -S src/vectl/lifecycle.py\"\n   \
+      \   sibling_count: 2\n  suggestions:\n    - \"Worktree `.vectl/worktrees/gate`\
+      \ missing; audit executed in latest retest worktree.\"\n    - \"Add true CLI\
+      \ entrypoint e2e claim/complete test for wiring confidence.\"\n  tech_debt:\n\
+      \    - \"Consolidate claim-store operations into one locked critical section.\"\
+      \nverification_summary:\n  - \"ruff check src tests -> FAIL\"\n  - \"pyright\
+      \ -> FAIL\"\n  - \"pytest broad non-playwright/network -> FAIL (collection ImportError\
+      \ around vectl.core exports)\"\n  - \"claim-focused and Anima subsets pass\"\
+      \nrecommendation: \"REJECT until blockers fixed and broad verification is green.\"\
+      \n\nBatched remediation created:\n- claim-consistency-hardening-core.gate-fix-all\n\
+      - claim-consistency-hardening-core.gate-retest"
   - id: integration-verify-fix-all
     name: Fix All Integration Verify Blockers
     status: done

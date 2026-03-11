@@ -19963,7 +19963,7 @@ phases:
       - none'
   - id: align-repair-and-conflict-messaging
     name: Align Repair/Conflict Messaging
-    status: claimed
+    status: done
     description: "Align repair and conflict messaging across CLI and MCP.\n\n- Define\
       \ consistent error/notice types:\n  - `repair_attempted`: mismatch detected,\
       \ scoped repair executed\n  - `repair_succeeded`: mismatch fixed, retrying claim\n\
@@ -19978,6 +19978,46 @@ phases:
     agent: python-executor
     claimed_by: python-executor
     claimed_at: '2026-03-11T16:32:56.789708+00:00'
+    done_at: '2026-03-11T16:46:30.406068+00:00'
+    evidence: 'Artifact:
+
+      - Commit hash(es): a3a2f52
+
+
+      Verification:
+
+      - Run: `uv run pytest tests/test_cli.py tests/test_mcp.py -k repair -v` -> 6
+      passed, 0 failed
+
+
+      Spec link:
+
+      - align-repair-and-conflict-messaging
+
+
+      Files changed:
+
+      - src/vectl/claims.py
+
+      - src/vectl/cli.py
+
+      - src/vectl/mcp_server.py
+
+      - tests/test_claims.py
+
+
+      Gaps/Notes:
+
+      - Added structured `RepairStatus` semantics to repair results and surfaced status
+      messaging in CLI/MCP flow.
+
+      - One unrelated pre-existing mutate test failure was observed outside required
+      verification scope.
+
+
+      discovered_issues:
+
+      - Pre-existing unrelated mutate test instability reported by worker'
   - id: verify-diagnostics
     name: Verify Diagnostics
     status: pending

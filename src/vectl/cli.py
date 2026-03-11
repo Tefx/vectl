@@ -6,6 +6,7 @@ Spec authority: tools/vectl/plan.yaml, phases cli_read + cli_write.
 from __future__ import annotations
 
 import enum
+import json
 import os
 import sys
 from pathlib import Path
@@ -19,6 +20,7 @@ from rich.table import Table
 from rich.text import Text
 
 from vectl import __version__
+from vectl.claims import repair_claims
 from vectl.core import (
     RecoverResult,
     add_phase,
@@ -52,9 +54,8 @@ from vectl.io import (
     load_plan_definition,
     save_plan,
 )
-from vectl.merge_driver import merge_plans
-from vectl.migration import migrate_from_split_state, resolve_state_path
 from vectl.lifecycle import (
+    ClaimConflictError,
     claim_step,
     complete_phase,
     complete_step,
@@ -64,6 +65,8 @@ from vectl.lifecycle import (
     skip_phase,
     skip_step,
 )
+from vectl.merge_driver import merge_plans
+from vectl.migration import migrate_from_split_state, resolve_state_path
 from vectl.models import (
     AffinityMode,
     CASConflictError,
@@ -198,8 +201,18 @@ def _save_plan(plan: Plan, plan_path: Path, expected_def_hash: str, msg: str) ->
 
     changed_ids = recalc_lock_status(plan)
 
+    # Source: claim-consistency-recovery.integration-verify-fix Issue 1.
+    # When --plan targets a different repo/worktree, write should still succeed
+    # quietly without misleading git pathspec/autosave warnings.
+    commit_message = msg if _should_autosave_commit(plan_path) else None
+
     try:
-        save_plan(plan, plan_path, expected_hash=expected_def_hash, commit_message=msg)
+        save_plan(
+            plan,
+            plan_path,
+            expected_hash=expected_def_hash,
+            commit_message=commit_message,
+        )
     except CASConflictError:
         _die(
             "CAS conflict: plan.yaml was modified by another process since you loaded it. "
@@ -209,6 +222,76 @@ def _save_plan(plan: Plan, plan_path: Path, expected_def_hash: str, msg: str) ->
     notice = format_lock_changes(changed_ids, plan)
     if notice:
         print(notice)
+
+
+def _git_toplevel_for(path: Path) -> Path | None:
+    """Return git toplevel for a path, or None when unavailable."""
+    import subprocess as sp
+
+    try:
+        result = sp.run(
+            ["git", "rev-parse", "--show-toplevel"],
+            cwd=str(path),
+            capture_output=True,
+            text=True,
+            timeout=5,
+        )
+    except (OSError, sp.TimeoutExpired):
+        return None
+
+    if result.returncode != 0:
+        return None
+
+    resolved = result.stdout.strip()
+    if not resolved:
+        return None
+
+    return Path(resolved).resolve()
+
+
+def _should_autosave_commit(plan_path: Path) -> bool:
+    """Allow autosave commit only when plan is in current repo/worktree."""
+    cwd_repo = _git_toplevel_for(Path.cwd())
+    plan_repo = _git_toplevel_for(plan_path.parent.resolve())
+    return cwd_repo is not None and plan_repo is not None and cwd_repo == plan_repo
+
+
+def _is_claim_consistency_scoped_gate(phase_id: str) -> bool:
+    """Return True when scoped verification note should be shown."""
+    return phase_id == "claim-consistency-recovery"
+
+
+def _check_claim_mismatch(p: Plan, plan_path: Path) -> tuple[bool, list[str], list[str]]:
+    """Check for claims.json vs plan.yaml mismatch.
+
+    Returns:
+        Tuple of (has_mismatch, ghost_claims, stale_plan_claims)
+        - ghost_claims: claims entries with no corresponding claimed step in plan
+        - stale_plan_claims: claimed steps in plan with no entry in claims.json
+    """
+    from vectl.claims import get_current_branch, load_claims, resolve_claims_path
+
+    claims_path = resolve_claims_path(plan_path)
+    claims = load_claims(claims_path)
+    branch = get_current_branch()
+
+    # Build current branch's claimed steps from plan
+    plan_claimed: set[str] = set()
+    for phase in p.phases:
+        for step in phase.steps:
+            if step.status == StepStatus.CLAIMED and step.claimed_by:
+                plan_claimed.add(f"{branch}:{step.id}")
+
+    # Find ghost claims (in claims but not claimed in plan)
+    ghost_claims = [
+        key for key in claims if key.startswith(f"{branch}:") and key not in plan_claimed
+    ]
+
+    # Find stale plan claims (claimed in plan but not in claims)
+    stale_plan_claims = [key.split(":", 1)[1] for key in plan_claimed if key not in claims]
+
+    has_mismatch = bool(ghost_claims or stale_plan_claims)
+    return has_mismatch, ghost_claims, stale_plan_claims
 
 
 # ---------------------------------------------------------------------------
@@ -228,6 +311,9 @@ app = typer.Typer(
     no_args_is_help=True,
     rich_markup_mode="rich",
 )
+
+repair_app = typer.Typer(help="Operator recovery commands.")
+app.add_typer(repair_app, name="repair")
 
 PlanOption = typer.Option(
     None,
@@ -857,11 +943,14 @@ def status(
     phase: str | None = typer.Option(None, "--phase", help="Show detail for a specific phase."),
 ) -> None:
     """Show plan status overview."""
-    p, _, _ = _load(plan)
+    p, _, plan_path = _load(plan)
 
     if phase is not None:
         _show_phase_detail(p, phase)
         return
+
+    # Check for claims.json vs plan.yaml mismatch
+    has_mismatch, ghost_claims, stale_plan_claims = _check_claim_mismatch(p, plan_path)
 
     # Overview: all phases
     table = Table(title=f"Plan: {p.project}", show_lines=True)
@@ -888,6 +977,24 @@ def status(
         )
 
     out.print(table)
+
+    # B1: Show mismatch indicator when detected
+    if has_mismatch:
+        out.print()
+        out.print("[yellow]⚠ Claim mismatch detected (branch-scoped):[/]")
+        if ghost_claims:
+            out.print(
+                "  [dim]Ghost claims (in claims.json but not claimed in plan):[/] "
+                f"{len(ghost_claims)}"
+            )
+        if stale_plan_claims:
+            out.print(
+                "  [dim]Stale plan claims (claimed in plan but missing from claims.json):[/] "
+                f"{len(stale_plan_claims)}"
+            )
+        out.print("[dim]  → Run `vectl repair claims --dry-run` to preview repair[/]")
+        out.print("[dim]  → Run `vectl repair claims` to auto-repair[/]")
+
     out.print()
     out.print("[dim]→ vectl next                      See claimable steps[/]")
     out.print("[dim]→ vectl show <phase>               Phase detail[/]")
@@ -935,12 +1042,28 @@ def _show_phase_detail(p: Plan, phase_id: str) -> None:
     out.print()
 
 
-def _show_step_detail(p: Plan, step_id: str) -> None:
+def _show_step_detail(p: Plan, step_id: str, plan_path: Path | None = None) -> None:
     found = p.find_step(step_id)
     if not found:
         _die(f"Step '{step_id}' not found.")
         return  # unreachable
     phase, step = found
+
+    # B2: Check for mismatch for this specific step
+    mismatch_info = ""
+    if plan_path is not None and step.status == StepStatus.CLAIMED:
+        has_mismatch, ghost_claims, stale_plan_claims = _check_claim_mismatch(p, plan_path)
+        if has_mismatch:
+            from vectl.claims import get_current_branch
+
+            branch = get_current_branch()
+            step_key = f"{branch}:{step_id}"
+            if step_key in ghost_claims:
+                mismatch_info = (
+                    "⚠ Claim exists in claims.json but step is not claimed in plan (ghost)"
+                )
+            elif step_key not in ghost_claims and step_id in stale_plan_claims:
+                mismatch_info = "⚠ Step is claimed in plan but missing from claims.json"
 
     out.print(f"## Step: {step.name}", markup=False)
     out.print(f"**ID:** {step.id}", markup=False)
@@ -953,6 +1076,10 @@ def _show_step_detail(p: Plan, step_id: str) -> None:
 
     locked = is_step_locked(p, phase, step)
     out.print(f"**Status:** {_step_icon(step.status, locked=locked)}")
+
+    # B2: Show mismatch explanation when detected
+    if mismatch_info:
+        out.print(f"[yellow]{mismatch_info}[/]")
 
     if step.agent:
         out.print(f"**Suggested agent:** {step.agent}", markup=False)
@@ -1017,7 +1144,7 @@ def show(
     plan: Path | None = PlanOption,
 ) -> None:
     """Show details for a step or phase."""
-    p, _, _ = _load(plan)
+    p, _, plan_path = _load(plan)
 
     # Try phase match
     ph = p.find_phase(target)
@@ -1028,7 +1155,7 @@ def show(
     # Try step match
     found = p.find_step(target)
     if found is not None:
-        _show_step_detail(p, target)
+        _show_step_detail(p, target, plan_path=plan_path)
         return
 
     _die(f"'{target}' not found as step or phase.")
@@ -1044,7 +1171,7 @@ def guide_cmd(
     on: str | None = typer.Option(
         None,
         "--on",
-        help="Show one topic only: startup, stuck, review, planning, or migration.",
+        help="Show one topic only: startup, stuck, recovery, review, planning, or migration.",
     ),
 ) -> None:
     """Show agent onboarding guide."""
@@ -1055,7 +1182,9 @@ def guide_cmd(
     else:
         guide = _GUIDE_TOPICS.get(on)
         if guide is None:
-            _die(f"Unknown topic '{on}'. Use: startup, stuck, review, planning, migration.")
+            _die(
+                f"Unknown topic '{on}'. Use: startup, stuck, recovery, review, planning, migration."
+            )
             return  # unreachable, for type checker
         out.print(Markdown(guide.strip()))
 
@@ -1142,6 +1271,21 @@ def claim(
             force=force,
             claims_path=resolve_claims_path(plan_path),
         )
+    except ClaimConflictError as e:
+        # Rich claim conflict diagnostics with actionable next step
+        console.print(f"[red bold]Error:[/] {e}")
+        console.print()
+        console.print("[bold]Claim Details:[/]")
+        console.print(f"  Step ID:    {e.step_id}")
+        console.print(f"  Branch:     {e.branch}")
+        console.print(f"  Claimed by: {e.claimant}")
+        console.print(f"  Claimed at: {e.claimed_at}")
+        console.print()
+        console.print("[bold]Next Steps:[/]")
+        console.print(f"  1. Inspect the step: [cyan]vectl show {e.step_id}[/]")
+        console.print("  2. If this claim is stale, you can repair claims with:")
+        console.print("     [cyan]vectl repair claims --dry-run[/]")
+        raise typer.Exit(1) from None
     except PlanError as e:
         _die(str(e))
         return  # unreachable, but satisfies Pyright
@@ -1182,7 +1326,7 @@ def claim(
     if found is not None:
         phase_obj, step_obj = found
         out.print()
-        _show_step_detail(p, step_id)
+        _show_step_detail(p, step_id, plan_path=plan_path)
 
 
 @app.command()
@@ -2125,6 +2269,75 @@ def recalc_lock(
 
 
 # ---------------------------------------------------------------------------
+# cli.12b: repair claims (operator recovery)
+# Source: claim-consistency-recovery.repair-claims-command
+# ---------------------------------------------------------------------------
+
+
+@repair_app.command("claims")
+def repair_claims_cmd(
+    dry_run: bool = typer.Option(
+        False,
+        "--dry-run",
+        help="Preview reconciliation without writing claims.json.",
+    ),
+    step: str | None = typer.Option(
+        None,
+        "--step",
+        help="Repair only this step's claim on current branch.",
+    ),
+    as_json: bool = typer.Option(
+        False,
+        "--json",
+        help="Emit machine-readable JSON output.",
+    ),
+    plan: Path | None = PlanOption,
+) -> None:
+    """Repair claims.json consistency against plan.yaml (current branch scope)."""
+
+    p, _, plan_path = _load(plan)
+    claims_path = resolve_claims_path(plan_path)
+
+    try:
+        result = repair_claims(
+            p,
+            plan_path,
+            claims_path,
+            dry_run=dry_run,
+            step_id=step,
+        )
+    except PlanError as e:
+        _die(str(e))
+        return
+
+    payload = result.to_dict()
+
+    if as_json:
+        typer.echo(json.dumps(payload, sort_keys=True))
+        return
+
+    mode = "[dry-run]" if dry_run else ""
+    out.print(f"[bold]Repair claims {mode}[/]")
+    out.print(f"Status: {result.status.value}")
+    out.print(f"Policy: {result.policy}")
+    out.print(f"Branch: {result.branch}")
+    out.print(f"Plan: {result.plan_path}")
+    out.print(f"Claims: {result.claims_path}")
+    if result.step_scope is not None:
+        out.print(f"Scope: step={result.step_scope}")
+    if result.missing_claims_file:
+        out.print("Claims file was missing; fallback started from empty map.")
+
+    if not result.actions:
+        out.print("No claim inconsistencies detected.")
+        return
+
+    out.print(f"Applied actions: {len(result.actions)}")
+    for action in result.actions:
+        out.print(f"- {action.action}: {action.key} ({action.reason})")
+
+
+# ---------------------------------------------------------------------------
 # cli.13: add-steps (bulk from stdin)
 # ---------------------------------------------------------------------------
 
@@ -2364,6 +2577,11 @@ def review(
                 out.print(f"    deps: {_esc(', '.join(ph.depends_on))}")
             if ph.gate:
                 out.print(f"    gate: [yellow]{_esc(ph.gate)}[/]")
+                if _is_claim_consistency_scoped_gate(ph.id):
+                    out.print(
+                        "    [dim]scoped verification evidence: targeted integration run only "
+                        "(not full package-wide coverage proof)[/]"
+                    )
             for step in ph.steps:
                 if is_step_locked(p, ph, step):
                     icon, style = ("🔒", "dim")
@@ -2489,6 +2707,12 @@ def gate_check(
     if gc.gate_criterion:
         out.print("\n  [yellow]Manual gate criterion:[/]")
         out.print(f"  {gc.gate_criterion}")
+        if _is_claim_consistency_scoped_gate(gc.phase_id):
+            # Source: claim-consistency-recovery.integration-verify-fix Issue 2.
+            out.print(
+                "  [dim]Scoped verification evidence: interpret targeted integration "
+                "output as scoped signal only (not full package-wide coverage proof).[/]"
+            )
     else:
         out.print("\n  [dim]No manual gate criterion[/]")
 

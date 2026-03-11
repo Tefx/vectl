@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import subprocess as sp
 from pathlib import Path
 
 import pytest
@@ -10,9 +11,10 @@ import yaml
 from typer.testing import CliRunner
 
 from vectl import __version__
-from vectl.claims import load_claims
+from vectl.claims import ClaimEntry, load_claims, save_claims
 from vectl.cli import app
-from vectl.io import load_plan_definition as load_plan, load_plan_definition, save_plan
+from vectl.io import load_plan_definition, save_plan
+from vectl.io import load_plan_definition as load_plan
 from vectl.models import AffinityMode, Phase, PhaseStatus, Plan, Step, StepStatus
 from vectl.plan_path import resolve_claims_path
 
@@ -713,6 +715,72 @@ class TestClaim:
         assert step.status == StepStatus.CLAIMED
         assert step.claimed_by == "bot-1"
 
+    def test_claim_reject_with_existing_claim_shows_diagnostics(self, plan_file: Path) -> None:
+        """Claim rejection due to existing claim shows rich diagnostics."""
+        import os
+        import subprocess
+
+        from vectl.claims import get_current_branch
+
+        # Need to work in a git repo for get_current_branch() to work
+        repo_root = plan_file.parent
+        if not (repo_root / ".git").exists():
+            # Create .git directory to make it a git repo
+            (repo_root / ".git").mkdir()
+            subprocess.run(["git", "init"], cwd=repo_root, capture_output=True)
+            subprocess.run(
+                ["git", "config", "user.email", "test@test.com"],
+                cwd=repo_root,
+                capture_output=True,
+            )
+            subprocess.run(
+                ["git", "config", "user.name", "Test"],
+                cwd=repo_root,
+                capture_output=True,
+            )
+            subprocess.run(
+                ["git", "commit", "--allow-empty", "-m", "init"],
+                cwd=repo_root,
+                capture_output=True,
+            )
+
+        # Get branch
+        original_cwd = os.getcwd()
+        os.chdir(repo_root)
+        branch_name = get_current_branch()
+
+        try:
+            # Create an existing claim
+            claims_path = resolve_claims_path(plan_file)
+            claims_path.parent.mkdir(parents=True, exist_ok=True)
+            save_claims(
+                {
+                    f"{branch_name}:s1": ClaimEntry(
+                        step_id="s1",
+                        branch=branch_name,
+                        agent="agent-a",
+                        claimed_at="2026-03-09T00:00:00Z",
+                    )
+                },
+                claims_path,
+            )
+
+            # Try to claim the same step with a different agent
+            claim_result = runner.invoke(
+                app, ["claim", "s1", "--agent", "agent-b", "--plan", str(plan_file)]
+            )
+
+            assert claim_result.exit_code == 1
+            # Check for rich diagnostics
+            assert "Claim Details:" in claim_result.output
+            assert "s1" in claim_result.output
+            assert branch_name in claim_result.output
+            assert "agent-a" in claim_result.output  # The original claimant
+            # Check for actionable next steps
+            assert "vectl show s1" in claim_result.output
+        finally:
+            os.chdir(original_cwd)
+
     def test_claim_nonexistent(self, plan_file: Path):
         result = runner.invoke(app, ["claim", "nope", "--plan", str(plan_file)])
         assert result.exit_code == 1
@@ -743,6 +811,159 @@ class TestClaim:
         result = runner.invoke(app, ["claim", "--agent", "bot", "--plan", str(path)])
         assert result.exit_code == 1
         assert "No claimable steps" in result.output
+
+
+class TestRepairClaimsCLI:
+    def _init_repo(self, repo: Path) -> str:
+        sp.run(["git", "init"], cwd=repo, check=True, capture_output=True, text=True)
+        sp.run(["git", "config", "user.email", "test@example.com"], cwd=repo, check=True)
+        sp.run(["git", "config", "user.name", "Test User"], cwd=repo, check=True)
+        (repo / ".gitkeep").write_text("x", encoding="utf-8")
+        sp.run(["git", "add", ".gitkeep"], cwd=repo, check=True)
+        sp.run(
+            ["git", "commit", "-m", "init"], cwd=repo, check=True, capture_output=True, text=True
+        )
+        branch = sp.run(
+            ["git", "rev-parse", "--abbrev-ref", "HEAD"],
+            cwd=repo,
+            check=True,
+            capture_output=True,
+            text=True,
+        ).stdout.strip()
+        return branch
+
+    def test_repair_claims_relative_and_absolute_plan_paths_share_claims_target(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        repo = tmp_path / "repo"
+        repo.mkdir()
+        self._init_repo(repo)
+
+        plan_path = repo / "plan.yaml"
+        save_plan(Plan(project="repair", phases=[Phase(id="p1", name="P1", steps=[])]), plan_path)
+
+        monkeypatch.chdir(repo)
+        rel = runner.invoke(app, ["repair", "claims", "--dry-run", "--json", "--plan", "plan.yaml"])
+        abs_result = runner.invoke(
+            app,
+            ["repair", "claims", "--dry-run", "--json", "--plan", str(plan_path)],
+        )
+
+        assert rel.exit_code == 0
+        assert abs_result.exit_code == 0
+        rel_payload = json.loads(rel.output)
+        abs_payload = json.loads(abs_result.output)
+        assert rel_payload["claims_path"] == abs_payload["claims_path"]
+        assert rel_payload["plan_path"] == abs_payload["plan_path"]
+        assert rel_payload["changed"] is False
+        assert abs_payload["changed"] is False
+
+    def test_repair_claims_step_scope_preserves_unrelated_claims(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        repo = tmp_path / "repo"
+        repo.mkdir()
+        branch = self._init_repo(repo)
+
+        plan_path = repo / "plan.yaml"
+        save_plan(
+            Plan(
+                project="repair",
+                phases=[
+                    Phase(
+                        id="p1",
+                        name="P1",
+                        steps=[
+                            Step(id="s1", name="S1", status=StepStatus.PENDING),
+                            Step(
+                                id="s2",
+                                name="S2",
+                                status=StepStatus.CLAIMED,
+                                claimed_by="agent-plan",
+                                claimed_at="2026-03-09T10:00:00Z",
+                            ),
+                        ],
+                    )
+                ],
+            ),
+            plan_path,
+        )
+
+        claims_path = resolve_claims_path(plan_path)
+        untouched = ClaimEntry(
+            step_id="s2",
+            branch=branch,
+            agent="keep-me",
+            claimed_at="2026-03-09T09:00:00Z",
+        )
+        save_claims(
+            {
+                f"{branch}:s1": ClaimEntry(
+                    step_id="s1",
+                    branch=branch,
+                    agent="ghost",
+                    claimed_at="2026-03-08T00:00:00Z",
+                ),
+                f"{branch}:s2": untouched,
+            },
+            claims_path,
+        )
+
+        monkeypatch.chdir(repo)
+        result = runner.invoke(
+            app,
+            ["repair", "claims", "--step", "s1", "--json", "--plan", str(plan_path)],
+        )
+        assert result.exit_code == 0
+        payload = json.loads(result.output)
+        assert payload["changed"] is True
+        assert [a["key"] for a in payload["actions"]] == [f"{branch}:s1"]
+
+        repaired = load_claims(claims_path)
+        assert repaired[f"{branch}:s2"] == untouched
+
+    def test_repair_claims_missing_file_fallback_and_invalid_step(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        repo = tmp_path / "repo"
+        repo.mkdir()
+        self._init_repo(repo)
+
+        plan_path = repo / "plan.yaml"
+        save_plan(
+            Plan(
+                project="repair",
+                phases=[
+                    Phase(
+                        id="p1",
+                        name="P1",
+                        steps=[
+                            Step(
+                                id="s1",
+                                name="S1",
+                                status=StepStatus.CLAIMED,
+                                claimed_by="agent-plan",
+                                claimed_at="2026-03-09T10:00:00Z",
+                            )
+                        ],
+                    )
+                ],
+            ),
+            plan_path,
+        )
+
+        monkeypatch.chdir(repo)
+        ok = runner.invoke(app, ["repair", "claims", "--json", "--plan", str(plan_path)])
+        assert ok.exit_code == 0
+        payload = json.loads(ok.output)
+        assert payload["missing_claims_file"] is True
+
+        bad = runner.invoke(
+            app,
+            ["repair", "claims", "--step", "missing.step", "--plan", str(plan_path)],
+        )
+        assert bad.exit_code == 1
+        assert "not found" in bad.output.lower()
 
 
 class TestComplete:
@@ -787,6 +1008,230 @@ class TestComplete:
         )
         assert complete_result.exit_code == 0
         assert load_claims(claims_path) == {}
+
+    def test_claim_complete_with_external_plan_avoids_misleading_autosave_noise(
+        self, tmp_path: Path, caplog: pytest.LogCaptureFixture
+    ) -> None:
+        """External --plan claim/complete should not emit pathspec/autosave warning noise."""
+        external_repo = tmp_path / "external-repo"
+        external_repo.mkdir()
+
+        for command in (
+            ["git", "init"],
+            ["git", "config", "user.email", "test@example.com"],
+            ["git", "config", "user.name", "Test User"],
+        ):
+            result = sp.run(command, cwd=external_repo, capture_output=True, text=True)
+            assert result.returncode == 0, result.stderr
+
+        external_plan = external_repo / "plan.yaml"
+        save_plan(
+            Plan(
+                project="external-plan",
+                phases=[
+                    Phase(
+                        id="p1",
+                        name="Phase 1",
+                        status=PhaseStatus.PENDING,
+                        steps=[Step(id="s1", name="Step 1")],
+                    )
+                ],
+            ),
+            external_plan,
+        )
+
+        caplog.set_level("WARNING", logger="vectl.io")
+        claim_result = runner.invoke(
+            app,
+            ["claim", "s1", "--agent", "bot-1", "--plan", str(external_plan)],
+        )
+        assert claim_result.exit_code == 0
+        assert "Claimed" in claim_result.output
+
+        complete_result = runner.invoke(
+            app,
+            ["complete", "s1", "--evidence", "scoped run", "--plan", str(external_plan)],
+        )
+        assert complete_result.exit_code == 0
+        assert "Completed" in complete_result.output
+        assert "pathspec" not in caplog.text.lower()
+        assert "git add" not in caplog.text.lower()
+
+    def test_claim_in_repo_preserves_autosave_commit_behavior(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """In-repo plan mutation still autosaves via git commit."""
+        repo = tmp_path / "repo"
+        repo.mkdir()
+
+        for command in (
+            ["git", "init"],
+            ["git", "config", "user.email", "test@example.com"],
+            ["git", "config", "user.name", "Test User"],
+        ):
+            result = sp.run(command, cwd=repo, capture_output=True, text=True)
+            assert result.returncode == 0, result.stderr
+
+        plan_path = repo / "plan.yaml"
+        save_plan(
+            Plan(
+                project="in-repo-plan",
+                phases=[
+                    Phase(
+                        id="p1",
+                        name="Phase 1",
+                        status=PhaseStatus.PENDING,
+                        steps=[Step(id="s1", name="Step 1")],
+                    )
+                ],
+            ),
+            plan_path,
+        )
+
+        for command in (["git", "add", "plan.yaml"], ["git", "commit", "-m", "seed"]):
+            result = sp.run(command, cwd=repo, capture_output=True, text=True)
+            assert result.returncode == 0, result.stderr
+
+        monkeypatch.chdir(repo)
+        result = runner.invoke(app, ["claim", "s1", "--agent", "bot-1", "--plan", str(plan_path)])
+        assert result.exit_code == 0
+
+        commit_count = sp.run(
+            ["git", "rev-list", "--count", "HEAD"],
+            cwd=repo,
+            capture_output=True,
+            text=True,
+        )
+        assert commit_count.returncode == 0
+        assert commit_count.stdout.strip() == "2"
+
+        latest_subject = sp.run(
+            ["git", "log", "-1", "--pretty=%s"],
+            cwd=repo,
+            capture_output=True,
+            text=True,
+        )
+        assert latest_subject.returncode == 0
+        assert latest_subject.stdout.strip() == "vectl: claim s1 by bot-1"
+
+    def test_gate_check_claim_consistency_shows_scoped_verification_note(
+        self, tmp_path: Path
+    ) -> None:
+        """claim-consistency gate output must mark targeted evidence as scoped."""
+        plan_path = tmp_path / "plan.yaml"
+        save_plan(
+            Plan(
+                project="gate-scope",
+                phases=[
+                    Phase(
+                        id="claim-consistency-recovery",
+                        name="Claim Consistency Recovery",
+                        status=PhaseStatus.PENDING,
+                        gate="Targeted integration verify evidence.",
+                        steps=[
+                            Step(
+                                id="s1",
+                                name="Done step",
+                                status=StepStatus.DONE,
+                                evidence="historical verification",
+                            )
+                        ],
+                    )
+                ],
+            ),
+            plan_path,
+        )
+
+        result = runner.invoke(
+            app, ["gate-check", "claim-consistency-recovery", "--plan", str(plan_path)]
+        )
+
+        assert result.exit_code == 0
+        out_lower = result.output.lower()
+        assert "scoped verification evidence" in out_lower
+        assert "not full package-wide coverage proof" in out_lower
+
+    def test_split_brain_claim_exists_but_plan_shows_pending(self, plan_file: Path) -> None:
+        """CLI-level reproducer: claims.json has claim but plan.yaml shows pending.
+
+        This demonstrates the split-brain symptom at CLI level:
+        - Manual manipulation of claims.json creates inconsistency
+        - CLI claim command fails with 'already claimed' (reads claims.json)
+        - But plan.yaml shows the step as PENDING (not CLAIMED)
+        - CLI complete command fails because it reads plan.yaml status
+        """
+        import os
+        import subprocess
+
+        from vectl.claims import ClaimEntry, get_current_branch, resolve_claims_path, save_claims
+        from vectl.io import load_plan_definition as load_plan
+
+        # Need to work in a git repo for get_current_branch() to work
+        repo_root = plan_file.parent
+        if not (repo_root / ".git").exists():
+            # Create .git directory to make it a git repo
+            (repo_root / ".git").mkdir()
+            subprocess.run(["git", "init"], cwd=repo_root, capture_output=True)
+            subprocess.run(
+                ["git", "config", "user.email", "test@test.com"],
+                cwd=repo_root,
+                capture_output=True,
+            )
+            subprocess.run(
+                ["git", "config", "user.name", "Test"],
+                cwd=repo_root,
+                capture_output=True,
+            )
+            subprocess.run(
+                ["git", "commit", "--allow-empty", "-m", "init"],
+                cwd=repo_root,
+                capture_output=True,
+            )
+
+        # Get branch
+        original_cwd = os.getcwd()
+        os.chdir(repo_root)
+        branch_name = get_current_branch()
+        os.chdir(original_cwd)
+
+        # Manually add claim to claims.json without updating plan.yaml
+        claims_path = resolve_claims_path(plan_file)
+        claims_path.parent.mkdir(parents=True, exist_ok=True)
+        save_claims(
+            {
+                f"{branch_name}:s1": ClaimEntry(
+                    step_id="s1",
+                    branch=branch_name,
+                    agent="agent-a",
+                    claimed_at="2026-03-09T00:00:00Z",
+                )
+            },
+            claims_path,
+        )
+
+        # Verify split-brain state
+        plan, _ = load_plan(plan_file)
+        step = _must_find_step(plan, "s1")
+        assert step.status == StepStatus.PENDING, "Precondition: plan shows PENDING"
+
+        # Symptom: claim command fails with "already claimed"
+        # because it checks claims.json first
+        os.chdir(repo_root)
+        try:
+            claim_result = runner.invoke(
+                app, ["claim", "s1", "--agent", "agent-b", "--plan", str(plan_file)]
+            )
+            assert claim_result.exit_code == 1
+            assert "already claimed" in claim_result.output.lower()
+        finally:
+            os.chdir(original_cwd)
+
+        # Symptom: complete command fails because plan shows PENDING
+        complete_result = runner.invoke(
+            app, ["complete", "s1", "--evidence", "evidence", "--plan", str(plan_file)]
+        )
+        assert complete_result.exit_code == 1
+        assert "claimed" in complete_result.output.lower()
 
 
 class TestCompletePhase:
@@ -3049,3 +3494,222 @@ class TestCliUnifiedStateIntegration:
         assert rejection.reason == "Testing reject via CLI"
         assert rejection.timestamp == "2026-02-09T04:46:23.870176+00:00"
         assert rejection.reviewer == "cli-tester"
+
+
+# ---------------------------------------------------------------------------
+# Tests for B1-B4: Claim mismatch visibility
+# ---------------------------------------------------------------------------
+
+
+class TestClaimMismatchVisibility:
+    """Tests for claim.json vs plan.yaml mismatch visibility (B1-B4)."""
+
+    def test_status_baseline_clean_when_no_mismatch(self, plan_file: Path) -> None:
+        """B4 baseline: Status output is clean when no mismatch exists."""
+        result = runner.invoke(app, ["status", "--plan", str(plan_file)])
+        assert result.exit_code == 0
+        # Should NOT show mismatch warning
+        assert "Claim mismatch detected" not in result.output
+        assert "vectl repair claims" not in result.output
+
+    def test_show_baseline_clean_when_no_mismatch(self, plan_file: Path) -> None:
+        """B4 baseline: Show output is clean when no mismatch exists."""
+        result = runner.invoke(app, ["show", "s1", "--plan", str(plan_file)])
+        assert result.exit_code == 0
+        # Should NOT show mismatch warning for non-claimed step
+        assert "⚠" not in result.output
+
+    def test_status_shows_mismatch_indicator(self, tmp_path: Path) -> None:
+        """B1: Status shows explicit mismatch indicator when mismatch exists."""
+        # Create plan with a claimed step
+        plan = Plan(
+            project="mismatch-test",
+            phases=[
+                Phase(
+                    id="p1",
+                    name="Phase 1",
+                    status=PhaseStatus.PENDING,
+                    steps=[
+                        Step(
+                            id="s1",
+                            name="Step 1",
+                            status=StepStatus.CLAIMED,
+                            claimed_by="test-agent",
+                            claimed_at="2026-03-01T10:00:00Z",
+                        ),
+                    ],
+                ),
+            ],
+        )
+        plan_path = tmp_path / "plan.yaml"
+        save_plan(plan, plan_path)
+
+        # Run status - should show mismatch indicator
+        result = runner.invoke(app, ["status", "--plan", str(plan_path)])
+        assert result.exit_code == 0
+        assert "Claim mismatch detected" in result.output
+        assert "branch-scoped" in result.output.lower()
+
+    def test_status_shows_ghost_claims_count(self, tmp_path: Path) -> None:
+        """B1: Status shows ghost claims count when present."""
+        plan = Plan(
+            project="ghost-test",
+            phases=[
+                Phase(
+                    id="p1",
+                    name="Phase 1",
+                    status=PhaseStatus.PENDING,
+                    steps=[Step(id="s1", name="Step 1")],
+                ),
+            ],
+        )
+        plan_path = tmp_path / "plan.yaml"
+        save_plan(plan, plan_path)
+
+        # Use the same branch resolution path as CLI status/show.
+        from vectl.claims import get_current_branch
+
+        branch = get_current_branch()
+
+        # Create claims.json with a ghost claim (matching current branch)
+        claims_path = plan_path.parent / ".vectl" / "claims.json"
+        claims_path.parent.mkdir(parents=True, exist_ok=True)
+        import json
+
+        claims_path.write_text(
+            json.dumps(
+                {
+                    f"{branch}:s1": {
+                        "step_id": "s1",
+                        "branch": branch,
+                        "agent": "ghost-agent",
+                        "claimed_at": "2026-03-01T10:00:00Z",
+                    }
+                }
+            ),
+            encoding="utf-8",
+        )
+
+        result = runner.invoke(app, ["status", "--plan", str(plan_path)])
+        assert result.exit_code == 0
+        assert "Ghost claims" in result.output
+        assert "1" in result.output
+
+    def test_status_shows_stale_plan_claims_count(self, tmp_path: Path) -> None:
+        """B1: Status shows stale plan claims count when present."""
+        plan = Plan(
+            project="stale-test",
+            phases=[
+                Phase(
+                    id="p1",
+                    name="Phase 1",
+                    status=PhaseStatus.PENDING,
+                    steps=[
+                        Step(
+                            id="s1",
+                            name="Step 1",
+                            status=StepStatus.CLAIMED,
+                            claimed_by="test-agent",
+                            claimed_at="2026-03-01T10:00:00Z",
+                        ),
+                    ],
+                ),
+            ],
+        )
+        plan_path = tmp_path / "plan.yaml"
+        save_plan(plan, plan_path)
+
+        # Ensure no claims.json entry exists
+        claims_path = plan_path.parent / ".vectl" / "claims.json"
+        if claims_path.exists():
+            claims_path.unlink()
+
+        result = runner.invoke(app, ["status", "--plan", str(plan_path)])
+        assert result.exit_code == 0
+        assert "Stale plan claims" in result.output
+        assert "1" in result.output
+
+    def test_status_shows_repair_instructions(self, tmp_path: Path) -> None:
+        """B3: Status shows repair instructions when mismatch exists."""
+        plan = Plan(
+            project="repair-test",
+            phases=[
+                Phase(
+                    id="p1",
+                    name="Phase 1",
+                    status=PhaseStatus.PENDING,
+                    steps=[
+                        Step(
+                            id="s1",
+                            name="Step 1",
+                            status=StepStatus.CLAIMED,
+                            claimed_by="test-agent",
+                            claimed_at="2026-03-01T10:00:00Z",
+                        ),
+                    ],
+                ),
+            ],
+        )
+        plan_path = tmp_path / "plan.yaml"
+        save_plan(plan, plan_path)
+
+        result = runner.invoke(app, ["status", "--plan", str(plan_path)])
+        assert result.exit_code == 0
+        assert "vectl repair claims --dry-run" in result.output
+        assert "vectl repair claims" in result.output
+
+    def test_show_step_explains_mismatch(self, tmp_path: Path) -> None:
+        """B2: Show step explains mismatch when detected."""
+        plan = Plan(
+            project="show-mismatch-test",
+            phases=[
+                Phase(
+                    id="p1",
+                    name="Phase 1",
+                    status=PhaseStatus.PENDING,
+                    steps=[
+                        Step(
+                            id="s1",
+                            name="Step 1",
+                            status=StepStatus.CLAIMED,
+                            claimed_by="test-agent",
+                            claimed_at="2026-03-01T10:00:00Z",
+                        ),
+                    ],
+                ),
+            ],
+        )
+        plan_path = tmp_path / "plan.yaml"
+        save_plan(plan, plan_path)
+
+        # Ensure no claims.json entry exists - this creates stale plan claim
+        claims_path = plan_path.parent / ".vectl" / "claims.json"
+        if claims_path.exists():
+            claims_path.unlink()
+
+        result = runner.invoke(app, ["show", "s1", "--plan", str(plan_path)])
+        assert result.exit_code == 0
+        # B2: Show should explain the mismatch
+        assert "missing from claims.json" in result.output
+
+    def test_show_step_clean_for_non_claimed(self, tmp_path: Path) -> None:
+        """B4: Show step is clean when step is not claimed."""
+        plan = Plan(
+            project="clean-show",
+            phases=[
+                Phase(
+                    id="p1",
+                    name="Phase 1",
+                    status=PhaseStatus.PENDING,
+                    steps=[Step(id="s1", name="Step 1", status=StepStatus.PENDING)],
+                ),
+            ],
+        )
+        plan_path = tmp_path / "plan.yaml"
+        save_plan(plan, plan_path)
+
+        result = runner.invoke(app, ["show", "s1", "--plan", str(plan_path)])
+        assert result.exit_code == 0
+        # Should not show mismatch warning for non-claimed steps
+        assert "missing from claims.json" not in result.output
+        assert "ghost" not in result.output.lower()

@@ -8,7 +8,8 @@ import pytest
 from typer.testing import CliRunner
 
 from vectl.cli import app
-from vectl.io import load_plan_definition as load_plan, save_plan
+from vectl.io import load_plan_definition as load_plan
+from vectl.io import save_plan
 from vectl.models import Clipboard, Phase, Plan, Step, StepStatus
 
 runner = CliRunner()

@@ -15,12 +15,11 @@ from __future__ import annotations
 
 from pathlib import Path
 
-import pytest
 from typer.testing import CliRunner
 
 from vectl.cli import _save_plan, app
-from vectl.io import load_plan_definition as load_plan, save_plan
-from vectl.models import Phase, PhaseStatus, Plan, Step, StepStatus
+from vectl.io import load_plan_definition as load_plan
+from vectl.models import PhaseStatus
 
 runner = CliRunner()
 

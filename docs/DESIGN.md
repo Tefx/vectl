@@ -90,3 +90,30 @@ uv run pytest tests/ -q           # 456 tests
 | `test_checklist.py` | 12 | Checklist toggle, append |
 | `test_io.py` | 11 | YAML IO, CAS |
 | `test_properties.py` | 1 | Stateful property-based testing |
+
+## Claim Recovery
+
+vectl maintains claim state in `claims.json` (branch-scoped). When this state
+diverges from `plan.yaml`, use the repair command:
+
+```bash
+uvx vectl repair claims --dry-run     # preview
+uvx vectl repair claims               # repair all
+uvx vectl repair claims --step <id>  # scoped repair
+```
+
+### Policy: Plan Precedence
+
+| Principle | Description |
+|-----------|-------------|
+| Source of truth | `plan.yaml` claim-visible state |
+| Scope | Current git branch only |
+| Preservation | Out-of-scope entries (other branches, unrelated steps) kept intact |
+| Modes | `--dry-run` (safe preview), `--step` (scoped), `--json` (machine output) |
+
+### Ghost Claims & Split-Brain
+
+- **Ghost claim**: Entry in claims.json but step is not claimed in plan.yaml
+- **Split-brain**: Entry in claims.json disagrees with plan.yaml (different owner, stale timestamp)
+
+The repair command removes ghosts and reconciles split-brain entries using plan precedence.

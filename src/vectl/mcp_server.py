@@ -39,6 +39,7 @@ from fastmcp import FastMCP
 from pydantic import BaseModel
 
 from vectl.claim_guidance import GuidancePayload, build_claim_guidance
+from vectl.claims import repair_claims
 from vectl.core import (
     _SENTINEL,
     AgentsTarget,
@@ -68,6 +69,17 @@ from vectl.io import (
     load_plan_definition,
     save_plan,
 )
+from vectl.lifecycle import (
+    ClaimConflictError,
+    claim_step,
+    complete_phase,
+    complete_step,
+    defer_step,
+    get_claimed_steps,
+    reject_step,
+    skip_phase,
+    skip_step,
+)
 from vectl.models import (
     AffinityError,
     AmbiguousMatchError,
@@ -79,16 +91,6 @@ from vectl.models import (
     PlanError,
     Step,
     StepStatus,
-)
-from vectl.lifecycle import (
-    claim_step,
-    complete_phase,
-    complete_step,
-    defer_step,
-    get_claimed_steps,
-    reject_step,
-    skip_phase,
-    skip_step,
 )
 from vectl.plan_path import (
     is_linked_worktree,
@@ -397,6 +399,17 @@ class ClaimResult(BaseModel):
     affinity_override: AffinityOverrideData | None = None
     error: str | None = None
     error_code: str | None = None
+    # Claim conflict details for existing-claim rejection
+    claim_conflict: ClaimConflictData | None = None
+
+
+class ClaimConflictData(BaseModel):
+    """Structured data about an existing claim that blocked a claim attempt."""
+
+    step_id: str
+    branch: str
+    claimant: str
+    claimed_at: str
 
 
 @mcp.tool(
@@ -443,6 +456,31 @@ def vectl_claim(
             expected_def_hash,
             f"mcp: claim step {step_id} by {agent}",
         )
+    except ClaimConflictError as e:
+        # Claim conflict: existing claim record blocking this attempt
+        conflict_data = ClaimConflictData(
+            step_id=e.step_id,
+            branch=e.branch,
+            claimant=e.claimant,
+            claimed_at=e.claimed_at,
+        )
+        err = str(e)
+        conflict_md_lines = [
+            f"**Claim Conflict:** {e.step_id} is already claimed on branch '{e.branch}'",
+            f"**Claimed by:** {e.claimant}",
+            f"**Claimed at:** {e.claimed_at}",
+            "",
+            "**Next Steps:**",
+            f"1. Inspect: `vectl_show` step_id={e.step_id}",
+            "2. If stale, repair claims: `vectl repair claims --dry-run`",
+        ]
+        return ClaimResult(
+            ok=False,
+            markdown="\n".join(conflict_md_lines),
+            error=err,
+            error_code="claim_conflict",
+            claim_conflict=conflict_data,
+        ).model_dump(mode="json", exclude_none=True)
     except AffinityError as e:
         # RFC: docs/RFC-affinity.md
         # Exclusive affinity violation
@@ -1613,6 +1651,37 @@ def vectl_recover() -> dict:
     }
 
 
+@mcp.tool(
+    description=(
+        "Repair claims.json consistency against plan.yaml for current branch. "
+        "Supports dry-run and optional step-scoped repair."
+    ),
+)
+def vectl_repair_claims(dry_run: bool = False, step_id: str | None = None) -> dict:
+    """Repair claims store by deterministic reconciliation with plan state."""
+    plan, _ = _load()
+    plan_path = _plan_path()
+    claims_path = resolve_claims_path(plan_path)
+
+    try:
+        result = repair_claims(
+            plan,
+            plan_path,
+            claims_path,
+            dry_run=dry_run,
+            step_id=step_id,
+        )
+    except PlanError as e:
+        return {
+            "ok": False,
+            "error": str(e),
+        }
+
+    payload = result.to_dict()
+    payload["ok"] = True
+    return payload
+
+
 # ---------------------------------------------------------------------------
 # Test compatibility shim
 # ---------------------------------------------------------------------------
@@ -1688,6 +1757,9 @@ vectl_check = _ToolWrapper(vectl_check)  # type: ignore[assignment]
 
 _vectl_recover_tool = vectl_recover
 vectl_recover = _ToolWrapper(vectl_recover)  # type: ignore[assignment]
+
+_vectl_repair_claims_tool = vectl_repair_claims
+vectl_repair_claims = _ToolWrapper(vectl_repair_claims)  # type: ignore[assignment]
 
 _vectl_checkpoint_tool = vectl_checkpoint
 vectl_checkpoint = _ToolWrapper(vectl_checkpoint)  # type: ignore[assignment]

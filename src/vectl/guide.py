@@ -70,25 +70,17 @@ uvx vectl recalc-lock --dry-run # preview changes first
 Under normal agent workflow this is never needed — lock status recalculates
 on every `claim`, `complete`, or `mutate`.
 
-## Phase Restructuring? (Merging/Splitting Phases)
-When consolidating phases (e.g., merging "fix" and "retest" into one "remediation" phase),
-you may move all steps out of a phase, leaving it empty. To clean up:
+## Claim Consistency Issues? (Ghost Claims / Split-Brain)
+When claim state diverges from plan state:
 
-1. `uvx vectl skip-phase <empty-phase> -r superseded`
+```
+uvx vectl repair claims --dry-run     # diagnose (read-only)
+uvx vectl repair claims               # repair all
+uvx vectl repair claims --step <id>   # repair specific step
+uvx vectl repair claims --dry-run --json  # machine-readable
+```
 
-**Rules:**
-- Empty locked phases (0 steps) can always be skipped — the lock protects nothing
-- Locked phases with remaining steps require `--force`:
-  `uvx vectl skip-phase <locked-phase> -r superseded --force`
-- Use reason `superseded` for merged/absorbed phases
-- Use reason `absorbed` when steps moved to another phase
-- Use reason `irrelevant` when requirements changed
-
-**MCP Agents:**
-Use `vectl_lifecycle(action="skip-phase", id="<phase>", reason="superseded", force=True)`
-
-## Lost?
-`uvx vectl review` — Re-orient with full plan scan.
+See `uvx vectl guide recovery` for full runbook.
 """
 
 GUIDE_REVIEW = """\
@@ -235,9 +227,102 @@ configures AGENTS.md (or CLAUDE.md for Claude Code projects).
 """
 
 
+GUIDE_RECOVERY = """\
+# Claim Recovery Runbook
+
+Ghost claims and split-brain claim state can block work. This guide covers
+symptom recognition and the recovery workflow.
+
+## Symptom Recognition
+
+| Symptom | Likely Cause |
+|---------|-------------|
+| Claim rejected, `show` says unclaimed | Ghost claim in `claims.json` (stale/orphaned) |
+| Claim rejected, `show` shows different owner | Split-brain: claims.json vs plan.yaml disagree |
+| `status` shows claimed, but no agent working | Stale claim (agent crashed/left) |
+
+**Example error**:
+```
+$ uvx vectl claim auth.user-model
+Error: Step 'auth.user-model' is already claimed on branch 'main'
+
+$ uvx vectl show auth.user-model
+status: pending
+claimed_by: null
+```
+
+## Recovery Commands
+
+```bash
+# 1. Preview changes (safe, read-only)
+uvx vectl repair claims --dry-run
+
+# 2. Machine-readable output (CI/scripting)
+uvx vectl repair claims --dry-run --json
+
+# 3. Repair all claims on current branch
+uvx vectl repair claims
+
+# 4. Repair specific step only (scoped)
+uvx vectl repair claims --step auth.user-model
+```
+
+## Flags
+
+| Flag | Purpose |
+|------|---------|
+| `--dry-run` | Preview without writing. **Always run first.** |
+| `--step <id>` | Scope repair to single step. Other claims untouched. |
+| `--json` | JSON output for automation. |
+
+## Policy: Plan Precedence
+
+`vectl repair claims` follows **plan precedence**:
+- `plan.yaml` is source of truth for claim-visible state
+- Claims entries for current branch are repaired to match plan step status/owner
+- Out-of-scope entries (other branches, unrelated steps) preserved
+
+## When Repo is Healthy (No-Op)
+
+If consistent, `--dry-run` returns:
+```json
+{"changed": false, "actions": []}
+```
+
+No repair needed — claims.json already matches plan.yaml.
+
+## Full Recovery Sequence
+
+```bash
+# Step 1: Diagnose
+uvx vectl repair claims --dry-run --json
+
+# Step 2: If changes needed, review them
+# Look for "ghost_claim_or_non_claimed_step" or "stale_claim_entry"
+
+# Step 3: Apply repair
+uvx vectl repair claims
+
+# Step 4: Verify
+uvx vectl status
+uvx vectl show <step-id>
+uvx vectl repair claims --dry-run  # should show no changes
+```
+
+## MCP Equivalent
+
+```python
+vectl_repair_claims(dry_run=True)           # diagnose
+vectl_repair_claims(dry_run=False)          # repair
+vectl_repair_claims(step_id="auth.user")   # scoped
+```
+"""
+
+
 GUIDE_ALL: list[str] = [
     GUIDE_STARTUP,
     GUIDE_STUCK,
+    GUIDE_RECOVERY,
     GUIDE_REVIEW,
     GUIDE_PLANNING,
     GUIDE_MIGRATION,
@@ -246,6 +331,7 @@ GUIDE_ALL: list[str] = [
 GUIDE_TOPICS: dict[str, str] = {
     "startup": GUIDE_STARTUP,
     "stuck": GUIDE_STUCK,
+    "recovery": GUIDE_RECOVERY,
     "review": GUIDE_REVIEW,
     "planning": GUIDE_PLANNING,
     "migration": GUIDE_MIGRATION,

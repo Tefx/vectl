@@ -16,6 +16,7 @@ from pathlib import Path
 import pytest
 import yaml
 
+from vectl.claims import get_current_branch as _claims_current_branch
 from vectl.claims import load_claims
 from vectl.mcp_server import (
     _load as _vectl_load,
@@ -54,6 +55,9 @@ from vectl.mcp_server import (
     vectl_render as _vectl_render_tool,
 )
 from vectl.mcp_server import (
+    vectl_repair_claims as _vectl_repair_claims_tool,
+)
+from vectl.mcp_server import (
     vectl_review as _vectl_review_tool,
 )
 from vectl.mcp_server import (
@@ -66,7 +70,7 @@ from vectl.mcp_server import (
     vectl_status as _vectl_status_tool,
 )
 from vectl.migration import migrate_from_split_state
-from vectl.models import Phase, PhaseStatus, Plan, PlanError, PlanIOError, Step, StepStatus
+from vectl.models import PhaseStatus, PlanError, PlanIOError, StepStatus
 from vectl.plan_path import resolve_claims_path
 
 # FastMCP @mcp.tool() returns FunctionTool objects; unwrap to get the callable.
@@ -84,6 +88,7 @@ vectl_clipboard = _vectl_clipboard_tool.fn
 vectl_check = _vectl_check_tool.fn
 vectl_render = _vectl_render_tool.fn
 vectl_recover = _vectl_recover_tool.fn
+vectl_repair_claims = _vectl_repair_claims_tool.fn
 
 
 # ---------------------------------------------------------------------------
@@ -419,6 +424,150 @@ class TestVectlClaim:
     def test_claim_shows_affordance(self, plan_file: Path) -> None:
         result = vectl_claim(agent="bot", step_id="a.1")
         assert "vectl_complete" in result["markdown"]
+
+    def test_claim_reject_with_existing_claim_returns_structured_error(
+        self, plan_file: Path
+    ) -> None:
+        """Claim rejection due to existing claim returns structured error data."""
+        import os
+        import subprocess
+
+        # Need to work in a git repo for get_current_branch() to work
+        repo_root = plan_file.parent
+        if not (repo_root / ".git").exists():
+            (repo_root / ".git").mkdir()
+            subprocess.run(["git", "init"], cwd=repo_root, capture_output=True)
+            subprocess.run(
+                ["git", "config", "user.email", "test@test.com"],
+                cwd=repo_root,
+                capture_output=True,
+            )
+            subprocess.run(
+                ["git", "config", "user.name", "Test"],
+                cwd=repo_root,
+                capture_output=True,
+            )
+            subprocess.run(
+                ["git", "commit", "--allow-empty", "-m", "init"],
+                cwd=repo_root,
+                capture_output=True,
+            )
+
+        # Get branch
+        original_cwd = os.getcwd()
+        os.chdir(repo_root)
+        try:
+            from vectl.claims import (
+                ClaimEntry,
+                get_current_branch,
+                resolve_claims_path,
+                save_claims,
+            )
+
+            branch_name = get_current_branch()
+
+            # Create an existing claim
+            claims_path = resolve_claims_path(plan_file)
+            claims_path.parent.mkdir(parents=True, exist_ok=True)
+            save_claims(
+                {
+                    f"{branch_name}:a.1": ClaimEntry(
+                        step_id="a.1",
+                        branch=branch_name,
+                        agent="agent-a",
+                        claimed_at="2026-03-09T00:00:00Z",
+                    )
+                },
+                claims_path,
+            )
+
+            # Try to claim the same step with a different agent
+            result = vectl_claim(agent="agent-b", step_id="a.1")
+
+            assert result["ok"] is False
+            assert result["error_code"] == "claim_conflict"
+            # Check for structured conflict data
+            assert result["claim_conflict"] is not None
+            assert result["claim_conflict"]["step_id"] == "a.1"
+            assert result["claim_conflict"]["branch"] == branch_name
+            assert result["claim_conflict"]["claimant"] == "agent-a"
+            # Check markdown includes actionable info
+            assert "Claim Conflict" in result["markdown"]
+            assert "agent-a" in result["markdown"]
+            assert "vectl_show" in result["markdown"]
+        finally:
+            os.chdir(original_cwd)
+
+
+class TestRepairClaimsMcp:
+    def test_repair_claims_dry_run_preview(self, plan_file: Path) -> None:
+        branch = _claims_current_branch()
+        claims_path = resolve_claims_path(plan_file)
+        claims_path.parent.mkdir(parents=True, exist_ok=True)
+        claims_path.write_text(
+            json.dumps(
+                {
+                    f"{branch}:a.1": {
+                        "step_id": "a.1",
+                        "branch": branch,
+                        "agent": "ghost",
+                        "claimed_at": "2026-03-09T00:00:00Z",
+                    }
+                }
+            ),
+            encoding="utf-8",
+        )
+        before = claims_path.read_text(encoding="utf-8")
+
+        result = vectl_repair_claims(dry_run=True)
+
+        assert result["ok"] is True
+        assert result["dry_run"] is True
+        assert result["changed"] is True
+        assert claims_path.read_text(encoding="utf-8") == before
+
+    def test_repair_claims_step_scope_preserves_unrelated_entries(self, plan_file: Path) -> None:
+        branch = _claims_current_branch()
+        claims_path = resolve_claims_path(plan_file)
+        claims_path.parent.mkdir(parents=True, exist_ok=True)
+        claims_path.write_text(
+            json.dumps(
+                {
+                    f"{branch}:a.1": {
+                        "step_id": "a.1",
+                        "branch": branch,
+                        "agent": "ghost",
+                        "claimed_at": "2026-03-09T00:00:00Z",
+                    },
+                    f"{branch}:b.1": {
+                        "step_id": "b.1",
+                        "branch": branch,
+                        "agent": "keep",
+                        "claimed_at": "2026-03-09T00:00:00Z",
+                    },
+                },
+                indent=2,
+            ),
+            encoding="utf-8",
+        )
+
+        result = vectl_repair_claims(step_id="a.1")
+
+        assert result["ok"] is True
+        assert [a["key"] for a in result["actions"]] == [f"{branch}:a.1"]
+        claims = load_claims(claims_path)
+        assert f"{branch}:a.1" not in claims
+        assert claims[f"{branch}:b.1"].agent == "keep"
+
+    def test_repair_claims_output_shape_and_policy(self, plan_file: Path) -> None:
+        result = vectl_repair_claims(dry_run=True)
+
+        assert result["ok"] is True
+        assert "policy" in result
+        assert "plan_precedence" in result["policy"]
+        assert "claims_path" in result
+        assert "plan_path" in result
+        assert "actions" in result
 
 
 # ---------------------------------------------------------------------------

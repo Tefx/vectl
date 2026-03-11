@@ -18312,7 +18312,7 @@ phases:
 
       - none'
   - id: freeze-for-integration
-    name: claim-consistency-hardening-mutate.freeze-for-integration
+    name: Freeze for Integration
     status: done
     description: 'Freeze snapshot before integration verification.
 
@@ -19408,64 +19408,9 @@ phases:
       - Existing issue observed while drafting tests: `claim` path can raise `AttributeError:
       module ''vectl.core'' has no attribute ''acquire_claim''` via `vectl.lifecycle._claims_api()`
       in certain test flows. Regression tests were adjusted to avoid expanding scope.'
-  - id: freeze-for-integration
-    name: Freeze for Integration
-    status: pending
-    description: 'Freeze snapshot before mutate integration verification.
-
-
-      - Capture `git rev-parse HEAD`
-
-      - Capture clean `git status`
-
-      - Declare environment
-
-      - Confirm no code changes until integration verify completes
-
-
-      No file changes.'
-    depends_on:
-    - add-orphan-claim-regression-matrix
-    agent: python-executor
-  - id: integration-verify
-    name: Integration Verify
-    status: pending
-    description: "End-to-end integration verification of mutation reconciliation.\n\
-      \n- Execute mutation commands:\n  - Claim step, then remove step - verify claim\
-      \ is cleaned\n  - Claim step, then move step to different phase - verify claim\
-      \ follows or is cleaned\n  - Reject/defer/skip steps with claims - verify reconciliation\n\
-      - Execute through MCP tools.\n- Paste actual command output.\n\nVerification:\n\
-      - No stale `already claimed` failure after rewiring/removal scenarios\n- Unrelated\
-      \ claims remain intact\n- Targeted command: `uv run pytest tests/test_mcp.py\
-      \ tests/test_cli.py -k mutate -v`"
-    verification: '- Real mutation command outputs
-
-      - No stale claim failures after mutations'
-    depends_on:
-    - freeze-for-integration
-    agent: integration-verifier
-  - id: gate
-    name: Gate Check
-    status: pending
-    description: 'Review mutate hardening gate.
-
-
-      - Verify all evidence quality
-
-      - Confirm no mutation path bypasses reconciliation
-
-      - Cross-cutting focus: orphan claim cleanup, scope preservation, no hidden bypass
-
-      - Review depth: THOROUGH
-
-
-      No file changes.'
-    depends_on:
-    - integration-verify
-    agent: gate-reviewer
   - id: claim-consistency-hardening-mutate.freeze-for-integration
     name: Freeze for Integration
-    status: pending
+    status: claimed
     description: 'Freeze snapshot before mutate integration verification.
 
 
@@ -19482,6 +19427,8 @@ phases:
     depends_on:
     - add-orphan-claim-regression-matrix
     agent: python-executor
+    claimed_by: python-executor
+    claimed_at: '2026-03-11T15:41:08.342708+00:00'
   - id: claim-consistency-hardening-mutate.integration-verify
     name: Integration Verify
     status: pending
@@ -19607,23 +19554,6 @@ phases:
     - verify-diagnostics
     - update-operator-docs
     agent: python-executor
-  - id: gate
-    name: Gate Check
-    status: pending
-    description: 'Review diagnostics gate.
-
-
-      - Verify operator clarity in docs and CLI output
-
-      - Confirm no hidden split-brain state
-
-      - Review depth: STANDARD
-
-
-      No file changes.'
-    depends_on:
-    - freeze-for-gate
-    agent: gate-reviewer
   - id: claim-consistency-diagnostics.gate
     name: Gate Check
     status: pending
@@ -19662,66 +19592,6 @@ phases:
       - Prove all paths resolve to correct shared claims store\n- Targeted command:\
       \ `uv run pytest tests/test_plan_path.py tests/test_io.py -k worktree -v`"
     agent: python-senior
-  - id: freeze-for-integration
-    name: Freeze for Integration
-    status: pending
-    description: 'Freeze snapshot before worktree matrix integration verification.
-
-
-      - Capture `git rev-parse HEAD`
-
-      - Capture clean `git status`
-
-      - Declare environment including worktree configuration
-
-      - Explicit worktree/env declaration
-
-
-      No file changes.'
-    depends_on:
-    - add-cross-worktree-path-parity-regressions
-    agent: python-executor
-  - id: integration-verify
-    name: Integration Verify
-    status: pending
-    description: "End-to-end integration verification of worktree matrix.\n\n- Execute\
-      \ matrix of:\n  - Main worktree claim flow\n  - Linked worktree claim flow (if\
-      \ available, or simulate)\n  - Explicit `--plan` / VECTL_PLAN_PATH override\n\
-      - Verify path resolution for all scenarios.\n- Paste actual command output for\
-      \ full matrix.\n\nVerification:\n- At least one real linked-worktree or simulated\
-      \ equivalent path\n- Path exercised: `resolve_claims_path -> claim/mutate/status/show`\n\
-      - No path resolution regressions\n- Targeted command: `uv run pytest tests/test_plan_path.py\
-      \ tests/test_io.py tests/test_cli.py -k worktree -v`"
-    verification: '- Real command output for full matrix
-
-      - At least one real/simulated worktree path
-
-      - `resolve_claims_path` exercised correctly'
-    depends_on:
-    - freeze-for-integration
-    agent: integration-verifier
-  - id: gate
-    name: Gate Check
-    status: pending
-    description: 'Review worktree matrix gate.
-
-
-      - Verify all evidence quality
-
-      - Confirm path parity across worktrees
-
-      - Confirm branch scoping preserved
-
-      - Cross-cutting focus: path parity, branch scoping, ghost-claim recovery under
-      concurrency
-
-      - Review depth: THOROUGH
-
-
-      No file changes.'
-    depends_on:
-    - integration-verify
-    agent: gate-reviewer
   - id: claim-consistency-worktree-matrix.freeze-for-integration
     name: Freeze for Integration
     status: pending

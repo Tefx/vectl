@@ -21195,7 +21195,7 @@ phases:
       - Freeze snapshot captured successfully; worktree clean.'
   - id: claim-consistency-worktree-matrix.integration-verify
     name: Integration Verify
-    status: claimed
+    status: done
     description: "End-to-end integration verification of worktree matrix.\n\n- Execute\
       \ matrix of:\n  - Main worktree claim flow\n  - Linked worktree claim flow (if\
       \ available, or simulate)\n  - Explicit `--plan` / VECTL_PLAN_PATH override\n\
@@ -21214,6 +21214,49 @@ phases:
     agent: integration-verifier
     claimed_by: integration-verifier
     claimed_at: '2026-03-11T18:07:34.444867+00:00'
+    done_at: '2026-03-11T18:09:21.944141+00:00'
+    evidence: 'Artifact:
+
+      - Commit hash(es): none (verify-only)
+
+
+      Verification:
+
+      - Run: `uv run pytest tests/test_plan_path.py tests/test_io.py tests/test_cli.py
+      -k worktree -v` -> `26 passed, 260 deselected in 1.46s`
+
+      - Run: `uv run pytest -v tests/test_cli.py::TestCliPathParityRegressions::test_status_show_with_relative_plan_keep_plan_claims_path_parity
+      tests/test_cli.py::TestCliPathParityRegressions::test_claim_mutate_with_absolute_plan_keep_plan_claims_path_parity
+      tests/test_cli.py::TestLinkedWorktreeImplicitResolution::test_cli_claim_resolves_to_main_worktree_plan_without_explicit_path
+      tests/test_plan_path.py::TestResolveClaimsPathWorktreeParity::test_resolve_claims_path_main_worktree_uses_git_common_dir
+      tests/test_plan_path.py::TestResolveClaimsPathWorktreeParity::test_resolve_claims_path_linked_worktree_maps_to_main_common_dir
+      tests/test_plan_path.py::TestWorktreeDetection::test_env_var_overrides_worktree_detection`
+      -> `6 passed in 0.59s`
+
+      - Run: `uv run pytest -v tests/test_cli.py::TestLinkedWorktreeGuard::test_cli_mutate_allowed_with_env_override
+      tests/test_cli.py::TestLinkedWorktreeImplicitResolution::test_cli_mutate_with_explicit_plan_allowed_in_linked_worktree`
+      -> `2 passed in 0.23s`
+
+
+      Spec link:
+
+      - claim-consistency-worktree-matrix.integration-verify
+
+
+      Files changed:
+
+      - none
+
+
+      Gaps/Notes:
+
+      - Matrix verification covered main worktree, linked worktree behavior, and explicit
+      `--plan`/`VECTL_PLAN_PATH` override.
+
+      - `resolve_claims_path` parity exercised for claim/mutate/status/show paths
+      via targeted suites.
+
+      - No issues found.'
   - id: claim-consistency-worktree-matrix.gate
     name: Gate Check
     status: pending

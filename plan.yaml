@@ -20130,6 +20130,187 @@ phases:
     depends_on:
     - freeze-for-gate
     agent: gate-reviewer
+  - id: fix-diagnostics-mismatch-visibility
+    name: 'Batched Fix: Diagnostics Mismatch Visibility'
+    status: pending
+    description: 'Fix ALL issues found by `verify-diagnostics` for mismatch visibility
+      in CLI read surfaces.
+
+
+      ## Blockers to Fix (ALL of these, not just the first)
+
+
+      ### B1: `vectl status` does not explicitly explain plan/claims mismatch state
+
+      Locations: `src/vectl/cli.py` (`status`, phase detail rendering), related mismatch/claims
+      helpers under `src/vectl/`
+
+      Remediation: Add explicit mismatch indicator text in `status` output when plan
+      state and claims state diverge. The message must clearly say a mismatch was
+      detected between plan and claims state, explain the user-facing implication,
+      and remain scoped to the affected state so it does not imply unrelated corruption.
+
+      Grep hint: `rg -n "def status|_show_phase_detail|claims|mismatch|repair" src/vectl
+      tests`
+
+      IMPORTANT: Search for sibling status/detail output paths beyond the first insertion
+      point.
+
+
+      ### B2: `vectl show` does not surface understandable mismatch explanation
+
+      Locations: `src/vectl/cli.py` (`show`, `_show_step_detail`, `_show_phase_detail`),
+      related mismatch diagnostic helpers under `src/vectl/`
+
+      Remediation: Ensure `show <step>` and any relevant phase/show detail output
+      surface the same explicit mismatch diagnostic language, with understandable
+      explanation instead of only a raw state transition such as `claimed -> locked`.
+
+      Grep hint: `rg -n "def show|_show_step_detail|_show_phase_detail|claimed|locked|mismatch"
+      src/vectl tests`
+
+      IMPORTANT: Search for sibling show/detail paths so status and show stay aligned.
+
+
+      ### B3: Auto-repair notice/instruction is missing or unclear in status/show
+
+      Locations: `src/vectl/cli.py`, existing auto-fix/repair messaging tests such
+      as `tests/test_autofix_message.py`, related CLI tests under `tests/`
+
+      Remediation: Add a clear auto-repair notice/instruction when applicable, including
+      what command/operator action to use, while keeping output non-misleading and
+      only shown when mismatch/repair guidance truly applies.
+
+      Grep hint: `rg -n "auto.?fix|auto.?repair|repair claims|Lock status updated|status\(|show\("
+      src/vectl tests`
+
+      IMPORTANT: Reuse or align existing repair wording rather than inventing conflicting
+      terminology.
+
+
+      ### B4: Visibility semantics are not covered by tests
+
+      Locations: `tests/test_cli.py`, `tests/test_autofix_message.py`, and any focused
+      CLI diagnostics test module added for this work
+
+      Remediation: Add/update tests covering both `vectl status` and `vectl show`
+      visibility semantics for baseline and mismatch scenarios, including explicit
+      mismatch indicator text, understandable auto-repair notice, and guardrails against
+      misleading output when state is consistent.
+
+      Grep hint: `rg -n "runner.invoke\(app, \[\"status\"|runner.invoke\(app, \[\"show\"|autofix|repair"
+      tests`
+
+      IMPORTANT: Search for sibling assertions so all CLI read surfaces sharing helpers
+      are updated together.
+
+
+      ## Completion Criteria
+
+      - ALL blockers fixed across both `status` and `show`, not just one view
+
+      - Explicit mismatch indicator text is present and understandable
+
+      - Auto-repair notice/instruction appears when applicable and stays scoped
+
+      - Baseline output remains clean and non-misleading when no mismatch exists
+
+      - Visibility tests cover baseline + mismatch scenarios for both views
+
+
+      spec_refs:
+
+      - Derived from verification findings for `verify-diagnostics`
+
+      - Repo anchors: `src/vectl/cli.py`, `tests/test_cli.py`, `tests/test_autofix_message.py`
+
+      touch_paths:
+
+      - `src/vectl/cli.py`
+
+      - `src/vectl/` mismatch/claims diagnostic helpers as needed
+
+      - `tests/test_cli.py`
+
+      - `tests/test_autofix_message.py`
+
+      harness_refs:
+
+      - Typer CLI runner in `tests/test_cli.py`
+
+      - mismatch/autofix fixtures in `tests/test_autofix_message.py`
+
+      known_risks:
+
+      - CLI output can become misleading if mismatch messaging is shown for healthy
+      state; verify clean baseline behavior explicitly.
+
+      - Status/show wording can drift if implemented separately; keep wording aligned
+      across both read surfaces.
+
+      - Existing auto-fix messaging already has format expectations; extend without
+      regressing established operator-facing wording.
+
+      out_of_scope:
+
+      - No mutation to MCP output surfaces unless required by shared helper behavior.
+
+      - No expansion into unrelated claim/lock remediation flows beyond explicit status/show
+      diagnostics.'
+    verification: '- Targeted CLI tests cover baseline and mismatch scenarios for
+      `vectl status` and `vectl show`
+
+      - Assertions verify explicit mismatch text, understandable auto-repair notice,
+      and no misleading notice in baseline output
+
+      - Evidence includes which shared output helper(s) were updated so status/show
+      stay aligned'
+    evidence_template: '## Batched Fix Evidence
+
+
+      **Files changed**:
+
+      - <path>
+
+
+      **All blockers addressed**:
+
+      - B1 status mismatch indicator: <how fixed>
+
+      - B2 show mismatch explanation: <how fixed>
+
+      - B3 auto-repair notice/instruction: <how fixed>
+
+      - B4 visibility semantics tests: <tests added/updated>
+
+
+      **Sibling search evidence**:
+
+      - `rg -n "def status|def show|_show_step_detail|_show_phase_detail|auto.?fix|repair"
+      src/vectl tests`
+
+      - Remaining unmatched surfaces reviewed: <notes>
+
+
+      **Targeted tests run**:
+
+      ```text
+
+      <paste exact commands>
+
+      ```
+
+
+      **Result**:
+
+      ```text
+
+      <paste actual test output>
+
+      ```'
+    depends_on:
+    - verify-diagnostics
+    agent: python-executor
 - id: claim-consistency-worktree-matrix
   name: 'Claim Consistency Hardening: Worktree Matrix'
   status: locked

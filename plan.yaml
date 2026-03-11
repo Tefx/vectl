@@ -21292,13 +21292,13 @@ phases:
       \ keys\"\nrecommendation: \"Proceed; path parity and branch scoping validated.\""
 - id: version-bump
   name: Version Bump
-  status: in_progress
+  status: done
   depends_on:
   - claim-consistency-worktree-matrix
   steps:
   - id: version-bump.update-version
     name: Update canonical project version
-    status: claimed
+    status: done
     description: 'Bump the project version in the canonical metadata file and keep
       any directly related exposed references consistent if present.
 
@@ -21370,3 +21370,13 @@ phases:
     agent: python-executor
     claimed_by: python-executor
     claimed_at: '2026-03-11T18:32:55.198601+00:00'
+    done_at: '2026-03-11T18:34:43.203607+00:00'
+    evidence: "## Version Update Evidence\n\n- Requested new version: 0.6.1\n- Canonical\
+      \ file updated: `pyproject.toml`\n- Additional references updated or confirmed\
+      \ dynamic: none (no mirrored hard-coded refs requiring update)\n- Metadata command\
+      \ output:\n  ```\n  0.6.1\n  ```\n- CLI version command output:\n  ```\n  vectl\
+      \ 0.6.1\n  ```\n- Targeted pytest output:\n  ```\n  tests/test_cli.py::TestVersion::test_version_flag\
+      \ PASSED\n  tests/test_cli.py::TestVersion::test_short_version_flag PASSED\n\
+      \  2 passed, 209 deselected\n  ```\n- Conflict rationale: isolated metadata/version\
+      \ surfaces only; no broader release changes\n\nFiles changed:\n- pyproject.toml\n\
+      \nCommit hash(es):\n- ad5653c"

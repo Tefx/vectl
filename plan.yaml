@@ -21295,3 +21295,76 @@ phases:
   status: pending
   depends_on:
   - claim-consistency-worktree-matrix
+  steps:
+  - id: version-bump.update-version
+    name: Update canonical project version
+    status: pending
+    description: 'Bump the project version in the canonical metadata file and keep
+      any directly related exposed references consistent if present.
+
+
+      spec_refs:
+
+      - User request: "bump version number"
+
+      - SPEC MISSING (behavior derived from repository metadata layout)
+
+
+      touch_paths:
+
+      - pyproject.toml
+
+      - src/vectl/__init__.py
+
+      - src/vectl/cli.py
+
+      - src/vectl/checkpoint.py
+
+      - tests/test_cli.py
+
+
+      harness_refs:
+
+      - tests/test_cli.py
+
+
+      Implementation scope:
+
+      - Update the version string in `pyproject.toml` as the canonical project source
+      of truth.
+
+      - Check whether any additional hard-coded version references exist; update them
+      only if present and intended to mirror the canonical version.
+
+      - Preserve the existing dynamic `__version__` flow from package metadata unless
+      the repository already requires another explicit version surface.
+
+      - Keep the change minimal; no unrelated release-process or packaging edits.
+
+
+      Targeted verification:
+
+      - Run a metadata check that reads the version from `pyproject.toml`.
+
+      - Run a CLI-focused verification proving the exposed `vectl --version` output
+      reflects the bumped version.
+
+      - If a targeted test exists for version output, run that test as supporting
+      proof.'
+    verification: '- `python - <<''PY''\nfrom pathlib import Path\nimport re\ntext
+      = Path(''pyproject.toml'').read_text()\nm = re.search(r''^version\\s*=\\s*\"([^\"]+)\"'',
+      text, re.M)\nassert m, ''version not found''\nprint(m.group(1))\nPY` prints
+      the new version
+
+      - `python -m vectl.cli --version` prints the same new version
+
+      - `pytest tests/test_cli.py -k version -v` passes if the targeted version assertions
+      exist'
+    evidence_template: "## Version Update Evidence\n\n- Requested new version: <x.y.z>\n\
+      - Canonical file updated: `pyproject.toml`\n- Additional references updated\
+      \ or confirmed dynamic: <list>\n- Metadata command output:\n  ```\n  <paste\
+      \ output>\n  ```\n- CLI version command output:\n  ```\n  <paste output>\n \
+      \ ```\n- Targeted pytest output (if applicable):\n  ```\n  <paste output>\n\
+      \  ```\n- Conflict rationale: isolated metadata/version surfaces only; no broader\
+      \ release changes"
+    agent: python-executor

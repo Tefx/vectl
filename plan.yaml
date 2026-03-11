@@ -21290,3 +21290,8 @@ phases:
       \ - \"`uvx ruff check .` passed\"\n  - \"`uv run --group dev mypy src` passed\"\
       \n  - \"worktree harness confirmed main/linked claims path equality and branch-scoped\
       \ keys\"\nrecommendation: \"Proceed; path parity and branch scoping validated.\""
+- id: version-bump
+  name: Version Bump
+  status: pending
+  depends_on:
+  - claim-consistency-worktree-matrix

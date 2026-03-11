@@ -21835,3 +21835,68 @@ phases:
     depends_on:
     - release-0-6-1-stabilization.fix-batch-claim-wiring-collection-and-lint
     agent: integration-verifier
+  - id: release-0-6-1-stabilization.freeze-for-release-gate
+    name: freeze-for-release-gate
+    status: pending
+    description: 'Freeze the release-stabilization snapshot before gate review.
+
+
+      Requirements:
+
+      - Record `git rev-parse HEAD`
+
+      - Record that `git status --short` is clean for the release candidate snapshot
+      under review
+
+      - Record the toolchain used for evidence (`python --version`, `uv --version`)
+
+      - State explicitly that no code changes are allowed until the gate step completes
+
+
+      This freeze exists to protect L2/gate evidence from drift between retest and
+      release-readiness review.'
+    verification: '- Evidence includes commit SHA, clean working tree confirmation,
+      and toolchain versions
+
+      - Evidence explicitly states the no-code-change freeze interval until gate completion'
+    evidence_template: '## Freeze Snapshot
+
+
+      **Commit**
+
+      ```
+
+      git rev-parse HEAD
+
+      ```
+
+
+      **Workspace state**
+
+      ```
+
+      git status --short
+
+      ```
+
+
+      **Environment**
+
+      ```
+
+      python --version
+
+      uv --version
+
+      ```
+
+
+      **Freeze statement**
+
+      - No code changes from this snapshot until `release-0-6-1-stabilization.gate`
+      completes.
+
+      '
+    depends_on:
+    - release-0-6-1-stabilization.independent-retest-release-candidate
+    agent: general

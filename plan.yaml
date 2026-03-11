@@ -21390,3 +21390,153 @@ phases:
     local wheel install prints `vectl 0.6.1`.'
   depends_on:
   - version-bump
+  steps:
+  - id: release-0-6-1-stabilization.baseline-reproduce-main-failures
+    name: baseline-reproduce-main-failures
+    status: pending
+    description: 'As an independent verifier, capture the current Main-branch 0.6.1
+      stabilization baseline before any fixes.
+
+
+      SPEC SOURCE:
+
+      - User-provided release stabilization brief in this conversation (SPEC MISSING
+      from repo docs; derive only from the listed failures and acceptance targets).
+
+
+      Scope:
+
+      - Reproduce the current collection failure reported from `uv run pytest -q`.
+
+      - Reproduce the current `uv run ruff check .` failure set and capture exact
+      file/code counts.
+
+      - Confirm control state for `uv run mypy src`.
+
+      - Probe the focused branch-context regression path for mismatch visibility.
+
+
+      Commands to run exactly:
+
+      - `uv run pytest -q`
+
+      - `uv run ruff check .`
+
+      - `uv run mypy src`
+
+      - `uv run pytest -q tests/test_cli.py::TestClaimMismatchVisibility::test_status_shows_ghost_claims_count`
+
+
+      Capture:
+
+      - Full failing import stack for `cannot import name ''claim_step'' from ''vectl.core''`
+      and every module hit during collection.
+
+      - Ruff rule/file matrix for all 15 reported findings, not just the first file.
+
+      - Whether the targeted mismatch-visibility test already passes after the `get_current_branch()`
+      patch.
+
+
+      Sibling search expectations:
+
+      - Search for all repo consumers of `claim_step`, `acquire_claim`, `_claims_api`,
+      and `get_current_branch`, not just the failing tests.
+
+      - Record all related files under `src/vectl/*.py` and `tests/test_*.py` that
+      will likely need review in the fix step.
+
+
+      Likely touch-path inventory to hand off:
+
+      - `src/vectl/core.py`
+
+      - `src/vectl/lifecycle.py`
+
+      - `src/vectl/claims.py`
+
+      - `src/vectl/cli.py`
+
+      - `src/vectl/io.py`
+
+      - `tests/test_core.py`
+
+      - `tests/test_logic.py`
+
+      - `tests/test_properties.py`
+
+      - `tests/test_cli.py`
+
+      - `tests/test_lifecycle_imports.py`
+
+      - `tests/test_agent_field.py`
+
+      - `tests/test_checkpoint.py`
+
+      - `tests/test_manual_yaml_edit.py`
+
+      - `tests/test_review.py`
+
+
+      This step is successful only if it produces a concrete baseline report, even
+      if failures are found.'
+    verification: '- Evidence includes the exact commands above and their real outputs
+
+      - Evidence explicitly lists every failing collection module and every Ruff finding
+      category/file
+
+      - Evidence records whether `uv run mypy src` still passes
+
+      - Evidence names the sibling-search file set for the fix step'
+    evidence_template: '## Baseline Capture
+
+
+      **Commands executed**
+
+      ```
+
+      uv run pytest -q
+
+      uv run ruff check .
+
+      uv run mypy src
+
+      uv run pytest -q tests/test_cli.py::TestClaimMismatchVisibility::test_status_shows_ghost_claims_count
+
+      ```
+
+
+      **Pytest collection failures**
+
+      - Modules hit:
+
+      - Import stack summary:
+
+
+      **Ruff findings**
+
+      - Total count:
+
+      - By file/rule:
+
+
+      **Mypy control result**
+
+      - Pass/fail:
+
+
+      **Branch-context targeted regression**
+
+      - Pass/fail:
+
+      - Notes:
+
+
+      **Sibling-search handoff**
+
+      - claim/import wiring files:
+
+      - lint hygiene files:
+
+      '
+    agent: integration-verifier

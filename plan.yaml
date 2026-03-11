@@ -22409,3 +22409,8 @@ phases:
       ### Verdict
 
       - PASS'
+- id: version-bump-0-6-2
+  name: Version Bump 0.6.2
+  status: pending
+  depends_on:
+  - release-0-6-1-stabilization

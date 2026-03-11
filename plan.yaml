@@ -20612,7 +20612,7 @@ phases:
       \ ✅\n- non-misleading output verified: ✅\n\n### Verdict\n- PASS"
   - id: claim-consistency-diagnostics.fix-gate-blockers-batched
     name: fix-gate-blockers-batched
-    status: claimed
+    status: done
     description: 'Fix ALL blockers and should-fix findings from `claim-consistency-diagnostics.gate`
       in one batched remediation step.
 
@@ -20840,6 +20840,79 @@ phases:
     agent: python-senior
     claimed_by: python-senior
     claimed_at: '2026-03-11T17:27:14.325783+00:00'
+    done_at: '2026-03-11T17:43:02.180753+00:00'
+    evidence: 'Artifact:
+
+      - Commit hash(es): 8b7687c
+
+
+      Verification:
+
+      - Run: `uv run ruff check .` -> passed (All checks passed)
+
+      - Run: `uv run pytest` -> passed (1061 passed in 74.00s)
+
+      - Run: `uv run pytest -v tests/test_claims.py::test_check_mismatch_uses_plan_root_for_branch_resolution
+      tests/test_cli.py::TestStatus::test_status_malformed_claims_does_not_crash tests/test_cli.py::TestStatus::test_show_malformed_claims_does_not_crash
+      tests/test_mcp.py::TestVectlStatus::test_status_malformed_claims_does_not_crash
+      tests/test_mcp.py::TestVectlShow::test_show_malformed_claims_does_not_crash`
+      -> 5 passed
+
+      - Run: `uv run pytest tests/test_core.py` -> 12 passed
+
+      - Run: `uv run pytest tests/test_cli.py::TestMutateClaimReconciliationCli` ->
+      5 passed
+
+
+      Spec link:
+
+      - claim-consistency-diagnostics.fix-gate-blockers-batched
+
+
+      Files changed:
+
+      - src/vectl/claims.py
+
+      - src/vectl/cli.py
+
+      - src/vectl/core.py
+
+      - src/vectl/io.py
+
+      - src/vectl/mcp_server.py
+
+      - tests/test_claims.py
+
+      - tests/test_cli.py
+
+      - tests/test_mcp.py
+
+      - tests/test_logic.py
+
+      - tests/test_manual_yaml_edit.py
+
+      - tests/test_agent_field.py
+
+      - tests/test_checkpoint.py
+
+      - tests/test_review.py
+
+
+      Gaps/Notes:
+
+      - B1 resolved: claim API wiring consistency restored for lifecycle/read surfaces.
+
+      - B2 resolved: `vectl.core` compatibility exports restored for broad import
+      paths.
+
+      - B3 resolved: diagnostics branch-context resolution now plan-root scoped with
+      fallback.
+
+      - B4 resolved: repo lint gate clean after remediation.
+
+      - S1 resolved: malformed claims data no longer crashes status/show (CLI+MCP).
+
+      - S2 resolved: operator wording clarifies branch/context scope.'
   - id: claim-consistency-diagnostics.retest-gate-blockers-batched
     name: retest-gate-blockers-batched
     status: pending

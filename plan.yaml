@@ -20006,7 +20006,7 @@ phases:
     agent: integration-verifier
   - id: update-operator-docs
     name: Update Operator Docs
-    status: claimed
+    status: done
     description: "Update operator documentation for claim consistency.\n\n- Update\
       \ `README.md` and `docs/DESIGN.md`:\n  - Document manual repair as escape hatch,\
       \ not primary path\n  - Document automatic reconciliation as primary\n  - Document\
@@ -20017,6 +20017,42 @@ phases:
     agent: doc-reviewer
     claimed_by: general
     claimed_at: '2026-03-11T16:32:49.578966+00:00'
+    done_at: '2026-03-11T16:46:27.911304+00:00'
+    evidence: 'Artifact:
+
+      - Commit hash(es): 3c4fe27
+
+
+      Verification:
+
+      - Run: `uvx --from . vectl guide --on recovery` -> PASS (rendered Claim Recovery
+      Runbook including policy and commands)
+
+
+      Spec link:
+
+      - update-operator-docs
+
+
+      Files changed:
+
+      - README.md
+
+      - docs/DESIGN.md
+
+
+      Gaps/Notes:
+
+      - Docs now state automatic reconciliation as primary path.
+
+      - Manual `repair claims` positioned as escape hatch only.
+
+      - Added worktree/path caveats and aligned wording with recovery guide semantics.
+
+
+      discovered_issues:
+
+      - none'
   - id: freeze-for-gate
     name: Freeze for Gate
     status: pending

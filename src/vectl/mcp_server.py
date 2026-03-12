@@ -46,8 +46,10 @@ from vectl.core import (
     add_phase,
     add_step,
     add_steps_bulk,
+    analyze_duplicate_step_ids,
     clipboard_clear,
     clipboard_write,
+    duplicate_step_id_recommendation_for_target,
     edit_phase,
     edit_plan,
     edit_step,
@@ -62,6 +64,7 @@ from vectl.core import (
     search_plan,
     update_checklist,
     upsert_agents_md,
+    validate_plan,
 )
 from vectl.io import (
     _backup_definition,
@@ -216,6 +219,44 @@ def _fmt_phase_summary(plan: Plan) -> str:
     return f"## Plan: {plan.project}\n\n{header}\n" + "\n".join(lines)
 
 
+def _duplicate_id_diagnostics_lines(plan: Plan) -> list[str]:
+    """Format duplicate step-ID diagnostics for read-only MCP tools."""
+    diagnostics = analyze_duplicate_step_ids(plan)
+    if not diagnostics.conflicts:
+        return []
+
+    lines: list[str] = ["## Duplicate Step-ID Diagnostics", ""]
+    for conflict in diagnostics.conflicts:
+        phases = ", ".join(conflict.phase_ids)
+        lines.append(
+            f"WARN: duplicate step ID '{conflict.step_id}' appears "
+            f"{conflict.occurrences} time(s) across phases: {phases}"
+        )
+    return lines
+
+
+def _duplicate_id_recommendation_lines(plan: Plan, step_id: str) -> list[str]:
+    """Format duplicate-ID repair recommendation for targeted step reads."""
+    diagnostics = analyze_duplicate_step_ids(plan)
+    recommendation = duplicate_step_id_recommendation_for_target(diagnostics, step_id)
+    if recommendation is None:
+        return []
+
+    phase_list = ", ".join(recommendation.phase_ids)
+    return [
+        "",
+        "## Duplicate-ID Repair Recommendation",
+        (
+            f"step_id={recommendation.step_id}; "
+            f"phases={phase_list}; "
+            f"dry_run={recommendation.dry_run_repair_entry_point}; "
+            f"auto_migrate={recommendation.auto_migrate_entry_point}"
+        ),
+        f"operator_next_action: {recommendation.operator_next_action}",
+        f"automation_next_action: {recommendation.automation_next_action}",
+    ]
+
+
 # ---------------------------------------------------------------------------
 # Tool 1: vectl_status
 # ---------------------------------------------------------------------------
@@ -259,6 +300,11 @@ def vectl_status(agent: str | None = None) -> str:
                 parts.append(_fmt_step(plan, step, phase_id))
         else:
             parts.append(f"\n*No steps claimed by {agent}.*")
+
+    diag_lines = _duplicate_id_diagnostics_lines(plan)
+    if diag_lines:
+        parts.append("\n")
+        parts.extend(diag_lines)
 
     return "\n".join(parts)
 
@@ -315,6 +361,7 @@ def vectl_show(id: str) -> str:
             lines.append(f"**Verification:** {step.verification}")
         if step.refs:
             lines.append(f"**Refs:** {', '.join(step.refs)}")
+        lines.extend(_duplicate_id_recommendation_lines(plan, step.id))
         return "\n".join(lines)
 
     # Try phase
@@ -335,6 +382,10 @@ def vectl_show(id: str) -> str:
             lines.append("\n### Steps\n")
             for step in phase_obj.steps:
                 lines.append(_fmt_step(plan, step, phase_obj.id))
+        diag_lines = _duplicate_id_diagnostics_lines(plan)
+        if diag_lines:
+            lines.append("")
+            lines.extend(diag_lines)
         return "\n".join(lines)
 
     return f"**Error:** '{id}' not found as step or phase."
@@ -1195,6 +1246,38 @@ def vectl_review(
         except PlanError as e:
             parts.append(f"\n**Gate Check Error:** {e}")
 
+    diag_lines = _duplicate_id_diagnostics_lines(plan)
+    if diag_lines:
+        parts.append("")
+        parts.extend(diag_lines)
+
+    return "\n".join(parts)
+
+
+@mcp.tool(
+    description=(
+        "Validate plan structure and consistency (read-only diagnostics). "
+        "Returns errors/warnings without mutating plan state."
+    ),
+)
+def vectl_validate(check_refs: bool = False) -> str:
+    """Validate plan structure and consistency (MCP read-only equivalent)."""
+    plan, _ = _load()
+    base_path = _plan_path().parent if check_refs else None
+    issues = validate_plan(plan, check_refs=check_refs, base_path=base_path)
+
+    parts: list[str] = ["## Validation"]
+    if not issues:
+        parts.append("✓ Plan is valid — 0 errors, 0 warnings")
+        return "\n".join(parts)
+
+    errors = [issue for issue in issues if not issue.is_warning]
+    warnings = [issue for issue in issues if issue.is_warning]
+    for issue in errors:
+        parts.append(f"ERROR: {issue.message}")
+    for issue in warnings:
+        parts.append(f"WARN: {issue.message}")
+    parts.append(f"{len(errors)} error(s), {len(warnings)} warning(s)")
     return "\n".join(parts)
 
 
@@ -1254,9 +1337,22 @@ def vectl_dag(phase_id: str | None = None) -> str:
     plan, _ = _load()
 
     try:
-        return generate_mermaid_dag(plan, phase_id=phase_id)
+        mmd = generate_mermaid_dag(plan, phase_id=phase_id)
     except PlanError as e:
         return f"**Error:** {e}"
+
+    diagnostics = analyze_duplicate_step_ids(plan)
+    if not diagnostics.conflicts:
+        return mmd
+
+    warning_lines = ["%% Duplicate Step-ID Diagnostics"]
+    for conflict in diagnostics.conflicts:
+        warning_lines.append(
+            "%% WARN duplicate step ID "
+            f"'{conflict.step_id}' appears {conflict.occurrences} time(s) across phases: "
+            f"{', '.join(conflict.phase_ids)}"
+        )
+    return "\n".join([*warning_lines, "", mmd])
 
 
 # ---------------------------------------------------------------------------

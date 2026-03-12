@@ -26,8 +26,10 @@ from vectl.core import (
     add_phase,
     add_step,
     add_steps_bulk,
+    analyze_duplicate_step_ids,
     clipboard_clear,
     clipboard_write,
+    duplicate_step_id_recommendation_for_target,
     diff_plans,
     edit_phase,
     edit_step,
@@ -135,6 +137,50 @@ def _one_line_summary(description: str, max_len: int = 72) -> str:
             return stripped[: max_len - 1] + "…"
         return stripped
     return ""
+
+
+def _print_duplicate_id_warning_block(p: Plan) -> None:
+    """Print duplicate step-ID diagnostics for read-only surfaces."""
+    diagnostics = analyze_duplicate_step_ids(p)
+    if not diagnostics.conflicts:
+        return
+
+    out.print("[yellow]⚠ Duplicate step-ID diagnostics:[/]")
+    for conflict in diagnostics.conflicts:
+        phases = ", ".join(conflict.phase_ids)
+        out.print(
+            f"  [yellow]WARN:[/] duplicate step ID '{_esc(conflict.step_id)}' "
+            f"appears {conflict.occurrences} time(s) across phases: {_esc(phases)}"
+        )
+
+
+def _print_duplicate_id_recommendation_for_step(p: Plan, step_id: str) -> None:
+    """Print duplicate-ID repair recommendation for an ambiguous step target."""
+    diagnostics = analyze_duplicate_step_ids(p)
+    recommendation = duplicate_step_id_recommendation_for_target(diagnostics, step_id)
+    if recommendation is None:
+        return
+
+    out.print(
+        "[yellow]⚠ Ambiguous step target: duplicate ID detected across phases.[/]",
+    )
+    out.print(
+        "  "
+        f"[dim]step_id={_esc(recommendation.step_id)} "
+        f"phases={_esc(', '.join(recommendation.phase_ids))}[/]"
+    )
+    out.print(
+        f"  [dim]dry-run repair:[/] {recommendation.dry_run_repair_entry_point}",
+    )
+    out.print(
+        f"  [dim]opt-in auto-migrate:[/] {recommendation.auto_migrate_entry_point}",
+    )
+    out.print(
+        f"  [dim]operator next action:[/] {_esc(recommendation.operator_next_action)}",
+    )
+    out.print(
+        f"  [dim]automation next action:[/] {_esc(recommendation.automation_next_action)}",
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -947,6 +993,7 @@ def status(
 
     if phase is not None:
         _show_phase_detail(p, phase)
+        _print_duplicate_id_warning_block(p)
         return
 
     # Check for claims.json vs plan.yaml mismatch
@@ -977,6 +1024,8 @@ def status(
         )
 
     out.print(table)
+    out.print()
+    _print_duplicate_id_warning_block(p)
 
     # B1: Show mismatch indicator when detected
     if has_mismatch:
@@ -1081,6 +1130,8 @@ def _show_step_detail(p: Plan, step_id: str, plan_path: Path | None = None) -> N
     if mismatch_info:
         out.print(f"[yellow]{mismatch_info}[/]")
 
+    _print_duplicate_id_recommendation_for_step(p, step.id)
+
     if step.agent:
         out.print(f"**Suggested agent:** {step.agent}", markup=False)
         # RFC: docs/RFC-affinity.md
@@ -1150,6 +1201,7 @@ def show(
     ph = p.find_phase(target)
     if ph is not None:
         _show_phase_detail(p, target)
+        _print_duplicate_id_warning_block(p)
         return
 
     # Try step match
@@ -1213,6 +1265,7 @@ def dag(
         _die(str(e))
         return  # unreachable
 
+    _print_duplicate_id_warning_block(p)
     out.print(mmd)
 
 

@@ -3190,6 +3190,63 @@ class TestDag:
         assert "uvx vectl dag --phase" in result.output
 
 
+class TestDuplicateIdDiagnostics:
+    def _duplicate_plan_path(self, tmp_path: Path) -> Path:
+        plan = Plan(
+            project="duplicate-diagnostics",
+            phases=[
+                Phase(
+                    id="p1",
+                    name="Phase 1",
+                    status=PhaseStatus.PENDING,
+                    steps=[Step(id="dup.step", name="P1 Dup")],
+                ),
+                Phase(
+                    id="p2",
+                    name="Phase 2",
+                    status=PhaseStatus.PENDING,
+                    steps=[Step(id="dup.step", name="P2 Dup")],
+                ),
+            ],
+        )
+        path = tmp_path / "plan.yaml"
+        save_plan(plan, path)
+        return path
+
+    def test_validate_duplicate_step_ids_are_warnings_only(self, tmp_path: Path) -> None:
+        plan_path = self._duplicate_plan_path(tmp_path)
+        result = runner.invoke(app, ["validate", "--plan", str(plan_path)])
+        assert result.exit_code == 0
+        assert "WARN:" in result.output
+        assert "Duplicate step ID 'dup.step'" in result.output
+        assert "0 error(s), 1 warning(s)" in result.output
+
+    def test_status_shows_duplicate_diagnostics(self, tmp_path: Path) -> None:
+        plan_path = self._duplicate_plan_path(tmp_path)
+        result = runner.invoke(app, ["status", "--plan", str(plan_path)])
+        assert result.exit_code == 0
+        assert "Duplicate step-ID diagnostics" in result.output
+        assert "dup.step" in result.output
+        assert "p1, p2" in result.output
+
+    def test_show_step_emits_structured_repair_recommendation(self, tmp_path: Path) -> None:
+        plan_path = self._duplicate_plan_path(tmp_path)
+        result = runner.invoke(app, ["show", "dup.step", "--plan", str(plan_path)])
+        assert result.exit_code == 0
+        assert "Ambiguous step target: duplicate ID detected across phases" in result.output
+        assert "step_id=dup.step" in result.output
+        assert "phases=p1, p2" in result.output
+        assert "vectl repair claims --dry-run" in result.output
+        assert "vectl validate --auto-migrate" in result.output
+
+    def test_dag_shows_duplicate_diagnostics(self, tmp_path: Path) -> None:
+        plan_path = self._duplicate_plan_path(tmp_path)
+        result = runner.invoke(app, ["dag", "--plan", str(plan_path)])
+        assert result.exit_code == 0
+        assert "Duplicate step-ID diagnostics" in result.output
+        assert "dup.step" in result.output
+
+
 # ---------------------------------------------------------------------------
 # clipboard commands
 # ---------------------------------------------------------------------------

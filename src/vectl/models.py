@@ -224,6 +224,39 @@ class PlanValidationIssue:
         return self.message == other.message and self.is_warning == other.is_warning
 
 
+@dataclass(frozen=True)
+class DuplicateStepIdDiagnostic:
+    """Plan-wide duplicate step-ID conflict details.
+
+    Used by read-only diagnostic surfaces (status/review/show/dag/validate)
+    and by targeted-command repair recommendations.
+    """
+
+    step_id: str
+    phase_ids: list[str]
+    occurrences: int
+
+
+@dataclass(frozen=True)
+class DuplicateStepIdRepairRecommendation:
+    """Structured next-step recommendation for duplicate step IDs."""
+
+    step_id: str
+    phase_ids: list[str]
+    dry_run_repair_entry_point: str
+    auto_migrate_entry_point: str
+    operator_next_action: str
+    automation_next_action: str
+
+
+@dataclass(frozen=True)
+class DuplicateStepIdDiagnostics:
+    """Aggregate duplicate step-ID diagnostics and repair guidance."""
+
+    conflicts: list[DuplicateStepIdDiagnostic]
+    recommendations: list[DuplicateStepIdRepairRecommendation]
+
+
 class PlanError(Exception):
     """Raised when a plan operation fails."""
 

@@ -254,12 +254,8 @@ class TestRefsCheck:
 class TestLegacyDuplicateStepIdWarnings:
     """Legacy plans with duplicate IDs produce warning diagnostics in read-only surfaces."""
 
-    def test_duplicate_step_id_is_error_not_warning(self):
-        """Current behavior: duplicate step IDs are errors (not warnings).
-
-        This test documents current hard-error behavior. The step below
-        is a placeholder for the future soft-warning migration.
-        """
+    def test_duplicate_step_id_is_warning(self):
+        """Duplicate step IDs are warnings for diagnostics-only rollout."""
         plan = _make_plan(
             phases=[
                 Phase(
@@ -275,8 +271,7 @@ class TestLegacyDuplicateStepIdWarnings:
         errors = validate_plan(plan)
         assert len(errors) == 1
         assert "Duplicate step ID" in errors[0].message
-        # Currently this is an error, not a warning
-        assert errors[0].is_warning is False
+        assert errors[0].is_warning is True
 
     def test_duplicate_step_id_warning_placeholder(self):
         """Placeholder test for future soft-warning flip.
@@ -300,12 +295,8 @@ class TestLegacyDuplicateStepIdWarnings:
                 )
             ]
         )
-        # Current behavior: hard error
         errors = validate_plan(plan)
-        assert errors[0].is_warning is False
-        # TODO: After flip, this should become:
-        # errors = validate_plan(plan, legacy_warnings=True)
-        # assert errors[0].is_warning is True
+        assert errors[0].is_warning is True
 
     def test_read_only_surface_status_shows_warning_for_duplicate(self):
         """Status command should show validation warnings for legacy duplicates.
@@ -313,8 +304,6 @@ class TestLegacyDuplicateStepIdWarnings:
         This is a placeholder for testing the read-only surface behavior
         when legacy_warnings flag is implemented.
         """
-        # Currently, validate_plan returns errors (not warnings) for duplicates.
-        # Read-only surfaces (status, render, show) will display these as errors.
         plan = _make_plan(
             phases=[
                 Phase(
@@ -328,11 +317,7 @@ class TestLegacyDuplicateStepIdWarnings:
             ]
         )
         errors = validate_plan(plan)
-        # Validation produces non-warning errors currently
-        assert any(not e.is_warning for e in errors)
-        # Placeholder: after flip, read-only surfaces should show warnings:
-        # errors = validate_plan(plan, legacy_warnings=True)
-        # assert any(e.is_warning for e in errors)
+        assert any(e.is_warning for e in errors)
 
     def test_read_only_surface_render_shows_warning_placeholder(self):
         """Render should show warnings for legacy duplicates (placeholder)."""
@@ -348,11 +333,9 @@ class TestLegacyDuplicateStepIdWarnings:
                 )
             ]
         )
-        # Current behavior - validation errors
         errors = validate_plan(plan)
         assert len(errors) > 0
-        # Placeholder for render output with warnings:
-        # After flip: render should indicate warnings without blocking
+        assert all(e.is_warning for e in errors)
 
 
 class TestWriteSurfaceRejectsDuplicateIds:
@@ -433,9 +416,8 @@ class TestFutureHardErrorFlipPlaceholders:
                 )
             ]
         )
-        # Current behavior: always returns errors
         errors = validate_plan(plan)
-        assert all(not e.is_warning for e in errors)
+        assert all(e.is_warning for e in errors)
 
         # Placeholder for future implementation:
         # errors = validate_plan(plan, strict=False)  # soft warnings for legacy

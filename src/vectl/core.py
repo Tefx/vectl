@@ -13,6 +13,9 @@ from vectl import lifecycle as _lifecycle
 from vectl.models import (
     AmbiguousMatchError,
     Clipboard,
+    DuplicateStepIdDiagnostic,
+    DuplicateStepIdDiagnostics,
+    DuplicateStepIdRepairRecommendation,
     DiffResult,
     GateCheckResult,
     NoMatchError,
@@ -143,15 +146,15 @@ def validate_plan(
     if phase_cycle:
         errors.append(PlanValidationIssue(f"Phase DAG cycle detected: {' → '.join(phase_cycle)}"))
 
+    duplicate_diagnostics = analyze_duplicate_step_ids(plan)
+
     # Per-phase checks
     for phase in plan.phases:
-        # Step ID uniqueness within phase
+        # Step IDs in this phase (used for dependency validation only).
+        # Duplicate-ID diagnostics are generated plan-wide by
+        # analyze_duplicate_step_ids().
         step_ids: set[str] = set()
         for step in phase.steps:
-            if step.id in step_ids:
-                errors.append(
-                    PlanValidationIssue(f"Duplicate step ID '{step.id}' in phase '{phase.id}'")
-                )
             step_ids.add(step.id)
 
         # Step DAG: valid depends_on refs (within same phase)
@@ -195,6 +198,16 @@ def validate_plan(
                         )
                     )
 
+    for conflict in duplicate_diagnostics.conflicts:
+        conflict_phase_list = ", ".join(conflict.phase_ids)
+        errors.append(
+            PlanValidationIssue(
+                f"Duplicate step ID '{conflict.step_id}' appears {conflict.occurrences} "
+                f"times across phases: {conflict_phase_list}",
+                is_warning=True,
+            )
+        )
+
     # Refs check (optional)
     if check_refs and base_path is not None:
         for phase in plan.phases:
@@ -211,6 +224,75 @@ def validate_plan(
                         )
 
     return errors
+
+
+def analyze_duplicate_step_ids(plan: Plan) -> DuplicateStepIdDiagnostics:
+    """Analyze plan-wide duplicate step IDs and build repair guidance.
+
+    Source:
+        - conversation/duplicate-step-id-bug
+        - conversation/half-automatic-step-id-migration
+
+    Rollout contract for this step requires diagnostics-only behavior on
+    read surfaces, including explicit, structured recommendations.
+    """
+    step_phase_counts: dict[str, dict[str, int]] = {}
+    for phase in plan.phases:
+        for step in phase.steps:
+            phase_counts = step_phase_counts.setdefault(step.id, {})
+            phase_counts[phase.id] = phase_counts.get(phase.id, 0) + 1
+
+    conflicts: list[DuplicateStepIdDiagnostic] = []
+    recommendations: list[DuplicateStepIdRepairRecommendation] = []
+
+    for step_id in sorted(step_phase_counts):
+        phase_counts = step_phase_counts[step_id]
+        occurrences = sum(phase_counts.values())
+        if occurrences <= 1:
+            continue
+
+        phase_ids = sorted(phase_counts)
+        conflicts.append(
+            DuplicateStepIdDiagnostic(
+                step_id=step_id,
+                phase_ids=phase_ids,
+                occurrences=occurrences,
+            )
+        )
+        recommendations.append(_build_duplicate_step_id_recommendation(step_id, phase_ids))
+
+    return DuplicateStepIdDiagnostics(conflicts=conflicts, recommendations=recommendations)
+
+
+def _build_duplicate_step_id_recommendation(
+    step_id: str, phase_ids: list[str]
+) -> DuplicateStepIdRepairRecommendation:
+    """Build a structured repair recommendation for one duplicate step ID."""
+    phase_list = ", ".join(phase_ids)
+    return DuplicateStepIdRepairRecommendation(
+        step_id=step_id,
+        phase_ids=phase_ids,
+        dry_run_repair_entry_point="vectl repair claims --dry-run",
+        auto_migrate_entry_point="vectl validate --auto-migrate",
+        operator_next_action=(
+            f"Inspect duplicate step ID '{step_id}' in phases: {phase_list}. "
+            "Run dry-run first, then opt into auto-migrate when acceptable."
+        ),
+        automation_next_action=(
+            f"If duplicate ID '{step_id}' is detected, emit this diagnostic payload, "
+            "execute dry-run repair, and require explicit opt-in before auto-migrate."
+        ),
+    )
+
+
+def duplicate_step_id_recommendation_for_target(
+    diagnostics: DuplicateStepIdDiagnostics, step_id: str
+) -> DuplicateStepIdRepairRecommendation | None:
+    """Return duplicate repair recommendation for a targeted step ID, if any."""
+    for recommendation in diagnostics.recommendations:
+        if recommendation.step_id == step_id:
+            return recommendation
+    return None
 
 
 def _detect_cycle(graph: dict[str, list[str]]) -> list[str] | None:

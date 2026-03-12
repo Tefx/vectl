@@ -791,6 +791,28 @@ class TestClaim:
         assert result.exit_code == 1
         assert "unmet dependencies" in result.output
 
+    def test_claim_error_for_already_qualified_id_is_not_double_prefixed(
+        self, tmp_path: Path
+    ) -> None:
+        plan = Plan(
+            project="qualified-id-regression",
+            phases=[
+                Phase(
+                    id="p1",
+                    name="Phase 1",
+                    steps=[Step(id="p1.s1", name="Step 1", status=StepStatus.DONE)],
+                )
+            ],
+        )
+        plan_path = tmp_path / "plan.yaml"
+        save_plan(plan, plan_path)
+
+        result = runner.invoke(app, ["claim", "p1.s1", "--plan", str(plan_path)])
+
+        assert result.exit_code == 1
+        assert "p1.s1" in result.output
+        assert "p1.p1.s1" not in result.output
+
     def test_auto_claim_picks_first(self, plan_file: Path) -> None:
         """Omitting step_id auto-picks the first claimable step."""
         result = runner.invoke(app, ["claim", "--agent", "bot-1", "--plan", str(plan_file)])
@@ -2491,6 +2513,12 @@ class TestShow:
         result = runner.invoke(app, ["show", "nonexistent", "--plan", str(plan_file)])
         assert result.exit_code == 1
         assert "not found" in result.output
+
+    def test_show_not_found_collapses_double_prefixed_selector(self, plan_file: Path) -> None:
+        result = runner.invoke(app, ["show", "p1.p1.missing", "--plan", str(plan_file)])
+        assert result.exit_code == 1
+        assert "'p1.missing' not found as step or phase." in result.output
+        assert "p1.p1.missing" not in result.output
 
     def test_show_claimed_step_has_agent(self, plan_file: Path) -> None:
         runner.invoke(app, ["claim", "s1", "--agent", "bot", "--plan", str(plan_file)])

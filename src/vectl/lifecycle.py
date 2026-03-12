@@ -20,6 +20,7 @@ from vectl.models import (
     SkipReason,
     Step,
     StepStatus,
+    format_step_selector,
 )
 
 _logger = logging.getLogger(__name__)
@@ -127,7 +128,7 @@ def claim_step(
     if found is None:
         raise PlanError(f"Step '{step_id}' not found")
     phase, step = found
-    qualified_id = f"{phase.id}.{step.id}"
+    qualified_id = format_step_selector(phase.id, step.id)
 
     if step.status not in (StepStatus.PENDING, StepStatus.REJECTED):
         raise PlanError(f"Step '{qualified_id}' cannot be claimed (status: {step.status.value})")
@@ -199,7 +200,7 @@ def complete_step(plan: Plan, step_id: str, evidence: str, claims_path: Path | N
     if found is None:
         raise PlanError(f"Step '{step_id}' not found")
     phase, step = found
-    qualified_id = f"{phase.id}.{step.id}"
+    qualified_id = format_step_selector(phase.id, step.id)
 
     if step.status != StepStatus.CLAIMED:
         raise PlanError(
@@ -277,7 +278,7 @@ def defer_step(plan: Plan, step_id: str, claims_path: Path | None = None) -> Pla
     if found is None:
         raise PlanError(f"Step '{step_id}' not found")
     phase, step = found
-    qualified_id = f"{phase.id}.{step.id}"
+    qualified_id = format_step_selector(phase.id, step.id)
 
     if step.status != StepStatus.CLAIMED:
         raise PlanError(f"Step '{qualified_id}' cannot be deferred (status: {step.status.value})")
@@ -296,7 +297,7 @@ def reject_step(plan: Plan, step_id: str, reason: str, reviewer: str = "") -> Pl
     if found is None:
         raise PlanError(f"Step '{step_id}' not found")
     phase, step = found
-    qualified_id = f"{phase.id}.{step.id}"
+    qualified_id = format_step_selector(phase.id, step.id)
 
     if step.status != StepStatus.DONE:
         raise PlanError(
@@ -332,7 +333,7 @@ def skip_step(plan: Plan, step_id: str, reason: str) -> Plan:
     if found is None:
         raise PlanError(f"Step '{step_id}' not found")
     phase, step = found
-    qualified_id = f"{phase.id}.{step.id}"
+    qualified_id = format_step_selector(phase.id, step.id)
 
     if step.status not in (StepStatus.PENDING, StepStatus.CLAIMED, StepStatus.REJECTED):
         raise PlanError(f"Step '{qualified_id}' cannot be skipped (status: {step.status.value})")

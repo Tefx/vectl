@@ -44,6 +44,7 @@ from vectl.models import (
     Step,
     StepChange,
     StepStatus,
+    format_step_selector,
 )
 
 # Lazy import to avoid circular — semantics imports models, core imports models.
@@ -1658,7 +1659,7 @@ def remove_step(plan: Plan, step_id: str, *, force: bool = False) -> Plan:
     if found is None:
         raise PlanError(f"Step '{step_id}' not found")
     phase, step = found
-    qualified_id = f"{phase.id}.{step.id}"
+    qualified_id = format_step_selector(phase.id, step.id)
 
     if step.status != StepStatus.PENDING:
         raise PlanError(
@@ -1736,7 +1737,7 @@ def move_step(plan: Plan, step_id: str, to_phase_id: str) -> Plan:
     if found is None:
         raise PlanError(f"Step '{step_id}' not found")
     from_phase, step = found
-    qualified_id = f"{from_phase.id}.{step.id}"
+    qualified_id = format_step_selector(from_phase.id, step.id)
 
     if step.status != StepStatus.PENDING:
         raise PlanError(

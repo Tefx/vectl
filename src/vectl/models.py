@@ -212,6 +212,17 @@ class Plan(BaseModel):
         return None
 
 
+def format_step_selector(phase_id: str, step_id: str) -> str:
+    """Return canonical selector text for step-oriented diagnostics.
+
+    If a stored step ID is already phase-qualified (contains ``.``), emit it
+    as-is to avoid duplicating the phase prefix in user-facing error messages.
+    """
+    if "." in step_id:
+        return step_id
+    return f"{phase_id}.{step_id}"
+
+
 # ---------------------------------------------------------------------------
 # Exceptions & Validation Types
 # ---------------------------------------------------------------------------

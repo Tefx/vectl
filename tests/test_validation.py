@@ -667,6 +667,26 @@ class TestQualifiedIdInErrorMessages:
         msg = str(exc_info.value)
         assert "p1.s1" in msg, f"Error message should contain qualified ID 'p1.s1', got: {msg}"
 
+    def test_claim_step_with_already_qualified_id_does_not_double_prefix(self):
+        """Already-qualified IDs remain canonical in claim_step errors."""
+        plan = _make_plan(
+            phases=[
+                Phase(
+                    id="p1",
+                    name="P1",
+                    steps=[Step(id="p1.s1", name="S1", status=StepStatus.DONE)],
+                )
+            ]
+        )
+        from vectl.lifecycle import claim_step
+
+        with pytest.raises(PlanError) as exc_info:
+            claim_step(plan, "p1.s1", "agent-1")
+
+        msg = str(exc_info.value)
+        assert "p1.s1" in msg
+        assert "p1.p1.s1" not in msg
+
     def test_complete_step_wrong_status_error_uses_qualified_id(self):
         """complete_step error for wrong status uses qualified ID format."""
         plan = _make_plan(
@@ -791,6 +811,28 @@ class TestQualifiedIdInErrorMessages:
 
         msg = str(exc_info.value)
         assert "p1.s1" in msg, f"Error message should contain qualified ID 'p1.s1', got: {msg}"
+
+    def test_remove_step_with_already_qualified_id_does_not_double_prefix(self):
+        """Already-qualified IDs remain canonical in remove_step errors."""
+        plan = _make_plan(
+            phases=[
+                Phase(
+                    id="p1",
+                    name="P1",
+                    steps=[
+                        Step(id="p1.s1", name="S1", status=StepStatus.CLAIMED, claimed_by="agent-1")
+                    ],
+                )
+            ]
+        )
+        from vectl.core import remove_step
+
+        with pytest.raises(PlanError) as exc_info:
+            remove_step(plan, "p1.s1")
+
+        msg = str(exc_info.value)
+        assert "p1.s1" in msg
+        assert "p1.p1.s1" not in msg
 
     def test_move_step_wrong_status_error_uses_qualified_id(self):
         """move_step error for wrong status uses qualified ID format."""

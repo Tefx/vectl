@@ -82,6 +82,7 @@ from vectl.models import (
     SkipReason,
     Step,
     StepStatus,
+    format_step_selector,
 )
 from vectl.plan_path import (
     is_linked_worktree,
@@ -1140,7 +1141,7 @@ def _show_phase_detail(p: Plan, phase_id: str) -> None:
 def _show_step_detail(p: Plan, step_id: str, plan_path: Path | None = None) -> None:
     found = p.find_step(step_id)
     if not found:
-        _die(f"Step '{step_id}' not found.")
+        _die(f"Step '{_canonical_selector_error_target(step_id)}' not found.")
         return  # unreachable
     phase, step = found
 
@@ -1235,6 +1236,16 @@ def _show_step_detail(p: Plan, step_id: str, plan_path: Path | None = None) -> N
         out.print(f"[dim]→ vectl claim {eid} --agent <name>   Re-claim for rework[/]")
 
 
+def _canonical_selector_error_target(selector: str) -> str:
+    """Collapse accidental double-prefix selector forms for error output."""
+    if "." not in selector:
+        return selector
+    phase_prefix, _, step_suffix = selector.partition(".")
+    if phase_prefix and step_suffix.startswith(f"{phase_prefix}."):
+        return format_step_selector(phase_prefix, step_suffix)
+    return selector
+
+
 @app.command()
 def show(
     target: str = typer.Argument(..., help="Step ID or Phase ID."),
@@ -1256,7 +1267,8 @@ def show(
         _show_step_detail(p, target, plan_path=plan_path)
         return
 
-    _die(f"'{target}' not found as step or phase.")
+    canonical_target = _canonical_selector_error_target(target)
+    _die(f"'{canonical_target}' not found as step or phase.")
 
 
 # ---------------------------------------------------------------------------

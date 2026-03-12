@@ -24411,7 +24411,7 @@ phases:
       \ with PASS and no residual mismatch"
   - id: step-id-validation-hardening.gate
     name: Gate review for validation hardening
-    status: pending
+    status: claimed
     description: 'step_type: gate
 
       agent_source: default
@@ -24472,6 +24472,8 @@ phases:
     - step-id-validation-hardening.retest-verify-findings
     - step-id-validation-hardening.freeze-gate
     agent: gate-reviewer
+    claimed_by: gate-reviewer
+    claimed_at: '2026-03-12T15:15:36.971727+00:00'
   - id: step-id-validation-hardening.fix-verify-findings
     name: Fix MCP duplicate-id status findings
     status: done

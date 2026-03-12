@@ -27557,7 +27557,7 @@ phases:
     claimed_at: '2026-03-12T17:32:24.047492+00:00'
   - id: test-error-msg
     name: Add validation error message qualified ID test
-    status: claimed
+    status: done
     description: 'Add a test verifying the validation error message uses qualified
       phase.step IDs.
 
@@ -27594,6 +27594,38 @@ phases:
     agent: python-executor
     claimed_by: python-executor
     claimed_at: '2026-03-12T17:32:22.896865+00:00'
+    done_at: '2026-03-12T17:38:52.330238+00:00'
+    evidence: 'Commit hash(es): none (tests already present before this step; verification-only
+      completion)
+
+
+      Files changed:
+
+      - none
+
+
+      Verification:
+
+      - uv run pytest tests/test_validation.py -v -> PASS (48 passed)
+
+      - qualified error message suite `TestQualifiedIdInErrorMessages` -> PASS (12
+      passed)
+
+
+      Spec link:
+
+      - p1-qualified-lookup-errors/test-error-msg
+
+
+      Gaps/Notes:
+
+      - Existing test coverage already satisfied this step''s acceptance; no additional
+      edits required.
+
+
+      discovered_issues:
+
+      - none'
   - id: p1-qualified-lookup-errors-gate
     name: Gate review for P1 qualified lookup and error messages
     status: pending

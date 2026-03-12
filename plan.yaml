@@ -23848,13 +23848,13 @@ phases:
       (non-failing)'
 - id: step-id-validation-hardening
   name: B / Validation Hardening
-  status: pending
+  status: in_progress
   depends_on:
   - step-id-resolver-hardening
   steps:
   - id: step-id-validation-hardening.rollout-contract
     name: Define duplicate-id rollout policy
-    status: pending
+    status: claimed
     description: "step_type: contract\ncontract_purity: ENFORCED\ncontract_outputs:\n\
       \  - rollout_policy\n  - validation_severity_matrix\n  - read_vs_write_behavior\n\
       \  - deprecation_copy\n  - half_automatic_mode_matrix\nagent_source: default\n\
@@ -23899,6 +23899,8 @@ phases:
 
       '
     agent: software-architect
+    claimed_by: software-architect
+    claimed_at: '2026-03-12T13:57:23.854618+00:00'
   - id: step-id-validation-hardening.tests
     name: Add duplicate-id validation tests
     status: pending

@@ -23019,24 +23019,35 @@ phases:
     name: Prevent new duplicate step IDs on write surfaces
     status: pending
     description: "step_type: implementation\nagent_source: default\nspec_refs:\n \
-      \ - conversation/duplicate-step-id-bug\n\ntouch_paths:\n- src/vectl/core.py\n\
-      - src/vectl/cli.py\n- src/vectl/mcp_server.py\n\nharness_refs:\n- tests/test_cli.py\n\
-      - tests/test_mcp.py\n- tests/test_validation.py\n\nEnforce correctness for all\
-      \ NEW plan mutations while legacy migration tooling is still pending.\n\nRequired\
-      \ write surfaces:\n- add-step / add-steps\n- edit-step when renaming an ID\n\
-      - import/migration entry points that create or rewrite steps\n- MCP mutate equivalents\n\
-      \nBehavior:\n- reject any write that would create a globally duplicate step\
-      \ ID anywhere in the plan\n- preserve existing legacy duplicates in read-only\
-      \ mode so phase C can migrate them\n- return actionable errors that tell operators\
-      \ to run duplicate-ID repair/migration once available\n\nOut-of-scope guardrail:\n\
-      - do not yet fail plan load or read-only inspection for old plans\n- final hard\
-      \ error for legacy duplicates is deferred to phase C after repair tooling ships"
+      \ - conversation/duplicate-step-id-bug\n  - conversation/half-automatic-step-id-migration\n\
+      \ntouch_paths:\n- src/vectl/core.py\n- src/vectl/cli.py\n- src/vectl/mcp_server.py\n\
+      \nharness_refs:\n- tests/test_cli.py\n- tests/test_mcp.py\n- tests/test_validation.py\n\
+      \nEnforce correctness for all NEW plan mutations while legacy migration tooling\
+      \ is still pending, and define the pre-auto-migrate guard behavior for targeted\
+      \ mutating commands.\n\nRequired write surfaces:\n- add-step / add-steps\n-\
+      \ edit-step when renaming an ID\n- targeted mutations (`claim`, `complete`,\
+      \ `defer`, `reject`, `skip`, `cancel`, `check`, lifecycle variants)\n- import/migration\
+      \ entry points that create or rewrite steps\n- MCP mutate equivalents\n\nBehavior:\n\
+      - reject any write that would create a globally duplicate step ID anywhere in\
+      \ the plan\n- preserve existing legacy duplicates in read-only mode so phase\
+      \ C can migrate them\n- when a targeted mutating command hits duplicate-ID ambiguity\
+      \ without explicit opt-in, error cleanly and emit the structured repair recommendation\
+      \ rather than mutating or partially retrying\n- recommendation text/data must\
+      \ be stable enough for automation to detect that the command was blocked specifically\
+      \ because `--auto-migrate` or equivalent was not supplied\n- no silent migration,\
+      \ implicit dry-run/apply, or hidden retry is allowed in this phase\n\nOut-of-scope\
+      \ guardrail:\n- do not yet fail plan load or read-only inspection for old plans\n\
+      - actual repair execution and retry-after-repair flow land in phase C\n- final\
+      \ hard error for legacy duplicates is deferred to phase C after repair tooling\
+      \ ships"
     verification: '- Main path: new step creation with unique IDs still works
 
       - Failure path: attempted duplicate creation via CLI and MCP is rejected with
-      actionable guidance
+      actionable guidance, and targeted mutating commands without opt-in stop with
+      a structured recommendation instead of mutating
 
-      - Proof: no write path can introduce a duplicate step ID after this step lands'
+      - Proof: no write path can introduce a duplicate step ID after this step lands
+      and no ambiguous targeted mutation can mutate silently'
     evidence_template: '## Write Guard Evidence
 
       - Rejected surfaces: <list>

@@ -26400,7 +26400,7 @@ phases:
       - none'
   - id: test
     name: Add edit_step cycle detection tests
-    status: pending
+    status: claimed
     description: 'Add tests for the new cycle detection in edit_step.
 
 
@@ -26449,6 +26449,8 @@ phases:
     depends_on:
     - implement
     agent: python-executor
+    claimed_by: python-executor
+    claimed_at: '2026-03-12T16:12:38.771268+00:00'
   - id: p0-cycle-detection-gate
     name: Gate review for P0 cycle detection
     status: pending

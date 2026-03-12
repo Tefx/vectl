@@ -22712,7 +22712,7 @@ phases:
       \ in CLI/MCP surfaces (matches listed above)\n- Commit hash(es): `68aa775`"
   - id: step-id-resolver-hardening.surfaces
     name: Apply resolver to CLI and MCP surfaces
-    status: claimed
+    status: done
     description: "step_type: implementation\nagent_source: default\ntags:\n- integration\n\
       spec_refs:\n  - conversation/duplicate-step-id-bug\n\ntouch_paths:\n- src/vectl/cli.py\n\
       - src/vectl/mcp_server.py\n- src/vectl/claim_guidance.py\n\nharness_refs:\n\
@@ -22765,6 +22765,51 @@ phases:
     agent: python-senior
     claimed_by: python-senior
     claimed_at: '2026-03-12T13:00:04.626108+00:00'
+    done_at: '2026-03-12T13:11:24.644844+00:00'
+    evidence: "## Integration Evidence\n\n**Command or test exercising the full path**:\n\
+      ```bash\nuv run pytest -q tests/test_resolver_surfaces.py\nuv run pytest -q\
+      \ tests/test_cli.py -k \"show or claim or complete or defer or reject or skip\
+      \ or cancel or check\"\nuv run pytest -q tests/test_mcp.py -k \"show or claim\
+      \ or complete or lifecycle\"\n\nPLAN_PATH=$(uv run python -c \"from pathlib\
+      \ import Path; import tempfile; from vectl.io import save_plan; from vectl.models\
+      \ import Plan, Phase, Step, PhaseStatus, StepStatus; d=Path(tempfile.mkdtemp(prefix='resolver-evidence-'));\
+      \ p=d/'plan.yaml'; plan=Plan(project='evidence', phases=[Phase(id='alpha', name='Alpha',\
+      \ status=PhaseStatus.PENDING, steps=[Step(id='dup', name='Dup A', status=StepStatus.PENDING)]),\
+      \ Phase(id='beta', name='Beta', status=PhaseStatus.PENDING, steps=[Step(id='dup',\
+      \ name='Dup B', status=StepStatus.PENDING)])]); save_plan(plan,p); print(p)\"\
+      ) && uv run vectl show dup --plan \"$PLAN_PATH\"\n\nPLAN_PATH=$(uv run python\
+      \ -c \"from pathlib import Path; import tempfile; from vectl.io import save_plan;\
+      \ from vectl.models import Plan, Phase, Step, PhaseStatus, StepStatus; d=Path(tempfile.mkdtemp(prefix='resolver-evidence-'));\
+      \ p=d/'plan.yaml'; plan=Plan(project='evidence', phases=[Phase(id='alpha', name='Alpha',\
+      \ status=PhaseStatus.PENDING, steps=[Step(id='dup', name='Dup A', status=StepStatus.PENDING)]),\
+      \ Phase(id='beta', name='Beta', status=PhaseStatus.PENDING, steps=[Step(id='dup',\
+      \ name='Dup B', status=StepStatus.PENDING)])]); save_plan(plan,p); print(p)\"\
+      ) && export PLAN_PATH && uv run python -c \"import os, json; from vectl.mcp_server\
+      \ import vectl_claim; os.environ['VECTL_PLAN_PATH']=os.environ['PLAN_PATH'];\
+      \ result=vectl_claim.fn(agent='bot', step_id='dup'); print(json.dumps(result,\
+      \ indent=2, sort_keys=True))\"\n```\n\n**Actual output**:\n```text\ntests/test_resolver_surfaces.py\
+      \ ... [100%]\n3 passed\n\ntests/test_cli.py ... [100%]\n83 passed, 136 deselected\n\
+      \ntests/test_mcp.py ... [100%]\n51 passed, 108 deselected\n```\n\n```text\n\
+      Error: Step selector 'dup' is ambiguous across 2 matches. Use a uniquely\nidentifiable\
+      \ step ID.\nerror_code: ambiguous_target\nselector: dup\ncandidates:\n  - alpha.dup\
+      \ (step)\n  - beta.dup (step)\nrepair_hints:\n  - Use 'phase:dup' for phase\
+      \ targets.\n  - Use 'step:dup' for step targets.\n  - Duplicate step IDs detected\
+      \ across phases; use unique step IDs.\n```\n\n```json\n{\n  \"candidates\":\
+      \ [\n    \"alpha.dup (step)\",\n    \"beta.dup (step)\"\n  ],\n  \"error\":\
+      \ \"Step selector 'dup' is ambiguous across 2 matches. Use a uniquely identifiable\
+      \ step ID.\",\n  \"error_code\": \"ambiguous_target\",\n  \"ok\": false,\n \
+      \ \"repair_hints\": [\n    \"Use 'phase:dup' for phase targets.\",\n    \"Use\
+      \ 'step:dup' for step targets.\",\n    \"Duplicate step IDs detected across\
+      \ phases; use unique step IDs.\"\n  ],\n  \"selector\": \"dup\"\n}\n```\n\n\
+      **Path exercised**: shared resolver (`src/vectl/resolver.py::resolve_target`)\
+      \ -> CLI (`show`, `claim`, `complete`, `defer`, `reject`, `skip`, `cancel`,\
+      \ `check`) and MCP (`vectl_show`, `vectl_claim`, `vectl_complete`, `vectl_lifecycle`\
+      \ step-target actions)\n\n**Files changed**:\n- `src/vectl/cli.py`\n- `src/vectl/mcp_server.py`\n\
+      - `tests/test_cli.py`\n- `tests/test_resolver_surfaces.py`\n\n**Verification\
+      \ summary**:\n- Resolver adopted across required CLI/MCP targeted surfaces.\n\
+      - Canonical target UX (`step:<id>`, `phase:<id>`) added to guidance paths.\n\
+      - Added resolver surface tests proving shared resolver usage and CLI/MCP parity.\n\
+      - Targeted CLI/MCP regression suites pass.\n\n**Commit hash(es)**:\n- `edcf2f7f3c0cdce0f073d33c4a52c4ee92354de1`"
   - id: step-id-resolver-hardening.freeze-l2
     name: Freeze snapshot for resolver verification
     status: pending

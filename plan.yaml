@@ -27952,7 +27952,7 @@ phases:
       backlog'
   - id: step-id-final-integration.independent-retest-of-batched-gate-remediation
     name: Independent retest of batched gate remediation
-    status: claimed
+    status: done
     description: 'step_type: verification
 
       agent_source: default
@@ -28063,6 +28063,58 @@ phases:
     agent: blind-tester
     claimed_by: blind-tester
     claimed_at: '2026-03-12T20:01:05.533449+00:00'
+    done_at: '2026-03-12T20:07:20.426472+00:00'
+    evidence: 'Commit hash(es): none (validation-only retest; no repository edits)
+
+
+      Files changed:
+
+      - none
+
+
+      Verification:
+
+      - uv run vectl validate --plan tests/repro/fixtures/legacy_duplicate_plan.yaml
+      -> expected hard-error duplicate-id output with repair guidance
+
+      - uv run vectl gate-check p1 --plan tests/repro/fixtures/legacy_duplicate_plan.yaml
+      -> deterministic block on validation failure
+
+      - uv run vectl status --plan tests/repro/fixtures/legacy_duplicate_plan.yaml
+      -> read-surface warning diagnostics retained
+
+      - uv run pytest -q tests/test_cli.py -k "validate_duplicate_step_ids_are_hard_errors
+      or gate_check_blocks_duplicate_step_id_plan or show_step_emits_structured_repair_recommendation"
+      -> PASS (3 passed)
+
+      - uv run pytest -q tests/test_mcp.py::TestVectlShow::test_show_step_duplicate_id_recommendation
+      tests/test_validation.py::TestLegacyDuplicateStepIdHardErrors::test_duplicate_step_id_is_error
+      tests/test_validation.py::TestLegacyDuplicateStepIdHardErrors::test_duplicate_step_id_error_includes_repair_guidance
+      -> PASS (3 passed)
+
+      - grep contract for `release_gate_disposition` and `invar_invar_guard_changed_false.enforced:
+      false` -> explicit deterministic B2 criterion present
+
+      - git status --short -> clean
+
+
+      Spec link:
+
+      - step-id-final-integration.independent-retest-of-batched-gate-remediation
+
+
+      Gaps/Notes:
+
+      - B1 contract/runtime/test alignment confirmed for chosen hard-error semantics.
+
+      - B2 disposition confirmed explicit and deterministic in contract wording.
+
+      - S1 copy alignment checked via CLI/MCP recommendation tests.
+
+
+      discovered_issues:
+
+      - none'
 - id: p0-cycle-detection
   name: 'P0: edit_step Cycle Detection'
   status: done

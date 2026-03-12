@@ -24362,7 +24362,7 @@ phases:
       \ to phase before gate progression\"]"
   - id: step-id-validation-hardening.freeze-gate
     name: Freeze snapshot for validation gate
-    status: pending
+    status: claimed
     description: 'step_type: verification
 
       agent_source: default
@@ -24398,6 +24398,8 @@ phases:
     - step-id-validation-hardening.verify
     - step-id-validation-hardening.retest-verify-findings
     agent: software-architect
+    claimed_by: software-architect
+    claimed_at: '2026-03-12T15:12:03.768609+00:00'
   - id: step-id-validation-hardening.gate
     name: Gate review for validation hardening
     status: pending

@@ -23023,6 +23023,57 @@ phases:
     depends_on:
     - step-id-validation-hardening.diagnostics
     agent: python-senior
+  - id: step-id-validation-hardening.verify
+    name: Independently verify validation rollout behavior
+    status: pending
+    description: 'step_type: verification
+
+      agent_source: default
+
+      Independence Level: L1
+
+      As an INDEPENDENT TESTER (`blind-tester`), validate the duplicate-ID rollout
+      behavior from CLI and MCP interfaces.
+
+
+      YOUR GOAL IS TO FIND PROBLEMS, not to confirm it works.
+
+
+      Test for:
+
+      - Happy path: unique-step plans remain unaffected
+
+      - Edge cases: legacy duplicate plans show warnings on read surfaces and errors
+      on write surfaces
+
+      - Error scenarios: attempted duplicate creation, inconsistent severity between
+      `status/review/validate`, and unclear operator guidance
+
+
+      Document ALL findings. A test that discovers issues is a SUCCESS.'
+    verification: '- Evidence includes at least one legacy duplicate fixture and one
+      attempted duplicate creation through a write surface
+
+      - Verification compares CLI and MCP behavior where both exist
+
+      - Coverage explains the phased rollout decision and confirms it is reflected
+      in user-facing outputs'
+    evidence_template: '## Verification Report
+
+      - Fixtures used: <list>
+
+      - Commands/calls executed: <list>
+
+      - Warning outputs: <paste>
+
+      - Write errors: <paste>
+
+      - Issues found: <list>
+
+      '
+    depends_on:
+    - step-id-validation-hardening.write-guard
+    agent: blind-tester
 - id: step-id-migration-tooling
   name: C / Migration & Tooling
   status: locked

@@ -27577,7 +27577,7 @@ phases:
   steps:
   - id: step-id-final-integration.freeze-l2
     name: Freeze snapshot for final duplicate-id end-to-end proof
-    status: claimed
+    status: done
     description: 'step_type: verification
 
       agent_source: default
@@ -27615,6 +27615,24 @@ phases:
     agent: software-architect
     claimed_by: software-architect
     claimed_at: '2026-03-12T19:31:49.248936+00:00'
+    done_at: '2026-03-12T19:34:27.031675+00:00'
+    evidence: '## Freeze Record
+
+      - Commit: 2e10dd0765f1367c9c9fb814929848b41106b5ae
+
+      - Git status clean: yes
+
+      - Fixture: legacy duplicate-`gate` plan at tests/repro/fixtures/legacy_duplicate_plan.yaml
+
+      - Environment: Python 3.14.3 / uv 0.10.9 / macOS Darwin
+
+      - Freeze statement: no code changes until `step-id-final-integration.verify`
+      completes
+
+
+      discovered_issues:
+
+      - none'
   - id: step-id-final-integration.verify
     name: Run end-to-end duplicate-gate regression
     status: pending

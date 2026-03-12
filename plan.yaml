@@ -23483,7 +23483,8 @@ phases:
     name: Flip legacy duplicates to hard validation errors
     status: pending
     description: "step_type: implementation\nagent_source: default\nspec_refs:\n \
-      \ - conversation/duplicate-step-id-bug\n  - phased rollout decision from `step-id-validation-hardening.rollout-contract`\n\
+      \ - conversation/duplicate-step-id-bug\n  - conversation/half-automatic-step-id-migration\n\
+      \  - phased rollout decision from `step-id-validation-hardening.rollout-contract`\n\
       \ntouch_paths:\n- src/vectl/core.py\n- src/vectl/cli.py\n- src/vectl/mcp_server.py\n\
       - tests/test_validation.py\n\nharness_refs:\n- validation and CLI/MCP fixtures\
       \ for migrated and unmigrated plans\n\nAfter repair tooling exists, complete\
@@ -23493,11 +23494,22 @@ phases:
       \ surfaces should mark duplicate IDs as blocking rather than informational\n\
       - read-oriented surfaces needed to inspect and repair a legacy plan may remain\
       \ readable, but they must make the plan invalid and point to repair tooling\n\
-      - migrated plans pass validation with preserved DAG behavior\n\nBackward-compatibility\
+      - targeted mutating commands must keep the half-automatic model: no opt-in means\
+      \ recommendation-only error; explicit `--auto-migrate` may repair first and\
+      \ then retry\n- migrated plans pass validation with preserved DAG behavior\n\
+      - post-migration surfaces must emit enough mapping/new-ID guidance that scripts\
+      \ still using old IDs can be updated deterministically\n\nBackward-compatibility\
       \ risk checks:\n- existing unique-ID plans must remain unchanged\n- migrated\
       \ plans must not receive false-positive duplicate diagnostics\n- unmigrated\
       \ duplicate plans must point to repair/migrate commands instead of silently\
-      \ failing without guidance"
+      \ failing without guidance\n- automation consuming old IDs must receive stable\
+      \ old->new mapping output rather than ambiguous prose\n**Depends on:** step-id-migration-tooling.guidance\n\
+      **Verification:** - Main path: migrated plans validate cleanly and duplicate-free\
+      \ plans remain unaffected\n- Failure path: unmigrated duplicate plans fail validation\
+      \ and gate/review checks with actionable repair guidance, and targeted mutating\
+      \ commands still require explicit opt-in for repair\n- Proof: phased rollout\
+      \ transitions from warning mode to hard-error mode exactly once repair tooling\
+      \ is available without reintroducing silent mutation"
     verification: '- Main path: migrated plans validate cleanly and duplicate-free
       plans remain unaffected
 

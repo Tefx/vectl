@@ -24463,7 +24463,7 @@ phases:
     agent: gate-reviewer
   - id: step-id-validation-hardening.fix-verify-findings
     name: Fix MCP duplicate-id status findings
-    status: claimed
+    status: done
     description: 'step_type: implementation
 
       Fix ALL of these, not just the first, from `step-id-validation-hardening.verify`.
@@ -24526,6 +24526,55 @@ phases:
     agent: python-executor
     claimed_by: python-executor
     claimed_at: '2026-03-12T14:53:21.141451+00:00'
+    done_at: '2026-03-12T15:07:56.769109+00:00'
+    evidence: 'Commit hash(es):
+
+      - worker branch: 3f07146
+
+      - main squash commit: 0ef2245
+
+
+      Files changed:
+
+      - src/vectl/mcp_server.py
+
+      - src/vectl/cli.py
+
+      - tests/test_mcp.py
+
+
+      Verification:
+
+      - pytest tests/test_mcp.py::TestVectlStatus -> 7 passed
+
+      - pytest tests/test_mcp.py tests/test_cli.py -> 394 passed
+
+      - Unique-step non-regression -> Verified
+
+
+      Spec link:
+
+      - conversation/duplicate-step-id-bug
+
+      - conversation/half-automatic-step-id-migration
+
+
+      Gaps/Notes:
+
+      - Fixed duplicate-ID next-step phase labeling through shared helper path across
+      MCP and CLI surfaces.
+
+      - Added MCP regression coverage for duplicate entries with distinct phases.
+
+      - Sibling/systemic search completed and patched all identified status-rendering
+      call sites.
+
+      - No additional discovered issues reported.
+
+
+      discovered_issues:
+
+      - none'
   - id: step-id-validation-hardening.retest-verify-findings
     name: Retest MCP duplicate-id status findings
     status: pending

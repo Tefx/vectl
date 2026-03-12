@@ -26287,7 +26287,7 @@ phases:
       - none'
   - id: step-id-migration-tooling.tests
     name: Add migration and DAG-preservation tests
-    status: claimed
+    status: done
     description: "step_type: test\nagent_source: default\nspec_refs:\n  - conversation/duplicate-step-id-bug\n\
       \  - conversation/half-automatic-step-id-migration\n\ntouch_paths:\n- tests/test_cli.py\n\
       - tests/test_mcp.py\n- tests/test_validation.py\n- dedicated migration fixture\
@@ -26337,6 +26337,39 @@ phases:
     agent: python-executor
     claimed_by: python-executor
     claimed_at: '2026-03-12T17:53:51.144381+00:00'
+    done_at: '2026-03-12T18:00:31.700201+00:00'
+    evidence: 'Commit hash(es):
+
+      - worker branch: 2930fe1
+
+      - main squash commit: 118b522
+
+
+      Files changed:
+
+      - tests/test_duplicate_id_migration_dag.py
+
+
+      Verification:
+
+      - uv run pytest tests/test_duplicate_id_migration_contract.py tests/test_duplicate_id_migration_dag.py
+      -> 34 passed
+
+
+      Spec link:
+
+      - step-id-migration-tooling.tests
+
+
+      Gaps/Notes:
+
+      - Added comprehensive migration/DAG-preservation coverage across dry-run/apply
+      contract semantics and compatibility policy without implementing migration runtime.
+
+
+      discovered_issues:
+
+      - none'
   - id: step-id-migration-tooling.engine
     name: Implement duplicate-id repair engine
     status: pending

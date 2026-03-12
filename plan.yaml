@@ -22515,7 +22515,7 @@ phases:
   steps:
   - id: step-id-resolver-hardening.contract
     name: Define unified step target contract
-    status: claimed
+    status: done
     description: "step_type: contract\ncontract_purity: ENFORCED\ncontract_outputs:\n\
       \  - selector_rules\n  - ambiguity_errors\n  - qualified_target_grammar\n  -\
       \ legacy_behavior_matrix\n  - repair_recommendation_schema\nagent_source: default\n\
@@ -22568,6 +22568,32 @@ phases:
     agent: software-architect
     claimed_by: software-architect
     claimed_at: '2026-03-12T12:27:21.040731+00:00'
+    done_at: '2026-03-12T12:35:00.095610+00:00'
+    evidence: '## Resolver Contract
+
+      - Shared resolver API: `src/vectl/resolver.py::resolve_target(plan, selector,
+      *, target_type="auto", require_claimed_by=None) -> ResolvedTarget`
+
+      - Accepted selectors: qualified (`phase:<id>`, `step:<id>`), unqualified exact
+      phase IDs, unqualified exact step IDs, auto-detection with explicit ambiguity
+      errors
+
+      - Ambiguity cases: `TargetNotFoundError`, `AmbiguousTargetError`, `InvalidSelectorError`;
+      exact case-sensitive matching; explicit empty-selector failure
+
+      - Surfaces adopting contract: CLI `show/claim/complete/defer/reject/skip/_show_step_detail`
+      and MCP `vectl_show/vectl_claim/vectl_complete/vectl_lifecycle`; core retains
+      defense-in-depth checks
+
+      - Deferred items: resolver implementation body, CLI/MCP adoption implementation,
+      migration/auto-repair behavior, fuzzy matching, full test implementation
+
+      - Files changed: `docs/contracts/step-resolver-contract.md`, `src/vectl/resolver.py`,
+      `tests/test_resolver_contract.py`
+
+      - Verification: analyzed legacy resolution paths across `cli.py`, `mcp_server.py`,
+      `core.py`, `lifecycle.py`; documented one shared resolver entry-point requirement,
+      read-only non-mutation guarantee, and common ambiguity/repair payload schema'
   - id: step-id-resolver-hardening.tests
     name: Add resolver regression tests first
     status: pending

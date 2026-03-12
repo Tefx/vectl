@@ -23271,18 +23271,31 @@ phases:
     name: Add migration and DAG-preservation tests
     status: pending
     description: "step_type: test\nagent_source: default\nspec_refs:\n  - conversation/duplicate-step-id-bug\n\
-      \ntouch_paths:\n- tests/test_cli.py\n- tests/test_mcp.py\n- tests/test_validation.py\n\
-      - dedicated migration fixture plans with duplicate IDs and fanout dependencies\n\
-      \nharness_refs:\n- CLI runner fixtures in `tests/test_cli.py`\n- MCP fixtures\
-      \ in `tests/test_mcp.py`\n- validation fixtures in `tests/test_validation.py`\n\
-      \nAdd failing tests for migration tooling before implementation.\n\nRequired\
-      \ coverage:\n- dry-run reports a deterministic rename map for duplicate `gate`\
-      \ IDs across phases\n- apply mode rewrites duplicate IDs and all same-phase\
-      \ `depends_on` references\n- repeated migration is idempotent or no-op with\
-      \ clear messaging\n- migrated plan preserves DAG topology and claimable step\
-      \ order\n- claimed-step or stale-claims scenarios follow the contract's compatibility\
-      \ policy\n\nNon-goals:\n- final hard-error flip on legacy duplicates\n- planner/template\
-      \ updates"
+      \  - conversation/half-automatic-step-id-migration\n\ntouch_paths:\n- tests/test_cli.py\n\
+      - tests/test_mcp.py\n- tests/test_validation.py\n- dedicated migration fixture\
+      \ plans with duplicate IDs and fanout dependencies\n\nharness_refs:\n- CLI runner\
+      \ fixtures in `tests/test_cli.py`\n- MCP fixtures in `tests/test_mcp.py`\n-\
+      \ validation fixtures in `tests/test_validation.py`\n\nAdd failing tests for\
+      \ migration tooling before implementation.\n\nRequired coverage:\n- read-only\
+      \ commands (`status`, `show`, `review`, `dag`) do not mutate plan files or claims\
+      \ state when duplicates exist\n- dry-run reports a deterministic rename map\
+      \ for duplicate `gate` IDs across phases\n- mutating command without opt-in\
+      \ errors cleanly with the structured repair recommendation and no plan mutation\n\
+      - mutating command with `--auto-migrate` repairs first, retries the original\
+      \ command, and surfaces the same old->new mapping plus retry result\n- apply\
+      \ mode rewrites duplicate IDs and all same-phase `depends_on` references\n-\
+      \ repeated command after migration uses new IDs cleanly and either no-ops or\
+      \ gives precise old-ID guidance per compatibility policy\n- migrated plan preserves\
+      \ DAG topology and claimable step order\n- claimed-step or stale-claims scenarios\
+      \ follow the contract's compatibility policy\n- CLI and MCP surfaces expose\
+      \ mapping/evidence fields clearly enough for both humans and automation assertions\n\
+      \nNon-goals:\n- planner/template updates\n- final hard-error flip on legacy\
+      \ duplicates\n**Depends on:** step-id-migration-tooling.contract\n**Verification:**\
+      \ - Tests fail against current tooling because duplicate-ID repair and half-automatic\
+      \ retry do not exist yet\n- Fixtures include at least one duplicate-ID plan\
+      \ with fanout dependencies and one with a claimed-step policy case\n- Test names\
+      \ make non-mutation, opt-in blocking, retry-after-repair, and DAG-preservation\
+      \ expectations explicit"
     verification: '- Tests fail against current tooling because duplicate-ID repair
       does not exist yet
 

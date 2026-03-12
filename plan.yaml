@@ -23278,6 +23278,165 @@ phases:
     depends_on:
     - step-id-resolver-hardening.gate
     agent: python-senior
+  - id: step-id-resolver-hardening.retest-gate-blockers
+    name: Independent retest for resolver hardening gate blockers
+    status: pending
+    description: 'step_type: verification
+
+      agent_source: default
+
+
+      As an INDEPENDENT TESTER (`integration-verifier`), validate the batched remediation
+      from `step-id-resolver-hardening.fix-gate-blockers` from a fresh perspective.
+
+
+      YOUR GOAL IS TO FIND PROBLEMS, not to confirm it works.
+
+
+      prior_loop:
+
+      - step-id-resolver-hardening.gate
+
+      - step-id-resolver-hardening.fix-gate-blockers
+
+      remaining_blocker: Resolver hardening cannot proceed until lint, typing, and
+      contract enforceability are independently revalidated after the batched fix.
+
+      why_new_loop: The gate identified a combined static-quality and contract-evidence
+      failure; only an independent retest can show whether the batched remediation
+      actually closes all issues together.
+
+
+      spec_refs:
+
+      - `docs/contracts/step-resolver-contract.md`
+
+      - phase `step-id-resolver-hardening`
+
+
+      touch_paths under test:
+
+      - `src/vectl/resolver.py`
+
+      - `src/vectl/models.py`
+
+      - `tests/test_resolver_contract.py`
+
+      - `tests/test_resolver_regression.py`
+
+      - `tests/test_resolver_surfaces.py`
+
+      - `tests/test_mcp.py`
+
+
+      harness_refs:
+
+      - `uv run ruff check .`
+
+      - `uv run mypy src tests`
+
+      - targeted resolver parity / non-mutation / contract suites
+
+
+      Test for:
+
+      - Happy path: resolver contract tests now enforce behavior and collect as real
+      tests rather than placeholder skips.
+
+      - Edge cases: contract doc semantics match the runtime/model semantics for step
+      IDs and phase IDs.
+
+      - Error scenarios: duplicate-step ambiguity hints now direct users toward unique-step-id
+      repair actions.
+
+      - Static quality: touched resolver/runtime/test paths are clean under ruff and
+      mypy.
+
+      - Regression path: targeted resolver parity and non-mutation tests still pass
+      after typing and contract cleanup.
+
+
+      If `uv run mypy src tests` is still blocked by unrelated pre-existing repo debt,
+      bound the target narrowly, explain why the bound is sufficient for the touched
+      resolver surfaces, and record the exact command used.
+
+
+      Independence Level: L1'
+    verification: '- `uv run ruff check .` passes
+
+      - `uv run mypy src tests` passes, or an explicitly bounded target is used with
+      rationale covering unchanged external debt
+
+      - Resolver contract tests enforce behavior with no placeholder skip-only contract
+      artifact remaining
+
+      - Targeted resolver parity/non-mutation tests pass after the remediation'
+    evidence_template: '## Verification Report
+
+
+      **Tester**: integration-verifier
+
+      **Scope**: resolver hardening batched remediation
+
+      **Independence Level**: L1
+
+
+      ### Commands executed
+
+      ```bash
+
+      uv run ruff check .
+
+      uv run mypy src tests
+
+      # if bounded instead, paste exact bounded command and rationale
+
+      ```
+
+
+      ### Contract enforceability checks
+
+      - Contract test file status:
+
+      - Any placeholder/skips remaining in collected paths:
+
+      - Doc/model grammar alignment result:
+
+
+      ### Targeted regression checks
+
+      ```bash
+
+      # paste exact targeted resolver parity / non-mutation / contract test commands
+
+      ```
+
+      - Actual output summary:
+
+
+      ### Issues Found
+
+      | Severity | Description | Location | Reproduction |
+
+      |----------|-------------|----------|--------------|
+
+      | blocker |  |  |  |
+
+      | should_fix |  |  |  |
+
+
+      ### Verdict
+
+      - [ ] PASS
+
+      - [ ] ISSUES_FOUND
+
+      - [ ] INCOMPLETE
+
+      '
+    depends_on:
+    - step-id-resolver-hardening.fix-gate-blockers
+    agent: integration-verifier
 - id: step-id-validation-hardening
   name: B / Validation Hardening
   status: locked

@@ -25960,7 +25960,7 @@ phases:
       - none'
   - id: step-id-validation-hardening.fix-gate-rerun-guidance-blockers
     name: Batched fix for gate rerun guidance blockers
-    status: pending
+    status: claimed
     description: "step_type: implementation\nagent_source: default\nspec_refs:\n \
       \ - docs/contracts/duplicate-id-rollout-policy.yaml#duplicate-id-repair-guidance\n\
       \  - conversation/duplicate-step-id-bug\n  - conversation/half-automatic-step-id-migration\n\
@@ -26020,6 +26020,8 @@ phases:
     depends_on:
     - step-id-validation-hardening.step-id-validation-hardening-retest-gate-rerun-import-blockers
     agent: python-senior
+    claimed_by: python-senior
+    claimed_at: '2026-03-12T17:17:25.113654+00:00'
   - id: step-id-validation-hardening.retest-gate-rerun-guidance-blockers
     name: Independent retest of gate rerun guidance blockers
     status: pending

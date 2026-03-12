@@ -20,13 +20,16 @@ from rich.table import Table
 from rich.text import Text
 
 from vectl import __version__
-from vectl.claims import repair_claims
+from vectl.claims import get_current_branch, repair_claims
 from vectl.core import (
     RecoverResult,
     add_phase,
     add_step,
     add_steps_bulk,
     analyze_duplicate_step_ids,
+    apply_duplicate_step_id_migration,
+    build_duplicate_step_id_migration_dry_run,
+    build_duplicate_step_id_migration_evidence,
     claim_step,
     clipboard_clear,
     clipboard_write,
@@ -1747,6 +1750,122 @@ def migrate_cmd(
         out.print("[yellow]Warnings:[/]")
         for warning in result.warnings:
             out.print(f"  - {warning}")
+
+
+@app.command("migrate-step-id")
+def migrate_step_id_cmd(
+    dry_run: bool = typer.Option(
+        False,
+        "--dry-run",
+        help="Preview duplicate step-ID migration without writing plan.yaml.",
+    ),
+    yes: bool = typer.Option(False, "--yes", "-y", help="Skip confirmation prompt for apply."),
+    as_json: bool = typer.Option(
+        False,
+        "--json",
+        help="Emit machine-readable payload including report and evidence.",
+    ),
+    plan: Path | None = PlanOption,
+) -> None:
+    """Migrate duplicate step IDs to globally unique IDs.
+
+    Source: step `step-id-migration-tooling.surfaces` and contract
+    docs/contracts/duplicate-id-migration-contract.yaml dry-run/apply schema.
+    """
+
+    loaded_plan, def_h, plan_path = _load(plan)
+    claims_path = resolve_claims_path(plan_path)
+    branch = get_current_branch()
+
+    report, _ = build_duplicate_step_id_migration_dry_run(
+        loaded_plan,
+        claims_path=claims_path,
+        branch=branch,
+    )
+    preview_evidence = build_duplicate_step_id_migration_evidence(
+        command="vectl migrate-step-id",
+        command_args=["--dry-run"],
+        run_mode="dry-run",
+        migrated=False,
+        report=report,
+    )
+
+    if dry_run:
+        dry_run_payload: dict[str, object] = {
+            "status": "recommendation_only",
+            "report": report.to_dict(),
+            "evidence": preview_evidence.to_dict(),
+        }
+        if as_json:
+            typer.echo(json.dumps(dry_run_payload, sort_keys=True))
+            return
+
+        out.print("[bold]Duplicate step-ID migration dry-run[/]")
+        out.print(f"Plan: {plan_path}")
+        out.print(f"Branch: {branch}")
+        out.print(f"Duplicate groups: {len(report.duplicate_groups)}")
+        out.print(f"Rename map entries: {len(report.rename_map)}")
+        affected_phases = ", ".join(report.affected_phases) if report.affected_phases else "-"
+        out.print(f"Affected phases: {affected_phases}")
+        out.print("[dim]report[/]")
+        out.print(json.dumps(report.to_dict(), indent=2, sort_keys=True))
+        out.print("[dim]evidence[/]")
+        out.print(json.dumps(preview_evidence.to_dict(), indent=2, sort_keys=True))
+        return
+
+    if not yes:
+        out.print("[bold]Duplicate step-ID migration apply preview[/]")
+        out.print(f"Plan: {plan_path}")
+        out.print(f"Branch: {branch}")
+        out.print(f"Duplicate groups: {len(report.duplicate_groups)}")
+        out.print(f"Rename map entries: {len(report.rename_map)}")
+        if report.claimed_step_conflicts:
+            out.print("[yellow]Claimed-step conflicts detected; apply will be blocked.[/]")
+        out.print()
+        confirm = typer.prompt("Apply duplicate step-ID migration now? (y/N)", default="n")
+        if confirm.lower() != "y":
+            out.print("[yellow]Cancelled.[/]")
+            return
+
+    try:
+        apply_result = apply_duplicate_step_id_migration(
+            plan_path,
+            expected_hash=def_h,
+            claims_path=claims_path,
+            branch=branch,
+            command="vectl migrate-step-id",
+            command_args=["--yes"] if yes else [],
+            run_mode="apply",
+        )
+    except CASConflictError:
+        _die(
+            "CAS conflict: plan.yaml was modified by another process since you loaded it. "
+            "Re-read with `vectl status` or `vectl show`, then retry migration."
+        )
+        return
+    except PlanError as e:
+        _die(str(e))
+        return
+
+    apply_payload: dict[str, object] = {
+        "status": "repair_applied",
+        "migrated": apply_result.migrated,
+        "new_plan_hash": apply_result.new_plan_hash,
+        "report": apply_result.report.to_dict(),
+        "evidence": apply_result.evidence.to_dict(),
+    }
+
+    if as_json:
+        typer.echo(json.dumps(apply_payload, sort_keys=True))
+        return
+
+    out.print("[green]Duplicate step-ID migration complete.[/]")
+    out.print(f"migrated={apply_result.migrated}")
+    out.print(f"new_plan_hash={apply_result.new_plan_hash or '-'}")
+    out.print("[dim]report[/]")
+    out.print(json.dumps(apply_result.report.to_dict(), indent=2, sort_keys=True))
+    out.print("[dim]evidence[/]")
+    out.print(json.dumps(apply_result.evidence.to_dict(), indent=2, sort_keys=True))
 
 
 @app.command()

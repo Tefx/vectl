@@ -46,6 +46,9 @@ from vectl.mcp_server import (
     vectl_lifecycle as _vectl_lifecycle_tool,
 )
 from vectl.mcp_server import (
+    vectl_migrate_step_id as _vectl_migrate_step_id_tool,
+)
+from vectl.mcp_server import (
     vectl_mutate as _vectl_mutate_tool,
 )
 from vectl.mcp_server import (
@@ -86,6 +89,7 @@ vectl_complete = _vectl_complete_tool.fn  # type: ignore[attr-defined]
 vectl_lifecycle = _vectl_lifecycle_tool.fn  # type: ignore[attr-defined]
 vectl_search = _vectl_search_tool.fn  # type: ignore[attr-defined]
 vectl_mutate = _vectl_mutate_tool.fn  # type: ignore[attr-defined]
+vectl_migrate_step_id = getattr(_vectl_migrate_step_id_tool, "fn", _vectl_migrate_step_id_tool)
 vectl_review = _vectl_review_tool.fn  # type: ignore[attr-defined]
 vectl_guide = _vectl_guide_tool.fn  # type: ignore[attr-defined]
 vectl_dag = _vectl_dag_tool.fn  # type: ignore[attr-defined]
@@ -455,6 +459,40 @@ class TestVectlValidate:
         assert "WARN:" in result
         assert "dup.step" in result
         assert "0 error(s), 1 warning(s)" in result
+
+
+class TestVectlMigrateStepId:
+    def test_dry_run_returns_report_and_evidence(self, duplicate_id_plan_file: Path) -> None:
+        result = vectl_migrate_step_id(run_mode="dry-run")
+
+        assert result["ok"] is True
+        assert result["status"] == "recommendation_only"
+        assert result["report"]["run_mode"] == "dry-run"
+        assert result["report"]["rename_map"]
+        assert result["evidence"]["run_mode"] == "dry-run"
+        assert result["evidence"]["migrated"] is False
+
+    def test_apply_returns_report_and_persists_migration_then_noops(
+        self, duplicate_id_plan_file: Path
+    ) -> None:
+        first = vectl_migrate_step_id(run_mode="apply")
+
+        assert first["ok"] is True
+        assert first["status"] == "repair_applied"
+        assert first["migrated"] is True
+        assert first["report"]["rename_map"]
+        assert first["evidence"]["run_mode"] == "apply"
+        assert first["evidence"]["migrated"] is True
+
+        data = _reload_plan(duplicate_id_plan_file)
+        ids = [step["id"] for phase in data["phases"] for step in phase["steps"]]
+        assert len(ids) == len(set(ids))
+
+        second = vectl_migrate_step_id(run_mode="apply")
+        assert second["ok"] is True
+        assert second["status"] == "repair_applied"
+        assert second["migrated"] is False
+        assert second["report"]["rename_map"] == []
 
 
 # ---------------------------------------------------------------------------

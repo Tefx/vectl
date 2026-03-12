@@ -3316,6 +3316,46 @@ class TestDuplicateIdDiagnostics:
         assert "error_code=duplicate_step_id_ambiguous_target" in result.output
         assert "blocking_reason=duplicate_step_id_ambiguous" in result.output
 
+    def test_migrate_step_id_dry_run_json_reports_mapping_and_evidence(
+        self, tmp_path: Path
+    ) -> None:
+        plan_path = self._duplicate_plan_path(tmp_path)
+
+        result = runner.invoke(
+            app, ["migrate-step-id", "--dry-run", "--json", "--plan", str(plan_path)]
+        )
+
+        assert result.exit_code == 0
+        payload = json.loads(result.output)
+        assert payload["status"] == "recommendation_only"
+        assert payload["report"]["run_mode"] == "dry-run"
+        assert payload["report"]["rename_map"]
+        assert payload["evidence"]["run_mode"] == "dry-run"
+        assert payload["evidence"]["migrated"] is False
+
+    def test_migrate_step_id_apply_json_saves_then_becomes_noop(self, tmp_path: Path) -> None:
+        plan_path = self._duplicate_plan_path(tmp_path)
+
+        first = runner.invoke(app, ["migrate-step-id", "--yes", "--json", "--plan", str(plan_path)])
+        assert first.exit_code == 0
+        first_payload = json.loads(first.output)
+        assert first_payload["status"] == "repair_applied"
+        assert first_payload["migrated"] is True
+        assert first_payload["report"]["rename_map"]
+
+        reloaded, _ = load_plan(plan_path)
+        ids = [step.id for phase in reloaded.phases for step in phase.steps]
+        assert len(ids) == len(set(ids))
+
+        second = runner.invoke(
+            app, ["migrate-step-id", "--yes", "--json", "--plan", str(plan_path)]
+        )
+        assert second.exit_code == 0
+        second_payload = json.loads(second.output)
+        assert second_payload["status"] == "repair_applied"
+        assert second_payload["migrated"] is False
+        assert second_payload["report"]["rename_map"] == []
+
 
 # ---------------------------------------------------------------------------
 # clipboard commands

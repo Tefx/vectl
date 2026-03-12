@@ -50,9 +50,11 @@ def test_dry_run_schema_includes_mapping_and_follow_up_fields() -> None:
     assert "requires_manual_follow_up" in required_fields
 
 
-def test_retry_contract_is_exactly_once() -> None:
+def test_retry_contract_has_no_auto_retry_in_phase_b() -> None:
     contract = _load_contract()
 
     retry_constraints = contract["half_automatic_retry_contract"]["retry_constraints"]
-    assert retry_constraints["max_retries"] == 1
+    trigger = contract["half_automatic_retry_contract"]["trigger"]
+    assert trigger["flag_available"] is False
+    assert retry_constraints["max_retries"] == 0
     assert retry_constraints["additional_auto_retry"] is False

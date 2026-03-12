@@ -298,8 +298,11 @@ def _build_duplicate_step_id_recommendation(
                 "Not available in phase B: targeted commands do not support "
                 "phase-qualified step selectors"
             ),
-            auto_migrate_flag="--auto-migrate (coming in phase C)",
-            migration_tool="vectl migrate-step-id (phase C)",
+            auto_migrate_flag=(
+                "Not available in phase B: --auto-migrate is unsupported "
+                "on targeted mutating commands"
+            ),
+            migration_tool="Use vectl migrate-step-id --dry-run, then --yes",
         ),
     )
 
@@ -2549,7 +2552,8 @@ Quick view: `uvx vectl status`
 **Step IDs must be globally unique across ALL phases.**
 - Example: `auth.login` and `api.login` are different step IDs.
 - Example: Using just `login` in two phases creates a duplicate — not allowed.
-- If you have legacy duplicate step IDs, use `vectl migrate-step-id --dry-run` to preview and `--yes` to repair.
+- If you have legacy duplicate step IDs, use `vectl migrate-step-id --dry-run`
+  to preview and `--yes` to repair.
 
 ### For Architects / Planners
 - **Design Mode**: Run `uvx vectl guide --on planning` to learn the Architect Protocol.

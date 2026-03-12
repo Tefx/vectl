@@ -3279,9 +3279,10 @@ class TestDuplicateIdDiagnostics:
         assert "phase-qualified step selectors" in result.output
         assert "Use one of:" not in result.output
         assert "resolution.auto_migrate_flag:" in result.output
-        assert "--auto-migrate (coming in phase C)" in result.output
+        assert "Not available in phase B" in result.output
+        assert "--auto-migrate" in result.output
         assert "resolution.migration_tool:" in result.output
-        assert "vectl migrate-step-id (phase C)" in result.output
+        assert "Use vectl migrate-step-id --dry-run, then --yes" in result.output
 
     def test_dag_shows_duplicate_diagnostics(self, tmp_path: Path) -> None:
         plan_path = self._duplicate_plan_path(tmp_path)

@@ -85,16 +85,15 @@ half_automatic_retry_contract:
     - "plan.yaml:26195-26198 (explicit opt-in + repair first + retry once)"
   trigger:
     condition: "targeted mutating surface hits duplicate-step-ID ambiguity"
-    required_opt_in: "--auto-migrate"
+    flag_available: false
   behavior:
-    - "Without --auto-migrate: fail with structured repair recommendation, no mutation"
-    - "With --auto-migrate: run duplicate repair apply path first"
-    - "If apply succeeds: retry the original command exactly once"
-    - "Retry uses translated selector from migration map for this attempt only"
+    - "Without migration apply: fail with structured repair recommendation, no mutation"
+    - "--auto-migrate is unsupported in phase B on targeted mutating surfaces"
+    - "Operator must run migrate-step-id dry-run/apply explicitly before retrying command"
   retry_constraints:
-    max_retries: 1
+    max_retries: 0
     additional_auto_retry: false
-    on_retry_failure: "return failure with migration evidence; do not roll back migration"
+    on_retry_failure: "not applicable in phase B; no automatic retry path"
 
 compatibility_policy:
   source:
@@ -102,7 +101,7 @@ compatibility_policy:
   old_id_aliases_supported: false
   old_id_visibility:
     - "Old IDs are surfaced in dry-run/apply mapping output"
-    - "Old IDs may be used only for one in-memory translated retry in --auto-migrate flow"
+    - "Old IDs are not auto-translated on targeted mutating surfaces in phase B"
   post_migration_old_id_behavior:
     - "Targeting an old ID after migration fails with guidance"
     - "Guidance must include old->new mapping entries for that ID"
@@ -137,7 +136,7 @@ migration_evidence_schema:
   field_contract:
     command: "original mutating command name"
     command_args: "original command args string/list"
-    run_mode: "apply | auto-migrate-retry"
+    run_mode: "apply"
     migrated: "bool"
     rename_map: "list[{phase_id, old_step_id, new_step_id}]"
     depends_on_rewrites: "list[{phase_id, step_id, old_depends_on, new_depends_on}]"

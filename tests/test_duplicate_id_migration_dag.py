@@ -253,40 +253,39 @@ class TestApplyMode:
 
 
 class TestHalfAutomaticRetry:
-    """Contract: --auto-migrate retry semantics."""
+    """Contract: phase-B explicit migration without auto-retry."""
 
-    def test_requires_explicit_opt_in(self) -> None:
-        """Auto-migration must require explicit --auto-migrate flag."""
+    def test_auto_migrate_flag_is_unavailable(self) -> None:
+        """Phase B must not expose --auto-migrate on targeted surfaces."""
         contract = _load_contract()
         trigger = contract["half_automatic_retry_contract"]["trigger"]
 
-        assert "required_opt_in" in trigger
-        assert trigger["required_opt_in"] == "--auto-migrate", "Must require --auto-migrate flag"
+        assert trigger["flag_available"] is False
 
-    def test_without_flag_fails_with_guidance(self) -> None:
-        """Without --auto-migrate, must fail with repair recommendation."""
+    def test_without_migration_apply_fails_with_guidance(self) -> None:
+        """Without migration apply, command must fail with repair recommendation."""
         contract = _load_contract()
         behavior = contract["half_automatic_retry_contract"]["behavior"]
 
-        assert any("Without --auto-migrate" in b and "fail" in b.lower() for b in behavior), (
-            "Must fail without flag"
+        assert any("Without migration apply" in b and "fail" in b.lower() for b in behavior), (
+            "Must fail without explicit migration apply"
         )
 
-    def test_with_flag_runs_repair(self) -> None:
-        """With --auto-migrate, must run repair first."""
+    def test_auto_migrate_is_explicitly_unsupported(self) -> None:
+        """Contract must state --auto-migrate is unsupported in phase B."""
         contract = _load_contract()
         behavior = contract["half_automatic_retry_contract"]["behavior"]
 
-        assert any("With --auto-migrate" in b and "repair" in b.lower() for b in behavior), (
-            "Must run repair with flag"
+        assert any("--auto-migrate" in b and "unsupported" in b.lower() for b in behavior), (
+            "Must declare unsupported --auto-migrate behavior"
         )
 
-    def test_max_one_retry(self) -> None:
-        """Retry must be attempted exactly once."""
+    def test_max_zero_retry(self) -> None:
+        """Automatic retry must not be attempted in phase B."""
         contract = _load_contract()
         constraints = contract["half_automatic_retry_contract"]["retry_constraints"]
 
-        assert constraints["max_retries"] == 1, "Must retry exactly once"
+        assert constraints["max_retries"] == 0, "Must not auto-retry in phase B"
 
     def test_no_additional_auto_retry(self) -> None:
         """No additional auto-retry beyond the single retry."""

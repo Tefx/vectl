@@ -549,8 +549,13 @@ class TestVectlShow:
         assert "resolution.explicit_phase" in result
         assert "phase-qualified step selectors" in result
         assert "Use one of:" not in result
-        assert "resolution.auto_migrate_flag: --auto-migrate (coming in phase C)" in result
-        assert "resolution.migration_tool: vectl migrate-step-id (phase C)" in result
+        assert (
+            "resolution.auto_migrate_flag: Not available in phase B: --auto-migrate is unsupported"
+            in result
+        )
+        assert (
+            "resolution.migration_tool: Use vectl migrate-step-id --dry-run, then --yes" in result
+        )
 
 
 # ---------------------------------------------------------------------------
@@ -676,9 +681,8 @@ class TestVectlClaim:
         assert (
             "phase-qualified step selectors" in recommendation["resolution_path"]["explicit_phase"]
         )
-        assert (
-            recommendation["resolution_path"]["auto_migrate_flag"]
-            == "--auto-migrate (coming in phase C)"
+        assert recommendation["resolution_path"]["auto_migrate_flag"].startswith(
+            "Not available in phase B"
         )
 
         data = _reload_plan(duplicate_id_plan_file)

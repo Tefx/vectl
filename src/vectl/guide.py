@@ -225,28 +225,17 @@ The migration tool will:
 4. Emit a mapping of old IDs → new IDs for automation updates
 
 **Important:** Read-only commands (status, show, validate) NEVER mutate plan
-files. Only `migrate-step-id --yes` or `--auto-migrate` with explicit opt-in
-will modify step IDs.
+files. Only `migrate-step-id --yes` will modify step IDs in phase B.
 
-### Half-Automatic Repair Flow
+### Ambiguous Target Handling (Phase B)
 
-When a targeted command (claim, complete, etc.) hits an ambiguous duplicate:
+When a targeted command (claim, complete, etc.) hits an ambiguous duplicate,
+the command fails with structured repair guidance and does not mutate state:
 
 ```bash
-# Without --auto-migrate: fails with repair recommendation
 $ uvx vectl claim login
 Error: Ambiguous step ID 'login' appears in: auth, api
-Recommendation: run 'vectl migrate-step-id --dry-run' or use '--auto-migrate'
-
-# With --auto-migrate: preview, confirm, apply, retry
-$ uvx vectl claim login --auto-migrate
-Migration preview:
-  auth.login  -> auth.login    (canonical, kept)
-  api.login   -> api.login     (already qualified)
-  api.auth    -> api.api-auth  (renamed)
-Apply migration? [y/N]: y
-Applied. Retrying claim...
-Claimed: auth.login
+Recommendation: run 'vectl migrate-step-id --dry-run' then 'vectl migrate-step-id --yes'
 ```
 
 ### Post-Migration Automation Updates

@@ -784,7 +784,8 @@ directly as a workaround. Use `uvx vectl guide stuck` for troubleshooting.
 **Step IDs must be globally unique across ALL phases.**
 - Example: `auth.login` and `api.login` are different step IDs.
 - Example: Using just `login` in two phases creates a duplicate — not allowed.
-- If you have legacy duplicate step IDs, use `vectl migrate-step-id --dry-run` to preview and `--yes` to repair.
+- If you have legacy duplicate step IDs, use `vectl migrate-step-id --dry-run`
+  to preview and `--yes` to repair.
 
 ### For Architects / Planners
 - **Design Mode**: Run `uvx vectl guide --on planning` to learn the Architect Protocol.

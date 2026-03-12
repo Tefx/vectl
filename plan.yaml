@@ -27313,7 +27313,7 @@ phases:
   steps:
   - id: implement-find-step
     name: Implement qualified phase.step lookup in find_step
-    status: claimed
+    status: done
     description: "Add qualified phase.step lookup fallback to Plan.find_step().\n\n\
       File: src/vectl/models.py (lines 177-183)\n\nProblem: find_step only does exact\
       \ match on step.id. When step IDs are bare (e.g., \"gate\") and exist in multiple\
@@ -27348,6 +27348,45 @@ phases:
     agent: python-executor
     claimed_by: python-executor
     claimed_at: '2026-03-12T17:17:28.636319+00:00'
+    done_at: '2026-03-12T17:31:59.666035+00:00'
+    evidence: 'Commit hash(es):
+
+      - worker branch: c52dbc3
+
+      - main squash commit: d5c099b
+
+
+      Files changed:
+
+      - src/vectl/models.py
+
+      - tests/test_models.py
+
+
+      Verification:
+
+      - uv run pytest tests/ -k find_step -v -> PASS (5 passed)
+
+      - uv run pytest tests/test_models.py -v -> PASS (47 passed)
+
+      - uv run pytest tests/test_validation.py tests/test_properties.py -v -> PASS
+      (37 passed)
+
+
+      Spec link:
+
+      - p1-qualified-lookup-errors/implement-find-step
+
+
+      Gaps/Notes:
+
+      - Added qualified `phase.step` fallback using `partition(''.'')` while preserving
+      exact-match priority.
+
+
+      discovered_issues:
+
+      - none'
   - id: implement-error-msg
     name: Fix ambiguous bare step IDs in validation error messages
     status: claimed

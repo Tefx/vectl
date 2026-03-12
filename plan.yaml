@@ -22647,7 +22647,7 @@ phases:
       \ -x` -> 999 passed, 35 skipped\n- Commit hash(es): `8cad8d0`"
   - id: step-id-resolver-hardening.core
     name: Implement shared resolver core
-    status: claimed
+    status: done
     description: "step_type: implementation\nagent_source: default\nspec_refs:\n \
       \ - conversation/duplicate-step-id-bug\n\ntouch_paths:\n- src/vectl/models.py\n\
       - src/vectl/lifecycle.py\n- src/vectl/core.py\n\nharness_refs:\n- tests/test_logic.py\n\
@@ -22691,6 +22691,25 @@ phases:
     agent: python-senior
     claimed_by: python-senior
     claimed_at: '2026-03-12T12:41:35.024853+00:00'
+    done_at: '2026-03-12T12:47:03.591970+00:00'
+    evidence: "## Shared Resolver Implementation\n- Shared API added/updated: `src/vectl/resolver.py::resolve_target`;\
+      \ `ResolutionError` hierarchy (`TargetNotFoundError`, `AmbiguousTargetError`,\
+      \ `InvalidSelectorError`); result/data models (`ResolvedStep`, `ResolvedPhase`,\
+      \ `ResolutionFailure`); selector + ambiguity helpers (`_parse_qualified_selector`,\
+      \ `_try_resolve_step`, `_try_resolve_phase`, `_build_repair_hints`)\n- Callers\
+      \ migrated: none in this step by design (surface adoption is handled in `step-id-resolver-hardening.surfaces`)\n\
+      - Legacy duplicate-id behavior: duplicate bare step IDs now produce structured\
+      \ `AmbiguousTargetError` (`error_code=ambiguous_target`) with explicit `candidates`\
+      \ and `repair_hints`; no silent first-match fallback in resolver core\n- Remaining\
+      \ direct `find_step` usage in targeted paths:\n  - `src/vectl/cli.py`: 1046,\
+      \ 1156, 1306, 1315, 1325, 2181\n  - `src/vectl/mcp_server.py`: 245, 286, 500,\
+      \ 610, 622, 1581\n  - remaining direct `find_phase` usage in same targeted paths:\n\
+      \    - `src/vectl/cli.py`: 1150, 1898\n    - `src/vectl/mcp_server.py`: 194,\
+      \ 321\n- Files changed: `src/vectl/resolver.py`, `tests/test_resolver.py`, `tests/test_resolver_regression.py`\n\
+      - Verification:\n  - `uv run pytest -q tests/test_resolver.py tests/test_resolver_regression.py`\
+      \ -> 32 passed\n  - `uv run pytest -q tests/test_resolver_contract.py` -> 35\
+      \ skipped (contract placeholders)\n  - grep audit executed for direct `find_step(`/`find_phase(`\
+      \ in CLI/MCP surfaces (matches listed above)\n- Commit hash(es): `68aa775`"
   - id: step-id-resolver-hardening.surfaces
     name: Apply resolver to CLI and MCP surfaces
     status: pending

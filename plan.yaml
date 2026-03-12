@@ -24411,7 +24411,7 @@ phases:
       \ with PASS and no residual mismatch"
   - id: step-id-validation-hardening.gate
     name: Gate review for validation hardening
-    status: claimed
+    status: done
     description: 'step_type: gate
 
       agent_source: default
@@ -24504,6 +24504,24 @@ phases:
     agent: gate-reviewer
     claimed_by: gate-reviewer
     claimed_at: '2026-03-12T15:15:36.971727+00:00'
+    done_at: '2026-03-12T17:16:40.835477+00:00'
+    evidence: "## Gate Review Report\n- Blocking issues:\n  - B1: duplicate-ID repair\
+      \ recommendation currently advertises unsupported phase-qualified disambiguation\
+      \ (`phase.step_id`) that is not resolvable by current find_step/targeted write\
+      \ resolution behavior.\n- Rollout recommendation confirmed: no\n- Gate decision:\
+      \ BLOCKED\n- findings:\n  findings:\n    blockers:\n      - id: B1\n       \
+      \ root_cause: Duplicate-ID recommendation suggests `phase.step_id` targets that\
+      \ are not currently resolvable.\n        locations:\n          - src/vectl/core.py:285\n\
+      \          - src/vectl/models.py:177\n          - src/vectl/cli.py:176\n   \
+      \       - src/vectl/mcp_server.py:249\n          - docs/contracts/duplicate-id-rollout-policy.yaml:85\n\
+      \        remediation: Implement supported phase-qualified resolver path OR remove\
+      \ unsupported explicit-phase guidance and only advertise supported remediation.\n\
+      \        grep_hint: rg -n \"explicit_phase=f\\\"Use one of:\" -S src/vectl/core.py\n\
+      \nBatched remediation action:\n- Planner created fix+retest loop before gate\
+      \ rerun:\n  - step-id-validation-hardening.fix-gate-rerun-guidance-blockers\n\
+      \  - step-id-validation-hardening.retest-gate-rerun-guidance-blockers\n- Gate\
+      \ dependencies rewired to wait on both steps before rerun.\n\ndiscovered_issues:\n\
+      - none"
   - id: step-id-validation-hardening.fix-verify-findings
     name: Fix MCP duplicate-id status findings
     status: done

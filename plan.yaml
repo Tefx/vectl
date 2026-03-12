@@ -22974,27 +22974,33 @@ phases:
     name: Implement global duplicate-id diagnostics
     status: pending
     description: "step_type: implementation\nagent_source: default\nspec_refs:\n \
-      \ - conversation/duplicate-step-id-bug\n\ntouch_paths:\n- src/vectl/core.py\n\
-      - src/vectl/models.py\n- src/vectl/cli.py\n- src/vectl/mcp_server.py\n\nharness_refs:\n\
-      - tests/test_validation.py\n- tests/test_cli.py\n- tests/test_mcp.py\n\nImplement\
-      \ plan-wide duplicate step-ID detection and structured diagnostics without blocking\
-      \ legacy inspection.\n\nRequired behavior:\n- detect duplicates across ALL phases,\
-      \ not only within a phase\n- include both conflicting phase IDs in the diagnostic\
-      \ payload\n- expose duplicate diagnostics in `status`, `review`, and `validate`\
-      \ using the rollout severity from the contract step\n- keep `show`/`dag` readable\
-      \ on legacy plans while making duplicate presence explicit\n\nKnown risk from\
-      \ project history:\n- read/write surfaces in vectl have diverged before; diagnostics\
-      \ must come from one shared analysis path rather than custom formatting logic\
-      \ in each command.\n\nOut-of-scope guardrail:\n- creation of new duplicate IDs\
-      \ is enforced in the next step\n- duplicate-ID repair/migration remains phase\
-      \ C"
+      \ - conversation/duplicate-step-id-bug\n  - conversation/half-automatic-step-id-migration\n\
+      \ntouch_paths:\n- src/vectl/core.py\n- src/vectl/models.py\n- src/vectl/cli.py\n\
+      - src/vectl/mcp_server.py\n\nharness_refs:\n- tests/test_validation.py\n- tests/test_cli.py\n\
+      - tests/test_mcp.py\n\nImplement plan-wide duplicate step-ID detection and structured\
+      \ diagnostics without blocking legacy inspection.\n\nRequired behavior:\n- detect\
+      \ duplicates across ALL phases, not only within a phase\n- include both conflicting\
+      \ phase IDs in the diagnostic payload\n- expose duplicate diagnostics in `status`,\
+      \ `review`, `show`, `dag`, and `validate` using the rollout severity from the\
+      \ contract step\n- keep read-only surfaces readable on legacy plans while making\
+      \ duplicate presence explicit\n- for ambiguity-triggering targeted commands,\
+      \ generate one structured repair recommendation payload that can later be surfaced\
+      \ as CLI text and MCP data without mutating the plan\n- recommendation payload\
+      \ must name the duplicate ID, conflicting phase IDs, dry-run repair entry point,\
+      \ opt-in `--auto-migrate` availability, and exact next action for operators\
+      \ and automation\n\nKnown risk from project history:\n- read/write surfaces\
+      \ in vectl have diverged before; diagnostics must come from one shared analysis\
+      \ path rather than custom formatting logic in each command.\n\nOut-of-scope\
+      \ guardrail:\n- creation of new duplicate IDs is enforced in the next step\n\
+      - duplicate-ID repair/migration remains phase C"
     verification: '- Main path: legacy duplicate plans emit duplicate-ID diagnostics
-      in `validate`, `status`, and `review`
+      in `validate`, `status`, `review`, `show`, and `dag`
 
       - Failure path: diagnostics name every conflicting phase for a repeated step
       ID and do not collapse to the first match
 
-      - Proof: one shared duplicate-analysis path is referenced by all surfaced commands'
+      - Proof: one shared duplicate-analysis path is referenced by all surfaced commands
+      and recommendation payloads are available without mutating plan state'
     evidence_template: '## Duplicate-ID Diagnostics
 
       - Shared analysis API: <module::symbol>

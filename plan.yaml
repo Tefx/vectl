@@ -23848,7 +23848,7 @@ phases:
       (non-failing)'
 - id: step-id-validation-hardening
   name: B / Validation Hardening
-  status: in_progress
+  status: done
   depends_on:
   - step-id-resolver-hardening
   steps:
@@ -26077,7 +26077,7 @@ phases:
       - none'
   - id: step-id-validation-hardening.retest-gate-rerun-guidance-blockers
     name: Independent retest of gate rerun guidance blockers
-    status: claimed
+    status: done
     description: 'step_type: verification
 
       agent_source: default
@@ -26130,9 +26130,52 @@ phases:
     agent: integration-verifier
     claimed_by: integration-verifier
     claimed_at: '2026-03-12T17:32:21.990460+00:00'
+    done_at: '2026-03-12T17:38:50.697824+00:00'
+    evidence: 'Commit hash(es): none (verification-only retest; no file changes)
+
+
+      Files changed:
+
+      - none
+
+
+      Verification:
+
+      - uv run pytest -v tests/test_cli.py -k "test_show_step_emits_structured_repair_recommendation
+      or test_claim_blocks_ambiguous_duplicate_target_without_opt_in" -> PASS (2 passed)
+
+      - uv run pytest -v tests/test_mcp.py -k "test_show_step_duplicate_id_recommendation
+      or test_claim_blocks_ambiguous_duplicate_target_without_opt_in" -> PASS (2 passed)
+
+      - uv run pytest -v tests/test_validation.py -k "test_claim_rejects_ambiguous_duplicate_target_without_opt_in"
+      -> PASS (1 passed)
+
+      - Manual repro with legacy duplicate fixture: `vectl show dup.step` and `vectl
+      claim dup.step` -> PASS; guidance now states explicit-phase selectors are not
+      available in phase B
+
+      - source grep for stale "Use one of:" guidance -> no matches
+
+
+      Spec link:
+
+      - docs/contracts/duplicate-id-rollout-policy.yaml#duplicate-id-repair-guidance
+
+      - conversation/duplicate-step-id-bug
+
+
+      Gaps/Notes:
+
+      - Retest confirms recommendation/action alignment without advertising non-resolvable
+      phase-qualified selector flow.
+
+
+      discovered_issues:
+
+      - none'
 - id: step-id-migration-tooling
   name: C / Migration & Tooling
-  status: locked
+  status: pending
   depends_on:
   - step-id-validation-hardening
   steps:

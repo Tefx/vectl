@@ -23321,12 +23321,14 @@ phases:
     name: Implement duplicate-id repair engine
     status: pending
     description: "step_type: implementation\nagent_source: default\nspec_refs:\n \
-      \ - conversation/duplicate-step-id-bug\n\ntouch_paths:\n- src/vectl/core.py\n\
-      - src/vectl/models.py\n- src/vectl/io.py\n- src/vectl/claims.py\n\nharness_refs:\n\
-      - tests/test_validation.py\n- migration fixtures and DAG regression tests\n\n\
-      Implement the pure repair engine that detects duplicate step IDs, assigns deterministic\
-      \ phase-scoped replacements, and rewrites plan references.\n\nFailure-mode checklist:\n\
-      - relative vs absolute plan-path behavior for migration entry points\n- missing-file\
+      \ - conversation/duplicate-step-id-bug\n  - conversation/half-automatic-step-id-migration\n\
+      \ntouch_paths:\n- src/vectl/core.py\n- src/vectl/models.py\n- src/vectl/io.py\n\
+      - src/vectl/claims.py\n\nharness_refs:\n- tests/test_validation.py\n- migration\
+      \ fixtures and DAG regression tests\n\nImplement the pure repair engine that\
+      \ detects duplicate step IDs, assigns deterministic phase-scoped replacements,\
+      \ rewrites plan references, and emits structured migration evidence for explicit\
+      \ apply or half-automatic retry flows.\n\nFailure-mode checklist:\n- relative\
+      \ vs absolute plan-path behavior for migration entry points\n- missing-file\
       \ fallback or malformed-plan error behavior\n- explicit clear/null overwrite\
       \ semantics if a duplicate is resolved into an existing candidate ID\n- stale-definition\
       \ vs new-state precedence when a plan already contains partially-migrated IDs\n\
@@ -23337,19 +23339,23 @@ phases:
       \ the renamed ID\n- preserve phase ordering and active/locked/done status semantics\n\
       - backward-compatible legacy behavior means read surfaces can still inspect\
       \ duplicates before migration, not that duplicate IDs remain valid forever\n\
-      \nConcrete regressions required:\n- focused regression for duplicate `gate`\
-      \ IDs across two phases\n- focused regression for fanout `depends_on` rewrite\
-      \ after a renamed step\n- focused regression for idempotent re-run on an already\
-      \ migrated plan\n- focused regression for claimed-step or claims-repair policy\
-      \ selected in the contract\n\nOut-of-scope guardrail:\n- CLI/MCP command UX\
-      \ and guide text wiring happen in the next steps"
-    verification: '- Main path: repair engine produces deterministic rename maps and
-      rewritten plans for legacy duplicates
+      - mapping output must preserve enough old->new data for scripts/operators to\
+      \ update stored selectors after repair\n\nConcrete regressions required:\n-\
+      \ focused regression for duplicate `gate` IDs across two phases\n- focused regression\
+      \ for fanout `depends_on` rewrite after a renamed step\n- focused regression\
+      \ for idempotent re-run on an already migrated plan\n- focused regression for\
+      \ claimed-step or claims-repair policy selected in the contract\n- focused regression\
+      \ that evidence payload records original command intent plus retry outcome when\
+      \ `--auto-migrate` wraps a targeted command\n\nOut-of-scope guardrail:\n- CLI/MCP\
+      \ command UX and guide text wiring happen in the next steps"
+    verification: '- Main path: repair engine produces deterministic rename maps,
+      rewritten plans, and structured migration evidence for legacy duplicates
 
       - Failure path: regression tests cover CAS conflict or interrupted-apply handling,
-      plus partially migrated input
+      partially migrated input, and retry-after-repair evidence integrity
 
-      - Proof: no stale `depends_on` reference remains after renaming in covered fixtures'
+      - Proof: no stale `depends_on` reference remains after renaming in covered fixtures
+      and the engine returns machine-readable mapping data for automation'
     evidence_template: '## Repair Engine Evidence
 
       - Duplicate map: <old -> new>

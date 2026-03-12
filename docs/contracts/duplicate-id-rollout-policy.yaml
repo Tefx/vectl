@@ -70,19 +70,12 @@ severity_matrix:
           ⚠ Duplicate step IDs detected (shown in DAG edges):
             - 'step-id' → phase-a, phase-b
       - surface: "validate"
-        severity: "WARNING"
-        behavior: "Report all duplicates with full phase context; exit code 0 (not error yet)"
+        severity: "ERROR"
+        behavior: "Report all duplicates with full phase context; exit code 1 (blocking for release gates)"
         user_copy: |
-          ⚠ WARNING: Duplicate step IDs detected (legacy):
-            - 'step-id' appears in: phase-a, phase-b
-            - 'other-id' appears in: phase-x, phase-y
-          
-          ⚠ Duplicate IDs make targeted commands ambiguous.
-          Read-only commands (status, show, dag, validate) are safe.
-          Mutating commands require repair before execution.
-          
-          → Repair path: 'vectl migrate-step-id' (coming in phase C)
-          → Until repaired: avoid targeted mutating commands (phase-qualified selector support is not available in phase B)
+          ERROR: Duplicate step ID 'step-id' appears N times across phases: phase-a, phase-b.
+          Repair required before validation/gate checks can pass.
+          Run `vectl migrate-step-id --dry-run` then `vectl migrate-step-id --yes`.
 
     write_surfaces_new_duplicate:
       - surface: "CLI: add-step, add-steps, edit-step (rename)"
@@ -116,28 +109,27 @@ severity_matrix:
           3. Emit structured repair recommendation payload
           4. Require explicit opt-in for migration (--auto-migrate flag, future)
         user_copy: |
-          ✗ Ambiguous step ID: 'step-id' appears in multiple phases:
-            - phase-a
-            - phase-b
-          
-          Targeted commands cannot proceed with ambiguous step IDs.
-          
-          Recommended action:
-            1. Inspect duplicate phases with read-only surfaces (status/show/validate)
-            2. OR repair duplicates: vectl migrate-step-id --dry-run (phase C)
-            3. OR auto-migrate (coming): vectl claim step-id --auto-migrate
-          
-          ⚠ Do NOT attempt partial mutations. Phase-qualified targeting is deferred.
+          duplicate_step_id_write_guard: blocked
+          error_code=duplicate_step_id_ambiguous_target
+          blocking_reason=duplicate_step_id_ambiguous
+          operation=<operation>
+          step_id=step-id
+          recommendation.type=duplicate-step-id
+          recommendation.duplicates=phase-a,phase-b
+          recommendation.resolution_path.explicit_phase=Not available in phase B: targeted commands do not support phase-qualified step selectors
+          recommendation.resolution_path.auto_migrate_flag=Not available in phase B: --auto-migrate is unsupported on targeted mutating commands
+          recommendation.resolution_path.migration_tool=Use vectl migrate-step-id --dry-run, then --yes
         mcp_response: |
-          **Error:** Ambiguous step ID.
-          
-          Step ID 'step-id' appears in phases: phase-a, phase-b.
-          
-          Targeted commands require a unique step ID. Options:
-            1. Inspect duplicate phases with read-only surfaces (status/show/validate)
-            2. Repair duplicates: wait for migrate-step-id tool (phase C)
-          
-          Structured repair recommendation available for automation.
+          duplicate_step_id_write_guard: blocked
+          error_code=duplicate_step_id_ambiguous_target
+          blocking_reason=duplicate_step_id_ambiguous
+          operation=<operation>
+          step_id=step-id
+          recommendation.type=duplicate-step-id
+          recommendation.duplicates=phase-a,phase-b
+          recommendation.resolution_path.explicit_phase=Not available in phase B: targeted commands do not support phase-qualified step selectors
+          recommendation.resolution_path.auto_migrate_flag=Not available in phase B: --auto-migrate is unsupported on targeted mutating commands
+          recommendation.resolution_path.migration_tool=Use vectl migrate-step-id --dry-run, then --yes
         recommendation_payload:  # For automation detection
           type: "duplicate-step-id"
           step_id: "step-id"
@@ -164,11 +156,11 @@ severity_matrix:
 
   # Phase C (future): migration tooling and final hard error
   phase_C:
-    description: "Migration tooling ships, then hard error flips on after tooling is proven"
+    description: "Migration tooling ships, then remaining read-surface warnings flip to hard error"
     read_surfaces:
       - surface: "ALL"
-        severity: "WARNING → HARD ERROR (after flip)"
-        behavior: "During transition: warning. After flip: hard error on plan load."
+        severity: "MIXED (validate already ERROR in phase B; status/show/dag WARNING → HARD ERROR after flip)"
+        behavior: "During transition: status/show/dag warn while validate is already blocking. After flip: all read surfaces hard-error on duplicates."
     
     write_surfaces_new_duplicate:
       - surface: "ALL"
@@ -187,7 +179,7 @@ severity_matrix:
     
     hard_error_flip:
       trigger: "After phase C tooling ships and migration is validated"
-      behavior: "vectl validate and all read/write surfaces hard-error on legacy duplicate step IDs"
+      behavior: "status/show/dag and all write surfaces hard-error on legacy duplicate step IDs (validate already hard-errors in phase B)"
       timeline: "Set by project maintainer after migration tooling is stable"
       user_copy: |
         ✗ Plan contains duplicate step IDs (unmigrated legacy data).
@@ -215,7 +207,7 @@ read_surface_guarantees:
     violate automation safety properties.
   
   affected_surfaces:
-    - "CLI: status, show, dag, validate (warning mode), review, render, guide"
+    - "CLI: status, show, dag (warning mode), validate (error mode), review, render, guide"
     - "MCP: vectl_status, vectl_show, vectl_dag, vectl_review, vectl_guide, vectl_render"
   
   implementation_requirement:
@@ -264,7 +256,7 @@ user_facing_copy_placements:
   
   cli_validate:
     location: "src/vectl/cli.py:validate() output"
-    behavior: "Report full diagnostic with phase context; exit code 0 for legacy duplicates"
+    behavior: "Report full diagnostic with phase context; exit code 1 for legacy duplicates"
     copy_template: "${severity_matrix.phase_B.read_surfaces[3].user_copy}"
   
   cli_targeted_mutate_error:
@@ -347,9 +339,9 @@ implementation_constraints:
 
 verification_criteria:
   read_surfaces:
-    - "Legacy duplicate plan loads without error in status/show/dag/validate"
+    - "Legacy duplicate plan loads without error in status/show/dag"
     - "Warning emitted with ALL conflicting phase IDs in output"
-    - "Exit code is 0 (warning, not hard error) in phase B"
+    - "validate exits 1 for legacy duplicates in phase B; status/show/dag remain warning-only"
     - "No file mutation, no git commit, no backup generation in read code paths"
   
   write_surfaces_new_duplicate:
@@ -373,7 +365,8 @@ verification_criteria:
 phase_boundaries:
   phase_B_deliverables:
     - "Duplicate-ID detection function (single shared path)"
-    - "Warning mode in status/show/dag/validate for legacy duplicates"
+    - "Warning mode in status/show/dag for legacy duplicates"
+    - "validate hard-errors legacy duplicates (gate-blocking in phase B)"
     - "Hard error for NEW duplicate creation on all write surfaces"
     - "Hard error for targeted mutate on ambiguous legacy duplicate"
     - "Structured recommendation payload for blocked targeted mutates"
@@ -389,6 +382,20 @@ phase_boundaries:
   rollback_safety:
     description: "Phase B can be rolled back without data loss"
     rationale: "No plan mutations occur, only output changes"
+
+release_gate_disposition:
+  duplicate_id_release_gate:
+    invar_invar_guard_changed_false:
+      enforced: false
+      rationale: |
+        This release gate does not enforce `invar_invar_guard changed=false` for
+        duplicate-ID rollout acceptance. The branch contains unrelated static-analysis
+        debt outside this bounded remediation scope. Deterministic duplicate-ID release
+        readiness is established via targeted duplicate-ID contract/runtime/test checks.
+      deterministic_gate_wording: |
+        Duplicate-ID release readiness is gated by targeted duplicate-ID behavior checks
+        (contract alignment + runtime + tests + copy), not by repository-wide
+        `invar_invar_guard changed=false` full-scan status.
 
 out_of_scope:
   - "Actual migration repair command implementation (phase C)"

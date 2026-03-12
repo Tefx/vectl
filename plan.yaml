@@ -23336,7 +23336,7 @@ phases:
       \ hash(es)\n- `638d704`"
   - id: step-id-resolver-hardening.retest-gate-blockers
     name: Independent retest for resolver hardening gate blockers
-    status: claimed
+    status: done
     description: 'step_type: verification
 
       agent_source: default
@@ -23495,6 +23495,17 @@ phases:
     agent: integration-verifier
     claimed_by: integration-verifier
     claimed_at: '2026-03-12T13:40:13.508234+00:00'
+    done_at: '2026-03-12T13:45:46.406063+00:00'
+    evidence: "## Verification Report\n- Commands executed:\n  - `uv run ruff check\
+      \ .` -> PASS\n  - `uv run mypy src tests` -> FAIL (16 errors in 4 files)\n \
+      \ - resolver contract enforceability checks -> PASS (`tests/test_resolver_contract.py`\
+      \ 10 passed, no skip placeholders)\n  - targeted resolver parity/non-mutation\
+      \ checks -> PASS\n\nIssues found:\n- blocker: mypy gate failure across three\
+      \ families\n  - nullable tuple indexing / Optional handling in `tests/test_migration.py`\n\
+      \  - result type mismatch in `tests/test_cli.py`\n  - `.fn` attr-defined typing\
+      \ in MCP wrapper test surfaces (`tests/test_autofix_message.py`, `tests/test_agent_field.py`,\
+      \ related)\n- should_fix: none\n\nVerdict:\n- ISSUES_FOUND\n\nfix_steps_created:\n\
+      - step-id-resolver-hardening.fix-mypy-gate-blockers\n- step-id-resolver-hardening.retest-mypy-gate-blockers"
   - id: step-id-resolver-hardening.fix-mypy-gate-blockers
     name: Batched mypy remediation for resolver hardening retest blockers
     status: pending

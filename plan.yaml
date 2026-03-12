@@ -27815,8 +27815,8 @@ phases:
 
       review_depth: STANDARD
 
-      review_depth_rationale: Two small localized bug fixes with clear specifications,
-      no known rework patterns.
+      review_depth_rationale: One remaining formatter regression spans lifecycle/core/cli
+      error emitters and must be closed systemically before rerun.
 
 
       Review criteria:
@@ -27824,32 +27824,37 @@ phases:
       1. find_step: Exact match priority preserved; qualified fallback uses partition
       (not split); handles dots in step IDs
 
-      2. Error message: Uses qualified phase.step format at line 203
+      2. Error message: Uses qualified phase.step format at line 203 and never double-prefixes
+      already-qualified IDs
 
       3. Test coverage: All edge cases covered (exact match priority, missing phase,
-      missing step, dot-in-step-id)
+      missing step, dot-in-step-id, already-qualified copy-paste reuse)
 
-      4. No regressions: Full test suite passes
+      4. No regressions: Full targeted lint/type/tests pass for the touched scope
 
-      5. Consistency: Qualified ID format in error message matches find_step''s parsing'
+      5. Consistency: Qualified ID format in lifecycle/core/cli matches find_step''s
+      parsing and copy-paste behavior'
     verification: '- All implementation steps completed with evidence
 
       - Batched blocker remediation completed and independently retested
+
+      - Follow-up formatter regression loop completed: fix + independent retest for
+      already-qualified IDs
 
       - Full targeted regression rerun recorded: ruff + mypy + relevant pytest
 
       - find_step qualified lookup works end-to-end
 
-      - Error messages use qualified IDs
+      - Error messages use qualified IDs without double-prefixing
 
-      - Copy-paste behavior remains sane and no touched path emits double-prefixed
-      qualified IDs'
+      - Copy-paste behavior remains sane across lifecycle/core/cli paths'
     depends_on:
     - implement-find-step
     - implement-error-msg
     - test-find-step
     - test-error-msg
     - p1-qualified-lookup-errors.independent-retest-of-p1-qualified-lookup-errors-gate-blockers
+    - p1-qualified-lookup-errors.independent-retest-double-prefix-qualified-id-regression
     agent: gate-reviewer
     claimed_by: gate-reviewer
     claimed_at: '2026-03-12T17:39:29.355579+00:00'

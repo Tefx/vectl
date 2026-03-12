@@ -27885,6 +27885,117 @@ phases:
     depends_on:
     - step-id-final-integration.verify
     agent: python-senior
+  - id: step-id-final-integration.independent-retest-of-batched-gate-remediation
+    name: Independent retest of batched gate remediation
+    status: pending
+    description: 'step_type: verification
+
+      agent_source: default
+
+      Independence Level: L2
+
+      spec_refs:
+
+      - docs/contracts/duplicate-id-rollout-policy.yaml#phase-b-rollout-semantics
+
+      - docs/contracts/duplicate-id-rollout-policy.yaml#operator-copy-templates
+
+      - final gate criteria after B2 disposition
+
+      harness_refs:
+
+      - tests/test_cli.py duplicate-ID rollout cases
+
+      - final integration duplicate-ID end-to-end proof path
+
+      As an INDEPENDENT TESTER (`blind-tester`), validate the batched remediation
+      from a fresh perspective.
+
+
+      YOUR GOAL IS TO FIND PROBLEMS, not to confirm it works.
+
+
+      Retest for:
+
+      - B1 contract alignment: the chosen Phase-B `validate` semantics match contract
+      text, CLI/core behavior, and test expectations
+
+      - B2 release-gate determinism: the final gate now has one explicit, reproducible
+      policy for `invar_invar_guard changed=false`
+
+      - S1 copy alignment if touched: CLI/MCP duplicate-ID user copy matches the chosen
+      contract templates
+
+      - Regression risk: no lingering mixed semantics (warning text with exit 1, hard-error
+      text with exit 0, or contract text contradicting code/tests)
+
+
+      Document ALL findings. A retest that discovers issues is a SUCCESS.'
+    verification: '- Re-run the chosen gate criteria relevant to duplicate-ID rollout
+      readiness
+
+      - Validate contract/copy alignment with concrete evidence from docs + CLI/test
+      behavior
+
+      - If `invar_invar_guard changed=false` remains enforced, record the exact enforced
+      command and outcome; if removed, record the updated gate wording showing it
+      is no longer a blocker
+
+      - Report any blocker/should-fix findings instead of papering over them'
+    evidence_template: '## Independent Retest Report
+
+
+      **Tester**: blind-tester
+
+      **Scope**: batched remediation for B1+B2 (+S1 if touched)
+
+      **Independence Level**: L2
+
+
+      ### Commands / checks executed
+
+      ```
+
+      <paste exact commands/tests reviewed or run>
+
+      ```
+
+
+      ### B1 contract alignment
+
+      - Authoritative semantics observed: <warning+exit0 | hard-error+exit1>
+
+      - Contract evidence: <path:line>
+
+      - Runtime/test evidence: <path:line or command output>
+
+      - Mismatch found? <no | describe>
+
+
+      ### B2 gate determinism
+
+      - Enforced gate criterion? <yes|no>
+
+      - Evidence: <command output or updated gate text>
+
+      - Ambiguity remains? <no | describe>
+
+
+      ### S1 copy alignment
+
+      - Checked surfaces: <CLI | MCP | both>
+
+      - Drift found? <no | describe>
+
+
+      ### Verdict
+
+      - PASS | ISSUES_FOUND | INCOMPLETE
+
+      '
+    depends_on:
+    - step-id-final-integration.fix-all-gate-blockers-and-copy-drift
+    agent: blind-tester
 - id: p0-cycle-detection
   name: 'P0: edit_step Cycle Detection'
   status: done

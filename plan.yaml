@@ -22927,7 +22927,7 @@ phases:
       \ verification\n  - external service checks out of scope for resolver hardening"
   - id: step-id-resolver-hardening.freeze-gate
     name: Freeze snapshot for resolver gate
-    status: claimed
+    status: done
     description: 'step_type: verification
 
       agent_source: default
@@ -22963,6 +22963,18 @@ phases:
     agent: software-architect
     claimed_by: software-architect
     claimed_at: '2026-03-12T13:17:49.857032+00:00'
+    done_at: '2026-03-12T13:19:41.722614+00:00'
+    evidence: "## Gate Freeze Record\n- Commit: edcf2f7f3c0cdce0f073d33c4a52c4ee92354de1\n\
+      - Git status clean: yes\n- Review inputs:\n  - Resolver contract/tests: `tests/test_resolver_contract.py`,\
+      \ `tests/test_resolver.py`, `tests/test_resolver_surfaces.py`, `tests/test_resolver_regression.py`\n\
+      \  - Implementation surface: `src/vectl/resolver.py` (`resolve_target`, result/error\
+      \ models)\n  - Dependency evidence: `step-id-resolver-hardening.verify` completed\
+      \ (integration-verifier)\n  - Verified: resolver/surface tests pass, CLI/MCP\
+      \ parity for `ambiguous_target`, qualified selectors succeed, read-only hash\
+      \ checks unchanged\n  - Surfaces instrumented: CLI (`show/claim/complete/defer/reject/skip/cancel/check`),\
+      \ MCP (`vectl_show/vectl_claim/vectl_complete/vectl_lifecycle`)\n- Freeze statement:\
+      \ no code changes allowed until `step-id-resolver-hardening.gate` completes\
+      \ review and records decision"
   - id: step-id-resolver-hardening.gate
     name: Gate review for resolver hardening
     status: pending

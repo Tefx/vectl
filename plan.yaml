@@ -25937,6 +25937,68 @@ phases:
       discovered_issues:
 
       - none'
+  - id: step-id-validation-hardening.fix-gate-rerun-guidance-blockers
+    name: Batched fix for gate rerun guidance blockers
+    status: pending
+    description: "step_type: implementation\nagent_source: default\nspec_refs:\n \
+      \ - docs/contracts/duplicate-id-rollout-policy.yaml#duplicate-id-repair-guidance\n\
+      \  - conversation/duplicate-step-id-bug\n  - conversation/half-automatic-step-id-migration\n\
+      \ntouch_paths:\n  - src/vectl/core.py\n  - src/vectl/models.py\n  - src/vectl/cli.py\n\
+      \  - src/vectl/mcp_server.py\n  - docs/contracts/duplicate-id-rollout-policy.yaml\n\
+      \nharness_refs:\n  - tests/test_cli.py\n  - tests/test_mcp.py\n  - tests/test_validation.py\n\
+      \nprior_loop:\n  - step-id-validation-hardening.fix-gate-findings\n  - step-id-validation-hardening.retest-gate-findings\n\
+      \  - step-id-validation-hardening.fix-gate-rerun-type-blockers\n  - step-id-validation-hardening.retest-gate-rerun-type-blockers\n\
+      \  - step-id-validation-hardening.step-id-validation-hardening-fix-gate-rerun-import-blockers\n\
+      \  - step-id-validation-hardening.step-id-validation-hardening-retest-gate-rerun-import-blockers\n\
+      remaining_blocker: duplicate-ID repair recommendation advertises unsupported\
+      \ phase-qualified disambiguation that current targeted write commands cannot\
+      \ resolve\nwhy_new_loop: earlier remediation chains closed MCP status, gate\
+      \ findings, typing, and import hygiene, but did not reconcile recommendation\
+      \ text with actual resolver behavior across CLI/MCP and the rollout contract\n\
+      \nFix ALL of these, not just the first, from the latest rerun of `step-id-validation-hardening.gate`.\n\
+      \n## Blockers to Fix (ALL of these, not just the first)\n\n### B1: duplicate-ID\
+      \ repair recommendation advertises unsupported phase-qualified disambiguation\n\
+      Locations:\n- src/vectl/core.py:285\n- src/vectl/models.py:177\n- src/vectl/cli.py:176\n\
+      - src/vectl/mcp_server.py:249\n- docs/contracts/duplicate-id-rollout-policy.yaml:85\n\
+      \nRepro:\n- `vectl claim dup.step` suggests `p1.dup.step` / `p2.dup.step`\n\
+      - `vectl claim p1.dup.step` fails `Step 'p1.dup.step' not found`\n\nRemediation:\
+      \ choose ONE coherent path and implement it everywhere the recommendation is\
+      \ produced or documented:\n1. implement supported `phase.step_id` lookup/resolution\
+      \ for the targeted write commands that currently advertise it, OR\n2. remove\
+      \ unsupported phase-qualified guidance and advertise only currently resolvable\
+      \ remediation actions.\n\nGrep hint:\n- `rg -n \"explicit_phase=f\\\"Use one\
+      \ of:\" -S src/vectl/core.py`\n- Search sibling recommendation emitters and\
+      \ resolver/documentation call sites beyond the listed locations so CLI, MCP,\
+      \ models, and contract text stay aligned.\n\n## Completion Criteria\n- ALL blocker\
+      \ instances above are fixed, not just the first emitted string\n- recommendation\
+      \ payloads and human-facing guidance are consistent with real command resolvability\n\
+      - docs/contracts/duplicate-id-rollout-policy.yaml matches the implemented behavior\n\
+      - no CLI or MCP path advertises a remediation action that fails immediately\
+      \ when executed\n\n## Gate Preview (what the gate WILL reject)\n1. Any remaining\
+      \ suggestion of `phase.step_id` syntax without working resolver support on the\
+      \ commands that advertise it\n2. CLI and MCP recommendation drift for the same\
+      \ duplicate-ID condition\n3. Contract text that still promises unsupported disambiguation\
+      \ behavior\n\nOut-of-scope guardrail:\n- do not introduce broader migration\
+      \ tooling beyond the chosen coherent path\n- if option 1 is chosen, scope lookup\
+      \ support only to the targeted write-command flows implicated by this blocker\
+      \ unless the contract explicitly widens the surface\n- if option 2 is chosen,\
+      \ remove unsupported guidance everywhere rather than leaving mixed behavior"
+    verification: '- Grep hint and sibling search show no stale unsupported recommendation
+      strings remain after the chosen path lands
+
+      - Targeted regression coverage exists for the reported repro on CLI and MCP
+      paths
+
+      - Main path: duplicate-ID guidance is actionable and internally consistent
+
+      - Failure path: a suggested remediation command either resolves successfully
+      because resolver support exists, or is no longer suggested anywhere if unsupported
+
+      - Proof: contract doc, emitted recommendation data, and targeted write-command
+      behavior all match'
+    depends_on:
+    - step-id-validation-hardening.gate
+    agent: python-senior
 - id: step-id-migration-tooling
   name: C / Migration & Tooling
   status: locked

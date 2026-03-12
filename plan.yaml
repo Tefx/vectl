@@ -22647,7 +22647,7 @@ phases:
       \ -x` -> 999 passed, 35 skipped\n- Commit hash(es): `8cad8d0`"
   - id: step-id-resolver-hardening.core
     name: Implement shared resolver core
-    status: pending
+    status: claimed
     description: "step_type: implementation\nagent_source: default\nspec_refs:\n \
       \ - conversation/duplicate-step-id-bug\n\ntouch_paths:\n- src/vectl/models.py\n\
       - src/vectl/lifecycle.py\n- src/vectl/core.py\n\nharness_refs:\n- tests/test_logic.py\n\
@@ -22689,6 +22689,8 @@ phases:
     depends_on:
     - step-id-resolver-hardening.tests
     agent: python-senior
+    claimed_by: python-senior
+    claimed_at: '2026-03-12T12:41:35.024853+00:00'
   - id: step-id-resolver-hardening.surfaces
     name: Apply resolver to CLI and MCP surfaces
     status: pending

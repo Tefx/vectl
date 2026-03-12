@@ -25078,7 +25078,7 @@ phases:
       in repository artifact set'
   - id: step-id-validation-hardening.retest-gate-findings
     name: Independent retest of batched gate findings
-    status: claimed
+    status: done
     description: 'step_type: verification
 
       agent_source: default
@@ -25223,6 +25223,20 @@ phases:
     agent: integration-verifier
     claimed_by: integration-verifier
     claimed_at: '2026-03-12T15:39:13.895027+00:00'
+    done_at: '2026-03-12T15:41:58.432216+00:00'
+    evidence: "## Retest Report\n- Commands executed:\n  - ruff check .\n  - uv run\
+      \ pytest tests/test_architect.py -q\n  - uv run pytest tests/test_cli.py tests/test_mcp.py\
+      \ tests/test_validation.py -q\n  - grep \"_unique_step_id\\(\" (*.py)\n  - grep\
+      \ \"for\\s+l\\s+in\" (*.py)\n  - git status --short\n- Output excerpts:\n  -\
+      \ ruff check . -> All checks passed\n  - pytest tests/test_architect.py -q ->\
+      \ 106 passed\n  - pytest tests/test_cli.py tests/test_mcp.py tests/test_validation.py\
+      \ -q -> 424 passed\n  - _unique_step_id callsites in tests/test_architect.py\
+      \ and src/vectl/core.py now use supported 3-arg shape\n  - ambiguous `for l\
+      \ in` pattern scan -> no matches\n  - git status -> clean\n- Findings:\n  -\
+      \ blocker: none\n  - should_fix: none\n- Coverage assessment:\n  - B1 signature\
+      \ drift rechecked: yes\n  - B2 lint blockers rechecked: yes\n  - B3 contract\
+      \ mismatch rechecked: yes\n  - S1/S2/S3 disposition verified: yes\n- Verdict:\
+      \ PASS\n\ndiscovered_issues:\n- none"
 - id: step-id-migration-tooling
   name: C / Migration & Tooling
   status: locked

@@ -25237,6 +25237,205 @@ phases:
       \ drift rechecked: yes\n  - B2 lint blockers rechecked: yes\n  - B3 contract\
       \ mismatch rechecked: yes\n  - S1/S2/S3 disposition verified: yes\n- Verdict:\
       \ PASS\n\ndiscovered_issues:\n- none"
+  - id: step-id-validation-hardening.fix-gate-rerun-type-blockers
+    name: Batched fix for gate rerun type blockers
+    status: pending
+    description: 'step_type: implementation
+
+      agent_source: default
+
+      Fix ALL of these, not just the first, from `step-id-validation-hardening.gate`
+      rerun.
+
+
+      prior_loop:
+
+      - step-id-validation-hardening.fix-gate-findings
+
+      - step-id-validation-hardening.retest-gate-findings
+
+      remaining_blocker: type-checking gate still fails on a clustered batch spanning
+      Optional access in migration tests, untyped `.fn` MCP tool wrapper usage in
+      MCP-related tests, and CLI test variable type reuse mismatch.
+
+      why_new_loop: the earlier batched gate-remediation loop is already complete
+      and scoped to signature/lint/contract-alignment findings; this new loop isolates
+      the remaining static-type blocker cluster without overwriting prior evidence.
+
+
+      spec_refs:
+
+      - `step-id-validation-hardening.gate` rerun findings / B4 type-checking gate
+      failure
+
+      - `docs/contracts/duplicate-id-rollout-policy.yaml` / validation hardening phase
+      quality bar
+
+      - SPEC MISSING / static typing policy is inferred from existing `mypy` + `pyright`
+      gate usage in this phase
+
+
+      touch_paths:
+
+      - `tests/test_migration.py`
+
+      - `tests/test_mcp.py`
+
+      - `tests/test_autofix_message.py`
+
+      - `tests/test_agent_field.py`
+
+      - `tests/test_cli.py`
+
+
+      harness_refs:
+
+      - `uv run --with mypy mypy src tests`
+
+      - `uv run --with pyright pyright`
+
+      - `pytest tests/test_migration.py tests/test_mcp.py tests/test_autofix_message.py
+      tests/test_agent_field.py tests/test_cli.py`
+
+
+      Conflict rationale:
+
+      - All fixes land in shared typed test surfaces and the same mypy/pyright harness,
+      so they must stay batched and serialized.
+
+      - `tests/test_mcp.py` is a shared MCP wrapper surface with repeated `.fn` call
+      patterns; splitting would create rework and merge-conflict risk.
+
+
+      ## Blockers to Fix (ALL of these, not just the first)
+
+
+      ### B4.1: Optional-return indexing/member access in migration tests
+
+      Locations:
+
+      - `tests/test_migration.py:68`
+
+      - `tests/test_migration.py:72`
+
+      Remediation:
+
+      - add explicit non-None assertions/guards before indexing or member access
+
+      - preserve current test intent; do not weaken assertions into broad `cast`-only
+      silence unless the guard proves the runtime contract
+
+      Grep hint:
+
+      ```bash
+
+      rg ''find_step\([^)]*\)\[1\]'' tests/test_migration.py
+
+      ```
+
+      IMPORTANT: Search for sibling Optional-index/member-access patterns in the same
+      module beyond the listed lines.
+
+
+      ### B4.2: MCP FastMCP tool wrapper `.fn` attribute not represented in static
+      types across MCP-related tests
+
+      Locations:
+
+      - `tests/test_mcp.py:80`
+
+      - `tests/test_mcp.py:2266`
+
+      - `tests/test_autofix_message.py:32`
+
+      - `tests/test_agent_field.py:40`
+
+      Remediation:
+
+      - adjust MCP tool symbol typing or test invocation style so `.fn` usage is type-safe,
+      or avoid `.fn` where a typed helper is more appropriate
+
+      - keep behavior identical; this is a typing-safety fix, not a test semantics
+      rewrite
+
+      Grep hint:
+
+      ```bash
+
+      rg ''\\.fn\\b'' tests --glob ''test_*.py''
+
+      ```
+
+      IMPORTANT: Search for sibling `.fn` usages and fix or justify every remaining
+      typed call path, not only the listed lines.
+
+
+      ### B4.3: CLI test variable typing/reuse mismatch
+
+      Locations:
+
+      - `tests/test_cli.py:1096`
+
+      Remediation:
+
+      - separate Typer `Result` typing from subprocess result typing so the same variable
+      name is not reused across incompatible static types
+
+      - keep existing assertions and command coverage intact
+
+      Grep hint:
+
+      ```bash
+
+      rg ''result\s*=.*CliRunner|result\s*=.*subprocess|CompletedProcess|CliRunner''
+      tests/test_cli.py
+
+      ```
+
+      IMPORTANT: Search for sibling mixed-result typing patterns in nearby CLI tests.
+
+
+      Known risks:
+
+      - `.fn` access in MCP tests has already caused collection/runtime and now static-type
+      churn; prove the chosen helper or invocation style works across the whole sibling
+      set.
+
+      - Optional-return tests can hide real contract drift; use explicit assertions
+      that preserve failure readability.
+
+      - Do not mix type silencing with semantic changes; the goal is a clean type
+      gate with the same validation-hardening behavior.
+
+
+      Completion criteria:
+
+      - ALL blocker clusters above fixed in one batch, not just the first occurrence
+
+      - sibling search completed for `.fn` usages and Optional-index/member-access
+      patterns
+
+      - `mypy` and `pyright` both pass for the repo after the batched fix
+
+      - targeted pytest coverage for the touched modules still passes
+
+
+      Out-of-scope guardrail:
+
+      - do not broaden this step into production MCP wrapper redesign or validation
+      rollout behavior changes; keep scope to typed test remediation and minimal helper/test-call
+      adjustments.'
+    verification: '- Main path: static typing blockers in the listed test modules
+      are removed without changing intended runtime assertions
+
+      - Failure path: sibling-search evidence shows no remaining unsafe `.fn` or Optional-index/member-access
+      patterns in the affected test surfaces where this batch claims remediation
+
+      - Proof: `uv run --with mypy mypy src tests`, `uv run --with pyright pyright`,
+      and targeted pytest for touched modules are green'
+    depends_on:
+    - step-id-validation-hardening.retest-gate-findings
+    agent: python-executor
 - id: step-id-migration-tooling
   name: C / Migration & Tooling
   status: locked

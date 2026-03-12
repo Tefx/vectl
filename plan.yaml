@@ -22812,7 +22812,7 @@ phases:
       - Targeted CLI/MCP regression suites pass.\n\n**Commit hash(es)**:\n- `edcf2f7f3c0cdce0f073d33c4a52c4ee92354de1`"
   - id: step-id-resolver-hardening.freeze-l2
     name: Freeze snapshot for resolver verification
-    status: claimed
+    status: done
     description: 'step_type: verification
 
       agent_source: default
@@ -22848,6 +22848,17 @@ phases:
     agent: software-architect
     claimed_by: software-architect
     claimed_at: '2026-03-12T13:11:48.426175+00:00'
+    done_at: '2026-03-12T13:12:35.836182+00:00'
+    evidence: '## Freeze Record
+
+      - Commit: edcf2f7f3c0cdce0f073d33c4a52c4ee92354de1
+
+      - Git status clean: yes
+
+      - Environment: Python 3.14.3, uv 0.10.9 (Homebrew 2026-03-06)
+
+      - Freeze statement: No code changes permitted until `step-id-resolver-hardening.verify`
+      completes. This is a read-only evidence collection step.'
   - id: step-id-resolver-hardening.verify
     name: Independently verify resolver behavior
     status: pending

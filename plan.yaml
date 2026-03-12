@@ -24577,7 +24577,7 @@ phases:
       - none'
   - id: step-id-validation-hardening.retest-verify-findings
     name: Retest MCP duplicate-id status findings
-    status: pending
+    status: claimed
     description: 'step_type: verification
 
       agent_source: default
@@ -24617,6 +24617,8 @@ phases:
     depends_on:
     - step-id-validation-hardening.fix-verify-findings
     agent: blind-tester
+    claimed_by: blind-tester
+    claimed_at: '2026-03-12T15:08:18.305143+00:00'
 - id: step-id-migration-tooling
   name: C / Migration & Tooling
   status: locked

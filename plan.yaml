@@ -24065,7 +24065,7 @@ phases:
       - Contract is executable by workers without implementation choices'
   - id: step-id-validation-hardening.tests
     name: Add duplicate-id validation tests
-    status: claimed
+    status: done
     description: "step_type: test\nagent_source: default\nspec_refs:\n  - conversation/duplicate-step-id-bug\n\
       \ntouch_paths:\n- tests/test_cli.py\n- tests/test_logic.py\n- tests/test_mcp.py\n\
       - tests/test_validation.py\n\nharness_refs:\n- plan validation tests in `tests/test_validation.py`\n\
@@ -24097,6 +24097,18 @@ phases:
     agent: python-executor
     claimed_by: python-executor
     claimed_at: '2026-03-12T14:02:06.009743+00:00'
+    done_at: '2026-03-12T14:10:04.573289+00:00'
+    evidence: "## Validation Test Additions\n- Legacy-plan warning tests:\n  - `test_duplicate_step_id_is_error_not_warning`\n\
+      \  - `test_duplicate_step_id_warning_placeholder`\n  - `test_read_only_surface_status_shows_warning_for_duplicate`\n\
+      \  - `test_read_only_surface_render_shows_warning_placeholder`\n- Write-surface\
+      \ rejection tests:\n  - `test_add_step_rejects_duplicate_explicit_id`\n  - `test_add_step_rejects_duplicate_auto_generated_id`\n\
+      \  - `test_add_phase_rejects_duplicate_phase_id`\n- Future hard-error flip placeholders:\n\
+      \  - `test_validation_flag_placeholder_soft_warnings`\n  - `test_cli_validate_flag_placeholder`\n\
+      \  - `test_add_step_future_strict_mode_placeholder`\n\n- Files changed: `tests/test_validation.py`\n\
+      \n- Verification:\n  - `uv run pytest tests/test_validation.py -v` -> 27 passed\n\
+      \  - `uv run pyright tests/test_validation.py` -> 0 errors\n  - `uv run ruff\
+      \ check tests/test_validation.py` -> All checks passed\n\n- Commit hash(es):\
+      \ `febc04c8efda62b1cf1c9765136518fe800daa95`"
   - id: step-id-validation-hardening.diagnostics
     name: Implement global duplicate-id diagnostics
     status: pending

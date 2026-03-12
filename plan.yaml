@@ -25241,7 +25241,7 @@ phases:
       \ PASS\n\ndiscovered_issues:\n- none"
   - id: step-id-validation-hardening.fix-gate-rerun-type-blockers
     name: Batched fix for gate rerun type blockers
-    status: pending
+    status: claimed
     description: 'step_type: implementation
 
       agent_source: default
@@ -25438,6 +25438,8 @@ phases:
     depends_on:
     - step-id-validation-hardening.retest-gate-findings
     agent: python-executor
+    claimed_by: python-executor
+    claimed_at: '2026-03-12T15:55:09.475389+00:00'
   - id: step-id-validation-hardening.retest-gate-rerun-type-blockers
     name: Independent retest of gate rerun type blockers
     status: pending

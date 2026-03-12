@@ -23661,3 +23661,40 @@ phases:
 
       '
     agent: software-architect
+  - id: step-id-final-integration.verify
+    name: Run end-to-end duplicate-gate regression
+    status: pending
+    description: "step_type: verification\nagent_source: default\nIndependence Level:\
+      \ L2\nAs an INDEPENDENT TESTER (`blind-tester`), execute the full duplicate-step-ID\
+      \ regression from legacy symptom to repaired plan.\n\nYOUR GOAL IS TO FIND PROBLEMS,\
+      \ not to confirm it works.\n\nRequired end-to-end flow:\n1. Start with a plan\
+      \ fixture containing duplicate `gate` IDs across two phases.\n2. Confirm the\
+      \ legacy pre-fix symptom is reproducible in the fixture context or explicitly\
+      \ preserved as a documented pre-migration invalid state:\n   - read surfaces\
+      \ can identify the duplicate problem\n   - targeted bare selector behavior is\
+      \ ambiguous and reported as such\n3. Run duplicate-ID migration in dry-run and\
+      \ apply modes.\n4. Verify post-migration behavior:\n   - `claim` and `show`\
+      \ resolve the migrated gate IDs correctly\n   - validation passes on the migrated\
+      \ plan\n   - DAG output before/after migration preserves phase/step dependency\
+      \ structure apart from ID renames\n5. Confirm operator guidance tells users\
+      \ how to repair duplicate-ID plans.\n\nDocument ALL findings. A test that discovers\
+      \ issues is a SUCCESS.\nA test that finds nothing must justify the coverage\
+      \ achieved."
+    verification: '- Evidence includes actual CLI commands and outputs for duplicate
+      detection, dry-run/apply migration, post-migration `show`, post-migration `claim`,
+      and DAG comparison
+
+      - Verification explicitly checks backward compatibility messaging, ambiguous-step
+      errors, and DAG preservation after migration
+
+      - Coverage explains any remaining unsupported legacy behavior and why it is
+      acceptable'
+    evidence_template: "## End-to-End Report\n- Legacy fixture: <path>\n- Commands\
+      \ executed:\n  ```text\n  <paste exact commands>\n  ```\n- Pre-migration outputs:\n\
+      \  ```text\n  <duplicate warning / ambiguity output>\n  ```\n- Migration outputs:\n\
+      \  ```text\n  <dry-run and apply outputs>\n  ```\n- Post-migration outputs:\n\
+      \  ```text\n  <show/claim/validate/dag outputs>\n  ```\n- DAG preservation assessment:\
+      \ <summary>\n- Issues found: <list>\n"
+    depends_on:
+    - step-id-final-integration.freeze-l2
+    agent: blind-tester

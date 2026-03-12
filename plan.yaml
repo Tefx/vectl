@@ -26599,7 +26599,7 @@ phases:
       - none'
   - id: step-id-migration-tooling.guidance
     name: Update planner templates and guidance
-    status: claimed
+    status: done
     description: "step_type: implementation\nagent_source: default\nspec_refs:\n \
       \ - conversation/duplicate-step-id-bug\n  - conversation/half-automatic-step-id-migration\n\
       \ntouch_paths:\n- src/vectl/guide.py\n- src/vectl/claim_guidance.py\n- plan/init\
@@ -26642,6 +26642,55 @@ phases:
     agent: doc-reviewer
     claimed_by: doc-reviewer
     claimed_at: '2026-03-12T18:27:58.209768+00:00'
+    done_at: '2026-03-12T18:36:07.022207+00:00'
+    evidence: 'Commit hash(es):
+
+      - worker branch: 57e627644fa5b8add4470a59aa0b8f3c578858ed
+
+      - main squash commit: 41e6575
+
+
+      Files changed:
+
+      - src/vectl/guide.py
+
+      - src/vectl/claim_guidance.py
+
+      - src/vectl/cli.py
+
+      - src/vectl/core.py
+
+
+      Verification:
+
+      - pytest tests/ -k "guide" -> 14 passed
+
+      - pytest tests/ -k "agents" -> 13 passed
+
+      - pytest tests/ -k "guidance" -> 6 passed
+
+      - claim guidance includes Step ID Uniqueness section -> verified
+
+      - migration guide (`--on migration`) includes duplicate-ID repair guidance ->
+      verified
+
+
+      Spec link:
+
+      - step-id-migration-tooling.guidance
+
+
+      Gaps/Notes:
+
+      - Updated guidance surfaces: migration guide text, claim-time guidance output,
+      and AGENTS/CLAUDE template snippets.
+
+      - Example IDs audited and already compliant with global-uniqueness convention.
+
+
+      discovered_issues:
+
+      - none'
   - id: step-id-migration-tooling.hard-error-flip
     name: Flip legacy duplicates to hard validation errors
     status: pending

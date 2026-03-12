@@ -26760,34 +26760,41 @@ phases:
 
       review_depth: STANDARD
 
-      review_depth_rationale: Single-file bug fix with clear pattern to follow, no
-      known rework patterns.
+      review_depth_rationale: Single-file bug fix with a known rollback parity pattern,
+      plus fresh independent retest evidence.
 
 
       Review criteria:
 
-      1. Completeness: Cycle check covers all 3 dep-mutation paths (depends_on, add_deps,
-      remove_deps)
+      1. Completeness: Cycle check rollback now covers dependency-mutation failure
+      handling without leaking in-memory state
 
-      2. Pattern match: Implementation mirrors add_steps_bulk pattern at lines 1046-1052
+      2. Pattern match: Implementation mirrors add_steps_bulk rollback pattern at
+      lines 1045-1052 where cycle errors restore prior deps before raising
 
-      3. Test coverage: Tests exercise all 3 dep-mutation paths + valid operations
+      3. Test coverage: Tests exercise rollback after cycle-triggering depends_on
+      and add_deps edits, plus valid dependency and remove_deps behavior
 
-      4. No regressions: Full test suite passes
+      4. Independent evidence: retest-gate-precheck-edit-step-rollback provides fresh
+      L1 verification output
 
-      5. Error message: PlanError message is actionable (includes cycle path)'
+      5. No regressions: focused validation suite passes and non-dependency edit behavior
+      remains unchanged'
     verification: '- Implementation step completed with evidence
 
-      - Test step completed with evidence
+      - Retest precheck completed with independent evidence
 
-      - All tests pass: pytest tests/test_validation.py -v
+      - Rollback behavior verified: cycle-triggering dependency edits raise PlanError
+      and restore original depends_on state
 
-      - Cycle check covers depends_on, add_deps, and remove_deps paths
+      - Focused tests pass for valid dependency edits and remove_deps behavior
 
-      - No regressions in existing tests'
+      - No regressions in non-dependency edit behavior'
     depends_on:
     - implement
     - test
+    - p0-cycle-detection.fix-gate-blocker-edit-step-rollback
+    - p0-cycle-detection.retest-gate-precheck-edit-step-rollback
     agent: gate-reviewer
     claimed_by: gate-reviewer
     claimed_at: '2026-03-12T16:25:37.627771+00:00'

@@ -26214,3 +26214,8 @@ phases:
 - id: p0-cycle-detection
   name: 'P0: edit_step Cycle Detection'
   status: pending
+- id: p1-qualified-lookup-errors
+  name: 'P1: Qualified Step Lookup + Error Messages'
+  status: locked
+  depends_on:
+  - p0-cycle-detection

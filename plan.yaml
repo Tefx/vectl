@@ -27109,7 +27109,7 @@ phases:
       \ loop before rerun.\n\ndiscovered_issues:\n- none"
   - id: step-id-migration-tooling.fix-gate-blockers
     name: Fix gate blockers for migration tooling
-    status: claimed
+    status: done
     description: 'step_type: implementation
 
       agent_source: default
@@ -27334,6 +27334,73 @@ phases:
     agent: python-senior
     claimed_by: python-senior
     claimed_at: '2026-03-12T19:20:36.833264+00:00'
+    done_at: '2026-03-12T19:27:01.721240+00:00'
+    evidence: 'Commit hash(es):
+
+      - worker branch: 578fb73983eda7fdf06d7130575782a6fe7ad9eb
+
+      - main squash commit: 6076619
+
+
+      Files changed:
+
+      - docs/contracts/duplicate-id-migration-contract.yaml
+
+      - src/vectl/cli.py
+
+      - src/vectl/core.py
+
+      - src/vectl/guide.py
+
+      - tests/test_cli.py
+
+      - tests/test_duplicate_id_migration_contract.py
+
+      - tests/test_duplicate_id_migration_dag.py
+
+      - tests/test_mcp.py
+
+
+      Verification:
+
+      - uv run ruff check src/vectl/cli.py src/vectl/core.py src/vectl/guide.py tests/test_cli.py
+      tests/test_mcp.py tests/test_duplicate_id_migration_contract.py tests/test_duplicate_id_migration_dag.py
+      -> PASS
+
+      - uv run pytest -q tests/test_duplicate_id_migration_contract.py tests/test_duplicate_id_migration_dag.py
+      tests/test_cli.py::TestDuplicateIdDiagnostics::test_show_step_emits_structured_repair_recommendation
+      tests/test_mcp.py::TestVectlShow::test_show_step_duplicate_id_recommendation
+      tests/test_mcp.py::TestVectlClaim::test_claim_blocks_ambiguous_duplicate_target_without_opt_in
+      -> PASS (37 passed)
+
+      - rg -n "If you have legacy duplicate step IDs" src/vectl -> wrapped/clean emitters
+      only
+
+      - rg -n -- "--auto-migrate" src/vectl tests docs/contracts -> aligned references
+      for chosen path
+
+      - rg -n "coming in phase C" src/vectl tests -> no matches
+
+
+      Spec link:
+
+      - step-id-migration-tooling.gate/B1-B2
+
+
+      Gaps/Notes:
+
+      - B1 fixed: long-line lint issue resolved across duplicated guidance surfaces.
+
+      - B2 fixed via coherent path: removed unsupported active `--auto-migrate` behavior
+      claims from contract/guide/diagnostic surfaces (no wrapper implementation introduced
+      in this step).
+
+      - S1 evidence-wording cleanup not included in this bounded pass.
+
+
+      discovered_issues:
+
+      - none'
   - id: step-id-migration-tooling.retest-gate-blockers
     name: Independent retest of migration tooling gate blockers
     status: pending

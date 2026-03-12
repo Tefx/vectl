@@ -22592,6 +22592,50 @@ phases:
     depends_on:
     - step-id-resolver-hardening.contract
     agent: python-executor
+  - id: step-id-resolver-hardening.core
+    name: Implement shared resolver core
+    status: pending
+    description: "step_type: implementation\nagent_source: default\nspec_refs:\n \
+      \ - conversation/duplicate-step-id-bug\n\ntouch_paths:\n- src/vectl/models.py\n\
+      - src/vectl/lifecycle.py\n- src/vectl/core.py\n\nharness_refs:\n- tests/test_logic.py\n\
+      - duplicate-step legacy fixture\n\nImplement one shared step-target resolver\
+      \ used by all targeted command paths.\n\nFailure-mode checklist:\n- bare duplicate\
+      \ step IDs must return an explicit ambiguity result, not the first match\n-\
+      \ qualified selectors must resolve by phase + step.id, not by step.name\n- inactive-phase\
+      \ context must not mask an otherwise valid active-phase match when the target\
+      \ is ambiguous\n- unknown phase and unknown step errors must remain distinguishable\
+      \ from ambiguity\n- helper callers that still use global `Plan.find_step` directly\
+      \ for targeted mutations must be removed or wrapped\n\nState semantics:\n- last-writer-wins\
+      \ does not apply here; resolution is pure and deterministic\n- existing globally\
+      \ unique step IDs must preserve current behavior exactly\n- legacy duplicate-id\
+      \ plans remain readable so migration tooling can operate on them\n\nOut-of-scope\
+      \ guardrail:\n- do not add migration/repair writes in this step\n- do not enforce\
+      \ global uniqueness yet\n\nKnown risk from project history:\n- helper-signature\
+      \ refactors in `src/vectl/core.py` and `src/vectl/lifecycle.py` have previously\
+      \ left one command family on stale semantics. Update all shared entry points\
+      \ or add explicit follow-up blockers."
+    verification: '- Main path: targeted resolver tests for unique IDs and phase-qualified
+      IDs pass
+
+      - Failure path: regression tests cover ambiguous duplicate IDs and wrong-qualified
+      selectors
+
+      - Proof: no targeted mutation path still resolves steps through ad hoc first-match
+      lookup where shared resolver scope requires removal'
+    evidence_template: '## Shared Resolver Implementation
+
+      - Shared API added/updated: <module::symbol>
+
+      - Callers migrated: <list>
+
+      - Legacy duplicate-id behavior: <error/result>
+
+      - Remaining direct `find_step` usage in targeted paths: <none or justified list>
+
+      '
+    depends_on:
+    - step-id-resolver-hardening.tests
+    agent: python-senior
 - id: step-id-validation-hardening
   name: B / Validation Hardening
   status: locked

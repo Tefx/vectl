@@ -23864,8 +23864,8 @@ phases:
 
       - bug impacts core plan targeting behavior and operator recovery workflows
 
-      - shipping without strong review risks stranded legacy plans or silent wrong-step
-      mutations
+      - shipping without strong review risks stranded legacy plans, silent wrong-step
+      mutations, or unclear automation migration contracts
 
 
       cross_cutting_focus:
@@ -23874,18 +23874,23 @@ phases:
 
       - phased rollout completed correctly from warning to hard error
 
-      - migration preserves DAG and produces actionable operator guidance
+      - half-automatic targeted mutation behavior stays explicit and never silently
+      mutates on read-only paths
+
+      - migration preserves DAG and produces actionable operator guidance plus machine-readable
+      old->new mapping
 
 
       Independence: gate agent must not match any implementation agent in earlier
       phases.'
     verification: '- Final end-to-end duplicate-gate regression completed successfully
 
-      - Evidence shows pre-fix symptom capture, migration fix, post-fix claim/show
-      behavior, and DAG preservation
+      - Evidence shows pre-fix symptom capture, read-only non-mutation, recommendation-only
+      error path, opt-in auto-migrate retry, post-fix claim/show behavior, and DAG
+      preservation
 
-      - No unresolved blocker remains around backward compatibility or ambiguous-step
-      handling
+      - No unresolved blocker remains around backward compatibility, mapping clarity
+      for automation, or ambiguous-step handling
 
       - Ready for release or follow-on versioning work'
     evidence_template: '## Final Gate Review Report

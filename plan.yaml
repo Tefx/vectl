@@ -24693,7 +24693,7 @@ phases:
       - none'
   - id: step-id-validation-hardening.fix-gate-findings
     name: Batched fix for gate findings
-    status: claimed
+    status: done
     description: 'step_type: implementation
 
       agent_source: default
@@ -24997,6 +24997,85 @@ phases:
     agent: python-senior
     claimed_by: python-senior
     claimed_at: '2026-03-12T15:29:03.027082+00:00'
+    done_at: '2026-03-12T15:39:02.805862+00:00'
+    evidence: 'Commit hash(es):
+
+      - worker branch: c3604b5, 502d0b6
+
+      - main squash commit: ec22892
+
+
+      Files changed:
+
+      - src/vectl/models.py
+
+      - src/vectl/core.py
+
+      - src/vectl/cli.py
+
+      - src/vectl/mcp_server.py
+
+      - tests/test_architect.py
+
+      - tests/test_cli.py
+
+      - tests/test_mcp.py
+
+      - tests/test_validation.py
+
+      - tests/repro/step_id_validation_hardening_verify.md
+
+
+      Verification:
+
+      - rg -n "_unique_step_id\(" tests/test_architect.py src/vectl/core.py -> 5 matches,
+      all callsites now on (plan, phase, slug) shape
+
+      - rg -n "\[l for l in" tests/test_mcp.py -> 0 matches
+
+      - rg -n "validate --auto-migrate|required_opt_in=--auto-migrate|dry_run_repair_entry_point"
+      src/vectl/core.py src/vectl/cli.py src/vectl/mcp_server.py tests/test_cli.py
+      tests/test_mcp.py -> 0 matches
+
+      - ruff check . -> All checks passed
+
+      - uv run pytest -v tests/test_architect.py::TestUniqueIds tests/test_validation.py::TestWriteSurfaceRejectsDuplicateIds
+      tests/test_validation.py::TestFutureHardErrorFlipPlaceholders::test_cli_validate_flag_placeholder
+      tests/test_cli.py::TestDuplicateIdDiagnostics tests/test_mcp.py::TestVectlStatus::test_status_next_steps_shows_correct_phase_for_duplicate_ids
+      tests/test_mcp.py::TestVectlShow::test_show_step_duplicate_id_recommendation
+      tests/test_mcp.py::TestVectlClaim::test_claim_blocks_ambiguous_duplicate_target_without_opt_in
+      tests/test_mcp.py::TestVectlLifecycle::test_lifecycle_blocks_ambiguous_duplicate_target_without_opt_in
+      -> 23 passed
+
+
+      Spec link:
+
+      - docs/contracts/duplicate-id-rollout-policy.yaml
+
+      - conversation/step-id-validation-hardening.gate-findings
+
+
+      Gaps/Notes:
+
+      - B1 fixed: architect tests updated to current _unique_step_id signature.
+
+      - B2 fixed: import-order and ambiguous variable lint blockers resolved.
+
+      - B3 fixed: phase-B recommendation payload aligned to contract fields, stale
+      auto-migrate/dry-run entry points removed from surfaces/tests.
+
+      - S1/S2/S3 addressed within same batch: placeholder validation test replaced
+      with concrete assertion, stale repro note updated, add_steps_bulk duplicate
+      guard logic consolidated/reduced drift risk.
+
+      - Non-existent conversation artifact reference was reported as discovered issue
+      but did not affect code changes.
+
+
+      discovered_issues:
+
+      - conversation/step-id-validation-hardening.gate-findings reference is absent
+      in repository artifact set'
   - id: step-id-validation-hardening.retest-gate-findings
     name: Independent retest of batched gate findings
     status: pending

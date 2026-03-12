@@ -22861,7 +22861,7 @@ phases:
       completes. This is a read-only evidence collection step.'
   - id: step-id-resolver-hardening.verify
     name: Independently verify resolver behavior
-    status: pending
+    status: claimed
     description: 'step_type: verification
 
       agent_source: default
@@ -22911,6 +22911,8 @@ phases:
     depends_on:
     - step-id-resolver-hardening.freeze-l2
     agent: integration-verifier
+    claimed_by: integration-verifier
+    claimed_at: '2026-03-12T13:12:56.350656+00:00'
   - id: step-id-resolver-hardening.freeze-gate
     name: Freeze snapshot for resolver gate
     status: pending

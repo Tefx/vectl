@@ -23464,6 +23464,59 @@ phases:
     depends_on:
     - step-id-migration-tooling.hard-error-flip
     agent: software-architect
+  - id: step-id-migration-tooling.verify
+    name: Independently verify migration and DAG preservation
+    status: pending
+    description: 'step_type: verification
+
+      agent_source: default
+
+      Independence Level: L2
+
+      As an INDEPENDENT TESTER (`integration-verifier`), validate duplicate-ID repair
+      end to end from dry-run through migrated plan behavior.
+
+
+      YOUR GOAL IS TO FIND PROBLEMS, not to confirm it works.
+
+
+      Test for:
+
+      - Happy path: dry-run shows deterministic mapping, apply rewrites IDs, migrated
+      plan validates cleanly
+
+      - Edge cases: fanout dependencies, repeated migration, claimed-step policy,
+      CLI/MCP mapping parity
+
+      - Error scenarios: blocked migration with actionable guidance, DAG regression
+      after rename, stale duplicate diagnostics after successful migration
+
+
+      Document ALL findings. A test that discovers issues is a SUCCESS.
+
+      A test that finds nothing must justify the coverage achieved.
+
+
+      Review depth hint:
+
+      - focus explicitly on DAG preservation, not just successful rename output
+
+      - require actual before/after plan excerpts or command outputs in evidence'
+    verification: '- Main path: dry-run/apply/migrated-validation flow passes on a
+      real duplicate-gate fixture
+
+      - Failure path: at least one DAG-preservation check and one claimed-step or
+      blocked-migration path are exercised and reported
+
+      - Evidence includes actual mapping output and post-migration behavior, not only
+      test summaries'
+    evidence_template: "## Verification Report\n- Commands executed:\n  - <repair\
+      \ dry-run>\n  - <repair apply>\n  - <validation / claim/show after migration>\n\
+      - Actual outputs:\n  ```text\n  <paste outputs>\n  ```\n- DAG preservation check:\
+      \ <how verified>\n- Issues found: <list>\n"
+    depends_on:
+    - step-id-migration-tooling.freeze-l2
+    agent: integration-verifier
 - id: step-id-final-integration
   name: Final Integration & Gate
   status: locked

@@ -22813,6 +22813,67 @@ phases:
     depends_on:
     - step-id-resolver-hardening.verify
     agent: software-architect
+  - id: step-id-resolver-hardening.gate
+    name: Gate review for resolver hardening
+    status: pending
+    description: 'step_type: gate
+
+      agent_source: default
+
+      As an INDEPENDENT REVIEWER (`gate-reviewer`), assess whether resolver hardening
+      is complete and safe to build on.
+
+
+      review_depth: THOROUGH
+
+      review_depth_rationale:
+
+      - phase touches cross-cutting targeted command surfaces in both CLI and MCP
+
+      - bug class is a known stale-helper / inconsistent-surface failure pattern in
+      this repo
+
+      - ambiguity handling must be consistent before validation and migration build
+      on it
+
+
+      cross_cutting_focus:
+
+      - one shared resolver path for all targeted commands
+
+      - ambiguity errors are actionable and do not silently choose the wrong phase
+
+      - unique-ID plans preserve current behavior
+
+
+      Independence: gate agent must not match any implementation agent in this phase.'
+    verification: '- All phase steps completed successfully
+
+      - Evidence collected for contract, tests, implementation, and independent verification
+
+      - No targeted command surface still uses inconsistent step resolution semantics
+
+      - Ready for validation hardening'
+    evidence_template: '## Gate Review Report
+
+      - Step-by-step evidence quality: <table>
+
+      - Blocking issues: <list>
+
+      - Cross-cutting findings: <list>
+
+      - Gate decision: OPEN or BLOCKED
+
+      '
+    depends_on:
+    - step-id-resolver-hardening.contract
+    - step-id-resolver-hardening.tests
+    - step-id-resolver-hardening.core
+    - step-id-resolver-hardening.surfaces
+    - step-id-resolver-hardening.freeze-l2
+    - step-id-resolver-hardening.verify
+    - step-id-resolver-hardening.freeze-gate
+    agent: gate-reviewer
 - id: step-id-validation-hardening
   name: B / Validation Hardening
   status: locked

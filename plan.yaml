@@ -22509,13 +22509,13 @@ phases:
       suite as closest authoritative equivalent.'
 - id: step-id-resolver-hardening
   name: A / Resolver Hardening
-  status: pending
+  status: in_progress
   depends_on:
   - version-bump-0-6-2
   steps:
   - id: step-id-resolver-hardening.contract
     name: Define unified step target contract
-    status: pending
+    status: claimed
     description: "step_type: contract\ncontract_purity: ENFORCED\ncontract_outputs:\n\
       \  - selector_rules\n  - ambiguity_errors\n  - qualified_target_grammar\n  -\
       \ legacy_behavior_matrix\n  - repair_recommendation_schema\nagent_source: default\n\
@@ -22566,6 +22566,8 @@ phases:
 
       '
     agent: software-architect
+    claimed_by: software-architect
+    claimed_at: '2026-03-12T12:27:21.040731+00:00'
   - id: step-id-resolver-hardening.tests
     name: Add resolver regression tests first
     status: pending

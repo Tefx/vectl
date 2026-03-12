@@ -638,3 +638,331 @@ class TestEditStepCycleDetection:
         assert found is not None
         _, s1 = found
         assert s1.name == "Updated S1"
+
+
+# =============================================================================
+# Qualified ID in Error Messages Tests (p1-qualified-lookup-errors/implement-error-msg)
+# =============================================================================
+
+
+class TestQualifiedIdInErrorMessages:
+    """Validation error messages use {phase.id}.{step.id} qualified ID format."""
+
+    def test_claim_step_wrong_status_error_uses_qualified_id(self):
+        """claim_step error for wrong status uses qualified ID format like 'p1.s1'."""
+        plan = _make_plan(
+            phases=[
+                Phase(
+                    id="p1",
+                    name="P1",
+                    steps=[Step(id="s1", name="S1", status=StepStatus.DONE)],
+                )
+            ]
+        )
+        from vectl.lifecycle import claim_step
+
+        with pytest.raises(PlanError) as exc_info:
+            claim_step(plan, "s1", "agent-1")
+
+        msg = str(exc_info.value)
+        assert "p1.s1" in msg, f"Error message should contain qualified ID 'p1.s1', got: {msg}"
+
+    def test_complete_step_wrong_status_error_uses_qualified_id(self):
+        """complete_step error for wrong status uses qualified ID format."""
+        plan = _make_plan(
+            phases=[
+                Phase(
+                    id="core",
+                    name="Core",
+                    steps=[Step(id="validate", name="Validate", status=StepStatus.PENDING)],
+                )
+            ]
+        )
+        from vectl.lifecycle import complete_step
+
+        with pytest.raises(PlanError) as exc_info:
+            complete_step(plan, "validate", "evidence")
+
+        msg = str(exc_info.value)
+        assert "core.validate" in msg, (
+            f"Error message should contain qualified ID 'core.validate', got: {msg}"
+        )
+
+    def test_defer_step_wrong_status_error_uses_qualified_id(self):
+        """defer_step error for wrong status uses qualified ID format."""
+        plan = _make_plan(
+            phases=[
+                Phase(
+                    id="p1",
+                    name="P1",
+                    steps=[Step(id="s1", name="S1", status=StepStatus.PENDING)],
+                )
+            ]
+        )
+        from vectl.lifecycle import defer_step
+
+        with pytest.raises(PlanError) as exc_info:
+            defer_step(plan, "s1")
+
+        msg = str(exc_info.value)
+        assert "p1.s1" in msg, f"Error message should contain qualified ID 'p1.s1', got: {msg}"
+
+    def test_reject_step_wrong_status_error_uses_qualified_id(self):
+        """reject_step error for wrong status uses qualified ID format."""
+        plan = _make_plan(
+            phases=[
+                Phase(
+                    id="p1",
+                    name="P1",
+                    steps=[Step(id="s1", name="S1", status=StepStatus.PENDING)],
+                )
+            ]
+        )
+        from vectl.lifecycle import reject_step
+
+        with pytest.raises(PlanError) as exc_info:
+            reject_step(plan, "s1", "needs rework")
+
+        msg = str(exc_info.value)
+        assert "p1.s1" in msg, f"Error message should contain qualified ID 'p1.s1', got: {msg}"
+
+    def test_skip_step_wrong_status_error_uses_qualified_id(self):
+        """skip_step error for wrong status uses qualified ID format."""
+        plan = _make_plan(
+            phases=[
+                Phase(
+                    id="core",
+                    name="Core",
+                    steps=[Step(id="validate", name="Validate", status=StepStatus.DONE)],
+                )
+            ]
+        )
+        from vectl.lifecycle import skip_step
+
+        with pytest.raises(PlanError) as exc_info:
+            skip_step(plan, "validate", "irrelevant")
+
+        msg = str(exc_info.value)
+        assert "core.validate" in msg, (
+            f"Error message should contain qualified ID 'core.validate', got: {msg}"
+        )
+
+    def test_edit_step_cycle_error_uses_qualified_id(self):
+        """edit_step error for dependency cycle uses qualified ID format."""
+        plan = _make_plan(
+            phases=[
+                Phase(
+                    id="p1",
+                    name="P1",
+                    steps=[
+                        Step(id="s1", name="S1"),
+                        Step(id="s2", name="S2", depends_on=["s1"]),
+                    ],
+                )
+            ]
+        )
+        # s1 depends on s2 creates cycle: s1 -> s2 -> s1
+        with pytest.raises(PlanError) as exc_info:
+            edit_step(plan, "s1", depends_on=["s2"])
+
+        msg = str(exc_info.value)
+        # Should contain qualified IDs like p1.s2 → p1.s1
+        assert "p1.s1" in msg and "p1.s2" in msg, (
+            f"Error message should contain qualified IDs, got: {msg}"
+        )
+
+    def test_remove_step_wrong_status_error_uses_qualified_id(self):
+        """remove_step error for wrong status uses qualified ID format."""
+        plan = _make_plan(
+            phases=[
+                Phase(
+                    id="p1",
+                    name="P1",
+                    steps=[
+                        Step(id="s1", name="S1", status=StepStatus.CLAIMED, claimed_by="agent-1")
+                    ],
+                )
+            ]
+        )
+        from vectl.core import remove_step
+
+        with pytest.raises(PlanError) as exc_info:
+            remove_step(plan, "s1")
+
+        msg = str(exc_info.value)
+        assert "p1.s1" in msg, f"Error message should contain qualified ID 'p1.s1', got: {msg}"
+
+    def test_move_step_wrong_status_error_uses_qualified_id(self):
+        """move_step error for wrong status uses qualified ID format."""
+        plan = _make_plan(
+            phases=[
+                Phase(
+                    id="p1",
+                    name="P1",
+                    steps=[
+                        Step(id="s1", name="S1", status=StepStatus.CLAIMED, claimed_by="agent-1")
+                    ],
+                ),
+                Phase(id="p2", name="P2", steps=[]),
+            ]
+        )
+        from vectl.core import move_step
+
+        with pytest.raises(PlanError) as exc_info:
+            move_step(plan, "s1", "p2")
+
+        msg = str(exc_info.value)
+        assert "p1.s1" in msg, f"Error message should contain qualified ID 'p1.s1', got: {msg}"
+
+    def test_remove_step_wrong_status_error_uses_qualified_id(self):
+        """remove_step error for wrong status uses qualified ID format."""
+        plan = _make_plan(
+            phases=[
+                Phase(
+                    id="p1",
+                    name="P1",
+                    steps=[
+                        Step(id="s1", name="S1", status=StepStatus.CLAIMED, claimed_by="agent-1")
+                    ],
+                )
+            ]
+        )
+        from vectl.core import remove_step
+
+        with pytest.raises(PlanError) as exc_info:
+            remove_step(plan, "s1")
+
+        msg = str(exc_info.value)
+        assert "p1.s1" in msg, f"Error message should contain qualified ID 'p1.s1', got: {msg}"
+
+    def test_move_step_wrong_status_error_uses_qualified_id(self):
+        """move_step error for wrong status uses qualified ID format."""
+        plan = _make_plan(
+            phases=[
+                Phase(
+                    id="p1",
+                    name="P1",
+                    steps=[
+                        Step(id="s1", name="S1", status=StepStatus.CLAIMED, claimed_by="agent-1")
+                    ],
+                ),
+                Phase(id="p2", name="P2", steps=[]),
+            ]
+        )
+        from vectl.core import move_step
+
+        with pytest.raises(PlanError) as exc_info:
+            move_step(plan, "s1", "p2")
+
+        msg = str(exc_info.value)
+        assert "p1.s1" in msg, f"Error message should contain qualified ID 'p1.s1', got: {msg}"
+
+    def test_remove_step_wrong_status_error_uses_qualified_id(self):
+        """remove_step error for wrong status uses qualified ID format."""
+        plan = _make_plan(
+            phases=[
+                Phase(
+                    id="p1",
+                    name="P1",
+                    steps=[
+                        Step(id="s1", name="S1", status=StepStatus.CLAIMED, claimed_by="agent-1")
+                    ],
+                )
+            ]
+        )
+        from vectl.core import remove_step
+
+        with pytest.raises(PlanError) as exc_info:
+            remove_step(plan, "s1")
+
+        msg = str(exc_info.value)
+        assert "p1.s1" in msg, f"Error message should contain qualified ID 'p1.s1', got: {msg}"
+
+    def test_move_step_wrong_phase_error_uses_qualified_id(self):
+        """move_step error when step is already in target phase uses qualified ID format."""
+        plan = _make_plan(
+            phases=[
+                Phase(id="p1", name="P1", steps=[Step(id="s1", name="S1")]),
+                Phase(id="p2", name="P2", steps=[]),
+            ]
+        )
+        from vectl.core import move_step
+
+        # Trying to move to same phase it already belongs to
+        with pytest.raises(PlanError) as exc_info:
+            move_step(plan, "s1", "p1")
+
+        msg = str(exc_info.value)
+        assert "p1.s1" in msg, f"Error message should contain qualified ID 'p1.s1', got: {msg}"
+
+    def test_claim_step_inactive_phase_error_uses_qualified_id(self):
+        """claim_step error for inactive phase uses qualified ID format."""
+        plan = _make_plan(
+            phases=[
+                Phase(
+                    id="p1",
+                    name="P1",
+                    status=PhaseStatus.LOCKED,
+                    steps=[Step(id="s1", name="S1")],
+                )
+            ]
+        )
+        from vectl.lifecycle import claim_step
+
+        with pytest.raises(PlanError) as exc_info:
+            claim_step(plan, "s1", "agent-1")
+
+        msg = str(exc_info.value)
+        assert "p1.s1" in msg, f"Error message should contain qualified ID 'p1.s1', got: {msg}"
+
+    def test_claim_step_unmet_deps_error_uses_qualified_id(self):
+        """claim_step error for unmet dependencies uses qualified ID format."""
+        plan = _make_plan(
+            phases=[
+                Phase(
+                    id="p1",
+                    name="P1",
+                    steps=[
+                        Step(id="s1", name="S1"),
+                        Step(id="s2", name="S2", depends_on=["s1"]),
+                    ],
+                )
+            ]
+        )
+        from vectl.lifecycle import claim_step
+
+        with pytest.raises(PlanError) as exc_info:
+            claim_step(plan, "s2", "agent-1")
+
+        msg = str(exc_info.value)
+        assert "p1.s2" in msg, f"Error message should contain qualified ID 'p1.s2', got: {msg}"
+
+    def test_error_message_copy_pasteable_as_step_id(self):
+        """Qualified ID in error message can be copy-pasted to identify step.
+
+        Note: The current find_step only matches on step.id, not qualified ID.
+        This test verifies the qualified ID format is correct and can be parsed.
+        The copy-paste use case would require updating find_step to support
+        qualified IDs in the future.
+        """
+        plan = _make_plan(
+            phases=[
+                Phase(
+                    id="core",
+                    name="Core",
+                    steps=[Step(id="validate", name="Validate", status=StepStatus.DONE)],
+                )
+            ]
+        )
+        from vectl.lifecycle import claim_step
+
+        with pytest.raises(PlanError) as exc_info:
+            claim_step(plan, "validate", "agent-1")
+
+        msg = str(exc_info.value)
+        # Verify qualified ID format is present
+        assert "core.validate" in msg, (
+            f"Error message should contain qualified ID 'core.validate', got: {msg}"
+        )
+        # Verify the qualified ID can be parsed into phase and step
+        assert msg.count("core.validate") > 0

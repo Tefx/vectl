@@ -1140,6 +1140,7 @@ def _show_step_detail(p: Plan, step_id: str, plan_path: Path | None = None) -> N
         _die(f"Step '{step_id}' not found.")
         return  # unreachable
     phase, step = found
+    qualified_id = f"{phase.id}.{step.id}"
 
     # B2: Check for mismatch for this specific step
     mismatch_info = ""

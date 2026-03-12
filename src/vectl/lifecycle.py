@@ -127,18 +127,19 @@ def claim_step(
     if found is None:
         raise PlanError(f"Step '{step_id}' not found")
     phase, step = found
+    qualified_id = f"{phase.id}.{step.id}"
 
     if step.status not in (StepStatus.PENDING, StepStatus.REJECTED):
-        raise PlanError(f"Step '{step_id}' cannot be claimed (status: {step.status.value})")
+        raise PlanError(f"Step '{qualified_id}' cannot be claimed (status: {step.status.value})")
 
     active_ids = _get_active_phase_ids(plan)
     if phase.id not in active_ids:
-        raise PlanError(f"Step '{step_id}' is in inactive phase '{phase.id}'")
+        raise PlanError(f"Step '{qualified_id}' is in inactive phase '{phase.id}'")
 
     done_ids = {s.id for s in phase.steps if s.status in (StepStatus.DONE, StepStatus.SKIPPED)}
     unmet = [dep for dep in step.depends_on if dep not in done_ids]
     if unmet:
-        raise PlanError(f"Step '{step_id}' has unmet dependencies: {unmet}")
+        raise PlanError(f"Step '{qualified_id}' has unmet dependencies: {unmet}")
 
     if step.agent is not None and step.agent != agent_name:
         effective_affinity = step.affinity or plan.default_affinity
@@ -198,10 +199,11 @@ def complete_step(plan: Plan, step_id: str, evidence: str, claims_path: Path | N
     if found is None:
         raise PlanError(f"Step '{step_id}' not found")
     phase, step = found
+    qualified_id = f"{phase.id}.{step.id}"
 
     if step.status != StepStatus.CLAIMED:
         raise PlanError(
-            f"Step '{step_id}' cannot be completed (status: {step.status.value}, "
+            f"Step '{qualified_id}' cannot be completed (status: {step.status.value}, "
             "must be claimed first)"
         )
 
@@ -274,10 +276,11 @@ def defer_step(plan: Plan, step_id: str, claims_path: Path | None = None) -> Pla
     found = plan.find_step(step_id)
     if found is None:
         raise PlanError(f"Step '{step_id}' not found")
-    _, step = found
+    phase, step = found
+    qualified_id = f"{phase.id}.{step.id}"
 
     if step.status != StepStatus.CLAIMED:
-        raise PlanError(f"Step '{step_id}' cannot be deferred (status: {step.status.value})")
+        raise PlanError(f"Step '{qualified_id}' cannot be deferred (status: {step.status.value})")
 
     _release_claim_if_needed(step_id, claims_path, action="deferring")
 
@@ -293,10 +296,11 @@ def reject_step(plan: Plan, step_id: str, reason: str, reviewer: str = "") -> Pl
     if found is None:
         raise PlanError(f"Step '{step_id}' not found")
     phase, step = found
+    qualified_id = f"{phase.id}.{step.id}"
 
     if step.status != StepStatus.DONE:
         raise PlanError(
-            f"Step '{step_id}' cannot be rejected (status: {step.status.value}, must be done)"
+            f"Step '{qualified_id}' cannot be rejected (status: {step.status.value}, must be done)"
         )
 
     step.status = StepStatus.REJECTED
@@ -328,9 +332,10 @@ def skip_step(plan: Plan, step_id: str, reason: str) -> Plan:
     if found is None:
         raise PlanError(f"Step '{step_id}' not found")
     phase, step = found
+    qualified_id = f"{phase.id}.{step.id}"
 
     if step.status not in (StepStatus.PENDING, StepStatus.CLAIMED, StepStatus.REJECTED):
-        raise PlanError(f"Step '{step_id}' cannot be skipped (status: {step.status.value})")
+        raise PlanError(f"Step '{qualified_id}' cannot be skipped (status: {step.status.value})")
 
     step.status = StepStatus.SKIPPED
     step.skipped_reason = reason

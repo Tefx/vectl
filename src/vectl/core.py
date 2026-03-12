@@ -1129,6 +1129,7 @@ def edit_step(
     if found is None:
         raise PlanError(f"Step '{step_id}' not found")
     phase, step = found
+    qualified_id = f"{phase.id}.{step.id}"
 
     if new_step_id is not _SENTINEL:
         target_id = str(new_step_id)
@@ -1186,7 +1187,8 @@ def edit_step(
         if cycle:
             if original_depends_on is not None:
                 step.depends_on = original_depends_on
-            raise PlanError(f"Step dependency cycle: {' → '.join(cycle)}")
+            cycle_str = " → ".join(f"{phase.id}.{s}" for s in cycle)
+            raise PlanError(f"Step dependency cycle: {cycle_str}")
 
     if refs is not _SENTINEL:
         step.refs = list(refs)  # type: ignore
@@ -1328,17 +1330,18 @@ def remove_step(plan: Plan, step_id: str, *, force: bool = False) -> Plan:
     if found is None:
         raise PlanError(f"Step '{step_id}' not found")
     phase, step = found
+    qualified_id = f"{phase.id}.{step.id}"
 
     if step.status != StepStatus.PENDING:
         raise PlanError(
-            f"Cannot remove step '{step_id}' with status '{step.status.value}' (must be pending)"
+            f"Cannot remove step '{qualified_id}' with status '{step.status.value}' (must be pending)"
         )
 
     # Check no other step depends on this one
     dependents = [s for s in phase.steps if step_id in s.depends_on]
     if dependents and not force:
         dep_ids = [s.id for s in dependents]
-        raise PlanError(f"Cannot remove step '{step_id}': step '{dep_ids[0]}' depends on it")
+        raise PlanError(f"Cannot remove step '{qualified_id}': step '{dep_ids[0]}' depends on it")
 
     # Force: clean up dependency refs
     if force:
@@ -1404,10 +1407,11 @@ def move_step(plan: Plan, step_id: str, to_phase_id: str) -> Plan:
     if found is None:
         raise PlanError(f"Step '{step_id}' not found")
     from_phase, step = found
+    qualified_id = f"{from_phase.id}.{step.id}"
 
     if step.status != StepStatus.PENDING:
         raise PlanError(
-            f"Cannot move step '{step_id}' with status '{step.status.value}' (must be pending)"
+            f"Cannot move step '{qualified_id}' with status '{step.status.value}' (must be pending)"
         )
 
     target = plan.find_phase(to_phase_id)
@@ -1415,12 +1419,12 @@ def move_step(plan: Plan, step_id: str, to_phase_id: str) -> Plan:
         raise PlanError(f"Target phase '{to_phase_id}' not found")
 
     if from_phase.id == to_phase_id:
-        raise PlanError(f"Step '{step_id}' is already in phase '{to_phase_id}'")
+        raise PlanError(f"Step '{qualified_id}' is already in phase '{to_phase_id}'")
 
     # Check no other step in source phase depends on this one
     for s in from_phase.steps:
         if step_id in s.depends_on:
-            raise PlanError(f"Cannot move step '{step_id}': step '{s.id}' depends on it")
+            raise PlanError(f"Cannot move step '{qualified_id}': step '{s.id}' depends on it")
 
     # Remove from source, clear deps (phase-scoped), add to target
     from_phase.steps = [s for s in from_phase.steps if s.id != step_id]
@@ -1456,7 +1460,8 @@ def update_checklist(
     found = plan.find_step(step_id)
     if found is None:
         raise PlanError(f"Step '{step_id}' not found")
-    _, step = found
+    phase, step = found
+    qualified_id = f"{phase.id}.{step.id}"
 
     if check is not None:
         step.description = _toggle_checklist_item(step.description, check)

@@ -27747,7 +27747,7 @@ phases:
       - none'
   - id: step-id-final-integration.gate
     name: Final gate review for duplicate-id fix
-    status: pending
+    status: claimed
     description: 'step_type: gate
 
       agent_source: default
@@ -27810,6 +27810,8 @@ phases:
     - step-id-final-integration.verify
     - step-id-final-integration.freeze-gate
     agent: gate-reviewer
+    claimed_by: gate-reviewer
+    claimed_at: '2026-03-12T19:41:05.968931+00:00'
 - id: p0-cycle-detection
   name: 'P0: edit_step Cycle Detection'
   status: done

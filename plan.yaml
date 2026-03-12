@@ -26077,7 +26077,7 @@ phases:
       - none'
   - id: step-id-validation-hardening.retest-gate-rerun-guidance-blockers
     name: Independent retest of gate rerun guidance blockers
-    status: pending
+    status: claimed
     description: 'step_type: verification
 
       agent_source: default
@@ -26128,6 +26128,8 @@ phases:
     depends_on:
     - step-id-validation-hardening.fix-gate-rerun-guidance-blockers
     agent: integration-verifier
+    claimed_by: integration-verifier
+    claimed_at: '2026-03-12T17:32:21.990460+00:00'
 - id: step-id-migration-tooling
   name: C / Migration & Tooling
   status: locked

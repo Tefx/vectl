@@ -27694,7 +27694,7 @@ phases:
       \ndiscovered_issues:\n- none"
   - id: step-id-final-integration.freeze-gate
     name: Freeze snapshot for final gate
-    status: pending
+    status: claimed
     description: 'step_type: verification
 
       agent_source: default
@@ -27727,6 +27727,8 @@ phases:
     depends_on:
     - step-id-final-integration.verify
     agent: software-architect
+    claimed_by: software-architect
+    claimed_at: '2026-03-12T19:38:53.021225+00:00'
   - id: step-id-final-integration.gate
     name: Final gate review for duplicate-id fix
     status: pending

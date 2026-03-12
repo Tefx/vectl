@@ -23553,6 +23553,70 @@ phases:
     depends_on:
     - step-id-migration-tooling.verify
     agent: software-architect
+  - id: step-id-migration-tooling.gate
+    name: Gate review for migration and tooling
+    status: pending
+    description: 'step_type: gate
+
+      agent_source: default
+
+      As an INDEPENDENT REVIEWER (`gate-reviewer`), assess whether duplicate-ID migration
+      tooling is safe, actionable, and ready for final end-to-end proof.
+
+
+      review_depth: THOROUGH
+
+      review_depth_rationale:
+
+      - phase touches migration semantics, validation enforcement, and operator guidance
+
+      - known failure pattern in this repo: migration work passes happy-path tests
+      but misses DAG or compatibility edge cases
+
+      - multiple integration-tagged steps require cross-cutting scrutiny
+
+
+      cross_cutting_focus:
+
+      - deterministic rename scheme and dry-run/apply parity
+
+      - DAG preservation after rewriting `depends_on`
+
+      - guidance and hard-error rollout align with actual behavior
+
+
+      Independence: gate agent must not match any implementation agent in this phase.'
+    verification: '- All phase steps completed successfully
+
+      - Evidence collected for migration contract, tests, engine, surfaces, guidance,
+      rollout flip, and independent verification
+
+      - No unresolved blocker remains around backward compatibility, ambiguous-step
+      errors, or DAG preservation
+
+      - Ready for final end-to-end gate phase'
+    evidence_template: '## Gate Review Report
+
+      - Step-by-step evidence quality: <table>
+
+      - Blocking issues: <list>
+
+      - Cross-cutting findings: <list>
+
+      - Gate decision: OPEN or BLOCKED
+
+      '
+    depends_on:
+    - step-id-migration-tooling.contract
+    - step-id-migration-tooling.tests
+    - step-id-migration-tooling.engine
+    - step-id-migration-tooling.surfaces
+    - step-id-migration-tooling.guidance
+    - step-id-migration-tooling.hard-error-flip
+    - step-id-migration-tooling.freeze-l2
+    - step-id-migration-tooling.verify
+    - step-id-migration-tooling.freeze-gate
+    agent: gate-reviewer
 - id: step-id-final-integration
   name: Final Integration & Gate
   status: locked

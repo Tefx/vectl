@@ -24973,6 +24973,151 @@ phases:
     - step-id-validation-hardening.retest-verify-findings
     - step-id-validation-hardening.freeze-gate
     agent: python-senior
+  - id: step-id-validation-hardening.retest-gate-findings
+    name: Independent retest of batched gate findings
+    status: pending
+    description: 'step_type: verification
+
+      agent_source: default
+
+      As an INDEPENDENT TESTER (`integration-verifier`), re-check the full batched
+      remediation from `step-id-validation-hardening.gate` after `step-id-validation-hardening.fix-gate-findings`.
+
+
+      spec_refs:
+
+      - `docs/contracts/duplicate-id-rollout-policy.yaml` / duplicate-id recommendation
+      payload / Phase B rollout guidance
+
+      - conversation / `step-id-validation-hardening.gate` findings
+
+
+      touch_paths under test:
+
+      - `src/vectl/core.py`
+
+      - `src/vectl/cli.py`
+
+      - `src/vectl/mcp_server.py`
+
+      - `tests/test_architect.py`
+
+      - `tests/test_mcp.py`
+
+      - `tests/test_validation.py`
+
+      - `tests/repro/step_id_validation_hardening_verify.md`
+
+
+      harness_refs:
+
+      - `pytest`
+
+      - `ruff check .`
+
+      - CLI/MCP surfaced recommendation paths
+
+
+      Test for:
+
+      - B1 happy path: `_unique_step_id` call sites and architect tests now use the
+      supported signature or an intentional compatibility seam
+
+      - B2 failure path: lint gate is green for the remediated files and no ambiguous
+      `l` comprehension pattern remains in the cited MCP tests
+
+      - B3 contract path: duplicate-ID recommendation text and structured payload
+      fields remain stable and Phase B-consistent across core, CLI, and MCP
+
+      - should-fix path: placeholder/stale-note/duplication-risk cleanup does not
+      regress validation hardening evidence quality
+
+
+      Your goal is to find any remaining mismatch, not to confirm it works.
+
+      Independence Level: L1
+
+
+      Integration steps detected: 1
+
+      - `step-id-validation-hardening.fix-gate-findings`: `src/vectl/core.py` -> `src/vectl/cli.py`
+      / `src/vectl/mcp_server.py` surfaced recommendation path (signal: source-sink
+      + multi-module refs)
+
+      '
+    verification: '- Re-run focused architect, CLI/MCP, and validation tests relevant
+      to the batched fixes
+
+      - Re-run `ruff check .` and confirm the cited I001/E741 issues are gone
+
+      - Evidence includes actual command outputs plus a statement of whether any should-fix
+      item was deferred'
+    evidence_template: '## Retest Report
+
+
+      **Tester**: integration-verifier (independent of implementation)
+
+      **Scope**: batched gate findings from `step-id-validation-hardening.gate`
+
+      **Independence Level**: L1
+
+
+      ### Commands executed
+
+      ```bash
+
+      ruff check .
+
+      pytest tests/test_architect.py -q
+
+      pytest tests/test_cli.py tests/test_mcp.py tests/test_validation.py -q
+
+      ```
+
+
+      ### Output excerpts
+
+      ```text
+
+      <paste actual outputs>
+
+      ```
+
+
+      ### Findings
+
+      | Severity | Description | Location | Reproduction |
+
+      | --- | --- | --- | --- |
+
+      | blocker | <issue or none> | <file:line or command> | <steps> |
+
+      | should_fix | <issue or none> | <file:line or command> | <steps> |
+
+
+      ### Coverage assessment
+
+      - B1 signature drift rechecked: yes/no
+
+      - B2 lint blockers rechecked: yes/no
+
+      - B3 contract mismatch rechecked: yes/no
+
+      - S1/S2/S3 disposition verified: yes/no
+
+
+      ### Verdict
+
+      - [ ] PASS
+
+      - [ ] ISSUES_FOUND
+
+      - [ ] INCOMPLETE
+
+      '
+    depends_on:
+    - step-id-validation-hardening.fix-gate-findings
+    agent: integration-verifier
 - id: step-id-migration-tooling
   name: C / Migration & Tooling
   status: locked

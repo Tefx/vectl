@@ -24432,8 +24432,8 @@ phases:
       - mistakes here can either reintroduce ambiguity or block operators from repairing
       old plans
 
-      - gate findings required a fourth remediation loop for residual Ruff import-hygiene
-      failures across shared test surfaces
+      - gate findings required another serialized batched rerun to reconcile duplicate-ID
+      recommendation text with actual targeted-command resolvability
 
 
       cross_cutting_focus:
@@ -24444,19 +24444,20 @@ phases:
 
       - phased rollout recommendation remains coherent and actionable
 
-      - latest gate rerun must confirm the batched import-hygiene remediation resolved
-      rerun blockers B1/B2 without regressing the earlier type-fix loop
+      - latest rerun must confirm the new batched guidance-remediation loop closed
+      B1 without reintroducing resolver or contract drift
 
 
       Remediation consolidation:
 
       - Existing chain extended
 
-      - Root blocker: latest gate rerun surfaced one remaining batched Ruff import-hygiene
-      cluster in shared test files after the type-checking rerun passed
+      - Root blocker: duplicate-ID repair recommendation still advertises unsupported
+      phase-qualified disambiguation that targeted write commands cannot resolve
 
-      - New loop justified by: preserving prior evidence while adding one serialized
-      batched fix+retest for the remaining import/redefinition and typing-import blockers
+      - New loop justified by: preserving prior remediation evidence while adding
+      one serialized batched fix+retest for recommendation/resolver consistency across
+      CLI, MCP, and contract docs
 
 
       Independence: gate agent must not match any implementation agent in this phase.'
@@ -24498,6 +24499,8 @@ phases:
     - step-id-validation-hardening.retest-gate-rerun-type-blockers
     - step-id-validation-hardening.step-id-validation-hardening-fix-gate-rerun-import-blockers
     - step-id-validation-hardening.step-id-validation-hardening-retest-gate-rerun-import-blockers
+    - step-id-validation-hardening.fix-gate-rerun-guidance-blockers
+    - step-id-validation-hardening.retest-gate-rerun-guidance-blockers
     agent: gate-reviewer
     claimed_by: gate-reviewer
     claimed_at: '2026-03-12T15:15:36.971727+00:00'

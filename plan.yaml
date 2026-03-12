@@ -26481,7 +26481,7 @@ phases:
       - none'
   - id: step-id-migration-tooling.surfaces
     name: Add CLI and MCP migration surfaces
-    status: pending
+    status: claimed
     description: "step_type: implementation\nagent_source: default\ntags:\n- integration\n\
       spec_refs:\n  - conversation/duplicate-step-id-bug\n  - conversation/half-automatic-step-id-migration\n\
       \ntouch_paths:\n- src/vectl/cli.py\n- src/vectl/mcp_server.py\n\nharness_refs:\n\
@@ -26545,6 +26545,8 @@ phases:
     depends_on:
     - step-id-migration-tooling.engine
     agent: python-senior
+    claimed_by: python-senior
+    claimed_at: '2026-03-12T18:16:35.466526+00:00'
   - id: step-id-migration-tooling.guidance
     name: Update planner templates and guidance
     status: pending

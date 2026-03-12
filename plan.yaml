@@ -24279,7 +24279,7 @@ phases:
       - Worktree branch cleaned up after merge.'
   - id: step-id-validation-hardening.verify
     name: Independently verify validation rollout behavior
-    status: claimed
+    status: done
     description: 'step_type: verification
 
       agent_source: default
@@ -24330,6 +24330,36 @@ phases:
     agent: blind-tester
     claimed_by: blind-tester
     claimed_at: '2026-03-12T14:44:02.134205+00:00'
+    done_at: '2026-03-12T14:53:00.422283+00:00'
+    evidence: "## Verification Report\n- Fixtures used: tests/repro/fixtures/unique_plan.yaml,\
+      \ tests/repro/fixtures/legacy_duplicate_plan.yaml, docs/contracts/duplicate-id-rollout-policy.yaml\n\
+      - Commands/calls executed:\n  - uv run vectl status --plan tests/repro/fixtures/unique_plan.yaml\n\
+      \  - uv run vectl validate --plan tests/repro/fixtures/unique_plan.yaml\n  -\
+      \ uv run vectl review --plan tests/repro/fixtures/unique_plan.yaml\n  - uv run\
+      \ vectl status --plan tests/repro/fixtures/legacy_duplicate_plan.yaml\n  - uv\
+      \ run vectl validate --plan tests/repro/fixtures/legacy_duplicate_plan.yaml\n\
+      \  - uv run vectl review --plan tests/repro/fixtures/legacy_duplicate_plan.yaml\n\
+      \  - uv run vectl show dup.step --plan tests/repro/fixtures/legacy_duplicate_plan.yaml\n\
+      \  - uv run vectl dag --plan tests/repro/fixtures/legacy_duplicate_plan.yaml\n\
+      \  - uv run vectl add-step --phase beta --name \"Dup Attempt\" --id alpha.step1\
+      \ --plan tests/repro/fixtures/unique_plan.yaml (with sha256 before/after)\n\
+      \  - uv run vectl claim dup.step --agent blind-tester --plan tests/repro/fixtures/legacy_duplicate_plan.yaml\
+      \ (with sha256 before/after)\n  - MCP calls via python: vectl_status.fn, vectl_validate.fn,\
+      \ vectl_review.fn, vectl_show.fn, vectl_mutate.fn(action=add-step), vectl_claim.fn(step_id=dup.step)\n\
+      - Warning outputs:\n  - CLI read surfaces on legacy duplicates report WARN diagnostics\
+      \ (status/validate/review)\n  - CLI show for duplicate target emits ambiguous-target\
+      \ guidance with dry-run repair + auto-migrate opt-in path\n  - MCP read surfaces\
+      \ mirror WARN behavior on legacy duplicates\n- Write errors:\n  - Duplicate\
+      \ creation blocks with duplicate_step_id_write_blocked and unchanged plan hash\n\
+      \  - Targeted mutation on legacy duplicate blocks with duplicate_step_id_auto_migrate_required,\
+      \ blocking_reason=auto_migrate_missing, required_opt_in=--auto-migrate, unchanged\
+      \ plan hash\n- Issues found:\n  - should_fix: MCP status output mislabels one\
+      \ duplicate entry phase label in Next Available Steps (`P2 duplicate (p1)` observed\
+      \ instead of `(p2)`)\n  - all other Phase-B rollout expectations verified (unique\
+      \ plans unaffected; read warnings; write guards with actionable guidance)\n\
+      - notes:\n  suggestions: []\n  tech_debt: []\n  should_fix: [\"MCP status duplicate-entry\
+      \ phase label mismatch\"]\n  remediation: [\"Batched fix+retest steps were added\
+      \ to phase before gate progression\"]"
   - id: step-id-validation-hardening.freeze-gate
     name: Freeze snapshot for validation gate
     status: pending

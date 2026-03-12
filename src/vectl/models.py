@@ -293,6 +293,173 @@ class DuplicateStepIdDiagnostics:
     recommendations: list[DuplicateStepIdRepairRecommendation]
 
 
+@dataclass(frozen=True)
+class DuplicateStepIdGroup:
+    """Duplicate step-ID group summary for migration reports."""
+
+    step_id: str
+    phases: list[str]
+    occurrences: int
+
+
+@dataclass(frozen=True)
+class DuplicateStepIdRenameEntry:
+    """One deterministic step-ID rename entry."""
+
+    phase_id: str
+    old_step_id: str
+    new_step_id: str
+    reason: str
+
+
+@dataclass(frozen=True)
+class DuplicateStepIdDependsOnRewrite:
+    """One depends_on rewrite record for migration reports."""
+
+    phase_id: str
+    step_id: str
+    old_depends_on: list[str]
+    new_depends_on: list[str]
+
+
+@dataclass(frozen=True)
+class DuplicateStepIdClaimConflict:
+    """One claimed-step conflict blocking duplicate-ID migration apply."""
+
+    phase_id: str
+    step_id: str
+    claimed_by: str
+
+
+@dataclass(frozen=True)
+class DuplicateStepIdRetryEvidence:
+    """Retry outcome schema for auto-migrate wrapper flows."""
+
+    attempted: bool
+    succeeded: bool
+    error: str | None
+
+
+@dataclass(frozen=True)
+class DuplicateStepIdDryRunReport:
+    """Machine-readable duplicate-ID migration dry-run output."""
+
+    run_mode: str
+    duplicate_groups: list[DuplicateStepIdGroup]
+    rename_map: list[DuplicateStepIdRenameEntry]
+    depends_on_rewrites: list[DuplicateStepIdDependsOnRewrite]
+    affected_phases: list[str]
+    claimed_step_conflicts: list[DuplicateStepIdClaimConflict]
+    compatibility_notes: list[str]
+    requires_manual_follow_up: bool
+
+    def to_dict(self) -> dict[str, object]:
+        return {
+            "run_mode": self.run_mode,
+            "duplicate_groups": [
+                {
+                    "step_id": group.step_id,
+                    "phases": list(group.phases),
+                    "occurrences": group.occurrences,
+                }
+                for group in self.duplicate_groups
+            ],
+            "rename_map": [
+                {
+                    "phase_id": entry.phase_id,
+                    "old_step_id": entry.old_step_id,
+                    "new_step_id": entry.new_step_id,
+                    "reason": entry.reason,
+                }
+                for entry in self.rename_map
+            ],
+            "depends_on_rewrites": [
+                {
+                    "phase_id": rewrite.phase_id,
+                    "step_id": rewrite.step_id,
+                    "old_depends_on": list(rewrite.old_depends_on),
+                    "new_depends_on": list(rewrite.new_depends_on),
+                }
+                for rewrite in self.depends_on_rewrites
+            ],
+            "affected_phases": list(self.affected_phases),
+            "claimed_step_conflicts": [
+                {
+                    "phase_id": conflict.phase_id,
+                    "step_id": conflict.step_id,
+                    "claimed_by": conflict.claimed_by,
+                }
+                for conflict in self.claimed_step_conflicts
+            ],
+            "compatibility_notes": list(self.compatibility_notes),
+            "requires_manual_follow_up": self.requires_manual_follow_up,
+        }
+
+
+@dataclass(frozen=True)
+class DuplicateStepIdMigrationEvidence:
+    """Structured duplicate-ID migration evidence payload."""
+
+    command: str
+    command_args: list[str]
+    run_mode: str
+    migrated: bool
+    rename_map: list[DuplicateStepIdRenameEntry]
+    depends_on_rewrites: list[DuplicateStepIdDependsOnRewrite]
+    affected_phases: list[str]
+    claimed_step_conflicts: list[DuplicateStepIdClaimConflict]
+    retry: DuplicateStepIdRetryEvidence
+
+    def to_dict(self) -> dict[str, object]:
+        return {
+            "command": self.command,
+            "command_args": list(self.command_args),
+            "run_mode": self.run_mode,
+            "migrated": self.migrated,
+            "rename_map": [
+                {
+                    "phase_id": entry.phase_id,
+                    "old_step_id": entry.old_step_id,
+                    "new_step_id": entry.new_step_id,
+                }
+                for entry in self.rename_map
+            ],
+            "depends_on_rewrites": [
+                {
+                    "phase_id": rewrite.phase_id,
+                    "step_id": rewrite.step_id,
+                    "old_depends_on": list(rewrite.old_depends_on),
+                    "new_depends_on": list(rewrite.new_depends_on),
+                }
+                for rewrite in self.depends_on_rewrites
+            ],
+            "affected_phases": list(self.affected_phases),
+            "claimed_step_conflicts": [
+                {
+                    "phase_id": conflict.phase_id,
+                    "step_id": conflict.step_id,
+                    "claimed_by": conflict.claimed_by,
+                }
+                for conflict in self.claimed_step_conflicts
+            ],
+            "retry": {
+                "attempted": self.retry.attempted,
+                "succeeded": self.retry.succeeded,
+                "error": self.retry.error,
+            },
+        }
+
+
+@dataclass(frozen=True)
+class DuplicateStepIdApplyResult:
+    """Apply-mode result for duplicate-ID migration engine."""
+
+    report: DuplicateStepIdDryRunReport
+    evidence: DuplicateStepIdMigrationEvidence
+    migrated: bool
+    new_plan_hash: str | None
+
+
 class PlanError(Exception):
     """Raised when a plan operation fails."""
 

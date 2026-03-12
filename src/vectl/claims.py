@@ -201,6 +201,19 @@ def load_claims(claims_path: Path) -> dict[str, ClaimEntry]:
         return _read_claims_file(claims_path)
 
 
+def load_claims_for_branch(claims_path: Path, branch: str) -> dict[str, ClaimEntry]:
+    """Load only claims entries for one branch, keyed by step ID."""
+    with _locked_claims_file(claims_path):
+        claims = _read_claims_file(claims_path)
+
+    by_step: dict[str, ClaimEntry] = {}
+    for entry in claims.values():
+        if entry.branch != branch:
+            continue
+        by_step.setdefault(entry.step_id, entry)
+    return by_step
+
+
 def save_claims(claims: dict[str, ClaimEntry], claims_path: Path) -> None:
     """Persist claims map atomically with file lock protection."""
     with _locked_claims_file(claims_path):

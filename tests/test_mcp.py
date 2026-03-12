@@ -12,7 +12,6 @@ import os
 import subprocess
 from collections.abc import Iterator
 from pathlib import Path
-from typing import Any, Callable, cast
 
 import pytest
 import yaml

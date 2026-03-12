@@ -27779,7 +27779,7 @@ phases:
       - none"
   - id: p1-qualified-lookup-errors.fix-all-blockers-from-p1-qualified-lookup-errors-gate
     name: Fix all blockers from p1-qualified-lookup-errors-gate
-    status: claimed
+    status: done
     description: 'step_type: implementation
 
       agent_source: default
@@ -27988,6 +27988,53 @@ phases:
     agent: python-executor
     claimed_by: python-executor
     claimed_at: '2026-03-12T17:53:50.039801+00:00'
+    done_at: '2026-03-12T18:00:30.541480+00:00'
+    evidence: 'Commit hash(es):
+
+      - worker branch: ee40d7c
+
+      - main squash commit: 2636662
+
+
+      Files changed:
+
+      - src/vectl/cli.py
+
+      - src/vectl/core.py
+
+      - src/vectl/models.py
+
+      - tests/test_validation.py
+
+
+      Verification:
+
+      - ruff check src/vectl/cli.py src/vectl/core.py src/vectl/models.py tests/test_validation.py
+      -> All checks passed
+
+      - mypy src/vectl/models.py -> Success: no issues found
+
+      - pytest tests/test_validation.py tests/test_models.py -> 99 passed
+
+
+      Spec link:
+
+      - p1-qualified-lookup-errors-gate
+
+
+      Gaps/Notes:
+
+      - Fixed B1/B2/B3/B4 blocker set in one batch: removed unused vars, fixed long
+      line, resolved duplicate test definitions, and corrected find_step mypy typing
+      via non-shadowed Optional handling.
+
+      - Should-fix S1/S2 were investigated; no actionable in-scope regression evidence
+      found during this batch.
+
+
+      discovered_issues:
+
+      - none'
   - id: p1-qualified-lookup-errors.independent-retest-of-p1-qualified-lookup-errors-gate-blockers
     name: Independent retest of p1-qualified-lookup-errors gate blockers
     status: pending

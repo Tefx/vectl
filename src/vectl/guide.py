@@ -175,6 +175,93 @@ configures AGENTS.md (or CLAUDE.md for Claude Code projects).
    missing references, or structural inconsistencies, ask the user whether
    to auto-fix. Only apply fixes after explicit confirmation.
 
+## Step ID Uniqueness (Important)
+
+**Step IDs must be GLOBALLY UNIQUE across ALL phases.**
+
+- Before vectl, step IDs only needed to be unique within a phase.
+- Now, the same step ID cannot appear in multiple phases.
+- Use qualified IDs like `phase-name.step-id` to ensure uniqueness.
+
+Example (correct):
+```yaml
+phases:
+  - id: auth
+    steps:
+      - id: auth.login      # unique
+  - id: api
+    steps:
+      - id: api.login       # different from auth.login
+```
+
+Example (incorrect - will be rejected):
+```yaml
+phases:
+  - id: auth
+    steps:
+      - id: login
+  - id: api
+    steps:
+      - id: login           # ERROR: duplicate with auth.login
+```
+
+## Legacy Duplicate Step ID Repair
+
+If you have an existing plan with duplicate step IDs (created before this
+requirement), use the migration tool to repair:
+
+```bash
+# Preview the changes (dry-run)
+uvx vectl migrate-step-id --dry-run
+
+# Apply the migration
+uvx vectl migrate-step-id --yes
+```
+
+The migration tool will:
+1. Detect all duplicate step IDs across phases
+2. Rename non-canonical occurrences to `{phase_id}.{old_step_id}`
+3. Rewrite depends_on references to preserve DAG structure
+4. Emit a mapping of old IDs → new IDs for automation updates
+
+**Important:** Read-only commands (status, show, validate) NEVER mutate plan
+files. Only `migrate-step-id --yes` or `--auto-migrate` with explicit opt-in
+will modify step IDs.
+
+### Half-Automatic Repair Flow
+
+When a targeted command (claim, complete, etc.) hits an ambiguous duplicate:
+
+```bash
+# Without --auto-migrate: fails with repair recommendation
+$ uvx vectl claim login
+Error: Ambiguous step ID 'login' appears in: auth, api
+Recommendation: run 'vectl migrate-step-id --dry-run' or use '--auto-migrate'
+
+# With --auto-migrate: preview, confirm, apply, retry
+$ uvx vectl claim login --auto-migrate
+Migration preview:
+  auth.login  -> auth.login    (canonical, kept)
+  api.login   -> api.login     (already qualified)
+  api.auth    -> api.api-auth  (renamed)
+Apply migration? [y/N]: y
+Applied. Retrying claim...
+Claimed: auth.login
+```
+
+### Post-Migration Automation Updates
+
+After migration, update any scripts or automation that reference old step IDs:
+
+```bash
+# Get the mapping
+uvx vectl migrate-step-id --dry-run --json
+
+# Update your scripts to use new IDs
+# Old: vectl claim login
+# New: vectl claim auth.login
+```
+
 ## Workflow
 
 1. **Read** the existing plan in full. Identify phases and steps.
@@ -194,6 +281,7 @@ configures AGENTS.md (or CLAUDE.md for Claude Code projects).
    - Every phase accounted for?
    - Every step accounted for?
    - Dependencies correct?
+   - Step IDs globally unique?
 
 4. **Drop** content that belongs in AGENTS.md / CLAUDE.md, not plan.yaml
    (testing strategy, coding standards, architectural decisions).
@@ -224,6 +312,7 @@ configures AGENTS.md (or CLAUDE.md for Claude Code projects).
 - Use `uvx vectl review` after building to check for orphan deps or missing verifications.
 - Mark already-completed steps: `uvx vectl complete <step-id> --evidence "pre-migration: done"`.
 - One phase at a time. Verify as you go — don't build the entire plan in one pass.
+- **Important:** Always use globally unique step IDs. When in doubt, prefix with phase ID.
 """
 
 

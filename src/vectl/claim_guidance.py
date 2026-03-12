@@ -121,6 +121,17 @@ def build_claim_guidance(plan: Plan, phase: Phase, step: Step) -> GuidancePayloa
                 ]
             )
 
+    # Duplicate step ID guidance
+    md_lines.extend(
+        [
+            "### Step ID Uniqueness",
+            "Step IDs must be **globally unique** across ALL phases.",
+            "When adding new steps, use qualified IDs like `phase-name.step-id`.",
+            "If you encounter duplicate ID errors, run `vectl migrate-step-id --dry-run`.",
+            "",
+        ]
+    )
+
     if truncated:
         md_lines.append("*(Guidance truncated to stay bounded.)*\n")
 

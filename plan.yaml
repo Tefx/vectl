@@ -28242,3 +28242,56 @@ phases:
     agent: integration-verifier
     claimed_by: integration-verifier
     claimed_at: '2026-03-12T18:00:47.351370+00:00'
+  - id: p1-qualified-lookup-errors.fix-double-prefix-qualified-id-regression
+    name: Fix double-prefix regression for already-qualified step IDs
+    status: pending
+    description: "step_type: implementation\nagent_source: default\npriority: HIGH\n\
+      prior_loop:\n  - p1-qualified-lookup-errors.fix-all-blockers-from-p1-qualified-lookup-errors-gate\n\
+      \  - p1-qualified-lookup-errors.independent-retest-of-p1-qualified-lookup-errors-gate-blockers\n\
+      remaining_blocker: double-prefix regression for already-qualified step IDs in\
+      \ error messages across lifecycle/core/cli emitters\nwhy_new_loop: the prior\
+      \ batched blocker loop explicitly investigated S1 but the independent retest\
+      \ produced concrete reproductions showing a shared formatter bug still remains;\
+      \ this needs one systemic follow-up fix before gate rerun\nknown_risks:\n  -\
+      \ Already-qualified IDs must remain copy-paste safe; do not prefix `phase.id`\
+      \ when the incoming selector is already `phase.step`.\n  - Search sibling emitters,\
+      \ not only the listed repro lines, so formatter drift does not survive in adjacent\
+      \ lifecycle/core/cli paths.\n  - Preserve exact-match and dot-in-step-id semantics;\
+      \ this step fixes presentation/selector formatting, not lookup behavior.\n\n\
+      ## Gate Preview (what the gate WILL reject)\n1. Any remaining `p1.p1.s1`-style\
+      \ output in lifecycle/core/cli error paths\n2. Partial fixes that update one\
+      \ emitter family but leave sibling qualified-id formatters drifting\n3. Missing\
+      \ regression coverage for already-qualified IDs and copy-paste behavior\n\n\
+      Fix ALL of these, not just the first, from `p1-qualified-lookup-errors.independent-retest-of-p1-qualified-lookup-errors-gate-blockers`.\n\
+      \n## Blockers to Fix (ALL of these, not just the first)\n\n### B1: double-prefix\
+      \ regression for already-qualified step IDs in error messages\nLocations: `src/vectl/lifecycle.py`,\
+      \ `src/vectl/core.py`, `src/vectl/cli.py`\nRepro evidence:\n- `claim_step_already_qualified_msg`:\
+      \ `Step 'p1.p1.s1' cannot be claimed (status: done)`\n- `remove_step_already_qualified_msg`:\
+      \ `Cannot remove step 'p1.p1.s1' ...`\n- `move_step_already_qualified_msg`:\
+      \ `Cannot move step 'p1.p1.s1' ...`\nRemediation: implement a canonical selector\
+      \ formatter that preserves already-qualified step IDs and only prefixes when\
+      \ needed, then apply it consistently across lifecycle/core/cli error emitters.\n\
+      Grep hint: `rg -n 'f\"\\{phase\\.id\\}\\.\\{step\\.id\\}\"|f\"\\{from_phase\\\
+      .id\\}\\.\\{step\\.id\\}\"' src/vectl/*.py`\nIMPORTANT: Search for sibling emitters\
+      \ beyond the listed paths and route them through the same canonical formatter.\n\
+      \n## Required regression coverage\n- Add or update regression tests for already-qualified\
+      \ IDs in lifecycle/core/cli error emitters.\n- Add copy-paste behavior checks\
+      \ proving a qualified ID remains unchanged when reused.\n- Keep targeted lint/type\
+      \ coverage green for the touched scope.\n\n## Out of scope guardrail\n- Do not\
+      \ widen this loop into unrelated lookup-semantics or phase-selection work beyond\
+      \ the canonical qualified-id formatter adoption in `src/vectl/lifecycle.py`,\
+      \ `src/vectl/core.py`, `src/vectl/cli.py`, and the directly related regression\
+      \ tests."
+    verification: '- Main path: targeted regression tests for already-qualified ID
+      error messages pass across lifecycle/core/cli
+
+      - Failure path: regression proof shows already-qualified selectors are preserved
+      verbatim and no `p1.p1.s1`-style double-prefix output remains
+
+      - Targeted lint/type checks for touched Python/test files pass
+
+      - Sibling search for the grep hint is completed and evidence states which emitters
+      were normalized'
+    depends_on:
+    - p1-qualified-lookup-errors.independent-retest-of-p1-qualified-lookup-errors-gate-blockers
+    agent: python-senior

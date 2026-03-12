@@ -23719,7 +23719,7 @@ phases:
       - Resolver behavior retained; resolver tests pass.'
   - id: step-id-resolver-hardening.retest-mypy-gate-blockers
     name: Independent retest for resolver hardening mypy remediation
-    status: pending
+    status: claimed
     description: 'step_type: verification
 
       agent_source: default
@@ -23816,6 +23816,8 @@ phases:
     depends_on:
     - step-id-resolver-hardening.fix-mypy-gate-blockers
     agent: integration-verifier
+    claimed_by: integration-verifier
+    claimed_at: '2026-03-12T13:53:57.834763+00:00'
 - id: step-id-validation-hardening
   name: B / Validation Hardening
   status: locked

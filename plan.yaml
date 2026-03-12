@@ -27512,7 +27512,7 @@ phases:
     agent: python-executor
   - id: test-error-msg
     name: Add validation error message qualified ID test
-    status: pending
+    status: claimed
     description: 'Add a test verifying the validation error message uses qualified
       phase.step IDs.
 
@@ -27547,6 +27547,8 @@ phases:
     depends_on:
     - implement-error-msg
     agent: python-executor
+    claimed_by: python-executor
+    claimed_at: '2026-03-12T17:32:22.896865+00:00'
   - id: p1-qualified-lookup-errors-gate
     name: Gate review for P1 qualified lookup and error messages
     status: pending

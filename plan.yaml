@@ -22879,6 +22879,43 @@ phases:
   status: locked
   depends_on:
   - step-id-resolver-hardening
+  steps:
+  - id: step-id-validation-hardening.rollout-contract
+    name: Define duplicate-id rollout policy
+    status: pending
+    description: "step_type: contract\ncontract_purity: ENFORCED\ncontract_outputs:\n\
+      \  - rollout_policy\n  - validation_severity_matrix\n  - read_vs_write_behavior\n\
+      \  - deprecation_copy\nagent_source: default\nspec_refs:\n  - conversation/duplicate-step-id-bug\n\
+      \nRecommend and codify the rollout policy for global step-ID uniqueness.\n\n\
+      Required recommendation:\n- phased rollout is preferred over immediate load-time\
+      \ hard failure\n\nThe contract must define:\n- warning mode for legacy duplicate-id\
+      \ plans in read-oriented surfaces (`status`, `review`, `show`, `dag`) so operators\
+      \ can still inspect and migrate\n- hard prevention for creating NEW duplicate\
+      \ IDs on write surfaces as soon as this phase lands\n- final hard validation\
+      \ error for legacy duplicate IDs after migration tooling exists in phase C\n\
+      - exact wording and severity placement for `status`, `review`, `validate`, and\
+      \ mutation commands\n\nRationale to preserve:\n- an immediate universal hard\
+      \ error would strand existing plans before a repair path ships\n- a warning-only\
+      \ forever policy is insufficient because ambiguity is correctness-breaking\n\
+      \nOut of scope:\n- actual migration command implementation"
+    verification: '- Rollout matrix names each surface and its required severity:
+      info/warning/error
+
+      - Contract explicitly states when the final hard error flips on
+
+      - Contract is executable by workers without making implementation choices later'
+    evidence_template: '## Rollout Policy
+
+      - Read surfaces: <behavior>
+
+      - Write surfaces: <behavior>
+
+      - Final hard-error trigger: <condition>
+
+      - User-facing copy: <summary>
+
+      '
+    agent: software-architect
 - id: step-id-migration-tooling
   name: C / Migration & Tooling
   status: locked

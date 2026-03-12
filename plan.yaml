@@ -26401,3 +26401,57 @@ phases:
 
       - Run: pytest tests/test_validation.py -v (no regressions)'
     agent: python-executor
+  - id: test-find-step
+    name: Add find_step qualified lookup tests
+    status: pending
+    description: 'Add tests for the qualified phase.step lookup in find_step.
+
+
+      File: tests/test_validation.py (or a new tests/test_models.py if test_validation.py
+      is not appropriate)
+
+
+      Add a new test class TestFindStepQualifiedLookup with at minimum these test
+      cases:
+
+
+      1. test_exact_match_still_works — Create a plan with phase "p1" and step "s1".
+      Call find_step("s1"). Assert it returns (p1, s1).
+
+
+      2. test_qualified_lookup — Create a plan with two phases "p1" and "p2", each
+      having a step with id "gate". Call find_step("p2.gate"). Assert it returns (p2,
+      gate_step_in_p2).
+
+
+      3. test_qualified_lookup_phase_not_found — Call find_step("nonexistent.gate").
+      Assert it returns None.
+
+
+      4. test_qualified_lookup_step_not_in_phase — Create a plan with phase "p1" containing
+      step "s1". Call find_step("p1.s2"). Assert it returns None.
+
+
+      5. test_exact_match_priority — Create a plan with a step whose actual id is
+      "p1.gate" (literal dot in id) AND a phase "p1" with step "gate". Call find_step("p1.gate").
+      Assert exact match wins (returns the step with literal id "p1.gate").
+
+
+      6. test_qualified_lookup_dot_in_step_id — Create a plan with phase "p1" and
+      step "fix.gate-findings". Call find_step("p1.fix.gate-findings"). Assert it
+      returns correctly (partition on first dot only).
+
+
+      Helper: Use the existing _make_plan() helper.
+
+
+      Imports: Plan, Phase, Step from vectl.models (already imported in test_validation.py).'
+    verification: '- All 6 test cases pass: pytest tests/test_validation.py::TestFindStepQualifiedLookup
+      -v
+
+      - Tests verify exact match priority, qualified lookup, edge cases
+
+      - No regressions: pytest tests/test_validation.py -v'
+    depends_on:
+    - implement-find-step
+    agent: python-executor

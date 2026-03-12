@@ -28295,3 +28295,42 @@ phases:
     depends_on:
     - p1-qualified-lookup-errors.independent-retest-of-p1-qualified-lookup-errors-gate-blockers
     agent: python-senior
+  - id: p1-qualified-lookup-errors.independent-retest-double-prefix-qualified-id-regression
+    name: Independent retest of double-prefix qualified-id regression
+    status: pending
+    description: "step_type: verification\nagent_source: default\nindependence_level:\
+      \ L1\nprior_loop:\n  - p1-qualified-lookup-errors.independent-retest-of-p1-qualified-lookup-errors-gate-blockers\n\
+      remaining_blocker: confirm the canonical selector formatter removed all already-qualified\
+      \ double-prefix regressions without disturbing copy-paste behavior\nwhy_new_loop:\
+      \ the prior independent retest found concrete B1 reproductions after the first\
+      \ blocker batch closed; this follow-up retest must validate the systemic formatter\
+      \ fix from a fresh perspective\n\nAs an INDEPENDENT TESTER (`integration-verifier`),\
+      \ validate the follow-up batched remediation for already-qualified step IDs\
+      \ from a fresh perspective.\n\nYOUR GOAL IS TO FIND PROBLEMS, not to confirm\
+      \ it works.\n\nRetest scope:\n- The canonical selector formatter preserves already-qualified\
+      \ step IDs and only prefixes when needed\n- Lifecycle/core/cli error emitters\
+      \ all use the normalized formatter path or equivalent shared behavior\n- Copy-paste\
+      \ qualified IDs remain unchanged when reused in claim/remove/move and related\
+      \ error flows\n- No new lint/type regressions were introduced in the touched\
+      \ scope\n\nTest for:\n- Happy path: unqualified IDs still render as `phase.step`\
+      \ where needed\n- Edge cases: already-qualified step IDs, dot-in-step-id selectors,\
+      \ move/remove flows, CLI-mediated message paths\n- Error scenarios: no remaining\
+      \ `p1.p1.s1`-style output and no targeted ruff/mypy regressions in the touched\
+      \ files\n\nFinding issues is a SUCCESS. Missing or vague evidence is not."
+    verification: '- Re-run the reported repros and confirm `claim_step_already_qualified_msg`,
+      `remove_step_already_qualified_msg`, and `move_step_already_qualified_msg` no
+      longer emit double-prefixed IDs
+
+      - Run targeted ruff on touched Python/test files and confirm the remediation
+      stays lint-clean
+
+      - Run targeted mypy or project-equivalent typed check covering the touched selector/formatter
+      paths if typing changed
+
+      - Run focused pytest coverage for already-qualified ID regressions and copy-paste
+      behavior
+
+      - Record exact commands and actual outputs, not a summary'
+    depends_on:
+    - p1-qualified-lookup-errors.fix-double-prefix-qualified-id-regression
+    agent: integration-verifier

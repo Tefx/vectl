@@ -23622,3 +23622,42 @@ phases:
   status: locked
   depends_on:
   - step-id-migration-tooling
+  steps:
+  - id: step-id-final-integration.freeze-l2
+    name: Freeze snapshot for final duplicate-id end-to-end proof
+    status: pending
+    description: 'step_type: verification
+
+      agent_source: default
+
+      Freeze the repository snapshot before the final semi-blind end-to-end duplicate-ID
+      verification.
+
+
+      Requirements:
+
+      - capture `git rev-parse HEAD`
+
+      - confirm `git status` is clean
+
+      - declare the legacy duplicate-`gate` fixture and environment used for the end-to-end
+      run
+
+      - state that no code changes are allowed until final verification completes'
+    verification: '- Evidence includes commit SHA, clean-status confirmation, fixture
+      inventory, environment declaration, and freeze statement'
+    evidence_template: '## Freeze Record
+
+      - Commit: <git rev-parse HEAD>
+
+      - Git status clean: <yes/no>
+
+      - Fixture: legacy duplicate-`gate` plan
+
+      - Environment: <python version / test env>
+
+      - Freeze statement: no code changes until `step-id-final-integration.verify`
+      completes
+
+      '
+    agent: software-architect

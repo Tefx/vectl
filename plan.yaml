@@ -27297,7 +27297,7 @@ phases:
     claimed_at: '2026-03-12T17:17:28.636319+00:00'
   - id: implement-error-msg
     name: Fix ambiguous bare step IDs in validation error messages
-    status: pending
+    status: claimed
     description: "Use qualified phase.step IDs in validation error messages.\n\nFile:\
       \ src/vectl/core.py (line 203)\n\nProblem: Error message says \"Phase '{phase.id}'\
       \ is done but step '{step.id}' has status '{step.status.value}'\" using bare\
@@ -27320,6 +27320,8 @@ phases:
 
       - Run: pytest tests/test_validation.py -v (no regressions)'
     agent: python-executor
+    claimed_by: python-executor
+    claimed_at: '2026-03-12T17:17:32.108016+00:00'
   - id: test-find-step
     name: Add find_step qualified lookup tests
     status: pending

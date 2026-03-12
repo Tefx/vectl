@@ -23222,23 +23222,35 @@ phases:
     status: pending
     description: "step_type: contract\ncontract_purity: ENFORCED\ncontract_outputs:\n\
       \  - rename_algorithm\n  - dry_run_schema\n  - depends_on_rewrite_rules\n  -\
-      \ compatibility_policy\nagent_source: default\nspec_refs:\n  - conversation/duplicate-step-id-bug\n\
-      \nDefine the migration contract for repairing legacy plans with duplicate step\
-      \ IDs.\n\nMust specify:\n- deterministic rename scheme for duplicate IDs, preferably\
-      \ phase-scoped IDs that stay stable on repeated dry-runs\n- how `depends_on`\
-      \ edges are rewritten so the DAG is preserved exactly\n- dry-run output format\
-      \ including old->new mapping, affected phases, and whether any claims/manual\
-      \ follow-up remain\n- backward-compatibility stance for legacy targeted commands\
-      \ before and after migration\n- whether claimed duplicate steps are migrated\
-      \ automatically, blocked with guidance, or repaired via a follow-up claims reconciliation\
-      \ step\n\nKnown risk from project history:\n- migration and split-state work\
-      \ in this repo repeatedly failed when precedence and partial-write semantics\
-      \ were underspecified. This contract must define deterministic apply behavior\
-      \ and what happens on interrupted or repeated migrations.\n\nOut of scope:\n\
-      - final hard validation flip implementation\n- planner/template wording changes"
-    verification: '- Migration contract names the exact rename rule and dry-run schema
+      \ compatibility_policy\n  - auto_migrate_retry_contract\n  - migration_evidence_schema\n\
+      agent_source: default\nspec_refs:\n  - conversation/duplicate-step-id-bug\n\
+      \  - conversation/half-automatic-step-id-migration\n\nDefine the migration contract\
+      \ for repairing legacy plans with duplicate step IDs.\n\nMust specify:\n- deterministic\
+      \ rename scheme for duplicate IDs, preferably phase-scoped IDs that stay stable\
+      \ on repeated dry-runs\n- how `depends_on` edges are rewritten so the DAG is\
+      \ preserved exactly\n- dry-run output format including old->new mapping, affected\
+      \ phases, and whether any claims/manual follow-up remain\n- half-automatic command\
+      \ contract for targeted mutating surfaces: detect ambiguity, emit structured\
+      \ repair recommendation, require explicit `--auto-migrate` opt-in, run duplicate-step-id\
+      \ repair first, then retry the original command exactly once\n- exact migration\
+      \ evidence payload after apply or auto-migrate retry, including original command,\
+      \ repaired IDs, rewritten `depends_on` edges, and whether the original command\
+      \ succeeded on retry\n- backward-compatibility stance for scripts that still\
+      \ reference old IDs after migration, including whether compatibility aliases\
+      \ are supported, whether old IDs are surfaced in mapping output only, and how\
+      \ automation should update stored selectors\n- whether claimed duplicate steps\
+      \ are migrated automatically, blocked with guidance, or repaired via a follow-up\
+      \ claims reconciliation step\n\nKnown risk from project history:\n- migration\
+      \ and split-state work in this repo repeatedly failed when precedence and partial-write\
+      \ semantics were underspecified. This contract must define deterministic apply\
+      \ behavior and what happens on interrupted or repeated migrations.\n\nOut of\
+      \ scope:\n- final hard validation flip implementation\n- planner/template wording\
+      \ changes"
+    verification: '- Migration contract names the exact rename rule, dry-run schema,
+      auto-migrate retry contract, and migration evidence payload
 
-      - Contract includes DAG-preservation invariants and repeat-run/idempotence expectations
+      - Contract includes DAG-preservation invariants, repeat-run/idempotence expectations,
+      and backward-compatibility guidance for old-ID scripts
 
       - Contract is reviewable without shipping migration logic'
     evidence_template: '## Migration Contract

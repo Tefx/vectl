@@ -528,6 +528,10 @@ class TestEditStepCycleDetection:
             edit_step(plan, "s1", depends_on=["s2"])
 
         assert "cycle" in str(exc_info.value).lower()
+        found = plan.find_step("s1")
+        assert found is not None
+        _, s1 = found
+        assert s1.depends_on == []
 
     def test_edit_step_add_deps_cycle_raises_error(self):
         """edit_step with add_deps that creates a cycle raises PlanError."""
@@ -548,6 +552,34 @@ class TestEditStepCycleDetection:
             edit_step(plan, "s1", add_deps=["s2"])
 
         assert "cycle" in str(exc_info.value).lower()
+        found = plan.find_step("s1")
+        assert found is not None
+        _, s1 = found
+        assert s1.depends_on == []
+
+    def test_edit_step_cycle_rollback_keeps_non_dependency_edits(self):
+        """Dependency rollback on cycle leaves non-dependency edits intact."""
+        plan = _make_plan(
+            phases=[
+                Phase(
+                    id="p1",
+                    name="P1",
+                    steps=[
+                        Step(id="s1", name="S1"),
+                        Step(id="s2", name="S2", depends_on=["s1"]),
+                    ],
+                )
+            ]
+        )
+
+        with pytest.raises(PlanError):
+            edit_step(plan, "s1", name="S1 updated", add_deps=["s2"])
+
+        found = plan.find_step("s1")
+        assert found is not None
+        _, s1 = found
+        assert s1.depends_on == []
+        assert s1.name == "S1 updated"
 
     def test_edit_step_remove_deps_cycle_raises_error(self):
         """edit_step with remove_deps does NOT raise cycle (removing deps can't create cycles)."""
@@ -602,3 +634,7 @@ class TestEditStepCycleDetection:
         # No dep mutation, should succeed even with existing steps
         result = edit_step(plan, "s1", name="Updated S1")
         assert result is not None
+        found = plan.find_step("s1")
+        assert found is not None
+        _, s1 = found
+        assert s1.name == "Updated S1"

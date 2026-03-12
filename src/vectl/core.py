@@ -1150,6 +1150,10 @@ def edit_step(
     if agent is not _SENTINEL:
         step.agent = agent if agent is None else str(agent)  # type: ignore[assignment]
 
+    original_depends_on: list[str] | None = None
+    if depends_on is not _SENTINEL or add_deps or remove_deps:
+        original_depends_on = list(step.depends_on)
+
     if depends_on is not _SENTINEL:
         # Validate dependencies
         existing_step_ids = {s.id for s in phase.steps}
@@ -1178,6 +1182,8 @@ def edit_step(
         step_graph = {s.id: s.depends_on for s in phase.steps}
         cycle = _detect_cycle(step_graph)
         if cycle:
+            if original_depends_on is not None:
+                step.depends_on = original_depends_on
             raise PlanError(f"Step dependency cycle: {' → '.join(cycle)}")
 
     if refs is not _SENTINEL:

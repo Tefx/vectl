@@ -26327,7 +26327,7 @@ phases:
   steps:
   - id: implement
     name: Implement cycle detection in edit_step
-    status: claimed
+    status: done
     description: "Add DAG cycle detection to edit_step() after dependency mutations.\n\
       \nFile: src/vectl/core.py (lines 1153-1174)\n\nProblem: When depends_on, add_deps,\
       \ or remove_deps are used in edit_step, no cycle detection runs afterward. Both\
@@ -26359,6 +26359,45 @@ phases:
     agent: python-executor
     claimed_by: python-executor
     claimed_at: '2026-03-12T16:08:30.524789+00:00'
+    done_at: '2026-03-12T16:12:08.230884+00:00'
+    evidence: 'Commit hash(es):
+
+      - worker branch: ca731ca5a0de77b3b2067e7c657ae4198864a73b
+
+      - main squash commit: ce23a6f
+
+
+      Files changed:
+
+      - src/vectl/core.py
+
+      - tests/test_validation.py
+
+
+      Verification:
+
+      - uv run pytest tests/test_validation.py -v -> 35 passed
+
+      - Added/verified cycle-causing edit_step dep mutation raises PlanError containing
+      cycle path
+
+      - Added/verified valid edit_step dep mutation succeeds
+
+
+      Spec link:
+
+      - p0-cycle-detection/implement
+
+
+      Gaps/Notes:
+
+      - Cycle check inserted after depends_on/add_deps/remove_deps mutation handling
+      and before refs processing, matching add_steps_bulk detection pattern.
+
+
+      discovered_issues:
+
+      - none'
   - id: test
     name: Add edit_step cycle detection tests
     status: pending

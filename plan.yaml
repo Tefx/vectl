@@ -22555,6 +22555,43 @@ phases:
 
       '
     agent: software-architect
+  - id: step-id-resolver-hardening.tests
+    name: Add resolver regression tests first
+    status: pending
+    description: "step_type: test\nagent_source: default\nspec_refs:\n  - conversation/duplicate-step-id-bug\n\
+      \ntouch_paths:\n- tests/test_cli.py\n- tests/test_logic.py\n- tests/test_mcp.py\n\
+      - tests fixtures for duplicate-step legacy plans\n\nharness_refs:\n- CLI runner\
+      \ fixtures in `tests/test_cli.py`\n- MCP tool fixtures in `tests/test_mcp.py`\n\
+      - core/lifecycle step-resolution tests in `tests/test_logic.py`\n\nAdd failing\
+      \ tests that lock the bug and the desired behavior before implementation.\n\n\
+      Required coverage:\n- `show gate` and `claim gate` on a legacy plan with duplicate\
+      \ step IDs produce the same ambiguity-aware answer\n- phase-qualified selector\
+      \ succeeds once the shared resolver contract defines it\n- `complete/defer/reject/skip/cancel/check`\
+      \ resolve the same target semantics as `claim/show`\n- MCP `vectl_claim`, `vectl_show`,\
+      \ and lifecycle mutations mirror CLI behavior and error payloads\n- negative\
+      \ cases: unknown phase, unknown step within phase, ambiguous bare step ID, qualified\
+      \ selector against a step `name` instead of `id`\n\nNon-goals:\n- migration\
+      \ command behavior\n- hard validation policy"
+    verification: '- Add targeted tests that fail against current behavior and name
+      the exact legacy duplicate-`gate` scenario
+
+      - Tests identify command-by-command parity expectations for CLI and MCP
+
+      - No product implementation changes bundled into this step beyond minimal fixtures'
+    evidence_template: '## Resolver Test Additions
+
+      - New fixtures: <paths>
+
+      - CLI cases: <tests>
+
+      - MCP cases: <tests>
+
+      - Expected failure mode before implementation: <summary>
+
+      '
+    depends_on:
+    - step-id-resolver-hardening.contract
+    agent: python-executor
 - id: step-id-validation-hardening
   name: B / Validation Hardening
   status: locked

@@ -22636,6 +22636,59 @@ phases:
     depends_on:
     - step-id-resolver-hardening.tests
     agent: python-senior
+  - id: step-id-resolver-hardening.surfaces
+    name: Apply resolver to CLI and MCP surfaces
+    status: pending
+    description: "step_type: implementation\nagent_source: default\ntags:\n- integration\n\
+      spec_refs:\n  - conversation/duplicate-step-id-bug\n\ntouch_paths:\n- src/vectl/cli.py\n\
+      - src/vectl/mcp_server.py\n- src/vectl/claim_guidance.py\n\nharness_refs:\n\
+      - tests/test_cli.py\n- tests/test_mcp.py\n\nWire the shared resolver into every\
+      \ targeted user-facing surface that accepts a step target.\n\nRequired surfaces:\n\
+      - CLI: `show`, `claim`, `complete`, `defer`, `reject`, `skip`, `cancel`, `check`,\
+      \ and any helper that prints follow-up commands using step IDs\n- MCP: `vectl_claim`,\
+      \ `vectl_show`, `vectl_complete`, and lifecycle actions that target a step\n\
+      - guidance/UX: actionable follow-up suggestions must emit the canonical target\
+      \ form when a plan contains duplicates or after migration renames IDs\n\nIntegration\
+      \ evidence requirement:\n- prove source-to-sink behavior from resolver core\
+      \ -> CLI text/error output\n- prove source-to-sink behavior from resolver core\
+      \ -> MCP structured payload/error output\n\nOut-of-scope guardrail:\n- validation\
+      \ warnings/errors for duplicate plans are handled in the next phase\n- migration\
+      \ command surfaces are handled in phase C"
+    verification: '- Main path: CLI and MCP targeted command tests pass using the
+      same selector semantics
+
+      - Failure path: ambiguous duplicate-step errors are identical in meaning across
+      CLI and MCP, with actionable qualified target guidance when possible
+
+      - Proof: claim/show/complete/defer/reject/skip/cancel/check and MCP equivalents
+      all call the shared resolver path'
+    evidence_template: '## Integration Evidence
+
+
+      **Command or test exercising the full path**:
+
+      ```
+
+      <exact CLI command and MCP test or call>
+
+      ```
+
+
+      **Actual output**:
+
+      ```
+
+      <stdout/stderr or MCP payload excerpt>
+
+      ```
+
+
+      **Path exercised**: shared resolver -> CLI/MCP target command
+
+      '
+    depends_on:
+    - step-id-resolver-hardening.core
+    agent: python-senior
 - id: step-id-validation-hardening
   name: B / Validation Hardening
   status: locked

@@ -24428,6 +24428,69 @@ phases:
     - step-id-validation-hardening.verify
     - step-id-validation-hardening.freeze-gate
     agent: gate-reviewer
+  - id: step-id-validation-hardening.fix-verify-findings
+    name: Fix MCP duplicate-id status findings
+    status: pending
+    description: 'step_type: implementation
+
+      Fix ALL of these, not just the first, from `step-id-validation-hardening.verify`.
+
+
+      ## Blockers to Fix (ALL of these, not just the first)
+
+
+      ### S1: MCP status output mislabels phase in `Next Available Steps` when duplicate
+      step IDs exist
+
+      Locations: `src/vectl/mcp_server.py` status rendering path; shared status formatting
+      helpers if they participate in duplicate-id rendering.
+
+      Remediation:
+
+      - ensure each duplicate entry reports its own phase id/name rather than reusing
+      a sibling duplicate''s phase label
+
+      - add regression coverage for duplicate step IDs rendered through MCP status
+      output, especially `Next Available Steps`
+
+      Grep hint: search for `Next Available Steps` and duplicate-id diagnostics/status
+      formatting in MCP status code paths.
+
+      IMPORTANT: Search for siblings beyond the listed location. Audit any shared
+      status/render helpers used by CLI and MCP so the phase label bug is fixed systemically,
+      not only at the first failing call site.
+
+
+      ## Completion Criteria
+
+      - ALL listed issues fixed, not just S1 in one narrow branch
+
+      - sibling/systemic search completed for duplicate-id rendering paths and shared
+      formatting helpers
+
+      - focused regression tests cover duplicate entries with distinct phase ids/names
+      and prove each rendered row carries its own phase label
+
+      - operator-facing output remains correct for both unique-step plans and legacy
+      duplicate-step plans
+
+
+      Out of scope:
+
+      - changing duplicate-id rollout policy or validator severity semantics beyond
+      the rendering defect above'
+    verification: '- Focused regression tests cover MCP status `Next Available Steps`
+      with duplicate step IDs in different phases and assert correct per-entry phase
+      labels
+
+      - Sibling/systemic search evidence identifies and updates any shared formatting
+      path that could reuse the wrong phase label
+
+      - Unique-step status output remains unchanged while duplicate-step output shows
+      correct phase ids/names'
+    depends_on:
+    - step-id-validation-hardening.verify
+    agent: python-executor
 - id: step-id-migration-tooling
   name: C / Migration & Tooling
   status: locked

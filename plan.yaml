@@ -25628,7 +25628,7 @@ phases:
       - none'
   - id: step-id-validation-hardening.step-id-validation-hardening-fix-gate-rerun-import-blockers
     name: step-id-validation-hardening.fix-gate-rerun-import-blockers
-    status: claimed
+    status: done
     description: 'step_type: implementation
 
       agent_source: default
@@ -25785,6 +25785,48 @@ phases:
     agent: python-executor
     claimed_by: python-executor
     claimed_at: '2026-03-12T16:25:38.341069+00:00'
+    done_at: '2026-03-12T16:32:59.606826+00:00'
+    evidence: 'Commit hash(es):
+
+      - worker branch: 433e0bf
+
+      - main squash commit: d28b056
+
+
+      Files changed:
+
+      - tests/test_agent_field.py
+
+      - tests/test_mcp.py
+
+
+      Verification:
+
+      - uv run ruff check tests/test_agent_field.py tests/test_mcp.py -> All checks
+      passed
+
+      - pytest tests/test_agent_field.py tests/test_mcp.py -> 197 passed
+
+
+      Spec link:
+
+      - docs/contracts/duplicate-id-rollout-policy.yaml
+
+      - conversation/step-id-validation-hardening.gate-latest-rerun
+
+
+      Gaps/Notes:
+
+      - Removed duplicated import/wrapper block causing E402/F811 in tests/test_agent_field.py.
+
+      - Cleaned stale typing import issue in tests/test_mcp.py (UP035/F401 cluster).
+
+      - Scope constrained to latest import-hygiene blocker batch.
+
+
+      discovered_issues:
+
+      - none'
   - id: step-id-validation-hardening.step-id-validation-hardening-retest-gate-rerun-import-blockers
     name: step-id-validation-hardening.retest-gate-rerun-import-blockers
     status: pending

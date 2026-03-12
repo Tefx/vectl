@@ -27812,6 +27812,79 @@ phases:
     agent: gate-reviewer
     claimed_by: gate-reviewer
     claimed_at: '2026-03-12T19:41:05.968931+00:00'
+  - id: step-id-final-integration.fix-all-gate-blockers-and-copy-drift
+    name: Fix ALL gate blockers and copy drift
+    status: pending
+    description: "step_type: implementation\nagent_source: default\npriority: HIGH\n\
+      spec_refs:\n- docs/contracts/duplicate-id-rollout-policy.yaml#phase-b-rollout-semantics\n\
+      - docs/contracts/duplicate-id-rollout-policy.yaml#operator-copy-templates\n\
+      - SPEC MISSING: release-gate policy for `invar_invar_guard changed=false`\n\
+      touch_paths:\n- docs/contracts/duplicate-id-rollout-policy.yaml\n- src/vectl/core.py\n\
+      - src/vectl/cli.py\n- tests/test_cli.py\n- final gate criteria/evidence text\
+      \ for duplicate-id release readiness\nharness_refs:\n- tests/test_cli.py duplicate-ID\
+      \ rollout coverage\n- final integration duplicate-ID end-to-end gate evidence\n\
+      Fix ALL of these, not just the first.\n\n## Blockers to Fix (ALL of these, not\
+      \ just the first)\n\n### B1: Phase-B rollout contract mismatch for `validate`\
+      \ semantics\nLocations:\n- docs/contracts/duplicate-id-rollout-policy.yaml:74\n\
+      - docs/contracts/duplicate-id-rollout-policy.yaml:267\n- src/vectl/core.py:219\n\
+      - src/vectl/cli.py:1687\n- tests/test_cli.py:3246\nRemediation:\n- Choose one\
+      \ truth for Phase-B legacy-duplicate `validate` semantics and align contract,\
+      \ core behavior, CLI exit semantics, tests, and operator-facing copy coherently.\n\
+      - If Phase B remains warning + exit code 0, remove any hard-error/exit-1 behavior\
+      \ and align tests/copy.\n- If Phase B becomes hard-error + exit 1, update the\
+      \ contract and rollout/copy text everywhere so the policy is internally consistent.\n\
+      - Include S1 if feasible within the same change set: eliminate CLI/MCP duplicate-ID\
+      \ user-copy drift vs contract templates.\nGrep hint:\n- rg -n \"Phase B|phase\
+      \ B|warning|exit code 0|exit 1|hard-error|hard error|duplicate-ID|duplicate\
+      \ ID|legacy duplicate|validate semantics\" docs/contracts src/vectl tests/test_cli.py\n\
+      IMPORTANT: Search for sibling rollout/copy references beyond the listed locations.\n\
+      \n### B2: `invar_invar_guard` full-scan failure disposition is undefined\nLocations:\n\
+      - release/final gate criteria and evidence for duplicate-ID readiness\n- any\
+      \ plan/gate text or harness expectations referencing `invar_invar_guard changed=false`\n\
+      Remediation:\n- Make the final gate deterministic by choosing and encoding an\
+      \ explicit disposition:\n  1. if `invar_invar_guard changed=false` is an enforced\
+      \ release criterion, add the required suppression/fix work to satisfy that criterion\
+      \ now; OR\n  2. if it is not enforced for this release, remove it from gate\
+      \ criteria/evidence and document the rationale so the gate no longer ambiguously\
+      \ blocks on 198 unrelated static errors.\n- The chosen disposition must be reflected\
+      \ consistently in the remediation evidence expectations and final gate criteria.\n\
+      Grep hint:\n- rg -n \"invar_guard|invar_invar_guard|changed=false|full-scan|full\
+      \ scan|ruff|mypy|pytest|release gate|gate criteria\" .\nIMPORTANT: Search for\
+      \ sibling gate criteria references beyond the first failing mention.\n\n## Completion\
+      \ Criteria\n- ALL blockers fixed (not just B1)\n- One explicit truth chosen\
+      \ for Phase-B `validate` semantics and reflected in contract/code/tests/copy\n\
+      - Final gate criteria are deterministic about whether `invar_invar_guard changed=false`\
+      \ is enforced\n- If S1 is included, CLI/MCP duplicate-ID copy matches the chosen\
+      \ contract templates\n- Sibling search completed for rollout/copy and gate-criteria\
+      \ references; no inconsistent remnants remain\n\n## Out of Scope Guardrail\n\
+      - Do not start unrelated cleanup of the 198 static errors unless that cleanup\
+      \ is required by the chosen release-gate disposition for this exact fix loop."
+    verification: '- Main path: targeted regression proves the chosen Phase-B `validate`
+      semantics match contract, CLI behavior, and tests
+
+      - Failure path: focused regression covers the opposite legacy-duplicate branch
+      (warning/exit-0 vs hard-error/exit-1) so the chosen truth is unambiguous
+
+      - Gate determinism: evidence states whether `invar_invar_guard changed=false`
+      is enforced, and either shows the passing enforcement path or confirms the criterion
+      was removed from the final gate text
+
+      - Proof: sibling search evidence shows no remaining duplicate-ID rollout/copy
+      drift in CLI/MCP templates where this phase claims alignment'
+    evidence_template: "## Batched Gate Remediation Evidence\n\n**Chosen truth for\
+      \ B1**: <warning+exit0 | hard-error+exit1>\n**Rationale**: <why this truth is\
+      \ authoritative>\n\n### B1 alignment\n- Contract locations updated: <paths:lines>\n\
+      - Code locations updated: <paths:lines>\n- Test locations updated: <paths:lines>\n\
+      - Copy/template locations updated: <paths:lines or deferred note>\n- Sibling\
+      \ search command(s):\n  ```\n  <paste rg commands>\n  ```\n- Remaining mismatches:\
+      \ <none | list>\n\n### B2 disposition\n- Enforced gate? <yes|no>\n- Criterion\
+      \ source updated: <paths:lines>\n- If yes, exact command/outcome:\n  ```\n \
+      \ <command + relevant output>\n  ```\n- If no, rationale and updated deterministic\
+      \ gate wording: <text>\n\n### Completion check\n- ALL blockers addressed: <yes/no>\n\
+      - S1 included if feasible: <yes/no + note>\n"
+    depends_on:
+    - step-id-final-integration.verify
+    agent: python-senior
 - id: p0-cycle-detection
   name: 'P0: edit_step Cycle Detection'
   status: done

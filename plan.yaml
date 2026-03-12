@@ -25436,6 +25436,79 @@ phases:
     depends_on:
     - step-id-validation-hardening.retest-gate-findings
     agent: python-executor
+  - id: step-id-validation-hardening.retest-gate-rerun-type-blockers
+    name: Independent retest of gate rerun type blockers
+    status: pending
+    description: 'step_type: verification
+
+      agent_source: default
+
+      As an INDEPENDENT TESTER (`integration-verifier`), re-verify that ALL type-checking
+      issues reported by the `step-id-validation-hardening.gate` rerun are resolved
+      after `step-id-validation-hardening.fix-gate-rerun-type-blockers`.
+
+
+      spec_refs:
+
+      - `step-id-validation-hardening.gate` rerun findings / B4 type-checking gate
+      failure
+
+      - `docs/contracts/duplicate-id-rollout-policy.yaml` / validation hardening phase
+      quality bar
+
+
+      touch_paths under test:
+
+      - `tests/test_migration.py`
+
+      - `tests/test_mcp.py`
+
+      - `tests/test_autofix_message.py`
+
+      - `tests/test_agent_field.py`
+
+      - `tests/test_cli.py`
+
+
+      harness_refs:
+
+      - `uv run --with mypy mypy src tests`
+
+      - `uv run --with pyright pyright`
+
+      - targeted pytest for the touched modules
+
+
+      Test for:
+
+      - Optional-return guards are explicit before indexing/member access in migration
+      tests
+
+      - MCP-related tests no longer rely on statically unsafe `.fn` usage patterns,
+      or any remaining use is typed safely and justified
+
+      - CLI tests keep Typer/subprocess result types distinct
+
+      - sibling searches for `.fn` and Optional-index patterns do not reveal unremediated
+      matches in scope
+
+
+      YOUR GOAL IS TO FIND PROBLEMS, not to confirm it works.
+
+      Independence Level: L1'
+    verification: '- Re-run `uv run --with mypy mypy src tests`
+
+      - Re-run `uv run --with pyright pyright`
+
+      - Re-run targeted pytest for `tests/test_migration.py`, `tests/test_mcp.py`,
+      `tests/test_autofix_message.py`, `tests/test_agent_field.py`, and the affected
+      `tests/test_cli.py` coverage
+
+      - Evidence includes actual command outputs plus explicit findings for any remaining
+      `.fn` or Optional-pattern siblings'
+    depends_on:
+    - step-id-validation-hardening.fix-gate-rerun-type-blockers
+    agent: integration-verifier
 - id: step-id-migration-tooling
   name: C / Migration & Tooling
   status: locked

@@ -25781,7 +25781,7 @@ phases:
       - Proof: `uv run ruff check tests/test_agent_field.py tests/test_mcp.py` and
       targeted pytest for both files are green'
     depends_on:
-    - step-id-validation-hardening.gate
+    - step-id-validation-hardening.retest-gate-rerun-type-blockers
     agent: python-executor
   - id: step-id-validation-hardening.step-id-validation-hardening-retest-gate-rerun-import-blockers
     name: step-id-validation-hardening.retest-gate-rerun-import-blockers

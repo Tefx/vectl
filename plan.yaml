@@ -23508,7 +23508,7 @@ phases:
       - step-id-resolver-hardening.fix-mypy-gate-blockers\n- step-id-resolver-hardening.retest-mypy-gate-blockers"
   - id: step-id-resolver-hardening.fix-mypy-gate-blockers
     name: Batched mypy remediation for resolver hardening retest blockers
-    status: claimed
+    status: done
     description: 'step_type: implementation
 
       agent_source: default
@@ -23674,6 +23674,49 @@ phases:
     agent: python-executor
     claimed_by: python-executor
     claimed_at: '2026-03-12T13:46:02.547189+00:00'
+    done_at: '2026-03-12T13:53:28.059947+00:00'
+    evidence: 'Artifact:
+
+      - Commit hash(es): 8626481c10d38f7accf0dbf39a4a9249ee9b39fb
+
+
+      Verification:
+
+      - Run: `uv run mypy src tests` -> Success: no issues found in 52 source files
+
+      - Run: `uv run ruff check .` -> All checks passed
+
+      - Run: `uv run pytest tests/test_resolver.py -v` -> 8 passed
+
+      - Run: `uv run pytest tests/test_migration.py -v` -> 11 passed
+
+
+      Spec link:
+
+      - step-id-resolver-hardening.fix-mypy-gate-blockers
+
+
+      Files changed:
+
+      - `tests/test_migration.py`
+
+      - `tests/test_cli.py`
+
+      - `tests/test_autofix_message.py`
+
+      - `tests/test_agent_field.py`
+
+
+      Gaps/Notes:
+
+      - Resolved Optional indexing/type narrowing in migration tests.
+
+      - Resolved CLI variable typing clash (`Result` vs `CompletedProcess`).
+
+      - Replaced direct `.fn` typing pattern with typed callable helper in affected
+      test surfaces.
+
+      - Resolver behavior retained; resolver tests pass.'
   - id: step-id-resolver-hardening.retest-mypy-gate-blockers
     name: Independent retest for resolver hardening mypy remediation
     status: pending

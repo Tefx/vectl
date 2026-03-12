@@ -23216,6 +23216,43 @@ phases:
 
       '
     agent: python-senior
+  - id: step-id-migration-tooling.tests
+    name: Add migration and DAG-preservation tests
+    status: pending
+    description: "step_type: test\nagent_source: default\nspec_refs:\n  - conversation/duplicate-step-id-bug\n\
+      \ntouch_paths:\n- tests/test_cli.py\n- tests/test_mcp.py\n- tests/test_validation.py\n\
+      - dedicated migration fixture plans with duplicate IDs and fanout dependencies\n\
+      \nharness_refs:\n- CLI runner fixtures in `tests/test_cli.py`\n- MCP fixtures\
+      \ in `tests/test_mcp.py`\n- validation fixtures in `tests/test_validation.py`\n\
+      \nAdd failing tests for migration tooling before implementation.\n\nRequired\
+      \ coverage:\n- dry-run reports a deterministic rename map for duplicate `gate`\
+      \ IDs across phases\n- apply mode rewrites duplicate IDs and all same-phase\
+      \ `depends_on` references\n- repeated migration is idempotent or no-op with\
+      \ clear messaging\n- migrated plan preserves DAG topology and claimable step\
+      \ order\n- claimed-step or stale-claims scenarios follow the contract's compatibility\
+      \ policy\n\nNon-goals:\n- final hard-error flip on legacy duplicates\n- planner/template\
+      \ updates"
+    verification: '- Tests fail against current tooling because duplicate-ID repair
+      does not exist yet
+
+      - Fixtures include at least one duplicate-ID plan with fanout dependencies and
+      one with a claimed step policy case
+
+      - Test names make DAG-preservation expectations explicit'
+    evidence_template: '## Migration Test Additions
+
+      - Fixtures: <list>
+
+      - Dry-run tests: <list>
+
+      - Apply-mode tests: <list>
+
+      - DAG checks: <list>
+
+      '
+    depends_on:
+    - step-id-migration-tooling.contract
+    agent: python-executor
 - id: step-id-final-integration
   name: Final Integration & Gate
   status: locked

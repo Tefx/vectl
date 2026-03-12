@@ -27699,7 +27699,8 @@ phases:
 
       agent_source: default
 
-      Freeze the repository snapshot before the final duplicate-ID gate review.
+      Freeze the repository snapshot immediately before the rerun final duplicate-ID
+      gate review after batched remediation.
 
 
       Requirements:
@@ -27708,11 +27709,19 @@ phases:
 
       - confirm `git status` is clean
 
-      - declare review inputs (end-to-end evidence, migration outputs, DAG comparisons)
+      - declare review inputs (batched remediation evidence, independent retest evidence,
+      updated gate criteria, migration outputs, DAG comparisons)
 
-      - state that no code changes are allowed until the gate decision is recorded'
-    verification: '- Evidence includes commit SHA, clean-status confirmation, evidence
-      inventory, and freeze statement'
+      - state that no code changes are allowed until the rerun gate decision is recorded'
+    verification: '- `git rev-parse HEAD` recorded for the rerun review snapshot
+
+      - `git status` clean at freeze time
+
+      - Review inputs explicitly list batched remediation evidence, independent retest
+      evidence, and the final chosen gate criteria
+
+      - Statement recorded that no code changes are allowed until the rerun gate decision
+      completes'
     evidence_template: '## Gate Freeze Record
 
       - Commit: <git rev-parse HEAD>
@@ -27725,7 +27734,7 @@ phases:
 
       '
     depends_on:
-    - step-id-final-integration.verify
+    - step-id-final-integration.independent-retest-of-batched-gate-remediation
     agent: software-architect
     claimed_by: software-architect
     claimed_at: '2026-03-12T19:38:53.021225+00:00'

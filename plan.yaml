@@ -26481,7 +26481,7 @@ phases:
       - none'
   - id: step-id-migration-tooling.surfaces
     name: Add CLI and MCP migration surfaces
-    status: claimed
+    status: done
     description: "step_type: implementation\nagent_source: default\ntags:\n- integration\n\
       spec_refs:\n  - conversation/duplicate-step-id-bug\n  - conversation/half-automatic-step-id-migration\n\
       \ntouch_paths:\n- src/vectl/cli.py\n- src/vectl/mcp_server.py\n\nharness_refs:\n\
@@ -26547,6 +26547,56 @@ phases:
     agent: python-senior
     claimed_by: python-senior
     claimed_at: '2026-03-12T18:16:35.466526+00:00'
+    done_at: '2026-03-12T18:27:31.731939+00:00'
+    evidence: 'Commit hash(es):
+
+      - worker branch: ffc4b8d577454c18ef87c44491b32a86f0ce442e
+
+      - main squash commit: 07a7378
+
+
+      Files changed:
+
+      - src/vectl/cli.py
+
+      - src/vectl/mcp_server.py
+
+      - tests/test_cli.py
+
+      - tests/test_mcp.py
+
+
+      Verification:
+
+      - uv run mypy src/vectl/cli.py src/vectl/mcp_server.py -> no issues
+
+      - uv run ruff check src/vectl/cli.py src/vectl/mcp_server.py tests/test_cli.py
+      tests/test_mcp.py -> All checks passed
+
+      - uv run pytest -q tests/test_cli.py::TestDuplicateIdDiagnostics tests/test_mcp.py
+      -k "duplicate or migrate_step_id" -> 18 passed
+
+      - CLI+MCP dry-run/apply probe -> recommendation_only on dry-run, repair_applied
+      with migrated=true on apply, saved IDs reflect rename map
+
+
+      Spec link:
+
+      - step-id-migration-tooling.surfaces
+
+
+      Gaps/Notes:
+
+      - Added CLI `migrate-step-id` and MCP migration surface wiring to engine dry-run/apply
+      paths and persistence.
+
+      - Scope kept to integration surfaces; no hard-error flip/planner-gating behavior
+      changes.
+
+
+      discovered_issues:
+
+      - none'
   - id: step-id-migration-tooling.guidance
     name: Update planner templates and guidance
     status: pending

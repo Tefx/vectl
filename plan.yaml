@@ -26866,7 +26866,7 @@ phases:
       - none'
   - id: step-id-migration-tooling.verify
     name: Independently verify migration and DAG preservation
-    status: claimed
+    status: done
     description: 'step_type: verification
 
       agent_source: default
@@ -26919,6 +26919,52 @@ phases:
     agent: integration-verifier
     claimed_by: integration-verifier
     claimed_at: '2026-03-12T18:46:35.506021+00:00'
+    done_at: '2026-03-12T18:51:34.398763+00:00'
+    evidence: 'Commit hash(es): none (verification-only; no repository changes)
+
+
+      Files changed:
+
+      - none
+
+
+      Verification:
+
+      - uv run vectl migrate-step-id --dry-run --json --plan <tmp-plan> -> status=recommendation_only;
+      deterministic rename_map and depends_on_rewrites emitted
+
+      - uv run vectl migrate-step-id --yes --json --plan <tmp-plan> -> status=repair_applied;
+      migrated=true; new plan hash emitted
+
+      - uv run vectl validate --plan <tmp-plan> -> Plan is valid
+
+      - uv run vectl claim phase-b.gate--dup2 --agent verifier --no-guidance --plan
+      <tmp-plan> -> claimed successfully
+
+      - uv run vectl show phase-b.gate--dup2 --plan <tmp-plan> -> correct phase/id/status/claimed_by
+      shown
+
+      - uv run vectl show gate --plan <tmp-plan> -> canonical unambiguous step resolves
+
+      - DAG preservation check via `vectl dag --phase phase-b` before/after apply
+      -> edge cardinality preserved; in-phase dependency retargeted to migrated ID
+      without cross-phase drift
+
+
+      Spec link:
+
+      - step-id-migration-tooling.verify
+
+
+      Gaps/Notes:
+
+      - Verification used isolated temporary plan via `--plan`; repository plan/state
+      untouched.
+
+
+      discovered_issues:
+
+      - none'
   - id: step-id-migration-tooling.freeze-gate
     name: Freeze snapshot for migration gate
     status: pending

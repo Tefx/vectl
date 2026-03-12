@@ -26214,6 +26214,39 @@ phases:
 - id: p0-cycle-detection
   name: 'P0: edit_step Cycle Detection'
   status: pending
+  steps:
+  - id: implement
+    name: Implement cycle detection in edit_step
+    status: pending
+    description: "Add DAG cycle detection to edit_step() after dependency mutations.\n\
+      \nFile: src/vectl/core.py (lines 1153-1174)\n\nProblem: When depends_on, add_deps,\
+      \ or remove_deps are used in edit_step, no cycle detection runs afterward. Both\
+      \ add_steps_bulk (line 1046-1052) and validate_plan (line 178) DO check — edit_step\
+      \ is the gap.\n\nFix: After the three dependency-mutation blocks (depends_on\
+      \ at line 1161, add_deps at line 1169, remove_deps at line 1174), insert a cycle\
+      \ check:\n\n```python\n# After all dep mutations, check for cycles\nif depends_on\
+      \ is not _SENTINEL or add_deps or remove_deps:\n    step_graph = {s.id: s.depends_on\
+      \ for s in phase.steps}\n    cycle = _detect_cycle(step_graph)\n    if cycle:\n\
+      \        raise PlanError(f\"edit-step would create dependency cycle: {' -> '.join(cycle)}\"\
+      )\n```\n\nInsert this block immediately after the remove_deps block (after line\
+      \ 1174, before line 1176 which starts refs handling).\n\nPattern reference:\
+      \ Follow the exact pattern from add_steps_bulk at lines 1046-1052.\n\nNote:\
+      \ Unlike add_steps_bulk, there is no rollback needed — edit_step modifies in-place,\
+      \ so the caller should catch the PlanError. The step's deps will have been mutated\
+      \ but the plan won't be saved (save happens after edit_step returns in the CLI/MCP\
+      \ layer).\n\nsimple_feature_exception:\n  approved: true\n  conditions_met:\n\
+      \    - single_symbol_or_tiny_ui\n    - no_cross_module_coordination\n    - no_meaningful_side_effects\n\
+      \    - obvious_existing_pattern\n  pattern_reference: src/vectl/core.py lines\
+      \ 1046-1052 (add_steps_bulk cycle check)"
+    verification: '- edit_step with depends_on/add_deps creating a cycle raises PlanError
+      containing "cycle"
+
+      - edit_step with valid dep changes succeeds without error
+
+      - Pattern matches add_steps_bulk cycle check at lines 1046-1052
+
+      - Run: pytest tests/test_validation.py -v (no regressions)'
+    agent: python-executor
 - id: p1-qualified-lookup-errors
   name: 'P1: Qualified Step Lookup + Error Messages'
   status: locked

@@ -275,14 +275,16 @@ def _build_duplicate_step_id_recommendation(
     step_id: str, phase_ids: list[str]
 ) -> DuplicateStepIdRepairRecommendation:
     """Build a structured repair recommendation for one duplicate step ID."""
-    phase_paths = ", ".join(f"{phase_id}.{step_id}" for phase_id in phase_ids)
     duplicates = [DuplicateStepIdPhaseRef(phase=phase_id) for phase_id in phase_ids]
     return DuplicateStepIdRepairRecommendation(
         type="duplicate-step-id",
         step_id=step_id,
         duplicates=duplicates,
         resolution_path=DuplicateStepIdResolutionPath(
-            explicit_phase=f"Use one of: {phase_paths}",
+            explicit_phase=(
+                "Not available in phase B: targeted commands do not support "
+                "phase-qualified step selectors"
+            ),
             auto_migrate_flag="--auto-migrate (coming in phase C)",
             migration_tool="vectl migrate-step-id (phase C)",
         ),

@@ -3240,6 +3240,8 @@ class TestDuplicateIdDiagnostics:
         assert "step_id=dup.step" in result.output
         assert "duplicates=p1, p2" in result.output
         assert "resolution.explicit_phase:" in result.output
+        assert "phase-qualified step selectors" in result.output
+        assert "Use one of:" not in result.output
         assert "resolution.auto_migrate_flag:" in result.output
         assert "--auto-migrate (coming in phase C)" in result.output
         assert "resolution.migration_tool:" in result.output
@@ -3262,6 +3264,7 @@ class TestDuplicateIdDiagnostics:
         assert "error_code=duplicate_step_id_ambiguous_target" in result.output
         assert "blocking_reason=duplicate_step_id_ambiguous" in result.output
         assert "recommendation.type=duplicate-step-id" in result.output
+        assert "Use one of:" not in result.output
 
         plan, _ = load_plan(plan_path)
         assert plan.phases[0].steps[0].status == StepStatus.PENDING

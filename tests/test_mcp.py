@@ -499,6 +499,8 @@ class TestVectlShow:
         assert "step_id=dup.step" in result
         assert "duplicates=alpha, beta" in result
         assert "resolution.explicit_phase" in result
+        assert "phase-qualified step selectors" in result
+        assert "Use one of:" not in result
         assert "resolution.auto_migrate_flag: --auto-migrate (coming in phase C)" in result
         assert "resolution.migration_tool: vectl migrate-step-id (phase C)" in result
 
@@ -623,6 +625,9 @@ class TestVectlClaim:
         assert recommendation["type"] == "duplicate-step-id"
         assert recommendation["step_id"] == "dup.step"
         assert recommendation["duplicates"] == [{"phase": "alpha"}, {"phase": "beta"}]
+        assert (
+            "phase-qualified step selectors" in recommendation["resolution_path"]["explicit_phase"]
+        )
         assert (
             recommendation["resolution_path"]["auto_migrate_flag"]
             == "--auto-migrate (coming in phase C)"

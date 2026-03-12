@@ -82,7 +82,7 @@ severity_matrix:
           Mutating commands require repair before execution.
           
           → Repair path: 'vectl migrate-step-id' (coming in phase C)
-          → Until repaired: avoid targeted mutating commands, or use --phase.step-id syntax
+          → Until repaired: avoid targeted mutating commands (phase-qualified selector support is not available in phase B)
 
     write_surfaces_new_duplicate:
       - surface: "CLI: add-step, add-steps, edit-step (rename)"
@@ -123,18 +123,18 @@ severity_matrix:
           Targeted commands cannot proceed with ambiguous step IDs.
           
           Recommended action:
-            1. Use full identifier: vectl claim phase-a.step-id
+            1. Inspect duplicate phases with read-only surfaces (status/show/validate)
             2. OR repair duplicates: vectl migrate-step-id --dry-run (phase C)
             3. OR auto-migrate (coming): vectl claim step-id --auto-migrate
           
-          ⚠ Do NOT attempt partial mutations. Choose one phase explicitly.
+          ⚠ Do NOT attempt partial mutations. Phase-qualified targeting is deferred.
         mcp_response: |
           **Error:** Ambiguous step ID.
           
           Step ID 'step-id' appears in phases: phase-a, phase-b.
           
           Targeted commands require a unique step ID. Options:
-            1. Specify phase: use `phase_id: "phase-a"` parameter
+            1. Inspect duplicate phases with read-only surfaces (status/show/validate)
             2. Repair duplicates: wait for migrate-step-id tool (phase C)
           
           Structured repair recommendation available for automation.
@@ -145,7 +145,7 @@ severity_matrix:
             - phase: "phase-a"
             - phase: "phase-b"
           resolution_path:
-            explicit_phase: "Use phase-a.step-id or phase-b.step-id syntax"
+            explicit_phase: "Not available in phase B: targeted commands do not support phase-qualified step selectors"
             auto_migrate_flag: "--auto-migrate (coming in phase C)"
             migration_tool: "vectl migrate-step-id (phase C)"
 
@@ -243,7 +243,7 @@ write_surface_guarantees:
       - "Detect ambiguity in resolver"
       - "Do not partially mutate or assume first match"
       - "Emit recommendation payload for automation"
-      - "Require --auto-migrate or explicit phase qualification"
+      - "Require --auto-migrate; phase-qualified selector support is deferred"
 
 user_facing_copy_placements:
   # Exact copy locations across CLI and MCP surfaces

@@ -27314,6 +27314,126 @@ phases:
     depends_on:
     - step-id-migration-tooling.freeze-gate
     agent: python-senior
+  - id: step-id-migration-tooling.retest-gate-blockers
+    name: Independent retest of migration tooling gate blockers
+    status: pending
+    description: 'step_type: verification
+
+      agent_source: default
+
+      As an INDEPENDENT TESTER (`integration-verifier`), rerun the exact gate blocker
+      checks after batched remediation for `step-id-migration-tooling`.
+
+
+      YOUR GOAL IS TO FIND REMAINING PROBLEMS, not to confirm the implementation is
+      probably fine.
+
+
+      Scope:
+
+      - Re-run Ruff on the affected migration guidance surfaces
+
+      - Re-test the chosen B2 migration-path behavior across CLI + MCP + guidance/contract
+      surfaces
+
+      - Re-check guidance/evidence wording consistency if S1 was touched
+
+
+      Test for:
+
+      - Happy path: chosen B2 behavior works coherently on all claimed surfaces
+
+      - Edge cases: ambiguity detection, dry-run/apply wording parity, or unsupported-behavior
+      removal is consistent everywhere the repo advertises it
+
+      - Error scenarios: no stale diagnostic still points users to unavailable `--auto-migrate`
+      behavior; no lint regression remains in sibling copies
+
+
+      Document ALL findings. A retest that discovers issues is a SUCCESS.
+
+      Independence Level: L2'
+    verification: '- Run `ruff check src/vectl/cli.py src/vectl/core.py` and confirm
+      B1 is fully cleared
+
+      - Run focused migration-path behavior checks for the chosen B2 direction, covering
+      CLI invocation / parser surface, MCP wrapper parameter surface, and contract
+      + guide + diagnostic alignment
+
+      - Use the blocker grep hints to confirm sibling copies are either implemented
+      consistently or removed from unsupported surfaces
+
+      - If S1 was included, verify evidence guidance wording is consistent on raw
+      output inclusion and environment declaration'
+    evidence_template: '## Verification Report
+
+
+      **Tester**: integration-verifier (independent of implementation)
+
+      **Scope**: Batched retest for B1/B2 (+S1 if applicable)
+
+      **Independence Level**: L2
+
+
+      ### Test Execution
+
+      - Commands executed:
+
+      ```bash
+
+      ruff check src/vectl/cli.py src/vectl/core.py
+
+      rg -n "If you have legacy duplicate step IDs" src/vectl
+
+      rg -n -- "--auto-migrate" src/vectl tests docs/contracts
+
+      <focused migration-path tests / commands here>
+
+      ```
+
+      - Output summary:
+
+      ```text
+
+      <paste actual key output>
+
+      ```
+
+
+      ### Issues Found
+
+      | Severity | Description | Location | Reproduction |
+
+      | blocker | <issue or none> | <file:line or surface> | <steps> |
+
+      | should_fix | <issue or none> | <location> | <steps> |
+
+
+      ### Coverage Assessment
+
+      - B1 lint regression checked: yes/no
+
+      - B2 CLI surface checked: yes/no
+
+      - B2 MCP surface checked: yes/no
+
+      - B2 contract/guide/diagnostic alignment checked: yes/no
+
+      - S1 wording consistency checked if touched: yes/no
+
+
+      ### Verdict
+
+      - [ ] PASS
+
+      - [ ] ISSUES_FOUND
+
+      - [ ] INCOMPLETE
+
+      '
+    depends_on:
+    - step-id-migration-tooling.fix-gate-blockers
+    agent: integration-verifier
 - id: step-id-final-integration
   name: Final Integration & Gate
   status: locked

@@ -24432,8 +24432,8 @@ phases:
       - mistakes here can either reintroduce ambiguity or block operators from repairing
       old plans
 
-      - gate findings required a second remediation loop spanning signature drift,
-      lint blockers, and contract-alignment fixes
+      - gate findings required a third remediation loop for residual mypy/pyright
+      failures across migration, MCP, autofix, agent-field, and CLI test surfaces
 
 
       cross_cutting_focus:
@@ -24444,33 +24444,33 @@ phases:
 
       - phased rollout recommendation remains coherent and actionable
 
-      - gate rerun must confirm batched remediation resolved B1/B2/B3 and any included
-      should-fix items
+      - gate rerun must confirm batched remediation resolved B1/B2/B3 and the follow-up
+      B4 type-checking blocker cluster
 
 
       Remediation consolidation:
 
       - Existing chain extended
 
-      - Root blocker: gate surfaced a broader cross-file batch than the earlier MCP-only
-      verification remediation
+      - Root blocker: gate rerun surfaced one remaining batched static-typing cluster
+      after the earlier remediation loop closed signature/lint/contract issues
 
-      - New loop justified by: preserving prior completed evidence while adding a
-      distinct batch for signature, lint, and contract-alignment defects
+      - New loop justified by: preserving prior evidence while adding a targeted batched
+      fix+retest for mypy/pyright blockers across shared test harnesses
 
 
       Independence: gate agent must not match any implementation agent in this phase.'
     verification: '- All phase steps completed successfully
 
       - Evidence collected for rollout contract, diagnostics, write guards, independent
-      verification, and the batched gate-remediation loop
+      verification, and both batched gate-remediation loops
 
       - No mutation surface can create a new duplicate step ID
 
       - Legacy plans remain inspectable pending migration tooling
 
-      - Batched gate findings B1/B2/B3 are closed and any included should-fix items
-      have explicit disposition'
+      - Batched gate findings B1/B2/B3 and follow-up B4 type-checking blockers are
+      closed and any included should-fix items have explicit disposition'
     evidence_template: '## Gate Review Report
 
       - Step-by-step evidence quality: <table>
@@ -24493,6 +24493,8 @@ phases:
     - step-id-validation-hardening.freeze-gate
     - step-id-validation-hardening.fix-gate-findings
     - step-id-validation-hardening.retest-gate-findings
+    - step-id-validation-hardening.fix-gate-rerun-type-blockers
+    - step-id-validation-hardening.retest-gate-rerun-type-blockers
     agent: gate-reviewer
     claimed_by: gate-reviewer
     claimed_at: '2026-03-12T15:15:36.971727+00:00'

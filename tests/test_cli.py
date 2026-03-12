@@ -3243,13 +3243,21 @@ class TestDuplicateIdDiagnostics:
         save_plan(plan, path)
         return path
 
-    def test_validate_duplicate_step_ids_are_warnings_only(self, tmp_path: Path) -> None:
+    def test_validate_duplicate_step_ids_are_hard_errors(self, tmp_path: Path) -> None:
         plan_path = self._duplicate_plan_path(tmp_path)
         result = runner.invoke(app, ["validate", "--plan", str(plan_path)])
-        assert result.exit_code == 0
-        assert "WARN:" in result.output
+        assert result.exit_code == 1
+        assert "ERROR:" in result.output
         assert "Duplicate step ID 'dup.step'" in result.output
-        assert "0 error(s), 1 warning(s)" in result.output
+        assert "1 error(s)" in result.output
+
+    def test_gate_check_blocks_duplicate_step_id_plan(self, tmp_path: Path) -> None:
+        plan_path = self._duplicate_plan_path(tmp_path)
+        result = runner.invoke(app, ["gate-check", "p1", "--plan", str(plan_path)])
+
+        assert result.exit_code == 1
+        assert "Gate check blocked" in result.output
+        assert "Duplicate step ID 'dup.step'" in result.output
 
     def test_status_shows_duplicate_diagnostics(self, tmp_path: Path) -> None:
         plan_path = self._duplicate_plan_path(tmp_path)

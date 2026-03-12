@@ -241,22 +241,21 @@ class TestRefsCheck:
 
 
 # =============================================================================
-# Step ID Validation Hardening Tests (core.3.1: Rollout Behavior)
+# Step ID Validation Hardening Tests (core.3.1: Hard-Error Flip)
 # =============================================================================
 #
-# These tests validate the rollout behavior for step ID uniqueness:
-# - Legacy plans: read-only surfaces emit warnings (soft validation)
-# - Write surfaces: reject creating NEW duplicate IDs (hard validation)
-# - Future flip: placeholders for eventual hard-error migration
+# These tests validate hard-error behavior for step ID uniqueness:
+# - Legacy duplicate IDs fail validation
+# - Write surfaces reject creating NEW duplicate IDs
+# - Validation output points operators to migration tooling
 #
 # Reference: docs/RFC-step-id-validation.md
 
 
-class TestLegacyDuplicateStepIdWarnings:
-    """Legacy plans with duplicate IDs produce warning diagnostics in read-only surfaces."""
+class TestLegacyDuplicateStepIdHardErrors:
+    """Legacy plans with duplicate IDs fail validation as hard errors."""
 
-    def test_duplicate_step_id_is_warning(self):
-        """Duplicate step IDs are warnings for diagnostics-only rollout."""
+    def test_duplicate_step_id_is_error(self):
         plan = _make_plan(
             phases=[
                 Phase(
@@ -272,18 +271,10 @@ class TestLegacyDuplicateStepIdWarnings:
         errors = validate_plan(plan)
         assert len(errors) == 1
         assert "Duplicate step ID" in errors[0].message
-        assert errors[0].is_warning is True
+        assert errors[0].is_warning is False
+        assert "vectl migrate-step-id --dry-run" in errors[0].message
 
-    def test_duplicate_step_id_warning_placeholder(self):
-        """Placeholder test for future soft-warning flip.
-
-        TODO(phase-2): When transitioning to soft-warning mode for legacy plans:
-        1. Add a flag like `legacy_warnings=True` to validate_plan()
-        2. Change duplicate detection to emit warnings instead of errors
-        3. Update this test to verify `is_warning=True` when flag is set
-
-        until then, this test serves as documentation of intended behavior.
-        """
+    def test_duplicate_step_id_error_includes_repair_guidance(self):
         plan = _make_plan(
             phases=[
                 Phase(
@@ -297,14 +288,11 @@ class TestLegacyDuplicateStepIdWarnings:
             ]
         )
         errors = validate_plan(plan)
-        assert errors[0].is_warning is True
+        assert errors[0].is_warning is False
+        assert "Repair required before validation/gate checks can pass" in errors[0].message
+        assert "vectl migrate-step-id --yes" in errors[0].message
 
-    def test_read_only_surface_status_shows_warning_for_duplicate(self):
-        """Status command should show validation warnings for legacy duplicates.
-
-        This is a placeholder for testing the read-only surface behavior
-        when legacy_warnings flag is implemented.
-        """
+    def test_review_plan_marks_duplicate_step_id_as_blocking_error(self):
         plan = _make_plan(
             phases=[
                 Phase(
@@ -318,25 +306,7 @@ class TestLegacyDuplicateStepIdWarnings:
             ]
         )
         errors = validate_plan(plan)
-        assert any(e.is_warning for e in errors)
-
-    def test_read_only_surface_render_shows_warning_placeholder(self):
-        """Render should show warnings for legacy duplicates (placeholder)."""
-        plan = _make_plan(
-            phases=[
-                Phase(
-                    id="p1",
-                    name="P1",
-                    steps=[
-                        Step(id="s1", name="S1"),
-                        Step(id="s1", name="Dup"),
-                    ],
-                )
-            ]
-        )
-        errors = validate_plan(plan)
-        assert len(errors) > 0
-        assert all(e.is_warning for e in errors)
+        assert any(not e.is_warning for e in errors)
 
 
 class TestWriteSurfaceRejectsDuplicateIds:
@@ -443,15 +413,10 @@ class TestWriteSurfaceRejectsDuplicateIds:
         assert "already exists" in str(exc_info.value)
 
 
-class TestFutureHardErrorFlipPlaceholders:
-    """Placeholders for future hard-error flip behavior.
+class TestHardErrorFlipRegressions:
+    """Regression checks for finalized hard-error flip behavior."""
 
-    These tests document the intended migration path from soft warnings
-    to hard errors for duplicate step IDs.
-    """
-
-    def test_validation_flag_placeholder_soft_warnings(self):
-        """Placeholder: validate_plan should accept flag for soft-warning mode."""
+    def test_duplicate_step_id_remains_hard_error(self):
         plan = _make_plan(
             phases=[
                 Phase(
@@ -465,17 +430,10 @@ class TestFutureHardErrorFlipPlaceholders:
             ]
         )
         errors = validate_plan(plan)
-        assert all(e.is_warning for e in errors)
-
-        # Placeholder for future implementation:
-        # errors = validate_plan(plan, strict=False)  # soft warnings for legacy
-        # assert all(e.is_warning for e in errors)
-        #
-        # errors = validate_plan(plan, strict=True)   # hard errors (default)
-        # assert all(not e.is_warning for e in errors)
+        assert all(not e.is_warning for e in errors)
 
     def test_cli_validate_flag_placeholder(self):
-        """Phase-B surface keeps validate_plan signature stable (no strict flag yet)."""
+        """validate_plan signature remains stable (no strict mode switch)."""
         import inspect
 
         parameters = inspect.signature(validate_plan).parameters

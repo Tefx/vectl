@@ -221,8 +221,10 @@ def validate_plan(
         errors.append(
             PlanValidationIssue(
                 f"Duplicate step ID '{conflict.step_id}' appears {conflict.occurrences} "
-                f"times across phases: {conflict_phase_list}",
-                is_warning=True,
+                f"times across phases: {conflict_phase_list}. "
+                "Repair required before validation/gate checks can pass. "
+                "Run `vectl migrate-step-id --dry-run` then "
+                "`vectl migrate-step-id --yes`.",
             )
         )
 

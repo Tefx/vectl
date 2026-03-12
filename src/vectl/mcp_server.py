@@ -1322,31 +1322,37 @@ def vectl_review(
 
     # Gate check (if phase_id provided)
     if phase_id:
-        try:
-            gc = gate_check(plan, phase_id)
-            parts.append(f"\n## Gate Check: {gc.phase_id}\n")
-            if gc.steps_complete:
-                parts.append(f"✓ Steps: {gc.done_count}/{gc.total_count} complete")
-            else:
-                parts.append(
-                    f"✗ Steps: {gc.done_count}/{gc.total_count} — "
-                    f"{len(gc.pending_steps)} remaining:"
-                )
-                for s in gc.pending_steps:
-                    icon = _STEP_ICON.get(s.status, "?")
-                    suggested = f" suggested={s.agent}" if s.agent else ""
-                    parts.append(f"  {icon} {s.id} — {s.name}{suggested}")
-            if gc.gate_criterion:
-                parts.append(f"\nManual gate criterion: {gc.gate_criterion}")
-            if gc.gate_script:
-                parts.append(
-                    f"\n⚠ gate_script defined ({gc.gate_script}) but not executable via MCP. "
-                    "Use CLI `vectl gate-check`."
-                )
-            if gc.downstream_locked:
-                parts.append(f"\nDownstream phases: {', '.join(gc.downstream_locked)}")
-        except PlanError as e:
-            parts.append(f"\n**Gate Check Error:** {e}")
+        parts.append(f"\n## Gate Check: {phase_id}\n")
+        if result.errors:
+            parts.append(
+                "✗ Gate check blocked: plan validation failed. "
+                "Fix validation errors before evaluating gate readiness."
+            )
+        else:
+            try:
+                gc = gate_check(plan, phase_id)
+                if gc.steps_complete:
+                    parts.append(f"✓ Steps: {gc.done_count}/{gc.total_count} complete")
+                else:
+                    parts.append(
+                        f"✗ Steps: {gc.done_count}/{gc.total_count} — "
+                        f"{len(gc.pending_steps)} remaining:"
+                    )
+                    for s in gc.pending_steps:
+                        icon = _STEP_ICON.get(s.status, "?")
+                        suggested = f" suggested={s.agent}" if s.agent else ""
+                        parts.append(f"  {icon} {s.id} — {s.name}{suggested}")
+                if gc.gate_criterion:
+                    parts.append(f"\nManual gate criterion: {gc.gate_criterion}")
+                if gc.gate_script:
+                    parts.append(
+                        f"\n⚠ gate_script defined ({gc.gate_script}) but not executable via MCP. "
+                        "Use CLI `vectl gate-check`."
+                    )
+                if gc.downstream_locked:
+                    parts.append(f"\nDownstream phases: {', '.join(gc.downstream_locked)}")
+            except PlanError as e:
+                parts.append(f"\n**Gate Check Error:** {e}")
 
     diag_lines = _duplicate_id_diagnostics_lines(plan)
     if diag_lines:

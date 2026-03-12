@@ -2889,6 +2889,15 @@ def gate_check(
 
     p, _, plan_path = _load(plan)
 
+    validation_issues = validate_plan(p)
+    validation_errors = [issue for issue in validation_issues if not issue.is_warning]
+    if validation_errors:
+        out.print("[red bold]✗ Gate check blocked: plan validation failed.[/]")
+        for issue in validation_errors:
+            out.print(f"  [red]ERROR:[/] {_esc(issue.message)}")
+        out.print("[dim]→ vectl validate                  Full validation report[/]")
+        raise typer.Exit(1)
+
     try:
         gc = core_gate_check(p, phase_id)
     except PlanError as e:

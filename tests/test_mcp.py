@@ -453,12 +453,22 @@ class TestVectlStatus:
 
 
 class TestVectlValidate:
-    def test_validate_reports_duplicate_step_id_warning(self, duplicate_id_plan_file: Path) -> None:
+    def test_validate_reports_duplicate_step_id_error(self, duplicate_id_plan_file: Path) -> None:
         result = vectl_validate()
         assert "Validation" in result
-        assert "WARN:" in result
+        assert "ERROR:" in result
         assert "dup.step" in result
-        assert "0 error(s), 1 warning(s)" in result
+        assert "1 error(s), 0 warning(s)" in result
+
+
+class TestVectlReviewDuplicateBlocking:
+    def test_review_gate_check_is_blocked_when_plan_has_duplicate_step_ids(
+        self, duplicate_id_plan_file: Path
+    ) -> None:
+        result = vectl_review(phase_id="alpha")
+        assert "L1: Validation" in result
+        assert "ERROR: Duplicate step ID 'dup.step'" in result
+        assert "Gate check blocked: plan validation failed" in result
 
 
 class TestVectlMigrateStepId:

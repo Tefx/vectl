@@ -142,7 +142,7 @@ def test_validate_plan_detects_duplicate_phase_ids() -> None:
 
 
 def test_validate_plan_detects_duplicate_step_ids() -> None:
-    """Validate plan reports duplicate step IDs as warnings."""
+    """Validate plan reports duplicate step IDs as blocking errors."""
     plan = Plan(
         project="duplicate-test",
         phases=[
@@ -161,7 +161,8 @@ def test_validate_plan_detects_duplicate_step_ids() -> None:
 
     assert len(errors) == 1
     assert "Duplicate step ID" in errors[0].message
-    assert errors[0].is_warning is True
+    assert errors[0].is_warning is False
+    assert "vectl migrate-step-id --dry-run" in errors[0].message
 
 
 def _claimable_plan() -> Plan:

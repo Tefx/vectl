@@ -180,6 +180,18 @@ def _make_duplicate_step_id_plan_dict() -> dict:
                     }
                 ],
             },
+            {
+                "id": "gamma",
+                "name": "Gamma",
+                "status": "pending",
+                "steps": [
+                    {
+                        "id": "unique.step",
+                        "name": "Gamma unique",
+                        "status": "pending",
+                    }
+                ],
+            },
         ],
     }
 
@@ -409,6 +421,28 @@ class TestVectlStatus:
         assert "Duplicate Step-ID Diagnostics" in result
         assert "dup.step" in result
         assert "alpha, beta" in result
+
+    def test_status_next_steps_shows_correct_phase_for_duplicate_ids(
+        self, duplicate_id_plan_file: Path
+    ) -> None:
+        """Regression test: Next Available Steps shows correct phase for each duplicate step ID."""
+        result = vectl_status()
+        # Both dup.step entries should appear with their correct phases
+        assert "(alpha)" in result
+        assert "(beta)" in result
+        # Verify each duplicate shows its own phase, not the first found
+        # Look for the step entries (marked with ○ bullet)
+        lines = result.split("\n")
+        dup_step_lines = [l for l in lines if "dup.step" in l and l.strip().startswith("○")]
+        # Should have two entries for dup.step (one in alpha, one in beta)
+        assert len(dup_step_lines) == 2, (
+            f"Expected 2 step lines, got {len(dup_step_lines)}: {dup_step_lines}"
+        )
+        # Check that each shows the correct phase
+        alpha_dup = [l for l in dup_step_lines if "(alpha)" in l]
+        beta_dup = [l for l in dup_step_lines if "(beta)" in l]
+        assert len(alpha_dup) == 1, f"Alpha duplicate should show (alpha): {alpha_dup}"
+        assert len(beta_dup) == 1, f"Beta duplicate should show (beta): {beta_dup}"
 
 
 class TestVectlValidate:

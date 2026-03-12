@@ -71,13 +71,16 @@ from vectl.migration import migrate_from_split_state, resolve_state_path
 from vectl.models import (
     AffinityMode,
     CASConflictError,
+    Phase,
     PhaseStatus,
     Plan,
     PlanError,
     PlanIOError,
     SkipReason,
+    Step,
     StepStatus,
 )
+from vectl.semantics import _get_active_phase_ids
 from vectl.plan_path import (
     is_linked_worktree,
     resolve_claims_path,
@@ -180,6 +183,50 @@ def _print_duplicate_id_recommendation_for_step(p: Plan, step_id: str) -> None:
     out.print(
         f"  [dim]automation next action:[/] {_esc(recommendation.automation_next_action)}",
     )
+
+
+def _get_next_steps_with_phase(plan: Plan, agent: str | None = None) -> list[tuple[Phase, Step]]:
+    """Get next steps with their containing phase.
+
+    Returns list of (phase, step) tuples to correctly track phase membership
+    for duplicate step IDs across different phases.
+
+    Args:
+        plan: The plan to query.
+        agent: If provided, prioritize steps whose `agent` field matches.
+    """
+    active_phase_ids = _get_active_phase_ids(plan)
+    result: list[tuple[Phase, Step]] = []
+
+    for phase in plan.phases:
+        if phase.id not in active_phase_ids:
+            continue
+        done_step_ids = {
+            s.id for s in phase.steps if s.status in (StepStatus.DONE, StepStatus.SKIPPED)
+        }
+        for step in phase.steps:
+            if step.status not in (StepStatus.PENDING, StepStatus.REJECTED):
+                continue
+            # All deps satisfied?
+            if all(dep in done_step_ids for dep in step.depends_on):
+                result.append((phase, step))
+
+    # Sort with same priority as get_next_steps
+    def _sort_key(item: tuple[Phase, Step]) -> tuple[int, int, str]:
+        _, s = item
+        # Priority 0: rejected (needs rework)
+        status_rank = 0 if s.status == StepStatus.REJECTED else 1
+        # Agent affinity: 0 = matches, 1 = unassigned, 2 = different agent
+        if agent is None or s.agent is None:
+            agent_rank = 1
+        elif s.agent == agent:
+            agent_rank = 0
+        else:
+            agent_rank = 2
+        return (status_rank, agent_rank, s.id)
+
+    result.sort(key=_sort_key)
+    return result
 
 
 # ---------------------------------------------------------------------------
@@ -919,24 +966,20 @@ def next_cmd(
     if p.context.strip():
         out.print(Panel(p.context.strip(), title="Strategy", border_style="blue"))
 
-    steps = get_next_steps(p, agent=agent)
-    if not steps:
+    # Get next steps with phase info to correctly track phase for duplicate step IDs
+    steps_with_phase = _get_next_steps_with_phase(p, agent=agent)
+    if not steps_with_phase:
         out.print("[dim]No claimable steps. All phases may be done or locked.[/]")
         return
 
-    total = len(steps)
+    total = len(steps_with_phase)
     display_limit = total if all_steps else limit
-    visible = steps[:display_limit]
+    visible = steps_with_phase[:display_limit]
 
     out.print("[bold]Next Steps[/]\n")
 
-    for i, step in enumerate(visible, 1):
-        # Find which phase this step belongs to
-        phase_id = ""
-        for phase in p.phases:
-            if any(s.id == step.id for s in phase.steps):
-                phase_id = phase.id
-                break
+    for i, (phase, step) in enumerate(visible, 1):
+        phase_id = phase.id
 
         icon = _step_icon(step.status)
         # One-line summary: first line of description, truncated
@@ -1396,22 +1439,17 @@ def complete(
     _save_plan(p, plan_path, def_h, f"vectl: complete {step_id}")
     out.print(f"[green]Completed:[/] {step_id}")
 
-    # Show next available steps (saves a tool call)
-    next_steps = get_next_steps(p)
-    if next_steps:
+    # Show next available steps - use _get_next_steps_with_phase for correct phase tracking
+    next_steps_with_phase = _get_next_steps_with_phase(p)
+    if next_steps_with_phase:
         out.print()
         out.print("[bold]Next available:[/]")
-        for s in next_steps[:3]:
-            phase_id = ""
-            for ph in p.phases:
-                if any(ps.id == s.id for ps in ph.steps):
-                    phase_id = ph.id
-                    break
+        for phase, s in next_steps_with_phase[:3]:
             icon = _step_icon(s.status)
             suggested = f"  suggested: {_esc(s.agent)}" if s.agent else ""
-            out.print(f"  {icon}  {s.id} — {s.name}  [dim]({phase_id}){suggested}[/]")
-        if len(next_steps) > 3:
-            out.print(f"  [dim]... and {len(next_steps) - 3} more[/]")
+            out.print(f"  {icon}  {s.id} — {s.name}  [dim]({phase.id}){suggested}[/]")
+        if len(next_steps_with_phase) > 3:
+            out.print(f"  [dim]... and {len(next_steps_with_phase) - 3} more[/]")
         out.print()
         out.print("[dim]→ vectl claim <id> --agent <name>[/]")
         out.print("[dim]→ vectl show <id>                  [/]")

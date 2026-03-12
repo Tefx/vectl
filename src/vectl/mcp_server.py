@@ -87,6 +87,7 @@ from vectl.models import (
     CASConflictError,
     InitResult,
     NoMatchError,
+    Phase,
     PhaseStatus,
     Plan,
     PlanError,
@@ -256,6 +257,57 @@ def _duplicate_id_recommendation_lines(plan: Plan, step_id: str) -> list[str]:
 
 
 # ---------------------------------------------------------------------------
+# Helper functions
+# ---------------------------------------------------------------------------
+
+
+def _get_next_steps_with_phase(plan: Plan, agent: str | None = None) -> list[tuple[Phase, Step]]:
+    """Get next steps with their containing phase.
+
+    Returns list of (phase, step) tuples to correctly track phase membership
+    for duplicate step IDs across different phases.
+
+    Args:
+        plan: The plan to query.
+        agent: If provided, prioritize steps whose `agent` field matches.
+    """
+    from vectl.core import _get_active_phase_ids
+
+    active_phase_ids = _get_active_phase_ids(plan)
+    result: list[tuple[Phase, Step]] = []
+
+    for phase in plan.phases:
+        if phase.id not in active_phase_ids:
+            continue
+        done_step_ids = {
+            s.id for s in phase.steps if s.status in (StepStatus.DONE, StepStatus.SKIPPED)
+        }
+        for step in phase.steps:
+            if step.status not in (StepStatus.PENDING, StepStatus.REJECTED):
+                continue
+            # All deps satisfied?
+            if all(dep in done_step_ids for dep in step.depends_on):
+                result.append((phase, step))
+
+    # Sort with same priority as get_next_steps
+    def _sort_key(item: tuple[Phase, Step]) -> tuple[int, int, str]:
+        _, s = item
+        # Priority 0: rejected (needs rework)
+        status_rank = 0 if s.status == StepStatus.REJECTED else 1
+        # Agent affinity: 0 = matches, 1 = unassigned, 2 = different agent
+        if agent is None or s.agent is None:
+            agent_rank = 1
+        elif s.agent == agent:
+            agent_rank = 0
+        else:
+            agent_rank = 2
+        return (status_rank, agent_rank, s.id)
+
+    result.sort(key=_sort_key)
+    return result
+
+
+# ---------------------------------------------------------------------------
 # Tool 1: vectl_status
 # ---------------------------------------------------------------------------
 
@@ -277,13 +329,12 @@ def vectl_status(agent: str | None = None) -> str:
     parts: list[str] = [_fmt_phase_summary(plan)]
 
     # Next steps (prioritized by agent if provided)
-    available = get_next_steps(plan, agent=agent)
+    # Use _get_next_steps_with_phase to correctly track phase for duplicate step IDs
+    available = _get_next_steps_with_phase(plan, agent=agent)
     if available:
         parts.append("\n## Next Available Steps\n")
-        for step in available[:3]:
-            found = plan.find_step(step.id)
-            phase_id = found[0].id if found else "?"
-            parts.append(_fmt_step(plan, step, phase_id))
+        for phase, step in available[:3]:
+            parts.append(_fmt_step(plan, step, phase.id))
         if len(available) > 3:
             parts.append(f"\n  ... and {len(available) - 3} more")
     else:
@@ -671,14 +722,12 @@ def vectl_complete(step_id: str, evidence: str) -> str:
         if phase.status == PhaseStatus.DONE:
             parts.append(f"**Phase '{phase.id}' is now DONE!**")
 
-    # Show next available
-    available = get_next_steps(plan)
+    # Show next available - use _get_next_steps_with_phase for correct phase tracking
+    available = _get_next_steps_with_phase(plan)
     if available:
         parts.append("\n**Next available:**")
-        for step in available[:3]:
-            f = plan.find_step(step.id)
-            pid = f[0].id if f else "?"
-            parts.append(_fmt_step(plan, step, pid))
+        for phase, step in available[:3]:
+            parts.append(_fmt_step(plan, step, phase.id))
         if len(available) > 3:
             parts.append(f"  ... and {len(available) - 3} more")
 

@@ -24669,6 +24669,310 @@ phases:
       discovered_issues:
 
       - none'
+  - id: step-id-validation-hardening.fix-gate-findings
+    name: Batched fix for gate findings
+    status: pending
+    description: 'step_type: implementation
+
+      agent_source: default
+
+      Fix ALL of these, not just the first, from `step-id-validation-hardening.gate`.
+
+
+      prior_loop:
+
+      - step-id-validation-hardening.fix-verify-findings
+
+      - step-id-validation-hardening.retest-verify-findings
+
+      remaining_blocker: gate review found a broader validation-hardening batch spanning
+      test signature drift, lint blockers, contract/recommendation mismatch, and adjacent
+      cleanup items that were out of scope for the earlier MCP-only remediation loop.
+
+      why_new_loop: the earlier remediation loop is already complete and scoped to
+      MCP duplicate-id phase-label rendering; editing it would erase completed evidence
+      and would not clearly capture the new cross-file gate blockers.
+
+
+      spec_refs:
+
+      - `docs/contracts/duplicate-id-rollout-policy.yaml` / duplicate-id recommendation
+      payload / Phase B rollout guidance
+
+      - conversation / `step-id-validation-hardening.gate` findings
+
+
+      touch_paths:
+
+      - `src/vectl/core.py`
+
+      - `src/vectl/cli.py`
+
+      - `src/vectl/mcp_server.py`
+
+      - `tests/test_architect.py`
+
+      - `tests/test_mcp.py`
+
+      - `tests/test_validation.py`
+
+      - `tests/repro/step_id_validation_hardening_verify.md`
+
+      - `docs/contracts/duplicate-id-rollout-policy.yaml`
+
+
+      harness_refs:
+
+      - `pytest`
+
+      - `ruff check .`
+
+      - CLI/MCP recommendation surfacing tests in `tests/test_cli.py` and `tests/test_mcp.py`
+
+
+      Conflict rationale:
+
+      - This step touches shared validation and surfaced diagnostics across core/CLI/MCP
+      plus shared test harnesses, so it must remain serialized ahead of any re-run
+      gate.
+
+      - Keep shared recommendation/wiring edits in this single batch to avoid merge
+      conflict churn across `src/vectl/core.py`, `src/vectl/cli.py`, and `src/vectl/mcp_server.py`.
+
+
+      ## Blockers to Fix (ALL of these, not just the first)
+
+
+      ### B1: pytest failures from `_unique_step_id` signature mismatch
+
+      Root cause: `tests/test_architect.py` uses old signature.
+
+      Locations:
+
+      - `tests/test_architect.py:66`
+
+      - `tests/test_architect.py:74`
+
+      - `tests/test_architect.py:86`
+
+      Remediation:
+
+      - update test calls to `_unique_step_id(plan, phase, base_slug)` or add compatibility
+      wrapper if intentional
+
+      Grep hint:
+
+      ```bash
+
+      rg -n "_unique_step_id\(" tests/test_architect.py src/vectl/core.py
+
+      ```
+
+      IMPORTANT: Search for siblings beyond the listed locations and prove there are
+      no remaining old-signature call sites or intentional compatibility seams left
+      undocumented.
+
+
+      ### B2: lint failures block CI gate
+
+      Locations:
+
+      - `src/vectl/cli.py:6` (I001)
+
+      - `src/vectl/core.py:3` (I001)
+
+      - `src/vectl/mcp_server.py:32` (I001)
+
+      - `tests/test_mcp.py:436` (E741)
+
+      - `tests/test_mcp.py:442` (E741)
+
+      - `tests/test_mcp.py:443` (E741)
+
+      Remediation:
+
+      - sort imports and rename ambiguous variable `l`
+
+      Grep hint:
+
+      ```bash
+
+      ruff check . && rg -n "\[l for l in" tests/test_mcp.py
+
+      ```
+
+      IMPORTANT: Search for sibling lint failures in the touched files so the gate
+      is not reopened by a nearby unresolved import-order or ambiguous-name violation.
+
+
+      ### B3: contract mismatch in duplicate-ID recommendation payload
+
+      Locations:
+
+      - `src/vectl/core.py:280`
+
+      - `src/vectl/core.py:281`
+
+      - `src/vectl/core.py:317`
+
+      - `docs/contracts/duplicate-id-rollout-policy.yaml:369`
+
+      Remediation:
+
+      - align recommendation with contract (Phase B has no `--auto-migrate` flag yet)
+
+      - remove or soften non-existent entry points (`vectl validate --auto-migrate`,
+      `vectl repair claims --dry-run`)
+
+      - ensure stable structured automation payload fields (`type: duplicate-step-id`,
+      `step_id`, `duplicates`, `resolution_path`)
+
+      - update CLI/MCP surfaced recommendation text consistently
+
+      Grep hint:
+
+      ```bash
+
+      rg -n "validate --auto-migrate|required_opt_in=--auto-migrate|dry_run_repair_entry_point"
+      src/vectl/core.py src/vectl/cli.py src/vectl/mcp_server.py tests/test_cli.py
+      tests/test_mcp.py
+
+      ```
+
+      IMPORTANT: Search for sibling surfaced recommendation text and structured payload
+      producers beyond the listed lines so CLI, MCP, and automation payloads stay
+      contract-consistent.
+
+
+      ## Should-fix items to include in the same batch if feasible
+
+
+      ### S1: `tests/test_validation.py` placeholder stubs/TODO gate signal
+
+      - remove or resolve placeholder/TODO test stubs that would reopen the quality
+      signal
+
+      - sibling search: inspect nearby validation hardening tests for other placeholder
+      markers in the same module
+
+
+      ### S2: `tests/repro/step_id_validation_hardening_verify.md` stale observed-issue
+      note
+
+      - refresh the repro note so it reflects current gate findings/remediation scope
+      rather than stale observed issues
+
+      - sibling search: check adjacent repro notes in this validation-hardening area
+      for stale gate-state references
+
+
+      ### S3: `src/vectl/core.py` `add_steps_bulk` duplicate-prevention logic duplication
+      risk
+
+      - reduce or document duplicate-prevention logic duplication risk while staying
+      within this phase''s validation-hardening scope
+
+      - out-of-scope guardrail: do not redesign migration tooling or Phase C auto-migration
+      flows here; if a larger extraction is needed, leave a tightly scoped follow-up
+      note rather than broadening this fix step
+
+
+      Known risks:
+
+      - Recommendation text and structured payloads must stay coherent across core,
+      CLI, and MCP; fixing only one surfaced string will reopen the gate.
+
+      - Duplicate-ID rollout is phase-split; do not advertise Phase C entry points
+      during Phase B validation hardening.
+
+      - Shared helper signature drift can hide at test-only call sites; prove the
+      old `_unique_step_id` call shape is gone or intentionally wrapped.
+
+
+      Completion criteria:
+
+      - ALL blockers above fixed in one batch, not just B1/B2/B3 individually
+
+      - should-fix items S1-S3 addressed if feasible within the same bounded scope,
+      or explicitly documented with narrow follow-up rationale in evidence
+
+      - sibling/systemic search completed for each grep hint and adjacent producers/consumers
+
+      - CLI, MCP, and structured automation payloads agree on the current duplicate-ID
+      recommendation contract
+
+      - no touched-file lint or targeted test failure remains
+
+      '
+    verification: '- Main path: targeted tests covering `_unique_step_id` callers
+      and duplicate-ID recommendation surfacing pass
+
+      - Failure path: regression coverage proves no stale `--auto-migrate` / dry-run
+      repair recommendation survives in CLI, MCP, or automation payload outputs
+
+      - Proof: sibling search evidence for each grep hint is recorded; `ruff check
+      .` no longer reports the listed I001/E741 failures in touched files
+
+      - Out-of-scope respected: no Phase C migration-tooling behavior is advertised
+      or implemented here'
+    evidence_template: '## Batched Gate Remediation Evidence
+
+
+      **Commands executed**:
+
+      ```bash
+
+      rg -n "_unique_step_id\(" tests/test_architect.py src/vectl/core.py
+
+      ruff check .
+
+      rg -n "\[l for l in" tests/test_mcp.py
+
+      rg -n "validate --auto-migrate|required_opt_in=--auto-migrate|dry_run_repair_entry_point"
+      src/vectl/core.py src/vectl/cli.py src/vectl/mcp_server.py tests/test_cli.py
+      tests/test_mcp.py
+
+      ```
+
+
+      **Blocker coverage**:
+
+      - B1 resolved at: <file:line list>
+
+      - B2 resolved at: <file:line list>
+
+      - B3 resolved at: <file:line list>
+
+      - S1/S2/S3 disposition: <resolved | deferred with reason>
+
+
+      **Sibling search**:
+
+      - `_unique_step_id` old-signature matches after fix: <count>
+
+      - ambiguous `l` comprehension matches after fix: <count>
+
+      - stale auto-migrate / dry-run recommendation matches after fix: <count>
+
+
+      **Targeted verification**:
+
+      ```bash
+
+      <exact pytest / ruff commands>
+
+      ```
+
+
+      **Contract consistency note**:
+
+      - explain how core, CLI, MCP, and docs now align on Phase B duplicate-ID guidance
+
+      '
+    depends_on:
+    - step-id-validation-hardening.retest-verify-findings
+    - step-id-validation-hardening.freeze-gate
+    agent: python-senior
 - id: step-id-migration-tooling
   name: C / Migration & Tooling
   status: locked

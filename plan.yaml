@@ -24111,7 +24111,7 @@ phases:
       \ `febc04c8efda62b1cf1c9765136518fe800daa95`"
   - id: step-id-validation-hardening.diagnostics
     name: Implement global duplicate-id diagnostics
-    status: claimed
+    status: done
     description: "step_type: implementation\nagent_source: default\nspec_refs:\n \
       \ - conversation/duplicate-step-id-bug\n  - conversation/half-automatic-step-id-migration\n\
       \ntouch_paths:\n- src/vectl/core.py\n- src/vectl/models.py\n- src/vectl/cli.py\n\
@@ -24156,6 +24156,21 @@ phases:
     agent: python-senior
     claimed_by: python-senior
     claimed_at: '2026-03-12T14:10:28.094693+00:00'
+    done_at: '2026-03-12T14:27:52.452747+00:00'
+    evidence: "## Duplicate-ID Diagnostics\n- Shared analysis API: `src/vectl/core.py::analyze_duplicate_step_ids`\
+      \ plus recommendation helper `duplicate_step_id_recommendation_for_target`\n\
+      - Surfaces wired: CLI `status/show/dag/review/validate`; MCP `vectl_status/vectl_show/vectl_dag/vectl_review`\
+      \ and read-only `vectl_validate`\n- Legacy warning example: `WARN: Duplicate\
+      \ step ID 'dup.step' appears 2 times across phases: p1, p2` followed by `0 error(s),\
+      \ 1 warning(s)` with validate exit 0\n- Remaining gaps: write-path enforcement\
+      \ and migration apply behavior intentionally out-of-scope for this step\n- Files\
+      \ changed: `src/vectl/core.py`, `src/vectl/models.py`, `src/vectl/cli.py`, `src/vectl/mcp_server.py`,\
+      \ `tests/test_core.py`, `tests/test_validation.py`, `tests/test_cli.py`, `tests/test_mcp.py`\n\
+      - Verification:\n  - `uv run pytest -q tests/test_core.py tests/test_validation.py\
+      \ tests/test_cli.py tests/test_mcp.py` -> 426 passed\n  - grep audit confirms\
+      \ shared diagnostics/recommendation wiring across CLI/MCP/tests\n  - ad-hoc\
+      \ validate command on duplicate-id fixture shows warning-only behavior (exit\
+      \ 0)\n- Commit hash(es): `48d8fd4`, `9401f2d`"
   - id: step-id-validation-hardening.write-guard
     name: Prevent new duplicate step IDs on write surfaces
     status: pending

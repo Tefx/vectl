@@ -24065,7 +24065,7 @@ phases:
       - Contract is executable by workers without implementation choices'
   - id: step-id-validation-hardening.tests
     name: Add duplicate-id validation tests
-    status: pending
+    status: claimed
     description: "step_type: test\nagent_source: default\nspec_refs:\n  - conversation/duplicate-step-id-bug\n\
       \ntouch_paths:\n- tests/test_cli.py\n- tests/test_logic.py\n- tests/test_mcp.py\n\
       - tests/test_validation.py\n\nharness_refs:\n- plan validation tests in `tests/test_validation.py`\n\
@@ -24095,6 +24095,8 @@ phases:
     depends_on:
     - step-id-validation-hardening.rollout-contract
     agent: python-executor
+    claimed_by: python-executor
+    claimed_at: '2026-03-12T14:02:06.009743+00:00'
   - id: step-id-validation-hardening.diagnostics
     name: Implement global duplicate-id diagnostics
     status: pending

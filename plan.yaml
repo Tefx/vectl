@@ -24427,6 +24427,8 @@ phases:
     - step-id-validation-hardening.diagnostics
     - step-id-validation-hardening.write-guard
     - step-id-validation-hardening.verify
+    - step-id-validation-hardening.fix-verify-findings
+    - step-id-validation-hardening.retest-verify-findings
     - step-id-validation-hardening.freeze-gate
     agent: gate-reviewer
   - id: step-id-validation-hardening.fix-verify-findings

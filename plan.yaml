@@ -24173,7 +24173,7 @@ phases:
       \ 0)\n- Commit hash(es): `48d8fd4`, `9401f2d`"
   - id: step-id-validation-hardening.write-guard
     name: Prevent new duplicate step IDs on write surfaces
-    status: claimed
+    status: done
     description: "step_type: implementation\nagent_source: default\nspec_refs:\n \
       \ - conversation/duplicate-step-id-bug\n  - conversation/half-automatic-step-id-migration\n\
       \ntouch_paths:\n- src/vectl/core.py\n- src/vectl/cli.py\n- src/vectl/mcp_server.py\n\
@@ -24220,6 +24220,63 @@ phases:
     agent: python-senior
     claimed_by: python-senior
     claimed_at: '2026-03-12T14:28:20.226918+00:00'
+    done_at: '2026-03-12T14:43:47.877984+00:00'
+    evidence: 'Worktree execution completed by python-senior and merged to main.
+
+
+      Commit hash(es):
+
+      - worker branch: 9981b5f, f57e757
+
+      - main squash commit: d4010fa
+
+
+      Files changed:
+
+      - src/vectl/core.py
+
+      - src/vectl/cli.py
+
+      - src/vectl/mcp_server.py
+
+      - tests/test_validation.py
+
+      - tests/test_cli.py
+
+      - tests/test_mcp.py
+
+
+      Verification:
+
+      - uv run pytest -q tests/test_validation.py tests/test_cli.py tests/test_mcp.py
+      -> PASS (423 passed)
+
+      - sibling-search(require_unambiguous_target_step_id|require_no_global_duplicate_step_id
+      in src/vectl/*.py) -> PASS (guards wired for claim/complete/defer/reject/skip/check/remove-step/move-step/edit-step
+      rename + migrate preflight + add-step/add-steps duplicate-create blocking)
+
+      - git status --short --branch (worker worktree) -> PASS (clean on vectl/step-step-id-validation-hardening.write-guard)
+
+
+      Spec link:
+
+      - conversation/duplicate-step-id-bug
+
+      - conversation/half-automatic-step-id-migration
+
+
+      Gaps/Notes:
+
+      - Added stable machine-detectable blocking payload for missing opt-in (`error_code=duplicate_step_id_auto_migrate_required`,
+      `blocking_reason=auto_migrate_missing`, `required_opt_in=--auto-migrate`).
+
+      - Enforced duplicate-ID write guards for create/rename/mutate/migration write
+      surfaces and MCP mutate equivalents.
+
+      - Preserved read-only behavior for legacy duplicates; no load-time hard fail
+      or migration execution/retry flow in this step (deferred to phase C).
+
+      - Worktree branch cleaned up after merge.'
   - id: step-id-validation-hardening.verify
     name: Independently verify validation rollout behavior
     status: pending

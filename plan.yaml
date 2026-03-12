@@ -22689,6 +22689,42 @@ phases:
     depends_on:
     - step-id-resolver-hardening.core
     agent: python-senior
+  - id: step-id-resolver-hardening.freeze-l2
+    name: Freeze snapshot for resolver verification
+    status: pending
+    description: 'step_type: verification
+
+      agent_source: default
+
+      Freeze the repository snapshot before semi-blind resolver verification.
+
+
+      Requirements:
+
+      - capture `git rev-parse HEAD`
+
+      - confirm `git status` is clean
+
+      - declare the test environment used for CLI and MCP verification
+
+      - state that no code changes are allowed until resolver verification completes'
+    verification: '- Evidence includes commit SHA, clean-status confirmation, environment
+      declaration, and freeze statement'
+    evidence_template: '## Freeze Record
+
+      - Commit: <git rev-parse HEAD>
+
+      - Git status clean: <yes/no>
+
+      - Environment: <python version / test env>
+
+      - Freeze statement: no code changes until `step-id-resolver-hardening.verify`
+      completes
+
+      '
+    depends_on:
+    - step-id-resolver-hardening.surfaces
+    agent: software-architect
 - id: step-id-validation-hardening
   name: B / Validation Hardening
   status: locked

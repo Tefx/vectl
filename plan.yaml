@@ -24491,6 +24491,48 @@ phases:
     depends_on:
     - step-id-validation-hardening.verify
     agent: python-executor
+  - id: step-id-validation-hardening.retest-verify-findings
+    name: Retest MCP duplicate-id status findings
+    status: pending
+    description: 'step_type: verification
+
+      agent_source: default
+
+      As an INDEPENDENT TESTER (`blind-tester`), re-verify that ALL issues reported
+      by `step-id-validation-hardening.verify` are fixed after the batched remediation.
+
+
+      Scope:
+
+      - S1: MCP status `Next Available Steps` reports the correct phase id/name for
+      each duplicate entry
+
+
+      Test for:
+
+      - happy path: unique-step plans still render unchanged
+
+      - duplicate-id path: each duplicate occurrence reports its own phase label in
+      MCP status output
+
+      - systemic path: any shared formatting helper used for duplicate-id status output
+      no longer leaks a sibling phase label
+
+
+      Your goal is to find any remaining mismatch, not to confirm it works.
+
+      Independence Level: L1'
+    verification: '- Re-run focused MCP status coverage for duplicate-step fixtures
+      and confirm every duplicate row reports its own phase id/name
+
+      - Compare duplicate-step and unique-step status output to ensure the fix is
+      scoped correctly
+
+      - Report any remaining formatting/helper path that still reuses the wrong phase
+      label'
+    depends_on:
+    - step-id-validation-hardening.fix-verify-findings
+    agent: blind-tester
 - id: step-id-migration-tooling
   name: C / Migration & Tooling
   status: locked

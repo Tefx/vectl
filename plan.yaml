@@ -23426,6 +23426,44 @@ phases:
     depends_on:
     - step-id-migration-tooling.guidance
     agent: python-senior
+  - id: step-id-migration-tooling.freeze-l2
+    name: Freeze snapshot for migration verification
+    status: pending
+    description: 'step_type: verification
+
+      agent_source: default
+
+      Freeze the repository snapshot before semi-blind migration verification.
+
+
+      Requirements:
+
+      - capture `git rev-parse HEAD`
+
+      - confirm `git status` is clean
+
+      - declare the plan fixture(s) and environment used for migration verification
+
+      - state that no code changes are allowed until migration verification completes'
+    verification: '- Evidence includes commit SHA, clean-status confirmation, fixture
+      inventory, environment declaration, and freeze statement'
+    evidence_template: '## Freeze Record
+
+      - Commit: <git rev-parse HEAD>
+
+      - Git status clean: <yes/no>
+
+      - Fixtures: <list>
+
+      - Environment: <python version / test env>
+
+      - Freeze statement: no code changes until `step-id-migration-tooling.verify`
+      completes
+
+      '
+    depends_on:
+    - step-id-migration-tooling.hard-error-flip
+    agent: software-architect
 - id: step-id-final-integration
   name: Final Integration & Gate
   status: locked

@@ -26982,7 +26982,7 @@ phases:
       - none'
   - id: p0-cycle-detection.retest-gate-precheck-edit-step-rollback
     name: retest-gate-precheck-edit-step-rollback
-    status: claimed
+    status: done
     description: 'As an INDEPENDENT TESTER (integration-verifier), validate the edit_step
       rollback fix from a fresh perspective.
 
@@ -27060,6 +27060,41 @@ phases:
     agent: integration-verifier
     claimed_by: integration-verifier
     claimed_at: '2026-03-12T16:57:08.250265+00:00'
+    done_at: '2026-03-12T16:59:16.219121+00:00'
+    evidence: 'Commit hash(es): none (verification-only step; no code changes)
+
+
+      Files changed:
+
+      - none
+
+
+      Verification:
+
+      - uv run pytest tests/test_validation.py::TestEditStepCycleDetection -v -> PASS
+      (6 passed)
+
+      - uv run pytest tests/test_validation.py -k "edit_step and cycle" -v -> PASS
+      (6 selected passed, 30 deselected)
+
+      - Assertions in tests prove rollback after PlanError keeps depends_on unchanged
+      for cycle-triggering depends_on/add_deps, preserves non-dependency edit fields,
+      and valid/remove_deps paths remain non-regressive
+
+
+      Spec link:
+
+      - p0-cycle-detection-gate/B1
+
+
+      Gaps/Notes:
+
+      - Verification executed read-only in isolated worktree; no tracked file changes.
+
+
+      discovered_issues:
+
+      - none'
 - id: p1-qualified-lookup-errors
   name: 'P1: Qualified Step Lookup + Error Messages'
   status: locked

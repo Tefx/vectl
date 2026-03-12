@@ -37,10 +37,28 @@ from vectl.mcp_server import (
 from vectl.models import Phase, PhaseStatus, Plan, Step, StepStatus
 
 # FastMCP tools are FunctionTool objects; unwrap to get the callable
-vectl_status = _vectl_status_tool.fn
-vectl_show = _vectl_show_tool.fn
-vectl_claim = _vectl_claim_tool.fn
-vectl_mutate = _vectl_mutate_tool.fn
+# Use type: ignore to suppress mypy errors about the .fn attribute access.
+vectl_status = _vectl_status_tool.fn  # type: ignore[attr-defined]
+vectl_show = _vectl_show_tool.fn  # type: ignore[attr-defined]
+vectl_claim = _vectl_claim_tool.fn  # type: ignore[attr-defined]
+vectl_mutate = _vectl_mutate_tool.fn  # type: ignore[attr-defined]
+from vectl.mcp_server import (
+    vectl_mutate as _vectl_mutate_tool,
+)
+from vectl.mcp_server import (
+    vectl_show as _vectl_show_tool,
+)
+from vectl.mcp_server import (
+    vectl_status as _vectl_status_tool,
+)
+from vectl.models import Phase, PhaseStatus, Plan, Step, StepStatus
+
+# FastMCP tools are FunctionTool objects; unwrap to get the callable
+# Use type: ignore to suppress mypy errors about the .fn attribute access.
+vectl_status = _vectl_status_tool.fn  # type: ignore[attr-defined]
+vectl_show = _vectl_show_tool.fn  # type: ignore[attr-defined]
+vectl_claim = _vectl_claim_tool.fn  # type: ignore[attr-defined]
+vectl_mutate = _vectl_mutate_tool.fn  # type: ignore[attr-defined]
 
 runner = CliRunner()
 

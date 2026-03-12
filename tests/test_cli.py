@@ -1093,8 +1093,10 @@ class TestComplete:
             assert result.returncode == 0, result.stderr
 
         monkeypatch.chdir(repo)
-        result = runner.invoke(app, ["claim", "s1", "--agent", "bot-1", "--plan", str(plan_path)])
-        assert result.exit_code == 0
+        invoke_result = runner.invoke(
+            app, ["claim", "s1", "--agent", "bot-1", "--plan", str(plan_path)]
+        )
+        assert invoke_result.exit_code == 0
 
         commit_count = sp.run(
             ["git", "rev-list", "--count", "HEAD"],

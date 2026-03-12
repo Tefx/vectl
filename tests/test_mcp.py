@@ -12,6 +12,7 @@ import os
 import subprocess
 from collections.abc import Iterator
 from pathlib import Path
+from typing import Any, Callable, cast
 
 import pytest
 import yaml
@@ -76,23 +77,24 @@ from vectl.migration import migrate_from_split_state
 from vectl.models import PhaseStatus, PlanError, PlanIOError, StepStatus
 from vectl.plan_path import resolve_claims_path
 
-# FastMCP @mcp.tool() returns FunctionTool objects; unwrap to get the callable.
-vectl_status = _vectl_status_tool.fn
-vectl_validate = _vectl_validate_tool.fn
-vectl_show = _vectl_show_tool.fn
-vectl_claim = _vectl_claim_tool.fn
-vectl_complete = _vectl_complete_tool.fn
-vectl_lifecycle = _vectl_lifecycle_tool.fn
-vectl_search = _vectl_search_tool.fn
-vectl_mutate = _vectl_mutate_tool.fn
-vectl_review = _vectl_review_tool.fn
-vectl_guide = _vectl_guide_tool.fn
-vectl_dag = _vectl_dag_tool.fn
-vectl_clipboard = _vectl_clipboard_tool.fn
-vectl_check = _vectl_check_tool.fn
-vectl_render = _vectl_render_tool.fn
-vectl_recover = _vectl_recover_tool.fn
-vectl_repair_claims = _vectl_repair_claims_tool.fn
+# FastMCP @mcp.tool() returns _ToolWrapper objects; unwrap to get the callable.
+# Use type: ignore to suppress mypy errors about the .fn attribute access.
+vectl_status = _vectl_status_tool.fn  # type: ignore[attr-defined]
+vectl_validate = _vectl_validate_tool.fn  # type: ignore[attr-defined]
+vectl_show = _vectl_show_tool.fn  # type: ignore[attr-defined]
+vectl_claim = _vectl_claim_tool.fn  # type: ignore[attr-defined]
+vectl_complete = _vectl_complete_tool.fn  # type: ignore[attr-defined]
+vectl_lifecycle = _vectl_lifecycle_tool.fn  # type: ignore[attr-defined]
+vectl_search = _vectl_search_tool.fn  # type: ignore[attr-defined]
+vectl_mutate = _vectl_mutate_tool.fn  # type: ignore[attr-defined]
+vectl_review = _vectl_review_tool.fn  # type: ignore[attr-defined]
+vectl_guide = _vectl_guide_tool.fn  # type: ignore[attr-defined]
+vectl_dag = _vectl_dag_tool.fn  # type: ignore[attr-defined]
+vectl_clipboard = _vectl_clipboard_tool.fn  # type: ignore[attr-defined]
+vectl_check = _vectl_check_tool.fn  # type: ignore[attr-defined]
+vectl_render = _vectl_render_tool.fn  # type: ignore[attr-defined]
+vectl_recover = _vectl_recover_tool.fn  # type: ignore[attr-defined]
+vectl_repair_claims = _vectl_repair_claims_tool.fn  # type: ignore[attr-defined]
 
 
 # ---------------------------------------------------------------------------
@@ -2263,7 +2265,7 @@ class TestVectlInit:
         """Basic init creates plan.yaml and AGENTS.md."""
         from vectl.mcp_server import vectl_init as _vectl_init_tool
 
-        vectl_init = _vectl_init_tool.fn
+        vectl_init = _vectl_init_tool.fn  # type: ignore[attr-defined]
 
         old_cwd = os.getcwd()
         old_plan = os.environ.get("VECTL_PLAN_PATH")
@@ -2298,7 +2300,7 @@ class TestVectlInit:
         """Init refuses to overwrite an existing plan.yaml."""
         from vectl.mcp_server import vectl_init as _vectl_init_tool
 
-        vectl_init = _vectl_init_tool.fn
+        vectl_init = _vectl_init_tool.fn  # type: ignore[attr-defined]
 
         old_cwd = os.getcwd()
         old_plan = os.environ.get("VECTL_PLAN_PATH")
@@ -2324,7 +2326,7 @@ class TestVectlInit:
         """Init respects custom plan_path parameter."""
         from vectl.mcp_server import vectl_init as _vectl_init_tool
 
-        vectl_init = _vectl_init_tool.fn
+        vectl_init = _vectl_init_tool.fn  # type: ignore[attr-defined]
 
         old_cwd = os.getcwd()
         old_plan = os.environ.get("VECTL_PLAN_PATH")
@@ -2349,7 +2351,7 @@ class TestVectlInit:
         """Init creates CLAUDE.md when .claude/ dir exists."""
         from vectl.mcp_server import vectl_init as _vectl_init_tool
 
-        vectl_init = _vectl_init_tool.fn
+        vectl_init = _vectl_init_tool.fn  # type: ignore[attr-defined]
 
         old_cwd = os.getcwd()
         old_plan = os.environ.get("VECTL_PLAN_PATH")
@@ -2375,7 +2377,7 @@ class TestVectlInit:
         """Init respects explicit agents_target='claude'."""
         from vectl.mcp_server import vectl_init as _vectl_init_tool
 
-        vectl_init = _vectl_init_tool.fn
+        vectl_init = _vectl_init_tool.fn  # type: ignore[attr-defined]
 
         old_cwd = os.getcwd()
         old_plan = os.environ.get("VECTL_PLAN_PATH")
@@ -2399,7 +2401,7 @@ class TestVectlInit:
         """Init appends vectl section to existing AGENTS.md."""
         from vectl.mcp_server import vectl_init as _vectl_init_tool
 
-        vectl_init = _vectl_init_tool.fn
+        vectl_init = _vectl_init_tool.fn  # type: ignore[attr-defined]
 
         old_cwd = os.getcwd()
         old_plan = os.environ.get("VECTL_PLAN_PATH")
@@ -2427,7 +2429,7 @@ class TestVectlInit:
         """Init is idempotent - running twice on same AGENTS.md updates block."""
         from vectl.mcp_server import vectl_init as _vectl_init_tool
 
-        vectl_init = _vectl_init_tool.fn
+        vectl_init = _vectl_init_tool.fn  # type: ignore[attr-defined]
 
         old_cwd = os.getcwd()
         old_plan = os.environ.get("VECTL_PLAN_PATH")

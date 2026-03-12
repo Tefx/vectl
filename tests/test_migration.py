@@ -14,6 +14,21 @@ from vectl.migration import migrate_from_split_state, resolve_state_path
 from vectl.models import Phase, Plan, Step, StepStatus
 
 
+def _must_find_step(plan: Plan, step_id: str) -> Step:
+    """Find a step by ID, asserting it exists."""
+    found = plan.find_step(step_id)
+    assert found is not None, f"Step {step_id} not found"
+    _, step = found
+    return step
+
+
+def _must_find_phase(plan: Plan, phase_id: str) -> Phase:
+    """Find a phase by ID, asserting it exists."""
+    phase = plan.find_phase(phase_id)
+    assert phase is not None, f"Phase {phase_id} not found"
+    return phase
+
+
 def _base_plan() -> Plan:
     return Plan(
         project="migration-test",
@@ -65,12 +80,19 @@ def test_migrate_normal(tmp_path: Path) -> None:
     assert result.migrated_steps == 3
     assert result.migrated_phases == 1
     assert not result.skipped_orphans
-    assert loaded.find_step("phase-a.step1")[1].status == StepStatus.DONE
-    assert loaded.find_step("phase-a.step1")[1].evidence == "done evidence"
-    assert loaded.find_step("phase-a.step2")[1].status == StepStatus.CLAIMED
-    assert loaded.find_step("phase-a.step2")[1].claimed_by == "agent-1"
-    assert loaded.find_phase("phase-a").status.value == "in_progress"
-    assert loaded.find_phase("phase-a").evidence == "phase evidence"
+
+    # Use _must_find_step helper to handle Optional tuple return
+    step1 = _must_find_step(loaded, "phase-a.step1")
+    assert step1.status == StepStatus.DONE
+    assert step1.evidence == "done evidence"
+
+    step2 = _must_find_step(loaded, "phase-a.step2")
+    assert step2.status == StepStatus.CLAIMED
+    assert step2.claimed_by == "agent-1"
+
+    phase_a = _must_find_phase(loaded, "phase-a")
+    assert phase_a.status.value == "in_progress"
+    assert phase_a.evidence == "phase evidence"
     assert not state_path.exists()
     assert migrated_path.exists()
 
@@ -117,8 +139,9 @@ def test_migrate_plan_has_inline_status_state_wins(tmp_path: Path) -> None:
     loaded, _ = load_plan_definition(plan_path)
 
     assert result.migrated_steps == 1
-    assert loaded.find_step("phase-a.step1")[1].status == StepStatus.CLAIMED
-    assert loaded.find_step("phase-a.step1")[1].claimed_by == "state"
+    step1 = _must_find_step(loaded, "phase-a.step1")
+    assert step1.status == StepStatus.CLAIMED
+    assert step1.claimed_by == "state"
 
 
 def test_migrate_warns_on_inline_step_value_overwrite(tmp_path: Path, caplog) -> None:

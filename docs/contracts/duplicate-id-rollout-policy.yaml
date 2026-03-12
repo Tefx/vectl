@@ -1,0 +1,400 @@
+# Duplicate Step-ID Rollout Policy Contract
+# Source: step-id-validation-hardening.rollout-contract
+# ADR-style policy contract for phased rollout of global-step uniqueness enforcement
+#
+# This contract is BINDING on all CLI and MCP surfaces. Implementation must follow
+# this exact behavior matrix. Any deviation requires explicit contract amendment.
+
+metadata:
+  contract_id: duplicate-id-rollout-policy
+  version: "1.0.0"
+  created: 2026-03-12
+  status: proposed
+  phase_boundaries:
+    phase_B: step-id-validation-hardening  # THIS PHASE
+    phase_C: step-id-migration-tooling      # FUTURE
+  rationale_preserved:
+    - "immediate universal hard error would strand existing plans before repair path ships"
+    - "warning-only forever is insufficient because ambiguity is correctness-breaking"
+    - "silent migration by default is unsafe for operators and automation"
+
+definitions:
+  legacy_duplicate_step_id:
+    description: "A step ID that appears in multiple phases in plan.yaml, created before this policy takes effect"
+    detection: "plan-wide scan for step IDs appearing more than once across ALL phases"
+    phase_scope: "global (not per-phase)"
+
+  write_surface:
+    description: "Any command that can create, modify, or delete plan state"
+    examples:
+      - "CLI: add-step, add-steps, edit-step (when renaming), remove-step, claim, complete, defer, reject, skip, cancel, check, import, migrate"
+      - "MCP: vectl_mutate (add-step, add-steps, edit-step, remove-step, move-step actions), vectl_claim, vectl_complete, vectl_lifecycle"
+
+  read_surface:
+    description: "Any command that inspects plan state without modification"
+    examples:
+      - "CLI: status, show, dag, validate, review, render"
+      - "MCP: vectl_status, vectl_show, vectl_dag, vectl_review, vectl_guide"
+
+  targeted_mutating_command:
+    description: "A write command that operates on a specific step ID via resolver"
+    examples:
+      - "CLI/MCP: claim(step_id), complete(step_id), defer, reject, skip, cancel, check"
+
+  new_duplicate:
+    description: "Any operation that would introduce a duplicate step ID that does not already exist in the plan as a duplicate"
+    phase_B_behavior: "HARD ERROR - always rejected"
+
+severity_matrix:
+  # Phase B (current phase): diagnostics and prevention
+  phase_B:
+    read_surfaces:
+      - surface: "status"
+        severity: "WARNING"
+        behavior: "Display duplicate-ID warnings in output; never mutate plan"
+        user_copy: |
+          ⚠ Duplicate step IDs detected:
+            - 'step-id' appears in: phase-a, phase-b
+          This indicates legacy data. Use 'vectl validate' for full report.
+          Read-only commands are safe to run. Mutating commands require repair first.
+      - surface: "show"
+        severity: "WARNING"
+        behavior: "Emit duplicate-ID warning; display step details as normal"
+        user_copy: |
+          ⚠ Duplicate step ID detected: 'step-id' appears in phases: phase-a, phase-b
+          Read-only inspection is safe.
+      - surface: "dag"
+        severity: "WARNING"
+        behavior: "Emit duplicate-ID warning; render DAG with both phases"
+        user_copy: |
+          ⚠ Duplicate step IDs detected (shown in DAG edges):
+            - 'step-id' → phase-a, phase-b
+      - surface: "validate"
+        severity: "WARNING"
+        behavior: "Report all duplicates with full phase context; exit code 0 (not error yet)"
+        user_copy: |
+          ⚠ WARNING: Duplicate step IDs detected (legacy):
+            - 'step-id' appears in: phase-a, phase-b
+            - 'other-id' appears in: phase-x, phase-y
+          
+          ⚠ Duplicate IDs make targeted commands ambiguous.
+          Read-only commands (status, show, dag, validate) are safe.
+          Mutating commands require repair before execution.
+          
+          → Repair path: 'vectl migrate-step-id' (coming in phase C)
+          → Until repaired: avoid targeted mutating commands, or use --phase.step-id syntax
+
+    write_surfaces_new_duplicate:
+      - surface: "CLI: add-step, add-steps, edit-step (rename)"
+        severity: "ERROR"
+        behavior: "Hard rejection before plan mutation; do not mutate; emit actionable error"
+        user_copy: |
+          ✗ Cannot create duplicate step ID: 'step-id' already exists in phase 'phase-a'.
+          
+          Each step ID must be unique across ALL phases.
+          Choose a different step ID.
+      - surface: "CLI: import, migrate (step creation paths)"
+        severity: "ERROR"
+        behavior: "Hard rejection; do not create duplicate during import"
+        user_copy: |
+          ✗ Import would create duplicate step ID: 'step-id' already exists in phase 'phase-a'.
+          Remove or rename the duplicate before import.
+      - surface: "MCP: vectl_mutate (add-step, add-steps, edit-step rename)"
+        severity: "ERROR"
+        behavior: "Hard rejection; return error payload; do not mutate"
+        mcp_response: |
+          **Error:** Cannot create duplicate step ID.
+          Step ID 'step-id' already exists in phase 'phase-a'.
+          Each step ID must be unique across ALL phases.
+
+    targeted_mutating_legacy_duplicate:
+      - surface: "CLI/MCP: claim(step_id), complete(step_id), defer, reject, skip, cancel, check"
+        severity: "ERROR with structured repair recommendation"
+        behavior: |
+          1. Detect duplicate-ID ambiguity via resolver
+          2. STOP - do not mutate
+          3. Emit structured repair recommendation payload
+          4. Require explicit opt-in for migration (--auto-migrate flag, future)
+        user_copy: |
+          ✗ Ambiguous step ID: 'step-id' appears in multiple phases:
+            - phase-a
+            - phase-b
+          
+          Targeted commands cannot proceed with ambiguous step IDs.
+          
+          Recommended action:
+            1. Use full identifier: vectl claim phase-a.step-id
+            2. OR repair duplicates: vectl migrate-step-id --dry-run (phase C)
+            3. OR auto-migrate (coming): vectl claim step-id --auto-migrate
+          
+          ⚠ Do NOT attempt partial mutations. Choose one phase explicitly.
+        mcp_response: |
+          **Error:** Ambiguous step ID.
+          
+          Step ID 'step-id' appears in phases: phase-a, phase-b.
+          
+          Targeted commands require a unique step ID. Options:
+            1. Specify phase: use `phase_id: "phase-a"` parameter
+            2. Repair duplicates: wait for migrate-step-id tool (phase C)
+          
+          Structured repair recommendation available for automation.
+        recommendation_payload:  # For automation detection
+          type: "duplicate-step-id"
+          step_id: "step-id"
+          duplicates:
+            - phase: "phase-a"
+            - phase: "phase-b"
+          resolution_path:
+            explicit_phase: "Use phase-a.step-id or phase-b.step-id syntax"
+            auto_migrate_flag: "--auto-migrate (coming in phase C)"
+            migration_tool: "vectl migrate-step-id (phase C)"
+
+    half_automatic_mode:
+      description: "Behavior when --auto-migrate flag exists (phase C tooling)"
+      status: "NOT IMPLEMENTED IN PHASE B"
+      planned_behavior: |
+        When a targeted mutating command is blocked on legacy duplicate with --auto-migrate:
+        1. Run dry-run migration analysis
+        2. Show planned changes (which steps get renamed to what)
+        3. Require explicit --yes OR interactive confirmation
+        4. Apply migration atomically
+        5. Retry the original command after migration
+        
+        Half-automatic = user explicitly requests migration, tool shows plan, user confirms.
+
+  # Phase C (future): migration tooling and final hard error
+  phase_C:
+    description: "Migration tooling ships, then hard error flips on after tooling is proven"
+    read_surfaces:
+      - surface: "ALL"
+        severity: "WARNING → HARD ERROR (after flip)"
+        behavior: "During transition: warning. After flip: hard error on plan load."
+    
+    write_surfaces_new_duplicate:
+      - surface: "ALL"
+        severity: "ERROR (unchanged from phase B)"
+    
+    targeted_mutating_legacy_duplicate:
+      - surface: "ALL"
+        severity: "ERROR with half-automatic repair path"
+        behavior: |
+          1. Detect duplicate-ID ambiguity
+          2. STOP - do not mutate
+          3. Offer --auto-migrate with dry-run preview
+          4. Require explicit confirmation
+          5. Apply migration atomically
+          6. Retry original command
+    
+    hard_error_flip:
+      trigger: "After phase C tooling ships and migration is validated"
+      behavior: "vectl validate and all read/write surfaces hard-error on legacy duplicate step IDs"
+      timeline: "Set by project maintainer after migration tooling is stable"
+      user_copy: |
+        ✗ Plan contains duplicate step IDs (unmigrated legacy data).
+        
+        Duplicate step IDs: 'step-id' (phases: phase-a, phase-b)
+        
+        This plan must be migrated before vectl can process it.
+        Run: vectl migrate-step-id --dry-run
+        Then: vectl migrate-step-id --yes
+        
+        Note: Migration modifies step IDs. Review changes with --dry-run first.
+
+read_surface_guarantees:
+  critical: |
+    READ-ONLY SURFACES MUST NEVER MUTATE PLAN FILES.
+    
+    This guarantee holds even when:
+    - Duplicate step IDs are detected
+    - Warnings are emitted
+    - Repair recommendations are shown
+    - --auto-migrate or similar flags are present
+    
+    Rationale: operators must be able to inspect legacy plans safely to make
+    informed migration decisions. Mutating without explicit user action would
+    violate automation safety properties.
+  
+  affected_surfaces:
+    - "CLI: status, show, dag, validate (warning mode), review, render, guide"
+    - "MCP: vectl_status, vectl_show, vectl_dag, vectl_review, vectl_guide, vectl_render"
+  
+  implementation_requirement:
+    - "No write operation in read surface code paths"
+    - "No implicit save, commit, or backup generation"
+    - "Warning output is pure display, not a side effect"
+
+write_surface_guarantees:
+  new_duplicate_prevention:
+    description: "Any operation that would create a NEW duplicate step ID is permanently rejected"
+    surfaces: "ALL write surfaces (CLI and MCP)"
+    behavior: "Hard error before any plan mutation occurs"
+    error_code: "DUPLICATE_STEP_ID"
+  
+  legacy_duplicate_tolerance:
+    description: "Existing duplicate step IDs in legacy plans are tolerated for read-only inspection"
+    surfaces: "READ surfaces only"
+    behavior: "Warning + full diagnostic output"
+    
+  legacy_duplicate_rejection_write:
+    description: "Targeted mutating commands on legacy duplicates are blocked until repair"
+    surfaces: "WRITE surfaces that target step IDs"
+    behavior: "Error + structured repair recommendation + explicit opt-in requirement"
+    implementation:
+      - "Detect ambiguity in resolver"
+      - "Do not partially mutate or assume first match"
+      - "Emit recommendation payload for automation"
+      - "Require --auto-migrate or explicit phase qualification"
+
+user_facing_copy_placements:
+  # Exact copy locations across CLI and MCP surfaces
+  cli_status:
+    location: "src/vectl/cli.py:status() output"
+    behavior: "Emit duplicate-ID warning before normal status output"
+    copy_template: "${severity_matrix.phase_B.read_surfaces[0].user_copy}"
+  
+  cli_show:
+    location: "src/vectl/cli.py:show() output"
+    behavior: "Emit duplicate-ID warning before step detail display"
+    copy_template: "${severity_matrix.phase_B.read_surfaces[1].user_copy}"
+  
+  cli_dag:
+    location: "src/vectl/cli.py:dag() output"
+    behavior: "Emit duplicate-ID warning before DAG rendering"
+    copy_template: "${severity_matrix.phase_B.read_surfaces[2].user_copy}"
+  
+  cli_validate:
+    location: "src/vectl/cli.py:validate() output"
+    behavior: "Report full diagnostic with phase context; exit code 0 for legacy duplicates"
+    copy_template: "${severity_matrix.phase_B.read_surfaces[3].user_copy}"
+  
+  cli_targeted_mutate_error:
+    locations:
+      - "src/vectl/cli.py:claim()"
+      - "src/vectl/cli.py:complete()"
+      - "src/vectl/cli.py:defer()"
+      - "src/vectl/cli.py:reject()"
+      - "src/vectl/cli.py:skip()"
+      - "src/vectl/cli.py:cancel()"
+      - "src/vectl/cli.py:check_cmd()"
+    behavior: "Error exit + structured recommendation"
+    copy_template: "${severity_matrix.phase_B.targeted_mutating_legacy_duplicate.user_copy}"
+  
+  cli_new_duplicate_error:
+    locations:
+      - "src/vectl/cli.py:add_step_cmd()"
+      - "src/vectl/cli.py:add_steps_cmd()"
+      - "src/vectl/cli.py:edit_step_cmd() (when renaming)"
+    behavior: "Hard rejection before mutation"
+    copy_template: "${severity_matrix.phase_B.write_surfaces_new_duplicate[0].user_copy}"
+  
+  mcp_status:
+    location: "src/vectl/mcp_server.py:vectl_status() response"
+    behavior: "Include duplicate-ID warning in response payload"
+    copy_template: "${severity_matrix.phase_B.read_surfaces[0].user_copy}"
+  
+  mcp_targeted_mutate_error:
+    locations:
+      - "src/vectl/mcp_server.py:vectl_claim()"
+      - "src/vectl/mcp_server.py:vectl_complete()"
+      - "src/vectl/mcp_server.py:vectl_lifecycle()"
+      - "src/vectl/mcp_server.py:vectl_check_tool()"  # if applicable
+    behavior: "Error payload with structured recommendation"
+    copy_template: "${severity_matrix.phase_B.targeted_mutating_legacy_duplicate.mcp_response}"
+  
+  mcp_new_duplicate_error:
+    location: "src/vectl/mcp_server.py:vectl_mutate() error paths"
+    behavior: "Error payload before mutation"
+    copy_template: "${severity_matrix.phase_B.write_surfaces_new_duplicate[2].mcp_response}"
+
+implementation_constraints:
+  single_analysis_path:
+    description: "ALL duplicate-ID detection logic must come from ONE shared analysis function"
+    rationale: |
+      Divergent detection logic in different commands has caused correctness bugs
+      in vectl's history. Each command must call the SAME validation path with
+      the SAME duplicate-ID detection algorithm.
+    implementation:
+      function: "detect_duplicate_step_ids(plan) -> list[DuplicateStepIdInfo]"
+      callers:
+        - "CLI: status, show, dag, validate"
+        - "CLI: claim, complete, defer, reject, skip, cancel, check"
+        - "CLI: add-step, add-steps, edit-step (rename check)"
+        - "MCP: vectl_status, vectl_show, vectl_dag, vectl_review"
+        - "MCP: vectl_claim, vectl_complete, vectl_lifecycle"
+        - "MCP: vectl_mutate (add-step, add-steps, edit-step mutations)"
+    
+  recommendation_payload_stability:
+    description: "Structured repair recommendation must be stable for automation detection"
+    fields:
+      - "type: 'duplicate-step-id'"
+      - "step_id: string"
+      - "duplicates: list[{phase: string}]"
+      - "resolution_path: {explicit_phase: string, auto_migrate_flag: string, migration_tool: string}"
+    
+  no_silent_migration:
+    description: "NEVER migrate duplicate step IDs without explicit user opt-in"
+    rationale: |
+      Plan mutations must be intentional and inspectable. Automation safety
+      requires that tooling never mutates state without user-facing confirmation,
+      especially for correctness-breaking changes like step ID renames.
+    
+  no_implicit_retry:
+    description: "Targeted mutating commands blocked on ambiguity must NOT retry automatically"
+    rationale: |
+      Retrying after partial success or with assumed phase context would hide
+      the ambiguity from operators and automation, defeating the safety properties
+      of explicit opt-in migration.
+
+verification_criteria:
+  read_surfaces:
+    - "Legacy duplicate plan loads without error in status/show/dag/validate"
+    - "Warning emitted with ALL conflicting phase IDs in output"
+    - "Exit code is 0 (warning, not hard error) in phase B"
+    - "No file mutation, no git commit, no backup generation in read code paths"
+  
+  write_surfaces_new_duplicate:
+    - "CLI add-step with duplicate ID exits 1 with actionable error"
+    - "MCP mutate add-step with duplicate ID returns error payload"
+    - "Plan file is unchanged after rejection"
+    - "Error message names the conflicting phase and step ID"
+  
+  write_surfaces_targeted_legacy_duplicate:
+    - "CLI claim/complete/etc on ambiguous step ID exits 1 with recommendation"
+    - "MCP claim/complete/etc returns error with structured recommendation payload"
+    - "Recommendation payload includes all conflicting phases"
+    - "Recommendation payload is detectable by automation (type: 'duplicate-step-id')"
+    - "No mutation occurred (plan unchanged)"
+  
+  half_automatic_mode:
+    - "--auto-migrate flag does NOT exist in phase B (implementation deferred to phase C)"
+    - "When phase C ships, --auto-migrate requires confirmation before mutation"
+    - "Dry-run path exists for inspection before confirmation"
+
+phase_boundaries:
+  phase_B_deliverables:
+    - "Duplicate-ID detection function (single shared path)"
+    - "Warning mode in status/show/dag/validate for legacy duplicates"
+    - "Hard error for NEW duplicate creation on all write surfaces"
+    - "Hard error for targeted mutate on ambiguous legacy duplicate"
+    - "Structured recommendation payload for blocked targeted mutates"
+    - "Copy placement in all CLI and MCP surfaces per user_facing_copy_placements"
+  
+  phase_C_deliverables:
+    - "migration tool: vectl migrate-step-id --dry-run"
+    - "migration tool: vectl migrate-step-id --yes"
+    - "--auto-migrate flag for targeted mutating commands"
+    - "Half-automatic confirmation flow"
+    - "Final hard error flip (configurable timeline)"
+  
+  rollback_safety:
+    description: "Phase B can be rolled back without data loss"
+    rationale: "No plan mutations occur, only output changes"
+
+out_of_scope:
+  - "Actual migration repair command implementation (phase C)"
+  - "Automatic step ID renaming (always requires explicit opt-in)"
+  - "Cross-phase dependency resolution changes"
+  - "Plan format changes"
+
+amendments: []
+# Amendments require explicit version bump and rationale

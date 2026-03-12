@@ -27089,6 +27089,231 @@ phases:
     agent: gate-reviewer
     claimed_by: gate-reviewer
     claimed_at: '2026-03-12T18:54:46.949013+00:00'
+  - id: step-id-migration-tooling.fix-gate-blockers
+    name: Fix gate blockers for migration tooling
+    status: pending
+    description: 'step_type: implementation
+
+      agent_source: default
+
+      tags:
+
+      - integration
+
+      Fix ALL blockers found by `step-id-migration-tooling.gate` in one batched remediation
+      loop.
+
+
+      ## Blockers to Fix (ALL of these, not just the first)
+
+
+      ### B1: Ruff E501 lint failures from duplicated long guidance line
+
+      Locations:
+
+      - `src/vectl/cli.py:787`
+
+      - `src/vectl/core.py:2552`
+
+      Remediation:
+
+      - Wrap or refactor the duplicated guidance line so Ruff E501 passes in both
+      locations.
+
+      - Prefer a shared snippet only if it does not widen the migration scope or create
+      new wiring churn.
+
+      Grep hint:
+
+      ```bash
+
+      rg -n "If you have legacy duplicate step IDs" src/vectl
+
+      ```
+
+      IMPORTANT:
+
+      - Search for sibling copies beyond the listed locations before claiming done.
+
+      - Keep guidance wording aligned across both emitters after refactor/wrapping.
+
+
+      ### B2: `--auto-migrate` half-automatic flow documented/contracted but not implemented
+
+      Contract/guidance references:
+
+      - `docs/contracts/duplicate-id-migration-contract.yaml:83`
+
+      - `src/vectl/guide.py:231`
+
+      Missing / conflicting surfaces:
+
+      - `src/vectl/cli.py` claim command has no `--auto-migrate` option
+
+      - `src/vectl/mcp_server.py` `vectl_claim` has no `auto_migrate` parameter /
+      wrapper
+
+      - `src/vectl/core.py` recommendation text still says coming in phase C / not
+      available in phase B
+
+      Remediation (pick ONE coherent path and make all touched surfaces agree):
+
+      1. Implement CLI + MCP auto-migrate wrapper semantics end-to-end: detect ambiguity
+      -> dry-run preview -> explicit opt-in -> apply migration -> retry once, OR
+
+      2. Remove unsupported `--auto-migrate` claims from contract, guide, and diagnostics
+      and state the actual supported behavior.
+
+      Grep hint:
+
+      ```bash
+
+      rg -n -- "--auto-migrate" src/vectl tests docs/contracts
+
+      ```
+
+      IMPORTANT:
+
+      - Treat this as a single contract/surface alignment decision; do not leave docs
+      advertising unsupported behavior.
+
+      - Search sibling guidance, tests, and diagnostics so the chosen behavior is
+      consistent everywhere.
+
+
+      ### S1: Evidence quality cleanup for verify/freeze/test wording consistency
+      (include if feasible within same batch)
+
+      Scope:
+
+      - Align guidance so evidence requirements consistently call for raw output inclusion
+      and correct environment declaration where this phase references verify/freeze/test
+      evidence.
+
+      - Include this only if it can be resolved without opening a second remediation
+      loop.
+
+
+      ## Known risks
+
+      - Migration/tooling work in this repo often passes a narrow happy path but leaves
+      CLI/MCP guidance or compatibility wording inconsistent.
+
+      - Shared wording duplicated across CLI/core surfaces can regress again if only
+      one emitter is fixed.
+
+
+      ## Gate Preview (what the rerun gate will reject)
+
+      1. Any remaining E501 match for the duplicate guidance string.
+
+      2. Any contract/guide/diagnostic claim that advertises `--auto-migrate` behavior
+      not actually supported on CLI and MCP surfaces.
+
+      3. Migration-path checks that only validate one surface instead of CLI + MCP
+      + operator guidance together.
+
+      4. Evidence guidance text that still conflicts about raw output or environment
+      declaration if S1 is touched.
+
+
+      ## Completion Criteria
+
+      - ALL blockers fixed, not just B1.
+
+      - Sibling search completed for each blocker family.
+
+      - Chosen B2 behavior is consistent across contract, guide, diagnostics, CLI,
+      MCP wrapper/tests, and recommendation text.
+
+      - No new instances of either blocker pattern remain in the migrated surfaces.
+
+
+      ## Out of Scope Guardrail
+
+      - Do not expand into unrelated migration-engine redesign; keep scope to lint,
+      contract/surface behavior alignment, and associated focused tests/evidence guidance.
+
+      '
+    verification: '- `ruff check src/vectl/cli.py src/vectl/core.py` passes with no
+      E501 failure for the duplicated guidance line
+
+      - Focused regression evidence covers the chosen B2 path across CLI and MCP surfaces
+      plus contract/guide/diagnostic alignment
+
+      - If S1 is included, evidence guidance text is consistent about raw output inclusion
+      and environment declaration
+
+      - Proof includes sibling-search results for both grep hints and confirms no
+      unsupported `--auto-migrate` claim remains where the chosen scope requires removal
+      or implementation'
+    evidence_template: '## Remediation Evidence
+
+
+      **Blockers covered**: B1, B2, S1-if-feasible
+
+
+      **Sibling search commands**:
+
+      ```bash
+
+      rg -n "If you have legacy duplicate step IDs" src/vectl
+
+      rg -n -- "--auto-migrate" src/vectl tests docs/contracts
+
+      ```
+
+
+      **B1 proof**:
+
+      - Files changed: <paths>
+
+      - Ruff output:
+
+      ```text
+
+      <paste actual output>
+
+      ```
+
+
+      **B2 decision**:
+
+      - Chosen path: <implement wrapper semantics | remove unsupported claims>
+
+      - CLI surface: <what changed>
+
+      - MCP surface: <what changed>
+
+      - Contract/guide/diagnostic alignment: <what changed>
+
+      - Migration-path command(s)/test(s):
+
+      ```text
+
+      <paste exact commands/tests>
+
+      ```
+
+      - Actual output:
+
+      ```text
+
+      <paste actual output>
+
+      ```
+
+
+      **S1 (if included)**:
+
+      - Guidance paths updated: <paths>
+
+      - Consistency proof: <short note>
+
+      '
+    depends_on:
+    - step-id-migration-tooling.freeze-gate
+    agent: python-senior
 - id: step-id-final-integration
   name: Final Integration & Gate
   status: locked

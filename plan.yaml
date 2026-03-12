@@ -24432,6 +24432,9 @@ phases:
       - mistakes here can either reintroduce ambiguity or block operators from repairing
       old plans
 
+      - gate findings required a second remediation loop spanning signature drift,
+      lint blockers, and contract-alignment fixes
+
 
       cross_cutting_focus:
 
@@ -24441,16 +24444,33 @@ phases:
 
       - phased rollout recommendation remains coherent and actionable
 
+      - gate rerun must confirm batched remediation resolved B1/B2/B3 and any included
+      should-fix items
+
+
+      Remediation consolidation:
+
+      - Existing chain extended
+
+      - Root blocker: gate surfaced a broader cross-file batch than the earlier MCP-only
+      verification remediation
+
+      - New loop justified by: preserving prior completed evidence while adding a
+      distinct batch for signature, lint, and contract-alignment defects
+
 
       Independence: gate agent must not match any implementation agent in this phase.'
     verification: '- All phase steps completed successfully
 
-      - Evidence collected for rollout contract, diagnostics, write guards, and independent
-      verification
+      - Evidence collected for rollout contract, diagnostics, write guards, independent
+      verification, and the batched gate-remediation loop
 
       - No mutation surface can create a new duplicate step ID
 
-      - Legacy plans remain inspectable pending migration tooling'
+      - Legacy plans remain inspectable pending migration tooling
+
+      - Batched gate findings B1/B2/B3 are closed and any included should-fix items
+      have explicit disposition'
     evidence_template: '## Gate Review Report
 
       - Step-by-step evidence quality: <table>
@@ -24471,6 +24491,8 @@ phases:
     - step-id-validation-hardening.fix-verify-findings
     - step-id-validation-hardening.retest-verify-findings
     - step-id-validation-hardening.freeze-gate
+    - step-id-validation-hardening.fix-gate-findings
+    - step-id-validation-hardening.retest-gate-findings
     agent: gate-reviewer
     claimed_by: gate-reviewer
     claimed_at: '2026-03-12T15:15:36.971727+00:00'

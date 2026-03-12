@@ -25997,7 +25997,7 @@ phases:
       - Proof: contract doc, emitted recommendation data, and targeted write-command
       behavior all match'
     depends_on:
-    - step-id-validation-hardening.gate
+    - step-id-validation-hardening.step-id-validation-hardening-retest-gate-rerun-import-blockers
     agent: python-senior
   - id: step-id-validation-hardening.retest-gate-rerun-guidance-blockers
     name: Independent retest of gate rerun guidance blockers

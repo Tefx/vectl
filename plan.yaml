@@ -22522,3 +22522,8 @@ phases:
   status: locked
   depends_on:
   - step-id-validation-hardening
+- id: step-id-final-integration
+  name: Final Integration & Gate
+  status: locked
+  depends_on:
+  - step-id-migration-tooling

@@ -26492,3 +26492,44 @@ phases:
     depends_on:
     - implement-error-msg
     agent: python-executor
+  - id: p1-qualified-lookup-errors-gate
+    name: Gate review for P1 qualified lookup and error messages
+    status: pending
+    description: 'Gate review: Verify P1 qualified lookup and error message fixes
+      are complete and correct.
+
+
+      review_depth: STANDARD
+
+      review_depth_rationale: Two small localized bug fixes with clear specifications,
+      no known rework patterns.
+
+
+      Review criteria:
+
+      1. find_step: Exact match priority preserved; qualified fallback uses partition
+      (not split); handles dots in step IDs
+
+      2. Error message: Uses qualified phase.step format at line 203
+
+      3. Test coverage: All edge cases covered (exact match priority, missing phase,
+      missing step, dot-in-step-id)
+
+      4. No regressions: Full test suite passes
+
+      5. Consistency: Qualified ID format in error message matches find_step''s parsing'
+    verification: '- All implementation steps completed with evidence
+
+      - All test steps completed with evidence
+
+      - Full test suite passes: pytest tests/ -v
+
+      - find_step qualified lookup works end-to-end
+
+      - Error messages use qualified IDs'
+    depends_on:
+    - implement-find-step
+    - implement-error-msg
+    - test-find-step
+    - test-error-msg
+    agent: gate-reviewer

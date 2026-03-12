@@ -23038,6 +23038,246 @@ phases:
     agent: gate-reviewer
     claimed_by: gate-reviewer
     claimed_at: '2026-03-12T13:20:02.157942+00:00'
+  - id: step-id-resolver-hardening.fix-gate-blockers
+    name: Batched remediation for resolver hardening gate blockers
+    status: pending
+    description: 'step_type: implementation
+
+      agent_source: default
+
+      priority: HIGH
+
+
+      Fix ALL blockers found by `step-id-resolver-hardening.gate` plus the actionable
+      should-fix follow-up. ALL of these, not just the first.
+
+
+      prior_loop:
+
+      - step-id-resolver-hardening.gate
+
+      remaining_blocker: Gate cannot be considered enforceable while resolver lint,
+      contract/test enforceability, and mypy surface typing remain broken.
+
+      why_new_loop: The gate surfaced concrete multi-file blockers that require one
+      bounded remediation pass before independent retest can produce trustworthy evidence.
+
+
+      spec_refs:
+
+      - `docs/contracts/step-resolver-contract.md`
+
+      - phase `step-id-resolver-hardening`
+
+
+      touch_paths:
+
+      - `src/vectl/resolver.py`
+
+      - `src/vectl/models.py`
+
+      - `tests/test_resolver_contract.py`
+
+      - `tests/test_resolver_regression.py`
+
+      - `tests/test_resolver_surfaces.py`
+
+      - `tests/test_mcp.py`
+
+      - related MCP wrapper typing surfaces used by resolver tests
+
+
+      harness_refs:
+
+      - `uv run ruff check .`
+
+      - `uv run mypy src tests`
+
+      - resolver contract / regression / surfaces test modules
+
+
+      Risk notes:
+
+      - This step spans runtime, tests, and contract docs because the gate found an
+      enforceability mismatch across all three.
+
+      - `.fn` typing has regressed in this repo before; search for sibling call sites
+      beyond the listed files before closing the step.
+
+      - Contract doc updates must align with actual Step/Phase ID semantics in `src/vectl/models.py`;
+      do not leave a doc/model split.
+
+
+      ## Blockers to Fix (ALL of these, not just the first)
+
+
+      ### B1: Ruff lint fails on resolver + tests
+
+      Locations:
+
+      - `src/vectl/resolver.py` (`I001`, `UP037`)
+
+      - `tests/test_resolver_contract.py` (`I001`, `F401`)
+
+      - `tests/test_resolver_regression.py` (`F401`, `F841`)
+
+      Remediation:
+
+      - Make `uv run ruff check .` pass for the touched resolver/runtime/test paths.
+
+      - Fix import ordering, unused imports/vars, and forward-reference style without
+      weakening coverage.
+
+      Grep hint:
+
+      - `uv run ruff check .`
+
+
+      ### B2: Contract not enforceable (placeholder contract tests + contract/model
+      mismatch)
+
+      Locations:
+
+      - placeholder skips in `tests/test_resolver_contract.py`
+
+      - step-id grammar mismatch between `docs/contracts/step-resolver-contract.md`
+      and `src/vectl/models.py`
+
+      Remediation:
+
+      - Replace placeholder skips with enforceable contract tests OR move placeholder
+      material out of collected test paths.
+
+      - Align contract documentation with actual Step ID / Phase ID semantics implemented
+      in models.
+
+      - Ensure the contract artifact is reviewable and executable, not aspirational.
+
+      Grep hint:
+
+      - `rg -n "pytest\.skip|placeholder" tests/test_resolver_contract.py docs/contracts/step-resolver-contract.md
+      src/vectl/models.py`
+
+
+      ### B3: mypy fails on resolver-surface tests using `.fn`
+
+      Locations:
+
+      - `tests/test_resolver_surfaces.py`
+
+      - `tests/test_resolver_regression.py`
+
+      - related MCP wrapper typing surfaces
+
+      Remediation:
+
+      - Make mypy pass for the touched runtime/test paths.
+
+      - Use a type-safe access pattern or wrapper typing instead of brittle `.fn`
+      access where needed.
+
+      - Search for sibling `.fn` call sites in related resolver/MCP tests before stopping.
+
+      Grep hint:
+
+      - `rg -n "\.fn" tests/test_resolver_*.py tests/test_mcp.py`
+
+
+      ### S1: Ambiguity repair hints should be actionable for duplicate step IDs
+
+      Location:
+
+      - `src/vectl/resolver.py` `_build_repair_hints`
+
+      Remediation:
+
+      - Improve repair hints so duplicate step ID ambiguity points users toward unique-step-id
+      repair actions first.
+
+      - Keep hint behavior consistent across CLI and MCP resolver surfaces.
+
+
+      ## Completion Criteria
+
+      - ALL blockers B1+B2+B3 resolved and S1 addressed in the same bounded remediation.
+
+      - Ruff passes on repo check, or on a clearly bounded target only if repo-wide
+      pass is impossible and the rationale is recorded.
+
+      - Mypy passes on `src tests`, or on an explicitly bounded target with rationale
+      tied to unchanged external debt.
+
+      - No placeholder-only contract test remains in collected resolver contract paths.
+
+      - Contract doc and model semantics agree on step/phase ID grammar.
+
+      - Sibling search completed for lint, placeholder, and `.fn` patterns; no unreviewed
+      nearby instances remain.
+
+      - Out of scope: broader validation/migration phase behavior beyond resolver
+      hardening; do not start phase B work here.'
+    verification: '- `uv run ruff check .` passes, or a bounded equivalent is justified
+      in evidence
+
+      - `uv run mypy src tests` passes, or a bounded equivalent is justified in evidence
+
+      - Enforceable resolver contract coverage exists with no placeholder skip-only
+      collection artifact
+
+      - Duplicate-ID repair hints are more actionable and consistent across resolver
+      surfaces'
+    evidence_template: '## Batched Fix Evidence
+
+
+      **Blockers addressed**: B1, B2, B3, S1
+
+
+      ### Searches run
+
+      ```bash
+
+      uv run ruff check .
+
+      rg -n "pytest\.skip|placeholder" tests/test_resolver_contract.py docs/contracts/step-resolver-contract.md
+      src/vectl/models.py
+
+      rg -n "\.fn" tests/test_resolver_*.py tests/test_mcp.py
+
+      ```
+
+
+      ### Changes made
+
+      - B1:
+
+      - B2:
+
+      - B3:
+
+      - S1:
+
+
+      ### Scope control
+
+      - Files touched:
+
+      - Sibling instances reviewed:
+
+      - Anything intentionally deferred with rationale:
+
+
+      ### Verification prepared for retest
+
+      - Expected ruff target:
+
+      - Expected mypy target:
+
+      - Expected resolver tests:
+
+      '
+    depends_on:
+    - step-id-resolver-hardening.gate
+    agent: python-senior
 - id: step-id-validation-hardening
   name: B / Validation Hardening
   status: locked

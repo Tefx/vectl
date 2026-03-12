@@ -27553,7 +27553,7 @@ phases:
       - none'
 - id: p1-qualified-lookup-errors
   name: 'P1: Qualified Step Lookup + Error Messages'
-  status: in_progress
+  status: done
   depends_on:
   - p0-cycle-detection
   steps:
@@ -28423,7 +28423,7 @@ phases:
       - none'
   - id: p1-qualified-lookup-errors.independent-retest-double-prefix-qualified-id-regression
     name: Independent retest of double-prefix qualified-id regression
-    status: claimed
+    status: done
     description: "step_type: verification\nagent_source: default\nindependence_level:\
       \ L1\nprior_loop:\n  - p1-qualified-lookup-errors.independent-retest-of-p1-qualified-lookup-errors-gate-blockers\n\
       remaining_blocker: confirm the canonical selector formatter removed all already-qualified\
@@ -28462,3 +28462,43 @@ phases:
     agent: integration-verifier
     claimed_by: integration-verifier
     claimed_at: '2026-03-12T18:27:56.743307+00:00'
+    done_at: '2026-03-12T18:36:06.220965+00:00'
+    evidence: 'Commit hash(es): none (verification-only step; no code changes)
+
+
+      Files changed:
+
+      - none
+
+
+      Verification:
+
+      - direct repro script for prior failures -> PASS; now emits `p1.s1` (no `p1.p1.s1`)
+      for claim/remove/move error paths
+
+      - uv run ruff check src/vectl/cli.py src/vectl/core.py src/vectl/lifecycle.py
+      src/vectl/models.py tests/test_cli.py tests/test_validation.py -> PASS
+
+      - uv run mypy src/vectl/cli.py src/vectl/core.py src/vectl/lifecycle.py src/vectl/models.py
+      -> PASS
+
+      - uv run pytest -v targeted qualified-lookup and qualified-id regression tests
+      -> PASS (8 passed)
+
+      - git status --short -> clean
+
+
+      Spec link:
+
+      - p1-qualified-lookup-errors/double-prefix-regression
+
+
+      Gaps/Notes:
+
+      - Independent retest confirms copy-paste selector sanity and no remaining double-prefix
+      regression on tested surfaces.
+
+
+      discovered_issues:
+
+      - none'

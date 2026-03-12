@@ -175,11 +175,33 @@ class Plan(BaseModel):
     # ---- helpers ----
 
     def find_step(self, step_id: str) -> tuple[Phase, Step] | None:
-        """Find a step by ID across all phases."""
+        """Find a step by ID across all phases.
+
+        Supports qualified lookup (phase.step format) and unqualified lookup.
+
+        Priority:
+        1. Exact match: try to find step with ID == step_id across all phases
+        2. Qualified fallback: if step_id contains '.', split by partition('.')
+           to get (phase_id, step_suffix) and look up step with ID == step_suffix
+           within that specific phase
+        """
+        # Priority 1: exact match
         for phase in self.phases:
             for step in phase.steps:
                 if step.id == step_id:
                     return phase, step
+
+        # Priority 2: qualified lookup (phase.step format)
+        if "." in step_id:
+            phase_prefix, _, step_suffix = step_id.partition(".")
+            if phase_prefix and step_suffix:
+                phase = self.find_phase(phase_prefix)
+                if phase is not None:
+                    for step in phase.steps:
+                        # Look for the step_suffix within the specified phase
+                        if step.id == step_suffix:
+                            return phase, step
+
         return None
 
     def find_phase(self, phase_id: str) -> Phase | None:

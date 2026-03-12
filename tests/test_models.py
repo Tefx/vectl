@@ -165,6 +165,88 @@ class TestPlan:
         plan = Plan(project="test")
         assert plan.find_step("nope") is None
 
+    def test_find_step_qualified_lookup_exact_match_priority(self):
+        """Exact match should take priority over qualified lookup."""
+        plan = Plan(
+            project="test",
+            phases=[
+                Phase(
+                    id="p1",
+                    name="Phase 1",
+                    steps=[Step(id="s1", name="Step 1"), Step(id="p1.s1", name="Qualified S1")],
+                ),
+            ],
+        )
+        # Exact match "s1" should be found first (in p1), not "p1.s1"
+        result = plan.find_step("s1")
+        assert result is not None
+        phase, step = result
+        assert phase.id == "p1"
+        assert step.id == "s1"
+
+    def test_find_step_qualified_lookup_fallback(self):
+        """Qualified lookup should work when exact match fails."""
+        plan = Plan(
+            project="test",
+            phases=[
+                Phase(
+                    id="p1",
+                    name="Phase 1",
+                    steps=[Step(id="s1", name="Step 1"), Step(id="s2", name="Step 2")],
+                ),
+                Phase(
+                    id="p2",
+                    name="Phase 2",
+                    steps=[Step(id="s3", name="Step 3")],
+                ),
+            ],
+        )
+        # Exact match "s1" should work
+        result = plan.find_step("s1")
+        assert result is not None
+        phase, step = result
+        assert phase.id == "p1"
+        assert step.id == "s1"
+
+        # Exact match "p1.s1" should work (qualified form matches exact step id)
+        result = plan.find_step("p1.s1")
+        assert result is not None
+        phase, step = result
+        assert phase.id == "p1"
+        assert step.id == "s1"
+
+        # Exact match "p2.s3" should work
+        result = plan.find_step("p2.s3")
+        assert result is not None
+        phase, step = result
+        assert phase.id == "p2"
+        assert step.id == "s3"
+
+        # Non-existent qualified step should return None
+        result = plan.find_step("p1.s3")
+        assert result is None
+
+        # Non-existent phase in qualified lookup should return None
+        result = plan.find_step("nonexistent.s1")
+        assert result is None
+
+    def test_find_step_qualified_lookup_partition_behavior(self):
+        """Qualified lookup should use partition('.') - only first dot splits."""
+        plan = Plan(
+            project="test",
+            phases=[
+                Phase(
+                    id="p1",
+                    name="Phase 1",
+                    steps=[Step(id="p1.s1", name="Step 1")],
+                ),
+            ],
+        )
+        # "p1.s1" has phase_prefix="p1", step_suffix="s1" - should find
+        result = plan.find_step("p1.s1")
+        assert result is not None
+        assert result[1].id == "p1.s1"
+
     def test_find_phase(self):
         plan = Plan(
             project="test",

@@ -27635,7 +27635,7 @@ phases:
       - none'
   - id: step-id-final-integration.verify
     name: Run end-to-end duplicate-gate regression
-    status: pending
+    status: claimed
     description: "step_type: verification\nagent_source: default\nIndependence Level:\
       \ L2\nAs an INDEPENDENT TESTER (`blind-tester`), execute the full duplicate-step-ID\
       \ regression from legacy symptom to repaired plan.\n\nYOUR GOAL IS TO FIND PROBLEMS,\
@@ -27677,6 +27677,8 @@ phases:
     depends_on:
     - step-id-final-integration.freeze-l2
     agent: blind-tester
+    claimed_by: blind-tester
+    claimed_at: '2026-03-12T19:34:42.708588+00:00'
   - id: step-id-final-integration.freeze-gate
     name: Freeze snapshot for final gate
     status: pending

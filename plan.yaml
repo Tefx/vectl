@@ -27820,7 +27820,7 @@ phases:
     agent: gate-reviewer
   - id: step-id-final-integration.fix-all-gate-blockers-and-copy-drift
     name: Fix ALL gate blockers and copy drift
-    status: claimed
+    status: done
     description: "step_type: implementation\nagent_source: default\npriority: HIGH\n\
       spec_refs:\n- docs/contracts/duplicate-id-rollout-policy.yaml#phase-b-rollout-semantics\n\
       - docs/contracts/duplicate-id-rollout-policy.yaml#operator-copy-templates\n\
@@ -27893,6 +27893,63 @@ phases:
     agent: python-senior
     claimed_by: python-senior
     claimed_at: '2026-03-12T19:53:41.288737+00:00'
+    done_at: '2026-03-12T20:00:46.729101+00:00'
+    evidence: 'Commit hash(es):
+
+      - worker branch: 820665e
+
+      - main squash commit: b2bf4ad
+
+
+      Files changed:
+
+      - docs/contracts/duplicate-id-rollout-policy.yaml
+
+
+      Verification:
+
+      - sibling scans for phase-B validate semantics + ambiguous-target payload/copy
+      + gate criterion references show coherent post-remediation text in contract
+      scope
+
+      - uv run pytest tests/test_cli.py::TestDuplicateIdDiagnostics -v -> 10 passed
+
+      - uv run pytest tests/test_mcp.py -k duplicate -v -> 10 passed
+
+      - uv run pytest tests/test_validation.py::TestLegacyDuplicateStepIdHardErrors
+      -v -> 3 passed
+
+      - focused targeted tests around hard-error validate + duplicate-id guidance
+      -> passed
+
+      - invar_invar_guard changed=false recorded as non-enforced criterion per chosen
+      B2 disposition
+
+
+      Spec link:
+
+      - step-id-final-integration.gate/B1-B2
+
+
+      Gaps/Notes:
+
+      - B1 resolution: contract aligned to implemented/runtime truth (Phase-B validate
+      hard-error + exit 1 for legacy duplicates).
+
+      - S1 included: copy/template alignment for ambiguous-target payload semantics
+      in contract guidance.
+
+      - B2 resolution: deterministic release-gate disposition documented (`invar_invar_guard
+      changed=false` explicitly not enforced for this bounded duplicate-ID release
+      gate).
+
+      - Repository-wide invar full-scan findings remain out of scope for this step.
+
+
+      discovered_issues:
+
+      - invar_invar_guard full scan still reports large unrelated static-analysis
+      backlog'
   - id: step-id-final-integration.independent-retest-of-batched-gate-remediation
     name: Independent retest of batched gate remediation
     status: pending

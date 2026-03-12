@@ -23775,21 +23775,28 @@ phases:
       \ fixture containing duplicate `gate` IDs across two phases.\n2. Confirm the\
       \ legacy pre-fix symptom is reproducible in the fixture context or explicitly\
       \ preserved as a documented pre-migration invalid state:\n   - read surfaces\
-      \ can identify the duplicate problem\n   - targeted bare selector behavior is\
-      \ ambiguous and reported as such\n3. Run duplicate-ID migration in dry-run and\
-      \ apply modes.\n4. Verify post-migration behavior:\n   - `claim` and `show`\
-      \ resolve the migrated gate IDs correctly\n   - validation passes on the migrated\
-      \ plan\n   - DAG output before/after migration preserves phase/step dependency\
-      \ structure apart from ID renames\n5. Confirm operator guidance tells users\
-      \ how to repair duplicate-ID plans.\n\nDocument ALL findings. A test that discovers\
-      \ issues is a SUCCESS.\nA test that finds nothing must justify the coverage\
-      \ achieved."
+      \ can identify the duplicate problem\n   - `status`, `show`, `review`, and `dag`\
+      \ do not mutate plan files while reporting the problem\n   - targeted bare selector\
+      \ behavior is ambiguous and reported as such\n3. Run duplicate-ID migration\
+      \ in dry-run and apply modes.\n4. Verify half-automatic targeted mutation behavior:\n\
+      \   - mutating command without opt-in errors cleanly with a structured repair\
+      \ recommendation\n   - the same mutating command with `--auto-migrate` repairs\
+      \ first, emits old->new mapping plus exact migration evidence, and retries the\
+      \ original command exactly once\n5. Verify post-migration behavior:\n   - repeated\
+      \ command after migration uses the new IDs cleanly without re-running repair\n\
+      \   - `claim` and `show` resolve the migrated gate IDs correctly\n   - validation\
+      \ passes on the migrated plan\n   - DAG output before/after migration preserves\
+      \ phase/step dependency structure apart from ID renames\n6. Confirm operator\
+      \ guidance tells users and automation how to update old IDs using the emitted\
+      \ mapping.\n\nDocument ALL findings. A test that discovers issues is a SUCCESS.\n\
+      A test that finds nothing must justify the coverage achieved."
     verification: '- Evidence includes actual CLI commands and outputs for duplicate
-      detection, dry-run/apply migration, post-migration `show`, post-migration `claim`,
+      detection, non-mutating read surfaces, dry-run/apply migration, blocked mutation
+      without opt-in, opt-in retry flow, post-migration `show`, post-migration `claim`,
       and DAG comparison
 
-      - Verification explicitly checks backward compatibility messaging, ambiguous-step
-      errors, and DAG preservation after migration
+      - Verification explicitly checks backward-compatibility messaging, ambiguous-step
+      errors, mapping visibility for automation, and DAG preservation after migration
 
       - Coverage explains any remaining unsupported legacy behavior and why it is
       acceptable'

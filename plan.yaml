@@ -26247,6 +26247,57 @@ phases:
 
       - Run: pytest tests/test_validation.py -v (no regressions)'
     agent: python-executor
+  - id: test
+    name: Add edit_step cycle detection tests
+    status: pending
+    description: 'Add tests for the new cycle detection in edit_step.
+
+
+      File: tests/test_validation.py
+
+
+      Add a new test class TestEditStepCycleDetection with at minimum these test cases:
+
+
+      1. test_edit_step_depends_on_creates_cycle — Create a phase with steps s1->s2->s3.
+      Use edit_step to set s1''s depends_on to ["s3"]. Assert PlanError is raised
+      with "cycle" in the message.
+
+
+      2. test_edit_step_add_deps_creates_cycle — Create a phase with steps s1->s2->s3.
+      Use edit_step with add_deps=["s3"] on s1. Assert PlanError is raised with "cycle"
+      in the message.
+
+
+      3. test_edit_step_valid_dep_change — Create a phase with steps s1, s2, s3 (no
+      deps). Use edit_step to add a valid dependency. Assert no error is raised.
+
+
+      4. test_edit_step_remove_deps_no_false_positive — Create a phase with steps
+      s1->s2. Use edit_step with remove_deps=["s1"] on s2. Assert no error is raised
+      (removing a dep cannot create a cycle).
+
+
+      Imports needed: from vectl.core import edit_step (add to existing import line
+      5).
+
+
+      Pattern reference: Follow the existing TestStepDAG class style in the same file
+      (lines 69-113).
+
+
+      Helper: Use the existing _make_plan() helper at line 15.'
+    verification: '- All 4 test cases pass: pytest tests/test_validation.py::TestEditStepCycleDetection
+      -v
+
+      - Tests correctly verify PlanError is raised for cycles
+
+      - Tests correctly verify no error for valid operations
+
+      - No regressions: pytest tests/test_validation.py -v'
+    depends_on:
+    - implement
+    agent: python-executor
 - id: p1-qualified-lookup-errors
   name: 'P1: Qualified Step Lookup + Error Messages'
   status: locked

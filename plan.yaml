@@ -22509,7 +22509,7 @@ phases:
       suite as closest authoritative equivalent.'
 - id: step-id-resolver-hardening
   name: A / Resolver Hardening
-  status: in_progress
+  status: done
   depends_on:
   - version-bump-0-6-2
   steps:
@@ -23719,7 +23719,7 @@ phases:
       - Resolver behavior retained; resolver tests pass.'
   - id: step-id-resolver-hardening.retest-mypy-gate-blockers
     name: Independent retest for resolver hardening mypy remediation
-    status: claimed
+    status: done
     description: 'step_type: verification
 
       agent_source: default
@@ -23818,9 +23818,37 @@ phases:
     agent: integration-verifier
     claimed_by: integration-verifier
     claimed_at: '2026-03-12T13:53:57.834763+00:00'
+    done_at: '2026-03-12T13:56:52.665186+00:00'
+    evidence: 'Artifact:
+
+      - commit hash: 8626481c10d38f7accf0dbf39a4a9249ee9b39fb (retested)
+
+
+      Verification:
+
+      - Run: `uv run mypy src tests` -> Success: no issues found in 52 source files
+
+      - Run: `uv run ruff check .` -> All checks passed
+
+      - Run: `uv run pytest -q tests/test_resolver.py tests/test_resolver_contract.py
+      tests/test_resolver_surfaces.py` -> 21 passed
+
+      - Run: `uv run pytest -q tests/test_mcp.py -k "test_init_"` -> 7 passed, 152
+      deselected
+
+
+      Spec link:
+
+      - step-id-resolver-hardening.retest-mypy-gate-blockers
+
+
+      Gaps/Notes:
+
+      - only mypy note observed: unchecked body note in `tests/test_agent_field.py`
+      (non-failing)'
 - id: step-id-validation-hardening
   name: B / Validation Hardening
-  status: locked
+  status: pending
   depends_on:
   - step-id-resolver-hardening
   steps:

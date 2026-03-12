@@ -26277,11 +26277,11 @@ phases:
     agent: gate-reviewer
 - id: p0-cycle-detection
   name: 'P0: edit_step Cycle Detection'
-  status: pending
+  status: in_progress
   steps:
   - id: implement
     name: Implement cycle detection in edit_step
-    status: pending
+    status: claimed
     description: "Add DAG cycle detection to edit_step() after dependency mutations.\n\
       \nFile: src/vectl/core.py (lines 1153-1174)\n\nProblem: When depends_on, add_deps,\
       \ or remove_deps are used in edit_step, no cycle detection runs afterward. Both\
@@ -26311,6 +26311,8 @@ phases:
 
       - Run: pytest tests/test_validation.py -v (no regressions)'
     agent: python-executor
+    claimed_by: python-executor
+    claimed_at: '2026-03-12T16:08:30.524789+00:00'
   - id: test
     name: Add edit_step cycle detection tests
     status: pending

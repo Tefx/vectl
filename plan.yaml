@@ -23854,7 +23854,7 @@ phases:
   steps:
   - id: step-id-validation-hardening.rollout-contract
     name: Define duplicate-id rollout policy
-    status: claimed
+    status: done
     description: "step_type: contract\ncontract_purity: ENFORCED\ncontract_outputs:\n\
       \  - rollout_policy\n  - validation_severity_matrix\n  - read_vs_write_behavior\n\
       \  - deprecation_copy\n  - half_automatic_mode_matrix\nagent_source: default\n\
@@ -23901,6 +23901,168 @@ phases:
     agent: software-architect
     claimed_by: software-architect
     claimed_at: '2026-03-12T13:57:23.854618+00:00'
+    done_at: '2026-03-12T14:01:16.011912+00:00'
+    evidence: '## Rollout Policy Contract Complete
+
+
+      Created `docs/contracts/duplicate-id-rollout-policy.yaml` (399 lines) defining
+      the duplicate-ID rollout policy.
+
+
+      ### Rollout Phases
+
+
+      **Phase B (Current - Validation Hardening)**:
+
+      - Read surfaces (`status`, `review`, `show`, `dag`, `validate`): WARNING mode
+      for legacy duplicates, full diagnostic output, exit code 0, NEVER mutate plan
+      files
+
+      - Write surfaces NEW duplicates (`add-step`, `add-steps`, `edit-step` rename,
+      `import`): HARD ERROR - always rejected before mutation
+
+      - Targeted mutating commands on legacy ambiguity (`claim`, `complete`, `defer`,
+      `reject`, `skip`, `cancel`, `check`): HARD ERROR with structured repair recommendation
+      + explicit opt-in requirement
+
+      - Half-automatic mode: NOT IMPLEMENTED in Phase B (deferred to Phase C)
+
+
+      **Phase C (Future - Migration Tooling)**:
+
+      - `migrate-step-id --dry-run` and `migrate-step-id --yes` tools
+
+      - `--auto-migrate` flag with dry-run preview and explicit confirmation
+
+      - Final hard error flip (configurable timeline) after tooling validation
+
+
+      ### Read Surfaces: Non-Mutation Guarantee
+
+
+      Contract explicitly guarantees READ SURFACES NEVER MUTATE:
+
+      - No write operations in read code paths
+
+      - No save, commit, or backup generation
+
+      - Only display warnings, no side effects
+
+      - Affected: CLI status/show/dag/validate/review/render/guide, MCP equivalents
+
+
+      ### Write Surfaces: New-Duplicate Prevention
+
+
+      ALL write surfaces (CLI and MCP) enforce:
+
+      - Hard rejection BEFORE any plan mutation
+
+      - Error code: `DUPLICATE_STEP_ID`
+
+      - Clear actionable message naming conflicting phase
+
+
+      ### Targeted Mutating Commands: Half-Automatic Mode Preference
+
+
+      When ambiguity detected:
+
+      1. STOP - do not mutate
+
+      2. Emit structured repair recommendation payload (type: `duplicate-step-id`)
+
+      3. Require explicit opt-in (Phase C `--auto-migrate` or `--phase.step-id` syntax)
+
+      4. NO silent migration, NO implicit dry-run/apply, NO hidden retry
+
+
+      ### Final Hard-Error Flip Condition
+
+
+      Trigger: After Phase C migration tooling ships and is validated
+
+      Behavior: `validate` and all read/write surfaces hard-error on legacy duplicate
+      step IDs
+
+      Timeline: Set by project maintainer after stability confirmation
+
+
+      ### User-Facing Copy Placements
+
+
+      Exact locations in `src/vectl/cli.py` and `src/vectl/mcp_server.py`:
+
+      - CLI: status (line ~941), show (~1142), dag (~1193), validate (~1566)
+
+      - CLI: claim (~1225), complete (~1333), defer/reject/skip/cancel/check
+
+      - CLI: add_step_cmd (~1762), add_steps_cmd (~2346), edit_step_cmd
+
+      - MCP: vectl_status, vectl_show, vectl_dag, vectl_review, vectl_guide
+
+      - MCP: vectl_claim, vectl_complete, vectl_lifecycle, vectl_mutate
+
+
+      ### Severity Matrix
+
+
+      | Surface | Phase B Severity | Behavior |
+
+      |---------|------------------|----------|
+
+      | status/show/dag/validate/review | WARNING | Warn + full context, exit 0, never
+      mutate |
+
+      | add-step/add-steps/edit-step (new dup) | ERROR | Hard rejection before mutation
+      |
+
+      | claim/complete/defer/reject/skip/cancel/check (ambiguous) | ERROR + recommendation
+      | Stop + payload, require opt-in |
+
+      | validate | WARNING (phase B) | Full diagnostic, exit 0 |
+
+      | validate | ERROR (phase C post-flip) | Hard failure on legacy duplicates |
+
+
+      ### Verification Criteria
+
+
+      - Single shared `detect_duplicate_step_ids()` path powers all surfaces
+
+      - Recommendation payload stable for automation (type field, all phases, resolution_path)
+
+      - No silent mutation, no implicit retry
+
+      - Phase B rollback safe (no mutations, only output)
+
+
+      ### Files Changed
+
+
+      - `docs/contracts/duplicate-id-rollout-policy.yaml` (400 lines)
+
+
+      ### Commit Hash
+
+
+      `ff24c07` - "docs: add duplicate-ID rollout policy contract"
+
+
+      ### Verification
+
+
+      - Contract defines exact behavior matrix per surface
+
+      - Contract explicitly states read-only non-mutation guarantee
+
+      - Contract defines final hard-error flip condition (Phase C after tooling)
+
+      - Contract specifies half-automatic mode (explicit opt-in requirement)
+
+      - User-facing copy placements reference exact CLI/MCP function names
+
+      - Contract is executable by workers without implementation choices'
   - id: step-id-validation-hardening.tests
     name: Add duplicate-id validation tests
     status: pending

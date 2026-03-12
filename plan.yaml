@@ -27501,7 +27501,7 @@ phases:
       - none'
   - id: test-find-step
     name: Add find_step qualified lookup tests
-    status: claimed
+    status: done
     description: 'Add tests for the qualified phase.step lookup in find_step.
 
 
@@ -27555,6 +27555,39 @@ phases:
     agent: python-executor
     claimed_by: python-executor
     claimed_at: '2026-03-12T17:32:24.047492+00:00'
+    done_at: '2026-03-12T17:38:55.613336+00:00'
+    evidence: 'Commit hash(es):
+
+      - worker branch: 1762cde
+
+      - main squash commit: 40807a0
+
+
+      Files changed:
+
+      - tests/test_models.py
+
+
+      Verification:
+
+      - pytest tests/ -k find_step -v -> PASS (9 passed)
+
+
+      Spec link:
+
+      - p1-qualified-lookup-errors/test-find-step
+
+
+      Gaps/Notes:
+
+      - Added focused qualified-lookup tests: empty-part handling, qualified lookup
+      among duplicate bare IDs, missing step/phase behavior, and case-sensitivity
+      expectations.
+
+
+      discovered_issues:
+
+      - none'
   - id: test-error-msg
     name: Add validation error message qualified ID test
     status: done

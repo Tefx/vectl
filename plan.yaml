@@ -27109,7 +27109,7 @@ phases:
       \ loop before rerun.\n\ndiscovered_issues:\n- none"
   - id: step-id-migration-tooling.fix-gate-blockers
     name: Fix gate blockers for migration tooling
-    status: pending
+    status: claimed
     description: 'step_type: implementation
 
       agent_source: default
@@ -27332,6 +27332,8 @@ phases:
     depends_on:
     - step-id-migration-tooling.freeze-gate
     agent: python-senior
+    claimed_by: python-senior
+    claimed_at: '2026-03-12T19:20:36.833264+00:00'
   - id: step-id-migration-tooling.retest-gate-blockers
     name: Independent retest of migration tooling gate blockers
     status: pending

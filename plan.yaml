@@ -27952,7 +27952,7 @@ phases:
       backlog'
   - id: step-id-final-integration.independent-retest-of-batched-gate-remediation
     name: Independent retest of batched gate remediation
-    status: pending
+    status: claimed
     description: 'step_type: verification
 
       agent_source: default
@@ -28061,6 +28061,8 @@ phases:
     depends_on:
     - step-id-final-integration.fix-all-gate-blockers-and-copy-drift
     agent: blind-tester
+    claimed_by: blind-tester
+    claimed_at: '2026-03-12T20:01:05.533449+00:00'
 - id: p0-cycle-detection
   name: 'P0: edit_step Cycle Detection'
   status: done

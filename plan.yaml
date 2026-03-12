@@ -24577,7 +24577,7 @@ phases:
       - none'
   - id: step-id-validation-hardening.retest-verify-findings
     name: Retest MCP duplicate-id status findings
-    status: claimed
+    status: done
     description: 'step_type: verification
 
       agent_source: default
@@ -24619,6 +24619,43 @@ phases:
     agent: blind-tester
     claimed_by: blind-tester
     claimed_at: '2026-03-12T15:08:18.305143+00:00'
+    done_at: '2026-03-12T15:11:47.350125+00:00'
+    evidence: 'Commit hash(es): none (retest-only step; no code changes required)
+
+
+      Files changed:
+
+      - none
+
+
+      Verification:
+
+      - uv run python (MCP vectl_status.fn against duplicate+unique fixtures) -> PASS;
+      duplicate output shows `P1 duplicate (p1)` and `P2 duplicate (p2)` without phase
+      leakage; unique output remains `alpha.step1 (alpha)`
+
+      - uv run pytest tests/test_mcp.py::TestVectlStatus::test_status_next_steps_shows_correct_phase_for_duplicate_ids
+      tests/test_mcp.py::TestVectlStatus::test_shows_next_available tests/test_mcp.py::TestVectlStatus::test_status_shows_duplicate_step_id_diagnostics
+      -> PASS (3 passed)
+
+      - git status --short --branch (worker worktree) -> clean
+
+
+      Spec link:
+
+      - conversation/duplicate-step-id-bug
+
+      - conversation/half-automatic-step-id-migration
+
+
+      Gaps/Notes:
+
+      - Focused duplicate/unique fixture retest completed; no residual mismatch found.
+
+
+      discovered_issues:
+
+      - none'
 - id: step-id-migration-tooling
   name: C / Migration & Tooling
   status: locked

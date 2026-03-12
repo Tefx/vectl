@@ -23300,6 +23300,58 @@ phases:
     depends_on:
     - step-id-migration-tooling.tests
     agent: python-senior
+  - id: step-id-migration-tooling.surfaces
+    name: Add CLI and MCP migration surfaces
+    status: pending
+    description: "step_type: implementation\nagent_source: default\ntags:\n- integration\n\
+      spec_refs:\n  - conversation/duplicate-step-id-bug\n\ntouch_paths:\n- src/vectl/cli.py\n\
+      - src/vectl/mcp_server.py\n\nharness_refs:\n- tests/test_cli.py\n- tests/test_mcp.py\n\
+      \nAdd operator-facing duplicate-ID repair surfaces.\n\nRequired behavior:\n\
+      - provide repair/migrate command(s) with `--dry-run`\n- show deterministic rename\
+      \ maps and impacted phases/steps before apply\n- support apply mode that uses\
+      \ the repair engine and reports the resulting IDs clearly\n- expose equivalent\
+      \ MCP functionality for automated repair workflows where appropriate\n- if claimed-step\
+      \ migration is blocked or requires follow-up, return actionable guidance rather\
+      \ than partial success\n\nIntegration evidence requirement:\n- prove CLI dry-run\
+      \ -> apply flow against a real duplicate-id fixture\n- prove MCP dry-run or\
+      \ apply path returns the same mapping semantics as CLI\n\nOut-of-scope guardrail:\n\
+      - planner/template/guidance wording changes happen in the next step\n- final\
+      \ hard-error flip follows after repair surfaces exist"
+    verification: '- Main path: CLI and MCP repair flows exercise the same engine
+      and mapping output
+
+      - Failure path: dry-run/apply mismatch, blocked claimed-step policy, and no-op
+      re-run are covered
+
+      - Proof: operator can repair a duplicate-id plan without hand-editing YAML'
+    evidence_template: '## Integration Evidence
+
+
+      **Command or test exercising the full path**:
+
+      ```
+
+      <vectl repair/migrate dry-run and apply commands>
+
+      ```
+
+
+      **Actual output**:
+
+      ```
+
+      <stdout/stderr or MCP payload excerpt>
+
+      ```
+
+
+      **Path exercised**: repair command/tool -> repair engine -> saved plan / dry-run
+      report
+
+      '
+    depends_on:
+    - step-id-migration-tooling.engine
+    agent: python-senior
 - id: step-id-final-integration
   name: Final Integration & Gate
   status: locked

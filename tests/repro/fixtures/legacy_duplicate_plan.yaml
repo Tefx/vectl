@@ -1,0 +1,17 @@
+version: 1
+project: verify-legacy-dup
+phases:
+- id: p1
+  name: Phase 1
+  status: pending
+  steps:
+  - id: dup.step
+    name: P1 duplicate
+    status: pending
+- id: p2
+  name: Phase 2
+  status: pending
+  steps:
+  - id: dup.step
+    name: P2 duplicate
+    status: pending

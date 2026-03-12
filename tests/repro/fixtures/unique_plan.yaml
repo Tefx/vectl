@@ -1,0 +1,24 @@
+version: 1
+project: verify-unique
+phases:
+- id: alpha
+  name: Alpha
+  status: pending
+  steps:
+  - id: alpha.step1
+    name: Alpha Step 1
+    status: pending
+  - id: alpha.step2
+    name: Alpha Step 2
+    status: pending
+    depends_on:
+    - alpha.step1
+- id: beta
+  name: Beta
+  status: locked
+  depends_on:
+  - alpha
+  steps:
+  - id: beta.step1
+    name: Beta Step 1
+    status: pending

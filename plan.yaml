@@ -24693,7 +24693,7 @@ phases:
       - none'
   - id: step-id-validation-hardening.fix-gate-findings
     name: Batched fix for gate findings
-    status: pending
+    status: claimed
     description: 'step_type: implementation
 
       agent_source: default
@@ -24995,6 +24995,8 @@ phases:
     - step-id-validation-hardening.retest-verify-findings
     - step-id-validation-hardening.freeze-gate
     agent: python-senior
+    claimed_by: python-senior
+    claimed_at: '2026-03-12T15:29:03.027082+00:00'
   - id: step-id-validation-hardening.retest-gate-findings
     name: Independent retest of batched gate findings
     status: pending

@@ -1173,6 +1173,13 @@ def edit_step(
             if dep in step.depends_on:
                 step.depends_on.remove(dep)
 
+    # Cycle detection: check when depends_on/add_deps/remove_deps mutations occurred
+    if depends_on is not _SENTINEL or add_deps or remove_deps:
+        step_graph = {s.id: s.depends_on for s in phase.steps}
+        cycle = _detect_cycle(step_graph)
+        if cycle:
+            raise PlanError(f"Step dependency cycle: {' → '.join(cycle)}")
+
     if refs is not _SENTINEL:
         step.refs = list(refs)  # type: ignore
 

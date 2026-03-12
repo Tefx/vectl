@@ -2,11 +2,12 @@
 
 import pytest
 
-from vectl.core import add_step, add_steps_bulk, claim_step, validate_plan
+from vectl.core import add_step, add_steps_bulk, claim_step, edit_step, validate_plan
 from vectl.models import (
     Phase,
     PhaseStatus,
     Plan,
+    PlanError,
     Step,
     StepStatus,
 )
@@ -498,3 +499,106 @@ class TestFutureHardErrorFlipPlaceholders:
         # Placeholder for future: strict validation of auto-generated IDs
         # add_step(plan, "p1", "X", strict=True)  # Would fail if "x" exists
         # add_step(plan, "p1", "X", strict=False) # Would allow with suffix
+
+
+# =============================================================================
+# edit_step Cycle Detection Tests (p0-cycle-detection/implement)
+# =============================================================================
+
+
+class TestEditStepCycleDetection:
+    """Cycle detection during edit_step mutations."""
+
+    def test_edit_step_depends_on_cycle_raises_error(self):
+        """edit_step with depends_on that creates a cycle raises PlanError."""
+        plan = _make_plan(
+            phases=[
+                Phase(
+                    id="p1",
+                    name="P1",
+                    steps=[
+                        Step(id="s1", name="S1"),
+                        Step(id="s2", name="S2", depends_on=["s1"]),
+                    ],
+                )
+            ]
+        )
+        # s1 depends on s2 creates cycle: s1 -> s2 -> s1
+        with pytest.raises(PlanError) as exc_info:
+            edit_step(plan, "s1", depends_on=["s2"])
+
+        assert "cycle" in str(exc_info.value).lower()
+
+    def test_edit_step_add_deps_cycle_raises_error(self):
+        """edit_step with add_deps that creates a cycle raises PlanError."""
+        plan = _make_plan(
+            phases=[
+                Phase(
+                    id="p1",
+                    name="P1",
+                    steps=[
+                        Step(id="s1", name="S1"),
+                        Step(id="s2", name="S2", depends_on=["s1"]),
+                    ],
+                )
+            ]
+        )
+        # s1 -> s2 already exists; adding s2 as dep to s1 creates cycle
+        with pytest.raises(PlanError) as exc_info:
+            edit_step(plan, "s1", add_deps=["s2"])
+
+        assert "cycle" in str(exc_info.value).lower()
+
+    def test_edit_step_remove_deps_cycle_raises_error(self):
+        """edit_step with remove_deps does NOT raise cycle (removing deps can't create cycles)."""
+        plan = _make_plan(
+            phases=[
+                Phase(
+                    id="p1",
+                    name="P1",
+                    steps=[
+                        Step(id="s1", name="S1"),
+                        Step(id="s2", name="S2", depends_on=["s1"]),
+                    ],
+                )
+            ]
+        )
+        # Removing deps cannot create a cycle, should succeed
+        result = edit_step(plan, "s2", remove_deps=["s1"])
+        assert result is not None
+
+    def test_edit_step_valid_deps_succeeds(self):
+        """edit_step with valid dependencies succeeds."""
+        plan = _make_plan(
+            phases=[
+                Phase(
+                    id="p1",
+                    name="P1",
+                    steps=[
+                        Step(id="s1", name="S1"),
+                        Step(id="s2", name="S2"),
+                        Step(id="s3", name="S3"),
+                    ],
+                )
+            ]
+        )
+        # Adding valid dependencies should succeed
+        result = edit_step(plan, "s3", add_deps=["s1", "s2"])
+        assert result is not None
+
+    def test_edit_step_no_dep_mutation_no_cycle_check(self):
+        """edit_step without dep mutations doesn't trigger cycle check."""
+        plan = _make_plan(
+            phases=[
+                Phase(
+                    id="p1",
+                    name="P1",
+                    steps=[
+                        Step(id="s1", name="S1"),
+                    ],
+                )
+            ]
+        )
+        # No dep mutation, should succeed even with existing steps
+        result = edit_step(plan, "s1", name="Updated S1")
+        assert result is not None

@@ -26866,7 +26866,7 @@ phases:
       - none'
   - id: step-id-migration-tooling.verify
     name: Independently verify migration and DAG preservation
-    status: pending
+    status: claimed
     description: 'step_type: verification
 
       agent_source: default
@@ -26917,6 +26917,8 @@ phases:
     depends_on:
     - step-id-migration-tooling.freeze-l2
     agent: integration-verifier
+    claimed_by: integration-verifier
+    claimed_at: '2026-03-12T18:46:35.506021+00:00'
   - id: step-id-migration-tooling.freeze-gate
     name: Freeze snapshot for migration gate
     status: pending

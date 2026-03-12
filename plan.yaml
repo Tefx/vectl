@@ -22977,7 +22977,7 @@ phases:
       \ review and records decision"
   - id: step-id-resolver-hardening.gate
     name: Gate review for resolver hardening
-    status: claimed
+    status: done
     description: 'step_type: gate
 
       agent_source: default
@@ -23038,6 +23038,35 @@ phases:
     agent: gate-reviewer
     claimed_by: gate-reviewer
     claimed_at: '2026-03-12T13:20:02.157942+00:00'
+    done_at: '2026-03-12T13:30:37.178410+00:00'
+    evidence: "gate_verdict: \"BLOCKED\"\nscope: \"step-id-resolver-hardening.gate\"\
+      \nfindings:\n  blockers:\n    - root_cause: \"ruff lint gate fails on resolver\
+      \ + test surfaces\"\n      locations:\n        - \"src/vectl/resolver.py\"\n\
+      \        - \"tests/test_resolver_contract.py\"\n        - \"tests/test_resolver_regression.py\"\
+      \n      remediation: \"clear import/unused/style failures so `uv run ruff check\
+      \ .` passes\"\n      grep_hint: \"uv run ruff check .\"\n      sibling_count:\
+      \ 3\n    - root_cause: \"resolver contract tests are placeholder-skipped and\
+      \ contract doc conflicts with model semantics\"\n      locations:\n        -\
+      \ \"tests/test_resolver_contract.py\"\n        - \"docs/contracts/step-resolver-contract.md\"\
+      \n        - \"src/vectl/models.py\"\n      remediation: \"replace placeholders\
+      \ with enforceable tests (or move placeholders out of collected tests) and align\
+      \ doc with Step/Phase id semantics\"\n      grep_hint: \"rg -n 'pytest.skip|placeholder'\
+      \ tests/test_resolver_contract.py docs/contracts/step-resolver-contract.md src/vectl/models.py\"\
+      \n      sibling_count: 3\n    - root_cause: \"mypy type-check fails on resolver\
+      \ surface tests using `.fn` callable wrapper assumptions\"\n      locations:\n\
+      \        - \"tests/test_resolver_surfaces.py\"\n        - \"tests/test_resolver_regression.py\"\
+      \n        - \"tests/test_mcp.py\"\n      remediation: \"adopt type-safe MCP\
+      \ wrapper access or wrapper typing so mypy passes\"\n      grep_hint: \"rg -n\
+      \ '\\\\.fn' tests/test_resolver_*.py tests/test_mcp.py\"\n      sibling_count:\
+      \ 3\n  should_fix:\n    - root_cause: \"repair hints for duplicate step IDs\
+      \ are partially non-actionable\"\n      locations:\n        - \"src/vectl/resolver.py\"\
+      \n      remediation: \"prioritize actionable unique-ID repair guidance in hint\
+      \ builder\"\n      grep_hint: \"_build_repair_hints\"\n      sibling_count:\
+      \ 1\n  suggestions: []\n  tech_debt: []\nverification_summary:\n  - \"pytest\
+      \ focused resolver verification passed\"\n  - \"gate rerun found ruff and mypy\
+      \ blockers\"\n  - \"created batched remediation chain\"\nrecommendation: \"\
+      BLOCK until batched fixes and independent retest pass.\"\n\nfix_steps_created:\n\
+      - step-id-resolver-hardening.fix-gate-blockers\n- step-id-resolver-hardening.retest-gate-blockers"
   - id: step-id-resolver-hardening.fix-gate-blockers
     name: Batched remediation for resolver hardening gate blockers
     status: pending

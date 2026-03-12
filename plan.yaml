@@ -23661,6 +23661,105 @@ phases:
     depends_on:
     - step-id-resolver-hardening.retest-gate-blockers
     agent: python-executor
+  - id: step-id-resolver-hardening.retest-mypy-gate-blockers
+    name: Independent retest for resolver hardening mypy remediation
+    status: pending
+    description: 'step_type: verification
+
+      agent_source: default
+
+      priority: HIGH
+
+
+      As an INDEPENDENT TESTER (`integration-verifier`), validate the batched mypy
+      remediation from `step-id-resolver-hardening.fix-mypy-gate-blockers` from a
+      fresh perspective.
+
+
+      YOUR GOAL IS TO FIND PROBLEMS, not to confirm it works.
+
+
+      prior_loop:
+
+      - step-id-resolver-hardening.fix-gate-blockers
+
+      - step-id-resolver-hardening.retest-gate-blockers
+
+      - step-id-resolver-hardening.fix-mypy-gate-blockers
+
+      remaining_blocker: Phase A cannot progress while repo typing is still red or
+      while resolver hardening behavior regresses under the follow-up typing cleanup.
+
+      why_new_loop: The narrowed blocker now requires independent confirmation that
+      the consolidated mypy fixes close the full error set without re-breaking resolver
+      hardening.
+
+
+      spec_refs:
+
+      - `docs/contracts/step-resolver-contract.md`
+
+      - phase `step-id-resolver-hardening`
+
+
+      touch_paths under test:
+
+      - `tests/test_migration.py`
+
+      - `tests/test_cli.py`
+
+      - `tests/test_autofix_message.py`
+
+      - `tests/test_agent_field.py`
+
+      - `src/vectl/resolver.py`
+
+      - `tests/test_resolver_contract.py`
+
+      - `tests/test_resolver_surfaces.py`
+
+      - `tests/test_resolver_regression.py`
+
+
+      harness_refs:
+
+      - `uv run mypy src tests`
+
+      - `uv run ruff check .`
+
+      - resolver contract enforceability checks
+
+      - targeted resolver parity / non-mutation / resolver surface tests
+
+
+      Test for:
+
+      - Static typing: `uv run mypy src tests` now passes with no remaining errors.
+
+      - Static hygiene: `uv run ruff check .` remains green after the typing follow-up.
+
+      - Regression path: resolver contract + resolver surface/parity/non-mutation
+      suites still pass after the mypy cleanup.
+
+      - Error scenarios: no sibling `.fn`, Optional tuple-index, or result-type mismatches
+      remain in the touched test surfaces.
+
+
+      Independence Level: L1'
+    verification: '- `uv run mypy src tests` passes
+
+      - `uv run ruff check .` passes
+
+      - Resolver contract enforceability checks pass
+
+      - Resolver contract + resolver surface/parity/non-mutation tests still pass
+      after the remediation
+
+      - Evidence records actual command output, plus any residual typing issue as
+      a blocker if found'
+    depends_on:
+    - step-id-resolver-hardening.fix-mypy-gate-blockers
+    agent: integration-verifier
 - id: step-id-validation-hardening
   name: B / Validation Hardening
   status: locked

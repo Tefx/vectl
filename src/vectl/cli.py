@@ -20,25 +20,39 @@ from rich.table import Table
 from rich.text import Text
 
 from vectl import __version__
-from vectl.claims import repair_claims
+from vectl.claims import get_current_branch, repair_claims
 from vectl.core import (
     RecoverResult,
     add_phase,
     add_step,
     add_steps_bulk,
+    analyze_duplicate_step_ids,
+    apply_duplicate_step_id_migration,
+    build_duplicate_step_id_migration_dry_run,
+    build_duplicate_step_id_migration_evidence,
+    claim_step,
     clipboard_clear,
     clipboard_write,
+    complete_phase,
+    complete_step,
+    defer_step,
     diff_plans,
+    duplicate_step_id_recommendation_for_target,
     edit_phase,
     edit_step,
     format_lock_changes,
+    get_claimed_steps,
     get_next_steps,
     move_step,
     recalc_lock_status,
+    reject_step,
     remove_step,
     render_plan,
+    require_unambiguous_target_step_id,
     review_plan,
     search_plan,
+    skip_phase,
+    skip_step,
     unlock_phase,
     update_checklist,
     validate_plan,
@@ -54,35 +68,28 @@ from vectl.io import (
     load_plan_definition,
     save_plan,
 )
-from vectl.lifecycle import (
-    ClaimConflictError,
-    claim_step,
-    complete_phase,
-    complete_step,
-    defer_step,
-    get_claimed_steps,
-    reject_step,
-    skip_phase,
-    skip_step,
-)
+from vectl.lifecycle import ClaimConflictError
 from vectl.merge_driver import merge_plans
 from vectl.migration import migrate_from_split_state, resolve_state_path
 from vectl.models import (
     AffinityMode,
     CASConflictError,
+    Phase,
     PhaseStatus,
     Plan,
     PlanError,
     PlanIOError,
     SkipReason,
+    Step,
     StepStatus,
+    format_step_selector,
 )
 from vectl.plan_path import (
     is_linked_worktree,
     resolve_claims_path,
     resolve_plan_path,
 )
-from vectl.semantics import is_step_locked
+from vectl.semantics import _get_active_phase_ids, is_step_locked
 
 console = Console(stderr=True)
 out = Console()
@@ -135,6 +142,96 @@ def _one_line_summary(description: str, max_len: int = 72) -> str:
             return stripped[: max_len - 1] + "…"
         return stripped
     return ""
+
+
+def _print_duplicate_id_warning_block(p: Plan) -> None:
+    """Print duplicate step-ID diagnostics for read-only surfaces."""
+    diagnostics = analyze_duplicate_step_ids(p)
+    if not diagnostics.conflicts:
+        return
+
+    out.print("[yellow]⚠ Duplicate step-ID diagnostics:[/]")
+    for conflict in diagnostics.conflicts:
+        phases = ", ".join(conflict.phase_ids)
+        out.print(
+            f"  [yellow]WARN:[/] duplicate step ID '{_esc(conflict.step_id)}' "
+            f"appears {conflict.occurrences} time(s) across phases: {_esc(phases)}"
+        )
+
+
+def _print_duplicate_id_recommendation_for_step(p: Plan, step_id: str) -> None:
+    """Print duplicate-ID repair recommendation for an ambiguous step target."""
+    diagnostics = analyze_duplicate_step_ids(p)
+    recommendation = duplicate_step_id_recommendation_for_target(diagnostics, step_id)
+    if recommendation is None:
+        return
+
+    out.print(
+        "[yellow]⚠ Ambiguous step target: duplicate ID detected across phases.[/]",
+    )
+    phases = ", ".join(duplicate.phase for duplicate in recommendation.duplicates)
+    out.print(
+        "  "
+        f"[dim]type={_esc(recommendation.type)} "
+        f"step_id={_esc(recommendation.step_id)} "
+        f"duplicates={_esc(phases)}[/]"
+    )
+    out.print(
+        "  [dim]resolution.explicit_phase:[/] "
+        f"{_esc(recommendation.resolution_path.explicit_phase)}",
+    )
+    out.print(
+        "  [dim]resolution.auto_migrate_flag:[/] "
+        f"{_esc(recommendation.resolution_path.auto_migrate_flag)}",
+    )
+    out.print(
+        "  [dim]resolution.migration_tool:[/] "
+        f"{_esc(recommendation.resolution_path.migration_tool)}",
+    )
+
+
+def _get_next_steps_with_phase(plan: Plan, agent: str | None = None) -> list[tuple[Phase, Step]]:
+    """Get next steps with their containing phase.
+
+    Returns list of (phase, step) tuples to correctly track phase membership
+    for duplicate step IDs across different phases.
+
+    Args:
+        plan: The plan to query.
+        agent: If provided, prioritize steps whose `agent` field matches.
+    """
+    active_phase_ids = _get_active_phase_ids(plan)
+    result: list[tuple[Phase, Step]] = []
+
+    for phase in plan.phases:
+        if phase.id not in active_phase_ids:
+            continue
+        done_step_ids = {
+            s.id for s in phase.steps if s.status in (StepStatus.DONE, StepStatus.SKIPPED)
+        }
+        for step in phase.steps:
+            if step.status not in (StepStatus.PENDING, StepStatus.REJECTED):
+                continue
+            # All deps satisfied?
+            if all(dep in done_step_ids for dep in step.depends_on):
+                result.append((phase, step))
+
+    # Sort with same priority as get_next_steps
+    def _sort_key(item: tuple[Phase, Step]) -> tuple[int, int, str]:
+        _, s = item
+        # Priority 0: rejected (needs rework)
+        status_rank = 0 if s.status == StepStatus.REJECTED else 1
+        # Agent affinity: 0 = matches, 1 = unassigned, 2 = different agent
+        if agent is None or s.agent is None:
+            agent_rank = 1
+        elif s.agent == agent:
+            agent_rank = 0
+        else:
+            agent_rank = 2
+        return (status_rank, agent_rank, s.id)
+
+    result.sort(key=_sort_key)
+    return result
 
 
 # ---------------------------------------------------------------------------
@@ -683,6 +780,13 @@ directly as a workaround. Use `uvx vectl guide stuck` for troubleshooting.
 - Evidence is mandatory when completing (commands run + outputs + gaps).
 - Spec uncertainty: leave `# SPEC QUESTION: ...` in code, do not guess.
 
+### Step ID Uniqueness
+**Step IDs must be globally unique across ALL phases.**
+- Example: `auth.login` and `api.login` are different step IDs.
+- Example: Using just `login` in two phases creates a duplicate — not allowed.
+- If you have legacy duplicate step IDs, use `vectl migrate-step-id --dry-run`
+  to preview and `--yes` to repair.
+
 ### For Architects / Planners
 - **Design Mode**: Run `uvx vectl guide --on planning` to learn the Architect Protocol.
 - **Ambiguity = Failure**: Workers will hallucinate if steps are vague.
@@ -874,24 +978,20 @@ def next_cmd(
     if p.context.strip():
         out.print(Panel(p.context.strip(), title="Strategy", border_style="blue"))
 
-    steps = get_next_steps(p, agent=agent)
-    if not steps:
+    # Get next steps with phase info to correctly track phase for duplicate step IDs
+    steps_with_phase = _get_next_steps_with_phase(p, agent=agent)
+    if not steps_with_phase:
         out.print("[dim]No claimable steps. All phases may be done or locked.[/]")
         return
 
-    total = len(steps)
+    total = len(steps_with_phase)
     display_limit = total if all_steps else limit
-    visible = steps[:display_limit]
+    visible = steps_with_phase[:display_limit]
 
     out.print("[bold]Next Steps[/]\n")
 
-    for i, step in enumerate(visible, 1):
-        # Find which phase this step belongs to
-        phase_id = ""
-        for phase in p.phases:
-            if any(s.id == step.id for s in phase.steps):
-                phase_id = phase.id
-                break
+    for i, (phase, step) in enumerate(visible, 1):
+        phase_id = phase.id
 
         icon = _step_icon(step.status)
         # One-line summary: first line of description, truncated
@@ -947,6 +1047,7 @@ def status(
 
     if phase is not None:
         _show_phase_detail(p, phase)
+        _print_duplicate_id_warning_block(p)
         return
 
     # Check for claims.json vs plan.yaml mismatch
@@ -977,6 +1078,8 @@ def status(
         )
 
     out.print(table)
+    out.print()
+    _print_duplicate_id_warning_block(p)
 
     # B1: Show mismatch indicator when detected
     if has_mismatch:
@@ -1045,7 +1148,7 @@ def _show_phase_detail(p: Plan, phase_id: str) -> None:
 def _show_step_detail(p: Plan, step_id: str, plan_path: Path | None = None) -> None:
     found = p.find_step(step_id)
     if not found:
-        _die(f"Step '{step_id}' not found.")
+        _die(f"Step '{_canonical_selector_error_target(step_id)}' not found.")
         return  # unreachable
     phase, step = found
 
@@ -1080,6 +1183,8 @@ def _show_step_detail(p: Plan, step_id: str, plan_path: Path | None = None) -> N
     # B2: Show mismatch explanation when detected
     if mismatch_info:
         out.print(f"[yellow]{mismatch_info}[/]")
+
+    _print_duplicate_id_recommendation_for_step(p, step.id)
 
     if step.agent:
         out.print(f"**Suggested agent:** {step.agent}", markup=False)
@@ -1138,6 +1243,16 @@ def _show_step_detail(p: Plan, step_id: str, plan_path: Path | None = None) -> N
         out.print(f"[dim]→ vectl claim {eid} --agent <name>   Re-claim for rework[/]")
 
 
+def _canonical_selector_error_target(selector: str) -> str:
+    """Collapse accidental double-prefix selector forms for error output."""
+    if "." not in selector:
+        return selector
+    phase_prefix, _, step_suffix = selector.partition(".")
+    if phase_prefix and step_suffix.startswith(f"{phase_prefix}."):
+        return format_step_selector(phase_prefix, step_suffix)
+    return selector
+
+
 @app.command()
 def show(
     target: str = typer.Argument(..., help="Step ID or Phase ID."),
@@ -1150,6 +1265,7 @@ def show(
     ph = p.find_phase(target)
     if ph is not None:
         _show_phase_detail(p, target)
+        _print_duplicate_id_warning_block(p)
         return
 
     # Try step match
@@ -1158,7 +1274,8 @@ def show(
         _show_step_detail(p, target, plan_path=plan_path)
         return
 
-    _die(f"'{target}' not found as step or phase.")
+    canonical_target = _canonical_selector_error_target(target)
+    _die(f"'{canonical_target}' not found as step or phase.")
 
 
 # ---------------------------------------------------------------------------
@@ -1213,6 +1330,7 @@ def dag(
         _die(str(e))
         return  # unreachable
 
+    _print_duplicate_id_warning_block(p)
     out.print(mmd)
 
 
@@ -1344,22 +1462,17 @@ def complete(
     _save_plan(p, plan_path, def_h, f"vectl: complete {step_id}")
     out.print(f"[green]Completed:[/] {step_id}")
 
-    # Show next available steps (saves a tool call)
-    next_steps = get_next_steps(p)
-    if next_steps:
+    # Show next available steps - use _get_next_steps_with_phase for correct phase tracking
+    next_steps_with_phase = _get_next_steps_with_phase(p)
+    if next_steps_with_phase:
         out.print()
         out.print("[bold]Next available:[/]")
-        for s in next_steps[:3]:
-            phase_id = ""
-            for ph in p.phases:
-                if any(ps.id == s.id for ps in ph.steps):
-                    phase_id = ph.id
-                    break
+        for phase, s in next_steps_with_phase[:3]:
             icon = _step_icon(s.status)
             suggested = f"  suggested: {_esc(s.agent)}" if s.agent else ""
-            out.print(f"  {icon}  {s.id} — {s.name}  [dim]({phase_id}){suggested}[/]")
-        if len(next_steps) > 3:
-            out.print(f"  [dim]... and {len(next_steps) - 3} more[/]")
+            out.print(f"  {icon}  {s.id} — {s.name}  [dim]({phase.id}){suggested}[/]")
+        if len(next_steps_with_phase) > 3:
+            out.print(f"  [dim]... and {len(next_steps_with_phase) - 3} more[/]")
         out.print()
         out.print("[dim]→ vectl claim <id> --agent <name>[/]")
         out.print("[dim]→ vectl show <id>                  [/]")
@@ -1615,6 +1728,15 @@ def migrate_cmd(
         out.print(f"[yellow]No legacy state file found:[/] {state_path}")
         return
 
+    loaded_plan, _, _ = _load(plan)
+    try:
+        for phase in loaded_plan.phases:
+            for step in phase.steps:
+                require_unambiguous_target_step_id(loaded_plan, step.id, operation="migrate")
+    except PlanError as e:
+        _die(str(e))
+        return
+
     out.print("[bold]Migration preview[/]")
     out.print(f"  plan: {plan_path}")
     out.print(f"  legacy state: {state_path}")
@@ -1647,6 +1769,122 @@ def migrate_cmd(
         out.print("[yellow]Warnings:[/]")
         for warning in result.warnings:
             out.print(f"  - {warning}")
+
+
+@app.command("migrate-step-id")
+def migrate_step_id_cmd(
+    dry_run: bool = typer.Option(
+        False,
+        "--dry-run",
+        help="Preview duplicate step-ID migration without writing plan.yaml.",
+    ),
+    yes: bool = typer.Option(False, "--yes", "-y", help="Skip confirmation prompt for apply."),
+    as_json: bool = typer.Option(
+        False,
+        "--json",
+        help="Emit machine-readable payload including report and evidence.",
+    ),
+    plan: Path | None = PlanOption,
+) -> None:
+    """Migrate duplicate step IDs to globally unique IDs.
+
+    Source: step `step-id-migration-tooling.surfaces` and contract
+    docs/contracts/duplicate-id-migration-contract.yaml dry-run/apply schema.
+    """
+
+    loaded_plan, def_h, plan_path = _load(plan)
+    claims_path = resolve_claims_path(plan_path)
+    branch = get_current_branch()
+
+    report, _ = build_duplicate_step_id_migration_dry_run(
+        loaded_plan,
+        claims_path=claims_path,
+        branch=branch,
+    )
+    preview_evidence = build_duplicate_step_id_migration_evidence(
+        command="vectl migrate-step-id",
+        command_args=["--dry-run"],
+        run_mode="dry-run",
+        migrated=False,
+        report=report,
+    )
+
+    if dry_run:
+        dry_run_payload: dict[str, object] = {
+            "status": "recommendation_only",
+            "report": report.to_dict(),
+            "evidence": preview_evidence.to_dict(),
+        }
+        if as_json:
+            typer.echo(json.dumps(dry_run_payload, sort_keys=True))
+            return
+
+        out.print("[bold]Duplicate step-ID migration dry-run[/]")
+        out.print(f"Plan: {plan_path}")
+        out.print(f"Branch: {branch}")
+        out.print(f"Duplicate groups: {len(report.duplicate_groups)}")
+        out.print(f"Rename map entries: {len(report.rename_map)}")
+        affected_phases = ", ".join(report.affected_phases) if report.affected_phases else "-"
+        out.print(f"Affected phases: {affected_phases}")
+        out.print("[dim]report[/]")
+        out.print(json.dumps(report.to_dict(), indent=2, sort_keys=True))
+        out.print("[dim]evidence[/]")
+        out.print(json.dumps(preview_evidence.to_dict(), indent=2, sort_keys=True))
+        return
+
+    if not yes:
+        out.print("[bold]Duplicate step-ID migration apply preview[/]")
+        out.print(f"Plan: {plan_path}")
+        out.print(f"Branch: {branch}")
+        out.print(f"Duplicate groups: {len(report.duplicate_groups)}")
+        out.print(f"Rename map entries: {len(report.rename_map)}")
+        if report.claimed_step_conflicts:
+            out.print("[yellow]Claimed-step conflicts detected; apply will be blocked.[/]")
+        out.print()
+        confirm = typer.prompt("Apply duplicate step-ID migration now? (y/N)", default="n")
+        if confirm.lower() != "y":
+            out.print("[yellow]Cancelled.[/]")
+            return
+
+    try:
+        apply_result = apply_duplicate_step_id_migration(
+            plan_path,
+            expected_hash=def_h,
+            claims_path=claims_path,
+            branch=branch,
+            command="vectl migrate-step-id",
+            command_args=["--yes"] if yes else [],
+            run_mode="apply",
+        )
+    except CASConflictError:
+        _die(
+            "CAS conflict: plan.yaml was modified by another process since you loaded it. "
+            "Re-read with `vectl status` or `vectl show`, then retry migration."
+        )
+        return
+    except PlanError as e:
+        _die(str(e))
+        return
+
+    apply_payload: dict[str, object] = {
+        "status": "repair_applied",
+        "migrated": apply_result.migrated,
+        "new_plan_hash": apply_result.new_plan_hash,
+        "report": apply_result.report.to_dict(),
+        "evidence": apply_result.evidence.to_dict(),
+    }
+
+    if as_json:
+        typer.echo(json.dumps(apply_payload, sort_keys=True))
+        return
+
+    out.print("[green]Duplicate step-ID migration complete.[/]")
+    out.print(f"migrated={apply_result.migrated}")
+    out.print(f"new_plan_hash={apply_result.new_plan_hash or '-'}")
+    out.print("[dim]report[/]")
+    out.print(json.dumps(apply_result.report.to_dict(), indent=2, sort_keys=True))
+    out.print("[dim]evidence[/]")
+    out.print(json.dumps(apply_result.evidence.to_dict(), indent=2, sort_keys=True))
 
 
 @app.command()
@@ -2018,6 +2256,11 @@ def edit_step_cmd(
         "--evidence-template",
         help="New completion evidence template (inline; use '' to clear).",
     ),
+    new_step_id: str | None = typer.Option(
+        None,
+        "--new-id",
+        help="Rename this step to a new globally unique ID.",
+    ),
     evidence_template_file: Path | None = EvidenceTemplateFileOption,
     plan: Path | None = PlanOption,
 ) -> None:
@@ -2042,11 +2285,13 @@ def edit_step_cmd(
         and not add_refs
         and not rm_refs
         and evidence_template is None
+        and new_step_id is None
         and evidence_template_file is None
     ):
         _die(
             "Nothing to edit. Provide at least one of --name, --desc, --verify, --agent, "
             "--add-dep, --rm-dep, --add-ref, --rm-ref, --evidence_template, "
+            "--new-id, "
             "--evidence_template_file."
         )
         return  # unreachable
@@ -2079,6 +2324,7 @@ def edit_step_cmd(
             remove_deps=rm_deps,
             add_refs=add_refs,
             remove_refs=rm_refs,
+            new_step_id=new_step_id if new_step_id is not None else _SENTINEL,
         )
     except PlanError as e:
         _die(str(e))
@@ -2643,6 +2889,15 @@ def gate_check(
     import subprocess as sp
 
     p, _, plan_path = _load(plan)
+
+    validation_issues = validate_plan(p)
+    validation_errors = [issue for issue in validation_issues if not issue.is_warning]
+    if validation_errors:
+        out.print("[red bold]✗ Gate check blocked: plan validation failed.[/]")
+        for issue in validation_errors:
+            out.print(f"  [red]ERROR:[/] {_esc(issue.message)}")
+        out.print("[dim]→ vectl validate                  Full validation report[/]")
+        raise typer.Exit(1)
 
     try:
         gc = core_gate_check(p, phase_id)

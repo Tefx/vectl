@@ -7,13 +7,28 @@ from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
 from enum import Enum
 from pathlib import Path
+from typing import NamedTuple
 
 from vectl import claims as _claims
 from vectl import lifecycle as _lifecycle
+from vectl.io import load_plan_definition, save_plan
 from vectl.models import (
     AmbiguousMatchError,
     Clipboard,
     DiffResult,
+    DuplicateStepIdApplyResult,
+    DuplicateStepIdClaimConflict,
+    DuplicateStepIdDependsOnRewrite,
+    DuplicateStepIdDiagnostic,
+    DuplicateStepIdDiagnostics,
+    DuplicateStepIdDryRunReport,
+    DuplicateStepIdGroup,
+    DuplicateStepIdMigrationEvidence,
+    DuplicateStepIdPhaseRef,
+    DuplicateStepIdRenameEntry,
+    DuplicateStepIdRepairRecommendation,
+    DuplicateStepIdResolutionPath,
+    DuplicateStepIdRetryEvidence,
     GateCheckResult,
     NoMatchError,
     Phase,
@@ -29,6 +44,7 @@ from vectl.models import (
     Step,
     StepChange,
     StepStatus,
+    format_step_selector,
 )
 
 # Lazy import to avoid circular — semantics imports models, core imports models.
@@ -44,6 +60,7 @@ def claim_step(
     force: bool = False,
     claims_path: Path | None = None,
 ) -> tuple[Plan, _lifecycle.ClaimResult]:
+    require_unambiguous_target_step_id(plan, step_id, operation="claim")
     return _lifecycle.claim_step(
         plan,
         step_id,
@@ -54,6 +71,7 @@ def claim_step(
 
 
 def complete_step(plan: Plan, step_id: str, evidence: str, claims_path: Path | None = None) -> Plan:
+    require_unambiguous_target_step_id(plan, step_id, operation="complete")
     return _lifecycle.complete_step(plan, step_id, evidence, claims_path=claims_path)
 
 
@@ -62,14 +80,17 @@ def complete_phase(plan: Plan, phase_id: str, evidence: str) -> tuple[Plan, list
 
 
 def defer_step(plan: Plan, step_id: str, claims_path: Path | None = None) -> Plan:
+    require_unambiguous_target_step_id(plan, step_id, operation="defer")
     return _lifecycle.defer_step(plan, step_id, claims_path=claims_path)
 
 
 def reject_step(plan: Plan, step_id: str, reason: str, reviewer: str = "") -> Plan:
+    require_unambiguous_target_step_id(plan, step_id, operation="reject")
     return _lifecycle.reject_step(plan, step_id, reason, reviewer)
 
 
 def skip_step(plan: Plan, step_id: str, reason: str) -> Plan:
+    require_unambiguous_target_step_id(plan, step_id, operation="skip")
     return _lifecycle.skip_step(plan, step_id, reason)
 
 
@@ -143,15 +164,15 @@ def validate_plan(
     if phase_cycle:
         errors.append(PlanValidationIssue(f"Phase DAG cycle detected: {' → '.join(phase_cycle)}"))
 
+    duplicate_diagnostics = analyze_duplicate_step_ids(plan)
+
     # Per-phase checks
     for phase in plan.phases:
-        # Step ID uniqueness within phase
+        # Step IDs in this phase (used for dependency validation only).
+        # Duplicate-ID diagnostics are generated plan-wide by
+        # analyze_duplicate_step_ids().
         step_ids: set[str] = set()
         for step in phase.steps:
-            if step.id in step_ids:
-                errors.append(
-                    PlanValidationIssue(f"Duplicate step ID '{step.id}' in phase '{phase.id}'")
-                )
             step_ids.add(step.id)
 
         # Step DAG: valid depends_on refs (within same phase)
@@ -195,6 +216,18 @@ def validate_plan(
                         )
                     )
 
+    for conflict in duplicate_diagnostics.conflicts:
+        conflict_phase_list = ", ".join(conflict.phase_ids)
+        errors.append(
+            PlanValidationIssue(
+                f"Duplicate step ID '{conflict.step_id}' appears {conflict.occurrences} "
+                f"times across phases: {conflict_phase_list}. "
+                "Repair required before validation/gate checks can pass. "
+                "Run `vectl migrate-step-id --dry-run` then "
+                "`vectl migrate-step-id --yes`.",
+            )
+        )
+
     # Refs check (optional)
     if check_refs and base_path is not None:
         for phase in plan.phases:
@@ -211,6 +244,448 @@ def validate_plan(
                         )
 
     return errors
+
+
+def analyze_duplicate_step_ids(plan: Plan) -> DuplicateStepIdDiagnostics:
+    """Analyze plan-wide duplicate step IDs and build repair guidance.
+
+    Source:
+        - conversation/duplicate-step-id-bug
+        - conversation/half-automatic-step-id-migration
+
+    Rollout contract for this step requires diagnostics-only behavior on
+    read surfaces, including explicit, structured recommendations.
+    """
+    step_phase_counts: dict[str, dict[str, int]] = {}
+    for phase in plan.phases:
+        for step in phase.steps:
+            phase_counts = step_phase_counts.setdefault(step.id, {})
+            phase_counts[phase.id] = phase_counts.get(phase.id, 0) + 1
+
+    conflicts: list[DuplicateStepIdDiagnostic] = []
+    recommendations: list[DuplicateStepIdRepairRecommendation] = []
+
+    for step_id in sorted(step_phase_counts):
+        phase_counts = step_phase_counts[step_id]
+        occurrences = sum(phase_counts.values())
+        if occurrences <= 1:
+            continue
+
+        phase_ids = sorted(phase_counts)
+        conflicts.append(
+            DuplicateStepIdDiagnostic(
+                step_id=step_id,
+                phase_ids=phase_ids,
+                occurrences=occurrences,
+            )
+        )
+        recommendations.append(_build_duplicate_step_id_recommendation(step_id, phase_ids))
+
+    return DuplicateStepIdDiagnostics(conflicts=conflicts, recommendations=recommendations)
+
+
+def _build_duplicate_step_id_recommendation(
+    step_id: str, phase_ids: list[str]
+) -> DuplicateStepIdRepairRecommendation:
+    """Build a structured repair recommendation for one duplicate step ID."""
+    duplicates = [DuplicateStepIdPhaseRef(phase=phase_id) for phase_id in phase_ids]
+    return DuplicateStepIdRepairRecommendation(
+        type="duplicate-step-id",
+        step_id=step_id,
+        duplicates=duplicates,
+        resolution_path=DuplicateStepIdResolutionPath(
+            explicit_phase=(
+                "Not available in phase B: targeted commands do not support "
+                "phase-qualified step selectors"
+            ),
+            auto_migrate_flag=(
+                "Not available in phase B: --auto-migrate is unsupported "
+                "on targeted mutating commands"
+            ),
+            migration_tool="Use vectl migrate-step-id --dry-run, then --yes",
+        ),
+    )
+
+
+def duplicate_step_id_recommendation_for_target(
+    diagnostics: DuplicateStepIdDiagnostics, step_id: str
+) -> DuplicateStepIdRepairRecommendation | None:
+    """Return duplicate repair recommendation for a targeted step ID, if any."""
+    for recommendation in diagnostics.recommendations:
+        if recommendation.step_id == step_id:
+            return recommendation
+    return None
+
+
+def require_unambiguous_target_step_id(plan: Plan, step_id: str, *, operation: str) -> None:
+    """Block targeted writes when duplicate step IDs make target selection ambiguous.
+
+    Source:
+        - conversation/duplicate-step-id-bug
+        - conversation/half-automatic-step-id-migration
+    """
+    diagnostics = analyze_duplicate_step_ids(plan)
+    recommendation = duplicate_step_id_recommendation_for_target(diagnostics, step_id)
+    if recommendation is None:
+        return
+
+    phases = ",".join(duplicate.phase for duplicate in recommendation.duplicates)
+    raise PlanError(
+        "duplicate_step_id_write_guard: blocked\n"
+        "error_code=duplicate_step_id_ambiguous_target\n"
+        "blocking_reason=duplicate_step_id_ambiguous\n"
+        f"operation={operation}\n"
+        f"step_id={recommendation.step_id}\n"
+        f"recommendation.type={recommendation.type}\n"
+        f"recommendation.duplicates={phases}\n"
+        "recommendation.resolution_path.explicit_phase="
+        f"{recommendation.resolution_path.explicit_phase}\n"
+        "recommendation.resolution_path.auto_migrate_flag="
+        f"{recommendation.resolution_path.auto_migrate_flag}\n"
+        "recommendation.resolution_path.migration_tool="
+        f"{recommendation.resolution_path.migration_tool}"
+    )
+
+
+def require_no_global_duplicate_step_id(plan: Plan, step_id: str, *, operation: str) -> None:
+    """Reject writes that would introduce a global duplicate step ID."""
+    phase_ids: list[str] = []
+    for phase in plan.phases:
+        if any(step.id == step_id for step in phase.steps):
+            phase_ids.append(phase.id)
+
+    if not phase_ids:
+        return
+
+    phases = ",".join(sorted(set(phase_ids)))
+    raise PlanError(
+        "duplicate_step_id_write_guard: blocked\n"
+        "error_code=duplicate_step_id_write_blocked\n"
+        "blocking_reason=duplicate_step_id_exists\n"
+        f"operation={operation}\n"
+        f"step_id={step_id}\n"
+        f"phases={phases}\n"
+        f"detail=Step ID '{step_id}' already exists"
+    )
+
+
+class _StepOccurrence(NamedTuple):
+    phase_index: int
+    step_index: int
+    phase_id: str
+    step_id: str
+    claimed_by: str | None
+    is_claimed: bool
+
+
+def _collect_step_occurrences(
+    plan: Plan,
+) -> tuple[list[_StepOccurrence], dict[str, list[_StepOccurrence]]]:
+    occurrences: list[_StepOccurrence] = []
+    by_step_id: dict[str, list[_StepOccurrence]] = {}
+
+    for phase_index, phase in enumerate(plan.phases):
+        for step_index, step in enumerate(phase.steps):
+            occurrence = _StepOccurrence(
+                phase_index=phase_index,
+                step_index=step_index,
+                phase_id=phase.id,
+                step_id=step.id,
+                claimed_by=step.claimed_by,
+                is_claimed=step.status == StepStatus.CLAIMED,
+            )
+            occurrences.append(occurrence)
+            by_step_id.setdefault(step.id, []).append(occurrence)
+
+    return occurrences, by_step_id
+
+
+def _build_rename_entries(
+    plan: Plan,
+) -> tuple[list[DuplicateStepIdRenameEntry], dict[tuple[int, int], str]]:
+    _, occurrences_by_step_id = _collect_step_occurrences(plan)
+    existing_ids = {step.id for phase in plan.phases for step in phase.steps}
+    assigned_ids = set(existing_ids)
+
+    rename_entries: list[DuplicateStepIdRenameEntry] = []
+    rename_by_location: dict[tuple[int, int], str] = {}
+
+    for step_id, occurrences in occurrences_by_step_id.items():
+        if len(occurrences) <= 1:
+            continue
+
+        for occurrence in occurrences[1:]:
+            candidate = f"{occurrence.phase_id}.{step_id}"
+            if candidate in assigned_ids:
+                suffix = 2
+                while f"{candidate}--dup{suffix}" in assigned_ids:
+                    suffix += 1
+                candidate = f"{candidate}--dup{suffix}"
+
+            rename_by_location[(occurrence.phase_index, occurrence.step_index)] = candidate
+            assigned_ids.add(candidate)
+            rename_entries.append(
+                DuplicateStepIdRenameEntry(
+                    phase_id=occurrence.phase_id,
+                    old_step_id=step_id,
+                    new_step_id=candidate,
+                    reason="noncanonical_duplicate",
+                )
+            )
+
+    return rename_entries, rename_by_location
+
+
+def _build_duplicate_groups(plan: Plan) -> list[DuplicateStepIdGroup]:
+    _, occurrences_by_step_id = _collect_step_occurrences(plan)
+    groups: list[DuplicateStepIdGroup] = []
+
+    for step_id, occurrences in occurrences_by_step_id.items():
+        if len(occurrences) <= 1:
+            continue
+        phases: list[str] = []
+        for occurrence in occurrences:
+            if occurrence.phase_id not in phases:
+                phases.append(occurrence.phase_id)
+        groups.append(
+            DuplicateStepIdGroup(step_id=step_id, phases=phases, occurrences=len(occurrences))
+        )
+
+    return groups
+
+
+def _build_claim_conflicts(
+    plan: Plan,
+    duplicate_step_ids: set[str],
+    *,
+    claims_path: Path | None,
+    branch: str | None,
+) -> list[DuplicateStepIdClaimConflict]:
+    conflicts: dict[tuple[str, str], DuplicateStepIdClaimConflict] = {}
+
+    for phase in plan.phases:
+        for step in phase.steps:
+            if step.id not in duplicate_step_ids:
+                continue
+            if step.status != StepStatus.CLAIMED:
+                continue
+            if step.claimed_by is None:
+                continue
+            key = (phase.id, step.id)
+            conflicts[key] = DuplicateStepIdClaimConflict(
+                phase_id=phase.id,
+                step_id=step.id,
+                claimed_by=step.claimed_by,
+            )
+
+    if claims_path is None:
+        return [conflicts[key] for key in sorted(conflicts)]
+    if not claims_path.exists():
+        return [conflicts[key] for key in sorted(conflicts)]
+
+    claims_branch = branch if branch is not None else _claims.get_current_branch()
+    branch_claims = _claims.load_claims_for_branch(claims_path, claims_branch)
+
+    for step_id in sorted(duplicate_step_ids):
+        claim_entry = branch_claims.get(step_id)
+        if claim_entry is None:
+            continue
+        for phase in plan.phases:
+            for step in phase.steps:
+                if step.id != step_id:
+                    continue
+                key = (phase.id, step.id)
+                conflicts.setdefault(
+                    key,
+                    DuplicateStepIdClaimConflict(
+                        phase_id=phase.id,
+                        step_id=step_id,
+                        claimed_by=claim_entry.agent,
+                    ),
+                )
+
+    return [conflicts[key] for key in sorted(conflicts)]
+
+
+def _migrated_plan_and_rewrites(
+    plan: Plan,
+    rename_by_location: dict[tuple[int, int], str],
+) -> tuple[Plan, list[DuplicateStepIdDependsOnRewrite]]:
+    migrated = plan.model_copy(deep=True)
+
+    for (phase_index, step_index), new_step_id in rename_by_location.items():
+        migrated.phases[phase_index].steps[step_index].id = new_step_id
+
+    phase_resolution: dict[str, dict[str, str]] = {}
+    for phase_index, phase in enumerate(plan.phases):
+        resolved: dict[str, str] = {}
+        for step_index, step in enumerate(phase.steps):
+            if step.id in resolved:
+                continue
+            resolved[step.id] = rename_by_location.get((phase_index, step_index), step.id)
+        phase_resolution[phase.id] = resolved
+
+    rewrites: list[DuplicateStepIdDependsOnRewrite] = []
+    for phase in migrated.phases:
+        resolver = phase_resolution.get(phase.id)
+        if resolver is None:
+            resolver = {}
+        for step in phase.steps:
+            old_depends_on: list[str] = []
+            for dep in step.depends_on:
+                if dep is None:
+                    continue
+                old_depends_on.append(dep)
+            if not old_depends_on:
+                continue
+            new_depends_on: list[str] = []
+            for dep in old_depends_on:
+                resolved_dep = resolver.get(dep, dep)
+                if resolved_dep is None:
+                    continue
+                new_depends_on.append(resolved_dep)
+            if old_depends_on == new_depends_on:
+                continue
+            step.depends_on = new_depends_on
+            rewrites.append(
+                DuplicateStepIdDependsOnRewrite(
+                    phase_id=phase.id,
+                    step_id=step.id,
+                    old_depends_on=old_depends_on,
+                    new_depends_on=new_depends_on,
+                )
+            )
+
+    return migrated, rewrites
+
+
+def build_duplicate_step_id_migration_dry_run(
+    plan: Plan,
+    *,
+    claims_path: Path | None = None,
+    branch: str | None = None,
+) -> tuple[DuplicateStepIdDryRunReport, Plan]:
+    """Build deterministic duplicate-ID migration dry-run output and candidate plan."""
+    duplicate_groups = _build_duplicate_groups(plan)
+    rename_map, rename_by_location = _build_rename_entries(plan)
+    migrated_plan, depends_on_rewrites = _migrated_plan_and_rewrites(plan, rename_by_location)
+
+    duplicate_step_ids = {group.step_id for group in duplicate_groups}
+    claimed_conflicts = _build_claim_conflicts(
+        plan,
+        duplicate_step_ids,
+        claims_path=claims_path,
+        branch=branch,
+    )
+
+    affected_phase_ids = sorted(
+        {entry.phase_id for entry in rename_map}
+        | {rewrite.phase_id for rewrite in depends_on_rewrites}
+    )
+
+    report = DuplicateStepIdDryRunReport(
+        run_mode="dry-run",
+        duplicate_groups=duplicate_groups,
+        rename_map=rename_map,
+        depends_on_rewrites=depends_on_rewrites,
+        affected_phases=affected_phase_ids,
+        claimed_step_conflicts=claimed_conflicts,
+        compatibility_notes=[
+            "old_id_aliases_supported=false",
+            "post_migration_old_ids_fail_with_guidance",
+            "update_stored_selectors_using_rename_map",
+        ],
+        requires_manual_follow_up=bool(claimed_conflicts),
+    )
+
+    return report, migrated_plan
+
+
+def build_duplicate_step_id_migration_evidence(
+    *,
+    command: str,
+    command_args: list[str],
+    run_mode: str,
+    migrated: bool,
+    report: DuplicateStepIdDryRunReport,
+    retry: DuplicateStepIdRetryEvidence | None = None,
+) -> DuplicateStepIdMigrationEvidence:
+    """Build migration evidence payload from dry-run/apply engine outputs."""
+    retry_evidence = retry or DuplicateStepIdRetryEvidence(
+        attempted=False,
+        succeeded=False,
+        error=None,
+    )
+    return DuplicateStepIdMigrationEvidence(
+        command=command,
+        command_args=command_args,
+        run_mode=run_mode,
+        migrated=migrated,
+        rename_map=report.rename_map,
+        depends_on_rewrites=report.depends_on_rewrites,
+        affected_phases=report.affected_phases,
+        claimed_step_conflicts=report.claimed_step_conflicts,
+        retry=retry_evidence,
+    )
+
+
+def apply_duplicate_step_id_migration(
+    plan_path: Path,
+    *,
+    expected_hash: str | None = None,
+    claims_path: Path | None = None,
+    branch: str | None = None,
+    command: str = "migrate-step-id",
+    command_args: list[str] | None = None,
+    run_mode: str = "apply",
+    retry: DuplicateStepIdRetryEvidence | None = None,
+) -> DuplicateStepIdApplyResult:
+    """Apply duplicate-ID migration with CAS and claimed-step safeguards."""
+    loaded_plan, loaded_hash = load_plan_definition(plan_path)
+    cas_hash = loaded_hash if expected_hash is None else expected_hash
+
+    report, migrated_plan = build_duplicate_step_id_migration_dry_run(
+        loaded_plan,
+        claims_path=claims_path,
+        branch=branch,
+    )
+    if report.claimed_step_conflicts:
+        conflict_lines = [
+            f"{conflict.phase_id}.{conflict.step_id} claimed_by={conflict.claimed_by}"
+            for conflict in report.claimed_step_conflicts
+        ]
+        details = "\n".join(conflict_lines)
+        raise PlanError(
+            "duplicate_step_id_migration_blocked\n"
+            "blocking_reason=claimed_step_conflict\n"
+            "unblock_guidance=unclaim_defer_or_reject_conflicted_steps_then_retry\n"
+            f"claimed_step_conflicts={details}"
+        )
+
+    migrated = len(report.rename_map) > 0
+    new_plan_hash: str | None = None
+    if migrated:
+        new_plan_hash = save_plan(
+            migrated_plan,
+            plan_path,
+            expected_hash=cas_hash,
+        )
+
+    evidence = build_duplicate_step_id_migration_evidence(
+        command=command,
+        command_args=command_args or [],
+        run_mode=run_mode,
+        migrated=migrated,
+        report=report,
+        retry=retry,
+    )
+
+    return DuplicateStepIdApplyResult(
+        report=report,
+        evidence=evidence,
+        migrated=migrated,
+        new_plan_hash=new_plan_hash,
+    )
 
 
 def _detect_cycle(graph: dict[str, list[str]]) -> list[str] | None:
@@ -447,12 +922,15 @@ def _slugify(name: str) -> str:
     return re.sub(r"-+", "-", slug)
 
 
-def _unique_step_id(phase: Phase, base_slug: str) -> str:
-    """Generate a unique step ID within a phase.
+def _unique_step_id(plan: Plan, phase: Phase, base_slug: str) -> str:
+    """Generate a unique step ID across the full plan.
 
     Format: ``{phase.id}.{slug}``. Appends ``-2``, ``-3`` on collision.
     """
-    existing = {s.id for s in phase.steps}
+    existing: set[str] = set()
+    for existing_phase in plan.phases:
+        for step in existing_phase.steps:
+            existing.add(step.id)
     candidate = f"{phase.id}.{base_slug}"
     if candidate not in existing:
         return candidate
@@ -551,10 +1029,9 @@ def add_step(
         slug = _slugify(name)
         if not slug:
             raise PlanError("Cannot generate step ID: name produces empty slug")
-        step_id = _unique_step_id(phase, slug)
+        step_id = _unique_step_id(plan, phase, slug)
     else:
-        if any(s.id == step_id for s in phase.steps):
-            raise PlanError(f"Step ID '{step_id}' already exists in phase '{phase_id}'")
+        require_no_global_duplicate_step_id(plan, step_id, operation="add-step")
 
     # Validate depends_on refs exist within phase
     deps = depends_on or []
@@ -699,7 +1176,15 @@ def add_steps_bulk(
 
     # --- Pass 1: Parse entries and pre-compute all IDs ---
     parsed: list[dict[str, object]] = []
-    known_ids: set[str] = {s.id for s in phase.steps}  # track collisions
+    existing_global_ids: set[str] = set()
+    for existing_phase in plan.phases:
+        for existing_step in existing_phase.steps:
+            existing_global_ids.add(existing_step.id)
+
+    used_ids = set(existing_global_ids)
+    batch_ids: set[str] = set()
+
+    known_phase_ids: set[str] = {s.id for s in phase.steps}
     slug_to_id: dict[str, str] = {}  # short slug → full step ID
 
     for i, entry in enumerate(steps):
@@ -790,23 +1275,33 @@ def add_steps_bulk(
         step_id_raw = entry.get("id")
         if step_id_raw is not None:
             step_id = str(step_id_raw)
-            if step_id in known_ids:
-                raise PlanError(f"Step ID '{step_id}' already exists in phase '{phase_id}'")
+            require_no_global_duplicate_step_id(plan, step_id, operation="add-steps")
+            if step_id in batch_ids:
+                raise PlanError(
+                    "duplicate_step_id_write_guard: blocked\n"
+                    "error_code=duplicate_step_id_write_blocked\n"
+                    "blocking_reason=duplicate_step_id_exists_in_batch\n"
+                    "operation=add-steps\n"
+                    f"step_id={step_id}\n"
+                    f"phases={phase_id}"
+                )
         else:
             slug = _slugify(name)
             if not slug:
                 raise PlanError(f"Step {i}: Cannot generate step ID: name produces empty slug")
-            # Generate unique ID considering both existing steps and earlier batch entries
+            # Generate unique ID considering all existing and earlier batch entries.
             candidate = f"{phase_id}.{slug}"
-            if candidate not in known_ids:
+            if candidate not in used_ids:
                 step_id = candidate
             else:
                 counter = 2
-                while f"{phase_id}.{slug}-{counter}" in known_ids:
+                while f"{phase_id}.{slug}-{counter}" in used_ids:
                     counter += 1
                 step_id = f"{phase_id}.{slug}-{counter}"
 
-        known_ids.add(step_id)
+        used_ids.add(step_id)
+        batch_ids.add(step_id)
+        known_phase_ids.add(step_id)
 
         # Build short slug mapping for intra-batch references
         prefix = f"{phase_id}."
@@ -839,7 +1334,7 @@ def add_steps_bulk(
             assert isinstance(after_raw_val, list)
             for dep_ref in after_raw_val:
                 assert isinstance(dep_ref, str)
-                if dep_ref in known_ids:
+                if dep_ref in known_phase_ids:
                     # Exact match: full step ID (existing or batch)
                     resolved_deps.append(dep_ref)
                 elif dep_ref in slug_to_id:
@@ -937,6 +1432,7 @@ def edit_step(
     add_refs: list[str] | None = None,
     remove_refs: list[str] | None = None,
     refs: list[str] | _Unset = _SENTINEL,
+    new_step_id: str | _Unset = _SENTINEL,
 ) -> Plan:
     """Edit an existing step's metadata.
 
@@ -963,10 +1459,22 @@ def edit_step(
     Raises:
         PlanError: If step not found, or add_deps reference invalid step IDs.
     """
+    require_unambiguous_target_step_id(plan, step_id, operation="edit-step")
     found = plan.find_step(step_id)
     if found is None:
         raise PlanError(f"Step '{step_id}' not found")
     phase, step = found
+
+    if new_step_id is not _SENTINEL:
+        target_id = str(new_step_id)
+        if target_id != step.id:
+            require_no_global_duplicate_step_id(plan, target_id, operation="edit-step")
+            old_id = step.id
+            step.id = target_id
+            for dep_step in phase.steps:
+                dep_step.depends_on = [
+                    target_id if dep == old_id else dep for dep in dep_step.depends_on
+                ]
 
     if name is not _SENTINEL:
         step.name = str(name)
@@ -978,6 +1486,10 @@ def edit_step(
         step.evidence_template = str(evidence_template)
     if agent is not _SENTINEL:
         step.agent = agent if agent is None else str(agent)  # type: ignore[assignment]
+
+    original_depends_on: list[str] | None = None
+    if depends_on is not _SENTINEL or add_deps or remove_deps:
+        original_depends_on = list(step.depends_on)
 
     if depends_on is not _SENTINEL:
         # Validate dependencies
@@ -1001,6 +1513,16 @@ def edit_step(
         for dep in remove_deps:
             if dep in step.depends_on:
                 step.depends_on.remove(dep)
+
+    # Cycle detection: check when depends_on/add_deps/remove_deps mutations occurred
+    if depends_on is not _SENTINEL or add_deps or remove_deps:
+        step_graph = {s.id: s.depends_on for s in phase.steps}
+        cycle = _detect_cycle(step_graph)
+        if cycle:
+            if original_depends_on is not None:
+                step.depends_on = original_depends_on
+            cycle_str = " → ".join(f"{phase.id}.{s}" for s in cycle)
+            raise PlanError(f"Step dependency cycle: {cycle_str}")
 
     if refs is not _SENTINEL:
         step.refs = list(refs)  # type: ignore
@@ -1137,21 +1659,24 @@ def remove_step(plan: Plan, step_id: str, *, force: bool = False) -> Plan:
     Raises:
         PlanError: If step not found or step is not pending.
     """
+    require_unambiguous_target_step_id(plan, step_id, operation="remove-step")
     found = plan.find_step(step_id)
     if found is None:
         raise PlanError(f"Step '{step_id}' not found")
     phase, step = found
+    qualified_id = format_step_selector(phase.id, step.id)
 
     if step.status != StepStatus.PENDING:
         raise PlanError(
-            f"Cannot remove step '{step_id}' with status '{step.status.value}' (must be pending)"
+            f"Cannot remove step '{qualified_id}' with status "
+            f"'{step.status.value}' (must be pending)"
         )
 
     # Check no other step depends on this one
     dependents = [s for s in phase.steps if step_id in s.depends_on]
     if dependents and not force:
         dep_ids = [s.id for s in dependents]
-        raise PlanError(f"Cannot remove step '{step_id}': step '{dep_ids[0]}' depends on it")
+        raise PlanError(f"Cannot remove step '{qualified_id}': step '{dep_ids[0]}' depends on it")
 
     # Force: clean up dependency refs
     if force:
@@ -1212,14 +1737,16 @@ def move_step(plan: Plan, step_id: str, to_phase_id: str) -> Plan:
     Raises:
         PlanError: If step/phase not found, step not pending, or target is same phase.
     """
+    require_unambiguous_target_step_id(plan, step_id, operation="move-step")
     found = plan.find_step(step_id)
     if found is None:
         raise PlanError(f"Step '{step_id}' not found")
     from_phase, step = found
+    qualified_id = format_step_selector(from_phase.id, step.id)
 
     if step.status != StepStatus.PENDING:
         raise PlanError(
-            f"Cannot move step '{step_id}' with status '{step.status.value}' (must be pending)"
+            f"Cannot move step '{qualified_id}' with status '{step.status.value}' (must be pending)"
         )
 
     target = plan.find_phase(to_phase_id)
@@ -1227,12 +1754,12 @@ def move_step(plan: Plan, step_id: str, to_phase_id: str) -> Plan:
         raise PlanError(f"Target phase '{to_phase_id}' not found")
 
     if from_phase.id == to_phase_id:
-        raise PlanError(f"Step '{step_id}' is already in phase '{to_phase_id}'")
+        raise PlanError(f"Step '{qualified_id}' is already in phase '{to_phase_id}'")
 
     # Check no other step in source phase depends on this one
     for s in from_phase.steps:
         if step_id in s.depends_on:
-            raise PlanError(f"Cannot move step '{step_id}': step '{s.id}' depends on it")
+            raise PlanError(f"Cannot move step '{qualified_id}': step '{s.id}' depends on it")
 
     # Remove from source, clear deps (phase-scoped), add to target
     from_phase.steps = [s for s in from_phase.steps if s.id != step_id]
@@ -1264,10 +1791,11 @@ def update_checklist(
     if check is None and append is None:
         raise PlanError("Must provide either 'check' or 'append'")
 
+    require_unambiguous_target_step_id(plan, step_id, operation="check")
     found = plan.find_step(step_id)
     if found is None:
         raise PlanError(f"Step '{step_id}' not found")
-    _, step = found
+    phase, step = found
 
     if check is not None:
         step.description = _toggle_checklist_item(step.description, check)
@@ -2019,6 +2547,13 @@ Quick view: `uvx vectl status`
 - One claimed step at a time.
 - Evidence is mandatory when completing (commands run + outputs + gaps).
 - Spec uncertainty: leave `# SPEC QUESTION: ...` in code, do not guess.
+
+### Step ID Uniqueness
+**Step IDs must be globally unique across ALL phases.**
+- Example: `auth.login` and `api.login` are different step IDs.
+- Example: Using just `login` in two phases creates a duplicate — not allowed.
+- If you have legacy duplicate step IDs, use `vectl migrate-step-id --dry-run`
+  to preview and `--yes` to repair.
 
 ### For Architects / Planners
 - **Design Mode**: Run `uvx vectl guide --on planning` to learn the Architect Protocol.

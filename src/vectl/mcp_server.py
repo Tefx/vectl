@@ -39,29 +39,43 @@ from fastmcp import FastMCP
 from pydantic import BaseModel
 
 from vectl.claim_guidance import GuidancePayload, build_claim_guidance
-from vectl.claims import repair_claims
+from vectl.claims import get_current_branch, repair_claims
 from vectl.core import (
     _SENTINEL,
     AgentsTarget,
     add_phase,
     add_step,
     add_steps_bulk,
+    analyze_duplicate_step_ids,
+    apply_duplicate_step_id_migration,
+    build_duplicate_step_id_migration_dry_run,
+    build_duplicate_step_id_migration_evidence,
+    claim_step,
     clipboard_clear,
     clipboard_write,
+    complete_phase,
+    complete_step,
+    defer_step,
+    duplicate_step_id_recommendation_for_target,
     edit_phase,
     edit_plan,
     edit_step,
     format_lock_changes,
     gate_check,
+    get_claimed_steps,
     get_next_steps,
     move_step,
     recalc_lock_status,
+    reject_step,
     remove_step,
     render_plan,
     review_plan,
     search_plan,
+    skip_phase,
+    skip_step,
     update_checklist,
     upsert_agents_md,
+    validate_plan,
 )
 from vectl.io import (
     _backup_definition,
@@ -69,23 +83,14 @@ from vectl.io import (
     load_plan_definition,
     save_plan,
 )
-from vectl.lifecycle import (
-    ClaimConflictError,
-    claim_step,
-    complete_phase,
-    complete_step,
-    defer_step,
-    get_claimed_steps,
-    reject_step,
-    skip_phase,
-    skip_step,
-)
+from vectl.lifecycle import ClaimConflictError
 from vectl.models import (
     AffinityError,
     AmbiguousMatchError,
     CASConflictError,
     InitResult,
     NoMatchError,
+    Phase,
     PhaseStatus,
     Plan,
     PlanError,
@@ -216,6 +221,91 @@ def _fmt_phase_summary(plan: Plan) -> str:
     return f"## Plan: {plan.project}\n\n{header}\n" + "\n".join(lines)
 
 
+def _duplicate_id_diagnostics_lines(plan: Plan) -> list[str]:
+    """Format duplicate step-ID diagnostics for read-only MCP tools."""
+    diagnostics = analyze_duplicate_step_ids(plan)
+    if not diagnostics.conflicts:
+        return []
+
+    lines: list[str] = ["## Duplicate Step-ID Diagnostics", ""]
+    for conflict in diagnostics.conflicts:
+        phases = ", ".join(conflict.phase_ids)
+        lines.append(
+            f"WARN: duplicate step ID '{conflict.step_id}' appears "
+            f"{conflict.occurrences} time(s) across phases: {phases}"
+        )
+    return lines
+
+
+def _duplicate_id_recommendation_lines(plan: Plan, step_id: str) -> list[str]:
+    """Format duplicate-ID repair recommendation for targeted step reads."""
+    diagnostics = analyze_duplicate_step_ids(plan)
+    recommendation = duplicate_step_id_recommendation_for_target(diagnostics, step_id)
+    if recommendation is None:
+        return []
+
+    phase_list = ", ".join(duplicate.phase for duplicate in recommendation.duplicates)
+    return [
+        "",
+        "## Duplicate-ID Repair Recommendation",
+        (f"type={recommendation.type}; step_id={recommendation.step_id}; duplicates={phase_list}"),
+        f"resolution.explicit_phase: {recommendation.resolution_path.explicit_phase}",
+        f"resolution.auto_migrate_flag: {recommendation.resolution_path.auto_migrate_flag}",
+        f"resolution.migration_tool: {recommendation.resolution_path.migration_tool}",
+    ]
+
+
+# ---------------------------------------------------------------------------
+# Helper functions
+# ---------------------------------------------------------------------------
+
+
+def _get_next_steps_with_phase(plan: Plan, agent: str | None = None) -> list[tuple[Phase, Step]]:
+    """Get next steps with their containing phase.
+
+    Returns list of (phase, step) tuples to correctly track phase membership
+    for duplicate step IDs across different phases.
+
+    Args:
+        plan: The plan to query.
+        agent: If provided, prioritize steps whose `agent` field matches.
+    """
+    from vectl.core import _get_active_phase_ids
+
+    active_phase_ids = _get_active_phase_ids(plan)
+    result: list[tuple[Phase, Step]] = []
+
+    for phase in plan.phases:
+        if phase.id not in active_phase_ids:
+            continue
+        done_step_ids = {
+            s.id for s in phase.steps if s.status in (StepStatus.DONE, StepStatus.SKIPPED)
+        }
+        for step in phase.steps:
+            if step.status not in (StepStatus.PENDING, StepStatus.REJECTED):
+                continue
+            # All deps satisfied?
+            if all(dep in done_step_ids for dep in step.depends_on):
+                result.append((phase, step))
+
+    # Sort with same priority as get_next_steps
+    def _sort_key(item: tuple[Phase, Step]) -> tuple[int, int, str]:
+        _, s = item
+        # Priority 0: rejected (needs rework)
+        status_rank = 0 if s.status == StepStatus.REJECTED else 1
+        # Agent affinity: 0 = matches, 1 = unassigned, 2 = different agent
+        if agent is None or s.agent is None:
+            agent_rank = 1
+        elif s.agent == agent:
+            agent_rank = 0
+        else:
+            agent_rank = 2
+        return (status_rank, agent_rank, s.id)
+
+    result.sort(key=_sort_key)
+    return result
+
+
 # ---------------------------------------------------------------------------
 # Tool 1: vectl_status
 # ---------------------------------------------------------------------------
@@ -238,13 +328,12 @@ def vectl_status(agent: str | None = None) -> str:
     parts: list[str] = [_fmt_phase_summary(plan)]
 
     # Next steps (prioritized by agent if provided)
-    available = get_next_steps(plan, agent=agent)
+    # Use _get_next_steps_with_phase to correctly track phase for duplicate step IDs
+    available = _get_next_steps_with_phase(plan, agent=agent)
     if available:
         parts.append("\n## Next Available Steps\n")
-        for step in available[:3]:
-            found = plan.find_step(step.id)
-            phase_id = found[0].id if found else "?"
-            parts.append(_fmt_step(plan, step, phase_id))
+        for phase, step in available[:3]:
+            parts.append(_fmt_step(plan, step, phase.id))
         if len(available) > 3:
             parts.append(f"\n  ... and {len(available) - 3} more")
     else:
@@ -259,6 +348,11 @@ def vectl_status(agent: str | None = None) -> str:
                 parts.append(_fmt_step(plan, step, phase_id))
         else:
             parts.append(f"\n*No steps claimed by {agent}.*")
+
+    diag_lines = _duplicate_id_diagnostics_lines(plan)
+    if diag_lines:
+        parts.append("\n")
+        parts.extend(diag_lines)
 
     return "\n".join(parts)
 
@@ -315,6 +409,7 @@ def vectl_show(id: str) -> str:
             lines.append(f"**Verification:** {step.verification}")
         if step.refs:
             lines.append(f"**Refs:** {', '.join(step.refs)}")
+        lines.extend(_duplicate_id_recommendation_lines(plan, step.id))
         return "\n".join(lines)
 
     # Try phase
@@ -335,6 +430,10 @@ def vectl_show(id: str) -> str:
             lines.append("\n### Steps\n")
             for step in phase_obj.steps:
                 lines.append(_fmt_step(plan, step, phase_obj.id))
+        diag_lines = _duplicate_id_diagnostics_lines(plan)
+        if diag_lines:
+            lines.append("")
+            lines.extend(diag_lines)
         return "\n".join(lines)
 
     return f"**Error:** '{id}' not found as step or phase."
@@ -399,6 +498,7 @@ class ClaimResult(BaseModel):
     affinity_override: AffinityOverrideData | None = None
     error: str | None = None
     error_code: str | None = None
+    duplicate_step_id_recommendation: dict[str, Any] | None = None
     # Claim conflict details for existing-claim rejection
     claim_conflict: ClaimConflictData | None = None
 
@@ -493,9 +593,62 @@ def vectl_claim(
         ).model_dump(mode="json", exclude_none=True)
     except PlanError as e:
         err = str(e)
-        return ClaimResult(ok=False, markdown=f"**Error:** {err}", error=err).model_dump(
-            mode="json", exclude_none=True
-        )
+        error_code = None
+        if "error_code=duplicate_step_id_ambiguous_target" in err:
+            error_code = "duplicate_step_id_ambiguous_target"
+        elif "error_code=duplicate_step_id_auto_migrate_required" in err:
+            error_code = "duplicate_step_id_auto_migrate_required"
+
+        recommendation_payload: dict[str, Any] | None = None
+        if error_code == "duplicate_step_id_ambiguous_target" and step_id is not None:
+            diagnostics = analyze_duplicate_step_ids(plan)
+            recommendation = duplicate_step_id_recommendation_for_target(diagnostics, step_id)
+            if recommendation is not None:
+                recommendation_payload = {
+                    "type": recommendation.type,
+                    "step_id": recommendation.step_id,
+                    "duplicates": [
+                        {"phase": duplicate.phase} for duplicate in recommendation.duplicates
+                    ],
+                    "resolution_path": {
+                        "explicit_phase": recommendation.resolution_path.explicit_phase,
+                        "auto_migrate_flag": recommendation.resolution_path.auto_migrate_flag,
+                        "migration_tool": recommendation.resolution_path.migration_tool,
+                    },
+                }
+
+        markdown_lines = [f"**Error:** {err}"]
+        if recommendation_payload is not None:
+            markdown_lines.extend(
+                [
+                    "",
+                    "Structured repair recommendation:",
+                    f"- type: {recommendation_payload['type']}",
+                    f"- step_id: {recommendation_payload['step_id']}",
+                ]
+            )
+            duplicates = recommendation_payload["duplicates"]
+            for duplicate in duplicates:
+                markdown_lines.append(f"  - phase: {duplicate['phase']}")
+
+            resolution_path = recommendation_payload["resolution_path"]
+            markdown_lines.extend(
+                [
+                    "- resolution_path:",
+                    f"  - explicit_phase: {resolution_path['explicit_phase']}",
+                    f"  - auto_migrate_flag: {resolution_path['auto_migrate_flag']}",
+                    f"  - migration_tool: {resolution_path['migration_tool']}",
+                ]
+            )
+
+        markdown = "\n".join(markdown_lines)
+        return ClaimResult(
+            ok=False,
+            markdown=markdown,
+            error=err,
+            error_code=error_code,
+            duplicate_step_id_recommendation=recommendation_payload,
+        ).model_dump(mode="json", exclude_none=True)
 
     found = plan.find_step(step_id)
     if found:
@@ -614,14 +767,12 @@ def vectl_complete(step_id: str, evidence: str) -> str:
         if phase.status == PhaseStatus.DONE:
             parts.append(f"**Phase '{phase.id}' is now DONE!**")
 
-    # Show next available
-    available = get_next_steps(plan)
+    # Show next available - use _get_next_steps_with_phase for correct phase tracking
+    available = _get_next_steps_with_phase(plan)
     if available:
         parts.append("\n**Next available:**")
-        for step in available[:3]:
-            f = plan.find_step(step.id)
-            pid = f[0].id if f else "?"
-            parts.append(_fmt_step(plan, step, pid))
+        for phase, step in available[:3]:
+            parts.append(_fmt_step(plan, step, phase.id))
         if len(available) > 3:
             parts.append(f"  ... and {len(available) - 3} more")
 
@@ -830,6 +981,7 @@ def vectl_mutate(
     evidence: str = "",
     skipped_reason: str = "",
     agent: str = "",
+    new_step_id: str = "",
     steps: list[dict] | None = None,
 ) -> str:
     """Modify plan structure.
@@ -976,6 +1128,7 @@ def vectl_mutate(
                 add_refs=add_refs,
                 remove_refs=remove_refs,
                 refs=refs if refs is not None else _SENTINEL,
+                new_step_id=new_step_id if new_step_id else _SENTINEL,
             )
             msg = f"**Updated step:** {step_id}"
 
@@ -1169,33 +1322,151 @@ def vectl_review(
 
     # Gate check (if phase_id provided)
     if phase_id:
-        try:
-            gc = gate_check(plan, phase_id)
-            parts.append(f"\n## Gate Check: {gc.phase_id}\n")
-            if gc.steps_complete:
-                parts.append(f"✓ Steps: {gc.done_count}/{gc.total_count} complete")
-            else:
-                parts.append(
-                    f"✗ Steps: {gc.done_count}/{gc.total_count} — "
-                    f"{len(gc.pending_steps)} remaining:"
-                )
-                for s in gc.pending_steps:
-                    icon = _STEP_ICON.get(s.status, "?")
-                    suggested = f" suggested={s.agent}" if s.agent else ""
-                    parts.append(f"  {icon} {s.id} — {s.name}{suggested}")
-            if gc.gate_criterion:
-                parts.append(f"\nManual gate criterion: {gc.gate_criterion}")
-            if gc.gate_script:
-                parts.append(
-                    f"\n⚠ gate_script defined ({gc.gate_script}) but not executable via MCP. "
-                    "Use CLI `vectl gate-check`."
-                )
-            if gc.downstream_locked:
-                parts.append(f"\nDownstream phases: {', '.join(gc.downstream_locked)}")
-        except PlanError as e:
-            parts.append(f"\n**Gate Check Error:** {e}")
+        parts.append(f"\n## Gate Check: {phase_id}\n")
+        if result.errors:
+            parts.append(
+                "✗ Gate check blocked: plan validation failed. "
+                "Fix validation errors before evaluating gate readiness."
+            )
+        else:
+            try:
+                gc = gate_check(plan, phase_id)
+                if gc.steps_complete:
+                    parts.append(f"✓ Steps: {gc.done_count}/{gc.total_count} complete")
+                else:
+                    parts.append(
+                        f"✗ Steps: {gc.done_count}/{gc.total_count} — "
+                        f"{len(gc.pending_steps)} remaining:"
+                    )
+                    for s in gc.pending_steps:
+                        icon = _STEP_ICON.get(s.status, "?")
+                        suggested = f" suggested={s.agent}" if s.agent else ""
+                        parts.append(f"  {icon} {s.id} — {s.name}{suggested}")
+                if gc.gate_criterion:
+                    parts.append(f"\nManual gate criterion: {gc.gate_criterion}")
+                if gc.gate_script:
+                    parts.append(
+                        f"\n⚠ gate_script defined ({gc.gate_script}) but not executable via MCP. "
+                        "Use CLI `vectl gate-check`."
+                    )
+                if gc.downstream_locked:
+                    parts.append(f"\nDownstream phases: {', '.join(gc.downstream_locked)}")
+            except PlanError as e:
+                parts.append(f"\n**Gate Check Error:** {e}")
+
+    diag_lines = _duplicate_id_diagnostics_lines(plan)
+    if diag_lines:
+        parts.append("")
+        parts.extend(diag_lines)
 
     return "\n".join(parts)
+
+
+@mcp.tool(
+    description=(
+        "Validate plan structure and consistency (read-only diagnostics). "
+        "Returns errors/warnings without mutating plan state."
+    ),
+)
+def vectl_validate(check_refs: bool = False) -> str:
+    """Validate plan structure and consistency (MCP read-only equivalent)."""
+    plan, _ = _load()
+    base_path = _plan_path().parent if check_refs else None
+    issues = validate_plan(plan, check_refs=check_refs, base_path=base_path)
+
+    parts: list[str] = ["## Validation"]
+    if not issues:
+        parts.append("✓ Plan is valid — 0 errors, 0 warnings")
+        return "\n".join(parts)
+
+    errors = [issue for issue in issues if not issue.is_warning]
+    warnings = [issue for issue in issues if issue.is_warning]
+    for issue in errors:
+        parts.append(f"ERROR: {issue.message}")
+    for issue in warnings:
+        parts.append(f"WARN: {issue.message}")
+    parts.append(f"{len(errors)} error(s), {len(warnings)} warning(s)")
+    return "\n".join(parts)
+
+
+@mcp.tool(
+    description=(
+        "Run duplicate step-ID migration tooling in dry-run or apply mode. "
+        "Returns deterministic mapping report and migration evidence payload."
+    ),
+)
+def vectl_migrate_step_id(run_mode: Literal["dry-run", "apply"] = "dry-run") -> dict[str, Any]:
+    """Expose duplicate step-ID migration dry-run/apply surfaces.
+
+    Source: step `step-id-migration-tooling.surfaces` and contract
+    docs/contracts/duplicate-id-migration-contract.yaml dry_run_schema and
+    migration_evidence_schema.
+    """
+    plan, expected_def_hash = _load()
+    plan_path = _plan_path()
+    claims_path = resolve_claims_path(plan_path)
+    branch = get_current_branch()
+
+    report, _ = build_duplicate_step_id_migration_dry_run(
+        plan,
+        claims_path=claims_path,
+        branch=branch,
+    )
+    preview_evidence = build_duplicate_step_id_migration_evidence(
+        command="vectl_migrate_step_id",
+        command_args=["run_mode=dry-run"],
+        run_mode="dry-run",
+        migrated=False,
+        report=report,
+    )
+
+    if run_mode == "dry-run":
+        return {
+            "ok": True,
+            "status": "recommendation_only",
+            "report": report.to_dict(),
+            "evidence": preview_evidence.to_dict(),
+        }
+
+    try:
+        apply_result = apply_duplicate_step_id_migration(
+            plan_path,
+            expected_hash=expected_def_hash,
+            claims_path=claims_path,
+            branch=branch,
+            command="vectl_migrate_step_id",
+            command_args=["run_mode=apply"],
+            run_mode="apply",
+        )
+    except CASConflictError as e:
+        return {
+            "ok": False,
+            "status": "recommendation_only",
+            "error": (
+                "CAS conflict: plan.yaml was modified by another process since you loaded it. "
+                "Re-read with `vectl_status` or `vectl_show`, then retry migration."
+            ),
+            "raw_error": str(e),
+            "report": report.to_dict(),
+            "evidence": preview_evidence.to_dict(),
+        }
+    except PlanError as e:
+        return {
+            "ok": False,
+            "status": "recommendation_only",
+            "error": str(e),
+            "report": report.to_dict(),
+            "evidence": preview_evidence.to_dict(),
+        }
+
+    return {
+        "ok": True,
+        "status": "repair_applied",
+        "migrated": apply_result.migrated,
+        "new_plan_hash": apply_result.new_plan_hash,
+        "report": apply_result.report.to_dict(),
+        "evidence": apply_result.evidence.to_dict(),
+    }
 
 
 # ---------------------------------------------------------------------------
@@ -1254,9 +1525,22 @@ def vectl_dag(phase_id: str | None = None) -> str:
     plan, _ = _load()
 
     try:
-        return generate_mermaid_dag(plan, phase_id=phase_id)
+        mmd = generate_mermaid_dag(plan, phase_id=phase_id)
     except PlanError as e:
         return f"**Error:** {e}"
+
+    diagnostics = analyze_duplicate_step_ids(plan)
+    if not diagnostics.conflicts:
+        return mmd
+
+    warning_lines = ["%% Duplicate Step-ID Diagnostics"]
+    for conflict in diagnostics.conflicts:
+        warning_lines.append(
+            "%% WARN duplicate step ID "
+            f"'{conflict.step_id}' appears {conflict.occurrences} time(s) across phases: "
+            f"{', '.join(conflict.phase_ids)}"
+        )
+    return "\n".join([*warning_lines, "", mmd])
 
 
 # ---------------------------------------------------------------------------
@@ -1715,6 +1999,9 @@ class _ToolWrapper:
 # Wrap all tool functions for test compatibility
 _vectl_status_tool = vectl_status
 vectl_status = _ToolWrapper(vectl_status)  # type: ignore[assignment]
+
+_vectl_validate_tool = vectl_validate
+vectl_validate = _ToolWrapper(vectl_validate)  # type: ignore[assignment]
 
 _vectl_show_tool = vectl_show
 vectl_show = _ToolWrapper(vectl_show)  # type: ignore[assignment]

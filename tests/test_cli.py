@@ -791,6 +791,28 @@ class TestClaim:
         assert result.exit_code == 1
         assert "unmet dependencies" in result.output
 
+    def test_claim_error_for_already_qualified_id_is_not_double_prefixed(
+        self, tmp_path: Path
+    ) -> None:
+        plan = Plan(
+            project="qualified-id-regression",
+            phases=[
+                Phase(
+                    id="p1",
+                    name="Phase 1",
+                    steps=[Step(id="p1.s1", name="Step 1", status=StepStatus.DONE)],
+                )
+            ],
+        )
+        plan_path = tmp_path / "plan.yaml"
+        save_plan(plan, plan_path)
+
+        result = runner.invoke(app, ["claim", "p1.s1", "--plan", str(plan_path)])
+
+        assert result.exit_code == 1
+        assert "p1.s1" in result.output
+        assert "p1.p1.s1" not in result.output
+
     def test_auto_claim_picks_first(self, plan_file: Path) -> None:
         """Omitting step_id auto-picks the first claimable step."""
         result = runner.invoke(app, ["claim", "--agent", "bot-1", "--plan", str(plan_file)])
@@ -1093,8 +1115,10 @@ class TestComplete:
             assert result.returncode == 0, result.stderr
 
         monkeypatch.chdir(repo)
-        result = runner.invoke(app, ["claim", "s1", "--agent", "bot-1", "--plan", str(plan_path)])
-        assert result.exit_code == 0
+        invoke_result = runner.invoke(
+            app, ["claim", "s1", "--agent", "bot-1", "--plan", str(plan_path)]
+        )
+        assert invoke_result.exit_code == 0
 
         commit_count = sp.run(
             ["git", "rev-list", "--count", "HEAD"],
@@ -2490,6 +2514,12 @@ class TestShow:
         assert result.exit_code == 1
         assert "not found" in result.output
 
+    def test_show_not_found_collapses_double_prefixed_selector(self, plan_file: Path) -> None:
+        result = runner.invoke(app, ["show", "p1.p1.missing", "--plan", str(plan_file)])
+        assert result.exit_code == 1
+        assert "'p1.missing' not found as step or phase." in result.output
+        assert "p1.p1.missing" not in result.output
+
     def test_show_claimed_step_has_agent(self, plan_file: Path) -> None:
         runner.invoke(app, ["claim", "s1", "--agent", "bot", "--plan", str(plan_file)])
         result = runner.invoke(app, ["show", "s1", "--plan", str(plan_file)])
@@ -3188,6 +3218,180 @@ class TestDag:
     def test_dag_has_drill_hint(self, plan_file: Path) -> None:
         result = runner.invoke(app, ["dag", "--plan", str(plan_file)])
         assert "uvx vectl dag --phase" in result.output
+
+
+class TestDuplicateIdDiagnostics:
+    def _duplicate_plan_path(self, tmp_path: Path) -> Path:
+        plan = Plan(
+            project="duplicate-diagnostics",
+            phases=[
+                Phase(
+                    id="p1",
+                    name="Phase 1",
+                    status=PhaseStatus.PENDING,
+                    steps=[Step(id="dup.step", name="P1 Dup")],
+                ),
+                Phase(
+                    id="p2",
+                    name="Phase 2",
+                    status=PhaseStatus.PENDING,
+                    steps=[Step(id="dup.step", name="P2 Dup")],
+                ),
+            ],
+        )
+        path = tmp_path / "plan.yaml"
+        save_plan(plan, path)
+        return path
+
+    def test_validate_duplicate_step_ids_are_hard_errors(self, tmp_path: Path) -> None:
+        plan_path = self._duplicate_plan_path(tmp_path)
+        result = runner.invoke(app, ["validate", "--plan", str(plan_path)])
+        assert result.exit_code == 1
+        assert "ERROR:" in result.output
+        assert "Duplicate step ID 'dup.step'" in result.output
+        assert "1 error(s)" in result.output
+
+    def test_gate_check_blocks_duplicate_step_id_plan(self, tmp_path: Path) -> None:
+        plan_path = self._duplicate_plan_path(tmp_path)
+        result = runner.invoke(app, ["gate-check", "p1", "--plan", str(plan_path)])
+
+        assert result.exit_code == 1
+        assert "Gate check blocked" in result.output
+        assert "Duplicate step ID 'dup.step'" in result.output
+
+    def test_status_shows_duplicate_diagnostics(self, tmp_path: Path) -> None:
+        plan_path = self._duplicate_plan_path(tmp_path)
+        result = runner.invoke(app, ["status", "--plan", str(plan_path)])
+        assert result.exit_code == 0
+        assert "Duplicate step-ID diagnostics" in result.output
+        assert "dup.step" in result.output
+        assert "p1, p2" in result.output
+
+    def test_show_step_emits_structured_repair_recommendation(self, tmp_path: Path) -> None:
+        plan_path = self._duplicate_plan_path(tmp_path)
+        result = runner.invoke(app, ["show", "dup.step", "--plan", str(plan_path)])
+        assert result.exit_code == 0
+        assert "Ambiguous step target: duplicate ID detected across phases" in result.output
+        assert "type=duplicate-step-id" in result.output
+        assert "step_id=dup.step" in result.output
+        assert "duplicates=p1, p2" in result.output
+        assert "resolution.explicit_phase:" in result.output
+        assert "phase-qualified step selectors" in result.output
+        assert "Use one of:" not in result.output
+        assert "resolution.auto_migrate_flag:" in result.output
+        assert "Not available in phase B" in result.output
+        assert "--auto-migrate" in result.output
+        assert "resolution.migration_tool:" in result.output
+        assert "Use vectl migrate-step-id --dry-run, then --yes" in result.output
+
+    def test_dag_shows_duplicate_diagnostics(self, tmp_path: Path) -> None:
+        plan_path = self._duplicate_plan_path(tmp_path)
+        result = runner.invoke(app, ["dag", "--plan", str(plan_path)])
+        assert result.exit_code == 0
+        assert "Duplicate step-ID diagnostics" in result.output
+        assert "dup.step" in result.output
+
+    def test_claim_blocks_ambiguous_duplicate_target_without_opt_in(self, tmp_path: Path) -> None:
+        plan_path = self._duplicate_plan_path(tmp_path)
+        result = runner.invoke(
+            app, ["claim", "dup.step", "--agent", "bot", "--plan", str(plan_path)]
+        )
+
+        assert result.exit_code == 1
+        assert "error_code=duplicate_step_id_ambiguous_target" in result.output
+        assert "blocking_reason=duplicate_step_id_ambiguous" in result.output
+        assert "recommendation.type=duplicate-step-id" in result.output
+        assert "Use one of:" not in result.output
+
+        plan, _ = load_plan(plan_path)
+        assert plan.phases[0].steps[0].status == StepStatus.PENDING
+        assert plan.phases[1].steps[0].status == StepStatus.PENDING
+
+    def test_check_blocks_ambiguous_duplicate_target_without_opt_in(self, tmp_path: Path) -> None:
+        plan = Plan(
+            project="duplicate-check",
+            phases=[
+                Phase(
+                    id="p1",
+                    name="Phase 1",
+                    status=PhaseStatus.PENDING,
+                    steps=[Step(id="dup.step", name="P1 Dup", description="- [ ] first")],
+                ),
+                Phase(
+                    id="p2",
+                    name="Phase 2",
+                    status=PhaseStatus.PENDING,
+                    steps=[Step(id="dup.step", name="P2 Dup", description="- [ ] second")],
+                ),
+            ],
+        )
+        plan_path = tmp_path / "plan.yaml"
+        save_plan(plan, plan_path)
+
+        result = runner.invoke(app, ["check", "dup.step", "first", "--plan", str(plan_path)])
+
+        assert result.exit_code == 1
+        assert "error_code=duplicate_step_id_ambiguous_target" in result.output
+
+        reloaded, _ = load_plan(plan_path)
+        assert reloaded.phases[0].steps[0].description == "- [ ] first"
+        assert reloaded.phases[1].steps[0].description == "- [ ] second"
+
+    def test_migrate_blocks_when_duplicate_targets_require_auto_migrate(
+        self, tmp_path: Path
+    ) -> None:
+        plan_path = self._duplicate_plan_path(tmp_path)
+        from vectl.migration import resolve_state_path
+
+        state_path = resolve_state_path(plan_path)
+        state_path.parent.mkdir(parents=True, exist_ok=True)
+        state_path.write_text("{}", encoding="utf-8")
+
+        result = runner.invoke(app, ["migrate", "--yes", "--plan", str(plan_path)])
+
+        assert result.exit_code == 1
+        assert "error_code=duplicate_step_id_ambiguous_target" in result.output
+        assert "blocking_reason=duplicate_step_id_ambiguous" in result.output
+
+    def test_migrate_step_id_dry_run_json_reports_mapping_and_evidence(
+        self, tmp_path: Path
+    ) -> None:
+        plan_path = self._duplicate_plan_path(tmp_path)
+
+        result = runner.invoke(
+            app, ["migrate-step-id", "--dry-run", "--json", "--plan", str(plan_path)]
+        )
+
+        assert result.exit_code == 0
+        payload = json.loads(result.output)
+        assert payload["status"] == "recommendation_only"
+        assert payload["report"]["run_mode"] == "dry-run"
+        assert payload["report"]["rename_map"]
+        assert payload["evidence"]["run_mode"] == "dry-run"
+        assert payload["evidence"]["migrated"] is False
+
+    def test_migrate_step_id_apply_json_saves_then_becomes_noop(self, tmp_path: Path) -> None:
+        plan_path = self._duplicate_plan_path(tmp_path)
+
+        first = runner.invoke(app, ["migrate-step-id", "--yes", "--json", "--plan", str(plan_path)])
+        assert first.exit_code == 0
+        first_payload = json.loads(first.output)
+        assert first_payload["status"] == "repair_applied"
+        assert first_payload["migrated"] is True
+        assert first_payload["report"]["rename_map"]
+
+        reloaded, _ = load_plan(plan_path)
+        ids = [step.id for phase in reloaded.phases for step in phase.steps]
+        assert len(ids) == len(set(ids))
+
+        second = runner.invoke(
+            app, ["migrate-step-id", "--yes", "--json", "--plan", str(plan_path)]
+        )
+        assert second.exit_code == 0
+        second_payload = json.loads(second.output)
+        assert second_payload["status"] == "repair_applied"
+        assert second_payload["migrated"] is False
+        assert second_payload["report"]["rename_map"] == []
 
 
 # ---------------------------------------------------------------------------

@@ -28,9 +28,10 @@ from vectl.models import Phase, PhaseStatus, Plan, Step
 
 runner = CliRunner()
 
-# FastMCP @mcp.tool() returns FunctionTool objects; unwrap to get the callable.
-vectl_claim = _vectl_claim_tool.fn
-vectl_complete = _vectl_complete_tool.fn
+# FastMCP @mcp.tool() returns _ToolWrapper objects; unwrap to get the callable.
+# Use type: ignore to suppress mypy errors about the .fn attribute access.
+vectl_claim = _vectl_claim_tool.fn  # type: ignore[attr-defined]
+vectl_complete = _vectl_complete_tool.fn  # type: ignore[attr-defined]
 
 
 # ---------------------------------------------------------------------------

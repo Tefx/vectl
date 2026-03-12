@@ -46,6 +46,9 @@ from vectl.mcp_server import (
     vectl_lifecycle as _vectl_lifecycle_tool,
 )
 from vectl.mcp_server import (
+    vectl_migrate_step_id as _vectl_migrate_step_id_tool,
+)
+from vectl.mcp_server import (
     vectl_mutate as _vectl_mutate_tool,
 )
 from vectl.mcp_server import (
@@ -69,26 +72,32 @@ from vectl.mcp_server import (
 from vectl.mcp_server import (
     vectl_status as _vectl_status_tool,
 )
+from vectl.mcp_server import (
+    vectl_validate as _vectl_validate_tool,
+)
 from vectl.migration import migrate_from_split_state
 from vectl.models import PhaseStatus, PlanError, PlanIOError, StepStatus
 from vectl.plan_path import resolve_claims_path
 
-# FastMCP @mcp.tool() returns FunctionTool objects; unwrap to get the callable.
-vectl_status = _vectl_status_tool.fn
-vectl_show = _vectl_show_tool.fn
-vectl_claim = _vectl_claim_tool.fn
-vectl_complete = _vectl_complete_tool.fn
-vectl_lifecycle = _vectl_lifecycle_tool.fn
-vectl_search = _vectl_search_tool.fn
-vectl_mutate = _vectl_mutate_tool.fn
-vectl_review = _vectl_review_tool.fn
-vectl_guide = _vectl_guide_tool.fn
-vectl_dag = _vectl_dag_tool.fn
-vectl_clipboard = _vectl_clipboard_tool.fn
-vectl_check = _vectl_check_tool.fn
-vectl_render = _vectl_render_tool.fn
-vectl_recover = _vectl_recover_tool.fn
-vectl_repair_claims = _vectl_repair_claims_tool.fn
+# FastMCP @mcp.tool() returns _ToolWrapper objects; unwrap to get the callable.
+# Use type: ignore to suppress mypy errors about the .fn attribute access.
+vectl_status = _vectl_status_tool.fn  # type: ignore[attr-defined]
+vectl_validate = _vectl_validate_tool.fn  # type: ignore[attr-defined]
+vectl_show = _vectl_show_tool.fn  # type: ignore[attr-defined]
+vectl_claim = _vectl_claim_tool.fn  # type: ignore[attr-defined]
+vectl_complete = _vectl_complete_tool.fn  # type: ignore[attr-defined]
+vectl_lifecycle = _vectl_lifecycle_tool.fn  # type: ignore[attr-defined]
+vectl_search = _vectl_search_tool.fn  # type: ignore[attr-defined]
+vectl_mutate = _vectl_mutate_tool.fn  # type: ignore[attr-defined]
+vectl_migrate_step_id = getattr(_vectl_migrate_step_id_tool, "fn", _vectl_migrate_step_id_tool)
+vectl_review = _vectl_review_tool.fn  # type: ignore[attr-defined]
+vectl_guide = _vectl_guide_tool.fn  # type: ignore[attr-defined]
+vectl_dag = _vectl_dag_tool.fn  # type: ignore[attr-defined]
+vectl_clipboard = _vectl_clipboard_tool.fn  # type: ignore[attr-defined]
+vectl_check = _vectl_check_tool.fn  # type: ignore[attr-defined]
+vectl_render = _vectl_render_tool.fn  # type: ignore[attr-defined]
+vectl_recover = _vectl_recover_tool.fn  # type: ignore[attr-defined]
+vectl_repair_claims = _vectl_repair_claims_tool.fn  # type: ignore[attr-defined]
 
 
 # ---------------------------------------------------------------------------
@@ -141,6 +150,51 @@ def _make_plan_dict(
                         "name": "Beta Step One",
                         "status": s3_status,
                     },
+                ],
+            },
+        ],
+    }
+
+
+def _make_duplicate_step_id_plan_dict() -> dict:
+    """Create plan dict with one duplicate step ID across phases."""
+    return {
+        "project": "duplicate-id-mcp",
+        "phases": [
+            {
+                "id": "alpha",
+                "name": "Alpha",
+                "status": "pending",
+                "steps": [
+                    {
+                        "id": "dup.step",
+                        "name": "Alpha duplicate",
+                        "status": "pending",
+                    }
+                ],
+            },
+            {
+                "id": "beta",
+                "name": "Beta",
+                "status": "pending",
+                "steps": [
+                    {
+                        "id": "dup.step",
+                        "name": "Beta duplicate",
+                        "status": "pending",
+                    }
+                ],
+            },
+            {
+                "id": "gamma",
+                "name": "Gamma",
+                "status": "pending",
+                "steps": [
+                    {
+                        "id": "unique.step",
+                        "name": "Gamma unique",
+                        "status": "pending",
+                    }
                 ],
             },
         ],
@@ -299,6 +353,20 @@ def plan_file(tmp_path: Path) -> Iterator[Path]:
         os.environ["VECTL_PLAN_PATH"] = old
 
 
+@pytest.fixture()
+def duplicate_id_plan_file(tmp_path: Path) -> Iterator[Path]:
+    """Create a temp plan file with duplicate step IDs and set VECTL_PLAN_PATH."""
+    p = tmp_path / "plan.yaml"
+    p.write_text(yaml.dump(_make_duplicate_step_id_plan_dict()))
+    old = os.environ.get("VECTL_PLAN_PATH")
+    os.environ["VECTL_PLAN_PATH"] = str(p)
+    yield p
+    if old is None:
+        os.environ.pop("VECTL_PLAN_PATH", None)
+    else:
+        os.environ["VECTL_PLAN_PATH"] = old
+
+
 def _reload_plan(path: Path) -> dict:
     """Re-read plan.yaml contents as dict."""
     return yaml.safe_load(path.read_text())
@@ -353,6 +421,89 @@ class TestVectlStatus:
         assert "bot" in result
         assert "a.1" in result
 
+    def test_status_shows_duplicate_step_id_diagnostics(self, duplicate_id_plan_file: Path) -> None:
+        result = vectl_status()
+        assert "Duplicate Step-ID Diagnostics" in result
+        assert "dup.step" in result
+        assert "alpha, beta" in result
+
+    def test_status_next_steps_shows_correct_phase_for_duplicate_ids(
+        self, duplicate_id_plan_file: Path
+    ) -> None:
+        """Regression test: Next Available Steps shows correct phase for each duplicate step ID."""
+        result = vectl_status()
+        # Both dup.step entries should appear with their correct phases
+        assert "(alpha)" in result
+        assert "(beta)" in result
+        # Verify each duplicate shows its own phase, not the first found
+        # Look for the step entries (marked with ○ bullet)
+        lines = result.split("\n")
+        dup_step_lines = [
+            line for line in lines if "dup.step" in line and line.strip().startswith("○")
+        ]
+        # Should have two entries for dup.step (one in alpha, one in beta)
+        assert len(dup_step_lines) == 2, (
+            f"Expected 2 step lines, got {len(dup_step_lines)}: {dup_step_lines}"
+        )
+        # Check that each shows the correct phase
+        alpha_dup = [line for line in dup_step_lines if "(alpha)" in line]
+        beta_dup = [line for line in dup_step_lines if "(beta)" in line]
+        assert len(alpha_dup) == 1, f"Alpha duplicate should show (alpha): {alpha_dup}"
+        assert len(beta_dup) == 1, f"Beta duplicate should show (beta): {beta_dup}"
+
+
+class TestVectlValidate:
+    def test_validate_reports_duplicate_step_id_error(self, duplicate_id_plan_file: Path) -> None:
+        result = vectl_validate()
+        assert "Validation" in result
+        assert "ERROR:" in result
+        assert "dup.step" in result
+        assert "1 error(s), 0 warning(s)" in result
+
+
+class TestVectlReviewDuplicateBlocking:
+    def test_review_gate_check_is_blocked_when_plan_has_duplicate_step_ids(
+        self, duplicate_id_plan_file: Path
+    ) -> None:
+        result = vectl_review(phase_id="alpha")
+        assert "L1: Validation" in result
+        assert "ERROR: Duplicate step ID 'dup.step'" in result
+        assert "Gate check blocked: plan validation failed" in result
+
+
+class TestVectlMigrateStepId:
+    def test_dry_run_returns_report_and_evidence(self, duplicate_id_plan_file: Path) -> None:
+        result = vectl_migrate_step_id(run_mode="dry-run")
+
+        assert result["ok"] is True
+        assert result["status"] == "recommendation_only"
+        assert result["report"]["run_mode"] == "dry-run"
+        assert result["report"]["rename_map"]
+        assert result["evidence"]["run_mode"] == "dry-run"
+        assert result["evidence"]["migrated"] is False
+
+    def test_apply_returns_report_and_persists_migration_then_noops(
+        self, duplicate_id_plan_file: Path
+    ) -> None:
+        first = vectl_migrate_step_id(run_mode="apply")
+
+        assert first["ok"] is True
+        assert first["status"] == "repair_applied"
+        assert first["migrated"] is True
+        assert first["report"]["rename_map"]
+        assert first["evidence"]["run_mode"] == "apply"
+        assert first["evidence"]["migrated"] is True
+
+        data = _reload_plan(duplicate_id_plan_file)
+        ids = [step["id"] for phase in data["phases"] for step in phase["steps"]]
+        assert len(ids) == len(set(ids))
+
+        second = vectl_migrate_step_id(run_mode="apply")
+        assert second["ok"] is True
+        assert second["status"] == "repair_applied"
+        assert second["migrated"] is False
+        assert second["report"]["rename_map"] == []
+
 
 # ---------------------------------------------------------------------------
 # Tool 2: vectl_show
@@ -388,6 +539,23 @@ class TestVectlShow:
         result = vectl_show(id="a.2")
         assert "Depends on" in result
         assert "a.1" in result
+
+    def test_show_step_duplicate_id_recommendation(self, duplicate_id_plan_file: Path) -> None:
+        result = vectl_show(id="dup.step")
+        assert "Duplicate-ID Repair Recommendation" in result
+        assert "type=duplicate-step-id" in result
+        assert "step_id=dup.step" in result
+        assert "duplicates=alpha, beta" in result
+        assert "resolution.explicit_phase" in result
+        assert "phase-qualified step selectors" in result
+        assert "Use one of:" not in result
+        assert (
+            "resolution.auto_migrate_flag: Not available in phase B: --auto-migrate is unsupported"
+            in result
+        )
+        assert (
+            "resolution.migration_tool: Use vectl migrate-step-id --dry-run, then --yes" in result
+        )
 
 
 # ---------------------------------------------------------------------------
@@ -497,6 +665,29 @@ class TestVectlClaim:
             assert "vectl_show" in result["markdown"]
         finally:
             os.chdir(original_cwd)
+
+    def test_claim_blocks_ambiguous_duplicate_target_without_opt_in(
+        self, duplicate_id_plan_file: Path
+    ) -> None:
+        result = vectl_claim(agent="bot", step_id="dup.step")
+
+        assert result["ok"] is False
+        assert result["error_code"] == "duplicate_step_id_ambiguous_target"
+        assert "blocking_reason=duplicate_step_id_ambiguous" in result["error"]
+        recommendation = result["duplicate_step_id_recommendation"]
+        assert recommendation["type"] == "duplicate-step-id"
+        assert recommendation["step_id"] == "dup.step"
+        assert recommendation["duplicates"] == [{"phase": "alpha"}, {"phase": "beta"}]
+        assert (
+            "phase-qualified step selectors" in recommendation["resolution_path"]["explicit_phase"]
+        )
+        assert recommendation["resolution_path"]["auto_migrate_flag"].startswith(
+            "Not available in phase B"
+        )
+
+        data = _reload_plan(duplicate_id_plan_file)
+        assert data["phases"][0]["steps"][0]["status"] == "pending"
+        assert data["phases"][1]["steps"][0]["status"] == "pending"
 
 
 class TestRepairClaimsMcp:
@@ -695,6 +886,19 @@ class TestVectlLifecycle:
         result = vectl_lifecycle(action="defer", id="nonexistent")
         assert "Error" in result
 
+    def test_lifecycle_blocks_ambiguous_duplicate_target_without_opt_in(
+        self, duplicate_id_plan_file: Path
+    ) -> None:
+        result = vectl_lifecycle(action="skip", id="dup.step", reason="irrelevant")
+
+        assert "Error" in result
+        assert "error_code=duplicate_step_id_ambiguous_target" in result
+        assert "blocking_reason=duplicate_step_id_ambiguous" in result
+
+        data = _reload_plan(duplicate_id_plan_file)
+        assert data["phases"][0]["steps"][0]["status"] == "pending"
+        assert data["phases"][1]["steps"][0]["status"] == "pending"
+
 
 # ---------------------------------------------------------------------------
 # Tool 6: vectl_search
@@ -749,6 +953,18 @@ class TestVectlMutate:
     def test_add_step_requires_phase_and_name(self, plan_file: Path) -> None:
         result = vectl_mutate(action="add-step", phase_id="alpha")
         assert "Error" in result
+
+    def test_add_step_rejects_duplicate_id_across_plan(self, duplicate_id_plan_file: Path) -> None:
+        result = vectl_mutate(
+            action="add-step",
+            phase_id="alpha",
+            name="Another dup",
+            step_id="dup.step",
+        )
+
+        assert "Error" in result
+        assert "error_code=duplicate_step_id_write_blocked" in result
+        assert "blocking_reason=duplicate_step_id_exists" in result
 
     def test_edit_step(self, plan_file: Path) -> None:
         result = vectl_mutate(
@@ -1738,6 +1954,12 @@ class TestVectlReview:
         result = vectl_review()
         assert "Gate Check:" not in result
 
+    def test_review_shows_duplicate_step_id_diagnostics(self, duplicate_id_plan_file: Path) -> None:
+        result = vectl_review()
+        assert "Duplicate Step-ID Diagnostics" in result
+        assert "dup.step" in result
+        assert "alpha, beta" in result
+
     def test_gate_script_warning(self, tmp_path: Path) -> None:
         """Gate script should show warning about MCP non-executability."""
         plan_dict = {
@@ -1897,6 +2119,13 @@ class TestVectlDag:
     def test_drill_hint_in_phase_dag(self, plan_file: Path) -> None:
         result = vectl_dag()
         assert "uvx vectl dag --phase" in result
+
+    def test_dag_includes_duplicate_step_id_warning_comments(
+        self, duplicate_id_plan_file: Path
+    ) -> None:
+        result = vectl_dag()
+        assert "%% Duplicate Step-ID Diagnostics" in result
+        assert "dup.step" in result
 
 
 # ---------------------------------------------------------------------------
@@ -2092,7 +2321,7 @@ class TestVectlInit:
         """Basic init creates plan.yaml and AGENTS.md."""
         from vectl.mcp_server import vectl_init as _vectl_init_tool
 
-        vectl_init = _vectl_init_tool.fn
+        vectl_init = _vectl_init_tool.fn  # type: ignore[attr-defined]
 
         old_cwd = os.getcwd()
         old_plan = os.environ.get("VECTL_PLAN_PATH")
@@ -2127,7 +2356,7 @@ class TestVectlInit:
         """Init refuses to overwrite an existing plan.yaml."""
         from vectl.mcp_server import vectl_init as _vectl_init_tool
 
-        vectl_init = _vectl_init_tool.fn
+        vectl_init = _vectl_init_tool.fn  # type: ignore[attr-defined]
 
         old_cwd = os.getcwd()
         old_plan = os.environ.get("VECTL_PLAN_PATH")
@@ -2153,7 +2382,7 @@ class TestVectlInit:
         """Init respects custom plan_path parameter."""
         from vectl.mcp_server import vectl_init as _vectl_init_tool
 
-        vectl_init = _vectl_init_tool.fn
+        vectl_init = _vectl_init_tool.fn  # type: ignore[attr-defined]
 
         old_cwd = os.getcwd()
         old_plan = os.environ.get("VECTL_PLAN_PATH")
@@ -2178,7 +2407,7 @@ class TestVectlInit:
         """Init creates CLAUDE.md when .claude/ dir exists."""
         from vectl.mcp_server import vectl_init as _vectl_init_tool
 
-        vectl_init = _vectl_init_tool.fn
+        vectl_init = _vectl_init_tool.fn  # type: ignore[attr-defined]
 
         old_cwd = os.getcwd()
         old_plan = os.environ.get("VECTL_PLAN_PATH")
@@ -2204,7 +2433,7 @@ class TestVectlInit:
         """Init respects explicit agents_target='claude'."""
         from vectl.mcp_server import vectl_init as _vectl_init_tool
 
-        vectl_init = _vectl_init_tool.fn
+        vectl_init = _vectl_init_tool.fn  # type: ignore[attr-defined]
 
         old_cwd = os.getcwd()
         old_plan = os.environ.get("VECTL_PLAN_PATH")
@@ -2228,7 +2457,7 @@ class TestVectlInit:
         """Init appends vectl section to existing AGENTS.md."""
         from vectl.mcp_server import vectl_init as _vectl_init_tool
 
-        vectl_init = _vectl_init_tool.fn
+        vectl_init = _vectl_init_tool.fn  # type: ignore[attr-defined]
 
         old_cwd = os.getcwd()
         old_plan = os.environ.get("VECTL_PLAN_PATH")
@@ -2256,7 +2485,7 @@ class TestVectlInit:
         """Init is idempotent - running twice on same AGENTS.md updates block."""
         from vectl.mcp_server import vectl_init as _vectl_init_tool
 
-        vectl_init = _vectl_init_tool.fn
+        vectl_init = _vectl_init_tool.fn  # type: ignore[attr-defined]
 
         old_cwd = os.getcwd()
         old_plan = os.environ.get("VECTL_PLAN_PATH")

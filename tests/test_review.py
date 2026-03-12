@@ -265,6 +265,22 @@ class TestReview:
         assert result.exit_code == 1
         assert "ERROR" in result.output
 
+    def test_review_exits_1_on_duplicate_step_ids(self, tmp_path: Path) -> None:
+        plan = Plan(
+            project="duplicate-step-id-review",
+            phases=[
+                Phase(id="alpha", name="Alpha", steps=[Step(id="dup.step", name="A Dup")]),
+                Phase(id="beta", name="Beta", steps=[Step(id="dup.step", name="B Dup")]),
+            ],
+        )
+        path = tmp_path / "plan.yaml"
+        save_plan(plan, path)
+
+        result = runner.invoke(app, ["review", "--plan", str(path)])
+
+        assert result.exit_code == 1
+        assert "Duplicate step ID 'dup.step'" in result.output
+
 
 # ---------------------------------------------------------------------------
 # gate-check command

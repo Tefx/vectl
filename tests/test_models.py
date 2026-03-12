@@ -165,6 +165,180 @@ class TestPlan:
         plan = Plan(project="test")
         assert plan.find_step("nope") is None
 
+    def test_find_step_qualified_lookup_exact_match_priority(self):
+        """Exact match should take priority over qualified lookup."""
+        plan = Plan(
+            project="test",
+            phases=[
+                Phase(
+                    id="p1",
+                    name="Phase 1",
+                    steps=[Step(id="s1", name="Step 1"), Step(id="p1.s1", name="Qualified S1")],
+                ),
+            ],
+        )
+        # Exact match "s1" should be found first (in p1), not "p1.s1"
+        result = plan.find_step("s1")
+        assert result is not None
+        phase, step = result
+        assert phase.id == "p1"
+        assert step.id == "s1"
+
+    def test_find_step_qualified_lookup_fallback(self):
+        """Qualified lookup should work when exact match fails."""
+        plan = Plan(
+            project="test",
+            phases=[
+                Phase(
+                    id="p1",
+                    name="Phase 1",
+                    steps=[Step(id="s1", name="Step 1"), Step(id="s2", name="Step 2")],
+                ),
+                Phase(
+                    id="p2",
+                    name="Phase 2",
+                    steps=[Step(id="s3", name="Step 3")],
+                ),
+            ],
+        )
+        # Exact match "s1" should work
+        result = plan.find_step("s1")
+        assert result is not None
+        phase, step = result
+        assert phase.id == "p1"
+        assert step.id == "s1"
+
+        # Exact match "p1.s1" should work (qualified form matches exact step id)
+        result = plan.find_step("p1.s1")
+        assert result is not None
+        phase, step = result
+        assert phase.id == "p1"
+        assert step.id == "s1"
+
+        # Exact match "p2.s3" should work
+        result = plan.find_step("p2.s3")
+        assert result is not None
+        phase, step = result
+        assert phase.id == "p2"
+        assert step.id == "s3"
+
+        # Non-existent qualified step should return None
+        result = plan.find_step("p1.s3")
+        assert result is None
+
+        # Non-existent phase in qualified lookup should return None
+        result = plan.find_step("nonexistent.s1")
+        assert result is None
+
+    def test_find_step_qualified_lookup_partition_behavior(self):
+        """Qualified lookup should use partition('.') - only first dot splits."""
+        plan = Plan(
+            project="test",
+            phases=[
+                Phase(
+                    id="p1",
+                    name="Phase 1",
+                    steps=[Step(id="p1.s1", name="Step 1")],
+                ),
+            ],
+        )
+        # "p1.s1" has phase_prefix="p1", step_suffix="s1" - should find
+        result = plan.find_step("p1.s1")
+        assert result is not None
+        assert result[1].id == "p1.s1"
+
+    def test_find_step_qualified_lookup_empty_parts(self):
+        """Qualified lookup returns None if phase prefix or step suffix is empty."""
+        plan = Plan(
+            project="test",
+            phases=[
+                Phase(
+                    id="p1",
+                    name="Phase 1",
+                    steps=[Step(id="s1", name="Step 1")],
+                ),
+            ],
+        )
+        # Empty step suffix (no dot) - falls through to exact match
+        result = plan.find_step("p1.")
+        # "p1." has phase_prefix="p1", step_suffix="" - empty suffix should not match
+        # The function checks "if phase_prefix and step_suffix" so empty suffix returns None
+        assert result is None
+
+    def test_find_step_qualified_lookup_with_exact_step_id_in_specific_phase(self):
+        """Qualified lookup should find step by phase prefix + step suffix."""
+        plan = Plan(
+            project="test",
+            phases=[
+                Phase(
+                    id="phase-a",
+                    name="Phase A",
+                    steps=[Step(id="step-1", name="Step 1")],
+                ),
+                Phase(
+                    id="phase-b",
+                    name="Phase B",
+                    steps=[Step(id="step-1", name="Step 1 in B")],
+                ),
+            ],
+        )
+        # Exact match should find first match
+        result = plan.find_step("step-1")
+        assert result is not None
+        assert result[0].id == "phase-a"
+        assert result[1].id == "step-1"
+
+        # Qualified lookup for phase-b should find the one in phase-b
+        result = plan.find_step("phase-b.step-1")
+        assert result is not None
+        assert result[0].id == "phase-b"
+        assert result[1].id == "step-1"
+
+        # Qualified lookup for phase-a should find the one in phase-a
+        result = plan.find_step("phase-a.step-1")
+        assert result is not None
+        assert result[0].id == "phase-a"
+        assert result[1].id == "step-1"
+
+    def test_find_step_no_match_returns_none(self):
+        """find_step returns None when no step matches."""
+        plan = Plan(
+            project="test",
+            phases=[
+                Phase(
+                    id="p1",
+                    name="Phase 1",
+                    steps=[Step(id="s1", name="Step 1")],
+                ),
+            ],
+        )
+        # Non-existent step
+        assert plan.find_step("nonexistent") is None
+        # Non-existent qualified step
+        assert plan.find_step("p1.nonexistent") is None
+        # Non-existent phase
+        assert plan.find_step("nonexistent.s1") is None
+
+    def test_find_step_case_sensitivity(self):
+        """find_step lookup is case-sensitive."""
+        plan = Plan(
+            project="test",
+            phases=[
+                Phase(
+                    id="Phase1",
+                    name="Phase 1",
+                    steps=[Step(id="Step1", name="Step 1")],
+                ),
+            ],
+        )
+        # Case matters - exact match
+        assert plan.find_step("Step1") is not None
+        # Case mismatch - should not match
+        assert plan.find_step("step1") is None
+        assert plan.find_step("STEP1") is None
+        # Phase case mismatch
+        assert plan.find_step("phase1.Step1") is None
+
     def test_find_phase(self):
         plan = Plan(
             project="test",

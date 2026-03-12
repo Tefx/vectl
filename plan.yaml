@@ -27967,3 +27967,119 @@ phases:
     - test-find-step
     - test-error-msg
     agent: python-executor
+  - id: p1-qualified-lookup-errors.independent-retest-of-p1-qualified-lookup-errors-gate-blockers
+    name: Independent retest of p1-qualified-lookup-errors gate blockers
+    status: pending
+    description: 'step_type: verification
+
+      agent_source: default
+
+      independence_level: L1
+
+
+      As an INDEPENDENT TESTER (`integration-verifier`), validate the batched remediation
+      for `p1-qualified-lookup-errors-gate` from a fresh perspective.
+
+
+      YOUR GOAL IS TO FIND PROBLEMS, not to confirm it works.
+
+
+      Retest scope:
+
+      - B1-B4 are fully closed, not partially patched
+
+      - S1/S2 are either safely included or explicitly deferred with justification
+
+      - Qualified lookup behavior still preserves exact-match priority and dot-in-step-id
+      behavior
+
+      - Error messages and copy-paste qualified IDs remain sane and are not double-prefixed
+
+
+      Test for:
+
+      - Happy path: qualified lookup and qualified error messages still work end-to-end
+
+      - Edge cases: already-qualified step IDs, dot-in-step-id, missing phase, missing
+      step
+
+      - Error scenarios: no remaining ruff/mypy regressions in the touched scope
+
+
+      Finding issues is a SUCCESS. Missing or vague evidence is not.'
+    verification: '- Run ruff on the touched Python/test files and confirm the B1/B2/B3
+      classes of failures are gone
+
+      - Run mypy on the `Plan.find_step` path and confirm the B4 typing failure is
+      gone
+
+      - Run relevant pytest coverage for qualified lookup + validation error behavior,
+      including copy-paste sanity expectations
+
+      - Check whether any touched lifecycle/core/cli paths still double-prefix qualified
+      IDs
+
+      - Record exact commands and actual outputs, not a summary'
+    evidence_template: '## Verification Report
+
+
+      **Tester**: integration-verifier (independent of implementation)
+
+      **Scope**: `p1-qualified-lookup-errors.fix-all-blockers-from-p1-qualified-lookup-errors-gate`
+
+      **Independence Level**: L1
+
+
+      ### Commands executed
+
+      ```sh
+
+      <ruff command>
+
+      <mypy command>
+
+      <pytest command>
+
+      <grep or repro command for double-prefix/copy-paste sanity>
+
+      ```
+
+
+      ### Actual output
+
+      ```text
+
+      <paste key output>
+
+      ```
+
+
+      ### Findings
+
+      | Severity | Description | Location | Reproduction |
+
+      | --- | --- | --- | --- |
+
+      | blocker | <issue or none> | <file:line or behavior> | <steps> |
+
+      | should_fix | <issue or none> | <file:line or behavior> | <steps> |
+
+
+      ### Coverage assessment
+
+      - Happy path verified: yes/no
+
+      - Edge cases verified: exact match priority, missing phase, missing step, dot-in-step-id,
+      already-qualified ID
+
+      - Copy-paste sanity verified: yes/no
+
+      - Double-prefix regression checked: yes/no
+
+
+      ### Verdict
+
+      - PASS / ISSUES_FOUND / INCOMPLETE'
+    depends_on:
+    - p1-qualified-lookup-errors.fix-all-blockers-from-p1-qualified-lookup-errors-gate
+    agent: integration-verifier

@@ -26211,3 +26211,6 @@ phases:
     - step-id-final-integration.verify
     - step-id-final-integration.freeze-gate
     agent: gate-reviewer
+- id: p0-cycle-detection
+  name: 'P0: edit_step Cycle Detection'
+  status: pending

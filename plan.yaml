@@ -25241,7 +25241,7 @@ phases:
       \ PASS\n\ndiscovered_issues:\n- none"
   - id: step-id-validation-hardening.fix-gate-rerun-type-blockers
     name: Batched fix for gate rerun type blockers
-    status: claimed
+    status: done
     description: 'step_type: implementation
 
       agent_source: default
@@ -25440,6 +25440,68 @@ phases:
     agent: python-executor
     claimed_by: python-executor
     claimed_at: '2026-03-12T15:55:09.475389+00:00'
+    done_at: '2026-03-12T16:08:14.053829+00:00'
+    evidence: 'Commit hash(es):
+
+      - worker branch: e5d60a7c8c09774c77ad2075831c9646340eb4fc
+
+      - main squash commit: 24281f1
+
+
+      Files changed:
+
+      - tests/test_migration.py
+
+      - tests/test_mcp.py
+
+      - tests/test_autofix_message.py
+
+      - tests/test_agent_field.py
+
+      - tests/test_cli.py
+
+
+      Verification:
+
+      - uv run --with mypy mypy src tests -> Success: no issues found in 47 source
+      files
+
+      - uv run --with pyright pyright src tests -> 0 errors, 0 warnings
+
+      - pytest tests/test_migration.py -> 9 passed
+
+      - pytest tests/test_autofix_message.py -> 8 passed
+
+      - pytest tests/test_agent_field.py -> 31 passed
+
+      - pytest tests/test_cli.py::TestComplete::test_claim_in_repo_preserves_autosave_commit_behavior
+      -> 1 passed
+
+
+      Spec link:
+
+      - docs/contracts/duplicate-id-rollout-policy.yaml
+
+      - conversation/step-id-validation-hardening.gate-rerun
+
+
+      Gaps/Notes:
+
+      - Added explicit non-None helpers/assertions for migration test Optional access.
+
+      - Addressed typed `.fn` test call surfaces via explicit attr-defined suppression
+      on wrapper access points.
+
+      - Fixed CLI test variable typing reuse mismatch by separating Typer invocation
+      result variable.
+
+      - Sibling scans for Optional-index pattern and `.fn` usage performed and recorded
+      in worker evidence.
+
+
+      discovered_issues:
+
+      - none (nonexistent conversation artifact reference does not affect implementation)'
   - id: step-id-validation-hardening.retest-gate-rerun-type-blockers
     name: Independent retest of gate rerun type blockers
     status: pending

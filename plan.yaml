@@ -25078,7 +25078,7 @@ phases:
       in repository artifact set'
   - id: step-id-validation-hardening.retest-gate-findings
     name: Independent retest of batched gate findings
-    status: pending
+    status: claimed
     description: 'step_type: verification
 
       agent_source: default
@@ -25221,6 +25221,8 @@ phases:
     depends_on:
     - step-id-validation-hardening.fix-gate-findings
     agent: integration-verifier
+    claimed_by: integration-verifier
+    claimed_at: '2026-03-12T15:39:13.895027+00:00'
 - id: step-id-migration-tooling
   name: C / Migration & Tooling
   status: locked

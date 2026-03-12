@@ -26372,7 +26372,7 @@ phases:
       - none'
   - id: step-id-migration-tooling.engine
     name: Implement duplicate-id repair engine
-    status: claimed
+    status: done
     description: "step_type: implementation\nagent_source: default\nspec_refs:\n \
       \ - conversation/duplicate-step-id-bug\n  - conversation/half-automatic-step-id-migration\n\
       \ntouch_paths:\n- src/vectl/core.py\n- src/vectl/models.py\n- src/vectl/io.py\n\
@@ -26425,6 +26425,60 @@ phases:
     agent: python-senior
     claimed_by: python-senior
     claimed_at: '2026-03-12T18:00:48.295393+00:00'
+    done_at: '2026-03-12T18:13:36.033919+00:00'
+    evidence: 'Commit hash(es):
+
+      - worker branch: 8887600685cd97363bee4e5a1dfdcffe6bacdd46
+
+      - main squash commit: 987671b
+
+
+      Files changed:
+
+      - src/vectl/core.py
+
+      - src/vectl/models.py
+
+      - src/vectl/claims.py
+
+      - tests/test_duplicate_id_migration_engine.py
+
+
+      Verification:
+
+      - uv run ruff check src/vectl/core.py src/vectl/models.py src/vectl/claims.py
+      tests/test_duplicate_id_migration_engine.py -> passed
+
+      - uv run mypy src/vectl/core.py src/vectl/models.py src/vectl/claims.py -> no
+      issues
+
+      - uv run pytest -v tests/test_duplicate_id_migration_engine.py tests/test_validation.py
+      -> 53 passed
+
+      - dry-run/apply probe -> deterministic rename_map + depends_on rewrite + migrated
+      flags (True then False on rerun) + claimed-block true
+
+      - CAS probe -> conflict raised as expected
+
+
+      Spec link:
+
+      - step-id-migration-tooling.engine
+
+
+      Gaps/Notes:
+
+      - Implemented deterministic duplicate grouping/rename map, in-phase dependency
+      rewrites, dry-run schema, apply path with CAS, claimed-step blocking (plan +
+      claims.json), and evidence payload scaffolding.
+
+      - Added focused migration-engine regression coverage for determinism, rewrite
+      correctness, claimed-step policy, CAS safety, and idempotence.
+
+
+      discovered_issues:
+
+      - none'
   - id: step-id-migration-tooling.surfaces
     name: Add CLI and MCP migration surfaces
     status: pending

@@ -23495,6 +23495,172 @@ phases:
     agent: integration-verifier
     claimed_by: integration-verifier
     claimed_at: '2026-03-12T13:40:13.508234+00:00'
+  - id: step-id-resolver-hardening.fix-mypy-gate-blockers
+    name: Batched mypy remediation for resolver hardening retest blockers
+    status: pending
+    description: 'step_type: implementation
+
+      agent_source: default
+
+      priority: HIGH
+
+
+      Fix ALL mypy blockers found by `step-id-resolver-hardening.retest-gate-blockers`
+      in ONE batched remediation. ALL of these, not just the first.
+
+
+      prior_loop:
+
+      - step-id-resolver-hardening.gate
+
+      - step-id-resolver-hardening.fix-gate-blockers
+
+      - step-id-resolver-hardening.retest-gate-blockers
+
+      remaining_blocker: `uv run mypy src tests` still fails with 16 errors across
+      4 files, blocking phase progression despite ruff and resolver contract/surface
+      checks already passing.
+
+      why_new_loop: The first remediation closed lint and resolver-contract issues,
+      but independent retest exposed a narrower cross-test typing debt cluster that
+      now needs one consolidated follow-up before the phase can reopen.
+
+
+      spec_refs:
+
+      - `docs/contracts/step-resolver-contract.md`
+
+      - phase `step-id-resolver-hardening`
+
+
+      touch_paths:
+
+      - `tests/test_migration.py`
+
+      - `tests/test_cli.py`
+
+      - `tests/test_autofix_message.py`
+
+      - `tests/test_agent_field.py`
+
+      - related MCP wrapper test helpers or typed callable adapters needed to remove
+      sibling `.fn` attr-defined errors
+
+
+      harness_refs:
+
+      - `uv run mypy src tests`
+
+      - `uv run ruff check .`
+
+      - resolver contract enforceability tests
+
+      - targeted resolver parity / non-mutation / surface tests
+
+
+      Known constraints:
+
+      - Preserve the resolver hardening behavior already validated by the passing
+      resolver contract and surface suites.
+
+      - Do not weaken assertions or replace real typing coverage with blanket ignores
+      unless a file-local justification is unavoidable and documented.
+
+      - Search for sibling instances beyond the listed lines before closing; this
+      is a batched debt cleanup, not a single-line patch.
+
+
+      ## Blockers to Fix (ALL of these, not just the first)
+
+
+      ### B1: Nullable tuple indexing in migration tests
+
+      Locations:
+
+      - `tests/test_migration.py`
+
+      Remediation:
+
+      - Replace unsafe indexing on the Optional result from `find_step(...)` with
+      a type-safe narrowing pattern.
+
+      - Search for sibling Optional tuple/indexing patterns in migration tests before
+      stopping.
+
+      Grep hint:
+
+      - `rg -n "find_step\(|\[[01]\]" tests/test_migration.py`
+
+
+      ### B2: Result type mismatch in CLI tests
+
+      Locations:
+
+      - `tests/test_cli.py`
+
+      Remediation:
+
+      - Align the test helper/result annotations so mypy sees a consistent `Result`
+      vs `CompletedProcess` contract.
+
+      - Keep CLI behavioral assertions intact; do not change the runtime API just
+      to satisfy tests.
+
+      Grep hint:
+
+      - `rg -n "CompletedProcess|Result" tests/test_cli.py`
+
+
+      ### B3: `.fn` attr-defined typing failures in MCP wrapper test surfaces
+
+      Locations:
+
+      - `tests/test_autofix_message.py`
+
+      - `tests/test_agent_field.py`
+
+      - related MCP wrapper test helpers/surfaces
+
+      Remediation:
+
+      - Replace brittle `.fn` attribute access with a typed wrapper/access pattern
+      that satisfies mypy across all sibling surfaces.
+
+      - Search related MCP wrapper tests for remaining `.fn`-style access before closing.
+
+      Grep hint:
+
+      - `rg -n "\.fn\b" tests/test_autofix_message.py tests/test_agent_field.py tests`
+
+
+      ## Completion Criteria
+
+      - `uv run mypy src tests` passes with no remaining errors.
+
+      - `uv run ruff check .` remains green after the typing fixes.
+
+      - Resolver contract enforceability tests still pass.
+
+      - Targeted resolver parity / non-mutation / resolver surface tests still pass.
+
+      - Sibling search completed for Optional tuple indexing, `Result`/`CompletedProcess`
+      typing, and `.fn` attr access; no unreviewed nearby instances remain.
+
+      - Out of scope: new resolver features, broader migration semantics changes,
+      or unrelated repo-wide typing cleanup beyond the reported mypy blockers.'
+    verification: '- `uv run mypy src tests` passes
+
+      - `uv run ruff check .` remains green
+
+      - Resolver contract enforceability tests continue to pass
+
+      - Targeted resolver parity / non-mutation / resolver surface tests continue
+      to pass
+
+      - Evidence includes sibling-search results for each blocker family'
+    depends_on:
+    - step-id-resolver-hardening.retest-gate-blockers
+    agent: python-executor
 - id: step-id-validation-hardening
   name: B / Validation Hardening
   status: locked

@@ -24463,7 +24463,7 @@ phases:
     agent: gate-reviewer
   - id: step-id-validation-hardening.fix-verify-findings
     name: Fix MCP duplicate-id status findings
-    status: pending
+    status: claimed
     description: 'step_type: implementation
 
       Fix ALL of these, not just the first, from `step-id-validation-hardening.verify`.
@@ -24524,6 +24524,8 @@ phases:
     depends_on:
     - step-id-validation-hardening.verify
     agent: python-executor
+    claimed_by: python-executor
+    claimed_at: '2026-03-12T14:53:21.141451+00:00'
   - id: step-id-validation-hardening.retest-verify-findings
     name: Retest MCP duplicate-id status findings
     status: pending

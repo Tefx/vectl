@@ -27025,7 +27025,7 @@ phases:
       - none'
   - id: step-id-migration-tooling.gate
     name: Gate review for migration and tooling
-    status: claimed
+    status: done
     description: 'step_type: gate
 
       agent_source: default
@@ -27096,6 +27096,17 @@ phases:
     agent: gate-reviewer
     claimed_by: gate-reviewer
     claimed_at: '2026-03-12T18:54:46.949013+00:00'
+    done_at: '2026-03-12T19:20:16.123691+00:00'
+    evidence: "## Gate Review Report\n- Blocking issues:\n  - B1: Ruff E501 lint blockers\
+      \ from duplicated long guidance line in `src/vectl/cli.py` and `src/vectl/core.py`\n\
+      \  - B2: `--auto-migrate` half-automatic flow documented/contracted but not\
+      \ implemented consistently across CLI/MCP/surfaced guidance\n- Cross-cutting\
+      \ findings:\n  - guidance/contract/surface drift around `--auto-migrate` messaging\
+      \ and availability\n  - should-fix evidence quality consistency concerns (freeze/verify\
+      \ raw output rigor)\n- Gate decision: BLOCKED\n\nBatched remediation action:\n\
+      - Planner added and wired remediation loop:\n  - step-id-migration-tooling.fix-gate-blockers\n\
+      \  - step-id-migration-tooling.retest-gate-blockers\n- Gate now depends on fix+retest\
+      \ loop before rerun.\n\ndiscovered_issues:\n- none"
   - id: step-id-migration-tooling.fix-gate-blockers
     name: Fix gate blockers for migration tooling
     status: pending

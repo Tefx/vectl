@@ -25999,6 +25999,59 @@ phases:
     depends_on:
     - step-id-validation-hardening.gate
     agent: python-senior
+  - id: step-id-validation-hardening.retest-gate-rerun-guidance-blockers
+    name: Independent retest of gate rerun guidance blockers
+    status: pending
+    description: 'step_type: verification
+
+      agent_source: default
+
+      Independence Level: L1
+
+      As an INDEPENDENT TESTER (`integration-verifier`), validate recommendation consistency
+      and command resolvability after `step-id-validation-hardening.fix-gate-rerun-guidance-blockers`.
+
+
+      YOUR GOAL IS TO FIND PROBLEMS, not to confirm it works.
+
+
+      Test for:
+
+      - Happy path: duplicate-ID remediation guidance in CLI and MCP matches the shipped
+      contract and points only to executable actions
+
+      - Edge cases: duplicate targets with multiple phases, machine-readable recommendation
+      payloads, and docs/examples that could drift from runtime behavior
+
+      - Error scenarios: any advertised `phase.step_id` or alternative remediation
+      action still fails immediately when exercised on the targeted write commands
+
+
+      Reproduce the original blocker and confirm the fix chose one coherent path:
+
+      - `vectl claim dup.step` on a legacy duplicate fixture
+
+      - exercise every remediation action that the recommendation now advertises
+
+      - verify the same behavior through MCP for the equivalent path
+
+
+      A test that discovers issues is a SUCCESS.'
+    verification: '- Execute the original repro and capture the new recommendation
+      payload/text
+
+      - Validate recommendation consistency across CLI, MCP, and docs/contracts/duplicate-id-rollout-policy.yaml
+
+      - If `phase.step_id` is advertised, prove the advertised targeted commands now
+      resolve it; if not advertised, prove no surface still suggests it
+
+      - Report actual command outputs for both the main path and the highest-risk
+      mismatch path
+
+      - Classify any remaining drift as blocker/should_fix with exact reproduction'
+    depends_on:
+    - step-id-validation-hardening.fix-gate-rerun-guidance-blockers
+    agent: integration-verifier
 - id: step-id-migration-tooling
   name: C / Migration & Tooling
   status: locked

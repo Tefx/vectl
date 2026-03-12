@@ -23074,6 +23074,43 @@ phases:
     depends_on:
     - step-id-validation-hardening.write-guard
     agent: blind-tester
+  - id: step-id-validation-hardening.freeze-gate
+    name: Freeze snapshot for validation gate
+    status: pending
+    description: 'step_type: verification
+
+      agent_source: default
+
+      Freeze the repository snapshot before the validation gate review.
+
+
+      Requirements:
+
+      - capture `git rev-parse HEAD`
+
+      - confirm `git status` is clean
+
+      - declare review inputs (diagnostics outputs, write-guard tests, verification
+      notes)
+
+      - state that no code changes are allowed until the gate decision is recorded'
+    verification: '- Evidence includes commit SHA, clean-status confirmation, evidence
+      inventory, and freeze statement'
+    evidence_template: '## Gate Freeze Record
+
+      - Commit: <git rev-parse HEAD>
+
+      - Git status clean: <yes/no>
+
+      - Review inputs: <files/tests/evidence>
+
+      - Freeze statement: no code changes until `step-id-validation-hardening.gate`
+      completes
+
+      '
+    depends_on:
+    - step-id-validation-hardening.verify
+    agent: software-architect
 - id: step-id-migration-tooling
   name: C / Migration & Tooling
   status: locked

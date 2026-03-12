@@ -26455,3 +26455,40 @@ phases:
     depends_on:
     - implement-find-step
     agent: python-executor
+  - id: test-error-msg
+    name: Add validation error message qualified ID test
+    status: pending
+    description: 'Add a test verifying the validation error message uses qualified
+      phase.step IDs.
+
+
+      File: tests/test_validation.py
+
+
+      Add a test case (in existing TestStatusConsistency class or a new class) with
+      this logic:
+
+
+      1. test_done_phase_error_uses_qualified_id — Create a plan with a phase (id="myphase",
+      status=DONE) containing a step (id="mystep", status=PENDING). Run validate_plan().
+      Assert the error message contains "myphase.mystep" (the qualified form), not
+      just bare "mystep".
+
+
+      This verifies that the error message at core.py line 203 now uses f"{phase.id}.{step.id}"
+      format, making the ID actionable for copy-paste into vectl show/skip.
+
+
+      Helper: Use the existing _make_plan() helper.
+
+
+      Imports: Already available in test_validation.py.'
+    verification: '- Test passes: pytest tests/test_validation.py::TestStatusConsistency::test_done_phase_error_uses_qualified_id
+      -v (or equivalent class path)
+
+      - Error message in test assertion uses "myphase.mystep" format
+
+      - No regressions: pytest tests/test_validation.py -v'
+    depends_on:
+    - implement-error-msg
+    agent: python-executor

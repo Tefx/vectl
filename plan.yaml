@@ -27694,7 +27694,7 @@ phases:
       \ndiscovered_issues:\n- none"
   - id: step-id-final-integration.freeze-gate
     name: Freeze snapshot for final gate
-    status: done
+    status: rejected
     description: 'step_type: verification
 
       agent_source: default
@@ -27739,21 +27739,13 @@ phases:
     claimed_by: software-architect
     claimed_at: '2026-03-12T19:38:53.021225+00:00'
     done_at: '2026-03-12T19:40:47.879104+00:00'
-    evidence: '## Gate Freeze Record
-
-      - Commit: a66c2896559a16b7beba5decbdc3ea0f1625c9fa
-
-      - Git status clean: yes
-
-      - Review inputs: tests/repro/step_id_validation_hardening_verify.md, tests/repro/fixtures/unique_plan.yaml,
-      tests/repro/fixtures/legacy_duplicate_plan.yaml, tests/ (33 test files), src/vectl/
-
-      - Freeze statement: no code changes until `step-id-final-integration.gate` completes
-
-
-      discovered_issues:
-
-      - none'
+    rejection_reason: Freeze evidence must be re-collected after batched remediation
+      and independent retest; prior freeze snapshot predates the new fix/retest loop.
+    rejection_history:
+    - reason: Freeze evidence must be re-collected after batched remediation and independent
+        retest; prior freeze snapshot predates the new fix/retest loop.
+      timestamp: '2026-03-12T19:52:45.945495+00:00'
+      reviewer: planner
   - id: step-id-final-integration.gate
     name: Final gate review for duplicate-id fix
     status: claimed

@@ -25829,7 +25829,7 @@ phases:
       - none'
   - id: step-id-validation-hardening.step-id-validation-hardening-retest-gate-rerun-import-blockers
     name: step-id-validation-hardening.retest-gate-rerun-import-blockers
-    status: claimed
+    status: done
     description: 'step_type: verification
 
       agent_source: default
@@ -25894,6 +25894,49 @@ phases:
     agent: integration-verifier
     claimed_by: integration-verifier
     claimed_at: '2026-03-12T16:36:43.493766+00:00'
+    done_at: '2026-03-12T16:41:31.230655+00:00'
+    evidence: 'Commit hash(es): none (retest-only step; no code changes)
+
+
+      Files changed:
+
+      - none
+
+
+      Verification:
+
+      - uv run ruff check tests/test_agent_field.py tests/test_mcp.py -> PASS (All
+      checks passed)
+
+      - uv run pytest -v tests/test_agent_field.py tests/test_mcp.py -> PASS (197
+      passed)
+
+      - uv run ruff check --select I tests/test_agent_field.py tests/test_mcp.py ->
+      PASS
+
+      - uv run ruff check tests -> PASS
+
+      - uv run ruff check . --select E402,F811,UP035,F401 -> PASS
+
+
+      Spec link:
+
+      - docs/contracts/duplicate-id-rollout-policy.yaml
+
+      - conversation/step-id-validation-hardening.import-hygiene-retest
+
+
+      Gaps/Notes:
+
+      - `pytest` binary not on PATH in this environment; `uv run pytest` used as equivalent
+      harness.
+
+      - No residual import-hygiene blocker in scoped files.
+
+
+      discovered_issues:
+
+      - none'
 - id: step-id-migration-tooling
   name: C / Migration & Tooling
   status: locked

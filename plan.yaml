@@ -28312,7 +28312,7 @@ phases:
       - none"
   - id: p1-qualified-lookup-errors.fix-double-prefix-qualified-id-regression
     name: Fix double-prefix regression for already-qualified step IDs
-    status: claimed
+    status: done
     description: "step_type: implementation\nagent_source: default\npriority: HIGH\n\
       prior_loop:\n  - p1-qualified-lookup-errors.fix-all-blockers-from-p1-qualified-lookup-errors-gate\n\
       \  - p1-qualified-lookup-errors.independent-retest-of-p1-qualified-lookup-errors-gate-blockers\n\
@@ -28365,6 +28365,60 @@ phases:
     agent: python-senior
     claimed_by: python-senior
     claimed_at: '2026-03-12T18:16:34.030897+00:00'
+    done_at: '2026-03-12T18:27:35.489195+00:00'
+    evidence: 'Commit hash(es):
+
+      - worker branch: 45945b65d1eefec76fd23481c1d49e28f8182dd0
+
+      - main squash commit: 38002a6
+
+
+      Files changed:
+
+      - src/vectl/models.py
+
+      - src/vectl/lifecycle.py
+
+      - src/vectl/core.py
+
+      - src/vectl/cli.py
+
+      - tests/test_validation.py
+
+      - tests/test_cli.py
+
+
+      Verification:
+
+      - ruff check src/vectl/models.py src/vectl/lifecycle.py src/vectl/core.py src/vectl/cli.py
+      tests/test_validation.py tests/test_cli.py -> All checks passed
+
+      - mypy src/vectl/models.py src/vectl/lifecycle.py src/vectl/core.py src/vectl/cli.py
+      -> no issues
+
+      - uv run pytest -q targeted regression cases for already-qualified IDs and CLI
+      collapse behavior -> PASS (4 passed)
+
+      - broader targeted suite on qualified-id error messaging + CLI show cases ->
+      PASS (16 passed)
+
+
+      Spec link:
+
+      - p1-qualified-lookup-errors/double-prefix-regression
+
+
+      Gaps/Notes:
+
+      - Introduced canonical step selector formatter and applied it across lifecycle/core/cli
+      emitters to prevent `phase.phase.step` output.
+
+      - Added regressions for already-qualified and double-prefixed input forms.
+
+
+      discovered_issues:
+
+      - none'
   - id: p1-qualified-lookup-errors.independent-retest-double-prefix-qualified-id-regression
     name: Independent retest of double-prefix qualified-id regression
     status: pending

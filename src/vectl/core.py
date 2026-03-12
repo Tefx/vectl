@@ -1129,7 +1129,6 @@ def edit_step(
     if found is None:
         raise PlanError(f"Step '{step_id}' not found")
     phase, step = found
-    qualified_id = f"{phase.id}.{step.id}"
 
     if new_step_id is not _SENTINEL:
         target_id = str(new_step_id)
@@ -1334,7 +1333,8 @@ def remove_step(plan: Plan, step_id: str, *, force: bool = False) -> Plan:
 
     if step.status != StepStatus.PENDING:
         raise PlanError(
-            f"Cannot remove step '{qualified_id}' with status '{step.status.value}' (must be pending)"
+            f"Cannot remove step '{qualified_id}' with status "
+            f"'{step.status.value}' (must be pending)"
         )
 
     # Check no other step depends on this one
@@ -1461,7 +1461,6 @@ def update_checklist(
     if found is None:
         raise PlanError(f"Step '{step_id}' not found")
     phase, step = found
-    qualified_id = f"{phase.id}.{step.id}"
 
     if check is not None:
         step.description = _toggle_checklist_item(step.description, check)

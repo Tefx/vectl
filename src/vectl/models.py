@@ -195,12 +195,12 @@ class Plan(BaseModel):
         if "." in step_id:
             phase_prefix, _, step_suffix = step_id.partition(".")
             if phase_prefix and step_suffix:
-                phase = self.find_phase(phase_prefix)
-                if phase is not None:
-                    for step in phase.steps:
+                found_phase = self.find_phase(phase_prefix)
+                if found_phase is not None:
+                    for found_step in found_phase.steps:
                         # Look for the step_suffix within the specified phase
-                        if step.id == step_suffix:
-                            return phase, step
+                        if found_step.id == step_suffix:
+                            return found_phase, found_step
 
         return None
 

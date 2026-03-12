@@ -26693,7 +26693,7 @@ phases:
       - none'
   - id: step-id-migration-tooling.hard-error-flip
     name: Flip legacy duplicates to hard validation errors
-    status: claimed
+    status: done
     description: "step_type: implementation\nagent_source: default\nspec_refs:\n \
       \ - conversation/duplicate-step-id-bug\n  - conversation/half-automatic-step-id-migration\n\
       \  - phased rollout decision from `step-id-validation-hardening.rollout-contract`\n\
@@ -26744,6 +26744,67 @@ phases:
     agent: python-senior
     claimed_by: python-senior
     claimed_at: '2026-03-12T18:36:29.933173+00:00'
+    done_at: '2026-03-12T18:43:53.573656+00:00'
+    evidence: 'Commit hash(es):
+
+      - worker branch: 18c5212602436e6ac777a22f95dbe247cf45fb95
+
+      - main squash commit: 28b56bd
+
+
+      Files changed:
+
+      - src/vectl/core.py
+
+      - src/vectl/cli.py
+
+      - src/vectl/mcp_server.py
+
+      - tests/test_validation.py
+
+      - tests/test_core.py
+
+      - tests/test_cli.py
+
+      - tests/test_mcp.py
+
+      - tests/test_review.py
+
+
+      Verification:
+
+      - uv run pytest tests/test_validation.py tests/test_core.py tests/test_cli.py
+      tests/test_mcp.py tests/test_review.py -> 504 passed
+
+      - uv run vectl validate --plan tests/repro/fixtures/legacy_duplicate_plan.yaml
+      -> hard ERROR duplicate-id; 1 error / 0 warning
+
+      - uv run vectl gate-check p1 --plan tests/repro/fixtures/legacy_duplicate_plan.yaml
+      -> blocked by validation failure with repair guidance
+
+      - uv run vectl review --phase alpha --plan tests/repro/fixtures/legacy_duplicate_plan.yaml
+      -> blocking ERROR duplicate-id
+
+      - uv run vectl validate --plan tests/repro/fixtures/unique_plan.yaml -> valid
+      (duplicate-free regression)
+
+
+      Spec link:
+
+      - step-id-migration-tooling.hard-error-flip
+
+
+      Gaps/Notes:
+
+      - Flipped validation/review/gate surfaces to hard-error behavior for legacy
+      duplicates while preserving status/show/dag diagnostics policy.
+
+      - No migration-engine algorithm changes in this step.
+
+
+      discovered_issues:
+
+      - none'
   - id: step-id-migration-tooling.freeze-l2
     name: Freeze snapshot for migration verification
     status: pending

@@ -26967,7 +26967,7 @@ phases:
       - none'
   - id: step-id-migration-tooling.freeze-gate
     name: Freeze snapshot for migration gate
-    status: claimed
+    status: done
     description: 'step_type: verification
 
       agent_source: default
@@ -27003,6 +27003,26 @@ phases:
     agent: software-architect
     claimed_by: software-architect
     claimed_at: '2026-03-12T18:51:51.258667+00:00'
+    done_at: '2026-03-12T18:54:28.075992+00:00'
+    evidence: '## Gate Freeze Record
+
+      - Commit: 3da037b82f559ebffb56e22ea5cb732ec3f50dbd
+
+      - Git status clean: yes
+
+      - Review inputs: docs/contracts/duplicate-id-migration-contract.yaml, tests/repro/fixtures/legacy_duplicate_plan.yaml,
+      tests/repro/fixtures/unique_plan.yaml, tests/test_duplicate_id_migration_engine.py,
+      tests/test_duplicate_id_migration_dag.py, tests/test_duplicate_id_migration_contract.py,
+      tests/test_migration.py, tests/test_validation.py, tests/test_cli.py, tests/test_mcp.py,
+      src/vectl/core.py, src/vectl/models.py, src/vectl/claims.py, src/vectl/cli.py,
+      src/vectl/mcp_server.py, src/vectl/guide.py, src/vectl/claim_guidance.py
+
+      - Freeze statement: no code changes until `step-id-migration-tooling.gate` completes
+
+
+      discovered_issues:
+
+      - none'
   - id: step-id-migration-tooling.gate
     name: Gate review for migration and tooling
     status: pending

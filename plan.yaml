@@ -22507,3 +22507,8 @@ phases:
 
       - Requested `test_version_subcommand` target does not exist; used existing `TestVersion`
       suite as closest authoritative equivalent.'
+- id: step-id-resolver-hardening
+  name: A / Resolver Hardening
+  status: pending
+  depends_on:
+  - version-bump-0-6-2

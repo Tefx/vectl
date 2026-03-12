@@ -25504,7 +25504,7 @@ phases:
       - none (nonexistent conversation artifact reference does not affect implementation)'
   - id: step-id-validation-hardening.retest-gate-rerun-type-blockers
     name: Independent retest of gate rerun type blockers
-    status: claimed
+    status: done
     description: 'step_type: verification
 
       agent_source: default
@@ -25577,6 +25577,52 @@ phases:
     agent: integration-verifier
     claimed_by: integration-verifier
     claimed_at: '2026-03-12T16:08:29.518153+00:00'
+    done_at: '2026-03-12T16:12:07.413625+00:00'
+    evidence: 'Commit hash(es): none (independent retest-only step; no code changes)
+
+
+      Files changed:
+
+      - none
+
+
+      Verification:
+
+      - uv run --with mypy mypy src tests -> PASS (Success: no issues found in 47
+      source files)
+
+      - uv run --with pyright pyright -> PASS (0 errors, 0 warnings)
+
+      - uv run pytest -v tests/test_migration.py tests/test_mcp.py tests/test_autofix_message.py
+      tests/test_agent_field.py -> PASS (216 passed)
+
+      - uv run pytest -v tests/test_cli.py --cov=src --cov-report=term-missing ->
+      PASS (226 passed)
+
+      - sibling scan `\.fn\b` -> matches reviewed; typed-safe/justified in scoped
+      tests
+
+      - sibling scan Optional-index patterns -> no remaining unsafe pattern matches
+      in scope
+
+
+      Spec link:
+
+      - docs/contracts/duplicate-id-rollout-policy.yaml
+
+      - conversation/step-id-validation-hardening.gate-rerun
+
+
+      Gaps/Notes:
+
+      - Worktree remained clean before/after checks.
+
+      - No residual blocker/should-fix findings in this retest.
+
+
+      discovered_issues:
+
+      - none'
 - id: step-id-migration-tooling
   name: C / Migration & Tooling
   status: locked

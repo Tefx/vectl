@@ -22977,7 +22977,7 @@ phases:
       \ review and records decision"
   - id: step-id-resolver-hardening.gate
     name: Gate review for resolver hardening
-    status: pending
+    status: claimed
     description: 'step_type: gate
 
       agent_source: default
@@ -23036,6 +23036,8 @@ phases:
     - step-id-resolver-hardening.verify
     - step-id-resolver-hardening.freeze-gate
     agent: gate-reviewer
+    claimed_by: gate-reviewer
+    claimed_at: '2026-03-12T13:20:02.157942+00:00'
 - id: step-id-validation-hardening
   name: B / Validation Hardening
   status: locked

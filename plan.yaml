@@ -26800,7 +26800,7 @@ phases:
     claimed_at: '2026-03-12T16:25:37.627771+00:00'
   - id: p0-cycle-detection.fix-gate-blocker-edit-step-rollback
     name: fix-gate-blocker-edit-step-rollback
-    status: pending
+    status: claimed
     description: 'Fix ALL blockers found by the gate rerun for edit_step cycle detection.
 
 
@@ -26893,6 +26893,8 @@ phases:
     depends_on:
     - test
     agent: python-senior
+    claimed_by: python-senior
+    claimed_at: '2026-03-12T16:36:42.198505+00:00'
   - id: p0-cycle-detection.retest-gate-precheck-edit-step-rollback
     name: retest-gate-precheck-edit-step-rollback
     status: pending

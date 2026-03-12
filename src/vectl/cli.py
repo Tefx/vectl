@@ -27,29 +27,29 @@ from vectl.core import (
     add_step,
     add_steps_bulk,
     analyze_duplicate_step_ids,
+    claim_step,
     clipboard_clear,
     clipboard_write,
-    duplicate_step_id_recommendation_for_target,
-    diff_plans,
-    edit_phase,
     complete_phase,
     complete_step,
-    claim_step,
     defer_step,
+    diff_plans,
+    duplicate_step_id_recommendation_for_target,
+    edit_phase,
     edit_step,
     format_lock_changes,
-    get_next_steps,
     get_claimed_steps,
+    get_next_steps,
     move_step,
     recalc_lock_status,
     reject_step,
     remove_step,
     render_plan,
+    require_unambiguous_target_step_id,
     review_plan,
     search_plan,
     skip_phase,
     skip_step,
-    require_unambiguous_target_step_id,
     unlock_phase,
     update_checklist,
     validate_plan,
@@ -80,13 +80,12 @@ from vectl.models import (
     Step,
     StepStatus,
 )
-from vectl.semantics import _get_active_phase_ids
 from vectl.plan_path import (
     is_linked_worktree,
     resolve_claims_path,
     resolve_plan_path,
 )
-from vectl.semantics import is_step_locked
+from vectl.semantics import _get_active_phase_ids, is_step_locked
 
 console = Console(stderr=True)
 out = Console()
@@ -166,22 +165,24 @@ def _print_duplicate_id_recommendation_for_step(p: Plan, step_id: str) -> None:
     out.print(
         "[yellow]⚠ Ambiguous step target: duplicate ID detected across phases.[/]",
     )
+    phases = ", ".join(duplicate.phase for duplicate in recommendation.duplicates)
     out.print(
         "  "
-        f"[dim]step_id={_esc(recommendation.step_id)} "
-        f"phases={_esc(', '.join(recommendation.phase_ids))}[/]"
+        f"[dim]type={_esc(recommendation.type)} "
+        f"step_id={_esc(recommendation.step_id)} "
+        f"duplicates={_esc(phases)}[/]"
     )
     out.print(
-        f"  [dim]dry-run repair:[/] {recommendation.dry_run_repair_entry_point}",
+        "  [dim]resolution.explicit_phase:[/] "
+        f"{_esc(recommendation.resolution_path.explicit_phase)}",
     )
     out.print(
-        f"  [dim]opt-in auto-migrate:[/] {recommendation.auto_migrate_entry_point}",
+        "  [dim]resolution.auto_migrate_flag:[/] "
+        f"{_esc(recommendation.resolution_path.auto_migrate_flag)}",
     )
     out.print(
-        f"  [dim]operator next action:[/] {_esc(recommendation.operator_next_action)}",
-    )
-    out.print(
-        f"  [dim]automation next action:[/] {_esc(recommendation.automation_next_action)}",
+        "  [dim]resolution.migration_tool:[/] "
+        f"{_esc(recommendation.resolution_path.migration_tool)}",
     )
 
 

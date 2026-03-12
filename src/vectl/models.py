@@ -238,15 +238,29 @@ class DuplicateStepIdDiagnostic:
 
 
 @dataclass(frozen=True)
+class DuplicateStepIdPhaseRef:
+    """One conflicting phase for a duplicate step ID."""
+
+    phase: str
+
+
+@dataclass(frozen=True)
+class DuplicateStepIdResolutionPath:
+    """Stable resolution metadata for duplicate step-ID automation."""
+
+    explicit_phase: str
+    auto_migrate_flag: str
+    migration_tool: str
+
+
+@dataclass(frozen=True)
 class DuplicateStepIdRepairRecommendation:
     """Structured next-step recommendation for duplicate step IDs."""
 
+    type: str
     step_id: str
-    phase_ids: list[str]
-    dry_run_repair_entry_point: str
-    auto_migrate_entry_point: str
-    operator_next_action: str
-    automation_next_action: str
+    duplicates: list[DuplicateStepIdPhaseRef]
+    resolution_path: DuplicateStepIdResolutionPath
 
 
 @dataclass(frozen=True)

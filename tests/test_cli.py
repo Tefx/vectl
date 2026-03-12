@@ -3234,10 +3234,14 @@ class TestDuplicateIdDiagnostics:
         result = runner.invoke(app, ["show", "dup.step", "--plan", str(plan_path)])
         assert result.exit_code == 0
         assert "Ambiguous step target: duplicate ID detected across phases" in result.output
+        assert "type=duplicate-step-id" in result.output
         assert "step_id=dup.step" in result.output
-        assert "phases=p1, p2" in result.output
-        assert "vectl repair claims --dry-run" in result.output
-        assert "vectl validate --auto-migrate" in result.output
+        assert "duplicates=p1, p2" in result.output
+        assert "resolution.explicit_phase:" in result.output
+        assert "resolution.auto_migrate_flag:" in result.output
+        assert "--auto-migrate (coming in phase C)" in result.output
+        assert "resolution.migration_tool:" in result.output
+        assert "vectl migrate-step-id (phase C)" in result.output
 
     def test_dag_shows_duplicate_diagnostics(self, tmp_path: Path) -> None:
         plan_path = self._duplicate_plan_path(tmp_path)
@@ -3253,9 +3257,9 @@ class TestDuplicateIdDiagnostics:
         )
 
         assert result.exit_code == 1
-        assert "error_code=duplicate_step_id_auto_migrate_required" in result.output
-        assert "blocking_reason=auto_migrate_missing" in result.output
-        assert "required_opt_in=--auto-migrate" in result.output
+        assert "error_code=duplicate_step_id_ambiguous_target" in result.output
+        assert "blocking_reason=duplicate_step_id_ambiguous" in result.output
+        assert "recommendation.type=duplicate-step-id" in result.output
 
         plan, _ = load_plan(plan_path)
         assert plan.phases[0].steps[0].status == StepStatus.PENDING
@@ -3285,7 +3289,7 @@ class TestDuplicateIdDiagnostics:
         result = runner.invoke(app, ["check", "dup.step", "first", "--plan", str(plan_path)])
 
         assert result.exit_code == 1
-        assert "error_code=duplicate_step_id_auto_migrate_required" in result.output
+        assert "error_code=duplicate_step_id_ambiguous_target" in result.output
 
         reloaded, _ = load_plan(plan_path)
         assert reloaded.phases[0].steps[0].description == "- [ ] first"
@@ -3304,8 +3308,8 @@ class TestDuplicateIdDiagnostics:
         result = runner.invoke(app, ["migrate", "--yes", "--plan", str(plan_path)])
 
         assert result.exit_code == 1
-        assert "error_code=duplicate_step_id_auto_migrate_required" in result.output
-        assert "blocking_reason=auto_migrate_missing" in result.output
+        assert "error_code=duplicate_step_id_ambiguous_target" in result.output
+        assert "blocking_reason=duplicate_step_id_ambiguous" in result.output
 
 
 # ---------------------------------------------------------------------------

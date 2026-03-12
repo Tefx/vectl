@@ -426,9 +426,9 @@ class TestWriteSurfaceRejectsDuplicateIds:
             claim_step(plan, "dup.step", "bot")
 
         msg = str(exc_info.value)
-        assert "error_code=duplicate_step_id_auto_migrate_required" in msg
-        assert "blocking_reason=auto_migrate_missing" in msg
-        assert "required_opt_in=--auto-migrate" in msg
+        assert "error_code=duplicate_step_id_ambiguous_target" in msg
+        assert "blocking_reason=duplicate_step_id_ambiguous" in msg
+        assert "recommendation.type=duplicate-step-id" in msg
 
     def test_add_phase_rejects_duplicate_phase_id(self):
         """add_phase should reject creating a phase with an ID that already exists."""
@@ -474,12 +474,11 @@ class TestFutureHardErrorFlipPlaceholders:
         # assert all(not e.is_warning for e in errors)
 
     def test_cli_validate_flag_placeholder(self):
-        """Placeholder: CLI validate command should have --strict/--warn flags."""
-        # Current CLI always treats duplicates as errors (exit code 1)
-        # Placeholder for future:
-        # vectl validate --warn    # exits 0, shows warnings for legacy dupes
-        # vectl validate --strict  # exits 1, treats all as errors (default)
-        pass  # Documenting intended CLI flag behavior
+        """Phase-B surface keeps validate_plan signature stable (no strict flag yet)."""
+        import inspect
+
+        parameters = inspect.signature(validate_plan).parameters
+        assert "strict" not in parameters
 
     def test_add_step_future_strict_mode_placeholder(self):
         """Placeholder: add_step will eventually support strict mode.

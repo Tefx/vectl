@@ -13,10 +13,12 @@ from vectl import lifecycle as _lifecycle
 from vectl.models import (
     AmbiguousMatchError,
     Clipboard,
+    DiffResult,
     DuplicateStepIdDiagnostic,
     DuplicateStepIdDiagnostics,
+    DuplicateStepIdPhaseRef,
     DuplicateStepIdRepairRecommendation,
-    DiffResult,
+    DuplicateStepIdResolutionPath,
     GateCheckResult,
     NoMatchError,
     Phase,
@@ -273,19 +275,16 @@ def _build_duplicate_step_id_recommendation(
     step_id: str, phase_ids: list[str]
 ) -> DuplicateStepIdRepairRecommendation:
     """Build a structured repair recommendation for one duplicate step ID."""
-    phase_list = ", ".join(phase_ids)
+    phase_paths = ", ".join(f"{phase_id}.{step_id}" for phase_id in phase_ids)
+    duplicates = [DuplicateStepIdPhaseRef(phase=phase_id) for phase_id in phase_ids]
     return DuplicateStepIdRepairRecommendation(
+        type="duplicate-step-id",
         step_id=step_id,
-        phase_ids=phase_ids,
-        dry_run_repair_entry_point="vectl repair claims --dry-run",
-        auto_migrate_entry_point="vectl validate --auto-migrate",
-        operator_next_action=(
-            f"Inspect duplicate step ID '{step_id}' in phases: {phase_list}. "
-            "Run dry-run first, then opt into auto-migrate when acceptable."
-        ),
-        automation_next_action=(
-            f"If duplicate ID '{step_id}' is detected, emit this diagnostic payload, "
-            "execute dry-run repair, and require explicit opt-in before auto-migrate."
+        duplicates=duplicates,
+        resolution_path=DuplicateStepIdResolutionPath(
+            explicit_phase=f"Use one of: {phase_paths}",
+            auto_migrate_flag="--auto-migrate (coming in phase C)",
+            migration_tool="vectl migrate-step-id (phase C)",
         ),
     )
 
@@ -312,19 +311,21 @@ def require_unambiguous_target_step_id(plan: Plan, step_id: str, *, operation: s
     if recommendation is None:
         return
 
-    phases = ",".join(recommendation.phase_ids)
+    phases = ",".join(duplicate.phase for duplicate in recommendation.duplicates)
     raise PlanError(
         "duplicate_step_id_write_guard: blocked\n"
-        "error_code=duplicate_step_id_auto_migrate_required\n"
-        "blocking_reason=auto_migrate_missing\n"
+        "error_code=duplicate_step_id_ambiguous_target\n"
+        "blocking_reason=duplicate_step_id_ambiguous\n"
         f"operation={operation}\n"
         f"step_id={recommendation.step_id}\n"
-        f"phases={phases}\n"
-        f"dry_run_repair={recommendation.dry_run_repair_entry_point}\n"
-        "required_opt_in=--auto-migrate\n"
-        f"auto_migrate_entry_point={recommendation.auto_migrate_entry_point}\n"
-        f"operator_next_action={recommendation.operator_next_action}\n"
-        f"automation_next_action={recommendation.automation_next_action}"
+        f"recommendation.type={recommendation.type}\n"
+        f"recommendation.duplicates={phases}\n"
+        "recommendation.resolution_path.explicit_phase="
+        f"{recommendation.resolution_path.explicit_phase}\n"
+        "recommendation.resolution_path.auto_migrate_flag="
+        f"{recommendation.resolution_path.auto_migrate_flag}\n"
+        "recommendation.resolution_path.migration_tool="
+        f"{recommendation.resolution_path.migration_tool}"
     )
 
 
@@ -838,10 +839,13 @@ def add_steps_bulk(
 
     # --- Pass 1: Parse entries and pre-compute all IDs ---
     parsed: list[dict[str, object]] = []
-    global_ids: set[str] = set()
+    existing_global_ids: set[str] = set()
     for existing_phase in plan.phases:
         for existing_step in existing_phase.steps:
-            global_ids.add(existing_step.id)
+            existing_global_ids.add(existing_step.id)
+
+    used_ids = set(existing_global_ids)
+    batch_ids: set[str] = set()
 
     known_phase_ids: set[str] = {s.id for s in phase.steps}
     slug_to_id: dict[str, str] = {}  # short slug → full step ID
@@ -934,13 +938,15 @@ def add_steps_bulk(
         step_id_raw = entry.get("id")
         if step_id_raw is not None:
             step_id = str(step_id_raw)
-            if step_id in global_ids:
+            require_no_global_duplicate_step_id(plan, step_id, operation="add-steps")
+            if step_id in batch_ids:
                 raise PlanError(
                     "duplicate_step_id_write_guard: blocked\n"
                     "error_code=duplicate_step_id_write_blocked\n"
-                    "blocking_reason=duplicate_step_id_exists\n"
+                    "blocking_reason=duplicate_step_id_exists_in_batch\n"
                     "operation=add-steps\n"
-                    f"step_id={step_id}"
+                    f"step_id={step_id}\n"
+                    f"phases={phase_id}"
                 )
         else:
             slug = _slugify(name)
@@ -948,15 +954,16 @@ def add_steps_bulk(
                 raise PlanError(f"Step {i}: Cannot generate step ID: name produces empty slug")
             # Generate unique ID considering all existing and earlier batch entries.
             candidate = f"{phase_id}.{slug}"
-            if candidate not in global_ids:
+            if candidate not in used_ids:
                 step_id = candidate
             else:
                 counter = 2
-                while f"{phase_id}.{slug}-{counter}" in global_ids:
+                while f"{phase_id}.{slug}-{counter}" in used_ids:
                     counter += 1
                 step_id = f"{phase_id}.{slug}-{counter}"
 
-        global_ids.add(step_id)
+        used_ids.add(step_id)
+        batch_ids.add(step_id)
         known_phase_ids.add(step_id)
 
         # Build short slug mapping for intra-batch references

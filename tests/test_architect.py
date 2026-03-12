@@ -63,7 +63,8 @@ class TestSlugify:
 class TestUniqueIds:
     def test_step_id_no_collision(self) -> None:
         phase = Phase(id="core", name="Core")
-        assert _unique_step_id(phase, "show-command") == "core.show-command"
+        plan = Plan(project="test", phases=[phase])
+        assert _unique_step_id(plan, phase, "show-command") == "core.show-command"
 
     def test_step_id_collision(self) -> None:
         phase = Phase(
@@ -71,7 +72,8 @@ class TestUniqueIds:
             name="Core",
             steps=[Step(id="core.show-command", name="Show Command")],
         )
-        assert _unique_step_id(phase, "show-command") == "core.show-command-2"
+        plan = Plan(project="test", phases=[phase])
+        assert _unique_step_id(plan, phase, "show-command") == "core.show-command-2"
 
     def test_step_id_multiple_collisions(self) -> None:
         phase = Phase(
@@ -83,7 +85,8 @@ class TestUniqueIds:
                 Step(id="core.foo-3", name="Foo 3"),
             ],
         )
-        assert _unique_step_id(phase, "foo") == "core.foo-4"
+        plan = Plan(project="test", phases=[phase])
+        assert _unique_step_id(plan, phase, "foo") == "core.foo-4"
 
     def test_phase_id_no_collision(self) -> None:
         plan = Plan(project="test")

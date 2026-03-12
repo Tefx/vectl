@@ -433,14 +433,16 @@ class TestVectlStatus:
         # Verify each duplicate shows its own phase, not the first found
         # Look for the step entries (marked with ○ bullet)
         lines = result.split("\n")
-        dup_step_lines = [l for l in lines if "dup.step" in l and l.strip().startswith("○")]
+        dup_step_lines = [
+            line for line in lines if "dup.step" in line and line.strip().startswith("○")
+        ]
         # Should have two entries for dup.step (one in alpha, one in beta)
         assert len(dup_step_lines) == 2, (
             f"Expected 2 step lines, got {len(dup_step_lines)}: {dup_step_lines}"
         )
         # Check that each shows the correct phase
-        alpha_dup = [l for l in dup_step_lines if "(alpha)" in l]
-        beta_dup = [l for l in dup_step_lines if "(beta)" in l]
+        alpha_dup = [line for line in dup_step_lines if "(alpha)" in line]
+        beta_dup = [line for line in dup_step_lines if "(beta)" in line]
         assert len(alpha_dup) == 1, f"Alpha duplicate should show (alpha): {alpha_dup}"
         assert len(beta_dup) == 1, f"Beta duplicate should show (beta): {beta_dup}"
 
@@ -492,10 +494,12 @@ class TestVectlShow:
     def test_show_step_duplicate_id_recommendation(self, duplicate_id_plan_file: Path) -> None:
         result = vectl_show(id="dup.step")
         assert "Duplicate-ID Repair Recommendation" in result
+        assert "type=duplicate-step-id" in result
         assert "step_id=dup.step" in result
-        assert "phases=alpha, beta" in result
-        assert "vectl repair claims --dry-run" in result
-        assert "vectl validate --auto-migrate" in result
+        assert "duplicates=alpha, beta" in result
+        assert "resolution.explicit_phase" in result
+        assert "resolution.auto_migrate_flag: --auto-migrate (coming in phase C)" in result
+        assert "resolution.migration_tool: vectl migrate-step-id (phase C)" in result
 
 
 # ---------------------------------------------------------------------------
@@ -612,9 +616,16 @@ class TestVectlClaim:
         result = vectl_claim(agent="bot", step_id="dup.step")
 
         assert result["ok"] is False
-        assert result["error_code"] == "duplicate_step_id_auto_migrate_required"
-        assert "blocking_reason=auto_migrate_missing" in result["error"]
-        assert "required_opt_in=--auto-migrate" in result["error"]
+        assert result["error_code"] == "duplicate_step_id_ambiguous_target"
+        assert "blocking_reason=duplicate_step_id_ambiguous" in result["error"]
+        recommendation = result["duplicate_step_id_recommendation"]
+        assert recommendation["type"] == "duplicate-step-id"
+        assert recommendation["step_id"] == "dup.step"
+        assert recommendation["duplicates"] == [{"phase": "alpha"}, {"phase": "beta"}]
+        assert (
+            recommendation["resolution_path"]["auto_migrate_flag"]
+            == "--auto-migrate (coming in phase C)"
+        )
 
         data = _reload_plan(duplicate_id_plan_file)
         assert data["phases"][0]["steps"][0]["status"] == "pending"
@@ -823,8 +834,8 @@ class TestVectlLifecycle:
         result = vectl_lifecycle(action="skip", id="dup.step", reason="irrelevant")
 
         assert "Error" in result
-        assert "error_code=duplicate_step_id_auto_migrate_required" in result
-        assert "blocking_reason=auto_migrate_missing" in result
+        assert "error_code=duplicate_step_id_ambiguous_target" in result
+        assert "blocking_reason=duplicate_step_id_ambiguous" in result
 
         data = _reload_plan(duplicate_id_plan_file)
         assert data["phases"][0]["steps"][0]["status"] == "pending"

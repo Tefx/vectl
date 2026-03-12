@@ -14,4 +14,4 @@ Covered checks:
 - No-mutation guarantee on rejected writes (sha256 before/after)
 
 Observed issue:
-- MCP `status` next-step list reports incorrect phase label for the second duplicate entry (`P2 duplicate` shown as `(p1)`).
+- None. Regression case for MCP `status` phase-label correctness is covered by `tests/test_mcp.py::TestVectlStatus::test_status_next_steps_shows_correct_phase_for_duplicate_ids`.

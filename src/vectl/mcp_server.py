@@ -47,9 +47,9 @@ from vectl.core import (
     add_step,
     add_steps_bulk,
     analyze_duplicate_step_ids,
+    claim_step,
     clipboard_clear,
     clipboard_write,
-    claim_step,
     complete_phase,
     complete_step,
     defer_step,
@@ -241,18 +241,14 @@ def _duplicate_id_recommendation_lines(plan: Plan, step_id: str) -> list[str]:
     if recommendation is None:
         return []
 
-    phase_list = ", ".join(recommendation.phase_ids)
+    phase_list = ", ".join(duplicate.phase for duplicate in recommendation.duplicates)
     return [
         "",
         "## Duplicate-ID Repair Recommendation",
-        (
-            f"step_id={recommendation.step_id}; "
-            f"phases={phase_list}; "
-            f"dry_run={recommendation.dry_run_repair_entry_point}; "
-            f"auto_migrate={recommendation.auto_migrate_entry_point}"
-        ),
-        f"operator_next_action: {recommendation.operator_next_action}",
-        f"automation_next_action: {recommendation.automation_next_action}",
+        (f"type={recommendation.type}; step_id={recommendation.step_id}; duplicates={phase_list}"),
+        f"resolution.explicit_phase: {recommendation.resolution_path.explicit_phase}",
+        f"resolution.auto_migrate_flag: {recommendation.resolution_path.auto_migrate_flag}",
+        f"resolution.migration_tool: {recommendation.resolution_path.migration_tool}",
     ]
 
 
@@ -499,6 +495,7 @@ class ClaimResult(BaseModel):
     affinity_override: AffinityOverrideData | None = None
     error: str | None = None
     error_code: str | None = None
+    duplicate_step_id_recommendation: dict[str, Any] | None = None
     # Claim conflict details for existing-claim rejection
     claim_conflict: ClaimConflictData | None = None
 
@@ -593,16 +590,61 @@ def vectl_claim(
         ).model_dump(mode="json", exclude_none=True)
     except PlanError as e:
         err = str(e)
-        error_code = (
-            "duplicate_step_id_auto_migrate_required"
-            if "error_code=duplicate_step_id_auto_migrate_required" in err
-            else None
-        )
+        error_code = None
+        if "error_code=duplicate_step_id_ambiguous_target" in err:
+            error_code = "duplicate_step_id_ambiguous_target"
+        elif "error_code=duplicate_step_id_auto_migrate_required" in err:
+            error_code = "duplicate_step_id_auto_migrate_required"
+
+        recommendation_payload: dict[str, Any] | None = None
+        if error_code == "duplicate_step_id_ambiguous_target" and step_id is not None:
+            diagnostics = analyze_duplicate_step_ids(plan)
+            recommendation = duplicate_step_id_recommendation_for_target(diagnostics, step_id)
+            if recommendation is not None:
+                recommendation_payload = {
+                    "type": recommendation.type,
+                    "step_id": recommendation.step_id,
+                    "duplicates": [
+                        {"phase": duplicate.phase} for duplicate in recommendation.duplicates
+                    ],
+                    "resolution_path": {
+                        "explicit_phase": recommendation.resolution_path.explicit_phase,
+                        "auto_migrate_flag": recommendation.resolution_path.auto_migrate_flag,
+                        "migration_tool": recommendation.resolution_path.migration_tool,
+                    },
+                }
+
+        markdown_lines = [f"**Error:** {err}"]
+        if recommendation_payload is not None:
+            markdown_lines.extend(
+                [
+                    "",
+                    "Structured repair recommendation:",
+                    f"- type: {recommendation_payload['type']}",
+                    f"- step_id: {recommendation_payload['step_id']}",
+                ]
+            )
+            duplicates = recommendation_payload["duplicates"]
+            for duplicate in duplicates:
+                markdown_lines.append(f"  - phase: {duplicate['phase']}")
+
+            resolution_path = recommendation_payload["resolution_path"]
+            markdown_lines.extend(
+                [
+                    "- resolution_path:",
+                    f"  - explicit_phase: {resolution_path['explicit_phase']}",
+                    f"  - auto_migrate_flag: {resolution_path['auto_migrate_flag']}",
+                    f"  - migration_tool: {resolution_path['migration_tool']}",
+                ]
+            )
+
+        markdown = "\n".join(markdown_lines)
         return ClaimResult(
             ok=False,
-            markdown=f"**Error:** {err}",
+            markdown=markdown,
             error=err,
             error_code=error_code,
+            duplicate_step_id_recommendation=recommendation_payload,
         ).model_dump(mode="json", exclude_none=True)
 
     found = plan.find_step(step_id)

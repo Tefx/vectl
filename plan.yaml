@@ -28131,7 +28131,7 @@ phases:
       - none'
   - id: p1-qualified-lookup-errors.independent-retest-of-p1-qualified-lookup-errors-gate-blockers
     name: Independent retest of p1-qualified-lookup-errors gate blockers
-    status: claimed
+    status: done
     description: 'step_type: verification
 
       agent_source: default
@@ -28247,6 +28247,17 @@ phases:
     agent: integration-verifier
     claimed_by: integration-verifier
     claimed_at: '2026-03-12T18:00:47.351370+00:00'
+    done_at: '2026-03-12T18:16:04.393797+00:00'
+    evidence: "## Verification Report\n- Blocking issue detected:\n  - double-prefix\
+      \ regression for already-qualified IDs in error emitters (`p1.s1` surfaced as\
+      \ `p1.p1.s1`) in lifecycle/core message paths\n- Command evidence summary:\n\
+      \  - ruff + mypy + targeted pytest passed\n  - custom repro script failed assertion\
+      \ on double-prefix output\n  - grep confirms remaining formatter pattern sites\n\
+      \nBatched remediation action:\n- Planner created serialized fix+retest loop:\n\
+      \  - p1-qualified-lookup-errors.fix-double-prefix-qualified-id-regression\n\
+      \  - p1-qualified-lookup-errors.independent-retest-double-prefix-qualified-id-regression\n\
+      - Gate dependency rewired to wait on new loop before rerun.\n\ndiscovered_issues:\n\
+      - none"
   - id: p1-qualified-lookup-errors.fix-double-prefix-qualified-id-regression
     name: Fix double-prefix regression for already-qualified step IDs
     status: pending

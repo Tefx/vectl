@@ -27403,7 +27403,7 @@ phases:
       - none'
   - id: step-id-migration-tooling.retest-gate-blockers
     name: Independent retest of migration tooling gate blockers
-    status: pending
+    status: claimed
     description: 'step_type: verification
 
       agent_source: default
@@ -27521,6 +27521,8 @@ phases:
     depends_on:
     - step-id-migration-tooling.fix-gate-blockers
     agent: integration-verifier
+    claimed_by: integration-verifier
+    claimed_at: '2026-03-12T19:27:19.346330+00:00'
 - id: step-id-final-integration
   name: Final Integration & Gate
   status: locked

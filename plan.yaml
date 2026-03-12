@@ -26287,7 +26287,7 @@ phases:
       - none'
   - id: step-id-migration-tooling.tests
     name: Add migration and DAG-preservation tests
-    status: pending
+    status: claimed
     description: "step_type: test\nagent_source: default\nspec_refs:\n  - conversation/duplicate-step-id-bug\n\
       \  - conversation/half-automatic-step-id-migration\n\ntouch_paths:\n- tests/test_cli.py\n\
       - tests/test_mcp.py\n- tests/test_validation.py\n- dedicated migration fixture\
@@ -26335,6 +26335,8 @@ phases:
     depends_on:
     - step-id-migration-tooling.contract
     agent: python-executor
+    claimed_by: python-executor
+    claimed_at: '2026-03-12T17:53:51.144381+00:00'
   - id: step-id-migration-tooling.engine
     name: Implement duplicate-id repair engine
     status: pending

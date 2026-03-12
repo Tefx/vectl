@@ -22518,7 +22518,8 @@ phases:
     status: pending
     description: "step_type: contract\ncontract_purity: ENFORCED\ncontract_outputs:\n\
       \  - selector_rules\n  - ambiguity_errors\n  - qualified_target_grammar\n  -\
-      \ legacy_behavior_matrix\nagent_source: default\nspec_refs:\n  - conversation/duplicate-step-id-bug\n\
+      \ legacy_behavior_matrix\n  - repair_recommendation_schema\nagent_source: default\n\
+      spec_refs:\n  - conversation/duplicate-step-id-bug\n  - conversation/half-automatic-step-id-migration\n\
       \  - /Users/tefx/Projects/Invar/plan.yaml legacy fixture with duplicate `gate`\n\
       \nDefine the acceptance contract for all targeted step commands before code\
       \ changes.\n\nMust specify:\n- accepted target forms for legacy and repaired\
@@ -22527,17 +22528,27 @@ phases:
       \ target points to no step\n- precedence rule: targeted commands must not prefer\
       \ an inactive-phase match over an active-phase match simply because it is encountered\
       \ first\n- distinction between `step.id` and `step.name`, and how a phase-qualified\
-      \ selector maps to step IDs rather than names\n- compatibility policy for read-only\
-      \ commands on legacy plans versus mutating commands\n\nKnown risk from project\
-      \ history:\n- Split-state and claim-consistency work in this repo repeatedly\
-      \ failed when different command surfaces used different helper paths. This contract\
-      \ must name one shared resolver entry point and forbid per-command fallback\
-      \ logic.\n\nOut of scope in this step:\n- global uniqueness enforcement\n- migration\
-      \ command behavior\n- planner/template copy updates"
+      \ selector maps to step IDs rather than names\n- read-only commands (`status`,\
+      \ `show`, `review`, `dag`) must remain observational only and MUST NOT mutate\
+      \ plan files or auto-repair anything\n- targeted mutating commands must share\
+      \ one ambiguity payload shape that can carry a structured repair recommendation\
+      \ when duplicate step IDs are the root cause\n\nStructured repair recommendation\
+      \ contract:\n- include machine-readable fields for duplicated bare ID, conflicting\
+      \ phase IDs, canonical repair command, dry-run hint, and whether `--auto-migrate`\
+      \ is supported on that surface\n- ambiguity payload must distinguish `recommendation_only`\
+      \ from `repair_applied`\n- the same recommendation schema must be reusable by\
+      \ CLI and MCP so scripts can parse it without screen-scraping prose\n\nKnown\
+      \ risk from project history:\n- split-state and claim-consistency work in this\
+      \ repo repeatedly failed when different command surfaces used different helper\
+      \ paths. This contract must name one shared resolver entry point and forbid\
+      \ per-command fallback logic.\n\nOut of scope in this step:\n- global uniqueness\
+      \ enforcement\n- migration command behavior beyond the shared recommendation\
+      \ schema\n- planner/template copy updates"
     verification: '- Produce a resolver contract note in code-adjacent docs/comments/tests
-      scope naming the shared resolver API and ambiguity cases
+      scope naming the shared resolver API, read-only non-mutation guarantee, and
+      ambiguity payload schema
 
-      - Enumerate command surfaces to adopt it: CLI `show/claim/complete/defer/reject/skip/cancel/check`,
+      - Enumerate command surfaces to adopt it: CLI `status/show/review/dag/claim/complete/defer/reject/skip/cancel/check`,
       MCP `claim/show/lifecycle/complete`, and any helper using `Plan.find_step`
 
       - Contract is reviewable without shipping implementation logic'

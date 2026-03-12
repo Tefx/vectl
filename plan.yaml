@@ -23733,3 +23733,63 @@ phases:
     depends_on:
     - step-id-final-integration.verify
     agent: software-architect
+  - id: step-id-final-integration.gate
+    name: Final gate review for duplicate-id fix
+    status: pending
+    description: 'step_type: gate
+
+      agent_source: default
+
+      As an INDEPENDENT REVIEWER (`gate-reviewer`), decide whether the duplicate-step-ID
+      ambiguity fix is ready to ship.
+
+
+      review_depth: THOROUGH
+
+      review_depth_rationale:
+
+      - final phase consolidates resolver changes, validation rollout, migration semantics,
+      and end-to-end proof
+
+      - bug impacts core plan targeting behavior and operator recovery workflows
+
+      - shipping without strong review risks stranded legacy plans or silent wrong-step
+      mutations
+
+
+      cross_cutting_focus:
+
+      - resolver consistency across CLI and MCP
+
+      - phased rollout completed correctly from warning to hard error
+
+      - migration preserves DAG and produces actionable operator guidance
+
+
+      Independence: gate agent must not match any implementation agent in earlier
+      phases.'
+    verification: '- Final end-to-end duplicate-gate regression completed successfully
+
+      - Evidence shows pre-fix symptom capture, migration fix, post-fix claim/show
+      behavior, and DAG preservation
+
+      - No unresolved blocker remains around backward compatibility or ambiguous-step
+      handling
+
+      - Ready for release or follow-on versioning work'
+    evidence_template: '## Final Gate Review Report
+
+      - End-to-end evidence quality: <assessment>
+
+      - Blocking issues: <list>
+
+      - Ship recommendation: yes/no
+
+      - Follow-up debt: <list>
+
+      '
+    depends_on:
+    - step-id-final-integration.freeze-l2
+    - step-id-final-integration.verify
+    - step-id-final-integration.freeze-gate
+    agent: gate-reviewer

@@ -26181,7 +26181,7 @@ phases:
   steps:
   - id: step-id-migration-tooling.contract
     name: Define duplicate-id migration contract
-    status: claimed
+    status: done
     description: "step_type: contract\ncontract_purity: ENFORCED\ncontract_outputs:\n\
       \  - rename_algorithm\n  - dry_run_schema\n  - depends_on_rewrite_rules\n  -\
       \ compatibility_policy\n  - auto_migrate_retry_contract\n  - migration_evidence_schema\n\
@@ -26231,6 +26231,60 @@ phases:
     agent: python-senior
     claimed_by: python-senior
     claimed_at: '2026-03-12T17:39:32.459663+00:00'
+    done_at: '2026-03-12T17:50:24.870492+00:00'
+    evidence: 'Commit hash(es):
+
+      - worker branch: add67ed4dd54fcf14ce97a99a933b67ac4bbbd8f
+
+      - main squash commit: 7a5f01c
+
+
+      Files changed:
+
+      - docs/contracts/duplicate-id-migration-contract.yaml
+
+      - tests/test_duplicate_id_migration_contract.py
+
+
+      Verification:
+
+      - ruff check tests/test_duplicate_id_migration_contract.py -> All checks passed
+
+      - uv run pytest -v tests/test_duplicate_id_migration_contract.py -> 4 passed
+
+
+      Spec link:
+
+      - step-id-migration-tooling.contract
+
+
+      ## Migration Contract
+
+      - Rename rule: canonical occurrence keeps old ID; non-canonical duplicates rename
+      to `{phase_id}.{old_step_id}` with deterministic `--dup{n}` suffix for collisions.
+
+      - Dry-run schema: run_mode, duplicate_groups, rename_map, depends_on_rewrites,
+      affected_phases, claimed_step_conflicts, compatibility_notes, requires_manual_follow_up.
+
+      - DAG invariants: preserve dependency cardinality/order, phase-scoped rewrites,
+      no new cycles, no lock-state changes from rewrite.
+
+      - Claimed-step policy: block-with-guidance on apply when any duplicate occurrence
+      is claimed; dry-run emits deterministic conflicts/unblock hints.
+
+      - Idempotence: no duplicates => no-op; repeated apply post-success => empty
+      mapping/migrated=false; repeated dry-run deterministic.
+
+
+      Gaps/Notes:
+
+      - Migration engine/CLI/MCP execution and hard-error flip behavior remain out
+      of scope for this contract step.
+
+
+      discovered_issues:
+
+      - none'
   - id: step-id-migration-tooling.tests
     name: Add migration and DAG-preservation tests
     status: pending

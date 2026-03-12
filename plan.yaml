@@ -26982,7 +26982,7 @@ phases:
       - none'
   - id: p0-cycle-detection.retest-gate-precheck-edit-step-rollback
     name: retest-gate-precheck-edit-step-rollback
-    status: pending
+    status: claimed
     description: 'As an INDEPENDENT TESTER (integration-verifier), validate the edit_step
       rollback fix from a fresh perspective.
 
@@ -27058,6 +27058,8 @@ phases:
     depends_on:
     - p0-cycle-detection.fix-gate-blocker-edit-step-rollback
     agent: integration-verifier
+    claimed_by: integration-verifier
+    claimed_at: '2026-03-12T16:57:08.250265+00:00'
 - id: p1-qualified-lookup-errors
   name: 'P1: Qualified Step Lookup + Error Messages'
   status: locked

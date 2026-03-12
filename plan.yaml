@@ -22596,7 +22596,7 @@ phases:
       read-only non-mutation guarantee, and common ambiguity/repair payload schema'
   - id: step-id-resolver-hardening.tests
     name: Add resolver regression tests first
-    status: pending
+    status: claimed
     description: "step_type: test\nagent_source: default\nspec_refs:\n  - conversation/duplicate-step-id-bug\n\
       \ntouch_paths:\n- tests/test_cli.py\n- tests/test_logic.py\n- tests/test_mcp.py\n\
       - tests fixtures for duplicate-step legacy plans\n\nharness_refs:\n- CLI runner\
@@ -22631,6 +22631,8 @@ phases:
     depends_on:
     - step-id-resolver-hardening.contract
     agent: python-executor
+    claimed_by: python-executor
+    claimed_at: '2026-03-12T12:35:24.765107+00:00'
   - id: step-id-resolver-hardening.core
     name: Implement shared resolver core
     status: pending

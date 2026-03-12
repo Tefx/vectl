@@ -26886,6 +26886,84 @@ phases:
     depends_on:
     - test
     agent: python-senior
+  - id: p0-cycle-detection.retest-gate-precheck-edit-step-rollback
+    name: retest-gate-precheck-edit-step-rollback
+    status: pending
+    description: 'As an INDEPENDENT TESTER (integration-verifier), validate the edit_step
+      rollback fix from a fresh perspective.
+
+
+      step_type: verification
+
+      agent_source: default
+
+      spec_refs:
+
+      - p0-cycle-detection-gate / blocker B1
+
+
+      touch_paths:
+
+      - src/vectl/core.py
+
+      - tests/test_validation.py
+
+
+      harness_refs:
+
+      - tests/test_validation.py::TestEditStepCycleDetection
+
+
+      YOUR GOAL IS TO FIND PROBLEMS, not to confirm it works.
+
+
+      Test for:
+
+      - Happy path: valid dependency edits still succeed
+
+      - Edge cases: rollback after cycle-triggering depends_on and add_deps edits
+      leaves in-memory deps unchanged
+
+      - Error scenarios: PlanError is raised and rollback is complete before control
+      returns to caller
+
+      - Regression scope: non-dependency edits remain unchanged; remove_deps path
+      does not regress
+
+
+      Independence Level: L1
+
+
+      Conflict rationale:
+
+      - Serial after the fix step because it exercises the same core.py mutation surface
+      and shared validation harness.
+
+      - Gate must wait on this precheck so the rerun reviews fresh independent evidence,
+      not implementation self-reporting.'
+    verification: '- Run targeted rollback regressions for cycle-triggering depends_on
+      and add_deps edits
+
+      - Run focused non-regression coverage for valid dependency edits and remove_deps
+      behavior
+
+      - Evidence must include actual commands and observed output proving in-memory
+      deps are restored after PlanError'
+    evidence_template: "## Verification Report\n\n**Tester**: integration-verifier\
+      \ (independent of implementation)\n**Scope**: edit_step dependency rollback\
+      \ after cycle detection failure\n**Independence Level**: L1\n\n### Test Execution\n\
+      - Commands executed:\n  ```\n  pytest tests/test_validation.py -k \"edit_step\
+      \ and cycle\" -v\n  ```\n- Output summary: <paste key results>\n\n### Rollback\
+      \ Checks\n- depends_on failure leaves original deps intact: PASS|FAIL\n- add_deps\
+      \ failure leaves original deps intact: PASS|FAIL\n- valid dependency edit still\
+      \ succeeds: PASS|FAIL\n- remove_deps path shows no regression: PASS|FAIL\n\n\
+      ### Issues Found\n| Severity | Description | Location | Reproduction |\n|----------|-------------|----------|--------------|\n\
+      | blocker | <issue> | <file:line or test> | <steps> |\n| should_fix | <issue>\
+      \ | <file:line or test> | <steps> |\n\n### Verdict\n- [ ] PASS\n- [ ] ISSUES_FOUND\n\
+      - [ ] INCOMPLETE\n"
+    depends_on:
+    - p0-cycle-detection.fix-gate-blocker-edit-step-rollback
+    agent: integration-verifier
 - id: p1-qualified-lookup-errors
   name: 'P1: Qualified Step Lookup + Error Messages'
   status: locked

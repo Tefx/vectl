@@ -26807,7 +26807,7 @@ phases:
       - none'
   - id: step-id-migration-tooling.freeze-l2
     name: Freeze snapshot for migration verification
-    status: claimed
+    status: done
     description: 'step_type: verification
 
       agent_source: default
@@ -26845,6 +26845,25 @@ phases:
     agent: software-architect
     claimed_by: software-architect
     claimed_at: '2026-03-12T18:44:15.920192+00:00'
+    done_at: '2026-03-12T18:46:17.980644+00:00'
+    evidence: '## Freeze Record
+
+      - Commit: 90b3bb3d9158c0c8f1aac5d1d2f73dcda32126e2
+
+      - Git status clean: yes
+
+      - Fixtures: tests/repro/fixtures/legacy_duplicate_plan.yaml, tests/repro/fixtures/unique_plan.yaml,
+      docs/contracts/duplicate-id-migration-contract.yaml
+
+      - Environment: Python 3.14.3 / pytest
+
+      - Freeze statement: no code changes until `step-id-migration-tooling.verify`
+      completes
+
+
+      discovered_issues:
+
+      - none'
   - id: step-id-migration-tooling.verify
     name: Independently verify migration and DAG preservation
     status: pending

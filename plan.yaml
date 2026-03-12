@@ -23374,26 +23374,40 @@ phases:
     name: Add CLI and MCP migration surfaces
     status: pending
     description: "step_type: implementation\nagent_source: default\ntags:\n- integration\n\
-      spec_refs:\n  - conversation/duplicate-step-id-bug\n\ntouch_paths:\n- src/vectl/cli.py\n\
-      - src/vectl/mcp_server.py\n\nharness_refs:\n- tests/test_cli.py\n- tests/test_mcp.py\n\
-      \nAdd operator-facing duplicate-ID repair surfaces.\n\nRequired behavior:\n\
+      spec_refs:\n  - conversation/duplicate-step-id-bug\n  - conversation/half-automatic-step-id-migration\n\
+      \ntouch_paths:\n- src/vectl/cli.py\n- src/vectl/mcp_server.py\n\nharness_refs:\n\
+      - tests/test_cli.py\n- tests/test_mcp.py\n\nAdd operator-facing duplicate-ID\
+      \ repair surfaces and half-automatic opt-in retry flow.\n\nRequired behavior:\n\
       - provide repair/migrate command(s) with `--dry-run`\n- show deterministic rename\
-      \ maps and impacted phases/steps before apply\n- support apply mode that uses\
-      \ the repair engine and reports the resulting IDs clearly\n- expose equivalent\
-      \ MCP functionality for automated repair workflows where appropriate\n- if claimed-step\
-      \ migration is blocked or requires follow-up, return actionable guidance rather\
-      \ than partial success\n\nIntegration evidence requirement:\n- prove CLI dry-run\
-      \ -> apply flow against a real duplicate-id fixture\n- prove MCP dry-run or\
-      \ apply path returns the same mapping semantics as CLI\n\nOut-of-scope guardrail:\n\
-      - planner/template/guidance wording changes happen in the next step\n- final\
-      \ hard-error flip follows after repair surfaces exist"
-    verification: '- Main path: CLI and MCP repair flows exercise the same engine
-      and mapping output
+      \ maps, impacted phases/steps, and exact migration evidence before and after\
+      \ apply\n- support apply mode that uses the repair engine and reports the resulting\
+      \ IDs clearly\n- for targeted mutating commands encountering duplicate-ID ambiguity:\
+      \ detect ambiguity, emit the structured repair recommendation, support explicit\
+      \ opt-in `--auto-migrate` or equivalent, run duplicate-step-id repair first,\
+      \ then retry the original command exactly once\n- no silent migration by default;\
+      \ command output must make it obvious whether the result is `recommendation_only`,\
+      \ `repair_applied`, or `repair_applied_and_retried`\n- expose equivalent MCP\
+      \ functionality for automated repair workflows where appropriate\n- surface\
+      \ backward-compatibility guidance for scripts still using old IDs, including\
+      \ the exact old->new mapping and whether callers must update stored selectors\
+      \ immediately\n- if claimed-step migration is blocked or requires follow-up,\
+      \ return actionable guidance rather than partial success\n\nIntegration evidence\
+      \ requirement:\n- prove CLI dry-run -> apply flow against a real duplicate-id\
+      \ fixture\n- prove a targeted CLI mutating command with `--auto-migrate` performs\
+      \ repair first and then succeeds or fails with explicit retry evidence\n- prove\
+      \ MCP dry-run or apply path returns the same mapping semantics as CLI\n- prove\
+      \ repeated invocation after migration uses the new IDs cleanly and does not\
+      \ re-run repair unnecessarily\n\nOut-of-scope guardrail:\n- planner/template/guidance\
+      \ wording changes happen in the next step\n- final hard-error flip follows after\
+      \ repair surfaces exist"
+    verification: '- Main path: CLI and MCP repair flows exercise the same engine,
+      mapping output, and retry semantics
 
-      - Failure path: dry-run/apply mismatch, blocked claimed-step policy, and no-op
-      re-run are covered
+      - Failure path: dry-run/apply mismatch, blocked claimed-step policy, mutating
+      command without opt-in, and no-op re-run are covered
 
-      - Proof: operator can repair a duplicate-id plan without hand-editing YAML'
+      - Proof: operator can repair a duplicate-id plan without hand-editing YAML and
+      automation can parse exact old->new mappings plus retry evidence'
     evidence_template: '## Integration Evidence
 
 

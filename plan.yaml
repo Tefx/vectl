@@ -22512,6 +22512,49 @@ phases:
   status: pending
   depends_on:
   - version-bump-0-6-2
+  steps:
+  - id: step-id-resolver-hardening.contract
+    name: Define unified step target contract
+    status: pending
+    description: "step_type: contract\ncontract_purity: ENFORCED\ncontract_outputs:\n\
+      \  - selector_rules\n  - ambiguity_errors\n  - qualified_target_grammar\n  -\
+      \ legacy_behavior_matrix\nagent_source: default\nspec_refs:\n  - conversation/duplicate-step-id-bug\n\
+      \  - /Users/tefx/Projects/Invar/plan.yaml legacy fixture with duplicate `gate`\n\
+      \nDefine the acceptance contract for all targeted step commands before code\
+      \ changes.\n\nMust specify:\n- accepted target forms for legacy and repaired\
+      \ plans, including bare `step_id` and phase-qualified form for disambiguation\n\
+      - exact ambiguity error model when more than one step matches or when a qualified\
+      \ target points to no step\n- precedence rule: targeted commands must not prefer\
+      \ an inactive-phase match over an active-phase match simply because it is encountered\
+      \ first\n- distinction between `step.id` and `step.name`, and how a phase-qualified\
+      \ selector maps to step IDs rather than names\n- compatibility policy for read-only\
+      \ commands on legacy plans versus mutating commands\n\nKnown risk from project\
+      \ history:\n- Split-state and claim-consistency work in this repo repeatedly\
+      \ failed when different command surfaces used different helper paths. This contract\
+      \ must name one shared resolver entry point and forbid per-command fallback\
+      \ logic.\n\nOut of scope in this step:\n- global uniqueness enforcement\n- migration\
+      \ command behavior\n- planner/template copy updates"
+    verification: '- Produce a resolver contract note in code-adjacent docs/comments/tests
+      scope naming the shared resolver API and ambiguity cases
+
+      - Enumerate command surfaces to adopt it: CLI `show/claim/complete/defer/reject/skip/cancel/check`,
+      MCP `claim/show/lifecycle/complete`, and any helper using `Plan.find_step`
+
+      - Contract is reviewable without shipping implementation logic'
+    evidence_template: '## Resolver Contract
+
+      - Shared resolver API: <module::symbol>
+
+      - Accepted selectors: <list>
+
+      - Ambiguity cases: <list>
+
+      - Surfaces adopting contract: <list>
+
+      - Deferred items: <list>
+
+      '
+    agent: software-architect
 - id: step-id-validation-hardening
   name: B / Validation Hardening
   status: locked

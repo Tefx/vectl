@@ -22927,7 +22927,7 @@ phases:
       \ verification\n  - external service checks out of scope for resolver hardening"
   - id: step-id-resolver-hardening.freeze-gate
     name: Freeze snapshot for resolver gate
-    status: pending
+    status: claimed
     description: 'step_type: verification
 
       agent_source: default
@@ -22961,6 +22961,8 @@ phases:
     depends_on:
     - step-id-resolver-hardening.verify
     agent: software-architect
+    claimed_by: software-architect
+    claimed_at: '2026-03-12T13:17:49.857032+00:00'
   - id: step-id-resolver-hardening.gate
     name: Gate review for resolver hardening
     status: pending

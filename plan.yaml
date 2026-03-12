@@ -25960,7 +25960,7 @@ phases:
       - none'
   - id: step-id-validation-hardening.fix-gate-rerun-guidance-blockers
     name: Batched fix for gate rerun guidance blockers
-    status: claimed
+    status: done
     description: "step_type: implementation\nagent_source: default\nspec_refs:\n \
       \ - docs/contracts/duplicate-id-rollout-policy.yaml#duplicate-id-repair-guidance\n\
       \  - conversation/duplicate-step-id-bug\n  - conversation/half-automatic-step-id-migration\n\
@@ -26022,6 +26022,59 @@ phases:
     agent: python-senior
     claimed_by: python-senior
     claimed_at: '2026-03-12T17:17:25.113654+00:00'
+    done_at: '2026-03-12T17:31:57.585023+00:00'
+    evidence: 'Commit hash(es):
+
+      - worker branch: 4db1dab3c3c20c54cce8488fc0a1f5414729a234
+
+      - main squash commit: 0a77303
+
+
+      Files changed:
+
+      - docs/contracts/duplicate-id-rollout-policy.yaml
+
+      - src/vectl/core.py
+
+      - tests/test_cli.py
+
+      - tests/test_mcp.py
+
+
+      Verification:
+
+      - uv run pytest tests/test_cli.py::TestDuplicateIdDiagnostics::test_show_step_emits_structured_repair_recommendation
+      tests/test_cli.py::TestDuplicateIdDiagnostics::test_claim_blocks_ambiguous_duplicate_target_without_opt_in
+      tests/test_mcp.py::TestVectlShow::test_show_step_duplicate_id_recommendation
+      tests/test_mcp.py::TestVectlClaim::test_claim_blocks_ambiguous_duplicate_target_without_opt_in
+      -> PASS (4 passed)
+
+      - rg -n "Use one of:|phase-a\.step-id|phase-b\.step-id|--phase\.step-id" src
+      docs -> no matches
+
+      - rg -n "phase_id: \"phase-a\"|explicit phase qualification|Choose one phase
+      explicitly" src docs -> no matches
+
+
+      Spec link:
+
+      - docs/contracts/duplicate-id-rollout-policy.yaml#duplicate-id-repair-guidance
+
+      - conversation/duplicate-step-id-bug
+
+
+      Gaps/Notes:
+
+      - Chosen coherent path: removed unsupported phase-qualified guidance from recommendation/docs
+      instead of implementing new resolver surface in this loop.
+
+      - CLI/MCP recommendation payloads now avoid advertising non-resolvable `phase.step_id`
+      guidance in phase B.
+
+
+      discovered_issues:
+
+      - none'
   - id: step-id-validation-hardening.retest-gate-rerun-guidance-blockers
     name: Independent retest of gate rerun guidance blockers
     status: pending

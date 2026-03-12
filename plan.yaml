@@ -26298,6 +26298,43 @@ phases:
     depends_on:
     - implement
     agent: python-executor
+  - id: p0-cycle-detection-gate
+    name: Gate review for P0 cycle detection
+    status: pending
+    description: 'Gate review: Verify P0 cycle detection fix is complete and correct.
+
+
+      review_depth: STANDARD
+
+      review_depth_rationale: Single-file bug fix with clear pattern to follow, no
+      known rework patterns.
+
+
+      Review criteria:
+
+      1. Completeness: Cycle check covers all 3 dep-mutation paths (depends_on, add_deps,
+      remove_deps)
+
+      2. Pattern match: Implementation mirrors add_steps_bulk pattern at lines 1046-1052
+
+      3. Test coverage: Tests exercise all 3 dep-mutation paths + valid operations
+
+      4. No regressions: Full test suite passes
+
+      5. Error message: PlanError message is actionable (includes cycle path)'
+    verification: '- Implementation step completed with evidence
+
+      - Test step completed with evidence
+
+      - All tests pass: pytest tests/test_validation.py -v
+
+      - Cycle check covers depends_on, add_deps, and remove_deps paths
+
+      - No regressions in existing tests'
+    depends_on:
+    - implement
+    - test
+    agent: gate-reviewer
 - id: p1-qualified-lookup-errors
   name: 'P1: Qualified Step Lookup + Error Messages'
   status: locked

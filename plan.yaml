@@ -27820,7 +27820,7 @@ phases:
     agent: gate-reviewer
   - id: step-id-final-integration.fix-all-gate-blockers-and-copy-drift
     name: Fix ALL gate blockers and copy drift
-    status: pending
+    status: claimed
     description: "step_type: implementation\nagent_source: default\npriority: HIGH\n\
       spec_refs:\n- docs/contracts/duplicate-id-rollout-policy.yaml#phase-b-rollout-semantics\n\
       - docs/contracts/duplicate-id-rollout-policy.yaml#operator-copy-templates\n\
@@ -27891,6 +27891,8 @@ phases:
     depends_on:
     - step-id-final-integration.verify
     agent: python-senior
+    claimed_by: python-senior
+    claimed_at: '2026-03-12T19:53:41.288737+00:00'
   - id: step-id-final-integration.independent-retest-of-batched-gate-remediation
     name: Independent retest of batched gate remediation
     status: pending

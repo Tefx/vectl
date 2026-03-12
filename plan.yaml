@@ -27743,18 +27743,22 @@ phases:
       5. Consistency: Qualified ID format in error message matches find_step''s parsing'
     verification: '- All implementation steps completed with evidence
 
-      - All test steps completed with evidence
+      - Batched blocker remediation completed and independently retested
 
-      - Full test suite passes: pytest tests/ -v
+      - Full targeted regression rerun recorded: ruff + mypy + relevant pytest
 
       - find_step qualified lookup works end-to-end
 
-      - Error messages use qualified IDs'
+      - Error messages use qualified IDs
+
+      - Copy-paste behavior remains sane and no touched path emits double-prefixed
+      qualified IDs'
     depends_on:
     - implement-find-step
     - implement-error-msg
     - test-find-step
     - test-error-msg
+    - p1-qualified-lookup-errors.independent-retest-of-p1-qualified-lookup-errors-gate-blockers
     agent: gate-reviewer
     claimed_by: gate-reviewer
     claimed_at: '2026-03-12T17:39:29.355579+00:00'

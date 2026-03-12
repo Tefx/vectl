@@ -25829,7 +25829,7 @@ phases:
       - none'
   - id: step-id-validation-hardening.step-id-validation-hardening-retest-gate-rerun-import-blockers
     name: step-id-validation-hardening.retest-gate-rerun-import-blockers
-    status: pending
+    status: claimed
     description: 'step_type: verification
 
       agent_source: default
@@ -25892,6 +25892,8 @@ phases:
     depends_on:
     - step-id-validation-hardening.step-id-validation-hardening-fix-gate-rerun-import-blockers
     agent: integration-verifier
+    claimed_by: integration-verifier
+    claimed_at: '2026-03-12T16:36:43.493766+00:00'
 - id: step-id-migration-tooling
   name: C / Migration & Tooling
   status: locked

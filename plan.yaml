@@ -28421,7 +28421,7 @@ phases:
       - none'
   - id: p1-qualified-lookup-errors.independent-retest-double-prefix-qualified-id-regression
     name: Independent retest of double-prefix qualified-id regression
-    status: pending
+    status: claimed
     description: "step_type: verification\nagent_source: default\nindependence_level:\
       \ L1\nprior_loop:\n  - p1-qualified-lookup-errors.independent-retest-of-p1-qualified-lookup-errors-gate-blockers\n\
       remaining_blocker: confirm the canonical selector formatter removed all already-qualified\
@@ -28458,3 +28458,5 @@ phases:
     depends_on:
     - p1-qualified-lookup-errors.fix-double-prefix-qualified-id-regression
     agent: integration-verifier
+    claimed_by: integration-verifier
+    claimed_at: '2026-03-12T18:27:56.743307+00:00'

@@ -27762,7 +27762,7 @@ phases:
       agent_source: default
 
       As an INDEPENDENT REVIEWER (`gate-reviewer`), decide whether the duplicate-step-ID
-      ambiguity fix is ready to ship.
+      ambiguity fix is ready to ship after the batched remediation loop.
 
 
       review_depth: THOROUGH
@@ -27774,15 +27774,19 @@ phases:
 
       - bug impacts core plan targeting behavior and operator recovery workflows
 
-      - shipping without strong review risks stranded legacy plans, silent wrong-step
-      mutations, or unclear automation migration contracts
+      - gate must confirm the B1 semantic truth and B2 release-gate disposition are
+      both coherent and deterministic before release
 
 
       cross_cutting_focus:
 
       - resolver consistency across CLI and MCP
 
-      - phased rollout completed correctly from warning to hard error
+      - Phase-B `validate` semantics are internally consistent across contract, runtime
+      behavior, tests, and user-facing copy
+
+      - final release gate is deterministic about whether `invar_invar_guard changed=false`
+      is enforced
 
       - half-automatic targeted mutation behavior stays explicit and never silently
       mutates on read-only paths
@@ -27793,14 +27797,15 @@ phases:
 
       Independence: gate agent must not match any implementation agent in earlier
       phases.'
-    verification: '- Final end-to-end duplicate-gate regression completed successfully
+    verification: '- Independent retest confirms the chosen Phase-B `validate` semantics
+      align across contract, code, tests, and any touched CLI/MCP copy
 
-      - Evidence shows pre-fix symptom capture, read-only non-mutation, recommendation-only
-      error path, opt-in auto-migrate retry, post-fix claim/show behavior, and DAG
-      preservation
+      - Final gate criteria explicitly state whether `invar_invar_guard changed=false`
+      is enforced, and evidence matches that choice
 
-      - No unresolved blocker remains around backward compatibility, mapping clarity
-      for automation, or ambiguous-step handling
+      - Final end-to-end duplicate-gate regression and remediation evidence leave
+      no unresolved blocker around backward compatibility, mapping clarity for automation,
+      ambiguous-step handling, or release-gate determinism
 
       - Ready for release or follow-on versioning work'
     evidence_template: '## Final Gate Review Report
@@ -27817,6 +27822,8 @@ phases:
     depends_on:
     - step-id-final-integration.freeze-l2
     - step-id-final-integration.verify
+    - step-id-final-integration.fix-all-gate-blockers-and-copy-drift
+    - step-id-final-integration.independent-retest-of-batched-gate-remediation
     - step-id-final-integration.freeze-gate
     agent: gate-reviewer
     claimed_by: gate-reviewer

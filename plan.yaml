@@ -26637,7 +26637,7 @@ phases:
     agent: gate-reviewer
 - id: p0-cycle-detection
   name: 'P0: edit_step Cycle Detection'
-  status: in_progress
+  status: done
   steps:
   - id: implement
     name: Implement cycle detection in edit_step
@@ -26799,7 +26799,7 @@ phases:
       - none'
   - id: p0-cycle-detection-gate
     name: Gate review for P0 cycle detection
-    status: claimed
+    status: done
     description: 'Gate review: Verify P0 cycle detection fix is complete and correct.
 
 
@@ -26843,6 +26843,25 @@ phases:
     agent: gate-reviewer
     claimed_by: gate-reviewer
     claimed_at: '2026-03-12T16:25:37.627771+00:00'
+    done_at: '2026-03-12T17:13:36.944143+00:00'
+    evidence: '## Gate Review Report
+
+      - Blocking issues: none
+
+      - Gate decision: OPEN
+
+      - Verified edit_step cycle-error path now atomically restores original depends_on
+      state before PlanError (rollback parity with add_steps_bulk semantics).
+
+      - Verified focused coverage includes depends_on/add_deps rollback, non-dependency
+      field preservation on rollback, valid dependency edits, and remove_deps non-regression.
+
+      - Independent gate harness checks: ruff pass, mypy src pass, broad pytest pass.
+
+
+      discovered_issues:
+
+      - none'
   - id: p0-cycle-detection.fix-gate-blocker-edit-step-rollback
     name: fix-gate-blocker-edit-step-rollback
     status: done
@@ -27097,7 +27116,7 @@ phases:
       - none'
 - id: p1-qualified-lookup-errors
   name: 'P1: Qualified Step Lookup + Error Messages'
-  status: locked
+  status: pending
   depends_on:
   - p0-cycle-detection
   steps:

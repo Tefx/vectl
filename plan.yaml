@@ -26693,7 +26693,7 @@ phases:
       - none'
   - id: step-id-migration-tooling.hard-error-flip
     name: Flip legacy duplicates to hard validation errors
-    status: pending
+    status: claimed
     description: "step_type: implementation\nagent_source: default\nspec_refs:\n \
       \ - conversation/duplicate-step-id-bug\n  - conversation/half-automatic-step-id-migration\n\
       \  - phased rollout decision from `step-id-validation-hardening.rollout-contract`\n\
@@ -26742,6 +26742,8 @@ phases:
     depends_on:
     - step-id-migration-tooling.guidance
     agent: python-senior
+    claimed_by: python-senior
+    claimed_at: '2026-03-12T18:36:29.933173+00:00'
   - id: step-id-migration-tooling.freeze-l2
     name: Freeze snapshot for migration verification
     status: pending

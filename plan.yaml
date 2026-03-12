@@ -22596,7 +22596,7 @@ phases:
       read-only non-mutation guarantee, and common ambiguity/repair payload schema'
   - id: step-id-resolver-hardening.tests
     name: Add resolver regression tests first
-    status: claimed
+    status: done
     description: "step_type: test\nagent_source: default\nspec_refs:\n  - conversation/duplicate-step-id-bug\n\
       \ntouch_paths:\n- tests/test_cli.py\n- tests/test_logic.py\n- tests/test_mcp.py\n\
       - tests fixtures for duplicate-step legacy plans\n\nharness_refs:\n- CLI runner\
@@ -22633,6 +22633,18 @@ phases:
     agent: python-executor
     claimed_by: python-executor
     claimed_at: '2026-03-12T12:35:24.765107+00:00'
+    done_at: '2026-03-12T12:41:09.922743+00:00'
+    evidence: "## Resolver Test Additions\n- New fixtures: `_ambiguous_plan()`, `_phase_step_name_collision_plan()`,\
+      \ `_qualified_selector_plan()`, `_active_phase_precedence_plan()` in `tests/test_resolver_regression.py`\n\
+      - CLI cases: `TestCLIResolverIntegration::test_cli_claim_with_ambiguous_step`,\
+      \ `test_cli_complete_with_ambiguous_step`\n- MCP cases: `TestMCPResolverIntegration::test_mcp_claim_with_ambiguous_step`,\
+      \ `test_mcp_lifecycle_with_ambiguous_step`\n- Expected failure mode before implementation:\
+      \ first-match behavior for duplicate IDs, qualified selector literal misparse,\
+      \ no active-phase precedence, no ambiguity exception signaling\n- Files changed:\
+      \ `tests/test_resolver_regression.py`\n- Verification commands:\n  - `uv run\
+      \ pytest tests/test_resolver_regression.py -v` -> 24 passed\n  - `uv run pytest\
+      \ tests/ --ignore=tests/test_dashboard_ui.py --ignore=tests/test_dashboard.py\
+      \ -x` -> 999 passed, 35 skipped\n- Commit hash(es): `8cad8d0`"
   - id: step-id-resolver-hardening.core
     name: Implement shared resolver core
     status: pending

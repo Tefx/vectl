@@ -27043,7 +27043,8 @@ phases:
       - known failure pattern in this repo: migration work passes happy-path tests
       but misses DAG or compatibility edge cases
 
-      - multiple integration-tagged steps require cross-cutting scrutiny
+      - this rerun must review the batched remediation loop for lint, CLI/MCP migration-surface
+      behavior, and contract/guidance alignment
 
 
       cross_cutting_focus:
@@ -27054,15 +27055,19 @@ phases:
 
       - guidance and hard-error rollout align with actual behavior
 
+      - `--auto-migrate` behavior is either implemented coherently across CLI + MCP
+      + docs or removed coherently everywhere
+
 
       Independence: gate agent must not match any implementation agent in this phase.'
-    verification: '- All phase steps completed successfully
+    verification: '- All phase steps completed successfully, including `step-id-migration-tooling.fix-gate-blockers`
+      and `step-id-migration-tooling.retest-gate-blockers`
 
       - Evidence collected for migration contract, tests, engine, surfaces, guidance,
-      rollout flip, and independent verification
+      rollout flip, independent verification, and batched remediation
 
       - No unresolved blocker remains around backward compatibility, ambiguous-step
-      errors, or DAG preservation
+      errors, DAG preservation, lint, or unsupported `--auto-migrate` claims
 
       - Ready for final end-to-end gate phase'
     evidence_template: '## Gate Review Report
@@ -27086,6 +27091,8 @@ phases:
     - step-id-migration-tooling.freeze-l2
     - step-id-migration-tooling.verify
     - step-id-migration-tooling.freeze-gate
+    - step-id-migration-tooling.fix-gate-blockers
+    - step-id-migration-tooling.retest-gate-blockers
     agent: gate-reviewer
     claimed_by: gate-reviewer
     claimed_at: '2026-03-12T18:54:46.949013+00:00'

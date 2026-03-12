@@ -26376,3 +26376,28 @@ phases:
 
       - Run: pytest tests/ -k find_step -v (no regressions)'
     agent: python-executor
+  - id: implement-error-msg
+    name: Fix ambiguous bare step IDs in validation error messages
+    status: pending
+    description: "Use qualified phase.step IDs in validation error messages.\n\nFile:\
+      \ src/vectl/core.py (line 203)\n\nProblem: Error message says \"Phase '{phase.id}'\
+      \ is done but step '{step.id}' has status '{step.status.value}'\" using bare\
+      \ step.id. When step IDs are duplicated across phases (e.g., \"gate\"), users\
+      \ cannot action on the error because \"vectl show gate\" may find the wrong\
+      \ one.\n\nFix: Change the f-string at line 203 from:\n```python\nf\"Phase '{phase.id}'\
+      \ is done but step '{step.id}' \"\nf\"has status '{step.status.value}'\"\n```\n\
+      to:\n```python\nf\"Phase '{phase.id}' is done but step '{phase.id}.{step.id}'\
+      \ \"\nf\"has status '{step.status.value}'\"\n```\n\nThis is a one-line change.\
+      \ The qualified ID format matches what find_step will now support (after Bug\
+      \ 2 fix), so users can copy-paste the ID from the error message directly into\
+      \ show/skip commands.\n\nsimple_feature_exception:\n  approved: true\n  conditions_met:\n\
+      \    - single_symbol_or_tiny_ui\n    - no_cross_module_coordination\n    - no_meaningful_side_effects\n\
+      \    - obvious_existing_pattern\n  pattern_reference: src/vectl/core.py line\
+      \ 203"
+    verification: '- Error message for done-phase-with-pending-step uses "{phase.id}.{step.id}"
+      format
+
+      - The qualified ID in the error is copy-pasteable into vectl show
+
+      - Run: pytest tests/test_validation.py -v (no regressions)'
+    agent: python-executor

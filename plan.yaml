@@ -22725,6 +22725,58 @@ phases:
     depends_on:
     - step-id-resolver-hardening.surfaces
     agent: software-architect
+  - id: step-id-resolver-hardening.verify
+    name: Independently verify resolver behavior
+    status: pending
+    description: 'step_type: verification
+
+      agent_source: default
+
+      Independence Level: L2
+
+      As an INDEPENDENT TESTER (`integration-verifier`), validate resolver behavior
+      from a semi-blind perspective.
+
+
+      YOUR GOAL IS TO FIND PROBLEMS, not to confirm it works.
+
+
+      Test for:
+
+      - Happy path: unique step IDs still claim/show/complete exactly as before
+
+      - Edge cases: duplicate `gate` IDs across phases, qualified target resolution,
+      inactive-vs-active phase ambiguity
+
+      - Error scenarios: unknown phase, unknown step in phase, ambiguous bare target,
+      MCP payload parity with CLI
+
+
+      Document ALL findings. A test that discovers issues is a SUCCESS.
+
+      A test that finds nothing must justify the coverage achieved.
+
+
+      Review depth hint:
+
+      - Cross-cutting focus on every targeted command surface, not just `claim` and
+      `show`
+
+      - Require at least one real CLI invocation and one real MCP tool call through
+      the affected path'
+    verification: '- Main path: focused CLI/MCP resolver regression suite passes
+
+      - Failure path: at least one explicit ambiguity case and one wrong-qualified-selector
+      case are exercised and reported
+
+      - Evidence includes actual command output or MCP payload, not only ''tests pass'''
+    evidence_template: "## Verification Report\n- Commands executed:\n  - <pytest\
+      \ target>\n  - <CLI invocation>\n  - <MCP call>\n- Key outputs:\n  ```text\n\
+      \  <paste output>\n  ```\n- Issues found: <table or none>\n- Coverage gaps:\
+      \ <list>\n"
+    depends_on:
+    - step-id-resolver-hardening.freeze-l2
+    agent: integration-verifier
 - id: step-id-validation-hardening
   name: B / Validation Hardening
   status: locked

@@ -49,19 +49,27 @@ from vectl.core import (
     analyze_duplicate_step_ids,
     clipboard_clear,
     clipboard_write,
+    claim_step,
+    complete_phase,
+    complete_step,
+    defer_step,
     duplicate_step_id_recommendation_for_target,
     edit_phase,
     edit_plan,
     edit_step,
     format_lock_changes,
     gate_check,
+    get_claimed_steps,
     get_next_steps,
     move_step,
     recalc_lock_status,
+    reject_step,
     remove_step,
     render_plan,
     review_plan,
     search_plan,
+    skip_phase,
+    skip_step,
     update_checklist,
     upsert_agents_md,
     validate_plan,
@@ -72,17 +80,7 @@ from vectl.io import (
     load_plan_definition,
     save_plan,
 )
-from vectl.lifecycle import (
-    ClaimConflictError,
-    claim_step,
-    complete_phase,
-    complete_step,
-    defer_step,
-    get_claimed_steps,
-    reject_step,
-    skip_phase,
-    skip_step,
-)
+from vectl.lifecycle import ClaimConflictError
 from vectl.models import (
     AffinityError,
     AmbiguousMatchError,
@@ -544,9 +542,17 @@ def vectl_claim(
         ).model_dump(mode="json", exclude_none=True)
     except PlanError as e:
         err = str(e)
-        return ClaimResult(ok=False, markdown=f"**Error:** {err}", error=err).model_dump(
-            mode="json", exclude_none=True
+        error_code = (
+            "duplicate_step_id_auto_migrate_required"
+            if "error_code=duplicate_step_id_auto_migrate_required" in err
+            else None
         )
+        return ClaimResult(
+            ok=False,
+            markdown=f"**Error:** {err}",
+            error=err,
+            error_code=error_code,
+        ).model_dump(mode="json", exclude_none=True)
 
     found = plan.find_step(step_id)
     if found:
@@ -881,6 +887,7 @@ def vectl_mutate(
     evidence: str = "",
     skipped_reason: str = "",
     agent: str = "",
+    new_step_id: str = "",
     steps: list[dict] | None = None,
 ) -> str:
     """Modify plan structure.
@@ -1027,6 +1034,7 @@ def vectl_mutate(
                 add_refs=add_refs,
                 remove_refs=remove_refs,
                 refs=refs if refs is not None else _SENTINEL,
+                new_step_id=new_step_id if new_step_id else _SENTINEL,
             )
             msg = f"**Updated step:** {step_id}"
 
@@ -1811,6 +1819,9 @@ class _ToolWrapper:
 # Wrap all tool functions for test compatibility
 _vectl_status_tool = vectl_status
 vectl_status = _ToolWrapper(vectl_status)  # type: ignore[assignment]
+
+_vectl_validate_tool = vectl_validate
+vectl_validate = _ToolWrapper(vectl_validate)  # type: ignore[assignment]
 
 _vectl_show_tool = vectl_show
 vectl_show = _ToolWrapper(vectl_show)  # type: ignore[assignment]

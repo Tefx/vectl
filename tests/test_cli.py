@@ -3246,6 +3246,67 @@ class TestDuplicateIdDiagnostics:
         assert "Duplicate step-ID diagnostics" in result.output
         assert "dup.step" in result.output
 
+    def test_claim_blocks_ambiguous_duplicate_target_without_opt_in(self, tmp_path: Path) -> None:
+        plan_path = self._duplicate_plan_path(tmp_path)
+        result = runner.invoke(
+            app, ["claim", "dup.step", "--agent", "bot", "--plan", str(plan_path)]
+        )
+
+        assert result.exit_code == 1
+        assert "error_code=duplicate_step_id_auto_migrate_required" in result.output
+        assert "blocking_reason=auto_migrate_missing" in result.output
+        assert "required_opt_in=--auto-migrate" in result.output
+
+        plan, _ = load_plan(plan_path)
+        assert plan.phases[0].steps[0].status == StepStatus.PENDING
+        assert plan.phases[1].steps[0].status == StepStatus.PENDING
+
+    def test_check_blocks_ambiguous_duplicate_target_without_opt_in(self, tmp_path: Path) -> None:
+        plan = Plan(
+            project="duplicate-check",
+            phases=[
+                Phase(
+                    id="p1",
+                    name="Phase 1",
+                    status=PhaseStatus.PENDING,
+                    steps=[Step(id="dup.step", name="P1 Dup", description="- [ ] first")],
+                ),
+                Phase(
+                    id="p2",
+                    name="Phase 2",
+                    status=PhaseStatus.PENDING,
+                    steps=[Step(id="dup.step", name="P2 Dup", description="- [ ] second")],
+                ),
+            ],
+        )
+        plan_path = tmp_path / "plan.yaml"
+        save_plan(plan, plan_path)
+
+        result = runner.invoke(app, ["check", "dup.step", "first", "--plan", str(plan_path)])
+
+        assert result.exit_code == 1
+        assert "error_code=duplicate_step_id_auto_migrate_required" in result.output
+
+        reloaded, _ = load_plan(plan_path)
+        assert reloaded.phases[0].steps[0].description == "- [ ] first"
+        assert reloaded.phases[1].steps[0].description == "- [ ] second"
+
+    def test_migrate_blocks_when_duplicate_targets_require_auto_migrate(
+        self, tmp_path: Path
+    ) -> None:
+        plan_path = self._duplicate_plan_path(tmp_path)
+        from vectl.migration import resolve_state_path
+
+        state_path = resolve_state_path(plan_path)
+        state_path.parent.mkdir(parents=True, exist_ok=True)
+        state_path.write_text("{}", encoding="utf-8")
+
+        result = runner.invoke(app, ["migrate", "--yes", "--plan", str(plan_path)])
+
+        assert result.exit_code == 1
+        assert "error_code=duplicate_step_id_auto_migrate_required" in result.output
+        assert "blocking_reason=auto_migrate_missing" in result.output
+
 
 # ---------------------------------------------------------------------------
 # clipboard commands

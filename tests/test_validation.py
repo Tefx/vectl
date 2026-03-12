@@ -2,7 +2,7 @@
 
 import pytest
 
-from vectl.core import validate_plan
+from vectl.core import add_step, add_steps_bulk, claim_step, validate_plan
 from vectl.models import (
     Phase,
     PhaseStatus,
@@ -382,6 +382,53 @@ class TestWriteSurfaceRejectsDuplicateIds:
             add_step(plan, "p1", "My Step", step_id="my-step")
 
         assert "already exists" in str(exc_info.value)
+
+    def test_add_step_rejects_duplicate_id_across_phases(self):
+        plan = _make_plan(
+            phases=[
+                Phase(id="p1", name="P1", steps=[Step(id="shared", name="P1 Existing")]),
+                Phase(id="p2", name="P2", steps=[]),
+            ]
+        )
+        from vectl.models import PlanError
+
+        with pytest.raises(PlanError) as exc_info:
+            add_step(plan, "p2", "P2 New", step_id="shared")
+
+        msg = str(exc_info.value)
+        assert "error_code=duplicate_step_id_write_blocked" in msg
+        assert "blocking_reason=duplicate_step_id_exists" in msg
+
+    def test_add_steps_bulk_rejects_duplicate_id_across_phases(self):
+        plan = _make_plan(
+            phases=[
+                Phase(id="p1", name="P1", steps=[Step(id="shared", name="P1 Existing")]),
+                Phase(id="p2", name="P2", steps=[]),
+            ]
+        )
+        from vectl.models import PlanError
+
+        with pytest.raises(PlanError) as exc_info:
+            add_steps_bulk(plan, "p2", [{"name": "P2 New", "id": "shared"}])
+
+        assert "error_code=duplicate_step_id_write_blocked" in str(exc_info.value)
+
+    def test_claim_rejects_ambiguous_duplicate_target_without_opt_in(self):
+        plan = _make_plan(
+            phases=[
+                Phase(id="p1", name="P1", steps=[Step(id="dup.step", name="P1 Step")]),
+                Phase(id="p2", name="P2", steps=[Step(id="dup.step", name="P2 Step")]),
+            ]
+        )
+        from vectl.models import PlanError
+
+        with pytest.raises(PlanError) as exc_info:
+            claim_step(plan, "dup.step", "bot")
+
+        msg = str(exc_info.value)
+        assert "error_code=duplicate_step_id_auto_migrate_required" in msg
+        assert "blocking_reason=auto_migrate_missing" in msg
+        assert "required_opt_in=--auto-migrate" in msg
 
     def test_add_phase_rejects_duplicate_phase_id(self):
         """add_phase should reject creating a phase with an ID that already exists."""

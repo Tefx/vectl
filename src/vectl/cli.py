@@ -32,15 +32,24 @@ from vectl.core import (
     duplicate_step_id_recommendation_for_target,
     diff_plans,
     edit_phase,
+    complete_phase,
+    complete_step,
+    claim_step,
+    defer_step,
     edit_step,
     format_lock_changes,
     get_next_steps,
+    get_claimed_steps,
     move_step,
     recalc_lock_status,
+    reject_step,
     remove_step,
     render_plan,
     review_plan,
     search_plan,
+    skip_phase,
+    skip_step,
+    require_unambiguous_target_step_id,
     unlock_phase,
     update_checklist,
     validate_plan,
@@ -56,17 +65,7 @@ from vectl.io import (
     load_plan_definition,
     save_plan,
 )
-from vectl.lifecycle import (
-    ClaimConflictError,
-    claim_step,
-    complete_phase,
-    complete_step,
-    defer_step,
-    get_claimed_steps,
-    reject_step,
-    skip_phase,
-    skip_step,
-)
+from vectl.lifecycle import ClaimConflictError
 from vectl.merge_driver import merge_plans
 from vectl.migration import migrate_from_split_state, resolve_state_path
 from vectl.models import (
@@ -1668,6 +1667,15 @@ def migrate_cmd(
         out.print(f"[yellow]No legacy state file found:[/] {state_path}")
         return
 
+    loaded_plan, _, _ = _load(plan)
+    try:
+        for phase in loaded_plan.phases:
+            for step in phase.steps:
+                require_unambiguous_target_step_id(loaded_plan, step.id, operation="migrate")
+    except PlanError as e:
+        _die(str(e))
+        return
+
     out.print("[bold]Migration preview[/]")
     out.print(f"  plan: {plan_path}")
     out.print(f"  legacy state: {state_path}")
@@ -2071,6 +2079,11 @@ def edit_step_cmd(
         "--evidence-template",
         help="New completion evidence template (inline; use '' to clear).",
     ),
+    new_step_id: str | None = typer.Option(
+        None,
+        "--new-id",
+        help="Rename this step to a new globally unique ID.",
+    ),
     evidence_template_file: Path | None = EvidenceTemplateFileOption,
     plan: Path | None = PlanOption,
 ) -> None:
@@ -2095,11 +2108,13 @@ def edit_step_cmd(
         and not add_refs
         and not rm_refs
         and evidence_template is None
+        and new_step_id is None
         and evidence_template_file is None
     ):
         _die(
             "Nothing to edit. Provide at least one of --name, --desc, --verify, --agent, "
             "--add-dep, --rm-dep, --add-ref, --rm-ref, --evidence_template, "
+            "--new-id, "
             "--evidence_template_file."
         )
         return  # unreachable
@@ -2132,6 +2147,7 @@ def edit_step_cmd(
             remove_deps=rm_deps,
             add_refs=add_refs,
             remove_refs=rm_refs,
+            new_step_id=new_step_id if new_step_id is not None else _SENTINEL,
         )
     except PlanError as e:
         _die(str(e))

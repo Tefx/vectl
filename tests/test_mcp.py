@@ -572,6 +572,20 @@ class TestVectlClaim:
         finally:
             os.chdir(original_cwd)
 
+    def test_claim_blocks_ambiguous_duplicate_target_without_opt_in(
+        self, duplicate_id_plan_file: Path
+    ) -> None:
+        result = vectl_claim(agent="bot", step_id="dup.step")
+
+        assert result["ok"] is False
+        assert result["error_code"] == "duplicate_step_id_auto_migrate_required"
+        assert "blocking_reason=auto_migrate_missing" in result["error"]
+        assert "required_opt_in=--auto-migrate" in result["error"]
+
+        data = _reload_plan(duplicate_id_plan_file)
+        assert data["phases"][0]["steps"][0]["status"] == "pending"
+        assert data["phases"][1]["steps"][0]["status"] == "pending"
+
 
 class TestRepairClaimsMcp:
     def test_repair_claims_dry_run_preview(self, plan_file: Path) -> None:
@@ -769,6 +783,19 @@ class TestVectlLifecycle:
         result = vectl_lifecycle(action="defer", id="nonexistent")
         assert "Error" in result
 
+    def test_lifecycle_blocks_ambiguous_duplicate_target_without_opt_in(
+        self, duplicate_id_plan_file: Path
+    ) -> None:
+        result = vectl_lifecycle(action="skip", id="dup.step", reason="irrelevant")
+
+        assert "Error" in result
+        assert "error_code=duplicate_step_id_auto_migrate_required" in result
+        assert "blocking_reason=auto_migrate_missing" in result
+
+        data = _reload_plan(duplicate_id_plan_file)
+        assert data["phases"][0]["steps"][0]["status"] == "pending"
+        assert data["phases"][1]["steps"][0]["status"] == "pending"
+
 
 # ---------------------------------------------------------------------------
 # Tool 6: vectl_search
@@ -823,6 +850,18 @@ class TestVectlMutate:
     def test_add_step_requires_phase_and_name(self, plan_file: Path) -> None:
         result = vectl_mutate(action="add-step", phase_id="alpha")
         assert "Error" in result
+
+    def test_add_step_rejects_duplicate_id_across_plan(self, duplicate_id_plan_file: Path) -> None:
+        result = vectl_mutate(
+            action="add-step",
+            phase_id="alpha",
+            name="Another dup",
+            step_id="dup.step",
+        )
+
+        assert "Error" in result
+        assert "error_code=duplicate_step_id_write_blocked" in result
+        assert "blocking_reason=duplicate_step_id_exists" in result
 
     def test_edit_step(self, plan_file: Path) -> None:
         result = vectl_mutate(

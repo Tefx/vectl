@@ -47,6 +47,7 @@ def claim_step(
     force: bool = False,
     claims_path: Path | None = None,
 ) -> tuple[Plan, _lifecycle.ClaimResult]:
+    require_unambiguous_target_step_id(plan, step_id, operation="claim")
     return _lifecycle.claim_step(
         plan,
         step_id,
@@ -57,6 +58,7 @@ def claim_step(
 
 
 def complete_step(plan: Plan, step_id: str, evidence: str, claims_path: Path | None = None) -> Plan:
+    require_unambiguous_target_step_id(plan, step_id, operation="complete")
     return _lifecycle.complete_step(plan, step_id, evidence, claims_path=claims_path)
 
 
@@ -65,14 +67,17 @@ def complete_phase(plan: Plan, phase_id: str, evidence: str) -> tuple[Plan, list
 
 
 def defer_step(plan: Plan, step_id: str, claims_path: Path | None = None) -> Plan:
+    require_unambiguous_target_step_id(plan, step_id, operation="defer")
     return _lifecycle.defer_step(plan, step_id, claims_path=claims_path)
 
 
 def reject_step(plan: Plan, step_id: str, reason: str, reviewer: str = "") -> Plan:
+    require_unambiguous_target_step_id(plan, step_id, operation="reject")
     return _lifecycle.reject_step(plan, step_id, reason, reviewer)
 
 
 def skip_step(plan: Plan, step_id: str, reason: str) -> Plan:
+    require_unambiguous_target_step_id(plan, step_id, operation="skip")
     return _lifecycle.skip_step(plan, step_id, reason)
 
 
@@ -293,6 +298,56 @@ def duplicate_step_id_recommendation_for_target(
         if recommendation.step_id == step_id:
             return recommendation
     return None
+
+
+def require_unambiguous_target_step_id(plan: Plan, step_id: str, *, operation: str) -> None:
+    """Block targeted writes when duplicate step IDs make target selection ambiguous.
+
+    Source:
+        - conversation/duplicate-step-id-bug
+        - conversation/half-automatic-step-id-migration
+    """
+    diagnostics = analyze_duplicate_step_ids(plan)
+    recommendation = duplicate_step_id_recommendation_for_target(diagnostics, step_id)
+    if recommendation is None:
+        return
+
+    phases = ",".join(recommendation.phase_ids)
+    raise PlanError(
+        "duplicate_step_id_write_guard: blocked\n"
+        "error_code=duplicate_step_id_auto_migrate_required\n"
+        "blocking_reason=auto_migrate_missing\n"
+        f"operation={operation}\n"
+        f"step_id={recommendation.step_id}\n"
+        f"phases={phases}\n"
+        f"dry_run_repair={recommendation.dry_run_repair_entry_point}\n"
+        "required_opt_in=--auto-migrate\n"
+        f"auto_migrate_entry_point={recommendation.auto_migrate_entry_point}\n"
+        f"operator_next_action={recommendation.operator_next_action}\n"
+        f"automation_next_action={recommendation.automation_next_action}"
+    )
+
+
+def require_no_global_duplicate_step_id(plan: Plan, step_id: str, *, operation: str) -> None:
+    """Reject writes that would introduce a global duplicate step ID."""
+    phase_ids: list[str] = []
+    for phase in plan.phases:
+        if any(step.id == step_id for step in phase.steps):
+            phase_ids.append(phase.id)
+
+    if not phase_ids:
+        return
+
+    phases = ",".join(sorted(set(phase_ids)))
+    raise PlanError(
+        "duplicate_step_id_write_guard: blocked\n"
+        "error_code=duplicate_step_id_write_blocked\n"
+        "blocking_reason=duplicate_step_id_exists\n"
+        f"operation={operation}\n"
+        f"step_id={step_id}\n"
+        f"phases={phases}\n"
+        f"detail=Step ID '{step_id}' already exists"
+    )
 
 
 def _detect_cycle(graph: dict[str, list[str]]) -> list[str] | None:
@@ -529,12 +584,15 @@ def _slugify(name: str) -> str:
     return re.sub(r"-+", "-", slug)
 
 
-def _unique_step_id(phase: Phase, base_slug: str) -> str:
-    """Generate a unique step ID within a phase.
+def _unique_step_id(plan: Plan, phase: Phase, base_slug: str) -> str:
+    """Generate a unique step ID across the full plan.
 
     Format: ``{phase.id}.{slug}``. Appends ``-2``, ``-3`` on collision.
     """
-    existing = {s.id for s in phase.steps}
+    existing: set[str] = set()
+    for existing_phase in plan.phases:
+        for step in existing_phase.steps:
+            existing.add(step.id)
     candidate = f"{phase.id}.{base_slug}"
     if candidate not in existing:
         return candidate
@@ -633,10 +691,9 @@ def add_step(
         slug = _slugify(name)
         if not slug:
             raise PlanError("Cannot generate step ID: name produces empty slug")
-        step_id = _unique_step_id(phase, slug)
+        step_id = _unique_step_id(plan, phase, slug)
     else:
-        if any(s.id == step_id for s in phase.steps):
-            raise PlanError(f"Step ID '{step_id}' already exists in phase '{phase_id}'")
+        require_no_global_duplicate_step_id(plan, step_id, operation="add-step")
 
     # Validate depends_on refs exist within phase
     deps = depends_on or []
@@ -781,7 +838,12 @@ def add_steps_bulk(
 
     # --- Pass 1: Parse entries and pre-compute all IDs ---
     parsed: list[dict[str, object]] = []
-    known_ids: set[str] = {s.id for s in phase.steps}  # track collisions
+    global_ids: set[str] = set()
+    for existing_phase in plan.phases:
+        for existing_step in existing_phase.steps:
+            global_ids.add(existing_step.id)
+
+    known_phase_ids: set[str] = {s.id for s in phase.steps}
     slug_to_id: dict[str, str] = {}  # short slug → full step ID
 
     for i, entry in enumerate(steps):
@@ -872,23 +934,30 @@ def add_steps_bulk(
         step_id_raw = entry.get("id")
         if step_id_raw is not None:
             step_id = str(step_id_raw)
-            if step_id in known_ids:
-                raise PlanError(f"Step ID '{step_id}' already exists in phase '{phase_id}'")
+            if step_id in global_ids:
+                raise PlanError(
+                    "duplicate_step_id_write_guard: blocked\n"
+                    "error_code=duplicate_step_id_write_blocked\n"
+                    "blocking_reason=duplicate_step_id_exists\n"
+                    "operation=add-steps\n"
+                    f"step_id={step_id}"
+                )
         else:
             slug = _slugify(name)
             if not slug:
                 raise PlanError(f"Step {i}: Cannot generate step ID: name produces empty slug")
-            # Generate unique ID considering both existing steps and earlier batch entries
+            # Generate unique ID considering all existing and earlier batch entries.
             candidate = f"{phase_id}.{slug}"
-            if candidate not in known_ids:
+            if candidate not in global_ids:
                 step_id = candidate
             else:
                 counter = 2
-                while f"{phase_id}.{slug}-{counter}" in known_ids:
+                while f"{phase_id}.{slug}-{counter}" in global_ids:
                     counter += 1
                 step_id = f"{phase_id}.{slug}-{counter}"
 
-        known_ids.add(step_id)
+        global_ids.add(step_id)
+        known_phase_ids.add(step_id)
 
         # Build short slug mapping for intra-batch references
         prefix = f"{phase_id}."
@@ -921,7 +990,7 @@ def add_steps_bulk(
             assert isinstance(after_raw_val, list)
             for dep_ref in after_raw_val:
                 assert isinstance(dep_ref, str)
-                if dep_ref in known_ids:
+                if dep_ref in known_phase_ids:
                     # Exact match: full step ID (existing or batch)
                     resolved_deps.append(dep_ref)
                 elif dep_ref in slug_to_id:
@@ -1019,6 +1088,7 @@ def edit_step(
     add_refs: list[str] | None = None,
     remove_refs: list[str] | None = None,
     refs: list[str] | _Unset = _SENTINEL,
+    new_step_id: str | _Unset = _SENTINEL,
 ) -> Plan:
     """Edit an existing step's metadata.
 
@@ -1045,10 +1115,22 @@ def edit_step(
     Raises:
         PlanError: If step not found, or add_deps reference invalid step IDs.
     """
+    require_unambiguous_target_step_id(plan, step_id, operation="edit-step")
     found = plan.find_step(step_id)
     if found is None:
         raise PlanError(f"Step '{step_id}' not found")
     phase, step = found
+
+    if new_step_id is not _SENTINEL:
+        target_id = str(new_step_id)
+        if target_id != step.id:
+            require_no_global_duplicate_step_id(plan, target_id, operation="edit-step")
+            old_id = step.id
+            step.id = target_id
+            for dep_step in phase.steps:
+                dep_step.depends_on = [
+                    target_id if dep == old_id else dep for dep in dep_step.depends_on
+                ]
 
     if name is not _SENTINEL:
         step.name = str(name)
@@ -1219,6 +1301,7 @@ def remove_step(plan: Plan, step_id: str, *, force: bool = False) -> Plan:
     Raises:
         PlanError: If step not found or step is not pending.
     """
+    require_unambiguous_target_step_id(plan, step_id, operation="remove-step")
     found = plan.find_step(step_id)
     if found is None:
         raise PlanError(f"Step '{step_id}' not found")
@@ -1294,6 +1377,7 @@ def move_step(plan: Plan, step_id: str, to_phase_id: str) -> Plan:
     Raises:
         PlanError: If step/phase not found, step not pending, or target is same phase.
     """
+    require_unambiguous_target_step_id(plan, step_id, operation="move-step")
     found = plan.find_step(step_id)
     if found is None:
         raise PlanError(f"Step '{step_id}' not found")
@@ -1346,6 +1430,7 @@ def update_checklist(
     if check is None and append is None:
         raise PlanError("Must provide either 'check' or 'append'")
 
+    require_unambiguous_target_step_id(plan, step_id, operation="check")
     found = plan.find_step(step_id)
     if found is None:
         raise PlanError(f"Step '{step_id}' not found")

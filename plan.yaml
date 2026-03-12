@@ -26967,7 +26967,7 @@ phases:
       - none'
   - id: step-id-migration-tooling.freeze-gate
     name: Freeze snapshot for migration gate
-    status: pending
+    status: claimed
     description: 'step_type: verification
 
       agent_source: default
@@ -27001,6 +27001,8 @@ phases:
     depends_on:
     - step-id-migration-tooling.verify
     agent: software-architect
+    claimed_by: software-architect
+    claimed_at: '2026-03-12T18:51:51.258667+00:00'
   - id: step-id-migration-tooling.gate
     name: Gate review for migration and tooling
     status: pending

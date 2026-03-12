@@ -25504,7 +25504,7 @@ phases:
       - none (nonexistent conversation artifact reference does not affect implementation)'
   - id: step-id-validation-hardening.retest-gate-rerun-type-blockers
     name: Independent retest of gate rerun type blockers
-    status: pending
+    status: claimed
     description: 'step_type: verification
 
       agent_source: default
@@ -25575,6 +25575,8 @@ phases:
     depends_on:
     - step-id-validation-hardening.fix-gate-rerun-type-blockers
     agent: integration-verifier
+    claimed_by: integration-verifier
+    claimed_at: '2026-03-12T16:08:29.518153+00:00'
 - id: step-id-migration-tooling
   name: C / Migration & Tooling
   status: locked

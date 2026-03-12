@@ -24111,7 +24111,7 @@ phases:
       \ `febc04c8efda62b1cf1c9765136518fe800daa95`"
   - id: step-id-validation-hardening.diagnostics
     name: Implement global duplicate-id diagnostics
-    status: pending
+    status: claimed
     description: "step_type: implementation\nagent_source: default\nspec_refs:\n \
       \ - conversation/duplicate-step-id-bug\n  - conversation/half-automatic-step-id-migration\n\
       \ntouch_paths:\n- src/vectl/core.py\n- src/vectl/models.py\n- src/vectl/cli.py\n\
@@ -24154,6 +24154,8 @@ phases:
     depends_on:
     - step-id-validation-hardening.tests
     agent: python-senior
+    claimed_by: python-senior
+    claimed_at: '2026-03-12T14:10:28.094693+00:00'
   - id: step-id-validation-hardening.write-guard
     name: Prevent new duplicate step IDs on write surfaces
     status: pending

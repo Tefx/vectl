@@ -22896,21 +22896,32 @@ phases:
     status: pending
     description: "step_type: contract\ncontract_purity: ENFORCED\ncontract_outputs:\n\
       \  - rollout_policy\n  - validation_severity_matrix\n  - read_vs_write_behavior\n\
-      \  - deprecation_copy\nagent_source: default\nspec_refs:\n  - conversation/duplicate-step-id-bug\n\
+      \  - deprecation_copy\n  - half_automatic_mode_matrix\nagent_source: default\n\
+      spec_refs:\n  - conversation/duplicate-step-id-bug\n  - conversation/half-automatic-step-id-migration\n\
       \nRecommend and codify the rollout policy for global step-ID uniqueness.\n\n\
       Required recommendation:\n- phased rollout is preferred over immediate load-time\
-      \ hard failure\n\nThe contract must define:\n- warning mode for legacy duplicate-id\
-      \ plans in read-oriented surfaces (`status`, `review`, `show`, `dag`) so operators\
-      \ can still inspect and migrate\n- hard prevention for creating NEW duplicate\
-      \ IDs on write surfaces as soon as this phase lands\n- final hard validation\
-      \ error for legacy duplicate IDs after migration tooling exists in phase C\n\
-      - exact wording and severity placement for `status`, `review`, `validate`, and\
-      \ mutation commands\n\nRationale to preserve:\n- an immediate universal hard\
+      \ hard failure\n- half-automatic mode is preferred over silent default migration\n\
+      \nThe contract must define:\n- warning mode for legacy duplicate-id plans in\
+      \ read-only surfaces (`status`, `review`, `show`, `dag`) so operators can still\
+      \ inspect and migrate\n- explicit guarantee that those read-only surfaces NEVER\
+      \ mutate plan files, even when duplicates are present\n- hard prevention for\
+      \ creating NEW duplicate IDs on write surfaces as soon as this phase lands\n\
+      - targeted mutating commands on legacy duplicate plans must stop on ambiguity,\
+      \ emit a structured repair recommendation, and require explicit opt-in before\
+      \ any migration work runs\n- final hard validation error for legacy duplicate\
+      \ IDs after migration tooling exists in phase C\n- exact wording and severity\
+      \ placement for `status`, `review`, `validate`, targeted mutation commands,\
+      \ and MCP equivalents\n\nRationale to preserve:\n- an immediate universal hard\
       \ error would strand existing plans before a repair path ships\n- a warning-only\
       \ forever policy is insufficient because ambiguity is correctness-breaking\n\
-      \nOut of scope:\n- actual migration command implementation"
+      - silent migration by default is unsafe for operators and automation because\
+      \ plan mutations must be intentional and inspectable\n\nOut of scope:\n- actual\
+      \ migration repair command implementation"
     verification: '- Rollout matrix names each surface and its required severity:
       info/warning/error
+
+      - Contract explicitly states read-only non-mutation behavior and the opt-in
+      requirement for half-automatic repair
 
       - Contract explicitly states when the final hard error flips on
 

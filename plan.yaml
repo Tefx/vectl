@@ -23440,25 +23440,33 @@ phases:
     name: Update planner templates and guidance
     status: pending
     description: "step_type: implementation\nagent_source: default\nspec_refs:\n \
-      \ - conversation/duplicate-step-id-bug\n\ntouch_paths:\n- src/vectl/guide.py\n\
-      - src/vectl/claim_guidance.py\n- plan/init templates or planning guidance surfaces\
-      \ that teach step-ID authoring\n\nharness_refs:\n- tests covering guide/help\
-      \ output if present\n- planner or onboarding output fixtures if present\n\n\
-      Update planning and operator guidance so globally unique step IDs become the\
-      \ documented norm.\n\nRequired updates:\n- planning guidance explicitly says\
-      \ step IDs must be globally unique, not just unique within a phase\n- recovery/migration\
-      \ guidance documents duplicate-ID symptoms and the new repair command workflow\n\
-      - claim/show guidance copy avoids suggesting ambiguous bare step IDs when a\
-      \ qualified target is required\n- any plan templates or init flows that show\
-      \ example step IDs use globally unique forms\n\nOut-of-scope guardrail:\n- do\
-      \ not add new migration semantics here; document the implemented behavior only"
-    verification: '- Guidance text matches implemented duplicate-ID policy and repair
-      workflow
+      \ - conversation/duplicate-step-id-bug\n  - conversation/half-automatic-step-id-migration\n\
+      \ntouch_paths:\n- src/vectl/guide.py\n- src/vectl/claim_guidance.py\n- plan/init\
+      \ templates or planning guidance surfaces that teach step-ID authoring\n\nharness_refs:\n\
+      - tests covering guide/help output if present\n- planner or onboarding output\
+      \ fixtures if present\n\nUpdate planning and operator guidance so globally unique\
+      \ step IDs become the documented norm and half-automatic repair is explained\
+      \ precisely.\n\nRequired updates:\n- planning guidance explicitly says step\
+      \ IDs must be globally unique, not just unique within a phase\n- recovery/migration\
+      \ guidance documents duplicate-ID symptoms, the `--dry-run` preview, explicit\
+      \ apply mode, and the opt-in `--auto-migrate` wrapper flow for targeted mutating\
+      \ commands\n- guidance must state that read-only commands never mutate plan\
+      \ files and that mutating commands without opt-in stop with a recommendation\
+      \ instead of silently repairing\n- claim/show guidance copy avoids suggesting\
+      \ ambiguous bare step IDs when a qualified target is required\n- any plan templates\
+      \ or init flows that show example step IDs use globally unique forms\n- backward-compatibility\
+      \ guidance tells users and script authors how to consume old->new mapping output\
+      \ and update stored selectors after migration\n\nOut-of-scope guardrail:\n-\
+      \ do not add new migration semantics here; document the implemented behavior\
+      \ only"
+    verification: '- Guidance text matches implemented duplicate-ID policy, half-automatic
+      repair workflow, and mapping/evidence contract
 
       - Examples and templates no longer imply that phase-local duplicate step IDs
       are acceptable
 
-      - Claim/show guidance points users toward the canonical target form after migration'
+      - Claim/show guidance points users toward the canonical target form after migration
+      and explains how automation should use the emitted mapping'
     evidence_template: '## Guidance Update Evidence
 
       - Surfaces updated: <list>

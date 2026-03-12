@@ -25623,6 +25623,163 @@ phases:
       discovered_issues:
 
       - none'
+  - id: step-id-validation-hardening.step-id-validation-hardening-fix-gate-rerun-import-blockers
+    name: step-id-validation-hardening.fix-gate-rerun-import-blockers
+    status: pending
+    description: 'step_type: implementation
+
+      agent_source: default
+
+      Fix ALL of these, not just the first, from the latest rerun of `step-id-validation-hardening.gate`.
+
+
+      prior_loop:
+
+      - step-id-validation-hardening.fix-gate-rerun-type-blockers
+
+      - step-id-validation-hardening.retest-gate-rerun-type-blockers
+
+      remaining_blocker: latest gate rerun surfaced a batched Ruff import-hygiene
+      cluster across `tests/test_agent_field.py` and `tests/test_mcp.py` after the
+      earlier static-typing remediation passed.
+
+      why_new_loop: the prior loop already closed mypy/pyright blockers; this new
+      batched loop isolates the remaining Ruff-only import/redefinition issues without
+      reopening the earlier verified type-fix scope.
+
+
+      spec_refs:
+
+      - `step-id-validation-hardening.gate` latest rerun findings / Ruff blocker batch
+
+      - `docs/contracts/duplicate-id-rollout-policy.yaml` / validation hardening phase
+      quality bar
+
+      - SPEC MISSING / exact import-layout expectation is inferred from repo Ruff
+      enforcement (`E402`, `F811`, `UP035`, `F401`)
+
+
+      touch_paths:
+
+      - `tests/test_agent_field.py`
+
+      - `tests/test_mcp.py`
+
+
+      harness_refs:
+
+      - `uv run ruff check tests/test_agent_field.py tests/test_mcp.py`
+
+      - `pytest tests/test_agent_field.py tests/test_mcp.py`
+
+      - gate precheck bundle for validation hardening
+
+
+      Conflict rationale:
+
+      - Both blockers are in shared test harness surfaces and the same Ruff/import-order
+      policy, so they must stay batched and serialized.
+
+      - `tests/test_agent_field.py` and `tests/test_mcp.py` are already part of earlier
+      remediation loops; parallel micro-fixes would create avoidable merge and evidence
+      fragmentation risk.
+
+
+      ## Blockers to Fix (ALL of these, not just the first)
+
+
+      ### B1: ruff E402/F811 in `tests/test_agent_field.py`
+
+      Locations:
+
+      - `tests/test_agent_field.py` around lines 45/48/51/54
+
+      Remediation:
+
+      - remove the duplicated import+wrapper block introduced after `.fn` assignments
+
+      - keep imports at the top of the file
+
+      - define the unwrapping helper once, not via repeated symbol redefinitions
+
+      Grep hint:
+
+      ```bash
+
+      rg -n "^from vectl\.mcp_server import" tests/test_agent_field.py
+
+      ```
+
+      IMPORTANT: Search for sibling duplicate import/redefinition patterns beyond
+      the listed lines before declaring the file clean.
+
+
+      ### B2: ruff UP035/F401 in `tests/test_mcp.py`
+
+      Locations:
+
+      - `tests/test_mcp.py` around line 15
+
+      Remediation:
+
+      - remove unused `typing` imports
+
+      - import `Callable` from `collections.abc` only if it is still needed after
+      cleanup
+
+      Grep hint:
+
+      ```bash
+
+      rg -n "from typing import Any, Callable, cast|from typing import .*Callable"
+      tests/test_mcp.py
+
+      ```
+
+      IMPORTANT: Search for sibling `Callable`/unused-typing imports in the same import
+      block before declaring the file clean.
+
+
+      Known risks:
+
+      - `tests/test_agent_field.py` already churned across prior `.fn` remediation
+      loops; avoid reintroducing duplicate wrappers while cleaning Ruff findings.
+
+      - Import cleanup in `tests/test_mcp.py` must preserve any remaining typed helper
+      expectations; do not silently change test behavior while removing unused imports.
+
+      - Treat this as import-hygiene repair only; do not broaden into another MCP
+      wrapper redesign.
+
+
+      Completion criteria:
+
+      - ALL blockers above fixed in one batch, not just the first occurrence
+
+      - sibling searches completed for duplicate import/redefinition and typing-import
+      patterns
+
+      - targeted Ruff checks for both files are clean
+
+      - targeted pytest for both files still passes
+
+
+      Out-of-scope guardrail:
+
+      - do not reopen prior Optional-access, `.fn` typing, or CLI result-typing remediation
+      unless the latest rerun proves they regressed as part of this exact import-hygiene
+      batch.'
+    verification: '- Main path: targeted Ruff blockers (`E402`, `F811`, `UP035`, `F401`)
+      are removed from the listed files without changing intended test behavior
+
+      - Failure path: sibling-search evidence shows no remaining duplicate import/redefinition
+      or stale `typing.Callable` pattern in scope
+
+      - Proof: `uv run ruff check tests/test_agent_field.py tests/test_mcp.py` and
+      targeted pytest for both files are green'
+    depends_on:
+    - step-id-validation-hardening.gate
+    agent: python-executor
 - id: step-id-migration-tooling
   name: C / Migration & Tooling
   status: locked

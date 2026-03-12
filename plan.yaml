@@ -22512,3 +22512,8 @@ phases:
   status: pending
   depends_on:
   - version-bump-0-6-2
+- id: step-id-validation-hardening
+  name: B / Validation Hardening
+  status: locked
+  depends_on:
+  - step-id-resolver-hardening

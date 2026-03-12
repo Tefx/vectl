@@ -26599,7 +26599,7 @@ phases:
       - none'
   - id: step-id-migration-tooling.guidance
     name: Update planner templates and guidance
-    status: pending
+    status: claimed
     description: "step_type: implementation\nagent_source: default\nspec_refs:\n \
       \ - conversation/duplicate-step-id-bug\n  - conversation/half-automatic-step-id-migration\n\
       \ntouch_paths:\n- src/vectl/guide.py\n- src/vectl/claim_guidance.py\n- plan/init\
@@ -26640,6 +26640,8 @@ phases:
     depends_on:
     - step-id-migration-tooling.surfaces
     agent: doc-reviewer
+    claimed_by: doc-reviewer
+    claimed_at: '2026-03-12T18:27:58.209768+00:00'
   - id: step-id-migration-tooling.hard-error-flip
     name: Flip legacy duplicates to hard validation errors
     status: pending

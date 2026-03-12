@@ -23069,7 +23069,7 @@ phases:
       - step-id-resolver-hardening.fix-gate-blockers\n- step-id-resolver-hardening.retest-gate-blockers"
   - id: step-id-resolver-hardening.fix-gate-blockers
     name: Batched remediation for resolver hardening gate blockers
-    status: claimed
+    status: done
     description: 'step_type: implementation
 
       agent_source: default
@@ -23309,6 +23309,31 @@ phases:
     agent: python-senior
     claimed_by: python-senior
     claimed_at: '2026-03-12T13:31:02.614090+00:00'
+    done_at: '2026-03-12T13:39:53.857901+00:00'
+    evidence: "## Batched Fix Evidence\n\n**Blockers addressed**: B1, B2, B3, S1\n\
+      \n### Searches run\n```bash\n$ uv run ruff check .\nAll checks passed!\n\n$\
+      \ rg -n \"pytest\\.skip|placeholder\" tests/test_resolver_contract.py docs/contracts/step-resolver-contract.md\
+      \ src/vectl/models.py\n# no matches\n\n$ rg -n \"\\.fn\" tests/test_resolver_*.py\
+      \ tests/test_mcp.py\n# no matches\n```\n\n### Changes made\n- B1: fixed ruff\
+      \ issues in resolver/test files (import order, quoted annotations, unused imports/locals).\n\
+      - B2: replaced placeholder-skipped contract tests with enforceable tests in\
+      \ `tests/test_resolver_contract.py`; aligned contract assertions with real model\
+      \ semantics.\n- B3: removed direct `.fn` test usage; added typed callable unwrapping\
+      \ patterns in resolver/MCP tests to satisfy mypy.\n- S1: improved duplicate-step\
+      \ repair hints to include actionable candidate-qualified `step:<phase.step>`\
+      \ guidance and added assertions.\n\n### Scope control\n- Files touched:\n  -\
+      \ `src/vectl/resolver.py`\n  - `tests/test_mcp.py`\n  - `tests/test_resolver.py`\n\
+      \  - `tests/test_resolver_contract.py`\n  - `tests/test_resolver_regression.py`\n\
+      \  - `tests/test_resolver_surfaces.py`\n- Sibling instances reviewed:\n  - all\
+      \ `.fn` usages in resolver/MCP test scope removed\n  - placeholder/skip markers\
+      \ removed from resolver contract test scope\n  - ambiguity hint behavior validated\
+      \ by unit + contract tests\n- Deferred items: none\n\n### Verification prepared\
+      \ for retest\n- Expected ruff target: `uv run ruff check .` -> pass\n- Expected\
+      \ mypy target: `uv run mypy tests/test_resolver_*.py tests/test_mcp.py src/vectl/resolver.py`\
+      \ -> pass\n- Expected resolver tests:\n  - `uv run pytest -q tests/test_resolver.py\
+      \ tests/test_resolver_contract.py tests/test_resolver_surfaces.py` -> pass\n\
+      \  - `uv run pytest -q tests/test_mcp.py -k \"test_init_\"` -> pass\n\n### Commit\
+      \ hash(es)\n- `638d704`"
   - id: step-id-resolver-hardening.retest-gate-blockers
     name: Independent retest for resolver hardening gate blockers
     status: pending

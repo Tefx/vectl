@@ -23069,7 +23069,7 @@ phases:
       - step-id-resolver-hardening.fix-gate-blockers\n- step-id-resolver-hardening.retest-gate-blockers"
   - id: step-id-resolver-hardening.fix-gate-blockers
     name: Batched remediation for resolver hardening gate blockers
-    status: pending
+    status: claimed
     description: 'step_type: implementation
 
       agent_source: default
@@ -23307,6 +23307,8 @@ phases:
     depends_on:
     - step-id-resolver-hardening.gate
     agent: python-senior
+    claimed_by: python-senior
+    claimed_at: '2026-03-12T13:31:02.614090+00:00'
   - id: step-id-resolver-hardening.retest-gate-blockers
     name: Independent retest for resolver hardening gate blockers
     status: pending

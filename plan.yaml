@@ -24173,7 +24173,7 @@ phases:
       \ 0)\n- Commit hash(es): `48d8fd4`, `9401f2d`"
   - id: step-id-validation-hardening.write-guard
     name: Prevent new duplicate step IDs on write surfaces
-    status: pending
+    status: claimed
     description: "step_type: implementation\nagent_source: default\nspec_refs:\n \
       \ - conversation/duplicate-step-id-bug\n  - conversation/half-automatic-step-id-migration\n\
       \ntouch_paths:\n- src/vectl/core.py\n- src/vectl/cli.py\n- src/vectl/mcp_server.py\n\
@@ -24218,6 +24218,8 @@ phases:
     depends_on:
     - step-id-validation-hardening.diagnostics
     agent: python-senior
+    claimed_by: python-senior
+    claimed_at: '2026-03-12T14:28:20.226918+00:00'
   - id: step-id-validation-hardening.verify
     name: Independently verify validation rollout behavior
     status: pending

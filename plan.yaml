@@ -26802,7 +26802,7 @@ phases:
     claimed_at: '2026-03-12T16:25:37.627771+00:00'
   - id: p0-cycle-detection.fix-gate-blocker-edit-step-rollback
     name: fix-gate-blocker-edit-step-rollback
-    status: claimed
+    status: done
     description: 'Fix ALL blockers found by the gate rerun for edit_step cycle detection.
 
 
@@ -26897,6 +26897,46 @@ phases:
     agent: python-senior
     claimed_by: python-senior
     claimed_at: '2026-03-12T16:36:42.198505+00:00'
+    done_at: '2026-03-12T16:41:30.504438+00:00'
+    evidence: 'Commit hash(es):
+
+      - worker branch: cd34429860dcf002062440ded1d926b5660c1829
+
+      - main squash commit: 0e977a3
+
+
+      Files changed:
+
+      - src/vectl/core.py
+
+      - tests/test_validation.py
+
+
+      Verification:
+
+      - uv run pytest tests/test_validation.py::TestEditStepCycleDetection -v -> PASSED
+      (6 passed)
+
+      - uv run pytest tests/test_validation.py -v -> PASSED (36 passed)
+
+
+      Spec link:
+
+      - p0-cycle-detection-gate/B1
+
+
+      Gaps/Notes:
+
+      - Added atomic rollback parity for edit_step dependency mutation cycle path,
+      preserving non-dependency behavior.
+
+      - Added regression coverage asserting failed cycle mutation restores original
+      depends_on state before re-raising.
+
+
+      discovered_issues:
+
+      - none'
   - id: p0-cycle-detection.retest-gate-precheck-edit-step-rollback
     name: retest-gate-precheck-edit-step-rollback
     status: pending

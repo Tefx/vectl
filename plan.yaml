@@ -28260,7 +28260,7 @@ phases:
       - none"
   - id: p1-qualified-lookup-errors.fix-double-prefix-qualified-id-regression
     name: Fix double-prefix regression for already-qualified step IDs
-    status: pending
+    status: claimed
     description: "step_type: implementation\nagent_source: default\npriority: HIGH\n\
       prior_loop:\n  - p1-qualified-lookup-errors.fix-all-blockers-from-p1-qualified-lookup-errors-gate\n\
       \  - p1-qualified-lookup-errors.independent-retest-of-p1-qualified-lookup-errors-gate-blockers\n\
@@ -28311,6 +28311,8 @@ phases:
     depends_on:
     - p1-qualified-lookup-errors.independent-retest-of-p1-qualified-lookup-errors-gate-blockers
     agent: python-senior
+    claimed_by: python-senior
+    claimed_at: '2026-03-12T18:16:34.030897+00:00'
   - id: p1-qualified-lookup-errors.independent-retest-double-prefix-qualified-id-regression
     name: Independent retest of double-prefix qualified-id regression
     status: pending

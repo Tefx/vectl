@@ -24366,6 +24366,7 @@ phases:
       '
     depends_on:
     - step-id-validation-hardening.verify
+    - step-id-validation-hardening.retest-verify-findings
     agent: software-architect
   - id: step-id-validation-hardening.gate
     name: Gate review for validation hardening

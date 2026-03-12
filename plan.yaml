@@ -22916,6 +22916,38 @@ phases:
 
       '
     agent: software-architect
+  - id: step-id-validation-hardening.tests
+    name: Add duplicate-id validation tests
+    status: pending
+    description: "step_type: test\nagent_source: default\nspec_refs:\n  - conversation/duplicate-step-id-bug\n\
+      \ntouch_paths:\n- tests/test_cli.py\n- tests/test_logic.py\n- tests/test_mcp.py\n\
+      - tests/test_validation.py\n\nharness_refs:\n- plan validation tests in `tests/test_validation.py`\n\
+      - CLI read/mutate command coverage in `tests/test_cli.py`\n- MCP validation/summary\
+      \ coverage in `tests/test_mcp.py`\n\nAdd tests for the phased duplicate-ID rollout\
+      \ before implementation.\n\nRequired coverage:\n- `validate` reports duplicate\
+      \ step IDs across phases with the expected severity for the current rollout\
+      \ stage\n- `status` and `review` surface duplicate-ID warnings for legacy plans\
+      \ without hiding active phases\n- add/edit/import/mutate surfaces reject creation\
+      \ of new duplicates\n- once phase C enables the flip, validation tests can be\
+      \ tightened without rewriting fixture semantics\n\nNon-goals:\n- actual migration\
+      \ repair command behavior\n- resolver parity already covered in phase A"
+    verification: '- Focused tests fail against current legacy duplicate-ID handling
+
+      - Tests name exact surfaces and expected severity per rollout contract
+
+      - Fixtures distinguish legacy duplicate plans from newly-created invalid plans'
+    evidence_template: '## Validation Test Additions
+
+      - Legacy-plan warning tests: <list>
+
+      - Write-surface rejection tests: <list>
+
+      - Future hard-error flip placeholders: <list>
+
+      '
+    depends_on:
+    - step-id-validation-hardening.rollout-contract
+    agent: python-executor
 - id: step-id-migration-tooling
   name: C / Migration & Tooling
   status: locked

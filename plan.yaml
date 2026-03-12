@@ -22777,6 +22777,42 @@ phases:
     depends_on:
     - step-id-resolver-hardening.freeze-l2
     agent: integration-verifier
+  - id: step-id-resolver-hardening.freeze-gate
+    name: Freeze snapshot for resolver gate
+    status: pending
+    description: 'step_type: verification
+
+      agent_source: default
+
+      Freeze the repository snapshot before the resolver gate review.
+
+
+      Requirements:
+
+      - capture `git rev-parse HEAD`
+
+      - confirm `git status` is clean
+
+      - declare review inputs (changed files, executed tests, evidence paths)
+
+      - state that no code changes are allowed until the gate decision is recorded'
+    verification: '- Evidence includes commit SHA, clean-status confirmation, evidence
+      inventory, and freeze statement'
+    evidence_template: '## Gate Freeze Record
+
+      - Commit: <git rev-parse HEAD>
+
+      - Git status clean: <yes/no>
+
+      - Review inputs: <files/tests/evidence>
+
+      - Freeze statement: no code changes until `step-id-resolver-hardening.gate`
+      completes
+
+      '
+    depends_on:
+    - step-id-resolver-hardening.verify
+    agent: software-architect
 - id: step-id-validation-hardening
   name: B / Validation Hardening
   status: locked

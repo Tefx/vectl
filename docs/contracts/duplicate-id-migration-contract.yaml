@@ -1,0 +1,163 @@
+# Duplicate Step-ID Migration Contract
+# Source step: step-id-migration-tooling.contract
+# Spec refs:
+#   - conversation/duplicate-step-id-bug
+#   - conversation/half-automatic-step-id-migration
+
+metadata:
+  contract_id: duplicate-id-migration-contract
+  version: "1.0.0"
+  status: proposed
+  created: 2026-03-13
+  owner_step: step-id-migration-tooling.contract
+
+definitions:
+  duplicate_group:
+    description: "All occurrences of the same step ID across phases."
+  canonical_occurrence:
+    description: "The first occurrence in plan order (phase order, then step order)."
+  targeted_mutating_surface:
+    description: "A command targeting one step ID that may mutate plan state."
+    examples:
+      - "CLI: claim, complete, defer, reject, skip, cancel, check"
+      - "MCP: vectl_claim, vectl_complete, vectl_lifecycle"
+
+rename_algorithm:
+  source:
+    - "plan.yaml:26190-26193 (deterministic rename requirement)"
+    - "docs/ADR-cross-phase-step-deps.md:23-24 (phase-scoped DAG is load-bearing)"
+  ordering:
+    - "Enumerate duplicates by plan order: phases top-to-bottom, steps top-to-bottom"
+    - "Within one duplicate group, canonical occurrence keeps the original ID"
+  rule:
+    canonical_keeps_original: true
+    noncanonical_template: "{phase_id}.{old_step_id}"
+    collision_disambiguation:
+      template: "{phase_id}.{old_step_id}--dup{n}"
+      n_start: 2
+      selection: "smallest n where candidate does not exist in global step-ID set"
+  guarantees:
+    - "Deterministic: identical input plan produces identical old->new map"
+    - "Injective: each migrated occurrence gets exactly one unique new ID"
+    - "Stable dry-run: repeated dry-runs without file mutation return identical map"
+
+depends_on_rewrite_rules:
+  source:
+    - "plan.yaml:26192-26193 (DAG-preserving rewrite requirement)"
+    - "docs/ADR-cross-phase-step-deps.md:23-24 (step DAG remains phase-scoped)"
+  scope: "Step-level depends_on references are rewritten within the same phase context"
+  rewrite_algorithm:
+    - "Build occurrence-aware map: (phase_id, old_step_id, ordinal_in_phase) -> new_step_id"
+    - "For each migrated step, rewrite depends_on entries that resolve to renamed in-phase targets"
+    - "Do not create cross-phase edges during rewrite"
+    - "Preserve depends_on list order and multiplicity"
+  invariants:
+    - "Edge cardinality preserved per step (same number of dependencies before/after)"
+    - "Topological order preserved within each phase"
+    - "No new cycles introduced"
+    - "No unlocked/locked phase transition changes caused by rewrite itself"
+
+dry_run_schema:
+  source:
+    - "plan.yaml:26193-26195 (mapping + affected phases + follow-up visibility)"
+  format: "machine-readable object surfaced by CLI and MCP"
+  required_fields:
+    - run_mode
+    - duplicate_groups
+    - rename_map
+    - depends_on_rewrites
+    - affected_phases
+    - claimed_step_conflicts
+    - compatibility_notes
+    - requires_manual_follow_up
+  field_contract:
+    run_mode: "dry-run"
+    duplicate_groups: "list[{step_id, phases, occurrences}]"
+    rename_map: "list[{phase_id, old_step_id, new_step_id, reason}]"
+    depends_on_rewrites: "list[{phase_id, step_id, old_depends_on, new_depends_on}]"
+    affected_phases: "list[phase_id]"
+    claimed_step_conflicts: "list[{phase_id, step_id, claimed_by}]"
+    compatibility_notes: "list[str]"
+    requires_manual_follow_up: "bool"
+
+half_automatic_retry_contract:
+  source:
+    - "plan.yaml:26195-26198 (explicit opt-in + repair first + retry once)"
+  trigger:
+    condition: "targeted mutating surface hits duplicate-step-ID ambiguity"
+    required_opt_in: "--auto-migrate"
+  behavior:
+    - "Without --auto-migrate: fail with structured repair recommendation, no mutation"
+    - "With --auto-migrate: run duplicate repair apply path first"
+    - "If apply succeeds: retry the original command exactly once"
+    - "Retry uses translated selector from migration map for this attempt only"
+  retry_constraints:
+    max_retries: 1
+    additional_auto_retry: false
+    on_retry_failure: "return failure with migration evidence; do not roll back migration"
+
+compatibility_policy:
+  source:
+    - "plan.yaml:26200-26203 (backward compatibility stance requirement)"
+  old_id_aliases_supported: false
+  old_id_visibility:
+    - "Old IDs are surfaced in dry-run/apply mapping output"
+    - "Old IDs may be used only for one in-memory translated retry in --auto-migrate flow"
+  post_migration_old_id_behavior:
+    - "Targeting an old ID after migration fails with guidance"
+    - "Guidance must include old->new mapping entries for that ID"
+  automation_guidance:
+    - "Automation must update stored selectors to migrated IDs after apply"
+    - "Consumers must treat mapping output as source of truth"
+
+claimed_step_policy:
+  source:
+    - "plan.yaml:26203-26205 (claimed duplicate handling decision required)"
+    - "plan.yaml:26206-26208 (underspecified partial-write risk)"
+  mode: "block-with-guidance"
+  behavior:
+    - "If any duplicate occurrence is currently claimed, apply is blocked"
+    - "Dry-run reports all claimed conflicts in claimed_step_conflicts"
+    - "Error includes deterministic unblock guidance: unclaim/defer/reject conflicted steps, then rerun"
+  rationale: "Avoid plan/claims split-brain and partial migration side effects"
+
+migration_evidence_schema:
+  source:
+    - "plan.yaml:26198-26200 (evidence payload requirement)"
+  required_fields:
+    - command
+    - command_args
+    - run_mode
+    - migrated
+    - rename_map
+    - depends_on_rewrites
+    - affected_phases
+    - claimed_step_conflicts
+    - retry
+  field_contract:
+    command: "original mutating command name"
+    command_args: "original command args string/list"
+    run_mode: "apply | auto-migrate-retry"
+    migrated: "bool"
+    rename_map: "list[{phase_id, old_step_id, new_step_id}]"
+    depends_on_rewrites: "list[{phase_id, step_id, old_depends_on, new_depends_on}]"
+    affected_phases: "list[phase_id]"
+    claimed_step_conflicts: "list[{phase_id, step_id, claimed_by}]"
+    retry: "{attempted: bool, succeeded: bool, error: str|null}"
+
+idempotence_and_interruption:
+  source:
+    - "plan.yaml:26206-26208 (deterministic apply + interrupted/repeated behavior)"
+  idempotence:
+    - "If no duplicate groups exist, apply is a no-op"
+    - "After successful apply, rerunning apply returns empty rename_map and migrated=false"
+    - "Dry-run output is deterministic for unchanged input plan"
+  interruption:
+    - "If interruption occurs before save, no persisted migration state is allowed"
+    - "If interruption occurs after save but before retry, plan remains migrated and retry is not resumed implicitly"
+    - "Subsequent command re-evaluates current plan state and proceeds per normal guards"
+
+out_of_scope:
+  - "Migration engine implementation"
+  - "Final hard-error rollout flip implementation"
+  - "Planner/template wording updates"

@@ -24362,7 +24362,7 @@ phases:
       \ to phase before gate progression\"]"
   - id: step-id-validation-hardening.freeze-gate
     name: Freeze snapshot for validation gate
-    status: claimed
+    status: done
     description: 'step_type: verification
 
       agent_source: default
@@ -24400,6 +24400,15 @@ phases:
     agent: software-architect
     claimed_by: software-architect
     claimed_at: '2026-03-12T15:12:03.768609+00:00'
+    done_at: '2026-03-12T15:15:16.958277+00:00'
+    evidence: "## Gate Freeze Record\n- Commit: eab0c06d1f2ab1003b4d2b98b94650c166e0b117\n\
+      - Git status clean: yes\n- Review inputs:\n  - tests/test_validation.py (validation\
+      \ and rollout behavior tests)\n  - tests/repro/step_id_validation_hardening_verify.md\
+      \ (verification notes)\n  - tests/repro/fixtures/unique_plan.yaml\n  - tests/repro/fixtures/legacy_duplicate_plan.yaml\n\
+      - Freeze statement: no code changes until `step-id-validation-hardening.gate`\
+      \ completes\n- discovered_issues:\n  - stale note in verification artifact still\
+      \ references pre-fix phase-label mismatch; independently retested in `step-id-validation-hardening.retest-verify-findings`\
+      \ with PASS and no residual mismatch"
   - id: step-id-validation-hardening.gate
     name: Gate review for validation hardening
     status: pending

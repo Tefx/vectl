@@ -27717,7 +27717,7 @@ phases:
       - none'
   - id: p1-qualified-lookup-errors-gate
     name: Gate review for P1 qualified lookup and error messages
-    status: claimed
+    status: done
     description: 'Gate review: Verify P1 qualified lookup and error message fixes
       are complete and correct.
 
@@ -27762,6 +27762,19 @@ phases:
     agent: gate-reviewer
     claimed_by: gate-reviewer
     claimed_at: '2026-03-12T17:39:29.355579+00:00'
+    done_at: '2026-03-12T17:53:35.024121+00:00'
+    evidence: "## Gate Review Report\n- Blocking issues:\n  - B1: Ruff F841 unused\
+      \ `qualified_id` assignments in `src/vectl/cli.py` and `src/vectl/core.py`\n\
+      \  - B2: Ruff E501 long-line violation in `src/vectl/core.py`\n  - B3: Ruff\
+      \ F811 duplicate test definitions in `tests/test_validation.py`\n  - B4: mypy\
+      \ type error in `src/vectl/models.py` qualified lookup path\n- Gate decision:\
+      \ BLOCKED\n- findings include additional should-fix:\n  - S1: double-prefixed\
+      \ qualified IDs for already-qualified step IDs\n  - S2: misleading qualified-lookup\
+      \ docstring in tests\n\nBatched remediation action:\n- Planner created serialized\
+      \ fix+independent-retest loop:\n  - p1-qualified-lookup-errors.fix-all-blockers-from-p1-qualified-lookup-errors-gate\n\
+      \  - p1-qualified-lookup-errors.independent-retest-of-p1-qualified-lookup-errors-gate-blockers\n\
+      - Gate dependency rewired to wait on retest step before rerun.\n\ndiscovered_issues:\n\
+      - none"
   - id: p1-qualified-lookup-errors.fix-all-blockers-from-p1-qualified-lookup-errors-gate
     name: Fix all blockers from p1-qualified-lookup-errors-gate
     status: pending

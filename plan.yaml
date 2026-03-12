@@ -27758,3 +27758,212 @@ phases:
     agent: gate-reviewer
     claimed_by: gate-reviewer
     claimed_at: '2026-03-12T17:39:29.355579+00:00'
+  - id: p1-qualified-lookup-errors.fix-all-blockers-from-p1-qualified-lookup-errors-gate
+    name: Fix all blockers from p1-qualified-lookup-errors-gate
+    status: pending
+    description: 'step_type: implementation
+
+      agent_source: default
+
+      priority: HIGH
+
+
+      Fix ALL of these, not just the first, from `p1-qualified-lookup-errors-gate`.
+
+
+      Scope:
+
+      - Remove the ruff/mypy/test failures introduced by the qualified lookup + error
+      message work.
+
+      - Include should-fix items S1/S2 in the same batch if they can be resolved safely
+      while touching the same files.
+
+      - Preserve sane copy-paste behavior for qualified IDs and avoid introducing
+      double-prefixed identifiers.
+
+
+      ## Blockers to Fix (ALL of these, not just the first)
+
+
+      ### B1: ruff F841 unused `qualified_id` vars
+
+      Locations: `src/vectl/cli.py:1143`, `src/vectl/core.py:1132`, `src/vectl/core.py:1464`
+
+      Remediation: remove or intentionally use the vars; rerun ruff.
+
+      Grep hint: `rg -n "qualified_id\s*=\s*f\"\{[^}]+\}\.\{[^}]+\}\"" src/vectl`
+
+      IMPORTANT: Search for siblings beyond the listed locations.
+
+
+      ### B2: ruff E501 line length
+
+      Locations: `src/vectl/core.py:1337`
+
+      Remediation: wrap or reformat the f-string while preserving message semantics.
+
+      Grep hint: `rg -n "Cannot remove step ''\{qualified_id\}''" src/vectl/core.py`
+
+      IMPORTANT: Keep the exact user-facing meaning of the message.
+
+
+      ### B3: ruff F811 duplicate test defs
+
+      Locations: `tests/test_validation.py` duplicate defs around lines `774/795/817/838/860`
+
+      Remediation: remove or rename duplicates so each test is unique.
+
+      Grep hint: `rg -n "def test_(remove_step_wrong_status_error_uses_qualified_id|move_step_wrong_status_error_uses_qualified_id)"
+      tests/test_validation.py`
+
+      IMPORTANT: Search for all duplicate siblings before claiming done.
+
+
+      ### B4: mypy error in `Plan.find_step` qualified lookup
+
+      Locations: `src/vectl/models.py:198`
+
+      Remediation: avoid loop-variable shadowing with Optional assignment; make typing
+      explicit and pass mypy.
+
+      Grep hint: `rg -n "def find_step\(|for phase in self\.phases:|phase = self\.find_phase"
+      src/vectl/models.py`
+
+      IMPORTANT: Keep exact-match priority and qualified lookup semantics intact.
+
+
+      ## Should-fix in same batch if feasible
+
+      - S1: double-prefixed qualified IDs when `step.id` is already qualified across
+      lifecycle/core/cli
+
+      - S2: misleading docstring about qualified lookup support in `tests/test_validation.py`
+
+
+      ## Known risks
+
+      - Qualified-ID formatting drift across CLI/core/lifecycle call sites: search
+      sibling emitters, not just the reported line.
+
+      - Test cleanup can accidentally narrow coverage: preserve one unique test per
+      behavior case.
+
+      - `find_step` typing cleanup must not regress dot-in-step-id handling or exact-match
+      priority.
+
+
+      ## Out of scope guardrail
+
+      - Do not expand this batch into unrelated step-id migration work outside the
+      files surfaced by B1-B4 and the feasible S1/S2 follow-ups.
+
+
+      ## Completion criteria
+
+      - ALL blockers fixed, not just B1.
+
+      - Sibling search completed for each blocker pattern.
+
+      - No new instances of the reported blocker patterns remain in the touched scope.
+
+      - Qualified-ID copy/paste behavior remains sane and not double-prefixed.'
+    verification: '- `ruff check src/vectl/cli.py src/vectl/core.py src/vectl/models.py
+      tests/test_validation.py` passes
+
+      - `mypy src/vectl/models.py` (or project-equivalent targeted mypy invocation
+      covering `Plan.find_step`) passes
+
+      - Focused pytest for qualified lookup + validation error coverage passes, including
+      duplicate-test cleanup cases
+
+      - Sibling searches for each grep hint show no remaining blocker-pattern hits
+      in scope
+
+      - Proof that qualified IDs are not double-prefixed and remain copy-paste sane
+      where this batch touches lifecycle/core/cli
+
+      - If S1/S2 are deferred, evidence states why they were not safely included in
+      this batch'
+    evidence_template: '## Batched Fix Evidence
+
+
+      **Agent**: python-executor
+
+      **Scope**: ALL blockers from `p1-qualified-lookup-errors-gate`
+
+
+      ### Blocker closure
+
+      - B1 locations fixed:
+
+      - B2 location fixed:
+
+      - B3 duplicate tests resolved:
+
+      - B4 typing issue resolved:
+
+      - S1 included or deferred:
+
+      - S2 included or deferred:
+
+
+      ### Sibling searches
+
+      - B1 grep output:
+
+      ```sh
+
+      <paste command + output>
+
+      ```
+
+      - B2 grep output:
+
+      ```sh
+
+      <paste command + output>
+
+      ```
+
+      - B3 grep output:
+
+      ```sh
+
+      <paste command + output>
+
+      ```
+
+      - B4 grep output:
+
+      ```sh
+
+      <paste command + output>
+
+      ```
+
+
+      ### Verification commands
+
+      ```sh
+
+      <ruff command>
+
+      <mypy command>
+
+      <pytest command>
+
+      ```
+
+
+      ### Notes
+
+      - Confirm copy-paste qualified ID behavior remains sane
+
+      - Confirm no double-prefixed qualified IDs were introduced in touched paths'
+    depends_on:
+    - implement-find-step
+    - implement-error-msg
+    - test-find-step
+    - test-error-msg
+    agent: python-executor

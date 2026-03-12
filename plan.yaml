@@ -23336,7 +23336,7 @@ phases:
       \ hash(es)\n- `638d704`"
   - id: step-id-resolver-hardening.retest-gate-blockers
     name: Independent retest for resolver hardening gate blockers
-    status: pending
+    status: claimed
     description: 'step_type: verification
 
       agent_source: default
@@ -23493,6 +23493,8 @@ phases:
     depends_on:
     - step-id-resolver-hardening.fix-gate-blockers
     agent: integration-verifier
+    claimed_by: integration-verifier
+    claimed_at: '2026-03-12T13:40:13.508234+00:00'
 - id: step-id-validation-hardening
   name: B / Validation Hardening
   status: locked

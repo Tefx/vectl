@@ -22712,7 +22712,7 @@ phases:
       \ in CLI/MCP surfaces (matches listed above)\n- Commit hash(es): `68aa775`"
   - id: step-id-resolver-hardening.surfaces
     name: Apply resolver to CLI and MCP surfaces
-    status: pending
+    status: claimed
     description: "step_type: implementation\nagent_source: default\ntags:\n- integration\n\
       spec_refs:\n  - conversation/duplicate-step-id-bug\n\ntouch_paths:\n- src/vectl/cli.py\n\
       - src/vectl/mcp_server.py\n- src/vectl/claim_guidance.py\n\nharness_refs:\n\
@@ -22763,6 +22763,8 @@ phases:
     depends_on:
     - step-id-resolver-hardening.core
     agent: python-senior
+    claimed_by: python-senior
+    claimed_at: '2026-03-12T12:58:09.004472+00:00'
   - id: step-id-resolver-hardening.freeze-l2
     name: Freeze snapshot for resolver verification
     status: pending

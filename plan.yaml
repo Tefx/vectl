@@ -26340,3 +26340,39 @@ phases:
   status: locked
   depends_on:
   - p0-cycle-detection
+  steps:
+  - id: implement-find-step
+    name: Implement qualified phase.step lookup in find_step
+    status: pending
+    description: "Add qualified phase.step lookup fallback to Plan.find_step().\n\n\
+      File: src/vectl/models.py (lines 177-183)\n\nProblem: find_step only does exact\
+      \ match on step.id. When step IDs are bare (e.g., \"gate\") and exist in multiple\
+      \ phases, users cannot target a specific one via \"phase.step\" syntax (e.g.,\
+      \ \"tech-debt-hardening.gate\"). This affects show, claim, complete, defer,\
+      \ reject, skip — any command routing through find_step.\n\nFix: Add a fallback\
+      \ after the exact-match loop. If exact match fails and step_id contains a \"\
+      .\", split on the first \".\" and try phase-scoped lookup:\n\n```python\ndef\
+      \ find_step(self, step_id: str) -> tuple[Phase, Step] | None:\n    \"\"\"Find\
+      \ a step by ID across all phases.\"\"\"\n    for phase in self.phases:\n   \
+      \     for step in phase.steps:\n            if step.id == step_id:\n       \
+      \         return phase, step\n    # Fallback: qualified \"phase_id.step_id\"\
+      \ lookup\n    if \".\" in step_id:\n        phase_id, _, bare_step_id = step_id.partition(\"\
+      .\")\n        phase = self.find_phase(phase_id)\n        if phase is not None:\n\
+      \            for step in phase.steps:\n                if step.id == bare_step_id:\n\
+      \                    return phase, step\n    return None\n```\n\nKey behaviors:\n\
+      - Exact match on step.id always takes priority (no behavior change for existing\
+      \ callers)\n- Qualified lookup is fallback only — triggered when exact match\
+      \ fails AND step_id contains \".\"\n- Uses partition(\".\") not split(\".\"\
+      ) to handle step IDs that themselves contain dots\n- Returns None if phase not\
+      \ found or step not in that phase"
+    verification: '- find_step("phase.step") resolves correctly when step exists in
+      that phase
+
+      - find_step("phase.step") returns None when phase exists but step does not
+
+      - find_step("phase.step") returns None when phase does not exist
+
+      - Exact match still takes priority over qualified lookup
+
+      - Run: pytest tests/ -k find_step -v (no regressions)'
+    agent: python-executor

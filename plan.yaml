@@ -22861,7 +22861,7 @@ phases:
       completes. This is a read-only evidence collection step.'
   - id: step-id-resolver-hardening.verify
     name: Independently verify resolver behavior
-    status: claimed
+    status: done
     description: 'step_type: verification
 
       agent_source: default
@@ -22913,6 +22913,18 @@ phases:
     agent: integration-verifier
     claimed_by: integration-verifier
     claimed_at: '2026-03-12T13:12:56.350656+00:00'
+    done_at: '2026-03-12T13:17:28.476846+00:00'
+    evidence: "## Verification Report\n- Commands executed:\n  - `uv run pytest -v\
+      \ tests/test_resolver.py tests/test_resolver_surfaces.py`\n  - `uv run python\
+      \ - <<'PY' ...` (temp-plan CLI/MCP selector parity + non-mutation hash checks)\n\
+      \  - MCP read path: `vectl_show(id=\"step-id-resolver-hardening\")`\n- Key outputs:\n\
+      ```text\n11 resolver/surface tests passed.\nCLI ambiguous selector and MCP ambiguous\
+      \ payload both return `error_code: ambiguous_target` with matching candidates\
+      \ and repair hints.\nQualified selector (`phase:core`) succeeds on both CLI\
+      \ and MCP.\nRead-only checks report plan.yaml unchanged=True and claims.json\
+      \ unchanged=True with identical before/after SHA-256.\n```\n- Issues found:\
+      \ none\n- Coverage gaps:\n  - full-module coverage gate not run in this scoped\
+      \ verification\n  - external service checks out of scope for resolver hardening"
   - id: step-id-resolver-hardening.freeze-gate
     name: Freeze snapshot for resolver gate
     status: pending

@@ -30159,7 +30159,7 @@ phases:
       setup regressions.'
 - id: decide-impl
   name: 'vectl_decide: Implementation'
-  status: in_progress
+  status: done
   gate: All tests pass, mypy clean, ruff clean, no existing tests broken.
   context: Core implementation of vectl_decide logic and MCP tool registration.
   depends_on:
@@ -30371,7 +30371,7 @@ phases:
       phase.'
   - id: decide-impl.gate
     name: gate
-    status: claimed
+    status: done
     description: 'Gate review: Verify decide-impl phase completion.
 
 
@@ -30412,9 +30412,47 @@ phases:
     agent: gate-reviewer
     claimed_by: gate-reviewer
     claimed_at: '2026-03-14T20:32:41.894701+00:00'
+    done_at: '2026-03-14T20:40:35.007559+00:00'
+    evidence: 'Artifact:
+
+      - Gate review executed on verify-only branch vectl/step-decide-impl.gate (no
+      file modifications)
+
+
+      Verification:
+
+      - Run: uv run mypy src/vectl/decide.py src/vectl/mcp_server.py -> PASS (no issues
+      in 2 files)
+
+      - Run: uv run ruff check src/vectl/decide.py src/vectl/mcp_server.py -> PASS
+
+      - Run: uv run pytest tests/test_decide.py -v -> PASS (13 passed)
+
+      - Run: uv run pytest tests/test_mcp.py -v -k decide -> PASS (3 passed, others
+      deselected)
+
+      - Run: uv run pytest tests/ -v -> PASS (1167 passed)
+
+      - Review checks: implementation logic and MCP tool wiring align to phase criteria;
+      no regressions detected; existing MCP surfaces remain stable
+
+
+      Spec link:
+
+      - docs/RFC-decide.md
+
+      - src/vectl/decide.py
+
+      - src/vectl/mcp_server.py
+
+
+      Gaps/Notes:
+
+      - Cross-cutting criterion validated by gate review output: no blocker or should-fix
+      findings reported for decide-impl phase.'
 - id: decide-docs
   name: 'vectl_decide: Documentation'
-  status: locked
+  status: pending
   gate: README updated, tool count accurate, description matches RFC.
   context: Update README.md and MCP server docstring to reflect vectl_decide (tool
     15).

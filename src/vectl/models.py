@@ -5,6 +5,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from enum import Enum
 from pathlib import Path
+from typing import Literal
 
 from pydantic import BaseModel, Field, model_validator
 
@@ -645,3 +646,82 @@ class InitResult(BaseModel):
     agents_target: str | None = None  # Which file was updated (AGENTS.md or CLAUDE.md)
     message: str
     error: str | None = None
+
+
+# ---------------------------------------------------------------------------
+# vectl_decide Models
+# ---------------------------------------------------------------------------
+
+
+class RunningTask(BaseModel):
+    """A running task tracked by the orchestrator.
+
+    RFC: docs/RFC-decide.md
+    Used by vectl_decide to track in-flight work for session reuse decisions.
+    """
+
+    step_id: str
+    agent: str
+    task_id: str  # opencode session ID, for reuse tracking
+    dispatched_at: float  # time.time() when dispatched
+
+
+class CompletedResult(BaseModel):
+    """A completed task result from a sub-agent.
+
+    RFC: docs/RFC-decide.md
+    Used by vectl_decide to process completion events.
+    """
+
+    step_id: str
+    task_id: str  # opencode session ID
+    status: str  # SUCCESS | FAIL
+    output_summary: str  # brief text from sub-agent (for evidence)
+
+
+class Decision(BaseModel):
+    """A single decision made by vectl_decide.
+
+    RFC: docs/RFC-decide.md
+    Logged for debugging and audit trail.
+    """
+
+    decision: str  # SESSION_FRESH | SESSION_REUSE | CLAIM | COMPLETE | WAIT
+    step_id: str | None = None
+    why: str
+
+
+class Action(BaseModel):
+    """A single action to be executed by the orchestrator.
+
+    RFC: docs/RFC-decide.md
+    Deterministic action output from vectl_decide.
+    """
+
+    action: Literal["claim_and_dispatch", "complete", "wait", "escalate"]
+    # For claim_and_dispatch:
+    step_id: str | None = None
+    agent: str | None = None
+    session: Literal["fresh", "reuse"] | None = None
+    task_id: str | None = None  # Only if session=reuse
+    step_description: str | None = None
+    step_verification: str | None = None
+    step_refs: list[str] | None = None
+    # For complete:
+    evidence: str | None = None
+    # For wait/escalate:
+    reason: str | None = None
+    context: str | None = None
+
+
+class DecideOutput(BaseModel):
+    """Structured output from vectl_decide.
+
+    RFC: docs/RFC-decide.md
+    Contains all actions the orchestrator must execute and continuation state.
+    """
+
+    actions: list[Action]
+    continuation: bool  # True = orchestrator must continue looping
+    halt_reason: str | None = None  # If continuation=False, why
+    decision_log: list[Decision]

@@ -29870,6 +29870,47 @@ phases:
     depends_on:
     - decide-impl.decide-logic
     agent: python-executor
+  - id: decide-impl.verify
+    name: verify
+    status: pending
+    description: 'Independent verification of vectl_decide implementation.
+
+
+      Independence Level: L1
+
+
+      As an INDEPENDENT TESTER, validate the vectl_decide implementation.
+
+      YOUR GOAL IS TO FIND PROBLEMS.
+
+
+      Test for:
+
+      - Happy path: claimable steps -> claim_and_dispatch actions
+
+      - Edge cases: empty plan, all done, max parallelism, TTL boundary
+
+      - Error scenarios: invalid inputs, missing plan
+
+      - Integration: MCP tool callable, returns formatted output
+
+      - Regression: all existing tests still pass
+
+
+      Run: uv run pytest tests/test_decide.py tests/test_mcp.py -v
+
+      Run: uv run pytest tests/ -v (full suite)'
+    verification: uv run pytest tests/test_decide.py -v -- all PASS; uv run pytest
+      tests/test_mcp.py -v -- all PASS; uv run pytest tests/ -v -- full suite PASS;
+      uv run mypy src/vectl/decide.py src/vectl/mcp_server.py -- PASS
+    refs:
+    - tests/test_decide.py
+    - tests/test_mcp.py
+    - src/vectl/decide.py
+    - src/vectl/mcp_server.py
+    depends_on:
+    - decide-impl.mcp-tool
+    agent: integration-verifier
 - id: decide-docs
   name: 'vectl_decide: Documentation'
   status: locked

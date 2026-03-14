@@ -29575,6 +29575,47 @@ phases:
     no implementation logic present.
   context: Contract-first phase for vectl_decide (RFC-decide.md). Define Pydantic
     models and function stubs. No implementation logic.
+  steps:
+  - id: decide-contracts.models
+    name: models
+    status: pending
+    description: 'Add vectl_decide Pydantic models to src/vectl/models.py.
+
+
+      step_type: contract
+
+      contract_purity: ENFORCED
+
+
+      Models to add (append after existing models):
+
+      1. RunningTask(BaseModel): step_id: str, agent: str, task_id: str, dispatched_at:
+      float
+
+      2. CompletedResult(BaseModel): step_id: str, task_id: str, status: str, output_summary:
+      str
+
+      3. Decision(BaseModel): decision: str, step_id: str | None, why: str
+
+      4. Action(BaseModel): action: Literal[claim_and_dispatch, complete, wait, escalate],
+      step_id, agent, session, task_id, step_description, step_verification, step_refs,
+      evidence, reason, context (all Optional)
+
+      5. DecideOutput(BaseModel): actions: list[Action], continuation: bool, halt_reason:
+      str | None, decision_log: list[Decision]
+
+
+      Pattern: Follow existing Pydantic model style in models.py.
+
+      File: src/vectl/models.py
+
+      Spec: docs/RFC-decide.md Input Schema + Output Schema'
+    verification: uv run mypy src/vectl/models.py -- PASS; uv run ruff check src/vectl/models.py
+      -- PASS; All 5 models importable; No implementation logic present
+    refs:
+    - docs/RFC-decide.md
+    - src/vectl/models.py
+    agent: python-executor
 - id: decide-tests
   name: 'vectl_decide: Tests'
   status: locked

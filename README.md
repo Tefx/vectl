@@ -75,7 +75,7 @@ Recommended: connect via MCP for structured tool access.
 }
 ```
 
-vectl exposes 14 MCP tools. Agents call `vectl_status`, `vectl_claim`, `vectl_complete`, etc. directly — structured data in, structured data out.
+vectl exposes 15 MCP tools. Agents call `vectl_status`, `vectl_claim`, `vectl_complete`, `vectl_decide`, etc. directly — structured data in, structured data out.
 
 For OpenCode, add to your `opencode.jsonc`:
 

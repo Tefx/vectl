@@ -29620,7 +29620,7 @@ phases:
     claimed_at: '2026-03-14T19:30:19.903587+00:00'
   - id: decide-contracts.decide-module-stubs
     name: decide-module-stubs
-    status: pending
+    status: claimed
     description: 'Create src/vectl/decide.py with function stubs for vectl_decide
       logic.
 
@@ -29656,6 +29656,8 @@ phases:
     - docs/RFC-decide.md
     - src/vectl/decide.py
     agent: python-executor
+    claimed_by: python-executor
+    claimed_at: '2026-03-14T19:31:26.805178+00:00'
   - id: decide-contracts.gate
     name: gate
     status: pending

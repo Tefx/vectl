@@ -30521,7 +30521,7 @@ phases:
       - Documentation-only update per simple_feature_exception scope.'
   - id: decide-docs.gate
     name: gate
-    status: pending
+    status: claimed
     description: 'Gate review: Verify decide-docs phase completion.
 
 
@@ -30540,3 +30540,5 @@ phases:
     depends_on:
     - decide-docs.readme
     agent: gate-reviewer
+    claimed_by: integration-verifier
+    claimed_at: '2026-03-14T20:42:51.688192+00:00'

@@ -29653,7 +29653,7 @@ phases:
       - None'
   - id: decide-contracts.decide-module-stubs
     name: decide-module-stubs
-    status: claimed
+    status: done
     description: 'Create src/vectl/decide.py with function stubs for vectl_decide
       logic.
 
@@ -29691,6 +29691,40 @@ phases:
     agent: python-executor
     claimed_by: python-executor
     claimed_at: '2026-03-14T19:31:26.805178+00:00'
+    done_at: '2026-03-14T19:38:43.915830+00:00'
+    evidence: 'Artifact:
+
+      - Worker commit: 87450eb
+
+      - Orchestrator squash commit on main: a0f78c0
+
+
+      Verification:
+
+      - Run: uv run mypy src/vectl/decide.py -> PASS (no issues found)
+
+      - Run: uv run ruff check src/vectl/decide.py -> PASS (All checks passed)
+
+      - Run: uv run python -c "import vectl.decide" -> PASS (module importable)
+
+      - Contract purity check: all specified functions raise NotImplementedError
+
+
+      Files changed:
+
+      - src/vectl/decide.py
+
+
+      Spec link:
+
+      - docs/RFC-decide.md (contract step for decide-module-stubs)
+
+
+      Gaps/Notes:
+
+      - Subagent referenced merging the models branch in its isolated branch; final
+      integrated change set for this step in main is scoped to src/vectl/decide.py
+      after prior models-step merge.'
   - id: decide-contracts.gate
     name: gate
     status: pending

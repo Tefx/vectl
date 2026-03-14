@@ -29575,3 +29575,12 @@ phases:
     no implementation logic present.
   context: Contract-first phase for vectl_decide (RFC-decide.md). Define Pydantic
     models and function stubs. No implementation logic.
+- id: decide-tests
+  name: 'vectl_decide: Tests'
+  status: locked
+  gate: All test files created, tests collect without error, coverage spans all RFC
+    scenarios.
+  context: Test definitions for vectl_decide. Tests written against plan fixtures
+    before implementation.
+  depends_on:
+  - decide-contracts

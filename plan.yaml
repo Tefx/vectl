@@ -29727,7 +29727,7 @@ phases:
       after prior models-step merge.'
   - id: decide-contracts.gate
     name: gate
-    status: pending
+    status: claimed
     description: 'Gate review: Verify decide-contracts phase completion.
 
 
@@ -29754,6 +29754,8 @@ phases:
     - decide-contracts.models
     - decide-contracts.decide-module-stubs
     agent: gate-reviewer
+    claimed_by: gate-reviewer
+    claimed_at: '2026-03-14T19:39:00.897469+00:00'
 - id: decide-tests
   name: 'vectl_decide: Tests'
   status: locked

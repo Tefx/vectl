@@ -2955,3 +2955,126 @@ class TestVectlRecover:
                 os.environ.pop("VECTL_PLAN_PATH", None)
             else:
                 os.environ["VECTL_PLAN_PATH"] = old_plan
+
+
+# ---------------------------------------------------------------------------
+# Tool: vectl_decide (RFC: docs/RFC-decide.md)
+# ---------------------------------------------------------------------------
+
+
+class TestVectlDecide:
+    """Tests for vectl_decide MCP tool.
+
+    vectl_decide makes orchestration decisions deterministic:
+    - Computes claimable steps respecting DAG ordering
+    - Evaluates continuation guard (can_continue / must_stop)
+    - Decides session reuse (fresh vs reuse with TTL awareness)
+    - Returns structured action list with step metadata
+
+    RFC: docs/RFC-decide.md
+    """
+
+    def test_vectl_decide_returns_structured_output(self, plan_file: Path) -> None:
+        """vectl_decide returns structured DecideOutput with actions, continuation, halt_reason."""
+        # Import the tool - implementation may not exist yet (expected to fail)
+        from vectl.mcp_server import vectl_decide as _vectl_decide_tool
+
+        vectl_decide = _vectl_decide_tool.fn  # type: ignore[attr-defined]
+
+        result = vectl_decide(running_tasks=[])
+
+        # Verify structured output shape
+        assert isinstance(result, dict)
+        assert "actions" in result
+        assert "continuation" in result
+        assert "halt_reason" in result
+        assert "decision_log" in result
+
+        # continuation should be bool
+        assert isinstance(result["continuation"], bool)
+
+        # actions should be a list
+        assert isinstance(result["actions"], list)
+
+        # decision_log should be a list
+        assert isinstance(result["decision_log"], list)
+
+        # When no running tasks and plan has available steps, should recommend claim
+        # Plan has a.1 available (pending, no deps)
+        if result["actions"]:
+            action = result["actions"][0]
+            assert "action" in action
+            assert action["action"] in ("claim_and_dispatch", "wait", "complete", "escalate")
+
+    def test_vectl_decide_empty_plan(self, tmp_path: Path) -> None:
+        """vectl_decide handles empty plan (no phases/steps) gracefully."""
+        from vectl.mcp_server import vectl_decide as _vectl_decide_tool
+
+        vectl_decide = _vectl_decide_tool.fn  # type: ignore[attr-defined]
+
+        # Create empty plan
+        empty_plan = tmp_path / "empty_plan.yaml"
+        empty_plan.write_text(yaml.dump({"project": "empty", "phases": []}))
+        old = os.environ.get("VECTL_PLAN_PATH")
+        os.environ["VECTL_PLAN_PATH"] = str(empty_plan)
+        try:
+            result = vectl_decide(running_tasks=[])
+
+            assert isinstance(result, dict)
+            assert "actions" in result
+            assert "continuation" in result
+
+            # Empty plan => no claimable steps => no continuation
+            assert result["continuation"] is False
+            # halt_reason should explain why
+            assert result["halt_reason"] is not None
+            # No actions to take
+            assert result["actions"] == []
+        finally:
+            if old is None:
+                os.environ.pop("VECTL_PLAN_PATH", None)
+            else:
+                os.environ["VECTL_PLAN_PATH"] = old
+
+    def test_vectl_decide_with_running_tasks(self, plan_file: Path) -> None:
+        """vectl_decide respects running_tasks when making decisions."""
+        from vectl.mcp_server import vectl_decide as _vectl_decide_tool
+
+        vectl_decide = _vectl_decide_tool.fn  # type: ignore[attr-defined]
+
+        # Running task represents an in-flight sub-agent
+        running_tasks = [
+            {
+                "step_id": "a.1",
+                "agent": "python-engineer",
+                "task_id": "session-123",
+                "dispatched_at": 1700000000.0,  # Unix timestamp
+            }
+        ]
+
+        result = vectl_decide(running_tasks=running_tasks)
+
+        assert isinstance(result, dict)
+        assert "actions" in result
+        assert "continuation" in result
+
+        # With running task and a.1 in progress, a.2 shouldn't be claimable (depends on a.1)
+        # The continuation decision depends on max_parallelism and available capacity
+        # Plan has: a.1 (available), a.2 (depends on a.1), b.1 (locked by phase dependency)
+
+        # If capacity available but steps blocked by running deps, should wait
+        # The exact behavior depends on implementation, but structure is validated
+        for action in result["actions"]:
+            assert "action" in action
+            # Each action should have required fields based on type
+            if action["action"] == "claim_and_dispatch":
+                assert "step_id" in action
+                assert "agent" in action
+                assert "session" in action  # "fresh" or "reuse"
+            elif action["action"] == "complete":
+                assert "step_id" in action
+                assert "evidence" in action
+            elif action["action"] == "wait":
+                assert "reason" in action
+            elif action["action"] == "escalate":
+                assert "reason" in action

@@ -30452,7 +30452,7 @@ phases:
       findings reported for decide-impl phase.'
 - id: decide-docs
   name: 'vectl_decide: Documentation'
-  status: pending
+  status: in_progress
   gate: README updated, tool count accurate, description matches RFC.
   context: Update README.md and MCP server docstring to reflect vectl_decide (tool
     15).
@@ -30461,7 +30461,7 @@ phases:
   steps:
   - id: decide-docs.readme
     name: readme
-    status: pending
+    status: claimed
     description: 'Update README.md to document vectl_decide tool.
 
 
@@ -30487,6 +30487,8 @@ phases:
     - docs/RFC-decide.md
     - README.md
     agent: python-executor
+    claimed_by: python-executor
+    claimed_at: '2026-03-14T20:40:53.255998+00:00'
   - id: decide-docs.gate
     name: gate
     status: pending

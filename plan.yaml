@@ -29863,7 +29863,7 @@ phases:
     claimed_at: '2026-03-14T19:42:45.633819+00:00'
   - id: decide-tests.unit-mcp-tool
     name: unit-mcp-tool
-    status: pending
+    status: claimed
     description: 'Write MCP integration test for vectl_decide in tests/test_mcp.py
       (APPEND).
 
@@ -29896,6 +29896,8 @@ phases:
     - tests/test_mcp.py
     - src/vectl/mcp_server.py
     agent: python-executor
+    claimed_by: python-executor
+    claimed_at: '2026-03-14T19:42:50.502887+00:00'
   - id: decide-tests.gate
     name: gate
     status: pending

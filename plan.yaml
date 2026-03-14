@@ -29692,6 +29692,60 @@ phases:
     before implementation.
   depends_on:
   - decide-contracts
+  steps:
+  - id: decide-tests.unit-decide
+    name: unit-decide
+    status: pending
+    description: 'Write unit tests for vectl_decide logic in tests/test_decide.py
+      (NEW file).
+
+
+      step_type: test
+
+
+      Test against plan fixtures (tmp_path). Follow tests/test_core.py pattern.
+
+
+      Tests to write:
+
+      1. test_compute_continuation_claimable_steps_returns_true - pending steps, running=0
+      -> (True, None)
+
+      2. test_compute_continuation_no_claimable_no_running - all done -> (False, NO_EXECUTABLE_STEPS)
+
+      3. test_compute_continuation_at_max_parallelism - running==max -> (False, AT_MAX_PARALLELISM)
+
+      4. test_compute_continuation_waiting_on_running - no claimable, running>0 ->
+      (False, WAITING_ON_RUNNING_SUBAGENTS)
+
+      5. test_should_reuse_session_no_parent - None -> (False, None)
+
+      6. test_should_reuse_session_within_ttl - 60s ago -> (True, task_id)
+
+      7. test_should_reuse_session_beyond_ttl - 600s ago -> (False, None)
+
+      8. test_should_reuse_session_no_registered_task - no task_id -> (False, None)
+
+      9. test_decide_returns_claim_actions - 2 claimable -> 2 claim_and_dispatch
+
+      10. test_decide_returns_wait_when_at_capacity - at max -> wait action
+
+      11. test_decide_completes_successful_results - SUCCESS -> complete action
+
+      12. test_decide_escalates_after_repeated_failures - 3+ FAIL -> escalate
+
+      13. test_decide_continuation_flag - matches compute_continuation
+
+
+      File: tests/test_decide.py (NEW)'
+    verification: uv run pytest tests/test_decide.py --collect-only -- 13 tests; uv
+      run ruff check tests/test_decide.py -- PASS; Tests expected to FAIL with NotImplementedError
+      until impl phase
+    refs:
+    - docs/RFC-decide.md
+    - tests/test_decide.py
+    - tests/test_core.py
+    agent: python-executor
 - id: decide-impl
   name: 'vectl_decide: Implementation'
   status: locked

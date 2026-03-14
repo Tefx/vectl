@@ -29798,7 +29798,7 @@ phases:
       deferred to decide-impl phase.'
 - id: decide-tests
   name: 'vectl_decide: Tests'
-  status: pending
+  status: in_progress
   gate: All test files created, tests collect without error, coverage spans all RFC
     scenarios.
   context: Test definitions for vectl_decide. Tests written against plan fixtures
@@ -29808,7 +29808,7 @@ phases:
   steps:
   - id: decide-tests.unit-decide
     name: unit-decide
-    status: pending
+    status: claimed
     description: 'Write unit tests for vectl_decide logic in tests/test_decide.py
       (NEW file).
 
@@ -29859,6 +29859,8 @@ phases:
     - tests/test_decide.py
     - tests/test_core.py
     agent: python-executor
+    claimed_by: python-executor
+    claimed_at: '2026-03-14T19:42:45.633819+00:00'
   - id: decide-tests.unit-mcp-tool
     name: unit-mcp-tool
     status: pending

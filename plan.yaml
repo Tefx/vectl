@@ -30159,7 +30159,7 @@ phases:
       setup regressions.'
 - id: decide-impl
   name: 'vectl_decide: Implementation'
-  status: pending
+  status: in_progress
   gate: All tests pass, mypy clean, ruff clean, no existing tests broken.
   context: Core implementation of vectl_decide logic and MCP tool registration.
   depends_on:
@@ -30167,7 +30167,7 @@ phases:
   steps:
   - id: decide-impl.decide-logic
     name: decide-logic
-    status: pending
+    status: claimed
     description: "Implement vectl_decide core logic in src/vectl/decide.py (replace\
       \ NotImplementedError stubs).\n\nstep_type: implementation\n\nFunctions to implement:\n\
       \n1. should_reuse_session(step_id, parent_step_id):\n   - No parent -> (False,\
@@ -30193,6 +30193,8 @@ phases:
     - src/vectl/core.py
     - src/vectl/plan_path.py
     agent: python-executor
+    claimed_by: python-executor
+    claimed_at: '2026-03-14T20:12:52.926121+00:00'
   - id: decide-impl.mcp-tool
     name: mcp-tool
     status: pending

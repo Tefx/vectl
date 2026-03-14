@@ -29895,7 +29895,7 @@ phases:
       in decide-impl; this step validates test definitions and collection.'
   - id: decide-tests.unit-mcp-tool
     name: unit-mcp-tool
-    status: claimed
+    status: done
     description: 'Write MCP integration test for vectl_decide in tests/test_mcp.py
       (APPEND).
 
@@ -29930,6 +29930,40 @@ phases:
     agent: python-executor
     claimed_by: python-executor
     claimed_at: '2026-03-14T19:42:50.502887+00:00'
+    done_at: '2026-03-14T19:46:56.739427+00:00'
+    evidence: 'Artifact:
+
+      - Worker commit: e7af83b
+
+      - Orchestrator squash commit on main: 2af2e9d
+
+
+      Verification:
+
+      - Run: uv run pytest tests/test_mcp.py --collect-only -> PASS (174 tests collected;
+      includes 3 new vectl_decide tests)
+
+      - Run: uv run pytest tests/test_mcp.py -v -> Existing MCP tests PASS; new vectl_decide
+      tests fail with ImportError (expected before impl.mcp-tool)
+
+      - Structured-output assertions are defined for DecideOutput shape and continuation/halt
+      semantics
+
+
+      Files changed:
+
+      - tests/test_mcp.py (append)
+
+
+      Spec link:
+
+      - docs/RFC-decide.md (Input/Output Schema)
+
+
+      Gaps/Notes:
+
+      - Expected pre-implementation failure mode observed: cannot import/use vectl_decide
+      tool before implementation step.'
   - id: decide-tests.gate
     name: gate
     status: pending

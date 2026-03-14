@@ -29966,7 +29966,7 @@ phases:
       tool before implementation step.'
   - id: decide-tests.gate
     name: gate
-    status: pending
+    status: claimed
     description: 'Gate review: Verify decide-tests phase completion.
 
 
@@ -29993,6 +29993,8 @@ phases:
     - decide-tests.unit-decide
     - decide-tests.unit-mcp-tool
     agent: gate-reviewer
+    claimed_by: gate-reviewer
+    claimed_at: '2026-03-14T19:47:10.803991+00:00'
 - id: decide-impl
   name: 'vectl_decide: Implementation'
   status: locked

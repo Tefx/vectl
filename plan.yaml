@@ -29798,7 +29798,7 @@ phases:
       deferred to decide-impl phase.'
 - id: decide-tests
   name: 'vectl_decide: Tests'
-  status: in_progress
+  status: done
   gate: All test files created, tests collect without error, coverage spans all RFC
     scenarios.
   context: Test definitions for vectl_decide. Tests written against plan fixtures
@@ -29966,7 +29966,7 @@ phases:
       tool before implementation step.'
   - id: decide-tests.gate
     name: gate
-    status: claimed
+    status: done
     description: "Gate review: Verify decide-tests phase completion after blocker\
       \ remediation.\n\nstep_type: gate\nreview_depth: THOROUGH\nreview_depth_rationale:\n\
       \  - Gate already surfaced blocking setup/model-fixture failures in `tests/test_decide.py`\n\
@@ -30002,6 +30002,22 @@ phases:
     agent: gate-reviewer
     claimed_by: integration-verifier
     claimed_at: '2026-03-14T20:08:28.910384+00:00'
+    done_at: '2026-03-14T20:12:37.584044+00:00'
+    evidence: "Artifact:\n- Gate reviewed on branch vectl/step-decide-tests.gate (verify-only;\
+      \ no code changes)\n- Inputs include remediation commit 15a3f37 and retest evidence\
+      \ from decide-tests.retest-gate-blockers\n\nVerification:\n- Run: uv run pytest\
+      \ tests/test_decide.py tests/test_mcp.py --collect-only -> PASS (full collection\
+      \ succeeds)\n- Run: uv run ruff check tests/test_decide.py tests/test_mcp.py\
+      \ -> PASS\n- Run: uv run pytest tests/test_models.py tests/test_core.py -v ->\
+      \ PASS (63 passed)\n- Runtime classification checks:\n  - decide contract tests\
+      \ fail only with expected NotImplementedError from decide stubs (pre-impl)\n\
+      \  - mcp vectl_decide tests fail only with expected ImportError (tool not yet\
+      \ implemented/registered pre-impl)\n- Blocker closure checks:\n  - no /dev/null.lock\
+      \ PermissionError path remains in decide fixtures\n  - no CLAIMED fixture missing\
+      \ claimed_by ValidationError remains in decide tests\n\nSpec link:\n- docs/RFC-decide.md\n\
+      - tests/test_decide.py\n- tests/test_mcp.py\n\nGaps/Notes:\n- Remaining pre-impl\
+      \ failures are explicitly documented contract expectations and correctly classified\
+      \ as deferred to decide-impl."
   - id: decide-tests.fix-gate-blockers
     name: fix-gate-blockers
     status: done
@@ -30143,7 +30159,7 @@ phases:
       setup regressions.'
 - id: decide-impl
   name: 'vectl_decide: Implementation'
-  status: locked
+  status: pending
   gate: All tests pass, mypy clean, ruff clean, no existing tests broken.
   context: Core implementation of vectl_decide logic and MCP tool registration.
   depends_on:

@@ -29989,3 +29989,24 @@ phases:
     - docs/RFC-decide.md
     - README.md
     agent: python-executor
+  - id: decide-docs.gate
+    name: gate
+    status: pending
+    description: 'Gate review: Verify decide-docs phase completion.
+
+
+      review_depth: QUICK
+
+
+      Review criteria:
+
+      1. README.md updated with vectl_decide entry
+
+      2. Tool count accurate (15)
+
+      3. Description matches RFC'
+    verification: README mentions vectl_decide with accurate description; Tool count
+      is 15; No unrelated changes
+    depends_on:
+    - decide-docs.readme
+    agent: gate-reviewer

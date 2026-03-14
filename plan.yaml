@@ -3,8 +3,8 @@
 # This file is owned by vectl. Direct edits bypass CAS write
 # protection, lock recalculation, and schema validation.
 #
-# Use: uvx vectl <command>  OR  vectl_* MCP tools
-# Docs: uvx vectl guide
+# Use: vectl_* MCP tools (preferred)  OR  vectl <command> (CLI fallback)
+# Docs: vectl guide  OR  MCP: vectl_guide
 # =============================================================
 version: 1
 project: vectl
@@ -29570,7 +29570,7 @@ phases:
       - none'
 - id: decide-contracts
   name: 'vectl_decide: Contracts'
-  status: pending
+  status: in_progress
   gate: All models defined in models.py, all function stubs in decide.py, mypy passes,
     no implementation logic present.
   context: Contract-first phase for vectl_decide (RFC-decide.md). Define Pydantic
@@ -29578,7 +29578,7 @@ phases:
   steps:
   - id: decide-contracts.models
     name: models
-    status: pending
+    status: claimed
     description: 'Add vectl_decide Pydantic models to src/vectl/models.py.
 
 
@@ -29616,6 +29616,8 @@ phases:
     - docs/RFC-decide.md
     - src/vectl/models.py
     agent: python-executor
+    claimed_by: python-executor
+    claimed_at: '2026-03-14T19:30:19.903587+00:00'
   - id: decide-contracts.decide-module-stubs
     name: decide-module-stubs
     status: pending

@@ -29966,7 +29966,7 @@ phases:
       tool before implementation step.'
   - id: decide-tests.gate
     name: gate
-    status: claimed
+    status: pending
     description: "Gate review: Verify decide-tests phase completion after blocker\
       \ remediation.\n\nstep_type: gate\nreview_depth: THOROUGH\nreview_depth_rationale:\n\
       \  - Gate already surfaced blocking setup/model-fixture failures in `tests/test_decide.py`\n\
@@ -30000,8 +30000,6 @@ phases:
     depends_on:
     - decide-tests.retest-gate-blockers
     agent: gate-reviewer
-    claimed_by: gate-reviewer
-    claimed_at: '2026-03-14T19:47:10.803991+00:00'
   - id: decide-tests.fix-gate-blockers
     name: fix-gate-blockers
     status: pending

@@ -30230,7 +30230,7 @@ phases:
       completed-result handling with escalation threshold, and claim/wait action generation.'
   - id: decide-impl.mcp-tool
     name: mcp-tool
-    status: pending
+    status: claimed
     description: "Add @mcp.tool() def vectl_decide(...) to src/vectl/mcp_server.py.\n\
       \nstep_type: implementation\ntags: [integration]\n\n1. Add import: from vectl.decide\
       \ import decide as _decide_impl\n2. Add import: from vectl.models import RunningTask,\
@@ -30252,6 +30252,8 @@ phases:
     depends_on:
     - decide-impl.decide-logic
     agent: python-executor
+    claimed_by: python-executor
+    claimed_at: '2026-03-14T20:18:52.945183+00:00'
   - id: decide-impl.verify
     name: verify
     status: pending

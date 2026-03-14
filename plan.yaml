@@ -29578,7 +29578,7 @@ phases:
   steps:
   - id: decide-contracts.models
     name: models
-    status: claimed
+    status: done
     description: 'Add vectl_decide Pydantic models to src/vectl/models.py.
 
 
@@ -29618,6 +29618,39 @@ phases:
     agent: python-executor
     claimed_by: python-executor
     claimed_at: '2026-03-14T19:30:19.903587+00:00'
+    done_at: '2026-03-14T19:38:35.469475+00:00'
+    evidence: 'Artifact:
+
+      - Worker commit: d921ebb6ba2d9758032aa7494d8e0c748fa0a4d6
+
+      - Orchestrator squash commit on main: 81358c1
+
+
+      Verification:
+
+      - Run: uv run mypy src/vectl/models.py -> PASS (no errors)
+
+      - Run: uv run ruff check src/vectl/models.py -> PASS (All checks passed)
+
+      - Run: uv run python -c "from vectl.models import RunningTask, CompletedResult,
+      Decision, Action, DecideOutput" -> PASS
+
+      - Contract purity check: model-only definitions; no implementation logic added
+
+
+      Files changed:
+
+      - src/vectl/models.py
+
+
+      Spec link:
+
+      - docs/RFC-decide.md (Input Schema lines 92-104; Output Schema lines 109-140)
+
+
+      Gaps/Notes:
+
+      - None'
   - id: decide-contracts.decide-module-stubs
     name: decide-module-stubs
     status: claimed

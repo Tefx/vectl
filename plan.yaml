@@ -29960,3 +29960,32 @@ phases:
     15).
   depends_on:
   - decide-impl
+  steps:
+  - id: decide-docs.readme
+    name: readme
+    status: pending
+    description: 'Update README.md to document vectl_decide tool.
+
+
+      simple_feature_exception: approved (single entry addition, obvious existing
+      pattern)
+
+
+      Changes:
+
+      1. Update tool count from 14 to 15
+
+      2. Add vectl_decide to tools list: ''vectl_decide -- Deterministic orchestration
+      advisor. Reads plan state, computes claimable steps, evaluates continuation
+      guard, returns structured action list.''
+
+      3. Match style of existing tool entries
+
+
+      File: README.md'
+    verification: README.md mentions vectl_decide; Tool count is 15; No other content
+      changed
+    refs:
+    - docs/RFC-decide.md
+    - README.md
+    agent: python-executor

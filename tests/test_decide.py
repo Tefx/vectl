@@ -32,8 +32,17 @@ from vectl.models import (
 )
 
 
-def _write_plan_with_steps(path: Path, steps: list[Step]) -> Plan:
-    """Helper to create a plan with steps and save it."""
+def _write_plan_with_steps(path: Path | None, steps: list[Step]) -> Plan:
+    """Helper to create a plan with steps and save it.
+
+    Args:
+        path: Path to save plan, or None to skip disk write (in-memory only).
+        steps: List of steps for the first phase.
+
+    Note:
+        Using path=None avoids /dev/null.lock PermissionError in tests that
+        only need in-memory Plan objects.
+    """
     plan = Plan(
         project="decide-test",
         phases=[
@@ -57,8 +66,9 @@ def _write_plan_with_steps(path: Path, steps: list[Step]) -> Plan:
 
 def test_compute_continuation_claimable_steps_returns_true() -> None:
     """compute_continuation returns (True, None) with claimable steps."""
+    # Note: path=None skips disk write; these tests don't need file persistence
     plan = _write_plan_with_steps(
-        Path("/dev/null"),
+        None,
         [Step(id="s1", name="Step 1", status=StepStatus.PENDING)],
     )
 
@@ -76,7 +86,7 @@ def test_compute_continuation_claimable_steps_returns_true() -> None:
 def test_compute_continuation_no_claimable_no_running() -> None:
     """compute_continuation returns (False, NO_EXECUTABLE_STEPS) when done."""
     plan = _write_plan_with_steps(
-        Path("/dev/null"),
+        None,
         [Step(id="s1", name="Step 1", status=StepStatus.DONE)],
     )
 
@@ -93,7 +103,7 @@ def test_compute_continuation_no_claimable_no_running() -> None:
 def test_compute_continuation_at_max_parallelism() -> None:
     """compute_continuation returns (False, MAX_PARALLELISM_REACHED) at cap."""
     plan = _write_plan_with_steps(
-        Path("/dev/null"),
+        None,
         [Step(id="s1", name="Step 1", status=StepStatus.PENDING)],
     )
 
@@ -110,9 +120,10 @@ def test_compute_continuation_at_max_parallelism() -> None:
 
 def test_compute_continuation_waiting_on_running() -> None:
     """compute_continuation returns (False, WAITING_ON_RUNNING_SUBAGENTS)."""
+    # B2 fix: CLAIMED status requires claimed_by field (model validator enforced)
     plan = _write_plan_with_steps(
-        Path("/dev/null"),
-        [Step(id="s1", name="Step 1", status=StepStatus.CLAIMED)],
+        None,
+        [Step(id="s1", name="Step 1", status=StepStatus.CLAIMED, claimed_by="agent-1")],
     )
 
     # Running tasks exist but no claimable steps

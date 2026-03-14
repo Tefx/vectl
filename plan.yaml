@@ -29995,6 +29995,54 @@ phases:
     agent: gate-reviewer
     claimed_by: gate-reviewer
     claimed_at: '2026-03-14T19:47:10.803991+00:00'
+  - id: decide-tests.fix-gate-blockers
+    name: fix-gate-blockers
+    status: pending
+    description: "Batched remediation for decide-tests gate blockers.\n\nstep_type:\
+      \ implementation\npriority: HIGH\nagent_source: default\nspec_refs:\n  - docs/RFC-decide.md\n\
+      \  - tests/test_decide.py (unit-test contract and pre-impl NotImplementedError\
+      \ note)\n  - tests/test_mcp.py#Tool: vectl_decide\n\ntouch_paths:\n  - tests/test_decide.py\n\
+      \  - tests/test_mcp.py\nharness_refs:\n  - tests/test_decide.py::_write_plan_with_steps\n\
+      \  - tests/test_mcp.py::TestVectlDecide\n\nFix ALL blockers, not just the first.\n\
+      Search sibling fixtures/helpers before claiming done; do not patch only the\
+      \ listed line.\n\n## Blockers to Fix (ALL of these)\n\n### B1: /dev/null fixture\
+      \ path causes PermissionError on /dev/null.lock\n- Failure mode: tests using\
+      \ `_write_plan_with_steps(Path(\"/dev/null\"), ...)` call `save_plan()` and\
+      \ attempt to create `/dev/null.lock`, causing setup failure before the behavioral\
+      \ assertion runs.\n- Required remediation: replace the non-writable sentinel\
+      \ path with a real temp-path fixture pattern consistent with repo tests, or\
+      \ otherwise avoid lock-file creation while preserving plan-save coverage.\n\
+      - Grep hint: `rg -n 'Path\\(\"/dev/null\"\\)|save_plan\\(plan, path\\)' tests/test_decide.py`\n\
+      - Sibling search: inspect every `_write_plan_with_steps(...)` call in `tests/test_decide.py`,\
+      \ not just the first failing test.\n\n### B2: CLAIMED step fixture missing required\
+      \ claimed_by field\n- Failure mode: `StepStatus.CLAIMED` is used without `claimed_by`,\
+      \ triggering validation failure before orchestration behavior is exercised.\n\
+      - Required remediation: update the claimed fixture(s) to include a valid `claimed_by`\
+      \ value following existing model-test patterns; do not loosen model validation\
+      \ in this remediation loop unless a stronger repo-wide reason is found.\n- Grep\
+      \ hint: `rg -n 'StepStatus\\.CLAIMED' tests/test_decide.py tests/test_models.py\
+      \ tests/test_validation.py`\n- Sibling search: inspect all claimed-step fixtures\
+      \ added in the decide test surface, not only `test_compute_continuation_waiting_on_running`.\n\
+      \n## Additional should-fix context to preserve explicitly\n- `tests/test_mcp.py`\
+      \ vectl_decide tests may still fail before impl with ImportError; if that remains\
+      \ true, keep it documented and isolated instead of converting it into an untracked\
+      \ blocker.\n- Grep hint: `rg -n 'implementation may not exist yet|ImportError|vectl_decide'\
+      \ tests/test_mcp.py`\n\n## Completion Criteria\n- ALL blocker families above\
+      \ are fixed\n- Sibling search completed for each blocker family\n- No remaining\
+      \ `/dev/null.lock` setup path in decide tests\n- No decide-test CLAIMED fixture\
+      \ lacks `claimed_by`\n- Pre-impl ImportError/NotImplementedError expectations\
+      \ remain explicit where still expected"
+    verification: '- Run targeted regression coverage for the former setup-blocked
+      decide tests and show they no longer fail with `PermissionError` or `ValidationError`
+
+      - Prove sibling-search completion using the listed grep hints
+
+      - Keep remaining pre-impl `ImportError` / `NotImplementedError` expectations
+      explicit rather than silently broadening assertions'
+    depends_on:
+    - decide-tests.unit-decide
+    - decide-tests.unit-mcp-tool
+    agent: python-executor
 - id: decide-impl
   name: 'vectl_decide: Implementation'
   status: locked

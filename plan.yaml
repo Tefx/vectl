@@ -29911,6 +29911,47 @@ phases:
     depends_on:
     - decide-impl.mcp-tool
     agent: integration-verifier
+  - id: decide-impl.gate
+    name: gate
+    status: pending
+    description: 'Gate review: Verify decide-impl phase completion.
+
+
+      review_depth: THOROUGH
+
+      review_depth_rationale: Phase contains integration-tagged step (mcp-tool). MCP
+      server is a deployability-bearing surface.
+
+
+      Review criteria:
+
+      1. All implementation steps completed
+
+      2. decide.py logic matches RFC-decide.md exactly
+
+      3. MCP tool registered and callable
+
+      4. All 13 unit tests + 3 MCP tests pass
+
+      5. Full test suite passes (no regressions)
+
+      6. mypy and ruff clean
+
+      7. No existing MCP tools modified
+
+      8. In-memory state properly isolated
+
+
+      cross_cutting_focus:
+
+      - MCP tool returns well-formatted Markdown (consistent with other tools)
+
+      - No import side effects from decide.py on server startup'
+    verification: 'All tests pass: uv run pytest tests/ -v; mypy clean; ruff clean;
+      MCP tool callable; No existing tool behavior changed'
+    depends_on:
+    - decide-impl.verify
+    agent: gate-reviewer
 - id: decide-docs
   name: 'vectl_decide: Documentation'
   status: locked

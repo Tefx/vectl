@@ -30291,7 +30291,7 @@ phases:
       while preserving existing MCP tool behavior.'
   - id: decide-impl.verify
     name: verify
-    status: claimed
+    status: done
     description: 'Independent verification of vectl_decide implementation.
 
 
@@ -30332,6 +30332,43 @@ phases:
     agent: integration-verifier
     claimed_by: integration-verifier
     claimed_at: '2026-03-14T20:27:55.796982+00:00'
+    done_at: '2026-03-14T20:32:21.111142+00:00'
+    evidence: 'Artifact:
+
+      - Independent verification branch: vectl/step-decide-impl.verify (verify-only;
+      no code changes)
+
+
+      Verification:
+
+      - Run: uv run pytest tests/test_decide.py tests/test_mcp.py -v -> PASS (187
+      passed)
+
+      - Run: uv run pytest tests/ -v -> PASS (1167 passed)
+
+      - Run: uv run mypy src/vectl/decide.py src/vectl/mcp_server.py -> PASS
+
+      - Coverage notes from verifier: decide.py ~82%, mcp_server.py ~90%
+
+      - Integration checks: vectl_decide MCP tool calls decide implementation and
+      returns structured serializable output
+
+      - Regression: no existing tests broken in full suite
+
+
+      Spec link:
+
+      - docs/RFC-decide.md
+
+      - tests/test_decide.py
+
+      - tests/test_mcp.py
+
+
+      Gaps/Notes:
+
+      - None reported; verification found no blocker or should-fix issues for this
+      phase.'
   - id: decide-impl.gate
     name: gate
     status: pending

@@ -30461,7 +30461,7 @@ phases:
   steps:
   - id: decide-docs.readme
     name: readme
-    status: claimed
+    status: done
     description: 'Update README.md to document vectl_decide tool.
 
 
@@ -30489,6 +30489,36 @@ phases:
     agent: python-executor
     claimed_by: python-executor
     claimed_at: '2026-03-14T20:40:53.255998+00:00'
+    done_at: '2026-03-14T20:42:38.648866+00:00'
+    evidence: 'Artifact:
+
+      - Worker commit: 77b1260200569c0ebb46108fe60ed6c4d36f9259
+
+      - Orchestrator squash commit on main: 881722f
+
+
+      Verification:
+
+      - README now states 15 MCP tools
+
+      - README tool list includes vectl_decide entry in existing style
+
+      - Diff scope limited to README tool-count/list line (no unrelated content changes)
+
+
+      Files changed:
+
+      - README.md
+
+
+      Spec link:
+
+      - docs/RFC-decide.md
+
+
+      Gaps/Notes:
+
+      - Documentation-only update per simple_feature_exception scope.'
   - id: decide-docs.gate
     name: gate
     status: pending

@@ -30230,7 +30230,7 @@ phases:
       completed-result handling with escalation threshold, and claim/wait action generation.'
   - id: decide-impl.mcp-tool
     name: mcp-tool
-    status: claimed
+    status: done
     description: "Add @mcp.tool() def vectl_decide(...) to src/vectl/mcp_server.py.\n\
       \nstep_type: implementation\ntags: [integration]\n\n1. Add import: from vectl.decide\
       \ import decide as _decide_impl\n2. Add import: from vectl.models import RunningTask,\
@@ -30254,6 +30254,41 @@ phases:
     agent: python-executor
     claimed_by: python-executor
     claimed_at: '2026-03-14T20:18:52.945183+00:00'
+    done_at: '2026-03-14T20:27:43.414276+00:00'
+    evidence: 'Artifact:
+
+      - Worker commit: 5ca3d68
+
+      - Orchestrator squash commit on main: ca15ab7
+
+
+      Verification:
+
+      - Run: uv run pytest tests/test_mcp.py -v -k decide -> PASS (3 tests)
+
+      - Run: uv run pytest tests/test_mcp.py -v -> PASS (174 tests)
+
+      - Run: uv run mypy src/vectl/mcp_server.py -> PASS
+
+      - Run: uv run ruff check src/vectl/mcp_server.py -> PASS
+
+
+      Files changed:
+
+      - src/vectl/mcp_server.py
+
+
+      Spec link:
+
+      - docs/RFC-decide.md
+
+      - src/vectl/mcp_server.py
+
+
+      Gaps/Notes:
+
+      - Added vectl_decide MCP tool wiring and related imports/docstring count update
+      while preserving existing MCP tool behavior.'
   - id: decide-impl.verify
     name: verify
     status: pending

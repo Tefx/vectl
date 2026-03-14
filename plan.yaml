@@ -29846,6 +29846,30 @@ phases:
     - src/vectl/core.py
     - src/vectl/plan_path.py
     agent: python-executor
+  - id: decide-impl.mcp-tool
+    name: mcp-tool
+    status: pending
+    description: "Add @mcp.tool() def vectl_decide(...) to src/vectl/mcp_server.py.\n\
+      \nstep_type: implementation\ntags: [integration]\n\n1. Add import: from vectl.decide\
+      \ import decide as _decide_impl\n2. Add import: from vectl.models import RunningTask,\
+      \ CompletedResult\n3. Add tool function after existing tools, before _unwrap_tool_fn:\n\
+      \   @mcp.tool(description='Deterministic orchestration advisor...')\n   def\
+      \ vectl_decide(running_tasks: list[RunningTask], completed_results: list[CompletedResult]\
+      \ | None = None, max_parallelism: int = 5) -> str:\n     result = _decide_impl(running_tasks,\
+      \ completed_results, max_parallelism)\n     # Format as Markdown (follow existing\
+      \ tool pattern)\n4. Update module docstring: 14 tools -> 15 tools, add vectl_decide\
+      \ to list\n\nIMPORTANT: Do NOT modify any existing tool functions.\n\nFile:\
+      \ src/vectl/mcp_server.py"
+    verification: uv run pytest tests/test_mcp.py -v -k decide -- 3 tests PASS; uv
+      run mypy src/vectl/mcp_server.py -- PASS; uv run ruff check src/vectl/mcp_server.py
+      -- PASS; Existing MCP tests still pass
+    refs:
+    - docs/RFC-decide.md
+    - src/vectl/mcp_server.py
+    - src/vectl/decide.py
+    depends_on:
+    - decide-impl.decide-logic
+    agent: python-executor
 - id: decide-docs
   name: 'vectl_decide: Documentation'
   status: locked

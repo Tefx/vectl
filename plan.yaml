@@ -30002,7 +30002,7 @@ phases:
     agent: gate-reviewer
   - id: decide-tests.fix-gate-blockers
     name: fix-gate-blockers
-    status: claimed
+    status: done
     description: "Batched remediation for decide-tests gate blockers.\n\nstep_type:\
       \ implementation\npriority: HIGH\nagent_source: default\nspec_refs:\n  - docs/RFC-decide.md\n\
       \  - tests/test_decide.py (unit-test contract and pre-impl NotImplementedError\
@@ -30050,6 +30050,19 @@ phases:
     agent: python-executor
     claimed_by: python-executor
     claimed_at: '2026-03-14T20:00:48.631056+00:00'
+    done_at: '2026-03-14T20:04:58.055532+00:00'
+    evidence: "Artifact:\n- Worker commit: ebdfc51\n- Orchestrator squash commit on\
+      \ main: 15a3f37\n\nVerification:\n- Run: rg -n 'Path\\(\"/dev/null\"\\)' tests/test_decide.py\
+      \ -> no matches\n- Run: rg -n 'StepStatus\\.CLAIMED' tests/test_decide.py tests/test_models.py\
+      \ tests/test_validation.py -> reviewed all hits; decide-test CLAIMED fixture\
+      \ now includes claimed_by\n- Targeted behavior checks:\n  - _write_plan_with_steps(path=None,\
+      \ ...) no longer triggers /dev/null.lock PermissionError path\n  - Step(status=CLAIMED,\
+      \ claimed_by='agent-1') validates successfully\n  - Step(status=CLAIMED) without\
+      \ claimed_by still raises ValidationError (model contract preserved)\n\nFiles\
+      \ changed:\n- tests/test_decide.py\n\nSpec link:\n- docs/RFC-decide.md\n- src/vectl/models.py\
+      \ CLAIMED/claimed_by validation contract\n\nGaps/Notes:\n- tests/test_mcp.py\
+      \ vectl_decide ImportError behavior remains explicit as expected-before-impl\
+      \ and is preserved for retest classification."
   - id: decide-tests.retest-gate-blockers
     name: retest-gate-blockers
     status: pending

@@ -30452,7 +30452,7 @@ phases:
       findings reported for decide-impl phase.'
 - id: decide-docs
   name: 'vectl_decide: Documentation'
-  status: in_progress
+  status: done
   gate: README updated, tool count accurate, description matches RFC.
   context: Update README.md and MCP server docstring to reflect vectl_decide (tool
     15).
@@ -30521,7 +30521,7 @@ phases:
       - Documentation-only update per simple_feature_exception scope.'
   - id: decide-docs.gate
     name: gate
-    status: claimed
+    status: done
     description: 'Gate review: Verify decide-docs phase completion.
 
 
@@ -30542,3 +30542,35 @@ phases:
     agent: gate-reviewer
     claimed_by: integration-verifier
     claimed_at: '2026-03-14T20:42:51.688192+00:00'
+    done_at: '2026-03-14T20:49:36.481294+00:00'
+    evidence: 'Artifact:
+
+      - Documentation gate reviewed on verify-only branch vectl/step-decide-docs.gate
+
+      - README update commit under review: 881722f
+
+
+      Verification:
+
+      - README now lists 15 MCP tools and explicitly includes vectl_decide in the
+      tool example list
+
+      - Description alignment check against docs/RFC-decide.md confirms vectl_decide
+      documented as deterministic orchestration advisor
+
+      - Diff-isolation check confirms docs step changed only README tool-count/list
+      entry as intended
+
+      - No unrelated documentation/content drift detected in gate review
+
+
+      Spec link:
+
+      - docs/RFC-decide.md
+
+      - README.md
+
+
+      Gaps/Notes:
+
+      - Quick gate passed with no blocker/should-fix findings.'

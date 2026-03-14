@@ -29568,3 +29568,10 @@ phases:
       discovered_issues:
 
       - none'
+- id: decide-contracts
+  name: 'vectl_decide: Contracts'
+  status: pending
+  gate: All models defined in models.py, all function stubs in decide.py, mypy passes,
+    no implementation logic present.
+  context: Contract-first phase for vectl_decide (RFC-decide.md). Define Pydantic
+    models and function stubs. No implementation logic.

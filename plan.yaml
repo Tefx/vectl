@@ -29746,6 +29746,41 @@ phases:
     - tests/test_decide.py
     - tests/test_core.py
     agent: python-executor
+  - id: decide-tests.unit-mcp-tool
+    name: unit-mcp-tool
+    status: pending
+    description: 'Write MCP integration test for vectl_decide in tests/test_mcp.py
+      (APPEND).
+
+
+      step_type: test
+
+
+      Follow existing test_mcp.py pattern: import tool, call directly with VECTL_PLAN_PATH
+      temp file.
+
+
+      Tests to add:
+
+      1. test_vectl_decide_returns_structured_output - claimable steps -> claim_and_dispatch
+      actions
+
+      2. test_vectl_decide_empty_plan - all done -> continuation=False
+
+      3. test_vectl_decide_with_running_tasks - capacity calculation correct
+
+
+      Import: from vectl.mcp_server import vectl_decide as _vectl_decide_tool
+
+
+      File: tests/test_mcp.py (APPEND)'
+    verification: uv run pytest tests/test_mcp.py --collect-only -- new tests collected;
+      Existing tests still collected; New tests expected to fail until impl.mcp-tool
+    refs:
+    - docs/RFC-decide.md
+    - tests/test_mcp.py
+    - src/vectl/mcp_server.py
+    agent: python-executor
 - id: decide-impl
   name: 'vectl_decide: Implementation'
   status: locked

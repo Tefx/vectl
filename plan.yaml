@@ -29808,7 +29808,7 @@ phases:
   steps:
   - id: decide-tests.unit-decide
     name: unit-decide
-    status: claimed
+    status: done
     description: 'Write unit tests for vectl_decide logic in tests/test_decide.py
       (NEW file).
 
@@ -29861,6 +29861,38 @@ phases:
     agent: python-executor
     claimed_by: python-executor
     claimed_at: '2026-03-14T19:42:45.633819+00:00'
+    done_at: '2026-03-14T19:46:49.960706+00:00'
+    evidence: 'Artifact:
+
+      - Worker commit: ff96156c28a5c1758e8e7c3891de17d1e635d60f
+
+      - Orchestrator squash commit on main: 9ec2c80
+
+
+      Verification:
+
+      - Run: uv run pytest tests/test_decide.py --collect-only -> PASS (13 tests collected)
+
+      - Run: uv run ruff check tests/test_decide.py -> PASS (All checks passed)
+
+      - Runtime execution intentionally deferred (stubs currently raise NotImplementedError
+      until decide-impl)
+
+
+      Files changed:
+
+      - tests/test_decide.py (new)
+
+
+      Spec link:
+
+      - docs/RFC-decide.md (compute_continuation / should_reuse_session / decide behavior)
+
+
+      Gaps/Notes:
+
+      - Runtime assertions against implementation behavior are expected to activate
+      in decide-impl; this step validates test definitions and collection.'
   - id: decide-tests.unit-mcp-tool
     name: unit-mcp-tool
     status: claimed

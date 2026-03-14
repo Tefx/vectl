@@ -30065,7 +30065,7 @@ phases:
       \ and is preserved for retest classification."
   - id: decide-tests.retest-gate-blockers
     name: retest-gate-blockers
-    status: claimed
+    status: done
     description: "As an INDEPENDENT TESTER (`integration-verifier`), re-validate the\
       \ decide-tests blocker remediation from a fresh perspective.\n\nstep_type: verification\n\
       agent_source: default\nspec_refs:\n  - docs/RFC-decide.md\n  - tests/test_decide.py\n\
@@ -30099,6 +30099,46 @@ phases:
     agent: integration-verifier
     claimed_by: integration-verifier
     claimed_at: '2026-03-14T20:05:18.081028+00:00'
+    done_at: '2026-03-14T20:08:17.003163+00:00'
+    evidence: 'Artifact:
+
+      - Independent verification branch: vectl/step-decide-tests.retest-gate-blockers
+      (verify-only, no code changes)
+
+
+      Verification:
+
+      - Run: uv run pytest tests/test_decide.py --collect-only -> PASS (13 collected)
+
+      - Run: uv run pytest tests/test_mcp.py --collect-only -k vectl_decide -> PASS
+      (3 collected, others deselected)
+
+      - Run: uv run pytest tests/test_decide.py -v -> runtime failures are NotImplementedError
+      at decide stubs (expected pre-impl)
+
+      - Run: uv run pytest tests/test_mcp.py -v -k vectl_decide -> runtime failures
+      are ImportError for vectl_decide tool registration (expected pre-impl)
+
+      - Classification check: no /dev/null.lock PermissionError observed; no CLAIMED
+      fixture missing claimed_by ValidationError observed
+
+      - Documentation check: tests and decide module explicitly note pre-impl NotImplementedError/ImportError
+      expectation
+
+
+      Spec link:
+
+      - docs/RFC-decide.md
+
+      - tests/test_decide.py
+
+      - tests/test_mcp.py
+
+
+      Gaps/Notes:
+
+      - Remaining failures are explicitly deferred-to-implementation behavior, not
+      setup regressions.'
 - id: decide-impl
   name: 'vectl_decide: Implementation'
   status: locked

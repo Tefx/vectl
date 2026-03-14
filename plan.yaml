@@ -29584,3 +29584,10 @@ phases:
     before implementation.
   depends_on:
   - decide-contracts
+- id: decide-impl
+  name: 'vectl_decide: Implementation'
+  status: locked
+  gate: All tests pass, mypy clean, ruff clean, no existing tests broken.
+  context: Core implementation of vectl_decide logic and MCP tool registration.
+  depends_on:
+  - decide-tests

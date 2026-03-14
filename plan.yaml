@@ -29616,6 +29616,44 @@ phases:
     - docs/RFC-decide.md
     - src/vectl/models.py
     agent: python-executor
+  - id: decide-contracts.decide-module-stubs
+    name: decide-module-stubs
+    status: pending
+    description: 'Create src/vectl/decide.py with function stubs for vectl_decide
+      logic.
+
+
+      step_type: contract
+
+      contract_purity: ENFORCED
+
+
+      Module-level: REUSE_TTL=300, _completion_times: dict[str,float]={}, _session_registry:
+      dict[str,str]={}
+
+
+      Function stubs (raise NotImplementedError):
+
+      1. should_reuse_session(step_id: str, parent_step_id: str | None) -> tuple[bool,
+      str | None]
+
+      2. compute_continuation(plan: Plan, running_count: int, max_parallelism: int)
+      -> tuple[bool, str | None]
+
+      3. decide(running_tasks: list[RunningTask], completed_results: list[CompletedResult]
+      | None, max_parallelism: int) -> DecideOutput
+
+
+      Imports: vectl.models (RunningTask, CompletedResult, DecideOutput, Action, Decision,
+      Plan), vectl.core (get_next_steps), vectl.io (load_plan_definition)
+
+      File: src/vectl/decide.py (NEW)'
+    verification: uv run mypy src/vectl/decide.py -- PASS; uv run ruff check src/vectl/decide.py
+      -- PASS; Module importable; All functions raise NotImplementedError
+    refs:
+    - docs/RFC-decide.md
+    - src/vectl/decide.py
+    agent: python-executor
 - id: decide-tests
   name: 'vectl_decide: Tests'
   status: locked

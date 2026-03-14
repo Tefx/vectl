@@ -29591,3 +29591,11 @@ phases:
   context: Core implementation of vectl_decide logic and MCP tool registration.
   depends_on:
   - decide-tests
+- id: decide-docs
+  name: 'vectl_decide: Documentation'
+  status: locked
+  gate: README updated, tool count accurate, description matches RFC.
+  context: Update README.md and MCP server docstring to reflect vectl_decide (tool
+    15).
+  depends_on:
+  - decide-impl

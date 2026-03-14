@@ -30065,7 +30065,7 @@ phases:
       \ and is preserved for retest classification."
   - id: decide-tests.retest-gate-blockers
     name: retest-gate-blockers
-    status: pending
+    status: claimed
     description: "As an INDEPENDENT TESTER (`integration-verifier`), re-validate the\
       \ decide-tests blocker remediation from a fresh perspective.\n\nstep_type: verification\n\
       agent_source: default\nspec_refs:\n  - docs/RFC-decide.md\n  - tests/test_decide.py\n\
@@ -30097,6 +30097,8 @@ phases:
     depends_on:
     - decide-tests.fix-gate-blockers
     agent: integration-verifier
+    claimed_by: integration-verifier
+    claimed_at: '2026-03-14T20:05:18.081028+00:00'
 - id: decide-impl
   name: 'vectl_decide: Implementation'
   status: locked

@@ -29654,6 +29654,35 @@ phases:
     - docs/RFC-decide.md
     - src/vectl/decide.py
     agent: python-executor
+  - id: decide-contracts.gate
+    name: gate
+    status: pending
+    description: 'Gate review: Verify decide-contracts phase completion.
+
+
+      review_depth: STANDARD
+
+
+      Review criteria:
+
+      1. All 5 Pydantic models defined in models.py
+
+      2. All 3 function stubs in decide.py
+
+      3. No implementation logic (stubs raise NotImplementedError)
+
+      4. Types match RFC-decide.md schemas exactly
+
+      5. mypy and ruff clean on both files
+
+      6. Existing models.py tests still pass'
+    verification: Contract purity verified; Type signatures match RFC; uv run mypy
+      src/vectl/models.py src/vectl/decide.py -- PASS; uv run pytest tests/test_models.py
+      -v -- PASS
+    depends_on:
+    - decide-contracts.models
+    - decide-contracts.decide-module-stubs
+    agent: gate-reviewer
 - id: decide-tests
   name: 'vectl_decide: Tests'
   status: locked

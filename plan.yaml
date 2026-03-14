@@ -30167,7 +30167,7 @@ phases:
   steps:
   - id: decide-impl.decide-logic
     name: decide-logic
-    status: claimed
+    status: done
     description: "Implement vectl_decide core logic in src/vectl/decide.py (replace\
       \ NotImplementedError stubs).\n\nstep_type: implementation\n\nFunctions to implement:\n\
       \n1. should_reuse_session(step_id, parent_step_id):\n   - No parent -> (False,\
@@ -30195,6 +30195,39 @@ phases:
     agent: python-executor
     claimed_by: python-executor
     claimed_at: '2026-03-14T20:12:52.926121+00:00'
+    done_at: '2026-03-14T20:18:34.237535+00:00'
+    evidence: 'Artifact:
+
+      - Worker commit: 333c842
+
+      - Orchestrator squash commit on main: ff883a3
+
+
+      Verification:
+
+      - Run: uv run pytest tests/test_decide.py -v -> PASS (13 passed)
+
+      - Run: uv run mypy src/vectl/decide.py -> PASS
+
+      - Run: uv run ruff check src/vectl/decide.py -> PASS
+
+
+      Files changed:
+
+      - src/vectl/decide.py
+
+
+      Spec link:
+
+      - docs/RFC-decide.md
+
+      - src/vectl/decide.py
+
+
+      Gaps/Notes:
+
+      - Core decide logic implemented: session reuse evaluation, continuation computation,
+      completed-result handling with escalation threshold, and claim/wait action generation.'
   - id: decide-impl.mcp-tool
     name: mcp-tool
     status: pending

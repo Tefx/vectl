@@ -29570,7 +29570,7 @@ phases:
       - none'
 - id: decide-contracts
   name: 'vectl_decide: Contracts'
-  status: in_progress
+  status: done
   gate: All models defined in models.py, all function stubs in decide.py, mypy passes,
     no implementation logic present.
   context: Contract-first phase for vectl_decide (RFC-decide.md). Define Pydantic
@@ -29727,7 +29727,7 @@ phases:
       after prior models-step merge.'
   - id: decide-contracts.gate
     name: gate
-    status: claimed
+    status: done
     description: 'Gate review: Verify decide-contracts phase completion.
 
 
@@ -29756,9 +29756,49 @@ phases:
     agent: gate-reviewer
     claimed_by: gate-reviewer
     claimed_at: '2026-03-14T19:39:00.897469+00:00'
+    done_at: '2026-03-14T19:42:32.644535+00:00'
+    evidence: 'Artifact:
+
+      - Reviewed integrated commits: 81358c1 (decide-contracts.models), a0f78c0 (decide-contracts.decide-module-stubs)
+
+      - Gate worktree branch: vectl/step-decide-contracts.gate (verify-only; no code
+      changes)
+
+
+      Verification:
+
+      - Structural check: 5 Pydantic models present in src/vectl/models.py (RunningTask,
+      CompletedResult, Decision, Action, DecideOutput)
+
+      - Structural check: 3 stubs present in src/vectl/decide.py with required signatures
+
+      - Contract purity check: each stub raises NotImplementedError; no implementation
+      logic added
+
+      - Run: uv run mypy src/vectl/models.py src/vectl/decide.py -> PASS (Success:
+      no issues found in 2 source files)
+
+      - Run: uv run ruff check src/vectl/models.py src/vectl/decide.py -> PASS (All
+      checks passed)
+
+      - Run: uv run pytest tests/test_models.py -v -> PASS (51 passed)
+
+      - RFC alignment check: types and fields match docs/RFC-decide.md Input Schema
+      + Output Schema
+
+
+      Spec link:
+
+      - docs/RFC-decide.md
+
+
+      Gaps/Notes:
+
+      - Non-goals for this gate: runtime behavior/integration of decide implementation
+      deferred to decide-impl phase.'
 - id: decide-tests
   name: 'vectl_decide: Tests'
-  status: locked
+  status: pending
   gate: All test files created, tests collect without error, coverage spans all RFC
     scenarios.
   context: Test definitions for vectl_decide. Tests written against plan fixtures

@@ -30002,7 +30002,7 @@ phases:
     agent: gate-reviewer
   - id: decide-tests.fix-gate-blockers
     name: fix-gate-blockers
-    status: pending
+    status: claimed
     description: "Batched remediation for decide-tests gate blockers.\n\nstep_type:\
       \ implementation\npriority: HIGH\nagent_source: default\nspec_refs:\n  - docs/RFC-decide.md\n\
       \  - tests/test_decide.py (unit-test contract and pre-impl NotImplementedError\
@@ -30048,6 +30048,8 @@ phases:
     - decide-tests.unit-decide
     - decide-tests.unit-mcp-tool
     agent: python-executor
+    claimed_by: python-executor
+    claimed_at: '2026-03-14T20:00:48.631056+00:00'
   - id: decide-tests.retest-gate-blockers
     name: retest-gate-blockers
     status: pending

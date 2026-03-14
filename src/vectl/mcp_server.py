@@ -1,7 +1,7 @@
 """MCP server exposing vectl tools to agents.
 
-14 tools (8 consolidated per expert panel dec-001, plus guide, dag, clipboard,
-init, render, and check):
+15 tools (8 consolidated per expert panel dec-001, plus guide, dag, clipboard,
+init, render, check, and decide):
   1. vectl_status  — plan overview + next steps + mine
   2. vectl_show    — step/phase detail
   3. vectl_claim   — claim step (auto-claim supported)
@@ -16,6 +16,7 @@ init, render, and check):
   12. vectl_init   — initialize new vectl project (create plan.yaml + AGENTS.md/CLAUDE.md)
   13. vectl_render — render plan as Markdown stakeholder report
   14. vectl_check  — toggle/add checklist items in step descriptions
+  15. vectl_decide — deterministic orchestration advisor (session reuse, continuation)
 
 Tools generally return Markdown-formatted text.
 
@@ -77,6 +78,7 @@ from vectl.core import (
     upsert_agents_md,
     validate_plan,
 )
+from vectl.decide import decide as _decide_impl
 from vectl.io import (
     _backup_definition,
     _resolve_git_dir,
@@ -88,12 +90,14 @@ from vectl.models import (
     AffinityError,
     AmbiguousMatchError,
     CASConflictError,
+    CompletedResult,
     InitResult,
     NoMatchError,
     Phase,
     PhaseStatus,
     Plan,
     PlanError,
+    RunningTask,
     Step,
     StepStatus,
 )
@@ -1967,6 +1971,55 @@ def vectl_repair_claims(dry_run: bool = False, step_id: str | None = None) -> di
 
 
 # ---------------------------------------------------------------------------
+# Tool 16: vectl_decide
+# ---------------------------------------------------------------------------
+
+
+@mcp.tool(
+    description=(
+        "Deterministic orchestration advisor for agent workflow decisions. "
+        "Analyzes running tasks and completed results to determine next actions: "
+        "claim_and_dispatch (with fresh or reused session), complete, wait, or escalate. "
+        "Returns structured output with actions list, continuation flag, halt reason, "
+        "and decision log."
+    ),
+)
+def vectl_decide(
+    running_tasks: list[RunningTask],
+    completed_results: list[CompletedResult] | None = None,
+    max_parallelism: int = 5,
+) -> dict:
+    """Deterministic orchestration advisor.
+
+    Analyzes running tasks and completed results to determine what actions
+    the orchestrator should take next. Supports session reuse decisions
+    for efficient agent workflow continuation.
+
+    Args:
+        running_tasks: Currently running tasks (in-flight work).
+            Each task has step_id, agent, task_id, dispatched_at.
+        completed_results: Tasks that have completed since last decision.
+            Each result has step_id, task_id, status (SUCCESS/FAIL), output_summary.
+        max_parallelism: Maximum allowed parallel dispatches (default 5).
+
+    Returns:
+        Structured output containing:
+        - actions: list of Action objects (claim_and_dispatch, complete, wait, escalate)
+        - continuation: bool - whether orchestrator should continue looping
+        - halt_reason: str | None - reason for halting if continuation is False
+        - decision_log: list of Decision objects for debugging/audit
+    """
+    result = _decide_impl(
+        running_tasks=running_tasks,
+        completed_results=completed_results,
+        max_parallelism=max_parallelism,
+    )
+    # Return as dict for MCP JSON serialization
+    # Use exclude_none=False to ensure all expected fields are present even when None
+    return result.model_dump(mode="json", exclude_none=False)
+
+
+# ---------------------------------------------------------------------------
 # Test compatibility shim
 # ---------------------------------------------------------------------------
 
@@ -2050,6 +2103,9 @@ vectl_repair_claims = _ToolWrapper(vectl_repair_claims)  # type: ignore[assignme
 
 _vectl_checkpoint_tool = vectl_checkpoint
 vectl_checkpoint = _ToolWrapper(vectl_checkpoint)  # type: ignore[assignment]
+
+_vectl_decide_tool = vectl_decide
+vectl_decide = _ToolWrapper(vectl_decide)  # type: ignore[assignment]
 
 
 # ---------------------------------------------------------------------------

@@ -29817,6 +29817,35 @@ phases:
   context: Core implementation of vectl_decide logic and MCP tool registration.
   depends_on:
   - decide-tests
+  steps:
+  - id: decide-impl.decide-logic
+    name: decide-logic
+    status: pending
+    description: "Implement vectl_decide core logic in src/vectl/decide.py (replace\
+      \ NotImplementedError stubs).\n\nstep_type: implementation\n\nFunctions to implement:\n\
+      \n1. should_reuse_session(step_id, parent_step_id):\n   - No parent -> (False,\
+      \ None)\n   - Parent not in _completion_times -> (False, None)\n   - elapsed\
+      \ > REUSE_TTL (300s) -> (False, None)\n   - No task_id in _session_registry\
+      \ -> (False, None)\n   - Otherwise -> (True, task_id)\n\n2. compute_continuation(plan,\
+      \ running_count, max_parallelism):\n   - claimable = get_next_steps(plan); capacity\
+      \ = max_parallelism - running_count\n   - capacity>0 and claimable -> (True,\
+      \ None)\n   - running_count>0 -> (False, WAITING_ON_RUNNING_SUBAGENTS)\n   -\
+      \ no claimable -> (False, NO_EXECUTABLE_STEPS)\n   - else -> (False, AT_MAX_PARALLELISM)\n\
+      \n3. decide(running_tasks, completed_results, max_parallelism):\n   - Load plan\
+      \ via resolve_plan_path() + load_plan_definition()\n   - Process completed_results:\
+      \ record _completion_times/_session_registry, create complete/escalate actions\n\
+      \   - Escalation: 3+ FAIL same step_id -> escalate\n   - Claimable steps via\
+      \ get_next_steps(plan), session reuse check, claim_and_dispatch actions\n  \
+      \ - At capacity -> wait action\n   - Compute continuation, return DecideOutput\n\
+      \nFile: src/vectl/decide.py"
+    verification: uv run pytest tests/test_decide.py -v -- all 13 tests PASS; uv run
+      mypy src/vectl/decide.py -- PASS; uv run ruff check src/vectl/decide.py -- PASS
+    refs:
+    - docs/RFC-decide.md
+    - src/vectl/decide.py
+    - src/vectl/core.py
+    - src/vectl/plan_path.py
+    agent: python-executor
 - id: decide-docs
   name: 'vectl_decide: Documentation'
   status: locked

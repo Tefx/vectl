@@ -30371,7 +30371,7 @@ phases:
       phase.'
   - id: decide-impl.gate
     name: gate
-    status: pending
+    status: claimed
     description: 'Gate review: Verify decide-impl phase completion.
 
 
@@ -30410,6 +30410,8 @@ phases:
     depends_on:
     - decide-impl.verify
     agent: gate-reviewer
+    claimed_by: gate-reviewer
+    claimed_at: '2026-03-14T20:32:41.894701+00:00'
 - id: decide-docs
   name: 'vectl_decide: Documentation'
   status: locked

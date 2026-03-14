@@ -29967,31 +29967,38 @@ phases:
   - id: decide-tests.gate
     name: gate
     status: claimed
-    description: 'Gate review: Verify decide-tests phase completion.
+    description: "Gate review: Verify decide-tests phase completion after blocker\
+      \ remediation.\n\nstep_type: gate\nreview_depth: THOROUGH\nreview_depth_rationale:\n\
+      \  - Gate already surfaced blocking setup/model-fixture failures in `tests/test_decide.py`\n\
+      \  - Phase also carries documented pre-impl `NotImplementedError` / `ImportError`\
+      \ expectations that must remain explicit\n  - Cross-file test surfaces (`tests/test_decide.py`,\
+      \ `tests/test_mcp.py`) must agree on what is blocked vs expected-before-impl\n\
+      \nspec_refs:\n  - docs/RFC-decide.md\n  - tests/test_decide.py\n  - tests/test_mcp.py#Tool:\
+      \ vectl_decide\ntouch_paths:\n  - tests/test_decide.py\n  - tests/test_mcp.py\n\
+      harness_refs:\n  - tests/test_decide.py::_write_plan_with_steps\n  - tests/test_mcp.py::TestVectlDecide\n\
+      agent_source: default\n\nGate focus:\n1. Confirm the batched remediation closed\
+      \ BOTH blocker families:\n   - `/dev/null.lock` PermissionError from decide\
+      \ test fixture paths\n   - CLAIMED-step `claimed_by` validation failure\n2.\
+      \ Confirm retest evidence distinguishes fixed blockers from still-expected pre-impl\
+      \ `NotImplementedError` / `ImportError` behavior.\n3. Reject the phase if any\
+      \ sibling fixture still reproduces either blocker family or if expected pre-impl\
+      \ failures are no longer classified clearly."
+    verification: '- Retest evidence shows the former blocker tests no longer fail
+      with `/dev/null.lock` `PermissionError`
 
+      - Retest evidence shows no decide-test CLAIMED fixture fails validation for
+      missing `claimed_by`
 
-      review_depth: STANDARD
+      - `uv run pytest tests/test_decide.py tests/test_mcp.py --collect-only` passes
+      after remediation
 
+      - Any remaining runtime failure before impl is explicitly limited to the documented
+      deferred `NotImplementedError` / `ImportError` expectations
 
-      Review criteria:
-
-      1. tests/test_decide.py exists with all 13 unit tests
-
-      2. tests/test_mcp.py has 3 new vectl_decide tests
-
-      3. All tests collect without errors
-
-      4. Coverage spans all RFC scenarios
-
-      5. No existing tests broken
-
-      6. ruff clean'
-    verification: uv run pytest tests/test_decide.py tests/test_mcp.py --collect-only
-      -- all new tests; uv run ruff check tests/test_decide.py tests/test_mcp.py --
-      PASS; uv run pytest tests/test_models.py tests/test_core.py -v -- PASS
+      - Ready for `decide-impl` only if blocker families are closed and pre-impl expectations
+      are crisply documented'
     depends_on:
-    - decide-tests.unit-decide
-    - decide-tests.unit-mcp-tool
+    - decide-tests.retest-gate-blockers
     agent: gate-reviewer
     claimed_by: gate-reviewer
     claimed_at: '2026-03-14T19:47:10.803991+00:00'

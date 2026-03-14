@@ -30043,6 +30043,40 @@ phases:
     - decide-tests.unit-decide
     - decide-tests.unit-mcp-tool
     agent: python-executor
+  - id: decide-tests.retest-gate-blockers
+    name: retest-gate-blockers
+    status: pending
+    description: "As an INDEPENDENT TESTER (`integration-verifier`), re-validate the\
+      \ decide-tests blocker remediation from a fresh perspective.\n\nstep_type: verification\n\
+      agent_source: default\nspec_refs:\n  - docs/RFC-decide.md\n  - tests/test_decide.py\n\
+      \  - tests/test_mcp.py#Tool: vectl_decide\n\ntouch_paths:\n  - tests/test_decide.py\n\
+      \  - tests/test_mcp.py\nharness_refs:\n  - tests/test_decide.py::_write_plan_with_steps\n\
+      \  - tests/test_mcp.py::TestVectlDecide\n\nValidate both blocker families and\
+      \ preserve expected pre-impl behavior.\n\nRequired checks:\n1. Former setup-blocked\
+      \ decide tests no longer hit `PermissionError` from `/dev/null.lock`.\n2. No\
+      \ decide-test CLAIMED fixture triggers `ValidationError` for missing `claimed_by`.\n\
+      3. `tests/test_decide.py` still documents any implementation-deferred `NotImplementedError`\
+      \ behavior explicitly rather than masking it.\n4. `tests/test_mcp.py` vectl_decide\
+      \ tests either collect/pass or fail only with the documented pre-impl `ImportError`;\
+      \ no new setup/import regressions are introduced.\n\nFinding remaining expected\
+      \ pre-impl ImportError/NotImplementedError is acceptable only if the evidence\
+      \ shows those are the documented deferred behaviors, not fixture/setup regressions."
+    verification: '- Main path: `uv run pytest tests/test_decide.py --collect-only`
+      passes and targeted decide tests execute without `/dev/null.lock` `PermissionError`
+      or CLAIMED-fixture `ValidationError`
+
+      - Main path: `uv run pytest tests/test_mcp.py --collect-only -k vectl_decide`
+      still collects the new MCP tests
+
+      - Failure-path classification: if runtime execution still fails before impl,
+      evidence must show the remaining failure is the expected documented `NotImplementedError`
+      or `ImportError`, with exact exception/location captured
+
+      - Proof: no other unexpected collection/setup regressions appear in these test
+      files'
+    depends_on:
+    - decide-tests.fix-gate-blockers
+    agent: integration-verifier
 - id: decide-impl
   name: 'vectl_decide: Implementation'
   status: locked

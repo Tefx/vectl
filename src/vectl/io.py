@@ -29,8 +29,8 @@ _PLAN_YAML_HEADER = """\
 # This file is owned by vectl. Direct edits bypass CAS write
 # protection, lock recalculation, and schema validation.
 #
-# Use: uvx vectl <command>  OR  vectl_* MCP tools
-# Docs: uvx vectl guide
+# Use: vectl_* MCP tools (preferred)  OR  vectl <command> (CLI fallback)
+# Docs: vectl guide  OR  MCP: vectl_guide
 # =============================================================
 """
 

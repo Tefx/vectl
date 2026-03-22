@@ -409,11 +409,11 @@ class TestMcpStatusAgent:
 
 class TestMcpShowAgent:
     def test_show_step_agent(self, mcp_plan_file: Path):
-        result = vectl_show(id="a.1")
+        result = vectl_show(target="a.1")
         assert "**Suggested agent:** alice" in result
 
     def test_show_step_no_agent(self, mcp_plan_file: Path):
-        result = vectl_show(id="a.3")
+        result = vectl_show(target="a.3")
         assert "**Suggested agent:**" not in result
 
 

@@ -12,35 +12,36 @@ GUIDE_STARTUP = """\
 **Authority:** `plan.yaml` is the SINGLE source of truth.
 Conflict? Update plan or escalate. Do not guess.
 
+## Tools Priority
+**Always prefer MCP tools** (`vectl_status`, `vectl_claim`, `vectl_complete`, etc.) when available.
+CLI fallback priority: `uv run vectl` > `vectl` > `uvx vectl`.
+
 ## Workflow
-1. `uvx vectl status`           — Overview & progress
-2. `uvx vectl next`             — Find available work
-3. `uvx vectl claim <id>`       — Lock a step (one at a time)
-4. **Execute**              — Follow description + refs exactly
-5. `uvx vectl complete <id> --evidence "..."` — Submit results
-6. `uvx vectl next`             — Loop
+1. `vectl_status` / `vectl status`    — Overview & progress
+2. `vectl_guide` / `vectl next`       — Find available work
+3. `vectl_claim` / `vectl claim <id>` — Lock a step (one at a time)
+4. **Execute**                         — Follow description + refs exactly
+5. `vectl_complete` / `vectl complete <id> --evidence "..."` — Submit results
+6. Loop
 
 ## Claim-time Guidance
-`uvx vectl claim` may emit a bounded Guidance block delimited by:
+`vectl claim` may emit a bounded Guidance block delimited by:
 - `--- VECTL:GUIDANCE:BEGIN ---`
 - `--- VECTL:GUIDANCE:END ---`
 
 Use the included evidence template as the skeleton for completion evidence.
-For automation/CI, disable guidance with: `uvx vectl claim --no-guidance`.
+For automation/CI, disable guidance with: `vectl claim --no-guidance`.
 
 ## Evidence (Strict)
 Required: Files changed, Verification (cmd + result), Gaps (skipped).
 > Ex: "Fixed auth.py. Ran pytest (PASS). No integration tests."
 
-## Tools
-Prefer MCP tools (vectl_*) if available. Rules are identical.
-
 ## Agent Instructions (AGENTS.md / CLAUDE.md)
 `vectl init` injects a vectl section into AGENTS.md or CLAUDE.md.
 To update an existing project to the latest template:
 ```
-uvx vectl agents-md          # auto-detect target file
-uvx vectl agents-md --target claude   # force CLAUDE.md
+vectl agents-md          # auto-detect target file
+vectl agents-md --target claude   # force CLAUDE.md
 ```
 """
 
@@ -48,14 +49,14 @@ GUIDE_STUCK = """\
 # Unblocking Strategy
 
 ## Rejected? (High Priority)
-1. `uvx vectl next`             — Rejected items float to top
-2. `uvx vectl show <id>`        — Read **rejection_reason**
-3. `uvx vectl claim <id>`       — Re-claim & Fix
-4. `uvx vectl complete`         — Submit with new evidence
+1. `vectl next`             — Rejected items float to top
+2. `vectl show <id>`        — Read **rejection_reason**
+3. `vectl claim <id>`       — Re-claim & Fix
+4. `vectl complete`         — Submit with new evidence
 
 ## Blocked? (Deps Missing)
-1. `uvx vectl show <id>`        — Identify missing deps
-2. `uvx vectl search <term>`    — Find the blocker
+1. `vectl show <id>`        — Identify missing deps
+2. `vectl search <term>`    — Find the blocker
 3. **Pivot**                — Work on parallel steps
 
 > **Lock status is automatic.** Completing upstream steps unlocks
@@ -64,8 +65,8 @@ GUIDE_STUCK = """\
 ## Lock Status Wrong? (After Manual YAML Edit)
 If you (or a tool) edited `plan.yaml` directly and lock status looks wrong:
 ```
-uvx vectl recalc-lock           # fix immediately
-uvx vectl recalc-lock --dry-run # preview changes first
+vectl recalc-lock           # fix immediately
+vectl recalc-lock --dry-run # preview changes first
 ```
 Under normal agent workflow this is never needed — lock status recalculates
 on every `claim`, `complete`, or `mutate`.
@@ -74,26 +75,26 @@ on every `claim`, `complete`, or `mutate`.
 When claim state diverges from plan state:
 
 ```
-uvx vectl repair claims --dry-run     # diagnose (read-only)
-uvx vectl repair claims               # repair all
-uvx vectl repair claims --step <id>   # repair specific step
-uvx vectl repair claims --dry-run --json  # machine-readable
+vectl repair claims --dry-run     # diagnose (read-only)
+vectl repair claims               # repair all
+vectl repair claims --step <id>   # repair specific step
+vectl repair claims --dry-run --json  # machine-readable
 ```
 
-See `uvx vectl guide recovery` for full runbook.
+See `vectl guide recovery` for full runbook.
 """
 
 GUIDE_REVIEW = """\
 # Review & Validation
 
 ## Situational Awareness
-1. `uvx vectl review`           — Deep scan (L1:Valid → L4:Specs)
-2. `uvx vectl review --all`     — Full history (audit trail)
+1. `vectl review`           — Deep scan (L1:Valid → L4:Specs)
+2. `vectl review --all`     — Full history (audit trail)
 
 ## Gatekeeping
-1. `uvx vectl validate`         — Check structural integrity
-2. `uvx vectl gate-check <ph>`  — Check phase completion
-3. `uvx vectl validate --check-refs` — Audit file references
+1. `vectl validate`         — Check structural integrity
+2. `vectl gate-check <ph>`  — Check phase completion
+3. `vectl validate --check-refs` — Audit file references
 
 > Always review before starting a complex phase.
 """
@@ -102,15 +103,15 @@ GUIDE_PLANNING = """\
 # Architect Protocol
 
 ## 1. Orient
-`uvx vectl status` → `uvx vectl review` (Context load)
+`vectl status` → `vectl review` (Context load)
 
 ## 2. Mutate
-- `uvx vectl add-phase --name "..."`
-- `uvx vectl add-step --phase <p> --name "..." --after <dep> --evidence-template "..."`
-- `uvx vectl edit-step <id> --desc "..." --verify "..." --refs "..."`
-- `uvx vectl edit-plan --project-guidance-file <path>`
-- `uvx vectl move-step <step> --target-phase <phase>` — Move step between phases
-- `uvx vectl skip-phase <phase> -r superseded` — Clean up empty/merged phases
+- `vectl add-phase --name "..."`
+- `vectl add-step --phase <p> --name "..." --after <dep> --evidence-template "..."`
+- `vectl edit-step <id> --desc "..." --verify "..." --refs "..."`
+- `vectl edit-plan --project-guidance-file <path>`
+- `vectl move-step <step> --target-phase <phase>` — Move step between phases
+- `vectl skip-phase <phase> -r superseded` — Clean up empty/merged phases
 
 ## 3. Intelligent Guidance (The "Why")
 Your goal is to make the *next* agent (the Worker) succeed without guessing.
@@ -136,15 +137,15 @@ Ambiguity = Hallucination.
 ## 4. Restructuring Phases
 When reorganizing phases for better dependency granularity:
 
-1. **Move steps** to target phase: `uvx vectl move-step <step> --target-phase <target>`
-2. **Skip the now-empty phase**: `uvx vectl skip-phase <empty> -r superseded`
+1. **Move steps** to target phase: `vectl move-step <step> --target-phase <target>`
+2. **Skip the now-empty phase**: `vectl skip-phase <empty> -r superseded`
 3. **For locked phases**: Empty ones skip freely; non-empty need `--force`
 
 > Why? Lock protects work. Zero steps = zero work = nothing to protect.
 
 ## 5. Verify
-- `uvx vectl validate` (Mandatory before commit)
-- `uvx vectl search <term>` (Check for dupes)
+- `vectl validate` (Mandatory before commit)
+- `vectl search <term>` (Check for dupes)
 """
 
 
@@ -156,7 +157,7 @@ issue tracker), use this workflow to migrate it into plan.yaml.
 
 ## Prerequisites
 
-Run `uvx vectl init --project <name>` first. This creates an empty plan.yaml and
+Run `vectl init --project <name>` first. This creates an empty plan.yaml and
 configures AGENTS.md (or CLAUDE.md for Claude Code projects).
 
 ## Rules
@@ -212,10 +213,10 @@ requirement), use the migration tool to repair:
 
 ```bash
 # Preview the changes (dry-run)
-uvx vectl migrate-step-id --dry-run
+vectl migrate-step-id --dry-run
 
 # Apply the migration
-uvx vectl migrate-step-id --yes
+vectl migrate-step-id --yes
 ```
 
 The migration tool will:
@@ -233,7 +234,7 @@ When a targeted command (claim, complete, etc.) hits an ambiguous duplicate,
 the command fails with structured repair guidance and does not mutate state:
 
 ```bash
-$ uvx vectl claim login
+$ vectl claim login
 Error: Ambiguous step ID 'login' appears in: auth, api
 Recommendation: run 'vectl migrate-step-id --dry-run' then 'vectl migrate-step-id --yes'
 ```
@@ -244,7 +245,7 @@ After migration, update any scripts or automation that reference old step IDs:
 
 ```bash
 # Get the mapping
-uvx vectl migrate-step-id --dry-run --json
+vectl migrate-step-id --dry-run --json
 
 # Update your scripts to use new IDs
 # Old: vectl claim login
@@ -258,15 +259,15 @@ uvx vectl migrate-step-id --dry-run --json
 2. **Build** plan.yaml incrementally.
 
    **CLI Users** (terminal):
-   - `uvx vectl add-phase --phase-id <id> --name "<name>"`
-   - `uvx vectl add-step --phase-id <id> --step-id <id> --name "<name>"`
-   - `uvx vectl add-step ... --description "<desc>" --depends-on "dep1,dep2"`
+   - `vectl add-phase --phase-id <id> --name "<name>"`
+   - `vectl add-step --phase-id <id> --step-id <id> --name "<name>"`
+   - `vectl add-step ... --description "<desc>" --depends-on "dep1,dep2"`
 
    **MCP Agents** (Claude/Cursor):
    - Use `vectl_mutate` tool with `action="add-phase"` or `action="add-step"`.
    - Arguments map 1:1 (e.g., `--depends-on` → `depends_on=["dep1", "dep2"]`).
 
-3. **Verify** with `uvx vectl render` — compare against the original plan.
+3. **Verify** with `vectl render` — compare against the original plan.
    - Every phase accounted for?
    - Every step accounted for?
    - Dependencies correct?
@@ -281,8 +282,8 @@ uvx vectl migrate-step-id --dry-run --json
 
 ## What Goes Where
 
-- **Phase headings** in source doc → `uvx vectl add-phase` (or `vectl_mutate action=add-phase`)
-- **Step items** under each phase → `uvx vectl add-step` (or `vectl_mutate action=add-step`)
+- **Phase headings** in source doc → `vectl add-phase` (or `vectl_mutate action=add-phase`)
+- **Step items** under each phase → `vectl add-step` (or `vectl_mutate action=add-step`)
 - **Dependencies** between steps → `--depends-on` (or `depends_on=[...]`)
 - **Context/descriptions** → `--description` / `--context`
 
@@ -298,8 +299,8 @@ uvx vectl migrate-step-id --dry-run --json
 ## Tips
 
 - **Tip:** vectl searches parent directories for `plan.yaml` automatically.
-- Use `uvx vectl review` after building to check for orphan deps or missing verifications.
-- Mark already-completed steps: `uvx vectl complete <step-id> --evidence "pre-migration: done"`.
+- Use `vectl review` after building to check for orphan deps or missing verifications.
+- Mark already-completed steps: `vectl complete <step-id> --evidence "pre-migration: done"`.
 - One phase at a time. Verify as you go — don't build the entire plan in one pass.
 - **Important:** Always use globally unique step IDs. When in doubt, prefix with phase ID.
 """
@@ -321,10 +322,10 @@ symptom recognition and the recovery workflow.
 
 **Example error**:
 ```
-$ uvx vectl claim auth.user-model
+$ vectl claim auth.user-model
 Error: Step 'auth.user-model' is already claimed on branch 'main'
 
-$ uvx vectl show auth.user-model
+$ vectl show auth.user-model
 status: pending
 claimed_by: null
 ```
@@ -333,16 +334,16 @@ claimed_by: null
 
 ```bash
 # 1. Preview changes (safe, read-only)
-uvx vectl repair claims --dry-run
+vectl repair claims --dry-run
 
 # 2. Machine-readable output (CI/scripting)
-uvx vectl repair claims --dry-run --json
+vectl repair claims --dry-run --json
 
 # 3. Repair all claims on current branch
-uvx vectl repair claims
+vectl repair claims
 
 # 4. Repair specific step only (scoped)
-uvx vectl repair claims --step auth.user-model
+vectl repair claims --step auth.user-model
 ```
 
 ## Flags
@@ -373,18 +374,18 @@ No repair needed — claims.json already matches plan.yaml.
 
 ```bash
 # Step 1: Diagnose
-uvx vectl repair claims --dry-run --json
+vectl repair claims --dry-run --json
 
 # Step 2: If changes needed, review them
 # Look for "ghost_claim_or_non_claimed_step" or "stale_claim_entry"
 
 # Step 3: Apply repair
-uvx vectl repair claims
+vectl repair claims
 
 # Step 4: Verify
-uvx vectl status
-uvx vectl show <step-id>
-uvx vectl repair claims --dry-run  # should show no changes
+vectl status
+vectl show <step-id>
+vectl repair claims --dry-run  # should show no changes
 ```
 
 ## MCP Equivalent

@@ -309,7 +309,7 @@ class TestMermaidDag:
 
     def test_phase_dag_has_hint(self) -> None:
         mmd = generate_mermaid_dag(self._dag_plan())
-        assert "uvx vectl dag --phase" in mmd
+        assert "vectl dag --phase" in mmd
 
     def test_step_dag_has_flowchart_header(self) -> None:
         mmd = generate_mermaid_dag(self._dag_plan(), phase_id="core")

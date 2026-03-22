@@ -222,7 +222,7 @@ class TestInit:
         assert "## Plan Tracking (vectl)" in content
         assert "<!-- VECTL:AGENTS:BEGIN -->" in content
         assert "<!-- VECTL:AGENTS:END -->" in content
-        assert "uvx vectl guide" in content
+        assert "vectl guide" in content
         assert "VECTL:GUIDANCE:BEGIN" in content
 
     def test_init_appends_to_existing_agents_md(self, tmp_path: Path):
@@ -3217,7 +3217,7 @@ class TestDag:
 
     def test_dag_has_drill_hint(self, plan_file: Path) -> None:
         result = runner.invoke(app, ["dag", "--plan", str(plan_file)])
-        assert "uvx vectl dag --phase" in result.output
+        assert "vectl dag --phase" in result.output
 
 
 class TestDuplicateIdDiagnostics:
@@ -3751,8 +3751,8 @@ class TestClaimMismatchVisibility:
         # Run status - should show mismatch indicator
         result = runner.invoke(app, ["status", "--plan", str(plan_path)])
         assert result.exit_code == 0
-        assert "Claim mismatch detected" in result.output
-        assert "branch-scoped" in result.output.lower()
+        assert "Stale claims detected" in result.output
+        assert "routine" in result.output.lower()
 
     def test_status_shows_ghost_claims_count(self, tmp_path: Path) -> None:
         """B1: Status shows ghost claims count when present."""
@@ -3859,8 +3859,8 @@ class TestClaimMismatchVisibility:
 
         result = runner.invoke(app, ["status", "--plan", str(plan_path)])
         assert result.exit_code == 0
-        assert "vectl repair claims --dry-run" in result.output
         assert "vectl repair claims" in result.output
+        assert "safe, idempotent" in result.output
 
     def test_show_step_explains_mismatch(self, tmp_path: Path) -> None:
         """B2: Show step explains mismatch when detected."""

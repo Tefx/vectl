@@ -3,8 +3,8 @@
 # This file is owned by vectl. Direct edits bypass CAS write
 # protection, lock recalculation, and schema validation.
 #
-# Use: uvx vectl <command>  OR  vectl_* MCP tools
-# Docs: uvx vectl guide
+# Use: vectl_* MCP tools (preferred)  OR  vectl <command> (CLI fallback)
+# Docs: vectl guide  OR  MCP: vectl_guide
 # =============================================================
 version: 1
 project: vectl
@@ -26175,7 +26175,7 @@ phases:
       - none'
 - id: step-id-migration-tooling
   name: C / Migration & Tooling
-  status: in_progress
+  status: done
   depends_on:
   - step-id-validation-hardening
   steps:
@@ -27109,7 +27109,7 @@ phases:
       \ loop before rerun.\n\ndiscovered_issues:\n- none"
   - id: step-id-migration-tooling.fix-gate-blockers
     name: Fix gate blockers for migration tooling
-    status: claimed
+    status: done
     description: 'step_type: implementation
 
       agent_source: default
@@ -27334,9 +27334,76 @@ phases:
     agent: python-senior
     claimed_by: python-senior
     claimed_at: '2026-03-12T19:20:36.833264+00:00'
+    done_at: '2026-03-12T19:27:01.721240+00:00'
+    evidence: 'Commit hash(es):
+
+      - worker branch: 578fb73983eda7fdf06d7130575782a6fe7ad9eb
+
+      - main squash commit: 6076619
+
+
+      Files changed:
+
+      - docs/contracts/duplicate-id-migration-contract.yaml
+
+      - src/vectl/cli.py
+
+      - src/vectl/core.py
+
+      - src/vectl/guide.py
+
+      - tests/test_cli.py
+
+      - tests/test_duplicate_id_migration_contract.py
+
+      - tests/test_duplicate_id_migration_dag.py
+
+      - tests/test_mcp.py
+
+
+      Verification:
+
+      - uv run ruff check src/vectl/cli.py src/vectl/core.py src/vectl/guide.py tests/test_cli.py
+      tests/test_mcp.py tests/test_duplicate_id_migration_contract.py tests/test_duplicate_id_migration_dag.py
+      -> PASS
+
+      - uv run pytest -q tests/test_duplicate_id_migration_contract.py tests/test_duplicate_id_migration_dag.py
+      tests/test_cli.py::TestDuplicateIdDiagnostics::test_show_step_emits_structured_repair_recommendation
+      tests/test_mcp.py::TestVectlShow::test_show_step_duplicate_id_recommendation
+      tests/test_mcp.py::TestVectlClaim::test_claim_blocks_ambiguous_duplicate_target_without_opt_in
+      -> PASS (37 passed)
+
+      - rg -n "If you have legacy duplicate step IDs" src/vectl -> wrapped/clean emitters
+      only
+
+      - rg -n -- "--auto-migrate" src/vectl tests docs/contracts -> aligned references
+      for chosen path
+
+      - rg -n "coming in phase C" src/vectl tests -> no matches
+
+
+      Spec link:
+
+      - step-id-migration-tooling.gate/B1-B2
+
+
+      Gaps/Notes:
+
+      - B1 fixed: long-line lint issue resolved across duplicated guidance surfaces.
+
+      - B2 fixed via coherent path: removed unsupported active `--auto-migrate` behavior
+      claims from contract/guide/diagnostic surfaces (no wrapper implementation introduced
+      in this step).
+
+      - S1 evidence-wording cleanup not included in this bounded pass.
+
+
+      discovered_issues:
+
+      - none'
   - id: step-id-migration-tooling.retest-gate-blockers
     name: Independent retest of migration tooling gate blockers
-    status: pending
+    status: done
     description: 'step_type: verification
 
       agent_source: default
@@ -27454,15 +27521,63 @@ phases:
     depends_on:
     - step-id-migration-tooling.fix-gate-blockers
     agent: integration-verifier
+    claimed_by: integration-verifier
+    claimed_at: '2026-03-12T19:27:19.346330+00:00'
+    done_at: '2026-03-12T19:31:33.773250+00:00'
+    evidence: 'Commit hash(es): none (verification-only; no code changes)
+
+
+      Files changed:
+
+      - none
+
+
+      Verification:
+
+      - uv run ruff check src/vectl/cli.py src/vectl/core.py src/vectl/guide.py tests/test_cli.py
+      tests/test_duplicate_id_migration_contract.py tests/test_duplicate_id_migration_dag.py
+      tests/test_mcp.py -> All checks passed
+
+      - sibling length scan and `--auto-migrate` drift scan over affected contract/source/test
+      surfaces -> expected matches only; no unexpected new drift surface detected
+
+      - uv run pytest -v tests/test_duplicate_id_migration_contract.py tests/test_duplicate_id_migration_dag.py
+      -> 34 passed
+
+      - uv run pytest -v tests/test_cli.py -k "migrate_blocks_when_duplicate_targets_require_auto_migrate
+      or validate_duplicate_step_ids_are_hard_errors or gate_check_blocks_duplicate_step_id_plan
+      or status_shows_duplicate_diagnostics" -> 4 passed
+
+      - uv run pytest -v tests/test_mcp.py -k "dry_run_returns_report_and_evidence
+      or apply_returns_report_and_persists_migration_then_noops or show_step_duplicate_id_recommendation
+      or claim_blocks_ambiguous_duplicate_target_without_opt_in" -> 4 passed
+
+      - git status --short -> clean
+
+
+      Spec link:
+
+      - step-id-migration-tooling.retest-gate-blockers
+
+
+      Gaps/Notes:
+
+      - `pytest` binary not directly on PATH in this environment; used `uv run pytest`
+      for all checks.
+
+
+      discovered_issues:
+
+      - none'
 - id: step-id-final-integration
   name: Final Integration & Gate
-  status: locked
+  status: done
   depends_on:
   - step-id-migration-tooling
   steps:
   - id: step-id-final-integration.freeze-l2
     name: Freeze snapshot for final duplicate-id end-to-end proof
-    status: pending
+    status: done
     description: 'step_type: verification
 
       agent_source: default
@@ -27498,9 +27613,29 @@ phases:
 
       '
     agent: software-architect
+    claimed_by: software-architect
+    claimed_at: '2026-03-12T19:31:49.248936+00:00'
+    done_at: '2026-03-12T19:34:27.031675+00:00'
+    evidence: '## Freeze Record
+
+      - Commit: 2e10dd0765f1367c9c9fb814929848b41106b5ae
+
+      - Git status clean: yes
+
+      - Fixture: legacy duplicate-`gate` plan at tests/repro/fixtures/legacy_duplicate_plan.yaml
+
+      - Environment: Python 3.14.3 / uv 0.10.9 / macOS Darwin
+
+      - Freeze statement: no code changes until `step-id-final-integration.verify`
+      completes
+
+
+      discovered_issues:
+
+      - none'
   - id: step-id-final-integration.verify
     name: Run end-to-end duplicate-gate regression
-    status: pending
+    status: done
     description: "step_type: verification\nagent_source: default\nIndependence Level:\
       \ L2\nAs an INDEPENDENT TESTER (`blind-tester`), execute the full duplicate-step-ID\
       \ regression from legacy symptom to repaired plan.\n\nYOUR GOAL IS TO FIND PROBLEMS,\
@@ -27542,14 +27677,30 @@ phases:
     depends_on:
     - step-id-final-integration.freeze-l2
     agent: blind-tester
+    claimed_by: blind-tester
+    claimed_at: '2026-03-12T19:34:42.708588+00:00'
+    done_at: '2026-03-12T19:38:36.014408+00:00'
+    evidence: "Commit hash(es): none (verification-only; no code changes)\n\nFiles\
+      \ changed:\n- none\n\nVerification:\n- uv run vectl status --plan tests/repro/fixtures/legacy_duplicate_plan.yaml\
+      \ -> duplicate diagnostics visible pre-migration\n- uv run vectl validate --plan\
+      \ tests/repro/fixtures/legacy_duplicate_plan.yaml -> expected hard-error pre-migration\
+      \ (exit 1)\n- end-to-end harness (python) executing migrate-step-id dry-run/apply\
+      \ and post-checks -> PASS:\n  - dry-run status=recommendation_only with non-empty\
+      \ rename_map\n  - apply status=repair_applied with migrated=true\n  - post-migration\
+      \ validate passes and status no longer reports duplicate diagnostics\n  - DAG\
+      \ preservation verified with dependency rewrite (`phase_b_gate__dup2 --> phase_b_fanout`)\
+      \ and no edge-loss regression\n\nSpec link:\n- step-id-final-integration.verify\n\
+      \nGaps/Notes:\n- Executed in isolated worktree; repository files unchanged.\n\
+      \ndiscovered_issues:\n- none"
   - id: step-id-final-integration.freeze-gate
     name: Freeze snapshot for final gate
-    status: pending
+    status: done
     description: 'step_type: verification
 
       agent_source: default
 
-      Freeze the repository snapshot before the final duplicate-ID gate review.
+      Freeze the repository snapshot immediately before the rerun final duplicate-ID
+      gate review after batched remediation.
 
 
       Requirements:
@@ -27558,11 +27709,19 @@ phases:
 
       - confirm `git status` is clean
 
-      - declare review inputs (end-to-end evidence, migration outputs, DAG comparisons)
+      - declare review inputs (batched remediation evidence, independent retest evidence,
+      updated gate criteria, migration outputs, DAG comparisons)
 
-      - state that no code changes are allowed until the gate decision is recorded'
-    verification: '- Evidence includes commit SHA, clean-status confirmation, evidence
-      inventory, and freeze statement'
+      - state that no code changes are allowed until the rerun gate decision is recorded'
+    verification: '- `git rev-parse HEAD` recorded for the rerun review snapshot
+
+      - `git status` clean at freeze time
+
+      - Review inputs explicitly list batched remediation evidence, independent retest
+      evidence, and the final chosen gate criteria
+
+      - Statement recorded that no code changes are allowed until the rerun gate decision
+      completes'
     evidence_template: '## Gate Freeze Record
 
       - Commit: <git rev-parse HEAD>
@@ -27575,17 +27734,36 @@ phases:
 
       '
     depends_on:
-    - step-id-final-integration.verify
+    - step-id-final-integration.independent-retest-of-batched-gate-remediation
     agent: software-architect
+    claimed_by: software-architect
+    claimed_at: '2026-03-12T20:10:17.868312+00:00'
+    done_at: '2026-03-12T20:10:28.938710+00:00'
+    evidence: "## Gate Freeze Record\n- Commit: b2c6d93dacd0b92bfc526ba13b7a317f4c18518f\n\
+      - Git status clean: yes\n- Review inputs:\n  - Batched remediation evidence\
+      \ for B1/B2(+S1): contract/runtime/test/copy alignment and deterministic gate\
+      \ disposition\n  - Independent retest evidence validating chosen semantics and\
+      \ gate determinism\n  - Final gate criteria set (including explicit non-enforcement\
+      \ of `invar_invar_guard changed=false` for this bounded duplicate-ID gate)\n\
+      \  - Migration dry-run/apply outputs and DAG before/after comparison proving\
+      \ rewrite without edge loss\n- Freeze statement: no code changes until `step-id-final-integration.gate`\
+      \ completes\n\ndiscovered_issues:\n- none"
+    rejection_reason: Freeze evidence must be re-collected after batched remediation
+      and independent retest; prior freeze snapshot predates the new fix/retest loop.
+    rejection_history:
+    - reason: Freeze evidence must be re-collected after batched remediation and independent
+        retest; prior freeze snapshot predates the new fix/retest loop.
+      timestamp: '2026-03-12T19:52:45.945495+00:00'
+      reviewer: planner
   - id: step-id-final-integration.gate
     name: Final gate review for duplicate-id fix
-    status: pending
+    status: done
     description: 'step_type: gate
 
       agent_source: default
 
       As an INDEPENDENT REVIEWER (`gate-reviewer`), decide whether the duplicate-step-ID
-      ambiguity fix is ready to ship.
+      ambiguity fix is ready to ship after the batched remediation loop.
 
 
       review_depth: THOROUGH
@@ -27597,15 +27775,19 @@ phases:
 
       - bug impacts core plan targeting behavior and operator recovery workflows
 
-      - shipping without strong review risks stranded legacy plans, silent wrong-step
-      mutations, or unclear automation migration contracts
+      - gate must confirm the B1 semantic truth and B2 release-gate disposition are
+      both coherent and deterministic before release
 
 
       cross_cutting_focus:
 
       - resolver consistency across CLI and MCP
 
-      - phased rollout completed correctly from warning to hard error
+      - Phase-B `validate` semantics are internally consistent across contract, runtime
+      behavior, tests, and user-facing copy
+
+      - final release gate is deterministic about whether `invar_invar_guard changed=false`
+      is enforced
 
       - half-automatic targeted mutation behavior stays explicit and never silently
       mutates on read-only paths
@@ -27616,14 +27798,15 @@ phases:
 
       Independence: gate agent must not match any implementation agent in earlier
       phases.'
-    verification: '- Final end-to-end duplicate-gate regression completed successfully
+    verification: '- Independent retest confirms the chosen Phase-B `validate` semantics
+      align across contract, code, tests, and any touched CLI/MCP copy
 
-      - Evidence shows pre-fix symptom capture, read-only non-mutation, recommendation-only
-      error path, opt-in auto-migrate retry, post-fix claim/show behavior, and DAG
-      preservation
+      - Final gate criteria explicitly state whether `invar_invar_guard changed=false`
+      is enforced, and evidence matches that choice
 
-      - No unresolved blocker remains around backward compatibility, mapping clarity
-      for automation, or ambiguous-step handling
+      - Final end-to-end duplicate-gate regression and remediation evidence leave
+      no unresolved blocker around backward compatibility, mapping clarity for automation,
+      ambiguous-step handling, or release-gate determinism
 
       - Ready for release or follow-on versioning work'
     evidence_template: '## Final Gate Review Report
@@ -27640,8 +27823,321 @@ phases:
     depends_on:
     - step-id-final-integration.freeze-l2
     - step-id-final-integration.verify
+    - step-id-final-integration.fix-all-gate-blockers-and-copy-drift
+    - step-id-final-integration.independent-retest-of-batched-gate-remediation
     - step-id-final-integration.freeze-gate
     agent: gate-reviewer
+    claimed_by: gate-reviewer
+    claimed_at: '2026-03-12T20:10:50.937863+00:00'
+    done_at: '2026-03-12T20:19:34.478738+00:00'
+    evidence: "## Final Gate Review Report\n- End-to-end evidence quality: High\n\
+      - Blocking issues: none\n- Ship recommendation: yes\n- Follow-up debt:\n  -\
+      \ module size growth across cli/core/mcp_server/models\n  - broad exception\
+      \ swallow in dashboard DAG generation\n- Gate decision: OPEN\n\nAutomated gates:\n\
+      - uv run ruff check . -> All checks passed\n- uv run mypy src -> Success (18\
+      \ source files)\n- uv run pytest -q -> 1151 passed\n\nnotes:\n  suggestions:\n\
+      \    - \"Refactor oversized modules (`src/vectl/cli.py`, `src/vectl/core.py`,\
+      \ `src/vectl/mcp_server.py`, `src/vectl/models.py`) into smaller responsibility-focused\
+      \ units.\"\n  tech_debt:\n    - \"Replace/guard broad `except Exception` in\
+      \ `src/vectl/dashboard.py` per-phase DAG generation path with diagnosable handling.\"\
+      \n\ndiscovered_issues:\n- none"
+  - id: step-id-final-integration.fix-all-gate-blockers-and-copy-drift
+    name: Fix ALL gate blockers and copy drift
+    status: done
+    description: "step_type: implementation\nagent_source: default\npriority: HIGH\n\
+      spec_refs:\n- docs/contracts/duplicate-id-rollout-policy.yaml#phase-b-rollout-semantics\n\
+      - docs/contracts/duplicate-id-rollout-policy.yaml#operator-copy-templates\n\
+      - SPEC MISSING: release-gate policy for `invar_invar_guard changed=false`\n\
+      touch_paths:\n- docs/contracts/duplicate-id-rollout-policy.yaml\n- src/vectl/core.py\n\
+      - src/vectl/cli.py\n- tests/test_cli.py\n- final gate criteria/evidence text\
+      \ for duplicate-id release readiness\nharness_refs:\n- tests/test_cli.py duplicate-ID\
+      \ rollout coverage\n- final integration duplicate-ID end-to-end gate evidence\n\
+      Fix ALL of these, not just the first.\n\n## Blockers to Fix (ALL of these, not\
+      \ just the first)\n\n### B1: Phase-B rollout contract mismatch for `validate`\
+      \ semantics\nLocations:\n- docs/contracts/duplicate-id-rollout-policy.yaml:74\n\
+      - docs/contracts/duplicate-id-rollout-policy.yaml:267\n- src/vectl/core.py:219\n\
+      - src/vectl/cli.py:1687\n- tests/test_cli.py:3246\nRemediation:\n- Choose one\
+      \ truth for Phase-B legacy-duplicate `validate` semantics and align contract,\
+      \ core behavior, CLI exit semantics, tests, and operator-facing copy coherently.\n\
+      - If Phase B remains warning + exit code 0, remove any hard-error/exit-1 behavior\
+      \ and align tests/copy.\n- If Phase B becomes hard-error + exit 1, update the\
+      \ contract and rollout/copy text everywhere so the policy is internally consistent.\n\
+      - Include S1 if feasible within the same change set: eliminate CLI/MCP duplicate-ID\
+      \ user-copy drift vs contract templates.\nGrep hint:\n- rg -n \"Phase B|phase\
+      \ B|warning|exit code 0|exit 1|hard-error|hard error|duplicate-ID|duplicate\
+      \ ID|legacy duplicate|validate semantics\" docs/contracts src/vectl tests/test_cli.py\n\
+      IMPORTANT: Search for sibling rollout/copy references beyond the listed locations.\n\
+      \n### B2: `invar_invar_guard` full-scan failure disposition is undefined\nLocations:\n\
+      - release/final gate criteria and evidence for duplicate-ID readiness\n- any\
+      \ plan/gate text or harness expectations referencing `invar_invar_guard changed=false`\n\
+      Remediation:\n- Make the final gate deterministic by choosing and encoding an\
+      \ explicit disposition:\n  1. if `invar_invar_guard changed=false` is an enforced\
+      \ release criterion, add the required suppression/fix work to satisfy that criterion\
+      \ now; OR\n  2. if it is not enforced for this release, remove it from gate\
+      \ criteria/evidence and document the rationale so the gate no longer ambiguously\
+      \ blocks on 198 unrelated static errors.\n- The chosen disposition must be reflected\
+      \ consistently in the remediation evidence expectations and final gate criteria.\n\
+      Grep hint:\n- rg -n \"invar_guard|invar_invar_guard|changed=false|full-scan|full\
+      \ scan|ruff|mypy|pytest|release gate|gate criteria\" .\nIMPORTANT: Search for\
+      \ sibling gate criteria references beyond the first failing mention.\n\n## Completion\
+      \ Criteria\n- ALL blockers fixed (not just B1)\n- One explicit truth chosen\
+      \ for Phase-B `validate` semantics and reflected in contract/code/tests/copy\n\
+      - Final gate criteria are deterministic about whether `invar_invar_guard changed=false`\
+      \ is enforced\n- If S1 is included, CLI/MCP duplicate-ID copy matches the chosen\
+      \ contract templates\n- Sibling search completed for rollout/copy and gate-criteria\
+      \ references; no inconsistent remnants remain\n\n## Out of Scope Guardrail\n\
+      - Do not start unrelated cleanup of the 198 static errors unless that cleanup\
+      \ is required by the chosen release-gate disposition for this exact fix loop."
+    verification: '- Main path: targeted regression proves the chosen Phase-B `validate`
+      semantics match contract, CLI behavior, and tests
+
+      - Failure path: focused regression covers the opposite legacy-duplicate branch
+      (warning/exit-0 vs hard-error/exit-1) so the chosen truth is unambiguous
+
+      - Gate determinism: evidence states whether `invar_invar_guard changed=false`
+      is enforced, and either shows the passing enforcement path or confirms the criterion
+      was removed from the final gate text
+
+      - Proof: sibling search evidence shows no remaining duplicate-ID rollout/copy
+      drift in CLI/MCP templates where this phase claims alignment'
+    evidence_template: "## Batched Gate Remediation Evidence\n\n**Chosen truth for\
+      \ B1**: <warning+exit0 | hard-error+exit1>\n**Rationale**: <why this truth is\
+      \ authoritative>\n\n### B1 alignment\n- Contract locations updated: <paths:lines>\n\
+      - Code locations updated: <paths:lines>\n- Test locations updated: <paths:lines>\n\
+      - Copy/template locations updated: <paths:lines or deferred note>\n- Sibling\
+      \ search command(s):\n  ```\n  <paste rg commands>\n  ```\n- Remaining mismatches:\
+      \ <none | list>\n\n### B2 disposition\n- Enforced gate? <yes|no>\n- Criterion\
+      \ source updated: <paths:lines>\n- If yes, exact command/outcome:\n  ```\n \
+      \ <command + relevant output>\n  ```\n- If no, rationale and updated deterministic\
+      \ gate wording: <text>\n\n### Completion check\n- ALL blockers addressed: <yes/no>\n\
+      - S1 included if feasible: <yes/no + note>\n"
+    depends_on:
+    - step-id-final-integration.verify
+    agent: python-senior
+    claimed_by: python-senior
+    claimed_at: '2026-03-12T19:53:41.288737+00:00'
+    done_at: '2026-03-12T20:00:46.729101+00:00'
+    evidence: 'Commit hash(es):
+
+      - worker branch: 820665e
+
+      - main squash commit: b2bf4ad
+
+
+      Files changed:
+
+      - docs/contracts/duplicate-id-rollout-policy.yaml
+
+
+      Verification:
+
+      - sibling scans for phase-B validate semantics + ambiguous-target payload/copy
+      + gate criterion references show coherent post-remediation text in contract
+      scope
+
+      - uv run pytest tests/test_cli.py::TestDuplicateIdDiagnostics -v -> 10 passed
+
+      - uv run pytest tests/test_mcp.py -k duplicate -v -> 10 passed
+
+      - uv run pytest tests/test_validation.py::TestLegacyDuplicateStepIdHardErrors
+      -v -> 3 passed
+
+      - focused targeted tests around hard-error validate + duplicate-id guidance
+      -> passed
+
+      - invar_invar_guard changed=false recorded as non-enforced criterion per chosen
+      B2 disposition
+
+
+      Spec link:
+
+      - step-id-final-integration.gate/B1-B2
+
+
+      Gaps/Notes:
+
+      - B1 resolution: contract aligned to implemented/runtime truth (Phase-B validate
+      hard-error + exit 1 for legacy duplicates).
+
+      - S1 included: copy/template alignment for ambiguous-target payload semantics
+      in contract guidance.
+
+      - B2 resolution: deterministic release-gate disposition documented (`invar_invar_guard
+      changed=false` explicitly not enforced for this bounded duplicate-ID release
+      gate).
+
+      - Repository-wide invar full-scan findings remain out of scope for this step.
+
+
+      discovered_issues:
+
+      - invar_invar_guard full scan still reports large unrelated static-analysis
+      backlog'
+  - id: step-id-final-integration.independent-retest-of-batched-gate-remediation
+    name: Independent retest of batched gate remediation
+    status: done
+    description: 'step_type: verification
+
+      agent_source: default
+
+      Independence Level: L2
+
+      spec_refs:
+
+      - docs/contracts/duplicate-id-rollout-policy.yaml#phase-b-rollout-semantics
+
+      - docs/contracts/duplicate-id-rollout-policy.yaml#operator-copy-templates
+
+      - final gate criteria after B2 disposition
+
+      harness_refs:
+
+      - tests/test_cli.py duplicate-ID rollout cases
+
+      - final integration duplicate-ID end-to-end proof path
+
+      As an INDEPENDENT TESTER (`blind-tester`), validate the batched remediation
+      from a fresh perspective.
+
+
+      YOUR GOAL IS TO FIND PROBLEMS, not to confirm it works.
+
+
+      Retest for:
+
+      - B1 contract alignment: the chosen Phase-B `validate` semantics match contract
+      text, CLI/core behavior, and test expectations
+
+      - B2 release-gate determinism: the final gate now has one explicit, reproducible
+      policy for `invar_invar_guard changed=false`
+
+      - S1 copy alignment if touched: CLI/MCP duplicate-ID user copy matches the chosen
+      contract templates
+
+      - Regression risk: no lingering mixed semantics (warning text with exit 1, hard-error
+      text with exit 0, or contract text contradicting code/tests)
+
+
+      Document ALL findings. A retest that discovers issues is a SUCCESS.'
+    verification: '- Re-run the chosen gate criteria relevant to duplicate-ID rollout
+      readiness
+
+      - Validate contract/copy alignment with concrete evidence from docs + CLI/test
+      behavior
+
+      - If `invar_invar_guard changed=false` remains enforced, record the exact enforced
+      command and outcome; if removed, record the updated gate wording showing it
+      is no longer a blocker
+
+      - Report any blocker/should-fix findings instead of papering over them'
+    evidence_template: '## Independent Retest Report
+
+
+      **Tester**: blind-tester
+
+      **Scope**: batched remediation for B1+B2 (+S1 if touched)
+
+      **Independence Level**: L2
+
+
+      ### Commands / checks executed
+
+      ```
+
+      <paste exact commands/tests reviewed or run>
+
+      ```
+
+
+      ### B1 contract alignment
+
+      - Authoritative semantics observed: <warning+exit0 | hard-error+exit1>
+
+      - Contract evidence: <path:line>
+
+      - Runtime/test evidence: <path:line or command output>
+
+      - Mismatch found? <no | describe>
+
+
+      ### B2 gate determinism
+
+      - Enforced gate criterion? <yes|no>
+
+      - Evidence: <command output or updated gate text>
+
+      - Ambiguity remains? <no | describe>
+
+
+      ### S1 copy alignment
+
+      - Checked surfaces: <CLI | MCP | both>
+
+      - Drift found? <no | describe>
+
+
+      ### Verdict
+
+      - PASS | ISSUES_FOUND | INCOMPLETE
+
+      '
+    depends_on:
+    - step-id-final-integration.fix-all-gate-blockers-and-copy-drift
+    agent: blind-tester
+    claimed_by: blind-tester
+    claimed_at: '2026-03-12T20:01:05.533449+00:00'
+    done_at: '2026-03-12T20:07:20.426472+00:00'
+    evidence: 'Commit hash(es): none (validation-only retest; no repository edits)
+
+
+      Files changed:
+
+      - none
+
+
+      Verification:
+
+      - uv run vectl validate --plan tests/repro/fixtures/legacy_duplicate_plan.yaml
+      -> expected hard-error duplicate-id output with repair guidance
+
+      - uv run vectl gate-check p1 --plan tests/repro/fixtures/legacy_duplicate_plan.yaml
+      -> deterministic block on validation failure
+
+      - uv run vectl status --plan tests/repro/fixtures/legacy_duplicate_plan.yaml
+      -> read-surface warning diagnostics retained
+
+      - uv run pytest -q tests/test_cli.py -k "validate_duplicate_step_ids_are_hard_errors
+      or gate_check_blocks_duplicate_step_id_plan or show_step_emits_structured_repair_recommendation"
+      -> PASS (3 passed)
+
+      - uv run pytest -q tests/test_mcp.py::TestVectlShow::test_show_step_duplicate_id_recommendation
+      tests/test_validation.py::TestLegacyDuplicateStepIdHardErrors::test_duplicate_step_id_is_error
+      tests/test_validation.py::TestLegacyDuplicateStepIdHardErrors::test_duplicate_step_id_error_includes_repair_guidance
+      -> PASS (3 passed)
+
+      - grep contract for `release_gate_disposition` and `invar_invar_guard_changed_false.enforced:
+      false` -> explicit deterministic B2 criterion present
+
+      - git status --short -> clean
+
+
+      Spec link:
+
+      - step-id-final-integration.independent-retest-of-batched-gate-remediation
+
+
+      Gaps/Notes:
+
+      - B1 contract/runtime/test alignment confirmed for chosen hard-error semantics.
+
+      - B2 disposition confirmed explicit and deterministic in contract wording.
+
+      - S1 copy alignment checked via CLI/MCP recommendation tests.
+
+
+      discovered_issues:
+
+      - none'
 - id: p0-cycle-detection
   name: 'P0: edit_step Cycle Detection'
   status: done
@@ -29072,3 +29568,1009 @@ phases:
       discovered_issues:
 
       - none'
+- id: decide-contracts
+  name: 'vectl_decide: Contracts'
+  status: done
+  gate: All models defined in models.py, all function stubs in decide.py, mypy passes,
+    no implementation logic present.
+  context: Contract-first phase for vectl_decide (RFC-decide.md). Define Pydantic
+    models and function stubs. No implementation logic.
+  steps:
+  - id: decide-contracts.models
+    name: models
+    status: done
+    description: 'Add vectl_decide Pydantic models to src/vectl/models.py.
+
+
+      step_type: contract
+
+      contract_purity: ENFORCED
+
+
+      Models to add (append after existing models):
+
+      1. RunningTask(BaseModel): step_id: str, agent: str, task_id: str, dispatched_at:
+      float
+
+      2. CompletedResult(BaseModel): step_id: str, task_id: str, status: str, output_summary:
+      str
+
+      3. Decision(BaseModel): decision: str, step_id: str | None, why: str
+
+      4. Action(BaseModel): action: Literal[claim_and_dispatch, complete, wait, escalate],
+      step_id, agent, session, task_id, step_description, step_verification, step_refs,
+      evidence, reason, context (all Optional)
+
+      5. DecideOutput(BaseModel): actions: list[Action], continuation: bool, halt_reason:
+      str | None, decision_log: list[Decision]
+
+
+      Pattern: Follow existing Pydantic model style in models.py.
+
+      File: src/vectl/models.py
+
+      Spec: docs/RFC-decide.md Input Schema + Output Schema'
+    verification: uv run mypy src/vectl/models.py -- PASS; uv run ruff check src/vectl/models.py
+      -- PASS; All 5 models importable; No implementation logic present
+    refs:
+    - docs/RFC-decide.md
+    - src/vectl/models.py
+    agent: python-executor
+    claimed_by: python-executor
+    claimed_at: '2026-03-14T19:30:19.903587+00:00'
+    done_at: '2026-03-14T19:38:35.469475+00:00'
+    evidence: 'Artifact:
+
+      - Worker commit: d921ebb6ba2d9758032aa7494d8e0c748fa0a4d6
+
+      - Orchestrator squash commit on main: 81358c1
+
+
+      Verification:
+
+      - Run: uv run mypy src/vectl/models.py -> PASS (no errors)
+
+      - Run: uv run ruff check src/vectl/models.py -> PASS (All checks passed)
+
+      - Run: uv run python -c "from vectl.models import RunningTask, CompletedResult,
+      Decision, Action, DecideOutput" -> PASS
+
+      - Contract purity check: model-only definitions; no implementation logic added
+
+
+      Files changed:
+
+      - src/vectl/models.py
+
+
+      Spec link:
+
+      - docs/RFC-decide.md (Input Schema lines 92-104; Output Schema lines 109-140)
+
+
+      Gaps/Notes:
+
+      - None'
+  - id: decide-contracts.decide-module-stubs
+    name: decide-module-stubs
+    status: done
+    description: 'Create src/vectl/decide.py with function stubs for vectl_decide
+      logic.
+
+
+      step_type: contract
+
+      contract_purity: ENFORCED
+
+
+      Module-level: REUSE_TTL=300, _completion_times: dict[str,float]={}, _session_registry:
+      dict[str,str]={}
+
+
+      Function stubs (raise NotImplementedError):
+
+      1. should_reuse_session(step_id: str, parent_step_id: str | None) -> tuple[bool,
+      str | None]
+
+      2. compute_continuation(plan: Plan, running_count: int, max_parallelism: int)
+      -> tuple[bool, str | None]
+
+      3. decide(running_tasks: list[RunningTask], completed_results: list[CompletedResult]
+      | None, max_parallelism: int) -> DecideOutput
+
+
+      Imports: vectl.models (RunningTask, CompletedResult, DecideOutput, Action, Decision,
+      Plan), vectl.core (get_next_steps), vectl.io (load_plan_definition)
+
+      File: src/vectl/decide.py (NEW)'
+    verification: uv run mypy src/vectl/decide.py -- PASS; uv run ruff check src/vectl/decide.py
+      -- PASS; Module importable; All functions raise NotImplementedError
+    refs:
+    - docs/RFC-decide.md
+    - src/vectl/decide.py
+    agent: python-executor
+    claimed_by: python-executor
+    claimed_at: '2026-03-14T19:31:26.805178+00:00'
+    done_at: '2026-03-14T19:38:43.915830+00:00'
+    evidence: 'Artifact:
+
+      - Worker commit: 87450eb
+
+      - Orchestrator squash commit on main: a0f78c0
+
+
+      Verification:
+
+      - Run: uv run mypy src/vectl/decide.py -> PASS (no issues found)
+
+      - Run: uv run ruff check src/vectl/decide.py -> PASS (All checks passed)
+
+      - Run: uv run python -c "import vectl.decide" -> PASS (module importable)
+
+      - Contract purity check: all specified functions raise NotImplementedError
+
+
+      Files changed:
+
+      - src/vectl/decide.py
+
+
+      Spec link:
+
+      - docs/RFC-decide.md (contract step for decide-module-stubs)
+
+
+      Gaps/Notes:
+
+      - Subagent referenced merging the models branch in its isolated branch; final
+      integrated change set for this step in main is scoped to src/vectl/decide.py
+      after prior models-step merge.'
+  - id: decide-contracts.gate
+    name: gate
+    status: done
+    description: 'Gate review: Verify decide-contracts phase completion.
+
+
+      review_depth: STANDARD
+
+
+      Review criteria:
+
+      1. All 5 Pydantic models defined in models.py
+
+      2. All 3 function stubs in decide.py
+
+      3. No implementation logic (stubs raise NotImplementedError)
+
+      4. Types match RFC-decide.md schemas exactly
+
+      5. mypy and ruff clean on both files
+
+      6. Existing models.py tests still pass'
+    verification: Contract purity verified; Type signatures match RFC; uv run mypy
+      src/vectl/models.py src/vectl/decide.py -- PASS; uv run pytest tests/test_models.py
+      -v -- PASS
+    depends_on:
+    - decide-contracts.models
+    - decide-contracts.decide-module-stubs
+    agent: gate-reviewer
+    claimed_by: gate-reviewer
+    claimed_at: '2026-03-14T19:39:00.897469+00:00'
+    done_at: '2026-03-14T19:42:32.644535+00:00'
+    evidence: 'Artifact:
+
+      - Reviewed integrated commits: 81358c1 (decide-contracts.models), a0f78c0 (decide-contracts.decide-module-stubs)
+
+      - Gate worktree branch: vectl/step-decide-contracts.gate (verify-only; no code
+      changes)
+
+
+      Verification:
+
+      - Structural check: 5 Pydantic models present in src/vectl/models.py (RunningTask,
+      CompletedResult, Decision, Action, DecideOutput)
+
+      - Structural check: 3 stubs present in src/vectl/decide.py with required signatures
+
+      - Contract purity check: each stub raises NotImplementedError; no implementation
+      logic added
+
+      - Run: uv run mypy src/vectl/models.py src/vectl/decide.py -> PASS (Success:
+      no issues found in 2 source files)
+
+      - Run: uv run ruff check src/vectl/models.py src/vectl/decide.py -> PASS (All
+      checks passed)
+
+      - Run: uv run pytest tests/test_models.py -v -> PASS (51 passed)
+
+      - RFC alignment check: types and fields match docs/RFC-decide.md Input Schema
+      + Output Schema
+
+
+      Spec link:
+
+      - docs/RFC-decide.md
+
+
+      Gaps/Notes:
+
+      - Non-goals for this gate: runtime behavior/integration of decide implementation
+      deferred to decide-impl phase.'
+- id: decide-tests
+  name: 'vectl_decide: Tests'
+  status: done
+  gate: All test files created, tests collect without error, coverage spans all RFC
+    scenarios.
+  context: Test definitions for vectl_decide. Tests written against plan fixtures
+    before implementation.
+  depends_on:
+  - decide-contracts
+  steps:
+  - id: decide-tests.unit-decide
+    name: unit-decide
+    status: done
+    description: 'Write unit tests for vectl_decide logic in tests/test_decide.py
+      (NEW file).
+
+
+      step_type: test
+
+
+      Test against plan fixtures (tmp_path). Follow tests/test_core.py pattern.
+
+
+      Tests to write:
+
+      1. test_compute_continuation_claimable_steps_returns_true - pending steps, running=0
+      -> (True, None)
+
+      2. test_compute_continuation_no_claimable_no_running - all done -> (False, NO_EXECUTABLE_STEPS)
+
+      3. test_compute_continuation_at_max_parallelism - running==max -> (False, AT_MAX_PARALLELISM)
+
+      4. test_compute_continuation_waiting_on_running - no claimable, running>0 ->
+      (False, WAITING_ON_RUNNING_SUBAGENTS)
+
+      5. test_should_reuse_session_no_parent - None -> (False, None)
+
+      6. test_should_reuse_session_within_ttl - 60s ago -> (True, task_id)
+
+      7. test_should_reuse_session_beyond_ttl - 600s ago -> (False, None)
+
+      8. test_should_reuse_session_no_registered_task - no task_id -> (False, None)
+
+      9. test_decide_returns_claim_actions - 2 claimable -> 2 claim_and_dispatch
+
+      10. test_decide_returns_wait_when_at_capacity - at max -> wait action
+
+      11. test_decide_completes_successful_results - SUCCESS -> complete action
+
+      12. test_decide_escalates_after_repeated_failures - 3+ FAIL -> escalate
+
+      13. test_decide_continuation_flag - matches compute_continuation
+
+
+      File: tests/test_decide.py (NEW)'
+    verification: uv run pytest tests/test_decide.py --collect-only -- 13 tests; uv
+      run ruff check tests/test_decide.py -- PASS; Tests expected to FAIL with NotImplementedError
+      until impl phase
+    refs:
+    - docs/RFC-decide.md
+    - tests/test_decide.py
+    - tests/test_core.py
+    agent: python-executor
+    claimed_by: python-executor
+    claimed_at: '2026-03-14T19:42:45.633819+00:00'
+    done_at: '2026-03-14T19:46:49.960706+00:00'
+    evidence: 'Artifact:
+
+      - Worker commit: ff96156c28a5c1758e8e7c3891de17d1e635d60f
+
+      - Orchestrator squash commit on main: 9ec2c80
+
+
+      Verification:
+
+      - Run: uv run pytest tests/test_decide.py --collect-only -> PASS (13 tests collected)
+
+      - Run: uv run ruff check tests/test_decide.py -> PASS (All checks passed)
+
+      - Runtime execution intentionally deferred (stubs currently raise NotImplementedError
+      until decide-impl)
+
+
+      Files changed:
+
+      - tests/test_decide.py (new)
+
+
+      Spec link:
+
+      - docs/RFC-decide.md (compute_continuation / should_reuse_session / decide behavior)
+
+
+      Gaps/Notes:
+
+      - Runtime assertions against implementation behavior are expected to activate
+      in decide-impl; this step validates test definitions and collection.'
+  - id: decide-tests.unit-mcp-tool
+    name: unit-mcp-tool
+    status: done
+    description: 'Write MCP integration test for vectl_decide in tests/test_mcp.py
+      (APPEND).
+
+
+      step_type: test
+
+
+      Follow existing test_mcp.py pattern: import tool, call directly with VECTL_PLAN_PATH
+      temp file.
+
+
+      Tests to add:
+
+      1. test_vectl_decide_returns_structured_output - claimable steps -> claim_and_dispatch
+      actions
+
+      2. test_vectl_decide_empty_plan - all done -> continuation=False
+
+      3. test_vectl_decide_with_running_tasks - capacity calculation correct
+
+
+      Import: from vectl.mcp_server import vectl_decide as _vectl_decide_tool
+
+
+      File: tests/test_mcp.py (APPEND)'
+    verification: uv run pytest tests/test_mcp.py --collect-only -- new tests collected;
+      Existing tests still collected; New tests expected to fail until impl.mcp-tool
+    refs:
+    - docs/RFC-decide.md
+    - tests/test_mcp.py
+    - src/vectl/mcp_server.py
+    agent: python-executor
+    claimed_by: python-executor
+    claimed_at: '2026-03-14T19:42:50.502887+00:00'
+    done_at: '2026-03-14T19:46:56.739427+00:00'
+    evidence: 'Artifact:
+
+      - Worker commit: e7af83b
+
+      - Orchestrator squash commit on main: 2af2e9d
+
+
+      Verification:
+
+      - Run: uv run pytest tests/test_mcp.py --collect-only -> PASS (174 tests collected;
+      includes 3 new vectl_decide tests)
+
+      - Run: uv run pytest tests/test_mcp.py -v -> Existing MCP tests PASS; new vectl_decide
+      tests fail with ImportError (expected before impl.mcp-tool)
+
+      - Structured-output assertions are defined for DecideOutput shape and continuation/halt
+      semantics
+
+
+      Files changed:
+
+      - tests/test_mcp.py (append)
+
+
+      Spec link:
+
+      - docs/RFC-decide.md (Input/Output Schema)
+
+
+      Gaps/Notes:
+
+      - Expected pre-implementation failure mode observed: cannot import/use vectl_decide
+      tool before implementation step.'
+  - id: decide-tests.gate
+    name: gate
+    status: done
+    description: "Gate review: Verify decide-tests phase completion after blocker\
+      \ remediation.\n\nstep_type: gate\nreview_depth: THOROUGH\nreview_depth_rationale:\n\
+      \  - Gate already surfaced blocking setup/model-fixture failures in `tests/test_decide.py`\n\
+      \  - Phase also carries documented pre-impl `NotImplementedError` / `ImportError`\
+      \ expectations that must remain explicit\n  - Cross-file test surfaces (`tests/test_decide.py`,\
+      \ `tests/test_mcp.py`) must agree on what is blocked vs expected-before-impl\n\
+      \nspec_refs:\n  - docs/RFC-decide.md\n  - tests/test_decide.py\n  - tests/test_mcp.py#Tool:\
+      \ vectl_decide\ntouch_paths:\n  - tests/test_decide.py\n  - tests/test_mcp.py\n\
+      harness_refs:\n  - tests/test_decide.py::_write_plan_with_steps\n  - tests/test_mcp.py::TestVectlDecide\n\
+      agent_source: default\n\nGate focus:\n1. Confirm the batched remediation closed\
+      \ BOTH blocker families:\n   - `/dev/null.lock` PermissionError from decide\
+      \ test fixture paths\n   - CLAIMED-step `claimed_by` validation failure\n2.\
+      \ Confirm retest evidence distinguishes fixed blockers from still-expected pre-impl\
+      \ `NotImplementedError` / `ImportError` behavior.\n3. Reject the phase if any\
+      \ sibling fixture still reproduces either blocker family or if expected pre-impl\
+      \ failures are no longer classified clearly."
+    verification: '- Retest evidence shows the former blocker tests no longer fail
+      with `/dev/null.lock` `PermissionError`
+
+      - Retest evidence shows no decide-test CLAIMED fixture fails validation for
+      missing `claimed_by`
+
+      - `uv run pytest tests/test_decide.py tests/test_mcp.py --collect-only` passes
+      after remediation
+
+      - Any remaining runtime failure before impl is explicitly limited to the documented
+      deferred `NotImplementedError` / `ImportError` expectations
+
+      - Ready for `decide-impl` only if blocker families are closed and pre-impl expectations
+      are crisply documented'
+    depends_on:
+    - decide-tests.retest-gate-blockers
+    agent: gate-reviewer
+    claimed_by: integration-verifier
+    claimed_at: '2026-03-14T20:08:28.910384+00:00'
+    done_at: '2026-03-14T20:12:37.584044+00:00'
+    evidence: "Artifact:\n- Gate reviewed on branch vectl/step-decide-tests.gate (verify-only;\
+      \ no code changes)\n- Inputs include remediation commit 15a3f37 and retest evidence\
+      \ from decide-tests.retest-gate-blockers\n\nVerification:\n- Run: uv run pytest\
+      \ tests/test_decide.py tests/test_mcp.py --collect-only -> PASS (full collection\
+      \ succeeds)\n- Run: uv run ruff check tests/test_decide.py tests/test_mcp.py\
+      \ -> PASS\n- Run: uv run pytest tests/test_models.py tests/test_core.py -v ->\
+      \ PASS (63 passed)\n- Runtime classification checks:\n  - decide contract tests\
+      \ fail only with expected NotImplementedError from decide stubs (pre-impl)\n\
+      \  - mcp vectl_decide tests fail only with expected ImportError (tool not yet\
+      \ implemented/registered pre-impl)\n- Blocker closure checks:\n  - no /dev/null.lock\
+      \ PermissionError path remains in decide fixtures\n  - no CLAIMED fixture missing\
+      \ claimed_by ValidationError remains in decide tests\n\nSpec link:\n- docs/RFC-decide.md\n\
+      - tests/test_decide.py\n- tests/test_mcp.py\n\nGaps/Notes:\n- Remaining pre-impl\
+      \ failures are explicitly documented contract expectations and correctly classified\
+      \ as deferred to decide-impl."
+  - id: decide-tests.fix-gate-blockers
+    name: fix-gate-blockers
+    status: done
+    description: "Batched remediation for decide-tests gate blockers.\n\nstep_type:\
+      \ implementation\npriority: HIGH\nagent_source: default\nspec_refs:\n  - docs/RFC-decide.md\n\
+      \  - tests/test_decide.py (unit-test contract and pre-impl NotImplementedError\
+      \ note)\n  - tests/test_mcp.py#Tool: vectl_decide\n\ntouch_paths:\n  - tests/test_decide.py\n\
+      \  - tests/test_mcp.py\nharness_refs:\n  - tests/test_decide.py::_write_plan_with_steps\n\
+      \  - tests/test_mcp.py::TestVectlDecide\n\nFix ALL blockers, not just the first.\n\
+      Search sibling fixtures/helpers before claiming done; do not patch only the\
+      \ listed line.\n\n## Blockers to Fix (ALL of these)\n\n### B1: /dev/null fixture\
+      \ path causes PermissionError on /dev/null.lock\n- Failure mode: tests using\
+      \ `_write_plan_with_steps(Path(\"/dev/null\"), ...)` call `save_plan()` and\
+      \ attempt to create `/dev/null.lock`, causing setup failure before the behavioral\
+      \ assertion runs.\n- Required remediation: replace the non-writable sentinel\
+      \ path with a real temp-path fixture pattern consistent with repo tests, or\
+      \ otherwise avoid lock-file creation while preserving plan-save coverage.\n\
+      - Grep hint: `rg -n 'Path\\(\"/dev/null\"\\)|save_plan\\(plan, path\\)' tests/test_decide.py`\n\
+      - Sibling search: inspect every `_write_plan_with_steps(...)` call in `tests/test_decide.py`,\
+      \ not just the first failing test.\n\n### B2: CLAIMED step fixture missing required\
+      \ claimed_by field\n- Failure mode: `StepStatus.CLAIMED` is used without `claimed_by`,\
+      \ triggering validation failure before orchestration behavior is exercised.\n\
+      - Required remediation: update the claimed fixture(s) to include a valid `claimed_by`\
+      \ value following existing model-test patterns; do not loosen model validation\
+      \ in this remediation loop unless a stronger repo-wide reason is found.\n- Grep\
+      \ hint: `rg -n 'StepStatus\\.CLAIMED' tests/test_decide.py tests/test_models.py\
+      \ tests/test_validation.py`\n- Sibling search: inspect all claimed-step fixtures\
+      \ added in the decide test surface, not only `test_compute_continuation_waiting_on_running`.\n\
+      \n## Additional should-fix context to preserve explicitly\n- `tests/test_mcp.py`\
+      \ vectl_decide tests may still fail before impl with ImportError; if that remains\
+      \ true, keep it documented and isolated instead of converting it into an untracked\
+      \ blocker.\n- Grep hint: `rg -n 'implementation may not exist yet|ImportError|vectl_decide'\
+      \ tests/test_mcp.py`\n\n## Completion Criteria\n- ALL blocker families above\
+      \ are fixed\n- Sibling search completed for each blocker family\n- No remaining\
+      \ `/dev/null.lock` setup path in decide tests\n- No decide-test CLAIMED fixture\
+      \ lacks `claimed_by`\n- Pre-impl ImportError/NotImplementedError expectations\
+      \ remain explicit where still expected"
+    verification: '- Run targeted regression coverage for the former setup-blocked
+      decide tests and show they no longer fail with `PermissionError` or `ValidationError`
+
+      - Prove sibling-search completion using the listed grep hints
+
+      - Keep remaining pre-impl `ImportError` / `NotImplementedError` expectations
+      explicit rather than silently broadening assertions'
+    depends_on:
+    - decide-tests.unit-decide
+    - decide-tests.unit-mcp-tool
+    agent: python-executor
+    claimed_by: python-executor
+    claimed_at: '2026-03-14T20:00:48.631056+00:00'
+    done_at: '2026-03-14T20:04:58.055532+00:00'
+    evidence: "Artifact:\n- Worker commit: ebdfc51\n- Orchestrator squash commit on\
+      \ main: 15a3f37\n\nVerification:\n- Run: rg -n 'Path\\(\"/dev/null\"\\)' tests/test_decide.py\
+      \ -> no matches\n- Run: rg -n 'StepStatus\\.CLAIMED' tests/test_decide.py tests/test_models.py\
+      \ tests/test_validation.py -> reviewed all hits; decide-test CLAIMED fixture\
+      \ now includes claimed_by\n- Targeted behavior checks:\n  - _write_plan_with_steps(path=None,\
+      \ ...) no longer triggers /dev/null.lock PermissionError path\n  - Step(status=CLAIMED,\
+      \ claimed_by='agent-1') validates successfully\n  - Step(status=CLAIMED) without\
+      \ claimed_by still raises ValidationError (model contract preserved)\n\nFiles\
+      \ changed:\n- tests/test_decide.py\n\nSpec link:\n- docs/RFC-decide.md\n- src/vectl/models.py\
+      \ CLAIMED/claimed_by validation contract\n\nGaps/Notes:\n- tests/test_mcp.py\
+      \ vectl_decide ImportError behavior remains explicit as expected-before-impl\
+      \ and is preserved for retest classification."
+  - id: decide-tests.retest-gate-blockers
+    name: retest-gate-blockers
+    status: done
+    description: "As an INDEPENDENT TESTER (`integration-verifier`), re-validate the\
+      \ decide-tests blocker remediation from a fresh perspective.\n\nstep_type: verification\n\
+      agent_source: default\nspec_refs:\n  - docs/RFC-decide.md\n  - tests/test_decide.py\n\
+      \  - tests/test_mcp.py#Tool: vectl_decide\n\ntouch_paths:\n  - tests/test_decide.py\n\
+      \  - tests/test_mcp.py\nharness_refs:\n  - tests/test_decide.py::_write_plan_with_steps\n\
+      \  - tests/test_mcp.py::TestVectlDecide\n\nValidate both blocker families and\
+      \ preserve expected pre-impl behavior.\n\nRequired checks:\n1. Former setup-blocked\
+      \ decide tests no longer hit `PermissionError` from `/dev/null.lock`.\n2. No\
+      \ decide-test CLAIMED fixture triggers `ValidationError` for missing `claimed_by`.\n\
+      3. `tests/test_decide.py` still documents any implementation-deferred `NotImplementedError`\
+      \ behavior explicitly rather than masking it.\n4. `tests/test_mcp.py` vectl_decide\
+      \ tests either collect/pass or fail only with the documented pre-impl `ImportError`;\
+      \ no new setup/import regressions are introduced.\n\nFinding remaining expected\
+      \ pre-impl ImportError/NotImplementedError is acceptable only if the evidence\
+      \ shows those are the documented deferred behaviors, not fixture/setup regressions."
+    verification: '- Main path: `uv run pytest tests/test_decide.py --collect-only`
+      passes and targeted decide tests execute without `/dev/null.lock` `PermissionError`
+      or CLAIMED-fixture `ValidationError`
+
+      - Main path: `uv run pytest tests/test_mcp.py --collect-only -k vectl_decide`
+      still collects the new MCP tests
+
+      - Failure-path classification: if runtime execution still fails before impl,
+      evidence must show the remaining failure is the expected documented `NotImplementedError`
+      or `ImportError`, with exact exception/location captured
+
+      - Proof: no other unexpected collection/setup regressions appear in these test
+      files'
+    depends_on:
+    - decide-tests.fix-gate-blockers
+    agent: integration-verifier
+    claimed_by: integration-verifier
+    claimed_at: '2026-03-14T20:05:18.081028+00:00'
+    done_at: '2026-03-14T20:08:17.003163+00:00'
+    evidence: 'Artifact:
+
+      - Independent verification branch: vectl/step-decide-tests.retest-gate-blockers
+      (verify-only, no code changes)
+
+
+      Verification:
+
+      - Run: uv run pytest tests/test_decide.py --collect-only -> PASS (13 collected)
+
+      - Run: uv run pytest tests/test_mcp.py --collect-only -k vectl_decide -> PASS
+      (3 collected, others deselected)
+
+      - Run: uv run pytest tests/test_decide.py -v -> runtime failures are NotImplementedError
+      at decide stubs (expected pre-impl)
+
+      - Run: uv run pytest tests/test_mcp.py -v -k vectl_decide -> runtime failures
+      are ImportError for vectl_decide tool registration (expected pre-impl)
+
+      - Classification check: no /dev/null.lock PermissionError observed; no CLAIMED
+      fixture missing claimed_by ValidationError observed
+
+      - Documentation check: tests and decide module explicitly note pre-impl NotImplementedError/ImportError
+      expectation
+
+
+      Spec link:
+
+      - docs/RFC-decide.md
+
+      - tests/test_decide.py
+
+      - tests/test_mcp.py
+
+
+      Gaps/Notes:
+
+      - Remaining failures are explicitly deferred-to-implementation behavior, not
+      setup regressions.'
+- id: decide-impl
+  name: 'vectl_decide: Implementation'
+  status: done
+  gate: All tests pass, mypy clean, ruff clean, no existing tests broken.
+  context: Core implementation of vectl_decide logic and MCP tool registration.
+  depends_on:
+  - decide-tests
+  steps:
+  - id: decide-impl.decide-logic
+    name: decide-logic
+    status: done
+    description: "Implement vectl_decide core logic in src/vectl/decide.py (replace\
+      \ NotImplementedError stubs).\n\nstep_type: implementation\n\nFunctions to implement:\n\
+      \n1. should_reuse_session(step_id, parent_step_id):\n   - No parent -> (False,\
+      \ None)\n   - Parent not in _completion_times -> (False, None)\n   - elapsed\
+      \ > REUSE_TTL (300s) -> (False, None)\n   - No task_id in _session_registry\
+      \ -> (False, None)\n   - Otherwise -> (True, task_id)\n\n2. compute_continuation(plan,\
+      \ running_count, max_parallelism):\n   - claimable = get_next_steps(plan); capacity\
+      \ = max_parallelism - running_count\n   - capacity>0 and claimable -> (True,\
+      \ None)\n   - running_count>0 -> (False, WAITING_ON_RUNNING_SUBAGENTS)\n   -\
+      \ no claimable -> (False, NO_EXECUTABLE_STEPS)\n   - else -> (False, AT_MAX_PARALLELISM)\n\
+      \n3. decide(running_tasks, completed_results, max_parallelism):\n   - Load plan\
+      \ via resolve_plan_path() + load_plan_definition()\n   - Process completed_results:\
+      \ record _completion_times/_session_registry, create complete/escalate actions\n\
+      \   - Escalation: 3+ FAIL same step_id -> escalate\n   - Claimable steps via\
+      \ get_next_steps(plan), session reuse check, claim_and_dispatch actions\n  \
+      \ - At capacity -> wait action\n   - Compute continuation, return DecideOutput\n\
+      \nFile: src/vectl/decide.py"
+    verification: uv run pytest tests/test_decide.py -v -- all 13 tests PASS; uv run
+      mypy src/vectl/decide.py -- PASS; uv run ruff check src/vectl/decide.py -- PASS
+    refs:
+    - docs/RFC-decide.md
+    - src/vectl/decide.py
+    - src/vectl/core.py
+    - src/vectl/plan_path.py
+    agent: python-executor
+    claimed_by: python-executor
+    claimed_at: '2026-03-14T20:12:52.926121+00:00'
+    done_at: '2026-03-14T20:18:34.237535+00:00'
+    evidence: 'Artifact:
+
+      - Worker commit: 333c842
+
+      - Orchestrator squash commit on main: ff883a3
+
+
+      Verification:
+
+      - Run: uv run pytest tests/test_decide.py -v -> PASS (13 passed)
+
+      - Run: uv run mypy src/vectl/decide.py -> PASS
+
+      - Run: uv run ruff check src/vectl/decide.py -> PASS
+
+
+      Files changed:
+
+      - src/vectl/decide.py
+
+
+      Spec link:
+
+      - docs/RFC-decide.md
+
+      - src/vectl/decide.py
+
+
+      Gaps/Notes:
+
+      - Core decide logic implemented: session reuse evaluation, continuation computation,
+      completed-result handling with escalation threshold, and claim/wait action generation.'
+  - id: decide-impl.mcp-tool
+    name: mcp-tool
+    status: done
+    description: "Add @mcp.tool() def vectl_decide(...) to src/vectl/mcp_server.py.\n\
+      \nstep_type: implementation\ntags: [integration]\n\n1. Add import: from vectl.decide\
+      \ import decide as _decide_impl\n2. Add import: from vectl.models import RunningTask,\
+      \ CompletedResult\n3. Add tool function after existing tools, before _unwrap_tool_fn:\n\
+      \   @mcp.tool(description='Deterministic orchestration advisor...')\n   def\
+      \ vectl_decide(running_tasks: list[RunningTask], completed_results: list[CompletedResult]\
+      \ | None = None, max_parallelism: int = 5) -> str:\n     result = _decide_impl(running_tasks,\
+      \ completed_results, max_parallelism)\n     # Format as Markdown (follow existing\
+      \ tool pattern)\n4. Update module docstring: 14 tools -> 15 tools, add vectl_decide\
+      \ to list\n\nIMPORTANT: Do NOT modify any existing tool functions.\n\nFile:\
+      \ src/vectl/mcp_server.py"
+    verification: uv run pytest tests/test_mcp.py -v -k decide -- 3 tests PASS; uv
+      run mypy src/vectl/mcp_server.py -- PASS; uv run ruff check src/vectl/mcp_server.py
+      -- PASS; Existing MCP tests still pass
+    refs:
+    - docs/RFC-decide.md
+    - src/vectl/mcp_server.py
+    - src/vectl/decide.py
+    depends_on:
+    - decide-impl.decide-logic
+    agent: python-executor
+    claimed_by: python-executor
+    claimed_at: '2026-03-14T20:18:52.945183+00:00'
+    done_at: '2026-03-14T20:27:43.414276+00:00'
+    evidence: 'Artifact:
+
+      - Worker commit: 5ca3d68
+
+      - Orchestrator squash commit on main: ca15ab7
+
+
+      Verification:
+
+      - Run: uv run pytest tests/test_mcp.py -v -k decide -> PASS (3 tests)
+
+      - Run: uv run pytest tests/test_mcp.py -v -> PASS (174 tests)
+
+      - Run: uv run mypy src/vectl/mcp_server.py -> PASS
+
+      - Run: uv run ruff check src/vectl/mcp_server.py -> PASS
+
+
+      Files changed:
+
+      - src/vectl/mcp_server.py
+
+
+      Spec link:
+
+      - docs/RFC-decide.md
+
+      - src/vectl/mcp_server.py
+
+
+      Gaps/Notes:
+
+      - Added vectl_decide MCP tool wiring and related imports/docstring count update
+      while preserving existing MCP tool behavior.'
+  - id: decide-impl.verify
+    name: verify
+    status: done
+    description: 'Independent verification of vectl_decide implementation.
+
+
+      Independence Level: L1
+
+
+      As an INDEPENDENT TESTER, validate the vectl_decide implementation.
+
+      YOUR GOAL IS TO FIND PROBLEMS.
+
+
+      Test for:
+
+      - Happy path: claimable steps -> claim_and_dispatch actions
+
+      - Edge cases: empty plan, all done, max parallelism, TTL boundary
+
+      - Error scenarios: invalid inputs, missing plan
+
+      - Integration: MCP tool callable, returns formatted output
+
+      - Regression: all existing tests still pass
+
+
+      Run: uv run pytest tests/test_decide.py tests/test_mcp.py -v
+
+      Run: uv run pytest tests/ -v (full suite)'
+    verification: uv run pytest tests/test_decide.py -v -- all PASS; uv run pytest
+      tests/test_mcp.py -v -- all PASS; uv run pytest tests/ -v -- full suite PASS;
+      uv run mypy src/vectl/decide.py src/vectl/mcp_server.py -- PASS
+    refs:
+    - tests/test_decide.py
+    - tests/test_mcp.py
+    - src/vectl/decide.py
+    - src/vectl/mcp_server.py
+    depends_on:
+    - decide-impl.mcp-tool
+    agent: integration-verifier
+    claimed_by: integration-verifier
+    claimed_at: '2026-03-14T20:27:55.796982+00:00'
+    done_at: '2026-03-14T20:32:21.111142+00:00'
+    evidence: 'Artifact:
+
+      - Independent verification branch: vectl/step-decide-impl.verify (verify-only;
+      no code changes)
+
+
+      Verification:
+
+      - Run: uv run pytest tests/test_decide.py tests/test_mcp.py -v -> PASS (187
+      passed)
+
+      - Run: uv run pytest tests/ -v -> PASS (1167 passed)
+
+      - Run: uv run mypy src/vectl/decide.py src/vectl/mcp_server.py -> PASS
+
+      - Coverage notes from verifier: decide.py ~82%, mcp_server.py ~90%
+
+      - Integration checks: vectl_decide MCP tool calls decide implementation and
+      returns structured serializable output
+
+      - Regression: no existing tests broken in full suite
+
+
+      Spec link:
+
+      - docs/RFC-decide.md
+
+      - tests/test_decide.py
+
+      - tests/test_mcp.py
+
+
+      Gaps/Notes:
+
+      - None reported; verification found no blocker or should-fix issues for this
+      phase.'
+  - id: decide-impl.gate
+    name: gate
+    status: done
+    description: 'Gate review: Verify decide-impl phase completion.
+
+
+      review_depth: THOROUGH
+
+      review_depth_rationale: Phase contains integration-tagged step (mcp-tool). MCP
+      server is a deployability-bearing surface.
+
+
+      Review criteria:
+
+      1. All implementation steps completed
+
+      2. decide.py logic matches RFC-decide.md exactly
+
+      3. MCP tool registered and callable
+
+      4. All 13 unit tests + 3 MCP tests pass
+
+      5. Full test suite passes (no regressions)
+
+      6. mypy and ruff clean
+
+      7. No existing MCP tools modified
+
+      8. In-memory state properly isolated
+
+
+      cross_cutting_focus:
+
+      - MCP tool returns well-formatted Markdown (consistent with other tools)
+
+      - No import side effects from decide.py on server startup'
+    verification: 'All tests pass: uv run pytest tests/ -v; mypy clean; ruff clean;
+      MCP tool callable; No existing tool behavior changed'
+    depends_on:
+    - decide-impl.verify
+    agent: gate-reviewer
+    claimed_by: gate-reviewer
+    claimed_at: '2026-03-14T20:32:41.894701+00:00'
+    done_at: '2026-03-14T20:40:35.007559+00:00'
+    evidence: 'Artifact:
+
+      - Gate review executed on verify-only branch vectl/step-decide-impl.gate (no
+      file modifications)
+
+
+      Verification:
+
+      - Run: uv run mypy src/vectl/decide.py src/vectl/mcp_server.py -> PASS (no issues
+      in 2 files)
+
+      - Run: uv run ruff check src/vectl/decide.py src/vectl/mcp_server.py -> PASS
+
+      - Run: uv run pytest tests/test_decide.py -v -> PASS (13 passed)
+
+      - Run: uv run pytest tests/test_mcp.py -v -k decide -> PASS (3 passed, others
+      deselected)
+
+      - Run: uv run pytest tests/ -v -> PASS (1167 passed)
+
+      - Review checks: implementation logic and MCP tool wiring align to phase criteria;
+      no regressions detected; existing MCP surfaces remain stable
+
+
+      Spec link:
+
+      - docs/RFC-decide.md
+
+      - src/vectl/decide.py
+
+      - src/vectl/mcp_server.py
+
+
+      Gaps/Notes:
+
+      - Cross-cutting criterion validated by gate review output: no blocker or should-fix
+      findings reported for decide-impl phase.'
+- id: decide-docs
+  name: 'vectl_decide: Documentation'
+  status: done
+  gate: README updated, tool count accurate, description matches RFC.
+  context: Update README.md and MCP server docstring to reflect vectl_decide (tool
+    15).
+  depends_on:
+  - decide-impl
+  steps:
+  - id: decide-docs.readme
+    name: readme
+    status: done
+    description: 'Update README.md to document vectl_decide tool.
+
+
+      simple_feature_exception: approved (single entry addition, obvious existing
+      pattern)
+
+
+      Changes:
+
+      1. Update tool count from 14 to 15
+
+      2. Add vectl_decide to tools list: ''vectl_decide -- Deterministic orchestration
+      advisor. Reads plan state, computes claimable steps, evaluates continuation
+      guard, returns structured action list.''
+
+      3. Match style of existing tool entries
+
+
+      File: README.md'
+    verification: README.md mentions vectl_decide; Tool count is 15; No other content
+      changed
+    refs:
+    - docs/RFC-decide.md
+    - README.md
+    agent: python-executor
+    claimed_by: python-executor
+    claimed_at: '2026-03-14T20:40:53.255998+00:00'
+    done_at: '2026-03-14T20:42:38.648866+00:00'
+    evidence: 'Artifact:
+
+      - Worker commit: 77b1260200569c0ebb46108fe60ed6c4d36f9259
+
+      - Orchestrator squash commit on main: 881722f
+
+
+      Verification:
+
+      - README now states 15 MCP tools
+
+      - README tool list includes vectl_decide entry in existing style
+
+      - Diff scope limited to README tool-count/list line (no unrelated content changes)
+
+
+      Files changed:
+
+      - README.md
+
+
+      Spec link:
+
+      - docs/RFC-decide.md
+
+
+      Gaps/Notes:
+
+      - Documentation-only update per simple_feature_exception scope.'
+  - id: decide-docs.gate
+    name: gate
+    status: done
+    description: 'Gate review: Verify decide-docs phase completion.
+
+
+      review_depth: QUICK
+
+
+      Review criteria:
+
+      1. README.md updated with vectl_decide entry
+
+      2. Tool count accurate (15)
+
+      3. Description matches RFC'
+    verification: README mentions vectl_decide with accurate description; Tool count
+      is 15; No unrelated changes
+    depends_on:
+    - decide-docs.readme
+    agent: gate-reviewer
+    claimed_by: integration-verifier
+    claimed_at: '2026-03-14T20:42:51.688192+00:00'
+    done_at: '2026-03-14T20:49:36.481294+00:00'
+    evidence: 'Artifact:
+
+      - Documentation gate reviewed on verify-only branch vectl/step-decide-docs.gate
+
+      - README update commit under review: 881722f
+
+
+      Verification:
+
+      - README now lists 15 MCP tools and explicitly includes vectl_decide in the
+      tool example list
+
+      - Description alignment check against docs/RFC-decide.md confirms vectl_decide
+      documented as deterministic orchestration advisor
+
+      - Diff-isolation check confirms docs step changed only README tool-count/list
+      entry as intended
+
+      - No unrelated documentation/content drift detected in gate review
+
+
+      Spec link:
+
+      - docs/RFC-decide.md
+
+      - README.md
+
+
+      Gaps/Notes:
+
+      - Quick gate passed with no blocker/should-fix findings.'

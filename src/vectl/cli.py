@@ -746,20 +746,20 @@ _AGENTS_MD_SNIPPET = f"""\
 vectl tracks this repo's implementation plan as a structured `plan.yaml`:
 what to do next, who claimed it, and what counts as done (with verification evidence).
 
-Full guide: `uvx vectl guide`
-Quick view: `uvx vectl status`
+Full guide: `vectl_guide` (CLI fallback: `vectl guide`)
+Quick view: `vectl_status` (CLI fallback: `vectl status`)
+
+### MCP vs CLI
+- Source of truth: `plan.yaml` (channel-agnostic).
+- **Always prefer MCP tools** (`vectl_status`, `vectl_claim`, `vectl_complete`, etc.) when available.
+- CLI fallback priority: `uv run vectl` > `vectl` > `uvx vectl`.
+- Evidence requirements are identical across MCP and CLI.
 
 ### Claim-time Guidance
-- `uvx vectl claim` may emit a bounded Guidance block delimited by:
+- `vectl claim` may emit a bounded Guidance block delimited by:
   - `--- VECTL:GUIDANCE:BEGIN ---`
   - `--- VECTL:GUIDANCE:END ---`
-- For automation/CI: use `uvx vectl claim --no-guidance` to keep stdout clean.
-
-### CLI vs MCP
-- Source of truth: `plan.yaml` (channel-agnostic).
-- If MCP is available (IDE / Claude host), prefer MCP tools for plan operations.
-- Otherwise use CLI (`uvx vectl ...`).
-- Evidence requirements are identical across CLI and MCP.
+- For automation/CI: use `vectl claim --no-guidance` to keep stdout clean.
 
 ### plan.yaml — Managed File (DO NOT EDIT DIRECTLY)
 
@@ -769,11 +769,11 @@ recalculation, and schema validation on every save, none of which run on direct
 edits.
 
 **To modify plan state, ONLY use:**
-- CLI: `uvx vectl claim`, `uvx vectl complete`, `uvx vectl mutate`, etc.
-- MCP: `vectl_claim`, `vectl_complete`, `vectl_mutate`, etc.
+- MCP (preferred): `vectl_claim`, `vectl_complete`, `vectl_mutate`, etc.
+- CLI (fallback): `uv run vectl claim`, `vectl claim`, or `uvx vectl claim`, etc.
 
 If a vectl command fails, report the error — do **not** edit `plan.yaml`
-directly as a workaround. Use `uvx vectl guide stuck` for troubleshooting.
+directly as a workaround. Use `vectl guide stuck` for troubleshooting.
 
 ### Rules
 - One claimed step at a time.
@@ -788,7 +788,7 @@ directly as a workaround. Use `uvx vectl guide stuck` for troubleshooting.
   to preview and `--yes` to repair.
 
 ### For Architects / Planners
-- **Design Mode**: Run `uvx vectl guide --on planning` to learn the Architect Protocol.
+- **Design Mode**: Run `vectl_guide` (CLI fallback: `vectl guide --on planning`) to learn the Architect Protocol.
 - **Ambiguity = Failure**: Workers will hallucinate if steps are vague.
 - **Constraint Tools**:
   - `--evidence-template`: Force workers to provide specific proof (e.g., "Paste logs here").
@@ -1084,19 +1084,16 @@ def status(
     # B1: Show mismatch indicator when detected
     if has_mismatch:
         out.print()
-        out.print("[yellow]⚠ Claim mismatch detected (branch-scoped):[/]")
+        out.print("[dim]ℹ Stale claims detected (routine after agent restart):[/]")
         if ghost_claims:
             out.print(
-                "  [dim]Ghost claims (in claims.json but not claimed in plan):[/] "
-                f"{len(ghost_claims)}"
+                f"  [dim]Ghost claims: {len(ghost_claims)}[/]"
             )
         if stale_plan_claims:
             out.print(
-                "  [dim]Stale plan claims (claimed in plan but missing from claims.json):[/] "
-                f"{len(stale_plan_claims)}"
+                f"  [dim]Stale plan claims: {len(stale_plan_claims)}[/]"
             )
-        out.print("[dim]  → Run `vectl repair claims --dry-run` to preview repair[/]")
-        out.print("[dim]  → Run `vectl repair claims` to auto-repair[/]")
+        out.print("[dim]  → Run `vectl repair claims` to fix (safe, idempotent)[/]")
 
     out.print()
     out.print("[dim]→ vectl next                      See claimable steps[/]")
@@ -1294,7 +1291,7 @@ def guide_cmd(
     """Show agent onboarding guide."""
     if on is None:
         combined = "\n---\n\n".join(g.strip() for g in _GUIDE_ALL)
-        combined += "\n\n---\n*Use `uvx vectl guide --on <topic>` to revisit one section.*"
+        combined += "\n\n---\n*Use `vectl_guide` (CLI fallback: `vectl guide --on <topic>`) to revisit one section.*"
         out.print(Markdown(combined))
     else:
         guide = _GUIDE_TOPICS.get(on)

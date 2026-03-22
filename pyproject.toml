@@ -1,6 +1,6 @@
 [project]
 name = "vectl"
-version = "0.6.3"
+version = "0.6.9"
 description = "Execution control plane for AI agents — structure agents, save tokens."
 readme = "README.md"
 authors = [{name = "Tefx", email = "zhaomeng.zhu@gmail.com"}]

@@ -301,3 +301,68 @@ def test_decide_continuation_flag() -> None:
     assert output.continuation in (True, False)
     if not output.continuation:
         assert isinstance(output.halt_reason, str | type(None))
+
+
+def test_decide_successor_visible_after_simulated_completion(tmp_path: Path) -> None:
+    """decide returns both complete AND claim_and_dispatch for successor in one batch.
+
+    Regression test: before the fix, decide() would return complete(A) but NOT
+    claim_and_dispatch(B) because B depends on A and A was not yet marked DONE
+    on disk. The fix simulates completions in-memory before computing claimable steps.
+    """
+    # A (claimed) -> B (pending, depends on A)
+    plan = Plan(
+        project="decide-test",
+        phases=[
+            Phase(
+                id="p1",
+                name="Phase 1",
+                status=PhaseStatus.PENDING,
+                steps=[
+                    Step(
+                        id="s1",
+                        name="Step A",
+                        status=StepStatus.CLAIMED,
+                        claimed_by="agent-1",
+                        agent="python-executor",
+                    ),
+                    Step(
+                        id="s2",
+                        name="Step B",
+                        status=StepStatus.PENDING,
+                        depends_on=["s1"],
+                        agent="python-executor",
+                    ),
+                ],
+            )
+        ],
+    )
+    plan_path = tmp_path / "plan.yaml"
+    save_plan(plan, plan_path)
+
+    import vectl.decide as decide_mod
+
+    # Patch resolve_plan_path to point at our temp plan
+    original = decide_mod.resolve_plan_path
+    decide_mod.resolve_plan_path = lambda: plan_path  # type: ignore[assignment]
+    try:
+        completed = [
+            CompletedResult(
+                step_id="s1",
+                task_id="task-1",
+                status="SUCCESS",
+                output_summary="Done",
+            ),
+        ]
+        output = decide(
+            running_tasks=[],
+            completed_results=completed,
+            max_parallelism=5,
+        )
+    finally:
+        decide_mod.resolve_plan_path = original  # type: ignore[assignment]
+
+    action_types = [(a.action, a.step_id) for a in output.actions]
+    # Must contain complete(s1) AND claim_and_dispatch(s2) in the same batch
+    assert ("complete", "s1") in action_types
+    assert ("claim_and_dispatch", "s2") in action_types

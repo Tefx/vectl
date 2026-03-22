@@ -2237,7 +2237,7 @@ def _mermaid_phase_dag(plan: Plan) -> str:
 
     # Hint
     lines.append("")
-    lines.append("%% Drill into a phase: uvx vectl dag --phase <id>")
+    lines.append("%% Drill into a phase: vectl dag --phase <id>")
 
     return "\n".join(lines)
 
@@ -2528,20 +2528,34 @@ _AGENTS_MD_SNIPPET = f"""\
 vectl tracks this repo's implementation plan as a structured `plan.yaml`:
 what to do next, who claimed it, and what counts as done (with verification evidence).
 
-Full guide: `uvx vectl guide`
-Quick view: `uvx vectl status`
+Full guide: `vectl_guide` (CLI fallback: `vectl guide`)
+Quick view: `vectl_status` (CLI fallback: `vectl status`)
+
+### MCP vs CLI
+- Source of truth: `plan.yaml` (channel-agnostic).
+- **Always prefer MCP tools** (`vectl_status`, `vectl_claim`, `vectl_complete`, etc.) when available.
+- CLI fallback priority: `uv run vectl` > `vectl` > `uvx vectl`.
+- Evidence requirements are identical across MCP and CLI.
 
 ### Claim-time Guidance
-- `uvx vectl claim` may emit a bounded Guidance block delimited by:
+- `vectl claim` may emit a bounded Guidance block delimited by:
   - `--- VECTL:GUIDANCE:BEGIN ---`
   - `--- VECTL:GUIDANCE:END ---`
-- For automation/CI: use `uvx vectl claim --no-guidance` to keep stdout clean.
+- For automation/CI: use `vectl claim --no-guidance` to keep stdout clean.
 
-### CLI vs MCP
-- Source of truth: `plan.yaml` (channel-agnostic).
-- If MCP is available (IDE / Claude host), prefer MCP tools for plan operations.
-- Otherwise use CLI (`uvx vectl ...`).
-- Evidence requirements are identical across CLI and MCP.
+### plan.yaml — Managed File (DO NOT EDIT DIRECTLY)
+
+`plan.yaml` is exclusively owned by vectl. Direct edits (Edit, Write, sed, or
+any file tool) **will** corrupt plan state — vectl performs CAS writes, lock
+recalculation, and schema validation on every save, none of which run on direct
+edits.
+
+**To modify plan state, ONLY use:**
+- MCP (preferred): `vectl_claim`, `vectl_complete`, `vectl_mutate`, etc.
+- CLI (fallback): `uv run vectl claim`, `vectl claim`, or `uvx vectl claim`, etc.
+
+If a vectl command fails, report the error — do **not** edit `plan.yaml`
+directly as a workaround. Use `vectl guide stuck` for troubleshooting.
 
 ### Rules
 - One claimed step at a time.
@@ -2556,7 +2570,7 @@ Quick view: `uvx vectl status`
   to preview and `--yes` to repair.
 
 ### For Architects / Planners
-- **Design Mode**: Run `uvx vectl guide --on planning` to learn the Architect Protocol.
+- **Design Mode**: Run `vectl_guide` (CLI fallback: `vectl guide --on planning`) to learn the Architect Protocol.
 - **Ambiguity = Failure**: Workers will hallucinate if steps are vague.
 - **Constraint Tools**:
   - `--evidence-template`: Force workers to provide specific proof (e.g., "Paste logs here").

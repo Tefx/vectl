@@ -512,36 +512,36 @@ class TestVectlMigrateStepId:
 
 class TestVectlShow:
     def test_show_step(self, plan_file: Path) -> None:
-        result = vectl_show(id="a.1")
+        result = vectl_show(target="a.1")
         assert "Step: a.1" in result
         assert "Alpha Step One" in result
         assert "pending" in result
         assert "pytest tests/a1.py" in result
 
     def test_show_phase(self, plan_file: Path) -> None:
-        result = vectl_show(id="alpha")
+        result = vectl_show(target="alpha")
         assert "Phase: alpha" in result
         assert "Alpha Phase" in result
         assert "a.1" in result
         assert "a.2" in result
 
     def test_show_not_found(self, plan_file: Path) -> None:
-        result = vectl_show(id="nonexistent")
+        result = vectl_show(target="nonexistent")
         assert "Error" in result
         assert "not found" in result
 
     def test_show_phase_gate(self, plan_file: Path) -> None:
-        result = vectl_show(id="beta")
+        result = vectl_show(target="beta")
         assert "Gate" in result
         assert "All alpha tests pass" in result
 
     def test_show_step_deps(self, plan_file: Path) -> None:
-        result = vectl_show(id="a.2")
+        result = vectl_show(target="a.2")
         assert "Depends on" in result
         assert "a.1" in result
 
     def test_show_step_duplicate_id_recommendation(self, duplicate_id_plan_file: Path) -> None:
-        result = vectl_show(id="dup.step")
+        result = vectl_show(target="dup.step")
         assert "Duplicate-ID Repair Recommendation" in result
         assert "type=duplicate-step-id" in result
         assert "step_id=dup.step" in result
@@ -809,7 +809,7 @@ class TestVectlComplete:
 class TestVectlLifecycle:
     def test_defer_claimed_step(self, plan_file: Path) -> None:
         vectl_claim(agent="bot", step_id="a.1")
-        result = vectl_lifecycle(action="defer", id="a.1")
+        result = vectl_lifecycle(action="defer", target="a.1")
         assert "Deferred" in result
 
         data = _reload_plan(plan_file)
@@ -824,43 +824,43 @@ class TestVectlLifecycle:
         assert len(claims_after_claim) == 1
         assert next(iter(claims_after_claim.values())).step_id == "a.1"
 
-        defer_result = vectl_lifecycle(action="defer", id="a.1")
+        defer_result = vectl_lifecycle(action="defer", target="a.1")
         assert "Deferred" in defer_result
         assert load_claims(claims_path) == {}
 
     def test_reject_done_step(self, plan_file: Path) -> None:
         vectl_claim(agent="bot", step_id="a.1")
         vectl_complete(step_id="a.1", evidence="done")
-        result = vectl_lifecycle(action="reject", id="a.1", reason="Bad quality")
+        result = vectl_lifecycle(action="reject", target="a.1", reason="Bad quality")
         assert "Rejected" in result
         assert "Bad quality" in result
 
     def test_reject_requires_reason(self, plan_file: Path) -> None:
         vectl_claim(agent="bot", step_id="a.1")
         vectl_complete(step_id="a.1", evidence="done")
-        result = vectl_lifecycle(action="reject", id="a.1")
+        result = vectl_lifecycle(action="reject", target="a.1")
         assert "Error" in result
         assert "reason" in result.lower()
 
     def test_skip_step(self, plan_file: Path) -> None:
-        result = vectl_lifecycle(action="skip", id="a.1", reason="superseded")
+        result = vectl_lifecycle(action="skip", target="a.1", reason="superseded")
         assert "Skipped" in result
 
         data = _reload_plan(plan_file)
         assert data["phases"][0]["steps"][0]["status"] == "skipped"
 
     def test_skip_requires_reason(self, plan_file: Path) -> None:
-        result = vectl_lifecycle(action="skip", id="a.1")
+        result = vectl_lifecycle(action="skip", target="a.1")
         assert "Error" in result
 
     def test_skip_phase(self, plan_file: Path) -> None:
-        result = vectl_lifecycle(action="skip-phase", id="alpha", reason="irrelevant")
+        result = vectl_lifecycle(action="skip-phase", target="alpha", reason="irrelevant")
         assert "Skipped phase" in result
         assert "2 steps skipped" in result
 
     def test_skip_locked_phase_with_force(self, plan_file: Path) -> None:
         """Locked phase can be skipped with force=True."""
-        result = vectl_lifecycle(action="skip-phase", id="beta", reason="superseded", force=True)
+        result = vectl_lifecycle(action="skip-phase", target="beta", reason="superseded", force=True)
         assert "Skipped phase" in result
         reloaded = _reload_plan(plan_file)
         assert reloaded["phases"][1]["status"] == PhaseStatus.DONE.value
@@ -873,7 +873,7 @@ class TestVectlLifecycle:
         data["phases"][0]["steps"][1]["skipped_reason"] = "irrelevant"
         plan_file.write_text(yaml.dump(data))
 
-        result = vectl_lifecycle(action="complete-phase", id="alpha", evidence="import")
+        result = vectl_lifecycle(action="complete-phase", target="alpha", evidence="import")
         assert "Completed phase" in result
 
         reloaded = _reload_plan(plan_file)
@@ -883,13 +883,13 @@ class TestVectlLifecycle:
         assert reloaded["phases"][1]["status"] == PhaseStatus.PENDING.value
 
     def test_unknown_action(self, plan_file: Path) -> None:
-        result = vectl_lifecycle(action="defer", id="nonexistent")
+        result = vectl_lifecycle(action="defer", target="nonexistent")
         assert "Error" in result
 
     def test_lifecycle_blocks_ambiguous_duplicate_target_without_opt_in(
         self, duplicate_id_plan_file: Path
     ) -> None:
-        result = vectl_lifecycle(action="skip", id="dup.step", reason="irrelevant")
+        result = vectl_lifecycle(action="skip", target="dup.step", reason="irrelevant")
 
         assert "Error" in result
         assert "error_code=duplicate_step_id_ambiguous_target" in result
@@ -1649,7 +1649,7 @@ class TestWorkflow:
     def test_defer_and_reclaim(self, plan_file: Path) -> None:
         """Claim → defer → reclaim."""
         vectl_claim(agent="bot1", step_id="a.1")
-        vectl_lifecycle(action="defer", id="a.1")
+        vectl_lifecycle(action="defer", target="a.1")
 
         # Different agent can claim
         result = vectl_claim(agent="bot2", step_id="a.1")
@@ -2118,7 +2118,7 @@ class TestVectlDag:
 
     def test_drill_hint_in_phase_dag(self, plan_file: Path) -> None:
         result = vectl_dag()
-        assert "uvx vectl dag --phase" in result
+        assert "vectl dag --phase" in result
 
     def test_dag_includes_duplicate_step_id_warning_comments(
         self, duplicate_id_plan_file: Path
@@ -2310,7 +2310,7 @@ class TestMcpUnifiedPlanPath:
         vectl_status()
         assert not state_path.exists()
 
-        vectl_show(id="a.1")
+        vectl_show(target="a.1")
         assert not state_path.exists()
 
 

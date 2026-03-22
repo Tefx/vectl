@@ -13,15 +13,17 @@ from __future__ import annotations
 
 import time
 
-from vectl.core import get_next_steps
+from vectl.core import auto_unlock_phases, get_next_steps
 from vectl.io import load_plan_definition
 from vectl.models import (
     Action,
     CompletedResult,
     DecideOutput,
     Decision,
+    PhaseStatus,
     Plan,
     RunningTask,
+    StepStatus,
 )
 from vectl.plan_path import resolve_plan_path
 
@@ -205,6 +207,21 @@ def decide(
                             why=f"Step failed ({count} attempts), waiting for retry",
                         )
                     )
+
+    # Simulate completions on in-memory plan so successor tasks become visible
+    # in this same decide() call, enabling parallel dispatch.
+    for action in actions:
+        if action.action == "complete" and action.step_id:
+            found = plan.find_step(action.step_id)
+            if found:
+                phase, step = found
+                step.status = StepStatus.DONE
+                if all(
+                    s.status in (StepStatus.DONE, StepStatus.SKIPPED)
+                    for s in phase.steps
+                ):
+                    phase.status = PhaseStatus.DONE
+                    auto_unlock_phases(plan)
 
     # Get running count from tasks
     running_count = len(running_tasks)

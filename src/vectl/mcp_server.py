@@ -113,7 +113,18 @@ mcp = FastMCP(
     instructions=(
         "vectl manages phased development plans for AI agents. "
         "Use vectl_status to understand the plan, vectl_claim to start work, "
-        "vectl_complete when done. Each tool returns Markdown text."
+        "vectl_complete when done. Each tool returns Markdown text.\n\n"
+        "Parameter convention:\n"
+        "  - `step_id`: always a step (format: 'phase.step', e.g. 'core.validate')\n"
+        "  - `phase_id`: always a phase (format: 'phase', e.g. 'core')\n"
+        "  - `target`: accepts either a step ID or phase ID (used by vectl_show, vectl_lifecycle)\n\n"
+        "Tool groups:\n"
+        "  Core loop: vectl_status, vectl_claim, vectl_complete, vectl_check\n"
+        "  Inspect:   vectl_show, vectl_search, vectl_dag, vectl_render\n"
+        "  Lifecycle: vectl_lifecycle, vectl_review, vectl_checkpoint\n"
+        "  Mutate:    vectl_mutate\n"
+        "  Help:      vectl_guide (call with topic='stuck' if blocked)\n"
+        "  Setup:     vectl_init, vectl_validate, vectl_recover, vectl_repair_claims"
     ),
 )
 
@@ -358,6 +369,23 @@ def vectl_status(agent: str | None = None) -> str:
         parts.append("\n")
         parts.extend(diag_lines)
 
+    # Auto-repair ghost claims (routine maintenance, not an error)
+    try:
+        plan_path = _plan_path()
+        claims_path = resolve_claims_path(plan_path)
+        repair_result = repair_claims(
+            plan, plan_path, claims_path, dry_run=False,
+        )
+        if repair_result.changed:
+            actions_summary = ", ".join(
+                f"{a.action} {a.key}" for a in repair_result.actions
+            )
+            parts.append(
+                f"\n> **Auto-repaired claims** (routine): {actions_summary}"
+            )
+    except Exception:
+        pass  # non-critical; don't block status
+
     return "\n".join(parts)
 
 
@@ -369,19 +397,19 @@ def vectl_status(agent: str | None = None) -> str:
 @mcp.tool(
     description=(
         "Show detailed information about a step or phase. "
-        "Pass a step ID (e.g. 'core.validate') or phase ID (e.g. 'core')."
+        "Set `target` to a step ID (e.g. 'core.validate') or phase ID (e.g. 'core')."
     ),
 )
-def vectl_show(id: str) -> str:
+def vectl_show(target: str) -> str:
     """Show step or phase detail.
 
     Args:
-        id: Step ID (e.g. 'phase.step') or phase ID (e.g. 'phase').
+        target: Step ID (e.g. 'core.validate') or phase ID (e.g. 'core').
     """
     plan, _ = _load()
 
     # Try step first
-    found = plan.find_step(id)
+    found = plan.find_step(target)
     if found:
         phase, step = found
         locked = is_step_locked(plan, phase, step)
@@ -417,7 +445,7 @@ def vectl_show(id: str) -> str:
         return "\n".join(lines)
 
     # Try phase
-    phase_obj = plan.find_phase(id)
+    phase_obj = plan.find_phase(target)
     if phase_obj:
         lines = [
             f"## Phase: {phase_obj.id}",
@@ -440,7 +468,7 @@ def vectl_show(id: str) -> str:
             lines.extend(diag_lines)
         return "\n".join(lines)
 
-    return f"**Error:** '{id}' not found as step or phase."
+    return f"**Error:** '{target}' not found as step or phase."
 
 
 # ---------------------------------------------------------------------------
@@ -576,7 +604,8 @@ def vectl_claim(
             "",
             "**Next Steps:**",
             f"1. Inspect: `vectl_show` step_id={e.step_id}",
-            "2. If stale, repair claims: `vectl repair claims --dry-run`",
+            "2. If this is a stale/ghost claim (common after agent restarts), "
+            "run `vectl_repair_claims()` to fix it — this is routine maintenance, not an error.",
         ]
         return ClaimResult(
             ok=False,
@@ -736,8 +765,8 @@ def vectl_claim(
 
 @mcp.tool(
     description=(
-        "Complete a claimed step with evidence. Evidence should describe "
-        "what was done and how it was verified."
+        "Complete a claimed step with evidence. "
+        "Pass `step_id` (e.g. 'core.validate') and `evidence` describing what was done and how it was verified."
     ),
 )
 def vectl_complete(step_id: str, evidence: str) -> str:
@@ -792,7 +821,9 @@ def vectl_complete(step_id: str, evidence: str) -> str:
 
 @mcp.tool(
     description=(
-        "Change step/phase lifecycle state. Actions: "
+        "Change step/phase lifecycle state. "
+        "Set `target` to a step ID (for defer/reject/skip) or phase ID (for skip-phase/complete-phase). "
+        "Actions: "
         "defer (release claimed step), "
         "reject (reject completed step for rework), "
         "skip (skip a step with reason: superseded/irrelevant/absorbed/deprioritized), "
@@ -802,7 +833,7 @@ def vectl_complete(step_id: str, evidence: str) -> str:
 )
 def vectl_lifecycle(
     action: Literal["defer", "reject", "skip", "skip-phase", "complete-phase"],
-    id: str,
+    target: str,
     reason: str = "",
     evidence: str = "",
     reviewer: str = "",
@@ -815,7 +846,7 @@ def vectl_lifecycle(
 
     Args:
         action: One of: defer, reject, skip, skip-phase, complete-phase.
-        id: Step ID (for defer/reject/skip) or phase ID (for skip-phase/complete-phase).
+        target: Step ID (for defer/reject/skip) or phase ID (for skip-phase/complete-phase).
         reason: Required for reject, skip, skip-phase. For skip/skip-phase
             must be: superseded, irrelevant, absorbed, deprioritized.
         evidence: Required for complete-phase.
@@ -828,22 +859,22 @@ def vectl_lifecycle(
 
     try:
         if action == "defer":
-            plan = defer_step(plan, id, claims_path=claims_path)
-            msg = f"**Deferred:** {id} → back to pending"
+            plan = defer_step(plan, target, claims_path=claims_path)
+            msg = f"**Deferred:** {target} → back to pending"
             lock_notice = _save_plan(
                 plan,
                 expected_def_hash,
-                f"mcp: defer step {id}",
+                f"mcp: defer step {target}",
             )
         elif action == "reject":
             if not reason:
                 return "**Error:** reason is required for reject."
-            plan = reject_step(plan, id, reason, reviewer)
-            msg = f"**Rejected:** {id} — {reason}"
+            plan = reject_step(plan, target, reason, reviewer)
+            msg = f"**Rejected:** {target} — {reason}"
             lock_notice = _save_plan(
                 plan,
                 expected_def_hash,
-                f"mcp: reject step {id}",
+                f"mcp: reject step {target}",
             )
         elif action == "skip":
             if not reason:
@@ -851,36 +882,36 @@ def vectl_lifecycle(
                     "**Error:** reason is required for skip "
                     "(superseded/irrelevant/absorbed/deprioritized)."
                 )
-            plan = skip_step(plan, id, reason)
-            msg = f"**Skipped:** {id} — {reason}"
+            plan = skip_step(plan, target, reason)
+            msg = f"**Skipped:** {target} — {reason}"
             lock_notice = _save_plan(
                 plan,
                 expected_def_hash,
-                f"mcp: skip step {id}",
+                f"mcp: skip step {target}",
             )
         elif action == "skip-phase":
             if not reason:
                 return "**Error:** reason is required for skip-phase."
-            plan, skipped_ids = skip_phase(plan, id, reason, force=force)
-            msg = f"**Skipped phase '{id}':** {len(skipped_ids)} steps skipped"
+            plan, skipped_ids = skip_phase(plan, target, reason, force=force)
+            msg = f"**Skipped phase '{target}':** {len(skipped_ids)} steps skipped"
             if skipped_ids:
                 msg += "\n" + "\n".join(f"  - {sid}" for sid in skipped_ids)
             lock_notice = _save_plan(
                 plan,
                 expected_def_hash,
-                f"mcp: skip phase {id}",
+                f"mcp: skip phase {target}",
             )
         elif action == "complete-phase":
             if not evidence:
                 return "**Error:** evidence is required for complete-phase."
-            plan, unlocked = complete_phase(plan, id, evidence)
-            msg = f"**Completed phase '{id}':** {len(unlocked)} phase(s) unlocked"
+            plan, unlocked = complete_phase(plan, target, evidence)
+            msg = f"**Completed phase '{target}':** {len(unlocked)} phase(s) unlocked"
             if unlocked:
                 msg += "\n" + "\n".join(f"  - {pid}" for pid in unlocked)
             lock_notice = _save_plan(
                 plan,
                 expected_def_hash,
-                f"mcp: complete phase {id}",
+                f"mcp: complete phase {target}",
             )
         else:
             return (
@@ -941,15 +972,15 @@ def vectl_search(pattern: str, phase_id: str | None = None, regex: bool = False)
 
 @mcp.tool(
     description=(
-        "Modify plan structure. Actions: "
-        "add-step (add a new step to a phase), "
-        "add-steps (add multiple steps in batch), "
-        "edit-step (update step fields), "
-        "remove-step (remove a step, use force=true to clean dep refs), "
-        "move-step (move step between phases), "
-        "add-phase (add a new phase), "
-        "edit-phase (update phase fields), "
-        "edit-plan (update plan-level metadata). "
+        "Modify plan structure. Actions and their key parameters:\n"
+        "- add-step: phase_id (required), name (required), step_id, description, depends_on, refs, verification, evidence_template, agent\n"
+        "- add-steps: phase_id (required), steps (required, list of step dicts)\n"
+        "- edit-step: step_id (required), then any field to update: name, description, depends_on, add_refs, remove_refs, verification, evidence_template, agent, new_step_id\n"
+        "- remove-step: step_id (required), force=true to clean dep refs\n"
+        "- move-step: step_id (required), target_phase (required)\n"
+        "- add-phase: phase_id (required), name (required), depends_on, gate, context\n"
+        "- edit-phase: phase_id (required), then any field: name, depends_on, gate, context\n"
+        "- edit-plan: project_guidance, strategy_ref, plan_context\n"
         "After mutations, use vectl_search to verify consistency."
     ),
 )
@@ -1821,8 +1852,9 @@ def vectl_render(
 @mcp.tool(
     description=(
         "Toggle or add a checklist item in a step's description. "
-        "Use 'keyword' to toggle an existing item by keyword match. "
-        "Use 'add' to append a new unchecked item. "
+        "Pass `step_id` of the step containing the checklist. "
+        "Use `keyword` to toggle an existing item by keyword match. "
+        "Use `add` to append a new unchecked item. "
         "Operates on markdown checklists: '- [ ] item' / '- [x] item'."
     ),
 )

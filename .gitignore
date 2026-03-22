@@ -30,3 +30,5 @@ CLAUDE.md
 .gemini/
 GEMINI.md
 .vectl/
+dev-timeline.html
+plan.yaml.lock

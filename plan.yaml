@@ -31945,6 +31945,20 @@ phases:
   status: locked
   depends_on:
   - driver-judgment-expansion-replan
+  steps:
+  - id: driver-cli-integration.contract-cli-drive
+    name: Contract vectl drive CLI command
+    status: pending
+    description: "step_type: contract\ncontract_purity: ENFORCED\ncontract_outputs:\n\
+      \  - signatures\n  - interfaces\n  - stubs\n\nPin the exact CLI integration\
+      \ surface in src/vectl/cli.py for `vectl drive [--config PATH]` as documented\
+      \ in the blueprint. This is a runnable surface and must preserve runtime/entrypoint\
+      \ semantics."
+    verification: '- Contract pins command name, flag surface, and runtime entrypoint
+      target
+
+      - No implementation logic beyond stubs/signatures'
+    agent: python-executor
 - id: driver-system-wiring
   name: Driver System Wiring
   status: locked

@@ -31959,6 +31959,19 @@ phases:
 
       - No implementation logic beyond stubs/signatures'
     agent: python-executor
+  - id: driver-cli-integration.test-cli-drive
+    name: Test vectl drive CLI command
+    status: pending
+    description: 'step_type: test
+
+
+      Add focused CLI tests for vectl drive config resolution and command wiring using
+      CliRunner and real-ish runtime setup where practical.'
+    verification: '- Tests cover CLI flag parsing and runtime handoff to the driver
+      entrypoint'
+    depends_on:
+    - driver-cli-integration.contract-cli-drive
+    agent: python-executor
 - id: driver-system-wiring
   name: Driver System Wiring
   status: locked

@@ -30601,6 +30601,40 @@ phases:
 
       - No business/runtime implementation logic beyond stubs and signatures'
     agent: python-executor
+  - id: driver-foundation.test-types-errors-config-observe
+    name: Test foundation types/errors/config/observe contracts
+    status: pending
+    description: 'step_type: test
+
+
+      Add focused tests for the pinned foundation contracts in src/vectl/driver/types.py,
+      errors.py, config.py, and observe.py.
+
+
+      Required checks:
+
+      - Config validation and invariant errors from the architecture doc
+
+      - Event emission shape for the JSONL observer contract
+
+      - Error hierarchy and typed data-model round-trips
+
+      - Minimal fixture coverage for documented driver.yaml structure
+
+
+      ## Spec-Fixture Conformance (MANDATORY)
+
+      At least one config fixture MUST use the exact documented driver.yaml format
+      from the blueprint and architecture docs without convenience fields.'
+    verification: '- Targeted pytest file(s) cover config invariants, event shapes,
+      and model/error serialization
+
+      - At least one fixture cites the exact spec section used
+
+      - No product implementation code added beyond tests/helpers'
+    depends_on:
+    - driver-foundation.contract-types-errors-config-observe
+    agent: python-executor
 - id: driver-execution-infra
   name: Driver Execution Infrastructure
   status: locked

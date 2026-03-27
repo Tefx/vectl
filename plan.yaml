@@ -32229,3 +32229,18 @@ phases:
     verification: '- Audit covers exports, runtime reachability, and absence of placeholder
       runtime classes'
     agent: wiring-auditor
+  - id: driver-deep-review.spec-conformance
+    name: Deep review spec conformance
+    status: pending
+    description: 'step_type: verification
+
+      Verification scope: full-plan-check protecting driver-deep-review.gate.
+
+
+      Compare all implemented driver behavior against DRIVER-BLUEPRINT.md, docs/DRIVER-ARCHITECTURE.md,
+      and docs/JUDGE-AGENT-PROMPT.md field-by-field and flow-by-flow.'
+    verification: '- Full conformance report covers runtime, judgment semantics, state
+      ownership, and CLI surfaces'
+    depends_on:
+    - driver-deep-review.wiring-audit
+    agent: doc-reviewer

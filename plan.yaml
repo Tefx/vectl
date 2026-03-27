@@ -30579,6 +30579,28 @@ phases:
   status: pending
   depends_on:
   - decide-docs
+  steps:
+  - id: driver-foundation.contract-types-errors-config-observe
+    name: Contract foundation types/errors/config/observe
+    status: pending
+    description: "step_type: contract\ncontract_purity: ENFORCED\ncontract_outputs:\n\
+      \  - signatures\n  - type_defs\n  - interfaces\n  - stubs\n\nPin the exact contracts\
+      \ for src/vectl/driver/types.py, errors.py, config.py, and observe.py from DRIVER-BLUEPRINT.md\
+      \ (Module Map, Configuration Schema, Observability) and docs/DRIVER-ARCHITECTURE.md\
+      \ sections 1, 2.3, 2.4, and 4.\n\nRefs to pin:\n- src/vectl/driver/types.py\n\
+      - src/vectl/driver/errors.py\n- src/vectl/driver/config.py\n- src/vectl/driver/observe.py\n\
+      - tests/test_driver_types.py\n- tests/test_driver_config.py\n- tests/test_driver_observe.py\n\
+      \nAcceptance boundary:\n- Define dataclasses/models/error hierarchy/event contract\
+      \ only\n- Preserve dependency rules: config.py must not own runtime state; observe.py\
+      \ remains append-only event emission surface\n- No runtime loop logic, no runner\
+      \ invocation, no git behavior implemented here"
+    verification: '- Contract artifacts pin DriverConfig/RunnerConfig/SessionConfig/JudgeConfig/ObservabilityConfig
+      fields and observer event payload expectations
+
+      - Contract descriptions cite the authoritative sections for each module
+
+      - No business/runtime implementation logic beyond stubs and signatures'
+    agent: python-executor
 - id: driver-execution-infra
   name: Driver Execution Infrastructure
   status: locked

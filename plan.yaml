@@ -31610,7 +31610,7 @@ phases:
       - No code modifications performed in verification step.'
   - id: driver-execution-infra.contract-runners-core
     name: Contract runners core
-    status: claimed
+    status: done
     description: "step_type: contract\ncontract_purity: ENFORCED\ncontract_outputs:\n\
       \  - signatures\n  - type_defs\n  - interfaces\n  - stubs\n\nPin the core runner\
       \ contract in src/vectl/driver/runners.py for:\n- Runner protocol\n- RunnerHandle\
@@ -31626,6 +31626,38 @@ phases:
     agent: python-executor
     claimed_by: python-executor
     claimed_at: '2026-03-27T23:20:19.769407+00:00'
+    done_at: '2026-03-27T23:32:38.436919+00:00'
+    evidence: 'Artifact:
+
+      - Commit: 03101c5 (contract-only runners module)
+
+
+      Verification:
+
+      - mypy src/vectl/driver/runners.py -> success
+
+      - Verified exported protocols/types/stubs and deferred codex/gemini behavior
+
+      - Verified no substantive subprocess/output-parser runtime logic in this contract
+      step
+
+
+      Files changed:
+
+      - src/vectl/driver/runners.py
+
+
+      Spec link:
+
+      - docs/DRIVER-ARCHITECTURE.md section 2.8
+
+      - DRIVER-BLUEPRINT.md runner protocol/implementations sections
+
+
+      Gaps/Notes:
+
+      - Contract purity enforced: signatures/type defs/interfaces/stubs only; runtime
+      implementation deferred to impl-runners-core.'
   - id: driver-execution-infra.test-runners-core
     name: Test runners core
     status: pending

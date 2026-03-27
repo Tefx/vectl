@@ -30944,6 +30944,38 @@ phases:
     depends_on:
     - driver-execution-infra.contract-worktree
     agent: python-executor
+  - id: driver-execution-infra.impl-worktree
+    name: Implement worktree lifecycle
+    status: pending
+    description: 'step_type: implementation
+
+
+      Implement src/vectl/driver/worktree.py to the pinned contract.
+
+
+      ## Failure-mode checklist
+
+      - relative vs absolute worktree path behavior
+
+      - branch exists and worktree exists retry behavior
+
+      - trivial conflict vs non-trivial conflict split
+
+      - merge abort behavior on non-trivial conflict
+
+
+      ## Completion Criteria (stub exclusion)
+
+      This is an IMPLEMENTATION step. Stub-only completion is NOT acceptable.'
+    verification: '- Main path: targeted worktree tests pass
+
+      - Failure path: non-trivial conflict path returns a conflict result without
+      silently resolving source conflicts
+
+      - Proof: merge lifecycle matches blueprint and architecture semantics'
+    depends_on:
+    - driver-execution-infra.test-worktree
+    agent: python-senior
 - id: driver-judgment-runtime-minimal
   name: Driver Judgment + Minimal Runtime
   status: locked

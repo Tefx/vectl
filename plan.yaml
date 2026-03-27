@@ -31522,7 +31522,7 @@ phases:
       not part of this step scope.'
   - id: driver-execution-infra.verify-worktree-real-git-path
     name: Verify worktree real git path
-    status: pending
+    status: claimed
     description: 'step_type: verification
 
       Verification scope: local-check protecting driver-execution-infra.gate.
@@ -31549,6 +31549,8 @@ phases:
     depends_on:
     - driver-execution-infra.impl-worktree
     agent: integration-verifier
+    claimed_by: integration-verifier
+    claimed_at: '2026-03-27T23:04:14.114871+00:00'
   - id: driver-execution-infra.contract-runners-core
     name: Contract runners core
     status: pending

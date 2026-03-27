@@ -30675,6 +30675,24 @@ phases:
     depends_on:
     - driver-foundation.test-types-errors-config-observe
     agent: python-executor
+  - id: driver-foundation.contract-session
+    name: Contract session pool boundary
+    status: pending
+    description: "step_type: contract\ncontract_purity: ENFORCED\ncontract_outputs:\n\
+      \  - signatures\n  - type_defs\n  - interfaces\n  - stubs\n\nPin the exact SessionPool\
+      \ contract for src/vectl/driver/session.py from docs/DRIVER-ARCHITECTURE.md\
+      \ section 2.5 and Q4.\n\nThe contract MUST explicitly encode:\n- record(step_id,\
+      \ session_id, runner_name, agent)\n- find_reusable(step_id, agent, runner_name,\
+      \ depends_on)\n- single-dependency reuse limitation\n- ownership boundary versus\
+      \ decide.py module-level session registries\n\nDo not implement runner-aware\
+      \ heuristics beyond the documented contract."
+    verification: '- Contract text names the ownership boundary between SessionPool
+      and decide.py state
+
+      - No runtime loop or dispatch logic implemented here'
+    depends_on:
+    - driver-foundation.impl-types-errors-config-observe
+    agent: python-executor
 - id: driver-execution-infra
   name: Driver Execution Infrastructure
   status: locked

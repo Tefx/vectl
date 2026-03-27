@@ -31132,6 +31132,32 @@ phases:
     depends_on:
     - driver-execution-infra.wiring-audit
     agent: doc-reviewer
+  - id: driver-execution-infra.gate
+    name: Gate driver-execution-infra
+    status: pending
+    description: 'step_type: gate
+
+      As an INDEPENDENT REVIEWER, assess whether worktree and runner-core infrastructure
+      is complete and safe for runtime assembly.
+
+
+      review_depth: THOROUGH
+
+      cross_cutting_focus:
+
+      - real git behavior
+
+      - real runner path proof
+
+      - deferred-vs-implemented runner scope is explicit'
+    verification: '- All driver-execution-infra steps completed successfully
+
+      - Real git and real CLI verification evidence is present
+
+      - No blocker remains for driver-judgment-runtime-minimal'
+    depends_on:
+    - driver-execution-infra.spec-conformance
+    agent: gate-reviewer
 - id: driver-judgment-runtime-minimal
   name: Driver Judgment + Minimal Runtime
   status: locked

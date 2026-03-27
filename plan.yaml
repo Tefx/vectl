@@ -31385,7 +31385,18 @@ phases:
     description: 'step_type: test
 
 
-      Add real temp-repo tests for worktree create/merge/cleanup behavior.
+      Add real temp-repo tests for src/vectl/driver/worktree.py create/merge/cleanup
+      behavior after the implementation step lands.
+
+
+      Test-only scope:
+
+      - add or update pytest coverage using temp repos and real git commands
+
+      - validate the implemented behavior without editing product code
+
+      - report gaps if contract and implementation diverge, rather than patching src/vectl/driver/worktree.py
+      in this step
 
 
       Required checks:
@@ -31398,13 +31409,18 @@ phases:
 
       - trivial conflict detection path
 
-      - non-trivial conflict classification path'
-    verification: '- Targeted pytest integration tests exercise real git commands
-      in temp repos
+      - non-trivial conflict classification path
 
-      - Tests prove conflict classes are distinguished, not guessed'
+      - cleanup behavior after success and conflict flows'
+    verification: '- Targeted pytest integration tests exercise real git commands
+      in temp repos against implemented src/vectl/driver/worktree.py behavior
+
+      - Tests prove conflict classes are distinguished, not guessed
+
+      - Step evidence stays in test scope only: no product-code edits are required
+      or authorized in this step'
     depends_on:
-    - driver-execution-infra.contract-worktree
+    - driver-execution-infra.impl-worktree
     agent: python-executor
   - id: driver-execution-infra.impl-worktree
     name: Implement worktree lifecycle

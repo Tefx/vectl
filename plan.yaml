@@ -30719,6 +30719,38 @@ phases:
     depends_on:
     - driver-foundation.contract-session
     agent: python-executor
+  - id: driver-foundation.impl-session
+    name: Implement session pool boundary
+    status: pending
+    description: 'step_type: implementation
+
+
+      Implement src/vectl/driver/session.py exactly to the pinned SessionPool contract.
+
+
+      State semantics bullets:
+
+      - last-writer-wins only for replacing a recorded session entry for the same
+      step_id
+
+      - preserved exactly: recorded runner_name, agent, session_id, completed_at
+
+      - backward-compatible behavior: fresh session on any unsupported reuse case
+
+
+      ## Completion Criteria (stub exclusion)
+
+      This is an IMPLEMENTATION step. Stub-only completion is NOT acceptable.'
+    verification: '- Main path: targeted session pool tests pass
+
+      - Failure path: multiple-dependency and expired-TTL cases return no reusable
+      session
+
+      - Proof: SessionPool remains supplementary and does not write into decide.py
+      module state'
+    depends_on:
+    - driver-foundation.test-session
+    agent: python-executor
 - id: driver-execution-infra
   name: Driver Execution Infrastructure
   status: locked

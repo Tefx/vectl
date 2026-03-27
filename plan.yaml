@@ -30604,3 +30604,8 @@ phases:
   status: locked
   depends_on:
   - driver-judgment-expansion-replan
+- id: driver-system-wiring
+  name: Driver System Wiring
+  status: locked
+  depends_on:
+  - driver-cli-integration

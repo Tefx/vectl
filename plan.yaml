@@ -32087,6 +32087,24 @@ phases:
   status: locked
   depends_on:
   - driver-cli-integration
+  steps:
+  - id: driver-system-wiring.replace-stubs
+    name: Replace or reject runtime placeholders
+    status: pending
+    description: 'step_type: implementation
+
+
+      Search the driver runtime path for private runtime placeholders such as _Runtime*,
+      _Stub*, or _Placeholder* and replace them with real implementations where present.
+
+
+      If none exist, produce evidence that the runtime path is already fully real
+      and that this step was a no-op by proof, not assumption.'
+    verification: '- Evidence lists placeholders found or states none found with concrete
+      search proof
+
+      - No runtime placeholder remains on the critical path'
+    agent: python-senior
 - id: driver-doc-sync
   name: Driver Documentation Sync
   status: locked

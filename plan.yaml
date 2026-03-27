@@ -31068,6 +31068,28 @@ phases:
     depends_on:
     - driver-execution-infra.test-runners-core
     agent: python-senior
+  - id: driver-execution-infra.verify-runners-real-cli-path
+    name: Verify runners real CLI path
+    status: pending
+    description: 'step_type: verification
+
+      Verification scope: phase-check protecting driver-execution-infra.gate.
+
+
+      As an INDEPENDENT TESTER, exercise at least one real Claude CLI path and one
+      real OpenCode path in non-interactive mode, or document exact environment constraints
+      if a runner is unavailable.
+
+
+      YOUR GOAL IS TO FIND PROBLEMS, not to confirm success.'
+    verification: '- Evidence includes exact commands and actual stdout/stderr
+
+      - At least one malformed or unavailable-runner scenario is assessed
+
+      - Real CLI path proof is provided; mock-only evidence is insufficient'
+    depends_on:
+    - driver-execution-infra.impl-runners-core
+    agent: integration-verifier
 - id: driver-judgment-runtime-minimal
   name: Driver Judgment + Minimal Runtime
   status: locked

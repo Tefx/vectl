@@ -31366,6 +31366,32 @@ phases:
     depends_on:
     - driver-judgment-runtime-minimal.verify-judge-structured-output-path
     agent: software-architect
+  - id: driver-judgment-runtime-minimal.test-loop-runtime-minimal
+    name: Test loop runtime minimal
+    status: pending
+    description: 'step_type: test
+
+
+      Add focused tests for the minimal runtime path.
+
+
+      Required checks:
+
+      - startup recovery path scaffolding
+
+      - claim and dispatch flow with a single runner
+
+      - reconcile success path with accepted evidence
+
+      - reconcile failure path with retry threshold behavior
+
+      - graceful shutdown path bookkeeping'
+    verification: '- Targeted pytest files cover the documented minimal loop contract
+
+      - Tests identify which branches remain deferred to later phases'
+    depends_on:
+    - driver-judgment-runtime-minimal.contract-loop-runtime-minimal
+    agent: python-executor
 - id: driver-multi-runner-hardening
   name: Driver Multi-Runner Hardening
   status: locked

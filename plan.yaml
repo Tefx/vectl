@@ -31467,6 +31467,27 @@ phases:
     depends_on:
     - driver-judgment-runtime-minimal.verify-startup-recovery-and-shutdown
     agent: integration-verifier
+  - id: driver-judgment-runtime-minimal.liveness-probe
+    name: Liveness probe runtime minimal
+    status: pending
+    description: 'step_type: verification
+
+      Verification scope: phase-check protecting driver-judgment-runtime-minimal.gate.
+
+
+      Runnable-surface liveness probe for `python -m vectl.driver`.
+
+
+      Entry point must start, remain alive long enough to accept at least one operation
+      or controlled cycle, and produce expected output through the real entrypoint
+      path.'
+    verification: '- Entry point starts and accepts at least one operation or controlled
+      cycle
+
+      - Evidence shows the real runtime path, not only handler/unit output'
+    depends_on:
+    - driver-judgment-runtime-minimal.vertical-slice-runtime
+    agent: blind-tester
 - id: driver-multi-runner-hardening
   name: Driver Multi-Runner Hardening
   status: locked

@@ -30917,6 +30917,33 @@ phases:
 
       - No git command implementation beyond stubs'
     agent: python-senior
+  - id: driver-execution-infra.test-worktree
+    name: Test worktree lifecycle
+    status: pending
+    description: 'step_type: test
+
+
+      Add real temp-repo tests for worktree create/merge/cleanup behavior.
+
+
+      Required checks:
+
+      - fresh create path
+
+      - retry/reuse path when worktree already exists
+
+      - clean squash merge path
+
+      - trivial conflict detection path
+
+      - non-trivial conflict classification path'
+    verification: '- Targeted pytest integration tests exercise real git commands
+      in temp repos
+
+      - Tests prove conflict classes are distinguished, not guessed'
+    depends_on:
+    - driver-execution-infra.contract-worktree
+    agent: python-executor
 - id: driver-judgment-runtime-minimal
   name: Driver Judgment + Minimal Runtime
   status: locked

@@ -31228,6 +31228,25 @@ phases:
     depends_on:
     - driver-judgment-runtime-minimal.contract-judgment-coverage-matrix
     agent: python-executor
+  - id: driver-judgment-runtime-minimal.impl-judgments
+    name: Implement judgment contracts
+    status: pending
+    description: 'step_type: implementation
+
+
+      Implement src/vectl/driver/judgments.py to the pinned contract and coverage
+      matrix.
+
+
+      ## Completion Criteria (stub exclusion)
+
+      This is an IMPLEMENTATION step. Stub-only completion is NOT acceptable.'
+    verification: '- Main path: judgment contract tests pass
+
+      - Failure path: missing required context keys are rejected as documented'
+    depends_on:
+    - driver-judgment-runtime-minimal.test-judgments
+    agent: python-executor
 - id: driver-multi-runner-hardening
   name: Driver Multi-Runner Hardening
   status: locked

@@ -31796,6 +31796,22 @@ phases:
     depends_on:
     - driver-judgment-expansion-replan.test-replan-planner-wiring
     agent: python-senior
+  - id: driver-judgment-expansion-replan.contract-gate-chain-flow
+    name: Contract full gate-chain and remediation flow
+    status: pending
+    description: "step_type: contract\ncontract_purity: ENFORCED\ncontract_outputs:\n\
+      \  - signatures\n  - type_defs\n  - interfaces\n  - stubs\n\nPin the full gate/replan/remediation\
+      \ semantics for the remaining runtime behavior:\n- failure classification\n\
+      - escalation\n- gate assessment\n- anomaly handling\n- cold-context pruning\n\
+      - gate failure -> fix+retest chain\n- conflict-resolver dispatch readiness\n\
+      \nUse the judge prompt as the authoritative semantic contract."
+    verification: '- Contract names each remaining judgment type and its runtime trigger
+      point
+
+      - Batched remediation ownership is explicit'
+    depends_on:
+    - driver-judgment-expansion-replan.impl-replan-planner-wiring
+    agent: software-architect
 - id: driver-cli-integration
   name: Driver CLI Integration
   status: locked

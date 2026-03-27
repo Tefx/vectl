@@ -30574,3 +30574,8 @@ phases:
       Gaps/Notes:
 
       - Quick gate passed with no blocker/should-fix findings.'
+- id: driver-foundation
+  name: Driver Foundation
+  status: pending
+  depends_on:
+  - decide-docs

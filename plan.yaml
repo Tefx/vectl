@@ -31590,6 +31590,25 @@ phases:
     depends_on:
     - driver-multi-runner-hardening.contract-runners-extended
     agent: python-executor
+  - id: driver-multi-runner-hardening.impl-runners-extended
+    name: Implement extended runners
+    status: pending
+    description: 'step_type: implementation
+
+
+      Implement CodexRunner and GeminiRunner support in src/vectl/driver/runners.py
+      without destabilizing the core runner path.
+
+
+      ## Completion Criteria (stub exclusion)
+
+      This is an IMPLEMENTATION step. Stub-only completion is NOT acceptable.'
+    verification: '- Main path: extended-runner tests pass
+
+      - Failure path: unavailable/experimental runner behavior is documented and covered'
+    depends_on:
+    - driver-multi-runner-hardening.test-runners-extended
+    agent: python-senior
 - id: driver-judgment-expansion-replan
   name: Driver Judgment Expansion + Replan
   status: locked

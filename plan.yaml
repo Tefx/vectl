@@ -31021,6 +31021,33 @@ phases:
     depends_on:
     - driver-execution-infra.verify-worktree-real-git-path
     agent: python-executor
+  - id: driver-execution-infra.test-runners-core
+    name: Test runners core
+    status: pending
+    description: 'step_type: test
+
+
+      Add focused tests for runner protocols and core parser/dispatch behavior.
+
+
+      Required checks:
+
+      - Claude single-JSON output parsing
+
+      - OpenCode JSONL output parsing
+
+      - stdin prompt mode behavior
+
+      - session resume flag translation for supported core runners
+
+      - transport error classification on malformed output'
+    verification: '- Targeted pytest file covers parser and dispatch contract for
+      core runners
+
+      - Tests include malformed-output and non-zero-exit cases'
+    depends_on:
+    - driver-execution-infra.contract-runners-core
+    agent: python-executor
 - id: driver-judgment-runtime-minimal
   name: Driver Judgment + Minimal Runtime
   status: locked

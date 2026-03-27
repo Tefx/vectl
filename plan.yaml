@@ -31163,6 +31163,21 @@ phases:
   status: locked
   depends_on:
   - driver-execution-infra
+  steps:
+  - id: driver-judgment-runtime-minimal.contract-judgments
+    name: Contract judgment types and requests
+    status: pending
+    description: "step_type: contract\ncontract_purity: ENFORCED\ncontract_outputs:\n\
+      \  - signatures\n  - type_defs\n  - interfaces\n  - stubs\n\nPin the exact JudgmentType,\
+      \ JudgmentRequest, JudgmentVerdict, and CONTEXT_SCHEMAS contracts from docs/DRIVER-ARCHITECTURE.md\
+      \ section 2.9 and docs/JUDGE-AGENT-PROMPT.md.\n\nThe contract must preserve\
+      \ all seven named judgment types and the strict verdict fields required by the\
+      \ judge prompt."
+    verification: '- Contract pins all seven judgment types and the mandatory verdict
+      JSON fields
+
+      - No judge invocation logic implemented here'
+    agent: python-executor
 - id: driver-multi-runner-hardening
   name: Driver Multi-Runner Hardening
   status: locked

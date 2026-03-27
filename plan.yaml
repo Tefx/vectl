@@ -32216,3 +32216,16 @@ phases:
   status: locked
   depends_on:
   - driver-doc-sync
+  steps:
+  - id: driver-deep-review.wiring-audit
+    name: Deep review wiring audit
+    status: pending
+    description: 'step_type: verification
+
+      Verification scope: full-plan-check protecting driver-deep-review.gate.
+
+
+      Complete system wiring audit for vectl.driver and vectl drive surfaces.'
+    verification: '- Audit covers exports, runtime reachability, and absence of placeholder
+      runtime classes'
+    agent: wiring-auditor

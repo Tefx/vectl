@@ -31120,7 +31120,7 @@ phases:
       rendering criteria.'
   - id: driver-foundation.wiring-audit
     name: Foundation wiring audit
-    status: claimed
+    status: done
     description: 'step_type: verification
 
       Verification scope: phase-check protecting driver-foundation.gate.
@@ -31149,6 +31149,46 @@ phases:
     agent: wiring-auditor
     claimed_by: wiring-auditor
     claimed_at: '2026-03-27T22:08:04.760598+00:00'
+    done_at: '2026-03-27T22:13:57.303193+00:00'
+    evidence: "## Wiring Audit: PASS\n\n### Check 1: Export Reachability\n- `__init__.py`\
+      \ has empty `__all__` list — correct for foundation phase (no external consumers\
+      \ yet)\n- Internal module imports are correctly wired:\n  - `session.py:19-20`\
+      \ — imports `SessionConfig` from `.config`, `SessionEntry` from `.types`\n \
+      \ - `observe.py:24` — imports `ObservabilityConfig` from `.config` (TYPE_CHECKING)\n\
+      \  - `config.py:24` — imports `ConfigError` from `.errors`\n  - `types.py:22-25`\
+      \ — TYPE_CHECKING imports from `vectl.models` and `.runners` (forward reference\
+      \ for unimplemented modules)\n- No orphan exports, circular imports, or missing\
+      \ symbols\n\n### Check 2: Config Fields Consumed by Non-Test Modules\n| Config\
+      \ Class | Fields | Consumed By |\n|-------------|--------|-------------|\n|\
+      \ `SessionConfig` | reuse_ttl, ttl_overrides | `session.py:63-71` — SessionPool.__init__\
+      \ |\n| `ObservabilityConfig` | events_file, log_level, print_progress, cost_tracking\
+      \ | `observe.py:94-118` — FileObserver.__init__, create_observer |\n| `DriverConfig`\
+      \ | route_agent(), _validate_runners_exist() | `config.py:127-167` — fully implemented\
+      \ |\n| `JudgeConfig` | All fields defined | Consumption in judge.py (future\
+      \ module) |\n| `OrchestrationConfig` | max_parallelism, merge_strategy | Consumption\
+      \ in loop.py (future module) |\n| `RunnerConfig` | All fields defined | Consumption\
+      \ in runners.py (future module) |\n\nAll foundation config fields are either\
+      \ consumed or documented as future-facing (per architecture doc).\n\n### Check\
+      \ 3: Observer Event Names/Types Referenced\nEvent types documented in `observe.py:34-48`\
+      \ Event docstring:\n- DECIDE, STEP_DISPATCHED, STEP_COMPLETED, STEP_FAILED,\
+      \ JUDGMENT, MERGE_COMPLETED, MERGE_CONFLICTED, RUNNER_FALLBACK, SESSION_REUSE_HIT,\
+      \ SESSION_REUSE_MISS, COST_CHECKPOINT, RECOVERY, HALT, FINAL\n\nTest coverage:\
+      \ `test_driver_observe.py:52-75` validates all 14 event types.  \nRuntime reference:\
+      \ `observe.py:121-148` — emit() serializes event_type as `event.event` field.\n\
+      \n### Check 4: No Vacuous Contract Placeholders\nGrep results for suspicious\
+      \ patterns:\n- `@pre(`: 0 matches\n- `@post(`: 0 matches  \n- `lambda x: x`:\
+      \ 0 matches\n- `lambda.*: True`: 0 matches\n- `@invar:allow`: 0 matches\n- `NotImplementedError`:\
+      \ 0 matches in driver modules\n\nAll functions are fully implemented:\n- `config.py:127-146`\
+      \ — route_agent() with glob pattern matching\n- `config.py:148-167` — _validate_runners_exist()\
+      \ model validator\n- `config.py:171-206` — load_config() full implementation\n\
+      - `session.py:73-95` — record() fully implemented\n- `session.py:96-146` — find_reusable()\
+      \ fully implemented\n- `observe.py:121-159` — emit() fully implemented\n- `types.py:135-352`\
+      \ — All DriverState methods fully implemented\n\n### Files Audited\n```\nsrc/vectl/driver/__init__.py\
+      \ (14 lines)\nsrc/vectl/driver/config.py (206 lines)\nsrc/vectl/driver/dispatch.py\
+      \ (169 lines)\nsrc/vectl/driver/session.py (146 lines)\nsrc/vectl/driver/observe.py\
+      \ (199 lines)\nsrc/vectl/driver/types.py (381 lines)\nsrc/vectl/driver/errors.py\
+      \ (132 lines)\n```\n\n### Verdict\n**PASS** — Foundation modules are properly\
+      \ wired with real implementations."
   - id: driver-foundation.spec-conformance
     name: Foundation spec conformance
     status: pending

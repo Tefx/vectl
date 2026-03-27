@@ -31434,6 +31434,39 @@ phases:
     depends_on:
     - driver-judgment-runtime-minimal.impl-loop-runtime-minimal
     agent: integration-verifier
+  - id: driver-judgment-runtime-minimal.vertical-slice-runtime
+    name: Early vertical slice runtime
+    status: pending
+    description: 'step_type: verification
+
+      Verification scope: phase-check protecting driver-judgment-runtime-minimal.gate.
+
+
+      Early vertical slice: wire ONE complete path from the user-facing entrypoint
+      `python -m vectl.driver` through config -> loop -> judge -> runner -> reconcile
+      -> completion using real implementations.
+
+
+      MUST NOT use stubs, mocks, or placeholder classes at layer boundaries.
+
+
+      Evidence MUST include:
+
+      - exact command executed
+
+      - layers traversed
+
+      - observable output
+
+      - statement that no runtime stubs were used'
+    verification: '- Real vertical slice command/output is pasted
+
+      - Layers traversed are explicitly named
+
+      - Stubs used: NONE'
+    depends_on:
+    - driver-judgment-runtime-minimal.verify-startup-recovery-and-shutdown
+    agent: integration-verifier
 - id: driver-multi-runner-hardening
   name: Driver Multi-Runner Hardening
   status: locked

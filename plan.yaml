@@ -31985,6 +31985,22 @@ phases:
     depends_on:
     - driver-cli-integration.test-cli-drive
     agent: python-executor
+  - id: driver-cli-integration.verify-cli-drive
+    name: Verify vectl drive real path
+    status: pending
+    description: 'step_type: verification
+
+      Verification scope: phase-check protecting driver-cli-integration.gate.
+
+
+      Exercise the real `vectl drive` path with actual command invocation and prove
+      it reaches the runtime entrypoint rather than a stubbed adapter path.'
+    verification: '- Exact command and actual output are included
+
+      - Evidence shows vectl drive reaches the real runtime path'
+    depends_on:
+    - driver-cli-integration.impl-cli-drive
+    agent: integration-verifier
 - id: driver-system-wiring
   name: Driver System Wiring
   status: locked

@@ -31488,6 +31488,32 @@ phases:
     depends_on:
     - driver-judgment-runtime-minimal.vertical-slice-runtime
     agent: blind-tester
+  - id: driver-judgment-runtime-minimal.wiring-audit
+    name: Runtime minimal wiring audit
+    status: pending
+    description: 'step_type: verification
+
+      Verification scope: phase-check protecting driver-judgment-runtime-minimal.gate.
+
+
+      Audit runtime wiring for the first runnable surface.
+
+
+      Required checks:
+
+      - __main__ reaches loop.run via real imports
+
+      - loop runtime uses real judge/worktree/runner paths for the implemented scope
+
+      - no _Runtime*, _Stub*, or placeholder runtime classes remain on the critical
+      path'
+    verification: '- Wiring audit report names any orphaned or placeholder runtime
+      paths
+
+      - Verdict is PASS or ISSUES_FOUND'
+    depends_on:
+    - driver-judgment-runtime-minimal.liveness-probe
+    agent: wiring-auditor
 - id: driver-multi-runner-hardening
   name: Driver Multi-Runner Hardening
   status: locked

@@ -31412,7 +31412,26 @@ phases:
     description: 'step_type: implementation
 
 
-      Implement src/vectl/driver/worktree.py to the pinned contract.
+      Implement substantive create/merge/cleanup behavior in src/vectl/driver/worktree.py
+      to satisfy the pinned contract before any real temp-repo tests are expected
+      to pass.
+
+
+      Required product-code scope for this step:
+
+      - replace contract-only stubs with real git-backed worktree lifecycle logic
+
+      - implement stable worktree path and branch naming
+
+      - implement reuse-on-retry behavior when the worktree path or branch already
+      exists
+
+      - implement squash-merge default behavior
+
+      - implement trivial conflict auto-resolution limited to plan/lock style files
+
+      - implement non-trivial conflict classification with merge-abort / resolver
+      handoff semantics
 
 
       ## Failure-mode checklist
@@ -31425,18 +31444,26 @@ phases:
 
       - merge abort behavior on non-trivial conflict
 
+      - cleanup behavior after success and after aborted/conflicted merge
+
 
       ## Completion Criteria (stub exclusion)
 
-      This is an IMPLEMENTATION step. Stub-only completion is NOT acceptable.'
-    verification: '- Main path: targeted worktree tests pass
+      This is an IMPLEMENTATION step. Stub-only completion is NOT acceptable.
 
-      - Failure path: non-trivial conflict path returns a conflict result without
-      silently resolving source conflicts
+      The deliverable must contain substantive logic that processes real git state
+      and enables downstream real temp-repo tests without requiring the test step
+      to edit product code.'
+    verification: '- Main path: src/vectl/driver/worktree.py contains real create/merge/cleanup
+      logic matching the pinned contract
 
-      - Proof: merge lifecycle matches blueprint and architecture semantics'
+      - Failure path: non-trivial conflict path returns a conflict result after merge-abort
+      / resolver handoff semantics, without silently resolving source conflicts
+
+      - Proof: targeted static/unit checks for the module pass and downstream test-worktree
+      can remain test-only scope'
     depends_on:
-    - driver-execution-infra.test-worktree
+    - driver-execution-infra.contract-worktree
     agent: python-senior
   - id: driver-execution-infra.verify-worktree-real-git-path
     name: Verify worktree real git path

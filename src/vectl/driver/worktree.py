@@ -3,8 +3,9 @@
 Responsibility: define stable, typed contracts for create/merge/cleanup in the
 driver worktree lifecycle.
 
-Non-responsibility: execute git commands. All lifecycle functions in this
-module are contract stubs for later implementation.
+Non-responsibility: make semantic conflict judgments beyond the trivial
+auto-resolve set. Non-trivial conflicts are surfaced to callers for resolver
+handoff.
 
 Architecture Reference: docs/DRIVER-ARCHITECTURE.md Section 2.6
 Blueprint Reference: DRIVER-BLUEPRINT.md Worktree Lifecycle (worktree.py)
@@ -12,9 +13,14 @@ Blueprint Reference: DRIVER-BLUEPRINT.md Worktree Lifecycle (worktree.py)
 
 from __future__ import annotations
 
+import asyncio
+import fnmatch
+import shutil
 from dataclasses import dataclass, field
 from enum import Enum
 from pathlib import Path
+
+from .errors import WorktreeError
 
 WORKTREE_BASE_DIR: Path = Path(".vectl/worktrees")
 """Default base directory for isolated worktrees.
@@ -152,10 +158,40 @@ async def create(step_id: str, base_dir: Path = WORKTREE_BASE_DIR) -> WorktreeBi
         `WorktreeBinding` with deterministic path/branch and reuse signal.
 
     Raises:
-        NotImplementedError: Contract-only stub. Git implementation deferred.
+        WorktreeError: If git operations fail.
     """
+    repo_root = await _repo_root(step_id)
+    branch_name = derive_branch_name(step_id)
+    worktree_path = derive_worktree_path(step_id=step_id, base_dir=base_dir)
+    materialized_path = _materialize_path(path=worktree_path, repo_root=repo_root)
 
-    raise NotImplementedError("Contract-only stub: create() git lifecycle not implemented")
+    if materialized_path.exists():
+        return WorktreeBinding(
+            step_id=step_id,
+            worktree_path=worktree_path,
+            branch_name=branch_name,
+            reused_existing=True,
+        )
+
+    materialized_path.parent.mkdir(parents=True, exist_ok=True)
+    branch_exists = await _branch_exists(
+        step_id=step_id, branch_name=branch_name, repo_root=repo_root
+    )
+    if not branch_exists:
+        await _git_checked(step_id=step_id, repo_root=repo_root, args=("branch", branch_name))
+
+    await _git_checked(
+        step_id=step_id,
+        repo_root=repo_root,
+        args=("worktree", "add", str(worktree_path), branch_name),
+    )
+
+    return WorktreeBinding(
+        step_id=step_id,
+        worktree_path=worktree_path,
+        branch_name=branch_name,
+        reused_existing=branch_exists,
+    )
 
 
 async def merge(
@@ -186,10 +222,67 @@ async def merge(
         `MergeResult` with explicit outcome and optional resolver dispatch.
 
     Raises:
-        NotImplementedError: Contract-only stub. Git implementation deferred.
+        WorktreeError: If git operations fail unexpectedly.
     """
+    if strategy is not MergeStrategy.SQUASH:
+        raise WorktreeError(step_id, f"Unsupported merge strategy: {strategy}")
 
-    raise NotImplementedError("Contract-only stub: merge() git lifecycle not implemented")
+    repo_root = await _repo_root(step_id)
+    source_branch = derive_branch_name(step_id)
+    await _git_checked(step_id=step_id, repo_root=repo_root, args=("checkout", target_branch))
+
+    merge_result = await _git(
+        repo_root=repo_root,
+        args=("merge", "--squash", source_branch),
+    )
+    if merge_result.returncode == 0:
+        await _commit_merge(
+            step_id=step_id,
+            repo_root=repo_root,
+            message=f"[vectl-driver] {step_id}",
+        )
+        return MergeResult(outcome=MergeOutcome.CLEAN_MERGE)
+
+    conflicted_files = await _list_conflicts(step_id=step_id, repo_root=repo_root)
+    if not conflicted_files:
+        raise WorktreeError(
+            step_id,
+            f"squash merge failed without conflict markers: {_format_git_error(merge_result)}",
+        )
+
+    if _all_trivial_conflicts(conflicted_files):
+        await _git_checked(
+            step_id=step_id,
+            repo_root=repo_root,
+            args=("checkout", "--ours", "--", *conflicted_files),
+        )
+        await _git_checked(
+            step_id=step_id,
+            repo_root=repo_root,
+            args=("add", "--", *conflicted_files),
+        )
+        await _commit_merge(
+            step_id=step_id,
+            repo_root=repo_root,
+            message=f"[vectl-driver] {step_id} (auto-resolved)",
+        )
+        return MergeResult(
+            outcome=MergeOutcome.AUTO_RESOLVED_CONFLICT,
+            conflicted_files=tuple(conflicted_files),
+        )
+
+    await _abort_merge_state(step_id=step_id, repo_root=repo_root)
+    return MergeResult(
+        outcome=MergeOutcome.NON_TRIVIAL_CONFLICT,
+        conflicted_files=tuple(conflicted_files),
+        resolver_dispatch=ConflictResolverDispatch(
+            step_id=step_id,
+            worktree_path=worktree_path,
+            source_branch=source_branch,
+            target_branch=target_branch,
+            conflicted_files=tuple(conflicted_files),
+        ),
+    )
 
 
 async def cleanup(step_id: str, worktree_path: Path, force: bool = True) -> None:
@@ -208,10 +301,171 @@ async def cleanup(step_id: str, worktree_path: Path, force: bool = True) -> None
         None.
 
     Raises:
-        NotImplementedError: Contract-only stub. Git implementation deferred.
+        None.
     """
+    repo_result = await _git(repo_root=None, args=("rev-parse", "--show-toplevel"))
+    if repo_result.returncode != 0:
+        return
 
-    raise NotImplementedError("Contract-only stub: cleanup() git lifecycle not implemented")
+    repo_root = Path(repo_result.stdout.strip())
+    branch_name = derive_branch_name(step_id)
+    materialized_path = _materialize_path(path=worktree_path, repo_root=repo_root)
+
+    remove_args: tuple[str, ...]
+    if force:
+        remove_args = ("worktree", "remove", "--force", str(worktree_path))
+    else:
+        remove_args = ("worktree", "remove", str(worktree_path))
+    await _git(repo_root=repo_root, args=remove_args)
+
+    branch_delete_args: tuple[str, ...]
+    if force:
+        branch_delete_args = ("branch", "-D", branch_name)
+    else:
+        branch_delete_args = ("branch", "-d", branch_name)
+    await _git(repo_root=repo_root, args=branch_delete_args)
+
+    if force and materialized_path.exists():
+        shutil.rmtree(materialized_path, ignore_errors=True)
+
+
+@dataclass(frozen=True)
+class _GitResult:
+    """Structured git command result."""
+
+    returncode: int
+    stdout: str
+    stderr: str
+
+
+async def _repo_root(step_id: str) -> Path:
+    """Resolve repository root for current process."""
+
+    result = await _git_checked(
+        step_id=step_id,
+        repo_root=None,
+        args=("rev-parse", "--show-toplevel"),
+    )
+    return Path(result.stdout.strip())
+
+
+def _materialize_path(path: Path, repo_root: Path) -> Path:
+    """Return absolute filesystem path for relative/absolute inputs."""
+
+    if path.is_absolute():
+        return path
+    return repo_root / path
+
+
+async def _branch_exists(step_id: str, branch_name: str, repo_root: Path) -> bool:
+    """Return whether local branch already exists."""
+
+    result = await _git(
+        repo_root=repo_root,
+        args=("show-ref", "--verify", "--quiet", f"refs/heads/{branch_name}"),
+    )
+    if result.returncode == 0:
+        return True
+    if result.returncode == 1:
+        return False
+    raise WorktreeError(step_id, f"Unable to check branch existence: {_format_git_error(result)}")
+
+
+async def _list_conflicts(step_id: str, repo_root: Path) -> list[str]:
+    """List currently unresolved conflict file paths."""
+
+    result = await _git_checked(
+        step_id=step_id,
+        repo_root=repo_root,
+        args=("diff", "--name-only", "--diff-filter=U"),
+    )
+    return [line.strip() for line in result.stdout.splitlines() if line.strip()]
+
+
+def _all_trivial_conflicts(conflicted_files: list[str]) -> bool:
+    """Return True when all conflicts match trivial auto-resolve patterns."""
+
+    for file_path in conflicted_files:
+        normalized = Path(file_path).as_posix()
+        basename = Path(file_path).name
+        if not any(
+            fnmatch.fnmatch(normalized, pattern) or fnmatch.fnmatch(basename, pattern)
+            for pattern in TRIVIAL_CONFLICT_PATTERNS
+        ):
+            return False
+    return True
+
+
+async def _commit_merge(step_id: str, repo_root: Path, message: str) -> None:
+    """Commit staged squash merge changes when present."""
+
+    result = await _git(repo_root=repo_root, args=("commit", "-m", message))
+    if result.returncode == 0:
+        return
+    combined = f"{result.stdout}\n{result.stderr}".lower()
+    if "nothing to commit" in combined or "nothing added to commit" in combined:
+        return
+    raise WorktreeError(step_id, f"Unable to commit merge result: {_format_git_error(result)}")
+
+
+async def _abort_merge_state(step_id: str, repo_root: Path) -> None:
+    """Abort merge state for regular or squash conflicts."""
+
+    abort_result = await _git(repo_root=repo_root, args=("merge", "--abort"))
+    if abort_result.returncode == 0:
+        return
+
+    reset_result = await _git(repo_root=repo_root, args=("reset", "--merge"))
+    if reset_result.returncode == 0:
+        return
+
+    hard_reset_result = await _git(repo_root=repo_root, args=("reset", "--hard", "HEAD"))
+    if hard_reset_result.returncode == 0:
+        return
+
+    raise WorktreeError(
+        step_id,
+        "Unable to clear merge state after non-trivial conflict: "
+        f"{_format_git_error(abort_result)}; {_format_git_error(reset_result)}; "
+        f"{_format_git_error(hard_reset_result)}",
+    )
+
+
+def _format_git_error(result: _GitResult) -> str:
+    """Render compact git failure detail for WorktreeError."""
+
+    details = (result.stderr or result.stdout).strip()
+    return f"exit={result.returncode}: {details}"
+
+
+async def _git_checked(step_id: str, repo_root: Path | None, args: tuple[str, ...]) -> _GitResult:
+    """Run git command and raise WorktreeError on non-zero exit."""
+
+    result = await _git(repo_root=repo_root, args=args)
+    if result.returncode != 0:
+        raise WorktreeError(step_id, f"git {' '.join(args)} failed: {_format_git_error(result)}")
+    return result
+
+
+async def _git(repo_root: Path | None, args: tuple[str, ...]) -> _GitResult:
+    """Run git command and capture output."""
+
+    process = await asyncio.create_subprocess_exec(
+        "git",
+        *args,
+        cwd=str(repo_root) if repo_root is not None else None,
+        stdout=asyncio.subprocess.PIPE,
+        stderr=asyncio.subprocess.PIPE,
+    )
+    stdout_raw, stderr_raw = await process.communicate()
+    returncode = process.returncode
+    if returncode is None:
+        returncode = 1
+    return _GitResult(
+        returncode=returncode,
+        stdout=stdout_raw.decode("utf-8", errors="replace"),
+        stderr=stderr_raw.decode("utf-8", errors="replace"),
+    )
 
 
 __all__ = [

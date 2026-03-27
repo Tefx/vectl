@@ -31381,7 +31381,7 @@ phases:
       - Contract-only step; create/merge/cleanup remain stubs by design.'
   - id: driver-execution-infra.test-worktree
     name: Test worktree lifecycle
-    status: pending
+    status: claimed
     description: 'step_type: test
 
 
@@ -31406,6 +31406,8 @@ phases:
     depends_on:
     - driver-execution-infra.contract-worktree
     agent: python-executor
+    claimed_by: python-executor
+    claimed_at: '2026-03-27T22:49:52.902278+00:00'
   - id: driver-execution-infra.impl-worktree
     name: Implement worktree lifecycle
     status: pending

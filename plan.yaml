@@ -31348,6 +31348,24 @@ phases:
     depends_on:
     - driver-judgment-runtime-minimal.impl-judge
     agent: integration-verifier
+  - id: driver-judgment-runtime-minimal.contract-loop-runtime-minimal
+    name: Contract loop runtime minimal
+    status: pending
+    description: "step_type: contract\ncontract_purity: ENFORCED\ncontract_outputs:\n\
+      \  - signatures\n  - type_defs\n  - interfaces\n  - stubs\n\nPin the minimal\
+      \ runtime contract for src/vectl/driver/loop.py and src/vectl/driver/__main__.py\
+      \ from the blueprint key flows and docs/DRIVER-ARCHITECTURE.md sections 2.11,\
+      \ 3, 4, and Q1-Q3.\n\nScope for this phase:\n- run()\n- handle_dispatch()\n\
+      - handle_complete()\n- reconcile()\n- shutdown()\n- __main__ entrypoint\n- startup\
+      \ recovery and graceful shutdown\n- single-runner/single-judge happy path\n\n\
+      Explicitly record which REPLAN-capable branches are deferred to driver-judgment-expansion-replan\
+      \ so runtime behavior is not silently narrowed."
+    verification: '- Contract names the exact runtime surfaces and any bounded deferrals
+
+      - No business implementation beyond stubs and interfaces'
+    depends_on:
+    - driver-judgment-runtime-minimal.verify-judge-structured-output-path
+    agent: software-architect
 - id: driver-multi-runner-hardening
   name: Driver Multi-Runner Hardening
   status: locked

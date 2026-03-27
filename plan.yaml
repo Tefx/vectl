@@ -31120,7 +31120,7 @@ phases:
       rendering criteria.'
   - id: driver-foundation.wiring-audit
     name: Foundation wiring audit
-    status: pending
+    status: claimed
     description: 'step_type: verification
 
       Verification scope: phase-check protecting driver-foundation.gate.
@@ -31147,6 +31147,8 @@ phases:
     depends_on:
     - driver-foundation.impl-dispatch
     agent: wiring-auditor
+    claimed_by: wiring-auditor
+    claimed_at: '2026-03-27T22:08:04.760598+00:00'
   - id: driver-foundation.spec-conformance
     name: Foundation spec conformance
     status: pending

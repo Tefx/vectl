@@ -31776,6 +31776,26 @@ phases:
     depends_on:
     - driver-judgment-expansion-replan.contract-replan-planner-wiring
     agent: python-executor
+  - id: driver-judgment-expansion-replan.impl-replan-planner-wiring
+    name: Implement replan and planner wiring
+    status: pending
+    description: 'step_type: implementation
+
+
+      Implement REPLAN-aware planner dispatch wiring in src/vectl/driver/loop.py and
+      any required judgment handoff helpers.
+
+
+      ## Completion Criteria (stub exclusion)
+
+      This is an IMPLEMENTATION step. Stub-only completion is NOT acceptable.'
+    verification: '- Main path: REPLAN tests pass
+
+      - Failure path: missing planner_instruction or planner failure path is explicitly
+      handled'
+    depends_on:
+    - driver-judgment-expansion-replan.test-replan-planner-wiring
+    agent: python-senior
 - id: driver-cli-integration
   name: Driver CLI Integration
   status: locked

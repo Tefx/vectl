@@ -31914,6 +31914,32 @@ phases:
     depends_on:
     - driver-judgment-expansion-replan.spec-conformance
     agent: integration-verifier
+  - id: driver-judgment-expansion-replan.gate
+    name: Gate driver-judgment-expansion-replan
+    status: pending
+    description: 'step_type: gate
+
+      As an INDEPENDENT REVIEWER, assess whether the full judgment/remediation flow
+      is ready for CLI exposure.
+
+
+      review_depth: THOROUGH
+
+      cross_cutting_focus:
+
+      - REPLAN correctness
+
+      - blocker batching and remediation ownership
+
+      - no silent semantic narrowing of judge verdicts'
+    verification: '- All phase steps completed successfully
+
+      - End-to-end gate-chain evidence is present
+
+      - No unresolved blockers remain for CLI integration'
+    depends_on:
+    - driver-judgment-expansion-replan.freeze
+    agent: gate-reviewer
 - id: driver-cli-integration
   name: Driver CLI Integration
   status: locked

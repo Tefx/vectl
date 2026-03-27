@@ -31261,7 +31261,7 @@ phases:
       - Conformance report found no blocking non-conformances.'
   - id: driver-foundation.gate
     name: Gate driver-foundation
-    status: pending
+    status: claimed
     description: 'step_type: gate
 
       As an INDEPENDENT REVIEWER, assess whether the driver-foundation phase is complete
@@ -31287,6 +31287,8 @@ phases:
     depends_on:
     - driver-foundation.spec-conformance
     agent: gate-reviewer
+    claimed_by: gate-reviewer
+    claimed_at: '2026-03-27T22:19:24.127117+00:00'
 - id: driver-execution-infra
   name: Driver Execution Infrastructure
   status: locked

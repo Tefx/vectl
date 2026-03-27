@@ -31874,6 +31874,21 @@ phases:
     depends_on:
     - driver-judgment-expansion-replan.impl-gate-chain-flow
     agent: integration-verifier
+  - id: driver-judgment-expansion-replan.spec-conformance
+    name: Judgment expansion and replan spec conformance
+    status: pending
+    description: 'step_type: verification
+
+      Verification scope: phase-check protecting driver-judgment-expansion-replan.gate.
+
+
+      Compare expanded judgment/replan/remediation behavior against the blueprint
+      key flows and the judge system prompt semantics.'
+    verification: '- Spec conformance report covers REPLAN, gate, failure, escalation,
+      anomaly, and cold-context behavior'
+    depends_on:
+    - driver-judgment-expansion-replan.verify-gate-chain-e2e
+    agent: doc-reviewer
 - id: driver-cli-integration
   name: Driver CLI Integration
   status: locked

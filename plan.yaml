@@ -31048,6 +31048,26 @@ phases:
     depends_on:
     - driver-execution-infra.contract-runners-core
     agent: python-executor
+  - id: driver-execution-infra.impl-runners-core
+    name: Implement runners core
+    status: pending
+    description: "step_type: implementation\n\ntags:\n  - integration\n\nImplement\
+      \ the core subset of src/vectl/driver/runners.py:\n- Runner and RunnerHandle\
+      \ protocol-backed implementations\n- ClaudeRunner and OpenCodeRunner\n- core\
+      \ output parsers and status classification\n\n## Gate Preview (what the gate\
+      \ WILL reject)\n1. Parser-only completion with no real subprocess path proof\n\
+      2. Session resume flags wired incorrectly relative to config\n3. Silent narrowing\
+      \ of malformed-output handling into generic success\n\n## Completion Criteria\
+      \ (stub exclusion)\nThis is an IMPLEMENTATION step. Stub-only completion is\
+      \ NOT acceptable."
+    verification: '- Main path: targeted runner-core tests pass
+
+      - Failure path: malformed output and runner-not-found behaviors are covered
+
+      - Proof: runner dispatch creates real subprocess handles with closed stdin semantics'
+    depends_on:
+    - driver-execution-infra.test-runners-core
+    agent: python-senior
 - id: driver-judgment-runtime-minimal
   name: Driver Judgment + Minimal Runtime
   status: locked

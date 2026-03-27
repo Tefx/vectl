@@ -31424,7 +31424,7 @@ phases:
     agent: python-executor
   - id: driver-execution-infra.impl-worktree
     name: Implement worktree lifecycle
-    status: pending
+    status: claimed
     description: 'step_type: implementation
 
 
@@ -31481,6 +31481,8 @@ phases:
     depends_on:
     - driver-execution-infra.contract-worktree
     agent: python-senior
+    claimed_by: python-senior
+    claimed_at: '2026-03-27T22:56:45.029176+00:00'
   - id: driver-execution-infra.verify-worktree-real-git-path
     name: Verify worktree real git path
     status: pending

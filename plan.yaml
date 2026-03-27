@@ -32001,6 +32001,28 @@ phases:
     depends_on:
     - driver-cli-integration.impl-cli-drive
     agent: integration-verifier
+  - id: driver-cli-integration.wiring-audit
+    name: CLI drive wiring audit
+    status: pending
+    description: 'step_type: verification
+
+      Verification scope: phase-check protecting driver-cli-integration.gate.
+
+
+      Wiring audit for the new runnable CLI surface.
+
+
+      Required checks:
+
+      - command registered in src/vectl/cli.py
+
+      - import path reaches loop runtime
+
+      - no orphaned config flag surface or dead command branch remains'
+    verification: '- Wiring audit report shows command registration and runtime reachability'
+    depends_on:
+    - driver-cli-integration.verify-cli-drive
+    agent: wiring-auditor
 - id: driver-system-wiring
   name: Driver System Wiring
   status: locked

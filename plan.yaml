@@ -31115,6 +31115,23 @@ phases:
     depends_on:
     - driver-execution-infra.verify-runners-real-cli-path
     agent: wiring-auditor
+  - id: driver-execution-infra.spec-conformance
+    name: Execution infrastructure spec conformance
+    status: pending
+    description: 'step_type: verification
+
+      Verification scope: phase-check protecting driver-execution-infra.gate.
+
+
+      Compare worktree and runner-core behavior against the blueprint/architecture
+      module specs and verified CLI capability table.'
+    verification: '- Report maps runner/worktree requirements to implementation file:line
+
+      - Any deferred extended-runner responsibilities are explicitly recorded as phase-scoped
+      deferrals, not omissions'
+    depends_on:
+    - driver-execution-infra.wiring-audit
+    agent: doc-reviewer
 - id: driver-judgment-runtime-minimal
   name: Driver Judgment + Minimal Runtime
   status: locked

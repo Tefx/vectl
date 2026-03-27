@@ -30867,6 +30867,34 @@ phases:
     depends_on:
     - driver-foundation.wiring-audit
     agent: doc-reviewer
+  - id: driver-foundation.gate
+    name: Gate driver-foundation
+    status: pending
+    description: 'step_type: gate
+
+      As an INDEPENDENT REVIEWER, assess whether the driver-foundation phase is complete
+      and safe to build upon.
+
+
+      review_depth: STANDARD
+
+      cross_cutting_focus:
+
+      - configuration invariant enforcement
+
+      - event auditability
+
+      - session ownership boundary is not yet violated by dispatch logic'
+    verification: '- All driver-foundation steps completed successfully
+
+      - Wiring audit passed or issues are resolved
+
+      - Spec conformance evidence is adequate
+
+      - No unresolved blockers remain for driver-execution-infra'
+    depends_on:
+    - driver-foundation.spec-conformance
+    agent: gate-reviewer
 - id: driver-execution-infra
   name: Driver Execution Infrastructure
   status: locked

@@ -31411,6 +31411,29 @@ phases:
     depends_on:
     - driver-judgment-runtime-minimal.test-loop-runtime-minimal
     agent: python-senior
+  - id: driver-judgment-runtime-minimal.verify-startup-recovery-and-shutdown
+    name: Verify startup recovery and shutdown paths
+    status: pending
+    description: 'step_type: verification
+
+      Verification scope: phase-check protecting driver-judgment-runtime-minimal.gate.
+
+
+      As an INDEPENDENT TESTER, validate startup recovery (repair_claims/orphan handling)
+      and graceful shutdown (SIGINT/SIGTERM or equivalent controlled stop).
+
+
+      YOUR GOAL IS TO FIND PROBLEMS.
+
+
+      This is a real-path verification step; generic unit-test summaries are insufficient.'
+    verification: '- Evidence includes exact commands or controlled test invocations
+      for startup recovery and shutdown paths
+
+      - At least one anomaly/recovery path and one shutdown path are demonstrated'
+    depends_on:
+    - driver-judgment-runtime-minimal.impl-loop-runtime-minimal
+    agent: integration-verifier
 - id: driver-multi-runner-hardening
   name: Driver Multi-Runner Hardening
   status: locked

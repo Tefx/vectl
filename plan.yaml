@@ -31392,6 +31392,25 @@ phases:
     depends_on:
     - driver-judgment-runtime-minimal.contract-loop-runtime-minimal
     agent: python-executor
+  - id: driver-judgment-runtime-minimal.impl-loop-runtime-minimal
+    name: Implement loop runtime minimal
+    status: pending
+    description: "step_type: implementation\n\ntags:\n  - integration\n\nImplement\
+      \ the minimal runtime in src/vectl/driver/loop.py and src/vectl/driver/__main__.py.\n\
+      \n## Failure-mode checklist\n- startup recovery path when claims/worktrees need\
+      \ repair\n- success reconcile path with evidence acceptance\n- failure retry\
+      \ threshold path before escalation\n- graceful shutdown on signal/forced stop\n\
+      \n## Completion Criteria (stub exclusion)\nThis is an IMPLEMENTATION step. Stub-only\
+      \ completion is NOT acceptable."
+    verification: '- Main path: targeted loop-runtime tests pass
+
+      - Failure path: startup recovery and retry-threshold paths are covered
+
+      - Proof: runtime remains single-runner/single-judge scoped and does not silently
+      claim later-phase behavior'
+    depends_on:
+    - driver-judgment-runtime-minimal.test-loop-runtime-minimal
+    agent: python-senior
 - id: driver-multi-runner-hardening
   name: Driver Multi-Runner Hardening
   status: locked

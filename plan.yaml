@@ -32152,6 +32152,20 @@ phases:
     depends_on:
     - driver-system-wiring.verify-e2e
     agent: integration-verifier
+  - id: driver-system-wiring.gate
+    name: Gate driver-system-wiring
+    status: pending
+    description: 'step_type: gate
+
+      As an INDEPENDENT REVIEWER, assess whether both runnable surfaces are fully
+      wired and broad runtime/repo checks have been performed at the correct boundary.'
+    verification: '- Both runnable surfaces have end-to-end evidence
+
+      - Full-plan check has run and any blocker debt is either fixed or explicitly
+      owned before doc sync'
+    depends_on:
+    - driver-system-wiring.full-plan-check
+    agent: gate-reviewer
 - id: driver-doc-sync
   name: Driver Documentation Sync
   status: locked

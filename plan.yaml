@@ -32130,6 +32130,28 @@ phases:
     depends_on:
     - driver-system-wiring.replace-stubs
     agent: integration-verifier
+  - id: driver-system-wiring.full-plan-check
+    name: Full-plan runtime and repo check
+    status: pending
+    description: 'step_type: verification
+
+      Verification scope: full-plan-check protecting driver-deep-review and final
+      completion.
+
+
+      Run the nearest broad verification boundary after runtime wiring is complete
+      so late gates are not the first point to rediscover systemic issues.
+
+
+      This check should cover runtime, integration, and any repo-level debt intersecting
+      remaining deep-review gates.'
+    verification: '- Broad verification command(s) and actual output are recorded
+
+      - Any blocker-class debt discovered here receives remediation ownership before
+      deep review proceeds'
+    depends_on:
+    - driver-system-wiring.verify-e2e
+    agent: integration-verifier
 - id: driver-doc-sync
   name: Driver Documentation Sync
   status: locked

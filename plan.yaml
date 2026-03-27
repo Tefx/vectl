@@ -30812,6 +30812,35 @@ phases:
     depends_on:
     - driver-foundation.test-dispatch
     agent: python-executor
+  - id: driver-foundation.wiring-audit
+    name: Foundation wiring audit
+    status: pending
+    description: 'step_type: verification
+
+      Verification scope: phase-check protecting driver-foundation.gate.
+
+
+      Wiring completeness audit for the new foundation modules.
+
+
+      REQUIRED CHECKS:
+
+      1. Export reachability for any symbols re-exported from src/vectl/driver/__init__.py
+
+      2. Config fields are consumed by at least one non-test module where intended
+
+      3. Observer event names/types are referenced by runtime code paths or explicitly
+      documented as future-facing
+
+      4. No identity-lambda or vacuous contract placeholders remain in contract-bearing
+      code'
+    verification: '- Evidence includes orphan exports, unconsumed config fields, and
+      vacuous contract checks
+
+      - Verdict is PASS or ISSUES_FOUND with concrete grep/import-trace output'
+    depends_on:
+    - driver-foundation.impl-dispatch
+    agent: wiring-auditor
 - id: driver-execution-infra
   name: Driver Execution Infrastructure
   status: locked

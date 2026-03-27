@@ -30599,3 +30599,8 @@ phases:
   status: locked
   depends_on:
   - driver-multi-runner-hardening
+- id: driver-cli-integration
+  name: Driver CLI Integration
+  status: locked
+  depends_on:
+  - driver-judgment-expansion-replan

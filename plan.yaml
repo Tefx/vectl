@@ -31178,6 +31178,33 @@ phases:
 
       - No judge invocation logic implemented here'
     agent: python-executor
+  - id: driver-judgment-runtime-minimal.contract-judgment-coverage-matrix
+    name: Contract judgment coverage matrix
+    status: pending
+    description: 'step_type: planning
+
+
+      Create the explicit judgment coverage matrix demanded by the architecture review.
+
+
+      Map each judgment type to:
+
+      - where it is invoked (dispatch, reconcile, gate handling, startup recovery)
+
+      - whether rules or judge handle the decision first
+
+      - whether this phase or a later phase owns the runtime behavior
+
+
+      This step exists to prevent silent narrowing of REPLAN, GATE, FAILURE, ESCALATION,
+      ANOMALY, and COLD_CONTEXT obligations.'
+    verification: '- Coverage matrix names all judgment types, trigger points, and
+      phase ownership
+
+      - Any deferred behavior is explicit and bounded'
+    depends_on:
+    - driver-judgment-runtime-minimal.contract-judgments
+    agent: software-architect
 - id: driver-multi-runner-hardening
   name: Driver Multi-Runner Hardening
   status: locked

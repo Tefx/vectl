@@ -32105,6 +32105,31 @@ phases:
 
       - No runtime placeholder remains on the critical path'
     agent: python-senior
+  - id: driver-system-wiring.verify-e2e
+    name: Verify system wiring end-to-end
+    status: pending
+    description: 'step_type: verification
+
+      Verification scope: full-plan-check protecting driver-system-wiring.gate and
+      downstream deep review.
+
+
+      Verify both user-facing entrypoints:
+
+      - python -m vectl.driver
+
+      - vectl drive
+
+
+      Evidence must show a real path through config -> loop -> judge -> runner ->
+      worktree -> reconcile/completion.'
+    verification: '- Exact commands and actual output for both entrypoints are included
+
+      - Evidence shows the real end-to-end path and confirms no runtime placeholders
+      are involved'
+    depends_on:
+    - driver-system-wiring.replace-stubs
+    agent: integration-verifier
 - id: driver-doc-sync
   name: Driver Documentation Sync
   status: locked

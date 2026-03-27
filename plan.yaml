@@ -30584,3 +30584,8 @@ phases:
   status: locked
   depends_on:
   - driver-foundation
+- id: driver-judgment-runtime-minimal
+  name: Driver Judgment + Minimal Runtime
+  status: locked
+  depends_on:
+  - driver-execution-infra

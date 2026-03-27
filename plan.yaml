@@ -32291,3 +32291,27 @@ phases:
     depends_on:
     - driver-deep-review.wiring-audit
     agent: gate-reviewer
+  - id: driver-deep-review.black-box-verification
+    name: Deep review black-box verification
+    status: pending
+    description: 'step_type: verification
+
+      Verification scope: full-plan-check protecting driver-deep-review.gate.
+
+
+      Using only the docs/specs and public runtime surfaces, verify the driver behaves
+      as documented.
+
+
+      Required black-box surfaces:
+
+      - python -m vectl.driver
+
+      - vectl drive
+
+      - judge verdict contract shape where externally observable'
+    verification: '- Black-box evidence uses spec-derived fixtures or commands and
+      reports actual observable behavior'
+    depends_on:
+    - driver-deep-review.spec-conformance
+    agent: blind-tester

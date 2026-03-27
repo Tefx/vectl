@@ -30900,6 +30900,23 @@ phases:
   status: locked
   depends_on:
   - driver-foundation
+  steps:
+  - id: driver-execution-infra.contract-worktree
+    name: Contract worktree lifecycle
+    status: pending
+    description: "step_type: contract\ncontract_purity: ENFORCED\ncontract_outputs:\n\
+      \  - signatures\n  - type_defs\n  - interfaces\n  - stubs\n\nPin the exact create/merge/cleanup\
+      \ contracts for src/vectl/driver/worktree.py from DRIVER-BLUEPRINT.md Worktree\
+      \ Lifecycle and docs/DRIVER-ARCHITECTURE.md section 2.6.\n\nThe contract must\
+      \ explicitly encode:\n- stable worktree path and branch naming\n- reuse-on-retry\
+      \ behavior when worktree path already exists\n- squash-merge default\n- trivial-conflict\
+      \ auto-resolution limited to plan/lock style files\n- non-trivial conflicts\
+      \ dispatch to a later resolver path rather than silent narrowing"
+    verification: '- Contract names clean merge, auto-resolved conflict, and non-trivial
+      conflict outcomes
+
+      - No git command implementation beyond stubs'
+    agent: python-senior
 - id: driver-judgment-runtime-minimal
   name: Driver Judgment + Minimal Runtime
   status: locked

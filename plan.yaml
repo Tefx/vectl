@@ -32023,6 +32023,21 @@ phases:
     depends_on:
     - driver-cli-integration.verify-cli-drive
     agent: wiring-auditor
+  - id: driver-cli-integration.spec-conformance
+    name: CLI drive spec conformance
+    status: pending
+    description: 'step_type: verification
+
+      Verification scope: phase-check protecting driver-cli-integration.gate.
+
+
+      Compare the implemented vectl drive command surface and behavior against the
+      blueprint CLI integration requirement.'
+    verification: '- Report maps command/flag/runtime expectations to implementation
+      file:line'
+    depends_on:
+    - driver-cli-integration.wiring-audit
+    agent: doc-reviewer
 - id: driver-system-wiring
   name: Driver System Wiring
   status: locked

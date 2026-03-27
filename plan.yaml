@@ -31005,6 +31005,22 @@ phases:
     depends_on:
     - driver-execution-infra.impl-worktree
     agent: integration-verifier
+  - id: driver-execution-infra.contract-runners-core
+    name: Contract runners core
+    status: pending
+    description: "step_type: contract\ncontract_purity: ENFORCED\ncontract_outputs:\n\
+      \  - signatures\n  - type_defs\n  - interfaces\n  - stubs\n\nPin the core runner\
+      \ contract in src/vectl/driver/runners.py for:\n- Runner protocol\n- RunnerHandle\
+      \ protocol\n- RunnerResult / RunnerStatus surfaces\n- ClaudeRunner and OpenCodeRunner\
+      \ only in this phase\n\nThis contract is intentionally phase-scoped. CodexRunner\
+      \ and GeminiRunner are deferred to driver-multi-runner-hardening."
+    verification: '- Contract explicitly states core-only scope and defers extended
+      runners without ambiguity
+
+      - Output parser expectations for Claude/OpenCode are pinned'
+    depends_on:
+    - driver-execution-infra.verify-worktree-real-git-path
+    agent: python-executor
 - id: driver-judgment-runtime-minimal
   name: Driver Judgment + Minimal Runtime
   status: locked

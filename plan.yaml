@@ -31191,7 +31191,7 @@ phases:
       \ wired with real implementations."
   - id: driver-foundation.spec-conformance
     name: Foundation spec conformance
-    status: pending
+    status: claimed
     description: 'step_type: verification
 
       Verification scope: phase-check protecting driver-foundation.gate.
@@ -31215,6 +31215,8 @@ phases:
     depends_on:
     - driver-foundation.wiring-audit
     agent: doc-reviewer
+    claimed_by: doc-reviewer
+    claimed_at: '2026-03-27T22:16:08.279665+00:00'
   - id: driver-foundation.gate
     name: Gate driver-foundation
     status: pending

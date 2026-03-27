@@ -30693,6 +30693,32 @@ phases:
     depends_on:
     - driver-foundation.impl-types-errors-config-observe
     agent: python-executor
+  - id: driver-foundation.test-session
+    name: Test session pool boundary
+    status: pending
+    description: 'step_type: test
+
+
+      Add focused tests for SessionPool reuse rules, TTL behavior, runner matching,
+      and the documented single-dependency limitation.
+
+
+      Required edge cases:
+
+      - zero dependencies -> fresh only
+
+      - multiple dependencies -> fresh only
+
+      - runner mismatch -> fresh only
+
+      - expired TTL -> fresh only'
+    verification: '- Targeted pytest file covers the documented single-dependency
+      and TTL semantics
+
+      - Tests prove the SessionPool contract does not mutate decide.py state'
+    depends_on:
+    - driver-foundation.contract-session
+    agent: python-executor
 - id: driver-execution-infra
   name: Driver Execution Infrastructure
   status: locked

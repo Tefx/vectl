@@ -31564,6 +31564,19 @@ phases:
   status: locked
   depends_on:
   - driver-judgment-runtime-minimal
+  steps:
+  - id: driver-multi-runner-hardening.contract-runners-extended
+    name: Contract extended runners
+    status: pending
+    description: "step_type: contract\ncontract_purity: ENFORCED\ncontract_outputs:\n\
+      \  - signatures\n  - type_defs\n  - interfaces\n  - stubs\n\nExtend the runner\
+      \ contract to cover CodexRunner and GeminiRunner, resume semantics, parser semantics,\
+      \ fallback interactions, and experimental-status handling from the blueprint\
+      \ capability table."
+    verification: '- Contract explicitly adds only the deferred extended-runner surfaces
+
+      - Resume/output/parser requirements are pinned for each extended runner'
+    agent: python-executor
 - id: driver-judgment-expansion-replan
   name: Driver Judgment Expansion + Replan
   status: locked

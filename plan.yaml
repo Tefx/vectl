@@ -31763,6 +31763,19 @@ phases:
     verification: '- Contract names trigger points, planner_instruction handling,
       and bounded deferral rules'
     agent: software-architect
+  - id: driver-judgment-expansion-replan.test-replan-planner-wiring
+    name: Test replan and planner wiring
+    status: pending
+    description: 'step_type: test
+
+
+      Add focused tests for REPLAN verdict handling, planner dispatch instruction
+      propagation, and non-destructive deferral of the originating step.'
+    verification: '- Tests cover REPLAN from preflight, escalation, and gate-like
+      contexts where applicable'
+    depends_on:
+    - driver-judgment-expansion-replan.contract-replan-planner-wiring
+    agent: python-executor
 - id: driver-cli-integration
   name: Driver CLI Integration
   status: locked

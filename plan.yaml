@@ -31654,6 +31654,31 @@ phases:
     depends_on:
     - driver-multi-runner-hardening.impl-loop-hardening
     agent: integration-verifier
+  - id: driver-multi-runner-hardening.verify-conflict-and-multirunner
+    name: Verify conflict resolution and multi-runner seams
+    status: pending
+    description: 'step_type: verification
+
+      Verification scope: phase-check protecting driver-multi-runner-hardening.gate.
+
+
+      Provide seam-level proof for:
+
+      - multi-runner dispatch/fallback path
+
+      - worktree conflict classification path
+
+      - non-trivial conflict handoff readiness
+
+
+      Mock-heavy unit tests alone are insufficient.'
+    verification: '- Exact commands/tests and actual output are included
+
+      - Evidence covers both the main multi-runner path and a highest-risk conflict/fallback
+      path'
+    depends_on:
+    - driver-multi-runner-hardening.verify-session-boundary
+    agent: integration-verifier
 - id: driver-judgment-expansion-replan
   name: Driver Judgment Expansion + Replan
   status: locked

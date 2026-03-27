@@ -31072,7 +31072,7 @@ phases:
       branches.'
   - id: driver-foundation.impl-dispatch
     name: Implement prompt dispatch rendering
-    status: pending
+    status: claimed
     description: "step_type: implementation\n\ntags:\n  - integration\n\nImplement\
       \ src/vectl/driver/dispatch.py using deterministic templates only.\n\n## Integration\
       \ Evidence\n- Command or test exercising the full path: pytest tests/test_driver_dispatch.py\
@@ -31087,6 +31087,8 @@ phases:
     depends_on:
     - driver-foundation.test-dispatch
     agent: python-executor
+    claimed_by: python-executor
+    claimed_at: '2026-03-27T22:05:51.687653+00:00'
   - id: driver-foundation.wiring-audit
     name: Foundation wiring audit
     status: pending

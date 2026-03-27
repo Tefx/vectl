@@ -31577,6 +31577,19 @@ phases:
 
       - Resume/output/parser requirements are pinned for each extended runner'
     agent: python-executor
+  - id: driver-multi-runner-hardening.test-runners-extended
+    name: Test extended runners
+    status: pending
+    description: 'step_type: test
+
+
+      Add focused tests for Codex/Gemini parser and resume behavior plus fallback
+      compatibility with the shared runner protocol.'
+    verification: '- Tests cover extended parser shapes, resume translation, and experimental-runner
+      failure handling'
+    depends_on:
+    - driver-multi-runner-hardening.contract-runners-extended
+    agent: python-executor
 - id: driver-judgment-expansion-replan
   name: Driver Judgment Expansion + Replan
   status: locked

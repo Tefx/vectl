@@ -30976,6 +30976,35 @@ phases:
     depends_on:
     - driver-execution-infra.test-worktree
     agent: python-senior
+  - id: driver-execution-infra.verify-worktree-real-git-path
+    name: Verify worktree real git path
+    status: pending
+    description: 'step_type: verification
+
+      Verification scope: local-check protecting driver-execution-infra.gate.
+
+
+      As an INDEPENDENT TESTER, validate the worktree implementation through real
+      git operations, not mocked plumbing.
+
+
+      YOUR GOAL IS TO FIND PROBLEMS.
+
+      Test for:
+
+      - happy path create/merge/cleanup
+
+      - branch/worktree reuse
+
+      - trivial conflict handling
+
+      - non-trivial conflict refusal'
+    verification: '- Commands executed against a temp git repo are pasted in evidence
+
+      - At least one conflict-path command/output is included, not just passing summaries'
+    depends_on:
+    - driver-execution-infra.impl-worktree
+    agent: integration-verifier
 - id: driver-judgment-runtime-minimal
   name: Driver Judgment + Minimal Runtime
   status: locked

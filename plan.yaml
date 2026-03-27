@@ -31660,7 +31660,7 @@ phases:
       implementation deferred to impl-runners-core.'
   - id: driver-execution-infra.test-runners-core
     name: Test runners core
-    status: pending
+    status: claimed
     description: 'step_type: test
 
 
@@ -31685,6 +31685,8 @@ phases:
     depends_on:
     - driver-execution-infra.contract-runners-core
     agent: python-executor
+    claimed_by: python-executor
+    claimed_at: '2026-03-27T23:33:02.873531+00:00'
   - id: driver-execution-infra.impl-runners-core
     name: Implement runners core
     status: pending

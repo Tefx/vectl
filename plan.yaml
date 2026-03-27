@@ -30751,6 +30751,24 @@ phases:
     depends_on:
     - driver-foundation.test-session
     agent: python-executor
+  - id: driver-foundation.contract-dispatch
+    name: Contract prompt dispatch rendering
+    status: pending
+    description: "step_type: contract\ncontract_purity: ENFORCED\ncontract_outputs:\n\
+      \  - signatures\n  - type_defs\n  - interfaces\n  - stubs\n\nPin the prompt-rendering\
+      \ contract for src/vectl/driver/dispatch.py using the blueprint Dispatch with\
+      \ Preflight flow and architecture section 2.7/Q5.\n\nThe contract must name\
+      \ exact prompt inputs:\n- step_id, agent, description, verification, refs\n\
+      - worktree_path\n- session reuse flag\n- failure_context\n\nDo not introduce\
+      \ LLM-generated prompting behavior; render_prompt() remains deterministic string/template\
+      \ rendering."
+    verification: '- Contract specifies deterministic prompt rendering inputs and
+      excludes dynamic planning logic
+
+      - No runtime dispatch or runner invocation is implemented here'
+    depends_on:
+    - driver-foundation.impl-session
+    agent: python-executor
 - id: driver-execution-infra
   name: Driver Execution Infrastructure
   status: locked

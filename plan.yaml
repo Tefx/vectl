@@ -31552,7 +31552,7 @@ phases:
       not part of this step scope.'
   - id: driver-execution-infra.verify-worktree-real-git-path
     name: Verify worktree real git path
-    status: claimed
+    status: done
     description: 'step_type: verification
 
       Verification scope: local-check protecting driver-execution-infra.gate.
@@ -31581,6 +31581,33 @@ phases:
     agent: integration-verifier
     claimed_by: integration-verifier
     claimed_at: '2026-03-27T23:04:14.114871+00:00'
+    done_at: '2026-03-27T23:17:11.192275+00:00'
+    evidence: 'Artifact:
+
+      - Commit hash(es): none (verification-only step)
+
+
+      Verification:
+
+      - Executed independent real-git temp-repo checks for create/merge/cleanup, reuse,
+      trivial conflict auto-resolution, and non-trivial conflict refusal
+
+      - Included conflict-path command/output evidence and merge-abort confirmation
+      for non-trivial conflicts
+
+      - Integration run summary: 5/5 verification scenarios passed
+
+
+      Spec link:
+
+      - DRIVER-BLUEPRINT.md worktree lifecycle
+
+      - docs/DRIVER-ARCHITECTURE.md section 2.6
+
+
+      Gaps/Notes:
+
+      - No code modifications performed in verification step.'
   - id: driver-execution-infra.contract-runners-core
     name: Contract runners core
     status: pending

@@ -31263,6 +31263,32 @@ phases:
     depends_on:
     - driver-judgment-runtime-minimal.impl-judgments
     agent: python-executor
+  - id: driver-judgment-runtime-minimal.test-judge
+    name: Test judge invocation
+    status: pending
+    description: 'step_type: test
+
+
+      Add focused tests for judge request validation, structured-output parsing, timeout
+      handling, and observer emission.
+
+
+      Required checks:
+
+      - valid strict JSON verdict accepted
+
+      - malformed verdict rejected
+
+      - timeout path raises the documented error
+
+      - disabled judgment types are skipped cleanly where configured'
+    verification: '- Targeted pytest file covers request validation and structured-output
+      parsing expectations
+
+      - Tests do not implement loop runtime behavior'
+    depends_on:
+    - driver-judgment-runtime-minimal.contract-judge
+    agent: python-executor
 - id: driver-multi-runner-hardening
   name: Driver Multi-Runner Hardening
   status: locked

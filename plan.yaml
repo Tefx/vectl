@@ -31247,6 +31247,22 @@ phases:
     depends_on:
     - driver-judgment-runtime-minimal.test-judgments
     agent: python-executor
+  - id: driver-judgment-runtime-minimal.contract-judge
+    name: Contract judge invocation
+    status: pending
+    description: "step_type: contract\ncontract_purity: ENFORCED\ncontract_outputs:\n\
+      \  - signatures\n  - type_defs\n  - interfaces\n  - stubs\n\nPin the exact Judge\
+      \ contract for src/vectl/driver/judge.py from docs/DRIVER-ARCHITECTURE.md section\
+      \ 2.10 and docs/JUDGE-AGENT-PROMPT.md.\n\nRequired surface:\n- Judge.__init__(config,\
+      \ observer)\n- await Judge.judge(request)\n- is_enabled(judgment_type)\n- strict\
+      \ JSON verdict handling and timeout/parse failure behavior"
+    verification: '- Contract pins strict verdict fields and structured-output strategy
+      expectations
+
+      - No loop invocation decisions implemented here'
+    depends_on:
+    - driver-judgment-runtime-minimal.impl-judgments
+    agent: python-executor
 - id: driver-multi-runner-hardening
   name: Driver Multi-Runner Hardening
   status: locked

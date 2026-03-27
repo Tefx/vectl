@@ -30579,3 +30579,8 @@ phases:
   status: pending
   depends_on:
   - decide-docs
+- id: driver-execution-infra
+  name: Driver Execution Infrastructure
+  status: locked
+  depends_on:
+  - driver-foundation

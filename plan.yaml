@@ -32038,6 +32038,24 @@ phases:
     depends_on:
     - driver-cli-integration.wiring-audit
     agent: doc-reviewer
+  - id: driver-cli-integration.liveness-probe
+    name: Liveness probe vectl drive
+    status: pending
+    description: 'step_type: verification
+
+      Verification scope: phase-check protecting driver-cli-integration.gate.
+
+
+      Runnable-surface liveness probe for `vectl drive`.
+
+
+      The command must start, accept a controlled operation, and produce expected
+      output through the real CLI entrypoint path.'
+    verification: '- Evidence shows the command starts and reaches the runtime path
+      end-to-end'
+    depends_on:
+    - driver-cli-integration.spec-conformance
+    agent: blind-tester
 - id: driver-system-wiring
   name: Driver System Wiring
   status: locked

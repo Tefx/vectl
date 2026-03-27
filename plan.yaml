@@ -31628,6 +31628,32 @@ phases:
     depends_on:
     - driver-multi-runner-hardening.impl-runners-extended
     agent: python-senior
+  - id: driver-multi-runner-hardening.verify-session-boundary
+    name: Verify session reuse boundary
+    status: pending
+    description: 'step_type: verification
+
+      Verification scope: local-check protecting driver-multi-runner-hardening.gate.
+
+
+      Validate the ownership boundary between SessionPool and decide.py state during
+      real runtime execution.
+
+
+      Required proof:
+
+      - driver supplements reuse when safe
+
+      - driver does not mutate decide.py module registries directly
+
+      - stale or mismatched sessions degrade gracefully to fresh dispatch'
+    verification: '- Evidence includes a real or instrumented runtime path showing
+      fresh fallback on unsupported reuse
+
+      - No direct decide.py state mutation is observed'
+    depends_on:
+    - driver-multi-runner-hardening.impl-loop-hardening
+    agent: integration-verifier
 - id: driver-judgment-expansion-replan
   name: Driver Judgment Expansion + Replan
   status: locked

@@ -31610,7 +31610,7 @@ phases:
       - No code modifications performed in verification step.'
   - id: driver-execution-infra.contract-runners-core
     name: Contract runners core
-    status: pending
+    status: claimed
     description: "step_type: contract\ncontract_purity: ENFORCED\ncontract_outputs:\n\
       \  - signatures\n  - type_defs\n  - interfaces\n  - stubs\n\nPin the core runner\
       \ contract in src/vectl/driver/runners.py for:\n- Runner protocol\n- RunnerHandle\
@@ -31624,6 +31624,8 @@ phases:
     depends_on:
     - driver-execution-infra.verify-worktree-real-git-path
     agent: python-executor
+    claimed_by: python-executor
+    claimed_at: '2026-03-27T23:20:19.769407+00:00'
   - id: driver-execution-infra.test-runners-core
     name: Test runners core
     status: pending

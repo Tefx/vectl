@@ -32056,6 +32056,32 @@ phases:
     depends_on:
     - driver-cli-integration.spec-conformance
     agent: blind-tester
+  - id: driver-cli-integration.gate
+    name: Gate driver-cli-integration
+    status: pending
+    description: 'step_type: gate
+
+      As an INDEPENDENT REVIEWER, assess whether the vectl drive runnable CLI surface
+      is complete and correctly wired.
+
+
+      review_depth: THOROUGH
+
+      cross_cutting_focus:
+
+      - command registration
+
+      - runtime entrypoint reachability
+
+      - liveness evidence for the real CLI path'
+    verification: '- All phase steps completed successfully
+
+      - Wiring and liveness evidence for vectl drive are present
+
+      - No unresolved blockers remain for system wiring'
+    depends_on:
+    - driver-cli-integration.liveness-probe
+    agent: gate-reviewer
 - id: driver-system-wiring
   name: Driver System Wiring
   status: locked

@@ -31679,6 +31679,21 @@ phases:
     depends_on:
     - driver-multi-runner-hardening.verify-session-boundary
     agent: integration-verifier
+  - id: driver-multi-runner-hardening.spec-conformance
+    name: Multi-runner hardening spec conformance
+    status: pending
+    description: 'step_type: verification
+
+      Verification scope: phase-check protecting driver-multi-runner-hardening.gate.
+
+
+      Compare hardening behavior against the blueprint failure modes, session pool
+      semantics, and runner capability matrix.'
+    verification: '- Spec conformance report covers fallback, reuse, conflict, and
+      loop-protection behaviors'
+    depends_on:
+    - driver-multi-runner-hardening.verify-conflict-and-multirunner
+    agent: doc-reviewer
 - id: driver-judgment-expansion-replan
   name: Driver Judgment Expansion + Replan
   status: locked

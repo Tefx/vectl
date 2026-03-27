@@ -31609,6 +31609,25 @@ phases:
     depends_on:
     - driver-multi-runner-hardening.test-runners-extended
     agent: python-senior
+  - id: driver-multi-runner-hardening.impl-loop-hardening
+    name: Implement loop fallback/session/conflict hardening
+    status: pending
+    description: "step_type: implementation\n\ntags:\n  - integration\n\nImplement\
+      \ the hardening layer in src/vectl/driver/loop.py for:\n- runner fallback after\
+      \ repeated failures\n- session reuse integration\n- conflict-handling path integration\n\
+      - orphan cleanup\n- infinite-loop guard and all-stalled recovery\n\n## Failure-mode\
+      \ checklist\n- stale session reuse fallback\n- runner fallback after repeated\
+      \ failures\n- trivial vs non-trivial merge conflict routing\n- all-stalled /\
+      \ repeated-decide loop behavior\n\n## Completion Criteria (stub exclusion)\n\
+      This is an IMPLEMENTATION step. Stub-only completion is NOT acceptable."
+    verification: '- Main path: targeted hardening tests pass
+
+      - Failure path: stale session, runner fallback, and conflict routing are covered
+
+      - Proof: loop behavior matches blueprint failure-mode handling'
+    depends_on:
+    - driver-multi-runner-hardening.impl-runners-extended
+    agent: python-senior
 - id: driver-judgment-expansion-replan
   name: Driver Judgment Expansion + Replan
   status: locked

@@ -31531,6 +31531,34 @@ phases:
     depends_on:
     - driver-judgment-runtime-minimal.wiring-audit
     agent: doc-reviewer
+  - id: driver-judgment-runtime-minimal.gate
+    name: Gate driver-judgment-runtime-minimal
+    status: pending
+    description: 'step_type: gate
+
+      As an INDEPENDENT REVIEWER, assess whether the first runnable vectl.driver surface
+      is complete enough for hardening work.
+
+
+      review_depth: THOROUGH
+
+      cross_cutting_focus:
+
+      - strict verdict contract preservation
+
+      - startup/shutdown behavior
+
+      - real vertical slice proof
+
+      - no silent narrowing of deferred judgment behaviors'
+    verification: '- All phase steps completed successfully
+
+      - Vertical slice, liveness, and wiring audit evidence are present
+
+      - Runnable-surface quality bar is met for the implemented minimal scope'
+    depends_on:
+    - driver-judgment-runtime-minimal.spec-conformance
+    agent: gate-reviewer
 - id: driver-multi-runner-hardening
   name: Driver Multi-Runner Hardening
   status: locked

@@ -31719,6 +31719,32 @@ phases:
     depends_on:
     - driver-multi-runner-hardening.spec-conformance
     agent: integration-verifier
+  - id: driver-multi-runner-hardening.gate
+    name: Gate driver-multi-runner-hardening
+    status: pending
+    description: 'step_type: gate
+
+      As an INDEPENDENT REVIEWER, assess whether multi-runner and hardening behavior
+      is ready for full judgment/replan expansion.
+
+
+      review_depth: THOROUGH
+
+      cross_cutting_focus:
+
+      - fallback correctness
+
+      - session boundary preservation
+
+      - conflict path realism'
+    verification: '- All phase steps completed successfully
+
+      - Real seam evidence is present for fallback/conflict/session behavior
+
+      - No unresolved blockers remain for replan/gate-chain work'
+    depends_on:
+    - driver-multi-runner-hardening.freeze
+    agent: gate-reviewer
 - id: driver-judgment-expansion-replan
   name: Driver Judgment Expansion + Replan
   status: locked

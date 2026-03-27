@@ -31514,6 +31514,23 @@ phases:
     depends_on:
     - driver-judgment-runtime-minimal.liveness-probe
     agent: wiring-auditor
+  - id: driver-judgment-runtime-minimal.spec-conformance
+    name: Judgment and runtime minimal spec conformance
+    status: pending
+    description: 'step_type: verification
+
+      Verification scope: phase-check protecting driver-judgment-runtime-minimal.gate.
+
+
+      Compare judgment and minimal runtime behavior against the blueprint key flows,
+      architecture runtime contracts, and judge prompt response format.'
+    verification: '- Report maps judgment/runtime requirements to implementation file:line
+
+      - Any deferred REPLAN/full-gate-chain behavior is explicitly identified as deferred
+      to later phases'
+    depends_on:
+    - driver-judgment-runtime-minimal.wiring-audit
+    agent: doc-reviewer
 - id: driver-multi-runner-hardening
   name: Driver Multi-Runner Hardening
   status: locked

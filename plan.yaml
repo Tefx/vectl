@@ -32198,6 +32198,19 @@ phases:
 
       - No stale references to deferred or unimplemented behavior remain'
     agent: doc-reviewer
+  - id: driver-doc-sync.gate
+    name: Gate driver-doc-sync
+    status: pending
+    description: 'step_type: gate
+
+      As an INDEPENDENT REVIEWER, assess whether the driver docs and user-facing guidance
+      match the implemented runtime surface and architecture.'
+    verification: '- Authoritative docs and user docs are synchronized with the implementation
+
+      - No major doc drift remains before deep review'
+    depends_on:
+    - driver-doc-sync.update-docs
+    agent: gate-reviewer
 - id: driver-deep-review
   name: Driver Deep Review
   status: locked

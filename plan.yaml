@@ -31889,6 +31889,31 @@ phases:
     depends_on:
     - driver-judgment-expansion-replan.verify-gate-chain-e2e
     agent: doc-reviewer
+  - id: driver-judgment-expansion-replan.freeze
+    name: Freeze judgment expansion snapshot
+    status: pending
+    description: 'step_type: verification
+
+      Verification scope: phase-check protecting driver-judgment-expansion-replan.gate.
+
+
+      Freeze snapshot for L2/gate validation.
+
+
+      Required freeze evidence:
+
+      - git rev-parse HEAD
+
+      - git status clean
+
+      - environment declaration
+
+      - no-code-change statement until gate review completes'
+    verification: '- Freeze evidence includes commit, clean status, env, and no-change
+      statement'
+    depends_on:
+    - driver-judgment-expansion-replan.spec-conformance
+    agent: integration-verifier
 - id: driver-cli-integration
   name: Driver CLI Integration
   status: locked

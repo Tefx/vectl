@@ -32270,3 +32270,24 @@ phases:
     depends_on:
     - driver-deep-review.wiring-audit
     agent: software-architect
+  - id: driver-deep-review.contract-strength
+    name: Deep review contract strength audit
+    status: pending
+    description: 'step_type: review
+
+
+      Audit contract-bearing code and verification evidence quality.
+
+
+      Checks:
+
+      - no vacuous contracts or placeholder verdict handling
+
+      - no stub-only implementation falsely marked complete
+
+      - evidence remains specific and scope-correct'
+    verification: '- Audit report identifies any vacuous contract or evidence-strength
+      issue'
+    depends_on:
+    - driver-deep-review.wiring-audit
+    agent: gate-reviewer

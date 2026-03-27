@@ -31694,6 +31694,31 @@ phases:
     depends_on:
     - driver-multi-runner-hardening.verify-conflict-and-multirunner
     agent: doc-reviewer
+  - id: driver-multi-runner-hardening.freeze
+    name: Freeze multi-runner hardening snapshot
+    status: pending
+    description: 'step_type: verification
+
+      Verification scope: phase-check protecting driver-multi-runner-hardening.gate.
+
+
+      Freeze snapshot for L2/gate validation.
+
+
+      Required freeze evidence:
+
+      - git rev-parse HEAD
+
+      - git status clean
+
+      - environment declaration
+
+      - statement that no code changes are allowed until gate verification completes'
+    verification: '- Freeze evidence includes commit, clean status, env, and no-change
+      statement'
+    depends_on:
+    - driver-multi-runner-hardening.spec-conformance
+    agent: integration-verifier
 - id: driver-judgment-expansion-replan
   name: Driver Judgment Expansion + Replan
   status: locked

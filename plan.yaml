@@ -32244,3 +32244,29 @@ phases:
     depends_on:
     - driver-deep-review.wiring-audit
     agent: doc-reviewer
+  - id: driver-deep-review.architecture-review
+    name: Deep review architecture and concurrency audit
+    status: pending
+    description: 'step_type: review
+
+
+      Review module boundaries, dependency direction, state ownership, and concurrency
+      safety for vectl.driver.
+
+
+      Focus:
+
+      - loop as coordinator only
+
+      - judge vs rules boundary
+
+      - SessionPool vs decide.py state ownership
+
+      - mutable state/concurrency risks
+
+      - runtime surface preservation across python -m vectl.driver and vectl drive'
+    verification: '- Review report names any boundary or concurrency violations with
+      concrete remediation guidance'
+    depends_on:
+    - driver-deep-review.wiring-audit
+    agent: software-architect

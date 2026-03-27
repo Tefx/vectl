@@ -31090,6 +31090,31 @@ phases:
     depends_on:
     - driver-execution-infra.impl-runners-core
     agent: integration-verifier
+  - id: driver-execution-infra.wiring-audit
+    name: Execution infrastructure wiring audit
+    status: pending
+    description: 'step_type: verification
+
+      Verification scope: phase-check protecting driver-execution-infra.gate.
+
+
+      Audit worktree/runners wiring completeness before the phase gate.
+
+
+      Required checks:
+
+      - new runner classes are reachable from config-driven construction paths
+
+      - no orphan parser names exist in config vs code
+
+      - no worktree helper is left unconsumed in runtime paths'
+    verification: '- Wiring audit report shows orphan exports/config keys/parsers
+      if any
+
+      - Verdict is PASS or ISSUES_FOUND with concrete evidence'
+    depends_on:
+    - driver-execution-infra.verify-runners-real-cli-path
+    agent: wiring-auditor
 - id: driver-judgment-runtime-minimal
   name: Driver Judgment + Minimal Runtime
   status: locked

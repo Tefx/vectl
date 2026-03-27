@@ -31812,6 +31812,28 @@ phases:
     depends_on:
     - driver-judgment-expansion-replan.impl-replan-planner-wiring
     agent: software-architect
+  - id: driver-judgment-expansion-replan.test-gate-chain-flow
+    name: Test full gate-chain and remediation flow
+    status: pending
+    description: 'step_type: test
+
+
+      Add focused tests for full judgment expansion behavior:
+
+      - failure classification provenance/disposition
+
+      - escalation thresholds
+
+      - cold-context pruning contract
+
+      - gate failure -> fix+retest dispatch orchestration
+
+      - anomaly safe-repair vs halt split'
+    verification: '- Tests cover the remaining judgment types and fix/retest chain
+      creation semantics'
+    depends_on:
+    - driver-judgment-expansion-replan.contract-gate-chain-flow
+    agent: python-executor
 - id: driver-cli-integration
   name: Driver CLI Integration
   status: locked

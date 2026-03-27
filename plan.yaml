@@ -31855,6 +31855,25 @@ phases:
     depends_on:
     - driver-judgment-expansion-replan.test-gate-chain-flow
     agent: python-senior
+  - id: driver-judgment-expansion-replan.verify-gate-chain-e2e
+    name: Verify gate-chain end-to-end
+    status: pending
+    description: 'step_type: verification
+
+      Verification scope: phase-check protecting driver-judgment-expansion-replan.gate.
+
+
+      Provide end-to-end proof for a gate failure or equivalent remediation-triggering
+      path that results in planner-directed follow-up behavior.
+
+
+      Mock-only evidence is insufficient.'
+    verification: '- Exact command/test and output are included
+
+      - Evidence shows the trigger, judgment verdict, and follow-up action path'
+    depends_on:
+    - driver-judgment-expansion-replan.impl-gate-chain-flow
+    agent: integration-verifier
 - id: driver-cli-integration
   name: Driver CLI Integration
   status: locked

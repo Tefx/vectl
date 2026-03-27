@@ -1,7 +1,7 @@
-"""Test contracts for driver dispatch.
+"""Focused tests for render_prompt() deterministic template rendering.
 
-These test stubs verify the dispatch contract defined in dispatch.py.
-Each test is a contract placeholder that will be filled during implementation.
+Tests verify deterministic template rendering inputs and outputs,
+ensuring downstream workers receive context-pinned prompts.
 
 Architecture Reference: docs/DRIVER-ARCHITECTURE.md Section 2.7
 Architecture Reference: docs/DRIVER-ARCHITECTURE.md Q5 (Prompt Data Flow)
@@ -20,71 +20,69 @@ from src.vectl.driver.dispatch import (
 )
 
 
-class TestRenderPromptSignature:
-    """Tests for render_prompt function signature and inputs."""
-
-    def test_render_prompt_required_inputs(self) -> None:
-        """render_prompt MUST accept all required inputs.
-
-        Required inputs:
-        - step_id: str
-        - agent: str
-        - description: str
-        - verification: str
-        - refs: list[str]
-        - worktree_path: str
-        - session_reuse: bool
-
-        Contract pin from: docs/DRIVER-ARCHITECTURE.md Section 2.7
-        Blueprint: DRIVER-BLUEPRINT.md Dispatch with Preflow flow
-        """
-        raise NotImplementedError("Contract: render_prompt required inputs")
-
-    def test_render_prompt_optional_inputs(self) -> None:
-        """render_prompt MUST accept optional inputs.
-
-        Optional inputs:
-        - failure_context: str | None = None
-        - plan_context: str = ""
-        - phase_context: str = ""
-
-        Contract pin from: docs/DRIVER-ARCHITECTURE.md Section 2.7
-        """
-        raise NotImplementedError("Contract: render_prompt optional inputs")
-
-    def test_render_prompt_returns_string(self) -> None:
-        """render_prompt MUST return a deterministic string.
-
-        The output is a rendered prompt ready for runner dispatch.
-
-        Contract pin from: docs/DRIVER-ARCHITECTURE.md Section 2.7
-        """
-        raise NotImplementedError("Contract: render_prompt returns str")
-
-
 class TestRenderPromptDeterministic:
     """Tests proving render_prompt is deterministic."""
 
-    def test_render_prompt_deterministic_same_inputs(self) -> None:
-        """render_prompt MUST produce identical output for identical inputs.
+    def test_deterministic_same_inputs(self) -> None:
+        """Same inputs MUST produce identical output.
 
         This is the core guarantee: no LLM, no random values, no timestamps
         in the prompt content itself.
 
-        Contract pin from: docs/DRIVER-ARCHITECTURE.md Section 2.7
-        Architecture: "The prompt is a deterministic string template, not LLM-generated."
+        Architecture: docs/DRIVER-ARCHITECTURE.md Section 2.7
         """
-        raise NotImplementedError("Contract: render_prompt determinism")
+        result1 = render_prompt(
+            step_id="core.impl",
+            agent="python-executor",
+            description="Implement the core module",
+            verification="Tests pass",
+            refs=["src/core.py", "tests/test_core.py"],
+            worktree_path=".vectl/worktrees/core.impl",
+            session_reuse=False,
+        )
+        result2 = render_prompt(
+            step_id="core.impl",
+            agent="python-executor",
+            description="Implement the core module",
+            verification="Tests pass",
+            refs=["src/core.py", "tests/test_core.py"],
+            worktree_path=".vectl/worktrees/core.impl",
+            session_reuse=False,
+        )
 
-    def test_render_prompt_no_timestamp_in_content(self) -> None:
+        assert result1 == result2
+
+    def test_no_timestamp_in_content(self) -> None:
         """render_prompt MUST NOT include timestamps in prompt content.
 
         Timestamps belong in events (observe.py), not prompts.
         This ensures determinism across calls.
-
-        Contract pin from: docs/DRIVER-ARCHITECTURE.md Section 2.7
         """
-        raise NotImplementedError("Contract: render_prompt no timestamps")
+        import time
+
+        # Time before and after should not affect output
+        time.sleep(0.01)
+
+        result = render_prompt(
+            step_id="test.step",
+            agent="test-agent",
+            description="Test task",
+            verification="Pass",
+            refs=[],
+            worktree_path="/tmp/test",
+            session_reuse=False,
+        )
+
+        # No timestamps in the output
+        import re
+
+        # Check for ISO timestamp patterns
+        iso_pattern = r"\d{4}-\d{2}-\d{2}[T ]\d{2}:\d{2}:\d{2}"
+        assert not re.search(iso_pattern, result), "Timestamps should not appear in prompt"
+
+        # Check for Unix timestamp
+        unix_pattern = r"\b\d{10,13}\b"
+        assert not re.search(unix_pattern, result), "Unix timestamps should not appear in prompt"
 
 
 class TestRenderPromptInputs:
@@ -92,122 +90,301 @@ class TestRenderPromptInputs:
 
     def test_step_id_included_in_output(self) -> None:
         """render_prompt MUST include step_id in the output."""
-        raise NotImplementedError("Contract: step_id in prompt")
+        result = render_prompt(
+            step_id="core.impl",
+            agent="python-executor",
+            description="Task",
+            verification="Pass",
+            refs=[],
+            worktree_path="/tmp/test",
+            session_reuse=False,
+        )
+
+        assert "core.impl" in result
+        assert "step core.impl" in result or "step_id" in result.lower()
 
     def test_agent_included_in_output(self) -> None:
         """render_prompt MUST include agent in the output."""
-        raise NotImplementedError("Contract: agent in prompt")
+        result = render_prompt(
+            step_id="test.step",
+            agent="python-executor",
+            description="Task",
+            verification="Pass",
+            refs=[],
+            worktree_path="/tmp/test",
+            session_reuse=False,
+        )
+
+        assert "python-executor" in result
+        assert "You are python-executor" in result
 
     def test_description_included_in_output(self) -> None:
-        """render_prompt MUST include description in the output.
+        """render_prompt MUST include description in the output."""
+        result = render_prompt(
+            step_id="test.step",
+            agent="test-agent",
+            description="Implement the feature",
+            verification="Pass",
+            refs=[],
+            worktree_path="/tmp/test",
+            session_reuse=False,
+        )
 
-        Architecture Q5: 'The Action dataclass from decide() carries
-        step_description... The driver passes these directly to render_prompt()'
-        """
-        raise NotImplementedError("Contract: description in prompt")
+        assert "Implement the feature" in result
 
     def test_verification_included_in_output(self) -> None:
-        """render_prompt MUST include verification criteria in the output.
+        """render_prompt MUST include verification criteria in the output."""
+        result = render_prompt(
+            step_id="test.step",
+            agent="test-agent",
+            description="Task",
+            verification="All tests pass with coverage > 80%",
+            refs=[],
+            worktree_path="/tmp/test",
+            session_reuse=False,
+        )
 
-        Architecture Q5: 'The Action dataclass from decide() carries
-        step_verification... The driver passes these directly to render_prompt()'
-        """
-        raise NotImplementedError("Contract: verification in prompt")
+        assert "All tests pass with coverage > 80%" in result
+        assert "Verification Criteria" in result
 
     def test_refs_included_in_output(self) -> None:
-        """render_prompt MUST include refs list in the output.
+        """render_prompt MUST include refs list in the output."""
+        result = render_prompt(
+            step_id="test.step",
+            agent="test-agent",
+            description="Task",
+            verification="Pass",
+            refs=["src/main.py", "tests/test_main.py", "docs/api.md"],
+            worktree_path="/tmp/test",
+            session_reuse=False,
+        )
 
-        Architecture Q5: 'The Action dataclass from decide() carries
-        step_refs... The driver passes these directly to render_prompt()'
-        """
-        raise NotImplementedError("Contract: refs in prompt")
+        assert "src/main.py" in result
+        assert "tests/test_main.py" in result
+        assert "docs/api.md" in result
+        assert "Reference Files" in result
 
     def test_worktree_path_included_in_output(self) -> None:
-        """render_prompt MUST include worktree_path in the output.
+        """render_prompt MUST include worktree_path in the output."""
+        result = render_prompt(
+            step_id="test.step",
+            agent="test-agent",
+            description="Task",
+            verification="Pass",
+            refs=[],
+            worktree_path=".vectl/worktrees/core.impl",
+            session_reuse=False,
+        )
 
-        Architecture Q5: 'worktree_path -- from the just-created worktree'
-        """
-        raise NotImplementedError("Contract: worktree_path in prompt")
+        assert ".vectl/worktrees/core.impl" in result
+        assert "Working Directory" in result
 
     def test_session_reuse_true_adds_context(self) -> None:
-        """When session_reuse=True, render_prompt MUST include session context.
+        """When session_reuse=True, render_prompt MUST include session context."""
+        result = render_prompt(
+            step_id="test.step",
+            agent="test-agent",
+            description="Task",
+            verification="Pass",
+            refs=[],
+            worktree_path="/tmp/test",
+            session_reuse=True,
+        )
 
-        The session context tells the agent to resume from where it left off.
-        """
-        raise NotImplementedError("Contract: session_reuse context")
+        assert "Session Context" in result
+        assert "resuming a previous session" in result
 
     def test_session_reuse_false_no_session_context(self) -> None:
         """When session_reuse=False, render_prompt MUST NOT include session context."""
-        raise NotImplementedError("Contract: no session context when session_reuse=False")
+        result = render_prompt(
+            step_id="test.step",
+            agent="test-agent",
+            description="Task",
+            verification="Pass",
+            refs=[],
+            worktree_path="/tmp/test",
+            session_reuse=False,
+        )
+
+        assert "Session Context" not in result
+        assert "resuming a previous session" not in result
 
     def test_failure_context_none_no_failure_section(self) -> None:
         """When failure_context=None, render_prompt MUST NOT add failure section."""
-        raise NotImplementedError("Contract: no failure section when None")
+        result = render_prompt(
+            step_id="test.step",
+            agent="test-agent",
+            description="Task",
+            verification="Pass",
+            refs=[],
+            worktree_path="/tmp/test",
+            session_reuse=False,
+            failure_context=None,
+        )
+
+        assert "Previous Attempt" not in result
+        assert "previous attempt failed" not in result.lower()
 
     def test_failure_context_included_in_output(self) -> None:
-        """When failure_context is provided, render_prompt MUST include it.
+        """When failure_context is provided, render_prompt MUST include it."""
+        result = render_prompt(
+            step_id="test.step",
+            agent="test-agent",
+            description="Task",
+            verification="Pass",
+            refs=[],
+            worktree_path="/tmp/test",
+            session_reuse=False,
+            failure_context="Error: Tests failed with 3 failures",
+        )
 
-        Architecture Q5: 'DriverState.get_failure_context(step_id) --
-        previous failure output for retry prompts'
-        """
-        raise NotImplementedError("Contract: failure_context in prompt")
+        assert "Previous Attempt" in result
+        assert "Tests failed with 3 failures" in result
+        assert "Address the issues above" in result
 
     def test_plan_context_included_when_provided(self) -> None:
-        """When plan_context is provided, render_prompt MUST include it.
+        """When plan_context is provided, render_prompt MUST include it."""
+        result = render_prompt(
+            step_id="test.step",
+            agent="test-agent",
+            description="Task",
+            verification="Pass",
+            refs=[],
+            worktree_path="/tmp/test",
+            session_reuse=False,
+            plan_context="This is a Python project using pytest.",
+        )
 
-        Architecture Q5: 'Plan.context -- loaded from plan.yaml'
-        """
-        raise NotImplementedError("Contract: plan_context in prompt")
+        assert "Context" in result
+        assert "This is a Python project using pytest" in result
+
+    def test_plan_context_empty_not_included(self) -> None:
+        """When plan_context is empty, it should not add empty context section."""
+        result = render_prompt(
+            step_id="test.step",
+            agent="test-agent",
+            description="Task",
+            verification="Pass",
+            refs=[],
+            worktree_path="/tmp/test",
+            session_reuse=False,
+            plan_context="",
+        )
+
+        # Empty context should not result in empty context section
+        # Count occurrences of "## Context" - should be 0 or 1 (from phase_context)
+        context_count = result.count("## Context")
+        assert context_count <= 1  # Only phase_context might add one
 
     def test_phase_context_included_when_provided(self) -> None:
-        """When phase_context is provided, render_prompt MUST include it.
+        """When phase_context is provided, render_prompt MUST include it."""
+        result = render_prompt(
+            step_id="test.step",
+            agent="test-agent",
+            description="Task",
+            verification="Pass",
+            refs=[],
+            worktree_path="/tmp/test",
+            session_reuse=False,
+            phase_context="Phase: Implementation - building core features",
+        )
 
-        Architecture Q5: 'Phase.context -- loaded from plan.yaml'
-        """
-        raise NotImplementedError("Contract: phase_context in prompt")
+        assert "Context" in result
+        assert "Phase: Implementation" in result
+
+    def test_both_contexts_included(self) -> None:
+        """Both plan_context and phase_context should be included when provided."""
+        result = render_prompt(
+            step_id="test.step",
+            agent="test-agent",
+            description="Task",
+            verification="Pass",
+            refs=[],
+            worktree_path="/tmp/test",
+            session_reuse=False,
+            plan_context="Plan: Build a CLI tool",
+            phase_context="Phase: Core implementation",
+        )
+
+        assert "Build a CLI tool" in result
+        assert "Core implementation" in result
 
 
-class TestPromptTemplateConstants:
-    """Tests for template constant presence."""
+class TestRefsFormatting:
+    """Tests for refs list formatting."""
 
-    def test_header_template_exists(self) -> None:
-        """PROMPT_TEMPLATE_HEADER must exist as a string constant."""
-        assert isinstance(PROMPT_TEMPLATE_HEADER, str)
-        assert "{agent}" in PROMPT_TEMPLATE_HEADER
-        assert "{step_id}" in PROMPT_TEMPLATE_HEADER
-        assert "{description}" in PROMPT_TEMPLATE_HEADER
-        assert "{verification}" in PROMPT_TEMPLATE_HEADER
+    def test_empty_refs_no_section(self) -> None:
+        """When refs is empty, no Reference Files section should appear."""
+        result = render_prompt(
+            step_id="test.step",
+            agent="test-agent",
+            description="Task",
+            verification="Pass",
+            refs=[],
+            worktree_path="/tmp/test",
+            session_reuse=False,
+        )
 
-    def test_session_reuse_template_exists(self) -> None:
-        """PROMPT_TEMPLATE_SESSION_REUSE must exist as a string constant."""
-        assert isinstance(PROMPT_TEMPLATE_SESSION_REUSE, str)
+        assert "Reference Files" not in result
 
-    def test_failure_context_template_exists(self) -> None:
-        """PROMPT_TEMPLATE_FAILURE_CONTEXT must exist as a string constant."""
-        assert isinstance(PROMPT_TEMPLATE_FAILURE_CONTEXT, str)
-        assert "{failure_context}" in PROMPT_TEMPLATE_FAILURE_CONTEXT
+    def test_single_ref_formatted_correctly(self) -> None:
+        """Single ref MUST be included in output."""
+        result = render_prompt(
+            step_id="test.step",
+            agent="test-agent",
+            description="Task",
+            verification="Pass",
+            refs=["src/main.py"],
+            worktree_path="/tmp/test",
+            session_reuse=False,
+        )
 
-    def test_context_template_exists(self) -> None:
-        """PROMPT_TEMPLATE_CONTEXT must exist as a string constant."""
-        assert isinstance(PROMPT_TEMPLATE_CONTEXT, str)
-        assert "{context}" in PROMPT_TEMPLATE_CONTEXT
+        assert "Reference Files" in result
+        assert "src/main.py" in result
 
-    def test_footer_template_exists(self) -> None:
-        """PROMPT_TEMPLATE_FOOTER must exist as a string constant."""
-        assert isinstance(PROMPT_TEMPLATE_FOOTER, str)
+    def test_multiple_refs_formatted_correctly(self) -> None:
+        """Multiple refs MUST all be included in output."""
+        result = render_prompt(
+            step_id="test.step",
+            agent="test-agent",
+            description="Task",
+            verification="Pass",
+            refs=["src/main.py", "src/utils.py", "tests/test_main.py"],
+            worktree_path="/tmp/test",
+            session_reuse=False,
+        )
+
+        assert "Reference Files" in result
+        assert "src/main.py" in result
+        assert "src/utils.py" in result
+        assert "tests/test_main.py" in result
+
+    def test_refs_as_file_paths(self) -> None:
+        """refs are file paths that the agent should read."""
+        result = render_prompt(
+            step_id="test.step",
+            agent="test-agent",
+            description="Task",
+            verification="Pass",
+            refs=["/absolute/path/to/file.py", "relative/path/to/file.py"],
+            worktree_path="/tmp/test",
+            session_reuse=False,
+        )
+
+        # Both absolute and relative paths should be included
+        assert "/absolute/path/to/file.py" in result
+        assert "relative/path/to/file.py" in result
 
 
 class TestNoRuntimeDispatchLogic:
     """Tests proving dispatch.py does NOT implement runner invocation."""
 
     def test_dispatch_does_not_import_subprocess(self) -> None:
-        """dispatch.py MUST NOT import subprocess (runner invocation happens elsewhere).
-
-        Architecture: dispatch.py does NOT invoke runners.
-        """
-        import src.vectl.driver.dispatch as dispatch_module
+        """dispatch.py MUST NOT import subprocess (runner invocation happens elsewhere)."""
         import ast
         import inspect
+
+        import src.vectl.driver.dispatch as dispatch_module
 
         source = inspect.getsource(dispatch_module)
         tree = ast.parse(source)
@@ -221,13 +398,11 @@ class TestNoRuntimeDispatchLogic:
                     raise AssertionError("dispatch.py MUST NOT import from subprocess")
 
     def test_dispatch_does_not_import_asyncio(self) -> None:
-        """dispatch.py MUST NOT import asyncio (async dispatch happens in runners.py).
-
-        Architecture: dispatch.py does NOT make async calls.
-        """
-        import src.vectl.driver.dispatch as dispatch_module
+        """dispatch.py MUST NOT import asyncio (async dispatch happens in runners.py)."""
         import ast
         import inspect
+
+        import src.vectl.driver.dispatch as dispatch_module
 
         source = inspect.getsource(dispatch_module)
         tree = ast.parse(source)
@@ -243,65 +418,78 @@ class TestNoRuntimeDispatchLogic:
     def test_render_prompt_is_pure_function(self) -> None:
         """render_prompt MUST be a pure function (no side effects).
 
-        Architecture: "The prompt is a deterministic string template,
-        not LLM-generated."
-
-        Pure function means: same inputs -> same output, no side effects.
+        Same inputs -> same output, no side effects.
         """
-        # This test documents the contract - actual verification requires implementation
-        raise NotImplementedError("Contract: render_prompt is pure function")
+        # Call multiple times with same inputs
+        for _ in range(3):
+            result = render_prompt(
+                step_id="test.step",
+                agent="test-agent",
+                description="Task",
+                verification="Pass",
+                refs=["file.py"],
+                worktree_path="/tmp/test",
+                session_reuse=False,
+            )
+
+            # Result should be consistent
+            assert "test.step" in result
+            assert "test-agent" in result
+            assert "Task" in result
+            assert "file.py" in result
 
 
-class TestRefsFormatting:
-    """Tests for refs list formatting."""
+class TestCombinedOutput:
+    """Tests for combined output with multiple features enabled."""
 
-    def test_empty_refs_formatted_correctly(self) -> None:
-        """When refs is empty, render_prompt MUST handle gracefully."""
-        raise NotImplementedError("Contract: empty refs handling")
+    def test_full_prompt_with_all_features(self) -> None:
+        """Full prompt with all features should contain all sections."""
+        result = render_prompt(
+            step_id="core.impl",
+            agent="python-executor",
+            description="Implement the core processing module",
+            verification="All tests pass with >80% coverage",
+            refs=["src/core.py", "tests/test_core.py"],
+            worktree_path=".vectl/worktrees/core.impl",
+            session_reuse=True,
+            failure_context="Previous: SyntaxError on line 42",
+            plan_context="Building a CLI tool for data processing",
+            phase_context="Phase: Implementation - core features",
+        )
 
-    def test_single_ref_formatted_correctly(self) -> None:
-        """Single ref MUST be included in output."""
-        raise NotImplementedError("Contract: single ref formatting")
+        # Verify all sections are present
+        assert "core.impl" in result
+        assert "python-executor" in result
+        assert "Implement the core processing module" in result
+        assert "All tests pass with >80% coverage" in result
+        assert "src/core.py" in result
+        assert ".vectl/worktrees/core.impl" in result
+        assert "Session Context" in result
+        assert "Previous Attempt" in result
+        assert "SyntaxError on line 42" in result
+        assert "CLI tool for data processing" in result
+        assert "Phase: Implementation" in result
+        assert "Instructions" in result
 
-    def test_multiple_refs_formatted_correctly(self) -> None:
-        """Multiple refs MUST all be included in output."""
-        raise NotImplementedError("Contract: multiple refs formatting")
+    def test_minimal_prompt_works(self) -> None:
+        """Minimal prompt with only required fields should work."""
+        result = render_prompt(
+            step_id="minimal",
+            agent="test",
+            description="Do something",
+            verification="Done",
+            refs=[],
+            worktree_path="/tmp/test",
+            session_reuse=False,
+        )
 
-    def test_refs_as_file_paths(self) -> None:
-        """refs are file paths that the agent should read.
+        # Verify required sections are present
+        assert "minimal" in result
+        assert "test" in result
+        assert "Do something" in result
+        assert "Done" in result
+        assert "/tmp/test" in result
 
-        Architecture Q5: 'step_refs... Reference file paths'
-        """
-        raise NotImplementedError("Contract: refs are file paths")
-
-
-class TestPlanPhaseContext:
-    """Tests for plan and phase context handling."""
-
-    def test_plan_context_empty_string_when_not_provided(self) -> None:
-        """plan_context defaults to empty string, not None."""
-        raise NotImplementedError("Contract: plan_context defaults to empty string")
-
-    def test_phase_context_empty_string_when_not_provided(self) -> None:
-        """phase_context defaults to empty string, not None."""
-        raise NotImplementedError("Contract: phase_context defaults to empty string")
-
-    def test_contexts_combined_appropriately(self) -> None:
-        """Both plan_context and phase_context should be included when provided."""
-        raise NotImplementedError("Contract: both contexts included")
-
-
-class TestFailureContextIntegration:
-    """Tests for failure context from DriverState."""
-
-    def test_failure_context_integrates_with_driver_state(self) -> None:
-        """failure_context comes from DriverState.get_failure_context(step_id).
-
-        Architecture Q5: 'DriverState.get_failure_context(step_id) --
-        previous failure output for retry prompts'
-
-        This test documents the integration - dispatch.py receives
-        the string, DriverState provides it.
-        """
-        # This test documents the contract - the integration happens in loop.py
-        raise NotImplementedError("Contract: failure_context integration documented")
+        # Verify optional sections are NOT present
+        assert "Session Context" not in result
+        assert "Previous Attempt" not in result

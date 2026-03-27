@@ -74,7 +74,42 @@ def render_prompt(
         the same output string. No LLM calls, no random values, no timestamps
         in the prompt content (timestamps are for events, not prompts).
     """
-    raise NotImplementedError
+    # Build refs section
+    if refs:
+        refs_section = "## Reference Files\n\n" + "\n".join(f"- {ref}" for ref in refs)
+    else:
+        refs_section = ""
+
+    # Build header
+    prompt = PROMPT_TEMPLATE_HEADER.format(
+        agent=agent,
+        step_id=step_id,
+        description=description,
+        verification=verification,
+        refs_section=refs_section,
+        worktree_path=worktree_path,
+    )
+
+    # Add session reuse context if requested
+    if session_reuse:
+        prompt += PROMPT_TEMPLATE_SESSION_REUSE
+
+    # Add failure context if provided (retry path)
+    if failure_context:
+        prompt += PROMPT_TEMPLATE_FAILURE_CONTEXT.format(failure_context=failure_context)
+
+    # Add plan context if provided
+    if plan_context:
+        prompt += PROMPT_TEMPLATE_CONTEXT.format(context=plan_context)
+
+    # Add phase context if provided
+    if phase_context:
+        prompt += PROMPT_TEMPLATE_CONTEXT.format(context=phase_context)
+
+    # Add footer with instructions
+    prompt += PROMPT_TEMPLATE_FOOTER
+
+    return prompt
 
 
 # Template constants defined inline for auditability (per Architecture doc Section 2.7)

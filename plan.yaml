@@ -30795,6 +30795,23 @@ phases:
     depends_on:
     - driver-foundation.contract-dispatch
     agent: python-executor
+  - id: driver-foundation.impl-dispatch
+    name: Implement prompt dispatch rendering
+    status: pending
+    description: "step_type: implementation\n\ntags:\n  - integration\n\nImplement\
+      \ src/vectl/driver/dispatch.py using deterministic templates only.\n\n## Integration\
+      \ Evidence\n- Command or test exercising the full path: pytest tests/test_driver_dispatch.py\
+      \ -q\n- Path exercised: loop/Action data -> dispatch.render_prompt -> runner\
+      \ input\n\n## Completion Criteria (stub exclusion)\nThis is an IMPLEMENTATION\
+      \ step. Stub-only completion is NOT acceptable."
+    verification: '- Main path: targeted render_prompt tests pass
+
+      - Failure path: retry/fresh-session rendering differences are covered
+
+      - Proof: prompt rendering remains deterministic and context-complete'
+    depends_on:
+    - driver-foundation.test-dispatch
+    agent: python-executor
 - id: driver-execution-infra
   name: Driver Execution Infrastructure
   status: locked

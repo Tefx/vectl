@@ -32171,6 +32171,33 @@ phases:
   status: locked
   depends_on:
   - driver-system-wiring
+  steps:
+  - id: driver-doc-sync.update-docs
+    name: Update driver documentation to match implementation
+    status: pending
+    description: 'step_type: review
+
+
+      Sync authoritative and user-facing docs with implemented driver behavior.
+
+
+      Required updates:
+
+      - DRIVER-BLUEPRINT.md runtime and phase descriptions if implementation changed
+      details
+
+      - docs/DRIVER-ARCHITECTURE.md module specs, state ownership, and runtime data
+      flow
+
+      - docs/JUDGE-AGENT-PROMPT.md only if the documented prompt contract intentionally
+      changed
+
+      - README/CLI docs for vectl drive usage and constraints'
+    verification: '- Documentation reflects actual implemented behavior, command surface,
+      and limits
+
+      - No stale references to deferred or unimplemented behavior remain'
+    agent: doc-reviewer
 - id: driver-deep-review
   name: Driver Deep Review
   status: locked

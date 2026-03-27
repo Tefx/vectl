@@ -31972,6 +31972,19 @@ phases:
     depends_on:
     - driver-cli-integration.contract-cli-drive
     agent: python-executor
+  - id: driver-cli-integration.impl-cli-drive
+    name: Implement vectl drive CLI command
+    status: pending
+    description: "step_type: implementation\n\ntags:\n  - integration\n\nImplement\
+      \ the vectl drive command in src/vectl/cli.py exactly as documented.\n\n## Completion\
+      \ Criteria (stub exclusion)\nThis is an IMPLEMENTATION step. Stub-only completion\
+      \ is NOT acceptable."
+    verification: '- Main path: CLI tests pass
+
+      - Failure path: invalid config-path or runtime handoff error is covered'
+    depends_on:
+    - driver-cli-integration.test-cli-drive
+    agent: python-executor
 - id: driver-system-wiring
   name: Driver System Wiring
   status: locked

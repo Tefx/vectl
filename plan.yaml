@@ -30965,7 +30965,7 @@ phases:
       requirements.'
   - id: driver-foundation.contract-dispatch
     name: Contract prompt dispatch rendering
-    status: claimed
+    status: done
     description: "step_type: contract\ncontract_purity: ENFORCED\ncontract_outputs:\n\
       \  - signatures\n  - type_defs\n  - interfaces\n  - stubs\n\nPin the prompt-rendering\
       \ contract for src/vectl/driver/dispatch.py using the blueprint Dispatch with\
@@ -30983,6 +30983,36 @@ phases:
     agent: python-executor
     claimed_by: python-executor
     claimed_at: '2026-03-27T21:52:25.224769+00:00'
+    done_at: '2026-03-27T21:58:57.465214+00:00'
+    evidence: 'Artifact:
+
+      - Commit: 21da979
+
+
+      Verification:
+
+      - uv run pytest tests/test_driver_dispatch.py -v -> contract checks passed (template
+      constants + contract assertions)
+
+
+      Files changed:
+
+      - src/vectl/driver/dispatch.py
+
+      - tests/test_driver_dispatch.py
+
+
+      Spec link:
+
+      - docs/DRIVER-ARCHITECTURE.md section 2.7 and Q5
+
+      - DRIVER-BLUEPRINT.md dispatch with preflight flow
+
+
+      Gaps/Notes:
+
+      - render_prompt remains deterministic contract stub; no runtime dispatch/runner
+      invocation implemented.'
   - id: driver-foundation.test-dispatch
     name: Test prompt dispatch rendering
     status: pending

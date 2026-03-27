@@ -31289,6 +31289,45 @@ phases:
     depends_on:
     - driver-judgment-runtime-minimal.contract-judge
     agent: python-executor
+  - id: driver-judgment-runtime-minimal.impl-judge
+    name: Implement judge invocation
+    status: pending
+    description: 'step_type: implementation
+
+
+      Implement src/vectl/driver/judge.py with runner-backed judge invocation, strict
+      verdict parsing, and observer logging.
+
+
+      ⚠️ KNOWN RISKS (from project history):
+
+      - Structured output drift: reject loose text wrappers and enforce exact verdict
+      shape
+
+      - Runtime narrowing: do not silently collapse REPLAN/SWITCH_AGENT/DEFER/HALT
+      outcomes into ACCEPT/REJECT
+
+
+      ## Gate Preview (what the gate WILL reject)
+
+      1. Prompt-guided parsing only when structured-output path is documented as available
+
+      2. Missing timeout handling
+
+      3. Loss of exact verdict fields from the system prompt
+
+
+      ## Completion Criteria (stub exclusion)
+
+      This is an IMPLEMENTATION step. Stub-only completion is NOT acceptable.'
+    verification: '- Main path: judge tests pass
+
+      - Failure path: malformed verdict and timeout paths are covered
+
+      - Proof: judge preserves exact verdict surface from docs/JUDGE-AGENT-PROMPT.md'
+    depends_on:
+    - driver-judgment-runtime-minimal.test-judge
+    agent: python-senior
 - id: driver-multi-runner-hardening
   name: Driver Multi-Runner Hardening
   status: locked

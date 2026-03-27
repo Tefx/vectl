@@ -30841,6 +30841,32 @@ phases:
     depends_on:
     - driver-foundation.impl-dispatch
     agent: wiring-auditor
+  - id: driver-foundation.spec-conformance
+    name: Foundation spec conformance
+    status: pending
+    description: 'step_type: verification
+
+      Verification scope: phase-check protecting driver-foundation.gate.
+
+
+      Compare implemented foundation behavior against DRIVER-BLUEPRINT.md and docs/DRIVER-ARCHITECTURE.md
+      field-by-field.
+
+
+      Required checks:
+
+      - config schema fields and defaults
+
+      - event names and audit-log expectations
+
+      - dependency-direction and non-responsibility boundaries for config.py and observe.py'
+    verification: '- Spec conformance report maps each requirement to implementation
+      file:line
+
+      - Non-conformances, if any, are explicitly listed'
+    depends_on:
+    - driver-foundation.wiring-audit
+    agent: doc-reviewer
 - id: driver-execution-infra
   name: Driver Execution Infrastructure
   status: locked

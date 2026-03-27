@@ -31750,6 +31750,19 @@ phases:
   status: locked
   depends_on:
   - driver-multi-runner-hardening
+  steps:
+  - id: driver-judgment-expansion-replan.contract-replan-planner-wiring
+    name: Contract replan and planner wiring
+    status: pending
+    description: "step_type: contract\ncontract_purity: ENFORCED\ncontract_outputs:\n\
+      \  - signatures\n  - type_defs\n  - interfaces\n  - stubs\n\nPin the exact REPLAN/planner-dispatch\
+      \ wiring contract for src/vectl/driver/loop.py based on blueprint key flows,\
+      \ architecture dispatch_planner(), and the judge prompt verdict schema.\n\n\
+      The contract must state how REPLAN-producing judgments are handled without silently\
+      \ narrowing them to reject-only behavior."
+    verification: '- Contract names trigger points, planner_instruction handling,
+      and bounded deferral rules'
+    agent: software-architect
 - id: driver-cli-integration
   name: Driver CLI Integration
   status: locked

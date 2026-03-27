@@ -13,6 +13,7 @@ Blueprint Reference: DRIVER-BLUEPRINT.md Module Map (types.py)
 from __future__ import annotations
 
 import asyncio
+import time
 from dataclasses import dataclass, field
 from enum import Enum
 from typing import TYPE_CHECKING
@@ -137,23 +138,88 @@ class DriverState:
         Architecture: docs/DRIVER-ARCHITECTURE.md Section 2.1, DriverState methods
         Blueprint: DRIVER-BLUEPRINT.md Flow 1 (decide_result = decide(...))
         """
-        raise NotImplementedError
+        from vectl.models import RunningTask
+
+        return [
+            RunningTask(
+                step_id=entry.step_id,
+                agent=entry.agent,
+                task_id=entry.handle.session_id or "",
+                dispatched_at=entry.dispatched_at,
+            )
+            for entry in self.running.values()
+        ]
 
     def drain_completed(self) -> list[CompletedResult] | None:
         """Drain completed_queue into vectl.models.CompletedResult list for decide() input.
 
         Architecture: docs/DRIVER-ARCHITECTURE.md Section 2.1, DriverState methods
         Blueprint: DRIVER-BLUEPRINT.md Flow 1 (completed_results = state.drain_completed())
+
+        Returns:
+            List of CompletedResult if there are completed entries, None otherwise.
         """
-        raise NotImplementedError
+        from vectl.models import CompletedResult
+
+        if not self.completed_queue:
+            return None
+
+        results = [
+            CompletedResult(
+                step_id=entry.step_id,
+                task_id=entry.result.session_id or "",
+                status="SUCCESS" if entry.result.status == RunnerStatus.SUCCESS else "FAIL",
+                output_summary=entry.result.output[:500],  # Truncate for summary
+            )
+            for entry in self.completed_queue
+        ]
+        self.completed_queue.clear()
+        return results
 
     async def wait_for_any(self) -> CompletedEntry:
         """Wait for any running handle to complete. Returns first done.
 
         Architecture: docs/DRIVER-ARCHITECTURE.md Section 2.1, DriverState methods
         Blueprint: DRIVER-BLUEPRINT.md Flow 1 (completed = await state.wait_for_any())
+
+        Raises:
+            RuntimeError: If no running tasks.
         """
-        raise NotImplementedError
+        if not self.running:
+            raise RuntimeError("No running tasks to wait for")
+
+        # Create wait tasks for all handles
+        async def wait_for_entry(step_id: str, entry: RunningEntry) -> tuple[str, CompletedEntry]:
+            result = await entry.handle.wait()
+            completed = CompletedEntry(
+                step_id=entry.step_id,
+                agent=entry.agent,
+                runner_name=entry.runner_name,
+                result=result,
+                worktree_path=entry.worktree_path,
+                elapsed_seconds=result.elapsed_seconds,
+            )
+            return step_id, completed
+
+        tasks = {
+            asyncio.create_task(wait_for_entry(step_id, entry)): step_id
+            for step_id, entry in self.running.items()
+        }
+
+        done, _ = await asyncio.wait(tasks.keys(), return_when=asyncio.FIRST_COMPLETED)
+        task = done.pop()
+        step_id, completed = task.result()
+
+        # Move from running to completed_queue
+        del self.running[step_id]
+        self.completed_queue.append(completed)
+
+        # Cancel remaining tasks
+        for t in tasks:
+            if t is not task:
+                t.cancel()
+
+        return completed
 
     def register(
         self,
@@ -168,7 +234,14 @@ class DriverState:
         Architecture: docs/DRIVER-ARCHITECTURE.md Section 2.1, DriverState methods
         Blueprint: DRIVER-BLUEPRINT.md Flow 2 (state.register(...))
         """
-        raise NotImplementedError
+        self.running[step_id] = RunningEntry(
+            step_id=step_id,
+            agent=agent,
+            runner_name=runner_name,
+            handle=handle,
+            worktree_path=worktree_path,
+            dispatched_at=time.monotonic(),
+        )
 
     def mark_completed(self, step_id: str, status: str, output: str) -> None:
         """Move entry from running to completed_queue.
@@ -180,8 +253,31 @@ class DriverState:
 
         Architecture: docs/DRIVER-ARCHITECTURE.md Section 2.1, DriverState methods
         Blueprint: DRIVER-BLUEPRINT.md Flow 3 (state.mark_completed(...))
+
+        Note:
+            This is a simplified version. The full implementation would
+            create a CompletedEntry from the running entry and its result.
+            This method is typically called from wait_for_any().
         """
-        raise NotImplementedError
+        if step_id in self.running:
+            entry = self.running[step_id]
+            result = RunnerResult(
+                status=RunnerStatus.SUCCESS if status == "success" else RunnerStatus.FAIL,
+                session_id=entry.handle.session_id,
+                output=output,
+                elapsed_seconds=0.0,  # Would need actual timing
+                exit_code=None,
+            )
+            completed = CompletedEntry(
+                step_id=step_id,
+                agent=entry.agent,
+                runner_name=entry.runner_name,
+                result=result,
+                worktree_path=entry.worktree_path,
+                elapsed_seconds=0.0,
+            )
+            del self.running[step_id]
+            self.completed_queue.append(completed)
 
     def increment_failure(self, step_id: str, runner_name: str) -> None:
         """Increment failure counters for step and runner.
@@ -189,14 +285,17 @@ class DriverState:
         Architecture: docs/DRIVER-ARCHITECTURE.md Section 2.1, DriverState methods
         Blueprint: DRIVER-BLUEPRINT.md Flow 3 (state.increment_failure(...))
         """
-        raise NotImplementedError
+        self.failure_counts[step_id] = self.failure_counts.get(step_id, 0) + 1
+        self.runner_failures[(step_id, runner_name)] = (
+            self.runner_failures.get((step_id, runner_name), 0) + 1
+        )
 
     def failure_count(self, step_id: str) -> int:
         """Return consecutive failure count for a step.
 
         Architecture: docs/DRIVER-ARCHITECTURE.md Section 2.1, DriverState methods
         """
-        raise NotImplementedError
+        return self.failure_counts.get(step_id, 0)
 
     def get_failure_context(self, step_id: str) -> str | None:
         """Return last failure output for prompt enrichment, or None.
@@ -204,7 +303,10 @@ class DriverState:
         Architecture: docs/DRIVER-ARCHITECTURE.md Section 2.1, DriverState methods
         Blueprint: DRIVER-BLUEPRINT.md Flow 2 (failure_context=state.get_failure_context(...))
         """
-        raise NotImplementedError
+        history = self.failure_history.get(step_id, [])
+        if not history:
+            return None
+        return history[-1]
 
     def get_failure_history(self, step_id: str) -> list[str]:
         """Return all failure outputs for a step.
@@ -212,7 +314,7 @@ class DriverState:
         Architecture: docs/DRIVER-ARCHITECTURE.md Section 2.1, DriverState methods
         Blueprint: DRIVER-BLUEPRINT.md Flow 3 (failure_history=state.get_failure_history(...))
         """
-        raise NotImplementedError
+        return self.failure_history.get(step_id, [])
 
     def set_agent_override(self, step_id: str, agent: str) -> None:
         """Override the agent for a step (judge SWITCH_AGENT verdict).
@@ -220,7 +322,7 @@ class DriverState:
         Architecture: docs/DRIVER-ARCHITECTURE.md Section 2.1, DriverState methods
         Blueprint: DRIVER-BLUEPRINT.md Flow 3 (state.set_agent_override(...))
         """
-        raise NotImplementedError
+        self.agent_overrides[step_id] = agent
 
     def detect_loop(self, window: int = 10) -> bool:
         """Return True if the last `window` decide() signatures are identical.
@@ -228,7 +330,11 @@ class DriverState:
         Architecture: docs/DRIVER-ARCHITECTURE.md Section 2.1, DriverState methods
         Blueprint: DRIVER-BLUEPRINT.md Flow 1 (if state.detect_loop(): ...)
         """
-        raise NotImplementedError
+        if len(self.loop_detector) < window:
+            return False
+        # Check if all signatures in the window are identical
+        recent = self.loop_detector[-window:]
+        return len(set(recent)) == 1
 
     def summary(self) -> dict[str, object]:
         """Return summary dict for FINAL event.
@@ -236,7 +342,14 @@ class DriverState:
         Architecture: docs/DRIVER-ARCHITECTURE.md Section 2.1, DriverState methods
         Blueprint: DRIVER-BLUEPRINT.md Flow 1 (observer.emit("FINAL", state.summary()))
         """
-        raise NotImplementedError
+        return {
+            "running_count": len(self.running),
+            "completed_count": sum(
+                1 for fc in self.failure_counts.values() if fc == 0
+            ),  # Steps without failures
+            "failure_count": len(self.failure_counts),
+            "halt_requested": self.halt_requested,
+        }
 
 
 @dataclass

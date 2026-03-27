@@ -19,7 +19,9 @@ from pathlib import Path
 from typing import Any
 
 import yaml
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, model_validator
+
+from .errors import ConfigError
 
 
 class RunnerConfig(BaseModel):
@@ -131,7 +133,39 @@ class DriverConfig(BaseModel):
         Architecture: docs/DRIVER-ARCHITECTURE.md Section 2.3, DriverConfig.route_agent
         Blueprint: DRIVER-BLUEPRINT.md Configuration Schema, agent_routing section
         """
-        raise NotImplementedError
+        # First, try exact match
+        if agent in self.agent_routing:
+            return self.agent_routing[agent]
+
+        # Then, try glob patterns
+        for pattern, runner in self.agent_routing.items():
+            if fnmatch(agent, pattern):
+                return runner
+
+        # Fall back to default runner
+        return self.fallback_runner
+
+    @model_validator(mode="after")
+    def _validate_runners_exist(self) -> DriverConfig:
+        """Validate that judge.runner and fallback_runner exist in runners.
+
+        Architecture: docs/DRIVER-ARCHITECTURE.md Section 2.3, DriverConfig invariants
+        """
+        # Check fallback_runner exists
+        if self.fallback_runner not in self.runners:
+            raise ValueError(
+                f"fallback_runner '{self.fallback_runner}' not found in runners. "
+                f"Available runners: {list(self.runners.keys())}"
+            )
+
+        # Check judge.runner exists
+        if self.judge.runner not in self.runners:
+            raise ValueError(
+                f"judge.runner '{self.judge.runner}' not found in runners. "
+                f"Available runners: {list(self.runners.keys())}"
+            )
+
+        return self
 
 
 def load_config(path: Path) -> DriverConfig:
@@ -149,4 +183,24 @@ def load_config(path: Path) -> DriverConfig:
     Architecture: docs/DRIVER-ARCHITECTURE.md Section 2.3, config.py loader
     Blueprint: DRIVER-BLUEPRINT.md Flow 1 (config = load_config(config_path))
     """
-    raise NotImplementedError
+    if not path.exists():
+        raise ConfigError(f"Configuration file not found: {path}")
+
+    try:
+        with open(path) as f:
+            data = yaml.safe_load(f)
+    except yaml.YAMLError as e:
+        raise ConfigError(f"Invalid YAML in configuration file {path}: {e}") from e
+
+    if data is None:
+        raise ConfigError(f"Empty configuration file: {path}")
+
+    if not isinstance(data, dict):
+        raise ConfigError(f"Configuration must be a dictionary, got {type(data).__name__}")
+
+    try:
+        config = DriverConfig(**data)
+    except Exception as e:
+        raise ConfigError(f"Invalid configuration in {path}: {e}") from e
+
+    return config

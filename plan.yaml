@@ -31205,6 +31205,29 @@ phases:
     depends_on:
     - driver-judgment-runtime-minimal.contract-judgments
     agent: software-architect
+  - id: driver-judgment-runtime-minimal.test-judgments
+    name: Test judgment contracts
+    status: pending
+    description: 'step_type: test
+
+
+      Add focused tests for judgment enums, request validation, required context fields,
+      and verdict parsing assumptions.
+
+
+      Required checks:
+
+      - all judgment types are represented
+
+      - required context-field enforcement
+
+      - verdict object round-trip and strict field coverage'
+    verification: '- Targeted pytest file covers the documented judgment data contract
+
+      - No runtime judge subprocess behavior implemented in tests beyond fixtures/mocks'
+    depends_on:
+    - driver-judgment-runtime-minimal.contract-judgment-coverage-matrix
+    agent: python-executor
 - id: driver-multi-runner-hardening
   name: Driver Multi-Runner Hardening
   status: locked

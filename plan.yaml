@@ -30635,6 +30635,46 @@ phases:
     depends_on:
     - driver-foundation.contract-types-errors-config-observe
     agent: python-executor
+  - id: driver-foundation.impl-types-errors-config-observe
+    name: Implement foundation types/errors/config/observe
+    status: pending
+    description: 'step_type: implementation
+
+
+      Implement the contract-defined foundation modules:
+
+      - src/vectl/driver/types.py
+
+      - src/vectl/driver/errors.py
+
+      - src/vectl/driver/config.py
+
+      - src/vectl/driver/observe.py
+
+
+      Pattern constraints:
+
+      - Keep dependency direction aligned with docs/DRIVER-ARCHITECTURE.md section
+      1.2
+
+      - config.py must validate runner/judge/fallback invariants at load time
+
+      - observe.py must provide structured append-only event emission suitable for
+      later audit replay
+
+
+      ## Completion Criteria (stub exclusion)
+
+      This is an IMPLEMENTATION step. Stub-only completion is NOT acceptable.'
+    verification: '- Main path: targeted tests for types/config/observe pass
+
+      - Failure path: invalid judge.runner or fallback_runner configurations raise
+      the expected config errors
+
+      - Proof: exported config/event/error surfaces match the pinned contracts'
+    depends_on:
+    - driver-foundation.test-types-errors-config-observe
+    agent: python-executor
 - id: driver-execution-infra
   name: Driver Execution Infrastructure
   status: locked

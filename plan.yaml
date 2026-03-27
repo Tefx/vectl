@@ -30769,6 +30769,32 @@ phases:
     depends_on:
     - driver-foundation.impl-session
     agent: python-executor
+  - id: driver-foundation.test-dispatch
+    name: Test prompt dispatch rendering
+    status: pending
+    description: 'step_type: test
+
+
+      Add focused tests for render_prompt() so downstream workers receive deterministic,
+      context-pinned prompts.
+
+
+      Required checks:
+
+      - refs and verification sections render when present
+
+      - failure context renders only on retry paths
+
+      - session reuse marker renders only when requested
+
+      - worktree path and agent name appear in the output'
+    verification: '- Targeted pytest file covers deterministic template rendering
+      cases
+
+      - Tests assert no prompt branch requires additional plan reads or LLM calls'
+    depends_on:
+    - driver-foundation.contract-dispatch
+    agent: python-executor
 - id: driver-execution-infra
   name: Driver Execution Infrastructure
   status: locked

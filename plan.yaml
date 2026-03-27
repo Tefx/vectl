@@ -30965,7 +30965,7 @@ phases:
       requirements.'
   - id: driver-foundation.contract-dispatch
     name: Contract prompt dispatch rendering
-    status: pending
+    status: claimed
     description: "step_type: contract\ncontract_purity: ENFORCED\ncontract_outputs:\n\
       \  - signatures\n  - type_defs\n  - interfaces\n  - stubs\n\nPin the prompt-rendering\
       \ contract for src/vectl/driver/dispatch.py using the blueprint Dispatch with\
@@ -30981,6 +30981,8 @@ phases:
     depends_on:
     - driver-foundation.impl-session
     agent: python-executor
+    claimed_by: python-executor
+    claimed_at: '2026-03-27T21:52:25.224769+00:00'
   - id: driver-foundation.test-dispatch
     name: Test prompt dispatch rendering
     status: pending

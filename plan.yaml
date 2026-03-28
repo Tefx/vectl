@@ -43585,7 +43585,7 @@ phases:
     claimed_at: '2026-03-28T22:33:02.369063+00:00'
   - id: driver-continuity-foundation.contract
     name: Pin continuity authority and capability contract
-    status: pending
+    status: claimed
     description: "step_type: contract\ncontract_purity: ENFORCED\ncontract_outputs:\n\
       \  - interfaces\n  - type_defs\n  - signatures\n  - stubs\nPin the authoritative\
       \ continuity contract for:\n- single session authority after driver-debt-decision-state\n\
@@ -43604,6 +43604,8 @@ phases:
 
       - Contract output is acceptance-only and contains no runnable business logic'
     agent: software-architect
+    claimed_by: software-architect
+    claimed_at: '2026-03-28T22:33:10.763284+00:00'
   - id: driver-continuity-foundation.gate
     name: Gate continuity foundation
     status: pending

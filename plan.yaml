@@ -41857,18 +41857,34 @@ phases:
     status: pending
     description: "step_type: implementation\ntags:\n  - integration\nVerification\
       \ scope: phase-check protecting driver-prompt-migration.runtime-retest and gate.\n\
-      \nImplement the packaged runtime prompt resource and migrate the existing judge\
-      \ loader to use it as the runtime source of truth.\n\nTarget seams:\n- src/vectl/driver/judge.py::_load_judge_system_prompt\n\
-      - pyproject.toml packaging metadata\n- a packaged resource path under src/vectl/driver/\
-      \ owned by the driver package\n\nRequired outcomes:\n- runtime prompt no longer\
-      \ reads docs/JUDGE-AGENT-PROMPT.md at execution time\n- packaged installs include\
+      \nFill in stub bodies and replace placeholder prompt-resource wiring with working\
+      \ packaged-resource loading on the existing judge loader surface.\n\nUPSTREAM\
+      \ ARTIFACTS (from merged design+test step):\n  - src/vectl/driver/judge.py —\
+      \ from_step: driver-prompt-foundation.design-and-test — tier: contract\n  -\
+      \ docs/JUDGE-AGENT-PROMPT.md — from_step: driver-prompt-foundation.design-and-test\
+      \ — tier: contract\n  - tests/test_driver_judge.py — from_step: driver-prompt-foundation.design-and-test\
+      \ — tier: test\n\nThe merged contract+test step produced both interfaces and\
+      \ tests. Your job is to make the tests pass by filling in stub bodies.\n\nDeviation\
+      \ protocol: If a contract artifact is wrong or incomplete, document a deviation\
+      \ record (type, what, why, impact) — do NOT silently rewrite.\n\nupstream_artifacts:\n\
+      \  - path: src/vectl/driver/judge.py\n    from_step: driver-prompt-foundation.design-and-test\n\
+      \    tier: contract\n  - path: docs/JUDGE-AGENT-PROMPT.md\n    from_step: driver-prompt-foundation.design-and-test\n\
+      \    tier: contract\n  - path: tests/test_driver_judge.py\n    from_step: driver-prompt-foundation.design-and-test\n\
+      \    tier: test\n\nImplement the packaged runtime prompt resource and migrate\
+      \ the existing judge loader to use it as the runtime source of truth.\n\nTarget\
+      \ seams:\n- src/vectl/driver/judge.py::_load_judge_system_prompt\n- pyproject.toml\
+      \ packaging metadata\n- a packaged resource path under src/vectl/driver/ owned\
+      \ by the driver package\n\nRequired outcomes:\n- runtime prompt no longer reads\
+      \ docs/JUDGE-AGENT-PROMPT.md at execution time\n- packaged installs include\
       \ the prompt resource\n- missing packaged resource fails explicitly with actionable\
       \ diagnostics; no weak silent fallback remains\n- judge external verdict contract\
       \ stays unchanged\n\nIntegration evidence requirement:\n- prove the runtime\
       \ path loads the packaged resource in an installed/package-style context, not\
       \ only from the repo root\n- show the source→sink path: packaged resource →\
-      \ judge loader → runner payload assembly\n\nCompletion Criteria (stub exclusion)\n\
-      This is an IMPLEMENTATION step. Stub-only completion is NOT acceptable."
+      \ judge loader → runner payload assembly\n\n## Completion Criteria (stub exclusion)\n\
+      This is an IMPLEMENTATION step. Stub-only completion is NOT acceptable.\nAfter\
+      \ implementation, run spec-verifier scoped to changed files to check for spec-code\
+      \ drift."
     verification: '- Main path: targeted tests prove packaged resource loading works
       and docs/ is not required at runtime.
 

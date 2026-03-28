@@ -42752,3 +42752,11 @@ phases:
 
       - Long-horizon evolution phases remain blocked until this milestone is complete'
     agent: gate-reviewer
+- id: driver-continuity-foundation
+  name: 'Driver Continuity: Foundation'
+  status: locked
+  gate: Approved continuity architecture basis exists for session authority convergence,
+    durable resume state, replay safety, runner capability semantics, and recovery-grade
+    minimum telemetry before implementation fan-out.
+  depends_on:
+  - driver-debt-review

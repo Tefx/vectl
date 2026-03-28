@@ -39717,6 +39717,49 @@ phases:
     depends_on:
     - driver-evolution-loop-migration.implement-loop-handlers
     agent: blind-tester
+  - id: driver-evolution-loop-migration.full-plan-check
+    name: Run full-plan driver regression boundary
+    status: pending
+    description: 'step_type: verification
+
+      expected_result: green
+
+      verification_scope: full-plan-check
+
+
+      Full-plan-check at the nearest appropriate boundary before final review.
+
+      This broad verification exists because loop migration and action wiring can
+      surface repo-wide driver debt that would otherwise only appear in the final
+      review.
+
+
+      Scope:
+
+      - driver runtime tests impacted by event contracts, runtime context, planner
+      dispatch, and loop migration
+
+      - broad regression relevant to the remaining review gate
+
+
+      Disposition rule:
+
+      - Any blocker that intersects the final review or runnable driver surface must
+      create remediation ownership immediately.
+
+      - Notes like ''pre-existing'' or ''out-of-scope'' are insufficient without non-intersection
+      evidence.'
+    verification: 'full-plan-check protecting driver-evolution-review.
+
+      - Run the broad driver regression command family appropriate to the touched
+      surfaces
+
+      - Report blockers with explicit gate intersection analysis
+
+      - Evidence must distinguish blocker-class debt from non-intersecting debt'
+    depends_on:
+    - driver-evolution-loop-migration.implement-loop-handlers
+    agent: integration-verifier
 - id: driver-evolution-review
   name: 'Driver Evolution: Review'
   status: locked

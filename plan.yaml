@@ -43230,69 +43230,48 @@ phases:
   - id: driver-continuity-capability-safety.impl
     name: Implement runner capability model and replay-safe idempotency
     status: pending
-    description: 'step_type: implementation
-
-      Implement the bootstrap-blocker resume capability model and replay-safe idempotency
-      layer.
-
-
-      Scope:
-
-      - surface authoritative runner capability facts into control-plane decisions
-
-      - enforce replay safety and duplicate-dispatch protection for tool execution
-      / recovery re-entry
-
-      - make restart/resume branching consume explicit capability facts rather than
-      implicit assumptions
-
-      - provide continuity-safe metadata needed by restart recovery without re-owning
-      rich observability work
-
-
-      ## Failure-mode checklist
-
-      - runner marked resumable when capability is absent
-
-      - duplicate tool replay after restart or retried recovery
-
-      - stale capability snapshot vs current runner selection
-
-      - explicit clear/terminal completion causing unsafe resume reuse
-
-      - partial-write or duplicate-append of idempotency tokens
-
-
-      ## State semantics
-
-      - last-writer-wins: resolved capability snapshot for the active recovery attempt
-
-      - preserve exactly: replay token, runner identity, capability flags, step/session
-      binding
-
-      - backward-compatible legacy behavior: non-resumable runners continue with safe
-      restart-only semantics
-
-
-      ## Out-of-scope guardrail
-
-      - advanced watchdog timing taxonomy and rich progress streaming remain in post-bootstrap
-      enhancement phases
-
-
-      KNOWN RISKS:
-
-      - capability facts must enter decide/control logic as first-class inputs
-
-      - replay-safe behavior must cover recovery re-entry, not only ordinary retry'
+    description: "step_type: implementation\n\nFill in stub bodies and replace placeholder\
+      \ capability/replay handling with working logic on the existing continuity/recovery\
+      \ surfaces.\n\nUPSTREAM ARTIFACTS (from merged design+test step):\n  - src/vectl/driver/config.py\
+      \ — from_step: driver-continuity-capability-safety.design-and-test — tier: contract\n\
+      \  - src/vectl/driver/loop.py — from_step: driver-continuity-capability-safety.design-and-test\
+      \ — tier: contract\n  - tests/test_driver_loop_runtime.py — from_step: driver-continuity-capability-safety.design-and-test\
+      \ — tier: test\n  - tests/test_driver_recovery.py — from_step: driver-continuity-capability-safety.design-and-test\
+      \ — tier: test\n\nThe merged contract+test step produced both interfaces and\
+      \ tests. Your job is to make the tests pass by filling in stub bodies.\n\nDeviation\
+      \ protocol: If a contract artifact is wrong or incomplete, document a deviation\
+      \ record (type, what, why, impact) — do NOT silently rewrite.\n\nupstream_artifacts:\n\
+      \  - path: src/vectl/driver/config.py\n    from_step: driver-continuity-capability-safety.design-and-test\n\
+      \    tier: contract\n  - path: src/vectl/driver/loop.py\n    from_step: driver-continuity-capability-safety.design-and-test\n\
+      \    tier: contract\n  - path: tests/test_driver_loop_runtime.py\n    from_step:\
+      \ driver-continuity-capability-safety.design-and-test\n    tier: test\n  - path:\
+      \ tests/test_driver_recovery.py\n    from_step: driver-continuity-capability-safety.design-and-test\n\
+      \    tier: test\n\nImplement runner capability model and replay-safe idempotency.\n\
+      \nScope:\n- surface authoritative runner capability facts into control-plane\
+      \ decisions\n- enforce replay safety and duplicate-dispatch protection for tool\
+      \ execution / recovery re-entry\n- make restart/resume branching consume explicit\
+      \ capability facts rather than implicit assumptions\n- provide continuity-safe\
+      \ metadata needed by restart recovery without re-owning rich observability work\n\
+      \n## Failure-mode checklist\n- runner marked resumable when capability is absent\n\
+      - duplicate tool replay after restart or retried recovery\n- stale capability\
+      \ snapshot vs current runner selection\n- explicit clear/terminal completion\
+      \ causing unsafe resume reuse\n- partial-write or duplicate-append of idempotency\
+      \ tokens\n\n## State semantics\n- last-writer-wins: resolved capability snapshot\
+      \ for the active recovery attempt\n- preserve exactly: replay token, runner\
+      \ identity, capability flags, step/session binding\n- backward-compatible legacy\
+      \ behavior: non-resumable runners continue with safe restart-only semantics\n\
+      \n## Out-of-scope guardrail\n- advanced watchdog timing taxonomy and rich progress\
+      \ streaming remain in post-bootstrap enhancement phases\n\n## Completion Criteria\
+      \ (stub exclusion)\nThis is an IMPLEMENTATION step. Stub-only completion is\
+      \ NOT acceptable.\nEach deliverable MUST contain substantive logic that changes\
+      \ resume/replay behavior based on explicit capability facts."
     verification: '- Main path: capability-aware resume/restart tests pass
 
       - Failure path: duplicate replay / non-resumable runner regressions are covered
 
       - Proof: restart decisions no longer infer capability from ad hoc runner assumptions'
     depends_on:
-    - driver-continuity-capability-safety.contract
-    - driver-continuity-capability-safety.test-define-red
+    - driver-continuity-capability-safety.design-and-test
     agent: python-senior
   - id: driver-continuity-capability-safety.verify
     name: Verify runner capability and replay safety

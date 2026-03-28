@@ -38382,12 +38382,12 @@ phases:
     agent: gate-reviewer
 - id: driver-debt-doc-sync
   name: 'Driver Debt: Documentation Sync'
-  status: locked
+  status: done
   depends_on:
   - driver-debt-system-wiring
 - id: driver-debt-deep-review
   name: 'Driver Debt: Deep Review'
-  status: locked
+  status: pending
   depends_on:
   - driver-debt-doc-sync
 - id: driver-debt-review

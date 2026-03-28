@@ -34771,6 +34771,111 @@ phases:
     depends_on:
     - driver-judgment-expansion-replan.verify-gate-chain-e2e
     agent: python-executor
+  - id: driver-judgment-expansion-replan.expected-red-decide
+    name: Teach decide() to respect expected-red verification semantics
+    status: pending
+    description: "step_type: implementation\ntags: []\n\nRFC: docs/RFC-expected-red-verification-semantics.md\
+      \ (Sections 4-5)\n\nModify `decide()` in `src/vectl/decide.py` to recognize\
+      \ the `verify` field on completed steps and classify outcomes accordingly.\n\
+      \n## Current Behavior (lines 156-209 of decide.py)\n\nCurrently, `decide()`\
+      \ processes completed results with a binary check:\n- `result.status == \"SUCCESS\"\
+      ` -> create complete action\n- `result.status == \"FAIL\"` -> increment failure\
+      \ count, escalate after 3\n\n## Required Change\n\nIn the `result.status ==\
+      \ \"FAIL\"` branch (around line 177), BEFORE incrementing the failure count,\
+      \ look up the step's `verify` field:\n\n```python\n# Look up step in plan to\
+      \ check verification semantics\nfound = plan.find_step(result.step_id)\nif found:\n\
+      \    _, step = found\n    if step.verify == \"expected_red\":\n        # Red\
+      \ outcome on an expected-red step is SUCCESSFUL completion.\n        # The step\
+      \ exposed a gap as intended.\n        actions.append(\n            Action(\n\
+      \                action=\"complete\",\n                step_id=result.step_id,\n\
+      \                evidence=result.output_summary,\n            )\n        )\n\
+      \        decision_log.append(\n            Decision(\n                decision=\"\
+      COMPLETE\",\n                step_id=result.step_id,\n                why=\"\
+      Expected-red step completed: red outcome demonstrates intended gap\",\n    \
+      \        )\n        )\n        _failure_counts.pop(result.step_id, None)\n \
+      \       continue  # skip the normal FAIL path\n```\n\n## Distinguishing Operational\
+      \ Failure from Expected Red\n\nThe expected-red path should ONLY activate when:\n\
+      1. `step.verify == \"expected_red\"` AND\n2. `result.status == \"FAIL\"` (product-level\
+      \ failure, not crash)\n\nIf `result.status` indicates an operational/infrastructure\
+      \ failure (agent crash, tool unavailable, timeout), the normal failure/escalation\
+      \ path should still apply. Check whether `CompletedResult` already distinguishes\
+      \ these; if not, treat all FAIL results on expected-red steps as gap-demonstration\
+      \ for now (the distinction can be refined later with richer status codes).\n\
+      \n## Default Behavior Preservation (CRITICAL)\n\n- When `step.verify is None`\
+      \ (most existing steps): behavior MUST be identical to current code\n- When\
+      \ `step.verify == \"must_green\"`: behavior MUST be identical to current code\n\
+      - Only `step.verify == \"expected_red\"` changes the FAIL path\n\n## Out of\
+      \ Scope\n\n- Do NOT modify the Step model (done in prior step)\n- Do NOT modify\
+      \ CLI/MCP rendering\n- Do NOT add new status codes to CompletedResult (that\
+      \ is future work)\n\n## Completion Criteria (stub exclusion)\nThis is an IMPLEMENTATION\
+      \ step. Stub-only completion is NOT acceptable."
+    verification: '- decide() completes an expected-red step when result.status is
+      FAIL (unit test)
+
+      - decide() still fails/escalates a must_green step when result.status is FAIL
+      (unit test)
+
+      - decide() still fails/escalates a step with verify=None when result.status
+      is FAIL (unit test — default behavior unchanged)
+
+      - decide() still completes any step normally when result.status is SUCCESS regardless
+      of verify field
+
+      - Decision log entry says "Expected-red" for the expected-red completion path
+
+      - No regression: existing decide tests still pass (run: uv run pytest tests/
+      -k decide)'
+    evidence_template: '## Expected-Red Decide Evidence
+
+
+      **Code change diff** (src/vectl/decide.py):
+
+      ```
+
+      <paste diff showing the new branch in decide()>
+
+      ```
+
+
+      **Test: expected-red FAIL -> COMPLETE**:
+
+      ```
+
+      <paste test showing decide() completes an expected_red step on FAIL>
+
+      ```
+
+
+      **Test: must_green FAIL -> normal failure path**:
+
+      ```
+
+      <paste test showing decide() still fails must_green steps>
+
+      ```
+
+
+      **Test: verify=None FAIL -> normal failure path (default unchanged)**:
+
+      ```
+
+      <paste test showing default behavior preserved>
+
+      ```
+
+
+      **Existing tests still pass**:
+
+      ```
+
+      $ uv run pytest tests/ -k decide -v
+
+      <paste output>
+
+      ```'
+    depends_on:
+    - driver-judgment-expansion-replan.expected-red-schema
+    agent: python-executor
 - id: driver-cli-integration
   name: Driver CLI Integration
   status: locked

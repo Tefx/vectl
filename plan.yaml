@@ -41485,3 +41485,10 @@ phases:
     the restored production guardrails.
   depends_on:
   - driver-guardrails-real-bootstrap
+- id: driver-guardrails-deep-review
+  name: 'Driver Guardrails: Deep Review'
+  status: locked
+  gate: Independent multi-agent review confirms restored guardrails, runtime wiring,
+    spec conformance, and real-bootstrap behavior are production-safe.
+  depends_on:
+  - driver-guardrails-doc-sync

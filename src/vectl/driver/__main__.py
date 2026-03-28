@@ -57,3 +57,9 @@ def main(argv: Sequence[str] | None = None) -> int:
 
 
 __all__ = ["DEFAULT_DRIVER_CONFIG_PATH", "main"]
+
+
+if __name__ == "__main__":
+    import sys
+
+    sys.exit(main())

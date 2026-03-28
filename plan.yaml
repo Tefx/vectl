@@ -39484,6 +39484,48 @@ phases:
     - driver-evolution-action-registry.implement-layered-registry
     - driver-evolution-action-registry.implement-planner-dispatch-registration
     agent: integration-verifier
+  - id: driver-evolution-action-registry.gate
+    name: Gate action registry
+    status: pending
+    description: 'step_type: gate
+
+      Gate review: verify the action-registry phase completion and quality.
+
+
+      review_depth: THOROUGH
+
+      review_depth_rationale:
+
+      - planner dispatch is a core runtime capability
+
+      - phase introduces layered registry governance across multiple action categories
+
+      - helper bypass would poison downstream loop migration
+
+
+      cross_cutting_focus:
+
+      - planner dispatch is first-class and categorized as planner
+
+      - execution/planner/control/recovery layering is explicit
+
+      - registry metadata, not loop-local branching, is the action source of truth
+
+
+      Independence: gate-reviewer must remain independent from software-architect/python-senior.'
+    verification: 'phase-check protecting driver-evolution-loop-migration.
+
+      - Planner dispatch contract and verification are both present
+
+      - Layered action registry covers runtime and planner actions in scope
+
+      - No unresolved registry blocker intersects loop migration'
+    depends_on:
+    - driver-evolution-action-registry.planner-dispatch-contract
+    - driver-evolution-action-registry.implement-layered-registry
+    - driver-evolution-action-registry.implement-planner-dispatch-registration
+    - driver-evolution-action-registry.verify-planner-dispatch
+    agent: gate-reviewer
 - id: driver-evolution-loop-migration
   name: 'Driver Evolution: Loop Migration & Wiring'
   status: locked

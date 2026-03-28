@@ -35272,6 +35272,90 @@ phases:
       \ must_green FAIL -> normal failure path**: PASSED (test_decide_must_green_fail_normal_failure_path)\n\
       **Test: verify=None FAIL -> normal failure path**: PASSED (test_decide_verify_none_fail_normal_failure_path)\n\
       **Existing decide tests**: 25 passed\n**Linter/type check**: All passed"
+  - id: driver-judgment-expansion-replan.fix-gate-type-contract
+    name: Fix GATE REJECT type contract and mypy overlap
+    status: pending
+    description: 'step_type: implementation
+
+      tags: [fix]
+
+
+      Fix GATE REJECT planner dispatch type contract (B1) and mypy comparison overlap
+      (S1).
+
+
+      ## Blockers to Fix (ALL of these, not just the first)
+
+
+      ### B1: PlannerDispatchRequest type contract violation for GATE REJECT
+
+      Locations:
+
+      - src/vectl/driver/loop.py:281-284
+
+      - src/vectl/driver/loop.py:1707-1714
+
+      - src/vectl/driver/loop.py:566
+
+      - tests/test_driver_judgment_expansion_flow.py:751-757
+
+
+      Required remediation:
+
+      - Generalize PlannerDispatchRequest to accept source_verdict=REJECT with appropriate
+      trigger names, OR create a separate GateRejectDispatchRequest type.
+
+      - Update the type definition in loop.py.
+
+      - Update the runtime dispatch in loop.py.
+
+      - Update GATE_REMEDIATION_CHAIN_CONTRACT.planner_trigger.
+
+      - Update tests in test_driver_judgment_expansion_flow.py.
+
+
+      ### S1: MyPy comparison overlap
+
+      Location:
+
+      - src/vectl/driver/loop.py:664
+
+
+      Required remediation:
+
+      - Fix the RunnerStatus enum comparison to use a proper equality check and remove
+      the comparison-overlap error.
+
+
+      ## Completion Criteria (stub exclusion)
+
+      This is an IMPLEMENTATION step. Stub-only completion is NOT acceptable.
+
+      Each deliverable MUST contain substantive logic that processes its inputs and
+      produces outputs that vary based on those inputs. Private stub classes (`_Runtime*`,
+      `_Stub*`, `_Placeholder*`) do not satisfy this requirement.
+
+
+      ## Completion Criteria
+
+      - MyPy clean for the affected loop.py surface
+
+      - GATE REJECT dispatch contract aligns across types, runtime usage, contract
+      constants, and tests
+
+      - Both REPLAN and REJECT source verdict paths are covered
+
+      - ALL listed blockers addressed, not just the first'
+    verification: '- MyPy clean on src/vectl/driver/loop.py (comparison-overlap resolved)
+
+      - All GATE REJECT planner dispatch tests pass
+
+      - All 238+ driver tests pass
+
+      - PlannerDispatchRequest correctly handles both REPLAN and REJECT source verdicts'
+    depends_on:
+    - driver-judgment-expansion-replan.gate
+    agent: python-senior
 - id: driver-cli-integration
   name: Driver CLI Integration
   status: locked

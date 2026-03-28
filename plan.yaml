@@ -40268,3 +40268,12 @@ phases:
     recovery matrix with watchdog-backed evidence.
   depends_on:
   - driver-enhancement-foundation
+- id: driver-enhancement-integration
+  name: 'Driver Enhancement: Integration'
+  status: locked
+  gate: Shared loop wiring, end-to-end enhancement behavior, and repo-wide checks
+    prove the fan-out branches work together on the real driver path.
+  depends_on:
+  - driver-enhancement-observability
+  - driver-enhancement-streaming-progress
+  - driver-enhancement-runner-recovery

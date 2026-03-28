@@ -34919,7 +34919,7 @@ phases:
     agent: gate-reviewer
   - id: driver-judgment-expansion-replan.expected-red-schema
     name: Add verify field to Step model (expected-red schema)
-    status: claimed
+    status: done
     description: 'step_type: implementation
 
       tags: []
@@ -35062,6 +35062,21 @@ phases:
     agent: python-executor
     claimed_by: python-executor
     claimed_at: '2026-03-28T11:12:52.650382+00:00'
+    done_at: '2026-03-28T11:14:29.067955+00:00'
+    evidence: "## Expected-Red Schema Evidence\n\n**Model change diff** (src/vectl/models.py):\n\
+      ```diff\ndiff --git a/src/vectl/models.py b/src/vectl/models.py\nindex 6e2cc37..0273f2a\
+      \ 100644\n--- a/src/vectl/models.py\n+++ b/src/vectl/models.py\n@@ -78,6 +78,9\
+      \ @@ class Step(BaseModel):\n     evidence_template: str = \"\"\n+    # RFC:\
+      \ docs/RFC-expected-red-verification-semantics.md\n+    # Verification mode:\
+      \ None=red is failure, \"expected_red\"=red output acceptable for missing behavior\n\
+      +    verify: Literal[\"expected_red\", \"must_green\"] | None = None\n     refs:\
+      \ list[str] = Field(default_factory=list)\n```\n\n**Backward compatibility proof**:\n\
+      uv run vectl validate -> ✓ Plan is valid.\n\n**Round-trip test**: verify='expected_red'\
+      \ serializes/deserializes correctly, None is excluded from output.\n\n**Invalid\
+      \ value rejection**: verify=\"green\" raises ValidationError (literal_error,\
+      \ expected 'expected_red' or 'must_green').\n\n**Serialization omission**: Step\
+      \ with None verify excludes field from JSON/YAML output via exclude_none=True.\n\
+      \nCommit: 6a04e96"
   - id: driver-judgment-expansion-replan.expected-red-decide
     name: Teach decide() to respect expected-red verification semantics
     status: pending

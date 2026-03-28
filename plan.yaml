@@ -37882,9 +37882,9 @@ phases:
     agent: gate-reviewer
 - id: driver-debt-cli-entrypoint-unification
   name: 'Driver Debt: CLI Entrypoint Unification'
-  status: locked
+  status: pending
   depends_on:
-  - driver-debt-completion-authority
+  - driver-deep-review
   steps:
   - id: driver-debt-cli-entrypoint-unification.contract
     name: Pin shared driver entrypoint contract

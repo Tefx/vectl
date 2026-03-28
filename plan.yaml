@@ -32250,16 +32250,22 @@ phases:
       Verification scope: phase-check protecting driver-judgment-runtime-minimal.gate.
 
 
+      POST-IMPLEMENTATION GREEN VERIFICATION STEP.
+
+
       Runnable-surface liveness probe for `python -m vectl.driver`.
 
 
       Entry point must start, remain alive long enough to accept at least one operation
       or controlled cycle, and produce expected output through the real entrypoint
-      path.'
+      path. Red results here are blocking verification findings, not expected-red.'
     verification: '- Entry point starts and accepts at least one operation or controlled
       cycle
 
-      - Evidence shows the real runtime path, not only handler/unit output'
+      - Evidence shows the real runtime path, not only handler/unit output
+
+      - Expected result is green pass on the implemented runnable surface; failures
+      block the phase gate'
     depends_on:
     - driver-judgment-runtime-minimal.vertical-slice-runtime
     agent: blind-tester

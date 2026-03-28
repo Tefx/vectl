@@ -27,7 +27,8 @@ src/vectl/driver/
     judgments.py         # Judgment type definitions + context schemas     (~80 lines)
     judge.py             # Judgment Agent invocation + routing             (~120 lines)
     loop.py              # Main event loop + state machine                (~250 lines)
-    __main__.py          # `python -m vectl.driver` entry                 (~10 lines)
+    entrypoint.py        # Shared entrypoint adapter contract             (~120 lines)
+    __main__.py          # `python -m vectl.driver` runtime entry         (~10 lines)
 ```
 
 ### 1.1 Module Dependency Graph
@@ -1249,6 +1250,49 @@ async def shutdown(state: DriverState, observer: Observer) -> None:
     """
     ...
 ```
+
+---
+
+### 2.12 entrypoint.py + runtime entrypoint unification contract
+
+**Responsibility**: Pin one shared adapter surface used by both runtime entrypoints:
+`vectl drive` (Typer) and `python -m vectl.driver` (argparse process surface).
+
+**Non-responsibility**: Does NOT implement runtime execution in this phase. This
+section is contract-only; implementation is deferred.
+
+```python
+class RuntimeEntrypointAdapter(Protocol):
+    def normalize_config(self, invocation: EntrypointInvocation) -> Path: ...
+    def invoke_async(self, config_path: Path) -> None: ...
+    def map_error_to_exit_code(self, error: BaseException) -> int: ...
+
+
+def run_drive_cli_entrypoint(*, config: Path, adapter: RuntimeEntrypointAdapter) -> int: ...
+
+
+def run_driver_module_entrypoint(
+    *, argv: Sequence[str] | None, adapter: RuntimeEntrypointAdapter
+) -> int: ...
+```
+
+#### Supported invocation forms (normative)
+
+1. `vectl drive --config <path>`
+2. `python -m vectl.driver <path>` (positional config retained)
+3. `python -m vectl.driver --config <path>` (new support)
+
+#### Exit code semantics (shared across both entrypoints)
+
+| Category | Exit code |
+|----------|-----------|
+| Runtime/config execution error | `1` |
+| Argument parsing / usage error | `2` |
+
+#### Wiring requirement
+
+Both `src/vectl/cli.py::drive` and `src/vectl/driver/__main__.py::main` MUST
+delegate to the same shared adapter path in `src/vectl/driver/entrypoint.py`.
 
 ---
 

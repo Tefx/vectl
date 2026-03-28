@@ -460,6 +460,11 @@ DashboardOutputOption = typer.Option(
     "-o",
     help="Output file path for the HTML dashboard.",
 )
+DriveConfigOption = typer.Option(
+    Path("driver.yaml"),
+    "--config",
+    help="Path to driver YAML configuration file.",
+)
 
 
 # ---------------------------------------------------------------------------
@@ -3129,32 +3134,16 @@ def dashboard(
 
 @app.command()
 def drive(
-    config: Path = typer.Option(
-        Path("driver.yaml"),
-        "--config",
-        help="Path to driver YAML configuration file.",
-    ),
+    config: Path = DriveConfigOption,
 ) -> None:
     """Auto-execute plan with programmatic orchestration.
 
-    CLI entry point for the vectl driver: runs the deterministic
-    orchestration loop with LLM judgment fallback.
+    Contract-only runtime entrypoint in this phase.
 
-    Ref: DRIVER-BLUEPRINT.md §CLI integration
+    Source:
+    - Step ``driver-debt-cli-entrypoint-unification.contract``
+    - docs/DRIVER-ARCHITECTURE.md (entrypoint unification)
     """
-    import asyncio
+    from vectl.driver.entrypoint import get_runtime_adapter, run_drive_cli_entrypoint
 
-    from vectl.driver.loop import run
-
-    # Validate config path exists before attempting to run
-    if not config.exists():
-        console.print(f"[red bold]Error:[/] Config file not found: {config}")
-        raise typer.Exit(1)
-
-    # Wire to runtime entrypoint: vectl.driver.loop.run
-    # The run function is async, so we need to run it in an event loop
-    try:
-        asyncio.run(run(config))
-    except Exception as e:
-        console.print(f"[red bold]Driver error:[/] {e}")
-        raise typer.Exit(1) from e
+    raise typer.Exit(run_drive_cli_entrypoint(config=config, adapter=get_runtime_adapter()))

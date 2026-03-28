@@ -1,59 +1,33 @@
 """CLI entrypoint contract for ``python -m vectl.driver``.
 
-Responsibility: Provide the process entry surface for the driver runtime.
+Source of contract requirements:
+- Step ``driver-debt-cli-entrypoint-unification.contract``.
+- ``docs/DRIVER-ARCHITECTURE.md`` entrypoint/runtime sections.
 
-Non-responsibility: Does NOT implement orchestration logic. Delegates runtime
-execution to ``loop.run``.
-
-Architecture Reference: docs/DRIVER-ARCHITECTURE.md Section 2.11.
-
-CONTRACT PURITY: This module pins the entrypoint signature only. Argument
-parsing and process wiring remain implementation work.
+This module intentionally delegates to the shared adapter surface in
+``vectl.driver.entrypoint``. Runtime wiring and parse implementation are deferred.
 """
 
 from __future__ import annotations
 
-import argparse
-import asyncio
-from pathlib import Path
-from typing import Final, Sequence
+from collections.abc import Sequence
+from typing import Final
 
-from .errors import ConfigError, DriverError
-from .loop import run
+from .entrypoint import get_runtime_adapter, run_driver_module_entrypoint
 
-DEFAULT_DRIVER_CONFIG_PATH: Final[Path] = Path("driver.yaml")
+DEFAULT_DRIVER_CONFIG_PATH: Final[str] = "driver.yaml"
 
 
 def main(argv: Sequence[str] | None = None) -> int:
     """Run the driver from the command line.
 
     Contract:
-    - accept an optional argv override for testability
-    - resolve the driver config path (default: ``driver.yaml``)
-    - delegate async orchestration to ``vectl.driver.loop.run``
-    - return process exit status rather than calling ``sys.exit`` directly
-
-    Startup recovery and graceful shutdown semantics are owned by ``loop.run``;
-    this entrypoint only exposes the process boundary.
+    - accepts optional argv override for testability
+    - supports positional ``config`` and ``--config`` forms (deferred wiring)
+    - delegates runtime behavior to shared adapter in ``vectl.driver.entrypoint``
+    - returns process exit status instead of calling ``sys.exit`` directly
     """
-    parser = argparse.ArgumentParser(prog="python -m vectl.driver")
-    parser.add_argument(
-        "config",
-        nargs="?",
-        default=str(DEFAULT_DRIVER_CONFIG_PATH),
-        help="Path to driver config (default: driver.yaml)",
-    )
-    args = parser.parse_args(list(argv) if argv is not None else None)
-
-    try:
-        asyncio.run(run(Path(args.config)))
-    except ConfigError:
-        return 2
-    except DriverError:
-        return 1
-    except Exception:
-        return 1
-    return 0
+    return run_driver_module_entrypoint(argv=argv, adapter=get_runtime_adapter())
 
 
 __all__ = ["DEFAULT_DRIVER_CONFIG_PATH", "main"]

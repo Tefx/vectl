@@ -33985,7 +33985,7 @@ phases:
       - docs/DRIVER-ARCHITECTURE.md §2.8'
   - id: driver-multi-runner-hardening.impl-loop-hardening
     name: Implement loop fallback/session/conflict hardening
-    status: pending
+    status: claimed
     description: "step_type: implementation\n\ntags:\n  - integration\n\nImplement\
       \ the hardening layer in src/vectl/driver/loop.py for:\n- runner fallback after\
       \ repeated failures\n- session reuse integration\n- conflict-handling path integration\n\
@@ -34002,6 +34002,8 @@ phases:
     depends_on:
     - driver-multi-runner-hardening.impl-runners-extended
     agent: python-senior
+    claimed_by: python-senior
+    claimed_at: '2026-03-28T09:37:17.723909+00:00'
   - id: driver-multi-runner-hardening.verify-session-boundary
     name: Verify session reuse boundary
     status: pending

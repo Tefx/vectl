@@ -36755,7 +36755,7 @@ phases:
       - No stale references to deferred/unimplemented behavior remain'
   - id: driver-doc-sync.gate
     name: Gate driver-doc-sync
-    status: pending
+    status: claimed
     description: 'step_type: gate
 
       As an INDEPENDENT REVIEWER, assess whether the driver docs and user-facing guidance
@@ -36766,6 +36766,8 @@ phases:
     depends_on:
     - driver-doc-sync.update-docs
     agent: gate-reviewer
+    claimed_by: gate-reviewer
+    claimed_at: '2026-03-28T13:29:02.531460+00:00'
 - id: driver-deep-review
   name: Driver Deep Review
   status: locked

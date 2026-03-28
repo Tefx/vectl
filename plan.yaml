@@ -38051,7 +38051,7 @@ phases:
       - No CLI UX regression for vectl drive --config'
   - id: driver-debt-cli-entrypoint-unification.liveness
     name: Liveness probe shared entrypoints
-    status: pending
+    status: claimed
     description: 'step_type: verification
 
       independence_level: L2
@@ -38089,6 +38089,8 @@ phases:
     depends_on:
     - driver-debt-cli-entrypoint-unification.impl
     agent: blind-tester
+    claimed_by: blind-tester
+    claimed_at: '2026-03-28T19:21:43.193305+00:00'
   - id: driver-debt-cli-entrypoint-unification.spec-conformance
     name: Verify CLI entrypoint spec conformance
     status: pending

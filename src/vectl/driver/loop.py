@@ -22,6 +22,7 @@ import contextlib
 import json
 import logging
 import shutil
+import time
 from dataclasses import dataclass
 from fnmatch import fnmatch
 from pathlib import Path
@@ -1568,6 +1569,8 @@ async def reconcile(
     if completed.result.status == RunnerStatus.SUCCESS:
         evidence = completed.result.output
         plan, expected_hash = load_plan_definition(plan_path)
+        state.decide_state.reset_failure(step_id=completed.step_id)
+        state.failure_counts.pop(completed.step_id, None)
         runtime_config = cast(DriverConfig | None, state.runtime_config)
         runtime_runners = cast(dict[str, Runner] | None, state.runtime_runners)
         found = plan.find_step(completed.step_id)
@@ -1717,6 +1720,11 @@ async def reconcile(
                 runner_name=completed.runner_name,
                 agent=completed.agent,
             )
+            state.decide_state.record_completion(
+                step_id=completed.step_id,
+                task_id=completed.result.session_id,
+                completed_at=time.time(),
+            )
 
         cleanup_result = await cleanup_worktree(
             completed.step_id,
@@ -1743,9 +1751,15 @@ async def reconcile(
         )
         return
 
-    state.increment_failure(completed.step_id, completed.runner_name)
+    state.runner_failures[(completed.step_id, completed.runner_name)] = (
+        state.runner_failures.get((completed.step_id, completed.runner_name), 0) + 1
+    )
     state.failure_history.setdefault(completed.step_id, []).append(completed.result.output)
-    count = state.failure_count(completed.step_id)
+    legacy_failure_count = state.failure_counts.get(completed.step_id, 0)
+    if legacy_failure_count > state.decide_state.failure_counts.get(completed.step_id, 0):
+        state.decide_state.failure_counts[completed.step_id] = legacy_failure_count
+    count = state.decide_state.register_failure(step_id=completed.step_id)
+    state.failure_counts[completed.step_id] = count
 
     plan, expected_hash = load_plan_definition(plan_path)
     claims_path = resolve_claims_path(plan_path)

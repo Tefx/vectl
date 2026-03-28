@@ -40823,6 +40823,28 @@ phases:
     - driver-enhancement-streaming-progress.contract
     - driver-enhancement-streaming-progress.test-define-red
     agent: python-senior
+  - id: driver-enhancement-streaming-progress.verify
+    name: Verify heartbeat progress and streaming-aware liveness
+    status: pending
+    description: 'step_type: verification
+
+      Verification scope: phase-check protecting driver-enhancement-streaming-progress.gate.
+
+
+      Independently verify that the driver can detect ongoing runner activity from
+      incremental output and expose heartbeat/progress-aware liveness before process
+      exit.'
+    verification: 'phase-check protecting driver-enhancement-streaming-progress.gate.
+
+      - Evidence shows incremental chunks are consumed before runner completion
+
+      - Heartbeat / progress / last-progress signals update during execution
+
+      - Verification distinguishes active-but-slow from stalled/no-progress cases
+      where the contract requires it'
+    depends_on:
+    - driver-enhancement-streaming-progress.impl
+    agent: integration-verifier
 - id: driver-enhancement-runner-recovery
   name: 'Driver Enhancement: Runner Recovery'
   status: locked

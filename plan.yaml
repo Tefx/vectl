@@ -35748,7 +35748,7 @@ phases:
       not a stubbed adapter.'
   - id: driver-cli-integration.wiring-audit
     name: CLI drive wiring audit
-    status: claimed
+    status: done
     description: 'step_type: verification
 
       Verification scope: phase-check protecting driver-cli-integration.gate.
@@ -35770,6 +35770,101 @@ phases:
     agent: wiring-auditor
     claimed_by: wiring-auditor
     claimed_at: '2026-03-28T12:34:13.338225+00:00'
+    done_at: '2026-03-28T12:37:40.308939+00:00'
+    evidence: '## Wiring Audit Report: vectl drive CLI Integration
+
+
+      **Date**: 2026-03-28
+
+      **Auditor**: Wiring Auditor
+
+      **Scope**: src/vectl/cli.py, src/vectl/driver/loop.py, src/vectl/driver/__main__.py
+
+
+      ---
+
+
+      ### W1: Command Registration
+
+      | Check | Result | Evidence |
+
+      |-------|--------|---------|
+
+      | Command registered in Typer app | PASS | `@app.command()` decorator at line
+      3130 |
+
+      | Command name correct | PASS | `def drive(...)` - matches expected name |
+
+      | Total registered commands | INFO | 45 commands in app |
+
+
+      ### W2: Import Chain Traceability
+
+      | Step | Location | Import | Status |
+
+      |------|----------|--------|--------|
+
+      | CLI entry | `cli.py:3147` | `from vectl.driver.loop import run` | ✅ LIVE |
+
+      | Runtime entry | `loop.py:1195` | `async def run(config_path: Path)` | ✅ EFFECTFUL
+      |
+
+      | Alternative entry | `__main__.py:22` | `from .loop import run` | ✅ LIVE |
+
+
+      Type Consistency: CLI `config: Path` → Runtime `config_path: Path` ✅ MATCH
+
+
+      ### W3: Flag Surface Audit
+
+      | Flag | Type | Default | Consumer | Status |
+
+      |------|------|---------|---------|--------|
+
+      | `--config` | `Path` | `driver.yaml` | `loop.run(config)` | LIVE |
+
+
+      Orphaned Flags: None found
+
+
+      ### W4: Dead Code Path Scan
+
+      All paths (error/missing config/main) are EFFECTFUL. No unreachable code found.
+
+
+      ### W5: Export Consistency
+
+      `driver/loop.py` exports `run` in `__all__` ✅ EXPORTED
+
+
+      ### W6: Entrypoint Convergence
+
+      Both `vectl drive --config PATH` and `python -m vectl.driver` converge on `vectl.driver.loop.run`
+      ✅ VERIFIED
+
+
+      ### W7: I/O Primitive Check
+
+      11 real I/O operations in `run()`: config load, plan resolve, observer init,
+      runner allocation, judge init, plan load, state repair, main loop, shutdown
+      ✅ EFFECTFUL
+
+
+      ### W8: Documentation
+
+      CLI docstring references `DRIVER-BLUEPRINT.md §CLI integration` ✅
+
+
+      ### Summary
+
+      | Protocol | Total | Issues | Verdict |
+
+      |----------|-------|--------|---------|
+
+      | W1-W8 | 8 | 0 | **PASS** |
+
+
+      **Overall**: PASS — No blocking issues found.'
   - id: driver-cli-integration.spec-conformance
     name: CLI drive spec conformance
     status: pending

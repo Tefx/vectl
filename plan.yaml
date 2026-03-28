@@ -42760,6 +42760,54 @@ phases:
     minimum telemetry before implementation fan-out.
   depends_on:
   - driver-debt-review
+  steps:
+  - id: driver-continuity-foundation.architecture-basis
+    name: Produce continuity architecture basis
+    status: pending
+    description: 'step_type: planning
+
+      Build the approved architecture basis for bootstrap-blocker continuity work.
+
+
+      Required basis contents:
+
+      - system_layers covering driver control loop, session authority, runner interface,
+      journal/ledger storage, and startup recovery controller
+
+      - source_of_truth_matrix for SessionPool, decide.py state, claims, plan state,
+      judge results, and runner capability facts
+
+      - runtime_contract for restart, resume, abort, and replay decisions
+
+      - state_strata separating intent, resolved continuity contract, mutable runtime
+      session state, persisted ledger/journal, and transport/process state
+
+      - transport_boundary_rules for runner invocation, resume handoff, and post-crash
+      restart
+
+      - cross_cutting_governance for judge failure policy alignment, continuity policy
+      ordering, and journal write points
+
+      - shared_abstractions for continuity record, replay token/idempotency envelope,
+      and capability descriptors
+
+      - module_split_recommendations eliminating double truth between SessionPool
+      and decide.py
+
+      - open_questions and readiness
+
+
+      This phase coordinates with completed debt phases and explicitly reserves only
+      bootstrap-blocker continuity scope; long-horizon analytics and rich observability
+      remain in post-bootstrap enhancement phases.'
+    verification: '- Architecture basis explicitly names the single session authority
+      and durable continuity record owner
+
+      - Basis differentiates bootstrap-blocker continuity scope from post-bootstrap
+      enhancement scope
+
+      - Readiness is APPROVED or lists only non-blocking post-bootstrap follow-ups'
+    agent: software-architect
 - id: driver-continuity-authority-ledger
   name: 'Driver Continuity: Authority & Ledger'
   status: locked

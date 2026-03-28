@@ -41437,3 +41437,11 @@ phases:
     docs/ as runtime authority, and green verification proves no silent fallback remains.
   depends_on:
   - driver-prompt-foundation
+- id: driver-prompt-review
+  name: Driver Prompt Resource Review
+  status: locked
+  gate: Independent review confirms runtime prompt packaging, docs mirror consistency,
+    and non-degrading missing/drift behavior before the improvement branch is considered
+    done.
+  depends_on:
+  - driver-prompt-migration

@@ -38323,7 +38323,6 @@ phases:
     - src/vectl/driver/loop.py
     depends_on:
     - driver-debt-policy-extraction.verify
-    - driver-debt-policy-extraction.freeze
     agent: gate-reviewer
 - id: driver-debt-system-wiring
   name: 'Driver Debt: System Wiring'

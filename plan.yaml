@@ -37338,7 +37338,42 @@ phases:
   - id: driver-debt-decision-state.contract
     name: Pin DecideState ownership contract
     status: pending
-    description: test
+    description: "step_type: contract\ncontract_purity: ENFORCED\ncontract_outputs:\n\
+      \  - signatures\n  - type_defs\n  - interfaces\n  - stubs\nVerification scope:\
+      \ phase-check protecting driver-debt-decision-state.impl and driver-debt-decision-state.gate.\n\
+      \nPin the approved A2 contract before implementation.\n\nRequired contract decisions:\n\
+      - Introduce src/vectl/decision_state.py with the sole mutable state container\
+      \ for decide-side reuse/failure memory.\n- Pin exact signatures:\n  - decide(...,\
+      \ state: DecideState | None = None)\n  - should_reuse_session(..., state: DecideState\
+      \ | None = None)\n  - DriverState.decide_state: DecideState\n- Driver runtime\
+      \ must pass DriverState.decide_state explicitly.\n- Long-lived module globals\
+      \ (_completion_times, _session_registry, _failure_counts) must stop being the\
+      \ runtime truth.\n- If any transitional fallback remains, it must be scoped\
+      \ as short-lived internal migration only and MUST NOT remain the default runtime\
+      \ path.\n\nKnown risks:\n- Existing docs in docs/DRIVER-ARCHITECTURE.md Section\
+      \ 2.5 / Q4 still describe module-global decide state; record exact drift points\
+      \ for doc-sync.\n- Session reuse semantics must remain correct for single-instance\
+      \ operation while state becomes instance-local.\n\nRefs/touch paths: src/vectl/decide.py,\
+      \ src/vectl/driver/types.py, src/vectl/driver/loop.py, src/vectl/driver/session.py,\
+      \ docs/DRIVER-ARCHITECTURE.md"
+    verification: '- Contract lists exact signatures, ownership boundary, and no-global-state
+      rule
+
+      - No implementation logic added beyond signatures / stubs / docstrings
+
+      - Drift points against existing docs are enumerated for later doc-sync'
+    evidence_template: "## DecideState Contract Pinning\n- Signatures pinned:\n  -\
+      \ decide(...)\n  - should_reuse_session(...)\n  - DriverState.decide_state\n\
+      - Ownership statement: <who owns completion_times/session_registry/failure_counts\
+      \ after remediation>\n- Drift points recorded from docs/DRIVER-ARCHITECTURE.md:\
+      \ <section + sentence>\n- Implementation excluded: yes/no"
+    refs:
+    - src/vectl/decide.py
+    - src/vectl/driver/types.py
+    - src/vectl/driver/loop.py
+    - src/vectl/driver/session.py
+    - docs/DRIVER-ARCHITECTURE.md
+    agent: python-senior
   - id: driver-debt-decision-state.test
     name: Test
     status: pending

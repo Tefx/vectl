@@ -35272,7 +35272,7 @@ phases:
       **Existing decide tests**: 25 passed\n**Linter/type check**: All passed"
   - id: driver-judgment-expansion-replan.fix-gate-type-contract
     name: Fix GATE REJECT type contract and mypy overlap
-    status: claimed
+    status: done
     description: 'step_type: implementation
 
       tags: [fix]
@@ -35354,6 +35354,39 @@ phases:
     agent: python-senior
     claimed_by: python-senior
     claimed_at: '2026-03-28T11:39:09.015251+00:00'
+    done_at: '2026-03-28T11:43:25.757522+00:00'
+    evidence: 'Artifact:
+
+      - Commit: 524b7c5
+
+
+      Verification:
+
+      - uv run mypy src/vectl/driver/loop.py -> Success: no issues found (S1 fixed)
+
+      - uv run pytest -v tests/test_driver_judgment_expansion_flow.py -k gate_reject
+      -> 2 passed
+
+      - uv run pytest -v tests/test_driver*.py -> 570 passed, 34 xfailed, 17 xpassed
+      (>238 tests satisfied)
+
+
+      Delivered:
+
+      - Generalized PlannerDispatchRequest to support both REPLAN and REJECT source
+      verdicts (B1 fixed)
+
+      - Added GateRejectPlannerTriggerName, PlannerDispatchTriggerName union, PlannerDispatchSourceVerdict
+
+      - Updated GATE_REMEDIATION_CHAIN_CONTRACT.planner_trigger to typed gate reject
+      trigger
+
+      - Fixed GATE REJECT runtime dispatch to use canonical contract trigger
+
+      - Fixed mypy comparison-overlap at loop.py planner dispatch status check (S1
+      fixed)
+
+      - Updated GATE REJECT PlannerDispatchRequest test to use source_verdict="REJECT"'
 - id: driver-cli-integration
   name: Driver CLI Integration
   status: locked

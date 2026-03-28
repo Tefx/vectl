@@ -42165,3 +42165,10 @@ phases:
     verified, and parser hard-fail/tolerance boundaries hold under real judgments.
   depends_on:
   - driver-judge-hardening-foundation
+- id: driver-judge-hardening-recovery-policy
+  name: 'Driver Judge Hardening: Failure Handling Policy'
+  status: locked
+  gate: Judgment failure classes have an explicit retry/fallback/halt/remediation
+    matrix with independent verification.
+  depends_on:
+  - driver-judge-hardening-foundation

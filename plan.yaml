@@ -38331,6 +38331,8 @@ phases:
   name: 'Driver Debt: System Wiring'
   status: locked
   depends_on:
+  - driver-debt-completion-authority
+  - driver-debt-cli-entrypoint-unification
   - driver-debt-policy-extraction
   steps:
   - id: driver-debt-system-wiring.integrate-runtime-surfaces

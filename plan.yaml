@@ -38633,8 +38633,10 @@ phases:
   status: locked
   gate: Versioned envelope + event registry source of truth established on top of
     debt-remediation baseline
+  context: Bootstrap-postponed evolution work. Event foundation starts only after
+    debt remediation plus judge hardening authorize another real bootstrap attempt.
   depends_on:
-  - driver-debt-review
+  - driver-bootstrap-readiness
   steps:
   - id: driver-evolution-events-foundation.contract
     name: Pin versioned event envelope and registry contract

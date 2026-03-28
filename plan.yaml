@@ -34255,7 +34255,7 @@ phases:
       suites all passing.'
   - id: driver-multi-runner-hardening.freeze
     name: Freeze multi-runner hardening snapshot
-    status: claimed
+    status: done
     description: 'step_type: verification
 
       Verification scope: phase-check protecting driver-multi-runner-hardening.gate.
@@ -34280,6 +34280,19 @@ phases:
     agent: integration-verifier
     claimed_by: integration-verifier
     claimed_at: '2026-03-28T09:54:24.693300+00:00'
+    done_at: '2026-03-28T09:55:42.161358+00:00'
+    evidence: 'Freeze evidence:
+
+      - git rev-parse HEAD captured
+
+      - git tracked status clean (no staged/modified tracked files)
+
+      - environment declaration captured
+
+      - explicit no-code-changes-until-gate statement recorded
+
+
+      Snapshot frozen for gate validation.'
   - id: driver-multi-runner-hardening.gate
     name: Gate driver-multi-runner-hardening
     status: pending

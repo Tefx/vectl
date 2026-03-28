@@ -42033,3 +42033,61 @@ phases:
     depends_on:
     - driver-prompt-review.update-docs
     agent: spec-verifier
+  - id: driver-prompt-review.black-box-verification
+    name: Black-box verify docs-absent packaged prompt runtime
+    status: pending
+    description: 'As an INDEPENDENT TESTER (blind-tester), verify the prompt runtime
+      behavior from the public driver surface without relying on implementation details.
+
+
+      Required checks:
+
+      - In a docs-absent context, the driver judge path still obtains its runtime
+      prompt from the packaged resource
+
+      - If the packaged resource is intentionally made unavailable, the failure is
+      explicit/actionable rather than silent degradation
+
+      - Prompt/runtime change does not alter the documented verdict output contract
+
+
+      Finding issues is a successful outcome for this verification step.
+
+      Independence Level: L2-L3 boundary, because it validates runtime behavior through
+      the public surface rather than implementation internals.'
+    verification: '- Evidence includes exact runtime invocation(s) or black-box test
+      command(s).
+
+      - Docs-absent behavior and explicit missing-resource failure are both exercised.
+
+      - Output contract remains compatible with the documented judgment verdict format.'
+    evidence_template: '## Black-Box Verification
+
+      **Commands executed**:
+
+      ```
+
+      <paste exact commands>
+
+      ```
+
+      **Observed behavior**:
+
+      ```
+
+      <paste output>
+
+      ```
+
+      **Docs absent case**:
+
+      - Result:
+
+      **Packaged resource missing case**:
+
+      - Result:
+
+      **Verdict contract compatibility**:
+
+      - Result:'
+    agent: blind-tester

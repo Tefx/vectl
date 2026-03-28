@@ -33489,9 +33489,11 @@ phases:
     verification: '- Wiring audit report names any orphaned or placeholder runtime
       paths
 
+      - Audit must use the post-fix liveness rerun as the runtime evidence basis
+
       - Verdict is PASS or ISSUES_FOUND'
     depends_on:
-    - driver-judgment-runtime-minimal.liveness-probe
+    - driver-judgment-runtime-minimal.retest-liveness-probe
     agent: wiring-auditor
   - id: driver-judgment-runtime-minimal.spec-conformance
     name: Judgment and runtime minimal spec conformance

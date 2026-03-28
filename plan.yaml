@@ -38536,37 +38536,6 @@ phases:
     - src/vectl/driver/policy.py
     - src/vectl/decision_state.py
     agent: wiring-auditor
-  - id: driver-debt-deep-review.contract-strength
-    name: Audit remediated contracts for strength
-    status: pending
-    description: 'step_type: verification
-
-      Verification scope: full-plan-check protecting driver-debt-deep-review.gate.
-
-
-      Verify the new contract surfaces are real and non-vacuous.
-
-      Check:
-
-      - DecideState API is exercised by tests
-
-      - shared entrypoint adapter is actually called
-
-      - policy extraction contract is represented by real imports/tests, not comments
-      only
-
-      - no legacy shim claims remain without caller proof'
-    verification: '- Evidence demonstrates the new contract surfaces are live and
-      exercised'
-    refs:
-    - src/vectl/decision_state.py
-    - src/vectl/driver/entrypoint.py
-    - src/vectl/driver/policy.py
-    - tests/test_decide.py
-    - tests/test_driver_loop_runtime.py
-    depends_on:
-    - driver-debt-deep-review.wiring-audit
-    agent: gate-reviewer
 - id: driver-debt-review
   name: 'Driver Debt: Review'
   status: locked
@@ -38733,3 +38702,32 @@ phases:
     - src/vectl/driver/entrypoint.py
     - src/vectl/driver/policy.py
     agent: software-architect
+  - id: driver-debt-deep-review.contract-strength
+    name: Audit remediated contracts for strength
+    status: pending
+    description: 'step_type: verification
+
+      Verification scope: full-plan-check protecting driver-debt-deep-review.gate.
+
+
+      Verify the new contract surfaces are real and non-vacuous.
+
+      Check:
+
+      - DecideState API is exercised by tests
+
+      - shared entrypoint adapter is actually called
+
+      - policy extraction contract is represented by real imports/tests, not comments
+      only
+
+      - no legacy shim claims remain without caller proof'
+    verification: '- Evidence demonstrates the new contract surfaces are live and
+      exercised'
+    refs:
+    - src/vectl/decision_state.py
+    - src/vectl/driver/entrypoint.py
+    - src/vectl/driver/policy.py
+    - tests/test_decide.py
+    - tests/test_driver_loop_runtime.py
+    agent: gate-reviewer

@@ -43022,7 +43022,7 @@ phases:
     claimed_at: '2026-03-28T22:43:47.344927+00:00'
   - id: driver-judge-hardening-foundation.fix-contract-ambiguities
     name: Resolve judge contract ambiguities
-    status: claimed
+    status: done
     description: 'step_type: implementation
 
       verification_scope: local-check
@@ -43075,6 +43075,26 @@ phases:
     agent: software-architect
     claimed_by: software-architect
     claimed_at: '2026-03-28T22:51:15.118046+00:00'
+    done_at: '2026-03-28T22:55:23.992538+00:00'
+    evidence: "Artifact:\n- PR: ac601c3faa01da9aeb108a1ead07cb20717abe4c\n\nVerification:\n\
+      - Run: git diff -- docs/DRIVER-ARCHITECTURE.md docs/JUDGE-AGENT-PROMPT.md ->\
+      \ confirmed all four blockers are resolved in docs:\n  - codex source-of-truth\
+      \ + bounded divergence policy\n  - complete runner/judge capability matrix with\
+      \ Gemini explicitly deferred/excluded\n  - hard-fail vs tolerant verdict extraction\
+      \ boundary table\n  - exact `FAILURE` vs `GATE` trigger rules\n- Run: python3\
+      \ - <<'PY'\n  from pathlib import Path\n  text = Path('docs/DRIVER-ARCHITECTURE.md').read_text()\n\
+      \  checks = [\n      'Codex invocation source of truth (normative)',\n     \
+      \ 'Runner/Judge capability matrix (normative)',\n      'Verdict extraction boundary\
+      \ (hard-fail vs tolerant)',\n      'Exact trigger rules: `FAILURE` vs `GATE`',\n\
+      \  ]\n  missing = [c for c in checks if c not in text]\n  print('PASS' if not\
+      \ missing else 'MISSING: ' + ', '.join(missing))\n  PY -> PASS\n- Run: docs/JUDGE-AGENT-PROMPT.md\
+      \ grep checks -> confirmed prompt explicitly routes completed gate/freeze artifacts\
+      \ to `TYPE: gate` and pre-artifact execution failures to `TYPE: failure`\n-\
+      \ Run: git status --short -> clean worktree after commit\n\nSpec link:\n- docs/DRIVER-ARCHITECTURE.md\
+      \ sections:\n  - Codex invocation source of truth (normative)\n  - Runner/Judge\
+      \ capability matrix (normative)\n  - Verdict extraction boundary (hard-fail\
+      \ vs tolerant)\n  - Exact trigger rules: `FAILURE` vs `GATE`\n- docs/JUDGE-AGENT-PROMPT.md\
+      \ sections:\n  - TYPE: failure\n  - TYPE: gate"
   - id: driver-judge-hardening-foundation.retest-gate
     name: Re-gate judge hardening foundation after contract fix
     status: pending

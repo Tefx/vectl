@@ -17,7 +17,7 @@ import time
 from collections.abc import Mapping
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Protocol
 
 from vectl.decision_state import DecideState
 
@@ -405,3 +405,107 @@ class SessionEntry:
     agent: str
     step_id: str
     completed_at: float  # time.monotonic()
+
+
+@dataclass(frozen=True)
+class ReplaySafetyEnvelope:
+    """Canonical replay/idempotency envelope for continuity-sensitive actions.
+
+    Contract scope only: this type pins the minimum facts that downstream
+    continuity phases must preserve when deciding whether a resumed or replayed
+    action is safe to apply.
+    """
+
+    step_id: str
+    attempt_key: str
+    runner_name: str
+    session_id: str | None
+    idempotency_scope: str
+    tool_call_fingerprint: str | None = None
+
+
+@dataclass(frozen=True)
+class ContinuityJournalEntry:
+    """Minimum recovery telemetry emitted for replay-safe restart reasoning.
+
+    This is intentionally narrower than post-bootstrap observability. It exists
+    only to pin the bootstrap-minimum journal facts required by restart,
+    resume, and abort handling.
+    """
+
+    step_id: str
+    event_kind: str
+    recorded_at: str
+    attempt_key: str
+    runner_name: str
+    session_id: str | None
+    summary: str
+    replay_envelope: ReplaySafetyEnvelope
+
+
+@dataclass(frozen=True)
+class ContinuityLedgerEntry:
+    """Durable continuity record for one step-level execution lineage.
+
+    The ledger is the durable source of truth for resumable continuity facts.
+    Downstream implementation phases own persistence mechanics; this contract
+    pins the durable shape they must converge on.
+    """
+
+    step_id: str
+    latest_attempt_key: str
+    status: str
+    runner_name: str
+    last_session_id: str | None
+    replay_envelope: ReplaySafetyEnvelope
+    last_journal_event: ContinuityJournalEntry
+    recovery_cursor: str | None = None
+
+
+@dataclass(frozen=True)
+class ContinuityHandoff:
+    """Loop-facing continuity handoff used by restart and resume control flow.
+
+    This type separates the durable continuity decision input from transient
+    runtime process state so downstream phases do not re-derive restart policy
+    from loosely structured dictionaries.
+    """
+
+    step_id: str
+    resume_from_session_id: str | None
+    replay_envelope: ReplaySafetyEnvelope
+    ledger_entry: ContinuityLedgerEntry | None
+    capability_snapshot_id: str
+    reason: str
+
+
+@dataclass(frozen=True)
+class StartupRecoveryControllerInput:
+    """Inputs required by the startup recovery controller contract."""
+
+    orphaned_steps: tuple[str, ...]
+    stale_claim_step_ids: tuple[str, ...]
+    ledger_entries: tuple[ContinuityLedgerEntry, ...]
+    available_capability_snapshot_ids: tuple[str, ...]
+
+
+@dataclass(frozen=True)
+class StartupRecoveryControllerOutput:
+    """Outputs produced by the startup recovery controller contract."""
+
+    resumable_handoffs: tuple[ContinuityHandoff, ...]
+    repair_actions: tuple[str, ...]
+    blocked_reasons: tuple[str, ...]
+
+
+class StartupRecoveryController(Protocol):
+    """Protocol for continuity-aware startup recovery planning.
+
+    Contract only: implementation remains deferred to continuity runtime phases.
+    """
+
+    def plan_recovery(
+        self, recovery_input: StartupRecoveryControllerInput
+    ) -> StartupRecoveryControllerOutput:
+        """Return deterministic recovery decisions from continuity inputs."""
+        ...

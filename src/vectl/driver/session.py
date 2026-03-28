@@ -14,9 +14,24 @@ Blueprint Reference: DRIVER-BLUEPRINT.md Session Pool (session.py)
 from __future__ import annotations
 
 import time
+from typing import Final
 
 from .config import SessionConfig
 from .types import SessionEntry
+
+
+SESSION_CONTINUITY_AUTHORITIES: Final[dict[str, str]] = {
+    "dispatch_reuse_intent": "DecideState in vectl.decide via Action.session/task_id",
+    "runner_compatible_session_cache": "SessionPool in src/vectl/driver/session.py",
+    "durable_resume_state": (
+        "ContinuityLedgerEntry contract in src/vectl/driver/types.py; runtime persistence "
+        "deferred to driver-continuity-authority-ledger"
+    ),
+    "replay_safety_envelope": "ReplaySafetyEnvelope contract in src/vectl/driver/types.py",
+    "startup_recovery_decision_input": (
+        "StartupRecoveryControllerInput/Output contract in src/vectl/driver/types.py"
+    ),
+}
 
 
 class SessionPool:

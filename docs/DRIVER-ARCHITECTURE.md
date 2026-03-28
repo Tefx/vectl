@@ -8,6 +8,12 @@
 **Certainty**: [Proven] for all interfaces derived from existing vectl code;
 [Likely] for judgment and runner protocols (derived from blueprint + verified CLI capabilities).
 
+**Continuity foundation**: `docs/DRIVER-CONTINUITY-FOUNDATION.md` is the
+canonical bootstrap-blocker continuity basis and contract repair. It defines the
+truthful continuity authority boundary, durable resume-state contracts,
+runner capability semantics, replay-safety envelope, and minimum recovery
+telemetry expected by downstream continuity phases.
+
 ---
 
 ## 1. Module Map

@@ -38063,7 +38063,7 @@ phases:
   steps:
   - id: driver-debt-policy-extraction.contract
     name: Pin driver.policy extraction seam
-    status: pending
+    status: claimed
     description: "step_type: contract\ncontract_purity: ENFORCED\ncontract_outputs:\n\
       \  - signatures\n  - interfaces\n  - behavioral notes\nVerification scope: phase-check\
       \ protecting driver-debt-policy-extraction.impl and gate.\n\nPin the A3 extraction\
@@ -38084,6 +38084,8 @@ phases:
     - src/vectl/driver/policy.py
     - tests/test_driver_loop_hardening.py
     agent: python-senior
+    claimed_by: python-senior
+    claimed_at: '2026-03-28T18:28:12.603621+00:00'
   - id: driver-debt-policy-extraction.tests
     name: Add behavior-lock tests for policy helpers
     status: pending

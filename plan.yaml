@@ -36828,7 +36828,7 @@ phases:
   steps:
   - id: driver-deep-review.wiring-audit
     name: Deep review wiring audit
-    status: claimed
+    status: done
     description: 'step_type: verification
 
       Verification scope: full-plan-check protecting driver-deep-review.gate.
@@ -36840,6 +36840,70 @@ phases:
     agent: wiring-auditor
     claimed_by: wiring-auditor
     claimed_at: '2026-03-28T13:43:30.887921+00:00'
+    done_at: '2026-03-28T13:47:52.683692+00:00'
+    evidence: '## Wiring Audit Report: PASS (After Fix)
+
+
+      ### Previous Findings Re-Verification
+
+
+      **W1 Fix (driver/__init__.py loop import):** ✅ VERIFIED FIXED
+
+      - `grep -n "from . import loop" src/vectl/driver/__init__.py` shows line 12
+
+      - `import vectl.driver; hasattr(vectl.driver, ''loop'')` → `True`
+
+      - `vectl.driver.loop.__name__` → `"vectl.driver.loop"`
+
+
+      **W8 Fix (fastmcp dependency):** ✅ VERIFIED LIVE
+
+      - `fastmcp>=2.0.0` declared in `pyproject.toml:25`
+
+      - Imported in `src/vectl/mcp_server.py:39`: `from fastmcp import FastMCP`
+
+      - Used at line 111: `mcp = FastMCP("vectl", ...)`
+
+      - Comment added explaining it''s used by MCP server, not driver
+
+
+      ### Full W1-W13 Audit Results
+
+
+      | Protocol | Total | Issues | Verdict |
+
+      |----------|-------|--------|---------|
+
+      | W13 | 6 EFFECTIVE | 0 | PASS |
+
+      | W1 | 1 LIVE | 0 | PASS |
+
+      | W2 | 0 GHOST | 0 | PASS |
+
+      | W3 | 1 COVERED | 0 | PASS |
+
+      | W4 | N/A | 0 | PASS |
+
+      | W5 | N/A | 0 | PASS |
+
+      | W6 | 5 classes | 0 | PASS |
+
+      | W7 | 0 | 0 | PASS |
+
+      | W8 | 5 deps | 0 | PASS |
+
+      | W8b | 0 UNDECLARED | 0 | PASS |
+
+      | W9 | 4 LIVE | 0 | PASS |
+
+      | W10 | N/A | 0 | PASS |
+
+      | W11 | 4 LEGITIMATE | 0 | PASS |
+
+      | W12 | N/A | 0 | PASS |
+
+
+      **Overall**: PASS — All blocking issues resolved.'
   - id: driver-deep-review.spec-conformance
     name: Deep review spec conformance
     status: pending

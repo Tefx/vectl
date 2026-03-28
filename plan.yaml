@@ -32340,10 +32340,40 @@ phases:
     description: 'step_type: test
 
 
+      EXPECTED-RED PRE-IMPLEMENTATION TEST STEP.
+
+
       Add focused tests for Codex/Gemini parser and resume behavior plus fallback
-      compatibility with the shared runner protocol.'
+      compatibility with the shared runner protocol before extended-runner implementation
+      lands.
+
+
+      Allowed file scope:
+
+      - tests
+
+      - fixtures
+
+      - test helpers
+
+      Do NOT modify src/vectl/driver/*. If gaps are exposed, report them explicitly
+      instead of implementing runner behavior here.
+
+
+      Evidence requirements:
+
+      - modified files limited to tests/fixtures/helpers
+
+      - expected_failures or exposed_gaps listed explicitly
+
+      - downstream implementation owner linked: driver-multi-runner-hardening.impl-runners-extended'
     verification: '- Tests cover extended parser shapes, resume translation, and experimental-runner
-      failure handling'
+      failure handling
+
+      - Step succeeds if it records expected-red gaps without product-code edits or
+      proves the contract already passes green without src changes
+
+      - Evidence links every unresolved gap to driver-multi-runner-hardening.impl-runners-extended'
     depends_on:
     - driver-multi-runner-hardening.contract-runners-extended
     agent: python-executor

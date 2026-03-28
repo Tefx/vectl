@@ -32629,7 +32629,7 @@ phases:
       \ Types)"
   - id: driver-judgment-runtime-minimal.test-judgments
     name: Test judgment contracts
-    status: pending
+    status: claimed
     description: 'step_type: test
 
 
@@ -32677,6 +32677,8 @@ phases:
     depends_on:
     - driver-judgment-runtime-minimal.contract-judgment-coverage-matrix
     agent: python-executor
+    claimed_by: python-executor
+    claimed_at: '2026-03-28T07:34:21.177201+00:00'
   - id: driver-judgment-runtime-minimal.impl-judgments
     name: Implement judgment contracts
     status: pending

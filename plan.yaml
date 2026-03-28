@@ -39317,7 +39317,8 @@ phases:
 
       - RuntimeContext does not absorb unrelated durable lifecycle authority
 
-      - the real entrypoint path still works with the typed context
+      - the real entrypoint path carries one unified RuntimeContext without role-specific
+      variants
 
 
       Independence: gate-reviewer must remain independent from software-architect/python-senior.'
@@ -39326,6 +39327,9 @@ phases:
       - Contract and implementation evidence align with the ADR ownership model
 
       - Vertical-slice evidence proves a real entrypoint path using RuntimeContext
+
+      - Gate checks RuntimeContext boundary clarity and unified propagation only;
+      event-foundation or registry-backed helper proof is not required in this phase
 
       - No unresolved ownership blocker intersects planner-action registry work'
     depends_on:

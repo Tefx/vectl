@@ -32583,7 +32583,7 @@ phases:
       - docs/JUDGE-AGENT-PROMPT.md'
   - id: driver-judgment-runtime-minimal.contract-judgment-coverage-matrix
     name: Contract judgment coverage matrix
-    status: pending
+    status: claimed
     description: 'step_type: planning
 
 
@@ -32608,6 +32608,8 @@ phases:
     depends_on:
     - driver-judgment-runtime-minimal.contract-judgments
     agent: software-architect
+    claimed_by: software-architect
+    claimed_at: '2026-03-28T04:26:42.859114+00:00'
   - id: driver-judgment-runtime-minimal.test-judgments
     name: Test judgment contracts
     status: pending

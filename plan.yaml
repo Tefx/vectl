@@ -42158,3 +42158,10 @@ phases:
     before implementation fan-out.
   depends_on:
   - driver-debt-review
+- id: driver-judge-hardening-structured-output
+  name: 'Driver Judge Hardening: Structured Output Stability'
+  status: locked
+  gate: Judge invocation reuses stable runner config, codex structured output is real-runner
+    verified, and parser hard-fail/tolerance boundaries hold under real judgments.
+  depends_on:
+  - driver-judge-hardening-foundation

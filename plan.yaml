@@ -42237,6 +42237,49 @@ phases:
     verified, and parser hard-fail/tolerance boundaries hold under real judgments.
   depends_on:
   - driver-judge-hardening-foundation
+  steps:
+  - id: driver-judge-hardening-structured-output.test-define-red
+    name: Define expected-red codex structured-output regressions
+    status: pending
+    description: "step_type: test\nstep_intent: test_define_red\nexpected_result:\
+      \ red\nspec_refs:\n  - driver.yaml#runners-codex-and-judge\n  - docs/JUDGE-AGENT-PROMPT.md#verdict-schema\n\
+      \  - docs/DRIVER-ARCHITECTURE.md#judge-runtime\ntouch_paths:\n  - tests/test_driver_judge.py\n\
+      \  - tests/test_driver_judge_runtime.py\n  - tests/test_driver_loop_runtime.py\n\
+      \  - tests/repro/\nharness_refs:\n  - driver.yaml fixture loading\n  - real\
+      \ runner smoke harness for codex judge path\nauthoritative_interface: Judge.judge(request)\
+      \ with codex runner selected via driver.yaml\nagent_source: default\n\nDefine\
+      \ the blocking regression suite before implementation changes land.\n\nRequired\
+      \ red coverage:\n- codex judge invocation diverges from the stable `runners.codex`\
+      \ contract in `driver.yaml`\n- codex judge path emits only partial JSONL events\
+      \ such as `thread.started` / `turn.started` and currently fails to produce a\
+      \ valid verdict\n- parser/extraction handling for malformed JSON, empty output,\
+      \ and partial event streams distinguishes tolerated extraction vs hard fail\
+      \ per foundation contract\n- at least one real-runner test target is authored\
+      \ for each judgment family: preflight, cold_context, failure, gate, with quality\
+      \ gates enabled\n\n## Spec-Fixture Conformance (MANDATORY)\nAt least one fixture\
+      \ MUST use the exact documented `driver.yaml` format and cite the section it\
+      \ was derived from.\n\nThis is a test-definition step only. Product code changes\
+      \ are out of scope."
+    verification: '- Modified files remain in tests/ or test helpers only
+
+      - Expected-red cases expose the current codex judge-path divergence and structured-output
+      gaps without product code edits
+
+      - Evidence names the downstream implementation owner: driver-judge-hardening-structured-output.impl'
+    evidence_template: '## Expected-Red Judge Stability Tests
+
+      - New/updated test files:
+
+      - Exposed gaps:
+
+      - Judgment families covered: preflight | cold_context | failure | gate
+
+      - Spec sections cited for fixtures:
+
+      - Downstream implementation owner: driver-judge-hardening-structured-output.impl
+
+      '
+    agent: python-executor
 - id: driver-judge-hardening-recovery-policy
   name: 'Driver Judge Hardening: Failure Handling Policy'
   status: locked

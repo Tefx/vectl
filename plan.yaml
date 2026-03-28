@@ -38536,24 +38536,6 @@ phases:
     - src/vectl/driver/__main__.py
     - src/vectl/cli.py
     agent: doc-reviewer
-  - id: driver-debt-doc-sync.freeze
-    name: Freeze snapshot for doc-sync gate
-    status: pending
-    description: 'step_type: verification
-
-      Verification scope: phase-check protecting driver-debt-doc-sync.gate.
-
-
-      Freeze the documentation snapshot before gate review.
-
-      Required evidence: git rev-parse HEAD, clean status, environment declaration,
-      and no-change statement.'
-    verification: '- Freeze evidence complete before gate'
-    refs:
-    - docs/DRIVER-ARCHITECTURE.md
-    depends_on:
-    - driver-debt-doc-sync.update-docs
-    agent: integration-verifier
 - id: driver-debt-deep-review
   name: 'Driver Debt: Deep Review'
   status: locked

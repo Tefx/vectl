@@ -38643,3 +38643,10 @@ phases:
     entrypoint behavior
   depends_on:
   - driver-evolution-event-contracts
+- id: driver-evolution-action-registry
+  name: 'Driver Evolution: Action Registry'
+  status: locked
+  gate: Layered action registry covers runtime and planner dispatch actions with explicit
+    contracts and verification
+  depends_on:
+  - driver-evolution-runtime-context

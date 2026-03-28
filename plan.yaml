@@ -40277,3 +40277,11 @@ phases:
   - driver-enhancement-observability
   - driver-enhancement-streaming-progress
   - driver-enhancement-runner-recovery
+- id: driver-enhancement-review
+  name: 'Driver Enhancement: Review'
+  status: locked
+  gate: Final doc-sync plus independent deep review confirm the hardened and enhanced
+    driver is safe, observable, and extension-ready.
+  depends_on:
+  - driver-routing-hardening
+  - driver-enhancement-integration

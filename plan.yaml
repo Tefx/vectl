@@ -43349,6 +43349,59 @@ phases:
     - driver-continuity-capability-safety.impl
     - driver-continuity-capability-safety.verify
     agent: gate-reviewer
+  - id: driver-continuity-capability-safety.design-and-test
+    name: Design capability boundary and write expected-red tests
+    status: pending
+    description: 'step_type: test
+
+      merged_contract_test: true
+
+      step_intent: test_define_red
+
+      expected_result: red
+
+
+      Design interface and write expected-red tests for resume capability and replay
+      safety.
+
+
+      There is no authoritative external spec that precisely pins the bootstrap continuity
+      capability interface, so contract-first would over-specify an undocumented surface.
+      This merged step owns both boundary design and red-test definition on the existing
+      continuity/recovery surfaces.
+
+
+      Outputs allowed:
+
+      - signatures, type notes, docstrings, and stubs on existing capability/replay
+      surfaces only
+
+      - expected-red tests and fixtures defining the missing behavior
+
+
+      Required scope:
+
+      - define resume capability facts, replay/idempotency envelope, replay token
+      semantics, and continuity-facing result fields on existing surfaces
+
+      - preserve advanced watchdog heuristics for post-bootstrap enhancement phases
+
+      - author expected-red tests for non-resumable runners treated as resumable,
+      duplicate replay, token semantics drift, and guessed runner-name branching
+
+
+      No implementation logic beyond signatures/stubs and tests.
+
+      Evidence must include exposed_gaps and name `driver-continuity-capability-safety.impl`
+      as the downstream implementation owner.'
+    verification: '- Modified files are limited to tests plus minimal contract/stub
+      surfaces
+
+      - Expected-red coverage exposes missing capability/replay-safety behavior before
+      runtime code changes
+
+      - Outputs include both boundary design notes and failing tests'
+    agent: python-senior
 - id: driver-continuity-restart-recovery
   name: 'Driver Continuity: Restart Recovery'
   status: locked

@@ -1467,6 +1467,28 @@ See Section 2.10, "Judge vs Rules Decision Boundary" table.
 
 See Section 2.5 ownership boundary table.
 
+#### Decision-state Contract Drift Register (for later doc-sync)
+
+The current runtime contract is being pinned to explicit ``DecideState`` wiring.
+The following existing architecture statements are now known drift points that
+must be synchronized in a dedicated doc-sync step:
+
+1. **Section 2.5, Ownership Boundary heading**
+   - Current text: ``#### Ownership Boundary: SessionPool vs _session_registry``
+   - Drift reason: contract now uses ``DecideState`` as the sole decide-side
+     mutable container passed explicitly by ``DriverState``.
+2. **Section 2.5, ownership paragraph**
+   - Current text: ``decide.py maintains _session_registry and _completion_times as module-level dicts.``
+   - Drift reason: module-global dicts are no longer the intended runtime truth.
+3. **Section 4, State Ownership Matrix rows for `_session_registry` / `_completion_times` / `_failure_counts`**
+   - Current text (rows): module-level ``decide.py`` process state.
+   - Drift reason: ownership boundary is moving to instance-local
+     ``DriverState.decide_state: DecideState`` with explicit parameter passing.
+4. **Q4 answer bullet 1**
+   - Current text: ``_session_registry is decide.py-internal state ...``
+   - Drift reason: ownership statement must be rewritten to refer to
+     ``DecideState`` instead of module-global registries.
+
 ### Q5: How do prompt templates get the data they need?
 
 **Answer**: The `Action` dataclass from `decide()` carries `step_description`,

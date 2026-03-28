@@ -14,6 +14,7 @@ from __future__ import annotations
 import time
 
 from vectl.core import auto_unlock_phases, get_next_steps
+from vectl.decision_state import DecideState
 from vectl.io import load_plan_definition
 from vectl.models import (
     Action,
@@ -34,14 +35,9 @@ from vectl.plan_path import resolve_plan_path
 # Time-to-live for session reuse eligibility (in seconds)
 REUSE_TTL: int = 300
 
-# Tracks completion times for session reuse logic
-_completion_times: dict[str, float] = {}
-
-# Maps step IDs to their session IDs for cross-agent handoff
-_session_registry: dict[str, str] = {}
-
-# Tracks failure counts per step for escalation
-_failure_counts: dict[str, int] = {}
+# Transitional compatibility state for legacy callers that do not yet pass
+# DecideState explicitly. Driver runtime must pass DriverState.decide_state.
+_legacy_state: DecideState = DecideState()
 
 
 # ---------------------------------------------------------------------------
@@ -49,7 +45,18 @@ _failure_counts: dict[str, int] = {}
 # ---------------------------------------------------------------------------
 
 
-def should_reuse_session(step_id: str, parent_step_id: str | None) -> tuple[bool, str | None]:
+def _resolve_state(state: DecideState | None) -> DecideState:
+    """Resolve decide state with short-lived migration fallback."""
+    if state is not None:
+        return state
+    return _legacy_state
+
+
+def should_reuse_session(
+    step_id: str,
+    parent_step_id: str | None,
+    state: DecideState | None = None,
+) -> tuple[bool, str | None]:
     """Determine if a session can be reused for a step.
 
     Args:
@@ -60,27 +67,35 @@ def should_reuse_session(step_id: str, parent_step_id: str | None) -> tuple[bool
         Tuple of (should_reuse, session_id_or_None):
         - (True, session_id) if reuse is recommended
         - (False, None) if fresh session is required
+
+    Notes:
+        ``state`` is the sole mutable-memory container for decide-side reuse
+        and failure tracking. ``None`` uses a short-lived internal migration
+        fallback and is not the intended runtime path.
     """
+    _ = step_id
+    decision_state = _resolve_state(state)
+
     # No parent -> cannot reuse
     if parent_step_id is None:
         return (False, None)
 
-    # Parent not in _completion_times -> no session to reuse
-    if parent_step_id not in _completion_times:
+    # Parent not in completion_times -> no session to reuse
+    if parent_step_id not in decision_state.completion_times:
         return (False, None)
 
     # Check TTL
-    completion_time = _completion_times[parent_step_id]
+    completion_time = decision_state.completion_times[parent_step_id]
     elapsed = time.time() - completion_time
     if elapsed > REUSE_TTL:
         return (False, None)
 
     # No task_id in registry -> cannot reuse
-    if parent_step_id not in _session_registry:
+    if parent_step_id not in decision_state.session_registry:
         return (False, None)
 
     # Session is available for reuse
-    return (True, _session_registry[parent_step_id])
+    return (True, decision_state.session_registry[parent_step_id])
 
 
 def compute_continuation(
@@ -123,6 +138,7 @@ def decide(
     running_tasks: list[RunningTask],
     completed_results: list[CompletedResult] | None,
     max_parallelism: int,
+    state: DecideState | None = None,
 ) -> DecideOutput:
     """Main decision function for vectl orchestration.
 
@@ -133,11 +149,13 @@ def decide(
         running_tasks: Currently running tasks (in-flight work).
         completed_results: Tasks that have completed since last decision.
         max_parallelism: Maximum allowed parallel dispatches.
+        state: Mutable decide-side memory container. Driver runtime must pass
+            ``DriverState.decide_state`` explicitly.
 
     Returns:
         DecideOutput with actions to execute and continuation state.
     """
-    global _completion_times, _session_registry, _failure_counts
+    decision_state = _resolve_state(state)
 
     # Load plan
     plan_path = resolve_plan_path()
@@ -150,8 +168,8 @@ def decide(
     if completed_results:
         for result in completed_results:
             # Record completion time for session reuse
-            _completion_times[result.step_id] = time.time()
-            _session_registry[result.step_id] = result.task_id
+            decision_state.completion_times[result.step_id] = time.time()
+            decision_state.session_registry[result.step_id] = result.task_id
 
             if result.status == "SUCCESS":
                 # Create complete action
@@ -173,7 +191,7 @@ def decide(
                     )
                 )
                 # Reset failure count on success
-                _failure_counts.pop(result.step_id, None)
+                decision_state.failure_counts.pop(result.step_id, None)
             elif result.status == "FAIL":
                 # Check if this is an expected-red step (red outcome demonstrates gap)
                 found = plan.find_step(result.step_id)
@@ -196,13 +214,13 @@ def decide(
                             )
                         )
                         # Clear any prior failure count for this step
-                        _failure_counts.pop(result.step_id, None)
+                        decision_state.failure_counts.pop(result.step_id, None)
                         continue  # skip the normal FAIL path
 
                 # Default FAIL path: must_green or verify=None
                 # Track failures for escalation
-                count = _failure_counts.get(result.step_id, 0) + 1
-                _failure_counts[result.step_id] = count
+                count = decision_state.failure_counts.get(result.step_id, 0) + 1
+                decision_state.failure_counts[result.step_id] = count
 
                 if count >= 3:
                     # Escalate after 3 failures
@@ -222,7 +240,7 @@ def decide(
                         )
                     )
                     # Reset count after escalation
-                    _failure_counts.pop(result.step_id, None)
+                    decision_state.failure_counts.pop(result.step_id, None)
                 else:
                     # Wait for retry (step will be re-claimable)
                     decision_log.append(
@@ -262,7 +280,11 @@ def decide(
             parent_step_id = step.depends_on[0]
 
         # Check session reuse
-        should_reuse, task_id = should_reuse_session(step.id, parent_step_id)
+        should_reuse, task_id = should_reuse_session(
+            step.id,
+            parent_step_id,
+            state=decision_state,
+        )
 
         if should_reuse and task_id:
             actions.append(

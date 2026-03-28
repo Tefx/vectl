@@ -4,7 +4,7 @@ Responsibility: Track completed sessions and find reusable ones based on
 step dependency, runner match, and TTL.
 
 Non-responsibility: Does NOT make dispatch decisions. Does NOT interact with
-`decide.py`'s `_session_registry` directly -- see ownership boundary below.
+`decide.py`/`decision_state.py` decide-memory internals directly.
 
 Architecture Reference: docs/DRIVER-ARCHITECTURE.md Section 2.5
 Architecture Reference: docs/DRIVER-ARCHITECTURE.md Q4 (Ownership Boundary)
@@ -14,7 +14,6 @@ Blueprint Reference: DRIVER-BLUEPRINT.md Session Pool (session.py)
 from __future__ import annotations
 
 import time
-from dataclasses import dataclass, field
 
 from .config import SessionConfig
 from .types import SessionEntry
@@ -26,27 +25,31 @@ class SessionPool:
     Architecture: docs/DRIVER-ARCHITECTURE.md Section 2.5, SessionPool class
     Blueprint: DRIVER-BLUEPRINT.md Session Pool (session.py)
 
-    This is a runner-aware session pool that supplements decide.py's
-    _session_registry with per-runner TTL and runner-name matching.
+    This is a runner-aware session pool with per-runner TTL and runner-name
+    matching.
 
-    Ownership Boundary: SessionPool vs _session_registry
+    Ownership Boundary: SessionPool vs DecideState
 
-    `decide.py` maintains `_session_registry` and `_completion_times` as module-level
-    dicts. These are populated as a **side effect** of calling `decide()` with
-    `completed_results`. The driver does NOT write to these dicts directly.
+    `decide.py` mutates decide-side memory through ``DecideState`` and receives
+    that container via an explicit ``state`` argument. The driver runtime passes
+    ``DriverState.decide_state`` and does NOT write decide-memory fields directly.
 
     The driver's `SessionPool` is a **parallel, runner-aware** pool that adds
     runner-name matching and per-runner TTL overrides -- capabilities that `decide.py`
     does not have. The two mechanisms serve different purposes:
 
-    | Concern | `_session_registry` (decide.py) | `SessionPool` (driver) |
+    | Concern | `DecideState` (decide.py) | `SessionPool` (driver) |
     |---------|--------------------------------|----------------------|
-    | Owner | `decide()` function | `loop.py` via `session.py` |
-    | Written by | `decide()` when processing `CompletedResult` | `loop.py` reconcile path after successful merge |
-    | Read by | `decide()` during `should_reuse_session()` | `loop.py` dispatch path, BEFORE calling `decide()` |
+    | Owner | `DriverState` + `decide()` mutation contract | `loop.py` via
+    | | | `session.py` |
+    | Written by | `decide()` when processing `CompletedResult` |
+    | | | `loop.py` reconcile path after successful merge |
+    | Read by | `decide()` during `should_reuse_session()` |
+    | | | `loop.py` dispatch path, BEFORE calling `decide()` |
     | Runner-aware | No | Yes (runner-name match required) |
     | Per-runner TTL | No | Yes |
-    | Purpose | decide() internal: determine session field on Action | Driver: pre-resolve session_id for dispatch optimization |
+    | Purpose | decide() internal: determine session field on Action |
+    | | | Driver: pre-resolve session_id for dispatch optimization |
 
     **Reconciliation**: When `decide()` produces an `Action` with `session="reuse"` and
     a `task_id`, the driver uses that `task_id`. When `decide()` produces `session="fresh"`,
@@ -54,10 +57,12 @@ class SessionPool:
     match. This is safe because session reuse is best-effort: if the session is stale,
     the runner starts fresh (graceful degradation).
 
-    **Decision**: [ADR] The driver does NOT modify `decide.py`'s module-level state.
-    Instead it feeds data through the existing `CompletedResult` -> `decide()` contract.
-    This preserves the frozen-core constraint. The `SessionPool` provides a supplementary
-    layer for runner-aware reuse that `decide()` cannot express.
+    **Decision**: [ADR] Decide-side memory lives in ``DecideState`` and is passed
+    explicitly from ``DriverState``. ``SessionPool`` remains a supplementary
+    runner-aware layer for dispatch-time optimization.
+
+    Drift note (doc-sync pending): docs/DRIVER-ARCHITECTURE.md Section 2.5/Q4
+    still describe module-global decide state from the pre-contract baseline.
     """
 
     def __init__(self, config: SessionConfig) -> None:

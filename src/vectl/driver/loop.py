@@ -2104,6 +2104,7 @@ async def _run_main_loop(
             running_tasks=state.as_running_tasks(),
             completed_results=state.drain_completed(),
             max_parallelism=config.orchestration.max_parallelism,
+            state=state.decide_state,
         )
         observer.emit(
             "DECIDE",

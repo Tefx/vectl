@@ -19,6 +19,8 @@ from dataclasses import dataclass, field
 from enum import Enum
 from typing import TYPE_CHECKING
 
+from vectl.decision_state import DecideState
+
 if TYPE_CHECKING:
     from vectl.models import CompletedResult, RunningTask
 
@@ -138,6 +140,9 @@ class DriverState:
 
     runtime_runners: Mapping[str, object] | None = None
     # Loop-injected runner map for reconcile follow-up planner dispatch wiring.
+
+    decide_state: DecideState = field(default_factory=DecideState)
+    # Sole mutable owner for decide-side session reuse/failure memory.
 
     def as_running_tasks(self) -> list[RunningTask]:
         """Convert to vectl.models.RunningTask list for decide() input.

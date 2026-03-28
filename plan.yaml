@@ -38629,6 +38629,62 @@ phases:
     debt-remediation baseline
   depends_on:
   - driver-debt-review
+  steps:
+  - id: driver-evolution-events-foundation.contract
+    name: Pin versioned event envelope and registry contract
+    status: pending
+    description: 'step_type: contract
+
+      contract_purity: ENFORCED
+
+      contract_outputs:
+
+      - signatures
+
+      - type_defs
+
+      - interfaces
+
+      - stubs
+
+
+      Authoritative source: docs/ADR-driver-evolution-foundation.md#30-versioned-event-envelope-now
+      and #45-event-registry-becomes-source-of-truth.
+
+
+      Pin the driver event foundation contract without shipping business logic.
+
+      Required contract outputs:
+
+      - canonical JSONL envelope with top-level fields `ts`, `event`, `version`, `data`
+
+      - registry record shape defining event name, version, required fields, optional
+      fields, owner module, compatibility notes
+
+      - ownership split where observe.py remains the durable JSONL sink and the registry
+      becomes the event schema source of truth
+
+      - module targets for `src/vectl/driver/events/types.py`, `src/vectl/driver/events/registry.py`,
+      and `src/vectl/driver/events/sinks.py`
+
+
+      Authoritative interface: envelope shape exactly matches the ADR and `version`
+      MUST remain top-level, never nested under `data`.
+
+      Touch paths: src/vectl/driver/observe.py, src/vectl/driver/events/types.py,
+      src/vectl/driver/events/registry.py, src/vectl/driver/events/sinks.py, tests/test_driver_observe.py.
+
+      Completion boundary: this step defines contracts and file responsibilities only;
+      no substantive runtime migration is allowed.'
+    verification: 'local-check protecting the implementation handoff for driver-evolution-events-foundation.
+
+      - Contract text names the exact envelope fields and registry record fields from
+      the ADR
+
+      - Contract preserves observe.py as the durable JSONL sink
+
+      - No implementation logic beyond declarations/stubs is introduced'
+    agent: software-architect
 - id: driver-evolution-event-contracts
   name: 'Driver Evolution: Canonical Event Contracts'
   status: locked

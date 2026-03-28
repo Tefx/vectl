@@ -56,10 +56,21 @@ from .policy import (
     _is_gate_or_freeze_step,
     _parse_gate_issues,
 )
+from .runner_continuity import (
+    capability_for_runner,
+    capability_snapshot_id,
+    evaluate_resume_or_replay_safety,
+)
 from .runners import Runner, create_runner
 from .runners import RunnerStatus as RunnerDispatchStatus
 from .session import SessionPool
-from .types import CompletedEntry, DriverState, RunnerStatus
+from .types import (
+    CompletedEntry,
+    DriverState,
+    ReplaySafetyEnvelope,
+    ReplayTokenSemantics,
+    RunnerStatus,
+)
 from .worktree import (
     ConflictResolverDispatch,
     Failure,
@@ -1121,6 +1132,38 @@ def _compose_gate_batch_instruction(
     return "\n".join(lines)
 
 
+def _continuity_attempt_key(*, step_id: str, runner_name: str, session_id: str | None) -> str:
+    """Build deterministic attempt key for replay/idempotency checks.
+
+    Source: docs/DRIVER-CONTINUITY-FOUNDATION.md Section 4 (Replay) and
+    Section 5 (state strata).
+    """
+
+    return f"{step_id}|{runner_name}|{session_id or 'fresh'}"
+
+
+def _state_attempt_key_set(state: DriverState) -> set[str]:
+    """Return mutable per-state replay attempt-key registry."""
+
+    existing = getattr(state, "_continuity_attempt_keys", None)
+    if isinstance(existing, set):
+        return existing
+    fresh: set[str] = set()
+    state._continuity_attempt_keys = fresh
+    return fresh
+
+
+def _state_capability_snapshot_cache(state: DriverState) -> dict[str, str]:
+    """Return last-writer-wins capability snapshot cache by step."""
+
+    existing = getattr(state, "_continuity_capability_snapshots", None)
+    if isinstance(existing, dict):
+        return existing
+    fresh: dict[str, str] = {}
+    state._continuity_capability_snapshots = fresh
+    return fresh
+
+
 async def run(config_path: Path) -> None:
     """Main driver entry point.
 
@@ -1439,6 +1482,54 @@ async def handle_dispatch(
         )
         if session_id is not None:
             session_source = "pool"
+
+    capability = capability_for_runner(runner_name)
+    current_snapshot = capability_snapshot_id(capability)
+    snapshot_cache = _state_capability_snapshot_cache(state)
+    previous_snapshot = snapshot_cache.get(step_id)
+    snapshot_cache[step_id] = current_snapshot
+
+    replay_token: ReplayTokenSemantics | None = None
+    if session_id is not None:
+        replay_token = ReplayTokenSemantics(
+            token=session_id,
+            token_kind="session",
+            semantics_version="bootstrap-v1",
+            bound_runner_name=runner_name,
+            bound_step_id=step_id,
+            capability_snapshot_id=previous_snapshot or current_snapshot,
+        )
+
+    attempt_key = _continuity_attempt_key(
+        step_id=step_id,
+        runner_name=runner_name,
+        session_id=session_id,
+    )
+    seen_attempt_keys = frozenset(_state_attempt_key_set(state))
+    replay_decision = evaluate_resume_or_replay_safety(
+        capability=capability,
+        envelope=ReplaySafetyEnvelope(
+            step_id=step_id,
+            attempt_key=attempt_key,
+            runner_name=runner_name,
+            session_id=session_id,
+            idempotency_scope="step_dispatch",
+            tool_call_fingerprint=action.task_id,
+        ),
+        requested_token=replay_token,
+        seen_attempt_keys=seen_attempt_keys,
+    )
+    if replay_decision.replay_safe:
+        _state_attempt_key_set(state).add(replay_decision.attempt_key)
+    else:
+        if session_id is not None:
+            observer.emit(
+                "SESSION_REUSE_MISS",
+                step_id=step_id,
+                reason=replay_decision.recovery_reason,
+            )
+        session_id = None
+        session_source = "none"
 
     if session_id is not None:
         observer.emit(

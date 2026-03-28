@@ -41788,6 +41788,62 @@ phases:
     - driver-prompt-foundation.contract
     - driver-prompt-foundation.test-define-red
     agent: gate-reviewer
+  - id: driver-prompt-foundation.design-and-test
+    name: Design packaged prompt boundary and write expected-red tests
+    status: pending
+    description: 'step_type: test
+
+      merged_contract_test: true
+
+      step_intent: test_define_red
+
+      expected_result: red
+
+
+      Design interface and write expected-red tests for packaged judge-prompt migration.
+
+
+      There is no authoritative external spec that precisely pins the runtime packaged-resource
+      interface, so contract-first would over-specify an undocumented surface. This
+      merged step owns both boundary design and red-test definition on the existing
+      judge loader surface.
+
+
+      Outputs allowed:
+
+      - signatures, type notes, docstrings, and stubs on the existing loader/resource
+      boundary only
+
+      - expected-red tests and fixtures defining the current docs/runtime gap
+
+
+      Required scope:
+
+      - define the packaged runtime resource location on the existing judge loader
+      surface without introducing a new public API
+
+      - define docs/JUDGE-AGENT-PROMPT.md as a mirror/documentation artifact rather
+      than runtime authority
+
+      - define explicit missing-resource failure semantics and drift visibility expectations
+
+      - author expected-red tests for docs dependency, silent fallback, installed/package-style
+      lookup, and docs/runtime drift visibility
+
+
+      No implementation logic beyond signatures/stubs and tests.
+
+      Evidence must include exposed_gaps and name `driver-prompt-migration.package-resource-loader`
+      and `driver-prompt-migration.authority-reference-migration` as downstream implementation
+      owners.'
+    verification: '- Modified files are limited to tests plus minimal contract/stub
+      surfaces
+
+      - Expected-red coverage exposes docs/runtime authority drift before runtime
+      code changes
+
+      - Outputs include both boundary design notes and failing tests'
+    agent: python-senior
 - id: driver-prompt-migration
   name: Driver Prompt Resource Migration
   status: locked

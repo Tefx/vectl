@@ -37329,3 +37329,8 @@ phases:
       \ Strong contract enforcement with no fake stubs\n4. Correct wiring of all exports\
       \ to runtime callers\n5. Observable behavior matching documentation\n\n**Gate\
       \ passes with architectural debt recorded.**"
+- id: driver-debt-decision-state
+  name: 'Driver Debt: DecideState Isolation'
+  status: pending
+  depends_on:
+  - driver-deep-review

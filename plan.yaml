@@ -38702,7 +38702,7 @@ phases:
     - tests/test_decide.py
     - tests/test_driver_loop_runtime.py
     agent: gate-reviewer
-  - id: driver-debt-deep-review.wiring-audit
+  - id: driver-debt-review.wiring-audit
     name: Audit driver debt wiring completeness
     status: pending
     description: 'step_type: verification

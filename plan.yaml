@@ -43786,7 +43786,7 @@ phases:
       files modified.'
   - id: driver-continuity-foundation.gate
     name: Gate continuity foundation
-    status: claimed
+    status: done
     description: "step_type: gate\nGate review for continuity foundation. Verification\
       \ scope: phase-check protecting driver-continuity-authority-ledger.gate and\
       \ driver-continuity-capability-safety.gate.\n\nreview_depth: THOROUGH\ncross_cutting_focus:\n\
@@ -43806,6 +43806,27 @@ phases:
     agent: gate-reviewer
     claimed_by: gate-reviewer
     claimed_at: '2026-03-28T23:01:00.659410+00:00'
+    done_at: '2026-03-28T23:18:54.683088+00:00'
+    evidence: 'Gate review detected blocker-class issues and prevented downstream
+      unlock. Findings: prerequisite continuity foundation artifacts/tests claimed
+      by prior completions were not present in repository; verification commands reported
+      missing artifacts. In response, orchestrator batched remediation ownership by
+      adding `driver-continuity-foundation.fix-blockers` (depends on this gate) and
+      `driver-continuity-foundation.gate-retest` (depends on fix), per anti-rework
+      protocol.
+
+
+      Verification:
+
+      - Gate worker reported missing continuity artifacts/tests and trust-boundary
+      inconsistency.
+
+      - Planner mutation confirmed new batched remediation path exists in plan.
+
+
+      Disposition:
+
+      - blocker -> batched fix path created before progression.'
   - id: driver-continuity-foundation.fix-blockers
     name: Repair continuity foundation blocker set
     status: pending

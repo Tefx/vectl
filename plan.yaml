@@ -37465,59 +37465,43 @@ phases:
   - id: driver-debt-decision-state.impl
     name: Implement instance-owned DecideState plumbing
     status: done
-    description: 'step_type: implementation
-
-      Verification scope: phase-check protecting driver-debt-decision-state.verify
-      and driver-debt-decision-state.gate.
-
-
-      Implement the approved A2 remediation with substantive logic.
-
-
-      Completion criteria (stub exclusion):
-
-      This is an IMPLEMENTATION step. Stub-only completion is NOT acceptable.
-
-      Each deliverable must contain substantive logic that processes explicit DecideState
-      input and updates instance-owned state. Private fallback singletons do not satisfy
-      completion unless they are strictly transitional and off the driver runtime
-      default path.
-
-
-      Required work:
-
-      - Add src/vectl/decision_state.py with DecideState owning completion_times,
-      session_registry, and failure_counts.
-
-      - Update src/vectl/decide.py to read/write DecideState instead of module globals.
-
-      - Thread decide_state through DriverState in src/vectl/driver/types.py.
-
-      - Pass state.decide_state from src/vectl/driver/loop.py into decide().
-
-      - Remove driver runtime dependence on module-global state for reuse/failure
-      memory.
-
-      - Keep single-instance behavior stable for session reuse and failure counting.
-
-
-      Failure-mode checklist:
-
-      - Two DriverState instances must not share decide-side mutable state.
-
-      - Session reuse must degrade safely when no reusable session exists.
-
-      - Failure count reset on success must remain instance-local.
-
-      - No stale module-global fallback may override explicit instance state.
-
-
-      Out-of-scope guardrail:
-
-      - Do not change completion authority here; A1 owns reconcile-only completion
-      flow.
-
-      - Do not change CLI semantics here; A4 owns entrypoint unification.'
+    description: "step_type: implementation\nVerification scope: phase-check protecting\
+      \ driver-debt-decision-state.verify and driver-debt-decision-state.gate.\n\n\
+      Fill in stub bodies and replace any placeholder DecideState plumbing with working\
+      \ logic within the contract already pinned upstream.\n\nUPSTREAM ARTIFACTS (from\
+      \ contract/test steps):\n  - src/vectl/decision_state.py — from_step: driver-debt-decision-state.contract\
+      \ — tier: contract\n  - src/vectl/decide.py — from_step: driver-debt-decision-state.contract\
+      \ — tier: contract\n  - tests/test_decide.py — from_step: driver-debt-decision-state.test-define-red\
+      \ — tier: test\n  - tests/test_driver_loop_runtime.py — from_step: driver-debt-decision-state.test-define-red\
+      \ — tier: test\n\nYOUR SCOPE: Replace stub markers, transitional globals, or\
+      \ placeholder wiring with substantive logic. Use Edit-style body changes only\
+      \ within the approved signatures and seams.\n\nDeviation protocol: If any upstream\
+      \ contract or test artifact is wrong or incomplete, record a deviation note\
+      \ with type, what, why, and impact; do NOT silently rewrite the contract surface.\n\
+      \nupstream_artifacts:\n  - path: src/vectl/decision_state.py\n    from_step:\
+      \ driver-debt-decision-state.contract\n    tier: contract\n  - path: src/vectl/decide.py\n\
+      \    from_step: driver-debt-decision-state.contract\n    tier: contract\n  -\
+      \ path: tests/test_decide.py\n    from_step: driver-debt-decision-state.test-define-red\n\
+      \    tier: test\n  - path: tests/test_driver_loop_runtime.py\n    from_step:\
+      \ driver-debt-decision-state.test-define-red\n    tier: test\n\nRequired work:\n\
+      - Add src/vectl/decision_state.py with DecideState owning completion_times,\
+      \ session_registry, and failure_counts.\n- Update src/vectl/decide.py to read/write\
+      \ DecideState instead of module globals.\n- Thread decide_state through DriverState\
+      \ in src/vectl/driver/types.py.\n- Pass state.decide_state from src/vectl/driver/loop.py\
+      \ into decide().\n- Remove driver runtime dependence on module-global state\
+      \ for reuse/failure memory.\n- Keep single-instance behavior stable for session\
+      \ reuse and failure counting.\n\nFailure-mode checklist:\n- Two DriverState\
+      \ instances must not share decide-side mutable state.\n- Session reuse must\
+      \ degrade safely when no reusable session exists.\n- Failure count reset on\
+      \ success must remain instance-local.\n- No stale module-global fallback may\
+      \ override explicit instance state.\n\nOut-of-scope guardrail:\n- Do not change\
+      \ completion authority here; A1 owns reconcile-only completion flow.\n- Do not\
+      \ change CLI semantics here; A4 owns entrypoint unification.\n\n## Completion\
+      \ Criteria (stub exclusion)\nThis is an IMPLEMENTATION step. Stub-only completion\
+      \ is NOT acceptable.\nEach deliverable must contain substantive logic that processes\
+      \ explicit DecideState input and updates instance-owned state. Private fallback\
+      \ singletons do not satisfy completion unless they are strictly transitional\
+      \ and off the driver runtime default path."
     verification: '- Targeted DecideState tests pass
 
       - Two-instance isolation regression passes

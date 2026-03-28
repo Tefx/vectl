@@ -39255,31 +39255,39 @@ phases:
 
 
       Early vertical slice: wire ONE complete path from a user-facing driver entry
-      point to observable event output using the new event foundation and RuntimeContext.
+      point through runtime context creation and propagation to observable output,
+      without requiring the new event foundation.
 
 
       Pick the simplest driver operation that exercises:
 
       - actual driver entrypoint / loop startup
 
-      - runtime context creation
+      - RuntimeContext creation at the runtime boundary
 
-      - canonical event emission through registry-backed helpers
+      - unified RuntimeContext propagation through the real loop / entrypoint path
 
-      - durable JSONL sink output
+      - observable output or sink evidence proving the same context instance/shape
+      is carried through the path
+
+
+      This step owns runtime-context boundary proof only. It MUST NOT require registry-backed
+      helpers, event-foundation completion, or role-specific context variants.
 
 
       MUST NOT use stubs, mocks, or placeholder classes at any layer boundary.
 
-      Evidence MUST show the layers traversed and the actual emitted output.
+      Evidence MUST show the layers traversed and the actual context propagation proof.
 
       Downstream gate protected: driver-evolution-runtime-context.gate.'
     verification: 'phase-check protecting driver-evolution-runtime-context.gate.
 
       - Execute one real driver entrypoint path end-to-end
 
-      - Evidence includes exact command/test name, layers traversed, and pasted emitted
-      JSONL output
+      - Evidence includes exact command/test name, layers traversed, and pasted proof
+      that a unified RuntimeContext crosses the real loop / entrypoint path
+
+      - RuntimeContext boundary is explicit and no role-specific contexts are introduced
 
       - Stubs used: NONE'
     depends_on:

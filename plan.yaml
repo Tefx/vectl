@@ -32635,7 +32635,11 @@ phases:
     description: 'step_type: test
 
 
-      Add focused tests for full judgment expansion behavior:
+      EXPECTED-RED PRE-IMPLEMENTATION TEST STEP.
+
+
+      Add focused tests for full judgment expansion behavior before the gate-chain
+      implementation lands:
 
       - failure classification provenance/disposition
 
@@ -32645,9 +32649,35 @@ phases:
 
       - gate failure -> fix+retest dispatch orchestration
 
-      - anomaly safe-repair vs halt split'
+      - anomaly safe-repair vs halt split
+
+
+      Allowed file scope:
+
+      - tests
+
+      - fixtures
+
+      - test helpers
+
+      Do NOT modify src/vectl/driver/*. If behavior is still red, report the exposed
+      gap rather than implementing the flow here.
+
+
+      Evidence requirements:
+
+      - modified files limited to tests/fixtures/helpers
+
+      - expected_failures or exposed_gaps listed explicitly
+
+      - downstream implementation owner linked: driver-judgment-expansion-replan.impl-gate-chain-flow'
     verification: '- Tests cover the remaining judgment types and fix/retest chain
-      creation semantics'
+      creation semantics
+
+      - Step succeeds if it records expected-red gaps without product-code edits or
+      proves the contract already passes green without src changes
+
+      - Evidence links unresolved gaps to driver-judgment-expansion-replan.impl-gate-chain-flow'
     depends_on:
     - driver-judgment-expansion-replan.contract-gate-chain-flow
     agent: python-executor

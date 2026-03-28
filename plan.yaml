@@ -37391,7 +37391,7 @@ phases:
       \ tests/test_decide.py: 18 passed\n- ruff check: All passed"
   - id: driver-debt-decision-state.test-define-red
     name: Define expected-red isolation regressions
-    status: claimed
+    status: done
     description: 'step_type: test
 
       step_intent: test_define_red
@@ -37448,6 +37448,20 @@ phases:
     agent: python-executor
     claimed_by: python-executor
     claimed_at: '2026-03-28T18:42:34.758138+00:00'
+    done_at: '2026-03-28T18:58:34.947907+00:00'
+    evidence: "## Expected-Red Isolation Evidence\n- Tests/files added: tests/test_decide_state_isolation.py\
+      \ (525 lines)\n\n- Exposed gaps:\n  - Gap 1: When state=None is passed to decide(),\
+      \ module-level _legacy_state is used as fallback. Two separate decide(None)\
+      \ calls share the SAME state object, causing coupling.\n  - Gap 2: should_reuse_session(state=None)\
+      \ queries SHARED _legacy_state, so caller B sees data left by caller A.\n  -\
+      \ Gap 3: _legacy_state persists across calls, so completion_times/session_registry\
+      \ from one decide() call leak into subsequent decide() calls.\n\n- Expected\
+      \ failures:\n  - test_state_none_callers_share_legacy_state: AssertionError\
+      \ - Gap exposed: _legacy_state still contains s1 from previous decide(None)\
+      \ call\n  - test_should_reuse_session_with_none_uses_shared_legacy: AssertionError\
+      \ - Gap exposed: should_reuse_session(state=None) returned True due to SHARED\
+      \ _legacy_state\n\n- Passing tests: 9 tests PASS verifying correct explicit-state\
+      \ behavior\n- Product code modified: NO"
   - id: driver-debt-decision-state.impl
     name: Implement instance-owned DecideState plumbing
     status: pending

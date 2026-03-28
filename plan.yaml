@@ -38656,30 +38656,6 @@ phases:
     depends_on:
     - driver-debt-deep-review.spec-conformance
     agent: blind-tester
-  - id: driver-debt-deep-review.freeze
-    name: Freeze snapshot for final deep-review gate
-    status: pending
-    description: 'step_type: verification
-
-      Verification scope: full-plan-check protecting driver-debt-deep-review.gate.
-
-
-      Freeze the final review snapshot before the closing gate.
-
-      Required evidence: git rev-parse HEAD, clean status, environment declaration,
-      and no-change statement.'
-    verification: '- Freeze evidence complete before final gate'
-    refs:
-    - src/vectl/decision_state.py
-    - src/vectl/driver/loop.py
-    - src/vectl/driver/entrypoint.py
-    - src/vectl/driver/policy.py
-    depends_on:
-    - driver-debt-deep-review.spec-conformance
-    - driver-debt-deep-review.architecture-review
-    - driver-debt-deep-review.contract-strength
-    - driver-debt-deep-review.black-box-verification
-    agent: integration-verifier
   - id: driver-debt-deep-review.gate
     name: Final gate for driver debt remediation
     status: pending
@@ -38727,7 +38703,6 @@ phases:
     - driver-debt-deep-review.architecture-review
     - driver-debt-deep-review.contract-strength
     - driver-debt-deep-review.black-box-verification
-    - driver-debt-deep-review.freeze
     agent: gate-reviewer
 - id: driver-debt-review
   name: 'Driver Debt: Review'

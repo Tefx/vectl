@@ -42760,3 +42760,11 @@ phases:
     minimum telemetry before implementation fan-out.
   depends_on:
   - driver-debt-review
+- id: driver-continuity-authority-ledger
+  name: 'Driver Continuity: Authority & Ledger'
+  status: locked
+  gate: Driver has one durable authority for resumable session continuity, a recovery-grade
+    continuity ledger, and minimum journal evidence sufficient for restart/resume
+    decisions.
+  depends_on:
+  - driver-continuity-foundation

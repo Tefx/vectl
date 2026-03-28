@@ -34120,7 +34120,7 @@ phases:
       \ private state from driver code"
   - id: driver-multi-runner-hardening.verify-conflict-and-multirunner
     name: Verify conflict resolution and multi-runner seams
-    status: claimed
+    status: done
     description: 'step_type: verification
 
       Verification scope: phase-check protecting driver-multi-runner-hardening.gate.
@@ -34152,6 +34152,68 @@ phases:
     agent: integration-verifier
     claimed_by: integration-verifier
     claimed_at: '2026-03-28T09:48:13.251785+00:00'
+    done_at: '2026-03-28T09:49:52.284149+00:00'
+    evidence: "## Verification Report: Multi-Runner & Conflict Resolution Seams\n\n\
+      **Date**: 2026-03-28\n**Verifier**: Integration Verifier\n**Scope**: Multi-runner\
+      \ dispatch/fallback path, worktree conflict classification, non-trivial conflict\
+      \ handoff readiness\n\n### Results\n\n| Check | Result | Evidence |\n|-------|--------|----------|\n\
+      | Conflict tests (L2) | PASS | Real `git` subprocess calls, not mocked |\n|\
+      \ Multi-runner fallback (L2) | PASS | Driver logic tested with protocol-compliant\
+      \ mocks |\n| Non-trivial conflict handoff (L2) | PASS | Resolver dispatch returned\
+      \ correctly |\n| Mock Island (P6) | PASS | Driver logic has integration companions\
+      \ via worktree tests |\n\n### Evidence: Conflict Resolution Path\n\n**Real Git\
+      \ Operations** (not mocked):\n```\ntests/test_driver_worktree.py:\n- 34 subprocess.run\
+      \ calls for real git commands\n- asyncio.run(create(...)) for real worktree\
+      \ creation\n- asyncio.run(merge(...)) for real merge operations\n```\n\n**Conflict\
+      \ Classification Tests**:\n```bash\n$ uv run pytest tests/test_driver_worktree.py::TestMergeTrivialConflict\
+      \ tests/test_driver_worktree.py::TestMergeNonTrivialConflict -v\ntests/test_driver_worktree.py::TestMergeTrivialConflict::test_trivial_conflict_plan_yaml\
+      \ PASSED\ntests/test_driver_worktree.py::TestMergeTrivialConflict::test_trivial_conflict_lock_file\
+      \ PASSED\ntests/test_driver_worktree.py::TestMergeNonTrivialConflict::test_non_trivial_conflict_source_code\
+      \ PASSED\ntests/test_driver_worktree.py::TestMergeNonTrivialConflict::test_non_trivial_conflict_returns_resolver_dispatch\
+      \ PASSED\n4 passed in 3.62s\n```\n\n### Evidence: Multi-Runner Fallback Path\n\
+      \n**Driver Logic Tests**:\n```bash\n$ uv run pytest tests/test_driver_loop_hardening.py::test_handle_dispatch_runner_fallback_after_repeated_failures\
+      \ -v\ntests/test_driver_loop_hardening.py::test_handle_dispatch_runner_fallback_after_repeated_failures[asyncio]\
+      \ PASSED\n\n# Verifies:\n# - state.runner_failures[(step, runner)] >= 2 triggers\
+      \ fallback\n# - emits RUNNER_FALLBACK event with from_runner, to_runner, reason\n\
+      # - uses fallback_runner from config\n```\n\n**Implementation in loop.py:267-275**:\n\
+      ```python\nif state.runner_failures.get((action.step_id, runner_name), 0) >=\
+      \ 2:\n    runner_name = config.fallback_runner\n    observer.emit(\n       \
+      \ \"RUNNER_FALLBACK\",\n        step_id=action.step_id,\n        from_runner=primary_runner,\n\
+      \        to_runner=runner_name,\n        reason=\"repeated_failures\",\n   \
+      \ )\n```\n\n### Evidence: Non-Trivial Conflict Handoff\n\n**Resolver Dispatch\
+      \ Structure**:\n```python\n@dataclass(frozen=True)\nclass ConflictResolverDispatch:\n\
+      \    step_id: str\n    worktree_path: Path\n    source_branch: str\n    target_branch:\
+      \ str\n    conflicted_files: tuple[str, ...]\n    resolver_path: str = \"driver.merge_conflict_resolver\"\
+      \n```\n\n**Reconcile Path Integration**:\n```python\n# loop.py:440-450\nif merge_result.value.outcome.value\
+      \ == \"non_trivial_conflict\":\n    observer.emit(\n        \"MERGE_CONFLICTED\"\
+      ,\n        step_id=completed.step_id,\n        conflicting_files=list(merge_result.value.conflicted_files),\n\
+      \    )\n    plan = defer_step(plan, completed.step_id, claims_path=claims_path)\n\
+      \    save_plan(plan, path=plan_path, expected_hash=expected_hash)\n    return\
+      \  # Handoff complete, step deferred\n```\n\n### Evidence: Runner Contract Coverage\n\
+      \n**Extended Runners + Core Runners**:\n```bash\n$ uv run pytest tests/test_driver_extended_runners.py\
+      \ tests/test_driver_runners.py -v\n81 passed in 0.78s\n\nKey test classes:\n\
+      - TestCoreRunnersScope: create_runner factory for claude/opencode/codex/gemini\n\
+      - TestRunnerDispatchIntegration: real subprocess dispatch tests\n- TestTransportErrorClassification:\
+      \ parser error handling\n- TestSessionResumeFlagContract: resume flag translation\n\
+      ```\n\n### P2 Analysis: Fake Seam Check\n\n| Test File | Mock Usage | Acceptable?\
+      \ | Reason |\n|-----------|-----------|-------------|--------|\n| `test_driver_worktree.py`\
+      \ | None | ✓ | Real git subprocess calls |\n| `test_driver_loop_hardening.py`\
+      \ | `_Runner` class | ✓ | Tests driver orchestration, not runner implementation\
+      \ |\n| `test_driver_runners.py` | Runner stubs | ✓ | Tests contracts, dispatch\
+      \ integration uses real subprocess |\n\n### P6 Analysis: Mock Island Check\n\
+      \n| Mock-Heavy Test | Integration Companion | Status |\n|-----------------|---------------------|--------|\n\
+      | `test_driver_loop_hardening` | `test_driver_worktree` (real git) | ✓ PASS\
+      \ |\n| `test_driver_runners` (stubs) | `TestRunnerDispatchIntegration` (real\
+      \ subprocess) | ✓ PASS |\n\n### Findings\n\n**No findings.** All verification\
+      \ checks pass:\n\n1. ✓ Multi-runner dispatch path (fallback after 2 failures)\
+      \ - verified in `test_handle_dispatch_runner_fallback_after_repeated_failures`\n\
+      2. ✓ Worktree conflict classification - real git tests in `test_driver_worktree.py`\n\
+      3. ✓ Non-trivial conflict handoff - `ConflictResolverDispatch` returned, step\
+      \ deferred\n4. ✓ Mock usage is at I/O boundaries with integration companions\
+      \ (P2+P6 ✓)\n\n### L2 Evidence Level: PASS\n\n- Conflict resolution uses real\
+      \ `git` subprocess calls (not mocked)\n- Multi-runner fallback tested at driver\
+      \ orchestration level\n- Non-trivial conflict returns proper resolver dispatch\
+      \ structure\n- Mock Island check passes: unit tests have integration companions"
   - id: driver-multi-runner-hardening.spec-conformance
     name: Multi-runner hardening spec conformance
     status: pending

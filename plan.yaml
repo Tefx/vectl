@@ -39080,6 +39080,58 @@ phases:
     entrypoint behavior
   depends_on:
   - driver-evolution-event-contracts
+  steps:
+  - id: driver-evolution-runtime-context.contract
+    name: Pin RuntimeContext contract and ownership boundaries
+    status: pending
+    description: 'step_type: contract
+
+      contract_purity: ENFORCED
+
+      contract_outputs:
+
+      - signatures
+
+      - type_defs
+
+      - interfaces
+
+      - stubs
+
+
+      Authoritative source: docs/ADR-driver-evolution-foundation.md#96-target-architecture-shape,
+      #117-ownership-model, and open question 2.
+
+
+      Pin the `driver/runtime_context.py` contract before implementation.
+
+      Required outputs:
+
+      - RuntimeContext responsibility split versus DriverState and DecideState
+
+      - handler input contract for registry-backed actions
+
+      - boundary rules for runtime orchestration state, decide-local mutable state,
+      event contracts, and policy parsing helpers
+
+      - explicit note on whether a single RuntimeContext is sufficient for this rollout
+      or whether smaller contexts remain deferred
+
+
+      Authoritative interface: `RuntimeContext` is the typed execution context for
+      handlers in this ADR. Do not redesign durable plan lifecycle ownership.
+
+      Touch paths: src/vectl/driver/runtime_context.py, src/vectl/driver/loop.py,
+      src/vectl/driver/action_registry.py, src/vectl/decision_state.py, src/vectl/decide.py,
+      tests/test_driver_loop_runtime.py.'
+    verification: 'local-check protecting runtime-context implementation.
+
+      - Contract distinguishes DriverState vs DecideState vs RuntimeContext ownership
+
+      - Contract preserves the ADR target architecture shape
+
+      - No implementation logic beyond declarations/stubs is introduced'
+    agent: software-architect
 - id: driver-evolution-action-registry
   name: 'Driver Evolution: Action Registry'
   status: locked

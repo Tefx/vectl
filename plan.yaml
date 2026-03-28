@@ -35079,7 +35079,7 @@ phases:
       \nCommit: 6a04e96"
   - id: driver-judgment-expansion-replan.expected-red-decide
     name: Teach decide() to respect expected-red verification semantics
-    status: claimed
+    status: done
     description: "step_type: implementation\ntags: []\n\nRFC: docs/RFC-expected-red-verification-semantics.md\
       \ (Sections 4-5)\n\nModify `decide()` in `src/vectl/decide.py` to recognize\
       \ the `verify` field on completed steps and classify outcomes accordingly.\n\
@@ -35184,6 +35184,24 @@ phases:
     agent: python-executor
     claimed_by: python-executor
     claimed_at: '2026-03-28T11:14:53.289856+00:00'
+    done_at: '2026-03-28T11:21:55.310370+00:00'
+    evidence: "## Expected-Red Decide Evidence\n\n**Code change diff** (src/vectl/decide.py):\n\
+      ```diff\n@@ -175,6 +175,31 @@ def decide(\n                   _failure_counts.pop(result.step_id,\
+      \ None)\n           elif result.status == \"FAIL\":\n+              # Check\
+      \ if this is an expected-red step\n+              found = plan.find_step(result.step_id)\n\
+      +              if found:\n+                  _, step = found\n+            \
+      \      if step.verify == \"expected_red\":\n+                      # Red outcome\
+      \ is successful gap demonstration\n+                      actions.append(Action(action=\"\
+      complete\", step_id=result.step_id, evidence=result.output_summary))\n+    \
+      \                  decision_log.append(Decision(decision=\"COMPLETE\", step_id=result.step_id,\
+      \ why=\"Expected-red: red outcome demonstrates intended gap\"))\n+         \
+      \             _failure_counts.pop(result.step_id, None)\n+                 \
+      \     continue\n+              # Default FAIL path for must_green / verify=None\n\
+      \               # Track failures for escalation...\n```\n\n**Test: expected-red\
+      \ FAIL -> COMPLETE**: PASSED (test_decide_expected_red_fail_completes)\n**Test:\
+      \ must_green FAIL -> normal failure path**: PASSED (test_decide_must_green_fail_normal_failure_path)\n\
+      **Test: verify=None FAIL -> normal failure path**: PASSED (test_decide_verify_none_fail_normal_failure_path)\n\
+      **Existing decide tests**: 25 passed\n**Linter/type check**: All passed"
 - id: driver-cli-integration
   name: Driver CLI Integration
   status: locked

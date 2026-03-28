@@ -38536,38 +38536,6 @@ phases:
     - src/vectl/driver/policy.py
     - src/vectl/decision_state.py
     agent: wiring-auditor
-  - id: driver-debt-deep-review.spec-conformance
-    name: Audit driver debt spec conformance
-    status: pending
-    description: 'step_type: verification
-
-      Verification scope: full-plan-check protecting driver-debt-deep-review.gate.
-
-
-      Independent spec conformance review for the approved A1/A2/A4/A3 remediation.
-
-      Focus on:
-
-      - DecideState ownership
-
-      - reconcile-only completion authority
-
-      - CLI invocation/exit-code semantics
-
-      - policy extraction behavior preservation'
-    verification: '- Evidence table cites requirement -> implementation mapping with
-      verdicts'
-    refs:
-    - docs/DRIVER-ARCHITECTURE.md
-    - src/vectl/decide.py
-    - src/vectl/decision_state.py
-    - src/vectl/driver/loop.py
-    - src/vectl/driver/entrypoint.py
-    - src/vectl/cli.py
-    - src/vectl/driver/policy.py
-    depends_on:
-    - driver-debt-deep-review.wiring-audit
-    agent: spec-verifier
   - id: driver-debt-deep-review.architecture-review
     name: Review driver debt architecture boundaries
     status: pending
@@ -38737,3 +38705,33 @@ phases:
     - src/vectl/cli.py
     - tests/repro/driver_black_box_liveness.py
     agent: blind-tester
+  - id: driver-debt-deep-review.spec-conformance
+    name: Audit driver debt spec conformance
+    status: pending
+    description: 'step_type: verification
+
+      Verification scope: full-plan-check protecting driver-debt-deep-review.gate.
+
+
+      Independent spec conformance review for the approved A1/A2/A4/A3 remediation.
+
+      Focus on:
+
+      - DecideState ownership
+
+      - reconcile-only completion authority
+
+      - CLI invocation/exit-code semantics
+
+      - policy extraction behavior preservation'
+    verification: '- Evidence table cites requirement -> implementation mapping with
+      verdicts'
+    refs:
+    - docs/DRIVER-ARCHITECTURE.md
+    - src/vectl/decide.py
+    - src/vectl/decision_state.py
+    - src/vectl/driver/loop.py
+    - src/vectl/driver/entrypoint.py
+    - src/vectl/cli.py
+    - src/vectl/driver/policy.py
+    agent: spec-verifier

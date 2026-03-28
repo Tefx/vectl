@@ -39132,6 +39132,54 @@ phases:
 
       - No implementation logic beyond declarations/stubs is introduced'
     agent: software-architect
+  - id: driver-evolution-runtime-context.implement-runtime-context
+    name: Implement RuntimeContext and DecideState boundary
+    status: pending
+    description: 'step_type: implementation
+
+
+      Implement the typed runtime context defined by the ADR.
+
+
+      Scope:
+
+      - add `src/vectl/driver/runtime_context.py`
+
+      - route loop-executed handler dependencies through RuntimeContext instead of
+      ad hoc parameter bundles in the touched path
+
+      - keep `src/vectl/decision_state.py` as the decide-local mutable state carrier
+      and preserve its source-of-truth role
+
+      - maintain clear ownership boundaries among DriverState, DecideState, policy
+      helpers, and event emission surfaces
+
+
+      Failure-mode checklist:
+
+      - RuntimeContext does not absorb durable plan lifecycle ownership
+
+      - DecideState remains explicit and non-global
+
+      - handler callers cannot silently fall back to stale implicit state channels
+
+      - context creation does not break existing driver startup/runtime semantics
+
+
+      Out-of-scope guardrail: layered action registry registration is deferred to
+      the next phase.'
+    verification: 'phase-check protecting the runtime-context vertical slice and gate.
+
+      - Main path: targeted tests prove handlers receive a typed RuntimeContext while
+      DecideState remains separate
+
+      - Failure path: regression covers accidental state leakage or hidden module-global
+      mutation
+
+      - Proof: touched handlers no longer depend on untyped ad hoc input bundles'
+    depends_on:
+    - driver-evolution-runtime-context.contract
+    agent: python-senior
 - id: driver-evolution-action-registry
   name: 'Driver Evolution: Action Registry'
   status: locked

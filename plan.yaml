@@ -42158,6 +42158,53 @@ phases:
     before implementation fan-out.
   depends_on:
   - driver-debt-review
+  steps:
+  - id: driver-judge-hardening-foundation.contract
+    name: Pin judge runner capability and invocation contract
+    status: pending
+    description: "step_type: contract\ncontract_purity: ENFORCED\ncontract_outputs:\n\
+      \  - capability_matrix\n  - invocation_contract\n  - failure_boundary_matrix\n\
+      spec_refs:\n  - driver.yaml#judge-and-runners\n  - docs/DRIVER-ARCHITECTURE.md#judge-runtime\n\
+      \  - docs/JUDGE-AGENT-PROMPT.md#verdict-schema\nauthoritative_interface: Judge.judge(request)\
+      \ plus driver.yaml runners.<runner> and judge.runner semantics\ntouch_paths:\n\
+      \  - driver.yaml\n  - src/vectl/driver/config.py\n  - src/vectl/driver/judge.py\n\
+      \  - src/vectl/driver/runners.py\n  - src/vectl/driver/parsers.py\n  - docs/DRIVER-ARCHITECTURE.md\n\
+      agent_source: default\n\nDefine the authoritative judge-runner capability contract\
+      \ for opencode, codex, and claude-facing judge paths.\n\nRequired outputs:\n\
+      - capability matrix that distinguishes native structured output, JSONL event\
+      \ completeness, best-effort extraction only, timeout/session constraints, and\
+      \ quality-gate compatibility\n- codex invocation contract stating that judge\
+      \ execution MUST reuse or derive from the same stable runner configuration and\
+      \ capability constraints declared under `runners.codex` in `driver.yaml`; no\
+      \ judge-local divergence is allowed\n- explicit hard-fail vs tolerant-extraction\
+      \ boundary for malformed, partial, empty, or non-verdict output\n- judgment-type\
+      \ coverage expectations for preflight, cold_context, failure, and gate requests\n\
+      \nThis is a contract-only step. It may pin signatures, config semantics, and\
+      \ failure classes, but MUST NOT implement subprocess or parser logic."
+    verification: '- Contract cites file:line or section ownership for judge runner
+      config, parser ownership, and verdict schema
+
+      - Capability matrix explicitly distinguishes native structured output vs best-effort
+      extraction
+
+      - Codex invocation alignment requirement is explicit and leaves no judge-local
+      config ambiguity
+
+      - No runtime implementation logic is introduced in this step'
+    evidence_template: '## Judge Hardening Foundation Contract
+
+      - Capability matrix:
+
+      - Codex invocation contract:
+
+      - Hard-fail vs tolerant extraction boundaries:
+
+      - Judgment-type coverage expectations:
+
+      - File/section anchors:
+
+      '
+    agent: software-architect
 - id: driver-judge-hardening-structured-output
   name: 'Driver Judge Hardening: Structured Output Stability'
   status: locked

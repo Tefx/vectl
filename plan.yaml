@@ -31802,7 +31802,7 @@ phases:
       - Downstream owner: driver-execution-infra.impl-runners-core'
   - id: driver-execution-infra.impl-runners-core
     name: Implement runners core
-    status: pending
+    status: claimed
     description: "step_type: implementation\n\ntags:\n  - integration\n\nImplement\
       \ the core subset of src/vectl/driver/runners.py:\n- Runner and RunnerHandle\
       \ protocol-backed implementations\n- ClaudeRunner and OpenCodeRunner\n- core\
@@ -31820,6 +31820,8 @@ phases:
     depends_on:
     - driver-execution-infra.test-runners-core
     agent: python-senior
+    claimed_by: python-senior
+    claimed_at: '2026-03-28T03:02:16.345153+00:00'
   - id: driver-execution-infra.verify-runners-real-cli-path
     name: Verify runners real CLI path
     status: pending

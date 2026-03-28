@@ -205,7 +205,7 @@ async def run(config_path: Path) -> None:
         session_pool = SessionPool(config.session)
         judge = Judge(config.judge, observer)
 
-        await _run_single_cycle(
+        await _run_main_loop(
             state=state,
             config=config,
             runners=runners,
@@ -263,6 +263,17 @@ async def handle_dispatch(
     binding = binding_result.value
 
     runner_name = config.route_agent(action.agent)
+    primary_runner = runner_name
+    if state.runner_failures.get((action.step_id, runner_name), 0) >= 2:
+        runner_name = config.fallback_runner
+        observer.emit(
+            "RUNNER_FALLBACK",
+            step_id=action.step_id,
+            from_runner=primary_runner,
+            to_runner=runner_name,
+            reason="repeated_failures",
+        )
+
     runner = runners.get(runner_name)
     if runner is None:
         raise RunnerError(runner_name, action.step_id, "runner not configured")
@@ -273,15 +284,29 @@ async def handle_dispatch(
     _, step = found
 
     session_id: str | None = None
+    session_source = "none"
     if action.session == "reuse" and action.task_id:
         session_id = action.task_id
-    elif action.session == "fresh":
+        session_source = "action"
+    else:
         session_id = session_pool.find_reusable(
             step_id=action.step_id,
             agent=action.agent,
             runner_name=runner_name,
             depends_on=step.depends_on,
         )
+        if session_id is not None:
+            session_source = "pool"
+
+    if session_id is not None:
+        observer.emit(
+            "SESSION_REUSE_HIT",
+            step_id=action.step_id,
+            session_id=session_id,
+            source=session_source,
+        )
+    else:
+        observer.emit("SESSION_REUSE_MISS", step_id=action.step_id, reason="no_reusable_session")
 
     prompt = render_prompt(
         step_id=action.step_id,
@@ -296,12 +321,28 @@ async def handle_dispatch(
         phase_context="",
     )
 
-    handle = await runner.dispatch(
-        prompt=prompt,
-        agent=action.agent,
-        workdir=str(binding.worktree_path),
-        session_id=session_id,
-    )
+    try:
+        handle = await runner.dispatch(
+            prompt=prompt,
+            agent=action.agent,
+            workdir=str(binding.worktree_path),
+            session_id=session_id,
+        )
+    except RunnerError:
+        if session_id is not None:
+            observer.emit(
+                "SESSION_REUSE_MISS",
+                step_id=action.step_id,
+                reason="stale_or_unavailable_session",
+            )
+            handle = await runner.dispatch(
+                prompt=prompt,
+                agent=action.agent,
+                workdir=str(binding.worktree_path),
+                session_id=None,
+            )
+        else:
+            raise
     state.register(
         step_id=action.step_id,
         agent=action.agent,
@@ -396,6 +437,27 @@ async def reconcile(
             if isinstance(merge_result, Failure):
                 raise merge_result.error
 
+            if merge_result.value.outcome.value == "non_trivial_conflict":
+                observer.emit(
+                    "MERGE_CONFLICTED",
+                    step_id=completed.step_id,
+                    conflicting_files=list(merge_result.value.conflicted_files),
+                )
+                plan, expected_hash = load_plan_definition(plan_path)
+                claims_path = resolve_claims_path(plan_path)
+                plan = defer_step(plan, completed.step_id, claims_path=claims_path)
+                save_plan(plan, path=plan_path, expected_hash=expected_hash)
+                return
+
+            if merge_result.value.outcome.value == "auto_resolved_conflict":
+                observer.emit(
+                    "MERGE_COMPLETED",
+                    step_id=completed.step_id,
+                    auto_resolved=True,
+                    conflicting_files=list(merge_result.value.conflicted_files),
+                    elapsed_seconds=completed.elapsed_seconds,
+                )
+
         if completed.result.session_id:
             session_pool.record(
                 step_id=completed.step_id,
@@ -415,9 +477,7 @@ async def reconcile(
             )
 
         observer.emit(
-            "MERGE_COMPLETED",
-            step_id=completed.step_id,
-            elapsed_seconds=completed.elapsed_seconds,
+            "MERGE_COMPLETED", step_id=completed.step_id, elapsed_seconds=completed.elapsed_seconds
         )
         return
 
@@ -564,7 +624,41 @@ def _cleanup_orphan_worktrees(*, plan_path: Path, plan_step_ids: set[str]) -> No
         shutil.rmtree(candidate, ignore_errors=True)
 
 
-async def _run_single_cycle(
+def _serialize_actions_for_loop_guard(actions: list[Action]) -> str:
+    """Serialize actions to a stable loop-signature string."""
+    parts: list[str] = []
+    for action in actions:
+        parts.append(
+            "|".join(
+                [
+                    action.action,
+                    action.step_id or "",
+                    action.agent or "",
+                    action.session or "",
+                    action.task_id or "",
+                ]
+            )
+        )
+    return ";".join(parts)
+
+
+def _all_running_handles_dead(state: DriverState) -> bool:
+    """Return True when all tracked running handles are not alive."""
+    if not state.running:
+        return False
+    return all(not entry.handle.is_alive() for entry in state.running.values())
+
+
+async def _recover_all_stalled(state: DriverState, observer: Observer) -> None:
+    """Kill any residual handles and clear running map after full stall."""
+    for step_id, entry in list(state.running.items()):
+        with contextlib.suppress(Exception):
+            await entry.handle.kill()
+        state.running.pop(step_id, None)
+    observer.emit("RECOVERY", type="all_stalled")
+
+
+async def _run_main_loop(
     *,
     state: DriverState,
     config: DriverConfig,
@@ -574,63 +668,71 @@ async def _run_single_cycle(
     observer: Observer,
     plan_path: Path,
 ) -> None:
-    """Execute one minimal decide/dispatch/reconcile cycle.
-
-    The minimal runtime keeps single-runner/single-judge scope and avoids
-    committing later-phase behavior. It performs one deterministic cycle for
-    startup and recovery proof, then returns.
-    """
-    decide_output = decide(
-        running_tasks=state.as_running_tasks(),
-        completed_results=state.drain_completed(),
-        max_parallelism=config.orchestration.max_parallelism,
-    )
-    observer.emit(
-        "DECIDE",
-        running_count=len(state.running),
-        actions=[action.action for action in decide_output.actions],
-    )
-
-    for action in decide_output.actions:
-        if action.action == "claim_and_dispatch":
-            await handle_dispatch(
-                action=action,
-                state=state,
-                config=config,
-                runners=runners,
-                judge=judge,
-                session_pool=session_pool,
-                observer=observer,
-                plan_path=plan_path,
-            )
-        elif action.action == "complete":
-            await handle_complete(
-                action=action,
-                state=state,
-                judge=judge,
-                session_pool=session_pool,
-                observer=observer,
-                plan_path=plan_path,
-            )
-        elif action.action == "wait":
-            observer.emit("WAIT", reason=action.reason or "No action")
-        elif action.action == "escalate":
-            observer.emit(
-                "ESCALATION_DEFERRED",
-                step_id=action.step_id,
-                reason="Escalation handling beyond threshold is deferred",
-            )
-
-    if state.running:
-        completed = await state.wait_for_any()
-        await reconcile(
-            completed=completed,
-            state=state,
-            judge=judge,
-            session_pool=session_pool,
-            observer=observer,
-            plan_path=plan_path,
+    """Execute the deterministic decide/dispatch/wait/reconcile loop."""
+    while not state.halt_requested:
+        decide_output = decide(
+            running_tasks=state.as_running_tasks(),
+            completed_results=state.drain_completed(),
+            max_parallelism=config.orchestration.max_parallelism,
         )
+        observer.emit(
+            "DECIDE",
+            running_count=len(state.running),
+            actions=[action.action for action in decide_output.actions],
+        )
+
+        state.loop_detector.append(_serialize_actions_for_loop_guard(decide_output.actions))
+        if state.detect_loop():
+            observer.emit("HALT", reason="SUSPECTED_INFINITE_LOOP")
+            state.halt_requested = True
+            break
+
+        for action in decide_output.actions:
+            if action.action == "claim_and_dispatch":
+                await handle_dispatch(
+                    action=action,
+                    state=state,
+                    config=config,
+                    runners=runners,
+                    judge=judge,
+                    session_pool=session_pool,
+                    observer=observer,
+                    plan_path=plan_path,
+                )
+            elif action.action == "complete":
+                await handle_complete(
+                    action=action,
+                    state=state,
+                    judge=judge,
+                    session_pool=session_pool,
+                    observer=observer,
+                    plan_path=plan_path,
+                )
+            elif action.action == "wait":
+                observer.emit("WAIT", reason=action.reason or "No action")
+            elif action.action == "escalate":
+                observer.emit(
+                    "ESCALATION_DEFERRED",
+                    step_id=action.step_id,
+                    reason="Escalation handling beyond threshold is deferred",
+                )
+
+        if state.running:
+            completed = await state.wait_for_any()
+            await reconcile(
+                completed=completed,
+                state=state,
+                judge=judge,
+                session_pool=session_pool,
+                observer=observer,
+                plan_path=plan_path,
+            )
+
+            if completed.result.status == RunnerStatus.STALL and _all_running_handles_dead(state):
+                await _recover_all_stalled(state, observer)
+
+        if not decide_output.continuation and not state.running:
+            break
 
 
 __all__ = [

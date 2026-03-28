@@ -5,6 +5,9 @@ Non-responsibility: Does NOT dispatch subprocesses (that is runner impl).
 
 Architecture Reference: docs/DRIVER-ARCHITECTURE.md Section 2.8
 Blueprint Reference: DRIVER-BLUEPRINT.md Output Parsers (3 formats)
+
+PHASE SCOPE: Core parsers (ClaudeOutputParser, OpenCodeOutputParser) and
+extended parsers (CodexOutputParser, GeminiOutputParser) are implemented.
 """
 
 from __future__ import annotations
@@ -29,6 +32,11 @@ def _parse_json_safely(text: str) -> tuple[dict | None, str]:
         return data, ""
     except json.JSONDecodeError as e:
         return None, f"JSON parse error at line {e.lineno} col {e.colno}: {e.msg}"
+
+
+# =============================================================================
+# Core Parsers (Implemented)
+# =============================================================================
 
 
 class ClaudeOutputParser:
@@ -159,7 +167,162 @@ class OpenCodeOutputParser:
         )
 
 
+# =============================================================================
+# Extended Parsers (Phase 2 - Implemented)
+# =============================================================================
+
+
+class CodexOutputParser:
+    """Parse Codex JSONL output from `codex exec --json`.
+
+    Phase 2 Contract: Parse JSONL stream from `codex exec --json`.
+
+    Output format (from DRIVER-BLUEPRINT.md Verified CLI Capabilities):
+        {"type": "thread.started", "thread_id": "uuid", ...}
+        {"type": "item.completed", "item": {"text": "..."}}
+        ...
+        {"type": "turn.completed", "usage": {"input_tokens": N, "output_tokens": N}}
+
+    Parser Semantics:
+        - Session ID: Extracted from thread.started event (thread_id field)
+        - Status: SUCCESS if item.completed events exist, FAIL otherwise
+        - Output: Concatenated text from all item.completed events
+        - Tokens: Extracted from turn.completed.usage
+
+    Architecture: docs/DRIVER-ARCHITECTURE.md Section 2.8 (CodexRunner)
+    Blueprint: DRIVER-BLUEPRINT.md Output Parsers (CodexOutputParser)
+
+    Implementation Owner: driver-multi-runner-hardening.impl-runners-extended
+    """
+
+    def parse(self, stdout: str, elapsed_seconds: float) -> RunnerResult:
+        """Parse Codex JSONL stream into RunnerResult."""
+        lines = stdout.strip().split("\n")
+        events: list[dict] = []
+
+        for line in lines:
+            line = line.strip()
+            if not line:
+                continue
+            try:
+                payload = json.loads(line)
+            except json.JSONDecodeError:
+                return RunnerResult(
+                    status=RunnerStatus.TRANSPORT_ERROR,
+                    session_id=None,
+                    output=stdout,
+                    elapsed_seconds=elapsed_seconds,
+                    exit_code=None,
+                )
+            if isinstance(payload, dict):
+                events.append(payload)
+
+        if not events:
+            return RunnerResult(
+                status=RunnerStatus.TRANSPORT_ERROR,
+                session_id=None,
+                output=stdout,
+                elapsed_seconds=elapsed_seconds,
+                exit_code=None,
+            )
+
+        session_id: str | None = None
+        text_parts: list[str] = []
+        tokens: dict | None = None
+
+        for event in events:
+            event_type = event.get("type")
+            if event_type == "thread.started" and session_id is None:
+                raw = event.get("thread_id")
+                session_id = str(raw) if raw is not None else None
+            elif event_type == "item.completed":
+                item = event.get("item")
+                if isinstance(item, dict):
+                    text = item.get("text")
+                    if text is not None and str(text):
+                        text_parts.append(str(text))
+            elif event_type == "turn.completed":
+                usage = event.get("usage")
+                if isinstance(usage, dict):
+                    tokens = usage
+
+        status = RunnerStatus.SUCCESS if text_parts else RunnerStatus.FAIL
+        output = "\n".join(text_parts)
+        return RunnerResult(
+            status=status,
+            session_id=session_id,
+            output=output,
+            elapsed_seconds=elapsed_seconds,
+            exit_code=0 if status == RunnerStatus.SUCCESS else 1,
+            tokens=tokens,
+        )
+
+
+class GeminiOutputParser:
+    """Parse Gemini single JSON output from `gemini -p --output-format json`.
+
+    Phase 2 Contract: Parse single JSON object from `gemini -p --output-format json`.
+
+    Output format (from DRIVER-BLUEPRINT.md Verified CLI Capabilities):
+        {
+            "session_id": "uuid-or-index",
+            "result": "text output",
+            "subtype": "success" | "error",
+            "usage": {...}
+        }
+
+    Note: Cost tracking (total_cost_usd) is unverified for Gemini.
+
+    Parser Semantics:
+        - Session ID: session_id field (may be different format than Claude)
+        - Status: SUCCESS if subtype == "success", FAIL otherwise
+        - Output: result field
+        - Tokens: usage field (format unverified)
+
+    Architecture: docs/DRIVER-ARCHITECTURE.md Section 2.8 (GeminiRunner)
+    Blueprint: DRIVER-BLUEPRINT.md Output Parsers (GeminiOutputParser)
+
+    Implementation Owner: driver-multi-runner-hardening.impl-runners-extended
+    """
+
+    def parse(self, stdout: str, elapsed_seconds: float) -> RunnerResult:
+        """Parse Gemini single JSON into RunnerResult."""
+        data, err = _parse_json_safely(stdout)
+        if data is None:
+            return RunnerResult(
+                status=RunnerStatus.TRANSPORT_ERROR,
+                session_id=None,
+                output=stdout,
+                elapsed_seconds=elapsed_seconds,
+                exit_code=None,
+            )
+
+        raw_output = data.get("structured_output") or data.get("result", "")
+        if isinstance(raw_output, dict):
+            output = json.dumps(raw_output)
+        else:
+            output = str(raw_output)
+
+        status = RunnerStatus.SUCCESS if data.get("subtype", "") == "success" else RunnerStatus.FAIL
+        raw_session = data.get("session_id")
+        session_id = str(raw_session) if raw_session is not None else None
+        tokens = data.get("usage")
+        return RunnerResult(
+            status=status,
+            session_id=session_id,
+            output=output,
+            elapsed_seconds=elapsed_seconds,
+            exit_code=0 if status == RunnerStatus.SUCCESS else 1,
+            cost_usd=data.get("total_cost_usd"),
+            tokens=tokens if isinstance(tokens, dict) else None,
+        )
+
+
 __all__ = [
+    # Core parsers (implemented)
     "ClaudeOutputParser",
     "OpenCodeOutputParser",
+    # Extended parsers (contract-only stubs)
+    "CodexOutputParser",
+    "GeminiOutputParser",
 ]

@@ -428,27 +428,48 @@ class TestCoreRunnersScope:
         assert isinstance(runner, OpenCodeRunner)
         assert runner.name == "opencode"
 
-    def test_create_runner_codex_raises_error(self) -> None:
-        """create_runner('codex', config) raises RunnerError (deferred phase)."""
+    def test_create_runner_codex_requires_config(self) -> None:
+        """create_runner('codex', config) validates required config fields."""
         from vectl.driver.errors import RunnerError
+        from vectl.driver.runners import CodexRunnerStub
 
+        # Missing resume_command raises RunnerError
         config = RunnerConfig(command="codex", args=["exec"])
         with pytest.raises(RunnerError) as exc_info:
             create_runner("codex", config)
 
-        assert "not in core scope" in str(exc_info.value)
-        assert "driver-multi-runner-hardening" in str(exc_info.value)
+        assert "resume_command" in str(exc_info.value)
 
-    def test_create_runner_gemini_raises_error(self) -> None:
-        """create_runner('gemini', config) raises RunnerError (deferred phase)."""
+        # With valid config, returns stub (extends phase contract)
+        valid_config = RunnerConfig(
+            command="codex",
+            args=["exec", "--json"],
+            prompt_mode="stdin_dash",
+            resume_command=["codex", "exec", "resume", "--json"],
+        )
+        runner = create_runner("codex", valid_config)
+        assert isinstance(runner, CodexRunnerStub)
+
+    def test_create_runner_gemini_requires_config(self) -> None:
+        """create_runner('gemini', config) validates required config fields."""
         from vectl.driver.errors import RunnerError
+        from vectl.driver.runners import GeminiRunnerStub
 
+        # Missing experimental=True raises RunnerError
         config = RunnerConfig(command="gemini", args=["-p"])
         with pytest.raises(RunnerError) as exc_info:
             create_runner("gemini", config)
 
-        assert "not in core scope" in str(exc_info.value)
-        assert "driver-multi-runner-hardening" in str(exc_info.value)
+        assert "experimental=True" in str(exc_info.value)
+
+        # With valid config, returns stub (extends phase contract)
+        valid_config = RunnerConfig(
+            command="gemini",
+            args=["-p", "--output-format", "json"],
+            experimental=True,
+        )
+        runner = create_runner("gemini", valid_config)
+        assert isinstance(runner, GeminiRunnerStub)
 
     def test_create_runner_unknown_raises_error(self) -> None:
         """create_runner('unknown', config) raises RunnerError."""

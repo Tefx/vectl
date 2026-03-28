@@ -41195,3 +41195,31 @@ phases:
 
       - Runtime and recovery surfaces are documented at the right boundary'
     agent: doc-reviewer
+  - id: driver-enhancement-review.wiring-audit
+    name: Audit enhancement wiring completeness
+    status: pending
+    description: 'step_type: verification
+
+      Verification scope: phase-check protecting driver-enhancement-review.gate.
+
+
+      Wiring completeness audit for the enhancement program.
+
+
+      Required checks:
+
+      - every new public event or helper is reachable from the real driver path
+
+      - streaming/progress state is consumed by the loop path that owns liveness
+
+      - recovery classification outputs are consumed by the policy / action path that
+      enforces them
+
+      - no orphan export or unregistered driver command surface remains'
+    verification: 'phase-check protecting driver-enhancement-review.gate.
+
+      - Evidence lists orphan exports / unconsumed fields / missing registrations
+      or says none found
+
+      - Any wiring gap is blocking at this phase'
+    agent: wiring-auditor

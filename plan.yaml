@@ -41430,3 +41430,10 @@ phases:
     semantics are pinned before runtime migration fan-out.
   depends_on:
   - driver-debt-review
+- id: driver-prompt-migration
+  name: Driver Prompt Resource Migration
+  status: locked
+  gate: Runtime consumes packaged prompt resources, code references stop treating
+    docs/ as runtime authority, and green verification proves no silent fallback remains.
+  depends_on:
+  - driver-prompt-foundation

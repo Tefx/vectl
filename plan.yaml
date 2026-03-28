@@ -37753,7 +37753,7 @@ phases:
       convergence implementation yet.'
   - id: driver-debt-completion-authority.test-define-red
     name: Define expected-red duplicate-completion regressions
-    status: claimed
+    status: done
     description: 'step_type: test
 
       step_intent: test_define_red
@@ -37803,6 +37803,31 @@ phases:
     agent: python-executor
     claimed_by: python-executor
     claimed_at: '2026-03-28T20:33:57.574037+00:00'
+    done_at: '2026-03-28T21:00:50.760006+00:00'
+    evidence: 'EXPECTED_RED_ACCEPTED.
+
+
+      step_intent: test_define_red
+
+      expected_result: red
+
+      observed_result: red (gap-exposing regressions added and exercised)
+
+      failure_alignment: aligned to declared dual-path completion gap
+
+      product_files_modified: tests only
+
+
+      Evidence:
+
+      - Added targeted regression tests exposing duplicate completion authority surface
+      for one completed runner result.
+
+      - Verification run: uv run pytest -q tests/test_driver_loop_hardening.py tests/test_driver_loop_runtime.py
+      --tb=no -> 26 passed, 25 xfailed
+
+      - No product implementation files changed in this step; implementation deferred
+      to downstream impl step.'
   - id: driver-debt-completion-authority.impl
     name: Converge driver runtime onto reconcile-only completion sink
     status: pending

@@ -41197,21 +41197,31 @@ phases:
   - id: driver-enhancement-runner-recovery.impl
     name: Implement watchdog-backed failure classification and recovery policy
     status: pending
-    description: 'step_type: implementation
-
-      Implement post-bootstrap advanced runner recovery behavior.
-
-
-      Scope:
-
-      - add watchdog-backed stall/no-progress/crash taxonomy and richer operator-facing
-      recovery behavior
-
-      - build on top of the continuity-owned bootstrap minimum for resume capability,
-      replay safety, and startup recovery
-
-      - do not duplicate ownership of durable continuity state, restart recovery controller,
-      or minimum recovery journal'
+    description: "step_type: implementation\n\nFill in stub bodies and replace placeholder\
+      \ recovery branches with working watchdog-backed classification and policy logic\
+      \ on the existing recovery surfaces.\n\nUPSTREAM ARTIFACTS (from merged design+test\
+      \ step):\n  - src/vectl/driver/loop.py — from_step: driver-enhancement-runner-recovery.design-and-test\
+      \ — tier: contract\n  - src/vectl/driver/errors.py — from_step: driver-enhancement-runner-recovery.design-and-test\
+      \ — tier: contract\n  - tests/test_driver_loop_runtime.py — from_step: driver-enhancement-runner-recovery.design-and-test\
+      \ — tier: test\n  - tests/test_driver_loop_hardening.py — from_step: driver-enhancement-runner-recovery.design-and-test\
+      \ — tier: test\n\nThe merged contract+test step produced both interfaces and\
+      \ tests. Your job is to make the tests pass by filling in stub bodies.\n\nDeviation\
+      \ protocol: If a contract artifact is wrong or incomplete, document a deviation\
+      \ record (type, what, why, impact) — do NOT silently rewrite.\n\nupstream_artifacts:\n\
+      \  - path: src/vectl/driver/loop.py\n    from_step: driver-enhancement-runner-recovery.design-and-test\n\
+      \    tier: contract\n  - path: src/vectl/driver/errors.py\n    from_step: driver-enhancement-runner-recovery.design-and-test\n\
+      \    tier: contract\n  - path: tests/test_driver_loop_runtime.py\n    from_step:\
+      \ driver-enhancement-runner-recovery.design-and-test\n    tier: test\n  - path:\
+      \ tests/test_driver_loop_hardening.py\n    from_step: driver-enhancement-runner-recovery.design-and-test\n\
+      \    tier: test\n\nImplement watchdog-backed failure classification and recovery\
+      \ policy.\n\nScope:\n- add watchdog-backed stall/no-progress/crash taxonomy\
+      \ and richer operator-facing recovery behavior\n- build on top of the continuity-owned\
+      \ bootstrap minimum for resume capability, replay safety, and startup recovery\n\
+      - do not duplicate ownership of durable continuity state, restart recovery controller,\
+      \ or minimum recovery journal\n\n## Completion Criteria (stub exclusion)\nThis\
+      \ is an IMPLEMENTATION step. Stub-only completion is NOT acceptable.\nEach deliverable\
+      \ MUST contain substantive logic that classifies failures and applies differentiated\
+      \ recovery actions."
     verification: 'phase-check protecting driver-enhancement-runner-recovery.verify.
 
       - Main path: focused tests prove each failure class maps to the intended recovery
@@ -41223,8 +41233,7 @@ phases:
       - Proof: evidence shows the recovery matrix is enforced rather than inferred
       from a single generic failure path'
     depends_on:
-    - driver-enhancement-runner-recovery.contract
-    - driver-enhancement-runner-recovery.test-define-red
+    - driver-enhancement-runner-recovery.design-and-test
     agent: python-senior
   - id: driver-enhancement-runner-recovery.verify
     name: Verify failure taxonomy watchdog and recovery matrix

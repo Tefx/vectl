@@ -42151,3 +42151,10 @@ phases:
     - driver-prompt-review.spec-conformance
     - driver-prompt-review.black-box-verification
     agent: gate-reviewer
+- id: driver-judge-hardening-foundation
+  name: 'Driver Judge Hardening: Foundation'
+  status: locked
+  gate: Judge runner capability contract and codex invocation alignment are pinned
+    before implementation fan-out.
+  depends_on:
+  - driver-debt-review

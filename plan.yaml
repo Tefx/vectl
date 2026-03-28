@@ -39092,45 +39092,41 @@ phases:
   - id: driver-evolution-event-contracts.implement-canonical-events
     name: Canonicalize FINAL DECIDE STEP_COMPLETED event semantics
     status: pending
-    description: 'step_type: implementation
-
-
-      Implement canonical event semantics from the ADR.
-
-
-      Scope:
-
-      - update registry definitions for `FINAL`, `DECIDE`, and `STEP_COMPLETED`
-
-      - make `FINAL` the summary-oriented canonical final event, including completed/finalized
-      work summary, total duration, total cost/tokens when available, and optional
-      `halt_reason`
-
-      - preserve `HALT` as a separate event while ensuring end-of-run consumers do
-      not need to backscan the stream to learn the terminal halt reason
-
-      - remove or relocate raw runtime snapshot payloads that currently overload `FINAL`
-
-      - keep event ownership/versioning in the registry as the sole schema truth
-
-
-      Failure-mode checklist:
-
-      - no summary field is silently placed outside the canonical envelope/data split
-
-      - `halt_reason` is optional on `FINAL`, not a second-class afterthought gated
-      by unresolved ADR questions
-
-      - DECIDE and STEP_COMPLETED keep explicit required vs optional field boundaries
-
-      - FINAL no longer acts as a garbage-bucket snapshot event
-
-      - any remaining runtime snapshot need is explicitly deferred to a separate event,
-      not hidden inside FINAL
-
-
-      Known risk: output/formatting drift in persisted JSONL events. The gate will
-      reject mixed legacy/canonical FINAL payloads.'
+    description: "step_type: implementation\n\nFill in stub bodies and replace placeholder\
+      \ event payload definitions with substantive canonical FINAL/DECIDE/STEP_COMPLETED\
+      \ logic under the pinned contract.\n\nUPSTREAM ARTIFACTS (from contract/test\
+      \ steps):\n  - src/vectl/driver/events/registry.py — from_step: driver-evolution-event-contracts.contract\
+      \ — tier: contract\n  - src/vectl/driver/events/types.py — from_step: driver-evolution-event-contracts.contract\
+      \ — tier: contract\n  - tests/test_driver_loop_contract.py — from_step: driver-evolution-event-contracts.contract\
+      \ — tier: test\n  - tests/test_driver_observe.py — from_step: driver-evolution-event-contracts.contract\
+      \ — tier: test\n\nYOUR SCOPE: Complete the implementation within the existing\
+      \ registry-driven contract; do not invent new event families or backslide into\
+      \ legacy FINAL overloading.\n\nDeviation protocol: If a contract artifact is\
+      \ wrong or incomplete, document a deviation record (type, what, why, impact)\
+      \ — do NOT silently rewrite.\n\nupstream_artifacts:\n  - path: src/vectl/driver/events/registry.py\n\
+      \    from_step: driver-evolution-event-contracts.contract\n    tier: contract\n\
+      \  - path: src/vectl/driver/events/types.py\n    from_step: driver-evolution-event-contracts.contract\n\
+      \    tier: contract\n  - path: tests/test_driver_loop_contract.py\n    from_step:\
+      \ driver-evolution-event-contracts.contract\n    tier: test\n  - path: tests/test_driver_observe.py\n\
+      \    from_step: driver-evolution-event-contracts.contract\n    tier: test\n\n\
+      Scope:\n- update registry definitions for `FINAL`, `DECIDE`, and `STEP_COMPLETED`\n\
+      - make `FINAL` the summary-oriented canonical final event, including completed/finalized\
+      \ work summary, total duration, total cost/tokens when available, and optional\
+      \ `halt_reason`\n- preserve `HALT` as a separate event while ensuring end-of-run\
+      \ consumers do not need to backscan the stream to learn the terminal halt reason\n\
+      - remove or relocate raw runtime snapshot payloads that currently overload `FINAL`\n\
+      - keep event ownership/versioning in the registry as the sole schema truth\n\
+      \nFailure-mode checklist:\n- no summary field is silently placed outside the\
+      \ canonical envelope/data split\n- `halt_reason` is optional on `FINAL`, not\
+      \ a second-class afterthought gated by unresolved ADR questions\n- DECIDE and\
+      \ STEP_COMPLETED keep explicit required vs optional field boundaries\n- FINAL\
+      \ no longer acts as a garbage-bucket snapshot event\n- any remaining runtime\
+      \ snapshot need is explicitly deferred to a separate event, not hidden inside\
+      \ FINAL\n\nKnown risk: output/formatting drift in persisted JSONL events. The\
+      \ gate will reject mixed legacy/canonical FINAL payloads.\n\n## Completion Criteria\
+      \ (stub exclusion)\nThis is an IMPLEMENTATION step. Stub-only completion is\
+      \ NOT acceptable.\nCanonical event definitions must be substantive and executable;\
+      \ schema-only placeholders do not satisfy this step."
     verification: 'phase-check protecting typed-emitter and conformance work.
 
       - Main path: targeted tests prove FINAL/DECIDE/STEP_COMPLETED records match

@@ -40536,10 +40536,10 @@ phases:
     - driver-enhancement-foundation.contract
     agent: gate-reviewer
 - id: driver-enhancement-observability
-  name: 'Driver Enhancement: Observability'
+  name: 'Driver Enhancement: Advanced Observability'
   status: locked
-  gate: Runtime observability covers runner lifecycle, planner dispatch, recovery,
-    and heartbeat/progress events with schema-safe evidence.
+  gate: Post-bootstrap observability extends beyond the continuity-owned minimum journal
+    to richer lifecycle analytics, progress telemetry, and long-horizon runtime visibility.
   depends_on:
   - driver-enhancement-foundation
   steps:

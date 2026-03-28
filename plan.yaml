@@ -43444,3 +43444,32 @@ phases:
 
       - BLOCK if any production entrypoint still terminates without continuity recovery'
     agent: wiring-auditor
+  - id: driver-continuity-review.spec-conformance
+    name: Audit continuity spec conformance
+    status: pending
+    description: 'step_type: verification
+
+      Spec conformance verification via adversarial divergence hunting.
+
+
+      SCOPE: continuity, restart recovery, runner capability, replay safety, and recovery-grade
+      journal requirements touched by the continuity phases.
+
+
+      FOCUS AREAS:
+
+      - naming and format semantics for journal/ledger fields and capability facts
+
+      - omission drift for failure/abort persistence and restart recovery behavior
+
+      - contract surface drift between authoritative continuity interfaces and implementation
+
+      - behavioral precedence claims should be flagged as NEEDS_TEST unless proven
+      by targeted evidence'
+    verification: '- For each requirement cite the spec section or architecture-basis
+      section and the implementation file:line
+
+      - Output verdicts using CONFORMS | DIVERGES | PARTIAL | NEEDS_TEST | NOT_FOUND
+
+      - Highlight any drift that would poison driver-bootstrap-readiness'
+    agent: spec-verifier

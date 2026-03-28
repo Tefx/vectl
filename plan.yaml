@@ -42355,6 +42355,59 @@ phases:
     depends_on:
     - driver-judge-hardening-structured-output.test-define-red
     agent: python-senior
+  - id: driver-judge-hardening-structured-output.real-codex-verify
+    name: Verify real codex judge stability for blocking judgments
+    status: pending
+    description: "step_type: verification\nverification_scope: phase-check\nprotects_downstream_gates:\n\
+      \  - driver-judge-hardening-review.gate\n  - driver-bootstrap-readiness.gate\n\
+      spec_refs:\n  - driver.yaml#judge\n  - docs/JUDGE-AGENT-PROMPT.md#verdict-schema\n\
+      touch_paths:\n  - src/vectl/driver/judge.py\n  - src/vectl/driver/parsers.py\n\
+      \  - driver.yaml\nharness_refs:\n  - real codex runner\n  - quality gates enabled\
+      \ configuration\n  - fresh/cold environment for judge verification\nauthoritative_interface:\
+      \ Judge.judge(request) with judge.runner=codex\nagent_source: default\nindependence_level:\
+      \ L2\n\nAs an INDEPENDENT TESTER, validate that the real codex judge path now\
+      \ works for the blocking judgment families.\n\nYOU ARE TRYING TO FIND FAILURES.\n\
+      \nRequired real-runner coverage:\n- preflight judgment\n- cold_context judgment\n\
+      - failure judgment\n- gate judgment\n\nRun with `judge.runner=codex` and quality\
+      \ gates enabled. Evidence must show the actual runner command path, actual output,\
+      \ and actual verdict extraction outcome. A pass requires stable verdict delivery\
+      \ or the exact contracted hard-fail classification; silent parse drift is failure."
+    verification: '- Execute real codex judge flows in a fresh/cold environment for
+      preflight, cold_context, failure, and gate
+
+      - Evidence includes exact commands and actual output, not summaries
+
+      - Any malformed/empty/partial-output case is classified per contract, not misreported
+      as success'
+    evidence_template: '## Real Codex Judge Verification
+
+      **Runner**: codex
+
+      **Quality gates enabled**: yes
+
+      **Environment**: fresh/cold
+
+      | Judgment Type | Exact Command | Actual Output Snippet | Verdict / Failure
+      Class | Status |
+
+      | --- | --- | --- | --- | --- |
+
+      | preflight |  |  |  |  |
+
+      | cold_context |  |  |  |  |
+
+      | failure |  |  |  |  |
+
+      | gate |  |  |  |  |
+
+
+      **Divergence check**: show that invoked codex parameters match or derive from
+      `driver.yaml`.
+
+      '
+    depends_on:
+    - driver-judge-hardening-structured-output.impl
+    agent: integration-verifier
 - id: driver-judge-hardening-recovery-policy
   name: 'Driver Judge Hardening: Failure Handling Policy'
   status: locked

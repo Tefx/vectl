@@ -41309,3 +41309,36 @@ phases:
 
       - Any under-specified contract is reported as blocking review debt'
     agent: gate-reviewer
+  - id: driver-enhancement-review.black-box-verification
+    name: Black-box verify enhanced driver liveness and visibility
+    status: pending
+    description: 'step_type: verification
+
+      Verification scope: phase-check protecting driver-enhancement-review.gate.
+
+
+      Using the final docs/contracts and public driver surface only, verify:
+
+      - invalid `agent_routing.default` configs fail with the documented error
+
+      - the driver exposes observable lifecycle / progress / recovery behavior on
+      a real run path
+
+      - liveness remains understandable from heartbeat/progress evidence
+
+      - recovery behavior is externally distinguishable where the contract says it
+      should be
+
+
+      This step is the runnable-surface liveness probe for the enhancement wave.'
+    verification: 'phase-check protecting driver-enhancement-review.gate.
+
+      - Entry point starts and executes at least one real operation
+
+      - Black-box evidence shows expected output / error behavior for routing hardening
+      and driver liveness surfaces
+
+      - At least one real run path demonstrates observable progress before termination'
+    depends_on:
+    - driver-enhancement-review.update-docs
+    agent: blind-tester

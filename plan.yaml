@@ -38583,3 +38583,225 @@ phases:
   status: locked
   depends_on:
   - driver-debt-doc-sync
+  steps:
+  - id: driver-debt-deep-review.wiring-audit
+    name: Audit driver debt wiring completeness
+    status: pending
+    description: 'step_type: verification
+
+      Verification scope: full-plan-check protecting driver-debt-deep-review.gate.
+
+
+      Complete wiring audit for the remediated driver surfaces.
+
+      Check:
+
+      - shared entrypoint adapter is the only runtime adapter
+
+      - no orphan completion path remains
+
+      - no unconsumed DecideState field or write-only state path remains
+
+      - extracted policy helpers are referenced from loop.py and not duplicated there'
+    verification: '- Wiring audit report cites grep/import evidence for each check'
+    refs:
+    - src/vectl/driver/entrypoint.py
+    - src/vectl/driver/__main__.py
+    - src/vectl/cli.py
+    - src/vectl/driver/loop.py
+    - src/vectl/driver/policy.py
+    - src/vectl/decision_state.py
+    agent: wiring-auditor
+  - id: driver-debt-deep-review.spec-conformance
+    name: Audit driver debt spec conformance
+    status: pending
+    description: 'step_type: verification
+
+      Verification scope: full-plan-check protecting driver-debt-deep-review.gate.
+
+
+      Independent spec conformance review for the approved A1/A2/A4/A3 remediation.
+
+      Focus on:
+
+      - DecideState ownership
+
+      - reconcile-only completion authority
+
+      - CLI invocation/exit-code semantics
+
+      - policy extraction behavior preservation'
+    verification: '- Evidence table cites requirement -> implementation mapping with
+      verdicts'
+    refs:
+    - docs/DRIVER-ARCHITECTURE.md
+    - src/vectl/decide.py
+    - src/vectl/decision_state.py
+    - src/vectl/driver/loop.py
+    - src/vectl/driver/entrypoint.py
+    - src/vectl/cli.py
+    - src/vectl/driver/policy.py
+    depends_on:
+    - driver-debt-deep-review.wiring-audit
+    agent: spec-verifier
+  - id: driver-debt-deep-review.architecture-review
+    name: Review driver debt architecture boundaries
+    status: pending
+    description: 'step_type: review
+
+      Verification scope: full-plan-check protecting driver-debt-deep-review.gate.
+
+
+      Review the final architecture for boundary correctness.
+
+      Must assess:
+
+      - state ownership now instance-local and single-source
+
+      - reconcile owns completion/failure/session authority in runtime
+
+      - loop.py restored toward coordinator role
+
+      - entrypoint/runtime boundary unified cleanly'
+    verification: '- Review names any remaining architecture debt explicitly with
+      severity'
+    refs:
+    - src/vectl/decide.py
+    - src/vectl/decision_state.py
+    - src/vectl/driver/loop.py
+    - src/vectl/driver/entrypoint.py
+    - src/vectl/driver/policy.py
+    depends_on:
+    - driver-debt-deep-review.wiring-audit
+    agent: software-architect
+  - id: driver-debt-deep-review.contract-strength
+    name: Audit remediated contracts for strength
+    status: pending
+    description: 'step_type: verification
+
+      Verification scope: full-plan-check protecting driver-debt-deep-review.gate.
+
+
+      Verify the new contract surfaces are real and non-vacuous.
+
+      Check:
+
+      - DecideState API is exercised by tests
+
+      - shared entrypoint adapter is actually called
+
+      - policy extraction contract is represented by real imports/tests, not comments
+      only
+
+      - no legacy shim claims remain without caller proof'
+    verification: '- Evidence demonstrates the new contract surfaces are live and
+      exercised'
+    refs:
+    - src/vectl/decision_state.py
+    - src/vectl/driver/entrypoint.py
+    - src/vectl/driver/policy.py
+    - tests/test_decide.py
+    - tests/test_driver_loop_runtime.py
+    depends_on:
+    - driver-debt-deep-review.wiring-audit
+    agent: gate-reviewer
+  - id: driver-debt-deep-review.black-box-verification
+    name: Black-box verify remediated driver surfaces
+    status: pending
+    description: 'step_type: verification
+
+      independence_level: L2
+
+      Verification scope: full-plan-check protecting driver-debt-deep-review.gate.
+
+
+      Using only the approved remediation expectations and public CLI surfaces, verify:
+
+      - both entrypoints behave consistently
+
+      - one runtime path completes without duplicate completion effects
+
+      - user-visible CLI behavior stays compatible for agent consumers'
+    verification: '- Real command/output evidence attached
+
+      - Any mismatch between the two CLI surfaces is blocker severity'
+    refs:
+    - src/vectl/driver/__main__.py
+    - src/vectl/cli.py
+    - tests/repro/driver_black_box_liveness.py
+    depends_on:
+    - driver-debt-deep-review.spec-conformance
+    agent: blind-tester
+  - id: driver-debt-deep-review.freeze
+    name: Freeze snapshot for final deep-review gate
+    status: pending
+    description: 'step_type: verification
+
+      Verification scope: full-plan-check protecting driver-debt-deep-review.gate.
+
+
+      Freeze the final review snapshot before the closing gate.
+
+      Required evidence: git rev-parse HEAD, clean status, environment declaration,
+      and no-change statement.'
+    verification: '- Freeze evidence complete before final gate'
+    refs:
+    - src/vectl/decision_state.py
+    - src/vectl/driver/loop.py
+    - src/vectl/driver/entrypoint.py
+    - src/vectl/driver/policy.py
+    depends_on:
+    - driver-debt-deep-review.spec-conformance
+    - driver-debt-deep-review.architecture-review
+    - driver-debt-deep-review.contract-strength
+    - driver-debt-deep-review.black-box-verification
+    agent: integration-verifier
+  - id: driver-debt-deep-review.gate
+    name: Final gate for driver debt remediation
+    status: pending
+    description: 'step_type: gate
+
+      Final deep-review gate for A1/A2/A4/A3 remediation.
+
+
+      BLOCK if any blocker remains in:
+
+      - state ownership isolation
+
+      - reconcile-only completion authority
+
+      - CLI parity / exit-code semantics
+
+      - policy extraction drift
+
+      - wiring completeness or black-box runtime behavior
+
+
+      review_depth: THOROUGH
+
+      cross_cutting_focus:
+
+      - no residual dual authority
+
+      - no residual global mutable runtime state
+
+      - no entrypoint divergence
+
+      - no hidden drift in policy extraction'
+    verification: '- All deep-review steps complete
+
+      - No unresolved blocker remains for final completion of the remediation program'
+    refs:
+    - src/vectl/decide.py
+    - src/vectl/decision_state.py
+    - src/vectl/driver/loop.py
+    - src/vectl/driver/entrypoint.py
+    - src/vectl/cli.py
+    - src/vectl/driver/policy.py
+    depends_on:
+    - driver-debt-deep-review.spec-conformance
+    - driver-debt-deep-review.architecture-review
+    - driver-debt-deep-review.contract-strength
+    - driver-debt-deep-review.black-box-verification
+    - driver-debt-deep-review.freeze
+    agent: gate-reviewer

@@ -39550,11 +39550,11 @@ phases:
       - Happy path: a planner-triggering driver path resolves planner dispatch via
       the registry and reaches the registered handler
 
-      - Edge cases: payload validation, category tagging, and expected event emission
-      behavior
+      - Edge cases: payload validation, category tagging, shared RuntimeContext consumption,
+      and expected event emission behavior
 
       - Error scenarios: planner dispatch surviving as a helper path outside the registry,
-      or falling into the wrong category
+      falling into the wrong category, or depending on implicit dynamic registration
 
 
       Independence Level: L2
@@ -39570,6 +39570,9 @@ phases:
       path
 
       - Evidence includes actual command/test output and the path exercised
+
+      - Evidence explicitly verifies planner dispatch is in registry coverage, uses
+      the shared RuntimeContext, and is not relying on dynamic registration hooks
 
       - Any helper bypass or category mismatch is logged as a blocker-class finding'
     depends_on:

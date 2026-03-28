@@ -78,6 +78,9 @@ class Step(BaseModel):
     # Source: user feature request "Output guidance when running vectl claim".
     # R2: step-level evidence template needs a place to store short copy/paste text.
     evidence_template: str = ""
+    # RFC: docs/RFC-expected-red-verification-semantics.md
+    # Verification mode: None=red is failure, "expected_red"=red output acceptable for missing behavior
+    verify: Literal["expected_red", "must_green"] | None = None
     refs: list[str] = Field(default_factory=list)
     depends_on: list[str] = Field(default_factory=list)
     agent: str | None = None

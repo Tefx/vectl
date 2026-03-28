@@ -38401,7 +38401,7 @@ phases:
       implemented.'
   - id: driver-debt-cli-entrypoint-unification.gate
     name: Gate CLI entrypoint unification
-    status: pending
+    status: claimed
     description: 'step_type: gate
 
       Gate review for A4.
@@ -38442,6 +38442,8 @@ phases:
     - driver-debt-cli-entrypoint-unification.liveness
     - driver-debt-cli-entrypoint-unification.spec-conformance
     agent: gate-reviewer
+    claimed_by: gate-reviewer
+    claimed_at: '2026-03-28T21:28:03.398996+00:00'
 - id: driver-debt-policy-extraction
   name: 'Driver Debt: Loop Policy Extraction'
   status: done

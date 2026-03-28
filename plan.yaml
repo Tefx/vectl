@@ -39221,6 +39221,46 @@ phases:
     depends_on:
     - driver-evolution-runtime-context.implement-runtime-context
     agent: integration-verifier
+  - id: driver-evolution-runtime-context.gate
+    name: Gate runtime context
+    status: pending
+    description: 'step_type: gate
+
+      Gate review: verify the runtime-context phase completion and quality.
+
+
+      review_depth: THOROUGH
+
+      review_depth_rationale:
+
+      - ownership boundaries across DriverState, DecideState, and RuntimeContext can
+      create structural rework
+
+      - phase includes the mandatory early vertical slice
+
+
+      cross_cutting_focus:
+
+      - DecideState remains the decide-local mutable state carrier
+
+      - RuntimeContext does not absorb unrelated durable lifecycle authority
+
+      - the real entrypoint path still works with the typed context
+
+
+      Independence: gate-reviewer must remain independent from software-architect/python-senior.'
+    verification: 'phase-check protecting driver-evolution-action-registry.
+
+      - Contract and implementation evidence align with the ADR ownership model
+
+      - Vertical-slice evidence proves a real entrypoint path using RuntimeContext
+
+      - No unresolved ownership blocker intersects planner-action registry work'
+    depends_on:
+    - driver-evolution-runtime-context.contract
+    - driver-evolution-runtime-context.implement-runtime-context
+    - driver-evolution-runtime-context.vertical-slice
+    agent: gate-reviewer
 - id: driver-evolution-action-registry
   name: 'Driver Evolution: Action Registry'
   status: locked

@@ -39396,44 +39396,37 @@ phases:
   - id: driver-evolution-runtime-context.implement-runtime-context
     name: Implement RuntimeContext and DecideState boundary
     status: pending
-    description: 'step_type: implementation
-
-
-      Implement the typed runtime context defined by the ADR.
-
-
-      Scope:
-
-      - add `src/vectl/driver/runtime_context.py`
-
-      - route loop-executed handler dependencies through one shared RuntimeContext
-      instead of ad hoc parameter bundles in the touched path
-
-      - keep `src/vectl/decision_state.py` as the decide-local mutable state carrier
-      and preserve its source-of-truth role
-
-      - maintain clear ownership boundaries among DriverState, DecideState, policy
-      helpers, and event emission surfaces
-
-      - do NOT introduce role-specific handler contexts in the initial migration
-
-
-      Failure-mode checklist:
-
-      - RuntimeContext does not absorb durable plan lifecycle ownership
-
-      - DecideState remains explicit and non-global
-
-      - handler callers cannot silently fall back to stale implicit state channels
-
-      - context creation does not break existing driver startup/runtime semantics
-
-      - no action family receives a divergent role-specific context during this rollout
-
-
-      Out-of-scope guardrail: layered action registry registration is deferred to
-      the next phase; role-specific contexts remain explicitly deferred beyond this
-      rollout.'
+    description: "step_type: implementation\n\nFill in stub bodies and replace ad\
+      \ hoc runtime-context plumbing with substantive shared RuntimeContext logic\
+      \ under the pinned boundary contract.\n\nUPSTREAM ARTIFACTS (from contract/test\
+      \ steps):\n  - src/vectl/driver/runtime_context.py — from_step: driver-evolution-runtime-context.contract\
+      \ — tier: contract\n  - src/vectl/decision_state.py — from_step: driver-evolution-runtime-context.contract\
+      \ — tier: contract\n  - tests/test_driver_loop_runtime.py — from_step: driver-evolution-runtime-context.contract\
+      \ — tier: test\n\nYOUR SCOPE: Complete the implementation within existing ownership\
+      \ boundaries; do not introduce role-specific contexts or re-home DecideState\
+      \ ownership.\n\nDeviation protocol: If a contract artifact is wrong or incomplete,\
+      \ document a deviation record (type, what, why, impact) — do NOT silently rewrite.\n\
+      \nupstream_artifacts:\n  - path: src/vectl/driver/runtime_context.py\n    from_step:\
+      \ driver-evolution-runtime-context.contract\n    tier: contract\n  - path: src/vectl/decision_state.py\n\
+      \    from_step: driver-evolution-runtime-context.contract\n    tier: contract\n\
+      \  - path: tests/test_driver_loop_runtime.py\n    from_step: driver-evolution-runtime-context.contract\n\
+      \    tier: test\n\nScope:\n- add `src/vectl/driver/runtime_context.py`\n- route\
+      \ loop-executed handler dependencies through one shared RuntimeContext instead\
+      \ of ad hoc parameter bundles in the touched path\n- keep `src/vectl/decision_state.py`\
+      \ as the decide-local mutable state carrier and preserve its source-of-truth\
+      \ role\n- maintain clear ownership boundaries among DriverState, DecideState,\
+      \ policy helpers, and event emission surfaces\n- do NOT introduce role-specific\
+      \ handler contexts in the initial migration\n\nFailure-mode checklist:\n- RuntimeContext\
+      \ does not absorb durable plan lifecycle ownership\n- DecideState remains explicit\
+      \ and non-global\n- handler callers cannot silently fall back to stale implicit\
+      \ state channels\n- context creation does not break existing driver startup/runtime\
+      \ semantics\n- no action family receives a divergent role-specific context during\
+      \ this rollout\n\nOut-of-scope guardrail: layered action registry registration\
+      \ is deferred to the next phase; role-specific contexts remain explicitly deferred\
+      \ beyond this rollout.\n\n## Completion Criteria (stub exclusion)\nThis is an\
+      \ IMPLEMENTATION step. Stub-only completion is NOT acceptable.\nRuntimeContext\
+      \ wiring must be substantive and shared; empty containers or pass-through placeholders\
+      \ do not satisfy this step."
     verification: 'phase-check protecting the runtime-context vertical slice and gate.
 
       - Main path: targeted tests prove migrated handlers receive a shared typed RuntimeContext

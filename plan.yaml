@@ -41928,48 +41928,33 @@ phases:
   - id: driver-prompt-migration.authority-reference-migration
     name: Migrate prompt authority references and drift checks
     status: pending
-    description: 'step_type: implementation
-
-      Verification scope: local-check protecting driver-prompt-migration.runtime-retest
-      and gate.
-
-
-      Migrate driver code/tests away from treating docs/JUDGE-AGENT-PROMPT.md as the
-      runtime authority and make prompt drift visible.
-
-
-      Required scope:
-
-      - Update code comments/docstrings/tests that currently cite docs/JUDGE-AGENT-PROMPT.md
-      as the runtime source of truth so they instead reference the packaged resource
-      contract and docs-mirror role.
-
-      - Add or update verification that makes docs/runtime drift explicit rather than
-      silently tolerated.
-
-      - Preserve docs/JUDGE-AGENT-PROMPT.md as a mirror/spec artifact until the final
-      review sync step updates the rendered documentation.
-
-
-      Primary seams:
-
-      - src/vectl/driver/judgments.py
-
-      - src/vectl/driver/loop.py
-
-      - driver-related tests that currently encode docs-path authority
-
-
-      Non-goals:
-
-      - Do not re-open verdict schema design.
-
-      - Do not introduce a second runtime prompt source.
-
-
-      Completion Criteria (stub exclusion)
-
-      This is an IMPLEMENTATION step. Stub-only completion is NOT acceptable.'
+    description: "step_type: implementation\nVerification scope: local-check protecting\
+      \ driver-prompt-migration.runtime-retest and gate.\n\nFill in stub bodies and\
+      \ replace placeholder authority references with working docs-mirror / packaged-resource\
+      \ alignment on the existing surfaces.\n\nUPSTREAM ARTIFACTS (from merged design+test\
+      \ step):\n  - src/vectl/driver/judge.py — from_step: driver-prompt-foundation.design-and-test\
+      \ — tier: contract\n  - docs/JUDGE-AGENT-PROMPT.md — from_step: driver-prompt-foundation.design-and-test\
+      \ — tier: contract\n  - tests/test_driver_judge.py — from_step: driver-prompt-foundation.design-and-test\
+      \ — tier: test\n\nThe merged contract+test step produced both interfaces and\
+      \ tests. Your job is to make the tests pass by filling in stub bodies.\n\nDeviation\
+      \ protocol: If a contract artifact is wrong or incomplete, document a deviation\
+      \ record (type, what, why, impact) — do NOT silently rewrite.\n\nupstream_artifacts:\n\
+      \  - path: src/vectl/driver/judge.py\n    from_step: driver-prompt-foundation.design-and-test\n\
+      \    tier: contract\n  - path: docs/JUDGE-AGENT-PROMPT.md\n    from_step: driver-prompt-foundation.design-and-test\n\
+      \    tier: contract\n  - path: tests/test_driver_judge.py\n    from_step: driver-prompt-foundation.design-and-test\n\
+      \    tier: test\n\nMigrate driver code/tests away from treating docs/JUDGE-AGENT-PROMPT.md\
+      \ as the runtime authority and make prompt drift visible.\n\nRequired scope:\n\
+      - Update code comments/docstrings/tests that currently cite docs/JUDGE-AGENT-PROMPT.md\
+      \ as the runtime source of truth so they instead reference the packaged resource\
+      \ contract and docs-mirror role.\n- Add or update verification that makes docs/runtime\
+      \ drift explicit rather than silently tolerated.\n- Preserve docs/JUDGE-AGENT-PROMPT.md\
+      \ as a mirror/spec artifact until the final review sync step updates the rendered\
+      \ documentation.\n\nPrimary seams:\n- src/vectl/driver/judgments.py\n- src/vectl/driver/loop.py\n\
+      - driver-related tests that currently encode docs-path authority\n\nNon-goals:\n\
+      - Do not re-open verdict schema design.\n- Do not introduce a second runtime\
+      \ prompt source.\n\n## Completion Criteria (stub exclusion)\nThis is an IMPLEMENTATION\
+      \ step. Stub-only completion is NOT acceptable.\nThe packaged-resource / docs-mirror\
+      \ split must be enforced in real references, not comments alone."
     verification: '- References no longer imply docs/ is required at runtime.
 
       - At least one verification path makes docs mirror drift explicit.

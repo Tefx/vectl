@@ -38854,16 +38854,27 @@ phases:
       - stubs
 
 
-      Authoritative source: docs/ADR-driver-evolution-foundation.md#58-final-becomes-canonical-summary-event
-      and #149-implementation-guidance.
+      Authoritative source:
+
+      - docs/ADR-driver-evolution-foundation.md#58-final-becomes-canonical-summary-event
+
+      - docs/ADR-driver-evolution-foundation.md#169-implementation-guidance
+
+      - docs/ADR-driver-evolution-foundation.md#188-resolved-decisions
 
 
       Pin canonical contracts for the schema-critical events before implementation.
 
       Required outputs:
 
-      - `FINAL` is a summary-oriented canonical final event, not a runtime snapshot
+      - `FINAL` is the canonical summary-oriented final event, not a runtime snapshot
       bucket
+
+      - `FINAL` explicitly allows optional `halt_reason` while `HALT` remains a separate
+      event
+
+      - end-of-run consumers can determine terminal outcome from `FINAL` alone without
+      rescanning prior events for halt causality
 
       - `DECIDE` and `STEP_COMPLETED` registry definitions each declare required fields,
       optional fields, version, owner, and compatibility notes
@@ -38883,7 +38894,10 @@ phases:
 
       - Contract text covers FINAL, DECIDE, and STEP_COMPLETED individually
 
-      - FINAL is pinned as a summary event and excludes snapshot-bucket semantics
+      - FINAL is pinned as the canonical summary event and explicitly includes optional
+      `halt_reason` while preserving `HALT`
+
+      - FINAL excludes snapshot-bucket semantics
 
       - Typed emitter helper signatures are defined without adding runtime logic'
     agent: software-architect

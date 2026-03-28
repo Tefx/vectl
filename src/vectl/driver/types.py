@@ -107,13 +107,19 @@ class DriverState:
         - `merge_lock` is the sole serialization mechanism for git merge
           operations. All code paths that call `worktree.merge()` MUST hold
           this lock.
+        - Completion authority convergence is pinned by
+          ``loop.COMPLETION_AUTHORITY_A1_CONTRACT``: runtime completion/failure
+          side effects are reconcile-owned. ``completed_queue`` and
+          ``drain_completed()`` are legacy transitional surfaces and may be
+          narrowed or removed by the implementation owner step when no longer
+          required by runtime loop wiring.
     """
 
     running: dict[str, RunningEntry] = field(default_factory=dict)
     # step_id -> RunningEntry
 
     completed_queue: list[CompletedEntry] = field(default_factory=list)
-    # Drained each loop iteration
+    # Legacy transitional queue; runtime convergence may remove this surface.
 
     failure_counts: dict[str, int] = field(default_factory=dict)
     # step_id -> consecutive failure count
@@ -170,6 +176,11 @@ class DriverState:
 
         Returns:
             List of CompletedResult if there are completed entries, None otherwise.
+
+        Authority note:
+            ``driver-debt-completion-authority.contract`` pins this as a legacy
+            compatibility seam. Runtime completion authority converges on
+            ``wait_for_any() -> reconcile()``.
         """
         from vectl.models import CompletedResult
 

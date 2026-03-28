@@ -20,7 +20,7 @@ from __future__ import annotations
 import asyncio
 from pathlib import Path
 from typing import Any
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import MagicMock, patch
 
 import pytest
 
@@ -36,12 +36,11 @@ from src.vectl.driver.config import (
 from src.vectl.driver.errors import ConfigError
 from src.vectl.driver.judge import Judge
 from src.vectl.driver.loop import (
+    COMPLETION_AUTHORITY_A1_CONTRACT,
     DEFERRED_REPLAN_BRANCHES,
     GRACEFUL_SHUTDOWN_CONTRACT,
     STARTUP_RECOVERY_CONTRACT,
-    DeferredRuntimeBranch,
-    GracefulShutdownContract,
-    StartupRecoveryContract,
+    CompletionAuthorityContract,
     handle_complete,
     handle_dispatch,
     reconcile,
@@ -53,7 +52,6 @@ from src.vectl.driver.runners import Runner
 from src.vectl.driver.session import SessionPool
 from src.vectl.driver.types import CompletedEntry, DriverState, RunnerResult, RunnerStatus
 from vectl.models import DecideOutput
-
 
 # =============================================================================
 # FIXTURES
@@ -226,6 +224,55 @@ class TestStartupRecoveryContract:
         assert "reconcile.failure_classification_replan" in branch_names
         assert "reconcile.escalation_replan" in branch_names
         assert "run.startup_recovery_anomaly_replan" in branch_names
+
+
+class TestCompletionAuthorityA1Contract:
+    """Contract pins for reconcile-only completion authority convergence."""
+
+    def test_completion_authority_contract_shape(self) -> None:
+        """A1 completion authority contract MUST expose required metadata."""
+        contract = COMPLETION_AUTHORITY_A1_CONTRACT
+        assert isinstance(contract, CompletionAuthorityContract)
+        assert contract.contract_id == "driver-runtime-completion-authority-a1"
+        assert contract.source_step_id == "driver-debt-completion-authority.contract"
+        assert contract.sole_completion_sink == "wait_for_any_then_reconcile"
+        assert contract.implementation_owner_step == "driver-debt-completion-authority.impl"
+
+    def test_completion_authority_required_statements_are_pinned(self) -> None:
+        """A1 contract MUST pin required completion authority statements."""
+        contract = COMPLETION_AUTHORITY_A1_CONTRACT
+        assert (
+            "MUST NOT pass raw completed_results"
+            in contract.decide_runtime_completed_results_policy
+        )
+        assert (
+            "MUST NOT execute handle_complete()" in contract.runtime_main_path_forbidden_actions[0]
+        )
+
+        side_effects = set(contract.reconcile_side_effect_owner)
+        assert side_effects == {
+            "evidence judgment",
+            "complete/defer lifecycle mutation",
+            "merge",
+            "session record",
+            "worktree cleanup",
+            "event emission",
+        }
+
+    def test_completion_authority_legacy_shim_and_risk_blockers(self) -> None:
+        """A1 contract MUST document shim disposition and blocker regressions."""
+        contract = COMPLETION_AUTHORITY_A1_CONTRACT
+        assert contract.handle_complete_disposition in {
+            "delete_preferred_if_feasible",
+            "legacy_internal_shim_only",
+        }
+        assert len(contract.handle_complete_removal_conditions) >= 1
+        assert contract.escalation_once_per_completed_result is True
+        assert "duplicate complete_step() for one runner result" in contract.blocker_regressions
+        assert (
+            "duplicate STEP_COMPLETED emission for one runner result"
+            in contract.blocker_regressions
+        )
 
 
 class TestStartupRecoveryPath:

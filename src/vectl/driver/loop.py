@@ -93,6 +93,51 @@ LoopSurfaceName = Literal[
 ]
 
 
+CompletionSinkName = Literal["wait_for_any_then_reconcile"]
+
+
+LegacyCompleteShimDisposition = Literal[
+    "delete_preferred_if_feasible",
+    "legacy_internal_shim_only",
+]
+
+
+@dataclass(frozen=True)
+class CompletionAuthorityContract:
+    """Approved A1 runtime completion authority contract.
+
+    Authority source:
+    - step ``driver-debt-completion-authority.contract`` required statements.
+
+    Scope:
+    - pins runtime authority boundaries only
+    - carries no runtime behavior changes in this contract phase
+
+    Invariants:
+        - Runtime must not route raw runner completions through ``decide()`` for
+          completion-action generation.
+        - Main runtime completion sink is exactly ``wait_for_any()`` then
+          ``reconcile()``.
+        - ``reconcile()`` is the sole owner of completion/failure/session
+          side-effects.
+        - ``handle_complete()`` is removed if feasible; otherwise constrained to
+          a legacy/internal shim path outside main runtime flow.
+    """
+
+    contract_id: str
+    source_step_id: str
+    decide_runtime_completed_results_policy: str
+    runtime_main_path_forbidden_actions: tuple[str, ...]
+    sole_completion_sink: CompletionSinkName
+    reconcile_side_effect_owner: tuple[str, ...]
+    handle_complete_disposition: LegacyCompleteShimDisposition
+    handle_complete_removal_conditions: tuple[str, ...]
+    blocker_regressions: tuple[str, ...]
+    escalation_once_per_completed_result: bool
+    implementation_owner_step: str
+    rationale: str
+
+
 @dataclass(frozen=True)
 class DeferredRuntimeBranch:
     """Bounded runtime behavior intentionally deferred to a later phase.
@@ -357,6 +402,43 @@ class GracefulShutdownContract:
 
 STARTUP_RECOVERY_CONTRACT: Final[StartupRecoveryContract] = StartupRecoveryContract()
 GRACEFUL_SHUTDOWN_CONTRACT: Final[GracefulShutdownContract] = GracefulShutdownContract()
+
+
+COMPLETION_AUTHORITY_A1_CONTRACT: Final[CompletionAuthorityContract] = CompletionAuthorityContract(
+    contract_id="driver-runtime-completion-authority-a1",
+    source_step_id="driver-debt-completion-authority.contract",
+    decide_runtime_completed_results_policy=(
+        "driver runtime MUST NOT pass raw completed_results into decide() "
+        "for completion action generation"
+    ),
+    runtime_main_path_forbidden_actions=(
+        "_run_main_loop main path MUST NOT execute handle_complete() for runner completion",
+    ),
+    sole_completion_sink="wait_for_any_then_reconcile",
+    reconcile_side_effect_owner=(
+        "evidence judgment",
+        "complete/defer lifecycle mutation",
+        "merge",
+        "session record",
+        "worktree cleanup",
+        "event emission",
+    ),
+    handle_complete_disposition="legacy_internal_shim_only",
+    handle_complete_removal_conditions=(
+        "delete handle_complete() when no legacy caller depends on decide(action='complete')",
+        "if retained, keep off main runtime path and scope to internal compatibility only",
+    ),
+    blocker_regressions=(
+        "duplicate complete_step() for one runner result",
+        "duplicate STEP_COMPLETED emission for one runner result",
+    ),
+    escalation_once_per_completed_result=True,
+    implementation_owner_step="driver-debt-completion-authority.impl",
+    rationale=(
+        "A1 authority converges runtime completion semantics to one sink so "
+        "completion side-effects are serialized and idempotence risks are bounded."
+    ),
+)
 
 # Bounded REPLAN-capable branches intentionally deferred to the
 # driver-judgment-expansion-replan phase. These names are contract authority for
@@ -1435,8 +1517,11 @@ async def handle_complete(
     - complete the step using CAS-safe lifecycle operations
     - persist the resulting plan state
 
-    This surface exists separately from ``reconcile()`` because ``decide()`` may
-    emit completion actions based on prior iteration results.
+    Legacy-shim disposition (A1 authority):
+    - main runtime path should converge on ``wait_for_any() -> reconcile()`` as
+      the sole completion sink.
+    - this function remains only as an internal compatibility shim until
+      ``driver-debt-completion-authority.impl`` removes or narrows legacy calls.
     """
     if action.step_id is None:
         raise PlanError("complete action requires step_id")
@@ -1941,7 +2026,15 @@ async def _run_main_loop(
     observer: Observer,
     plan_path: Path,
 ) -> None:
-    """Execute the deterministic decide/dispatch/wait/reconcile loop."""
+    """Execute the deterministic decide/dispatch/wait/reconcile loop.
+
+    Completion authority note (A1 contract pin):
+    - runtime convergence target is a single completion sink
+      ``wait_for_any() -> reconcile()``
+    - ``handle_complete()`` is legacy/internal compatibility only and should be
+      removed from the main runtime path by
+      ``driver-debt-completion-authority.impl``
+    """
     state.runtime_config = config
     state.runtime_runners = runners
 
@@ -2013,6 +2106,9 @@ async def _run_main_loop(
 
 
 __all__ = [
+    "COMPLETION_AUTHORITY_A1_CONTRACT",
+    "CompletionAuthorityContract",
+    "CompletionSinkName",
     "CONFLICT_RESOLVER_READINESS_CONTRACT",
     "ConflictResolverDispatcher",
     "ConflictResolverReadinessContract",
@@ -2023,6 +2119,7 @@ __all__ = [
     "GateRemediationTriggerName",
     "GRACEFUL_SHUTDOWN_CONTRACT",
     "LoopSurfaceName",
+    "LegacyCompleteShimDisposition",
     "PlannerDispatchContract",
     "PlannerDispatchRequest",
     "PlannerDispatcher",

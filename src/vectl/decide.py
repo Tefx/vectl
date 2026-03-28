@@ -140,6 +140,11 @@ def decide(
     Args:
         running_tasks: Currently running tasks (in-flight work).
         completed_results: Tasks that have completed since last decision.
+            Runtime authority note:
+            ``driver-debt-completion-authority.contract`` pins that driver main
+            loop completion/failure ownership converges on
+            ``wait_for_any() -> reconcile()``. Driver runtime should not feed raw
+            runner completions here for completion-action generation.
         max_parallelism: Maximum allowed parallel dispatches.
         state: Mutable decide-side memory container. Driver runtime must pass
             ``DriverState.decide_state`` explicitly.

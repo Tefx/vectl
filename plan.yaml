@@ -40302,6 +40302,49 @@ phases:
     depends_on:
     - driver-routing-hardening.contract
     agent: python-executor
+  - id: driver-routing-hardening.impl
+    name: Reject reserved `agent_routing.default` during config load
+    status: pending
+    description: 'step_type: implementation
+
+
+      Implement the reserved-key validation in driver config loading and model validation.
+
+
+      Scope:
+
+      - reject `agent_routing.default` during config validation with a clear error
+
+      - preserve exact match, glob match, and `fallback_runner` semantics unchanged
+
+      - do not add implicit default-routing behavior to `agent_routing`
+
+
+      Files likely touched:
+
+      - `src/vectl/driver/config.py`
+
+      - focused driver config tests only
+
+
+      Completion criteria:
+
+      - invalid configs fail during `load_config()` / `DriverConfig` validation
+
+      - error text is specific enough for users to self-correct
+
+      - no runtime path silently ignores the key'
+    verification: 'phase-check protecting driver-routing-hardening.verify.
+
+      - Targeted config tests prove reserved-key rejection
+
+      - Existing valid routing behavior stays green
+
+      - Evidence includes the exact invalid config fixture and the exact error text'
+    depends_on:
+    - driver-routing-hardening.contract
+    - driver-routing-hardening.test-define-red
+    agent: python-executor
 - id: driver-enhancement-foundation
   name: Driver Enhancement Foundation
   status: locked

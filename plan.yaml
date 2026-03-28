@@ -39466,10 +39466,9 @@ phases:
       around registry control
 
       - Proof: action metadata is centralized in action_registry.py, planner dispatch
-      is within declared registry coverage, and covered actions do not require dynamic
-      registration hooks'
-    depends_on:
-    - driver-evolution-action-registry.planner-dispatch-contract
+      is within declared registry coverage, RuntimeContext ownership comes from the
+      prior runtime-context gate, and covered actions do not require dynamic registration
+      hooks'
     agent: python-senior
   - id: driver-evolution-action-registry.implement-planner-dispatch-registration
     name: Register planner dispatch in the action registry

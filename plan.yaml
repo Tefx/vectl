@@ -38873,7 +38873,7 @@ phases:
     agent: blind-tester
   - id: driver-debt-system-wiring.full-plan-check
     name: Run full-plan driver debt check
-    status: pending
+    status: claimed
     description: 'step_type: verification
 
       Verification scope: full-plan-check protecting driver-debt-deep-review.
@@ -38909,6 +38909,8 @@ phases:
     depends_on:
     - driver-debt-system-wiring.integrate-runtime-surfaces
     agent: integration-verifier
+    claimed_by: integration-verifier
+    claimed_at: '2026-03-28T21:45:34.148353+00:00'
   - id: driver-debt-system-wiring.gate
     name: Gate driver debt system wiring
     status: pending

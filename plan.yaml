@@ -43687,7 +43687,7 @@ phases:
     agent: gate-reviewer
 - id: driver-continuity-foundation
   name: 'Driver Continuity: Foundation'
-  status: in_progress
+  status: done
   gate: Approved continuity architecture basis exists for session authority convergence,
     durable resume state, replay safety, runner capability semantics, and recovery-grade
     minimum telemetry before implementation fan-out.
@@ -43922,7 +43922,7 @@ phases:
       \ grep checks confirmed expected continuity symbols present"
   - id: driver-continuity-foundation.gate-retest
     name: Retest continuity foundation gate blockers
-    status: claimed
+    status: done
     description: 'step_type: gate
 
       step_intent: retest_green
@@ -43984,9 +43984,28 @@ phases:
     agent: gate-reviewer
     claimed_by: gate-reviewer
     claimed_at: '2026-03-28T23:25:11.647358+00:00'
+    done_at: '2026-03-28T23:28:46.969720+00:00'
+    evidence: "## Continuity Foundation Gate Retest\n- Verified artifact paths:\n\
+      \  - docs/DRIVER-CONTINUITY-FOUNDATION.md exists\n  - src/vectl/driver/runner_continuity.py\
+      \ exists\n  - tests/test_driver_continuity_contract.py exists\n  - src/vectl/driver/session.py:\
+      \ SESSION_CONTINUITY_AUTHORITIES exists\n  - src/vectl/driver/types.py continuity\
+      \ contract symbols exist: ReplaySafetyEnvelope, ContinuityJournalEntry, ContinuityLedgerEntry,\
+      \ ContinuityHandoff, StartupRecoveryControllerInput, StartupRecoveryControllerOutput,\
+      \ StartupRecoveryController\n  - docs/DRIVER-ARCHITECTURE.md references continuity\
+      \ foundation document\n- Verified test identifiers:\n  - tests/test_driver_continuity_contract.py::test_continuity_foundation_doc_exists\
+      \ PASSED\n  - tests/test_driver_continuity_contract.py::test_session_continuity_authorities_are_explicit\
+      \ PASSED\n  - tests/test_driver_continuity_contract.py::test_continuity_types_exist_with_pinned_fields\
+      \ PASSED\n  - tests/test_driver_continuity_contract.py::test_startup_recovery_controller_contract_is_present\
+      \ PASSED\n  - tests/test_driver_continuity_contract.py::test_runner_continuity_capabilities_are_repo_present_and_explicit\
+      \ PASSED\n  - 5 passed in ~2s\n- Remaining ambiguity found: none\n- Gate decision:\
+      \ OPEN\n- If blocked, list exact blocker(s) still present: N/A\n- step_intent:\
+      \ retest_green\n- expected_result: green\n- observed_result: original blocker\
+      \ set is closed with repo-backed evidence\n- failure_alignment: N/A\n- whether\
+      \ any product implementation files were modified: no additional implementation\
+      \ mutations in this retest step"
 - id: driver-continuity-authority-ledger
   name: 'Driver Continuity: Authority & Ledger'
-  status: locked
+  status: pending
   gate: Driver has one durable authority for resumable session continuity, a recovery-grade
     continuity ledger, and minimum journal evidence sufficient for restart/resume
     decisions.
@@ -44137,7 +44156,7 @@ phases:
     agent: gate-reviewer
 - id: driver-continuity-capability-safety
   name: 'Driver Continuity: Capability & Replay Safety'
-  status: locked
+  status: pending
   gate: Runner capability semantics and tool replay safety are explicit enough for
     restart/resume control decisions and cannot silently duplicate or reapply prior
     side effects.

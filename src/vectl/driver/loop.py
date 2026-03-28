@@ -48,7 +48,7 @@ from .errors import ConfigError, RunnerError
 from .judge import Judge
 from .judgments import JudgmentRequest, JudgmentType, JudgmentVerdict
 from .observe import Observer, create_observer
-from .runners import Runner, create_runner
+from .runners import Runner, RunnerStatus as RunnerDispatchStatus, create_runner
 from .session import SessionPool
 from .types import CompletedEntry, DriverState, RunnerStatus
 from .worktree import (
@@ -106,6 +106,19 @@ ReplanTriggerName = Literal[
     "reconcile.escalation_replan",
     "run.startup_recovery_anomaly_replan",
 ]
+
+
+GateRejectPlannerTriggerName = Literal["reconcile.gate_reject_fix_retest_chain"]
+
+
+PlannerDispatchTriggerName = ReplanTriggerName | GateRejectPlannerTriggerName
+
+
+PlannerDispatchSourceVerdict = Literal["REPLAN", "REJECT"]
+
+
+PLANNER_SOURCE_VERDICT_REPLAN: Final[PlannerDispatchSourceVerdict] = "REPLAN"
+PLANNER_SOURCE_VERDICT_REJECT: Final[PlannerDispatchSourceVerdict] = "REJECT"
 
 
 RemainingJudgmentTriggerName = Literal[
@@ -170,7 +183,7 @@ class GateRemediationChainContract:
 
     trigger: GateRemediationTriggerName
     judgment_trigger: RemainingJudgmentTriggerName
-    planner_trigger: str
+    planner_trigger: GateRejectPlannerTriggerName
     batched_remediation_owner: str
     retest_step_owner: str
     blocker_severities: tuple[str, ...]
@@ -260,7 +273,7 @@ class PlannerDispatchContract:
 
 @dataclass(frozen=True)
 class PlannerDispatchRequest:
-    """Planner dispatch payload derived from a REPLAN verdict.
+    """Planner dispatch payload derived from planner-dispatch verdict branches.
 
     Architecture: docs/DRIVER-ARCHITECTURE.md Section 2.11 (`dispatch_planner`)
     Blueprint: DRIVER-BLUEPRINT.md lines 566-568, 697-698, 728-733
@@ -270,7 +283,7 @@ class PlannerDispatchRequest:
 
     Invariants:
         - ``planner_instruction`` is non-empty and comes from the judge verdict.
-        - ``source_verdict`` is exactly ``"REPLAN"``.
+        - ``source_verdict`` is either ``"REPLAN"`` or ``"REJECT"``.
         - ``trigger`` identifies the originating branch so later phases cannot
           silently merge distinct REPLAN sites into one reject-only path.
         - ``step_id`` identifies the step whose plan needs strengthening,
@@ -278,10 +291,10 @@ class PlannerDispatchRequest:
     """
 
     step_id: str
-    trigger: ReplanTriggerName
+    trigger: PlannerDispatchTriggerName
     judgment_type: str
     planner_instruction: str
-    source_verdict: str = "REPLAN"
+    source_verdict: PlannerDispatchSourceVerdict = PLANNER_SOURCE_VERDICT_REPLAN
 
 
 class PlannerDispatcher(Protocol):
@@ -661,7 +674,7 @@ async def dispatch_planner(
     )
     result = await handle.wait()
 
-    if result.status != RunnerStatus.SUCCESS:
+    if result.status != RunnerDispatchStatus.SUCCESS:
         observer.emit(
             "PLANNER_DISPATCH_FAILED",
             step_id=request.step_id,
@@ -1707,10 +1720,10 @@ async def reconcile(
                         await dispatch_planner(
                             PlannerDispatchRequest(
                                 step_id=completed.step_id,
-                                trigger="reconcile.evidence_replan",
+                                trigger=GATE_REMEDIATION_CHAIN_CONTRACT.planner_trigger,
                                 judgment_type="GATE",
                                 planner_instruction=batch_instruction,
-                                source_verdict="REJECT",
+                                source_verdict=PLANNER_SOURCE_VERDICT_REJECT,
                             ),
                             config=runtime_config,
                             runners=runtime_runners,
@@ -1857,7 +1870,7 @@ async def reconcile(
                     trigger="reconcile.failure_classification_replan",
                     judgment_type="FAILURE",
                     planner_instruction=failure_verdict.planner_instruction,
-                    source_verdict=failure_verdict.verdict,
+                    source_verdict=PLANNER_SOURCE_VERDICT_REPLAN,
                 ),
                 config=runtime_config,
                 runners=runtime_runners,

@@ -32750,14 +32750,21 @@ phases:
       Verification scope: phase-check protecting driver-judgment-expansion-replan.gate.
 
 
+      POST-IMPLEMENTATION GREEN VERIFICATION STEP.
+
+
       Provide end-to-end proof for a gate failure or equivalent remediation-triggering
       path that results in planner-directed follow-up behavior.
 
 
-      Mock-only evidence is insufficient.'
+      Mock-only evidence is insufficient. Failures here are implementation verification
+      findings, not expected-red.'
     verification: '- Exact command/test and output are included
 
-      - Evidence shows the trigger, judgment verdict, and follow-up action path'
+      - Evidence shows the trigger, judgment verdict, and follow-up action path
+
+      - Expected result is green pass against implemented gate-chain behavior; red
+      outcomes must be reported as findings'
     depends_on:
     - driver-judgment-expansion-replan.impl-gate-chain-flow
     agent: integration-verifier

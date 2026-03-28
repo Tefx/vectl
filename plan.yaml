@@ -38636,3 +38636,10 @@ phases:
     against the ADR
   depends_on:
   - driver-evolution-events-foundation
+- id: driver-evolution-runtime-context
+  name: 'Driver Evolution: Runtime Context'
+  status: locked
+  gate: Typed runtime context replaces ad hoc handler inputs without regressing driver
+    entrypoint behavior
+  depends_on:
+  - driver-evolution-event-contracts

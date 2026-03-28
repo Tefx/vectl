@@ -42776,3 +42776,13 @@ phases:
     side effects.
   depends_on:
   - driver-continuity-foundation
+- id: driver-continuity-restart-recovery
+  name: 'Driver Continuity: Restart Recovery'
+  status: locked
+  gate: After abnormal stop, failed step, or process restart, the driver can recover
+    continuity state, apply replay-safe resume decisions, and align judge failure
+    handling with continuity policy.
+  depends_on:
+  - driver-continuity-authority-ledger
+  - driver-continuity-capability-safety
+  - driver-judge-hardening-recovery-policy

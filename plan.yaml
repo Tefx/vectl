@@ -40263,6 +40263,45 @@ phases:
 
       - Contract defines the required user-facing error guidance'
     agent: python-senior
+  - id: driver-routing-hardening.test-define-red
+    name: Define expected-red invalid default routing regression
+    status: pending
+    description: 'step_type: test
+
+      step_intent: test_define_red
+
+      expected_result: red
+
+
+      Define failing tests for the reserved-key case before implementation.
+
+
+      Test scope is limited to `tests/` plus fixtures/helpers. Success means the gap
+      is exposed without modifying product code.
+
+
+      Required cases:
+
+      - config containing `agent_routing.default` fails validation
+
+      - error text explicitly says the key is unsupported and points users to `fallback_runner`
+      / explicit patterns
+
+      - valid exact/glob routing plus `fallback_runner` still load successfully
+
+
+      Evidence must include `expected_failures` and identify `driver-routing-hardening.impl`
+      as the downstream implementation owner.'
+    verification: 'local-check protecting driver-routing-hardening.impl.
+
+      - Added tests are limited to driver config test surfaces
+
+      - At least one fixture includes `agent_routing.default` and fails before implementation
+
+      - Evidence records the exposed validation gap and expected error text'
+    depends_on:
+    - driver-routing-hardening.contract
+    agent: python-executor
 - id: driver-enhancement-foundation
   name: Driver Enhancement Foundation
   status: locked

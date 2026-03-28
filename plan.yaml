@@ -44158,7 +44158,7 @@ phases:
     agent: gate-reviewer
 - id: driver-continuity-capability-safety
   name: 'Driver Continuity: Capability & Replay Safety'
-  status: pending
+  status: in_progress
   gate: Runner capability semantics and tool replay safety are explicit enough for
     restart/resume control decisions and cannot silently duplicate or reapply prior
     side effects.
@@ -44266,7 +44266,7 @@ phases:
     agent: gate-reviewer
   - id: driver-continuity-capability-safety.design-and-test
     name: Design capability boundary and write expected-red tests
-    status: pending
+    status: claimed
     description: 'step_type: test
 
       merged_contract_test: true
@@ -44317,6 +44317,8 @@ phases:
 
       - Outputs include both boundary design notes and failing tests'
     agent: python-senior
+    claimed_by: python-senior
+    claimed_at: '2026-03-28T23:30:00.295686+00:00'
 - id: driver-continuity-restart-recovery
   name: 'Driver Continuity: Restart Recovery'
   status: locked

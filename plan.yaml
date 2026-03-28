@@ -33817,13 +33817,13 @@ phases:
       - controlled cycle/operation reached: yes'
 - id: driver-multi-runner-hardening
   name: Driver Multi-Runner Hardening
-  status: pending
+  status: in_progress
   depends_on:
   - driver-judgment-runtime-minimal
   steps:
   - id: driver-multi-runner-hardening.contract-runners-extended
     name: Contract extended runners
-    status: pending
+    status: claimed
     description: "step_type: contract\ncontract_purity: ENFORCED\ncontract_outputs:\n\
       \  - signatures\n  - type_defs\n  - interfaces\n  - stubs\n\nExtend the runner\
       \ contract to cover CodexRunner and GeminiRunner, resume semantics, parser semantics,\
@@ -33833,6 +33833,8 @@ phases:
 
       - Resume/output/parser requirements are pinned for each extended runner'
     agent: python-executor
+    claimed_by: python-executor
+    claimed_at: '2026-03-28T09:11:52.544419+00:00'
   - id: driver-multi-runner-hardening.test-runners-extended
     name: Test extended runners
     status: pending

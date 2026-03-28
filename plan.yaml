@@ -34771,7 +34771,7 @@ phases:
       blockers, cold-context requests, anomaly request builder'
   - id: driver-judgment-expansion-replan.verify-gate-chain-e2e
     name: Verify gate-chain end-to-end
-    status: pending
+    status: claimed
     description: 'step_type: verification
 
       Verification scope: phase-check protecting driver-judgment-expansion-replan.gate.
@@ -34795,6 +34795,8 @@ phases:
     depends_on:
     - driver-judgment-expansion-replan.impl-gate-chain-flow
     agent: integration-verifier
+    claimed_by: integration-verifier
+    claimed_at: '2026-03-28T11:06:57.160810+00:00'
   - id: driver-judgment-expansion-replan.spec-conformance
     name: Judgment expansion and replan spec conformance
     status: pending

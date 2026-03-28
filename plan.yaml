@@ -32121,11 +32121,14 @@ phases:
       - deferred-vs-implemented runner scope is explicit'
     verification: '- All driver-execution-infra steps completed successfully
 
-      - Real git and real CLI verification evidence is present
+      - Batched remediation retest evidence is present for the full relevant suite
+
+      - Required execution-infra guard checks are green using the project-required
+      guard command family
 
       - No blocker remains for driver-judgment-runtime-minimal'
     depends_on:
-    - driver-execution-infra.spec-conformance
+    - driver-execution-infra.retest-gate-blockers
     agent: gate-reviewer
     claimed_by: gate-reviewer
     claimed_at: '2026-03-28T03:26:22.060916+00:00'

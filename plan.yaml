@@ -41661,6 +41661,69 @@ phases:
 
       ```'
     agent: python-senior
+  - id: driver-prompt-migration.authority-reference-migration
+    name: Migrate prompt authority references and drift checks
+    status: pending
+    description: 'step_type: implementation
+
+      Verification scope: local-check protecting driver-prompt-migration.runtime-retest
+      and gate.
+
+
+      Migrate driver code/tests away from treating docs/JUDGE-AGENT-PROMPT.md as the
+      runtime authority and make prompt drift visible.
+
+
+      Required scope:
+
+      - Update code comments/docstrings/tests that currently cite docs/JUDGE-AGENT-PROMPT.md
+      as the runtime source of truth so they instead reference the packaged resource
+      contract and docs-mirror role.
+
+      - Add or update verification that makes docs/runtime drift explicit rather than
+      silently tolerated.
+
+      - Preserve docs/JUDGE-AGENT-PROMPT.md as a mirror/spec artifact until the final
+      review sync step updates the rendered documentation.
+
+
+      Primary seams:
+
+      - src/vectl/driver/judgments.py
+
+      - src/vectl/driver/loop.py
+
+      - driver-related tests that currently encode docs-path authority
+
+
+      Non-goals:
+
+      - Do not re-open verdict schema design.
+
+      - Do not introduce a second runtime prompt source.
+
+
+      Completion Criteria (stub exclusion)
+
+      This is an IMPLEMENTATION step. Stub-only completion is NOT acceptable.'
+    verification: '- References no longer imply docs/ is required at runtime.
+
+      - At least one verification path makes docs mirror drift explicit.
+
+      - Tests/comments remain aligned with the packaged-resource contract pinned in
+      foundation.'
+    evidence_template: '## Migration Evidence
+
+      - Files updated:
+
+      - Old docs-authority references removed/rephrased:
+
+      - Drift visibility added in:
+
+      - Exact tests/checks run:
+
+      - Remaining references intentionally kept for doc-mirror/spec purposes:'
+    agent: python-executor
 - id: driver-prompt-review
   name: Driver Prompt Resource Review
   status: locked

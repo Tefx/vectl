@@ -39012,7 +39012,7 @@ phases:
       \ adapter\n- Policy helpers are cleanly extracted"
   - id: driver-debt-system-wiring.gate
     name: Gate driver debt system wiring
-    status: pending
+    status: claimed
     description: 'step_type: gate
 
       Gate review for integrated driver debt remediation.
@@ -39050,6 +39050,8 @@ phases:
     - driver-debt-system-wiring.runtime-liveness
     - driver-debt-system-wiring.full-plan-check
     agent: gate-reviewer
+    claimed_by: integration-verifier
+    claimed_at: '2026-03-28T22:05:20.257349+00:00'
 - id: driver-debt-doc-sync
   name: 'Driver Debt: Documentation Sync'
   status: done

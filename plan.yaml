@@ -42515,28 +42515,29 @@ phases:
   - id: driver-judge-hardening-recovery-policy.impl
     name: Implement judge failure handling policy
     status: pending
-    description: "step_type: implementation\nspec_refs:\n  - driver.yaml#judge\n \
-      \ - docs/DRIVER-ARCHITECTURE.md#judge-runtime\ntouch_paths:\n  - src/vectl/driver/judge.py\n\
-      \  - src/vectl/driver/loop.py\n  - src/vectl/driver/errors.py\n  - src/vectl/driver/observe.py\n\
-      \  - src/vectl/driver/types.py\n  - tests/test_driver_judge.py\n  - tests/test_driver_loop_runtime.py\n\
-      harness_refs:\n  - failure policy matrix\n  - driver event / escalation emission\
-      \ path\nauthoritative_interface: contracted failure disposition matrix for judge\
-      \ failures\nagent_source: default\ntags:\n  - integration\n\nImplement the judge\
-      \ failure handling matrix without silently degrading bootstrap safety.\n\nRequired\
-      \ outcomes:\n- `JudgmentParseError`, timeout, malformed output, and empty output\
-      \ are classified according to the pinned matrix\n- retry/fallback/halt/planner-remediation\
-      \ behavior is explicit and evidence-preserving\n- failure behavior remains consistent\
-      \ across preflight, cold_context, failure, and gate judgment flows\n\n## Failure-mode\
-      \ checklist\n- timeout before any output\n- partial output followed by stall\
-      \ timeout\n- malformed output that cannot satisfy verdict schema\n- empty output\
-      \ after successful process launch\n- fallback eligibility vs hard halt for unsupported\
-      \ structured-output capability\n\n## State semantics\n- evidence from the original\
-      \ failed attempt must be preserved exactly where the contract requires it\n\
-      - hard-fail classes must not be silently converted into tolerant extraction\
-      \ success\n- planner remediation triggers must remain deterministic\n\n## Completion\
-      \ Criteria (stub exclusion)\nThis is an IMPLEMENTATION step. Stub-only completion\
-      \ is NOT acceptable.\n\nOut of scope: adding new runner types or broad retry\
-      \ frameworks beyond the judge failure policy surface."
+    description: 'step_type: implementation
+
+      Implement judge failure handling so outcomes are stable, structured, and consumable
+      by the continuity recovery controller.
+
+
+      Scope:
+
+      - produce the authoritative judge-side retry/fallback/halt/remediation matrix
+
+      - emit continuity-consumable outcome classes and provenance
+
+      - avoid duplicating durable resume state, startup recovery, or replay-safety
+      ownership
+
+
+      KNOWN RISKS:
+
+      - ambiguous judge output must not force continuity code to infer policy from
+      raw text
+
+      - any restart/resume behavior here must remain declarative outputs, not a second
+      recovery controller'
     verification: '- Main path: focused failure-policy tests pass
 
       - Failure path: regressions prove correct retry/fallback/halt/remediation behavior

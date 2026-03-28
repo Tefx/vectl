@@ -40239,6 +40239,30 @@ phases:
     and independent verification.
   depends_on:
   - driver-evolution-review
+  steps:
+  - id: driver-routing-hardening.contract
+    name: Pin invalid `agent_routing.default` validation semantics
+    status: pending
+    description: "step_type: contract\ncontract_purity: ENFORCED\ncontract_outputs:\n\
+      \  - config_validation_semantics\n  - error_contract\n\nPin the confirmed config\
+      \ contract: `agent_routing.default` is NOT a legal routing semantic and MUST\
+      \ be rejected during config validation rather than ignored at runtime.\n\nRequired\
+      \ outputs:\n- authoritative validation rule for `src/vectl/driver/config.py`\n\
+      - exact failure semantics for configs that include the reserved key `agent_routing.default`\n\
+      - clear error guidance telling users to use explicit exact/glob entries in `agent_routing`\
+      \ or `fallback_runner`\n- explicit statement that `route_agent()` continues\
+      \ to support only exact match, glob match, and `fallback_runner`\n\nAuthoritative\
+      \ refs:\n- `src/vectl/driver/config.py` (`route_agent`, `DriverConfig` validation)\n\
+      - latest driver config docs after removal of the stale `default: opencode` example\n\
+      \nDownstream gate protected: driver-routing-hardening.gate."
+    verification: 'local-check protecting driver-routing-hardening.impl.
+
+      - Contract names the invalid key exactly: `agent_routing.default`
+
+      - Contract states rejection happens in config validation, not in runtime routing
+
+      - Contract defines the required user-facing error guidance'
+    agent: python-senior
 - id: driver-enhancement-foundation
   name: Driver Enhancement Foundation
   status: locked

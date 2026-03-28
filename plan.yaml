@@ -38500,6 +38500,84 @@ phases:
   status: locked
   depends_on:
   - driver-debt-system-wiring
+  steps:
+  - id: driver-debt-doc-sync.update-docs
+    name: Sync driver docs to remediated architecture
+    status: pending
+    description: 'step_type: implementation
+
+      Verification scope: phase-check protecting driver-debt-doc-sync.gate.
+
+
+      Update documentation to match the implemented driver debt remediation.
+
+
+      Required docs to inspect/update:
+
+      - docs/DRIVER-ARCHITECTURE.md ownership boundary text for SessionPool vs DecideState
+
+      - runtime loop authority notes (reconcile-only completion sink)
+
+      - CLI entrypoint section for positional config, --config, and shared exit codes
+
+      - any code docstrings/comments that still describe handle_complete main-path
+      ownership or module-global decide state
+
+
+      Do not invent new architecture; sync docs to the approved and implemented behavior.'
+    verification: '- Docs align with implemented behavior and no stale statements
+      remain for the remediated surfaces'
+    refs:
+    - docs/DRIVER-ARCHITECTURE.md
+    - src/vectl/driver/session.py
+    - src/vectl/driver/loop.py
+    - src/vectl/driver/__main__.py
+    - src/vectl/cli.py
+    agent: doc-reviewer
+  - id: driver-debt-doc-sync.freeze
+    name: Freeze snapshot for doc-sync gate
+    status: pending
+    description: 'step_type: verification
+
+      Verification scope: phase-check protecting driver-debt-doc-sync.gate.
+
+
+      Freeze the documentation snapshot before gate review.
+
+      Required evidence: git rev-parse HEAD, clean status, environment declaration,
+      and no-change statement.'
+    verification: '- Freeze evidence complete before gate'
+    refs:
+    - docs/DRIVER-ARCHITECTURE.md
+    depends_on:
+    - driver-debt-doc-sync.update-docs
+    agent: integration-verifier
+  - id: driver-debt-doc-sync.gate
+    name: Gate driver debt doc sync
+    status: pending
+    description: 'step_type: gate
+
+      BLOCK if docs still describe the pre-remediation authority/entrypoint/state
+      model.
+
+
+      review_depth: STANDARD
+
+      cross_cutting_focus:
+
+      - authority ownership wording
+
+      - CLI invocation wording
+
+      - stale code comments/docstrings'
+    verification: '- Doc drift for the remediated surfaces is closed'
+    refs:
+    - docs/DRIVER-ARCHITECTURE.md
+    - src/vectl/driver/session.py
+    - src/vectl/driver/loop.py
+    depends_on:
+    - driver-debt-doc-sync.freeze
+    agent: gate-reviewer
 - id: driver-debt-deep-review
   name: 'Driver Debt: Deep Review'
   status: locked

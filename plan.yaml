@@ -32537,7 +32537,7 @@ phases:
   steps:
   - id: driver-judgment-runtime-minimal.contract-judgments
     name: Contract judgment types and requests
-    status: claimed
+    status: done
     description: "step_type: contract\ncontract_purity: ENFORCED\ncontract_outputs:\n\
       \  - signatures\n  - type_defs\n  - interfaces\n  - stubs\n\nPin the exact JudgmentType,\
       \ JudgmentRequest, JudgmentVerdict, and CONTEXT_SCHEMAS contracts from docs/DRIVER-ARCHITECTURE.md\
@@ -32551,6 +32551,36 @@ phases:
     agent: python-executor
     claimed_by: python-executor
     claimed_at: '2026-03-28T04:23:08.350344+00:00'
+    done_at: '2026-03-28T04:26:23.858349+00:00'
+    evidence: 'Artifact:
+
+      - Commit: e28791dc3b525bef074bac32012ca9b4815c6b14
+
+
+      Verification:
+
+      - Run: uv run pyright src/vectl/driver/judgments.py -> 0 errors, 0 warnings
+
+      - Run: uv run python -c "from vectl.driver.judgments import JudgmentType, JudgmentRequest,
+      JudgmentVerdict, CONTEXT_SCHEMAS, VERDICT_VALUES" -> Import OK
+
+      - Verified: seven judgment types present (PREFLIGHT, EVIDENCE, FAILURE, ESCALATION,
+      GATE, ANOMALY, COLD_CONTEXT)
+
+      - Verified: CONTEXT_SCHEMAS required/optional keys align with docs/DRIVER-ARCHITECTURE.md
+      §2.9
+
+      - Verified: JudgmentVerdict schema aligns with docs/JUDGE-AGENT-PROMPT.md required
+      fields
+
+      - Verified: no judge invocation logic implemented in this contract step
+
+
+      Spec link:
+
+      - docs/DRIVER-ARCHITECTURE.md §2.9
+
+      - docs/JUDGE-AGENT-PROMPT.md'
   - id: driver-judgment-runtime-minimal.contract-judgment-coverage-matrix
     name: Contract judgment coverage matrix
     status: pending

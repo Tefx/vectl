@@ -42829,6 +42829,26 @@ phases:
 
       - Contract output is acceptance-only and contains no runnable business logic'
     agent: software-architect
+  - id: driver-continuity-foundation.gate
+    name: Gate continuity foundation
+    status: pending
+    description: "step_type: gate\nGate review for continuity foundation. Verification\
+      \ scope: phase-check protecting driver-continuity-authority-ledger.gate and\
+      \ driver-continuity-capability-safety.gate.\n\nreview_depth: THOROUGH\ncross_cutting_focus:\n\
+      \  - Session authority convergence removes double truth\n  - Capability semantics\
+      \ are explicit enough for restart/resume decisions\n  - Continuity scope is\
+      \ separated from enhancement-only observability/recovery ambitions"
+    verification: '- Architecture basis approved for implementation decomposition
+
+      - Contract covers session authority, durable ledger, replay safety, capability
+      model, and restart controller inputs
+
+      - No duplicate ownership remains between debt, judge, continuity, and enhancement
+      scopes'
+    depends_on:
+    - driver-continuity-foundation.architecture-basis
+    - driver-continuity-foundation.contract
+    agent: gate-reviewer
 - id: driver-continuity-authority-ledger
   name: 'Driver Continuity: Authority & Ledger'
   status: locked

@@ -35077,6 +35077,188 @@ phases:
     depends_on:
     - driver-cli-integration.liveness-probe
     agent: gate-reviewer
+  - id: driver-cli-integration.expected-red-render
+    name: Render expected-red completed steps distinctly in status/show output
+    status: pending
+    description: 'step_type: implementation
+
+      tags: []
+
+
+      RFC: docs/RFC-expected-red-verification-semantics.md (Section 6D)
+
+
+      Update CLI and MCP status rendering so that a completed step with `verify ==
+      "expected_red"` is shown distinctly from a normal green-completed step.
+
+
+      ## Files to Modify
+
+
+      ### 1. src/vectl/cli.py
+
+
+      **`_STEP_STATUS_STYLE` dict (around line 99-106)**:
+
+      No change needed to the dict itself — expected-red steps still have `status=done`.
+      The distinction is in how they are rendered.
+
+
+      **`_step_icon()` function (around line 116)**:
+
+      Add a parameter or check: when the step is done AND `step.verify == "expected_red"`,
+      use a different icon/label. Suggested rendering:
+
+
+      - Normal done: `✓ done` (green)
+
+      - Expected-red done: `✓ gap reproduced` (cyan or blue)
+
+
+      The function currently takes `(status, locked)`. Add an optional `verify` parameter:
+
+      ```python
+
+      def _step_icon(status: StepStatus, locked: bool = False, verify: str | None
+      = None) -> Text:
+
+      ```
+
+
+      When `status == StepStatus.DONE` and `verify == "expected_red"`:
+
+      ```python
+
+      return Text("✓ gap reproduced", style="cyan")
+
+      ```
+
+
+      **Update all call sites of `_step_icon()`** to pass the step''s `verify` field.
+      There are approximately 5 call sites (around lines 996, 1124, 1178, 1468, and
+      the render command). Search with: `grep -n ''_step_icon'' src/vectl/cli.py`
+
+
+      ### 2. src/vectl/mcp_server.py
+
+
+      **`_STEP_STATUS_ICON` dict (around line 143-147)**:
+
+      No change needed — same reasoning as CLI.
+
+
+      **Step rendering in status/show/render functions**:
+
+      Where MCP builds markdown status lines for steps, check if `step.verify == "expected_red"`
+      and `step.status == StepStatus.DONE`. If so, render as `✓ gap reproduced` instead
+      of `✓ done`.
+
+
+      Search for all places where step status icons are emitted: `grep -n ''StepStatus.DONE\|_STEP_STATUS_ICON\|step.status''
+      src/vectl/mcp_server.py`
+
+
+      ## Behavioral Contract
+
+
+      | Step State | verify field | Display |
+
+      |-----------|-------------|---------|
+
+      | done | None | `✓ done` (green) — unchanged |
+
+      | done | must_green | `✓ done` (green) — unchanged |
+
+      | done | expected_red | `✓ gap reproduced` (cyan) — NEW |
+
+      | any other status | any | unchanged |
+
+
+      ## Out of Scope
+
+
+      - Do NOT modify the Step model (already done)
+
+      - Do NOT modify decide.py (already done)
+
+      - Do NOT modify dashboard.py (static HTML dashboard is out of scope for now)
+
+
+      ## Completion Criteria (stub exclusion)
+
+      This is an IMPLEMENTATION step. Stub-only completion is NOT acceptable.'
+    verification: '- CLI `vectl status` shows "gap reproduced" for a done step with
+      verify=expected_red
+
+      - CLI `vectl show <step>` shows "gap reproduced" for expected-red done steps
+
+      - MCP vectl_status shows "gap reproduced" for expected-red done steps
+
+      - Normal done steps (verify=None or must_green) still show "done" — no regression
+
+      - Non-done steps are unaffected regardless of verify field'
+    evidence_template: '## Expected-Red Render Evidence
+
+
+      **CLI status output** (step with verify=expected_red, status=done):
+
+      ```
+
+      $ uv run vectl status
+
+      <paste output showing "gap reproduced" for the expected-red step>
+
+      ```
+
+
+      **CLI show output** (step with verify=expected_red, status=done):
+
+      ```
+
+      $ uv run vectl show <step_id>
+
+      <paste output showing "gap reproduced">
+
+      ```
+
+
+      **MCP status output** (expected-red step):
+
+      ```
+
+      <paste vectl_status output showing "gap reproduced">
+
+      ```
+
+
+      **Normal done step unchanged**:
+
+      ```
+
+      <paste evidence that a normal done step still shows "done">
+
+      ```
+
+
+      **Code diff** (cli.py _step_icon change):
+
+      ```
+
+      <paste diff>
+
+      ```
+
+
+      **Code diff** (mcp_server.py rendering change):
+
+      ```
+
+      <paste diff>
+
+      ```'
+    depends_on:
+    - driver-cli-integration.impl-cli-drive
+    agent: python-executor
 - id: driver-system-wiring
   name: Driver System Wiring
   status: locked

@@ -39476,11 +39476,14 @@ phases:
 
       - add planner-dispatch action definition(s) to the layered action registry
 
-      - wire planner dispatch handlers through the registry using RuntimeContext-aware
-      contracts
+      - wire planner dispatch handlers through the registry using the shared RuntimeContext
+      contract from the ADR
 
       - ensure planner dispatch remains a first-class driver capability for replan/remediation
       branches, not a special-case helper path outside the model
+
+      - preserve registry shape as explicit static declarations for covered actions
+      in this rollout rather than introducing dynamic module-level registration hooks
 
 
       ## Completion Criteria (stub exclusion)
@@ -39499,6 +39502,8 @@ phases:
 
       - missing event emission expectations for planner-driven actions
 
+      - registry drift toward implicit/dynamic registration instead of explicit declarations
+
 
       Gate Preview:
 
@@ -39506,16 +39511,20 @@ phases:
 
       2. Helper-only wiring outside the registry will be rejected
 
-      3. Missing verification of planner dispatch event expectations will be rejected'
+      3. Missing verification of planner dispatch event expectations will be rejected
+
+      4. Dynamic registration replacing explicit registry declarations will be rejected'
     verification: 'phase-check protecting driver-evolution-action-registry.verify-planner-dispatch.
 
-      - Main path: focused tests prove planner dispatch is resolved via the registry
-      and executes through the registered handler
+      - Main path: focused tests prove planner dispatch is resolved via the registry,
+      executes through the registered handler, and consumes the shared RuntimeContext
+      contract
 
       - Failure path: regression covers miscategorized or unregistered planner dispatch
-      actions
+      actions plus any helper bypass around the registry
 
-      - Proof: planner dispatch call sites in scope no longer bypass the action registry'
+      - Proof: planner dispatch call sites in scope no longer bypass the action registry
+      and the registry remains explicitly declared'
     depends_on:
     - driver-evolution-action-registry.implement-layered-registry
     agent: python-senior

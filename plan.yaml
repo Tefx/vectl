@@ -44167,7 +44167,7 @@ phases:
   steps:
   - id: driver-continuity-capability-safety.impl
     name: Implement runner capability model and replay-safe idempotency
-    status: pending
+    status: claimed
     description: "step_type: implementation\n\nFill in stub bodies and replace placeholder\
       \ capability/replay handling with working logic on the existing continuity/recovery\
       \ surfaces.\n\nUPSTREAM ARTIFACTS (from merged design+test step):\n  - src/vectl/driver/config.py\
@@ -44211,6 +44211,8 @@ phases:
     depends_on:
     - driver-continuity-capability-safety.design-and-test
     agent: python-senior
+    claimed_by: python-senior
+    claimed_at: '2026-03-28T23:40:50.304532+00:00'
   - id: driver-continuity-capability-safety.verify
     name: Verify runner capability and replay safety
     status: pending

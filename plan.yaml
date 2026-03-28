@@ -42729,10 +42729,14 @@ phases:
 - id: driver-bootstrap-readiness
   name: Driver Real Bootstrap Readiness
   status: locked
-  gate: Only after this milestone may the plan authorize another real project bootstrap
-    attempt and unlock long-horizon evolution work.
+  gate: Go/no-go gate for another real project bootstrap attempt. Requires debt remediation,
+    judge hardening, continuity/resume blockers, and system wiring/review evidence
+    sufficient to show bootstrap is controllable, restart-resumable, replay-safe,
+    and recoverable.
   depends_on:
+  - driver-debt-review
   - driver-judge-hardening-review
+  - driver-continuity-review
   steps:
   - id: driver-bootstrap-readiness.gate
     name: Authorize next real bootstrap attempt

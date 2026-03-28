@@ -43013,6 +43013,59 @@ phases:
     agent: gate-reviewer
     claimed_by: gate-reviewer
     claimed_at: '2026-03-28T22:43:47.344927+00:00'
+  - id: driver-judge-hardening-foundation.fix-contract-ambiguities
+    name: Resolve judge contract ambiguities
+    status: pending
+    description: 'step_type: implementation
+
+      verification_scope: local-check
+
+      agent_source: default
+
+
+      Resolve all foundation contract blockers in the contract docs and config semantics
+      before re-gating.
+
+
+      Blockers to close (ALL four are required):
+
+      1. Codex invocation source-of-truth ambiguity vs `driver.yaml` `runners.codex`
+
+      2. Capability matrix completeness ambiguity, including explicit Gemini inclusion/exclusion
+
+      3. Missing explicit hard-fail vs tolerant extraction boundary table
+
+      4. Vague `FAILURE` vs `GATE` judgment trigger conditions
+
+
+      Required outputs:
+
+      - One authoritative source-of-truth statement for codex invocation parameters,
+      precedence, and allowed divergence from `driver.yaml`
+
+      - A complete capability matrix covering supported runner/judge combinations
+      and explicit Gemini status (included, excluded, or deferred with rationale)
+
+      - An explicit boundary table separating hard-fail extraction conditions from
+      tolerated extraction conditions
+
+      - Exact judgment trigger rules defining when outcomes classify as `FAILURE`
+      vs `GATE`
+
+
+      This is a docs-contract/semantics hardening step. Downstream work must not proceed
+      with any of the four ambiguities unresolved.'
+    verification: '- Contract docs/config semantics explicitly resolve codex source-of-truth
+      vs `driver.yaml` `runners.codex`
+
+      - Capability matrix is complete and explicitly states Gemini inclusion/exclusion
+      status
+
+      - Hard-fail vs tolerant extraction boundary table is present and unambiguous
+
+      - `FAILURE` vs `GATE` trigger conditions are explicit enough for downstream
+      implementation and review'
+    agent: software-architect
 - id: driver-judge-hardening-structured-output
   name: 'Driver Judge Hardening: Structured Output Stability'
   status: locked

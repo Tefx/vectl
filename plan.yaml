@@ -42172,3 +42172,11 @@ phases:
     matrix with independent verification.
   depends_on:
   - driver-judge-hardening-foundation
+- id: driver-judge-hardening-review
+  name: 'Driver Judge Hardening: Review'
+  status: locked
+  gate: Independent real-runner review confirms judge stability is sufficient for
+    renewed real bootstrap attempts.
+  depends_on:
+  - driver-judge-hardening-structured-output
+  - driver-judge-hardening-recovery-policy

@@ -38589,6 +38589,13 @@ phases:
     - src/vectl/driver/entrypoint.py
     - src/vectl/cli.py
     - src/vectl/driver/policy.py
+    depends_on:
+    - driver-debt-review.update-docs
+    - driver-debt-review.wiring-audit
+    - driver-debt-review.spec-conformance
+    - driver-debt-review.architecture-review
+    - driver-debt-review.contract-strength
+    - driver-debt-review.black-box-verification
     agent: gate-reviewer
   - id: driver-debt-review.black-box-verification
     name: Black-box verify remediated driver surfaces

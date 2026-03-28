@@ -35438,7 +35438,7 @@ phases:
       - Updated GATE REJECT PlannerDispatchRequest test to use source_verdict="REJECT"'
 - id: driver-cli-integration
   name: Driver CLI Integration
-  status: in_progress
+  status: done
   depends_on:
   - driver-judgment-expansion-replan
   steps:
@@ -35959,7 +35959,7 @@ phases:
       \ the shutdown sequence with exit code 0."
   - id: driver-cli-integration.gate
     name: Gate driver-cli-integration
-    status: claimed
+    status: done
     description: 'step_type: gate
 
       As an INDEPENDENT REVIEWER, assess whether the vectl drive runnable CLI surface
@@ -35985,6 +35985,147 @@ phases:
     agent: gate-reviewer
     claimed_by: gate-reviewer
     claimed_at: '2026-03-28T12:47:54.964440+00:00'
+    done_at: '2026-03-28T12:53:51.797312+00:00'
+    evidence: '# Gate Review: driver-cli-integration
+
+
+      **Reviewer**: Independent Auditor (Cold Context)
+
+      **Phase**: driver-cli-integration
+
+      **Verdict**: PASS
+
+
+      ---
+
+
+      ## 1. Wiring Audit (W1-W8) - Independently Verified
+
+
+      | Check | Result | Evidence |
+
+      |-------|--------|---------|
+
+      | W1 | PASS | `vectl --help` shows `drive` command; function is callable |
+
+      | W2 | PASS | `config: Path` parameter present in signature |
+
+      | W3 | PASS | `from vectl.driver.loop import run` in source (line 3147) |
+
+      | W4 | PASS | `asyncio.run(run(config))` in source (line 3157) |
+
+      | W5 | PASS | `asyncio.iscoroutinefunction(run)` verified True |
+
+      | W6 | PASS | `config.exists()` check present (line 3150) |
+
+      | W7 | PASS | `except Exception` + `typer.Exit(1)` error handling |
+
+      | W8 | PASS | All 11 driver modules importable with required exports |
+
+
+      ---
+
+
+      ## 2. Liveness Probe - Independently Verified
+
+
+      ```
+
+      Exit code: 0
+
+      Events: DECIDE event + FINAL event emitted
+
+      ```
+
+
+      **Liveness Integrity Check**:
+
+      - No `mock`, `Mock`, `fixture`, or `@patch` in liveness_drive.py
+
+      - Real subprocess invocation
+
+      - Real file I/O (events.jsonl)
+
+      - **Real runtime path exercised, not stubbed**
+
+
+      ---
+
+
+      ## 3. Spec Conformance - Verified
+
+
+      Blueprint (DRIVER-BLUEPRINT.md lines 44, 115-122) vs Implementation (`cli.py:3130-3160`):
+
+      - Command name `drive` ✓
+
+      - Parameter `config: Path` with default `driver.yaml` ✓
+
+      - Docstring matches ✓
+
+      - Import path `vectl.driver.loop.run` ✓
+
+      - Runtime dispatch via `asyncio.run(run(config))` ✓
+
+      - Production hardening (config validation, error handling) ✓
+
+
+      ---
+
+
+      ## 4. Escape Hatch Audit
+
+
+      ```
+
+      grep -rn "@invar:allow|dead_export|dead_param" src/vectl/driver/
+
+      # No escape hatches found
+
+      ```
+
+
+      ---
+
+
+      ## 5. Integration Integrity
+
+
+      - Preceding steps completed: spec-conformance, wiring-audit, liveness-probe
+
+      - No fixture-injected tests in final probe
+
+      - Real I/O verified through subprocess execution
+
+
+      ---
+
+
+      ## Gate Verdict
+
+
+      | Criterion | Status |
+
+      |-----------|--------|
+
+      | Wiring audit (W1-W8) | PASS |
+
+      | Liveness probe | PASS |
+
+      | Spec conformance | PASS |
+
+      | Escape hatch audit | PASS |
+
+      | No fixture-injected tests | PASS |
+
+      | Real I/O verification | PASS |
+
+      | Import chain verification | PASS |
+
+      | Integration integrity | PASS |
+
+
+      **GATE VERDICT: PASS**'
   - id: driver-cli-integration.expected-red-render
     name: Render expected-red completed steps distinctly in status/show output
     status: done
@@ -36225,7 +36366,7 @@ phases:
       - Non-done steps: unaffected'
 - id: driver-system-wiring
   name: Driver System Wiring
-  status: locked
+  status: pending
   depends_on:
   - driver-cli-integration
   steps:

@@ -41724,6 +41724,92 @@ phases:
 
       - Remaining references intentionally kept for doc-mirror/spec purposes:'
     agent: python-executor
+  - id: driver-prompt-migration.runtime-retest
+    name: Retest packaged prompt runtime green
+    status: pending
+    description: 'step_type: test
+
+      step_intent: retest_green
+
+      expected_result: green
+
+      Verification scope: phase-check protecting driver-prompt-migration.gate.
+
+
+      As an INDEPENDENT TESTER (integration-verifier), validate the packaged prompt
+      runtime path from a fresh perspective.
+
+
+      YOUR GOAL IS TO FIND PROBLEMS, not to confirm it works.
+
+
+      Required coverage:
+
+      - Happy path: judge runtime loads the packaged prompt resource and assembles
+      the same verdict-facing payload shape
+
+      - Error path: missing packaged resource produces explicit actionable failure,
+      not weak silent fallback
+
+      - Drift path: docs mirror divergence is surfaced by the planned verification
+      check
+
+      - Installed-context path: runtime works when docs/ is absent
+
+
+      Document ALL findings. Finding issues is a success for this step.
+
+      Independence Level: L2 (semi-blind at repo level, not implementation-process
+      level).'
+    verification: '- Green result is required after implementation.
+
+      - Evidence includes exact commands/tests for happy path, missing-resource failure
+      path, drift path, and docs-absent installed-context path.
+
+      - Verification explicitly confirms no silent fallback remains.'
+    evidence_template: '## Verification Report
+
+      **Tester**: integration-verifier
+
+      **Independence Level**: L2
+
+
+      ### Commands executed
+
+      ```
+
+      <paste exact commands>
+
+      ```
+
+
+      ### Actual output
+
+      ```
+
+      <paste output>
+
+      ```
+
+
+      ### Coverage
+
+      - Happy path:
+
+      - Missing-resource failure path:
+
+      - Drift path:
+
+      - Docs-absent installed context:
+
+
+      ### Verdict
+
+      - PASS | ISSUES_FOUND | INCOMPLETE'
+    depends_on:
+    - driver-prompt-migration.package-resource-loader
+    - driver-prompt-migration.authority-reference-migration
+    agent: integration-verifier
 - id: driver-prompt-review
   name: Driver Prompt Resource Review
   status: locked

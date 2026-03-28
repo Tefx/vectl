@@ -38629,33 +38629,6 @@ phases:
     depends_on:
     - driver-debt-deep-review.wiring-audit
     agent: gate-reviewer
-  - id: driver-debt-deep-review.black-box-verification
-    name: Black-box verify remediated driver surfaces
-    status: pending
-    description: 'step_type: verification
-
-      independence_level: L2
-
-      Verification scope: full-plan-check protecting driver-debt-deep-review.gate.
-
-
-      Using only the approved remediation expectations and public CLI surfaces, verify:
-
-      - both entrypoints behave consistently
-
-      - one runtime path completes without duplicate completion effects
-
-      - user-visible CLI behavior stays compatible for agent consumers'
-    verification: '- Real command/output evidence attached
-
-      - Any mismatch between the two CLI surfaces is blocker severity'
-    refs:
-    - src/vectl/driver/__main__.py
-    - src/vectl/cli.py
-    - tests/repro/driver_black_box_liveness.py
-    depends_on:
-    - driver-debt-deep-review.spec-conformance
-    agent: blind-tester
 - id: driver-debt-review
   name: 'Driver Debt: Review'
   status: locked
@@ -38739,3 +38712,28 @@ phases:
     - src/vectl/cli.py
     - src/vectl/driver/policy.py
     agent: gate-reviewer
+  - id: driver-debt-deep-review.black-box-verification
+    name: Black-box verify remediated driver surfaces
+    status: pending
+    description: 'step_type: verification
+
+      independence_level: L2
+
+      Verification scope: full-plan-check protecting driver-debt-deep-review.gate.
+
+
+      Using only the approved remediation expectations and public CLI surfaces, verify:
+
+      - both entrypoints behave consistently
+
+      - one runtime path completes without duplicate completion effects
+
+      - user-visible CLI behavior stays compatible for agent consumers'
+    verification: '- Real command/output evidence attached
+
+      - Any mismatch between the two CLI surfaces is blocker severity'
+    refs:
+    - src/vectl/driver/__main__.py
+    - src/vectl/cli.py
+    - tests/repro/driver_black_box_liveness.py
+    agent: blind-tester

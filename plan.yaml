@@ -38332,6 +38332,169 @@ phases:
   status: locked
   depends_on:
   - driver-debt-policy-extraction
+  steps:
+  - id: driver-debt-system-wiring.integrate-runtime-surfaces
+    name: Integrate remediated driver runtime surfaces
+    status: pending
+    description: "step_type: implementation\ntags:\n  - integration\nVerification\
+      \ scope: full-plan-check protecting driver-debt-system-wiring.liveness, full-plan-check,\
+      \ and gate.\n\nPlanner-required system wiring phase after four implementation\
+      \ phases.\n\nRequired work:\n- Ensure the final runtime graph is coherent after\
+      \ A1/A2/A4/A3:\n  - loop runtime uses explicit DecideState ownership\n  - reconcile\
+      \ is the only completion sink\n  - both CLI entrypoints route through the shared\
+      \ adapter\n  - extracted policy helpers are imported from driver.policy\n- Remove\
+      \ or quarantine any leftover legacy path that would keep the old authority or\
+      \ old entrypoint wiring reachable.\n\nThis step is allowed to make final wiring-only\
+      \ adjustments; it must not reopen feature scope."
+    verification: '- Final runtime graph references only the remediated surfaces
+
+      - No orphan legacy path remains reachable'
+    refs:
+    - src/vectl/driver/loop.py
+    - src/vectl/decision_state.py
+    - src/vectl/driver/entrypoint.py
+    - src/vectl/driver/policy.py
+    - src/vectl/cli.py
+    - src/vectl/driver/__main__.py
+    agent: python-senior
+  - id: driver-debt-system-wiring.runtime-liveness
+    name: Probe end-to-end driver runtime liveness
+    status: pending
+    description: 'step_type: verification
+
+      independence_level: L2
+
+      Verification scope: full-plan-check protecting driver-debt-system-wiring.gate
+      and driver-debt-deep-review.
+
+
+      Provide seam-level real path evidence for one complete runtime slice.
+
+
+      Required proof:
+
+      - execute one real driver command path from entrypoint through shared adapter
+      into loop.run
+
+      - show completion handling reaches reconcile as the runtime sink
+
+      - show policy helper path resolves via driver.policy
+
+      - show no old completion branch or old entrypoint adapter is used
+
+
+      Actual command/output evidence is mandatory.'
+    verification: '- Evidence contains exact command(s), output, and traced path
+
+      - Any legacy-path reachability is blocker'
+    refs:
+    - src/vectl/driver/loop.py
+    - src/vectl/decision_state.py
+    - src/vectl/driver/entrypoint.py
+    - src/vectl/driver/policy.py
+    - tests/repro/driver_black_box_liveness.py
+    depends_on:
+    - driver-debt-system-wiring.integrate-runtime-surfaces
+    agent: blind-tester
+  - id: driver-debt-system-wiring.full-plan-check
+    name: Run full-plan driver debt check
+    status: pending
+    description: 'step_type: verification
+
+      Verification scope: full-plan-check protecting driver-debt-deep-review.
+
+
+      Run the nearest broad checkpoint instead of waiting for the final deep review.
+
+
+      Must check for repo-level debt relevant to the remaining gate:
+
+      - no duplicate completion authority remains
+
+      - no decide.py module-global runtime mutable state remains
+
+      - no CLI entrypoint divergence remains
+
+      - no extracted-policy drift remains
+
+
+      If a broad verifier surfaces blocker-class debt, remediation ownership must
+      be created before deep review.'
+    verification: '- Broad check output attached
+
+      - Any blocker intersection with deep review is called out explicitly'
+    refs:
+    - src/vectl/driver/loop.py
+    - src/vectl/decide.py
+    - src/vectl/decision_state.py
+    - src/vectl/driver/entrypoint.py
+    - src/vectl/driver/policy.py
+    - src/vectl/cli.py
+    - src/vectl/driver/__main__.py
+    depends_on:
+    - driver-debt-system-wiring.integrate-runtime-surfaces
+    agent: integration-verifier
+  - id: driver-debt-system-wiring.freeze
+    name: Freeze snapshot for system wiring gate
+    status: pending
+    description: 'step_type: verification
+
+      Verification scope: full-plan-check protecting driver-debt-system-wiring.gate.
+
+
+      Freeze the integrated runtime snapshot before liveness/gate review.
+
+      Required evidence: git rev-parse HEAD, clean status, environment declaration,
+      and no-change statement.'
+    verification: '- Freeze evidence complete before gate'
+    refs:
+    - src/vectl/driver/loop.py
+    - src/vectl/driver/entrypoint.py
+    - src/vectl/driver/policy.py
+    depends_on:
+    - driver-debt-system-wiring.integrate-runtime-surfaces
+    agent: integration-verifier
+  - id: driver-debt-system-wiring.gate
+    name: Gate driver debt system wiring
+    status: pending
+    description: 'step_type: gate
+
+      Gate review for integrated driver debt remediation.
+
+
+      BLOCK if:
+
+      - runtime slice does not traverse the intended new surfaces
+
+      - broad check reports blocker-class residual debt
+
+      - legacy completion/entrypoint/policy paths remain reachable
+
+
+      review_depth: THOROUGH
+
+      cross_cutting_focus:
+
+      - runtime graph coherence
+
+      - early broad-check debt intersection
+
+      - liveness evidence quality'
+    verification: '- Integrated liveness evidence accepted
+
+      - Broad check accepted or follow-up ownership created
+
+      - Ready for doc sync'
+    refs:
+    - src/vectl/driver/loop.py
+    - src/vectl/decision_state.py
+    - src/vectl/driver/entrypoint.py
+    - src/vectl/driver/policy.py
+    depends_on:
+    - driver-debt-system-wiring.runtime-liveness
+    - driver-debt-system-wiring.full-plan-check
+    - driver-debt-system-wiring.freeze
+    agent: gate-reviewer
 - id: driver-debt-doc-sync
   name: 'Driver Debt: Documentation Sync'
   status: locked

@@ -33091,16 +33091,22 @@ phases:
       completion.
 
 
+      POST-IMPLEMENTATION GREEN VERIFICATION STEP.
+
+
       Run the nearest broad verification boundary after runtime wiring is complete
       so late gates are not the first point to rediscover systemic issues.
 
 
-      This check should cover runtime, integration, and any repo-level debt intersecting
-      remaining deep-review gates.'
+      This broad check is not expected-red. Remaining failures intersect downstream
+      gates and therefore require remediation ownership before deep review proceeds.'
     verification: '- Broad verification command(s) and actual output are recorded
 
       - Any blocker-class debt discovered here receives remediation ownership before
-      deep review proceeds'
+      deep review proceeds
+
+      - Expected result is green pass across remaining runtime/integration scope;
+      red outcomes cannot be normalized as pre-implementation expected-red'
     depends_on:
     - driver-system-wiring.verify-e2e
     agent: integration-verifier

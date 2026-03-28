@@ -19,11 +19,13 @@ from __future__ import annotations
 
 import asyncio
 import contextlib
+import json
 import logging
 import shutil
 from dataclasses import dataclass
+from fnmatch import fnmatch
 from pathlib import Path
-from typing import TYPE_CHECKING, Final, Literal
+from typing import TYPE_CHECKING, Any, Final, Literal, Protocol, cast
 
 from vectl.claims import repair_claims
 from vectl.decide import decide
@@ -44,20 +46,31 @@ from .config import (
 from .dispatch import render_prompt
 from .errors import ConfigError, RunnerError
 from .judge import Judge
+from .judgments import JudgmentRequest, JudgmentType, JudgmentVerdict
 from .observe import Observer, create_observer
 from .runners import Runner, create_runner
 from .session import SessionPool
 from .types import CompletedEntry, DriverState, RunnerStatus
 from .worktree import (
+    ConflictResolverDispatch,
     Failure,
-    Success,
-    cleanup as cleanup_worktree,
-    create as create_worktree,
     merge,
+)
+from .worktree import (
+    cleanup as cleanup_worktree,
+)
+from .worktree import (
+    create as create_worktree,
 )
 
 if TYPE_CHECKING:
     from vectl.models import Action
+
+    from .config import DriverConfig
+    from .judge import Judge
+    from .observe import Observer
+    from .runners import Runner
+    from .session import SessionPool
 
 
 _LOGGER = logging.getLogger(__name__)
@@ -84,6 +97,222 @@ class DeferredRuntimeBranch:
     branch: str
     deferred_to: str
     rationale: str
+
+
+ReplanTriggerName = Literal[
+    "handle_dispatch.preflight_replan",
+    "reconcile.evidence_replan",
+    "reconcile.failure_classification_replan",
+    "reconcile.escalation_replan",
+    "run.startup_recovery_anomaly_replan",
+]
+
+
+RemainingJudgmentTriggerName = Literal[
+    "reconcile.failure_classification",
+    "reconcile.escalation_threshold",
+    "reconcile.gate_assessment",
+    "run.startup_recovery_anomaly",
+    "handle_dispatch.gate_cold_context",
+]
+
+
+@dataclass(frozen=True)
+class RemainingJudgmentRuntimeContract:
+    """Pinned runtime semantics for the remaining prompt-defined judgment paths.
+
+    Authority: docs/JUDGE-AGENT-PROMPT.md sections ``failure``,
+    ``escalation``, ``gate``, ``anomaly``, and ``cold_context``.
+
+    The purpose of this contract is to prevent later runtime work from
+    narrowing any prompt-mandated branch into a smaller local rule.
+
+    Invariants:
+        - ``judgment_type`` names one of the still-expanding runtime judgment
+          surfaces whose semantics remain judge-owned.
+        - ``trigger`` names the exact loop entry point that must invoke or honor
+          the judgment.
+        - ``allowed_verdicts`` is the complete runtime verdict surface preserved
+          for that trigger until an explicit architecture update changes it.
+        - ``runtime_owner`` stays ``loop.py`` because loop wiring owns when these
+          prompt-derived semantics are executed.
+    """
+
+    judgment_type: str
+    trigger: RemainingJudgmentTriggerName
+    trigger_surface: str
+    allowed_verdicts: tuple[str, ...]
+    planner_instruction_required_for: tuple[str, ...]
+    runtime_owner: str
+    deferred_to: str
+    rationale: str
+
+
+GateRemediationTriggerName = Literal["reconcile.gate_failure_fix_retest_chain",]
+
+
+@dataclass(frozen=True)
+class GateRemediationChainContract:
+    """Pinned contract for gate failure -> batched remediation -> retest flow.
+
+    Authority: docs/JUDGE-AGENT-PROMPT.md ``TYPE: gate`` and
+    DRIVER-BLUEPRINT.md Flow 4.
+
+    Invariants:
+        - ``batched_remediation_owner`` explicitly names who creates the fix
+          batch so later phases cannot split ownership implicitly.
+        - ``included_same_batch`` contains all severities that MUST travel with
+          the blocker batch once remediation is required.
+        - ``retest_step_owner`` names the owner of the deferred gate re-run.
+        - ``planner_instruction_source`` MUST remain the judge verdict so gate
+          failures keep prompt-authored remediation semantics.
+    """
+
+    trigger: GateRemediationTriggerName
+    judgment_trigger: RemainingJudgmentTriggerName
+    planner_trigger: str
+    batched_remediation_owner: str
+    retest_step_owner: str
+    blocker_severities: tuple[str, ...]
+    included_same_batch: tuple[str, ...]
+    record_only_severities: tuple[str, ...]
+    planner_instruction_source: str
+    deferred_to: str
+    rationale: str
+
+
+ConflictResolverTriggerName = Literal["reconcile.merge_conflict_resolver_dispatch",]
+
+
+class ConflictResolverDispatcher(Protocol):
+    """Protocol for dispatching a non-trivial merge conflict resolver.
+
+    Non-responsibility: does NOT decide whether a conflict is trivial. That is
+    owned by ``worktree.merge()``. This protocol only carries the ready-to-
+    dispatch payload once merge semantics have classified the conflict.
+    """
+
+    async def dispatch_conflict_resolver(
+        self,
+        dispatch: ConflictResolverDispatch,
+        *,
+        config: DriverConfig,
+        runners: dict[str, Runner],
+        observer: Observer,
+    ) -> bool: ...
+
+
+@dataclass(frozen=True)
+class ConflictResolverReadinessContract:
+    """Pinned readiness contract for non-trivial merge conflict dispatch.
+
+    Authority: DRIVER-BLUEPRINT.md Worktree Lifecycle and Failure Modes,
+    plus docs/DRIVER-ARCHITECTURE.md Section 2.11 ``dispatch_conflict_resolver``.
+
+    Invariants:
+        - ``payload_source`` stays ``MergeResult.resolver_dispatch`` so merge
+          classification remains the source of truth.
+        - ``dispatch_ready_when`` enumerates the full readiness preconditions the
+          later implementation MUST check before invoking a resolver agent.
+        - ``runtime_owner`` stays ``loop.py`` because loop reconciliation owns
+          post-merge branching.
+    """
+
+    trigger: ConflictResolverTriggerName
+    payload_source: str
+    dispatch_ready_when: tuple[str, ...]
+    runtime_owner: str
+    deferred_to: str
+    rationale: str
+
+
+@dataclass(frozen=True)
+class PlannerDispatchContract:
+    """Pinned planner-dispatch contract for REPLAN-capable loop branches.
+
+    Architecture: docs/DRIVER-ARCHITECTURE.md Section 2.11
+    Blueprint: DRIVER-BLUEPRINT.md Flow 2 / Flow 3 / Flow 4
+
+    This contract is intentionally pre-runtime. It names the exact loop trigger
+    points that MAY produce planner dispatch, the source of the instruction, and
+    the bounded deferral that remains in force until the later implementation
+    phase wires planner execution.
+
+    Invariants:
+        - ``trigger`` MUST correspond to a branch named in
+          ``DEFERRED_REPLAN_BRANCHES``.
+        - ``planner_instruction`` originates from
+          ``JudgmentVerdict.planner_instruction`` and may not be replaced with a
+          hard-coded reject/defer message.
+        - ``verdict`` remains semantically distinct from REJECT/DEFER/HALT.
+          Later phases MUST preserve REPLAN as planner-dispatch-capable behavior.
+        - ``deferred_to`` names the only later phase allowed to implement the
+          runtime branch unless architecture authority changes.
+    """
+
+    trigger: ReplanTriggerName
+    judgment_type: str
+    trigger_surface: str
+    planner_instruction_source: str
+    deferred_to: str
+    rationale: str
+
+
+@dataclass(frozen=True)
+class PlannerDispatchRequest:
+    """Planner dispatch payload derived from a REPLAN verdict.
+
+    Architecture: docs/DRIVER-ARCHITECTURE.md Section 2.11 (`dispatch_planner`)
+    Blueprint: DRIVER-BLUEPRINT.md lines 566-568, 697-698, 728-733
+
+    This request is the canonical loop->planner handoff shape. It is contract
+    surface only; runtime dispatch remains deferred.
+
+    Invariants:
+        - ``planner_instruction`` is non-empty and comes from the judge verdict.
+        - ``source_verdict`` is exactly ``"REPLAN"``.
+        - ``trigger`` identifies the originating branch so later phases cannot
+          silently merge distinct REPLAN sites into one reject-only path.
+        - ``step_id`` identifies the step whose plan needs strengthening,
+          decomposition, repair, or gate follow-up.
+    """
+
+    step_id: str
+    trigger: ReplanTriggerName
+    judgment_type: str
+    planner_instruction: str
+    source_verdict: str = "REPLAN"
+
+
+class PlannerDispatcher(Protocol):
+    """Protocol for loop-owned planner dispatch.
+
+    Non-responsibility: does NOT decide whether REPLAN is warranted. That is the
+    judge's responsibility. This protocol only carries out the loop->planner
+    wiring once a REPLAN verdict already exists.
+    """
+
+    async def dispatch_planner(
+        self,
+        request: PlannerDispatchRequest,
+        *,
+        config: DriverConfig,
+        runners: dict[str, Runner],
+        observer: Observer,
+        plan_path: Path,
+    ) -> None: ...
+
+
+@dataclass(frozen=True)
+class ParsedGateIssue:
+    """Normalized gate issue extracted from gate evidence output.
+
+    Source: docs/JUDGE-AGENT-PROMPT.md ``TYPE: gate`` issue severity table.
+    """
+
+    severity: str
+    summary: str
+    raw: dict[str, Any]
 
 
 @dataclass(frozen=True)
@@ -167,6 +396,789 @@ DEFERRED_REPLAN_BRANCHES: Final[tuple[DeferredRuntimeBranch, ...]] = (
 )
 
 
+REPLAN_PLANNER_WIRING: Final[tuple[PlannerDispatchContract, ...]] = (
+    PlannerDispatchContract(
+        trigger="handle_dispatch.preflight_replan",
+        judgment_type="PREFLIGHT",
+        trigger_surface="handle_dispatch() before claim/worktree/runner dispatch",
+        planner_instruction_source="JudgmentVerdict.planner_instruction",
+        deferred_to="driver-judgment-expansion-replan",
+        rationale=(
+            "Blueprint Flow 2 requires planner dispatch when PREFLIGHT returns "
+            "REPLAN so the step can be strengthened rather than silently "
+            "downgraded to reject-only behavior."
+        ),
+    ),
+    PlannerDispatchContract(
+        trigger="reconcile.evidence_replan",
+        judgment_type="EVIDENCE",
+        trigger_surface="reconcile() success path after evidence semantics review",
+        planner_instruction_source="JudgmentVerdict.planner_instruction",
+        deferred_to="driver-judgment-expansion-replan",
+        rationale=(
+            "Evidence inadequacy may require plan strengthening or fix/retest "
+            "decomposition; REPLAN must remain a planner path, not a bare reject."
+        ),
+    ),
+    PlannerDispatchContract(
+        trigger="reconcile.failure_classification_replan",
+        judgment_type="FAILURE",
+        trigger_surface=(
+            "reconcile() failure classification before blocker disposition is finalized"
+        ),
+        planner_instruction_source="JudgmentVerdict.planner_instruction",
+        deferred_to="driver-judgment-expansion-replan",
+        rationale=(
+            "Failure provenance/disposition may require planner-created follow-up "
+            "work; architecture forbids collapsing this branch into reject-only "
+            "or defer-only handling."
+        ),
+    ),
+    PlannerDispatchContract(
+        trigger="reconcile.escalation_replan",
+        judgment_type="ESCALATION",
+        trigger_surface="reconcile() repeated-failure branch once threshold is reached",
+        planner_instruction_source="JudgmentVerdict.planner_instruction",
+        deferred_to="driver-judgment-expansion-replan",
+        rationale=(
+            "Blueprint Flow 3 explicitly routes repeated-failure REPLAN verdicts "
+            "to planner dispatch instead of retry/switch-agent only."
+        ),
+    ),
+    PlannerDispatchContract(
+        trigger="run.startup_recovery_anomaly_replan",
+        judgment_type="ANOMALY",
+        trigger_surface=(
+            "run() startup recovery after anomaly detection and before unsafe auto-repair"
+        ),
+        planner_instruction_source="JudgmentVerdict.planner_instruction",
+        deferred_to="driver-judgment-expansion-replan",
+        rationale=(
+            "Structural/semantic anomalies may require planner-authored repair "
+            "steps; later phases may not narrow this to halt-only behavior."
+        ),
+    ),
+)
+"""Exact REPLAN/planner-dispatch wiring commitments for ``loop.py``.
+
+Each entry pins:
+- the trigger point
+- the judgment type that may emit REPLAN
+- the source of planner instructions
+- the later phase allowed to implement runtime behavior
+
+Anti-narrowing rule:
+    Later phases MUST preserve all entries in this matrix as planner-capable.
+    They MUST NOT reinterpret REPLAN as a synonym for REJECT, DEFER, or HALT.
+"""
+
+
+REMAINING_JUDGMENT_RUNTIME_CONTRACTS: Final[tuple[RemainingJudgmentRuntimeContract, ...]] = (
+    RemainingJudgmentRuntimeContract(
+        judgment_type="FAILURE",
+        trigger="reconcile.failure_classification",
+        trigger_surface=(
+            "reconcile() failure path before any provenance/disposition result is accepted"
+        ),
+        allowed_verdicts=("ACCEPT", "REPLAN"),
+        planner_instruction_required_for=("REPLAN",),
+        runtime_owner="loop.py",
+        deferred_to="driver-judgment-expansion-replan",
+        rationale=(
+            "The judge prompt requires provenance/disposition classification and makes "
+            "planner-authored remediation ownership mandatory when disposition is "
+            "downstream_blocker."
+        ),
+    ),
+    RemainingJudgmentRuntimeContract(
+        judgment_type="ESCALATION",
+        trigger="reconcile.escalation_threshold",
+        trigger_surface=("reconcile() repeated-failure branch once failure_count >= 3 is reached"),
+        allowed_verdicts=("RETRY", "SWITCH_AGENT", "REPLAN", "DEFER", "HALT"),
+        planner_instruction_required_for=("REPLAN",),
+        runtime_owner="loop.py",
+        deferred_to="driver-judgment-expansion-replan",
+        rationale=(
+            "The judge prompt owns repeated-failure disposition, including retry, "
+            "agent switch, plan strengthening, defer, and terminal halt semantics."
+        ),
+    ),
+    RemainingJudgmentRuntimeContract(
+        judgment_type="GATE",
+        trigger="reconcile.gate_assessment",
+        trigger_surface=(
+            "gate-result reconciliation after issue parsing and before blocker promotion or "
+            "freeze disposition is finalized"
+        ),
+        allowed_verdicts=("ACCEPT", "REJECT", "HALT"),
+        planner_instruction_required_for=("REJECT",),
+        runtime_owner="loop.py",
+        deferred_to="driver-judgment-expansion-replan",
+        rationale=(
+            "The judge prompt requires gate blocker promotion, runnable-surface liveness "
+            "checks, freeze hard-block evaluation, and planner-authored batched fix+retest "
+            "instructions when blockers remain."
+        ),
+    ),
+    RemainingJudgmentRuntimeContract(
+        judgment_type="ANOMALY",
+        trigger="run.startup_recovery_anomaly",
+        trigger_surface=(
+            "run() startup recovery after repair/orphan detection and before unsafe auto-repair"
+        ),
+        allowed_verdicts=("ACCEPT", "HALT"),
+        planner_instruction_required_for=(),
+        runtime_owner="loop.py",
+        deferred_to="driver-judgment-expansion-replan",
+        rationale=(
+            "The judge prompt defines the safe-vs-unsafe anomaly boundary for automatic "
+            "recovery and forbids silent structural repair without judgment."
+        ),
+    ),
+    RemainingJudgmentRuntimeContract(
+        judgment_type="COLD_CONTEXT",
+        trigger="handle_dispatch.gate_cold_context",
+        trigger_surface=(
+            "handle_dispatch() before gate/freeze dispatch payload is assembled for an "
+            "independent auditor"
+        ),
+        allowed_verdicts=("ACCEPT",),
+        planner_instruction_required_for=(),
+        runtime_owner="loop.py",
+        deferred_to="driver-judgment-expansion-replan",
+        rationale=(
+            "The judge prompt requires cold-context pruning to include only objective gate "
+            "artifacts and exclude worker/orchestrator reasoning before gate dispatch."
+        ),
+    ),
+)
+"""Normative matrix for remaining prompt-defined judgment runtime paths.
+
+This matrix closes the contract gap after the earlier REPLAN trigger pinning by
+recording the exact runtime trigger point and verdict surface for the remaining
+judgment semantics that are still deferred.
+"""
+
+
+GATE_REMEDIATION_CHAIN_CONTRACT: Final[GateRemediationChainContract] = GateRemediationChainContract(
+    trigger="reconcile.gate_failure_fix_retest_chain",
+    judgment_trigger="reconcile.gate_assessment",
+    planner_trigger="reconcile.gate_reject_fix_retest_chain",
+    batched_remediation_owner="planner dispatch from loop.py",
+    retest_step_owner="loop.py gate rerun after planner-created fix batch lands",
+    blocker_severities=("blocker",),
+    included_same_batch=("blocker", "should_fix"),
+    record_only_severities=("suggestion", "tech_debt"),
+    planner_instruction_source="JudgmentVerdict.planner_instruction",
+    deferred_to="driver-judgment-expansion-replan",
+    rationale=(
+        "The judge prompt and Flow 4 require blocker and should-fix issues to travel through "
+        "one batched remediation chain, followed by a deferred gate re-run rather than ad hoc "
+        "manual fixes."
+    ),
+)
+"""Canonical owner/shape for gate failure remediation batching.
+
+The ownership split is deliberate:
+- planner dispatch owns creation of the batched fix chain
+- loop reconciliation owns deferring and re-running the gate step
+"""
+
+
+CONFLICT_RESOLVER_READINESS_CONTRACT: Final[ConflictResolverReadinessContract] = (
+    ConflictResolverReadinessContract(
+        trigger="reconcile.merge_conflict_resolver_dispatch",
+        payload_source="MergeResult.resolver_dispatch",
+        dispatch_ready_when=(
+            "merge outcome is non_trivial_conflict",
+            "resolver_dispatch payload is present",
+            "conflicted_files is non-empty",
+            "step has already been durably deferred away from merge happy-path completion",
+        ),
+        runtime_owner="loop.py",
+        deferred_to="driver-judgment-expansion-replan",
+        rationale=(
+            "The blueprint requires dispatching a conflict-resolver agent for source-file merge "
+            "conflicts once worktree classification has proven the conflict is non-trivial."
+        ),
+    )
+)
+"""Canonical readiness contract for conflict-resolver dispatch."""
+
+
+async def dispatch_planner(
+    request: PlannerDispatchRequest,
+    *,
+    config: DriverConfig,
+    runners: dict[str, Runner],
+    observer: Observer,
+    plan_path: Path,
+) -> None:
+    """Invoke the planner agent in response to a REPLAN verdict.
+
+    Contract pin from docs/DRIVER-ARCHITECTURE.md Section 2.11 and
+    DRIVER-BLUEPRINT.md Flow 2 / Flow 3 / Flow 4:
+
+    - Input is a ``PlannerDispatchRequest`` derived from a judge REPLAN verdict.
+    - ``request.planner_instruction`` is the canonical planner instruction and
+      must be preserved verbatim enough to retain judge intent.
+    - ``request.trigger`` identifies the originating branch so audit logs and
+      later runtime code cannot silently collapse distinct REPLAN sites.
+    - Runtime behavior remains deferred to ``driver-judgment-expansion-replan``.
+
+    Runtime behavior implemented by step
+    ``driver-judgment-expansion-replan.impl-replan-planner-wiring``:
+
+    - route to planner agent ``vectl-planner``
+    - execute planner instruction in repository root (plan_path.parent)
+    - require planner success; non-success is explicit failure
+    """
+    if not request.planner_instruction.strip():
+        raise PlanError(
+            "REPLAN verdict requires non-empty planner_instruction "
+            f"(step={request.step_id}, trigger={request.trigger})"
+        )
+
+    planner_agent = "vectl-planner"
+    runner_name = config.route_agent(planner_agent)
+    runner = runners.get(runner_name)
+    if runner is None:
+        raise RunnerError(runner_name, request.step_id, "planner runner not configured")
+
+    observer.emit(
+        "PLANNER_DISPATCH_STARTED",
+        step_id=request.step_id,
+        trigger=request.trigger,
+        judgment_type=request.judgment_type,
+        runner=runner_name,
+    )
+
+    prompt = _render_planner_prompt(request=request, plan_path=plan_path)
+    handle = await runner.dispatch(
+        prompt=prompt,
+        agent=planner_agent,
+        workdir=str(plan_path.parent),
+    )
+    result = await handle.wait()
+
+    if result.status != RunnerStatus.SUCCESS:
+        observer.emit(
+            "PLANNER_DISPATCH_FAILED",
+            step_id=request.step_id,
+            trigger=request.trigger,
+            judgment_type=request.judgment_type,
+            runner=runner_name,
+            status=result.status.value,
+            output=result.output,
+        )
+        raise RunnerError(
+            runner_name,
+            request.step_id,
+            (
+                f"planner dispatch failed ({result.status.value}) for "
+                f"{request.trigger}: {result.output[:200]}"
+            ),
+        )
+
+    observer.emit(
+        "PLANNER_DISPATCH_COMPLETED",
+        step_id=request.step_id,
+        trigger=request.trigger,
+        judgment_type=request.judgment_type,
+        runner=runner_name,
+        elapsed_seconds=result.elapsed_seconds,
+        session_id=result.session_id,
+    )
+
+
+def _render_planner_prompt(*, request: PlannerDispatchRequest, plan_path: Path) -> str:
+    """Render deterministic planner prompt for REPLAN dispatch.
+
+    Source: docs/DRIVER-ARCHITECTURE.md Section 2.11 (`dispatch_planner`) and
+    "Planner Instruction Handling" subsection (loop owns routing the instruction
+    to planner dispatch, planner owns plan mutation).
+    """
+    payload = {
+        "step_id": request.step_id,
+        "trigger": request.trigger,
+        "judgment_type": request.judgment_type,
+        "source_verdict": request.source_verdict,
+        "plan_path": str(plan_path),
+        "planner_instruction": request.planner_instruction,
+    }
+    return "\n".join(
+        [
+            "You are vectl-planner. Apply the requested replanning change.",
+            "",
+            "## REPLAN Handoff",
+            json.dumps(payload, ensure_ascii=False, indent=2),
+            "",
+            "## Requirements",
+            "1. Preserve existing completed history unless instruction explicitly requires change.",
+            "2. Keep step IDs globally unique.",
+            "3. Apply only the requested replanning intent.",
+            "4. Return exact edits and rationale.",
+        ]
+    )
+
+
+def _build_replan_dispatch_request(
+    *,
+    step_id: str,
+    trigger: ReplanTriggerName,
+    judgment_type: str,
+    verdict: JudgmentVerdict,
+) -> PlannerDispatchRequest:
+    """Build a validated planner dispatch request from a judge verdict.
+
+    Source: docs/DRIVER-ARCHITECTURE.md Section 2.11 REPLAN / Planner Wiring
+    Contract and "Planner Instruction Handling".
+    """
+    if verdict.verdict != "REPLAN":
+        raise PlanError(
+            "Planner dispatch request requires REPLAN verdict "
+            f"(got={verdict.verdict}, step={step_id}, trigger={trigger})"
+        )
+    if verdict.planner_instruction is None or not verdict.planner_instruction.strip():
+        raise PlanError(
+            "REPLAN verdict requires non-empty planner_instruction "
+            f"(step={step_id}, trigger={trigger})"
+        )
+
+    return PlannerDispatchRequest(
+        step_id=step_id,
+        trigger=trigger,
+        judgment_type=judgment_type,
+        planner_instruction=verdict.planner_instruction,
+    )
+
+
+def _is_impl_step_id(step_id: str) -> bool:
+    """Return True when step_id matches implementation-oriented naming.
+
+    Source: DRIVER-BLUEPRINT.md Flow 2 preflight guard (`is_impl_step(step_id)`).
+    """
+    lowered = step_id.lower()
+    return lowered.endswith(".impl") or ".impl-" in lowered or lowered.endswith(".implementation")
+
+
+_PREFLIGHT_RISK_KEYWORDS: Final[tuple[str, ...]] = (
+    "migration",
+    "cas",
+    "backward compat",
+    "backward compatibility",
+    "concurrency",
+    "race",
+    "atomic",
+)
+
+
+def _detect_preflight_risk_signals(
+    *,
+    step_id: str,
+    description: str,
+    verification: str,
+    refs: list[str],
+) -> list[str]:
+    """Detect textual risk signals for preflight judgment routing.
+
+    Source: docs/DRIVER-ARCHITECTURE.md Section 2.10 Judge vs Rules Decision
+    Boundary (preflight risk-signal keyword detection).
+    """
+    haystack = "\n".join([step_id, description, verification, "\n".join(refs)]).lower()
+    return [keyword for keyword in _PREFLIGHT_RISK_KEYWORDS if keyword in haystack]
+
+
+def _build_preflight_request(
+    *,
+    step_id: str,
+    description: str,
+    verification: str,
+    refs: list[str],
+    risk_signals: list[str],
+    plan_summary: str,
+) -> JudgmentRequest:
+    """Build a PREFLIGHT request with required schema fields.
+
+    Source: src/vectl/driver/judgments.py CONTEXT_SCHEMAS[PREFLIGHT].
+    """
+    return JudgmentRequest(
+        type=JudgmentType.PREFLIGHT,
+        step_id=step_id,
+        context={
+            "step_id": step_id,
+            "step_description": description,
+            "step_verification": verification,
+            "step_refs": json.dumps(refs, ensure_ascii=False),
+            "risk_signals": ", ".join(risk_signals),
+        },
+        failure_history=[],
+        plan_summary=plan_summary,
+    )
+
+
+def _build_escalation_request(
+    *,
+    step_id: str,
+    failure_count: int,
+    failure_history: list[str],
+    step_description: str,
+    available_agents: list[str],
+    plan_summary: str,
+) -> JudgmentRequest:
+    """Build an ESCALATION request with required schema fields.
+
+    Source: src/vectl/driver/judgments.py CONTEXT_SCHEMAS[ESCALATION].
+    """
+    return JudgmentRequest(
+        type=JudgmentType.ESCALATION,
+        step_id=step_id,
+        context={
+            "step_id": step_id,
+            "failure_count": str(failure_count),
+            "failure_history": "\n".join(failure_history),
+            "step_description": step_description,
+            "available_agents": ", ".join(available_agents),
+            "runner_failures": str(failure_count),
+        },
+        failure_history=failure_history,
+        plan_summary=plan_summary,
+    )
+
+
+def _judge_type_enabled(judge: Judge, judgment_type: JudgmentType) -> bool:
+    """Return whether a judgment type is enabled for this judge instance.
+
+    Source: docs/DRIVER-ARCHITECTURE.md Section 2.10 judge-vs-rules boundary.
+    """
+
+    is_enabled = getattr(judge, "is_enabled", None)
+    if callable(is_enabled):
+        return bool(is_enabled(judgment_type))
+    return False
+
+
+def _collect_remaining_required_checks(plan: object, step_id: str) -> list[str]:
+    """Collect remaining required checks for downstream-intersection reasoning.
+
+    Source: docs/JUDGE-AGENT-PROMPT.md ``TYPE: failure`` gate-intersection
+    reasoning rule requiring enumeration of remaining required checks.
+    """
+
+    find_step = getattr(plan, "find_step", None)
+    phases = getattr(plan, "phases", None)
+    if not callable(find_step) or not isinstance(phases, list):
+        return []
+
+    found = find_step(step_id)
+    if found is None or not isinstance(found, tuple) or len(found) != 2:
+        return []
+
+    phase_obj, step_obj = found
+
+    phase_index = -1
+    step_index = -1
+    for index, phase in enumerate(phases):
+        if phase is phase_obj:
+            phase_index = index
+            phase_steps = list(getattr(phase, "steps", []))
+            for inner_index, candidate_step in enumerate(phase_steps):
+                if candidate_step is step_obj:
+                    step_index = inner_index
+                    break
+            break
+
+    if phase_index < 0 or step_index < 0:
+        return []
+
+    checks: list[str] = []
+    for index in range(phase_index, len(phases)):
+        phase = phases[index]
+        phase_id = str(getattr(phase, "id", ""))
+        gate_text = str(getattr(phase, "gate", "")).strip()
+        if gate_text:
+            checks.append(f"phase_gate:{phase_id}:{gate_text}")
+
+        steps = list(getattr(phase, "steps", []))
+        start = step_index + 1 if index == phase_index else 0
+        for step in steps[start:]:
+            candidate_step_id = str(getattr(step, "id", "")).strip()
+            if not candidate_step_id:
+                continue
+            checks.append(f"step:{candidate_step_id}")
+
+    # deterministic de-dup while preserving order
+    seen: set[str] = set()
+    deduped: list[str] = []
+    for check in checks:
+        if check in seen:
+            continue
+        deduped.append(check)
+        seen.add(check)
+    return deduped
+
+
+def _extract_failure_disposition(reason: str) -> str | None:
+    """Extract ``disposition`` tag from FAILURE verdict reason.
+
+    Source: docs/JUDGE-AGENT-PROMPT.md ``TYPE: failure`` verdict contract:
+    reason MUST include ``provenance=<value>, disposition=<value>``.
+    """
+
+    marker = "disposition="
+    lowered = reason.lower()
+    start = lowered.find(marker)
+    if start < 0:
+        return None
+    raw = lowered[start + len(marker) :]
+    token = raw.split(",", 1)[0].split(";", 1)[0].split(" ", 1)[0].strip()
+    return token or None
+
+
+def _build_failure_request(
+    *,
+    step_id: str,
+    error_output: str,
+    failure_count: int,
+    step_description: str,
+    remaining_gates: list[str],
+    failure_history: list[str],
+    plan_summary: str,
+) -> JudgmentRequest:
+    """Build FAILURE judgment request with downstream-intersection context.
+
+    Source: docs/JUDGE-AGENT-PROMPT.md ``TYPE: failure`` and
+    docs/DRIVER-ARCHITECTURE.md Section 2.9 ``CONTEXT_SCHEMAS[FAILURE]``.
+    """
+
+    context: dict[str, str] = {
+        "step_id": step_id,
+        "error_output": error_output,
+        "failure_count": str(failure_count),
+    }
+    if step_description:
+        context["step_description"] = step_description
+    if remaining_gates:
+        context["remaining_gates"] = "\n".join(remaining_gates)
+
+    return JudgmentRequest(
+        type=JudgmentType.FAILURE,
+        step_id=step_id,
+        context=context,
+        failure_history=failure_history,
+        plan_summary=plan_summary,
+    )
+
+
+def _coerce_gate_issue(raw_issue: object) -> ParsedGateIssue | None:
+    """Normalize one issue from gate evidence payload.
+
+    Source: docs/JUDGE-AGENT-PROMPT.md ``TYPE: gate`` severity taxonomy.
+    """
+
+    if not isinstance(raw_issue, dict):
+        return None
+
+    severity_raw = raw_issue.get("severity", "")
+    severity = str(severity_raw).strip().lower()
+    if not severity:
+        return None
+
+    summary_candidates = (
+        raw_issue.get("summary"),
+        raw_issue.get("message"),
+        raw_issue.get("title"),
+        raw_issue.get("issue"),
+    )
+    summary = ""
+    for candidate in summary_candidates:
+        if candidate is None:
+            continue
+        summary = str(candidate).strip()
+        if summary:
+            break
+    if not summary:
+        summary = f"{severity} issue"
+
+    return ParsedGateIssue(
+        severity=severity,
+        summary=summary,
+        raw={str(key): value for key, value in raw_issue.items()},
+    )
+
+
+def _parse_gate_issues(gate_evidence: str) -> list[ParsedGateIssue]:
+    """Parse gate issues from JSON/JSONL/plain-text evidence.
+
+    Source: DRIVER-BLUEPRINT.md Flow 4 (`parse_gate_issues(gate_evidence)`).
+    """
+
+    candidates: list[ParsedGateIssue] = []
+
+    stripped = gate_evidence.strip()
+    if stripped:
+        try:
+            payload = json.loads(stripped)
+        except json.JSONDecodeError:
+            payload = None
+        if isinstance(payload, dict):
+            raw_issues = payload.get("issues")
+            if isinstance(raw_issues, list):
+                for issue in raw_issues:
+                    parsed = _coerce_gate_issue(issue)
+                    if parsed is not None:
+                        candidates.append(parsed)
+        elif isinstance(payload, list):
+            for issue in payload:
+                parsed = _coerce_gate_issue(issue)
+                if parsed is not None:
+                    candidates.append(parsed)
+
+    # fallback: lightweight line parser ``[severity] message`` or ``severity: message``
+    if not candidates:
+        severities = {"blocker", "should_fix", "suggestion", "tech_debt"}
+        for line in gate_evidence.splitlines():
+            cleaned = line.strip().lstrip("-*0123456789. ").strip()
+            if not cleaned:
+                continue
+            lowered = cleaned.lower()
+            for severity in severities:
+                prefix_a = f"[{severity}]"
+                prefix_b = f"{severity}:"
+                if lowered.startswith(prefix_a):
+                    summary = cleaned[len(prefix_a) :].strip() or f"{severity} issue"
+                    candidates.append(ParsedGateIssue(severity=severity, summary=summary, raw={}))
+                    break
+                if lowered.startswith(prefix_b):
+                    summary = cleaned[len(prefix_b) :].strip() or f"{severity} issue"
+                    candidates.append(ParsedGateIssue(severity=severity, summary=summary, raw={}))
+                    break
+
+    return candidates
+
+
+def _is_gate_or_freeze_step(*, step_id: str, description: str, verification: str) -> bool:
+    """Return whether a step should use gate/cold-context judgment paths.
+
+    Source: docs/JUDGE-AGENT-PROMPT.md ``TYPE: gate`` and ``TYPE: cold_context``.
+    """
+
+    haystack = "\n".join([step_id, description, verification]).lower()
+    markers = (
+        ".gate",
+        " gate",
+        "freeze",
+        "independent auditor",
+        "adversarial",
+        "liveness",
+        "smoke test",
+    )
+    return any(marker in haystack for marker in markers)
+
+
+def _extract_entry_points_from_verification(verification: str) -> list[str]:
+    """Extract likely runnable entry points from verification text.
+
+    Source: docs/JUDGE-AGENT-PROMPT.md ``TYPE: cold_context`` runnable-surface
+    requirement (include entry points and expected startup behavior).
+    """
+
+    entry_points: list[str] = []
+    for line in verification.splitlines():
+        stripped = line.strip()
+        lowered = stripped.lower()
+        if not stripped:
+            continue
+        if lowered.startswith("run:") or lowered.startswith("start:"):
+            entry_points.append(stripped)
+            continue
+        if "pytest" in lowered or "uv run" in lowered or "python -m" in lowered:
+            entry_points.append(stripped)
+    return entry_points[:5]
+
+
+def _build_cold_context_request(
+    *,
+    step_id: str,
+    step_spec: str,
+    verification: str,
+    diff: str,
+) -> JudgmentRequest:
+    """Build COLD_CONTEXT judgment request with required fields.
+
+    Source: docs/DRIVER-ARCHITECTURE.md Section 2.9
+    ``CONTEXT_SCHEMAS[JudgmentType.COLD_CONTEXT]``.
+    """
+
+    context: dict[str, str] = {
+        "step_id": step_id,
+        "step_spec": step_spec,
+        "diff": diff,
+    }
+    if verification:
+        context["verification_criteria"] = verification
+
+    entry_points = _extract_entry_points_from_verification(verification)
+    if entry_points:
+        context["entry_points"] = "\n".join(entry_points)
+
+    return JudgmentRequest(
+        type=JudgmentType.COLD_CONTEXT,
+        step_id=step_id,
+        context=context,
+        failure_history=[],
+        plan_summary="",
+    )
+
+
+def _build_anomaly_request(
+    *,
+    anomaly_type: str,
+    repair_scope: str,
+    dry_run_recommendation: str,
+) -> JudgmentRequest:
+    """Build ANOMALY judgment request with required evidence sections.
+
+    Source: docs/DRIVER-ARCHITECTURE.md Section 2.9
+    ``CONTEXT_SCHEMAS[JudgmentType.ANOMALY]``.
+    """
+
+    return JudgmentRequest(
+        type=JudgmentType.ANOMALY,
+        step_id="startup.recovery",
+        context={
+            "anomaly_type": anomaly_type,
+            "repair_scope": repair_scope,
+            "dry_run_recommendation": dry_run_recommendation,
+        },
+        failure_history=[],
+        plan_summary="startup recovery",
+    )
+
+
+def _compose_gate_batch_instruction(
+    *,
+    base_instruction: str,
+    step_id: str,
+    remediation_issues: list[ParsedGateIssue],
+) -> str:
+    """Compose deterministic planner instruction for full gate fix chain.
+
+    Source: docs/JUDGE-AGENT-PROMPT.md ``TYPE: gate`` and DRIVER-BLUEPRINT.md
+    Flow 4 (batched fix+retest chain for blockers and should-fix issues).
+    """
+
+    normalized = base_instruction.strip()
+    lines = [
+        f"Gate remediation batch for {step_id} MUST include all listed issues.",
+    ]
+    for issue in remediation_issues:
+        lines.append(f"- [{issue.severity}] {issue.summary}")
+    if normalized:
+        return "\n".join([normalized, "", *lines])
+    return "\n".join(lines)
+
+
 async def run(config_path: Path) -> None:
     """Main driver entry point.
 
@@ -194,26 +1206,110 @@ async def run(config_path: Path) -> None:
     state = DriverState()
 
     try:
-        plan, _ = load_plan_definition(plan_path)
-        claims_path = resolve_claims_path(plan_path)
-        repair_claims(plan, plan_path, claims_path)
-        _cleanup_orphan_worktrees(plan_path=plan_path, plan_step_ids=_all_plan_step_ids(plan))
-
         runners = {
             name: create_runner(name, runner_cfg) for name, runner_cfg in config.runners.items()
         }
         session_pool = SessionPool(config.session)
         judge = Judge(config.judge, observer)
 
-        await _run_main_loop(
-            state=state,
-            config=config,
-            runners=runners,
-            judge=judge,
-            session_pool=session_pool,
-            observer=observer,
+        plan, _ = load_plan_definition(plan_path)
+        claims_path = resolve_claims_path(plan_path)
+        repair_result = repair_claims(plan, plan_path, claims_path)
+        removed_orphans = _cleanup_orphan_worktrees(
             plan_path=plan_path,
+            plan_step_ids=_all_plan_step_ids(plan),
         )
+
+        if _judge_type_enabled(judge, JudgmentType.ANOMALY):
+            startup_anomalies: list[JudgmentRequest] = []
+            if repair_result.actions:
+                startup_anomalies.append(
+                    _build_anomaly_request(
+                        anomaly_type="claim_state_repair",
+                        repair_scope=json.dumps(
+                            [
+                                {
+                                    "action": action.action,
+                                    "key": action.key,
+                                    "reason": action.reason,
+                                }
+                                for action in repair_result.actions
+                            ],
+                            ensure_ascii=False,
+                        ),
+                        dry_run_recommendation="safe_to_apply",
+                    )
+                )
+            if removed_orphans:
+                startup_anomalies.append(
+                    _build_anomaly_request(
+                        anomaly_type="orphan_worktrees",
+                        repair_scope=json.dumps(
+                            {"removed_orphans": list(removed_orphans)}, ensure_ascii=False
+                        ),
+                        dry_run_recommendation="safe_to_apply",
+                    )
+                )
+
+            for anomaly_request in startup_anomalies:
+                anomaly_verdict = await judge.judge(anomaly_request)
+                observer.emit(
+                    "ANOMALY_VERDICT",
+                    step_id=anomaly_request.step_id,
+                    verdict=anomaly_verdict.verdict,
+                    reason=anomaly_verdict.reason,
+                    anomaly_type=anomaly_request.context["anomaly_type"],
+                )
+
+                if anomaly_verdict.verdict == "HALT":
+                    observer.emit(
+                        "HALT",
+                        reason=(
+                            "Startup anomaly marked unsafe for auto-repair: "
+                            f"{anomaly_verdict.reason}"
+                        ),
+                    )
+                    state.halt_requested = True
+                    break
+
+                if anomaly_verdict.verdict == "REPLAN":
+                    if (
+                        anomaly_verdict.planner_instruction is None
+                        or not anomaly_verdict.planner_instruction.strip()
+                    ):
+                        raise PlanError(
+                            "ANOMALY REPLAN verdict requires non-empty planner_instruction "
+                            "for startup recovery"
+                        )
+                    await dispatch_planner(
+                        PlannerDispatchRequest(
+                            step_id="startup.recovery",
+                            trigger="run.startup_recovery_anomaly_replan",
+                            judgment_type="ANOMALY",
+                            planner_instruction=anomaly_verdict.planner_instruction,
+                        ),
+                        config=config,
+                        runners=runners,
+                        observer=observer,
+                        plan_path=plan_path,
+                    )
+
+                if anomaly_verdict.verdict not in {"ACCEPT", "HALT", "REPLAN"}:
+                    raise PlanError(
+                        "ANOMALY verdict must be ACCEPT, REPLAN, or HALT "
+                        f"(got={anomaly_verdict.verdict})"
+                    )
+
+        if not state.halt_requested:
+            await _run_main_loop(
+                state=state,
+                config=config,
+                runners=runners,
+                judge=judge,
+                session_pool=session_pool,
+                observer=observer,
+                plan_path=plan_path,
+            )
     finally:
         await shutdown(state=state, observer=observer)
 
@@ -247,9 +1343,86 @@ async def handle_dispatch(
     if action.step_id is None or action.agent is None:
         raise PlanError("claim_and_dispatch action requires step_id and agent")
 
+    step_id = action.step_id
+    agent = action.agent
+
+    preflight_metadata_plan = None
+    preflight_description = action.step_description or ""
+    preflight_verification = action.step_verification or ""
+    preflight_refs = action.step_refs or []
+    if config.judge.preflight and _is_impl_step_id(step_id):
+        if any(fnmatch(step_id, pattern) for pattern in config.judge.skip_preflight_for):
+            observer.emit("PREFLIGHT_SKIPPED", step_id=step_id, reason="skip_preflight_for_pattern")
+        else:
+            if not preflight_description or not preflight_verification:
+                preflight_metadata_plan, _ = load_plan_definition(plan_path)
+                found = preflight_metadata_plan.find_step(step_id)
+                if found is not None:
+                    _, preflight_step = found
+                    if not preflight_description:
+                        preflight_description = preflight_step.description
+                    if not preflight_verification:
+                        preflight_verification = preflight_step.verification
+                    if not preflight_refs:
+                        preflight_refs = list(preflight_step.refs)
+
+            risk_signals = _detect_preflight_risk_signals(
+                step_id=step_id,
+                description=preflight_description,
+                verification=preflight_verification,
+                refs=preflight_refs,
+            )
+            if risk_signals:
+                preflight_request = _build_preflight_request(
+                    step_id=step_id,
+                    description=preflight_description,
+                    verification=preflight_verification,
+                    refs=preflight_refs,
+                    risk_signals=risk_signals,
+                    plan_summary=(
+                        preflight_metadata_plan.context
+                        if preflight_metadata_plan is not None
+                        else ""
+                    ),
+                )
+                preflight_verdict = await judge.judge(preflight_request)
+                observer.emit(
+                    "PREFLIGHT_VERDICT",
+                    step_id=step_id,
+                    verdict=preflight_verdict.verdict,
+                    reason=preflight_verdict.reason,
+                    risk_signals=risk_signals,
+                )
+
+                if preflight_verdict.verdict == "REPLAN":
+                    planner_request = _build_replan_dispatch_request(
+                        step_id=step_id,
+                        trigger="handle_dispatch.preflight_replan",
+                        judgment_type="PREFLIGHT",
+                        verdict=preflight_verdict,
+                    )
+                    await dispatch_planner(
+                        planner_request,
+                        config=config,
+                        runners=runners,
+                        observer=observer,
+                        plan_path=plan_path,
+                    )
+                    return
+                if preflight_verdict.verdict == "REJECT":
+                    observer.emit(
+                        "PREFLIGHT_REJECT", step_id=step_id, reason=preflight_verdict.reason
+                    )
+                    return
+                if preflight_verdict.verdict == "DEFER":
+                    observer.emit(
+                        "PREFLIGHT_DEFER", step_id=step_id, reason=preflight_verdict.reason
+                    )
+                    return
+
     plan, expected_hash = load_plan_definition(plan_path)
     claims_path = resolve_claims_path(plan_path)
-    plan, _ = claim_step(plan, action.step_id, action.agent, claims_path=claims_path)
+    plan, _ = claim_step(plan, step_id, agent, claims_path=claims_path)
 
     save_plan(
         plan,
@@ -257,18 +1430,18 @@ async def handle_dispatch(
         expected_hash=expected_hash,
     )
 
-    binding_result = await create_worktree(action.step_id, cwd=plan_path.parent)
+    binding_result = await create_worktree(step_id, cwd=plan_path.parent)
     if isinstance(binding_result, Failure):
         raise binding_result.error
     binding = binding_result.value
 
-    runner_name = config.route_agent(action.agent)
+    runner_name = config.route_agent(agent)
     primary_runner = runner_name
-    if state.runner_failures.get((action.step_id, runner_name), 0) >= 2:
+    if state.runner_failures.get((step_id, runner_name), 0) >= 2:
         runner_name = config.fallback_runner
         observer.emit(
             "RUNNER_FALLBACK",
-            step_id=action.step_id,
+            step_id=step_id,
             from_runner=primary_runner,
             to_runner=runner_name,
             reason="repeated_failures",
@@ -276,12 +1449,39 @@ async def handle_dispatch(
 
     runner = runners.get(runner_name)
     if runner is None:
-        raise RunnerError(runner_name, action.step_id, "runner not configured")
+        raise RunnerError(runner_name, step_id, "runner not configured")
 
-    found = plan.find_step(action.step_id)
+    found = plan.find_step(step_id)
     if found is None:
-        raise PlanError(f"Step '{action.step_id}' not found after claim")
+        raise PlanError(f"Step '{step_id}' not found after claim")
     _, step = found
+
+    step_description = action.step_description or step.description
+    step_verification = action.step_verification or step.verification
+
+    if _is_gate_or_freeze_step(
+        step_id=step_id,
+        description=step_description,
+        verification=step_verification,
+    ) and _judge_type_enabled(judge, JudgmentType.COLD_CONTEXT):
+        cold_context_request = _build_cold_context_request(
+            step_id=step_id,
+            step_spec=step_description,
+            verification=step_verification,
+            diff="No diff available before gate dispatch; use objective artifacts only.",
+        )
+        cold_context_verdict = await judge.judge(cold_context_request)
+        observer.emit(
+            "COLD_CONTEXT_VERDICT",
+            step_id=step_id,
+            verdict=cold_context_verdict.verdict,
+            reason=cold_context_verdict.reason,
+        )
+        if cold_context_verdict.verdict != "ACCEPT":
+            raise PlanError(
+                "COLD_CONTEXT judgment returned non-ACCEPT verdict "
+                f"(step={step_id}, verdict={cold_context_verdict.verdict})"
+            )
 
     session_id: str | None = None
     session_source = "none"
@@ -290,8 +1490,8 @@ async def handle_dispatch(
         session_source = "action"
     else:
         session_id = session_pool.find_reusable(
-            step_id=action.step_id,
-            agent=action.agent,
+            step_id=step_id,
+            agent=agent,
             runner_name=runner_name,
             depends_on=step.depends_on,
         )
@@ -301,22 +1501,22 @@ async def handle_dispatch(
     if session_id is not None:
         observer.emit(
             "SESSION_REUSE_HIT",
-            step_id=action.step_id,
+            step_id=step_id,
             session_id=session_id,
             source=session_source,
         )
     else:
-        observer.emit("SESSION_REUSE_MISS", step_id=action.step_id, reason="no_reusable_session")
+        observer.emit("SESSION_REUSE_MISS", step_id=step_id, reason="no_reusable_session")
 
     prompt = render_prompt(
-        step_id=action.step_id,
-        agent=action.agent,
-        description=action.step_description or step.description,
-        verification=action.step_verification or step.verification,
+        step_id=step_id,
+        agent=agent,
+        description=step_description,
+        verification=step_verification,
         refs=action.step_refs or step.refs,
         worktree_path=str(binding.worktree_path),
         session_reuse=session_id is not None,
-        failure_context=state.get_failure_context(action.step_id),
+        failure_context=state.get_failure_context(step_id),
         plan_context=plan.context,
         phase_context="",
     )
@@ -324,7 +1524,7 @@ async def handle_dispatch(
     try:
         handle = await runner.dispatch(
             prompt=prompt,
-            agent=action.agent,
+            agent=agent,
             workdir=str(binding.worktree_path),
             session_id=session_id,
         )
@@ -332,20 +1532,20 @@ async def handle_dispatch(
         if session_id is not None:
             observer.emit(
                 "SESSION_REUSE_MISS",
-                step_id=action.step_id,
+                step_id=step_id,
                 reason="stale_or_unavailable_session",
             )
             handle = await runner.dispatch(
                 prompt=prompt,
-                agent=action.agent,
+                agent=agent,
                 workdir=str(binding.worktree_path),
                 session_id=None,
             )
         else:
             raise
     state.register(
-        step_id=action.step_id,
-        agent=action.agent,
+        step_id=step_id,
+        agent=agent,
         runner_name=runner_name,
         handle=handle,
         worktree_path=str(binding.worktree_path),
@@ -353,8 +1553,8 @@ async def handle_dispatch(
 
     observer.emit(
         "STEP_DISPATCHED",
-        step_id=action.step_id,
-        agent=action.agent,
+        step_id=step_id,
+        agent=agent,
         runner=runner_name,
         session_reuse=session_id is not None,
         preflight_enabled=config.judge.preflight,
@@ -424,6 +1624,120 @@ async def reconcile(
     if completed.result.status == RunnerStatus.SUCCESS:
         evidence = completed.result.output
         plan, expected_hash = load_plan_definition(plan_path)
+        runtime_config = cast(DriverConfig | None, state.runtime_config)
+        runtime_runners = cast(dict[str, Runner] | None, state.runtime_runners)
+        found = plan.find_step(completed.step_id)
+        if found is not None:
+            _, step = found
+            if _is_gate_or_freeze_step(
+                step_id=completed.step_id,
+                description=step.description,
+                verification=step.verification,
+            ) and _judge_type_enabled(judge, JudgmentType.GATE):
+                issues = _parse_gate_issues(evidence)
+                remediation_issues = [
+                    issue
+                    for issue in issues
+                    if issue.severity in GATE_REMEDIATION_CHAIN_CONTRACT.included_same_batch
+                ]
+                has_blocker = any(
+                    issue.severity in GATE_REMEDIATION_CHAIN_CONTRACT.blocker_severities
+                    for issue in remediation_issues
+                )
+                if has_blocker:
+                    remaining_checks = _collect_remaining_required_checks(plan, completed.step_id)
+                    gate_request = JudgmentRequest(
+                        type=JudgmentType.GATE,
+                        step_id=completed.step_id,
+                        context={
+                            "step_id": completed.step_id,
+                            "gate_evidence": evidence,
+                            "blocker_issues": json.dumps(
+                                [
+                                    {
+                                        "severity": issue.severity,
+                                        "summary": issue.summary,
+                                        "raw": issue.raw,
+                                    }
+                                    for issue in remediation_issues
+                                ],
+                                ensure_ascii=False,
+                            ),
+                            "remaining_gates": "\n".join(remaining_checks),
+                        },
+                        failure_history=state.get_failure_history(completed.step_id),
+                        plan_summary=str(getattr(plan, "context", "")),
+                    )
+                    gate_verdict = await judge.judge(gate_request)
+                    observer.emit(
+                        "GATE_VERDICT",
+                        step_id=completed.step_id,
+                        verdict=gate_verdict.verdict,
+                        reason=gate_verdict.reason,
+                        issue_count=len(remediation_issues),
+                    )
+
+                    if gate_verdict.verdict == "HALT":
+                        observer.emit(
+                            "HALT",
+                            reason=(
+                                f"Gate hard-block for {completed.step_id}: {gate_verdict.reason}"
+                            ),
+                        )
+                        state.halt_requested = True
+                        return
+
+                    if gate_verdict.verdict == "REJECT":
+                        if runtime_config is None or runtime_runners is None:
+                            raise PlanError(
+                                "GATE REJECT remediation requires config/runners wiring "
+                                "for planner dispatch"
+                            )
+                        batch_instruction = _compose_gate_batch_instruction(
+                            base_instruction=gate_verdict.planner_instruction or "",
+                            step_id=completed.step_id,
+                            remediation_issues=remediation_issues,
+                        )
+                        if not batch_instruction.strip():
+                            raise PlanError(
+                                "GATE REJECT verdict requires planner instruction for batched "
+                                f"fix chain (step={completed.step_id})"
+                            )
+
+                        await dispatch_planner(
+                            PlannerDispatchRequest(
+                                step_id=completed.step_id,
+                                trigger="reconcile.evidence_replan",
+                                judgment_type="GATE",
+                                planner_instruction=batch_instruction,
+                                source_verdict="REJECT",
+                            ),
+                            config=runtime_config,
+                            runners=runtime_runners,
+                            observer=observer,
+                            plan_path=plan_path,
+                        )
+
+                        claims_path = resolve_claims_path(plan_path)
+                        deferred_plan = defer_step(
+                            plan,
+                            completed.step_id,
+                            claims_path=claims_path,
+                        )
+                        save_plan(deferred_plan, path=plan_path, expected_hash=expected_hash)
+                        observer.emit(
+                            "GATE_REMEDIATION_DEFERRED",
+                            step_id=completed.step_id,
+                            blocker_count=sum(
+                                1
+                                for issue in remediation_issues
+                                if issue.severity
+                                in GATE_REMEDIATION_CHAIN_CONTRACT.blocker_severities
+                            ),
+                            batched_issue_count=len(remediation_issues),
+                        )
+                        return
+
         claims_path = resolve_claims_path(plan_path)
         plan = complete_step(plan, completed.step_id, evidence, claims_path=claims_path)
         save_plan(plan, path=plan_path, expected_hash=expected_hash)
@@ -488,6 +1802,78 @@ async def reconcile(
     plan, expected_hash = load_plan_definition(plan_path)
     claims_path = resolve_claims_path(plan_path)
 
+    failure_step_description = ""
+    found = plan.find_step(completed.step_id)
+    if found is not None:
+        _, failure_step = found
+        failure_step_description = failure_step.description
+
+    runtime_config = cast(DriverConfig | None, state.runtime_config)
+    runtime_runners = cast(dict[str, Runner] | None, state.runtime_runners)
+
+    if _judge_type_enabled(judge, JudgmentType.FAILURE):
+        remaining_checks = _collect_remaining_required_checks(plan, completed.step_id)
+        failure_request = _build_failure_request(
+            step_id=completed.step_id,
+            error_output=completed.result.output,
+            failure_count=count,
+            step_description=failure_step_description,
+            remaining_gates=remaining_checks,
+            failure_history=state.get_failure_history(completed.step_id),
+            plan_summary=str(getattr(plan, "context", "")),
+        )
+        failure_verdict = await judge.judge(failure_request)
+        disposition = _extract_failure_disposition(failure_verdict.reason)
+        observer.emit(
+            "FAILURE_VERDICT",
+            step_id=completed.step_id,
+            verdict=failure_verdict.verdict,
+            reason=failure_verdict.reason,
+            disposition=disposition or "",
+            remaining_checks=len(remaining_checks),
+        )
+
+        requires_planner = (
+            failure_verdict.verdict == "REPLAN" or disposition == "downstream_blocker"
+        )
+        if requires_planner:
+            if runtime_config is None or runtime_runners is None:
+                raise PlanError(
+                    "FAILURE downstream-blocker remediation requires config/runners wiring "
+                    "for planner dispatch"
+                )
+            if (
+                failure_verdict.planner_instruction is None
+                or not failure_verdict.planner_instruction.strip()
+            ):
+                raise PlanError(
+                    "FAILURE downstream_blocker/REPLAN verdict requires non-empty "
+                    f"planner_instruction (step={completed.step_id})"
+                )
+
+            await dispatch_planner(
+                PlannerDispatchRequest(
+                    step_id=completed.step_id,
+                    trigger="reconcile.failure_classification_replan",
+                    judgment_type="FAILURE",
+                    planner_instruction=failure_verdict.planner_instruction,
+                    source_verdict=failure_verdict.verdict,
+                ),
+                config=runtime_config,
+                runners=runtime_runners,
+                observer=observer,
+                plan_path=plan_path,
+            )
+            deferred_plan = defer_step(plan, completed.step_id, claims_path=claims_path)
+            save_plan(deferred_plan, path=plan_path, expected_hash=expected_hash)
+            observer.emit(
+                "FAILURE_REMEDIATION_DEFERRED",
+                step_id=completed.step_id,
+                verdict=failure_verdict.verdict,
+                disposition=disposition or "",
+            )
+            return
+
     if count < 3:
         plan = defer_step(plan, completed.step_id, claims_path=claims_path)
         save_plan(plan, path=plan_path, expected_hash=expected_hash)
@@ -500,11 +1886,34 @@ async def reconcile(
         )
         return
 
+    escalation_step_description = failure_step_description
+
+    escalation_request = _build_escalation_request(
+        step_id=completed.step_id,
+        failure_count=count,
+        failure_history=state.get_failure_history(completed.step_id),
+        step_description=escalation_step_description,
+        available_agents=[completed.agent],
+        plan_summary=plan.context,
+    )
+    escalation_verdict = await judge.judge(escalation_request)
+    observer.emit(
+        "ESCALATION_VERDICT",
+        step_id=completed.step_id,
+        attempt=count,
+        verdict=escalation_verdict.verdict,
+        reason=escalation_verdict.reason,
+    )
+
     observer.emit(
         "ESCALATION_DEFERRED",
         step_id=completed.step_id,
         attempt=count,
-        reason="Escalation runtime verdict path is deferred to driver-judgment-expansion-replan",
+        reason=(
+            "Escalation verdict handling beyond threshold remains deferred to "
+            "driver-judgment-expansion-replan"
+        ),
+        verdict=escalation_verdict.verdict,
         deferred_branches=[branch.branch for branch in DEFERRED_REPLAN_BRANCHES],
     )
 
@@ -605,7 +2014,7 @@ def _all_plan_step_ids(plan: object) -> set[str]:
     return {step.id for phase in phases for step in phase.steps}
 
 
-def _cleanup_orphan_worktrees(*, plan_path: Path, plan_step_ids: set[str]) -> None:
+def _cleanup_orphan_worktrees(*, plan_path: Path, plan_step_ids: set[str]) -> tuple[str, ...]:
     """Delete stale step directories that do not map to any plan step.
 
     Args:
@@ -614,7 +2023,9 @@ def _cleanup_orphan_worktrees(*, plan_path: Path, plan_step_ids: set[str]) -> No
     """
     base_dir = plan_path.parent / ".vectl" / "worktrees"
     if not base_dir.exists() or not base_dir.is_dir():
-        return
+        return ()
+
+    removed: list[str] = []
 
     for candidate in base_dir.iterdir():
         if not candidate.is_dir():
@@ -622,6 +2033,9 @@ def _cleanup_orphan_worktrees(*, plan_path: Path, plan_step_ids: set[str]) -> No
         if candidate.name in plan_step_ids:
             continue
         shutil.rmtree(candidate, ignore_errors=True)
+        removed.append(candidate.name)
+
+    return tuple(sorted(removed))
 
 
 def _serialize_actions_for_loop_guard(actions: list[Action]) -> str:
@@ -669,6 +2083,9 @@ async def _run_main_loop(
     plan_path: Path,
 ) -> None:
     """Execute the deterministic decide/dispatch/wait/reconcile loop."""
+    state.runtime_config = config
+    state.runtime_runners = runners
+
     while not state.halt_requested:
         decide_output = decide(
             running_tasks=state.as_running_tasks(),
@@ -736,13 +2153,29 @@ async def _run_main_loop(
 
 
 __all__ = [
+    "CONFLICT_RESOLVER_READINESS_CONTRACT",
+    "ConflictResolverDispatcher",
+    "ConflictResolverReadinessContract",
+    "ConflictResolverTriggerName",
     "DEFERRED_REPLAN_BRANCHES",
+    "GATE_REMEDIATION_CHAIN_CONTRACT",
+    "GateRemediationChainContract",
+    "GateRemediationTriggerName",
     "GRACEFUL_SHUTDOWN_CONTRACT",
     "LoopSurfaceName",
+    "PlannerDispatchContract",
+    "PlannerDispatchRequest",
+    "PlannerDispatcher",
+    "REMAINING_JUDGMENT_RUNTIME_CONTRACTS",
+    "REPLAN_PLANNER_WIRING",
+    "RemainingJudgmentRuntimeContract",
+    "RemainingJudgmentTriggerName",
+    "ReplanTriggerName",
     "GracefulShutdownContract",
     "DeferredRuntimeBranch",
     "STARTUP_RECOVERY_CONTRACT",
     "StartupRecoveryContract",
+    "dispatch_planner",
     "handle_complete",
     "handle_dispatch",
     "reconcile",

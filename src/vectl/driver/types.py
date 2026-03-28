@@ -14,6 +14,7 @@ from __future__ import annotations
 
 import asyncio
 import time
+from collections.abc import Mapping
 from dataclasses import dataclass, field
 from enum import Enum
 from typing import TYPE_CHECKING
@@ -131,6 +132,12 @@ class DriverState:
 
     merge_lock: asyncio.Lock = field(default_factory=asyncio.Lock)
     # Serializes all git merge operations (real lock, not LLM instruction)
+
+    runtime_config: object | None = None
+    # Loop-injected runtime config for reconcile follow-up dispatch wiring.
+
+    runtime_runners: Mapping[str, object] | None = None
+    # Loop-injected runner map for reconcile follow-up planner dispatch wiring.
 
     def as_running_tasks(self) -> list[RunningTask]:
         """Convert to vectl.models.RunningTask list for decide() input.

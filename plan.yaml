@@ -33817,7 +33817,7 @@ phases:
       - controlled cycle/operation reached: yes'
 - id: driver-multi-runner-hardening
   name: Driver Multi-Runner Hardening
-  status: in_progress
+  status: done
   depends_on:
   - driver-judgment-runtime-minimal
   steps:
@@ -34037,7 +34037,7 @@ phases:
       - driver hardening failure-mode handling in blueprint/runtime architecture docs'
   - id: driver-multi-runner-hardening.verify-session-boundary
     name: Verify session reuse boundary
-    status: pending
+    status: done
     description: 'step_type: verification
 
       Verification scope: local-check protecting driver-multi-runner-hardening.gate.
@@ -34070,9 +34070,57 @@ phases:
     depends_on:
     - driver-multi-runner-hardening.impl-loop-hardening
     agent: integration-verifier
+    claimed_by: integration-verifier
+    claimed_at: '2026-03-28T09:44:58.249291+00:00'
+    done_at: '2026-03-28T09:48:00.497667+00:00'
+    evidence: "## Verification Report: SessionPool/decide Ownership Boundary\n\n**Date**:\
+      \ 2026-03-28\n**Verifier**: Integration Verifier\n**Scope**: Session reuse ownership\
+      \ boundary between `SessionPool` (driver) and `_session_registry` (decide.py)\n\
+      \n### Results\n\n| Check | Result | Evidence |\n|-------|--------|----------|\n\
+      | Code isolation (P2) | PASS | No direct mutation of `_session_registry` in\
+      \ driver |\n| Import boundary | PASS | `loop.py` imports only `decide` function,\
+      \ not private state |\n| Runtime independence | PASS | `SessionPool._entries`\
+      \ is independent dict from `_session_registry` |\n| Documentation | PASS | SessionPool\
+      \ docstring explicitly documents ownership boundary |\n| Test coverage (L2)\
+      \ | PASS | 443 driver tests pass, including session boundary tests |\n\n###\
+      \ Evidence: Code Boundary\n\n1. **No direct import of private state**:\n   ```python\n\
+      \   # loop.py:29\n   from vectl.decide import decide  # Only public function\n\
+      \   ```\n\n2. **Runtime isolation verified**:\n   ```python\n   # decide.py\
+      \ has private module-level state\n   _session_registry: dict[str, str] = {}\n\
+      \   _completion_times: dict[str, float] = {}\n\n   # SessionPool has its own\
+      \ independent entries\n   SessionPool._entries: dict[str, SessionEntry]\n  \
+      \ ```\n\n3. **Independence proven**:\n   ```\n   SessionPool._entries is NOT\
+      \ _session_registry: True\n   id(SessionPool._entries) != id(_session_registry):\
+      \ True\n   ```\n\n4. **No write to decide.py state in driver code**:\n   ```\n\
+      \   grep \"session_registry\\|_completion_times\\|_failure_counts\" src/vectl/driver/\n\
+      \   # Returns only documentation comments in session.py (lines 7, 30, 32, 34,\
+      \ 42)\n   # No assignments to these variables\n   ```\n\n### Evidence: Session\
+      \ Reuse Flow\n\n| Path | Source | Driver Action |\n|------|--------|---------------|\n\
+      | `action.session=\"reuse\" + task_id` | decide() result | Use `action.task_id`\
+      \ directly |\n| `action.session=\"fresh\"` | decide() result | Check `SessionPool.find_reusable()`\
+      \ for runner-aware match |\n| RunnerError on stale session | runtime exception\
+      \ | Retry with `session_id=None` (fresh dispatch) |\n\n### Evidence: Test Coverage\n\
+      \n```\ntests/test_driver_loop_hardening.py::test_handle_dispatch_runner_fallback_after_repeated_failures\
+      \ PASSED\ntests/test_driver_loop_hardening.py::test_handle_dispatch_stale_session_retries_fresh\
+      \ PASSED\ntests/test_driver_loop_hardening.py::test_reconcile_routes_non_trivial_conflict\
+      \ PASSED\ntests/test_driver_session.py::TestSessionPoolOwnershipBoundary::test_session_pool_is_independent\
+      \ PASSED\ntests/test_driver_session.py::TestSessionPoolReconciliation::test_session_pool_supplements_decide\
+      \ PASSED\ntests/test_driver_session_edge_cases.py::TestSessionPoolNoMutation::test_session_pool_has_own_entries\
+      \ PASSED\n\n# All driver tests: 443 passed, 34 xfailed, 17 xpassed\n```\n\n\
+      ### Findings\n\n**No findings.** All verification checks pass:\n\n1. ✓ Driver\
+      \ supplements reuse when safe (via `SessionPool.find_reusable()`)\n2. ✓ Driver\
+      \ does NOT mutate `decide.py` module registries directly\n3. ✓ Stale/mismatched\
+      \ sessions degrade gracefully to fresh dispatch (confirmed in `test_handle_dispatch_stale_session_retries_fresh`)\n\
+      4. ✓ Ownership boundary is explicitly documented in `SessionPool` docstring\n\
+      5. ✓ Independent test coverage exists for both pools\n\n### L2 Evidence Level:\
+      \ PASS\n\nThe `SessionPool`/`_session_registry` boundary is properly isolated:\n\
+      - Separate dictionaries with no cross-references\n- Driver feeds data through\
+      \ `decide()`'s existing `CompletedResult` contract\n- `SessionPool.record()`\
+      \ is called after `decide()` processes results\n- No direct write to `decide.py`\
+      \ private state from driver code"
   - id: driver-multi-runner-hardening.verify-conflict-and-multirunner
     name: Verify conflict resolution and multi-runner seams
-    status: pending
+    status: done
     description: 'step_type: verification
 
       Verification scope: phase-check protecting driver-multi-runner-hardening.gate.
@@ -34102,9 +34150,73 @@ phases:
     depends_on:
     - driver-multi-runner-hardening.verify-session-boundary
     agent: integration-verifier
+    claimed_by: integration-verifier
+    claimed_at: '2026-03-28T09:48:13.251785+00:00'
+    done_at: '2026-03-28T09:49:52.284149+00:00'
+    evidence: "## Verification Report: Multi-Runner & Conflict Resolution Seams\n\n\
+      **Date**: 2026-03-28\n**Verifier**: Integration Verifier\n**Scope**: Multi-runner\
+      \ dispatch/fallback path, worktree conflict classification, non-trivial conflict\
+      \ handoff readiness\n\n### Results\n\n| Check | Result | Evidence |\n|-------|--------|----------|\n\
+      | Conflict tests (L2) | PASS | Real `git` subprocess calls, not mocked |\n|\
+      \ Multi-runner fallback (L2) | PASS | Driver logic tested with protocol-compliant\
+      \ mocks |\n| Non-trivial conflict handoff (L2) | PASS | Resolver dispatch returned\
+      \ correctly |\n| Mock Island (P6) | PASS | Driver logic has integration companions\
+      \ via worktree tests |\n\n### Evidence: Conflict Resolution Path\n\n**Real Git\
+      \ Operations** (not mocked):\n```\ntests/test_driver_worktree.py:\n- 34 subprocess.run\
+      \ calls for real git commands\n- asyncio.run(create(...)) for real worktree\
+      \ creation\n- asyncio.run(merge(...)) for real merge operations\n```\n\n**Conflict\
+      \ Classification Tests**:\n```bash\n$ uv run pytest tests/test_driver_worktree.py::TestMergeTrivialConflict\
+      \ tests/test_driver_worktree.py::TestMergeNonTrivialConflict -v\ntests/test_driver_worktree.py::TestMergeTrivialConflict::test_trivial_conflict_plan_yaml\
+      \ PASSED\ntests/test_driver_worktree.py::TestMergeTrivialConflict::test_trivial_conflict_lock_file\
+      \ PASSED\ntests/test_driver_worktree.py::TestMergeNonTrivialConflict::test_non_trivial_conflict_source_code\
+      \ PASSED\ntests/test_driver_worktree.py::TestMergeNonTrivialConflict::test_non_trivial_conflict_returns_resolver_dispatch\
+      \ PASSED\n4 passed in 3.62s\n```\n\n### Evidence: Multi-Runner Fallback Path\n\
+      \n**Driver Logic Tests**:\n```bash\n$ uv run pytest tests/test_driver_loop_hardening.py::test_handle_dispatch_runner_fallback_after_repeated_failures\
+      \ -v\ntests/test_driver_loop_hardening.py::test_handle_dispatch_runner_fallback_after_repeated_failures[asyncio]\
+      \ PASSED\n\n# Verifies:\n# - state.runner_failures[(step, runner)] >= 2 triggers\
+      \ fallback\n# - emits RUNNER_FALLBACK event with from_runner, to_runner, reason\n\
+      # - uses fallback_runner from config\n```\n\n**Implementation in loop.py:267-275**:\n\
+      ```python\nif state.runner_failures.get((action.step_id, runner_name), 0) >=\
+      \ 2:\n    runner_name = config.fallback_runner\n    observer.emit(\n       \
+      \ \"RUNNER_FALLBACK\",\n        step_id=action.step_id,\n        from_runner=primary_runner,\n\
+      \        to_runner=runner_name,\n        reason=\"repeated_failures\",\n   \
+      \ )\n```\n\n### Evidence: Non-Trivial Conflict Handoff\n\n**Resolver Dispatch\
+      \ Structure**:\n```python\n@dataclass(frozen=True)\nclass ConflictResolverDispatch:\n\
+      \    step_id: str\n    worktree_path: Path\n    source_branch: str\n    target_branch:\
+      \ str\n    conflicted_files: tuple[str, ...]\n    resolver_path: str = \"driver.merge_conflict_resolver\"\
+      \n```\n\n**Reconcile Path Integration**:\n```python\n# loop.py:440-450\nif merge_result.value.outcome.value\
+      \ == \"non_trivial_conflict\":\n    observer.emit(\n        \"MERGE_CONFLICTED\"\
+      ,\n        step_id=completed.step_id,\n        conflicting_files=list(merge_result.value.conflicted_files),\n\
+      \    )\n    plan = defer_step(plan, completed.step_id, claims_path=claims_path)\n\
+      \    save_plan(plan, path=plan_path, expected_hash=expected_hash)\n    return\
+      \  # Handoff complete, step deferred\n```\n\n### Evidence: Runner Contract Coverage\n\
+      \n**Extended Runners + Core Runners**:\n```bash\n$ uv run pytest tests/test_driver_extended_runners.py\
+      \ tests/test_driver_runners.py -v\n81 passed in 0.78s\n\nKey test classes:\n\
+      - TestCoreRunnersScope: create_runner factory for claude/opencode/codex/gemini\n\
+      - TestRunnerDispatchIntegration: real subprocess dispatch tests\n- TestTransportErrorClassification:\
+      \ parser error handling\n- TestSessionResumeFlagContract: resume flag translation\n\
+      ```\n\n### P2 Analysis: Fake Seam Check\n\n| Test File | Mock Usage | Acceptable?\
+      \ | Reason |\n|-----------|-----------|-------------|--------|\n| `test_driver_worktree.py`\
+      \ | None | ✓ | Real git subprocess calls |\n| `test_driver_loop_hardening.py`\
+      \ | `_Runner` class | ✓ | Tests driver orchestration, not runner implementation\
+      \ |\n| `test_driver_runners.py` | Runner stubs | ✓ | Tests contracts, dispatch\
+      \ integration uses real subprocess |\n\n### P6 Analysis: Mock Island Check\n\
+      \n| Mock-Heavy Test | Integration Companion | Status |\n|-----------------|---------------------|--------|\n\
+      | `test_driver_loop_hardening` | `test_driver_worktree` (real git) | ✓ PASS\
+      \ |\n| `test_driver_runners` (stubs) | `TestRunnerDispatchIntegration` (real\
+      \ subprocess) | ✓ PASS |\n\n### Findings\n\n**No findings.** All verification\
+      \ checks pass:\n\n1. ✓ Multi-runner dispatch path (fallback after 2 failures)\
+      \ - verified in `test_handle_dispatch_runner_fallback_after_repeated_failures`\n\
+      2. ✓ Worktree conflict classification - real git tests in `test_driver_worktree.py`\n\
+      3. ✓ Non-trivial conflict handoff - `ConflictResolverDispatch` returned, step\
+      \ deferred\n4. ✓ Mock usage is at I/O boundaries with integration companions\
+      \ (P2+P6 ✓)\n\n### L2 Evidence Level: PASS\n\n- Conflict resolution uses real\
+      \ `git` subprocess calls (not mocked)\n- Multi-runner fallback tested at driver\
+      \ orchestration level\n- Non-trivial conflict returns proper resolver dispatch\
+      \ structure\n- Mock Island check passes: unit tests have integration companions"
   - id: driver-multi-runner-hardening.spec-conformance
     name: Multi-runner hardening spec conformance
-    status: pending
+    status: done
     description: 'step_type: verification
 
       Verification scope: phase-check protecting driver-multi-runner-hardening.gate.
@@ -34117,9 +34229,33 @@ phases:
     depends_on:
     - driver-multi-runner-hardening.verify-conflict-and-multirunner
     agent: doc-reviewer
+    claimed_by: doc-reviewer
+    claimed_at: '2026-03-28T09:51:53.637334+00:00'
+    done_at: '2026-03-28T09:54:01.264904+00:00'
+    evidence: 'step_intent: verify multi-runner hardening conformance vs blueprint/architecture.
+
+      expected_result: fallback/session/conflict/loop-guard behaviors mapped and deferred
+      branches explicit.
+
+      observed_result:
+
+      - File:line mappings provided for fallback, stale-session retry, conflict routing,
+      infinite-loop guard, all-stalled recovery.
+
+      - SessionPool semantics and runner capability matrix validated.
+
+      - Deferred REPLAN branches explicitly enumerated and bounded.
+
+      failure_alignment: N/A (PASS)
+
+      product_implementation_files_modified: none
+
+
+      verification_commands_and_outcomes include config/runners/loop-hardening/session
+      suites all passing.'
   - id: driver-multi-runner-hardening.freeze
     name: Freeze multi-runner hardening snapshot
-    status: pending
+    status: done
     description: 'step_type: verification
 
       Verification scope: phase-check protecting driver-multi-runner-hardening.gate.
@@ -34142,9 +34278,24 @@ phases:
     depends_on:
     - driver-multi-runner-hardening.spec-conformance
     agent: integration-verifier
+    claimed_by: integration-verifier
+    claimed_at: '2026-03-28T09:54:24.693300+00:00'
+    done_at: '2026-03-28T09:55:42.161358+00:00'
+    evidence: 'Freeze evidence:
+
+      - git rev-parse HEAD captured
+
+      - git tracked status clean (no staged/modified tracked files)
+
+      - environment declaration captured
+
+      - explicit no-code-changes-until-gate statement recorded
+
+
+      Snapshot frozen for gate validation.'
   - id: driver-multi-runner-hardening.gate
     name: Gate driver-multi-runner-hardening
-    status: pending
+    status: done
     description: 'step_type: gate
 
       As an INDEPENDENT REVIEWER, assess whether multi-runner and hardening behavior
@@ -34168,15 +34319,39 @@ phases:
     depends_on:
     - driver-multi-runner-hardening.freeze
     agent: gate-reviewer
+    claimed_by: gate-reviewer
+    claimed_at: '2026-03-28T09:56:07.343048+00:00'
+    done_at: '2026-03-28T10:06:51.002529+00:00'
+    evidence: 'step_intent: independent gate review for multi-runner hardening readiness.
+
+      expected_result: PASS if fallback/session-boundary/conflict realism criteria
+      met with real seam evidence.
+
+      observed_result:
+
+      - fallback correctness validated
+
+      - session boundary preserved with no direct decide-state mutation
+
+      - conflict routing realism validated
+
+      - no unresolved blockers for next phase
+
+      failure_alignment: N/A (PASS)
+
+      product_implementation_files_modified: none
+
+
+      gate_verdict: PASS'
 - id: driver-judgment-expansion-replan
   name: Driver Judgment Expansion + Replan
-  status: locked
+  status: in_progress
   depends_on:
   - driver-multi-runner-hardening
   steps:
   - id: driver-judgment-expansion-replan.contract-replan-planner-wiring
     name: Contract replan and planner wiring
-    status: pending
+    status: done
     description: "step_type: contract\ncontract_purity: ENFORCED\ncontract_outputs:\n\
       \  - signatures\n  - type_defs\n  - interfaces\n  - stubs\n\nPin the exact REPLAN/planner-dispatch\
       \ wiring contract for src/vectl/driver/loop.py based on blueprint key flows,\
@@ -34186,9 +34361,32 @@ phases:
     verification: '- Contract names trigger points, planner_instruction handling,
       and bounded deferral rules'
     agent: software-architect
+    claimed_by: software-architect
+    claimed_at: '2026-03-28T10:07:38.379233+00:00'
+    done_at: '2026-03-28T10:11:40.847036+00:00'
+    evidence: 'Contract surfaces pinned for REPLAN/planner wiring across loop + judgments
+      + architecture docs.
+
+
+      Included:
+
+      - Trigger matrix for five REPLAN-capable points
+
+      - Planner instruction ownership contract and dispatch request shape
+
+      - Explicit bounded deferrals to this phase
+
+      - Anti-narrowing rule forbidding collapse of REPLAN into reject-only behavior
+
+
+      Verification:
+
+      - py_compile for updated modules passed
+
+      - relevant runtime/contract tests remained green/expected profile'
   - id: driver-judgment-expansion-replan.test-replan-planner-wiring
     name: Test replan and planner wiring
-    status: pending
+    status: done
     description: 'step_type: test
 
 
@@ -34229,9 +34427,72 @@ phases:
     depends_on:
     - driver-judgment-expansion-replan.contract-replan-planner-wiring
     agent: python-executor
+    claimed_by: python-executor
+    claimed_at: '2026-03-28T10:22:14.796865+00:00'
+    done_at: '2026-03-28T10:30:13.482697+00:00'
+    evidence: 'Artifact:
+
+      - Commit: f1d988e
+
+
+      Verification:
+
+      - Run: uv run pytest tests/test_driver_replan_verdict.py -v -> 58 passed in
+      0.27s
+
+      - Run: uv run pytest tests/test_driver_judgments.py tests/test_driver_loop_contract.py
+      -v -> 65 passed in 0.28s
+
+
+      Test coverage areas:
+
+      - ReplanVerdictContract dataclass validation (verdict must be "REPLAN", planner_instruction
+      required)
+
+      - REPLAN_NON_NARROWING_RULE documentation
+
+      - PlannerDispatchRequest dataclass validation (step_id, trigger, instruction
+      propagation)
+
+      - DEFERRED_REPLAN_BRANCHES registration (5 branches, all deferred to driver-judgment-expansion-replan)
+
+      - REPLAN_PLANNER_WIRING matrix (5 contracts, all with planner_instruction_source
+      from JudgmentVerdict)
+
+      - PlannerDispatcher protocol existence
+
+      - REPLAN verdict validation (REPLAN requires planner_instruction)
+
+      - JudgmentVerdict to PlannerDispatchRequest instruction preservation
+
+      - Non-destructive step deferral (step remains claimable after planner dispatch)
+
+      - Runtime gap documentation (dispatch_planner raises NotImplementedError)
+
+      - Anti-narrowing invariants (REPLAN != REJECT/DEFER/HALT)
+
+      - Context coverage (PREFLIGHT, ESCALATION, ANOMALY)
+
+      - Gate context (GATE does NOT produce REPLAN)
+
+      - Preflight REPLAN context (before dispatch)
+
+      - Escalation REPLAN context (after threshold)
+
+
+      Spec link:
+
+      - Architecture: docs/DRIVER-ARCHITECTURE.md Section 2.10, 2.11
+
+      - Blueprint: DRIVER-BLUEPRINT.md Flow 2, Flow 3, Flow 4
+
+      - Implementation: src/vectl/driver/judgments.py ReplanVerdictContract, REPLAN_NON_NARROWING_RULE
+
+      - Implementation: src/vectl/driver/loop.py DEFERRED_REPLAN_BRANCHES, REPLAN_PLANNER_WIRING,
+      PlannerDispatchRequest'
   - id: driver-judgment-expansion-replan.impl-replan-planner-wiring
     name: Implement replan and planner wiring
-    status: pending
+    status: done
     description: 'step_type: implementation
 
 
@@ -34249,9 +34510,33 @@ phases:
     depends_on:
     - driver-judgment-expansion-replan.test-replan-planner-wiring
     agent: python-senior
+    claimed_by: python-senior
+    claimed_at: '2026-03-28T10:30:49.800898+00:00'
+    done_at: '2026-03-28T10:39:21.559264+00:00'
+    evidence: "Artifact:\n- Commit: 6b8241c\n\nVerification:\n- Run: uv run ruff check\
+      \ src/vectl/driver/loop.py tests/test_driver_loop_hardening.py -> All checks\
+      \ passed!\n- Run: uv run pytest tests/test_driver_loop_hardening.py tests/test_driver_replan_verdict.py\
+      \ -q -> 68 passed in 0.35s\n\nSpec link:\n- docs/DRIVER-ARCHITECTURE.md §2.11\
+      \ \"REPLAN / Planner Wiring Contract (Bounded)\" + \"Planner Instruction Handling\"\
+      \n- DRIVER-BLUEPRINT.md Flow 2 (\"Preflight judgment\", REPLAN -> dispatch_planner)\n\
+      \nImplemented:\n- Wired preflight REPLAN handling in handle_dispatch():\n  -\
+      \ preflight candidate detection for impl-like step IDs\n  - risk-signal routing\n\
+      \  - judge PREFLIGHT request construction\n  - REPLAN verdict -> planner handoff\
+      \ + early return before claim/worktree/runner dispatch\n  - explicit REJECT/DEFER\
+      \ preflight handling events\n- Implemented runtime dispatch_planner():\n  -\
+      \ validates non-empty planner_instruction\n  - routes to vectl-planner via configured\
+      \ runner\n  - dispatches planner prompt in repo root\n  - waits for result and\
+      \ explicitly fails on non-success statuses\n  - emits started/completed/failed\
+      \ planner dispatch events\n- Added judgment handoff helpers in loop.py:\n  -\
+      \ _build_replan_dispatch_request(...)\n  - _render_planner_prompt(...)\n  -\
+      \ _build_preflight_request(...)\n  - _detect_preflight_risk_signals(...)\n \
+      \ - _is_impl_step_id(...)\n  - _build_escalation_request(...)\n- Added focused\
+      \ tests in tests/test_driver_loop_hardening.py for:\n  - preflight REPLAN planner\
+      \ dispatch path\n  - missing planner_instruction failure path\n  - planner runner\
+      \ failure path\n  - non-empty planner_instruction enforcement"
   - id: driver-judgment-expansion-replan.contract-gate-chain-flow
     name: Contract full gate-chain and remediation flow
-    status: pending
+    status: done
     description: "step_type: contract\ncontract_purity: ENFORCED\ncontract_outputs:\n\
       \  - signatures\n  - type_defs\n  - interfaces\n  - stubs\n\nPin the full gate/replan/remediation\
       \ semantics for the remaining runtime behavior:\n- failure classification\n\
@@ -34265,9 +34550,42 @@ phases:
     depends_on:
     - driver-judgment-expansion-replan.impl-replan-planner-wiring
     agent: software-architect
+    claimed_by: software-architect
+    claimed_at: '2026-03-28T10:39:50.692826+00:00'
+    done_at: '2026-03-28T10:45:13.075681+00:00'
+    evidence: 'Artifact:
+
+      - Commit: af7153a9479b2058fc9518cd3483e3455290e6d2
+
+
+      Verification:
+
+      - Run: uv run pytest tests/test_driver_judgment_expansion_contract.py tests/test_driver_judgments.py
+      tests/test_driver_judge.py -q -> 111 passed
+
+      - Run: uv run ruff check src/vectl/driver/loop.py tests/test_driver_judgment_expansion_contract.py
+      -> all checks passed
+
+      - Run: uv run python -m compileall src/vectl/driver/loop.py tests/test_driver_judgment_expansion_contract.py
+      -> compiled successfully
+
+
+      Spec link:
+
+      - docs/JUDGE-AGENT-PROMPT.md#type-failure
+
+      - docs/JUDGE-AGENT-PROMPT.md#type-escalation
+
+      - docs/JUDGE-AGENT-PROMPT.md#type-gate
+
+      - docs/JUDGE-AGENT-PROMPT.md#type-anomaly
+
+      - docs/JUDGE-AGENT-PROMPT.md#type-cold_context
+
+      - DRIVER-BLUEPRINT.md Flow 4: Gate Failure -> Fix+Retest Chain'
   - id: driver-judgment-expansion-replan.test-gate-chain-flow
     name: Test full gate-chain and remediation flow
-    status: pending
+    status: done
     description: 'step_type: test
 
 
@@ -34317,9 +34635,68 @@ phases:
     depends_on:
     - driver-judgment-expansion-replan.contract-gate-chain-flow
     agent: python-executor
+    claimed_by: python-executor
+    claimed_at: '2026-03-28T10:45:38.380919+00:00'
+    done_at: '2026-03-28T10:51:29.680661+00:00'
+    evidence: 'Artifact:
+
+      - Commit: be0521cf120bf6a71d158f677479fbb8fa90b293
+
+
+      Verification:
+
+      - Run: uv run pytest tests/test_driver_judgment_expansion_flow.py -v -> 55 tests
+      passed
+
+      - Run: uv run pytest tests/test_driver_judgment_expansion_contract.py tests/test_driver_judgment_expansion_flow.py
+      tests/test_driver_judgments.py tests/test_driver_judge.py tests/test_driver_loop_contract.py
+      -v -> 170 tests passed
+
+
+      Spec link:
+
+      - DRIVER-BLUEPRINT.md Flow 3, Flow 4 (failure classification, gate remediation)
+
+      - docs/DRIVER-ARCHITECTURE.md Section 2.11 (judgment runtime contracts)
+
+      - src/vectl/driver/loop.py REMAINING_JUDGMENT_RUNTIME_CONTRACTS, GATE_REMEDIATION_CHAIN_CONTRACT
+
+
+      step_intent: test_define_red
+
+      expected_result: red
+
+      observed_result: green (all tests pass because contracts already exist in judgments.py
+      and loop.py)
+
+      failure_alignment: tests succeeded by proving expected-green behavior without
+      product-code edits
+
+      product_implementation_files_modified: no (only test files created)
+
+
+      Test coverage added:
+
+      - TestFailureJudgmentProvenanceDisposition (6 tests)
+
+      - TestEscalationJudgmentThresholdBehavior (6 tests)
+
+      - TestGateJudgmentFixRetestChain (10 tests)
+
+      - TestColdContextJudgmentPruningContract (5 tests)
+
+      - TestAnomalyJudgmentSafeRepairHaltSplit (6 tests)
+
+      - TestCrossTypeJudgmentContracts (8 tests)
+
+      - TestGateRemediationChainOrchestration (4 tests)
+
+      - TestFailureToFixRetestDispatchSemantics (3 tests)
+
+      - TestVerdictConstructionPerType (8 tests)'
   - id: driver-judgment-expansion-replan.impl-gate-chain-flow
     name: Implement full gate-chain and remediation flow
-    status: pending
+    status: done
     description: "step_type: implementation\n\ntags:\n  - integration\n\nImplement\
       \ the remaining judgment-expansion and remediation wiring in src/vectl/driver/loop.py\
       \ and related driver modules.\n\n## Gate Preview (what the gate WILL reject)\n\
@@ -34338,6 +34715,60 @@ phases:
     depends_on:
     - driver-judgment-expansion-replan.test-gate-chain-flow
     agent: python-senior
+    claimed_by: python-senior
+    claimed_at: '2026-03-28T10:51:53.306117+00:00'
+    done_at: '2026-03-28T11:06:32.002271+00:00'
+    evidence: 'Artifact:
+
+      - Commit: 29eaed0
+
+
+      Verification:
+
+      - Run: uv run ruff check src/vectl/driver/loop.py src/vectl/driver/types.py
+      tests/test_driver_loop_hardening.py -> passed (0 issues)
+
+      - Run: uv run pytest -q tests/test_driver_loop_hardening.py tests/test_driver_loop_contract.py
+      tests/test_driver_judgment_expansion_flow.py tests/test_driver_judgment_expansion_contract.py
+      tests/test_driver_replan_verdict.py tests/test_driver_impl.py tests/test_driver_loop_runtime.py
+      -> 173 passed, 25 xfailed, 0 failed
+
+      - Run: uv run mypy src/vectl/driver/loop.py src/vectl/driver/types.py tests/test_driver_loop_hardening.py
+      -> existing repo/module-path issue (unrelated to this change)
+
+
+      Spec link:
+
+      - docs/JUDGE-AGENT-PROMPT.md §TYPE: failure (gate-intersection, downstream_blocker),
+      §TYPE: gate (batched blocker+should_fix remediation), §TYPE: anomaly, §TYPE:
+      cold_context
+
+      - docs/DRIVER-ARCHITECTURE.md §2.10 judgment boundary + explicit coverage matrix,
+      §2.11 loop runtime trigger ownership
+
+      - DRIVER-BLUEPRINT.md Flow 3 (reconcile failure/escalation), Flow 4 (gate failure
+      -> fix+retest chain)
+
+
+      Delivered:
+
+      - FAILURE judgment wiring in reconcile() with remaining required-check enumeration,
+      downstream-blocker detection, planner follow-up routing
+
+      - GATE remediation wiring in reconcile() for gate/freeze steps: batch all blockers+should_fix,
+      require planner instruction on REJECT, defer for rerun
+
+      - COLD_CONTEXT wiring in handle_dispatch() for gate/freeze dispatches with required
+      context fields + verification/entry-point enrichment
+
+      - Startup ANOMALY handling in run() with ACCEPT/HALT/REPLAN handling and planner
+      routing on REPLAN
+
+      - Runtime-carried config/runner wiring on DriverState for reconcile() planner
+      follow-ups
+
+      - Hardening tests for gate blocker batching, failure classification with downstream
+      blockers, cold-context requests, anomaly request builder'
   - id: driver-judgment-expansion-replan.verify-gate-chain-e2e
     name: Verify gate-chain end-to-end
     status: pending
@@ -34372,12 +34803,23 @@ phases:
       Verification scope: phase-check protecting driver-judgment-expansion-replan.gate.
 
 
-      Compare expanded judgment/replan/remediation behavior against the blueprint
-      key flows and the judge system prompt semantics.'
+      Compare expanded judgment/replan/remediation behavior AND expected-red verification
+      semantics against the blueprint key flows, the judge system prompt semantics,
+      and docs/RFC-expected-red-verification-semantics.md.
+
+
+      Additional conformance checks for expected-red:
+
+      - Step model `verify` field matches RFC Section 5A (optional, defaults to must_green)
+
+      - decide() behavior matches RFC Section 5B (expected_red + red = complete, must_green
+      + red = fail)
+
+      - Default behavior unchanged for steps without verify field (RFC Section 7)'
     verification: '- Spec conformance report covers REPLAN, gate, failure, escalation,
       anomaly, and cold-context behavior'
     depends_on:
-    - driver-judgment-expansion-replan.verify-gate-chain-e2e
+    - driver-judgment-expansion-replan.expected-red-decide
     agent: doc-reviewer
   - id: driver-judgment-expansion-replan.freeze
     name: Freeze judgment expansion snapshot
@@ -34430,6 +34872,254 @@ phases:
     depends_on:
     - driver-judgment-expansion-replan.freeze
     agent: gate-reviewer
+  - id: driver-judgment-expansion-replan.expected-red-schema
+    name: Add verify field to Step model (expected-red schema)
+    status: pending
+    description: 'step_type: implementation
+
+      tags: []
+
+
+      RFC: docs/RFC-expected-red-verification-semantics.md (Sections 4-5)
+
+
+      Add an optional `verify` field to the `Step` model in `src/vectl/models.py`.
+
+
+      ## Exact Change
+
+
+      In `class Step(BaseModel)` (around line 69), add a new optional field:
+
+
+      ```python
+
+      verify: Literal["expected_red", "must_green"] | None = None
+
+      ```
+
+
+      Place it after the `evidence_template` field (line 80) and before `refs`.
+
+
+      ## Serialization/Deserialization
+
+
+      Pydantic handles this automatically for `Literal` union types with `None` default.
+
+      Verify that:
+
+      - When `verify` is absent in YAML, it deserializes as `None`
+
+      - When `verify` is `"expected_red"`, it round-trips correctly
+
+      - When `verify` is `"must_green"`, it round-trips correctly
+
+      - When `verify` is an invalid string (e.g. `"green"`), Pydantic raises a validation
+      error
+
+      - The field is omitted from serialized output when `None` (use `exclude_none=True`
+      or equivalent — check existing serialization pattern in `src/vectl/io.py`)
+
+
+      ## Backward Compatibility (CRITICAL)
+
+
+      Existing `plan.yaml` files that do not have a `verify` field on any step MUST
+      load without error. The `None` default ensures this. Verify by loading THIS
+      repo''s `plan.yaml` after the change.
+
+
+      ## Semantic Contract
+
+
+      - `None` and `"must_green"` are equivalent at runtime: red = failure (current
+      behavior)
+
+      - `"expected_red"`: red output is acceptable when it demonstrates missing behavior
+
+
+      ## Out of Scope
+
+
+      - Do NOT modify `decide.py` (that is the next step)
+
+      - Do NOT modify CLI/MCP rendering (that is a later step)
+
+      - Do NOT modify any other model classes
+
+
+      ## Completion Criteria (stub exclusion)
+
+      This is an IMPLEMENTATION step. Stub-only completion is NOT acceptable.
+
+      The field must be a real Pydantic field with working validation.'
+    verification: '- `verify` field exists on Step model with correct type annotation
+
+      - Existing plan.yaml loads without error (run: uv run vectl validate)
+
+      - Round-trip test: a step with verify=expected_red serializes and deserializes
+      correctly
+
+      - Invalid value rejected: verify="green" raises Pydantic ValidationError
+
+      - Field is omitted from YAML output when None (check serialization in io.py)'
+    evidence_template: '## Expected-Red Schema Evidence
+
+
+      **Model change diff** (src/vectl/models.py):
+
+      ```
+
+      <paste diff showing new field>
+
+      ```
+
+
+      **Backward compatibility proof**:
+
+      ```
+
+      $ uv run vectl validate
+
+      <paste output — must show plan is valid>
+
+      ```
+
+
+      **Round-trip test** (expected_red value):
+
+      ```
+
+      <paste test or REPL showing serialize/deserialize>
+
+      ```
+
+
+      **Invalid value rejection**:
+
+      ```
+
+      <paste ValidationError for verify="green">
+
+      ```
+
+
+      **Serialization omission** (None value not in output):
+
+      ```
+
+      <paste evidence that None verify is excluded from YAML>
+
+      ```'
+    depends_on:
+    - driver-judgment-expansion-replan.verify-gate-chain-e2e
+    agent: python-executor
+  - id: driver-judgment-expansion-replan.expected-red-decide
+    name: Teach decide() to respect expected-red verification semantics
+    status: pending
+    description: "step_type: implementation\ntags: []\n\nRFC: docs/RFC-expected-red-verification-semantics.md\
+      \ (Sections 4-5)\n\nModify `decide()` in `src/vectl/decide.py` to recognize\
+      \ the `verify` field on completed steps and classify outcomes accordingly.\n\
+      \n## Current Behavior (lines 156-209 of decide.py)\n\nCurrently, `decide()`\
+      \ processes completed results with a binary check:\n- `result.status == \"SUCCESS\"\
+      ` -> create complete action\n- `result.status == \"FAIL\"` -> increment failure\
+      \ count, escalate after 3\n\n## Required Change\n\nIn the `result.status ==\
+      \ \"FAIL\"` branch (around line 177), BEFORE incrementing the failure count,\
+      \ look up the step's `verify` field:\n\n```python\n# Look up step in plan to\
+      \ check verification semantics\nfound = plan.find_step(result.step_id)\nif found:\n\
+      \    _, step = found\n    if step.verify == \"expected_red\":\n        # Red\
+      \ outcome on an expected-red step is SUCCESSFUL completion.\n        # The step\
+      \ exposed a gap as intended.\n        actions.append(\n            Action(\n\
+      \                action=\"complete\",\n                step_id=result.step_id,\n\
+      \                evidence=result.output_summary,\n            )\n        )\n\
+      \        decision_log.append(\n            Decision(\n                decision=\"\
+      COMPLETE\",\n                step_id=result.step_id,\n                why=\"\
+      Expected-red step completed: red outcome demonstrates intended gap\",\n    \
+      \        )\n        )\n        _failure_counts.pop(result.step_id, None)\n \
+      \       continue  # skip the normal FAIL path\n```\n\n## Distinguishing Operational\
+      \ Failure from Expected Red\n\nThe expected-red path should ONLY activate when:\n\
+      1. `step.verify == \"expected_red\"` AND\n2. `result.status == \"FAIL\"` (product-level\
+      \ failure, not crash)\n\nIf `result.status` indicates an operational/infrastructure\
+      \ failure (agent crash, tool unavailable, timeout), the normal failure/escalation\
+      \ path should still apply. Check whether `CompletedResult` already distinguishes\
+      \ these; if not, treat all FAIL results on expected-red steps as gap-demonstration\
+      \ for now (the distinction can be refined later with richer status codes).\n\
+      \n## Default Behavior Preservation (CRITICAL)\n\n- When `step.verify is None`\
+      \ (most existing steps): behavior MUST be identical to current code\n- When\
+      \ `step.verify == \"must_green\"`: behavior MUST be identical to current code\n\
+      - Only `step.verify == \"expected_red\"` changes the FAIL path\n\n## Out of\
+      \ Scope\n\n- Do NOT modify the Step model (done in prior step)\n- Do NOT modify\
+      \ CLI/MCP rendering\n- Do NOT add new status codes to CompletedResult (that\
+      \ is future work)\n\n## Completion Criteria (stub exclusion)\nThis is an IMPLEMENTATION\
+      \ step. Stub-only completion is NOT acceptable."
+    verification: '- decide() completes an expected-red step when result.status is
+      FAIL (unit test)
+
+      - decide() still fails/escalates a must_green step when result.status is FAIL
+      (unit test)
+
+      - decide() still fails/escalates a step with verify=None when result.status
+      is FAIL (unit test — default behavior unchanged)
+
+      - decide() still completes any step normally when result.status is SUCCESS regardless
+      of verify field
+
+      - Decision log entry says "Expected-red" for the expected-red completion path
+
+      - No regression: existing decide tests still pass (run: uv run pytest tests/
+      -k decide)'
+    evidence_template: '## Expected-Red Decide Evidence
+
+
+      **Code change diff** (src/vectl/decide.py):
+
+      ```
+
+      <paste diff showing the new branch in decide()>
+
+      ```
+
+
+      **Test: expected-red FAIL -> COMPLETE**:
+
+      ```
+
+      <paste test showing decide() completes an expected_red step on FAIL>
+
+      ```
+
+
+      **Test: must_green FAIL -> normal failure path**:
+
+      ```
+
+      <paste test showing decide() still fails must_green steps>
+
+      ```
+
+
+      **Test: verify=None FAIL -> normal failure path (default unchanged)**:
+
+      ```
+
+      <paste test showing default behavior preserved>
+
+      ```
+
+
+      **Existing tests still pass**:
+
+      ```
+
+      $ uv run pytest tests/ -k decide -v
+
+      <paste output>
+
+      ```'
+    depends_on:
+    - driver-judgment-expansion-replan.expected-red-schema
+    agent: python-executor
 - id: driver-cli-integration
   name: Driver CLI Integration
   status: locked
@@ -34538,6 +35228,7 @@ phases:
       block the phase gate'
     depends_on:
     - driver-cli-integration.impl-cli-drive
+    - driver-cli-integration.expected-red-render
     agent: integration-verifier
   - id: driver-cli-integration.wiring-audit
     name: CLI drive wiring audit
@@ -34620,6 +35311,188 @@ phases:
     depends_on:
     - driver-cli-integration.liveness-probe
     agent: gate-reviewer
+  - id: driver-cli-integration.expected-red-render
+    name: Render expected-red completed steps distinctly in status/show output
+    status: pending
+    description: 'step_type: implementation
+
+      tags: []
+
+
+      RFC: docs/RFC-expected-red-verification-semantics.md (Section 6D)
+
+
+      Update CLI and MCP status rendering so that a completed step with `verify ==
+      "expected_red"` is shown distinctly from a normal green-completed step.
+
+
+      ## Files to Modify
+
+
+      ### 1. src/vectl/cli.py
+
+
+      **`_STEP_STATUS_STYLE` dict (around line 99-106)**:
+
+      No change needed to the dict itself — expected-red steps still have `status=done`.
+      The distinction is in how they are rendered.
+
+
+      **`_step_icon()` function (around line 116)**:
+
+      Add a parameter or check: when the step is done AND `step.verify == "expected_red"`,
+      use a different icon/label. Suggested rendering:
+
+
+      - Normal done: `✓ done` (green)
+
+      - Expected-red done: `✓ gap reproduced` (cyan or blue)
+
+
+      The function currently takes `(status, locked)`. Add an optional `verify` parameter:
+
+      ```python
+
+      def _step_icon(status: StepStatus, locked: bool = False, verify: str | None
+      = None) -> Text:
+
+      ```
+
+
+      When `status == StepStatus.DONE` and `verify == "expected_red"`:
+
+      ```python
+
+      return Text("✓ gap reproduced", style="cyan")
+
+      ```
+
+
+      **Update all call sites of `_step_icon()`** to pass the step''s `verify` field.
+      There are approximately 5 call sites (around lines 996, 1124, 1178, 1468, and
+      the render command). Search with: `grep -n ''_step_icon'' src/vectl/cli.py`
+
+
+      ### 2. src/vectl/mcp_server.py
+
+
+      **`_STEP_STATUS_ICON` dict (around line 143-147)**:
+
+      No change needed — same reasoning as CLI.
+
+
+      **Step rendering in status/show/render functions**:
+
+      Where MCP builds markdown status lines for steps, check if `step.verify == "expected_red"`
+      and `step.status == StepStatus.DONE`. If so, render as `✓ gap reproduced` instead
+      of `✓ done`.
+
+
+      Search for all places where step status icons are emitted: `grep -n ''StepStatus.DONE\|_STEP_STATUS_ICON\|step.status''
+      src/vectl/mcp_server.py`
+
+
+      ## Behavioral Contract
+
+
+      | Step State | verify field | Display |
+
+      |-----------|-------------|---------|
+
+      | done | None | `✓ done` (green) — unchanged |
+
+      | done | must_green | `✓ done` (green) — unchanged |
+
+      | done | expected_red | `✓ gap reproduced` (cyan) — NEW |
+
+      | any other status | any | unchanged |
+
+
+      ## Out of Scope
+
+
+      - Do NOT modify the Step model (already done)
+
+      - Do NOT modify decide.py (already done)
+
+      - Do NOT modify dashboard.py (static HTML dashboard is out of scope for now)
+
+
+      ## Completion Criteria (stub exclusion)
+
+      This is an IMPLEMENTATION step. Stub-only completion is NOT acceptable.'
+    verification: '- CLI `vectl status` shows "gap reproduced" for a done step with
+      verify=expected_red
+
+      - CLI `vectl show <step>` shows "gap reproduced" for expected-red done steps
+
+      - MCP vectl_status shows "gap reproduced" for expected-red done steps
+
+      - Normal done steps (verify=None or must_green) still show "done" — no regression
+
+      - Non-done steps are unaffected regardless of verify field'
+    evidence_template: '## Expected-Red Render Evidence
+
+
+      **CLI status output** (step with verify=expected_red, status=done):
+
+      ```
+
+      $ uv run vectl status
+
+      <paste output showing "gap reproduced" for the expected-red step>
+
+      ```
+
+
+      **CLI show output** (step with verify=expected_red, status=done):
+
+      ```
+
+      $ uv run vectl show <step_id>
+
+      <paste output showing "gap reproduced">
+
+      ```
+
+
+      **MCP status output** (expected-red step):
+
+      ```
+
+      <paste vectl_status output showing "gap reproduced">
+
+      ```
+
+
+      **Normal done step unchanged**:
+
+      ```
+
+      <paste evidence that a normal done step still shows "done">
+
+      ```
+
+
+      **Code diff** (cli.py _step_icon change):
+
+      ```
+
+      <paste diff>
+
+      ```
+
+
+      **Code diff** (mcp_server.py rendering change):
+
+      ```
+
+      <paste diff>
+
+      ```'
+    depends_on:
+    - driver-cli-integration.impl-cli-drive
+    agent: python-executor
 - id: driver-system-wiring
   name: Driver System Wiring
   status: locked

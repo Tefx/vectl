@@ -5,6 +5,10 @@ Non-responsibility: Does NOT dispatch subprocesses (that is runner impl).
 
 Architecture Reference: docs/DRIVER-ARCHITECTURE.md Section 2.8
 Blueprint Reference: DRIVER-BLUEPRINT.md Output Parsers (3 formats)
+
+PHASE SCOPE: Core parsers (ClaudeOutputParser, OpenCodeOutputParser) are fully
+implemented. Extended parsers (CodexOutputParser, GeminiOutputParser) are
+CONTRACT-ONLY in this phase.
 """
 
 from __future__ import annotations
@@ -29,6 +33,11 @@ def _parse_json_safely(text: str) -> tuple[dict | None, str]:
         return data, ""
     except json.JSONDecodeError as e:
         return None, f"JSON parse error at line {e.lineno} col {e.colno}: {e.msg}"
+
+
+# =============================================================================
+# Core Parsers (Implemented)
+# =============================================================================
 
 
 class ClaudeOutputParser:
@@ -159,7 +168,101 @@ class OpenCodeOutputParser:
         )
 
 
+# =============================================================================
+# Extended Parsers (Phase 2 - Contract Only)
+# =============================================================================
+
+
+class CodexOutputParser:
+    """Stub for Codex JSONL output parser - CONTRACT ONLY.
+
+    Phase 2 Contract: Parse JSONL stream from `codex exec --json`.
+
+    Output format (from DRIVER-BLUEPRINT.md Verified CLI Capabilities):
+        {"type": "thread.started", "thread_id": "uuid", ...}
+        {"type": "item.completed", "item": {"text": "..."}}
+        ...
+        {"type": "turn.completed", "usage": {"input_tokens": N, "output_tokens": N}}
+
+    Parser Semantics:
+        - Session ID: Extracted from thread.started event (thread_id field)
+        - Status: SUCCESS if item.completed events exist, FAIL otherwise
+        - Output: Concatenated text from all item.completed events
+        - Tokens: Extracted from turn.completed.usage
+
+    Architecture: docs/DRIVER-ARCHITECTURE.md Section 2.8 (CodexRunner)
+    Blueprint: DRIVER-BLUEPRINT.md Output Parsers (CodexOutputParser)
+
+    Implementation Owner: driver-multi-runner-hardening.execution
+    """
+
+    def parse(self, stdout: str, elapsed_seconds: float) -> RunnerResult:
+        """Parse Codex JSONL stream into RunnerResult.
+
+        Contract (raise NotImplementedError until driver-multi-runner-hardening.execution):
+        - Parse JSONL lines (one JSON object per line)
+        - Extract session_id from first thread.started event
+        - Concatenate text from all item.completed events
+        - Determine SUCCESS if any item.completed events, FAIL otherwise
+        - Extract tokens from turn.completed.usage
+        - Return TRANSPORT_ERROR on malformed/no events
+        """
+        raise NotImplementedError(
+            "CodexOutputParser.parse is a STUB. "
+            "Implement in driver-multi-runner-hardening.execution phase."
+        )
+
+
+class GeminiOutputParser:
+    """Stub for Gemini single JSON output parser - CONTRACT ONLY.
+
+    Phase 2 Contract: Parse single JSON object from `gemini -p --output-format json`.
+
+    Output format (from DRIVER-BLUEPRINT.md Verified CLI Capabilities):
+        {
+            "session_id": "uuid-or-index",
+            "result": "text output",
+            "subtype": "success" | "error",
+            "usage": {...}
+        }
+
+    Note: Cost tracking (total_cost_usd) is unverified for Gemini.
+
+    Parser Semantics:
+        - Session ID: session_id field (may be different format than Claude)
+        - Status: SUCCESS if subtype == "success", FAIL otherwise
+        - Output: result field
+        - Tokens: usage field (format unverified)
+
+    Architecture: docs/DRIVER-ARCHITECTURE.md Section 2.8 (GeminiRunner)
+    Blueprint: DRIVER-BLUEPRINT.md Output Parsers (GeminiOutputParser)
+
+    Implementation Owner: driver-multi-runner-hardening.execution
+    """
+
+    def parse(self, stdout: str, elapsed_seconds: float) -> RunnerResult:
+        """Parse Gemini single JSON into RunnerResult.
+
+        Contract (raise NotImplementedError until driver-multi-runner-hardening.execution):
+        - Parse single JSON object
+        - Extract session_id from session_id field
+        - Determine SUCCESS if subtype == "success", FAIL otherwise
+        - Return result field as output
+        - Extract tokens from usage field if present
+        - Cost tracking may be unavailable (set cost_usd = None)
+        - Return TRANSPORT_ERROR on malformed JSON
+        """
+        raise NotImplementedError(
+            "GeminiOutputParser.parse is a STUB. "
+            "Implement in driver-multi-runner-hardening.execution phase."
+        )
+
+
 __all__ = [
+    # Core parsers (implemented)
     "ClaudeOutputParser",
     "OpenCodeOutputParser",
+    # Extended parsers (contract-only stubs)
+    "CodexOutputParser",
+    "GeminiOutputParser",
 ]

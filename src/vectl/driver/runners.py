@@ -9,9 +9,9 @@ Does NOT manage runner lifecycle across the loop (DriverState).
 Architecture Reference: docs/DRIVER-ARCHITECTURE.md Section 2.8
 Blueprint Reference: DRIVER-BLUEPRINT.md Runner Protocol & Implementations
 
-PHASE SCOPE: Core runners only (ClaudeRunner, OpenCodeRunner).
-Extended runners (CodexRunner, GeminiRunner) are deferred to
-driver-multi-runner-hardening phase.
+PHASE SCOPE: Core runners (ClaudeRunner, OpenCodeRunner) are fully implemented.
+Extended runners (CodexRunner, GeminiRunner) are CONTRACT-ONLY in this phase.
+Runtime implementation deferred to driver-multi-runner-hardening.execution phase.
 
 CONTRACT PURITY: This file pins protocols, type definitions, and stub signatures.
 Substantive implementations belong in driver-execution phases, not here.
@@ -504,6 +504,190 @@ class OpenCodeRunner:
 
 
 # =============================================================================
+# Extended Runners (Phase 2 - Contract Only)
+# =============================================================================
+
+
+EXTENDED_RUNNERS: frozenset[str] = frozenset({"codex", "gemini"})
+"""Runner names with CONTRACT-ONLY definitions in this phase.
+
+Implementation deferred to driver-multi-runner-hardening.execution phase.
+"""
+
+# Extended runner capability table (from DRIVER-BLUEPRINT.md)
+# | Capability | Codex | Gemini |
+# |------------|-------|--------|
+# | Headless mode | exec | -p |
+# | Stdin prompt | stdin_dash ("-") | stdin |
+# | JSON output | --json (JSONL) | --output-format json |
+# | Session resume | `exec resume UUID` | --resume INDEX |
+# | Working dir | -C DIR | N/A |
+# | Experimental | No | Yes (auth issues) |
+#
+# Resume semantics:
+#   - Codex: Uses separate command `codex exec resume <UUID>` with --json flag
+#   - Gemini: Uses --resume INDEX flag where INDEX is session number
+#
+# Parser semantics:
+#   - Codex: JSONL stream (thread.started -> item.completed -> turn.completed)
+#   - Gemini: Single JSON object (like Claude)
+#
+# Fallback interactions:
+#   - Experimental runners have elevated failure risk
+#   - Fallback to core runner (opencode) after 2 consecutive failures
+#   - Session reuse may not work for experimental runners
+#   - Cost tracking may be unavailable for Gemini
+
+
+class CodexRunnerStub:
+    """Stub for Codex runner - CONTRACT ONLY.
+
+    Phase 2 Contract: Codex CLI runner with JSONL output parsing.
+
+    Resume Semantics (Blueprint Section: Verified CLI Capabilities):
+        - Resume command: `codex exec resume <UUID> --json`
+        - Uses DIFFERENT command structure than initial dispatch
+        - Session ID regex: ^[0-9a-f]{8}-
+        - Config field: resume_command (list[str]) replaces dispatch command
+
+    Parser Semantics (Blueprint Section: Output Parsers):
+        - Format: JSONL stream (thread.started -> item.completed -> turn.completed)
+        - Session ID extraction: thread.started event
+        - Status detection: presence of item.completed events
+        - Token usage: turn.completed.usage
+
+    Stdin Mode:
+        - Uses "-" argument for stdin input (stdin_dash mode)
+
+    Working Directory:
+        - Supports -C flag for working directory
+
+    Experimental Status:
+        - NOT experimental (stable runner)
+        - Standard fallback behavior applies
+
+    Implementation Owner: driver-multi-runner-hardening.execution
+    """
+
+    __slots__ = ("name", "_config")
+
+    def __init__(self, name: str, config: RunnerConfig) -> None:
+        if config.resume_command is None:
+            raise RunnerError(
+                name,
+                "create",
+                "CodexRunner requires resume_command in config",
+            )
+        self.name = name
+        self._config = config
+
+    async def dispatch(
+        self,
+        prompt: str,
+        agent: str,
+        workdir: str,
+        session_id: str | None = None,
+    ) -> RunnerHandle:
+        """Launch a Codex subprocess and return a concrete handle.
+
+        Contract (raise NotImplementedError until driver-multi-runner-hardening.execution):
+        - Build command from config.command + config.args
+        - Use stdin_dash mode ("-" argument for stdin)
+        - Apply -C flag with workdir
+        - For resume: use config.resume_command instead of dispatch command
+        - Parse output using CodexOutputParser (JSONL stream)
+
+        Returns:
+            RunnerHandle with session_id from thread.started event.
+
+        Raises:
+            RunnerNotFoundError: If codex command not on PATH.
+            RunnerError: If subprocess creation fails.
+        """
+        raise NotImplementedError(
+            "CodexRunner.dispatch is a STUB. "
+            "Implement in driver-multi-runner-hardening.execution phase."
+        )
+
+
+class GeminiRunnerStub:
+    """Stub for Gemini runner - CONTRACT ONLY.
+
+    Phase 2 Contract: Gemini CLI runner with single JSON output parsing.
+
+    Resume Semantics (Blueprint Section: Verified CLI Capabilities):
+        - Resume flag: --resume INDEX (INDEX is session number, not UUID)
+        - Config field: resume_flag = "--resume"
+        - Note: Gemini session management is different from Claude/OpenCode
+
+    Parser Semantics (Blueprint Section: Output Parsers):
+        - Format: Single JSON object (like Claude)
+        - Session ID: extracted from session_id field
+        - Status detection: subtype field (success/error)
+        - Token usage: usage field
+        - Cost tracking: unverified (may be unavailable)
+
+    Stdin Mode:
+        - Standard stdin mode (pipe to -p flag)
+
+    Working Directory:
+        - No explicit -C flag (verify against actual CLI)
+
+    Experimental Status:
+        - EXPERIMENTAL: true (auth issues, not fully verified)
+        - Elevated failure risk
+        - May require additional authentication setup
+
+    Implementation Owner: driver-multi-runner-hardening.execution
+
+    Known Issues:
+        - Authentication may fail without proper setup
+        - Cost tracking may not be available in output
+        - Session resume semantics not fully verified
+    """
+
+    __slots__ = ("name", "_config")
+
+    def __init__(self, name: str, config: RunnerConfig) -> None:
+        if not config.experimental:
+            raise RunnerError(
+                name,
+                "create",
+                "GeminiRunner requires experimental=True in config",
+            )
+        self.name = name
+        self._config = config
+
+    async def dispatch(
+        self,
+        prompt: str,
+        agent: str,
+        workdir: str,
+        session_id: str | None = None,
+    ) -> RunnerHandle:
+        """Launch a Gemini subprocess and return a concrete handle.
+
+        Contract (raise NotImplementedError until driver-multi-runner-hardening.execution):
+        - Build command from config.command + config.args
+        - Use standard stdin mode
+        - Apply --yolo flag for auto-approve (--approval-mode yolo)
+        - For resume: use --resume INDEX flag
+        - Parse output using GeminiOutputParser (single JSON)
+
+        Returns:
+            RunnerHandle with session_id from JSON output.
+
+        Raises:
+            RunnerNotFoundError: If gemini command not on PATH.
+            RunnerError: If subprocess creation fails (including auth issues).
+        """
+        raise NotImplementedError(
+            "GeminiRunner.dispatch is a STUB. "
+            "Implement in driver-multi-runner-hardening.execution phase."
+        )
+
+
+# =============================================================================
 # Factory
 # =============================================================================
 
@@ -519,29 +703,29 @@ def create_runner(name: str, config: RunnerConfig) -> Runner:
         Runner implementation instance.
 
     Raises:
-        RunnerError: If runner name is not in core scope.
+        RunnerError: If runner name is not recognized.
 
-    Runtime behavior: Return core runner implementations for this phase,
-    raise for out-of-scope runners.
+    Core runners (claude, opencode): Return full implementations.
+    Extended runners (codex, gemini): Return contract-only stubs.
+    Unknown runners: Raise RunnerError.
     """
+    # Core runners (fully implemented)
     if name == "claude":
         return ClaudeRunner(name, config)
     if name == "opencode":
         return OpenCodeRunner(name, config)
 
-    # Deferred to driver-multi-runner-hardening phase
-    if name in ("codex", "gemini"):
-        raise RunnerError(
-            name,
-            "create",
-            f"Runner '{name}' is not in core scope. "
-            "Implement in driver-multi-runner-hardening phase.",
-        )
+    # Extended runners (contract-only stubs)
+    if name == "codex":
+        return CodexRunnerStub(name, config)  # type: ignore[return-value]
+    if name == "gemini":
+        return GeminiRunnerStub(name, config)  # type: ignore[return-value]
 
     raise RunnerError(
         name,
         "create",
-        f"Unknown runner '{name}'. Available: {sorted(CORE_RUNNERS)}",
+        f"Unknown runner '{name}'. Available core: {sorted(CORE_RUNNERS)}, "
+        f"extended: {sorted(EXTENDED_RUNNERS)}",
     )
 
 
@@ -554,11 +738,15 @@ __all__ = [
     "RunnerHandle",
     "Runner",
     "OutputParser",
-    # Core runner stubs
+    # Core runners (implemented)
     "ClaudeRunner",
     "OpenCodeRunner",
+    # Extended runners (contract-only stubs)
+    "CodexRunnerStub",
+    "GeminiRunnerStub",
+    # Phase scoping
+    "CORE_RUNNERS",
+    "EXTENDED_RUNNERS",
     # Factory
     "create_runner",
-    # Phase scope
-    "CORE_RUNNERS",
 ]

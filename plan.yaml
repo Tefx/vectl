@@ -42205,6 +42205,31 @@ phases:
 
       '
     agent: software-architect
+  - id: driver-judge-hardening-foundation.gate
+    name: Gate judge hardening foundation
+    status: pending
+    description: "step_type: gate\nreview_depth: THOROUGH\nreview_depth_rationale:\n\
+      \  - Judge stability is now a bootstrap blocker\n  - Codex judge invocation\
+      \ currently diverges from stable runner config\n  - Downstream structured-output\
+      \ and policy work depend on this contract\nverification_scope: phase-check\n\
+      protects_downstream_gates:\n  - driver-judge-hardening-structured-output.gate\n\
+      \  - driver-judge-hardening-recovery-policy.gate\n  - driver-bootstrap-readiness.gate\n\
+      \nAs an INDEPENDENT REVIEWER, verify the foundation contract is precise enough\
+      \ to prevent judge-path drift.\n\nBLOCK if the contract leaves ambiguous:\n\
+      - codex judge invocation parameters vs `driver.yaml`\n- native structured output\
+      \ vs best-effort extraction classification\n- which failure classes are hard\
+      \ fail vs tolerated extraction\n- which real judgment types must be proven before\
+      \ bootstrap resumes"
+    verification: '- Foundation contract accepted with no unresolved codex invocation
+      ambiguity
+
+      - Failure boundary matrix is explicit enough for downstream implementation and
+      verification
+
+      - Ready for parallel structured-output and recovery-policy phases'
+    depends_on:
+    - driver-judge-hardening-foundation.contract
+    agent: gate-reviewer
 - id: driver-judge-hardening-structured-output
   name: 'Driver Judge Hardening: Structured Output Stability'
   status: locked

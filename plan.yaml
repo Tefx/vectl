@@ -38051,7 +38051,7 @@ phases:
     - src/vectl/driver/__main__.py
     - src/vectl/cli.py
     depends_on:
-    - driver-debt-cli-entrypoint-unification.freeze
+    - driver-debt-cli-entrypoint-unification.impl
     agent: blind-tester
   - id: driver-debt-cli-entrypoint-unification.spec-conformance
     name: Verify CLI entrypoint spec conformance

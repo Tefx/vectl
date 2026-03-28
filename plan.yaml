@@ -42905,7 +42905,7 @@ phases:
     agent: gate-reviewer
 - id: driver-judge-hardening-foundation
   name: 'Driver Judge Hardening: Foundation'
-  status: pending
+  status: in_progress
   gate: Judge runner capability contract and codex invocation alignment are pinned
     before implementation fan-out.
   depends_on:
@@ -42913,7 +42913,7 @@ phases:
   steps:
   - id: driver-judge-hardening-foundation.contract
     name: Pin judge runner capability and invocation contract
-    status: pending
+    status: claimed
     description: "step_type: contract\ncontract_purity: ENFORCED\ncontract_outputs:\n\
       \  - capability_matrix\n  - invocation_contract\n  - failure_boundary_matrix\n\
       spec_refs:\n  - driver.yaml#judge-and-runners\n  - docs/DRIVER-ARCHITECTURE.md#judge-runtime\n\
@@ -42957,6 +42957,8 @@ phases:
 
       '
     agent: software-architect
+    claimed_by: software-architect
+    claimed_at: '2026-03-28T22:33:22.226287+00:00'
   - id: driver-judge-hardening-foundation.gate
     name: Gate judge hardening foundation
     status: pending

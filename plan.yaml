@@ -36614,7 +36614,7 @@ phases:
       - **GREEN pass** across all verification commands'
   - id: driver-system-wiring.gate
     name: Gate driver-system-wiring
-    status: pending
+    status: claimed
     description: 'step_type: gate
 
       As an INDEPENDENT REVIEWER, assess whether both runnable surfaces are fully
@@ -36626,6 +36626,8 @@ phases:
     depends_on:
     - driver-system-wiring.full-plan-check
     agent: gate-reviewer
+    claimed_by: gate-reviewer
+    claimed_at: '2026-03-28T13:10:52.400326+00:00'
 - id: driver-doc-sync
   name: Driver Documentation Sync
   status: locked

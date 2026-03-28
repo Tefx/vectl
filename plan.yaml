@@ -32292,6 +32292,65 @@ phases:
     depends_on:
     - driver-execution-infra.spec-conformance
     agent: python-senior
+  - id: driver-execution-infra.retest-gate-blockers
+    name: Retest gate blockers for driver execution infra
+    status: pending
+    description: 'step_type: test
+
+      step_intent: retest_green
+
+      expected_result: green
+
+      As an INDEPENDENT TESTER, re-run the full remediation proof for the driver-execution-infra
+      gate blocker family after the batched fix step completes.
+
+
+      YOUR GOAL IS TO FIND REMAINING PROBLEMS, not to confirm it works.
+
+
+      Scope:
+
+      - full relevant driver execution infra suite coverage
+
+      - the worktree tests previously failing on cwd-aware create/merge/cleanup signatures
+
+      - required invar guard checks for the execution-infra scope
+
+      - verification completeness of the evidence package
+
+
+      Independence Level: L2
+
+
+      This retest must use a fresh/cold environment for the required guard and suite
+      runs, and it must validate that evidence covers the full relevant suite rather
+      than a narrowed subset.'
+    verification: '- Execute the full relevant driver execution infra test suite in
+      a fresh/cold environment
+
+      - Re-run the required guard checks for the execution-infra scope with the project-required
+      command family
+
+      - Confirm the 14 previously failing worktree tests now pass with cwd-aware calls
+
+      - Confirm no relevant execution-infra test module was omitted from the evidence
+      package
+
+      - Record blocker / should_fix findings explicitly; if no findings remain, mark
+      green evidence for gate consumption'
+    evidence_template: "## Retest Report\n\n**Tester**: integration-verifier\n**Scope**:\
+      \ driver-execution-infra batched gate blocker remediation\n**Expected result**:\
+      \ green\n\n### Commands executed\n```\n<paste full suite command(s)>\n<paste\
+      \ required guard command(s)>\n```\n\n### Coverage proof\n- Relevant test modules\
+      \ exercised:\n  - <list>\n- Previously failing worktree tests included: yes/no\n\
+      - Guard scope covered: <details>\n\n### Findings\n| Severity | Description |\
+      \ Location | Reproduction |\n|----------|-------------|----------|--------------|\n\
+      | blocker/should_fix/suggestion | <if any> | <location> | <steps> |\n\n### Verdict\n\
+      - PASS if full suite + required guard checks are green and evidence is complete\n\
+      - ISSUES_FOUND otherwise"
+    depends_on:
+    - driver-execution-infra.fix-gate-blockers
+    agent: integration-verifier
 - id: driver-judgment-runtime-minimal
   name: Driver Judgment + Minimal Runtime
   status: locked

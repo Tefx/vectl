@@ -43066,6 +43066,31 @@ phases:
       - `FAILURE` vs `GATE` trigger conditions are explicit enough for downstream
       implementation and review'
     agent: software-architect
+  - id: driver-judge-hardening-foundation.retest-gate
+    name: Re-gate judge hardening foundation after contract fix
+    status: pending
+    description: "step_type: gate\nverification_scope: phase-check\nprotects_downstream_gates:\n\
+      \  - driver-judge-hardening-structured-output.gate\n  - driver-judge-hardening-recovery-policy.gate\n\
+      \  - driver-bootstrap-readiness.gate\nagent_source: default\n\nAs an INDEPENDENT\
+      \ REVIEWER, re-check the hardened foundation contract after `driver-judge-hardening-foundation.fix-contract-ambiguities`.\n\
+      \nYou MUST verify closure of all four blocker items:\n1. Codex invocation source-of-truth\
+      \ ambiguity vs `driver.yaml` `runners.codex`\n2. Capability matrix completeness\
+      \ ambiguity, including Gemini inclusion/exclusion\n3. Explicit hard-fail vs\
+      \ tolerant extraction boundary table\n4. Exact `FAILURE` vs `GATE` judgment\
+      \ trigger conditions\n\nBLOCK if any of the four remains ambiguous or internally\
+      \ inconsistent."
+    verification: '- Re-review confirms codex invocation source-of-truth is explicit
+      and consistent with `driver.yaml` `runners.codex`
+
+      - Capability matrix is complete and explicitly resolves Gemini inclusion/exclusion
+
+      - Hard-fail vs tolerant extraction boundary table is explicit and actionable
+
+      - `FAILURE` vs `GATE` trigger conditions are concrete, reviewable, and sufficient
+      for downstream phases'
+    depends_on:
+    - driver-judge-hardening-foundation.fix-contract-ambiguities
+    agent: gate-reviewer
 - id: driver-judge-hardening-structured-output
   name: 'Driver Judge Hardening: Structured Output Stability'
   status: locked

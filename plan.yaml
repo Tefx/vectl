@@ -38734,6 +38734,48 @@ phases:
     depends_on:
     - driver-evolution-events-foundation.contract
     agent: python-senior
+  - id: driver-evolution-events-foundation.verify-envelope-foundation
+    name: Verify versioned envelope and registry durability
+    status: pending
+    description: 'step_type: verification
+
+      expected_result: green
+
+      verification_scope: phase-check
+
+
+      As an INDEPENDENT TESTER (integration-verifier), validate the event foundation
+      from a fresh perspective.
+
+
+      YOUR GOAL IS TO FIND PROBLEMS, not to confirm it works.
+
+
+      Test for:
+
+      - Happy path: JSONL emission through the durable sink produces `ts`, `event`,
+      `version`, `data`
+
+      - Edge cases: unknown event names, missing required registry fields, and sink
+      initialization behavior
+
+      - Error scenarios: envelope drift back to `data.version` or direct string-literal
+      emission that bypasses the registry
+
+
+      Independence Level: L2
+
+      Downstream gate protected: driver-evolution-events-foundation.gate.'
+    verification: 'phase-check protecting driver-evolution-events-foundation.gate.
+
+      - Execute targeted sink/event tests exercising the real durable JSONL path
+
+      - Report actual emitted record shape and any schema-drift findings
+
+      - Evidence must include at least one emitted record showing top-level `version`'
+    depends_on:
+    - driver-evolution-events-foundation.implement-registry-envelope
+    agent: integration-verifier
 - id: driver-evolution-event-contracts
   name: 'Driver Evolution: Canonical Event Contracts'
   status: locked

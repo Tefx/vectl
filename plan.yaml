@@ -37719,55 +37719,47 @@ phases:
   - id: driver-debt-completion-authority.impl
     name: Converge driver runtime onto reconcile-only completion sink
     status: pending
-    description: 'step_type: implementation
-
-      Verification scope: phase-check protecting driver-debt-completion-authority.verify
-      and gate.
-
-
-      Implement the approved A1 remediation.
-
-
-      Required work:
-
-      - Stop feeding raw completed_results from _run_main_loop() into decide() for
-      completion action generation in driver runtime.
-
-      - Remove the handle_complete() main-path branch from _run_main_loop().
-
-      - Make wait_for_any() -> reconcile() the only runtime completion sink.
-
-      - Ensure reconcile() performs all success/failure side effects exactly once:
-      evidence judgment, complete/defer, merge, session record, cleanup, and events.
-
-      - Delete handle_complete() if safe; otherwise demote it to a non-runtime legacy/internal
-      shim with no main-loop callers.
-
-      - Update DriverState completed_queue/drain_completed if its old contract no
-      longer matches runtime reality.
-
-
-      Failure-mode checklist:
-
-      - same completed result must trigger complete_step() once
-
-      - STEP_COMPLETED emitted once
-
-      - success path still merges, records session, cleans worktree, and emits terminal
-      events once
-
-      - failure path still increments/escalates once per completed result
-
-      - no stale decide-side completion action remains reachable from driver runtime
-
-
-      Known risks (from project history):
-
-      - module-global mutable orchestration state and policy drift live near this
-      seam; do not reintroduce a second authority while fixing the first.
-
-      - Gate Preview: the gate will reject duplicate side effects, stale legacy branches
-      still on the main path, or success/failure asymmetry between reconcile branches.'
+    description: "step_type: implementation\nVerification scope: phase-check protecting\
+      \ driver-debt-completion-authority.verify and gate.\n\nFill in stub bodies and\
+      \ replace placeholder completion-authority branches with working reconcile-only\
+      \ logic within the pinned contract.\n\nUPSTREAM ARTIFACTS (from contract/test\
+      \ steps):\n  - src/vectl/driver/loop.py — from_step: driver-debt-completion-authority.contract\
+      \ — tier: contract\n  - src/vectl/driver/types.py — from_step: driver-debt-completion-authority.contract\
+      \ — tier: contract\n  - tests/test_driver_loop_runtime.py — from_step: driver-debt-completion-authority.test-define-red\
+      \ — tier: test\n  - tests/test_driver_loop_hardening.py — from_step: driver-debt-completion-authority.test-define-red\
+      \ — tier: test\n\nYOUR SCOPE: Replace legacy dual-authority branches or NotImplemented-style\
+      \ placeholders with substantive reconcile-only completion flow. Keep existing\
+      \ signatures and authority boundaries intact.\n\nDeviation protocol: If any\
+      \ upstream contract or test artifact is wrong or incomplete, record a deviation\
+      \ note with type, what, why, and impact; do NOT silently rewrite the completion-authority\
+      \ contract.\n\nupstream_artifacts:\n  - path: src/vectl/driver/loop.py\n   \
+      \ from_step: driver-debt-completion-authority.contract\n    tier: contract\n\
+      \  - path: src/vectl/driver/types.py\n    from_step: driver-debt-completion-authority.contract\n\
+      \    tier: contract\n  - path: tests/test_driver_loop_runtime.py\n    from_step:\
+      \ driver-debt-completion-authority.test-define-red\n    tier: test\n  - path:\
+      \ tests/test_driver_loop_hardening.py\n    from_step: driver-debt-completion-authority.test-define-red\n\
+      \    tier: test\n\nRequired work:\n- Stop feeding raw completed_results from\
+      \ _run_main_loop() into decide() for completion action generation in driver\
+      \ runtime.\n- Remove the handle_complete() main-path branch from _run_main_loop().\n\
+      - Make wait_for_any() -> reconcile() the only runtime completion sink.\n- Ensure\
+      \ reconcile() performs all success/failure side effects exactly once: evidence\
+      \ judgment, complete/defer, merge, session record, cleanup, and events.\n- Delete\
+      \ handle_complete() if safe; otherwise demote it to a non-runtime legacy/internal\
+      \ shim with no main-loop callers.\n- Update DriverState completed_queue/drain_completed\
+      \ if its old contract no longer matches runtime reality.\n\nFailure-mode checklist:\n\
+      - same completed result must trigger complete_step() once\n- STEP_COMPLETED\
+      \ emitted once\n- success path still merges, records session, cleans worktree,\
+      \ and emits terminal events once\n- failure path still increments/escalates\
+      \ once per completed result\n- no stale decide-side completion action remains\
+      \ reachable from driver runtime\n\nKnown risks (from project history):\n- module-global\
+      \ mutable orchestration state and policy drift live near this seam; do not reintroduce\
+      \ a second authority while fixing the first.\n- Gate Preview: the gate will\
+      \ reject duplicate side effects, stale legacy branches still on the main path,\
+      \ or success/failure asymmetry between reconcile branches.\n\n## Completion\
+      \ Criteria (stub exclusion)\nThis is an IMPLEMENTATION step. Stub-only completion\
+      \ is NOT acceptable.\nEach deliverable MUST contain substantive logic that processes\
+      \ completion results and produces single-fired side effects under the reconcile-only\
+      \ authority model."
     verification: '- Targeted duplicate-completion regressions pass
 
       - Runtime path has one completion sink

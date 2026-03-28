@@ -42624,6 +42624,46 @@ phases:
   depends_on:
   - driver-judge-hardening-structured-output
   - driver-judge-hardening-recovery-policy
+  steps:
+  - id: driver-judge-hardening-review.real-judgment-matrix
+    name: Real-runner verify blocking judgment matrix
+    status: pending
+    description: "step_type: verification\nverification_scope: full-plan-check\nprotects_downstream_gates:\n\
+      \  - driver-bootstrap-readiness.gate\nindependence_level: L2\nspec_refs:\n \
+      \ - driver.yaml#judge\n  - docs/JUDGE-AGENT-PROMPT.md#verdict-schema\n  - docs/DRIVER-ARCHITECTURE.md#judge-runtime\n\
+      touch_paths:\n  - src/vectl/driver/judge.py\n  - src/vectl/driver/parsers.py\n\
+      \  - src/vectl/driver/loop.py\n  - driver.yaml\nharness_refs:\n  - fresh/cold\
+      \ real-runner environment\n  - quality-gates-enabled config\n  - blocking judgment\
+      \ matrix repros\nauthoritative_interface: real judgment execution for preflight,\
+      \ cold_context, failure, and gate\nagent_source: default\n\nAs an INDEPENDENT\
+      \ TESTER, run the consolidated real-runner judgment matrix after both hardening\
+      \ branches land.\n\nRequired evidence:\n- real codex judge validation for preflight,\
+      \ cold_context, failure, and gate judgments\n- any opencode fallback or best-effort\
+      \ extraction path is explicitly classified rather than assumed equivalent to\
+      \ native structured output\n- actual command lines, actual output, and resulting\
+      \ verdict/failure classifications\n\nThis step protects the next bootstrap milestone;\
+      \ broad failures must create remediation ownership immediately."
+    verification: '- Real judgment matrix executed in a fresh/cold environment
+
+      - Codex path is proven for all blocking judgment types with quality gates enabled
+
+      - Any non-codex path behavior is explicitly classified against the capability
+      matrix'
+    evidence_template: '## Blocking Judgment Matrix Review
+
+      | Runner | Judgment Type | Exact Command | Actual Output Snippet | Verdict /
+      Failure Class | Status |
+
+      | --- | --- | --- | --- | --- | --- |
+
+
+      ## Capability Matrix Deviations
+
+
+      ## Required Remediation Ownership (if any)
+
+      '
+    agent: blind-tester
 - id: driver-bootstrap-readiness
   name: Driver Real Bootstrap Readiness
   status: locked

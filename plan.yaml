@@ -33932,7 +33932,7 @@ phases:
       - docs/DRIVER-ARCHITECTURE.md §2.8'
   - id: driver-multi-runner-hardening.impl-runners-extended
     name: Implement extended runners
-    status: pending
+    status: claimed
     description: 'step_type: implementation
 
 
@@ -33949,6 +33949,8 @@ phases:
     depends_on:
     - driver-multi-runner-hardening.test-runners-extended
     agent: python-senior
+    claimed_by: python-senior
+    claimed_at: '2026-03-28T09:30:44.816439+00:00'
   - id: driver-multi-runner-hardening.impl-loop-hardening
     name: Implement loop fallback/session/conflict hardening
     status: pending

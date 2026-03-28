@@ -38986,6 +38986,50 @@ phases:
     - driver-evolution-event-contracts.implement-canonical-events
     - driver-evolution-event-contracts.implement-typed-emitter
     agent: spec-verifier
+  - id: driver-evolution-event-contracts.verify-emitter-flow
+    name: Verify typed emitter source-to-sink flow
+    status: pending
+    description: 'step_type: verification
+
+      expected_result: green
+
+      verification_scope: phase-check
+
+
+      As an INDEPENDENT TESTER (integration-verifier), validate the canonical event
+      path from a fresh perspective.
+
+
+      YOUR GOAL IS TO FIND PROBLEMS, not to confirm it works.
+
+
+      Test for:
+
+      - Happy path: loop-driven emission of FINAL/DECIDE/STEP_COMPLETED reaches the
+      real durable sink through typed helpers
+
+      - Edge cases: missing optional summary fields, halt-related termination, and
+      repeated event emission
+
+      - Error scenarios: fallback to legacy string-literal emission or mixed legacy/canonical
+      payloads
+
+
+      Independence Level: L2
+
+      Integration Evidence required: paste actual command/test output and identify
+      the path exercised: loop -> typed emitter -> registry -> sink.'
+    verification: 'phase-check protecting driver-evolution-event-contracts.gate.
+
+      - Execute at least one real source-to-sink driver test or harness
+
+      - Evidence includes actual emitted records for FINAL/DECIDE/STEP_COMPLETED
+
+      - Remaining mock-heavy coverage, if any, is justified'
+    depends_on:
+    - driver-evolution-event-contracts.implement-canonical-events
+    - driver-evolution-event-contracts.implement-typed-emitter
+    agent: integration-verifier
 - id: driver-evolution-runtime-context
   name: 'Driver Evolution: Runtime Context'
   status: locked

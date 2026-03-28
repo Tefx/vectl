@@ -32103,7 +32103,7 @@ phases:
       - driver-execution-infra.spec-conformance step verification requirements'
   - id: driver-execution-infra.gate
     name: Gate driver-execution-infra
-    status: pending
+    status: claimed
     description: 'step_type: gate
 
       As an INDEPENDENT REVIEWER, assess whether worktree and runner-core infrastructure
@@ -32130,6 +32130,8 @@ phases:
     depends_on:
     - driver-execution-infra.retest-gate-blockers
     agent: gate-reviewer
+    claimed_by: gate-reviewer
+    claimed_at: '2026-03-28T04:13:27.060144+00:00'
   - id: driver-execution-infra.fix-gate-blockers
     name: Fix gate blockers for driver execution infra
     status: done

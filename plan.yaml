@@ -43087,6 +43087,73 @@ phases:
 
       - Evidence captures duplicate side-effect and non-resumable runner cases'
     agent: python-executor
+  - id: driver-continuity-capability-safety.impl
+    name: Implement runner capability model and replay-safe idempotency
+    status: pending
+    description: 'step_type: implementation
+
+      Implement the bootstrap-blocker resume capability model and replay-safe idempotency
+      layer.
+
+
+      Scope:
+
+      - surface authoritative runner capability facts into control-plane decisions
+
+      - enforce replay safety and duplicate-dispatch protection for tool execution
+      / recovery re-entry
+
+      - make restart/resume branching consume explicit capability facts rather than
+      implicit assumptions
+
+      - provide continuity-safe metadata needed by restart recovery without re-owning
+      rich observability work
+
+
+      ## Failure-mode checklist
+
+      - runner marked resumable when capability is absent
+
+      - duplicate tool replay after restart or retried recovery
+
+      - stale capability snapshot vs current runner selection
+
+      - explicit clear/terminal completion causing unsafe resume reuse
+
+      - partial-write or duplicate-append of idempotency tokens
+
+
+      ## State semantics
+
+      - last-writer-wins: resolved capability snapshot for the active recovery attempt
+
+      - preserve exactly: replay token, runner identity, capability flags, step/session
+      binding
+
+      - backward-compatible legacy behavior: non-resumable runners continue with safe
+      restart-only semantics
+
+
+      ## Out-of-scope guardrail
+
+      - advanced watchdog timing taxonomy and rich progress streaming remain in post-bootstrap
+      enhancement phases
+
+
+      KNOWN RISKS:
+
+      - capability facts must enter decide/control logic as first-class inputs
+
+      - replay-safe behavior must cover recovery re-entry, not only ordinary retry'
+    verification: '- Main path: capability-aware resume/restart tests pass
+
+      - Failure path: duplicate replay / non-resumable runner regressions are covered
+
+      - Proof: restart decisions no longer infer capability from ad hoc runner assumptions'
+    depends_on:
+    - driver-continuity-capability-safety.contract
+    - driver-continuity-capability-safety.test-define-red
+    agent: python-senior
 - id: driver-continuity-restart-recovery
   name: 'Driver Continuity: Restart Recovery'
   status: locked

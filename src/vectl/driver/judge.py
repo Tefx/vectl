@@ -16,10 +16,10 @@ from __future__ import annotations
 
 import asyncio
 import json
-import tempfile
-from dataclasses import dataclass, field
+import time
 from pathlib import Path
-from typing import TYPE_CHECKING, Protocol
+from tempfile import NamedTemporaryFile
+from typing import TYPE_CHECKING, Any, Protocol
 
 from .errors import JudgmentParseError, JudgmentTimeoutError
 from .judgments import (
@@ -199,7 +199,14 @@ class Judge:
 
         Architecture: docs/DRIVER-ARCHITECTURE.md Section 2.10, Judge.__init__
         """
-        raise NotImplementedError("Judge.__init__ not implemented")
+        self._config = config
+        self._observer = observer
+        self._system_prompt = _load_judge_system_prompt()
+        self._structured_schema_path: str | None = None
+        self._runner_override: JudgeRunner | None = None
+
+        if self._config.structured_output and self._config.runner in {"claude", "codex"}:
+            self._structured_schema_path = _write_schema_tempfile(VERDICT_SCHEMA)
 
     def is_enabled(self, judgment_type: JudgmentType) -> bool:
         """Check if a judgment type is enabled in config.
@@ -221,7 +228,16 @@ class Judge:
             - cold_context: enable COLD_CONTEXT judgments
             - anomaly: enable ANOMALY judgments
         """
-        raise NotImplementedError("Judge.is_enabled not implemented")
+        flag_by_type: dict[JudgmentType, bool] = {
+            JudgmentType.PREFLIGHT: self._config.preflight,
+            JudgmentType.EVIDENCE: self._config.evidence_validation,
+            JudgmentType.FAILURE: self._config.failure_classification,
+            JudgmentType.ESCALATION: self._config.escalation,
+            JudgmentType.GATE: self._config.gate_assessment,
+            JudgmentType.ANOMALY: self._config.anomaly,
+            JudgmentType.COLD_CONTEXT: self._config.cold_context,
+        }
+        return flag_by_type[judgment_type]
 
     async def judge(self, request: JudgmentRequest) -> JudgmentVerdict:
         """Invoke the judgment agent and return a parsed verdict.
@@ -256,7 +272,45 @@ class Judge:
             - Observer emits JUDGMENT event with type, step_id, verdict, reason, latency.
             - Verdict.verdict MUST be one of VERDICT_VALUES.
         """
-        raise NotImplementedError("Judge.judge not implemented")
+        if not self.is_enabled(request.type):
+            verdict = JudgmentVerdict(
+                verdict="DEFER",
+                reason=f"Judgment type '{request.type.value}' is disabled by configuration",
+                suggested_action=None,
+                planner_instruction=None,
+            )
+            self._emit_judgment_event(request=request, verdict=verdict, latency_ms=0.0)
+            return verdict
+
+        self._validate_request(request)
+        user_prompt = self._render_request(request)
+
+        started = time.monotonic()
+        try:
+            raw_output = await self._invoke_runner(
+                system_prompt=self._system_prompt,
+                user_prompt=user_prompt,
+            )
+            verdict = self._parse_verdict(raw_output=raw_output, request=request)
+        except JudgmentTimeoutError:
+            raise JudgmentTimeoutError(
+                judgment_type=request.type.value,
+                step_id=request.step_id,
+                timeout_seconds=self._config.timeout,
+            )
+        except JudgmentParseError as exc:
+            raise JudgmentParseError(
+                judgment_type=request.type.value,
+                step_id=request.step_id,
+                raw_output=exc.raw_output,
+            )
+
+        self._emit_judgment_event(
+            request=request,
+            verdict=verdict,
+            latency_ms=(time.monotonic() - started) * 1000.0,
+        )
+        return verdict
 
     # =========================================================================
     # PRIVATE METHODS (STUBS)
@@ -278,7 +332,12 @@ class Judge:
             All JudgmentRequest.context dicts MUST contain all keys listed in
             CONTEXT_SCHEMAS[request.type]["required"].
         """
-        raise NotImplementedError("Judge._validate_request not implemented")
+        schema = CONTEXT_SCHEMAS[request.type]
+        required_fields = schema["required"]
+        missing_fields = [field for field in required_fields if field not in request.context]
+        if missing_fields:
+            missing = ", ".join(missing_fields)
+            raise ValueError(f"Missing required context fields for {request.type.value}: {missing}")
 
     def _render_request(self, request: JudgmentRequest) -> str:
         """Render a JudgmentRequest into a user prompt for the judge.
@@ -291,7 +350,14 @@ class Judge:
 
         Architecture: docs/DRIVER-ARCHITECTURE.md Section 2.10, request rendering
         """
-        raise NotImplementedError("Judge._render_request not implemented")
+        payload: dict[str, object] = {
+            "type": request.type.value,
+            "step_id": request.step_id,
+            "context": request.context,
+            "failure_history": request.failure_history,
+            "plan_summary": request.plan_summary,
+        }
+        return json.dumps(payload, ensure_ascii=False, indent=2)
 
     async def _invoke_runner(self, system_prompt: str, user_prompt: str) -> str:
         """Invoke the configured runner with the judge prompt.
@@ -309,7 +375,84 @@ class Judge:
 
         Architecture: docs/DRIVER-ARCHITECTURE.md Section 2.10, runner invocation
         """
-        raise NotImplementedError("Judge._invoke_runner not implemented")
+        timeout_seconds = float(self._config.timeout)
+
+        if self._runner_override is not None:
+            try:
+                if self._config.structured_output:
+                    verdict_obj = await asyncio.wait_for(
+                        self._runner_override.dispatch_structured(
+                            system_prompt=system_prompt,
+                            user_prompt=user_prompt,
+                            schema=VERDICT_SCHEMA,
+                            timeout=timeout_seconds,
+                        ),
+                        timeout=timeout_seconds,
+                    )
+                    return json.dumps(verdict_obj, ensure_ascii=False)
+
+                return await asyncio.wait_for(
+                    self._runner_override.dispatch_text(
+                        system_prompt=system_prompt,
+                        user_prompt=user_prompt,
+                        timeout=timeout_seconds,
+                    ),
+                    timeout=timeout_seconds,
+                )
+            except TimeoutError as exc:
+                raise JudgmentTimeoutError(
+                    judgment_type="unknown",
+                    step_id="unknown",
+                    timeout_seconds=int(timeout_seconds),
+                ) from exc
+
+        command, payload = self._build_subprocess_command(system_prompt, user_prompt)
+        try:
+            process = await asyncio.create_subprocess_exec(
+                *command,
+                stdin=asyncio.subprocess.PIPE,
+                stdout=asyncio.subprocess.PIPE,
+                stderr=asyncio.subprocess.PIPE,
+            )
+        except FileNotFoundError as exc:
+            raise JudgmentParseError(
+                judgment_type="unknown",
+                step_id="unknown",
+                raw_output=f"judge runner not found: {self._config.runner}",
+            ) from exc
+
+        try:
+            stdout_bytes, stderr_bytes = await asyncio.wait_for(
+                process.communicate(payload.encode("utf-8")),
+                timeout=timeout_seconds,
+            )
+        except TimeoutError as exc:
+            process.kill()
+            raise JudgmentTimeoutError(
+                judgment_type="unknown",
+                step_id="unknown",
+                timeout_seconds=int(timeout_seconds),
+            ) from exc
+
+        stdout_text = stdout_bytes.decode("utf-8", errors="replace").strip()
+        stderr_text = stderr_bytes.decode("utf-8", errors="replace").strip()
+
+        if process.returncode not in (0, None):
+            raw = stdout_text or stderr_text or f"runner exited {process.returncode}"
+            raise JudgmentParseError(
+                judgment_type="unknown",
+                step_id="unknown",
+                raw_output=raw,
+            )
+
+        if not stdout_text:
+            raise JudgmentParseError(
+                judgment_type="unknown",
+                step_id="unknown",
+                raw_output="empty output from judge runner",
+            )
+
+        return _extract_verdict_payload(stdout_text)
 
     def _parse_verdict(self, raw_output: str, request: JudgmentRequest) -> JudgmentVerdict:
         """Parse raw runner output into a JudgmentVerdict.
@@ -332,7 +475,94 @@ class Judge:
             - If verdict.verdict == "SWITCH_AGENT", suggested_action MUST be non-None.
             - If verdict.verdict == "REPLAN", planner_instruction MUST be non-None.
         """
-        raise NotImplementedError("Judge._parse_verdict not implemented")
+        try:
+            data = json.loads(raw_output)
+        except json.JSONDecodeError as exc:
+            raise JudgmentParseError(
+                judgment_type=request.type.value,
+                step_id=request.step_id,
+                raw_output=raw_output,
+            ) from exc
+
+        if not isinstance(data, dict):
+            raise JudgmentParseError(
+                judgment_type=request.type.value,
+                step_id=request.step_id,
+                raw_output=raw_output,
+            )
+
+        expected_keys = {"verdict", "reason", "suggested_action", "planner_instruction"}
+        if set(data.keys()) != expected_keys:
+            raise JudgmentParseError(
+                judgment_type=request.type.value,
+                step_id=request.step_id,
+                raw_output=raw_output,
+            )
+
+        verdict_raw = data["verdict"]
+        reason_raw = data["reason"]
+        suggested_raw = data["suggested_action"]
+        planner_raw = data["planner_instruction"]
+
+        if not isinstance(verdict_raw, str) or verdict_raw not in VERDICT_VALUES:
+            raise JudgmentParseError(
+                judgment_type=request.type.value,
+                step_id=request.step_id,
+                raw_output=raw_output,
+            )
+
+        if not isinstance(reason_raw, str) or not reason_raw.strip():
+            raise JudgmentParseError(
+                judgment_type=request.type.value,
+                step_id=request.step_id,
+                raw_output=raw_output,
+            )
+
+        if suggested_raw is not None and not isinstance(suggested_raw, str):
+            raise JudgmentParseError(
+                judgment_type=request.type.value,
+                step_id=request.step_id,
+                raw_output=raw_output,
+            )
+        if planner_raw is not None and not isinstance(planner_raw, str):
+            raise JudgmentParseError(
+                judgment_type=request.type.value,
+                step_id=request.step_id,
+                raw_output=raw_output,
+            )
+
+        if verdict_raw == "SWITCH_AGENT" and not suggested_raw:
+            raise JudgmentParseError(
+                judgment_type=request.type.value,
+                step_id=request.step_id,
+                raw_output=raw_output,
+            )
+        if verdict_raw != "SWITCH_AGENT" and suggested_raw is not None:
+            raise JudgmentParseError(
+                judgment_type=request.type.value,
+                step_id=request.step_id,
+                raw_output=raw_output,
+            )
+
+        if verdict_raw == "REPLAN" and not planner_raw:
+            raise JudgmentParseError(
+                judgment_type=request.type.value,
+                step_id=request.step_id,
+                raw_output=raw_output,
+            )
+        if verdict_raw != "REPLAN" and planner_raw is not None:
+            raise JudgmentParseError(
+                judgment_type=request.type.value,
+                step_id=request.step_id,
+                raw_output=raw_output,
+            )
+
+        return JudgmentVerdict(
+            verdict=verdict_raw,
+            reason=reason_raw,
+            suggested_action=suggested_raw,
+            planner_instruction=planner_raw,
+        )
 
     def _emit_judgment_event(
         self,
@@ -351,7 +581,123 @@ class Judge:
         Blueprint: DRIVER-BLUEPRINT.md line 248 (observer.emit("JUDGMENT", ...))
         Blueprint: DRIVER-BLUEPRINT.md lines 837-839 (JUDGMENT event format)
         """
-        raise NotImplementedError("Judge._emit_judgment_event not implemented")
+        self._observer.emit(
+            "JUDGMENT",
+            type=request.type.value,
+            step_id=request.step_id,
+            verdict=verdict.verdict,
+            reason=verdict.reason,
+            suggested_action=verdict.suggested_action,
+            planner_instruction=verdict.planner_instruction,
+            latency_ms=latency_ms,
+        )
+
+    def _build_subprocess_command(
+        self, system_prompt: str, user_prompt: str
+    ) -> tuple[list[str], str]:
+        """Build subprocess command and stdin payload.
+
+        Architecture: docs/DRIVER-ARCHITECTURE.md Section 2.10 Structured Output Strategy
+        """
+        runner = self._config.runner
+        payload = user_prompt
+
+        if runner == "claude":
+            command = [runner, "-p", "--output-format", "json", "--system-prompt", system_prompt]
+            if self._config.structured_output and self._structured_schema_path is not None:
+                command.extend(["--json-schema", self._structured_schema_path])
+            return command, payload
+
+        if runner == "codex":
+            command = [runner, "exec", "--json"]
+            if self._config.structured_output and self._structured_schema_path is not None:
+                command.extend(["--output-schema", self._structured_schema_path])
+            command.append("-")
+            payload = f"SYSTEM PROMPT:\n{system_prompt}\n\n{user_prompt}"
+            return command, payload
+
+        if runner == "opencode":
+            command = [runner, "run", "--format", "json"]
+            payload = f"SYSTEM PROMPT:\n{system_prompt}\n\n{user_prompt}"
+            return command, payload
+
+        command = [runner]
+        payload = f"SYSTEM PROMPT:\n{system_prompt}\n\n{user_prompt}"
+        return command, payload
+
+
+def _load_judge_system_prompt() -> str:
+    """Load judge system prompt from docs/JUDGE-AGENT-PROMPT.md.
+
+    Architecture: docs/DRIVER-ARCHITECTURE.md Section 2.10
+    """
+    prompt_path = Path("docs/JUDGE-AGENT-PROMPT.md")
+    if not prompt_path.exists():
+        return (
+            "You are a Plan Execution Judge. Return strict JSON verdict with keys "
+            "verdict, reason, suggested_action, planner_instruction."
+        )
+    return prompt_path.read_text(encoding="utf-8")
+
+
+def _write_schema_tempfile(schema: dict[str, object]) -> str:
+    """Write verdict schema to a temporary file and return path."""
+    with NamedTemporaryFile(mode="w", encoding="utf-8", suffix=".json", delete=False) as fp:
+        json.dump(schema, fp)
+        fp.flush()
+        return fp.name
+
+
+def _extract_verdict_payload(stdout_text: str) -> str:
+    """Extract verdict JSON payload from runner output.
+
+    Strict policy:
+    - If output is a single JSON object, return it unchanged.
+    - If output is JSONL (OpenCode), extract `text` event content and require it to be JSON.
+    - Reject loose text wrappers around JSON.
+    """
+    stripped = stdout_text.strip()
+
+    # Single JSON object path
+    try:
+        data = json.loads(stripped)
+    except json.JSONDecodeError:
+        data = None
+
+    if isinstance(data, dict):
+        # Claude structured output envelope
+        if "structured_output" in data:
+            return json.dumps(data["structured_output"], ensure_ascii=False)
+        if "result" in data and isinstance(data["result"], (dict, list)):
+            return json.dumps(data["result"], ensure_ascii=False)
+        if "result" in data and isinstance(data["result"], str):
+            return data["result"]
+        return stripped
+
+    # JSONL path (OpenCode-style)
+    text_parts: list[str] = []
+    for line in stripped.splitlines():
+        line = line.strip()
+        if not line:
+            continue
+        try:
+            event = json.loads(line)
+        except json.JSONDecodeError:
+            continue
+
+        if event.get("type") == "text":
+            part = event.get("part", {})
+            text = part.get("text")
+            if isinstance(text, str) and text.strip():
+                text_parts.append(text.strip())
+
+    if not text_parts:
+        return stripped
+
+    candidate = text_parts[-1]
+    # strict: candidate itself must be JSON, not markdown wrapper
+    json.loads(candidate)
+    return candidate
 
 
 # =============================================================================

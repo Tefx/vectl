@@ -42180,3 +42180,10 @@ phases:
   depends_on:
   - driver-judge-hardening-structured-output
   - driver-judge-hardening-recovery-policy
+- id: driver-bootstrap-readiness
+  name: Driver Real Bootstrap Readiness
+  status: locked
+  gate: Only after this milestone may the plan authorize another real project bootstrap
+    attempt and unlock long-horizon evolution work.
+  depends_on:
+  - driver-judge-hardening-review

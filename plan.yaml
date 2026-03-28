@@ -38443,7 +38443,8 @@ phases:
       \ it must not reopen feature scope.\n\n## Completion Criteria (stub exclusion)\n\
       This is an IMPLEMENTATION step. Stub-only completion is NOT acceptable.\nFinal\
       \ runtime wiring must be substantive and executable; placeholder joins or commented\
-      \ TODO wiring do not satisfy this step."
+      \ TODO wiring do not satisfy this step.\n\nAfter implementation, run spec-verifier\
+      \ scoped to changed files to check for spec-code drift."
     verification: '- Final runtime graph references only the remediated surfaces
 
       - No orphan legacy path remains reachable'

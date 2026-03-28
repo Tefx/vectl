@@ -22,10 +22,11 @@ import contextlib
 import json
 import logging
 import shutil
+import time
 from dataclasses import dataclass
 from fnmatch import fnmatch
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, Final, Literal, Protocol, cast
+from typing import TYPE_CHECKING, Final, Literal, Protocol, cast
 
 from vectl.claims import repair_claims
 from vectl.decide import decide
@@ -48,7 +49,15 @@ from .errors import ConfigError, RunnerError
 from .judge import Judge
 from .judgments import JudgmentRequest, JudgmentType, JudgmentVerdict
 from .observe import Observer, create_observer
-from .runners import Runner, RunnerStatus as RunnerDispatchStatus, create_runner
+from .policy import (
+    ParsedGateIssue,
+    _detect_preflight_risk_signals,
+    _extract_failure_disposition,
+    _is_gate_or_freeze_step,
+    _parse_gate_issues,
+)
+from .runners import Runner, create_runner
+from .runners import RunnerStatus as RunnerDispatchStatus
 from .session import SessionPool
 from .types import CompletedEntry, DriverState, RunnerStatus
 from .worktree import (
@@ -83,6 +92,51 @@ LoopSurfaceName = Literal[
     "reconcile",
     "shutdown",
 ]
+
+
+CompletionSinkName = Literal["wait_for_any_then_reconcile"]
+
+
+LegacyCompleteShimDisposition = Literal[
+    "delete_preferred_if_feasible",
+    "legacy_internal_shim_only",
+]
+
+
+@dataclass(frozen=True)
+class CompletionAuthorityContract:
+    """Approved A1 runtime completion authority contract.
+
+    Authority source:
+    - step ``driver-debt-completion-authority.contract`` required statements.
+
+    Scope:
+    - pins runtime authority boundaries only
+    - carries no runtime behavior changes in this contract phase
+
+    Invariants:
+        - Runtime must not route raw runner completions through ``decide()`` for
+          completion-action generation.
+        - Main runtime completion sink is exactly ``wait_for_any()`` then
+          ``reconcile()``.
+        - ``reconcile()`` is the sole owner of completion/failure/session
+          side-effects.
+        - ``handle_complete()`` is removed if feasible; otherwise constrained to
+          a legacy/internal shim path outside main runtime flow.
+    """
+
+    contract_id: str
+    source_step_id: str
+    decide_runtime_completed_results_policy: str
+    runtime_main_path_forbidden_actions: tuple[str, ...]
+    sole_completion_sink: CompletionSinkName
+    reconcile_side_effect_owner: tuple[str, ...]
+    handle_complete_disposition: LegacyCompleteShimDisposition
+    handle_complete_removal_conditions: tuple[str, ...]
+    blocker_regressions: tuple[str, ...]
+    escalation_once_per_completed_result: bool
+    implementation_owner_step: str
+    rationale: str
 
 
 @dataclass(frozen=True)
@@ -317,18 +371,6 @@ class PlannerDispatcher(Protocol):
 
 
 @dataclass(frozen=True)
-class ParsedGateIssue:
-    """Normalized gate issue extracted from gate evidence output.
-
-    Source: docs/JUDGE-AGENT-PROMPT.md ``TYPE: gate`` issue severity table.
-    """
-
-    severity: str
-    summary: str
-    raw: dict[str, Any]
-
-
-@dataclass(frozen=True)
 class StartupRecoveryContract:
     """Contract summary for startup recovery owned by ``run()``.
 
@@ -361,6 +403,43 @@ class GracefulShutdownContract:
 
 STARTUP_RECOVERY_CONTRACT: Final[StartupRecoveryContract] = StartupRecoveryContract()
 GRACEFUL_SHUTDOWN_CONTRACT: Final[GracefulShutdownContract] = GracefulShutdownContract()
+
+
+COMPLETION_AUTHORITY_A1_CONTRACT: Final[CompletionAuthorityContract] = CompletionAuthorityContract(
+    contract_id="driver-runtime-completion-authority-a1",
+    source_step_id="driver-debt-completion-authority.contract",
+    decide_runtime_completed_results_policy=(
+        "driver runtime MUST NOT pass raw completed_results into decide() "
+        "for completion action generation"
+    ),
+    runtime_main_path_forbidden_actions=(
+        "_run_main_loop main path MUST NOT execute handle_complete() for runner completion",
+    ),
+    sole_completion_sink="wait_for_any_then_reconcile",
+    reconcile_side_effect_owner=(
+        "evidence judgment",
+        "complete/defer lifecycle mutation",
+        "merge",
+        "session record",
+        "worktree cleanup",
+        "event emission",
+    ),
+    handle_complete_disposition="legacy_internal_shim_only",
+    handle_complete_removal_conditions=(
+        "delete handle_complete() when no legacy caller depends on decide(action='complete')",
+        "if retained, keep off main runtime path and scope to internal compatibility only",
+    ),
+    blocker_regressions=(
+        "duplicate complete_step() for one runner result",
+        "duplicate STEP_COMPLETED emission for one runner result",
+    ),
+    escalation_once_per_completed_result=True,
+    implementation_owner_step="driver-debt-completion-authority.impl",
+    rationale=(
+        "A1 authority converges runtime completion semantics to one sink so "
+        "completion side-effects are serialized and idempotence risks are bounded."
+    ),
+)
 
 # Bounded REPLAN-capable branches intentionally deferred to the
 # driver-judgment-expansion-replan phase. These names are contract authority for
@@ -775,33 +854,6 @@ def _is_impl_step_id(step_id: str) -> bool:
     return lowered.endswith(".impl") or ".impl-" in lowered or lowered.endswith(".implementation")
 
 
-_PREFLIGHT_RISK_KEYWORDS: Final[tuple[str, ...]] = (
-    "migration",
-    "cas",
-    "backward compat",
-    "backward compatibility",
-    "concurrency",
-    "race",
-    "atomic",
-)
-
-
-def _detect_preflight_risk_signals(
-    *,
-    step_id: str,
-    description: str,
-    verification: str,
-    refs: list[str],
-) -> list[str]:
-    """Detect textual risk signals for preflight judgment routing.
-
-    Source: docs/DRIVER-ARCHITECTURE.md Section 2.10 Judge vs Rules Decision
-    Boundary (preflight risk-signal keyword detection).
-    """
-    haystack = "\n".join([step_id, description, verification, "\n".join(refs)]).lower()
-    return [keyword for keyword in _PREFLIGHT_RISK_KEYWORDS if keyword in haystack]
-
-
 def _build_preflight_request(
     *,
     step_id: str,
@@ -931,23 +983,6 @@ def _collect_remaining_required_checks(plan: object, step_id: str) -> list[str]:
     return deduped
 
 
-def _extract_failure_disposition(reason: str) -> str | None:
-    """Extract ``disposition`` tag from FAILURE verdict reason.
-
-    Source: docs/JUDGE-AGENT-PROMPT.md ``TYPE: failure`` verdict contract:
-    reason MUST include ``provenance=<value>, disposition=<value>``.
-    """
-
-    marker = "disposition="
-    lowered = reason.lower()
-    start = lowered.find(marker)
-    if start < 0:
-        return None
-    raw = lowered[start + len(marker) :]
-    token = raw.split(",", 1)[0].split(";", 1)[0].split(" ", 1)[0].strip()
-    return token or None
-
-
 def _build_failure_request(
     *,
     step_id: str,
@@ -981,112 +1016,6 @@ def _build_failure_request(
         failure_history=failure_history,
         plan_summary=plan_summary,
     )
-
-
-def _coerce_gate_issue(raw_issue: object) -> ParsedGateIssue | None:
-    """Normalize one issue from gate evidence payload.
-
-    Source: docs/JUDGE-AGENT-PROMPT.md ``TYPE: gate`` severity taxonomy.
-    """
-
-    if not isinstance(raw_issue, dict):
-        return None
-
-    severity_raw = raw_issue.get("severity", "")
-    severity = str(severity_raw).strip().lower()
-    if not severity:
-        return None
-
-    summary_candidates = (
-        raw_issue.get("summary"),
-        raw_issue.get("message"),
-        raw_issue.get("title"),
-        raw_issue.get("issue"),
-    )
-    summary = ""
-    for candidate in summary_candidates:
-        if candidate is None:
-            continue
-        summary = str(candidate).strip()
-        if summary:
-            break
-    if not summary:
-        summary = f"{severity} issue"
-
-    return ParsedGateIssue(
-        severity=severity,
-        summary=summary,
-        raw={str(key): value for key, value in raw_issue.items()},
-    )
-
-
-def _parse_gate_issues(gate_evidence: str) -> list[ParsedGateIssue]:
-    """Parse gate issues from JSON/JSONL/plain-text evidence.
-
-    Source: DRIVER-BLUEPRINT.md Flow 4 (`parse_gate_issues(gate_evidence)`).
-    """
-
-    candidates: list[ParsedGateIssue] = []
-
-    stripped = gate_evidence.strip()
-    if stripped:
-        try:
-            payload = json.loads(stripped)
-        except json.JSONDecodeError:
-            payload = None
-        if isinstance(payload, dict):
-            raw_issues = payload.get("issues")
-            if isinstance(raw_issues, list):
-                for issue in raw_issues:
-                    parsed = _coerce_gate_issue(issue)
-                    if parsed is not None:
-                        candidates.append(parsed)
-        elif isinstance(payload, list):
-            for issue in payload:
-                parsed = _coerce_gate_issue(issue)
-                if parsed is not None:
-                    candidates.append(parsed)
-
-    # fallback: lightweight line parser ``[severity] message`` or ``severity: message``
-    if not candidates:
-        severities = {"blocker", "should_fix", "suggestion", "tech_debt"}
-        for line in gate_evidence.splitlines():
-            cleaned = line.strip().lstrip("-*0123456789. ").strip()
-            if not cleaned:
-                continue
-            lowered = cleaned.lower()
-            for severity in severities:
-                prefix_a = f"[{severity}]"
-                prefix_b = f"{severity}:"
-                if lowered.startswith(prefix_a):
-                    summary = cleaned[len(prefix_a) :].strip() or f"{severity} issue"
-                    candidates.append(ParsedGateIssue(severity=severity, summary=summary, raw={}))
-                    break
-                if lowered.startswith(prefix_b):
-                    summary = cleaned[len(prefix_b) :].strip() or f"{severity} issue"
-                    candidates.append(ParsedGateIssue(severity=severity, summary=summary, raw={}))
-                    break
-
-    return candidates
-
-
-def _is_gate_or_freeze_step(*, step_id: str, description: str, verification: str) -> bool:
-    """Return whether a step should use gate/cold-context judgment paths.
-
-    Source: docs/JUDGE-AGENT-PROMPT.md ``TYPE: gate`` and ``TYPE: cold_context``.
-    """
-
-    haystack = "\n".join([step_id, description, verification]).lower()
-    markers = (
-        ".gate",
-        " gate",
-        "freeze",
-        "independent auditor",
-        "adversarial",
-        "liveness",
-        "smoke test",
-    )
-    return any(marker in haystack for marker in markers)
 
 
 def _extract_entry_points_from_verification(verification: str) -> list[str]:
@@ -1589,8 +1518,11 @@ async def handle_complete(
     - complete the step using CAS-safe lifecycle operations
     - persist the resulting plan state
 
-    This surface exists separately from ``reconcile()`` because ``decide()`` may
-    emit completion actions based on prior iteration results.
+    Legacy-shim disposition (A1 authority):
+    - main runtime path should converge on ``wait_for_any() -> reconcile()`` as
+      the sole completion sink.
+    - this function remains only as an internal compatibility shim until
+      ``driver-debt-completion-authority.impl`` removes or narrows legacy calls.
     """
     if action.step_id is None:
         raise PlanError("complete action requires step_id")
@@ -1637,6 +1569,8 @@ async def reconcile(
     if completed.result.status == RunnerStatus.SUCCESS:
         evidence = completed.result.output
         plan, expected_hash = load_plan_definition(plan_path)
+        state.decide_state.reset_failure(step_id=completed.step_id)
+        state.failure_counts.pop(completed.step_id, None)
         runtime_config = cast(DriverConfig | None, state.runtime_config)
         runtime_runners = cast(dict[str, Runner] | None, state.runtime_runners)
         found = plan.find_step(completed.step_id)
@@ -1776,14 +1710,8 @@ async def reconcile(
                 save_plan(plan, path=plan_path, expected_hash=expected_hash)
                 return
 
-            if merge_result.value.outcome.value == "auto_resolved_conflict":
-                observer.emit(
-                    "MERGE_COMPLETED",
-                    step_id=completed.step_id,
-                    auto_resolved=True,
-                    conflicting_files=list(merge_result.value.conflicted_files),
-                    elapsed_seconds=completed.elapsed_seconds,
-                )
+            auto_resolved = merge_result.value.outcome.value == "auto_resolved_conflict"
+            conflicting_files = list(merge_result.value.conflicted_files)
 
         if completed.result.session_id:
             session_pool.record(
@@ -1791,6 +1719,11 @@ async def reconcile(
                 session_id=completed.result.session_id,
                 runner_name=completed.runner_name,
                 agent=completed.agent,
+            )
+            state.decide_state.record_completion(
+                step_id=completed.step_id,
+                task_id=completed.result.session_id,
+                completed_at=time.time(),
             )
 
         cleanup_result = await cleanup_worktree(
@@ -1804,13 +1737,29 @@ async def reconcile(
             )
 
         observer.emit(
-            "MERGE_COMPLETED", step_id=completed.step_id, elapsed_seconds=completed.elapsed_seconds
+            "STEP_COMPLETED",
+            step_id=completed.step_id,
+            evidence_len=len(evidence),
+            elapsed_seconds=completed.elapsed_seconds,
+        )
+        observer.emit(
+            "MERGE_COMPLETED",
+            step_id=completed.step_id,
+            auto_resolved=auto_resolved,
+            conflicting_files=conflicting_files,
+            elapsed_seconds=completed.elapsed_seconds,
         )
         return
 
-    state.increment_failure(completed.step_id, completed.runner_name)
+    state.runner_failures[(completed.step_id, completed.runner_name)] = (
+        state.runner_failures.get((completed.step_id, completed.runner_name), 0) + 1
+    )
     state.failure_history.setdefault(completed.step_id, []).append(completed.result.output)
-    count = state.failure_count(completed.step_id)
+    legacy_failure_count = state.failure_counts.get(completed.step_id, 0)
+    if legacy_failure_count > state.decide_state.failure_counts.get(completed.step_id, 0):
+        state.decide_state.failure_counts[completed.step_id] = legacy_failure_count
+    count = state.decide_state.register_failure(step_id=completed.step_id)
+    state.failure_counts[completed.step_id] = count
 
     plan, expected_hash = load_plan_definition(plan_path)
     claims_path = resolve_claims_path(plan_path)
@@ -2095,15 +2044,24 @@ async def _run_main_loop(
     observer: Observer,
     plan_path: Path,
 ) -> None:
-    """Execute the deterministic decide/dispatch/wait/reconcile loop."""
+    """Execute the deterministic decide/dispatch/wait/reconcile loop.
+
+    Completion authority note (A1 contract pin):
+    - runtime convergence target is a single completion sink
+      ``wait_for_any() -> reconcile()``
+    - ``handle_complete()`` is legacy/internal compatibility only and should be
+      removed from the main runtime path by
+      ``driver-debt-completion-authority.impl``
+    """
     state.runtime_config = config
     state.runtime_runners = runners
 
     while not state.halt_requested:
         decide_output = decide(
             running_tasks=state.as_running_tasks(),
-            completed_results=state.drain_completed(),
+            completed_results=None,
             max_parallelism=config.orchestration.max_parallelism,
+            state=state.decide_state,
         )
         observer.emit(
             "DECIDE",
@@ -2130,13 +2088,13 @@ async def _run_main_loop(
                     plan_path=plan_path,
                 )
             elif action.action == "complete":
-                await handle_complete(
-                    action=action,
-                    state=state,
-                    judge=judge,
-                    session_pool=session_pool,
-                    observer=observer,
-                    plan_path=plan_path,
+                observer.emit(
+                    "COMPLETE_ACTION_IGNORED",
+                    step_id=action.step_id,
+                    reason=(
+                        "Runtime completion authority is reconcile-only; "
+                        "decide(action='complete') is legacy and ignored"
+                    ),
                 )
             elif action.action == "wait":
                 observer.emit("WAIT", reason=action.reason or "No action")
@@ -2166,6 +2124,9 @@ async def _run_main_loop(
 
 
 __all__ = [
+    "COMPLETION_AUTHORITY_A1_CONTRACT",
+    "CompletionAuthorityContract",
+    "CompletionSinkName",
     "CONFLICT_RESOLVER_READINESS_CONTRACT",
     "ConflictResolverDispatcher",
     "ConflictResolverReadinessContract",
@@ -2176,6 +2137,7 @@ __all__ = [
     "GateRemediationTriggerName",
     "GRACEFUL_SHUTDOWN_CONTRACT",
     "LoopSurfaceName",
+    "LegacyCompleteShimDisposition",
     "PlannerDispatchContract",
     "PlannerDispatchRequest",
     "PlannerDispatcher",

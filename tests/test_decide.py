@@ -12,8 +12,11 @@ Tests may fail at runtime with NotImplementedError until impl phase.
 
 from __future__ import annotations
 
+import time
+import importlib
 from pathlib import Path
 
+from vectl.decision_state import DecideState
 from vectl.decide import (
     compute_continuation,
     decide,
@@ -156,43 +159,50 @@ def test_should_reuse_session_no_parent() -> None:
 
 def test_should_reuse_session_within_ttl() -> None:
     """should_reuse_session returns (True, task_id) when parent within TTL."""
-    # This test will fail until impl phase fills _completion_times/_session_registry
-    # Expected behavior: if parent_step_id is in _completion_times within REUSE_TTL,
-    # return (True, task_id)
+    state = DecideState(
+        completion_times={"s1": time.time()},
+        session_registry={"s1": "task-1"},
+    )
+
     should_reuse, task_id = should_reuse_session(
         step_id="s2",
         parent_step_id="s1",
+        state=state,
     )
 
-    # Note: This will raise NotImplementedError until impl phase
-    # After impl: should_reuse should be True if s1 completed within TTL
-    # and _session_registry has a task_id for s1
-    # Impl should populate _completion_times and _session_registry first
-    assert should_reuse is False or should_reuse is True  # Placeholder until impl
+    assert should_reuse is True
+    assert task_id == "task-1"
 
 
 def test_should_reuse_session_beyond_ttl() -> None:
     """should_reuse_session returns (False, None) when parent beyond TTL."""
+    state = DecideState(
+        completion_times={"s1": time.time() - 301},
+        session_registry={"s1": "task-1"},
+    )
+
     should_reuse, task_id = should_reuse_session(
         step_id="s2",
         parent_step_id="s1",
+        state=state,
     )
 
-    # After impl: this should test that if elapsed > REUSE_TTL, returns (False, None)
-    # Placeholder until impl phase
-    assert should_reuse is False or should_reuse is True  # Placeholder until impl
+    assert should_reuse is False
+    assert task_id is None
 
 
 def test_should_reuse_session_no_registered_task() -> None:
     """should_reuse_session returns (False, None) with no registered task."""
+    state = DecideState(completion_times={"s1": time.time()})
+
     should_reuse, task_id = should_reuse_session(
         step_id="s2",
         parent_step_id="s1",
+        state=state,
     )
 
-    # After impl: if parent_step_id not in _session_registry, returns (False, None)
-    # Placeholder until impl phase
-    assert should_reuse is False or should_reuse is True  # Placeholder until impl
+    assert should_reuse is False
+    assert task_id is None
 
 
 # ---------------------------------------------------------------------------
@@ -303,6 +313,143 @@ def test_decide_continuation_flag() -> None:
         assert isinstance(output.halt_reason, str | type(None))
 
 
+def test_decide_explicit_state_prevents_legacy_fallback_override(tmp_path: Path) -> None:
+    """Explicit state remains authoritative over legacy fallback memory."""
+    plan = Plan(
+        project="decide-test",
+        phases=[
+            Phase(
+                id="p1",
+                name="Phase 1",
+                status=PhaseStatus.PENDING,
+                steps=[
+                    Step(id="s1", name="Parent", status=StepStatus.DONE),
+                    Step(
+                        id="s2",
+                        name="Child",
+                        status=StepStatus.PENDING,
+                        depends_on=["s1"],
+                        agent="python-executor",
+                    ),
+                ],
+            )
+        ],
+    )
+    plan_path = tmp_path / "plan.yaml"
+    save_plan(plan, plan_path)
+
+    decide_mod = importlib.import_module("vectl.decide")
+
+    original_path = decide_mod.resolve_plan_path
+    original_legacy = DecideState(
+        completion_times=dict(decide_mod._legacy_state.completion_times),
+        session_registry=dict(decide_mod._legacy_state.session_registry),
+        failure_counts=dict(decide_mod._legacy_state.failure_counts),
+    )
+
+    decide_mod.resolve_plan_path = lambda: plan_path  # type: ignore[assignment]
+    decide_mod._legacy_state.completion_times = {"s1": time.time()}
+    decide_mod._legacy_state.session_registry = {"s1": "legacy-task"}
+    decide_mod._legacy_state.failure_counts = {}
+
+    explicit_state = DecideState()
+    try:
+        output = decide(
+            running_tasks=[],
+            completed_results=None,
+            max_parallelism=5,
+            state=explicit_state,
+        )
+    finally:
+        decide_mod.resolve_plan_path = original_path  # type: ignore[assignment]
+        decide_mod._legacy_state.completion_times = original_legacy.completion_times
+        decide_mod._legacy_state.session_registry = original_legacy.session_registry
+        decide_mod._legacy_state.failure_counts = original_legacy.failure_counts
+
+    dispatch_actions = [action for action in output.actions if action.step_id == "s2"]
+    assert len(dispatch_actions) == 1
+    assert dispatch_actions[0].session == "fresh"
+    assert dispatch_actions[0].task_id is None
+
+
+def test_decide_state_isolation_reuse_and_failure_reset(tmp_path: Path) -> None:
+    """Two DecideState instances keep reuse/failure memory isolated."""
+    plan = Plan(
+        project="decide-test",
+        phases=[
+            Phase(
+                id="p1",
+                name="Phase 1",
+                status=PhaseStatus.PENDING,
+                steps=[
+                    Step(id="s1", name="Parent", status=StepStatus.DONE),
+                    Step(
+                        id="s2",
+                        name="Child",
+                        status=StepStatus.PENDING,
+                        depends_on=["s1"],
+                        agent="python-executor",
+                    ),
+                ],
+            )
+        ],
+    )
+    plan_path = tmp_path / "plan.yaml"
+    save_plan(plan, plan_path)
+
+    state_a = DecideState(
+        completion_times={"s1": time.time()},
+        session_registry={"s1": "task-a"},
+        failure_counts={"s1": 2},
+    )
+    state_b = DecideState(failure_counts={"s1": 2})
+
+    decide_mod = importlib.import_module("vectl.decide")
+
+    original_path = decide_mod.resolve_plan_path
+    decide_mod.resolve_plan_path = lambda: plan_path  # type: ignore[assignment]
+    try:
+        output_a = decide(
+            running_tasks=[],
+            completed_results=None,
+            max_parallelism=5,
+            state=state_a,
+        )
+        output_b = decide(
+            running_tasks=[],
+            completed_results=None,
+            max_parallelism=5,
+            state=state_b,
+        )
+
+        decide(
+            running_tasks=[],
+            completed_results=[
+                CompletedResult(
+                    step_id="s1",
+                    task_id="task-a",
+                    status="SUCCESS",
+                    output_summary="ok",
+                )
+            ],
+            max_parallelism=5,
+            state=state_a,
+        )
+    finally:
+        decide_mod.resolve_plan_path = original_path  # type: ignore[assignment]
+
+    action_a = next(action for action in output_a.actions if action.step_id == "s2")
+    action_b = next(action for action in output_b.actions if action.step_id == "s2")
+
+    assert action_a.session == "reuse"
+    assert action_a.task_id == "task-a"
+    assert action_b.session == "fresh"
+    assert action_b.task_id is None
+
+    assert "s1" not in state_a.failure_counts
+    assert state_b.failure_counts["s1"] == 2
+
+
 def test_decide_successor_visible_after_simulated_completion(tmp_path: Path) -> None:
     """decide returns both complete AND claim_and_dispatch for successor in one batch.
 
@@ -340,7 +487,7 @@ def test_decide_successor_visible_after_simulated_completion(tmp_path: Path) -> 
     plan_path = tmp_path / "plan.yaml"
     save_plan(plan, plan_path)
 
-    import vectl.decide as decide_mod
+    decide_mod = importlib.import_module("vectl.decide")
 
     # Patch resolve_plan_path to point at our temp plan
     original = decide_mod.resolve_plan_path
@@ -402,7 +549,7 @@ def test_decide_expected_red_fail_completes(tmp_path: Path) -> None:
     plan_path = tmp_path / "plan.yaml"
     save_plan(plan, plan_path)
 
-    import vectl.decide as decide_mod
+    decide_mod = importlib.import_module("vectl.decide")
 
     original = decide_mod.resolve_plan_path
     decide_mod.resolve_plan_path = lambda: plan_path  # type: ignore[assignment]
@@ -463,7 +610,7 @@ def test_decide_must_green_fail_normal_failure_path(tmp_path: Path) -> None:
     plan_path = tmp_path / "plan.yaml"
     save_plan(plan, plan_path)
 
-    import vectl.decide as decide_mod
+    decide_mod = importlib.import_module("vectl.decide")
 
     original = decide_mod.resolve_plan_path
     decide_mod.resolve_plan_path = lambda: plan_path  # type: ignore[assignment]
@@ -525,7 +672,7 @@ def test_decide_verify_none_fail_normal_failure_path(tmp_path: Path) -> None:
     plan_path = tmp_path / "plan.yaml"
     save_plan(plan, plan_path)
 
-    import vectl.decide as decide_mod
+    decide_mod = importlib.import_module("vectl.decide")
 
     original = decide_mod.resolve_plan_path
     decide_mod.resolve_plan_path = lambda: plan_path  # type: ignore[assignment]
@@ -586,7 +733,7 @@ def test_decide_expected_red_success_completes_normally(tmp_path: Path) -> None:
     plan_path = tmp_path / "plan.yaml"
     save_plan(plan, plan_path)
 
-    import vectl.decide as decide_mod
+    decide_mod = importlib.import_module("vectl.decide")
 
     original = decide_mod.resolve_plan_path
     decide_mod.resolve_plan_path = lambda: plan_path  # type: ignore[assignment]

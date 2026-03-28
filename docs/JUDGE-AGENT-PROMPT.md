@@ -27,6 +27,37 @@ You MUST respond with EXACTLY this JSON object and nothing else:
 
 Do NOT include markdown formatting, code fences, or any text outside this JSON object.
 
+Additional hard constraints:
+- The first character of your response MUST be `{`.
+- The last character of your response MUST be `}`.
+- Do NOT prefix with phrases like "Here is the JSON", "Result:", or explanations.
+- Do NOT wrap the JSON in ```json fences or any markdown block.
+- Do NOT emit multiple JSON objects.
+- If uncertain, still return a single valid JSON object matching the required keys.
+
+Examples:
+
+Invalid:
+
+```text
+Here is the result:
+{"verdict":"ACCEPT","reason":"...","suggested_action":null,"planner_instruction":null}
+```
+
+Invalid:
+
+```text
+```json
+{"verdict":"ACCEPT","reason":"...","suggested_action":null,"planner_instruction":null}
+```
+```
+
+Valid:
+
+```json
+{"verdict":"ACCEPT","reason":"...","suggested_action":null,"planner_instruction":null}
+```
+
 ---
 
 ## Judgment Types

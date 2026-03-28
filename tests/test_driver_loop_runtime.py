@@ -20,10 +20,11 @@ from __future__ import annotations
 import asyncio
 from pathlib import Path
 from typing import Any
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import MagicMock, patch
 
 import pytest
 
+import src.vectl.driver.loop as loop_module
 from src.vectl.driver.config import (
     DriverConfig,
     JudgeConfig,
@@ -35,12 +36,11 @@ from src.vectl.driver.config import (
 from src.vectl.driver.errors import ConfigError
 from src.vectl.driver.judge import Judge
 from src.vectl.driver.loop import (
+    COMPLETION_AUTHORITY_A1_CONTRACT,
     DEFERRED_REPLAN_BRANCHES,
     GRACEFUL_SHUTDOWN_CONTRACT,
     STARTUP_RECOVERY_CONTRACT,
-    DeferredRuntimeBranch,
-    GracefulShutdownContract,
-    StartupRecoveryContract,
+    CompletionAuthorityContract,
     handle_complete,
     handle_dispatch,
     reconcile,
@@ -51,7 +51,7 @@ from src.vectl.driver.observe import FileObserver
 from src.vectl.driver.runners import Runner
 from src.vectl.driver.session import SessionPool
 from src.vectl.driver.types import CompletedEntry, DriverState, RunnerResult, RunnerStatus
-
+from vectl.models import DecideOutput
 
 # =============================================================================
 # FIXTURES
@@ -87,7 +87,7 @@ def driver_config(tmp_path: Path) -> DriverConfig:
 
 
 @pytest.fixture
-def mock_runner() -> Runner:
+def mock_runner() -> Any:
     """Mock runner for single-runner happy path."""
 
     class MockRunnerHandle:
@@ -224,6 +224,55 @@ class TestStartupRecoveryContract:
         assert "reconcile.failure_classification_replan" in branch_names
         assert "reconcile.escalation_replan" in branch_names
         assert "run.startup_recovery_anomaly_replan" in branch_names
+
+
+class TestCompletionAuthorityA1Contract:
+    """Contract pins for reconcile-only completion authority convergence."""
+
+    def test_completion_authority_contract_shape(self) -> None:
+        """A1 completion authority contract MUST expose required metadata."""
+        contract = COMPLETION_AUTHORITY_A1_CONTRACT
+        assert isinstance(contract, CompletionAuthorityContract)
+        assert contract.contract_id == "driver-runtime-completion-authority-a1"
+        assert contract.source_step_id == "driver-debt-completion-authority.contract"
+        assert contract.sole_completion_sink == "wait_for_any_then_reconcile"
+        assert contract.implementation_owner_step == "driver-debt-completion-authority.impl"
+
+    def test_completion_authority_required_statements_are_pinned(self) -> None:
+        """A1 contract MUST pin required completion authority statements."""
+        contract = COMPLETION_AUTHORITY_A1_CONTRACT
+        assert (
+            "MUST NOT pass raw completed_results"
+            in contract.decide_runtime_completed_results_policy
+        )
+        assert (
+            "MUST NOT execute handle_complete()" in contract.runtime_main_path_forbidden_actions[0]
+        )
+
+        side_effects = set(contract.reconcile_side_effect_owner)
+        assert side_effects == {
+            "evidence judgment",
+            "complete/defer lifecycle mutation",
+            "merge",
+            "session record",
+            "worktree cleanup",
+            "event emission",
+        }
+
+    def test_completion_authority_legacy_shim_and_risk_blockers(self) -> None:
+        """A1 contract MUST document shim disposition and blocker regressions."""
+        contract = COMPLETION_AUTHORITY_A1_CONTRACT
+        assert contract.handle_complete_disposition in {
+            "delete_preferred_if_feasible",
+            "legacy_internal_shim_only",
+        }
+        assert len(contract.handle_complete_removal_conditions) >= 1
+        assert contract.escalation_once_per_completed_result is True
+        assert "duplicate complete_step() for one runner result" in contract.blocker_regressions
+        assert (
+            "duplicate STEP_COMPLETED emission for one runner result"
+            in contract.blocker_regressions
+        )
 
 
 class TestStartupRecoveryPath:
@@ -823,6 +872,69 @@ class TestHandleComplete:
             plan_path=plan_path,
         )
         # Expected: NotImplementedError stub until impl
+
+
+class TestDecideStateRuntimeWiring:
+    """Regression coverage for decide-state instance ownership and loop wiring."""
+
+    def test_driver_state_decide_state_is_instance_local(self) -> None:
+        """Two DriverState instances must not share decide-side mutable state."""
+        state_a = DriverState()
+        state_b = DriverState()
+
+        assert state_a.decide_state is not state_b.decide_state
+
+        state_a.decide_state.failure_counts["core.impl"] = 2
+        state_a.decide_state.completion_times["core.impl"] = 123.0
+        state_a.decide_state.session_registry["core.impl"] = "task-a"
+
+        assert state_b.decide_state.failure_counts == {}
+        assert state_b.decide_state.completion_times == {}
+        assert state_b.decide_state.session_registry == {}
+
+    def test_run_main_loop_passes_driver_decide_state_to_decide(
+        self,
+        driver_config: DriverConfig,
+        driver_state: DriverState,
+        mock_judge: Judge,
+        session_pool: SessionPool,
+        observer: FileObserver,
+        tmp_path: Path,
+    ) -> None:
+        """Main loop must provide explicit state.decide_state to decide()."""
+        captured_state: dict[str, object] = {}
+
+        def fake_decide(
+            *, running_tasks: Any, completed_results: Any, max_parallelism: int, state: Any
+        ) -> DecideOutput:
+            captured_state["state"] = state
+            captured_state["running_tasks"] = running_tasks
+            captured_state["completed_results"] = completed_results
+            captured_state["max_parallelism"] = max_parallelism
+            return DecideOutput(
+                actions=[],
+                continuation=False,
+                halt_reason="NO_EXECUTABLE_STEPS",
+                decision_log=[],
+            )
+
+        with patch.object(loop_module, "decide", side_effect=fake_decide):
+            asyncio.run(
+                loop_module._run_main_loop(
+                    state=driver_state,
+                    config=driver_config,
+                    runners={},
+                    judge=mock_judge,
+                    session_pool=session_pool,
+                    observer=observer,
+                    plan_path=tmp_path / "plan.yaml",
+                )
+            )
+
+        assert captured_state["state"] is driver_state.decide_state
+        assert captured_state["running_tasks"] == []
+        assert captured_state["completed_results"] is None
+        assert captured_state["max_parallelism"] == driver_config.orchestration.max_parallelism
 
     @pytest.mark.xfail(reason="handle_complete() not implemented (expected-red)")
     async def test_handle_complete_uses_cas_safe_lifecycle(

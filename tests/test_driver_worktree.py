@@ -17,10 +17,14 @@ Blueprint Reference: DRIVER-BLUEPRINT.md Worktree Lifecycle (worktree.py)
 import asyncio
 import subprocess
 from pathlib import Path
+from typing import TypeVar
 
 import pytest
 
 from vectl.driver.worktree import (
+    Failure,
+    Result,
+    Success,
     TRIVIAL_CONFLICT_PATTERNS,
     WORKTREE_BASE_DIR,
     WORKTREE_BRANCH_PREFIX,
@@ -40,6 +44,24 @@ from vectl.driver.worktree import (
 # =============================================================================
 # Fixtures: Temporary git repo setup
 # =============================================================================
+
+
+T = TypeVar("T")
+E = TypeVar("E", bound=Exception)
+
+
+def expect_success(result: Result[T, E]) -> T:
+    """Return success payload or fail test with error."""
+
+    assert isinstance(result, Success), f"expected Success, got {result!r}"
+    return result.value
+
+
+def expect_failure(result: Result[T, E]) -> E:
+    """Return failure payload or fail test when successful."""
+
+    assert isinstance(result, Failure), f"expected Failure, got {result!r}"
+    return result.error
 
 
 @pytest.fixture
@@ -86,14 +108,14 @@ class TestDeriveBranchName:
 
     def test_derive_branch_name_format(self) -> None:
         """Branch name MUST be vectl/step-{step_id}."""
-        assert derive_branch_name("core-impl") == "vectl/step-core-impl"
-        assert derive_branch_name("test-step") == "vectl/step-test-step"
-        assert derive_branch_name("phase_step_123") == "vectl/step-phase_step_123"
+        assert expect_success(derive_branch_name("core-impl")) == "vectl/step-core-impl"
+        assert expect_success(derive_branch_name("test-step")) == "vectl/step-test-step"
+        assert expect_success(derive_branch_name("phase_step_123")) == "vectl/step-phase_step_123"
 
     def test_derive_branch_name_uses_prefix_constant(self) -> None:
         """derive_branch_name MUST use WORKTREE_BRANCH_PREFIX."""
         assert WORKTREE_BRANCH_PREFIX == "vectl/step-"
-        assert derive_branch_name("x").startswith(WORKTREE_BRANCH_PREFIX)
+        assert expect_success(derive_branch_name("x")).startswith(WORKTREE_BRANCH_PREFIX)
 
 
 class TestDeriveWorktreePath:
@@ -101,18 +123,18 @@ class TestDeriveWorktreePath:
 
     def test_derive_worktree_path_format(self) -> None:
         """Path MUST be base_dir/step_id."""
-        path = derive_worktree_path("core-impl")
+        path = expect_success(derive_worktree_path("core-impl"))
         assert path == WORKTREE_BASE_DIR / "core-impl"
 
     def test_derive_worktree_path_custom_base(self) -> None:
         """Path MUST support custom base_dir."""
         custom_base = Path("/custom/worktrees")
-        path = derive_worktree_path("test-step", base_dir=custom_base)
+        path = expect_success(derive_worktree_path("test-step", base_dir=custom_base))
         assert path == custom_base / "test-step"
 
     def test_derive_worktree_path_returns_path(self) -> None:
         """MUST return Path object."""
-        result = derive_worktree_path("any_step")
+        result = expect_success(derive_worktree_path("any_step"))
         assert isinstance(result, Path)
 
 
@@ -133,7 +155,7 @@ class TestCreateFreshPath:
         base_dir = temp_git_repo / ".vectl" / "worktrees"
         base_dir.mkdir(parents=True, exist_ok=True)
 
-        binding = asyncio.run(create(step_id, base_dir=base_dir, cwd=temp_git_repo))
+        binding = expect_success(asyncio.run(create(step_id, base_dir=base_dir, cwd=temp_git_repo)))
 
         assert binding.step_id == step_id
         assert binding.branch_name == f"vectl/step-{step_id}"
@@ -163,7 +185,7 @@ class TestCreateFreshPath:
         base_dir = temp_git_repo / ".vectl" / "worktrees"
         base_dir.mkdir(parents=True, exist_ok=True)
 
-        binding = asyncio.run(create(step_id, base_dir=base_dir, cwd=temp_git_repo))
+        binding = expect_success(asyncio.run(create(step_id, base_dir=base_dir, cwd=temp_git_repo)))
 
         # Work on step branch
         test_file = binding.worktree_path / "new_file.txt"
@@ -199,11 +221,15 @@ class TestCreateReusePath:
         base_dir.mkdir(parents=True, exist_ok=True)
 
         # First call: fresh create
-        binding1 = asyncio.run(create(step_id, base_dir=base_dir, cwd=temp_git_repo))
+        binding1 = expect_success(
+            asyncio.run(create(step_id, base_dir=base_dir, cwd=temp_git_repo))
+        )
         assert binding1.reused_existing is False
 
         # Second call: reuse existing
-        binding2 = asyncio.run(create(step_id, base_dir=base_dir, cwd=temp_git_repo))
+        binding2 = expect_success(
+            asyncio.run(create(step_id, base_dir=base_dir, cwd=temp_git_repo))
+        )
         assert binding2.reused_existing is True
         assert binding2.worktree_path == binding1.worktree_path
         assert binding2.branch_name == binding1.branch_name
@@ -217,8 +243,12 @@ class TestCreateReusePath:
         base_dir = temp_git_repo / ".vectl" / "worktrees"
         base_dir.mkdir(parents=True, exist_ok=True)
 
-        binding1 = asyncio.run(create(step_id, base_dir=base_dir, cwd=temp_git_repo))
-        binding2 = asyncio.run(create(step_id, base_dir=base_dir, cwd=temp_git_repo))
+        binding1 = expect_success(
+            asyncio.run(create(step_id, base_dir=base_dir, cwd=temp_git_repo))
+        )
+        binding2 = expect_success(
+            asyncio.run(create(step_id, base_dir=base_dir, cwd=temp_git_repo))
+        )
 
         assert binding1.branch_name == binding2.branch_name
         expected_branch = f"vectl/step-{step_id}"
@@ -237,10 +267,10 @@ class TestCreateErrorHandling:
         base_dir = tmp_path / "not_a_repo" / "worktrees"
         base_dir.mkdir(parents=True, exist_ok=True)
 
-        with pytest.raises(WorktreeError) as exc_info:
+        failure = expect_failure(
             asyncio.run(create(step_id, base_dir=base_dir, cwd=tmp_path / "not_a_repo"))
-
-        assert step_id in str(exc_info.value)
+        )
+        assert step_id in str(failure)
 
 
 # =============================================================================
@@ -261,7 +291,7 @@ class TestMergeClean:
         base_dir.mkdir(parents=True, exist_ok=True)
 
         # Create worktree
-        binding = asyncio.run(create(step_id, base_dir=base_dir, cwd=temp_git_repo))
+        binding = expect_success(asyncio.run(create(step_id, base_dir=base_dir, cwd=temp_git_repo)))
 
         # Make changes in worktree
         test_file = binding.worktree_path / "feature.txt"
@@ -279,9 +309,11 @@ class TestMergeClean:
             check=True,
         )
 
-        # Merge back to main (master)
-        result = asyncio.run(
-            merge(step_id, binding.worktree_path, target_branch="master", cwd=temp_git_repo)
+        # Merge back to main
+        result = expect_success(
+            asyncio.run(
+                merge(step_id, binding.worktree_path, target_branch="main", cwd=temp_git_repo)
+            )
         )
 
         # Check result outcome
@@ -308,7 +340,7 @@ class TestMergeClean:
         base_dir = temp_git_repo / ".vectl" / "worktrees"
         base_dir.mkdir(parents=True, exist_ok=True)
 
-        binding = asyncio.run(create(step_id, base_dir=base_dir, cwd=temp_git_repo))
+        binding = expect_success(asyncio.run(create(step_id, base_dir=base_dir, cwd=temp_git_repo)))
         (binding.worktree_path / "file.txt").write_text("content\n")
         subprocess.run(
             ["git", "add", "file.txt"], cwd=binding.worktree_path, capture_output=True, check=True
@@ -320,7 +352,7 @@ class TestMergeClean:
             check=True,
         )
 
-        asyncio.run(merge(step_id, binding.worktree_path, cwd=temp_git_repo))
+        expect_success(asyncio.run(merge(step_id, binding.worktree_path, cwd=temp_git_repo)))
 
         log_result = subprocess.run(
             ["git", "log", "--oneline", "-1"],
@@ -364,7 +396,7 @@ class TestMergeTrivialConflict:
         )
 
         # Create worktree (branch from current HEAD)
-        binding = asyncio.run(create(step_id, base_dir=base_dir, cwd=temp_git_repo))
+        binding = expect_success(asyncio.run(create(step_id, base_dir=base_dir, cwd=temp_git_repo)))
 
         # Modify plan.yaml on step branch
         plan_file = binding.worktree_path / "plan.yaml"
@@ -404,7 +436,9 @@ class TestMergeTrivialConflict:
         )
 
         # Merge back - should auto-resolve
-        result = asyncio.run(merge(step_id, binding.worktree_path, cwd=temp_git_repo))
+        result = expect_success(
+            asyncio.run(merge(step_id, binding.worktree_path, cwd=temp_git_repo))
+        )
 
         # Must classify as AUTO_RESOLVED_CONFLICT
         assert result.outcome == MergeOutcome.AUTO_RESOLVED_CONFLICT
@@ -416,7 +450,7 @@ class TestMergeTrivialConflict:
         base_dir = temp_git_repo / ".vectl" / "worktrees"
         base_dir.mkdir(parents=True, exist_ok=True)
 
-        binding = asyncio.run(create(step_id, base_dir=base_dir, cwd=temp_git_repo))
+        binding = expect_success(asyncio.run(create(step_id, base_dir=base_dir, cwd=temp_git_repo)))
 
         # Add lock file on worktree
         lock_file = binding.worktree_path / "package.lock"
@@ -448,7 +482,9 @@ class TestMergeTrivialConflict:
         )
 
         # Merge should auto-resolve
-        result = asyncio.run(merge(step_id, binding.worktree_path, cwd=temp_git_repo))
+        result = expect_success(
+            asyncio.run(merge(step_id, binding.worktree_path, cwd=temp_git_repo))
+        )
 
         assert result.outcome == MergeOutcome.AUTO_RESOLVED_CONFLICT
 
@@ -465,7 +501,7 @@ class TestMergeNonTrivialConflict:
         base_dir = temp_git_repo / ".vectl" / "worktrees"
         base_dir.mkdir(parents=True, exist_ok=True)
 
-        binding = asyncio.run(create(step_id, base_dir=base_dir, cwd=temp_git_repo))
+        binding = expect_success(asyncio.run(create(step_id, base_dir=base_dir, cwd=temp_git_repo)))
 
         # Add source file on worktree
         src_file = binding.worktree_path / "main.py"
@@ -494,16 +530,18 @@ class TestMergeNonTrivialConflict:
         )
 
         # Merge - should detect non-trivial conflict
-        result = asyncio.run(
-            merge(step_id, binding.worktree_path, target_branch="master", cwd=temp_git_repo)
+        result = expect_success(
+            asyncio.run(
+                merge(step_id, binding.worktree_path, target_branch="main", cwd=temp_git_repo)
+            )
         )
 
         assert result.outcome == MergeOutcome.NON_TRIVIAL_CONFLICT
         assert "main.py" in result.conflicted_files
         assert result.resolver_dispatch is not None
         assert result.resolver_dispatch.step_id == step_id
-        assert result.resolver_dispatch.source_branch == derive_branch_name(step_id)
-        assert result.resolver_dispatch.target_branch == "master"
+        assert result.resolver_dispatch.source_branch == expect_success(derive_branch_name(step_id))
+        assert result.resolver_dispatch.target_branch == "main"
 
     def test_non_trivial_conflict_returns_resolver_dispatch(self, temp_git_repo: Path) -> None:
         """NON_TRIVIAL_CONFLICT MUST return ConflictResolverDispatch with metadata.
@@ -514,7 +552,7 @@ class TestMergeNonTrivialConflict:
         base_dir = temp_git_repo / ".vectl" / "worktrees"
         base_dir.mkdir(parents=True, exist_ok=True)
 
-        binding = asyncio.run(create(step_id, base_dir=base_dir, cwd=temp_git_repo))
+        binding = expect_success(asyncio.run(create(step_id, base_dir=base_dir, cwd=temp_git_repo)))
 
         # Create conflict on both branches
         (binding.worktree_path / "conflict.txt").write_text("branch version\n")
@@ -542,7 +580,9 @@ class TestMergeNonTrivialConflict:
             check=True,
         )
 
-        result = asyncio.run(merge(step_id, binding.worktree_path, cwd=temp_git_repo))
+        result = expect_success(
+            asyncio.run(merge(step_id, binding.worktree_path, cwd=temp_git_repo))
+        )
 
         # NON_TRIVIAL_CONFLICT dispatches resolver path (does not silent narrow)
         assert result.outcome == MergeOutcome.NON_TRIVIAL_CONFLICT
@@ -565,10 +605,10 @@ class TestCleanup:
         base_dir = temp_git_repo / ".vectl" / "worktrees"
         base_dir.mkdir(parents=True, exist_ok=True)
 
-        binding = asyncio.run(create(step_id, base_dir=base_dir, cwd=temp_git_repo))
+        binding = expect_success(asyncio.run(create(step_id, base_dir=base_dir, cwd=temp_git_repo)))
         assert binding.worktree_path.exists()
 
-        asyncio.run(cleanup(step_id, binding.worktree_path, cwd=temp_git_repo))
+        expect_success(asyncio.run(cleanup(step_id, binding.worktree_path, cwd=temp_git_repo)))
 
         assert not binding.worktree_path.exists()
 
@@ -578,8 +618,8 @@ class TestCleanup:
         base_dir = temp_git_repo / ".vectl" / "worktrees"
         base_dir.mkdir(parents=True, exist_ok=True)
 
-        binding = asyncio.run(create(step_id, base_dir=base_dir, cwd=temp_git_repo))
-        branch_name = derive_branch_name(step_id)
+        binding = expect_success(asyncio.run(create(step_id, base_dir=base_dir, cwd=temp_git_repo)))
+        branch_name = expect_success(derive_branch_name(step_id))
 
         # Verify branch exists
         result = subprocess.run(
@@ -592,7 +632,7 @@ class TestCleanup:
         assert branch_name in result.stdout
 
         # Cleanup
-        asyncio.run(cleanup(step_id, binding.worktree_path, cwd=temp_git_repo))
+        expect_success(asyncio.run(cleanup(step_id, binding.worktree_path, cwd=temp_git_repo)))
 
         # Verify branch is deleted
         result = subprocess.run(
@@ -614,7 +654,7 @@ class TestCleanup:
         non_existent_path = base_dir / "does_not_exist"
 
         # Should not raise
-        asyncio.run(cleanup(step_id, non_existent_path, cwd=tmp_path))
+        expect_success(asyncio.run(cleanup(step_id, non_existent_path, cwd=tmp_path)))
 
 
 # =============================================================================

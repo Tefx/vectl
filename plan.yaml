@@ -40845,6 +40845,25 @@ phases:
     depends_on:
     - driver-enhancement-streaming-progress.impl
     agent: integration-verifier
+  - id: driver-enhancement-streaming-progress.gate
+    name: Gate streaming and progress enhancement
+    status: pending
+    description: 'step_type: gate
+
+      Gate the streaming-aware progress enhancement phase.'
+    verification: 'phase-check protecting driver-enhancement-integration.
+
+      - Contract, red tests, implementation, and independent verification prove the
+      driver is streaming-aware
+
+      - No blocker remains around heartbeat/progress visibility or incremental JSONL
+      consumption'
+    depends_on:
+    - driver-enhancement-streaming-progress.contract
+    - driver-enhancement-streaming-progress.test-define-red
+    - driver-enhancement-streaming-progress.impl
+    - driver-enhancement-streaming-progress.verify
+    agent: gate-reviewer
 - id: driver-enhancement-runner-recovery
   name: 'Driver Enhancement: Runner Recovery'
   status: locked

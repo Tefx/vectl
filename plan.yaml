@@ -34995,6 +34995,7 @@ phases:
       block the phase gate'
     depends_on:
     - driver-cli-integration.impl-cli-drive
+    - driver-cli-integration.expected-red-render
     agent: integration-verifier
   - id: driver-cli-integration.wiring-audit
     name: CLI drive wiring audit

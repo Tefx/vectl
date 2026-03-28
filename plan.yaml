@@ -38273,7 +38273,7 @@ phases:
       - No product code modified'
   - id: driver-debt-policy-extraction.impl
     name: Extract pure policy helpers from loop.py
-    status: claimed
+    status: done
     description: 'step_type: implementation
 
       Verification scope: phase-check protecting driver-debt-policy-extraction.verify
@@ -38317,6 +38317,21 @@ phases:
     agent: python-executor
     claimed_by: python-executor
     claimed_at: '2026-03-28T19:01:33.934483+00:00'
+    done_at: '2026-03-28T19:21:14.341987+00:00'
+    evidence: 'Verification:
+
+      - pytest tests/test_driver_loop_hardening.py: 14 passed in 0.58s
+
+      - pyright: 0 errors on policy.py and loop.py
+
+      - ruff: All checks passed
+
+      - loop.py imports from .policy (lines 51-57), all helper definitions removed
+
+      - policy.py contains all extracted helpers: ParsedGateIssue, _detect_preflight_risk_signals,
+      _extract_failure_disposition, _parse_gate_issues, _is_gate_or_freeze_step
+
+      - Behavior-preserving: no semantic drift introduced'
   - id: driver-debt-policy-extraction.verify
     name: Independently verify policy extraction drift-free
     status: pending

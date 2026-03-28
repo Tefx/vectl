@@ -37978,7 +37978,7 @@ phases:
       - Product code modified: NO'
   - id: driver-debt-cli-entrypoint-unification.impl
     name: Implement shared driver entrypoint adapter
-    status: claimed
+    status: done
     description: "step_type: implementation\ntags:\n  - integration\nVerification\
       \ scope: phase-check protecting driver-debt-cli-entrypoint-unification.liveness\
       \ and gate.\n\nImplement A4 using one runtime adapter.\n\nRequired work:\n-\
@@ -38011,6 +38011,25 @@ phases:
     agent: python-senior
     claimed_by: python-senior
     claimed_at: '2026-03-28T19:01:18.772368+00:00'
+    done_at: '2026-03-28T19:20:41.745702+00:00'
+    evidence: 'Artifact:
+
+      - Commits: f4fd764, 2dfd1ef (branch: vectl/step-driver-debt-cli-entrypoint-unification.impl)
+
+
+      Verification:
+
+      - pytest tests/test_driver_loop_contract.py tests/test_driver_entrypoint_drift.py
+      tests/test_cli.py::TestDriveCLI: 22 passed
+
+      - ruff check: All passed
+
+      - Integration path: python -m vectl.driver / vectl drive -> shared adapter ->
+      loop.run confirmed
+
+      - Exit-code parity: 8 passed (runtime error -> 1, parse error -> 2)
+
+      - No CLI UX regression for vectl drive --config'
   - id: driver-debt-cli-entrypoint-unification.liveness
     name: Liveness probe shared entrypoints
     status: pending

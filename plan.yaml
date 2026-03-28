@@ -38075,7 +38075,7 @@ phases:
       - No unresolved blocker remains for downstream runtime work.'
 - id: driver-debt-cli-entrypoint-unification
   name: 'Driver Debt: CLI Entrypoint Unification'
-  status: in_progress
+  status: done
   depends_on:
   - driver-deep-review
   steps:
@@ -38401,7 +38401,7 @@ phases:
       implemented.'
   - id: driver-debt-cli-entrypoint-unification.gate
     name: Gate CLI entrypoint unification
-    status: claimed
+    status: done
     description: 'step_type: gate
 
       Gate review for A4.
@@ -38444,6 +38444,30 @@ phases:
     agent: gate-reviewer
     claimed_by: gate-reviewer
     claimed_at: '2026-03-28T21:28:03.398996+00:00'
+    done_at: '2026-03-28T21:34:20.969953+00:00'
+    evidence: 'Gate-reviewer SUCCESS.
+
+
+      step_intent: gate review
+
+      expected_result: green
+
+      observed_result: green
+
+      failure_alignment: none
+
+      product_files_modified: no (verification-only)
+
+
+      Gate verdict: PASS.
+
+      - Shared adapter wiring validated across module and CLI entrypoints.
+
+      - Exit-code consistency validated (runtime/config vs usage/parsing).
+
+      - Positional and --config forms validated with runnable liveness evidence.
+
+      - No unresolved blocker remains for downstream system wiring.'
 - id: driver-debt-policy-extraction
   name: 'Driver Debt: Loop Policy Extraction'
   status: done
@@ -38730,7 +38754,7 @@ phases:
       Policy extraction remains behavior-preserving and pure with no unresolved blocker.'
 - id: driver-debt-system-wiring
   name: 'Driver Debt: System Wiring'
-  status: locked
+  status: pending
   depends_on:
   - driver-debt-completion-authority
   - driver-debt-cli-entrypoint-unification

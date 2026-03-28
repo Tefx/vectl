@@ -34961,7 +34961,7 @@ phases:
       no-change declaration'
   - id: driver-judgment-expansion-replan.gate
     name: Gate driver-judgment-expansion-replan
-    status: claimed
+    status: pending
     description: 'step_type: gate
 
       As an INDEPENDENT REVIEWER, assess whether the full judgment/remediation flow
@@ -34985,8 +34985,6 @@ phases:
     depends_on:
     - driver-judgment-expansion-replan.freeze
     agent: gate-reviewer
-    claimed_by: gate-reviewer
-    claimed_at: '2026-03-28T11:28:20.825327+00:00'
   - id: driver-judgment-expansion-replan.expected-red-schema
     name: Add verify field to Step model (expected-red schema)
     status: done

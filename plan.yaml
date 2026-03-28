@@ -32838,7 +32838,7 @@ phases:
       - DRIVER-BLUEPRINT.md invocation protocol section'
   - id: driver-judgment-runtime-minimal.test-judge
     name: Test judge invocation
-    status: claimed
+    status: done
     description: 'step_type: test
 
 
@@ -32892,6 +32892,60 @@ phases:
     agent: python-executor
     claimed_by: python-executor
     claimed_at: '2026-03-28T07:50:26.861231+00:00'
+    done_at: '2026-03-28T07:55:05.706710+00:00'
+    evidence: '## Step Intent
+
+      Add focused tests for judge request validation, structured-output parsing, timeout
+      handling, and observer emission before judge implementation lands.
+
+
+      ## Expected Result
+
+      Expected-red pre-implementation test step that records behavior gaps without
+      product-code edits.
+
+
+      ## Observed Result
+
+      - Added tests/test_driver_judge_runtime.py with focused runtime-behavior tests.
+
+      - Runtime behavior tests are intentionally xfail against current contract stubs.
+
+      - Existing contract tests remain green.
+
+      - Verification run: 44 passed, 26 xfailed.
+
+
+      ## Failure Alignment
+
+      Aligned expected-red outcome: xfails correspond to intentionally unimplemented
+      runtime methods in judge contract stubs, with explicit downstream implementation
+      ownership.
+
+
+      ## Product Implementation Files Modified
+
+      None. Only test file added.
+
+
+      ## Exposed gaps (downstream owner)
+
+      - driver-judgment-runtime-minimal.impl-judge
+
+
+      ## Verification
+
+      - Run: uv run pytest tests/test_driver_judge.py tests/test_driver_judge_runtime.py
+      -v -> 44 passed, 26 xfailed
+
+
+      ## Spec link
+
+      - docs/DRIVER-ARCHITECTURE.md §2.10
+
+      - docs/JUDGE-AGENT-PROMPT.md
+
+      - DRIVER-BLUEPRINT.md invocation protocol section'
   - id: driver-judgment-runtime-minimal.impl-judge
     name: Implement judge invocation
     status: pending

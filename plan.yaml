@@ -41470,3 +41470,11 @@ phases:
   depends_on:
   - driver-guardrails-preflight-restoration
   - driver-guardrails-cold-context-restoration
+- id: driver-guardrails-real-bootstrap
+  name: 'Driver Guardrails: Real Bootstrap Verification'
+  status: locked
+  gate: A non-toy plan advances under the driver with preflight and cold_context enabled,
+    and broad verification confirms the restored guardrails do not only work in demo
+    conditions.
+  depends_on:
+  - driver-guardrails-system-wiring

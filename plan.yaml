@@ -34216,7 +34216,7 @@ phases:
       \ structure\n- Mock Island check passes: unit tests have integration companions"
   - id: driver-multi-runner-hardening.spec-conformance
     name: Multi-runner hardening spec conformance
-    status: claimed
+    status: done
     description: 'step_type: verification
 
       Verification scope: phase-check protecting driver-multi-runner-hardening.gate.
@@ -34231,6 +34231,28 @@ phases:
     agent: doc-reviewer
     claimed_by: doc-reviewer
     claimed_at: '2026-03-28T09:51:53.637334+00:00'
+    done_at: '2026-03-28T09:54:01.264904+00:00'
+    evidence: 'step_intent: verify multi-runner hardening conformance vs blueprint/architecture.
+
+      expected_result: fallback/session/conflict/loop-guard behaviors mapped and deferred
+      branches explicit.
+
+      observed_result:
+
+      - File:line mappings provided for fallback, stale-session retry, conflict routing,
+      infinite-loop guard, all-stalled recovery.
+
+      - SessionPool semantics and runner capability matrix validated.
+
+      - Deferred REPLAN branches explicitly enumerated and bounded.
+
+      failure_alignment: N/A (PASS)
+
+      product_implementation_files_modified: none
+
+
+      verification_commands_and_outcomes include config/runners/loop-hardening/session
+      suites all passing.'
   - id: driver-multi-runner-hardening.freeze
     name: Freeze multi-runner hardening snapshot
     status: pending

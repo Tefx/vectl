@@ -32365,7 +32365,7 @@ phases:
       debt outside this step scope; in-scope execution-infra blocker family addressed.'
   - id: driver-execution-infra.retest-gate-blockers
     name: Retest gate blockers for driver execution infra
-    status: pending
+    status: claimed
     description: 'step_type: test
 
       step_intent: retest_green
@@ -32422,6 +32422,8 @@ phases:
     depends_on:
     - driver-execution-infra.fix-gate-blockers
     agent: integration-verifier
+    claimed_by: integration-verifier
+    claimed_at: '2026-03-28T04:06:22.248274+00:00'
 - id: driver-judgment-runtime-minimal
   name: Driver Judgment + Minimal Runtime
   status: locked

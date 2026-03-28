@@ -33823,7 +33823,7 @@ phases:
   steps:
   - id: driver-multi-runner-hardening.contract-runners-extended
     name: Contract extended runners
-    status: claimed
+    status: done
     description: "step_type: contract\ncontract_purity: ENFORCED\ncontract_outputs:\n\
       \  - signatures\n  - type_defs\n  - interfaces\n  - stubs\n\nExtend the runner\
       \ contract to cover CodexRunner and GeminiRunner, resume semantics, parser semantics,\
@@ -33835,6 +33835,28 @@ phases:
     agent: python-executor
     claimed_by: python-executor
     claimed_at: '2026-03-28T09:11:52.544419+00:00'
+    done_at: '2026-03-28T09:21:49.335600+00:00'
+    evidence: 'Artifact:
+
+      - Commit: 5ca2bae
+
+
+      Verification:
+
+      - Run: uv run pytest tests/test_driver_runners.py tests/test_driver_extended_runners.py
+      -v -> 93 passed
+
+      - Extended runner contract surfaces pinned for Codex/Gemini including resume/parser/experimental
+      constraints
+
+      - Added contract stubs only (no runtime extended-runner implementation)
+
+
+      Spec link:
+
+      - DRIVER-BLUEPRINT.md verified capabilities + parser sections
+
+      - docs/DRIVER-ARCHITECTURE.md §2.8'
   - id: driver-multi-runner-hardening.test-runners-extended
     name: Test extended runners
     status: pending

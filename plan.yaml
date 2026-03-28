@@ -33859,7 +33859,7 @@ phases:
       - docs/DRIVER-ARCHITECTURE.md §2.8'
   - id: driver-multi-runner-hardening.test-runners-extended
     name: Test extended runners
-    status: pending
+    status: claimed
     description: 'step_type: test
 
 
@@ -33900,6 +33900,8 @@ phases:
     depends_on:
     - driver-multi-runner-hardening.contract-runners-extended
     agent: python-executor
+    claimed_by: python-executor
+    claimed_at: '2026-03-28T09:23:08.341612+00:00'
   - id: driver-multi-runner-hardening.impl-runners-extended
     name: Implement extended runners
     status: pending

@@ -43190,6 +43190,25 @@ phases:
     depends_on:
     - driver-continuity-capability-safety.impl
     agent: integration-verifier
+  - id: driver-continuity-capability-safety.gate
+    name: Gate capability and replay safety
+    status: pending
+    description: "step_type: gate\nGate review for runner capability and replay safety.\n\
+      \nreview_depth: THOROUGH\ncross_cutting_focus:\n  - resume decisions depend\
+      \ on authoritative capability facts\n  - replay/idempotency envelope blocks\
+      \ duplicate side effects\n  - bootstrap-minimum scope stays separate from advanced\
+      \ runner-recovery enhancements"
+    verification: '- Capability model is explicit and independently verified
+
+      - Replay safety covers restart and recovery re-entry paths
+
+      - No blocker remains that would invalidate driver-continuity-restart-recovery'
+    depends_on:
+    - driver-continuity-capability-safety.contract
+    - driver-continuity-capability-safety.test-define-red
+    - driver-continuity-capability-safety.impl
+    - driver-continuity-capability-safety.verify
+    agent: gate-reviewer
 - id: driver-continuity-restart-recovery
   name: 'Driver Continuity: Restart Recovery'
   status: locked

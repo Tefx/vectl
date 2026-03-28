@@ -32948,7 +32948,7 @@ phases:
       - DRIVER-BLUEPRINT.md invocation protocol section'
   - id: driver-judgment-runtime-minimal.impl-judge
     name: Implement judge invocation
-    status: claimed
+    status: done
     description: 'step_type: implementation
 
 
@@ -32987,6 +32987,49 @@ phases:
     agent: python-senior
     claimed_by: python-senior
     claimed_at: '2026-03-28T07:55:29.566873+00:00'
+    done_at: '2026-03-28T08:01:04.413264+00:00'
+    evidence: 'Artifact:
+
+      - Commit: baedae8
+
+
+      Verification:
+
+      - Run: uv run pyright src/vectl/driver/judge.py tests/test_driver_judge_impl_runtime.py
+      -> 0 errors, 0 warnings
+
+      - Run: uv run pytest tests/test_driver_judge_impl_runtime.py -v --tb=short ->
+      4 passed
+
+      - Run: uv run pytest tests/test_driver_judge.py tests/test_driver_judge_runtime.py
+      tests/test_driver_judge_impl_runtime.py -v --tb=short -> 48 passed, 9 xfailed,
+      17 xpassed
+
+
+      Implemented:
+
+      - src/vectl/driver/judge.py runtime behavior for Judge.__init__, is_enabled,
+      and judge flow
+
+      - strict verdict parsing and exact verdict surface enforcement
+
+      - timeout handling and malformed verdict error paths
+
+      - observer JUDGMENT event emission and disabled-type clean skip behavior
+
+
+      Added tests:
+
+      - tests/test_driver_judge_impl_runtime.py (runtime implementation-focused cases)
+
+
+      Spec link:
+
+      - docs/DRIVER-ARCHITECTURE.md §2.10
+
+      - docs/JUDGE-AGENT-PROMPT.md
+
+      - DRIVER-BLUEPRINT.md invocation protocol section'
   - id: driver-judgment-runtime-minimal.verify-judge-structured-output-path
     name: Verify judge structured-output path
     status: pending

@@ -38414,14 +38414,36 @@ phases:
     status: pending
     description: "step_type: implementation\ntags:\n  - integration\nVerification\
       \ scope: full-plan-check protecting driver-debt-system-wiring.liveness, full-plan-check,\
-      \ and gate.\n\nPlanner-required system wiring phase after four implementation\
-      \ phases.\n\nRequired work:\n- Ensure the final runtime graph is coherent after\
-      \ A1/A2/A4/A3:\n  - loop runtime uses explicit DecideState ownership\n  - reconcile\
-      \ is the only completion sink\n  - both CLI entrypoints route through the shared\
-      \ adapter\n  - extracted policy helpers are imported from driver.policy\n- Remove\
-      \ or quarantine any leftover legacy path that would keep the old authority or\
-      \ old entrypoint wiring reachable.\n\nThis step is allowed to make final wiring-only\
-      \ adjustments; it must not reopen feature scope."
+      \ and gate.\n\nFill in stub bodies and replace any temporary join wiring with\
+      \ substantive final runtime wiring across the approved debt-remediation surfaces.\n\
+      \nUPSTREAM ARTIFACTS (from contract/test steps):\n  - src/vectl/driver/loop.py\
+      \ — from_step: driver-debt-completion-authority.impl — tier: contract\n  - src/vectl/decision_state.py\
+      \ — from_step: driver-debt-decision-state.impl — tier: contract\n  - src/vectl/driver/entrypoint.py\
+      \ — from_step: driver-debt-cli-entrypoint-unification.impl — tier: contract\n\
+      \  - src/vectl/driver/policy.py — from_step: driver-debt-policy-extraction.impl\
+      \ — tier: contract\n  - tests/test_driver_loop_runtime.py — from_step: driver-debt-completion-authority.verify\
+      \ — tier: test\n\nYOUR SCOPE: Complete the wiring within the existing remediated\
+      \ seams only; do not reopen branch-local contracts or feature scope.\n\nDeviation\
+      \ protocol: If any upstream artifact is wrong or incomplete, record a deviation\
+      \ note with type, what, why, and impact; do NOT silently rewrite upstream contracts.\n\
+      \nupstream_artifacts:\n  - path: src/vectl/driver/loop.py\n    from_step: driver-debt-completion-authority.impl\n\
+      \    tier: contract\n  - path: src/vectl/decision_state.py\n    from_step: driver-debt-decision-state.impl\n\
+      \    tier: contract\n  - path: src/vectl/driver/entrypoint.py\n    from_step:\
+      \ driver-debt-cli-entrypoint-unification.impl\n    tier: contract\n  - path:\
+      \ src/vectl/driver/policy.py\n    from_step: driver-debt-policy-extraction.impl\n\
+      \    tier: contract\n  - path: tests/test_driver_loop_runtime.py\n    from_step:\
+      \ driver-debt-completion-authority.verify\n    tier: test\n\nPlanner-required\
+      \ system wiring phase after four implementation phases.\n\nRequired work:\n\
+      - Ensure the final runtime graph is coherent after A1/A2/A4/A3:\n  - loop runtime\
+      \ uses explicit DecideState ownership\n  - reconcile is the only completion\
+      \ sink\n  - both CLI entrypoints route through the shared adapter\n  - extracted\
+      \ policy helpers are imported from driver.policy\n- Remove or quarantine any\
+      \ leftover legacy path that would keep the old authority or old entrypoint wiring\
+      \ reachable.\n\nThis step is allowed to make final wiring-only adjustments;\
+      \ it must not reopen feature scope.\n\n## Completion Criteria (stub exclusion)\n\
+      This is an IMPLEMENTATION step. Stub-only completion is NOT acceptable.\nFinal\
+      \ runtime wiring must be substantive and executable; placeholder joins or commented\
+      \ TODO wiring do not satisfy this step."
     verification: '- Final runtime graph references only the remediated surfaces
 
       - No orphan legacy path remains reachable'

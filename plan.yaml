@@ -40375,6 +40375,26 @@ phases:
     depends_on:
     - driver-routing-hardening.impl
     agent: integration-verifier
+  - id: driver-routing-hardening.gate
+    name: Gate reserved routing hardening
+    status: pending
+    description: 'step_type: gate
+
+      Gate review for the reserved-key routing hardening phase.'
+    verification: 'phase-check protecting driver-enhancement-review.
+
+      - Contract, red-test definition, implementation, and independent verification
+      all align
+
+      - No unresolved blocker remains around `agent_routing.default`
+
+      - Clear error semantics are documented by evidence'
+    depends_on:
+    - driver-routing-hardening.contract
+    - driver-routing-hardening.test-define-red
+    - driver-routing-hardening.impl
+    - driver-routing-hardening.verify
+    agent: gate-reviewer
 - id: driver-enhancement-foundation
   name: Driver Enhancement Foundation
   status: locked

@@ -11,11 +11,12 @@ This module intentionally delegates to the shared adapter surface in
 from __future__ import annotations
 
 from collections.abc import Sequence
+from pathlib import Path
 from typing import Final
 
 from .entrypoint import get_runtime_adapter, run_driver_module_entrypoint
 
-DEFAULT_DRIVER_CONFIG_PATH: Final[str] = "driver.yaml"
+DEFAULT_DRIVER_CONFIG_PATH: Final[Path] = Path("driver.yaml")
 
 
 def main(argv: Sequence[str] | None = None) -> int:

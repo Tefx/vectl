@@ -3143,6 +3143,7 @@ def drive(
     Source:
     - Step ``driver-debt-cli-entrypoint-unification.contract``
     - docs/DRIVER-ARCHITECTURE.md (entrypoint unification)
+    - DRIVER-BLUEPRINT.md (runtime driver entrypoint)
     """
     from vectl.driver.entrypoint import get_runtime_adapter, run_drive_cli_entrypoint
 

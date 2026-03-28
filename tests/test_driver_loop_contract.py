@@ -10,6 +10,7 @@ import inspect
 from pathlib import Path
 
 import src.vectl.driver.__main__ as driver_main
+import src.vectl.driver.entrypoint as entrypoint
 import src.vectl.driver.loop as loop
 
 
@@ -70,3 +71,40 @@ def test_deferred_replan_branches_are_bounded() -> None:
 def test_entrypoint_contract_is_pinned() -> None:
     assert list(inspect.signature(driver_main.main).parameters) == ["argv"]
     assert driver_main.DEFAULT_DRIVER_CONFIG_PATH == Path("driver.yaml")
+
+
+def test_module_entrypoint_delegates_to_shared_adapter_and_loop(
+    monkeypatch, tmp_path: Path
+) -> None:
+    called: dict[str, Path] = {}
+
+    async def fake_run(config_path: Path) -> None:
+        called["config"] = config_path
+
+    monkeypatch.setattr(loop, "run", fake_run)
+    adapter = entrypoint.get_runtime_adapter()
+    config_path = tmp_path / "driver.yaml"
+
+    exit_code = entrypoint.run_driver_module_entrypoint(
+        argv=[str(config_path)],
+        adapter=adapter,
+    )
+
+    assert exit_code == 0
+    assert called["config"] == config_path.resolve()
+
+
+def test_drive_entrypoint_delegates_to_shared_adapter_and_loop(monkeypatch, tmp_path: Path) -> None:
+    called: dict[str, Path] = {}
+
+    async def fake_run(config_path: Path) -> None:
+        called["config"] = config_path
+
+    monkeypatch.setattr(loop, "run", fake_run)
+    adapter = entrypoint.get_runtime_adapter()
+    config_path = tmp_path / "driver.yaml"
+
+    exit_code = entrypoint.run_drive_cli_entrypoint(config=config_path, adapter=adapter)
+
+    assert exit_code == 0
+    assert called["config"] == config_path.resolve()

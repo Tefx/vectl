@@ -3968,20 +3968,17 @@ class TestDriveCLI:
         # Should show error about config file not found
         assert "not found" in result.output.lower() or "error" in result.output.lower()
 
-    def test_drive_imports_driver_loop_run(self):
-        """Verify the drive command correctly imports the driver entrypoint.
-
-        This is a wiring contract test: we verify that the import statement
-        for vectl.driver.loop.run is present and correct.
-        """
+    def test_drive_imports_driver_entrypoint_adapter(self):
+        """Verify drive command imports shared driver entrypoint adapter."""
         # Read the cli.py source to verify the import contract
         import inspect
 
         from vectl.cli import drive
 
         source = inspect.getsource(drive)
-        assert "vectl.driver.loop" in source
-        assert "run" in source
+        assert "vectl.driver.entrypoint" in source
+        assert "run_drive_cli_entrypoint" in source
+        assert "get_runtime_adapter" in source
 
     def test_drive_with_explicit_config_path(self):
         """Verify --config flag accepts an explicit path."""

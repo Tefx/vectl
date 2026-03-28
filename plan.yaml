@@ -34255,7 +34255,7 @@ phases:
       suites all passing.'
   - id: driver-multi-runner-hardening.freeze
     name: Freeze multi-runner hardening snapshot
-    status: pending
+    status: claimed
     description: 'step_type: verification
 
       Verification scope: phase-check protecting driver-multi-runner-hardening.gate.
@@ -34278,6 +34278,8 @@ phases:
     depends_on:
     - driver-multi-runner-hardening.spec-conformance
     agent: integration-verifier
+    claimed_by: integration-verifier
+    claimed_at: '2026-03-28T09:54:24.693300+00:00'
   - id: driver-multi-runner-hardening.gate
     name: Gate driver-multi-runner-hardening
     status: pending

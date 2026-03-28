@@ -37334,6 +37334,17 @@ phases:
   status: pending
   depends_on:
   - driver-deep-review
+  steps:
+  - id: driver-debt-decision-state.contract
+    name: Pin DecideState ownership contract
+    status: pending
+    description: test
+  - id: driver-debt-decision-state.test
+    name: Test
+    status: pending
+    description: test
+    depends_on:
+    - driver-debt-decision-state.contract
 - id: driver-debt-completion-authority
   name: 'Driver Debt: Completion Authority Convergence'
   status: locked

@@ -40697,16 +40697,27 @@ phases:
       Verification scope: phase-check protecting driver-enhancement-observability.gate.
 
 
-      Independently verify that runtime telemetry now covers runner lifecycle, planner
-      dispatch, recovery, and heartbeat/progress boundaries and conforms to the event
-      schema contract.'
+      Independently verify that runtime telemetry defines the event family/schema
+      correctly and that emission hooks are ready across planner dispatch, runner
+      lifecycle, and recovery contract surfaces.
+
+
+      This verification is contract-surface scoped. It MUST NOT require proof that
+      realtime heartbeat/progress behavior or recovery behavior is already fully implemented
+      in this phase; those behaviors are owned by sibling phases and summarized later
+      in driver-enhancement-integration / driver-enhancement-review.'
     verification: 'phase-check protecting driver-enhancement-observability.gate.
 
       - Event schema conformance is evidenced with contract-derived fixtures
 
-      - Planner dispatch, recovery, and heartbeat/progress visibility are all present
+      - Planner dispatch, runner lifecycle, and recovery contract surfaces expose
+      the required event families / envelopes or ready emission hooks
 
-      - Missing required event families or malformed envelopes are surfaced as blockers'
+      - Missing required event families, malformed envelopes, or unhooked contract
+      surfaces are surfaced as blockers
+
+      - Full heartbeat/progress behavior proof and recovery behavior proof are explicitly
+      out of scope for this phase'
     depends_on:
     - driver-enhancement-observability.impl
     agent: spec-verifier

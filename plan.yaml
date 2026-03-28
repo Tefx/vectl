@@ -37836,7 +37836,7 @@ phases:
   steps:
   - id: driver-debt-cli-entrypoint-unification.contract
     name: Pin shared driver entrypoint contract
-    status: claimed
+    status: done
     description: "step_type: contract\ncontract_purity: ENFORCED\ncontract_outputs:\n\
       \  - signatures\n  - interfaces\n  - behavioral notes\nVerification scope: phase-check\
       \ protecting driver-debt-cli-entrypoint-unification.impl and gate.\n\nPin the\
@@ -37863,6 +37863,25 @@ phases:
     agent: python-senior
     claimed_by: python-senior
     claimed_at: '2026-03-28T18:27:56.350137+00:00'
+    done_at: '2026-03-28T18:41:14.877967+00:00'
+    evidence: 'Artifact:
+
+      - Commit: db23635ac87e362f7ee9a9f081b8234aeee66ace
+
+
+      Verification:
+
+      - Shared adapter contract lists both supported invocation forms and exit-code
+      matrix
+
+      - No implementation logic beyond signatures/stubs/notes
+
+      - ruff check passed on all refs
+
+      - py_compile success on all refs
+
+      - docs/DRIVER-ARCHITECTURE.md §2.12 added with supported invocation forms +
+      shared exit-code matrix'
   - id: driver-debt-cli-entrypoint-unification.test-define-red
     name: Define expected-red CLI parity regressions
     status: pending

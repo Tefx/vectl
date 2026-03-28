@@ -41036,15 +41036,31 @@ phases:
   - id: driver-enhancement-streaming-progress.impl
     name: Implement incremental JSONL consumption and live progress state
     status: pending
-    description: "step_type: implementation\n\ntags:\n  - integration\n\nImplement\
-      \ streaming-aware runner consumption for the driver.\n\nScope:\n- consume opencode\
-      \ JSONL incrementally instead of waiting for terminal `communicate()` collection\n\
-      - maintain heartbeat / progress / last-progress state during execution\n- expose\
-      \ streaming-aware liveness without changing the driver's external runtime surface\n\
-      - keep final summary handling and live streaming state in distinct strata\n\n\
-      ## Completion Criteria (stub exclusion)\nThis is an IMPLEMENTATION step. Stub-only\
-      \ completion is NOT acceptable.\nEach deliverable MUST contain substantive logic\
-      \ that updates live state based on real incremental runner output."
+    description: "step_type: implementation\n\ntags:\n  - integration\n\nFill in stub\
+      \ bodies and replace placeholder streaming hooks with working incremental consumption\
+      \ logic on the existing runner/loop surfaces.\n\nUPSTREAM ARTIFACTS (from merged\
+      \ design+test step):\n  - src/vectl/driver/runners.py — from_step: driver-enhancement-streaming-progress.design-and-test\
+      \ — tier: contract\n  - src/vectl/driver/loop.py — from_step: driver-enhancement-streaming-progress.design-and-test\
+      \ — tier: contract\n  - tests/test_driver_runners.py — from_step: driver-enhancement-streaming-progress.design-and-test\
+      \ — tier: test\n  - tests/test_driver_loop_runtime.py — from_step: driver-enhancement-streaming-progress.design-and-test\
+      \ — tier: test\n\nThe merged contract+test step produced both interfaces and\
+      \ tests. Your job is to make the tests pass by filling in stub bodies.\n\nDeviation\
+      \ protocol: If a contract artifact is wrong or incomplete, document a deviation\
+      \ record (type, what, why, impact) — do NOT silently rewrite.\n\nupstream_artifacts:\n\
+      \  - path: src/vectl/driver/runners.py\n    from_step: driver-enhancement-streaming-progress.design-and-test\n\
+      \    tier: contract\n  - path: src/vectl/driver/loop.py\n    from_step: driver-enhancement-streaming-progress.design-and-test\n\
+      \    tier: contract\n  - path: tests/test_driver_runners.py\n    from_step:\
+      \ driver-enhancement-streaming-progress.design-and-test\n    tier: test\n  -\
+      \ path: tests/test_driver_loop_runtime.py\n    from_step: driver-enhancement-streaming-progress.design-and-test\n\
+      \    tier: test\n\nImplement incremental JSONL consumption and live progress\
+      \ state.\n\nScope:\n- consume opencode JSONL incrementally instead of waiting\
+      \ for terminal `communicate()` collection\n- maintain heartbeat / progress /\
+      \ last-progress state during execution\n- expose streaming-aware liveness without\
+      \ changing the driver's external runtime surface\n- keep final summary handling\
+      \ and live streaming state in distinct strata\n\n## Completion Criteria (stub\
+      \ exclusion)\nThis is an IMPLEMENTATION step. Stub-only completion is NOT acceptable.\n\
+      Each deliverable MUST contain substantive logic that updates live state based\
+      \ on real incremental runner output."
     verification: 'phase-check protecting driver-enhancement-streaming-progress.verify.
 
       - Main path: focused tests prove incremental consumption updates heartbeat/progress
@@ -41079,8 +41095,7 @@ phases:
       **Path exercised**: driver entrypoint -> runner stdout JSONL -> incremental
       reader -> live liveness state'
     depends_on:
-    - driver-enhancement-streaming-progress.contract
-    - driver-enhancement-streaming-progress.test-define-red
+    - driver-enhancement-streaming-progress.design-and-test
     agent: python-senior
   - id: driver-enhancement-streaming-progress.verify
     name: Verify heartbeat progress and streaming-aware liveness

@@ -41446,3 +41446,11 @@ phases:
     path.
   depends_on:
   - driver-guardrails-foundation
+- id: driver-guardrails-preflight-restoration
+  name: 'Driver Guardrails: Preflight Restoration'
+  status: locked
+  gate: preflight is restored as a real-bootstrap quality gate with proven ACCEPT
+    / REPLAN / REJECT behavior and no plan-corrupting side effects.
+  depends_on:
+  - driver-guardrails-output-hardening
+  - driver-guardrails-prompt-governance

@@ -3,7 +3,6 @@ from __future__ import annotations
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, cast
-
 from unittest.mock import MagicMock
 
 import pytest
@@ -17,9 +16,12 @@ from src.vectl.driver.config import (
     SessionConfig,
 )
 from src.vectl.driver.errors import RunnerError
+from src.vectl.driver.judgments import JudgmentVerdict
 from src.vectl.driver.loop import (
+    PlannerDispatchRequest,
     _cleanup_orphan_worktrees,
     _run_main_loop,
+    dispatch_planner,
     handle_dispatch,
     reconcile,
 )
@@ -32,7 +34,7 @@ from src.vectl.driver.worktree import (
     Success,
     WorktreeBinding,
 )
-from vectl.models import Action, DecideOutput
+from vectl.models import Action, DecideOutput, PlanError
 
 
 @dataclass
@@ -458,3 +460,185 @@ async def test_main_loop_all_stalled_recovery(monkeypatch: pytest.MonkeyPatch) -
 
     assert state.running == {}
     assert any(e[0] == "RECOVERY" and e[1].get("type") == "all_stalled" for e in observer.events)
+
+
+@pytest.mark.anyio
+async def test_handle_dispatch_preflight_replan_invokes_planner_and_skips_claim(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    config = _base_config()
+    config.judge.preflight = True
+    state = DriverState()
+    observer = _RecordingObserver()
+    session_pool = SessionPool(config.session)
+
+    class _PreflightJudge:
+        async def judge(self, request: object) -> JudgmentVerdict:
+            return JudgmentVerdict(
+                verdict="REPLAN",
+                reason="Spec too risky without decomposition",
+                planner_instruction="Split migration into prep + apply + verify",
+            )
+
+    dispatch_calls: list[PlannerDispatchRequest] = []
+
+    async def _dispatch_planner(
+        request: PlannerDispatchRequest,
+        *,
+        config: DriverConfig,
+        runners: dict[str, object],
+        observer: object,
+        plan_path: Path,
+    ) -> None:
+        dispatch_calls.append(request)
+
+    def _claim_step(*_a: object, **_k: object) -> object:
+        raise AssertionError("claim_step must not run when preflight verdict is REPLAN")
+
+    monkeypatch.setattr("src.vectl.driver.loop.load_plan_definition", lambda _p: (_FakePlan(), "h"))
+    monkeypatch.setattr("src.vectl.driver.loop.claim_step", _claim_step)
+    monkeypatch.setattr("src.vectl.driver.loop.dispatch_planner", _dispatch_planner)
+
+    await handle_dispatch(
+        action=Action(
+            action="claim_and_dispatch",
+            step_id="core.impl",
+            agent="python-executor",
+            step_description="Perform migration with CAS checks",
+            step_verification="Prove backward compatibility for migration path",
+            step_refs=["docs/migration.md"],
+        ),
+        state=state,
+        config=config,
+        runners=cast(
+            dict[str, Any], {"claude": _Runner("claude"), "opencode": _Runner("opencode")}
+        ),
+        judge=cast(Any, _PreflightJudge()),
+        session_pool=session_pool,
+        observer=observer,
+        plan_path=Path("plan.yaml"),
+    )
+
+    assert len(dispatch_calls) == 1
+    request = dispatch_calls[0]
+    assert request.step_id == "core.impl"
+    assert request.trigger == "handle_dispatch.preflight_replan"
+    assert request.judgment_type == "PREFLIGHT"
+    assert request.planner_instruction == "Split migration into prep + apply + verify"
+
+
+@pytest.mark.anyio
+async def test_handle_dispatch_preflight_replan_requires_planner_instruction(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    config = _base_config()
+    config.judge.preflight = True
+
+    class _BrokenPreflightJudge:
+        async def judge(self, request: object) -> JudgmentVerdict:
+            return JudgmentVerdict(
+                verdict="REPLAN",
+                reason="Spec ambiguous",
+                planner_instruction=None,
+            )
+
+    monkeypatch.setattr("src.vectl.driver.loop.load_plan_definition", lambda _p: (_FakePlan(), "h"))
+
+    with pytest.raises(PlanError, match="planner_instruction"):
+        await handle_dispatch(
+            action=Action(
+                action="claim_and_dispatch",
+                step_id="core.impl",
+                agent="python-executor",
+                step_description="CAS migration",
+                step_verification="Backward compatibility",
+            ),
+            state=DriverState(),
+            config=config,
+            runners=cast(
+                dict[str, Any], {"claude": _Runner("claude"), "opencode": _Runner("opencode")}
+            ),
+            judge=cast(Any, _BrokenPreflightJudge()),
+            session_pool=SessionPool(config.session),
+            observer=_RecordingObserver(),
+            plan_path=Path("plan.yaml"),
+        )
+
+
+@pytest.mark.anyio
+async def test_dispatch_planner_raises_on_runner_failure() -> None:
+    class _FailingRunner:
+        name = "opencode"
+
+        async def dispatch(
+            self,
+            prompt: str,
+            agent: str,
+            workdir: str,
+            session_id: str | None = None,
+        ) -> Any:
+            class _Handle:
+                session_id = None
+                pid = 321
+
+                async def wait(self, timeout: float | None = None) -> RunnerResult:
+                    return RunnerResult(
+                        status=RunnerStatus.FAIL,
+                        session_id=None,
+                        output="planner crashed",
+                        elapsed_seconds=0.2,
+                        exit_code=1,
+                    )
+
+                async def kill(self) -> None:
+                    return
+
+                def is_alive(self) -> bool:
+                    return False
+
+            return _Handle()
+
+    config = _base_config()
+    observer = _RecordingObserver()
+    request = PlannerDispatchRequest(
+        step_id="core.impl",
+        trigger="handle_dispatch.preflight_replan",
+        judgment_type="PREFLIGHT",
+        planner_instruction="Split implementation",
+    )
+
+    with pytest.raises(RunnerError, match="planner dispatch failed"):
+        await dispatch_planner(
+            request,
+            config=config,
+            runners=cast(
+                dict[str, Any], {"opencode": _FailingRunner(), "claude": _Runner("claude")}
+            ),
+            observer=observer,
+            plan_path=Path("plan.yaml"),
+        )
+
+    assert any(event == "PLANNER_DISPATCH_FAILED" for event, _ in observer.events)
+
+
+@pytest.mark.anyio
+async def test_dispatch_planner_requires_non_empty_instruction() -> None:
+    config = _base_config()
+    observer = _RecordingObserver()
+    request = PlannerDispatchRequest(
+        step_id="core.impl",
+        trigger="handle_dispatch.preflight_replan",
+        judgment_type="PREFLIGHT",
+        planner_instruction="   ",
+    )
+
+    with pytest.raises(PlanError, match="non-empty planner_instruction"):
+        await dispatch_planner(
+            request,
+            config=config,
+            runners=cast(
+                dict[str, Any], {"opencode": _Runner("opencode"), "claude": _Runner("claude")}
+            ),
+            observer=observer,
+            plan_path=Path("plan.yaml"),
+        )

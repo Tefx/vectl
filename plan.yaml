@@ -42725,3 +42725,22 @@ phases:
     attempt and unlock long-horizon evolution work.
   depends_on:
   - driver-judge-hardening-review
+  steps:
+  - id: driver-bootstrap-readiness.gate
+    name: Authorize next real bootstrap attempt
+    status: pending
+    description: "step_type: gate\nreview_depth: THOROUGH\nverification_scope: phase-check\n\
+      protects_downstream_gates:\n  - driver-evolution-events-foundation.gate\n  -\
+      \ driver-prompt-foundation.gate\n\nHigh-blast-radius bootstrap milestone.\n\n\
+      Authorize another real project bootstrap attempt only when:\n- driver debt remediation\
+      \ review is complete\n- judge hardening review is complete\n- codex judge is\
+      \ real-runner verified for preflight, cold_context, failure, and gate judgments\
+      \ with quality gates enabled\n- failure handling policy has explicit retry/fallback/halt/remediation\
+      \ semantics\n\nThis milestone exists because launching real bootstrap before\
+      \ these conditions are met is an expensive rework and stability risk boundary."
+    verification: '- Upstream review phases are complete and accepted
+
+      - Bootstrap go/no-go rationale is explicit
+
+      - Long-horizon evolution phases remain blocked until this milestone is complete'
+    agent: gate-reviewer

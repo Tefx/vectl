@@ -39380,6 +39380,62 @@ phases:
     depends_on:
     - driver-evolution-action-registry.planner-dispatch-contract
     agent: python-senior
+  - id: driver-evolution-action-registry.implement-planner-dispatch-registration
+    name: Register planner dispatch in the action registry
+    status: pending
+    description: 'step_type: implementation
+
+
+      Implement planner dispatch as an explicit registry-backed loop action.
+
+
+      Scope:
+
+      - add planner-dispatch action definition(s) to the layered action registry
+
+      - wire planner dispatch handlers through the registry using RuntimeContext-aware
+      contracts
+
+      - ensure planner dispatch remains a first-class driver capability for replan/remediation
+      branches, not a special-case helper path outside the model
+
+
+      ## Completion Criteria (stub exclusion)
+
+      This is an IMPLEMENTATION step. Stub-only completion is NOT acceptable.
+
+      Each deliverable MUST contain substantive logic that processes its inputs and
+      produces outputs that vary based on those inputs.
+
+
+      Known risks:
+
+      - planner dispatch disappearing behind a generic helper abstraction
+
+      - payload contract drift between loop callers and dispatch handler
+
+      - missing event emission expectations for planner-driven actions
+
+
+      Gate Preview:
+
+      1. Planner dispatch not registered as category `planner` will be rejected
+
+      2. Helper-only wiring outside the registry will be rejected
+
+      3. Missing verification of planner dispatch event expectations will be rejected'
+    verification: 'phase-check protecting driver-evolution-action-registry.verify-planner-dispatch.
+
+      - Main path: focused tests prove planner dispatch is resolved via the registry
+      and executes through the registered handler
+
+      - Failure path: regression covers miscategorized or unregistered planner dispatch
+      actions
+
+      - Proof: planner dispatch call sites in scope no longer bypass the action registry'
+    depends_on:
+    - driver-evolution-action-registry.implement-layered-registry
+    agent: python-senior
 - id: driver-evolution-loop-migration
   name: 'Driver Evolution: Loop Migration & Wiring'
   status: locked

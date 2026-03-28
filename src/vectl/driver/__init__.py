@@ -10,5 +10,5 @@ Architecture: docs/DRIVER-ARCHITECTURE.md
 from __future__ import annotations
 
 __all__ = [
-    # Public re-exports will be added as modules are implemented
+    "loop",
 ]

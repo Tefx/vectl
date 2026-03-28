@@ -990,6 +990,51 @@ Reconcile determines when to invoke the judge via a two-tier check:
 
 The boundary is: **rules handle structure; the judge handles semantics.**
 
+#### Explicit Judgment Coverage Matrix
+
+This matrix is normative. Its purpose is to prevent silent narrowing of
+`REPLAN`, `GATE`, `FAILURE`, `ESCALATION`, `ANOMALY`, and `COLD_CONTEXT`
+obligations during phased implementation.
+
+| Judgment Type | Invocation site | Trigger point | First decision owner | Runtime behavior owner |
+|---------------|-----------------|---------------|----------------------|------------------------|
+| `PREFLIGHT` | `handle_dispatch()` | Before dispatching an implementation step when `config.judge.preflight` is enabled, the step is implementation-shaped, and risk signals are present | Rules first (`is_impl_step`, risk-signal detection, skip lists), then judge for adequacy semantics | **Later phase**: runtime invocation in `loop.py` + `judge.py`. **This phase** owns only the contract and trigger commitment. |
+| `EVIDENCE` | `reconcile()` success path | After worker success when step has verification requirements and rule-based evidence schema checks pass | Rules first (required fields, minimum structure, parseability), then judge for adequacy/content semantics | **Later phase**: runtime invocation and reject/accept handling in `reconcile()`. **This phase** owns only the contract and required trigger point. |
+| `FAILURE` | `reconcile()` failure path; gate handling reconciliation | When a failure must be classified for provenance/disposition, especially for gate-intersection reasoning and non-blocking claims | Rules first may collect raw failure facts; judge owns provenance/disposition semantics | **Later phase**: explicit runtime classification path must be added in `reconcile()`/gate handling before any non-blocking or downstream-blocker decision is accepted. **This phase** reserves the obligation and forbids omission. |
+| `ESCALATION` | `reconcile()` failure path; `handle_escalate()` | After repeated failure reaches escalation threshold (documented as `count >= 3`) | Rules first (failure counting / threshold), then judge for retry vs switch-agent vs replan vs defer vs halt | **Later phase**: runtime escalation dispatch and verdict handling. **This phase** owns the thresholded trigger commitment and verdict surface. |
+| `GATE` | Gate handling / gate-result reconciliation | When parsed gate or freeze evidence contains blocker issues, severity classification ambiguity, downstream-blocker promotion, or freeze hard-block conditions | Rules first may parse issue structure and detect explicit hard-block invariants; judge handles blocker semantics and downstream impact | **Later phase**: runtime gate-assessment path in gate handling/reconcile. **This phase** owns the obligation that gate semantics are not collapsed into pure rule checks. |
+| `ANOMALY` | Startup recovery | After `repair_claims()` or orphan recovery surfaces an anomaly and `config.judge.anomaly` is enabled | Rules first identify anomaly shape and candidate repair scope; judge decides safe auto-repair vs halt for structural/semantic corruption | **Later phase**: runtime startup-recovery judgment path in `run()`. **This phase** owns anomaly contract scope and safe-vs-unsafe boundary. |
+| `COLD_CONTEXT` | `handle_dispatch()` for gate/freeze steps | Before dispatching a gate/freeze step when cold-context isolation is enabled | Rules first identify gate/freeze step and assemble candidate artifacts; judge decides include/exclude pruning semantics | **Later phase**: runtime context-pruning and gate dispatch assembly. **This phase** owns the isolation obligation and required invocation point. |
+
+##### Ownership Mapping by Phase
+
+| Concern | This phase (`contract-judgment-runtime-minimal`) | Later phase |
+|--------|-----------------------------------------------|-------------|
+| Judgment vocabulary | Owns the canonical list of judgment types, request/verdict contracts, and context schemas | Must consume without narrowing |
+| Invocation commitments | Owns the explicit trigger matrix above | Must implement each committed trigger point |
+| Rule-vs-judge boundary | Owns the declared boundary: rules for structure, judge for semantics | Must preserve boundary in code |
+| Runtime invocation | Does **not** implement any judge calls in this phase | Owns `loop.py` / `judge.py` runtime behavior |
+| Deferred behavior | Must name every deferred runtime path explicitly and keep it bounded | Must implement only the deferred paths named here, not reinterpret scope |
+
+##### Deferred Runtime Behavior (Bounded)
+
+The following behaviors are intentionally deferred out of this phase, but they are
+bounded by the coverage matrix and may not be silently dropped:
+
+1. `PREFLIGHT` runtime call and verdict handling in `handle_dispatch()`.
+2. `EVIDENCE` runtime call and accept/reject handling in `reconcile()` success path.
+3. `FAILURE` provenance/disposition runtime classification before accepting any
+   `non_blocking` or `downstream_blocker` conclusion.
+4. `ESCALATION` runtime call once repeated-failure threshold is reached.
+5. `GATE` runtime assessment for blocker promotion, batched-fix instruction, and
+   freeze hard-block evaluation.
+6. `ANOMALY` runtime assessment during startup recovery before auto-repair of
+   structural or semantic anomalies.
+7. `COLD_CONTEXT` runtime pruning before gate/freeze dispatch.
+
+No later phase may remove one of these judgment paths without an explicit ADR or
+architecture update to this section.
+
 ---
 
 ### 2.11 loop.py -- Main Event Loop

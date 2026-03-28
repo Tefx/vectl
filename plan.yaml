@@ -31748,17 +31748,24 @@ phases:
       Verification scope: phase-check protecting driver-execution-infra.gate.
 
 
+      POST-IMPLEMENTATION GREEN VERIFICATION STEP.
+
+
       As an INDEPENDENT TESTER, exercise at least one real Claude CLI path and one
       real OpenCode path in non-interactive mode, or document exact environment constraints
       if a runner is unavailable.
 
 
-      YOUR GOAL IS TO FIND PROBLEMS, not to confirm success.'
+      Failures here are blocker-class verification results for the implementation;
+      they are NOT expected-red contract gaps.'
     verification: '- Evidence includes exact commands and actual stdout/stderr
 
       - At least one malformed or unavailable-runner scenario is assessed
 
-      - Real CLI path proof is provided; mock-only evidence is insufficient'
+      - Real CLI path proof is provided; mock-only evidence is insufficient
+
+      - Expected result is green pass against implemented behavior; any red finding
+      must be reported as a blocker or should_fix outcome, not treated as expected-red'
     depends_on:
     - driver-execution-infra.impl-runners-core
     agent: integration-verifier

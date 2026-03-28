@@ -34842,7 +34842,7 @@ phases:
       - src/vectl/driver/judgments.py'
   - id: driver-judgment-expansion-replan.spec-conformance
     name: Judgment expansion and replan spec conformance
-    status: claimed
+    status: done
     description: 'step_type: verification
 
       Verification scope: phase-check protecting driver-judgment-expansion-replan.gate.
@@ -34868,6 +34868,36 @@ phases:
     agent: doc-reviewer
     claimed_by: doc-reviewer
     claimed_at: '2026-03-28T11:22:21.722566+00:00'
+    done_at: '2026-03-28T11:25:27.046555+00:00'
+    evidence: "# Spec Conformance Report: driver-judgment-expansion-replan\n\n## RFC\
+      \ Expected-Red Verification Semantics\n\n### Section 5A: Step Model verify Field\
+      \ ✓ CONFORMANT\n- Location: src/vectl/models.py, lines 81-83\n- verify: Literal[\"\
+      expected_red\", \"must_green\"] | None = None\n- Backward compatibility verified\
+      \ (plan.yaml loads without errors)\n\n### Section 5B: decide() Behavior ✓ CONFORMANT\n\
+      - Location: src/vectl/decide.py, lines 178-200\n- Behavior matrix verified:\n\
+      \  | verify | result.status | Action | Conformance |\n  | expected_red | FAIL\
+      \ | complete (gap demonstrated) | ✓ RFC 5B |\n  | expected_red | SUCCESS | complete\
+      \ (normal) | ✓ RFC 5B |\n  | must_green | FAIL | escalate after 3 failures |\
+      \ ✓ RFC 5B |\n  | must_green | SUCCESS | complete (normal) | ✓ RFC 5B |\n  |\
+      \ None | FAIL | escalate after 3 failures | ✓ RFC 5B |\n  | None | SUCCESS |\
+      \ complete (normal) | ✓ RFC 5B |\n\n### Section 7: Default Behavior ✓ CONFORMANT\n\
+      - Default (None) behavior identical to must_green\n- Backward compatibility\
+      \ confirmed\n\n## Blueprint Key Flows\n\n### Flow 1: Main Loop REPLAN handling\
+      \ ✓ CONFORMANT\n- REPLAN verdict creates planner dispatch via dispatch_planner()\n\
+      - planner_instruction preserved and passed to planner\n- Anti-narrowing: REPLAN\
+      \ never collapsed to REJECT/DEFER/HALT\n\n### Flow 2: Dispatch with Preflight\
+      \ ✓ CONFORMANT\n- Preflight judgment evaluates step specification adequacy\n\
+      - High-risk signals trigger elevated scrutiny\n- Contract-first gate verified\
+      \ for new feature steps\n\n### Flow 3: Reconcile with Evidence Judgment ✓ CONFORMANT\n\
+      - Evidence judgment tier: rule-based first, then LLM if needed\n- Expected-red\
+      \ handling integrated into reconcile logic\n\n### Flow 4: Gate Failure → Fix+Retest\
+      \ Chain ✓ CONFORMANT\n- Gate blocker classification present\n- Batched fix+retest\
+      \ chain creation via planner dispatch\n- Downstream-blocker promotion logic\
+      \ exists\n\n## Judge System Prompt Semantics ✓ COMPLETE\n\nAll 11 judgment points\
+      \ implemented:\n- PREFLIGHT, EVIDENCE, FAILURE, ESCALATION, GATE, ANOMALY, COLD_CONTEXT\n\
+      - All 7 verdict values: ACCEPT, REJECT, RETRY, SWITCH_AGENT, REPLAN, DEFER,\
+      \ HALT\n- CONTEXT_SCHEMAS defines required/optional fields per type\n\n## Test\
+      \ Suite: All 25 decide tests PASS"
   - id: driver-judgment-expansion-replan.freeze
     name: Freeze judgment expansion snapshot
     status: pending

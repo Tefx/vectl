@@ -41919,3 +41919,65 @@ phases:
 
       - Remaining doc follow-ups:'
     agent: doc-reviewer
+  - id: driver-prompt-review.wiring-audit
+    name: Audit packaged prompt wiring completeness
+    status: pending
+    description: 'Wiring completeness audit: verify the packaged prompt resource is
+      reachable at runtime and not orphaned.
+
+
+      REQUIRED CHECKS:
+
+      1. Packaged resource is included in build/install metadata
+
+      2. Judge runtime imports/loads the packaged resource through the pinned loader
+      path
+
+      3. docs/JUDGE-AGENT-PROMPT.md is no longer a runtime dependency
+
+      4. No secondary weak fallback prompt path remains in non-test driver code
+
+
+      Use import/package evidence and targeted search output as proof, not assertions.'
+    verification: '- Audit reports whether any runtime dependency on docs/ remains.
+
+      - Audit proves the packaged resource is wired into the runtime path and packaging
+      metadata.
+
+      - Audit blocks if any weak fallback prompt path remains in non-test code.'
+    evidence_template: '## Wiring Audit Report
+
+      **Package resource inclusion**:
+
+      ```
+
+      <proof or issue>
+
+      ```
+
+      **Runtime loader path**:
+
+      ```
+
+      <proof or issue>
+
+      ```
+
+      **Remaining docs runtime dependencies**:
+
+      ```
+
+      <none found or list>
+
+      ```
+
+      **Remaining fallback prompt paths**:
+
+      ```
+
+      <none found or list>
+
+      ```
+
+      **Verdict**: PASS | ISSUES_FOUND'
+    agent: wiring-auditor

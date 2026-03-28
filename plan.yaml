@@ -40468,6 +40468,31 @@ phases:
 
       - Any remaining ambiguity is documented as open questions with impact'
     agent: software-architect
+  - id: driver-enhancement-foundation.contract
+    name: Pin enhancement contracts for telemetry streaming and recovery
+    status: pending
+    description: "step_type: contract\ncontract_purity: ENFORCED\ncontract_outputs:\n\
+      \  - event_contracts\n  - streaming_contract\n  - liveness_contract\n  - recovery_policy_contract\n\
+      \nPin the contract set that downstream phases will implement.\n\nRequired contract\
+      \ outputs:\n- telemetry event families for runner lifecycle, planner dispatch,\
+      \ recovery, heartbeat, and progress\n- streaming consumption contract for incremental\
+      \ JSONL handling from runner stdout/stderr\n- heartbeat/progress snapshot model\
+      \ including last-seen and stale thresholds\n- failure taxonomy and recovery\
+      \ matrix covering crash, clean fail, timeout, stall, and no-progress\n- fallback\
+      \ boundary describing when retry, alternate runner, defer, planner, or halt\
+      \ is allowed\n\nThe contract MUST preserve the driver runtime surface and define\
+      \ which shared files are serial-integration surfaces only."
+    verification: 'local-check protecting downstream implementation phases.
+
+      - Contract is explicit enough for independent test-definition steps
+
+      - Shared writable surfaces are named so parallel branches avoid merge-heavy
+      files until integration
+
+      - Remaining open questions do not block implementation sequencing'
+    depends_on:
+    - driver-enhancement-foundation.architecture-basis
+    agent: software-architect
 - id: driver-enhancement-observability
   name: 'Driver Enhancement: Observability'
   status: locked

@@ -40891,6 +40891,43 @@ phases:
 
       - Contract says when planner/escalation paths are allowed vs forbidden'
     agent: software-architect
+  - id: driver-enhancement-runner-recovery.test-define-red
+    name: Define expected-red runner recovery regressions
+    status: pending
+    description: 'step_type: test
+
+      step_intent: test_define_red
+
+      expected_result: red
+
+
+      Define failing tests for the current recovery gaps before implementation.
+
+
+      Required exposed gaps:
+
+      - crash vs clean fail are not clearly distinguished
+
+      - stall watchdog behavior is missing or weak
+
+      - heartbeat-driven liveness checks cannot drive recovery decisions
+
+      - no explicit recovery matrix for retry / fallback / defer / planner / halt
+
+      - multi-runner fallback assumptions are not encoded for future extension
+
+
+      Success means the current gap is exposed without modifying product code.'
+    verification: 'local-check protecting driver-enhancement-runner-recovery.impl.
+
+      - Tests remain limited to test surfaces and helpers
+
+      - Each required failure class has at least one exposed red case
+
+      - Evidence records the remaining blocker family precisely'
+    depends_on:
+    - driver-enhancement-runner-recovery.contract
+    agent: python-executor
 - id: driver-enhancement-integration
   name: 'Driver Enhancement: Integration'
   status: locked

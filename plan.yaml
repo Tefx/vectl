@@ -38547,7 +38547,7 @@ phases:
     - src/vectl/driver/__main__.py
     - src/vectl/cli.py
     agent: doc-reviewer
-  - id: driver-debt-deep-review.gate
+  - id: driver-debt-review.gate
     name: Final gate for driver debt remediation
     status: pending
     description: 'step_type: gate

@@ -460,7 +460,6 @@ agent_routing:
   "*-verifier": opencode
   "*-auditor": opencode
   "*-planner": opencode
-  default: opencode
 
 fallback_runner: opencode
 

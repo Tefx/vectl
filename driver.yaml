@@ -1,0 +1,35 @@
+plan_path: plan.yaml
+
+runners:
+  opencode:
+    command: opencode
+    args: ["run", "--format", "json"]
+    stall_timeout: 300
+    output_parser: opencode_jsonl
+    persist_session: true
+
+fallback_runner: opencode
+
+orchestration:
+  max_parallelism: 3
+  merge_strategy: squash
+
+session:
+  reuse_ttl: 300
+
+judge:
+  runner: opencode
+  structured_output: true
+  preflight: true
+  evidence_validation: true
+  failure_classification: true
+  escalation: true
+  gate_assessment: true
+  cold_context: true
+  anomaly: true
+
+observability:
+  events_file: .vectl/driver-events.jsonl
+  log_level: INFO
+  print_progress: true
+  cost_tracking: true

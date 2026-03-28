@@ -44167,7 +44167,7 @@ phases:
   steps:
   - id: driver-continuity-capability-safety.impl
     name: Implement runner capability model and replay-safe idempotency
-    status: claimed
+    status: done
     description: "step_type: implementation\n\nFill in stub bodies and replace placeholder\
       \ capability/replay handling with working logic on the existing continuity/recovery\
       \ surfaces.\n\nUPSTREAM ARTIFACTS (from merged design+test step):\n  - src/vectl/driver/config.py\
@@ -44213,6 +44213,53 @@ phases:
     agent: python-senior
     claimed_by: python-senior
     claimed_at: '2026-03-28T23:40:50.304532+00:00'
+    done_at: '2026-03-28T23:46:47.177732+00:00'
+    evidence: 'Artifact:
+
+      - PR: b6df12c7f4eee3e2fac1eb0c4b4e46a4afb8a43d
+
+
+      Verification:
+
+      - Run: uv run ruff check src/vectl/driver/runner_continuity.py src/vectl/driver/loop.py
+      -> all checks passed
+
+      - Run: uv run pytest -q tests/test_driver_continuity_contract.py tests/test_driver_continuity_capability_safety_red.py
+      -> 9 passed
+
+      - Run: uv run pytest -q tests/test_driver_loop_hardening.py -k "handle_dispatch
+      and session" -> 1 passed
+
+      - Run: uv run pytest -q tests/test_driver_loop_hardening.py -k "stale_session_retries_fresh
+      or runner_fallback_after_repeated_failures" -> 2 passed
+
+
+      Spec link:
+
+      - docs/DRIVER-CONTINUITY-FOUNDATION.md#3-source-of-truth-matrix
+
+      - docs/DRIVER-CONTINUITY-FOUNDATION.md#4-runtime-contract
+
+      - docs/DRIVER-CONTINUITY-FOUNDATION.md#6-transport-boundary-rules
+
+
+      Scope delivered:
+
+      - Implemented runner capability resolution and deterministic capability snapshot
+      IDs in runner_continuity surface
+
+      - Implemented replay-safety idempotency policy (duplicate attempt-key rejection,
+      runner/token binding checks, snapshot drift checks, empty-token rejection, non-resumable
+      replay rejection, safe fresh-dispatch allowance)
+
+      - Wired capability/replay checks into handle_dispatch control-plane branching
+      with capability-aware reuse gating, non-resumable fallback to fresh dispatch,
+      duplicate-dispatch protection, and last-writer-wins snapshot cache
+
+
+      Deviation record:
+
+      - none'
   - id: driver-continuity-capability-safety.verify
     name: Verify runner capability and replay safety
     status: pending

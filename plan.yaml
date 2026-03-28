@@ -39126,7 +39126,7 @@ phases:
   gate: Typed runtime context replaces ad hoc handler inputs without regressing driver
     entrypoint behavior
   depends_on:
-  - driver-evolution-event-contracts
+  - driver-debt-review
   steps:
   - id: driver-evolution-runtime-context.contract
     name: Pin RuntimeContext contract and ownership boundaries

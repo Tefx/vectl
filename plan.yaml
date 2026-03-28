@@ -42808,6 +42808,27 @@ phases:
 
       - Readiness is APPROVED or lists only non-blocking post-bootstrap follow-ups'
     agent: software-architect
+  - id: driver-continuity-foundation.contract
+    name: Pin continuity authority and capability contract
+    status: pending
+    description: "step_type: contract\ncontract_purity: ENFORCED\ncontract_outputs:\n\
+      \  - interfaces\n  - type_defs\n  - signatures\n  - stubs\nPin the authoritative\
+      \ continuity contract for:\n- single session authority after driver-debt-decision-state\n\
+      - durable continuity ledger and minimum recovery-grade journal fields\n- runner\
+      \ capability model for resume/persist/replay semantics\n- tool replay safety\
+      \ / idempotency envelope\n- failure and abort continuity policy handoff points\n\
+      - startup recovery controller inputs and outputs\n\nAuthoritative interfaces\
+      \ only; no implementation logic.\n\nauthoritative_interface: exact public continuity\
+      \ interfaces in src/vectl/driver/session.py, decide.py, runner abstractions,\
+      \ and startup recovery entrypoints as defined by the architecture basis and\
+      \ docs/DRIVER-ARCHITECTURE.md."
+    verification: '- Contract names one authority per continuity fact
+
+      - Contract specifies how judge failure outcomes are consumed without re-owning
+      judge logic
+
+      - Contract output is acceptance-only and contains no runnable business logic'
+    agent: software-architect
 - id: driver-continuity-authority-ledger
   name: 'Driver Continuity: Authority & Ledger'
   status: locked

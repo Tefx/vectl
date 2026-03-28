@@ -42913,7 +42913,7 @@ phases:
   steps:
   - id: driver-judge-hardening-foundation.contract
     name: Pin judge runner capability and invocation contract
-    status: claimed
+    status: done
     description: "step_type: contract\ncontract_purity: ENFORCED\ncontract_outputs:\n\
       \  - capability_matrix\n  - invocation_contract\n  - failure_boundary_matrix\n\
       spec_refs:\n  - driver.yaml#judge-and-runners\n  - docs/DRIVER-ARCHITECTURE.md#judge-runtime\n\
@@ -42959,6 +42959,33 @@ phases:
     agent: software-architect
     claimed_by: software-architect
     claimed_at: '2026-03-28T22:33:22.226287+00:00'
+    done_at: '2026-03-28T22:35:56.878732+00:00'
+    evidence: 'Updated contract-only judge runner specification in `.vectl/worktrees/driver-judge-hardening-foundation.contract/docs/DRIVER-ARCHITECTURE.md`
+      to add: (1) a capability matrix covering claude/opencode/codex native structured
+      output, JSONL completeness, session/invocation constraints, extraction policy,
+      and quality-gate compatibility; (2) a normative `Judge.judge(request)` invocation
+      contract that binds `judge.runner: codex` to `driver.yaml -> runners.codex`
+      with no judge-local divergence; (3) a hard-fail vs tolerant-extraction boundary
+      table; and (4) explicit coverage expectations requiring preflight/evidence/failure/escalation/gate/anomaly/cold_context
+      on all supported judge runners. Added matching contract comments only (no runtime
+      logic changes) in `.vectl/worktrees/driver-judge-hardening-foundation.contract/src/vectl/driver/config.py`,
+      `.vectl/worktrees/driver-judge-hardening-foundation.contract/src/vectl/driver/judge.py`,
+      and `.vectl/worktrees/driver-judge-hardening-foundation.contract/driver.yaml`.
+
+
+      Verification performed:
+
+      - `git diff -- docs/DRIVER-ARCHITECTURE.md src/vectl/driver/config.py src/vectl/driver/judge.py
+      driver.yaml`
+
+      - `git status --short`
+
+
+      Observed result: diff shows documentation/comment-only edits in the four targeted
+      files; no subprocess/parser/runtime behavior changed. The updated text cites
+      config ownership (`driver.yaml -> runners.<runner>`), parser ownership (`runners.py`
+      / `parsers.py`), and verdict schema authority (`Judge.judge(request)` / `JudgmentVerdict`
+      contract) and makes codex alignment explicit.'
   - id: driver-judge-hardening-foundation.gate
     name: Gate judge hardening foundation
     status: pending

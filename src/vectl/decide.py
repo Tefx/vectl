@@ -175,6 +175,31 @@ def decide(
                 # Reset failure count on success
                 _failure_counts.pop(result.step_id, None)
             elif result.status == "FAIL":
+                # Check if this is an expected-red step (red outcome demonstrates gap)
+                found = plan.find_step(result.step_id)
+                if found:
+                    _, step = found
+                    if step.verify == "expected_red":
+                        # Expected-red: FAIL result is actually a successful gap demonstration
+                        actions.append(
+                            Action(
+                                action="complete",
+                                step_id=result.step_id,
+                                evidence=result.output_summary,
+                            )
+                        )
+                        decision_log.append(
+                            Decision(
+                                decision="COMPLETE",
+                                step_id=result.step_id,
+                                why="Expected-red: red outcome demonstrates intended gap",
+                            )
+                        )
+                        # Clear any prior failure count for this step
+                        _failure_counts.pop(result.step_id, None)
+                        continue  # skip the normal FAIL path
+
+                # Default FAIL path: must_green or verify=None
                 # Track failures for escalation
                 count = _failure_counts.get(result.step_id, 0) + 1
                 _failure_counts[result.step_id] = count
@@ -216,10 +241,7 @@ def decide(
             if found:
                 phase, step = found
                 step.status = StepStatus.DONE
-                if all(
-                    s.status in (StepStatus.DONE, StepStatus.SKIPPED)
-                    for s in phase.steps
-                ):
+                if all(s.status in (StepStatus.DONE, StepStatus.SKIPPED) for s in phase.steps):
                     phase.status = PhaseStatus.DONE
                     auto_unlock_phases(plan)
 

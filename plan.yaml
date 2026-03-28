@@ -40687,6 +40687,26 @@ phases:
     depends_on:
     - driver-enhancement-observability.impl
     agent: spec-verifier
+  - id: driver-enhancement-observability.gate
+    name: Gate observability enhancement
+    status: pending
+    description: 'step_type: gate
+
+      Gate runtime observability enhancement readiness.'
+    verification: 'phase-check protecting driver-enhancement-integration.
+
+      - Runtime telemetry contract, implementation, early vertical slice, and independent
+      schema verification all align
+
+      - No blocker remains around lifecycle / dispatch / recovery / heartbeat observability
+      coverage'
+    depends_on:
+    - driver-enhancement-observability.contract
+    - driver-enhancement-observability.test-define-red
+    - driver-enhancement-observability.impl
+    - driver-enhancement-observability.vertical-slice
+    - driver-enhancement-observability.verify
+    agent: gate-reviewer
 - id: driver-enhancement-streaming-progress
   name: 'Driver Enhancement: Streaming & Progress'
   status: locked

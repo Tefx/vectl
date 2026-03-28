@@ -37621,7 +37621,6 @@ phases:
     - tests/test_decide.py
     depends_on:
     - driver-debt-decision-state.verify
-    - driver-debt-decision-state.freeze
     agent: gate-reviewer
 - id: driver-debt-completion-authority
   name: 'Driver Debt: Completion Authority Convergence'

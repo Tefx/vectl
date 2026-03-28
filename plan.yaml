@@ -42449,21 +42449,13 @@ phases:
     name: Pin judge failure handling policy matrix
     status: pending
     description: "step_type: contract\ncontract_purity: ENFORCED\ncontract_outputs:\n\
-      \  - failure_policy_matrix\n  - disposition_rules\n  - remediation_trigger_rules\n\
-      spec_refs:\n  - driver.yaml#judge\n  - docs/DRIVER-ARCHITECTURE.md#judge-runtime\n\
-      \  - docs/JUDGE-AGENT-PROMPT.md#verdict-schema\nauthoritative_interface: failure\
-      \ handling semantics for JudgmentParseError, timeout, malformed output, empty\
-      \ output, and unsupported capability cases\ntouch_paths:\n  - src/vectl/driver/judge.py\n\
-      \  - src/vectl/driver/loop.py\n  - src/vectl/driver/errors.py\n  - src/vectl/driver/observe.py\n\
-      \  - docs/DRIVER-ARCHITECTURE.md\nagent_source: default\n\nDefine the explicit\
-      \ disposition matrix for judge failures.\n\nThe matrix MUST state, for each\
-      \ relevant failure family and judgment type, whether the system:\n- retries\n\
-      - falls back to another runner\n- halts the driver attempt\n- emits planner\
-      \ remediation / escalation\n- preserves original evidence vs synthesized fallback\
-      \ evidence\n\nRequired coverage:\n- `JudgmentParseError`\n- timeout / stall\
-      \ timeout\n- malformed output\n- empty output\n- unsupported native structured-output\
-      \ capability (best-effort only)\n\nThis is a contract-only step. It MUST NOT\
-      \ implement runtime control flow."
+      \  - interfaces\n  - type_defs\n  - signatures\n  - stubs\nPin the judge-side\
+      \ failure policy matrix that continuity phases will consume.\n\nScope:\n- classify\
+      \ judge outcomes and required retry/fallback/halt/remediation decisions\n- define\
+      \ the exact output fields continuity policy consumes after judge decisions\n\
+      - align terminology and provenance with restart recovery without taking ownership\
+      \ of durable resume, restart controller logic, or recovery journaling\n\nNo\
+      \ implementation logic."
     verification: '- Matrix gives an unambiguous disposition for each failure class
       and judgment family
 

@@ -43829,7 +43829,7 @@ phases:
       - blocker -> batched fix path created before progression.'
   - id: driver-continuity-foundation.fix-blockers
     name: Repair continuity foundation blocker set
-    status: claimed
+    status: done
     description: "step_type: planning\n\nBatched remediation for blocker-class continuity-foundation\
       \ defects reported by driver-continuity-foundation.gate.\n\nThis step MUST resolve\
       \ ALL discovered blockers together, not one-by-one:\n- prerequisite architecture-basis\
@@ -43889,6 +43889,37 @@ phases:
     agent: software-architect
     claimed_by: software-architect
     claimed_at: '2026-03-28T23:19:21.163210+00:00'
+    done_at: '2026-03-28T23:24:42.200304+00:00'
+    evidence: "## Continuity Foundation Repair Evidence\n- Corrected artifact paths:\n\
+      \  - `docs/DRIVER-CONTINUITY-FOUNDATION.md` — canonical continuity architecture\
+      \ basis and contract repair doc\n  - `docs/DRIVER-ARCHITECTURE.md` — now references\
+      \ canonical continuity foundation doc\n  - `src/vectl/driver/session.py` — defines\
+      \ `SESSION_CONTINUITY_AUTHORITIES`\n  - `src/vectl/driver/types.py` — defines\
+      \ `ReplaySafetyEnvelope`, `ContinuityJournalEntry`, `ContinuityLedgerEntry`,\
+      \ `ContinuityHandoff`, `StartupRecoveryControllerInput`, `StartupRecoveryControllerOutput`,\
+      \ and `StartupRecoveryController`\n  - `src/vectl/driver/runner_continuity.py`\
+      \ — runner resume/persist/replay capability contracts\n  - `tests/test_driver_continuity_contract.py`\
+      \ — contract test file for repaired artifacts\n  - Commit: `8427839` (`repair\
+      \ continuity foundation contract artifacts`)\n- Corrected or newly created test\
+      \ identifiers:\n  - `tests/test_driver_continuity_contract.py`\n  - Verification\
+      \ run: `uv run pytest tests/test_driver_continuity_contract.py` -> `5 passed\
+      \ in 1.90s`\n- Removed fabricated claims:\n  - Previously claimed missing artifacts/tests\
+      \ are now present in repo at exact paths above.\n- Scope revisions and non-intersection\
+      \ rationale for deferrals:\n  - Chosen path: create missing contract artifacts\
+      \ now.\n  - Deferred: durable persistence implementation, runtime journal writes,\
+      \ startup recovery execution logic, richer observability/analytics.\n  - Non-intersection:\
+      \ downstream foundation phases need ownership/shapes/capability semantics/minimum\
+      \ telemetry boundaries, not implementation internals.\n- Why downstream authority-ledger\
+      \ and capability-safety are now safe to unlock:\n  - Session authority convergence\
+      \ explicit (DecideState dispatch reuse intent, SessionPool runner-aware cache,\
+      \ durable authority pinned to ContinuityLedgerEntry)\n  - Durable resume state\
+      \ explicit via ledger/journal/handoff/startup recovery IO contracts\n  - Replay\
+      \ safety explicit via ReplaySafetyEnvelope\n  - Runner capability semantics\
+      \ explicit via RUNNER_CONTINUITY_CAPABILITIES\n  - Minimum recovery telemetry\
+      \ explicit via ContinuityJournalEntry and DEFAULT_MINIMUM_RECOVERY_TELEMETRY\n\
+      \nVerification:\n- `uv run pytest tests/test_driver_continuity_contract.py`\
+      \ -> 5 passed\n- `ls` checks confirmed all cited artifact files present\n- symbol\
+      \ grep checks confirmed expected continuity symbols present"
   - id: driver-continuity-foundation.gate-retest
     name: Retest continuity foundation gate blockers
     status: pending

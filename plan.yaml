@@ -31802,7 +31802,7 @@ phases:
       - Downstream owner: driver-execution-infra.impl-runners-core'
   - id: driver-execution-infra.impl-runners-core
     name: Implement runners core
-    status: claimed
+    status: done
     description: "step_type: implementation\n\ntags:\n  - integration\n\nImplement\
       \ the core subset of src/vectl/driver/runners.py:\n- Runner and RunnerHandle\
       \ protocol-backed implementations\n- ClaudeRunner and OpenCodeRunner\n- core\
@@ -31822,6 +31822,31 @@ phases:
     agent: python-senior
     claimed_by: python-senior
     claimed_at: '2026-03-28T03:02:16.345153+00:00'
+    done_at: '2026-03-28T03:13:15.616898+00:00'
+    evidence: "Artifact:\n- Commit: 209760f\n\nVerification:\n- Run: uv run pytest\
+      \ tests/test_driver_runners.py -q -> PASS (66 passed)\n- Run: uv run pytest\
+      \ tests/test_driver_runners.py tests/test_driver_types.py -q -> PASS (94 passed)\n\
+      - Run: uv run ruff check src/vectl/driver/runners.py tests/test_driver_runners.py\
+      \ -> PASS\n- Run: uv run mypy src/vectl/driver/runners.py -> PASS\n- Run: invar_guard(path=.vectl/worktrees/driver-execution-infra.impl-runners-core,\
+      \ changed=true) -> PASS (warning: runners.py near file-size threshold)\n\nImplemented:\n\
+      - src/vectl/driver/runners.py\n  - concrete subprocess-backed RunnerHandle implementation\n\
+      \  - ClaudeRunner.dispatch and OpenCodeRunner.dispatch with asyncio.create_subprocess_exec\n\
+      \  - stdin prompt delivery with explicit stdin close\n  - resume flag translation\
+      \ from config (resume_flag + session_id)\n  - parser selection for claude_json\
+      \ and opencode_jsonl\n  - non-zero process exit cannot remain SUCCESS\n  - runner-not-found\
+      \ classification via RunnerNotFoundError\n- tests/test_driver_runners.py\n \
+      \ - live-subprocess tests for Claude/OpenCode parse paths\n  - stdin prompt\
+      \ mode and closed-stdin proof\n  - resume-flag translation tests for both core\
+      \ runners\n  - malformed output classification to TRANSPORT_ERROR\n  - non-zero\
+      \ exit downgrades success to FAIL\n  - missing command raises RunnerNotFoundError\n\
+      \  - handle lifecycle checks (pid/is_alive/completion)\n\nRequired failure-path\
+      \ proof:\n- malformed output: test_malformed_output_classified_transport_error\
+      \ -> PASS\n- non-zero exit: test_non_zero_exit_downgrades_success_to_fail ->\
+      \ PASS\n- runner-not-found: test_runner_not_found_raises_specific_error -> PASS\n\
+      \nSpec link:\n- docs/DRIVER-ARCHITECTURE.md §2.8\n- DRIVER-BLUEPRINT.md (Runner\
+      \ Protocol & Implementations)\n\nGaps/Notes:\n- Extended runners (codex/gemini)\
+      \ intentionally not implemented in this step scope\n- invar guard warning on\
+      \ runners.py file-size threshold reported for later refactor consideration"
   - id: driver-execution-infra.verify-runners-real-cli-path
     name: Verify runners real CLI path
     status: pending

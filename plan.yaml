@@ -38648,8 +38648,15 @@ phases:
       - stubs
 
 
-      Authoritative source: docs/ADR-driver-evolution-foundation.md#30-versioned-event-envelope-now
-      and #45-event-registry-becomes-source-of-truth.
+      Authoritative source:
+
+      - docs/ADR-driver-evolution-foundation.md#30-versioned-event-envelope-now
+
+      - docs/ADR-driver-evolution-foundation.md#45-event-registry-becomes-source-of-truth
+
+      - docs/ADR-driver-evolution-foundation.md#104-event-registry-is-a-static-declaration-table
+
+      - docs/ADR-driver-evolution-foundation.md#188-resolved-decisions
 
 
       Pin the driver event foundation contract without shipping business logic.
@@ -38661,15 +38668,19 @@ phases:
       - registry record shape defining event name, version, required fields, optional
       fields, owner module, compatibility notes
 
-      - ownership split where observe.py remains the durable JSONL sink and the registry
-      becomes the event schema source of truth
+      - ownership split where `observe.py` remains the durable JSONL sink and the
+      registry becomes the event schema source of truth
+
+      - a STATIC declaration table in `src/vectl/driver/events/registry.py`; initial
+      rollout MUST NOT introduce a module-level dynamic registration API
 
       - module targets for `src/vectl/driver/events/types.py`, `src/vectl/driver/events/registry.py`,
       and `src/vectl/driver/events/sinks.py`
 
 
       Authoritative interface: envelope shape exactly matches the ADR and `version`
-      MUST remain top-level, never nested under `data`.
+      MUST remain top-level, never nested under `data`. Registry truth is centralized,
+      explicit, and auditable rather than dynamically extended at runtime.
 
       Touch paths: src/vectl/driver/observe.py, src/vectl/driver/events/types.py,
       src/vectl/driver/events/registry.py, src/vectl/driver/events/sinks.py, tests/test_driver_observe.py.
@@ -38680,6 +38691,9 @@ phases:
 
       - Contract text names the exact envelope fields and registry record fields from
       the ADR
+
+      - Contract pins the registry as a STATIC declaration table and forbids dynamic
+      registration API introduction in this rollout
 
       - Contract preserves observe.py as the durable JSONL sink
 

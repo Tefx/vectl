@@ -34492,7 +34492,7 @@ phases:
       PlannerDispatchRequest'
   - id: driver-judgment-expansion-replan.impl-replan-planner-wiring
     name: Implement replan and planner wiring
-    status: claimed
+    status: done
     description: 'step_type: implementation
 
 
@@ -34512,6 +34512,28 @@ phases:
     agent: python-senior
     claimed_by: python-senior
     claimed_at: '2026-03-28T10:30:49.800898+00:00'
+    done_at: '2026-03-28T10:39:21.559264+00:00'
+    evidence: "Artifact:\n- Commit: 6b8241c\n\nVerification:\n- Run: uv run ruff check\
+      \ src/vectl/driver/loop.py tests/test_driver_loop_hardening.py -> All checks\
+      \ passed!\n- Run: uv run pytest tests/test_driver_loop_hardening.py tests/test_driver_replan_verdict.py\
+      \ -q -> 68 passed in 0.35s\n\nSpec link:\n- docs/DRIVER-ARCHITECTURE.md §2.11\
+      \ \"REPLAN / Planner Wiring Contract (Bounded)\" + \"Planner Instruction Handling\"\
+      \n- DRIVER-BLUEPRINT.md Flow 2 (\"Preflight judgment\", REPLAN -> dispatch_planner)\n\
+      \nImplemented:\n- Wired preflight REPLAN handling in handle_dispatch():\n  -\
+      \ preflight candidate detection for impl-like step IDs\n  - risk-signal routing\n\
+      \  - judge PREFLIGHT request construction\n  - REPLAN verdict -> planner handoff\
+      \ + early return before claim/worktree/runner dispatch\n  - explicit REJECT/DEFER\
+      \ preflight handling events\n- Implemented runtime dispatch_planner():\n  -\
+      \ validates non-empty planner_instruction\n  - routes to vectl-planner via configured\
+      \ runner\n  - dispatches planner prompt in repo root\n  - waits for result and\
+      \ explicitly fails on non-success statuses\n  - emits started/completed/failed\
+      \ planner dispatch events\n- Added judgment handoff helpers in loop.py:\n  -\
+      \ _build_replan_dispatch_request(...)\n  - _render_planner_prompt(...)\n  -\
+      \ _build_preflight_request(...)\n  - _detect_preflight_risk_signals(...)\n \
+      \ - _is_impl_step_id(...)\n  - _build_escalation_request(...)\n- Added focused\
+      \ tests in tests/test_driver_loop_hardening.py for:\n  - preflight REPLAN planner\
+      \ dispatch path\n  - missing planner_instruction failure path\n  - planner runner\
+      \ failure path\n  - non-empty planner_instruction enforcement"
   - id: driver-judgment-expansion-replan.contract-gate-chain-flow
     name: Contract full gate-chain and remediation flow
     status: pending

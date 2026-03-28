@@ -32033,7 +32033,7 @@ phases:
       architecture references'
   - id: driver-execution-infra.spec-conformance
     name: Execution infrastructure spec conformance
-    status: claimed
+    status: done
     description: 'step_type: verification
 
       Verification scope: phase-check protecting driver-execution-infra.gate.
@@ -32050,6 +32050,57 @@ phases:
     agent: doc-reviewer
     claimed_by: doc-reviewer
     claimed_at: '2026-03-28T03:22:43.169336+00:00'
+    done_at: '2026-03-28T03:26:04.585066+00:00'
+    evidence: '## step_intent
+
+      Compare runner/worktree implementation behavior against blueprint/architecture
+      module specs and verified CLI capability table, with file:line mapping and explicit
+      phase-scoped deferrals.
+
+
+      ## expected_result
+
+      - Runner/worktree requirements map cleanly to implementation
+
+      - Deferred extended-runner responsibilities are explicitly marked as phase-scoped
+      deferrals
+
+      - No omissions hidden as deferrals
+
+
+      ## observed_result
+
+      Spec conformance PASS.
+
+      - Runner protocol and implementations mapped to file:line locations
+
+      - Output parser conformance verified for core runner scope
+
+      - Worktree lifecycle semantics mapped to implementation file:line
+
+      - CLI capability table aligns with implemented command/flag behavior
+
+      - Codex/Gemini and Codex JSONL parser responsibilities explicitly documented
+      as phase-scoped deferrals (not omissions)
+
+
+      ## failure_alignment
+
+      No conformance failures found; results align with expected green verification.
+
+
+      ## product_implementation_files_modified
+
+      None (verification-only step).
+
+
+      ## spec_link
+
+      - DRIVER-BLUEPRINT.md (Runner Protocol & Implementations; CLI capability table)
+
+      - docs/DRIVER-ARCHITECTURE.md (runner/worktree architecture expectations)
+
+      - driver-execution-infra.spec-conformance step verification requirements'
   - id: driver-execution-infra.gate
     name: Gate driver-execution-infra
     status: pending

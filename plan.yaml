@@ -36695,13 +36695,13 @@ phases:
       **GATE VERDICT: PASS**'
 - id: driver-doc-sync
   name: Driver Documentation Sync
-  status: pending
+  status: in_progress
   depends_on:
   - driver-system-wiring
   steps:
   - id: driver-doc-sync.update-docs
     name: Update driver documentation to match implementation
-    status: pending
+    status: claimed
     description: 'step_type: review
 
 
@@ -36725,6 +36725,8 @@ phases:
 
       - No stale references to deferred or unimplemented behavior remain'
     agent: doc-reviewer
+    claimed_by: doc-reviewer
+    claimed_at: '2026-03-28T13:24:10.037943+00:00'
   - id: driver-doc-sync.gate
     name: Gate driver-doc-sync
     status: pending

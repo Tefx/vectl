@@ -38867,6 +38867,54 @@ phases:
 
       - Typed emitter helper signatures are defined without adding runtime logic'
     agent: software-architect
+  - id: driver-evolution-event-contracts.implement-canonical-events
+    name: Canonicalize FINAL DECIDE STEP_COMPLETED event semantics
+    status: pending
+    description: 'step_type: implementation
+
+
+      Implement canonical event semantics from the ADR.
+
+
+      Scope:
+
+      - update registry definitions for `FINAL`, `DECIDE`, and `STEP_COMPLETED`
+
+      - make `FINAL` summary-oriented, including completed/finalized work summary,
+      total duration, total cost/tokens when available, and optional halt reason if
+      adopted
+
+      - remove or relocate raw runtime snapshot payloads that currently overload `FINAL`
+
+      - keep event ownership/versioning in the registry as the sole schema truth
+
+
+      Failure-mode checklist:
+
+      - no summary field is silently placed outside the canonical envelope/data split
+
+      - DECIDE and STEP_COMPLETED keep explicit required vs optional field boundaries
+
+      - FINAL no longer acts as a garbage-bucket snapshot event
+
+      - any remaining runtime snapshot need is explicitly deferred to a separate event,
+      not hidden inside FINAL
+
+
+      Known risk: output/formatting drift in persisted JSONL events. The gate will
+      reject mixed legacy/canonical FINAL payloads.'
+    verification: 'phase-check protecting typed-emitter and conformance work.
+
+      - Main path: targeted tests prove FINAL/DECIDE/STEP_COMPLETED records match
+      canonical registry definitions
+
+      - Failure path: regression covers rejection or absence of legacy FINAL snapshot
+      overloading
+
+      - Proof: event ownership remains centralized in the registry'
+    depends_on:
+    - driver-evolution-event-contracts.contract
+    agent: python-senior
 - id: driver-evolution-runtime-context
   name: 'Driver Evolution: Runtime Context'
   status: locked

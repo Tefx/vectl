@@ -41478,3 +41478,10 @@ phases:
     conditions.
   depends_on:
   - driver-guardrails-system-wiring
+- id: driver-guardrails-doc-sync
+  name: 'Driver Guardrails: Documentation Sync'
+  status: locked
+  gate: Runtime behavior, configuration examples, and human-facing prompt docs match
+    the restored production guardrails.
+  depends_on:
+  - driver-guardrails-real-bootstrap

@@ -35658,7 +35658,7 @@ phases:
       - DRIVER-BLUEPRINT.md lines 115-122: Exact stub pattern documented'
   - id: driver-cli-integration.verify-cli-drive
     name: Verify vectl drive real path
-    status: claimed
+    status: done
     description: 'step_type: verification
 
       Verification scope: phase-check protecting driver-cli-integration.gate.
@@ -35684,6 +35684,68 @@ phases:
     agent: integration-verifier
     claimed_by: integration-verifier
     claimed_at: '2026-03-28T12:26:38.811345+00:00'
+    done_at: '2026-03-28T12:33:46.177944+00:00'
+    evidence: '## Verification Report: vectl drive CLI Integration
+
+
+      **Date**: 2026-03-28
+
+      **Verifier**: Integration Verifier
+
+      **Scope**: POST-IMPLEMENTATION verification of `vectl drive` CLI command
+
+
+      ### Tests Executed
+
+
+      | Test                             | Result | Evidence                                                                                                               |
+
+      | -------------------------------- | ------ | ----------------------------------------------------------------------------------------------------------------------
+      |
+
+      | CLI Registration (P1)            | PASS   | `uv run vectl drive --help` exit
+      0, shows ''--config'' flag and ''driver.yaml'' default                                      |
+
+      | Missing Config Error (P1)        | PASS   | `uv run vectl drive --config /nonexistent`
+      exit 1, output: "Error: Config file not found: /nonexistent/path/driver.yaml"
+      |
+
+      | Valid Config Runtime Invoke (P2) | PASS   | Valid driver.yaml + plan.yaml
+      → exit 0, runtime entrypoint reached                                                     |
+
+      | Python Import Chain (P2)         | PASS   | CLI imports from `vectl.driver.loop`,
+      calls `asyncio.run(run(config))`                                                     |
+
+
+      ### Command Executions
+
+
+      1. **Help command**: `uv run vectl drive --help` exit 0, shows ''--config''
+      flag
+
+      2. **Missing config error**: `uv run vectl drive --config nonexistent.yaml`
+      exit 1 with proper error
+
+      3. **Valid config execution**: exit 0, runtime entrypoint reached
+
+      4. **Import chain verified**: CLI → vectl.driver.loop.run via asyncio.run
+
+
+      ### Codepath Verified
+
+      - CLI registered at src/vectl/cli.py:3130
+
+      - Config validation at line 3150
+
+      - Runtime handoff at line 3157: asyncio.run(run(config))
+
+      - Real entrypoint at src/vectl/driver/loop.py:1195
+
+
+      ### Findings
+
+      All verification passes. The `vectl drive` CLI reaches the real runtime path,
+      not a stubbed adapter.'
   - id: driver-cli-integration.wiring-audit
     name: CLI drive wiring audit
     status: pending

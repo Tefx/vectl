@@ -38685,6 +38685,55 @@ phases:
 
       - No implementation logic beyond declarations/stubs is introduced'
     agent: software-architect
+  - id: driver-evolution-events-foundation.implement-registry-envelope
+    name: Implement event registry and versioned JSONL envelope
+    status: pending
+    description: 'step_type: implementation
+
+
+      Implement the event foundation defined by the ADR.
+
+
+      Scope:
+
+      - add `src/vectl/driver/events/types.py`, `src/vectl/driver/events/registry.py`,
+      and `src/vectl/driver/events/sinks.py`
+
+      - migrate event serialization so the durable JSONL envelope is `{ts, event,
+      version, data}` with `version` at the top level
+
+      - keep `observe.py` as the append-only durable sink, but route schema/version
+      truth through the new registry
+
+      - preserve current append semantics and file durability behavior while moving
+      schema ownership out of scattered emit call sites
+
+
+      Failure-mode checklist:
+
+      - existing durable writes still append valid JSONL records
+
+      - missing or unknown event metadata fails at the registry boundary rather than
+      silently emitting drifted payloads
+
+      - path handling for observe sink remains unchanged
+
+      - no compatibility shim is allowed that stores `version` inside `data`
+
+
+      Out-of-scope guardrail: canonical event semantics for `FINAL`, `DECIDE`, and
+      `STEP_COMPLETED` are deferred to the next phase.'
+    verification: 'phase-check protecting the downstream canonical-event phase.
+
+      - Main path: targeted tests prove emitted JSONL records now use top-level `version`
+
+      - Failure path: targeted regression proves nested `data.version` is rejected
+      or not produced
+
+      - Proof: registry is the only schema/version source for emitted event metadata'
+    depends_on:
+    - driver-evolution-events-foundation.contract
+    agent: python-senior
 - id: driver-evolution-event-contracts
   name: 'Driver Evolution: Canonical Event Contracts'
   status: locked

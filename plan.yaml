@@ -41430,3 +41430,11 @@ phases:
     ownership, and real-bootstrap guardrail policy before any restoration work begins.
   depends_on:
   - driver-enhancement-review
+- id: driver-guardrails-output-hardening
+  name: 'Driver Guardrails: Judge Output Hardening'
+  status: locked
+  gate: opencode-backed judgment calls have a hardened structured-output path with
+    independent verification over known malformed-output failure modes before guardrails
+    are re-enabled.
+  depends_on:
+  - driver-guardrails-foundation

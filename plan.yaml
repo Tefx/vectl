@@ -42425,31 +42425,47 @@ phases:
       \  - tests/test_driver_judge.py\n  - tests/test_driver_judge_runtime.py\nharness_refs:\n\
       \  - driver.yaml runner configuration\n  - real codex judge verification harness\n\
       authoritative_interface: Judge.judge(request) and driver.yaml runners.codex\
-      \ / judge.runner\nagent_source: default\ntags:\n  - integration\n\nClose the\
-      \ discovered codex judge-path gap and harden structured-output extraction without\
-      \ widening scope beyond judge stability.\n\nRequired implementation outcomes:\n\
-      - `src/vectl/driver/judge.py` MUST stop constructing a codex judge invocation\
-      \ that diverges from `driver.yaml`; judge execution must reuse or derive from\
-      \ the stable `runners.codex` command/args/prompt_mode/parser/session constraints\n\
-      - parser/extraction logic must tolerate only the explicitly allowed best-effort\
-      \ cases from the foundation contract and must hard-fail deterministically for\
-      \ malformed, empty, or non-verdict output that cannot satisfy the verdict schema\n\
-      - opencode/codex capability distinctions must remain explicit; do not silently\
-      \ treat best-effort extraction as native structured output\n\n## Failure-mode\
-      \ checklist\n- relative vs absolute runner config resolution\n- missing parser\
-      \ or unsupported runner capability fallback behavior\n- partial JSONL stream\
-      \ with only lifecycle events and no verdict payload\n- empty output, malformed\
-      \ output, or truncated verdict payload\n- stale judge-local defaults vs `driver.yaml`\
-      \ source-of-truth precedence\n\n## State semantics\n- `driver.yaml` runner config\
-      \ is the source of truth for codex invocation parameters\n- verdict schema validation\
-      \ must be preserved exactly\n- backward-compatible tolerance is limited to explicitly\
-      \ contracted best-effort extraction paths\n\n## Completion Criteria (stub exclusion)\n\
-      This is an IMPLEMENTATION step. Stub-only completion is NOT acceptable.\n\n\
-      ## Gate Preview (what the gate WILL reject)\n1. Codex judge path still has judge-local\
-      \ command/arg divergence from `driver.yaml`\n2. Parser accepts non-verdict output\
-      \ as success\n3. Real codex judgment still dies on partial JSONL without deterministic\
-      \ classification\n4. Quality-gate-enabled judgments are not proven end-to-end\n\
-      \nOut of scope: broad runner feature expansion beyond the judge stability contract."
+      \ / judge.runner\nagent_source: default\ntags:\n  - integration\n\nFill in stub\
+      \ bodies and replace placeholder judge-path divergence with substantive codex-aligned\
+      \ invocation and parser logic within the pinned interfaces.\n\nUPSTREAM ARTIFACTS\
+      \ (from contract/test steps):\n  - src/vectl/driver/judge.py — from_step: driver-judge-hardening-foundation.contract\
+      \ — tier: contract\n  - src/vectl/driver/parsers.py — from_step: driver-judge-hardening-foundation.contract\
+      \ — tier: contract\n  - tests/test_driver_judge.py — from_step: driver-judge-hardening-structured-output.test-define-red\
+      \ — tier: test\n  - tests/test_driver_judge_runtime.py — from_step: driver-judge-hardening-structured-output.test-define-red\
+      \ — tier: test\n\nYOUR SCOPE: Replace stub markers or divergent judge-local\
+      \ wiring with working logic inside the existing Judge.judge(request) and config/parser\
+      \ signatures.\n\nDeviation protocol: If a contract artifact is wrong or incomplete,\
+      \ document a deviation record (type, what, why, impact) — do NOT silently rewrite.\n\
+      \nupstream_artifacts:\n  - path: src/vectl/driver/judge.py\n    from_step: driver-judge-hardening-foundation.contract\n\
+      \    tier: contract\n  - path: src/vectl/driver/parsers.py\n    from_step: driver-judge-hardening-foundation.contract\n\
+      \    tier: contract\n  - path: tests/test_driver_judge.py\n    from_step: driver-judge-hardening-structured-output.test-define-red\n\
+      \    tier: test\n  - path: tests/test_driver_judge_runtime.py\n    from_step:\
+      \ driver-judge-hardening-structured-output.test-define-red\n    tier: test\n\
+      \nClose the discovered codex judge-path gap and harden structured-output extraction\
+      \ without widening scope beyond judge stability.\n\nRequired implementation\
+      \ outcomes:\n- `src/vectl/driver/judge.py` MUST stop constructing a codex judge\
+      \ invocation that diverges from `driver.yaml`; judge execution must reuse or\
+      \ derive from the stable `runners.codex` command/args/prompt_mode/parser/session\
+      \ constraints\n- parser/extraction logic must tolerate only the explicitly allowed\
+      \ best-effort cases from the foundation contract and must hard-fail deterministically\
+      \ for malformed, empty, or non-verdict output that cannot satisfy the verdict\
+      \ schema\n- opencode/codex capability distinctions must remain explicit; do\
+      \ not silently treat best-effort extraction as native structured output\n\n\
+      ## Failure-mode checklist\n- relative vs absolute runner config resolution\n\
+      - missing parser or unsupported runner capability fallback behavior\n- partial\
+      \ JSONL stream with only lifecycle events and no verdict payload\n- empty output,\
+      \ malformed output, or truncated verdict payload\n- stale judge-local defaults\
+      \ vs `driver.yaml` source-of-truth precedence\n\n## State semantics\n- `driver.yaml`\
+      \ runner config is the source of truth for codex invocation parameters\n- verdict\
+      \ schema validation must be preserved exactly\n- backward-compatible tolerance\
+      \ is limited to explicitly contracted best-effort extraction paths\n\n## Completion\
+      \ Criteria (stub exclusion)\nThis is an IMPLEMENTATION step. Stub-only completion\
+      \ is NOT acceptable.\n\n## Gate Preview (what the gate WILL reject)\n1. Codex\
+      \ judge path still has judge-local command/arg divergence from `driver.yaml`\n\
+      2. Parser accepts non-verdict output as success\n3. Real codex judgment still\
+      \ dies on partial JSONL without deterministic classification\n4. Quality-gate-enabled\
+      \ judgments are not proven end-to-end\n\nOut of scope: broad runner feature\
+      \ expansion beyond the judge stability contract."
     verification: '- Main path: targeted judge tests and focused runner alignment
       tests pass
 

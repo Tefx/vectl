@@ -39617,13 +39617,13 @@ phases:
       Independence: gate-reviewer must remain independent from software-architect/python-senior.'
     verification: 'phase-check protecting driver-evolution-loop-migration.
 
-      - Planner dispatch contract and verification are both present
+      - Early planner-dispatch contract foundation is complete in the prerequisite
+      phase
 
       - Layered action registry covers runtime and planner actions in scope
 
       - No unresolved registry blocker intersects loop migration'
     depends_on:
-    - driver-evolution-action-registry.planner-dispatch-contract
     - driver-evolution-action-registry.implement-layered-registry
     - driver-evolution-action-registry.implement-planner-dispatch-registration
     - driver-evolution-action-registry.verify-planner-dispatch

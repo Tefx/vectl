@@ -40871,6 +40871,26 @@ phases:
     recovery matrix with watchdog-backed evidence.
   depends_on:
   - driver-enhancement-foundation
+  steps:
+  - id: driver-enhancement-runner-recovery.contract
+    name: Pin runner failure taxonomy and recovery matrix contract
+    status: pending
+    description: "step_type: contract\ncontract_purity: ENFORCED\ncontract_outputs:\n\
+      \  - failure_taxonomy\n  - watchdog_contract\n  - recovery_matrix\n  - fallback_boundary\n\
+      \nauthoritative_interface: recovery policy contract from `driver-enhancement-foundation.contract`\n\
+      \nPin the driver recovery contract for:\n- crash vs clean fail distinction\n\
+      - timeout vs stall vs no-progress semantics\n- watchdog ownership and thresholds\n\
+      - recovery strategy matrix across retry, fallback runner, defer, planner, and\
+      \ halt\n- future multi-runner fallback boundaries even if current production\
+      \ runner is only opencode"
+    verification: 'local-check protecting driver-enhancement-runner-recovery.impl.
+
+      - Failure classes are mutually understandable and operationally distinct
+
+      - Watchdog and fallback ownership boundaries are explicit
+
+      - Contract says when planner/escalation paths are allowed vs forbidden'
+    agent: software-architect
 - id: driver-enhancement-integration
   name: 'Driver Enhancement: Integration'
   status: locked

@@ -34386,7 +34386,7 @@ phases:
       - relevant runtime/contract tests remained green/expected profile'
   - id: driver-judgment-expansion-replan.test-replan-planner-wiring
     name: Test replan and planner wiring
-    status: pending
+    status: claimed
     description: 'step_type: test
 
 
@@ -34427,6 +34427,8 @@ phases:
     depends_on:
     - driver-judgment-expansion-replan.contract-replan-planner-wiring
     agent: python-executor
+    claimed_by: python-executor
+    claimed_at: '2026-03-28T10:22:14.796865+00:00'
   - id: driver-judgment-expansion-replan.impl-replan-planner-wiring
     name: Implement replan and planner wiring
     status: pending

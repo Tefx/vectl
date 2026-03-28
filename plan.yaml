@@ -40493,6 +40493,24 @@ phases:
     depends_on:
     - driver-enhancement-foundation.architecture-basis
     agent: software-architect
+  - id: driver-enhancement-foundation.gate
+    name: Gate enhancement foundation readiness
+    status: pending
+    description: 'step_type: gate
+
+      Gate the architecture and contract foundation before implementation fan-out.'
+    verification: 'phase-check protecting driver-enhancement-observability, driver-enhancement-streaming-progress,
+      and driver-enhancement-runner-recovery.
+
+      - Approved architecture basis exists
+
+      - Contract set is sufficient for downstream test and implementation steps
+
+      - No blocking ownership ambiguity remains'
+    depends_on:
+    - driver-enhancement-foundation.architecture-basis
+    - driver-enhancement-foundation.contract
+    agent: gate-reviewer
 - id: driver-enhancement-observability
   name: 'Driver Enhancement: Observability'
   status: locked

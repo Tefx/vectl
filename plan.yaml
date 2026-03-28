@@ -32838,7 +32838,7 @@ phases:
       - DRIVER-BLUEPRINT.md invocation protocol section'
   - id: driver-judgment-runtime-minimal.test-judge
     name: Test judge invocation
-    status: pending
+    status: claimed
     description: 'step_type: test
 
 
@@ -32890,6 +32890,8 @@ phases:
     depends_on:
     - driver-judgment-runtime-minimal.contract-judge
     agent: python-executor
+    claimed_by: python-executor
+    claimed_at: '2026-03-28T07:50:26.861231+00:00'
   - id: driver-judgment-runtime-minimal.impl-judge
     name: Implement judge invocation
     status: pending

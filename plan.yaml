@@ -42972,6 +42972,42 @@ phases:
     depends_on:
     - driver-continuity-authority-ledger.test-define-red
     agent: python-senior
+  - id: driver-continuity-authority-ledger.verify
+    name: Verify durable continuity authority and ledger
+    status: pending
+    description: 'step_type: verification
+
+      As an INDEPENDENT TESTER (integration-verifier), validate the durable continuity
+      authority, ledger writes, and minimum recovery-grade journal from a fresh perspective.
+
+
+      YOUR GOAL IS TO FIND PROBLEMS, not to confirm it works.
+
+
+      Test for:
+
+      - Happy path: successful step completion remains resumable with durable evidence
+
+      - Edge cases: failed step, aborted run, crash-adjacent interruption, and stale
+      ledger recovery
+
+      - Error scenarios: claims/plan mismatch during recovery and missing journal
+      segments
+
+
+      Independence Level: L2
+
+      Verification scope: phase-check protecting driver-continuity-authority-ledger.gate
+      and downstream driver-continuity-restart-recovery.'
+    verification: '- Execute targeted persistence/recovery tests and inspect actual
+      continuity artifacts
+
+      - Confirm evidence exists for success, failure, abort, and interrupted transitions
+
+      - Report whether any double-truth or missing-journal paths remain'
+    depends_on:
+    - driver-continuity-authority-ledger.impl
+    agent: integration-verifier
 - id: driver-continuity-capability-safety
   name: 'Driver Continuity: Capability & Replay Safety'
   status: locked

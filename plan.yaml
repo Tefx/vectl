@@ -38196,25 +38196,6 @@ phases:
     depends_on:
     - driver-debt-policy-extraction.impl
     agent: integration-verifier
-  - id: driver-debt-policy-extraction.freeze
-    name: Freeze snapshot for policy extraction gate
-    status: pending
-    description: 'step_type: verification
-
-      Verification scope: phase-check protecting driver-debt-policy-extraction.gate.
-
-
-      Freeze the policy-extraction snapshot before gate review.
-
-      Required evidence: git rev-parse HEAD, clean status, environment declaration,
-      and no-change statement.'
-    verification: '- Freeze evidence complete before gate'
-    refs:
-    - src/vectl/driver/policy.py
-    - src/vectl/driver/loop.py
-    depends_on:
-    - driver-debt-policy-extraction.impl
-    agent: integration-verifier
   - id: driver-debt-policy-extraction.gate
     name: Gate policy extraction phase
     status: pending

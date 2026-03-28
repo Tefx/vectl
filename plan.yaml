@@ -39760,6 +39760,52 @@ phases:
     depends_on:
     - driver-evolution-loop-migration.implement-loop-handlers
     agent: integration-verifier
+  - id: driver-evolution-loop-migration.gate
+    name: Gate loop migration and wiring
+    status: pending
+    description: 'step_type: gate
+
+      Gate review: verify the loop-migration phase completion and quality.
+
+
+      review_depth: THOROUGH
+
+      review_depth_rationale:
+
+      - phase changes the runnable driver surface and the main loop execution model
+
+      - planner dispatch is in the critical path
+
+      - system wiring and full-plan regression evidence both matter here
+
+
+      cross_cutting_focus:
+
+      - loop.py remains a stable orchestration skeleton
+
+      - registry-backed handlers own migrated actions
+
+      - planner dispatch stays first-class in the runnable path
+
+      - liveness and full-plan-check findings are dispositioned before review
+
+
+      Independence: gate-reviewer must remain independent from software-architect/python-senior/integration-verifier/blind-tester.'
+    verification: 'phase-check protecting driver-evolution-review.
+
+      - Runnable driver surface has system-wiring and liveness evidence
+
+      - Full-plan-check findings are either remediated or shown not to intersect final
+      review
+
+      - No unresolved blocker intersects the final review phase'
+    depends_on:
+    - driver-evolution-loop-migration.contract
+    - driver-evolution-loop-migration.implement-loop-handlers
+    - driver-evolution-loop-migration.system-wiring
+    - driver-evolution-loop-migration.liveness-probe
+    - driver-evolution-loop-migration.full-plan-check
+    agent: gate-reviewer
 - id: driver-evolution-review
   name: 'Driver Evolution: Review'
   status: locked

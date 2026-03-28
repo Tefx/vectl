@@ -31849,7 +31849,7 @@ phases:
       \ runners.py file-size threshold reported for later refactor consideration"
   - id: driver-execution-infra.verify-runners-real-cli-path
     name: Verify runners real CLI path
-    status: pending
+    status: claimed
     description: 'step_type: verification
 
       Verification scope: phase-check protecting driver-execution-infra.gate.
@@ -31876,6 +31876,8 @@ phases:
     depends_on:
     - driver-execution-infra.impl-runners-core
     agent: integration-verifier
+    claimed_by: integration-verifier
+    claimed_at: '2026-03-28T03:13:36.862996+00:00'
   - id: driver-execution-infra.wiring-audit
     name: Execution infrastructure wiring audit
     status: pending

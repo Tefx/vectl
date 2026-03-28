@@ -38080,7 +38080,7 @@ phases:
     - src/vectl/cli.py
     - docs/DRIVER-ARCHITECTURE.md
     depends_on:
-    - driver-debt-cli-entrypoint-unification.freeze
+    - driver-debt-cli-entrypoint-unification.impl
     agent: spec-verifier
   - id: driver-debt-cli-entrypoint-unification.gate
     name: Gate CLI entrypoint unification

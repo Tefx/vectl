@@ -36921,7 +36921,7 @@ phases:
     agent: doc-reviewer
   - id: driver-deep-review.architecture-review
     name: Deep review architecture and concurrency audit
-    status: pending
+    status: claimed
     description: 'step_type: review
 
 
@@ -36945,6 +36945,8 @@ phases:
     depends_on:
     - driver-deep-review.wiring-audit
     agent: software-architect
+    claimed_by: software-architect
+    claimed_at: '2026-03-28T13:48:24.210837+00:00'
   - id: driver-deep-review.contract-strength
     name: Deep review contract strength audit
     status: pending

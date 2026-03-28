@@ -24,6 +24,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
+import src.vectl.driver.loop as loop_module
 from src.vectl.driver.config import (
     DriverConfig,
     JudgeConfig,
@@ -51,6 +52,7 @@ from src.vectl.driver.observe import FileObserver
 from src.vectl.driver.runners import Runner
 from src.vectl.driver.session import SessionPool
 from src.vectl.driver.types import CompletedEntry, DriverState, RunnerResult, RunnerStatus
+from vectl.models import DecideOutput
 
 
 # =============================================================================
@@ -87,7 +89,7 @@ def driver_config(tmp_path: Path) -> DriverConfig:
 
 
 @pytest.fixture
-def mock_runner() -> Runner:
+def mock_runner() -> Any:
     """Mock runner for single-runner happy path."""
 
     class MockRunnerHandle:
@@ -823,6 +825,69 @@ class TestHandleComplete:
             plan_path=plan_path,
         )
         # Expected: NotImplementedError stub until impl
+
+
+class TestDecideStateRuntimeWiring:
+    """Regression coverage for decide-state instance ownership and loop wiring."""
+
+    def test_driver_state_decide_state_is_instance_local(self) -> None:
+        """Two DriverState instances must not share decide-side mutable state."""
+        state_a = DriverState()
+        state_b = DriverState()
+
+        assert state_a.decide_state is not state_b.decide_state
+
+        state_a.decide_state.failure_counts["core.impl"] = 2
+        state_a.decide_state.completion_times["core.impl"] = 123.0
+        state_a.decide_state.session_registry["core.impl"] = "task-a"
+
+        assert state_b.decide_state.failure_counts == {}
+        assert state_b.decide_state.completion_times == {}
+        assert state_b.decide_state.session_registry == {}
+
+    def test_run_main_loop_passes_driver_decide_state_to_decide(
+        self,
+        driver_config: DriverConfig,
+        driver_state: DriverState,
+        mock_judge: Judge,
+        session_pool: SessionPool,
+        observer: FileObserver,
+        tmp_path: Path,
+    ) -> None:
+        """Main loop must provide explicit state.decide_state to decide()."""
+        captured_state: dict[str, object] = {}
+
+        def fake_decide(
+            *, running_tasks: Any, completed_results: Any, max_parallelism: int, state: Any
+        ) -> DecideOutput:
+            captured_state["state"] = state
+            captured_state["running_tasks"] = running_tasks
+            captured_state["completed_results"] = completed_results
+            captured_state["max_parallelism"] = max_parallelism
+            return DecideOutput(
+                actions=[],
+                continuation=False,
+                halt_reason="NO_EXECUTABLE_STEPS",
+                decision_log=[],
+            )
+
+        with patch.object(loop_module, "decide", side_effect=fake_decide):
+            asyncio.run(
+                loop_module._run_main_loop(
+                    state=driver_state,
+                    config=driver_config,
+                    runners={},
+                    judge=mock_judge,
+                    session_pool=session_pool,
+                    observer=observer,
+                    plan_path=tmp_path / "plan.yaml",
+                )
+            )
+
+        assert captured_state["state"] is driver_state.decide_state
+        assert captured_state["running_tasks"] == []
+        assert captured_state["completed_results"] is None
+        assert captured_state["max_parallelism"] == driver_config.orchestration.max_parallelism
 
     @pytest.mark.xfail(reason="handle_complete() not implemented (expected-red)")
     async def test_handle_complete_uses_cas_safe_lifecycle(

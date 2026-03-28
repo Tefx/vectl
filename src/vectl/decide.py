@@ -80,22 +80,14 @@ def should_reuse_session(
     if parent_step_id is None:
         return (False, None)
 
-    # Parent not in completion_times -> no session to reuse
-    if parent_step_id not in decision_state.completion_times:
+    task_id = decision_state.reusable_session(
+        parent_step_id=parent_step_id,
+        now=time.time(),
+        reuse_ttl=REUSE_TTL,
+    )
+    if task_id is None:
         return (False, None)
-
-    # Check TTL
-    completion_time = decision_state.completion_times[parent_step_id]
-    elapsed = time.time() - completion_time
-    if elapsed > REUSE_TTL:
-        return (False, None)
-
-    # No task_id in registry -> cannot reuse
-    if parent_step_id not in decision_state.session_registry:
-        return (False, None)
-
-    # Session is available for reuse
-    return (True, decision_state.session_registry[parent_step_id])
+    return (True, task_id)
 
 
 def compute_continuation(
@@ -168,8 +160,11 @@ def decide(
     if completed_results:
         for result in completed_results:
             # Record completion time for session reuse
-            decision_state.completion_times[result.step_id] = time.time()
-            decision_state.session_registry[result.step_id] = result.task_id
+            decision_state.record_completion(
+                step_id=result.step_id,
+                task_id=result.task_id,
+                completed_at=time.time(),
+            )
 
             if result.status == "SUCCESS":
                 # Create complete action
@@ -191,7 +186,7 @@ def decide(
                     )
                 )
                 # Reset failure count on success
-                decision_state.failure_counts.pop(result.step_id, None)
+                decision_state.reset_failure(step_id=result.step_id)
             elif result.status == "FAIL":
                 # Check if this is an expected-red step (red outcome demonstrates gap)
                 found = plan.find_step(result.step_id)
@@ -214,13 +209,12 @@ def decide(
                             )
                         )
                         # Clear any prior failure count for this step
-                        decision_state.failure_counts.pop(result.step_id, None)
+                        decision_state.reset_failure(step_id=result.step_id)
                         continue  # skip the normal FAIL path
 
                 # Default FAIL path: must_green or verify=None
                 # Track failures for escalation
-                count = decision_state.failure_counts.get(result.step_id, 0) + 1
-                decision_state.failure_counts[result.step_id] = count
+                count = decision_state.register_failure(step_id=result.step_id)
 
                 if count >= 3:
                     # Escalate after 3 failures
@@ -240,7 +234,7 @@ def decide(
                         )
                     )
                     # Reset count after escalation
-                    decision_state.failure_counts.pop(result.step_id, None)
+                    decision_state.reset_failure(step_id=result.step_id)
                 else:
                     # Wait for retry (step will be re-claimable)
                     decision_log.append(

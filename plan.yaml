@@ -33104,7 +33104,7 @@ phases:
       5. Handles timeout and parse errors per specification"
   - id: driver-judgment-runtime-minimal.contract-loop-runtime-minimal
     name: Contract loop runtime minimal
-    status: pending
+    status: claimed
     description: "step_type: contract\ncontract_purity: ENFORCED\ncontract_outputs:\n\
       \  - signatures\n  - type_defs\n  - interfaces\n  - stubs\n\nPin the minimal\
       \ runtime contract for src/vectl/driver/loop.py and src/vectl/driver/__main__.py\
@@ -33120,6 +33120,8 @@ phases:
     depends_on:
     - driver-judgment-runtime-minimal.verify-judge-structured-output-path
     agent: software-architect
+    claimed_by: software-architect
+    claimed_at: '2026-03-28T08:06:45.857048+00:00'
   - id: driver-judgment-runtime-minimal.test-loop-runtime-minimal
     name: Test loop runtime minimal
     status: pending

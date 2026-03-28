@@ -40734,24 +40734,6 @@ phases:
   depends_on:
   - driver-enhancement-foundation
   steps:
-  - id: driver-enhancement-observability.contract
-    name: Pin runtime telemetry and event schema contract
-    status: pending
-    description: "step_type: contract\ncontract_purity: ENFORCED\ncontract_outputs:\n\
-      \  - interfaces\n  - type_defs\n  - signatures\n  - stubs\nPin the post-bootstrap\
-      \ advanced telemetry contract.\n\nBootstrap-minimum recovery-grade journal fields\
-      \ are owned by driver-continuity-authority-ledger. This phase only owns additive\
-      \ long-horizon observability such as richer lifecycle analytics, progress/event\
-      \ visibility, and operator-facing telemetry expansion.\n\nNo implementation\
-      \ logic."
-    verification: 'local-check protecting driver-enhancement-observability.impl.
-
-      - Event families and field ownership are explicit
-
-      - Shared registry updates are bounded enough for a single integration surface
-
-      - Contract preserves versioned envelope semantics'
-    agent: software-architect
   - id: driver-enhancement-observability.impl
     name: Implement runtime telemetry for lifecycle dispatch and recovery
     status: pending
@@ -40927,7 +40909,6 @@ phases:
       - No blocker remains around event schema, envelope shape, or emission-hook readiness
       for downstream integration'
     depends_on:
-    - driver-enhancement-observability.contract
     - driver-enhancement-observability.impl
     - driver-enhancement-observability.vertical-slice
     - driver-enhancement-observability.verify

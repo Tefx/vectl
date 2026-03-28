@@ -34386,7 +34386,7 @@ phases:
       - relevant runtime/contract tests remained green/expected profile'
   - id: driver-judgment-expansion-replan.test-replan-planner-wiring
     name: Test replan and planner wiring
-    status: claimed
+    status: done
     description: 'step_type: test
 
 
@@ -34429,6 +34429,67 @@ phases:
     agent: python-executor
     claimed_by: python-executor
     claimed_at: '2026-03-28T10:22:14.796865+00:00'
+    done_at: '2026-03-28T10:30:13.482697+00:00'
+    evidence: 'Artifact:
+
+      - Commit: f1d988e
+
+
+      Verification:
+
+      - Run: uv run pytest tests/test_driver_replan_verdict.py -v -> 58 passed in
+      0.27s
+
+      - Run: uv run pytest tests/test_driver_judgments.py tests/test_driver_loop_contract.py
+      -v -> 65 passed in 0.28s
+
+
+      Test coverage areas:
+
+      - ReplanVerdictContract dataclass validation (verdict must be "REPLAN", planner_instruction
+      required)
+
+      - REPLAN_NON_NARROWING_RULE documentation
+
+      - PlannerDispatchRequest dataclass validation (step_id, trigger, instruction
+      propagation)
+
+      - DEFERRED_REPLAN_BRANCHES registration (5 branches, all deferred to driver-judgment-expansion-replan)
+
+      - REPLAN_PLANNER_WIRING matrix (5 contracts, all with planner_instruction_source
+      from JudgmentVerdict)
+
+      - PlannerDispatcher protocol existence
+
+      - REPLAN verdict validation (REPLAN requires planner_instruction)
+
+      - JudgmentVerdict to PlannerDispatchRequest instruction preservation
+
+      - Non-destructive step deferral (step remains claimable after planner dispatch)
+
+      - Runtime gap documentation (dispatch_planner raises NotImplementedError)
+
+      - Anti-narrowing invariants (REPLAN != REJECT/DEFER/HALT)
+
+      - Context coverage (PREFLIGHT, ESCALATION, ANOMALY)
+
+      - Gate context (GATE does NOT produce REPLAN)
+
+      - Preflight REPLAN context (before dispatch)
+
+      - Escalation REPLAN context (after threshold)
+
+
+      Spec link:
+
+      - Architecture: docs/DRIVER-ARCHITECTURE.md Section 2.10, 2.11
+
+      - Blueprint: DRIVER-BLUEPRINT.md Flow 2, Flow 3, Flow 4
+
+      - Implementation: src/vectl/driver/judgments.py ReplanVerdictContract, REPLAN_NON_NARROWING_RULE
+
+      - Implementation: src/vectl/driver/loop.py DEFERRED_REPLAN_BRANCHES, REPLAN_PLANNER_WIRING,
+      PlannerDispatchRequest'
   - id: driver-judgment-expansion-replan.impl-replan-planner-wiring
     name: Implement replan and planner wiring
     status: pending

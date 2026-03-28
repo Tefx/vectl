@@ -41438,3 +41438,11 @@ phases:
     are re-enabled.
   depends_on:
   - driver-guardrails-foundation
+- id: driver-guardrails-prompt-governance
+  name: 'Driver Guardrails: Prompt Governance'
+  status: locked
+  gate: Runtime prompt loading is package-owned, docs are mirror-only, and consistency
+    checks prevent runtime/doc drift before restored guardrails depend on the prompt
+    path.
+  depends_on:
+  - driver-guardrails-foundation

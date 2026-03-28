@@ -33651,7 +33651,7 @@ phases:
       - docs/DRIVER-ARCHITECTURE.md §2.11'
   - id: driver-judgment-runtime-minimal.retest-liveness-probe
     name: Retest liveness probe after blocker fix
-    status: pending
+    status: claimed
     description: 'step_type: test
 
       step_intent: retest_green
@@ -33687,6 +33687,8 @@ phases:
     depends_on:
     - driver-judgment-runtime-minimal.fix-liveness-probe-blockers
     agent: blind-tester
+    claimed_by: blind-tester
+    claimed_at: '2026-03-28T08:55:49.321062+00:00'
 - id: driver-multi-runner-hardening
   name: Driver Multi-Runner Hardening
   status: locked

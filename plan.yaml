@@ -39008,6 +39008,9 @@ phases:
 
       - FINAL summary-oriented requirements vs forbidden runtime-snapshot overloading
 
+      - FINAL explicitly allows optional `halt_reason` while `HALT` remains preserved
+      as a distinct event
+
       - required vs optional field boundaries for DECIDE and STEP_COMPLETED
 
       - helper-backed emission expectations at the canonical call sites
@@ -39017,6 +39020,9 @@ phases:
     verification: 'phase-check protecting driver-evolution-event-contracts.gate.
 
       - Evidence table covers FINAL, DECIDE, and STEP_COMPLETED individually
+
+      - Evidence explicitly checks that FINAL is the canonical summary event with
+      optional `halt_reason`
 
       - Verdicts use CONFORMS | DIVERGES | PARTIAL | NEEDS_TEST | NOT_FOUND | AMBIGUOUS_SPEC
       | SPEC_POSSIBLY_STALE

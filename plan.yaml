@@ -33365,7 +33365,7 @@ phases:
       \ paths."
   - id: driver-judgment-runtime-minimal.vertical-slice-runtime
     name: Early vertical slice runtime
-    status: claimed
+    status: done
     description: 'step_type: verification
 
       Verification scope: phase-check protecting driver-judgment-runtime-minimal.gate.
@@ -33398,6 +33398,46 @@ phases:
     agent: integration-verifier
     claimed_by: integration-verifier
     claimed_at: '2026-03-28T08:34:05.760781+00:00'
+    done_at: '2026-03-28T08:41:05.193823+00:00'
+    evidence: 'step_intent: Verify one real end-to-end vertical slice from python
+      -m vectl.driver entrypoint through config, loop, judge, runner, reconcile, and
+      shutdown.
+
+      expected_result: real-path green verification with explicit command/output,
+      traversed layers, and no runtime stubs.
+
+      observed_result:
+
+      - Run: uv run python /tmp/vertical_slice_test2.py -> exit 0 with full traversal
+      assertions
+
+      - Observed real subprocess runner handle + wait result
+
+      - Entrypoint/config/observer/session/judge/dispatch/reconcile/shutdown surfaces
+      traversed and evidenced
+
+      failure_alignment: N/A (green verification)
+
+      product_implementation_files_modified: none
+
+      stubs_used: NONE
+
+
+      verification_commands:
+
+      - uv run python /tmp/vertical_slice_test2.py
+
+      - uv run pytest tests/test_driver_loop_contract.py -> 4 passed
+
+      - uv run pytest tests/test_driver_runners.py::TestRunnerDispatchIntegration
+      -> 7 passed
+
+
+      spec_link:
+
+      - docs/DRIVER-ARCHITECTURE.md §2.11, §2.8, §2.3
+
+      - DRIVER-BLUEPRINT.md configuration/runtime flow sections'
   - id: driver-judgment-runtime-minimal.liveness-probe
     name: Liveness probe runtime minimal
     status: pending

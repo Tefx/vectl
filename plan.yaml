@@ -38896,46 +38896,40 @@ phases:
   - id: driver-evolution-events-foundation.implement-registry-envelope
     name: Implement event registry and versioned JSONL envelope
     status: pending
-    description: 'step_type: implementation
-
-
-      Implement the event foundation defined by the ADR.
-
-
-      Scope:
-
-      - add `src/vectl/driver/events/types.py`, `src/vectl/driver/events/registry.py`,
-      and `src/vectl/driver/events/sinks.py`
-
-      - migrate event serialization so the durable JSONL envelope is `{ts, event,
-      version, data}` with `version` at the top level
-
-      - keep `observe.py` as the append-only durable sink, but route schema/version
-      truth through the new registry
-
-      - implement the registry as a STATIC declaration table that is centralized,
-      explicit, and auditable
-
-      - preserve current append semantics and file durability behavior while moving
-      schema ownership out of scattered emit call sites
-
-
-      Failure-mode checklist:
-
-      - existing durable writes still append valid JSONL records
-
-      - missing or unknown event metadata fails at the registry boundary rather than
-      silently emitting drifted payloads
-
-      - path handling for observe sink remains unchanged
-
-      - no compatibility shim is allowed that stores `version` inside `data`
-
-      - no module-level dynamic registration API is introduced for initial rollout
-
-
-      Out-of-scope guardrail: canonical event semantics for `FINAL`, `DECIDE`, and
-      `STEP_COMPLETED` are deferred to the next phase.'
+    description: "step_type: implementation\n\nFill in stub bodies and replace placeholder\
+      \ event-foundation scaffolding with substantive registry and envelope logic\
+      \ within the pinned contract.\n\nUPSTREAM ARTIFACTS (from contract/test steps):\n\
+      \  - src/vectl/driver/events/types.py — from_step: driver-evolution-events-foundation.contract\
+      \ — tier: contract\n  - src/vectl/driver/events/registry.py — from_step: driver-evolution-events-foundation.contract\
+      \ — tier: contract\n  - src/vectl/driver/events/sinks.py — from_step: driver-evolution-events-foundation.contract\
+      \ — tier: contract\n\nYOUR SCOPE: Complete the implementation within existing\
+      \ envelope and registry signatures; do not redesign canonical event semantics,\
+      \ which belong to the next phase.\n\nDeviation protocol: If any upstream contract\
+      \ artifact is wrong or incomplete, record a deviation note with type, what,\
+      \ why, and impact; do NOT silently rewrite the event-foundation contract.\n\n\
+      upstream_artifacts:\n  - path: src/vectl/driver/events/types.py\n    from_step:\
+      \ driver-evolution-events-foundation.contract\n    tier: contract\n  - path:\
+      \ src/vectl/driver/events/registry.py\n    from_step: driver-evolution-events-foundation.contract\n\
+      \    tier: contract\n  - path: src/vectl/driver/events/sinks.py\n    from_step:\
+      \ driver-evolution-events-foundation.contract\n    tier: contract\n\nScope:\n\
+      - add `src/vectl/driver/events/types.py`, `src/vectl/driver/events/registry.py`,\
+      \ and `src/vectl/driver/events/sinks.py`\n- migrate event serialization so the\
+      \ durable JSONL envelope is `{ts, event, version, data}` with `version` at the\
+      \ top level\n- keep `observe.py` as the append-only durable sink, but route\
+      \ schema/version truth through the new registry\n- implement the registry as\
+      \ a STATIC declaration table that is centralized, explicit, and auditable\n\
+      - preserve current append semantics and file durability behavior while moving\
+      \ schema ownership out of scattered emit call sites\n\nFailure-mode checklist:\n\
+      - existing durable writes still append valid JSONL records\n- missing or unknown\
+      \ event metadata fails at the registry boundary rather than silently emitting\
+      \ drifted payloads\n- path handling for observe sink remains unchanged\n- no\
+      \ compatibility shim is allowed that stores `version` inside `data`\n- no module-level\
+      \ dynamic registration API is introduced for initial rollout\n\nOut-of-scope\
+      \ guardrail: canonical event semantics for `FINAL`, `DECIDE`, and `STEP_COMPLETED`\
+      \ are deferred to the next phase.\n\n## Completion Criteria (stub exclusion)\n\
+      This is an IMPLEMENTATION step. Stub-only completion is NOT acceptable.\nEach\
+      \ deliverable MUST contain substantive registry/envelope logic; static declarations\
+      \ without working serialization path do not satisfy this step."
     verification: 'phase-check protecting the downstream canonical-event phase.
 
       - Main path: targeted tests prove emitted JSONL records now use top-level `version`

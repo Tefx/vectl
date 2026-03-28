@@ -41123,6 +41123,59 @@ phases:
     - driver-enhancement-streaming-progress.impl
     - driver-enhancement-streaming-progress.verify
     agent: gate-reviewer
+  - id: driver-enhancement-streaming-progress.design-and-test
+    name: Design streaming boundary and write expected-red tests
+    status: pending
+    description: 'step_type: test
+
+      merged_contract_test: true
+
+      step_intent: test_define_red
+
+      expected_result: red
+
+
+      Design interface and write expected-red tests for incremental streaming and
+      progress.
+
+
+      There is no authoritative external spec that precisely pins the post-bootstrap
+      streaming/liveness interface, so contract-first would over-specify an undocumented
+      surface. This merged step owns both boundary design and red-test definition
+      on the existing runner/loop surfaces.
+
+
+      Outputs allowed:
+
+      - signatures, type notes, docstrings, and stubs on existing streaming/progress
+      surfaces only
+
+      - expected-red tests and fixtures defining the missing behavior
+
+
+      Required scope:
+
+      - define incremental JSONL consumption semantics, heartbeat/progress model,
+      and live liveness state boundaries
+
+      - preserve separation between live streaming state and final summary logic
+
+      - author expected-red tests for communicate()-only behavior, missing heartbeat/progress
+      awareness, missing last-progress signal, and missing streaming-aware loop state
+
+
+      No implementation logic beyond signatures/stubs and tests.
+
+      Evidence must include exposed_gaps and name `driver-enhancement-streaming-progress.impl`
+      as the downstream implementation owner.'
+    verification: '- Modified files are limited to tests plus minimal contract/stub
+      surfaces
+
+      - Expected-red coverage exposes the one-shot streaming gap before runtime code
+      changes
+
+      - Outputs include both boundary design notes and failing tests'
+    agent: python-senior
 - id: driver-enhancement-runner-recovery
   name: 'Driver Enhancement: Advanced Runner Recovery'
   status: locked

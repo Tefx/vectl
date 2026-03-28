@@ -39566,6 +39566,7 @@ phases:
   gate: loop.py uses registry-backed handlers, planner dispatch remains first-class,
     and the runnable driver path is proven end-to-end
   depends_on:
+  - driver-evolution-event-contracts
   - driver-evolution-action-registry
   steps:
   - id: driver-evolution-loop-migration.contract

@@ -32789,7 +32789,7 @@ phases:
       logic added here.'
   - id: driver-judgment-runtime-minimal.contract-judge
     name: Contract judge invocation
-    status: claimed
+    status: done
     description: "step_type: contract\ncontract_purity: ENFORCED\ncontract_outputs:\n\
       \  - signatures\n  - type_defs\n  - interfaces\n  - stubs\n\nPin the exact Judge\
       \ contract for src/vectl/driver/judge.py from docs/DRIVER-ARCHITECTURE.md section\
@@ -32805,6 +32805,37 @@ phases:
     agent: python-executor
     claimed_by: python-executor
     claimed_at: '2026-03-28T07:42:55.827807+00:00'
+    done_at: '2026-03-28T07:50:01.875893+00:00'
+    evidence: 'Artifact:
+
+      - Commit: 870f648
+
+
+      Verification:
+
+      - Run: uv run pyright src/vectl/driver/judge.py src/vectl/driver/judgments.py
+      src/vectl/driver/errors.py -> 0 errors, 0 warnings
+
+      - Run: uv run pytest tests/test_driver_judge.py tests/test_driver_judgments.py
+      -v --tb=short -> 105 passed
+
+      - Verified contract surface includes required APIs: Judge.__init__(config, observer),
+      await Judge.judge(request), is_enabled(judgment_type)
+
+      - Verified strict verdict schema handling strategy and timeout/parse-failure
+      behavior are pinned at contract layer
+
+      - Verified no loop runtime/orchestration decision implementation was added in
+      this contract step
+
+
+      Spec link:
+
+      - docs/DRIVER-ARCHITECTURE.md §2.10
+
+      - docs/JUDGE-AGENT-PROMPT.md
+
+      - DRIVER-BLUEPRINT.md invocation protocol section'
   - id: driver-judgment-runtime-minimal.test-judge
     name: Test judge invocation
     status: pending

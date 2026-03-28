@@ -43097,7 +43097,7 @@ phases:
       \ sections:\n  - TYPE: failure\n  - TYPE: gate"
   - id: driver-judge-hardening-foundation.retest-gate
     name: Re-gate judge hardening foundation after contract fix
-    status: pending
+    status: claimed
     description: "step_type: gate\nverification_scope: phase-check\nprotects_downstream_gates:\n\
       \  - driver-judge-hardening-structured-output.gate\n  - driver-judge-hardening-recovery-policy.gate\n\
       \  - driver-bootstrap-readiness.gate\nagent_source: default\n\nAs an INDEPENDENT\
@@ -43120,6 +43120,8 @@ phases:
     depends_on:
     - driver-judge-hardening-foundation.fix-contract-ambiguities
     agent: gate-reviewer
+    claimed_by: gate-reviewer
+    claimed_at: '2026-03-28T22:55:51.189569+00:00'
 - id: driver-judge-hardening-structured-output
   name: 'Driver Judge Hardening: Structured Output Stability'
   status: locked

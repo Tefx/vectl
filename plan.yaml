@@ -43097,7 +43097,7 @@ phases:
       \ sections:\n  - TYPE: failure\n  - TYPE: gate"
   - id: driver-judge-hardening-foundation.retest-gate
     name: Re-gate judge hardening foundation after contract fix
-    status: claimed
+    status: done
     description: "step_type: gate\nverification_scope: phase-check\nprotects_downstream_gates:\n\
       \  - driver-judge-hardening-structured-output.gate\n  - driver-judge-hardening-recovery-policy.gate\n\
       \  - driver-bootstrap-readiness.gate\nagent_source: default\n\nAs an INDEPENDENT\
@@ -43122,6 +43122,26 @@ phases:
     agent: gate-reviewer
     claimed_by: gate-reviewer
     claimed_at: '2026-03-28T22:55:51.189569+00:00'
+    done_at: '2026-03-28T22:59:56.347829+00:00'
+    evidence: "Artifact:\n- PR: f3f2a50ec2c57aa6790d42108b2583acd2377db6 (worktree\
+      \ branch)\n\nVerification:\n- Run: python3 assertions across docs/DRIVER-ARCHITECTURE.md\
+      \ and docs/JUDGE-AGENT-PROMPT.md -> PASS; all four blocker closures verified:\n\
+      \  1) codex source-of-truth/precedence and bounded divergence\n  2) capability\
+      \ matrix completeness incl. explicit Gemini status\n  3) hard-fail vs tolerated\
+      \ extraction boundary table\n  4) exact FAILURE vs GATE trigger boundary\n-\
+      \ Run: git diff <base>..HEAD --name-only -> docs/DRIVER-ARCHITECTURE.md, docs/JUDGE-AGENT-PROMPT.md,\
+      \ plan.yaml (no product code changes)\n\nSpec link:\n- docs/DRIVER-ARCHITECTURE.md\
+      \ sections:\n  - Codex invocation source of truth (normative)\n  - Runner/Judge\
+      \ capability matrix (normative)\n  - Verdict extraction boundary (hard-fail\
+      \ vs tolerant)\n  - Exact trigger rules: FAILURE vs GATE\n- docs/JUDGE-AGENT-PROMPT.md\
+      \ sections:\n  - TYPE: failure invoke-only-when + do-NOT-use boundary\n  - TYPE:\
+      \ gate invoke-only-when + do-NOT-use boundary\n- driver.yaml runners.codex authoritative\
+      \ config section\n\nTest/gate semantic reporting:\n- step_intent: Independent\
+      \ audit verifying closure of four foundation contract blockers\n- expected_result:\
+      \ All four blockers explicitly resolved with actionable contract documentation\n\
+      - observed_result: All four blockers PASS with normative sections in docs\n\
+      - failure_alignment: none\n- whether any product implementation files were modified:\
+      \ false"
 - id: driver-judge-hardening-structured-output
   name: 'Driver Judge Hardening: Structured Output Stability'
   status: locked

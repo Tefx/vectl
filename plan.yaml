@@ -42664,6 +42664,39 @@ phases:
 
       '
     agent: blind-tester
+  - id: driver-judge-hardening-review.spec-conformance
+    name: Audit judge hardening spec conformance
+    status: pending
+    description: "step_type: verification\nverification_scope: phase-check\nprotects_downstream_gates:\n\
+      \  - driver-bootstrap-readiness.gate\nindependence_level: L1\nspec_refs:\n \
+      \ - driver.yaml#judge-and-runners\n  - docs/JUDGE-AGENT-PROMPT.md#verdict-schema\n\
+      \  - docs/DRIVER-ARCHITECTURE.md#judge-runtime\nauthoritative_interface: capability\
+      \ matrix, codex invocation contract, and failure policy matrix\nagent_source:\
+      \ default\n\nSpec conformance verification via adversarial divergence hunting.\n\
+      \nFocus:\n- codex invocation path actually matches the authoritative runner\
+      \ contract from `driver.yaml`\n- capability distinctions between native structured\
+      \ output and best-effort extraction remain explicit\n- failure policy implementation\
+      \ matches the pinned retry/fallback/halt/remediation matrix\n- no bootstrap-critical\
+      \ judgment type is left without real verification ownership"
+    verification: '- Evidence table cites spec section and implementation location
+      for each critical requirement
+
+      - Divergences, if any, are explicit and blocker-class where they intersect bootstrap
+      readiness'
+    evidence_template: '## Judge Hardening Spec Conformance
+
+      | R# | Spec Section | Requirement | Implementation | Verdict | Notes |
+
+      | --- | --- | --- | --- | --- | --- |
+
+
+      ## Coverage Summary
+
+
+      ## Top Risks
+
+      '
+    agent: spec-verifier
 - id: driver-bootstrap-readiness
   name: Driver Real Bootstrap Readiness
   status: locked

@@ -37391,7 +37391,7 @@ phases:
       \ tests/test_decide.py: 18 passed\n- ruff check: All passed"
   - id: driver-debt-decision-state.test-define-red
     name: Define expected-red isolation regressions
-    status: pending
+    status: claimed
     description: 'step_type: test
 
       step_intent: test_define_red
@@ -37446,6 +37446,8 @@ phases:
     depends_on:
     - driver-debt-decision-state.contract
     agent: python-executor
+    claimed_by: python-executor
+    claimed_at: '2026-03-28T18:42:34.758138+00:00'
   - id: driver-debt-decision-state.impl
     name: Implement instance-owned DecideState plumbing
     status: pending

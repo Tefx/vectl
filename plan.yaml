@@ -39359,6 +39359,8 @@ phases:
 
       - docs/ADR-driver-evolution-foundation.md#96-handlers-receive-a-unified-runtimecontext
 
+      - docs/ADR-driver-evolution-foundation.md#104-event-registry-is-a-static-declaration-table
+
       - docs/ADR-driver-evolution-foundation.md#188-resolved-decisions
 
 
@@ -39381,6 +39383,9 @@ phases:
       - explicit coverage statement that planner dispatch is included in registry
       scope, not deferred to helper-only wiring
 
+      - registry declarations are explicit and auditable in the touched path for this
+      rollout; no dynamic registration mechanism becomes the public contract
+
 
       Authoritative interface: planner dispatch remains loop-executed, registry-backed,
       first-class, and category-explicit.'
@@ -39392,7 +39397,7 @@ phases:
       input contract, and event emission expectations
 
       - Contract explicitly states planner dispatch is inside registry coverage for
-      this rollout
+      this rollout and does not depend on dynamic registration
 
       - No runtime logic is introduced'
     agent: software-architect

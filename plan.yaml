@@ -41666,6 +41666,56 @@ phases:
     depends_on:
     - driver-guardrails-output-hardening.test-define-red
     agent: python-senior
+  - id: driver-guardrails-output-hardening.verify-failure-matrix
+    name: Verify hardened judge-output failure matrix
+    status: pending
+    description: 'step_type: verification
+
+      Verification scope: phase-check protecting driver-guardrails-preflight-restoration
+      and driver-guardrails-cold-context-restoration.
+
+
+      As an INDEPENDENT TESTER (integration-verifier), validate the hardened opencode
+      judgment path from a fresh perspective.
+
+
+      YOUR GOAL IS TO FIND PROBLEMS, not to confirm it works.
+
+
+      Test for:
+
+      - Happy path: exact JSON verdict parsing remains stable
+
+      - Edge cases: prefix/suffix text, code fences, empty output, non-JSON text,
+      truncated output, multi-object noise
+
+      - Error scenarios: ambiguous malformed output is rejected rather than silently
+      accepted
+
+
+      Independence Level: L2'
+    verification: '- Actual commands/tests for each malformed-output class are recorded
+
+      - Issues found are cataloged by severity if any remain
+
+      - Coverage justifies that restored guardrails can rely on the hardened judge
+      path'
+    evidence_template: '## Verification Report
+
+      - Tester: integration-verifier
+
+      - Commands executed:
+
+      - Happy-path result:
+
+      - Edge-case results by failure mode:
+
+      - Issues found / none:
+
+      '
+    depends_on:
+    - driver-guardrails-output-hardening.implement-opencode-hardening
+    agent: integration-verifier
 - id: driver-guardrails-prompt-governance
   name: 'Driver Guardrails: Prompt Governance'
   status: locked

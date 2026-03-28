@@ -41595,6 +41595,77 @@ phases:
 
       '
     agent: integration-verifier
+  - id: driver-guardrails-output-hardening.implement-opencode-hardening
+    name: Implement opencode judge-output hardening
+    status: pending
+    description: 'step_type: implementation
+
+
+      Implement the bounded hardening required by the foundation contract for opencode-backed
+      judgment calls.
+
+
+      Touch paths are expected to include:
+
+      - src/vectl/driver/judge.py
+
+      - src/vectl/driver/parsers.py
+
+      - src/vectl/driver/runners.py
+
+      - targeted tests under tests/test_driver_judge*.py and tests/test_driver_runners.py
+
+
+      Required scope:
+
+      - strengthen prompt-facing structured-output handling for opencode judgments
+
+      - implement parser normalization only within the approved salvage boundary
+
+      - reject ambiguous or empty responses deterministically
+
+      - preserve the exact verdict schema consumed by downstream preflight/cold_context
+      flows
+
+
+      ## Completion Criteria (stub exclusion)
+
+      This is an IMPLEMENTATION step. Stub-only completion is NOT acceptable.
+
+      Each deliverable MUST contain substantive logic that processes its inputs and
+      produces outputs that vary based on those inputs.
+
+
+      ## Known Risks
+
+      - JSON output drift across runner/parser boundaries can silently disable guardrails
+      if tolerance becomes too permissive
+
+      - Empty or fenced responses must not be interpreted as semantic ACCEPT
+
+      - Search sibling parsing paths beyond the first failing fixture; do not fix
+      only one malformed-output shape'
+    verification: '- Main path: targeted tests for valid opencode structured judgments
+      pass
+
+      - Failure path: focused regressions cover prefix/suffix text, fenced JSON, empty
+      output, non-JSON text, and truncated output
+
+      - Proof: no salvage path converts ambiguous malformed text into a semantic verdict'
+    evidence_template: '## Judge Output Hardening
+
+      - Failure-mode handling implemented:
+
+      - Commands/tests executed:
+
+      - Main-path proof:
+
+      - Highest-risk failure-path proof:
+
+      '
+    depends_on:
+    - driver-guardrails-output-hardening.test-define-red
+    agent: python-senior
 - id: driver-guardrails-prompt-governance
   name: 'Driver Guardrails: Prompt Governance'
   status: locked

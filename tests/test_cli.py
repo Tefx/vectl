@@ -3956,20 +3956,17 @@ class TestDriveCLI:
         assert result.exit_code == 0
         assert "driver.yaml" in result.output
 
-    def test_drive_raises_not_implemented(self):
-        """Verify drive command raises NotImplementedError when called.
+    def test_drive_error_on_missing_config(self):
+        """Verify drive command exits properly when config file is missing.
 
-        This is the expected-red contract test: the CLI wiring is correct,
-        but the driver implementation is not yet complete.
+        This tests the failure path: when the config file doesn't exist,
+        the command should exit with an error message.
         """
-        result = runner.invoke(app, ["drive"])
-        # Current stub raises NotImplementedError
+        result = runner.invoke(app, ["drive", "--config", "/nonexistent/path/driver.yaml"])
+        # Should fail because config doesn't exist
         assert result.exit_code != 0
-        # Check exception was raised (not in output but in exception attribute)
-        assert result.exception is not None
-        assert "NotImplementedError" in str(
-            type(result.exception).__name__
-        ) or "not yet implemented" in str(result.exception)
+        # Should show error about config file not found
+        assert "not found" in result.output.lower() or "error" in result.output.lower()
 
     def test_drive_imports_driver_loop_run(self):
         """Verify the drive command correctly imports the driver entrypoint.

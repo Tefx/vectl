@@ -3119,7 +3119,7 @@ def dashboard(
 
 
 # ---------------------------------------------------------------------------
-# vectl drive: programmatic orchestration driver (stub/signature contract)
+# vectl drive: programmatic orchestration driver
 # Ref: DRIVER-BLUEPRINT.md lines 44, 115-122
 # ---------------------------------------------------------------------------
 
@@ -3139,9 +3139,19 @@ def drive(
 
     Ref: DRIVER-BLUEPRINT.md §CLI integration
     """
+    import asyncio
+
     from vectl.driver.loop import run
 
-    # Contract: runtime entrypoint is vectl.driver.loop.run
-    # Flag surface: --config PATH (default: driver.yaml)
-    # No implementation logic beyond signature stub
-    raise NotImplementedError("vectl driver not yet implemented")
+    # Validate config path exists before attempting to run
+    if not config.exists():
+        console.print(f"[red bold]Error:[/] Config file not found: {config}")
+        raise typer.Exit(1)
+
+    # Wire to runtime entrypoint: vectl.driver.loop.run
+    # The run function is async, so we need to run it in an event loop
+    try:
+        asyncio.run(run(config))
+    except Exception as e:
+        console.print(f"[red bold]Driver error:[/] {e}")
+        raise typer.Exit(1) from e

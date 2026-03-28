@@ -33056,6 +33056,9 @@ phases:
       downstream deep review.
 
 
+      POST-IMPLEMENTATION GREEN VERIFICATION STEP.
+
+
       Verify both user-facing entrypoints:
 
       - python -m vectl.driver
@@ -33064,11 +33067,18 @@ phases:
 
 
       Evidence must show a real path through config -> loop -> judge -> runner ->
-      worktree -> reconcile/completion.'
+      worktree -> reconcile/completion.
+
+
+      This is not an expected-red step. By this point runtime wiring must pass green
+      or surface blocker-class findings.'
     verification: '- Exact commands and actual output for both entrypoints are included
 
       - Evidence shows the real end-to-end path and confirms no runtime placeholders
-      are involved'
+      are involved
+
+      - Expected result is green pass for both wired entrypoints; any red outcome
+      must be reported as blocker or should_fix debt before gate/deep review'
     depends_on:
     - driver-system-wiring.replace-stubs
     agent: integration-verifier

@@ -33553,7 +33553,7 @@ phases:
     agent: gate-reviewer
   - id: driver-judgment-runtime-minimal.fix-liveness-probe-blockers
     name: Fix liveness-probe blockers
-    status: claimed
+    status: done
     description: 'step_type: implementation
 
 
@@ -33613,6 +33613,42 @@ phases:
     agent: python-executor
     claimed_by: python-executor
     claimed_at: '2026-03-28T08:50:57.052976+00:00'
+    done_at: '2026-03-28T08:55:29.934443+00:00'
+    evidence: 'Artifact:
+
+      - Commit: 80571ec
+
+
+      Verification:
+
+      - Run: uv run python -m vectl.driver /nonexistent.yaml -> exit code 2 (ConfigError
+      path reached via module entrypoint)
+
+      - Run: uv run python -m vectl.driver --help -> usage output shown
+
+      - Run: uv run python -c "from vectl.driver.__main__ import main; main([''/nonexistent.yaml''])"
+      -> exit code 2 (consistent with module path)
+
+      - Liveness check with temp config showed runtime events and controlled execution
+      path
+
+
+      Root-cause closure:
+
+      - Added missing `if __name__ == "__main__": sys.exit(main())` guard in src/vectl/driver/__main__.py.
+
+      - Eliminated dead-on-arrival module execution path.
+
+
+      Sibling search evidence:
+
+      - Verified sibling entrypoint pattern presence (e.g., src/vectl/mcp_server.py)
+      and no additional missing-guard issue in src/vectl entrypoint surfaces.
+
+
+      Spec link:
+
+      - docs/DRIVER-ARCHITECTURE.md §2.11'
   - id: driver-judgment-runtime-minimal.retest-liveness-probe
     name: Retest liveness probe after blocker fix
     status: pending

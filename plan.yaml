@@ -42557,6 +42557,44 @@ phases:
     depends_on:
     - driver-judge-hardening-recovery-policy.test-define-red
     agent: python-senior
+  - id: driver-judge-hardening-recovery-policy.verify
+    name: Verify judgment failure handling policy
+    status: pending
+    description: "step_type: verification\nverification_scope: phase-check\nprotects_downstream_gates:\n\
+      \  - driver-judge-hardening-review.gate\n  - driver-bootstrap-readiness.gate\n\
+      independence_level: L2\nspec_refs:\n  - driver.yaml#judge\n  - docs/DRIVER-ARCHITECTURE.md#judge-runtime\n\
+      touch_paths:\n  - src/vectl/driver/judge.py\n  - src/vectl/driver/loop.py\n\
+      \  - src/vectl/driver/errors.py\nharness_refs:\n  - timeout and malformed-output\
+      \ repro cases\n  - planner remediation / escalation evidence\nauthoritative_interface:\
+      \ contracted failure disposition matrix\nagent_source: default\n\nAs an INDEPENDENT\
+      \ TESTER, validate that failure handling now follows the contracted matrix instead\
+      \ of ad hoc behavior.\n\nTest for:\n- parse failure (`JudgmentParseError`)\n\
+      - timeout / stall timeout\n- malformed output\n- empty output\n- fallback eligibility\
+      \ vs halt behavior\n\nFinding a wrong retry/fallback/halt decision is a SUCCESS\
+      \ for this verification step."
+    verification: '- Independent evidence shows each targeted failure class reaches
+      the contracted disposition
+
+      - Evidence includes actual command/test names and resulting classification
+
+      - No silent downgrade from hard-fail to tolerant success remains'
+    evidence_template: '## Failure Policy Verification
+
+      | Failure Class | Reproduction Command/Test | Observed Disposition | Expected
+      Disposition | Status |
+
+      | --- | --- | --- | --- | --- |
+
+
+      ## Planner Remediation / Escalation Evidence
+
+
+      ## Coverage Gaps
+
+      '
+    depends_on:
+    - driver-judge-hardening-recovery-policy.impl
+    agent: integration-verifier
 - id: driver-judge-hardening-review
   name: 'Driver Judge Hardening: Review'
   status: locked

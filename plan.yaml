@@ -32033,7 +32033,7 @@ phases:
       architecture references'
   - id: driver-execution-infra.spec-conformance
     name: Execution infrastructure spec conformance
-    status: pending
+    status: claimed
     description: 'step_type: verification
 
       Verification scope: phase-check protecting driver-execution-infra.gate.
@@ -32048,6 +32048,8 @@ phases:
     depends_on:
     - driver-execution-infra.wiring-audit
     agent: doc-reviewer
+    claimed_by: doc-reviewer
+    claimed_at: '2026-03-28T03:22:43.169336+00:00'
   - id: driver-execution-infra.gate
     name: Gate driver-execution-infra
     status: pending

@@ -33440,7 +33440,7 @@ phases:
       - DRIVER-BLUEPRINT.md configuration/runtime flow sections'
   - id: driver-judgment-runtime-minimal.liveness-probe
     name: Liveness probe runtime minimal
-    status: claimed
+    status: done
     description: 'step_type: verification
 
       Verification scope: phase-check protecting driver-judgment-runtime-minimal.gate.
@@ -33467,6 +33467,17 @@ phases:
     agent: blind-tester
     claimed_by: blind-tester
     claimed_at: '2026-03-28T08:41:28.519979+00:00'
+    done_at: '2026-03-28T08:50:23.291374+00:00'
+    evidence: "Liveness probe result: BLOCKER detected.\n\nIssue:\n- `python -m vectl.driver`\
+      \ exits code 0 without invoking runtime main path (DEAD_ON_ARRIVAL).\n- Root\
+      \ cause reported: missing `if __name__ == \"__main__\": sys.exit(main())` guard\
+      \ in src/vectl/driver/__main__.py.\n\nVerification evidence summary:\n- Command:\
+      \ uv run python -m vectl.driver /nonexistent.yaml -> exit 0 with no runtime\
+      \ behavior\n- Direct call to main(...) produced expected error exit path, indicating\
+      \ module execution path mismatch.\n\nDisposition:\n- Classified as blocker-class\
+      \ liveness finding.\n- Batched remediation path created:\n  - driver-judgment-runtime-minimal.fix-liveness-probe-blockers\n\
+      \  - driver-judgment-runtime-minimal.retest-liveness-probe\n- Downstream wiring-audit\
+      \ dependency rewired to block until retest completes."
   - id: driver-judgment-runtime-minimal.wiring-audit
     name: Runtime minimal wiring audit
     status: pending

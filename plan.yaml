@@ -38502,40 +38502,6 @@ phases:
   status: locked
   depends_on:
   - driver-debt-system-wiring
-  steps:
-  - id: driver-debt-doc-sync.update-docs
-    name: Sync driver docs to remediated architecture
-    status: pending
-    description: 'step_type: implementation
-
-      Verification scope: phase-check protecting driver-debt-doc-sync.gate.
-
-
-      Update documentation to match the implemented driver debt remediation.
-
-
-      Required docs to inspect/update:
-
-      - docs/DRIVER-ARCHITECTURE.md ownership boundary text for SessionPool vs DecideState
-
-      - runtime loop authority notes (reconcile-only completion sink)
-
-      - CLI entrypoint section for positional config, --config, and shared exit codes
-
-      - any code docstrings/comments that still describe handle_complete main-path
-      ownership or module-global decide state
-
-
-      Do not invent new architecture; sync docs to the approved and implemented behavior.'
-    verification: '- Docs align with implemented behavior and no stale statements
-      remain for the remediated surfaces'
-    refs:
-    - docs/DRIVER-ARCHITECTURE.md
-    - src/vectl/driver/session.py
-    - src/vectl/driver/loop.py
-    - src/vectl/driver/__main__.py
-    - src/vectl/cli.py
-    agent: doc-reviewer
 - id: driver-debt-deep-review
   name: 'Driver Debt: Deep Review'
   status: locked
@@ -38769,3 +38735,37 @@ phases:
   gate: Consolidated doc-sync + deep review after system wiring
   depends_on:
   - driver-debt-system-wiring
+  steps:
+  - id: driver-debt-doc-sync.update-docs
+    name: Sync driver docs to remediated architecture
+    status: pending
+    description: 'step_type: implementation
+
+      Verification scope: phase-check protecting driver-debt-doc-sync.gate.
+
+
+      Update documentation to match the implemented driver debt remediation.
+
+
+      Required docs to inspect/update:
+
+      - docs/DRIVER-ARCHITECTURE.md ownership boundary text for SessionPool vs DecideState
+
+      - runtime loop authority notes (reconcile-only completion sink)
+
+      - CLI entrypoint section for positional config, --config, and shared exit codes
+
+      - any code docstrings/comments that still describe handle_complete main-path
+      ownership or module-global decide state
+
+
+      Do not invent new architecture; sync docs to the approved and implemented behavior.'
+    verification: '- Docs align with implemented behavior and no stale statements
+      remain for the remediated surfaces'
+    refs:
+    - docs/DRIVER-ARCHITECTURE.md
+    - src/vectl/driver/session.py
+    - src/vectl/driver/loop.py
+    - src/vectl/driver/__main__.py
+    - src/vectl/cli.py
+    agent: doc-reviewer

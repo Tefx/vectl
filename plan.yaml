@@ -42280,6 +42280,81 @@ phases:
 
       '
     agent: python-executor
+  - id: driver-judge-hardening-structured-output.impl
+    name: Implement codex-aligned judge invocation and parser hardening
+    status: pending
+    description: "step_type: implementation\nspec_refs:\n  - driver.yaml#runners-codex-and-judge\n\
+      \  - docs/JUDGE-AGENT-PROMPT.md#verdict-schema\n  - docs/DRIVER-ARCHITECTURE.md#judge-runtime\n\
+      touch_paths:\n  - src/vectl/driver/judge.py\n  - src/vectl/driver/config.py\n\
+      \  - src/vectl/driver/runners.py\n  - src/vectl/driver/parsers.py\n  - src/vectl/driver/errors.py\n\
+      \  - tests/test_driver_judge.py\n  - tests/test_driver_judge_runtime.py\nharness_refs:\n\
+      \  - driver.yaml runner configuration\n  - real codex judge verification harness\n\
+      authoritative_interface: Judge.judge(request) and driver.yaml runners.codex\
+      \ / judge.runner\nagent_source: default\ntags:\n  - integration\n\nClose the\
+      \ discovered codex judge-path gap and harden structured-output extraction without\
+      \ widening scope beyond judge stability.\n\nRequired implementation outcomes:\n\
+      - `src/vectl/driver/judge.py` MUST stop constructing a codex judge invocation\
+      \ that diverges from `driver.yaml`; judge execution must reuse or derive from\
+      \ the stable `runners.codex` command/args/prompt_mode/parser/session constraints\n\
+      - parser/extraction logic must tolerate only the explicitly allowed best-effort\
+      \ cases from the foundation contract and must hard-fail deterministically for\
+      \ malformed, empty, or non-verdict output that cannot satisfy the verdict schema\n\
+      - opencode/codex capability distinctions must remain explicit; do not silently\
+      \ treat best-effort extraction as native structured output\n\n## Failure-mode\
+      \ checklist\n- relative vs absolute runner config resolution\n- missing parser\
+      \ or unsupported runner capability fallback behavior\n- partial JSONL stream\
+      \ with only lifecycle events and no verdict payload\n- empty output, malformed\
+      \ output, or truncated verdict payload\n- stale judge-local defaults vs `driver.yaml`\
+      \ source-of-truth precedence\n\n## State semantics\n- `driver.yaml` runner config\
+      \ is the source of truth for codex invocation parameters\n- verdict schema validation\
+      \ must be preserved exactly\n- backward-compatible tolerance is limited to explicitly\
+      \ contracted best-effort extraction paths\n\n## Completion Criteria (stub exclusion)\n\
+      This is an IMPLEMENTATION step. Stub-only completion is NOT acceptable.\n\n\
+      ## Gate Preview (what the gate WILL reject)\n1. Codex judge path still has judge-local\
+      \ command/arg divergence from `driver.yaml`\n2. Parser accepts non-verdict output\
+      \ as success\n3. Real codex judgment still dies on partial JSONL without deterministic\
+      \ classification\n4. Quality-gate-enabled judgments are not proven end-to-end\n\
+      \nOut of scope: broad runner feature expansion beyond the judge stability contract."
+    verification: '- Main path: targeted judge tests and focused runner alignment
+      tests pass
+
+      - Failure path: regression coverage proves deterministic handling for partial
+      JSONL, empty output, and malformed verdicts
+
+      - Proof: no codex judge invocation path remains detached from `driver.yaml`
+      where migration scope requires alignment'
+    evidence_template: '## Structured Output Stability Implementation
+
+      **Config reuse path**:
+
+      **Files changed**:
+
+      **Failure-path regressions added/updated**:
+
+      **Integration Evidence**
+
+      Command or test exercising the full path:
+
+      ```
+
+      <paste exact command>
+
+      ```
+
+      Actual output:
+
+      ```
+
+      <paste stdout/stderr or test output>
+
+      ```
+
+      Path exercised: driver.yaml -> config -> judge -> runner -> parser -> verdict
+
+      '
+    depends_on:
+    - driver-judge-hardening-structured-output.test-define-red
+    agent: python-senior
 - id: driver-judge-hardening-recovery-policy
   name: 'Driver Judge Hardening: Failure Handling Policy'
   status: locked

@@ -42595,6 +42595,27 @@ phases:
     depends_on:
     - driver-judge-hardening-recovery-policy.impl
     agent: integration-verifier
+  - id: driver-judge-hardening-recovery-policy.gate
+    name: Gate judge failure handling policy
+    status: pending
+    description: "step_type: gate\nreview_depth: THOROUGH\nverification_scope: phase-check\n\
+      protects_downstream_gates:\n  - driver-judge-hardening-review.gate\n  - driver-bootstrap-readiness.gate\n\
+      \nAs an INDEPENDENT REVIEWER, assess whether judge failure handling is safe\
+      \ enough for renewed bootstrap attempts.\n\nBLOCK if:\n- retry/fallback/halt/remediation\
+      \ rules remain ambiguous\n- evidence preservation is inconsistent across failure\
+      \ classes\n- hard-fail parse or empty-output cases can still slip through as\
+      \ success"
+    verification: '- Contract, tests, implementation, and independent verification
+      align on a single failure matrix
+
+      - Phase is ready for consolidated review with no unresolved bootstrap-blocking
+      ambiguity'
+    depends_on:
+    - driver-judge-hardening-recovery-policy.contract
+    - driver-judge-hardening-recovery-policy.test-define-red
+    - driver-judge-hardening-recovery-policy.impl
+    - driver-judge-hardening-recovery-policy.verify
+    agent: gate-reviewer
 - id: driver-judge-hardening-review
   name: 'Driver Judge Hardening: Review'
   status: locked

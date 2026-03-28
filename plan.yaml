@@ -42091,3 +42091,63 @@ phases:
 
       - Result:'
     agent: blind-tester
+  - id: driver-prompt-review.gate
+    name: Final gate for packaged prompt resource improvement
+    status: pending
+    description: 'Gate review: verify the packaged prompt resource improvement is
+      complete, documented, and safe.
+
+
+      review_depth: THOROUGH
+
+      review_depth_rationale:
+
+      - This branch changes runtime packaging and weak-fallback failure semantics.
+
+      - Final review must reject any remaining docs runtime dependency or hidden drift
+      path.
+
+
+      cross_cutting_focus:
+
+      - packaged resource is the only runtime prompt authority
+
+      - docs are synced as mirror/spec only
+
+      - missing/drift policy is explicit in code, tests, and docs
+
+      - verdict-facing behavior remains stable'
+    verification: '- Review evidence covers docs sync, wiring completeness, spec conformance,
+      and black-box runtime behavior.
+
+      - No blocker remains around docs dependency, package inclusion, or silent degradation.
+
+      - Improvement branch is ready without requiring a separate doc-sync phase.'
+    evidence_template: '## Final Gate Report
+
+      | Step ID | Status | Evidence Quality | Concerns |
+
+      | ------- | ------ | ---------------- | -------- |
+
+      | driver-prompt-review.update-docs |  |  |  |
+
+      | driver-prompt-review.wiring-audit |  |  |  |
+
+      | driver-prompt-review.spec-conformance |  |  |  |
+
+      | driver-prompt-review.black-box-verification |  |  |  |
+
+
+      ## Gate Decision
+
+      - OPEN or BLOCKED
+
+      - Blocking issues:
+
+      - Follow-up required:'
+    depends_on:
+    - driver-prompt-review.update-docs
+    - driver-prompt-review.wiring-audit
+    - driver-prompt-review.spec-conformance
+    - driver-prompt-review.black-box-verification
+    agent: gate-reviewer

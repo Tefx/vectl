@@ -40403,6 +40403,71 @@ phases:
     begins.
   depends_on:
   - driver-evolution-review
+  steps:
+  - id: driver-enhancement-foundation.architecture-basis
+    name: Produce architecture basis for driver enhancement wave
+    status: pending
+    description: 'step_type: planning
+
+
+      Create the approved architecture basis required before implementation DAG creation
+      for the enhancement wave.
+
+
+      Required artifact contents:
+
+      - system_layers
+
+      - source_of_truth_matrix
+
+      - service_catalog
+
+      - runtime_contract
+
+      - state_strata (intent / resolved contract / mutable runtime state / transport-session
+      state)
+
+      - transport_boundary_rules
+
+      - cross_cutting_governance for event registry, streaming reader lifecycle, watchdog
+      ownership, and recovery coordination
+
+      - shared_abstractions for heartbeat/progress snapshots, runner liveness state,
+      and recovery decisions
+
+      - module_split_recommendations
+
+      - open_questions
+
+      - readiness
+
+
+      This basis must explicitly cover:
+
+      - runner lifecycle observability
+
+      - planner dispatch observability
+
+      - recovery observability
+
+      - streaming-aware liveness
+
+      - crash/fail/timeout/stall/no-progress taxonomy
+
+      - future multi-runner fallback boundaries
+
+
+      Downstream gates protected: driver-enhancement-observability, driver-enhancement-streaming-progress,
+      driver-enhancement-runner-recovery.'
+    verification: 'local-check protecting driver-enhancement-foundation.contract.
+
+      - Architecture basis includes all required sections
+
+      - Ownership and state boundaries are explicit enough to support parallel implementation
+      phases
+
+      - Any remaining ambiguity is documented as open questions with impact'
+    agent: software-architect
 - id: driver-enhancement-observability
   name: 'Driver Enhancement: Observability'
   status: locked

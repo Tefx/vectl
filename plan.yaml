@@ -42687,29 +42687,33 @@ phases:
   - id: driver-judge-hardening-recovery-policy.impl
     name: Implement judge failure handling policy
     status: pending
-    description: 'step_type: implementation
-
-      Implement judge failure handling so outcomes are stable, structured, and consumable
-      by the continuity recovery controller.
-
-
-      Scope:
-
-      - produce the authoritative judge-side retry/fallback/halt/remediation matrix
-
-      - emit continuity-consumable outcome classes and provenance
-
-      - avoid duplicating durable resume state, startup recovery, or replay-safety
-      ownership
-
-
-      KNOWN RISKS:
-
-      - ambiguous judge output must not force continuity code to infer policy from
-      raw text
-
-      - any restart/resume behavior here must remain declarative outputs, not a second
-      recovery controller'
+    description: "step_type: implementation\n\nFill in stub bodies and replace placeholder\
+      \ failure-policy handling with working logic on the existing judge/continuity\
+      \ boundary.\n\nUPSTREAM ARTIFACTS (from merged design+test step):\n  - src/vectl/driver/judge.py\
+      \ — from_step: driver-judge-hardening-recovery-policy.design-and-test — tier:\
+      \ contract\n  - src/vectl/driver/loop.py — from_step: driver-judge-hardening-recovery-policy.design-and-test\
+      \ — tier: contract\n  - tests/test_driver_judge.py — from_step: driver-judge-hardening-recovery-policy.design-and-test\
+      \ — tier: test\n  - tests/test_driver_loop_runtime.py — from_step: driver-judge-hardening-recovery-policy.design-and-test\
+      \ — tier: test\n\nThe merged contract+test step produced both interfaces and\
+      \ tests. Your job is to make the tests pass by filling in stub bodies.\n\nDeviation\
+      \ protocol: If a contract artifact is wrong or incomplete, document a deviation\
+      \ record (type, what, why, impact) — do NOT silently rewrite.\n\nupstream_artifacts:\n\
+      \  - path: src/vectl/driver/judge.py\n    from_step: driver-judge-hardening-recovery-policy.design-and-test\n\
+      \    tier: contract\n  - path: src/vectl/driver/loop.py\n    from_step: driver-judge-hardening-recovery-policy.design-and-test\n\
+      \    tier: contract\n  - path: tests/test_driver_judge.py\n    from_step: driver-judge-hardening-recovery-policy.design-and-test\n\
+      \    tier: test\n  - path: tests/test_driver_loop_runtime.py\n    from_step:\
+      \ driver-judge-hardening-recovery-policy.design-and-test\n    tier: test\n\n\
+      Implement judge failure handling so outcomes are stable, structured, and consumable\
+      \ by the continuity recovery controller.\n\nScope:\n- produce the authoritative\
+      \ judge-side retry/fallback/halt/remediation matrix\n- emit continuity-consumable\
+      \ outcome classes and provenance\n- avoid duplicating durable resume state,\
+      \ startup recovery, or replay-safety ownership\n\nKNOWN RISKS:\n- ambiguous\
+      \ judge output must not force continuity code to infer policy from raw text\n\
+      - any restart/resume behavior here must remain declarative outputs, not a second\
+      \ recovery controller\n\n## Completion Criteria (stub exclusion)\nThis is an\
+      \ IMPLEMENTATION step. Stub-only completion is NOT acceptable.\nEach deliverable\
+      \ MUST contain substantive logic that processes judgment failures and produces\
+      \ explicit policy outcomes that vary by failure class."
     verification: '- Main path: focused failure-policy tests pass
 
       - Failure path: regressions prove correct retry/fallback/halt/remediation behavior
@@ -42729,7 +42733,7 @@ phases:
 
       '
     depends_on:
-    - driver-judge-hardening-recovery-policy.test-define-red
+    - driver-judge-hardening-recovery-policy.design-and-test
     agent: python-senior
   - id: driver-judge-hardening-recovery-policy.verify
     name: Verify judgment failure handling policy

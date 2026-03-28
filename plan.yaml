@@ -38146,7 +38146,7 @@ phases:
       - Behavior-preservation rule enforced: no policy rewrites in this step'
   - id: driver-debt-policy-extraction.tests
     name: Add behavior-lock tests for policy helpers
-    status: pending
+    status: claimed
     description: 'step_type: test
 
       step_intent: retest_green
@@ -38183,6 +38183,8 @@ phases:
     depends_on:
     - driver-debt-policy-extraction.contract
     agent: python-executor
+    claimed_by: python-executor
+    claimed_at: '2026-03-28T18:42:41.991985+00:00'
   - id: driver-debt-policy-extraction.impl
     name: Extract pure policy helpers from loop.py
     status: pending

@@ -42697,6 +42697,27 @@ phases:
 
       '
     agent: spec-verifier
+  - id: driver-judge-hardening-review.gate
+    name: Gate judge hardening review
+    status: pending
+    description: "step_type: gate\nreview_depth: THOROUGH\nreview_depth_rationale:\n\
+      \  - Judge stability gates renewed real bootstrap\n  - Real codex runner evidence\
+      \ is mandatory\n  - Failure policy intersects all downstream bootstrap attempts\n\
+      verification_scope: full-plan-check\nprotects_downstream_gates:\n  - driver-bootstrap-readiness.gate\n\
+      \nAs an INDEPENDENT REVIEWER, decide whether judge stability is now sufficient\
+      \ for another real bootstrap attempt.\n\nBLOCK if:\n- any blocking judgment\
+      \ type lacks real codex evidence\n- codex invocation can still diverge from\
+      \ `driver.yaml`\n- failure policy drift remains between contract, implementation,\
+      \ and observed behavior\n- best-effort extraction is still being treated as\
+      \ equivalent to native structured output"
+    verification: '- Consolidated review covers capability contract, real-runner matrix,
+      and failure policy alignment
+
+      - Explicit go/no-go decision for the next real bootstrap attempt is recorded'
+    depends_on:
+    - driver-judge-hardening-review.real-judgment-matrix
+    - driver-judge-hardening-review.spec-conformance
+    agent: gate-reviewer
 - id: driver-bootstrap-readiness
   name: Driver Real Bootstrap Readiness
   status: locked

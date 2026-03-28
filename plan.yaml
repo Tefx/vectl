@@ -41430,6 +41430,49 @@ phases:
     ownership, and real-bootstrap guardrail policy before any restoration work begins.
   depends_on:
   - driver-enhancement-review
+  steps:
+  - id: driver-guardrails-foundation.judge-contract
+    name: Author judge structured-output hardening contract
+    status: pending
+    description: "step_type: contract\ncontract_purity: ENFORCED\ncontract_outputs:\n\
+      \  - signatures\n  - interfaces\n  - behavioral_notes\n\nDefine the authoritative\
+      \ contract for opencode-backed judgment responses used by the driver in real\
+      \ bootstrap.\n\nAuthority:\n- DRIVER-BLUEPRINT.md / Runner Protocol & Implementations\
+      \ / Output Parsers (3 formats)\n- DRIVER-BLUEPRINT.md / Configuration Schema\
+      \ (driver.yaml)\n- docs/JUDGE-AGENT-PROMPT.md / Response Format (MANDATORY)\n\
+      \nRequired scope:\n- Pin the exact verdict JSON surface expected by Judge._parse_verdict()\n\
+      - Define which malformed outputs are salvageable parser cases vs hard runtime\
+      \ failures\n- Cover common failure modes explicitly: prefix text, suffix text,\
+      \ fenced JSON, empty output, non-JSON text, multiple objects, truncated JSONL\
+      \ stream\n- Assign source-of-truth ownership across prompt contract, parser\
+      \ behavior, runner transport, and judge normalization\n- State whether parser\
+      \ tolerance is bounded normalization or semantic recovery; do NOT allow silent\
+      \ acceptance of ambiguous output\n\nThis step MUST NOT ship runtime implementation\
+      \ logic."
+    verification: '- Contract names every required malformed-output class and its
+      disposition
+
+      - Contract pins the exact structured verdict surface used by later tests and
+      implementation
+
+      - Contract identifies the effective truth owner for prompt, parser, runner,
+      and judge responsibilities
+
+      - No product/runtime code is implemented in this step'
+    evidence_template: '## Judge Contract
+
+      - Structured verdict surface:
+
+      - Failure-mode matrix:
+
+      - Salvage vs hard-fail boundary:
+
+      - Layer ownership matrix:
+
+      - Downstream test requirements:
+
+      '
+    agent: software-architect
 - id: driver-guardrails-output-hardening
   name: 'Driver Guardrails: Judge Output Hardening'
   status: locked

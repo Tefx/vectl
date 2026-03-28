@@ -35912,7 +35912,7 @@ phases:
       \ CLI integration requirements are implemented correctly."
   - id: driver-cli-integration.liveness-probe
     name: Liveness probe vectl drive
-    status: pending
+    status: claimed
     description: 'step_type: verification
 
       Verification scope: phase-check protecting driver-cli-integration.gate.
@@ -35928,6 +35928,8 @@ phases:
     depends_on:
     - driver-cli-integration.spec-conformance
     agent: blind-tester
+    claimed_by: blind-tester
+    claimed_at: '2026-03-28T12:41:09.985251+00:00'
   - id: driver-cli-integration.gate
     name: Gate driver-cli-integration
     status: pending

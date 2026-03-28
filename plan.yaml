@@ -43614,7 +43614,7 @@ phases:
     claimed_at: '2026-03-28T22:33:02.369063+00:00'
   - id: driver-continuity-foundation.contract
     name: Pin continuity authority and capability contract
-    status: claimed
+    status: done
     description: "step_type: contract\ncontract_purity: ENFORCED\ncontract_outputs:\n\
       \  - interfaces\n  - type_defs\n  - signatures\n  - stubs\nPin the authoritative\
       \ continuity contract for:\n- single session authority after driver-debt-decision-state\n\
@@ -43635,6 +43635,19 @@ phases:
     agent: software-architect
     claimed_by: software-architect
     claimed_at: '2026-03-28T22:33:10.763284+00:00'
+    done_at: '2026-03-28T22:41:54.174561+00:00'
+    evidence: 'Added continuity authority/capability contract surfaces without runtime
+      behavior changes: `src/vectl/driver/session.py` now pins `SESSION_CONTINUITY_AUTHORITIES`;
+      `src/vectl/driver/types.py` now defines recovery-grade `ContinuityLedgerEntry`,
+      `ContinuityJournalEntry`, `ReplaySafetyEnvelope`, `ContinuityHandoff`, and startup
+      recovery controller IO dataclasses/protocol; `src/vectl/driver/runner_continuity.py`
+      now defines runner resume/persist/replay capability contracts; `docs/DRIVER-ARCHITECTURE.md`
+      documents the authoritative continuity contract; `tests/test_driver_continuity_contract.py`
+      pins signatures/fields. Verification: `uv run pytest tests/test_driver_continuity_contract.py`
+      => 7 passed. Additional guard check: `invar_guard(changed=true)` had no static
+      errors, only pre-existing/non-blocking warnings plus doctest environment import
+      issue (`PackageNotFoundError: vectl` under guard collection). No plan/orchestrator
+      files modified.'
   - id: driver-continuity-foundation.gate
     name: Gate continuity foundation
     status: pending

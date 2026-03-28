@@ -37628,6 +37628,258 @@ phases:
   status: locked
   depends_on:
   - driver-debt-decision-state
+  steps:
+  - id: driver-debt-completion-authority.contract
+    name: Pin reconcile-only completion authority contract
+    status: pending
+    description: "step_type: contract\ncontract_purity: ENFORCED\ncontract_outputs:\n\
+      \  - signatures\n  - interfaces\n  - behavioral notes\nVerification scope: phase-check\
+      \ protecting driver-debt-completion-authority.impl and gate.\n\nPin the approved\
+      \ A1 runtime authority contract.\n\nRequired contract statements:\n- driver\
+      \ runtime MUST NOT pass raw completed_results into decide() for completion action\
+      \ generation.\n- _run_main_loop() main path MUST NOT execute handle_complete()\
+      \ for runner completion.\n- wait_for_any() -> reconcile() is the sole completion/failure/session\
+      \ sink in driver runtime.\n- reconcile() owns all success/failure side effects:\
+      \ evidence judgment, complete/defer, merge, session record, cleanup, and event\
+      \ emission.\n- handle_complete() may only remain as a legacy/internal shim off\
+      \ the main runtime path, with explicit removal conditions; deletion is preferred\
+      \ if feasible.\n\nAuthoritative interface notes:\n- decide() stays available\
+      \ for dispatch continuation logic.\n- DriverState completed_queue/drain_completed\
+      \ semantics may be narrowed or removed if no longer needed by the runtime loop.\n\
+      \nKnown risks:\n- Duplicate complete_step() or duplicate STEP_COMPLETED emission\
+      \ must be treated as blocker-class regressions.\n- Failure threshold escalation\
+      \ must still occur exactly once per completed result."
+    verification: '- Contract pins a single completion sink and documents legacy-shim
+      disposition
+
+      - No implementation logic added in this step'
+    refs:
+    - src/vectl/driver/loop.py
+    - src/vectl/driver/types.py
+    - src/vectl/decide.py
+    - tests/test_driver_loop_runtime.py
+    - tests/test_driver_loop_hardening.py
+    agent: python-senior
+  - id: driver-debt-completion-authority.test-define-red
+    name: Define expected-red duplicate-completion regressions
+    status: pending
+    description: 'step_type: test
+
+      step_intent: test_define_red
+
+      expected_result: red
+
+      Verification scope: local-check protecting driver-debt-completion-authority.impl
+      and verify.
+
+
+      Add targeted tests that expose the current dual-path completion bug surface
+      before implementation.
+
+
+      Required red cases:
+
+      - One completed runner result can currently trigger duplicate completion handling
+      paths.
+
+      - The same completed result must not cause more than one complete_step() call.
+
+      - STEP_COMPLETED must not be emitted twice for one step.
+
+      - Success path still requires merge, cleanup, and session record once.
+
+      - Failure path still requires threshold escalation once.
+
+
+      Test-only scope:
+
+      - Prefer tests/test_driver_loop_runtime.py, tests/test_driver_loop_hardening.py,
+      and focused loop runtime harnesses.
+
+      - Record the exact failing counters/events.'
+    verification: '- Tests expose duplicate completion path or prove current gap before
+      implementation
+
+      - Evidence names exact duplicate counter/event conditions'
+    refs:
+    - tests/test_driver_loop_runtime.py
+    - tests/test_driver_loop_hardening.py
+    - src/vectl/driver/loop.py
+    - src/vectl/driver/types.py
+    - src/vectl/decide.py
+    depends_on:
+    - driver-debt-completion-authority.contract
+    agent: python-executor
+  - id: driver-debt-completion-authority.impl
+    name: Converge driver runtime onto reconcile-only completion sink
+    status: pending
+    description: 'step_type: implementation
+
+      Verification scope: phase-check protecting driver-debt-completion-authority.verify
+      and gate.
+
+
+      Implement the approved A1 remediation.
+
+
+      Required work:
+
+      - Stop feeding raw completed_results from _run_main_loop() into decide() for
+      completion action generation in driver runtime.
+
+      - Remove the handle_complete() main-path branch from _run_main_loop().
+
+      - Make wait_for_any() -> reconcile() the only runtime completion sink.
+
+      - Ensure reconcile() performs all success/failure side effects exactly once:
+      evidence judgment, complete/defer, merge, session record, cleanup, and events.
+
+      - Delete handle_complete() if safe; otherwise demote it to a non-runtime legacy/internal
+      shim with no main-loop callers.
+
+      - Update DriverState completed_queue/drain_completed if its old contract no
+      longer matches runtime reality.
+
+
+      Failure-mode checklist:
+
+      - same completed result must trigger complete_step() once
+
+      - STEP_COMPLETED emitted once
+
+      - success path still merges, records session, cleans worktree, and emits terminal
+      events once
+
+      - failure path still increments/escalates once per completed result
+
+      - no stale decide-side completion action remains reachable from driver runtime
+
+
+      Known risks (from project history):
+
+      - module-global mutable orchestration state and policy drift live near this
+      seam; do not reintroduce a second authority while fixing the first.
+
+      - Gate Preview: the gate will reject duplicate side effects, stale legacy branches
+      still on the main path, or success/failure asymmetry between reconcile branches.'
+    verification: '- Targeted duplicate-completion regressions pass
+
+      - Runtime path has one completion sink
+
+      - Success/failure side effects remain correct and single-fired'
+    refs:
+    - src/vectl/driver/loop.py
+    - src/vectl/driver/types.py
+    - src/vectl/decide.py
+    - tests/test_driver_loop_runtime.py
+    - tests/test_driver_loop_hardening.py
+    depends_on:
+    - driver-debt-completion-authority.test-define-red
+    agent: python-senior
+  - id: driver-debt-completion-authority.verify
+    name: Independently verify reconcile-only completion flow
+    status: pending
+    description: 'step_type: verification
+
+      independence_level: L2
+
+      Verification scope: phase-check protecting driver-debt-completion-authority.gate.
+
+
+      As an independent verifier, exercise the runtime loop around completion handling.
+
+
+      Must verify:
+
+      - completed results no longer drive decide()->complete actions on the driver
+      runtime path
+
+      - handle_complete is absent from the main path or provably unreachable there
+
+      - reconcile emits exactly one complete/defer/event outcome per result
+
+      - success path still merges/cleans/records session once
+
+      - failure path still escalates on threshold once
+
+
+      Finding bugs here is success; duplicate side effects are blocker severity.'
+    verification: '- Independent runtime-oriented test run includes exact command
+      names and outputs
+
+      - Evidence proves single-sink behavior on success and failure paths'
+    refs:
+    - src/vectl/driver/loop.py
+    - src/vectl/driver/types.py
+    - src/vectl/decide.py
+    - tests/test_driver_loop_runtime.py
+    - tests/test_driver_loop_hardening.py
+    depends_on:
+    - driver-debt-completion-authority.impl
+    agent: integration-verifier
+  - id: driver-debt-completion-authority.freeze
+    name: Freeze snapshot for completion-authority gate
+    status: pending
+    description: 'step_type: verification
+
+      Verification scope: phase-check protecting driver-debt-completion-authority.gate.
+
+
+      Freeze the completion-authority remediation before gate review.
+
+      Required evidence: git rev-parse HEAD, clean status, environment declaration,
+      and no-change statement.'
+    verification: '- Freeze evidence is complete and no code changes occur before
+      gate'
+    refs:
+    - src/vectl/driver/loop.py
+    - src/vectl/driver/types.py
+    - src/vectl/decide.py
+    depends_on:
+    - driver-debt-completion-authority.impl
+    agent: integration-verifier
+  - id: driver-debt-completion-authority.gate
+    name: Gate completion-authority convergence
+    status: pending
+    description: 'step_type: gate
+
+      Gate review for A1.
+
+
+      BLOCK if any of the following remain:
+
+      - dual completion sink in runtime
+
+      - duplicate complete_step or STEP_COMPLETED
+
+      - success path lost merge / cleanup / session recording
+
+      - failure threshold behavior regressed
+
+
+      Review depth: THOROUGH
+
+      Cross-cutting focus:
+
+      - runtime authority ownership
+
+      - duplicate side effects
+
+      - failure escalation correctness'
+    verification: '- All A1 steps complete
+
+      - Independent evidence proves reconcile-only completion authority
+
+      - No unresolved blocker remains for CLI/runtime follow-on work'
+    refs:
+    - src/vectl/driver/loop.py
+    - src/vectl/driver/types.py
+    - src/vectl/decide.py
+    - tests/test_driver_loop_runtime.py
+    depends_on:
+    - driver-debt-completion-authority.verify
+    - driver-debt-completion-authority.freeze
+    agent: gate-reviewer
 - id: driver-debt-cli-entrypoint-unification
   name: 'Driver Debt: CLI Entrypoint Unification'
   status: locked

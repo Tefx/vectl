@@ -38622,3 +38622,10 @@ phases:
     - src/vectl/driver/policy.py
     - src/vectl/decision_state.py
     agent: wiring-auditor
+- id: driver-evolution-events-foundation
+  name: 'Driver Evolution: Events Foundation'
+  status: locked
+  gate: Versioned envelope + event registry source of truth established on top of
+    debt-remediation baseline
+  depends_on:
+  - driver-debt-review

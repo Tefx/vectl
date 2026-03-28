@@ -409,6 +409,38 @@ class DriverConfig(BaseModel):
 
 **Invariant**: `DriverConfig.fallback_runner` MUST reference a key in `DriverConfig.runners`.
 
+#### Codex invocation source of truth (normative)
+
+`driver.yaml` `runners.codex` is the **authoritative source of truth** for the
+base Codex subprocess contract: `command`, `args`, `prompt_mode`,
+`resume_command`, `session_id_regex`, and `output_parser`.
+
+All Codex invocations MUST start from that configured contract. Runtime code and
+docs MUST NOT hard-code a divergent default Codex argv.
+
+Allowed divergence from `driver.yaml` is intentionally narrow:
+
+| Divergence | Allowed | Why |
+|------------|---------|-----|
+| `{workdir}` placeholder substitution inside configured args | Yes | Config owns the template; runtime supplies the concrete path |
+| Switching from `args` to `resume_command` for an explicit resume flow | Yes | Resume is a separate configured contract, still owned by `driver.yaml` |
+| Appending a per-invocation ephemeral structured-output flag such as `--output-schema <tempfile>` for judge calls | Yes, but only for the specific judge invocation and only when `judge.structured_output` requires it | The schema file is runtime-generated and cannot live in static config |
+| Adding any other Codex flags in code/docs that are not present in `driver.yaml` or the bounded structured-output append above | No | Would create a second source of truth |
+
+Therefore, the judge contract is:
+
+1. Start from `runners.codex.args` for fresh invocations or
+   `runners.codex.resume_command` for resume invocations.
+2. Apply placeholder substitution.
+3. If structured verdict enforcement is enabled for a Codex judge call, append
+   the ephemeral schema/output-contract flag without changing the configured base
+   args.
+4. Parse output with `runners.codex.output_parser`.
+
+This resolves the ambiguity between docs and config: `driver.yaml` owns Codex
+base invocation semantics; the judge may append only per-call structured-output
+material that cannot be represented statically.
+
 **Lifecycle call convention**: All `claim_step`, `complete_step`, and `defer_step`
 calls MUST pass `claims_path=resolve_claims_path(plan_path)` to ensure claims.json
 is resolved relative to the correct plan location.
@@ -936,6 +968,54 @@ and written to a temp file at judge initialization. When structured output is
 disabled (`structured_output: false`), the judge falls back to prompt-guided
 JSON parsing from the raw text output.
 
+#### Runner/Judge capability matrix (normative)
+
+Foundation support is defined per runner role, not by ad hoc examples.
+
+**Supported execution runners**: `claude`, `opencode`, `codex`
+
+**Supported judge runners**: `claude`, `opencode`, `codex`
+
+**Gemini status**: **Deferred / excluded from foundation support** for both
+execution and judge roles. A repo may keep an experimental `runners.gemini`
+stanza for future work, but it is non-normative and MUST NOT be treated as a
+supported runner/judge combination until auth stability, non-interactive
+contract, and structured verdict extraction are explicitly ratified.
+
+| Execution runner \ Judge runner | `claude` | `opencode` | `codex` | `gemini` |
+|---------------------------------|----------|------------|---------|----------|
+| `claude` | Supported | Supported | Supported | Deferred / unsupported |
+| `opencode` | Supported | Supported | Supported | Deferred / unsupported |
+| `codex` | Supported | Supported | Supported | Deferred / unsupported |
+| `gemini` | Deferred / unsupported | Deferred / unsupported | Deferred / unsupported | Deferred / unsupported |
+
+Additional role notes:
+
+| Runner | Execution role | Judge role | Structured verdict status |
+|--------|----------------|------------|---------------------------|
+| `claude` | Included | Included | Supported via schema-backed structured output |
+| `opencode` | Included | Included | Tolerant extraction only; no schema-backed verdict guarantee in this foundation |
+| `codex` | Included | Included | Supported via schema-backed structured output appended to configured base args |
+| `gemini` | Deferred / excluded | Deferred / excluded | Not part of the normative matrix in this foundation |
+
+#### Verdict extraction boundary (hard-fail vs tolerant)
+
+This table applies to judge verdict extraction only.
+
+| Condition | Classification | Required handling |
+|-----------|----------------|-------------------|
+| Runner is in schema-enforced mode (`claude` or `codex` with structured-output enabled) and the required verdict object is absent | Hard-fail extraction | Raise `JudgmentParseError`; do not silently downgrade to tolerant parsing |
+| Schema-enforced verdict object is present but invalid against the verdict schema (missing required keys, invalid enum values, malformed JSON) | Hard-fail extraction | Raise `JudgmentParseError` |
+| More than one candidate verdict object is extracted and they disagree | Hard-fail extraction | Raise `JudgmentParseError` because the judge contract is no longer single-verdict |
+| OpenCode best-effort JSON/text extraction yields no valid verdict object | Hard-fail extraction | Raise `JudgmentParseError`; this runner has tolerant transport, not tolerant absence of verdict |
+| Valid verdict object is extracted, but ancillary metadata such as session id, token usage, or non-verdict JSONL events is missing | Tolerated extraction | Accept the verdict and log missing ancillary metadata if needed |
+| JSONL/event-stream runners emit extra chatter before or after one valid verdict object | Tolerated extraction | Ignore non-verdict frames once one valid verdict is extracted |
+| Structured-output is disabled and a runner still returns a single valid verdict after prompt-guided parsing | Tolerated extraction | Accept the verdict; parsing path is weaker but still valid |
+| Resume/session metadata cannot be extracted, but verdict extraction succeeded | Tolerated extraction | Accept the verdict; session reuse/reporting may degrade independently |
+
+Boundary rule: **tolerance applies to transport noise and ancillary metadata,
+not to verdict absence or verdict-shape violations**.
+
 #### Judge Interaction with Main Loop
 
 The judge is called **synchronously within the async loop** (awaited inline).
@@ -1001,9 +1081,9 @@ obligations during phased implementation.
 |---------------|-----------------|---------------|----------------------|------------------------|
 | `PREFLIGHT` | `handle_dispatch()` | Before dispatching an implementation step when `config.judge.preflight` is enabled, the step is implementation-shaped, and risk signals are present | Rules first (`is_impl_step`, risk-signal detection, skip lists), then judge for adequacy semantics | **Later phase**: runtime invocation in `loop.py` + `judge.py`. **This phase** owns only the contract and trigger commitment. |
 | `EVIDENCE` | `reconcile()` success path | After worker success when step has verification requirements and rule-based evidence schema checks pass | Rules first (required fields, minimum structure, parseability), then judge for adequacy/content semantics | **Later phase**: runtime invocation and reject/accept handling in `reconcile()`. **This phase** owns only the contract and required trigger point. |
-| `FAILURE` | `reconcile()` failure path; gate handling reconciliation | When a failure must be classified for provenance/disposition, especially for gate-intersection reasoning and non-blocking claims | Rules first may collect raw failure facts; judge owns provenance/disposition semantics | **Later phase**: explicit runtime classification path must be added in `reconcile()`/gate handling before any non-blocking or downstream-blocker decision is accepted. **This phase** reserves the obligation and forbids omission. |
+| `FAILURE` | `reconcile()` failure path; gate-step execution failure path | Trigger exactly when step execution did **not** produce acceptable completion evidence (runner non-zero, timeout/cancel, merge/apply failure, verification command failure, or gate step crashed before yielding a review artifact) and orchestration needs provenance/disposition classification before retry/defer/non-blocking/downstream-blocker handling | Rules first collect raw failure facts and detect that the outcome is an execution failure rather than a completed gate artifact; judge owns provenance/disposition semantics | **Later phase**: explicit runtime classification path must be added in `reconcile()`/gate-failure handling before any `non_blocking` or `downstream_blocker` conclusion is accepted. **This phase** reserves the obligation and forbids omission. |
 | `ESCALATION` | `reconcile()` failure path; `handle_escalate()` | After repeated failure reaches escalation threshold (documented as `count >= 3`) | Rules first (failure counting / threshold), then judge for retry vs switch-agent vs replan vs defer vs halt | **Later phase**: runtime escalation dispatch and verdict handling. **This phase** owns the thresholded trigger commitment and verdict surface. |
-| `GATE` | Gate handling / gate-result reconciliation | When parsed gate or freeze evidence contains blocker issues, severity classification ambiguity, downstream-blocker promotion, or freeze hard-block conditions | Rules first may parse issue structure and detect explicit hard-block invariants; judge handles blocker semantics and downstream impact | **Later phase**: runtime gate-assessment path in gate handling/reconcile. **This phase** owns the obligation that gate semantics are not collapsed into pure rule checks. |
+| `GATE` | Gate handling / gate-result reconciliation | Trigger exactly when a gate/freeze step **did** produce a review artifact (review report, parsed issues, freeze findings, or liveness audit output) and orchestration must classify blocker severity, downstream-blocker promotion, batched remediation, or freeze hard-block semantics | Rules first parse the artifact structure and detect explicit hard-block invariants; judge handles blocker semantics and downstream impact | **Later phase**: runtime gate-assessment path in gate handling/reconcile. **This phase** owns the obligation that gate semantics are not collapsed into pure rule checks. |
 | `ANOMALY` | Startup recovery | After `repair_claims()` or orphan recovery surfaces an anomaly and `config.judge.anomaly` is enabled | Rules first identify anomaly shape and candidate repair scope; judge decides safe auto-repair vs halt for structural/semantic corruption | **Later phase**: runtime startup-recovery judgment path in `run()`. **This phase** owns anomaly contract scope and safe-vs-unsafe boundary. |
 | `COLD_CONTEXT` | `handle_dispatch()` for gate/freeze steps | Before dispatching a gate/freeze step when cold-context isolation is enabled | Rules first identify gate/freeze step and assemble candidate artifacts; judge decides include/exclude pruning semantics | **Later phase**: runtime context-pruning and gate dispatch assembly. **This phase** owns the isolation obligation and required invocation point. |
 
@@ -1035,6 +1115,26 @@ bounded by the coverage matrix and may not be silently dropped:
 
 No later phase may remove one of these judgment paths without an explicit ADR or
 architecture update to this section.
+
+##### Exact trigger rules: `FAILURE` vs `GATE`
+
+This distinction is normative and removes the remaining ambiguity.
+
+| Scenario | Invoke `FAILURE`? | Invoke `GATE`? | Why |
+|----------|-------------------|----------------|-----|
+| Implementation step exits non-zero / times out / crashes | Yes | No | No completed gate artifact exists; this is an execution failure |
+| Merge/apply/reconcile path fails before step can be accepted | Yes | No | Still an execution/reconciliation failure |
+| Gate step crashes or times out before producing reviewer output | Yes | No | The system is handling failure of the gate execution itself, not gate semantics |
+| Gate reviewer completes and reports blocker / should-fix / suggestion issues | No | Yes | A gate artifact exists and now needs semantic interpretation |
+| Gate reviewer completes with ambiguous severity or pre-existing issue that may affect downstream checks | No | Yes | This is blocker semantics / downstream promotion, not execution failure classification |
+| Freeze step returns findings and one of the hard-block invariants may apply | No | Yes | Freeze semantics belong to `GATE` |
+| Verification evidence for a normal implementation step is structurally missing | No | No (`EVIDENCE`) | This is an evidence-adequacy path, not failure/gate classification |
+
+Classification rule:
+
+- Use `FAILURE` for **failed execution without a completed gate artifact**.
+- Use `GATE` for **semantic interpretation of a completed gate/freeze artifact**.
+- A single outcome MUST NOT be classified as both in the same decision point.
 
 ---
 
@@ -1582,7 +1682,7 @@ is a deterministic string template, not LLM-generated.
 
 **Open questions**:
 - ~~Exact system prompt text for the Judgment Agent~~ -- Resolved: see `JUDGE-AGENT-PROMPT.md`.
-- Whether `gemini` runner should be included in Phase 1 or deferred (marked `experimental: true` in blueprint). Recommend deferring to avoid unverified auth issues blocking Phase 1.
+- ~~Whether `gemini` runner should be included in Phase 1 or deferred~~ -- Resolved here: deferred/excluded from the normative foundation matrix until auth, non-interactive invocation, and structured verdict extraction are ratified.
 - Exact risk-signal keyword list for preflight judgment routing. Implementation detail, but should be extracted from production orchestrator logs for accuracy.
 
 **NOT addressed** (explicitly out of scope per Section 0):

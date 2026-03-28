@@ -145,6 +145,14 @@ section named.
 
 **Question**: What is the provenance and disposition of this failure?
 
+**Invoke this type only when** execution/reconciliation failed **before** the
+system obtained a completed gate/freeze review artifact. Typical triggers:
+runner non-zero exit, timeout/cancel, merge/apply failure, verification command
+failure, or a gate step crashing before reviewer output exists.
+
+**Do NOT use this type for** semantic interpretation of completed gate/freeze
+findings. That belongs to `TYPE: gate`.
+
 **Two independent axes**:
 
 **Provenance** (where it came from):
@@ -211,6 +219,14 @@ step_description, available agents.
 ### TYPE: gate
 
 **Question**: How should gate/test results be handled?
+
+**Invoke this type only when** a gate/freeze step already produced a completed
+review artifact (review report, parsed issues, freeze findings, liveness audit,
+or equivalent) and the system now needs blocker/downstream/hard-block
+semantics.
+
+**Do NOT use this type for** gate-step execution crashes/timeouts with no review
+artifact. That belongs to `TYPE: failure`.
 
 **Context provided**: gate_evidence (full reviewer output), blocker issues
 found, remaining gates in plan.

@@ -41001,41 +41001,19 @@ phases:
     status: pending
     description: 'step_type: implementation
 
-
-      Implement the runner failure and recovery hardening defined by the enhancement
-      foundation.
+      Implement post-bootstrap advanced runner recovery behavior.
 
 
       Scope:
 
-      - classify crash, clean fail, timeout, stall, and no-progress distinctly
+      - add watchdog-backed stall/no-progress/crash taxonomy and richer operator-facing
+      recovery behavior
 
-      - add watchdog / heartbeat-driven liveness checks where the contract assigns
-      ownership
+      - build on top of the continuity-owned bootstrap minimum for resume capability,
+      replay safety, and startup recovery
 
-      - encode a recovery policy matrix for retry, fallback runner, defer, planner,
-      and halt
-
-      - preserve a future-ready fallback boundary even if only opencode is active
-      today
-
-
-      ## Gate Preview (what the gate WILL reject)
-
-      1. Recovery logic that collapses crash / fail / timeout / stall into one bucket
-
-      2. Watchdog logic without evidence of heartbeat or no-progress reasoning
-
-      3. Fallback policy that cannot explain why planner/defer/halt choices differ
-      by failure class
-
-
-      ## Completion Criteria (stub exclusion)
-
-      This is an IMPLEMENTATION step. Stub-only completion is NOT acceptable.
-
-      Each deliverable MUST contain substantive logic that varies by failure class
-      and recovery decision.'
+      - do not duplicate ownership of durable continuity state, restart recovery controller,
+      or minimum recovery journal'
     verification: 'phase-check protecting driver-enhancement-runner-recovery.verify.
 
       - Main path: focused tests prove each failure class maps to the intended recovery

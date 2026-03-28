@@ -34696,7 +34696,7 @@ phases:
       - TestVerdictConstructionPerType (8 tests)'
   - id: driver-judgment-expansion-replan.impl-gate-chain-flow
     name: Implement full gate-chain and remediation flow
-    status: claimed
+    status: done
     description: "step_type: implementation\n\ntags:\n  - integration\n\nImplement\
       \ the remaining judgment-expansion and remediation wiring in src/vectl/driver/loop.py\
       \ and related driver modules.\n\n## Gate Preview (what the gate WILL reject)\n\
@@ -34717,6 +34717,58 @@ phases:
     agent: python-senior
     claimed_by: python-senior
     claimed_at: '2026-03-28T10:51:53.306117+00:00'
+    done_at: '2026-03-28T11:06:32.002271+00:00'
+    evidence: 'Artifact:
+
+      - Commit: 29eaed0
+
+
+      Verification:
+
+      - Run: uv run ruff check src/vectl/driver/loop.py src/vectl/driver/types.py
+      tests/test_driver_loop_hardening.py -> passed (0 issues)
+
+      - Run: uv run pytest -q tests/test_driver_loop_hardening.py tests/test_driver_loop_contract.py
+      tests/test_driver_judgment_expansion_flow.py tests/test_driver_judgment_expansion_contract.py
+      tests/test_driver_replan_verdict.py tests/test_driver_impl.py tests/test_driver_loop_runtime.py
+      -> 173 passed, 25 xfailed, 0 failed
+
+      - Run: uv run mypy src/vectl/driver/loop.py src/vectl/driver/types.py tests/test_driver_loop_hardening.py
+      -> existing repo/module-path issue (unrelated to this change)
+
+
+      Spec link:
+
+      - docs/JUDGE-AGENT-PROMPT.md §TYPE: failure (gate-intersection, downstream_blocker),
+      §TYPE: gate (batched blocker+should_fix remediation), §TYPE: anomaly, §TYPE:
+      cold_context
+
+      - docs/DRIVER-ARCHITECTURE.md §2.10 judgment boundary + explicit coverage matrix,
+      §2.11 loop runtime trigger ownership
+
+      - DRIVER-BLUEPRINT.md Flow 3 (reconcile failure/escalation), Flow 4 (gate failure
+      -> fix+retest chain)
+
+
+      Delivered:
+
+      - FAILURE judgment wiring in reconcile() with remaining required-check enumeration,
+      downstream-blocker detection, planner follow-up routing
+
+      - GATE remediation wiring in reconcile() for gate/freeze steps: batch all blockers+should_fix,
+      require planner instruction on REJECT, defer for rerun
+
+      - COLD_CONTEXT wiring in handle_dispatch() for gate/freeze dispatches with required
+      context fields + verification/entry-point enrichment
+
+      - Startup ANOMALY handling in run() with ACCEPT/HALT/REPLAN handling and planner
+      routing on REPLAN
+
+      - Runtime-carried config/runner wiring on DriverState for reconcile() planner
+      follow-ups
+
+      - Hardening tests for gate blocker batching, failure classification with downstream
+      blockers, cold-context requests, anomaly request builder'
   - id: driver-judgment-expansion-replan.verify-gate-chain-e2e
     name: Verify gate-chain end-to-end
     status: pending

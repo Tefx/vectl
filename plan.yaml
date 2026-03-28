@@ -33932,7 +33932,7 @@ phases:
       - docs/DRIVER-ARCHITECTURE.md §2.8'
   - id: driver-multi-runner-hardening.impl-runners-extended
     name: Implement extended runners
-    status: claimed
+    status: done
     description: 'step_type: implementation
 
 
@@ -33951,6 +33951,38 @@ phases:
     agent: python-senior
     claimed_by: python-senior
     claimed_at: '2026-03-28T09:30:44.816439+00:00'
+    done_at: '2026-03-28T09:36:58.232452+00:00'
+    evidence: 'Artifact:
+
+      - Commit: 6dfb47e
+
+
+      Verification:
+
+      - Run: uv run pytest tests/test_driver_runners.py tests/test_driver_extended_runners.py
+      -q -> 81 passed
+
+      - Run: uv run pytest tests/test_codex_parser_behavior.py tests/test_gemini_parser_behavior.py
+      tests/test_codex_resume_behavior.py tests/test_gemini_resume_behavior.py tests/test_extended_runner_protocol.py
+      -q -> 6 passed, 42 skipped (expected-red suites)
+
+
+      Implemented:
+
+      - Codex/Gemini parsers (JSONL + JSON)
+
+      - Codex/Gemini dispatch with resume semantics
+
+      - experimental gating and factory integration
+
+      - failure-path coverage for unavailable runner and malformed output
+
+
+      Spec link:
+
+      - DRIVER-BLUEPRINT.md capabilities table and parser formats
+
+      - docs/DRIVER-ARCHITECTURE.md §2.8'
   - id: driver-multi-runner-hardening.impl-loop-hardening
     name: Implement loop fallback/session/conflict hardening
     status: pending

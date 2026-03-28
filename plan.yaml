@@ -42786,3 +42786,11 @@ phases:
   - driver-continuity-authority-ledger
   - driver-continuity-capability-safety
   - driver-judge-hardening-recovery-policy
+- id: driver-continuity-review
+  name: 'Driver Continuity: Review'
+  status: locked
+  gate: Independent recovery drills, wiring audit, and spec conformance prove the
+    driver is restart-resumable and recovery-controllable enough for another real
+    bootstrap attempt.
+  depends_on:
+  - driver-continuity-restart-recovery

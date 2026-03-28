@@ -34295,7 +34295,7 @@ phases:
       Snapshot frozen for gate validation.'
   - id: driver-multi-runner-hardening.gate
     name: Gate driver-multi-runner-hardening
-    status: pending
+    status: claimed
     description: 'step_type: gate
 
       As an INDEPENDENT REVIEWER, assess whether multi-runner and hardening behavior
@@ -34319,6 +34319,8 @@ phases:
     depends_on:
     - driver-multi-runner-hardening.freeze
     agent: gate-reviewer
+    claimed_by: gate-reviewer
+    claimed_at: '2026-03-28T09:56:07.343048+00:00'
 - id: driver-judgment-expansion-replan
   name: Driver Judgment Expansion + Replan
   status: locked

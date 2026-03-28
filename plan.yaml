@@ -42617,38 +42617,6 @@ phases:
   depends_on:
   - driver-judge-hardening-foundation
   steps:
-  - id: driver-judge-hardening-recovery-policy.contract
-    name: Pin judge failure handling policy matrix
-    status: pending
-    description: "step_type: contract\ncontract_purity: ENFORCED\ncontract_outputs:\n\
-      \  - interfaces\n  - type_defs\n  - signatures\n  - stubs\nPin the judge-side\
-      \ failure policy matrix that continuity phases will consume.\n\nScope:\n- classify\
-      \ judge outcomes and required retry/fallback/halt/remediation decisions\n- define\
-      \ the exact output fields continuity policy consumes after judge decisions\n\
-      - align terminology and provenance with restart recovery without taking ownership\
-      \ of durable resume, restart controller logic, or recovery journaling\n\nNo\
-      \ implementation logic."
-    verification: '- Matrix gives an unambiguous disposition for each failure class
-      and judgment family
-
-      - Retry/fallback/halt/planner-remediation boundaries are explicit
-
-      - No runtime control flow implementation lands in this step'
-    evidence_template: '## Judge Failure Handling Contract
-
-      | Failure Class | Judgment Types | Retry? | Fallback? | Halt? | Planner Remediation?
-      | Notes |
-
-      | --- | --- | --- | --- | --- | --- | --- |
-
-
-      ## Evidence Preservation Rules
-
-
-      ## Contract Anchors
-
-      '
-    agent: python-senior
   - id: driver-judge-hardening-recovery-policy.impl
     name: Implement judge failure handling policy
     status: pending
@@ -42754,7 +42722,6 @@ phases:
       - Phase is ready for consolidated review with no unresolved bootstrap-blocking
       ambiguity'
     depends_on:
-    - driver-judge-hardening-recovery-policy.contract
     - driver-judge-hardening-recovery-policy.impl
     - driver-judge-hardening-recovery-policy.verify
     agent: gate-reviewer

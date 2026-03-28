@@ -38333,7 +38333,7 @@ phases:
       - Behavior-preserving: no semantic drift introduced'
   - id: driver-debt-policy-extraction.verify
     name: Independently verify policy extraction drift-free
-    status: pending
+    status: claimed
     description: 'step_type: verification
 
       Verification scope: phase-check protecting driver-debt-policy-extraction.gate.
@@ -38364,6 +38364,8 @@ phases:
     depends_on:
     - driver-debt-policy-extraction.impl
     agent: integration-verifier
+    claimed_by: integration-verifier
+    claimed_at: '2026-03-28T20:12:41.529978+00:00'
   - id: driver-debt-policy-extraction.gate
     name: Gate policy extraction phase
     status: pending

@@ -33553,7 +33553,7 @@ phases:
     agent: gate-reviewer
   - id: driver-judgment-runtime-minimal.fix-liveness-probe-blockers
     name: Fix liveness-probe blockers
-    status: pending
+    status: claimed
     description: 'step_type: implementation
 
 
@@ -33611,6 +33611,8 @@ phases:
     depends_on:
     - driver-judgment-runtime-minimal.liveness-probe
     agent: python-executor
+    claimed_by: python-executor
+    claimed_at: '2026-03-28T08:50:57.052976+00:00'
   - id: driver-judgment-runtime-minimal.retest-liveness-probe
     name: Retest liveness probe after blocker fix
     status: pending

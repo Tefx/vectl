@@ -31938,7 +31938,7 @@ phases:
       - driver-execution-infra.verify-runners-real-cli-path step requirements'
   - id: driver-execution-infra.wiring-audit
     name: Execution infrastructure wiring audit
-    status: pending
+    status: claimed
     description: 'step_type: verification
 
       Verification scope: phase-check protecting driver-execution-infra.gate.
@@ -31961,6 +31961,8 @@ phases:
     depends_on:
     - driver-execution-infra.verify-runners-real-cli-path
     agent: wiring-auditor
+    claimed_by: wiring-auditor
+    claimed_at: '2026-03-28T03:18:04.320921+00:00'
   - id: driver-execution-infra.spec-conformance
     name: Execution infrastructure spec conformance
     status: pending

@@ -40538,6 +40538,47 @@ phases:
 
       - Contract preserves versioned envelope semantics'
     agent: software-architect
+  - id: driver-enhancement-observability.test-define-red
+    name: Define expected-red telemetry coverage regressions
+    status: pending
+    description: 'step_type: test
+
+      step_intent: test_define_red
+
+      expected_result: red
+
+
+      Define failing tests for the observability gaps before implementation.
+
+
+      Required exposed gaps:
+
+      - missing runner lifecycle events on the real driver path
+
+      - missing planner dispatch visibility
+
+      - missing recovery visibility
+
+      - missing heartbeat/progress event coverage
+
+      - schema-conformance failures for newly required event families
+
+
+      ## Spec-Fixture Conformance (MANDATORY)
+
+      At least one fixture MUST use the exact documented event-envelope shape from
+      the authoritative contract and cite the source section.'
+    verification: 'local-check protecting driver-enhancement-observability.impl.
+
+      - Added tests are limited to test surfaces and fixtures
+
+      - At least one fixture uses the exact event-envelope format from the contract
+
+      - Evidence lists expected_failures / exposed_gaps and the downstream implementation
+      owner'
+    depends_on:
+    - driver-enhancement-observability.contract
+    agent: python-executor
 - id: driver-enhancement-streaming-progress
   name: 'Driver Enhancement: Streaming & Progress'
   status: locked

@@ -41462,3 +41462,11 @@ phases:
   depends_on:
   - driver-guardrails-output-hardening
   - driver-guardrails-prompt-governance
+- id: driver-guardrails-system-wiring
+  name: 'Driver Guardrails: System Wiring'
+  status: locked
+  gate: Canonical runtime defaults, entrypoints, and fixtures all run with restored
+    guardrails enabled and package-owned prompt resources wired end-to-end.
+  depends_on:
+  - driver-guardrails-preflight-restoration
+  - driver-guardrails-cold-context-restoration

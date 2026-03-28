@@ -34351,7 +34351,7 @@ phases:
   steps:
   - id: driver-judgment-expansion-replan.contract-replan-planner-wiring
     name: Contract replan and planner wiring
-    status: claimed
+    status: done
     description: "step_type: contract\ncontract_purity: ENFORCED\ncontract_outputs:\n\
       \  - signatures\n  - type_defs\n  - interfaces\n  - stubs\n\nPin the exact REPLAN/planner-dispatch\
       \ wiring contract for src/vectl/driver/loop.py based on blueprint key flows,\
@@ -34363,6 +34363,27 @@ phases:
     agent: software-architect
     claimed_by: software-architect
     claimed_at: '2026-03-28T10:07:38.379233+00:00'
+    done_at: '2026-03-28T10:11:40.847036+00:00'
+    evidence: 'Contract surfaces pinned for REPLAN/planner wiring across loop + judgments
+      + architecture docs.
+
+
+      Included:
+
+      - Trigger matrix for five REPLAN-capable points
+
+      - Planner instruction ownership contract and dispatch request shape
+
+      - Explicit bounded deferrals to this phase
+
+      - Anti-narrowing rule forbidding collapse of REPLAN into reject-only behavior
+
+
+      Verification:
+
+      - py_compile for updated modules passed
+
+      - relevant runtime/contract tests remained green/expected profile'
   - id: driver-judgment-expansion-replan.test-replan-planner-wiring
     name: Test replan and planner wiring
     status: pending

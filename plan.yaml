@@ -38260,7 +38260,7 @@ phases:
     agent: gate-reviewer
 - id: driver-debt-policy-extraction
   name: 'Driver Debt: Loop Policy Extraction'
-  status: in_progress
+  status: done
   depends_on:
   - driver-deep-review
   steps:
@@ -38489,7 +38489,7 @@ phases:
       drift.'
   - id: driver-debt-policy-extraction.gate
     name: Gate policy extraction phase
-    status: claimed
+    status: done
     description: 'step_type: gate
 
       Gate review for A3.
@@ -38524,6 +38524,24 @@ phases:
     agent: gate-reviewer
     claimed_by: gate-reviewer
     claimed_at: '2026-03-28T20:21:12.201641+00:00'
+    done_at: '2026-03-28T20:28:02.857882+00:00'
+    evidence: 'Gate-reviewer SUCCESS.
+
+
+      step_intent: gate review
+
+      expected_result: green
+
+      observed_result: green
+
+      failure_alignment: none
+
+      product_files_modified: no
+
+
+      Gate verdict: PASS.
+
+      Policy extraction remains behavior-preserving and pure with no unresolved blocker.'
 - id: driver-debt-system-wiring
   name: 'Driver Debt: System Wiring'
   status: locked

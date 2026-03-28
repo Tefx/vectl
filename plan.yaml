@@ -39533,6 +39533,57 @@ phases:
     and the runnable driver path is proven end-to-end
   depends_on:
   - driver-evolution-action-registry
+  steps:
+  - id: driver-evolution-loop-migration.contract
+    name: Pin registry-backed loop migration seam
+    status: pending
+    description: 'step_type: contract
+
+      contract_purity: ENFORCED
+
+      contract_outputs:
+
+      - signatures
+
+      - type_defs
+
+      - interfaces
+
+      - stubs
+
+
+      Authoritative source: docs/ADR-driver-evolution-foundation.md#20-decision-drivers,
+      #96-target-architecture-shape, and rollout step 7.
+
+
+      Pin the migration seam for `loop.py` before implementation.
+
+      Required outputs:
+
+      - stable orchestration skeleton responsibilities retained in `loop.py`
+
+      - registry-backed handler lookup boundary
+
+      - planner dispatch, runtime execution, control, and recovery actions all remain
+      loop-executed through the same action model
+
+      - explicit system-wiring expectations for the runnable driver entrypoint
+
+
+      Authoritative interface: `loop.py` stays the orchestration skeleton; it does
+      not regain sprawling `if/elif` branching.
+
+      Touch paths: src/vectl/driver/loop.py, src/vectl/driver/action_registry.py,
+      src/vectl/driver/runtime_context.py, src/vectl/driver/__main__.py, tests/test_driver_loop_runtime.py,
+      tests/repro/driver_black_box_liveness.py.'
+    verification: 'local-check protecting loop-migration implementation.
+
+      - Contract preserves the stable skeleton + registry-backed handler split
+
+      - Contract includes runnable-entrypoint wiring expectations
+
+      - No implementation logic beyond declarations/stubs is introduced'
+    agent: software-architect
 - id: driver-evolution-review
   name: 'Driver Evolution: Review'
   status: locked

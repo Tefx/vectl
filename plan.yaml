@@ -34842,7 +34842,7 @@ phases:
       - src/vectl/driver/judgments.py'
   - id: driver-judgment-expansion-replan.spec-conformance
     name: Judgment expansion and replan spec conformance
-    status: pending
+    status: claimed
     description: 'step_type: verification
 
       Verification scope: phase-check protecting driver-judgment-expansion-replan.gate.
@@ -34866,6 +34866,8 @@ phases:
     depends_on:
     - driver-judgment-expansion-replan.expected-red-decide
     agent: doc-reviewer
+    claimed_by: doc-reviewer
+    claimed_at: '2026-03-28T11:22:21.722566+00:00'
   - id: driver-judgment-expansion-replan.freeze
     name: Freeze judgment expansion snapshot
     status: pending

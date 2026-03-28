@@ -41509,6 +41509,41 @@ phases:
 
       '
     agent: software-architect
+  - id: driver-guardrails-foundation.gate
+    name: Gate foundation contracts
+    status: pending
+    description: 'step_type: gate
+
+      Gate review: validate that the guardrail foundation contracts are sufficient
+      to unlock parallel implementation.
+
+
+      Verification scope: phase-check protecting driver-guardrails-output-hardening
+      and driver-guardrails-prompt-governance.
+
+
+      The gate reviewer MUST reject any contract that still treats leaving preflight
+      or cold_context disabled as an acceptable steady state.'
+    verification: '- Both contract steps completed with explicit authoritative sources
+
+      - Structured-output ownership and malformed-output matrix are reviewable
+
+      - Guardrail applicability matrices are explicit for real bootstrap
+
+      - No unresolved blocker leaves ''guardrails off'' as the terminal posture'
+    evidence_template: '## Foundation Gate Review
+
+      - Contract sufficiency verdict:
+
+      - Missing acceptance items:
+
+      - Ready for parallel hardening branches: YES/NO
+
+      '
+    depends_on:
+    - driver-guardrails-foundation.judge-contract
+    - driver-guardrails-foundation.guardrail-policy-contract
+    agent: gate-reviewer
 - id: driver-guardrails-output-hardening
   name: 'Driver Guardrails: Judge Output Hardening'
   status: locked

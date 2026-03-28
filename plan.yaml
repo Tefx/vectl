@@ -39204,14 +39204,16 @@ phases:
 
       - add `src/vectl/driver/runtime_context.py`
 
-      - route loop-executed handler dependencies through RuntimeContext instead of
-      ad hoc parameter bundles in the touched path
+      - route loop-executed handler dependencies through one shared RuntimeContext
+      instead of ad hoc parameter bundles in the touched path
 
       - keep `src/vectl/decision_state.py` as the decide-local mutable state carrier
       and preserve its source-of-truth role
 
       - maintain clear ownership boundaries among DriverState, DecideState, policy
       helpers, and event emission surfaces
+
+      - do NOT introduce role-specific handler contexts in the initial migration
 
 
       Failure-mode checklist:
@@ -39224,16 +39226,19 @@ phases:
 
       - context creation does not break existing driver startup/runtime semantics
 
+      - no action family receives a divergent role-specific context during this rollout
+
 
       Out-of-scope guardrail: layered action registry registration is deferred to
-      the next phase.'
+      the next phase; role-specific contexts remain explicitly deferred beyond this
+      rollout.'
     verification: 'phase-check protecting the runtime-context vertical slice and gate.
 
-      - Main path: targeted tests prove handlers receive a typed RuntimeContext while
-      DecideState remains separate
+      - Main path: targeted tests prove migrated handlers receive a shared typed RuntimeContext
+      while DecideState remains separate
 
-      - Failure path: regression covers accidental state leakage or hidden module-global
-      mutation
+      - Failure path: regression covers accidental state leakage, hidden module-global
+      mutation, or role-specific context drift
 
       - Proof: touched handlers no longer depend on untyped ad hoc input bundles'
     depends_on:

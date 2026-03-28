@@ -38629,3 +38629,10 @@ phases:
     debt-remediation baseline
   depends_on:
   - driver-debt-review
+- id: driver-evolution-event-contracts
+  name: 'Driver Evolution: Canonical Event Contracts'
+  status: locked
+  gate: Canonical FINAL/DECIDE/STEP_COMPLETED semantics and typed emit surfaces proven
+    against the ADR
+  depends_on:
+  - driver-evolution-events-foundation

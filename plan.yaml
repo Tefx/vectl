@@ -38941,6 +38941,51 @@ phases:
     depends_on:
     - driver-evolution-event-contracts.implement-canonical-events
     agent: python-executor
+  - id: driver-evolution-event-contracts.spec-conformance
+    name: Verify FINAL DECIDE STEP_COMPLETED schema conformance
+    status: pending
+    description: 'step_type: verification
+
+      expected_result: green
+
+      verification_scope: phase-check
+
+
+      Spec conformance verification via adversarial divergence hunting.
+
+      This is NOT ''do tests pass'' — it is ''does the implementation match what the
+      ADR says.''
+
+
+      SCOPE: docs/ADR-driver-evolution-foundation.md sections covering `FINAL`, `DECIDE`,
+      and `STEP_COMPLETED` only.
+
+
+      FOCUS AREAS:
+
+      - naming and field placement semantics, especially top-level `version`
+
+      - FINAL summary-oriented requirements vs forbidden runtime-snapshot overloading
+
+      - required vs optional field boundaries for DECIDE and STEP_COMPLETED
+
+      - helper-backed emission expectations at the canonical call sites
+
+
+      For EACH requirement, cite the ADR section and implementation file:line.'
+    verification: 'phase-check protecting driver-evolution-event-contracts.gate.
+
+      - Evidence table covers FINAL, DECIDE, and STEP_COMPLETED individually
+
+      - Verdicts use CONFORMS | DIVERGES | PARTIAL | NEEDS_TEST | NOT_FOUND | AMBIGUOUS_SPEC
+      | SPEC_POSSIBLY_STALE
+
+      - Any remaining divergence is explicitly dispositioned for the next phase or
+      blocks the gate'
+    depends_on:
+    - driver-evolution-event-contracts.implement-canonical-events
+    - driver-evolution-event-contracts.implement-typed-emitter
+    agent: spec-verifier
 - id: driver-evolution-runtime-context
   name: 'Driver Evolution: Runtime Context'
   status: locked

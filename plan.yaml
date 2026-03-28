@@ -39844,3 +39844,37 @@ phases:
 
       - No stale architecture statement contradicts the implementation'
     agent: doc-reviewer
+  - id: driver-evolution-review.wiring-audit
+    name: Audit evolved driver wiring completeness
+    status: pending
+    description: 'step_type: verification
+
+      expected_result: green
+
+      verification_scope: phase-check
+
+
+      Wiring completeness audit: verify every new public symbol and runtime registration
+      introduced by the ADR chain is reachable.
+
+
+      Required checks:
+
+      1. event helper and registry exports are consumed by runtime code
+
+      2. RuntimeContext is instantiated and consumed by handler execution paths
+
+      3. planner dispatch action registration is reachable from the runnable loop
+      path
+
+      4. no orphan registry entries or helper-only runtime branches remain
+
+      5. no write-only config or event fields were introduced in the touched surfaces'
+    verification: 'phase-check protecting driver-evolution-review.gate.
+
+      - Evidence uses import-trace / grep-style reachability proof, not assertions
+
+      - Orphan exports or unconsumed runtime registrations block the gate'
+    depends_on:
+    - driver-evolution-review.update-docs
+    agent: wiring-auditor

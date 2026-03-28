@@ -41454,3 +41454,11 @@ phases:
   depends_on:
   - driver-guardrails-output-hardening
   - driver-guardrails-prompt-governance
+- id: driver-guardrails-cold-context-restoration
+  name: 'Driver Guardrails: Cold Context Restoration'
+  status: locked
+  gate: cold_context is restored for real gate/review isolation with proven context-pruning
+    semantics and no warm-context contamination.
+  depends_on:
+  - driver-guardrails-output-hardening
+  - driver-guardrails-prompt-governance

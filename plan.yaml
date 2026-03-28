@@ -35272,7 +35272,7 @@ phases:
       **Existing decide tests**: 25 passed\n**Linter/type check**: All passed"
   - id: driver-judgment-expansion-replan.fix-gate-type-contract
     name: Fix GATE REJECT type contract and mypy overlap
-    status: pending
+    status: claimed
     description: 'step_type: implementation
 
       tags: [fix]
@@ -35352,6 +35352,8 @@ phases:
 
       - PlannerDispatchRequest correctly handles both REPLAN and REJECT source verdicts'
     agent: python-senior
+    claimed_by: python-senior
+    claimed_at: '2026-03-28T11:39:09.015251+00:00'
 - id: driver-cli-integration
   name: Driver CLI Integration
   status: locked

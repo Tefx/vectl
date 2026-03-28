@@ -40651,11 +40651,12 @@ phases:
 
 
       Early vertical slice: wire ONE complete driver path from entry point through
-      planner dispatch / runner execution to observable event output using real implementations.
+      planner dispatch / runner lifecycle surfaces to observable event output using
+      real implementations.
 
 
-      This step exists to catch integration drift early. MUST NOT rely on stubs or
-      summary-only evidence.
+      This step exists to catch integration drift early for observability ownership
+      only. MUST NOT rely on stubs or summary-only evidence.
 
 
       Required evidence:
@@ -40664,15 +40665,25 @@ phases:
 
       - layers traversed from entrypoint to event sink
 
-      - actual emitted lifecycle / dispatch / progress-related output
+      - actual emitted lifecycle / dispatch / observability-contract output
 
-      - explicit statement that no placeholder runtime class was used'
+      - explicit statement that no placeholder runtime class was used
+
+
+      This step is LIMITED to proving event family/schema readiness and emission-hook
+      reachability for planner dispatch and runner lifecycle surfaces. It MUST NOT
+      require fully implemented progress / heartbeat behavior or recovery behavior;
+      those proofs belong to driver-enhancement-streaming-progress and driver-enhancement-runner-recovery,
+      with cross-phase proof deferred to driver-enhancement-integration / driver-enhancement-review.'
     verification: 'phase-check protecting driver-enhancement-observability.gate.
 
-      - A real entrypoint path emits at least one lifecycle event, one planner-dispatch
-      or execution event, and one terminal event
+      - A real entrypoint path emits lifecycle / dispatch-oriented observability output
+      through the intended event surface
 
       - Evidence shows observable output, not just ''tests pass''
+
+      - Proof is limited to schema/event-surface readiness and hook reachability,
+      not full heartbeat/progress or recovery behavior
 
       - No stub-only runtime path is used'
     depends_on:

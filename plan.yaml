@@ -40247,3 +40247,10 @@ phases:
     begins.
   depends_on:
   - driver-evolution-review
+- id: driver-enhancement-observability
+  name: 'Driver Enhancement: Observability'
+  status: locked
+  gate: Runtime observability covers runner lifecycle, planner dispatch, recovery,
+    and heartbeat/progress events with schema-safe evidence.
+  depends_on:
+  - driver-enhancement-foundation

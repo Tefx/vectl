@@ -39322,6 +39322,64 @@ phases:
 
       - No runtime logic is introduced'
     agent: software-architect
+  - id: driver-evolution-action-registry.implement-layered-registry
+    name: Implement layered loop action registry
+    status: pending
+    description: 'step_type: implementation
+
+
+      Implement `src/vectl/driver/action_registry.py` as the source of truth for loop-executed
+      actions.
+
+
+      Required layers:
+
+      - execution
+
+      - planner
+
+      - control
+
+      - recovery
+
+
+      Scope:
+
+      - define action metadata shape with action type, payload contract, registered
+      handler, category, and event emission expectations
+
+      - register existing loop-executed runtime actions under the layered registry
+
+      - preserve stable `loop.py` orchestration skeleton by moving action definitions
+      out of `if/elif` growth paths
+
+
+      Failure-mode checklist:
+
+      - action metadata does not collapse categories into an unstructured string namespace
+
+      - unknown actions fail at the registry boundary
+
+      - handler registration does not depend on module-global mutable registries without
+      reset semantics
+
+      - existing runtime actions keep their behavioral contracts while moving into
+      registry form
+
+
+      Out-of-scope guardrail: full loop branching migration happens in the next phase.'
+    verification: 'phase-check protecting planner-dispatch registration and gate.
+
+      - Main path: targeted tests show execution/planner/control/recovery categories
+      are all represented
+
+      - Failure path: regression covers unknown-action rejection and registry reset/initialization
+      behavior
+
+      - Proof: action metadata is centralized in action_registry.py'
+    depends_on:
+    - driver-evolution-action-registry.planner-dispatch-contract
+    agent: python-senior
 - id: driver-evolution-loop-migration
   name: 'Driver Evolution: Loop Migration & Wiring'
   status: locked

@@ -43414,3 +43414,33 @@ phases:
 
       - Demonstrate that replay safety and capability facts influence the outcome'
     agent: blind-tester
+  - id: driver-continuity-review.wiring-audit
+    name: Audit continuity wiring completeness
+    status: pending
+    description: 'step_type: verification
+
+      Wiring completeness audit for continuity and restart recovery.
+
+
+      Verification scope: phase-check protecting driver-continuity-review.gate.
+
+
+      Required checks:
+
+      1. Every startup recovery entrypoint reaches the real continuity controller
+
+      2. Continuity ledger/journal fields consumed by recovery are actually read by
+      non-test code
+
+      3. Runner capability facts used by recovery decisions come from the authoritative
+      capability model
+
+      4. No success-only session record path remains wired as the sole source for
+      resume'
+    verification: '- Use grep/import-trace style evidence for each required check
+
+      - Report orphaned continuity exports, unconsumed recovery fields, or stub wiring
+      if found
+
+      - BLOCK if any production entrypoint still terminates without continuity recovery'
+    agent: wiring-auditor

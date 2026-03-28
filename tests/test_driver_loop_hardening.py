@@ -16,9 +16,10 @@ from src.vectl.driver.config import (
     SessionConfig,
 )
 from src.vectl.driver.errors import RunnerError
-from src.vectl.driver.judgments import JudgmentVerdict
+from src.vectl.driver.judgments import JudgmentRequest, JudgmentType, JudgmentVerdict
 from src.vectl.driver.loop import (
     PlannerDispatchRequest,
+    _build_anomaly_request,
     _cleanup_orphan_worktrees,
     _run_main_loop,
     dispatch_planner,
@@ -642,3 +643,264 @@ async def test_dispatch_planner_requires_non_empty_instruction() -> None:
             observer=observer,
             plan_path=Path("plan.yaml"),
         )
+
+
+@pytest.mark.anyio
+async def test_reconcile_gate_reject_batches_all_blockers_for_planner(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    state = DriverState()
+    observer = _RecordingObserver()
+    pool = SessionPool(SessionConfig(reuse_ttl=300))
+    config = _base_config()
+    completed = CompletedEntry(
+        step_id="quality.gate",
+        agent="python-executor",
+        runner_name="opencode",
+        result=RunnerResult(
+            status=RunnerStatus.SUCCESS,
+            session_id="ses-gate",
+            output=(
+                '{"issues": ['
+                '{"severity": "blocker", "summary": "missing branch coverage"},'
+                '{"severity": "should_fix", "summary": "flaky integration test"},'
+                '{"severity": "blocker", "summary": "unsafe migration ordering"}]}'
+            ),
+            elapsed_seconds=1.0,
+            exit_code=0,
+        ),
+        worktree_path=".vectl/worktrees/quality.gate",
+        elapsed_seconds=1.0,
+    )
+
+    class _GateJudge:
+        def is_enabled(self, judgment_type: JudgmentType) -> bool:
+            return judgment_type == JudgmentType.GATE
+
+        async def judge(self, request: object) -> JudgmentVerdict:
+            assert isinstance(request, object)
+            return JudgmentVerdict(
+                verdict="REJECT",
+                reason="Blockers remain",
+                planner_instruction="Create remediation chain",
+            )
+
+    dispatch_requests: list[PlannerDispatchRequest] = []
+
+    async def _dispatch_planner(
+        request: PlannerDispatchRequest,
+        *,
+        config: DriverConfig,
+        runners: dict[str, object],
+        observer: object,
+        plan_path: Path,
+    ) -> None:
+        dispatch_requests.append(request)
+
+    monkeypatch.setattr("src.vectl.driver.loop.load_plan_definition", lambda _p: (_FakePlan(), "h"))
+    monkeypatch.setattr("src.vectl.driver.loop.complete_step", lambda plan, *_a, **_k: plan)
+    monkeypatch.setattr("src.vectl.driver.loop.save_plan", lambda *_a, **_k: None)
+    monkeypatch.setattr("src.vectl.driver.loop.defer_step", lambda plan, *_a, **_k: plan)
+    monkeypatch.setattr("src.vectl.driver.loop.dispatch_planner", _dispatch_planner)
+
+    state.runtime_config = config
+    state.runtime_runners = cast(
+        dict[str, Any], {"opencode": _Runner("opencode"), "claude": _Runner("claude")}
+    )
+
+    await reconcile(
+        completed=completed,
+        state=state,
+        judge=cast(Any, _GateJudge()),
+        session_pool=pool,
+        observer=observer,
+        plan_path=Path("plan.yaml"),
+    )
+
+    assert len(dispatch_requests) == 1
+    instruction = dispatch_requests[0].planner_instruction
+    assert "missing branch coverage" in instruction
+    assert "flaky integration test" in instruction
+    assert "unsafe migration ordering" in instruction
+
+
+@pytest.mark.anyio
+async def test_reconcile_failure_classification_uses_remaining_gates(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    state = DriverState()
+    observer = _RecordingObserver()
+    pool = SessionPool(SessionConfig(reuse_ttl=300))
+    config = _base_config()
+    completed = CompletedEntry(
+        step_id="core.impl",
+        agent="python-executor",
+        runner_name="opencode",
+        result=RunnerResult(
+            status=RunnerStatus.FAIL,
+            session_id="ses-fail",
+            output="integration check failed",
+            elapsed_seconds=1.0,
+            exit_code=1,
+        ),
+        worktree_path=".vectl/worktrees/core.impl",
+        elapsed_seconds=1.0,
+    )
+
+    requests: list[object] = []
+    dispatch_requests: list[PlannerDispatchRequest] = []
+
+    class _FailureJudge:
+        def is_enabled(self, judgment_type: JudgmentType) -> bool:
+            return judgment_type == JudgmentType.FAILURE
+
+        async def judge(self, request: object) -> JudgmentVerdict:
+            requests.append(request)
+            return JudgmentVerdict(
+                verdict="ACCEPT",
+                reason="provenance=introduced_now, disposition=downstream_blocker",
+                planner_instruction="Add remediation before downstream gate",
+            )
+
+    async def _dispatch_planner(
+        request: PlannerDispatchRequest,
+        *,
+        config: DriverConfig,
+        runners: dict[str, object],
+        observer: object,
+        plan_path: Path,
+    ) -> None:
+        dispatch_requests.append(request)
+
+    class _StepObj:
+        def __init__(self, step_id: str, description: str = "desc") -> None:
+            self.id = step_id
+            self.description = description
+
+    class _PhaseObj:
+        def __init__(self, phase_id: str, gate: str, steps: list[_StepObj]) -> None:
+            self.id = phase_id
+            self.gate = gate
+            self.steps = steps
+
+    class _PlanWithRemainingChecks:
+        def __init__(self) -> None:
+            self.context = "ctx"
+            first = _StepObj("core.impl", "desc")
+            second = _StepObj("quality.gate", "gate step")
+            self.phases = [_PhaseObj("core", "must pass core gate", [first, second])]
+
+        def find_step(self, step_id: str) -> tuple[object, object] | None:
+            for phase in self.phases:
+                for step in phase.steps:
+                    if step.id == step_id:
+                        return (phase, step)
+            return None
+
+    monkeypatch.setattr(
+        "src.vectl.driver.loop.load_plan_definition", lambda _p: (_PlanWithRemainingChecks(), "h")
+    )
+    monkeypatch.setattr("src.vectl.driver.loop.save_plan", lambda *_a, **_k: None)
+    monkeypatch.setattr("src.vectl.driver.loop.defer_step", lambda plan, *_a, **_k: plan)
+    monkeypatch.setattr("src.vectl.driver.loop.dispatch_planner", _dispatch_planner)
+
+    state.runtime_config = config
+    state.runtime_runners = cast(
+        dict[str, Any], {"opencode": _Runner("opencode"), "claude": _Runner("claude")}
+    )
+
+    await reconcile(
+        completed=completed,
+        state=state,
+        judge=cast(Any, _FailureJudge()),
+        session_pool=pool,
+        observer=observer,
+        plan_path=Path("plan.yaml"),
+    )
+
+    assert requests
+    failure_request = requests[0]
+    assert isinstance(failure_request, JudgmentRequest)
+    context = failure_request.context
+    assert "remaining_gates" in context
+    assert context["remaining_gates"]
+    assert len(dispatch_requests) == 1
+
+
+@pytest.mark.anyio
+async def test_handle_dispatch_cold_context_includes_required_fields(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    config = _base_config()
+    config.judge.cold_context = True
+    config.agent_routing["python-executor"] = "opencode"
+    state = DriverState()
+    observer = _RecordingObserver()
+    session_pool = SessionPool(config.session)
+
+    class _ColdContextJudge:
+        def __init__(self) -> None:
+            self.requests: list[object] = []
+
+        def is_enabled(self, judgment_type: JudgmentType) -> bool:
+            return judgment_type == JudgmentType.COLD_CONTEXT
+
+        async def judge(self, request: object) -> JudgmentVerdict:
+            self.requests.append(request)
+            return JudgmentVerdict(verdict="ACCEPT", reason="include objective artifacts only")
+
+    judge = _ColdContextJudge()
+
+    monkeypatch.setattr("src.vectl.driver.loop.load_plan_definition", lambda _p: (_FakePlan(), "h"))
+    monkeypatch.setattr("src.vectl.driver.loop.claim_step", lambda plan, *_a, **_k: (plan, None))
+    monkeypatch.setattr("src.vectl.driver.loop.save_plan", lambda *_a, **_k: None)
+
+    async def _create_worktree(*_a: object, **_k: object) -> Success[WorktreeBinding]:
+        return Success(
+            WorktreeBinding(
+                step_id="quality.gate",
+                worktree_path=Path(".vectl/worktrees/quality.gate"),
+                branch_name="vectl/step-quality.gate",
+                reused_existing=False,
+            )
+        )
+
+    monkeypatch.setattr("src.vectl.driver.loop.create_worktree", _create_worktree)
+    monkeypatch.setattr("src.vectl.driver.loop.render_prompt", lambda **_k: "prompt")
+
+    await handle_dispatch(
+        action=Action(
+            action="claim_and_dispatch",
+            step_id="quality.gate",
+            agent="python-executor",
+            step_description="Run independent gate audit",
+            step_verification="Run: uv run pytest -q",
+        ),
+        state=state,
+        config=config,
+        runners=cast(
+            dict[str, Any], {"opencode": _Runner("opencode"), "claude": _Runner("claude")}
+        ),
+        judge=cast(Any, judge),
+        session_pool=session_pool,
+        observer=observer,
+        plan_path=Path("plan.yaml"),
+    )
+
+    assert judge.requests
+    request = judge.requests[0]
+    assert isinstance(request, JudgmentRequest)
+    context = request.context
+    assert context["step_id"] == "quality.gate"
+    assert "step_spec" in context
+    assert "diff" in context
+
+
+def test_build_anomaly_request_includes_required_sections() -> None:
+    request = _build_anomaly_request(
+        anomaly_type="orphan_worktrees",
+        repair_scope="removed orphan directories",
+        dry_run_recommendation="safe_to_apply",
+    )
+    assert request.context["anomaly_type"] == "orphan_worktrees"
+    assert request.context["repair_scope"] == "removed orphan directories"

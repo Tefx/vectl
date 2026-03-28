@@ -40774,6 +40774,55 @@ phases:
     depends_on:
     - driver-enhancement-streaming-progress.contract
     agent: python-executor
+  - id: driver-enhancement-streaming-progress.impl
+    name: Implement incremental JSONL consumption and live progress state
+    status: pending
+    description: "step_type: implementation\n\ntags:\n  - integration\n\nImplement\
+      \ streaming-aware runner consumption for the driver.\n\nScope:\n- consume opencode\
+      \ JSONL incrementally instead of waiting for terminal `communicate()` collection\n\
+      - maintain heartbeat / progress / last-progress state during execution\n- expose\
+      \ streaming-aware liveness without changing the driver's external runtime surface\n\
+      - keep final summary handling and live streaming state in distinct strata\n\n\
+      ## Completion Criteria (stub exclusion)\nThis is an IMPLEMENTATION step. Stub-only\
+      \ completion is NOT acceptable.\nEach deliverable MUST contain substantive logic\
+      \ that updates live state based on real incremental runner output."
+    verification: 'phase-check protecting driver-enhancement-streaming-progress.verify.
+
+      - Main path: focused tests prove incremental consumption updates heartbeat/progress
+      before runner exit
+
+      - Failure path: regression covers malformed chunk handling or progress starvation
+      without falsely marking healthy runners dead
+
+      - Proof: evidence shows timestamps / progress signals change during execution,
+      not only at the end'
+    evidence_template: '## Integration Evidence
+
+
+      **Command or test exercising the full path**:
+
+      ```
+
+      <paste exact command or test name>
+
+      ```
+
+
+      **Actual output**:
+
+      ```
+
+      <paste streaming chunks / liveness output>
+
+      ```
+
+
+      **Path exercised**: driver entrypoint -> runner stdout JSONL -> incremental
+      reader -> live liveness state'
+    depends_on:
+    - driver-enhancement-streaming-progress.contract
+    - driver-enhancement-streaming-progress.test-define-red
+    agent: python-senior
 - id: driver-enhancement-runner-recovery
   name: 'Driver Enhancement: Runner Recovery'
   status: locked

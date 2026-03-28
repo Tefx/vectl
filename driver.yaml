@@ -7,18 +7,26 @@ runners:
     stall_timeout: 300
     output_parser: opencode_jsonl
     persist_session: true
+  codex:
+    command: codex
+    args: ["exec", "--json", "--dangerously-bypass-approvals-and-sandbox", "-C", "{workdir}"]
+    prompt_mode: stdin_dash
+    stall_timeout: 300
+    resume_command: ["codex", "exec", "resume", "--json", "--dangerously-bypass-approvals-and-sandbox"]
+    session_id_regex: "^[0-9a-f]{8}-"
+    output_parser: codex_jsonl
 
 fallback_runner: opencode
 
 orchestration:
-  max_parallelism: 3
+  max_parallelism: 1
   merge_strategy: squash
 
 session:
   reuse_ttl: 300
 
 judge:
-  runner: opencode
+  runner: codex
   structured_output: true
   preflight: true
   evidence_validation: true

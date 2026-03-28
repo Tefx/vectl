@@ -18,91 +18,6 @@ context: 'Bootstrapping vectl development.
   CONSTRAINT: Zero imports from eidos-*. Pure standalone tool.
 
   '
-clipboard:
-  author: software-architect
-  summary: Temporary architecture note on expected-red test semantics vs orchestrator
-    beha…
-  content: 'Temporary Architecture Note: Test-Step Semantics vs Orchestrator Behavior
-
-
-    1. Current situation summary
-
-    Some pre-implementation test steps were intentionally designed to go red in order
-    to reveal missing behavior or spec gaps. The orchestration flow treated those
-    red results as ordinary execution failures instead of expected discovery signals.
-
-
-    2. Observed failure modes
-
-    - Expected-red test steps triggered retry/escalation behavior.
-
-    - The system interpreted semantic discovery failures as worker execution failures.
-
-    - This pushed later steps out of order and encouraged scope drift.
-
-    - Test-oriented steps sometimes expanded into implementation work in order to
-    “fix” the red result prematurely.
-
-
-    3. Immediate mitigation already applied
-
-    Planner logic in current/downstream driver phases has been adjusted to distinguish:
-
-    - Pre-implementation expected-red test steps: used to expose gaps, not judged
-    by green outcome.
-
-    - Post-implementation green-required test/verification steps: used as actual acceptance
-    gates.
-
-
-    4. Recommended future system-level changes
-
-    Minimal set:
-
-    - Add explicit step semantic types for expected_red_pre_impl and green_required_verification.
-
-    - Teach the orchestrator to branch retry/escalation policy based on step semantic
-    type.
-
-    - Require evidence templates to state whether red is expected, tolerated, or blocking.
-
-
-    Ideal set:
-
-    - Introduce a first-class outcome model separating execution failure, expected
-    diagnostic failure, spec-gap discovery, and verification pass/fail.
-
-    - Make planner/orchestrator contracts explicit so step intent survives handoff.
-
-    - Add guardrails preventing pre-implementation test steps from being resolved
-    by implementation unless a later implementation step is active.
-
-    - Record semantic outcomes in plan history for review/audit.
-
-
-    5. Open questions
-
-    - Should step semantics live in planner metadata, orchestrator runtime state,
-    or both?
-
-    - What is the smallest outcome taxonomy that prevents this class of mistake without
-    overcomplicating the system?
-
-    - Should retries be disabled entirely for expected-red steps, or only narrowed?
-
-    - How should evidence requirements differ between diagnostic-red and verification-green
-    steps?
-
-    - What review rule should detect scope drift from test discovery into implementation?
-
-
-    Trade-off:
-
-    - Gain: clearer orchestration behavior, less retry noise, reduced scope drift.
-
-    - Cost: slightly more plan/orchestrator complexity and stronger step typing requirements.'
-  written_at: '2026-03-28T02:36:52.136459Z'
-  expires_at: '2026-04-04T02:36:52.136459Z'
 phases:
 - id: core
   name: Core Logic
@@ -31745,7 +31660,7 @@ phases:
       implementation deferred to impl-runners-core.'
   - id: driver-execution-infra.test-runners-core
     name: Test runners core
-    status: claimed
+    status: pending
     description: 'step_type: test
 
 
@@ -31803,8 +31718,6 @@ phases:
     depends_on:
     - driver-execution-infra.contract-runners-core
     agent: python-executor
-    claimed_by: python-executor
-    claimed_at: '2026-03-27T23:33:02.873531+00:00'
   - id: driver-execution-infra.impl-runners-core
     name: Implement runners core
     status: pending

@@ -39180,6 +39180,47 @@ phases:
     depends_on:
     - driver-evolution-runtime-context.contract
     agent: python-senior
+  - id: driver-evolution-runtime-context.vertical-slice
+    name: Early vertical slice for typed event flow and runtime context
+    status: pending
+    description: 'step_type: verification
+
+      expected_result: green
+
+      verification_scope: phase-check
+
+
+      Early vertical slice: wire ONE complete path from a user-facing driver entry
+      point to observable event output using the new event foundation and RuntimeContext.
+
+
+      Pick the simplest driver operation that exercises:
+
+      - actual driver entrypoint / loop startup
+
+      - runtime context creation
+
+      - canonical event emission through registry-backed helpers
+
+      - durable JSONL sink output
+
+
+      MUST NOT use stubs, mocks, or placeholder classes at any layer boundary.
+
+      Evidence MUST show the layers traversed and the actual emitted output.
+
+      Downstream gate protected: driver-evolution-runtime-context.gate.'
+    verification: 'phase-check protecting driver-evolution-runtime-context.gate.
+
+      - Execute one real driver entrypoint path end-to-end
+
+      - Evidence includes exact command/test name, layers traversed, and pasted emitted
+      JSONL output
+
+      - Stubs used: NONE'
+    depends_on:
+    - driver-evolution-runtime-context.implement-runtime-context
+    agent: integration-verifier
 - id: driver-evolution-action-registry
   name: 'Driver Evolution: Action Registry'
   status: locked

@@ -41342,3 +41342,25 @@ phases:
     depends_on:
     - driver-enhancement-review.update-docs
     agent: blind-tester
+  - id: driver-enhancement-review.gate
+    name: Final gate for driver enhancement program
+    status: pending
+    description: 'step_type: gate
+
+      Final gate for the routing hardening plus driver enhancement program.'
+    verification: 'final gate for driver enhancement program.
+
+      - Routing hardening is documented and externally verified
+
+      - Integration evidence, docs sync, and all independent reviews align
+
+      - No unresolved blocker remains around observability, streaming-aware liveness,
+      or recovery behavior'
+    depends_on:
+    - driver-enhancement-review.update-docs
+    - driver-enhancement-review.wiring-audit
+    - driver-enhancement-review.spec-conformance
+    - driver-enhancement-review.architecture-review
+    - driver-enhancement-review.contract-strength
+    - driver-enhancement-review.black-box-verification
+    agent: gate-reviewer

@@ -38536,36 +38536,6 @@ phases:
     - src/vectl/driver/policy.py
     - src/vectl/decision_state.py
     agent: wiring-auditor
-  - id: driver-debt-deep-review.architecture-review
-    name: Review driver debt architecture boundaries
-    status: pending
-    description: 'step_type: review
-
-      Verification scope: full-plan-check protecting driver-debt-deep-review.gate.
-
-
-      Review the final architecture for boundary correctness.
-
-      Must assess:
-
-      - state ownership now instance-local and single-source
-
-      - reconcile owns completion/failure/session authority in runtime
-
-      - loop.py restored toward coordinator role
-
-      - entrypoint/runtime boundary unified cleanly'
-    verification: '- Review names any remaining architecture debt explicitly with
-      severity'
-    refs:
-    - src/vectl/decide.py
-    - src/vectl/decision_state.py
-    - src/vectl/driver/loop.py
-    - src/vectl/driver/entrypoint.py
-    - src/vectl/driver/policy.py
-    depends_on:
-    - driver-debt-deep-review.wiring-audit
-    agent: software-architect
   - id: driver-debt-deep-review.contract-strength
     name: Audit remediated contracts for strength
     status: pending
@@ -38735,3 +38705,31 @@ phases:
     - src/vectl/cli.py
     - src/vectl/driver/policy.py
     agent: spec-verifier
+  - id: driver-debt-deep-review.architecture-review
+    name: Review driver debt architecture boundaries
+    status: pending
+    description: 'step_type: review
+
+      Verification scope: full-plan-check protecting driver-debt-deep-review.gate.
+
+
+      Review the final architecture for boundary correctness.
+
+      Must assess:
+
+      - state ownership now instance-local and single-source
+
+      - reconcile owns completion/failure/session authority in runtime
+
+      - loop.py restored toward coordinator role
+
+      - entrypoint/runtime boundary unified cleanly'
+    verification: '- Review names any remaining architecture debt explicitly with
+      severity'
+    refs:
+    - src/vectl/decide.py
+    - src/vectl/decision_state.py
+    - src/vectl/driver/loop.py
+    - src/vectl/driver/entrypoint.py
+    - src/vectl/driver/policy.py
+    agent: software-architect

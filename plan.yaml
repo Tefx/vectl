@@ -43473,3 +43473,21 @@ phases:
 
       - Highlight any drift that would poison driver-bootstrap-readiness'
     agent: spec-verifier
+  - id: driver-continuity-review.gate
+    name: Gate continuity review
+    status: pending
+    description: "step_type: gate\nGate review for continuity bootstrap readiness\
+      \ proof.\n\nreview_depth: THOROUGH\ncross_cutting_focus:\n  - restart recovery\
+      \ is controllable and recoverable through the real entrypoint\n  - replay safety\
+      \ and capability facts prevent unsafe resume\n  - minimum recovery-grade journal\
+      \ is sufficient for diagnosis and reconciliation"
+    verification: '- Independent recovery drill evidence is complete and real-path
+
+      - Wiring audit finds no blocker on continuity/recovery reachability
+
+      - Spec conformance finds no blocker on bootstrap-critical continuity claims'
+    depends_on:
+    - driver-continuity-review.recovery-drill
+    - driver-continuity-review.wiring-audit
+    - driver-continuity-review.spec-conformance
+    agent: gate-reviewer

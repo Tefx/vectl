@@ -33598,6 +33598,44 @@ phases:
     depends_on:
     - driver-judgment-runtime-minimal.liveness-probe
     agent: python-executor
+  - id: driver-judgment-runtime-minimal.retest-liveness-probe
+    name: Retest liveness probe after blocker fix
+    status: pending
+    description: 'step_type: test
+
+      step_intent: retest_green
+
+      expected_result: green
+
+      Verification scope: phase-check protecting driver-judgment-runtime-minimal.gate.
+
+
+      Re-run runnable-surface liveness verification after the blocker remediation.
+
+
+      Required evidence:
+
+      - Execute the real module entrypoint with `python -m vectl.driver`
+
+      - Capture actual command output and exit status
+
+      - Confirm the command reaches the real `main()` path and no longer exits code
+      0 before startup logic runs
+
+      - Record whether the runtime stays alive long enough to accept at least one
+      controlled cycle or operation'
+    verification: '- Expected result is green
+
+      - Evidence includes the exact `python -m vectl.driver` command, actual output,
+      and actual exit code
+
+      - Evidence explicitly states that `main()` was invoked through the real entrypoint
+      path
+
+      - Any remaining liveness failure is reported as a blocking finding'
+    depends_on:
+    - driver-judgment-runtime-minimal.fix-liveness-probe-blockers
+    agent: blind-tester
 - id: driver-multi-runner-hardening
   name: Driver Multi-Runner Hardening
   status: locked

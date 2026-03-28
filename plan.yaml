@@ -38815,6 +38815,58 @@ phases:
     against the ADR
   depends_on:
   - driver-evolution-events-foundation
+  steps:
+  - id: driver-evolution-event-contracts.contract
+    name: Pin canonical FINAL DECIDE STEP_COMPLETED contracts
+    status: pending
+    description: 'step_type: contract
+
+      contract_purity: ENFORCED
+
+      contract_outputs:
+
+      - signatures
+
+      - type_defs
+
+      - interfaces
+
+      - stubs
+
+
+      Authoritative source: docs/ADR-driver-evolution-foundation.md#58-final-becomes-canonical-summary-event
+      and #149-implementation-guidance.
+
+
+      Pin canonical contracts for the schema-critical events before implementation.
+
+      Required outputs:
+
+      - `FINAL` is a summary-oriented canonical final event, not a runtime snapshot
+      bucket
+
+      - `DECIDE` and `STEP_COMPLETED` registry definitions each declare required fields,
+      optional fields, version, owner, and compatibility notes
+
+      - typed emitter helper signatures that emit these events through registry-backed
+      definitions rather than ad hoc literals
+
+
+      Authoritative interface: this step clarifies semantics on the exact event names
+      `FINAL`, `DECIDE`, and `STEP_COMPLETED` only. No alternate public event surfaces
+      may be introduced.
+
+      Touch paths: src/vectl/driver/events/types.py, src/vectl/driver/events/registry.py,
+      src/vectl/driver/events/emitter.py, src/vectl/driver/loop.py, tests/test_driver_loop_contract.py,
+      tests/test_driver_observe.py.'
+    verification: 'local-check protecting the canonical-event implementation phase.
+
+      - Contract text covers FINAL, DECIDE, and STEP_COMPLETED individually
+
+      - FINAL is pinned as a summary event and excludes snapshot-bucket semantics
+
+      - Typed emitter helper signatures are defined without adding runtime logic'
+    agent: software-architect
 - id: driver-evolution-runtime-context
   name: 'Driver Evolution: Runtime Context'
   status: locked

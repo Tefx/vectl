@@ -41106,6 +41106,37 @@ phases:
     depends_on:
     - driver-enhancement-integration.system-wiring
     agent: integration-verifier
+  - id: driver-enhancement-integration.full-plan-check
+    name: Run repo-wide driver enhancement check
+    status: pending
+    description: 'step_type: verification
+
+      Verification scope: full-plan-check protecting driver-enhancement-review and
+      late repo-wide gates.
+
+
+      Run the nearest broad verification boundary after the integration join so repo-wide
+      driver debt is surfaced before final review.
+
+
+      Required scope:
+
+      - broad driver test selection that can surface cross-phase regressions
+
+      - integrated event-schema / streaming / recovery compatibility checks
+
+      - explicit disposition for any repo-wide blocker surfaced here'
+    verification: 'full-plan-check protecting driver-enhancement-review.
+
+      - Broad checks capable of surfacing cross-phase debt run here rather than first
+      appearing at final review
+
+      - Evidence names any blocker and its remediation owner if found
+
+      - No unowned repo-wide blocker is deferred implicitly'
+    depends_on:
+    - driver-enhancement-integration.system-wiring
+    agent: integration-verifier
 - id: driver-enhancement-review
   name: 'Driver Enhancement: Review'
   status: locked

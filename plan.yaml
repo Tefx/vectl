@@ -35867,7 +35867,7 @@ phases:
       **Overall**: PASS — No blocking issues found.'
   - id: driver-cli-integration.spec-conformance
     name: CLI drive spec conformance
-    status: pending
+    status: claimed
     description: 'step_type: verification
 
       Verification scope: phase-check protecting driver-cli-integration.gate.
@@ -35880,6 +35880,8 @@ phases:
     depends_on:
     - driver-cli-integration.wiring-audit
     agent: doc-reviewer
+    claimed_by: doc-reviewer
+    claimed_at: '2026-03-28T12:38:07.507246+00:00'
   - id: driver-cli-integration.liveness-probe
     name: Liveness probe vectl drive
     status: pending

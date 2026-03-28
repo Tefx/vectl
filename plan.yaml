@@ -34345,7 +34345,7 @@ phases:
       gate_verdict: PASS'
 - id: driver-judgment-expansion-replan
   name: Driver Judgment Expansion + Replan
-  status: in_progress
+  status: done
   depends_on:
   - driver-multi-runner-hardening
   steps:
@@ -34961,7 +34961,7 @@ phases:
       no-change declaration'
   - id: driver-judgment-expansion-replan.gate
     name: Gate driver-judgment-expansion-replan
-    status: claimed
+    status: done
     description: 'step_type: gate
 
       As an INDEPENDENT REVIEWER, assess whether the full judgment/remediation flow
@@ -34987,6 +34987,53 @@ phases:
     agent: gate-reviewer
     claimed_by: gate-reviewer
     claimed_at: '2026-03-28T11:44:20.649112+00:00'
+    done_at: '2026-03-28T11:51:10.785318+00:00'
+    evidence: '# Gate Review: driver-judgment-expansion-replan (PASS)
+
+
+      ## Phase 1: Automated Gates ✅
+
+      - **Type Checking (MyPy)**: PASS - No errors (loop.py clean)
+
+      - **Linting (Ruff)**: PASS (1 cosmetic fixable warning)
+
+      - **Test Suite**: PASS - 55 tests passed, critical test_gate_reject_creates_planner_dispatch_request
+      PASSED
+
+      - **Pattern Scans**: CLEAN - no type:ignore, @invar:allow, TODO/FIXME, or pass
+      stubs
+
+
+      ## Phase 2: Cross-Cutting Pattern Scan ✅
+
+      - B1 (Type Contract): 6 PlannerDispatchRequest instantiations verified correct
+
+      - S1 (MyPy Overlap): 3 RunnerStatus comparisons all use correct enum
+
+
+      ## Phase 3: Expert Reviews ✅
+
+      - E1 Spec Alignment: PASS
+
+      - E2 Architecture: PASS
+
+      - E3 Developer Experience: PASS
+
+      - E4 SE Quality: PASS
+
+
+      ## Final Verdict: PASS ✅
+
+
+      Both prior blocking issues fully resolved:
+
+      - B1: PlannerDispatchRequest now typed with PlannerDispatchSourceVerdict = Literal["REPLAN",
+      "REJECT"]
+
+      - S1: MyPy comparison-overlap resolved with RunnerDispatchStatus alias
+
+
+      Ready for CLI integration.'
   - id: driver-judgment-expansion-replan.expected-red-schema
     name: Add verify field to Step model (expected-red schema)
     status: done
@@ -35391,7 +35438,7 @@ phases:
       - Updated GATE REJECT PlannerDispatchRequest test to use source_verdict="REJECT"'
 - id: driver-cli-integration
   name: Driver CLI Integration
-  status: locked
+  status: pending
   depends_on:
   - driver-judgment-expansion-replan
   steps:

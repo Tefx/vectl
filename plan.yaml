@@ -40579,6 +40579,59 @@ phases:
     depends_on:
     - driver-enhancement-observability.contract
     agent: python-executor
+  - id: driver-enhancement-observability.impl
+    name: Implement runtime telemetry for lifecycle dispatch and recovery
+    status: pending
+    description: "step_type: implementation\n\ntags:\n  - integration\n\nImplement\
+      \ the richer runtime telemetry surfaces defined by the enhancement foundation.\n\
+      \nScope:\n- add runner lifecycle events with versioned envelope compliance\n\
+      - surface planner dispatch observability on the real driver path\n- emit recovery-decision\
+      \ and recovery-result visibility\n- add heartbeat/progress-related events without\
+      \ creating a second source of truth\n\nIntegration boundary:\n- event registry\
+      \ / emitter definitions may centralize shared schema changes\n- avoid touching\
+      \ shared loop wiring beyond what is necessary for event emission; shared loop\
+      \ joins belong in `driver-enhancement-integration`\n\nCompletion Criteria (stub\
+      \ exclusion)\nThis is an IMPLEMENTATION step. Stub-only completion is NOT acceptable.\n\
+      Each deliverable MUST contain substantive logic that processes its inputs and\
+      \ produces outputs that vary based on runtime state."
+    verification: 'phase-check protecting driver-enhancement-observability.vertical-slice
+      and driver-enhancement-observability.verify.
+
+      - Main path: targeted tests prove lifecycle, planner dispatch, recovery, and
+      heartbeat/progress telemetry emit on the intended path
+
+      - Failure path: focused regression covers schema mismatch or missing required
+      event fields
+
+      - Proof: event evidence shows canonical envelope fields and event ownership
+      are preserved'
+    evidence_template: '## Integration Evidence
+
+
+      **Command or test exercising the full path**:
+
+      ```
+
+      <paste exact command or test name>
+
+      ```
+
+
+      **Actual output**:
+
+      ```
+
+      <paste runtime output or event log excerpt>
+
+      ```
+
+
+      **Path exercised**: driver entrypoint -> loop dispatch -> event emitter -> JSONL
+      sink'
+    depends_on:
+    - driver-enhancement-observability.contract
+    - driver-enhancement-observability.test-define-red
+    agent: python-senior
 - id: driver-enhancement-streaming-progress
   name: 'Driver Enhancement: Streaming & Progress'
   status: locked

@@ -42790,6 +42790,61 @@ phases:
     - driver-judge-hardening-recovery-policy.impl
     - driver-judge-hardening-recovery-policy.verify
     agent: gate-reviewer
+  - id: driver-judge-hardening-recovery-policy.design-and-test
+    name: Design failure policy boundary and write expected-red tests
+    status: pending
+    description: 'step_type: test
+
+      merged_contract_test: true
+
+      step_intent: test_define_red
+
+      expected_result: red
+
+
+      Design interface and write expected-red tests for judge failure handling policy.
+
+
+      This project does not have an authoritative external spec that precisely pins
+      the full retry/fallback/halt/remediation matrix, so contract-first would over-specify
+      a not-yet-documented interface. This merged step owns BOTH boundary design and
+      red-test definition on the existing judge/continuity surfaces.
+
+
+      Outputs allowed:
+
+      - signatures, type notes, docstrings, and stubs on existing judge/continuity
+      boundary surfaces only
+
+      - expected-red tests and fixtures defining the current gap
+
+
+      Required scope:
+
+      - classify judge outcomes and required retry/fallback/halt/remediation decisions
+      on the existing boundary
+
+      - define the exact output fields continuity policy consumes after judge decisions
+
+      - align terminology and provenance with restart recovery without taking ownership
+      of durable resume, restart controller logic, or recovery journaling
+
+      - author expected-red tests for parse errors, timeouts, malformed/empty output,
+      and planner-remediation vs retry/fallback/halt branching
+
+
+      No implementation logic beyond signatures/stubs and tests.
+
+      Evidence must include exposed_gaps and name `driver-judge-hardening-recovery-policy.impl`
+      as the downstream implementation owner.'
+    verification: '- Modified files are limited to tests plus minimal contract/stub
+      surfaces
+
+      - Expected-red coverage exposes the current policy ambiguity before runtime
+      code changes
+
+      - Outputs include both boundary design notes and failing tests'
+    agent: python-senior
 - id: driver-judge-hardening-review
   name: 'Driver Judge Hardening: Review'
   status: locked

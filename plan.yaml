@@ -38805,3 +38805,9 @@ phases:
     - driver-debt-deep-review.black-box-verification
     - driver-debt-deep-review.freeze
     agent: gate-reviewer
+- id: driver-debt-review
+  name: 'Driver Debt: Review'
+  status: locked
+  gate: Consolidated doc-sync + deep review after system wiring
+  depends_on:
+  - driver-debt-system-wiring

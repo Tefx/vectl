@@ -37620,7 +37620,7 @@ phases:
       runtime path.'
   - id: driver-debt-decision-state.gate
     name: Gate DecideState isolation phase
-    status: pending
+    status: claimed
     description: 'step_type: gate
 
       As an INDEPENDENT REVIEWER, decide whether A2 remediation is safe to build on.
@@ -37660,6 +37660,8 @@ phases:
     depends_on:
     - driver-debt-decision-state.verify
     agent: gate-reviewer
+    claimed_by: gate-reviewer
+    claimed_at: '2026-03-28T20:20:49.304667+00:00'
 - id: driver-debt-completion-authority
   name: 'Driver Debt: Completion Authority Convergence'
   status: locked

@@ -37142,7 +37142,7 @@ phases:
       extension recommended.'
   - id: driver-deep-review.black-box-verification
     name: Deep review black-box verification
-    status: claimed
+    status: done
     description: 'step_type: verification
 
       Verification scope: full-plan-check protecting driver-deep-review.gate.
@@ -37166,6 +37166,84 @@ phases:
     agent: blind-tester
     claimed_by: blind-tester
     claimed_at: '2026-03-28T13:59:43.179119+00:00'
+    done_at: '2026-03-28T14:07:04.290743+00:00'
+    evidence: '**Black-Box Liveness Verification Complete**
+
+
+      ## Mode D: Liveness Probe Results
+
+
+      ### CLI Entry Points: ALIVE
+
+      1. `python -m vectl.driver --help` → Exit 0, shows usage with `config` argument
+
+      2. `uv run vectl drive --help` → Exit 0, shows documented `--config` option
+
+
+      ### Driver Execution: ALIVE
+
+      Created minimal spec-derived config:
+
+      - drivers.yaml with runners, fallback_runner, judge, observability (per docs/DRIVER-ARCHITECTURE.md
+      Section 2.3)
+
+      - plans.yaml with done-phase (no dispatch needed)
+
+
+      Driver execution produced:
+
+      - events.jsonl created
+
+      - DECIDE event emitted (running_count, claimable, capacity, actions)
+
+      - FINAL event emitted (clean shutdown)
+
+
+      ### Config Error Handling: WORKING
+
+      Invalid config (runner not in runners) → Non-zero exit, error mentions "config"
+      or "runner"
+
+
+      ## Spec Divergence Noted (for follow-up)
+
+      Per observe.py docstring (lines 28-38):
+
+      - SPEC: FINAL event should have total_steps, total_time, total_cost
+
+      - IMPL: FINAL event has running_count, completed_count, failure_count, halt_requested
+
+
+      This is documented in the test but is NOT a blocking issue for liveness.
+
+
+      ## Files Created
+
+      - tests/repro/driver_black_box_liveness.py (157 lines)
+
+
+      ## Test Output
+
+      ```
+
+      PASS: python -m vectl.driver --help works
+
+      PASS: uv run vectl drive --help works
+
+      INFO: FINAL event data: {''running_count'': 0, ''completed_count'': 0, ''failure_count'':
+      0, ''halt_requested'': True}
+
+      PASS: Driver loaded config, parsed plan, emitted 2 events
+
+      PASS: Event types: [''DECIDE'', ''FINAL'']
+
+      PASS: Driver ran to completion cleanly
+
+      PASS: Driver reports config errors correctly
+
+      VERDICT: FIXED - All driver CLI surfaces are live and functional
+
+      ```'
   - id: driver-deep-review.gate
     name: Gate driver-deep-review
     status: pending

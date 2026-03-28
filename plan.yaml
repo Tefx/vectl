@@ -36366,13 +36366,13 @@ phases:
       - Non-done steps: unaffected'
 - id: driver-system-wiring
   name: Driver System Wiring
-  status: pending
+  status: in_progress
   depends_on:
   - driver-cli-integration
   steps:
   - id: driver-system-wiring.replace-stubs
     name: Replace or reject runtime placeholders
-    status: pending
+    status: claimed
     description: 'step_type: implementation
 
 
@@ -36387,6 +36387,8 @@ phases:
 
       - No runtime placeholder remains on the critical path'
     agent: python-senior
+    claimed_by: python-senior
+    claimed_at: '2026-03-28T12:54:34.038462+00:00'
   - id: driver-system-wiring.verify-e2e
     name: Verify system wiring end-to-end
     status: pending

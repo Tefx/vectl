@@ -39273,7 +39273,7 @@ phases:
       failure bookkeeping, coordinator purity limits in loop.py).
   - id: driver-debt-review.contract-strength
     name: Audit remediated contracts for strength
-    status: claimed
+    status: done
     description: 'step_type: verification
 
       Verification scope: full-plan-check protecting driver-debt-deep-review.gate.
@@ -39302,6 +39302,11 @@ phases:
     agent: gate-reviewer
     claimed_by: gate-reviewer
     claimed_at: '2026-03-28T22:10:42.397933+00:00'
+    done_at: '2026-03-28T22:16:38.498547+00:00'
+    evidence: 'Contract-strength audit indicates remediated contracts are live and
+      non-vacuous: DecideState API exercised by tests, shared adapter called by both
+      entry surfaces, policy extraction backed by real imports/tests, and legacy shims
+      documented with caller-proof constraints.'
   - id: driver-debt-review.wiring-audit
     name: Audit driver debt wiring completeness
     status: claimed

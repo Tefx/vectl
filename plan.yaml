@@ -36536,7 +36536,7 @@ phases:
       on critical path.'
   - id: driver-system-wiring.full-plan-check
     name: Full-plan runtime and repo check
-    status: claimed
+    status: done
     description: 'step_type: verification
 
       Verification scope: full-plan-check protecting driver-deep-review and final
@@ -36564,6 +36564,54 @@ phases:
     agent: integration-verifier
     claimed_by: integration-verifier
     claimed_at: '2026-03-28T13:07:57.348654+00:00'
+    done_at: '2026-03-28T13:10:21.047883+00:00'
+    evidence: '## Full-Plan Check Report
+
+
+      **Command 1:** `uv run pytest tests/test_cli.py -x -q`
+
+      - Result: 239 passed in 46.66s
+
+      - Exit code: 0
+
+
+      **Command 2:** Import smoke test
+
+      - `uv run python -c "from vectl.cli import app; from vectl.driver.loop import
+      run"`
+
+      - Output: Import smoke passed
+
+      - Exit code: 0
+
+
+      **Command 3:** `uv run vectl drive --help`
+
+      - Exit code: 0
+
+      - Shows drive command with --config PATH option
+
+
+      **Command 4:** `uv run vectl status`
+
+      - Exit code: 0
+
+      - Shows all phases with driver-system-wiring at 2/4 (50%)
+
+
+      **Summary:**
+
+      - All 239 CLI tests pass ✅
+
+      - Import smoke passes ✅
+
+      - drive command available ✅
+
+      - plan status readable ✅
+
+      - No blockers or should_fix debt discovered ✅
+
+      - **GREEN pass** across all verification commands'
   - id: driver-system-wiring.gate
     name: Gate driver-system-wiring
     status: pending

@@ -41623,48 +41623,6 @@ phases:
   depends_on:
   - driver-bootstrap-readiness
   steps:
-  - id: driver-prompt-foundation.contract
-    name: Pin packaged judge-prompt contract
-    status: pending
-    description: "step_type: contract\ncontract_purity: ENFORCED\ncontract_outputs:\n\
-      \  - signatures\n  - type_defs\n  - interfaces\n  - stubs\n\nPin the authoritative\
-      \ contract for runtime prompt decoupling on the existing judge loader surface\
-      \ without adding a new public API.\n\nRequired contract decisions:\n- Define\
-      \ the canonical packaged runtime resource location for the judge prompt inside\
-      \ the installed vectl package (resource file path and owning module boundary).\n\
-      - Define docs/JUDGE-AGENT-PROMPT.md as a mirror/documentation artifact, not\
-      \ the runtime source of truth.\n- Define missing-resource behavior for runtime:\
-      \ no silent degradation; failure must be explicit and actionable.\n- Define\
-      \ drift strategy between packaged resource and docs mirror, including which\
-      \ check is enforced in tests/review.\n- Pin the exact loader surface in src/vectl/driver/judge.py\
-      \ that must consume the packaged resource.\n- Pin any code-reference migration\
-      \ required in src/vectl/driver/judgments.py and src/vectl/driver/loop.py where\
-      \ docs are currently cited as runtime authority.\n\nAuthoritative refs:\n- docs/JUDGE-AGENT-PROMPT.md\n\
-      - docs/DRIVER-ARCHITECTURE.md §2.10 / open-question resolution\n- src/vectl/driver/judge.py::_load_judge_system_prompt\n\
-      \nThis is a contract step only. It must not implement packaging logic, resource\
-      \ loaders, or runtime fallback behavior."
-    verification: '- Contract cites the exact existing judge loader surface and preserves
-      the current judge external contract.
-
-      - Contract explicitly states packaged-resource ownership, docs-mirror role,
-      and no-silent-fallback failure semantics.
-
-      - Contract lists the downstream implementation seams: package resource wiring,
-      loader migration, reference migration, and drift verification.'
-    evidence_template: '## Contract Record
-
-      - Canonical packaged resource path:
-
-      - Runtime authority vs docs mirror:
-
-      - Missing-resource runtime behavior:
-
-      - Drift/consistency policy:
-
-      - Files/surfaces to migrate:
-
-      - Open questions left (must be implementation-local only):'
-    agent: software-architect
   - id: driver-prompt-foundation.gate
     name: Gate prompt-resource foundation readiness
     status: pending
@@ -41715,8 +41673,6 @@ phases:
       - Blocking ambiguities:
 
       - Required follow-up actions:'
-    depends_on:
-    - driver-prompt-foundation.contract
     agent: gate-reviewer
   - id: driver-prompt-foundation.design-and-test
     name: Design packaged prompt boundary and write expected-red tests

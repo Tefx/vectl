@@ -38095,7 +38095,7 @@ phases:
   steps:
   - id: driver-debt-policy-extraction.contract
     name: Pin driver.policy extraction seam
-    status: claimed
+    status: done
     description: "step_type: contract\ncontract_purity: ENFORCED\ncontract_outputs:\n\
       \  - signatures\n  - interfaces\n  - behavioral notes\nVerification scope: phase-check\
       \ protecting driver-debt-policy-extraction.impl and gate.\n\nPin the A3 extraction\
@@ -38118,6 +38118,28 @@ phases:
     agent: python-senior
     claimed_by: python-senior
     claimed_at: '2026-03-28T18:28:12.603621+00:00'
+    done_at: '2026-03-28T18:41:56.282411+00:00'
+    evidence: 'Artifact:
+
+      - Commit: aeb4b6eeafe281ed3921afaf0f21325e24d8115c (branch: vectl/step-driver-debt-policy-extraction.contract)
+
+
+      Verification:
+
+      - pytest tests/test_driver_loop_hardening.py: 14 passed
+
+      - ruff check: All passed on loop.py, policy.py, and tests
+
+      - Moved helpers confirmed removed from loop.py and present in policy.py
+
+      - loop.py imports from .policy at line 51
+
+
+      Spec link:
+
+      - Step: driver-debt-policy-extraction.contract
+
+      - Behavior-preservation rule enforced: no policy rewrites in this step'
   - id: driver-debt-policy-extraction.tests
     name: Add behavior-lock tests for policy helpers
     status: pending

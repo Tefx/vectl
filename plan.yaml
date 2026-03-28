@@ -37543,7 +37543,7 @@ phases:
       reset_failure'
   - id: driver-debt-decision-state.verify
     name: Independently verify DecideState isolation
-    status: claimed
+    status: pending
     description: 'step_type: verification
 
       independence_level: L2
@@ -37585,8 +37585,6 @@ phases:
     depends_on:
     - driver-debt-decision-state.impl
     agent: integration-verifier
-    claimed_by: integration-verifier
-    claimed_at: '2026-03-28T19:21:58.007138+00:00'
   - id: driver-debt-decision-state.gate
     name: Gate DecideState isolation phase
     status: pending

@@ -101,6 +101,7 @@ src/vectl/driver/
     __init__.py          # Package marker
     loop.py              # Main event loop + state machine         (~250 lines)
     runners.py           # Runner Protocol + implementations       (~150 lines)
+    parsers.py           # Output parsers for runner CLIs          (~100 lines)
     worktree.py          # Git worktree lifecycle                  (~120 lines)
     dispatch.py          # Prompt template rendering               (~100 lines)
     judge.py             # Judgment Agent invocation + routing      (~120 lines)
@@ -108,6 +109,8 @@ src/vectl/driver/
     session.py           # Session reuse pool                      (~60 lines)
     observe.py           # Event emitter + JSONL writer            (~60 lines)
     config.py            # YAML config loader + Pydantic models    (~80 lines)
+    types.py             # Driver-internal data types              (~80 lines)
+    errors.py            # Driver error hierarchy                  (~40 lines)
     __main__.py          # `python -m vectl.driver` entry          (~10 lines)
 ```
 
@@ -894,11 +897,14 @@ This enables: `vectl-replay --log events.jsonl --step core.impl`
 
 ### Phase 1: Core loop + single runner + judgment agent
 ```
+errors.py       → Driver error hierarchy
+types.py        → Driver-internal data types
 config.py       → YAML config, Pydantic validation
 observe.py      → Event emitter + JSONL
 session.py      → Session pool
 worktree.py     → Git worktree lifecycle
 dispatch.py     → Prompt templates (extracted from orchestrator)
+parsers.py      → Output parsers for runner CLIs
 runners.py      → Runner Protocol + ClaudeRunner (direct claude -p)
                   + OpenCodeRunner (opencode run --format json)
 judgments.py    → Judgment type definitions + context schemas

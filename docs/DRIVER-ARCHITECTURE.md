@@ -3,7 +3,7 @@
 > Architecture specification for the programmatic orchestration engine.
 > Replaces the LLM-based orchestrator with a deterministic Python driver.
 
-**Status**: Proposed
+**Status**: Implemented
 **Blueprint**: `DRIVER-BLUEPRINT.md`
 **Certainty**: [Proven] for all interfaces derived from existing vectl code;
 [Likely] for judgment and runner protocols (derived from blueprint + verified CLI capabilities).
@@ -22,6 +22,7 @@ src/vectl/driver/
     session.py           # Session reuse pool                             (~60 lines)
     worktree.py          # Git worktree lifecycle                         (~120 lines)
     dispatch.py          # Prompt template rendering                      (~100 lines)
+    parsers.py           # Output parsers for runner CLI results          (~100 lines)
     runners.py           # Runner Protocol + implementations              (~150 lines)
     judgments.py         # Judgment type definitions + context schemas     (~80 lines)
     judge.py             # Judgment Agent invocation + routing             (~120 lines)
@@ -45,9 +46,9 @@ src/vectl/driver/
     │          ┌───────────┘ │ └──────────────────┐               │
     │          ▼             ▼                    ▼               │
     │     runners.py    judge.py            worktree.py           │
-    │          │             │                    │               │
-    │          ▼             ▼                    │               │
-    │     dispatch.py   judgments.py              │               │
+    │          │    │         │                    │               │
+    │          ▼    ▼         ▼                    │               │
+    │     dispatch.py  parsers.py                 │               │
     │          │                                  │               │
     │          └──────────┐  ┌────────────────────┘               │
     │                     ▼  ▼                                    │
@@ -64,7 +65,8 @@ src/vectl/driver/
 | Source | May import from | Must NOT import from |
 |--------|----------------|---------------------|
 | `loop.py` | All driver modules, all vectl core modules | Nothing (top of driver) |
-| `runners.py` | `types`, `errors`, `config`, `dispatch`, `observe` | `loop`, `judge` |
+| `runners.py` | `types`, `errors`, `config`, `dispatch`, `observe`, `parsers` | `loop`, `judge` |
+| `parsers.py` | `types` | `loop`, `runners`, `judge`, `config` |
 | `judge.py` | `types`, `errors`, `judgments`, `config`, `observe` | `loop`, `runners` |
 | `worktree.py` | `types`, `errors` | `loop`, `runners`, `judge` |
 | `dispatch.py` | `types`, `config` | `loop`, `runners`, `judge` |
@@ -1465,7 +1467,7 @@ is a deterministic string template, not LLM-generated.
 
 ## 7. Implementation Handoff
 
-**Design scope**: `vectl/driver/` subpackage -- 12 modules, ~1150 lines estimated.
+**Design scope**: `vectl/driver/` subpackage -- 13 modules, ~1250 lines estimated.
 
 **Key deliverables**:
 - Module map with dependency arrows (Section 1)
@@ -1483,11 +1485,12 @@ is a deterministic string template, not LLM-generated.
 4. **session.py** -- Session pool. Small, self-contained, tested in isolation.
 5. **worktree.py** -- Git worktree lifecycle. Depends only on types/errors. Can be tested with real git repos.
 6. **dispatch.py** -- Prompt templates. Depends only on types/config. Pure string rendering, easy to test.
-7. **judgments.py** -- Judgment type definitions. Pure data, no logic.
-8. **runners.py** -- Runner Protocol + implementations. Depends on types, errors, config, dispatch. Requires real CLI binaries for integration tests; unit-test with mock processes.
-9. **judge.py** -- Judgment agent. Depends on judgments, config, observe. Test with mocked subprocess.
-10. **loop.py** -- Main loop. Wires everything together. Integration test against a real plan.yaml.
-11. **__main__.py + CLI integration** -- Entry points. Last because they just wire to `loop.run()`.
+7. **parsers.py** -- Output parsers. Depends only on types. Converts raw runner stdout to RunnerResult.
+8. **judgments.py** -- Judgment type definitions. Pure data, no logic.
+9. **runners.py** -- Runner Protocol + implementations. Depends on types, errors, config, dispatch, parsers. Requires real CLI binaries for integration tests; unit-test with mock processes.
+10. **judge.py** -- Judgment agent. Depends on judgments, config, observe. Test with mocked subprocess.
+11. **loop.py** -- Main loop. Wires everything together. Integration test against a real plan.yaml.
+12. **__main__.py + CLI integration** -- Entry points. Last because they just wire to `loop.run()`.
 
 **Watch for**:
 - `decide()` loads plan.yaml internally via `resolve_plan_path()`. The driver MUST ensure the working directory is correct (the project root, not a worktree) when calling `decide()`.
@@ -1495,6 +1498,7 @@ is a deterministic string template, not LLM-generated.
 - The `merge_lock` MUST be a real `asyncio.Lock`, not a `threading.Lock` -- the loop is single-threaded async, not multi-threaded.
 - `Runner.dispatch()` implementations MUST set `stdin=PIPE` and write the prompt, then close stdin. Do not leave stdin open or the subprocess will hang.
 - The default judge runner is `opencode`. When using `claude` as judge runner, add `--no-session-persistence` and `--dangerously-skip-permissions`. Each runner uses its own non-interactive flags (opencode: `--format json`; codex: `--dangerously-bypass-approvals-and-sandbox`; gemini: `--approval-mode yolo`).
+- Session reuse is implemented in `session.py` with runner-aware matching and per-runner TTL overrides.
 
 **Open questions**:
 - ~~Exact system prompt text for the Judgment Agent~~ -- Resolved: see `JUDGE-AGENT-PROMPT.md`.

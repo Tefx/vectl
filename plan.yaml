@@ -44266,7 +44266,7 @@ phases:
     agent: gate-reviewer
   - id: driver-continuity-capability-safety.design-and-test
     name: Design capability boundary and write expected-red tests
-    status: claimed
+    status: done
     description: 'step_type: test
 
       merged_contract_test: true
@@ -44319,6 +44319,27 @@ phases:
     agent: python-senior
     claimed_by: python-senior
     claimed_at: '2026-03-28T23:30:00.295686+00:00'
+    done_at: '2026-03-28T23:40:22.165319+00:00'
+    evidence: "Artifact:\n- PR: 46a2b2c7a7c82b05dfca02f55c46922767a06b85\n\nVerification:\n\
+      - Run: uv run ruff check src/vectl/driver/runner_continuity.py src/vectl/driver/runners.py\
+      \ src/vectl/driver/types.py tests/test_driver_continuity_contract.py tests/fixtures/helpers/continuity_capability_safety.py\
+      \ tests/test_driver_continuity_capability_safety_red.py -> PASS\n- Run: uv run\
+      \ pytest -q tests/test_driver_continuity_contract.py tests/test_driver_continuity_capability_safety_red.py\
+      \ -> EXPECTED RED (5 passed, 4 failed)\n  - failed: non-resumable runner reuse\
+      \ forced fresh expected red\n  - failed: duplicate replay rejected expected\
+      \ red\n  - failed: replay token semantics drift forces fresh expected red\n\
+      \  - failed: guessed runner-name branching rejected expected red\n\nSpec link:\n\
+      - docs/DRIVER-CONTINUITY-FOUNDATION.md#4-runtime-contract\n- docs/DRIVER-CONTINUITY-FOUNDATION.md#6-transport-boundary-rules\n\
+      - docs/DRIVER-CONTINUITY-FOUNDATION.md#3-source-of-truth-matrix\n\nTest-step\
+      \ semantic reporting:\n- step_intent: test_define_red\n- expected_result: red\n\
+      - observed_result: red (targeted suite produced 4 intentional failures aligned\
+      \ to declared gaps)\n- failure_alignment: aligned to required capability/replay-safety\
+      \ gaps\n- whether any product implementation files were modified: yes (allowed\
+      \ minimal contract/stub surfaces only)\n- exposed_gaps:\n  - non-resumable runner\
+      \ reuse not gated by capability facts\n  - replay safety evaluator contract\
+      \ exists but logic unimplemented\n  - guessed/non-authoritative runner binding\
+      \ in replay tokens not rejected\n  - continuity-facing result fields contract-defined\
+      \ but runtime paths incomplete\n- downstream_implementation_owner: driver-continuity-capability-safety.impl"
 - id: driver-continuity-restart-recovery
   name: 'Driver Continuity: Restart Recovery'
   status: locked

@@ -38275,35 +38275,33 @@ phases:
   - id: driver-debt-policy-extraction.impl
     name: Extract pure policy helpers from loop.py
     status: done
-    description: 'step_type: implementation
-
-      Verification scope: phase-check protecting driver-debt-policy-extraction.verify
-      and gate.
-
-
-      Implement A3 as a behavior-preserving extraction.
-
-
-      Required work:
-
-      - Add src/vectl/driver/policy.py.
-
-      - Move the pinned pure helpers and dependent pure types/functions there.
-
-      - Update src/vectl/driver/loop.py to import and use the extracted helpers.
-
-      - Keep loop.py focused on coordination, runtime sequencing, and ownership boundaries.
-
-      - Do not change helper behavior while moving them.
-
-
-      Known risks:
-
-      - loop.py already carries correctness-sensitive authority seams; do not couple
-      this extraction to A1/A2 rewrites.
-
-      - Gate Preview: the gate will reject any semantic drift hidden inside the move,
-      or any helper that still needs coordinator-only mutable state.'
+    description: "step_type: implementation\nVerification scope: phase-check protecting\
+      \ driver-debt-policy-extraction.verify and gate.\n\nFill in stub bodies and\
+      \ replace placeholder extraction scaffolding with substantive, behavior-preserving\
+      \ policy helper logic under the pinned seam.\n\nUPSTREAM ARTIFACTS (from contract/test\
+      \ steps):\n  - src/vectl/driver/policy.py — from_step: driver-debt-policy-extraction.contract\
+      \ — tier: contract\n  - src/vectl/driver/loop.py — from_step: driver-debt-policy-extraction.contract\
+      \ — tier: contract\n  - tests/test_driver_loop_hardening.py — from_step: driver-debt-policy-extraction.tests\
+      \ — tier: test\n\nYOUR SCOPE: Complete the implementation within existing signatures\
+      \ and move only the pinned pure helpers; do not redesign loop ownership.\n\n\
+      Deviation protocol: If any upstream contract or test artifact is wrong or incomplete,\
+      \ record a deviation note with type, what, why, and impact; do NOT silently\
+      \ rewrite the extraction contract.\n\nupstream_artifacts:\n  - path: src/vectl/driver/policy.py\n\
+      \    from_step: driver-debt-policy-extraction.contract\n    tier: contract\n\
+      \  - path: src/vectl/driver/loop.py\n    from_step: driver-debt-policy-extraction.contract\n\
+      \    tier: contract\n  - path: tests/test_driver_loop_hardening.py\n    from_step:\
+      \ driver-debt-policy-extraction.tests\n    tier: test\n\nRequired work:\n- Add\
+      \ src/vectl/driver/policy.py.\n- Move the pinned pure helpers and dependent\
+      \ pure types/functions there.\n- Update src/vectl/driver/loop.py to import and\
+      \ use the extracted helpers.\n- Keep loop.py focused on coordination, runtime\
+      \ sequencing, and ownership boundaries.\n- Do not change helper behavior while\
+      \ moving them.\n\nKnown risks:\n- loop.py already carries correctness-sensitive\
+      \ authority seams; do not couple this extraction to A1/A2 rewrites.\n- Gate\
+      \ Preview: the gate will reject any semantic drift hidden inside the move, or\
+      \ any helper that still needs coordinator-only mutable state.\n\n## Completion\
+      \ Criteria (stub exclusion)\nThis is an IMPLEMENTATION step. Stub-only completion\
+      \ is NOT acceptable.\nEach deliverable MUST contain substantive extracted helper\
+      \ logic; empty wrappers or moved stubs do not satisfy this step."
     verification: '- Behavior-lock tests remain green
 
       - loop.py no longer owns the extracted pure policy helpers

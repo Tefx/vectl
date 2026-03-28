@@ -43381,3 +43381,36 @@ phases:
     bootstrap attempt.
   depends_on:
   - driver-continuity-restart-recovery
+  steps:
+  - id: driver-continuity-review.recovery-drill
+    name: Run independent continuity recovery drill
+    status: pending
+    description: 'step_type: verification
+
+      As an INDEPENDENT TESTER (blind-tester), run a recovery drill covering restart,
+      failed-step continuity, and replay-safe resume.
+
+
+      Verification scope: phase-check protecting driver-continuity-review.gate and
+      driver-bootstrap-readiness.
+
+
+      Required drill matrix:
+
+      - interrupted resumable session
+
+      - non-resumable runner requiring safe restart-only handling
+
+      - failed or aborted step with preserved continuity evidence
+
+      - reconciliation conflict leading to explicit halt
+
+
+      This is a real-path recovery drill, not a unit-test summary.'
+    verification: '- Paste exact commands and actual outputs for each recovery drill
+      row
+
+      - Show the continuity artifacts consumed by the controller
+
+      - Demonstrate that replay safety and capability facts influence the outcome'
+    agent: blind-tester

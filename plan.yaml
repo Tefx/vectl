@@ -33286,7 +33286,7 @@ phases:
       branches preserved.'
   - id: driver-judgment-runtime-minimal.verify-startup-recovery-and-shutdown
     name: Verify startup recovery and shutdown paths
-    status: pending
+    status: claimed
     description: 'step_type: verification
 
       Verification scope: phase-check protecting driver-judgment-runtime-minimal.gate.
@@ -33311,6 +33311,8 @@ phases:
     depends_on:
     - driver-judgment-runtime-minimal.impl-loop-runtime-minimal
     agent: integration-verifier
+    claimed_by: integration-verifier
+    claimed_at: '2026-03-28T08:21:02.311400+00:00'
   - id: driver-judgment-runtime-minimal.vertical-slice-runtime
     name: Early vertical slice runtime
     status: pending

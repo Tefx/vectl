@@ -39436,6 +39436,54 @@ phases:
     depends_on:
     - driver-evolution-action-registry.implement-layered-registry
     agent: python-senior
+  - id: driver-evolution-action-registry.verify-planner-dispatch
+    name: Verify planner dispatch registry coverage
+    status: pending
+    description: 'step_type: verification
+
+      expected_result: green
+
+      verification_scope: phase-check
+
+
+      As an INDEPENDENT TESTER (integration-verifier), validate planner dispatch as
+      a first-class loop action.
+
+
+      YOUR GOAL IS TO FIND PROBLEMS, not to confirm it works.
+
+
+      Test for:
+
+      - Happy path: a planner-triggering driver path resolves planner dispatch via
+      the registry and reaches the registered handler
+
+      - Edge cases: payload validation, category tagging, and expected event emission
+      behavior
+
+      - Error scenarios: planner dispatch surviving as a helper path outside the registry,
+      or falling into the wrong category
+
+
+      Independence Level: L2
+
+      Downstream gate protected: driver-evolution-action-registry.gate.
+
+
+      Evidence MUST identify the exercised path: loop/runtime decision -> action registry
+      -> planner handler.'
+    verification: 'phase-check protecting driver-evolution-action-registry.gate.
+
+      - Execute focused planner-dispatch tests or harnesses through the real registry
+      path
+
+      - Evidence includes actual command/test output and the path exercised
+
+      - Any helper bypass or category mismatch is logged as a blocker-class finding'
+    depends_on:
+    - driver-evolution-action-registry.implement-layered-registry
+    - driver-evolution-action-registry.implement-planner-dispatch-registration
+    agent: integration-verifier
 - id: driver-evolution-loop-migration
   name: 'Driver Evolution: Loop Migration & Wiring'
   status: locked

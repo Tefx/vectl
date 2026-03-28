@@ -38176,7 +38176,7 @@ phases:
       - Behavior-preservation rule enforced: no policy rewrites in this step'
   - id: driver-debt-policy-extraction.tests
     name: Add behavior-lock tests for policy helpers
-    status: claimed
+    status: done
     description: 'step_type: test
 
       step_intent: retest_green
@@ -38215,6 +38215,20 @@ phases:
     agent: python-executor
     claimed_by: python-executor
     claimed_at: '2026-03-28T18:42:41.991985+00:00'
+    done_at: '2026-03-28T18:59:03.686712+00:00'
+    evidence: 'Artifact:
+
+      - Commit: 6f35dfd (tests/test_driver_policy.py, 52 tests, 605 lines)
+
+
+      Verification:
+
+      - pytest tests/test_driver_policy.py tests/test_driver_loop_hardening.py ->
+      66 passed in 0.54s
+
+      - All 4 helper functions covered with behavior-lock tests
+
+      - No product code modified'
   - id: driver-debt-policy-extraction.impl
     name: Extract pure policy helpers from loop.py
     status: pending

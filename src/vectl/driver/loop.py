@@ -52,6 +52,7 @@ from .runners import Runner, create_runner
 from .session import SessionPool
 from .types import CompletedEntry, DriverState, RunnerStatus
 from .worktree import (
+    ConflictResolverDispatch,
     Failure,
     merge,
 )
@@ -105,6 +106,124 @@ ReplanTriggerName = Literal[
     "reconcile.escalation_replan",
     "run.startup_recovery_anomaly_replan",
 ]
+
+
+RemainingJudgmentTriggerName = Literal[
+    "reconcile.failure_classification",
+    "reconcile.escalation_threshold",
+    "reconcile.gate_assessment",
+    "run.startup_recovery_anomaly",
+    "handle_dispatch.gate_cold_context",
+]
+
+
+@dataclass(frozen=True)
+class RemainingJudgmentRuntimeContract:
+    """Pinned runtime semantics for the remaining prompt-defined judgment paths.
+
+    Authority: docs/JUDGE-AGENT-PROMPT.md sections ``failure``,
+    ``escalation``, ``gate``, ``anomaly``, and ``cold_context``.
+
+    The purpose of this contract is to prevent later runtime work from
+    narrowing any prompt-mandated branch into a smaller local rule.
+
+    Invariants:
+        - ``judgment_type`` names one of the still-expanding runtime judgment
+          surfaces whose semantics remain judge-owned.
+        - ``trigger`` names the exact loop entry point that must invoke or honor
+          the judgment.
+        - ``allowed_verdicts`` is the complete runtime verdict surface preserved
+          for that trigger until an explicit architecture update changes it.
+        - ``runtime_owner`` stays ``loop.py`` because loop wiring owns when these
+          prompt-derived semantics are executed.
+    """
+
+    judgment_type: str
+    trigger: RemainingJudgmentTriggerName
+    trigger_surface: str
+    allowed_verdicts: tuple[str, ...]
+    planner_instruction_required_for: tuple[str, ...]
+    runtime_owner: str
+    deferred_to: str
+    rationale: str
+
+
+GateRemediationTriggerName = Literal["reconcile.gate_failure_fix_retest_chain",]
+
+
+@dataclass(frozen=True)
+class GateRemediationChainContract:
+    """Pinned contract for gate failure -> batched remediation -> retest flow.
+
+    Authority: docs/JUDGE-AGENT-PROMPT.md ``TYPE: gate`` and
+    DRIVER-BLUEPRINT.md Flow 4.
+
+    Invariants:
+        - ``batched_remediation_owner`` explicitly names who creates the fix
+          batch so later phases cannot split ownership implicitly.
+        - ``included_same_batch`` contains all severities that MUST travel with
+          the blocker batch once remediation is required.
+        - ``retest_step_owner`` names the owner of the deferred gate re-run.
+        - ``planner_instruction_source`` MUST remain the judge verdict so gate
+          failures keep prompt-authored remediation semantics.
+    """
+
+    trigger: GateRemediationTriggerName
+    judgment_trigger: RemainingJudgmentTriggerName
+    planner_trigger: str
+    batched_remediation_owner: str
+    retest_step_owner: str
+    blocker_severities: tuple[str, ...]
+    included_same_batch: tuple[str, ...]
+    record_only_severities: tuple[str, ...]
+    planner_instruction_source: str
+    deferred_to: str
+    rationale: str
+
+
+ConflictResolverTriggerName = Literal["reconcile.merge_conflict_resolver_dispatch",]
+
+
+class ConflictResolverDispatcher(Protocol):
+    """Protocol for dispatching a non-trivial merge conflict resolver.
+
+    Non-responsibility: does NOT decide whether a conflict is trivial. That is
+    owned by ``worktree.merge()``. This protocol only carries the ready-to-
+    dispatch payload once merge semantics have classified the conflict.
+    """
+
+    async def dispatch_conflict_resolver(
+        self,
+        dispatch: ConflictResolverDispatch,
+        *,
+        config: DriverConfig,
+        runners: dict[str, Runner],
+        observer: Observer,
+    ) -> bool: ...
+
+
+@dataclass(frozen=True)
+class ConflictResolverReadinessContract:
+    """Pinned readiness contract for non-trivial merge conflict dispatch.
+
+    Authority: DRIVER-BLUEPRINT.md Worktree Lifecycle and Failure Modes,
+    plus docs/DRIVER-ARCHITECTURE.md Section 2.11 ``dispatch_conflict_resolver``.
+
+    Invariants:
+        - ``payload_source`` stays ``MergeResult.resolver_dispatch`` so merge
+          classification remains the source of truth.
+        - ``dispatch_ready_when`` enumerates the full readiness preconditions the
+          later implementation MUST check before invoking a resolver agent.
+        - ``runtime_owner`` stays ``loop.py`` because loop reconciliation owns
+          post-merge branching.
+    """
+
+    trigger: ConflictResolverTriggerName
+    payload_source: str
+    dispatch_ready_when: tuple[str, ...]
+    runtime_owner: str
+    deferred_to: str
+    rationale: str
 
 
 @dataclass(frozen=True)
@@ -340,6 +459,139 @@ Anti-narrowing rule:
     Later phases MUST preserve all entries in this matrix as planner-capable.
     They MUST NOT reinterpret REPLAN as a synonym for REJECT, DEFER, or HALT.
 """
+
+
+REMAINING_JUDGMENT_RUNTIME_CONTRACTS: Final[tuple[RemainingJudgmentRuntimeContract, ...]] = (
+    RemainingJudgmentRuntimeContract(
+        judgment_type="FAILURE",
+        trigger="reconcile.failure_classification",
+        trigger_surface=(
+            "reconcile() failure path before any provenance/disposition result is accepted"
+        ),
+        allowed_verdicts=("ACCEPT", "REPLAN"),
+        planner_instruction_required_for=("REPLAN",),
+        runtime_owner="loop.py",
+        deferred_to="driver-judgment-expansion-replan",
+        rationale=(
+            "The judge prompt requires provenance/disposition classification and makes "
+            "planner-authored remediation ownership mandatory when disposition is "
+            "downstream_blocker."
+        ),
+    ),
+    RemainingJudgmentRuntimeContract(
+        judgment_type="ESCALATION",
+        trigger="reconcile.escalation_threshold",
+        trigger_surface=("reconcile() repeated-failure branch once failure_count >= 3 is reached"),
+        allowed_verdicts=("RETRY", "SWITCH_AGENT", "REPLAN", "DEFER", "HALT"),
+        planner_instruction_required_for=("REPLAN",),
+        runtime_owner="loop.py",
+        deferred_to="driver-judgment-expansion-replan",
+        rationale=(
+            "The judge prompt owns repeated-failure disposition, including retry, "
+            "agent switch, plan strengthening, defer, and terminal halt semantics."
+        ),
+    ),
+    RemainingJudgmentRuntimeContract(
+        judgment_type="GATE",
+        trigger="reconcile.gate_assessment",
+        trigger_surface=(
+            "gate-result reconciliation after issue parsing and before blocker promotion or "
+            "freeze disposition is finalized"
+        ),
+        allowed_verdicts=("ACCEPT", "REJECT", "HALT"),
+        planner_instruction_required_for=("REJECT",),
+        runtime_owner="loop.py",
+        deferred_to="driver-judgment-expansion-replan",
+        rationale=(
+            "The judge prompt requires gate blocker promotion, runnable-surface liveness "
+            "checks, freeze hard-block evaluation, and planner-authored batched fix+retest "
+            "instructions when blockers remain."
+        ),
+    ),
+    RemainingJudgmentRuntimeContract(
+        judgment_type="ANOMALY",
+        trigger="run.startup_recovery_anomaly",
+        trigger_surface=(
+            "run() startup recovery after repair/orphan detection and before unsafe auto-repair"
+        ),
+        allowed_verdicts=("ACCEPT", "HALT"),
+        planner_instruction_required_for=(),
+        runtime_owner="loop.py",
+        deferred_to="driver-judgment-expansion-replan",
+        rationale=(
+            "The judge prompt defines the safe-vs-unsafe anomaly boundary for automatic "
+            "recovery and forbids silent structural repair without judgment."
+        ),
+    ),
+    RemainingJudgmentRuntimeContract(
+        judgment_type="COLD_CONTEXT",
+        trigger="handle_dispatch.gate_cold_context",
+        trigger_surface=(
+            "handle_dispatch() before gate/freeze dispatch payload is assembled for an "
+            "independent auditor"
+        ),
+        allowed_verdicts=("ACCEPT",),
+        planner_instruction_required_for=(),
+        runtime_owner="loop.py",
+        deferred_to="driver-judgment-expansion-replan",
+        rationale=(
+            "The judge prompt requires cold-context pruning to include only objective gate "
+            "artifacts and exclude worker/orchestrator reasoning before gate dispatch."
+        ),
+    ),
+)
+"""Normative matrix for remaining prompt-defined judgment runtime paths.
+
+This matrix closes the contract gap after the earlier REPLAN trigger pinning by
+recording the exact runtime trigger point and verdict surface for the remaining
+judgment semantics that are still deferred.
+"""
+
+
+GATE_REMEDIATION_CHAIN_CONTRACT: Final[GateRemediationChainContract] = GateRemediationChainContract(
+    trigger="reconcile.gate_failure_fix_retest_chain",
+    judgment_trigger="reconcile.gate_assessment",
+    planner_trigger="reconcile.gate_reject_fix_retest_chain",
+    batched_remediation_owner="planner dispatch from loop.py",
+    retest_step_owner="loop.py gate rerun after planner-created fix batch lands",
+    blocker_severities=("blocker",),
+    included_same_batch=("blocker", "should_fix"),
+    record_only_severities=("suggestion", "tech_debt"),
+    planner_instruction_source="JudgmentVerdict.planner_instruction",
+    deferred_to="driver-judgment-expansion-replan",
+    rationale=(
+        "The judge prompt and Flow 4 require blocker and should-fix issues to travel through "
+        "one batched remediation chain, followed by a deferred gate re-run rather than ad hoc "
+        "manual fixes."
+    ),
+)
+"""Canonical owner/shape for gate failure remediation batching.
+
+The ownership split is deliberate:
+- planner dispatch owns creation of the batched fix chain
+- loop reconciliation owns deferring and re-running the gate step
+"""
+
+
+CONFLICT_RESOLVER_READINESS_CONTRACT: Final[ConflictResolverReadinessContract] = (
+    ConflictResolverReadinessContract(
+        trigger="reconcile.merge_conflict_resolver_dispatch",
+        payload_source="MergeResult.resolver_dispatch",
+        dispatch_ready_when=(
+            "merge outcome is non_trivial_conflict",
+            "resolver_dispatch payload is present",
+            "conflicted_files is non-empty",
+            "step has already been durably deferred away from merge happy-path completion",
+        ),
+        runtime_owner="loop.py",
+        deferred_to="driver-judgment-expansion-replan",
+        rationale=(
+            "The blueprint requires dispatching a conflict-resolver agent for source-file merge "
+            "conflicts once worktree classification has proven the conflict is non-trivial."
+        ),
+    )
+)
+"""Canonical readiness contract for conflict-resolver dispatch."""
 
 
 async def dispatch_planner(
@@ -1255,13 +1507,23 @@ async def _run_main_loop(
 
 
 __all__ = [
+    "CONFLICT_RESOLVER_READINESS_CONTRACT",
+    "ConflictResolverDispatcher",
+    "ConflictResolverReadinessContract",
+    "ConflictResolverTriggerName",
     "DEFERRED_REPLAN_BRANCHES",
+    "GATE_REMEDIATION_CHAIN_CONTRACT",
+    "GateRemediationChainContract",
+    "GateRemediationTriggerName",
     "GRACEFUL_SHUTDOWN_CONTRACT",
     "LoopSurfaceName",
     "PlannerDispatchContract",
     "PlannerDispatchRequest",
     "PlannerDispatcher",
+    "REMAINING_JUDGMENT_RUNTIME_CONTRACTS",
     "REPLAN_PLANNER_WIRING",
+    "RemainingJudgmentRuntimeContract",
+    "RemainingJudgmentTriggerName",
     "ReplanTriggerName",
     "GracefulShutdownContract",
     "DeferredRuntimeBranch",

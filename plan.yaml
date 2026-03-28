@@ -40734,6 +40734,46 @@ phases:
 
       - Boundary with recovery policy is explicit enough for parallel work'
     agent: software-architect
+  - id: driver-enhancement-streaming-progress.test-define-red
+    name: Define expected-red streaming liveness regressions
+    status: pending
+    description: 'step_type: test
+
+      step_intent: test_define_red
+
+      expected_result: red
+
+
+      Define failing tests that expose the current one-shot `communicate()` limitation
+      before implementation.
+
+
+      Required exposed gaps:
+
+      - driver cannot observe incremental JSONL output before runner completion
+
+      - no live heartbeat / progress awareness
+
+      - no last-progress signal for hung vs active runners
+
+      - main loop does not expose streaming-aware liveness state
+
+
+      ## Spec-Fixture Conformance (MANDATORY)
+
+      At least one fixture MUST use the exact documented JSONL envelope / progress
+      record shape from the authoritative contract.'
+    verification: 'local-check protecting driver-enhancement-streaming-progress.impl.
+
+      - Tests remain limited to test surfaces and helpers
+
+      - At least one fixture exercises incremental JSONL chunks, not final aggregated
+      output only
+
+      - Evidence records the pre-implementation red gap clearly'
+    depends_on:
+    - driver-enhancement-streaming-progress.contract
+    agent: python-executor
 - id: driver-enhancement-runner-recovery
   name: 'Driver Enhancement: Runner Recovery'
   status: locked

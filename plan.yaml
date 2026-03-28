@@ -41810,6 +41810,65 @@ phases:
     - driver-prompt-migration.package-resource-loader
     - driver-prompt-migration.authority-reference-migration
     agent: integration-verifier
+  - id: driver-prompt-migration.gate
+    name: Gate packaged prompt migration
+    status: pending
+    description: 'Gate review: verify the driver prompt migration phase is complete
+      and safe.
+
+
+      review_depth: THOROUGH
+
+      review_depth_rationale:
+
+      - Phase changes a runtime resource boundary and package distribution behavior.
+
+      - Historical risk includes missing-file fallback silently weakening runtime
+      behavior.
+
+
+      cross_cutting_focus:
+
+      - runtime no longer depends on docs/
+
+      - packaged resource ships with installs
+
+      - no silent fallback path remains
+
+      - docs/runtime drift is surfaced explicitly'
+    verification: '- All migration steps completed.
+
+      - Independent retest provides green evidence for packaged-resource loading and
+      explicit failure semantics.
+
+      - Package inclusion and docs/runtime authority migration are both evidenced.
+
+      - No unresolved blocker remains for final review.'
+    evidence_template: '## Gate Review Report
+
+      | Step ID | Status | Evidence Quality | Concerns |
+
+      | ------- | ------ | ---------------- | -------- |
+
+      | driver-prompt-migration.package-resource-loader |  |  |  |
+
+      | driver-prompt-migration.authority-reference-migration |  |  |  |
+
+      | driver-prompt-migration.runtime-retest |  |  |  |
+
+
+      ## Decision
+
+      - OPEN or BLOCKED
+
+      - Blocking issues:
+
+      - Required remediation:'
+    depends_on:
+    - driver-prompt-migration.package-resource-loader
+    - driver-prompt-migration.authority-reference-migration
+    - driver-prompt-migration.runtime-retest
+    agent: gate-reviewer
 - id: driver-prompt-review
   name: Driver Prompt Resource Review
   status: locked

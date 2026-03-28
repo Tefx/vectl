@@ -32132,7 +32132,7 @@ phases:
     agent: gate-reviewer
   - id: driver-execution-infra.fix-gate-blockers
     name: Fix gate blockers for driver execution infra
-    status: pending
+    status: claimed
     description: 'step_type: implementation
 
       As a batched remediation step, fix ALL blockers reported by the independent
@@ -32293,6 +32293,8 @@ phases:
     depends_on:
     - driver-execution-infra.spec-conformance
     agent: python-senior
+    claimed_by: python-senior
+    claimed_at: '2026-03-28T03:36:32.776996+00:00'
   - id: driver-execution-infra.retest-gate-blockers
     name: Retest gate blockers for driver execution infra
     status: pending

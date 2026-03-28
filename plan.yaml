@@ -41279,6 +41279,59 @@ phases:
     - driver-enhancement-runner-recovery.impl
     - driver-enhancement-runner-recovery.verify
     agent: gate-reviewer
+  - id: driver-enhancement-runner-recovery.design-and-test
+    name: Design recovery boundary and write expected-red tests
+    status: pending
+    description: 'step_type: test
+
+      merged_contract_test: true
+
+      step_intent: test_define_red
+
+      expected_result: red
+
+
+      Design interface and write expected-red tests for advanced runner recovery.
+
+
+      There is no authoritative external spec that precisely pins the post-bootstrap
+      watchdog/recovery taxonomy, so contract-first would over-specify an undocumented
+      surface. This merged step owns both boundary design and red-test definition
+      on the existing recovery surfaces.
+
+
+      Outputs allowed:
+
+      - signatures, type notes, docstrings, and stubs on existing recovery surfaces
+      only
+
+      - expected-red tests and fixtures defining the missing behavior
+
+
+      Required scope:
+
+      - define stall/no-progress/crash taxonomy and recovery matrix on the existing
+      loop/recovery boundary
+
+      - preserve continuity-owned bootstrap-minimum resume, replay-safety, and restart-controller
+      ownership
+
+      - author expected-red tests for crash-vs-clean-fail distinction, watchdog gaps,
+      heartbeat-driven recovery decisions, and missing recovery matrix behavior
+
+
+      No implementation logic beyond signatures/stubs and tests.
+
+      Evidence must include exposed_gaps and name `driver-enhancement-runner-recovery.impl`
+      as the downstream implementation owner.'
+    verification: '- Modified files are limited to tests plus minimal contract/stub
+      surfaces
+
+      - Expected-red coverage exposes the current recovery gaps before runtime code
+      changes
+
+      - Outputs include both recovery boundary design notes and failing tests'
+    agent: python-senior
 - id: driver-enhancement-integration
   name: 'Driver Enhancement: Integration'
   status: locked

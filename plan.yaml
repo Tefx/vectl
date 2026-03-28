@@ -43527,7 +43527,7 @@ phases:
     agent: gate-reviewer
 - id: driver-continuity-foundation
   name: 'Driver Continuity: Foundation'
-  status: pending
+  status: in_progress
   gate: Approved continuity architecture basis exists for session authority convergence,
     durable resume state, replay safety, runner capability semantics, and recovery-grade
     minimum telemetry before implementation fan-out.
@@ -43536,7 +43536,7 @@ phases:
   steps:
   - id: driver-continuity-foundation.architecture-basis
     name: Produce continuity architecture basis
-    status: pending
+    status: claimed
     description: 'step_type: planning
 
       Build the approved architecture basis for bootstrap-blocker continuity work.
@@ -43581,6 +43581,8 @@ phases:
 
       - Readiness is APPROVED or lists only non-blocking post-bootstrap follow-ups'
     agent: software-architect
+    claimed_by: software-architect
+    claimed_at: '2026-03-28T22:33:02.369063+00:00'
   - id: driver-continuity-foundation.contract
     name: Pin continuity authority and capability contract
     status: pending

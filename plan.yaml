@@ -33365,7 +33365,7 @@ phases:
       \ paths."
   - id: driver-judgment-runtime-minimal.vertical-slice-runtime
     name: Early vertical slice runtime
-    status: pending
+    status: claimed
     description: 'step_type: verification
 
       Verification scope: phase-check protecting driver-judgment-runtime-minimal.gate.
@@ -33396,6 +33396,8 @@ phases:
     depends_on:
     - driver-judgment-runtime-minimal.verify-startup-recovery-and-shutdown
     agent: integration-verifier
+    claimed_by: integration-verifier
+    claimed_at: '2026-03-28T08:34:05.760781+00:00'
   - id: driver-judgment-runtime-minimal.liveness-probe
     name: Liveness probe runtime minimal
     status: pending

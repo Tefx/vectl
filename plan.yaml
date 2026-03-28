@@ -34120,7 +34120,7 @@ phases:
       \ private state from driver code"
   - id: driver-multi-runner-hardening.verify-conflict-and-multirunner
     name: Verify conflict resolution and multi-runner seams
-    status: pending
+    status: claimed
     description: 'step_type: verification
 
       Verification scope: phase-check protecting driver-multi-runner-hardening.gate.
@@ -34150,6 +34150,8 @@ phases:
     depends_on:
     - driver-multi-runner-hardening.verify-session-boundary
     agent: integration-verifier
+    claimed_by: integration-verifier
+    claimed_at: '2026-03-28T09:48:13.251785+00:00'
   - id: driver-multi-runner-hardening.spec-conformance
     name: Multi-runner hardening spec conformance
     status: pending

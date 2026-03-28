@@ -38657,3 +38657,10 @@ phases:
     and the runnable driver path is proven end-to-end
   depends_on:
   - driver-evolution-action-registry
+- id: driver-evolution-review
+  name: 'Driver Evolution: Review'
+  status: locked
+  gate: Doc sync plus independent deep review confirm the evolved driver matches the
+    ADR and is safe to extend
+  depends_on:
+  - driver-evolution-loop-migration

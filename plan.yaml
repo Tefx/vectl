@@ -37937,28 +37937,6 @@ phases:
     depends_on:
     - driver-debt-cli-entrypoint-unification.test-define-red
     agent: python-senior
-  - id: driver-debt-cli-entrypoint-unification.freeze
-    name: Freeze snapshot for CLI parity verification
-    status: pending
-    description: 'step_type: verification
-
-      Verification scope: phase-check protecting driver-debt-cli-entrypoint-unification.liveness
-      and gate.
-
-
-      Freeze the entrypoint-unification snapshot before runnable verification and
-      gate review.
-
-      Required evidence: git rev-parse HEAD, clean status, environment declaration,
-      and no-change statement.'
-    verification: '- Freeze evidence complete before runnable checks'
-    refs:
-    - src/vectl/driver/entrypoint.py
-    - src/vectl/driver/__main__.py
-    - src/vectl/cli.py
-    depends_on:
-    - driver-debt-cli-entrypoint-unification.impl
-    agent: integration-verifier
   - id: driver-debt-cli-entrypoint-unification.liveness
     name: Liveness probe shared entrypoints
     status: pending

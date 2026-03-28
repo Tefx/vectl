@@ -40009,15 +40009,19 @@ phases:
 
       - top-level event envelope versioning
 
-      - FINAL summary semantics
+      - registry ownership of event contracts via centralized static declaration tables
 
-      - registry ownership of event contracts
+      - FINAL as canonical summary event with optional `halt_reason` while `HALT`
+      remains preserved
 
       - RuntimeContext ownership boundaries
 
+      - initial handler contract uses one shared RuntimeContext; role-specific contexts
+      remain deferred
+
       - layered action registry categories
 
-      - planner dispatch as a first-class planner action
+      - planner dispatch as a first-class planner action inside registry coverage
 
       - loop migration to registry-backed handlers
 
@@ -40027,11 +40031,16 @@ phases:
 
       - Evidence table covers all ADR decision points
 
+      - Evidence explicitly verifies: (1) FINAL includes optional `halt_reason`, (2)
+      migrated handlers use shared RuntimeContext, (3) event/action registries are
+      explicit static declarations rather than dynamic registration mechanisms where
+      the ADR requires that shape
+
       - Any divergence is dispositioned as blocker, explicit deferred ownership, or
       non-intersection with justification
 
-      - FINAL, DECIDE, STEP_COMPLETED, and planner dispatch are explicitly called
-      out'
+      - FINAL, DECIDE, STEP_COMPLETED, planner dispatch, and registry declaration
+      shape are explicitly called out'
     depends_on:
     - driver-evolution-review.update-docs
     - driver-evolution-review.wiring-audit

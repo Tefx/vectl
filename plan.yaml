@@ -35444,7 +35444,7 @@ phases:
   steps:
   - id: driver-cli-integration.contract-cli-drive
     name: Contract vectl drive CLI command
-    status: claimed
+    status: done
     description: "step_type: contract\ncontract_purity: ENFORCED\ncontract_outputs:\n\
       \  - signatures\n  - interfaces\n  - stubs\n\nPin the exact CLI integration\
       \ surface in src/vectl/cli.py for `vectl drive [--config PATH]` as documented\
@@ -35457,6 +35457,39 @@ phases:
     agent: python-executor
     claimed_by: python-executor
     claimed_at: '2026-03-28T12:05:26.688787+00:00'
+    done_at: '2026-03-28T12:11:32.114788+00:00'
+    evidence: 'Artifact:
+
+      - PR: 0d601336fcae6ff67d313bae76385a599c1c782f (commit on branch vectl/step-driver-cli-integration.contract-cli-drive)
+
+
+      Verification:
+
+      - Run: uv run vectl drive --help -> Command name: "drive", Flag surface: "--config
+      PATH" (default: driver.yaml), Runtime entrypoint: "vectl.driver.loop.run" (import
+      deferred)
+
+      - Run: uv run pytest tests/test_cli.py -x -q -> 231 passed
+
+      - Run: uv run python -c "from vectl.cli import app" -> OK (import successful)
+
+
+      Contract pins verified:
+
+      - Command name: "drive" (line 3133 in cli.py)
+
+      - Flag surface: --config PATH with default "driver.yaml" (line 3136-3139)
+
+      - Runtime entrypoint target: "vectl.driver.loop.run" (line 3148, deferred import)
+
+      - Docstring references DRIVER-BLUEPRINT.md §CLI integration (line 3154)
+
+
+      Spec link:
+
+      - DRIVER-BLUEPRINT.md line 44: "CLI entry: `vectl drive [--config PATH]`"
+
+      - DRIVER-BLUEPRINT.md lines 115-122: Exact stub pattern documented'
   - id: driver-cli-integration.test-cli-drive
     name: Test vectl drive CLI command
     status: pending

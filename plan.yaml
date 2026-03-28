@@ -40933,10 +40933,11 @@ phases:
     - driver-enhancement-streaming-progress.verify
     agent: gate-reviewer
 - id: driver-enhancement-runner-recovery
-  name: 'Driver Enhancement: Runner Recovery'
+  name: 'Driver Enhancement: Advanced Runner Recovery'
   status: locked
-  gate: Driver distinguishes crash/fail/timeout/stall/no-progress and applies an explicit
-    recovery matrix with watchdog-backed evidence.
+  gate: Post-bootstrap runner recovery extends beyond the continuity-owned bootstrap
+    minimum with richer watchdog heuristics, advanced failure taxonomy, and operator-facing
+    recovery behavior.
   depends_on:
   - driver-enhancement-foundation
   steps:

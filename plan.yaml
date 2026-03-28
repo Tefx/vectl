@@ -41473,6 +41473,42 @@ phases:
 
       '
     agent: software-architect
+  - id: driver-guardrails-foundation.guardrail-policy-contract
+    name: Author real-bootstrap guardrail policy contract
+    status: pending
+    description: "step_type: contract\ncontract_purity: ENFORCED\ncontract_outputs:\n\
+      \  - interfaces\n  - behavioral_notes\n\nDefine the policy contract for restoring\
+      \ preflight and cold_context in real bootstrap.\n\nAuthority:\n- DRIVER-BLUEPRINT.md\
+      \ / Configuration Schema (driver.yaml)\n- DRIVER-BLUEPRINT.md / Key Flows /\
+      \ Flow 2: Dispatch with Preflight\n- docs/JUDGE-AGENT-PROMPT.md / TYPE: preflight\n\
+      - docs/JUDGE-AGENT-PROMPT.md / TYPE: cold_context\n\nRequired scope:\n- Enumerate\
+      \ which step families MUST pass preflight, which are skip-eligible, and why\n\
+      - Enumerate which gate/review/freeze-like irreversible boundaries MUST use cold_context\n\
+      - Define minimal include/exclude context rules for cold_context so reviewers\
+      \ see objective artifacts, not warm execution reasoning\n- Define success criteria\
+      \ proving restored guardrails do not corrupt real plans, claims, or orchestration\
+      \ state\n- Record that long-term preflight:false or cold_context:false is NOT\
+      \ an acceptable end state\n\nThis step MUST NOT implement runtime logic."
+    verification: '- Policy matrix covers mandatory / skip / future-irreversible-boundary
+      treatment for both guardrails
+
+      - ACCEPT / REPLAN / REJECT expectations are explicit for preflight
+
+      - cold_context include/exclude rules are explicit and auditable
+
+      - No runtime code or config mutation is performed in this step'
+    evidence_template: '## Guardrail Policy Contract
+
+      - Preflight applicability matrix:
+
+      - cold_context applicability matrix:
+
+      - Include/exclude context rules:
+
+      - Safety proof requirements for real bootstrap:
+
+      '
+    agent: software-architect
 - id: driver-guardrails-output-hardening
   name: 'Driver Guardrails: Judge Output Hardening'
   status: locked

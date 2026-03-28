@@ -32926,11 +32926,20 @@ phases:
       Verification scope: phase-check protecting driver-cli-integration.gate.
 
 
+      POST-IMPLEMENTATION GREEN VERIFICATION STEP.
+
+
       Exercise the real `vectl drive` path with actual command invocation and prove
-      it reaches the runtime entrypoint rather than a stubbed adapter path.'
+      it reaches the runtime entrypoint rather than a stubbed adapter path.
+
+
+      Failures here are implementation verification findings, not expected-red.'
     verification: '- Exact command and actual output are included
 
-      - Evidence shows vectl drive reaches the real runtime path'
+      - Evidence shows vectl drive reaches the real runtime path
+
+      - Expected result is green pass against implemented CLI behavior; red outcomes
+      block the phase gate'
     depends_on:
     - driver-cli-integration.impl-cli-drive
     agent: integration-verifier

@@ -37976,7 +37976,7 @@ phases:
       - Product code modified: NO'
   - id: driver-debt-cli-entrypoint-unification.impl
     name: Implement shared driver entrypoint adapter
-    status: pending
+    status: claimed
     description: "step_type: implementation\ntags:\n  - integration\nVerification\
       \ scope: phase-check protecting driver-debt-cli-entrypoint-unification.liveness\
       \ and gate.\n\nImplement A4 using one runtime adapter.\n\nRequired work:\n-\
@@ -38007,6 +38007,8 @@ phases:
     depends_on:
     - driver-debt-cli-entrypoint-unification.test-define-red
     agent: python-senior
+    claimed_by: python-senior
+    claimed_at: '2026-03-28T19:01:18.772368+00:00'
   - id: driver-debt-cli-entrypoint-unification.liveness
     name: Liveness probe shared entrypoints
     status: pending

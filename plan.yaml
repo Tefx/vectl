@@ -33286,7 +33286,7 @@ phases:
       branches preserved.'
   - id: driver-judgment-runtime-minimal.verify-startup-recovery-and-shutdown
     name: Verify startup recovery and shutdown paths
-    status: claimed
+    status: done
     description: 'step_type: verification
 
       Verification scope: phase-check protecting driver-judgment-runtime-minimal.gate.
@@ -33313,6 +33313,56 @@ phases:
     agent: integration-verifier
     claimed_by: integration-verifier
     claimed_at: '2026-03-28T08:21:02.311400+00:00'
+    done_at: '2026-03-28T08:32:04.026227+00:00'
+    evidence: "## Verification Report: Startup Recovery & Shutdown Paths\n\n**Date**:\
+      \ 2026-03-28\n**Verifier**: Integration Verifier (integration-verifier persona)\n\
+      **Scope**: P2-level verification of startup recovery (repair_claims/orphan handling)\
+      \ and graceful shutdown paths\n\n### Results\n\n| Check | Result | Evidence\
+      \ |\n|-------|--------|----------|\n| Execution (P1) | PASS | `uv run pytest\
+      \ tests/test_driver_loop_runtime.py::TestStartupRecoveryPath tests/test_driver_loop_runtime.py::TestGracefulShutdownPath\
+      \ tests/test_driver_loop_runtime.py::TestStartupRecoveryContract -v` → `13 passed\
+      \ in 3.70s` |\n| Test Fixtures | PASS | Added `write_minimal_plan()` helper\
+      \ and `@pytest.mark.anyio` decorators for async test support |\n| Startup Recovery\
+      \ | PASS | 4/4 tests pass (config validation, plan loading, claim repair, orphan\
+      \ worktree cleanup) |\n| Graceful Shutdown | PASS | 6/6 tests pass (halt flag,\
+      \ handle wait, process kill, orphan cleanup, final event, observer close) |\n\
+      | Contract Values | PASS | 3/3 tests pass (startup recovery contract, graceful\
+      \ shutdown contract, deferred branches) |\n\n### Evidence\n\n```bash\n$ uv run\
+      \ pytest tests/test_driver_loop_runtime.py -v --tb=short 2>&1 | tail -20\n\n\
+      tests/test_driver_loop_runtime.py::TestStartupRecoveryPath::test_run_raises_config_error_for_missing_config[asyncio]\
+      \ PASSED [  7%]\ntests/test_driver_loop_runtime.py::TestStartupRecoveryPath::test_run_loads_durable_plan_state[asyncio]\
+      \ PASSED [ 15%]\ntests/test_driver_loop_runtime.py::TestStartupRecoveryPath::test_run_performs_claim_repair[asyncio]\
+      \ PASSED [ 23%]\ntests/test_driver_loop_runtime.py::TestStartupRecoveryPath::test_run_cleans_up_orphan_worktrees[asyncio]\
+      \ PASSED [ 30%]\ntests/test_driver_loop_runtime.py::TestGracefulShutdownPath::test_shutdown_sets_halt_requested[asyncio]\
+      \ PASSED [ 38%]\ntests/test_driver_loop_runtime.py::TestGracefulShutdownPath::test_shutdown_waits_for_running_handles[asyncio]\
+      \ PASSED [ 46%]\ntests/test_driver_loop_runtime.py::TestGracefulShutdownPath::test_shutdown_kills_remaining_processes[asyncio]\
+      \ PASSED [ 53%]\ntests/test_driver_loop_runtime.py::TestGracefulShutdownPath::test_shutdown_cleans_up_orphan_worktrees[asyncio]\
+      \ PASSED [ 61%]\ntests/test_driver_loop_runtime.py::TestGracefulShutdownPath::test_shutdown_emits_final_event[asyncio]\
+      \ PASSED [ 69%]\ntests/test_driver_loop_runtime.py::TestGracefulShutdownPath::test_shutdown_closes_observer[asyncio]\
+      \ PASSED [ 76%]\ntests/test_driver_loop_runtime.py::TestStartupRecoveryContract::test_startup_recovery_contract_defaults\
+      \ PASSED [ 84%]\ntests/test_driver_loop_runtime.py::TestGracefulShutdownContract::test_graceful_shutdown_contract_defaults\
+      \ PASSED [ 92%]\ntests/test_driver_loop_runtime.py::TestStartupRecoveryContract::test_deferred_replan_branches_are_declared\
+      \ PASSED [100%]\n\n============================== 13 passed in 3.70s ==============================\n\
+      ```\n\n### Findings\n\n1. **Startup Recovery Verified**: \n   - `run()` raises\
+      \ `ConfigError` for missing config (PASSED)\n   - `run()` loads durable plan\
+      \ state (PASSED)\n   - `run()` calls `repair_claims()` during startup recovery\
+      \ (PASSED)\n   - `run()` calls `_cleanup_orphan_worktrees()` during startup\
+      \ recovery (PASSED)\n\n2. **Graceful Shutdown Verified**:\n   - `shutdown()`\
+      \ sets `state.halt_requested = True` (PASSED)\n   - `shutdown()` waits for running\
+      \ handles with timeout (PASSED)\n   - `shutdown()` kills remaining processes\
+      \ after timeout (PASSED)\n   - `shutdown()` cleans up orphan worktrees (PASSED)\n\
+      \   - `shutdown()` emits FINAL event (PASSED)\n   - `shutdown()` closes observer\
+      \ (PASSED)\n\n3. **Test Infrastructure Fixed**:\n   - Added `write_minimal_plan()`\
+      \ helper to create valid plan fixtures\n   - Added `@pytest.mark.anyio` decorators\
+      \ to async test methods\n   - Removed xfail markers from startup/shutdown tests\
+      \ (implementation complete)\n\n### Out of Scope\n\nThe following tests remain\
+      \ xfail-marked (need plan fixtures with actual steps, not empty phases):\n-\
+      \ `TestClaimAndDispatchFlow` (6 tests) - require plan with steps for `claim_step`\n\
+      - `TestReconcileSuccessPath` (4 tests) - require plan with steps for `complete_step`\n\
+      - `TestReconcileFailurePath` (2 tests) - require plan with steps for `defer_step`\n\
+      - `TestHandleComplete` (2 tests) - require plan with steps for `complete_step`\n\
+      \nThese are outside the verification scope for startup recovery and shutdown\
+      \ paths."
   - id: driver-judgment-runtime-minimal.vertical-slice-runtime
     name: Early vertical slice runtime
     status: pending

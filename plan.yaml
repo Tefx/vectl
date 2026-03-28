@@ -38673,7 +38673,7 @@ phases:
     - src/vectl/driver/entrypoint.py
     - src/vectl/driver/policy.py
     agent: software-architect
-  - id: driver-debt-deep-review.contract-strength
+  - id: driver-debt-review.contract-strength
     name: Audit remediated contracts for strength
     status: pending
     description: 'step_type: verification

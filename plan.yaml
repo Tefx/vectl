@@ -34771,7 +34771,7 @@ phases:
       blockers, cold-context requests, anomaly request builder'
   - id: driver-judgment-expansion-replan.verify-gate-chain-e2e
     name: Verify gate-chain end-to-end
-    status: claimed
+    status: done
     description: 'step_type: verification
 
       Verification scope: phase-check protecting driver-judgment-expansion-replan.gate.
@@ -34797,6 +34797,49 @@ phases:
     agent: integration-verifier
     claimed_by: integration-verifier
     claimed_at: '2026-03-28T11:06:57.160810+00:00'
+    done_at: '2026-03-28T11:12:25.590513+00:00'
+    evidence: 'Artifact:
+
+      - Commit: 97ead0441c387731078db2d99c65e163c5e55a9f
+
+
+      Verification:
+
+      - Run: uv run pytest tests/test_driver_loop_hardening.py tests/test_driver_judgment_expansion_contract.py
+      tests/test_driver_judgment_expansion_flow.py tests/test_driver_replan_verdict.py
+      tests/test_driver_judge.py tests/test_driver_judgments.py -v -> 238 passed
+
+
+      Gate-Chain End-to-End Evidence:
+
+      1. Trigger Path: GATE verdict with blockers -> _parse_gate_issues() -> batch
+      all blockers -> REJECT verdict with planner_instruction -> dispatch_planner()
+      -> defer_step
+
+      2. Follow-Up Action: Planner dispatch with PlannerDispatchRequest, propagates
+      RunnerError on failure, requires non-empty planner_instruction
+
+      3. Judgment verdict flow: GATE allowed_verdicts (ACCEPT, REJECT, HALT), REJECT
+      requires planner_instruction, batched remediation
+
+      4. REPLAN verdict non-narrowing: preserved verbatim, all 5 branches registered
+
+      5. Context schema validation: GATE context required fields verified
+
+      6. Gate remediation chain contract: batched_remediation_owner = "planner (creation),
+      loop (retest)"
+
+      7. Failure classification with remaining_gates: downstream-blocker + REPLAN
+      triggers planner dispatch path
+
+
+      Spec link:
+
+      - docs/DRIVER-ARCHITECTURE.md Section 2.11, 3
+
+      - src/vectl/driver/loop.py lines 563-576, 1636-1739
+
+      - src/vectl/driver/judgments.py'
   - id: driver-judgment-expansion-replan.spec-conformance
     name: Judgment expansion and replan spec conformance
     status: pending

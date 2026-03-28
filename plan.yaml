@@ -43806,6 +43806,66 @@ phases:
     agent: gate-reviewer
     claimed_by: gate-reviewer
     claimed_at: '2026-03-28T23:01:00.659410+00:00'
+  - id: driver-continuity-foundation.fix-blockers
+    name: Repair continuity foundation blocker set
+    status: pending
+    description: "step_type: planning\n\nBatched remediation for blocker-class continuity-foundation\
+      \ defects reported by driver-continuity-foundation.gate.\n\nThis step MUST resolve\
+      \ ALL discovered blockers together, not one-by-one:\n- prerequisite architecture-basis\
+      \ and contract content appears semantically incomplete\n- prior evidence claims\
+      \ artifacts/tests that are not present in the repo\n- downstream phases cannot\
+      \ safely unlock while continuity authority, durable resume state, replay safety,\
+      \ runner capability semantics, and minimum recovery telemetry remain ambiguous\n\
+      \nRequired outputs (choose one truthful path per artifact claim, with repo-verifiable\
+      \ evidence):\n1. Create the previously claimed continuity artifacts/tests in\
+      \ the repository with implementable, non-fabricated scope; OR\n2. Revise the\
+      \ prior architecture basis / contract / evidence to a truthful, implementable\
+      \ scope that matches artifacts actually present and explicitly removes fabricated\
+      \ claims.\n\nAcceptance criteria (ALL required):\n- Continuity architecture\
+      \ basis is repo-present, reviewable, and specific about session authority convergence,\
+      \ durable resume state, replay safety, runner capability semantics, and minimum\
+      \ recovery telemetry.\n- Continuity contract is repo-present, reviewable, and\
+      \ pins truthful, implementable boundaries for downstream authority-ledger and\
+      \ capability-safety work.\n- Any claimed tests either exist with exact runnable\
+      \ identifiers or are removed/reframed from evidence and scope so no fabricated\
+      \ verification remains.\n- Evidence is truthful and artifact-backed: every cited\
+      \ document, file, and test can be located in the repo.\n- Ambiguity is eliminated\
+      \ enough that driver-continuity-authority-ledger and driver-continuity-capability-safety\
+      \ can unlock safely without re-deriving foundation semantics.\n- If scope is\
+      \ narrowed, the narrowed scope explicitly states what is deferred and why that\
+      \ deferral does not intersect the downstream foundation gate.\n\nAnti-rework\
+      \ instructions:\n- Re-check all prior evidence claims against the repo; do not\
+      \ preserve any artifact/test reference that cannot be located.\n- Search for\
+      \ sibling continuity docs/contracts/tests beyond the originally claimed locations\
+      \ so the repair closes the blocker family, not only the first missing artifact.\n\
+      - Do not fabricate approval language, test names, or file references.\n\nverification:\
+      \ |\n  - Every cited artifact exists in the repo and is discoverable by path\n\
+      \  - Every cited test exists exactly as named, or the evidence is revised to\
+      \ remove the claim\n  - Foundation scope is explicit enough for downstream phase\
+      \ decomposition without semantic guesswork\n  - No fabricated or non-repo-backed\
+      \ evidence remains in continuity foundation prerequisites"
+    verification: '- All blocker-class continuity foundation issues are resolved in
+      one batched repair
+
+      - Artifacts/tests previously claimed are either created and repo-present or
+      removed from evidence with truthful scope revision
+
+      - Downstream unlock conditions for driver-continuity-authority-ledger and driver-continuity-capability-safety
+      are explicit and safe'
+    evidence_template: '## Continuity Foundation Repair Evidence
+
+      - Corrected artifact paths:
+
+      - Corrected or newly created test identifiers:
+
+      - Removed fabricated claims:
+
+      - Scope revisions and non-intersection rationale for any deferrals:
+
+      - Why downstream authority-ledger and capability-safety are now safe to unlock:'
+    depends_on:
+    - driver-continuity-foundation.gate
+    agent: software-architect
 - id: driver-continuity-authority-ledger
   name: 'Driver Continuity: Authority & Ledger'
   status: locked

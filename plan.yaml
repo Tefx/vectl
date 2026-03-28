@@ -40666,6 +40666,27 @@ phases:
     depends_on:
     - driver-enhancement-observability.impl
     agent: integration-verifier
+  - id: driver-enhancement-observability.verify
+    name: Verify runtime telemetry schema and coverage
+    status: pending
+    description: 'step_type: verification
+
+      Verification scope: phase-check protecting driver-enhancement-observability.gate.
+
+
+      Independently verify that runtime telemetry now covers runner lifecycle, planner
+      dispatch, recovery, and heartbeat/progress boundaries and conforms to the event
+      schema contract.'
+    verification: 'phase-check protecting driver-enhancement-observability.gate.
+
+      - Event schema conformance is evidenced with contract-derived fixtures
+
+      - Planner dispatch, recovery, and heartbeat/progress visibility are all present
+
+      - Missing required event families or malformed envelopes are surfaced as blockers'
+    depends_on:
+    - driver-enhancement-observability.impl
+    agent: spec-verifier
 - id: driver-enhancement-streaming-progress
   name: 'Driver Enhancement: Streaming & Progress'
   status: locked

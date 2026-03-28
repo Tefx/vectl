@@ -40726,14 +40726,33 @@ phases:
     status: pending
     description: 'step_type: gate
 
-      Gate runtime observability enhancement readiness.'
+      Gate runtime observability enhancement readiness.
+
+
+      Scope lock:
+
+      - observability phase owns event family/schema completeness and emission-hook
+      readiness
+
+      - realtime progress / heartbeat behavior remains owned by driver-enhancement-streaming-progress
+
+      - recovery behavior realization remains owned by driver-enhancement-runner-recovery
+
+      - cross-phase behavioral synthesis is deferred to driver-enhancement-integration
+      / driver-enhancement-review'
     verification: 'phase-check protecting driver-enhancement-integration.
 
       - Runtime telemetry contract, implementation, early vertical slice, and independent
       schema verification all align
 
-      - No blocker remains around lifecycle / dispatch / recovery / heartbeat observability
-      coverage'
+      - Gate checks lifecycle / dispatch / recovery contract-surface observability
+      coverage only
+
+      - Gate does not require fully realized heartbeat/progress behavior or recovery
+      behavior in this phase
+
+      - No blocker remains around event schema, envelope shape, or emission-hook readiness
+      for downstream integration'
     depends_on:
     - driver-enhancement-observability.contract
     - driver-enhancement-observability.test-define-red

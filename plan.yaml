@@ -34037,7 +34037,7 @@ phases:
       - driver hardening failure-mode handling in blueprint/runtime architecture docs'
   - id: driver-multi-runner-hardening.verify-session-boundary
     name: Verify session reuse boundary
-    status: claimed
+    status: done
     description: 'step_type: verification
 
       Verification scope: local-check protecting driver-multi-runner-hardening.gate.
@@ -34072,6 +34072,52 @@ phases:
     agent: integration-verifier
     claimed_by: integration-verifier
     claimed_at: '2026-03-28T09:44:58.249291+00:00'
+    done_at: '2026-03-28T09:48:00.497667+00:00'
+    evidence: "## Verification Report: SessionPool/decide Ownership Boundary\n\n**Date**:\
+      \ 2026-03-28\n**Verifier**: Integration Verifier\n**Scope**: Session reuse ownership\
+      \ boundary between `SessionPool` (driver) and `_session_registry` (decide.py)\n\
+      \n### Results\n\n| Check | Result | Evidence |\n|-------|--------|----------|\n\
+      | Code isolation (P2) | PASS | No direct mutation of `_session_registry` in\
+      \ driver |\n| Import boundary | PASS | `loop.py` imports only `decide` function,\
+      \ not private state |\n| Runtime independence | PASS | `SessionPool._entries`\
+      \ is independent dict from `_session_registry` |\n| Documentation | PASS | SessionPool\
+      \ docstring explicitly documents ownership boundary |\n| Test coverage (L2)\
+      \ | PASS | 443 driver tests pass, including session boundary tests |\n\n###\
+      \ Evidence: Code Boundary\n\n1. **No direct import of private state**:\n   ```python\n\
+      \   # loop.py:29\n   from vectl.decide import decide  # Only public function\n\
+      \   ```\n\n2. **Runtime isolation verified**:\n   ```python\n   # decide.py\
+      \ has private module-level state\n   _session_registry: dict[str, str] = {}\n\
+      \   _completion_times: dict[str, float] = {}\n\n   # SessionPool has its own\
+      \ independent entries\n   SessionPool._entries: dict[str, SessionEntry]\n  \
+      \ ```\n\n3. **Independence proven**:\n   ```\n   SessionPool._entries is NOT\
+      \ _session_registry: True\n   id(SessionPool._entries) != id(_session_registry):\
+      \ True\n   ```\n\n4. **No write to decide.py state in driver code**:\n   ```\n\
+      \   grep \"session_registry\\|_completion_times\\|_failure_counts\" src/vectl/driver/\n\
+      \   # Returns only documentation comments in session.py (lines 7, 30, 32, 34,\
+      \ 42)\n   # No assignments to these variables\n   ```\n\n### Evidence: Session\
+      \ Reuse Flow\n\n| Path | Source | Driver Action |\n|------|--------|---------------|\n\
+      | `action.session=\"reuse\" + task_id` | decide() result | Use `action.task_id`\
+      \ directly |\n| `action.session=\"fresh\"` | decide() result | Check `SessionPool.find_reusable()`\
+      \ for runner-aware match |\n| RunnerError on stale session | runtime exception\
+      \ | Retry with `session_id=None` (fresh dispatch) |\n\n### Evidence: Test Coverage\n\
+      \n```\ntests/test_driver_loop_hardening.py::test_handle_dispatch_runner_fallback_after_repeated_failures\
+      \ PASSED\ntests/test_driver_loop_hardening.py::test_handle_dispatch_stale_session_retries_fresh\
+      \ PASSED\ntests/test_driver_loop_hardening.py::test_reconcile_routes_non_trivial_conflict\
+      \ PASSED\ntests/test_driver_session.py::TestSessionPoolOwnershipBoundary::test_session_pool_is_independent\
+      \ PASSED\ntests/test_driver_session.py::TestSessionPoolReconciliation::test_session_pool_supplements_decide\
+      \ PASSED\ntests/test_driver_session_edge_cases.py::TestSessionPoolNoMutation::test_session_pool_has_own_entries\
+      \ PASSED\n\n# All driver tests: 443 passed, 34 xfailed, 17 xpassed\n```\n\n\
+      ### Findings\n\n**No findings.** All verification checks pass:\n\n1. ✓ Driver\
+      \ supplements reuse when safe (via `SessionPool.find_reusable()`)\n2. ✓ Driver\
+      \ does NOT mutate `decide.py` module registries directly\n3. ✓ Stale/mismatched\
+      \ sessions degrade gracefully to fresh dispatch (confirmed in `test_handle_dispatch_stale_session_retries_fresh`)\n\
+      4. ✓ Ownership boundary is explicitly documented in `SessionPool` docstring\n\
+      5. ✓ Independent test coverage exists for both pools\n\n### L2 Evidence Level:\
+      \ PASS\n\nThe `SessionPool`/`_session_registry` boundary is properly isolated:\n\
+      - Separate dictionaries with no cross-references\n- Driver feeds data through\
+      \ `decide()`'s existing `CompletedResult` contract\n- `SessionPool.record()`\
+      \ is called after `decide()` processes results\n- No direct write to `decide.py`\
+      \ private state from driver code"
   - id: driver-multi-runner-hardening.verify-conflict-and-multirunner
     name: Verify conflict resolution and multi-runner seams
     status: pending

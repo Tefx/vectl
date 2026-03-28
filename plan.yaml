@@ -40518,6 +40518,26 @@ phases:
     and heartbeat/progress events with schema-safe evidence.
   depends_on:
   - driver-enhancement-foundation
+  steps:
+  - id: driver-enhancement-observability.contract
+    name: Pin runtime telemetry and event schema contract
+    status: pending
+    description: "step_type: contract\ncontract_purity: ENFORCED\ncontract_outputs:\n\
+      \  - signatures\n  - type_defs\n  - interfaces\n  - stubs\n\nauthoritative_interface:\
+      \ telemetry event contract set from `driver-enhancement-foundation.contract`\n\
+      \nPin the observability contract for:\n- runner lifecycle events\n- planner\
+      \ dispatch observability\n- recovery observability\n- heartbeat/progress-related\
+      \ events\n- event schema conformance and envelope ownership\n\nThis contract\
+      \ MUST define which events are emitted at start, progress, heartbeat, recovery-decision,\
+      \ recovery-result, and finalization boundaries, and which module owns each field."
+    verification: 'local-check protecting driver-enhancement-observability.impl.
+
+      - Event families and field ownership are explicit
+
+      - Shared registry updates are bounded enough for a single integration surface
+
+      - Contract preserves versioned envelope semantics'
+    agent: software-architect
 - id: driver-enhancement-streaming-progress
   name: 'Driver Enhancement: Streaming & Progress'
   status: locked

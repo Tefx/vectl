@@ -34536,7 +34536,7 @@ phases:
       \ failure path\n  - non-empty planner_instruction enforcement"
   - id: driver-judgment-expansion-replan.contract-gate-chain-flow
     name: Contract full gate-chain and remediation flow
-    status: pending
+    status: claimed
     description: "step_type: contract\ncontract_purity: ENFORCED\ncontract_outputs:\n\
       \  - signatures\n  - type_defs\n  - interfaces\n  - stubs\n\nPin the full gate/replan/remediation\
       \ semantics for the remaining runtime behavior:\n- failure classification\n\
@@ -34550,6 +34550,8 @@ phases:
     depends_on:
     - driver-judgment-expansion-replan.impl-replan-planner-wiring
     agent: software-architect
+    claimed_by: software-architect
+    claimed_at: '2026-03-28T10:39:50.692826+00:00'
   - id: driver-judgment-expansion-replan.test-gate-chain-flow
     name: Test full gate-chain and remediation flow
     status: pending

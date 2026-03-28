@@ -12,8 +12,12 @@ Architecture Reference: docs/DRIVER-ARCHITECTURE.md Section 2.8
 Blueprint Reference: DRIVER-BLUEPRINT.md Runner Protocol & Implementations
 """
 
+import sys
+
 import pytest
 
+from vectl.driver.config import RunnerConfig
+from vectl.driver.parsers import ClaudeOutputParser, OpenCodeOutputParser
 from vectl.driver.runners import (
     CORE_RUNNERS,
     ClaudeRunner,
@@ -24,9 +28,6 @@ from vectl.driver.runners import (
     RunnerStatus,
     create_runner,
 )
-from vectl.driver.parsers import ClaudeOutputParser, OpenCodeOutputParser
-from vectl.driver.config import RunnerConfig
-
 
 # =============================================================================
 # Parser Tests: Claude Single JSON Output
@@ -474,9 +475,6 @@ class TestRunnerHandleProtocol:
 
     def test_protocol_has_session_id(self) -> None:
         """RunnerHandle protocol has session_id: str | None."""
-        # Protocol inspection (static check would be better, but runtime check for now)
-        import inspect
-
         # Get protocol annotations
         annotations = RunnerHandle.__annotations__
         assert "session_id" in annotations
@@ -500,13 +498,8 @@ class TestRunnerProtocol:
 
     def test_protocol_has_dispatch_method(self) -> None:
         """Runner protocol has dispatch() async method."""
-        import inspect
-
         # Check dispatch method exists in protocol
         assert hasattr(Runner, "dispatch")
-        # Method should be a coroutine function
-        dispatch = getattr(Runner, "dispatch")
-        # Protocol methods have ... as body, signature is valid
 
 
 # =============================================================================
@@ -814,7 +807,6 @@ class TestDispatchContractGaps:
         # RunnerHandle is a Protocol, not a concrete class
         # Implementation creates concrete handle in runner.dispatch()
         from vectl.driver.runners import RunnerHandle
-        import inspect
 
         # Verify protocol methods exist
         assert hasattr(RunnerHandle, "wait")
@@ -850,3 +842,249 @@ class TestDispatchContractGaps:
         # Implementation will translate:
         # resume_flag="--resume" + session_id="abc" -> ["--resume", "abc"]
         # resume_flag="--session" + session_id="ses_123" -> ["--session", "ses_123"]
+
+
+# =============================================================================
+# Runner Dispatch Integration Tests (real subprocess path)
+# =============================================================================
+
+
+class TestRunnerDispatchIntegration:
+    """Integration tests proving real subprocess dispatch and handle behavior.
+
+    Source: step driver-execution-infra.impl-runners-core completion criteria
+    requiring real subprocess handles, malformed-output failure path, and
+    session resume flag translation.
+    """
+
+    @pytest.mark.anyio
+    async def test_claude_dispatch_writes_prompt_to_stdin_and_closes(self, tmp_path) -> None:
+        """Claude runner sends prompt via stdin and closes input.
+
+        The subprocess reads until EOF (`sys.stdin.read()`), so this test proves
+        closed-stdin semantics. If stdin were left open, wait() would hang.
+        """
+        code = (
+            "import json,sys;"
+            "prompt=sys.stdin.read();"
+            "print(json.dumps({'session_id':'sid-1','result':prompt,'subtype':'success'}))"
+        )
+        config = RunnerConfig(
+            command=sys.executable,
+            args=["-c", code],
+            prompt_mode="stdin",
+            output_parser="claude_json",
+            resume_flag="--resume",
+        )
+        runner = ClaudeRunner("claude", config)
+
+        handle = await runner.dispatch(
+            prompt="hello from stdin",
+            agent="python-senior",
+            workdir=str(tmp_path),
+        )
+
+        result = await handle.wait(timeout=2.0)
+
+        assert result.status == RunnerStatus.SUCCESS
+        assert result.output == "hello from stdin"
+        assert result.exit_code == 0
+        assert result.session_id == "sid-1"
+
+    @pytest.mark.anyio
+    async def test_opencode_dispatch_parses_jsonl_success(self, tmp_path) -> None:
+        """OpenCode runner dispatches subprocess and parses JSONL stream."""
+        code = (
+            "import json,sys;"
+            "prompt=sys.stdin.read();"
+            "print(json.dumps({'type':'step_start','sessionID':'ses_abc'}));"
+            "print(json.dumps({'type':'text','part':{'text':prompt}}));"
+            "print(json.dumps({'type':'step_finish','part':{'status':'success','tokens':{'input':1,'output':2}}}))"
+        )
+        config = RunnerConfig(
+            command=sys.executable,
+            args=["-c", code],
+            prompt_mode="stdin",
+            output_parser="opencode_jsonl",
+            resume_flag="--session",
+        )
+        runner = OpenCodeRunner("opencode", config)
+
+        handle = await runner.dispatch(
+            prompt="jsonl prompt",
+            agent="python-senior",
+            workdir=str(tmp_path),
+        )
+        result = await handle.wait(timeout=2.0)
+
+        assert result.status == RunnerStatus.SUCCESS
+        assert result.output == "jsonl prompt"
+        assert result.session_id == "ses_abc"
+        assert result.exit_code == 0
+        assert result.tokens == {"input": 1, "output": 2}
+
+    @pytest.mark.anyio
+    async def test_resume_flag_translation_for_claude_and_opencode(self, tmp_path) -> None:
+        """Resume flag + session_id are translated into subprocess argv.
+
+        Required check from step: session resume flag translation for supported
+        core runners.
+        """
+        claude_code = (
+            "import json,sys;"
+            "print(json.dumps("
+            "{'session_id':'sid','result':' '.join(sys.argv[1:]),'subtype':'success'}"
+            "))"
+        )
+        claude_runner = ClaudeRunner(
+            "claude",
+            RunnerConfig(
+                command=sys.executable,
+                args=["-c", claude_code, "base"],
+                prompt_mode="stdin",
+                output_parser="claude_json",
+                resume_flag="--resume",
+            ),
+        )
+
+        claude_handle = await claude_runner.dispatch(
+            prompt="ignored",
+            agent="python-senior",
+            workdir=str(tmp_path),
+            session_id="uuid-123",
+        )
+        claude_result = await claude_handle.wait(timeout=2.0)
+        assert "--resume uuid-123" in claude_result.output
+
+        opencode_code = (
+            "import json,sys;"
+            "print(json.dumps({'type':'step_start','sessionID':'sid'}));"
+            "print(json.dumps({'type':'text','part':{'text':' '.join(sys.argv[1:])}}));"
+            "print(json.dumps({'type':'step_finish','part':{'status':'success'}}))"
+        )
+        opencode_runner = OpenCodeRunner(
+            "opencode",
+            RunnerConfig(
+                command=sys.executable,
+                args=["-c", opencode_code, "base"],
+                prompt_mode="stdin",
+                output_parser="opencode_jsonl",
+                resume_flag="--session",
+            ),
+        )
+        opencode_handle = await opencode_runner.dispatch(
+            prompt="ignored",
+            agent="python-senior",
+            workdir=str(tmp_path),
+            session_id="ses_123",
+        )
+        opencode_result = await opencode_handle.wait(timeout=2.0)
+        assert "--session ses_123" in opencode_result.output
+
+    @pytest.mark.anyio
+    async def test_malformed_output_classified_transport_error(self, tmp_path) -> None:
+        """Malformed subprocess output is classified as transport_error."""
+        code = "print('{not valid json')"
+        runner = ClaudeRunner(
+            "claude",
+            RunnerConfig(
+                command=sys.executable,
+                args=["-c", code],
+                prompt_mode="stdin",
+                output_parser="claude_json",
+            ),
+        )
+
+        handle = await runner.dispatch(
+            prompt="ignored",
+            agent="python-senior",
+            workdir=str(tmp_path),
+        )
+        result = await handle.wait(timeout=2.0)
+
+        assert result.status == RunnerStatus.TRANSPORT_ERROR
+        assert result.exit_code == 0
+
+    @pytest.mark.anyio
+    async def test_non_zero_exit_downgrades_success_to_fail(self, tmp_path) -> None:
+        """SUCCESS output with non-zero process exit is FAIL.
+
+        Gate source: prevent generic success classification when process-level
+        execution failed.
+        """
+        code = (
+            "import json,sys;"
+            "print(json.dumps({'session_id':'sid','result':'ok','subtype':'success'}));"
+            "sys.exit(2)"
+        )
+        runner = ClaudeRunner(
+            "claude",
+            RunnerConfig(
+                command=sys.executable,
+                args=["-c", code],
+                prompt_mode="stdin",
+                output_parser="claude_json",
+            ),
+        )
+
+        handle = await runner.dispatch(
+            prompt="ignored",
+            agent="python-senior",
+            workdir=str(tmp_path),
+        )
+        result = await handle.wait(timeout=2.0)
+
+        assert result.status == RunnerStatus.FAIL
+        assert result.exit_code == 2
+
+    @pytest.mark.anyio
+    async def test_runner_not_found_raises_specific_error(self, tmp_path) -> None:
+        """Dispatch raises RunnerNotFoundError for missing command."""
+        from vectl.driver.errors import RunnerNotFoundError
+
+        runner = ClaudeRunner(
+            "claude",
+            RunnerConfig(
+                command="definitely-not-a-real-runner-command",
+                args=[],
+                prompt_mode="stdin",
+                output_parser="claude_json",
+            ),
+        )
+
+        with pytest.raises(RunnerNotFoundError):
+            await runner.dispatch(
+                prompt="ignored",
+                agent="python-senior",
+                workdir=str(tmp_path),
+            )
+
+    @pytest.mark.anyio
+    async def test_dispatch_returns_live_handle_then_finishes(self, tmp_path) -> None:
+        """Dispatch returns concrete handle with pid/is_alive lifecycle."""
+        code = (
+            "import json,time;"
+            "time.sleep(0.1);"
+            "print(json.dumps({'session_id':'sid','result':'done','subtype':'success'}))"
+        )
+        runner = ClaudeRunner(
+            "claude",
+            RunnerConfig(
+                command=sys.executable,
+                args=["-c", code],
+                prompt_mode="stdin",
+                output_parser="claude_json",
+            ),
+        )
+
+        handle = await runner.dispatch(
+            prompt="ignored",
+            agent="python-senior",
+            workdir=str(tmp_path),
+        )
+        assert handle.pid is not None
+        assert handle.is_alive() is True
+
+        result = await handle.wait(timeout=2.0)
+        assert result.status == RunnerStatus.SUCCESS
+        assert handle.is_alive() is False

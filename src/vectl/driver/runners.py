@@ -19,9 +19,15 @@ Substantive implementations belong in driver-execution phases, not here.
 
 from __future__ import annotations
 
+import asyncio
+import contextlib
+import time
 from dataclasses import dataclass
 from enum import Enum
 from typing import TYPE_CHECKING, Protocol
+
+from .errors import RunnerError, RunnerNotFoundError
+from .parsers import ClaudeOutputParser, OpenCodeOutputParser
 
 if TYPE_CHECKING:
     from .config import RunnerConfig
@@ -167,50 +173,239 @@ class OutputParser(Protocol):
         ...
 
 
+class _ClaudeParserAdapter:
+    """Adapter from parser module result type to runners module result type."""
+
+    __slots__ = ("_delegate",)
+
+    def __init__(self) -> None:
+        self._delegate = ClaudeOutputParser()
+
+    def parse(self, stdout: str, elapsed_seconds: float) -> RunnerResult:
+        parsed = self._delegate.parse(stdout, elapsed_seconds)
+        return RunnerResult(
+            status=RunnerStatus(parsed.status.value),
+            session_id=parsed.session_id,
+            output=parsed.output,
+            elapsed_seconds=parsed.elapsed_seconds,
+            exit_code=parsed.exit_code,
+            cost_usd=parsed.cost_usd,
+            tokens=parsed.tokens,
+        )
+
+
+class _OpenCodeParserAdapter:
+    """Adapter from parser module result type to runners module result type."""
+
+    __slots__ = ("_delegate",)
+
+    def __init__(self) -> None:
+        self._delegate = OpenCodeOutputParser()
+
+    def parse(self, stdout: str, elapsed_seconds: float) -> RunnerResult:
+        parsed = self._delegate.parse(stdout, elapsed_seconds)
+        return RunnerResult(
+            status=RunnerStatus(parsed.status.value),
+            session_id=parsed.session_id,
+            output=parsed.output,
+            elapsed_seconds=parsed.elapsed_seconds,
+            exit_code=parsed.exit_code,
+            cost_usd=parsed.cost_usd,
+            tokens=parsed.tokens,
+        )
+
+
+class _SubprocessRunnerHandle:
+    """Concrete handle for subprocess-backed runners."""
+
+    __slots__ = (
+        "session_id",
+        "pid",
+        "_process",
+        "_parser",
+        "_runner_name",
+        "_dispatch_started_at",
+    )
+
+    def __init__(
+        self,
+        *,
+        process: asyncio.subprocess.Process,
+        parser: OutputParser,
+        runner_name: str,
+        dispatch_started_at: float,
+        session_id: str | None = None,
+    ) -> None:
+        self.session_id = session_id
+        self.pid: int | None = process.pid
+        self._process = process
+        self._parser = parser
+        self._runner_name = runner_name
+        self._dispatch_started_at = dispatch_started_at
+
+    async def wait(self, timeout: float | None = None) -> RunnerResult:
+        """Wait for process completion and parse runner output.
+
+        Args:
+            timeout: Maximum seconds to wait. None means no timeout.
+
+        Returns:
+            Parsed runner result with real subprocess exit code attached.
+
+        Raises:
+            RunnerError: If wait times out or subprocess wait fails.
+        """
+        try:
+            stdout_bytes, stderr_bytes = await asyncio.wait_for(
+                self._process.communicate(), timeout=timeout
+            )
+        except TimeoutError as exc:
+            await self.kill()
+            raise RunnerError(
+                self._runner_name,
+                "wait",
+                f"runner timed out after {timeout}s",
+            ) from exc
+        except OSError as exc:
+            raise RunnerError(
+                self._runner_name,
+                "wait",
+                f"failed while waiting on subprocess: {exc}",
+            ) from exc
+
+        elapsed_seconds = time.monotonic() - self._dispatch_started_at
+        stdout_text = stdout_bytes.decode("utf-8", errors="replace")
+        stderr_text = stderr_bytes.decode("utf-8", errors="replace")
+        parse_input = stdout_text if stdout_text.strip() else stderr_text
+
+        parsed = self._parser.parse(parse_input, elapsed_seconds=elapsed_seconds)
+        return_code = self._process.returncode
+
+        status = parsed.status
+        # Non-zero subprocess exits cannot remain SUCCESS even if output says so.
+        # Source: step gate preview item #2 and #3 (status classification correctness).
+        if status == RunnerStatus.SUCCESS and return_code != 0:
+            status = RunnerStatus.FAIL
+
+        output = parsed.output
+        if stderr_text and stderr_text not in output:
+            output = f"{output}\n\n[stderr]\n{stderr_text}".strip()
+
+        self.session_id = parsed.session_id or self.session_id
+        return RunnerResult(
+            status=status,
+            session_id=self.session_id,
+            output=output,
+            elapsed_seconds=elapsed_seconds,
+            exit_code=return_code,
+            cost_usd=parsed.cost_usd,
+            tokens=parsed.tokens,
+        )
+
+    async def kill(self) -> None:
+        """Kill subprocess if still running. Idempotent."""
+        if self._process.returncode is None:
+            self._process.kill()
+            await self._process.wait()
+
+    def is_alive(self) -> bool:
+        """Return whether subprocess is still running."""
+        return self._process.returncode is None
+
+
+def _format_arg(template: str, *, workdir: str, agent: str) -> str:
+    """Replace `{workdir}` and `{agent}` placeholders."""
+    # Do targeted placeholder replacement only. We intentionally avoid
+    # `str.format(...)` because runner args may contain literal braces
+    # (e.g., inline Python/JSON snippets in tests and scripts).
+    return template.replace("{workdir}", workdir).replace("{agent}", agent)
+
+
+def _build_command(
+    config: RunnerConfig,
+    *,
+    workdir: str,
+    agent: str,
+    session_id: str | None,
+) -> list[str]:
+    """Build command argv for subprocess dispatch."""
+    argv = [config.command]
+    argv.extend(_format_arg(arg, workdir=workdir, agent=agent) for arg in config.args)
+
+    if config.prompt_mode == "stdin_dash":
+        argv.append("-")
+
+    if session_id is not None and config.resume_flag:
+        argv.extend([config.resume_flag, session_id])
+
+    return argv
+
+
+def _select_output_parser(runner_name: str, output_parser_name: str) -> OutputParser:
+    """Resolve configured parser to concrete parser implementation."""
+    if output_parser_name == "claude_json":
+        return _ClaudeParserAdapter()
+    if output_parser_name == "opencode_jsonl":
+        return _OpenCodeParserAdapter()
+
+    raise RunnerError(
+        runner_name,
+        "create",
+        f"Unsupported output_parser '{output_parser_name}' for core runner scope",
+    )
+
+
+async def _spawn_process(
+    *,
+    runner_name: str,
+    argv: list[str],
+    prompt: str,
+    workdir: str,
+) -> asyncio.subprocess.Process:
+    """Spawn subprocess and write prompt to stdin with explicit close."""
+    try:
+        process = await asyncio.create_subprocess_exec(
+            *argv,
+            stdin=asyncio.subprocess.PIPE,
+            stdout=asyncio.subprocess.PIPE,
+            stderr=asyncio.subprocess.PIPE,
+            cwd=workdir,
+        )
+    except FileNotFoundError as exc:
+        raise RunnerNotFoundError(runner_name, "dispatch") from exc
+    except OSError as exc:
+        raise RunnerError(runner_name, "dispatch", f"failed to spawn subprocess: {exc}") from exc
+
+    stdin = process.stdin
+    if stdin is not None:
+        stdin.write(prompt.encode("utf-8"))
+        with contextlib.suppress(BrokenPipeError, ConnectionResetError):
+            await stdin.drain()
+        stdin.close()
+        with contextlib.suppress(BrokenPipeError, ConnectionResetError):
+            await stdin.wait_closed()
+
+    return process
+
+
 # =============================================================================
-# Core Runner Stubs (Phase 1)
+# Core Runners (Phase 1)
 # =============================================================================
 
 
-# Phase scope: Core runners only. Extended runners deferred to multi-runner phase.
 CORE_RUNNERS: frozenset[str] = frozenset({"claude", "opencode"})
-"""Runner names implemented in this phase.
-
-Architecture: Core-only scope per phase plan.
-Blueprint: Phase 1 -> ClaudeRunner, OpenCodeRunner
-Future: driver-multi-runner-hardening -> CodexRunner, GeminiRunner
-
-CONTRACT: This constant defines the phase scope. Implementation phases
-(ClaudeRunnerImpl, OpenCodeRunnerImpl) register runners matching this set.
-"""
+"""Runner names implemented in the core phase."""
 
 
 class ClaudeRunner:
-    """Runner for Claude CLI (`claude -p --output-format json`).
-
-    Architecture: docs/DRIVER-ARCHITECTURE.md Section 2.8
-    Blueprint: DRIVER-BLUEPRINT.md Runner Protocol, Config Schema
-
-    Config example:
-        command: "claude"
-        args: ["-p", "--output-format", "json", "--dangerously-skip-permissions"]
-        prompt_mode: stdin
-        stall_timeout: 300
-        resume_flag: "--resume"
-        session_id_regex: "^[0-9a-f]{8}-[0-9a-f]{4}-"
-        output_parser: claude_json
-        persist_session: true
-
-    Contract stub: Implementation provided in driver-execution phase.
-    Runtime behavior: Dispatch subprocess, parse JSON output, return RunnerHandle.
-    """
+    """Runner for Claude-style JSON output CLIs."""
 
     __slots__ = ("name", "_config", "_parser")
 
     def __init__(self, name: str, config: RunnerConfig) -> None:
         self.name = name
         self._config = config
-        self._parser: OutputParser | None = None  # Set in impl phase
+        self._parser = _select_output_parser(name, config.output_parser)
 
     async def dispatch(
         self,
@@ -219,42 +414,51 @@ class ClaudeRunner:
         workdir: str,
         session_id: str | None = None,
     ) -> RunnerHandle:
-        """STUB: Implementation in driver-execution phase.
+        """Launch a Claude subprocess and return a concrete handle.
+
+        Args:
+            prompt: Prompt text piped to stdin.
+            agent: Agent identifier for argument templating.
+            workdir: Subprocess working directory.
+            session_id: Optional session to resume via configured resume_flag.
+
+        Returns:
+            Concrete RunnerHandle implementation.
 
         Raises:
-            NotImplementedError: This stub must be replaced by implementation.
+            RunnerNotFoundError: If configured command is unavailable.
+            RunnerError: If subprocess spawning fails.
         """
-        raise NotImplementedError(
-            "ClaudeRunner.dispatch() stub: implement in driver-execution phase"
+        argv = _build_command(
+            self._config,
+            workdir=workdir,
+            agent=agent,
+            session_id=session_id,
+        )
+        process = await _spawn_process(
+            runner_name=self.name,
+            argv=argv,
+            prompt=prompt,
+            workdir=workdir,
+        )
+        return _SubprocessRunnerHandle(
+            process=process,
+            parser=self._parser,
+            runner_name=self.name,
+            dispatch_started_at=time.monotonic(),
+            session_id=session_id,
         )
 
 
 class OpenCodeRunner:
-    """Runner for OpenCode CLI (`opencode run --format json`).
-
-    Architecture: docs/DRIVER-ARCHITECTURE.md Section 2.8
-    Blueprint: DRIVER-BLUEPRINT.md Runner Protocol, Config Schema
-
-    Config example:
-        command: "opencode"
-        args: ["run", "--format", "json", "--dir", "{workdir}"]
-        prompt_mode: stdin
-        stall_timeout: 600
-        resume_flag: "--session"
-        session_id_regex: "^ses_[a-z0-9]+"
-        output_parser: opencode_jsonl
-        persist_session: true
-
-    Contract stub: Implementation provided in driver-execution phase.
-    Runtime behavior: Dispatch subprocess, parse JSONL stream, return RunnerHandle.
-    """
+    """Runner for OpenCode-style JSONL output CLIs."""
 
     __slots__ = ("name", "_config", "_parser")
 
     def __init__(self, name: str, config: RunnerConfig) -> None:
         self.name = name
         self._config = config
-        self._parser: OutputParser | None = None  # Set in impl phase
+        self._parser = _select_output_parser(name, config.output_parser)
 
     async def dispatch(
         self,
@@ -263,18 +467,44 @@ class OpenCodeRunner:
         workdir: str,
         session_id: str | None = None,
     ) -> RunnerHandle:
-        """STUB: Implementation in driver-execution phase.
+        """Launch an OpenCode subprocess and return a concrete handle.
+
+        Args:
+            prompt: Prompt text piped to stdin.
+            agent: Agent identifier for argument templating.
+            workdir: Subprocess working directory.
+            session_id: Optional session to resume via configured resume_flag.
+
+        Returns:
+            Concrete RunnerHandle implementation.
 
         Raises:
-            NotImplementedError: This stub must be replaced by implementation.
+            RunnerNotFoundError: If configured command is unavailable.
+            RunnerError: If subprocess spawning fails.
         """
-        raise NotImplementedError(
-            "OpenCodeRunner.dispatch() stub: implement in driver-execution phase"
+        argv = _build_command(
+            self._config,
+            workdir=workdir,
+            agent=agent,
+            session_id=session_id,
+        )
+        process = await _spawn_process(
+            runner_name=self.name,
+            argv=argv,
+            prompt=prompt,
+            workdir=workdir,
+        )
+        return _SubprocessRunnerHandle(
+            process=process,
+            parser=self._parser,
+            runner_name=self.name,
+            dispatch_started_at=time.monotonic(),
+            session_id=session_id,
         )
 
 
 # =============================================================================
-# Factory Stub
+# Factory
 # =============================================================================
 
 
@@ -286,16 +516,14 @@ def create_runner(name: str, config: RunnerConfig) -> Runner:
         config: Runner configuration.
 
     Returns:
-        Runner implementation stub.
+        Runner implementation instance.
 
     Raises:
         RunnerError: If runner name is not in core scope.
 
-    Contract stub: Implementation registration in driver-execution phase.
-    Runtime behavior: Return runner stub for core scope, raise for extended scope.
+    Runtime behavior: Return core runner implementations for this phase,
+    raise for out-of-scope runners.
     """
-    from .errors import RunnerError
-
     if name == "claude":
         return ClaudeRunner(name, config)
     if name == "opencode":

@@ -31660,7 +31660,7 @@ phases:
       implementation deferred to impl-runners-core.'
   - id: driver-execution-infra.test-runners-core
     name: Test runners core
-    status: claimed
+    status: done
     description: 'step_type: test
 
 
@@ -31720,6 +31720,86 @@ phases:
     agent: python-executor
     claimed_by: python-executor
     claimed_at: '2026-03-28T02:52:19.282403+00:00'
+    done_at: '2026-03-28T03:01:07.500504+00:00'
+    evidence: '## Step Intent
+
+      Add focused contract/behavior tests for runner protocols and core parser/dispatch
+      behavior before implementation lands.
+
+
+      ## Expected Result
+
+      Tests should either:
+
+      - (a) Record expected-red failures/exposed gaps without product-code edits,
+      OR
+
+      - (b) Prove the contract already passes green without src changes
+
+
+      ## Observed Result
+
+      All 59 tests pass green, proving contracts are well-defined:
+
+      - Claude single-JSON output parsing (7 tests)
+
+      - OpenCode JSONL output parsing (7 tests)
+
+      - RunnerStatus enum values (4 tests)
+
+      - RunnerResult dataclass fields (3 tests)
+
+      - Core runner stubs (4 tests)
+
+      - CORE_RUNNERS phase scope (5 tests)
+
+      - Protocol compliance (4 tests)
+
+      - Config integration (6 tests)
+
+      - Exit code contract (4 tests)
+
+      - Transport error classification (7 tests)
+
+      - Dispatch contract gaps (4 tests)
+
+
+      Run command:
+
+      uv run pytest tests/test_driver_runners.py -v
+
+      Outcome: 59 passed in 0.34s
+
+
+      ## Failure Alignment
+
+      N/A - all tests pass green, no product-code fixes needed
+
+
+      ## Product Implementation Files Modified
+
+      None. Only tests/test_driver_runners.py was modified.
+
+
+      ## Gaps Documented (for impl phase)
+
+      1. Parser does NOT receive subprocess exit_code - gap documented in TestExitCodeContract
+
+      2. ClaudeRunner/OpenCodeRunner.dispatch() raises NotImplementedError - stubs
+      verified
+
+      3. RunnerHandle is a Protocol, not concrete - awaits implementation
+
+      4. resume_flag translation to CLI args documented but not tested (impl detail)
+
+
+      ## Spec Link
+
+      - docs/DRIVER-ARCHITECTURE.md Section 2.8
+
+      - DRIVER-BLUEPRINT.md Runner Protocol & Implementations
+
+      - Downstream owner: driver-execution-infra.impl-runners-core'
   - id: driver-execution-infra.impl-runners-core
     name: Implement runners core
     status: pending

@@ -38736,7 +38736,7 @@ phases:
   depends_on:
   - driver-debt-system-wiring
   steps:
-  - id: driver-debt-doc-sync.update-docs
+  - id: driver-debt-review.update-docs
     name: Sync driver docs to remediated architecture
     status: pending
     description: 'step_type: implementation

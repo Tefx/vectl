@@ -40714,6 +40714,26 @@ phases:
     liveness without waiting for end-of-process collection.
   depends_on:
   - driver-enhancement-foundation
+  steps:
+  - id: driver-enhancement-streaming-progress.contract
+    name: Pin incremental streaming and progress contract
+    status: pending
+    description: "step_type: contract\ncontract_purity: ENFORCED\ncontract_outputs:\n\
+      \  - streaming_contract\n  - progress_model\n  - heartbeat_model\n  - boundary_notes\n\
+      \nauthoritative_interface: streaming / liveness contract from `driver-enhancement-foundation.contract`\n\
+      \nPin the driver-side contract for incremental JSONL consumption from runner\
+      \ output.\n\nRequired scope:\n- opencode JSONL incremental consumption semantics\n\
+      - progress and heartbeat model\n- liveness timestamps / last-progress visibility\n\
+      - stdout/stderr parsing boundaries\n- main-loop boundary: what may update live\
+      \ liveness state vs what remains final summary logic only"
+    verification: 'local-check protecting driver-enhancement-streaming-progress.impl.
+
+      - Contract states what ''alive'', ''heartbeat'', and ''recent progress'' mean
+
+      - Contract keeps streaming state and final summary semantics separate
+
+      - Boundary with recovery policy is explicit enough for parallel work'
+    agent: software-architect
 - id: driver-enhancement-runner-recovery
   name: 'Driver Enhancement: Runner Recovery'
   status: locked

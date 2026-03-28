@@ -36,6 +36,7 @@ from .parsers import (
 
 if TYPE_CHECKING:
     from .config import RunnerConfig
+    from .types import ContinuityResultFields
 
 
 # =============================================================================
@@ -71,6 +72,7 @@ class RunnerResult:
     exit_code: int | None
     cost_usd: float | None = None
     tokens: dict[str, int] | None = None
+    continuity: ContinuityResultFields | None = None
 
 
 # =============================================================================

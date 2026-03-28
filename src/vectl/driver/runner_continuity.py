@@ -10,6 +10,8 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Protocol
 
+from .types import ContinuityResultFields, ReplaySafetyEnvelope, ReplayTokenSemantics
+
 
 @dataclass(frozen=True)
 class RunnerContinuityCapability:
@@ -42,6 +44,46 @@ class RunnerContinuityCapabilitySource(Protocol):
     def capability_for(self, runner_name: str) -> RunnerContinuityCapability:
         """Return the contract-level continuity capability for ``runner_name``."""
         ...
+
+
+class RunnerReplaySafetyController(Protocol):
+    """Capability-aware replay safety contract on continuity surfaces.
+
+    Source: docs/DRIVER-CONTINUITY-FOUNDATION.md Section 4 (Restart/Replay),
+    Section 6 (capability mismatch forces fresh session), and Step intent for
+    ``driver-continuity-capability-safety.design-and-test``.
+    """
+
+    def evaluate_resume_or_replay(
+        self,
+        *,
+        capability: RunnerContinuityCapability,
+        envelope: ReplaySafetyEnvelope,
+        requested_token: ReplayTokenSemantics | None,
+        seen_attempt_keys: frozenset[str],
+    ) -> ContinuityResultFields:
+        """Classify resume/replay safety for one continuity envelope."""
+        ...
+
+
+def evaluate_resume_or_replay_safety(
+    *,
+    capability: RunnerContinuityCapability,
+    envelope: ReplaySafetyEnvelope,
+    requested_token: ReplayTokenSemantics | None,
+    seen_attempt_keys: frozenset[str],
+) -> ContinuityResultFields:
+    """Evaluate continuity safety for resume/replay requests.
+
+    This function is intentionally unimplemented in the design-and-test step.
+    Runtime behavior ownership is deferred to
+    ``driver-continuity-capability-safety.impl``.
+    """
+
+    raise NotImplementedError(
+        "Continuity replay-safety evaluation is deferred to "
+        "driver-continuity-capability-safety.impl"
+    )
 
 
 DEFAULT_MINIMUM_RECOVERY_TELEMETRY: tuple[str, ...] = (
@@ -89,6 +131,9 @@ RUNNER_CONTINUITY_CAPABILITIES: tuple[RunnerContinuityCapability, ...] = (
         replay_safe_after_partial_output=False,
         requires_fresh_session_on_capability_mismatch=True,
         minimum_recovery_telemetry=DEFAULT_MINIMUM_RECOVERY_TELEMETRY,
-        notes="Contract remains conservative until runtime verification proves restart-safe resume semantics.",
+        notes=(
+            "Contract remains conservative until runtime verification proves "
+            "restart-safe resume semantics."
+        ),
     ),
 )

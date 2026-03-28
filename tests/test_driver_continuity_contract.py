@@ -15,7 +15,10 @@ from src.vectl.driver.types import (
     ContinuityHandoff,
     ContinuityJournalEntry,
     ContinuityLedgerEntry,
+    ContinuityResultFields,
     ReplaySafetyEnvelope,
+    ReplayTokenSemantics,
+    RunnerResult,
     StartupRecoveryController,
     StartupRecoveryControllerInput,
     StartupRecoveryControllerOutput,
@@ -52,6 +55,23 @@ def test_continuity_types_exist_with_pinned_fields() -> None:
         "tool_call_fingerprint",
     ]
 
+    assert [f.name for f in fields(ReplayTokenSemantics)] == [
+        "token",
+        "token_kind",
+        "semantics_version",
+        "bound_runner_name",
+        "bound_step_id",
+        "capability_snapshot_id",
+    ]
+
+    assert [f.name for f in fields(ContinuityResultFields)] == [
+        "attempt_key",
+        "replay_token",
+        "replay_safe",
+        "duplicate_replay",
+        "recovery_reason",
+    ]
+
     assert [f.name for f in fields(ContinuityJournalEntry)] == [
         "step_id",
         "event_kind",
@@ -81,6 +101,17 @@ def test_continuity_types_exist_with_pinned_fields() -> None:
         "ledger_entry",
         "capability_snapshot_id",
         "reason",
+    ]
+
+    assert [f.name for f in fields(RunnerResult)] == [
+        "status",
+        "session_id",
+        "output",
+        "elapsed_seconds",
+        "exit_code",
+        "cost_usd",
+        "tokens",
+        "continuity",
     ]
 
 

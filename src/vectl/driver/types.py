@@ -17,7 +17,7 @@ import time
 from collections.abc import Mapping
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import TYPE_CHECKING, Protocol
+from typing import TYPE_CHECKING, Literal, Protocol
 
 from vectl.decision_state import DecideState
 
@@ -56,6 +56,7 @@ class RunnerResult:
     exit_code: int | None
     cost_usd: float | None = None
     tokens: dict[str, int] | None = None
+    continuity: ContinuityResultFields | None = None
 
 
 @dataclass
@@ -425,6 +426,41 @@ class ReplaySafetyEnvelope:
 
 
 @dataclass(frozen=True)
+class ReplayTokenSemantics:
+    """Replay-token semantics contract used for resume/replay safety checks.
+
+    Source: docs/DRIVER-CONTINUITY-FOUNDATION.md Section 4 (Replay),
+    Section 6 (Transport boundary rules), and Section 13 open question on
+    capability snapshot persistence.
+
+    The token value itself is opaque to the bootstrap phase. This contract only
+    pins binding semantics that downstream continuity runtime must enforce.
+    """
+
+    token: str
+    token_kind: Literal["session", "attempt", "opaque"]
+    semantics_version: str
+    bound_runner_name: str
+    bound_step_id: str
+    capability_snapshot_id: str
+
+
+@dataclass(frozen=True)
+class ContinuityResultFields:
+    """Continuity-facing result fields captured from a completed runner attempt.
+
+    Source: docs/DRIVER-CONTINUITY-FOUNDATION.md Section 4 (Restart/Abort),
+    Section 5 (state strata), and Section 7 (journal write-point governance).
+    """
+
+    attempt_key: str
+    replay_token: ReplayTokenSemantics | None
+    replay_safe: bool
+    duplicate_replay: bool
+    recovery_reason: str
+
+
+@dataclass(frozen=True)
 class ContinuityJournalEntry:
     """Minimum recovery telemetry emitted for replay-safe restart reasoning.
 
@@ -508,4 +544,22 @@ class StartupRecoveryController(Protocol):
         self, recovery_input: StartupRecoveryControllerInput
     ) -> StartupRecoveryControllerOutput:
         """Return deterministic recovery decisions from continuity inputs."""
+        ...
+
+
+class ReplaySafetyPolicy(Protocol):
+    """Bootstrap replay/idempotency policy contract on continuity surfaces.
+
+    Source: docs/DRIVER-CONTINUITY-FOUNDATION.md Section 4 and Section 6.
+    Runtime implementation is intentionally deferred to
+    ``driver-continuity-capability-safety.impl``.
+    """
+
+    def evaluate_resume_request(
+        self,
+        *,
+        envelope: ReplaySafetyEnvelope,
+        requested_token: ReplayTokenSemantics | None,
+    ) -> ContinuityResultFields:
+        """Return deterministic continuity result fields for resume/replay."""
         ...

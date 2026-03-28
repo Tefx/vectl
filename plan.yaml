@@ -43866,6 +43866,68 @@ phases:
     depends_on:
     - driver-continuity-foundation.gate
     agent: software-architect
+  - id: driver-continuity-foundation.gate-retest
+    name: Retest continuity foundation gate blockers
+    status: pending
+    description: 'step_type: gate
+
+      step_intent: retest_green
+
+      expected_result: green
+
+
+      Adversarial gate re-validation of the exact blocker set reported against driver-continuity-foundation.gate
+      after driver-continuity-foundation.fix-blockers.
+
+
+      This retest MUST challenge, not assume, the repair. Validate these exact blocker
+      classes:
+
+      - architecture-basis is semantically complete enough for implementation decomposition
+
+      - contract is truthful, implementable, and non-fabricated
+
+      - every cited artifact and test is present in the repo exactly as claimed
+
+      - any scope revision is explicit, non-misleading, and still sufficient to safely
+      unlock driver-continuity-authority-ledger and driver-continuity-capability-safety
+
+
+      Adversarial review requirements:
+
+      - verify artifact presence by exact repo path
+
+      - verify cited tests by exact identifier/path, not paraphrase
+
+      - reject any evidence that relies on implied future work or missing documents
+
+      - block if ambiguity remains on session authority convergence, durable resume
+      state, replay safety, runner capability semantics, or minimum recovery telemetry
+
+
+      Verification scope: phase-check protecting driver-continuity-authority-ledger.gate
+      and driver-continuity-capability-safety.gate.'
+    verification: '- Re-run continuity foundation gate adversarially against the repaired
+      prerequisites
+
+      - Confirm the original blocker set is closed with repo-backed evidence
+
+      - Confirm downstream continuity-authority-ledger and continuity-capability-safety
+      are safe to unlock'
+    evidence_template: '## Continuity Foundation Gate Retest
+
+      - Verified artifact paths:
+
+      - Verified test identifiers:
+
+      - Remaining ambiguity found:
+
+      - Gate decision: OPEN or BLOCKED
+
+      - If blocked, list exact blocker(s) still present:'
+    depends_on:
+    - driver-continuity-foundation.fix-blockers
+    agent: gate-reviewer
 - id: driver-continuity-authority-ledger
   name: 'Driver Continuity: Authority & Ledger'
   status: locked

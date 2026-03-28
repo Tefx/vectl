@@ -34570,12 +34570,23 @@ phases:
       Verification scope: phase-check protecting driver-judgment-expansion-replan.gate.
 
 
-      Compare expanded judgment/replan/remediation behavior against the blueprint
-      key flows and the judge system prompt semantics.'
+      Compare expanded judgment/replan/remediation behavior AND expected-red verification
+      semantics against the blueprint key flows, the judge system prompt semantics,
+      and docs/RFC-expected-red-verification-semantics.md.
+
+
+      Additional conformance checks for expected-red:
+
+      - Step model `verify` field matches RFC Section 5A (optional, defaults to must_green)
+
+      - decide() behavior matches RFC Section 5B (expected_red + red = complete, must_green
+      + red = fail)
+
+      - Default behavior unchanged for steps without verify field (RFC Section 7)'
     verification: '- Spec conformance report covers REPLAN, gate, failure, escalation,
       anomaly, and cold-context behavior'
     depends_on:
-    - driver-judgment-expansion-replan.verify-gate-chain-e2e
+    - driver-judgment-expansion-replan.expected-red-decide
     agent: doc-reviewer
   - id: driver-judgment-expansion-replan.freeze
     name: Freeze judgment expansion snapshot

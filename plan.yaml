@@ -34536,7 +34536,7 @@ phases:
       \ failure path\n  - non-empty planner_instruction enforcement"
   - id: driver-judgment-expansion-replan.contract-gate-chain-flow
     name: Contract full gate-chain and remediation flow
-    status: claimed
+    status: done
     description: "step_type: contract\ncontract_purity: ENFORCED\ncontract_outputs:\n\
       \  - signatures\n  - type_defs\n  - interfaces\n  - stubs\n\nPin the full gate/replan/remediation\
       \ semantics for the remaining runtime behavior:\n- failure classification\n\
@@ -34552,6 +34552,37 @@ phases:
     agent: software-architect
     claimed_by: software-architect
     claimed_at: '2026-03-28T10:39:50.692826+00:00'
+    done_at: '2026-03-28T10:45:13.075681+00:00'
+    evidence: 'Artifact:
+
+      - Commit: af7153a9479b2058fc9518cd3483e3455290e6d2
+
+
+      Verification:
+
+      - Run: uv run pytest tests/test_driver_judgment_expansion_contract.py tests/test_driver_judgments.py
+      tests/test_driver_judge.py -q -> 111 passed
+
+      - Run: uv run ruff check src/vectl/driver/loop.py tests/test_driver_judgment_expansion_contract.py
+      -> all checks passed
+
+      - Run: uv run python -m compileall src/vectl/driver/loop.py tests/test_driver_judgment_expansion_contract.py
+      -> compiled successfully
+
+
+      Spec link:
+
+      - docs/JUDGE-AGENT-PROMPT.md#type-failure
+
+      - docs/JUDGE-AGENT-PROMPT.md#type-escalation
+
+      - docs/JUDGE-AGENT-PROMPT.md#type-gate
+
+      - docs/JUDGE-AGENT-PROMPT.md#type-anomaly
+
+      - docs/JUDGE-AGENT-PROMPT.md#type-cold_context
+
+      - DRIVER-BLUEPRINT.md Flow 4: Gate Failure -> Fix+Retest Chain'
   - id: driver-judgment-expansion-replan.test-gate-chain-flow
     name: Test full gate-chain and remediation flow
     status: pending

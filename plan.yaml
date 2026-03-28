@@ -40632,6 +40632,40 @@ phases:
     - driver-enhancement-observability.contract
     - driver-enhancement-observability.test-define-red
     agent: python-senior
+  - id: driver-enhancement-observability.vertical-slice
+    name: Early vertical slice for telemetry visibility
+    status: pending
+    description: 'step_type: verification
+
+
+      Early vertical slice: wire ONE complete driver path from entry point through
+      planner dispatch / runner execution to observable event output using real implementations.
+
+
+      This step exists to catch integration drift early. MUST NOT rely on stubs or
+      summary-only evidence.
+
+
+      Required evidence:
+
+      - exact driver entry command
+
+      - layers traversed from entrypoint to event sink
+
+      - actual emitted lifecycle / dispatch / progress-related output
+
+      - explicit statement that no placeholder runtime class was used'
+    verification: 'phase-check protecting driver-enhancement-observability.gate.
+
+      - A real entrypoint path emits at least one lifecycle event, one planner-dispatch
+      or execution event, and one terminal event
+
+      - Evidence shows observable output, not just ''tests pass''
+
+      - No stub-only runtime path is used'
+    depends_on:
+    - driver-enhancement-observability.impl
+    agent: integration-verifier
 - id: driver-enhancement-streaming-progress
   name: 'Driver Enhancement: Streaming & Progress'
   status: locked

@@ -43054,6 +43054,39 @@ phases:
 
       - No implementation logic shipped'
     agent: software-architect
+  - id: driver-continuity-capability-safety.test-define-red
+    name: Define expected-red replay safety and capability regressions
+    status: pending
+    description: 'step_type: test
+
+      step_intent: test_define_red
+
+      expected_result: red
+
+      Define bootstrap-blocker gaps for replay-safe resume control.
+
+
+      Test-only scope:
+
+      - runner without resume capability must not be treated as resumable
+
+      - duplicate tool/result replay must be rejected or safely deduplicated
+
+      - restart/retry must preserve idempotency token semantics
+
+      - recovery decisions must branch on authoritative capability facts, not guessed
+      runner names
+
+
+      At least one fixture MUST use the minimal contract form from the continuity
+      capability spec. Evidence must list exposed_gaps and the downstream implementation
+      owner driver-continuity-capability-safety.impl.'
+    verification: '- Modified files limited to tests/ plus fixtures/helpers
+
+      - Expected-red failures expose missing capability or replay-safety behavior
+
+      - Evidence captures duplicate side-effect and non-resumable runner cases'
+    agent: python-executor
 - id: driver-continuity-restart-recovery
   name: 'Driver Continuity: Restart Recovery'
   status: locked

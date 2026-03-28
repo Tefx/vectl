@@ -40928,6 +40928,60 @@ phases:
     depends_on:
     - driver-enhancement-runner-recovery.contract
     agent: python-executor
+  - id: driver-enhancement-runner-recovery.impl
+    name: Implement watchdog-backed failure classification and recovery policy
+    status: pending
+    description: 'step_type: implementation
+
+
+      Implement the runner failure and recovery hardening defined by the enhancement
+      foundation.
+
+
+      Scope:
+
+      - classify crash, clean fail, timeout, stall, and no-progress distinctly
+
+      - add watchdog / heartbeat-driven liveness checks where the contract assigns
+      ownership
+
+      - encode a recovery policy matrix for retry, fallback runner, defer, planner,
+      and halt
+
+      - preserve a future-ready fallback boundary even if only opencode is active
+      today
+
+
+      ## Gate Preview (what the gate WILL reject)
+
+      1. Recovery logic that collapses crash / fail / timeout / stall into one bucket
+
+      2. Watchdog logic without evidence of heartbeat or no-progress reasoning
+
+      3. Fallback policy that cannot explain why planner/defer/halt choices differ
+      by failure class
+
+
+      ## Completion Criteria (stub exclusion)
+
+      This is an IMPLEMENTATION step. Stub-only completion is NOT acceptable.
+
+      Each deliverable MUST contain substantive logic that varies by failure class
+      and recovery decision.'
+    verification: 'phase-check protecting driver-enhancement-runner-recovery.verify.
+
+      - Main path: focused tests prove each failure class maps to the intended recovery
+      action
+
+      - Failure path: regression covers stall/no-progress watchdog behavior and distinguishes
+      clean fail from crash
+
+      - Proof: evidence shows the recovery matrix is enforced rather than inferred
+      from a single generic failure path'
+    depends_on:
+    - driver-enhancement-runner-recovery.contract
+    - driver-enhancement-runner-recovery.test-define-red
+    agent: python-senior
 - id: driver-enhancement-integration
   name: 'Driver Enhancement: Integration'
   status: locked

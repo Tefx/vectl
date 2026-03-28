@@ -43050,73 +43050,47 @@ phases:
   - id: driver-continuity-authority-ledger.impl
     name: Implement durable session authority ledger and minimum journal
     status: pending
-    description: 'step_type: implementation
-
-      Implement the bootstrap-blocker durable continuity state layer.
-
-
-      Scope:
-
-      - converge runtime ownership so SessionPool and decide.py no longer persist
-      independent truths
-
-      - persist continuity state for success, failure, abort, and restart-adjacent
-      transitions
-
-      - add the minimum recovery-grade journal/telemetry fields needed to reconstruct
-      continuity and reconcile plan/claims state
-
-      - ensure continuity writes happen before any outcome that would otherwise lose
-      resumability evidence
-
-
-      ## Completion Criteria (stub exclusion)
-
-      This is an IMPLEMENTATION step. Stub-only completion is NOT acceptable.
-
-      Each deliverable MUST contain substantive logic that processes its inputs and
-      produces outputs that vary based on those inputs. Private stub classes (`_Runtime*`,
-      `_Stub*`, `_Placeholder*`) do not satisfy this requirement.
-
-
-      ## Failure-mode checklist
-
-      - missing continuity record on abnormal stop
-
-      - partial-write or interrupted-write behavior
-
-      - stale continuity record vs recovered plan/claims precedence
-
-      - explicit clear / terminal completion semantics
-
-      - relative vs absolute storage path behavior if driver runtime path differs
-
-
-      ## State semantics
-
-      - last-writer-wins facts: runtime continuity snapshot and journal append ordering
-
-      - preserve exactly: step/session identity, replay token, runner provenance,
-      outcome class, and recovery cursor
-
-      - backward-compatible legacy behavior: existing successful runs remain readable
-      and upgradeable
-
-
-      ## Out-of-scope guardrail
-
-      - rich analytics, dashboards, and long-tail telemetry remain in driver-enhancement-observability
-
-      - advanced recovery heuristics remain outside this step unless required for
-      bootstrap-safe resume
-
-
-      KNOWN RISKS:
-
-      - SessionPool process-local memory and decide.py side state previously diverged;
-      fix the shared truth, not just one write site
-
-      - Recovery evidence must exist on failure and abort, not only after success/merge'
+    description: "step_type: implementation\n\nFill in stub bodies and replace placeholder\
+      \ continuity writes with working durable authority and ledger logic on the existing\
+      \ continuity surfaces.\n\nUPSTREAM ARTIFACTS (from contract/test steps):\n \
+      \ - src/vectl/driver/session.py — from_step: driver-continuity-foundation.contract\
+      \ — tier: contract\n  - src/vectl/decide.py — from_step: driver-continuity-foundation.contract\
+      \ — tier: contract\n  - tests/test_driver_recovery.py — from_step: driver-continuity-authority-ledger.test-define-red\
+      \ — tier: test\n  - tests/test_driver_loop_runtime.py — from_step: driver-continuity-authority-ledger.test-define-red\
+      \ — tier: test\n\nYOUR SCOPE: Replace stub markers or placeholder persistence\
+      \ hooks with substantive durable continuity logic inside the existing authority/ledger\
+      \ boundary.\n\nDeviation protocol: If a contract artifact is wrong or incomplete,\
+      \ document a deviation record (type, what, why, impact) — do NOT silently rewrite.\n\
+      \nupstream_artifacts:\n  - path: src/vectl/driver/session.py\n    from_step:\
+      \ driver-continuity-foundation.contract\n    tier: contract\n  - path: src/vectl/decide.py\n\
+      \    from_step: driver-continuity-foundation.contract\n    tier: contract\n\
+      \  - path: tests/test_driver_recovery.py\n    from_step: driver-continuity-authority-ledger.test-define-red\n\
+      \    tier: test\n  - path: tests/test_driver_loop_runtime.py\n    from_step:\
+      \ driver-continuity-authority-ledger.test-define-red\n    tier: test\n\nImplement\
+      \ the bootstrap-blocker durable continuity state layer.\n\nScope:\n- converge\
+      \ runtime ownership so SessionPool and decide.py no longer persist independent\
+      \ truths\n- persist continuity state for success, failure, abort, and restart-adjacent\
+      \ transitions\n- add the minimum recovery-grade journal/telemetry fields needed\
+      \ to reconstruct continuity and reconcile plan/claims state\n- ensure continuity\
+      \ writes happen before any outcome that would otherwise lose resumability evidence\n\
+      \n## Completion Criteria (stub exclusion)\nThis is an IMPLEMENTATION step. Stub-only\
+      \ completion is NOT acceptable.\nEach deliverable MUST contain substantive logic\
+      \ that processes its inputs and produces outputs that vary based on those inputs.\
+      \ Private stub classes (`_Runtime*`, `_Stub*`, `_Placeholder*`) do not satisfy\
+      \ this requirement.\n\n## Failure-mode checklist\n- missing continuity record\
+      \ on abnormal stop\n- partial-write or interrupted-write behavior\n- stale continuity\
+      \ record vs recovered plan/claims precedence\n- explicit clear / terminal completion\
+      \ semantics\n- relative vs absolute storage path behavior if driver runtime\
+      \ path differs\n\n## State semantics\n- last-writer-wins facts: runtime continuity\
+      \ snapshot and journal append ordering\n- preserve exactly: step/session identity,\
+      \ replay token, runner provenance, outcome class, and recovery cursor\n- backward-compatible\
+      \ legacy behavior: existing successful runs remain readable and upgradeable\n\
+      \n## Out-of-scope guardrail\n- rich analytics, dashboards, and long-tail telemetry\
+      \ remain in driver-enhancement-observability\n- advanced recovery heuristics\
+      \ remain outside this step unless required for bootstrap-safe resume\n\nKNOWN\
+      \ RISKS:\n- SessionPool process-local memory and decide.py side state previously\
+      \ diverged; fix the shared truth, not just one write site\n- Recovery evidence\
+      \ must exist on failure and abort, not only after success/merge"
     verification: '- Main path: targeted continuity persistence tests pass for success
       and ordinary resume
 

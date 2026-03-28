@@ -36921,7 +36921,7 @@ phases:
     agent: doc-reviewer
   - id: driver-deep-review.architecture-review
     name: Deep review architecture and concurrency audit
-    status: claimed
+    status: done
     description: 'step_type: review
 
 
@@ -36947,6 +36947,63 @@ phases:
     agent: software-architect
     claimed_by: software-architect
     claimed_at: '2026-03-28T13:48:24.210837+00:00'
+    done_at: '2026-03-28T13:57:58.080843+00:00'
+    evidence: '## Architecture Review: Mixed Results
+
+
+      ### Good
+
+      - Dependency direction mostly sound: `config -> loop/judge/session`
+
+      - Judge correctly owns invocation/parsing, not timing
+
+      - SessionPool avoids mutating decide.py globals
+
+      - Config cleanly separated as typed config + validation
+
+      - Merge serialization explicit via `DriverState.merge_lock`
+
+      - Both CLI surfaces delegate to `vectl.driver.loop.run`
+
+
+      ### Violations Found
+
+
+      **Violation 1 (Proven):** `decide.py` and `loop.py` overlap on completion/failure
+      authority — double-processing risk for completed work.
+
+
+      **Violation 2 (Proven):** `decide.py` owns mutable module-global state (`_completion_times`,
+      `_session_registry`, `_failure_counts`) — process-global, not driver-instance-local.
+
+
+      **Violation 3 (Likely):** `loop.py` has drifted beyond "coordinator only" into
+      policy/rules ownership via helpers like `_detect_preflight_risk_signals()`,
+      `_extract_failure_disposition()`, `_parse_gate_issues()`.
+
+
+      **Violation 4 (Proven):** Runtime surfaces diverge: `python -m vectl.driver`
+      vs `vectl drive` have different CLI contracts and exit behavior.
+
+
+      ### Required Corrections
+
+      1. Eliminate double-processing of completed results; assign one owner for post-run
+      transitions
+
+      2. Remove or encapsulate `decide.py` module-global mutable state
+
+      3. Extract rule/policy helpers from `loop.py` to restore coordinator-only boundary
+
+      4. Replace text-parsed failure disposition with structured verdict fields
+
+      5. Unify runtime surface semantics for both entry points
+
+      6. Standardize TTL logic on monotonic time
+
+
+      **Verdict:** Implementation functional but with architectural debt requiring
+      future cleanup.'
   - id: driver-deep-review.contract-strength
     name: Deep review contract strength audit
     status: claimed

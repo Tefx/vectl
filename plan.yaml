@@ -38719,6 +38719,9 @@ phases:
       - keep `observe.py` as the append-only durable sink, but route schema/version
       truth through the new registry
 
+      - implement the registry as a STATIC declaration table that is centralized,
+      explicit, and auditable
+
       - preserve current append semantics and file durability behavior while moving
       schema ownership out of scattered emit call sites
 
@@ -38734,6 +38737,8 @@ phases:
 
       - no compatibility shim is allowed that stores `version` inside `data`
 
+      - no module-level dynamic registration API is introduced for initial rollout
+
 
       Out-of-scope guardrail: canonical event semantics for `FINAL`, `DECIDE`, and
       `STEP_COMPLETED` are deferred to the next phase.'
@@ -38744,7 +38749,8 @@ phases:
       - Failure path: targeted regression proves nested `data.version` is rejected
       or not produced
 
-      - Proof: registry is the only schema/version source for emitted event metadata'
+      - Proof: registry is the only schema/version source for emitted event metadata
+      and remains a static declaration table rather than a runtime registration mechanism'
     depends_on:
     - driver-evolution-events-foundation.contract
     agent: python-senior

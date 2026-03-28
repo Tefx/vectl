@@ -535,7 +535,7 @@ class Event:
 step dependency, runner match, and TTL.
 
 **Non-responsibility**: Does NOT make dispatch decisions. Does NOT interact with
-`decide.py`'s `_session_registry` directly -- see ownership boundary below.
+`decide.py`'s `DecideState` directly -- see ownership boundary below.
 
 ```python
 class SessionPool:
@@ -566,19 +566,19 @@ class SessionPool:
         ...
 ```
 
-#### Ownership Boundary: SessionPool vs _session_registry
+#### Ownership Boundary: SessionPool vs DecideState
 
-`decide.py` maintains `_session_registry` and `_completion_times` as module-level
-dicts. These are populated as a **side effect** of calling `decide()` with
-`completed_results`. The driver does NOT write to these dicts directly.
+`decide.py` receives decide-side memory via an explicit `state: DecideState`
+parameter. The driver runtime passes `DriverState.decide_state` and does NOT
+write to decide-memory fields directly.
 
 The driver's `SessionPool` is a **parallel, runner-aware** pool that adds
-runner-name matching and per-runner TTL overrides -- capabilities that `decide.py`
+runner-name matching and per-runner TTL overrides -- capabilities that `decide()`
 does not have. The two mechanisms serve different purposes:
 
-| Concern | `_session_registry` (decide.py) | `SessionPool` (driver) |
-|---------|--------------------------------|----------------------|
-| Owner | `decide()` function | `loop.py` via `session.py` |
+| Concern | `DecideState` (decide.py) | `SessionPool` (driver) |
+|---------|--------------------------|------------------------|
+| Owner | `DriverState` + `decide()` mutation contract | `loop.py` via `session.py` |
 | Written by | `decide()` when processing `CompletedResult` | `loop.py` reconcile path after successful merge |
 | Read by | `decide()` during `should_reuse_session()` | `loop.py` dispatch path, BEFORE calling `decide()` |
 | Runner-aware | No | Yes (runner-name match required) |
@@ -591,10 +591,9 @@ the driver MAY override by checking `SessionPool.find_reusable()` for a runner-a
 match. This is safe because session reuse is best-effort: if the session is stale,
 the runner starts fresh (graceful degradation).
 
-**Decision**: [ADR] The driver does NOT modify `decide.py`'s module-level state.
-Instead it feeds data through the existing `CompletedResult` -> `decide()` contract.
-This preserves the frozen-core constraint. The `SessionPool` provides a supplementary
-layer for runner-aware reuse that `decide()` cannot express.
+**Decision**: [ADR] Decide-side memory lives in `DecideState` and is passed
+explicitly from `DriverState`. `SessionPool` remains a supplementary
+runner-aware layer for dispatch-time optimization.
 
 ---
 
@@ -1106,6 +1105,12 @@ async def handle_complete(
     2. complete_step(plan, step_id, evidence,
        claims_path=resolve_claims_path(plan_path))
     3. Save plan (CAS write)
+
+    Legacy-shim disposition (A1 authority):
+    - main runtime path **uses** ``wait_for_any() -> reconcile()`` as the sole
+      completion sink; ``decide(action="complete")`` is ignored at runtime.
+    - this function exists only for internal compatibility; no runtime code path
+      invokes it directly.
     """
     ...
 
@@ -1278,14 +1283,27 @@ def run_driver_module_entrypoint(
 
 #### Supported invocation forms (normative)
 
-1. `vectl drive --config <path>`
-2. `python -m vectl.driver <path>` (positional config retained)
-3. `python -m vectl.driver --config <path>` (new support)
+All forms delegate to `vectl.driver.entrypoint.SharedRuntimeEntrypointAdapter`
+for config normalization, async runtime invocation, and exit-code mapping.
 
-#### Exit code semantics (shared across both entrypoints)
+| Form | Usage | Notes |
+|------|-------|-------|
+| `vectl drive --config <path>` | Typer CLI | Config passed as Typer option |
+| `python -m vectl.driver <path>` | Module entrypoint | Positional config argument |
+| `python -m vectl.driver --config <path>` | Module entrypoint | Optional `--config` flag |
+
+**Argument parsing**: The module entrypoint (`__main__.py`) accepts both:
+- Positional `CONFIG` argument (backwards-compatible)
+- `--config CONFIG` flag (preferred explicit form)
+
+The two forms are mutually exclusive; combining them results in a usage error.
+
+**Exit code semantics**: Both entrypoints share the same exit-code mapping
+via `EntrypointUsageError` classification:
 
 | Category | Exit code |
 |----------|-----------|
+| Success | `0` |
 | Runtime/config execution error | `1` |
 | Argument parsing / usage error | `2` |
 
@@ -1293,6 +1311,11 @@ def run_driver_module_entrypoint(
 
 Both `src/vectl/cli.py::drive` and `src/vectl/driver/__main__.py::main` MUST
 delegate to the same shared adapter path in `src/vectl/driver/entrypoint.py`.
+
+The shared adapter implementation in `entrypoint.py` provides:
+- `normalize_config()`: Canonicalizes config path with user-home expansion
+- `invoke_async()`: Runs `loop.run(config_path)` via `asyncio.run()`
+- `map_error_to_exit_code()`: Maps exceptions to shared exit-code matrix
 
 ---
 
@@ -1323,11 +1346,10 @@ delegate to the same shared adapter path in `src/vectl/driver/entrypoint.py`.
     │    worktree.create ──> dispatch.render ──>   │
     │    runner.dispatch ──> state.register        │
     │                                              │
-    │  complete:                                   │
-    │    Action ──> reload plan ──>                │
-    │    complete_step(plan, ..., claims_path) ──> │
-    │    save_plan (CAS)                           │
-    │                                              │
+  │  complete: (legacy shim)                     │
+     │    [A1 contract: ignored at runtime]         │
+     │    Runtime uses reconcile() only             │
+     │                                              │
     │  wait:                                       │
     │    (no-op, logged)                           │
     │                                              │
@@ -1402,17 +1424,26 @@ CompletedResult.output_summary = CompletedEntry.result.output[:500]
 | State | Owner Module | Mutated By | Read By | Lifetime |
 |-------|-------------|------------|---------|----------|
 | `DriverState.running` | `types.py` (defined), `loop.py` (managed) | `loop.py` dispatch + reconcile | `loop.py`, `decide()` (via `as_running_tasks()`) | Process |
-| `DriverState.completed_queue` | `types.py` / `loop.py` | `wait_for_any()` | `drain_completed()` | Per-iteration |
+| `DriverState.completed_queue` | `types.py` / `loop.py` | `wait_for_any()` | `drain_completed()` (legacy transitional seam) | Per-iteration |
 | `DriverState.failure_counts` | `types.py` / `loop.py` | `reconcile()` | `reconcile()`, `dispatch()` | Process |
 | `DriverState.merge_lock` | `types.py` | `reconcile()` (acquire/release) | `reconcile()` | Process |
+| `DriverState.decide_state` | `types.py` (defined), `decide()` | `decide()` internally | `decide()` via explicit parameter | Process |
 | `SessionPool._entries` | `session.py` | `reconcile()` via `record()` | `dispatch()` via `find_reusable()` | Process |
-| `_session_registry` (decide.py) | `decide.py` | `decide()` internally | `decide()` internally | Process (module-level) |
-| `_completion_times` (decide.py) | `decide.py` | `decide()` internally | `decide()` internally | Process (module-level) |
-| `_failure_counts` (decide.py) | `decide.py` | `decide()` internally | `decide()` internally | Process (module-level) |
 | `plan.yaml` | `vectl.io` | `loop.py` via `save_plan()` | `decide()` via `load_plan_definition()`, `loop.py` | Durable (disk) |
 | `claims.json` | `vectl.claims` | `claim_step()`, `complete_step()`, `defer_step()` | `repair_claims()` | Durable (disk) |
 | `events.jsonl` | `observe.py` | `observer.emit()` | External tools only | Durable (disk, append-only) |
 | Git worktrees | `worktree.py` | `create()`, `merge()`, `cleanup()` | `dispatch()` (path), `reconcile()` (merge) | Per-step |
+
+### Completion Authority (A1 Contract)
+
+Runtime completion authority is **reconcile-only**. The sole completion sink is:
+```
+wait_for_any() → reconcile()
+```
+
+`handle_complete()` is legacy/internal compatibility only and MUST NOT be invoked
+from the main runtime path. `decide(action="complete")` is ignored at runtime.
+This is enforced by `loop.COMPLETION_AUTHORITY_A1_CONTRACT`.
 
 ---
 
@@ -1456,38 +1487,22 @@ The boundary is hard-coded in `reconcile()` as a conditional chain:
 
 See Section 2.10, "Judge vs Rules Decision Boundary" table.
 
-### Q4: What is the ownership boundary between SessionPool and _session_registry?
+### Q4: What is the ownership boundary between SessionPool and DecideState?
 
 **Answer**: They are parallel, non-overlapping mechanisms:
 
-- `_session_registry` is `decide.py`-internal state, populated as a side effect of `decide()` processing `CompletedResult`. The driver never writes to it.
-- `SessionPool` is driver-internal state, populated by `reconcile()` after successful merge. It adds runner-name matching and per-runner TTL that `decide()` cannot express.
-- The driver feeds completed results through `CompletedResult` to keep `decide()` state current.
-- If `decide()` produces `session="reuse"` with a `task_id`, the driver uses that. If `session="fresh"`, the driver MAY supplement with `SessionPool.find_reusable()`.
+- `DecideState` is passed explicitly to `decide()` via the `state` parameter.
+  The driver does NOT write to decide-memory directly; it feeds data through
+  the `CompletedResult` contract.
+- `SessionPool` is driver-internal state, populated by `reconcile()` after
+  successful merge. It adds runner-name matching and per-runner TTL that
+  `decide()` cannot express.
+- The driver feeds completed results through `CompletedResult` to keep `decide()`
+  state current via the explicit `DecideState` parameter.
+- If `decide()` produces `session="reuse"` with a `task_id`, the driver uses
+  that. If `session="fresh"`, the driver MAY supplement with `SessionPool.find_reusable()`.
 
 See Section 2.5 ownership boundary table.
-
-#### Decision-state Contract Drift Register (for later doc-sync)
-
-The current runtime contract is being pinned to explicit ``DecideState`` wiring.
-The following existing architecture statements are now known drift points that
-must be synchronized in a dedicated doc-sync step:
-
-1. **Section 2.5, Ownership Boundary heading**
-   - Current text: ``#### Ownership Boundary: SessionPool vs _session_registry``
-   - Drift reason: contract now uses ``DecideState`` as the sole decide-side
-     mutable container passed explicitly by ``DriverState``.
-2. **Section 2.5, ownership paragraph**
-   - Current text: ``decide.py maintains _session_registry and _completion_times as module-level dicts.``
-   - Drift reason: module-global dicts are no longer the intended runtime truth.
-3. **Section 4, State Ownership Matrix rows for `_session_registry` / `_completion_times` / `_failure_counts`**
-   - Current text (rows): module-level ``decide.py`` process state.
-   - Drift reason: ownership boundary is moving to instance-local
-     ``DriverState.decide_state: DecideState`` with explicit parameter passing.
-4. **Q4 answer bullet 1**
-   - Current text: ``_session_registry is decide.py-internal state ...``
-   - Drift reason: ownership statement must be rewritten to refer to
-     ``DecideState`` instead of module-global registries.
 
 ### Q5: How do prompt templates get the data they need?
 
@@ -1511,7 +1526,7 @@ is a deterministic string template, not LLM-generated.
 
 | Decision | Gain | Cost |
 |----------|------|------|
-| Parallel SessionPool alongside _session_registry | Runner-aware reuse without modifying frozen core | Two session tracking mechanisms; slight conceptual overhead |
+| Parallel SessionPool alongside DecideState | Runner-aware reuse without modifying frozen core | Two session tracking mechanisms; slight conceptual overhead |
 | Inline `await judge.judge()` instead of event-driven | Linear control flow, easy debugging | Judge latency blocks the current action (acceptable: ~3s, infrequent) |
 | All state in DriverState (no persistence) | Simplicity, crash-restart-safe (plan.yaml + git are durable) | Lose failure history on crash (acceptable: restart re-evaluates from plan state) |
 | Rule-based evidence validation before judge | Fast rejection of obviously bad evidence, saves ~40% of judge calls | Rules may reject borderline-valid evidence; config toggle mitigates |
@@ -1524,7 +1539,7 @@ is a deterministic string template, not LLM-generated.
 | Risk | Likelihood | Mitigation |
 |------|-----------|------------|
 | Judge LLM produces unparseable output | Low (with structured_output), Medium (without) | Structured output via `--json-schema`/`--output-schema` eliminates most parse failures; fallback: timeout + parse error -> accept optimistically, log warning |
-| `decide()` module-level state drifts from DriverState | Low | Driver is single-threaded; state fed exclusively through CompletedResult contract |
+| `decide()` state drifts from DriverState | Low | Driver is single-threaded; state fed exclusively through CompletedResult contract |
 | Worktree accumulation on repeated crashes | Medium | Startup `cleanup_orphans()` + `repair_claims()` |
 | Runner stall not detected | Low | Real PID check + configurable stall_timeout per runner |
 

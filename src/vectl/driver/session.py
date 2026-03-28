@@ -60,9 +60,6 @@ class SessionPool:
     **Decision**: [ADR] Decide-side memory lives in ``DecideState`` and is passed
     explicitly from ``DriverState``. ``SessionPool`` remains a supplementary
     runner-aware layer for dispatch-time optimization.
-
-    Drift note (doc-sync pending): docs/DRIVER-ARCHITECTURE.md Section 2.5/Q4
-    still describe module-global decide state from the pre-contract baseline.
     """
 
     def __init__(self, config: SessionConfig) -> None:

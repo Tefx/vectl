@@ -139,7 +139,7 @@ vectl/
 | Concern | Source of Truth | Notes |
 |--------|------------------|-------|
 | Runtime orchestration state | `DriverState` | Running handles, queues, merge lock |
-| Decide-local state | `DecideState` | No module-global mutable state |
+| Decide-local state | `DecideState` | Passed explicitly to `decide()` via state parameter; driver does not write to decide-memory directly |
 | Event contracts | `driver.events.registry` | Canonical schema/version owner |
 | Event durability | `observe.py` / future `events.sinks` | JSONL append-only sink remains valid |
 | Loop-executed action contracts | `driver.action_registry` | Includes planner actions |

@@ -33538,6 +33538,66 @@ phases:
     depends_on:
     - driver-judgment-runtime-minimal.spec-conformance
     agent: gate-reviewer
+  - id: driver-judgment-runtime-minimal.fix-liveness-probe-blockers
+    name: Fix liveness-probe blockers
+    status: pending
+    description: 'step_type: implementation
+
+
+      Fix ALL blocker-class runtime liveness issues found by driver-judgment-runtime-minimal.liveness-probe.
+
+
+      ## Blockers to Fix (ALL of these, not just the first):
+
+      - DEAD_ON_ARRIVAL: `python -m vectl.driver` exits code 0 without invoking `main()`,
+      caused by missing `if __name__ == "__main__": sys.exit(main())` guard in `src/vectl/driver/__main__.py`.
+
+
+      ## Root Cause vs Symptom
+
+      - Root cause: the runnable entrypoint module defines runtime logic but does
+      not hand control to `main()` when executed as a module.
+
+      - Symptom: `python -m vectl.driver` returns success immediately, producing a
+      dead-on-arrival liveness result instead of exercising the real runtime path.
+
+      - Why this fix is not surface-level: it must restore the real module entrypoint
+      semantics and prove the process exit code reflects `main()` execution, not just
+      add a no-op wrapper.
+
+
+      ## Completion Criteria (stub exclusion)
+
+      This is an IMPLEMENTATION step. Stub-only completion is NOT acceptable. The
+      runnable module must execute substantive startup logic through the real `main()`
+      path.
+
+
+      ## Required remediation
+
+      - Add the missing `__main__` guard so module execution calls `sys.exit(main())`.
+
+      - Preserve correct exit semantics from `main()`.
+
+      - Search sibling runtime entrypoint surfaces for the same missing-guard anti-pattern
+      before claiming done.
+
+
+      Grep hint: search for module entrypoints that define `main()` or runtime startup
+      without a `__name__ == "__main__"` handoff.
+
+      '
+    verification: '- Real command evidence is required: run `python -m vectl.driver`
+
+      - Evidence must show the module invokes `main()` rather than exiting immediately
+
+      - Exit semantics must be correct: successful startup/controlled cycle returns
+      the expected code from `main()`, and dead-on-arrival exit-0 behavior is eliminated
+
+      - Sibling entrypoint search evidence is provided for the missing-guard pattern'
+    depends_on:
+    - driver-judgment-runtime-minimal.liveness-probe
+    agent: python-executor
 - id: driver-multi-runner-hardening
   name: Driver Multi-Runner Hardening
   status: locked

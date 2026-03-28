@@ -40498,6 +40498,12 @@ phases:
       - valid exact/glob routing plus `fallback_runner` still load successfully
 
 
+      ## Spec-Fixture Conformance (MANDATORY)
+
+      At least one fixture MUST use the exact documented `DriverConfig` / `driver.yaml`
+      routing shape from `docs/DRIVER-ARCHITECTURE.md#2-3-config-py-configuration`.
+
+
       Evidence must include `expected_failures` and identify `driver-routing-hardening.impl`
       as the downstream implementation owner.'
     verification: 'local-check protecting driver-routing-hardening.impl.

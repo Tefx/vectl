@@ -39030,6 +39030,49 @@ phases:
     - driver-evolution-event-contracts.implement-canonical-events
     - driver-evolution-event-contracts.implement-typed-emitter
     agent: integration-verifier
+  - id: driver-evolution-event-contracts.gate
+    name: Gate canonical event contracts
+    status: pending
+    description: 'step_type: gate
+
+      Gate review: verify the canonical-event-contracts phase completion and quality.
+
+
+      review_depth: THOROUGH
+
+      review_depth_rationale:
+
+      - phase changes persisted output formats
+
+      - phase includes integration-tagged source-to-sink emission work
+
+      - FINAL semantics have explicit drift risk
+
+
+      cross_cutting_focus:
+
+      - FINAL is summary-oriented only
+
+      - DECIDE and STEP_COMPLETED use registry-owned schemas
+
+      - typed helpers, not literals, own canonical event emission
+
+
+      Independence: gate-reviewer must remain independent from software-architect/python-senior/python-executor.'
+    verification: 'phase-check protecting driver-evolution-runtime-context.
+
+      - Spec conformance covers FINAL, DECIDE, and STEP_COMPLETED
+
+      - Integration evidence proves helper-backed source-to-sink flow
+
+      - No unresolved event-schema blocker intersects runtime-context work'
+    depends_on:
+    - driver-evolution-event-contracts.contract
+    - driver-evolution-event-contracts.implement-canonical-events
+    - driver-evolution-event-contracts.implement-typed-emitter
+    - driver-evolution-event-contracts.spec-conformance
+    - driver-evolution-event-contracts.verify-emitter-flow
+    agent: gate-reviewer
 - id: driver-evolution-runtime-context
   name: 'Driver Evolution: Runtime Context'
   status: locked

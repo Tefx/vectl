@@ -38615,7 +38615,7 @@ phases:
     - src/vectl/cli.py
     - tests/repro/driver_black_box_liveness.py
     agent: blind-tester
-  - id: driver-debt-deep-review.spec-conformance
+  - id: driver-debt-review.spec-conformance
     name: Audit driver debt spec conformance
     status: pending
     description: 'step_type: verification

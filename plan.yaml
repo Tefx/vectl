@@ -38915,6 +38915,32 @@ phases:
     depends_on:
     - driver-evolution-event-contracts.contract
     agent: python-senior
+  - id: driver-evolution-event-contracts.implement-typed-emitter
+    name: Add typed event emitter helpers
+    status: pending
+    description: "step_type: implementation\nsimple_feature_exception:\n  approved:\
+      \ false\n\nImplement typed emitter helpers on top of the canonical event registry.\n\
+      \nScope:\n- add `src/vectl/driver/events/emitter.py`\n- replace direct string-literal\
+      \ emission for `FINAL`, `DECIDE`, and `STEP_COMPLETED` at the main driver call\
+      \ sites in scope with typed helper usage\n- keep durable sink behavior unchanged\
+      \ while making emission expectations explicit per event\n\nIntegration tag:\
+      \ this step spans source-to-sink event flow (`loop.py` -> typed emitter -> sink).\n\
+      Gate Preview:\n1. Direct string-literal emitters left on critical event paths\
+      \ will be rejected\n2. Mixed canonical + legacy FINAL emit shapes will be rejected\n\
+      3. Helper APIs that bypass the registry will be rejected"
+    verification: 'phase-check protecting conformance and emitter-flow verification.
+
+      - Main path: helper-backed emission produces canonical envelopes through the
+      durable sink
+
+      - Failure path: focused regression proves direct legacy emit paths are removed
+      or explicitly out of scope
+
+      - Proof: the source-to-sink path is `loop.py -> typed emitter -> registry ->
+      sink` for the targeted events'
+    depends_on:
+    - driver-evolution-event-contracts.implement-canonical-events
+    agent: python-executor
 - id: driver-evolution-runtime-context
   name: 'Driver Evolution: Runtime Context'
   status: locked

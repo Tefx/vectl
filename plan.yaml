@@ -38776,6 +38776,38 @@ phases:
     depends_on:
     - driver-evolution-events-foundation.implement-registry-envelope
     agent: integration-verifier
+  - id: driver-evolution-events-foundation.gate
+    name: Gate events foundation
+    status: pending
+    description: 'step_type: gate
+
+      Gate review: verify the events-foundation phase completion and quality.
+
+
+      review_depth: STANDARD
+
+      cross_cutting_focus:
+
+      - top-level envelope versioning is canonical
+
+      - observe.py remains the durable sink while registry owns schema truth
+
+      - no direct-call-site schema drift remains in scope for this phase
+
+
+      Independence: gate-reviewer must remain independent from software-architect/python-senior.'
+    verification: 'phase-check protecting driver-evolution-event-contracts.
+
+      - Contract, implementation, and verification evidence are complete
+
+      - Envelope versioning is top-level and durable sink behavior remains intact
+
+      - No unresolved blocker intersects the next phase''s canonical-event work'
+    depends_on:
+    - driver-evolution-events-foundation.contract
+    - driver-evolution-events-foundation.implement-registry-envelope
+    - driver-evolution-events-foundation.verify-envelope-foundation
+    agent: gate-reviewer
 - id: driver-evolution-event-contracts
   name: 'Driver Evolution: Canonical Event Contracts'
   status: locked

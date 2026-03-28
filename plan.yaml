@@ -38590,7 +38590,7 @@ phases:
     - src/vectl/cli.py
     - src/vectl/driver/policy.py
     agent: gate-reviewer
-  - id: driver-debt-deep-review.black-box-verification
+  - id: driver-debt-review.black-box-verification
     name: Black-box verify remediated driver surfaces
     status: pending
     description: 'step_type: verification

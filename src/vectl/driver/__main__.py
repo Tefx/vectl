@@ -13,8 +13,13 @@ parsing and process wiring remain implementation work.
 
 from __future__ import annotations
 
+import argparse
+import asyncio
 from pathlib import Path
 from typing import Final, Sequence
+
+from .errors import ConfigError, DriverError
+from .loop import run
 
 DEFAULT_DRIVER_CONFIG_PATH: Final[Path] = Path("driver.yaml")
 
@@ -31,9 +36,24 @@ def main(argv: Sequence[str] | None = None) -> int:
     Startup recovery and graceful shutdown semantics are owned by ``loop.run``;
     this entrypoint only exposes the process boundary.
     """
-    raise NotImplementedError(
-        "driver.__main__.main contract stub; implementation belongs to runtime phase"
+    parser = argparse.ArgumentParser(prog="python -m vectl.driver")
+    parser.add_argument(
+        "config",
+        nargs="?",
+        default=str(DEFAULT_DRIVER_CONFIG_PATH),
+        help="Path to driver config (default: driver.yaml)",
     )
+    args = parser.parse_args(list(argv) if argv is not None else None)
+
+    try:
+        asyncio.run(run(Path(args.config)))
+    except ConfigError:
+        return 2
+    except DriverError:
+        return 1
+    except Exception:
+        return 1
+    return 0
 
 
 __all__ = ["DEFAULT_DRIVER_CONFIG_PATH", "main"]

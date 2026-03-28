@@ -34216,7 +34216,7 @@ phases:
       \ structure\n- Mock Island check passes: unit tests have integration companions"
   - id: driver-multi-runner-hardening.spec-conformance
     name: Multi-runner hardening spec conformance
-    status: pending
+    status: claimed
     description: 'step_type: verification
 
       Verification scope: phase-check protecting driver-multi-runner-hardening.gate.
@@ -34229,6 +34229,8 @@ phases:
     depends_on:
     - driver-multi-runner-hardening.verify-conflict-and-multirunner
     agent: doc-reviewer
+    claimed_by: doc-reviewer
+    claimed_at: '2026-03-28T09:51:53.637334+00:00'
   - id: driver-multi-runner-hardening.freeze
     name: Freeze multi-runner hardening snapshot
     status: pending

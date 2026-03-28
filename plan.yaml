@@ -41762,6 +41762,46 @@ phases:
     depends_on:
     - driver-guardrails-output-hardening.implement-opencode-hardening
     agent: spec-verifier
+  - id: driver-guardrails-output-hardening.gate
+    name: Gate judge-output hardening
+    status: pending
+    description: 'step_type: gate
+
+      Gate review: verify the hardened judge-output path is safe to support restored
+      preflight and cold_context.
+
+
+      review_depth: THOROUGH
+
+      review_depth_rationale:
+
+      - phase touches cross-cutting JSON output reliability
+
+      - malformed-output tolerance can disable downstream quality gates if wrong
+
+      - later phases depend on this phase for real-bootstrap guardrail restoration'
+    verification: '- Red test-definition evidence exists
+
+      - Independent malformed-output verification completed
+
+      - Spec-conformance audit completed
+
+      - No unresolved blocker allows ambiguous judge output to pass as valid verdict
+      JSON'
+    evidence_template: '## Gate Review Report
+
+      - Step-by-step evidence assessment:
+
+      - Blocking issues:
+
+      - Ready for restoration phases: YES/NO
+
+      '
+    depends_on:
+    - driver-guardrails-output-hardening.test-define-red
+    - driver-guardrails-output-hardening.verify-failure-matrix
+    - driver-guardrails-output-hardening.spec-conformance
+    agent: gate-reviewer
 - id: driver-guardrails-prompt-governance
   name: 'Driver Guardrails: Prompt Governance'
   status: locked

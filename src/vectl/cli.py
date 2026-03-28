@@ -1086,13 +1086,9 @@ def status(
         out.print()
         out.print("[dim]ℹ Stale claims detected (routine after agent restart):[/]")
         if ghost_claims:
-            out.print(
-                f"  [dim]Ghost claims: {len(ghost_claims)}[/]"
-            )
+            out.print(f"  [dim]Ghost claims: {len(ghost_claims)}[/]")
         if stale_plan_claims:
-            out.print(
-                f"  [dim]Stale plan claims: {len(stale_plan_claims)}[/]"
-            )
+            out.print(f"  [dim]Stale plan claims: {len(stale_plan_claims)}[/]")
         out.print("[dim]  → Run `vectl repair claims` to fix (safe, idempotent)[/]")
 
     out.print()
@@ -3120,3 +3116,32 @@ def dashboard(
         file_url = output.resolve().as_uri()
         webbrowser.open(file_url)
         console.print("[dim]Opening in browser...[/]")
+
+
+# ---------------------------------------------------------------------------
+# vectl drive: programmatic orchestration driver (stub/signature contract)
+# Ref: DRIVER-BLUEPRINT.md lines 44, 115-122
+# ---------------------------------------------------------------------------
+
+
+@app.command()
+def drive(
+    config: Path = typer.Option(
+        Path("driver.yaml"),
+        "--config",
+        help="Path to driver YAML configuration file.",
+    ),
+) -> None:
+    """Auto-execute plan with programmatic orchestration.
+
+    CLI entry point for the vectl driver: runs the deterministic
+    orchestration loop with LLM judgment fallback.
+
+    Ref: DRIVER-BLUEPRINT.md §CLI integration
+    """
+    from vectl.driver.loop import run
+
+    # Contract: runtime entrypoint is vectl.driver.loop.run
+    # Flag surface: --config PATH (default: driver.yaml)
+    # No implementation logic beyond signature stub
+    raise NotImplementedError("vectl driver not yet implemented")

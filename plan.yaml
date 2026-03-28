@@ -41139,24 +41139,6 @@ phases:
   depends_on:
   - driver-enhancement-foundation
   steps:
-  - id: driver-enhancement-runner-recovery.contract
-    name: Pin runner failure taxonomy and recovery matrix contract
-    status: pending
-    description: "step_type: contract\ncontract_purity: ENFORCED\ncontract_outputs:\n\
-      \  - interfaces\n  - type_defs\n  - signatures\n  - stubs\nPin the post-bootstrap\
-      \ advanced runner recovery contract.\n\nBootstrap-minimum resume capability\
-      \ semantics, replay safety, and restart controller behavior are owned by the\
-      \ continuity phases. This phase only owns additive heuristics such as watchdog-backed\
-      \ stall/no-progress taxonomy, richer operator policy, and advanced recovery\
-      \ UX."
-    verification: 'local-check protecting driver-enhancement-runner-recovery.impl.
-
-      - Failure classes are mutually understandable and operationally distinct
-
-      - Watchdog and fallback ownership boundaries are explicit
-
-      - Contract says when planner/escalation paths are allowed vs forbidden'
-    agent: software-architect
   - id: driver-enhancement-runner-recovery.impl
     name: Implement watchdog-backed failure classification and recovery policy
     status: pending
@@ -41246,7 +41228,6 @@ phases:
 
       - No blocker remains around crash/fail/timeout/stall/no-progress recovery behavior'
     depends_on:
-    - driver-enhancement-runner-recovery.contract
     - driver-enhancement-runner-recovery.impl
     - driver-enhancement-runner-recovery.verify
     agent: gate-reviewer

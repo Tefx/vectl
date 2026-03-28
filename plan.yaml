@@ -39268,6 +39268,60 @@ phases:
     contracts and verification
   depends_on:
   - driver-evolution-runtime-context
+  steps:
+  - id: driver-evolution-action-registry.planner-dispatch-contract
+    name: Pin planner dispatch as a first-class loop action
+    status: pending
+    description: 'step_type: contract
+
+      contract_purity: ENFORCED
+
+      contract_outputs:
+
+      - signatures
+
+      - type_defs
+
+      - interfaces
+
+      - stubs
+
+
+      Authoritative source: docs/ADR-driver-evolution-foundation.md#71-loop-action-registry-covers-all-loop-executed-actions-including-planner-dispatch
+      and #85-action-registry-is-layered-not-flat.
+
+
+      This step exists because planner dispatch is a core runtime capability and MUST
+      NOT be submerged inside a generic action bucket.
+
+      Required outputs:
+
+      - explicit planner-dispatch action type name(s)
+
+      - payload contract for planner dispatch inputs
+
+      - registered handler boundary
+
+      - category assignment under the layered action registry
+
+      - event emission expectations for planner dispatch execution and outcomes
+
+
+      Authoritative interface: planner dispatch remains loop-executed, registry-backed,
+      and first-class.
+
+      Touch paths: src/vectl/driver/action_registry.py, src/vectl/driver/runtime_context.py,
+      src/vectl/driver/loop.py, src/vectl/driver/dispatch.py, tests/test_driver_dispatch.py,
+      tests/test_driver_loop_contract.py.'
+    verification: 'local-check protecting action-registry implementation.
+
+      - Contract defines planner dispatch separately from generic execution actions
+
+      - Contract names category, payload contract, handler boundary, and event emission
+      expectations
+
+      - No runtime logic is introduced'
+    agent: software-architect
 - id: driver-evolution-loop-migration
   name: 'Driver Evolution: Loop Migration & Wiring'
   status: locked

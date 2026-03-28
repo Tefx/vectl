@@ -39955,3 +39955,30 @@ phases:
     - driver-evolution-review.update-docs
     - driver-evolution-review.wiring-audit
     agent: software-architect
+  - id: driver-evolution-review.contract-strength
+    name: Audit contract and registry strength
+    status: pending
+    description: 'step_type: review
+
+
+      Contract strength audit for the evolved driver.
+
+      Required checks:
+
+      - event registry entries have meaningful required/optional field distinctions
+
+      - typed emitter helpers and action contracts are non-vacuous
+
+      - RuntimeContext and planner-dispatch contracts do not degrade into placeholder
+      wrappers
+
+      - no identity-style contract placeholders or empty compatibility notes survive
+      in the touched ADR surfaces'
+    verification: 'phase-check protecting driver-evolution-review.gate.
+
+      - Contract artifacts are substantive, not tautological
+
+      - Any vacuous contract blocks the gate or gets explicit remediation ownership'
+    depends_on:
+    - driver-evolution-review.wiring-audit
+    agent: gate-reviewer

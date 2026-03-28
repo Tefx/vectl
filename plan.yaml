@@ -38492,7 +38492,6 @@ phases:
     depends_on:
     - driver-debt-system-wiring.runtime-liveness
     - driver-debt-system-wiring.full-plan-check
-    - driver-debt-system-wiring.freeze
     agent: gate-reviewer
 - id: driver-debt-doc-sync
   name: 'Driver Debt: Documentation Sync'

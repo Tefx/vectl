@@ -32132,7 +32132,7 @@ phases:
     agent: gate-reviewer
   - id: driver-execution-infra.fix-gate-blockers
     name: Fix gate blockers for driver execution infra
-    status: claimed
+    status: done
     description: 'step_type: implementation
 
       As a batched remediation step, fix ALL blockers reported by the independent
@@ -32295,6 +32295,74 @@ phases:
     agent: python-senior
     claimed_by: python-senior
     claimed_at: '2026-03-28T03:36:32.776996+00:00'
+    done_at: '2026-03-28T04:06:04.194067+00:00'
+    evidence: '## Batched Remediation Evidence
+
+
+      **Blocker families fixed**:
+
+      - B1 signature mismatch: fixed and retained green
+
+      - B2 in-scope invar guard blocker family on worktree paths: fixed
+
+      - B3 verification incompleteness: fixed with full relevant-suite rerun evidence
+
+
+      **why_previous_fix_failed**:
+
+      Previous attempt fixed cwd signature/test wiring but left guard blocker family
+      unresolved (`shell_result`/`shell_pure_logic`/complexity) in `src/vectl/driver/worktree.py`.
+      Root cause was shell-layer result-contract mismatch, not just missing helper
+      arguments.
+
+
+      **Commands executed**:
+
+      - uv run pytest tests/test_driver_worktree.py -q -> 32 passed
+
+      - uv run pytest tests/test_driver_*.py -q -> 306 passed
+
+      - uvx invar-tools guard -> passed (0 errors)
+
+      - uvx invar-tools guard --all -> still fails globally from pre-existing out-of-scope
+      repository debt
+
+
+      **Sibling search evidence**:
+
+      - `src/vectl/driver/worktree.py`: cwd-aware signatures present on create/merge/cleanup;
+      helper flow threaded accordingly
+
+      - `tests/test_driver_worktree.py`: cwd-aware lifecycle call sites covered and
+      green
+
+
+      **Root-cause closure**:
+
+      - B1: create/merge/cleanup now align with cwd-aware contract expected by tests
+
+      - B2: worktree shell-result guard blockers resolved in scope without suppressions
+
+      - B3: full relevant execution-infra suite rerun and recorded, not subset-only
+      evidence
+
+
+      **Files changed**:
+
+      - src/vectl/driver/worktree.py
+
+      - tests/test_driver_worktree.py
+
+
+      **Commit**:
+
+      - 21d54e8
+
+
+      **Gaps/Notes**:
+
+      - `uvx invar-tools guard --all` still reports pre-existing global repository
+      debt outside this step scope; in-scope execution-infra blocker family addressed.'
   - id: driver-execution-infra.retest-gate-blockers
     name: Retest gate blockers for driver execution infra
     status: pending

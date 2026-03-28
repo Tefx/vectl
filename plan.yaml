@@ -40232,3 +40232,10 @@ phases:
     depends_on:
     - driver-evolution-action-registry-contract-foundation.planner-dispatch-contract
     agent: gate-reviewer
+- id: driver-routing-hardening
+  name: Driver Routing Hardening
+  status: locked
+  gate: Reject unsupported `agent_routing.default` semantics with explicit validation
+    and independent verification.
+  depends_on:
+  - driver-evolution-review

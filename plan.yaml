@@ -39332,6 +39332,7 @@ phases:
     contracts and verification
   depends_on:
   - driver-evolution-runtime-context
+  - driver-evolution-action-registry-contract-foundation
   steps:
   - id: driver-evolution-action-registry.planner-dispatch-contract
     name: Pin planner dispatch as a first-class loop action

@@ -38507,35 +38507,6 @@ phases:
   status: locked
   depends_on:
   - driver-debt-doc-sync
-  steps:
-  - id: driver-debt-deep-review.wiring-audit
-    name: Audit driver debt wiring completeness
-    status: pending
-    description: 'step_type: verification
-
-      Verification scope: full-plan-check protecting driver-debt-deep-review.gate.
-
-
-      Complete wiring audit for the remediated driver surfaces.
-
-      Check:
-
-      - shared entrypoint adapter is the only runtime adapter
-
-      - no orphan completion path remains
-
-      - no unconsumed DecideState field or write-only state path remains
-
-      - extracted policy helpers are referenced from loop.py and not duplicated there'
-    verification: '- Wiring audit report cites grep/import evidence for each check'
-    refs:
-    - src/vectl/driver/entrypoint.py
-    - src/vectl/driver/__main__.py
-    - src/vectl/cli.py
-    - src/vectl/driver/loop.py
-    - src/vectl/driver/policy.py
-    - src/vectl/decision_state.py
-    agent: wiring-auditor
 - id: driver-debt-review
   name: 'Driver Debt: Review'
   status: locked
@@ -38731,3 +38702,31 @@ phases:
     - tests/test_decide.py
     - tests/test_driver_loop_runtime.py
     agent: gate-reviewer
+  - id: driver-debt-deep-review.wiring-audit
+    name: Audit driver debt wiring completeness
+    status: pending
+    description: 'step_type: verification
+
+      Verification scope: full-plan-check protecting driver-debt-deep-review.gate.
+
+
+      Complete wiring audit for the remediated driver surfaces.
+
+      Check:
+
+      - shared entrypoint adapter is the only runtime adapter
+
+      - no orphan completion path remains
+
+      - no unconsumed DecideState field or write-only state path remains
+
+      - extracted policy helpers are referenced from loop.py and not duplicated there'
+    verification: '- Wiring audit report cites grep/import evidence for each check'
+    refs:
+    - src/vectl/driver/entrypoint.py
+    - src/vectl/driver/__main__.py
+    - src/vectl/cli.py
+    - src/vectl/driver/loop.py
+    - src/vectl/driver/policy.py
+    - src/vectl/decision_state.py
+    agent: wiring-auditor

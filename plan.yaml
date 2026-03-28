@@ -38754,7 +38754,7 @@ phases:
       Policy extraction remains behavior-preserving and pure with no unresolved blocker.'
 - id: driver-debt-system-wiring
   name: 'Driver Debt: System Wiring'
-  status: pending
+  status: in_progress
   depends_on:
   - driver-debt-completion-authority
   - driver-debt-cli-entrypoint-unification
@@ -38762,7 +38762,7 @@ phases:
   steps:
   - id: driver-debt-system-wiring.integrate-runtime-surfaces
     name: Integrate remediated driver runtime surfaces
-    status: pending
+    status: claimed
     description: "step_type: implementation\ntags:\n  - integration\nVerification\
       \ scope: full-plan-check protecting driver-debt-system-wiring.liveness, full-plan-check,\
       \ and gate.\n\nFill in stub bodies and replace any temporary join wiring with\
@@ -38807,6 +38807,8 @@ phases:
     - src/vectl/cli.py
     - src/vectl/driver/__main__.py
     agent: python-senior
+    claimed_by: python-senior
+    claimed_at: '2026-03-28T21:34:49.546823+00:00'
   - id: driver-debt-system-wiring.runtime-liveness
     name: Probe end-to-end driver runtime liveness
     status: pending

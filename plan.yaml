@@ -42408,6 +42408,26 @@ phases:
     depends_on:
     - driver-judge-hardening-structured-output.impl
     agent: integration-verifier
+  - id: driver-judge-hardening-structured-output.gate
+    name: Gate structured-output stability
+    status: pending
+    description: "step_type: gate\nreview_depth: THOROUGH\nverification_scope: phase-check\n\
+      protects_downstream_gates:\n  - driver-judge-hardening-review.gate\n  - driver-bootstrap-readiness.gate\n\
+      \nAs an INDEPENDENT REVIEWER, assess whether judge structured-output stability\
+      \ is sufficient for continued bootstrap work.\n\nBLOCK if:\n- codex invocation\
+      \ still diverges from `driver.yaml`\n- real codex verification lacks preflight/cold_context/failure/gate\
+      \ evidence\n- parser tolerance exceeds the explicit contract\n- hard-fail classifications\
+      \ are still ambiguous"
+    verification: '- Expected-red tests exist and map to the implemented fixes
+
+      - Real codex verification evidence is complete and reproducible
+
+      - Structured-output stability is sufficient for review-phase full judgment validation'
+    depends_on:
+    - driver-judge-hardening-structured-output.test-define-red
+    - driver-judge-hardening-structured-output.impl
+    - driver-judge-hardening-structured-output.real-codex-verify
+    agent: gate-reviewer
 - id: driver-judge-hardening-recovery-policy
   name: 'Driver Judge Hardening: Failure Handling Policy'
   status: locked

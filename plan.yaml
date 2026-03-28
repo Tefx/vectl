@@ -39923,3 +39923,35 @@ phases:
     - driver-evolution-review.update-docs
     - driver-evolution-review.wiring-audit
     agent: spec-verifier
+  - id: driver-evolution-review.architecture-review
+    name: Review architecture boundaries for the evolved driver
+    status: pending
+    description: 'step_type: review
+
+
+      Architecture and concurrency review for the evolved driver.
+
+      Specifically check:
+
+      - module boundaries match the ADR target shape
+
+      - event contracts, RuntimeContext, and action registry each remain in their
+      declared ownership lane
+
+      - no module-global mutable registries or hidden split-truth paths were introduced
+
+      - planner dispatch remains first-class in architecture, not just in tests
+
+      - loop.py preserved the stable orchestration skeleton rather than regrowing
+      policy/action sprawl'
+    verification: 'phase-check protecting driver-evolution-review.gate.
+
+      - Evidence identifies any boundary violations with clear ownership impact
+
+      - Module-level mutable state risks are explicitly checked in touched modules
+
+      - Planner dispatch architecture remains first-class and auditable'
+    depends_on:
+    - driver-evolution-review.update-docs
+    - driver-evolution-review.wiring-audit
+    agent: software-architect

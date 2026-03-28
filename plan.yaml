@@ -43829,7 +43829,7 @@ phases:
       - blocker -> batched fix path created before progression.'
   - id: driver-continuity-foundation.fix-blockers
     name: Repair continuity foundation blocker set
-    status: pending
+    status: claimed
     description: "step_type: planning\n\nBatched remediation for blocker-class continuity-foundation\
       \ defects reported by driver-continuity-foundation.gate.\n\nThis step MUST resolve\
       \ ALL discovered blockers together, not one-by-one:\n- prerequisite architecture-basis\
@@ -43887,6 +43887,8 @@ phases:
     depends_on:
     - driver-continuity-foundation.gate
     agent: software-architect
+    claimed_by: software-architect
+    claimed_at: '2026-03-28T23:19:21.163210+00:00'
   - id: driver-continuity-foundation.gate-retest
     name: Retest continuity foundation gate blockers
     status: pending

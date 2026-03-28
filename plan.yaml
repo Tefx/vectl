@@ -39146,8 +39146,15 @@ phases:
       - stubs
 
 
-      Authoritative source: docs/ADR-driver-evolution-foundation.md#96-target-architecture-shape,
-      #117-ownership-model, and open question 2.
+      Authoritative source:
+
+      - docs/ADR-driver-evolution-foundation.md#96-handlers-receive-a-unified-runtimecontext
+
+      - docs/ADR-driver-evolution-foundation.md#116-target-architecture-shape
+
+      - docs/ADR-driver-evolution-foundation.md#137-ownership-model
+
+      - docs/ADR-driver-evolution-foundation.md#188-resolved-decisions
 
 
       Pin the `driver/runtime_context.py` contract before implementation.
@@ -39156,17 +39163,19 @@ phases:
 
       - RuntimeContext responsibility split versus DriverState and DecideState
 
-      - handler input contract for registry-backed actions
+      - initial handler input contract for registry-backed actions is a SINGLE shared
+      `RuntimeContext`
 
       - boundary rules for runtime orchestration state, decide-local mutable state,
       event contracts, and policy parsing helpers
 
-      - explicit note on whether a single RuntimeContext is sufficient for this rollout
-      or whether smaller contexts remain deferred
+      - role-specific contexts are explicitly deferred from this rollout; the migration
+      goal is to stabilize registry/loop structure first
 
 
       Authoritative interface: `RuntimeContext` is the typed execution context for
-      handlers in this ADR. Do not redesign durable plan lifecycle ownership.
+      handlers in this ADR and is unified for initial action-registry migration. Do
+      not redesign durable plan lifecycle ownership.
 
       Touch paths: src/vectl/driver/runtime_context.py, src/vectl/driver/loop.py,
       src/vectl/driver/action_registry.py, src/vectl/decision_state.py, src/vectl/decide.py,
@@ -39174,6 +39183,9 @@ phases:
     verification: 'local-check protecting runtime-context implementation.
 
       - Contract distinguishes DriverState vs DecideState vs RuntimeContext ownership
+
+      - Contract pins a single shared RuntimeContext for initial handler contracts
+      and explicitly defers role-specific contexts
 
       - Contract preserves the ADR target architecture shape
 

@@ -32070,15 +32070,22 @@ phases:
       Verification scope: local-check protecting driver-judgment-runtime-minimal.gate.
 
 
+      POST-IMPLEMENTATION GREEN VERIFICATION STEP.
+
+
       As an INDEPENDENT TESTER, validate the real judge verdict path from request
       rendering through strict JSON verdict parsing.
 
 
-      YOUR GOAL IS TO FIND PROBLEMS, not to confirm it works.'
+      Failures here are implementation defects or verification findings; they are
+      NOT expected-red contract evidence.'
     verification: '- Evidence includes actual command/output or exact mocked subprocess
       transcript proving strict verdict parsing
 
-      - Missing-field and malformed-JSON cases are assessed'
+      - Missing-field and malformed-JSON cases are assessed
+
+      - Expected result is green pass against implemented behavior; failures must
+      be reported as findings, not normalized as expected-red'
     depends_on:
     - driver-judgment-runtime-minimal.impl-judge
     agent: integration-verifier

@@ -37885,6 +37885,248 @@ phases:
   status: locked
   depends_on:
   - driver-debt-completion-authority
+  steps:
+  - id: driver-debt-cli-entrypoint-unification.contract
+    name: Pin shared driver entrypoint contract
+    status: pending
+    description: "step_type: contract\ncontract_purity: ENFORCED\ncontract_outputs:\n\
+      \  - signatures\n  - interfaces\n  - behavioral notes\nVerification scope: phase-check\
+      \ protecting driver-debt-cli-entrypoint-unification.impl and gate.\n\nPin the\
+      \ approved A4 runtime/entrypoint contract.\n\nRequired contract statements:\n\
+      - Add shared adapter surface in src/vectl/driver/entrypoint.py.\n- Both entrypoints\
+      \ must delegate to the same runtime adapter for config normalization, async\
+      \ invocation, and error-to-exit-code mapping.\n- Keep vectl drive --config syntax\
+      \ unchanged.\n- Keep python -m vectl.driver positional config support.\n- Add\
+      \ --config support to python -m vectl.driver.\n- Exit code semantics become\
+      \ shared:\n  - runtime/config execution error -> 1\n  - argument parsing / usage\
+      \ error -> 2\n\nAuthoritative surfaces:\n- src/vectl/driver/__main__.py runtime\
+      \ entrypoint\n- src/vectl/cli.py drive command runtime entrypoint\n\nKnown risks:\n\
+      - CLI help/parse behavior drift between argparse and Typer\n- accidental breakage\
+      \ of existing vectl drive UX while unifying runtime path"
+    verification: '- Shared adapter contract lists both supported invocation forms
+      and exit-code matrix
+
+      - No implementation logic beyond signatures / stubs / notes'
+    refs:
+    - src/vectl/driver/entrypoint.py
+    - src/vectl/driver/__main__.py
+    - src/vectl/cli.py
+    - docs/DRIVER-ARCHITECTURE.md
+    agent: python-senior
+  - id: driver-debt-cli-entrypoint-unification.test-define-red
+    name: Define expected-red CLI parity regressions
+    status: pending
+    description: 'step_type: test
+
+      step_intent: test_define_red
+
+      expected_result: red
+
+      Verification scope: local-check protecting driver-debt-cli-entrypoint-unification.impl,
+      liveness, and gate.
+
+
+      Write focused tests that expose the current entrypoint drift.
+
+
+      Required cases:
+
+      - python -m vectl.driver --help
+
+      - python -m vectl.driver path.yaml
+
+      - python -m vectl.driver --config path.yaml
+
+      - uv run vectl drive --config path.yaml
+
+      - equal error class -> equal exit code across both entrypoints
+
+
+      At least one fixture must use the documented minimal config path form without
+      convenience wrapping.
+
+      Record exact parse/runtime divergence before implementation.'
+    verification: '- Red/parity-gap evidence captured for help, positional config,
+      --config, and exit codes
+
+      - Modified files remain test-only'
+    refs:
+    - tests/test_driver_loop_contract.py
+    - tests/test_driver_impl.py
+    - src/vectl/driver/__main__.py
+    - src/vectl/cli.py
+    depends_on:
+    - driver-debt-cli-entrypoint-unification.contract
+    agent: python-executor
+  - id: driver-debt-cli-entrypoint-unification.impl
+    name: Implement shared driver entrypoint adapter
+    status: pending
+    description: "step_type: implementation\ntags:\n  - integration\nVerification\
+      \ scope: phase-check protecting driver-debt-cli-entrypoint-unification.liveness\
+      \ and gate.\n\nImplement A4 using one runtime adapter.\n\nRequired work:\n-\
+      \ Add src/vectl/driver/entrypoint.py.\n- Move config path normalization, async\
+      \ runtime invocation, and shared error mapping into the shared adapter.\n- Update\
+      \ src/vectl/driver/__main__.py to support positional config and --config while\
+      \ delegating to the adapter.\n- Update vectl drive in src/vectl/cli.py to delegate\
+      \ to the same adapter without changing user-facing --config syntax.\n- Enforce\
+      \ shared exit-code mapping: runtime/config execution error -> 1; parse/usage\
+      \ error -> 2.\n\nIntegration evidence requirement:\nPath exercised must be shown\
+      \ as:\npython -m vectl.driver / vectl drive -> shared adapter -> loop.run\n\n\
+      Gate Preview (what the gate will reject):\n1. argparse and Typer still map the\
+      \ same error class to different exit codes\n2. one entrypoint bypasses the shared\
+      \ adapter\n3. help/usage output regresses for existing vectl drive --config\
+      \ users"
+    verification: '- Shared adapter is the only runtime adapter for both entrypoints
+
+      - Targeted parity tests pass
+
+      - No CLI UX regression for vectl drive --config'
+    refs:
+    - src/vectl/driver/entrypoint.py
+    - src/vectl/driver/__main__.py
+    - src/vectl/cli.py
+    - src/vectl/driver/loop.py
+    - tests/test_driver_loop_contract.py
+    - tests/test_driver_impl.py
+    depends_on:
+    - driver-debt-cli-entrypoint-unification.test-define-red
+    agent: python-senior
+  - id: driver-debt-cli-entrypoint-unification.freeze
+    name: Freeze snapshot for CLI parity verification
+    status: pending
+    description: 'step_type: verification
+
+      Verification scope: phase-check protecting driver-debt-cli-entrypoint-unification.liveness
+      and gate.
+
+
+      Freeze the entrypoint-unification snapshot before runnable verification and
+      gate review.
+
+      Required evidence: git rev-parse HEAD, clean status, environment declaration,
+      and no-change statement.'
+    verification: '- Freeze evidence complete before runnable checks'
+    refs:
+    - src/vectl/driver/entrypoint.py
+    - src/vectl/driver/__main__.py
+    - src/vectl/cli.py
+    depends_on:
+    - driver-debt-cli-entrypoint-unification.impl
+    agent: integration-verifier
+  - id: driver-debt-cli-entrypoint-unification.liveness
+    name: Liveness probe shared entrypoints
+    status: pending
+    description: 'step_type: verification
+
+      independence_level: L2
+
+      Verification scope: phase-check protecting driver-debt-cli-entrypoint-unification.gate.
+
+
+      Runnable-surface liveness probe for the driver CLI surfaces.
+
+
+      Must execute and capture real output for:
+
+      - python -m vectl.driver --help
+
+      - python -m vectl.driver path.yaml
+
+      - python -m vectl.driver --config path.yaml
+
+      - uv run vectl drive --config path.yaml
+
+      - one matched error scenario showing equal exit code on both entrypoints
+
+
+      Entry point must start, route through the shared adapter, and produce expected
+      output/exit semantics.'
+    verification: '- All listed commands executed with captured output and exit codes
+
+      - Evidence shows both surfaces delegate to the same adapter
+
+      - Any mismatch is blocker severity'
+    refs:
+    - src/vectl/driver/entrypoint.py
+    - src/vectl/driver/__main__.py
+    - src/vectl/cli.py
+    depends_on:
+    - driver-debt-cli-entrypoint-unification.freeze
+    agent: blind-tester
+  - id: driver-debt-cli-entrypoint-unification.spec-conformance
+    name: Verify CLI entrypoint spec conformance
+    status: pending
+    description: 'step_type: verification
+
+      Verification scope: phase-check protecting driver-debt-cli-entrypoint-unification.gate.
+
+
+      Independent spec/code comparison for the touched CLI/runtime surfaces.
+
+      Focus:
+
+      - positional config preserved for python -m vectl.driver
+
+      - --config added there
+
+      - vectl drive --config unchanged
+
+      - shared exit-code matrix applied consistently
+
+      - help/usage text still matches the implemented surface'
+    verification: '- Spec/code evidence table cites file:line for each supported invocation
+      form and exit-code rule'
+    refs:
+    - src/vectl/driver/entrypoint.py
+    - src/vectl/driver/__main__.py
+    - src/vectl/cli.py
+    - docs/DRIVER-ARCHITECTURE.md
+    depends_on:
+    - driver-debt-cli-entrypoint-unification.freeze
+    agent: spec-verifier
+  - id: driver-debt-cli-entrypoint-unification.gate
+    name: Gate CLI entrypoint unification
+    status: pending
+    description: 'step_type: gate
+
+      Gate review for A4.
+
+
+      BLOCK if:
+
+      - either entrypoint bypasses the shared adapter
+
+      - runtime/config errors or usage errors map to inconsistent exit codes
+
+      - python -m vectl.driver loses positional config support
+
+      - vectl drive --config UX changes unexpectedly
+
+      - runnable evidence is missing or incomplete
+
+
+      review_depth: THOROUGH
+
+      cross_cutting_focus:
+
+      - shared runtime adapter reachability
+
+      - help/usage parity
+
+      - exit-code consistency'
+    verification: '- Runnable CLI evidence accepted
+
+      - Spec conformance accepted
+
+      - No unresolved blocker remains for policy extraction/system wiring'
+    refs:
+    - src/vectl/driver/entrypoint.py
+    - src/vectl/driver/__main__.py
+    - src/vectl/cli.py
+    depends_on:
+    - driver-debt-cli-entrypoint-unification.liveness
+    - driver-debt-cli-entrypoint-unification.spec-conformance
+    agent: gate-reviewer
 - id: driver-debt-policy-extraction
   name: 'Driver Debt: Loop Policy Extraction'
   status: locked

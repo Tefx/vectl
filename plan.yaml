@@ -33241,7 +33241,7 @@ phases:
       - run.startup_recovery_anomaly_replan'
   - id: driver-judgment-runtime-minimal.impl-loop-runtime-minimal
     name: Implement loop runtime minimal
-    status: claimed
+    status: done
     description: "step_type: implementation\n\ntags:\n  - integration\n\nImplement\
       \ the minimal runtime in src/vectl/driver/loop.py and src/vectl/driver/__main__.py.\n\
       \n## Failure-mode checklist\n- startup recovery path when claims/worktrees need\
@@ -33260,6 +33260,30 @@ phases:
     agent: python-senior
     claimed_by: python-senior
     claimed_at: '2026-03-28T08:15:51.537488+00:00'
+    done_at: '2026-03-28T08:20:36.189078+00:00'
+    evidence: 'Artifact:
+
+      - Commit: fda8d9f
+
+
+      Verification:
+
+      - Run: uv run pytest tests/test_driver_loop_runtime.py tests/test_driver_loop_contract.py
+      -v -> 7 passed, 25 xfailed, 0 failed
+
+      - Run: uv run python -m py_compile src/vectl/driver/loop.py src/vectl/driver/__main__.py
+      -> PASS
+
+
+      Spec link:
+
+      - docs/DRIVER-ARCHITECTURE.md §2.11, §3, §4, Q1-Q3
+
+
+      Notes:
+
+      - Implementation remains single-runner/single-judge scoped with deferred later-phase
+      branches preserved.'
   - id: driver-judgment-runtime-minimal.verify-startup-recovery-and-shutdown
     name: Verify startup recovery and shutdown paths
     status: pending

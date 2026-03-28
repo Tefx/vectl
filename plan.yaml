@@ -41716,6 +41716,52 @@ phases:
     depends_on:
     - driver-guardrails-output-hardening.implement-opencode-hardening
     agent: integration-verifier
+  - id: driver-guardrails-output-hardening.spec-conformance
+    name: Audit judge-output hardening spec conformance
+    status: pending
+    description: 'step_type: verification
+
+      Verification scope: phase-check protecting driver-guardrails-output-hardening.gate.
+
+
+      Spec conformance verification via adversarial divergence hunting.
+
+
+      SCOPE: Only the structured-output and malformed-output contract sections touched
+      by this phase.
+
+
+      FOCUS AREAS:
+
+      - field-exact verdict schema
+
+      - failure-mode disposition matches the contract
+
+      - prompt/parser/runner ownership boundaries are implemented where specified
+
+      - no code path reinterprets the documented response format loosely'
+    verification: '- For each touched requirement, cite the spec section and implementation
+      file:line
+
+      - Verdict table uses CONFORMS | DIVERGES | PARTIAL | NEEDS_TEST | NOT_FOUND
+      | AMBIGUOUS_SPEC | SPEC_POSSIBLY_STALE
+
+      - Behavioral precedence claims that cannot be proven statically are flagged
+      as NEEDS_TEST'
+    evidence_template: '## Spec Conformance Report
+
+      - Requirements register:
+
+      - Evidence table:
+
+      - Top risks:
+
+      - Suggested tests:
+
+      '
+    depends_on:
+    - driver-guardrails-output-hardening.implement-opencode-hardening
+    agent: spec-verifier
 - id: driver-guardrails-prompt-governance
   name: 'Driver Guardrails: Prompt Governance'
   status: locked

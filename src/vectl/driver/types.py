@@ -169,7 +169,7 @@ class DriverState:
         ]
 
     def drain_completed(self) -> list[CompletedResult] | None:
-        """Drain completed_queue into vectl.models.CompletedResult list for decide() input.
+        """Drain legacy completed_queue into vectl.models.CompletedResult list.
 
         Architecture: docs/DRIVER-ARCHITECTURE.md Section 2.1, DriverState methods
         Blueprint: DRIVER-BLUEPRINT.md Flow 1 (completed_results = state.drain_completed())
@@ -179,8 +179,10 @@ class DriverState:
 
         Authority note:
             ``driver-debt-completion-authority.contract`` pins this as a legacy
-            compatibility seam. Runtime completion authority converges on
-            ``wait_for_any() -> reconcile()``.
+            compatibility seam. Runtime completion authority has converged on
+            ``wait_for_any() -> reconcile()`` in loop runtime wiring.
+            This method remains for compatibility callers that still populate
+            ``completed_queue`` directly (e.g. tests or transitional adapters).
         """
         from vectl.models import CompletedResult
 
@@ -233,9 +235,10 @@ class DriverState:
         task = done.pop()
         step_id, completed = task.result()
 
-        # Move from running to completed_queue
+        # Move from running map only.
+        # Runtime completion authority is reconcile-only; this method returns the
+        # completed entry directly to loop.py for immediate reconcile().
         del self.running[step_id]
-        self.completed_queue.append(completed)
 
         # Cancel remaining tasks
         for t in tasks:

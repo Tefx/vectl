@@ -1707,14 +1707,8 @@ async def reconcile(
                 save_plan(plan, path=plan_path, expected_hash=expected_hash)
                 return
 
-            if merge_result.value.outcome.value == "auto_resolved_conflict":
-                observer.emit(
-                    "MERGE_COMPLETED",
-                    step_id=completed.step_id,
-                    auto_resolved=True,
-                    conflicting_files=list(merge_result.value.conflicted_files),
-                    elapsed_seconds=completed.elapsed_seconds,
-                )
+            auto_resolved = merge_result.value.outcome.value == "auto_resolved_conflict"
+            conflicting_files = list(merge_result.value.conflicted_files)
 
         if completed.result.session_id:
             session_pool.record(
@@ -1735,7 +1729,17 @@ async def reconcile(
             )
 
         observer.emit(
-            "MERGE_COMPLETED", step_id=completed.step_id, elapsed_seconds=completed.elapsed_seconds
+            "STEP_COMPLETED",
+            step_id=completed.step_id,
+            evidence_len=len(evidence),
+            elapsed_seconds=completed.elapsed_seconds,
+        )
+        observer.emit(
+            "MERGE_COMPLETED",
+            step_id=completed.step_id,
+            auto_resolved=auto_resolved,
+            conflicting_files=conflicting_files,
+            elapsed_seconds=completed.elapsed_seconds,
         )
         return
 
@@ -2041,7 +2045,7 @@ async def _run_main_loop(
     while not state.halt_requested:
         decide_output = decide(
             running_tasks=state.as_running_tasks(),
-            completed_results=state.drain_completed(),
+            completed_results=None,
             max_parallelism=config.orchestration.max_parallelism,
             state=state.decide_state,
         )
@@ -2070,13 +2074,13 @@ async def _run_main_loop(
                     plan_path=plan_path,
                 )
             elif action.action == "complete":
-                await handle_complete(
-                    action=action,
-                    state=state,
-                    judge=judge,
-                    session_pool=session_pool,
-                    observer=observer,
-                    plan_path=plan_path,
+                observer.emit(
+                    "COMPLETE_ACTION_IGNORED",
+                    step_id=action.step_id,
+                    reason=(
+                        "Runtime completion authority is reconcile-only; "
+                        "decide(action='complete') is legacy and ignored"
+                    ),
                 )
             elif action.action == "wait":
                 observer.emit("WAIT", reason=action.reason or "No action")

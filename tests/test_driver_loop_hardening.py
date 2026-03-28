@@ -904,3 +904,191 @@ def test_build_anomaly_request_includes_required_sections() -> None:
     )
     assert request.context["anomaly_type"] == "orphan_worktrees"
     assert request.context["repair_scope"] == "removed orphan directories"
+
+
+@pytest.mark.anyio
+async def test_main_loop_does_not_feed_completed_results_into_decide(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    state = DriverState()
+    observer = _RecordingObserver()
+    config = _base_config()
+    captured: dict[str, object] = {}
+
+    state.completed_queue.append(
+        CompletedEntry(
+            step_id="core.impl",
+            agent="python-executor",
+            runner_name="opencode",
+            result=RunnerResult(
+                status=RunnerStatus.SUCCESS,
+                session_id="ses-1",
+                output="ok",
+                elapsed_seconds=0.2,
+                exit_code=0,
+            ),
+            worktree_path=".vectl/worktrees/core.impl",
+            elapsed_seconds=0.2,
+        )
+    )
+
+    def _decide(**kwargs: object) -> DecideOutput:
+        captured["completed_results"] = kwargs.get("completed_results")
+        return DecideOutput(actions=[], continuation=False, decision_log=[])
+
+    monkeypatch.setattr("src.vectl.driver.loop.decide", _decide)
+
+    await _run_main_loop(
+        state=state,
+        config=config,
+        runners={},
+        judge=_fake_judge(),
+        session_pool=SessionPool(config.session),
+        observer=observer,
+        plan_path=Path("plan.yaml"),
+    )
+
+    assert captured["completed_results"] is None
+    assert len(state.completed_queue) == 1
+
+
+@pytest.mark.anyio
+async def test_main_loop_ignores_complete_action_branch(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    state = DriverState()
+    observer = _RecordingObserver()
+    config = _base_config()
+
+    def _decide(**_k: object) -> DecideOutput:
+        return DecideOutput(
+            actions=[Action(action="complete", step_id="core.impl", evidence="legacy")],
+            continuation=False,
+            decision_log=[],
+        )
+
+    async def _should_not_call_handle_complete(**_k: object) -> None:
+        raise AssertionError("handle_complete must not be called from main runtime loop")
+
+    monkeypatch.setattr("src.vectl.driver.loop.decide", _decide)
+    monkeypatch.setattr("src.vectl.driver.loop.handle_complete", _should_not_call_handle_complete)
+
+    await _run_main_loop(
+        state=state,
+        config=config,
+        runners={},
+        judge=_fake_judge(),
+        session_pool=SessionPool(config.session),
+        observer=observer,
+        plan_path=Path("plan.yaml"),
+    )
+
+    assert any(event == "COMPLETE_ACTION_IGNORED" for event, _ in observer.events)
+
+
+@pytest.mark.anyio
+async def test_reconcile_success_side_effects_fire_once(monkeypatch: pytest.MonkeyPatch) -> None:
+    state = DriverState()
+    observer = _RecordingObserver()
+    pool = SessionPool(SessionConfig(reuse_ttl=300))
+    completed = CompletedEntry(
+        step_id="core.impl",
+        agent="python-executor",
+        runner_name="opencode",
+        result=RunnerResult(
+            status=RunnerStatus.SUCCESS,
+            session_id="ses-1",
+            output="evidence",
+            elapsed_seconds=1.0,
+            exit_code=0,
+        ),
+        worktree_path=".vectl/worktrees/core.impl",
+        elapsed_seconds=1.0,
+    )
+
+    calls: dict[str, int] = {
+        "complete_step": 0,
+        "merge": 0,
+        "cleanup": 0,
+        "session_record": 0,
+    }
+
+    monkeypatch.setattr("src.vectl.driver.loop.load_plan_definition", lambda _p: (_FakePlan(), "h"))
+    monkeypatch.setattr("src.vectl.driver.loop.save_plan", lambda *_a, **_k: None)
+
+    def _complete_step(plan: object, *_a: object, **_k: object) -> object:
+        calls["complete_step"] += 1
+        return plan
+
+    async def _merge(**_k: object) -> Success[MergeResult]:
+        calls["merge"] += 1
+        return Success(MergeResult(outcome=MergeOutcome.CLEAN_MERGE, conflicted_files=()))
+
+    async def _cleanup(*_a: object, **_k: object) -> Success[None]:
+        calls["cleanup"] += 1
+        return Success(None)
+
+    def _record_session(*_a: object, **_k: object) -> None:
+        calls["session_record"] += 1
+
+    monkeypatch.setattr("src.vectl.driver.loop.complete_step", _complete_step)
+    monkeypatch.setattr("src.vectl.driver.loop.merge", _merge)
+    monkeypatch.setattr("src.vectl.driver.loop.cleanup_worktree", _cleanup)
+    monkeypatch.setattr(pool, "record", _record_session)
+
+    await reconcile(
+        completed=completed,
+        state=state,
+        judge=_fake_judge(),
+        session_pool=pool,
+        observer=observer,
+        plan_path=Path("plan.yaml"),
+    )
+
+    assert calls["complete_step"] == 1
+    assert calls["merge"] == 1
+    assert calls["cleanup"] == 1
+    assert calls["session_record"] == 1
+    assert sum(1 for event, _ in observer.events if event == "STEP_COMPLETED") == 1
+    assert sum(1 for event, _ in observer.events if event == "MERGE_COMPLETED") == 1
+
+
+@pytest.mark.anyio
+async def test_reconcile_failure_threshold_escalates_once(monkeypatch: pytest.MonkeyPatch) -> None:
+    state = DriverState()
+    observer = _RecordingObserver()
+    state.failure_counts["core.impl"] = 2
+    completed = CompletedEntry(
+        step_id="core.impl",
+        agent="python-executor",
+        runner_name="opencode",
+        result=RunnerResult(
+            status=RunnerStatus.FAIL,
+            session_id=None,
+            output="boom",
+            elapsed_seconds=1.0,
+            exit_code=1,
+        ),
+        worktree_path=".vectl/worktrees/core.impl",
+        elapsed_seconds=1.0,
+    )
+
+    monkeypatch.setattr("src.vectl.driver.loop.load_plan_definition", lambda _p: (_FakePlan(), "h"))
+    monkeypatch.setattr("src.vectl.driver.loop.save_plan", lambda *_a, **_k: None)
+
+    class _EscalationJudge:
+        async def judge(self, request: object) -> JudgmentVerdict:
+            return JudgmentVerdict(verdict="DEFER", reason="manual follow-up")
+
+    await reconcile(
+        completed=completed,
+        state=state,
+        judge=cast(Any, _EscalationJudge()),
+        session_pool=SessionPool(SessionConfig(reuse_ttl=300)),
+        observer=observer,
+        plan_path=Path("plan.yaml"),
+    )
+
+    assert state.failure_count("core.impl") == 3
+    assert sum(1 for event, _ in observer.events if event == "ESCALATION_VERDICT") == 1
+    assert sum(1 for event, _ in observer.events if event == "ESCALATION_DEFERRED") == 1

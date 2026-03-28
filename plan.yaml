@@ -37753,7 +37753,7 @@ phases:
       convergence implementation yet.'
   - id: driver-debt-completion-authority.test-define-red
     name: Define expected-red duplicate-completion regressions
-    status: pending
+    status: claimed
     description: 'step_type: test
 
       step_intent: test_define_red
@@ -37801,6 +37801,8 @@ phases:
     depends_on:
     - driver-debt-completion-authority.contract
     agent: python-executor
+    claimed_by: python-executor
+    claimed_at: '2026-03-28T20:33:57.574037+00:00'
   - id: driver-debt-completion-authority.impl
     name: Converge driver runtime onto reconcile-only completion sink
     status: pending

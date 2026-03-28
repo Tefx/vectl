@@ -39313,7 +39313,7 @@ phases:
       documented with caller-proof constraints.'
   - id: driver-debt-review.wiring-audit
     name: Audit driver debt wiring completeness
-    status: claimed
+    status: done
     description: 'step_type: verification
 
       Verification scope: full-plan-check protecting driver-debt-deep-review.gate.
@@ -39341,6 +39341,11 @@ phases:
     agent: wiring-auditor
     claimed_by: wiring-auditor
     claimed_at: '2026-03-28T22:10:57.869014+00:00'
+    done_at: '2026-03-28T22:17:02.806964+00:00'
+    evidence: Wiring audit confirms shared entrypoint adapter is the only runtime
+      adapter, reconcile remains sole completion path on main flow, DecideState fields
+      have active consumers, and policy helpers are referenced from policy module
+      without loop duplication.
 - id: driver-evolution-events-foundation
   name: 'Driver Evolution: Events Foundation'
   status: locked

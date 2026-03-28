@@ -37374,12 +37374,63 @@ phases:
     - src/vectl/driver/session.py
     - docs/DRIVER-ARCHITECTURE.md
     agent: python-senior
-  - id: driver-debt-decision-state.test
-    name: Test
+  - id: driver-debt-decision-state.test-define-red
+    name: Define expected-red isolation regressions
     status: pending
-    description: test
+    description: 'step_type: test
+
+      step_intent: test_define_red
+
+      expected_result: red
+
+      Verification scope: local-check protecting driver-debt-decision-state.impl and
+      driver-debt-decision-state.verify.
+
+
+      Author targeted tests that expose the current module-global coupling before
+      implementation.
+
+
+      Required red cases:
+
+      - Two DecideState() instances remain fully isolated: completion times, session
+      registry, and failure counts do not leak across instances.
+
+      - Driver runtime path can call decide() with an explicit state object and does
+      not need module-global mutable dictionaries.
+
+      - should_reuse_session() and failure escalation still behave correctly when
+      fed one explicit instance.
+
+
+      Test-only scope:
+
+      - Modify only tests/ plus minimal fixtures/helpers.
+
+      - Prefer tests in tests/test_decide.py and a focused driver runtime harness
+      file if needed.
+
+      - Record exact exposed gaps rather than masking them with product changes.
+
+
+      Spec-fixture conformance: derive fixtures from the approved A2 design, not convenience
+      globals.'
+    verification: '- Tests fail or expose the current global-state gap before implementation
+
+      - Evidence names the failing assertions / exposed gaps
+
+      - Modified files remain test-only'
+    evidence_template: "## Expected-Red Isolation Evidence\n- Tests/files added: <list>\n\
+      - Exposed gaps:\n  - <gap 1>\n  - <gap 2>\n- Expected failures or assertions:\n\
+      \  - <test name>: <failure>\n- Product code modified: NO"
+    refs:
+    - tests/test_decide.py
+    - tests/test_driver_loop_runtime.py
+    - src/vectl/decide.py
+    - src/vectl/driver/types.py
     depends_on:
     - driver-debt-decision-state.contract
+    agent: python-executor
 - id: driver-debt-completion-authority
   name: 'Driver Debt: Completion Authority Convergence'
   status: locked

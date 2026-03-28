@@ -42857,6 +42857,40 @@ phases:
     decisions.
   depends_on:
   - driver-continuity-foundation
+  steps:
+  - id: driver-continuity-authority-ledger.test-define-red
+    name: Define expected-red authority and ledger regressions
+    status: pending
+    description: 'step_type: test
+
+      step_intent: test_define_red
+
+      expected_result: red
+
+      Define the pre-implementation gaps for bootstrap-blocker continuity persistence.
+
+
+      Scope is limited to tests and fixtures for:
+
+      - SessionPool / decide state double-truth detection
+
+      - resume state surviving restart and failed step boundaries
+
+      - continuity ledger writes on success, failure, abort, and crash-adjacent edges
+
+      - plan/claims consistency validation on recovered state
+
+      - minimum recovery-grade journal fields required for diagnosis and resume decisions
+
+
+      Evidence must identify exposed_gaps and the downstream implementation owner
+      driver-continuity-authority-ledger.impl. No product implementation code.'
+    verification: '- Modified files limited to tests/ plus fixtures/helpers
+
+      - Expected-red failures expose missing durable authority/ledger behavior
+
+      - Evidence names the gaps around failure, abort, and restart persistence'
+    agent: python-executor
 - id: driver-continuity-capability-safety
   name: 'Driver Continuity: Capability & Replay Safety'
   status: locked

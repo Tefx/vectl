@@ -34919,7 +34919,7 @@ phases:
     agent: gate-reviewer
   - id: driver-judgment-expansion-replan.expected-red-schema
     name: Add verify field to Step model (expected-red schema)
-    status: pending
+    status: claimed
     description: 'step_type: implementation
 
       tags: []
@@ -35060,6 +35060,8 @@ phases:
     depends_on:
     - driver-judgment-expansion-replan.verify-gate-chain-e2e
     agent: python-executor
+    claimed_by: python-executor
+    claimed_at: '2026-03-28T11:12:52.650382+00:00'
   - id: driver-judgment-expansion-replan.expected-red-decide
     name: Teach decide() to respect expected-red verification semantics
     status: pending

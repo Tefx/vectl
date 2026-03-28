@@ -36536,7 +36536,7 @@ phases:
       on critical path.'
   - id: driver-system-wiring.full-plan-check
     name: Full-plan runtime and repo check
-    status: pending
+    status: claimed
     description: 'step_type: verification
 
       Verification scope: full-plan-check protecting driver-deep-review and final
@@ -36562,6 +36562,8 @@ phases:
     depends_on:
     - driver-system-wiring.verify-e2e
     agent: integration-verifier
+    claimed_by: integration-verifier
+    claimed_at: '2026-03-28T13:07:57.348654+00:00'
   - id: driver-system-wiring.gate
     name: Gate driver-system-wiring
     status: pending

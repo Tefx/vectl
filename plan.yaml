@@ -43394,8 +43394,23 @@ phases:
   - id: driver-continuity-restart-recovery.impl
     name: Implement startup recovery controller and continuity policy
     status: pending
-    description: "step_type: implementation\ntags:\n  - integration\nImplement the\
-      \ bootstrap-blocker startup recovery path and abnormal-stop continuity policy.\n\
+    description: "step_type: implementation\ntags:\n  - integration\n\nFill in stub\
+      \ bodies and replace placeholder startup-recovery paths with working continuity\
+      \ logic on the existing restart surfaces.\n\nUPSTREAM ARTIFACTS (from merged\
+      \ design+test step):\n  - src/vectl/driver/loop.py — from_step: driver-continuity-restart-recovery.design-and-test\
+      \ — tier: contract\n  - src/vectl/driver/session.py — from_step: driver-continuity-restart-recovery.design-and-test\
+      \ — tier: contract\n  - tests/test_driver_recovery.py — from_step: driver-continuity-restart-recovery.design-and-test\
+      \ — tier: test\n  - tests/test_driver_loop_runtime.py — from_step: driver-continuity-restart-recovery.design-and-test\
+      \ — tier: test\n\nThe merged contract+test step produced both interfaces and\
+      \ tests. Your job is to make the tests pass by filling in stub bodies.\n\nDeviation\
+      \ protocol: If a contract artifact is wrong or incomplete, document a deviation\
+      \ record (type, what, why, impact) — do NOT silently rewrite.\n\nupstream_artifacts:\n\
+      \  - path: src/vectl/driver/loop.py\n    from_step: driver-continuity-restart-recovery.design-and-test\n\
+      \    tier: contract\n  - path: src/vectl/driver/session.py\n    from_step: driver-continuity-restart-recovery.design-and-test\n\
+      \    tier: contract\n  - path: tests/test_driver_recovery.py\n    from_step:\
+      \ driver-continuity-restart-recovery.design-and-test\n    tier: test\n  - path:\
+      \ tests/test_driver_loop_runtime.py\n    from_step: driver-continuity-restart-recovery.design-and-test\n\
+      \    tier: test\n\nImplement startup recovery controller and continuity policy.\n\
       \nScope:\n- perform startup recovery beyond claims repair/orphan cleanup by\
       \ restoring continuity state and reconciling runtime recovery facts\n- apply\
       \ failure/abort continuity policy using authoritative judge outcomes, capability\
@@ -43403,22 +43418,21 @@ phases:
       \ plan/claims/ledger disagree\n- wire the real driver entrypoint to the restart\
       \ recovery controller\n\n## Completion Criteria (stub exclusion)\nThis is an\
       \ IMPLEMENTATION step. Stub-only completion is NOT acceptable.\nEach deliverable\
-      \ MUST contain substantive logic that processes its inputs and produces outputs\
-      \ that vary based on those inputs. Private stub classes (`_Runtime*`, `_Stub*`,\
-      \ `_Placeholder*`) do not satisfy this requirement.\n\n## Failure-mode checklist\n\
-      - restart after failed step with incomplete completion signal\n- aborted run\
-      \ with durable continuity state but stale claims\n- replay-safe resume denied\
-      \ because capability facts changed\n- partial recovery where one source is missing\
-      \ or corrupt\n- explicit halt path when reconciliation cannot prove safety\n\
-      \n## State semantics\n- last-writer-wins: resolved recovery decision for the\
-      \ current restart attempt\n- preserve exactly: failure provenance, continuity\
-      \ cursor, replay token, runner capability snapshot, and safety reason\n- backward-compatible\
-      \ legacy behavior: pre-continuity runs degrade to safe fresh-start/halt behavior\
-      \ rather than unsafe resume\n\n## Out-of-scope guardrail\n- advanced streaming\
-      \ progress UX and rich post-bootstrap recovery analytics remain deferred\n\n\
-      ## Integration Evidence Required\nPath exercised: driver CLI/entrypoint -> startup\
-      \ recovery controller -> continuity authority/ledger -> runner/judge decision\
-      \ -> resumed or halted operation"
+      \ MUST contain substantive logic that selects resume vs restart vs halt based\
+      \ on explicit recovery facts.\n\n## Failure-mode checklist\n- restart after\
+      \ failed step with incomplete completion signal\n- aborted run with durable\
+      \ continuity state but stale claims\n- replay-safe resume denied because capability\
+      \ facts changed\n- partial recovery where one source is missing or corrupt\n\
+      - explicit halt path when reconciliation cannot prove safety\n\n## State semantics\n\
+      - last-writer-wins: resolved recovery decision for the current restart attempt\n\
+      - preserve exactly: failure provenance, continuity cursor, replay token, runner\
+      \ capability snapshot, and safety reason\n- backward-compatible legacy behavior:\
+      \ pre-continuity runs degrade to safe fresh-start/halt behavior rather than\
+      \ unsafe resume\n\n## Out-of-scope guardrail\n- advanced streaming progress\
+      \ UX and rich post-bootstrap recovery analytics remain deferred\n\n## Integration\
+      \ Evidence Required\nPath exercised: driver CLI/entrypoint -> startup recovery\
+      \ controller -> continuity authority/ledger -> runner/judge decision -> resumed\
+      \ or halted operation"
     verification: '- Main path: startup recovery resumes a safe, resumable attempt
       using real continuity artifacts
 
@@ -43428,8 +43442,7 @@ phases:
       - Proof: startup path now does more than claims repair/orphan cleanup and uses
       capability-aware replay-safe decisions'
     depends_on:
-    - driver-continuity-restart-recovery.contract
-    - driver-continuity-restart-recovery.test-define-red
+    - driver-continuity-restart-recovery.design-and-test
     agent: python-senior
   - id: driver-continuity-restart-recovery.verify
     name: Verify startup recovery and continuity policy

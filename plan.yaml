@@ -32482,6 +32482,9 @@ phases:
       Verification scope: phase-check protecting driver-multi-runner-hardening.gate.
 
 
+      POST-IMPLEMENTATION GREEN VERIFICATION STEP.
+
+
       Provide seam-level proof for:
 
       - multi-runner dispatch/fallback path
@@ -32491,11 +32494,15 @@ phases:
       - non-trivial conflict handoff readiness
 
 
-      Mock-heavy unit tests alone are insufficient.'
+      Mock-heavy unit tests alone are insufficient. Failures here are green-path verification
+      findings, not expected-red.'
     verification: '- Exact commands/tests and actual output are included
 
       - Evidence covers both the main multi-runner path and a highest-risk conflict/fallback
-      path'
+      path
+
+      - Expected result is green pass against implemented behavior; any red outcome
+      must be reported as a blocker or should_fix finding'
     depends_on:
     - driver-multi-runner-hardening.verify-session-boundary
     agent: integration-verifier

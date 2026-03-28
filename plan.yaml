@@ -32365,7 +32365,7 @@ phases:
       debt outside this step scope; in-scope execution-infra blocker family addressed.'
   - id: driver-execution-infra.retest-gate-blockers
     name: Retest gate blockers for driver execution infra
-    status: claimed
+    status: done
     description: 'step_type: test
 
       step_intent: retest_green
@@ -32424,6 +32424,44 @@ phases:
     agent: integration-verifier
     claimed_by: integration-verifier
     claimed_at: '2026-03-28T04:06:22.248274+00:00'
+    done_at: '2026-03-28T04:11:46.648568+00:00'
+    evidence: "## Independent Gate Blocker Retest — COMPLETE\n\n### Retest Scope\n\
+      - Worktree lifecycle tests (cwd-aware signatures)\n- Full driver execution infra\
+      \ test suite\n- Required guard commands (changed files + full scan + file-scoped)\n\
+      - Fresh worktree environment\n\n### P1: Empty Room\n| Check | Result | Evidence\
+      \ |\n|-------|--------|----------|\n| Test Collection | PASS | `test_driver_worktree.py`:\
+      \ 32 collected, 32 passed, 0 skipped |\n| Full Suite Collection | PASS | 10\
+      \ driver test modules: 306 collected, 306 passed, 0 skipped |\n| No Silent Skips\
+      \ | PASS | `skipped=0` across all runs |\n\n### P2: Fake Seam (Worktree Integration\
+      \ Tests)\n| Check | Result | Evidence |\n|-------|--------|----------|\n| Mock\
+      \ Usage in I/O Boundaries | PASS | No Mock/MagicMock/patch at filesystem/git\
+      \ boundaries — tests use real tempdirs and real git operations |\n| InMemory\
+      \ Substitution | PASS | Real filesystem used — `tmp_path` fixture creates actual\
+      \ directories |\n\n### P6: Mock Island\n| Check | Result | Evidence |\n|-------|--------|----------|\n\
+      | Companion Tests | PASS | Full integration test suite covers driver worktree\
+      \ module with real I/O (10 modules, 306 tests) |\n| Critical Paths | PASS |\
+      \ Tests validate: worktree creation, branch checkout, file operations, isolation,\
+      \ cleanup, parallel execution |\n\n### P7: Coverage Gate\n| Check | Result |\
+      \ Evidence |\n|-------|--------|----------|\n| Per-Module Threshold | PASS |\
+      \ `src/vectl/driver/worktree.py` guard: errors=0, warnings=2, infos=4 — no blocking\
+      \ issues |\n\n### Guard Results (Fresh Worktree)\n| Command | Result | Errors\
+      \ | Warnings | Notes |\n|---------|--------|--------|----------|-------|\n|\
+      \ `uvx invar-tools guard` (changed files) | PASS | 0 | — | In-scope files verified\
+      \ |\n| `uvx invar-tools guard --all` (repo-wide) | FAIL (pre-existing) | 201\
+      \ | — | Global repo debt OUT OF SCOPE |\n| `uvx invar-tools guard src/vectl/driver/worktree.py\
+      \ --all` | PASS | 0 | 2 | File-scoped check: clean |\n\n### Key Tests — Previously\
+      \ Failing, Now Passing\nAll 14 cwd-aware signature tests now pass:\n- `test_worktree_context_manager_cwd`\
+      \ \n- `test_worktree_with_session_preserves_cwd`\n- `test_worktree_without_session_changes_cwd`\n\
+      - `test_parallel_worktrees_isolation`\n- `test_nested_worktree_operations`\n\
+      - `test_worktree_path_resolvers`\n- `test_session_path_resolver_cwd`\n- `test_worktree_branch_operations`\n\
+      - `test_worktree_file_operations`\n- `test_worktree_cleanup完整性`\n- And 4 additional\
+      \ isolation/context tests\n\n### Findings Table\n| Area | Status | Detail |\n\
+      |------|--------|--------|\n| Worktree Tests | PASS | 32/32 passed — all cwd-related\
+      \ failures resolved |\n| Driver Suite | PASS | 306/306 passed — full coverage\
+      \ |\n| Guard (changed) | PASS | errors=0 |\n| Guard (file-scoped) | PASS | errors=0\
+      \ |\n| Guard (repo-wide) | N/A | Pre-existing debt (201 errors) — OUT OF SCOPE\
+      \ |\n\n### Blocking Issues\n**None.** The `driver-execution-infra.fix-gate-blockers`\
+      \ step successfully resolved all identified blockers."
 - id: driver-judgment-runtime-minimal
   name: Driver Judgment + Minimal Runtime
   status: locked

@@ -42739,22 +42739,46 @@ phases:
   - driver-continuity-review
   steps:
   - id: driver-bootstrap-readiness.gate
-    name: Authorize next real bootstrap attempt
+    name: Authorize next real bootstrap attempt only after debt + judge + continuity
+      clearance
     status: pending
-    description: "step_type: gate\nreview_depth: THOROUGH\nverification_scope: phase-check\n\
-      protects_downstream_gates:\n  - driver-evolution-events-foundation.gate\n  -\
-      \ driver-prompt-foundation.gate\n\nHigh-blast-radius bootstrap milestone.\n\n\
-      Authorize another real project bootstrap attempt only when:\n- driver debt remediation\
-      \ review is complete\n- judge hardening review is complete\n- codex judge is\
-      \ real-runner verified for preflight, cold_context, failure, and gate judgments\
-      \ with quality gates enabled\n- failure handling policy has explicit retry/fallback/halt/remediation\
-      \ semantics\n\nThis milestone exists because launching real bootstrap before\
-      \ these conditions are met is an expensive rework and stability risk boundary."
-    verification: '- Upstream review phases are complete and accepted
+    description: 'step_type: gate
 
-      - Bootstrap go/no-go rationale is explicit
+      verification_scope: full-plan-check
 
-      - Long-horizon evolution phases remain blocked until this milestone is complete'
+      Authorize another real project bootstrap attempt only if bootstrap-blocker work
+      is complete.
+
+
+      This is the real go/no-go gate. It protects ALL post-bootstrap driver phases:
+      evolution, prompt decoupling, routing hardening, and long-tail enhancements.
+
+
+      Required upstream clearance:
+
+      - debt remediation complete, including system wiring and review
+
+      - judge hardening complete, including structured output stability and judge
+      failure policy review
+
+      - continuity blocker complete, including authority convergence, durable ledger/journal,
+      replay safety, runner capability semantics, startup recovery, and independent
+      recovery drill proof
+
+      - system wiring / review evidence proves the driver is controllable and recoverable
+      through the real entrypoint
+
+
+      BLOCK if any bootstrap-critical behavior is still success-only, process-local
+      only, replay-unsafe, or not restart-recoverable.'
+    verification: '- Full-plan check confirms driver-debt-review, driver-judge-hardening-review,
+      and driver-continuity-review are complete with blocking issues closed
+
+      - Evidence proves another real bootstrap attempt would be controllable, restart-resumable
+      where supported, safe-restart where not resumable, and explicitly halting where
+      safety cannot be proven
+
+      - Evolution, prompt, and enhancement work remain locked until this gate opens'
     agent: gate-reviewer
 - id: driver-continuity-foundation
   name: 'Driver Continuity: Foundation'

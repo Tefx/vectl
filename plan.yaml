@@ -38650,3 +38650,10 @@ phases:
     contracts and verification
   depends_on:
   - driver-evolution-runtime-context
+- id: driver-evolution-loop-migration
+  name: 'Driver Evolution: Loop Migration & Wiring'
+  status: locked
+  gate: loop.py uses registry-backed handlers, planner dispatch remains first-class,
+    and the runnable driver path is proven end-to-end
+  depends_on:
+  - driver-evolution-action-registry

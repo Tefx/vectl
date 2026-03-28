@@ -37349,3 +37349,8 @@ phases:
   status: locked
   depends_on:
   - driver-debt-cli-entrypoint-unification
+- id: driver-debt-system-wiring
+  name: 'Driver Debt: System Wiring'
+  status: locked
+  depends_on:
+  - driver-debt-policy-extraction

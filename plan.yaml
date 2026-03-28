@@ -35912,7 +35912,7 @@ phases:
       \ CLI integration requirements are implemented correctly."
   - id: driver-cli-integration.liveness-probe
     name: Liveness probe vectl drive
-    status: claimed
+    status: done
     description: 'step_type: verification
 
       Verification scope: phase-check protecting driver-cli-integration.gate.
@@ -35930,6 +35930,33 @@ phases:
     agent: blind-tester
     claimed_by: blind-tester
     claimed_at: '2026-03-28T12:41:09.985251+00:00'
+    done_at: '2026-03-28T12:47:17.991369+00:00'
+    evidence: "# Liveness Probe: vectl drive CLI Entry\n\n**Probe Type**: Runnable-surface\
+      \ verification (Mode D)\n\n**Execution Path Tested**: `uv run vectl drive --config\
+      \ <driver.yaml>`\n\n## Test Script Location\n`tests/repro/liveness_drive.py`\n\
+      \n## What Was Verified\n\n| Check | Result | Evidence |\n|-------|--------|---------|\n\
+      | Python import/syntax errors | PASS | No ModuleNotFoundError, SyntaxError in\
+      \ output |\n| Config loading | PASS | events.jsonl created proves `load_config()`\
+      \ succeeded |\n| Plan loading | PASS | DECIDE event proves `load_plan_definition()`\
+      \ succeeded |\n| Observer initialization | PASS | `.vectl/driver-events.jsonl`\
+      \ created with content |\n| Main loop entry | PASS | DECIDE event: `{\"event\"\
+      : \"DECIDE\", \"data\": {\"running_count\": 0, \"actions\": []}}` |\n| Clean\
+      \ shutdown | PASS | FINAL event emitted + exit code 0 |\n| End-to-end CLI path\
+      \ | PASS | CLI invocation → asyncio.run(run(config)) → shutdown sequence |\n\
+      \n## Probe Output\n```\nExit code: 0\nPASS: No Python import/syntax errors detected\n\
+      PASS: events.jsonl was created and has content\n\nEvents (liveness proof):\n\
+      \  {\"ts\": 1774701970.557607, \"event\": \"DECIDE\", \"data\": {\"running_count\"\
+      : 0, \"actions\": []}}\n  {\"ts\": 1774701970.557931, \"event\": \"FINAL\",\
+      \ \"data\": {\"running_count\": 0, \"completed_count\": 0, \"failure_count\"\
+      : 0, \"halt_requested\": true}}\n\nPASS: Required events present: ['DECIDE',\
+      \ 'FINAL']\nPASS: Exit code is 0 (clean shutdown)\n\nLIVENESS VERDICT: PASS\n\
+      \  ✓ Command starts without import errors\n  ✓ Config is loaded (no ConfigError)\n\
+      \  ✓ Plan is loaded (no PlanError)\n  ✓ Observer creates events.jsonl\n  ✓ Driver\
+      \ enters DECIDE loop (DECIDE event)\n  ✓ Driver exits cleanly (FINAL event,\
+      \ exit code 0)\n```\n\n## Conclusion\nThe `vectl drive` command is **ALIVE**\
+      \ - it successfully starts via the real CLI entrypoint, loads runtime configuration,\
+      \ initializes the observer, enters the main orchestration loop, and completes\
+      \ the shutdown sequence with exit code 0."
   - id: driver-cli-integration.gate
     name: Gate driver-cli-integration
     status: pending

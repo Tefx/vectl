@@ -37877,7 +37877,6 @@ phases:
     - tests/test_driver_loop_runtime.py
     depends_on:
     - driver-debt-completion-authority.verify
-    - driver-debt-completion-authority.freeze
     agent: gate-reviewer
 - id: driver-debt-cli-entrypoint-unification
   name: 'Driver Debt: CLI Entrypoint Unification'

@@ -37830,7 +37830,7 @@ phases:
       to downstream impl step.'
   - id: driver-debt-completion-authority.impl
     name: Converge driver runtime onto reconcile-only completion sink
-    status: claimed
+    status: done
     description: "step_type: implementation\nVerification scope: phase-check protecting\
       \ driver-debt-completion-authority.verify and gate.\n\nFill in stub bodies and\
       \ replace placeholder completion-authority branches with working reconcile-only\
@@ -37888,6 +37888,42 @@ phases:
     agent: python-senior
     claimed_by: python-senior
     claimed_at: '2026-03-28T21:01:20.593066+00:00'
+    done_at: '2026-03-28T21:07:47.490998+00:00'
+    evidence: 'python-senior SUCCESS.
+
+
+      Implementation delivered reconcile-only completion sink on runtime path.
+
+
+      Verification evidence:
+
+      - uv run pytest -q tests/test_driver_loop_hardening.py::test_main_loop_does_not_feed_completed_results_into_decide
+      tests/test_driver_loop_hardening.py::test_main_loop_ignores_complete_action_branch
+      tests/test_driver_loop_hardening.py::test_reconcile_success_side_effects_fire_once
+      tests/test_driver_loop_hardening.py::test_reconcile_failure_threshold_escalates_once
+      -> 4 passed
+
+      - uv run pytest -q tests/test_driver_loop_hardening.py tests/test_driver_loop_runtime.py
+      -> 26 passed, 25 xfailed
+
+      - uv run ruff check src/vectl/driver/loop.py src/vectl/driver/types.py tests/test_driver_loop_hardening.py
+      -> passed
+
+
+      Scope/contract alignment:
+
+      - runtime no longer feeds completed_results into decide for completion action
+      generation
+
+      - complete action branch removed from main runtime path (ignored as legacy)
+
+      - wait_for_any()->reconcile is sole runtime completion sink
+
+      - reconcile success/failure side effects covered with single-fire checks
+
+
+      Note: mypy invocation surfaced pre-existing module-path environment issue (duplicate
+      module name); not an implementation blocker for targeted step verification.'
   - id: driver-debt-completion-authority.verify
     name: Independently verify reconcile-only completion flow
     status: pending

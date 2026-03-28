@@ -35765,7 +35765,7 @@ phases:
     agent: gate-reviewer
   - id: driver-cli-integration.expected-red-render
     name: Render expected-red completed steps distinctly in status/show output
-    status: claimed
+    status: done
     description: 'step_type: implementation
 
       tags: []
@@ -35947,6 +35947,60 @@ phases:
     agent: python-executor
     claimed_by: python-executor
     claimed_at: '2026-03-28T12:20:35.842016+00:00'
+    done_at: '2026-03-28T12:26:10.343739+00:00'
+    evidence: 'Artifact:
+
+      - Commit: 05168ce2c39cfed05db6ab576efbf5b92f15f530 (branch vectl/step-driver-cli-integration.expected-red-render)
+
+
+      Verification:
+
+      - Run: uv run pytest tests/test_cli.py -x -q -> 239 passed
+
+      - Run: python -c "_step_icon test" -> Normal DONE: ''✓ done'' (green), Expected-red
+      DONE: ''✓ gap reproduced'' (cyan)
+
+
+      Changes:
+
+      - src/vectl/cli.py: Updated _step_icon() to accept verify parameter, updated
+      4 call sites
+
+      - src/vectl/mcp_server.py: Updated _fmt_step() and vectl_show status rendering
+      for expected_red
+
+
+      Behavioral contract verified:
+
+      | Step State       | verify field | Display                 |
+
+      | ---------------- | ------------ | ----------------------- |
+
+      | done             | None         | ✓ done (green)          |
+
+      | done             | must_green   | ✓ done (green)          |
+
+      | done             | expected_red | ✓ gap reproduced (cyan) |
+
+      | any other status | any          | unchanged               |
+
+
+      Files modified:
+
+      - src/vectl/cli.py (13 lines changed)
+
+      - src/vectl/mcp_server.py (32 lines changed)
+
+
+      Test coverage:
+
+      - CLI vectl status/show/next: ✓ gap reproduced for expected_red done steps
+
+      - MCP vectl_status/vectl_show: ✓ gap reproduced for expected_red done steps
+
+      - Normal done steps (verify=None or must_green): unchanged ✓ done
+
+      - Non-done steps: unaffected'
 - id: driver-system-wiring
   name: Driver System Wiring
   status: locked

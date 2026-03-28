@@ -33146,7 +33146,7 @@ phases:
       - docs/DRIVER-ARCHITECTURE.md §3, §4, Q1-Q3'
   - id: driver-judgment-runtime-minimal.test-loop-runtime-minimal
     name: Test loop runtime minimal
-    status: claimed
+    status: done
     description: 'step_type: test
 
 
@@ -33202,6 +33202,43 @@ phases:
     agent: python-executor
     claimed_by: python-executor
     claimed_at: '2026-03-28T08:11:59.284033+00:00'
+    done_at: '2026-03-28T08:15:31.664110+00:00'
+    evidence: 'step_intent: Add expected-red tests for minimal loop runtime (startup
+      recovery, single-runner dispatch, reconcile success/failure paths, graceful
+      shutdown, handle_complete CAS-safe behavior) before implementation completion.
+
+      expected_result: tests capture runtime gaps as expected-red without product-code
+      edits.
+
+      observed_result:
+
+      - Added tests/test_driver_loop_runtime.py
+
+      - Run: uv run pytest tests/test_driver_loop_runtime.py -v --tb=short -> 3 passed,
+      25 xfailed
+
+      - Xfails explicitly document downstream implementation gaps and deferred REPLAN
+      branches
+
+      failure_alignment: expected-red confirmed (xfails map to unimplemented runtime
+      behaviors in loop stubs)
+
+      product_implementation_files_modified: none
+
+      implementation_owner: driver-judgment-runtime-minimal.impl-loop-runtime-minimal
+
+
+      deferred_branches:
+
+      - handle_dispatch.preflight_replan
+
+      - reconcile.evidence_replan
+
+      - reconcile.failure_classification_replan
+
+      - reconcile.escalation_replan
+
+      - run.startup_recovery_anomaly_replan'
   - id: driver-judgment-runtime-minimal.impl-loop-runtime-minimal
     name: Implement loop runtime minimal
     status: pending

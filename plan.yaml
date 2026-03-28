@@ -32099,7 +32099,23 @@ phases:
     description: 'step_type: test
 
 
-      Add focused tests for the minimal runtime path.
+      EXPECTED-RED PRE-IMPLEMENTATION TEST STEP.
+
+
+      Add focused tests for the minimal runtime path before loop-runtime implementation
+      is complete.
+
+
+      Allowed file scope:
+
+      - tests
+
+      - fixtures
+
+      - test helpers
+
+      Do NOT modify src/vectl/driver/*. If runtime contract gaps are exposed, keep
+      the step red and document them for the implementation owner.
 
 
       Required checks:
@@ -32112,10 +32128,24 @@ phases:
 
       - reconcile failure path with retry threshold behavior
 
-      - graceful shutdown path bookkeeping'
+      - graceful shutdown path bookkeeping
+
+
+      Evidence requirements:
+
+      - modified files limited to tests/fixtures/helpers
+
+      - expected_failures or exposed_gaps listed explicitly
+
+      - linked downstream implementation owner: driver-judgment-runtime-minimal.impl-loop-runtime-minimal
+
+      - identify which branches remain deferred to later phases'
     verification: '- Targeted pytest files cover the documented minimal loop contract
 
-      - Tests identify which branches remain deferred to later phases'
+      - Step succeeds if it records expected-red runtime gaps without product-code
+      edits or proves the contract already passes green without src changes
+
+      - Evidence names deferred branches and links unresolved gaps to driver-judgment-runtime-minimal.impl-loop-runtime-minimal'
     depends_on:
     - driver-judgment-runtime-minimal.contract-loop-runtime-minimal
     agent: python-executor

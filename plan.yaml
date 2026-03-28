@@ -34696,7 +34696,7 @@ phases:
       - TestVerdictConstructionPerType (8 tests)'
   - id: driver-judgment-expansion-replan.impl-gate-chain-flow
     name: Implement full gate-chain and remediation flow
-    status: pending
+    status: claimed
     description: "step_type: implementation\n\ntags:\n  - integration\n\nImplement\
       \ the remaining judgment-expansion and remediation wiring in src/vectl/driver/loop.py\
       \ and related driver modules.\n\n## Gate Preview (what the gate WILL reject)\n\
@@ -34715,6 +34715,8 @@ phases:
     depends_on:
     - driver-judgment-expansion-replan.test-gate-chain-flow
     agent: python-senior
+    claimed_by: python-senior
+    claimed_at: '2026-03-28T10:51:53.306117+00:00'
   - id: driver-judgment-expansion-replan.verify-gate-chain-e2e
     name: Verify gate-chain end-to-end
     status: pending

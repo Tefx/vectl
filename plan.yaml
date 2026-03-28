@@ -35351,8 +35351,6 @@ phases:
       - All 238+ driver tests pass
 
       - PlannerDispatchRequest correctly handles both REPLAN and REJECT source verdicts'
-    depends_on:
-    - driver-judgment-expansion-replan.gate
     agent: python-senior
 - id: driver-cli-integration
   name: Driver CLI Integration

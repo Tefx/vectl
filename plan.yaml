@@ -40239,3 +40239,11 @@ phases:
     and independent verification.
   depends_on:
   - driver-evolution-review
+- id: driver-enhancement-foundation
+  name: Driver Enhancement Foundation
+  status: locked
+  gate: Approved architecture basis and contract set exist for runtime observability,
+    streaming-aware liveness, and recovery behavior before implementation fan-out
+    begins.
+  depends_on:
+  - driver-evolution-review

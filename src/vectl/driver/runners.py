@@ -9,12 +9,12 @@ Does NOT manage runner lifecycle across the loop (DriverState).
 Architecture Reference: docs/DRIVER-ARCHITECTURE.md Section 2.8
 Blueprint Reference: DRIVER-BLUEPRINT.md Runner Protocol & Implementations
 
-PHASE SCOPE: Core runners (ClaudeRunner, OpenCodeRunner) are fully implemented.
-Extended runners (CodexRunner, GeminiRunner) are CONTRACT-ONLY in this phase.
-Runtime implementation deferred to driver-multi-runner-hardening.execution phase.
+PHASE SCOPE: Core runners (ClaudeRunner, OpenCodeRunner) and extended
+runners (CodexRunner, GeminiRunner) are implemented.
 
-CONTRACT PURITY: This file pins protocols, type definitions, and stub signatures.
-Substantive implementations belong in driver-execution phases, not here.
+This file also preserves compatibility aliases (`CodexRunnerStub`,
+`GeminiRunnerStub`) so existing contract tests and downstream code paths remain
+stable during rollout.
 """
 
 from __future__ import annotations
@@ -27,7 +27,12 @@ from enum import Enum
 from typing import TYPE_CHECKING, Protocol
 
 from .errors import RunnerError, RunnerNotFoundError
-from .parsers import ClaudeOutputParser, OpenCodeOutputParser
+from .parsers import (
+    ClaudeOutputParser,
+    CodexOutputParser,
+    GeminiOutputParser,
+    OpenCodeOutputParser,
+)
 
 if TYPE_CHECKING:
     from .config import RunnerConfig
@@ -215,6 +220,48 @@ class _OpenCodeParserAdapter:
         )
 
 
+class _CodexParserAdapter:
+    """Adapter from parser module result type to runners module result type."""
+
+    __slots__ = ("_delegate",)
+
+    def __init__(self) -> None:
+        self._delegate = CodexOutputParser()
+
+    def parse(self, stdout: str, elapsed_seconds: float) -> RunnerResult:
+        parsed = self._delegate.parse(stdout, elapsed_seconds)
+        return RunnerResult(
+            status=RunnerStatus(parsed.status.value),
+            session_id=parsed.session_id,
+            output=parsed.output,
+            elapsed_seconds=parsed.elapsed_seconds,
+            exit_code=parsed.exit_code,
+            cost_usd=parsed.cost_usd,
+            tokens=parsed.tokens,
+        )
+
+
+class _GeminiParserAdapter:
+    """Adapter from parser module result type to runners module result type."""
+
+    __slots__ = ("_delegate",)
+
+    def __init__(self) -> None:
+        self._delegate = GeminiOutputParser()
+
+    def parse(self, stdout: str, elapsed_seconds: float) -> RunnerResult:
+        parsed = self._delegate.parse(stdout, elapsed_seconds)
+        return RunnerResult(
+            status=RunnerStatus(parsed.status.value),
+            session_id=parsed.session_id,
+            output=parsed.output,
+            elapsed_seconds=parsed.elapsed_seconds,
+            exit_code=parsed.exit_code,
+            cost_usd=parsed.cost_usd,
+            tokens=parsed.tokens,
+        )
+
+
 class _SubprocessRunnerHandle:
     """Concrete handle for subprocess-backed runners."""
 
@@ -313,12 +360,24 @@ class _SubprocessRunnerHandle:
         return self._process.returncode is None
 
 
-def _format_arg(template: str, *, workdir: str, agent: str) -> str:
-    """Replace `{workdir}` and `{agent}` placeholders."""
+def _format_arg(
+    template: str,
+    *,
+    workdir: str,
+    agent: str,
+    session_id: str | None = None,
+) -> str:
+    """Replace known placeholders in argument templates.
+
+    Supported placeholders: `{workdir}`, `{agent}`, `{session_id}`.
+    """
     # Do targeted placeholder replacement only. We intentionally avoid
     # `str.format(...)` because runner args may contain literal braces
     # (e.g., inline Python/JSON snippets in tests and scripts).
-    return template.replace("{workdir}", workdir).replace("{agent}", agent)
+    formatted = template.replace("{workdir}", workdir).replace("{agent}", agent)
+    if session_id is not None:
+        formatted = formatted.replace("{session_id}", session_id)
+    return formatted
 
 
 def _build_command(
@@ -330,7 +389,9 @@ def _build_command(
 ) -> list[str]:
     """Build command argv for subprocess dispatch."""
     argv = [config.command]
-    argv.extend(_format_arg(arg, workdir=workdir, agent=agent) for arg in config.args)
+    argv.extend(
+        _format_arg(arg, workdir=workdir, agent=agent, session_id=session_id) for arg in config.args
+    )
 
     if config.prompt_mode == "stdin_dash":
         argv.append("-")
@@ -347,12 +408,50 @@ def _select_output_parser(runner_name: str, output_parser_name: str) -> OutputPa
         return _ClaudeParserAdapter()
     if output_parser_name == "opencode_jsonl":
         return _OpenCodeParserAdapter()
+    if output_parser_name == "codex_jsonl":
+        return _CodexParserAdapter()
+    if output_parser_name == "gemini_json":
+        return _GeminiParserAdapter()
 
     raise RunnerError(
         runner_name,
         "create",
-        f"Unsupported output_parser '{output_parser_name}' for core runner scope",
+        f"Unsupported output_parser '{output_parser_name}'",
     )
+
+
+def _build_codex_resume_command(
+    config: RunnerConfig,
+    *,
+    workdir: str,
+    agent: str,
+    session_id: str,
+) -> list[str]:
+    """Build argv for Codex resume semantics.
+
+    Codex resume uses a separate command form (`exec resume`) rather than a
+    shared `resume_flag` append pattern.
+    """
+    if not config.resume_command:
+        raise RunnerError("codex", "dispatch", "resume_command is required for codex resume")
+
+    argv = [
+        _format_arg(part, workdir=workdir, agent=agent, session_id=session_id)
+        for part in config.resume_command
+    ]
+
+    has_placeholder = any("{session_id}" in part for part in config.resume_command)
+    if not has_placeholder:
+        if "resume" in argv:
+            idx = len(argv) - 1 - argv[::-1].index("resume")
+            argv.insert(idx + 1, session_id)
+        else:
+            argv.append(session_id)
+
+    if config.prompt_mode == "stdin_dash" and "-" not in argv:
+        argv.append("-")
+
+    return argv
 
 
 async def _spawn_process(
@@ -504,15 +603,12 @@ class OpenCodeRunner:
 
 
 # =============================================================================
-# Extended Runners (Phase 2 - Contract Only)
+# Extended Runners (Phase 2)
 # =============================================================================
 
 
 EXTENDED_RUNNERS: frozenset[str] = frozenset({"codex", "gemini"})
-"""Runner names with CONTRACT-ONLY definitions in this phase.
-
-Implementation deferred to driver-multi-runner-hardening.execution phase.
-"""
+"""Runner names implemented in the extended phase."""
 
 # Extended runner capability table (from DRIVER-BLUEPRINT.md)
 # | Capability | Codex | Gemini |
@@ -539,8 +635,8 @@ Implementation deferred to driver-multi-runner-hardening.execution phase.
 #   - Cost tracking may be unavailable for Gemini
 
 
-class CodexRunnerStub:
-    """Stub for Codex runner - CONTRACT ONLY.
+class CodexRunner:
+    """Runner for Codex-style JSONL output CLIs.
 
     Phase 2 Contract: Codex CLI runner with JSONL output parsing.
 
@@ -566,10 +662,10 @@ class CodexRunnerStub:
         - NOT experimental (stable runner)
         - Standard fallback behavior applies
 
-    Implementation Owner: driver-multi-runner-hardening.execution
+    Implementation Owner: driver-multi-runner-hardening.impl-runners-extended
     """
 
-    __slots__ = ("name", "_config")
+    __slots__ = ("name", "_config", "_parser")
 
     def __init__(self, name: str, config: RunnerConfig) -> None:
         if config.resume_command is None:
@@ -580,6 +676,7 @@ class CodexRunnerStub:
             )
         self.name = name
         self._config = config
+        self._parser = _select_output_parser(name, config.output_parser)
 
     async def dispatch(
         self,
@@ -590,13 +687,6 @@ class CodexRunnerStub:
     ) -> RunnerHandle:
         """Launch a Codex subprocess and return a concrete handle.
 
-        Contract (raise NotImplementedError until driver-multi-runner-hardening.execution):
-        - Build command from config.command + config.args
-        - Use stdin_dash mode ("-" argument for stdin)
-        - Apply -C flag with workdir
-        - For resume: use config.resume_command instead of dispatch command
-        - Parse output using CodexOutputParser (JSONL stream)
-
         Returns:
             RunnerHandle with session_id from thread.started event.
 
@@ -604,14 +694,38 @@ class CodexRunnerStub:
             RunnerNotFoundError: If codex command not on PATH.
             RunnerError: If subprocess creation fails.
         """
-        raise NotImplementedError(
-            "CodexRunner.dispatch is a STUB. "
-            "Implement in driver-multi-runner-hardening.execution phase."
+        argv = (
+            _build_codex_resume_command(
+                self._config,
+                workdir=workdir,
+                agent=agent,
+                session_id=session_id,
+            )
+            if session_id is not None and self._config.resume_command
+            else _build_command(
+                self._config,
+                workdir=workdir,
+                agent=agent,
+                session_id=session_id,
+            )
+        )
+        process = await _spawn_process(
+            runner_name=self.name,
+            argv=argv,
+            prompt=prompt,
+            workdir=workdir,
+        )
+        return _SubprocessRunnerHandle(
+            process=process,
+            parser=self._parser,
+            runner_name=self.name,
+            dispatch_started_at=time.monotonic(),
+            session_id=session_id,
         )
 
 
-class GeminiRunnerStub:
-    """Stub for Gemini runner - CONTRACT ONLY.
+class GeminiRunner:
+    """Runner for Gemini-style JSON output CLIs.
 
     Phase 2 Contract: Gemini CLI runner with single JSON output parsing.
 
@@ -638,7 +752,7 @@ class GeminiRunnerStub:
         - Elevated failure risk
         - May require additional authentication setup
 
-    Implementation Owner: driver-multi-runner-hardening.execution
+    Implementation Owner: driver-multi-runner-hardening.impl-runners-extended
 
     Known Issues:
         - Authentication may fail without proper setup
@@ -646,7 +760,7 @@ class GeminiRunnerStub:
         - Session resume semantics not fully verified
     """
 
-    __slots__ = ("name", "_config")
+    __slots__ = ("name", "_config", "_parser")
 
     def __init__(self, name: str, config: RunnerConfig) -> None:
         if not config.experimental:
@@ -657,6 +771,7 @@ class GeminiRunnerStub:
             )
         self.name = name
         self._config = config
+        self._parser = _select_output_parser(name, config.output_parser)
 
     async def dispatch(
         self,
@@ -667,13 +782,6 @@ class GeminiRunnerStub:
     ) -> RunnerHandle:
         """Launch a Gemini subprocess and return a concrete handle.
 
-        Contract (raise NotImplementedError until driver-multi-runner-hardening.execution):
-        - Build command from config.command + config.args
-        - Use standard stdin mode
-        - Apply --yolo flag for auto-approve (--approval-mode yolo)
-        - For resume: use --resume INDEX flag
-        - Parse output using GeminiOutputParser (single JSON)
-
         Returns:
             RunnerHandle with session_id from JSON output.
 
@@ -681,9 +789,24 @@ class GeminiRunnerStub:
             RunnerNotFoundError: If gemini command not on PATH.
             RunnerError: If subprocess creation fails (including auth issues).
         """
-        raise NotImplementedError(
-            "GeminiRunner.dispatch is a STUB. "
-            "Implement in driver-multi-runner-hardening.execution phase."
+        argv = _build_command(
+            self._config,
+            workdir=workdir,
+            agent=agent,
+            session_id=session_id,
+        )
+        process = await _spawn_process(
+            runner_name=self.name,
+            argv=argv,
+            prompt=prompt,
+            workdir=workdir,
+        )
+        return _SubprocessRunnerHandle(
+            process=process,
+            parser=self._parser,
+            runner_name=self.name,
+            dispatch_started_at=time.monotonic(),
+            session_id=session_id,
         )
 
 
@@ -706,7 +829,7 @@ def create_runner(name: str, config: RunnerConfig) -> Runner:
         RunnerError: If runner name is not recognized.
 
     Core runners (claude, opencode): Return full implementations.
-    Extended runners (codex, gemini): Return contract-only stubs.
+    Extended runners (codex, gemini): Return extended implementations.
     Unknown runners: Raise RunnerError.
     """
     # Core runners (fully implemented)
@@ -715,11 +838,11 @@ def create_runner(name: str, config: RunnerConfig) -> Runner:
     if name == "opencode":
         return OpenCodeRunner(name, config)
 
-    # Extended runners (contract-only stubs)
+    # Extended runners
     if name == "codex":
-        return CodexRunnerStub(name, config)  # type: ignore[return-value]
+        return CodexRunner(name, config)
     if name == "gemini":
-        return GeminiRunnerStub(name, config)  # type: ignore[return-value]
+        return GeminiRunner(name, config)
 
     raise RunnerError(
         name,
@@ -741,7 +864,10 @@ __all__ = [
     # Core runners (implemented)
     "ClaudeRunner",
     "OpenCodeRunner",
-    # Extended runners (contract-only stubs)
+    # Extended runners
+    "CodexRunner",
+    "GeminiRunner",
+    # Backward-compatibility aliases (deprecated names)
     "CodexRunnerStub",
     "GeminiRunnerStub",
     # Phase scoping
@@ -750,3 +876,8 @@ __all__ = [
     # Factory
     "create_runner",
 ]
+
+
+# Backward-compatibility aliases for tests/importers that still use stub names.
+CodexRunnerStub = CodexRunner
+GeminiRunnerStub = GeminiRunner

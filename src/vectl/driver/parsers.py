@@ -6,9 +6,8 @@ Non-responsibility: Does NOT dispatch subprocesses (that is runner impl).
 Architecture Reference: docs/DRIVER-ARCHITECTURE.md Section 2.8
 Blueprint Reference: DRIVER-BLUEPRINT.md Output Parsers (3 formats)
 
-PHASE SCOPE: Core parsers (ClaudeOutputParser, OpenCodeOutputParser) are fully
-implemented. Extended parsers (CodexOutputParser, GeminiOutputParser) are
-CONTRACT-ONLY in this phase.
+PHASE SCOPE: Core parsers (ClaudeOutputParser, OpenCodeOutputParser) and
+extended parsers (CodexOutputParser, GeminiOutputParser) are implemented.
 """
 
 from __future__ import annotations
@@ -169,12 +168,12 @@ class OpenCodeOutputParser:
 
 
 # =============================================================================
-# Extended Parsers (Phase 2 - Contract Only)
+# Extended Parsers (Phase 2 - Implemented)
 # =============================================================================
 
 
 class CodexOutputParser:
-    """Stub for Codex JSONL output parser - CONTRACT ONLY.
+    """Parse Codex JSONL output from `codex exec --json`.
 
     Phase 2 Contract: Parse JSONL stream from `codex exec --json`.
 
@@ -193,28 +192,74 @@ class CodexOutputParser:
     Architecture: docs/DRIVER-ARCHITECTURE.md Section 2.8 (CodexRunner)
     Blueprint: DRIVER-BLUEPRINT.md Output Parsers (CodexOutputParser)
 
-    Implementation Owner: driver-multi-runner-hardening.execution
+    Implementation Owner: driver-multi-runner-hardening.impl-runners-extended
     """
 
     def parse(self, stdout: str, elapsed_seconds: float) -> RunnerResult:
-        """Parse Codex JSONL stream into RunnerResult.
+        """Parse Codex JSONL stream into RunnerResult."""
+        lines = stdout.strip().split("\n")
+        events: list[dict] = []
 
-        Contract (raise NotImplementedError until driver-multi-runner-hardening.execution):
-        - Parse JSONL lines (one JSON object per line)
-        - Extract session_id from first thread.started event
-        - Concatenate text from all item.completed events
-        - Determine SUCCESS if any item.completed events, FAIL otherwise
-        - Extract tokens from turn.completed.usage
-        - Return TRANSPORT_ERROR on malformed/no events
-        """
-        raise NotImplementedError(
-            "CodexOutputParser.parse is a STUB. "
-            "Implement in driver-multi-runner-hardening.execution phase."
+        for line in lines:
+            line = line.strip()
+            if not line:
+                continue
+            try:
+                payload = json.loads(line)
+            except json.JSONDecodeError:
+                return RunnerResult(
+                    status=RunnerStatus.TRANSPORT_ERROR,
+                    session_id=None,
+                    output=stdout,
+                    elapsed_seconds=elapsed_seconds,
+                    exit_code=None,
+                )
+            if isinstance(payload, dict):
+                events.append(payload)
+
+        if not events:
+            return RunnerResult(
+                status=RunnerStatus.TRANSPORT_ERROR,
+                session_id=None,
+                output=stdout,
+                elapsed_seconds=elapsed_seconds,
+                exit_code=None,
+            )
+
+        session_id: str | None = None
+        text_parts: list[str] = []
+        tokens: dict | None = None
+
+        for event in events:
+            event_type = event.get("type")
+            if event_type == "thread.started" and session_id is None:
+                raw = event.get("thread_id")
+                session_id = str(raw) if raw is not None else None
+            elif event_type == "item.completed":
+                item = event.get("item")
+                if isinstance(item, dict):
+                    text = item.get("text")
+                    if text is not None and str(text):
+                        text_parts.append(str(text))
+            elif event_type == "turn.completed":
+                usage = event.get("usage")
+                if isinstance(usage, dict):
+                    tokens = usage
+
+        status = RunnerStatus.SUCCESS if text_parts else RunnerStatus.FAIL
+        output = "\n".join(text_parts)
+        return RunnerResult(
+            status=status,
+            session_id=session_id,
+            output=output,
+            elapsed_seconds=elapsed_seconds,
+            exit_code=0 if status == RunnerStatus.SUCCESS else 1,
+            tokens=tokens,
         )
 
 
 class GeminiOutputParser:
-    """Stub for Gemini single JSON output parser - CONTRACT ONLY.
+    """Parse Gemini single JSON output from `gemini -p --output-format json`.
 
     Phase 2 Contract: Parse single JSON object from `gemini -p --output-format json`.
 
@@ -237,24 +282,39 @@ class GeminiOutputParser:
     Architecture: docs/DRIVER-ARCHITECTURE.md Section 2.8 (GeminiRunner)
     Blueprint: DRIVER-BLUEPRINT.md Output Parsers (GeminiOutputParser)
 
-    Implementation Owner: driver-multi-runner-hardening.execution
+    Implementation Owner: driver-multi-runner-hardening.impl-runners-extended
     """
 
     def parse(self, stdout: str, elapsed_seconds: float) -> RunnerResult:
-        """Parse Gemini single JSON into RunnerResult.
+        """Parse Gemini single JSON into RunnerResult."""
+        data, err = _parse_json_safely(stdout)
+        if data is None:
+            return RunnerResult(
+                status=RunnerStatus.TRANSPORT_ERROR,
+                session_id=None,
+                output=stdout,
+                elapsed_seconds=elapsed_seconds,
+                exit_code=None,
+            )
 
-        Contract (raise NotImplementedError until driver-multi-runner-hardening.execution):
-        - Parse single JSON object
-        - Extract session_id from session_id field
-        - Determine SUCCESS if subtype == "success", FAIL otherwise
-        - Return result field as output
-        - Extract tokens from usage field if present
-        - Cost tracking may be unavailable (set cost_usd = None)
-        - Return TRANSPORT_ERROR on malformed JSON
-        """
-        raise NotImplementedError(
-            "GeminiOutputParser.parse is a STUB. "
-            "Implement in driver-multi-runner-hardening.execution phase."
+        raw_output = data.get("structured_output") or data.get("result", "")
+        if isinstance(raw_output, dict):
+            output = json.dumps(raw_output)
+        else:
+            output = str(raw_output)
+
+        status = RunnerStatus.SUCCESS if data.get("subtype", "") == "success" else RunnerStatus.FAIL
+        raw_session = data.get("session_id")
+        session_id = str(raw_session) if raw_session is not None else None
+        tokens = data.get("usage")
+        return RunnerResult(
+            status=status,
+            session_id=session_id,
+            output=output,
+            elapsed_seconds=elapsed_seconds,
+            exit_code=0 if status == RunnerStatus.SUCCESS else 1,
+            cost_usd=data.get("total_cost_usd"),
+            tokens=tokens if isinstance(tokens, dict) else None,
         )
 
 

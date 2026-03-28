@@ -41877,3 +41877,45 @@ phases:
     done.
   depends_on:
   - driver-prompt-migration
+  steps:
+  - id: driver-prompt-review.update-docs
+    name: Sync prompt docs to packaged-resource contract
+    status: pending
+    description: 'Update documentation so docs/JUDGE-AGENT-PROMPT.md and related driver
+      architecture docs clearly describe their new role.
+
+
+      Required outcomes:
+
+      - docs/JUDGE-AGENT-PROMPT.md is documented as the maintained mirror/spec artifact
+      for the packaged runtime prompt resource
+
+      - docs explain that runtime no longer loads from docs/
+
+      - missing-resource and drift/consistency strategy are documented without ambiguity
+
+      - any driver architecture text that previously implied docs-as-runtime-authority
+      is updated
+
+
+      This folds doc sync into final review rather than creating a separate doc-only
+      phase.'
+    verification: '- Documentation explicitly distinguishes runtime authority vs docs
+      mirror.
+
+      - Missing/drift behavior is documented consistently across prompt and architecture
+      docs.
+
+      - No remaining authoritative docs text implies runtime loads from docs/.'
+    evidence_template: '## Doc Sync Evidence
+
+      - Docs updated:
+
+      - Runtime authority wording:
+
+      - Docs mirror wording:
+
+      - Missing/drift policy wording:
+
+      - Remaining doc follow-ups:'
+    agent: doc-reviewer

@@ -41603,6 +41603,64 @@ phases:
     docs/ as runtime authority, and green verification proves no silent fallback remains.
   depends_on:
   - driver-prompt-foundation
+  steps:
+  - id: driver-prompt-migration.package-resource-loader
+    name: Package judge prompt resource and migrate loader
+    status: pending
+    description: "step_type: implementation\ntags:\n  - integration\nVerification\
+      \ scope: phase-check protecting driver-prompt-migration.runtime-retest and gate.\n\
+      \nImplement the packaged runtime prompt resource and migrate the existing judge\
+      \ loader to use it as the runtime source of truth.\n\nTarget seams:\n- src/vectl/driver/judge.py::_load_judge_system_prompt\n\
+      - pyproject.toml packaging metadata\n- a packaged resource path under src/vectl/driver/\
+      \ owned by the driver package\n\nRequired outcomes:\n- runtime prompt no longer\
+      \ reads docs/JUDGE-AGENT-PROMPT.md at execution time\n- packaged installs include\
+      \ the prompt resource\n- missing packaged resource fails explicitly with actionable\
+      \ diagnostics; no weak silent fallback remains\n- judge external verdict contract\
+      \ stays unchanged\n\nIntegration evidence requirement:\n- prove the runtime\
+      \ path loads the packaged resource in an installed/package-style context, not\
+      \ only from the repo root\n- show the source→sink path: packaged resource →\
+      \ judge loader → runner payload assembly\n\nCompletion Criteria (stub exclusion)\n\
+      This is an IMPLEMENTATION step. Stub-only completion is NOT acceptable."
+    verification: '- Main path: targeted tests prove packaged resource loading works
+      and docs/ is not required at runtime.
+
+      - Failure path: regression covers missing packaged resource raising explicit
+      failure rather than using a weak fallback.
+
+      - Proof includes package metadata / resource inclusion evidence and a runtime-path
+      test from loader to payload assembly.'
+    evidence_template: '## Integration Evidence
+
+      **Command or test exercising the full path**:
+
+      ```
+
+      <paste exact pytest command(s) or package-style invocation>
+
+      ```
+
+
+      **Actual output**:
+
+      ```
+
+      <paste stdout/stderr or failing/passing assertions>
+
+      ```
+
+
+      **Path exercised**: packaged resource -> _load_judge_system_prompt -> Judge
+      prompt payload
+
+
+      **Package inclusion proof**:
+
+      ```
+
+      <paste evidence that the resource ships with the package>
+
+      ```'
+    agent: python-senior
 - id: driver-prompt-review
   name: Driver Prompt Resource Review
   status: locked

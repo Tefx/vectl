@@ -43313,6 +43313,46 @@ phases:
     - driver-continuity-restart-recovery.contract
     - driver-continuity-restart-recovery.test-define-red
     agent: python-senior
+  - id: driver-continuity-restart-recovery.verify
+    name: Verify startup recovery and continuity policy
+    status: pending
+    description: 'step_type: verification
+
+      As an INDEPENDENT TESTER (blind-tester), validate the restart recovery controller
+      and continuity policy from a fresh perspective.
+
+
+      YOUR GOAL IS TO FIND PROBLEMS, not to confirm it works.
+
+
+      Test for:
+
+      - Happy path: a resumable interrupted session restarts and continues safely
+
+      - Edge cases: failed step, aborted run, changed capability facts, stale claims,
+      and stale ledger records
+
+      - Error scenarios: reconciliation conflict, unsafe replay candidate, and explicit
+      halt path
+
+
+      Independence Level: L2
+
+      Verification scope: phase-check protecting driver-continuity-review and driver-bootstrap-readiness.
+
+
+      REALISM CHECK: provide at least one real driver entrypoint execution proof with
+      actual recovery artifacts; mock-heavy evidence alone is insufficient.'
+    verification: '- Execute restart/recovery drills through the real driver entrypoint
+
+      - Paste actual command/output showing resume, restart-only fallback, and explicit
+      halt cases
+
+      - Report any path that still relies on success-only session records or inferred
+      capability'
+    depends_on:
+    - driver-continuity-restart-recovery.impl
+    agent: blind-tester
 - id: driver-continuity-review
   name: 'Driver Continuity: Review'
   status: locked

@@ -42891,6 +42891,87 @@ phases:
 
       - Evidence names the gaps around failure, abort, and restart persistence'
     agent: python-executor
+  - id: driver-continuity-authority-ledger.impl
+    name: Implement durable session authority ledger and minimum journal
+    status: pending
+    description: 'step_type: implementation
+
+      Implement the bootstrap-blocker durable continuity state layer.
+
+
+      Scope:
+
+      - converge runtime ownership so SessionPool and decide.py no longer persist
+      independent truths
+
+      - persist continuity state for success, failure, abort, and restart-adjacent
+      transitions
+
+      - add the minimum recovery-grade journal/telemetry fields needed to reconstruct
+      continuity and reconcile plan/claims state
+
+      - ensure continuity writes happen before any outcome that would otherwise lose
+      resumability evidence
+
+
+      ## Completion Criteria (stub exclusion)
+
+      This is an IMPLEMENTATION step. Stub-only completion is NOT acceptable.
+
+      Each deliverable MUST contain substantive logic that processes its inputs and
+      produces outputs that vary based on those inputs. Private stub classes (`_Runtime*`,
+      `_Stub*`, `_Placeholder*`) do not satisfy this requirement.
+
+
+      ## Failure-mode checklist
+
+      - missing continuity record on abnormal stop
+
+      - partial-write or interrupted-write behavior
+
+      - stale continuity record vs recovered plan/claims precedence
+
+      - explicit clear / terminal completion semantics
+
+      - relative vs absolute storage path behavior if driver runtime path differs
+
+
+      ## State semantics
+
+      - last-writer-wins facts: runtime continuity snapshot and journal append ordering
+
+      - preserve exactly: step/session identity, replay token, runner provenance,
+      outcome class, and recovery cursor
+
+      - backward-compatible legacy behavior: existing successful runs remain readable
+      and upgradeable
+
+
+      ## Out-of-scope guardrail
+
+      - rich analytics, dashboards, and long-tail telemetry remain in driver-enhancement-observability
+
+      - advanced recovery heuristics remain outside this step unless required for
+      bootstrap-safe resume
+
+
+      KNOWN RISKS:
+
+      - SessionPool process-local memory and decide.py side state previously diverged;
+      fix the shared truth, not just one write site
+
+      - Recovery evidence must exist on failure and abort, not only after success/merge'
+    verification: '- Main path: targeted continuity persistence tests pass for success
+      and ordinary resume
+
+      - Failure path: focused regression covers failure/abort/interrupted-run persistence
+      and recovered plan/claims reconciliation
+
+      - Proof: no independent durable session truth remains where migration scope
+      requires convergence'
+    depends_on:
+    - driver-continuity-authority-ledger.test-define-red
+    agent: python-senior
 - id: driver-continuity-capability-safety
   name: 'Driver Continuity: Capability & Replay Safety'
   status: locked

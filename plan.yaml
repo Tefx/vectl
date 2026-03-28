@@ -41665,75 +41665,6 @@ phases:
 
       - Open questions left (must be implementation-local only):'
     agent: software-architect
-  - id: driver-prompt-foundation.test-define-red
-    name: Define red tests for packaged prompt migration
-    status: pending
-    description: 'step_type: test
-
-      step_intent: test_define_red
-
-      expected_result: red
-
-
-      Create focused failing tests that expose the current gap before implementation.
-
-
-      Required exposed gaps:
-
-      - judge runtime still depends on docs/JUDGE-AGENT-PROMPT.md
-
-      - missing docs file currently degrades to a weak fallback prompt instead of
-      an explicit failure path
-
-      - packaged/install-time resource lookup is not yet exercised as the runtime
-      source of truth
-
-      - docs mirror drift is not yet made visible by verification
-
-
-      Test-only scope:
-
-      - Modify tests/ plus minimal test fixtures/helpers only.
-
-      - Do not change product code, package configuration, or docs in this step.
-
-
-      Spec-fixture conformance:
-
-      - Cite the exact prompt sections or response-format sections each test protects.
-
-      - At least one test must simulate an installed/runtime context where docs/ is
-      unavailable.
-
-      - At least one test must encode the expected explicit failure semantics when
-      the packaged prompt resource is absent.
-
-
-      Downstream implementation owner:
-
-      - driver-prompt-migration.package-resource-loader
-
-      - driver-prompt-migration.authority-reference-migration'
-    verification: '- Red is expected before implementation.
-
-      - Evidence shows the docs dependency, silent fallback path, and missing drift
-      visibility are exposed without modifying product code.
-
-      - Modified files are limited to tests/ and test helpers.'
-    evidence_template: '## Expected-Red Test Definition
-
-      - Tests added/updated:
-
-      - Exposed gaps:
-
-      - Expected failures before implementation:
-
-      - Spec sections cited:
-
-      - Product-code files touched: NONE'
-    depends_on:
-    - driver-prompt-foundation.contract
-    agent: integration-verifier
   - id: driver-prompt-foundation.gate
     name: Gate prompt-resource foundation readiness
     status: pending
@@ -41786,7 +41717,6 @@ phases:
       - Required follow-up actions:'
     depends_on:
     - driver-prompt-foundation.contract
-    - driver-prompt-foundation.test-define-red
     agent: gate-reviewer
   - id: driver-prompt-foundation.design-and-test
     name: Design packaged prompt boundary and write expected-red tests

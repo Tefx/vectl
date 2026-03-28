@@ -38129,9 +38129,9 @@ phases:
     agent: gate-reviewer
 - id: driver-debt-policy-extraction
   name: 'Driver Debt: Loop Policy Extraction'
-  status: locked
+  status: pending
   depends_on:
-  - driver-debt-cli-entrypoint-unification
+  - driver-deep-review
   steps:
   - id: driver-debt-policy-extraction.contract
     name: Pin driver.policy extraction seam

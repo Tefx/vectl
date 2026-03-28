@@ -41284,3 +41284,28 @@ phases:
 
       - Runtime / entrypoint / external contract boundaries remain aligned'
     agent: software-architect
+  - id: driver-enhancement-review.contract-strength
+    name: Audit enhancement contract strength
+    status: pending
+    description: 'step_type: verification
+
+      Verification scope: phase-check protecting driver-enhancement-review.gate.
+
+
+      Audit contract strength for routing validation, telemetry schemas, streaming
+      state, and recovery policy surfaces.
+
+
+      Focus:
+
+      - no vacuous or underspecified contract language remains
+
+      - error semantics and recovery matrix boundaries are reviewable and testable
+
+      - event-schema ownership is explicit rather than distributed across ad hoc emitters'
+    verification: 'phase-check protecting driver-enhancement-review.gate.
+
+      - Contract surfaces are specific enough for future remediation without reinterpretation
+
+      - Any under-specified contract is reported as blocking review debt'
+    agent: gate-reviewer

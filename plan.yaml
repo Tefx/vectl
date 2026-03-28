@@ -32812,10 +32812,49 @@ phases:
     description: 'step_type: test
 
 
-      Add focused CLI tests for vectl drive config resolution and command wiring using
-      CliRunner and real-ish runtime setup where practical.'
-    verification: '- Tests cover CLI flag parsing and runtime handoff to the driver
-      entrypoint'
+      EXPECTED-RED PRE-IMPLEMENTATION TEST STEP.
+
+
+      Add focused CLI tests for `vectl drive` config resolution and command wiring
+      before the CLI implementation lands.
+
+
+      Allowed file scope:
+
+      - tests
+
+      - fixtures
+
+      - test helpers
+
+      Do NOT modify src/vectl/*. If command-wiring gaps are exposed, keep this step
+      in test scope and report them.
+
+
+      Required checks:
+
+      - CLI flag parsing expectations
+
+      - config resolution and validation handoff
+
+      - runtime entrypoint wiring contract
+
+
+      Evidence requirements:
+
+      - modified files limited to tests/fixtures/helpers
+
+      - expected_failures or exposed_gaps listed explicitly
+
+      - downstream implementation owner linked: driver-cli-integration.impl-cli-drive'
+    verification: '- Tests cover CLI flag parsing and runtime handoff contract to
+      the driver entrypoint
+
+      - Step succeeds if it records expected-red CLI gaps without product-code edits
+      or proves the contract already passes green without src changes
+
+      - Evidence distinguishes fixture/helper changes from downstream implementation
+      ownership: driver-cli-integration.impl-cli-drive'
     depends_on:
     - driver-cli-integration.contract-cli-drive
     agent: python-executor

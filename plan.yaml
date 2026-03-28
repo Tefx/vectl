@@ -35765,7 +35765,7 @@ phases:
     agent: gate-reviewer
   - id: driver-cli-integration.expected-red-render
     name: Render expected-red completed steps distinctly in status/show output
-    status: pending
+    status: claimed
     description: 'step_type: implementation
 
       tags: []
@@ -35945,6 +35945,8 @@ phases:
     depends_on:
     - driver-cli-integration.impl-cli-drive
     agent: python-executor
+    claimed_by: python-executor
+    claimed_at: '2026-03-28T12:20:35.842016+00:00'
 - id: driver-system-wiring
   name: Driver System Wiring
   status: locked

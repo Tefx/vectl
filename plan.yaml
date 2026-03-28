@@ -42603,8 +42603,9 @@ phases:
 - id: driver-judge-hardening-review
   name: 'Driver Judge Hardening: Review'
   status: locked
-  gate: Independent real-runner review confirms judge stability is sufficient for
-    renewed real bootstrap attempts.
+  gate: Independent real-runner review confirms judge stability is sufficient on the
+    judge surface and explicitly ready for continuity integration; bootstrap authorization
+    still also requires continuity-review.
   depends_on:
   - driver-judge-hardening-structured-output
   - driver-judge-hardening-recovery-policy

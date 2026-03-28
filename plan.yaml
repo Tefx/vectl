@@ -40267,3 +40267,35 @@ phases:
 
       - No runtime logic is introduced'
     agent: software-architect
+  - id: driver-evolution-action-registry-contract-foundation.gate
+    name: Gate action-registry contract foundation
+    status: pending
+    description: 'step_type: gate
+
+      Gate review: verify the early planner-dispatch contract foundation is sufficient
+      to unlock action-registry implementation without collapsing runtime-context
+      ownership.
+
+
+      review_depth: STANDARD
+
+      cross_cutting_focus:
+
+      - planner dispatch remains first-class and category-explicit
+
+      - RuntimeContext is referenced as a contract dependency, not redefined here
+
+      - no helper-only or dynamic-registration interpretation slips into the boundary
+
+
+      Independence: gate-reviewer must remain independent from software-architect.'
+    verification: 'phase-check protecting driver-evolution-action-registry.
+
+      - Contract evidence pins planner-dispatch registry scope and layered-category
+      expectations
+
+      - No unresolved boundary blocker intersects runtime-context or action-registry
+      implementation'
+    depends_on:
+    - driver-evolution-action-registry-contract-foundation.planner-dispatch-contract
+    agent: gate-reviewer

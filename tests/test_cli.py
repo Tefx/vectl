@@ -3917,3 +3917,88 @@ class TestClaimMismatchVisibility:
         # Should not show mismatch warning for non-claimed steps
         assert "missing from claims.json" not in result.output
         assert "ghost" not in result.output.lower()
+
+
+# ---------------------------------------------------------------------------
+# vectl drive: CLI integration tests (EXPECTED-RED contract tests)
+# Ref: DRIVER-BLUEPRINT.md lines 44, 115-122
+# ---------------------------------------------------------------------------
+
+
+class TestDriveCLI:
+    """Tests for vectl drive CLI command.
+
+    These tests verify:
+    - CLI flag parsing expectations
+    - Config resolution and validation handoff
+    - Runtime entrypoint wiring contract
+
+    EXPECTED-RED: The driver implementation is not yet complete.
+    These tests should fail until driver-cli-integration.impl-cli-drive lands.
+    """
+
+    def test_drive_command_exists(self):
+        """Verify the drive command is registered in the CLI app."""
+        result = runner.invoke(app, ["drive", "--help"])
+        assert result.exit_code == 0
+        assert "drive" in result.output.lower()
+
+    def test_drive_config_flag_recognized(self):
+        """Verify --config flag is recognized by the drive command."""
+        result = runner.invoke(app, ["drive", "--help"])
+        assert result.exit_code == 0
+        assert "--config" in result.output
+        assert "PATH" in result.output
+
+    def test_drive_default_config_is_driver_yaml(self):
+        """Verify default config path is driver.yaml."""
+        result = runner.invoke(app, ["drive", "--help"])
+        assert result.exit_code == 0
+        assert "driver.yaml" in result.output
+
+    def test_drive_error_on_missing_config(self):
+        """Verify drive command exits properly when config file is missing.
+
+        This tests the failure path: when the config file doesn't exist,
+        the command should exit with an error message.
+        """
+        result = runner.invoke(app, ["drive", "--config", "/nonexistent/path/driver.yaml"])
+        # Should fail because config doesn't exist
+        assert result.exit_code != 0
+        # Should show error about config file not found
+        assert "not found" in result.output.lower() or "error" in result.output.lower()
+
+    def test_drive_imports_driver_loop_run(self):
+        """Verify the drive command correctly imports the driver entrypoint.
+
+        This is a wiring contract test: we verify that the import statement
+        for vectl.driver.loop.run is present and correct.
+        """
+        # Read the cli.py source to verify the import contract
+        import inspect
+
+        from vectl.cli import drive
+
+        source = inspect.getsource(drive)
+        assert "vectl.driver.loop" in source
+        assert "run" in source
+
+    def test_drive_with_explicit_config_path(self):
+        """Verify --config flag accepts an explicit path."""
+        result = runner.invoke(app, ["drive", "--config", "/tmp/test-driver.yaml"])
+        # Should fail with NotImplementedError, not with flag parsing error
+        assert result.exit_code != 0
+        # If flag parsing failed, we'd see "no such option" in output
+        assert "no such option" not in result.output.lower()
+
+    def test_drive_help_shows_ref_to_blueprint(self):
+        """Verify help text references the DRIVER-BLUEPRINT.md."""
+        result = runner.invoke(app, ["drive", "--help"])
+        assert result.exit_code == 0
+        assert "DRIVER-BLUEPRINT" in result.output
+
+    def test_drive_help_shows_docstring_description(self):
+        """Verify help text shows the command description."""
+        result = runner.invoke(app, ["drive", "--help"])
+        assert result.exit_code == 0
+        assert "auto-execute" in result.output.lower() or "orchestration" in result.output.lower()

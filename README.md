@@ -335,6 +335,47 @@ uvx vectl show <step-id>      # Check specific step
 uvx vectl repair claims --dry-run  # Should now show no changes
 ```
 
+## Programmatic Driver
+
+For automated plan execution, use the `vectl drive` command with a driver configuration file:
+
+```bash
+# Create driver.yaml (see DRIVER-BLUEPRINT.md for full schema)
+cat > driver.yaml << 'EOF'
+runners:
+  opencode:
+    command: opencode
+    args: ["run", "--format", "json"]
+    stall_timeout: 300
+    output_parser: opencode_jsonl
+
+agent_routing:
+  default: opencode
+
+fallback_runner: opencode
+
+orchestration:
+  max_parallelism: 3
+
+judge:
+  runner: opencode
+  preflight: true
+  evidence_validation: true
+EOF
+
+# Run the driver
+uvx vectl drive --config driver.yaml
+```
+
+The driver provides:
+- **Deterministic orchestration**: Decides actions based on plan state, not LLM judgment
+- **Session reuse**: Reuses agent sessions across dependent steps
+- **Failure handling**: Automatic retry, escalation, and runner fallback
+- **Git worktree isolation**: Each step runs in an isolated worktree
+- **Judgment agent**: LLM-based evaluation for evidence validation and escalation decisions
+
+See [DRIVER-BLUEPRINT.md](DRIVER-BLUEPRINT.md) for complete configuration reference.
+
 ## Technical Details
 
 Architecture, CAS safety, and test coverage (Hypothesis state machine verification): [docs/DESIGN.md](docs/DESIGN.md).

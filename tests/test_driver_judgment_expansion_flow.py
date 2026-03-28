@@ -753,9 +753,11 @@ class TestFailureToFixRetestDispatchSemantics:
             trigger="reconcile.gate_reject_fix_retest_chain",
             judgment_type="GATE",
             planner_instruction="Fix blockers: security scan, lint errors",
+            source_verdict="REJECT",
         )
         assert request.trigger == "reconcile.gate_reject_fix_retest_chain"
         assert request.judgment_type == "GATE"
+        assert request.source_verdict == "REJECT"
 
 
 # =============================================================================

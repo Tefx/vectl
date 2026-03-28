@@ -366,3 +366,251 @@ def test_decide_successor_visible_after_simulated_completion(tmp_path: Path) -> 
     # Must contain complete(s1) AND claim_and_dispatch(s2) in the same batch
     assert ("complete", "s1") in action_types
     assert ("claim_and_dispatch", "s2") in action_types
+
+
+# ---------------------------------------------------------------------------
+# Expected-red verification semantics tests
+# ---------------------------------------------------------------------------
+
+
+def test_decide_expected_red_fail_completes(tmp_path: Path) -> None:
+    """Expected-red step with FAIL result completes (gap demonstrated as intended).
+
+    RFC: docs/RFC-expected-red-verification-semantics.md (Sections 4-5)
+    When step.verify == "expected_red", a FAIL result means the gap was demonstrated.
+    This should create a complete action, not failure/escalation.
+    """
+    plan = Plan(
+        project="decide-test",
+        phases=[
+            Phase(
+                id="p1",
+                name="Phase 1",
+                status=PhaseStatus.PENDING,
+                steps=[
+                    Step(
+                        id="s1",
+                        name="Gap-exposing test step",
+                        status=StepStatus.CLAIMED,
+                        claimed_by="agent-1",
+                        verify="expected_red",
+                    ),
+                ],
+            )
+        ],
+    )
+    plan_path = tmp_path / "plan.yaml"
+    save_plan(plan, plan_path)
+
+    import vectl.decide as decide_mod
+
+    original = decide_mod.resolve_plan_path
+    decide_mod.resolve_plan_path = lambda: plan_path  # type: ignore[assignment]
+    try:
+        completed = [
+            CompletedResult(
+                step_id="s1",
+                task_id="task-1",
+                status="FAIL",
+                output_summary="Test failed as expected: missing feature X",
+            ),
+        ]
+        output = decide(
+            running_tasks=[],
+            completed_results=completed,
+            max_parallelism=5,
+        )
+    finally:
+        decide_mod.resolve_plan_path = original  # type: ignore[assignment]
+
+    # Must complete, not fail/escalate
+    action_types = [(a.action, a.step_id) for a in output.actions]
+    assert ("complete", "s1") in action_types
+
+    # Decision log must show expected-red reason
+    assert any(
+        d.decision == "COMPLETE" and d.step_id == "s1" and "Expected-red" in d.why
+        for d in output.decision_log
+    ), f"Decision log should contain 'Expected-red' reason, got: {output.decision_log}"
+
+
+def test_decide_must_green_fail_normal_failure_path(tmp_path: Path) -> None:
+    """must_green step with FAIL result follows normal failure path.
+
+    RFC: docs/RFC-expected-red-verification-semantics.md (Sections 4-5)
+    When step.verify == "must_green", FAIL should trigger failure tracking.
+    This preserves existing behavior for verification-critical steps.
+    """
+    plan = Plan(
+        project="decide-test",
+        phases=[
+            Phase(
+                id="p1",
+                name="Phase 1",
+                status=PhaseStatus.PENDING,
+                steps=[
+                    Step(
+                        id="s1",
+                        name="Critical verification step",
+                        status=StepStatus.CLAIMED,
+                        claimed_by="agent-1",
+                        verify="must_green",
+                    ),
+                ],
+            )
+        ],
+    )
+    plan_path = tmp_path / "plan.yaml"
+    save_plan(plan, plan_path)
+
+    import vectl.decide as decide_mod
+
+    original = decide_mod.resolve_plan_path
+    decide_mod.resolve_plan_path = lambda: plan_path  # type: ignore[assignment]
+    try:
+        # First failure
+        completed = [
+            CompletedResult(
+                step_id="s1",
+                task_id="task-1",
+                status="FAIL",
+                output_summary="Verification failed",
+            ),
+        ]
+        output = decide(
+            running_tasks=[],
+            completed_results=completed,
+            max_parallelism=5,
+        )
+    finally:
+        decide_mod.resolve_plan_path = original  # type: ignore[assignment]
+
+    # First failure should NOT complete, should be WAIT or escalate
+    action_types = [(a.action, a.step_id) for a in output.actions]
+    assert ("complete", "s1") not in action_types
+
+    # Should be a WAIT decision (failure count 1)
+    wait_decisions = [d for d in output.decision_log if d.decision == "WAIT"]
+    assert any(d.step_id == "s1" for d in wait_decisions), (
+        f"Expected WAIT decision for s1, got: {output.decision_log}"
+    )
+
+
+def test_decide_verify_none_fail_normal_failure_path(tmp_path: Path) -> None:
+    """verify=None step with FAIL result follows normal failure path.
+
+    RFC: docs/RFC-expected-red-verification-semantics.md (Section 7)
+    Default behavior (verify=None) is equivalent to must_green for failure handling.
+    This tests backward compatibility - existing steps unchanged.
+    """
+    plan = Plan(
+        project="decide-test",
+        phases=[
+            Phase(
+                id="p1",
+                name="Phase 1",
+                status=PhaseStatus.PENDING,
+                steps=[
+                    Step(
+                        id="s1",
+                        name="Legacy step without verify field",
+                        status=StepStatus.CLAIMED,
+                        claimed_by="agent-1",
+                        # verify is None by default
+                    ),
+                ],
+            )
+        ],
+    )
+    plan_path = tmp_path / "plan.yaml"
+    save_plan(plan, plan_path)
+
+    import vectl.decide as decide_mod
+
+    original = decide_mod.resolve_plan_path
+    decide_mod.resolve_plan_path = lambda: plan_path  # type: ignore[assignment]
+    try:
+        # First failure
+        completed = [
+            CompletedResult(
+                step_id="s1",
+                task_id="task-1",
+                status="FAIL",
+                output_summary="Operation failed",
+            ),
+        ]
+        output = decide(
+            running_tasks=[],
+            completed_results=completed,
+            max_parallelism=5,
+        )
+    finally:
+        decide_mod.resolve_plan_path = original  # type: ignore[assignment]
+
+    # First failure should NOT complete (preserves default behavior)
+    action_types = [(a.action, a.step_id) for a in output.actions]
+    assert ("complete", "s1") not in action_types
+
+    # Should be WAIT decision (failure count 1)
+    wait_decisions = [d for d in output.decision_log if d.decision == "WAIT"]
+    assert any(d.step_id == "s1" for d in wait_decisions), (
+        f"Expected WAIT decision for s1, got: {output.decision_log}"
+    )
+
+
+def test_decide_expected_red_success_completes_normally(tmp_path: Path) -> None:
+    """Expected-red step with SUCCESS result completes normally.
+
+    If an expected-red step unexpectedly succeeds (result.status == SUCCESS),
+    it should complete normally - the SUCCESS path is unchanged.
+    """
+    plan = Plan(
+        project="decide-test",
+        phases=[
+            Phase(
+                id="p1",
+                name="Phase 1",
+                status=PhaseStatus.PENDING,
+                steps=[
+                    Step(
+                        id="s1",
+                        name="Expected-red step that unexpectedly passed",
+                        status=StepStatus.CLAIMED,
+                        claimed_by="agent-1",
+                        verify="expected_red",
+                    ),
+                ],
+            )
+        ],
+    )
+    plan_path = tmp_path / "plan.yaml"
+    save_plan(plan, plan_path)
+
+    import vectl.decide as decide_mod
+
+    original = decide_mod.resolve_plan_path
+    decide_mod.resolve_plan_path = lambda: plan_path  # type: ignore[assignment]
+    try:
+        completed = [
+            CompletedResult(
+                step_id="s1",
+                task_id="task-1",
+                status="SUCCESS",
+                output_summary="Unexpectedly passed",
+            ),
+        ]
+        output = decide(
+            running_tasks=[],
+            completed_results=completed,
+            max_parallelism=5,
+        )
+    finally:
+        decide_mod.resolve_plan_path = original  # type: ignore[assignment]
+
+    # SUCCESS should complete regardless of verify field
+    action_types = [(a.action, a.step_id) for a in output.actions]
+    assert ("complete", "s1") in action_types
+
+    # Decision log should show normal SUCCESS completion
+    complete_decisions = [d for d in output.decision_log if d.decision == "COMPLETE"]
+    assert any(d.step_id == "s1" for d in complete_decisions)

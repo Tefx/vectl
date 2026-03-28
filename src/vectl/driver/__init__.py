@@ -9,6 +9,8 @@ Architecture: docs/DRIVER-ARCHITECTURE.md
 
 from __future__ import annotations
 
+from . import loop
+
 __all__ = [
     "loop",
 ]

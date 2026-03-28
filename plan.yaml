@@ -43922,7 +43922,7 @@ phases:
       \ grep checks confirmed expected continuity symbols present"
   - id: driver-continuity-foundation.gate-retest
     name: Retest continuity foundation gate blockers
-    status: pending
+    status: claimed
     description: 'step_type: gate
 
       step_intent: retest_green
@@ -43982,6 +43982,8 @@ phases:
     depends_on:
     - driver-continuity-foundation.fix-blockers
     agent: gate-reviewer
+    claimed_by: gate-reviewer
+    claimed_at: '2026-03-28T23:25:11.647358+00:00'
 - id: driver-continuity-authority-ledger
   name: 'Driver Continuity: Authority & Ledger'
   status: locked

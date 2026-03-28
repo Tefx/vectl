@@ -39584,6 +39584,55 @@ phases:
 
       - No implementation logic beyond declarations/stubs is introduced'
     agent: software-architect
+  - id: driver-evolution-loop-migration.implement-loop-handlers
+    name: Migrate loop branching to registry-backed handlers
+    status: pending
+    description: 'step_type: implementation
+
+
+      Implement rollout step 7 from the ADR by migrating loop branching to registry-backed
+      handlers.
+
+
+      Scope:
+
+      - replace loop-local `if/elif` action execution branching in the touched path
+      with registry-backed handler resolution
+
+      - keep `loop.py` as the stable orchestration skeleton
+
+      - ensure planner dispatch, execution, control, and recovery actions all execute
+      through the same registry-backed path in scope
+
+
+      ## Completion Criteria (stub exclusion)
+
+      This is an IMPLEMENTATION step. Stub-only completion is NOT acceptable.
+
+      Each deliverable MUST contain substantive logic that processes inputs and resolves
+      handlers through the registry.
+
+
+      Known risks:
+
+      - planner dispatch accidentally survives as a side helper
+
+      - recovery/control actions remain split-brain relative to execution actions
+
+      - loop readability regresses because registry migration leaks policy logic back
+      into loop.py'
+    verification: 'phase-check protecting system wiring, liveness, and full-plan-check.
+
+      - Main path: targeted loop tests prove handler resolution now flows through
+      the registry in scope
+
+      - Failure path: regression covers planner helper bypass and unknown-action handling
+
+      - Proof: loop-local branching for migrated actions is removed from the touched
+      path'
+    depends_on:
+    - driver-evolution-loop-migration.contract
+    agent: python-senior
 - id: driver-evolution-review
   name: 'Driver Evolution: Review'
   status: locked

@@ -41017,6 +41017,24 @@ phases:
     depends_on:
     - driver-enhancement-runner-recovery.impl
     agent: integration-verifier
+  - id: driver-enhancement-runner-recovery.gate
+    name: Gate runner recovery enhancement
+    status: pending
+    description: 'step_type: gate
+
+      Gate the runner recovery enhancement phase.'
+    verification: 'phase-check protecting driver-enhancement-integration.
+
+      - Failure taxonomy, watchdog behavior, implementation, and independent verification
+      all align
+
+      - No blocker remains around crash/fail/timeout/stall/no-progress recovery behavior'
+    depends_on:
+    - driver-enhancement-runner-recovery.contract
+    - driver-enhancement-runner-recovery.test-define-red
+    - driver-enhancement-runner-recovery.impl
+    - driver-enhancement-runner-recovery.verify
+    agent: gate-reviewer
 - id: driver-enhancement-integration
   name: 'Driver Enhancement: Integration'
   status: locked

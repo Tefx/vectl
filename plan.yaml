@@ -37464,7 +37464,7 @@ phases:
       \ behavior\n- Product code modified: NO"
   - id: driver-debt-decision-state.impl
     name: Implement instance-owned DecideState plumbing
-    status: claimed
+    status: done
     description: 'step_type: implementation
 
       Verification scope: phase-check protecting driver-debt-decision-state.verify
@@ -37538,6 +37538,25 @@ phases:
     agent: python-senior
     claimed_by: python-senior
     claimed_at: '2026-03-28T19:01:26.680314+00:00'
+    done_at: '2026-03-28T19:20:56.911945+00:00'
+    evidence: 'Artifact:
+
+      - Commit: f1450d4 (branch: vectl/step-driver-debt-decision-state.impl)
+
+
+      Verification:
+
+      - pytest tests/test_decide.py tests/test_driver_loop_runtime.py: 25 passed,
+      25 xfailed in 7.29s
+
+      - Two-instance isolation regressions pass
+
+      - Runtime wiring: loop.py passes state.decide_state into decide() at line 1953
+
+      - No module-global fallback reads in driver runtime path
+
+      - Substantive DecideState methods: record_completion, reusable_session, register_failure,
+      reset_failure'
   - id: driver-debt-decision-state.verify
     name: Independently verify DecideState isolation
     status: pending

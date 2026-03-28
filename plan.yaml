@@ -32789,7 +32789,7 @@ phases:
       logic added here.'
   - id: driver-judgment-runtime-minimal.contract-judge
     name: Contract judge invocation
-    status: pending
+    status: claimed
     description: "step_type: contract\ncontract_purity: ENFORCED\ncontract_outputs:\n\
       \  - signatures\n  - type_defs\n  - interfaces\n  - stubs\n\nPin the exact Judge\
       \ contract for src/vectl/driver/judge.py from docs/DRIVER-ARCHITECTURE.md section\
@@ -32803,6 +32803,8 @@ phases:
     depends_on:
     - driver-judgment-runtime-minimal.impl-judgments
     agent: python-executor
+    claimed_by: python-executor
+    claimed_at: '2026-03-28T07:42:55.827807+00:00'
   - id: driver-judgment-runtime-minimal.test-judge
     name: Test judge invocation
     status: pending

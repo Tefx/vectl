@@ -37339,3 +37339,8 @@ phases:
   status: locked
   depends_on:
   - driver-debt-decision-state
+- id: driver-debt-cli-entrypoint-unification
+  name: 'Driver Debt: CLI Entrypoint Unification'
+  status: locked
+  depends_on:
+  - driver-debt-completion-authority

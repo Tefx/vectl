@@ -42649,41 +42649,6 @@ phases:
 
       '
     agent: python-senior
-  - id: driver-judge-hardening-recovery-policy.test-define-red
-    name: Define expected-red judgment failure policy regressions
-    status: pending
-    description: "step_type: test\nstep_intent: test_define_red\nexpected_result:\
-      \ red\nspec_refs:\n  - driver.yaml#judge\n  - docs/DRIVER-ARCHITECTURE.md#judge-runtime\n\
-      touch_paths:\n  - tests/test_driver_judge.py\n  - tests/test_driver_loop_runtime.py\n\
-      \  - tests/test_driver_loop_hardening.py\nharness_refs:\n  - judge failure fixtures\n\
-      \  - real-runner timeout and malformed-output repro helpers\nauthoritative_interface:\
-      \ failure policy matrix pinned in driver-judge-hardening-recovery-policy.contract\n\
-      agent_source: default\n\nDefine expected-red regressions that expose the missing\
-      \ or ambiguous failure-handling behavior before product changes land.\n\nCoverage\
-      \ MUST include:\n- `JudgmentParseError` disposition by judgment type\n- timeout\
-      \ / stall-timeout handling\n- malformed and empty output handling\n- whether\
-      \ retry, fallback, halt, or planner remediation is expected in each case\n\n\
-      This is a test-only step; product code changes are out of scope."
-    verification: '- Modified files are limited to tests and helpers
-
-      - Expected-red coverage exposes the current policy ambiguity without modifying
-      runtime code
-
-      - Evidence names the downstream implementation owner: driver-judge-hardening-recovery-policy.impl'
-    evidence_template: '## Expected-Red Failure Policy Tests
-
-      - New/updated test files:
-
-      - Failure classes covered:
-
-      - Policy gaps exposed:
-
-      - Downstream implementation owner: driver-judge-hardening-recovery-policy.impl
-
-      '
-    depends_on:
-    - driver-judge-hardening-recovery-policy.contract
-    agent: python-executor
   - id: driver-judge-hardening-recovery-policy.impl
     name: Implement judge failure handling policy
     status: pending
@@ -42790,7 +42755,6 @@ phases:
       ambiguity'
     depends_on:
     - driver-judge-hardening-recovery-policy.contract
-    - driver-judge-hardening-recovery-policy.test-define-red
     - driver-judge-hardening-recovery-policy.impl
     - driver-judge-hardening-recovery-policy.verify
     agent: gate-reviewer

@@ -40528,35 +40528,27 @@ phases:
   - id: driver-routing-hardening.impl
     name: Reject reserved `agent_routing.default` during config load
     status: pending
-    description: 'step_type: implementation
-
-
-      Implement the reserved-key validation in driver config loading and model validation.
-
-
-      Scope:
-
-      - reject `agent_routing.default` during config validation with a clear error
-
-      - preserve exact match, glob match, and `fallback_runner` semantics unchanged
-
-      - do not add implicit default-routing behavior to `agent_routing`
-
-
-      Files likely touched:
-
-      - `src/vectl/driver/config.py`
-
-      - focused driver config tests only
-
-
-      Completion criteria:
-
-      - invalid configs fail during `load_config()` / `DriverConfig` validation
-
-      - error text is specific enough for users to self-correct
-
-      - no runtime path silently ignores the key'
+    description: "step_type: implementation\n\nFill in stub bodies and replace placeholder\
+      \ config validation with substantive reserved-key rejection logic under the\
+      \ pinned contract.\n\nUPSTREAM ARTIFACTS (from contract/test steps):\n  - src/vectl/driver/config.py\
+      \ — from_step: driver-routing-hardening.contract — tier: contract\n  - tests/test_driver_config.py\
+      \ — from_step: driver-routing-hardening.test-define-red — tier: test\n\nYOUR\
+      \ SCOPE: Complete the implementation within existing config-loading signatures;\
+      \ do not add new routing semantics.\n\nDeviation protocol: If a contract artifact\
+      \ is wrong or incomplete, document a deviation record (type, what, why, impact)\
+      \ — do NOT silently rewrite.\n\nupstream_artifacts:\n  - path: src/vectl/driver/config.py\n\
+      \    from_step: driver-routing-hardening.contract\n    tier: contract\n  - path:\
+      \ tests/test_driver_config.py\n    from_step: driver-routing-hardening.test-define-red\n\
+      \    tier: test\n\nScope:\n- reject `agent_routing.default` during config validation\
+      \ with a clear error\n- preserve exact match, glob match, and `fallback_runner`\
+      \ semantics unchanged\n- do not add implicit default-routing behavior to `agent_routing`\n\
+      \nFiles likely touched:\n- `src/vectl/driver/config.py`\n- focused driver config\
+      \ tests only\n\n## Completion Criteria (stub exclusion)\nThis is an IMPLEMENTATION\
+      \ step. Stub-only completion is NOT acceptable.\nReserved-key validation must\
+      \ execute in the real config path; comment-only or TODO-only guards do not satisfy\
+      \ this step.\n\nCompletion criteria:\n- invalid configs fail during `load_config()`\
+      \ / `DriverConfig` validation\n- error text is specific enough for users to\
+      \ self-correct\n- no runtime path silently ignores the key"
     verification: 'phase-check protecting driver-routing-hardening.verify.
 
       - Targeted config tests prove reserved-key rejection

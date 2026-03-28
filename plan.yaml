@@ -39424,6 +39424,9 @@ phases:
 
       - register existing loop-executed runtime actions under the layered registry
 
+      - ensure planner dispatch is explicitly covered in the `planner` layer rather
+      than left as helper-only logic outside registry control
+
       - preserve stable `loop.py` orchestration skeleton by moving action definitions
       out of `if/elif` growth paths
 
@@ -39434,23 +39437,29 @@ phases:
 
       - unknown actions fail at the registry boundary
 
-      - handler registration does not depend on module-global mutable registries without
-      reset semantics
+      - registry shape is declarative and auditable for the covered actions in this
+      rollout
 
       - existing runtime actions keep their behavioral contracts while moving into
       registry form
 
 
-      Out-of-scope guardrail: full loop branching migration happens in the next phase.'
+      Out-of-scope guardrail: full loop branching migration happens in the next phase.
+      This step does not introduce a dynamic module-level registration mechanism as
+      the primary action model.'
     verification: 'phase-check protecting planner-dispatch registration and gate.
 
       - Main path: targeted tests show execution/planner/control/recovery categories
       are all represented
 
-      - Failure path: regression covers unknown-action rejection and registry reset/initialization
-      behavior
+      - Main path: targeted tests show planner dispatch is explicitly present in the
+      planner layer
 
-      - Proof: action metadata is centralized in action_registry.py'
+      - Failure path: regression covers unknown-action rejection and helper-only bypass
+      around registry control
+
+      - Proof: action metadata is centralized in action_registry.py and planner dispatch
+      is within declared registry coverage'
     depends_on:
     - driver-evolution-action-registry.planner-dispatch-contract
     agent: python-senior

@@ -34345,13 +34345,13 @@ phases:
       gate_verdict: PASS'
 - id: driver-judgment-expansion-replan
   name: Driver Judgment Expansion + Replan
-  status: pending
+  status: in_progress
   depends_on:
   - driver-multi-runner-hardening
   steps:
   - id: driver-judgment-expansion-replan.contract-replan-planner-wiring
     name: Contract replan and planner wiring
-    status: pending
+    status: claimed
     description: "step_type: contract\ncontract_purity: ENFORCED\ncontract_outputs:\n\
       \  - signatures\n  - type_defs\n  - interfaces\n  - stubs\n\nPin the exact REPLAN/planner-dispatch\
       \ wiring contract for src/vectl/driver/loop.py based on blueprint key flows,\
@@ -34361,6 +34361,8 @@ phases:
     verification: '- Contract names trigger points, planner_instruction handling,
       and bounded deferral rules'
     agent: software-architect
+    claimed_by: software-architect
+    claimed_at: '2026-03-28T10:07:38.379233+00:00'
   - id: driver-judgment-expansion-replan.test-replan-planner-wiring
     name: Test replan and planner wiring
     status: pending

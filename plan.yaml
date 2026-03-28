@@ -40254,3 +40254,10 @@ phases:
     and heartbeat/progress events with schema-safe evidence.
   depends_on:
   - driver-enhancement-foundation
+- id: driver-enhancement-streaming-progress
+  name: 'Driver Enhancement: Streaming & Progress'
+  status: locked
+  gate: Driver consumes runner JSONL incrementally and exposes heartbeat/progress-aware
+    liveness without waiting for end-of-process collection.
+  depends_on:
+  - driver-enhancement-foundation

@@ -39982,3 +39982,34 @@ phases:
     depends_on:
     - driver-evolution-review.wiring-audit
     agent: gate-reviewer
+  - id: driver-evolution-review.black-box-verification
+    name: Black-box verify the evolved driver surfaces
+    status: pending
+    description: 'step_type: verification
+
+      expected_result: green
+
+      verification_scope: phase-check
+
+
+      Using ONLY the ADR, public entrypoints, and public contracts in scope:
+
+      - verify the driver emits versioned canonical events
+
+      - verify the runnable driver surface remains usable
+
+      - verify planner-dispatch-triggering behavior reaches the declared first-class
+      action path when exercised
+
+      - verify docs/examples are consistent with the actual observable behavior
+
+
+      This is black-box behavior proof, not implementation-source confirmation.'
+    verification: 'phase-check protecting driver-evolution-review.gate.
+
+      - Evidence includes exact commands/tests and actual observable output
+
+      - Any behavior that contradicts the ADR or synced docs is reported as divergence'
+    depends_on:
+    - driver-evolution-review.spec-conformance
+    agent: blind-tester

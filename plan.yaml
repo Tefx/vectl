@@ -39095,7 +39095,7 @@ phases:
   steps:
   - id: driver-debt-review.update-docs
     name: Sync driver docs to remediated architecture
-    status: claimed
+    status: done
     description: 'step_type: implementation
 
       Verification scope: phase-check protecting driver-debt-doc-sync.gate.
@@ -39128,6 +39128,30 @@ phases:
     agent: doc-reviewer
     claimed_by: project-guide
     claimed_at: '2026-03-28T22:26:04.229726+00:00'
+    done_at: '2026-03-28T22:27:57.944879+00:00'
+    evidence: 'Documentation sync completed (verified by commit 6d318b35ff9411da83acf26e04e3398f6440ed30
+      on step branch).
+
+
+      Updated files:
+
+      - docs/ADR-driver-evolution-foundation.md
+
+      - docs/DRIVER-ARCHITECTURE.md
+
+
+      Doc updates align with implemented behavior:
+
+      - SessionPool vs DecideState ownership boundary clarified for explicit state
+      passing.
+
+      - reconcile-only completion sink and runtime ignore of decide(action=''complete'')
+      documented per A1 contract.
+
+      - CLI entrypoint invocation forms, positional/--config behavior, mutual exclusion,
+      and shared exit-code matrix documented.
+
+      - stale/duplicative exit-code text removed.'
   - id: driver-debt-review.gate
     name: Final gate for driver debt remediation
     status: pending

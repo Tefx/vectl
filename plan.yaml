@@ -42437,10 +42437,11 @@ phases:
     - driver-judge-hardening-structured-output.real-codex-verify
     agent: gate-reviewer
 - id: driver-judge-hardening-recovery-policy
-  name: 'Driver Judge Hardening: Failure Handling Policy'
+  name: 'Driver Judge Hardening: Failure Policy Alignment'
   status: locked
-  gate: Judgment failure classes have an explicit retry/fallback/halt/remediation
-    matrix with independent verification.
+  gate: Judge failure classes have an explicit retry/fallback/halt/remediation matrix
+    and publish continuity-consumable outcomes; durable resume, restart recovery,
+    and recovery journaling are owned by continuity phases.
   depends_on:
   - driver-judge-hardening-foundation
   steps:

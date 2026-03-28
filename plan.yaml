@@ -37331,7 +37331,7 @@ phases:
       \ passes with architectural debt recorded.**"
 - id: driver-debt-decision-state
   name: 'Driver Debt: DecideState Isolation'
-  status: in_progress
+  status: done
   depends_on:
   - driver-deep-review
   steps:
@@ -37620,7 +37620,7 @@ phases:
       runtime path.'
   - id: driver-debt-decision-state.gate
     name: Gate DecideState isolation phase
-    status: claimed
+    status: done
     description: 'step_type: gate
 
       As an INDEPENDENT REVIEWER, decide whether A2 remediation is safe to build on.
@@ -37662,9 +37662,37 @@ phases:
     agent: gate-reviewer
     claimed_by: gate-reviewer
     claimed_at: '2026-03-28T20:20:49.304667+00:00'
+    done_at: '2026-03-28T20:27:29.393044+00:00'
+    evidence: 'Gate-reviewer SUCCESS.
+
+
+      step_intent: gate review
+
+      expected_result: green (block if unresolved ownership/isolation regressions)
+
+      observed_result: green
+
+      failure_alignment: none
+
+      product_files_modified: no
+
+
+      Gate verdict: PASS.
+
+      Evidence includes:
+
+      - Explicit runtime wiring uses state=state.decide_state in loop runtime path.
+
+      - Isolation tests and runtime wiring tests pass for instance-local DecideState
+      ownership.
+
+      - No unresolved blocker on module-global state in runtime path; legacy fallback
+      documented as non-runtime-path for explicit driver calls.
+
+      - No regression in reuse/failure escalation behavior.'
 - id: driver-debt-completion-authority
   name: 'Driver Debt: Completion Authority Convergence'
-  status: locked
+  status: pending
   depends_on:
   - driver-debt-decision-state
   steps:

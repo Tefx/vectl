@@ -43273,6 +43273,46 @@ phases:
 
       - Evidence names the highest-risk failure path, not only happy-path restart'
     agent: python-executor
+  - id: driver-continuity-restart-recovery.impl
+    name: Implement startup recovery controller and continuity policy
+    status: pending
+    description: "step_type: implementation\ntags:\n  - integration\nImplement the\
+      \ bootstrap-blocker startup recovery path and abnormal-stop continuity policy.\n\
+      \nScope:\n- perform startup recovery beyond claims repair/orphan cleanup by\
+      \ restoring continuity state and reconciling runtime recovery facts\n- apply\
+      \ failure/abort continuity policy using authoritative judge outcomes, capability\
+      \ facts, and replay-safe resume rules\n- recover or halt deterministically when\
+      \ plan/claims/ledger disagree\n- wire the real driver entrypoint to the restart\
+      \ recovery controller\n\n## Completion Criteria (stub exclusion)\nThis is an\
+      \ IMPLEMENTATION step. Stub-only completion is NOT acceptable.\nEach deliverable\
+      \ MUST contain substantive logic that processes its inputs and produces outputs\
+      \ that vary based on those inputs. Private stub classes (`_Runtime*`, `_Stub*`,\
+      \ `_Placeholder*`) do not satisfy this requirement.\n\n## Failure-mode checklist\n\
+      - restart after failed step with incomplete completion signal\n- aborted run\
+      \ with durable continuity state but stale claims\n- replay-safe resume denied\
+      \ because capability facts changed\n- partial recovery where one source is missing\
+      \ or corrupt\n- explicit halt path when reconciliation cannot prove safety\n\
+      \n## State semantics\n- last-writer-wins: resolved recovery decision for the\
+      \ current restart attempt\n- preserve exactly: failure provenance, continuity\
+      \ cursor, replay token, runner capability snapshot, and safety reason\n- backward-compatible\
+      \ legacy behavior: pre-continuity runs degrade to safe fresh-start/halt behavior\
+      \ rather than unsafe resume\n\n## Out-of-scope guardrail\n- advanced streaming\
+      \ progress UX and rich post-bootstrap recovery analytics remain deferred\n\n\
+      ## Integration Evidence Required\nPath exercised: driver CLI/entrypoint -> startup\
+      \ recovery controller -> continuity authority/ledger -> runner/judge decision\
+      \ -> resumed or halted operation"
+    verification: '- Main path: startup recovery resumes a safe, resumable attempt
+      using real continuity artifacts
+
+      - Failure path: targeted regression covers failed/aborted restart, stale claims,
+      and explicit halt behavior
+
+      - Proof: startup path now does more than claims repair/orphan cleanup and uses
+      capability-aware replay-safe decisions'
+    depends_on:
+    - driver-continuity-restart-recovery.contract
+    - driver-continuity-restart-recovery.test-define-red
+    agent: python-senior
 - id: driver-continuity-review
   name: 'Driver Continuity: Review'
   status: locked

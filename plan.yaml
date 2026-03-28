@@ -38914,9 +38914,12 @@ phases:
 
       - update registry definitions for `FINAL`, `DECIDE`, and `STEP_COMPLETED`
 
-      - make `FINAL` summary-oriented, including completed/finalized work summary,
-      total duration, total cost/tokens when available, and optional halt reason if
-      adopted
+      - make `FINAL` the summary-oriented canonical final event, including completed/finalized
+      work summary, total duration, total cost/tokens when available, and optional
+      `halt_reason`
+
+      - preserve `HALT` as a separate event while ensuring end-of-run consumers do
+      not need to backscan the stream to learn the terminal halt reason
 
       - remove or relocate raw runtime snapshot payloads that currently overload `FINAL`
 
@@ -38926,6 +38929,9 @@ phases:
       Failure-mode checklist:
 
       - no summary field is silently placed outside the canonical envelope/data split
+
+      - `halt_reason` is optional on `FINAL`, not a second-class afterthought gated
+      by unresolved ADR questions
 
       - DECIDE and STEP_COMPLETED keep explicit required vs optional field boundaries
 
@@ -38943,9 +38949,10 @@ phases:
       canonical registry definitions
 
       - Failure path: regression covers rejection or absence of legacy FINAL snapshot
-      overloading
+      overloading and verifies FINAL may carry optional `halt_reason`
 
-      - Proof: event ownership remains centralized in the registry'
+      - Proof: event ownership remains centralized in the registry and HALT remains
+      preserved as a distinct event'
     depends_on:
     - driver-evolution-event-contracts.contract
     agent: python-senior

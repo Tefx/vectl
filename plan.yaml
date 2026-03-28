@@ -35748,7 +35748,7 @@ phases:
       not a stubbed adapter.'
   - id: driver-cli-integration.wiring-audit
     name: CLI drive wiring audit
-    status: pending
+    status: claimed
     description: 'step_type: verification
 
       Verification scope: phase-check protecting driver-cli-integration.gate.
@@ -35768,6 +35768,8 @@ phases:
     depends_on:
     - driver-cli-integration.verify-cli-drive
     agent: wiring-auditor
+    claimed_by: wiring-auditor
+    claimed_at: '2026-03-28T12:34:13.338225+00:00'
   - id: driver-cli-integration.spec-conformance
     name: CLI drive spec conformance
     status: pending

@@ -37331,13 +37331,13 @@ phases:
       \ passes with architectural debt recorded.**"
 - id: driver-debt-decision-state
   name: 'Driver Debt: DecideState Isolation'
-  status: pending
+  status: in_progress
   depends_on:
   - driver-deep-review
   steps:
   - id: driver-debt-decision-state.contract
     name: Pin DecideState ownership contract
-    status: pending
+    status: claimed
     description: "step_type: contract\ncontract_purity: ENFORCED\ncontract_outputs:\n\
       \  - signatures\n  - type_defs\n  - interfaces\n  - stubs\nVerification scope:\
       \ phase-check protecting driver-debt-decision-state.impl and driver-debt-decision-state.gate.\n\
@@ -37374,6 +37374,8 @@ phases:
     - src/vectl/driver/session.py
     - docs/DRIVER-ARCHITECTURE.md
     agent: python-senior
+    claimed_by: python-senior
+    claimed_at: '2026-03-28T17:01:27.325477+00:00'
   - id: driver-debt-decision-state.test-define-red
     name: Define expected-red isolation regressions
     status: pending
@@ -37828,13 +37830,13 @@ phases:
     agent: gate-reviewer
 - id: driver-debt-cli-entrypoint-unification
   name: 'Driver Debt: CLI Entrypoint Unification'
-  status: pending
+  status: in_progress
   depends_on:
   - driver-deep-review
   steps:
   - id: driver-debt-cli-entrypoint-unification.contract
     name: Pin shared driver entrypoint contract
-    status: pending
+    status: claimed
     description: "step_type: contract\ncontract_purity: ENFORCED\ncontract_outputs:\n\
       \  - signatures\n  - interfaces\n  - behavioral notes\nVerification scope: phase-check\
       \ protecting driver-debt-cli-entrypoint-unification.impl and gate.\n\nPin the\
@@ -37859,6 +37861,8 @@ phases:
     - src/vectl/cli.py
     - docs/DRIVER-ARCHITECTURE.md
     agent: python-senior
+    claimed_by: python-senior
+    claimed_at: '2026-03-28T17:00:51.042584+00:00'
   - id: driver-debt-cli-entrypoint-unification.test-define-red
     name: Define expected-red CLI parity regressions
     status: pending
@@ -38053,13 +38057,13 @@ phases:
     agent: gate-reviewer
 - id: driver-debt-policy-extraction
   name: 'Driver Debt: Loop Policy Extraction'
-  status: pending
+  status: in_progress
   depends_on:
   - driver-deep-review
   steps:
   - id: driver-debt-policy-extraction.contract
     name: Pin driver.policy extraction seam
-    status: pending
+    status: claimed
     description: "step_type: contract\ncontract_purity: ENFORCED\ncontract_outputs:\n\
       \  - signatures\n  - interfaces\n  - behavioral notes\nVerification scope: phase-check\
       \ protecting driver-debt-policy-extraction.impl and gate.\n\nPin the A3 extraction\
@@ -38080,6 +38084,8 @@ phases:
     - src/vectl/driver/policy.py
     - tests/test_driver_loop_hardening.py
     agent: python-senior
+    claimed_by: python-senior
+    claimed_at: '2026-03-28T17:03:18.459057+00:00'
   - id: driver-debt-policy-extraction.tests
     name: Add behavior-lock tests for policy helpers
     status: pending
@@ -41417,3 +41423,10 @@ phases:
     - driver-enhancement-review.contract-strength
     - driver-enhancement-review.black-box-verification
     agent: gate-reviewer
+- id: driver-guardrails-foundation
+  name: 'Driver Guardrails: Foundation'
+  status: locked
+  gate: Authoritative contracts exist for judge structured output, prompt/runtime
+    ownership, and real-bootstrap guardrail policy before any restoration work begins.
+  depends_on:
+  - driver-enhancement-review

@@ -40261,3 +40261,10 @@ phases:
     liveness without waiting for end-of-process collection.
   depends_on:
   - driver-enhancement-foundation
+- id: driver-enhancement-runner-recovery
+  name: 'Driver Enhancement: Runner Recovery'
+  status: locked
+  gate: Driver distinguishes crash/fail/timeout/stall/no-progress and applies an explicit
+    recovery matrix with watchdog-backed evidence.
+  depends_on:
+  - driver-enhancement-foundation

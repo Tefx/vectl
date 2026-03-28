@@ -33480,7 +33480,7 @@ phases:
       \ dependency rewired to block until retest completes."
   - id: driver-judgment-runtime-minimal.wiring-audit
     name: Runtime minimal wiring audit
-    status: pending
+    status: claimed
     description: 'step_type: verification
 
       Verification scope: phase-check protecting driver-judgment-runtime-minimal.gate.
@@ -33506,6 +33506,8 @@ phases:
     depends_on:
     - driver-judgment-runtime-minimal.retest-liveness-probe
     agent: wiring-auditor
+    claimed_by: wiring-auditor
+    claimed_at: '2026-03-28T08:59:09.669286+00:00'
   - id: driver-judgment-runtime-minimal.spec-conformance
     name: Judgment and runtime minimal spec conformance
     status: pending

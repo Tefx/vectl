@@ -34628,6 +34628,149 @@ phases:
     depends_on:
     - driver-judgment-expansion-replan.freeze
     agent: gate-reviewer
+  - id: driver-judgment-expansion-replan.expected-red-schema
+    name: Add verify field to Step model (expected-red schema)
+    status: pending
+    description: 'step_type: implementation
+
+      tags: []
+
+
+      RFC: docs/RFC-expected-red-verification-semantics.md (Sections 4-5)
+
+
+      Add an optional `verify` field to the `Step` model in `src/vectl/models.py`.
+
+
+      ## Exact Change
+
+
+      In `class Step(BaseModel)` (around line 69), add a new optional field:
+
+
+      ```python
+
+      verify: Literal["expected_red", "must_green"] | None = None
+
+      ```
+
+
+      Place it after the `evidence_template` field (line 80) and before `refs`.
+
+
+      ## Serialization/Deserialization
+
+
+      Pydantic handles this automatically for `Literal` union types with `None` default.
+
+      Verify that:
+
+      - When `verify` is absent in YAML, it deserializes as `None`
+
+      - When `verify` is `"expected_red"`, it round-trips correctly
+
+      - When `verify` is `"must_green"`, it round-trips correctly
+
+      - When `verify` is an invalid string (e.g. `"green"`), Pydantic raises a validation
+      error
+
+      - The field is omitted from serialized output when `None` (use `exclude_none=True`
+      or equivalent — check existing serialization pattern in `src/vectl/io.py`)
+
+
+      ## Backward Compatibility (CRITICAL)
+
+
+      Existing `plan.yaml` files that do not have a `verify` field on any step MUST
+      load without error. The `None` default ensures this. Verify by loading THIS
+      repo''s `plan.yaml` after the change.
+
+
+      ## Semantic Contract
+
+
+      - `None` and `"must_green"` are equivalent at runtime: red = failure (current
+      behavior)
+
+      - `"expected_red"`: red output is acceptable when it demonstrates missing behavior
+
+
+      ## Out of Scope
+
+
+      - Do NOT modify `decide.py` (that is the next step)
+
+      - Do NOT modify CLI/MCP rendering (that is a later step)
+
+      - Do NOT modify any other model classes
+
+
+      ## Completion Criteria (stub exclusion)
+
+      This is an IMPLEMENTATION step. Stub-only completion is NOT acceptable.
+
+      The field must be a real Pydantic field with working validation.'
+    verification: '- `verify` field exists on Step model with correct type annotation
+
+      - Existing plan.yaml loads without error (run: uv run vectl validate)
+
+      - Round-trip test: a step with verify=expected_red serializes and deserializes
+      correctly
+
+      - Invalid value rejected: verify="green" raises Pydantic ValidationError
+
+      - Field is omitted from YAML output when None (check serialization in io.py)'
+    evidence_template: '## Expected-Red Schema Evidence
+
+
+      **Model change diff** (src/vectl/models.py):
+
+      ```
+
+      <paste diff showing new field>
+
+      ```
+
+
+      **Backward compatibility proof**:
+
+      ```
+
+      $ uv run vectl validate
+
+      <paste output — must show plan is valid>
+
+      ```
+
+
+      **Round-trip test** (expected_red value):
+
+      ```
+
+      <paste test or REPL showing serialize/deserialize>
+
+      ```
+
+
+      **Invalid value rejection**:
+
+      ```
+
+      <paste ValidationError for verify="green">
+
+      ```
+
+
+      **Serialization omission** (None value not in output):
+
+      ```
+
+      <paste evidence that None verify is excluded from YAML>
+
+      ```'
+    depends_on:
+    - driver-judgment-expansion-replan.verify-gate-chain-e2e
+    agent: python-executor
 - id: driver-cli-integration
   name: Driver CLI Integration
   status: locked

@@ -41434,8 +41434,10 @@ phases:
   status: locked
   gate: Packaged judge-prompt resource contract, docs/runtime relationship, and failure
     semantics are pinned before runtime migration fan-out.
+  context: Non-blocking prompt-resource work. Deliberately postponed until the renewed
+    real-bootstrap milestone is satisfied.
   depends_on:
-  - driver-debt-review
+  - driver-bootstrap-readiness
   steps:
   - id: driver-prompt-foundation.contract
     name: Pin packaged judge-prompt contract

@@ -34037,7 +34037,7 @@ phases:
       - driver hardening failure-mode handling in blueprint/runtime architecture docs'
   - id: driver-multi-runner-hardening.verify-session-boundary
     name: Verify session reuse boundary
-    status: pending
+    status: claimed
     description: 'step_type: verification
 
       Verification scope: local-check protecting driver-multi-runner-hardening.gate.
@@ -34070,6 +34070,8 @@ phases:
     depends_on:
     - driver-multi-runner-hardening.impl-loop-hardening
     agent: integration-verifier
+    claimed_by: integration-verifier
+    claimed_at: '2026-03-28T09:44:58.249291+00:00'
   - id: driver-multi-runner-hardening.verify-conflict-and-multirunner
     name: Verify conflict resolution and multi-runner seams
     status: pending

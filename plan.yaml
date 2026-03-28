@@ -38645,7 +38645,7 @@ phases:
     - src/vectl/cli.py
     - src/vectl/driver/policy.py
     agent: spec-verifier
-  - id: driver-debt-deep-review.architecture-review
+  - id: driver-debt-review.architecture-review
     name: Review driver debt architecture boundaries
     status: pending
     description: 'step_type: review

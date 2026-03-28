@@ -39088,7 +39088,7 @@ phases:
   - driver-debt-doc-sync
 - id: driver-debt-review
   name: 'Driver Debt: Review'
-  status: pending
+  status: in_progress
   gate: Consolidated doc-sync + deep review after system wiring
   depends_on:
   - driver-debt-system-wiring
@@ -39205,7 +39205,7 @@ phases:
     agent: blind-tester
   - id: driver-debt-review.spec-conformance
     name: Audit driver debt spec conformance
-    status: pending
+    status: claimed
     description: 'step_type: verification
 
       Verification scope: full-plan-check protecting driver-debt-deep-review.gate.
@@ -39233,6 +39233,8 @@ phases:
     - src/vectl/cli.py
     - src/vectl/driver/policy.py
     agent: spec-verifier
+    claimed_by: spec-verifier
+    claimed_at: '2026-03-28T22:10:16.775699+00:00'
   - id: driver-debt-review.architecture-review
     name: Review driver debt architecture boundaries
     status: pending

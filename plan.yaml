@@ -35592,7 +35592,7 @@ phases:
       - Run: uv run pytest tests/test_cli.py -x -q -> 239 passed'
   - id: driver-cli-integration.impl-cli-drive
     name: Implement vectl drive CLI command
-    status: claimed
+    status: done
     description: "step_type: implementation\n\ntags:\n  - integration\n\nImplement\
       \ the vectl drive command in src/vectl/cli.py exactly as documented.\n\n## Completion\
       \ Criteria (stub exclusion)\nThis is an IMPLEMENTATION step. Stub-only completion\
@@ -35605,6 +35605,57 @@ phases:
     agent: python-executor
     claimed_by: python-executor
     claimed_at: '2026-03-28T12:16:46.390388+00:00'
+    done_at: '2026-03-28T12:20:03.285957+00:00'
+    evidence: 'Artifact:
+
+      - PR/Commit: f668a5a27804ab6fdb1d182221a78f9cf8bff182 (branch vectl/step-driver-cli-integration.impl-cli-drive)
+
+
+      Verification:
+
+      - Run: uv run pytest tests/test_cli.py::TestDriveCLI -v -> 8 passed
+
+      - Run: uv run pytest tests/test_cli.py -x -q -> 239 passed
+
+      - Run: uv run vectl drive --help -> Command surfaces correctly with --config
+      PATH
+
+
+      Implementation details:
+
+      - Command name: "drive" (registered via @app.command())
+
+      - Flag surface: --config PATH with default "driver.yaml" (typer.Option)
+
+      - Config validation: checks config.exists() before running, exits with code
+      1 if missing
+
+      - Runtime handoff: asyncio.run(run(config)) wires to vectl.driver.loop.run
+
+      - Error handling: wraps exceptions in console error + typer.Exit(1)
+
+
+      Files modified:
+
+      - src/vectl/cli.py: Replaced NotImplementedError stub with implementation
+
+      - tests/test_cli.py: Updated test_drive_raises_not_implemented -> test_drive_error_on_missing_config
+
+
+      Test coverage:
+
+      - CLI flag parsing expectations: PASS
+
+      - Config resolution and validation handoff: PASS (missing config exits cleanly)
+
+      - Runtime entrypoint wiring contract: PASS (asyncio.run(run(config)))
+
+
+      Spec link:
+
+      - DRIVER-BLUEPRINT.md line 44: CLI entry: vectl drive [--config PATH]
+
+      - DRIVER-BLUEPRINT.md lines 115-122: Exact stub pattern documented'
   - id: driver-cli-integration.verify-cli-drive
     name: Verify vectl drive real path
     status: pending

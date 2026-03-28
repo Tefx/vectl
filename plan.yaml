@@ -38132,6 +38132,201 @@ phases:
   status: locked
   depends_on:
   - driver-debt-cli-entrypoint-unification
+  steps:
+  - id: driver-debt-policy-extraction.contract
+    name: Pin driver.policy extraction seam
+    status: pending
+    description: "step_type: contract\ncontract_purity: ENFORCED\ncontract_outputs:\n\
+      \  - signatures\n  - interfaces\n  - behavioral notes\nVerification scope: phase-check\
+      \ protecting driver-debt-policy-extraction.impl and gate.\n\nPin the A3 extraction\
+      \ seam before code movement.\n\nRequired surface:\n- New module: src/vectl/driver/policy.py\n\
+      - Move, without semantic change, these pure helpers first:\n  - _detect_preflight_risk_signals()\n\
+      \  - _extract_failure_disposition()\n  - _parse_gate_issues()\n  - _is_gate_or_freeze_step()\n\
+      - Move dependent pure helper types/functions required by those helpers (for\
+      \ example ParsedGateIssue).\n- loop.py becomes a coordinator importing these\
+      \ helpers rather than owning them.\n\nBehavior-preservation rule:\n- Extraction\
+      \ is behavior-preserving only; no policy rewrites bundled into this step.\n\
+      - If a helper is discovered to require runtime state, stop and narrow the extraction\
+      \ boundary instead of smuggling coordinator behavior into policy.py."
+    verification: '- Contract lists moved helper set and no-behavior-change rule
+
+      - Any non-pure helper discovered is explicitly excluded or escalated'
+    refs:
+    - src/vectl/driver/loop.py
+    - src/vectl/driver/policy.py
+    - tests/test_driver_loop_hardening.py
+    agent: python-senior
+  - id: driver-debt-policy-extraction.tests
+    name: Add behavior-lock tests for policy helpers
+    status: pending
+    description: 'step_type: test
+
+      step_intent: retest_green
+
+      expected_result: green
+
+      Verification scope: local-check protecting driver-debt-policy-extraction.impl
+      and verify.
+
+
+      Add focused must-green tests that lock current behavior before moving helpers.
+
+
+      Required coverage:
+
+      - gate issue parsing behavior unchanged
+
+      - preflight risk signal detection unchanged
+
+      - failure disposition extraction unchanged
+
+      - gate/freeze step classification unchanged
+
+
+      Prefer dedicated tests under tests/ for driver policy behavior rather than broad
+      loop-only assertions.'
+    verification: '- Tests encode current behavior explicitly and pass before/after
+      extraction
+
+      - Scope stays test-only'
+    refs:
+    - tests/test_driver_loop_hardening.py
+    - src/vectl/driver/loop.py
+    depends_on:
+    - driver-debt-policy-extraction.contract
+    agent: python-executor
+  - id: driver-debt-policy-extraction.impl
+    name: Extract pure policy helpers from loop.py
+    status: pending
+    description: 'step_type: implementation
+
+      Verification scope: phase-check protecting driver-debt-policy-extraction.verify
+      and gate.
+
+
+      Implement A3 as a behavior-preserving extraction.
+
+
+      Required work:
+
+      - Add src/vectl/driver/policy.py.
+
+      - Move the pinned pure helpers and dependent pure types/functions there.
+
+      - Update src/vectl/driver/loop.py to import and use the extracted helpers.
+
+      - Keep loop.py focused on coordination, runtime sequencing, and ownership boundaries.
+
+      - Do not change helper behavior while moving them.
+
+
+      Known risks:
+
+      - loop.py already carries correctness-sensitive authority seams; do not couple
+      this extraction to A1/A2 rewrites.
+
+      - Gate Preview: the gate will reject any semantic drift hidden inside the move,
+      or any helper that still needs coordinator-only mutable state.'
+    verification: '- Behavior-lock tests remain green
+
+      - loop.py no longer owns the extracted pure policy helpers
+
+      - No runtime behavior drift introduced by the move'
+    refs:
+    - src/vectl/driver/policy.py
+    - src/vectl/driver/loop.py
+    - tests/test_driver_loop_hardening.py
+    depends_on:
+    - driver-debt-policy-extraction.tests
+    agent: python-executor
+  - id: driver-debt-policy-extraction.verify
+    name: Independently verify policy extraction drift-free
+    status: pending
+    description: 'step_type: verification
+
+      Verification scope: phase-check protecting driver-debt-policy-extraction.gate.
+
+
+      Independent review focused on behavior drift.
+
+
+      Must verify:
+
+      - extracted helpers in policy.py are pure and coordinator-free
+
+      - gate issue parsing behavior unchanged
+
+      - preflight risk signal detection unchanged
+
+      - failure disposition extraction unchanged
+
+      - loop.py coordinator role is narrower after extraction'
+    verification: '- Independent test run / code review cites exact proofs for no-drift
+      extraction
+
+      - Any semantic drift is reported as blocker'
+    refs:
+    - src/vectl/driver/policy.py
+    - src/vectl/driver/loop.py
+    - tests/test_driver_loop_hardening.py
+    depends_on:
+    - driver-debt-policy-extraction.impl
+    agent: integration-verifier
+  - id: driver-debt-policy-extraction.freeze
+    name: Freeze snapshot for policy extraction gate
+    status: pending
+    description: 'step_type: verification
+
+      Verification scope: phase-check protecting driver-debt-policy-extraction.gate.
+
+
+      Freeze the policy-extraction snapshot before gate review.
+
+      Required evidence: git rev-parse HEAD, clean status, environment declaration,
+      and no-change statement.'
+    verification: '- Freeze evidence complete before gate'
+    refs:
+    - src/vectl/driver/policy.py
+    - src/vectl/driver/loop.py
+    depends_on:
+    - driver-debt-policy-extraction.impl
+    agent: integration-verifier
+  - id: driver-debt-policy-extraction.gate
+    name: Gate policy extraction phase
+    status: pending
+    description: 'step_type: gate
+
+      Gate review for A3.
+
+
+      BLOCK if:
+
+      - extracted helpers changed behavior
+
+      - loop.py still owns the pinned pure policy helpers
+
+      - policy.py still depends on coordinator-only runtime state
+
+
+      review_depth: STANDARD
+
+      cross_cutting_focus:
+
+      - purity of extracted helpers
+
+      - behavior preservation
+
+      - coordinator boundary restoration'
+    verification: '- All A3 steps completed
+
+      - No unresolved behavior-drift blocker remains'
+    refs:
+    - src/vectl/driver/policy.py
+    - src/vectl/driver/loop.py
+    depends_on:
+    - driver-debt-policy-extraction.verify
+    - driver-debt-policy-extraction.freeze
+    agent: gate-reviewer
 - id: driver-debt-system-wiring
   name: 'Driver Debt: System Wiring'
   status: locked

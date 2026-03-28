@@ -40982,6 +40982,41 @@ phases:
     - driver-enhancement-runner-recovery.contract
     - driver-enhancement-runner-recovery.test-define-red
     agent: python-senior
+  - id: driver-enhancement-runner-recovery.verify
+    name: Verify failure taxonomy watchdog and recovery matrix
+    status: pending
+    description: 'step_type: verification
+
+      Verification scope: phase-check protecting driver-enhancement-runner-recovery.gate.
+
+
+      Independently validate the recovery behavior from a fresh perspective.
+
+
+      Focus:
+
+      - crash vs clean fail distinction
+
+      - timeout vs stall vs no-progress classification
+
+      - watchdog / heartbeat-driven liveness checks
+
+      - recovery strategy matrix boundaries
+
+      - future multi-runner fallback readiness'
+    verification: 'phase-check protecting driver-enhancement-runner-recovery.gate.
+
+      - Verification demonstrates distinct handling for crash, clean fail, timeout,
+      stall, and no-progress
+
+      - Evidence shows watchdog-triggered and heartbeat-driven decisions, not just
+      process-exit handling
+
+      - Recovery matrix boundaries for retry / fallback / defer / planner / halt are
+      explicit in results'
+    depends_on:
+    - driver-enhancement-runner-recovery.impl
+    agent: integration-verifier
 - id: driver-enhancement-integration
   name: 'Driver Enhancement: Integration'
   status: locked

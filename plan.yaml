@@ -32190,18 +32190,22 @@ phases:
       Verification scope: phase-check protecting driver-judgment-runtime-minimal.gate.
 
 
+      POST-IMPLEMENTATION GREEN VERIFICATION STEP.
+
+
       As an INDEPENDENT TESTER, validate startup recovery (repair_claims/orphan handling)
       and graceful shutdown (SIGINT/SIGTERM or equivalent controlled stop).
 
 
-      YOUR GOAL IS TO FIND PROBLEMS.
-
-
-      This is a real-path verification step; generic unit-test summaries are insufficient.'
+      This is a real-path verification step; generic unit-test summaries are insufficient.
+      Failures here are not expected-red.'
     verification: '- Evidence includes exact commands or controlled test invocations
       for startup recovery and shutdown paths
 
-      - At least one anomaly/recovery path and one shutdown path are demonstrated'
+      - At least one anomaly/recovery path and one shutdown path are demonstrated
+
+      - Expected result is green pass against implemented runtime behavior; any failure
+      is a blocker or should_fix finding'
     depends_on:
     - driver-judgment-runtime-minimal.impl-loop-runtime-minimal
     agent: integration-verifier

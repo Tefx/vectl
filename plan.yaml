@@ -31664,7 +31664,23 @@ phases:
     description: 'step_type: test
 
 
-      Add focused tests for runner protocols and core parser/dispatch behavior.
+      EXPECTED-RED PRE-IMPLEMENTATION TEST STEP.
+
+
+      Add focused contract/behavior tests for runner protocols and core parser/dispatch
+      behavior before implementation lands.
+
+
+      Allowed file scope:
+
+      - tests
+
+      - fixtures
+
+      - test helpers
+
+      Do NOT modify src/vectl/driver/*. If the contract is not yet implemented, keep
+      the step in test scope and report the gap.
 
 
       Required checks:
@@ -31677,11 +31693,28 @@ phases:
 
       - session resume flag translation for supported core runners
 
-      - transport error classification on malformed output'
-    verification: '- Targeted pytest file covers parser and dispatch contract for
-      core runners
+      - transport error classification on malformed output
 
-      - Tests include malformed-output and non-zero-exit cases'
+
+      Evidence requirements:
+
+      - modified files limited to tests/fixtures/helpers
+
+      - expected_failures or exposed_gaps listed explicitly
+
+      - downstream implementation owner linked: driver-execution-infra.impl-runners-core
+
+      - if any check is already green without src changes, explain why the contract
+      is already satisfied'
+    verification: '- Targeted pytest file covers the parser and dispatch contract
+      for core runners
+
+      - Step succeeds if it either (a) records expected-red failures/exposed gaps
+      without product-code edits, or (b) proves the contract already passes green
+      without src changes
+
+      - Evidence includes malformed-output and non-zero-exit cases plus the linked
+      implementation owner: driver-execution-infra.impl-runners-core'
     depends_on:
     - driver-execution-infra.contract-runners-core
     agent: python-executor

@@ -41044,6 +41044,32 @@ phases:
   - driver-enhancement-observability
   - driver-enhancement-streaming-progress
   - driver-enhancement-runner-recovery
+  steps:
+  - id: driver-enhancement-integration.system-wiring
+    name: Wire telemetry streaming and recovery into the shared driver loop
+    status: pending
+    description: "step_type: implementation\n\ntags:\n  - integration\n\nSerial integration\
+      \ step for the shared writable surfaces.\n\nScope:\n- join the observability,\
+      \ streaming/progress, and recovery branches in the real driver loop\n- keep\
+      \ registry / loop wiring / entrypoint-facing surfaces centralized here rather\
+      \ than in the parallel branches\n- verify the driver main loop consumes incremental\
+      \ runner state, emits the required observability events, and applies the recovery\
+      \ matrix without split truth\n\nShared writable surfaces expected here:\n- `src/vectl/driver/loop.py`\n\
+      - any shared registry or wiring files introduced by the enhancement foundation\n\
+      \nOut-of-scope guardrail:\n- do not reopen branch-local contracts unless integration\
+      \ reveals a true incompatibility"
+    verification: 'phase-check protecting driver-enhancement-integration.verify-e2e
+      and driver-enhancement-integration.full-plan-check.
+
+      - Main path: integrated driver path exercises streaming-aware liveness, telemetry
+      emission, and recovery decisions together
+
+      - Failure path: targeted regression covers an observed no-progress or recovery-triggered
+      path through the integrated loop
+
+      - Proof: shared wiring changes are confined to the integration surface rather
+      than scattered back into the branch phases'
+    agent: python-senior
 - id: driver-enhancement-review
   name: 'Driver Enhancement: Review'
   status: locked

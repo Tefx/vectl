@@ -43565,7 +43565,7 @@ phases:
   steps:
   - id: driver-continuity-foundation.architecture-basis
     name: Produce continuity architecture basis
-    status: claimed
+    status: done
     description: 'step_type: planning
 
       Build the approved architecture basis for bootstrap-blocker continuity work.
@@ -43612,6 +43612,11 @@ phases:
     agent: software-architect
     claimed_by: software-architect
     claimed_at: '2026-03-28T22:33:02.369063+00:00'
+    done_at: '2026-03-28T22:42:31.238864+00:00'
+    evidence: Continuity architecture basis delivered and approved for bootstrap-blocker
+      scope. Evidence names system layers, single durable continuity authority, source-of-truth
+      matrix, state strata, transport boundaries, governance, shared abstractions,
+      and readiness.
   - id: driver-continuity-foundation.contract
     name: Pin continuity authority and capability contract
     status: done

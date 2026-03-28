@@ -43154,6 +43154,42 @@ phases:
     - driver-continuity-capability-safety.contract
     - driver-continuity-capability-safety.test-define-red
     agent: python-senior
+  - id: driver-continuity-capability-safety.verify
+    name: Verify runner capability and replay safety
+    status: pending
+    description: 'step_type: verification
+
+      As an INDEPENDENT TESTER (integration-verifier), validate runner capability
+      handling and replay-safe idempotency from a fresh perspective.
+
+
+      YOUR GOAL IS TO FIND PROBLEMS, not to confirm it works.
+
+
+      Test for:
+
+      - Happy path: resumable runners resume only when capability and continuity state
+      agree
+
+      - Edge cases: non-resumable runners, stale capability snapshots, duplicate restart
+      attempts
+
+      - Error scenarios: tool replay collision, duplicate completion signal, and partially
+      recovered attempts
+
+
+      Independence Level: L2
+
+      Verification scope: phase-check protecting driver-continuity-capability-safety.gate
+      and downstream driver-continuity-restart-recovery.'
+    verification: '- Execute capability-aware recovery tests with actual outputs
+
+      - Report any duplicate side-effect, unsafe replay, or capability inference gaps
+
+      - Evidence distinguishes resumable from restart-only runner behavior'
+    depends_on:
+    - driver-continuity-capability-safety.impl
+    agent: integration-verifier
 - id: driver-continuity-restart-recovery
   name: 'Driver Continuity: Restart Recovery'
   status: locked

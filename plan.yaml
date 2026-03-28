@@ -43034,6 +43034,26 @@ phases:
     side effects.
   depends_on:
   - driver-continuity-foundation
+  steps:
+  - id: driver-continuity-capability-safety.contract
+    name: Pin resume capability and replay safety contract
+    status: pending
+    description: "step_type: contract\ncontract_purity: ENFORCED\ncontract_outputs:\n\
+      \  - interfaces\n  - type_defs\n  - signatures\n  - stubs\nPin the exact runner\
+      \ capability and replay-safety contract for bootstrap readiness.\n\nRequired\
+      \ contract coverage:\n- capability model declaring whether a runner can resume,\
+      \ persist cursor/state, reattach logs, and tolerate replay\n- idempotency envelope\
+      \ for tool execution and duplicate dispatch detection\n- replay token semantics\
+      \ across restart, retry, and manual recovery\n- continuity-facing result fields\
+      \ that startup recovery and judge recovery policy consume\n\nThis contract is\
+      \ bootstrap-minimum only. Advanced watchdog heuristics and post-bootstrap recovery\
+      \ UX remain in driver-enhancement-runner-recovery."
+    verification: '- Contract distinguishes resume-capable vs restart-only runners
+
+      - Replay/idempotency rules are explicit enough to avoid duplicate side effects
+
+      - No implementation logic shipped'
+    agent: software-architect
 - id: driver-continuity-restart-recovery
   name: 'Driver Continuity: Restart Recovery'
   status: locked

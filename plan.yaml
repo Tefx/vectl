@@ -42768,3 +42768,11 @@ phases:
     decisions.
   depends_on:
   - driver-continuity-foundation
+- id: driver-continuity-capability-safety
+  name: 'Driver Continuity: Capability & Replay Safety'
+  status: locked
+  gate: Runner capability semantics and tool replay safety are explicit enough for
+    restart/resume control decisions and cannot silently duplicate or reapply prior
+    side effects.
+  depends_on:
+  - driver-continuity-foundation

@@ -39144,15 +39144,31 @@ phases:
     name: Add typed event emitter helpers
     status: pending
     description: "step_type: implementation\nsimple_feature_exception:\n  approved:\
-      \ false\n\nImplement typed emitter helpers on top of the canonical event registry.\n\
-      \nScope:\n- add `src/vectl/driver/events/emitter.py`\n- replace direct string-literal\
-      \ emission for `FINAL`, `DECIDE`, and `STEP_COMPLETED` at the main driver call\
-      \ sites in scope with typed helper usage\n- keep durable sink behavior unchanged\
-      \ while making emission expectations explicit per event\n\nIntegration tag:\
-      \ this step spans source-to-sink event flow (`loop.py` -> typed emitter -> sink).\n\
-      Gate Preview:\n1. Direct string-literal emitters left on critical event paths\
-      \ will be rejected\n2. Mixed canonical + legacy FINAL emit shapes will be rejected\n\
-      3. Helper APIs that bypass the registry will be rejected"
+      \ false\n\nFill in stub bodies and replace direct string-literal emission with\
+      \ substantive typed-emitter logic on the pinned canonical registry.\n\nUPSTREAM\
+      \ ARTIFACTS (from contract/test steps):\n  - src/vectl/driver/events/emitter.py\
+      \ — from_step: driver-evolution-event-contracts.contract — tier: contract\n\
+      \  - src/vectl/driver/events/registry.py — from_step: driver-evolution-event-contracts.contract\
+      \ — tier: contract\n  - tests/test_driver_loop_contract.py — from_step: driver-evolution-event-contracts.verify-emitter-flow\
+      \ — tier: test\n\nYOUR SCOPE: Complete the implementation within existing registry/event\
+      \ signatures; do not bypass the registry or introduce alternate emitter surfaces.\n\
+      \nDeviation protocol: If a contract artifact is wrong or incomplete, document\
+      \ a deviation record (type, what, why, impact) — do NOT silently rewrite.\n\n\
+      upstream_artifacts:\n  - path: src/vectl/driver/events/emitter.py\n    from_step:\
+      \ driver-evolution-event-contracts.contract\n    tier: contract\n  - path: src/vectl/driver/events/registry.py\n\
+      \    from_step: driver-evolution-event-contracts.contract\n    tier: contract\n\
+      \  - path: tests/test_driver_loop_contract.py\n    from_step: driver-evolution-event-contracts.verify-emitter-flow\n\
+      \    tier: test\n\nScope:\n- add `src/vectl/driver/events/emitter.py`\n- replace\
+      \ direct string-literal emission for `FINAL`, `DECIDE`, and `STEP_COMPLETED`\
+      \ at the main driver call sites in scope with typed helper usage\n- keep durable\
+      \ sink behavior unchanged while making emission expectations explicit per event\n\
+      \nIntegration tag: this step spans source-to-sink event flow (`loop.py` -> typed\
+      \ emitter -> sink).\nGate Preview:\n1. Direct string-literal emitters left on\
+      \ critical event paths will be rejected\n2. Mixed canonical + legacy FINAL emit\
+      \ shapes will be rejected\n3. Helper APIs that bypass the registry will be rejected\n\
+      \n## Completion Criteria (stub exclusion)\nThis is an IMPLEMENTATION step. Stub-only\
+      \ completion is NOT acceptable.\nTyped emitter helpers must execute real source-to-sink\
+      \ emission logic; wrapper stubs do not satisfy this step."
     verification: 'phase-check protecting conformance and emitter-flow verification.
 
       - Main path: helper-backed emission produces canonical envelopes through the

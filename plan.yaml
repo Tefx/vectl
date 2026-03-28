@@ -31968,8 +31968,23 @@ phases:
     description: 'step_type: test
 
 
+      EXPECTED-RED PRE-IMPLEMENTATION TEST STEP.
+
+
       Add focused tests for judge request validation, structured-output parsing, timeout
-      handling, and observer emission.
+      handling, and observer emission before judge implementation lands.
+
+
+      Allowed file scope:
+
+      - tests
+
+      - fixtures
+
+      - test helpers
+
+      Do NOT modify src/vectl/driver/*. If the current behavior is red, report the
+      exposed gap rather than patching product code.
 
 
       Required checks:
@@ -31980,11 +31995,24 @@ phases:
 
       - timeout path raises the documented error
 
-      - disabled judgment types are skipped cleanly where configured'
+      - disabled judgment types are skipped cleanly where configured
+
+
+      Evidence requirements:
+
+      - modified files limited to tests/fixtures/helpers
+
+      - expected_failures or exposed_gaps listed explicitly
+
+      - downstream implementation owner linked: driver-judgment-runtime-minimal.impl-judge'
     verification: '- Targeted pytest file covers request validation and structured-output
       parsing expectations
 
-      - Tests do not implement loop runtime behavior'
+      - Step succeeds if it records expected-red gaps without product-code edits or
+      proves the contract already passes green without src changes
+
+      - Evidence must distinguish fixture-only work from downstream implementation
+      ownership: driver-judgment-runtime-minimal.impl-judge'
     depends_on:
     - driver-judgment-runtime-minimal.contract-judge
     agent: python-executor

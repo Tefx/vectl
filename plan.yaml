@@ -39633,6 +39633,54 @@ phases:
     depends_on:
     - driver-evolution-loop-migration.contract
     agent: python-senior
+  - id: driver-evolution-loop-migration.system-wiring
+    name: Wire the runnable driver path to registry-backed handlers
+    status: pending
+    description: 'step_type: verification
+
+      expected_result: green
+
+      verification_scope: phase-check
+
+
+      System wiring proof for the evolved driver.
+
+
+      Verify the runnable driver entrypoint is wired end-to-end to the real registry-backed
+      handler path.
+
+      Required checks:
+
+      - actual driver entrypoint / loop startup reaches the migrated handler-resolution
+      path
+
+      - planner dispatch path is exercised through the registry in a real runtime
+      scenario
+
+      - emitted events still flow through canonical event helpers and durable sinks
+
+      - no `_Runtime*`, `_Stub*`, or helper-only planner-dispatch path remains in
+      the production entrypoint chain
+
+
+      Integration Evidence required:
+
+      - exact command or test exercising the full path
+
+      - actual output
+
+      - path exercised: entrypoint -> loop -> action registry -> handler -> event
+      emitter -> sink'
+    verification: 'phase-check protecting liveness-probe and gate.
+
+      - Evidence proves a real runnable path uses registry-backed handlers
+
+      - Planner dispatch path is included in the exercised flow
+
+      - Any surviving helper-only or stubbed runtime path is a blocker'
+    depends_on:
+    - driver-evolution-loop-migration.implement-loop-handlers
+    agent: integration-verifier
 - id: driver-evolution-review
   name: 'Driver Evolution: Review'
   status: locked

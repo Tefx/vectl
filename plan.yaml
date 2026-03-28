@@ -39133,8 +39133,10 @@ phases:
   status: locked
   gate: Typed runtime context replaces ad hoc handler inputs without regressing driver
     entrypoint behavior
+  context: Bootstrap-postponed evolution work. Runtime-context restructuring starts
+    only after the bootstrap readiness milestone is open.
   depends_on:
-  - driver-debt-review
+  - driver-bootstrap-readiness
   steps:
   - id: driver-evolution-runtime-context.contract
     name: Pin RuntimeContext contract and ownership boundaries

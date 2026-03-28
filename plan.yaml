@@ -42996,20 +42996,27 @@ phases:
       protects_downstream_gates:\n  - driver-judge-hardening-structured-output.gate\n\
       \  - driver-judge-hardening-recovery-policy.gate\n  - driver-bootstrap-readiness.gate\n\
       \nAs an INDEPENDENT REVIEWER, verify the foundation contract is precise enough\
-      \ to prevent judge-path drift.\n\nBLOCK if the contract leaves ambiguous:\n\
-      - codex judge invocation parameters vs `driver.yaml`\n- native structured output\
-      \ vs best-effort extraction classification\n- which failure classes are hard\
-      \ fail vs tolerated extraction\n- which real judgment types must be proven before\
-      \ bootstrap resumes"
+      \ to prevent judge-path drift after the ambiguity fix path and re-gate.\n\n\
+      BLOCK if the contract leaves ambiguous ANY of these four items:\n- codex judge\
+      \ invocation source-of-truth and parameters vs `driver.yaml` `runners.codex`\n\
+      - capability matrix completeness, including explicit Gemini inclusion/exclusion\n\
+      - native structured output vs best-effort extraction classification, including\
+      \ the hard-fail vs tolerant extraction boundary table\n- exact `FAILURE` vs\
+      \ `GATE` judgment trigger conditions"
     verification: '- Foundation contract accepted with no unresolved codex invocation
-      ambiguity
+      ambiguity vs `driver.yaml` `runners.codex`
 
-      - Failure boundary matrix is explicit enough for downstream implementation and
-      verification
+      - Capability matrix is complete, including explicit Gemini inclusion/exclusion
+      status
 
-      - Ready for parallel structured-output and recovery-policy phases'
+      - Hard-fail vs tolerant extraction boundary table is explicit enough for downstream
+      implementation and verification
+
+      - `FAILURE` vs `GATE` judgment trigger conditions are precise and ready for
+      parallel structured-output and recovery-policy phases'
     depends_on:
     - driver-judge-hardening-foundation.contract
+    - driver-judge-hardening-foundation.retest-gate
     agent: gate-reviewer
     claimed_by: gate-reviewer
     claimed_at: '2026-03-28T22:43:47.344927+00:00'

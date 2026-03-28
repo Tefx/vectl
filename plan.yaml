@@ -37334,3 +37334,8 @@ phases:
   status: pending
   depends_on:
   - driver-deep-review
+- id: driver-debt-completion-authority
+  name: 'Driver Debt: Completion Authority Convergence'
+  status: locked
+  depends_on:
+  - driver-debt-decision-state

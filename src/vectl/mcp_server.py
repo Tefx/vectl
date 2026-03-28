@@ -214,10 +214,16 @@ def _fmt_step(plan: Plan, step: Step, phase_id: str) -> str:
     phase = plan.find_phase(phase_id)
     if phase and is_step_locked(plan, phase, step):
         icon = "🔒"
+    elif step.status == StepStatus.DONE and step.verify == "expected_red":
+        icon = "✓"
+        status_text = "gap reproduced"
     else:
         icon = _STEP_ICON.get(step.status, "?")
+        status_text = step.status.value
     claimed = f" (claimed by {step.claimed_by})" if step.claimed_by else ""
     agent = f" [suggested: {step.agent}]" if step.agent else ""
+    if step.status == StepStatus.DONE and step.verify == "expected_red":
+        return f"  {icon} **{step.id}** — {step.name} ({phase_id}){claimed}{agent} [{status_text}]"
     return f"  {icon} **{step.id}** — {step.name} ({phase_id}){claimed}{agent}"
 
 
@@ -374,15 +380,14 @@ def vectl_status(agent: str | None = None) -> str:
         plan_path = _plan_path()
         claims_path = resolve_claims_path(plan_path)
         repair_result = repair_claims(
-            plan, plan_path, claims_path, dry_run=False,
+            plan,
+            plan_path,
+            claims_path,
+            dry_run=False,
         )
         if repair_result.changed:
-            actions_summary = ", ".join(
-                f"{a.action} {a.key}" for a in repair_result.actions
-            )
-            parts.append(
-                f"\n> **Auto-repaired claims** (routine): {actions_summary}"
-            )
+            actions_summary = ", ".join(f"{a.action} {a.key}" for a in repair_result.actions)
+            parts.append(f"\n> **Auto-repaired claims** (routine): {actions_summary}")
     except Exception:
         pass  # non-critical; don't block status
 
@@ -415,6 +420,8 @@ def vectl_show(target: str) -> str:
         locked = is_step_locked(plan, phase, step)
         if locked:
             status = "🔒 locked"
+        elif step.status == StepStatus.DONE and step.verify == "expected_red":
+            status = "✓ gap reproduced"
         else:
             status = f"{_STEP_ICON.get(step.status, '?')} {step.status.value}"
         lines = [
@@ -1337,12 +1344,21 @@ def vectl_review(
             for step in ph.steps:
                 if is_step_locked(plan, ph, step):
                     icon = "🔒"
+                elif step.status == StepStatus.DONE and step.verify == "expected_red":
+                    icon = "✓"
                 else:
                     icon = _STEP_ICON.get(step.status, "?")
                 claimed = f" @{step.claimed_by}" if step.claimed_by else ""
                 dep_info = f" deps={', '.join(step.depends_on)}" if step.depends_on else ""
                 suggested = f" suggested={step.agent}" if step.agent else ""
-                parts.append(f"  {icon} {step.id} — {step.name}{claimed}{suggested}{dep_info}")
+                extra = (
+                    " [gap reproduced]"
+                    if step.status == StepStatus.DONE and step.verify == "expected_red"
+                    else ""
+                )
+                parts.append(
+                    f"  {icon} {step.id} — {step.name}{claimed}{suggested}{dep_info}{extra}"
+                )
     else:
         parts.append("*No active phases.*")
 

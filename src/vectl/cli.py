@@ -113,9 +113,12 @@ _PHASE_STATUS_STYLE = {
 }
 
 
-def _step_icon(status: StepStatus, locked: bool = False) -> Text:
+def _step_icon(status: StepStatus, locked: bool = False, verify: str | None = None) -> Text:
     if locked and status == StepStatus.PENDING:
         return Text("🔒 locked", style="dim")
+    # Special rendering for expected_red completed steps
+    if status == StepStatus.DONE and verify == "expected_red":
+        return Text("✓ gap reproduced", style="cyan")
     icon, style = _STEP_STATUS_STYLE[status]
     return Text(f"{icon} {status.value}", style=style)
 
@@ -993,7 +996,7 @@ def next_cmd(
     for i, (phase, step) in enumerate(visible, 1):
         phase_id = phase.id
 
-        icon = _step_icon(step.status)
+        icon = _step_icon(step.status, verify=step.verify)
         # One-line summary: first line of description, truncated
         summary = _one_line_summary(step.description)
 
@@ -1117,7 +1120,7 @@ def _show_phase_detail(p: Plan, phase_id: str) -> None:
     out.print("\n### Steps\n")
     for step in phase.steps:
         locked = is_step_locked(p, phase, step)
-        icon = _step_icon(step.status, locked=locked)
+        icon = _step_icon(step.status, locked=locked, verify=step.verify)
         suggested = f"  [dim]suggested: {_esc(step.agent)}[/]" if step.agent else ""
         # RFC: docs/RFC-affinity.md
         # Show exclusive affinity icon
@@ -1171,7 +1174,7 @@ def _show_step_detail(p: Plan, step_id: str, plan_path: Path | None = None) -> N
         out.print(f"**Phase Context:** {phase.context}", markup=False)
 
     locked = is_step_locked(p, phase, step)
-    out.print(f"**Status:** {_step_icon(step.status, locked=locked)}")
+    out.print(f"**Status:** {_step_icon(step.status, locked=locked, verify=step.verify)}")
 
     # B2: Show mismatch explanation when detected
     if mismatch_info:
@@ -1461,7 +1464,7 @@ def complete(
         out.print()
         out.print("[bold]Next available:[/]")
         for phase, s in next_steps_with_phase[:3]:
-            icon = _step_icon(s.status)
+            icon = _step_icon(s.status, verify=s.verify)
             suggested = f"  suggested: {_esc(s.agent)}" if s.agent else ""
             out.print(f"  {icon}  {s.id} — {s.name}  [dim]({phase.id}){suggested}[/]")
         if len(next_steps_with_phase) > 3:

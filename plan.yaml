@@ -37549,37 +37549,6 @@ phases:
     depends_on:
     - driver-debt-decision-state.impl
     agent: integration-verifier
-  - id: driver-debt-decision-state.freeze
-    name: Freeze snapshot for DecideState gate
-    status: pending
-    description: 'step_type: verification
-
-      Verification scope: phase-check protecting driver-debt-decision-state.gate.
-
-
-      Freeze: lock the remediation snapshot before gate review.
-
-      No code changes are allowed after this step until the subsequent gate completes.
-
-
-      Required freeze evidence:
-
-      - git rev-parse HEAD
-
-      - git status clean declaration
-
-      - environment declaration used for verification
-
-      - statement that no code changes occur between freeze and gate'
-    verification: '- Freeze evidence includes commit, clean status, environment, and
-      no-change statement'
-    refs:
-    - src/vectl/decide.py
-    - src/vectl/driver/types.py
-    - src/vectl/driver/loop.py
-    depends_on:
-    - driver-debt-decision-state.impl
-    agent: integration-verifier
   - id: driver-debt-decision-state.gate
     name: Gate DecideState isolation phase
     status: pending

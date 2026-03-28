@@ -34492,7 +34492,7 @@ phases:
       PlannerDispatchRequest'
   - id: driver-judgment-expansion-replan.impl-replan-planner-wiring
     name: Implement replan and planner wiring
-    status: pending
+    status: claimed
     description: 'step_type: implementation
 
 
@@ -34510,6 +34510,8 @@ phases:
     depends_on:
     - driver-judgment-expansion-replan.test-replan-planner-wiring
     agent: python-senior
+    claimed_by: python-senior
+    claimed_at: '2026-03-28T10:30:49.800898+00:00'
   - id: driver-judgment-expansion-replan.contract-gate-chain-flow
     name: Contract full gate-chain and remediation flow
     status: pending

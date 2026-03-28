@@ -36428,7 +36428,7 @@ phases:
       - No files modified'
   - id: driver-system-wiring.verify-e2e
     name: Verify system wiring end-to-end
-    status: pending
+    status: claimed
     description: 'step_type: verification
 
       Verification scope: full-plan-check protecting driver-system-wiring.gate and
@@ -36461,6 +36461,8 @@ phases:
     depends_on:
     - driver-system-wiring.replace-stubs
     agent: integration-verifier
+    claimed_by: integration-verifier
+    claimed_at: '2026-03-28T12:57:34.701479+00:00'
   - id: driver-system-wiring.full-plan-check
     name: Full-plan runtime and repo check
     status: pending

@@ -39088,7 +39088,7 @@ phases:
   - driver-debt-doc-sync
 - id: driver-debt-review
   name: 'Driver Debt: Review'
-  status: in_progress
+  status: done
   gate: Consolidated doc-sync + deep review after system wiring
   depends_on:
   - driver-debt-system-wiring
@@ -39154,7 +39154,7 @@ phases:
       - stale/duplicative exit-code text removed.'
   - id: driver-debt-review.gate
     name: Final gate for driver debt remediation
-    status: claimed
+    status: done
     description: 'step_type: gate
 
       Final deep-review gate for A1/A2/A4/A3 remediation.
@@ -39204,6 +39204,27 @@ phases:
     agent: gate-reviewer
     claimed_by: gate-reviewer
     claimed_at: '2026-03-28T22:29:04.584847+00:00'
+    done_at: '2026-03-28T22:32:08.254116+00:00'
+    evidence: 'Final gate passed based on deep-review evidence across all blocker
+      categories.
+
+
+      Verified green:
+
+      - state ownership isolation (instance-local DecideState with explicit runtime
+      injection)
+
+      - reconcile-only completion authority on main path (complete actions ignored,
+      no duplicate completion effects)
+
+      - CLI parity and exit-code semantics across module/CLI entry surfaces
+
+      - policy extraction drift-free with helper imports and passing policy tests
+
+      - wiring completeness with no orphan runtime paths
+
+
+      No unresolved blocker remains for remediation completion.'
   - id: driver-debt-review.black-box-verification
     name: Black-box verify remediated driver surfaces
     status: done
@@ -42884,7 +42905,7 @@ phases:
     agent: gate-reviewer
 - id: driver-judge-hardening-foundation
   name: 'Driver Judge Hardening: Foundation'
-  status: locked
+  status: pending
   gate: Judge runner capability contract and codex invocation alignment are pinned
     before implementation fan-out.
   depends_on:
@@ -43506,7 +43527,7 @@ phases:
     agent: gate-reviewer
 - id: driver-continuity-foundation
   name: 'Driver Continuity: Foundation'
-  status: locked
+  status: pending
   gate: Approved continuity architecture basis exists for session authority convergence,
     durable resume state, replay safety, runner capability semantics, and recovery-grade
     minimum telemetry before implementation fan-out.

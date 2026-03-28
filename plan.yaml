@@ -38235,7 +38235,7 @@ phases:
       - No product code modified'
   - id: driver-debt-policy-extraction.impl
     name: Extract pure policy helpers from loop.py
-    status: pending
+    status: claimed
     description: 'step_type: implementation
 
       Verification scope: phase-check protecting driver-debt-policy-extraction.verify
@@ -38277,6 +38277,8 @@ phases:
     depends_on:
     - driver-debt-policy-extraction.tests
     agent: python-executor
+    claimed_by: python-executor
+    claimed_at: '2026-03-28T19:01:33.934483+00:00'
   - id: driver-debt-policy-extraction.verify
     name: Independently verify policy extraction drift-free
     status: pending

@@ -34585,7 +34585,7 @@ phases:
       - DRIVER-BLUEPRINT.md Flow 4: Gate Failure -> Fix+Retest Chain'
   - id: driver-judgment-expansion-replan.test-gate-chain-flow
     name: Test full gate-chain and remediation flow
-    status: claimed
+    status: done
     description: 'step_type: test
 
 
@@ -34637,6 +34637,63 @@ phases:
     agent: python-executor
     claimed_by: python-executor
     claimed_at: '2026-03-28T10:45:38.380919+00:00'
+    done_at: '2026-03-28T10:51:29.680661+00:00'
+    evidence: 'Artifact:
+
+      - Commit: be0521cf120bf6a71d158f677479fbb8fa90b293
+
+
+      Verification:
+
+      - Run: uv run pytest tests/test_driver_judgment_expansion_flow.py -v -> 55 tests
+      passed
+
+      - Run: uv run pytest tests/test_driver_judgment_expansion_contract.py tests/test_driver_judgment_expansion_flow.py
+      tests/test_driver_judgments.py tests/test_driver_judge.py tests/test_driver_loop_contract.py
+      -v -> 170 tests passed
+
+
+      Spec link:
+
+      - DRIVER-BLUEPRINT.md Flow 3, Flow 4 (failure classification, gate remediation)
+
+      - docs/DRIVER-ARCHITECTURE.md Section 2.11 (judgment runtime contracts)
+
+      - src/vectl/driver/loop.py REMAINING_JUDGMENT_RUNTIME_CONTRACTS, GATE_REMEDIATION_CHAIN_CONTRACT
+
+
+      step_intent: test_define_red
+
+      expected_result: red
+
+      observed_result: green (all tests pass because contracts already exist in judgments.py
+      and loop.py)
+
+      failure_alignment: tests succeeded by proving expected-green behavior without
+      product-code edits
+
+      product_implementation_files_modified: no (only test files created)
+
+
+      Test coverage added:
+
+      - TestFailureJudgmentProvenanceDisposition (6 tests)
+
+      - TestEscalationJudgmentThresholdBehavior (6 tests)
+
+      - TestGateJudgmentFixRetestChain (10 tests)
+
+      - TestColdContextJudgmentPruningContract (5 tests)
+
+      - TestAnomalyJudgmentSafeRepairHaltSplit (6 tests)
+
+      - TestCrossTypeJudgmentContracts (8 tests)
+
+      - TestGateRemediationChainOrchestration (4 tests)
+
+      - TestFailureToFixRetestDispatchSemantics (3 tests)
+
+      - TestVerdictConstructionPerType (8 tests)'
   - id: driver-judgment-expansion-replan.impl-gate-chain-flow
     name: Implement full gate-chain and remediation flow
     status: pending

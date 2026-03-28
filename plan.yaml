@@ -40547,13 +40547,12 @@ phases:
     name: Pin runtime telemetry and event schema contract
     status: pending
     description: "step_type: contract\ncontract_purity: ENFORCED\ncontract_outputs:\n\
-      \  - signatures\n  - type_defs\n  - interfaces\n  - stubs\n\nauthoritative_interface:\
-      \ telemetry event contract set from `driver-enhancement-foundation.contract`\n\
-      \nPin the observability contract for:\n- runner lifecycle events\n- planner\
-      \ dispatch observability\n- recovery observability\n- heartbeat/progress-related\
-      \ events\n- event schema conformance and envelope ownership\n\nThis contract\
-      \ MUST define which events are emitted at start, progress, heartbeat, recovery-decision,\
-      \ recovery-result, and finalization boundaries, and which module owns each field."
+      \  - interfaces\n  - type_defs\n  - signatures\n  - stubs\nPin the post-bootstrap\
+      \ advanced telemetry contract.\n\nBootstrap-minimum recovery-grade journal fields\
+      \ are owned by driver-continuity-authority-ledger. This phase only owns additive\
+      \ long-horizon observability such as richer lifecycle analytics, progress/event\
+      \ visibility, and operator-facing telemetry expansion.\n\nNo implementation\
+      \ logic."
     verification: 'local-check protecting driver-enhancement-observability.impl.
 
       - Event families and field ownership are explicit

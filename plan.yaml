@@ -39709,6 +39709,9 @@ phases:
       - ensure planner dispatch, execution, control, and recovery actions all execute
       through the same registry-backed path in scope
 
+      - ensure migrated action handlers consume the shared RuntimeContext contract
+      chosen for the initial rollout rather than role-specific contexts
+
 
       ## Completion Criteria (stub exclusion)
 
@@ -39725,13 +39728,18 @@ phases:
       - recovery/control actions remain split-brain relative to execution actions
 
       - loop readability regresses because registry migration leaks policy logic back
-      into loop.py'
+      into loop.py
+
+      - role-specific context drift reappears during handler migration
+
+      '
     verification: 'phase-check protecting system wiring, liveness, and full-plan-check.
 
       - Main path: targeted loop tests prove handler resolution now flows through
-      the registry in scope
+      the registry in scope and migrated handlers consume the shared RuntimeContext
 
-      - Failure path: regression covers planner helper bypass and unknown-action handling
+      - Failure path: regression covers planner helper bypass, unknown-action handling,
+      and role-specific context divergence
 
       - Proof: loop-local branching for migrated actions is removed from the touched
       path'

@@ -32129,6 +32129,169 @@ phases:
     agent: gate-reviewer
     claimed_by: gate-reviewer
     claimed_at: '2026-03-28T03:26:22.060916+00:00'
+  - id: driver-execution-infra.fix-gate-blockers
+    name: Fix gate blockers for driver execution infra
+    status: pending
+    description: 'step_type: implementation
+
+      As a batched remediation step, fix ALL blockers reported by the independent
+      gate review for driver-execution-infra.gate.
+
+
+      symbolic_testing: true
+
+      prior_loop:
+
+      - driver-execution-infra.gate
+
+      remaining_blocker:
+
+      - worktree helper signature mismatch with test call sites using cwd=...
+
+      - invar guard failure family (213 errors and complexity warnings)
+
+      - incomplete verification coverage for the relevant driver execution infra suite
+
+      why_new_loop: Gate failure spans one blocker family of execution-infra correctness
+      and must be remediated in one batched path before the gate can re-open.
+
+
+      ## Blockers to Fix (ALL of these, not just the first)
+
+
+      ## Root Cause vs Symptom
+
+      - Root cause: execution-infra helper interfaces, contract/test expectations,
+      and verification scope diverged; worktree lifecycle helpers are missing the
+      cwd parameter expected by the real test suite, guard debt remains unresolved,
+      and prior evidence stopped short of full relevant coverage.
+
+      - Symptom: 14 failing worktree tests, invar guard reports 213 errors plus complexity
+      warnings, and the last verification payload did not prove full relevant-suite
+      coverage.
+
+      - Why this fix is not surface-level: remediation must align helper signatures
+      with the authoritative contract and tests, remove guard blocker families rather
+      than waive them, and restore full-suite verification evidence.
+
+
+      ### B1: worktree lifecycle signature mismatch
+
+      Locations: driver execution infra worktree helpers and their test call sites
+
+      Remediation: align create/merge/cleanup helper signatures and downstream call
+      patterns with the documented/tested cwd-aware contract; update all affected
+      call sites and regressions together.
+
+      Grep hint: search for create_worktree|merge_worktree|cleanup_worktree plus cwd=
+      across src/ and tests/.
+
+      IMPORTANT: Search for siblings beyond the listed failing tests.
+
+
+      ### B2: invar guard blocker family
+
+      Locations: driver execution infra source and tests implicated by the current
+      guard report
+
+      Remediation: fix the reported invar guard errors and complexity findings within
+      the execution-infra remediation scope; root-cause recurring failures instead
+      of suppressing or bypassing them.
+
+      Command lock: use the exact command family required by this project''s guard
+      workflow for the relevant scope; do not substitute a different guard command
+      family.
+
+      Grep hint: capture the current guard findings and remediate by blocker family,
+      not one-off symptoms.
+
+
+      ### B3: verification incompleteness
+
+      Locations: verification evidence and any missing test coverage under driver
+      execution infra
+
+      Remediation: ensure the relevant full suite is runnable and covered, and that
+      evidence explicitly includes the full relevant suite plus guard results.
+
+      Grep hint: compare the phase''s execution-infra test modules against the previously
+      cited subset to identify omitted coverage.
+
+
+      ## Completion Criteria (stub exclusion)
+
+      This is an IMPLEMENTATION step. Stub-only completion is NOT acceptable.
+
+      Each deliverable MUST contain substantive logic that processes its inputs and
+      produces outputs that vary based on those inputs.
+
+
+      ## Out-of-scope guardrail
+
+      - This step may fix execution-infra source, tests, and verification gaps needed
+      to clear the gate.
+
+      - It does NOT authorize unrelated downstream runtime/CLI feature work outside
+      driver-execution-infra.
+
+      '
+    verification: '- Run the full relevant driver execution infra test suite, including
+      the worktree tests that previously failed on cwd signature mismatch
+
+      - Re-run the required guard checks for the execution-infra scope using the project-required
+      guard command family
+
+      - Evidence must show the highest-risk failure path is closed: cwd-aware create/merge/cleanup
+      calls succeed in the real suite
+
+      - Evidence must include full relevant-suite coverage, not a subset summary
+
+      - Root-cause evidence explains how the remediation closed all three blocker
+      classes, not only the first observed failure'
+    evidence_template: '## Batched Remediation Evidence
+
+
+      **Blocker families fixed**:
+
+      - B1 signature mismatch
+
+      - B2 invar guard failures
+
+      - B3 verification incompleteness
+
+
+      **Commands executed**:
+
+      ```
+
+      <paste full relevant suite command(s)>
+
+      <paste required guard command(s)>
+
+      ```
+
+
+      **Sibling search evidence**:
+
+      ```
+
+      <paste search output / audited locations>
+
+      ```
+
+
+      **Root-cause closure**:
+
+      - Why the signatures now match the cwd-aware contract
+
+      - Why the guard blocker family is resolved rather than suppressed
+
+      - Why the suite evidence is now complete
+
+      '
+    depends_on:
+    - driver-execution-infra.spec-conformance
+    agent: python-senior
 - id: driver-judgment-runtime-minimal
   name: Driver Judgment + Minimal Runtime
   status: locked

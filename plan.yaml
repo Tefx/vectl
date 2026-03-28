@@ -43008,6 +43008,24 @@ phases:
     depends_on:
     - driver-continuity-authority-ledger.impl
     agent: integration-verifier
+  - id: driver-continuity-authority-ledger.gate
+    name: Gate authority and ledger continuity
+    status: pending
+    description: "step_type: gate\nGate review for durable session authority and continuity\
+      \ ledger.\n\nreview_depth: THOROUGH\ncross_cutting_focus:\n  - single authority\
+      \ for resumable session truth\n  - recovery-grade minimum journal is written\
+      \ on non-success paths too\n  - recovered plan/claims coherence is explicit,\
+      \ not inferred"
+    verification: '- Authority convergence is evidenced and independently verified
+
+      - Journal/ledger coverage includes failure and abort paths
+
+      - No unresolved blocker would poison driver-continuity-restart-recovery or driver-bootstrap-readiness'
+    depends_on:
+    - driver-continuity-authority-ledger.test-define-red
+    - driver-continuity-authority-ledger.impl
+    - driver-continuity-authority-ledger.verify
+    agent: gate-reviewer
 - id: driver-continuity-capability-safety
   name: 'Driver Continuity: Capability & Replay Safety'
   status: locked

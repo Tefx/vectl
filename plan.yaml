@@ -37899,7 +37899,7 @@ phases:
       shared exit-code matrix'
   - id: driver-debt-cli-entrypoint-unification.test-define-red
     name: Define expected-red CLI parity regressions
-    status: claimed
+    status: done
     description: 'step_type: test
 
       step_intent: test_define_red
@@ -37944,6 +37944,22 @@ phases:
     agent: python-executor
     claimed_by: python-executor
     claimed_at: '2026-03-28T18:42:27.175916+00:00'
+    done_at: '2026-03-28T18:57:22.317410+00:00'
+    evidence: 'Artifact:
+
+      - Commit: 630f551 (tests/test_driver_entrypoint_drift.py, 336 lines)
+
+
+      Verification:
+
+      - pytest: 3 FAILED, 10 PASSED
+
+      - RED evidence captured: --help raises NotImplementedError before argparse runs,
+      --config missing from python -m vectl.driver
+
+      - GREEN evidence: exit code parity across entrypoints
+
+      - Product code modified: NO'
   - id: driver-debt-cli-entrypoint-unification.impl
     name: Implement shared driver entrypoint adapter
     status: pending

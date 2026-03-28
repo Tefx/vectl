@@ -43219,6 +43219,26 @@ phases:
   - driver-continuity-authority-ledger
   - driver-continuity-capability-safety
   - driver-judge-hardening-recovery-policy
+  steps:
+  - id: driver-continuity-restart-recovery.contract
+    name: Pin restart recovery and continuity policy contract
+    status: pending
+    description: "step_type: contract\ncontract_purity: ENFORCED\ncontract_outputs:\n\
+      \  - interfaces\n  - type_defs\n  - signatures\n  - stubs\nPin the exact contract\
+      \ for startup recovery and abnormal-stop continuity.\n\nRequired coverage:\n\
+      - restart recovery controller inputs/outputs and startup scan order\n- failure/abort\
+      \ continuity policy aligned to judge failure classifications without duplicating\
+      \ judge ownership\n- reconciliation rules for continuity ledger, plan state,\
+      \ and claims state\n- restart vs resume vs re-run decision matrix using runner\
+      \ capability facts and replay safety envelope\n- minimum recovery drill evidence\
+      \ expected before bootstrap authorization\n\nNo implementation logic."
+    verification: '- Contract explicitly states startup recovery order and precedence
+      rules
+
+      - Judge failure outcomes are consumed as inputs, not reimplemented here
+
+      - Recovery contract is sufficient for implementation without redesign'
+    agent: software-architect
 - id: driver-continuity-review
   name: 'Driver Continuity: Review'
   status: locked

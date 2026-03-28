@@ -38387,7 +38387,7 @@ phases:
   - driver-debt-system-wiring
 - id: driver-debt-deep-review
   name: 'Driver Debt: Deep Review'
-  status: pending
+  status: done
   depends_on:
   - driver-debt-doc-sync
 - id: driver-debt-review

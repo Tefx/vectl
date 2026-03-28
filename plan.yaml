@@ -37354,3 +37354,8 @@ phases:
   status: locked
   depends_on:
   - driver-debt-policy-extraction
+- id: driver-debt-doc-sync
+  name: 'Driver Debt: Documentation Sync'
+  status: locked
+  depends_on:
+  - driver-debt-system-wiring

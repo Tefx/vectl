@@ -40148,8 +40148,10 @@ phases:
   status: locked
   gate: Planner-dispatch registry boundary is pinned early so action-registry implementation
     can start only after runtime-context plus this contract foundation
+  context: Bootstrap-postponed evolution work. Action-registry contract foundation
+    begins only after judge hardening clears renewed real bootstrap.
   depends_on:
-  - driver-debt-review
+  - driver-bootstrap-readiness
   steps:
   - id: driver-evolution-action-registry-contract-foundation.planner-dispatch-contract
     name: Pin planner dispatch as a first-class loop action

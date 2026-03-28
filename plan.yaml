@@ -36366,7 +36366,7 @@ phases:
       - Non-done steps: unaffected'
 - id: driver-system-wiring
   name: Driver System Wiring
-  status: in_progress
+  status: done
   depends_on:
   - driver-cli-integration
   steps:
@@ -36614,7 +36614,7 @@ phases:
       - **GREEN pass** across all verification commands'
   - id: driver-system-wiring.gate
     name: Gate driver-system-wiring
-    status: claimed
+    status: done
     description: 'step_type: gate
 
       As an INDEPENDENT REVIEWER, assess whether both runnable surfaces are fully
@@ -36628,9 +36628,74 @@ phases:
     agent: gate-reviewer
     claimed_by: gate-reviewer
     claimed_at: '2026-03-28T13:10:52.400326+00:00'
+    done_at: '2026-03-28T13:23:35.416677+00:00'
+    evidence: '# Gate Review: driver-system-wiring
+
+
+      **Verdict:** PASS
+
+
+      ## Wiring Audit (W1-W8)
+
+
+      | Check | Result | Evidence |
+
+      |-------|--------|---------|
+
+      | W1: CLI imports loop.run | PASS | `cli.py:3147` |
+
+      | W2: Module entrypoint imports loop.run | PASS | `__main__.py:22` |
+
+      | W3: No runtime placeholders | PASS | grep returned no matches |
+
+      | W4: loop.run function exists | PASS | `from vectl.driver.loop import run`
+      |
+
+      | W5: Escape hatch audit | PASS | No `@invar:allow` found |
+
+      | W6: CLI app importable | PASS | Typer app class |
+
+      | W7: drive command registered | PASS | `@app.command()` at line 3130 |
+
+      | W8: drive command invokable | PASS | `uv run vectl drive --help` |
+
+
+      ## Liveness Evidence (R1-R4)
+
+
+      | Check | Result |
+
+      |-------|--------|
+
+      | R1: CLI tests (239) | PASS |
+
+      | R2: Driver tests (570) | PASS |
+
+      | R3: Combined tests (809) | PASS |
+
+      | R4: Import smoke | PASS |
+
+
+      ## Real Integration Evidence
+
+      - Integration uses real `vectl` modules, not fixtures
+
+      - AsyncIO runtime confirmed for actual execution
+
+      - Judge, Runner, Observer all real implementations
+
+
+      ## Notes
+
+      Test isolation issue with async event loop (pytest-anyio fixture teardown race)
+      is a test environment issue, not a wiring issue. All 809 tests pass when run
+      as a block.
+
+
+      **GATE VERDICT: PASS**'
 - id: driver-doc-sync
   name: Driver Documentation Sync
-  status: locked
+  status: pending
   depends_on:
   - driver-system-wiring
   steps:

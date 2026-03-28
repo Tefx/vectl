@@ -39813,3 +39813,34 @@ phases:
     ADR and is safe to extend
   depends_on:
   - driver-evolution-loop-migration
+  steps:
+  - id: driver-evolution-review.update-docs
+    name: Sync driver architecture docs to the ADR-backed evolution baseline
+    status: pending
+    description: 'step_type: doc-sync
+
+
+      Update driver-facing documentation after the implementation phases complete.
+
+
+      Scope:
+
+      - sync docs/DRIVER-ARCHITECTURE.md to the new module split and ownership model
+
+      - reference docs/ADR-driver-evolution-foundation.md explicitly
+
+      - describe canonical event envelope, event registry ownership, RuntimeContext,
+      layered action registry, and planner-dispatch first-class status
+
+
+      This phase intentionally merges doc sync into final review rather than creating
+      a standalone doc-sync phase.'
+    verification: 'phase-check protecting final deep review.
+
+      - Docs reference the implemented module split and ADR
+
+      - FINAL/DECIDE/STEP_COMPLETED semantics and planner-dispatch first-class status
+      are documented
+
+      - No stale architecture statement contradicts the implementation'
+    agent: doc-reviewer

@@ -40796,22 +40796,31 @@ phases:
   - id: driver-enhancement-observability.impl
     name: Implement runtime telemetry for lifecycle dispatch and recovery
     status: pending
-    description: 'step_type: implementation
-
-      Implement post-bootstrap advanced telemetry for lifecycle dispatch and recovery
-      analytics.
-
-
-      Scope:
-
-      - extend beyond the continuity-owned minimum journal with richer telemetry and
-      analytics
-
-      - improve operator visibility across runner lifecycle, planner dispatch, recovery
-      trends, and heartbeat/progress data
-
-      - do not re-own the bootstrap-minimum continuity ledger or recovery-grade journal
-      required for resume safety'
+    description: "step_type: implementation\n\nFill in stub bodies and replace placeholder\
+      \ telemetry hooks with working logic on the existing driver/event surfaces.\n\
+      \nUPSTREAM ARTIFACTS (from merged design+test step):\n  - src/vectl/driver/observe.py\
+      \ — from_step: driver-enhancement-observability.design-and-test — tier: contract\n\
+      \  - src/vectl/driver/loop.py — from_step: driver-enhancement-observability.design-and-test\
+      \ — tier: contract\n  - tests/test_driver_observe.py — from_step: driver-enhancement-observability.design-and-test\
+      \ — tier: test\n  - tests/test_driver_loop_runtime.py — from_step: driver-enhancement-observability.design-and-test\
+      \ — tier: test\n\nThe merged contract+test step produced both interfaces and\
+      \ tests. Your job is to make the tests pass by filling in stub bodies.\n\nDeviation\
+      \ protocol: If a contract artifact is wrong or incomplete, document a deviation\
+      \ record (type, what, why, impact) — do NOT silently rewrite.\n\nupstream_artifacts:\n\
+      \  - path: src/vectl/driver/observe.py\n    from_step: driver-enhancement-observability.design-and-test\n\
+      \    tier: contract\n  - path: src/vectl/driver/loop.py\n    from_step: driver-enhancement-observability.design-and-test\n\
+      \    tier: contract\n  - path: tests/test_driver_observe.py\n    from_step:\
+      \ driver-enhancement-observability.design-and-test\n    tier: test\n  - path:\
+      \ tests/test_driver_loop_runtime.py\n    from_step: driver-enhancement-observability.design-and-test\n\
+      \    tier: test\n\nImplement post-bootstrap advanced telemetry for lifecycle\
+      \ dispatch and recovery analytics.\n\nScope:\n- extend beyond the continuity-owned\
+      \ minimum journal with richer telemetry and analytics\n- improve operator visibility\
+      \ across runner lifecycle, planner dispatch, recovery trends, and heartbeat/progress\
+      \ data\n- do not re-own the bootstrap-minimum continuity ledger or recovery-grade\
+      \ journal required for resume safety\n\n## Completion Criteria (stub exclusion)\n\
+      This is an IMPLEMENTATION step. Stub-only completion is NOT acceptable.\nEach\
+      \ deliverable MUST contain substantive telemetry logic that emits differentiated\
+      \ lifecycle/recovery/progress signals on the real path."
     verification: 'phase-check protecting driver-enhancement-observability.vertical-slice
       and driver-enhancement-observability.verify.
 
@@ -40847,8 +40856,7 @@ phases:
       **Path exercised**: driver entrypoint -> loop dispatch -> event emitter -> JSONL
       sink'
     depends_on:
-    - driver-enhancement-observability.contract
-    - driver-enhancement-observability.test-define-red
+    - driver-enhancement-observability.design-and-test
     agent: python-senior
   - id: driver-enhancement-observability.vertical-slice
     name: Early vertical slice for telemetry visibility

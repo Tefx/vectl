@@ -31849,7 +31849,7 @@ phases:
       \ runners.py file-size threshold reported for later refactor consideration"
   - id: driver-execution-infra.verify-runners-real-cli-path
     name: Verify runners real CLI path
-    status: claimed
+    status: done
     description: 'step_type: verification
 
       Verification scope: phase-check protecting driver-execution-infra.gate.
@@ -31878,6 +31878,64 @@ phases:
     agent: integration-verifier
     claimed_by: integration-verifier
     claimed_at: '2026-03-28T03:13:36.862996+00:00'
+    done_at: '2026-03-28T03:17:34.733548+00:00'
+    evidence: '## Step Intent
+
+      Independent post-implementation verification of real Claude and OpenCode CLI
+      paths in non-interactive mode, plus malformed/unavailable scenarios, with exact
+      commands and observed outputs.
+
+
+      ## Expected Result
+
+      Green verification: real CLI paths execute, malformed output classified as TRANSPORT_ERROR,
+      unavailable runner raises RunnerNotFoundError, with concrete stdout/stderr evidence.
+
+
+      ## Observed Result
+
+      - Unavailable runner scenario: PASS (RunnerNotFoundError raised; command not
+      found on PATH)
+
+      - Malformed output scenario: PASS (status=transport_error, exit_code=0, malformed
+      payload preserved)
+
+      - Claude real CLI path: PASS (claude -p --output-format json; status=success,
+      exit_code=0, live session_id observed)
+
+      - OpenCode real CLI path: PASS (opencode run --format json; live JSONL stream
+      parsed, live session_id observed)
+
+      - Supporting tests: uv run pytest tests/test_driver_runners.py -q -> 66 passed
+
+
+      Key command evidence:
+
+      - claude -p --output-format json (stdin prompt) -> success, exit_code=0
+
+      - opencode run --format json (stdin prompt) -> real run with parsed JSONL events
+      and session_id
+
+      - malformed payload runner command -> transport_error classification
+
+      - nonexistent runner command -> RunnerNotFoundError
+
+
+      ## Failure Alignment
+
+      No blocker failures. Results align with expected green post-implementation verification.
+
+
+      ## Product Implementation Files Modified
+
+      None (verification-only step).
+
+
+      ## Spec Link
+
+      - docs/DRIVER-ARCHITECTURE.md §2.8
+
+      - driver-execution-infra.verify-runners-real-cli-path step requirements'
   - id: driver-execution-infra.wiring-audit
     name: Execution infrastructure wiring audit
     status: pending

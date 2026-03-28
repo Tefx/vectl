@@ -39681,6 +39681,42 @@ phases:
     depends_on:
     - driver-evolution-loop-migration.implement-loop-handlers
     agent: integration-verifier
+  - id: driver-evolution-loop-migration.liveness-probe
+    name: Probe driver liveness after loop migration
+    status: pending
+    description: 'step_type: verification
+
+      expected_result: green
+
+      verification_scope: phase-check
+
+
+      As a blind-tester, actually run the evolved driver entrypoint.
+
+
+      Verification criteria:
+
+      - Entry point starts
+
+      - Driver stays alive for the expected harness duration
+
+      - At least one documented operation reaches the real entrypoint path end-to-end
+
+      - Registry-backed planner dispatch remains reachable when the exercised path
+      needs it
+
+
+      This is runnable-surface evidence, not handler-only proof.'
+    verification: 'phase-check protecting driver-evolution-loop-migration.gate.
+
+      - Execute a real liveness probe against the runnable driver surface
+
+      - Evidence includes the exact launch command and observed output
+
+      - Fail if the surface only proves handler/unit behavior without a real entrypoint'
+    depends_on:
+    - driver-evolution-loop-migration.implement-loop-handlers
+    agent: blind-tester
 - id: driver-evolution-review
   name: 'Driver Evolution: Review'
   status: locked

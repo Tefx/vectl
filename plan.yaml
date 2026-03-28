@@ -41552,6 +41552,49 @@ phases:
     are re-enabled.
   depends_on:
   - driver-guardrails-foundation
+  steps:
+  - id: driver-guardrails-output-hardening.test-define-red
+    name: Define red judge-output failure matrix tests
+    status: pending
+    description: 'step_type: test
+
+      step_intent: test_define_red
+
+      expected_result: red
+
+
+      Author test-only fixtures and regression cases for opencode-backed judge output
+      stability.
+
+
+      Scope:
+
+      - tests around Judge / parser handling of prefix text, suffix text, fenced JSON,
+      empty output, non-JSON text, multi-object noise, and truncated output
+
+      - fixtures limited to tests plus minimal helpers
+
+      - no product implementation changes
+
+
+      The purpose is to expose the current gap against the foundation contract before
+      hardening lands.'
+    verification: '- Modified files are limited to tests/ plus minimal fixtures/helpers
+
+      - Expected failures or exposed gaps are documented for each malformed-output
+      class
+
+      - Downstream owner is driver-guardrails-output-hardening.implement-opencode-hardening'
+    evidence_template: '## Red Judge Output Matrix
+
+      - Fixture/source mapping:
+
+      - Exposed gaps by failure mode:
+
+      - Expected failing assertions:
+
+      '
+    agent: integration-verifier
 - id: driver-guardrails-prompt-governance
   name: 'Driver Guardrails: Prompt Governance'
   status: locked

@@ -37978,19 +37978,38 @@ phases:
     status: done
     description: "step_type: implementation\ntags:\n  - integration\nVerification\
       \ scope: phase-check protecting driver-debt-cli-entrypoint-unification.liveness\
-      \ and gate.\n\nImplement A4 using one runtime adapter.\n\nRequired work:\n-\
-      \ Add src/vectl/driver/entrypoint.py.\n- Move config path normalization, async\
-      \ runtime invocation, and shared error mapping into the shared adapter.\n- Update\
-      \ src/vectl/driver/__main__.py to support positional config and --config while\
-      \ delegating to the adapter.\n- Update vectl drive in src/vectl/cli.py to delegate\
-      \ to the same adapter without changing user-facing --config syntax.\n- Enforce\
-      \ shared exit-code mapping: runtime/config execution error -> 1; parse/usage\
-      \ error -> 2.\n\nIntegration evidence requirement:\nPath exercised must be shown\
-      \ as:\npython -m vectl.driver / vectl drive -> shared adapter -> loop.run\n\n\
-      Gate Preview (what the gate will reject):\n1. argparse and Typer still map the\
-      \ same error class to different exit codes\n2. one entrypoint bypasses the shared\
-      \ adapter\n3. help/usage output regresses for existing vectl drive --config\
-      \ users"
+      \ and gate.\n\nFill in stub bodies and replace duplicate entrypoint wiring with\
+      \ one working shared adapter under the upstream contract.\n\nUPSTREAM ARTIFACTS\
+      \ (from contract/test steps):\n  - src/vectl/driver/entrypoint.py — from_step:\
+      \ driver-debt-cli-entrypoint-unification.contract — tier: contract\n  - src/vectl/driver/__main__.py\
+      \ — from_step: driver-debt-cli-entrypoint-unification.contract — tier: contract\n\
+      \  - tests/test_driver_entrypoint_drift.py — from_step: driver-debt-cli-entrypoint-unification.test-define-red\
+      \ — tier: test\n  - tests/test_cli.py::TestDriveCLI — from_step: driver-debt-cli-entrypoint-unification.test-define-red\
+      \ — tier: test\n\nYOUR SCOPE: Replace placeholder or duplicated adapter logic\
+      \ with substantive shared-entrypoint behavior while preserving the pinned CLI\
+      \ contract.\n\nDeviation protocol: If any upstream contract or test artifact\
+      \ is wrong or incomplete, record a deviation note with type, what, why, and\
+      \ impact; do NOT silently rewrite the shared-entrypoint contract.\n\nupstream_artifacts:\n\
+      \  - path: src/vectl/driver/entrypoint.py\n    from_step: driver-debt-cli-entrypoint-unification.contract\n\
+      \    tier: contract\n  - path: src/vectl/driver/__main__.py\n    from_step:\
+      \ driver-debt-cli-entrypoint-unification.contract\n    tier: contract\n  - path:\
+      \ tests/test_driver_entrypoint_drift.py\n    from_step: driver-debt-cli-entrypoint-unification.test-define-red\n\
+      \    tier: test\n  - path: tests/test_cli.py::TestDriveCLI\n    from_step: driver-debt-cli-entrypoint-unification.test-define-red\n\
+      \    tier: test\n\nRequired work:\n- Add src/vectl/driver/entrypoint.py.\n-\
+      \ Move config path normalization, async runtime invocation, and shared error\
+      \ mapping into the shared adapter.\n- Update src/vectl/driver/__main__.py to\
+      \ support positional config and --config while delegating to the adapter.\n\
+      - Update vectl drive in src/vectl/cli.py to delegate to the same adapter without\
+      \ changing user-facing --config syntax.\n- Enforce shared exit-code mapping:\
+      \ runtime/config execution error -> 1; parse/usage error -> 2.\n\nIntegration\
+      \ evidence requirement:\nPath exercised must be shown as:\npython -m vectl.driver\
+      \ / vectl drive -> shared adapter -> loop.run\n\nGate Preview (what the gate\
+      \ will reject):\n1. argparse and Typer still map the same error class to different\
+      \ exit codes\n2. one entrypoint bypasses the shared adapter\n3. help/usage output\
+      \ regresses for existing vectl drive --config users\n\n## Completion Criteria\
+      \ (stub exclusion)\nThis is an IMPLEMENTATION step. Stub-only completion is\
+      \ NOT acceptable.\nEach deliverable MUST contain substantive shared-adapter\
+      \ logic; wrapper-only duplication does not satisfy this step."
     verification: '- Shared adapter is the only runtime adapter for both entrypoints
 
       - Targeted parity tests pass

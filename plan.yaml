@@ -41258,3 +41258,29 @@ phases:
     depends_on:
     - driver-enhancement-review.update-docs
     agent: spec-verifier
+  - id: driver-enhancement-review.architecture-review
+    name: Review enhancement architecture boundaries
+    status: pending
+    description: 'step_type: review
+
+
+      Review architecture boundaries for the hardened and enhanced driver.
+
+
+      Focus:
+
+      - source-of-truth boundaries between live streaming state, durable event output,
+      and final summary state
+
+      - ownership of liveness, watchdog, and recovery decisions
+
+      - planner dispatch observability placement
+
+      - future multi-runner fallback extensibility without re-centralizing loop complexity'
+    verification: 'phase-check protecting driver-enhancement-review.gate.
+
+      - Boundary review finds no unresolved ownership conflict that would poison future
+      phases
+
+      - Runtime / entrypoint / external contract boundaries remain aligned'
+    agent: software-architect

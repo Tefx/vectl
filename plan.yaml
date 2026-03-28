@@ -39239,7 +39239,7 @@ phases:
     claimed_at: '2026-03-28T22:10:16.775699+00:00'
   - id: driver-debt-review.architecture-review
     name: Review driver debt architecture boundaries
-    status: claimed
+    status: done
     description: 'step_type: review
 
       Verification scope: full-plan-check protecting driver-debt-deep-review.gate.
@@ -39267,6 +39267,10 @@ phases:
     agent: software-architect
     claimed_by: software-architect
     claimed_at: '2026-03-28T22:10:32.890618+00:00'
+    done_at: '2026-03-28T22:16:14.759456+00:00'
+    evidence: software-architect review complete. Architecture boundaries mostly correct;
+      medium-severity residual debt documented (_legacy_state fallback, duplicated
+      failure bookkeeping, coordinator purity limits in loop.py).
   - id: driver-debt-review.contract-strength
     name: Audit remediated contracts for strength
     status: claimed

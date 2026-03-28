@@ -40345,6 +40345,36 @@ phases:
     - driver-routing-hardening.contract
     - driver-routing-hardening.test-define-red
     agent: python-executor
+  - id: driver-routing-hardening.verify
+    name: Independently verify invalid default routing rejection
+    status: pending
+    description: 'step_type: verification
+
+      Verification scope: phase-check protecting driver-routing-hardening.gate.
+
+
+      As an independent verifier, validate that configs containing `agent_routing.default`
+      fail fast with a clear, user-correctable error and that supported routing semantics
+      still work.
+
+
+      Required evidence:
+
+      - one invalid config fixture using the reserved key
+
+      - actual failure output showing clear guidance
+
+      - one valid exact/glob routing fixture proving no regression'
+    verification: 'phase-check protecting driver-routing-hardening.gate.
+
+      - Invalid config with `agent_routing.default` fails deterministically
+
+      - Error explicitly names the unsupported key and supported alternatives
+
+      - Valid exact/glob + `fallback_runner` configs still pass'
+    depends_on:
+    - driver-routing-hardening.impl
+    agent: integration-verifier
 - id: driver-enhancement-foundation
   name: Driver Enhancement Foundation
   status: locked

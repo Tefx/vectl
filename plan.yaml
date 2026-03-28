@@ -38340,7 +38340,7 @@ phases:
       src/vectl/driver/entrypoint.py adapter functions.'
   - id: driver-debt-cli-entrypoint-unification.spec-conformance
     name: Verify CLI entrypoint spec conformance
-    status: claimed
+    status: pending
     description: 'step_type: verification
 
       Verification scope: phase-check protecting driver-debt-cli-entrypoint-unification.gate.
@@ -38369,8 +38369,6 @@ phases:
     depends_on:
     - driver-debt-cli-entrypoint-unification.impl
     agent: spec-verifier
-    claimed_by: spec-verifier
-    claimed_at: '2026-03-28T19:21:50.418552+00:00'
   - id: driver-debt-cli-entrypoint-unification.gate
     name: Gate CLI entrypoint unification
     status: pending

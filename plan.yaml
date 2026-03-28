@@ -38340,26 +38340,6 @@ phases:
     depends_on:
     - driver-debt-system-wiring.integrate-runtime-surfaces
     agent: integration-verifier
-  - id: driver-debt-system-wiring.freeze
-    name: Freeze snapshot for system wiring gate
-    status: pending
-    description: 'step_type: verification
-
-      Verification scope: full-plan-check protecting driver-debt-system-wiring.gate.
-
-
-      Freeze the integrated runtime snapshot before liveness/gate review.
-
-      Required evidence: git rev-parse HEAD, clean status, environment declaration,
-      and no-change statement.'
-    verification: '- Freeze evidence complete before gate'
-    refs:
-    - src/vectl/driver/loop.py
-    - src/vectl/driver/entrypoint.py
-    - src/vectl/driver/policy.py
-    depends_on:
-    - driver-debt-system-wiring.integrate-runtime-surfaces
-    agent: integration-verifier
   - id: driver-debt-system-wiring.gate
     name: Gate driver debt system wiring
     status: pending

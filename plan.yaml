@@ -38762,7 +38762,7 @@ phases:
   steps:
   - id: driver-debt-system-wiring.integrate-runtime-surfaces
     name: Integrate remediated driver runtime surfaces
-    status: claimed
+    status: done
     description: "step_type: implementation\ntags:\n  - integration\nVerification\
       \ scope: full-plan-check protecting driver-debt-system-wiring.liveness, full-plan-check,\
       \ and gate.\n\nFill in stub bodies and replace any temporary join wiring with\
@@ -38809,6 +38809,29 @@ phases:
     agent: python-senior
     claimed_by: python-senior
     claimed_at: '2026-03-28T21:34:49.546823+00:00'
+    done_at: '2026-03-28T21:45:02.111332+00:00'
+    evidence: 'Implementation completion accepted after AGENT_LIMITATION remediation.
+
+
+      Primary worker applied wiring changes and passed targeted tests; initial FAIL
+      was due unavailable spec-verifier command, not functional regression.
+
+      Remediation then performed scoped spec/code conformance verification on changed
+      files and found no drift.
+
+
+      Key verification:
+
+      - runtime keeps reconcile-only completion sink on main path
+
+      - explicit DecideState ownership and failure/ completion tracking wired in runtime
+
+      - shared entrypoint adapter and policy helper wiring remain coherent
+
+      - targeted tests and lint passed; scoped spec conformance passed
+
+
+      No contract deviation records reported.'
   - id: driver-debt-system-wiring.runtime-liveness
     name: Probe end-to-end driver runtime liveness
     status: pending

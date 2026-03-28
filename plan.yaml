@@ -33104,7 +33104,7 @@ phases:
       5. Handles timeout and parse errors per specification"
   - id: driver-judgment-runtime-minimal.contract-loop-runtime-minimal
     name: Contract loop runtime minimal
-    status: claimed
+    status: done
     description: "step_type: contract\ncontract_purity: ENFORCED\ncontract_outputs:\n\
       \  - signatures\n  - type_defs\n  - interfaces\n  - stubs\n\nPin the minimal\
       \ runtime contract for src/vectl/driver/loop.py and src/vectl/driver/__main__.py\
@@ -33122,6 +33122,28 @@ phases:
     agent: software-architect
     claimed_by: software-architect
     claimed_at: '2026-03-28T08:06:45.857048+00:00'
+    done_at: '2026-03-28T08:11:42.698081+00:00'
+    evidence: 'Artifact:
+
+      - Commit: 9b88bcb
+
+
+      Verification:
+
+      - Run: uv run pytest tests/test_driver_loop_contract.py -q -> 4 passed
+
+      - Run: uv run python -m py_compile src/vectl/driver/loop.py src/vectl/driver/__main__.py
+      -> PASS
+
+      - Verified contract surfaces pinned for run/handle_dispatch/handle_complete/reconcile/shutdown
+      and __main__ entrypoint with bounded deferred REPLAN branches
+
+
+      Spec link:
+
+      - docs/DRIVER-ARCHITECTURE.md §2.11
+
+      - docs/DRIVER-ARCHITECTURE.md §3, §4, Q1-Q3'
   - id: driver-judgment-runtime-minimal.test-loop-runtime-minimal
     name: Test loop runtime minimal
     status: pending

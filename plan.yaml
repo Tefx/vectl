@@ -41981,3 +41981,55 @@ phases:
 
       **Verdict**: PASS | ISSUES_FOUND'
     agent: wiring-auditor
+  - id: driver-prompt-review.spec-conformance
+    name: Verify packaged prompt spec conformance
+    status: pending
+    description: 'Spec conformance verification via adversarial divergence hunting.
+
+
+      SCOPE: only the prompt-resource requirements touched by this improvement.
+
+
+      Focus areas:
+
+      - runtime authority is the packaged resource, not docs/
+
+      - docs mirror language matches implemented runtime behavior
+
+      - missing packaged resource behavior is explicit and actionable
+
+      - drift strategy between packaged resource and docs mirror is implemented/documented
+      consistently
+
+      - judge verdict-facing contract remains aligned with docs/JUDGE-AGENT-PROMPT.md
+      response format requirements
+
+
+      For each requirement, cite the spec section and implementation file:line.'
+    verification: '- Conformance report covers the runtime-authority change, missing-resource
+      behavior, and docs-mirror wording.
+
+      - Any drift is called out with CONFORMS/DIVERGES/PARTIAL/NEEDS_TEST style verdicts.
+
+      - Verdict-facing output contract is rechecked against the prompt spec.'
+    evidence_template: '## Spec Conformance Report
+
+      | Requirement | Spec Section | Implementation | Verdict | Notes |
+
+      | ----------- | ------------ | -------------- | ------- | ----- |
+
+
+      ## Coverage Summary
+
+      - Runtime authority:
+
+      - Docs mirror wording:
+
+      - Missing-resource behavior:
+
+      - Drift strategy:
+
+      - Verdict contract alignment:'
+    depends_on:
+    - driver-prompt-review.update-docs
+    agent: spec-verifier

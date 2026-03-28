@@ -41542,6 +41542,60 @@ phases:
     depends_on:
     - driver-prompt-foundation.contract
     agent: integration-verifier
+  - id: driver-prompt-foundation.gate
+    name: Gate prompt-resource foundation readiness
+    status: pending
+    description: 'Gate review: verify the prompt-resource foundation phase is precise
+      enough to unlock implementation fan-out.
+
+
+      review_depth: STANDARD
+
+      review_depth_rationale:
+
+      - Runtime resource packaging changes startup/runtime behavior but stays within
+      one driver seam.
+
+      - The phase must block implementation if missing/drift semantics are still ambiguous.
+
+
+      Focus:
+
+      - Contract purity maintained
+
+      - Red-test scope is test-only and exposes the real current gap
+
+      - Downstream implementation seams are clearly split for parallel execution'
+    verification: '- All foundation steps completed.
+
+      - Contract defines packaged-resource ownership, docs-mirror role, and explicit
+      missing/drift semantics.
+
+      - Red tests expose the current docs dependency without product-code edits.
+
+      - No unresolved blocker remains for migration-step sequencing.'
+    evidence_template: '## Gate Review Report
+
+      | Step ID | Status | Evidence Quality | Concerns |
+
+      | ------- | ------ | ---------------- | -------- |
+
+      | driver-prompt-foundation.contract |  |  |  |
+
+      | driver-prompt-foundation.test-define-red |  |  |  |
+
+
+      ## Decision
+
+      - OPEN or BLOCKED
+
+      - Blocking ambiguities:
+
+      - Required follow-up actions:'
+    depends_on:
+    - driver-prompt-foundation.contract
+    - driver-prompt-foundation.test-define-red
+    agent: gate-reviewer
 - id: driver-prompt-migration
   name: Driver Prompt Resource Migration
   status: locked

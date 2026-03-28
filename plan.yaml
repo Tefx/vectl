@@ -39154,7 +39154,7 @@ phases:
       - stale/duplicative exit-code text removed.'
   - id: driver-debt-review.gate
     name: Final gate for driver debt remediation
-    status: pending
+    status: claimed
     description: 'step_type: gate
 
       Final deep-review gate for A1/A2/A4/A3 remediation.
@@ -39202,6 +39202,8 @@ phases:
     - driver-debt-review.contract-strength
     - driver-debt-review.black-box-verification
     agent: gate-reviewer
+    claimed_by: gate-reviewer
+    claimed_at: '2026-03-28T22:29:04.584847+00:00'
   - id: driver-debt-review.black-box-verification
     name: Black-box verify remediated driver surfaces
     status: done

@@ -41223,3 +41223,38 @@ phases:
 
       - Any wiring gap is blocking at this phase'
     agent: wiring-auditor
+  - id: driver-enhancement-review.spec-conformance
+    name: Audit enhanced driver spec conformance
+    status: pending
+    description: 'step_type: verification
+
+      Verification scope: phase-check protecting driver-enhancement-review.gate.
+
+
+      Spec conformance verification via adversarial divergence hunting.
+
+
+      Scope:
+
+      - hardened routing semantics for `agent_routing.default`
+
+      - observability event schema behavior
+
+      - streaming / heartbeat / progress visibility semantics
+
+      - recovery taxonomy and recovery matrix behavior
+
+
+      For each requirement, cite the spec/contract section and implementation file:line.'
+    verification: 'phase-check protecting driver-enhancement-review.gate.
+
+      - Evidence table covers the touched contracts and docs
+
+      - Any divergence is explicitly classified (CONFORMS / DIVERGES / PARTIAL / NEEDS_TEST
+      / NOT_FOUND / AMBIGUOUS_SPEC / SPEC_POSSIBLY_STALE)
+
+      - Behavioral precedence claims that cannot be proved statically are flagged
+      as NEEDS_TEST with concrete suggestions'
+    depends_on:
+    - driver-enhancement-review.update-docs
+    agent: spec-verifier

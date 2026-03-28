@@ -1181,6 +1181,41 @@ async def dispatch_planner(
     """
     ...
 
+#### REPLAN / Planner Wiring Contract (Bounded)
+
+The following trigger points are the exact ``loop.py`` surfaces allowed to emit
+planner dispatch from a judge REPLAN verdict:
+
+| Trigger | Judgment Type | Trigger Surface | Planner Instruction Source | Constraint |
+|---------|---------------|-----------------|----------------------------|------------|
+| `handle_dispatch.preflight_replan` | `PREFLIGHT` | Before claim/worktree/runner dispatch | `JudgmentVerdict.planner_instruction` | MUST preserve REPLAN as planner-capable; MUST NOT downgrade to reject-only behavior |
+| `reconcile.evidence_replan` | `EVIDENCE` | Success path after evidence semantics review | `JudgmentVerdict.planner_instruction` | MUST preserve plan-strengthening semantics; reject-only is insufficient |
+| `reconcile.failure_classification_replan` | `FAILURE` | Failure classification before blocker disposition is finalized | `JudgmentVerdict.planner_instruction` | MUST preserve planner path for remediation/decomposition |
+| `reconcile.escalation_replan` | `ESCALATION` | Repeated-failure branch once threshold is reached | `JudgmentVerdict.planner_instruction` | MUST NOT collapse REPLAN into retry/switch-agent only |
+| `run.startup_recovery_anomaly_replan` | `ANOMALY` | Startup recovery before unsafe auto-repair | `JudgmentVerdict.planner_instruction` | MUST preserve planner-authored repair path; MUST NOT collapse to halt-only |
+
+##### Anti-Narrowing Rule
+
+Later phases MUST treat ``REPLAN`` as a planner-dispatch-capable verdict with a
+non-empty ``planner_instruction``. They MUST NOT silently reinterpret REPLAN as
+``REJECT``, ``DEFER``, or ``HALT`` without an explicit ADR or architecture update.
+
+##### Planner Instruction Handling
+
+- The judge owns *why* replanning is needed via ``JudgmentVerdict.reason``.
+- The judge owns *what to tell the planner* via
+  ``JudgmentVerdict.planner_instruction``.
+- ``loop.py`` owns routing that instruction to planner dispatch.
+- The planner owns plan mutation after receiving the instruction.
+
+##### Deferred Runtime Scope
+
+This architecture step pins the callable surface and trigger matrix only. The
+runtime implementation of planner dispatch remains deferred to
+`driver-judgment-expansion-replan`. That later phase MUST implement only the
+bounded trigger points listed above and may not narrow the set without updating
+this section.
+
 async def dispatch_conflict_resolver(
     step_id: str,
     conflict_files: list[str],

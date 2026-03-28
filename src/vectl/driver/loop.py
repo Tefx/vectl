@@ -23,7 +23,7 @@ import logging
 import shutil
 from dataclasses import dataclass
 from pathlib import Path
-from typing import TYPE_CHECKING, Final, Literal
+from typing import TYPE_CHECKING, Final, Literal, Protocol
 
 from vectl.claims import repair_claims
 from vectl.decide import decide
@@ -59,6 +59,12 @@ from .worktree import (
 if TYPE_CHECKING:
     from vectl.models import Action
 
+    from .config import DriverConfig
+    from .judge import Judge
+    from .observe import Observer
+    from .runners import Runner
+    from .session import SessionPool
+
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -84,6 +90,92 @@ class DeferredRuntimeBranch:
     branch: str
     deferred_to: str
     rationale: str
+
+
+ReplanTriggerName = Literal[
+    "handle_dispatch.preflight_replan",
+    "reconcile.evidence_replan",
+    "reconcile.failure_classification_replan",
+    "reconcile.escalation_replan",
+    "run.startup_recovery_anomaly_replan",
+]
+
+
+@dataclass(frozen=True)
+class PlannerDispatchContract:
+    """Pinned planner-dispatch contract for REPLAN-capable loop branches.
+
+    Architecture: docs/DRIVER-ARCHITECTURE.md Section 2.11
+    Blueprint: DRIVER-BLUEPRINT.md Flow 2 / Flow 3 / Flow 4
+
+    This contract is intentionally pre-runtime. It names the exact loop trigger
+    points that MAY produce planner dispatch, the source of the instruction, and
+    the bounded deferral that remains in force until the later implementation
+    phase wires planner execution.
+
+    Invariants:
+        - ``trigger`` MUST correspond to a branch named in
+          ``DEFERRED_REPLAN_BRANCHES``.
+        - ``planner_instruction`` originates from
+          ``JudgmentVerdict.planner_instruction`` and may not be replaced with a
+          hard-coded reject/defer message.
+        - ``verdict`` remains semantically distinct from REJECT/DEFER/HALT.
+          Later phases MUST preserve REPLAN as planner-dispatch-capable behavior.
+        - ``deferred_to`` names the only later phase allowed to implement the
+          runtime branch unless architecture authority changes.
+    """
+
+    trigger: ReplanTriggerName
+    judgment_type: str
+    trigger_surface: str
+    planner_instruction_source: str
+    deferred_to: str
+    rationale: str
+
+
+@dataclass(frozen=True)
+class PlannerDispatchRequest:
+    """Planner dispatch payload derived from a REPLAN verdict.
+
+    Architecture: docs/DRIVER-ARCHITECTURE.md Section 2.11 (`dispatch_planner`)
+    Blueprint: DRIVER-BLUEPRINT.md lines 566-568, 697-698, 728-733
+
+    This request is the canonical loop->planner handoff shape. It is contract
+    surface only; runtime dispatch remains deferred.
+
+    Invariants:
+        - ``planner_instruction`` is non-empty and comes from the judge verdict.
+        - ``source_verdict`` is exactly ``"REPLAN"``.
+        - ``trigger`` identifies the originating branch so later phases cannot
+          silently merge distinct REPLAN sites into one reject-only path.
+        - ``step_id`` identifies the step whose plan needs strengthening,
+          decomposition, repair, or gate follow-up.
+    """
+
+    step_id: str
+    trigger: ReplanTriggerName
+    judgment_type: str
+    planner_instruction: str
+    source_verdict: str = "REPLAN"
+
+
+class PlannerDispatcher(Protocol):
+    """Protocol for loop-owned planner dispatch.
+
+    Non-responsibility: does NOT decide whether REPLAN is warranted. That is the
+    judge's responsibility. This protocol only carries out the loop->planner
+    wiring once a REPLAN verdict already exists.
+    """
+
+    async def dispatch_planner(
+        self,
+        request: PlannerDispatchRequest,
+        *,
+        config: DriverConfig,
+        runners: dict[str, Runner],
+        observer: Observer,
+        plan_path: Path,
+    ) -> None: ...
 
 
 @dataclass(frozen=True)
@@ -165,6 +257,106 @@ DEFERRED_REPLAN_BRANCHES: Final[tuple[DeferredRuntimeBranch, ...]] = (
         ),
     ),
 )
+
+
+REPLAN_PLANNER_WIRING: Final[tuple[PlannerDispatchContract, ...]] = (
+    PlannerDispatchContract(
+        trigger="handle_dispatch.preflight_replan",
+        judgment_type="PREFLIGHT",
+        trigger_surface="handle_dispatch() before claim/worktree/runner dispatch",
+        planner_instruction_source="JudgmentVerdict.planner_instruction",
+        deferred_to="driver-judgment-expansion-replan",
+        rationale=(
+            "Blueprint Flow 2 requires planner dispatch when PREFLIGHT returns "
+            "REPLAN so the step can be strengthened rather than silently "
+            "downgraded to reject-only behavior."
+        ),
+    ),
+    PlannerDispatchContract(
+        trigger="reconcile.evidence_replan",
+        judgment_type="EVIDENCE",
+        trigger_surface="reconcile() success path after evidence semantics review",
+        planner_instruction_source="JudgmentVerdict.planner_instruction",
+        deferred_to="driver-judgment-expansion-replan",
+        rationale=(
+            "Evidence inadequacy may require plan strengthening or fix/retest "
+            "decomposition; REPLAN must remain a planner path, not a bare reject."
+        ),
+    ),
+    PlannerDispatchContract(
+        trigger="reconcile.failure_classification_replan",
+        judgment_type="FAILURE",
+        trigger_surface="reconcile() failure classification before blocker disposition is finalized",
+        planner_instruction_source="JudgmentVerdict.planner_instruction",
+        deferred_to="driver-judgment-expansion-replan",
+        rationale=(
+            "Failure provenance/disposition may require planner-created follow-up "
+            "work; architecture forbids collapsing this branch into reject-only "
+            "or defer-only handling."
+        ),
+    ),
+    PlannerDispatchContract(
+        trigger="reconcile.escalation_replan",
+        judgment_type="ESCALATION",
+        trigger_surface="reconcile() repeated-failure branch once threshold is reached",
+        planner_instruction_source="JudgmentVerdict.planner_instruction",
+        deferred_to="driver-judgment-expansion-replan",
+        rationale=(
+            "Blueprint Flow 3 explicitly routes repeated-failure REPLAN verdicts "
+            "to planner dispatch instead of retry/switch-agent only."
+        ),
+    ),
+    PlannerDispatchContract(
+        trigger="run.startup_recovery_anomaly_replan",
+        judgment_type="ANOMALY",
+        trigger_surface="run() startup recovery after anomaly detection and before unsafe auto-repair",
+        planner_instruction_source="JudgmentVerdict.planner_instruction",
+        deferred_to="driver-judgment-expansion-replan",
+        rationale=(
+            "Structural/semantic anomalies may require planner-authored repair "
+            "steps; later phases may not narrow this to halt-only behavior."
+        ),
+    ),
+)
+"""Exact REPLAN/planner-dispatch wiring commitments for ``loop.py``.
+
+Each entry pins:
+- the trigger point
+- the judgment type that may emit REPLAN
+- the source of planner instructions
+- the later phase allowed to implement runtime behavior
+
+Anti-narrowing rule:
+    Later phases MUST preserve all entries in this matrix as planner-capable.
+    They MUST NOT reinterpret REPLAN as a synonym for REJECT, DEFER, or HALT.
+"""
+
+
+async def dispatch_planner(
+    request: PlannerDispatchRequest,
+    *,
+    config: DriverConfig,
+    runners: dict[str, Runner],
+    observer: Observer,
+    plan_path: Path,
+) -> None:
+    """Invoke the planner agent in response to a REPLAN verdict.
+
+    Contract pin from docs/DRIVER-ARCHITECTURE.md Section 2.11 and
+    DRIVER-BLUEPRINT.md Flow 2 / Flow 3 / Flow 4:
+
+    - Input is a ``PlannerDispatchRequest`` derived from a judge REPLAN verdict.
+    - ``request.planner_instruction`` is the canonical planner instruction and
+      must be preserved verbatim enough to retain judge intent.
+    - ``request.trigger`` identifies the originating branch so audit logs and
+      later runtime code cannot silently collapse distinct REPLAN sites.
+    - Runtime behavior remains deferred to ``driver-judgment-expansion-replan``.
+
+    This stub exists to pin the callable surface only.
+    """
+    raise NotImplementedError(
+        "Planner dispatch runtime is deferred to driver-judgment-expansion-replan"
+    )
 
 
 async def run(config_path: Path) -> None:
@@ -739,10 +931,16 @@ __all__ = [
     "DEFERRED_REPLAN_BRANCHES",
     "GRACEFUL_SHUTDOWN_CONTRACT",
     "LoopSurfaceName",
+    "PlannerDispatchContract",
+    "PlannerDispatchRequest",
+    "PlannerDispatcher",
+    "REPLAN_PLANNER_WIRING",
+    "ReplanTriggerName",
     "GracefulShutdownContract",
     "DeferredRuntimeBranch",
     "STARTUP_RECOVERY_CONTRACT",
     "StartupRecoveryContract",
+    "dispatch_planner",
     "handle_complete",
     "handle_dispatch",
     "reconcile",

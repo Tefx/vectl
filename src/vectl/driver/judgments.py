@@ -180,3 +180,40 @@ class JudgmentVerdict:
     reason: str
     suggested_action: str | None = None
     planner_instruction: str | None = None
+
+
+@dataclass(frozen=True)
+class ReplanVerdictContract:
+    """Contract authority for REPLAN verdict handling.
+
+    Architecture: docs/DRIVER-ARCHITECTURE.md Section 2.10 / 2.11
+    Blueprint: DRIVER-BLUEPRINT.md Flow 2, Flow 3, Flow 4
+
+    This type exists to pin the non-negotiable semantics of REPLAN before the
+    runtime planner wiring is implemented in ``loop.py``.
+
+    Invariants:
+        - ``verdict`` MUST be ``"REPLAN"``.
+        - ``planner_instruction`` MUST be non-empty for REPLAN.
+        - Later phases MUST route REPLAN through planner dispatch; they MUST NOT
+          silently collapse REPLAN into REJECT, DEFER, or HALT-only handling.
+        - ``reason`` explains why replanning is required; ``planner_instruction``
+          explains what the planner should change.
+    """
+
+    verdict: str
+    reason: str
+    planner_instruction: str
+
+
+REPLAN_NON_NARROWING_RULE: str = (
+    "A JudgmentVerdict with verdict='REPLAN' is planner-dispatch-capable "
+    "surface area. Later phases MUST preserve planner_instruction and invoke "
+    "the planner path; they MUST NOT reinterpret REPLAN as reject-only, "
+    "defer-only, or halt-only behavior without an explicit architecture update."
+)
+"""Canonical anti-narrowing rule for REPLAN verdicts.
+
+Architecture: docs/DRIVER-ARCHITECTURE.md Section 2.10 / 2.11
+Blueprint: DRIVER-BLUEPRINT.md lines 566-568, 697-698, 728-733
+"""

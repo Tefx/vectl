@@ -32447,6 +32447,9 @@ phases:
       Verification scope: local-check protecting driver-multi-runner-hardening.gate.
 
 
+      POST-IMPLEMENTATION GREEN VERIFICATION STEP.
+
+
       Validate the ownership boundary between SessionPool and decide.py state during
       real runtime execution.
 
@@ -32457,11 +32460,17 @@ phases:
 
       - driver does not mutate decide.py module registries directly
 
-      - stale or mismatched sessions degrade gracefully to fresh dispatch'
+      - stale or mismatched sessions degrade gracefully to fresh dispatch
+
+
+      Failures here are implementation findings, not expected-red.'
     verification: '- Evidence includes a real or instrumented runtime path showing
       fresh fallback on unsupported reuse
 
-      - No direct decide.py state mutation is observed'
+      - No direct decide.py state mutation is observed
+
+      - Expected result is green pass against implemented session-boundary behavior;
+      failures must be reported as findings'
     depends_on:
     - driver-multi-runner-hardening.impl-loop-hardening
     agent: integration-verifier

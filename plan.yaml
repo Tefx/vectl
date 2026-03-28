@@ -37337,7 +37337,7 @@ phases:
   steps:
   - id: driver-debt-decision-state.contract
     name: Pin DecideState ownership contract
-    status: claimed
+    status: done
     description: "step_type: contract\ncontract_purity: ENFORCED\ncontract_outputs:\n\
       \  - signatures\n  - type_defs\n  - interfaces\n  - stubs\nVerification scope:\
       \ phase-check protecting driver-debt-decision-state.impl and driver-debt-decision-state.gate.\n\
@@ -37376,6 +37376,19 @@ phases:
     agent: python-senior
     claimed_by: python-senior
     claimed_at: '2026-03-28T18:28:04.246125+00:00'
+    done_at: '2026-03-28T18:41:38.390674+00:00'
+    evidence: "## DecideState Contract Pinning\n- Signatures pinned:\n  - decide(...,\
+      \ state: DecideState | None = None) — src/vectl/decide.py updated\n  - should_reuse_session(...,\
+      \ state: DecideState | None = None) — src/vectl/decide.py updated\n  - DriverState.decide_state:\
+      \ DecideState — src/vectl/driver/types.py added\n- Ownership statement: After\
+      \ remediation, completion_times/session_registry/failure_counts owned by instance-local\
+      \ DecideState carried by DriverState.decide_state and passed explicitly by loop.py\
+      \ into decide(...). Legacy fallback as short-lived internal migration only.\n\
+      - Drift points recorded from docs/DRIVER-ARCHITECTURE.md: Section 2.5, Section\
+      \ 4 State Ownership Matrix, Q4 bullet — all enumerated in-file under \"Decision-state\
+      \ Contract Drift Register\"\n- Implementation excluded: yes — no new decision\
+      \ policy/branching, only contract surfaces and state ownership wiring\n- pytest\
+      \ tests/test_decide.py: 18 passed\n- ruff check: All passed"
   - id: driver-debt-decision-state.test-define-red
     name: Define expected-red isolation regressions
     status: pending

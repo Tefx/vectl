@@ -41164,3 +41164,34 @@ phases:
   depends_on:
   - driver-routing-hardening
   - driver-enhancement-integration
+  steps:
+  - id: driver-enhancement-review.update-docs
+    name: Sync driver enhancement docs
+    status: pending
+    description: 'step_type: review
+
+
+      Update driver documentation to match the hardened routing semantics and enhanced
+      driver behavior.
+
+
+      Required scope:
+
+      - remove any remaining implication that `agent_routing.default` is supported
+
+      - document the observability event families and versioned envelope expectations
+
+      - document streaming/progress-aware liveness semantics
+
+      - document the failure taxonomy and recovery policy matrix boundaries
+
+      - align driver architecture docs with the enhancement foundation outputs'
+    verification: 'phase-check protecting driver-enhancement-review.spec-conformance
+      and driver-enhancement-review.black-box-verification.
+
+      - Docs reflect implemented behavior and current config semantics
+
+      - No stale example or unsupported routing semantics remain
+
+      - Runtime and recovery surfaces are documented at the right boundary'
+    agent: doc-reviewer

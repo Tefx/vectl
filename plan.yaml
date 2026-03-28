@@ -33591,7 +33591,7 @@ phases:
       - docs/JUDGE-AGENT-PROMPT.md response format + judgment types'
   - id: driver-judgment-runtime-minimal.gate
     name: Gate driver-judgment-runtime-minimal
-    status: pending
+    status: claimed
     description: 'step_type: gate
 
       As an INDEPENDENT REVIEWER, assess whether the first runnable vectl.driver surface
@@ -33617,6 +33617,8 @@ phases:
     depends_on:
     - driver-judgment-runtime-minimal.spec-conformance
     agent: gate-reviewer
+    claimed_by: gate-reviewer
+    claimed_at: '2026-03-28T09:07:17.571518+00:00'
   - id: driver-judgment-runtime-minimal.fix-liveness-probe-blockers
     name: Fix liveness-probe blockers
     status: done

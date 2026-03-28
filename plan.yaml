@@ -42435,6 +42435,47 @@ phases:
     matrix with independent verification.
   depends_on:
   - driver-judge-hardening-foundation
+  steps:
+  - id: driver-judge-hardening-recovery-policy.contract
+    name: Pin judge failure handling policy matrix
+    status: pending
+    description: "step_type: contract\ncontract_purity: ENFORCED\ncontract_outputs:\n\
+      \  - failure_policy_matrix\n  - disposition_rules\n  - remediation_trigger_rules\n\
+      spec_refs:\n  - driver.yaml#judge\n  - docs/DRIVER-ARCHITECTURE.md#judge-runtime\n\
+      \  - docs/JUDGE-AGENT-PROMPT.md#verdict-schema\nauthoritative_interface: failure\
+      \ handling semantics for JudgmentParseError, timeout, malformed output, empty\
+      \ output, and unsupported capability cases\ntouch_paths:\n  - src/vectl/driver/judge.py\n\
+      \  - src/vectl/driver/loop.py\n  - src/vectl/driver/errors.py\n  - src/vectl/driver/observe.py\n\
+      \  - docs/DRIVER-ARCHITECTURE.md\nagent_source: default\n\nDefine the explicit\
+      \ disposition matrix for judge failures.\n\nThe matrix MUST state, for each\
+      \ relevant failure family and judgment type, whether the system:\n- retries\n\
+      - falls back to another runner\n- halts the driver attempt\n- emits planner\
+      \ remediation / escalation\n- preserves original evidence vs synthesized fallback\
+      \ evidence\n\nRequired coverage:\n- `JudgmentParseError`\n- timeout / stall\
+      \ timeout\n- malformed output\n- empty output\n- unsupported native structured-output\
+      \ capability (best-effort only)\n\nThis is a contract-only step. It MUST NOT\
+      \ implement runtime control flow."
+    verification: '- Matrix gives an unambiguous disposition for each failure class
+      and judgment family
+
+      - Retry/fallback/halt/planner-remediation boundaries are explicit
+
+      - No runtime control flow implementation lands in this step'
+    evidence_template: '## Judge Failure Handling Contract
+
+      | Failure Class | Judgment Types | Retry? | Fallback? | Halt? | Planner Remediation?
+      | Notes |
+
+      | --- | --- | --- | --- | --- | --- | --- |
+
+
+      ## Evidence Preservation Rules
+
+
+      ## Contract Anchors
+
+      '
+    agent: python-senior
 - id: driver-judge-hardening-review
   name: 'Driver Judge Hardening: Review'
   status: locked

@@ -40013,3 +40013,49 @@ phases:
     depends_on:
     - driver-evolution-review.spec-conformance
     agent: blind-tester
+  - id: driver-evolution-review.gate
+    name: Final gate for driver evolution ADR chain
+    status: pending
+    description: 'step_type: gate
+
+      Gate review: final doc-sync + deep review for the driver evolution ADR chain.
+
+
+      review_depth: THOROUGH
+
+      review_depth_rationale:
+
+      - final phase consolidates doc sync, conformance, wiring, architecture, contract-strength,
+      and black-box review
+
+      - phase protects long-lived extension boundaries for driver evolution
+
+
+      cross_cutting_focus:
+
+      - event contracts are canonical and versioned
+
+      - planner dispatch is first-class and auditable
+
+      - RuntimeContext and DecideState ownership remains clean
+
+      - runnable driver surface is still alive and documented
+
+
+      Independence: gate-reviewer must remain independent from implementation agents
+      used in preceding phases.'
+    verification: 'phase-check closing the ADR chain.
+
+      - Documentation sync is complete
+
+      - Deep review evidence is complete and internally consistent
+
+      - No unresolved blocker intersects future driver evolution work'
+    depends_on:
+    - driver-evolution-review.update-docs
+    - driver-evolution-review.wiring-audit
+    - driver-evolution-review.spec-conformance
+    - driver-evolution-review.architecture-review
+    - driver-evolution-review.contract-strength
+    - driver-evolution-review.black-box-verification
+    agent: gate-reviewer

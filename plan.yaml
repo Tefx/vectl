@@ -38340,7 +38340,7 @@ phases:
       src/vectl/driver/entrypoint.py adapter functions.'
   - id: driver-debt-cli-entrypoint-unification.spec-conformance
     name: Verify CLI entrypoint spec conformance
-    status: claimed
+    status: done
     description: 'step_type: verification
 
       Verification scope: phase-check protecting driver-debt-cli-entrypoint-unification.gate.
@@ -38371,6 +38371,34 @@ phases:
     agent: spec-verifier
     claimed_by: spec-verifier
     claimed_at: '2026-03-28T21:24:41.475238+00:00'
+    done_at: '2026-03-28T21:27:43.439179+00:00'
+    evidence: 'spec-verifier SUCCESS.
+
+
+      step_intent: verification
+
+      expected_result: green
+
+      observed_result: green
+
+      failure_alignment: none
+
+      product_files_modified: no
+
+
+      Spec/code evidence confirms conformance across invocation forms and exit-code
+      mapping:
+
+      - vectl drive --config surface preserved in src/vectl/cli.py
+
+      - python -m vectl.driver positional config preserved and --config supported
+      in src/vectl/driver/entrypoint.py
+
+      - both entrypoints delegate via shared adapter through src/vectl/driver/entrypoint.py
+      and src/vectl/driver/__main__.py
+
+      - shared exit-code semantics (runtime/config=1, usage/parsing=2) are consistently
+      implemented.'
   - id: driver-debt-cli-entrypoint-unification.gate
     name: Gate CLI entrypoint unification
     status: pending

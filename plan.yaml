@@ -37785,27 +37785,6 @@ phases:
     depends_on:
     - driver-debt-completion-authority.impl
     agent: integration-verifier
-  - id: driver-debt-completion-authority.freeze
-    name: Freeze snapshot for completion-authority gate
-    status: pending
-    description: 'step_type: verification
-
-      Verification scope: phase-check protecting driver-debt-completion-authority.gate.
-
-
-      Freeze the completion-authority remediation before gate review.
-
-      Required evidence: git rev-parse HEAD, clean status, environment declaration,
-      and no-change statement.'
-    verification: '- Freeze evidence is complete and no code changes occur before
-      gate'
-    refs:
-    - src/vectl/driver/loop.py
-    - src/vectl/driver/types.py
-    - src/vectl/decide.py
-    depends_on:
-    - driver-debt-completion-authority.impl
-    agent: integration-verifier
   - id: driver-debt-completion-authority.gate
     name: Gate completion-authority convergence
     status: pending

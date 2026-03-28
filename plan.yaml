@@ -39592,7 +39592,19 @@ phases:
       registry form
 
 
-      Out-of-scope guardrail: full loop branching migration happens in the next phase.'
+      Out-of-scope guardrail: full loop branching migration happens in the next phase.
+
+
+      ## Completion Criteria (stub exclusion)
+
+      This is an IMPLEMENTATION step. Stub-only completion is NOT acceptable.
+
+      Action-registry deliverables must contain substantive registry logic and lookup
+      behavior, not declaration-only placeholders.
+
+
+      After implementation, run spec-verifier scoped to changed files to check for
+      spec-code drift.'
     verification: 'phase-check protecting planner-dispatch registration and gate.
 
       - Main path: targeted tests show execution/planner/control/recovery categories

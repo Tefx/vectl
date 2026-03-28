@@ -39671,7 +39671,11 @@ phases:
 
       3. Missing verification of planner dispatch event expectations will be rejected
 
-      4. Dynamic registration replacing explicit registry declarations will be rejected'
+      4. Dynamic registration replacing explicit registry declarations will be rejected
+
+
+      After implementation, run spec-verifier scoped to changed files to check for
+      spec-code drift.'
     verification: 'phase-check protecting driver-evolution-action-registry.verify-planner-dispatch.
 
       - Main path: focused tests prove planner dispatch is resolved via the registry,

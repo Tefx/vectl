@@ -31883,8 +31883,23 @@ phases:
     description: 'step_type: test
 
 
+      EXPECTED-RED PRE-IMPLEMENTATION TEST STEP.
+
+
       Add focused tests for judgment enums, request validation, required context fields,
-      and verdict parsing assumptions.
+      and verdict parsing assumptions before implementation completion.
+
+
+      Allowed file scope:
+
+      - tests
+
+      - fixtures
+
+      - test helpers
+
+      Do NOT modify src/vectl/driver/*. If contract gaps are exposed, record them
+      instead of drifting into implementation.
 
 
       Required checks:
@@ -31893,10 +31908,22 @@ phases:
 
       - required context-field enforcement
 
-      - verdict object round-trip and strict field coverage'
+      - verdict object round-trip and strict field coverage
+
+
+      Evidence requirements:
+
+      - modified files limited to tests/fixtures/helpers
+
+      - expected_failures or exposed_gaps listed explicitly
+
+      - downstream implementation owner linked: driver-judgment-runtime-minimal.impl-judgments'
     verification: '- Targeted pytest file covers the documented judgment data contract
 
-      - No runtime judge subprocess behavior implemented in tests beyond fixtures/mocks'
+      - Step succeeds if it records expected-red contract gaps without product-code
+      edits or proves the contract already passes green without src changes
+
+      - No runtime judge subprocess behavior is implemented in this step beyond fixtures/mocks'
     depends_on:
     - driver-judgment-runtime-minimal.contract-judgment-coverage-matrix
     agent: python-executor

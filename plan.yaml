@@ -43353,6 +43353,26 @@ phases:
     depends_on:
     - driver-continuity-restart-recovery.impl
     agent: blind-tester
+  - id: driver-continuity-restart-recovery.gate
+    name: Gate restart recovery continuity
+    status: pending
+    description: "step_type: gate\nGate review for startup recovery and continuity\
+      \ policy.\n\nreview_depth: THOROUGH\ncross_cutting_focus:\n  - real entrypoint\
+      \ startup recovery is wired, not just helper logic\n  - failure/abort continuity\
+      \ policy aligns with judge outcomes\n  - unsafe replay or unresolved reconciliation\
+      \ blocks bootstrap"
+    verification: '- Restart recovery uses durable continuity artifacts and capability-aware
+      policy
+
+      - Real entrypoint evidence exists for resume, restart-only fallback, and halt
+
+      - Remaining issues, if any, have explicit non-intersection with driver-bootstrap-readiness'
+    depends_on:
+    - driver-continuity-restart-recovery.contract
+    - driver-continuity-restart-recovery.test-define-red
+    - driver-continuity-restart-recovery.impl
+    - driver-continuity-restart-recovery.verify
+    agent: gate-reviewer
 - id: driver-continuity-review
   name: 'Driver Continuity: Review'
   status: locked

@@ -43357,40 +43357,6 @@ phases:
 
       - Recovery contract is sufficient for implementation without redesign'
     agent: software-architect
-  - id: driver-continuity-restart-recovery.test-define-red
-    name: Define expected-red restart recovery regressions
-    status: pending
-    description: 'step_type: test
-
-      step_intent: test_define_red
-
-      expected_result: red
-
-      Define the bootstrap-blocker recovery gaps before implementation.
-
-
-      Test-only scope:
-
-      - process restart must recover resumable sessions and failed/aborted attempts
-
-      - startup recovery must reconcile continuity ledger with plan/claims truth and
-      flag inconsistencies
-
-      - judge failure handling must feed continuity policy without duplicate or conflicting
-      ownership
-
-      - recovery controller must choose resume vs restart vs halt based on capability
-      + replay safety facts
-
-
-      Evidence must list exposed_gaps and the downstream implementation owner driver-continuity-restart-recovery.impl.'
-    verification: '- Modified files limited to tests/ plus fixtures/helpers
-
-      - Expected-red failures expose missing startup recovery and policy alignment
-      behavior
-
-      - Evidence names the highest-risk failure path, not only happy-path restart'
-    agent: python-executor
   - id: driver-continuity-restart-recovery.impl
     name: Implement startup recovery controller and continuity policy
     status: pending
@@ -43500,7 +43466,6 @@ phases:
       - Remaining issues, if any, have explicit non-intersection with driver-bootstrap-readiness'
     depends_on:
     - driver-continuity-restart-recovery.contract
-    - driver-continuity-restart-recovery.test-define-red
     - driver-continuity-restart-recovery.impl
     - driver-continuity-restart-recovery.verify
     agent: gate-reviewer

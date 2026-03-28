@@ -35959,7 +35959,7 @@ phases:
       \ the shutdown sequence with exit code 0."
   - id: driver-cli-integration.gate
     name: Gate driver-cli-integration
-    status: pending
+    status: claimed
     description: 'step_type: gate
 
       As an INDEPENDENT REVIEWER, assess whether the vectl drive runnable CLI surface
@@ -35983,6 +35983,8 @@ phases:
     depends_on:
     - driver-cli-integration.liveness-probe
     agent: gate-reviewer
+    claimed_by: gate-reviewer
+    claimed_at: '2026-03-28T12:47:54.964440+00:00'
   - id: driver-cli-integration.expected-red-render
     name: Render expected-red completed steps distinctly in status/show output
     status: done

@@ -40420,11 +40420,12 @@ phases:
     - driver-routing-hardening.verify
     agent: gate-reviewer
 - id: driver-enhancement-foundation
-  name: Driver Enhancement Foundation
+  name: Driver Post-Bootstrap Enhancement Foundation
   status: locked
-  gate: Approved architecture basis and contract set exist for runtime observability,
-    streaming-aware liveness, and recovery behavior before implementation fan-out
-    begins.
+  gate: Approved architecture basis and contract set exist for post-bootstrap observability,
+    streaming-aware liveness, and advanced recovery behavior only. Bootstrap-minimum
+    continuity scope is excluded because it is owned upstream by the continuity blocker
+    chain.
   depends_on:
   - driver-evolution-review
   steps:

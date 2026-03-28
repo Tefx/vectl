@@ -40188,3 +40188,10 @@ phases:
     - driver-evolution-review.contract-strength
     - driver-evolution-review.black-box-verification
     agent: gate-reviewer
+- id: driver-evolution-action-registry-contract-foundation
+  name: 'Driver Evolution: Action Registry Contract Foundation'
+  status: locked
+  gate: Planner-dispatch registry boundary is pinned early so action-registry implementation
+    can start only after runtime-context plus this contract foundation
+  depends_on:
+  - driver-debt-review

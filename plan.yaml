@@ -41034,7 +41034,7 @@ phases:
       product_implementation_files_modified: no'
 - id: driver-evolution-loop-migration
   name: 'Driver Evolution: Loop Migration & Wiring'
-  status: in_progress
+  status: done
   gate: loop.py uses registry-backed handlers, planner dispatch remains first-class,
     and the runnable driver path is proven end-to-end
   depends_on:
@@ -41421,7 +41421,7 @@ phases:
       - no blocker intersects final review/runnable surface'
   - id: driver-evolution-loop-migration.gate
     name: Gate loop migration and wiring
-    status: claimed
+    status: done
     description: 'step_type: gate
 
       Gate review: verify the loop-migration phase completion and quality.
@@ -41467,9 +41467,47 @@ phases:
     agent: gate-reviewer
     claimed_by: gate-reviewer
     claimed_at: '2026-03-29T07:25:58.587673+00:00'
+    done_at: '2026-03-29T07:29:00.947027+00:00'
+    evidence: 'Artifact:
+
+      - loop migration implementation and verification evidence set
+
+
+      Verification:
+
+      - `uv run pytest tests/test_driver_loop_runtime.py tests/test_driver_loop_contract.py
+      tests/test_driver_loop_hardening.py -v` -> 52 passed, 25 xfailed
+
+      - `uv run pytest tests/test_driver_entrypoint_drift.py tests/test_driver_recovery.py
+      tests/test_driver_dispatch.py -q` -> 44 passed
+
+      - `uv run ruff check src/vectl/driver/loop.py src/vectl/driver/action_registry.py`
+      -> All checks passed
+
+      - runtime imports for planner dispatch/dispatch handler successful
+
+
+      Spec link:
+
+      - docs/ADR-driver-evolution-foundation.md#71-loop-action-registry-covers-all-loop-executed-actions-including-planner-dispatch
+
+      - docs/ADR-driver-evolution-foundation.md#116-target-architecture-shape
+
+      - docs/DRIVER-ARCHITECTURE.md Section 2.11
+
+
+      step_intent: gate
+
+      expected_result: green
+
+      observed_result: green
+
+      failure_alignment: N/A
+
+      product_implementation_files_modified: no'
 - id: driver-evolution-review
   name: 'Driver Evolution: Review'
-  status: locked
+  status: pending
   gate: Doc sync plus independent deep review confirm the evolved driver matches the
     ADR and is safe to extend
   depends_on:

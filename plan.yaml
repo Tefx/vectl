@@ -50189,7 +50189,7 @@ phases:
       \  - `723ab83 docs(driver): add reduced live smoke command surface`"
 - id: driver-live-smoke-implementation
   name: Driver Live Runner Smoke Coverage Implementation
-  status: pending
+  status: in_progress
   gate: Shared harness, codex/opencode judge+dispatch live smoke coverage, reduced
     doc updates, and one independent live matrix check must prove trustworthy PASS/FAIL/SKIP
     outcomes before driver enhancements unblock.
@@ -50198,7 +50198,7 @@ phases:
   steps:
   - id: driver-live-smoke-implementation.build-harness
     name: Build shared live smoke harness and pytest surface
-    status: pending
+    status: claimed
     description: "Fill in stub bodies and add the shared live test harness per the\
       \ explicit pinned outputs from driver-live-smoke-foundation.ratify-live-smoke-policy\
       \ and driver-live-smoke-foundation.finalize-test-surface-decisions.\n\nUPSTREAM\
@@ -50246,6 +50246,8 @@ phases:
 
       '
     agent: python-executor
+    claimed_by: python-executor
+    claimed_at: '2026-03-29T16:12:46.915407+00:00'
   - id: driver-live-smoke-implementation.add-codex-judge-live-smoke-coverage
     name: Add codex judge live smoke coverage
     status: pending

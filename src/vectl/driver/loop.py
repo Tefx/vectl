@@ -67,6 +67,9 @@ from .events.emitter import (
     DECIDE_EVENT_DEF,
     FINAL_EVENT_DEF,
     STEP_COMPLETED_EVENT_DEF,
+    emit_decide,
+    emit_final,
+    emit_step_completed,
 )
 from .judge import (
     Judge,
@@ -3403,9 +3406,13 @@ __all__ = [
     "LOOP_ACTION_REGISTRY_SCOPE_STATEMENT",
     "LOOP_HANDLER_RUNTIME_CONTEXT",
     "LOOP_PLANNER_ACTION_DECLARATIONS",
+    "LOOP_EVENT_HELPER_DEFS",
     "STARTUP_RECOVERY_CONTRACT",
     "StartupRecoveryContract",
     "dispatch_planner",
+    "emit_decide",
+    "emit_final",
+    "emit_step_completed",
     "handle_complete",
     "handle_dispatch",
     "reconcile",

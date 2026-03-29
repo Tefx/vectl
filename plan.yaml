@@ -51702,7 +51702,7 @@ phases:
       - TimeoutExpired properly caught and converted to deterministic result'
 - id: driver-continuity-hygiene-foundation
   name: 'Driver Continuity Hygiene: Foundation'
-  status: pending
+  status: in_progress
   gate: Contract and expected-red tests pin continuity hygiene classification, quarantine,
     and repair-continuity semantics before runtime code changes.
   depends_on:
@@ -51710,7 +51710,7 @@ phases:
   steps:
   - id: driver-continuity-hygiene-foundation.contract
     name: Pin continuity hygiene contract
-    status: pending
+    status: done
     description: "step_type: contract\ncontract_purity: ENFORCED\ncontract_outputs:\n\
       \  - signatures\n  - type_defs\n  - interfaces\n  - stubs\n\nPin the implementation\
       \ contract for two-stage startup recovery without adding runtime business logic.\n\
@@ -51748,6 +51748,26 @@ phases:
 
       - Confirmation that runtime logic remains stub-only:'
     agent: python-senior
+    claimed_by: python-senior
+    claimed_at: '2026-03-29T18:52:48.047388+00:00'
+    done_at: '2026-03-29T18:57:52.271844+00:00'
+    evidence: 'Authored contract-only continuity hygiene seam and repair command schema
+      for two-stage startup recovery without adding runtime business logic. Added
+      src/vectl/driver/continuity_hygiene.py with explicit artifact classifications
+      (safe_stale_quarantine, blocking_divergence, corrupt_blocking, ambiguous_blocking),
+      safe-stale rule text, quarantine manifest/result dataclasses, and pre-recovery
+      StartupHygieneStage protocol/stub; added src/vectl/driver/continuity_repair.py
+      with typed repair-continuity request/result schema for dry-run/apply/json flows.
+      Updated src/vectl/driver/loop.py to pin startup hygiene as a pre-recovery stage
+      in STARTUP_RECOVERY_SCAN_ORDER and declare the typed stage signature; updated
+      src/vectl/cli.py to pin the CLI-facing repair_continuity result signature; exported
+      new modules from src/vectl/driver/__init__.py. Verification: `python -m compileall
+      src/vectl/driver/continuity_hygiene.py src/vectl/driver/continuity_repair.py
+      src/vectl/driver/loop.py src/vectl/cli.py src/vectl/driver/__init__.py` succeeded.
+      `invar_guard(path=''.'', changed=true)` was attempted but the tool crashed in
+      its own mock_leak checker with `PreContractError: len(module) > 0 (module='''')`,
+      so compile verification was used as the successful local gate. Git: committed
+      as `683ce89` with message `Pin continuity hygiene contracts`.'
   - id: driver-continuity-hygiene-foundation.test-define-red
     name: Define expected-red helper and manifest tests
     status: pending

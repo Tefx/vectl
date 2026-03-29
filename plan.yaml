@@ -44352,7 +44352,7 @@ phases:
       - no blocker-class divergence found in audited judge hardening requirements.'
   - id: driver-judge-hardening-review.gate
     name: Gate judge hardening review
-    status: pending
+    status: claimed
     description: "step_type: gate\nreview_depth: THOROUGH\nreview_depth_rationale:\n\
       \  - Judge stability gates renewed real bootstrap\n  - Real codex runner evidence\
       \ is mandatory\n  - Failure policy intersects all downstream bootstrap attempts\n\
@@ -44371,6 +44371,8 @@ phases:
     - driver-judge-hardening-review.real-judgment-matrix
     - driver-judge-hardening-review.spec-conformance
     agent: gate-reviewer
+    claimed_by: gate-reviewer
+    claimed_at: '2026-03-29T02:00:31.460761+00:00'
 - id: driver-bootstrap-readiness
   name: Driver Real Bootstrap Readiness
   status: locked

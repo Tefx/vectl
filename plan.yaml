@@ -40054,7 +40054,7 @@ phases:
     claimed_at: '2026-03-29T06:59:53.228887+00:00'
   - id: driver-evolution-event-contracts.verify-emitter-flow
     name: Verify typed emitter source-to-sink flow
-    status: pending
+    status: claimed
     description: 'step_type: verification
 
       expected_result: green
@@ -40096,6 +40096,8 @@ phases:
     - driver-evolution-event-contracts.implement-canonical-events
     - driver-evolution-event-contracts.implement-typed-emitter
     agent: integration-verifier
+    claimed_by: integration-verifier
+    claimed_at: '2026-03-29T07:00:04.055079+00:00'
   - id: driver-evolution-event-contracts.gate
     name: Gate canonical event contracts
     status: pending

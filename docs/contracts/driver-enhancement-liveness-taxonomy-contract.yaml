@@ -1,0 +1,126 @@
+# Driver Enhancement Liveness Taxonomy Contract
+# Source step: driver-enhancement-foundation.contract
+# Scope: Pin crash/fail/timeout/stall/no-progress classification contracts for enhancement-wave watchdogs and recovery.
+
+metadata:
+  contract_id: driver-enhancement-liveness-taxonomy-contract
+  version: "1.0.0"
+  status: proposed
+  created: 2026-03-29
+  owner_step: driver-enhancement-foundation.contract
+
+sources:
+  - "docs/contracts/driver-enhancement-architecture-basis.yaml#runtime_contract"
+  - "docs/contracts/driver-enhancement-architecture-basis.yaml#source_of_truth_matrix"
+  - "docs/contracts/driver-enhancement-architecture-basis.yaml#cross_cutting_governance"
+  - "docs/contracts/driver-enhancement-architecture-basis.yaml#shared_abstractions"
+  - "docs/DRIVER-ARCHITECTURE.md#2-1-types-py-driver-internal-data-types"
+  - "src/vectl/driver/types.py (RunnerStatus, RunnerResult, RunningEntry)"
+  - "src/vectl/driver/runners.py (RunnerHandle.wait, RunnerHandle.is_alive)"
+  - "src/vectl/driver/events/registry.py (RECOVERY ownership)"
+
+authoritative_sources:
+  architecture_basis_sections:
+    - "source_of_truth_matrix.concern=runner liveness classification and failure taxonomy"
+    - "runtime_contract.streaming_aware_liveness"
+    - "runtime_contract.failure_taxonomy"
+    - "cross_cutting_governance.registries.liveness_taxonomy_registry"
+    - "shared_abstractions.shared_types.RunnerLivenessState"
+    - "shared_abstractions.shared_protocols.RunnerLivenessClassifier"
+  rationale: >-
+    The architecture basis explicitly requires one normalized owner for crash,
+    timeout, no_progress, stall, fail, and transport_error so loop.py,
+    telemetry, and recovery do not drift into incompatible heuristics.
+
+ownership:
+  owner_module: "src/vectl/driver/liveness.py"
+  adjacent_modules:
+    telemetry_snapshot_owner: "src/vectl/driver/observability_contracts.py"
+    recovery_consumer_owner: "src/vectl/driver/recovery_coordinator.py"
+    orchestration_authority: "src/vectl/driver/loop.py"
+  primary_consumers:
+    - "src/vectl/driver/loop.py"
+    - "src/vectl/driver/recovery_coordinator.py"
+    - "src/vectl/driver/observability_contracts.py"
+
+exact_signatures:
+  type_aliases:
+    RunnerLivenessClassification: 'Literal["healthy", "no_progress", "stall", "timeout", "crash", "fail", "transport_error"]'
+    RunnerLivenessTerminality: 'Literal["non_terminal", "terminal"]'
+  dataclasses:
+    RunnerLivenessState: |
+      @dataclass(frozen=True)
+      class RunnerLivenessState:
+          step_id: str
+          runner_name: str
+          classification: RunnerLivenessClassification
+          terminality: RunnerLivenessTerminality
+          reason: str
+          observed_at: float
+          pid: int | None
+          session_id: str | None
+          elapsed_seconds: float | None
+          progress_age_seconds: float | None
+          runner_status: RunnerStatus | None
+    RunnerLivenessInput: |
+      @dataclass(frozen=True)
+      class RunnerLivenessInput:
+          running_entry: RunningEntry
+          now_monotonic: float
+          handle_is_alive: bool
+          heartbeat: RunnerHeartbeatSnapshot | None
+          progress: RunnerProgressSnapshot | None
+          terminal_result: RunnerResult | None
+  protocols:
+    RunnerLivenessClassifier: |
+      class RunnerLivenessClassifier(Protocol):
+          def classify(
+              self,
+              *,
+              sample: RunnerLivenessInput,
+          ) -> RunnerLivenessState: ...
+
+taxonomy_contract:
+  classifications:
+    healthy:
+      definition: "Runner remains live or recently observed and no terminal failure/no-progress condition has been established."
+      terminality: non_terminal
+    no_progress:
+      definition: "Runner may still be alive, but no heartbeat/progress snapshot has been observed inside the configured liveness window."
+      terminality: non_terminal
+    stall:
+      definition: "System-level determination that useful forward progress has ceased and recovery coordination must intervene."
+      terminality: terminal
+    timeout:
+      definition: "Configured wait boundary expired for runner/judge transport and timeout handling now owns the outcome."
+      terminality: terminal
+    crash:
+      definition: "Transport process disappeared or terminated without a valid protocol-complete result."
+      terminality: terminal
+    fail:
+      definition: "Runner produced a completed unsuccessful semantic result or judge-driven failure disposition after a completed attempt."
+      terminality: terminal
+    transport_error:
+      definition: "Transport/parsing boundary failed to deliver a valid semantic result."
+      terminality: terminal
+
+boundaries_and_constraints:
+  - "This contract classifies liveness; it does not choose remediation. Recovery decisions belong to the recovery coordinator contract."
+  - "no_progress is an escalation input, not an automatic recovery decision."
+  - "stall is a normalized terminal classification, not a synonym for missing output."
+  - "fail remains the semantic unsuccessful-result class and MUST stay distinct from crash and transport_error."
+  - "Liveness evaluation may consume handle.is_alive(), wait(timeout) facts, and normalized telemetry snapshots, but MUST NOT mutate DriverState, subprocesses, or plan state."
+  - "Classification truth is static-contract owned; ad hoc booleans in loop branches are forbidden once this contract is implemented."
+
+invariants:
+  - "`terminal_result` with `RunnerStatus.FAIL` classifies as `fail`, not `stall`."
+  - "A dead process without a valid terminal result classifies as `crash`."
+  - "`no_progress` may transition to `stall`, but the two labels are never interchangeable within one sample."
+  - "`transport_error` is reserved for transport/parser boundary failure, not for semantic task failure."
+  - "`terminality` is `terminal` for crash, fail, timeout, stall, and transport_error; it is `non_terminal` for healthy and no_progress."
+
+out_of_scope:
+  - "Threshold values and configuration surfaces for liveness windows"
+  - "Watchdog scheduling/loop cadence"
+  - "Recovery policy after classification"
+  - "Implementation code or runtime behavior change in this step"

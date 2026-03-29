@@ -40054,7 +40054,7 @@ phases:
     claimed_at: '2026-03-29T06:59:53.228887+00:00'
   - id: driver-evolution-event-contracts.verify-emitter-flow
     name: Verify typed emitter source-to-sink flow
-    status: claimed
+    status: done
     description: 'step_type: verification
 
       expected_result: green
@@ -40098,6 +40098,54 @@ phases:
     agent: integration-verifier
     claimed_by: integration-verifier
     claimed_at: '2026-03-29T07:00:04.055079+00:00'
+    done_at: '2026-03-29T07:06:51.522676+00:00'
+    evidence: "## Verified Event Source-to-Sink Path\n\n### Artifact\n- PR: N/A (verification\
+      \ of existing implementation)\n- Path: `src/vectl/driver/events/{emitter.py,sinks.py,registry.py,types.py}`\n\
+      \n### Verification: Happy Path\n\n**Run**: `python3 /tmp/test_event_sink_flow.py`\
+      \ -> ALL PASSED\n\n**Path exercised**: \n- `loop.py:3332` calls `emit_decide(observer,\
+      \ running_count=..., actions=...)`\n- `loop.py:2675` calls `emit_step_completed(observer,\
+      \ step_id=..., elapsed_seconds=...)`\n- `loop.py:3040` calls `emit_final(observer,\
+      \ **state.summary())`\n\n**Evidence**:\n```\n✓ Happy path: DECIDE payload with\
+      \ required+optional fields\n  - running_count: 3\n  - actions: [\"claim_and_dispatch\"\
+      , \"wait\"]\n  - claimable: 5 (optional)\n  - capacity: 10 (optional)\n\n✓ Happy\
+      \ path: STEP_COMPLETED with required+optional fields\n  - step_id: \"core.impl\"\
+      \n  - elapsed_seconds: 12.5\n  - cost: 0.001 (optional)\n  - evidence_len: 512\
+      \ (optional)\n  - tokens: 8000 (optional)\n\n✓ Happy path: FINAL with halt_reason\
+      \ + cost/tokens\n  - completed_summary: {\"terminal_outcome\": \"completed\"\
+      , \"steps_completed\": 5}\n  - total_duration_seconds: 45.2\n  - halt_reason:\
+      \ \"user_requested\" (optional)\n  - total_cost_usd: 0.75 (optional)\n  - total_tokens:\
+      \ 50000 (optional)\n\n✓ Events written to durable JSONL sink with version envelope:\n\
+      \  {\"ts\": 1774767856.9016, \"event\": \"DECIDE\", \"version\": 1, \"data\"\
+      : {...}}\n  {\"ts\": 1774767856.9019, \"event\": \"STEP_COMPLETED\", \"version\"\
+      : 1, \"data\": {...}}\n  {\"ts\": 1774767856.9020, \"event\": \"FINAL\", \"\
+      version\": 1, \"data\": {...}}\n```\n\n### Verification: Edge Cases\n\n**Run**:\
+      \ `uv run pytest tests/test_driver_observe.py -v` -> 24 passed\n\n**Edge cases\
+      \ tested**:\n1. **Optional fields omitted**: FINAL without halt_reason, STEP_COMPLETED\
+      \ without cost/tokens\n2. **halt_reason termination**: DriverState sets `final_halt_reason`\
+      \ -> appears in FINAL\n3. **Repeated emissions**: Multiple STEP_COMPLETED events\
+      \ with same step_id -> all recorded separately\n\n**Evidence**:\n```\ntest_emit_final_omits_absent_optional_fields\
+      \ PASSED\n  - Assert: \"halt_reason\" not in data when not provided\n  - Assert:\
+      \ \"total_cost_usd\" not in data when not provided\n  - Assert: \"total_tokens\"\
+      \ not in data when not provided\n```\n\n### Verification: Error Scenarios\n\n\
+      **Run**: `uv run pytest tests/test_driver_observe.py::TestSinkOwnershipSplit\
+      \ -v` -> 4 passed\n\n**Error scenarios tested**:\n1. **Nested version rejection**:\
+      \ Passing `version=99` in payload raises `ValueError: payload must not include\
+      \ 'version'; use top-level envelope version`\n\n**Evidence**:\n```python\nobserver.emit(\"\
+      WAIT\", reason=\"test\", version=99)\n# -> ValueError: 'version' payload must\
+      \ not include 'version'; use top-level envelope version\n```\n\n### Verification:\
+      \ Registry Validation\n\n**Run**: `uv run pytest tests/test_driver_observe.py::TestEventRegistry\
+      \ -v` -> 6 passed\n\n**Registry contracts verified**:\n- DECIDE: required=(\"\
+      running_count\", \"actions\"), optional=(\"claimable\", \"capacity\")\n- FINAL:\
+      \ required=(\"completed_summary\", \"total_duration_seconds\"), optional=(\"\
+      halt_reason\", \"total_cost_usd\", \"total_tokens\")\n- STEP_COMPLETED: required=(\"\
+      _step_id\", \"elapsed_seconds\"), optional=(\"cost\", \"evidence_len\", \"tokens\"\
+      )\n- Registry is immutable (MappingProxyType)\n\n### Spec Link\n- ADR Section\
+      \ 1: Versioned event envelope now (lines 30-44)\n- ADR Section 2: Event registry\
+      \ becomes source of truth (lines 45-57)\n- ADR Section 3: FINAL becomes canonical\
+      \ summary event (lines 58-70)\n- ADR Section 6: Event registry is static declaration\
+      \ table (lines 104-115)\n\n### No Problems Found\nAll canonical events flow\
+      \ correctly from typed emitters through registry validation to durable FileObserver\
+      \ sink. Edge cases handled, errors correctly rejected."
   - id: driver-evolution-event-contracts.gate
     name: Gate canonical event contracts
     status: pending

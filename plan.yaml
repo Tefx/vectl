@@ -41269,7 +41269,7 @@ phases:
     agent: integration-verifier
   - id: driver-evolution-loop-migration.liveness-probe
     name: Probe driver liveness after loop migration
-    status: pending
+    status: claimed
     description: 'step_type: verification
 
       expected_result: green
@@ -41303,6 +41303,8 @@ phases:
     depends_on:
     - driver-evolution-loop-migration.implement-loop-handlers
     agent: blind-tester
+    claimed_by: blind-tester
+    claimed_at: '2026-03-29T07:23:12.325594+00:00'
   - id: driver-evolution-loop-migration.full-plan-check
     name: Run full-plan driver regression boundary
     status: claimed

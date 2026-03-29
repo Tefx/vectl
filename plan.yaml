@@ -41106,7 +41106,7 @@ phases:
       - docs/ADR-driver-evolution-foundation.md#188-resolved-decisions'
   - id: driver-evolution-action-registry-contract-foundation.gate
     name: Gate action-registry contract foundation
-    status: pending
+    status: claimed
     description: 'step_type: gate
 
       Gate review: verify the early planner-dispatch contract foundation is sufficient
@@ -41136,6 +41136,8 @@ phases:
     depends_on:
     - driver-evolution-action-registry-contract-foundation.planner-dispatch-contract
     agent: gate-reviewer
+    claimed_by: gate-reviewer
+    claimed_at: '2026-03-29T06:12:50.823124+00:00'
 - id: driver-routing-hardening
   name: Driver Routing Hardening
   status: locked

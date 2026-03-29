@@ -17,9 +17,10 @@ from __future__ import annotations
 import asyncio
 import json
 import time
+from dataclasses import dataclass
 from pathlib import Path
 from tempfile import NamedTemporaryFile
-from typing import TYPE_CHECKING, Any, Protocol
+from typing import TYPE_CHECKING, Any, Literal, Protocol
 
 from .errors import JudgmentParseError, JudgmentTimeoutError
 from .judgments import (
@@ -29,6 +30,7 @@ from .judgments import (
     JudgmentType,
     JudgmentVerdict,
 )
+from .types import JudgeContinuityPolicyOutput
 
 if TYPE_CHECKING:
     from .config import JudgeConfig
@@ -144,6 +146,61 @@ class JudgeRunner(Protocol):
         Architecture: docs/DRIVER-ARCHITECTURE.md Section 2.10, Text Fallback
         """
         ...
+
+
+JudgeOutcomeKind = Literal[
+    "verdict",
+    "timeout",
+    "parse_error",
+    "malformed_output",
+    "empty_output",
+]
+
+
+@dataclass(frozen=True)
+class JudgeRecoveryPolicyInput:
+    """Input contract for classifying judge failures and recovery action.
+
+    Source:
+    - docs/DRIVER-ARCHITECTURE.md Section 2.10 (verdict extraction boundary,
+      `FAILURE`/`ESCALATION` trigger points, and REPLAN planner wiring)
+    - docs/JUDGE-AGENT-PROMPT.md TYPE: failure and TYPE: escalation verdict
+      semantics (retry/fallback/halt/remediation branches)
+    - docs/DRIVER-CONTINUITY-FOUNDATION.md Section 4 and Section 7 (judge
+      outcomes inform continuity handoff, but do not become durable authority)
+
+    This contract is boundary-only and intentionally excludes durable
+    resume/restart controller ownership.
+    """
+
+    step_id: str
+    judgment_type: JudgmentType
+    outcome_kind: JudgeOutcomeKind
+    attempt_key: str
+    failure_count: int
+    retry_budget: int
+    fallback_runner_name: str | None
+    verdict: JudgmentVerdict | None = None
+
+
+def decide_judge_recovery_policy(
+    policy_input: JudgeRecoveryPolicyInput,
+) -> JudgeContinuityPolicyOutput:
+    """Classify judge outcome into retry/fallback/halt/remediation policy.
+
+    Source:
+    - docs/DRIVER-ARCHITECTURE.md Section 2.10 (hard-fail parse/timeout
+      handling and REPLAN/planner routing commitments)
+    - docs/JUDGE-AGENT-PROMPT.md TYPE: escalation decision framework
+    - docs/DRIVER-CONTINUITY-FOUNDATION.md Section 4 (Abort/failure handoff)
+
+    Implementation ownership is deferred to
+    ``driver-judge-hardening-recovery-policy.impl``.
+    """
+
+    raise NotImplementedError(
+        "Recovery policy classification is deferred to driver-judge-hardening-recovery-policy.impl"
+    )
 
 
 # =============================================================================

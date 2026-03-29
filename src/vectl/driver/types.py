@@ -460,6 +460,41 @@ class ContinuityResultFields:
     recovery_reason: str
 
 
+JudgeRecoveryAction = Literal[
+    "retry",
+    "fallback",
+    "halt",
+    "planner_remediation",
+]
+
+
+@dataclass(frozen=True)
+class JudgeContinuityPolicyOutput:
+    """Judge-to-continuity policy handoff fields (contract-only).
+
+    Source:
+    - docs/DRIVER-ARCHITECTURE.md Section 2.10 (judge failure extraction +
+      verdict handling boundaries)
+    - docs/DRIVER-CONTINUITY-FOUNDATION.md Section 4 (Abort/failure) and
+      Section 7 (judge outcomes inform policy handoff)
+
+    This contract intentionally stops at handoff fields. It does NOT take
+    ownership of durable ledger/journal persistence, startup recovery controller
+    execution, or restart orchestration logic.
+    """
+
+    step_id: str
+    judgment_type: str
+    judge_outcome: str
+    action: JudgeRecoveryAction
+    provenance: str
+    continuity_recovery_reason: str
+    attempt_key: str
+    planner_instruction: str | None = None
+    fallback_runner_name: str | None = None
+    halt_reason: str | None = None
+
+
 @dataclass(frozen=True)
 class ContinuityJournalEntry:
     """Minimum recovery telemetry emitted for replay-safe restart reasoning.

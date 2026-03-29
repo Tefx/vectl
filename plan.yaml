@@ -49375,7 +49375,7 @@ phases:
       - Implementation is correct per `RECONCILE_CONTEXT_ONLY_CONTRACT`'
   - id: driver-reconcile-context-convergence.sync-callsites-tests
     name: Migrate remaining reconcile callsites and targeted tests to context-only
-    status: claimed
+    status: done
     description: 'Migrate all remaining reconcile callsites and directly affected
       tests/helpers to the final context-only boundary.
 
@@ -49426,6 +49426,22 @@ phases:
     agent: python-executor
     claimed_by: python-executor
     claimed_at: '2026-03-29T11:30:02.528837+00:00'
+    done_at: '2026-03-29T11:44:38.483788+00:00'
+    evidence: "## Reconcile callsite/test migration\n- Search scope: tests/ + any\
+      \ reconcile-adjacent helpers\n- Remaining explicit-arg callsites: `<none found>`\
+      \ (verified with grep `reconcile\\(\\s*completed\\s*=` and manual review)\n\
+      - Commands: \n  - `uv run pytest tests/test_driver_loop_contract.py::test_loop_contract_signatures_are_pinned\
+      \ -v` → PASSED\n  - `uv run pytest tests/test_driver_judge_recovery_policy_impl.py\
+      \ -v` → 3/3 PASSED\n  - `uv run pytest tests/test_driver_continuity_expected_red.py\
+      \ -v` → 5/5 PASSED\n  - `uv run pytest tests/test_driver_loop_hardening.py -v`\
+      \ → 18/18 PASSED\n  - `uv run pytest tests/test_driver_loop_runtime.py -v` →\
+      \ 37 passed, 25 xfailed (expected-red tests still xfailing as designed)\n- Files\
+      \ changed:\n  ```\n  tests/test_driver_continuity_expected_red.py    | 60 ++++++++++++++---\n\
+      \  tests/test_driver_judge_recovery_policy_impl.py | 81 ++++++++++++++++++----\n\
+      \  tests/test_driver_loop_contract.py              |  6 +-\n  tests/test_driver_loop_hardening.py\
+      \             | 89 +++++++++++++++++++------\n  4 files changed, 189 insertions(+),\
+      \ 47 deletions(-)\n  ```\n- Explicit statement: \"Changes limited to reconcile\
+      \ callsites/tests\""
   - id: driver-reconcile-context-convergence.doc-sync
     name: Sync reconcile-specific docs to the context-only boundary
     status: pending

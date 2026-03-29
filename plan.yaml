@@ -51726,3 +51726,10 @@ phases:
     still blocking unsafe divergence.
   depends_on:
   - driver-continuity-hygiene-surface
+- id: driver-continuity-hygiene-doc-sync
+  name: 'Driver Continuity Hygiene: Documentation Sync'
+  status: locked
+  gate: Operator documentation reflects quarantine behavior, blocking conditions,
+    and repair-continuity recovery UX.
+  depends_on:
+  - driver-continuity-hygiene-review

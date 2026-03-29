@@ -44262,7 +44262,7 @@ phases:
       - none'
   - id: driver-continuity-capability-safety.verify
     name: Verify runner capability and replay safety
-    status: claimed
+    status: done
     description: 'step_type: verification
 
       As an INDEPENDENT TESTER (integration-verifier), validate runner capability
@@ -44298,6 +44298,160 @@ phases:
     agent: integration-verifier
     claimed_by: integration-verifier
     claimed_at: '2026-03-28T23:47:13.420488+00:00'
+    done_at: '2026-03-29T00:02:03.972882+00:00'
+    evidence: '## Verification Report: driver-continuity-capability-safety
+
+
+      **Date**: 2026-03-29
+
+      **Verifier**: Integration Verifier (integration-verifier persona)
+
+      **Scope**: Runner capability handling and replay-safe idempotency
+
+
+      ### Results
+
+
+      | Check | Result | Evidence |
+
+      |-------|--------|----------|
+
+      | **Protocol P1: Capability Resolution** | PASS | Known runners (claude, opencode,
+      codex, gemini) correctly declared; unknown runners default to non-resumable
+      |
+
+      | **Protocol P2: Snapshot ID Determinism** | PASS | `capability_snapshot_id()`
+      produces deterministic unique IDs based on capability fields |
+
+      | **Protocol P3: Duplicate Replay Detection** | PASS | First attempt: `replay_safe=True`;
+      Duplicate: `duplicate_replay=True, recovery_reason="duplicate_attempt_key_replay"`
+      |
+
+      | **Protocol P4: Runner Name Mismatch** | PASS | Envelope/capability runner
+      name mismatch rejected with `"runner_name_mismatch"` |
+
+      | **Protocol P5: Token Step Binding Mismatch** | PASS | Token bound to different
+      step_id rejected with `"token_step_binding_mismatch"` |
+
+      | **Protocol P6: Non-Resumable Runner Rejection** | PASS | Gemini `resume_supported=False`;
+      resume requests rejected with `"runner_not_resumable"` |
+
+      | **Protocol P7: Fresh Dispatch Allowed** | PASS | `requested_token=None` always
+      yields `replay_safe=True` for all runners |
+
+      | **Protocol P8: Capability Snapshot Drift** | PASS | Token with outdated snapshot
+      rejected with `"token_capability_snapshot_drift"` |
+
+      | **Protocol P9: Empty Replay Token** | PASS | Empty string and whitespace-only
+      tokens rejected with `"empty_replay_token"` |
+
+      | **Protocol P10: Valid Resume** | PASS | Resumable runners (claude, opencode,
+      codex) accept valid tokens with `replay_safe=True` |
+
+
+      ### State Management Verification
+
+
+      | Check | Result | Evidence |
+
+      |-------|--------|----------|
+
+      | **S1: Attempt Key Isolation** | PASS | `_state_attempt_key_set()` returns
+      distinct sets per `DriverState` instance |
+
+      | **S2: Capability Snapshot Cache** | PASS | `_state_capability_snapshot_cache()`
+      persists per-step snapshots correctly |
+
+      | **S3: State Defaults** | PASS | New `DriverState()` has empty attempt set
+      and snapshot cache |
+
+      | **S4: Attribute Naming** | PASS | Uses `_continuity_attempt_keys` and `_continuity_capability_snapshots`
+      |
+
+      | **S5: Multiple Steps Same Runner** | PASS | Cache tracks per-step, same runner
+      produces consistent snapshot |
+
+      | **S6: Snapshot Fallback** | PASS | `previous_snapshot or current_snapshot`
+      correctly falls back when None |
+
+      | **S7: Frozen Attempt Keys** | PASS | `frozenset(_state_attempt_key_set(state))`
+      ensures immutability |
+
+
+      ### Test Results
+
+
+      ```
+
+      tests/test_driver_continuity_capability_safety_red.py: 4 passed
+
+      tests/test_driver_continuity_contract.py: 5 passed
+
+      tests/test_driver_runners.py: 75 passed (continuity-related)
+
+      ```
+
+
+      ### L2 Evidence Levels
+
+
+      | Level | Status |
+
+      |-------|--------|
+
+      | **L2 (Real Wiring)** | PASS |
+
+
+      ### Findings
+
+
+      **No issues found.** The implementation correctly:
+
+
+      1. **Capability Resolution**: `capability_for_runner()` returns explicit capability
+      matrix for known runners; safe defaults for unknown runners with `resume_supported=False`.
+
+
+      2. **Duplicate Replay Detection**: `evaluate_resume_or_replay_safety()` correctly
+      rejects duplicate attempt keys with `duplicate_replay=True`.
+
+
+      3. **Runner Name Validation**: Token runner binding must match capability and
+      envelope runner name; mismatches are rejected.
+
+
+      4. **Snapshot Drift Detection**: Capability snapshot comparison prevents resume
+      when runner configuration has changed since the original session.
+
+
+      5. **Non-Resumable Runner Handling**: Gemini and unknown runners correctly reject
+      resume requests; fresh dispatch allowed.
+
+
+      6. **State Management**: `loop.py` lines 1486-1523 implement correct state tracking
+      with `_state_attempt_key_set()` and `_state_capability_snapshot_cache()`.
+
+
+      7. **Integration Path**: `handle_dispatch()` correctly calls `evaluate_resume_or_replay_safety()`
+      before dispatch, rejecting unsafe session reuse with `SESSION_REUSE_MISS` emission.
+
+
+      ### Verified Behaviors
+
+
+      From `tests/test_driver_continuity_capability_safety_red.py`:
+
+      - `test_non_resumable_runner_reuse_request_forced_fresh_expected_red`: Gemini
+      session reuse downgraded to fresh dispatch ✓
+
+      - `test_duplicate_replay_is_rejected_expected_red`: Duplicate attempt keys rejected
+      ✓
+
+      - `test_replay_token_semantics_drift_forces_fresh_expected_red`: Capability
+      snapshot drift forces fresh dispatch ✓
+
+      - `test_guessed_runner_name_branching_is_rejected_expected_red`: Runner name
+      mismatch rejected ✓'
   - id: driver-continuity-capability-safety.gate
     name: Gate capability and replay safety
     status: pending

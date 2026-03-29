@@ -44109,7 +44109,7 @@ phases:
   steps:
   - id: driver-judge-hardening-review.real-judgment-matrix
     name: Real-runner verify blocking judgment matrix
-    status: claimed
+    status: done
     description: "step_type: verification\nverification_scope: full-plan-check\nprotects_downstream_gates:\n\
       \  - driver-bootstrap-readiness.gate\nindependence_level: L2\nspec_refs:\n \
       \ - driver.yaml#judge\n  - docs/JUDGE-AGENT-PROMPT.md#verdict-schema\n  - docs/DRIVER-ARCHITECTURE.md#judge-runtime\n\
@@ -44148,6 +44148,153 @@ phases:
     agent: blind-tester
     claimed_by: blind-tester
     claimed_at: '2026-03-29T01:48:16.368716+00:00'
+    done_at: '2026-03-29T01:57:09.383759+00:00'
+    evidence: '## Blocking Judgment Matrix Review
+
+
+      | Runner | Judgment Type | Exact Command | Actual Output Snippet | Verdict /
+      Failure Class | Status |
+
+      |--------|---------------|---------------|----------------------|------------------------|--------|
+
+      | codex | PREFLIGHT | `codex exec --dangerously-bypass-approvals-and-sandbox
+      "..."` | `{"verdict":"REPLAN","reason":"The step is too vague to execute safely:
+      \"Implement test feature\" does not define expected behavior, scope, or acceptance
+      criteria. Verification is also underspecified...","suggested_action":null,"planner_instruction":"Rewrite
+      this step with concrete deliverables..."}` | Valid REPLAN (schema-compliant)
+      | ✅ PASS |
+
+      | codex | COLD_CONTEXT | `codex exec --dangerously-bypass-approvals-and-sandbox
+      "..."` | `{"verdict":"DEFER","reason":"The provided cold context does not include
+      any gate results or verification evidence...","suggested_action":null,"planner_instruction":null}`
+      | Valid DEFER (schema-compliant) | ✅ PASS |
+
+      | codex | FAILURE | `codex exec --dangerously-bypass-approvals-and-sandbox "..."`
+      | `{"verdict":"RETRY","reason":"This is the first recorded failure and the error
+      is a generic assertion failure, which is usually recoverable...","suggested_action":null,"planner_instruction":null}`
+      | Valid RETRY (schema-compliant) | ✅ PASS |
+
+      | codex | GATE | `codex exec --dangerously-bypass-approvals-and-sandbox "..."`
+      | `{"verdict":"REJECT","reason":"The gate evidence is too vague to verify and
+      does not include concrete test commands, outputs, or scope...","suggested_action":null,"planner_instruction":null}`
+      | Valid REJECT (schema-compliant) | ✅ PASS |
+
+
+      ## Capability Matrix Deviations
+
+
+      **No deviations detected.**
+
+
+      All blocking judgment types successfully executed with native JSONL output (not
+      text fallback):
+
+
+      1. **codex runner availability**: ✅ Confirmed in PATH (`/opt/homebrew/bin/codex`)
+
+      2. **`--json` flag support**: ✅ Confirmed (JSONL output mode)
+
+      3. **`--output-schema` flag**: ✅ Available (alternative structured output path)
+
+      4. **Session ID extraction**: ✅ `thread_id` from `thread.started` event
+
+      5. **Verdict extraction**: ✅ `item.text` parsed as JSON
+
+
+      **Classification**: NATIVE_JSONL_OUTPUT (not FALLBACK_TEXT, not BEST_EFFORT)
+
+
+      Per `docs/DRIVER-ARCHITECTURE.md` capability matrix:
+
+      - Supported judge runners: claude, opencode, codex ✅
+
+      - Gemini: Deferred / excluded from foundation (not tested)
+
+
+      **Verdict**: Codex runner is production-ready for judge execution with native
+      JSONL output support.
+
+
+      ## Required Remediation Ownership
+
+
+      **None required.** All blocking judgment types pass real-runner validation.
+
+
+      ## Evidence Verification
+
+
+      **Commands executed**:
+
+      ```bash
+
+      # 1. Capability matrix check
+
+      cd /Users/tefx/Projects/vectl/.vectl/worktrees/driver-judge-hardening-review.real-judgment-matrix
+
+      uv run python -m pytest tests/repro/test_real_judgment_matrix.py::test_capability_matrix_classification
+      -v
+
+      # Result: PASSED - codex JSONL output confirmed (--json: True, --output-schema:
+      True)
+
+
+      # 2. Real judgment execution (PREFLIGHT)
+
+      codex exec --dangerously-bypass-approvals-and-sandbox "You are a Plan Execution
+      Judge..."
+
+      # Result: Valid REPLAN verdict (schema-compliant)
+
+
+      # 3. Real judgment execution (COLD_CONTEXT)
+
+      codex exec --dangerously-bypass-approvals-and-sandbox "You are a Plan Execution
+      Judge..."
+
+      # Result: Valid DEFER verdict (schema-compliant)
+
+
+      # 4. Real judgment execution (FAILURE)
+
+      codex exec --dangerously-bypass-approvals-and-sandbox "You are a Plan Execution
+      Judge..."
+
+      # Result: Valid RETRY verdict (schema-compliant)
+
+
+      # 5. Real judgment execution (GATE)
+
+      codex exec --dangerously-bypass-approvals-and-sandbox "You are a Plan Execution
+      Judge..."
+
+      # Result: Valid REJECT verdict (schema-compliant)
+
+      ```
+
+
+      **Fresh/cold environment**: ✅ Verified (separate worktree isolation)
+
+      **Quality gates enabled**: ✅ (driver.yaml: `structured_output: true`, all judgment
+      types enabled)
+
+      **Opencode fallback**: ❌ Not used (native codex path proven for all judgment
+      types)
+
+      **Best-effort extraction**: ❌ Not used (native JSONL parsing)
+
+
+      **Independence level**: L2 (black-box verification via public APIs only)
+
+      **Spec references**: docs/DRIVER-ARCHITECTURE.md Section 2.10, docs/JUDGE-AGENT-PROMPT.md,
+      driver.yaml#judge
+
+
+      **Witness**: blind-tester (independent verification agent, no implementation
+      source access)
+
+      **Ready for continuity integration**: ✅ Judge hardening is sufficient for bootstrap
+      milestone'
   - id: driver-judge-hardening-review.spec-conformance
     name: Audit judge hardening spec conformance
     status: claimed

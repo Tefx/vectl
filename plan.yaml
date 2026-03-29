@@ -51871,6 +51871,59 @@ phases:
     depends_on:
     - driver-continuity-hygiene-foundation.contract
     agent: python-executor
+  - id: driver-continuity-hygiene-foundation.gate
+    name: Gate continuity hygiene foundation
+    status: pending
+    description: 'As an INDEPENDENT REVIEWER (gate-reviewer), assess whether the continuity
+      hygiene foundation phase is ready to unlock implementation.
+
+
+      Verification scope: phase-check protecting downstream runtime and CLI implementation
+      gates.
+
+
+      Review criteria:
+
+      1. Contract purity: interfaces/types/stubs only
+
+      2. Acceptance coverage: helper + black-box expected-red tests define the required
+      gap
+
+      3. Safe stale vs blocking divergence semantics are explicit and non-ambiguous
+
+      4. No contract text permits deletion, silent remap, or ambiguous auto-repair
+
+
+      review_depth: THOROUGH
+
+      cross_cutting_focus:
+
+      - startup classification authority
+
+      - quarantine auditability
+
+      - CLI/runtime semantic consistency'
+    verification: '- All foundation steps completed with acceptable evidence
+
+      - Contract remains implementation-free
+
+      - Expected-red tests cover both helper and black-box seams
+
+      - No unresolved blocker in semantics needed by core runtime work'
+    evidence_template: '## Foundation Gate Review
+
+      - Contract purity verdict:
+
+      - Acceptance gap coverage verdict:
+
+      - Blocking semantic ambiguities:
+
+      - Decision: OPEN | BLOCKED'
+    depends_on:
+    - driver-continuity-hygiene-foundation.contract
+    - driver-continuity-hygiene-foundation.test-define-red
+    - driver-continuity-hygiene-foundation.blackbox-define-red
+    agent: gate-reviewer
 - id: driver-continuity-hygiene-core
   name: 'Driver Continuity Hygiene: Core Runtime'
   status: locked

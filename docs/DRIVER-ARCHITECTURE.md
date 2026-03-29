@@ -1247,13 +1247,15 @@ async def handle_complete(
 
 async def reconcile(
     completed: CompletedEntry,
-    state: DriverState,
-    judge: Judge,
-    session_pool: SessionPool,
-    observer: Observer,
-    plan_path: Path,
+    *,
+    context: RuntimeContext,
 ) -> None:
     """Reconcile a completed runner result.
+
+    CRITICAL: Context-only contract. Runtime state is accessed exclusively
+    through the ``RuntimeContext`` parameter. All legacy explicit parameters
+    (state, judge, session_pool, observer, plan_path, config, runners) are
+    forbidden and MUST be accessed via ``context``.
 
     CRITICAL: Both paths reload the plan from disk before mutating.
     CAS conflicts (from concurrent external writes) are handled by
@@ -1264,9 +1266,9 @@ async def reconcile(
     2. Validate evidence (rules then judge)
     3. Reload plan from disk (CAS-safe)
     4. complete_step(plan, step_id, evidence,
-       claims_path=resolve_claims_path(plan_path))
+       claims_path=resolve_claims_path(context.plan_path))
     5. Save plan (CAS write)
-    6. Merge worktree (under merge_lock)
+    6. Merge worktree (under context.state.merge_lock)
     7. Record session for reuse
     8. Cleanup worktree
 
@@ -1274,10 +1276,15 @@ async def reconcile(
     1. Increment failure counter
     2. Reload plan from disk (CAS-safe)
     3. If count < 3: defer_step(plan, step_id,
-       claims_path=resolve_claims_path(plan_path))
+       claims_path=resolve_claims_path(context.plan_path))
     4. Save plan (CAS write)
     5. If count >= 3: judge escalation verdict
        -> RETRY | SWITCH_AGENT | REPLAN | HALT
+
+    Args:
+        completed: The completed runner entry with result and bookkeeping.
+        context: The sole authoritative runtime bundle containing state,
+            config, runners, judge, session_pool, observer, and plan_path.
     """
     ...
 
@@ -1600,17 +1607,17 @@ CompletedResult.output_summary = CompletedEntry.result.output[:500]
 |-------|-------------|------------|---------|----------|
 | `DriverState.running` | `types.py` (defined), `loop.py` (managed) | `loop.py` dispatch + reconcile | `loop.py`, `decide()` (via `as_running_tasks()`) | Process |
 | `DriverState.completed_queue` | `types.py` / `loop.py` | `wait_for_any()` | `drain_completed()` (legacy transitional seam) | Per-iteration |
-| `DriverState.failure_counts` | `types.py` / `loop.py` | `reconcile()` | `reconcile()`, `dispatch()` | Process |
-| `DriverState.merge_lock` | `types.py` | `reconcile()` (acquire/release) | `reconcile()` | Process |
+| `DriverState.failure_counts` | `types.py` / `loop.py` | `context.state` via `reconcile()` | `context.state` via `reconcile()`, `dispatch()` | Process |
+| `DriverState.merge_lock` | `types.py` | `context.state` via `reconcile()` (acquire/release) | `context.state` via `reconcile()` | Process |
 | `DriverState.decide_state` | `types.py` (defined), `decide()` | `decide()` internally | `decide()` via explicit parameter | Process |
-| `SessionPool._entries` | `session.py` | `reconcile()` via `record()` | `dispatch()` via `find_reusable()` | Process |
+| `SessionPool._entries` | `session.py` | `context.session_pool` via `reconcile()` (through `record()`) | `context.session_pool` via `dispatch()` (through `find_reusable()`) | Process |
 | `plan.yaml` | `vectl.io` | `loop.py` via `save_plan()` | `decide()` via `load_plan_definition()`, `loop.py` | Durable (disk) |
 | `claims.json` | `vectl.claims` | `claim_step()`, `complete_step()`, `defer_step()` | `repair_claims()` | Durable (disk) |
 | `events.jsonl` | `observe.py` | `observer.emit()` | External tools only | Durable (disk, append-only) |
 | Git worktrees | `worktree.py` | `create()`, `merge()`, `cleanup()` | `dispatch()` (path), `reconcile()` (merge) | Per-step |
 | Event registry | `driver.events.registry` | Static declarations | All emitters | Durable (code) |
 | Action registry | `driver.action_registry` | Static declarations | Loop dispatch | Durable (code) |
-| RuntimeContext | `driver.runtime_context` | `RuntimeContext` dataclass | Loop handlers | Per-invocation |
+| RuntimeContext | `driver.runtime_context` | `RuntimeContext` dataclass | Loop handlers (`reconcile()` receives `context`) | Per-invocation |
 
 ### Completion Authority (A1 Contract)
 

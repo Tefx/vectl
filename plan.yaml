@@ -52611,3 +52611,22 @@ phases:
     depends_on:
     - driver-continuity-hygiene-deep-review.wiring-audit
     agent: software-architect
+  - id: driver-continuity-hygiene-deep-review.contract-strength
+    name: Audit continuity hygiene contract strength
+    status: pending
+    description: 'Verify continuity hygiene contracts remain explicit and non-vacuous.
+
+
+      Check:
+
+      - helper result types and CLI/runtime contracts still encode stale-vs-blocking
+      distinctions explicitly
+
+      - no placeholder contract fields remain unused or semantically empty
+
+      - at least one negative-path test exists for each blocking classification family'
+    verification: '- Contract-strength evidence shows explicit negative-path coverage
+      and no vacuous contract fields'
+    depends_on:
+    - driver-continuity-hygiene-deep-review.wiring-audit
+    agent: gate-reviewer

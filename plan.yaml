@@ -41034,7 +41034,7 @@ phases:
       product_implementation_files_modified: no'
 - id: driver-evolution-loop-migration
   name: 'Driver Evolution: Loop Migration & Wiring'
-  status: pending
+  status: in_progress
   gate: loop.py uses registry-backed handlers, planner dispatch remains first-class,
     and the runnable driver path is proven end-to-end
   depends_on:
@@ -41043,7 +41043,7 @@ phases:
   steps:
   - id: driver-evolution-loop-migration.contract
     name: Pin registry-backed loop migration seam
-    status: pending
+    status: claimed
     description: 'step_type: contract
 
       contract_purity: ENFORCED
@@ -41101,6 +41101,8 @@ phases:
 
       - No implementation logic beyond declarations/stubs is introduced'
     agent: software-architect
+    claimed_by: software-architect
+    claimed_at: '2026-03-29T07:12:08.502075+00:00'
   - id: driver-evolution-loop-migration.implement-loop-handlers
     name: Migrate loop branching to registry-backed handlers
     status: pending

@@ -46511,3 +46511,88 @@ phases:
       \ PASS - All four wiring checks verified. StartupRecoveryController is wired\
       \ into production path; no bypasses exist; status and recovery_cursor are consumed\
       \ with observable control-flow impact."
+  - id: driver-continuity-review.fix-gate-blockers
+    name: Fix continuity review gate blockers
+    status: pending
+    description: 'step_type: implementation
+
+      Fix ALL blocker-class and listed should-fix findings from driver-continuity-review.gate
+      together; do not address only one family.
+
+
+      ## Blockers to Fix (ALL of these, not just the first)
+
+
+      ### B1: ContinuityLedgerEntry contract fixtures are stale
+
+      Locations: tests/test_driver_continuity_contract.py
+
+      Remediation: update continuity contract fixtures and pinned field expectations
+      so ContinuityLedgerEntry coverage includes the required judge_policy field everywhere
+      the contract snapshot is asserted.
+
+      Grep hint: ContinuityLedgerEntry|judge_policy|test_driver_continuity_contract
+
+      IMPORTANT: search for sibling stale fixture or pinned-field assertions beyond
+      the first failing test.
+
+
+      ### B2: RunnerResult immutability contract is violated
+
+      Locations: src/vectl/driver/types.py
+
+      Remediation: align RunnerResult with the immutability contract expected by continuity
+      tests by making the dataclass frozen and reconciling any directly affected constructor
+      or usage assumptions within the approved scope.
+
+      Grep hint: RunnerResult|dataclass\(|frozen=|driver/types.py
+
+      IMPORTANT: search for sibling mutability assumptions beyond the listed location.
+
+
+      ## Should-fix findings to address in the same remediation batch
+
+      - DecideState isolation failures
+
+      - continuity expected-red asyncio failures
+
+      - judge runtime failures
+
+
+      ## Root Cause vs Symptom
+
+      - Root cause: continuity review artifacts disagree on the authoritative continuity
+      contract and immutable runner result semantics.
+
+      - Symptom: gate blockers surface as stale pinned fields and mutability-sensitive
+      failures, with related isolation/async/runtime should-fix fallout.
+
+      - Why this fix is not surface-level: it must reconcile the shared continuity
+      contract and type semantics across tests and runtime-adjacent callers, not just
+      patch one assertion.
+
+
+      ## Completion Criteria
+
+      - BOTH blocker families are fixed together
+
+      - Sibling search completed for stale contract pins and mutability assumptions
+
+      - Listed should-fix findings are either remediated in scope or reduced to non-blocking
+      documented residuals within the same evidence set
+
+      - This is an IMPLEMENTATION step. Stub-only completion is NOT acceptable.'
+    verification: '- Blocker family B1: continuity contract coverage now includes
+      judge_policy in all required ContinuityLedgerEntry fixture/pin assertions
+
+      - Blocker family B2: RunnerResult immutability contract is enforced and no in-scope
+      caller relies on mutable post-init behavior
+
+      - Focused regressions cover BOTH families together, plus DecideState isolation,
+      expected-red asyncio continuity behavior, and judge runtime fallout
+
+      - Evidence includes sibling-search results for stale contract pins and mutability
+      assumptions'
+    depends_on:
+    - driver-continuity-review.gate
+    agent: python-senior

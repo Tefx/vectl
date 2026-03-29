@@ -52653,3 +52653,35 @@ phases:
     depends_on:
     - driver-continuity-hygiene-deep-review.spec-conformance
     agent: blind-tester
+  - id: driver-continuity-hygiene-deep-review.gate
+    name: Final gate continuity hygiene deep review
+    status: pending
+    description: 'As an INDEPENDENT REVIEWER (gate-reviewer), perform the final deep
+      review gate for continuity hygiene.
+
+
+      Verification scope: full-plan-check protecting subsequent driver enhancement
+      phases.
+
+
+      Block if any of the following remain:
+
+      - orphan CLI/event wiring
+
+      - divergence between docs, CLI, runtime, and event telemetry
+
+      - quarantine semantics that are not audit-preserving
+
+      - any unsafe widening of startup auto-repair beyond the provably stale class
+
+
+      review_depth: THOROUGH'
+    verification: '- All deep-review checks complete
+
+      - No blocker remains for continuity hygiene correctness or auditability'
+    depends_on:
+    - driver-continuity-hygiene-deep-review.spec-conformance
+    - driver-continuity-hygiene-deep-review.architecture-review
+    - driver-continuity-hygiene-deep-review.contract-strength
+    - driver-continuity-hygiene-deep-review.black-box-verification
+    agent: gate-reviewer

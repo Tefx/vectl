@@ -42419,6 +42419,117 @@ phases:
     depends_on:
     - driver-evolution-review.gate
     agent: software-architect
+  - id: driver-evolution-review.gate-retest-v2
+    name: Retest final gate blockers for driver evolution review (v2)
+    status: pending
+    description: 'step_type: test
+
+      verification_scope: phase-check
+
+      step_intent: retest_green
+
+      expected_result: green
+
+
+      As an INDEPENDENT REVIEWER (gate-reviewer), re-check the final gate blocker
+      families after source-level remediation.
+
+
+      YOUR GOAL IS TO FIND REMAINING ARCHITECTURE OR EVIDENCE-INTEGRITY PROBLEMS,
+      not to confirm the fix mechanically.
+
+
+      Retest ALL blocker families:
+
+      1. Split-truth runtime wiring: DriverState.runtime_config/runtime_runners versus
+      RuntimeContext ownership boundary
+
+      2. Mutable module-global registries on critical surfaces: action registry layer/index
+      tables, loop handler tables, session continuity authorities
+
+      3. Evidence integrity: prior false-positive remediation must not recur; this
+      retest must prove source files changed as claimed
+
+
+      Required source-level integrity checks:
+
+      - inspect git diff / git history for the remediation branch and confirm at least
+      one non-plan source file changed
+
+      - verify the cited driver files changed as claimed: src/vectl/driver/types.py,
+      src/vectl/driver/runtime_context.py, src/vectl/driver/action_registry.py, src/vectl/driver/loop.py,
+      src/vectl/driver/session.py
+
+      - reject completion if plan.yaml is the only modified file or if blocker claims
+      are unsupported by the diff
+
+
+      Required blocker checks:
+
+      - verify a single authoritative source-of-truth now governs runtime persistence
+      and RuntimeContext ownership boundaries
+
+      - verify no cited critical-surface authority remains as uncontrolled mutable
+      module-global registry state
+
+      - verify sibling ownership leaks or registry-table variants were not left behind
+
+
+      Independence Level: L1'
+    verification: 'phase-check protecting driver-evolution-review.gate.
+
+      - Git-diff integrity check proves source files changed as claimed and plan-only
+      completion did not occur
+
+      - Re-check confirms split-truth runtime wiring is cleared or explicitly re-homed
+      under one authority boundary
+
+      - Re-check confirms cited critical registry/authority tables no longer violate
+      static/auditable posture
+
+      - Any remaining issue is reported explicitly as blocker or should_fix; silent
+      partial clearance is invalid'
+    evidence_template: '## Gate Retest v2 Report
+
+
+      **Tester**: gate-reviewer (independent)
+
+
+      ### Git-diff integrity check
+
+      ```\n<git diff --name-only / git show --stat output>\n```
+
+      - Non-plan source files changed: YES/NO
+
+      - Cited files changed as claimed: YES/NO
+
+      - plan.yaml only: YES/NO
+
+
+      ### Blocker verification
+
+      - B1 Split-truth runtime wiring: PASS/FAIL with file:line evidence
+
+      - B2 Mutable critical registries: PASS/FAIL with file:line evidence
+
+      - B3 Evidence integrity: PASS/FAIL with git proof
+
+
+      ### Sibling search
+
+      ```\n<rg commands + findings>\n```
+
+
+      ### Verdict
+
+      - [ ] GREEN: blockers cleared and source changes verified
+
+      - [ ] ISSUES_FOUND: blockers remain or evidence integrity failed
+
+      '
+    depends_on:
+    - driver-evolution-review.fix-gate-blockers-v2
+    agent: gate-reviewer
 - id: driver-evolution-action-registry-contract-foundation
   name: 'Driver Evolution: Action Registry Contract Foundation'
   status: done

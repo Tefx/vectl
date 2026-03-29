@@ -49153,6 +49153,8 @@ phases:
       `handle_complete()` as a non-goal unless a direct dependency is proven.
     verification: Contract artifacts state the exact final signature, the forbidden
       explicit params list, and the reconcile-only scope boundary.
+    depends_on:
+    - driver-reconcile-context-convergence.sync-current-contract-test
     agent: python-senior
   - id: driver-reconcile-context-convergence.test-define-red
     name: Define expected-red reconcile convergence regressions

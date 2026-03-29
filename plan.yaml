@@ -43250,7 +43250,7 @@ phases:
       \ files were modified: no (tests-only)"
   - id: driver-judge-hardening-structured-output.impl
     name: Implement codex-aligned judge invocation and parser hardening
-    status: claimed
+    status: done
     description: "step_type: implementation\nspec_refs:\n  - driver.yaml#runners-codex-and-judge\n\
       \  - docs/JUDGE-AGENT-PROMPT.md#verdict-schema\n  - docs/DRIVER-ARCHITECTURE.md#judge-runtime\n\
       touch_paths:\n  - src/vectl/driver/judge.py\n  - src/vectl/driver/config.py\n\
@@ -43341,6 +43341,36 @@ phases:
     agent: python-senior
     claimed_by: python-senior
     claimed_at: '2026-03-29T01:18:43.738631+00:00'
+    done_at: '2026-03-29T01:26:28.284826+00:00'
+    evidence: '## Structured Output Stability Implementation
+
+      Config reuse path: driver.yaml-backed runner settings loaded and rendered into
+      judge codex command construction; codex command/args/prompt_mode/parser/session
+      now align with stable runners config.
+
+      Files changed: src/vectl/driver/judge.py, src/vectl/driver/parsers.py, tests/test_driver_judge_impl_runtime.py,
+      tests/test_driver_extended_runners.py
+
+      Failure-path regressions added/updated:
+
+      - empty output -> JudgmentParseError
+
+      - partial lifecycle-only codex streams -> JudgmentParseError
+
+      - malformed JSONL tolerance when valid events present
+
+      - all-malformed/empty hard-fail preserved
+
+      Integration Evidence:
+
+      - command: uv run pytest tests/test_driver_judge_impl_runtime.py tests/test_driver_extended_runners.py
+      -v
+
+      - output: 23 passed in 3.22s
+
+      - path exercised: driver.yaml -> config -> judge -> runner -> parser -> verdict
+
+      Deviation records: none'
   - id: driver-judge-hardening-structured-output.real-codex-verify
     name: Verify real codex judge stability for blocking judgments
     status: pending

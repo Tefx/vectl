@@ -42215,6 +42215,210 @@ phases:
       2. Gate reviews MUST verify fix step evidence matches git history
 
       3. Adversarial retest MUST diff actual source files against blocker locations'
+  - id: driver-evolution-review.fix-gate-blockers-v2
+    name: Fix final gate blockers for driver evolution review (v2)
+    status: pending
+    description: 'step_type: implementation
+
+
+      Fix ALL blocker families reported by driver-evolution-review.gate. This is a
+      batched remediation step and must close the runtime-ownership blocker, the mutable-registry
+      blocker, and the evidence-integrity blocker together because they all intersect
+      the same final gate.
+
+
+      tags:
+
+      - integration
+
+
+      ## Blockers to Fix (ALL of these, not just the first)
+
+
+      symbolic_testing: false
+
+      prior_loop:
+
+      - driver-evolution-review.fix-architecture-blockers
+
+      - driver-evolution-review.architecture-review-retest
+
+      remaining_blocker: split-truth runtime ownership, mutable critical registries,
+      and evidence-integrity failure still intersect the final driver-evolution-review.gate
+
+      why_new_loop: the prior remediation loop did not produce verified source-level
+      changes, so the same blocker family remains open at the final gate
+
+      why_previous_fix_failed: the previous fix step claimed source remediation while
+      only plan state changed, leaving the cited source files unmodified and the blocker
+      families unresolved
+
+
+      ## Root Cause vs Symptom
+
+      - Root cause: runtime truth remains split between DriverState persistence fields
+      and RuntimeContext authority surfaces while critical authority tables remain
+      mutable module-globals, and the prior remediation lacked source-level integrity
+      proof
+
+      - Symptom: the final gate still sees split-truth runtime wiring, mutable registry
+      authorities, and fix evidence that does not match git history
+
+      - Why this fix is not surface-level: remediation must change the cited source
+      files, re-establish one auditable ownership model, and prove via source diff
+      that the blocker families were actually cleared
+
+
+      ## Source-level remediation is REQUIRED
+
+      You MUST modify source files in the cited driver surfaces. Plan-only completion
+      is forbidden.
+
+
+      Required source files to change as claimed by the remediation:
+
+      - src/vectl/driver/types.py
+
+      - src/vectl/driver/runtime_context.py
+
+      - src/vectl/driver/action_registry.py
+
+      - src/vectl/driver/loop.py
+
+      - src/vectl/driver/session.py
+
+
+      If a cited blocker is resolved by changing an adjacent source file too, list
+      that file explicitly in the evidence; however, completion is invalid if the
+      only changed file is plan.yaml.
+
+
+      ### B1: Split-truth runtime wiring remains
+
+      Locations: DriverState.runtime_config / DriverState.runtime_runners in src/vectl/driver/types.py
+      versus RuntimeContext ownership rules in src/vectl/driver/runtime_context.py
+
+      Remediation: eliminate the split-truth path so DriverState persistence no longer
+      mirrors runtime-owned configuration or runner state that belongs to RuntimeContext.
+      Establish one authoritative ownership boundary and update any dependent runtime
+      wiring accordingly.
+
+      Grep hint: rg -n "runtime_config|runtime_runners|RuntimeContext" src/vectl/driver
+
+      IMPORTANT: search for sibling ownership leaks beyond the listed symbols and
+      remove any remaining mirror-truth path that would intersect the final gate.
+
+
+      ### B2: Critical mutable module-global registry tables remain
+
+      Locations:
+
+      - src/vectl/driver/action_registry.py (action registry layer/index tables)
+
+      - src/vectl/driver/loop.py (loop handler tables)
+
+      - src/vectl/driver/session.py (session continuity authorities)
+
+      Remediation: remove, encapsulate, or replace mutable module-global registry/authority
+      tables on these critical surfaces so posture is static, auditable, and ownership-scoped.
+      If any runtime mutability remains necessary, bind it to an explicit authority
+      object and lifecycle boundary instead of module-global mutable dict tables.
+
+      Grep hint: rg -n "Final\[dict\]|registry|handler table|continuity|authority"
+      src/vectl/driver/{action_registry.py,loop.py,session.py}
+
+      IMPORTANT: search for sibling module-global registry variants beyond the initially
+      cited tables.
+
+
+      ### B3: Evidence-integrity gap
+
+      Locations: prior remediation evidence versus actual git history for the cited
+      source files
+
+      Remediation: produce source-level proof tied to the blocker locations. Evidence
+      for this step MUST enumerate changed source files and explain which blocker
+      each change closes. Claiming completion with only plan-state mutation is invalid.
+
+      Grep hint: git diff --name-only HEAD~1..HEAD -- src/vectl/driver
+
+
+      ## Completion Criteria (stub exclusion)
+
+      This is an IMPLEMENTATION step. Stub-only completion is NOT acceptable.
+
+      Each deliverable MUST contain substantive logic that processes its inputs and
+      produces outputs that vary based on those inputs. Private stub classes (`_Runtime*`,
+      `_Stub*`, `_Placeholder*`) do not satisfy this requirement.
+
+
+      ## Completion Criteria
+
+      - ALL three blocker families are addressed in one batched source remediation
+      slice
+
+      - DriverState no longer persists runtime_config/runtime_runners if RuntimeContext
+      is the authority surface
+
+      - Critical registry/authority tables no longer rely on uncontrolled mutable
+      module-global dict state on the cited files
+
+      - Evidence maps each blocker family to concrete source-file changes
+
+      - Completion is rejected if plan.yaml is the only changed file
+
+      - Sibling search completed for adjacent ownership leaks and registry-table variants'
+    verification: 'phase-check protecting driver-evolution-review.gate-retest-v2 and
+      driver-evolution-review.gate.
+
+      - Source-level remediation is present in the cited driver files, not only in
+      plan state
+
+      - Split-truth runtime ownership is removed or explicitly re-homed under one
+      authoritative boundary
+
+      - Critical authority tables are static/auditable or lifecycle-scoped rather
+      than uncontrolled module-global mutable dicts
+
+      - Evidence enumerates blocker-to-file mapping and sibling-search coverage
+
+      - Plan-only completion is explicitly rejected'
+    evidence_template: '## Batched Gate Blocker Remediation Evidence
+
+
+      **Changed source files**:
+
+      - <path>
+
+      - <path>
+
+
+      **Blocker-to-change mapping**:
+
+      - B1 -> <file:line range> : <what changed>
+
+      - B2 -> <file:line range> : <what changed>
+
+      - B3 -> <git evidence + why it proves source remediation>
+
+
+      **Sibling search performed**:
+
+      ```\n<rg commands + findings>\n```
+
+
+      **Integrity assertion**:
+
+      - [ ] plan.yaml was NOT the only modified file
+
+      - [ ] cited source files changed as claimed
+
+      - [ ] evidence is consistent with git diff
+
+      '
+    depends_on:
+    - driver-evolution-review.gate
+    agent: software-architect
 - id: driver-evolution-action-registry-contract-foundation
   name: 'Driver Evolution: Action Registry Contract Foundation'
   status: done

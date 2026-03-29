@@ -49299,16 +49299,55 @@ phases:
     - driver-reconcile-context-convergence.test-define-red
     agent: python-senior
   - id: driver-reconcile-context-convergence.sync-callsites-tests
-    name: Migrate remaining reconcile call sites and tests
+    name: Migrate remaining reconcile callsites and targeted tests to context-only
     status: pending
-    description: Update remaining reconcile call sites and affected driver tests to
-      use the context-only boundary consistently. Remove test/helper invocations that
-      still pass explicit runtime dependencies to `reconcile()`.
-    verification: Targeted search shows no live reconcile invocations passing explicit
-      runtime dependency args and affected reconcile-related tests are updated to
-      the final boundary.
+    description: 'Migrate all remaining reconcile callsites and directly affected
+      tests/helpers to the final context-only boundary.
+
+
+      Primary touch targets are reconcile callsites outside the main runtime loop,
+      especially:
+
+      - `tests/test_driver_loop_runtime.py`
+
+      - `tests/test_driver_judge_recovery_policy_impl.py`
+
+      - `tests/test_driver_continuity_expected_red.py`
+
+      - `tests/test_driver_loop_hardening.py`
+
+
+      Required outcomes:
+
+      - no live test/helper invocation passes explicit runtime deps to `reconcile()`
+
+      - monkeypatch stubs for `reconcile()` reflect the final callable shape where
+      needed
+
+      - success/failure test intent remains reconcile-specific
+
+
+      Do not use this step to redesign unrelated test fixtures or widen scope into
+      `handle_complete()`.'
+    verification: '- targeted grep/search finds no reconcile callsites passing explicit
+      runtime dependency args
+
+      - targeted test files are updated to the final boundary
+
+      - no unrelated driver surfaces changed'
+    evidence_template: "## Reconcile callsite/test migration\n- Search scope:\n  `tests/`\
+      \ + any reconcile-adjacent helpers\n- Remaining explicit-arg callsites:\n  `<none\
+      \ found or list>`\n- Commands:\n  `<targeted pytest command(s)>`\n- Files changed:\n\
+      \  `<paste list>`\n- Explicit statement:\n  \"Changes limited to reconcile callsites/tests\""
+    refs:
+    - tests/test_driver_loop_runtime.py
+    - tests/test_driver_judge_recovery_policy_impl.py
+    - tests/test_driver_continuity_expected_red.py
+    - tests/test_driver_loop_hardening.py
+    - src/vectl/driver/loop.py
     depends_on:
     - driver-reconcile-context-convergence.impl-boundary
+    - driver-reconcile-context-convergence.contract
     agent: python-executor
   - id: driver-reconcile-context-convergence.doc-sync
     name: Sync reconcile docs to context-only convergence

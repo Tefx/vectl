@@ -46402,7 +46402,7 @@ phases:
       \ lifecycle state."
   - id: driver-continuity-review.wiring-audit-retest
     name: Retest continuity review wiring audit
-    status: claimed
+    status: done
     description: 'Re-run the wiring audit after driver-continuity-review.fix-wiring-blockers
       from an independent wiring perspective.
 
@@ -46464,3 +46464,52 @@ phases:
     agent: wiring-auditor
     claimed_by: wiring-auditor
     claimed_at: '2026-03-29T05:26:17.558463+00:00'
+    done_at: '2026-03-29T05:29:01.851464+00:00'
+    evidence: "## Wiring Audit Retest Report\n\n**Scope**: driver-continuity-review\
+      \ repaired wiring\n\n**Checks**:\n1. StartupRecoveryController contract reachable\
+      \ from production startup/recovery entrypoint\n2. No standalone-function bypass\
+      \ remains in production path\n3. `status` consumed in production recovery path\n\
+      4. `recovery_cursor` consumed in production recovery path\n\n**Evidence**:\n\
+      \n### Check 1: StartupRecoveryController Protocol Wiring\n- **Entry path traced**:\
+      \ \n  - `src/vectl/driver/__main__.py:31-40` `main()` -> `entrypoint.py:201-216`\
+      \ `_invoke_with_adapter()` -> `entrypoint.py:128` `asyncio.run(loop.run(config_path))`\
+      \ -> `loop.py:1759` `_startup_recovery_controller().plan_recovery(...)`\n- **Controller\
+      \ implementation reached at**: \n  - `loop.py:437-455` `DefaultStartupRecoveryController.plan_recovery()`\
+      \ delegates to `_evaluate_startup_recovery_boundary_matrix()`\n  - Protocol\
+      \ defined at `types.py:644-658` `StartupRecoveryController(Protocol)`\n- **Production\
+      \ path**: `run()` calls `_startup_recovery_controller().plan_recovery(boundary_input=...)`\
+      \ at line 1759\n- **Verdict**: PASS - Controller-backpath flow is wired at the\
+      \ production entrypoint\n\n### Check 2: No Standalone-Function Bypass\n- **Function\
+      \ `evaluate_startup_recovery_boundary`** at `loop.py:481-494`:\n  ```python\n\
+      \  def evaluate_startup_recovery_boundary(...):\n      return _startup_recovery_controller().plan_recovery(boundary_input=boundary_input)\n\
+      \  ```\n- This function routes TO the controller, not around it.\n- Production\
+      \ `run()` (line 1759) calls `_startup_recovery_controller().plan_recovery()`\
+      \ directly - never bypasses controller.\n- **Verdict**: PASS - All paths route\
+      \ through StartupRecoveryController\n\n### Check 3: `status` Field Consumption\n\
+      - **status read at**: `loop.py:562` - `status = ledger_entry.status.strip().lower()`\n\
+      - **Observable effects**:\n  - `loop.py:565-575`: If `status == \"completed\"\
+      ` -> `StartupRecoveryDecision(disposition=\"halt\", reason=\"ledger_status_completed\"\
+      )` -> `blocked_reasons.append(...)`\n  - `loop.py:577-587`: If `status == \"\
+      aborted\"` -> halt decision\n  - `loop.py:1779-1789`: `halt_reasons = list(startup_boundary.blocked_reasons)`\
+      \ -> if non-empty, `state.halt_requested = True` and `observer.emit(\"HALT\"\
+      , ...)`\n- **Downstream control-flow impact**: Halt reasons cause main loop\
+      \ skip (`main_loop_called[\"value\"] = False` in test)\n- **Verdict**: PASS\
+      \ - status is read and determines HALT vs CONTINUE behavior\n\n### Check 4:\
+      \ `recovery_cursor` Field Consumption\n- **recovery_cursor read at**: `loop.py:563`\
+      \ - `recovery_cursor = (ledger_entry.recovery_cursor or \"\").strip()`\n- **Observable\
+      \ effects**:\n  - `loop.py:589-599`: If `recovery_cursor == \"halt_requested_by_judge_policy\"\
+      ` -> halt decision\n  - `loop.py:601-611`: If `recovery_cursor == \"awaiting_conflict_resolution\"\
+      ` -> halt decision\n  - `loop.py:613-623`: If `recovery_cursor == \"pre_merge\"\
+      ` -> restart decision\n  - `loop.py:625-635`: If `recovery_cursor == \"awaiting_retry_or_escalation\"\
+      ` -> restart decision\n  - All decision outputs flow to `blocked_reasons` ->\
+      \ `halt_reasons` -> `state.halt_requested` in `run()`\n- **Verdict**: PASS -\
+      \ recovery_cursor is read and determines halt/restart/resume classification\n\
+      \n### Regression Test Evidence\n- `uv run pytest -v tests/test_driver_recovery.py\
+      \ tests/test_driver_continuity_contract.py`\n- Result: **16 passed**\n- Key\
+      \ tests:\n  - `test_evaluate_startup_recovery_boundary_routes_through_controller`:\
+      \ Verifies standalone evaluator routes through controller\n  - `test_run_uses_startup_recovery_controller_contract`:\
+      \ Verifies `run()` invokes controller\n  - `test_run_consumes_ledger_status_and_recovery_cursor_via_controller`:\
+      \ Verifies status/cursor consumption produces HALT decisions\n\n**Verdict**:\
+      \ PASS - All four wiring checks verified. StartupRecoveryController is wired\
+      \ into production path; no bypasses exist; status and recovery_cursor are consumed\
+      \ with observable control-flow impact."

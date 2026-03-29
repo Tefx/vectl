@@ -49350,15 +49350,44 @@ phases:
     - driver-reconcile-context-convergence.contract
     agent: python-executor
   - id: driver-reconcile-context-convergence.doc-sync
-    name: Sync reconcile docs to context-only convergence
+    name: Sync reconcile-specific docs to the context-only boundary
     status: pending
-    description: Update reconcile-specific architecture/docs so they match the final
-      context-only boundary and do not imply dual-path runtime injection remains for
-      `reconcile()`.
-    verification: Docs consistently describe `RuntimeContext` as the sole reconcile
-      runtime bundle and match the landed signature.
+    description: 'Update only reconcile-specific documentation so code and docs agree
+      on the final boundary.
+
+
+      Required doc outcomes:
+
+      - `reconcile()` is documented as context-only
+
+      - `RuntimeContext` is the sole runtime dependency bundle for reconcile
+
+      - migration-era explicit reconcile params are no longer described as active
+
+      - `handle_complete()` is not rewritten or expanded beyond the existing out-of-scope
+      note
+
+
+      Keep this doc sync narrow; do not turn it into a broader driver architecture
+      rewrite.'
+    verification: '- reconcile-related docs match the landed signature and runtime
+      boundary
+
+      - no doc section still describes dual-path reconcile dependency injection
+
+      - handle_complete docs remain unchanged except where reconcile wording forced
+      a minimal clarification'
+    evidence_template: "## Reconcile doc sync\n- Docs updated:\n  `<list>`\n- Final\
+      \ documented reconcile signature:\n  `<paste>`\n- Runtime bundle statement:\n\
+      \  `<paste RuntimeContext-only wording>`\n- Drift removed:\n  `<old wording\
+      \ removed>`"
+    refs:
+    - docs/DRIVER-ARCHITECTURE.md
+    - docs/ADR-driver-evolution-foundation.md
+    - src/vectl/driver/loop.py
+    - src/vectl/driver/runtime_context.py
     depends_on:
-    - driver-reconcile-context-convergence.impl-boundary
+    - driver-reconcile-context-convergence.sync-callsites-tests
     agent: doc-reviewer
   - id: driver-reconcile-context-convergence.verify
     name: Independently retest reconcile context-only convergence

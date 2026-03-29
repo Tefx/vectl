@@ -39429,7 +39429,7 @@ phases:
       without loop duplication.
 - id: driver-evolution-events-foundation
   name: 'Driver Evolution: Events Foundation'
-  status: locked
+  status: pending
   gate: Versioned envelope + event registry source of truth established on top of
     debt-remediation baseline
   context: Bootstrap-postponed evolution work. Event foundation starts only after
@@ -39935,7 +39935,7 @@ phases:
     agent: gate-reviewer
 - id: driver-evolution-runtime-context
   name: 'Driver Evolution: Runtime Context'
-  status: locked
+  status: pending
   gate: Typed runtime context replaces ad hoc handler inputs without regressing driver
     entrypoint behavior
   context: Bootstrap-postponed evolution work. Runtime-context restructuring starts
@@ -40946,7 +40946,7 @@ phases:
     agent: gate-reviewer
 - id: driver-evolution-action-registry-contract-foundation
   name: 'Driver Evolution: Action Registry Contract Foundation'
-  status: locked
+  status: pending
   gate: Planner-dispatch registry boundary is pinned early so action-registry implementation
     can start only after runtime-context plus this contract foundation
   context: Bootstrap-postponed evolution work. Action-registry contract foundation
@@ -42232,7 +42232,7 @@ phases:
     agent: gate-reviewer
 - id: driver-prompt-foundation
   name: Driver Prompt Resource Foundation
-  status: locked
+  status: pending
   gate: Packaged judge-prompt resource contract, docs/runtime relationship, and failure
     semantics are pinned before runtime migration fan-out.
   context: Non-blocking prompt-resource work. Deliberately postponed until the renewed
@@ -44448,7 +44448,7 @@ phases:
       \  - no divergent hardcoded fallback argv remains\n- Gate recommendation: PASS"
 - id: driver-bootstrap-readiness
   name: Driver Real Bootstrap Readiness
-  status: in_progress
+  status: done
   gate: Go/no-go gate for another real project bootstrap attempt. Requires debt remediation,
     judge hardening, continuity/resume blockers, and system wiring/review evidence
     sufficient to show bootstrap is controllable, restart-resumable, replay-safe,
@@ -44461,7 +44461,7 @@ phases:
   - id: driver-bootstrap-readiness.gate
     name: Authorize next real bootstrap attempt only after debt + judge + continuity
       clearance
-    status: claimed
+    status: done
     description: 'step_type: gate
 
       verification_scope: full-plan-check
@@ -44502,6 +44502,32 @@ phases:
     agent: gate-reviewer
     claimed_by: gate-reviewer
     claimed_at: '2026-03-29T05:41:40.494041+00:00'
+    done_at: '2026-03-29T05:50:59.166535+00:00'
+    evidence: "## Bootstrap Readiness Gate Review\n\n### Artifact\n- Commit: f094f46\
+      \ (claim driver-bootstrap-readiness.gate)\n- Prior commits: Gate completions\
+      \ for dependency phases\n\n### Upstream Clearance Verification\n\n1) debt remediation\
+      \ complete ✓\n- `driver-debt-review.gate` complete\n- state isolation, completion\
+      \ authority, CLI parity, policy extraction, wiring checks closed\n\n2) judge\
+      \ hardening complete ✓\n- review gate blocker (codex fallback contract divergence)\
+      \ fixed and retested\n- explicit parse-error behavior for missing/invalid codex\
+      \ contract\n\n3) continuity blocker complete ✓\n- continuity review blockers\
+      \ fixed and retested:\n  - ContinuityLedgerEntry `judge_policy` contract coverage\n\
+      \  - RunnerResult immutability (`@dataclass(frozen=True)`)\n  - StartupRecoveryController\
+      \ production-path wiring\n  - `status`/`recovery_cursor` consumption with control-flow\
+      \ effect\n\n### Runtime Verification\n- `uv run pytest tests/test_driver_judge_impl_runtime.py\
+      \ tests/test_driver_continuity_contract.py tests/test_driver_recovery.py tests/test_driver_recovery_black_box.py\
+      \ -v`\n- Result: 40 passed\n\nCritical assertions verified:\n- RunnerResult\
+      \ frozen dataclass\n- ContinuityLedgerEntry includes judge_policy\n- `run()`\
+      \ routes via StartupRecoveryController\n- ledger status/recovery_cursor consumed\
+      \ in decisions\n\n### Bootstrap-Critical Behavior Verdict\n- success-only paths:\
+      \ CLEARED\n- process-local-only behavior: CLEARED\n- replay-unsafe behavior:\
+      \ CLEARED\n- restart-recovery gaps: CLEARED\n- explicit halt behavior where\
+      \ safety unproven: CLEARED\n\n### Non-blocking note\nA stale expected-red style\
+      \ test patch target exists, but covered behavior is verified by passing controller-routing\
+      \ tests; treated as test-maintenance SHOULD_FIX, not bootstrap blocker.\n\n\
+      ### Spec link\n- Step: `driver-bootstrap-readiness.gate`\n- Dependencies: `driver-debt-review`,\
+      \ `driver-judge-hardening-review`, `driver-continuity-review`\n\nVerdict: PASS\
+      \ — authorize next real bootstrap attempt and unlock downstream phases."
 - id: driver-continuity-foundation
   name: 'Driver Continuity: Foundation'
   status: done

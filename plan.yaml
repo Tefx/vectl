@@ -51614,7 +51614,7 @@ phases:
       empty stdout, and stderr containing timeout message. Prevents exception propagation.'
   - id: driver-live-smoke-remediation.gate
     name: Gate live smoke remediation
-    status: pending
+    status: claimed
     description: 'Gate review: Verify both remediation fixes work correctly.
 
 
@@ -51645,3 +51645,5 @@ phases:
     - driver-live-smoke-remediation.fix-codex-judge-parser-item-text-extraction
     - driver-live-smoke-remediation.fix-run-subprocess-timeout-handling
     agent: gate-reviewer
+    claimed_by: gate-reviewer
+    claimed_at: '2026-03-29T17:32:41.628422+00:00'

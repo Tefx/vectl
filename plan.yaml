@@ -42239,7 +42239,7 @@ phases:
       3. Adversarial retest MUST diff actual source files against blocker locations'
   - id: driver-evolution-review.fix-gate-blockers-v2
     name: Fix final gate blockers for driver evolution review (v2)
-    status: claimed
+    status: done
     description: 'step_type: implementation
 
 
@@ -42443,6 +42443,46 @@ phases:
     agent: software-architect
     claimed_by: software-architect
     claimed_at: '2026-03-29T08:32:34.748294+00:00'
+    done_at: '2026-03-29T08:40:04.615554+00:00'
+    evidence: "## Batched Gate Blocker Remediation Evidence\n\n**Changed source files**:\n\
+      - src/vectl/driver/types.py\n- src/vectl/driver/runtime_context.py\n- src/vectl/driver/action_registry.py\n\
+      - src/vectl/driver/loop.py\n- src/vectl/driver/session.py\n\n**Blocker-to-change\
+      \ mapping**:\n- B1 -> src/vectl/driver/types.py:152-159 ; src/vectl/driver/runtime_context.py:118-153\
+      \ ; src/vectl/driver/loop.py:1793-1800, 1988-2009, 2413-2420, 3259-3279 : removed\
+      \ split runtime ownership by keeping mutable continuity state on `DriverState`,\
+      \ making `RuntimeContext` the authoritative runtime-input boundary, freezing\
+      \ `context.runners`, and routing startup/dispatch/reconcile through the same\
+      \ `runtime_context_from_parts(...)` builder instead of mirrored runtime config/runner\
+      \ state.\n- B2 -> src/vectl/driver/action_registry.py:321-339 ; src/vectl/driver/session.py:25-42,\
+      \ 94-101 ; src/vectl/driver/loop.py:1498-1507, 3282-3349 : hardened critical\
+      \ authority tables into auditable/static or lifecycle-scoped forms. `ACTION_REGISTRY_AUDIT_TABLES`,\
+      \ planner/runtime handler tables, and `SESSION_CONTINUITY_AUTHORITIES` are `MappingProxyType`-backed;\
+      \ session TTL overrides are frozen; session audit snapshots are immutable; continuity\
+      \ attempt/snapshot registries are now explicit `DriverState` fields instead\
+      \ of hidden `state.__dict__` mutation.\n- B3 -> git evidence:\n  - commits:\
+      \ `0090525 centralize driver runtime authority`, `448562d freeze driver authority\
+      \ registries`\n  - `git diff --name-only HEAD~2..HEAD -- src/vectl/driver/types.py\
+      \ src/vectl/driver/runtime_context.py src/vectl/driver/action_registry.py src/vectl/driver/loop.py\
+      \ src/vectl/driver/session.py` returned all 5 required driver files\n  - `git\
+      \ show --stat --oneline HEAD~2..HEAD -- ...` showed source diffs across exactly\
+      \ those files (`222 insertions, 102 deletions`)\n  - `uv run pytest tests/test_driver_loop_hardening.py\
+      \ tests/test_driver_judge_recovery_policy_impl.py` => `21 passed`\n  - `uv run\
+      \ python -m compileall src/vectl/driver` succeeded\n  - `git status --short\
+      \ -- plan.yaml .git/vectl/claims.json` returned empty output\n  This proves\
+      \ source remediation landed in code, not only plan state.\n\n**Sibling search\
+      \ performed**:\n```\nrg -n \"runtime_config|runtime_runners|state\\.runtime_config|state\\\
+      .runtime_runners\" src/vectl/driver\nFindings:\n- only _load_runtime_config\
+      \ function references remained in loop.py\n- no DriverState/runtime mirror ownership\
+      \ fields remained\n\nrg -n \"_REGISTERED_(RUNTIME|PLANNER)_ACTION_HANDLERS|ACTION_REGISTRY_AUDIT_TABLES|SESSION_CONTINUITY_AUTHORITIES|audit_entries|continuity_attempt_keys|continuity_capability_snapshots\"\
+      \ src/vectl/driver\nFindings:\n- src/vectl/driver/action_registry.py:332 ACTION_REGISTRY_AUDIT_TABLES\n\
+      - src/vectl/driver/types.py:155 continuity_attempt_keys\n- src/vectl/driver/types.py:158\
+      \ continuity_capability_snapshots\n- src/vectl/driver/session.py:25 SESSION_CONTINUITY_AUTHORITIES\n\
+      - src/vectl/driver/session.py:98 audit_entries\n- src/vectl/driver/loop.py:1501\
+      \ state.continuity_attempt_keys\n- src/vectl/driver/loop.py:1507 state.continuity_capability_snapshots\n\
+      - src/vectl/driver/loop.py:3282 _REGISTERED_PLANNER_ACTION_HANDLERS\n- src/vectl/driver/loop.py:3330\
+      \ _REGISTERED_RUNTIME_ACTION_HANDLERS\n```\n\n**Integrity assertion**:\n- [x]\
+      \ plan.yaml was NOT the only modified file\n- [x] cited source files changed\
+      \ as claimed\n- [x] evidence is consistent with git diff"
   - id: driver-evolution-review.gate-retest-v2
     name: Retest final gate blockers for driver evolution review (v2)
     status: pending

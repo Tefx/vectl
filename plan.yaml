@@ -52141,6 +52141,56 @@ phases:
 
       - Proof: registry/types and emitting sites stay aligned'
     agent: python-executor
+  - id: driver-continuity-hygiene-surface.wiring-audit
+    name: Audit continuity hygiene wiring completeness
+    status: pending
+    description: 'Wiring completeness audit: verify every new public symbol and CLI/event
+      surface introduced by continuity hygiene is reachable at runtime.
+
+
+      REQUIRED CHECKS:
+
+      1. CLI registration: `repair continuity` is registered under the existing repair
+      app and reaches the shared helper
+
+      2. Event registration: every new continuity hygiene event is present in src/vectl/driver/events/types.py
+      and src/vectl/driver/events/registry.py
+
+      3. Manifest consumption: emitted manifest paths/reasons are actually produced
+      by runtime or CLI code, not dead fields
+
+      4. Contract consumption: helper result objects created in the contract step
+      are consumed by loop.py and cli.py
+
+
+      Use grep/import-trace output as evidence, not assertions.'
+    verification: '- No unregistered repair-continuity command
+
+      - No orphan event types or manifest fields
+
+      - No contract/helper types left unconsumed on the runtime or CLI path'
+    evidence_template: '## Wiring Audit Report
+
+      **CLI registration**:
+
+      <grep/import trace output or none>
+
+
+      **Event registry alignment**:
+
+      <grep output or none>
+
+
+      **Manifest field consumption**:
+
+      <grep output or none>
+
+
+      **Verdict**: PASS | ISSUES_FOUND'
+    depends_on:
+    - driver-continuity-hygiene-surface.impl-cli-repair-continuity
+    - driver-continuity-hygiene-surface.impl-events-manifests
+    agent: wiring-auditor
 - id: driver-continuity-hygiene-review
   name: 'Driver Continuity Hygiene: Verification & Gate'
   status: locked

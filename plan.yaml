@@ -49945,7 +49945,7 @@ phases:
   steps:
   - id: driver-live-smoke-foundation.ratify-live-smoke-policy
     name: Ratify pinned live-smoke model and execution policy
-    status: claimed
+    status: done
     description: "Planning step.\n\nRatify the lightweight live smoke policy before\
       \ any additive test work assumes runner wiring or fallback semantics.\n\nRequired\
       \ outputs:\n- codex judge smoke model = gpt-5.4-mini\n- codex dispatch smoke\
@@ -50008,6 +50008,75 @@ phases:
     agent: software-architect
     claimed_by: software-architect
     claimed_at: '2026-03-29T16:02:15.162956+00:00'
+    done_at: '2026-03-29T16:08:01.576930+00:00'
+    evidence: "## Live Smoke Policy Ratification\n- artifact: `docs/DRIVER-LIVE-SMOKE-POLICY.md`\n\
+      - commit: `6cd4994` (`docs: ratify driver live smoke policy`)\n- codex cheap-model\
+      \ discovery: not reopened; fixed by step to `gpt-5.4-mini`. Override surface\
+      \ confirmed from `codex --help` (`-m, --model`) and `codex exec --help` (`--output-schema\
+      \ <FILE>`). Codex base argv authority remains `driver.yaml` + `docs/DRIVER-ARCHITECTURE.md`\
+      \ codex invocation source-of-truth section.\n- opencode cheap-model discovery:\
+      \ not reopened; fixed by step to `ollama-cloud/minimax-m2.7`. Override surface\
+      \ confirmed from `opencode --help` / `opencode run --help` (`-m, --model`, `--format\
+      \ json`).\n- opt-in env gate: `RUN_LIVE_RUNNER_TESTS=1`\n- skip reasons taxonomy:\n\
+      \  - `live_runner_opt_in_missing`\n  - `live_runner_binary_missing`\n  - `live_runner_auth_missing`\n\
+      \  - `live_runner_override_unsupported`\n- execution mode decision (manual /\
+      \ CI / nightly / release): `manual-only`\n  - why: live smoke depends on external\
+      \ binaries, provider auth, and billable services; this foundation step ratifies\
+      \ additive smoke policy without making default CI, nightly, or release gates\
+      \ depend on runner availability/secrets.\n- unresolved items:\n  - none for\
+      \ this policy step\n\n### Ratified runner/scenario table\n\n| Scenario     \
+      \     | Pinned model id           | Exact override mechanism               \
+      \                                                                          \
+      \                                                                          \
+      \       | Invocation shape                                                 \
+      \      | Expected markers                          | Fallback policy       \
+      \                                                                          \
+      \                                                                          \
+      \      |\n| ----------------- | ------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------\
+      \ | ---------------------------------------------------------------------- |\
+      \ ----------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------\
+      \ |\n| `codex-judge`       | `gpt-5.4-mini`              | **Fixed `driver.yaml`\
+      \ source**: pin model in `runners.codex.args` with Codex-supported `-m/--model`;\
+      \ judge must inherit base argv from `driver.yaml` and may append only ephemeral\
+      \ `--output-schema <tempfile>` | `codex exec --json ... -m gpt-5.4-mini ...\
+      \ --output-schema <tempfile> -` | `live_runner`, `codex_live`, `judge_live`\
+      \       | No cross-runner fallback. Missing opt-in/binary/auth => `SKIP`. Unsupported\
+      \ override surface => `SKIP`. Structured/schema rejection => explicit `FAILURE`,\
+      \ not tolerant text success. |\n| `codex-dispatch`    | `gpt-5.4-mini`     \
+      \         | **Fixed `driver.yaml` source**: pin model in `runners.codex.args`\
+      \ with Codex-supported `-m/--model`                                        \
+      \                                                                 | `codex exec\
+      \ --json ... -m gpt-5.4-mini ... -`                            | `live_runner`,\
+      \ `codex_live`, `dispatch_live`    | No cross-runner fallback. Missing opt-in/binary/auth\
+      \ => `SKIP`. Unsupported override surface => `SKIP`. Do not reopen model choice\
+      \ via alternate runner.                            |\n| `opencode-judge`   \
+      \ | `ollama-cloud/minimax-m2.7` | **CLI flag**: pass `-m/--model` on the smoke\
+      \ invocation                                                               \
+      \                                                                          \
+      \        | `opencode run --format json -m ollama-cloud/minimax-m2.7 ...`   \
+      \         | `live_runner`, `opencode_live`, `judge_live`    | No cross-runner\
+      \ fallback. Missing opt-in/binary/auth => `SKIP`. Unsupported override surface\
+      \ => `SKIP`. Tolerant JSONL/text extraction remains allowed compatibility behavior.\
+      \      |\n| `opencode-dispatch` | `ollama-cloud/minimax-m2.7` | **CLI flag**:\
+      \ pass `-m/--model` on the smoke invocation                                \
+      \                                                                          \
+      \                                       | `opencode run --format json -m ollama-cloud/minimax-m2.7\
+      \ ...`            | `live_runner`, `opencode_live`, `dispatch_live` | No cross-runner\
+      \ fallback. Missing opt-in/binary/auth => `SKIP`. Unsupported override surface\
+      \ => `SKIP`. Do not reopen model choice via alternate runner.              \
+      \              |\n\n### Override confirmation surfaces used\n- `codex --help`:\
+      \ confirms `-m, --model <MODEL>` and `-c, --config <key=value>`\n- `codex exec\
+      \ --help`: confirms `--output-schema <FILE>`\n- `opencode --help`: confirms\
+      \ `-m, --model`\n- `opencode run --help`: confirms `--format json`\n- `driver.yaml`\
+      \ + `docs/DRIVER-ARCHITECTURE.md`: confirm Codex base invocation is config-owned\
+      \ and judge may only append per-call structured-output material\n\n### Authoritative\
+      \ judge boundary decision\n- Codex structured-output mode is schema-enforced\
+      \ and MUST NOT treat tolerant text fallback as a normal compatibility success\
+      \ path.\n- Valid Codex judge live outcomes in structured mode are only:\n  -\
+      \ `PASS` on real structured output\n  - explicit `FAILURE` on schema/structured-output\
+      \ rejection\n  - explicit `SKIP` for missing binary/auth/opt-in\n- OpenCode\
+      \ judge coverage MAY exercise tolerant JSONL/text extraction as its normal live\
+      \ compatibility path."
   - id: driver-live-smoke-foundation.finalize-test-surface-decisions
     name: Finalize live smoke test-surface decisions
     status: pending

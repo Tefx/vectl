@@ -42,7 +42,7 @@ _PREFLIGHT_RISK_KEYWORDS: Final[tuple[str, ...]] = (
 class ParsedGateIssue:
     """Normalized gate issue extracted from gate evidence output.
 
-    Source: docs/JUDGE-AGENT-PROMPT.md ``TYPE: gate`` issue severity table.
+    Source (doc-mirror/spec): docs/JUDGE-AGENT-PROMPT.md ``TYPE: gate`` issue severity table.
     """
 
     severity: str
@@ -69,7 +69,7 @@ def _detect_preflight_risk_signals(
 def _extract_failure_disposition(reason: str) -> str | None:
     """Extract ``disposition`` tag from FAILURE verdict reason.
 
-    Source: docs/JUDGE-AGENT-PROMPT.md ``TYPE: failure`` verdict contract:
+    Source (doc-mirror/spec): docs/JUDGE-AGENT-PROMPT.md ``TYPE: failure`` verdict contract:
     reason MUST include ``provenance=<value>, disposition=<value>``.
     """
 
@@ -86,7 +86,7 @@ def _extract_failure_disposition(reason: str) -> str | None:
 def _coerce_gate_issue(raw_issue: object) -> ParsedGateIssue | None:
     """Normalize one issue from gate evidence payload.
 
-    Source: docs/JUDGE-AGENT-PROMPT.md ``TYPE: gate`` severity taxonomy.
+    Source (doc-mirror/spec): docs/JUDGE-AGENT-PROMPT.md ``TYPE: gate`` severity taxonomy.
     """
 
     if not isinstance(raw_issue, dict):
@@ -172,7 +172,7 @@ def _parse_gate_issues(gate_evidence: str) -> list[ParsedGateIssue]:
 def _is_gate_or_freeze_step(*, step_id: str, description: str, verification: str) -> bool:
     """Return whether a step should use gate/cold-context judgment paths.
 
-    Source: docs/JUDGE-AGENT-PROMPT.md ``TYPE: gate`` and ``TYPE: cold_context``.
+    Source (doc-mirror/spec): docs/JUDGE-AGENT-PROMPT.md ``TYPE: gate`` and ``TYPE: cold_context``.
     """
 
     haystack = "\n".join([step_id, description, verification]).lower()

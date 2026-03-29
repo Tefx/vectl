@@ -9,7 +9,8 @@ Does NOT own the decision of WHEN to call the judge (that is `loop.py`'s
 reconcile and dispatch logic).
 
 Architecture Reference: docs/DRIVER-ARCHITECTURE.md Section 2.10
-Blueprint Reference: docs/JUDGE-AGENT-PROMPT.md
+Blueprint Reference (doc-mirror/spec): docs/JUDGE-AGENT-PROMPT.md
+    Runtime authority: packaged ``judge_agent_prompt.md`` resource in ``vectl.driver``.
 """
 
 from __future__ import annotations
@@ -220,8 +221,8 @@ JUDGE_PROMPT_AUTHORITY_CONTRACT = JudgePromptAuthorityContract(
     implementation_owner_step="driver-prompt-migration.package-resource-loader",
     authority_migration_owner_step="driver-prompt-migration.authority-reference-migration",
     exposed_gaps=(
-        "runtime loader still reads docs/JUDGE-AGENT-PROMPT.md directly",
-        "packaged prompt resource is not yet wired as runtime prompt authority",
+        "docs mirror drift: docs/JUDGE-AGENT-PROMPT.md may diverge from packaged resource",
+        "verify_docs_packaged_sync() enforces drift visibility (run as part of CI/pre-commit)",
     ),
 )
 
@@ -263,6 +264,89 @@ def _load_packaged_judge_system_prompt(*, package_name: str, resource_name: str)
             "Populate the packaged prompt content before running vectl driver."
         )
     return prompt_text
+
+
+def verify_docs_packaged_sync() -> tuple[bool, str]:
+    """Check whether docs/JUDGE-AGENT-PROMPT.md is in sync with packaged resource.
+
+    Returns:
+        Tuple of (is_synced, diagnostic_message).
+        is_synced=True means docs contains all key packaged content.
+        is_synced=False with diagnostic describes the divergence.
+
+    This function makes docs/packaged drift visible rather than silently tolerated.
+    Run as part of CI/pre-commit to catch drift before it affects behavior.
+
+    Drift detection approach:
+    - Docs is the extended spec/mirror with examples and commentary
+    - Packaged is the clean runtime prompt
+    - We check that key content markers from packaged appear in docs
+    - This allows docs to have extra content without triggering false drift
+
+    Drifts detected (actual prompt content divergence):
+    - Required sections missing from docs (would affect runtime behavior)
+    - Verdict format specification mismatch
+    - Missing judgment type definitions
+    """
+    import importlib.resources
+
+    docs_path = Path("docs/JUDGE-AGENT-PROMPT.md")
+    packaged_name = JUDGE_PROMPT_AUTHORITY_CONTRACT.package_resource
+    package_name = JUDGE_PROMPT_AUTHORITY_CONTRACT.package_name
+
+    if not docs_path.exists():
+        return (
+            True,
+            "docs/JUDGE-AGENT-PROMPT.md does not exist (packaged resource is authoritative)",
+        )
+
+    try:
+        packaged_resource = importlib.resources.files(package_name).joinpath(packaged_name)
+    except ModuleNotFoundError:
+        return False, f"packaged resource {package_name}/{packaged_name} not importable"
+
+    if not packaged_resource.is_file():
+        return False, f"packaged resource {package_name}/{packaged_name} is not a file"
+
+    docs_content = docs_path.read_text(encoding="utf-8")
+    packaged_content = packaged_resource.read_text(encoding="utf-8")
+
+    # Exact match (edge case)
+    if docs_content.strip() == packaged_content.strip():
+        return True, "docs/JUDGE-AGENT-PROMPT.md matches packaged resource exactly"
+
+    # Key sections that MUST appear in docs if packaged has them
+    # These are the core runtime instructions that affect judge behavior
+    key_sections = [
+        "## Response Format (MANDATORY)",
+        '"verdict": "<ACCEPT|REJECT|RETRY|SWITCH_AGENT|REPLAN|DEFER|HALT>"',
+        '"suggested_action"',
+        '"planner_instruction"',
+        "## Judgment Types",
+        "### TYPE: preflight",
+        "### TYPE: evidence",
+        "### TYPE: failure",
+        "### TYPE: escalation",
+        "### TYPE: gate",
+        "### TYPE: anomaly",
+        "### TYPE: cold_context",
+    ]
+
+    missing_sections: list[str] = []
+    for section in key_sections:
+        if section in packaged_content and section not in docs_content:
+            missing_sections.append(section)
+
+    if missing_sections:
+        return False, (
+            f"docs/packaged drift detected: key sections missing from docs: {missing_sections}. "
+            "These sections exist in packaged but not in docs, which would affect runtime."
+        )
+
+    return True, (
+        "docs/JUDGE-AGENT-PROMPT.md contains all key packaged content "
+        "(docs may have extra examples/commentary; this is expected for doc-mirror)"
+    )
 
 
 def decide_judge_recovery_policy(
@@ -463,7 +547,8 @@ class Judge:
     (see Structured Output Strategy in Architecture doc).
 
     Architecture: docs/DRIVER-ARCHITECTURE.md Section 2.10
-    Blueprint: docs/JUDGE-AGENT-PROMPT.md (full prompt)
+    Blueprint Reference (doc-mirror): docs/JUDGE-AGENT-PROMPT.md
+    Runtime prompt authority: packaged ``judge_agent_prompt.md`` resource in ``vectl.driver``.
     Blueprint: DRIVER-BLUEPRINT.md lines 241-264 (Invocation Protocol)
 
     Invariants:

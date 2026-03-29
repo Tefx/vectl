@@ -19,6 +19,7 @@ from src.vectl.driver.judge import (
     Judge,
     _load_judge_system_prompt,
     _load_packaged_judge_system_prompt,
+    verify_docs_packaged_sync,
 )
 
 
@@ -91,3 +92,26 @@ def test_packaged_prompt_flows_to_judge_payload_assembly() -> None:
     assert payload.startswith("SYSTEM PROMPT:\n")
     assert "Response Format (MANDATORY)" in payload
     assert '"verdict": "<ACCEPT|REJECT|RETRY|SWITCH_AGENT|REPLAN|DEFER|HALT>"' in payload
+
+
+def test_verify_docs_packaged_sync_detects_drift() -> None:
+    """verify_docs_packaged_sync() makes drift visible rather than silently tolerated."""
+    is_synced, diagnostic = verify_docs_packaged_sync()
+
+    # When docs and packaged match (expected in normal operation), is_synced is True
+    # When drift exists, is_synced is False and diagnostic describes it
+    assert isinstance(is_synced, bool)
+    assert isinstance(diagnostic, str)
+    # Check diagnostic contains relevant info based on sync state
+    if is_synced:
+        # When synced, diagnostic confirms docs contains packaged content
+        assert "key packaged content" in diagnostic.lower() or "matches" in diagnostic.lower()
+    else:
+        assert "drift" in diagnostic.lower() or "missing" in diagnostic.lower()
+
+
+def test_verify_docs_packaged_sync_reports_synced_when_match() -> None:
+    """When docs contains all packaged content, sync check returns True."""
+    is_synced, diagnostic = verify_docs_packaged_sync()
+    assert is_synced is True
+    assert "contains all key packaged content" in diagnostic

@@ -7,7 +7,7 @@ Non-responsibility: Does NOT invoke the judge. Does NOT contain the judge
 system prompt.
 
 Architecture Reference: docs/DRIVER-ARCHITECTURE.md Section 2.9
-Blueprint Reference: docs/JUDGE-AGENT-PROMPT.md
+Blueprint Reference (doc-mirror/spec): docs/JUDGE-AGENT-PROMPT.md
 """
 
 from __future__ import annotations
@@ -23,7 +23,7 @@ class JudgmentType(str, Enum):
     The type determines which evaluation rules and verdict options apply.
 
     Architecture: docs/DRIVER-ARCHITECTURE.md Section 2.9, JudgmentType enum
-    Blueprint: docs/JUDGE-AGENT-PROMPT.md Judgment Types
+    Blueprint Reference (doc-mirror/spec): docs/JUDGE-AGENT-PROMPT.md Judgment Types
 
     Blueprint judgment point -> JudgmentType mapping:
 
@@ -95,7 +95,7 @@ CONTEXT_SCHEMAS: dict[JudgmentType, dict[str, list[str]]] = {
 Context schemas for each judgment type.
 
 Architecture: docs/DRIVER-ARCHITECTURE.md Section 2.9, CONTEXT_SCHEMAS
-Blueprint: docs/JUDGE-AGENT-PROMPT.md (per-type context descriptions)
+Blueprint Reference (doc-mirror/spec): docs/JUDGE-AGENT-PROMPT.md (per-type context descriptions)
 
 Invariant:
     All `JudgmentRequest.context` dicts MUST contain all keys listed in
@@ -121,7 +121,7 @@ VERDICT_VALUES: frozenset[str] = frozenset(
 Valid verdict values for JudgmentVerdict.verdict field.
 
 Architecture: docs/DRIVER-ARCHITECTURE.md Section 2.9, JudgmentVerdict
-Blueprint: docs/JUDGE-AGENT-PROMPT.md Response Format (MANDATORY)
+Blueprint Reference (doc-mirror/spec): docs/JUDGE-AGENT-PROMPT.md Response Format (MANDATORY)
 """
 
 
@@ -130,7 +130,7 @@ class JudgmentRequest:
     """Input to the judgment agent.
 
     Architecture: docs/DRIVER-ARCHITECTURE.md Section 2.9, JudgmentRequest dataclass
-    Blueprint: docs/JUDGE-AGENT-PROMPT.md (request structure)
+    Blueprint Reference (doc-mirror/spec): docs/JUDGE-AGENT-PROMPT.md (request structure)
 
     Attributes:
         type: The judgment type determining evaluation rules.
@@ -157,7 +157,7 @@ class JudgmentVerdict:
     """Output from the judgment agent.
 
     Architecture: docs/DRIVER-ARCHITECTURE.md Section 2.9, JudgmentVerdict dataclass
-    Blueprint: docs/JUDGE-AGENT-PROMPT.md Response Format (MANDATORY)
+    Blueprint Reference (doc-mirror/spec): docs/JUDGE-AGENT-PROMPT.md Response Format (MANDATORY)
 
     Attributes:
         verdict: One of ACCEPT, REJECT, RETRY, SWITCH_AGENT, REPLAN, DEFER, HALT.

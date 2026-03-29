@@ -41507,7 +41507,7 @@ phases:
       product_implementation_files_modified: no'
 - id: driver-evolution-review
   name: 'Driver Evolution: Review'
-  status: in_progress
+  status: done
   gate: Doc sync plus independent deep review confirm the evolved driver matches the
     ADR and is safe to extend
   depends_on:
@@ -42485,7 +42485,7 @@ phases:
       \ as claimed\n- [x] evidence is consistent with git diff"
   - id: driver-evolution-review.gate-retest-v2
     name: Retest final gate blockers for driver evolution review (v2)
-    status: claimed
+    status: done
     description: 'step_type: test
 
       verification_scope: phase-check
@@ -42596,6 +42596,65 @@ phases:
     agent: gate-reviewer
     claimed_by: gate-reviewer
     claimed_at: '2026-03-29T08:40:44.714204+00:00'
+    done_at: '2026-03-29T08:43:33.703366+00:00'
+    evidence: "## Gate Retest v2 Report\n\n**Tester**: gate-reviewer (independent)\n\
+      \n### Git-diff integrity check\n```\ncommit 8878028479013da58d2fbd8be0645992bfe1ca36\n\
+      Author: Zhu Zhaomeng <zhaomeng.zhu@gmail.com>\nDate:   Sun Mar 29 16:40:14 2026\
+      \ +0800\n\n    fix(driver): close evolution review gate blockers\n\n src/vectl/driver/action_registry.py\
+      \ |  64 +++++++++++-----\n src/vectl/driver/loop.py            | 149 ++++++++++++++++++++++--------------\n\
+      \ src/vectl/driver/runtime_context.py |  56 ++++++++++++--\n src/vectl/driver/session.py\
+      \         |  43 +++++++----\n src/vectl/driver/types.py           |  12 +--\n\
+      \ 5 files changed, 222 insertions(+), 102 deletions(-)\n\ngit diff --name-only\
+      \ HEAD~2..HEAD:\nplan.yaml\nsrc/vectl/driver/action_registry.py\nsrc/vectl/driver/loop.py\n\
+      src/vectl/driver/runtime_context.py\nsrc/vectl/driver/session.py\nsrc/vectl/driver/types.py\n\
+      ```\n- Non-plan source files changed: YES (5 driver files)\n- Cited files changed\
+      \ as claimed: YES (all 5 specified driver files present)\n- plan.yaml only:\
+      \ NO (source files changed alongside)\n\n### Blocker verification\n- **B1 Split-truth\
+      \ runtime wiring**: PASS\n  - `src/vectl/driver/types.py:155-159`: `DriverState.continuity_attempt_keys`\
+      \ and `continuity_capability_snapshots` are explicit lifecycle-scoped fields\
+      \ (removed hidden `__dict__` mutation)\n  - `src/vectl/driver/runtime_context.py:126-130`:\
+      \ `RuntimeContext.__post_init__` freezes `runners` via `MappingProxyType`\n\
+      \  - `src/vectl/driver/runtime_context.py:133-153`: `runtime_context_from_parts()`\
+      \ is now the authoritative builder\n  - `src/vectl/driver/loop.py:1498-1507`:\
+      \ `_state_attempt_key_set()` and `_state_capability_snapshot_cache()` return\
+      \ explicit `DriverState` fields\n  - Removed: `state.runtime_config` and `state.runtime_runners`\
+      \ fields (no grep hits for these)\n  - Verified: `rg \"dict\\(context\\.runners\\\
+      )\" src/vectl/driver` returned no results (unfrozen copies removed)\n\n- **B2\
+      \ Mutable critical registries**: PASS\n  - `src/vectl/driver/action_registry.py:299-339`:\
+      \ `LAYERED_ACTION_REGISTRY`, `_RUNTIME_LOOP_ACTION_INDEX`, `_PLANNER_DISPATCH_ACTION_INDEX`\
+      \ are `MappingProxyType` backed; `ACTION_REGISTRY_AUDIT_TABLES` provides audit\
+      \ surface\n  - `src/vectl/driver/session.py:25-42`: `SESSION_CONTINUITY_AUTHORITIES`\
+      \ is `MappingProxyType` frozen\n  - `src/vectl/driver/session.py:96`: `_ttl_overrides`\
+      \ initialized as `MappingProxyType(dict(config.ttl_overrides))` (frozen)\n \
+      \ - `src/vectl/driver/session.py:98-101`: `audit_entries()` returns `MappingProxyType(dict(self._entries))`\
+      \ (immutable snapshot)\n  - `src/vectl/driver/loop.py:3282-3292`: `_REGISTERED_PLANNER_ACTION_HANDLERS`\
+      \ is `MappingProxyType` frozen\n  - `src/vectl/driver/loop.py:3330-3342`: `_REGISTERED_RUNTIME_ACTION_HANDLERS`\
+      \ is `MappingProxyType` frozen\n\n- **B3 Evidence integrity**: PASS\n  - git\
+      \ show confirms `222 insertions, 102 deletions` across cited driver files\n\
+      \  - git diff --name-only confirms all 5 cited driver files (`types.py`, `runtime_context.py`,\
+      \ `action_registry.py`, `loop.py`, `session.py`) changed\n  - git status confirmed\
+      \ `plan.yaml` present in changes but source files dominate\n  - Test suite passed:\
+      \ `21 passed` on driver tests\n  - No `runtime_config`/`runtime_runners` field\
+      \ references remain in DriverState\n\n### Sibling search\n```\nrg -n \"runtime_config|runtime_runners|state\\\
+      .runtime_config|state\\.runtime_runners\" src/vectl/driver\nFindings:\n- src/vectl/driver/loop.py:1781\
+      \ _load_runtime_config (function name only)\n- src/vectl/driver/loop.py:3055\
+      \ _load_runtime_config (function name only)\n- No DriverState field references\
+      \ found\n\nrg -n \"_REGISTERED_(RUNTIME|PLANNER)_ACTION_HANDLERS|ACTION_REGISTRY_AUDIT_TABLES|SESSION_CONTINUITY_AUTHORITIES|audit_entries|continuity_attempt_keys|continuity_capability_snapshots\"\
+      \ src/vectl/driver\nFindings:\n- src/vectl/driver/types.py:155 continuity_attempt_keys\n\
+      - src/vectl/driver/types.py:158 continuity_capability_snapshots\n- src/vectl/driver/action_registry.py:332\
+      \ ACTION_REGISTRY_AUDIT_TABLES\n- src/vectl/driver/session.py:25 SESSION_CONTINUITY_AUTHORITIES\n\
+      - src/vectl/driver/session.py:98 audit_entries\n- src/vectl/driver/loop.py:1501\
+      \ state.continuity_attempt_keys\n- src/vectl/driver/loop.py:1507 state.continuity_capability_snapshots\n\
+      - src/vectl/driver/loop.py:3282 _REGISTERED_PLANNER_ACTION_HANDLERS\n- src/vectl/driver/loop.py:3330\
+      \ _REGISTERED_RUNTIME_ACTION_HANDLERS\n\nrg -n \"dict\\(context\\.runners\\\
+      )\" src/vectl/driver\nFindings: (none - unfrozen copies removed)\n```\n\n###\
+      \ Verdict\n- [x] GREEN: blockers cleared and source changes verified\n- Evidence\
+      \ proves source-level remediation landed in cited driver files\n- Split-truth\
+      \ runtime wiring eliminated: continuity registries re-homed to `DriverState`,\
+      \ `RuntimeContext` frozen\n- Critical registries are auditable/static: `MappingProxyType`\
+      \ backing on action registry, handler tables, and session authorities\n- Evidence\
+      \ integrity confirmed: git diff shows source changes as claimed, test suite\
+      \ passes"
 - id: driver-evolution-action-registry-contract-foundation
   name: 'Driver Evolution: Action Registry Contract Foundation'
   status: done
@@ -42781,7 +42840,7 @@ phases:
       product_implementation_files_modified: no'
 - id: driver-routing-hardening
   name: Driver Routing Hardening
-  status: locked
+  status: pending
   gate: Reject unsupported `agent_routing.default` semantics with explicit validation
     and independent verification.
   depends_on:
@@ -42946,7 +43005,7 @@ phases:
     agent: gate-reviewer
 - id: driver-enhancement-foundation
   name: Driver Post-Bootstrap Enhancement Foundation
-  status: locked
+  status: pending
   gate: Approved architecture basis and contract set exist for post-bootstrap observability,
     streaming-aware liveness, and advanced recovery behavior only. Bootstrap-minimum
     continuity scope is excluded because it is owned upstream by the continuity blocker

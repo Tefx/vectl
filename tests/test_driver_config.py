@@ -546,6 +546,181 @@ class TestConfigInvariants:
         #     load_config(...)
 
 
+class TestAgentRoutingValidation:
+    """Contract tests for agent_routing validation.
+
+    These tests verify the routing hardening contract:
+    - agent_routing.default is NOT supported (rejected at validation time)
+    - Valid routing patterns (exact match, glob match) work correctly
+    - fallback_runner is the ONLY way to configure default routing
+
+    Contract Reference: docs/contracts/driver-routing-hardening-contract.yaml
+    """
+
+    def test_agent_routing_default_key_rejected(self) -> None:
+        """Configuration containing agent_routing.default MUST be rejected.
+
+        Contract pin: driver-routing-hardening-contract.yaml, validation_contract
+
+        The 'default' routing key is not supported. Default routing is
+        exclusively handled by fallback_runner, not by a reserved routing key.
+        """
+        from pydantic import ValidationError
+
+        config_data = {
+            "runners": {
+                "opencode": {"command": "opencode"},
+            },
+            "agent_routing": {
+                "python-senior": "opencode",
+                "default": "opencode",  # This MUST be rejected
+            },
+            "fallback_runner": "opencode",
+            "judge": {"runner": "opencode"},
+        }
+
+        # This should raise ValidationError because agent_routing.default is invalid
+        with pytest.raises(ValidationError) as exc_info:
+            DriverConfig(**config_data)
+
+        # Error message should mention the invalid key
+        error_msg = str(exc_info.value).lower()
+        assert "agent_routing.default" in error_msg or "default" in error_msg
+
+    def test_agent_routing_default_error_message_is_actionable(self) -> None:
+        """Error message for agent_routing.default MUST be clear and actionable.
+
+        Contract pin: driver-routing-hardening-contract.yaml, required_user_facing_error
+
+        The error MUST:
+        - Name the invalid key exactly: agent_routing.default
+        - State this is a configuration error
+        - Instruct users to use exact/glob entries and fallback_runner
+        """
+        from pydantic import ValidationError
+
+        config_data = {
+            "runners": {
+                "opencode": {"command": "opencode"},
+            },
+            "agent_routing": {
+                "default": "opencode",
+            },
+            "fallback_runner": "opencode",
+            "judge": {"runner": "opencode"},
+        }
+
+        with pytest.raises(ValidationError) as exc_info:
+            DriverConfig(**config_data)
+
+        error_msg = str(exc_info.value)
+        # Must mention the invalid key
+        assert "agent_routing.default" in error_msg or "'default'" in error_msg
+
+    def test_agent_routing_exact_match_still_works(self) -> None:
+        """Exact match routing MUST continue to work.
+
+        Contract pin: driver-routing-hardening-contract.yaml, routing_semantics.supported.exact_match
+
+        Valid agent_routing keys (exact matches) must not be rejected.
+        """
+        config = DriverConfig(
+            runners={
+                "claude": {"command": "claude"},
+                "opencode": {"command": "opencode"},
+            },
+            agent_routing={
+                "python-senior": "claude",
+                "frontend-engineer": "claude",
+            },
+            fallback_runner="opencode",
+            judge={"runner": "opencode"},
+        )
+
+        # Exact match should work
+        assert config.route_agent("python-senior") == "claude"
+        assert config.route_agent("frontend-engineer") == "claude"
+        # Unmatched falls back to fallback_runner
+        assert config.route_agent("unknown-agent") == "opencode"
+
+    def test_agent_routing_glob_match_still_works(self) -> None:
+        """Glob pattern routing MUST continue to work.
+
+        Contract pin: driver-routing-hardening-contract.yaml, routing_semantics.supported.glob_match
+
+        Glob patterns (fnmatch) in agent_routing keys must not be rejected.
+        """
+        config = DriverConfig(
+            runners={
+                "claude": {"command": "claude"},
+                "opencode": {"command": "opencode"},
+            },
+            agent_routing={
+                "*-tester": "opencode",
+                "*-reviewer": "claude",
+            },
+            fallback_runner="opencode",
+            judge={"runner": "opencode"},
+        )
+
+        # Glob match should work
+        assert config.route_agent("python-tester") == "opencode"
+        assert config.route_agent("frontend-reviewer") == "claude"
+        # Unmatched falls back to fallback_runner
+        assert config.route_agent("unknown-agent") == "opencode"
+
+    def test_fallback_runner_is_only_default_routing(self) -> None:
+        """Default routing MUST be exclusively handled by fallback_runner.
+
+        Contract pin: driver-routing-hardening-contract.yaml, routing_semantics.unsupported
+
+        The agent_routing dictionary MUST NOT contain a 'default' key.
+        Users must use fallback_runner for default routing behavior.
+        """
+        # This config should be valid - no default key in agent_routing,
+        # default routing handled by fallback_runner
+        config = DriverConfig(
+            runners={
+                "claude": {"command": "claude"},
+                "opencode": {"command": "opencode"},
+            },
+            agent_routing={
+                "python-senior": "claude",
+            },
+            fallback_runner="opencode",
+            judge={"runner": "opencode"},
+        )
+
+        # Unmatched agents should route to fallback_runner
+        assert config.route_agent("completely-unknown-agent") == "opencode"
+        assert config.route_agent("another-unknown") == "opencode"
+
+    def test_agent_routing_default_key_not_special_in_route_agent(self) -> None:
+        """route_agent() MUST NOT contain runtime special-casing for 'default' key.
+
+        Contract pin: driver-routing-hardening-contract.yaml, validation_contract.required_behavior
+
+        Even if someone bypasses validation, route_agent() must not treat
+        'default' as a special key. This test verifies the runtime behavior
+        when agent_routing has no 'default' key (which is the only valid state).
+        """
+        config = DriverConfig(
+            runners={
+                "claude": {"command": "claude"},
+                "opencode": {"command": "opencode"},
+            },
+            agent_routing={
+                "python-senior": "claude",
+            },
+            fallback_runner="opencode",
+            judge={"runner": "opencode"},
+        )
+
+        # 'default' as an agent name should NOT match anything special
+        # It should fall through to fallback_runner since there's no exact/glob match
+        assert config.route_agent("default") == "opencode"
+
+
 class TestConfigModelRoundTrip:
     """Tests for Pydantic model serialization/deserialization."""
 

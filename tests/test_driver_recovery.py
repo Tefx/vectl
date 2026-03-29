@@ -11,6 +11,19 @@ These tests intentionally require behavior deferred to
 
 from __future__ import annotations
 
+from pathlib import Path
+from typing import Any
+
+import src.vectl.driver.entrypoint as driver_entrypoint
+import src.vectl.driver.loop as loop_module
+from src.vectl.driver.config import (
+    DriverConfig,
+    JudgeConfig,
+    ObservabilityConfig,
+    OrchestrationConfig,
+    RunnerConfig,
+    SessionConfig,
+)
 from src.vectl.driver.loop import (
     STARTUP_RECOVERY_SCAN_ORDER,
     evaluate_startup_recovery_boundary,
@@ -173,3 +186,88 @@ def test_startup_recovery_selects_restart_when_capability_snapshot_missing_expec
     assert all(
         isinstance(handoff, ContinuityHandoff) for handoff in boundary_output.resumable_handoffs
     )
+
+
+def test_entrypoint_path_halts_when_startup_boundary_blocks(
+    monkeypatch: Any,
+    tmp_path: Path,
+) -> None:
+    """Entrypoint path must halt runtime when startup boundary blocks."""
+
+    class _Observer:
+        def __init__(self) -> None:
+            self.halt_events: list[dict[str, object]] = []
+
+        def emit(self, event_type: str, /, **data: object) -> None:
+            if event_type == "HALT":
+                self.halt_events.append(data)
+
+        def close(self) -> None:
+            return None
+
+    class _RepairResult:
+        branch = "vectl/step-driver-continuity-restart-recovery.impl"
+        actions: tuple[object, ...] = ()
+
+    class _Step:
+        id = "core.impl"
+
+    class _Phase:
+        steps = [_Step()]
+
+    class _Plan:
+        context = "startup-recovery-integration"
+        phases = [_Phase()]
+
+    class _Runner:
+        name = "opencode"
+
+    driver_config = DriverConfig(
+        plan_path=str(tmp_path / "plan.yaml"),
+        runners={
+            "opencode": RunnerConfig(
+                command="opencode",
+                args=["run", "--format", "json"],
+                output_parser="opencode_jsonl",
+            )
+        },
+        agent_routing={"python-executor": "opencode"},
+        fallback_runner="opencode",
+        orchestration=OrchestrationConfig(max_parallelism=1),
+        session=SessionConfig(reuse_ttl=300),
+        judge=JudgeConfig(preflight=False),
+        observability=ObservabilityConfig(),
+    )
+
+    observed = _Observer()
+    main_loop_called = {"value": False}
+
+    async def _noop_main_loop(**_kwargs: object) -> None:
+        main_loop_called["value"] = True
+
+    monkeypatch.setattr(loop_module, "_load_runtime_config", lambda _p: driver_config)
+    monkeypatch.setattr(loop_module, "create_observer", lambda _cfg: observed)
+    monkeypatch.setattr(loop_module, "create_runner", lambda _n, _cfg: _Runner())
+    monkeypatch.setattr(loop_module, "Judge", lambda *_a, **_k: _Runner())
+    monkeypatch.setattr(loop_module, "load_plan_definition", lambda _p: (_Plan(), "hash"))
+    monkeypatch.setattr(loop_module, "repair_claims", lambda *_a, **_k: _RepairResult())
+    monkeypatch.setattr(loop_module, "load_claims_for_branch", lambda *_a, **_k: {})
+    monkeypatch.setattr(loop_module, "_cleanup_orphan_worktrees", lambda **_k: ())
+    monkeypatch.setattr(
+        loop_module,
+        "_load_ledger_entries",
+        lambda _root: (
+            (_ledger_entry("orphan.step"),),
+            (),
+        ),
+    )
+    monkeypatch.setattr(loop_module, "_run_main_loop", _noop_main_loop)
+
+    exit_code = driver_entrypoint.run_driver_module_entrypoint(
+        argv=[str(tmp_path / "driver.yaml")],
+        adapter=driver_entrypoint.get_runtime_adapter(),
+    )
+
+    assert exit_code == 0
+    assert main_loop_called["value"] is False
+    assert observed.halt_events

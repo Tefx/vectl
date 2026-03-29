@@ -30,7 +30,7 @@ from fnmatch import fnmatch
 from pathlib import Path
 from typing import TYPE_CHECKING, Final, Literal, Protocol, cast
 
-from vectl.claims import repair_claims
+from vectl.claims import load_claims_for_branch, repair_claims
 from vectl.decide import decide
 from vectl.io import load_plan_definition, save_plan
 from vectl.lifecycle import claim_step, complete_step, defer_step
@@ -73,15 +73,19 @@ from .runners import RunnerStatus as RunnerDispatchStatus
 from .session import SessionPool
 from .types import (
     CompletedEntry,
+    ContinuityHandoff,
     ContinuityJournalEntry,
     ContinuityLedgerEntry,
     DriverState,
     JudgeContinuityPolicyOutput,
     ReplaySafetyEnvelope,
     ReplayTokenSemantics,
+    RunnerStatus,
     StartupRecoveryBoundaryInput,
     StartupRecoveryBoundaryOutput,
-    RunnerStatus,
+    StartupRecoveryDecision,
+    StartupRecoveryJudgeInput,
+    StartupRecoveryReconciliationFacts,
 )
 from .worktree import (
     ConflictResolverDispatch,
@@ -450,15 +454,116 @@ def evaluate_startup_recovery_boundary(
 ) -> StartupRecoveryBoundaryOutput:
     """Evaluate startup recovery matrix from reconciliation + policy inputs.
 
-    Contract-only surface for
-    ``driver-continuity-restart-recovery.design-and-test``.
-    Runtime behavior is intentionally deferred to
-    ``driver-continuity-restart-recovery.impl``.
-    """
+    Source:
+    - docs/DRIVER-CONTINUITY-FOUNDATION.md Section 3 and Section 4
+      (ledger/plan/claims reconciliation and resume vs restart contract)
+    - docs/DRIVER-CONTINUITY-FOUNDATION.md Section 7
+      (judge outcomes are continuity policy inputs)
+    - tests/test_driver_recovery.py
 
-    raise NotImplementedError(
-        "Startup recovery boundary matrix pending implementation: "
-        "driver-continuity-restart-recovery.impl"
+    Matrix semantics:
+    - ``halt`` when plan/claims/ledger diverge for a ledger-owned step
+    - ``halt`` when a judge policy input already classifies to halt
+    - ``restart`` when capability snapshot facts needed for safe resume are missing
+    - ``resume`` only when facts are present and no stronger block applies
+    """
+    reconciliation = boundary_input.reconciliation
+    plan_steps = set(reconciliation.plan_step_ids)
+    claim_steps = set(reconciliation.claim_step_ids)
+    ledger_steps = set(reconciliation.ledger_step_ids)
+    available_snapshots = set(boundary_input.capability_snapshot_ids)
+
+    decisions: list[StartupRecoveryDecision] = []
+    repair_actions: list[str] = []
+    blocked_reasons: list[str] = []
+    resumable_handoffs: list[ContinuityHandoff] = []
+
+    judge_halt_by_step: dict[str, StartupRecoveryJudgeInput] = {
+        judge_input.step_id: judge_input
+        for judge_input in boundary_input.judge_failure_inputs
+        if judge_input.policy.action == "halt"
+    }
+
+    for orphaned_step in sorted(ledger_steps - plan_steps):
+        reason = "ledger_plan_claims_divergence"
+        decisions.append(
+            StartupRecoveryDecision(
+                step_id=orphaned_step,
+                disposition="halt",
+                reason=reason,
+            )
+        )
+        blocked_reasons.append(f"{orphaned_step}:{reason}")
+
+    ledger_by_step = {entry.step_id: entry for entry in boundary_input.ledger_entries}
+    candidate_steps = sorted(plan_steps & claim_steps & set(ledger_by_step))
+
+    for step_id in candidate_steps:
+        judge_halt = judge_halt_by_step.get(step_id)
+        if judge_halt is not None:
+            decisions.append(
+                StartupRecoveryDecision(
+                    step_id=step_id,
+                    disposition="halt",
+                    reason="judge_policy_halt",
+                    source_attempt_key=judge_halt.attempt_key,
+                )
+            )
+            blocked_reasons.append(f"{step_id}:judge_policy_halt")
+            continue
+
+        ledger_entry = ledger_by_step[step_id]
+        runner_capability = capability_for_runner(ledger_entry.runner_name)
+        expected_snapshot = capability_snapshot_id(runner_capability)
+
+        if expected_snapshot not in available_snapshots:
+            decisions.append(
+                StartupRecoveryDecision(
+                    step_id=step_id,
+                    disposition="restart",
+                    reason="capability_snapshot_missing",
+                    source_attempt_key=ledger_entry.latest_attempt_key,
+                )
+            )
+            repair_actions.append(f"restart:{step_id}:capability_snapshot_missing")
+            continue
+
+        if not runner_capability.resume_supported:
+            decisions.append(
+                StartupRecoveryDecision(
+                    step_id=step_id,
+                    disposition="restart",
+                    reason="runner_not_resumable",
+                    source_attempt_key=ledger_entry.latest_attempt_key,
+                )
+            )
+            repair_actions.append(f"restart:{step_id}:runner_not_resumable")
+            continue
+
+        decisions.append(
+            StartupRecoveryDecision(
+                step_id=step_id,
+                disposition="resume",
+                reason="resume_safe_from_ledger_and_capability",
+                source_attempt_key=ledger_entry.latest_attempt_key,
+            )
+        )
+        resumable_handoffs.append(
+            ContinuityHandoff(
+                step_id=step_id,
+                resume_from_session_id=ledger_entry.last_session_id,
+                replay_envelope=ledger_entry.replay_envelope,
+                ledger_entry=ledger_entry,
+                capability_snapshot_id=expected_snapshot,
+                reason="resume_safe_from_ledger_and_capability",
+            )
+        )
+
+    return StartupRecoveryBoundaryOutput(
+        decisions=tuple(decisions),
+        resumable_handoffs=tuple(resumable_handoffs),
+        repair_actions=tuple(repair_actions),
+        blocked_reasons=tuple(blocked_reasons),
     )
 
 
@@ -1392,6 +1497,59 @@ def _load_ledger_step_ids(repo_root: Path) -> set[str]:
     return step_ids
 
 
+def _load_ledger_entries(
+    repo_root: Path,
+) -> tuple[tuple[ContinuityLedgerEntry, ...], tuple[str, ...]]:
+    """Load continuity ledger entries and report corrupt files.
+
+    Source:
+    - docs/DRIVER-CONTINUITY-FOUNDATION.md Section 4 restart contract
+      (startup decisions require durable ledger facts)
+    """
+
+    ledger_dir = repo_root / ".vectl" / "continuity" / "ledger"
+    if not ledger_dir.exists() or not ledger_dir.is_dir():
+        return (), ()
+
+    entries: list[ContinuityLedgerEntry] = []
+    corrupt_files: list[str] = []
+    for ledger_path in sorted(ledger_dir.glob("*.json")):
+        try:
+            payload = json.loads(ledger_path.read_text(encoding="utf-8"))
+        except Exception:
+            corrupt_files.append(ledger_path.name)
+            continue
+
+        try:
+            replay_envelope_raw = payload["replay_envelope"]
+            last_journal_event_raw = payload["last_journal_event"]
+            replay_envelope = ReplaySafetyEnvelope(**replay_envelope_raw)
+            last_journal_event = ContinuityJournalEntry(
+                **{
+                    **last_journal_event_raw,
+                    "replay_envelope": ReplaySafetyEnvelope(
+                        **last_journal_event_raw["replay_envelope"]
+                    ),
+                }
+            )
+            entries.append(
+                ContinuityLedgerEntry(
+                    step_id=payload["step_id"],
+                    latest_attempt_key=payload["latest_attempt_key"],
+                    status=payload["status"],
+                    runner_name=payload["runner_name"],
+                    last_session_id=payload.get("last_session_id"),
+                    replay_envelope=replay_envelope,
+                    last_journal_event=last_journal_event,
+                    recovery_cursor=payload.get("recovery_cursor"),
+                )
+            )
+        except Exception:
+            corrupt_files.append(ledger_path.name)
+
+    return tuple(entries), tuple(corrupt_files)
+
+
 async def run(config_path: Path) -> None:
     """Main driver entry point.
 
@@ -1429,22 +1587,59 @@ async def run(config_path: Path) -> None:
         plan_step_ids = _all_plan_step_ids(plan)
         claims_path = resolve_claims_path(plan_path)
         repair_result = repair_claims(plan, plan_path, claims_path)
+        repaired_branch = getattr(repair_result, "branch", None)
+        if isinstance(repaired_branch, str) and repaired_branch.strip():
+            branch_claims = load_claims_for_branch(claims_path, repaired_branch)
+            claim_step_ids = tuple(sorted(branch_claims.keys()))
+        else:
+            claim_step_ids = ()
         removed_orphans = _cleanup_orphan_worktrees(
             plan_path=plan_path,
             plan_step_ids=plan_step_ids,
         )
 
         continuity_repo_root = _resolve_repo_root_from_plan(plan_path)
-        orphaned_ledger_steps = sorted(_load_ledger_step_ids(continuity_repo_root) - plan_step_ids)
-        if orphaned_ledger_steps:
+        ledger_entries, corrupt_ledger_files = _load_ledger_entries(continuity_repo_root)
+        startup_boundary = evaluate_startup_recovery_boundary(
+            boundary_input=StartupRecoveryBoundaryInput(
+                reconciliation=StartupRecoveryReconciliationFacts(
+                    plan_step_ids=tuple(sorted(plan_step_ids)),
+                    claim_step_ids=claim_step_ids,
+                    ledger_step_ids=tuple(sorted(entry.step_id for entry in ledger_entries)),
+                ),
+                capability_snapshot_ids=tuple(
+                    sorted(
+                        {
+                            capability_snapshot_id(capability_for_runner(entry.runner_name))
+                            for entry in ledger_entries
+                        }
+                    )
+                ),
+                ledger_entries=ledger_entries,
+                judge_failure_inputs=(),
+            )
+        )
+
+        halt_reasons = list(startup_boundary.blocked_reasons)
+        if corrupt_ledger_files:
+            halt_reasons.extend(
+                f"ledger_corrupt:{ledger_file_name}" for ledger_file_name in corrupt_ledger_files
+            )
+        if halt_reasons:
             observer.emit(
                 "HALT",
-                reason=(
-                    "Continuity ledger mismatch with recovered plan/claims state: "
-                    f"orphaned_steps={','.join(orphaned_ledger_steps)}"
-                ),
+                reason=("Continuity startup recovery blocked: " + ",".join(halt_reasons)),
             )
             state.halt_requested = True
+
+        for decision in startup_boundary.decisions:
+            observer.emit(
+                "STARTUP_RECOVERY_DECISION",
+                step_id=decision.step_id,
+                disposition=decision.disposition,
+                reason=decision.reason,
+                attempt_key=decision.source_attempt_key,
+            )
 
         if _judge_type_enabled(judge, JudgmentType.ANOMALY):
             startup_anomalies: list[JudgmentRequest] = []

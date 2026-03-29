@@ -43654,10 +43654,10 @@ phases:
 - id: driver-enhancement-streaming-progress
   name: 'Driver Enhancement: Streaming & Progress'
   status: locked
-  gate: Streaming/progress work remains blocked until live codex/opencode judge and
-    dispatch smoke coverage is established and independently reviewed.
+  gate: Streaming/progress work remains blocked until the slimmed live codex/opencode
+    judge and dispatch smoke implementation gate is complete.
   depends_on:
-  - driver-live-smoke-deep-review
+  - driver-live-smoke-implementation
   steps:
   - id: driver-enhancement-streaming-progress.impl
     name: Implement incremental JSONL consumption and live progress state

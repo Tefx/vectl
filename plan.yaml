@@ -44777,7 +44777,7 @@ phases:
     claimed_at: '2026-03-29T09:33:49.728501+00:00'
   - id: driver-prompt-review.wiring-audit
     name: Audit packaged prompt wiring completeness
-    status: pending
+    status: claimed
     description: 'Wiring completeness audit: verify the packaged prompt resource is
       reachable at runtime and not orphaned.
 
@@ -44837,6 +44837,8 @@ phases:
 
       **Verdict**: PASS | ISSUES_FOUND'
     agent: wiring-auditor
+    claimed_by: wiring-auditor
+    claimed_at: '2026-03-29T09:34:03.243938+00:00'
   - id: driver-prompt-review.spec-conformance
     name: Verify packaged prompt spec conformance
     status: pending

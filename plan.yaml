@@ -40096,7 +40096,7 @@ phases:
       - docs/ADR-driver-evolution-foundation.md#188-resolved-decisions'
   - id: driver-evolution-runtime-context.implement-runtime-context
     name: Implement RuntimeContext and DecideState boundary
-    status: claimed
+    status: done
     description: "step_type: implementation\n\nFill in stub bodies and replace ad\
       \ hoc runtime-context plumbing with substantive shared RuntimeContext logic\
       \ under the pinned boundary contract.\n\nUPSTREAM ARTIFACTS (from contract/test\
@@ -40142,6 +40142,43 @@ phases:
     agent: python-senior
     claimed_by: python-senior
     claimed_at: '2026-03-29T06:13:12.691891+00:00'
+    done_at: '2026-03-29T06:19:30.716913+00:00'
+    evidence: 'Artifact:
+
+      - PR: commit f83abc1 (vectl/step-driver-evolution-runtime-context.implement-runtime-context)
+
+
+      Verification:
+
+      - Run: `uv run pytest -q tests/test_driver_loop_runtime.py -k "RuntimeContextContracts
+      or DecideStateRuntimeWiring or startup_through_recovery_boundary_matrix_expected_red"`
+      -> 8 passed, 36 deselected, 1 xfailed
+
+      - Run: `uv run pytest -q tests/test_driver_loop_hardening.py -k "handle_dispatch
+      or completion_authority"` -> 5 passed, 13 deselected
+
+      - Run: `uv run ruff check src/vectl/driver/loop.py` -> All checks passed
+
+
+      Spec link:
+
+      - docs/ADR-driver-evolution-foundation.md#96-handlers-receive-a-unified-runtimecontext
+
+      - docs/ADR-driver-evolution-foundation.md#137-ownership-model
+
+      - tests/test_driver_loop_runtime.py::TestDecideStateRuntimeWiring::test_run_main_loop_passes_driver_decide_state_to_decide
+
+      - tests/test_driver_loop_runtime.py::test_run_routes_startup_through_recovery_boundary_matrix_expected_red
+
+
+      Files changed:
+
+      - src/vectl/driver/loop.py
+
+
+      Deviation records:
+
+      - none'
   - id: driver-evolution-runtime-context.vertical-slice
     name: Early vertical slice for typed event flow and runtime context
     status: pending

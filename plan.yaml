@@ -50284,6 +50284,50 @@ phases:
     depends_on:
     - driver-live-smoke-implementation.build-harness
     agent: python-executor
+  - id: driver-live-smoke-implementation.wiring-audit
+    name: Audit live smoke wiring completeness
+    status: pending
+    description: 'Wiring completeness audit: verify every new live-smoke surface is
+      reachable and isolated correctly.
+
+
+      REQUIRED CHECKS:
+
+      1. pytest markers are registered and selectable
+
+      2. live tests are excluded from the default fast suite unless opt-in is present
+
+      3. every new tests/live_smoke/test_*.py file imports the shared helper surface
+      instead of duplicating subprocess wiring
+
+      4. cheap-model policy names and env vars match the ratified foundation outputs
+
+      5. failure diagnostics preserve command, returncode, stdout, stderr'
+    verification: '- Audit output lists orphan markers/files or reports none.
+
+      - Audit confirms no live test was silently folded into default pytest execution.
+
+      - Audit confirms helper reuse and marker reachability.'
+    evidence_template: '## Wiring Audit Report
+
+      **Marker registration**:
+
+      **Default-suite isolation proof**:
+
+      **Helper reuse findings**:
+
+      **Cheap-model/env naming drift**:
+
+      **Verdict**: PASS | ISSUES_FOUND
+
+      '
+    depends_on:
+    - driver-live-smoke-implementation.build-harness
+    - driver-live-smoke-implementation.add-codex-judge-live-smoke-coverage
+    - driver-live-smoke-implementation.add-opencode-judge-live-smoke-coverage
+    - driver-live-smoke-implementation.add-codex-dispatch-live-smoke-coverage
+    - driver-live-smoke-implementation.add-opencode-dispatch-live-smoke-coverage
+    agent: wiring-auditor
 - id: driver-live-smoke-doc-sync
   name: Driver Live Runner Smoke Coverage Documentation Sync
   status: locked

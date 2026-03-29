@@ -44787,7 +44787,7 @@ phases:
       \ for CI/pre-commit\n- Remaining doc follow-ups:\n  - none identified"
   - id: driver-prompt-review.wiring-audit
     name: Audit packaged prompt wiring completeness
-    status: claimed
+    status: done
     description: 'Wiring completeness audit: verify the packaged prompt resource is
       reachable at runtime and not orphaned.
 
@@ -44849,6 +44849,47 @@ phases:
     agent: wiring-auditor
     claimed_by: wiring-auditor
     claimed_at: '2026-03-29T09:34:03.243938+00:00'
+    done_at: '2026-03-29T09:40:24.162391+00:00'
+    evidence: '## Wiring Audit Report
+
+      **Package resource inclusion**:
+
+      ```
+
+      pyproject.toml package-data includes vectl.driver: judge_agent_prompt.md
+
+      resource file exists at src/vectl/driver/judge_agent_prompt.md
+
+      ```
+
+      **Runtime loader path**:
+
+      ```
+
+      judge runtime path uses _load_judge_system_prompt -> _load_packaged_judge_system_prompt
+
+      contract pins package_name=vectl.driver and package_resource=judge_agent_prompt.md
+
+      ```
+
+      **Remaining docs runtime dependencies**:
+
+      ```
+
+      none found in runtime path; docs references are documentation/commentary or
+      CI drift utility only
+
+      ```
+
+      **Remaining fallback prompt paths**:
+
+      ```
+
+      none found in non-test driver code
+
+      ```
+
+      **Verdict**: PASS'
   - id: driver-prompt-review.spec-conformance
     name: Verify packaged prompt spec conformance
     status: pending

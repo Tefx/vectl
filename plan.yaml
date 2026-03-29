@@ -45889,6 +45889,29 @@ phases:
       \ consumed by startup recovery controller\n  - capability snapshot absence/mismatch\
       \ not yet enforcing restart-safe policy\n- downstream_implementation_owner:\
       \ driver-continuity-restart-recovery.impl"
+  - id: driver-continuity-restart-recovery.fix-restart-recovery-batch
+    name: Fix restart recovery gate blocker batch
+    status: pending
+    description: Batch-remediate the failed continuity restart-recovery gate by resolving
+      the duplicate `RunnerResult` type mismatch and ensuring judge failure HALT continuity
+      facts are durably persisted and consumed on the restart path.
+    verification: Implementation resolves the RunnerResult type mismatch and demonstrates
+      durable persistence plus restart-time consumption of judge HALT continuity facts
+      across the abnormal-stop / restart path.
+    evidence_template: '- Files changed
+
+      - RunnerResult mismatch resolution
+
+      - HALT continuity fact persistence/consumption changes
+
+      - Validation run(s) and results
+
+      - Residual risks or follow-ups
+
+      '
+    depends_on:
+    - driver-continuity-restart-recovery.gate
+    agent: python-senior
 - id: driver-continuity-review
   name: 'Driver Continuity: Review'
   status: locked

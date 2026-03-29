@@ -56,10 +56,20 @@ class TestCodexParser:
         assert result.session_id == "th-1"
         assert result.output == ""
 
-    def test_parse_transport_error_on_malformed_line(self) -> None:
+    def test_parse_tolerates_malformed_line_when_valid_events_exist(self) -> None:
         parser = CodexOutputParser()
         stdout = """{"type":"thread.started","thread_id":"th-1"}
-not-json"""
+not-json
+{"type":"item.completed","item":{"text":"ok"}}"""
+        result = parser.parse(stdout, elapsed_seconds=0.5)
+        assert result.status == RunnerStatus.SUCCESS
+        assert result.session_id == "th-1"
+        assert result.output == "ok"
+
+    def test_parse_transport_error_when_only_malformed_lines(self) -> None:
+        parser = CodexOutputParser()
+        stdout = """not-json
+still-not-json"""
         result = parser.parse(stdout, elapsed_seconds=0.5)
         assert result.status == RunnerStatus.TRANSPORT_ERROR
         assert result.session_id is None

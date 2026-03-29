@@ -10,13 +10,17 @@ Blueprint Reference: docs/JUDGE-AGENT-PROMPT.md
 from __future__ import annotations
 
 import asyncio
+import os
+from pathlib import Path
+import tempfile
 from typing import Any
 
 import pytest
+import yaml
 
 from src.vectl.driver.config import JudgeConfig
 from src.vectl.driver.errors import JudgmentParseError, JudgmentTimeoutError
-from src.vectl.driver.judge import Judge
+from src.vectl.driver.judge import Judge, _extract_verdict_payload
 from src.vectl.driver.judgments import JudgmentRequest, JudgmentType
 
 
@@ -179,3 +183,65 @@ def test_disabled_judgment_type_is_skipped_cleanly() -> None:
     event_type, payload = observer.events[0]
     assert event_type == "JUDGMENT"
     assert payload["verdict"] == "DEFER"
+
+
+def test_extract_verdict_payload_empty_output_raises_parse_error() -> None:
+    with pytest.raises(JudgmentParseError):
+        _extract_verdict_payload("")
+
+
+def test_extract_verdict_payload_partial_codex_events_raise_parse_error() -> None:
+    partial_stream = """{"type":"thread.started","thread_id":"th-1"}
+{"type":"turn.started","turn_id":"turn-1"}"""
+    with pytest.raises(JudgmentParseError):
+        _extract_verdict_payload(partial_stream)
+
+
+def test_codex_command_reuses_driver_yaml_runner_config() -> None:
+    driver_yaml = {
+        "runners": {
+            "codex": {
+                "command": "codex",
+                "args": [
+                    "exec",
+                    "--json",
+                    "--dangerously-bypass-approvals-and-sandbox",
+                    "-C",
+                    "{workdir}",
+                ],
+                "prompt_mode": "stdin_dash",
+            },
+            "opencode": {
+                "command": "opencode",
+                "args": ["run", "--format", "json"],
+            },
+        },
+        "fallback_runner": "opencode",
+        "judge": {"runner": "codex"},
+    }
+
+    with tempfile.TemporaryDirectory() as td:
+        td_path = Path(td)
+        (td_path / "driver.yaml").write_text(yaml.dump(driver_yaml), encoding="utf-8")
+        original_cwd = Path.cwd()
+        try:
+            # Judge command lookup is cwd-relative by design.
+            os.chdir(td_path)
+            observer = _ObserverSpy()
+            judge = Judge(
+                JudgeConfig(
+                    runner="codex",
+                    structured_output=True,
+                    timeout=30,
+                ),
+                observer,
+            )
+            command, _ = judge._build_subprocess_command("system", "user")
+        finally:
+            os.chdir(original_cwd)
+
+    assert command[0:3] == ["codex", "exec", "--json"]
+    assert "--dangerously-bypass-approvals-and-sandbox" in command
+    assert "-C" in command
+    assert "-" in command
+    assert "--output-schema" in command

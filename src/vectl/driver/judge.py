@@ -22,6 +22,8 @@ from pathlib import Path
 from tempfile import NamedTemporaryFile
 from typing import TYPE_CHECKING, Literal, Protocol
 
+import yaml
+
 from .errors import JudgmentParseError, JudgmentTimeoutError
 from .judgments import (
     CONTEXT_SCHEMAS,
@@ -830,10 +832,23 @@ class Judge:
             return command, payload
 
         if runner == "codex":
-            command = [runner, "exec", "--json"]
+            runner_settings = _load_runner_settings_from_driver_yaml("codex")
+            if runner_settings is not None:
+                configured_command, configured_args, configured_prompt_mode = runner_settings
+                command = [configured_command] + _render_runner_args(
+                    configured_args,
+                    workdir=str(Path.cwd()),
+                    agent="judge",
+                )
+                if configured_prompt_mode == "stdin_dash" and "-" not in command:
+                    command.append("-")
+            else:
+                command = [runner, "exec", "--json", "-"]
+
             if self._config.structured_output and self._structured_schema_path is not None:
-                command.extend(["--output-schema", self._structured_schema_path])
-            command.append("-")
+                has_schema_flag = "--output-schema" in command
+                if not has_schema_flag:
+                    command.extend(["--output-schema", self._structured_schema_path])
             payload = f"SYSTEM PROMPT:\n{system_prompt}\n\n{user_prompt}"
             return command, payload
 
@@ -869,6 +884,62 @@ def _write_schema_tempfile(schema: dict[str, object]) -> str:
         return fp.name
 
 
+def _load_runner_settings_from_driver_yaml(
+    runner_name: str,
+) -> tuple[str, list[str], str | None] | None:
+    """Load runner command settings from local ``driver.yaml`` when available.
+
+    Source authority:
+    - driver.yaml ``runners.<name>`` entry (runtime configuration authority)
+    - docs/DRIVER-ARCHITECTURE.md Section 2.3 (configuration schema)
+
+    Returns:
+        Tuple of ``(command, args, prompt_mode)`` when found and valid;
+        otherwise ``None``.
+    """
+    config_path = Path("driver.yaml")
+    if not config_path.exists():
+        return None
+
+    try:
+        raw = yaml.safe_load(config_path.read_text(encoding="utf-8"))
+    except yaml.YAMLError:
+        return None
+
+    if not isinstance(raw, dict):
+        return None
+
+    runners = raw.get("runners")
+    if not isinstance(runners, dict):
+        return None
+
+    runner = runners.get(runner_name)
+    if not isinstance(runner, dict):
+        return None
+
+    command = runner.get("command")
+    if not isinstance(command, str) or not command.strip():
+        return None
+
+    raw_args = runner.get("args", [])
+    if not isinstance(raw_args, list) or any(not isinstance(arg, str) for arg in raw_args):
+        return None
+
+    prompt_mode = runner.get("prompt_mode")
+    if prompt_mode is not None and not isinstance(prompt_mode, str):
+        return None
+
+    return command, list(raw_args), prompt_mode
+
+
+def _render_runner_args(args: list[str], *, workdir: str, agent: str) -> list[str]:
+    """Render common placeholder tokens in runner args."""
+    rendered: list[str] = []
+    for arg in args:
+        rendered.append(arg.replace("{workdir}", workdir).replace("{agent}", agent))
+    return rendered
+
+
 def _extract_verdict_payload(stdout_text: str) -> str:
     """Extract verdict JSON payload from runner output.
 
@@ -878,6 +949,12 @@ def _extract_verdict_payload(stdout_text: str) -> str:
     - Reject loose text wrappers around JSON.
     """
     stripped = stdout_text.strip()
+    if not stripped:
+        raise JudgmentParseError(
+            judgment_type="unknown",
+            step_id="unknown",
+            raw_output="empty output from judge runner",
+        )
 
     # Single JSON object path
     try:
@@ -896,6 +973,7 @@ def _extract_verdict_payload(stdout_text: str) -> str:
         return stripped
 
     # JSONL path (OpenCode-style)
+    saw_json_event = False
     text_parts: list[str] = []
     for line in stripped.splitlines():
         line = line.strip()
@@ -906,18 +984,45 @@ def _extract_verdict_payload(stdout_text: str) -> str:
         except json.JSONDecodeError:
             continue
 
+        if not isinstance(event, dict):
+            continue
+
+        saw_json_event = True
+
         if event.get("type") == "text":
             part = event.get("part", {})
             text = part.get("text")
             if isinstance(text, str) and text.strip():
                 text_parts.append(text.strip())
+            continue
+
+        # Codex JSONL path: item.completed carries the text payload.
+        if event.get("type") == "item.completed":
+            item = event.get("item", {})
+            if isinstance(item, dict):
+                text = item.get("text")
+                if isinstance(text, str) and text.strip():
+                    text_parts.append(text.strip())
 
     if not text_parts:
+        if saw_json_event:
+            raise JudgmentParseError(
+                judgment_type="unknown",
+                step_id="unknown",
+                raw_output=stripped,
+            )
         return stripped
 
     candidate = text_parts[-1]
     # strict: candidate itself must be JSON, not markdown wrapper
-    json.loads(candidate)
+    try:
+        json.loads(candidate)
+    except json.JSONDecodeError as exc:
+        raise JudgmentParseError(
+            judgment_type="unknown",
+            step_id="unknown",
+            raw_output=candidate,
+        ) from exc
     return candidate
 
 

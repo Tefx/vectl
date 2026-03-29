@@ -1769,7 +1769,30 @@ Per `docs/ADR-driver-evolution-foundation.md`:
 | RuntimeContext boundary | `driver.runtime_context.RuntimeContext` — unified handler context |
 | Role-specific contexts deferred | `driver.runtime_context.ROLE_SPECIFIC_CONTEXTS_DEFERRED` |
 
-### 7.3 Key Implementation Notes
+### 7.3 Event Emission Semantics
+
+Canonical driver events follow non-contradictory semantics defined by the registry and implemented in `loop.py`:
+
+#### DECIDE Event
+- **When emitted**: At the start of each loop iteration, immediately after `decide()` returns
+- **Purpose**: Signal a decision cycle occurred; provides visibility into running count and actions to execute
+- **Payload**: `running_count`, `actions` (list of action types), optional `claimable` and `capacity`
+- **Invariant**: Always emitted before actions are dispatched; represents the decision that precedes execution
+
+#### STEP_COMPLETED Event
+- **When emitted**: Exclusively in `reconcile()` success path, after merge completes and session is recorded
+- **Purpose**: Signal terminal step success (runner finished, evidence validated, merged to main)
+- **Payload**: `step_id`, `elapsed_seconds`, optional `cost`, `evidence_len`, `tokens`
+- **Critical invariant**: NOT emitted from `handle_complete()`; `decide(action="complete")` is legacy and ignored at runtime
+- **Single-source-of-truth**: Only the reconcile success path emits STEP_COMPLETED
+
+#### FINAL Event
+- **When emitted**: In `shutdown()`, after all running handles complete or timeout, before observer close
+- **Purpose**: Canonical end-of-run summary; includes completed work summary, duration, optional `halt_reason`
+- **Relationship to HALT**: HALT events are emitted mid-stream when termination is requested; FINAL always terminates the event stream
+- **Invariant**: Exactly one FINAL event per run; always the last event in the JSONL stream
+
+### 7.4 Key Implementation Notes
 
 - `decide()` loads plan.yaml internally via `resolve_plan_path()`. The driver MUST ensure the working directory is correct (the project root, not a worktree) when calling `decide()`.
 - `save_plan()` uses `fcntl.flock` -- single-process safety only. Since the driver is the sole writer in its process, this is fine, but be aware that external `vectl` CLI calls during a drive could hit CAS conflicts.
@@ -1778,7 +1801,7 @@ Per `docs/ADR-driver-evolution-foundation.md`:
 - The default judge runner is `opencode`. When using `claude` as judge runner, add `--no-session-persistence` and `--dangerously-skip-permissions`. Each runner uses its own non-interactive flags (opencode: `--format json`; codex: `--dangerously-bypass-approvals-and-sandbox`; gemini: `--approval-mode yolo`).
 - Session reuse is implemented in `session.py` with runner-aware matching and per-runner TTL overrides.
 
-### 7.4 Resolved Open Questions
+### 7.5 Resolved Open Questions
 
 - ~~Exact system prompt text for the Judgment Agent~~ -- Resolved: see `JUDGE-AGENT-PROMPT.md`.
 - ~~Whether `gemini` runner should be included in Phase 1 or deferred~~ -- Resolved: deferred/excluded from the normative foundation matrix until auth, non-interactive invocation, and structured verdict extraction are ratified.

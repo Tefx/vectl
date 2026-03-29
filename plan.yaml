@@ -49936,7 +49936,7 @@ phases:
       \ decision: OPEN**"
 - id: driver-live-smoke-foundation
   name: Driver Live Runner Smoke Coverage Foundation
-  status: in_progress
+  status: done
   gate: Pinned live-smoke model policy, live-runner opt-in policy, skip taxonomy,
     and lightweight test-surface decisions are ratified before live smoke implementation
     starts.
@@ -50079,7 +50079,7 @@ phases:
       \ compatibility path."
   - id: driver-live-smoke-foundation.finalize-test-surface-decisions
     name: Finalize live smoke test-surface decisions
-    status: claimed
+    status: done
     description: 'Planning/spec step.
 
 
@@ -50153,9 +50153,43 @@ phases:
     agent: python-senior
     claimed_by: python-senior
     claimed_at: '2026-03-29T16:08:33.028595+00:00'
+    done_at: '2026-03-29T16:12:22.120244+00:00'
+    evidence: "## Live Smoke Contract\n- helper interfaces pinned:\n  - Documented\
+      \ in `docs/DRIVER-LIVE-SMOKE-POLICY.md` under **Shared ownership split (pinned)**.\n\
+      \  - Ownership is explicitly split across:\n    - `tests/live_smoke/helpers.py`\
+      \ (shared harness wiring + diagnostics only)\n    - `tests/live_smoke/test_codex_judge_live.py`\
+      \ (codex structured judge only)\n    - `tests/live_smoke/test_opencode_judge_live.py`\
+      \ (opencode judge extraction, tolerant JSONL/text allowed)\n    - `tests/live_smoke/test_codex_dispatch_live.py`\
+      \ (codex dispatch only)\n    - `tests/live_smoke/test_opencode_dispatch_live.py`\
+      \ (opencode dispatch only)\n\n- marker names pinned:\n  - Exact taxonomy pinned\
+      \ in `docs/DRIVER-LIVE-SMOKE-POLICY.md`:\n    - `live_runner`, `codex_live`,\
+      \ `opencode_live`, `judge_live`, `dispatch_live`\n  - Exact marker combinations\
+      \ per test file are specified.\n  - Reduced-form marker taxonomy also added\
+      \ to `docs/DRIVER-ARCHITECTURE.md` section **7.4.1 Live Smoke (Reduced Test-Surface\
+      \ Record)**.\n\n- skip semantics pinned:\n  - Exact skip reasons pinned in both\
+      \ docs:\n    - `live_runner_opt_in_missing`\n    - `live_runner_binary_missing`\n\
+      \    - `live_runner_auth_missing`\n    - `live_runner_override_unsupported`\n\
+      \  - Explicitly documented as test-policy skips (not production fallback semantics).\n\
+      \n- manual invocation matrix pinned:\n  - Exact opt-in manual pytest selections\
+      \ pinned in both docs:\n    - judge-only:\n      `RUN_LIVE_RUNNER_TESTS=1 pytest\
+      \ -m \"live_runner and judge_live\" tests/live_smoke/test_codex_judge_live.py\
+      \ tests/live_smoke/test_opencode_judge_live.py -v`\n    - dispatch-only:\n \
+      \     `RUN_LIVE_RUNNER_TESTS=1 pytest -m \"live_runner and dispatch_live\" tests/live_smoke/test_codex_dispatch_live.py\
+      \ tests/live_smoke/test_opencode_dispatch_live.py -v`\n    - combined:\n   \
+      \   `RUN_LIVE_RUNNER_TESTS=1 pytest -m \"live_runner\" tests/live_smoke/test_codex_judge_live.py\
+      \ tests/live_smoke/test_opencode_judge_live.py tests/live_smoke/test_codex_dispatch_live.py\
+      \ tests/live_smoke/test_opencode_dispatch_live.py -v`\n\n- production authorities\
+      \ preserved:\n  - `docs/DRIVER-LIVE-SMOKE-POLICY.md` now states production invocation\
+      \ authority remains with `driver.yaml` + `docs/DRIVER-ARCHITECTURE.md`.\n  -\
+      \ Explicit boundaries pinned:\n    - Codex judge: no tolerant fallback-to-text\
+      \ success path in structured judge step.\n    - OpenCode judge: tolerant JSONL/text\
+      \ extraction belongs only to `test_opencode_judge_live.py`.\n  - Evidence contract\
+      \ pinned: failures must include full command, returncode, stdout, stderr.\n\n\
+      - commits:\n  - `89d2243 docs(live-smoke): pin lightweight test-surface decisions`\n\
+      \  - `723ab83 docs(driver): add reduced live smoke command surface`"
 - id: driver-live-smoke-implementation
   name: Driver Live Runner Smoke Coverage Implementation
-  status: locked
+  status: pending
   gate: Shared harness, codex/opencode judge+dispatch live smoke coverage, reduced
     doc updates, and one independent live matrix check must prove trustworthy PASS/FAIL/SKIP
     outcomes before driver enhancements unblock.

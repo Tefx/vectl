@@ -49945,55 +49945,36 @@ phases:
   - id: driver-live-smoke-foundation.ratify-live-smoke-policy
     name: Ratify cheap-model and execution policy
     status: pending
-    description: 'Planning step.
-
-
-      Use the architecture_basis as authoritative and ratify the live smoke execution
-      policy before implementation assumes any model names.
-
-
-      Required outputs:
-
-      - codex cheap-model selection mechanism and validated low-cost model name(s)
-
-      - opencode cheap-model selection mechanism and validated low-cost model name(s)
-
-      - explicit opt-in env gate (for example RUN_LIVE_RUNNER_TESTS=1) and skip taxonomy
-      for missing binary/auth/opt-in
-
-      - decision on where live smoke runs: manual-only vs separate CI job vs nightly
-      vs release gate
-
-      - exact marker set: live_runner, codex_live, opencode_live, judge_live, dispatch_live
-
-
-      Constraints:
-
-      - Do not redesign production runner semantics
-
-      - Do not guess model names; discovery/validation evidence is mandatory
-
-      - Preserve codex/opencode as the only in-scope live runners
-
-
-      Touch paths:
-
-      - docs/DRIVER-ARCHITECTURE.md
-
-      - driver.yaml
-
-      - pyproject.toml
-
-      - tests/live_smoke/
-
-
-      step_type: planning'
+    description: "Planning step.\n\nRatify the lightweight live smoke policy before\
+      \ any additive test work assumes model names or judge fallback semantics.\n\n\
+      Required outputs:\n- codex cheap-model selection mechanism and validated low-cost\
+      \ model name(s)\n- opencode cheap-model selection mechanism and validated low-cost\
+      \ model name(s)\n- explicit opt-in env gate (for example RUN_LIVE_RUNNER_TESTS=1)\
+      \ and skip taxonomy for missing binary/auth/opt-in\n- decision on where live\
+      \ smoke runs: manual-only vs separate CI job vs nightly vs release gate\n- exact\
+      \ marker set: live_runner, codex_live, opencode_live, judge_live, dispatch_live\n\
+      - authoritative boundary decision for judge behavior:\n  - codex structured-output\
+      \ mode is schema-enforced and MUST NOT treat tolerant text fallback as a normal\
+      \ compatibility success path\n  - valid codex judge outcomes in structured mode\
+      \ are PASS on real structured output, explicit FAILURE on schema/structured-output\
+      \ rejection, or explicit SKIP for missing binary/auth/opt-in\n  - opencode judge\
+      \ coverage MAY exercise tolerant JSONL/text extraction as its normal live compatibility\
+      \ path\n\nConstraints:\n- Do not redesign production runner semantics\n- Do\
+      \ not guess model names; discovery/validation evidence is mandatory\n- Preserve\
+      \ codex/opencode as the only in-scope live runners\n- Keep this initiative additive\
+      \ test/doc/config work, not a feature architecture program\n\nTouch paths:\n\
+      - docs/DRIVER-ARCHITECTURE.md\n- driver.yaml\n- pyproject.toml\n- tests/live_smoke/\n\
+      \nstep_type: planning"
     verification: '- Evidence includes a runner-by-runner matrix for cheap-model knobs,
       supported invocation shape, and skip reasons.
 
       - Evidence states the ratified execution mode for CI/manual gating and why.
 
-      - No downstream implementation step needs to guess a model name or env contract.'
+      - Evidence explicitly records the codex structured-output no-text-fallback rule
+      and opencode tolerant extraction allowance.
+
+      - No downstream implementation step needs to guess a model name, env contract,
+      or judge fallback policy.'
     evidence_template: '## Live Smoke Policy Ratification
 
       - codex cheap-model discovery:

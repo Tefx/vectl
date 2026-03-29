@@ -40196,7 +40196,7 @@ phases:
       - none'
   - id: driver-evolution-runtime-context.vertical-slice
     name: Early vertical slice for typed event flow and runtime context
-    status: claimed
+    status: done
     description: 'step_type: verification
 
       expected_result: green
@@ -40245,6 +40245,50 @@ phases:
     agent: integration-verifier
     claimed_by: integration-verifier
     claimed_at: '2026-03-29T06:20:00.276635+00:00'
+    done_at: '2026-03-29T06:26:56.221479+00:00'
+    evidence: 'Artifact:
+
+      - PR: commit ae7521c (vectl/step-driver-evolution-runtime-context.vertical-slice)
+
+
+      Verification:
+
+      - Run: `uv run pytest -q tests/test_driver_loop_runtime.py::TestRuntimeContextContracts
+      tests/test_driver_loop_runtime.py::TestDecideStateRuntimeWiring tests/test_decide_state_isolation.py
+      tests/test_runtime_context_vertical_slice.py --tb=line` -> 23 passed, 1 xfailed
+
+      - Run: `uv run pytest -q tests/test_driver_loop_runtime.py::test_run_routes_startup_through_recovery_boundary_matrix_expected_red
+      -v --tb=short` -> 1 passed
+
+      - Run: `uv run ruff check src/vectl/driver/loop.py` -> All checks passed
+
+
+      Layer traversal / propagation proof:
+
+      1. RuntimeContext constructed in `_run_main_loop` (`src/vectl/driver/loop.py`
+      lines 3096-3104)
+
+      2. `handle_dispatch` receives `context: RuntimeContext | None` and unpacks dependencies
+      (loop.py lines 1918-1940)
+
+      3. DecideState ownership remains explicit (`state.decide_state` passed directly
+      to `decide()`)
+
+      4. Frozen dataclass immutability proven by tests
+
+      5. Same-instance boundary proven: `context.state.decide_state is driver_state.decide_state`
+
+
+      Files changed:
+
+      - tests/test_runtime_context_vertical_slice.py
+
+
+      Spec link:
+
+      - docs/ADR-driver-evolution-foundation.md#96-handlers-receive-a-unified-runtimecontext
+
+      - docs/ADR-driver-evolution-foundation.md#137-ownership-model'
   - id: driver-evolution-runtime-context.gate
     name: Gate runtime context
     status: pending

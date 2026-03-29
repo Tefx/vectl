@@ -50995,7 +50995,7 @@ phases:
       - Remediation: Add timeout handling to prevent opencode from hanging indefinitely'
   - id: driver-live-smoke-implementation.gate
     name: Gate live smoke implementation
-    status: pending
+    status: claimed
     description: "Gate review: verify the slimmed live runner smoke implementation\
       \ phase is complete and trustworthy.\n\nreview_depth: STANDARD\nreview_depth_rationale:\n\
       - touches real runner integration and auth/env gating\n- must block further\
@@ -51040,6 +51040,8 @@ phases:
     - driver-live-smoke-implementation.update-docs
     - driver-live-smoke-implementation.runner-smoke-matrix
     agent: gate-reviewer
+    claimed_by: gate-reviewer
+    claimed_at: '2026-03-29T17:01:45.381448+00:00'
   - id: driver-live-smoke-implementation.update-docs
     name: Update live smoke docs in reduced form
     status: done

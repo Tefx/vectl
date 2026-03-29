@@ -43170,7 +43170,7 @@ phases:
       \ and independent verification.\"\n- Gate decision: OPEN"
 - id: driver-enhancement-foundation
   name: Driver Post-Bootstrap Enhancement Foundation
-  status: in_progress
+  status: done
   gate: Approved architecture basis and contract set exist for post-bootstrap observability,
     streaming-aware liveness, and advanced recovery behavior only. Bootstrap-minimum
     continuity scope is excluded because it is owned upstream by the continuity blocker
@@ -43371,7 +43371,7 @@ phases:
       \  - `docs/contracts/driver-enhancement-liveness-taxonomy-contract.yaml`"
   - id: driver-enhancement-foundation.gate
     name: Gate enhancement foundation readiness
-    status: claimed
+    status: done
     description: 'step_type: gate
 
       Gate the architecture and contract foundation before implementation fan-out.'
@@ -43389,9 +43389,31 @@ phases:
     agent: gate-reviewer
     claimed_by: gate-reviewer
     claimed_at: '2026-03-29T13:54:52.742778+00:00'
+    done_at: '2026-03-29T13:56:43.704652+00:00'
+    evidence: "## Gate review\n- Step evidence reviewed:\n  1. `docs/contracts/driver-enhancement-architecture-basis.yaml`\
+      \ (architecture basis)\n  2. `docs/contracts/driver-enhancement-telemetry-streaming-contract.yaml`\
+      \ (telemetry contract)\n  3. `docs/contracts/driver-enhancement-recovery-observability-contract.yaml`\
+      \ (recovery contract)\n  4. `docs/contracts/driver-enhancement-liveness-taxonomy-contract.yaml`\
+      \ (liveness contract)\n- Architecture basis verified: yes - all 11 required\
+      \ elements present (system layers, source of truth matrix, service catalog,\
+      \ runtime contract, state strata, transport boundary rules, cross-cutting governance,\
+      \ shared abstractions, module split recommendations, open questions, readiness);\
+      \ scope explicitly excludes bootstrap-minimum continuity (line 22-24); status\
+      \ READY (line 492)\n- Contracts verified:\n  - Telemetry streaming: complete\
+      \ (ID, 3 dataclasses + 1 protocol + type aliases, ownership with owner_module/adjacent/primary_consumers,\
+      \ boundaries_and_constraints section, invariants section)\n  - Recovery observability:\
+      \ complete (ID, 2 dataclasses + 1 protocol + type aliases, ownership with upstream_contracts/runtime_authority/primary_consumers,\
+      \ boundaries_and_constraints section, invariants section)\n  - Liveness taxonomy:\
+      \ complete (ID, 2 dataclasses + 1 protocol + type aliases + taxonomy_contract\
+      \ classification table, ownership with owner_module/adjacent/primary_consumers,\
+      \ boundaries_and_constraints section, invariants section)\n- Gate criterion\
+      \ verified: architecture basis approved (status READY), contract set complete\
+      \ for post-bootstrap observability/streaming-aware-liveness/advanced-recovery,\
+      \ bootstrap-minimum continuity explicitly excluded in out_of_scope\n- Gate decision:\
+      \ OPEN"
 - id: driver-enhancement-observability
   name: 'Driver Enhancement: Advanced Observability'
-  status: locked
+  status: pending
   gate: Post-bootstrap observability extends beyond the continuity-owned minimum journal
     to richer lifecycle analytics, progress telemetry, and long-horizon runtime visibility.
   depends_on:
@@ -43631,7 +43653,7 @@ phases:
     agent: python-senior
 - id: driver-enhancement-streaming-progress
   name: 'Driver Enhancement: Streaming & Progress'
-  status: locked
+  status: pending
   gate: Driver consumes runner JSONL incrementally and exposes heartbeat/progress-aware
     liveness without waiting for end-of-process collection.
   depends_on:
@@ -43795,7 +43817,7 @@ phases:
     agent: python-senior
 - id: driver-enhancement-runner-recovery
   name: 'Driver Enhancement: Advanced Runner Recovery'
-  status: locked
+  status: pending
   gate: Post-bootstrap runner recovery extends beyond the continuity-owned bootstrap
     minimum with richer watchdog heuristics, advanced failure taxonomy, and operator-facing
     recovery behavior.

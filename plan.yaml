@@ -43319,7 +43319,7 @@ phases:
       - Files created: docs/contracts/driver-enhancement-architecture-basis.yaml'
   - id: driver-enhancement-foundation.contract
     name: Pin enhancement contracts for telemetry streaming and recovery
-    status: pending
+    status: claimed
     description: "step_type: contract\ncontract_purity: ENFORCED\ncontract_outputs:\n\
       \  - event_contracts\n  - streaming_contract\n  - liveness_contract\n  - recovery_policy_contract\n\
       \nPin the contract set that downstream phases will implement.\n\nRequired contract\
@@ -43342,6 +43342,8 @@ phases:
     depends_on:
     - driver-enhancement-foundation.architecture-basis
     agent: software-architect
+    claimed_by: software-architect
+    claimed_at: '2026-03-29T13:47:52.136094+00:00'
   - id: driver-enhancement-foundation.gate
     name: Gate enhancement foundation readiness
     status: pending

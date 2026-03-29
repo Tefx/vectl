@@ -19,12 +19,39 @@ from __future__ import annotations
 
 import asyncio
 from pathlib import Path
-from typing import Any
+from typing import Any, cast
 from unittest.mock import MagicMock, patch
 
 import pytest
 
 import src.vectl.driver.loop as loop_module
+from src.vectl.driver.action_registry import (
+    ACTION_HANDLER_CONTRACTS,
+    ACTION_REGISTRY_DECLARATION_MODE,
+    ACTION_REGISTRY_PUBLIC_DYNAMIC_REGISTRATION,
+    ACTION_REGISTRY_SCOPE_STATEMENT,
+    CLAIM_AND_DISPATCH_ACTION_TYPE,
+    COMPLETE_ACTION_TYPE,
+    ESCALATE_ACTION_TYPE,
+    EXECUTION_ACTION_DECLARATIONS,
+    INITIAL_HANDLER_INPUT_CONTRACT,
+    LAYERED_ACTION_REGISTRY,
+    PLANNER_ACTION_CATEGORY,
+    PLANNER_DISPATCH_ACTION_DECLARATIONS,
+    PLANNER_DISPATCH_EVENT_EXPECTATIONS,
+    PLANNER_DISPATCH_GATE_REJECT_ACTION_TYPE,
+    PLANNER_DISPATCH_GATE_REJECT_HANDLER_CONTRACT,
+    PLANNER_DISPATCH_REPLAN_ACTION_TYPE,
+    PLANNER_DISPATCH_REPLAN_HANDLER_CONTRACT,
+    RECOVERY_ALL_STALLED_ACTION_TYPE,
+    WAIT_ACTION_TYPE,
+    PlannerDispatchAction,
+    PlannerDispatchActionType,
+    UnknownLoopActionError,
+    UnknownPlannerDispatchActionError,
+    resolve_planner_dispatch_action_declaration,
+    resolve_runtime_loop_action_declaration,
+)
 from src.vectl.driver.config import (
     DriverConfig,
     JudgeConfig,
@@ -39,6 +66,11 @@ from src.vectl.driver.loop import (
     COMPLETION_AUTHORITY_A1_CONTRACT,
     DEFERRED_REPLAN_BRANCHES,
     GRACEFUL_SHUTDOWN_CONTRACT,
+    LOOP_ACTION_REGISTRY_SCOPE_STATEMENT,
+    LOOP_HANDLER_RUNTIME_CONTEXT,
+    LOOP_PLANNER_ACTION_DECLARATIONS,
+    ROLE_SPECIFIC_CONTEXTS_DEFERRED,
+    RUNTIME_CONTEXT_ROLLOUT_CONTRACT,
     STARTUP_RECOVERY_CONTRACT,
     CompletionAuthorityContract,
     handle_complete,
@@ -49,6 +81,11 @@ from src.vectl.driver.loop import (
 )
 from src.vectl.driver.observe import FileObserver
 from src.vectl.driver.runners import Runner
+from src.vectl.driver.runtime_context import (
+    RUNTIME_CONTEXT_BOUNDARY_RULES,
+    RUNTIME_CONTEXT_RESPONSIBILITY_SPLIT,
+    RuntimeContext,
+)
 from src.vectl.driver.session import SessionPool
 from src.vectl.driver.types import (
     CompletedEntry,
@@ -57,7 +94,7 @@ from src.vectl.driver.types import (
     RunnerStatus,
     StartupRecoveryBoundaryOutput,
 )
-from vectl.models import DecideOutput
+from vectl.models import Action, DecideOutput
 
 # =============================================================================
 # FIXTURES
@@ -278,6 +315,263 @@ class TestCompletionAuthorityA1Contract:
         assert (
             "duplicate STEP_COMPLETED emission for one runner result"
             in contract.blocker_regressions
+        )
+
+
+class TestPlannerDispatchActionRegistryContract:
+    """Contract coverage for planner-dispatch registry declarations."""
+
+    def test_planner_dispatch_action_types_are_explicit_and_separate(self) -> None:
+        """Planner dispatch MUST have explicit action types outside generic execution."""
+        action_types = {decl.action_type for decl in PLANNER_DISPATCH_ACTION_DECLARATIONS}
+        assert action_types == {
+            PLANNER_DISPATCH_REPLAN_ACTION_TYPE,
+            PLANNER_DISPATCH_GATE_REJECT_ACTION_TYPE,
+        }
+        assert all(
+            decl.category == PLANNER_ACTION_CATEGORY
+            for decl in PLANNER_DISPATCH_ACTION_DECLARATIONS
+        )
+        assert PLANNER_ACTION_CATEGORY != "execution"
+
+    def test_planner_dispatch_payload_contract_names_required_fields(self) -> None:
+        """Planner dispatch payload MUST expose explicit contract fields."""
+        payload_fields = set(PlannerDispatchAction.__dataclass_fields__)
+        assert payload_fields == {
+            "action_type",
+            "step_id",
+            "trigger",
+            "judgment_type",
+            "planner_instruction",
+            "source_verdict",
+        }
+
+    def test_planner_dispatch_handler_boundary_uses_runtime_context(self) -> None:
+        """Loop planner contract MUST expose shared RuntimeContext boundary."""
+        assert LOOP_HANDLER_RUNTIME_CONTEXT is RuntimeContext
+        assert all(
+            decl.runtime_context_contract == "RuntimeContext"
+            for decl in PLANNER_DISPATCH_ACTION_DECLARATIONS
+        )
+
+    def test_planner_dispatch_events_are_declared_for_execution_outcomes(self) -> None:
+        """Planner dispatch MUST declare started/completed/failed event expectations."""
+        assert PLANNER_DISPATCH_EVENT_EXPECTATIONS.started == "PLANNER_DISPATCH_STARTED"
+        assert PLANNER_DISPATCH_EVENT_EXPECTATIONS.completed == "PLANNER_DISPATCH_COMPLETED"
+        assert PLANNER_DISPATCH_EVENT_EXPECTATIONS.failed == "PLANNER_DISPATCH_FAILED"
+        assert all(
+            decl.event_expectations == PLANNER_DISPATCH_EVENT_EXPECTATIONS
+            for decl in PLANNER_DISPATCH_ACTION_DECLARATIONS
+        )
+
+    def test_planner_dispatch_is_in_registry_scope_and_not_deferred(self) -> None:
+        """Planner dispatch MUST be in scope for the action registry now."""
+        assert ACTION_REGISTRY_SCOPE_STATEMENT == LOOP_ACTION_REGISTRY_SCOPE_STATEMENT
+        assert "included in loop action registry scope" in ACTION_REGISTRY_SCOPE_STATEMENT
+        assert all(decl.included_in_registry_scope for decl in PLANNER_DISPATCH_ACTION_DECLARATIONS)
+        assert all(
+            not decl.deferred_outside_registry for decl in PLANNER_DISPATCH_ACTION_DECLARATIONS
+        )
+        assert LOOP_PLANNER_ACTION_DECLARATIONS == PLANNER_DISPATCH_ACTION_DECLARATIONS
+        assert (
+            LAYERED_ACTION_REGISTRY[PLANNER_ACTION_CATEGORY] == PLANNER_DISPATCH_ACTION_DECLARATIONS
+        )
+
+    def test_action_registry_is_static_and_auditable(self) -> None:
+        """Planner dispatch declarations MUST stay static and reviewable."""
+        assert ACTION_REGISTRY_DECLARATION_MODE == "static_declaration_table"
+        assert ACTION_REGISTRY_PUBLIC_DYNAMIC_REGISTRATION is False
+        assert all(decl.auditable_declaration for decl in PLANNER_DISPATCH_ACTION_DECLARATIONS)
+
+    def test_layered_registry_registers_existing_runtime_actions(self) -> None:
+        """Layered registry MUST include execution/control runtime loop actions."""
+        execution_action_types = {decl.action_type for decl in EXECUTION_ACTION_DECLARATIONS}
+        assert CLAIM_AND_DISPATCH_ACTION_TYPE in execution_action_types
+        assert WAIT_ACTION_TYPE in execution_action_types
+
+        control_action_types = {decl.action_type for decl in LAYERED_ACTION_REGISTRY["control"]}
+        assert COMPLETE_ACTION_TYPE in control_action_types
+        assert ESCALATE_ACTION_TYPE in control_action_types
+
+    def test_unknown_runtime_action_fails_at_registry_boundary(self) -> None:
+        """Unknown runtime actions MUST fail at action-registry boundary."""
+        with pytest.raises(UnknownLoopActionError, match="Unknown loop action"):
+            resolve_runtime_loop_action_declaration("unknown.action")
+
+    def test_planner_dispatch_uses_explicit_handler_contracts(self) -> None:
+        """Planner actions MUST declare explicit registry handler contracts."""
+        handlers_by_action = {
+            declaration.action_type: declaration.handler_contract
+            for declaration in PLANNER_DISPATCH_ACTION_DECLARATIONS
+        }
+        assert handlers_by_action[PLANNER_DISPATCH_REPLAN_ACTION_TYPE] == (
+            PLANNER_DISPATCH_REPLAN_HANDLER_CONTRACT
+        )
+        assert handlers_by_action[PLANNER_DISPATCH_GATE_REJECT_ACTION_TYPE] == (
+            PLANNER_DISPATCH_GATE_REJECT_HANDLER_CONTRACT
+        )
+
+    def test_unknown_planner_dispatch_action_fails_at_registry_boundary(self) -> None:
+        """Unknown planner actions MUST fail at planner registry boundary."""
+        with pytest.raises(UnknownPlannerDispatchActionError, match="Unknown planner dispatch"):
+            resolve_planner_dispatch_action_declaration(
+                cast(PlannerDispatchActionType, "planner.unknown")
+            )
+
+    @pytest.mark.anyio
+    async def test_loop_wires_planner_dispatch_through_registry_handler(
+        self,
+        driver_config: DriverConfig,
+        driver_state: DriverState,
+        mock_judge: Judge,
+        session_pool: SessionPool,
+        observer: FileObserver,
+        tmp_path: Path,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """Loop MUST dispatch planner actions via registry-backed handlers."""
+
+        captured: dict[str, Any] = {}
+
+        async def _capture_dispatch_planner(
+            request: loop_module.PlannerDispatchRequest,
+            *,
+            config: DriverConfig,
+            runners: dict[str, Runner],
+            observer: FileObserver,
+            plan_path: Path,
+        ) -> None:
+            captured["request"] = request
+            captured["config"] = config
+            captured["plan_path"] = plan_path
+
+        monkeypatch.setattr(loop_module, "dispatch_planner", _capture_dispatch_planner)
+
+        runtime_context = RuntimeContext(
+            state=driver_state,
+            config=driver_config,
+            runners={},
+            judge=mock_judge,
+            session_pool=session_pool,
+            observer=observer,
+            plan_path=tmp_path / "plan.yaml",
+        )
+
+        planner_action = PlannerDispatchAction(
+            action_type=PLANNER_DISPATCH_REPLAN_ACTION_TYPE,
+            step_id="core.impl",
+            trigger="handle_dispatch.preflight_replan",
+            judgment_type="PREFLIGHT",
+            planner_instruction="Strengthen verification criteria",
+            source_verdict="REPLAN",
+        )
+
+        await loop_module._dispatch_registered_planner_action(
+            action=planner_action,
+            context=runtime_context,
+        )
+
+        assert captured["request"].step_id == "core.impl"
+        assert captured["request"].trigger == "handle_dispatch.preflight_replan"
+        assert captured["request"].planner_instruction == "Strengthen verification criteria"
+        assert captured["config"] is driver_config
+        assert captured["plan_path"] == tmp_path / "plan.yaml"
+
+    def test_runtime_registry_resolves_recovery_action_contract(self) -> None:
+        """Recovery action MUST resolve via runtime registry boundary."""
+
+        declaration = resolve_runtime_loop_action_declaration(RECOVERY_ALL_STALLED_ACTION_TYPE)
+        assert declaration.category == "recovery"
+        assert declaration.handler_contract == "recover_all_stalled"
+
+    @pytest.mark.anyio
+    async def test_loop_executes_recovery_through_runtime_registry_handler(
+        self,
+        driver_config: DriverConfig,
+        driver_state: DriverState,
+        mock_judge: Judge,
+        session_pool: SessionPool,
+        observer: FileObserver,
+        tmp_path: Path,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """All-stalled recovery MUST execute via runtime registry dispatch helper."""
+
+        captured: dict[str, object] = {}
+
+        async def _capture_recover_all_stalled(state: DriverState, observer: FileObserver) -> None:
+            captured["state"] = state
+            captured["observer"] = observer
+
+        monkeypatch.setattr(loop_module, "_recover_all_stalled", _capture_recover_all_stalled)
+
+        runtime_context = RuntimeContext(
+            state=driver_state,
+            config=driver_config,
+            runners={},
+            judge=mock_judge,
+            session_pool=session_pool,
+            observer=observer,
+            plan_path=tmp_path / "plan.yaml",
+        )
+
+        await loop_module._dispatch_registered_runtime_action(
+            action=Action.model_construct(action=RECOVERY_ALL_STALLED_ACTION_TYPE),
+            context=runtime_context,
+        )
+
+        assert captured["state"] is driver_state
+        assert captured["observer"] is observer
+
+
+class TestRuntimeContextContracts:
+    """Contract tests for the unified RuntimeContext rollout."""
+
+    def test_initial_handler_input_contract_is_single_shared_runtime_context(self) -> None:
+        """Registry and loop contract MUST agree on shared RuntimeContext input."""
+        assert INITIAL_HANDLER_INPUT_CONTRACT == "single shared RuntimeContext"
+        assert INITIAL_HANDLER_INPUT_CONTRACT == INITIAL_HANDLER_INPUT_CONTRACT
+        assert "single shared RuntimeContext" in RUNTIME_CONTEXT_ROLLOUT_CONTRACT
+
+    def test_runtime_context_responsibility_split_matches_adr_ownership(self) -> None:
+        """RuntimeContext boundaries MUST preserve DriverState vs DecideState ownership."""
+        split = {entry.concern: entry for entry in RUNTIME_CONTEXT_RESPONSIBILITY_SPLIT}
+
+        assert split["runtime_orchestration_state"].owner == "DriverState"
+        assert split["runtime_orchestration_state"].exposed_via_runtime_context is True
+
+        assert split["decide_local_state"].owner.startswith("DecideState")
+        assert split["decide_local_state"].exposed_via_runtime_context is False
+
+        assert split["event_contracts"].owner == "driver.events.registry"
+        assert split["policy_helpers"].owner == "driver.policy"
+
+    def test_runtime_context_boundary_rules_cover_required_subjects(self) -> None:
+        """Boundary rules MUST explicitly cover runtime, decide, events, and policy."""
+        subjects = {rule.subject for rule in RUNTIME_CONTEXT_BOUNDARY_RULES}
+        assert subjects == {
+            "runtime_orchestration_state",
+            "decide_local_state",
+            "event_contracts",
+            "policy_helpers",
+        }
+
+    def test_role_specific_contexts_are_explicitly_deferred(self) -> None:
+        """ADR decision MUST keep split handler contexts deferred in this rollout."""
+        assert ROLE_SPECIFIC_CONTEXTS_DEFERRED.status == "deferred"
+        assert ROLE_SPECIFIC_CONTEXTS_DEFERRED.current_contract == INITIAL_HANDLER_INPUT_CONTRACT
+        assert "DispatchContext" in ROLE_SPECIFIC_CONTEXTS_DEFERRED.deferred_contexts
+        assert "ReconcileContext" in ROLE_SPECIFIC_CONTEXTS_DEFERRED.deferred_contexts
+
+    def test_action_registry_uses_runtime_context_for_initial_handlers(self) -> None:
+        """Action registry declarations MUST pin RuntimeContext as the shared input."""
+        assert ACTION_HANDLER_CONTRACTS
+        assert all(
+            contract.handler_input == INITIAL_HANDLER_INPUT_CONTRACT
+            for contract in ACTION_HANDLER_CONTRACTS
+        )
+        assert all(
+            contract.role_specific_contexts_deferred for contract in ACTION_HANDLER_CONTRACTS
         )
 
 

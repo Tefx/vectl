@@ -93,7 +93,7 @@ To avoid registry sprawl, action definitions are categorized:
 
 This preserves planner support without collapsing all future actions into an unstructured string namespace.
 
-### 5. Handlers receive a unified `RuntimeContext`
+### 6. Handlers receive a unified `RuntimeContext`
 
 Loop action handlers will initially receive a single shared `RuntimeContext` object rather than role-specific micro-contexts.
 
@@ -101,7 +101,7 @@ This is an intentional migration simplification: the current need is to stabiliz
 
 If the context later grows too broad, role-specific contexts may be introduced as a second-step refactor. The initial contract should prefer migration safety over premature fragmentation.
 
-### 6. Event registry is a static declaration table
+### 7. Event registry is a static declaration table
 
 The event registry will be implemented as a static canonical declaration table, not as a runtime registration API.
 

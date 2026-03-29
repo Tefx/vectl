@@ -9,12 +9,14 @@ Does NOT own the decision of WHEN to call the judge (that is `loop.py`'s
 reconcile and dispatch logic).
 
 Architecture Reference: docs/DRIVER-ARCHITECTURE.md Section 2.10
-Blueprint Reference: docs/JUDGE-AGENT-PROMPT.md
+Blueprint Reference (doc-mirror/spec): docs/JUDGE-AGENT-PROMPT.md
+    Runtime authority: packaged ``judge_agent_prompt.md`` resource in ``vectl.driver``.
 """
 
 from __future__ import annotations
 
 import asyncio
+import importlib.resources
 import json
 import time
 from dataclasses import dataclass
@@ -183,6 +185,168 @@ class JudgeRecoveryPolicyInput:
     retry_budget: int
     fallback_runner_name: str | None
     verdict: JudgmentVerdict | None = None
+
+
+@dataclass(frozen=True)
+class JudgePromptAuthorityContract:
+    """Contract pins for judge prompt loading authority migration.
+
+    Source:
+    - Step contract intent: `driver-prompt-foundation.design-and-test`
+    - docs/DRIVER-ARCHITECTURE.md Section 2.10 (judge system prompt authority)
+    - docs/JUDGE-AGENT-PROMPT.md (semantic authority payload)
+
+    This contract is boundary-only and intentionally does not implement package
+    resource loading. Runtime implementation is owned by downstream migration
+    steps declared in ``implementation_owner_step`` and
+    ``authority_migration_owner_step``.
+    """
+
+    contract_id: str
+    source_step_id: str
+    docs_authority_reference: str
+    package_resource: str
+    package_name: str
+    implementation_owner_step: str
+    authority_migration_owner_step: str
+    exposed_gaps: tuple[str, ...]
+
+
+JUDGE_PROMPT_AUTHORITY_CONTRACT = JudgePromptAuthorityContract(
+    contract_id="driver-judge-prompt-authority-migration-a1",
+    source_step_id="driver-prompt-foundation.design-and-test",
+    docs_authority_reference="docs/JUDGE-AGENT-PROMPT.md",
+    package_resource="judge_agent_prompt.md",
+    package_name="vectl.driver",
+    implementation_owner_step="driver-prompt-migration.package-resource-loader",
+    authority_migration_owner_step="driver-prompt-migration.authority-reference-migration",
+    exposed_gaps=(
+        "docs mirror drift: docs/JUDGE-AGENT-PROMPT.md may diverge from packaged resource",
+        "verify_docs_packaged_sync() enforces drift visibility (run as part of CI/pre-commit)",
+    ),
+)
+
+
+def _load_packaged_judge_system_prompt(*, package_name: str, resource_name: str) -> str:
+    """Boundary stub for packaged judge prompt loading.
+
+    Args:
+        package_name: Python package containing prompt resources.
+        resource_name: Prompt resource filename inside ``package_name``.
+
+    Returns:
+        The loaded judge system prompt content.
+
+    Raises:
+        RuntimeError: If package/resource cannot be resolved or loaded.
+    """
+    try:
+        package_resource = importlib.resources.files(package_name).joinpath(resource_name)
+    except ModuleNotFoundError as exc:
+        raise RuntimeError(
+            "Judge prompt package is not importable: "
+            f"package={package_name!r}. Ensure vectl is installed and package resources "
+            "are included in the wheel/sdist build metadata."
+        ) from exc
+
+    if not package_resource.is_file():
+        raise RuntimeError(
+            "Judge prompt resource is missing from installed package: "
+            f"package={package_name!r}, resource={resource_name!r}. "
+            "Rebuild/reinstall with pyproject package-data including this file."
+        )
+
+    prompt_text = package_resource.read_text(encoding="utf-8")
+    if not prompt_text.strip():
+        raise RuntimeError(
+            "Judge prompt resource is empty: "
+            f"package={package_name!r}, resource={resource_name!r}. "
+            "Populate the packaged prompt content before running vectl driver."
+        )
+    return prompt_text
+
+
+def verify_docs_packaged_sync() -> tuple[bool, str]:
+    """Check whether docs/JUDGE-AGENT-PROMPT.md is in sync with packaged resource.
+
+    Returns:
+        Tuple of (is_synced, diagnostic_message).
+        is_synced=True means docs contains all key packaged content.
+        is_synced=False with diagnostic describes the divergence.
+
+    This function makes docs/packaged drift visible rather than silently tolerated.
+    Run as part of CI/pre-commit to catch drift before it affects behavior.
+
+    Drift detection approach:
+    - Docs is the extended spec/mirror with examples and commentary
+    - Packaged is the clean runtime prompt
+    - We check that key content markers from packaged appear in docs
+    - This allows docs to have extra content without triggering false drift
+
+    Drifts detected (actual prompt content divergence):
+    - Required sections missing from docs (would affect runtime behavior)
+    - Verdict format specification mismatch
+    - Missing judgment type definitions
+    """
+    import importlib.resources
+
+    docs_path = Path("docs/JUDGE-AGENT-PROMPT.md")
+    packaged_name = JUDGE_PROMPT_AUTHORITY_CONTRACT.package_resource
+    package_name = JUDGE_PROMPT_AUTHORITY_CONTRACT.package_name
+
+    if not docs_path.exists():
+        return (
+            True,
+            "docs/JUDGE-AGENT-PROMPT.md does not exist (packaged resource is authoritative)",
+        )
+
+    try:
+        packaged_resource = importlib.resources.files(package_name).joinpath(packaged_name)
+    except ModuleNotFoundError:
+        return False, f"packaged resource {package_name}/{packaged_name} not importable"
+
+    if not packaged_resource.is_file():
+        return False, f"packaged resource {package_name}/{packaged_name} is not a file"
+
+    docs_content = docs_path.read_text(encoding="utf-8")
+    packaged_content = packaged_resource.read_text(encoding="utf-8")
+
+    # Exact match (edge case)
+    if docs_content.strip() == packaged_content.strip():
+        return True, "docs/JUDGE-AGENT-PROMPT.md matches packaged resource exactly"
+
+    # Key sections that MUST appear in docs if packaged has them
+    # These are the core runtime instructions that affect judge behavior
+    key_sections = [
+        "## Response Format (MANDATORY)",
+        '"verdict": "<ACCEPT|REJECT|RETRY|SWITCH_AGENT|REPLAN|DEFER|HALT>"',
+        '"suggested_action"',
+        '"planner_instruction"',
+        "## Judgment Types",
+        "### TYPE: preflight",
+        "### TYPE: evidence",
+        "### TYPE: failure",
+        "### TYPE: escalation",
+        "### TYPE: gate",
+        "### TYPE: anomaly",
+        "### TYPE: cold_context",
+    ]
+
+    missing_sections: list[str] = []
+    for section in key_sections:
+        if section in packaged_content and section not in docs_content:
+            missing_sections.append(section)
+
+    if missing_sections:
+        return False, (
+            f"docs/packaged drift detected: key sections missing from docs: {missing_sections}. "
+            "These sections exist in packaged but not in docs, which would affect runtime."
+        )
+
+    return True, (
+        "docs/JUDGE-AGENT-PROMPT.md contains all key packaged content "
+        "(docs may have extra examples/commentary; this is expected for doc-mirror)"
+    )
 
 
 def decide_judge_recovery_policy(
@@ -383,7 +547,8 @@ class Judge:
     (see Structured Output Strategy in Architecture doc).
 
     Architecture: docs/DRIVER-ARCHITECTURE.md Section 2.10
-    Blueprint: docs/JUDGE-AGENT-PROMPT.md (full prompt)
+    Blueprint Reference (doc-mirror): docs/JUDGE-AGENT-PROMPT.md
+    Runtime prompt authority: packaged ``judge_agent_prompt.md`` resource in ``vectl.driver``.
     Blueprint: DRIVER-BLUEPRINT.md lines 241-264 (Invocation Protocol)
 
     Invariants:
@@ -870,17 +1035,15 @@ class Judge:
 
 
 def _load_judge_system_prompt() -> str:
-    """Load judge system prompt from docs/JUDGE-AGENT-PROMPT.md.
+    """Load judge system prompt from packaged runtime resource.
 
     Architecture: docs/DRIVER-ARCHITECTURE.md Section 2.10
     """
-    prompt_path = Path("docs/JUDGE-AGENT-PROMPT.md")
-    if not prompt_path.exists():
-        return (
-            "You are a Plan Execution Judge. Return strict JSON verdict with keys "
-            "verdict, reason, suggested_action, planner_instruction."
-        )
-    return prompt_path.read_text(encoding="utf-8")
+    contract = JUDGE_PROMPT_AUTHORITY_CONTRACT
+    return _load_packaged_judge_system_prompt(
+        package_name=contract.package_name,
+        resource_name=contract.package_resource,
+    )
 
 
 def _write_schema_tempfile(schema: dict[str, object]) -> str:

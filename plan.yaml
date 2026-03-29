@@ -50721,3 +50721,39 @@ phases:
     depends_on:
     - driver-live-smoke-deep-review.spec-conformance
     agent: blind-tester
+  - id: driver-live-smoke-deep-review.gate
+    name: Gate live smoke deep review
+    status: pending
+    description: 'Final gate review for the live runner smoke coverage program.
+
+
+      review_depth: THOROUGH
+
+      cross_cutting_focus:
+
+      - trustworthy PASS vs explicit SKIP evidence
+
+      - production authority preserved
+
+      - pending driver enhancement work remains blocked until this review opens'
+    verification: '- Independent audits completed and reviewed.
+
+      - Real codex/opencode smoke layer is trustworthy enough to unblock further driver
+      enhancement phases.
+
+      - Remaining issues, if any, have explicit remediation ownership.'
+    evidence_template: '## Final Deep Review Gate
+
+      **Audit summary**:
+
+      **Blockers**:
+
+      **Unblock decision**:
+
+      '
+    depends_on:
+    - driver-live-smoke-deep-review.wiring-audit
+    - driver-live-smoke-deep-review.spec-conformance
+    - driver-live-smoke-deep-review.architecture-review
+    - driver-live-smoke-deep-review.black-box-verification
+    agent: gate-reviewer

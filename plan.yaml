@@ -39930,7 +39930,7 @@ phases:
       - none'
   - id: driver-evolution-event-contracts.implement-typed-emitter
     name: Add typed event emitter helpers
-    status: pending
+    status: claimed
     description: "step_type: implementation\nsimple_feature_exception:\n  approved:\
       \ false\n\nFill in stub bodies and replace direct string-literal emission with\
       \ substantive typed-emitter logic on the pinned canonical registry.\n\nUPSTREAM\
@@ -39970,6 +39970,8 @@ phases:
     depends_on:
     - driver-evolution-event-contracts.implement-canonical-events
     agent: python-executor
+    claimed_by: python-executor
+    claimed_at: '2026-03-29T06:52:44.756723+00:00'
   - id: driver-evolution-event-contracts.spec-conformance
     name: Verify FINAL DECIDE STEP_COMPLETED schema conformance
     status: pending

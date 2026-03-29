@@ -42374,7 +42374,7 @@ phases:
     claimed_at: '2026-03-29T05:51:55.505343+00:00'
   - id: driver-prompt-foundation.design-and-test
     name: Design packaged prompt boundary and write expected-red tests
-    status: claimed
+    status: done
     description: 'step_type: test
 
       merged_contract_test: true
@@ -42430,6 +42430,22 @@ phases:
     agent: python-senior
     claimed_by: python-senior
     claimed_at: '2026-03-29T05:51:48.410699+00:00'
+    done_at: '2026-03-29T06:12:24.599444+00:00'
+    evidence: "Artifact:\n- PR: commit 78b8a5c (vectl/step-driver-prompt-foundation.design-and-test)\n\
+      \nVerification:\n- Run: `uv run pytest -q tests/test_driver_judge_prompt_migration_expected_red.py`\
+      \ -> FAILED as expected (3 collected, 1 passed, 2 failed)\n  - failed: `test_packaged_prompt_resource_exists_at_declared_authority_path`\n\
+      \  - failed: `test_runtime_loader_routes_through_packaged_loader_boundary`\n\
+      \nSpec link:\n- step: driver-prompt-foundation.design-and-test (test_define_red,\
+      \ merged_contract_test=true)\n- docs/DRIVER-ARCHITECTURE.md §2.10\n- docs/JUDGE-AGENT-PROMPT.md\n\
+      \nstep_intent: test_define_red\nexpected_result: red\nobserved_result: red (authority\
+      \ drift exposed: packaged resource missing + runtime loader still bound to docs\
+      \ path)\nfailure_alignment: Full alignment; failures directly represent pre-implementation\
+      \ docs/runtime authority drift targeted by packaged judge-prompt migration.\n\
+      product_implementation_files_modified: yes\nexposed_gaps:\n- Runtime loader\
+      \ boundary contract/stub added, but `_load_judge_system_prompt()` still reads\
+      \ `docs/JUDGE-AGENT-PROMPT.md` directly.\n- Packaged authority resource `vectl.templates/judge_agent_prompt.md`\
+      \ is not present/wired.\n- Downstream owner required: driver-prompt-migration.package-resource-loader\n\
+      - Downstream owner required: driver-prompt-migration.authority-reference-migration"
 - id: driver-prompt-migration
   name: Driver Prompt Resource Migration
   status: locked

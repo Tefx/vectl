@@ -45590,7 +45590,7 @@ phases:
   steps:
   - id: driver-continuity-restart-recovery.impl
     name: Implement startup recovery controller and continuity policy
-    status: pending
+    status: claimed
     description: "step_type: implementation\ntags:\n  - integration\n\nFill in stub\
       \ bodies and replace placeholder startup-recovery paths with working continuity\
       \ logic on the existing restart surfaces.\n\nUPSTREAM ARTIFACTS (from merged\
@@ -45641,6 +45641,8 @@ phases:
     depends_on:
     - driver-continuity-restart-recovery.design-and-test
     agent: python-senior
+    claimed_by: python-senior
+    claimed_at: '2026-03-29T02:00:08.803651+00:00'
   - id: driver-continuity-restart-recovery.verify
     name: Verify startup recovery and continuity policy
     status: pending

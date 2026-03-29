@@ -42893,7 +42893,7 @@ phases:
       \ plan/orchestrator state files (plan.yaml, .git/vectl/claims.json)"
   - id: driver-routing-hardening.test-define-red
     name: Define expected-red invalid default routing regression
-    status: pending
+    status: claimed
     description: 'step_type: test
 
       step_intent: test_define_red
@@ -42936,6 +42936,8 @@ phases:
     depends_on:
     - driver-routing-hardening.contract
     agent: python-executor
+    claimed_by: python-executor
+    claimed_at: '2026-03-29T12:01:58.581345+00:00'
   - id: driver-routing-hardening.impl
     name: Reject reserved `agent_routing.default` during config load
     status: pending

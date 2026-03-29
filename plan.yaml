@@ -50138,11 +50138,15 @@ phases:
       verification_scope: local-check
 
 
-      Fill in stub bodies and add the shared live test harness per the ratified foundation
-      decisions from driver-live-smoke-foundation.
+      Fill in stub bodies and add the shared live test harness per the explicit ratified
+      outputs from driver-live-smoke-foundation.ratify-live-smoke-policy and driver-live-smoke-foundation.finalize-test-surface-decisions.
 
 
       UPSTREAM ARTIFACTS (authoritative for this step):
+
+      - driver-live-smoke-foundation.ratify-live-smoke-policy — exact codex/opencode
+      judge and dispatch model identifiers, override mechanisms, and fallback rules
+      are AUTHORITATIVE
 
       - tests/live_smoke/helpers.py — shared helper interfaces and diagnostics contract
       are AUTHORITATIVE
@@ -50154,10 +50158,15 @@ phases:
       YOUR SCOPE:
 
       - create tests/live_smoke/helpers.py with shared subprocess capture, skip gating,
-      cheap-model argument selection, and verdict-shape assertion helpers
+      explicit runner/model override plumbing, cheap-model argument selection, and
+      verdict-shape assertion helpers
 
       - register live_runner/codex_live/opencode_live/judge_live/dispatch_live markers
       and opt-in env behavior without folding live tests into the default fast suite
+
+      - encode the ratified runner/scenario mapping so helpers consume exact named
+      model ids and exact override mechanisms rather than a generic "cheap model"
+      abstraction
 
       - preserve full command, returncode, stdout, stderr for failure diagnostics
 
@@ -50175,10 +50184,12 @@ phases:
       Each deliverable MUST contain substantive logic that processes its inputs and
       produces outputs that vary based on those inputs.'
     verification: '- Main path: helper module and pytest marker/config surface exist
-      and support manual isolated live runs.
+      and support manual isolated live runs using the ratified exact model ids and
+      override mechanisms.
 
       - Failure path: explicit skip reasons differentiate missing binary, missing
-      auth/prereq, and missing opt-in env gate.
+      auth/prereq, missing opt-in env gate, and preferred-model-unavailable fallback
+      handling.
 
       - Proof: manual invocation of a no-op/skip path shows captured diagnostics and
       non-default-suite isolation behavior.'

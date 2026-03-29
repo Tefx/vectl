@@ -44013,7 +44013,7 @@ phases:
     agent: gate-reviewer
 - id: driver-prompt-foundation
   name: Driver Prompt Resource Foundation
-  status: in_progress
+  status: done
   gate: Packaged judge-prompt resource contract, docs/runtime relationship, and failure
     semantics are pinned before runtime migration fan-out.
   context: Non-blocking prompt-resource work. Deliberately postponed until the renewed
@@ -44023,7 +44023,7 @@ phases:
   steps:
   - id: driver-prompt-foundation.gate
     name: Gate prompt-resource foundation readiness
-    status: claimed
+    status: done
     description: 'Gate review: verify the prompt-resource foundation phase is precise
       enough to unlock implementation fan-out.
 
@@ -44074,6 +44074,30 @@ phases:
     agent: gate-reviewer
     claimed_by: gate-reviewer
     claimed_at: '2026-03-29T08:55:56.703986+00:00'
+    done_at: '2026-03-29T09:01:12.933601+00:00'
+    evidence: "## Gate Review Report\n| Step ID | Status | Evidence Quality | Concerns\
+      \ |\n| ------- | ------ | ---------------- | -------- |\n| driver-prompt-foundation.design-and-test\
+      \ | ✓ PASS | HIGH | None |\n| driver-prompt-foundation.gate | ✓ PASS | N/A |\
+      \ None blocking |\n\n### Automated Gates\n- mypy: PASS (clean on modified files)\n\
+      - ruff: PASS (pre-existing docstring line-length issues only)\n- pytest: 1 passed,\
+      \ 2 expected-red failures (correct behavior)\n\n### Contract Purity Verification\n\
+      - `JudgePromptAuthorityContract` is frozen dataclass with explicit owner pins\n\
+      - `implementation_owner_step`: `driver-prompt-migration.package-resource-loader`\n\
+      - `authority_migration_owner_step`: `driver-prompt-migration.authority-reference-migration`\n\
+      - `exposed_gaps`: correctly identifies both gaps\n\n### Red-Test Scope Verification\n\
+      - 2 failures correctly expose:\n  1. Packaged resource missing at `vectl.templates/judge_agent_prompt.md`\n\
+      \  2. Runtime loader still reads `docs/JUDGE-AGENT-PROMPT.md` directly\n- 1\
+      \ pass verifies contract structure\n- No product-code edits beyond contract/stub\
+      \ addition (lines 188-244 in judge.py)\n\n### Downstream Seams Verification\n\
+      - Two distinct implementation owners in contract\n- `package-resource-loader`:\
+      \ resource creation + loader wiring\n- `authority-reference-migration`: reference\
+      \ migration + drift visibility\n- Plan confirms both steps exist in `driver-prompt-migration`\
+      \ phase\n\n### Files Changed\n- `src/vectl/driver/judge.py` (+59 lines): contract\
+      \ + stub\n- `tests/test_driver_judge_prompt_migration_expected_red.py` (+56\
+      \ lines): expected-red tests\n\n### Prevention Rules\n- Expected-red tests MUST\
+      \ test real implementation gaps\n- Contracts MUST pin downstream implementation\
+      \ owners by step ID\n\n### Decision: OPEN\nAll gate criteria satisfied. Foundation\
+      \ is precise enough to unlock implementation fan-out."
   - id: driver-prompt-foundation.design-and-test
     name: Design packaged prompt boundary and write expected-red tests
     status: done
@@ -44150,7 +44174,7 @@ phases:
       - Downstream owner required: driver-prompt-migration.authority-reference-migration"
 - id: driver-prompt-migration
   name: Driver Prompt Resource Migration
-  status: locked
+  status: pending
   gate: Runtime consumes packaged prompt resources, code references stop treating
     docs/ as runtime authority, and green verification proves no silent fallback remains.
   depends_on:

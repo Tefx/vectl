@@ -42840,7 +42840,7 @@ phases:
       product_implementation_files_modified: no'
 - id: driver-routing-hardening
   name: Driver Routing Hardening
-  status: in_progress
+  status: done
   gate: Reject unsupported `agent_routing.default` semantics with explicit validation
     and independent verification.
   depends_on:
@@ -43130,7 +43130,7 @@ phases:
       PASS'
   - id: driver-routing-hardening.gate
     name: Gate reserved routing hardening
-    status: claimed
+    status: done
     description: 'step_type: gate
 
       Gate review for the reserved-key routing hardening phase.'
@@ -43150,6 +43150,24 @@ phases:
     agent: gate-reviewer
     claimed_by: gate-reviewer
     claimed_at: '2026-03-29T12:15:12.336674+00:00'
+    done_at: '2026-03-29T12:18:01.576950+00:00'
+    evidence: "## Gate review\n- Step evidence reviewed:\n  - contract: Created docs/contracts/driver-routing-hardening-contract.yaml\
+      \ pinning authoritative interface and rejection semantics\n  - test-define-red:\
+      \ Added 6 tests in TestAgentRoutingValidation covering rejection, error message\
+      \ quality, and valid routing preservation\n  - impl: Added _validate_no_agent_routing_default\
+      \ model validator in config.py lines 170-185 with clear error message\n  - verify:\
+      \ Independent verification confirmed 6/6 tests pass, implementation matches\
+      \ contract, route_agent() has no runtime special-casing\n- Contract requirements\
+      \ verified:\n  - Invalid key `agent_routing.default` explicitly named (line\
+      \ 179: `if \"default\" in self.agent_routing`)\n  - Rejection timing: config\
+      \ validation (Pydantic @model_validator), not runtime\n  - Error message actionable:\
+      \ \"agent_routing.default is not supported. Remove agent_routing.default and\
+      \ use explicit exact/glob entries in agent_routing plus fallback_runner for\
+      \ default routing behavior.\"\n  - route_agent() behavior: exact match → glob\
+      \ match → fallback_runner (lines 127-146), no \"default\" special-case\n  -\
+      \ Valid routing preserved: 39/39 test_driver_config.py tests pass\n- Gate criterion:\
+      \ \"Reject unsupported `agent_routing.default` semantics with explicit validation\
+      \ and independent verification.\"\n- Gate decision: OPEN"
 - id: driver-enhancement-foundation
   name: Driver Post-Bootstrap Enhancement Foundation
   status: in_progress

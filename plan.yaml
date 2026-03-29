@@ -49154,3 +49154,13 @@ phases:
     verification: Contract artifacts state the exact final signature, the forbidden
       explicit params list, and the reconcile-only scope boundary.
     agent: python-senior
+  - id: driver-reconcile-context-convergence.test-define-red
+    name: Define expected-red reconcile convergence regressions
+    status: pending
+    description: 'Add focused expected-red tests for the context-only target: pin
+      the new reconcile signature, require loop runtime invocation through `context`
+      only, and expose any remaining dual-path reconcile dependency injection in representative
+      runtime/hardening/recovery coverage.'
+    verification: Targeted reconcile convergence tests run in expected-red mode with
+      failures attributable only to the not-yet-landed context-only refactor.
+    agent: python-executor

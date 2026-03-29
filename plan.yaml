@@ -49143,3 +49143,14 @@ phases:
     verification: '`pytest tests/test_driver_loop_contract.py -k test_loop_contract_signatures_are_pinned`
       passes and the diff is limited to `tests/test_driver_loop_contract.py`.'
     agent: python-executor
+  - id: driver-reconcile-context-convergence.contract
+    name: Pin final reconcile context-only contract
+    status: pending
+    description: Define the final clean reconcile contract as a single RuntimeContext
+      boundary (`reconcile(completed, *, context)` or equivalent single context-first
+      form). Explicitly forbid parallel explicit runtime params on `reconcile()` (`state`,
+      `judge`, `session_pool`, `observer`, `plan_path`, `config`, `runners`). Record
+      `handle_complete()` as a non-goal unless a direct dependency is proven.
+    verification: Contract artifacts state the exact final signature, the forbidden
+      explicit params list, and the reconcile-only scope boundary.
+    agent: python-senior

@@ -44363,7 +44363,7 @@ phases:
     agent: gate-reviewer
 - id: driver-continuity-capability-safety
   name: 'Driver Continuity: Capability & Replay Safety'
-  status: in_progress
+  status: done
   gate: Runner capability semantics and tool replay safety are explicit enough for
     restart/resume control decisions and cannot silently duplicate or reapply prior
     side effects.
@@ -44659,7 +44659,7 @@ phases:
       mismatch rejected ✓'
   - id: driver-continuity-capability-safety.gate
     name: Gate capability and replay safety
-    status: claimed
+    status: done
     description: "step_type: gate\nGate review for runner capability and replay safety.\n\
       \nreview_depth: THOROUGH\ncross_cutting_focus:\n  - resume decisions depend\
       \ on authoritative capability facts\n  - replay/idempotency envelope blocks\
@@ -44676,6 +44676,53 @@ phases:
     agent: gate-reviewer
     claimed_by: integration-verifier
     claimed_at: '2026-03-29T00:43:09.460872+00:00'
+    done_at: '2026-03-29T00:46:45.752690+00:00'
+    evidence: 'Artifact:
+
+      - PR: ba7d8e3b238e1b3dde0f949ea612b436a43f5bf0
+
+
+      Verification:
+
+      - Run: uv run pytest -v tests/test_driver_continuity_capability_safety_red.py
+      tests/test_driver_continuity_contract.py -> 9 passed
+
+      - Run: uv run pytest -v tests/test_driver_loop_hardening.py -k "handle_dispatch"
+      -> 1 passed
+
+      - Run: uv run pytest -v tests/test_driver_loop_hardening.py -k "runner_fallback"
+      -> 1 passed
+
+
+      Gate_intersection_analysis:
+
+      - No blocking issues for driver-continuity-restart-recovery
+
+      - Capability model explicit in RUNNER_CONTINUITY_CAPABILITIES
+
+      - Replay safety verifies duplicate attempt-key, runner/token binding, snapshot
+      drift, empty token, non-resumable runner rejection
+
+      - Fresh dispatch remains allowed
+
+
+      Spec link:
+
+      - docs/DRIVER-CONTINUITY-FOUNDATION.md sections 3,4,6
+
+
+      Test/gate semantic reporting:
+
+      - step_intent: gate capability and replay safety
+
+      - expected_result: pass with explicit capability and replay guarantees
+
+      - observed_result: pass
+
+      - failure_alignment: none
+
+      - whether any product implementation files were modified: no additional modifications
+      in gate step'
   - id: driver-continuity-capability-safety.design-and-test
     name: Design capability boundary and write expected-red tests
     status: done

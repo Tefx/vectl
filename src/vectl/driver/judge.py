@@ -185,6 +185,65 @@ class JudgeRecoveryPolicyInput:
     verdict: JudgmentVerdict | None = None
 
 
+@dataclass(frozen=True)
+class JudgePromptAuthorityContract:
+    """Contract pins for judge prompt loading authority migration.
+
+    Source:
+    - Step contract intent: `driver-prompt-foundation.design-and-test`
+    - docs/DRIVER-ARCHITECTURE.md Section 2.10 (judge system prompt authority)
+    - docs/JUDGE-AGENT-PROMPT.md (semantic authority payload)
+
+    This contract is boundary-only and intentionally does not implement package
+    resource loading. Runtime implementation is owned by downstream migration
+    steps declared in ``implementation_owner_step`` and
+    ``authority_migration_owner_step``.
+    """
+
+    contract_id: str
+    source_step_id: str
+    docs_authority_reference: str
+    package_resource: str
+    package_name: str
+    implementation_owner_step: str
+    authority_migration_owner_step: str
+    exposed_gaps: tuple[str, ...]
+
+
+JUDGE_PROMPT_AUTHORITY_CONTRACT = JudgePromptAuthorityContract(
+    contract_id="driver-judge-prompt-authority-migration-a1",
+    source_step_id="driver-prompt-foundation.design-and-test",
+    docs_authority_reference="docs/JUDGE-AGENT-PROMPT.md",
+    package_resource="judge_agent_prompt.md",
+    package_name="vectl.templates",
+    implementation_owner_step="driver-prompt-migration.package-resource-loader",
+    authority_migration_owner_step="driver-prompt-migration.authority-reference-migration",
+    exposed_gaps=(
+        "runtime loader still reads docs/JUDGE-AGENT-PROMPT.md directly",
+        "packaged prompt resource is not yet wired as runtime prompt authority",
+    ),
+)
+
+
+def _load_packaged_judge_system_prompt(*, package_name: str, resource_name: str) -> str:
+    """Boundary stub for packaged judge prompt loading.
+
+    Args:
+        package_name: Python package containing prompt resources.
+        resource_name: Prompt resource filename inside ``package_name``.
+
+    Returns:
+        The loaded judge system prompt content.
+
+    Raises:
+        NotImplementedError: Always. Runtime resource loading is intentionally
+            deferred to `driver-prompt-migration.package-resource-loader`.
+    """
+    raise NotImplementedError(
+        "Packaged judge prompt loading deferred to driver-prompt-migration.package-resource-loader"
+    )
+
+
 def decide_judge_recovery_policy(
     policy_input: JudgeRecoveryPolicyInput,
 ) -> JudgeContinuityPolicyOutput:

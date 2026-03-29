@@ -43516,7 +43516,7 @@ phases:
     agent: gate-reviewer
   - id: driver-judge-hardening-recovery-policy.design-and-test
     name: Design failure policy boundary and write expected-red tests
-    status: claimed
+    status: done
     description: 'step_type: test
 
       merged_contract_test: true
@@ -43571,6 +43571,21 @@ phases:
     agent: python-senior
     claimed_by: python-senior
     claimed_at: '2026-03-29T01:10:37.878932+00:00'
+    done_at: '2026-03-29T01:17:14.772026+00:00'
+    evidence: "Artifact:\n- PR: cb2577d\n\nVerification:\n- Run: uv run pytest -q\
+      \ tests/test_driver_judge_recovery_policy_expected_red.py -> EXPECTED RED (9\
+      \ collected; 1 passed, 8 failed with NotImplementedError from policy stub)\n\
+      \nSpec link:\n- docs/DRIVER-ARCHITECTURE.md §2.10\n- docs/JUDGE-AGENT-PROMPT.md\
+      \ TYPE failure / TYPE escalation\n- docs/DRIVER-CONTINUITY-FOUNDATION.md §§4,7\n\
+      \nTest-step semantic reporting:\n- step_intent: test_define_red\n- expected_result:\
+      \ red\n- observed_result: red\n- failure_alignment: failures align to missing\
+      \ policy classification path and routing branches\n- whether any product implementation\
+      \ files were modified: yes, minimal boundary contract/stub surfaces only (judge.py,\
+      \ types.py)\n- exposed_gaps:\n  - missing decide_judge_recovery_policy branch\
+      \ logic\n  - missing mapping from judge outcome kinds to continuity policy actions\n\
+      \  - missing verdict-driven routing for planner_remediation/retry/halt\n  -\
+      \ missing propagation of JudgeContinuityPolicyOutput into runtime policy paths\n\
+      - downstream_implementation_owner: driver-judge-hardening-recovery-policy.impl"
 - id: driver-judge-hardening-review
   name: 'Driver Judge Hardening: Review'
   status: locked

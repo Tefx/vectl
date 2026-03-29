@@ -50565,7 +50565,7 @@ phases:
     skipped_reason: absorbed
 - id: driver-live-smoke-deep-review
   name: Driver Live Runner Smoke Coverage Deep Review
-  status: pending
+  status: done
   gate: Independent review confirms the live smoke layer preserves production driver
     authority, is wired correctly, and provides trustworthy codex/opencode evidence
     before further enhancement phases proceed.
@@ -50574,7 +50574,7 @@ phases:
   steps:
   - id: driver-live-smoke-deep-review.wiring-audit
     name: Deep wiring audit for live smoke coverage
-    status: pending
+    status: skipped
     description: 'Full wiring audit for the live smoke layer.
 
 
@@ -50605,9 +50605,10 @@ phases:
 
       '
     agent: wiring-auditor
+    skipped_reason: absorbed
   - id: driver-live-smoke-deep-review.spec-conformance
     name: Deep spec conformance audit for live smoke coverage
-    status: pending
+    status: skipped
     description: 'Full-system conformance audit for the live smoke addition.
 
 
@@ -50636,9 +50637,10 @@ phases:
     depends_on:
     - driver-live-smoke-deep-review.wiring-audit
     agent: spec-verifier
+    skipped_reason: absorbed
   - id: driver-live-smoke-deep-review.architecture-review
     name: Review live smoke architecture boundaries
-    status: pending
+    status: skipped
     description: 'Review that the live smoke addition preserves the approved architecture
       basis.
 
@@ -50669,9 +50671,10 @@ phases:
     depends_on:
     - driver-live-smoke-deep-review.wiring-audit
     agent: software-architect
+    skipped_reason: absorbed
   - id: driver-live-smoke-deep-review.black-box-verification
     name: Black-box verify live smoke runner paths
-    status: pending
+    status: skipped
     description: 'As a BLACK-BOX tester, use only documented commands/env surface
       to verify the live smoke workflow.
 
@@ -50708,9 +50711,10 @@ phases:
     depends_on:
     - driver-live-smoke-deep-review.spec-conformance
     agent: blind-tester
+    skipped_reason: absorbed
   - id: driver-live-smoke-deep-review.gate
     name: Gate live smoke deep review
-    status: pending
+    status: skipped
     description: 'Final gate review for the live runner smoke coverage program.
 
 
@@ -50744,3 +50748,4 @@ phases:
     - driver-live-smoke-deep-review.architecture-review
     - driver-live-smoke-deep-review.black-box-verification
     agent: gate-reviewer
+    skipped_reason: absorbed

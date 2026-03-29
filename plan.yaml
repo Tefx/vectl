@@ -46547,7 +46547,7 @@ phases:
       \ with observable control-flow impact."
   - id: driver-continuity-review.fix-gate-blockers
     name: Fix continuity review gate blockers
-    status: claimed
+    status: done
     description: 'step_type: implementation
 
       Fix ALL blocker-class and listed should-fix findings from driver-continuity-review.gate
@@ -46632,6 +46632,46 @@ phases:
     agent: python-senior
     claimed_by: python-senior
     claimed_at: '2026-03-29T05:31:30.608598+00:00'
+    done_at: '2026-03-29T05:37:24.452131+00:00'
+    evidence: "Artifact:\n- PR: be680ed (commit hash)\n\nVerification:\n- Run: `uv\
+      \ run python -m pytest tests/test_driver_continuity_contract.py::test_continuity_types_exist_with_pinned_fields\
+      \ -v --tb=short` -> PASSED (1 passed)\n- Run: `uv run python -m pytest tests/test_driver_runners.py::TestRunnerResultFields::test_frozen_dataclass\
+      \ -v --tb=short` -> PASSED (1 passed)\n- Run: `uv run python -m pytest tests/test_decide_state_isolation.py\
+      \ -v --tb=short` -> PASSED (11 passed)\n- Run: `uv run python -m pytest tests/test_driver_continuity_expected_red.py\
+      \ tests/test_driver_judge_impl_runtime.py -v --tb=short` -> PASSED (14 passed)\n\
+      - Run: `uv run python -m pytest tests/test_decide.py -v --tb=short` -> PASSED\
+      \ (20 passed)\n- Run: `uv run python -m pytest tests/test_driver_continuity_contract.py\
+      \ tests/test_driver_runners.py tests/test_decide_state_isolation.py tests/test_driver_continuity_expected_red.py\
+      \ tests/test_driver_judge_impl_runtime.py -v --tb=short` -> PASSED (96 passed)\n\
+      \n- Run: `rg \"fields\\(ContinuityLedgerEntry\\)|ContinuityLedgerEntry\\(\"\
+      \ tests -n` -> sibling search complete; only pinned field assertion site is\
+      \ `tests/test_driver_continuity_contract.py` and fixture usages are in recovery\
+      \ tests; no additional stale pin sites found.\n- Run: `rg \"RunnerResult\\(|test_frozen_dataclass|\\\
+      .status\\s*=\\s*RunnerStatus\" src tests -n` -> sibling search complete; no\
+      \ runtime post-init mutation assumptions found in `src` (constructor-only usage).\n\
+      - Run: `rg \"result\\.(status|session_id|output|elapsed_seconds|exit_code|cost_usd|tokens|continuity)\\\
+      s*=\" src/vectl/driver -n` -> no assignment-based mutations of `RunnerResult`\
+      \ fields in runtime code.\n\nImplemented remediation (batched):\n- B2 fixed:\
+      \ `src/vectl/driver/types.py`\n  - `RunnerResult` changed from `@dataclass`\
+      \ to `@dataclass(frozen=True)` to enforce immutability contract.\n- Should-fix\
+      \ fixed (DecideState isolation):\n  - `src/vectl/decide.py`: `_resolve_state(None)`\
+      \ now returns a fresh `DecideState()` (isolated fallback), preventing module-global\
+      \ coupling via `_legacy_state`.\n  - `tests/test_decide_state_isolation.py`:\
+      \ updated leakage-exposure assertions to verify isolated fallback semantics\
+      \ (state=None no longer mutates/reads shared legacy state).\n- B1 status:\n\
+      \  - `tests/test_driver_continuity_contract.py` includes `judge_policy` in `ContinuityLedgerEntry`\
+      \ pinned fields; verified passing and sibling-searched for stale assertions.\n\
+      \nScope/result summary:\n- BOTH blocker families are satisfied in this remediation\
+      \ batch (B1 verified passing + B2 implemented).\n- Listed should-fix set addressed:\n\
+      \  - DecideState isolation failures: remediated and passing.\n  - continuity\
+      \ expected-red asyncio failures: passing in focused and combined regression\
+      \ runs.\n  - judge runtime failures: passing in focused and combined regression\
+      \ runs.\n- Product implementation files modified: YES (`src/vectl/driver/types.py`,\
+      \ `src/vectl/decide.py`).\n- Test-only file modified: `tests/test_decide_state_isolation.py`.\n\
+      \nSpec link:\n- Step: `driver-continuity-review.fix-gate-blockers` (implementation\
+      \ requirements for B1/B2 + should-fix batch)\n- `docs/DRIVER-CONTINUITY-FOUNDATION.md`\
+      \ Section 4 and Section 7\n- `tests/test_driver_continuity_contract.py` ContinuityLedgerEntry\
+      \ pinned field contract"
   - id: driver-continuity-review.gate-retest
     name: Retest continuity review gate after blocker batch
     status: pending

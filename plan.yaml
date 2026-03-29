@@ -51437,3 +51437,122 @@ phases:
   status: pending
   depends_on:
   - driver-live-smoke-implementation
+  steps:
+  - id: driver-live-smoke-remediation.fix-codex-judge-parser-item-text-extraction
+    name: Fix codex judge parser item.text extraction
+    status: pending
+    description: 'Fix ALL blockers for codex judge structured output parsing.
+
+
+      ## Blockers to Fix (ALL of these, not just the first):
+
+
+      ## Root Cause vs Symptom:
+
+      - Root cause: parse_codex_judge_output() only inspects output.text and misses
+      the authoritative Codex verdict payload embedded in event.item.text for item.completed
+      / agent_message events.
+
+      - Symptom: live smoke tests cannot extract the JSON verdict even when Codex
+      returns a valid structured result, violating the DRIVER-LIVE-SMOKE-POLICY.md
+      rule forbidding tolerant fallback-to-text success paths.
+
+      - Why this fix is not surface-level: update the parser to read the correct event
+      surface while preserving strict JSON-only success semantics.
+
+
+      ### B1: Codex judge structured output parser incomplete
+
+      Locations: tests/live_smoke/test_codex_judge_live.py:151, tests/live_smoke/test_codex_judge_live.py:179
+
+      Remediation: Fix parse_codex_judge_output() to check item.text when event.type
+      == "item.completed" and event.item.type == "agent_message". Add the extraction
+      path after checking structured_output and result fields, but continue to require
+      valid JSON and do NOT add tolerant fallback text parsing.
+
+      Grep hint: rg -n "parse_codex_judge_output|item\.completed|agent_message|output\.text|item\.text"
+      tests/live_smoke
+
+      IMPORTANT: Search for sibling parser branches beyond the listed locations.
+
+
+      ## Completion Criteria (stub exclusion)
+
+      This is an IMPLEMENTATION step. Stub-only completion is NOT acceptable.
+
+      Each deliverable MUST contain substantive logic that processes its inputs and
+      produces outputs that vary based on those inputs.
+
+
+      ## Completion Criteria:
+
+      - B1 fixed without reintroducing tolerant fallback-to-text parsing
+
+      - Sibling search completed for related parser branches
+
+      - Valid JSON remains mandatory for success'
+    verification: '- Run codex judge live smoke tests and verify verdict extraction
+      works from item.text
+
+      - Grep hint returns no remaining parser branch that incorrectly treats output.text
+      as the only Codex verdict source
+
+      - Evidence explains why the change closes the structured-output blocker family'
+    agent: python-executor
+  - id: driver-live-smoke-remediation.fix-run-subprocess-timeout-handling
+    name: Fix run_subprocess timeout handling
+    status: pending
+    description: 'Fix ALL blockers for subprocess timeout handling.
+
+
+      ## Blockers to Fix (ALL of these, not just the first):
+
+
+      ## Root Cause vs Symptom:
+
+      - Root cause: run_subprocess() allows subprocess.TimeoutExpired to escape instead
+      of converting timeout failures into the helper''s result contract.
+
+      - Symptom: malformed-input dispatch paths can hang until the surrounding test
+      times out, so the smoke harness never records a controlled failure result.
+
+      - Why this fix is not surface-level: normalize timeout behavior at the subprocess
+      boundary so downstream smoke tests receive deterministic timeout results.
+
+
+      ### B2: Timeout exception unhandled in run_subprocess
+
+      Locations: tests/live_smoke/helpers.py:305
+
+      Remediation: Catch subprocess.TimeoutExpired in run_subprocess() and return
+      an appropriate SubprocessResult with returncode=-1 and a timeout message in
+      stderr. Preserve the helper''s existing result shape so callers can treat timeout
+      as a handled subprocess outcome.
+
+      Grep hint: rg -n "run_subprocess|TimeoutExpired|SubprocessResult|timeout" tests/live_smoke
+
+      IMPORTANT: Search for sibling timeout-handling branches beyond the listed location.
+
+
+      ## Completion Criteria (stub exclusion)
+
+      This is an IMPLEMENTATION step. Stub-only completion is NOT acceptable.
+
+      Each deliverable MUST contain substantive logic that processes its inputs and
+      produces outputs that vary based on those inputs.
+
+
+      ## Completion Criteria:
+
+      - B2 fixed so TimeoutExpired no longer escapes run_subprocess()
+
+      - Sibling search completed for related subprocess timeout paths
+
+      - Returned result includes deterministic timeout signaling for callers'
+    verification: '- Run timeout-related tests and verify proper timeout handling
+
+      - Grep hint shows no remaining unhandled TimeoutExpired path in the live smoke
+      helper surface where migration scope requires handling
+
+      - Evidence covers main path and timeout failure path'
+    agent: python-executor

@@ -49177,6 +49177,8 @@ phases:
       authoritative `RuntimeContext`. Do not delete or redesign `handle_complete()`.
     verification: '`reconcile()` exposes only `completed` plus `context`; no explicit
       runtime dependency params or fallback path remain in reconcile implementation.'
+    depends_on:
+    - driver-reconcile-context-convergence.test-define-red
     agent: python-senior
   - id: driver-reconcile-context-convergence.sync-callsites-tests
     name: Migrate remaining reconcile call sites and tests

@@ -50584,3 +50584,37 @@ phases:
     before further enhancement phases proceed.
   depends_on:
   - driver-live-smoke-doc-sync
+  steps:
+  - id: driver-live-smoke-deep-review.wiring-audit
+    name: Deep wiring audit for live smoke coverage
+    status: pending
+    description: 'Full wiring audit for the live smoke layer.
+
+
+      Verify:
+
+      - all tests/live_smoke modules are reachable by their documented markers
+
+      - helper reuse is centralized in tests/live_smoke/helpers.py
+
+      - no live runner path depends on mocked subprocess behavior
+
+      - no live smoke command leaks into the default fast suite
+
+      - manual/gated invocation surface matches docs and pytest config'
+    verification: '- Audit evidence shows no orphan live smoke files or hidden marker
+      drift.
+
+      - Audit evidence confirms real subprocess transport only for smoke paths.'
+    evidence_template: '## Deep Wiring Audit
+
+      **Reachability findings**:
+
+      **Mock leakage findings**:
+
+      **Isolation findings**:
+
+      **Verdict**:
+
+      '
+    agent: wiring-auditor

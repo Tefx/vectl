@@ -42905,7 +42905,7 @@ phases:
     agent: gate-reviewer
 - id: driver-judge-hardening-foundation
   name: 'Driver Judge Hardening: Foundation'
-  status: in_progress
+  status: done
   gate: Judge runner capability contract and codex invocation alignment are pinned
     before implementation fan-out.
   depends_on:
@@ -42988,7 +42988,7 @@ phases:
       contract) and makes codex alignment explicit.'
   - id: driver-judge-hardening-foundation.gate
     name: Gate judge hardening foundation
-    status: claimed
+    status: done
     description: "step_type: gate\nreview_depth: THOROUGH\nreview_depth_rationale:\n\
       \  - Judge stability is now a bootstrap blocker\n  - Codex judge invocation\
       \ currently diverges from stable runner config\n  - Downstream structured-output\
@@ -43020,6 +43020,45 @@ phases:
     agent: gate-reviewer
     claimed_by: gate-reviewer
     claimed_at: '2026-03-29T00:55:29.709909+00:00'
+    done_at: '2026-03-29T01:09:55.268829+00:00'
+    evidence: 'Artifact:
+
+      - PR: c0a7430 (contract step) and 5871957 (gate claim)
+
+
+      Verification:
+
+      - docs/DRIVER-ARCHITECTURE.md Structured Output Strategy explicitly maps runner
+      mechanisms
+
+      - src/vectl/driver/runners.py explicitly marks Gemini experimental
+
+      - src/vectl/driver/judge.py extraction policy defines hard-fail vs tolerant
+      boundary
+
+      - docs/JUDGE-AGENT-PROMPT.md and judgments enums distinguish FAILURE vs GATE
+      triggers
+
+
+      Spec link:
+
+      - docs/DRIVER-ARCHITECTURE.md sections 2.10 and coverage matrix
+
+      - docs/JUDGE-AGENT-PROMPT.md TYPE failure vs TYPE gate
+
+
+      Test/gate semantic reporting:
+
+      - step_intent: gate judge foundation contract precision
+
+      - expected_result: four ambiguity areas fully resolved
+
+      - observed_result: all four resolved explicitly
+
+      - failure_alignment: n/a
+
+      - whether any product implementation files were modified: no additional modifications
+      in gate step'
   - id: driver-judge-hardening-foundation.fix-contract-ambiguities
     name: Resolve judge contract ambiguities
     status: done
@@ -43144,7 +43183,7 @@ phases:
       \ false"
 - id: driver-judge-hardening-structured-output
   name: 'Driver Judge Hardening: Structured Output Stability'
-  status: locked
+  status: pending
   gate: Judge invocation reuses stable runner config, codex structured output is real-runner
     verified, and parser hard-fail/tolerance boundaries hold under real judgments.
   depends_on:
@@ -43358,7 +43397,7 @@ phases:
     agent: gate-reviewer
 - id: driver-judge-hardening-recovery-policy
   name: 'Driver Judge Hardening: Failure Policy Alignment'
-  status: locked
+  status: pending
   gate: Judge failure classes have an explicit retry/fallback/halt/remediation matrix
     and publish continuity-consumable outcomes; durable resume, restart recovery,
     and recovery journaling are owned by continuity phases.

@@ -50828,7 +50828,7 @@ phases:
       **Deviation records**: None required.'
   - id: driver-live-smoke-implementation.runner-smoke-matrix
     name: Run independent codex/opencode smoke matrix
-    status: pending
+    status: claimed
     description: 'As an INDEPENDENT TESTER (blind-tester), validate the live codex/opencode
       smoke matrix from a fresh perspective.
 
@@ -50911,6 +50911,8 @@ phases:
     - driver-live-smoke-implementation.add-opencode-dispatch-live-smoke-coverage
     - driver-live-smoke-implementation.update-docs
     agent: blind-tester
+    claimed_by: blind-tester
+    claimed_at: '2026-03-29T16:51:53.370425+00:00'
   - id: driver-live-smoke-implementation.gate
     name: Gate live smoke implementation
     status: pending

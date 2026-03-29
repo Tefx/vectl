@@ -44373,6 +44373,27 @@ phases:
     agent: gate-reviewer
     claimed_by: gate-reviewer
     claimed_at: '2026-03-29T02:00:31.460761+00:00'
+  - id: driver-judge-hardening-review.fix-codex-fallback-contract
+    name: Fix codex fallback contract divergence batch
+    status: pending
+    description: Batch-remediate the failed review gate by aligning `src/vectl/driver/judge.py`
+      codex fallback argv handling with the `driver.yaml` contract and eliminating
+      the hardcoded fallback argv divergence called out by the gate.
+    verification: Implementation updated and targeted validation demonstrates judge
+      fallback argv now derives from the driver.yaml contract with no hardcoded divergent
+      codex fallback path.
+    evidence_template: '- Files changed
+
+      - How argv contract alignment was implemented
+
+      - Validation run(s) and results
+
+      - Residual risks or follow-ups
+
+      '
+    depends_on:
+    - driver-judge-hardening-review.gate
+    agent: python-senior
 - id: driver-bootstrap-readiness
   name: Driver Real Bootstrap Readiness
   status: locked

@@ -45592,7 +45592,7 @@ phases:
   steps:
   - id: driver-continuity-restart-recovery.impl
     name: Implement startup recovery controller and continuity policy
-    status: claimed
+    status: done
     description: "step_type: implementation\ntags:\n  - integration\n\nFill in stub\
       \ bodies and replace placeholder startup-recovery paths with working continuity\
       \ logic on the existing restart surfaces.\n\nUPSTREAM ARTIFACTS (from merged\
@@ -45645,6 +45645,35 @@ phases:
     agent: python-senior
     claimed_by: python-senior
     claimed_at: '2026-03-29T02:00:08.803651+00:00'
+    done_at: '2026-03-29T02:10:03.421909+00:00'
+    evidence: 'Artifact:
+
+      - PR: bf2fb77
+
+
+      Verification:
+
+      - uv run pytest -q tests/test_driver_recovery.py tests/test_driver_loop_runtime.py
+      -k "startup_recovery or run_routes_startup_through_recovery_boundary_matrix_expected_red
+      or entrypoint_path_halts_when_startup_boundary_blocks" -> 7 passed
+
+      - uv run pytest -q tests/test_driver_continuity_expected_red.py -k "startup_recovery_blocks_main_loop_when_plan_claims_ledger_mismatch
+      or reconcile_success_persists_durable_ledger_for_restart_resume" -> 2 passed
+
+      - uv run ruff check src/vectl/driver/loop.py tests/test_driver_recovery.py ->
+      passed
+
+
+      Spec link:
+
+      - docs/DRIVER-CONTINUITY-FOUNDATION.md sections 3,4,7
+
+      - docs/DRIVER-ARCHITECTURE.md section 2.11
+
+
+      Deviation records:
+
+      - none'
   - id: driver-continuity-restart-recovery.verify
     name: Verify startup recovery and continuity policy
     status: pending

@@ -43373,7 +43373,7 @@ phases:
       Deviation records: none'
   - id: driver-judge-hardening-structured-output.real-codex-verify
     name: Verify real codex judge stability for blocking judgments
-    status: pending
+    status: claimed
     description: "step_type: verification\nverification_scope: phase-check\nprotects_downstream_gates:\n\
       \  - driver-judge-hardening-review.gate\n  - driver-bootstrap-readiness.gate\n\
       spec_refs:\n  - driver.yaml#judge\n  - docs/JUDGE-AGENT-PROMPT.md#verdict-schema\n\
@@ -43424,6 +43424,8 @@ phases:
     depends_on:
     - driver-judge-hardening-structured-output.impl
     agent: integration-verifier
+    claimed_by: integration-verifier
+    claimed_at: '2026-03-29T01:27:33.635517+00:00'
   - id: driver-judge-hardening-structured-output.gate
     name: Gate structured-output stability
     status: pending

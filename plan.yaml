@@ -39742,7 +39742,7 @@ phases:
       product_implementation_files_modified: no'
 - id: driver-evolution-event-contracts
   name: 'Driver Evolution: Canonical Event Contracts'
-  status: pending
+  status: in_progress
   gate: Canonical FINAL/DECIDE/STEP_COMPLETED semantics and typed emit surfaces proven
     against the ADR
   depends_on:
@@ -39750,7 +39750,7 @@ phases:
   steps:
   - id: driver-evolution-event-contracts.contract
     name: Pin canonical FINAL DECIDE STEP_COMPLETED contracts
-    status: pending
+    status: claimed
     description: 'step_type: contract
 
       contract_purity: ENFORCED
@@ -39813,6 +39813,8 @@ phases:
 
       - Typed emitter helper signatures are defined without adding runtime logic'
     agent: software-architect
+    claimed_by: software-architect
+    claimed_at: '2026-03-29T06:35:31.042433+00:00'
   - id: driver-evolution-event-contracts.implement-canonical-events
     name: Canonicalize FINAL DECIDE STEP_COMPLETED event semantics
     status: pending

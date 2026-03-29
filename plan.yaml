@@ -44454,7 +44454,7 @@ phases:
       mismatch rejected ✓'
   - id: driver-continuity-capability-safety.gate
     name: Gate capability and replay safety
-    status: pending
+    status: claimed
     description: "step_type: gate\nGate review for runner capability and replay safety.\n\
       \nreview_depth: THOROUGH\ncross_cutting_focus:\n  - resume decisions depend\
       \ on authoritative capability facts\n  - replay/idempotency envelope blocks\
@@ -44469,6 +44469,8 @@ phases:
     - driver-continuity-capability-safety.impl
     - driver-continuity-capability-safety.verify
     agent: gate-reviewer
+    claimed_by: gate-reviewer
+    claimed_at: '2026-03-29T00:09:28.337109+00:00'
   - id: driver-continuity-capability-safety.design-and-test
     name: Design capability boundary and write expected-red tests
     status: done

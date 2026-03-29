@@ -41421,7 +41421,7 @@ phases:
       - no blocker intersects final review/runnable surface'
   - id: driver-evolution-loop-migration.gate
     name: Gate loop migration and wiring
-    status: pending
+    status: claimed
     description: 'step_type: gate
 
       Gate review: verify the loop-migration phase completion and quality.
@@ -41465,6 +41465,8 @@ phases:
     - driver-evolution-loop-migration.liveness-probe
     - driver-evolution-loop-migration.full-plan-check
     agent: gate-reviewer
+    claimed_by: gate-reviewer
+    claimed_at: '2026-03-29T07:25:58.587673+00:00'
 - id: driver-evolution-review
   name: 'Driver Evolution: Review'
   status: locked

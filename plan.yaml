@@ -43180,7 +43180,7 @@ phases:
   steps:
   - id: driver-enhancement-foundation.architecture-basis
     name: Produce architecture basis for driver enhancement wave
-    status: claimed
+    status: done
     description: 'step_type: planning
 
 
@@ -43244,6 +43244,79 @@ phases:
     agent: software-architect
     claimed_by: software-architect
     claimed_at: '2026-03-29T13:38:44.852017+00:00'
+    done_at: '2026-03-29T13:47:39.903469+00:00'
+    evidence: '## Architecture basis for driver enhancement wave
+
+      - System layers: vectl core authority; driver orchestration control plane; driver
+      contract/governance layer; execution transport layer; enhancement observability/liveness
+      layer; recovery coordination layer.
+
+      - Source of truth matrix: vectl core owns plan/claims lifecycle; DecideState
+      owns dispatch intent; SessionPool owns ephemeral runner-aware reuse cache; DriverState
+      owns mutable runtime orchestration; driver.events.registry owns event schemas;
+      driver.action_registry owns loop action declarations; runner_continuity + driver.types
+      own continuity/replay contracts; recommended enhancement owners are observability_contracts.py
+      for lifecycle snapshots, liveness.py for taxonomy/classification, and recovery_coordinator.py
+      for runtime recovery decisions.
+
+      - Service catalog: existing anchors are loop.py, runtime_context.py, action_registry.py,
+      events/registry.py, session.py, runner_continuity.py, runners.py, parsers.py;
+      recommended enhancement-wave additions are observability_contracts.py, streaming.py,
+      liveness.py, recovery_coordinator.py.
+
+      - Runtime contract: preserves startup recovery before normal dispatch; keeps
+      registry-backed execution/planner actions; requires runner lifecycle, planner
+      dispatch, and recovery observability as explicit contracts; defines streaming-aware
+      liveness; pins crash/fail/timeout/no_progress/stall/transport_error taxonomy;
+      constrains future multi-runner fallback so runner-bound session/replay state
+      is never treated as portable across runners.
+
+      - State strata: intent = DecideState; resolved contract = driver.types + runner_continuity
+      + action/event registries + enhancement snapshot/taxonomy contracts; mutable
+      runtime state = DriverState/loop.py; transport-session state = subprocess handles,
+      pid, runner-native session/resume state, streaming cursors; durable recovery
+      state = continuity ledger/journal and future persisted recovery records.
+
+      - Transport boundary rules: transports surface raw facts only; event schema
+      ownership stays in registries; streaming readers may normalize progress but
+      may not mutate plan/recovery directly; watchdogs classify but do not own lifecycle;
+      crash recovery must re-enter via continuity/recovery coordination; parser responsibility
+      stays terminal-result oriented.
+
+      - Cross-cutting governance: event_registry remains static in events/registry.py;
+      action_registry remains static in action_registry.py; recommended static liveness
+      taxonomy registry belongs in liveness.py; lifecycle ordering is startup wiring
+      -> plan/claims/worktree repair -> startup recovery -> main loop, with per-dispatch
+      reader/watchdog attach and reconcile-owned teardown; coordination mechanisms
+      are RuntimeContext, DriverState, typed event emission, startup recovery boundary
+      objects, and a recommended watchdog-to-recovery handoff; governance owners explicitly
+      cover event registry, streaming reader lifecycle, watchdog ownership, and recovery
+      coordination.
+
+      - Shared abstractions: recommended shared types are RunnerHeartbeatSnapshot,
+      RunnerProgressSnapshot, RunnerLivenessState, RecoveryDecisionSnapshot, PlannerDispatchSnapshot;
+      recommended shared protocols are StreamProgressSource, RunnerLivenessClassifier,
+      RecoveryCoordinator; shared utility remains speculative and only justified if
+      3+ serialization call sites appear.
+
+      - Module split recommendations: keep loop.py as orchestration skeleton; keep
+      parsers.py terminal-only; add streaming.py for reader lifecycle; add liveness.py
+      for watchdog/taxonomy ownership; add recovery_coordinator.py for runtime recovery
+      decisions; add observability_contracts.py for shared enhancement snapshots;
+      keep events/registry.py as sole event schema owner; keep runner_continuity.py
+      separate from enhancement observability.
+
+      - Open questions: final home for enhancement snapshot contracts (types.py vs
+      observability_contracts.py); streaming normalization surface (raw lines vs parser-native
+      events vs handle callbacks); no_progress threshold placement; whether recovery
+      decision snapshots need durable persistence; how future cross-runner fallback
+      should be represented in continuity lineage.
+
+      - Readiness: READY for downstream decomposition; ownership, dependency direction,
+      state strata, and transport boundaries are explicit; remaining questions are
+      implementation-shape choices, not missing architectural authority.
+
+      - Files created: docs/contracts/driver-enhancement-architecture-basis.yaml'
   - id: driver-enhancement-foundation.contract
     name: Pin enhancement contracts for telemetry streaming and recovery
     status: pending

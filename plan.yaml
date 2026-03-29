@@ -52028,6 +52028,46 @@ phases:
     depends_on:
     - driver-continuity-hygiene-core.impl-hygiene-storage
     agent: python-senior
+  - id: driver-continuity-hygiene-core.gate
+    name: Gate continuity hygiene core runtime
+    status: pending
+    description: 'As an INDEPENDENT REVIEWER (gate-reviewer), assess whether the core
+      continuity hygiene runtime phase is ready for surface wiring.
+
+
+      Verification scope: phase-check protecting CLI/observability integration and
+      downstream runtime liveness checks.
+
+
+      Review criteria:
+
+      1. Helper/storage implementation matches the pinned contract
+
+      2. Startup hygiene runs before active recovery
+
+      3. Safe stale quarantine is narrow and audit-preserving
+
+      4. Blocking classes remain blocking
+
+
+      review_depth: THOROUGH
+
+      cross_cutting_focus:
+
+      - startup recovery ordering
+
+      - quarantine audit trail integrity
+
+      - ambiguity remains blocking'
+    verification: '- All core runtime steps completed with evidence
+
+      - No startup path deletes or silently remaps continuity artifacts
+
+      - Runtime ordering and blocking semantics remain explicit and reviewable'
+    depends_on:
+    - driver-continuity-hygiene-core.impl-hygiene-storage
+    - driver-continuity-hygiene-core.impl-startup-stage
+    agent: gate-reviewer
 - id: driver-continuity-hygiene-surface
   name: 'Driver Continuity Hygiene: CLI & Observability'
   status: locked

@@ -39742,7 +39742,7 @@ phases:
       product_implementation_files_modified: no'
 - id: driver-evolution-event-contracts
   name: 'Driver Evolution: Canonical Event Contracts'
-  status: in_progress
+  status: done
   gate: Canonical FINAL/DECIDE/STEP_COMPLETED semantics and typed emit surfaces proven
     against the ADR
   depends_on:
@@ -40167,7 +40167,7 @@ phases:
       \ sink. Edge cases handled, errors correctly rejected."
   - id: driver-evolution-event-contracts.gate
     name: Gate canonical event contracts
-    status: claimed
+    status: done
     description: 'step_type: gate
 
       Gate review: verify the canonical-event-contracts phase completion and quality.
@@ -40210,6 +40210,48 @@ phases:
     agent: gate-reviewer
     claimed_by: gate-reviewer
     claimed_at: '2026-03-29T07:08:46.631670+00:00'
+    done_at: '2026-03-29T07:11:49.645963+00:00'
+    evidence: 'Artifact:
+
+      - event contracts implementation + conformance/flow verification evidence
+
+
+      Verification:
+
+      - `uv run python -m pytest tests/test_driver_observe.py -v` -> 24 passed
+
+      - `uv run python -m pytest tests/test_driver_loop_contract.py -v` -> 7 passed
+
+      - canonical events emitted via typed helpers; no direct literal DECIDE/FINAL/STEP_COMPLETED
+      emissions in loop
+
+      - FINAL/DECIDE/STEP_COMPLETED registry schema and typed payload contracts validated
+
+
+      Spec link:
+
+      - docs/ADR-driver-evolution-foundation.md#30
+
+      - docs/ADR-driver-evolution-foundation.md#45
+
+      - docs/ADR-driver-evolution-foundation.md#58
+
+      - docs/ADR-driver-evolution-foundation.md#104
+
+      - docs/ADR-driver-evolution-foundation.md#169
+
+      - docs/ADR-driver-evolution-foundation.md#188
+
+
+      step_intent: gate
+
+      expected_result: green
+
+      observed_result: green
+
+      failure_alignment: N/A
+
+      product_implementation_files_modified: no'
 - id: driver-evolution-runtime-context
   name: 'Driver Evolution: Runtime Context'
   status: done
@@ -40992,7 +41034,7 @@ phases:
       product_implementation_files_modified: no'
 - id: driver-evolution-loop-migration
   name: 'Driver Evolution: Loop Migration & Wiring'
-  status: locked
+  status: pending
   gate: loop.py uses registry-backed handlers, planner dispatch remains first-class,
     and the runnable driver path is proven end-to-end
   depends_on:

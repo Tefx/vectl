@@ -37,6 +37,11 @@ from vectl.lifecycle import claim_step, complete_step, defer_step
 from vectl.models import PlanError
 from vectl.plan_path import resolve_claims_path, resolve_plan_path
 
+from .action_registry import (
+    ACTION_REGISTRY_SCOPE_STATEMENT,
+    INITIAL_HANDLER_INPUT_CONTRACT,
+    PLANNER_DISPATCH_ACTION_DECLARATIONS,
+)
 from .config import (
     DriverConfig,
     JudgeConfig,
@@ -45,10 +50,6 @@ from .config import (
     RunnerConfig,
     SessionConfig,
     load_config,
-)
-from .action_registry import (
-    ACTION_REGISTRY_SCOPE_STATEMENT,
-    PLANNER_DISPATCH_ACTION_DECLARATIONS,
 )
 from .dispatch import render_prompt
 from .errors import ConfigError, JudgmentParseError, JudgmentTimeoutError, RunnerError
@@ -60,7 +61,6 @@ from .judge import (
 )
 from .judgments import JudgmentRequest, JudgmentType, JudgmentVerdict
 from .observe import Observer, create_observer
-from .action_registry import INITIAL_HANDLER_INPUT_CONTRACT
 from .policy import (
     ParsedGateIssue,
     _detect_preflight_risk_signals,
@@ -75,8 +75,8 @@ from .runner_continuity import (
 )
 from .runners import Runner, create_runner
 from .runners import RunnerStatus as RunnerDispatchStatus
-from .session import SessionPool
 from .runtime_context import ROLE_SPECIFIC_CONTEXTS_DEFERRED, RuntimeContext
+from .session import SessionPool
 from .types import (
     CompletedEntry,
     ContinuityHandoff,
@@ -1771,7 +1771,7 @@ async def run(config_path: Path) -> None:
         continuity_repo_root = _resolve_repo_root_from_plan(plan_path)
         ledger_entries, corrupt_ledger_files = _load_ledger_entries(continuity_repo_root)
         startup_judge_failure_inputs = _startup_judge_inputs_from_ledger_entries(ledger_entries)
-        startup_boundary = _startup_recovery_controller().plan_recovery(
+        startup_boundary = evaluate_startup_recovery_boundary(
             boundary_input=StartupRecoveryBoundaryInput(
                 reconciliation=StartupRecoveryReconciliationFacts(
                     plan_step_ids=tuple(sorted(plan_step_ids)),
@@ -1908,13 +1908,15 @@ async def run(config_path: Path) -> None:
 
 async def handle_dispatch(
     action: Action,
-    state: DriverState,
-    config: DriverConfig,
-    runners: dict[str, Runner],
-    judge: Judge,
-    session_pool: SessionPool,
-    observer: Observer,
-    plan_path: Path,
+    state: DriverState | None = None,
+    config: DriverConfig | None = None,
+    runners: dict[str, Runner] | None = None,
+    judge: Judge | None = None,
+    session_pool: SessionPool | None = None,
+    observer: Observer | None = None,
+    plan_path: Path | None = None,
+    *,
+    context: RuntimeContext | None = None,
 ) -> None:
     """Handle one ``claim_and_dispatch`` action from ``decide()``.
 
@@ -1934,6 +1936,30 @@ async def handle_dispatch(
     """
     if action.step_id is None or action.agent is None:
         raise PlanError("claim_and_dispatch action requires step_id and agent")
+
+    if context is not None:
+        state = context.state
+        config = context.config
+        runners = dict(context.runners)
+        judge = context.judge
+        session_pool = context.session_pool
+        observer = context.observer
+        plan_path = context.plan_path
+
+    if state is None:
+        raise PlanError("handle_dispatch requires runtime state")
+    if config is None:
+        raise PlanError("handle_dispatch requires runtime config")
+    if runners is None:
+        raise PlanError("handle_dispatch requires runtime runners")
+    if judge is None:
+        raise PlanError("handle_dispatch requires runtime judge")
+    if session_pool is None:
+        raise PlanError("handle_dispatch requires runtime session_pool")
+    if observer is None:
+        raise PlanError("handle_dispatch requires runtime observer")
+    if plan_path is None:
+        raise PlanError("handle_dispatch requires runtime plan_path")
 
     step_id = action.step_id
     agent = action.agent
@@ -2238,11 +2264,13 @@ async def handle_dispatch(
 
 async def handle_complete(
     action: Action,
-    state: DriverState,
-    judge: Judge,
-    session_pool: SessionPool,
-    observer: Observer,
-    plan_path: Path,
+    state: DriverState | None = None,
+    judge: Judge | None = None,
+    session_pool: SessionPool | None = None,
+    observer: Observer | None = None,
+    plan_path: Path | None = None,
+    *,
+    context: RuntimeContext | None = None,
 ) -> None:
     """Handle one ``complete`` action from ``decide()``.
 
@@ -2259,6 +2287,24 @@ async def handle_complete(
     """
     if action.step_id is None:
         raise PlanError("complete action requires step_id")
+
+    if context is not None:
+        state = context.state
+        judge = context.judge
+        session_pool = context.session_pool
+        observer = context.observer
+        plan_path = context.plan_path
+
+    if state is None:
+        raise PlanError("handle_complete requires runtime state")
+    if judge is None:
+        raise PlanError("handle_complete requires runtime judge")
+    if session_pool is None:
+        raise PlanError("handle_complete requires runtime session_pool")
+    if observer is None:
+        raise PlanError("handle_complete requires runtime observer")
+    if plan_path is None:
+        raise PlanError("handle_complete requires runtime plan_path")
 
     evidence = action.evidence or ""
     plan, expected_hash = load_plan_definition(plan_path)
@@ -3047,6 +3093,15 @@ async def _run_main_loop(
     """
     state.runtime_config = config
     state.runtime_runners = runners
+    runtime_context = RuntimeContext(
+        state=state,
+        config=config,
+        runners=runners,
+        judge=judge,
+        session_pool=session_pool,
+        observer=observer,
+        plan_path=plan_path,
+    )
 
     while not state.halt_requested:
         decide_output = decide(
@@ -3071,13 +3126,7 @@ async def _run_main_loop(
             if action.action == "claim_and_dispatch":
                 await handle_dispatch(
                     action=action,
-                    state=state,
-                    config=config,
-                    runners=runners,
-                    judge=judge,
-                    session_pool=session_pool,
-                    observer=observer,
-                    plan_path=plan_path,
+                    context=runtime_context,
                 )
             elif action.action == "complete":
                 observer.emit(

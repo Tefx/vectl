@@ -50649,3 +50649,36 @@ phases:
     depends_on:
     - driver-live-smoke-deep-review.wiring-audit
     agent: spec-verifier
+  - id: driver-live-smoke-deep-review.architecture-review
+    name: Review live smoke architecture boundaries
+    status: pending
+    description: 'Review that the live smoke addition preserves the approved architecture
+      basis.
+
+
+      Checks:
+
+      - test_harness owns gating/diagnostics only
+
+      - judge_runner_contract and dispatch_runner_contract remain test-layer validations,
+      not production redesigns
+
+      - production authorities remain driver.yaml and src/vectl/driver/judge.py
+
+      - no unnecessary architecture mutation leaked into existing driver runtime'
+    verification: '- Review confirms additive test/doc/config scope.
+
+      - Any production-code changes are minimal, justified, and testability-driven
+      only.'
+    evidence_template: '## Architecture Review
+
+      **Boundary findings**:
+
+      **Authority preservation**:
+
+      **Unnecessary redesign detected?**:
+
+      '
+    depends_on:
+    - driver-live-smoke-deep-review.wiring-audit
+    agent: software-architect

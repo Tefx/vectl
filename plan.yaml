@@ -39674,7 +39674,7 @@ phases:
       - docs/ADR-driver-evolution-foundation.md#6-event-registry-is-a-static-declaration-table"
   - id: driver-evolution-events-foundation.gate
     name: Gate events foundation
-    status: pending
+    status: claimed
     description: 'step_type: gate
 
       Gate review: verify the events-foundation phase completion and quality.
@@ -39704,6 +39704,8 @@ phases:
     - driver-evolution-events-foundation.implement-registry-envelope
     - driver-evolution-events-foundation.verify-envelope-foundation
     agent: gate-reviewer
+    claimed_by: gate-reviewer
+    claimed_at: '2026-03-29T06:27:04.658546+00:00'
 - id: driver-evolution-event-contracts
   name: 'Driver Evolution: Canonical Event Contracts'
   status: locked

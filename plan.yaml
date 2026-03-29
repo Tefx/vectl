@@ -50828,7 +50828,7 @@ phases:
       **Deviation records**: None required.'
   - id: driver-live-smoke-implementation.runner-smoke-matrix
     name: Run independent codex/opencode smoke matrix
-    status: claimed
+    status: done
     description: 'As an INDEPENDENT TESTER (blind-tester), validate the live codex/opencode
       smoke matrix from a fresh perspective.
 
@@ -50913,6 +50913,86 @@ phases:
     agent: blind-tester
     claimed_by: blind-tester
     claimed_at: '2026-03-29T16:51:53.370425+00:00'
+    done_at: '2026-03-29T17:00:56.331326+00:00'
+    evidence: '## Live Smoke Matrix
+
+
+      ### Environment
+
+      - codex: v0.117.0 (available at /opt/homebrew/bin/codex)
+
+      - opencode: v1.3.5 (available at /opt/homebrew/bin/opencode)
+
+      - RUN_LIVE_RUNNER_TESTS=1
+
+      - VECTL_CODEX_MODEL=gpt-5.4-mini
+
+      - VECTL_OPENCODE_MODEL=ollama-cloud/minimax-m2.7
+
+
+      | Path               | Command | Result (PASS/FAIL/SKIP) | Reason | stdout/stderr
+      captured? |
+
+      | ------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+      | ----------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+      | -----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+      |
+
+      | codex judge        | `RUN_LIVE_RUNNER_TESTS=1 VECTL_CODEX_MODEL=gpt-5.4-mini
+      pytest -m "live_runner and judge_live and codex_live" tests/live_smoke/test_codex_judge_live.py
+      -v` | **FAIL** | `parse_codex_judge_output()` fails to extract verdict from
+      JSONL. The verdict is in `item.text` field as embedded JSON string, but parser
+      only checks `structured_output`, `result`, or `output.text` fields. | YES |
+
+      | opencode judge     | `RUN_LIVE_RUNNER_TESTS=1 VECTL_OPENCODE_MODEL=ollama-cloud/minimax-m2.7
+      pytest -m "live_runner and judge_live and opencode_live" tests/live_smoke/test_opencode_judge_live.py
+      -v` | **PASS** | 12 passed, 1 skipped. Tolerant JSONL extraction works correctly.
+      | YES |
+
+      | codex dispatch     | `RUN_LIVE_RUNNER_TESTS=1 VECTL_CODEX_MODEL=gpt-5.4-mini
+      pytest -m "live_runner and dispatch_live and codex_live" tests/live_smoke/test_codex_dispatch_live.py
+      -v` | **PASS** | 10 passed, 1 skipped. | YES |
+
+      | opencode dispatch  | `RUN_LIVE_RUNNER_TESTS=1 VECTL_OPENCODE_MODEL=ollama-cloud/minimax-m2.7
+      pytest -m "live_runner and dispatch_live and opencode_live" tests/live_smoke/test_opencode_dispatch_live.py
+      -v` | **FAIL** | `test_opencode_dispatch_transport_vs_assertion_failure` times
+      out after 30.0 seconds. The opencode runner hangs on malformed input. | YES
+      |
+
+      | combined selection | `RUN_LIVE_RUNNER_TESTS=1 VECTL_CODEX_MODEL=gpt-5.4-mini
+      VECTL_OPENCODE_MODEL=ollama-cloud/minimax-m2.7 pytest -m "live_runner" tests/live_smoke/
+      -v` | **FAIL** | 2 failed, 40 passed, 4 skipped. Same failures as individual
+      runs. | YES |
+
+
+      ### Critical Issues Found
+
+
+      **ISSUE 1 (blocker)**: codex judge structured output parser fails on valid JSONL
+      output
+
+      - Location: `tests/live_smoke/test_codex_judge_live.py::parse_codex_judge_output()`
+      lines 123-199
+
+      - Evidence: Codex returns verdict in `event.item.text` as embedded JSON, not
+      in expected envelope fields
+
+      - Impact: Parser fails on valid structured output
+
+      - Remediation: Fix `parse_codex_judge_output()` to check `event.item.text` when
+      `event.type == "item.completed"` and `event.item.type == "agent_message"`
+
+
+      **ISSUE 2 (blocker)**: opencode dispatch hangs on malformed input
+
+      - Location: `tests/live_smoke/test_opencode_dispatch_live.py::test_opencode_dispatch_transport_vs_assertion_failure`
+
+      - Evidence: subprocess timeout after 30 seconds
+
+      - Impact: Test cannot complete assertion about distinguishing transport vs assertion
+      failure
+
+      - Remediation: Add timeout handling to prevent opencode from hanging indefinitely'
   - id: driver-live-smoke-implementation.gate
     name: Gate live smoke implementation
     status: pending

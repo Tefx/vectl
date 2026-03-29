@@ -51770,7 +51770,7 @@ phases:
       as `683ce89` with message `Pin continuity hygiene contracts`.'
   - id: driver-continuity-hygiene-foundation.test-define-red
     name: Define expected-red helper and manifest tests
-    status: pending
+    status: claimed
     description: 'step_type: test
 
       step_intent: test_define_red
@@ -51837,9 +51837,11 @@ phases:
     depends_on:
     - driver-continuity-hygiene-foundation.contract
     agent: python-executor
+    claimed_by: python-executor
+    claimed_at: '2026-03-29T19:02:45.421857+00:00'
   - id: driver-continuity-hygiene-foundation.blackbox-define-red
     name: Define expected-red black-box startup and repair tests
-    status: pending
+    status: done
     description: 'step_type: test
 
       step_intent: test_define_red
@@ -51894,6 +51896,38 @@ phases:
     depends_on:
     - driver-continuity-hygiene-foundation.contract
     agent: python-executor
+    claimed_by: python-executor
+    claimed_at: '2026-03-29T19:00:05.103768+00:00'
+    done_at: '2026-03-29T19:08:22.259995+00:00'
+    evidence: "## Expected-Red Black-Box Evidence\n- Real commands/tests defined:\n\
+      \  - `uv run pytest -q tests/test_driver_recovery_black_box.py::TestContinuityHygieneExpectedRedBlackBox`\n\
+      \  - Added exact-layout helper fixture module: `tests/fixtures/helpers/continuity_hygiene_black_box.py`\n\
+      \  - Added black-box coverage in `tests/test_driver_recovery_black_box.py`\n\
+      - Safe-stale scenarios defined:\n  - `test_vectl_drive_quarantines_only_safe_stale_artifacts_then_reaches_active_recovery`\n\
+      \  - `test_vectl_repair_continuity_supports_dry_run_apply_and_json_without_deletion`\n\
+      \  - `test_startup_and_repair_continuity_classify_same_fixture_consistently`\n\
+      \  - Fixture uses exact persisted paths under `.vectl/continuity/ledger` and\
+      \ `.vectl/continuity/journal` with raw JSON/JSONL payloads and no normalization\
+      \ helpers beyond file creation.\n- Blocking scenarios defined:\n  - corrupt\
+      \ ledger -> expected `corrupt_blocking:broken.json`\n  - active claims divergence\
+      \ -> expected `active_claims_divergence:stale.step`\n  - current claimed-step\
+      \ disagreement -> expected `current_claimed_step_disagreement:core.impl`\n \
+      \ - ambiguous identity -> expected `ambiguous_identity:legacy.step`\n- Expected\
+      \ failures before implementation:\n  - Current startup still halts safe-stale\
+      \ fixtures with `Continuity startup recovery blocked: stale.step:ledger_plan_claims_divergence`\
+      \ instead of quarantining and continuing into active recovery.\n  - Current\
+      \ corrupt-ledger path reports `ledger_corrupt:broken.json` instead of the pinned\
+      \ hygiene classification.\n  - Current active-claims / ambiguous fixtures collapse\
+      \ to legacy `ledger_plan_claims_divergence` behavior instead of hygiene-specific\
+      \ blocking reasons.\n  - Current `vectl repair continuity` surface does not\
+      \ exist (`No such command 'continuity'`), so dry-run/apply/json audit-preserving\
+      \ repair behavior is still missing.\n  - Current claimed-step disagreement fixture\
+      \ does not produce the pinned continuity halt reason, exposing the missing startup\
+      \ hygiene stage.\n- Confirmation product code was not modified:\n  - Changed\
+      \ files are limited to `tests/test_driver_recovery_black_box.py` and `tests/fixtures/helpers/continuity_hygiene_black_box.py`.\n\
+      - Downstream implementation owners:\n  - `driver-continuity-hygiene-core.impl-startup-stage`\n\
+      \  - `driver-continuity-hygiene-surface.impl-cli-repair-continuity`\n- Commit:\n\
+      \  - `d09235a` `Add continuity hygiene red-path black-box tests`"
   - id: driver-continuity-hygiene-foundation.gate
     name: Gate continuity hygiene foundation
     status: pending

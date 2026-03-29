@@ -45912,6 +45912,27 @@ phases:
     depends_on:
     - driver-continuity-restart-recovery.gate
     agent: python-senior
+  - id: driver-continuity-restart-recovery.retest-restart-recovery-gate
+    name: Retest continuity restart recovery gate after remediation
+    status: pending
+    description: Independently retest the continuity restart-recovery gate after the
+      remediation batch and verify both prior blockers are resolved on the restart
+      recovery path.
+    verification: Independent review evidence confirms the RunnerResult mismatch is
+      gone, HALT continuity facts survive restart and are consumed correctly, and
+      the restart-recovery gate can be reconsidered.
+    evidence_template: '- Independent retest scope
+
+      - Commands / checks executed
+
+      - Outcome for each prior blocker
+
+      - Pass/fail recommendation for gate
+
+      '
+    depends_on:
+    - driver-continuity-restart-recovery.fix-restart-recovery-batch
+    agent: gate-reviewer
 - id: driver-continuity-review
   name: 'Driver Continuity: Review'
   status: locked

@@ -50079,7 +50079,7 @@ phases:
       \ compatibility path."
   - id: driver-live-smoke-foundation.finalize-test-surface-decisions
     name: Finalize live smoke test-surface decisions
-    status: pending
+    status: claimed
     description: 'Planning/spec step.
 
 
@@ -50151,6 +50151,8 @@ phases:
     depends_on:
     - driver-live-smoke-foundation.ratify-live-smoke-policy
     agent: python-senior
+    claimed_by: python-senior
+    claimed_at: '2026-03-29T16:08:33.028595+00:00'
 - id: driver-live-smoke-implementation
   name: Driver Live Runner Smoke Coverage Implementation
   status: locked

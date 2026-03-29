@@ -1,9 +1,66 @@
 # Unified Judgment Agent — System Prompt
 
-> This prompt is used by `vectl driver` for ALL judgment calls.
-> Called via the configured judge runner (default: `opencode`) with this as the system prompt.
+> **Document Status**: Mirror/Specification — This document is the authoritative
+> human-readable specification for the judge prompt, NOT the runtime authority.
+>
+> **Runtime Authority**: The runtime loads the system prompt from the packaged
+> resource `vectl.driver.judge_agent_prompt.md` (shipped with the package).
+> This file in `docs/` serves as documentation, specification, and change tracking.
+>
+> **Consistency Model**: Docs may contain extended commentary, examples, and
+> rationale that the packaged runtime prompt omits for brevity. The packaged
+> prompt is the minimal runtime contract. Drift detection (`verify_docs_packaged_sync()`)
+> ensures docs do not fall behind runtime semantics.
+>
 > Each invocation is stateless. The driver sends a structured request
 > and expects a structured JSON verdict back.
+
+---
+
+## Resource Loading Behavior
+
+### Runtime Loading (Packaged Resource)
+
+The runtime (`vectl.driver.judge`) loads the system prompt from a packaged
+resource, not from `docs/`:
+
+```python
+from vectl.driver.judge import JUDGE_PROMPT_AUTHORITY_CONTRACT
+
+contract = JUDGE_PROMPT_AUTHORITY_CONTRACT
+# package_name = "vectl.driver"
+# package_resource = "judge_agent_prompt.md"
+```
+
+The prompt is loaded via `importlib.resources` at runtime initialization.
+
+### Missing Resource Handling
+
+If the packaged resource is missing or empty:
+
+| Scenario | Behavior |
+|----------|----------|
+| Package not importable | `RuntimeError`: Judge prompt package is not importable |
+| Resource file missing | `RuntimeError`: Judge prompt resource is missing from installed package |
+| Resource empty | `RuntimeError`: Judge prompt resource is empty |
+
+These are **hard failures** — the driver cannot operate without a system prompt.
+
+### Drift Detection
+
+Use `verify_docs_packaged_sync()` to detect divergence between this document
+and the packaged runtime prompt:
+
+```python
+from vectl.driver.judge import verify_docs_packaged_sync
+
+is_synced, message = verify_docs_packaged_sync()
+# Returns (True, "docs matches packaged") or (False, "divergence details")
+```
+
+**When to run**: CI, pre-commit hooks, or before releases.
+**Drift tolerance**: Docs may have extended content; missing semantic
+sections from packaged → docs triggers a warning.
 
 ---
 
@@ -31,7 +88,7 @@ Additional hard constraints:
 - The first character of your response MUST be `{`.
 - The last character of your response MUST be `}`.
 - Do NOT prefix with phrases like "Here is the JSON", "Result:", or explanations.
-- Do NOT wrap the JSON in ```json fences or any markdown block.
+- Do NOT wrap the JSON in \`\`\`json fences or any markdown block.
 - Do NOT emit multiple JSON objects.
 - If uncertain, still return a single valid JSON object matching the required keys.
 
@@ -47,9 +104,9 @@ Here is the result:
 Invalid:
 
 ```text
-```json
+\`\`\`json
 {"verdict":"ACCEPT","reason":"...","suggested_action":null,"planner_instruction":null}
-```
+\`\`\`
 ```
 
 Valid:
@@ -318,3 +375,9 @@ and hunting for reasons to REJECT this work."
    needed for judgment, say so in `reason`. Don't infer facts not present.
 5. **Independence**: Each judgment call is stateless. Don't assume you know
    anything from "previous" calls — you don't.
+
+## See Also
+
+- `docs/DRIVER-ARCHITECTURE.md` Section 2.10 — Judge module architecture
+- `src/vectl/driver/judge_agent_prompt.md` — Packaged runtime prompt (clean version)
+- `src/vectl/driver/judge.py` — Runtime loader and `verify_docs_packaged_sync()`

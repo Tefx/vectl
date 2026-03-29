@@ -936,7 +936,7 @@ before invocation and raises `JudgmentError` on violation.
 
 ### 2.10 judge.py -- Judgment Agent
 
-**Responsibility**: Invoke the unified Judgment Agent (a stateless `claude -p` call)
+**Responsibility**: Invoke the unified Judgment Agent (a stateless runner call)
 for decisions that require LLM understanding. Route between rule-based fast paths
 and LLM fallback. Parse structured verdicts from the agent's JSON output.
 
@@ -944,12 +944,19 @@ and LLM fallback. Parse structured verdicts from the agent's JSON output.
 Does NOT own the decision of WHEN to call the judge (that is `loop.py`'s
 reconcile and dispatch logic).
 
+**System Prompt Authority**: The runtime loads the judge system prompt from a
+**packaged resource** (`vectl.driver.judge_agent_prompt.md`), not from `docs/`.
+`docs/JUDGE-AGENT-PROMPT.md` is the **human-readable specification/mirror** of
+the runtime prompt, serving as documentation and change tracking. The packaged
+prompt is the minimal runtime contract. See `docs/JUDGE-AGENT-PROMPT.md` "Resource
+Loading Behavior" section for drift detection (`verify_docs_packaged_sync()`).
+
 ```python
 class Judge:
     """Unified judgment agent. Stateless per call.
 
     Each invocation spawns a runner process (default: opencode) with
-    the judge system prompt and a structured user message. The judge
+    the packaged judge system prompt and a structured user message. The judge
     returns a JSON verdict. Uses structured output when available
     (see Structured Output Strategy below).
     """
@@ -1803,7 +1810,7 @@ Canonical driver events follow non-contradictory semantics defined by the regist
 
 ### 7.5 Resolved Open Questions
 
-- ~~Exact system prompt text for the Judgment Agent~~ -- Resolved: see `JUDGE-AGENT-PROMPT.md`.
+- ~~Exact system prompt text for the Judgment Agent~~ -- Resolved: Runtime prompt is `vectl.driver.judge_agent_prompt.md` (packaged resource). `docs/JUDGE-AGENT-PROMPT.md` is the human-readable spec/mirror.
 - ~~Whether `gemini` runner should be included in Phase 1 or deferred~~ -- Resolved: deferred/excluded from the normative foundation matrix until auth, non-interactive invocation, and structured verdict extraction are ratified.
 - ~~Event envelope and registry~~ -- Resolved: `driver.events` module provides canonical envelope and static registry.
 - ~~Planner dispatch contract~~ -- Resolved: First-class registry action with `PlannerDispatchAction` contract.

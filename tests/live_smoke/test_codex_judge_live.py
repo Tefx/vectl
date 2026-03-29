@@ -180,6 +180,18 @@ def parse_codex_judge_output(stdout: str) -> dict[str, Any]:
                 if isinstance(text, str) and text.strip():
                     text_parts.append(text.strip())
 
+            # Check item.text for agent_message items
+            # Codex JSONL format: {"type":"item.completed","item":{"type":"agent_message","text":"{\"verdict\":\"DEFER\",\"reason\":\"...\"}"}}
+            if item.get("type") == "agent_message":
+                item_text = item.get("text")
+                if isinstance(item_text, str) and item_text.strip():
+                    try:
+                        parsed = json.loads(item_text)
+                        if isinstance(parsed, dict):
+                            return parsed
+                    except (json.JSONDecodeError, TypeError):
+                        pass
+
     # If we got structured output earlier, return it
     if structured_output is not None:
         return structured_output
@@ -560,6 +572,30 @@ class TestCodexJudgeVerdictParsing:
         jsonl = '{"type": "thread.started", "sessionId": "abc123"}\n' + json.dumps(outer_event)
         result = parse_codex_judge_output(jsonl)
         assert result["verdict"] == "REJECT"
+
+    def test_parse_item_text_agent_message(self) -> None:
+        """Verify item.text is parsed correctly for agent_message items.
+
+        Codex JSONL format:
+            {"type": "item.completed", "item": {"type": "agent_message", "text": "{\"verdict\":\"DEFER\",\"reason\":\"...\"}"}}
+        """
+        verdict = {
+            "verdict": "DEFER",
+            "reason": "Needs more context",
+            "suggested_action": None,
+            "planner_instruction": None,
+        }
+        outer_event = {
+            "type": "item.completed",
+            "item": {
+                "type": "agent_message",
+                "text": json.dumps(verdict),
+            },
+        }
+        jsonl = '{"type": "thread.started", "sessionId": "abc123"}\n' + json.dumps(outer_event)
+        result = parse_codex_judge_output(jsonl)
+        assert result["verdict"] == "DEFER"
+        assert result["reason"] == "Needs more context"
 
     def test_parse_invalid_not_json_raises(self) -> None:
         """Verify non-JSON output raises ValueError."""

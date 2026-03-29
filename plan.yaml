@@ -50326,20 +50326,40 @@ phases:
   - id: driver-live-smoke-implementation.add-opencode-dispatch-live-smoke-coverage
     name: Add opencode dispatch live smoke coverage
     status: pending
-    description: "step_type: implementation\ntags:\n  - integration\nverification_scope:\
-      \ local-check\n\nAdd additive live smoke tests for the real opencode regular\
-      \ task dispatch path.\n\nScope:\n- tests/live_smoke/test_opencode_dispatch_live.py\n\
-      - driver dispatch integration references only as needed for stable assertions\n\
-      \nRequired scenarios:\n- ordinary agent/task dispatch through the opencode runner,\
-      \ not judge-only invocation\n- use the exact opencode dispatch cheap-model identifier\
-      \ and exact supported override mechanism ratified by driver-live-smoke-foundation.ratify-live-smoke-policy\n\
-      - explicit skip evidence for missing binary, missing auth/prereq, or opt-in\
-      \ env gate absent\n- transport failure distinguished from task-output assertion\
-      \ failure\n- if preferred opencode dispatch model is unavailable, exercise only\
-      \ the ratified fallback policy from the foundation step\n\nPath exercised: driver.yaml\
-      \ opencode runner contract -> dispatch integration -> real opencode subprocess\
-      \ -> captured task output assertions.\n\n## Completion Criteria (stub exclusion)\n\
-      This is an IMPLEMENTATION step. Stub-only completion is NOT acceptable."
+    description: 'Add additive live smoke tests for the real opencode regular task
+      dispatch path.
+
+
+      Scope:
+
+      - tests/live_smoke/test_opencode_dispatch_live.py
+
+      - driver dispatch integration references only as needed for stable assertions
+
+
+      Required scenarios:
+
+      - ordinary agent/task dispatch through the opencode runner, not judge-only invocation
+
+      - use opencode dispatch smoke model ollama-cloud/minimax-m2.7 and the exact
+      supported override mechanism ratified by driver-live-smoke-foundation.ratify-live-smoke-policy
+
+      - explicit skip evidence for missing binary, missing auth/prereq, or opt-in
+      env gate absent
+
+      - transport failure distinguished from task-output assertion failure
+
+      - fallback behavior may be exercised only for true runner unavailability/auth/runner
+      issues per the ratified policy; do not reopen model selection
+
+
+      Path exercised: driver.yaml opencode runner contract -> dispatch integration
+      -> real opencode subprocess -> captured task output assertions.
+
+
+      ## Completion Criteria (stub exclusion)
+
+      This is an IMPLEMENTATION step. Stub-only completion is NOT acceptable.'
     verification: '- Main path: targeted opencode dispatch live pytest selection passes
       against real opencode or skips explicitly with justified evidence using the
       ratified model id/override mechanism.

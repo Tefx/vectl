@@ -51745,6 +51745,75 @@ phases:
 
       - Confirmation that runtime logic remains stub-only:'
     agent: python-senior
+  - id: driver-continuity-hygiene-foundation.test-define-red
+    name: Define expected-red helper and manifest tests
+    status: pending
+    description: 'step_type: test
+
+      step_intent: test_define_red
+
+      expected_result: red
+
+
+      Tests-only step. Add focused tests for continuity hygiene helper behavior without
+      modifying product runtime code.
+
+
+      Scope:
+
+      - new/updated tests under tests/ covering helper classification and quarantine
+      manifest behavior
+
+      - minimal fixtures for ledger and journal artifacts
+
+
+      Required red cases to expose:
+
+      - ledger artifact absent from plan and repaired current-branch claims is classified
+      as safe stale
+
+      - journal-only artifact absent from plan and repaired current-branch claims
+      is classified as safe stale
+
+      - ledger step absent from plan but present in active claims remains blocking
+
+      - corrupt ledger files remain blocking
+
+      - ambiguous migration identity remains blocking
+
+      - quarantine manifest records source path, destination path, reason, and audit
+      timestamp while preserving original files via quarantine rather than deletion
+
+
+      ## Spec-Fixture Conformance (MANDATORY)
+
+      At least one fixture MUST use the minimal external continuity artifact shape
+      implied by the authoritative sources and this request, without convenience fields
+      beyond what the persisted artifact actually stores.
+
+
+      Evidence must state which tests remain expected-red before implementation lands
+      and which exposed gaps they prove.'
+    verification: '- Modified files are limited to tests/ plus test fixtures/helpers
+
+      - Expected-red assertions expose helper/quarantine gaps without product-code
+      changes
+
+      - Evidence lists exposed_gaps and downstream implementation owner: driver-continuity-hygiene-core.impl-hygiene-storage'
+    evidence_template: '## Expected-Red Test Definition Evidence
+
+      - Tests added/updated:
+
+      - Exposed gaps:
+
+      - Expected failures before implementation:
+
+      - Fixture spec source:
+
+      - Confirmation product code was not modified:'
+    depends_on:
+    - driver-continuity-hygiene-foundation.contract
+    agent: python-executor
 - id: driver-continuity-hygiene-core
   name: 'Driver Continuity Hygiene: Core Runtime'
   status: locked

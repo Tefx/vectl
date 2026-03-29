@@ -2452,15 +2452,8 @@ async def handle_complete(
 
 async def reconcile(
     completed: CompletedEntry,
-    state: DriverState,
-    judge: Judge,
-    session_pool: SessionPool,
-    observer: Observer,
-    plan_path: Path,
-    config: DriverConfig | None = None,
-    runners: Mapping[str, Runner] | None = None,
     *,
-    context: RuntimeContext | None = None,
+    context: RuntimeContext,
 ) -> None:
     """Reconcile one completed runner result.
 
@@ -2480,14 +2473,13 @@ async def reconcile(
     - ``reconcile.failure_classification_replan``
     - ``reconcile.escalation_replan``
     """
-    if context is not None:
-        state = context.state
-        judge = context.judge
-        session_pool = context.session_pool
-        observer = context.observer
-        plan_path = context.plan_path
-        config = context.config
-        runners = context.runners
+    state = context.state
+    judge = context.judge
+    session_pool = context.session_pool
+    observer = context.observer
+    plan_path = context.plan_path
+    config = context.config
+    runners = context.runners
 
     continuity_repo_root = _resolve_repo_root_from_plan(plan_path)
     continuity_attempt_key = (
@@ -3498,11 +3490,6 @@ async def _run_main_loop(
             completed = await state.wait_for_any()
             await reconcile(
                 completed=completed,
-                state=state,
-                judge=judge,
-                session_pool=session_pool,
-                observer=observer,
-                plan_path=plan_path,
                 context=runtime_context,
             )
 

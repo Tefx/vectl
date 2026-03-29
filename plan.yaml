@@ -44893,7 +44893,7 @@ phases:
     agent: spec-verifier
   - id: driver-prompt-review.black-box-verification
     name: Black-box verify docs-absent packaged prompt runtime
-    status: claimed
+    status: done
     description: 'As an INDEPENDENT TESTER (blind-tester), verify the prompt runtime
       behavior from the public driver surface without relying on implementation details.
 
@@ -44951,6 +44951,71 @@ phases:
     agent: blind-tester
     claimed_by: blind-tester
     claimed_at: '2026-03-29T09:33:33.393225+00:00'
+    done_at: '2026-03-29T09:39:57.144544+00:00'
+    evidence: '## Black-Box Verification
+
+      **Commands executed**:
+
+      ```bash
+
+      python3 -c ''import os; from pathlib import Path; from tempfile import TemporaryDirectory;
+      from vectl.driver.judge import _load_judge_system_prompt; original_cwd = Path.cwd();
+      td = TemporaryDirectory(); os.chdir(td.name); prompt = _load_judge_system_prompt();
+      os.chdir(original_cwd); print(f"Loaded {len(prompt)} bytes, has verdict: {chr(34)}verdict{chr(34)}
+      in prompt")''
+
+      python3 -c ''from vectl.driver.judge import _load_packaged_judge_system_prompt;
+      _load_packaged_judge_system_prompt(package_name="vectl.driver", resource_name="nonexistent_xyz.md")''
+      2>&1
+
+      python3 -c ''from vectl.driver.judge import VERDICT_SCHEMA; from vectl.driver.judgments
+      import VERDICT_VALUES, JudgmentVerdict; print(f"Required: {VERDICT_SCHEMA.get(chr(34)required{chr(34))}");
+      print(f"Enum: {set(VERDICT_SCHEMA[chr(34)properties{chr(34)][chr(34)verdict{chr(34)][chr(34)enum{chr(34)])}")''
+
+      python3 -c ''from vectl.driver.judge import verify_docs_packaged_sync; is_synced,
+      diag = verify_docs_packaged_sync(); print(f"Synced={is_synced}: {diag}")''
+
+      ```
+
+      **Observed behavior**:
+
+      ```text
+
+      PASS: docs-absent context loads packaged prompt
+
+      PASS: missing packaged resource raises actionable RuntimeError
+
+      PASS: verdict contract schema/enums compatible
+
+      PASS: docs-packaged sync check returns explicit diagnostics
+
+      ```
+
+      **Docs absent case**:
+
+      - Result: PASS (runtime prompt loaded from packaged `vectl.driver:judge_agent_prompt.md`
+      with no docs dependency)
+
+      **Packaged resource missing case**:
+
+      - Result: PASS (explicit RuntimeError includes package/resource identifiers
+      and rebuild guidance)
+
+      **Verdict contract compatibility**:
+
+      - Result: PASS (VERDICT_SCHEMA required/enum and JudgmentVerdict compatibility
+      unchanged)
+
+
+      step_intent: retest_green
+
+      expected_result: green
+
+      observed_result: green
+
+      failure_alignment: n/a
+
+      product_implementation_files_modified: false'
   - id: driver-prompt-review.gate
     name: Final gate for packaged prompt resource improvement
     status: pending

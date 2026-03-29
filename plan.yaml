@@ -43183,7 +43183,7 @@ phases:
       \ false"
 - id: driver-judge-hardening-structured-output
   name: 'Driver Judge Hardening: Structured Output Stability'
-  status: pending
+  status: in_progress
   gate: Judge invocation reuses stable runner config, codex structured output is real-runner
     verified, and parser hard-fail/tolerance boundaries hold under real judgments.
   depends_on:
@@ -43191,7 +43191,7 @@ phases:
   steps:
   - id: driver-judge-hardening-structured-output.test-define-red
     name: Define expected-red codex structured-output regressions
-    status: pending
+    status: claimed
     description: "step_type: test\nstep_intent: test_define_red\nexpected_result:\
       \ red\nspec_refs:\n  - driver.yaml#runners-codex-and-judge\n  - docs/JUDGE-AGENT-PROMPT.md#verdict-schema\n\
       \  - docs/DRIVER-ARCHITECTURE.md#judge-runtime\ntouch_paths:\n  - tests/test_driver_judge.py\n\
@@ -43231,6 +43231,8 @@ phases:
 
       '
     agent: python-executor
+    claimed_by: python-executor
+    claimed_at: '2026-03-29T01:10:56.704002+00:00'
   - id: driver-judge-hardening-structured-output.impl
     name: Implement codex-aligned judge invocation and parser hardening
     status: pending

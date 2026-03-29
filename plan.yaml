@@ -43818,11 +43818,12 @@ phases:
     agent: python-senior
 - id: driver-enhancement-runner-recovery
   name: 'Driver Enhancement: Advanced Runner Recovery'
-  status: pending
+  status: locked
   gate: Advanced recovery work remains blocked until the slimmed live codex/opencode
     judge and dispatch smoke implementation gate is complete.
   depends_on:
   - driver-live-smoke-implementation
+  - driver-continuity-hygiene-deep-review
   steps:
   - id: driver-enhancement-runner-recovery.impl
     name: Implement watchdog-backed failure classification and recovery policy

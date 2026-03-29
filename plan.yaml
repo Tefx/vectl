@@ -45676,7 +45676,7 @@ phases:
       - none'
   - id: driver-continuity-restart-recovery.verify
     name: Verify startup recovery and continuity policy
-    status: pending
+    status: claimed
     description: 'step_type: verification
 
       As an INDEPENDENT TESTER (blind-tester), validate the restart recovery controller
@@ -45714,6 +45714,8 @@ phases:
     depends_on:
     - driver-continuity-restart-recovery.impl
     agent: blind-tester
+    claimed_by: blind-tester
+    claimed_at: '2026-03-29T02:10:35.795930+00:00'
   - id: driver-continuity-restart-recovery.gate
     name: Gate restart recovery continuity
     status: pending

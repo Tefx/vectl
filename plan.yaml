@@ -44448,7 +44448,7 @@ phases:
       \  - no divergent hardcoded fallback argv remains\n- Gate recommendation: PASS"
 - id: driver-bootstrap-readiness
   name: Driver Real Bootstrap Readiness
-  status: locked
+  status: pending
   gate: Go/no-go gate for another real project bootstrap attempt. Requires debt remediation,
     judge hardening, continuity/resume blockers, and system wiring/review evidence
     sufficient to show bootstrap is controllable, restart-resumable, replay-safe,
@@ -46000,7 +46000,7 @@ phases:
       \ on restart)\n- Gate recommendation: PASS"
 - id: driver-continuity-review
   name: 'Driver Continuity: Review'
-  status: in_progress
+  status: done
   gate: Independent recovery drills, wiring audit, and spec conformance prove the
     driver is restart-resumable and recovery-controllable enough for another real
     bootstrap attempt.
@@ -46674,7 +46674,7 @@ phases:
       \ pinned field contract"
   - id: driver-continuity-review.gate-retest
     name: Retest continuity review gate after blocker batch
-    status: claimed
+    status: done
     description: 'step_type: gate
 
       Re-run the continuity review gate after the batched blocker remediation and
@@ -46713,3 +46713,79 @@ phases:
     agent: gate-reviewer
     claimed_by: gate-reviewer
     claimed_at: '2026-03-29T05:37:39.713350+00:00'
+    done_at: '2026-03-29T05:40:59.880014+00:00'
+    evidence: 'Artifact:
+
+      - Commit: 573c34c (gate-retest worktree includes fix-gate-blockers parent)
+
+
+      Verification:
+
+      - Run: `uv run python -m pytest tests/test_driver_continuity_contract.py tests/test_driver_runners.py::TestRunnerResultFields
+      -v --tb=short` -> PASSED (8 passed)
+
+      - Run: `uv run python -m pytest tests/test_decide_state_isolation.py tests/test_driver_continuity_expected_red.py
+      tests/test_driver_judge_impl_runtime.py -v --tb=short` -> PASSED (25 passed)
+
+      - Run: `uv run python -m pytest tests/test_driver_recovery.py tests/test_driver_recovery_black_box.py
+      tests/test_driver_continuity_capability_safety_red.py -v --tb=short` -> PASSED
+      (30 passed)
+
+      - Run: `uv run python -c "from dataclasses import fields; from src.vectl.driver.types
+      import ContinuityLedgerEntry; [f.name for f in fields(ContinuityLedgerEntry)]"`
+      -> [''step_id'', ''latest_attempt_key'', ''status'', ''runner_name'', ''last_session_id'',
+      ''replay_envelope'', ''last_journal_event'', ''judge_policy'', ''recovery_cursor'']
+
+      - Run: `grep -n "@dataclass" src/vectl/driver/types.py | head -5 && grep -n
+      "judge_policy" tests/test_driver_continuity_contract.py tests/test_driver_recovery.py
+      tests/test_driver_recovery_black_box.py | head -15` -> judge_policy verified
+      in fixture/contract sites; `@dataclass(frozen=True)` for RunnerResult
+
+      - Run: `uv run python -m pytest tests/test_driver_continuity_contract.py tests/test_driver_runners.py
+      tests/test_decide_state_isolation.py tests/test_driver_continuity_expected_red.py
+      tests/test_driver_judge_impl_runtime.py tests/test_driver_recovery.py tests/test_driver_recovery_black_box.py
+      tests/test_driver_continuity_capability_safety_red.py -v --tb=short` -> PASSED
+      (126 passed)
+
+
+      B1 cleared:
+
+      - ContinuityLedgerEntry pinned-field test includes `judge_policy`
+
+      - Authoritative contract fixture sites consistent across continuity tests
+
+
+      B2 cleared:
+
+      - `RunnerResult` is `@dataclass(frozen=True)` at `src/vectl/driver/types.py:44`
+
+      - `test_frozen_dataclass` passes
+
+
+      Should-fix cleared:
+
+      - DecideState isolation: passing
+
+      - continuity expected-red asyncio behavior: passing
+
+      - judge runtime behavior: passing
+
+
+      Holistic batch result:
+
+      - Former gate blockers (B1+B2) cleared together in one retest pass
+
+      - No product implementation files modified in retest worktree
+
+      - No `@invar:allow` escape hatches found in src/
+
+
+      Result: `driver-continuity-review.gate` blockers are cleared after batch remediation
+      and retest.
+
+
+      Spec link:
+
+      - Step: `driver-continuity-review.gate-retest`
+
+      - Prior blocked gate: `driver-continuity-review.gate`'

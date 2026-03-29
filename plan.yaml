@@ -45757,7 +45757,7 @@ phases:
       - docs/DRIVER-ARCHITECTURE.md section 2.11'
   - id: driver-continuity-restart-recovery.gate
     name: Gate restart recovery continuity
-    status: pending
+    status: claimed
     description: "step_type: gate\nGate review for startup recovery and continuity\
       \ policy.\n\nreview_depth: THOROUGH\ncross_cutting_focus:\n  - real entrypoint\
       \ startup recovery is wired, not just helper logic\n  - failure/abort continuity\
@@ -45773,6 +45773,8 @@ phases:
     - driver-continuity-restart-recovery.impl
     - driver-continuity-restart-recovery.verify
     agent: gate-reviewer
+    claimed_by: gate-reviewer
+    claimed_at: '2026-03-29T02:17:30.381459+00:00'
   - id: driver-continuity-restart-recovery.design-and-test
     name: Design restart-recovery boundary and write expected-red tests
     status: done

@@ -50100,6 +50100,70 @@ phases:
     evidence.
   depends_on:
   - driver-live-smoke-foundation
+  steps:
+  - id: driver-live-smoke-implementation.build-harness
+    name: Build shared live smoke harness and pytest surface
+    status: pending
+    description: 'step_type: implementation
+
+      verification_scope: local-check
+
+
+      Fill in stub bodies and add the shared live test harness per the contract from
+      phase driver-live-smoke-foundation.
+
+
+      UPSTREAM ARTIFACTS (authoritative for this step):
+
+      - tests/live_smoke/helpers.py — shared helper interfaces and diagnostics contract
+      are AUTHORITATIVE
+
+      - pyproject.toml / tests/conftest.py — marker and skip surface pinned by the
+      foundation phase
+
+
+      YOUR SCOPE:
+
+      - create tests/live_smoke/helpers.py with shared subprocess capture, skip gating,
+      cheap-model argument selection, and verdict-shape assertion helpers
+
+      - register live_runner/codex_live/opencode_live/judge_live/dispatch_live markers
+      and opt-in env behavior without folding live tests into the default fast suite
+
+      - preserve full command, returncode, stdout, stderr for failure diagnostics
+
+      - keep production authority in driver.yaml and src/vectl/driver/judge.py; only
+      add minimal testability hooks if strictly required
+
+
+      ## Completion Criteria (stub exclusion)
+
+      This is an IMPLEMENTATION step. Stub-only completion is NOT acceptable.
+
+      Each deliverable MUST contain substantive logic that processes its inputs and
+      produces outputs that vary based on those inputs.'
+    verification: '- Main path: helper module and pytest marker/config surface exist
+      and support manual isolated live runs.
+
+      - Failure path: explicit skip reasons differentiate missing binary, missing
+      auth/prereq, and missing opt-in env gate.
+
+      - Proof: manual invocation of a no-op/skip path shows captured diagnostics and
+      non-default-suite isolation behavior.'
+    evidence_template: '## Harness Evidence
+
+      **Files changed**:
+
+      **Markers added**:
+
+      **Opt-in env gate**:
+
+      **Skip reason matrix**:
+
+      **Command / output proving non-default isolation**:
+
+      '
+    agent: python-executor
 - id: driver-live-smoke-doc-sync
   name: Driver Live Runner Smoke Coverage Documentation Sync
   status: locked

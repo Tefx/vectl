@@ -41727,7 +41727,7 @@ phases:
     claimed_at: '2026-03-29T07:48:01.914418+00:00'
   - id: driver-evolution-review.contract-strength
     name: Audit contract and registry strength
-    status: pending
+    status: claimed
     description: 'step_type: review
 
 
@@ -41752,6 +41752,8 @@ phases:
     depends_on:
     - driver-evolution-review.wiring-audit
     agent: gate-reviewer
+    claimed_by: gate-reviewer
+    claimed_at: '2026-03-29T07:48:09.978311+00:00'
   - id: driver-evolution-review.black-box-verification
     name: Black-box verify the evolved driver surfaces
     status: pending

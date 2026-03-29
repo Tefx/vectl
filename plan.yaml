@@ -50618,3 +50618,34 @@ phases:
 
       '
     agent: wiring-auditor
+  - id: driver-live-smoke-deep-review.spec-conformance
+    name: Deep spec conformance audit for live smoke coverage
+    status: pending
+    description: 'Full-system conformance audit for the live smoke addition.
+
+
+      Focus on emergent drift that per-phase checks may miss:
+
+      - codex/opencode judge and dispatch coverage all present together
+
+      - cheap-model policy remains runner-specific and non-assumptive
+
+      - driver.yaml and src/vectl/driver/judge.py remain production authorities
+
+      - skip semantics and diagnostics are consistent across all live smoke paths'
+    verification: '- Cross-cutting conformance issues are classified explicitly.
+
+      - No hidden drift remains between docs, pytest surface, and runner-specific
+      live tests.'
+    evidence_template: '## Deep Conformance Audit
+
+      **Cross-cutting conformances**:
+
+      **Divergences**:
+
+      **Top risks**:
+
+      '
+    depends_on:
+    - driver-live-smoke-deep-review.wiring-audit
+    agent: spec-verifier

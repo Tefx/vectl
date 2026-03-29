@@ -41710,7 +41710,7 @@ phases:
       - docs/ADR-driver-evolution-foundation.md §§30,45,58,71,85,96,104,137,190,193'
   - id: driver-evolution-review.architecture-review
     name: Review architecture boundaries for the evolved driver
-    status: pending
+    status: claimed
     description: 'step_type: review
 
 
@@ -41740,6 +41740,8 @@ phases:
     - driver-evolution-review.update-docs
     - driver-evolution-review.wiring-audit
     agent: software-architect
+    claimed_by: software-architect
+    claimed_at: '2026-03-29T07:56:26.573156+00:00'
   - id: driver-evolution-review.contract-strength
     name: Audit contract and registry strength
     status: done

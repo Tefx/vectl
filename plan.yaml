@@ -49499,7 +49499,7 @@ phases:
       \ were already in sync with the contract"
   - id: driver-reconcile-context-convergence.verify
     name: Independently verify reconcile context-only convergence
-    status: claimed
+    status: done
     description: 'Independent phase-check focused only on reconcile convergence.
 
 
@@ -49546,6 +49546,29 @@ phases:
     agent: integration-verifier
     claimed_by: integration-verifier
     claimed_at: '2026-03-29T11:48:37.696059+00:00'
+    done_at: '2026-03-29T11:52:03.817360+00:00'
+    evidence: "## Independent reconcile verification\n- Commands executed:\n  - `uv\
+      \ run pytest tests/test_driver_loop_contract.py -k signatures_are_pinned -q`\n\
+      \  - `uv run pytest tests/test_driver_loop_runtime.py -q`\n  - `grep -r \"reconcile(\"\
+      \ src/` and `grep -r \"reconcile(\" tests/`\n  - `grep -r \"await reconcile\\\
+      (\" src/` for runtime callsites\n  \n- Signature observed:\n  Line 2453-2457\
+      \ of src/vectl/driver/loop.py:\n  ```python\n  async def reconcile(\n      completed:\
+      \ CompletedEntry,\n      *,\n      context: RuntimeContext,\n  ) -> None:\n\
+      \  ```\n  \n  Contract pin (lines 538-566):\n  - contract_id: \"driver-reconcile-context-only-v1\"\
+      \n  - final_signature: \"async def reconcile(completed: CompletedEntry, *, context:\
+      \ RuntimeContext) -> None\"\n  - forbidden_params: (\"state\", \"judge\", \"\
+      session_pool\", \"observer\", \"plan_path\", \"config\", \"runners\")\n  \n\
+      - Remaining explicit-arg reconcile callsites:\n  None found. All callsites verified:\n\
+      \  \n  1. Main loop callsite (loop.py:3491-3494): `await reconcile(completed=completed,\
+      \ context=runtime_context)`\n  2. Test files (12 matches across 4 test files):\
+      \ All use context-only signature\n  \n- Docs checked:\n  - docs/DRIVER-ARCHITECTURE.md:\
+      \ Lines 1241-1248 describe reconcile context-only boundary\n  - docs/ADR-driver-evolution-foundation.md\
+      \ referenced in RECONCILE_CONTEXT_ONLY_CONTRACT rationale\n  - RuntimeContext\
+      \ definition properly exposes all required fields\n  \n- Tests passed:\n  -\
+      \ tests/test_driver_loop_contract.py::test_loop_contract_signatures_are_pinned\
+      \ PASSED\n  - tests/test_driver_loop_contract.py (7 tests): 7 passed\n  - tests/test_driver_loop_runtime.py\
+      \ (62 tests): 37 passed, 25 xfailed (expected-red)\n  - Total: 44 passed, 0\
+      \ failed\n  \n- Scope verdict: PASS"
   - id: driver-reconcile-context-convergence.gate
     name: Gate reconcile context-only convergence
     status: pending

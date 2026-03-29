@@ -44150,7 +44150,7 @@ phases:
     claimed_at: '2026-03-29T01:48:16.368716+00:00'
   - id: driver-judge-hardening-review.spec-conformance
     name: Audit judge hardening spec conformance
-    status: pending
+    status: claimed
     description: "step_type: verification\nverification_scope: phase-check\nprotects_downstream_gates:\n\
       \  - driver-bootstrap-readiness.gate\nindependence_level: L1\nspec_refs:\n \
       \ - driver.yaml#judge-and-runners\n  - docs/JUDGE-AGENT-PROMPT.md#verdict-schema\n\
@@ -44181,6 +44181,8 @@ phases:
 
       '
     agent: spec-verifier
+    claimed_by: spec-verifier
+    claimed_at: '2026-03-29T01:48:36.436547+00:00'
   - id: driver-judge-hardening-review.gate
     name: Gate judge hardening review
     status: pending

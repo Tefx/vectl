@@ -46596,3 +46596,42 @@ phases:
     depends_on:
     - driver-continuity-review.gate
     agent: python-senior
+  - id: driver-continuity-review.gate-retest
+    name: Retest continuity review gate after blocker batch
+    status: pending
+    description: 'step_type: gate
+
+      Re-run the continuity review gate after the batched blocker remediation and
+      verify the gate result against BOTH blocker families together, not as isolated
+      spot checks.
+
+
+      Retest scope MUST explicitly confirm:
+
+      - ContinuityLedgerEntry contract evidence now includes judge_policy in the authoritative
+      pinned-field/fixture surface
+
+      - RunnerResult immutability now matches the contract expected by tests and runtime-adjacent
+      use
+
+      - DecideState isolation, expected-red asyncio continuity behavior, and judge
+      runtime failures no longer leave the gate blocked, or are clearly proven non-blocking
+      with fresh evidence
+
+
+      This retest is only complete when the reviewer evaluates the post-fix batch
+      holistically and records whether the original gate blockers are cleared together.'
+    verification: '- Fresh gate evidence covers BOTH blocker families in one review
+      pass
+
+      - Retest reproduces/validates the former blocker surfaces for judge_policy contract
+      pins and RunnerResult immutability, then confirms they are cleared
+
+      - Retest checks DecideState isolation, expected-red asyncio continuity behavior,
+      and judge runtime outcomes for residual gate impact
+
+      - Result states clearly whether driver-continuity-review.gate blockers are cleared
+      after the batch'
+    depends_on:
+    - driver-continuity-review.fix-gate-blockers
+    agent: gate-reviewer

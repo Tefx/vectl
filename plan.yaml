@@ -42238,7 +42238,7 @@ phases:
     agent: gate-reviewer
 - id: driver-prompt-foundation
   name: Driver Prompt Resource Foundation
-  status: pending
+  status: in_progress
   gate: Packaged judge-prompt resource contract, docs/runtime relationship, and failure
     semantics are pinned before runtime migration fan-out.
   context: Non-blocking prompt-resource work. Deliberately postponed until the renewed
@@ -42299,7 +42299,7 @@ phases:
     agent: gate-reviewer
   - id: driver-prompt-foundation.design-and-test
     name: Design packaged prompt boundary and write expected-red tests
-    status: pending
+    status: claimed
     description: 'step_type: test
 
       merged_contract_test: true
@@ -42353,6 +42353,8 @@ phases:
 
       - Outputs include both boundary design notes and failing tests'
     agent: python-senior
+    claimed_by: python-senior
+    claimed_at: '2026-03-29T05:51:48.410699+00:00'
 - id: driver-prompt-migration
   name: Driver Prompt Resource Migration
   status: locked

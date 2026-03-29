@@ -44734,7 +44734,7 @@ phases:
   steps:
   - id: driver-prompt-review.update-docs
     name: Sync prompt docs to packaged-resource contract
-    status: claimed
+    status: done
     description: 'Update documentation so docs/JUDGE-AGENT-PROMPT.md and related driver
       architecture docs clearly describe their new role.
 
@@ -44775,6 +44775,16 @@ phases:
     agent: doc-reviewer
     claimed_by: doc-reviewer
     claimed_at: '2026-03-29T09:33:49.728501+00:00'
+    done_at: '2026-03-29T09:40:15.000680+00:00'
+    evidence: "## Doc Sync Evidence\n- Docs updated:\n  - docs/JUDGE-AGENT-PROMPT.md\
+      \ (document status, runtime loading behavior, missing-resource handling, drift\
+      \ detection, references)\n  - docs/DRIVER-ARCHITECTURE.md (section 2.10 authority\
+      \ wording and resolved questions update)\n- Runtime authority wording:\n  -\
+      \ runtime loads packaged resource `vectl.driver.judge_agent_prompt.md`\n- Docs\
+      \ mirror wording:\n  - docs marked as mirror/spec artifact and not runtime authority\n\
+      - Missing/drift policy wording:\n  - explicit RuntimeError semantics for missing/empty\
+      \ resource and package import failure\n  - drift detection documented via `verify_docs_packaged_sync()`\
+      \ for CI/pre-commit\n- Remaining doc follow-ups:\n  - none identified"
   - id: driver-prompt-review.wiring-audit
     name: Audit packaged prompt wiring completeness
     status: claimed

@@ -39617,7 +39617,7 @@ phases:
       - none'
   - id: driver-evolution-events-foundation.verify-envelope-foundation
     name: Verify versioned envelope and registry durability
-    status: pending
+    status: claimed
     description: 'step_type: verification
 
       expected_result: green
@@ -39657,6 +39657,8 @@ phases:
     depends_on:
     - driver-evolution-events-foundation.implement-registry-envelope
     agent: integration-verifier
+    claimed_by: integration-verifier
+    claimed_at: '2026-03-29T06:19:44.282731+00:00'
   - id: driver-evolution-events-foundation.gate
     name: Gate events foundation
     status: pending

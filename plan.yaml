@@ -45913,7 +45913,7 @@ phases:
       \ driver-continuity-restart-recovery.impl"
   - id: driver-continuity-restart-recovery.fix-restart-recovery-batch
     name: Fix restart recovery gate blocker batch
-    status: claimed
+    status: done
     description: Batch-remediate the failed continuity restart-recovery gate by resolving
       the duplicate `RunnerResult` type mismatch and ensuring judge failure HALT continuity
       facts are durably persisted and consumed on the restart path.
@@ -45936,6 +45936,18 @@ phases:
     agent: python-senior
     claimed_by: python-senior
     claimed_at: '2026-03-29T04:45:51.896781+00:00'
+    done_at: '2026-03-29T04:51:57.830372+00:00'
+    evidence: "- Files changed: src/vectl/driver/runners.py, src/vectl/driver/types.py,\
+      \ src/vectl/driver/loop.py, tests/test_driver_recovery.py, tests/test_driver_recovery_black_box.py\n\
+      - RunnerResult mismatch resolution: removed duplicate RunnerResult definitions\
+      \ in runners.py and imported canonical types from types.py.\n- HALT continuity\
+      \ fact persistence/consumption: added judge_policy to ContinuityLedgerEntry,\
+      \ persisted on failure policy halt path, loaded from ledger, derived startup\
+      \ judge inputs from durable entries, and fed into startup boundary input.\n\
+      - Validation:\n  - ruff check on touched files: pass\n  - pyright on touched\
+      \ files: 0 errors\n  - pytest targeted recovery/judge/ledger set: 18 passed\n\
+      - Residual risks: only HALT policy is restored for blocker scope; fallback/planner_remediation\
+      \ restart consumption can be expanded later."
   - id: driver-continuity-restart-recovery.retest-restart-recovery-gate
     name: Retest continuity restart recovery gate after remediation
     status: pending

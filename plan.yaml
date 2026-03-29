@@ -39836,7 +39836,7 @@ phases:
       - docs/ADR-driver-evolution-foundation.md#188-resolved-decisions'
   - id: driver-evolution-event-contracts.implement-canonical-events
     name: Canonicalize FINAL DECIDE STEP_COMPLETED event semantics
-    status: claimed
+    status: done
     description: "step_type: implementation\n\nFill in stub bodies and replace placeholder\
       \ event payload definitions with substantive canonical FINAL/DECIDE/STEP_COMPLETED\
       \ logic under the pinned contract.\n\nUPSTREAM ARTIFACTS (from contract/test\
@@ -39887,6 +39887,47 @@ phases:
     agent: python-senior
     claimed_by: python-senior
     claimed_at: '2026-03-29T06:44:54.752657+00:00'
+    done_at: '2026-03-29T06:52:17.174650+00:00'
+    evidence: 'Artifact:
+
+      - PR: 8ce52c40c4d39926a8093905495eaac8213b2348
+
+
+      Verification:
+
+      - `uv run pytest tests/test_driver_loop_contract.py tests/test_driver_observe.py
+      tests/test_driver_impl.py` -> 64 passed
+
+      - `uv run ruff check src/vectl/driver/events/emitter.py src/vectl/driver/loop.py
+      src/vectl/driver/types.py tests/test_driver_observe.py tests/test_driver_impl.py`
+      -> All checks passed
+
+
+      Spec link:
+
+      - docs/ADR-driver-evolution-foundation.md#58-final-becomes-canonical-summary-event
+
+      - docs/ADR-driver-evolution-foundation.md#169-implementation-guidance
+
+      - docs/ADR-driver-evolution-foundation.md#188-resolved-decisions
+
+
+      Files changed:
+
+      - src/vectl/driver/events/emitter.py
+
+      - src/vectl/driver/loop.py
+
+      - src/vectl/driver/types.py
+
+      - tests/test_driver_observe.py
+
+      - tests/test_driver_impl.py
+
+
+      Deviation records:
+
+      - none'
   - id: driver-evolution-event-contracts.implement-typed-emitter
     name: Add typed event emitter helpers
     status: pending

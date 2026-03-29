@@ -39836,7 +39836,7 @@ phases:
       - docs/ADR-driver-evolution-foundation.md#188-resolved-decisions'
   - id: driver-evolution-event-contracts.implement-canonical-events
     name: Canonicalize FINAL DECIDE STEP_COMPLETED event semantics
-    status: pending
+    status: claimed
     description: "step_type: implementation\n\nFill in stub bodies and replace placeholder\
       \ event payload definitions with substantive canonical FINAL/DECIDE/STEP_COMPLETED\
       \ logic under the pinned contract.\n\nUPSTREAM ARTIFACTS (from contract/test\
@@ -39885,6 +39885,8 @@ phases:
     depends_on:
     - driver-evolution-event-contracts.contract
     agent: python-senior
+    claimed_by: python-senior
+    claimed_at: '2026-03-29T06:44:54.752657+00:00'
   - id: driver-evolution-event-contracts.implement-typed-emitter
     name: Add typed event emitter helpers
     status: pending

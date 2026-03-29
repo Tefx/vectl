@@ -52240,6 +52240,86 @@ phases:
     still blocking unsafe divergence.
   depends_on:
   - driver-continuity-hygiene-surface
+  steps:
+  - id: driver-continuity-hygiene-review.verify-unit-green
+    name: Verify helper, manifest, and CLI seams go green
+    status: pending
+    description: 'As an INDEPENDENT TESTER (integration-verifier), validate the continuity
+      hygiene helper, manifest, and CLI seams from a fresh perspective.
+
+
+      step_type: test
+
+      step_intent: retest_green
+
+      expected_result: green
+
+
+      Verification scope: phase-check protecting the final runtime liveness and gate
+      review.
+
+
+      YOUR GOAL IS TO FIND PROBLEMS, not to confirm it works.
+
+
+      Test for:
+
+      - Happy path: safe stale ledger/journal leftovers are classified and quarantined
+      correctly
+
+      - Edge cases: mixed ledger+journal stale sets, missing directories, repeated
+      dry-run/apply cycles
+
+      - Error scenarios: corrupt files, active-claim divergence, current claimed-step
+      disagreement, ambiguous identity
+
+      - Consumer-boundary conformance: helper classification and `vectl repair continuity`
+      agree on the same fixture set
+
+
+      Independence Level: L1'
+    verification: '- Green targeted tests cover helper classification/quarantine and
+      CLI repair continuity
+
+      - Evidence includes exact commands and any issues found
+
+      - Shared fixture results match across helper-oriented and CLI-oriented tests'
+    evidence_template: '## Verification Report
+
+      **Tester**: integration-verifier
+
+      **Scope**: helper classification, quarantine storage, CLI repair continuity
+
+      **Independence Level**: L1
+
+
+      ### Test Execution
+
+      - Commands executed:
+
+      - Output summary:
+
+
+      ### Issues Found
+
+      - blocker:
+
+      - should_fix:
+
+
+      ### Coverage Assessment
+
+      - Happy path:
+
+      - Edge cases:
+
+      - Error scenarios:
+
+
+      ### Verdict
+
+      - PASS | ISSUES_FOUND | INCOMPLETE'
+    agent: integration-verifier
 - id: driver-continuity-hygiene-doc-sync
   name: 'Driver Continuity Hygiene: Documentation Sync'
   status: locked

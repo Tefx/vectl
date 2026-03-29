@@ -44153,7 +44153,7 @@ phases:
       - none'
   - id: driver-continuity-authority-ledger.verify
     name: Verify durable continuity authority and ledger
-    status: claimed
+    status: done
     description: 'step_type: verification
 
       As an INDEPENDENT TESTER (integration-verifier), validate the durable continuity
@@ -44189,6 +44189,160 @@ phases:
     agent: integration-verifier
     claimed_by: integration-verifier
     claimed_at: '2026-03-29T00:38:06.717388+00:00'
+    done_at: '2026-03-29T00:41:52.027169+00:00'
+    evidence: '## Verification Report: driver-continuity-authority-ledger
+
+
+      **Date**: 2025-03-29
+
+      **Verifier**: integration-verifier
+
+      **Scope**: Durable continuity authority and ledger persistence verification
+
+
+      ### Test Execution Results
+
+
+      #### P1 Execution Check
+
+      | Command | Result | Evidence |
+
+      |---------|--------|----------|
+
+      | `pytest tests/test_driver_continuity_expected_red.py -v` | PASS | `5 passed
+      in 2.06s` |
+
+      | `pytest tests/test_driver_continuity_capability_safety_red.py -v` | PASS |
+      `4 passed in 1.89s` |
+
+      | `pytest tests/test_driver*.py -v` | PASS | `655 passed, 34 xfailed, 17 xpassed
+      in 17.17s` |
+
+
+      All continuity tests pass. No `skipped`, no `collected 0`.
+
+
+      #### P2 Integration Purity Check
+
+      | Check | Result | Evidence |
+
+      |-------|--------|----------|
+
+      | `Mock`/`MagicMock` in continuity tests | NOT FAKE | Tests use real file I/O
+      via `tmp_path` fixtures |
+
+      | `@patch` at I/O boundaries | NOT FAKE | `monkeypatch.setattr` for plan/claims
+      mocks only, not I/O |
+
+      | `InMemory*` persistence | N/A | Tests write to real `tmp_path/.vectl/continuity/`
+      |
+
+
+      Integration tests create actual `.vectl/continuity/ledger/` and `.vectl/continuity/journal/`
+      files.
+
+
+      #### P6 Mock Island Check
+
+      | Test File | Mock Heavy | Integration Companion |
+
+      |-----------|------------|----------------------|
+
+      | `test_driver_continuity_expected_red.py` | No | Self-contained integration
+      tests |
+
+      | `test_driver_continuity_capability_safety_red.py` | Minimal | Self-contained
+      |
+
+
+      No mock island detected — all continuity boundaries have integration coverage.
+
+
+      ### Spec Alignment Verification
+
+
+      #### Source-of-Truth Matrix (§3) Verified
+
+      | Continuity Fact | Implementation | Status |
+
+      |-----------------|----------------|--------|
+
+      | `ContinuityLedgerEntry` | `src/vectl/driver/types.py:483-498` | ✅ Present
+      |
+
+      | `ContinuityJournalEntry` | `src/vectl/driver/types.py:464-479` | ✅ Present
+      |
+
+      | `ReplaySafetyEnvelope` | Imported in `loop.py:74` | ✅ Used |
+
+      | `RUNNER_CONTINUITY_CAPABILITIES` | `runner_continuity.py:91-147` | ✅ Present
+      |
+
+
+      #### Runtime Contract (§4) Verified
+
+      | Contract | Implementation | Test |
+
+      |----------|----------------|------|
+
+      | Double-truth detection | `loop.py:1666` emits `CONTINUITY_DOUBLE_TRUTH_DETECTED`
+      | `test_dispatch_detects_and_journals_sessionpool_decide_double_truth` |
+
+      | Success ledger persistence | `loop.py:1285-1312` `_persist_continuity_ledger()`
+      | `test_reconcile_success_persists_durable_ledger_for_restart_resume` |
+
+      | Failure journal write | `loop.py:1255-1281` `_persist_continuity_journal()`
+      | `test_reconcile_failure_writes_recovery_grade_journal_fields` |
+
+      | Shutdown abort journal | `loop.py:2339` writes `event_kind="shutdown_abort"`
+      | `test_shutdown_persists_abort_or_crash_adjacent_continuity_record` |
+
+      | Startup ledger validation | `loop.py:1378-1387` checks orphaned_ledger_steps
+      | `test_startup_recovery_blocks_main_loop_when_plan_claims_ledger_mismatch`
+      |
+
+
+      ### L2 Real Wiring Evidence
+
+
+      **Ledger write on success**:
+
+      - Path: `repo_root/.vectl/continuity/ledger/{step_id}.json`
+
+      - Verified: `test_reconcile_success_persists_durable_ledger_for_restart_resume`
+      creates file
+
+
+      **Journal write on failure**:
+
+      - Path: `repo_root/.vectl/continuity/journal/{step_id}.jsonl`
+
+      - Verified: `test_reconcile_failure_writes_recovery_grade_journal_fields` creates
+      file
+
+
+      **Abort journal on shutdown**:
+
+      - Path: `repo_root/.vectl/continuity/journal/{step_id}.jsonl`
+
+      - Verified: `test_shutdown_persists_abort_or_crash_adjacent_continuity_record`
+      creates file
+
+
+      ### Code Quality
+
+      | Check | Result |
+
+      |-------|--------|
+
+      | Contract coverage (invar) | PASS: 100% |
+
+      | Type contracts | All continuity types defined in `types.py` |
+
+
+      ### Findings
+
+      **NONE** — all tests pass, all contracts implemented, all spec sections satisfied.'
   - id: driver-continuity-authority-ledger.gate
     name: Gate authority and ledger continuity
     status: pending

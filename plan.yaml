@@ -52320,6 +52320,59 @@ phases:
 
       - PASS | ISSUES_FOUND | INCOMPLETE'
     agent: integration-verifier
+  - id: driver-continuity-hygiene-review.liveness-probe
+    name: Run black-box startup and repair-continuity liveness probe
+    status: pending
+    description: 'As an INDEPENDENT TESTER (blind-tester), run the real entrypoints
+      for continuity hygiene.
+
+
+      Verification scope: phase-check protecting the final phase gate for deployability-bearing
+      surfaces (`drive` command and `repair continuity` CLI surface).
+
+
+      Independence Level: L2
+
+
+      Required runnable proof:
+
+      - identified entrypoints: `uv run vectl drive --config driver.yaml` and `uv
+      run vectl repair continuity ...`
+
+      - exact launch commands with real continuity fixtures under `.vectl/continuity/{ledger,journal}`
+
+      - proof that startup hygiene quarantines only provably stale leftovers and then
+      reaches active recovery
+
+      - proof that the same fixtures still halt for corrupt, active-claim, current-claimed-step,
+      and ambiguous cases
+
+      - proof that repair-continuity dry-run/apply surfaces remain audit-preserving
+
+
+      Finding issues is success; missing real-path proof is not.'
+    verification: '- Entry point starts and accepts at least one safe-stale continuity
+      fixture without immediate divergence halt
+
+      - Blocking fixtures still halt with explicit reasons
+
+      - Repair-continuity CLI executes with real artifacts and auditable output/manifests'
+    evidence_template: '## Seam-Level Integration Evidence
+
+      **Changed seam path**: src/vectl/driver/__main__.py:CLI-runtime ; src/vectl/cli.py:repair-subcommand
+
+
+      **Exact commands executed**:
+
+
+      **Actual output**:
+
+
+      **Fixtures used**:
+
+
+      **Verification**: real-path proof for startup hygiene and repair continuity'
+    agent: blind-tester
 - id: driver-continuity-hygiene-doc-sync
   name: 'Driver Continuity Hygiene: Documentation Sync'
   status: locked

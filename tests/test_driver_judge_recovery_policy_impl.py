@@ -12,14 +12,21 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from pathlib import Path
-from types import SimpleNamespace
 from typing import Any, cast
 
 import pytest
 
-from src.vectl.driver.config import SessionConfig
+from src.vectl.driver.config import (
+    DriverConfig,
+    JudgeConfig,
+    ObservabilityConfig,
+    OrchestrationConfig,
+    RunnerConfig,
+    SessionConfig,
+)
 from src.vectl.driver.errors import JudgmentParseError, JudgmentTimeoutError
 from src.vectl.driver.loop import reconcile
+from src.vectl.driver.runtime_context import RuntimeContext
 from src.vectl.driver.session import SessionPool
 from src.vectl.driver.types import CompletedEntry, DriverState, RunnerResult, RunnerStatus
 
@@ -105,6 +112,32 @@ def _failed_completed_entry(tmp_path: Path) -> CompletedEntry:
     )
 
 
+def _make_context(
+    state: DriverState,
+    judge: Any,
+    session_pool: SessionPool,
+    observer: _Observer,
+    tmp_path: Path,
+) -> RuntimeContext:
+    """Build a RuntimeContext for testing."""
+    config = DriverConfig(
+        runners={"opencode": RunnerConfig(command="opencode", args=[], stall_timeout=300)},
+        fallback_runner="opencode",
+        session=SessionConfig(reuse_ttl=300),
+        judge=JudgeConfig(runner="opencode", structured_output=True, timeout=60, preflight=False),
+        observability=ObservabilityConfig(events_file=str(tmp_path / "events.jsonl")),
+    )
+    return RuntimeContext(
+        state=state,
+        config=config,
+        runners={},
+        judge=judge,
+        session_pool=session_pool,
+        observer=observer,
+        plan_path=tmp_path / "plan.yaml",
+    )
+
+
 @pytest.mark.anyio
 async def test_reconcile_failure_timeout_uses_retry_policy_and_defers(
     monkeypatch: pytest.MonkeyPatch,
@@ -125,13 +158,18 @@ async def test_reconcile_failure_timeout_uses_retry_policy_and_defers(
         lambda current, **_k: saved.append(current),
     )
 
-    await reconcile(
-        completed=_failed_completed_entry(tmp_path),
-        state=DriverState(),
+    state = DriverState()
+    context = _make_context(
+        state=state,
         judge=cast(Any, _JudgeTimeout()),
         session_pool=SessionPool(SessionConfig(reuse_ttl=300)),
         observer=observer,
-        plan_path=tmp_path / "plan.yaml",
+        tmp_path=tmp_path,
+    )
+
+    await reconcile(
+        completed=_failed_completed_entry(tmp_path),
+        context=context,
     )
 
     policy_events = [
@@ -152,7 +190,6 @@ async def test_reconcile_failure_parse_error_uses_fallback_policy(
     observer = _Observer()
     state = DriverState()
     state.decide_state.failure_counts["core.impl"] = 2
-    state.runtime_config = SimpleNamespace(fallback_runner="codex")
 
     monkeypatch.setattr(
         "src.vectl.driver.loop.load_plan_definition",
@@ -161,13 +198,29 @@ async def test_reconcile_failure_parse_error_uses_fallback_policy(
     monkeypatch.setattr("src.vectl.driver.loop.defer_step", lambda current, *_a, **_k: current)
     monkeypatch.setattr("src.vectl.driver.loop.save_plan", lambda *_a, **_k: None)
 
-    await reconcile(
-        completed=_failed_completed_entry(tmp_path),
+    config = DriverConfig(
+        runners={
+            "opencode": RunnerConfig(command="opencode", args=[], stall_timeout=300),
+            "codex": RunnerConfig(command="codex", args=[], stall_timeout=300),
+        },
+        fallback_runner="codex",
+        session=SessionConfig(reuse_ttl=300),
+        judge=JudgeConfig(runner="opencode", structured_output=True, timeout=60, preflight=False),
+        observability=ObservabilityConfig(events_file=str(tmp_path / "events.jsonl")),
+    )
+    context = RuntimeContext(
         state=state,
+        config=config,
+        runners={},
         judge=cast(Any, _JudgeParseError(raw_output="not-json-output")),
         session_pool=SessionPool(SessionConfig(reuse_ttl=300)),
         observer=observer,
         plan_path=tmp_path / "plan.yaml",
+    )
+
+    await reconcile(
+        completed=_failed_completed_entry(tmp_path),
+        context=context,
     )
 
     policy_events = [
@@ -196,13 +249,17 @@ async def test_reconcile_failure_empty_output_no_fallback_halts(
     monkeypatch.setattr("src.vectl.driver.loop.defer_step", lambda current, *_a, **_k: current)
     monkeypatch.setattr("src.vectl.driver.loop.save_plan", lambda *_a, **_k: None)
 
-    await reconcile(
-        completed=_failed_completed_entry(tmp_path),
+    context = _make_context(
         state=state,
         judge=cast(Any, _JudgeParseError(raw_output="empty output from judge runner")),
         session_pool=SessionPool(SessionConfig(reuse_ttl=300)),
         observer=observer,
-        plan_path=tmp_path / "plan.yaml",
+        tmp_path=tmp_path,
+    )
+
+    await reconcile(
+        completed=_failed_completed_entry(tmp_path),
+        context=context,
     )
 
     policy_events = [

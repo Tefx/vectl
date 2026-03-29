@@ -44394,6 +44394,27 @@ phases:
     depends_on:
     - driver-judge-hardening-review.gate
     agent: python-senior
+  - id: driver-judge-hardening-review.retest-codex-fallback-contract-gate
+    name: Retest judge hardening review after codex fallback remediation
+    status: pending
+    description: Independently retest the judge hardening review gate after the codex
+      fallback contract remediation and confirm the prior blocker is resolved without
+      introducing new judge-surface regressions.
+    verification: Independent review evidence confirms contract alignment, reproduces
+      or checks the prior failure mode, and states whether the judge hardening review
+      gate now passes.
+    evidence_template: '- Independent retest scope
+
+      - Commands / checks executed
+
+      - Outcome against prior blocker
+
+      - Pass/fail recommendation for gate
+
+      '
+    depends_on:
+    - driver-judge-hardening-review.fix-codex-fallback-contract
+    agent: gate-reviewer
 - id: driver-bootstrap-readiness
   name: Driver Real Bootstrap Readiness
   status: locked

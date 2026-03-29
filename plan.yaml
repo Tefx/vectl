@@ -50536,13 +50536,19 @@ phases:
       - exact pytest selections for codex/opencode judge, codex/opencode dispatch,
       and combined runs
 
-      - the exact ratified codex judge model id, codex dispatch model id (if different),
-      opencode judge model id, and opencode dispatch model id (if different)
+      - codex judge smoke model = gpt-5.4-mini
+
+      - codex dispatch smoke model = gpt-5.4-mini
+
+      - opencode judge smoke model = ollama-cloud/minimax-m2.7
+
+      - opencode dispatch smoke model = ollama-cloud/minimax-m2.7
 
       - the exact runner-supported override mechanism used for each documented invocation
       (flag/config/env)
 
-      - fallback policy if a preferred cheap model is unavailable
+      - fallback policy only for true runner unavailability/auth/runner issues; do
+      not reopen model selection
 
       - explicit PASS vs explicit SKIP semantics
 

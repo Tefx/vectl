@@ -44182,7 +44182,7 @@ phases:
   steps:
   - id: driver-prompt-migration.package-resource-loader
     name: Package judge prompt resource and migrate loader
-    status: pending
+    status: claimed
     description: "step_type: implementation\ntags:\n  - integration\nVerification\
       \ scope: phase-check protecting driver-prompt-migration.runtime-retest and gate.\n\
       \nFill in stub bodies and replace placeholder prompt-resource wiring with working\
@@ -44253,6 +44253,8 @@ phases:
 
       ```'
     agent: python-senior
+    claimed_by: python-senior
+    claimed_at: '2026-03-29T09:02:08.833187+00:00'
   - id: driver-prompt-migration.authority-reference-migration
     name: Migrate prompt authority references and drift checks
     status: claimed

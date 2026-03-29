@@ -302,7 +302,11 @@ LAYERED_ACTION_REGISTRY: Final[dict[ActionCategory, tuple[ActionDeclaration, ...
 
 _RUNTIME_LOOP_ACTION_INDEX: Final[dict[str, ActionDeclaration]] = {
     declaration.action_type: declaration
-    for declaration in (*EXECUTION_ACTION_DECLARATIONS, *CONTROL_ACTION_DECLARATIONS)
+    for declaration in (
+        *EXECUTION_ACTION_DECLARATIONS,
+        *CONTROL_ACTION_DECLARATIONS,
+        *RECOVERY_ACTION_DECLARATIONS,
+    )
 }
 
 _PLANNER_DISPATCH_ACTION_INDEX: Final[dict[str, ActionDeclaration]] = {

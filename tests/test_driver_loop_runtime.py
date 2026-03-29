@@ -43,6 +43,7 @@ from src.vectl.driver.action_registry import (
     PLANNER_DISPATCH_GATE_REJECT_HANDLER_CONTRACT,
     PLANNER_DISPATCH_REPLAN_ACTION_TYPE,
     PLANNER_DISPATCH_REPLAN_HANDLER_CONTRACT,
+    RECOVERY_ALL_STALLED_ACTION_TYPE,
     WAIT_ACTION_TYPE,
     PlannerDispatchAction,
     PlannerDispatchActionType,
@@ -93,7 +94,7 @@ from src.vectl.driver.types import (
     RunnerStatus,
     StartupRecoveryBoundaryOutput,
 )
-from vectl.models import DecideOutput
+from vectl.models import Action, DecideOutput
 
 # =============================================================================
 # FIXTURES
@@ -475,6 +476,52 @@ class TestPlannerDispatchActionRegistryContract:
         assert captured["request"].planner_instruction == "Strengthen verification criteria"
         assert captured["config"] is driver_config
         assert captured["plan_path"] == tmp_path / "plan.yaml"
+
+    def test_runtime_registry_resolves_recovery_action_contract(self) -> None:
+        """Recovery action MUST resolve via runtime registry boundary."""
+
+        declaration = resolve_runtime_loop_action_declaration(RECOVERY_ALL_STALLED_ACTION_TYPE)
+        assert declaration.category == "recovery"
+        assert declaration.handler_contract == "recover_all_stalled"
+
+    @pytest.mark.anyio
+    async def test_loop_executes_recovery_through_runtime_registry_handler(
+        self,
+        driver_config: DriverConfig,
+        driver_state: DriverState,
+        mock_judge: Judge,
+        session_pool: SessionPool,
+        observer: FileObserver,
+        tmp_path: Path,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """All-stalled recovery MUST execute via runtime registry dispatch helper."""
+
+        captured: dict[str, object] = {}
+
+        async def _capture_recover_all_stalled(state: DriverState, observer: FileObserver) -> None:
+            captured["state"] = state
+            captured["observer"] = observer
+
+        monkeypatch.setattr(loop_module, "_recover_all_stalled", _capture_recover_all_stalled)
+
+        runtime_context = RuntimeContext(
+            state=driver_state,
+            config=driver_config,
+            runners={},
+            judge=mock_judge,
+            session_pool=session_pool,
+            observer=observer,
+            plan_path=tmp_path / "plan.yaml",
+        )
+
+        await loop_module._dispatch_registered_runtime_action(
+            action=Action.model_construct(action=RECOVERY_ALL_STALLED_ACTION_TYPE),
+            context=runtime_context,
+        )
+
+        assert captured["state"] is driver_state
+        assert captured["observer"] is observer
 
 
 class TestRuntimeContextContracts:

@@ -35,7 +35,7 @@ from vectl.claims import load_claims_for_branch, repair_claims
 from vectl.decide import decide
 from vectl.io import load_plan_definition, save_plan
 from vectl.lifecycle import claim_step, complete_step, defer_step
-from vectl.models import PlanError
+from vectl.models import Action, PlanError
 from vectl.plan_path import resolve_claims_path, resolve_plan_path
 
 from .action_registry import (
@@ -46,6 +46,7 @@ from .action_registry import (
     PLANNER_DISPATCH_GATE_REJECT_HANDLER_CONTRACT,
     PLANNER_DISPATCH_REPLAN_ACTION_TYPE,
     PLANNER_DISPATCH_REPLAN_HANDLER_CONTRACT,
+    RECOVERY_ALL_STALLED_ACTION_TYPE,
     PlannerDispatchAction,
     UnknownLoopActionError,
     UnknownPlannerDispatchActionError,
@@ -125,8 +126,6 @@ from .worktree import (
 )
 
 if TYPE_CHECKING:
-    from vectl.models import Action
-
     from .config import DriverConfig
     from .judge import Judge
     from .observe import Observer
@@ -142,6 +141,7 @@ RegisteredLoopActionHandlerName = Literal[
     "emit_complete_action_ignored",
     "emit_wait",
     "emit_escalation_deferred",
+    "recover_all_stalled",
 ]
 
 RegisteredPlannerDispatchHandlerName = Literal[
@@ -3193,6 +3193,16 @@ async def _registry_emit_escalation_deferred(action: Action, context: RuntimeCon
     )
 
 
+async def _registry_recover_all_stalled(
+    action: Action,
+    context: RuntimeContext,
+) -> None:
+    """Execute all-stalled recovery via registry-declared recovery handler."""
+
+    _ = action
+    await _recover_all_stalled(state=context.state, observer=context.observer)
+
+
 async def _registry_dispatch_planner_replan(
     action: PlannerDispatchAction,
     context: RuntimeContext,
@@ -3282,13 +3292,47 @@ async def _dispatch_registered_planner_action(
 
 
 _REGISTERED_RUNTIME_ACTION_HANDLERS: Final[
-    dict[RegisteredLoopActionHandlerName, Callable[[Action, RuntimeContext], Awaitable[None]]]
+    dict[
+        RegisteredLoopActionHandlerName,
+        Callable[[Action, RuntimeContext], Awaitable[None]],
+    ]
 ] = {
     "handle_dispatch": _registry_handle_dispatch,
     "emit_complete_action_ignored": _registry_emit_complete_action_ignored,
     "emit_wait": _registry_emit_wait,
     "emit_escalation_deferred": _registry_emit_escalation_deferred,
+    "recover_all_stalled": _registry_recover_all_stalled,
 }
+
+
+async def _dispatch_registered_runtime_action(
+    *,
+    action: Action,
+    context: RuntimeContext,
+) -> None:
+    """Execute runtime/control/recovery actions via runtime action registry."""
+
+    try:
+        declaration = resolve_runtime_loop_action_declaration(action.action)
+    except UnknownLoopActionError as exc:
+        raise PlanError(str(exc)) from exc
+
+    if declaration.runtime_context_contract != "RuntimeContext":
+        raise PlanError(
+            "Loop action registry declaration must use RuntimeContext: "
+            f"action_type={declaration.action_type}, "
+            f"runtime_context_contract={declaration.runtime_context_contract}"
+        )
+
+    handler_name = cast(RegisteredLoopActionHandlerName, declaration.handler_contract)
+    handler = _REGISTERED_RUNTIME_ACTION_HANDLERS.get(handler_name)
+    if handler is None:
+        raise PlanError(
+            "Loop action registry handler is not wired: "
+            f"action_type={declaration.action_type}, handler={declaration.handler_contract}"
+        )
+
+    await handler(action, context)
 
 
 async def _run_main_loop(
@@ -3342,20 +3386,7 @@ async def _run_main_loop(
             break
 
         for action in decide_output.actions:
-            try:
-                declaration = resolve_runtime_loop_action_declaration(action.action)
-            except UnknownLoopActionError as exc:
-                raise PlanError(str(exc)) from exc
-
-            handler_name = cast(RegisteredLoopActionHandlerName, declaration.handler_contract)
-            handler = _REGISTERED_RUNTIME_ACTION_HANDLERS.get(handler_name)
-            if handler is None:
-                raise PlanError(
-                    "Loop action registry handler is not wired: "
-                    f"action_type={declaration.action_type}, handler={declaration.handler_contract}"
-                )
-
-            await handler(action, runtime_context)
+            await _dispatch_registered_runtime_action(action=action, context=runtime_context)
 
         if state.running:
             completed = await state.wait_for_any()
@@ -3369,7 +3400,13 @@ async def _run_main_loop(
             )
 
             if completed.result.status == RunnerStatus.STALL and _all_running_handles_dead(state):
-                await _recover_all_stalled(state, observer)
+                await _dispatch_registered_runtime_action(
+                    action=Action.model_construct(
+                        action=RECOVERY_ALL_STALLED_ACTION_TYPE,
+                        reason="all_running_handles_dead_after_stall",
+                    ),
+                    context=runtime_context,
+                )
 
         if not decide_output.continuation and not state.running:
             break

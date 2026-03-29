@@ -40841,7 +40841,7 @@ phases:
       \ - PASSED\n```"
   - id: driver-evolution-action-registry.gate
     name: Gate action registry
-    status: pending
+    status: claimed
     description: 'step_type: gate
 
       Gate review: verify the action-registry phase completion and quality.
@@ -40881,6 +40881,8 @@ phases:
     - driver-evolution-action-registry.implement-planner-dispatch-registration
     - driver-evolution-action-registry.verify-planner-dispatch
     agent: gate-reviewer
+    claimed_by: gate-reviewer
+    claimed_at: '2026-03-29T06:59:45.028748+00:00'
 - id: driver-evolution-loop-migration
   name: 'Driver Evolution: Loop Migration & Wiring'
   status: locked

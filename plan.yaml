@@ -46213,7 +46213,7 @@ phases:
       failure/abort coverage and concurrency invariants).'
   - id: driver-continuity-review.gate
     name: Gate continuity review
-    status: pending
+    status: claimed
     description: "step_type: gate\nGate review for continuity bootstrap readiness\
       \ proof.\n\nreview_depth: THOROUGH\ncross_cutting_focus:\n  - restart recovery\
       \ is controllable and recoverable through the real entrypoint\n  - replay safety\
@@ -46229,6 +46229,8 @@ phases:
     - driver-continuity-review.wiring-audit
     - driver-continuity-review.spec-conformance
     agent: gate-reviewer
+    claimed_by: gate-reviewer
+    claimed_at: '2026-03-29T05:07:23.848845+00:00'
   - id: driver-continuity-review.fix-wiring-blockers
     name: Fix continuity review wiring blockers
     status: claimed

@@ -41796,7 +41796,7 @@ phases:
       - docs/ADR-driver-evolution-foundation.md#104'
   - id: driver-evolution-review.black-box-verification
     name: Black-box verify the evolved driver surfaces
-    status: pending
+    status: claimed
     description: 'step_type: verification
 
       expected_result: green
@@ -41825,6 +41825,8 @@ phases:
     depends_on:
     - driver-evolution-review.spec-conformance
     agent: blind-tester
+    claimed_by: blind-tester
+    claimed_at: '2026-03-29T07:52:11.002087+00:00'
   - id: driver-evolution-review.gate
     name: Final gate for driver evolution ADR chain
     status: pending

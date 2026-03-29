@@ -49206,14 +49206,53 @@ phases:
     - driver-reconcile-context-convergence.sync-current-contract-test
     agent: python-executor
   - id: driver-reconcile-context-convergence.test-define-red
-    name: Define expected-red reconcile convergence regressions
+    name: Define expected-red tests for reconcile context-only convergence
     status: pending
-    description: 'Add focused expected-red tests for the context-only target: pin
-      the new reconcile signature, require loop runtime invocation through `context`
-      only, and expose any remaining dual-path reconcile dependency injection in representative
-      runtime/hardening/recovery coverage.'
-    verification: Targeted reconcile convergence tests run in expected-red mode with
-      failures attributable only to the not-yet-landed context-only refactor.
+    description: 'Add focused expected-red tests for the final context-only boundary
+      without implementing it.
+
+
+      Required coverage:
+
+      1. contract test pins final `reconcile(completed, *, context)` form
+
+      2. runtime loop path calls `reconcile()` through `context=` only
+
+      3. representative direct reconcile callers/tests no longer define success criteria
+      around explicit runtime arg passing
+
+      4. at least one grep-backed regression check or signature assertion exposes
+      remaining dual-path usage
+
+
+      Scope:
+
+      - tests only
+
+      - no production changes
+
+      - no `handle_complete()` changes
+
+      - keep failures attributable to the not-yet-landed refactor, not unrelated driver
+      behavior'
+    verification: '- expected-red tests are added/updated in tests only
+
+      - targeted run shows red for the intended boundary gap, not unrelated failures
+
+      - evidence identifies which failing assertions are expected pre-implementation'
+    evidence_template: "## Expected-red reconcile convergence\n- Commands:\n  `pytest\
+      \ tests/test_driver_loop_contract.py tests/test_driver_loop_runtime.py -k \"\
+      reconcile or signatures_are_pinned\" -q`\n- Expected failing tests:\n  `<list>`\n\
+      - Why red is correct before impl:\n  `<1-2 lines>`\n- Files changed:\n  `<tests\
+      \ only>`\n- Explicit statement:\n  \"No production code changed\""
+    refs:
+    - tests/test_driver_loop_contract.py
+    - tests/test_driver_loop_runtime.py
+    - tests/test_driver_loop_hardening.py
+    - tests/test_driver_continuity_expected_red.py
+    - tests/test_driver_judge_recovery_policy_impl.py
+    - src/vectl/driver/loop.py
+    - docs/RFC-expected-red-verification-semantics.md
     depends_on:
     - driver-reconcile-context-convergence.contract
     agent: python-executor

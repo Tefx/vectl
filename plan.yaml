@@ -44153,7 +44153,7 @@ phases:
       - none'
   - id: driver-continuity-authority-ledger.verify
     name: Verify durable continuity authority and ledger
-    status: pending
+    status: claimed
     description: 'step_type: verification
 
       As an INDEPENDENT TESTER (integration-verifier), validate the durable continuity
@@ -44187,6 +44187,8 @@ phases:
     depends_on:
     - driver-continuity-authority-ledger.impl
     agent: integration-verifier
+    claimed_by: integration-verifier
+    claimed_at: '2026-03-29T00:38:06.717388+00:00'
   - id: driver-continuity-authority-ledger.gate
     name: Gate authority and ledger continuity
     status: pending

@@ -40167,7 +40167,7 @@ phases:
       \ sink. Edge cases handled, errors correctly rejected."
   - id: driver-evolution-event-contracts.gate
     name: Gate canonical event contracts
-    status: pending
+    status: claimed
     description: 'step_type: gate
 
       Gate review: verify the canonical-event-contracts phase completion and quality.
@@ -40208,6 +40208,8 @@ phases:
     - driver-evolution-event-contracts.spec-conformance
     - driver-evolution-event-contracts.verify-emitter-flow
     agent: gate-reviewer
+    claimed_by: gate-reviewer
+    claimed_at: '2026-03-29T07:08:46.631670+00:00'
 - id: driver-evolution-runtime-context
   name: 'Driver Evolution: Runtime Context'
   status: done

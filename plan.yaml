@@ -43532,7 +43532,7 @@ phases:
       Deviation records: none'
   - id: driver-judge-hardening-recovery-policy.verify
     name: Verify judgment failure handling policy
-    status: pending
+    status: claimed
     description: "step_type: verification\nverification_scope: phase-check\nprotects_downstream_gates:\n\
       \  - driver-judge-hardening-review.gate\n  - driver-bootstrap-readiness.gate\n\
       independence_level: L2\nspec_refs:\n  - driver.yaml#judge\n  - docs/DRIVER-ARCHITECTURE.md#judge-runtime\n\
@@ -43568,6 +43568,8 @@ phases:
     depends_on:
     - driver-judge-hardening-recovery-policy.impl
     agent: integration-verifier
+    claimed_by: integration-verifier
+    claimed_at: '2026-03-29T01:27:12.724978+00:00'
   - id: driver-judge-hardening-recovery-policy.gate
     name: Gate judge failure handling policy
     status: pending

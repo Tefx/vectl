@@ -43413,11 +43413,12 @@ phases:
       \ OPEN"
 - id: driver-enhancement-observability
   name: 'Driver Enhancement: Advanced Observability'
-  status: pending
+  status: locked
   gate: Post-bootstrap observability remains blocked until the slimmed live codex/opencode
     judge and dispatch smoke implementation gate is complete.
   depends_on:
   - driver-live-smoke-implementation
+  - driver-continuity-hygiene-deep-review
   steps:
   - id: driver-enhancement-observability.impl
     name: Implement runtime telemetry for lifecycle dispatch and recovery

@@ -50213,19 +50213,26 @@ phases:
     description: "step_type: implementation\ntags:\n  - integration\nverification_scope:\
       \ local-check\n\nAdd additive live smoke tests for the real codex judge path.\n\
       \nScope:\n- tests/live_smoke/test_codex_judge_live.py\n- optional minimal test-only\
-      \ hook changes required to select the ratified cheap codex model\n\nRequired\
+      \ hook changes required to select the exact codex judge cheap-model identifier\
+      \ ratified in driver-live-smoke-foundation.ratify-live-smoke-policy\n\nRequired\
       \ scenarios:\n- structured-output judge path using src/vectl/driver/judge.py::VERDICT_SCHEMA\
       \ against real codex CLI behavior\n- schema/structured-output rejection is classified\
       \ explicitly as FAILURE, not as tolerant text-path success\n- explicit skip\
       \ evidence for missing codex binary, missing auth/prereq, or opt-in env gate\
       \ absent\n- invalid verdict shape classified distinctly from transport/auth\
-      \ failure\n\nForbidden success path in this step:\n- no tolerant fallback-to-text\
-      \ success path when the codex structured-output mode is under test\n\nPath exercised:\
-      \ driver.yaml codex runner contract -> judge command construction -> real codex\
-      \ subprocess -> verdict assertion helper.\n\n## Completion Criteria (stub exclusion)\n\
-      This is an IMPLEMENTATION step. Stub-only completion is NOT acceptable."
+      \ failure\n- if preferred codex judge model is unavailable, exercise only the\
+      \ ratified fallback policy from the foundation step\n\nRequired configuration\
+      \ anchor:\n- use the exact codex judge model id and exact supported override\
+      \ mechanism ratified by driver-live-smoke-foundation.ratify-live-smoke-policy;\
+      \ do not substitute a generic cheap model\n\nForbidden success path in this\
+      \ step:\n- no tolerant fallback-to-text success path when the codex structured-output\
+      \ mode is under test\n\nPath exercised: driver.yaml codex runner contract ->\
+      \ judge command construction -> real codex subprocess -> verdict assertion helper.\n\
+      \n## Completion Criteria (stub exclusion)\nThis is an IMPLEMENTATION step. Stub-only\
+      \ completion is NOT acceptable."
     verification: '- Main path: targeted codex judge live pytest selection passes
-      against real codex structured output or skips explicitly with justified evidence.
+      against real codex structured output or skips explicitly with justified evidence
+      using the ratified model id/override mechanism.
 
       - Failure path: schema/structured-output rejection is asserted as failure, and
       transport/auth skip paths are separately asserted.

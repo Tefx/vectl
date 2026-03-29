@@ -49957,3 +49957,11 @@ phases:
     workflow and skip semantics.
   depends_on:
   - driver-live-smoke-implementation
+- id: driver-live-smoke-deep-review
+  name: Driver Live Runner Smoke Coverage Deep Review
+  status: locked
+  gate: Independent review confirms the live smoke layer preserves production driver
+    authority, is wired correctly, and provides trustworthy codex/opencode evidence
+    before further enhancement phases proceed.
+  depends_on:
+  - driver-live-smoke-doc-sync

@@ -39531,7 +39531,7 @@ phases:
       - docs/ADR-driver-evolution-foundation.md#188-resolved-decisions'
   - id: driver-evolution-events-foundation.implement-registry-envelope
     name: Implement event registry and versioned JSONL envelope
-    status: pending
+    status: claimed
     description: "step_type: implementation\n\nFill in stub bodies and replace placeholder\
       \ event-foundation scaffolding with substantive registry and envelope logic\
       \ within the pinned contract.\n\nUPSTREAM ARTIFACTS (from contract/test steps):\n\
@@ -39578,6 +39578,8 @@ phases:
     depends_on:
     - driver-evolution-events-foundation.contract
     agent: python-senior
+    claimed_by: python-senior
+    claimed_at: '2026-03-29T06:13:01.124857+00:00'
   - id: driver-evolution-events-foundation.verify-envelope-foundation
     name: Verify versioned envelope and registry durability
     status: pending

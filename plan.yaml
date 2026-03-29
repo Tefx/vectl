@@ -39930,7 +39930,7 @@ phases:
       - none'
   - id: driver-evolution-event-contracts.implement-typed-emitter
     name: Add typed event emitter helpers
-    status: claimed
+    status: done
     description: "step_type: implementation\nsimple_feature_exception:\n  approved:\
       \ false\n\nFill in stub bodies and replace direct string-literal emission with\
       \ substantive typed-emitter logic on the pinned canonical registry.\n\nUPSTREAM\
@@ -39972,6 +39972,33 @@ phases:
     agent: python-executor
     claimed_by: python-executor
     claimed_at: '2026-03-29T06:52:44.756723+00:00'
+    done_at: '2026-03-29T06:59:29.553727+00:00'
+    evidence: 'Artifact:
+
+      - PR: b70ce9c2499d333d1bc6c3e115b9db594722efd8
+
+
+      Verification:
+
+      - `uv run pytest tests/test_driver_loop_contract.py tests/test_driver_observe.py`
+      -> 31 passed
+
+
+      Spec link:
+
+      - docs/ADR-driver-evolution-foundation.md#58-final-becomes-canonical-summary-event
+
+      - docs/ADR-driver-evolution-foundation.md#169-implementation-guidance
+
+
+      Files changed:
+
+      - src/vectl/driver/loop.py
+
+
+      Deviation records:
+
+      - none'
   - id: driver-evolution-event-contracts.spec-conformance
     name: Verify FINAL DECIDE STEP_COMPLETED schema conformance
     status: pending

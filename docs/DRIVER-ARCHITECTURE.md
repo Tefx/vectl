@@ -18,8 +18,8 @@ runner capability semantics, replay-safety envelope, and minimum recovery
 telemetry expected by downstream continuity phases.
 
 **Event foundation**: `docs/ADR-driver-evolution-foundation.md` establishes the
-versioned event envelope (`{ts, event, version, data}`), the static event registry
-as source of truth, and the `FINAL` event as canonical end-of-run summary.
+canonical event envelope (`{ts, event, version, data}`), the static event registry
+as source of truth (§2), and the `FINAL` event as canonical end-of-run summary (§3).
 
 ---
 
@@ -574,7 +574,7 @@ class Event:
 ```
 
 **Event registry ownership**: `driver.events.registry` is the static canonical
-declaration table per ADR-driver-evolution-foundation §5. All event types,
+declaration table per ADR-driver-evolution-foundation §2 and §7. All event types,
 schemas, and compatibility notes are auditable in one location. `observe.py`
 remains the durable JSONL sink; event definitions live in `driver.events.registry`.
 
@@ -1314,7 +1314,7 @@ async def dispatch_planner(
 
 #### REPLAN / Planner Wiring Contract (Bounded - First-Class Registry Action)
 
-Per ADR-driver-evolution-foundation §4, §7, planner dispatch is modeled as a
+Per ADR-driver-evolution-foundation §4 and §5, planner dispatch is modeled as a
 **first-class loop action** in the layered action registry, not an ad hoc helper.
 The registry categorizes actions as: **execution**, **planner**, **control**,
 and **recovery**.

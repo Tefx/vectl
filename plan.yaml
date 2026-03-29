@@ -44385,7 +44385,7 @@ phases:
       - blocker -> batched remediation path created before progression.'
   - id: driver-judge-hardening-review.fix-codex-fallback-contract
     name: Fix codex fallback contract divergence batch
-    status: claimed
+    status: done
     description: Batch-remediate the failed review gate by aligning `src/vectl/driver/judge.py`
       codex fallback argv handling with the `driver.yaml` contract and eliminating
       the hardcoded fallback argv divergence called out by the gate.
@@ -44406,6 +44406,15 @@ phases:
     agent: python-senior
     claimed_by: python-senior
     claimed_at: '2026-03-29T04:46:16.685565+00:00'
+    done_at: '2026-03-29T04:52:08.220498+00:00'
+    evidence: "- Files changed: src/vectl/driver/judge.py, tests/test_driver_judge_impl_runtime.py\n\
+      - Contract alignment: removed divergent hardcoded codex fallback argv; codex\
+      \ invocation now hard-requires driver.yaml runners.codex contract via loader.\n\
+      - Missing/invalid codex contract now raises explicit JudgmentParseError instead\
+      \ of silently using divergent argv.\n- Validation:\n  - uv run pytest tests/test_driver_judge_impl_runtime.py\
+      \ -v -> 9 passed\n  - added tests for missing contract and invalid args type.\n\
+      - Residual risks: runtime must ensure correct cwd/config presence for driver.yaml\
+      \ contract resolution."
   - id: driver-judge-hardening-review.retest-codex-fallback-contract-gate
     name: Retest judge hardening review after codex fallback remediation
     status: pending

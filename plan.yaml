@@ -46009,7 +46009,7 @@ phases:
   steps:
   - id: driver-continuity-review.recovery-drill
     name: Run independent continuity recovery drill
-    status: claimed
+    status: done
     description: 'step_type: verification
 
       As an INDEPENDENT TESTER (blind-tester), run a recovery drill covering restart,
@@ -46041,6 +46041,99 @@ phases:
     agent: blind-tester
     claimed_by: blind-tester
     claimed_at: '2026-03-29T04:57:22.787239+00:00'
+    done_at: '2026-03-29T05:03:20.621838+00:00'
+    evidence: '## Artifact
+
+      - tests/repro/test_driver_continuity_recovery_drill.py (10 test cases)
+
+
+      ## Verification
+
+
+      ### Run: `uv run pytest tests/repro/test_driver_continuity_recovery_drill.py
+      -v`
+
+      ```
+
+      tests/repro/test_driver_continuity_recovery_drill.py::TestDrillMatrix_InterruptedResumableSession::test_resumable_runner_suggests_resume_when_capability_matches
+      PASSED [ 10%]
+
+      tests/repro/test_driver_continuity_recovery_drill.py::TestDrillMatrix_InterruptedResumableSession::test_resumable_runner_forces_restart_on_capability_drift
+      PASSED [ 20%]
+
+      tests/repro/test_driver_continuity_recovery_drill.py::TestDrillMatrix_NonResumableRunnerRestartOnly::test_gemini_cannot_resume_even_with_session_token
+      PASSED [ 30%]
+
+      tests/repro/test_driver_continuity_recovery_drill.py::TestDrillMatrix_FailedAbortedPreservedEvidence::test_failed_step_preserves_journal_and_ledger_evidence
+      PASSED [ 40%]
+
+      tests/repro/test_driver_continuity_recovery_drill.py::TestDrillMatrix_FailedAbortedPreservedEvidence::test_aborted_step_has_halt_disposition_in_recovery_decisions
+      PASSED [ 50%]
+
+      tests/repro/test_driver_continuity_recovery_drill.py::TestDrillMatrix_ReconciliationConflictExplicitHalt::test_ledger_contains_orphan_step_not_in_plan_halts
+      PASSED [ 60%]
+
+      tests/repro/test_driver_continuity_recovery_drill.py::TestDrillMatrix_ReconciliationConflictExplicitHalt::test_ledger_claims_diverge_from_plan_halts
+      PASSED [ 70%]
+
+      tests/repro/test_driver_continuity_recovery_drill.py::TestDrillMatrix_DuplicateReplayProtection::test_duplicate_attempt_key_blocks_replay
+      PASSED [ 80%]
+
+      tests/repro/test_driver_continuity_recovery_drill.py::TestDrillMatrix_ArtifactConsumption::test_controller_consumes_capability_snapshot
+      PASSED [ 90%]
+
+      tests/repro/test_driver_continuity_recovery_drill.py::TestDrillMatrix_ArtifactConsumption::test_handoff_includes_ledger_entry_and_reason
+      PASSED [100%]
+
+      ============================== 10 passed in 0.41s ==============================
+
+      ```
+
+
+      ### Drill Matrix Results
+
+      | Row | Scenario | Expected Behavior | Observed |
+
+      |-----|----------|-------------------|----------|
+
+      | 1 | Interrupted resumable session | Resume with matching capability snapshot,
+      restart on drift | PASS |
+
+      | 2 | Non-resumable runner (gemini) | Restart-only, even with session token
+      | PASS |
+
+      | 3 | Failed/aborted with evidence | Journal+Ledger preserved, halt disposition
+      on abort | PASS |
+
+      | 4 | Reconciliation conflict | HALT on ledger orphan divergence | PASS |
+
+      | 5 | Duplicate replay protection | Block replay on duplicate attempt_key |
+      PASS |
+
+      | 6 | Artifact consumption | Capability snapshot, handoff fields validated |
+      PASS |
+
+
+      ## Continuity Artifacts Consumed
+
+      - `evaluate_startup_recovery_boundary()` from `src/vectl/driver/loop.py`
+
+      - `capability_for_runner()`, `capability_snapshot_id()` from `src/vectl/driver/runner_continuity.py`
+
+      - `ContinuityHandoff`, `ContinuityLedgerEntry`, `ReplaySafetyEnvelope`, `ReplayTokenSemantics`,
+      `JudgeContinuityPolicyOutput` from `src/vectl/driver/types.py`
+
+
+      ## Spec link
+
+      - docs/DRIVER-CONTINUITY-FOUNDATION.md Section 4 (Restart/Resume/Replay) and
+      Section 6 (Transport boundary rules)
+
+      - docs/DRIVER-ARCHITECTURE.md Section 2.11 (startup recovery ordering)
+
+      - src/vectl/driver/types.py (continuity contracts)
+
+      - src/vectl/driver/runner_continuity.py (capability semantics)'
   - id: driver-continuity-review.wiring-audit
     name: Audit continuity wiring completeness
     status: claimed

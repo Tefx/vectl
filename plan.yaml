@@ -43397,7 +43397,7 @@ phases:
     agent: gate-reviewer
 - id: driver-judge-hardening-recovery-policy
   name: 'Driver Judge Hardening: Failure Policy Alignment'
-  status: pending
+  status: in_progress
   gate: Judge failure classes have an explicit retry/fallback/halt/remediation matrix
     and publish continuity-consumable outcomes; durable resume, restart recovery,
     and recovery journaling are owned by continuity phases.
@@ -43514,7 +43514,7 @@ phases:
     agent: gate-reviewer
   - id: driver-judge-hardening-recovery-policy.design-and-test
     name: Design failure policy boundary and write expected-red tests
-    status: pending
+    status: claimed
     description: 'step_type: test
 
       merged_contract_test: true
@@ -43567,6 +43567,8 @@ phases:
 
       - Outputs include both boundary design notes and failing tests'
     agent: python-senior
+    claimed_by: python-senior
+    claimed_at: '2026-03-29T01:10:37.878932+00:00'
 - id: driver-judge-hardening-review
   name: 'Driver Judge Hardening: Review'
   status: locked

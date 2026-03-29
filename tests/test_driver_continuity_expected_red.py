@@ -27,6 +27,7 @@ from src.vectl.driver.config import (
     SessionConfig,
 )
 from src.vectl.driver.loop import handle_dispatch, reconcile, run, shutdown
+from src.vectl.driver.runtime_context import RuntimeContext
 from src.vectl.driver.session import SessionPool
 from src.vectl.driver.types import CompletedEntry, DriverState, RunnerResult, RunnerStatus
 from src.vectl.driver.worktree import MergeOutcome, MergeResult, Success, WorktreeBinding
@@ -78,6 +79,39 @@ class _RecordingObserver:
 
 class _NoopJudge:
     pass
+
+
+def _make_reconcile_context(
+    state: DriverState,
+    judge: Any,
+    tmp_path: Path,
+) -> RuntimeContext:
+    """Build a RuntimeContext for reconcile() testing."""
+    config = DriverConfig(
+        plan_path=str(tmp_path / "plan.yaml"),
+        runners={
+            "opencode": RunnerConfig(
+                command="opencode",
+                args=["run", "--format", "json"],
+                output_parser="opencode_jsonl",
+            )
+        },
+        agent_routing={"python-executor": "opencode"},
+        fallback_runner="opencode",
+        orchestration=OrchestrationConfig(max_parallelism=1),
+        session=SessionConfig(reuse_ttl=300),
+        judge=JudgeConfig(preflight=False),
+        observability=ObservabilityConfig(),
+    )
+    return RuntimeContext(
+        state=state,
+        config=config,
+        runners={},
+        judge=judge,
+        session_pool=SessionPool(SessionConfig(reuse_ttl=300)),
+        observer=_RecordingObserver(),
+        plan_path=tmp_path / "plan.yaml",
+    )
 
 
 def _driver_config(plan_path: Path) -> DriverConfig:
@@ -223,6 +257,13 @@ async def test_reconcile_success_persists_durable_ledger_for_restart_resume(
     monkeypatch.setattr("src.vectl.driver.loop.merge", _merge)
     monkeypatch.setattr("src.vectl.driver.loop.cleanup_worktree", _cleanup_worktree)
 
+    state = DriverState()
+    context = _make_reconcile_context(
+        state=state,
+        judge=cast(Any, _NoopJudge()),
+        tmp_path=tmp_path,
+    )
+
     await reconcile(
         completed=CompletedEntry(
             step_id=step_id,
@@ -238,11 +279,7 @@ async def test_reconcile_success_persists_durable_ledger_for_restart_resume(
             worktree_path=str(tmp_path / ".vectl" / "worktrees" / step_id),
             elapsed_seconds=0.2,
         ),
-        state=DriverState(),
-        judge=cast(Any, _NoopJudge()),
-        session_pool=SessionPool(SessionConfig(reuse_ttl=300)),
-        observer=observer,
-        plan_path=plan_path,
+        context=context,
     )
 
     ledger_path = tmp_path / ".vectl" / "continuity" / "ledger" / f"{step_id}.json"
@@ -267,6 +304,13 @@ async def test_reconcile_failure_writes_recovery_grade_journal_fields(
     monkeypatch.setattr("src.vectl.driver.loop.defer_step", lambda plan, *_a, **_k: plan)
     monkeypatch.setattr("src.vectl.driver.loop.save_plan", lambda *_a, **_k: None)
 
+    state = DriverState()
+    context = _make_reconcile_context(
+        state=state,
+        judge=cast(Any, _NoopJudge()),
+        tmp_path=tmp_path,
+    )
+
     await reconcile(
         completed=CompletedEntry(
             step_id=step_id,
@@ -282,11 +326,7 @@ async def test_reconcile_failure_writes_recovery_grade_journal_fields(
             worktree_path=str(tmp_path / ".vectl" / "worktrees" / step_id),
             elapsed_seconds=1.2,
         ),
-        state=DriverState(),
-        judge=cast(Any, _NoopJudge()),
-        session_pool=SessionPool(SessionConfig(reuse_ttl=300)),
-        observer=_RecordingObserver(),
-        plan_path=plan_path,
+        context=context,
     )
 
     journal_path = tmp_path / ".vectl" / "continuity" / "journal" / f"{step_id}.jsonl"

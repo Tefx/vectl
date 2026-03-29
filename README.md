@@ -350,7 +350,8 @@ runners:
     output_parser: opencode_jsonl
 
 agent_routing:
-  default: opencode
+  python-senior: opencode
+  "*-tester": opencode
 
 fallback_runner: opencode
 
@@ -375,6 +376,10 @@ The driver provides:
 - **Judgment agent**: LLM-based evaluation for evidence validation and escalation decisions
 
 See [DRIVER-BLUEPRINT.md](DRIVER-BLUEPRINT.md) for complete configuration reference.
+
+> Routing contract: `agent_routing.default` is invalid and rejected during
+> config validation. Use explicit exact/glob entries in `agent_routing` and
+> `fallback_runner` for default behavior.
 
 ## Technical Details
 

@@ -47,11 +47,7 @@ def test_loop_contract_signatures_are_pinned() -> None:
     ]
     assert list(inspect.signature(loop.reconcile).parameters) == [
         "completed",
-        "state",
-        "judge",
-        "session_pool",
-        "observer",
-        "plan_path",
+        "context",
     ]
     assert list(inspect.signature(loop.shutdown).parameters) == ["state", "observer"]
 

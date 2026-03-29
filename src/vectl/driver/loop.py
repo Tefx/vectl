@@ -497,6 +497,76 @@ GRACEFUL_SHUTDOWN_CONTRACT: Final[GracefulShutdownContract] = GracefulShutdownCo
 
 
 @dataclass(frozen=True)
+class ReconcileContextOnlyContract:
+    """Final reconcile context-only contract.
+
+    Authority:
+    - docs/DRIVER-ARCHITECTURE.md Section 2.11 reconcile boundary
+    - docs/ADR-driver-evolution-foundation.md#96-handlers-receive-a-unified-runtimecontext
+
+    This contract pins the final ``reconcile()`` signature to a single
+    context-only parameter. All legacy explicit parameters are forbidden.
+
+    Invariants:
+        - ``reconcile()`` accepts exactly one required positional parameter
+          (``completed``) plus one keyword-only parameter (``context``).
+        - The legacy explicit parameters (``state``, ``judge``, ``session_pool``,
+          ``observer``, ``plan_path``, ``config``, ``runners``) are forbidden
+          on ``reconcile()`` and MUST be accessed only through
+          ``RuntimeContext``.
+        - ``RuntimeContext`` is the sole authoritative runtime bundle for the
+          reconcile boundary.
+        - ``handle_complete()`` is explicitly out of scope for completion
+          authority convergence; it remains a legacy/internal shim only.
+
+    Non-goal (handle_complete scope):
+        ``handle_complete()`` does NOT handle completion authority convergence.
+        The sole completion authority is ``wait_for_any() -> reconcile()``.
+        ``handle_complete()`` is retained only as a legacy compatibility shim
+        for internal callers that invoke ``decide(action='complete')``.
+    """
+
+    contract_id: str
+    source_step_id: str
+    final_signature: str
+    forbidden_params: tuple[str, ...]
+    runtime_bundle_authority: str
+    handle_complete_non_goal: str
+    rationale: str
+
+
+RECONCILE_CONTEXT_ONLY_CONTRACT: Final[ReconcileContextOnlyContract] = ReconcileContextOnlyContract(
+    contract_id="driver-reconcile-context-only-v1",
+    source_step_id="driver-reconcile-context-convergence.contract",
+    final_signature=(
+        "async def reconcile(completed: CompletedEntry, *, context: RuntimeContext) -> None"
+    ),
+    forbidden_params=(
+        "state",
+        "judge",
+        "session_pool",
+        "observer",
+        "plan_path",
+        "config",
+        "runners",
+    ),
+    runtime_bundle_authority="RuntimeContext only",
+    handle_complete_non_goal=(
+        "handle_complete() does NOT handle completion authority convergence. "
+        "The sole completion authority is wait_for_any() -> reconcile(). "
+        "handle_complete() is retained only as a legacy compatibility shim "
+        "for internal callers that invoke decide(action='complete')."
+    ),
+    rationale=(
+        "Context-only boundary enforces single runtime bundle authority at the "
+        "reconcile entry point, preventing implicit coupling to individual runtime "
+        "components and ensuring all runtime state is accessed through the "
+        "RuntimeContext contract."
+    ),
+)
+
+
+@dataclass(frozen=True)
 class DefaultStartupRecoveryController:
     """Production startup recovery controller adapter.
 
@@ -2382,15 +2452,8 @@ async def handle_complete(
 
 async def reconcile(
     completed: CompletedEntry,
-    state: DriverState,
-    judge: Judge,
-    session_pool: SessionPool,
-    observer: Observer,
-    plan_path: Path,
-    config: DriverConfig | None = None,
-    runners: Mapping[str, Runner] | None = None,
     *,
-    context: RuntimeContext | None = None,
+    context: RuntimeContext,
 ) -> None:
     """Reconcile one completed runner result.
 
@@ -2410,14 +2473,13 @@ async def reconcile(
     - ``reconcile.failure_classification_replan``
     - ``reconcile.escalation_replan``
     """
-    if context is not None:
-        state = context.state
-        judge = context.judge
-        session_pool = context.session_pool
-        observer = context.observer
-        plan_path = context.plan_path
-        config = context.config
-        runners = context.runners
+    state = context.state
+    judge = context.judge
+    session_pool = context.session_pool
+    observer = context.observer
+    plan_path = context.plan_path
+    config = context.config
+    runners = context.runners
 
     continuity_repo_root = _resolve_repo_root_from_plan(plan_path)
     continuity_attempt_key = (
@@ -3428,11 +3490,6 @@ async def _run_main_loop(
             completed = await state.wait_for_any()
             await reconcile(
                 completed=completed,
-                state=state,
-                judge=judge,
-                session_pool=session_pool,
-                observer=observer,
-                plan_path=plan_path,
                 context=runtime_context,
             )
 
@@ -3470,6 +3527,8 @@ __all__ = [
     "PlannerDispatchContract",
     "PlannerDispatchRequest",
     "PlannerDispatcher",
+    "RECONCILE_CONTEXT_ONLY_CONTRACT",
+    "ReconcileContextOnlyContract",
     "REMAINING_JUDGMENT_RUNTIME_CONTRACTS",
     "REPLAN_PLANNER_WIRING",
     "RemainingJudgmentRuntimeContract",

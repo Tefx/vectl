@@ -537,7 +537,7 @@ run(config_path):
         # 4. Wait for any running task
         if state.running_tasks:
             completed = await state.wait_for_any()
-            await state.reconcile(completed, judge, observer)
+            await reconcile(completed, context=runtime_context)
         elif not decide_result.continuation:
             break
 
@@ -617,9 +617,9 @@ handle_dispatch(action, state, config, runners, judge, observer):
 ### Flow 3: Reconcile with Evidence Judgment
 
 ```
-reconcile(completed: CompletedEntry, judge, observer):
+reconcile(completed: CompletedEntry, *, context: RuntimeContext):
     step_id = completed.step_id
-    plan_path = resolve_plan_path()
+    plan_path = context.plan_path
     claims_path = resolve_claims_path(plan_path)
 
     if completed.status == SUCCESS:
@@ -631,7 +631,7 @@ reconcile(completed: CompletedEntry, judge, observer):
             verdict = REJECT  # Rule-based: missing fields, too short, etc.
         elif has_verification_criteria(step_id):
             # LLM judgment for content adequacy
-            verdict_result = await judge.judge(JudgmentRequest(
+            verdict_result = await context.judge.judge(JudgmentRequest(
                 type=EVIDENCE,
                 step_id=step_id,
                 context={"step_description": ..., "step_verification": ...,
@@ -644,9 +644,9 @@ reconcile(completed: CompletedEntry, judge, observer):
             plan, plan_hash = load_plan_definition(plan_path)
             plan = complete_step(plan, step_id, evidence, claims_path=claims_path)
             save_plan(plan, plan_path, plan_hash, f"[vectl-driver] complete {step_id}")
-            observer.emit("STEP_COMPLETED", step_id, completed.elapsed)
+            context.observer.emit("STEP_COMPLETED", step_id, completed.elapsed)
 
-            async with merge_lock:
+            async with context.state.merge_lock:
                 merge_result = worktree.merge(step_id, completed.worktree_path)
                 if merge_result.status == "conflict":
                     if merge_result.trivial:
@@ -656,20 +656,20 @@ reconcile(completed: CompletedEntry, judge, observer):
                 else:
                     worktree.cleanup(step_id, completed.worktree_path)
 
-            session_pool.record(step_id, completed.session_id,
+            context.session_pool.record(step_id, completed.session_id,
                                 completed.runner_name, completed.agent)
-            state.mark_completed(step_id, "SUCCESS", evidence)
+            context.state.mark_completed(step_id, "SUCCESS", evidence)
 
         elif verdict == REJECT:
             # Reload plan (CAS-safe) then defer for rework
             plan, plan_hash = load_plan_definition(plan_path)
             plan = defer_step(plan, step_id, claims_path=claims_path)
             save_plan(plan, plan_path, plan_hash, f"[vectl-driver] defer {step_id} (rejected)")
-            state.mark_completed(step_id, "FAIL", f"Evidence rejected: {verdict_result.reason}")
+            context.state.mark_completed(step_id, "FAIL", f"Evidence rejected: {verdict_result.reason}")
 
     elif completed.status in (FAIL, STALL, TRANSPORT_ERROR):
-        state.increment_failure(step_id, completed.runner_name)
-        count = state.failure_count(step_id)
+        context.state.increment_failure(step_id, completed.runner_name)
+        count = context.state.failure_count(step_id)
 
         # Reload plan (CAS-safe) for all mutation paths
         plan, plan_hash = load_plan_definition(plan_path)
@@ -678,15 +678,15 @@ reconcile(completed: CompletedEntry, judge, observer):
             # Rule-based: defer for automatic retry
             plan = defer_step(plan, step_id, claims_path=claims_path)
             save_plan(plan, plan_path, plan_hash, f"[vectl-driver] defer {step_id} (retry {count})")
-            state.mark_completed(step_id, "FAIL", completed.output)
+            context.state.mark_completed(step_id, "FAIL", completed.output)
         else:
             # LLM escalation judgment
-            verdict = await judge.judge(JudgmentRequest(
+            verdict = await context.judge.judge(JudgmentRequest(
                 type=ESCALATION,
                 step_id=step_id,
                 context={"failure_count": count, "last_error": completed.output,
                          "step_description": ...},
-                failure_history=state.get_failure_history(step_id),
+                failure_history=context.state.get_failure_history(step_id),
             ))
             match verdict.verdict:
                 case "RETRY":
@@ -695,12 +695,12 @@ reconcile(completed: CompletedEntry, judge, observer):
                 case "SWITCH_AGENT":
                     plan = defer_step(plan, step_id, claims_path=claims_path)
                     save_plan(plan, plan_path, plan_hash, f"[vectl-driver] defer {step_id} (switch agent)")
-                    state.set_agent_override(step_id, verdict.suggested_action)
+                    context.state.set_agent_override(step_id, verdict.suggested_action)
                 case "REPLAN":
                     await dispatch_planner(step_id, verdict.planner_instruction, ...)
                 case "HALT":
-                    observer.emit("HALT", f"Step {step_id} failed {count}x: {verdict.reason}")
-                    state.halt_requested = True
+                    context.observer.emit("HALT", f"Step {step_id} failed {count}x: {verdict.reason}")
+                    context.state.halt_requested = True
 ```
 
 ### Flow 4: Gate Failure -> Fix+Retest Chain

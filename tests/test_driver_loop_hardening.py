@@ -26,6 +26,7 @@ from src.vectl.driver.loop import (
     handle_dispatch,
     reconcile,
 )
+from src.vectl.driver.runtime_context import RuntimeContext
 from src.vectl.driver.session import SessionPool
 from src.vectl.driver.types import CompletedEntry, DriverState, RunnerResult, RunnerStatus
 from src.vectl.driver.worktree import (
@@ -139,6 +140,26 @@ class _Runner:
 
 def _fake_judge() -> Any:
     return MagicMock()
+
+
+def _make_reconcile_context(
+    state: DriverState,
+    config: DriverConfig,
+    judge: Any,
+    pool: SessionPool,
+    observer: _RecordingObserver,
+    runners: dict[str, Any] | None = None,
+) -> RuntimeContext:
+    """Build a RuntimeContext for reconcile() testing."""
+    return RuntimeContext(
+        state=state,
+        config=config,
+        runners=runners if runners is not None else {},
+        judge=judge,
+        session_pool=pool,
+        observer=observer,
+        plan_path=Path("plan.yaml"),
+    )
 
 
 @pytest.mark.anyio
@@ -326,13 +347,17 @@ async def test_reconcile_routes_non_trivial_conflict(monkeypatch: pytest.MonkeyP
     monkeypatch.setattr("src.vectl.driver.loop.defer_step", _defer)
     monkeypatch.setattr("src.vectl.driver.loop.cleanup_worktree", _cleanup)
 
+    context = _make_reconcile_context(
+        state=state,
+        config=_base_config(),
+        judge=_fake_judge(),
+        pool=pool,
+        observer=observer,
+    )
+
     await reconcile(
         completed=completed,
-        state=state,
-        judge=_fake_judge(),
-        session_pool=pool,
-        observer=observer,
-        plan_path=Path("plan.yaml"),
+        context=context,
     )
 
     assert calls["defer"] == 1
@@ -703,18 +728,25 @@ async def test_reconcile_gate_reject_batches_all_blockers_for_planner(
     monkeypatch.setattr("src.vectl.driver.loop.defer_step", lambda plan, *_a, **_k: plan)
     monkeypatch.setattr("src.vectl.driver.loop.dispatch_planner", _dispatch_planner)
 
-    state.runtime_config = config
-    state.runtime_runners = cast(
+    state = DriverState()
+    pool = SessionPool(SessionConfig(reuse_ttl=300))
+    observer = _RecordingObserver()
+    runners_dict = cast(
         dict[str, Any], {"opencode": _Runner("opencode"), "claude": _Runner("claude")}
     )
-
-    await reconcile(
-        completed=completed,
+    context = RuntimeContext(
         state=state,
+        config=config,
+        runners=runners_dict,
         judge=cast(Any, _GateJudge()),
         session_pool=pool,
         observer=observer,
         plan_path=Path("plan.yaml"),
+    )
+
+    await reconcile(
+        completed=completed,
+        context=context,
     )
 
     assert len(dispatch_requests) == 1
@@ -804,18 +836,25 @@ async def test_reconcile_failure_classification_uses_remaining_gates(
     monkeypatch.setattr("src.vectl.driver.loop.defer_step", lambda plan, *_a, **_k: plan)
     monkeypatch.setattr("src.vectl.driver.loop.dispatch_planner", _dispatch_planner)
 
-    state.runtime_config = config
-    state.runtime_runners = cast(
+    state = DriverState()
+    pool = SessionPool(SessionConfig(reuse_ttl=300))
+    observer = _RecordingObserver()
+    runners_dict = cast(
         dict[str, Any], {"opencode": _Runner("opencode"), "claude": _Runner("claude")}
     )
-
-    await reconcile(
-        completed=completed,
+    context = RuntimeContext(
         state=state,
+        config=config,
+        runners=runners_dict,
         judge=cast(Any, _FailureJudge()),
         session_pool=pool,
         observer=observer,
         plan_path=Path("plan.yaml"),
+    )
+
+    await reconcile(
+        completed=completed,
+        context=context,
     )
 
     assert requests
@@ -1036,13 +1075,17 @@ async def test_reconcile_success_side_effects_fire_once(monkeypatch: pytest.Monk
     monkeypatch.setattr("src.vectl.driver.loop.cleanup_worktree", _cleanup)
     monkeypatch.setattr(pool, "record", _record_session)
 
+    context = _make_reconcile_context(
+        state=state,
+        config=_base_config(),
+        judge=_fake_judge(),
+        pool=pool,
+        observer=observer,
+    )
+
     await reconcile(
         completed=completed,
-        state=state,
-        judge=_fake_judge(),
-        session_pool=pool,
-        observer=observer,
-        plan_path=Path("plan.yaml"),
+        context=context,
     )
 
     assert calls["complete_step"] == 1
@@ -1080,13 +1123,19 @@ async def test_reconcile_failure_threshold_escalates_once(monkeypatch: pytest.Mo
         async def judge(self, request: object) -> JudgmentVerdict:
             return JudgmentVerdict(verdict="DEFER", reason="manual follow-up")
 
-    await reconcile(
-        completed=completed,
+    context = RuntimeContext(
         state=state,
+        config=_base_config(),
         judge=cast(Any, _EscalationJudge()),
         session_pool=SessionPool(SessionConfig(reuse_ttl=300)),
         observer=observer,
         plan_path=Path("plan.yaml"),
+        runners={},
+    )
+
+    await reconcile(
+        completed=completed,
+        context=context,
     )
 
     assert state.failure_count("core.impl") == 3

@@ -167,6 +167,23 @@ class DriverConfig(BaseModel):
 
         return self
 
+    @model_validator(mode="after")
+    def _validate_no_agent_routing_default(self) -> DriverConfig:
+        """Reject agent_routing.default as it is not a supported routing key.
+
+        Default routing is exclusively handled by fallback_runner, not by a
+        reserved routing key in agent_routing.
+
+        Contract: docs/contracts/driver-routing-hardening-contract.yaml
+        """
+        if "default" in self.agent_routing:
+            raise ValueError(
+                "agent_routing.default is not supported. Remove agent_routing.default "
+                "and use explicit exact/glob entries in agent_routing plus fallback_runner "
+                "for default routing behavior."
+            )
+        return self
+
 
 def load_config(path: Path) -> DriverConfig:
     """Load and validate driver.yaml configuration.

@@ -417,6 +417,30 @@ class DriverConfig(BaseModel):
         ...
 ```
 
+#### Agent routing semantics (normative)
+
+`DriverConfig.agent_routing` and `DriverConfig.fallback_runner` are the only
+supported routing surfaces.
+
+Supported behavior:
+
+1. Exact-match routing via `agent_routing["<agent-name>"]`
+2. Glob-match routing via `fnmatch` patterns in `agent_routing`
+3. Fallback routing via `fallback_runner`
+
+Rejected behavior:
+
+- `agent_routing.default` is **not** a legal semantic and MUST be rejected at
+  configuration validation time (load-time), not during runtime dispatch.
+
+Required user-facing guidance for this misconfiguration:
+
+```text
+Invalid configuration in <path>: agent_routing.default is not supported. Remove
+agent_routing.default and use explicit exact/glob entries in agent_routing plus
+fallback_runner for default routing behavior.
+```
+
 **Invariant**: `DriverConfig.runners` MUST contain the runner referenced by
 `DriverConfig.judge.runner`. Validated at load time; raises `ConfigError` on violation.
 
@@ -936,7 +960,7 @@ before invocation and raises `JudgmentError` on violation.
 
 ### 2.10 judge.py -- Judgment Agent
 
-**Responsibility**: Invoke the unified Judgment Agent (a stateless `claude -p` call)
+**Responsibility**: Invoke the unified Judgment Agent (a stateless runner call)
 for decisions that require LLM understanding. Route between rule-based fast paths
 and LLM fallback. Parse structured verdicts from the agent's JSON output.
 
@@ -944,12 +968,19 @@ and LLM fallback. Parse structured verdicts from the agent's JSON output.
 Does NOT own the decision of WHEN to call the judge (that is `loop.py`'s
 reconcile and dispatch logic).
 
+**System Prompt Authority**: The runtime loads the judge system prompt from a
+**packaged resource** (`vectl.driver.judge_agent_prompt.md`), not from `docs/`.
+`docs/JUDGE-AGENT-PROMPT.md` is the **human-readable specification/mirror** of
+the runtime prompt, serving as documentation and change tracking. The packaged
+prompt is the minimal runtime contract. See `docs/JUDGE-AGENT-PROMPT.md` "Resource
+Loading Behavior" section for drift detection (`verify_docs_packaged_sync()`).
+
 ```python
 class Judge:
     """Unified judgment agent. Stateless per call.
 
     Each invocation spawns a runner process (default: opencode) with
-    the judge system prompt and a structured user message. The judge
+    the packaged judge system prompt and a structured user message. The judge
     returns a JSON verdict. Uses structured output when available
     (see Structured Output Strategy below).
     """
@@ -1240,13 +1271,15 @@ async def handle_complete(
 
 async def reconcile(
     completed: CompletedEntry,
-    state: DriverState,
-    judge: Judge,
-    session_pool: SessionPool,
-    observer: Observer,
-    plan_path: Path,
+    *,
+    context: RuntimeContext,
 ) -> None:
     """Reconcile a completed runner result.
+
+    CRITICAL: Context-only contract. Runtime state is accessed exclusively
+    through the ``RuntimeContext`` parameter. All legacy explicit parameters
+    (state, judge, session_pool, observer, plan_path, config, runners) are
+    forbidden and MUST be accessed via ``context``.
 
     CRITICAL: Both paths reload the plan from disk before mutating.
     CAS conflicts (from concurrent external writes) are handled by
@@ -1257,9 +1290,9 @@ async def reconcile(
     2. Validate evidence (rules then judge)
     3. Reload plan from disk (CAS-safe)
     4. complete_step(plan, step_id, evidence,
-       claims_path=resolve_claims_path(plan_path))
+       claims_path=resolve_claims_path(context.plan_path))
     5. Save plan (CAS write)
-    6. Merge worktree (under merge_lock)
+    6. Merge worktree (under context.state.merge_lock)
     7. Record session for reuse
     8. Cleanup worktree
 
@@ -1267,10 +1300,15 @@ async def reconcile(
     1. Increment failure counter
     2. Reload plan from disk (CAS-safe)
     3. If count < 3: defer_step(plan, step_id,
-       claims_path=resolve_claims_path(plan_path))
+       claims_path=resolve_claims_path(context.plan_path))
     4. Save plan (CAS write)
     5. If count >= 3: judge escalation verdict
        -> RETRY | SWITCH_AGENT | REPLAN | HALT
+
+    Args:
+        completed: The completed runner entry with result and bookkeeping.
+        context: The sole authoritative runtime bundle containing state,
+            config, runners, judge, session_pool, observer, and plan_path.
     """
     ...
 
@@ -1593,17 +1631,17 @@ CompletedResult.output_summary = CompletedEntry.result.output[:500]
 |-------|-------------|------------|---------|----------|
 | `DriverState.running` | `types.py` (defined), `loop.py` (managed) | `loop.py` dispatch + reconcile | `loop.py`, `decide()` (via `as_running_tasks()`) | Process |
 | `DriverState.completed_queue` | `types.py` / `loop.py` | `wait_for_any()` | `drain_completed()` (legacy transitional seam) | Per-iteration |
-| `DriverState.failure_counts` | `types.py` / `loop.py` | `reconcile()` | `reconcile()`, `dispatch()` | Process |
-| `DriverState.merge_lock` | `types.py` | `reconcile()` (acquire/release) | `reconcile()` | Process |
+| `DriverState.failure_counts` | `types.py` / `loop.py` | `context.state` via `reconcile()` | `context.state` via `reconcile()`, `dispatch()` | Process |
+| `DriverState.merge_lock` | `types.py` | `context.state` via `reconcile()` (acquire/release) | `context.state` via `reconcile()` | Process |
 | `DriverState.decide_state` | `types.py` (defined), `decide()` | `decide()` internally | `decide()` via explicit parameter | Process |
-| `SessionPool._entries` | `session.py` | `reconcile()` via `record()` | `dispatch()` via `find_reusable()` | Process |
+| `SessionPool._entries` | `session.py` | `context.session_pool` via `reconcile()` (through `record()`) | `context.session_pool` via `dispatch()` (through `find_reusable()`) | Process |
 | `plan.yaml` | `vectl.io` | `loop.py` via `save_plan()` | `decide()` via `load_plan_definition()`, `loop.py` | Durable (disk) |
 | `claims.json` | `vectl.claims` | `claim_step()`, `complete_step()`, `defer_step()` | `repair_claims()` | Durable (disk) |
 | `events.jsonl` | `observe.py` | `observer.emit()` | External tools only | Durable (disk, append-only) |
 | Git worktrees | `worktree.py` | `create()`, `merge()`, `cleanup()` | `dispatch()` (path), `reconcile()` (merge) | Per-step |
 | Event registry | `driver.events.registry` | Static declarations | All emitters | Durable (code) |
 | Action registry | `driver.action_registry` | Static declarations | Loop dispatch | Durable (code) |
-| RuntimeContext | `driver.runtime_context` | `RuntimeContext` dataclass | Loop handlers | Per-invocation |
+| RuntimeContext | `driver.runtime_context` | `RuntimeContext` dataclass | Loop handlers (`reconcile()` receives `context`) | Per-invocation |
 
 ### Completion Authority (A1 Contract)
 
@@ -1803,7 +1841,7 @@ Canonical driver events follow non-contradictory semantics defined by the regist
 
 ### 7.5 Resolved Open Questions
 
-- ~~Exact system prompt text for the Judgment Agent~~ -- Resolved: see `JUDGE-AGENT-PROMPT.md`.
+- ~~Exact system prompt text for the Judgment Agent~~ -- Resolved: Runtime prompt is `vectl.driver.judge_agent_prompt.md` (packaged resource). `docs/JUDGE-AGENT-PROMPT.md` is the human-readable spec/mirror.
 - ~~Whether `gemini` runner should be included in Phase 1 or deferred~~ -- Resolved: deferred/excluded from the normative foundation matrix until auth, non-interactive invocation, and structured verdict extraction are ratified.
 - ~~Event envelope and registry~~ -- Resolved: `driver.events` module provides canonical envelope and static registry.
 - ~~Planner dispatch contract~~ -- Resolved: First-class registry action with `PlannerDispatchAction` contract.

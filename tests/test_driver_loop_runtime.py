@@ -1327,3 +1327,184 @@ async def test_run_routes_startup_through_recovery_boundary_matrix_expected_red(
     await run(tmp_path / "driver.yaml")
 
     assert called["value"] is True
+
+
+# =============================================================================
+# RECONCILE CONTEXT-ONLY SIGNATURE TESTS (EXPECTED-RED)
+# =============================================================================
+
+
+class TestReconcileContextOnlySignature:
+    """Expected-red tests for reconcile() context-only signature convergence.
+
+    These tests assert the target signature from RECONCILE_CONTEXT_ONLY_CONTRACT:
+    - async def reconcile(completed: CompletedEntry, *, context: RuntimeContext) -> None
+
+    The 7 legacy explicit parameters (state, judge, session_pool, observer,
+    plan_path, config, runners) MUST NOT be explicit parameters on reconcile().
+
+    Implementation owner: driver-reconcile-context-convergence.impl-boundary
+    """
+
+    def test_reconcile_only_accepts_completed_and_context_params(self) -> None:
+        """reconcile() MUST accept only 'completed' and 'context' parameters.
+
+        Per RECONCILE_CONTEXT_ONLY_CONTRACT, the final signature is:
+        async def reconcile(completed: CompletedEntry, *, context: RuntimeContext) -> None
+        """
+        import inspect as inspect_module
+
+        sig = inspect_module.signature(reconcile)
+        params = list(sig.parameters.keys())
+
+        # The only allowed parameters are 'completed' and 'context'
+        assert params == ["completed", "context"], (
+            f"reconcile() signature must be ['completed', 'context'] but got {params}. "
+            "All legacy parameters must be accessed via RuntimeContext."
+        )
+
+    def test_reconcile_has_no_state_param(self) -> None:
+        """reconcile() MUST NOT have 'state' as an explicit parameter.
+
+        state is part of RuntimeContext and MUST NOT be a separate parameter.
+        """
+        import inspect as inspect_module
+
+        sig = inspect_module.signature(reconcile)
+        param_names = list(sig.parameters.keys())
+
+        assert "state" not in param_names, (
+            "'state' must not be an explicit parameter on reconcile(). "
+            "Access state via RuntimeContext."
+        )
+
+    def test_reconcile_has_no_judge_param(self) -> None:
+        """reconcile() MUST NOT have 'judge' as an explicit parameter.
+
+        judge is part of RuntimeContext and MUST NOT be a separate parameter.
+        """
+        import inspect as inspect_module
+
+        sig = inspect_module.signature(reconcile)
+        param_names = list(sig.parameters.keys())
+
+        assert "judge" not in param_names, (
+            "'judge' must not be an explicit parameter on reconcile(). "
+            "Access judge via RuntimeContext."
+        )
+
+    def test_reconcile_has_no_session_pool_param(self) -> None:
+        """reconcile() MUST NOT have 'session_pool' as an explicit parameter.
+
+        session_pool is part of RuntimeContext and MUST NOT be a separate parameter.
+        """
+        import inspect as inspect_module
+
+        sig = inspect_module.signature(reconcile)
+        param_names = list(sig.parameters.keys())
+
+        assert "session_pool" not in param_names, (
+            "'session_pool' must not be an explicit parameter on reconcile(). "
+            "Access session_pool via RuntimeContext."
+        )
+
+    def test_reconcile_has_no_observer_param(self) -> None:
+        """reconcile() MUST NOT have 'observer' as an explicit parameter.
+
+        observer is part of RuntimeContext and MUST NOT be a separate parameter.
+        """
+        import inspect as inspect_module
+
+        sig = inspect_module.signature(reconcile)
+        param_names = list(sig.parameters.keys())
+
+        assert "observer" not in param_names, (
+            "'observer' must not be an explicit parameter on reconcile(). "
+            "Access observer via RuntimeContext."
+        )
+
+    def test_reconcile_has_no_plan_path_param(self) -> None:
+        """reconcile() MUST NOT have 'plan_path' as an explicit parameter.
+
+        plan_path is part of RuntimeContext and MUST NOT be a separate parameter.
+        """
+        import inspect as inspect_module
+
+        sig = inspect_module.signature(reconcile)
+        param_names = list(sig.parameters.keys())
+
+        assert "plan_path" not in param_names, (
+            "'plan_path' must not be an explicit parameter on reconcile(). "
+            "Access plan_path via RuntimeContext."
+        )
+
+    def test_reconcile_has_no_config_param(self) -> None:
+        """reconcile() MUST NOT have 'config' as an explicit parameter.
+
+        config is part of RuntimeContext and MUST NOT be a separate parameter.
+        """
+        import inspect as inspect_module
+
+        sig = inspect_module.signature(reconcile)
+        param_names = list(sig.parameters.keys())
+
+        assert "config" not in param_names, (
+            "'config' must not be an explicit parameter on reconcile(). "
+            "Access config via RuntimeContext."
+        )
+
+    def test_reconcile_has_no_runners_param(self) -> None:
+        """reconcile() MUST NOT have 'runners' as an explicit parameter.
+
+        runners is part of RuntimeContext and MUST NOT be a separate parameter.
+        """
+        import inspect as inspect_module
+
+        sig = inspect_module.signature(reconcile)
+        param_names = list(sig.parameters.keys())
+
+        assert "runners" not in param_names, (
+            "'runners' must not be an explicit parameter on reconcile(). "
+            "Access runners via RuntimeContext."
+        )
+
+    def test_reconcile_context_param_is_keyword_only(self) -> None:
+        """reconcile() 'context' parameter MUST be keyword-only.
+
+        Per RECONCILE_CONTEXT_ONLY_CONTRACT final_signature:
+        async def reconcile(completed: CompletedEntry, *, context: RuntimeContext) -> None
+        """
+        import inspect as inspect_module
+
+        sig = inspect_module.signature(reconcile)
+        context_param = sig.parameters.get("context")
+
+        assert context_param is not None, "'context' parameter must exist on reconcile()"
+        assert context_param.kind == inspect_module.Parameter.KEYWORD_ONLY, (
+            "'context' must be a keyword-only parameter (after *)"
+        )
+
+    def test_reconcile_reconcile_context_only_contract_is_pinned(self) -> None:
+        """RECONCILE_CONTEXT_ONLY_CONTRACT MUST be properly defined.
+
+        This contract pins the context-only boundary for reconcile().
+        """
+        from src.vectl.driver.loop import RECONCILE_CONTEXT_ONLY_CONTRACT
+
+        assert RECONCILE_CONTEXT_ONLY_CONTRACT.contract_id == "driver-reconcile-context-only-v1"
+        assert RECONCILE_CONTEXT_ONLY_CONTRACT.source_step_id == (
+            "driver-reconcile-context-convergence.contract"
+        )
+        assert "completed" in RECONCILE_CONTEXT_ONLY_CONTRACT.final_signature
+        assert "context" in RECONCILE_CONTEXT_ONLY_CONTRACT.final_signature
+        assert "RuntimeContext" in RECONCILE_CONTEXT_ONLY_CONTRACT.final_signature
+
+        # The 7 forbidden params must be documented
+        forbidden = RECONCILE_CONTEXT_ONLY_CONTRACT.forbidden_params
+        assert "state" in forbidden
+        assert "judge" in forbidden
+        assert "session_pool" in forbidden
+        assert "observer" in forbidden
+        assert "plan_path" in forbidden
+        assert "config" in forbidden
+        assert "runners" in forbidden

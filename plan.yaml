@@ -49950,3 +49950,10 @@ phases:
     evidence.
   depends_on:
   - driver-live-smoke-foundation
+- id: driver-live-smoke-doc-sync
+  name: Driver Live Runner Smoke Coverage Documentation Sync
+  status: locked
+  gate: Developer-facing pytest/env surface docs match the implemented live smoke
+    workflow and skip semantics.
+  depends_on:
+  - driver-live-smoke-implementation

@@ -49231,4 +49231,12 @@ phases:
     verification: Review all step evidence and block on any remaining dual-path reconcile
       dependency injection, call-site/doc mismatch, or unjustified `handle_complete()`
       churn.
+    depends_on:
+    - driver-reconcile-context-convergence.sync-current-contract-test
+    - driver-reconcile-context-convergence.contract
+    - driver-reconcile-context-convergence.test-define-red
+    - driver-reconcile-context-convergence.impl-boundary
+    - driver-reconcile-context-convergence.sync-callsites-tests
+    - driver-reconcile-context-convergence.doc-sync
+    - driver-reconcile-context-convergence.verify
     agent: gate-reviewer

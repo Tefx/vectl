@@ -49164,3 +49164,13 @@ phases:
     verification: Targeted reconcile convergence tests run in expected-red mode with
       failures attributable only to the not-yet-landed context-only refactor.
     agent: python-executor
+  - id: driver-reconcile-context-convergence.impl-boundary
+    name: Refactor reconcile to a single RuntimeContext boundary
+    status: pending
+    description: In `src/vectl/driver/loop.py`, refactor `reconcile()` to the pinned
+      single-boundary form and remove dual-path fallback extraction of explicit runtime
+      dependencies. Update the loop runtime path to call reconcile only through the
+      authoritative `RuntimeContext`. Do not delete or redesign `handle_complete()`.
+    verification: '`reconcile()` exposes only `completed` plus `context`; no explicit
+      runtime dependency params or fallback path remain in reconcile implementation.'
+    agent: python-senior

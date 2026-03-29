@@ -50492,7 +50492,7 @@ phases:
     agent: doc-reviewer
 - id: driver-live-smoke-doc-sync
   name: Driver Live Runner Smoke Coverage Documentation Sync
-  status: locked
+  status: done
   gate: Developer-facing pytest/env surface docs match the implemented live smoke
     workflow and skip semantics.
   depends_on:
@@ -50500,7 +50500,7 @@ phases:
   steps:
   - id: driver-live-smoke-doc-sync.update-docs
     name: Update live smoke runner documentation
-    status: pending
+    status: skipped
     description: 'Update developer-facing documentation to match the implemented live
       smoke workflow.
 
@@ -50539,9 +50539,10 @@ phases:
 
       '
     agent: doc-reviewer
+    skipped_reason: absorbed
   - id: driver-live-smoke-doc-sync.gate
     name: Gate live smoke doc sync
-    status: pending
+    status: skipped
     description: 'Gate review: confirm live smoke docs match implementation and are
       discoverable for developers.'
     verification: '- Documentation matches the implemented marker/env surface.
@@ -50561,9 +50562,10 @@ phases:
     depends_on:
     - driver-live-smoke-doc-sync.update-docs
     agent: gate-reviewer
+    skipped_reason: absorbed
 - id: driver-live-smoke-deep-review
   name: Driver Live Runner Smoke Coverage Deep Review
-  status: locked
+  status: pending
   gate: Independent review confirms the live smoke layer preserves production driver
     authority, is wired correctly, and provides trustworthy codex/opencode evidence
     before further enhancement phases proceed.

@@ -45676,7 +45676,7 @@ phases:
       - none'
   - id: driver-continuity-restart-recovery.verify
     name: Verify startup recovery and continuity policy
-    status: claimed
+    status: done
     description: 'step_type: verification
 
       As an INDEPENDENT TESTER (blind-tester), validate the restart recovery controller
@@ -45716,6 +45716,45 @@ phases:
     agent: blind-tester
     claimed_by: blind-tester
     claimed_at: '2026-03-29T02:10:35.795930+00:00'
+    done_at: '2026-03-29T02:17:02.665188+00:00'
+    evidence: 'Artifact:
+
+      - PR: 505879d
+
+
+      Verification:
+
+      - uv run pytest -q tests/test_driver_recovery_black_box.py -v -> 14 passed
+
+      - uv run pytest -q tests/test_driver_recovery.py tests/test_driver_loop_runtime.py
+      tests/test_driver_continuity_expected_red.py tests/test_driver_continuity_contract.py
+      -k "startup_recovery..." -> 11 passed
+
+
+      Recovery drill matrix:
+
+      - resume-safe from ledger+capability: pass
+
+      - restart on missing capability snapshot: pass
+
+      - restart on non-resumable runner: pass
+
+      - halt on orphaned ledger step: pass
+
+      - halt on judge policy halt input: pass
+
+      - disk ledger loading: pass
+
+      - corrupt ledger reporting without crash: pass
+
+      - entrypoint integration with continuity artifacts: pass
+
+
+      Spec link:
+
+      - docs/DRIVER-CONTINUITY-FOUNDATION.md sections 3,4,7
+
+      - docs/DRIVER-ARCHITECTURE.md section 2.11'
   - id: driver-continuity-restart-recovery.gate
     name: Gate restart recovery continuity
     status: pending

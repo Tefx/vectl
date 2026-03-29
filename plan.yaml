@@ -43371,7 +43371,7 @@ phases:
       \  - `docs/contracts/driver-enhancement-liveness-taxonomy-contract.yaml`"
   - id: driver-enhancement-foundation.gate
     name: Gate enhancement foundation readiness
-    status: pending
+    status: claimed
     description: 'step_type: gate
 
       Gate the architecture and contract foundation before implementation fan-out.'
@@ -43387,6 +43387,8 @@ phases:
     - driver-enhancement-foundation.architecture-basis
     - driver-enhancement-foundation.contract
     agent: gate-reviewer
+    claimed_by: gate-reviewer
+    claimed_at: '2026-03-29T13:54:52.742778+00:00'
 - id: driver-enhancement-observability
   name: 'Driver Enhancement: Advanced Observability'
   status: locked

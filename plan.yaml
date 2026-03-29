@@ -44099,7 +44099,7 @@ phases:
       - downstream_implementation_owner: driver-judge-hardening-recovery-policy.impl"
 - id: driver-judge-hardening-review
   name: 'Driver Judge Hardening: Review'
-  status: pending
+  status: in_progress
   gate: Independent real-runner review confirms judge stability is sufficient on the
     judge surface and explicitly ready for continuity integration; bootstrap authorization
     still also requires continuity-review.
@@ -44109,7 +44109,7 @@ phases:
   steps:
   - id: driver-judge-hardening-review.real-judgment-matrix
     name: Real-runner verify blocking judgment matrix
-    status: pending
+    status: claimed
     description: "step_type: verification\nverification_scope: full-plan-check\nprotects_downstream_gates:\n\
       \  - driver-bootstrap-readiness.gate\nindependence_level: L2\nspec_refs:\n \
       \ - driver.yaml#judge\n  - docs/JUDGE-AGENT-PROMPT.md#verdict-schema\n  - docs/DRIVER-ARCHITECTURE.md#judge-runtime\n\
@@ -44146,6 +44146,8 @@ phases:
 
       '
     agent: blind-tester
+    claimed_by: blind-tester
+    claimed_at: '2026-03-29T01:48:16.368716+00:00'
   - id: driver-judge-hardening-review.spec-conformance
     name: Audit judge hardening spec conformance
     status: pending

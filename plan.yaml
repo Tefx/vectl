@@ -50682,3 +50682,42 @@ phases:
     depends_on:
     - driver-live-smoke-deep-review.wiring-audit
     agent: software-architect
+  - id: driver-live-smoke-deep-review.black-box-verification
+    name: Black-box verify live smoke runner paths
+    status: pending
+    description: 'As a BLACK-BOX tester, use only documented commands/env surface
+      to verify the live smoke workflow.
+
+
+      Run the documented live smoke pytest commands without reading implementation
+      details and verify:
+
+      - codex judge path is reachable
+
+      - opencode judge path is reachable
+
+      - codex dispatch path is reachable
+
+      - opencode dispatch path is reachable
+
+      - each path yields PASS or explicit SKIP with justified evidence
+
+
+      Finding issues is a success outcome for this review step.'
+    verification: '- Evidence uses documented commands only.
+
+      - Commands produce PASS or explicit SKIP with captured reason/output.
+
+      - Any mismatch between docs and runnable behavior is reported as a blocker.'
+    evidence_template: '## Black-Box Verification
+
+      **Commands used**:
+
+      **Observed PASS/SKIP results**:
+
+      **Doc mismatches**:
+
+      '
+    depends_on:
+    - driver-live-smoke-deep-review.spec-conformance
+    agent: blind-tester

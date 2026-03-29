@@ -50068,8 +50068,8 @@ phases:
   - id: driver-live-smoke-foundation.gate
     name: Gate live smoke foundation
     status: pending
-    description: 'Gate review: confirm cheap-model policy and live smoke contract
-      are ready for additive implementation.
+    description: 'Gate review: confirm the lightweight policy and test-surface decisions
+      are ready for additive live smoke implementation.
 
 
       review_depth: STANDARD
@@ -50080,13 +50080,16 @@ phases:
 
       - explicit skip semantics
 
+      - codex structured-output has no tolerant text-success fallback
+
       - additive test/doc/config scope only'
     verification: '- Cheap-model discovery/ratification is complete for codex and
       opencode.
 
       - Marker/env surface and manual-vs-gated execution policy are explicit.
 
-      - Helper/test module boundaries are pinned and preserve production driver authority.
+      - Minimal helper/test module boundaries are pinned without reintroducing heavy
+      contract-program overhead.
 
       - Ready for shared-harness implementation and parallel runner-specific test
       work.'

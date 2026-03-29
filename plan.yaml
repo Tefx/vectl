@@ -43026,7 +43026,7 @@ phases:
       - Total: 71 passed, 1 expected failure'
   - id: driver-routing-hardening.verify
     name: Independently verify invalid default routing rejection
-    status: pending
+    status: claimed
     description: 'step_type: verification
 
       Verification scope: phase-check protecting driver-routing-hardening.gate.
@@ -43054,6 +43054,8 @@ phases:
     depends_on:
     - driver-routing-hardening.impl
     agent: integration-verifier
+    claimed_by: integration-verifier
+    claimed_at: '2026-03-29T12:13:26.998808+00:00'
   - id: driver-routing-hardening.gate
     name: Gate reserved routing hardening
     status: pending

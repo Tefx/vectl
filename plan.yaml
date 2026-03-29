@@ -41043,7 +41043,7 @@ phases:
   steps:
   - id: driver-evolution-loop-migration.contract
     name: Pin registry-backed loop migration seam
-    status: claimed
+    status: done
     description: 'step_type: contract
 
       contract_purity: ENFORCED
@@ -41103,6 +41103,32 @@ phases:
     agent: software-architect
     claimed_by: software-architect
     claimed_at: '2026-03-29T07:12:08.502075+00:00'
+    done_at: '2026-03-29T07:15:31.716547+00:00'
+    evidence: 'Artifact:
+
+      - PR: e857313f6dd6edb8ab3a1731553cb96163fd72ef
+
+      - Contract surfaces validated in loop/action_registry/runtime_context/entrypoint
+
+
+      Verification:
+
+      - `uv run pytest tests/test_driver_loop_runtime.py` -> 25 passed, 25 xfailed
+
+      - `uv run pytest tests/test_driver_entrypoint_drift.py` -> 8 passed
+
+      - `git status --short` -> clean
+
+
+      Spec link:
+
+      - docs/ADR-driver-evolution-foundation.md#18-decision-drivers
+
+      - docs/ADR-driver-evolution-foundation.md#96-handlers-receive-a-unified-runtimecontext
+
+      - docs/ADR-driver-evolution-foundation.md#116-target-architecture-shape
+
+      - docs/ADR-driver-evolution-foundation.md#206-follow-up-work'
   - id: driver-evolution-loop-migration.implement-loop-handlers
     name: Migrate loop branching to registry-backed handlers
     status: pending

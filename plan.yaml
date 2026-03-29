@@ -44014,7 +44014,7 @@ phases:
   steps:
   - id: driver-continuity-authority-ledger.test-define-red
     name: Define expected-red authority and ledger regressions
-    status: claimed
+    status: pending
     description: 'step_type: test
 
       step_intent: test_define_red
@@ -44045,8 +44045,6 @@ phases:
 
       - Evidence names the gaps around failure, abort, and restart persistence'
     agent: python-executor
-    claimed_by: python-executor
-    claimed_at: '2026-03-28T23:29:33.497207+00:00'
   - id: driver-continuity-authority-ledger.impl
     name: Implement durable session authority ledger and minimum journal
     status: pending

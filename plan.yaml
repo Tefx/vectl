@@ -41796,7 +41796,7 @@ phases:
       - docs/ADR-driver-evolution-foundation.md#104'
   - id: driver-evolution-review.black-box-verification
     name: Black-box verify the evolved driver surfaces
-    status: claimed
+    status: done
     description: 'step_type: verification
 
       expected_result: green
@@ -41827,6 +41827,26 @@ phases:
     agent: blind-tester
     claimed_by: blind-tester
     claimed_at: '2026-03-29T07:52:11.002087+00:00'
+    done_at: '2026-03-29T07:55:43.195484+00:00'
+    evidence: 'Artifact:
+
+      - Black-box verification evidence pack (task ses_2c76eec06ffen013LDQ0jdrMzT)
+
+
+      Verification:
+
+      - canonical event envelope/registry tests: PASS (observe and registry suites)
+
+      - runnable driver surface/entrypoint checks: PASS
+
+      - planner-dispatch first-class registry path tests: PASS
+
+      - docs/ADR behavior consistency checks: PASS
+
+
+      Spec link:
+
+      - docs/ADR-driver-evolution-foundation.md §§30,45,58,71,85,96,104,137,190,193'
   - id: driver-evolution-review.gate
     name: Final gate for driver evolution ADR chain
     status: pending

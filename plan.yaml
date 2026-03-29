@@ -50328,6 +50328,58 @@ phases:
     - driver-live-smoke-implementation.add-codex-dispatch-live-smoke-coverage
     - driver-live-smoke-implementation.add-opencode-dispatch-live-smoke-coverage
     agent: wiring-auditor
+  - id: driver-live-smoke-implementation.spec-conformance
+    name: Verify live smoke spec conformance
+    status: pending
+    description: 'Spec conformance verification via adversarial divergence hunting.
+
+
+      SCOPE:
+
+      - architecture_basis runtime_contract, source_of_truth_matrix, transport_boundary_rules,
+      and cross_cutting_governance for live codex/opencode smoke coverage only
+
+
+      FOCUS AREAS:
+
+      - cheap-model selection uses only ratified runner-supported knobs
+
+      - judge schema assertions align with src/vectl/driver/judge.py::VERDICT_SCHEMA
+      and _extract_verdict_payload authority
+
+      - dispatch tests exercise regular task paths rather than judge-only paths
+
+      - skip conditions are explicit and non-fake-pass
+
+      - failure diagnostics capture command, returncode, stdout, stderr
+
+
+      For each requirement, cite the basis item and implementation file:line.'
+    verification: '- Evidence table covers judge and dispatch requirements for codex
+      and opencode.
+
+      - Any divergence is explicitly classified; behavioral claims without proof are
+      tagged NEEDS_TEST.
+
+      - No spec drift remains hidden behind passing unit tests.'
+    evidence_template: '## Spec Conformance Report
+
+      **Requirements audited**:
+
+      **CONFORMS**:
+
+      **DIVERGES/PARTIAL/NEEDS_TEST**:
+
+      **Top risks**:
+
+      '
+    depends_on:
+    - driver-live-smoke-implementation.build-harness
+    - driver-live-smoke-implementation.add-codex-judge-live-smoke-coverage
+    - driver-live-smoke-implementation.add-opencode-judge-live-smoke-coverage
+    - driver-live-smoke-implementation.add-codex-dispatch-live-smoke-coverage
+    - driver-live-smoke-implementation.add-opencode-dispatch-live-smoke-coverage
+    agent: spec-verifier
 - id: driver-live-smoke-doc-sync
   name: Driver Live Runner Smoke Coverage Documentation Sync
   status: locked

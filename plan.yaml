@@ -39750,7 +39750,7 @@ phases:
   steps:
   - id: driver-evolution-event-contracts.contract
     name: Pin canonical FINAL DECIDE STEP_COMPLETED contracts
-    status: claimed
+    status: done
     description: 'step_type: contract
 
       contract_purity: ENFORCED
@@ -39815,6 +39815,25 @@ phases:
     agent: software-architect
     claimed_by: software-architect
     claimed_at: '2026-03-29T06:35:31.042433+00:00'
+    done_at: '2026-03-29T06:44:36.456559+00:00'
+    evidence: 'Artifact:
+
+      - PR: 5b202777ee24ef05a0a98e91b260288526b27194
+
+
+      Verification:
+
+      - Run: `uv run pytest tests/test_driver_loop_contract.py tests/test_driver_observe.py`
+      -> 28 passed
+
+
+      Spec link:
+
+      - docs/ADR-driver-evolution-foundation.md#58-final-becomes-canonical-summary-event
+
+      - docs/ADR-driver-evolution-foundation.md#169-implementation-guidance
+
+      - docs/ADR-driver-evolution-foundation.md#188-resolved-decisions'
   - id: driver-evolution-event-contracts.implement-canonical-events
     name: Canonicalize FINAL DECIDE STEP_COMPLETED event semantics
     status: pending

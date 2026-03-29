@@ -15,6 +15,7 @@ Blueprint Reference: docs/JUDGE-AGENT-PROMPT.md
 from __future__ import annotations
 
 import asyncio
+import importlib.resources
 import json
 import time
 from dataclasses import dataclass
@@ -215,7 +216,7 @@ JUDGE_PROMPT_AUTHORITY_CONTRACT = JudgePromptAuthorityContract(
     source_step_id="driver-prompt-foundation.design-and-test",
     docs_authority_reference="docs/JUDGE-AGENT-PROMPT.md",
     package_resource="judge_agent_prompt.md",
-    package_name="vectl.templates",
+    package_name="vectl.driver",
     implementation_owner_step="driver-prompt-migration.package-resource-loader",
     authority_migration_owner_step="driver-prompt-migration.authority-reference-migration",
     exposed_gaps=(
@@ -236,12 +237,32 @@ def _load_packaged_judge_system_prompt(*, package_name: str, resource_name: str)
         The loaded judge system prompt content.
 
     Raises:
-        NotImplementedError: Always. Runtime resource loading is intentionally
-            deferred to `driver-prompt-migration.package-resource-loader`.
+        RuntimeError: If package/resource cannot be resolved or loaded.
     """
-    raise NotImplementedError(
-        "Packaged judge prompt loading deferred to driver-prompt-migration.package-resource-loader"
-    )
+    try:
+        package_resource = importlib.resources.files(package_name).joinpath(resource_name)
+    except ModuleNotFoundError as exc:
+        raise RuntimeError(
+            "Judge prompt package is not importable: "
+            f"package={package_name!r}. Ensure vectl is installed and package resources "
+            "are included in the wheel/sdist build metadata."
+        ) from exc
+
+    if not package_resource.is_file():
+        raise RuntimeError(
+            "Judge prompt resource is missing from installed package: "
+            f"package={package_name!r}, resource={resource_name!r}. "
+            "Rebuild/reinstall with pyproject package-data including this file."
+        )
+
+    prompt_text = package_resource.read_text(encoding="utf-8")
+    if not prompt_text.strip():
+        raise RuntimeError(
+            "Judge prompt resource is empty: "
+            f"package={package_name!r}, resource={resource_name!r}. "
+            "Populate the packaged prompt content before running vectl driver."
+        )
+    return prompt_text
 
 
 def decide_judge_recovery_policy(
@@ -929,17 +950,15 @@ class Judge:
 
 
 def _load_judge_system_prompt() -> str:
-    """Load judge system prompt from docs/JUDGE-AGENT-PROMPT.md.
+    """Load judge system prompt from packaged runtime resource.
 
     Architecture: docs/DRIVER-ARCHITECTURE.md Section 2.10
     """
-    prompt_path = Path("docs/JUDGE-AGENT-PROMPT.md")
-    if not prompt_path.exists():
-        return (
-            "You are a Plan Execution Judge. Return strict JSON verdict with keys "
-            "verdict, reason, suggested_action, planner_instruction."
-        )
-    return prompt_path.read_text(encoding="utf-8")
+    contract = JUDGE_PROMPT_AUTHORITY_CONTRACT
+    return _load_packaged_judge_system_prompt(
+        package_name=contract.package_name,
+        resource_name=contract.package_resource,
+    )
 
 
 def _write_schema_tempfile(schema: dict[str, object]) -> str:

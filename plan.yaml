@@ -41893,6 +41893,113 @@ phases:
     - driver-evolution-review.contract-strength
     - driver-evolution-review.black-box-verification
     agent: gate-reviewer
+  - id: driver-evolution-review.fix-architecture-blockers
+    name: Fix architecture blockers for driver evolution review
+    status: pending
+    description: 'step_type: implementation
+
+
+      Fix ALL blocker families reported by driver-evolution-review.architecture-review.
+      This is a batched remediation step and must close both blockers together because
+      they intersect the same architecture gate.
+
+
+      ## Blockers to Fix (ALL of these, not just the first)
+
+
+      symbolic_testing: false
+
+      prior_loop:
+
+      - driver-evolution-review.architecture-review
+
+      remaining_blocker: split-truth runtime ownership and mutable global registry
+      authority still intersect the final architecture gate
+
+      why_new_loop: repeated architecture-review findings show the blockers share
+      a structural root and should be remediated as one ownership/governance batch
+
+      why_previous_fix_failed: prior review loops did not eliminate the shared ownership
+      boundary between runtime persistence and auditable authority tables, so the
+      same blocker family can recur
+
+
+      ## Root Cause vs Symptom
+
+      - Root cause: runtime state ownership is split between DriverState persistence
+      paths and RuntimeContext authority surfaces while critical registries remain
+      mutable at module scope without a single auditable control boundary
+
+      - Symptom: architecture review keeps finding split-truth runtime wiring and
+      mutable module-global authority tables on critical surfaces
+
+      - Why this fix is not surface-level: remediation must re-establish one authoritative
+      ownership model and remove or encapsulate mutable global registry state on all
+      cited surfaces, not just patch one file
+
+
+      ### B1: Split-truth runtime wiring across DriverState and RuntimeContext
+
+      Locations: DriverState runtime_config/runtime_runners persistence path; RuntimeContext
+      ownership boundary
+
+      Remediation: eliminate the split-truth path so runtime_config/runtime_runners
+      persistence does not intersect RuntimeContext ownership. Establish one authoritative
+      source-of-truth and explicit transport/runtime boundary for persistence, runtime
+      runners, and context ownership.
+
+      IMPORTANT: search for sibling ownership leaks beyond the initially reported
+      persistence path.
+
+
+      ### B2: Mutable module-global registries on critical surfaces
+
+      Locations: layered registry; handler tables; continuity authority table
+
+      Remediation: remove, encapsulate, or replace mutable module-global registries
+      on these critical surfaces so posture remains static, auditable, and ownership-scoped.
+      Document any unavoidable runtime mutability with explicit authority and lifecycle
+      rules.
+
+      IMPORTANT: search for sibling module-global registry patterns beyond the listed
+      tables.
+
+
+      ## Completion Criteria
+
+      - BOTH blocker families are remediated in the same architecture slice
+
+      - DriverState persistence/runtime ownership no longer crosses the RuntimeContext
+      boundary
+
+      - Critical-surface registries are no longer uncontrolled mutable module-globals
+
+      - Sibling search completed for ownership leaks and registry-table variants
+
+      - Architectural evidence explains the resulting source-of-truth, authority,
+      and lifecycle model
+
+      '
+    verification: 'phase-check protecting driver-evolution-review.architecture-review-retest
+      and driver-evolution-review.gate.
+
+      - BOTH blocker families addressed explicitly: split-truth runtime wiring and
+      mutable critical-surface registries
+
+      - Evidence identifies the single authoritative ownership path for DriverState
+      persistence, runtime_config/runtime_runners, and RuntimeContext
+
+      - Evidence shows layered registry, handler tables, and continuity authority
+      table no longer rely on uncontrolled mutable module-global state
+
+      - Sibling search evidence covers adjacent ownership leaks and registry-table
+      variants
+
+      - No unresolved blocker in these two families remains able to intersect the
+      final driver evolution gate'
+    depends_on:
+    - driver-evolution-review.architecture-review
+    agent: software-architect
 - id: driver-evolution-action-registry-contract-foundation
   name: 'Driver Evolution: Action Registry Contract Foundation'
   status: done

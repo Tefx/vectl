@@ -44458,7 +44458,7 @@ phases:
       - 7d7fcdb migrate prompt authority references and add drift checks"
   - id: driver-prompt-migration.runtime-retest
     name: Retest packaged prompt runtime green
-    status: claimed
+    status: done
     description: 'step_type: test
 
       step_intent: retest_green
@@ -44544,6 +44544,89 @@ phases:
     agent: integration-verifier
     claimed_by: integration-verifier
     claimed_at: '2026-03-29T09:23:38.597315+00:00'
+    done_at: '2026-03-29T09:26:44.576307+00:00'
+    evidence: '## Verification Report
+
+      **Tester**: integration-verifier
+
+      **Independence Level**: L2
+
+      **Step ID**: driver-prompt-migration.runtime-retest
+
+      **step_type**: test
+
+      **step_intent**: retest_green
+
+      **expected_result**: green
+
+      **observed_result**: green
+
+      **failure_alignment**: n/a (no failures)
+
+
+      ### Commands executed
+
+      ```bash
+
+      .venv/bin/python -m pytest .vectl/worktrees/driver-prompt-migration.runtime-retest/tests/test_driver_judge_prompt_migration_impl.py
+      -v --tb=short
+
+      ```
+
+
+      ### Actual output
+
+      ```text
+
+      ============================= test session starts ==============================
+
+      platform darwin -- Python 3.12.12, pytest-9.0.2, pluggy-1.6.0
+
+      collected 5 items
+
+
+      test_driver_judge_prompt_migration_impl.py::test_packaged_prompt_loads_without_docs_directory_present
+      PASSED [ 20%]
+
+      test_driver_judge_prompt_migration_impl.py::test_missing_packaged_prompt_resource_raises_actionable_runtime_error
+      PASSED [ 40%]
+
+      test_driver_judge_prompt_migration_impl.py::test_packaged_prompt_flows_to_judge_payload_assembly
+      PASSED [ 60%]
+
+      test_driver_judge_prompt_migration_impl.py::test_verify_docs_packaged_sync_detects_drift
+      PASSED [ 80%]
+
+      test_driver_judge_prompt_migration_impl.py::test_verify_docs_packaged_sync_reports_synced_when_match
+      PASSED [100%]
+
+
+      ============================== 5 passed in 0.46s ==============================
+
+      ```
+
+
+      ### Coverage
+
+      - Happy path: PASS — packaged resource loads and payload shape remains correct.
+
+      - Missing-resource failure path: PASS — explicit actionable RuntimeError with
+      package/resource identifiers and rebuild guidance.
+
+      - Drift path: PASS — `verify_docs_packaged_sync()` surfaces sync/drift diagnostics.
+
+      - Docs-absent installed context: PASS — runtime works without `docs/` as packaged
+      resource is authoritative.
+
+
+      ### Verdict
+
+      - PASS
+
+
+      ### Product implementation files modified
+
+      - None (verify-only step)'
   - id: driver-prompt-migration.gate
     name: Gate packaged prompt migration
     status: pending

@@ -51432,3 +51432,8 @@ phases:
     - driver-live-smoke-deep-review.black-box-verification
     agent: gate-reviewer
     skipped_reason: absorbed
+- id: driver-live-smoke-remediation
+  name: Driver live smoke remediation
+  status: pending
+  depends_on:
+  - driver-live-smoke-implementation

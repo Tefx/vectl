@@ -321,7 +321,17 @@ def run_subprocess(
     if input_str is not None:
         kwargs["input"] = input_str
 
-    result = subprocess.run(argv, **kwargs)  # type: ignore[arg-type]
+    try:
+        result = subprocess.run(argv, **kwargs)  # type: ignore[arg-type]
+    except subprocess.TimeoutExpired as e:
+        return SubprocessResult(
+            argv=argv,
+            returncode=-1,
+            stdout="",
+            stderr=f"Timeout after {timeout}s: {e}",
+            runner_name=runner_name,
+            scenario=scenario,
+        )
 
     return SubprocessResult(
         argv=argv,

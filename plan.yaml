@@ -49936,7 +49936,7 @@ phases:
       \ decision: OPEN**"
 - id: driver-live-smoke-foundation
   name: Driver Live Runner Smoke Coverage Foundation
-  status: pending
+  status: in_progress
   gate: Pinned live-smoke model policy, live-runner opt-in policy, skip taxonomy,
     and lightweight test-surface decisions are ratified before live smoke implementation
     starts.
@@ -49945,7 +49945,7 @@ phases:
   steps:
   - id: driver-live-smoke-foundation.ratify-live-smoke-policy
     name: Ratify pinned live-smoke model and execution policy
-    status: pending
+    status: claimed
     description: "Planning step.\n\nRatify the lightweight live smoke policy before\
       \ any additive test work assumes runner wiring or fallback semantics.\n\nRequired\
       \ outputs:\n- codex judge smoke model = gpt-5.4-mini\n- codex dispatch smoke\
@@ -50006,6 +50006,8 @@ phases:
 
       '
     agent: software-architect
+    claimed_by: software-architect
+    claimed_at: '2026-03-29T16:02:15.162956+00:00'
   - id: driver-live-smoke-foundation.finalize-test-surface-decisions
     name: Finalize live smoke test-surface decisions
     status: pending

@@ -3,11 +3,13 @@
 from __future__ import annotations
 
 import json
+import os
 import time
+from io import UnsupportedOperation
 from pathlib import Path
 from typing import IO, TYPE_CHECKING, Protocol
 
-from .registry import get_event_record
+from .registry import get_event_record, validate_event_payload
 from .types import Event, JSONValue
 
 if TYPE_CHECKING:
@@ -35,6 +37,7 @@ class FileObserver:
 
     def emit(self, event_type: str, /, **data: object) -> None:
         record = get_event_record(event_type)
+        validate_event_payload(record, data)
         event = Event(
             ts=time.time(),
             event=record.event,
@@ -47,6 +50,14 @@ class FileObserver:
         sink = self._ensure_file()
         sink.write(line + "\n")
         sink.flush()
+        if hasattr(sink, "fileno"):
+            fd: int | None
+            try:
+                fd = sink.fileno()
+            except (OSError, UnsupportedOperation):
+                fd = None
+            if fd is not None and fd >= 0:
+                os.fsync(fd)
 
     def close(self) -> None:
         if self._file is not None and self._owns_file:
@@ -57,7 +68,8 @@ class FileObserver:
 
 class NullObserver:
     def emit(self, event_type: str, /, **data: object) -> None:
-        get_event_record(event_type)
+        record = get_event_record(event_type)
+        validate_event_payload(record, data)
 
     def close(self) -> None:
         return None

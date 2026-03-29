@@ -266,3 +266,20 @@ if set(EVENT_REGISTRY) != set(ALL_EVENT_TYPES):
 
 def get_event_record(event: str) -> EventRegistryRecord:
     return EVENT_REGISTRY[event]
+
+
+def validate_event_payload(record: EventRegistryRecord, payload: Mapping[str, object]) -> None:
+    """Validate emitted payload against canonical event-envelope rules.
+
+    Args:
+        record: Canonical registry record for the emitted event.
+        payload: Event payload kwargs destined for the envelope ``data`` field.
+
+    Raises:
+        ValueError: If payload includes a nested ``version`` shim.
+    """
+
+    if "version" in payload:
+        raise ValueError(
+            f"{record.event} payload must not include 'version'; use top-level envelope version"
+        )

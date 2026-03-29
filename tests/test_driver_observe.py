@@ -149,3 +149,23 @@ class TestSinkOwnershipSplit:
         observer = NullObserver()
         observer.emit("WAIT", reason="idle")
         observer.close()
+
+    def test_file_observer_rejects_nested_data_version(self, tmp_path) -> None:
+        from src.vectl.driver.config import ObservabilityConfig
+
+        observer = FileObserver(ObservabilityConfig(events_file=str(tmp_path / "events.jsonl")))
+        try:
+            observer.emit("WAIT", reason="idle", version=99)
+        except ValueError as exc:
+            assert "top-level envelope version" in str(exc)
+        else:
+            raise AssertionError("expected ValueError for nested payload version")
+
+    def test_null_observer_rejects_nested_data_version(self) -> None:
+        observer = NullObserver()
+        try:
+            observer.emit("WAIT", reason="idle", version=99)
+        except ValueError as exc:
+            assert "top-level envelope version" in str(exc)
+        else:
+            raise AssertionError("expected ValueError for nested payload version")

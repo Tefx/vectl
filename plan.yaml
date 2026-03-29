@@ -52115,6 +52115,34 @@ phases:
 
       **Path exercised**: continuity helper -> CLI command -> operator-visible result'
     agent: python-executor
+  - id: driver-continuity-hygiene-surface.impl-events-manifests
+    name: Add continuity hygiene events, telemetry, and manifest surfacing
+    status: pending
+    description: "step_type: implementation\nupstream_artifacts:\n  - path: src/vectl/driver/continuity_hygiene.py\n\
+      \    from_step: driver-continuity-hygiene-foundation.contract\n    tier: contract\n\
+      \  - path: tests/test_driver_recovery_black_box.py\n    from_step: driver-continuity-hygiene-foundation.blackbox-define-red\n\
+      \    tier: test\n\nFill in stub bodies in src/vectl/driver/events/ and loop-adjacent\
+      \ observability wiring so continuity hygiene produces auditable telemetry.\n\
+      \nRequired outputs:\n- event registry/types for startup hygiene scan/quarantine/blocking\
+      \ summaries\n- manifest/log linkage that records what was quarantined and why\n\
+      - explicit blocking telemetry for corrupt, active-claim, current-claimed-step,\
+      \ and ambiguous cases\n- startup decision visibility that distinguishes hygiene-stage\
+      \ quarantine from active recovery decisions\n\nKnown risks:\n- output and event\
+      \ drift between CLI-visible repair summaries and runtime event payloads\n- missing\
+      \ sibling paths in event registry/types causing observability blind spots\n\n\
+      ## Gate Preview (what the gate WILL reject)\n1. New event names not registered\
+      \ in the canonical registry\n2. Manifest paths emitted without stable reason/classification\
+      \ fields\n3. Runtime telemetry that cannot distinguish quarantined stale leftovers\
+      \ from blocking divergence"
+    verification: '- Main path: event/manifest payloads exist for hygiene scan, quarantine,
+      and blocking decisions
+
+      - Failure path: blocking cases still emit auditable telemetry
+
+      - Proof: registry/types and emitting sites stay aligned'
+    depends_on:
+    - driver-continuity-hygiene-surface.impl-cli-repair-continuity
+    agent: python-executor
 - id: driver-continuity-hygiene-review
   name: 'Driver Continuity Hygiene: Verification & Gate'
   status: locked

@@ -44383,7 +44383,7 @@ phases:
       - af57440 migrate judge prompt runtime loading to packaged resource'
   - id: driver-prompt-migration.authority-reference-migration
     name: Migrate prompt authority references and drift checks
-    status: claimed
+    status: done
     description: "step_type: implementation\nVerification scope: local-check protecting\
       \ driver-prompt-migration.runtime-retest and gate.\n\nFill in stub bodies and\
       \ replace placeholder authority references with working docs-mirror / packaged-resource\
@@ -44431,6 +44431,31 @@ phases:
     agent: python-executor
     claimed_by: python-executor
     claimed_at: '2026-03-29T09:01:55.526200+00:00'
+    done_at: '2026-03-29T09:23:04.906260+00:00'
+    evidence: "## Migration Evidence\n\n### Files Updated\n- `src/vectl/driver/judge.py`:\n\
+      \  - Module docstring changed to clarify docs are mirror/spec while runtime\
+      \ authority is packaged `judge_agent_prompt.md` in `vectl.driver`\n  - `JudgePromptAuthorityContract.exposed_gaps`\
+      \ updated to current state\n  - Added `verify_docs_packaged_sync()` for drift\
+      \ visibility\n  - Judge class docstring clarified doc-mirror vs runtime authority\n\
+      \n- `src/vectl/driver/judgments.py`:\n  - Module and related docstrings rephrased\
+      \ from docs-authority to doc-mirror/spec role\n\n- `src/vectl/driver/policy.py`:\n\
+      \  - Docstrings rephrased to doc-mirror/spec role\n\n- `tests/test_driver_judge_prompt_migration_impl.py`:\n\
+      \  - Added import for `verify_docs_packaged_sync`\n  - Added `test_verify_docs_packaged_sync_detects_drift()`\n\
+      \  - Added `test_verify_docs_packaged_sync_reports_synced_when_match()`\n\n\
+      ### Old docs-authority references removed/rephrased\n- References implying `docs/JUDGE-AGENT-PROMPT.md`\
+      \ is runtime authority were rephrased to doc-mirror/spec role.\n- Module/class\
+      \ docstrings no longer imply docs are required at runtime.\n\n### Drift visibility\
+      \ added in\n- `verify_docs_packaged_sync()` in `src/vectl/driver/judge.py` compares\
+      \ key packaged content vs docs mirror and returns `(is_synced, diagnostic)`\
+      \ for explicit drift surfacing.\n\n### Exact tests/checks run\n- `tests/test_driver_judge_prompt_migration_impl.py`:\
+      \ 5 passed\n- `tests/test_driver_judge_prompt_migration_expected_red.py`: 3\
+      \ passed\n- `tests/test_driver_judge.py`: 56 passed\n- `tests/test_driver_judgments.py`:\
+      \ 55 passed\n- Total: 119 passed\n\n### Remaining references intentionally kept\
+      \ for doc-mirror/spec purposes\n- `docs/DRIVER-ARCHITECTURE.md` section references\
+      \ (architecture doc)\n- `docs/JUDGE-AGENT-PROMPT.md` as mirror/spec artifact\
+      \ with commentary/examples\n- Test references that verify contract alignment\
+      \ (not runtime source)\n\n### Deviation records\n- None required\n\n### Commit\n\
+      - 7d7fcdb migrate prompt authority references and add drift checks"
   - id: driver-prompt-migration.runtime-retest
     name: Retest packaged prompt runtime green
     status: pending

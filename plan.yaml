@@ -45959,7 +45959,7 @@ phases:
       \ restart consumption can be expanded later."
   - id: driver-continuity-restart-recovery.retest-restart-recovery-gate
     name: Retest continuity restart recovery gate after remediation
-    status: pending
+    status: claimed
     description: Independently retest the continuity restart-recovery gate after the
       remediation batch and verify both prior blockers are resolved on the restart
       recovery path.
@@ -45978,6 +45978,8 @@ phases:
     depends_on:
     - driver-continuity-restart-recovery.fix-restart-recovery-batch
     agent: gate-reviewer
+    claimed_by: gate-reviewer
+    claimed_at: '2026-03-29T04:53:01.862441+00:00'
 - id: driver-continuity-review
   name: 'Driver Continuity: Review'
   status: locked

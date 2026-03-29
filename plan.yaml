@@ -39531,7 +39531,7 @@ phases:
       - docs/ADR-driver-evolution-foundation.md#188-resolved-decisions'
   - id: driver-evolution-events-foundation.implement-registry-envelope
     name: Implement event registry and versioned JSONL envelope
-    status: claimed
+    status: done
     description: "step_type: implementation\n\nFill in stub bodies and replace placeholder\
       \ event-foundation scaffolding with substantive registry and envelope logic\
       \ within the pinned contract.\n\nUPSTREAM ARTIFACTS (from contract/test steps):\n\
@@ -39580,6 +39580,41 @@ phases:
     agent: python-senior
     claimed_by: python-senior
     claimed_at: '2026-03-29T06:13:01.124857+00:00'
+    done_at: '2026-03-29T06:19:15.546481+00:00'
+    evidence: 'Artifact:
+
+      - PR: commit 754295d (branch vectl/step-driver-evolution-events-foundation.implement-registry-envelope)
+
+
+      Verification:
+
+      - Run: `uv run pytest -q tests/test_driver_observe.py tests/test_driver_impl.py::TestFileObserverImplementation`
+      -> 22 passed
+
+      - Run: `uv run pytest -q tests/test_driver_observe.py` -> 14 passed
+
+
+      Spec link:
+
+      - docs/ADR-driver-evolution-foundation.md#1-versioned-event-envelope-now
+
+      - docs/ADR-driver-evolution-foundation.md#2-event-registry-becomes-source-of-truth
+
+      - docs/ADR-driver-evolution-foundation.md#6-event-registry-is-a-static-declaration-table
+
+
+      Files changed:
+
+      - src/vectl/driver/events/registry.py
+
+      - src/vectl/driver/events/sinks.py
+
+      - tests/test_driver_observe.py
+
+
+      Deviation records:
+
+      - none'
   - id: driver-evolution-events-foundation.verify-envelope-foundation
     name: Verify versioned envelope and registry durability
     status: pending

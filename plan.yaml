@@ -40946,7 +40946,7 @@ phases:
     agent: gate-reviewer
 - id: driver-evolution-action-registry-contract-foundation
   name: 'Driver Evolution: Action Registry Contract Foundation'
-  status: pending
+  status: in_progress
   gate: Planner-dispatch registry boundary is pinned early so action-registry implementation
     can start only after runtime-context plus this contract foundation
   context: Bootstrap-postponed evolution work. Action-registry contract foundation
@@ -40956,7 +40956,7 @@ phases:
   steps:
   - id: driver-evolution-action-registry-contract-foundation.planner-dispatch-contract
     name: Pin planner dispatch as a first-class loop action
-    status: pending
+    status: claimed
     description: 'step_type: contract
 
       contract_purity: ENFORCED
@@ -41025,6 +41025,8 @@ phases:
 
       - No runtime logic is introduced'
     agent: software-architect
+    claimed_by: software-architect
+    claimed_at: '2026-03-29T05:51:23.620459+00:00'
   - id: driver-evolution-action-registry-contract-foundation.gate
     name: Gate action-registry contract foundation
     status: pending

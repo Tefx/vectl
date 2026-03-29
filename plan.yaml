@@ -44892,7 +44892,7 @@ phases:
       **Verdict**: PASS'
   - id: driver-prompt-review.spec-conformance
     name: Verify packaged prompt spec conformance
-    status: pending
+    status: claimed
     description: 'Spec conformance verification via adversarial divergence hunting.
 
 
@@ -44942,6 +44942,8 @@ phases:
     depends_on:
     - driver-prompt-review.update-docs
     agent: spec-verifier
+    claimed_by: spec-verifier
+    claimed_at: '2026-03-29T09:41:07.193682+00:00'
   - id: driver-prompt-review.black-box-verification
     name: Black-box verify docs-absent packaged prompt runtime
     status: done

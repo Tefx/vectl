@@ -49189,6 +49189,8 @@ phases:
     verification: Targeted search shows no live reconcile invocations passing explicit
       runtime dependency args and affected reconcile-related tests are updated to
       the final boundary.
+    depends_on:
+    - driver-reconcile-context-convergence.impl-boundary
     agent: python-executor
   - id: driver-reconcile-context-convergence.doc-sync
     name: Sync reconcile docs to context-only convergence

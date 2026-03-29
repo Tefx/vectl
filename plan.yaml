@@ -49942,3 +49942,11 @@ phases:
     contract are ratified before any live smoke implementation starts.
   depends_on:
   - driver-enhancement-foundation
+- id: driver-live-smoke-implementation
+  name: Driver Live Runner Smoke Coverage Implementation
+  status: locked
+  gate: Shared harness, runner-specific live smoke coverage, and independent smoke/audit
+    checks prove codex+opencode judge and dispatch paths pass or skip explicitly with
+    evidence.
+  depends_on:
+  - driver-live-smoke-foundation

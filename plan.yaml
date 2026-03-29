@@ -45809,7 +45809,7 @@ phases:
       - docs/DRIVER-ARCHITECTURE.md section 2.11'
   - id: driver-continuity-restart-recovery.gate
     name: Gate restart recovery continuity
-    status: claimed
+    status: done
     description: "step_type: gate\nGate review for startup recovery and continuity\
       \ policy.\n\nreview_depth: THOROUGH\ncross_cutting_focus:\n  - real entrypoint\
       \ startup recovery is wired, not just helper logic\n  - failure/abort continuity\
@@ -45827,6 +45827,16 @@ phases:
     agent: gate-reviewer
     claimed_by: gate-reviewer
     claimed_at: '2026-03-29T02:17:30.381459+00:00'
+    done_at: '2026-03-29T04:45:19.949207+00:00'
+    evidence: 'Gate identified blocker-class issues: (1) duplicate RunnerResult type
+      mismatch surface, and (2) judge failure HALT continuity facts not durably persisted/consumed
+      on restart path. Batched remediation ownership added as `driver-continuity-restart-recovery.fix-restart-recovery-batch`
+      with retest `driver-continuity-restart-recovery.retest-restart-recovery-gate`.
+
+
+      Disposition:
+
+      - blocker -> batched remediation path created before progression.'
   - id: driver-continuity-restart-recovery.design-and-test
     name: Design restart-recovery boundary and write expected-red tests
     status: done

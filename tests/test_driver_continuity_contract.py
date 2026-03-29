@@ -41,6 +41,10 @@ def test_session_continuity_authorities_are_explicit() -> None:
         "startup_recovery_decision_input": (
             "StartupRecoveryControllerInput/Output contract in src/vectl/driver/types.py"
         ),
+        "startup_recovery_boundary_matrix": (
+            "evaluate_startup_recovery_boundary + StartupRecoveryBoundaryInput/Output in "
+            "src/vectl/driver/loop.py and src/vectl/driver/types.py"
+        ),
     }
 
 

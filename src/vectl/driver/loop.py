@@ -79,6 +79,8 @@ from .types import (
     JudgeContinuityPolicyOutput,
     ReplaySafetyEnvelope,
     ReplayTokenSemantics,
+    StartupRecoveryBoundaryInput,
+    StartupRecoveryBoundaryOutput,
     RunnerStatus,
 )
 from .worktree import (
@@ -424,6 +426,40 @@ class GracefulShutdownContract:
 
 STARTUP_RECOVERY_CONTRACT: Final[StartupRecoveryContract] = StartupRecoveryContract()
 GRACEFUL_SHUTDOWN_CONTRACT: Final[GracefulShutdownContract] = GracefulShutdownContract()
+
+STARTUP_RECOVERY_SCAN_ORDER: Final[tuple[str, ...]] = (
+    "load_plan",
+    "repair_claims",
+    "cleanup_orphan_worktrees",
+    "scan_continuity_ledger",
+    "reconcile_plan_claims_ledger",
+    "consume_judge_failure_policy_inputs",
+    "classify_resume_restart_halt",
+)
+"""Normative startup scan order for restart-recovery boundary tests.
+
+Source:
+- docs/DRIVER-ARCHITECTURE.md Section 2.11 startup sequence
+- docs/DRIVER-CONTINUITY-FOUNDATION.md Section 4 and Section 7
+"""
+
+
+def evaluate_startup_recovery_boundary(
+    *,
+    boundary_input: StartupRecoveryBoundaryInput,
+) -> StartupRecoveryBoundaryOutput:
+    """Evaluate startup recovery matrix from reconciliation + policy inputs.
+
+    Contract-only surface for
+    ``driver-continuity-restart-recovery.design-and-test``.
+    Runtime behavior is intentionally deferred to
+    ``driver-continuity-restart-recovery.impl``.
+    """
+
+    raise NotImplementedError(
+        "Startup recovery boundary matrix pending implementation: "
+        "driver-continuity-restart-recovery.impl"
+    )
 
 
 COMPLETION_AUTHORITY_A1_CONTRACT: Final[CompletionAuthorityContract] = CompletionAuthorityContract(

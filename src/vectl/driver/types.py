@@ -569,6 +569,77 @@ class StartupRecoveryControllerOutput:
     blocked_reasons: tuple[str, ...]
 
 
+StartupRecoveryDisposition = Literal["resume", "restart", "halt"]
+
+
+@dataclass(frozen=True)
+class StartupRecoveryReconciliationFacts:
+    """Normalized startup reconciliation inputs for plan/claims/ledger alignment.
+
+    Source:
+    - docs/DRIVER-ARCHITECTURE.md Section 2.11 (startup recovery runs after
+      plan reload and claim repair)
+    - docs/DRIVER-CONTINUITY-FOUNDATION.md Section 3 (source-of-truth matrix)
+      and Section 4 (restart contract)
+    """
+
+    plan_step_ids: tuple[str, ...]
+    claim_step_ids: tuple[str, ...]
+    ledger_step_ids: tuple[str, ...]
+
+
+@dataclass(frozen=True)
+class StartupRecoveryJudgeInput:
+    """Judge-derived failure input consumed by startup continuity policy.
+
+    Source:
+    - docs/DRIVER-CONTINUITY-FOUNDATION.md Section 4 and Section 7
+      (judge outcomes are policy inputs; continuity remains authority owner)
+    """
+
+    step_id: str
+    attempt_key: str
+    policy: JudgeContinuityPolicyOutput
+
+
+@dataclass(frozen=True)
+class StartupRecoveryDecision:
+    """Decision row in startup resume vs restart vs halt matrix.
+
+    This is a contract-only type for testable matrix behavior.
+    """
+
+    step_id: str
+    disposition: StartupRecoveryDisposition
+    reason: str
+    source_attempt_key: str | None = None
+
+
+@dataclass(frozen=True)
+class StartupRecoveryBoundaryInput:
+    """Boundary input for startup-recovery matrix evaluation.
+
+    Source:
+    - docs/DRIVER-ARCHITECTURE.md Section 2.11 startup recovery ordering
+    - docs/DRIVER-CONTINUITY-FOUNDATION.md Section 4 restart/resume contract
+    """
+
+    reconciliation: StartupRecoveryReconciliationFacts
+    capability_snapshot_ids: tuple[str, ...]
+    ledger_entries: tuple[ContinuityLedgerEntry, ...]
+    judge_failure_inputs: tuple[StartupRecoveryJudgeInput, ...]
+
+
+@dataclass(frozen=True)
+class StartupRecoveryBoundaryOutput:
+    """Boundary output for startup-recovery matrix evaluation."""
+
+    decisions: tuple[StartupRecoveryDecision, ...]
+    resumable_handoffs: tuple[ContinuityHandoff, ...]
+    repair_actions: tuple[str, ...]
+    blocked_reasons: tuple[str, ...]
+
+
 class StartupRecoveryController(Protocol):
     """Protocol for continuity-aware startup recovery planning.
 

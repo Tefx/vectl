@@ -41710,7 +41710,7 @@ phases:
       - docs/ADR-driver-evolution-foundation.md §§30,45,58,71,85,96,104,137,190,193'
   - id: driver-evolution-review.architecture-review
     name: Review architecture boundaries for the evolved driver
-    status: claimed
+    status: done
     description: 'step_type: review
 
 
@@ -41742,6 +41742,28 @@ phases:
     agent: software-architect
     claimed_by: software-architect
     claimed_at: '2026-03-29T07:56:26.573156+00:00'
+    done_at: '2026-03-29T08:01:46.461319+00:00'
+    evidence: 'Architecture review identified blocker-class findings intersecting
+      ADR ownership/static-registry expectations:
+
+      1) split-truth runtime wiring between DriverState runtime_config/runtime_runners
+      and RuntimeContext boundary
+
+      2) mutable module-global registries on critical surfaces (layered registry,
+      handler tables, continuity authority table)
+
+
+      Per batched-fix protocol, remediation ownership created before progression:
+
+      - driver-evolution-review.fix-architecture-blockers (depends on architecture-review)
+
+      - driver-evolution-review.architecture-review-retest (depends on fix)
+
+      - driver-evolution-review.gate dependency updated to include architecture-review-retest
+
+
+      Architecture-review step completed as issue-detection review with explicit remediation
+      path.'
   - id: driver-evolution-review.contract-strength
     name: Audit contract and registry strength
     status: done

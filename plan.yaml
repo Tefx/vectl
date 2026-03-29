@@ -43191,7 +43191,7 @@ phases:
   steps:
   - id: driver-judge-hardening-structured-output.test-define-red
     name: Define expected-red codex structured-output regressions
-    status: claimed
+    status: done
     description: "step_type: test\nstep_intent: test_define_red\nexpected_result:\
       \ red\nspec_refs:\n  - driver.yaml#runners-codex-and-judge\n  - docs/JUDGE-AGENT-PROMPT.md#verdict-schema\n\
       \  - docs/DRIVER-ARCHITECTURE.md#judge-runtime\ntouch_paths:\n  - tests/test_driver_judge.py\n\
@@ -43233,6 +43233,21 @@ phases:
     agent: python-executor
     claimed_by: python-executor
     claimed_at: '2026-03-29T01:10:56.704002+00:00'
+    done_at: '2026-03-29T01:17:29.634419+00:00'
+    evidence: "## Expected-Red Judge Stability Tests\n- New/updated test files:\n\
+      \  - tests/test_driver_judge_expected_red.py (27 tests)\n\n- Exposed gaps:\n\
+      \  1) empty JSONL extraction returned empty string instead of JudgmentParseError\n\
+      \  2) CodexOutputParser malformed-line handling hard-failed instead of tolerant\
+      \ extraction path\n\n- Judgment families covered: preflight | cold_context |\
+      \ failure | gate\n  - family coverage tests present (including gate with quality\
+      \ gates enabled)\n\n- Spec sections cited for fixtures:\n  - DRIVER-BLUEPRINT.md\
+      \ lines 401-481 via canonical driver.yaml fixture\n  - docs/DRIVER-ARCHITECTURE.md\
+      \ sections 2.3, 2.9, 2.10\n\n- Downstream implementation owner: driver-judge-hardening-structured-output.impl\n\
+      \nVerification:\n- 27 total tests, 24 pass, 3 fail (expected red gap exposures)\n\
+      \nTest-step semantic reporting:\n- step_intent: test_define_red\n- expected_result:\
+      \ red\n- observed_result: red (targeted failures expose declared structured-output\
+      \ gaps)\n- failure_alignment: aligned\n- whether any product implementation\
+      \ files were modified: no (tests-only)"
   - id: driver-judge-hardening-structured-output.impl
     name: Implement codex-aligned judge invocation and parser hardening
     status: pending

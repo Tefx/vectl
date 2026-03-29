@@ -43885,7 +43885,7 @@ phases:
       policy tests use mocks at the correct seam (the judge interface).'
   - id: driver-judge-hardening-recovery-policy.gate
     name: Gate judge failure handling policy
-    status: pending
+    status: claimed
     description: "step_type: gate\nreview_depth: THOROUGH\nverification_scope: phase-check\n\
       protects_downstream_gates:\n  - driver-judge-hardening-review.gate\n  - driver-bootstrap-readiness.gate\n\
       \nAs an INDEPENDENT REVIEWER, assess whether judge failure handling is safe\
@@ -43902,6 +43902,8 @@ phases:
     - driver-judge-hardening-recovery-policy.impl
     - driver-judge-hardening-recovery-policy.verify
     agent: gate-reviewer
+    claimed_by: gate-reviewer
+    claimed_at: '2026-03-29T01:40:01.679612+00:00'
   - id: driver-judge-hardening-recovery-policy.design-and-test
     name: Design failure policy boundary and write expected-red tests
     status: done

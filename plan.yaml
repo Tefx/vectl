@@ -49193,3 +49193,14 @@ phases:
     verification: Docs consistently describe `RuntimeContext` as the sole reconcile
       runtime bundle and match the landed signature.
     agent: doc-reviewer
+  - id: driver-reconcile-context-convergence.verify
+    name: Independently retest reconcile context-only convergence
+    status: pending
+    description: 'Independent phase-check. Retest the reconcile boundary from a fresh
+      perspective: signature pinning, loop runtime wiring, representative success/failure
+      reconcile behavior, and doc/code consistency. Goal is to find remaining explicit-dependency
+      leaks or contract drift.'
+    verification: Green targeted runs for reconcile contract/runtime suites; evidence
+      shows the final signature is context-only, call sites are migrated, and docs
+      match.
+    agent: integration-verifier

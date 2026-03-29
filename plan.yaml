@@ -39937,7 +39937,7 @@ phases:
     agent: gate-reviewer
 - id: driver-evolution-runtime-context
   name: 'Driver Evolution: Runtime Context'
-  status: pending
+  status: in_progress
   gate: Typed runtime context replaces ad hoc handler inputs without regressing driver
     entrypoint behavior
   context: Bootstrap-postponed evolution work. Runtime-context restructuring starts
@@ -39947,7 +39947,7 @@ phases:
   steps:
   - id: driver-evolution-runtime-context.contract
     name: Pin RuntimeContext contract and ownership boundaries
-    status: pending
+    status: claimed
     description: 'step_type: contract
 
       contract_purity: ENFORCED
@@ -40008,6 +40008,8 @@ phases:
 
       - No implementation logic beyond declarations/stubs is introduced'
     agent: software-architect
+    claimed_by: software-architect
+    claimed_at: '2026-03-29T05:51:39.569601+00:00'
   - id: driver-evolution-runtime-context.implement-runtime-context
     name: Implement RuntimeContext and DecideState boundary
     status: pending

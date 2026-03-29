@@ -43695,7 +43695,7 @@ phases:
       by ensuring judge stability is sufficient for continued bootstrap work.'
 - id: driver-judge-hardening-recovery-policy
   name: 'Driver Judge Hardening: Failure Policy Alignment'
-  status: in_progress
+  status: done
   gate: Judge failure classes have an explicit retry/fallback/halt/remediation matrix
     and publish continuity-consumable outcomes; durable resume, restart recovery,
     and recovery journaling are owned by continuity phases.
@@ -43971,7 +43971,7 @@ phases:
       policy tests use mocks at the correct seam (the judge interface).'
   - id: driver-judge-hardening-recovery-policy.gate
     name: Gate judge failure handling policy
-    status: claimed
+    status: done
     description: "step_type: gate\nreview_depth: THOROUGH\nverification_scope: phase-check\n\
       protects_downstream_gates:\n  - driver-judge-hardening-review.gate\n  - driver-bootstrap-readiness.gate\n\
       \nAs an INDEPENDENT REVIEWER, assess whether judge failure handling is safe\
@@ -43990,6 +43990,41 @@ phases:
     agent: gate-reviewer
     claimed_by: gate-reviewer
     claimed_at: '2026-03-29T01:40:01.679612+00:00'
+    done_at: '2026-03-29T01:46:14.339861+00:00'
+    evidence: 'Artifact:
+
+      - PR: ebd3421 (impl), 1655234 (verify)
+
+
+      Verification:
+
+      - uv run pytest -q tests/test_driver_judge_recovery_policy_impl.py tests/test_driver_judge_recovery_policy_expected_red.py
+      -> 12 passed
+
+      - uv run pytest -q tests/test_driver_judge.py tests/test_driver_loop_runtime.py
+      -> 52 passed, 25 xfailed
+
+
+      Spec link:
+
+      - docs/DRIVER-ARCHITECTURE.md §2.10
+
+      - docs/DRIVER-CONTINUITY-FOUNDATION.md §4
+
+
+      Test/gate semantic reporting:
+
+      - step_intent: gate judge failure policy
+
+      - expected_result: unambiguous retry/fallback/halt/remediation + preserved evidence
+      + no hard-fail slip-through
+
+      - observed_result: pass
+
+      - failure_alignment: n/a
+
+      - whether any product implementation files were modified: no additional modifications
+      in gate step'
   - id: driver-judge-hardening-recovery-policy.design-and-test
     name: Design failure policy boundary and write expected-red tests
     status: done
@@ -44064,7 +44099,7 @@ phases:
       - downstream_implementation_owner: driver-judge-hardening-recovery-policy.impl"
 - id: driver-judge-hardening-review
   name: 'Driver Judge Hardening: Review'
-  status: locked
+  status: pending
   gate: Independent real-runner review confirms judge stability is sufficient on the
     judge surface and explicitly ready for continuity integration; bootstrap authorization
     still also requires continuity-review.
@@ -45373,7 +45408,7 @@ phases:
       \ but runtime paths incomplete\n- downstream_implementation_owner: driver-continuity-capability-safety.impl"
 - id: driver-continuity-restart-recovery
   name: 'Driver Continuity: Restart Recovery'
-  status: locked
+  status: pending
   gate: After abnormal stop, failed step, or process restart, the driver can recover
     continuity state, apply replay-safe resume decisions, and align judge failure
     handling with continuity policy.

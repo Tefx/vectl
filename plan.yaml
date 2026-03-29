@@ -45408,7 +45408,7 @@ phases:
       \ but runtime paths incomplete\n- downstream_implementation_owner: driver-continuity-capability-safety.impl"
 - id: driver-continuity-restart-recovery
   name: 'Driver Continuity: Restart Recovery'
-  status: pending
+  status: in_progress
   gate: After abnormal stop, failed step, or process restart, the driver can recover
     continuity state, apply replay-safe resume decisions, and align judge failure
     handling with continuity policy.
@@ -45530,7 +45530,7 @@ phases:
     agent: gate-reviewer
   - id: driver-continuity-restart-recovery.design-and-test
     name: Design restart-recovery boundary and write expected-red tests
-    status: pending
+    status: claimed
     description: 'step_type: test
 
       merged_contract_test: true
@@ -45582,6 +45582,8 @@ phases:
 
       - Outputs include both boundary design notes and failing tests'
     agent: python-senior
+    claimed_by: python-senior
+    claimed_at: '2026-03-29T01:47:52.998301+00:00'
 - id: driver-continuity-review
   name: 'Driver Continuity: Review'
   status: locked

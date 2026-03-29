@@ -51704,6 +51704,47 @@ phases:
     and repair-continuity semantics before runtime code changes.
   depends_on:
   - driver-live-smoke-remediation
+  steps:
+  - id: driver-continuity-hygiene-foundation.contract
+    name: Pin continuity hygiene contract
+    status: pending
+    description: "step_type: contract\ncontract_purity: ENFORCED\ncontract_outputs:\n\
+      \  - signatures\n  - type_defs\n  - interfaces\n  - stubs\n\nPin the implementation\
+      \ contract for two-stage startup recovery without adding runtime business logic.\n\
+      \nAuthoritative sources:\n- User-approved architecture direction in this planning\
+      \ request\n- docs/DRIVER-CONTINUITY-FOUNDATION.md §3 source-of-truth matrix,\
+      \ §4 Restart, §5 state strata, §7 cross-cutting governance\n\nCreate/adjust\
+      \ contract-only artifacts for the continuity hygiene seam under src/vectl/driver/\
+      \ (for example continuity_hygiene.py / continuity_repair.py) and any typed result\
+      \ objects needed by loop.py and cli.py.\n\nThe contract MUST make explicit:\n\
+      - classification outcomes for ledger and journal artifacts: safe stale quarantine\
+      \ vs blocking divergence vs corrupt blocking vs ambiguous blocking\n- safe stale\
+      \ rule: artifact step absent from current plan AND absent from repaired current-branch\
+      \ claims\n- quarantine manifest/result fields preserving original path, reason,\
+      \ classification, and quarantine destination\n- startup hygiene stage API consumed\
+      \ before active startup recovery\n- repair-continuity command result schema\
+      \ for dry-run/apply/json output\n\nContract guardrails:\n- no silent deletion\
+      \ during startup\n- no auto-remap of renamed or migrated step IDs\n- corrupt\
+      \ files, current-claim disagreement, and ambiguous identity remain blocking\n\
+      - signatures/docstrings/stubs only; NO runtime logic"
+    verification: '- Contract artifacts define the classification and quarantine surface
+      explicitly
+
+      - Startup hygiene and repair-continuity APIs are pinned before implementation
+
+      - Files remain contract-only (stubs/docstrings/types; no completed runtime logic)'
+    evidence_template: '## Contract Evidence
+
+      - Contract files and symbols created/updated:
+
+      - Classification outcomes pinned:
+
+      - Quarantine manifest fields pinned:
+
+      - Blocking cases pinned:
+
+      - Confirmation that runtime logic remains stub-only:'
+    agent: python-senior
 - id: driver-continuity-hygiene-core
   name: 'Driver Continuity Hygiene: Core Runtime'
   status: locked

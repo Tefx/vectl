@@ -49943,7 +49943,7 @@ phases:
   - driver-enhancement-foundation
   steps:
   - id: driver-live-smoke-foundation.ratify-live-smoke-policy
-    name: Ratify cheap-model and execution policy
+    name: Ratify pinned live-smoke model and execution policy
     status: pending
     description: "Planning step.\n\nRatify the lightweight live smoke policy before\
       \ any additive test work assumes runner wiring or fallback semantics.\n\nRequired\
@@ -49974,17 +49974,18 @@ phases:
       \ above are mandatory\n- Preserve codex/opencode as the only in-scope live runners\n\
       - Keep this initiative additive test/doc/config work, not a feature architecture\
       \ program"
-    verification: '- Evidence includes a runner-by-runner matrix for cheap-model knobs,
-      exact model identifiers, supported invocation shape, override mechanism, and
-      skip reasons.
+    verification: '- Evidence includes a runner-by-runner matrix for the pinned models
+      gpt-5.4-mini (codex judge + dispatch) and ollama-cloud/minimax-m2.7 (opencode
+      judge + dispatch), with exact supported invocation shape, override mechanism,
+      and skip reasons.
 
       - Evidence states the ratified execution mode for CI/manual gating and why.
 
       - Evidence explicitly records the codex structured-output no-text-fallback rule
       and opencode tolerant extraction allowance.
 
-      - Evidence records a fallback policy for each runner/scenario pair if the preferred
-      cheap model is unavailable.
+      - Evidence records a fallback policy for each runner/scenario pair only for
+      true runner unavailability, auth/prereq failure, or unsupported override surface.
 
       - No downstream implementation step needs to guess a model name, override contract,
       env contract, or judge fallback policy.'

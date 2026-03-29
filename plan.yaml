@@ -42000,6 +42000,61 @@ phases:
     depends_on:
     - driver-evolution-review.architecture-review
     agent: software-architect
+  - id: driver-evolution-review.architecture-review-retest
+    name: Retest architecture blockers for driver evolution review
+    status: pending
+    description: 'step_type: verification
+
+      verification_scope: phase-check
+
+
+      As an INDEPENDENT REVIEWER (gate-reviewer), re-check the architecture-review
+      blocker families after batched remediation.
+
+
+      YOUR GOAL IS TO FIND REMAINING ARCHITECTURE PROBLEMS, not to confirm the fix
+      mechanically.
+
+
+      Retest BOTH blocker families:
+
+      1. Split-truth runtime wiring: DriverState runtime_config/runtime_runners persistence
+      path versus RuntimeContext ownership boundary
+
+      2. Mutable module-global registries on critical surfaces: layered registry,
+      handler tables, continuity authority table
+
+
+      Required checks:
+
+      - verify a single authoritative source-of-truth now governs runtime persistence
+      and RuntimeContext ownership boundaries
+
+      - verify no critical-surface authority remains as uncontrolled mutable module-global
+      registry state
+
+      - verify sibling ownership leaks or registry-table variants were not left behind
+
+
+      Independence Level: L1
+
+      step_intent: retest_green
+
+      expected_result: green'
+    verification: 'phase-check protecting driver-evolution-review.gate.
+
+      - Re-check confirms BOTH blocker families are cleared
+
+      - Evidence names the resolved ownership boundary for DriverState versus RuntimeContext
+
+      - Evidence confirms layered registry, handler tables, and continuity authority
+      table no longer violate static/auditable posture
+
+      - Any remaining issue is reported explicitly as blocker or should_fix; silent
+      partial clearance is invalid'
+    depends_on:
+    - driver-evolution-review.fix-architecture-blockers
+    agent: gate-reviewer
 - id: driver-evolution-action-registry-contract-foundation
   name: 'Driver Evolution: Action Registry Contract Foundation'
   status: done

@@ -50,7 +50,13 @@ from src.vectl.driver.loop import (
 from src.vectl.driver.observe import FileObserver
 from src.vectl.driver.runners import Runner
 from src.vectl.driver.session import SessionPool
-from src.vectl.driver.types import CompletedEntry, DriverState, RunnerResult, RunnerStatus
+from src.vectl.driver.types import (
+    CompletedEntry,
+    DriverState,
+    RunnerResult,
+    RunnerStatus,
+    StartupRecoveryBoundaryOutput,
+)
 from vectl.models import DecideOutput
 
 # =============================================================================
@@ -966,3 +972,64 @@ class TestDecideStateRuntimeWiring:
             plan_path=plan_path,
         )
         # Expected: NotImplementedError stub until impl
+
+
+@pytest.mark.anyio
+async def test_run_routes_startup_through_recovery_boundary_matrix_expected_red(
+    monkeypatch: pytest.MonkeyPatch,
+    driver_config: DriverConfig,
+    tmp_path: Path,
+) -> None:
+    """run() must route startup decisions through boundary matrix surface."""
+
+    class _Observer:
+        def emit(self, event_type: str, /, **data: object) -> None:
+            return None
+
+        def close(self) -> None:
+            return None
+
+    class _RepairResult:
+        actions: tuple[object, ...] = ()
+
+    class _Step:
+        id = "core.impl"
+
+    class _Phase:
+        steps = [_Step()]
+
+    class _Plan:
+        context = "startup-boundary-test"
+        phases = [_Phase()]
+
+    class _Runner:
+        name = "opencode"
+
+    called = {"value": False}
+
+    def _fake_boundary(**_kwargs: object) -> StartupRecoveryBoundaryOutput:
+        called["value"] = True
+        return StartupRecoveryBoundaryOutput(
+            decisions=(),
+            resumable_handoffs=(),
+            repair_actions=(),
+            blocked_reasons=(),
+        )
+
+    async def _noop_main_loop(**_kwargs: object) -> None:
+        return None
+
+    monkeypatch.setattr(loop_module, "_load_runtime_config", lambda _p: driver_config)
+    monkeypatch.setattr(loop_module, "create_observer", lambda _cfg: _Observer())
+    monkeypatch.setattr(loop_module, "create_runner", lambda _n, _cfg: _Runner())
+    monkeypatch.setattr(loop_module, "Judge", lambda *_a, **_k: MagicMock())
+    monkeypatch.setattr(loop_module, "load_plan_definition", lambda _p: (_Plan(), "hash"))
+    monkeypatch.setattr(loop_module, "repair_claims", lambda *_a, **_k: _RepairResult())
+    monkeypatch.setattr(loop_module, "_cleanup_orphan_worktrees", lambda **_k: ())
+    monkeypatch.setattr(loop_module, "_load_ledger_step_ids", lambda _root: set())
+    monkeypatch.setattr(loop_module, "_run_main_loop", _noop_main_loop)
+    monkeypatch.setattr(loop_module, "evaluate_startup_recovery_boundary", _fake_boundary)
+
+    await run(tmp_path / "driver.yaml")
+
+    assert called["value"] is True

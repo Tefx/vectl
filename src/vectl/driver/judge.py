@@ -17,9 +17,12 @@ from __future__ import annotations
 import asyncio
 import json
 import time
+from dataclasses import dataclass
 from pathlib import Path
 from tempfile import NamedTemporaryFile
-from typing import TYPE_CHECKING, Any, Protocol
+from typing import TYPE_CHECKING, Literal, Protocol
+
+import yaml
 
 from .errors import JudgmentParseError, JudgmentTimeoutError
 from .judgments import (
@@ -29,6 +32,7 @@ from .judgments import (
     JudgmentType,
     JudgmentVerdict,
 )
+from .types import JudgeContinuityPolicyOutput
 
 if TYPE_CHECKING:
     from .config import JudgeConfig
@@ -144,6 +148,225 @@ class JudgeRunner(Protocol):
         Architecture: docs/DRIVER-ARCHITECTURE.md Section 2.10, Text Fallback
         """
         ...
+
+
+JudgeOutcomeKind = Literal[
+    "verdict",
+    "timeout",
+    "parse_error",
+    "malformed_output",
+    "empty_output",
+]
+
+
+@dataclass(frozen=True)
+class JudgeRecoveryPolicyInput:
+    """Input contract for classifying judge failures and recovery action.
+
+    Source:
+    - docs/DRIVER-ARCHITECTURE.md Section 2.10 (verdict extraction boundary,
+      `FAILURE`/`ESCALATION` trigger points, and REPLAN planner wiring)
+    - docs/JUDGE-AGENT-PROMPT.md TYPE: failure and TYPE: escalation verdict
+      semantics (retry/fallback/halt/remediation branches)
+    - docs/DRIVER-CONTINUITY-FOUNDATION.md Section 4 and Section 7 (judge
+      outcomes inform continuity handoff, but do not become durable authority)
+
+    This contract is boundary-only and intentionally excludes durable
+    resume/restart controller ownership.
+    """
+
+    step_id: str
+    judgment_type: JudgmentType
+    outcome_kind: JudgeOutcomeKind
+    attempt_key: str
+    failure_count: int
+    retry_budget: int
+    fallback_runner_name: str | None
+    verdict: JudgmentVerdict | None = None
+
+
+def decide_judge_recovery_policy(
+    policy_input: JudgeRecoveryPolicyInput,
+) -> JudgeContinuityPolicyOutput:
+    """Classify judge outcome into retry/fallback/halt/remediation policy.
+
+    Source:
+    - docs/DRIVER-ARCHITECTURE.md Section 2.10 (hard-fail parse/timeout
+      handling and REPLAN/planner routing commitments)
+    - docs/JUDGE-AGENT-PROMPT.md TYPE: escalation decision framework
+    - docs/DRIVER-CONTINUITY-FOUNDATION.md Section 4 (Abort/failure handoff)
+
+    Policy semantics:
+    - timeout: retry within retry budget, then fallback/halt
+    - parse/malformed/empty output: fallback if available, else halt
+    - verdict-driven: REPLAN->planner_remediation, RETRY->retry, HALT/REJECT->halt
+
+    The output is intentionally continuity-consumable and does not assume durable
+    resume/restart ownership.
+    """
+
+    retry_budget = max(policy_input.retry_budget, 0)
+    fallback_runner = policy_input.fallback_runner_name
+    if fallback_runner is not None and not fallback_runner.strip():
+        fallback_runner = None
+
+    if policy_input.outcome_kind == "timeout":
+        if policy_input.failure_count <= retry_budget:
+            return JudgeContinuityPolicyOutput(
+                step_id=policy_input.step_id,
+                judgment_type=policy_input.judgment_type.value,
+                judge_outcome="timeout",
+                action="retry",
+                provenance="judge_transport_timeout",
+                continuity_recovery_reason="judge_timeout_within_retry_budget",
+                attempt_key=policy_input.attempt_key,
+            )
+        if fallback_runner is not None:
+            return JudgeContinuityPolicyOutput(
+                step_id=policy_input.step_id,
+                judgment_type=policy_input.judgment_type.value,
+                judge_outcome="timeout",
+                action="fallback",
+                provenance="judge_transport_timeout",
+                continuity_recovery_reason="judge_timeout_retry_budget_exhausted",
+                attempt_key=policy_input.attempt_key,
+                fallback_runner_name=fallback_runner,
+            )
+        return JudgeContinuityPolicyOutput(
+            step_id=policy_input.step_id,
+            judgment_type=policy_input.judgment_type.value,
+            judge_outcome="timeout",
+            action="halt",
+            provenance="judge_transport_timeout",
+            continuity_recovery_reason="judge_timeout_no_fallback_runner",
+            attempt_key=policy_input.attempt_key,
+            halt_reason="Judge timeout exceeded retry budget and no fallback is configured",
+        )
+
+    if policy_input.outcome_kind in {"parse_error", "malformed_output", "empty_output"}:
+        if fallback_runner is not None:
+            return JudgeContinuityPolicyOutput(
+                step_id=policy_input.step_id,
+                judgment_type=policy_input.judgment_type.value,
+                judge_outcome=policy_input.outcome_kind,
+                action="fallback",
+                provenance="judge_output_contract_violation",
+                continuity_recovery_reason="judge_output_unusable_fallback_runner_available",
+                attempt_key=policy_input.attempt_key,
+                fallback_runner_name=fallback_runner,
+            )
+        return JudgeContinuityPolicyOutput(
+            step_id=policy_input.step_id,
+            judgment_type=policy_input.judgment_type.value,
+            judge_outcome=policy_input.outcome_kind,
+            action="halt",
+            provenance="judge_output_contract_violation",
+            continuity_recovery_reason="judge_output_unusable_no_fallback_runner",
+            attempt_key=policy_input.attempt_key,
+            halt_reason=("Judge produced unusable output and no fallback runner is configured"),
+        )
+
+    verdict = policy_input.verdict
+    if verdict is None:
+        return JudgeContinuityPolicyOutput(
+            step_id=policy_input.step_id,
+            judgment_type=policy_input.judgment_type.value,
+            judge_outcome="missing_verdict",
+            action="halt",
+            provenance="judge_policy_input_invalid",
+            continuity_recovery_reason="verdict_outcome_without_verdict_payload",
+            attempt_key=policy_input.attempt_key,
+            halt_reason="Judge recovery policy received outcome=verdict without verdict payload",
+        )
+
+    verdict_name = verdict.verdict
+    reason_lower = verdict.reason.lower()
+    provenance = "judge_verdict"
+    marker = "provenance="
+    if marker in reason_lower:
+        after = reason_lower.split(marker, 1)[1]
+        token = after.split(",", 1)[0].split(";", 1)[0].split(" ", 1)[0].strip()
+        if token:
+            provenance = f"judge_verdict:{token}"
+
+    if verdict_name == "REPLAN":
+        instruction = verdict.planner_instruction
+        if instruction is None or not instruction.strip():
+            return JudgeContinuityPolicyOutput(
+                step_id=policy_input.step_id,
+                judgment_type=policy_input.judgment_type.value,
+                judge_outcome="REPLAN",
+                action="halt",
+                provenance=provenance,
+                continuity_recovery_reason="replan_without_planner_instruction",
+                attempt_key=policy_input.attempt_key,
+                halt_reason="REPLAN verdict missing planner_instruction",
+            )
+        return JudgeContinuityPolicyOutput(
+            step_id=policy_input.step_id,
+            judgment_type=policy_input.judgment_type.value,
+            judge_outcome="REPLAN",
+            action="planner_remediation",
+            provenance=provenance,
+            continuity_recovery_reason="judge_requested_planner_remediation",
+            attempt_key=policy_input.attempt_key,
+            planner_instruction=instruction,
+        )
+
+    if verdict_name == "RETRY":
+        return JudgeContinuityPolicyOutput(
+            step_id=policy_input.step_id,
+            judgment_type=policy_input.judgment_type.value,
+            judge_outcome="RETRY",
+            action="retry",
+            provenance=provenance,
+            continuity_recovery_reason="judge_requested_retry",
+            attempt_key=policy_input.attempt_key,
+        )
+
+    if verdict_name == "SWITCH_AGENT":
+        if fallback_runner is not None:
+            return JudgeContinuityPolicyOutput(
+                step_id=policy_input.step_id,
+                judgment_type=policy_input.judgment_type.value,
+                judge_outcome="SWITCH_AGENT",
+                action="fallback",
+                provenance=provenance,
+                continuity_recovery_reason="judge_requested_alternate_execution_route",
+                attempt_key=policy_input.attempt_key,
+                fallback_runner_name=fallback_runner,
+            )
+        return JudgeContinuityPolicyOutput(
+            step_id=policy_input.step_id,
+            judgment_type=policy_input.judgment_type.value,
+            judge_outcome="SWITCH_AGENT",
+            action="retry",
+            provenance=provenance,
+            continuity_recovery_reason="switch_agent_without_runner_fallback",
+            attempt_key=policy_input.attempt_key,
+        )
+
+    if verdict_name in {"HALT", "REJECT"}:
+        return JudgeContinuityPolicyOutput(
+            step_id=policy_input.step_id,
+            judgment_type=policy_input.judgment_type.value,
+            judge_outcome=verdict_name,
+            action="halt",
+            provenance=provenance,
+            continuity_recovery_reason="judge_requested_halt",
+            attempt_key=policy_input.attempt_key,
+            halt_reason=verdict.reason,
+        )
+
+    return JudgeContinuityPolicyOutput(
+        step_id=policy_input.step_id,
+        judgment_type=policy_input.judgment_type.value,
+        judge_outcome=verdict_name,
+        action="retry",
+        provenance=provenance,
+        continuity_recovery_reason="judge_verdict_default_retry",
+        attempt_key=policy_input.attempt_key,
+    )
 
 
 # =============================================================================
@@ -292,18 +515,18 @@ class Judge:
                 user_prompt=user_prompt,
             )
             verdict = self._parse_verdict(raw_output=raw_output, request=request)
-        except JudgmentTimeoutError:
+        except JudgmentTimeoutError as exc:
             raise JudgmentTimeoutError(
                 judgment_type=request.type.value,
                 step_id=request.step_id,
                 timeout_seconds=self._config.timeout,
-            )
+            ) from exc
         except JudgmentParseError as exc:
             raise JudgmentParseError(
                 judgment_type=request.type.value,
                 step_id=request.step_id,
                 raw_output=exc.raw_output,
-            )
+            ) from exc
 
         self._emit_judgment_event(
             request=request,
@@ -609,10 +832,30 @@ class Judge:
             return command, payload
 
         if runner == "codex":
-            command = [runner, "exec", "--json"]
+            runner_settings = _load_runner_settings_from_driver_yaml("codex")
+            if runner_settings is None:
+                raise JudgmentParseError(
+                    judgment_type="unknown",
+                    step_id="unknown",
+                    raw_output=(
+                        "Missing or invalid codex runner contract in driver.yaml; "
+                        "judge codex argv must derive from configured runners.codex args"
+                    ),
+                )
+
+            configured_command, configured_args, configured_prompt_mode = runner_settings
+            command = [configured_command] + _render_runner_args(
+                configured_args,
+                workdir=str(Path.cwd()),
+                agent="judge",
+            )
+            if configured_prompt_mode == "stdin_dash" and "-" not in command:
+                command.append("-")
+
             if self._config.structured_output and self._structured_schema_path is not None:
-                command.extend(["--output-schema", self._structured_schema_path])
-            command.append("-")
+                has_schema_flag = "--output-schema" in command
+                if not has_schema_flag:
+                    command.extend(["--output-schema", self._structured_schema_path])
             payload = f"SYSTEM PROMPT:\n{system_prompt}\n\n{user_prompt}"
             return command, payload
 
@@ -648,6 +891,62 @@ def _write_schema_tempfile(schema: dict[str, object]) -> str:
         return fp.name
 
 
+def _load_runner_settings_from_driver_yaml(
+    runner_name: str,
+) -> tuple[str, list[str], str | None] | None:
+    """Load runner command settings from local ``driver.yaml`` when available.
+
+    Source authority:
+    - driver.yaml ``runners.<name>`` entry (runtime configuration authority)
+    - docs/DRIVER-ARCHITECTURE.md Section 2.3 (configuration schema)
+
+    Returns:
+        Tuple of ``(command, args, prompt_mode)`` when found and valid;
+        otherwise ``None``.
+    """
+    config_path = Path("driver.yaml")
+    if not config_path.exists():
+        return None
+
+    try:
+        raw = yaml.safe_load(config_path.read_text(encoding="utf-8"))
+    except yaml.YAMLError:
+        return None
+
+    if not isinstance(raw, dict):
+        return None
+
+    runners = raw.get("runners")
+    if not isinstance(runners, dict):
+        return None
+
+    runner = runners.get(runner_name)
+    if not isinstance(runner, dict):
+        return None
+
+    command = runner.get("command")
+    if not isinstance(command, str) or not command.strip():
+        return None
+
+    raw_args = runner.get("args", [])
+    if not isinstance(raw_args, list) or any(not isinstance(arg, str) for arg in raw_args):
+        return None
+
+    prompt_mode = runner.get("prompt_mode")
+    if prompt_mode is not None and not isinstance(prompt_mode, str):
+        return None
+
+    return command, list(raw_args), prompt_mode
+
+
+def _render_runner_args(args: list[str], *, workdir: str, agent: str) -> list[str]:
+    """Render common placeholder tokens in runner args."""
+    rendered: list[str] = []
+    for arg in args:
+        rendered.append(arg.replace("{workdir}", workdir).replace("{agent}", agent))
+    return rendered
+
+
 def _extract_verdict_payload(stdout_text: str) -> str:
     """Extract verdict JSON payload from runner output.
 
@@ -657,6 +956,12 @@ def _extract_verdict_payload(stdout_text: str) -> str:
     - Reject loose text wrappers around JSON.
     """
     stripped = stdout_text.strip()
+    if not stripped:
+        raise JudgmentParseError(
+            judgment_type="unknown",
+            step_id="unknown",
+            raw_output="empty output from judge runner",
+        )
 
     # Single JSON object path
     try:
@@ -675,6 +980,7 @@ def _extract_verdict_payload(stdout_text: str) -> str:
         return stripped
 
     # JSONL path (OpenCode-style)
+    saw_json_event = False
     text_parts: list[str] = []
     for line in stripped.splitlines():
         line = line.strip()
@@ -685,18 +991,45 @@ def _extract_verdict_payload(stdout_text: str) -> str:
         except json.JSONDecodeError:
             continue
 
+        if not isinstance(event, dict):
+            continue
+
+        saw_json_event = True
+
         if event.get("type") == "text":
             part = event.get("part", {})
             text = part.get("text")
             if isinstance(text, str) and text.strip():
                 text_parts.append(text.strip())
+            continue
+
+        # Codex JSONL path: item.completed carries the text payload.
+        if event.get("type") == "item.completed":
+            item = event.get("item", {})
+            if isinstance(item, dict):
+                text = item.get("text")
+                if isinstance(text, str) and text.strip():
+                    text_parts.append(text.strip())
 
     if not text_parts:
+        if saw_json_event:
+            raise JudgmentParseError(
+                judgment_type="unknown",
+                step_id="unknown",
+                raw_output=stripped,
+            )
         return stripped
 
     candidate = text_parts[-1]
     # strict: candidate itself must be JSON, not markdown wrapper
-    json.loads(candidate)
+    try:
+        json.loads(candidate)
+    except json.JSONDecodeError as exc:
+        raise JudgmentParseError(
+            judgment_type="unknown",
+            step_id="unknown",
+            raw_output=candidate,
+        ) from exc
     return candidate
 
 

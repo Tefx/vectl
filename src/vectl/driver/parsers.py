@@ -207,13 +207,10 @@ class CodexOutputParser:
             try:
                 payload = json.loads(line)
             except json.JSONDecodeError:
-                return RunnerResult(
-                    status=RunnerStatus.TRANSPORT_ERROR,
-                    session_id=None,
-                    output=stdout,
-                    elapsed_seconds=elapsed_seconds,
-                    exit_code=None,
-                )
+                # Tolerated boundary: mixed JSONL streams may contain malformed
+                # lines; continue parsing valid events. Hard-fail is only when
+                # zero valid JSON events are present.
+                continue
             if isinstance(payload, dict):
                 events.append(payload)
 

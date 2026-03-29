@@ -35,8 +35,9 @@ from vectl.plan_path import resolve_plan_path
 # Time-to-live for session reuse eligibility (in seconds)
 REUSE_TTL: int = 300
 
-# Transitional compatibility state for legacy callers that do not yet pass
-# DecideState explicitly. Driver runtime must pass DriverState.decide_state.
+# Legacy state object retained for compatibility references in tests/tools.
+# Runtime callers should pass explicit state. For state=None we now isolate by
+# returning a fresh ephemeral DecideState per call.
 _legacy_state: DecideState = DecideState()
 
 
@@ -46,10 +47,14 @@ _legacy_state: DecideState = DecideState()
 
 
 def _resolve_state(state: DecideState | None) -> DecideState:
-    """Resolve decide state with short-lived migration fallback."""
+    """Resolve decide state with isolated fallback semantics.
+
+    Source: tests/test_decide_state_isolation.py (legacy leakage exposure) and
+    step ``driver-continuity-review.fix-gate-blockers`` should-fix scope.
+    """
     if state is not None:
         return state
-    return _legacy_state
+    return DecideState()
 
 
 def should_reuse_session(

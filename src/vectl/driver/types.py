@@ -17,7 +17,7 @@ import time
 from collections.abc import Mapping
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Literal, Protocol
 
 from vectl.decision_state import DecideState
 
@@ -41,7 +41,7 @@ class RunnerStatus(str, Enum):
     TRANSPORT_ERROR = "transport_error"
 
 
-@dataclass
+@dataclass(frozen=True)
 class RunnerResult:
     """Parsed output from a completed runner process.
 
@@ -56,6 +56,7 @@ class RunnerResult:
     exit_code: int | None
     cost_usd: float | None = None
     tokens: dict[str, int] | None = None
+    continuity: ContinuityResultFields | None = None
 
 
 @dataclass
@@ -405,3 +406,271 @@ class SessionEntry:
     agent: str
     step_id: str
     completed_at: float  # time.monotonic()
+
+
+@dataclass(frozen=True)
+class ReplaySafetyEnvelope:
+    """Canonical replay/idempotency envelope for continuity-sensitive actions.
+
+    Contract scope only: this type pins the minimum facts that downstream
+    continuity phases must preserve when deciding whether a resumed or replayed
+    action is safe to apply.
+    """
+
+    step_id: str
+    attempt_key: str
+    runner_name: str
+    session_id: str | None
+    idempotency_scope: str
+    tool_call_fingerprint: str | None = None
+
+
+@dataclass(frozen=True)
+class ReplayTokenSemantics:
+    """Replay-token semantics contract used for resume/replay safety checks.
+
+    Source: docs/DRIVER-CONTINUITY-FOUNDATION.md Section 4 (Replay),
+    Section 6 (Transport boundary rules), and Section 13 open question on
+    capability snapshot persistence.
+
+    The token value itself is opaque to the bootstrap phase. This contract only
+    pins binding semantics that downstream continuity runtime must enforce.
+    """
+
+    token: str
+    token_kind: Literal["session", "attempt", "opaque"]
+    semantics_version: str
+    bound_runner_name: str
+    bound_step_id: str
+    capability_snapshot_id: str
+
+
+@dataclass(frozen=True)
+class ContinuityResultFields:
+    """Continuity-facing result fields captured from a completed runner attempt.
+
+    Source: docs/DRIVER-CONTINUITY-FOUNDATION.md Section 4 (Restart/Abort),
+    Section 5 (state strata), and Section 7 (journal write-point governance).
+    """
+
+    attempt_key: str
+    replay_token: ReplayTokenSemantics | None
+    replay_safe: bool
+    duplicate_replay: bool
+    recovery_reason: str
+
+
+JudgeRecoveryAction = Literal[
+    "retry",
+    "fallback",
+    "halt",
+    "planner_remediation",
+]
+
+
+@dataclass(frozen=True)
+class JudgeContinuityPolicyOutput:
+    """Judge-to-continuity policy handoff fields (contract-only).
+
+    Source:
+    - docs/DRIVER-ARCHITECTURE.md Section 2.10 (judge failure extraction +
+      verdict handling boundaries)
+    - docs/DRIVER-CONTINUITY-FOUNDATION.md Section 4 (Abort/failure) and
+      Section 7 (judge outcomes inform policy handoff)
+
+    This contract intentionally stops at handoff fields. It does NOT take
+    ownership of durable ledger/journal persistence, startup recovery controller
+    execution, or restart orchestration logic.
+    """
+
+    step_id: str
+    judgment_type: str
+    judge_outcome: str
+    action: JudgeRecoveryAction
+    provenance: str
+    continuity_recovery_reason: str
+    attempt_key: str
+    planner_instruction: str | None = None
+    fallback_runner_name: str | None = None
+    halt_reason: str | None = None
+
+
+@dataclass(frozen=True)
+class ContinuityJournalEntry:
+    """Minimum recovery telemetry emitted for replay-safe restart reasoning.
+
+    This is intentionally narrower than post-bootstrap observability. It exists
+    only to pin the bootstrap-minimum journal facts required by restart,
+    resume, and abort handling.
+    """
+
+    step_id: str
+    event_kind: str
+    recorded_at: str
+    attempt_key: str
+    runner_name: str
+    session_id: str | None
+    summary: str
+    replay_envelope: ReplaySafetyEnvelope
+
+
+@dataclass(frozen=True)
+class ContinuityLedgerEntry:
+    """Durable continuity record for one step-level execution lineage.
+
+    The ledger is the durable source of truth for resumable continuity facts.
+    Downstream implementation phases own persistence mechanics; this contract
+    pins the durable shape they must converge on.
+    """
+
+    step_id: str
+    latest_attempt_key: str
+    status: str
+    runner_name: str
+    last_session_id: str | None
+    replay_envelope: ReplaySafetyEnvelope
+    last_journal_event: ContinuityJournalEntry
+    judge_policy: JudgeContinuityPolicyOutput | None = None
+    recovery_cursor: str | None = None
+
+
+@dataclass(frozen=True)
+class ContinuityHandoff:
+    """Loop-facing continuity handoff used by restart and resume control flow.
+
+    This type separates the durable continuity decision input from transient
+    runtime process state so downstream phases do not re-derive restart policy
+    from loosely structured dictionaries.
+    """
+
+    step_id: str
+    resume_from_session_id: str | None
+    replay_envelope: ReplaySafetyEnvelope
+    ledger_entry: ContinuityLedgerEntry | None
+    capability_snapshot_id: str
+    reason: str
+
+
+@dataclass(frozen=True)
+class StartupRecoveryControllerInput:
+    """Inputs required by the startup recovery controller contract."""
+
+    orphaned_steps: tuple[str, ...]
+    stale_claim_step_ids: tuple[str, ...]
+    ledger_entries: tuple[ContinuityLedgerEntry, ...]
+    available_capability_snapshot_ids: tuple[str, ...]
+
+
+@dataclass(frozen=True)
+class StartupRecoveryControllerOutput:
+    """Outputs produced by the startup recovery controller contract."""
+
+    resumable_handoffs: tuple[ContinuityHandoff, ...]
+    repair_actions: tuple[str, ...]
+    blocked_reasons: tuple[str, ...]
+
+
+StartupRecoveryDisposition = Literal["resume", "restart", "halt"]
+
+
+@dataclass(frozen=True)
+class StartupRecoveryReconciliationFacts:
+    """Normalized startup reconciliation inputs for plan/claims/ledger alignment.
+
+    Source:
+    - docs/DRIVER-ARCHITECTURE.md Section 2.11 (startup recovery runs after
+      plan reload and claim repair)
+    - docs/DRIVER-CONTINUITY-FOUNDATION.md Section 3 (source-of-truth matrix)
+      and Section 4 (restart contract)
+    """
+
+    plan_step_ids: tuple[str, ...]
+    claim_step_ids: tuple[str, ...]
+    ledger_step_ids: tuple[str, ...]
+
+
+@dataclass(frozen=True)
+class StartupRecoveryJudgeInput:
+    """Judge-derived failure input consumed by startup continuity policy.
+
+    Source:
+    - docs/DRIVER-CONTINUITY-FOUNDATION.md Section 4 and Section 7
+      (judge outcomes are policy inputs; continuity remains authority owner)
+    """
+
+    step_id: str
+    attempt_key: str
+    policy: JudgeContinuityPolicyOutput
+
+
+@dataclass(frozen=True)
+class StartupRecoveryDecision:
+    """Decision row in startup resume vs restart vs halt matrix.
+
+    This is a contract-only type for testable matrix behavior.
+    """
+
+    step_id: str
+    disposition: StartupRecoveryDisposition
+    reason: str
+    source_attempt_key: str | None = None
+
+
+@dataclass(frozen=True)
+class StartupRecoveryBoundaryInput:
+    """Boundary input for startup-recovery matrix evaluation.
+
+    Source:
+    - docs/DRIVER-ARCHITECTURE.md Section 2.11 startup recovery ordering
+    - docs/DRIVER-CONTINUITY-FOUNDATION.md Section 4 restart/resume contract
+    """
+
+    reconciliation: StartupRecoveryReconciliationFacts
+    capability_snapshot_ids: tuple[str, ...]
+    ledger_entries: tuple[ContinuityLedgerEntry, ...]
+    judge_failure_inputs: tuple[StartupRecoveryJudgeInput, ...]
+
+
+@dataclass(frozen=True)
+class StartupRecoveryBoundaryOutput:
+    """Boundary output for startup-recovery matrix evaluation."""
+
+    decisions: tuple[StartupRecoveryDecision, ...]
+    resumable_handoffs: tuple[ContinuityHandoff, ...]
+    repair_actions: tuple[str, ...]
+    blocked_reasons: tuple[str, ...]
+
+
+class StartupRecoveryController(Protocol):
+    """Protocol for continuity-aware startup recovery planning.
+
+    Runtime authority: production startup entrypoints must execute recovery
+    through this controller contract rather than bypassing it with direct
+    boundary-function calls.
+    """
+
+    def plan_recovery(
+        self,
+        *,
+        boundary_input: StartupRecoveryBoundaryInput,
+    ) -> StartupRecoveryBoundaryOutput:
+        """Return deterministic startup recovery boundary classification."""
+        ...
+
+
+class ReplaySafetyPolicy(Protocol):
+    """Bootstrap replay/idempotency policy contract on continuity surfaces.
+
+    Source: docs/DRIVER-CONTINUITY-FOUNDATION.md Section 4 and Section 6.
+    Runtime implementation is intentionally deferred to
+    ``driver-continuity-capability-safety.impl``.
+    """
+
+    def evaluate_resume_request(
+        self,
+        *,
+        envelope: ReplaySafetyEnvelope,
+        requested_token: ReplayTokenSemantics | None,
+    ) -> ContinuityResultFields:
+        """Return deterministic continuity result fields for resume/replay."""
+        ...

@@ -21,14 +21,16 @@ import asyncio
 import contextlib
 import json
 import logging
+import os
 import shutil
 import time
-from dataclasses import dataclass
+from dataclasses import asdict, dataclass
+from datetime import datetime, timezone
 from fnmatch import fnmatch
 from pathlib import Path
 from typing import TYPE_CHECKING, Final, Literal, Protocol, cast
 
-from vectl.claims import repair_claims
+from vectl.claims import load_claims_for_branch, repair_claims
 from vectl.decide import decide
 from vectl.io import load_plan_definition, save_plan
 from vectl.lifecycle import claim_step, complete_step, defer_step
@@ -45,8 +47,13 @@ from .config import (
     load_config,
 )
 from .dispatch import render_prompt
-from .errors import ConfigError, RunnerError
-from .judge import Judge
+from .errors import ConfigError, JudgmentParseError, JudgmentTimeoutError, RunnerError
+from .judge import (
+    Judge,
+    JudgeOutcomeKind,
+    JudgeRecoveryPolicyInput,
+    decide_judge_recovery_policy,
+)
 from .judgments import JudgmentRequest, JudgmentType, JudgmentVerdict
 from .observe import Observer, create_observer
 from .policy import (
@@ -56,10 +63,31 @@ from .policy import (
     _is_gate_or_freeze_step,
     _parse_gate_issues,
 )
+from .runner_continuity import (
+    capability_for_runner,
+    capability_snapshot_id,
+    evaluate_resume_or_replay_safety,
+)
 from .runners import Runner, create_runner
 from .runners import RunnerStatus as RunnerDispatchStatus
 from .session import SessionPool
-from .types import CompletedEntry, DriverState, RunnerStatus
+from .types import (
+    CompletedEntry,
+    ContinuityHandoff,
+    ContinuityJournalEntry,
+    ContinuityLedgerEntry,
+    DriverState,
+    JudgeContinuityPolicyOutput,
+    ReplaySafetyEnvelope,
+    ReplayTokenSemantics,
+    RunnerStatus,
+    StartupRecoveryBoundaryInput,
+    StartupRecoveryBoundaryOutput,
+    StartupRecoveryController,
+    StartupRecoveryDecision,
+    StartupRecoveryJudgeInput,
+    StartupRecoveryReconciliationFacts,
+)
 from .worktree import (
     ConflictResolverDispatch,
     Failure,
@@ -403,6 +431,261 @@ class GracefulShutdownContract:
 
 STARTUP_RECOVERY_CONTRACT: Final[StartupRecoveryContract] = StartupRecoveryContract()
 GRACEFUL_SHUTDOWN_CONTRACT: Final[GracefulShutdownContract] = GracefulShutdownContract()
+
+
+@dataclass(frozen=True)
+class DefaultStartupRecoveryController:
+    """Production startup recovery controller adapter.
+
+    Source:
+    - ``driver-continuity-review.fix-wiring-blockers`` (B1 protocol wiring)
+
+    This adapter makes ``StartupRecoveryController`` the production startup
+    entrypoint contract while preserving the existing deterministic boundary
+    evaluator as the implementation authority.
+    """
+
+    def plan_recovery(
+        self,
+        *,
+        boundary_input: StartupRecoveryBoundaryInput,
+    ) -> StartupRecoveryBoundaryOutput:
+        """Evaluate startup recovery through the authoritative boundary matrix."""
+
+        return _evaluate_startup_recovery_boundary_matrix(boundary_input=boundary_input)
+
+
+def _startup_recovery_controller() -> StartupRecoveryController:
+    """Return the production startup recovery controller implementation."""
+
+    return DefaultStartupRecoveryController()
+
+
+STARTUP_RECOVERY_SCAN_ORDER: Final[tuple[str, ...]] = (
+    "load_plan",
+    "repair_claims",
+    "cleanup_orphan_worktrees",
+    "scan_continuity_ledger",
+    "reconcile_plan_claims_ledger",
+    "consume_judge_failure_policy_inputs",
+    "classify_resume_restart_halt",
+)
+"""Normative startup scan order for restart-recovery boundary tests.
+
+Source:
+- docs/DRIVER-ARCHITECTURE.md Section 2.11 startup sequence
+- docs/DRIVER-CONTINUITY-FOUNDATION.md Section 4 and Section 7
+"""
+
+
+def evaluate_startup_recovery_boundary(
+    *,
+    boundary_input: StartupRecoveryBoundaryInput,
+) -> StartupRecoveryBoundaryOutput:
+    """Evaluate startup recovery by routing through controller contract.
+
+    Source:
+    - ``driver-continuity-review.fix-wiring-blockers`` (B1 protocol wiring)
+
+    This surface remains available for callers that require function-level
+    invocation semantics, but it no longer bypasses ``StartupRecoveryController``.
+    """
+
+    return _startup_recovery_controller().plan_recovery(boundary_input=boundary_input)
+
+
+def _evaluate_startup_recovery_boundary_matrix(
+    *,
+    boundary_input: StartupRecoveryBoundaryInput,
+) -> StartupRecoveryBoundaryOutput:
+    """Evaluate startup recovery matrix from reconciliation + policy inputs.
+
+    Source:
+    - docs/DRIVER-CONTINUITY-FOUNDATION.md Section 3 and Section 4
+      (ledger/plan/claims reconciliation and resume vs restart contract)
+    - docs/DRIVER-CONTINUITY-FOUNDATION.md Section 7
+      (judge outcomes are continuity policy inputs)
+    - tests/test_driver_recovery.py
+
+    Matrix semantics:
+    - ``halt`` when plan/claims/ledger diverge for a ledger-owned step
+    - ``halt`` when a judge policy input already classifies to halt
+    - ``restart`` when capability snapshot facts needed for safe resume are missing
+    - ``resume`` only when facts are present and no stronger block applies
+    """
+    reconciliation = boundary_input.reconciliation
+    plan_steps = set(reconciliation.plan_step_ids)
+    claim_steps = set(reconciliation.claim_step_ids)
+    ledger_steps = set(reconciliation.ledger_step_ids)
+    available_snapshots = set(boundary_input.capability_snapshot_ids)
+
+    decisions: list[StartupRecoveryDecision] = []
+    repair_actions: list[str] = []
+    blocked_reasons: list[str] = []
+    resumable_handoffs: list[ContinuityHandoff] = []
+
+    judge_halt_by_step: dict[str, StartupRecoveryJudgeInput] = {
+        judge_input.step_id: judge_input
+        for judge_input in boundary_input.judge_failure_inputs
+        if judge_input.policy.action == "halt"
+    }
+
+    for orphaned_step in sorted(ledger_steps - plan_steps):
+        reason = "ledger_plan_claims_divergence"
+        decisions.append(
+            StartupRecoveryDecision(
+                step_id=orphaned_step,
+                disposition="halt",
+                reason=reason,
+            )
+        )
+        blocked_reasons.append(f"{orphaned_step}:{reason}")
+
+    ledger_by_step = {entry.step_id: entry for entry in boundary_input.ledger_entries}
+    candidate_steps = sorted(plan_steps & claim_steps & set(ledger_by_step))
+
+    for step_id in candidate_steps:
+        judge_halt = judge_halt_by_step.get(step_id)
+        if judge_halt is not None:
+            decisions.append(
+                StartupRecoveryDecision(
+                    step_id=step_id,
+                    disposition="halt",
+                    reason="judge_policy_halt",
+                    source_attempt_key=judge_halt.attempt_key,
+                )
+            )
+            blocked_reasons.append(f"{step_id}:judge_policy_halt")
+            continue
+
+        ledger_entry = ledger_by_step[step_id]
+        status = ledger_entry.status.strip().lower()
+        recovery_cursor = (ledger_entry.recovery_cursor or "").strip()
+
+        if status == "completed":
+            decisions.append(
+                StartupRecoveryDecision(
+                    step_id=step_id,
+                    disposition="halt",
+                    reason="ledger_status_completed",
+                    source_attempt_key=ledger_entry.latest_attempt_key,
+                )
+            )
+            blocked_reasons.append(f"{step_id}:ledger_status_completed")
+            continue
+
+        if status == "aborted":
+            decisions.append(
+                StartupRecoveryDecision(
+                    step_id=step_id,
+                    disposition="halt",
+                    reason="ledger_status_aborted",
+                    source_attempt_key=ledger_entry.latest_attempt_key,
+                )
+            )
+            blocked_reasons.append(f"{step_id}:ledger_status_aborted")
+            continue
+
+        if recovery_cursor == "halt_requested_by_judge_policy":
+            decisions.append(
+                StartupRecoveryDecision(
+                    step_id=step_id,
+                    disposition="halt",
+                    reason="recovery_cursor_halt_requested_by_judge_policy",
+                    source_attempt_key=ledger_entry.latest_attempt_key,
+                )
+            )
+            blocked_reasons.append(f"{step_id}:recovery_cursor_halt_requested_by_judge_policy")
+            continue
+
+        if recovery_cursor == "awaiting_conflict_resolution":
+            decisions.append(
+                StartupRecoveryDecision(
+                    step_id=step_id,
+                    disposition="halt",
+                    reason="recovery_cursor_awaiting_conflict_resolution",
+                    source_attempt_key=ledger_entry.latest_attempt_key,
+                )
+            )
+            blocked_reasons.append(f"{step_id}:recovery_cursor_awaiting_conflict_resolution")
+            continue
+
+        if recovery_cursor == "pre_merge":
+            decisions.append(
+                StartupRecoveryDecision(
+                    step_id=step_id,
+                    disposition="restart",
+                    reason="recovery_cursor_pre_merge",
+                    source_attempt_key=ledger_entry.latest_attempt_key,
+                )
+            )
+            repair_actions.append(f"restart:{step_id}:recovery_cursor_pre_merge")
+            continue
+
+        if recovery_cursor == "awaiting_retry_or_escalation":
+            decisions.append(
+                StartupRecoveryDecision(
+                    step_id=step_id,
+                    disposition="restart",
+                    reason="recovery_cursor_awaiting_retry_or_escalation",
+                    source_attempt_key=ledger_entry.latest_attempt_key,
+                )
+            )
+            repair_actions.append(f"restart:{step_id}:recovery_cursor_awaiting_retry_or_escalation")
+            continue
+
+        runner_capability = capability_for_runner(ledger_entry.runner_name)
+        expected_snapshot = capability_snapshot_id(runner_capability)
+
+        if expected_snapshot not in available_snapshots:
+            decisions.append(
+                StartupRecoveryDecision(
+                    step_id=step_id,
+                    disposition="restart",
+                    reason="capability_snapshot_missing",
+                    source_attempt_key=ledger_entry.latest_attempt_key,
+                )
+            )
+            repair_actions.append(f"restart:{step_id}:capability_snapshot_missing")
+            continue
+
+        if not runner_capability.resume_supported:
+            decisions.append(
+                StartupRecoveryDecision(
+                    step_id=step_id,
+                    disposition="restart",
+                    reason="runner_not_resumable",
+                    source_attempt_key=ledger_entry.latest_attempt_key,
+                )
+            )
+            repair_actions.append(f"restart:{step_id}:runner_not_resumable")
+            continue
+
+        decisions.append(
+            StartupRecoveryDecision(
+                step_id=step_id,
+                disposition="resume",
+                reason="resume_safe_from_ledger_and_capability",
+                source_attempt_key=ledger_entry.latest_attempt_key,
+            )
+        )
+        resumable_handoffs.append(
+            ContinuityHandoff(
+                step_id=step_id,
+                resume_from_session_id=ledger_entry.last_session_id,
+                replay_envelope=ledger_entry.replay_envelope,
+                ledger_entry=ledger_entry,
+                capability_snapshot_id=expected_snapshot,
+                reason="resume_safe_from_ledger_and_capability",
+            )
+        )
+
+    return StartupRecoveryBoundaryOutput(
+        decisions=tuple(decisions),
+        resumable_handoffs=tuple(resumable_handoffs),
+        repair_actions=tuple(repair_actions),
+        blocked_reasons=tuple(blocked_reasons),
+    )
 
 
 COMPLETION_AUTHORITY_A1_CONTRACT: Final[CompletionAuthorityContract] = CompletionAuthorityContract(
@@ -923,6 +1206,24 @@ def _judge_type_enabled(judge: Judge, judgment_type: JudgmentType) -> bool:
     return False
 
 
+def _classify_judge_parse_outcome(raw_output: str) -> JudgeOutcomeKind:
+    """Classify parse failures into policy outcome kinds.
+
+    Source: docs/DRIVER-ARCHITECTURE.md Section 2.10 verdict extraction
+    boundary (timeout/parse/malformed/empty handling split).
+    """
+
+    normalized = raw_output.strip()
+    if not normalized or "empty output from judge runner" in normalized.lower():
+        return "empty_output"
+
+    stripped = normalized.lstrip()
+    if stripped.startswith("{") or stripped.startswith("["):
+        return "malformed_output"
+
+    return "parse_error"
+
+
 def _collect_remaining_required_checks(plan: object, step_id: str) -> list[str]:
     """Collect remaining required checks for downstream-intersection reasoning.
 
@@ -1121,6 +1422,289 @@ def _compose_gate_batch_instruction(
     return "\n".join(lines)
 
 
+def _continuity_attempt_key(*, step_id: str, runner_name: str, session_id: str | None) -> str:
+    """Build deterministic attempt key for replay/idempotency checks.
+
+    Source: docs/DRIVER-CONTINUITY-FOUNDATION.md Section 4 (Replay) and
+    Section 5 (state strata).
+    """
+
+    return f"{step_id}|{runner_name}|{session_id or 'fresh'}"
+
+
+def _state_attempt_key_set(state: DriverState) -> set[str]:
+    """Return mutable per-state replay attempt-key registry."""
+
+    existing = getattr(state, "_continuity_attempt_keys", None)
+    if isinstance(existing, set):
+        return existing
+    fresh: set[str] = set()
+    state.__dict__["_continuity_attempt_keys"] = fresh
+    return fresh
+
+
+def _state_capability_snapshot_cache(state: DriverState) -> dict[str, str]:
+    """Return last-writer-wins capability snapshot cache by step."""
+
+    existing = getattr(state, "_continuity_capability_snapshots", None)
+    if isinstance(existing, dict):
+        return existing
+    fresh: dict[str, str] = {}
+    state.__dict__["_continuity_capability_snapshots"] = fresh
+    return fresh
+
+
+def _resolve_repo_root_from_plan(plan_path: Path) -> Path:
+    """Resolve repository root from plan path."""
+
+    plan_abs = plan_path if plan_path.is_absolute() else (Path.cwd() / plan_path)
+    return plan_abs.resolve().parent
+
+
+def _resolve_repo_root_from_worktree_path(worktree_path: str) -> Path:
+    """Resolve repository root from an absolute or relative worktree path."""
+
+    candidate = Path(worktree_path)
+    if not candidate.is_absolute():
+        candidate = Path.cwd() / candidate
+    candidate = candidate.resolve()
+
+    for parent in (candidate, *candidate.parents):
+        if parent.name == "worktrees" and parent.parent.name == ".vectl":
+            return parent.parent.parent
+    return Path.cwd().resolve()
+
+
+def _safe_step_filename(step_id: str) -> str:
+    """Map a step id to a stable ledger/journal filename."""
+
+    return step_id.replace("/", "__")
+
+
+def _atomic_write_text(path: Path, content: str) -> None:
+    """Atomically write UTF-8 text to path with fsync."""
+
+    path.parent.mkdir(parents=True, exist_ok=True)
+    temp_name = f".{path.name}.tmp-{os.getpid()}-{time.time_ns()}"
+    temp_path = path.parent / temp_name
+    with temp_path.open("w", encoding="utf-8") as handle:
+        handle.write(content)
+        handle.flush()
+        os.fsync(handle.fileno())
+    os.replace(temp_path, path)
+
+
+def _write_json(path: Path, payload: dict[str, object]) -> None:
+    """Write JSON payload atomically."""
+
+    serialized = json.dumps(payload, ensure_ascii=False, sort_keys=True, indent=2) + "\n"
+    _atomic_write_text(path, serialized)
+
+
+def _append_jsonl(path: Path, payload: dict[str, object]) -> None:
+    """Append one JSONL record with atomic replace semantics."""
+
+    line = json.dumps(payload, ensure_ascii=False, sort_keys=True) + "\n"
+    existing = ""
+    if path.exists():
+        existing = path.read_text(encoding="utf-8")
+    _atomic_write_text(path, existing + line)
+
+
+def _continuity_now_iso() -> str:
+    """Return UTC timestamp in ISO 8601 format."""
+
+    return datetime.now(timezone.utc).isoformat()
+
+
+def _build_replay_envelope(
+    *,
+    step_id: str,
+    attempt_key: str,
+    runner_name: str,
+    session_id: str | None,
+    scope: str,
+    fingerprint: str | None,
+) -> ReplaySafetyEnvelope:
+    """Build replay envelope for continuity journal/ledger records."""
+
+    return ReplaySafetyEnvelope(
+        step_id=step_id,
+        attempt_key=attempt_key,
+        runner_name=runner_name,
+        session_id=session_id,
+        idempotency_scope=scope,
+        tool_call_fingerprint=fingerprint,
+    )
+
+
+def _persist_continuity_journal(
+    *,
+    repo_root: Path,
+    step_id: str,
+    event_kind: str,
+    attempt_key: str,
+    runner_name: str,
+    session_id: str | None,
+    summary: str,
+    replay_envelope: ReplaySafetyEnvelope,
+) -> ContinuityJournalEntry:
+    """Persist continuity journal entry for recovery-grade telemetry."""
+
+    entry = ContinuityJournalEntry(
+        step_id=step_id,
+        event_kind=event_kind,
+        recorded_at=_continuity_now_iso(),
+        attempt_key=attempt_key,
+        runner_name=runner_name,
+        session_id=session_id,
+        summary=summary,
+        replay_envelope=replay_envelope,
+    )
+    journal_path = (
+        repo_root / ".vectl" / "continuity" / "journal" / f"{_safe_step_filename(step_id)}.jsonl"
+    )
+    _append_jsonl(journal_path, asdict(entry))
+    return entry
+
+
+def _persist_continuity_ledger(
+    *,
+    repo_root: Path,
+    step_id: str,
+    status: str,
+    attempt_key: str,
+    runner_name: str,
+    session_id: str | None,
+    replay_envelope: ReplaySafetyEnvelope,
+    last_journal_event: ContinuityJournalEntry,
+    judge_policy: JudgeContinuityPolicyOutput | None = None,
+    recovery_cursor: str | None,
+) -> ContinuityLedgerEntry:
+    """Persist continuity ledger as durable last-writer-wins snapshot."""
+
+    entry = ContinuityLedgerEntry(
+        step_id=step_id,
+        latest_attempt_key=attempt_key,
+        status=status,
+        runner_name=runner_name,
+        last_session_id=session_id,
+        replay_envelope=replay_envelope,
+        last_journal_event=last_journal_event,
+        judge_policy=judge_policy,
+        recovery_cursor=recovery_cursor,
+    )
+    ledger_path = (
+        repo_root / ".vectl" / "continuity" / "ledger" / f"{_safe_step_filename(step_id)}.json"
+    )
+    _write_json(ledger_path, asdict(entry))
+    return entry
+
+
+def _load_ledger_step_ids(repo_root: Path) -> set[str]:
+    """Load step ids present in durable continuity ledger files."""
+
+    ledger_dir = repo_root / ".vectl" / "continuity" / "ledger"
+    if not ledger_dir.exists() or not ledger_dir.is_dir():
+        return set()
+
+    step_ids: set[str] = set()
+    for ledger_path in ledger_dir.glob("*.json"):
+        try:
+            payload = json.loads(ledger_path.read_text(encoding="utf-8"))
+        except Exception:
+            continue
+        step_id = payload.get("step_id")
+        if isinstance(step_id, str) and step_id:
+            step_ids.add(step_id)
+    return step_ids
+
+
+def _load_ledger_entries(
+    repo_root: Path,
+) -> tuple[tuple[ContinuityLedgerEntry, ...], tuple[str, ...]]:
+    """Load continuity ledger entries and report corrupt files.
+
+    Source:
+    - docs/DRIVER-CONTINUITY-FOUNDATION.md Section 4 restart contract
+      (startup decisions require durable ledger facts)
+    """
+
+    ledger_dir = repo_root / ".vectl" / "continuity" / "ledger"
+    if not ledger_dir.exists() or not ledger_dir.is_dir():
+        return (), ()
+
+    entries: list[ContinuityLedgerEntry] = []
+    corrupt_files: list[str] = []
+    for ledger_path in sorted(ledger_dir.glob("*.json")):
+        try:
+            payload = json.loads(ledger_path.read_text(encoding="utf-8"))
+        except Exception:
+            corrupt_files.append(ledger_path.name)
+            continue
+
+        try:
+            replay_envelope_raw = payload["replay_envelope"]
+            last_journal_event_raw = payload["last_journal_event"]
+            replay_envelope = ReplaySafetyEnvelope(**replay_envelope_raw)
+            last_journal_event = ContinuityJournalEntry(
+                **{
+                    **last_journal_event_raw,
+                    "replay_envelope": ReplaySafetyEnvelope(
+                        **last_journal_event_raw["replay_envelope"]
+                    ),
+                }
+            )
+            entries.append(
+                ContinuityLedgerEntry(
+                    step_id=payload["step_id"],
+                    latest_attempt_key=payload["latest_attempt_key"],
+                    status=payload["status"],
+                    runner_name=payload["runner_name"],
+                    last_session_id=payload.get("last_session_id"),
+                    replay_envelope=replay_envelope,
+                    last_journal_event=last_journal_event,
+                    judge_policy=(
+                        JudgeContinuityPolicyOutput(**payload["judge_policy"])
+                        if isinstance(payload.get("judge_policy"), dict)
+                        else None
+                    ),
+                    recovery_cursor=payload.get("recovery_cursor"),
+                )
+            )
+        except Exception:
+            corrupt_files.append(ledger_path.name)
+
+    return tuple(entries), tuple(corrupt_files)
+
+
+def _startup_judge_inputs_from_ledger_entries(
+    ledger_entries: tuple[ContinuityLedgerEntry, ...],
+) -> tuple[StartupRecoveryJudgeInput, ...]:
+    """Extract durable startup judge-failure inputs from continuity ledger.
+
+    Source:
+    - docs/DRIVER-CONTINUITY-FOUNDATION.md Section 4 and Section 7
+      (judge failure outcomes must be journaled and consumed on restart)
+    """
+
+    judge_inputs: list[StartupRecoveryJudgeInput] = []
+    for ledger_entry in sorted(ledger_entries, key=lambda entry: entry.step_id):
+        policy = ledger_entry.judge_policy
+        if policy is None:
+            continue
+        if policy.action != "halt":
+            continue
+        judge_inputs.append(
+            StartupRecoveryJudgeInput(
+                step_id=ledger_entry.step_id,
+                attempt_key=policy.attempt_key,
+                policy=policy,
+            )
+        )
+    return tuple(judge_inputs)
+
+
 async def run(config_path: Path) -> None:
     """Main driver entry point.
 
@@ -1155,12 +1739,63 @@ async def run(config_path: Path) -> None:
         judge = Judge(config.judge, observer)
 
         plan, _ = load_plan_definition(plan_path)
+        plan_step_ids = _all_plan_step_ids(plan)
         claims_path = resolve_claims_path(plan_path)
         repair_result = repair_claims(plan, plan_path, claims_path)
+        repaired_branch = getattr(repair_result, "branch", None)
+        if isinstance(repaired_branch, str) and repaired_branch.strip():
+            branch_claims = load_claims_for_branch(claims_path, repaired_branch)
+            claim_step_ids = tuple(sorted(branch_claims.keys()))
+        else:
+            claim_step_ids = ()
         removed_orphans = _cleanup_orphan_worktrees(
             plan_path=plan_path,
-            plan_step_ids=_all_plan_step_ids(plan),
+            plan_step_ids=plan_step_ids,
         )
+
+        continuity_repo_root = _resolve_repo_root_from_plan(plan_path)
+        ledger_entries, corrupt_ledger_files = _load_ledger_entries(continuity_repo_root)
+        startup_judge_failure_inputs = _startup_judge_inputs_from_ledger_entries(ledger_entries)
+        startup_boundary = _startup_recovery_controller().plan_recovery(
+            boundary_input=StartupRecoveryBoundaryInput(
+                reconciliation=StartupRecoveryReconciliationFacts(
+                    plan_step_ids=tuple(sorted(plan_step_ids)),
+                    claim_step_ids=claim_step_ids,
+                    ledger_step_ids=tuple(sorted(entry.step_id for entry in ledger_entries)),
+                ),
+                capability_snapshot_ids=tuple(
+                    sorted(
+                        {
+                            capability_snapshot_id(capability_for_runner(entry.runner_name))
+                            for entry in ledger_entries
+                        }
+                    )
+                ),
+                ledger_entries=ledger_entries,
+                judge_failure_inputs=startup_judge_failure_inputs,
+            )
+        )
+
+        halt_reasons = list(startup_boundary.blocked_reasons)
+        if corrupt_ledger_files:
+            halt_reasons.extend(
+                f"ledger_corrupt:{ledger_file_name}" for ledger_file_name in corrupt_ledger_files
+            )
+        if halt_reasons:
+            observer.emit(
+                "HALT",
+                reason=("Continuity startup recovery blocked: " + ",".join(halt_reasons)),
+            )
+            state.halt_requested = True
+
+        for decision in startup_boundary.decisions:
+            observer.emit(
+                "STARTUP_RECOVERY_DECISION",
+                step_id=decision.step_id,
+                disposition=decision.disposition,
+                reason=decision.reason,
+                attempt_key=decision.source_attempt_key,
+            )
 
         if _judge_type_enabled(judge, JudgmentType.ANOMALY):
             startup_anomalies: list[JudgmentRequest] = []
@@ -1425,20 +2060,103 @@ async def handle_dispatch(
                 f"(step={step_id}, verdict={cold_context_verdict.verdict})"
             )
 
+    pool_session_candidate = session_pool.find_reusable(
+        step_id=step_id,
+        agent=agent,
+        runner_name=runner_name,
+        depends_on=step.depends_on,
+    )
+
     session_id: str | None = None
     session_source = "none"
     if action.session == "reuse" and action.task_id:
         session_id = action.task_id
         session_source = "action"
+        if pool_session_candidate is not None and pool_session_candidate != action.task_id:
+            observer.emit(
+                "CONTINUITY_DOUBLE_TRUTH_DETECTED",
+                step_id=step_id,
+                action_task_id=action.task_id,
+                pool_session_id=pool_session_candidate,
+                authority="durable_continuity_required",
+            )
+            replay_envelope = _build_replay_envelope(
+                step_id=step_id,
+                attempt_key=_continuity_attempt_key(
+                    step_id=step_id,
+                    runner_name=runner_name,
+                    session_id=action.task_id,
+                ),
+                runner_name=runner_name,
+                session_id=action.task_id,
+                scope="dispatch_double_truth_detection",
+                fingerprint=action.task_id,
+            )
+            _persist_continuity_journal(
+                repo_root=_resolve_repo_root_from_plan(plan_path),
+                step_id=step_id,
+                event_kind="double_truth_detected",
+                attempt_key=replay_envelope.attempt_key,
+                runner_name=runner_name,
+                session_id=action.task_id,
+                summary=(
+                    "Action reuse task_id diverged from SessionPool candidate; "
+                    "durable ledger authority required"
+                ),
+                replay_envelope=replay_envelope,
+            )
     else:
-        session_id = session_pool.find_reusable(
-            step_id=step_id,
-            agent=agent,
-            runner_name=runner_name,
-            depends_on=step.depends_on,
-        )
+        session_id = pool_session_candidate
         if session_id is not None:
             session_source = "pool"
+
+    capability = capability_for_runner(runner_name)
+    current_snapshot = capability_snapshot_id(capability)
+    snapshot_cache = _state_capability_snapshot_cache(state)
+    previous_snapshot = snapshot_cache.get(step_id)
+    snapshot_cache[step_id] = current_snapshot
+
+    replay_token: ReplayTokenSemantics | None = None
+    if session_id is not None:
+        replay_token = ReplayTokenSemantics(
+            token=session_id,
+            token_kind="session",
+            semantics_version="bootstrap-v1",
+            bound_runner_name=runner_name,
+            bound_step_id=step_id,
+            capability_snapshot_id=previous_snapshot or current_snapshot,
+        )
+
+    attempt_key = _continuity_attempt_key(
+        step_id=step_id,
+        runner_name=runner_name,
+        session_id=session_id,
+    )
+    seen_attempt_keys = frozenset(_state_attempt_key_set(state))
+    replay_decision = evaluate_resume_or_replay_safety(
+        capability=capability,
+        envelope=ReplaySafetyEnvelope(
+            step_id=step_id,
+            attempt_key=attempt_key,
+            runner_name=runner_name,
+            session_id=session_id,
+            idempotency_scope="step_dispatch",
+            tool_call_fingerprint=action.task_id,
+        ),
+        requested_token=replay_token,
+        seen_attempt_keys=seen_attempt_keys,
+    )
+    if replay_decision.replay_safe:
+        _state_attempt_key_set(state).add(replay_decision.attempt_key)
+    else:
+        if session_id is not None:
+            observer.emit(
+                "SESSION_REUSE_MISS",
+                step_id=step_id,
+                reason=replay_decision.recovery_reason,
+            )
+        session_id = None
+        session_source = "none"
 
     if session_id is not None:
         observer.emit(
@@ -1566,7 +2284,48 @@ async def reconcile(
     - ``reconcile.failure_classification_replan``
     - ``reconcile.escalation_replan``
     """
+    continuity_repo_root = _resolve_repo_root_from_plan(plan_path)
+    continuity_attempt_key = (
+        completed.result.continuity.attempt_key
+        if completed.result.continuity is not None
+        else _continuity_attempt_key(
+            step_id=completed.step_id,
+            runner_name=completed.runner_name,
+            session_id=completed.result.session_id,
+        )
+    )
+
     if completed.result.status == RunnerStatus.SUCCESS:
+        success_envelope = _build_replay_envelope(
+            step_id=completed.step_id,
+            attempt_key=continuity_attempt_key,
+            runner_name=completed.runner_name,
+            session_id=completed.result.session_id,
+            scope="reconcile_success",
+            fingerprint=None,
+        )
+        success_journal = _persist_continuity_journal(
+            repo_root=continuity_repo_root,
+            step_id=completed.step_id,
+            event_kind="runner_success",
+            attempt_key=continuity_attempt_key,
+            runner_name=completed.runner_name,
+            session_id=completed.result.session_id,
+            summary="Runner completed successfully; reconciling merge and lifecycle mutations",
+            replay_envelope=success_envelope,
+        )
+        _persist_continuity_ledger(
+            repo_root=continuity_repo_root,
+            step_id=completed.step_id,
+            status="runner_success",
+            attempt_key=continuity_attempt_key,
+            runner_name=completed.runner_name,
+            session_id=completed.result.session_id,
+            replay_envelope=success_envelope,
+            last_journal_event=success_journal,
+            recovery_cursor="pre_merge",
+        )
+
         evidence = completed.result.output
         plan, expected_hash = load_plan_definition(plan_path)
         state.decide_state.reset_failure(step_id=completed.step_id)
@@ -1699,6 +2458,27 @@ async def reconcile(
                 raise merge_result.error
 
             if merge_result.value.outcome.value == "non_trivial_conflict":
+                conflict_journal = _persist_continuity_journal(
+                    repo_root=continuity_repo_root,
+                    step_id=completed.step_id,
+                    event_kind="merge_conflict_deferred",
+                    attempt_key=continuity_attempt_key,
+                    runner_name=completed.runner_name,
+                    session_id=completed.result.session_id,
+                    summary="Non-trivial merge conflict; step deferred for resolver flow",
+                    replay_envelope=success_envelope,
+                )
+                _persist_continuity_ledger(
+                    repo_root=continuity_repo_root,
+                    step_id=completed.step_id,
+                    status="deferred_conflict",
+                    attempt_key=continuity_attempt_key,
+                    runner_name=completed.runner_name,
+                    session_id=completed.result.session_id,
+                    replay_envelope=success_envelope,
+                    last_journal_event=conflict_journal,
+                    recovery_cursor="awaiting_conflict_resolution",
+                )
                 observer.emit(
                     "MERGE_CONFLICTED",
                     step_id=completed.step_id,
@@ -1736,6 +2516,28 @@ async def reconcile(
                 "Worktree cleanup failed for %s: %s", completed.step_id, cleanup_result.error
             )
 
+        completed_journal = _persist_continuity_journal(
+            repo_root=continuity_repo_root,
+            step_id=completed.step_id,
+            event_kind="completed",
+            attempt_key=continuity_attempt_key,
+            runner_name=completed.runner_name,
+            session_id=completed.result.session_id,
+            summary="Step completion committed, merged, and cleaned up",
+            replay_envelope=success_envelope,
+        )
+        _persist_continuity_ledger(
+            repo_root=continuity_repo_root,
+            step_id=completed.step_id,
+            status="completed",
+            attempt_key=continuity_attempt_key,
+            runner_name=completed.runner_name,
+            session_id=completed.result.session_id,
+            replay_envelope=success_envelope,
+            last_journal_event=completed_journal,
+            recovery_cursor="terminal",
+        )
+
         observer.emit(
             "STEP_COMPLETED",
             step_id=completed.step_id,
@@ -1750,6 +2552,36 @@ async def reconcile(
             elapsed_seconds=completed.elapsed_seconds,
         )
         return
+
+    failure_envelope = _build_replay_envelope(
+        step_id=completed.step_id,
+        attempt_key=continuity_attempt_key,
+        runner_name=completed.runner_name,
+        session_id=completed.result.session_id,
+        scope="reconcile_failure",
+        fingerprint=None,
+    )
+    failure_journal = _persist_continuity_journal(
+        repo_root=continuity_repo_root,
+        step_id=completed.step_id,
+        event_kind="failure",
+        attempt_key=continuity_attempt_key,
+        runner_name=completed.runner_name,
+        session_id=completed.result.session_id,
+        summary=completed.result.output,
+        replay_envelope=failure_envelope,
+    )
+    _persist_continuity_ledger(
+        repo_root=continuity_repo_root,
+        step_id=completed.step_id,
+        status="failed",
+        attempt_key=continuity_attempt_key,
+        runner_name=completed.runner_name,
+        session_id=completed.result.session_id,
+        replay_envelope=failure_envelope,
+        last_journal_event=failure_journal,
+        recovery_cursor="awaiting_retry_or_escalation",
+    )
 
     state.runner_failures[(completed.step_id, completed.runner_name)] = (
         state.runner_failures.get((completed.step_id, completed.runner_name), 0) + 1
@@ -1784,19 +2616,128 @@ async def reconcile(
             failure_history=state.get_failure_history(completed.step_id),
             plan_summary=str(getattr(plan, "context", "")),
         )
-        failure_verdict = await judge.judge(failure_request)
-        disposition = _extract_failure_disposition(failure_verdict.reason)
-        observer.emit(
-            "FAILURE_VERDICT",
-            step_id=completed.step_id,
-            verdict=failure_verdict.verdict,
-            reason=failure_verdict.reason,
-            disposition=disposition or "",
-            remaining_checks=len(remaining_checks),
-        )
+        fallback_runner_name: str | None = None
+        if runtime_config is not None:
+            fallback_value = getattr(runtime_config, "fallback_runner", None)
+            if isinstance(fallback_value, str) and fallback_value.strip():
+                if fallback_value != completed.runner_name:
+                    fallback_runner_name = fallback_value
+
+        policy_output: JudgeContinuityPolicyOutput
+        failure_verdict: JudgmentVerdict | None = None
+        disposition: str | None = None
+
+        try:
+            failure_verdict = await judge.judge(failure_request)
+            disposition = _extract_failure_disposition(failure_verdict.reason)
+            observer.emit(
+                "FAILURE_VERDICT",
+                step_id=completed.step_id,
+                verdict=failure_verdict.verdict,
+                reason=failure_verdict.reason,
+                disposition=disposition or "",
+                remaining_checks=len(remaining_checks),
+            )
+            policy_output = decide_judge_recovery_policy(
+                JudgeRecoveryPolicyInput(
+                    step_id=completed.step_id,
+                    judgment_type=JudgmentType.FAILURE,
+                    outcome_kind="verdict",
+                    attempt_key=continuity_attempt_key,
+                    failure_count=count,
+                    retry_budget=2,
+                    fallback_runner_name=fallback_runner_name,
+                    verdict=failure_verdict,
+                )
+            )
+        except JudgmentTimeoutError:
+            policy_output = decide_judge_recovery_policy(
+                JudgeRecoveryPolicyInput(
+                    step_id=completed.step_id,
+                    judgment_type=JudgmentType.FAILURE,
+                    outcome_kind="timeout",
+                    attempt_key=continuity_attempt_key,
+                    failure_count=count,
+                    retry_budget=2,
+                    fallback_runner_name=fallback_runner_name,
+                )
+            )
+        except JudgmentParseError as exc:
+            policy_output = decide_judge_recovery_policy(
+                JudgeRecoveryPolicyInput(
+                    step_id=completed.step_id,
+                    judgment_type=JudgmentType.FAILURE,
+                    outcome_kind=_classify_judge_parse_outcome(exc.raw_output),
+                    attempt_key=continuity_attempt_key,
+                    failure_count=count,
+                    retry_budget=2,
+                    fallback_runner_name=fallback_runner_name,
+                )
+            )
+
+        observer.emit("JUDGE_FAILURE_POLICY", **asdict(policy_output))
+
+        if policy_output.action == "halt":
+            policy_envelope = _build_replay_envelope(
+                step_id=completed.step_id,
+                attempt_key=continuity_attempt_key,
+                runner_name=completed.runner_name,
+                session_id=completed.result.session_id,
+                scope="judge_failure_policy",
+                fingerprint=policy_output.judge_outcome,
+            )
+            policy_journal = _persist_continuity_journal(
+                repo_root=continuity_repo_root,
+                step_id=completed.step_id,
+                event_kind="judge_failure_policy",
+                attempt_key=continuity_attempt_key,
+                runner_name=completed.runner_name,
+                session_id=completed.result.session_id,
+                summary=(policy_output.halt_reason or policy_output.continuity_recovery_reason),
+                replay_envelope=policy_envelope,
+            )
+            _persist_continuity_ledger(
+                repo_root=continuity_repo_root,
+                step_id=completed.step_id,
+                status="failed",
+                attempt_key=continuity_attempt_key,
+                runner_name=completed.runner_name,
+                session_id=completed.result.session_id,
+                replay_envelope=policy_envelope,
+                last_journal_event=policy_journal,
+                judge_policy=policy_output,
+                recovery_cursor="halt_requested_by_judge_policy",
+            )
+
+        if failure_verdict is None:
+            if policy_output.action == "fallback":
+                state.runner_failures[(completed.step_id, completed.runner_name)] = max(
+                    state.runner_failures.get((completed.step_id, completed.runner_name), 0),
+                    2,
+                )
+            if policy_output.action == "halt":
+                state.halt_requested = True
+                observer.emit(
+                    "HALT_REQUESTED",
+                    step_id=completed.step_id,
+                    reason=policy_output.halt_reason or policy_output.continuity_recovery_reason,
+                )
+
+            plan = defer_step(plan, completed.step_id, claims_path=claims_path)
+            save_plan(plan, path=plan_path, expected_hash=expected_hash)
+            observer.emit(
+                "STEP_FAILED",
+                step_id=completed.step_id,
+                failure_type=completed.result.status.value,
+                attempt=count,
+                error=completed.result.output,
+                judge_policy_action=policy_output.action,
+                judge_recovery_reason=policy_output.continuity_recovery_reason,
+            )
+            return
 
         requires_planner = (
-            failure_verdict.verdict == "REPLAN" or disposition == "downstream_blocker"
+            policy_output.action == "planner_remediation" or disposition == "downstream_blocker"
         )
         if requires_planner:
             if runtime_config is None or runtime_runners is None:
@@ -1804,10 +2745,10 @@ async def reconcile(
                     "FAILURE downstream-blocker remediation requires config/runners wiring "
                     "for planner dispatch"
                 )
-            if (
-                failure_verdict.planner_instruction is None
-                or not failure_verdict.planner_instruction.strip()
-            ):
+            planner_instruction = (
+                policy_output.planner_instruction or failure_verdict.planner_instruction
+            )
+            if planner_instruction is None or not planner_instruction.strip():
                 raise PlanError(
                     "FAILURE downstream_blocker/REPLAN verdict requires non-empty "
                     f"planner_instruction (step={completed.step_id})"
@@ -1818,7 +2759,7 @@ async def reconcile(
                     step_id=completed.step_id,
                     trigger="reconcile.failure_classification_replan",
                     judgment_type="FAILURE",
-                    planner_instruction=failure_verdict.planner_instruction,
+                    planner_instruction=planner_instruction,
                     source_verdict=PLANNER_SOURCE_VERDICT_REPLAN,
                 ),
                 config=runtime_config,
@@ -1898,6 +2839,42 @@ async def shutdown(state: DriverState, observer: Observer) -> None:
 
     running_entries = list(state.running.values())
     for entry in running_entries:
+        abort_attempt_key = _continuity_attempt_key(
+            step_id=entry.step_id,
+            runner_name=entry.runner_name,
+            session_id=entry.handle.session_id,
+        )
+        abort_envelope = _build_replay_envelope(
+            step_id=entry.step_id,
+            attempt_key=abort_attempt_key,
+            runner_name=entry.runner_name,
+            session_id=entry.handle.session_id,
+            scope="shutdown_abort",
+            fingerprint=None,
+        )
+        abort_repo_root = _resolve_repo_root_from_worktree_path(entry.worktree_path)
+        abort_journal = _persist_continuity_journal(
+            repo_root=abort_repo_root,
+            step_id=entry.step_id,
+            event_kind="shutdown_abort",
+            attempt_key=abort_attempt_key,
+            runner_name=entry.runner_name,
+            session_id=entry.handle.session_id,
+            summary="Driver shutdown while step still running",
+            replay_envelope=abort_envelope,
+        )
+        _persist_continuity_ledger(
+            repo_root=abort_repo_root,
+            step_id=entry.step_id,
+            status="aborted",
+            attempt_key=abort_attempt_key,
+            runner_name=entry.runner_name,
+            session_id=entry.handle.session_id,
+            replay_envelope=abort_envelope,
+            last_journal_event=abort_journal,
+            recovery_cursor="shutdown_abort",
+        )
+
         with contextlib.suppress(Exception):
             await asyncio.wait_for(entry.handle.wait(timeout=0.1), timeout=0.1)
 

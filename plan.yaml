@@ -49991,31 +49991,64 @@ phases:
 
       '
     agent: software-architect
-  - id: driver-live-smoke-foundation.pin-live-smoke-contract
-    name: Pin live smoke harness contract
+  - id: driver-live-smoke-foundation.finalize-test-surface-decisions
+    name: Finalize live smoke test-surface decisions
     status: pending
-    description: "step_type: contract\ncontract_purity: ENFORCED\ncontract_outputs:\n\
-      \  - interfaces\n  - type_defs\n  - stubs\n\nPin the additive live smoke test\
-      \ surface without implementing the logic.\n\nAuthoritative scope:\n- tests/live_smoke/helpers.py\
-      \ owns shared harness wiring and diagnostics\n- tests/live_smoke/test_codex_judge_live.py\
-      \ validates real codex judge structured-output/text paths\n- tests/live_smoke/test_opencode_judge_live.py\
-      \ validates real opencode judge extraction paths\n- tests/live_smoke/test_codex_dispatch_live.py\
-      \ validates real codex regular dispatch path\n- tests/live_smoke/test_opencode_dispatch_live.py\
-      \ validates real opencode regular dispatch path\n\nRequired contract outputs:\n\
-      - helper interface for LiveRunnerInvocationResult, RunnerSmokeCase, require_runner_or_skip,\
-      \ run_subprocess_capture, assert_valid_verdict_shape, choose_cheap_model_args\n\
-      - exact pytest marker and skip semantics\n- evidence contract requiring full\
-      \ command, returncode, stdout, stderr on failures\n- exact manual pytest invocations\
-      \ for judge-only, dispatch-only, and combined live smoke runs\n\nContract-only\
-      \ rule: do not implement subprocess logic or concrete tests in this step."
-    verification: '- Contract artifacts define the helper/test split and explicit
-      marker taxonomy.
+    description: 'Planning/spec step.
 
-      - Contract preserves production authorities: driver.yaml and src/vectl/driver/judge.py
-      remain runtime authorities.
 
-      - Downstream implementation can fan out by runner/scenario without shared-contract
-      ambiguity.'
+      Convert the prior heavy contract step into a lightweight test-surface decision
+      record for additive live smoke work.
+
+
+      Pin only the minimum shared surface needed for safe parallel test implementation:
+
+      - tests/live_smoke/helpers.py owns shared harness wiring and diagnostics
+
+      - tests/live_smoke/test_codex_judge_live.py covers real codex judge structured-output
+      behavior only
+
+      - tests/live_smoke/test_opencode_judge_live.py covers real opencode judge extraction
+      behavior, including tolerant JSONL/text extraction when needed
+
+      - tests/live_smoke/test_codex_dispatch_live.py covers real codex regular dispatch
+
+      - tests/live_smoke/test_opencode_dispatch_live.py covers real opencode regular
+      dispatch
+
+      - docs/DRIVER-ARCHITECTURE.md (or adjacent driver docs) records opt-in commands,
+      markers, and skip meanings in reduced form
+
+
+      Required outputs:
+
+      - shared helper/test file ownership split
+
+      - exact pytest markers and skip semantics
+
+      - exact evidence contract requiring full command, returncode, stdout, stderr
+      on failures
+
+      - exact manual pytest selections for judge-only, dispatch-only, and combined
+      live smoke runs
+
+      - explicit codex decision: no tolerant fallback-to-text success path inside
+      the structured codex judge step
+
+      - explicit opencode decision: tolerant JSONL/text extraction belongs only to
+      the opencode judge step
+
+
+      Do not implement subprocess logic or the actual tests in this step.
+
+
+      step_type: planning'
+    verification: '- Helper/test ownership and explicit marker taxonomy are pinned.
+
+      - Codex structured-output and opencode extraction boundaries are unambiguous.
+
+      - Downstream implementation can fan out by runner/scenario without shared-surface
+      ambiguity or extra contract-phase overhead.'
     evidence_template: '## Live Smoke Contract
 
       - helper interfaces pinned:
@@ -50070,7 +50103,7 @@ phases:
       '
     depends_on:
     - driver-live-smoke-foundation.ratify-live-smoke-policy
-    - driver-live-smoke-foundation.pin-live-smoke-contract
+    - driver-live-smoke-foundation.finalize-test-surface-decisions
     agent: gate-reviewer
 - id: driver-live-smoke-implementation
   name: Driver Live Runner Smoke Coverage Implementation

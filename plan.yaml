@@ -50188,21 +50188,25 @@ phases:
       \nScope:\n- tests/live_smoke/test_codex_judge_live.py\n- optional minimal test-only\
       \ hook changes required to select the ratified cheap codex model\n\nRequired\
       \ scenarios:\n- structured-output judge path using src/vectl/driver/judge.py::VERDICT_SCHEMA\
-      \ against real codex CLI behavior\n- fallback/text extraction path when structured\
-      \ path is unavailable or rejected\n- explicit skip evidence for missing codex\
-      \ binary, missing auth/prereq, or opt-in env gate absent\n- invalid verdict\
-      \ shape classified distinctly from transport/auth failure\n\nPath exercised:\
+      \ against real codex CLI behavior\n- schema/structured-output rejection is classified\
+      \ explicitly as FAILURE, not as tolerant text-path success\n- explicit skip\
+      \ evidence for missing codex binary, missing auth/prereq, or opt-in env gate\
+      \ absent\n- invalid verdict shape classified distinctly from transport/auth\
+      \ failure\n\nForbidden success path in this step:\n- no tolerant fallback-to-text\
+      \ success path when the codex structured-output mode is under test\n\nPath exercised:\
       \ driver.yaml codex runner contract -> judge command construction -> real codex\
       \ subprocess -> verdict assertion helper.\n\n## Completion Criteria (stub exclusion)\n\
       This is an IMPLEMENTATION step. Stub-only completion is NOT acceptable."
     verification: '- Main path: targeted codex judge live pytest selection passes
-      against real codex or skips explicitly with justified evidence.
+      against real codex structured output or skips explicitly with justified evidence.
 
-      - Failure path: verdict-shape rejection and transport/auth skip paths are separately
-      asserted.
+      - Failure path: schema/structured-output rejection is asserted as failure, and
+      transport/auth skip paths are separately asserted.
 
       - Proof: evidence includes exact pytest command and pasted stdout/stderr or
-      skip output.'
+      skip output.
+
+      - No evidence claims a tolerant text fallback as codex structured-mode success.'
     refs:
     - tests/live_smoke/helpers.py
     - src/vectl/driver/judge.py

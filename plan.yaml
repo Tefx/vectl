@@ -43319,7 +43319,7 @@ phases:
       - Files created: docs/contracts/driver-enhancement-architecture-basis.yaml'
   - id: driver-enhancement-foundation.contract
     name: Pin enhancement contracts for telemetry streaming and recovery
-    status: claimed
+    status: done
     description: "step_type: contract\ncontract_purity: ENFORCED\ncontract_outputs:\n\
       \  - event_contracts\n  - streaming_contract\n  - liveness_contract\n  - recovery_policy_contract\n\
       \nPin the contract set that downstream phases will implement.\n\nRequired contract\
@@ -43344,6 +43344,31 @@ phases:
     agent: software-architect
     claimed_by: software-architect
     claimed_at: '2026-03-29T13:47:52.136094+00:00'
+    done_at: '2026-03-29T13:54:37.390451+00:00'
+    evidence: "## Enhancement contracts pinned\n- Contracts created:\n  - `docs/contracts/driver-enhancement-telemetry-streaming-contract.yaml`\
+      \ — pins normalized heartbeat/progress/planner-dispatch snapshot contracts,\
+      \ ownership in `src/vectl/driver/observability_contracts.py`, and streaming/event\
+      \ boundary constraints.\n  - `docs/contracts/driver-enhancement-recovery-observability-contract.yaml`\
+      \ — pins runtime recovery decision/coordination observability, ownership in\
+      \ `src/vectl/driver/recovery_coordinator.py`, and fallback/planner-remediation\
+      \ boundaries.\n  - `docs/contracts/driver-enhancement-liveness-taxonomy-contract.yaml`\
+      \ — pins normalized liveness classifications and classifier protocol, ownership\
+      \ in `src/vectl/driver/liveness.py`, and taxonomy invariants for crash/fail/timeout/stall/no_progress.\n\
+      - Telemetry streaming contract:\n  - Contract ID: `driver-enhancement-telemetry-streaming-contract`\n\
+      \  - Exact signatures/type definitions pinned for `RunnerHeartbeatSnapshot`,\
+      \ `RunnerProgressSnapshot`, `PlannerDispatchSnapshot`, and `StreamProgressSource`\n\
+      \  - Preserves planner dispatch fields required by existing `PLANNER_DISPATCH_*`\
+      \ event registry contracts\n  - Constrains telemetry to read-only observability\n\
+      - Recovery observability contract:\n  - Contract ID: `driver-enhancement-recovery-observability-contract`\n\
+      \  - Exact signatures for `RecoveryCoordinationInput`, `RecoveryDecisionSnapshot`,\
+      \ and `RecoveryCoordinator`\n  - Normalizes runtime recovery decisions into\
+      \ explicit types\n- Liveness taxonomy contract:\n  - Contract ID: `driver-enhancement-liveness-taxonomy-contract`\n\
+      \  - Exact signatures for `RunnerLivenessState`, `RunnerLivenessInput`, and\
+      \ `RunnerLivenessClassifier`\n  - Pins taxonomy classes: `healthy`, `no_progress`,\
+      \ `stall`, `timeout`, `crash`, `fail`, `transport_error`\n- Files created:\n\
+      \  - `docs/contracts/driver-enhancement-telemetry-streaming-contract.yaml`\n\
+      \  - `docs/contracts/driver-enhancement-recovery-observability-contract.yaml`\n\
+      \  - `docs/contracts/driver-enhancement-liveness-taxonomy-contract.yaml`"
   - id: driver-enhancement-foundation.gate
     name: Gate enhancement foundation readiness
     status: pending

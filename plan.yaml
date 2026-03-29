@@ -50512,6 +50512,48 @@ phases:
     workflow and skip semantics.
   depends_on:
   - driver-live-smoke-implementation
+  steps:
+  - id: driver-live-smoke-doc-sync.update-docs
+    name: Update live smoke runner documentation
+    status: pending
+    description: 'Update developer-facing documentation to match the implemented live
+      smoke workflow.
+
+
+      Required coverage:
+
+      - how to opt into live codex/opencode smoke tests
+
+      - marker names and example pytest invocations for judge, dispatch, and combined
+      smoke runs
+
+      - cheap-model strategy and where model names are ratified
+
+      - explicit skip reasons and what they mean
+
+      - chosen execution mode (manual vs separate CI/nightly/release gate)
+
+
+      Prefer additive doc updates; do not redesign production docs beyond what is
+      needed for the live smoke surface.'
+    verification: '- Docs show exact commands/env vars and align with implemented
+      markers.
+
+      - Docs explain PASS vs explicit SKIP evidence expectations.
+
+      - No stale instructions remain for live runner coverage.'
+    evidence_template: '## Doc Sync Evidence
+
+      **Docs updated**:
+
+      **Commands documented**:
+
+      **Skip semantics documented**:
+
+      **Execution mode documented**:
+
+      '
+    agent: doc-reviewer
 - id: driver-live-smoke-deep-review
   name: Driver Live Runner Smoke Coverage Deep Review
   status: locked

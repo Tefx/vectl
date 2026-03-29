@@ -44385,7 +44385,7 @@ phases:
       - blocker -> batched remediation path created before progression.'
   - id: driver-judge-hardening-review.fix-codex-fallback-contract
     name: Fix codex fallback contract divergence batch
-    status: pending
+    status: claimed
     description: Batch-remediate the failed review gate by aligning `src/vectl/driver/judge.py`
       codex fallback argv handling with the `driver.yaml` contract and eliminating
       the hardcoded fallback argv divergence called out by the gate.
@@ -44404,6 +44404,8 @@ phases:
     depends_on:
     - driver-judge-hardening-review.gate
     agent: python-senior
+    claimed_by: python-senior
+    claimed_at: '2026-03-29T04:46:16.685565+00:00'
   - id: driver-judge-hardening-review.retest-codex-fallback-contract-gate
     name: Retest judge hardening review after codex fallback remediation
     status: pending

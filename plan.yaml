@@ -44182,7 +44182,7 @@ phases:
   steps:
   - id: driver-prompt-migration.package-resource-loader
     name: Package judge prompt resource and migrate loader
-    status: claimed
+    status: done
     description: "step_type: implementation\ntags:\n  - integration\nVerification\
       \ scope: phase-check protecting driver-prompt-migration.runtime-retest and gate.\n\
       \nFill in stub bodies and replace placeholder prompt-resource wiring with working\
@@ -44255,6 +44255,132 @@ phases:
     agent: python-senior
     claimed_by: python-senior
     claimed_at: '2026-03-29T09:02:08.833187+00:00'
+    done_at: '2026-03-29T09:07:09.322510+00:00'
+    evidence: '## Integration Evidence
+
+      **Command or test exercising the full path**:
+
+      ```bash
+
+      uv run pytest -v tests/test_driver_judge_prompt_migration_expected_red.py tests/test_driver_judge_prompt_migration_impl.py
+      tests/test_driver_judge_impl_runtime.py
+
+      ```
+
+
+      **Actual output**:
+
+      ```text
+
+      ============================= test session starts ==============================
+
+      platform darwin -- Python 3.12.12, pytest-9.0.2
+
+      collecting ... collected 15 items
+
+
+      tests/test_driver_judge_prompt_migration_expected_red.py::test_prompt_authority_contract_exposes_downstream_owners_and_gaps
+      PASSED
+
+      tests/test_driver_judge_prompt_migration_expected_red.py::test_packaged_prompt_resource_exists_at_declared_authority_path
+      PASSED
+
+      tests/test_driver_judge_prompt_migration_expected_red.py::test_runtime_loader_routes_through_packaged_loader_boundary
+      PASSED
+
+      tests/test_driver_judge_prompt_migration_impl.py::test_packaged_prompt_loads_without_docs_directory_present
+      PASSED
+
+      tests/test_driver_judge_prompt_migration_impl.py::test_missing_packaged_prompt_resource_raises_actionable_runtime_error
+      PASSED
+
+      tests/test_driver_judge_prompt_migration_impl.py::test_packaged_prompt_flows_to_judge_payload_assembly
+      PASSED
+
+      tests/test_driver_judge_impl_runtime.py::test_judge_accepts_strict_json_verdict_and_emits_observer_event
+      PASSED
+
+      tests/test_driver_judge_impl_runtime.py::test_judge_rejects_malformed_verdict_shape
+      PASSED
+
+      tests/test_driver_judge_impl_runtime.py::test_judge_timeout_path_raises_documented_error
+      PASSED
+
+      tests/test_driver_judge_impl_runtime.py::test_disabled_judgment_type_is_skipped_cleanly
+      PASSED
+
+      tests/test_driver_judge_impl_runtime.py::test_extract_verdict_payload_empty_output_raises_parse_error
+      PASSED
+
+      tests/test_driver_judge_impl_runtime.py::test_extract_verdict_payload_partial_codex_events_raise_parse_error
+      PASSED
+
+      tests/test_driver_judge_impl_runtime.py::test_codex_command_reuses_driver_yaml_runner_config
+      PASSED
+
+      tests/test_driver_judge_impl_runtime.py::test_codex_command_without_driver_yaml_contract_raises_parse_error
+      PASSED
+
+      tests/test_driver_judge_impl_runtime.py::test_codex_command_with_invalid_contract_raises_parse_error
+      PASSED
+
+
+      ============================== 15 passed in 2.36s ==============================
+
+      ```
+
+
+      **Path exercised**: packaged resource -> _load_judge_system_prompt -> Judge
+      prompt payload
+
+
+      **Package inclusion proof**:
+
+      ```bash
+
+      uv build --wheel
+
+      uv run python -c "import zipfile; from pathlib import Path; wheel=sorted(Path(''dist'').glob(''vectl-*.whl''))[-1];
+      z=zipfile.ZipFile(wheel); names=[n for n in z.namelist() if ''judge_agent_prompt.md''
+      in n or n.endswith(''METADATA'')]; print(wheel); print(''\\n''.join(names))"
+
+      ```
+
+
+      ```text
+
+      Building wheel...
+
+      Successfully built dist/vectl-0.7.0-py3-none-any.whl
+
+
+      dist/vectl-0.7.0-py3-none-any.whl
+
+      vectl/driver/judge_agent_prompt.md
+
+      vectl-0.7.0.dist-info/METADATA
+
+      ```
+
+
+      Deviation record:
+
+      - type: contract_gap
+
+      - artifact: src/vectl/driver/judge.py (JUDGE_PROMPT_AUTHORITY_CONTRACT.package_name)
+
+      - change: package_name updated from "vectl.templates" to "vectl.driver"
+
+      - why: step requirement mandates packaged resource path under src/vectl/driver
+      owned by driver package
+
+      - impact: expected-red authority test still passes via contract constant; runtime
+      now resolves prompt from driver package resource
+
+
+      Commit:
+
+      - af57440 migrate judge prompt runtime loading to packaged resource'
   - id: driver-prompt-migration.authority-reference-migration
     name: Migrate prompt authority references and drift checks
     status: claimed

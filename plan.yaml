@@ -51982,6 +51982,52 @@ phases:
 
       - Confirmation that deletion/remap behavior is absent:'
     agent: python-senior
+  - id: driver-continuity-hygiene-core.impl-startup-stage
+    name: Wire startup hygiene stage before active recovery
+    status: pending
+    description: "step_type: implementation\nupstream_artifacts:\n  - path: src/vectl/driver/continuity_hygiene.py\n\
+      \    from_step: driver-continuity-hygiene-foundation.contract\n    tier: contract\n\
+      \  - path: tests/test_driver_recovery_black_box.py\n    from_step: driver-continuity-hygiene-foundation.blackbox-define-red\n\
+      \    tier: test\n  - path: tests/\n    from_step: driver-continuity-hygiene-foundation.test-define-red\n\
+      \    tier: test\n\nFill in stub bodies in src/vectl/driver/loop.py so startup\
+      \ performs two-stage recovery:\n1. continuity hygiene scan/classification/quarantine\n\
+      2. existing active startup recovery only on the remaining active continuity\
+      \ state\n\nYOUR SCOPE: Replace startup-stage placeholders with working wiring\
+      \ only. Use the helper outputs from driver-continuity-hygiene-core.impl-hygiene-storage;\
+      \ do not silently broaden startup repair policy.\n\nIntegration path: continuity\
+      \ artifacts -> hygiene classifier/quarantine -> remaining ledger entries ->\
+      \ evaluate_startup_recovery_boundary -> driver run entrypoint\n\n## Gate Preview\
+      \ (what the gate WILL reject)\n1. Startup still halts on provably stale leftovers\n\
+      2. Startup auto-repairs anything beyond the approved safe stale class\n3. Any\
+      \ path deletes continuity files instead of quarantining them\n4. Active/current-claim\
+      \ divergence or ambiguity no longer blocks\n\n## Completion Criteria (stub exclusion)\n\
+      This is an IMPLEMENTATION step. Stub-only completion is NOT acceptable.\nEach\
+      \ deliverable MUST contain substantive logic that processes its inputs and produces\
+      \ outputs that vary based on those inputs."
+    verification: '- Main path: startup proceeds when only safe stale continuity leftovers
+      exist
+
+      - Failure path: startup still halts with explicit reason for corrupt files,
+      active-claim divergence, current claimed-step disagreement, and ambiguous identity
+
+      - Proof: the real entrypoint path exercises hygiene before active recovery'
+    evidence_template: '## Integration Evidence
+
+      **Command or test exercising the full path**:
+
+      <exact pytest selection or driver invocation>
+
+
+      **Actual output**:
+
+      <paste stdout/stderr or test runner output>
+
+
+      **Path exercised**: continuity artifacts -> hygiene stage -> startup recovery
+      boundary -> driver entrypoint'
+    depends_on:
+    - driver-continuity-hygiene-core.impl-hygiene-storage
+    agent: python-senior
 - id: driver-continuity-hygiene-surface
   name: 'Driver Continuity Hygiene: CLI & Observability'
   status: locked

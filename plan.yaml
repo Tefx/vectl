@@ -51434,13 +51434,13 @@ phases:
     skipped_reason: absorbed
 - id: driver-live-smoke-remediation
   name: Driver live smoke remediation
-  status: pending
+  status: in_progress
   depends_on:
   - driver-live-smoke-implementation
   steps:
   - id: driver-live-smoke-remediation.fix-codex-judge-parser-item-text-extraction
     name: Fix codex judge parser item.text extraction
-    status: pending
+    status: claimed
     description: 'Fix ALL blockers for codex judge structured output parsing.
 
 
@@ -51499,6 +51499,8 @@ phases:
 
       - Evidence explains why the change closes the structured-output blocker family'
     agent: python-executor
+    claimed_by: python-executor
+    claimed_at: '2026-03-29T17:15:41.085891+00:00'
   - id: driver-live-smoke-remediation.fix-run-subprocess-timeout-handling
     name: Fix run_subprocess timeout handling
     status: pending

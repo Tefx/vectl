@@ -16,6 +16,7 @@ Authority:
 from __future__ import annotations
 
 from dataclasses import dataclass
+from types import MappingProxyType
 from typing import Final, Literal, Protocol, TypeAlias, TypeVar
 
 from vectl.models import Action
@@ -115,7 +116,9 @@ class PlannerDispatchAction:
     source_verdict: PlannerDispatchSourceVerdict
 
 
-PlannerDispatchActionT = TypeVar("PlannerDispatchActionT", bound=PlannerDispatchAction)
+PlannerDispatchActionT = TypeVar(
+    "PlannerDispatchActionT", bound=PlannerDispatchAction, contravariant=True
+)
 
 
 class LoopActionHandler(Protocol[PlannerDispatchActionT]):
@@ -293,25 +296,47 @@ RECOVERY_ACTION_DECLARATIONS: Final[tuple[ActionDeclaration, ...]] = (
     ),
 )
 
-LAYERED_ACTION_REGISTRY: Final[dict[ActionCategory, tuple[ActionDeclaration, ...]]] = {
-    "execution": EXECUTION_ACTION_DECLARATIONS,
-    "planner": PLANNER_DISPATCH_ACTION_DECLARATIONS,
-    "control": CONTROL_ACTION_DECLARATIONS,
-    "recovery": RECOVERY_ACTION_DECLARATIONS,
-}
-
-_RUNTIME_LOOP_ACTION_INDEX: Final[dict[str, ActionDeclaration]] = {
-    declaration.action_type: declaration
-    for declaration in (
-        *EXECUTION_ACTION_DECLARATIONS,
-        *CONTROL_ACTION_DECLARATIONS,
-        *RECOVERY_ACTION_DECLARATIONS,
+LAYERED_ACTION_REGISTRY: Final[MappingProxyType[ActionCategory, tuple[ActionDeclaration, ...]]] = (
+    MappingProxyType(
+        {
+            "execution": EXECUTION_ACTION_DECLARATIONS,
+            "planner": PLANNER_DISPATCH_ACTION_DECLARATIONS,
+            "control": CONTROL_ACTION_DECLARATIONS,
+            "recovery": RECOVERY_ACTION_DECLARATIONS,
+        }
     )
-}
+)
 
-_PLANNER_DISPATCH_ACTION_INDEX: Final[dict[str, ActionDeclaration]] = {
-    declaration.action_type: declaration for declaration in PLANNER_DISPATCH_ACTION_DECLARATIONS
-}
+_RUNTIME_LOOP_ACTION_INDEX: Final[MappingProxyType[str, ActionDeclaration]] = MappingProxyType(
+    {
+        declaration.action_type: declaration
+        for declaration in (
+            *EXECUTION_ACTION_DECLARATIONS,
+            *CONTROL_ACTION_DECLARATIONS,
+            *RECOVERY_ACTION_DECLARATIONS,
+        )
+    }
+)
+
+_PLANNER_DISPATCH_ACTION_INDEX: Final[MappingProxyType[str, ActionDeclaration]] = MappingProxyType(
+    {declaration.action_type: declaration for declaration in PLANNER_DISPATCH_ACTION_DECLARATIONS}
+)
+
+RUNTIME_LOOP_ACTION_INDEX: Final[MappingProxyType[str, ActionDeclaration]] = (
+    _RUNTIME_LOOP_ACTION_INDEX
+)
+PLANNER_DISPATCH_ACTION_INDEX: Final[MappingProxyType[str, ActionDeclaration]] = (
+    _PLANNER_DISPATCH_ACTION_INDEX
+)
+
+ACTION_REGISTRY_AUDIT_TABLES: Final[
+    MappingProxyType[str, MappingProxyType[str, ActionDeclaration]]
+] = MappingProxyType(
+    {
+        "runtime": RUNTIME_LOOP_ACTION_INDEX,
+        "planner": PLANNER_DISPATCH_ACTION_INDEX,
+    }
+)
 
 
 class UnknownLoopActionError(ValueError):
@@ -482,6 +507,7 @@ __all__ = [
     "ACTION_REGISTRY_DECLARATION_MODE",
     "ACTION_REGISTRY_PUBLIC_DYNAMIC_REGISTRATION",
     "ACTION_REGISTRY_SCOPE_STATEMENT",
+    "ACTION_REGISTRY_AUDIT_TABLES",
     "CLAIM_AND_DISPATCH_ACTION_TYPE",
     "CLAIM_AND_DISPATCH_EVENT_EXPECTATIONS",
     "COMPLETE_ACTION_TYPE",
@@ -504,6 +530,7 @@ __all__ = [
     "RECOVERY_ALL_STALLED_ACTION_TYPE",
     "RECOVERY_ALL_STALLED_EVENT_EXPECTATIONS",
     "PLANNER_DISPATCH_ACTION_DECLARATIONS",
+    "PLANNER_DISPATCH_ACTION_INDEX",
     "PLANNER_DISPATCH_GATE_REJECT_HANDLER_CONTRACT",
     "PLANNER_DISPATCH_EVENT_EXPECTATIONS",
     "PLANNER_DISPATCH_GATE_REJECT_ACTION_TYPE",
@@ -516,6 +543,7 @@ __all__ = [
     "PlannerDispatchSourceVerdict",
     "PlannerDispatchTriggerName",
     "RuntimeActionHandler",
+    "RUNTIME_LOOP_ACTION_INDEX",
     "UnknownLoopActionError",
     "UnknownPlannerDispatchActionError",
     "WAIT_ACTION_TYPE",

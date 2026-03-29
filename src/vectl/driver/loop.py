@@ -24,11 +24,12 @@ import logging
 import os
 import shutil
 import time
-from collections.abc import Awaitable, Callable
+from collections.abc import Awaitable, Callable, Mapping
 from dataclasses import asdict, dataclass
 from datetime import datetime, timezone
 from fnmatch import fnmatch
 from pathlib import Path
+from types import MappingProxyType
 from typing import TYPE_CHECKING, Final, Literal, Protocol, cast
 
 from vectl.claims import load_claims_for_branch, repair_claims
@@ -94,7 +95,11 @@ from .runner_continuity import (
 )
 from .runners import Runner, create_runner
 from .runners import RunnerStatus as RunnerDispatchStatus
-from .runtime_context import ROLE_SPECIFIC_CONTEXTS_DEFERRED, RuntimeContext
+from .runtime_context import (
+    ROLE_SPECIFIC_CONTEXTS_DEFERRED,
+    RuntimeContext,
+    runtime_context_from_parts,
+)
 from .session import SessionPool
 from .types import (
     CompletedEntry,
@@ -350,7 +355,7 @@ class ConflictResolverDispatcher(Protocol):
         dispatch: ConflictResolverDispatch,
         *,
         config: DriverConfig,
-        runners: dict[str, Runner],
+        runners: Mapping[str, Runner],
         observer: Observer,
     ) -> bool: ...
 
@@ -450,7 +455,7 @@ class PlannerDispatcher(Protocol):
         request: PlannerDispatchRequest,
         *,
         config: DriverConfig,
-        runners: dict[str, Runner],
+        runners: Mapping[str, Runner],
         observer: Observer,
         plan_path: Path,
     ) -> None: ...
@@ -1043,7 +1048,7 @@ async def dispatch_planner(
     request: PlannerDispatchRequest,
     *,
     config: DriverConfig,
-    runners: dict[str, Runner],
+    runners: Mapping[str, Runner],
     observer: Observer,
     plan_path: Path,
 ) -> None:
@@ -1493,23 +1498,13 @@ def _continuity_attempt_key(*, step_id: str, runner_name: str, session_id: str |
 def _state_attempt_key_set(state: DriverState) -> set[str]:
     """Return mutable per-state replay attempt-key registry."""
 
-    existing = getattr(state, "_continuity_attempt_keys", None)
-    if isinstance(existing, set):
-        return existing
-    fresh: set[str] = set()
-    state.__dict__["_continuity_attempt_keys"] = fresh
-    return fresh
+    return state.continuity_attempt_keys
 
 
 def _state_capability_snapshot_cache(state: DriverState) -> dict[str, str]:
     """Return last-writer-wins capability snapshot cache by step."""
 
-    existing = getattr(state, "_continuity_capability_snapshots", None)
-    if isinstance(existing, dict):
-        return existing
-    fresh: dict[str, str] = {}
-    state.__dict__["_continuity_capability_snapshots"] = fresh
-    return fresh
+    return state.continuity_capability_snapshots
 
 
 def _resolve_repo_root_from_plan(plan_path: Path) -> Path:
@@ -1795,7 +1790,7 @@ async def run(config_path: Path) -> None:
         }
         session_pool = SessionPool(config.session)
         judge = Judge(config.judge, observer)
-        startup_runtime_context = RuntimeContext(
+        startup_runtime_context = runtime_context_from_parts(
             state=state,
             config=config,
             runners=runners,
@@ -1963,7 +1958,7 @@ async def handle_dispatch(
     action: Action,
     state: DriverState | None = None,
     config: DriverConfig | None = None,
-    runners: dict[str, Runner] | None = None,
+    runners: Mapping[str, Runner] | None = None,
     judge: Judge | None = None,
     session_pool: SessionPool | None = None,
     observer: Observer | None = None,
@@ -1993,7 +1988,7 @@ async def handle_dispatch(
     if context is not None:
         state = context.state
         config = context.config
-        runners = dict(context.runners)
+        runners = context.runners
         judge = context.judge
         session_pool = context.session_pool
         observer = context.observer
@@ -2081,7 +2076,7 @@ async def handle_dispatch(
                             planner_instruction=planner_request.planner_instruction,
                             source_verdict=planner_request.source_verdict,
                         ),
-                        context=RuntimeContext(
+                        context=_runtime_context_from_runtime(
                             state=state,
                             config=config,
                             runners=runners,
@@ -2392,6 +2387,10 @@ async def reconcile(
     session_pool: SessionPool,
     observer: Observer,
     plan_path: Path,
+    config: DriverConfig | None = None,
+    runners: Mapping[str, Runner] | None = None,
+    *,
+    context: RuntimeContext | None = None,
 ) -> None:
     """Reconcile one completed runner result.
 
@@ -2411,6 +2410,15 @@ async def reconcile(
     - ``reconcile.failure_classification_replan``
     - ``reconcile.escalation_replan``
     """
+    if context is not None:
+        state = context.state
+        judge = context.judge
+        session_pool = context.session_pool
+        observer = context.observer
+        plan_path = context.plan_path
+        config = context.config
+        runners = context.runners
+
     continuity_repo_root = _resolve_repo_root_from_plan(plan_path)
     continuity_attempt_key = (
         completed.result.continuity.attempt_key
@@ -2457,8 +2465,6 @@ async def reconcile(
         plan, expected_hash = load_plan_definition(plan_path)
         state.decide_state.reset_failure(step_id=completed.step_id)
         state.failure_counts.pop(completed.step_id, None)
-        runtime_config = cast(DriverConfig | None, state.runtime_config)
-        runtime_runners = cast(dict[str, Runner] | None, state.runtime_runners)
         found = plan.find_step(completed.step_id)
         if found is not None:
             _, step = found
@@ -2522,7 +2528,7 @@ async def reconcile(
                         return
 
                     if gate_verdict.verdict == "REJECT":
-                        if runtime_config is None or runtime_runners is None:
+                        if config is None or runners is None:
                             raise PlanError(
                                 "GATE REJECT remediation requires config/runners wiring "
                                 "for planner dispatch"
@@ -2547,10 +2553,10 @@ async def reconcile(
                                 planner_instruction=batch_instruction,
                                 source_verdict=PLANNER_SOURCE_VERDICT_REJECT,
                             ),
-                            context=RuntimeContext(
+                            context=_runtime_context_from_runtime(
                                 state=state,
-                                config=runtime_config,
-                                runners=runtime_runners,
+                                config=config,
+                                runners=runners,
                                 judge=judge,
                                 session_pool=session_pool,
                                 observer=observer,
@@ -2740,9 +2746,6 @@ async def reconcile(
         _, failure_step = found
         failure_step_description = failure_step.description
 
-    runtime_config = cast(DriverConfig | None, state.runtime_config)
-    runtime_runners = cast(dict[str, Runner] | None, state.runtime_runners)
-
     if _judge_type_enabled(judge, JudgmentType.FAILURE):
         remaining_checks = _collect_remaining_required_checks(plan, completed.step_id)
         failure_request = _build_failure_request(
@@ -2755,8 +2758,8 @@ async def reconcile(
             plan_summary=str(getattr(plan, "context", "")),
         )
         fallback_runner_name: str | None = None
-        if runtime_config is not None:
-            fallback_value = getattr(runtime_config, "fallback_runner", None)
+        if config is not None:
+            fallback_value = getattr(config, "fallback_runner", None)
             if isinstance(fallback_value, str) and fallback_value.strip():
                 if fallback_value != completed.runner_name:
                     fallback_runner_name = fallback_value
@@ -2881,7 +2884,7 @@ async def reconcile(
             policy_output.action == "planner_remediation" or disposition == "downstream_blocker"
         )
         if requires_planner:
-            if runtime_config is None or runtime_runners is None:
+            if config is None or runners is None:
                 raise PlanError(
                     "FAILURE downstream-blocker remediation requires config/runners wiring "
                     "for planner dispatch"
@@ -2904,10 +2907,10 @@ async def reconcile(
                     planner_instruction=planner_instruction,
                     source_verdict=PLANNER_SOURCE_VERDICT_REPLAN,
                 ),
-                context=RuntimeContext(
+                context=_runtime_context_from_runtime(
                     state=state,
-                    config=runtime_config,
-                    runners=runtime_runners,
+                    config=config,
+                    runners=runners,
                     judge=judge,
                     session_pool=session_pool,
                     observer=observer,
@@ -3037,7 +3040,15 @@ async def shutdown(state: DriverState, observer: Observer) -> None:
                 "Worktree cleanup failed during shutdown for %s: %s", step_id, cleanup_result.error
             )
 
-    emit_final(observer, **state.summary())
+    final_summary = state.summary()
+    emit_final(
+        observer,
+        completed_summary=cast(dict[str, object], final_summary["completed_summary"]),
+        total_duration_seconds=cast(float, final_summary["total_duration_seconds"]),
+        halt_reason=cast(str | None, final_summary.get("halt_reason")),
+        total_cost_usd=cast(float | None, final_summary.get("total_cost_usd")),
+        total_tokens=cast(int | None, final_summary.get("total_tokens")),
+    )
     observer.close()
 
 
@@ -3218,7 +3229,7 @@ async def _registry_dispatch_planner_replan(
             source_verdict=action.source_verdict,
         ),
         config=context.config,
-        runners=dict(context.runners),
+        runners=context.runners,
         observer=context.observer,
         plan_path=context.plan_path,
     )
@@ -3239,21 +3250,46 @@ async def _registry_dispatch_planner_gate_reject(
             source_verdict=action.source_verdict,
         ),
         config=context.config,
-        runners=dict(context.runners),
+        runners=context.runners,
         observer=context.observer,
         plan_path=context.plan_path,
     )
 
 
+def _runtime_context_from_runtime(
+    *,
+    state: DriverState,
+    config: DriverConfig,
+    runners: Mapping[str, Runner],
+    judge: Judge,
+    session_pool: SessionPool,
+    observer: Observer,
+    plan_path: Path,
+) -> RuntimeContext:
+    """Build the single authoritative RuntimeContext for loop-owned runtime inputs."""
+
+    return runtime_context_from_parts(
+        state=state,
+        config=config,
+        runners=runners,
+        judge=judge,
+        session_pool=session_pool,
+        observer=observer,
+        plan_path=plan_path,
+    )
+
+
 _REGISTERED_PLANNER_ACTION_HANDLERS: Final[
-    dict[
+    MappingProxyType[
         RegisteredPlannerDispatchHandlerName,
         Callable[[PlannerDispatchAction, RuntimeContext], Awaitable[None]],
     ]
-] = {
-    PLANNER_DISPATCH_REPLAN_HANDLER_CONTRACT: _registry_dispatch_planner_replan,
-    PLANNER_DISPATCH_GATE_REJECT_HANDLER_CONTRACT: _registry_dispatch_planner_gate_reject,
-}
+] = MappingProxyType(
+    {
+        PLANNER_DISPATCH_REPLAN_HANDLER_CONTRACT: _registry_dispatch_planner_replan,
+        PLANNER_DISPATCH_GATE_REJECT_HANDLER_CONTRACT: _registry_dispatch_planner_gate_reject,
+    }
+)
 
 
 async def _dispatch_registered_planner_action(
@@ -3292,17 +3328,19 @@ async def _dispatch_registered_planner_action(
 
 
 _REGISTERED_RUNTIME_ACTION_HANDLERS: Final[
-    dict[
+    MappingProxyType[
         RegisteredLoopActionHandlerName,
         Callable[[Action, RuntimeContext], Awaitable[None]],
     ]
-] = {
-    "handle_dispatch": _registry_handle_dispatch,
-    "emit_complete_action_ignored": _registry_emit_complete_action_ignored,
-    "emit_wait": _registry_emit_wait,
-    "emit_escalation_deferred": _registry_emit_escalation_deferred,
-    "recover_all_stalled": _registry_recover_all_stalled,
-}
+] = MappingProxyType(
+    {
+        "handle_dispatch": _registry_handle_dispatch,
+        "emit_complete_action_ignored": _registry_emit_complete_action_ignored,
+        "emit_wait": _registry_emit_wait,
+        "emit_escalation_deferred": _registry_emit_escalation_deferred,
+        "recover_all_stalled": _registry_recover_all_stalled,
+    }
+)
 
 
 async def _dispatch_registered_runtime_action(
@@ -3339,7 +3377,7 @@ async def _run_main_loop(
     *,
     state: DriverState,
     config: DriverConfig,
-    runners: dict[str, Runner],
+    runners: Mapping[str, Runner],
     judge: Judge,
     session_pool: SessionPool,
     observer: Observer,
@@ -3354,9 +3392,7 @@ async def _run_main_loop(
       removed from the main runtime path by
       ``driver-debt-completion-authority.impl``
     """
-    state.runtime_config = config
-    state.runtime_runners = runners
-    runtime_context = RuntimeContext(
+    runtime_context = _runtime_context_from_runtime(
         state=state,
         config=config,
         runners=runners,
@@ -3397,6 +3433,7 @@ async def _run_main_loop(
                 session_pool=session_pool,
                 observer=observer,
                 plan_path=plan_path,
+                context=runtime_context,
             )
 
             if completed.result.status == RunnerStatus.STALL and _all_running_handles_dead(state):

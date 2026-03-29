@@ -17,6 +17,7 @@ from __future__ import annotations
 from collections.abc import Mapping
 from dataclasses import dataclass
 from pathlib import Path
+from types import MappingProxyType
 from typing import TYPE_CHECKING, Final, Literal, Protocol
 
 if TYPE_CHECKING:
@@ -122,6 +123,35 @@ class RuntimeContext:
     observer: Observer
     plan_path: Path
 
+    def __post_init__(self) -> None:
+        """Freeze runner bindings for this runtime-context lifecycle."""
+
+        if not isinstance(self.runners, MappingProxyType):
+            object.__setattr__(self, "runners", MappingProxyType(dict(self.runners)))
+
+
+def runtime_context_from_parts(
+    *,
+    state: DriverState,
+    config: DriverConfig,
+    runners: Mapping[str, Runner],
+    judge: Judge,
+    session_pool: SessionPool,
+    observer: Observer,
+    plan_path: Path,
+) -> RuntimeContext:
+    """Build the sole authoritative RuntimeContext from runtime-owned inputs."""
+
+    return RuntimeContext(
+        state=state,
+        config=config,
+        runners=runners,
+        judge=judge,
+        session_pool=session_pool,
+        observer=observer,
+        plan_path=plan_path,
+    )
+
 
 # =============================================================================
 # Responsibility split and boundary rules (from runtime_context.contract)
@@ -132,8 +162,14 @@ RUNTIME_CONTEXT_RESPONSIBILITY_SPLIT: Final[tuple[RuntimeContextResponsibility, 
         concern="runtime_orchestration_state",
         owner="DriverState",
         exposed_via_runtime_context=True,
-        mutation_rule="handlers may read/write runtime orchestration state through RuntimeContext.state",
-        rationale="ADR ownership model assigns runtime orchestration state to DriverState.",
+        mutation_rule=(
+            "handlers may read/write runtime orchestration state through RuntimeContext.state, "
+            "but runtime config and runner bindings remain RuntimeContext-owned inputs"
+        ),
+        rationale=(
+            "ADR ownership model assigns mutable orchestration state to DriverState while "
+            "keeping runtime config and runner wiring on the RuntimeContext boundary."
+        ),
     ),
     RuntimeContextResponsibility(
         concern="decide_local_state",
@@ -165,9 +201,18 @@ RUNTIME_CONTEXT_RESPONSIBILITY_SPLIT: Final[tuple[RuntimeContextResponsibility, 
 RUNTIME_CONTEXT_BOUNDARY_RULES: Final[tuple[RuntimeContextBoundaryRule, ...]] = (
     RuntimeContextBoundaryRule(
         subject="runtime_orchestration_state",
-        allowed_through_context="read/write DriverState-owned runtime fields needed for orchestration",
-        forbidden_through_context="creating parallel runtime state owners outside DriverState",
-        rationale="Preserves DriverState as the single runtime orchestration source of truth.",
+        allowed_through_context=(
+            "read/write DriverState-owned runtime fields needed for orchestration while reading "
+            "config and runner bindings from RuntimeContext"
+        ),
+        forbidden_through_context=(
+            "creating parallel runtime state owners outside DriverState or mirroring RuntimeContext "
+            "config/runners inside DriverState"
+        ),
+        rationale=(
+            "Preserves DriverState as the single mutable orchestration source of truth and "
+            "prevents config/runner mirror-truth persistence."
+        ),
     ),
     RuntimeContextBoundaryRule(
         subject="decide_local_state",
@@ -214,4 +259,5 @@ __all__ = [
     "RuntimeContextResponsibility",
     "RuntimeContextView",
     "RUNTIME_CONTEXT_ROLLOUT_CONTRACT",
+    "runtime_context_from_parts",
 ]

@@ -149,14 +149,14 @@ class DriverState:
     merge_lock: asyncio.Lock = field(default_factory=asyncio.Lock)
     # Serializes all git merge operations (real lock, not LLM instruction)
 
-    runtime_config: object | None = None
-    # Loop-injected runtime config for reconcile follow-up dispatch wiring.
-
-    runtime_runners: Mapping[str, object] | None = None
-    # Loop-injected runner map for reconcile follow-up planner dispatch wiring.
-
     decide_state: DecideState = field(default_factory=DecideState)
     # Sole mutable owner for decide-side session reuse/failure memory.
+
+    continuity_attempt_keys: set[str] = field(default_factory=set)
+    # Lifecycle-scoped replay attempt-key registry owned by DriverState.
+
+    continuity_capability_snapshots: dict[str, str] = field(default_factory=dict)
+    # Lifecycle-scoped step_id -> capability snapshot id cache.
 
     def as_running_tasks(self) -> list[RunningTask]:
         """Convert to vectl.models.RunningTask list for decide() input.

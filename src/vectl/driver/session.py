@@ -13,29 +13,33 @@ Blueprint Reference: DRIVER-BLUEPRINT.md Session Pool (session.py)
 
 from __future__ import annotations
 
+from collections.abc import Mapping
 import time
+from types import MappingProxyType
 from typing import Final
 
 from .config import SessionConfig
 from .types import SessionEntry
 
 
-SESSION_CONTINUITY_AUTHORITIES: Final[dict[str, str]] = {
-    "dispatch_reuse_intent": "DecideState in vectl.decide via Action.session/task_id",
-    "runner_compatible_session_cache": "SessionPool in src/vectl/driver/session.py",
-    "durable_resume_state": (
-        "ContinuityLedgerEntry contract in src/vectl/driver/types.py; runtime persistence "
-        "deferred to driver-continuity-authority-ledger"
-    ),
-    "replay_safety_envelope": "ReplaySafetyEnvelope contract in src/vectl/driver/types.py",
-    "startup_recovery_decision_input": (
-        "StartupRecoveryControllerInput/Output contract in src/vectl/driver/types.py"
-    ),
-    "startup_recovery_boundary_matrix": (
-        "evaluate_startup_recovery_boundary + StartupRecoveryBoundaryInput/Output in "
-        "src/vectl/driver/loop.py and src/vectl/driver/types.py"
-    ),
-}
+SESSION_CONTINUITY_AUTHORITIES: Final[MappingProxyType[str, str]] = MappingProxyType(
+    {
+        "dispatch_reuse_intent": "DecideState in vectl.decide via Action.session/task_id",
+        "runner_compatible_session_cache": "SessionPool in src/vectl/driver/session.py",
+        "durable_resume_state": (
+            "ContinuityLedgerEntry contract in src/vectl/driver/types.py; runtime persistence "
+            "deferred to driver-continuity-authority-ledger"
+        ),
+        "replay_safety_envelope": "ReplaySafetyEnvelope contract in src/vectl/driver/types.py",
+        "startup_recovery_decision_input": (
+            "StartupRecoveryControllerInput/Output contract in src/vectl/driver/types.py"
+        ),
+        "startup_recovery_boundary_matrix": (
+            "evaluate_startup_recovery_boundary + StartupRecoveryBoundaryInput/Output in "
+            "src/vectl/driver/loop.py and src/vectl/driver/types.py"
+        ),
+    }
+)
 
 
 class SessionPool:
@@ -89,7 +93,12 @@ class SessionPool:
         """
         self._entries: dict[str, SessionEntry] = {}
         self._default_ttl = config.reuse_ttl
-        self._ttl_overrides = config.ttl_overrides
+        self._ttl_overrides: Mapping[str, int] = MappingProxyType(dict(config.ttl_overrides))
+
+    def audit_entries(self) -> Mapping[str, SessionEntry]:
+        """Return immutable snapshot of lifecycle-scoped session authorities."""
+
+        return MappingProxyType(dict(self._entries))
 
     def record(self, step_id: str, session_id: str, runner_name: str, agent: str) -> None:
         """Record a completed session for potential reuse.

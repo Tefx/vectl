@@ -50052,6 +50052,46 @@ phases:
     depends_on:
     - driver-live-smoke-foundation.ratify-live-smoke-policy
     agent: python-senior
+  - id: driver-live-smoke-foundation.gate
+    name: Gate live smoke foundation
+    status: pending
+    description: 'Gate review: confirm cheap-model policy and live smoke contract
+      are ready for additive implementation.
+
+
+      review_depth: STANDARD
+
+      cross_cutting_focus:
+
+      - no guessed model names
+
+      - explicit skip semantics
+
+      - additive test/doc/config scope only'
+    verification: '- Cheap-model discovery/ratification is complete for codex and
+      opencode.
+
+      - Marker/env surface and manual-vs-gated execution policy are explicit.
+
+      - Helper/test module boundaries are pinned and preserve production driver authority.
+
+      - Ready for shared-harness implementation and parallel runner-specific test
+      work.'
+    evidence_template: '## Gate Review Report
+
+      - policy ratified:
+
+      - contract quality:
+
+      - blockers:
+
+      - gate decision:
+
+      '
+    depends_on:
+    - driver-live-smoke-foundation.ratify-live-smoke-policy
+    - driver-live-smoke-foundation.pin-live-smoke-contract
+    agent: gate-reviewer
 - id: driver-live-smoke-implementation
   name: Driver Live Runner Smoke Coverage Implementation
   status: locked

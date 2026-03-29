@@ -44099,7 +44099,7 @@ phases:
       - downstream_implementation_owner: driver-judge-hardening-recovery-policy.impl"
 - id: driver-judge-hardening-review
   name: 'Driver Judge Hardening: Review'
-  status: in_progress
+  status: done
   gate: Independent real-runner review confirms judge stability is sufficient on the
     judge surface and explicitly ready for continuity integration; bootstrap authorization
     still also requires continuity-review.
@@ -44417,7 +44417,7 @@ phases:
       \ contract resolution."
   - id: driver-judge-hardening-review.retest-codex-fallback-contract-gate
     name: Retest judge hardening review after codex fallback remediation
-    status: claimed
+    status: done
     description: Independently retest the judge hardening review gate after the codex
       fallback contract remediation and confirm the prior blocker is resolved without
       introducing new judge-surface regressions.
@@ -44438,6 +44438,14 @@ phases:
     agent: gate-reviewer
     claimed_by: gate-reviewer
     claimed_at: '2026-03-29T04:53:29.642045+00:00'
+    done_at: '2026-03-29T04:56:26.237948+00:00'
+    evidence: "- Independent retest scope: judge codex command construction and prior\
+      \ hardcoded fallback divergence.\n- Commands/checks executed:\n  - uv run pytest\
+      \ tests/test_driver_judge_impl_runtime.py -v -> 9 passed\n  - grep check for\
+      \ hardcoded codex fallback argv patterns -> none\n  - uv run pytest tests/test_driver_judge*.py\
+      \ -v -> 65 passed, 9 xfailed, 17 xpassed\n- Outcome against prior blocker: RESOLVED\n\
+      \  - missing/invalid driver.yaml codex contract now raises explicit JudgmentParseError\n\
+      \  - no divergent hardcoded fallback argv remains\n- Gate recommendation: PASS"
 - id: driver-bootstrap-readiness
   name: Driver Real Bootstrap Readiness
   status: locked

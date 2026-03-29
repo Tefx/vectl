@@ -21,9 +21,11 @@ import asyncio
 import contextlib
 import json
 import logging
+import os
 import shutil
 import time
-from dataclasses import dataclass
+from dataclasses import asdict, dataclass
+from datetime import datetime, timezone
 from fnmatch import fnmatch
 from pathlib import Path
 from typing import TYPE_CHECKING, Final, Literal, Protocol, cast
@@ -66,6 +68,8 @@ from .runners import RunnerStatus as RunnerDispatchStatus
 from .session import SessionPool
 from .types import (
     CompletedEntry,
+    ContinuityJournalEntry,
+    ContinuityLedgerEntry,
     DriverState,
     ReplaySafetyEnvelope,
     ReplayTokenSemantics,
@@ -1149,7 +1153,7 @@ def _state_attempt_key_set(state: DriverState) -> set[str]:
     if isinstance(existing, set):
         return existing
     fresh: set[str] = set()
-    state._continuity_attempt_keys = fresh
+    state.__dict__["_continuity_attempt_keys"] = fresh
     return fresh
 
 
@@ -1160,8 +1164,172 @@ def _state_capability_snapshot_cache(state: DriverState) -> dict[str, str]:
     if isinstance(existing, dict):
         return existing
     fresh: dict[str, str] = {}
-    state._continuity_capability_snapshots = fresh
+    state.__dict__["_continuity_capability_snapshots"] = fresh
     return fresh
+
+
+def _resolve_repo_root_from_plan(plan_path: Path) -> Path:
+    """Resolve repository root from plan path."""
+
+    plan_abs = plan_path if plan_path.is_absolute() else (Path.cwd() / plan_path)
+    return plan_abs.resolve().parent
+
+
+def _resolve_repo_root_from_worktree_path(worktree_path: str) -> Path:
+    """Resolve repository root from an absolute or relative worktree path."""
+
+    candidate = Path(worktree_path)
+    if not candidate.is_absolute():
+        candidate = Path.cwd() / candidate
+    candidate = candidate.resolve()
+
+    for parent in (candidate, *candidate.parents):
+        if parent.name == "worktrees" and parent.parent.name == ".vectl":
+            return parent.parent.parent
+    return Path.cwd().resolve()
+
+
+def _safe_step_filename(step_id: str) -> str:
+    """Map a step id to a stable ledger/journal filename."""
+
+    return step_id.replace("/", "__")
+
+
+def _atomic_write_text(path: Path, content: str) -> None:
+    """Atomically write UTF-8 text to path with fsync."""
+
+    path.parent.mkdir(parents=True, exist_ok=True)
+    temp_name = f".{path.name}.tmp-{os.getpid()}-{time.time_ns()}"
+    temp_path = path.parent / temp_name
+    with temp_path.open("w", encoding="utf-8") as handle:
+        handle.write(content)
+        handle.flush()
+        os.fsync(handle.fileno())
+    os.replace(temp_path, path)
+
+
+def _write_json(path: Path, payload: dict[str, object]) -> None:
+    """Write JSON payload atomically."""
+
+    serialized = json.dumps(payload, ensure_ascii=False, sort_keys=True, indent=2) + "\n"
+    _atomic_write_text(path, serialized)
+
+
+def _append_jsonl(path: Path, payload: dict[str, object]) -> None:
+    """Append one JSONL record with atomic replace semantics."""
+
+    line = json.dumps(payload, ensure_ascii=False, sort_keys=True) + "\n"
+    existing = ""
+    if path.exists():
+        existing = path.read_text(encoding="utf-8")
+    _atomic_write_text(path, existing + line)
+
+
+def _continuity_now_iso() -> str:
+    """Return UTC timestamp in ISO 8601 format."""
+
+    return datetime.now(timezone.utc).isoformat()
+
+
+def _build_replay_envelope(
+    *,
+    step_id: str,
+    attempt_key: str,
+    runner_name: str,
+    session_id: str | None,
+    scope: str,
+    fingerprint: str | None,
+) -> ReplaySafetyEnvelope:
+    """Build replay envelope for continuity journal/ledger records."""
+
+    return ReplaySafetyEnvelope(
+        step_id=step_id,
+        attempt_key=attempt_key,
+        runner_name=runner_name,
+        session_id=session_id,
+        idempotency_scope=scope,
+        tool_call_fingerprint=fingerprint,
+    )
+
+
+def _persist_continuity_journal(
+    *,
+    repo_root: Path,
+    step_id: str,
+    event_kind: str,
+    attempt_key: str,
+    runner_name: str,
+    session_id: str | None,
+    summary: str,
+    replay_envelope: ReplaySafetyEnvelope,
+) -> ContinuityJournalEntry:
+    """Persist continuity journal entry for recovery-grade telemetry."""
+
+    entry = ContinuityJournalEntry(
+        step_id=step_id,
+        event_kind=event_kind,
+        recorded_at=_continuity_now_iso(),
+        attempt_key=attempt_key,
+        runner_name=runner_name,
+        session_id=session_id,
+        summary=summary,
+        replay_envelope=replay_envelope,
+    )
+    journal_path = (
+        repo_root / ".vectl" / "continuity" / "journal" / f"{_safe_step_filename(step_id)}.jsonl"
+    )
+    _append_jsonl(journal_path, asdict(entry))
+    return entry
+
+
+def _persist_continuity_ledger(
+    *,
+    repo_root: Path,
+    step_id: str,
+    status: str,
+    attempt_key: str,
+    runner_name: str,
+    session_id: str | None,
+    replay_envelope: ReplaySafetyEnvelope,
+    last_journal_event: ContinuityJournalEntry,
+    recovery_cursor: str | None,
+) -> ContinuityLedgerEntry:
+    """Persist continuity ledger as durable last-writer-wins snapshot."""
+
+    entry = ContinuityLedgerEntry(
+        step_id=step_id,
+        latest_attempt_key=attempt_key,
+        status=status,
+        runner_name=runner_name,
+        last_session_id=session_id,
+        replay_envelope=replay_envelope,
+        last_journal_event=last_journal_event,
+        recovery_cursor=recovery_cursor,
+    )
+    ledger_path = (
+        repo_root / ".vectl" / "continuity" / "ledger" / f"{_safe_step_filename(step_id)}.json"
+    )
+    _write_json(ledger_path, asdict(entry))
+    return entry
+
+
+def _load_ledger_step_ids(repo_root: Path) -> set[str]:
+    """Load step ids present in durable continuity ledger files."""
+
+    ledger_dir = repo_root / ".vectl" / "continuity" / "ledger"
+    if not ledger_dir.exists() or not ledger_dir.is_dir():
+        return set()
+
+    step_ids: set[str] = set()
+    for ledger_path in ledger_dir.glob("*.json"):
+        try:
+            payload = json.loads(ledger_path.read_text(encoding="utf-8"))
+        except Exception:
+            continue
+        step_id = payload.get("step_id")
+        if isinstance(step_id, str) and step_id:
+            step_ids.add(step_id)
+    return step_ids
 
 
 async def run(config_path: Path) -> None:
@@ -1198,12 +1366,25 @@ async def run(config_path: Path) -> None:
         judge = Judge(config.judge, observer)
 
         plan, _ = load_plan_definition(plan_path)
+        plan_step_ids = _all_plan_step_ids(plan)
         claims_path = resolve_claims_path(plan_path)
         repair_result = repair_claims(plan, plan_path, claims_path)
         removed_orphans = _cleanup_orphan_worktrees(
             plan_path=plan_path,
-            plan_step_ids=_all_plan_step_ids(plan),
+            plan_step_ids=plan_step_ids,
         )
+
+        continuity_repo_root = _resolve_repo_root_from_plan(plan_path)
+        orphaned_ledger_steps = sorted(_load_ledger_step_ids(continuity_repo_root) - plan_step_ids)
+        if orphaned_ledger_steps:
+            observer.emit(
+                "HALT",
+                reason=(
+                    "Continuity ledger mismatch with recovered plan/claims state: "
+                    f"orphaned_steps={','.join(orphaned_ledger_steps)}"
+                ),
+            )
+            state.halt_requested = True
 
         if _judge_type_enabled(judge, JudgmentType.ANOMALY):
             startup_anomalies: list[JudgmentRequest] = []
@@ -1468,18 +1649,53 @@ async def handle_dispatch(
                 f"(step={step_id}, verdict={cold_context_verdict.verdict})"
             )
 
+    pool_session_candidate = session_pool.find_reusable(
+        step_id=step_id,
+        agent=agent,
+        runner_name=runner_name,
+        depends_on=step.depends_on,
+    )
+
     session_id: str | None = None
     session_source = "none"
     if action.session == "reuse" and action.task_id:
         session_id = action.task_id
         session_source = "action"
+        if pool_session_candidate is not None and pool_session_candidate != action.task_id:
+            observer.emit(
+                "CONTINUITY_DOUBLE_TRUTH_DETECTED",
+                step_id=step_id,
+                action_task_id=action.task_id,
+                pool_session_id=pool_session_candidate,
+                authority="durable_continuity_required",
+            )
+            replay_envelope = _build_replay_envelope(
+                step_id=step_id,
+                attempt_key=_continuity_attempt_key(
+                    step_id=step_id,
+                    runner_name=runner_name,
+                    session_id=action.task_id,
+                ),
+                runner_name=runner_name,
+                session_id=action.task_id,
+                scope="dispatch_double_truth_detection",
+                fingerprint=action.task_id,
+            )
+            _persist_continuity_journal(
+                repo_root=_resolve_repo_root_from_plan(plan_path),
+                step_id=step_id,
+                event_kind="double_truth_detected",
+                attempt_key=replay_envelope.attempt_key,
+                runner_name=runner_name,
+                session_id=action.task_id,
+                summary=(
+                    "Action reuse task_id diverged from SessionPool candidate; "
+                    "durable ledger authority required"
+                ),
+                replay_envelope=replay_envelope,
+            )
     else:
-        session_id = session_pool.find_reusable(
-            step_id=step_id,
-            agent=agent,
-            runner_name=runner_name,
-            depends_on=step.depends_on,
-        )
+        session_id = pool_session_candidate
         if session_id is not None:
             session_source = "pool"
 
@@ -1657,7 +1873,48 @@ async def reconcile(
     - ``reconcile.failure_classification_replan``
     - ``reconcile.escalation_replan``
     """
+    continuity_repo_root = _resolve_repo_root_from_plan(plan_path)
+    continuity_attempt_key = (
+        completed.result.continuity.attempt_key
+        if completed.result.continuity is not None
+        else _continuity_attempt_key(
+            step_id=completed.step_id,
+            runner_name=completed.runner_name,
+            session_id=completed.result.session_id,
+        )
+    )
+
     if completed.result.status == RunnerStatus.SUCCESS:
+        success_envelope = _build_replay_envelope(
+            step_id=completed.step_id,
+            attempt_key=continuity_attempt_key,
+            runner_name=completed.runner_name,
+            session_id=completed.result.session_id,
+            scope="reconcile_success",
+            fingerprint=None,
+        )
+        success_journal = _persist_continuity_journal(
+            repo_root=continuity_repo_root,
+            step_id=completed.step_id,
+            event_kind="runner_success",
+            attempt_key=continuity_attempt_key,
+            runner_name=completed.runner_name,
+            session_id=completed.result.session_id,
+            summary="Runner completed successfully; reconciling merge and lifecycle mutations",
+            replay_envelope=success_envelope,
+        )
+        _persist_continuity_ledger(
+            repo_root=continuity_repo_root,
+            step_id=completed.step_id,
+            status="runner_success",
+            attempt_key=continuity_attempt_key,
+            runner_name=completed.runner_name,
+            session_id=completed.result.session_id,
+            replay_envelope=success_envelope,
+            last_journal_event=success_journal,
+            recovery_cursor="pre_merge",
+        )
+
         evidence = completed.result.output
         plan, expected_hash = load_plan_definition(plan_path)
         state.decide_state.reset_failure(step_id=completed.step_id)
@@ -1790,6 +2047,27 @@ async def reconcile(
                 raise merge_result.error
 
             if merge_result.value.outcome.value == "non_trivial_conflict":
+                conflict_journal = _persist_continuity_journal(
+                    repo_root=continuity_repo_root,
+                    step_id=completed.step_id,
+                    event_kind="merge_conflict_deferred",
+                    attempt_key=continuity_attempt_key,
+                    runner_name=completed.runner_name,
+                    session_id=completed.result.session_id,
+                    summary="Non-trivial merge conflict; step deferred for resolver flow",
+                    replay_envelope=success_envelope,
+                )
+                _persist_continuity_ledger(
+                    repo_root=continuity_repo_root,
+                    step_id=completed.step_id,
+                    status="deferred_conflict",
+                    attempt_key=continuity_attempt_key,
+                    runner_name=completed.runner_name,
+                    session_id=completed.result.session_id,
+                    replay_envelope=success_envelope,
+                    last_journal_event=conflict_journal,
+                    recovery_cursor="awaiting_conflict_resolution",
+                )
                 observer.emit(
                     "MERGE_CONFLICTED",
                     step_id=completed.step_id,
@@ -1827,6 +2105,28 @@ async def reconcile(
                 "Worktree cleanup failed for %s: %s", completed.step_id, cleanup_result.error
             )
 
+        completed_journal = _persist_continuity_journal(
+            repo_root=continuity_repo_root,
+            step_id=completed.step_id,
+            event_kind="completed",
+            attempt_key=continuity_attempt_key,
+            runner_name=completed.runner_name,
+            session_id=completed.result.session_id,
+            summary="Step completion committed, merged, and cleaned up",
+            replay_envelope=success_envelope,
+        )
+        _persist_continuity_ledger(
+            repo_root=continuity_repo_root,
+            step_id=completed.step_id,
+            status="completed",
+            attempt_key=continuity_attempt_key,
+            runner_name=completed.runner_name,
+            session_id=completed.result.session_id,
+            replay_envelope=success_envelope,
+            last_journal_event=completed_journal,
+            recovery_cursor="terminal",
+        )
+
         observer.emit(
             "STEP_COMPLETED",
             step_id=completed.step_id,
@@ -1841,6 +2141,36 @@ async def reconcile(
             elapsed_seconds=completed.elapsed_seconds,
         )
         return
+
+    failure_envelope = _build_replay_envelope(
+        step_id=completed.step_id,
+        attempt_key=continuity_attempt_key,
+        runner_name=completed.runner_name,
+        session_id=completed.result.session_id,
+        scope="reconcile_failure",
+        fingerprint=None,
+    )
+    failure_journal = _persist_continuity_journal(
+        repo_root=continuity_repo_root,
+        step_id=completed.step_id,
+        event_kind="failure",
+        attempt_key=continuity_attempt_key,
+        runner_name=completed.runner_name,
+        session_id=completed.result.session_id,
+        summary=completed.result.output,
+        replay_envelope=failure_envelope,
+    )
+    _persist_continuity_ledger(
+        repo_root=continuity_repo_root,
+        step_id=completed.step_id,
+        status="failed",
+        attempt_key=continuity_attempt_key,
+        runner_name=completed.runner_name,
+        session_id=completed.result.session_id,
+        replay_envelope=failure_envelope,
+        last_journal_event=failure_journal,
+        recovery_cursor="awaiting_retry_or_escalation",
+    )
 
     state.runner_failures[(completed.step_id, completed.runner_name)] = (
         state.runner_failures.get((completed.step_id, completed.runner_name), 0) + 1
@@ -1989,6 +2319,42 @@ async def shutdown(state: DriverState, observer: Observer) -> None:
 
     running_entries = list(state.running.values())
     for entry in running_entries:
+        abort_attempt_key = _continuity_attempt_key(
+            step_id=entry.step_id,
+            runner_name=entry.runner_name,
+            session_id=entry.handle.session_id,
+        )
+        abort_envelope = _build_replay_envelope(
+            step_id=entry.step_id,
+            attempt_key=abort_attempt_key,
+            runner_name=entry.runner_name,
+            session_id=entry.handle.session_id,
+            scope="shutdown_abort",
+            fingerprint=None,
+        )
+        abort_repo_root = _resolve_repo_root_from_worktree_path(entry.worktree_path)
+        abort_journal = _persist_continuity_journal(
+            repo_root=abort_repo_root,
+            step_id=entry.step_id,
+            event_kind="shutdown_abort",
+            attempt_key=abort_attempt_key,
+            runner_name=entry.runner_name,
+            session_id=entry.handle.session_id,
+            summary="Driver shutdown while step still running",
+            replay_envelope=abort_envelope,
+        )
+        _persist_continuity_ledger(
+            repo_root=abort_repo_root,
+            step_id=entry.step_id,
+            status="aborted",
+            attempt_key=abort_attempt_key,
+            runner_name=entry.runner_name,
+            session_id=entry.handle.session_id,
+            replay_envelope=abort_envelope,
+            last_journal_event=abort_journal,
+            recovery_cursor="shutdown_abort",
+        )
+
         with contextlib.suppress(Exception):
             await asyncio.wait_for(entry.handle.wait(timeout=0.1), timeout=0.1)
 

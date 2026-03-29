@@ -51434,7 +51434,7 @@ phases:
     skipped_reason: absorbed
 - id: driver-live-smoke-remediation
   name: Driver live smoke remediation
-  status: in_progress
+  status: done
   depends_on:
   - driver-live-smoke-implementation
   steps:
@@ -51614,7 +51614,7 @@ phases:
       empty stdout, and stderr containing timeout message. Prevents exception propagation.'
   - id: driver-live-smoke-remediation.gate
     name: Gate live smoke remediation
-    status: claimed
+    status: done
     description: 'Gate review: Verify both remediation fixes work correctly.
 
 
@@ -51647,3 +51647,53 @@ phases:
     agent: gate-reviewer
     claimed_by: gate-reviewer
     claimed_at: '2026-03-29T17:32:41.628422+00:00'
+    done_at: '2026-03-29T17:35:19.290797+00:00'
+    evidence: '## Gate Review Report
+
+      **Phase**: driver-live-smoke-remediation
+
+
+      ### Fix 1 Verification: Codex judge parser item.text extraction
+
+      - **Status**: PASS
+
+      - **Implementation**: tests/live_smoke/test_codex_judge_live.py lines 183-193
+
+      - New extraction path for `item.text` when `event.type == "item.completed"`
+      and `item.type == "agent_message"`
+
+      - Maintains "no tolerant fallback" rule - JSON parsing required, no text-mode
+      success
+
+      - **Unit tests**: 17 passed, 5 skipped
+
+
+      ### Fix 2 Verification: run_subprocess timeout handling
+
+      - **Status**: PASS
+
+      - **Implementation**: tests/live_smoke/helpers.py lines 324-334
+
+      - Wrapped subprocess.run() in try/except for TimeoutExpired
+
+      - Returns SubprocessResult with returncode=-1, timeout message in stderr
+
+      - **Unit tests**: All subprocess tests pass
+
+
+      ### Smoke Matrix Rerun
+
+      - **Command**: uv run pytest tests/live_smoke/ -v
+
+      - **Result**: 56 passed, 21 skipped
+
+      - **No failures**
+
+
+      ### Gate Decision: APPROVED
+
+      - Both blockers (B1, B2) have correct implementations
+
+      - No tolerant fallback-to-text path added
+
+      - TimeoutExpired properly caught and converted to deterministic result'

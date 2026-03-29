@@ -44352,7 +44352,7 @@ phases:
       - no blocker-class divergence found in audited judge hardening requirements.'
   - id: driver-judge-hardening-review.gate
     name: Gate judge hardening review
-    status: claimed
+    status: done
     description: "step_type: gate\nreview_depth: THOROUGH\nreview_depth_rationale:\n\
       \  - Judge stability gates renewed real bootstrap\n  - Real codex runner evidence\
       \ is mandatory\n  - Failure policy intersects all downstream bootstrap attempts\n\
@@ -44373,6 +44373,16 @@ phases:
     agent: gate-reviewer
     claimed_by: gate-reviewer
     claimed_at: '2026-03-29T02:00:31.460761+00:00'
+    done_at: '2026-03-29T04:45:08.884133+00:00'
+    evidence: 'Gate identified blocker-class contract drift: codex fallback invocation
+      in src/vectl/driver/judge.py can diverge from driver.yaml source-of-truth argv.
+      Per batched-fix protocol, remediation ownership was added as `driver-judge-hardening-review.fix-codex-fallback-contract`
+      with retest `driver-judge-hardening-review.retest-codex-fallback-contract-gate`.
+
+
+      Disposition:
+
+      - blocker -> batched remediation path created before progression.'
   - id: driver-judge-hardening-review.fix-codex-fallback-contract
     name: Fix codex fallback contract divergence batch
     status: pending

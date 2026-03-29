@@ -41305,7 +41305,7 @@ phases:
     agent: blind-tester
   - id: driver-evolution-loop-migration.full-plan-check
     name: Run full-plan driver regression boundary
-    status: pending
+    status: claimed
     description: 'step_type: verification
 
       expected_result: green
@@ -41346,6 +41346,8 @@ phases:
     depends_on:
     - driver-evolution-loop-migration.implement-loop-handlers
     agent: integration-verifier
+    claimed_by: integration-verifier
+    claimed_at: '2026-03-29T07:23:01.498546+00:00'
   - id: driver-evolution-loop-migration.gate
     name: Gate loop migration and wiring
     status: pending

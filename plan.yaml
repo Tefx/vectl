@@ -41001,7 +41001,7 @@ phases:
     agent: gate-reviewer
 - id: driver-evolution-action-registry-contract-foundation
   name: 'Driver Evolution: Action Registry Contract Foundation'
-  status: in_progress
+  status: done
   gate: Planner-dispatch registry boundary is pinned early so action-registry implementation
     can start only after runtime-context plus this contract foundation
   context: Bootstrap-postponed evolution work. Action-registry contract foundation
@@ -41110,7 +41110,7 @@ phases:
       - docs/ADR-driver-evolution-foundation.md#188-resolved-decisions'
   - id: driver-evolution-action-registry-contract-foundation.gate
     name: Gate action-registry contract foundation
-    status: claimed
+    status: done
     description: 'step_type: gate
 
       Gate review: verify the early planner-dispatch contract foundation is sufficient
@@ -41142,6 +41142,46 @@ phases:
     agent: gate-reviewer
     claimed_by: gate-reviewer
     claimed_at: '2026-03-29T06:12:50.823124+00:00'
+    done_at: '2026-03-29T06:19:03.277058+00:00'
+    evidence: 'Artifact:
+
+      - PR: cb8e2ad74f29c462106dda47916b61230f5cb5ac
+
+
+      Verification:
+
+      - Run: `uv run pytest tests/test_driver_loop_runtime.py -k "TestPlannerDispatchActionRegistryContract
+      or TestRuntimeContextContracts"` -> 11 passed, 34 deselected
+
+      - Run: grep checks for `included_in_registry_scope=True` and `deferred_outside_registry=False`
+      -> confirmed
+
+      - Run: grep for `ACTION_REGISTRY_PUBLIC_DYNAMIC_REGISTRATION` -> False (static
+      declaration enforced)
+
+
+      Spec link:
+
+      - docs/ADR-driver-evolution-foundation.md#71
+
+      - docs/ADR-driver-evolution-foundation.md#85
+
+      - docs/ADR-driver-evolution-foundation.md#96
+
+      - docs/ADR-driver-evolution-foundation.md#104
+
+      - docs/ADR-driver-evolution-foundation.md#188
+
+
+      step_intent: gate
+
+      expected_result: green
+
+      observed_result: green
+
+      failure_alignment: N/A
+
+      product_implementation_files_modified: no'
 - id: driver-routing-hardening
   name: Driver Routing Hardening
   status: locked

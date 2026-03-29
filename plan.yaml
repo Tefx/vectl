@@ -45911,7 +45911,7 @@ phases:
       \ driver-continuity-restart-recovery.impl"
   - id: driver-continuity-restart-recovery.fix-restart-recovery-batch
     name: Fix restart recovery gate blocker batch
-    status: pending
+    status: claimed
     description: Batch-remediate the failed continuity restart-recovery gate by resolving
       the duplicate `RunnerResult` type mismatch and ensuring judge failure HALT continuity
       facts are durably persisted and consumed on the restart path.
@@ -45932,6 +45932,8 @@ phases:
     depends_on:
     - driver-continuity-restart-recovery.gate
     agent: python-senior
+    claimed_by: python-senior
+    claimed_at: '2026-03-29T04:45:51.896781+00:00'
   - id: driver-continuity-restart-recovery.retest-restart-recovery-gate
     name: Retest continuity restart recovery gate after remediation
     status: pending

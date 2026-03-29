@@ -51711,3 +51711,10 @@ phases:
     the pinned contract, with stale-only auto-quarantine and blocking ambiguity preserved.
   depends_on:
   - driver-continuity-hygiene-foundation
+- id: driver-continuity-hygiene-surface
+  name: 'Driver Continuity Hygiene: CLI & Observability'
+  status: locked
+  gate: CLI repair-continuity surface, telemetry events, and wiring audit prove the
+    operator-facing recovery path is reachable and fully registered.
+  depends_on:
+  - driver-continuity-hygiene-core

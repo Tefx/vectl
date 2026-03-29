@@ -49937,8 +49937,8 @@ phases:
 - id: driver-live-smoke-foundation
   name: Driver Live Runner Smoke Coverage Foundation
   status: pending
-  gate: Cheap-model selection, live-runner opt-in policy, skip taxonomy, and test-surface
-    contract are ratified before any live smoke implementation starts.
+  gate: Cheap-model selection, live-runner opt-in policy, skip taxonomy, and lightweight
+    test-surface decisions are ratified before live smoke implementation starts.
   depends_on:
   - driver-enhancement-foundation
   steps:

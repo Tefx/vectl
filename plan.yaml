@@ -42840,7 +42840,7 @@ phases:
       product_implementation_files_modified: no'
 - id: driver-routing-hardening
   name: Driver Routing Hardening
-  status: pending
+  status: in_progress
   gate: Reject unsupported `agent_routing.default` semantics with explicit validation
     and independent verification.
   depends_on:
@@ -42848,7 +42848,7 @@ phases:
   steps:
   - id: driver-routing-hardening.contract
     name: Pin invalid `agent_routing.default` validation semantics
-    status: pending
+    status: claimed
     description: "step_type: contract\ncontract_purity: ENFORCED\ncontract_outputs:\n\
       \  - config_validation_semantics\n  - error_contract\nspec_refs:\n  - docs/DRIVER-ARCHITECTURE.md#2-3-config-py-configuration\n\
       \  - driver.yaml#agent-routing-and-fallback-runner\nauthoritative_interface:\
@@ -42873,6 +42873,8 @@ phases:
 
       - Contract defines the required user-facing error guidance'
     agent: python-senior
+    claimed_by: python-senior
+    claimed_at: '2026-03-29T08:45:58.558663+00:00'
   - id: driver-routing-hardening.test-define-red
     name: Define expected-red invalid default routing regression
     status: pending

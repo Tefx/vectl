@@ -1839,6 +1839,22 @@ Canonical driver events follow non-contradictory semantics defined by the regist
 - The default judge runner is `opencode`. When using `claude` as judge runner, add `--no-session-persistence` and `--dangerously-skip-permissions`. Each runner uses its own non-interactive flags (opencode: `--format json`; codex: `--dangerously-bypass-approvals-and-sandbox`; gemini: `--approval-mode yolo`).
 - Session reuse is implemented in `session.py` with runner-aware matching and per-runner TTL overrides.
 
+### 7.4.1 Live Smoke (Reduced Test-Surface Record)
+
+For additive live smoke coverage details, see `docs/DRIVER-LIVE-SMOKE-POLICY.md`.
+
+- Opt-in gate: `RUN_LIVE_RUNNER_TESTS=1`.
+- Marker taxonomy: `live_runner`, `codex_live`, `opencode_live`, `judge_live`, `dispatch_live`.
+- Skip meanings: `live_runner_opt_in_missing`, `live_runner_binary_missing`, `live_runner_auth_missing`, `live_runner_override_unsupported`.
+
+Manual selections:
+
+```bash
+RUN_LIVE_RUNNER_TESTS=1 pytest -m "live_runner and judge_live" tests/live_smoke/test_codex_judge_live.py tests/live_smoke/test_opencode_judge_live.py -v
+RUN_LIVE_RUNNER_TESTS=1 pytest -m "live_runner and dispatch_live" tests/live_smoke/test_codex_dispatch_live.py tests/live_smoke/test_opencode_dispatch_live.py -v
+RUN_LIVE_RUNNER_TESTS=1 pytest -m "live_runner" tests/live_smoke/test_codex_judge_live.py tests/live_smoke/test_opencode_judge_live.py tests/live_smoke/test_codex_dispatch_live.py tests/live_smoke/test_opencode_dispatch_live.py -v
+```
+
 ### 7.5 Resolved Open Questions
 
 - ~~Exact system prompt text for the Judgment Agent~~ -- Resolved: Runtime prompt is `vectl.driver.judge_agent_prompt.md` (packaged resource). `docs/JUDGE-AGENT-PROMPT.md` is the human-readable spec/mirror.

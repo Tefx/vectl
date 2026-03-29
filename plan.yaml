@@ -50330,15 +50330,18 @@ phases:
       \ task dispatch path.\n\nScope:\n- tests/live_smoke/test_opencode_dispatch_live.py\n\
       - driver dispatch integration references only as needed for stable assertions\n\
       \nRequired scenarios:\n- ordinary agent/task dispatch through the opencode runner,\
-      \ not judge-only invocation\n- cheap-model selection uses only the ratified\
-      \ supported opencode override mechanism\n- explicit skip evidence for missing\
-      \ binary, missing auth/prereq, or opt-in env gate absent\n- transport failure\
-      \ distinguished from task-output assertion failure\n\nPath exercised: driver.yaml\
+      \ not judge-only invocation\n- use the exact opencode dispatch cheap-model identifier\
+      \ and exact supported override mechanism ratified by driver-live-smoke-foundation.ratify-live-smoke-policy\n\
+      - explicit skip evidence for missing binary, missing auth/prereq, or opt-in\
+      \ env gate absent\n- transport failure distinguished from task-output assertion\
+      \ failure\n- if preferred opencode dispatch model is unavailable, exercise only\
+      \ the ratified fallback policy from the foundation step\n\nPath exercised: driver.yaml\
       \ opencode runner contract -> dispatch integration -> real opencode subprocess\
       \ -> captured task output assertions.\n\n## Completion Criteria (stub exclusion)\n\
       This is an IMPLEMENTATION step. Stub-only completion is NOT acceptable."
     verification: '- Main path: targeted opencode dispatch live pytest selection passes
-      against real opencode or skips explicitly with justified evidence.
+      against real opencode or skips explicitly with justified evidence using the
+      ratified model id/override mechanism.
 
       - Failure path: transport/auth skip and invalid task-output assertions are distinct.
 

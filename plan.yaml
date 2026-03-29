@@ -50380,6 +50380,74 @@ phases:
     - driver-live-smoke-implementation.add-codex-dispatch-live-smoke-coverage
     - driver-live-smoke-implementation.add-opencode-dispatch-live-smoke-coverage
     agent: spec-verifier
+  - id: driver-live-smoke-implementation.runner-smoke-matrix
+    name: Run independent codex/opencode smoke matrix
+    status: pending
+    description: 'As an INDEPENDENT TESTER (blind-tester), validate the live codex/opencode
+      smoke matrix from a fresh perspective.
+
+
+      YOUR GOAL IS TO FIND PROBLEMS, not to confirm it works.
+
+
+      verification_scope: phase-check
+
+      expected_result: green
+
+
+      Run the ratified manual live invocations for:
+
+      - codex judge smoke
+
+      - opencode judge smoke
+
+      - codex dispatch smoke
+
+      - opencode dispatch smoke
+
+      - combined live smoke selection
+
+
+      Required outcome per path:
+
+      - PASS with real runner evidence, or
+
+      - explicit SKIP with justified evidence (runner missing, auth missing, opt-in
+      env absent)
+
+
+      A missing binary/auth/opt-in gate is acceptable only when the skip is explicit
+      and evidenced; silent pass is not acceptable.'
+    verification: '- Matrix evidence includes exact commands, output, and per-runner
+      per-scenario verdicts.
+
+      - Each path is PASS or explicit SKIP with reason and captured output.
+
+      - Broad-scope issues produce remediation ownership instead of vague notes.'
+    evidence_template: '## Live Smoke Matrix
+
+      | Path | Command | Result (PASS/SKIP) | Reason | stdout/stderr captured? |
+
+      |------|---------|--------------------|--------|--------------------------|
+
+      | codex judge | | | | |
+
+      | opencode judge | | | | |
+
+      | codex dispatch | | | | |
+
+      | opencode dispatch | | | | |
+
+      | combined selection | | | | |
+
+      '
+    depends_on:
+    - driver-live-smoke-implementation.build-harness
+    - driver-live-smoke-implementation.add-codex-judge-live-smoke-coverage
+    - driver-live-smoke-implementation.add-opencode-judge-live-smoke-coverage
+    - driver-live-smoke-implementation.add-codex-dispatch-live-smoke-coverage
+    - driver-live-smoke-implementation.add-opencode-dispatch-live-smoke-coverage
+    agent: blind-tester
 - id: driver-live-smoke-doc-sync
   name: Driver Live Runner Smoke Coverage Documentation Sync
   status: locked

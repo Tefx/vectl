@@ -39429,7 +39429,7 @@ phases:
       without loop duplication.
 - id: driver-evolution-events-foundation
   name: 'Driver Evolution: Events Foundation'
-  status: in_progress
+  status: done
   gate: Versioned envelope + event registry source of truth established on top of
     debt-remediation baseline
   context: Bootstrap-postponed evolution work. Event foundation starts only after
@@ -39674,7 +39674,7 @@ phases:
       - docs/ADR-driver-evolution-foundation.md#6-event-registry-is-a-static-declaration-table"
   - id: driver-evolution-events-foundation.gate
     name: Gate events foundation
-    status: claimed
+    status: done
     description: 'step_type: gate
 
       Gate review: verify the events-foundation phase completion and quality.
@@ -39706,9 +39706,43 @@ phases:
     agent: gate-reviewer
     claimed_by: gate-reviewer
     claimed_at: '2026-03-29T06:27:04.658546+00:00'
+    done_at: '2026-03-29T06:35:00.249133+00:00'
+    evidence: 'Artifact:
+
+      - PR: f5d7fad
+
+
+      Verification:
+
+      - `uv run pytest tests/test_driver_observe.py -v` -> 16 passed
+
+      - envelope/version/registry checks passed (top-level version, static registry,
+      sink durability)
+
+      - `@invar:allow` scan: none
+
+
+      Spec link:
+
+      - docs/ADR-driver-evolution-foundation.md#30-versioned-event-envelope-now
+
+      - docs/ADR-driver-evolution-foundation.md#45-event-registry-becomes-source-of-truth
+
+      - docs/ADR-driver-evolution-foundation.md#104-event-registry-is-a-static-declaration-table
+
+
+      step_intent: gate
+
+      expected_result: green
+
+      observed_result: green (non-blocking lint should-fix only)
+
+      failure_alignment: N/A
+
+      product_implementation_files_modified: no'
 - id: driver-evolution-event-contracts
   name: 'Driver Evolution: Canonical Event Contracts'
-  status: locked
+  status: pending
   gate: Canonical FINAL/DECIDE/STEP_COMPLETED semantics and typed emit surfaces proven
     against the ADR
   depends_on:

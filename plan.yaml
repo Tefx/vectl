@@ -49184,3 +49184,12 @@ phases:
       runtime dependency args and affected reconcile-related tests are updated to
       the final boundary.
     agent: python-executor
+  - id: driver-reconcile-context-convergence.doc-sync
+    name: Sync reconcile docs to context-only convergence
+    status: pending
+    description: Update reconcile-specific architecture/docs so they match the final
+      context-only boundary and do not imply dual-path runtime injection remains for
+      `reconcile()`.
+    verification: Docs consistently describe `RuntimeContext` as the sole reconcile
+      runtime bundle and match the landed signature.
+    agent: doc-reviewer

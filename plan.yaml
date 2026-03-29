@@ -52075,6 +52075,46 @@ phases:
     operator-facing recovery path is reachable and fully registered.
   depends_on:
   - driver-continuity-hygiene-core
+  steps:
+  - id: driver-continuity-hygiene-surface.impl-cli-repair-continuity
+    name: Implement `vectl repair continuity` CLI flow
+    status: pending
+    description: "step_type: implementation\nupstream_artifacts:\n  - path: src/vectl/driver/continuity_hygiene.py\n\
+      \    from_step: driver-continuity-hygiene-foundation.contract\n    tier: contract\n\
+      \  - path: tests/test_driver_recovery_black_box.py\n    from_step: driver-continuity-hygiene-foundation.blackbox-define-red\n\
+      \    tier: test\n\nFill in stub bodies in src/vectl/cli.py and the shared repair\
+      \ helper surface to expose `vectl repair continuity` analogous to `vectl repair\
+      \ claims`.\n\nYOUR SCOPE: Replace stub markers with working logic for:\n- dry-run\
+      \ preview\n- apply mode\n- machine-readable JSON output\n- quarantine/manifests\
+      \ as the repair action instead of deletion\n- operator-facing summaries that\
+      \ distinguish safe stale leftovers from blocking divergence\n\nIntegration path:\
+      \ continuity helper results -> CLI command -> operator output/json\n\nOut-of-scope\
+      \ guardrail:\n- do not add automatic renamed-step remapping\n- do not weaken\
+      \ blocking behavior for active claims, corrupt files, or ambiguity\n\n## Completion\
+      \ Criteria (stub exclusion)\nThis is an IMPLEMENTATION step. Stub-only completion\
+      \ is NOT acceptable.\nEach deliverable MUST contain substantive logic that processes\
+      \ its inputs and produces outputs that vary based on those inputs."
+    verification: '- Main path: CLI dry-run/apply/json behaviors work against safe
+      stale artifacts
+
+      - Failure path: CLI reports blocking divergence cleanly without deleting continuity
+      files
+
+      - Proof: exact CLI invocation/output is captured'
+    evidence_template: '## Integration Evidence
+
+      **Command or test exercising the full path**:
+
+      <exact `vectl repair continuity ...` command or pytest selection>
+
+
+      **Actual output**:
+
+      <paste stdout/stderr or JSON output>
+
+
+      **Path exercised**: continuity helper -> CLI command -> operator-visible result'
+    agent: python-executor
 - id: driver-continuity-hygiene-review
   name: 'Driver Continuity Hygiene: Verification & Gate'
   status: locked

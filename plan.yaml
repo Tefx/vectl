@@ -50694,7 +50694,7 @@ phases:
       **Deviation records**: None required.'
   - id: driver-live-smoke-implementation.add-opencode-dispatch-live-smoke-coverage
     name: Add opencode dispatch live smoke coverage
-    status: claimed
+    status: done
     description: 'Add additive live smoke tests for the real opencode regular task
       dispatch path.
 
@@ -50747,6 +50747,85 @@ phases:
     agent: python-executor
     claimed_by: python-executor
     claimed_at: '2026-03-29T16:23:44.691854+00:00'
+    done_at: '2026-03-29T16:48:07.393973+00:00'
+    evidence: '## OpenCode Dispatch Live Smoke Test Evidence
+
+
+      **Artifact**:
+
+      - Commit: `10c2ee3` - Created `tests/live_smoke/test_opencode_dispatch_live.py`
+      (486 lines)
+
+
+      **Verification**:
+
+
+      Run without opt-in (skips integration tests):
+
+      ```bash
+
+      $ uv run pytest tests/live_smoke/test_opencode_dispatch_live.py -v
+
+      = 13 passed, 5 skipped in 0.13s =
+
+      ```
+
+
+      Marker selection:
+
+      ```bash
+
+      $ uv run pytest tests/live_smoke/test_opencode_dispatch_live.py -m "live_runner
+      and opencode_live and dispatch_live" -v
+
+      = 6 passed, 5 skipped, 7 deselected =
+
+      ```
+
+
+      Default suite exclusion:
+
+      ```bash
+
+      $ uv run pytest tests/live_smoke/ -m "not live_runner" --co -q
+
+      = 30/76 tests collected (46 deselected) =
+
+      ```
+
+
+      Skip reasons displayed:
+
+      ```
+
+      SKIPPED: Live runner tests require RUN_LIVE_RUNNER_TESTS=1
+
+      SKIPPED: Auth/session not available for runner ''opencode''
+
+      SKIPPED: live_runner preflight failed: live_runner_opt_in_missing
+
+      ```
+
+
+      **Spec link**:
+
+      - DRIVER-LIVE-SMOKE-POLICY.md - opencode dispatch live smoke tests
+
+      - Uses pinned model: `ollama-cloud/minimax-m2.7`
+
+      - Override mechanism: `VECTL_OPENCODE_MODEL` envar
+
+
+      **Test coverage**:
+
+      - `TestOpencodeDispatchLive` - 5 tests for skip/preflight behavior
+
+      - `TestOpencodeDispatchLiveIntegration` - 6 tests for real CLI invocation
+
+      - `TestOpencodeDispatchParsing` - 7 unit tests for parsing helpers
+
+
+      **Deviation records**: None required.'
   - id: driver-live-smoke-implementation.runner-smoke-matrix
     name: Run independent codex/opencode smoke matrix
     status: pending

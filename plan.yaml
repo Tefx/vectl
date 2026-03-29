@@ -51697,3 +51697,10 @@ phases:
       - No tolerant fallback-to-text path added
 
       - TimeoutExpired properly caught and converted to deterministic result'
+- id: driver-continuity-hygiene-foundation
+  name: 'Driver Continuity Hygiene: Foundation'
+  status: pending
+  gate: Contract and expected-red tests pin continuity hygiene classification, quarantine,
+    and repair-continuity semantics before runtime code changes.
+  depends_on:
+  - driver-live-smoke-remediation

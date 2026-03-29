@@ -52191,6 +52191,47 @@ phases:
     - driver-continuity-hygiene-surface.impl-cli-repair-continuity
     - driver-continuity-hygiene-surface.impl-events-manifests
     agent: wiring-auditor
+  - id: driver-continuity-hygiene-surface.gate
+    name: Gate continuity hygiene CLI and observability surfaces
+    status: pending
+    description: 'As an INDEPENDENT REVIEWER (gate-reviewer), assess whether the continuity
+      hygiene surface phase meets the quality bar for verification.
+
+
+      Verification scope: phase-check protecting black-box runtime and operator recovery
+      gates.
+
+
+      Review criteria:
+
+      1. `vectl repair continuity` is reachable and audit-preserving
+
+      2. Event and manifest telemetry is wired completely
+
+      3. Wiring audit found no orphan command/event/manifest surfaces
+
+      4. Blocking behavior remains explicit for unsafe divergence
+
+
+      review_depth: THOROUGH
+
+      cross_cutting_focus:
+
+      - CLI/runtime semantic agreement
+
+      - event registry completeness
+
+      - manifest auditability'
+    verification: '- All surface steps completed with acceptable evidence
+
+      - Wiring audit passed
+
+      - Operator-facing and runtime-facing recovery semantics remain aligned'
+    depends_on:
+    - driver-continuity-hygiene-surface.impl-cli-repair-continuity
+    - driver-continuity-hygiene-surface.impl-events-manifests
+    - driver-continuity-hygiene-surface.wiring-audit
+    agent: gate-reviewer
 - id: driver-continuity-hygiene-review
   name: 'Driver Continuity Hygiene: Verification & Gate'
   status: locked

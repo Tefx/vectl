@@ -43589,7 +43589,7 @@ phases:
       contracted boundary.'
   - id: driver-judge-hardening-structured-output.gate
     name: Gate structured-output stability
-    status: pending
+    status: claimed
     description: "step_type: gate\nreview_depth: THOROUGH\nverification_scope: phase-check\n\
       protects_downstream_gates:\n  - driver-judge-hardening-review.gate\n  - driver-bootstrap-readiness.gate\n\
       \nAs an INDEPENDENT REVIEWER, assess whether judge structured-output stability\
@@ -43607,6 +43607,8 @@ phases:
     - driver-judge-hardening-structured-output.impl
     - driver-judge-hardening-structured-output.real-codex-verify
     agent: gate-reviewer
+    claimed_by: gate-reviewer
+    claimed_at: '2026-03-29T01:40:22.483393+00:00'
 - id: driver-judge-hardening-recovery-policy
   name: 'Driver Judge Hardening: Failure Policy Alignment'
   status: in_progress

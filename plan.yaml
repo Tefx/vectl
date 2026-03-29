@@ -50254,19 +50254,25 @@ phases:
     description: "step_type: implementation\ntags:\n  - integration\nverification_scope:\
       \ local-check\n\nAdd additive live smoke tests for the real opencode judge path.\n\
       \nScope:\n- tests/live_smoke/test_opencode_judge_live.py\n- optional minimal\
-      \ test-only hook changes required to select the ratified cheap opencode model\n\
+      \ test-only hook changes required to select the exact opencode judge cheap-model\
+      \ identifier ratified in driver-live-smoke-foundation.ratify-live-smoke-policy\n\
       \nRequired scenarios:\n- real opencode judge run that validates structured verdict\
       \ acceptance when available\n- tolerant JSONL/text verdict extraction through\
       \ src/vectl/driver/judge.py::_extract_verdict_payload with real opencode CLI\
       \ behavior when structured output is unavailable\n- explicit skip evidence for\
       \ missing binary, missing auth/prereq, or opt-in env gate absent\n- parse failure\
-      \ distinguished from transport/auth failure and invalid verdict shape\n\nPath\
-      \ exercised: driver.yaml opencode runner contract -> judge text/JSONL extraction\
-      \ path -> real opencode subprocess -> verdict assertion helper.\n\n## Completion\
-      \ Criteria (stub exclusion)\nThis is an IMPLEMENTATION step. Stub-only completion\
-      \ is NOT acceptable."
+      \ distinguished from transport/auth failure and invalid verdict shape\n- if\
+      \ preferred opencode judge model is unavailable, exercise only the ratified\
+      \ fallback policy from the foundation step\n\nRequired configuration anchor:\n\
+      - use the exact opencode judge model id and exact supported override mechanism\
+      \ ratified by driver-live-smoke-foundation.ratify-live-smoke-policy; do not\
+      \ substitute a generic cheap model\n\nPath exercised: driver.yaml opencode runner\
+      \ contract -> judge text/JSONL extraction path -> real opencode subprocess ->\
+      \ verdict assertion helper.\n\n## Completion Criteria (stub exclusion)\nThis\
+      \ is an IMPLEMENTATION step. Stub-only completion is NOT acceptable."
     verification: '- Main path: targeted opencode judge live pytest selection passes
-      against real opencode or skips explicitly with justified evidence.
+      against real opencode or skips explicitly with justified evidence using the
+      ratified model id/override mechanism.
 
       - Failure path: parse rejection and transport/auth skip paths are separately
       asserted.

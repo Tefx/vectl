@@ -41271,7 +41271,7 @@ phases:
     claimed_at: '2026-03-29T07:23:23.539370+00:00'
   - id: driver-evolution-loop-migration.liveness-probe
     name: Probe driver liveness after loop migration
-    status: claimed
+    status: done
     description: 'step_type: verification
 
       expected_result: green
@@ -41307,6 +41307,26 @@ phases:
     agent: blind-tester
     claimed_by: blind-tester
     claimed_at: '2026-03-29T07:23:12.325594+00:00'
+    done_at: '2026-03-29T07:25:38.138641+00:00'
+    evidence: 'Artifact:
+
+      - Runtime liveness verified within broad driver regression harness
+
+
+      Verification:
+
+      - entrypoint/runtime suites exercised via `tests/test_driver_entrypoint_drift.py`
+      and runtime/dispatch suites in same run
+
+      - observed: driver paths execute and remain alive for test harness duration
+      with no startup/runtime failure
+
+
+      Spec link:
+
+      - docs/ADR-driver-evolution-foundation.md#18-decision-drivers
+
+      - docs/ADR-driver-evolution-foundation.md#116-target-architecture-shape'
   - id: driver-evolution-loop-migration.full-plan-check
     name: Run full-plan driver regression boundary
     status: done

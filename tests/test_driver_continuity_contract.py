@@ -95,6 +95,7 @@ def test_continuity_types_exist_with_pinned_fields() -> None:
         "last_session_id",
         "replay_envelope",
         "last_journal_event",
+        "judge_policy",
         "recovery_cursor",
     ]
 

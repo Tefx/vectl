@@ -11,6 +11,7 @@ These tests intentionally require behavior deferred to
 
 from __future__ import annotations
 
+from dataclasses import replace
 from pathlib import Path
 from typing import Any
 
@@ -189,6 +190,64 @@ def test_startup_recovery_selects_restart_when_capability_snapshot_missing_expec
     )
 
 
+def test_startup_recovery_halts_when_ledger_status_completed() -> None:
+    """Completed ledger status must halt startup resume/restart classification."""
+
+    completed_entry = replace(
+        _ledger_entry("core.impl"),
+        status="completed",
+        recovery_cursor="terminal",
+    )
+    boundary_output = evaluate_startup_recovery_boundary(
+        boundary_input=StartupRecoveryBoundaryInput(
+            reconciliation=StartupRecoveryReconciliationFacts(
+                plan_step_ids=("core.impl",),
+                claim_step_ids=("core.impl",),
+                ledger_step_ids=("core.impl",),
+            ),
+            capability_snapshot_ids=(),
+            ledger_entries=(completed_entry,),
+            judge_failure_inputs=(),
+        )
+    )
+
+    assert any(
+        decision.step_id == "core.impl"
+        and decision.disposition == "halt"
+        and decision.reason == "ledger_status_completed"
+        for decision in boundary_output.decisions
+    )
+
+
+def test_startup_recovery_restarts_when_recovery_cursor_pre_merge() -> None:
+    """pre_merge recovery cursor must force restart before capability checks."""
+
+    pre_merge_entry = replace(
+        _ledger_entry("core.impl"),
+        status="runner_success",
+        recovery_cursor="pre_merge",
+    )
+    boundary_output = evaluate_startup_recovery_boundary(
+        boundary_input=StartupRecoveryBoundaryInput(
+            reconciliation=StartupRecoveryReconciliationFacts(
+                plan_step_ids=("core.impl",),
+                claim_step_ids=("core.impl",),
+                ledger_step_ids=("core.impl",),
+            ),
+            capability_snapshot_ids=(),
+            ledger_entries=(pre_merge_entry,),
+            judge_failure_inputs=(),
+        )
+    )
+
+    assert any(
+        decision.step_id == "core.impl"
+        and decision.disposition == "restart"
+        and decision.reason == "recovery_cursor_pre_merge"
+        for decision in boundary_output.decisions
+    )
+
+
 def test_entrypoint_path_halts_when_startup_boundary_blocks(
     monkeypatch: Any,
     tmp_path: Path,
@@ -323,16 +382,19 @@ def test_run_consumes_durable_judge_halt_policy_inputs_on_startup(
 
     captured: dict[str, object] = {}
 
-    def _capture_boundary(
-        *, boundary_input: StartupRecoveryBoundaryInput
-    ) -> StartupRecoveryBoundaryOutput:
-        captured["boundary_input"] = boundary_input
-        return StartupRecoveryBoundaryOutput(
-            decisions=(),
-            resumable_handoffs=(),
-            repair_actions=(),
-            blocked_reasons=(),
-        )
+    class _CaptureController:
+        def plan_recovery(
+            self,
+            *,
+            boundary_input: StartupRecoveryBoundaryInput,
+        ) -> StartupRecoveryBoundaryOutput:
+            captured["boundary_input"] = boundary_input
+            return StartupRecoveryBoundaryOutput(
+                decisions=(),
+                resumable_handoffs=(),
+                repair_actions=(),
+                blocked_reasons=(),
+            )
 
     async def _noop_main_loop(**_kwargs: object) -> None:
         return None
@@ -399,7 +461,7 @@ def test_run_consumes_durable_judge_halt_policy_inputs_on_startup(
             (),
         ),
     )
-    monkeypatch.setattr(loop_module, "evaluate_startup_recovery_boundary", _capture_boundary)
+    monkeypatch.setattr(loop_module, "_startup_recovery_controller", lambda: _CaptureController())
     monkeypatch.setattr(loop_module, "_run_main_loop", _noop_main_loop)
 
     exit_code = driver_entrypoint.run_driver_module_entrypoint(
@@ -413,3 +475,251 @@ def test_run_consumes_durable_judge_halt_policy_inputs_on_startup(
     assert len(boundary_input.judge_failure_inputs) == 1
     assert boundary_input.judge_failure_inputs[0].policy.action == "halt"
     assert boundary_input.judge_failure_inputs[0].attempt_key == "core.impl:opencode:session-1"
+
+
+def test_evaluate_startup_recovery_boundary_routes_through_controller(monkeypatch: Any) -> None:
+    """Standalone evaluator must route through StartupRecoveryController."""
+
+    expected = StartupRecoveryBoundaryOutput(
+        decisions=(),
+        resumable_handoffs=(),
+        repair_actions=("restart:core.impl:test",),
+        blocked_reasons=("core.impl:test",),
+    )
+    captured: dict[str, object] = {"called": False}
+
+    class _Controller:
+        def plan_recovery(
+            self,
+            *,
+            boundary_input: StartupRecoveryBoundaryInput,
+        ) -> StartupRecoveryBoundaryOutput:
+            captured["called"] = True
+            captured["boundary_input"] = boundary_input
+            return expected
+
+    boundary_input = _boundary_input(
+        plan_step_ids=("core.impl",),
+        claim_step_ids=("core.impl",),
+        ledger_step_ids=("core.impl",),
+    )
+    monkeypatch.setattr(loop_module, "_startup_recovery_controller", lambda: _Controller())
+
+    observed = evaluate_startup_recovery_boundary(boundary_input=boundary_input)
+
+    assert observed == expected
+    assert captured["called"] is True
+    assert captured["boundary_input"] == boundary_input
+
+
+def test_run_consumes_ledger_status_and_recovery_cursor_via_controller(
+    monkeypatch: Any,
+    tmp_path: Path,
+) -> None:
+    """Production startup path must consume status/recovery_cursor for control flow."""
+
+    class _Observer:
+        def __init__(self) -> None:
+            self.halt_events: list[dict[str, object]] = []
+            self.startup_decisions: list[dict[str, object]] = []
+
+        def emit(self, event_type: str, /, **data: object) -> None:
+            if event_type == "HALT":
+                self.halt_events.append(data)
+            if event_type == "STARTUP_RECOVERY_DECISION":
+                self.startup_decisions.append(data)
+
+        def close(self) -> None:
+            return None
+
+    class _RepairResult:
+        branch = "vectl/step-core.impl"
+        actions: tuple[object, ...] = ()
+
+    class _StepCore:
+        id = "core.impl"
+
+    class _StepApi:
+        id = "api.impl"
+
+    class _Phase:
+        steps = [_StepCore(), _StepApi()]
+
+    class _Plan:
+        context = "startup-recovery-ledger-status-cursor"
+        phases = [_Phase()]
+
+    class _Runner:
+        name = "opencode"
+
+    driver_config = DriverConfig(
+        plan_path=str(tmp_path / "plan.yaml"),
+        runners={
+            "opencode": RunnerConfig(
+                command="opencode",
+                args=["run", "--format", "json"],
+                output_parser="opencode_jsonl",
+            )
+        },
+        agent_routing={"python-executor": "opencode"},
+        fallback_runner="opencode",
+        orchestration=OrchestrationConfig(max_parallelism=1),
+        session=SessionConfig(reuse_ttl=300),
+        judge=JudgeConfig(preflight=False),
+        observability=ObservabilityConfig(),
+    )
+
+    observed = _Observer()
+    main_loop_called = {"value": False}
+
+    async def _noop_main_loop(**_kwargs: object) -> None:
+        main_loop_called["value"] = True
+
+    completed_status_entry = replace(
+        _ledger_entry("core.impl"),
+        status="completed",
+        recovery_cursor="terminal",
+    )
+    cursor_halt_entry = replace(
+        _ledger_entry("api.impl"),
+        status="failed",
+        recovery_cursor="halt_requested_by_judge_policy",
+    )
+
+    monkeypatch.setattr(loop_module, "_load_runtime_config", lambda _p: driver_config)
+    monkeypatch.setattr(loop_module, "create_observer", lambda _cfg: observed)
+    monkeypatch.setattr(loop_module, "create_runner", lambda _n, _cfg: _Runner())
+    monkeypatch.setattr(loop_module, "Judge", lambda *_a, **_k: _Runner())
+    monkeypatch.setattr(loop_module, "load_plan_definition", lambda _p: (_Plan(), "hash"))
+    monkeypatch.setattr(loop_module, "repair_claims", lambda *_a, **_k: _RepairResult())
+    monkeypatch.setattr(
+        loop_module,
+        "load_claims_for_branch",
+        lambda *_a, **_k: {
+            "core.impl": "python-senior",
+            "api.impl": "python-executor",
+        },
+    )
+    monkeypatch.setattr(loop_module, "_cleanup_orphan_worktrees", lambda **_k: ())
+    monkeypatch.setattr(
+        loop_module,
+        "_load_ledger_entries",
+        lambda _root: (
+            (completed_status_entry, cursor_halt_entry),
+            (),
+        ),
+    )
+    monkeypatch.setattr(loop_module, "_run_main_loop", _noop_main_loop)
+
+    exit_code = driver_entrypoint.run_driver_module_entrypoint(
+        argv=[str(tmp_path / "driver.yaml")],
+        adapter=driver_entrypoint.get_runtime_adapter(),
+    )
+
+    decision_reasons = {decision["reason"] for decision in observed.startup_decisions}
+
+    assert exit_code == 0
+    assert main_loop_called["value"] is False
+    assert decision_reasons == {
+        "ledger_status_completed",
+        "recovery_cursor_halt_requested_by_judge_policy",
+    }
+    assert observed.halt_events
+
+
+def test_run_uses_startup_recovery_controller_contract(
+    monkeypatch: Any,
+    tmp_path: Path,
+) -> None:
+    """Startup run path must invoke StartupRecoveryController.plan_recovery."""
+
+    class _Observer:
+        def emit(self, event_type: str, /, **data: object) -> None:
+            return None
+
+        def close(self) -> None:
+            return None
+
+    class _RepairResult:
+        branch = "vectl/step-core.impl"
+        actions: tuple[object, ...] = ()
+
+    class _Step:
+        id = "core.impl"
+
+    class _Phase:
+        steps = [_Step()]
+
+    class _Plan:
+        context = "startup-recovery-controller-contract"
+        phases = [_Phase()]
+
+    class _Runner:
+        name = "opencode"
+
+    class _Controller:
+        def __init__(self) -> None:
+            self.called = False
+            self.boundary_input: StartupRecoveryBoundaryInput | None = None
+
+        def plan_recovery(
+            self,
+            *,
+            boundary_input: StartupRecoveryBoundaryInput,
+        ) -> StartupRecoveryBoundaryOutput:
+            self.called = True
+            self.boundary_input = boundary_input
+            return StartupRecoveryBoundaryOutput(
+                decisions=(),
+                resumable_handoffs=(),
+                repair_actions=(),
+                blocked_reasons=(),
+            )
+
+    driver_config = DriverConfig(
+        plan_path=str(tmp_path / "plan.yaml"),
+        runners={
+            "opencode": RunnerConfig(
+                command="opencode",
+                args=["run", "--format", "json"],
+                output_parser="opencode_jsonl",
+            )
+        },
+        agent_routing={"python-executor": "opencode"},
+        fallback_runner="opencode",
+        orchestration=OrchestrationConfig(max_parallelism=1),
+        session=SessionConfig(reuse_ttl=300),
+        judge=JudgeConfig(preflight=False),
+        observability=ObservabilityConfig(),
+    )
+
+    main_loop_called = {"value": False}
+
+    async def _noop_main_loop(**_kwargs: object) -> None:
+        main_loop_called["value"] = True
+
+    controller = _Controller()
+
+    monkeypatch.setattr(loop_module, "_load_runtime_config", lambda _p: driver_config)
+    monkeypatch.setattr(loop_module, "create_observer", lambda _cfg: _Observer())
+    monkeypatch.setattr(loop_module, "create_runner", lambda _n, _cfg: _Runner())
+    monkeypatch.setattr(loop_module, "Judge", lambda *_a, **_k: _Runner())
+    monkeypatch.setattr(loop_module, "load_plan_definition", lambda _p: (_Plan(), "hash"))
+    monkeypatch.setattr(loop_module, "repair_claims", lambda *_a, **_k: _RepairResult())
+    monkeypatch.setattr(
+        loop_module, "load_claims_for_branch", lambda *_a, **_k: {"core.impl": "python-senior"}
+    )
+    monkeypatch.setattr(loop_module, "_cleanup_orphan_worktrees", lambda **_k: ())
+    monkeypatch.setattr(loop_module, "_load_ledger_entries", lambda _root: ((), ()))
+    monkeypatch.setattr(loop_module, "_startup_recovery_controller", lambda: controller)
+    monkeypatch.setattr(loop_module, "_run_main_loop", _noop_main_loop)
+
+    exit_code = driver_entrypoint.run_driver_module_entrypoint(
+        argv=[str(tmp_path / "driver.yaml")],
+        adapter=driver_entrypoint.get_runtime_adapter(),
+    )
+
+    assert exit_code == 0
+    assert controller.called is True
+    assert isinstance(controller.boundary_input, StartupRecoveryBoundaryInput)
+    assert main_loop_called["value"] is True

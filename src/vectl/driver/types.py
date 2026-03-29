@@ -644,13 +644,17 @@ class StartupRecoveryBoundaryOutput:
 class StartupRecoveryController(Protocol):
     """Protocol for continuity-aware startup recovery planning.
 
-    Contract only: implementation remains deferred to continuity runtime phases.
+    Runtime authority: production startup entrypoints must execute recovery
+    through this controller contract rather than bypassing it with direct
+    boundary-function calls.
     """
 
     def plan_recovery(
-        self, recovery_input: StartupRecoveryControllerInput
-    ) -> StartupRecoveryControllerOutput:
-        """Return deterministic recovery decisions from continuity inputs."""
+        self,
+        *,
+        boundary_input: StartupRecoveryBoundaryInput,
+    ) -> StartupRecoveryBoundaryOutput:
+        """Return deterministic startup recovery boundary classification."""
         ...
 
 

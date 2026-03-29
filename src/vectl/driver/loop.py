@@ -83,6 +83,7 @@ from .types import (
     RunnerStatus,
     StartupRecoveryBoundaryInput,
     StartupRecoveryBoundaryOutput,
+    StartupRecoveryController,
     StartupRecoveryDecision,
     StartupRecoveryJudgeInput,
     StartupRecoveryReconciliationFacts,
@@ -431,6 +432,35 @@ class GracefulShutdownContract:
 STARTUP_RECOVERY_CONTRACT: Final[StartupRecoveryContract] = StartupRecoveryContract()
 GRACEFUL_SHUTDOWN_CONTRACT: Final[GracefulShutdownContract] = GracefulShutdownContract()
 
+
+@dataclass(frozen=True)
+class DefaultStartupRecoveryController:
+    """Production startup recovery controller adapter.
+
+    Source:
+    - ``driver-continuity-review.fix-wiring-blockers`` (B1 protocol wiring)
+
+    This adapter makes ``StartupRecoveryController`` the production startup
+    entrypoint contract while preserving the existing deterministic boundary
+    evaluator as the implementation authority.
+    """
+
+    def plan_recovery(
+        self,
+        *,
+        boundary_input: StartupRecoveryBoundaryInput,
+    ) -> StartupRecoveryBoundaryOutput:
+        """Evaluate startup recovery through the authoritative boundary matrix."""
+
+        return _evaluate_startup_recovery_boundary_matrix(boundary_input=boundary_input)
+
+
+def _startup_recovery_controller() -> StartupRecoveryController:
+    """Return the production startup recovery controller implementation."""
+
+    return DefaultStartupRecoveryController()
+
+
 STARTUP_RECOVERY_SCAN_ORDER: Final[tuple[str, ...]] = (
     "load_plan",
     "repair_claims",
@@ -449,6 +479,22 @@ Source:
 
 
 def evaluate_startup_recovery_boundary(
+    *,
+    boundary_input: StartupRecoveryBoundaryInput,
+) -> StartupRecoveryBoundaryOutput:
+    """Evaluate startup recovery by routing through controller contract.
+
+    Source:
+    - ``driver-continuity-review.fix-wiring-blockers`` (B1 protocol wiring)
+
+    This surface remains available for callers that require function-level
+    invocation semantics, but it no longer bypasses ``StartupRecoveryController``.
+    """
+
+    return _startup_recovery_controller().plan_recovery(boundary_input=boundary_input)
+
+
+def _evaluate_startup_recovery_boundary_matrix(
     *,
     boundary_input: StartupRecoveryBoundaryInput,
 ) -> StartupRecoveryBoundaryOutput:
@@ -513,6 +559,81 @@ def evaluate_startup_recovery_boundary(
             continue
 
         ledger_entry = ledger_by_step[step_id]
+        status = ledger_entry.status.strip().lower()
+        recovery_cursor = (ledger_entry.recovery_cursor or "").strip()
+
+        if status == "completed":
+            decisions.append(
+                StartupRecoveryDecision(
+                    step_id=step_id,
+                    disposition="halt",
+                    reason="ledger_status_completed",
+                    source_attempt_key=ledger_entry.latest_attempt_key,
+                )
+            )
+            blocked_reasons.append(f"{step_id}:ledger_status_completed")
+            continue
+
+        if status == "aborted":
+            decisions.append(
+                StartupRecoveryDecision(
+                    step_id=step_id,
+                    disposition="halt",
+                    reason="ledger_status_aborted",
+                    source_attempt_key=ledger_entry.latest_attempt_key,
+                )
+            )
+            blocked_reasons.append(f"{step_id}:ledger_status_aborted")
+            continue
+
+        if recovery_cursor == "halt_requested_by_judge_policy":
+            decisions.append(
+                StartupRecoveryDecision(
+                    step_id=step_id,
+                    disposition="halt",
+                    reason="recovery_cursor_halt_requested_by_judge_policy",
+                    source_attempt_key=ledger_entry.latest_attempt_key,
+                )
+            )
+            blocked_reasons.append(f"{step_id}:recovery_cursor_halt_requested_by_judge_policy")
+            continue
+
+        if recovery_cursor == "awaiting_conflict_resolution":
+            decisions.append(
+                StartupRecoveryDecision(
+                    step_id=step_id,
+                    disposition="halt",
+                    reason="recovery_cursor_awaiting_conflict_resolution",
+                    source_attempt_key=ledger_entry.latest_attempt_key,
+                )
+            )
+            blocked_reasons.append(f"{step_id}:recovery_cursor_awaiting_conflict_resolution")
+            continue
+
+        if recovery_cursor == "pre_merge":
+            decisions.append(
+                StartupRecoveryDecision(
+                    step_id=step_id,
+                    disposition="restart",
+                    reason="recovery_cursor_pre_merge",
+                    source_attempt_key=ledger_entry.latest_attempt_key,
+                )
+            )
+            repair_actions.append(f"restart:{step_id}:recovery_cursor_pre_merge")
+            continue
+
+        if recovery_cursor == "awaiting_retry_or_escalation":
+            decisions.append(
+                StartupRecoveryDecision(
+                    step_id=step_id,
+                    disposition="restart",
+                    reason="recovery_cursor_awaiting_retry_or_escalation",
+                    source_attempt_key=ledger_entry.latest_attempt_key,
+                )
+            )
+            repair_actions.append(f"restart:{step_id}:recovery_cursor_awaiting_retry_or_escalation")
+            continue
+
         runner_capability = capability_for_runner(ledger_entry.runner_name)
         expected_snapshot = capability_snapshot_id(runner_capability)
 
@@ -1635,7 +1756,7 @@ async def run(config_path: Path) -> None:
         continuity_repo_root = _resolve_repo_root_from_plan(plan_path)
         ledger_entries, corrupt_ledger_files = _load_ledger_entries(continuity_repo_root)
         startup_judge_failure_inputs = _startup_judge_inputs_from_ledger_entries(ledger_entries)
-        startup_boundary = evaluate_startup_recovery_boundary(
+        startup_boundary = _startup_recovery_controller().plan_recovery(
             boundary_input=StartupRecoveryBoundaryInput(
                 reconciliation=StartupRecoveryReconciliationFacts(
                     plan_step_ids=tuple(sorted(plan_step_ids)),

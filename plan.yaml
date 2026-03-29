@@ -49165,6 +49165,8 @@ phases:
       runtime/hardening/recovery coverage.'
     verification: Targeted reconcile convergence tests run in expected-red mode with
       failures attributable only to the not-yet-landed context-only refactor.
+    depends_on:
+    - driver-reconcile-context-convergence.contract
     agent: python-executor
   - id: driver-reconcile-context-convergence.impl-boundary
     name: Refactor reconcile to a single RuntimeContext boundary

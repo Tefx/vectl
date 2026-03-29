@@ -50278,7 +50278,7 @@ phases:
       \ records**: None required — contract artifacts were followed exactly."
   - id: driver-live-smoke-implementation.add-codex-judge-live-smoke-coverage
     name: Add codex judge live smoke coverage
-    status: claimed
+    status: done
     description: 'Add additive live smoke tests for the real codex judge path.
 
 
@@ -50346,6 +50346,80 @@ phases:
     agent: python-executor
     claimed_by: python-executor
     claimed_at: '2026-03-29T16:23:35.716134+00:00'
+    done_at: '2026-03-29T16:47:54.885104+00:00'
+    evidence: '## Codex Judge Live Smoke Test Evidence
+
+
+      **Artifact**:
+
+      - Commit: `73af360` - Created `tests/live_smoke/test_codex_judge_live.py` (632
+      lines)
+
+
+      **Verification**:
+
+
+      Run without opt-in (skips integration tests):
+
+      ```bash
+
+      $ uv run pytest tests/live_smoke/test_codex_judge_live.py -v
+
+      = 16 passed, 5 skipped in 0.16s =
+
+      ```
+
+
+      Marker selection:
+
+      ```bash
+
+      $ uv run pytest tests/live_smoke/test_codex_judge_live.py -m "live_runner and
+      codex_live and judge_live" -v
+
+      = 6 passed, 5 skipped, 10 deselected =
+
+      ```
+
+
+      Skip reasons displayed:
+
+      ```
+
+      SKIPPED: Live runner tests require RUN_LIVE_RUNNER_TESTS=1
+
+      SKIPPED: Auth/session not available for runner ''codex''
+
+      SKIPPED: live_runner preflight failed: live_runner_opt_in_missing
+
+      ```
+
+
+      **Spec link**:
+
+      - DRIVER-LIVE-SMOKE-POLICY.md - codex judge live smoke tests
+
+      - Uses pinned model: `gpt-5.4-mini`
+
+      - Override mechanism: `VECTL_CODEX_MODEL` envar
+
+
+      **Test coverage**:
+
+      - `TestCodexJudgeLive` - 5 tests for skip/preflight behavior
+
+      - `TestCodexJudgeLiveIntegration` - 6 tests for real CLI invocation
+
+      - `TestCodexJudgeVerdictParsing` - 10 unit tests for parsing helpers
+
+
+      **Forbidden success path**:
+
+      No tolerant fallback-to-text success when codex structured-output mode is under
+      test.
+
+
+      **Deviation records**: None required.'
   - id: driver-live-smoke-implementation.add-opencode-judge-live-smoke-coverage
     name: Add opencode judge live smoke coverage
     status: done

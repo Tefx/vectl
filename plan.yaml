@@ -49190,7 +49190,7 @@ phases:
       \ files changed\""
   - id: driver-reconcile-context-convergence.contract
     name: Pin final reconcile context-only contract and non-goals
-    status: claimed
+    status: done
     description: "Contract-only step. Pin the FINAL reconcile boundary as:\n\n`reconcile(completed,\
       \ *, context)` or one equivalent single-context-only form.\n\nRequired contract\
       \ outputs:\n- exact final signature to be enforced\n- explicit forbidden legacy\
@@ -49222,6 +49222,23 @@ phases:
     agent: python-executor
     claimed_by: python-executor
     claimed_at: '2026-03-29T11:06:54.056172+00:00'
+    done_at: '2026-03-29T11:18:39.483521+00:00'
+    evidence: "## Final reconcile contract\n- Final signature:\n  `async def reconcile(completed:\
+      \ CompletedEntry, *, context: RuntimeContext) -> None`\n- Forbidden params:\n\
+      \  `state, judge, session_pool, observer, plan_path, config, runners`\n- Runtime\
+      \ bundle authority:\n  `RuntimeContext only`\n- Non-goal statement:\n  `handle_complete()\
+      \ does NOT handle completion authority convergence. The sole completion authority\
+      \ is wait_for_any() -> reconcile(). handle_complete() is retained only as a\
+      \ legacy compatibility shim for internal callers that invoke decide(action='complete').`\n\
+      - Files updated:\n  `src/vectl/driver/loop.py`\n  \n  Contract artifact added:\
+      \ `ReconcileContextOnlyContract` dataclass (lines 499-535) and `RECONCILE_CONTEXT_ONLY_CONTRACT`\
+      \ singleton (lines 538-566) following the same pattern as `STARTUP_RECOVERY_CONTRACT`,\
+      \ `GRACEFUL_SHUTDOWN_CONTRACT`, and `COMPLETION_AUTHORITY_A1_CONTRACT`.\n  \n\
+      \  The contract pins:\n  - The exact final `reconcile()` signature as context-only\n\
+      \  - All 7 forbidden explicit params listed verbatim\n  - `RuntimeContext` as\
+      \ sole runtime bundle authority  \n  - `handle_complete()` non-goal statement\
+      \ explicitly\n  \n  Authority sources:\n  - docs/DRIVER-ARCHITECTURE.md Section\
+      \ 2.11 reconcile boundary\n  - docs/ADR-driver-evolution-foundation.md#96-handlers-receive-a-unified-runtimecontext"
   - id: driver-reconcile-context-convergence.test-define-red
     name: Define expected-red tests for reconcile context-only convergence
     status: pending

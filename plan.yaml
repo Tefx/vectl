@@ -46336,3 +46336,65 @@ phases:
     depends_on:
     - driver-continuity-review.wiring-audit
     agent: python-senior
+  - id: driver-continuity-review.wiring-audit-retest
+    name: Retest continuity review wiring audit
+    status: pending
+    description: 'Re-run the wiring audit after driver-continuity-review.fix-wiring-blockers
+      from an independent wiring perspective.
+
+
+      This retest must verify BOTH repaired blocker families together:
+
+      1. StartupRecoveryController protocol is implemented and actually wired into
+      the production startup/recovery path
+
+      2. continuity ledger fields `status` and `recovery_cursor` are consumed in the
+      production recovery path with real semantic effect
+
+
+      Do not accept indirect references, dead reads, or helper-only paths as sufficient.
+      Validate production-path wiring and consumption semantics.'
+    verification: '- Re-run wiring audit for the repaired continuity-review scope
+
+      - Confirm production startup/recovery path reaches StartupRecoveryController-backed
+      flow
+
+      - Confirm `status` and `recovery_cursor` are production-path reads with observable
+      behavior impact
+
+      - Report PASS or ISSUES_FOUND with exact locations'
+    evidence_template: '## Wiring Audit Retest Report
+
+
+      **Scope**: driver-continuity-review repaired wiring
+
+
+      **Checks**:
+
+      1. StartupRecoveryController contract reachable from production startup/recovery
+      entrypoint
+
+      2. No standalone-function bypass remains in production path
+
+      3. `status` consumed in production recovery path
+
+      4. `recovery_cursor` consumed in production recovery path
+
+
+      **Evidence**:
+
+      - Entry path traced: <path>
+
+      - Controller implementation reached at: <file:line>
+
+      - status read at: <file:line>
+
+      - recovery_cursor read at: <file:line>
+
+      - Observable effects: <branch/decision>
+
+
+      **Verdict**: PASS | ISSUES_FOUND'
+    depends_on:
+    - driver-continuity-review.fix-wiring-blockers
+    agent: wiring-auditor

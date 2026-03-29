@@ -52630,3 +52630,26 @@ phases:
     depends_on:
     - driver-continuity-hygiene-deep-review.wiring-audit
     agent: gate-reviewer
+  - id: driver-continuity-hygiene-deep-review.black-box-verification
+    name: Black-box verify continuity hygiene from published surfaces
+    status: pending
+    description: 'Using only the spec, CLI surface, and driver entrypoints (not implementation
+      process), verify continuity hygiene behavior.
+
+
+      Required checks:
+
+      - create fixtures from the documented continuity directory layout
+
+      - verify safe stale leftovers are quarantined and do not halt startup
+
+      - verify corrupt, active-claim, current-claimed-step, and ambiguous fixtures
+      still block
+
+      - verify `repair continuity` emits auditable dry-run/apply/json outputs from
+      the same fixture families'
+    verification: '- Black-box evidence uses published surfaces and documented fixture
+      shapes only'
+    depends_on:
+    - driver-continuity-hygiene-deep-review.spec-conformance
+    agent: blind-tester

@@ -56,6 +56,12 @@ addopts = "-v --tb=short"
 markers = [
     "playwright: marks tests that require Playwright browser (deselect with '-m \"not playwright\"')",
     "network: marks tests that require network (for CDN resources)",
+    # Live smoke test markers (from DRIVER-LIVE-SMOKE-POLICY.md)
+    "live_runner: marks tests that are part of the live smoke test suite",
+    "codex_live: marks tests that use the codex runner in live smoke",
+    "opencode_live: marks tests that use the opencode runner in live smoke",
+    "judge_live: marks tests that exercise judge/score behavior in live smoke",
+    "dispatch_live: marks tests that exercise regular dispatch behavior in live smoke",
 ]
 
 [tool.ruff]

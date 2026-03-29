@@ -49213,6 +49213,13 @@ phases:
     verification: Green targeted runs for reconcile contract/runtime suites; evidence
       shows the final signature is context-only, call sites are migrated, and docs
       match.
+    depends_on:
+    - driver-reconcile-context-convergence.sync-current-contract-test
+    - driver-reconcile-context-convergence.contract
+    - driver-reconcile-context-convergence.test-define-red
+    - driver-reconcile-context-convergence.impl-boundary
+    - driver-reconcile-context-convergence.sync-callsites-tests
+    - driver-reconcile-context-convergence.doc-sync
     agent: integration-verifier
   - id: driver-reconcile-context-convergence.gate
     name: Gate reconcile context-only convergence

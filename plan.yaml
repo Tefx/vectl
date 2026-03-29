@@ -41515,7 +41515,7 @@ phases:
   steps:
   - id: driver-evolution-review.update-docs
     name: Sync driver architecture docs to the ADR-backed evolution baseline
-    status: claimed
+    status: pending
     description: 'step_type: doc-sync
 
 
@@ -41543,8 +41543,6 @@ phases:
 
       - No stale architecture statement contradicts the implementation'
     agent: doc-reviewer
-    claimed_by: doc-reviewer
-    claimed_at: '2026-03-29T07:29:30.823923+00:00'
   - id: driver-evolution-review.wiring-audit
     name: Audit evolved driver wiring completeness
     status: pending

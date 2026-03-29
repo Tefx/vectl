@@ -49942,6 +49942,75 @@ phases:
     contract are ratified before any live smoke implementation starts.
   depends_on:
   - driver-enhancement-foundation
+  steps:
+  - id: driver-live-smoke-foundation.ratify-live-smoke-policy
+    name: Ratify cheap-model and execution policy
+    status: pending
+    description: 'Planning step.
+
+
+      Use the architecture_basis as authoritative and ratify the live smoke execution
+      policy before implementation assumes any model names.
+
+
+      Required outputs:
+
+      - codex cheap-model selection mechanism and validated low-cost model name(s)
+
+      - opencode cheap-model selection mechanism and validated low-cost model name(s)
+
+      - explicit opt-in env gate (for example RUN_LIVE_RUNNER_TESTS=1) and skip taxonomy
+      for missing binary/auth/opt-in
+
+      - decision on where live smoke runs: manual-only vs separate CI job vs nightly
+      vs release gate
+
+      - exact marker set: live_runner, codex_live, opencode_live, judge_live, dispatch_live
+
+
+      Constraints:
+
+      - Do not redesign production runner semantics
+
+      - Do not guess model names; discovery/validation evidence is mandatory
+
+      - Preserve codex/opencode as the only in-scope live runners
+
+
+      Touch paths:
+
+      - docs/DRIVER-ARCHITECTURE.md
+
+      - driver.yaml
+
+      - pyproject.toml
+
+      - tests/live_smoke/
+
+
+      step_type: planning'
+    verification: '- Evidence includes a runner-by-runner matrix for cheap-model knobs,
+      supported invocation shape, and skip reasons.
+
+      - Evidence states the ratified execution mode for CI/manual gating and why.
+
+      - No downstream implementation step needs to guess a model name or env contract.'
+    evidence_template: '## Live Smoke Policy Ratification
+
+      - codex cheap-model discovery:
+
+      - opencode cheap-model discovery:
+
+      - opt-in env gate:
+
+      - skip reasons taxonomy:
+
+      - execution mode decision (manual / CI / nightly / release):
+
+      - unresolved items:
+
+      '
+    agent: software-architect
 - id: driver-live-smoke-implementation
   name: Driver Live Runner Smoke Coverage Implementation
   status: locked

@@ -44734,7 +44734,7 @@ phases:
   steps:
   - id: driver-prompt-review.update-docs
     name: Sync prompt docs to packaged-resource contract
-    status: pending
+    status: claimed
     description: 'Update documentation so docs/JUDGE-AGENT-PROMPT.md and related driver
       architecture docs clearly describe their new role.
 
@@ -44773,6 +44773,8 @@ phases:
 
       - Remaining doc follow-ups:'
     agent: doc-reviewer
+    claimed_by: doc-reviewer
+    claimed_at: '2026-03-29T09:33:49.728501+00:00'
   - id: driver-prompt-review.wiring-audit
     name: Audit packaged prompt wiring completeness
     status: pending

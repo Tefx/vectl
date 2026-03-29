@@ -52588,3 +52588,26 @@ phases:
     depends_on:
     - driver-continuity-hygiene-deep-review.wiring-audit
     agent: spec-verifier
+  - id: driver-continuity-hygiene-deep-review.architecture-review
+    name: Review continuity hygiene architecture and state boundaries
+    status: pending
+    description: 'Review module boundaries, dependency direction, and continuity-state
+      safety.
+
+
+      Specifically check:
+
+      - startup hygiene helper owns classification/quarantine truth, not duplicated
+      ad hoc in loop.py and cli.py
+
+      - no auto-remap of migrated step ids leaked into runtime behavior
+
+      - quarantine storage remains audit-preserving and bounded
+
+      - import direction and runtime ownership remain consistent with continuity foundation
+      architecture'
+    verification: '- Architecture review identifies any split-truth or state-boundary
+      regression before final gate'
+    depends_on:
+    - driver-continuity-hygiene-deep-review.wiring-audit
+    agent: software-architect

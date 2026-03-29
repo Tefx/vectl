@@ -41871,7 +41871,7 @@ phases:
       - docs/ADR-driver-evolution-foundation.md §§30,45,58,71,85,96,104,137,190,193'
   - id: driver-evolution-review.gate
     name: Final gate for driver evolution ADR chain
-    status: claimed
+    status: done
     description: 'step_type: gate
 
       Gate review: final doc-sync + deep review for the driver evolution ADR chain.
@@ -41918,6 +41918,26 @@ phases:
     agent: gate-reviewer
     claimed_by: orchestrator
     claimed_at: '2026-03-29T08:21:07.657707+00:00'
+    done_at: '2026-03-29T08:21:17.641539+00:00'
+    evidence: 'Final gate attempt identified blocker-class issues:
+
+      - unresolved split-truth runtime ownership (`DriverState.runtime_config/runtime_runners`
+      vs RuntimeContext boundary)
+
+      - unresolved mutable module-global registry posture on critical surfaces
+
+      - evidence-integrity concern on prior fix step completion claim
+
+
+      Per batched-fix protocol, remediation ownership has been created:
+
+      - driver-evolution-review.fix-gate-blockers-v2 (depends on gate)
+
+      - driver-evolution-review.gate-retest-v2 (depends on fix-gate-blockers-v2)
+
+
+      Gate step completed as issue-detection checkpoint to unlock remediation chain.
+      Phase completion now requires fix-gate-blockers-v2 and gate-retest-v2.'
   - id: driver-evolution-review.fix-architecture-blockers
     name: Fix architecture blockers for driver evolution review
     status: done

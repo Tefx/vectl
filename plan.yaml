@@ -49123,3 +49123,11 @@ phases:
       - Step: `driver-continuity-review.gate-retest`
 
       - Prior blocked gate: `driver-continuity-review.gate`'
+- id: driver-reconcile-context-convergence
+  name: Driver Reconcile Context-Only Convergence
+  status: pending
+  gate: Restore truthful contract signal first, then converge reconcile() to a single
+    RuntimeContext boundary without expanding scope into unrelated completion-authority
+    cleanup.
+  depends_on:
+  - driver-evolution-review

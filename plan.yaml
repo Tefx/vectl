@@ -50222,13 +50222,15 @@ phases:
       \nScope:\n- tests/live_smoke/test_opencode_judge_live.py\n- optional minimal\
       \ test-only hook changes required to select the ratified cheap opencode model\n\
       \nRequired scenarios:\n- real opencode judge run that validates structured verdict\
-      \ acceptance when available\n- JSONL/text verdict extraction through src/vectl/driver/judge.py::_extract_verdict_payload\
-      \ with real opencode CLI behavior\n- explicit skip evidence for missing binary,\
-      \ missing auth/prereq, or opt-in env gate absent\n- parse failure distinguished\
-      \ from transport/auth failure and invalid verdict shape\n\nPath exercised: driver.yaml\
-      \ opencode runner contract -> judge text/JSONL extraction path -> real opencode\
-      \ subprocess -> verdict assertion helper.\n\n## Completion Criteria (stub exclusion)\n\
-      This is an IMPLEMENTATION step. Stub-only completion is NOT acceptable."
+      \ acceptance when available\n- tolerant JSONL/text verdict extraction through\
+      \ src/vectl/driver/judge.py::_extract_verdict_payload with real opencode CLI\
+      \ behavior when structured output is unavailable\n- explicit skip evidence for\
+      \ missing binary, missing auth/prereq, or opt-in env gate absent\n- parse failure\
+      \ distinguished from transport/auth failure and invalid verdict shape\n\nPath\
+      \ exercised: driver.yaml opencode runner contract -> judge text/JSONL extraction\
+      \ path -> real opencode subprocess -> verdict assertion helper.\n\n## Completion\
+      \ Criteria (stub exclusion)\nThis is an IMPLEMENTATION step. Stub-only completion\
+      \ is NOT acceptable."
     verification: '- Main path: targeted opencode judge live pytest selection passes
       against real opencode or skips explicitly with justified evidence.
 
@@ -50236,7 +50238,10 @@ phases:
       asserted.
 
       - Proof: evidence includes exact pytest command and pasted stdout/stderr or
-      skip output.'
+      skip output.
+
+      - Tolerant extraction evidence is limited to the opencode judge path, not codex
+      structured-mode tests.'
     refs:
     - tests/live_smoke/helpers.py
     - src/vectl/driver/judge.py

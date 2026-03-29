@@ -49257,14 +49257,44 @@ phases:
     - driver-reconcile-context-convergence.contract
     agent: python-executor
   - id: driver-reconcile-context-convergence.impl-boundary
-    name: Refactor reconcile to a single RuntimeContext boundary
+    name: Converge reconcile to the single RuntimeContext boundary
     status: pending
-    description: In `src/vectl/driver/loop.py`, refactor `reconcile()` to the pinned
-      single-boundary form and remove dual-path fallback extraction of explicit runtime
-      dependencies. Update the loop runtime path to call reconcile only through the
-      authoritative `RuntimeContext`. Do not delete or redesign `handle_complete()`.
-    verification: '`reconcile()` exposes only `completed` plus `context`; no explicit
-      runtime dependency params or fallback path remain in reconcile implementation.'
+    description: "Fill in the boundary refactor in `src/vectl/driver/loop.py` so `reconcile()`\
+      \ uses only the pinned final contract from\n`driver-reconcile-context-convergence.contract`.\n\
+      \nUPSTREAM ARTIFACTS:\n- `tests/test_driver_loop_contract.py` — final signature\
+      \ is authoritative\n- red tests added in `driver-reconcile-context-convergence.test-define-red`\
+      \ are protected\n\nYOUR SCOPE:\n- change `reconcile()` to the final single-context-only\
+      \ boundary\n- remove migration-era explicit params from the public `reconcile()`\
+      \ signature:\n  `state`, `judge`, `session_pool`, `observer`, `plan_path`, `config`,\
+      \ `runners`\n- remove internal fallback extraction logic inside `reconcile()`\
+      \ that supports both explicit args and `context`\n- update `_run_main_loop()`\
+      \ in the same file so runtime invocation passes only the authoritative context\
+      \ path\n\nOUT OF SCOPE:\n- no deletion/redesign of `handle_complete()`\n- no\
+      \ broader completion-authority cleanup\n- no unrelated refactors in dispatch/escalation\
+      \ paths\n\nCompletion criteria:\n- `reconcile()` accepts only `completed` plus\
+      \ context-only input\n- no dual-path boundary remains in `reconcile()`\n- `_run_main_loop()`\
+      \ no longer passes legacy explicit runtime args to `reconcile()`"
+    verification: '- `inspect.signature(loop.reconcile)` matches the pinned final
+      contract
+
+      - grep/source review shows no legacy explicit params in the `reconcile()` definition
+
+      - `_run_main_loop()` invokes `reconcile()` via context-only path
+
+      - no `handle_complete()` churn unless direct dependency is documented'
+    evidence_template: "## Reconcile boundary implementation\n- Signature after change:\n\
+      \  `<paste exact reconcile signature>`\n- Updated runtime callsite:\n  `<paste\
+      \ _run_main_loop reconcile(...) call>`\n- Removed legacy params:\n  `state,\
+      \ judge, session_pool, observer, plan_path, config, runners`\n- Commands:\n\
+      \  `pytest tests/test_driver_loop_contract.py -k signatures_are_pinned -q`\n\
+      - Deviation record:\n  `none` or `<what blocked strict convergence>`"
+    refs:
+    - src/vectl/driver/loop.py
+    - src/vectl/driver/runtime_context.py
+    - docs/DRIVER-ARCHITECTURE.md#reconcile
+    - docs/ADR-driver-evolution-foundation.md#96-handlers-receive-a-unified-runtimecontext
+    - tests/test_driver_loop_contract.py
+    - tests/test_driver_loop_runtime.py
     depends_on:
     - driver-reconcile-context-convergence.test-define-red
     agent: python-senior

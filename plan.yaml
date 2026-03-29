@@ -51931,6 +51931,57 @@ phases:
     the pinned contract, with stale-only auto-quarantine and blocking ambiguity preserved.
   depends_on:
   - driver-continuity-hygiene-foundation
+  steps:
+  - id: driver-continuity-hygiene-core.impl-hygiene-storage
+    name: Implement continuity hygiene scan, classification, and quarantine storage
+    status: pending
+    description: "step_type: implementation\nupstream_artifacts:\n  - path: src/vectl/driver/continuity_hygiene.py\n\
+      \    from_step: driver-continuity-hygiene-foundation.contract\n    tier: contract\n\
+      \  - path: tests/\n    from_step: driver-continuity-hygiene-foundation.test-define-red\n\
+      \    tier: test\n  - path: tests/test_driver_recovery_black_box.py\n    from_step:\
+      \ driver-continuity-hygiene-foundation.blackbox-define-red\n    tier: test\n\
+      \nFill in stub bodies in the continuity hygiene helper/storage module(s) per\
+      \ the contract from step driver-continuity-hygiene-foundation.contract.\n\n\
+      UPSTREAM ARTIFACTS (from contract step):\n- helper/type signatures are AUTHORITATIVE\n\
+      - test cases are PROTECTED\n\nYOUR SCOPE: Replace stub markers (NotImplementedError\
+      \ / pass / ...) with working logic for:\n- scanning `.vectl/continuity/ledger/*.json`\
+      \ and `.vectl/continuity/journal/*.jsonl`\n- classifying artifacts against current\
+      \ plan step ids and repaired current-branch claims\n- quarantining only the\
+      \ provably stale class into audit-preserving storage with manifest output\n\
+      - preserving original bytes via move/copy into quarantine destinations instead\
+      \ of deletion\n- returning explicit blocking results for corrupt, active-claim,\
+      \ current-claimed-step, or ambiguous identity cases\n\n## Failure-mode checklist\n\
+      - missing-file fallback behavior for absent continuity directories\n- corrupt\
+      \ JSON / JSONL files remain blocking and auditable\n- stale-definition vs repaired-current-claims\
+      \ precedence is explicit\n- no auto-remap using step-id migration metadata;\
+      \ migration hints are read-only only\n- quarantine manifest records source,\
+      \ destination, classification, reason, and timestamp\n\n## State semantics\n\
+      - last-writer-wins: newest quarantine manifest record for a specific artifact\
+      \ path\n- must preserve exactly: original continuity artifact content, source\
+      \ path, and stale-vs-blocking classification reason\n- backward-compatible legacy\
+      \ behavior: active/current-claim divergence still blocks startup\n\n## Completion\
+      \ Criteria (stub exclusion)\nThis is an IMPLEMENTATION step. Stub-only completion\
+      \ is NOT acceptable.\nEach deliverable MUST contain substantive logic that processes\
+      \ its inputs and produces outputs that vary based on those inputs."
+    verification: '- Main path: targeted helper/quarantine tests pass
+
+      - Failure path: regression tests cover corrupt files, active-claims divergence,
+      and ambiguous identity
+
+      - Proof: no implementation path silently deletes continuity artifacts or auto-remaps
+      renamed step ids'
+    evidence_template: '## Helper/Storage Implementation Evidence
+
+      - Files changed:
+
+      - Main-path tests:
+
+      - Failure-path tests:
+
+      - Quarantine manifest example:
+
+      - Confirmation that deletion/remap behavior is absent:'
+    agent: python-senior
 - id: driver-continuity-hygiene-surface
   name: 'Driver Continuity Hygiene: CLI & Observability'
   status: locked

@@ -45646,7 +45646,7 @@ phases:
       \ but runtime paths incomplete\n- downstream_implementation_owner: driver-continuity-capability-safety.impl"
 - id: driver-continuity-restart-recovery
   name: 'Driver Continuity: Restart Recovery'
-  status: in_progress
+  status: done
   gate: After abnormal stop, failed step, or process restart, the driver can recover
     continuity state, apply replay-safe resume decisions, and align judge failure
     handling with continuity policy.
@@ -45961,7 +45961,7 @@ phases:
       \ restart consumption can be expanded later."
   - id: driver-continuity-restart-recovery.retest-restart-recovery-gate
     name: Retest continuity restart recovery gate after remediation
-    status: claimed
+    status: done
     description: Independently retest the continuity restart-recovery gate after the
       remediation batch and verify both prior blockers are resolved on the restart
       recovery path.
@@ -45982,9 +45982,17 @@ phases:
     agent: gate-reviewer
     claimed_by: gate-reviewer
     claimed_at: '2026-03-29T04:53:01.862441+00:00'
+    done_at: '2026-03-29T04:56:14.840619+00:00'
+    evidence: "- Independent retest scope: validated RunnerResult unification and\
+      \ startup consumption of durable judge HALT policy facts.\n- Commands/checks:\n\
+      \  - pyright on types/runners/loop -> 0 errors\n  - grep checks for judge_policy\
+      \ field, startup extraction, startup input wiring\n  - targeted pytest recovery/judge/ledger/entrypoint\
+      \ set -> 18 passed\n- Outcome:\n  - prior blocker B1 resolved (single canonical\
+      \ RunnerResult)\n  - prior blocker B2 resolved (HALT policy persisted and consumed\
+      \ on restart)\n- Gate recommendation: PASS"
 - id: driver-continuity-review
   name: 'Driver Continuity: Review'
-  status: locked
+  status: pending
   gate: Independent recovery drills, wiring audit, and spec conformance prove the
     driver is restart-resumable and recovery-controllable enough for another real
     bootstrap attempt.

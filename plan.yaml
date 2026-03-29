@@ -41131,7 +41131,7 @@ phases:
       - docs/ADR-driver-evolution-foundation.md#206-follow-up-work'
   - id: driver-evolution-loop-migration.implement-loop-handlers
     name: Migrate loop branching to registry-backed handlers
-    status: claimed
+    status: done
     description: "step_type: implementation\n\nFill in stub bodies and replace loop-local\
       \ branching with substantive registry-backed handler resolution under the pinned\
       \ migration contract.\n\nUPSTREAM ARTIFACTS (from contract/test steps):\n  -\
@@ -41175,6 +41175,50 @@ phases:
     agent: python-senior
     claimed_by: python-senior
     claimed_at: '2026-03-29T07:15:42.557346+00:00'
+    done_at: '2026-03-29T07:22:53.797844+00:00'
+    evidence: 'Artifact:
+
+      - PR: a2745148972d96d3303507eee64765a6cce00226
+
+
+      Verification:
+
+      - `uv run pytest tests/test_driver_loop_runtime.py` -> 27 passed, 25 xfailed
+
+      - `uv run pytest tests/test_driver_entrypoint_drift.py` -> 8 passed
+
+      - `uv run ruff check src/vectl/driver/loop.py src/vectl/driver/action_registry.py
+      tests/test_driver_loop_runtime.py` -> All checks passed
+
+      - `uv run mypy src/vectl/driver/loop.py src/vectl/driver/action_registry.py`
+      -> pre-existing typing issues remain (no new regression from this step)
+
+      - `git status --short` -> clean
+
+
+      Spec link:
+
+      - docs/ADR-driver-evolution-foundation.md#18-decision-drivers
+
+      - docs/ADR-driver-evolution-foundation.md#96-handlers-receive-a-unified-runtimecontext
+
+      - docs/ADR-driver-evolution-foundation.md#116-target-architecture-shape
+
+      - docs/ADR-driver-evolution-foundation.md#206-follow-up-work
+
+
+      Files changed:
+
+      - src/vectl/driver/action_registry.py
+
+      - src/vectl/driver/loop.py
+
+      - tests/test_driver_loop_runtime.py
+
+
+      Deviation records:
+
+      - none'
   - id: driver-evolution-loop-migration.system-wiring
     name: Wire the runnable driver path to registry-backed handlers
     status: pending

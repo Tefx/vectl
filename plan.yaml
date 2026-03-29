@@ -41871,7 +41871,7 @@ phases:
       - docs/ADR-driver-evolution-foundation.md §§30,45,58,71,85,96,104,137,190,193'
   - id: driver-evolution-review.gate
     name: Final gate for driver evolution ADR chain
-    status: claimed
+    status: pending
     description: 'step_type: gate
 
       Gate review: final doc-sync + deep review for the driver evolution ADR chain.
@@ -41916,8 +41916,6 @@ phases:
     - driver-evolution-review.black-box-verification
     - driver-evolution-review.architecture-review-retest
     agent: gate-reviewer
-    claimed_by: gate-reviewer
-    claimed_at: '2026-03-29T08:15:03.280504+00:00'
   - id: driver-evolution-review.fix-architecture-blockers
     name: Fix architecture blockers for driver evolution review
     status: done

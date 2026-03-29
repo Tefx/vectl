@@ -43534,7 +43534,7 @@ phases:
       Deviation records: none'
   - id: driver-judge-hardening-recovery-policy.verify
     name: Verify judgment failure handling policy
-    status: claimed
+    status: done
     description: "step_type: verification\nverification_scope: phase-check\nprotects_downstream_gates:\n\
       \  - driver-judge-hardening-review.gate\n  - driver-bootstrap-readiness.gate\n\
       independence_level: L2\nspec_refs:\n  - driver.yaml#judge\n  - docs/DRIVER-ARCHITECTURE.md#judge-runtime\n\
@@ -43572,6 +43572,156 @@ phases:
     agent: integration-verifier
     claimed_by: integration-verifier
     claimed_at: '2026-03-29T01:27:12.724978+00:00'
+    done_at: '2026-03-29T01:30:59.961720+00:00'
+    evidence: '## Verification Report: Judge Failure Handling Policy
+
+
+      **Date**: 2026-03-29
+
+      **Verifier**: integration-verifier
+
+      **Scope**: `src/vectl/driver/judge.py`, `src/vectl/driver/loop.py`, `src/vectl/driver/errors.py`
+
+
+      ### Results
+
+
+      | Check | Result | Evidence |
+
+      |-------|--------|----------|
+
+      | P1: Empty Room | PASS | `12 collected, 12 passed, 0 skipped` |
+
+      | P2: Contract Integrity | PASS | All tests pass, contract fields verified |
+
+      | L2: Real Wiring | PASS | Integration tests exercise actual policy path through
+      mock judge exceptions |
+
+
+      ### Failure Disposition Matrix — Contract Verification
+
+
+      **From `decide_judge_recovery_policy()` (judge.py:188-369):**
+
+
+      | Outcome Kind | Condition | Action | Lines |
+
+      |--------------|-----------|--------|-------|
+
+      | `timeout` | `failure_count <= retry_budget` | `retry` | 213-224 |
+
+      | `timeout` | `failure_count > retry_budget` AND fallback exists | `fallback`
+      | 224-234 |
+
+      | `timeout` | `failure_count > retry_budget` AND no fallback | `halt` | 235-244
+      |
+
+      | `parse_error`/`malformed_output`/`empty_output` | fallback exists | `fallback`
+      | 246-257 |
+
+      | `parse_error`/`malformed_output`/`empty_output` | no fallback | `halt` | 258-267
+      |
+
+      | `verdict=REPLAN` | has planner_instruction | `planner_remediation` | 292-314
+      |
+
+      | `verdict=REPLAN` | missing planner_instruction | `halt` | 295-304 |
+
+      | `verdict=RETRY` | — | `retry` | 316-325 |
+
+      | `verdict=SWITCH_AGENT` | fallback exists | `fallback` | 327-338 |
+
+      | `verdict=SWITCH_AGENT` | no fallback | `retry` | 339-347 |
+
+      | `verdict=HALT/REJECT` | — | `halt` | 349-359 |
+
+      | `outcome=verdict` but no verdict payload | — | `halt` | 269-280 |
+
+
+      ### Runtime Wiring — Verify `loop.py` Routes Correctly
+
+
+      **Classification function `_classify_judge_parse_outcome()` (loop.py:947-962):**
+
+      - Empty output → `"empty_output"`
+
+      - JSON-like start (`{`/`[`) → `"malformed_output"`
+
+      - Other unparseable → `"parse_error"`
+
+
+      **Exception routing in `reconcile()` (loop.py:2243-2318):**
+
+      - `JudgmentTimeoutError` → calls `decide_judge_recovery_policy(outcome_kind="timeout")`
+      ✓
+
+      - `JudgmentParseError` → calls `decide_judge_recovery_policy(outcome_kind=_classify_judge_parse_outcome(raw_output))`
+      ✓
+
+      - Verdict path → calls `decide_judge_recovery_policy(outcome_kind="verdict",
+      verdict=failure_verdict)` ✓
+
+
+      ### Test Coverage by Failure Class
+
+
+      | Failure Class | Test | Result |
+
+      |---------------|------|--------|
+
+      | Timeout within budget | `test_judge_transport_and_parse_failures_route_retry_fallback_or_halt[policy_input0-retry]`
+      | PASS |
+
+      | Timeout budget exhausted + fallback | `test_judge_transport_and_parse_failures_route_retry_fallback_or_halt[policy_input1-fallback]`
+      | PASS |
+
+      | Parse error + fallback | `test_judge_transport_and_parse_failures_route_retry_fallback_or_halt[policy_input2-fallback]`
+      + `test_reconcile_failure_parse_error_uses_fallback_policy` | PASS |
+
+      | Malformed output + no fallback | `test_judge_transport_and_parse_failures_route_retry_fallback_or_halt[policy_input3-halt]`
+      | PASS |
+
+      | Empty output + no fallback | `test_judge_transport_and_parse_failures_route_retry_fallback_or_halt[policy_input4-halt]`
+      + `test_reconcile_failure_empty_output_no_fallback_halts` | PASS |
+
+      | REPLAN verdict | `test_verdict_driven_branching_routes_planner_remediation_retry_or_halt[verdict0-planner_remediation]`
+      | PASS |
+
+      | RETRY verdict | `test_verdict_driven_branching_routes_planner_remediation_retry_or_halt[verdict1-retry]`
+      | PASS |
+
+      | HALT verdict | `test_verdict_driven_branching_routes_planner_remediation_retry_or_halt[verdict2-halt]`
+      | PASS |
+
+      | Timeout integration (runtime) | `test_reconcile_failure_timeout_uses_retry_policy_and_defers`
+      | PASS |
+
+
+      ### Contract Fields Verified
+
+
+      `JudgeContinuityPolicyOutput` fields (types.py:471-495):
+
+      - `step_id`, `judgment_type`, `judge_outcome`, `action`, `provenance`, `continuity_recovery_reason`,
+      `attempt_key`, `planner_instruction`, `fallback_runner_name`, `halt_reason`
+      — ALL PRESENT ✓
+
+
+      ### Findings
+
+
+      No wrong retry/fallback/halt decisions found. All tested branches route to the
+      contracted disposition.
+
+
+      **Evidence Level L2 (Real Wiring)**: PASS — Integration tests (`test_driver_judge_recovery_policy_impl.py`)
+      exercise the `reconcile()` function with actual `JudgmentTimeoutError` and `JudgmentParseError`
+      exceptions (via mock judge), routing through `decide_judge_recovery_policy()`
+      and emitting `JUDGE_FAILURE_POLICY` events.
+
+
+      **Evidence Level L3 (Live Service)**: N/A — Judge requires external runner;
+      policy tests use mocks at the correct seam (the judge interface).'
   - id: driver-judge-hardening-recovery-policy.gate
     name: Gate judge failure handling policy
     status: pending

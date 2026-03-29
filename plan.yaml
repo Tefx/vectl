@@ -40046,7 +40046,7 @@ phases:
     agent: gate-reviewer
 - id: driver-evolution-runtime-context
   name: 'Driver Evolution: Runtime Context'
-  status: in_progress
+  status: done
   gate: Typed runtime context replaces ad hoc handler inputs without regressing driver
     entrypoint behavior
   context: Bootstrap-postponed evolution work. Runtime-context restructuring starts
@@ -40327,7 +40327,7 @@ phases:
       - docs/ADR-driver-evolution-foundation.md#137-ownership-model'
   - id: driver-evolution-runtime-context.gate
     name: Gate runtime context
-    status: claimed
+    status: done
     description: 'step_type: gate
 
       Gate review: verify the runtime-context phase completion and quality.
@@ -40371,9 +40371,45 @@ phases:
     agent: gate-reviewer
     claimed_by: gate-reviewer
     claimed_at: '2026-03-29T06:27:12.856840+00:00'
+    done_at: '2026-03-29T06:35:13.449810+00:00'
+    evidence: 'Artifact:
+
+      - PR: commits 4f7cda1, 738232c, 5e94c7d
+
+
+      Verification:
+
+      - `uv run pytest tests/test_driver_loop_runtime.py::TestRuntimeContextContracts
+      tests/test_runtime_context_vertical_slice.py tests/test_decide_state_isolation.py::TestDecideStateIsolation
+      -v --tb=short` -> 21 passed
+
+      - ownership boundary checks: DecideState remains decide-local mutable state;
+      RuntimeContext frozen execution context
+
+      - unified real-path propagation through loop/entrypoint verified
+
+
+      Spec link:
+
+      - docs/ADR-driver-evolution-foundation.md#96-handlers-receive-a-unified-runtimecontext
+
+      - docs/ADR-driver-evolution-foundation.md#137-ownership-model
+
+      - docs/ADR-driver-evolution-foundation.md#188-resolved-decisions
+
+
+      step_intent: gate
+
+      expected_result: green
+
+      observed_result: green
+
+      failure_alignment: N/A
+
+      product_implementation_files_modified: no'
 - id: driver-evolution-action-registry
   name: 'Driver Evolution: Action Registry'
-  status: locked
+  status: pending
   gate: Layered action registry covers runtime and planner dispatch actions with explicit
     contracts and verification
   depends_on:

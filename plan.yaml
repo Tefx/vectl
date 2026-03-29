@@ -52140,8 +52140,6 @@ phases:
       - Failure path: blocking cases still emit auditable telemetry
 
       - Proof: registry/types and emitting sites stay aligned'
-    depends_on:
-    - driver-continuity-hygiene-surface.impl-cli-repair-continuity
     agent: python-executor
 - id: driver-continuity-hygiene-review
   name: 'Driver Continuity Hygiene: Verification & Gate'

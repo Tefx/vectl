@@ -44458,7 +44458,7 @@ phases:
       - 7d7fcdb migrate prompt authority references and add drift checks"
   - id: driver-prompt-migration.runtime-retest
     name: Retest packaged prompt runtime green
-    status: pending
+    status: claimed
     description: 'step_type: test
 
       step_intent: retest_green
@@ -44542,6 +44542,8 @@ phases:
     - driver-prompt-migration.package-resource-loader
     - driver-prompt-migration.authority-reference-migration
     agent: integration-verifier
+    claimed_by: integration-verifier
+    claimed_at: '2026-03-29T09:23:38.597315+00:00'
   - id: driver-prompt-migration.gate
     name: Gate packaged prompt migration
     status: pending

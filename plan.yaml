@@ -43817,12 +43817,11 @@ phases:
     agent: python-senior
 - id: driver-enhancement-runner-recovery
   name: 'Driver Enhancement: Advanced Runner Recovery'
-  status: pending
-  gate: Post-bootstrap runner recovery extends beyond the continuity-owned bootstrap
-    minimum with richer watchdog heuristics, advanced failure taxonomy, and operator-facing
-    recovery behavior.
+  status: locked
+  gate: Advanced recovery work remains blocked until live codex/opencode judge and
+    dispatch smoke coverage is established and independently reviewed.
   depends_on:
-  - driver-enhancement-foundation
+  - driver-live-smoke-deep-review
   steps:
   - id: driver-enhancement-runner-recovery.impl
     name: Implement watchdog-backed failure classification and recovery policy

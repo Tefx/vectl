@@ -43026,7 +43026,7 @@ phases:
       - Total: 71 passed, 1 expected failure'
   - id: driver-routing-hardening.verify
     name: Independently verify invalid default routing rejection
-    status: claimed
+    status: done
     description: 'step_type: verification
 
       Verification scope: phase-check protecting driver-routing-hardening.gate.
@@ -43056,6 +43056,78 @@ phases:
     agent: integration-verifier
     claimed_by: integration-verifier
     claimed_at: '2026-03-29T12:13:26.998808+00:00'
+    done_at: '2026-03-29T12:14:51.152917+00:00'
+    evidence: '## Independent routing validation verification
+
+
+      ### Commands executed:
+
+      ```bash
+
+      uv run pytest tests/test_driver_config.py::TestAgentRoutingValidation -v
+
+      ```
+
+
+      Output:
+
+      ```
+
+      tests/test_driver_config.py::TestAgentRoutingValidation::test_agent_routing_default_key_rejected
+      PASSED [ 16%]
+
+      tests/test_driver_config.py::TestAgentRoutingValidation::test_agent_routing_default_error_message_is_actionable
+      PASSED [ 33%]
+
+      tests/test_driver_config.py::TestAgentRoutingValidation::test_agent_routing_exact_match_still_works
+      PASSED [ 50%]
+
+      tests/test_driver_config.py::TestAgentRoutingValidation::test_agent_routing_glob_match_still_works
+      PASSED [ 66%]
+
+      tests/test_driver_config.py::TestAgentRoutingValidation::test_fallback_runner_is_only_default_routing
+      PASSED [ 83%]
+
+      tests/test_driver_config.py::TestAgentRoutingValidation::test_agent_routing_default_key_not_special_in_route_agent
+      PASSED [100%]
+
+
+      =============================== 6 passed in 0.29s ===============================
+
+      ```
+
+
+      ### Validation verified:
+
+      1. **`agent_routing.default` rejection** - Verified in `config.py` lines 170-185
+      via `_validate_no_agent_routing_default()` model validator
+
+      2. **Rejection timing** - Validation occurs at config load-time (Pydantic model_validator),
+      not at runtime
+
+      3. **`route_agent()` has no runtime special-casing** - Verified in lines 127-146:
+      exact match → glob match → fallback_runner, no "default" key check
+
+
+      ### Error message verified:
+
+      ```
+
+      agent_routing.default is not supported. Remove agent_routing.default and use
+      explicit exact/glob entries in agent_routing plus fallback_runner for default
+      routing behavior.
+
+      ```
+
+
+      ### Remaining issues:
+
+      None - all contract requirements verified.
+
+
+      ### Scope verdict:
+
+      PASS'
   - id: driver-routing-hardening.gate
     name: Gate reserved routing hardening
     status: pending

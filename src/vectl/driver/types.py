@@ -41,7 +41,7 @@ class RunnerStatus(str, Enum):
     TRANSPORT_ERROR = "transport_error"
 
 
-@dataclass
+@dataclass(frozen=True)
 class RunnerResult:
     """Parsed output from a completed runner process.
 

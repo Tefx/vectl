@@ -1,8 +1,8 @@
 """Tests exposing module-global coupling in decide.py.
 
-These tests document the expected-red behavior for the global-state gap:
-before implementation, callers using state=None share a module-global
-_legacy_state, causing coupling between independent decide() calls.
+These tests document isolation behavior for decide-state handling:
+callers using state=None must not share mutable module-global state between
+independent decide() calls.
 
 Required red cases:
 1. Two DecideState() instances remain fully isolated: completion times,
@@ -12,7 +12,7 @@ Required red cases:
 3. should_reuse_session() and failure escalation still behave correctly
    when fed one explicit instance.
 
-Expected failures expose the current global-state gap.
+All cases should pass with isolated fallback semantics.
 """
 
 from __future__ import annotations
@@ -24,7 +24,6 @@ import pytest
 
 from vectl.decision_state import DecideState
 from vectl.decide import (
-    _legacy_state,
     decide,
     should_reuse_session,
     REUSE_TTL,
@@ -165,42 +164,27 @@ class TestDecideStateIsolation:
 # ---------------------------------------------------------------------------
 
 
-class TestLegacyStateLeakageExposed:
-    """Tests that expose the module-global _legacy_state leakage.
+class TestLegacyFallbackIsolation:
+    """Tests for state=None fallback isolation behavior.
 
-    The gap: when state=None is passed to decide() or should_reuse_session(),
-    the module-level _legacy_state is used as a fallback. This creates
-    hidden coupling between callers that don't pass explicit state.
-
-    These tests will FAIL before impl because they demonstrate the coupling.
+    state=None should create isolated, call-local decide state and must not
+    couple callers through ``vectl.decide._legacy_state``.
     """
 
-    def test_resolve_state_returns_legacy_when_none(self) -> None:
-        """_resolve_state(None) returns the SHARED module global.
-
-        This is the root cause of the coupling: two callers using state=None
-        get the SAME _legacy_state object.
-        """
+    def test_resolve_state_returns_isolated_state_when_none(self) -> None:
+        """_resolve_state(None) must not return shared module-global state."""
         import vectl.decide as decide_mod
 
-        # When state=None, _resolve_state returns the module global
+        # When state=None, each resolve must produce a fresh object
         resolved1 = decide_mod._resolve_state(None)
         resolved2 = decide_mod._resolve_state(None)
 
-        # These are the SAME object - the module global
-        assert resolved1 is resolved2, (
-            "Gap: _resolve_state(None) should return same object for both calls"
-        )
-        assert resolved1 is decide_mod._legacy_state
+        assert resolved1 is not resolved2
+        assert resolved1 is not decide_mod._legacy_state
+        assert resolved2 is not decide_mod._legacy_state
 
-    def test_state_none_callers_share_legacy_state(self, tmp_path: Path) -> None:
-        """Two decide() calls with state=None share the SAME module global.
-
-        GAP: Caller A modifies _legacy_state, and those modifications are
-        visible to Caller B (when B also uses state=None).
-
-        This test EXPOSES the gap - it should FAIL before impl.
-        """
+    def test_state_none_callers_do_not_mutate_legacy_state(self, tmp_path: Path) -> None:
+        """decide(..., state=None) must not mutate module-global legacy state."""
         plan, plan_path = _make_plan(tmp_path)
         import vectl.decide as decide_mod
 
@@ -208,8 +192,9 @@ class TestLegacyStateLeakageExposed:
         decide_mod.resolve_plan_path = lambda: plan_path  # type: ignore[assignment]
 
         try:
-            # FIRST decide() call with state=None (uses legacy fallback)
-            # This will add s1 to _legacy_state.completion_times
+            decide_mod._legacy_state.completion_times = {}
+            decide_mod._legacy_state.session_registry = {}
+
             completed1 = [
                 CompletedResult(
                     step_id="s1",
@@ -222,62 +207,35 @@ class TestLegacyStateLeakageExposed:
                 running_tasks=[],
                 completed_results=completed1,
                 max_parallelism=5,
-                state=None,  # Uses _legacy_state
+                state=None,
             )
-
-            # Verify _legacy_state was modified
-            assert "s1" in decide_mod._legacy_state.completion_times, (
-                "Precondition: first decide() should have added s1 to _legacy_state"
-            )
-
-            # SECOND decide() call with state=None
-            # Before impl: this should see s1 from the first call (COUPLING!)
-            # After impl: either this should be isolated OR the legacy fallback
-            # should be documented as a short-lived migration aid
-
-            # The gap: if first call used state=None, second call with state=None
-            # will see first call's data in _legacy_state
-
-            # To demonstrate the gap, check if _legacy_state still has s1
-            # If it does, any subsequent caller using state=None will see it
             assert "s1" not in decide_mod._legacy_state.completion_times, (
-                "Gap exposed: _legacy_state still contains s1 from previous "
-                "decide(None) call. Callers using state=None are coupled "
-                "through the module global. This is the global-state gap."
+                "state=None fallback must be isolated; _legacy_state cannot be "
+                "mutated by decide() calls that omit explicit state"
             )
 
         finally:
             decide_mod.resolve_plan_path = original  # type: ignore[assignment]
 
-    def test_should_reuse_session_with_none_uses_shared_legacy(self, tmp_path: Path) -> None:
-        """should_reuse_session(state=None) uses shared _legacy_state.
-
-        GAP: Two different callers using state=None share the same state.
-
-        This test EXPOSES the gap - it should FAIL before impl.
-        """
+    def test_should_reuse_session_with_none_ignores_shared_legacy(self, tmp_path: Path) -> None:
+        """should_reuse_session(state=None) must ignore shared legacy state."""
         import vectl.decide as decide_mod
 
-        # Pre-populate _legacy_state as if a previous call had completed s1
+        # Pre-populate _legacy_state as if a previous caller had written data.
+        # state=None lookup must remain isolated from this shared object.
         decide_mod._legacy_state.completion_times["parent-step"] = time.time()
         decide_mod._legacy_state.session_registry["parent-step"] = "parent-session"
 
-        # Now caller B queries for session reuse with state=None
-        # Before impl: sees the data from caller A (耦合!)
         should_reuse, task_id = should_reuse_session(
             step_id="child-step",
             parent_step_id="parent-step",
-            state=None,  # Uses _legacy_state
+            state=None,
         )
 
-        # The gap: caller B using state=None sees data from caller A
-        # because they share _legacy_state
         assert should_reuse is False, (
-            "Gap exposed: should_reuse_session(state=None) returned True, "
-            "meaning it found parent-step in the SHARED _legacy_state. "
-            "This proves callers using state=None are coupled."
+            "state=None lookup must not reuse task_id from shared _legacy_state"
         )
-        assert task_id is None, "Gap: task_id should be None but found in shared _legacy_state"
+        assert task_id is None
 
 
 # ---------------------------------------------------------------------------

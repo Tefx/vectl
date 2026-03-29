@@ -44345,7 +44345,7 @@ phases:
       **NONE** — all tests pass, all contracts implemented, all spec sections satisfied.'
   - id: driver-continuity-authority-ledger.gate
     name: Gate authority and ledger continuity
-    status: pending
+    status: claimed
     description: "step_type: gate\nGate review for durable session authority and continuity\
       \ ledger.\n\nreview_depth: THOROUGH\ncross_cutting_focus:\n  - single authority\
       \ for resumable session truth\n  - recovery-grade minimum journal is written\
@@ -44361,6 +44361,8 @@ phases:
     - driver-continuity-authority-ledger.impl
     - driver-continuity-authority-ledger.verify
     agent: gate-reviewer
+    claimed_by: gate-reviewer
+    claimed_at: '2026-03-29T00:47:40.673397+00:00'
 - id: driver-continuity-capability-safety
   name: 'Driver Continuity: Capability & Replay Safety'
   status: done

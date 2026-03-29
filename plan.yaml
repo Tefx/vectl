@@ -45113,7 +45113,7 @@ phases:
       product_implementation_files_modified: false'
   - id: driver-prompt-review.gate
     name: Final gate for packaged prompt resource improvement
-    status: pending
+    status: claimed
     description: 'Gate review: verify the packaged prompt resource improvement is
       complete, documented, and safe.
 
@@ -45171,6 +45171,8 @@ phases:
     - driver-prompt-review.spec-conformance
     - driver-prompt-review.black-box-verification
     agent: gate-reviewer
+    claimed_by: gate-reviewer
+    claimed_at: '2026-03-29T09:46:43.163224+00:00'
 - id: driver-judge-hardening-foundation
   name: 'Driver Judge Hardening: Foundation'
   status: done

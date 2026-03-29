@@ -49935,3 +49935,10 @@ phases:
       \ restored (sync-current-contract-test)\n  - ✓ Context-only boundary converged\
       \ (impl-boundary)\n  - ✓ No scope expansion into completion-authority\n\n- **Gate\
       \ decision: OPEN**"
+- id: driver-live-smoke-foundation
+  name: Driver Live Runner Smoke Coverage Foundation
+  status: pending
+  gate: Cheap-model selection, live-runner opt-in policy, skip taxonomy, and test-surface
+    contract are ratified before any live smoke implementation starts.
+  depends_on:
+  - driver-enhancement-foundation

@@ -41918,7 +41918,7 @@ phases:
     agent: gate-reviewer
   - id: driver-evolution-review.fix-architecture-blockers
     name: Fix architecture blockers for driver evolution review
-    status: claimed
+    status: done
     description: 'step_type: implementation
 
 
@@ -42025,6 +42025,46 @@ phases:
     agent: software-architect
     claimed_by: software-architect
     claimed_at: '2026-03-29T08:02:11.929543+00:00'
+    done_at: '2026-03-29T08:09:11.264492+00:00'
+    evidence: 'Artifact:
+
+      - PR: 5c7bf69fa3ffd608314f58d3cb1e3cbde3174941
+
+
+      Verification:
+
+      - `uv run pytest tests/test_driver_observe.py tests/test_runtime_context_vertical_slice.py
+      tests/test_driver_replan_verdict.py tests/test_driver_continuity_contract.py
+      tests/test_driver_loop_runtime.py tests/test_driver_loop_hardening.py tests/test_driver_judge_recovery_policy_impl.py`
+      -> 141 passed, 25 xfailed
+
+      - `uv run mypy src/vectl/driver/action_registry.py src/vectl/driver/runtime_context.py
+      src/vectl/driver/session.py src/vectl/driver/types.py src/vectl/driver/loop.py`
+      -> Success: no issues
+
+      - sibling search confirms runtime_config/runtime_runners removed from DriverState
+      and critical registry surfaces immutable/static via MappingProxyType
+
+
+      Files changed:
+
+      - src/vectl/driver/action_registry.py
+
+      - src/vectl/driver/loop.py
+
+      - src/vectl/driver/runtime_context.py
+
+      - src/vectl/driver/session.py
+
+      - src/vectl/driver/types.py
+
+      - tests/test_driver_continuity_contract.py
+
+      - tests/test_driver_judge_recovery_policy_impl.py
+
+      - tests/test_driver_loop_hardening.py
+
+      - tests/test_driver_loop_runtime.py'
   - id: driver-evolution-review.architecture-review-retest
     name: Retest architecture blockers for driver evolution review
     status: pending

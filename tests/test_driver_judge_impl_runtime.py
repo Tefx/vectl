@@ -11,9 +11,8 @@ from __future__ import annotations
 
 import asyncio
 import os
-from pathlib import Path
 import tempfile
-from typing import Any
+from pathlib import Path
 
 import pytest
 import yaml
@@ -245,3 +244,63 @@ def test_codex_command_reuses_driver_yaml_runner_config() -> None:
     assert "-C" in command
     assert "-" in command
     assert "--output-schema" in command
+
+
+def test_codex_command_without_driver_yaml_contract_raises_parse_error() -> None:
+    with tempfile.TemporaryDirectory() as td:
+        td_path = Path(td)
+        original_cwd = Path.cwd()
+        try:
+            os.chdir(td_path)
+            observer = _ObserverSpy()
+            judge = Judge(
+                JudgeConfig(
+                    runner="codex",
+                    structured_output=True,
+                    timeout=30,
+                ),
+                observer,
+            )
+
+            with pytest.raises(JudgmentParseError) as exc_info:
+                judge._build_subprocess_command("system", "user")
+        finally:
+            os.chdir(original_cwd)
+
+    assert "driver.yaml" in exc_info.value.raw_output
+    assert "runners.codex" in exc_info.value.raw_output
+
+
+def test_codex_command_with_invalid_contract_raises_parse_error() -> None:
+    driver_yaml = {
+        "runners": {
+            "codex": {
+                "command": "codex",
+                "args": "exec --json",  # invalid type: must be list[str]
+                "prompt_mode": "stdin_dash",
+            }
+        }
+    }
+
+    with tempfile.TemporaryDirectory() as td:
+        td_path = Path(td)
+        (td_path / "driver.yaml").write_text(yaml.dump(driver_yaml), encoding="utf-8")
+        original_cwd = Path.cwd()
+        try:
+            os.chdir(td_path)
+            observer = _ObserverSpy()
+            judge = Judge(
+                JudgeConfig(
+                    runner="codex",
+                    structured_output=True,
+                    timeout=30,
+                ),
+                observer,
+            )
+
+            with pytest.raises(JudgmentParseError) as exc_info:
+                judge._build_subprocess_command("system", "user")
+        finally:
+            os.chdir(original_cwd)
+
+    assert "invalid codex runner contract" in exc_info.value.raw_output

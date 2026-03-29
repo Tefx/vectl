@@ -833,17 +833,24 @@ class Judge:
 
         if runner == "codex":
             runner_settings = _load_runner_settings_from_driver_yaml("codex")
-            if runner_settings is not None:
-                configured_command, configured_args, configured_prompt_mode = runner_settings
-                command = [configured_command] + _render_runner_args(
-                    configured_args,
-                    workdir=str(Path.cwd()),
-                    agent="judge",
+            if runner_settings is None:
+                raise JudgmentParseError(
+                    judgment_type="unknown",
+                    step_id="unknown",
+                    raw_output=(
+                        "Missing or invalid codex runner contract in driver.yaml; "
+                        "judge codex argv must derive from configured runners.codex args"
+                    ),
                 )
-                if configured_prompt_mode == "stdin_dash" and "-" not in command:
-                    command.append("-")
-            else:
-                command = [runner, "exec", "--json", "-"]
+
+            configured_command, configured_args, configured_prompt_mode = runner_settings
+            command = [configured_command] + _render_runner_args(
+                configured_args,
+                workdir=str(Path.cwd()),
+                agent="judge",
+            )
+            if configured_prompt_mode == "stdin_dash" and "-" not in command:
+                command.append("-")
 
             if self._config.structured_output and self._structured_schema_path is not None:
                 has_schema_flag = "--output-schema" in command

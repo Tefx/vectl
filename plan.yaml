@@ -49174,3 +49174,13 @@ phases:
     verification: '`reconcile()` exposes only `completed` plus `context`; no explicit
       runtime dependency params or fallback path remain in reconcile implementation.'
     agent: python-senior
+  - id: driver-reconcile-context-convergence.sync-callsites-tests
+    name: Migrate remaining reconcile call sites and tests
+    status: pending
+    description: Update remaining reconcile call sites and affected driver tests to
+      use the context-only boundary consistently. Remove test/helper invocations that
+      still pass explicit runtime dependencies to `reconcile()`.
+    verification: Targeted search shows no live reconcile invocations passing explicit
+      runtime dependency args and affected reconcile-related tests are updated to
+      the final boundary.
+    agent: python-executor

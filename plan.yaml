@@ -50960,7 +50960,7 @@ phases:
     agent: gate-reviewer
   - id: driver-live-smoke-implementation.update-docs
     name: Update live smoke docs in reduced form
-    status: pending
+    status: claimed
     description: 'Documentation step folded into implementation instead of a standalone
       doc-sync phase.
 
@@ -51014,6 +51014,8 @@ phases:
     - driver-live-smoke-implementation.add-codex-dispatch-live-smoke-coverage
     - driver-live-smoke-implementation.add-opencode-dispatch-live-smoke-coverage
     agent: doc-reviewer
+    claimed_by: doc-reviewer
+    claimed_at: '2026-03-29T16:48:59.720870+00:00'
 - id: driver-live-smoke-doc-sync
   name: Driver Live Runner Smoke Coverage Documentation Sync
   status: done

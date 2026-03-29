@@ -5,6 +5,9 @@
 
 **Status**: Implemented
 **Blueprint**: `DRIVER-BLUEPRINT.md`
+**Evolution Foundation**: `docs/ADR-driver-evolution-foundation.md` — canonical
+contracts for event envelopes, registry ownership, RuntimeContext boundaries,
+and the layered action registry (including first-class planner dispatch).
 **Certainty**: [Proven] for all interfaces derived from existing vectl code;
 [Likely] for judgment and runner protocols (derived from blueprint + verified CLI capabilities).
 
@@ -13,6 +16,10 @@ canonical bootstrap-blocker continuity basis and contract repair. It defines the
 truthful continuity authority boundary, durable resume-state contracts,
 runner capability semantics, replay-safety envelope, and minimum recovery
 telemetry expected by downstream continuity phases.
+
+**Event foundation**: `docs/ADR-driver-evolution-foundation.md` establishes the
+versioned event envelope (`{ts, event, version, data}`), the static event registry
+as source of truth, and the `FINAL` event as canonical end-of-run summary.
 
 ---
 
@@ -555,15 +562,21 @@ class Observer(Protocol):
         ...
 ```
 
-**Event schema** (all events share this envelope):
+**Event schema** (canonical envelope from ADR-driver-evolution-foundation):
 
 ```python
 @dataclass
 class Event:
     ts: float           # time.time()
-    event: str          # Event type name (see event table in blueprint)
+    event: str          # Event type name (registry is source of truth)
+    version: int = 1    # Envelope version for replay compatibility
     data: dict[str, object]
 ```
+
+**Event registry ownership**: `driver.events.registry` is the static canonical
+declaration table per ADR-driver-evolution-foundation §5. All event types,
+schemas, and compatibility notes are auditable in one location. `observe.py`
+remains the durable JSONL sink; event definitions live in `driver.events.registry`.
 
 ---
 
@@ -604,7 +617,7 @@ class SessionPool:
         ...
 ```
 
-#### Ownership Boundary: SessionPool vs DecideState
+#### Ownership Boundary: SessionPool vs DecideState vs RuntimeContext
 
 `decide.py` receives decide-side memory via an explicit `state: DecideState`
 parameter. The driver runtime passes `DriverState.decide_state` and does NOT
@@ -632,6 +645,11 @@ the runner starts fresh (graceful degradation).
 **Decision**: [ADR] Decide-side memory lives in `DecideState` and is passed
 explicitly from `DriverState`. `SessionPool` remains a supplementary
 runner-aware layer for dispatch-time optimization.
+
+**RuntimeContext boundary**: Per ADR-driver-evolution-foundation §6, loop action
+handlers receive a single shared `RuntimeContext` (containing `DriverState`,
+config, runners, judge, session_pool, observer, plan_path). Role-specific contexts
+(DispatchContext, ReconcileContext, etc.) are explicitly deferred.
 
 ---
 
@@ -1294,7 +1312,36 @@ async def dispatch_planner(
     """
     ...
 
-#### REPLAN / Planner Wiring Contract (Bounded)
+#### REPLAN / Planner Wiring Contract (Bounded - First-Class Registry Action)
+
+Per ADR-driver-evolution-foundation §4, §7, planner dispatch is modeled as a
+**first-class loop action** in the layered action registry, not an ad hoc helper.
+The registry categorizes actions as: **execution**, **planner**, **control**,
+and **recovery**.
+
+**Planner dispatch action types** (registry-declared):
+- `planner.dispatch_replan` — triggered by REPLAN verdicts from preflight, evidence, failure, escalation, or anomaly judgments
+- `planner.dispatch_gate_reject` — triggered by REJECT verdicts on gate steps requiring remediation
+
+**PlannerDispatchAction contract**:
+```python
+@dataclass(frozen=True)
+class PlannerDispatchAction:
+    action_type: PlannerDispatchActionType      # "planner.dispatch_replan" | "planner.dispatch_gate_reject"
+    step_id: str
+    trigger: PlannerDispatchTriggerName         # e.g., "handle_dispatch.preflight_replan"
+    judgment_type: str                           # e.g., "PREFLIGHT", "ESCALATION"
+    planner_instruction: str                     # The instruction passed to the planner
+    source_verdict: PlannerDispatchSourceVerdict # "REPLAN" | "REJECT"
+```
+
+**Event expectations** (emitted by planner dispatch handlers):
+- `PLANNER_DISPATCH_STARTED` — when dispatch begins
+- `PLANNER_DISPATCH_COMPLETED` — on successful planner execution
+- `PLANNER_DISPATCH_FAILED` — on runner failure or non-zero exit
+
+**Handler contract**: Planner dispatch handlers receive the shared `RuntimeContext`
+per ADR-driver-evolution-foundation §6 (role-specific contexts are deferred).
 
 The following trigger points are the exact ``loop.py`` surfaces allowed to emit
 planner dispatch from a judge REPLAN verdict:
@@ -1323,11 +1370,26 @@ non-empty ``planner_instruction``. They MUST NOT silently reinterpret REPLAN as
 
 ##### Deferred Runtime Scope
 
-This architecture step pins the callable surface and trigger matrix only. The
-runtime implementation of planner dispatch remains deferred to
-`driver-judgment-expansion-replan`. That later phase MUST implement only the
-bounded trigger points listed above and may not narrow the set without updating
-this section.
+This architecture step pins the callable surface and trigger matrix. The
+runtime implementation of planner dispatch is **complete** and backed by:
+- `driver.action_registry` — static declarations for planner actions
+- `driver.runtime_context.RuntimeContext` — unified handler context
+- `driver.events.emitter` — typed helpers for planner dispatch events
+
+The trigger points above are implemented as registry-backed handlers.
+
+##### Layered Action Registry Summary
+
+The action registry (`driver.action_registry`) categorizes all loop-executed actions:
+
+| Category | Action Types | Handler Contract |
+|----------|--------------|------------------|
+| execution | `claim_and_dispatch`, `wait` | `handle_dispatch`, `emit_wait` |
+| planner | `planner.dispatch_replan`, `planner.dispatch_gate_reject` | `dispatch_planner_replan`, `dispatch_planner_gate_reject` |
+| control | `complete`, `escalate` | `emit_complete_action_ignored`, `emit_escalation_deferred` |
+| recovery | `recovery.all_stalled` | `recover_all_stalled` |
+
+All handlers receive the shared `RuntimeContext` per ADR-driver-evolution-foundation §6.
 
 async def dispatch_conflict_resolver(
     step_id: str,
@@ -1539,6 +1601,9 @@ CompletedResult.output_summary = CompletedEntry.result.output[:500]
 | `claims.json` | `vectl.claims` | `claim_step()`, `complete_step()`, `defer_step()` | `repair_claims()` | Durable (disk) |
 | `events.jsonl` | `observe.py` | `observer.emit()` | External tools only | Durable (disk, append-only) |
 | Git worktrees | `worktree.py` | `create()`, `merge()`, `cleanup()` | `dispatch()` (path), `reconcile()` (merge) | Per-step |
+| Event registry | `driver.events.registry` | Static declarations | All emitters | Durable (code) |
+| Action registry | `driver.action_registry` | Static declarations | Loop dispatch | Durable (code) |
+| RuntimeContext | `driver.runtime_context` | `RuntimeContext` dataclass | Loop handlers | Per-invocation |
 
 ### Completion Authority (A1 Contract)
 
@@ -1593,20 +1658,24 @@ The boundary is hard-coded in `reconcile()` as a conditional chain:
 
 See Section 2.10, "Judge vs Rules Decision Boundary" table.
 
-### Q4: What is the ownership boundary between SessionPool and DecideState?
+### Q4: What is the ownership boundary between SessionPool, DecideState, and RuntimeContext?
 
-**Answer**: They are parallel, non-overlapping mechanisms:
+**Answer**: Three-layer separation per ADR-driver-evolution-foundation:
 
-- `DecideState` is passed explicitly to `decide()` via the `state` parameter.
+- **`DecideState`** is passed explicitly to `decide()` via the `state` parameter.
   The driver does NOT write to decide-memory directly; it feeds data through
   the `CompletedResult` contract.
-- `SessionPool` is driver-internal state, populated by `reconcile()` after
+- **`SessionPool`** is driver-internal state, populated by `reconcile()` after
   successful merge. It adds runner-name matching and per-runner TTL that
   `decide()` cannot express.
-- The driver feeds completed results through `CompletedResult` to keep `decide()`
-  state current via the explicit `DecideState` parameter.
-- If `decide()` produces `session="reuse"` with a `task_id`, the driver uses
-  that. If `session="fresh"`, the driver MAY supplement with `SessionPool.find_reusable()`.
+- **`RuntimeContext`** is the unified handler context (ADR §6) passed to all
+  loop action handlers. It carries `DriverState`, `config`, `runners`, `judge`,
+  `session_pool`, `observer`, and `plan_path`. Role-specific contexts are deferred.
+
+The driver feeds completed results through `CompletedResult` to keep `decide()`
+state current via the explicit `DecideState` parameter.
+If `decide()` produces `session="reuse"` with a `task_id`, the driver uses
+that. If `session="fresh"`, the driver MAY supplement with `SessionPool.find_reusable()`.
 
 See Section 2.5 ownership boundary table.
 
@@ -1651,34 +1720,57 @@ is a deterministic string template, not LLM-generated.
 
 ---
 
-## 7. Implementation Handoff
+## 7. Evolution Foundation Implementation (Complete)
 
-**Design scope**: `vectl/driver/` subpackage -- 13 modules, ~1250 lines estimated.
+**Design scope**: `vectl/driver/` subpackage -- 20+ modules implementing the
+canonical evolution baseline per `docs/ADR-driver-evolution-foundation.md`.
 
-**Key deliverables**:
-- Module map with dependency arrows (Section 1)
-- Protocol definitions for Runner, RunnerHandle, Observer (Sections 2.4, 2.8)
-- Data model for all driver-internal types (Section 2.1)
-- Error hierarchy with propagation rules (Section 2.2)
-- Config schema (Section 2.3)
-- State ownership matrix (Section 4)
+### 7.1 Module Structure (Current)
 
-**Implementation order** (suggested):
+```
+src/vectl/driver/
+    __init__.py               # Package exports
+    __main__.py               # Module entrypoint
+    action_registry.py        # Layered action registry (execution/planner/control/recovery)
+    config.py                 # Driver configuration models
+    dispatch.py               # Prompt template rendering
+    entrypoint.py             # Shared runtime entrypoint adapter
+    errors.py                 # Driver error hierarchy
+    events/
+        emitter.py            # Typed event emit helpers (DECIDE, FINAL, STEP_COMPLETED)
+        registry.py           # Static canonical event registry (source of truth)
+        sinks.py              # FileObserver, NullObserver sinks
+        types.py              # Event envelope dataclass and event name constants
+    judge.py                  # Judgment agent invocation
+    judgments.py              # Judgment type definitions + context schemas
+    loop.py                   # Main event loop + state machine
+    observe.py                # Compatibility facade for event sinks
+    parsers.py                # Output parsers for runner CLI results
+    policy.py                 # Pure parsing/classification helpers
+    runner_continuity.py      # Runner continuity contracts
+    runners.py                # Runner Protocol + implementations
+    runtime_context.py        # Unified RuntimeContext for handlers
+    session.py                # Session reuse pool
+    types.py                  # Driver-internal data types
+    worktree.py               # Git worktree lifecycle
+```
 
-1. **errors.py + types.py** -- Foundation types with no dependencies. Everything else imports these.
-2. **config.py** -- Config loading. Needed by all modules that read configuration.
-3. **observe.py** -- Event emitter. Lightweight, needed by everything that logs.
-4. **session.py** -- Session pool. Small, self-contained, tested in isolation.
-5. **worktree.py** -- Git worktree lifecycle. Depends only on types/errors. Can be tested with real git repos.
-6. **dispatch.py** -- Prompt templates. Depends only on types/config. Pure string rendering, easy to test.
-7. **parsers.py** -- Output parsers. Depends only on types. Converts raw runner stdout to RunnerResult.
-8. **judgments.py** -- Judgment type definitions. Pure data, no logic.
-9. **runners.py** -- Runner Protocol + implementations. Depends on types, errors, config, dispatch, parsers. Requires real CLI binaries for integration tests; unit-test with mock processes.
-10. **judge.py** -- Judgment agent. Depends on judgments, config, observe. Test with mocked subprocess.
-11. **loop.py** -- Main loop. Wires everything together. Integration test against a real plan.yaml.
-12. **__main__.py + CLI integration** -- Entry points. Last because they just wire to `loop.run()`.
+### 7.2 Evolution Foundation Artifacts
 
-**Watch for**:
+Per `docs/ADR-driver-evolution-foundation.md`:
+
+| Decision | Implementation Location |
+|----------|------------------------|
+| Versioned event envelope | `driver.events.types.Event` — `{ts, event, version, data}` |
+| Event registry as source of truth | `driver.events.registry.EVENT_REGISTRY` — static declaration table |
+| FINAL as canonical summary | `driver.events.emitter.emit_final()` — includes `halt_reason` |
+| Layered action registry | `driver.action_registry.LAYERED_ACTION_REGISTRY` — execution/planner/control/recovery |
+| Planner dispatch first-class | `driver.action_registry.PlannerDispatchAction` + registry declarations |
+| RuntimeContext boundary | `driver.runtime_context.RuntimeContext` — unified handler context |
+| Role-specific contexts deferred | `driver.runtime_context.ROLE_SPECIFIC_CONTEXTS_DEFERRED` |
+
+### 7.3 Key Implementation Notes
+
 - `decide()` loads plan.yaml internally via `resolve_plan_path()`. The driver MUST ensure the working directory is correct (the project root, not a worktree) when calling `decide()`.
 - `save_plan()` uses `fcntl.flock` -- single-process safety only. Since the driver is the sole writer in its process, this is fine, but be aware that external `vectl` CLI calls during a drive could hit CAS conflicts.
 - The `merge_lock` MUST be a real `asyncio.Lock`, not a `threading.Lock` -- the loop is single-threaded async, not multi-threaded.
@@ -1686,14 +1778,10 @@ is a deterministic string template, not LLM-generated.
 - The default judge runner is `opencode`. When using `claude` as judge runner, add `--no-session-persistence` and `--dangerously-skip-permissions`. Each runner uses its own non-interactive flags (opencode: `--format json`; codex: `--dangerously-bypass-approvals-and-sandbox`; gemini: `--approval-mode yolo`).
 - Session reuse is implemented in `session.py` with runner-aware matching and per-runner TTL overrides.
 
-**Open questions**:
-- ~~Exact system prompt text for the Judgment Agent~~ -- Resolved: see `JUDGE-AGENT-PROMPT.md`.
-- ~~Whether `gemini` runner should be included in Phase 1 or deferred~~ -- Resolved here: deferred/excluded from the normative foundation matrix until auth, non-interactive invocation, and structured verdict extraction are ratified.
-- Exact risk-signal keyword list for preflight judgment routing. Implementation detail, but should be extracted from production orchestrator logs for accuracy.
+### 7.4 Resolved Open Questions
 
-**NOT addressed** (explicitly out of scope per Section 0):
-- Implementation code for any module
-- Algorithm for loop detection (window-based signature comparison)
-- Exact JSONL event format (field names, nesting)
-- Template content for dispatch prompts
-- Test strategy and test file layout
+- ~~Exact system prompt text for the Judgment Agent~~ -- Resolved: see `JUDGE-AGENT-PROMPT.md`.
+- ~~Whether `gemini` runner should be included in Phase 1 or deferred~~ -- Resolved: deferred/excluded from the normative foundation matrix until auth, non-interactive invocation, and structured verdict extraction are ratified.
+- ~~Event envelope and registry~~ -- Resolved: `driver.events` module provides canonical envelope and static registry.
+- ~~Planner dispatch contract~~ -- Resolved: First-class registry action with `PlannerDispatchAction` contract.
+- ~~RuntimeContext boundary~~ -- Resolved: Unified context with deferred role-specific splits.

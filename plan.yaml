@@ -39617,7 +39617,7 @@ phases:
       - none'
   - id: driver-evolution-events-foundation.verify-envelope-foundation
     name: Verify versioned envelope and registry durability
-    status: claimed
+    status: done
     description: 'step_type: verification
 
       expected_result: green
@@ -39659,6 +39659,19 @@ phases:
     agent: integration-verifier
     claimed_by: integration-verifier
     claimed_at: '2026-03-29T06:19:44.282731+00:00'
+    done_at: '2026-03-29T06:26:41.507492+00:00'
+    evidence: "Artifact:\n- PR: commit 7fb45a7 (verification worktree)\n\nVerification:\n\
+      - Run: `uv run pytest -v tests/test_driver_observe.py` -> 16 passed\n- Run:\
+      \ `uv run pytest -v tests/test_driver_impl.py::TestFileObserverImplementation`\
+      \ -> 6 passed\n\nSample emitted JSONL record (top-level version):\n{\n  \"ts\"\
+      : 1774765281.868949,\n  \"event\": \"STEP_DISPATCHED\",\n  \"version\": 1,\n\
+      \  \"data\": {\n    \"step_id\": \"core.impl\",\n    \"agent\": \"python-executor\"\
+      ,\n    \"runner\": \"claude\",\n    \"session_reuse\": false\n  }\n}\n\nEdge-case\
+      \ checks:\n- unknown event type raises KeyError\n- `data.version` payload bypass\
+      \ raises ValueError\n- registry coverage complete and immutable\n\nSpec link:\n\
+      - docs/ADR-driver-evolution-foundation.md#1-versioned-event-envelope-now\n-\
+      \ docs/ADR-driver-evolution-foundation.md#2-event-registry-becomes-source-of-truth\n\
+      - docs/ADR-driver-evolution-foundation.md#6-event-registry-is-a-static-declaration-table"
   - id: driver-evolution-events-foundation.gate
     name: Gate events foundation
     status: pending

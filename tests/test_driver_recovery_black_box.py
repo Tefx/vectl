@@ -14,24 +14,20 @@ import json
 import subprocess
 import sys
 from pathlib import Path
-from typing import Any
 
 import pytest
 
 from src.vectl.driver.loop import (
-    STARTUP_RECOVERY_SCAN_ORDER,
-    evaluate_startup_recovery_boundary,
     _load_ledger_entries,
+    evaluate_startup_recovery_boundary,
 )
 from src.vectl.driver.runner_continuity import capability_for_runner, capability_snapshot_id
 from src.vectl.driver.types import (
-    ContinuityHandoff,
     ContinuityJournalEntry,
     ContinuityLedgerEntry,
     JudgeContinuityPolicyOutput,
     ReplaySafetyEnvelope,
     StartupRecoveryBoundaryInput,
-    StartupRecoveryDecision,
     StartupRecoveryJudgeInput,
     StartupRecoveryReconciliationFacts,
 )
@@ -53,6 +49,7 @@ def _write_ledger_entry(repo_root: Path, entry: ContinuityLedgerEntry) -> Path:
         "last_session_id": entry.last_session_id,
         "replay_envelope": asdict(entry.replay_envelope),
         "last_journal_event": asdict(entry.last_journal_event),
+        "judge_policy": asdict(entry.judge_policy) if entry.judge_policy is not None else None,
         "recovery_cursor": entry.recovery_cursor,
     }
     ledger_path.write_text(json.dumps(payload, indent=2), encoding="utf-8")
@@ -162,8 +159,6 @@ class TestStartupRecoveryBoundaryMatrix:
     def test_restart_when_capability_snapshot_missing(self, tmp_path: Path) -> None:
         """Missing capability snapshot must force RESTART, never resume."""
         entry = _make_ledger_entry("core.impl", runner_name="claude", session_id="claude-session-1")
-        claude_capability = capability_for_runner("claude")
-        expected_snapshot = capability_snapshot_id(claude_capability)
 
         boundary_output = evaluate_startup_recovery_boundary(
             boundary_input=StartupRecoveryBoundaryInput(
@@ -272,6 +267,39 @@ class TestLedgerLoading:
         assert loaded_entries[0].step_id == "core.valid"
         assert len(corrupt_files) == 1
         assert "core_invalid.json" in corrupt_files
+
+    def test_load_ledger_entry_with_judge_policy_halt(self, tmp_path: Path) -> None:
+        """Ledger judge HALT policy must load for startup consumption."""
+        entry = _make_ledger_entry("core.impl", runner_name="opencode", session_id="session-1")
+        entry_with_policy = ContinuityLedgerEntry(
+            step_id=entry.step_id,
+            latest_attempt_key=entry.latest_attempt_key,
+            status=entry.status,
+            runner_name=entry.runner_name,
+            last_session_id=entry.last_session_id,
+            replay_envelope=entry.replay_envelope,
+            last_journal_event=entry.last_journal_event,
+            judge_policy=JudgeContinuityPolicyOutput(
+                step_id="core.impl",
+                judgment_type="FAILURE",
+                judge_outcome="HALT",
+                action="halt",
+                provenance="judge_verdict",
+                continuity_recovery_reason="judge_requested_halt",
+                attempt_key=entry.latest_attempt_key,
+                halt_reason="unsafe replay",
+            ),
+            recovery_cursor="halt_requested_by_judge_policy",
+        )
+        _write_ledger_entry(tmp_path, entry_with_policy)
+
+        loaded_entries, corrupt_files = _load_ledger_entries(tmp_path)
+
+        assert len(corrupt_files) == 0
+        assert len(loaded_entries) == 1
+        assert loaded_entries[0].judge_policy is not None
+        assert loaded_entries[0].judge_policy.action == "halt"
+        assert loaded_entries[0].judge_policy.attempt_key == entry.latest_attempt_key
 
     def test_missing_ledger_dir_returns_empty(self, tmp_path: Path) -> None:
         """Missing ledger directory must not crash startup."""

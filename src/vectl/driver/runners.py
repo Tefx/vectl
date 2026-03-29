@@ -22,8 +22,6 @@ from __future__ import annotations
 import asyncio
 import contextlib
 import time
-from dataclasses import dataclass
-from enum import Enum
 from typing import TYPE_CHECKING, Protocol
 
 from .errors import RunnerError, RunnerNotFoundError
@@ -33,46 +31,10 @@ from .parsers import (
     GeminiOutputParser,
     OpenCodeOutputParser,
 )
+from .types import RunnerResult, RunnerStatus
 
 if TYPE_CHECKING:
     from .config import RunnerConfig
-    from .types import ContinuityResultFields
-
-
-# =============================================================================
-# Type Definitions
-# =============================================================================
-
-
-class RunnerStatus(str, Enum):
-    """Outcome of a runner execution.
-
-    Architecture: docs/DRIVER-ARCHITECTURE.md Section 2.1 (types.py)
-    Blueprint: DRIVER-BLUEPRINT.md Runner Protocol
-    """
-
-    SUCCESS = "success"
-    FAIL = "fail"
-    STALL = "stall"
-    TRANSPORT_ERROR = "transport_error"
-
-
-@dataclass(frozen=True)
-class RunnerResult:
-    """Parsed output from a completed runner process.
-
-    Architecture: docs/DRIVER-ARCHITECTURE.md Section 2.1 (types.py)
-    Blueprint: DRIVER-BLUEPRINT.md Runner Protocol
-    """
-
-    status: RunnerStatus
-    session_id: str | None
-    output: str
-    elapsed_seconds: float
-    exit_code: int | None
-    cost_usd: float | None = None
-    tokens: dict[str, int] | None = None
-    continuity: ContinuityResultFields | None = None
 
 
 # =============================================================================

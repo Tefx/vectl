@@ -1457,6 +1457,7 @@ def _persist_continuity_ledger(
     session_id: str | None,
     replay_envelope: ReplaySafetyEnvelope,
     last_journal_event: ContinuityJournalEntry,
+    judge_policy: JudgeContinuityPolicyOutput | None = None,
     recovery_cursor: str | None,
 ) -> ContinuityLedgerEntry:
     """Persist continuity ledger as durable last-writer-wins snapshot."""
@@ -1469,6 +1470,7 @@ def _persist_continuity_ledger(
         last_session_id=session_id,
         replay_envelope=replay_envelope,
         last_journal_event=last_journal_event,
+        judge_policy=judge_policy,
         recovery_cursor=recovery_cursor,
     )
     ledger_path = (
@@ -1541,6 +1543,11 @@ def _load_ledger_entries(
                     last_session_id=payload.get("last_session_id"),
                     replay_envelope=replay_envelope,
                     last_journal_event=last_journal_event,
+                    judge_policy=(
+                        JudgeContinuityPolicyOutput(**payload["judge_policy"])
+                        if isinstance(payload.get("judge_policy"), dict)
+                        else None
+                    ),
                     recovery_cursor=payload.get("recovery_cursor"),
                 )
             )
@@ -1548,6 +1555,33 @@ def _load_ledger_entries(
             corrupt_files.append(ledger_path.name)
 
     return tuple(entries), tuple(corrupt_files)
+
+
+def _startup_judge_inputs_from_ledger_entries(
+    ledger_entries: tuple[ContinuityLedgerEntry, ...],
+) -> tuple[StartupRecoveryJudgeInput, ...]:
+    """Extract durable startup judge-failure inputs from continuity ledger.
+
+    Source:
+    - docs/DRIVER-CONTINUITY-FOUNDATION.md Section 4 and Section 7
+      (judge failure outcomes must be journaled and consumed on restart)
+    """
+
+    judge_inputs: list[StartupRecoveryJudgeInput] = []
+    for ledger_entry in sorted(ledger_entries, key=lambda entry: entry.step_id):
+        policy = ledger_entry.judge_policy
+        if policy is None:
+            continue
+        if policy.action != "halt":
+            continue
+        judge_inputs.append(
+            StartupRecoveryJudgeInput(
+                step_id=ledger_entry.step_id,
+                attempt_key=policy.attempt_key,
+                policy=policy,
+            )
+        )
+    return tuple(judge_inputs)
 
 
 async def run(config_path: Path) -> None:
@@ -1600,6 +1634,7 @@ async def run(config_path: Path) -> None:
 
         continuity_repo_root = _resolve_repo_root_from_plan(plan_path)
         ledger_entries, corrupt_ledger_files = _load_ledger_entries(continuity_repo_root)
+        startup_judge_failure_inputs = _startup_judge_inputs_from_ledger_entries(ledger_entries)
         startup_boundary = evaluate_startup_recovery_boundary(
             boundary_input=StartupRecoveryBoundaryInput(
                 reconciliation=StartupRecoveryReconciliationFacts(
@@ -1616,7 +1651,7 @@ async def run(config_path: Path) -> None:
                     )
                 ),
                 ledger_entries=ledger_entries,
-                judge_failure_inputs=(),
+                judge_failure_inputs=startup_judge_failure_inputs,
             )
         )
 
@@ -2520,6 +2555,38 @@ async def reconcile(
             )
 
         observer.emit("JUDGE_FAILURE_POLICY", **asdict(policy_output))
+
+        if policy_output.action == "halt":
+            policy_envelope = _build_replay_envelope(
+                step_id=completed.step_id,
+                attempt_key=continuity_attempt_key,
+                runner_name=completed.runner_name,
+                session_id=completed.result.session_id,
+                scope="judge_failure_policy",
+                fingerprint=policy_output.judge_outcome,
+            )
+            policy_journal = _persist_continuity_journal(
+                repo_root=continuity_repo_root,
+                step_id=completed.step_id,
+                event_kind="judge_failure_policy",
+                attempt_key=continuity_attempt_key,
+                runner_name=completed.runner_name,
+                session_id=completed.result.session_id,
+                summary=(policy_output.halt_reason or policy_output.continuity_recovery_reason),
+                replay_envelope=policy_envelope,
+            )
+            _persist_continuity_ledger(
+                repo_root=continuity_repo_root,
+                step_id=completed.step_id,
+                status="failed",
+                attempt_key=continuity_attempt_key,
+                runner_name=completed.runner_name,
+                session_id=completed.result.session_id,
+                replay_envelope=policy_envelope,
+                last_journal_event=policy_journal,
+                judge_policy=policy_output,
+                recovery_cursor="halt_requested_by_judge_policy",
+            )
 
         if failure_verdict is None:
             if policy_output.action == "fallback":

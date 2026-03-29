@@ -530,6 +530,7 @@ class ContinuityLedgerEntry:
     last_session_id: str | None
     replay_envelope: ReplaySafetyEnvelope
     last_journal_event: ContinuityJournalEntry
+    judge_policy: JudgeContinuityPolicyOutput | None = None
     recovery_cursor: str | None = None
 
 

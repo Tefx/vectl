@@ -49174,18 +49174,37 @@ phases:
     - docs/DRIVER-ARCHITECTURE.md#reconcile
     agent: python-executor
   - id: driver-reconcile-context-convergence.contract
-    name: Pin final reconcile context-only contract
+    name: Pin final reconcile context-only contract and non-goals
     status: pending
-    description: Define the final clean reconcile contract as a single RuntimeContext
-      boundary (`reconcile(completed, *, context)` or equivalent single context-first
-      form). Explicitly forbid parallel explicit runtime params on `reconcile()` (`state`,
-      `judge`, `session_pool`, `observer`, `plan_path`, `config`, `runners`). Record
-      `handle_complete()` as a non-goal unless a direct dependency is proven.
-    verification: Contract artifacts state the exact final signature, the forbidden
-      explicit params list, and the reconcile-only scope boundary.
+    description: "Contract-only step. Pin the FINAL reconcile boundary as:\n\n`reconcile(completed,\
+      \ *, context)` or one equivalent single-context-only form.\n\nRequired contract\
+      \ outputs:\n- exact final signature to be enforced\n- explicit forbidden legacy\
+      \ params on `reconcile()`:\n  `state`, `judge`, `session_pool`, `observer`,\
+      \ `plan_path`, `config`, `runners`\n- explicit statement that `RuntimeContext`\
+      \ is the sole runtime dependency bundle\n- explicit non-goal: `handle_complete()`\
+      \ is out of scope unless a direct dependency is proven\n\nDo not widen the API.\
+      \ Do not redesign completion authority. Do not edit unrelated handlers."
+    verification: '- Contract artifacts name the exact final `reconcile()` signature
+
+      - Forbidden explicit params list is recorded verbatim
+
+      - `RuntimeContext` is stated as sole runtime bundle
+
+      - `handle_complete()` non-goal is stated explicitly'
+    evidence_template: "## Final reconcile contract\n- Final signature:\n  `<paste\
+      \ exact signature>`\n- Forbidden params:\n  `state, judge, session_pool, observer,\
+      \ plan_path, config, runners`\n- Runtime bundle authority:\n  `RuntimeContext\
+      \ only`\n- Non-goal statement:\n  `<paste handle_complete scope line>`\n- Files\
+      \ updated:\n  `<contract-only artifacts>`"
+    refs:
+    - src/vectl/driver/runtime_context.py
+    - src/vectl/driver/loop.py
+    - docs/ADR-driver-evolution-foundation.md#96-handlers-receive-a-unified-runtimecontext
+    - docs/DRIVER-ARCHITECTURE.md#reconcile
+    - tests/test_driver_loop_contract.py
     depends_on:
     - driver-reconcile-context-convergence.sync-current-contract-test
-    agent: python-senior
+    agent: python-executor
   - id: driver-reconcile-context-convergence.test-define-red
     name: Define expected-red reconcile convergence regressions
     status: pending

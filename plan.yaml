@@ -51531,7 +51531,7 @@ phases:
       as JSON verdict. No tolerant fallback-to-text added - valid JSON remains mandatory.'
   - id: driver-live-smoke-remediation.fix-run-subprocess-timeout-handling
     name: Fix run_subprocess timeout handling
-    status: pending
+    status: claimed
     description: 'Fix ALL blockers for subprocess timeout handling.
 
 
@@ -51586,6 +51586,8 @@ phases:
 
       - Evidence covers main path and timeout failure path'
     agent: python-executor
+    claimed_by: python-executor
+    claimed_at: '2026-03-29T17:30:32.729604+00:00'
   - id: driver-live-smoke-remediation.gate
     name: Gate live smoke remediation
     status: pending

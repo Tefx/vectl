@@ -50466,40 +50466,25 @@ phases:
   - id: driver-live-smoke-implementation.gate
     name: Gate live smoke implementation
     status: pending
-    description: 'Gate review: verify the slimmed live runner smoke implementation
-      phase is complete and trustworthy.
-
-
-      review_depth: STANDARD
-
-      review_depth_rationale:
-
-      - touches real runner integration and auth/env gating
-
-      - must block further driver enhancement work until smoke coverage exists
-
-      - compressed process weight moves doc sync into implementation and relies on
-      one independent live matrix step instead of a separate deep-review program
-
-
-      cross_cutting_focus:
-
-      - explicit skip semantics vs fake pass
-
-      - codex structured-output has no tolerant text-success fallback
-
-      - opencode tolerant extraction stays confined to the opencode judge path
-
-      - codex/opencode cheap-model policy conformance
-
-      - judge and regular dispatch both covered'
+    description: "Gate review: verify the slimmed live runner smoke implementation\
+      \ phase is complete and trustworthy.\n\nreview_depth: STANDARD\nreview_depth_rationale:\n\
+      - touches real runner integration and auth/env gating\n- must block further\
+      \ driver enhancement work until smoke coverage exists\n- compressed process\
+      \ weight moves doc sync into implementation and relies on one independent live\
+      \ matrix step instead of a separate deep-review program\n\ncross_cutting_focus:\n\
+      - explicit skip semantics vs fake pass\n- codex structured-output has no tolerant\
+      \ text-success fallback\n- opencode tolerant extraction stays confined to the\
+      \ opencode judge path\n- pinned-model conformance for all four live-smoke paths:\n\
+      \  - codex judge = gpt-5.4-mini\n  - codex dispatch = gpt-5.4-mini\n  - opencode\
+      \ judge = ollama-cloud/minimax-m2.7\n  - opencode dispatch = ollama-cloud/minimax-m2.7\n\
+      - judge and regular dispatch both covered"
     verification: '- All implementation work, reduced doc updates, and the independent
       live matrix step are completed.
 
       - Real codex/opencode smoke paths produce PASS, required FAILURE, or explicit
       SKIP with justified evidence; no fake-pass path remains.
 
-      - No unresolved blocker remains on helper wiring, marker isolation, cheap-model
+      - No unresolved blocker remains on helper wiring, marker isolation, pinned model
       assumptions, or judge fallback boundaries.
 
       - Safe to unblock pending driver enhancement phases.'

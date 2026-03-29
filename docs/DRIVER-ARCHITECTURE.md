@@ -417,6 +417,30 @@ class DriverConfig(BaseModel):
         ...
 ```
 
+#### Agent routing semantics (normative)
+
+`DriverConfig.agent_routing` and `DriverConfig.fallback_runner` are the only
+supported routing surfaces.
+
+Supported behavior:
+
+1. Exact-match routing via `agent_routing["<agent-name>"]`
+2. Glob-match routing via `fnmatch` patterns in `agent_routing`
+3. Fallback routing via `fallback_runner`
+
+Rejected behavior:
+
+- `agent_routing.default` is **not** a legal semantic and MUST be rejected at
+  configuration validation time (load-time), not during runtime dispatch.
+
+Required user-facing guidance for this misconfiguration:
+
+```text
+Invalid configuration in <path>: agent_routing.default is not supported. Remove
+agent_routing.default and use explicit exact/glob entries in agent_routing plus
+fallback_runner for default routing behavior.
+```
+
 **Invariant**: `DriverConfig.runners` MUST contain the runner referenced by
 `DriverConfig.judge.runner`. Validated at load time; raises `ConfigError` on violation.
 

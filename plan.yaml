@@ -39429,7 +39429,7 @@ phases:
       without loop duplication.
 - id: driver-evolution-events-foundation
   name: 'Driver Evolution: Events Foundation'
-  status: pending
+  status: in_progress
   gate: Versioned envelope + event registry source of truth established on top of
     debt-remediation baseline
   context: Bootstrap-postponed evolution work. Event foundation starts only after
@@ -39439,7 +39439,7 @@ phases:
   steps:
   - id: driver-evolution-events-foundation.contract
     name: Pin versioned event envelope and registry contract
-    status: pending
+    status: claimed
     description: 'step_type: contract
 
       contract_purity: ENFORCED
@@ -39506,6 +39506,8 @@ phases:
 
       - No implementation logic beyond declarations/stubs is introduced'
     agent: software-architect
+    claimed_by: software-architect
+    claimed_at: '2026-03-29T05:51:31.925470+00:00'
   - id: driver-evolution-events-foundation.implement-registry-envelope
     name: Implement event registry and versioned JSONL envelope
     status: pending

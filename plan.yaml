@@ -52548,3 +52548,22 @@ phases:
     driver enhancements resume.
   depends_on:
   - driver-continuity-hygiene-doc-sync
+  steps:
+  - id: driver-continuity-hygiene-deep-review.wiring-audit
+    name: Full continuity hygiene wiring audit
+    status: pending
+    description: 'Complete system wiring audit for continuity hygiene. Verify:
+
+      - every new repair-continuity surface is registered and reachable
+
+      - every new continuity hygiene event is registered and emitted from a real path
+
+      - every quarantine manifest field is consumed by CLI or runtime reporting
+
+      - no NotImplementedError stubs remain in continuity hygiene helper or wiring
+      code
+
+      - no write-only continuity hygiene fields exist'
+    verification: '- Wiring audit evidence covers CLI registration, event registration,
+      manifest consumption, and stub absence'
+    agent: wiring-auditor

@@ -52373,6 +52373,64 @@ phases:
 
       **Verification**: real-path proof for startup hygiene and repair continuity'
     agent: blind-tester
+  - id: driver-continuity-hygiene-review.spec-conformance
+    name: Audit continuity hygiene spec conformance
+    status: pending
+    description: 'Spec conformance verification via adversarial divergence hunting.
+
+      Agent: spec-verifier (dedicated, read-only, independent).
+
+
+      Verification scope: phase-check protecting the final gate for continuity startup/repair
+      semantics.
+
+
+      This is NOT ''do tests pass'' — it is ''does the implementation match what the
+      authoritative direction says.''
+
+
+      SCOPE:
+
+      - this user-approved continuity hygiene direction
+
+      - docs/DRIVER-CONTINUITY-FOUNDATION.md §3, §4 Restart, §5, §7
+
+      - README operator recovery and driver sections touched by this work
+
+
+      FOCUS AREAS:
+
+      - safe stale classification exactness
+
+      - blocking cases that must remain blocking
+
+      - quarantine vs deletion semantics
+
+      - CLI/runtime semantic agreement
+
+      - event/manifest auditability claims
+
+
+      Behavioral precedence claims MUST be flagged as NEEDS_TEST with a concrete test
+      suggestion when not directly checkable from code.'
+    verification: '- Evidence table maps each relevant requirement to implementation
+      file:line
+
+      - Divergence is called out explicitly when found
+
+      - No unreviewed deletion/remap/ambiguity drift remains'
+    evidence_template: '## Spec Conformance Report
+
+      - Requirements register:
+
+      - Evidence table:
+
+      - Coverage summary:
+
+      - Top risks:
+
+      - Suggested tests for NEEDS_TEST items:'
+    agent: spec-verifier
 - id: driver-continuity-hygiene-doc-sync
   name: 'Driver Continuity Hygiene: Documentation Sync'
   status: locked

@@ -43654,11 +43654,12 @@ phases:
     agent: python-senior
 - id: driver-enhancement-streaming-progress
   name: 'Driver Enhancement: Streaming & Progress'
-  status: pending
+  status: locked
   gate: Streaming/progress work remains blocked until the slimmed live codex/opencode
     judge and dispatch smoke implementation gate is complete.
   depends_on:
   - driver-live-smoke-implementation
+  - driver-continuity-hygiene-deep-review
   steps:
   - id: driver-enhancement-streaming-progress.impl
     name: Implement incremental JSONL consumption and live progress state

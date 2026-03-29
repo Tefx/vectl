@@ -50486,7 +50486,7 @@ phases:
       **Deviation records**: None required.'
   - id: driver-live-smoke-implementation.add-codex-dispatch-live-smoke-coverage
     name: Add codex dispatch live smoke coverage
-    status: claimed
+    status: done
     description: 'Add additive live smoke tests for the real codex regular task dispatch
       path.
 
@@ -50539,6 +50539,85 @@ phases:
     agent: python-executor
     claimed_by: python-executor
     claimed_at: '2026-03-29T16:23:26.113059+00:00'
+    done_at: '2026-03-29T16:47:41.806451+00:00'
+    evidence: '## Codex Dispatch Live Smoke Test Evidence
+
+
+      **Artifact**:
+
+      - Commit: `38f0a51` - Created `tests/live_smoke/test_codex_dispatch_live.py`
+      (491 lines)
+
+
+      **Verification**:
+
+
+      Run without opt-in (skips integration tests):
+
+      ```bash
+
+      $ uv run pytest tests/live_smoke/test_codex_dispatch_live.py -v
+
+      = 13 passed, 5 skipped in 0.16s =
+
+      ```
+
+
+      Marker selection:
+
+      ```bash
+
+      $ uv run pytest tests/live_smoke/test_codex_dispatch_live.py -m "live_runner
+      and codex_live and dispatch_live" -v
+
+      = 6 passed, 5 skipped, 7 deselected =
+
+      ```
+
+
+      Default suite exclusion:
+
+      ```bash
+
+      $ uv run pytest tests/live_smoke/ -m "not live_runner" --co -q
+
+      = 13/37 tests collected (24 deselected) =
+
+      ```
+
+
+      Skip reasons displayed:
+
+      ```
+
+      SKIPPED: Live runner tests require RUN_LIVE_RUNNER_TESTS=1
+
+      SKIPPED: Auth/session not available for runner ''codex''
+
+      SKIPPED: live_runner preflight failed: live_runner_opt_in_missing
+
+      ```
+
+
+      **Spec link**:
+
+      - DRIVER-LIVE-SMOKE-POLICY.md - codex dispatch live smoke tests
+
+      - Uses pinned model: `gpt-5.4-mini`
+
+      - Override mechanism: `VECTL_CODEX_MODEL` envar
+
+
+      **Test coverage**:
+
+      - `TestCodexDispatchLive` - 5 tests for skip/preflight behavior
+
+      - `TestCodexDispatchLiveIntegration` - 6 tests for real CLI invocation
+
+      - `TestCodexDispatchParsing` - 7 unit tests for parsing helpers
+
+
+      **Deviation records**: None required.'
   - id: driver-live-smoke-implementation.add-opencode-dispatch-live-smoke-coverage
     name: Add opencode dispatch live smoke coverage
     status: claimed

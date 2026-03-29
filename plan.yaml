@@ -50090,56 +50090,29 @@ phases:
   - id: driver-live-smoke-implementation.build-harness
     name: Build shared live smoke harness and pytest surface
     status: pending
-    description: 'step_type: implementation
-
-      verification_scope: local-check
-
-
-      Fill in stub bodies and add the shared live test harness per the explicit ratified
-      outputs from driver-live-smoke-foundation.ratify-live-smoke-policy and driver-live-smoke-foundation.finalize-test-surface-decisions.
-
-
-      UPSTREAM ARTIFACTS (authoritative for this step):
-
-      - driver-live-smoke-foundation.ratify-live-smoke-policy — exact codex/opencode
-      judge and dispatch model identifiers, override mechanisms, and fallback rules
-      are AUTHORITATIVE
-
-      - tests/live_smoke/helpers.py — shared helper interfaces and diagnostics contract
-      are AUTHORITATIVE
-
-      - pyproject.toml / tests/conftest.py — marker and skip surface pinned by the
-      foundation phase
-
-
-      YOUR SCOPE:
-
-      - create tests/live_smoke/helpers.py with shared subprocess capture, skip gating,
-      explicit runner/model override plumbing, cheap-model argument selection, and
-      verdict-shape assertion helpers
-
-      - register live_runner/codex_live/opencode_live/judge_live/dispatch_live markers
-      and opt-in env behavior without folding live tests into the default fast suite
-
-      - encode the ratified runner/scenario mapping so helpers consume exact named
-      model ids and exact override mechanisms rather than a generic "cheap model"
-      abstraction
-
-      - preserve full command, returncode, stdout, stderr for failure diagnostics
-
-      - keep production authority in driver.yaml and src/vectl/driver/judge.py; only
-      add minimal testability hooks if strictly required
-
-      - do not reintroduce tolerant codex structured-mode fallback semantics in shared
-      helpers
-
-
-      ## Completion Criteria (stub exclusion)
-
-      This is an IMPLEMENTATION step. Stub-only completion is NOT acceptable.
-
-      Each deliverable MUST contain substantive logic that processes its inputs and
-      produces outputs that vary based on those inputs.'
+    description: "Fill in stub bodies and add the shared live test harness per the\
+      \ explicit pinned outputs from driver-live-smoke-foundation.ratify-live-smoke-policy\
+      \ and driver-live-smoke-foundation.finalize-test-surface-decisions.\n\nUPSTREAM\
+      \ ARTIFACTS (authoritative for this step):\n- driver-live-smoke-foundation.ratify-live-smoke-policy\
+      \ — exact pinned live-smoke models, override mechanisms, and fallback rules\
+      \ are AUTHORITATIVE\n- tests/live_smoke/helpers.py — shared helper interfaces\
+      \ and diagnostics contract are AUTHORITATIVE\n- pyproject.toml / tests/conftest.py\
+      \ — marker and skip surface pinned by the foundation phase\n\nYOUR SCOPE:\n\
+      - create tests/live_smoke/helpers.py with shared subprocess capture, skip gating,\
+      \ explicit runner/model override plumbing, and verdict-shape assertion helpers\n\
+      - register live_runner/codex_live/opencode_live/judge_live/dispatch_live markers\
+      \ and opt-in env behavior without folding live tests into the default fast suite\n\
+      - encode the pinned runner/scenario mapping so helpers consume these exact named\
+      \ model ids and exact override mechanisms:\n  - codex judge = gpt-5.4-mini\n\
+      \  - codex dispatch = gpt-5.4-mini\n  - opencode judge = ollama-cloud/minimax-m2.7\n\
+      \  - opencode dispatch = ollama-cloud/minimax-m2.7\n- preserve full command,\
+      \ returncode, stdout, stderr for failure diagnostics\n- keep production authority\
+      \ in driver.yaml and src/vectl/driver/judge.py; only add minimal testability\
+      \ hooks if strictly required\n- do not reintroduce tolerant codex structured-mode\
+      \ fallback semantics in shared helpers\n\n## Completion Criteria (stub exclusion)\n\
+      This is an IMPLEMENTATION step. Stub-only completion is NOT acceptable.\nEach\
+      \ deliverable MUST contain substantive logic that processes its inputs and produces\
+      \ outputs that vary based on those inputs."
     verification: '- Main path: helper module and pytest marker/config surface exist
       and support manual isolated live runs using the ratified exact model ids and
       override mechanisms.

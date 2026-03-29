@@ -46213,7 +46213,7 @@ phases:
       failure/abort coverage and concurrency invariants).'
   - id: driver-continuity-review.gate
     name: Gate continuity review
-    status: claimed
+    status: done
     description: "step_type: gate\nGate review for continuity bootstrap readiness\
       \ proof.\n\nreview_depth: THOROUGH\ncross_cutting_focus:\n  - restart recovery\
       \ is controllable and recoverable through the real entrypoint\n  - replay safety\
@@ -46231,6 +46231,38 @@ phases:
     agent: gate-reviewer
     claimed_by: orchestrator
     claimed_at: '2026-03-29T05:30:59.168851+00:00'
+    done_at: '2026-03-29T05:31:10.982654+00:00'
+    evidence: 'Gate review executed and returned NEEDS REVISION with blocker-class
+      findings requiring remediation branch.
+
+
+      Blockers detected:
+
+      - B1: `tests/test_driver_continuity_contract.py` pinned `ContinuityLedgerEntry`
+      fields stale (missing `judge_policy`).
+
+      - B2: `src/vectl/driver/types.py` `RunnerResult` dataclass not frozen; violates
+      immutability contract expected by tests.
+
+
+      Should-fix set captured:
+
+      - DecideState isolation failures
+
+      - continuity expected-red asyncio failures
+
+      - judge runtime failures
+
+
+      Per batched-fix protocol, remediation ownership has been created before progression:
+
+      - Added `driver-continuity-review.fix-gate-blockers` (depends on gate)
+
+      - Added `driver-continuity-review.gate-retest` (depends on fix step)
+
+
+      Original gate step is completed as an issue-detection gate; downstream progression
+      now flows through the created fix + retest path.'
   - id: driver-continuity-review.fix-wiring-blockers
     name: Fix continuity review wiring blockers
     status: done

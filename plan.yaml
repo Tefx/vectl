@@ -43250,7 +43250,7 @@ phases:
       \ files were modified: no (tests-only)"
   - id: driver-judge-hardening-structured-output.impl
     name: Implement codex-aligned judge invocation and parser hardening
-    status: pending
+    status: claimed
     description: "step_type: implementation\nspec_refs:\n  - driver.yaml#runners-codex-and-judge\n\
       \  - docs/JUDGE-AGENT-PROMPT.md#verdict-schema\n  - docs/DRIVER-ARCHITECTURE.md#judge-runtime\n\
       touch_paths:\n  - src/vectl/driver/judge.py\n  - src/vectl/driver/config.py\n\
@@ -43339,6 +43339,8 @@ phases:
     depends_on:
     - driver-judge-hardening-structured-output.test-define-red
     agent: python-senior
+    claimed_by: python-senior
+    claimed_at: '2026-03-29T01:18:43.738631+00:00'
   - id: driver-judge-hardening-structured-output.real-codex-verify
     name: Verify real codex judge stability for blocking judgments
     status: pending

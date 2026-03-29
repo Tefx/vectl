@@ -42848,7 +42848,7 @@ phases:
   steps:
   - id: driver-routing-hardening.contract
     name: Pin invalid `agent_routing.default` validation semantics
-    status: claimed
+    status: done
     description: "step_type: contract\ncontract_purity: ENFORCED\ncontract_outputs:\n\
       \  - config_validation_semantics\n  - error_contract\nspec_refs:\n  - docs/DRIVER-ARCHITECTURE.md#2-3-config-py-configuration\n\
       \  - driver.yaml#agent-routing-and-fallback-runner\nauthoritative_interface:\
@@ -42875,6 +42875,22 @@ phases:
     agent: python-senior
     claimed_by: python-senior
     claimed_at: '2026-03-29T11:58:08.995087+00:00'
+    done_at: '2026-03-29T12:01:45.266338+00:00'
+    evidence: "## Final routing validation contract\n- Authoritative interface: DriverConfig.agent_routing\
+      \ + DriverConfig.fallback_runner (validated in src/vectl/driver/config.py),\
+      \ with route_agent(agent: str) resolving only configured mappings\n- Invalid\
+      \ key: agent_routing.default\n- Rejection timing: config validation (not runtime\
+      \ routing)\n- Required error guidance: \"Invalid configuration in <path>: agent_routing.default\
+      \ is not supported. Remove agent_routing.default and use explicit exact/glob\
+      \ entries in agent_routing plus fallback_runner for default routing behavior.\"\
+      \n- route_agent() supported semantics: exact match, glob match, fallback_runner\
+      \ only\n- Files updated: docs/contracts/driver-routing-hardening-contract.yaml;\
+      \ docs/DRIVER-ARCHITECTURE.md; README.md\n- Verification output:\n  - git commit:\
+      \ \"[vectl/step-driver-routing-hardening-contract df004fd] docs(driver): pin\
+      \ agent routing validation contract\"\n  - git status --short --branch: \"##\
+      \ vectl/step-driver-routing-hardening-contract\"\n- NOT Done:\n  - No production\
+      \ code changes under src/\n  - No runtime behavior changes\n  - No edits to\
+      \ plan/orchestrator state files (plan.yaml, .git/vectl/claims.json)"
   - id: driver-routing-hardening.test-define-red
     name: Define expected-red invalid default routing regression
     status: pending

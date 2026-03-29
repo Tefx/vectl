@@ -50521,6 +50521,47 @@ phases:
     - driver-live-smoke-implementation.spec-conformance
     - driver-live-smoke-implementation.runner-smoke-matrix
     agent: gate-reviewer
+  - id: driver-live-smoke-implementation.update-docs
+    name: Update live smoke docs in reduced form
+    status: pending
+    description: 'Documentation step folded into implementation instead of a standalone
+      doc-sync phase.
+
+
+      Update only the developer-facing live smoke instructions needed to keep the
+      new tests trustworthy:
+
+      - opt-in env gate and marker names
+
+      - exact pytest selections for codex/opencode judge, codex/opencode dispatch,
+      and combined runs
+
+      - cheap-model ratification location so implementers do not guess names
+
+      - explicit PASS vs explicit SKIP semantics
+
+      - codex structured-output rule: no tolerant fallback-to-text success path in
+      the codex judge structured mode step
+
+      - opencode judge may use tolerant JSONL/text extraction
+
+
+      Prefer additive updates to existing driver docs; do not create a separate documentation
+      program.'
+    verification: '- Docs show exact commands/env vars and align with implemented
+      markers.
+
+      - Docs explain PASS vs explicit SKIP evidence expectations.
+
+      - Docs distinguish codex structured-output enforcement from opencode tolerant
+      extraction.'
+    depends_on:
+    - driver-live-smoke-implementation.build-harness
+    - driver-live-smoke-implementation.add-codex-judge-live-smoke-coverage
+    - driver-live-smoke-implementation.add-opencode-judge-live-smoke-coverage
+    - driver-live-smoke-implementation.add-codex-dispatch-live-smoke-coverage
+    - driver-live-smoke-implementation.add-opencode-dispatch-live-smoke-coverage
+    agent: doc-reviewer
 - id: driver-live-smoke-doc-sync
   name: Driver Live Runner Smoke Coverage Documentation Sync
   status: locked

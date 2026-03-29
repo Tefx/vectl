@@ -51814,6 +51814,63 @@ phases:
     depends_on:
     - driver-continuity-hygiene-foundation.contract
     agent: python-executor
+  - id: driver-continuity-hygiene-foundation.blackbox-define-red
+    name: Define expected-red black-box startup and repair tests
+    status: pending
+    description: 'step_type: test
+
+      step_intent: test_define_red
+
+      expected_result: red
+
+
+      Tests-only step. Extend black-box coverage for the real entrypoint and CLI recovery
+      surfaces before implementation exists.
+
+
+      Required scenarios:
+
+      - `uv run vectl drive --config driver.yaml` auto-quarantines only the narrow
+      safe stale class and then proceeds into active recovery
+
+      - the same command still halts for corrupt ledger, active-claims divergence,
+      current claimed-step disagreement, and ambiguous identity cases
+
+      - `vectl repair continuity` supports dry-run/apply/json output and preserves
+      auditability via quarantine/manifests instead of deletion
+
+      - CLI and startup hygiene classify the same fixture consistently
+
+
+      Changed seams require real-path proof later; these tests should currently expose
+      the missing runtime/CLI behavior.
+
+
+      ## Spec-Fixture Conformance (MANDATORY)
+
+      At least one black-box fixture MUST use the exact persisted directory layout
+      under `.vectl/continuity/{ledger,journal}` with no convenience normalization.'
+    verification: '- Modified files are limited to tests/ plus test fixtures/helpers
+
+      - Expected-red startup/CLI tests clearly expose the current stale-artifact halt
+      problem
+
+      - Evidence names downstream implementation owners: driver-continuity-hygiene-core.impl-startup-stage
+      and driver-continuity-hygiene-surface.impl-cli-repair-continuity'
+    evidence_template: '## Expected-Red Black-Box Evidence
+
+      - Real commands/tests defined:
+
+      - Safe-stale scenarios defined:
+
+      - Blocking scenarios defined:
+
+      - Expected failures before implementation:
+
+      - Confirmation product code was not modified:'
+    depends_on:
+    - driver-continuity-hygiene-foundation.contract
+    agent: python-executor
 - id: driver-continuity-hygiene-core
   name: 'Driver Continuity Hygiene: Core Runtime'
   status: locked

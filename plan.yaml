@@ -51556,3 +51556,36 @@ phases:
 
       - Evidence covers main path and timeout failure path'
     agent: python-executor
+  - id: driver-live-smoke-remediation.gate
+    name: Gate live smoke remediation
+    status: pending
+    description: 'Gate review: Verify both remediation fixes work correctly.
+
+
+      As an INDEPENDENT REVIEWER (gate-reviewer), assess whether the remediation phase
+      meets the quality bar for proceeding.
+
+
+      Review criteria:
+
+      1. Codex judge parser now extracts verdict JSON from item.text for item.completed
+      / agent_message events without tolerant fallback-to-text success paths
+
+      2. run_subprocess() catches TimeoutExpired and returns a deterministic SubprocessResult
+      with returncode=-1
+
+      3. Re-run the independent smoke matrix from driver-live-smoke-implementation.runner-smoke-matrix
+      and confirm all paths now pass or explicitly skip
+
+      4. Evidence is specific, verifiable, and covers both blocker families'
+    verification: '- All live smoke integration tests pass or explicitly skip per
+      policy
+
+      - Independent smoke matrix rerun confirms codex structured-output extraction
+      and subprocess timeout handling work
+
+      - No unresolved blockers remain in the remediation phase'
+    depends_on:
+    - driver-live-smoke-remediation.fix-codex-judge-parser-item-text-extraction
+    - driver-live-smoke-remediation.fix-run-subprocess-timeout-handling
+    agent: gate-reviewer

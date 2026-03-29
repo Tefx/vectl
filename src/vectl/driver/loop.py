@@ -497,6 +497,76 @@ GRACEFUL_SHUTDOWN_CONTRACT: Final[GracefulShutdownContract] = GracefulShutdownCo
 
 
 @dataclass(frozen=True)
+class ReconcileContextOnlyContract:
+    """Final reconcile context-only contract.
+
+    Authority:
+    - docs/DRIVER-ARCHITECTURE.md Section 2.11 reconcile boundary
+    - docs/ADR-driver-evolution-foundation.md#96-handlers-receive-a-unified-runtimecontext
+
+    This contract pins the final ``reconcile()`` signature to a single
+    context-only parameter. All legacy explicit parameters are forbidden.
+
+    Invariants:
+        - ``reconcile()`` accepts exactly one required positional parameter
+          (``completed``) plus one keyword-only parameter (``context``).
+        - The legacy explicit parameters (``state``, ``judge``, ``session_pool``,
+          ``observer``, ``plan_path``, ``config``, ``runners``) are forbidden
+          on ``reconcile()`` and MUST be accessed only through
+          ``RuntimeContext``.
+        - ``RuntimeContext`` is the sole authoritative runtime bundle for the
+          reconcile boundary.
+        - ``handle_complete()`` is explicitly out of scope for completion
+          authority convergence; it remains a legacy/internal shim only.
+
+    Non-goal (handle_complete scope):
+        ``handle_complete()`` does NOT handle completion authority convergence.
+        The sole completion authority is ``wait_for_any() -> reconcile()``.
+        ``handle_complete()`` is retained only as a legacy compatibility shim
+        for internal callers that invoke ``decide(action='complete')``.
+    """
+
+    contract_id: str
+    source_step_id: str
+    final_signature: str
+    forbidden_params: tuple[str, ...]
+    runtime_bundle_authority: str
+    handle_complete_non_goal: str
+    rationale: str
+
+
+RECONCILE_CONTEXT_ONLY_CONTRACT: Final[ReconcileContextOnlyContract] = ReconcileContextOnlyContract(
+    contract_id="driver-reconcile-context-only-v1",
+    source_step_id="driver-reconcile-context-convergence.contract",
+    final_signature=(
+        "async def reconcile(completed: CompletedEntry, *, context: RuntimeContext) -> None"
+    ),
+    forbidden_params=(
+        "state",
+        "judge",
+        "session_pool",
+        "observer",
+        "plan_path",
+        "config",
+        "runners",
+    ),
+    runtime_bundle_authority="RuntimeContext only",
+    handle_complete_non_goal=(
+        "handle_complete() does NOT handle completion authority convergence. "
+        "The sole completion authority is wait_for_any() -> reconcile(). "
+        "handle_complete() is retained only as a legacy compatibility shim "
+        "for internal callers that invoke decide(action='complete')."
+    ),
+    rationale=(
+        "Context-only boundary enforces single runtime bundle authority at the "
+        "reconcile entry point, preventing implicit coupling to individual runtime "
+        "components and ensuring all runtime state is accessed through the "
+        "RuntimeContext contract."
+    ),
+)
+
+
+@dataclass(frozen=True)
 class DefaultStartupRecoveryController:
     """Production startup recovery controller adapter.
 
@@ -3470,6 +3540,8 @@ __all__ = [
     "PlannerDispatchContract",
     "PlannerDispatchRequest",
     "PlannerDispatcher",
+    "RECONCILE_CONTEXT_ONLY_CONTRACT",
+    "ReconcileContextOnlyContract",
     "REMAINING_JUDGMENT_RUNTIME_CONTRACTS",
     "REPLAN_PLANNER_WIRING",
     "RemainingJudgmentRuntimeContract",

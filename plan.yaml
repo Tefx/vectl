@@ -50510,7 +50510,13 @@ phases:
       - exact pytest selections for codex/opencode judge, codex/opencode dispatch,
       and combined runs
 
-      - cheap-model ratification location so implementers do not guess names
+      - the exact ratified codex judge model id, codex dispatch model id (if different),
+      opencode judge model id, and opencode dispatch model id (if different)
+
+      - the exact runner-supported override mechanism used for each documented invocation
+      (flag/config/env)
+
+      - fallback policy if a preferred cheap model is unavailable
 
       - explicit PASS vs explicit SKIP semantics
 
@@ -50522,13 +50528,16 @@ phases:
 
       Prefer additive updates to existing driver docs; do not create a separate documentation
       program.'
-    verification: '- Docs show exact commands/env vars and align with implemented
-      markers.
+    verification: '- Docs show exact commands, exact model ids, exact override mechanisms,
+      and align with implemented markers.
 
       - Docs explain PASS vs explicit SKIP evidence expectations.
 
       - Docs distinguish codex structured-output enforcement from opencode tolerant
-      extraction.'
+      extraction.
+
+      - Reduced-form docs remain implementation-local; no separate doc-sync phase
+      is reintroduced.'
     depends_on:
     - driver-live-smoke-implementation.build-harness
     - driver-live-smoke-implementation.add-codex-judge-live-smoke-coverage

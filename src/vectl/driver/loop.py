@@ -46,6 +46,10 @@ from .config import (
     SessionConfig,
     load_config,
 )
+from .action_registry import (
+    ACTION_REGISTRY_SCOPE_STATEMENT,
+    PLANNER_DISPATCH_ACTION_DECLARATIONS,
+)
 from .dispatch import render_prompt
 from .errors import ConfigError, JudgmentParseError, JudgmentTimeoutError, RunnerError
 from .judge import (
@@ -71,6 +75,7 @@ from .runner_continuity import (
 from .runners import Runner, create_runner
 from .runners import RunnerStatus as RunnerDispatchStatus
 from .session import SessionPool
+from .runtime_context import RuntimeContext
 from .types import (
     CompletedEntry,
     ContinuityHandoff,
@@ -201,6 +206,9 @@ PlannerDispatchSourceVerdict = Literal["REPLAN", "REJECT"]
 
 PLANNER_SOURCE_VERDICT_REPLAN: Final[PlannerDispatchSourceVerdict] = "REPLAN"
 PLANNER_SOURCE_VERDICT_REJECT: Final[PlannerDispatchSourceVerdict] = "REJECT"
+LOOP_HANDLER_RUNTIME_CONTEXT: Final[type[RuntimeContext]] = RuntimeContext
+LOOP_ACTION_REGISTRY_SCOPE_STATEMENT: Final[str] = ACTION_REGISTRY_SCOPE_STATEMENT
+LOOP_PLANNER_ACTION_DECLARATIONS = PLANNER_DISPATCH_ACTION_DECLARATIONS
 
 
 RemainingJudgmentTriggerName = Literal[
@@ -3125,6 +3133,9 @@ __all__ = [
     "ReplanTriggerName",
     "GracefulShutdownContract",
     "DeferredRuntimeBranch",
+    "LOOP_ACTION_REGISTRY_SCOPE_STATEMENT",
+    "LOOP_HANDLER_RUNTIME_CONTEXT",
+    "LOOP_PLANNER_ACTION_DECLARATIONS",
     "STARTUP_RECOVERY_CONTRACT",
     "StartupRecoveryContract",
     "dispatch_planner",

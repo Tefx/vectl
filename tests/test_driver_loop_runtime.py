@@ -35,10 +35,25 @@ from src.vectl.driver.config import (
 )
 from src.vectl.driver.errors import ConfigError
 from src.vectl.driver.judge import Judge
+from src.vectl.driver.action_registry import (
+    ACTION_REGISTRY_DECLARATION_MODE,
+    ACTION_REGISTRY_PUBLIC_DYNAMIC_REGISTRATION,
+    ACTION_REGISTRY_SCOPE_STATEMENT,
+    LAYERED_ACTION_REGISTRY,
+    PLANNER_ACTION_CATEGORY,
+    PLANNER_DISPATCH_ACTION_DECLARATIONS,
+    PLANNER_DISPATCH_EVENT_EXPECTATIONS,
+    PLANNER_DISPATCH_GATE_REJECT_ACTION_TYPE,
+    PLANNER_DISPATCH_REPLAN_ACTION_TYPE,
+    PlannerDispatchAction,
+)
 from src.vectl.driver.loop import (
     COMPLETION_AUTHORITY_A1_CONTRACT,
     DEFERRED_REPLAN_BRANCHES,
     GRACEFUL_SHUTDOWN_CONTRACT,
+    LOOP_ACTION_REGISTRY_SCOPE_STATEMENT,
+    LOOP_HANDLER_RUNTIME_CONTEXT,
+    LOOP_PLANNER_ACTION_DECLARATIONS,
     STARTUP_RECOVERY_CONTRACT,
     CompletionAuthorityContract,
     handle_complete,
@@ -49,6 +64,7 @@ from src.vectl.driver.loop import (
 )
 from src.vectl.driver.observe import FileObserver
 from src.vectl.driver.runners import Runner
+from src.vectl.driver.runtime_context import RuntimeContext
 from src.vectl.driver.session import SessionPool
 from src.vectl.driver.types import (
     CompletedEntry,
@@ -279,6 +295,72 @@ class TestCompletionAuthorityA1Contract:
             "duplicate STEP_COMPLETED emission for one runner result"
             in contract.blocker_regressions
         )
+
+
+class TestPlannerDispatchActionRegistryContract:
+    """Contract coverage for planner-dispatch registry declarations."""
+
+    def test_planner_dispatch_action_types_are_explicit_and_separate(self) -> None:
+        """Planner dispatch MUST have explicit action types outside generic execution."""
+        action_types = {decl.action_type for decl in PLANNER_DISPATCH_ACTION_DECLARATIONS}
+        assert action_types == {
+            PLANNER_DISPATCH_REPLAN_ACTION_TYPE,
+            PLANNER_DISPATCH_GATE_REJECT_ACTION_TYPE,
+        }
+        assert all(
+            decl.category == PLANNER_ACTION_CATEGORY
+            for decl in PLANNER_DISPATCH_ACTION_DECLARATIONS
+        )
+        assert PLANNER_ACTION_CATEGORY != "execution"
+
+    def test_planner_dispatch_payload_contract_names_required_fields(self) -> None:
+        """Planner dispatch payload MUST expose explicit contract fields."""
+        payload_fields = set(PlannerDispatchAction.__dataclass_fields__)
+        assert payload_fields == {
+            "action_type",
+            "step_id",
+            "trigger",
+            "judgment_type",
+            "planner_instruction",
+            "source_verdict",
+        }
+
+    def test_planner_dispatch_handler_boundary_uses_runtime_context(self) -> None:
+        """Loop planner contract MUST expose shared RuntimeContext boundary."""
+        assert LOOP_HANDLER_RUNTIME_CONTEXT is RuntimeContext
+        assert all(
+            decl.runtime_context_contract == "RuntimeContext"
+            for decl in PLANNER_DISPATCH_ACTION_DECLARATIONS
+        )
+
+    def test_planner_dispatch_events_are_declared_for_execution_outcomes(self) -> None:
+        """Planner dispatch MUST declare started/completed/failed event expectations."""
+        assert PLANNER_DISPATCH_EVENT_EXPECTATIONS.started == "PLANNER_DISPATCH_STARTED"
+        assert PLANNER_DISPATCH_EVENT_EXPECTATIONS.completed == "PLANNER_DISPATCH_COMPLETED"
+        assert PLANNER_DISPATCH_EVENT_EXPECTATIONS.failed == "PLANNER_DISPATCH_FAILED"
+        assert all(
+            decl.event_expectations == PLANNER_DISPATCH_EVENT_EXPECTATIONS
+            for decl in PLANNER_DISPATCH_ACTION_DECLARATIONS
+        )
+
+    def test_planner_dispatch_is_in_registry_scope_and_not_deferred(self) -> None:
+        """Planner dispatch MUST be in scope for the action registry now."""
+        assert ACTION_REGISTRY_SCOPE_STATEMENT == LOOP_ACTION_REGISTRY_SCOPE_STATEMENT
+        assert "included in loop action registry scope" in ACTION_REGISTRY_SCOPE_STATEMENT
+        assert all(decl.included_in_registry_scope for decl in PLANNER_DISPATCH_ACTION_DECLARATIONS)
+        assert all(
+            not decl.deferred_outside_registry for decl in PLANNER_DISPATCH_ACTION_DECLARATIONS
+        )
+        assert LOOP_PLANNER_ACTION_DECLARATIONS == PLANNER_DISPATCH_ACTION_DECLARATIONS
+        assert (
+            LAYERED_ACTION_REGISTRY[PLANNER_ACTION_CATEGORY] == PLANNER_DISPATCH_ACTION_DECLARATIONS
+        )
+
+    def test_action_registry_is_static_and_auditable(self) -> None:
+        """Planner dispatch declarations MUST stay static and reviewable."""
+        assert ACTION_REGISTRY_DECLARATION_MODE == "static_declaration_table"
+        assert ACTION_REGISTRY_PUBLIC_DYNAMIC_REGISTRATION is False
+        assert all(decl.auditable_declaration for decl in PLANNER_DISPATCH_ACTION_DECLARATIONS)
 
 
 class TestStartupRecoveryPath:

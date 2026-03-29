@@ -60,6 +60,7 @@ from .judge import (
 )
 from .judgments import JudgmentRequest, JudgmentType, JudgmentVerdict
 from .observe import Observer, create_observer
+from .action_registry import INITIAL_HANDLER_INPUT_CONTRACT
 from .policy import (
     ParsedGateIssue,
     _detect_preflight_risk_signals,
@@ -75,7 +76,7 @@ from .runner_continuity import (
 from .runners import Runner, create_runner
 from .runners import RunnerStatus as RunnerDispatchStatus
 from .session import SessionPool
-from .runtime_context import RuntimeContext
+from .runtime_context import ROLE_SPECIFIC_CONTEXTS_DEFERRED, RuntimeContext
 from .types import (
     CompletedEntry,
     ContinuityHandoff,
@@ -116,6 +117,12 @@ if TYPE_CHECKING:
 
 
 _LOGGER = logging.getLogger(__name__)
+
+
+RUNTIME_CONTEXT_ROLLOUT_CONTRACT: Final[str] = (
+    "Initial registry-backed loop handlers receive a single shared RuntimeContext; "
+    "role-specific contexts remain explicitly deferred for this rollout."
+)
 
 
 LoopSurfaceName = Literal[
@@ -3110,6 +3117,7 @@ async def _run_main_loop(
 
 __all__ = [
     "COMPLETION_AUTHORITY_A1_CONTRACT",
+    "INITIAL_HANDLER_INPUT_CONTRACT",
     "CompletionAuthorityContract",
     "CompletionSinkName",
     "CONFLICT_RESOLVER_READINESS_CONTRACT",
@@ -3117,6 +3125,8 @@ __all__ = [
     "ConflictResolverReadinessContract",
     "ConflictResolverTriggerName",
     "DEFERRED_REPLAN_BRANCHES",
+    "ROLE_SPECIFIC_CONTEXTS_DEFERRED",
+    "RUNTIME_CONTEXT_ROLLOUT_CONTRACT",
     "GATE_REMEDIATION_CHAIN_CONTRACT",
     "GateRemediationChainContract",
     "GateRemediationTriggerName",

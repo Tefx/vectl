@@ -33,6 +33,10 @@ from src.vectl.driver.config import (
     RunnerConfig,
     SessionConfig,
 )
+from src.vectl.driver.action_registry import (
+    ACTION_HANDLER_CONTRACTS,
+    INITIAL_HANDLER_INPUT_CONTRACT,
+)
 from src.vectl.driver.errors import ConfigError
 from src.vectl.driver.judge import Judge
 from src.vectl.driver.action_registry import (
@@ -54,6 +58,8 @@ from src.vectl.driver.loop import (
     LOOP_ACTION_REGISTRY_SCOPE_STATEMENT,
     LOOP_HANDLER_RUNTIME_CONTEXT,
     LOOP_PLANNER_ACTION_DECLARATIONS,
+    ROLE_SPECIFIC_CONTEXTS_DEFERRED,
+    RUNTIME_CONTEXT_ROLLOUT_CONTRACT,
     STARTUP_RECOVERY_CONTRACT,
     CompletionAuthorityContract,
     handle_complete,
@@ -63,6 +69,10 @@ from src.vectl.driver.loop import (
     shutdown,
 )
 from src.vectl.driver.observe import FileObserver
+from src.vectl.driver.runtime_context import (
+    RUNTIME_CONTEXT_BOUNDARY_RULES,
+    RUNTIME_CONTEXT_RESPONSIBILITY_SPLIT,
+)
 from src.vectl.driver.runners import Runner
 from src.vectl.driver.runtime_context import RuntimeContext
 from src.vectl.driver.session import SessionPool
@@ -361,6 +371,57 @@ class TestPlannerDispatchActionRegistryContract:
         assert ACTION_REGISTRY_DECLARATION_MODE == "static_declaration_table"
         assert ACTION_REGISTRY_PUBLIC_DYNAMIC_REGISTRATION is False
         assert all(decl.auditable_declaration for decl in PLANNER_DISPATCH_ACTION_DECLARATIONS)
+
+
+class TestRuntimeContextContracts:
+    """Contract tests for the unified RuntimeContext rollout."""
+
+    def test_initial_handler_input_contract_is_single_shared_runtime_context(self) -> None:
+        """Registry and loop contract MUST agree on shared RuntimeContext input."""
+        assert INITIAL_HANDLER_INPUT_CONTRACT == "single shared RuntimeContext"
+        assert INITIAL_HANDLER_INPUT_CONTRACT == INITIAL_HANDLER_INPUT_CONTRACT
+        assert "single shared RuntimeContext" in RUNTIME_CONTEXT_ROLLOUT_CONTRACT
+
+    def test_runtime_context_responsibility_split_matches_adr_ownership(self) -> None:
+        """RuntimeContext boundaries MUST preserve DriverState vs DecideState ownership."""
+        split = {entry.concern: entry for entry in RUNTIME_CONTEXT_RESPONSIBILITY_SPLIT}
+
+        assert split["runtime_orchestration_state"].owner == "DriverState"
+        assert split["runtime_orchestration_state"].exposed_via_runtime_context is True
+
+        assert split["decide_local_state"].owner.startswith("DecideState")
+        assert split["decide_local_state"].exposed_via_runtime_context is False
+
+        assert split["event_contracts"].owner == "driver.events.registry"
+        assert split["policy_helpers"].owner == "driver.policy"
+
+    def test_runtime_context_boundary_rules_cover_required_subjects(self) -> None:
+        """Boundary rules MUST explicitly cover runtime, decide, events, and policy."""
+        subjects = {rule.subject for rule in RUNTIME_CONTEXT_BOUNDARY_RULES}
+        assert subjects == {
+            "runtime_orchestration_state",
+            "decide_local_state",
+            "event_contracts",
+            "policy_helpers",
+        }
+
+    def test_role_specific_contexts_are_explicitly_deferred(self) -> None:
+        """ADR decision MUST keep split handler contexts deferred in this rollout."""
+        assert ROLE_SPECIFIC_CONTEXTS_DEFERRED.status == "deferred"
+        assert ROLE_SPECIFIC_CONTEXTS_DEFERRED.current_contract == INITIAL_HANDLER_INPUT_CONTRACT
+        assert "DispatchContext" in ROLE_SPECIFIC_CONTEXTS_DEFERRED.deferred_contexts
+        assert "ReconcileContext" in ROLE_SPECIFIC_CONTEXTS_DEFERRED.deferred_contexts
+
+    def test_action_registry_uses_runtime_context_for_initial_handlers(self) -> None:
+        """Action registry declarations MUST pin RuntimeContext as the shared input."""
+        assert ACTION_HANDLER_CONTRACTS
+        assert all(
+            contract.handler_input == INITIAL_HANDLER_INPUT_CONTRACT
+            for contract in ACTION_HANDLER_CONTRACTS
+        )
+        assert all(
+            contract.role_specific_contexts_deferred for contract in ACTION_HANDLER_CONTRACTS
+        )
 
 
 class TestStartupRecoveryPath:

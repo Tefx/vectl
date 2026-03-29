@@ -2,6 +2,12 @@
 
 Contract purity: this module declares auditable action metadata only. It does
 not perform runtime registration or dispatch.
+
+Authority:
+- docs/ADR-driver-evolution-foundation.md#96-handlers-receive-a-unified-runtimecontext
+- docs/ADR-driver-evolution-foundation.md#116-target-architecture-shape
+- docs/ADR-driver-evolution-foundation.md#137-ownership-model
+- docs/ADR-driver-evolution-foundation.md#188-resolved-decisions
 """
 
 from __future__ import annotations
@@ -9,8 +15,14 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Final, Literal, Protocol, TypeAlias, TypeVar
 
+from vectl.models import Action
+
 from .runtime_context import RuntimeContext
 
+
+# =============================================================================
+# Planner-dispatch specific types (HEAD contract surface)
+# =============================================================================
 
 ActionCategory = Literal["execution", "planner", "control", "recovery"]
 
@@ -50,6 +62,11 @@ ACTION_REGISTRY_SCOPE_STATEMENT: Final[str] = (
     "Planner dispatch is included in loop action registry scope and is not deferred "
     "outside the registry contract."
 )
+
+
+# =============================================================================
+# Planner-dispatch contracts (HEAD contract surface)
+# =============================================================================
 
 
 @dataclass(frozen=True)
@@ -164,15 +181,114 @@ LAYERED_ACTION_REGISTRY: Final[dict[ActionCategory, tuple[ActionDeclaration, ...
 }
 
 
+# =============================================================================
+# General loop action handler contracts (incoming contract surface)
+# =============================================================================
+
+LoopActionKind = Literal[
+    "claim_and_dispatch",
+    "complete",
+    "wait",
+    "escalate",
+    "planner_dispatch",
+    "recovery",
+]
+
+
+LoopActionCategory = Literal["runtime", "planner", "control", "recovery"]
+
+
+class RuntimeActionHandler(Protocol):
+    """Initial shared handler signature for registry-backed loop actions."""
+
+    async def __call__(self, action: Action, context: RuntimeContext) -> None: ...
+
+
+@dataclass(frozen=True)
+class ActionHandlerContract:
+    """Registry declaration for one loop action surface."""
+
+    action: LoopActionKind
+    category: LoopActionCategory
+    handler_name: str
+    handler_input: str
+    state_owner: str
+    decide_state_boundary: str
+    event_boundary: str
+    policy_boundary: str
+    role_specific_contexts_deferred: bool
+    rationale: str
+
+
+INITIAL_HANDLER_INPUT_CONTRACT: Final[str] = "single shared RuntimeContext"
+
+
+ACTION_HANDLER_CONTRACTS: Final[tuple[ActionHandlerContract, ...]] = (
+    ActionHandlerContract(
+        action="claim_and_dispatch",
+        category="runtime",
+        handler_name="handle_dispatch",
+        handler_input=INITIAL_HANDLER_INPUT_CONTRACT,
+        state_owner="DriverState",
+        decide_state_boundary="pass DriverState.decide_state only through vectl.decide interfaces",
+        event_boundary="emit declared events only; schema ownership stays outside handlers",
+        policy_boundary="use driver.policy helpers without transferring policy ownership",
+        role_specific_contexts_deferred=True,
+        rationale="Dispatch remains a runtime handler but adopts the shared context contract first.",
+    ),
+    ActionHandlerContract(
+        action="complete",
+        category="control",
+        handler_name="handle_complete",
+        handler_input=INITIAL_HANDLER_INPUT_CONTRACT,
+        state_owner="DriverState",
+        decide_state_boundary="complete-action compatibility must not become decide-state ownership drift",
+        event_boundary="legacy compatibility emissions still use declared event surfaces",
+        policy_boundary="no policy ownership transfer",
+        role_specific_contexts_deferred=True,
+        rationale="Legacy complete compatibility remains explicitly bounded during migration.",
+    ),
+    ActionHandlerContract(
+        action="planner_dispatch",
+        category="planner",
+        handler_name="dispatch_planner",
+        handler_input=INITIAL_HANDLER_INPUT_CONTRACT,
+        state_owner="DriverState",
+        decide_state_boundary="planner dispatch may observe runtime state but does not own DecideState",
+        event_boundary="planner dispatch emits events through runtime surfaces only",
+        policy_boundary="planner trigger classification remains policy/judgment owned",
+        role_specific_contexts_deferred=True,
+        rationale="Planner actions are first-class loop action contracts in the target architecture.",
+    ),
+    ActionHandlerContract(
+        action="recovery",
+        category="recovery",
+        handler_name="startup_recovery_or_runtime_repair",
+        handler_input=INITIAL_HANDLER_INPUT_CONTRACT,
+        state_owner="DriverState",
+        decide_state_boundary="recovery may restore orchestration state without becoming decide-memory owner",
+        event_boundary="recovery reports through declared event surfaces only",
+        policy_boundary="recovery-specific classification remains external to RuntimeContext",
+        role_specific_contexts_deferred=True,
+        rationale="Recovery is preserved as a separate category without introducing special-purpose contexts yet.",
+    ),
+)
+
+
 __all__ = [
+    "ACTION_HANDLER_CONTRACTS",
     "ACTION_REGISTRY_DECLARATION_MODE",
     "ACTION_REGISTRY_PUBLIC_DYNAMIC_REGISTRATION",
     "ACTION_REGISTRY_SCOPE_STATEMENT",
     "ActionCategory",
     "ActionDeclaration",
     "ActionEventExpectation",
+    "ActionHandlerContract",
+    "INITIAL_HANDLER_INPUT_CONTRACT",
     "LAYERED_ACTION_REGISTRY",
+    "LoopActionCategory",
     "LoopActionHandler",
+    "LoopActionKind",
     "PLANNER_ACTION_CATEGORY",
     "PLANNER_DISPATCH_ACTION_DECLARATIONS",
     "PLANNER_DISPATCH_EVENT_EXPECTATIONS",
@@ -184,4 +300,5 @@ __all__ = [
     "PlannerDispatchHandler",
     "PlannerDispatchSourceVerdict",
     "PlannerDispatchTriggerName",
+    "RuntimeActionHandler",
 ]

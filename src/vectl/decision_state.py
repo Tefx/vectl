@@ -17,6 +17,13 @@ from typing import Final
 _MIN_TIMESTAMP: Final[float] = 0.0
 
 
+DECIDE_STATE_RUNTIME_BOUNDARY: Final[str] = (
+    "DecideState is decide-local mutable memory. RuntimeContext may carry DriverState, "
+    "but handlers must not create a second mutable decide-memory surface outside "
+    "DriverState.decide_state -> vectl.decide(state=...)."
+)
+
+
 @dataclass
 class DecideState:
     """Mutable state for ``vectl.decide`` decision memory.
@@ -90,3 +97,6 @@ class DecideState:
             step_id: Step identifier.
         """
         self.failure_counts.pop(step_id, None)
+
+
+__all__ = ["DECIDE_STATE_RUNTIME_BOUNDARY", "DecideState"]

@@ -40,6 +40,12 @@ REUSE_TTL: int = 300
 # returning a fresh ephemeral DecideState per call.
 _legacy_state: DecideState = DecideState()
 
+DECIDE_RUNTIME_CONTEXT_BOUNDARY: str = (
+    "RuntimeContext rollout does not move decide-local ownership into driver handlers; "
+    "decide() remains the mutation boundary for DecideState passed via "
+    "DriverState.decide_state."
+)
+
 
 # ---------------------------------------------------------------------------
 # Function Implementations

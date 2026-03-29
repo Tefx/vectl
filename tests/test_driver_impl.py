@@ -204,12 +204,12 @@ class TestFileObserverImplementation:
         config = ObservabilityConfig(events_file=str(events_file))
         observer = FileObserver(config)
 
-        observer.emit("TEST", message="hello")
+        observer.emit("WAIT", reason="hello")
 
         assert events_file.exists()
 
     def test_file_observer_writes_jsonl(self, tmp_path: Path) -> None:
-        """FileObserver writes valid JSONL with ts, event, data."""
+        """FileObserver writes valid JSONL with ts, event, version, data."""
         import json
 
         from src.vectl.driver.config import ObservabilityConfig
@@ -228,6 +228,7 @@ class TestFileObserverImplementation:
         data = json.loads(lines[0])
         assert "ts" in data
         assert data["event"] == "STEP_DISPATCHED"
+        assert data["version"] == 1
         assert data["data"]["step_id"] == "core.impl"
         assert data["data"]["agent"] == "python-executor"
 
@@ -242,8 +243,8 @@ class TestFileObserverImplementation:
         config = ObservabilityConfig(events_file=str(events_file))
         observer = FileObserver(config)
 
-        observer.emit("EVENT1", key="value1")
-        observer.emit("EVENT2", key="value2")
+        observer.emit("WAIT", reason="value1")
+        observer.emit("HALT", reason="value2")
         observer.close()
 
         lines = events_file.read_text().strip().split("\n")
@@ -251,8 +252,8 @@ class TestFileObserverImplementation:
 
         event1 = json.loads(lines[0])
         event2 = json.loads(lines[1])
-        assert event1["event"] == "EVENT1"
-        assert event2["event"] == "EVENT2"
+        assert event1["event"] == "WAIT"
+        assert event2["event"] == "HALT"
 
     def test_file_observer_creates_parent_dirs(self, tmp_path: Path) -> None:
         """FileObserver creates parent directories for events_file."""
@@ -263,7 +264,7 @@ class TestFileObserverImplementation:
         config = ObservabilityConfig(events_file=str(events_file))
         observer = FileObserver(config)
 
-        observer.emit("TEST")
+        observer.emit("WAIT", reason="idle")
         observer.close()
 
         assert events_file.exists()
@@ -274,7 +275,7 @@ class TestFileObserverImplementation:
         from src.vectl.driver.observe import NullObserver
 
         observer = NullObserver()
-        observer.emit("ANY_EVENT", key="value", nested={"a": 1})
+        observer.emit("WAIT", reason="value")
         observer.close()  # No error
 
     def test_file_observer_serializes_nested_values(self, tmp_path: Path) -> None:
@@ -300,6 +301,7 @@ class TestFileObserverImplementation:
         observer.close()
 
         data = json.loads(events_file.read_text())
+        assert data["version"] == 1
         assert data["data"]["context"]["verdict"] == "ACCEPT"
         assert data["data"]["context"]["nested"]["key"] == "value"
         assert data["data"]["tokens"] == [100, 200, 300]

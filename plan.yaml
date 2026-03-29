@@ -51718,3 +51718,11 @@ phases:
     operator-facing recovery path is reachable and fully registered.
   depends_on:
   - driver-continuity-hygiene-core
+- id: driver-continuity-hygiene-review
+  name: 'Driver Continuity Hygiene: Verification & Gate'
+  status: locked
+  gate: Independent green verification, black-box liveness, and spec conformance prove
+    startup recovery no longer halts on provably stale continuity leftovers while
+    still blocking unsafe divergence.
+  depends_on:
+  - driver-continuity-hygiene-surface

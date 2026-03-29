@@ -50413,7 +50413,7 @@ phases:
     claimed_at: '2026-03-29T16:23:18.322328+00:00'
   - id: driver-live-smoke-implementation.add-codex-dispatch-live-smoke-coverage
     name: Add codex dispatch live smoke coverage
-    status: pending
+    status: claimed
     description: 'Add additive live smoke tests for the real codex regular task dispatch
       path.
 
@@ -50464,6 +50464,8 @@ phases:
     depends_on:
     - driver-live-smoke-implementation.build-harness
     agent: python-executor
+    claimed_by: python-executor
+    claimed_at: '2026-03-29T16:23:26.113059+00:00'
   - id: driver-live-smoke-implementation.add-opencode-dispatch-live-smoke-coverage
     name: Add opencode dispatch live smoke coverage
     status: pending

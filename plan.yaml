@@ -49946,33 +49946,33 @@ phases:
     name: Ratify cheap-model and execution policy
     status: pending
     description: "Planning step.\n\nRatify the lightweight live smoke policy before\
-      \ any additive test work assumes model names, override knobs, or judge fallback\
-      \ semantics.\n\nRequired outputs:\n- exact codex cheap-model identifier(s) chosen\
-      \ for judge smoke\n- exact codex cheap-model identifier(s) chosen for dispatch\
-      \ smoke if different\n- exact opencode cheap-model identifier(s) chosen for\
-      \ judge smoke\n- exact opencode cheap-model identifier(s) chosen for dispatch\
-      \ smoke if different\n- exact runner-supported override mechanism used for each\
-      \ selection (flag, config key, env var, or fixed driver.yaml source)\n- fallback\
-      \ policy if the preferred cheap model is unavailable for each runner/scenario\
-      \ pair\n- explicit opt-in env gate (for example RUN_LIVE_RUNNER_TESTS=1) and\
-      \ skip taxonomy for missing binary/auth/opt-in\n- decision on where live smoke\
-      \ runs: manual-only vs separate CI job vs nightly vs release gate\n- exact marker\
-      \ set: live_runner, codex_live, opencode_live, judge_live, dispatch_live\n-\
-      \ authoritative boundary decision for judge behavior:\n  - codex structured-output\
-      \ mode is schema-enforced and MUST NOT treat tolerant text fallback as a normal\
-      \ compatibility success path\n  - valid codex judge outcomes in structured mode\
-      \ are PASS on real structured output, explicit FAILURE on schema/structured-output\
-      \ rejection, or explicit SKIP for missing binary/auth/opt-in\n  - opencode judge\
-      \ coverage MAY exercise tolerant JSONL/text extraction as its normal live compatibility\
-      \ path\n\nRequired evidence format:\n- one ratified runner/scenario table covering\
-      \ codex-judge, codex-dispatch, opencode-judge, and opencode-dispatch\n- each\
-      \ row records: exact model id, override mechanism, invocation shape, expected\
-      \ marker selection, and fallback policy\n- model discovery/validation evidence\
-      \ cites the real runner help/config surface used to confirm the override mechanism\n\
-      \nConstraints:\n- Do not redesign production runner semantics\n- Do not guess\
-      \ model names; exact model identifiers and discovery/validation evidence are\
-      \ mandatory\n- Preserve codex/opencode as the only in-scope live runners\n-\
-      \ Keep this initiative additive test/doc/config work, not a feature architecture\
+      \ any additive test work assumes runner wiring or fallback semantics.\n\nRequired\
+      \ outputs:\n- codex judge smoke model = gpt-5.4-mini\n- codex dispatch smoke\
+      \ model = gpt-5.4-mini\n- opencode judge smoke model = ollama-cloud/minimax-m2.7\n\
+      - opencode dispatch smoke model = ollama-cloud/minimax-m2.7\n- exact runner-supported\
+      \ override mechanism used for each pinned path (flag, config key, env var, or\
+      \ fixed driver.yaml source)\n- fallback policy for each runner/scenario pair\
+      \ ONLY for true runner unavailability, auth/prereq failure, or unsupported override\
+      \ surface; fallback policy must not reopen model selection\n- explicit opt-in\
+      \ env gate (for example RUN_LIVE_RUNNER_TESTS=1) and skip taxonomy for missing\
+      \ binary/auth/opt-in\n- decision on where live smoke runs: manual-only vs separate\
+      \ CI job vs nightly vs release gate\n- exact marker set: live_runner, codex_live,\
+      \ opencode_live, judge_live, dispatch_live\n- authoritative boundary decision\
+      \ for judge behavior:\n  - codex structured-output mode is schema-enforced and\
+      \ MUST NOT treat tolerant text fallback as a normal compatibility success path\n\
+      \  - valid codex judge outcomes in structured mode are PASS on real structured\
+      \ output, explicit FAILURE on schema/structured-output rejection, or explicit\
+      \ SKIP for missing binary/auth/opt-in\n  - opencode judge coverage MAY exercise\
+      \ tolerant JSONL/text extraction as its normal live compatibility path\n\nRequired\
+      \ evidence format:\n- one ratified runner/scenario table covering codex-judge,\
+      \ codex-dispatch, opencode-judge, and opencode-dispatch\n- each row records:\
+      \ exact pinned model id, exact override mechanism, invocation shape, expected\
+      \ marker selection, and fallback policy\n- evidence must cite the real runner\
+      \ help/config surface used to confirm the override mechanism only; model identities\
+      \ are already fixed by user decision\n\nConstraints:\n- Do not redesign production\
+      \ runner semantics\n- Do not reopen model-name discovery; exact model identifiers\
+      \ above are mandatory\n- Preserve codex/opencode as the only in-scope live runners\n\
+      - Keep this initiative additive test/doc/config work, not a feature architecture\
       \ program"
     verification: '- Evidence includes a runner-by-runner matrix for cheap-model knobs,
       exact model identifiers, supported invocation shape, override mechanism, and

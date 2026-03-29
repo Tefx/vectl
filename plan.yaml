@@ -41892,6 +41892,7 @@ phases:
     - driver-evolution-review.architecture-review
     - driver-evolution-review.contract-strength
     - driver-evolution-review.black-box-verification
+    - driver-evolution-review.architecture-review-retest
     agent: gate-reviewer
   - id: driver-evolution-review.fix-architecture-blockers
     name: Fix architecture blockers for driver evolution review

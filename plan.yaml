@@ -52487,6 +52487,34 @@ phases:
     and repair-continuity recovery UX.
   depends_on:
   - driver-continuity-hygiene-review
+  steps:
+  - id: driver-continuity-hygiene-doc-sync.update-docs
+    name: Update continuity hygiene operator and driver docs
+    status: pending
+    description: 'Update documentation to match implemented continuity hygiene behavior.
+
+
+      Required updates:
+
+      - README claim-recovery/operator guidance: add `vectl repair continuity` usage,
+      dry-run/apply/json examples, quarantine behavior, and post-repair verification
+
+      - README programmatic driver guidance: note startup hygiene stage, stale-artifact
+      quarantine, and remaining blocking conditions
+
+      - continuity/driver docs touched by this work should describe quarantine manifest
+      paths, auditability, and the rule that startup never deletes files or auto-remaps
+      renamed step ids
+
+
+      Doc sync must remove any text implying manual deletion is the intended recovery
+      path.'
+    verification: '- Operator docs match implemented CLI/runtime behavior
+
+      - Recovery UX documents quarantine instead of deletion
+
+      - Blocking conditions remain explicitly documented'
+    agent: doc-reviewer
 - id: driver-continuity-hygiene-deep-review
   name: 'Driver Continuity Hygiene: Deep Review'
   status: locked

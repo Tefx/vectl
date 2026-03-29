@@ -44,6 +44,9 @@ if TYPE_CHECKING:
 # =============================================================================
 
 # Shared marker for all live smoke tests
+live_runner = pytest.mark.live_runner
+"""Marks tests that are part of the live smoke test suite."""
+
 codex_live = pytest.mark.codex_live
 """Marks tests that use the codex runner."""
 

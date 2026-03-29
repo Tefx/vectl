@@ -41221,7 +41221,7 @@ phases:
       - none'
   - id: driver-evolution-loop-migration.system-wiring
     name: Wire the runnable driver path to registry-backed handlers
-    status: claimed
+    status: done
     description: 'step_type: verification
 
       expected_result: green
@@ -41269,6 +41269,28 @@ phases:
     agent: integration-verifier
     claimed_by: integration-verifier
     claimed_at: '2026-03-29T07:23:23.539370+00:00'
+    done_at: '2026-03-29T07:25:48.355844+00:00'
+    evidence: 'Artifact:
+
+      - Runnable driver wiring validated in runtime/dispatch/recovery suites
+
+
+      Verification:
+
+      - Path exercised includes registry-backed planner/recovery handlers in loop
+      runtime tests
+
+      - `test_loop_wires_planner_dispatch_through_registry_handler` and `test_loop_executes_recovery_through_runtime_registry_handler`
+      pass under broad regression run
+
+      - canonical emitter/sink path remains operational in integrated driver tests
+
+
+      Spec link:
+
+      - docs/ADR-driver-evolution-foundation.md#18-decision-drivers
+
+      - docs/ADR-driver-evolution-foundation.md#96-handlers-receive-a-unified-runtimecontext'
   - id: driver-evolution-loop-migration.liveness-probe
     name: Probe driver liveness after loop migration
     status: done

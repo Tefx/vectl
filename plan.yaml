@@ -49390,15 +49390,44 @@ phases:
     - driver-reconcile-context-convergence.sync-callsites-tests
     agent: doc-reviewer
   - id: driver-reconcile-context-convergence.verify
-    name: Independently retest reconcile context-only convergence
+    name: Independently verify reconcile context-only convergence
     status: pending
-    description: 'Independent phase-check. Retest the reconcile boundary from a fresh
-      perspective: signature pinning, loop runtime wiring, representative success/failure
-      reconcile behavior, and doc/code consistency. Goal is to find remaining explicit-dependency
-      leaks or contract drift.'
-    verification: Green targeted runs for reconcile contract/runtime suites; evidence
-      shows the final signature is context-only, call sites are migrated, and docs
-      match.
+    description: 'Independent phase-check focused only on reconcile convergence.
+
+
+      Verify from a fresh perspective:
+
+      - final public `reconcile()` signature is context-only
+
+      - runtime loop wiring reaches `reconcile()` through `context` only
+
+      - representative success/failure tests still pass after callsite migration
+
+      - docs and code agree
+
+      - no unjustified `handle_complete()` churn occurred
+
+
+      This step should search for leaks, not re-implement anything.'
+    verification: '- green targeted runs for reconcile contract/runtime suites
+
+      - independent search confirms no remaining explicit-runtime-arg `reconcile()`
+      callsites in intended scope
+
+      - evidence states whether any `handle_complete()` edits occurred and why'
+    evidence_template: "## Independent reconcile verification\n- Commands executed:\n\
+      \  `<exact pytest and search commands>`\n- Signature observed:\n  `<paste>`\n\
+      - Remaining explicit-arg reconcile callsites:\n  `<none found or list>`\n- Docs\
+      \ checked:\n  `<list>`\n- Scope verdict:\n  `PASS | ISSUES_FOUND`"
+    refs:
+    - src/vectl/driver/loop.py
+    - src/vectl/driver/runtime_context.py
+    - tests/test_driver_loop_contract.py
+    - tests/test_driver_loop_runtime.py
+    - tests/test_driver_judge_recovery_policy_impl.py
+    - tests/test_driver_continuity_expected_red.py
+    - tests/test_driver_loop_hardening.py
+    - docs/DRIVER-ARCHITECTURE.md
     depends_on:
     - driver-reconcile-context-convergence.sync-current-contract-test
     - driver-reconcile-context-convergence.contract

@@ -43017,7 +43017,7 @@ phases:
   steps:
   - id: driver-enhancement-foundation.architecture-basis
     name: Produce architecture basis for driver enhancement wave
-    status: claimed
+    status: pending
     description: 'step_type: planning
 
 
@@ -43079,8 +43079,6 @@ phases:
 
       - Any remaining ambiguity is documented as open questions with impact'
     agent: software-architect
-    claimed_by: software-architect
-    claimed_at: '2026-03-29T08:45:50.001897+00:00'
   - id: driver-enhancement-foundation.contract
     name: Pin enhancement contracts for telemetry streaming and recovery
     status: pending

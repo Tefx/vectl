@@ -44725,7 +44725,7 @@ phases:
       - Docs/runtime drift is surfaced explicitly'
 - id: driver-prompt-review
   name: Driver Prompt Resource Review
-  status: pending
+  status: in_progress
   gate: Independent review confirms runtime prompt packaging, docs mirror consistency,
     and non-degrading missing/drift behavior before the improvement branch is considered
     done.
@@ -44889,7 +44889,7 @@ phases:
     agent: spec-verifier
   - id: driver-prompt-review.black-box-verification
     name: Black-box verify docs-absent packaged prompt runtime
-    status: pending
+    status: claimed
     description: 'As an INDEPENDENT TESTER (blind-tester), verify the prompt runtime
       behavior from the public driver surface without relying on implementation details.
 
@@ -44945,6 +44945,8 @@ phases:
 
       - Result:'
     agent: blind-tester
+    claimed_by: blind-tester
+    claimed_at: '2026-03-29T09:33:33.393225+00:00'
   - id: driver-prompt-review.gate
     name: Final gate for packaged prompt resource improvement
     status: pending

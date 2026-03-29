@@ -44725,7 +44725,7 @@ phases:
       - Docs/runtime drift is surfaced explicitly'
 - id: driver-prompt-review
   name: Driver Prompt Resource Review
-  status: in_progress
+  status: done
   gate: Independent review confirms runtime prompt packaging, docs mirror consistency,
     and non-degrading missing/drift behavior before the improvement branch is considered
     done.
@@ -45113,7 +45113,7 @@ phases:
       product_implementation_files_modified: false'
   - id: driver-prompt-review.gate
     name: Final gate for packaged prompt resource improvement
-    status: claimed
+    status: done
     description: 'Gate review: verify the packaged prompt resource improvement is
       complete, documented, and safe.
 
@@ -45173,6 +45173,42 @@ phases:
     agent: gate-reviewer
     claimed_by: gate-reviewer
     claimed_at: '2026-03-29T09:46:43.163224+00:00'
+    done_at: '2026-03-29T09:52:07.913421+00:00'
+    evidence: '## Final Gate Report
+
+      | Step ID | Status | Evidence Quality | Concerns |
+
+      | ------- | ------ | ---------------- | -------- |
+
+      | driver-prompt-review.update-docs | PASS | HIGH | none blocking |
+
+      | driver-prompt-review.wiring-audit | PASS | HIGH | none blocking |
+
+      | driver-prompt-review.spec-conformance | PASS | HIGH | none blocking |
+
+      | driver-prompt-review.black-box-verification | PASS | HIGH | none blocking
+      |
+
+
+      ## Gate Decision
+
+      - OPEN
+
+      - Blocking issues: none
+
+      - Follow-up required: pre-existing unrelated failure in `test_driver_judge_recovery_policy_impl.py::test_reconcile_failure_parse_error_uses_fallback_policy`
+      (out of scope for prompt-review)
+
+
+      Prompt-review gate confirms:
+
+      - runtime authority is packaged resource (not docs/)
+
+      - docs mirror wording and drift strategy are explicit and consistent
+
+      - missing packaged resource behavior is explicit/actionable
+
+      - verdict contract remains aligned'
 - id: driver-judge-hardening-foundation
   name: 'Driver Judge Hardening: Foundation'
   status: done

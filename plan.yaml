@@ -50345,12 +50345,22 @@ phases:
       env absent)
 
 
+      Boundary checks:
+
+      - codex judge structured mode may PASS on real structured output, FAIL on schema/structured-output
+      rejection, or SKIP explicitly; it must not claim tolerant text fallback success
+
+      - opencode judge may PASS via tolerant JSONL/text extraction when that is the
+      ratified live compatibility path
+
+
       A missing binary/auth/opt-in gate is acceptable only when the skip is explicit
       and evidenced; silent pass is not acceptable.'
     verification: '- Matrix evidence includes exact commands, output, and per-runner
       per-scenario verdicts.
 
-      - Each path is PASS or explicit SKIP with reason and captured output.
+      - Each path is PASS, explicit FAILURE where required by the codex structured-output
+      contract, or explicit SKIP with reason and captured output.
 
       - Broad-scope issues produce remediation ownership instead of vague notes.'
     evidence_template: '## Live Smoke Matrix

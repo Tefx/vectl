@@ -40707,7 +40707,7 @@ phases:
       - tests/test_driver_loop_runtime.py'
   - id: driver-evolution-action-registry.verify-planner-dispatch
     name: Verify planner dispatch registry coverage
-    status: claimed
+    status: done
     description: 'step_type: verification
 
       expected_result: green
@@ -40758,6 +40758,60 @@ phases:
     agent: integration-verifier
     claimed_by: integration-verifier
     claimed_at: '2026-03-29T06:52:30.046913+00:00'
+    done_at: '2026-03-29T06:58:20.554062+00:00'
+    evidence: "## Verification: Planner Dispatch Registry Coverage\n\n### Artifact\
+      \ Evidence\n- **Registry definition:** `src/vectl/driver/action_registry.py:207-230`\
+      \ (PLANNER_DISPATCH_ACTION_DECLARATIONS)\n- **Handler wiring:** `src/vectl/driver/loop.py:3193-3278`\
+      \ (_registry_dispatch_planner_replan, _registry_dispatch_planner_gate_reject,\
+      \ _dispatch_registered_planner_action)\n- **Test file:** `tests/test_driver_loop_runtime.py:320-478`\
+      \ (TestPlannerDispatchActionRegistryContract)\n\n### Verification Results\n\n\
+      #### Happy Path Verification\n```\nRun: uv run pytest tests/test_driver_loop_runtime.py::TestPlannerDispatchActionRegistryContract\
+      \ -v\nOutcome: 11 passed\n\nPath exercised:\n  loop/runtime decision → _dispatch_registered_planner_action()\n\
+      \    → resolve_planner_dispatch_action_declaration()\n    → declaration.category\
+      \ check (\"planner\")\n    → declaration.runtime_context_contract check (\"\
+      RuntimeContext\")\n    → _REGISTERED_PLANNER_ACTION_HANDLERS[handler_name]\n\
+      \    → dispatch_planner(PlannerDispatchRequest, config, runners, observer, plan_path)\n\
+      ```\n\n#### Edge Cases Verified\n| Test | Evidence |\n|------|----------|\n\
+      | Payload contract fields | `test_planner_dispatch_payload_contract_names_required_fields`:\
+      \ action_type, step_id, trigger, judgment_type, planner_instruction, source_verdict\
+      \ |\n| Category = \"planner\" | `test_planner_dispatch_action_types_are_explicit_and_separate`:\
+      \ all declarations have category=PLANNER_ACTION_CATEGORY ≠ \"execution\" |\n\
+      | RuntimeContext shared boundary | `test_planner_dispatch_handler_boundary_uses_runtime_context`:\
+      \ LOOP_HANDLER_RUNTIME_CONTEXT is RuntimeContext, all declarations use \"RuntimeContext\"\
+      \ |\n| Event expectations | `test_planner_dispatch_events_are_declared_for_execution_outcomes`:\
+      \ started=\"PLANNER_DISPATCH_STARTED\", completed=\"PLANNER_DISPATCH_COMPLETED\"\
+      , failed=\"PLANNER_DISPATCH_FAILED\" |\n| In registry scope | `test_planner_dispatch_is_in_registry_scope_and_not_deferred`:\
+      \ included_in_registry_scope=True, deferred_outside_registry=False |\n| Static\
+      \ declaration | `test_action_registry_is_static_and_auditable`: ACTION_REGISTRY_DECLARATION_MODE=\"\
+      static_declaration_table\", ACTION_REGISTRY_PUBLIC_DYNAMIC_REGISTRATION=False\
+      \ |\n\n#### Error Scenarios Verified\n| Test | Evidence |\n|------|----------|\n\
+      | Unknown action fails at boundary | `test_unknown_planner_dispatch_action_fails_at_registry_boundary`:\
+      \ raises UnknownPlannerDispatchActionError for \"planner.unknown\" |\n| Category\
+      \ mismatch blocked | `loop.py:3258-3262`: raises PlanError if category != \"\
+      planner\" |\n| RuntimeContext contract enforced | `loop.py:3263-3268`: raises\
+      \ PlanError if runtime_context_contract != \"RuntimeContext\" |\n| Handler not\
+      \ wired blocked | `loop.py:3272-3276`: raises PlanError if handler not in _REGISTERED_PLANNER_ACTION_HANDLERS\
+      \ |\n\n#### Integration Test Coverage\n```\ntest_loop_wires_planner_dispatch_through_registry_handler[asyncio]\
+      \ PASSED\n- Creates PlannerDispatchAction with PLANNER_DISPATCH_REPLAN_ACTION_TYPE\n\
+      - Passes RuntimeContext with all required fields\n- Calls _dispatch_registered_planner_action()\n\
+      - Verifies dispatch_planner receives correct PlannerDispatchRequest\n```\n\n\
+      #### Event Registry Coverage\n- PLANNER_DISPATCH_STARTED/COMPLETED/FAILED declared\
+      \ in `action_registry.py:169-177`\n- Event registry matched in `events/registry.py:164-177`\n\
+      - Events emitted in `dispatch_planner()` at lines 1078-1084, 1094-1103, 1113-1121\n\
+      \n#### No Bypass Paths\n- Direct `dispatch_planner()` calls ONLY exist inside\
+      \ registry handlers (`loop.py:3199, 3220`)\n- All 4 planner dispatch sites use\
+      \ `_dispatch_registered_planner_action()`:\n  - `loop.py:1927` (startup_recovery_anomaly_replan)\n\
+      \  - `loop.py:2072` (handle_dispatch.preflight_replan)\n  - `loop.py:2538` (gate\
+      \ reject remediation)\n  - `loop.py:2895` (failure classification replan)\n\
+      - No dynamic registration: `ACTION_REGISTRY_PUBLIC_DYNAMIC_REGISTRATION = False`\n\
+      \n### Spec Link\n- `docs/ADR-driver-evolution-foundation.md` #71 \"loop-action-registry-covers-all-loop-executed-actions-including-planner-dispatch\"\
+      \n- `docs/ADR-driver-evolution-foundation.md` #96 \"handlers-receive-a-unified-runtimecontext\"\
+      \n- `docs/ADR-driver-evolution-foundation.md` #85 \"action-registry-is-layered-not-flat\"\
+      \n- `src/vectl/driver/action_registry.py:78-85` (ACTION_REGISTRY_SCOPE_STATEMENT)\n\
+      \n### All Tests Passed\n```\ntests/test_driver_loop_runtime.py::TestPlannerDispatchActionRegistryContract\
+      \ - 11 passed\ntests/test_driver_loop_hardening.py::test_dispatch_planner_raises_on_runner_failure\
+      \ - PASSED\ntests/test_driver_loop_hardening.py::test_dispatch_planner_requires_non_empty_instruction\
+      \ - PASSED\n```"
   - id: driver-evolution-action-registry.gate
     name: Gate action registry
     status: pending

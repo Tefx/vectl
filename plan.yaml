@@ -49241,7 +49241,7 @@ phases:
       \ 2.11 reconcile boundary\n  - docs/ADR-driver-evolution-foundation.md#96-handlers-receive-a-unified-runtimecontext"
   - id: driver-reconcile-context-convergence.test-define-red
     name: Define expected-red tests for reconcile context-only convergence
-    status: claimed
+    status: done
     description: 'Add focused expected-red tests for the final context-only boundary
       without implementing it.
 
@@ -49292,6 +49292,21 @@ phases:
     agent: python-executor
     claimed_by: python-executor
     claimed_at: '2026-03-29T11:19:36.330414+00:00'
+    done_at: '2026-03-29T11:24:57.268453+00:00'
+    evidence: "## Expected-red reconcile convergence\n- Commands:\n  `uv run pytest\
+      \ tests/test_driver_loop_runtime.py tests/test_driver_loop_contract.py -k \"\
+      reconcile or signatures_are_pinned\" -q`\n- Expected failing tests:\n  - test_reconcile_only_accepts_completed_and_context_params\n\
+      \  - test_reconcile_has_no_state_param\n  - test_reconcile_has_no_judge_param\n\
+      \  - test_reconcile_has_no_session_pool_param\n  - test_reconcile_has_no_observer_param\n\
+      \  - test_reconcile_has_no_plan_path_param\n  - test_reconcile_has_no_config_param\n\
+      \  - test_reconcile_has_no_runners_param\n  (plus existing test_loop_contract_signatures_are_pinned\
+      \ which also fails due to additional params)\n- Why red is correct before impl:\n\
+      \  The current reconcile() signature has 9 parameters (completed, state, judge,\
+      \ session_pool, observer, plan_path, config, runners, context) but the target\
+      \ context-only contract requires only 2 parameters (completed, context). Tests\
+      \ correctly fail until impl removes the 7 legacy explicit params.\n- Files changed:\n\
+      \  tests/test_driver_loop_runtime.py (181 lines added - only tests, no production\
+      \ code)\n- Explicit statement:\n  \"No production code changed\""
   - id: driver-reconcile-context-convergence.impl-boundary
     name: Converge reconcile to the single RuntimeContext boundary
     status: pending

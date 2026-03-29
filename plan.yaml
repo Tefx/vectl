@@ -51733,3 +51733,11 @@ phases:
     and repair-continuity recovery UX.
   depends_on:
   - driver-continuity-hygiene-review
+- id: driver-continuity-hygiene-deep-review
+  name: 'Driver Continuity Hygiene: Deep Review'
+  status: locked
+  gate: Final independent audit confirms wiring, conformance, architecture boundaries,
+    contract strength, and black-box behavior for continuity hygiene before later
+    driver enhancements resume.
+  depends_on:
+  - driver-continuity-hygiene-doc-sync

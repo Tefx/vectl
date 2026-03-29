@@ -135,6 +135,13 @@ class DriverState:
     # step_id -> overridden agent name (from judge SWITCH_AGENT verdict)
 
     halt_requested: bool = False
+    final_halt_reason: str | None = None
+
+    started_at_monotonic: float = field(default_factory=time.monotonic)
+    completed_success_count: int = 0
+    completed_failure_count: int = 0
+    total_cost_usd: float | None = None
+    total_tokens: int | None = None
 
     loop_detector: list[str] = field(default_factory=list)
     # Last N serialized decide() action signatures for loop detection
@@ -363,20 +370,51 @@ class DriverState:
         recent = self.loop_detector[-window:]
         return len(set(recent)) == 1
 
+    def record_completion_metrics(self, result: RunnerResult) -> None:
+        """Accumulate optional cost/token metrics from a completed runner result.
+
+        Args:
+            result: Completed runner result carrying optional cost/token facts.
+        """
+
+        if result.cost_usd is not None:
+            if self.total_cost_usd is None:
+                self.total_cost_usd = 0.0
+            self.total_cost_usd += result.cost_usd
+
+        if result.tokens is not None:
+            token_total = sum(result.tokens.values())
+            if self.total_tokens is None:
+                self.total_tokens = 0
+            self.total_tokens += token_total
+
     def summary(self) -> dict[str, object]:
-        """Return summary dict for FINAL event.
+        """Return canonical end-of-run summary payload for FINAL event.
 
         Architecture: docs/DRIVER-ARCHITECTURE.md Section 2.1, DriverState methods
         Blueprint: DRIVER-BLUEPRINT.md Flow 1 (observer.emit("FINAL", state.summary()))
         """
-        return {
-            "running_count": len(self.running),
-            "completed_count": sum(
-                1 for fc in self.failure_counts.values() if fc == 0
-            ),  # Steps without failures
-            "failure_count": len(self.failure_counts),
-            "halt_requested": self.halt_requested,
+        summary: dict[str, object] = {
+            "completed_summary": {
+                "running_count": len(self.running),
+                "completed_success_count": self.completed_success_count,
+                "completed_failure_count": self.completed_failure_count,
+                "failure_count": len(self.failure_counts),
+                "terminal_outcome": ("halted" if self.halt_requested else "completed"),
+            },
+            "total_duration_seconds": max(0.0, time.monotonic() - self.started_at_monotonic),
         }
+        if self.final_halt_reason is not None:
+            summary["halt_reason"] = self.final_halt_reason
+        elif self.halt_requested:
+            summary["halt_reason"] = "halt_requested"
+
+        if self.total_cost_usd is not None:
+            summary["total_cost_usd"] = self.total_cost_usd
+        if self.total_tokens is not None:
+            summary["total_tokens"] = self.total_tokens
+
+        return summary
 
 
 @dataclass

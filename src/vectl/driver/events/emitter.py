@@ -1,13 +1,13 @@
-"""Typed contract helpers for canonical driver event emission.
+"""Typed helpers for canonical driver event emission.
 
 Authoritative source:
 - docs/ADR-driver-evolution-foundation.md#58-final-becomes-canonical-summary-event
 - docs/ADR-driver-evolution-foundation.md#169-implementation-guidance
 - docs/ADR-driver-evolution-foundation.md#188-resolved-decisions
 
-CONTRACT PURITY:
-- signatures/type definitions only
-- runtime helper bodies remain intentionally deferred
+Implementation notes:
+- registry remains the sole schema/version source of truth
+- helpers enforce exact event names and forward to observer sinks
 """
 
 from __future__ import annotations
@@ -75,7 +75,17 @@ def emit_decide(
     claimable: int | None = None,
     capacity: int | None = None,
 ) -> DecideEventName:
-    raise NotImplementedError(f"{DECIDE} typed helper is contract-only in this phase")
+    payload: DecideEventPayload = {
+        "running_count": running_count,
+        "actions": list(actions),
+    }
+    if claimable is not None:
+        payload["claimable"] = claimable
+    if capacity is not None:
+        payload["capacity"] = capacity
+
+    observer.emit(DECIDE_EVENT_DEF.event, **payload)
+    return DECIDE
 
 
 def emit_final(
@@ -88,7 +98,19 @@ def emit_final(
     total_cost_usd: float | None = None,
     total_tokens: int | None = None,
 ) -> FinalEventName:
-    raise NotImplementedError(f"{FINAL} typed helper is contract-only in this phase")
+    payload: FinalEventPayload = {
+        "completed_summary": completed_summary,
+        "total_duration_seconds": total_duration_seconds,
+    }
+    if halt_reason is not None:
+        payload["halt_reason"] = halt_reason
+    if total_cost_usd is not None:
+        payload["total_cost_usd"] = total_cost_usd
+    if total_tokens is not None:
+        payload["total_tokens"] = total_tokens
+
+    observer.emit(FINAL_EVENT_DEF.event, **payload)
+    return FINAL
 
 
 def emit_step_completed(
@@ -101,4 +123,16 @@ def emit_step_completed(
     evidence_len: int | None = None,
     tokens: int | None = None,
 ) -> StepCompletedEventName:
-    raise NotImplementedError(f"{STEP_COMPLETED} typed helper is contract-only in this phase")
+    payload: StepCompletedEventPayload = {
+        "step_id": step_id,
+        "elapsed_seconds": elapsed_seconds,
+    }
+    if cost is not None:
+        payload["cost"] = cost
+    if evidence_len is not None:
+        payload["evidence_len"] = evidence_len
+    if tokens is not None:
+        payload["tokens"] = tokens
+
+    observer.emit(STEP_COMPLETED_EVENT_DEF.event, **payload)
+    return STEP_COMPLETED

@@ -391,7 +391,7 @@ class TestDriverStateImplementation:
         assert state.detect_loop(window=10) is True
 
     def test_summary(self) -> None:
-        """DriverState.summary returns summary dict."""
+        """DriverState.summary returns canonical FINAL payload shape."""
         from src.vectl.driver.types import DriverState
 
         state = DriverState()
@@ -399,7 +399,8 @@ class TestDriverStateImplementation:
         state.halt_requested = False
 
         summary = state.summary()
-        assert "running_count" in summary
-        assert "completed_count" in summary
-        assert "failure_count" in summary
-        assert "halt_requested" in summary
+        assert "completed_summary" in summary
+        assert "total_duration_seconds" in summary
+        completed_summary = summary["completed_summary"]
+        assert isinstance(completed_summary, dict)
+        assert completed_summary["terminal_outcome"] == "completed"

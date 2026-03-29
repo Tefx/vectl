@@ -2,8 +2,8 @@
 
 from __future__ import annotations
 
-import time
 import inspect
+import time
 from typing import get_type_hints
 
 from src.vectl.driver.events.emitter import (
@@ -157,6 +157,66 @@ class TestTypedEmitterContracts:
         assert (
             str(get_type_hints(emit_step_completed)["return"]) == "typing.Literal['STEP_COMPLETED']"
         )
+
+
+class TestTypedEmitterRuntimeBehavior:
+    class _CaptureObserver:
+        def __init__(self) -> None:
+            self.calls: list[tuple[str, dict[str, object]]] = []
+
+        def emit(self, event_type: str, /, **data: object) -> None:
+            self.calls.append((event_type, data))
+
+    def test_emit_decide_emits_exact_event_and_payload(self) -> None:
+        observer = self._CaptureObserver()
+
+        result = emit_decide(observer, running_count=3, actions=["claim_and_dispatch"])
+
+        assert result == "DECIDE"
+        assert observer.calls == [
+            (
+                "DECIDE",
+                {"running_count": 3, "actions": ["claim_and_dispatch"]},
+            )
+        ]
+
+    def test_emit_step_completed_emits_required_elapsed_seconds(self) -> None:
+        observer = self._CaptureObserver()
+
+        result = emit_step_completed(
+            observer,
+            step_id="core.impl",
+            elapsed_seconds=1.25,
+            evidence_len=8,
+        )
+
+        assert result == "STEP_COMPLETED"
+        assert observer.calls == [
+            (
+                "STEP_COMPLETED",
+                {"step_id": "core.impl", "elapsed_seconds": 1.25, "evidence_len": 8},
+            )
+        ]
+
+    def test_emit_final_omits_absent_optional_fields(self) -> None:
+        observer = self._CaptureObserver()
+
+        result = emit_final(
+            observer,
+            completed_summary={"terminal_outcome": "completed"},
+            total_duration_seconds=12.5,
+        )
+
+        assert result == "FINAL"
+        assert observer.calls == [
+            (
+                "FINAL",
+                {
+                    "completed_summary": {"terminal_outcome": "completed"},
+                    "total_duration_seconds": 12.5,
+                },
+            )
+        ]
 
 
 class TestEventLogging:

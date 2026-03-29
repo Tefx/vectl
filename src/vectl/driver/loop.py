@@ -251,6 +251,13 @@ LOOP_EVENT_HELPER_DEFS: Final[tuple[str, ...]] = (
 )
 
 
+def _emit_halt(*, state: DriverState, observer: Observer, reason: str) -> None:
+    """Emit HALT and persist canonical halt reason for FINAL summary."""
+
+    state.final_halt_reason = reason
+    observer.emit("HALT", reason=reason)
+
+
 RemainingJudgmentTriggerName = Literal[
     "reconcile.failure_classification",
     "reconcile.escalation_threshold",
@@ -1839,8 +1846,9 @@ async def run(config_path: Path) -> None:
                 f"ledger_corrupt:{ledger_file_name}" for ledger_file_name in corrupt_ledger_files
             )
         if halt_reasons:
-            observer.emit(
-                "HALT",
+            _emit_halt(
+                state=state,
+                observer=observer,
                 reason=("Continuity startup recovery blocked: " + ",".join(halt_reasons)),
             )
             state.halt_requested = True
@@ -1896,8 +1904,9 @@ async def run(config_path: Path) -> None:
                 )
 
                 if anomaly_verdict.verdict == "HALT":
-                    observer.emit(
-                        "HALT",
+                    _emit_halt(
+                        state=state,
+                        observer=observer,
                         reason=(
                             "Startup anomaly marked unsafe for auto-repair: "
                             f"{anomaly_verdict.reason}"
@@ -2365,9 +2374,10 @@ async def handle_complete(
     plan = complete_step(plan, action.step_id, evidence, claims_path=claims_path)
     save_plan(plan, path=plan_path, expected_hash=expected_hash)
 
-    observer.emit(
-        "STEP_COMPLETED",
+    emit_step_completed(
+        observer,
         step_id=action.step_id,
+        elapsed_seconds=0.0,
         evidence_len=len(evidence),
     )
 
@@ -2498,8 +2508,9 @@ async def reconcile(
                     )
 
                     if gate_verdict.verdict == "HALT":
-                        observer.emit(
-                            "HALT",
+                        _emit_halt(
+                            state=state,
+                            observer=observer,
                             reason=(
                                 f"Gate hard-block for {completed.step_id}: {gate_verdict.reason}"
                             ),
@@ -2658,12 +2669,14 @@ async def reconcile(
             recovery_cursor="terminal",
         )
 
-        observer.emit(
-            "STEP_COMPLETED",
+        emit_step_completed(
+            observer,
             step_id=completed.step_id,
-            evidence_len=len(evidence),
             elapsed_seconds=completed.elapsed_seconds,
+            evidence_len=len(evidence),
         )
+        state.completed_success_count += 1
+        state.record_completion_metrics(completed.result)
         observer.emit(
             "MERGE_COMPLETED",
             step_id=completed.step_id,
@@ -2702,6 +2715,8 @@ async def reconcile(
         last_journal_event=failure_journal,
         recovery_cursor="awaiting_retry_or_escalation",
     )
+    state.completed_failure_count += 1
+    state.record_completion_metrics(completed.result)
 
     state.runner_failures[(completed.step_id, completed.runner_name)] = (
         state.runner_failures.get((completed.step_id, completed.runner_name), 0) + 1
@@ -2837,6 +2852,9 @@ async def reconcile(
                 )
             if policy_output.action == "halt":
                 state.halt_requested = True
+                state.final_halt_reason = (
+                    policy_output.halt_reason or policy_output.continuity_recovery_reason
+                )
                 observer.emit(
                     "HALT_REQUESTED",
                     step_id=completed.step_id,
@@ -3016,7 +3034,7 @@ async def shutdown(state: DriverState, observer: Observer) -> None:
                 "Worktree cleanup failed during shutdown for %s: %s", step_id, cleanup_result.error
             )
 
-    observer.emit("FINAL", **state.summary())
+    emit_final(observer, **state.summary())
     observer.close()
 
 
@@ -3308,15 +3326,15 @@ async def _run_main_loop(
             max_parallelism=config.orchestration.max_parallelism,
             state=state.decide_state,
         )
-        observer.emit(
-            "DECIDE",
+        emit_decide(
+            observer,
             running_count=len(state.running),
             actions=[action.action for action in decide_output.actions],
         )
 
         state.loop_detector.append(_serialize_actions_for_loop_guard(decide_output.actions))
         if state.detect_loop():
-            observer.emit("HALT", reason="SUSPECTED_INFINITE_LOOP")
+            _emit_halt(state=state, observer=observer, reason="SUSPECTED_INFINITE_LOOP")
             state.halt_requested = True
             break
 

@@ -42988,7 +42988,7 @@ phases:
       contract) and makes codex alignment explicit.'
   - id: driver-judge-hardening-foundation.gate
     name: Gate judge hardening foundation
-    status: claimed
+    status: pending
     description: "step_type: gate\nreview_depth: THOROUGH\nreview_depth_rationale:\n\
       \  - Judge stability is now a bootstrap blocker\n  - Codex judge invocation\
       \ currently diverges from stable runner config\n  - Downstream structured-output\
@@ -43018,8 +43018,6 @@ phases:
     - driver-judge-hardening-foundation.contract
     - driver-judge-hardening-foundation.retest-gate
     agent: gate-reviewer
-    claimed_by: gate-reviewer
-    claimed_at: '2026-03-28T22:43:47.344927+00:00'
   - id: driver-judge-hardening-foundation.fix-contract-ambiguities
     name: Resolve judge contract ambiguities
     status: done

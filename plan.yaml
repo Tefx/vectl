@@ -50960,7 +50960,7 @@ phases:
     agent: gate-reviewer
   - id: driver-live-smoke-implementation.update-docs
     name: Update live smoke docs in reduced form
-    status: claimed
+    status: done
     description: 'Documentation step folded into implementation instead of a standalone
       doc-sync phase.
 
@@ -51016,6 +51016,23 @@ phases:
     agent: doc-reviewer
     claimed_by: doc-reviewer
     claimed_at: '2026-03-29T16:48:59.720870+00:00'
+    done_at: '2026-03-29T16:51:31.248209+00:00'
+    evidence: "Artifact:\n- Commit: 5ed93b1 docs: Update DRIVER-LIVE-SMOKE-POLICY.md\
+      \ with live smoke details\n\nVerification:\n- Run: grep -E \"^CODEX_MODEL|^OPENCODE_MODEL\"\
+      \ tests/live_smoke/helpers.py -> CODEX_MODEL: str = \"gpt-5.4-mini\", OPENCODE_MODEL:\
+      \ str = \"ollama-cloud/minimax-m2.7\"\n- Run: grep -E \"VECTL_CODEX_MODEL|VECTL_OPENCODE_MODEL\"\
+      \ tests/live_smoke/helpers.py -> VECTL_CODEX_MODEL, VECTL_OPENCODE_MODEL env\
+      \ vars defined\n- Run: grep -E \"@live_runner|@codex_live|@opencode_live|@judge_live|@dispatch_live\"\
+      \ tests/live_smoke/test_*.py -> All 4 test files use correct marker combinations\n\
+      \nSpec link:\n- docs/DRIVER-LIVE-SMOKE-POLICY.md (updated sections):\n  - Model\
+      \ IDs (exact): gpt-5.4-mini (codex), ollama-cloud/minimax-m2.7 (opencode)\n\
+      \  - Override mechanism (env-only): VECTL_CODEX_MODEL, VECTL_OPENCODE_MODEL\n\
+      \  - Manual invocation matrix: exact pytest selections for judge, dispatch,\
+      \ combined, runner-specific\n  - PASS vs explicit SKIP semantics with evidence\
+      \ requirements\n  - Codex structured-output rule: no tolerant fallback-to-text\
+      \ success path\n  - OpenCode judge: tolerant JSONL/text extraction allowed\n\
+      \  - Fallback policy: for runner unavailability/auth issues only, NOT model\
+      \ selection"
 - id: driver-live-smoke-doc-sync
   name: Driver Live Runner Smoke Coverage Documentation Sync
   status: done

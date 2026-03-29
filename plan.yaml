@@ -44892,7 +44892,7 @@ phases:
       **Verdict**: PASS'
   - id: driver-prompt-review.spec-conformance
     name: Verify packaged prompt spec conformance
-    status: claimed
+    status: done
     description: 'Spec conformance verification via adversarial divergence hunting.
 
 
@@ -44944,6 +44944,48 @@ phases:
     agent: spec-verifier
     claimed_by: spec-verifier
     claimed_at: '2026-03-29T09:41:07.193682+00:00'
+    done_at: '2026-03-29T09:46:14.249429+00:00'
+    evidence: '## Spec Conformance Report
+
+      | Requirement | Spec Section | Implementation | Verdict | Notes |
+
+      | ----------- | ------------ | -------------- | ------- | ----- |
+
+      | Runtime authority is packaged resource, not docs/ | docs/JUDGE-AGENT-PROMPT.md
+      Resource Loading; docs/DRIVER-ARCHITECTURE.md §2.10 | src/vectl/driver/judge.py
+      `_load_judge_system_prompt` + `_load_packaged_judge_system_prompt` | CONFORMS
+      | Runtime path uses importlib.resources packaged resource only |
+
+      | Docs mirror wording matches runtime behavior | docs/JUDGE-AGENT-PROMPT.md
+      Document Status | docs/JUDGE-AGENT-PROMPT.md header + judge.py comments | CONFORMS
+      | docs explicitly mirror/spec, not runtime authority |
+
+      | Missing packaged resource behavior explicit/actionable | docs/JUDGE-AGENT-PROMPT.md
+      Missing Resource Handling | src/vectl/driver/judge.py RuntimeError branches
+      (package missing/resource missing/resource empty) | CONFORMS | explicit hard
+      failures with remediation hints |
+
+      | Drift strategy implemented/documented | docs/JUDGE-AGENT-PROMPT.md Drift Detection
+      | src/vectl/driver/judge.py `verify_docs_packaged_sync()` + doc section | CONFORMS
+      | CI/pre-commit drift check documented and implemented |
+
+      | Verdict-facing output contract aligned | docs/JUDGE-AGENT-PROMPT.md Response
+      Format | src/vectl/driver/judge.py VERDICT_SCHEMA + src/vectl/driver/judgments.py
+      JudgmentVerdict/VERDICT_VALUES | CONFORMS | field names/types/enums aligned
+      |
+
+
+      ## Coverage Summary
+
+      - Runtime authority: CONFORMS
+
+      - Docs mirror wording: CONFORMS
+
+      - Missing-resource behavior: CONFORMS
+
+      - Drift strategy: CONFORMS
+
+      - Verdict contract alignment: CONFORMS'
   - id: driver-prompt-review.black-box-verification
     name: Black-box verify docs-absent packaged prompt runtime
     status: done

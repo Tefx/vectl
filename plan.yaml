@@ -41515,7 +41515,7 @@ phases:
   steps:
   - id: driver-evolution-review.update-docs
     name: Sync driver architecture docs to the ADR-backed evolution baseline
-    status: claimed
+    status: done
     description: 'step_type: doc-sync
 
 
@@ -41545,6 +41545,34 @@ phases:
     agent: doc-reviewer
     claimed_by: project-guide
     claimed_at: '2026-03-29T07:36:38.431904+00:00'
+    done_at: '2026-03-29T07:40:43.436667+00:00'
+    evidence: 'Artifact:
+
+      - Commit: f3e0cd7
+
+
+      Verification:
+
+      - `git log -1 --oneline` -> f3e0cd7 docs: update DRIVER-ARCHITECTURE.md for
+      ADR-backed evolution baseline
+
+      - `git show --stat f3e0cd7` -> 2 files changed, 6 insertions(+), 6 deletions(-)
+
+
+      Spec link:
+
+      - docs/ADR-driver-evolution-foundation.md §§1-7
+
+      - docs/DRIVER-ARCHITECTURE.md §§7.2, 7.3
+
+
+      Changes:
+
+      - ADR cross-reference renumber alignment
+
+      - explicit event foundation and planner-dispatch references
+
+      - removal of contradictory observe-section mapping'
   - id: driver-evolution-review.wiring-audit
     name: Audit evolved driver wiring completeness
     status: pending

@@ -49200,6 +49200,8 @@ phases:
       `reconcile()`.
     verification: Docs consistently describe `RuntimeContext` as the sole reconcile
       runtime bundle and match the landed signature.
+    depends_on:
+    - driver-reconcile-context-convergence.impl-boundary
     agent: doc-reviewer
   - id: driver-reconcile-context-convergence.verify
     name: Independently retest reconcile context-only convergence

@@ -52567,3 +52567,24 @@ phases:
     verification: '- Wiring audit evidence covers CLI registration, event registration,
       manifest consumption, and stub absence'
     agent: wiring-auditor
+  - id: driver-continuity-hygiene-deep-review.spec-conformance
+    name: Full continuity hygiene conformance audit
+    status: pending
+    description: 'Full-system adversarial conformance audit for continuity hygiene.
+
+
+      Focus on cross-cutting and integration-level requirements that per-phase checks
+      can miss:
+
+      - startup hygiene precedes active recovery
+
+      - safe stale classification remains narrow across CLI and runtime surfaces
+
+      - blocking classes remain consistent across telemetry, CLI, and runtime behavior
+
+      - documentation and emitted events agree on quarantine vs blocking semantics'
+    verification: '- Full evidence table produced with cross-surface drift called
+      out explicitly'
+    depends_on:
+    - driver-continuity-hygiene-deep-review.wiring-audit
+    agent: spec-verifier

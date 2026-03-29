@@ -50125,8 +50125,8 @@ phases:
       verification_scope: local-check
 
 
-      Fill in stub bodies and add the shared live test harness per the contract from
-      phase driver-live-smoke-foundation.
+      Fill in stub bodies and add the shared live test harness per the ratified foundation
+      decisions from driver-live-smoke-foundation.
 
 
       UPSTREAM ARTIFACTS (authoritative for this step):
@@ -50150,6 +50150,9 @@ phases:
 
       - keep production authority in driver.yaml and src/vectl/driver/judge.py; only
       add minimal testability hooks if strictly required
+
+      - do not reintroduce tolerant codex structured-mode fallback semantics in shared
+      helpers
 
 
       ## Completion Criteria (stub exclusion)

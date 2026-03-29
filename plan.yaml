@@ -50348,7 +50348,7 @@ phases:
     claimed_at: '2026-03-29T16:23:35.716134+00:00'
   - id: driver-live-smoke-implementation.add-opencode-judge-live-smoke-coverage
     name: Add opencode judge live smoke coverage
-    status: claimed
+    status: done
     description: 'Add additive live smoke tests for the real opencode judge path.
 
 
@@ -50413,6 +50413,77 @@ phases:
     agent: python-executor
     claimed_by: python-executor
     claimed_at: '2026-03-29T16:23:18.322328+00:00'
+    done_at: '2026-03-29T16:47:27.440683+00:00'
+    evidence: '## OpenCode Judge Live Smoke Test Evidence
+
+
+      **Artifact**:
+
+      - PR: Created `tests/live_smoke/test_opencode_judge_live.py` (572 lines)
+
+      - Also fixed `tests/live_smoke/helpers.py` to add missing `live_runner` marker
+
+
+      **Verification**:
+
+
+      Run without opt-in (skips integration tests):
+
+      ```bash
+
+      $ uv run pytest tests/live_smoke/test_opencode_judge_live.py -v
+
+      = 13 passed, 6 skipped in 0.13s =
+
+      ```
+
+
+      Run with opt-in (executes integration tests against real opencode):
+
+      ```bash
+
+      $ RUN_LIVE_RUNNER_TESTS=1 uv run pytest tests/live_smoke/test_opencode_judge_live.py
+      -v
+
+      = 7 passed in 38.24s =
+
+      ```
+
+
+      Skip reasons displayed:
+
+      ```
+
+      SKIPPED: Live runner tests require RUN_LIVE_RUNNER_TESTS=1
+
+      SKIPPED: Auth/session not available for runner ''opencode''
+
+      SKIPPED: RUN_LIVE_RUNNER_TESTS=1 required
+
+      SKIPPED: live_runner preflight failed: live_runner_opt_in_missing
+
+      ```
+
+
+      **Spec link**:
+
+      - DRIVER-LIVE-SMOKE-POLICY.md - opencode judge live smoke tests
+
+      - Uses pinned model: `ollama-cloud/minimax-m2.7`
+
+      - Override mechanism: `VECTL_OPENCODE_MODEL` envar
+
+
+      **Test coverage**:
+
+      - `TestOpencodeJudgeLive` - 6 tests for skip/preflight behavior
+
+      - `TestOpencodeJudgeLiveIntegration` - 7 tests for real CLI invocation
+
+      - `TestOpencodeJudgeVerdictParsing` - 6 tests for verdict parsing logic
+
+
+      **Deviation records**: None required.'
   - id: driver-live-smoke-implementation.add-codex-dispatch-live-smoke-coverage
     name: Add codex dispatch live smoke coverage
     status: claimed

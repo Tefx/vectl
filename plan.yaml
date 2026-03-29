@@ -40001,7 +40001,7 @@ phases:
       - none'
   - id: driver-evolution-event-contracts.spec-conformance
     name: Verify FINAL DECIDE STEP_COMPLETED schema conformance
-    status: claimed
+    status: done
     description: 'step_type: verification
 
       expected_result: green
@@ -40052,6 +40052,25 @@ phases:
     agent: spec-verifier
     claimed_by: spec-verifier
     claimed_at: '2026-03-29T06:59:53.228887+00:00'
+    done_at: '2026-03-29T07:08:29.718229+00:00'
+    evidence: 'Spec conformance report for FINAL/DECIDE/STEP_COMPLETED against docs/ADR-driver-evolution-foundation.md:
+
+      - Top-level version semantics: CONFORMS
+
+      - FINAL required/optional fields and summary semantics: CONFORMS
+
+      - Optional halt_reason on FINAL while HALT remains distinct: CONFORMS
+
+      - DECIDE required/optional boundaries: CONFORMS
+
+      - STEP_COMPLETED required/optional boundaries: CONFORMS
+
+      - Static registry declaration and immutability: CONFORMS
+
+      - Helper-backed canonical call sites: CONFORMS
+
+
+      Coverage summary: 12 requirements audited, 12 conform, 0 diverge.'
   - id: driver-evolution-event-contracts.verify-emitter-flow
     name: Verify typed emitter source-to-sink flow
     status: done

@@ -44023,7 +44023,7 @@ phases:
   steps:
   - id: driver-prompt-foundation.gate
     name: Gate prompt-resource foundation readiness
-    status: claimed
+    status: pending
     description: 'Gate review: verify the prompt-resource foundation phase is precise
       enough to unlock implementation fan-out.
 
@@ -44072,8 +44072,6 @@ phases:
 
       - Required follow-up actions:'
     agent: gate-reviewer
-    claimed_by: gate-reviewer
-    claimed_at: '2026-03-29T05:51:55.505343+00:00'
   - id: driver-prompt-foundation.design-and-test
     name: Design packaged prompt boundary and write expected-red tests
     status: done

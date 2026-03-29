@@ -42893,7 +42893,7 @@ phases:
       \ plan/orchestrator state files (plan.yaml, .git/vectl/claims.json)"
   - id: driver-routing-hardening.test-define-red
     name: Define expected-red invalid default routing regression
-    status: claimed
+    status: done
     description: 'step_type: test
 
       step_intent: test_define_red
@@ -42938,6 +42938,22 @@ phases:
     agent: python-executor
     claimed_by: python-executor
     claimed_at: '2026-03-29T12:01:58.581345+00:00'
+    done_at: '2026-03-29T12:06:44.693699+00:00'
+    evidence: "## Expected-red routing validation\n- Test file: `tests/test_driver_config.py`\n\
+      - Tests added:\n  - `test_agent_routing_default_key_rejected` - Asserts that\
+      \ `agent_routing.default` is rejected during config validation\n  - `test_agent_routing_default_error_message_is_actionable`\
+      \ - Asserts the error message names the invalid key and instructs users to use\
+      \ fallback_runner\n  - `test_agent_routing_exact_match_still_works` - Asserts\
+      \ valid exact match routing continues to work\n  - `test_agent_routing_glob_match_still_works`\
+      \ - Asserts valid glob pattern routing continues to work\n  - `test_fallback_runner_is_only_default_routing`\
+      \ - Asserts fallback_runner is the only way to configure default routing\n \
+      \ - `test_agent_routing_default_key_not_special_in_route_agent` - Asserts route_agent()\
+      \ has no special-casing for 'default' key\n- Expected failures:\n  - `test_agent_routing_default_key_rejected`\
+      \ and `test_agent_routing_default_error_message_is_actionable` FAIL because\
+      \ the validation hasn't been implemented yet. The config currently accepts `agent_routing.default`\
+      \ without raising a ValidationError.\n  - The other 4 tests PASS because they\
+      \ test existing working behavior.\n- Commands: `uv run pytest tests/test_driver_config.py::TestAgentRoutingValidation\
+      \ -v`\n- Explicit statement: \"No production code changed\""
   - id: driver-routing-hardening.impl
     name: Reject reserved `agent_routing.default` during config load
     status: pending

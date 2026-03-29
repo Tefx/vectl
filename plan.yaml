@@ -46219,3 +46219,120 @@ phases:
     - driver-continuity-review.wiring-audit
     - driver-continuity-review.spec-conformance
     agent: gate-reviewer
+  - id: driver-continuity-review.fix-wiring-blockers
+    name: Fix continuity review wiring blockers
+    status: pending
+    description: 'Fix ALL wiring blockers from driver-continuity-review.wiring-audit
+      together; do not address them separately.
+
+
+      ## Blockers to Fix (ALL of these, not just the first)
+
+
+      ### B1: StartupRecoveryController protocol is unimplemented or bypassed
+
+      - Resolve the standalone-function execution path so production startup/recovery
+      flow actually goes through the StartupRecoveryController-owned contract, or
+      remove the bypass and wire the real protocol implementation into the production
+      path.
+
+      - Prove runtime/entrypoint wiring semantics: the production recovery path must
+      invoke the protocol-backed controller path rather than a disconnected helper
+      path.
+
+      - Search for sibling bypasses or alternate recovery entry paths before claiming
+      done.
+
+
+      ### B2: continuity ledger fields appear write-only
+
+      - Resolve production-path consumption for continuity ledger fields `status`
+      and `recovery_cursor`.
+
+      - Prove these fields are not only persisted but also read/consumed by the production
+      recovery path with observable control-flow effect.
+
+      - Search for sibling write-only continuity/recovery fields before claiming done.
+
+
+      ## Root Cause vs Symptom
+
+      - Root cause: recovery runtime wiring and ledger state semantics are split,
+      causing protocol bypass and fields that appear persisted without authoritative
+      production-path consumption.
+
+      - Symptom: wiring audit reports unimplemented/bypassed controller contract and
+      write-only ledger fields.
+
+      - Why this fix is not surface-level: completion requires repairing runtime wiring
+      and proving production-path read/consume semantics together, not just adding
+      references or helper calls.
+
+
+      ## Completion Criteria
+
+      - BOTH blockers resolved in one coherent production-path fix
+
+      - Production startup/recovery path is wired through the authoritative controller
+      contract
+
+      - `status` and `recovery_cursor` are demonstrably consumed in production recovery
+      logic
+
+      - Sibling search completed for protocol bypasses and write-only continuity fields
+
+      - Evidence includes exact production-path files/entrypoints and read/write flow
+      proof'
+    verification: '- Prove production startup/recovery path uses StartupRecoveryController
+      contract end-to-end
+
+      - Prove `status` and `recovery_cursor` are consumed by production recovery logic,
+      not only written
+
+      - Provide focused regression evidence for both blocker families and sibling-search
+      results
+
+      - No remaining protocol-bypass or write-only continuity-field findings in the
+      repaired wiring audit scope'
+    evidence_template: '## Wiring Blocker Fix Evidence
+
+
+      **Blockers addressed together**: B1 protocol wiring + B2 ledger-field consumption
+
+
+      **Production path traced**:
+
+      - Entry point: <file:symbol>
+
+      - Controller contract: <protocol + implementation>
+
+      - Recovery flow: <call chain>
+
+
+      **Protocol wiring proof**:
+
+      - <show production path now routes through StartupRecoveryController>
+
+
+      **Ledger field consumption proof**:
+
+      - status read at: <file:line>
+
+      - recovery_cursor read at: <file:line>
+
+      - observable effect: <branch/decision/state transition>
+
+
+      **Sibling search evidence**:
+
+      - Bypass search: <results>
+
+      - Write-only field search: <results>
+
+
+      **Regression coverage**:
+
+      - <tests or audit evidence proving both blockers closed>'
+    depends_on:
+    - driver-continuity-review.wiring-audit
+    agent: python-senior

@@ -46233,7 +46233,7 @@ phases:
     claimed_at: '2026-03-29T05:16:29.394552+00:00'
   - id: driver-continuity-review.fix-wiring-blockers
     name: Fix continuity review wiring blockers
-    status: claimed
+    status: done
     description: 'Fix ALL wiring blockers from driver-continuity-review.wiring-audit
       together; do not address them separately.
 
@@ -46350,6 +46350,56 @@ phases:
     agent: python-senior
     claimed_by: python-senior
     claimed_at: '2026-03-29T05:16:13.267267+00:00'
+    done_at: '2026-03-29T05:26:03.790873+00:00'
+    evidence: "## Wiring Blocker Fix Evidence\n\n**Blockers addressed together**:\
+      \ B1 protocol wiring + B2 ledger-field consumption\n\n**Production path traced**:\n\
+      - Entry point: `src/vectl/driver/entrypoint.py:201` `_invoke_with_adapter` ->\
+      \ `invoke_async` -> `src/vectl/driver/loop.py:1692` `run`\n- Controller contract:\
+      \ `src/vectl/driver/types.py:644` `StartupRecoveryController.plan_recovery`;\
+      \ implementation `src/vectl/driver/loop.py:437` `DefaultStartupRecoveryController.plan_recovery`\n\
+      - Recovery flow: `run()` (`loop.py:1759`) -> `_startup_recovery_controller().plan_recovery(...)`\
+      \ -> `_evaluate_startup_recovery_boundary_matrix(...)` (`loop.py:497`) -> decisions/block\
+      \ reasons consumed by `run()` (`loop.py:1779-1792`)\n\n**Protocol wiring proof**:\n\
+      - Removed standalone-function bypass path by routing `evaluate_startup_recovery_boundary(...)`\
+      \ through controller contract:\n  - `src/vectl/driver/loop.py:481-494` now calls\
+      \ `_startup_recovery_controller().plan_recovery(...)`\n  - `DefaultStartupRecoveryController.plan_recovery`\
+      \ (`loop.py:448-455`) owns matrix execution via `_evaluate_startup_recovery_boundary_matrix(...)`\n\
+      - Production startup path remains controller-first at `loop.py:1759`.\n- Regression\
+      \ proof:\n  - `tests/test_driver_recovery.py:480` `test_evaluate_startup_recovery_boundary_routes_through_controller`\n\
+      \  - `tests/test_driver_recovery.py:336` updated to capture controller invocation\
+      \ (`_startup_recovery_controller`), not direct function patching.\n\n**Ledger\
+      \ field consumption proof**:\n- status read at: `src/vectl/driver/loop.py:562`\n\
+      - recovery_cursor read at: `src/vectl/driver/loop.py:563`\n- observable effect:\n\
+      \  - `status == \"completed\"` -> decision reason `ledger_status_completed`\
+      \ + `blocked_reasons` append (`loop.py:565-575`) -> `run()` emits HALT and sets\
+      \ `state.halt_requested=True` (`loop.py:1779-1789`)\n  - `recovery_cursor ==\
+      \ \"halt_requested_by_judge_policy\"` -> decision reason `recovery_cursor_halt_requested_by_judge_policy`\
+      \ + `blocked_reasons` append (`loop.py:589-599`) -> same HALT control-flow in\
+      \ `run()`\n- Production-path regression test:\n  - `tests/test_driver_recovery.py:515`\
+      \ `test_run_consumes_ledger_status_and_recovery_cursor_via_controller` proves\
+      \ both reasons are emitted and main loop is skipped (`main_loop_called == False`)\
+      \ due startup HALT.\n\n**Sibling search evidence**:\n- Bypass search: `rg -n\
+      \ \"evaluate_startup_recovery_boundary\\(|_startup_recovery_controller\\(|plan_recovery\\\
+      (\" src/vectl/driver`\n  - Results show only controller-owned production wiring:\n\
+      \    - `loop.py:1759` production `run()` uses `_startup_recovery_controller().plan_recovery(...)`\n\
+      \    - `loop.py:494` standalone evaluator now routes to controller\n    - no\
+      \ alternate production direct matrix invocation outside controller-owned path.\n\
+      - Write-only field search:\n  - `rg -n \"ledger_entry\\.status|status=\\\"|status=status|payload\\\
+      [\\\"status\\\"\\]\" src/vectl/driver/loop.py`\n  - `rg -n \"ledger_entry\\\
+      .recovery_cursor|recovery_cursor=|payload\\.get\\(\\\"recovery_cursor\\\"\\\
+      )\" src/vectl/driver/loop.py`\n  - Verified write + read paths in same production\
+      \ scope:\n    - writes in `_persist_continuity_ledger(...)` callsites (`loop.py:2320,2474,2532,2577,2702,2869`\
+      \ + cursor writes at `2326,2480,2538,2583,2709,2875`)\n    - reads at `loop.py:562-563`\
+      \ with control-flow branches (`565-635`).\n\n**Regression coverage**:\n- `uv\
+      \ run pytest -v tests/test_driver_recovery.py`\n  - Result: `11 passed`\n  -\
+      \ Includes new controller-routing and production status/cursor consumption tests.\n\
+      - `uv run pytest -v tests/test_driver_continuity_contract.py`\n  - Result: `5\
+      \ passed`\n- `uv run ruff check src/vectl/driver/loop.py tests/test_driver_recovery.py`\n\
+      \  - Result: `All checks passed!`\n- Commit on isolated branch:\n  - `d82a9e4`\n\
+      \  - Message: `fix(driver): route startup boundary evaluation through controller\
+      \ contract`\n\nScope note:\n- Fixed only wiring blockers in assigned scope (B1+B2\
+      \ together).\n- Did not modify `plan.yaml`, `.git/vectl/claims.json`, or orchestrator\
+      \ lifecycle state."
   - id: driver-continuity-review.wiring-audit-retest
     name: Retest continuity review wiring audit
     status: pending

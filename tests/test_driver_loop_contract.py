@@ -10,6 +10,7 @@ import inspect
 from pathlib import Path
 
 import src.vectl.driver.__main__ as driver_main
+import src.vectl.driver.events.emitter as event_emitter
 import src.vectl.driver.entrypoint as entrypoint
 import src.vectl.driver.loop as loop
 
@@ -33,6 +34,7 @@ def test_loop_contract_signatures_are_pinned() -> None:
         "session_pool",
         "observer",
         "plan_path",
+        "context",
     ]
     assert list(inspect.signature(loop.handle_complete).parameters) == [
         "action",
@@ -41,6 +43,7 @@ def test_loop_contract_signatures_are_pinned() -> None:
         "session_pool",
         "observer",
         "plan_path",
+        "context",
     ]
     assert list(inspect.signature(loop.reconcile).parameters) == [
         "completed",
@@ -66,6 +69,13 @@ def test_deferred_replan_branches_are_bounded() -> None:
         entry.deferred_to == "driver-judgment-expansion-replan"
         for entry in loop.DEFERRED_REPLAN_BRANCHES
     )
+
+
+def test_loop_exposes_registry_backed_typed_event_helpers() -> None:
+    assert loop.emit_decide is event_emitter.emit_decide
+    assert loop.emit_final is event_emitter.emit_final
+    assert loop.emit_step_completed is event_emitter.emit_step_completed
+    assert loop.LOOP_EVENT_HELPER_DEFS == ("DECIDE", "FINAL", "STEP_COMPLETED")
 
 
 def test_entrypoint_contract_is_pinned() -> None:

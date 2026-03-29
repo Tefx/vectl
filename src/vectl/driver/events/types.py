@@ -8,11 +8,14 @@ Authoritative source:
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import Final, TypeAlias
+from typing import Final, Literal, TypeAlias
 
 JSONScalar: TypeAlias = str | int | float | bool | None
 JSONValue: TypeAlias = JSONScalar | dict[str, "JSONValue"] | list["JSONValue"]
 EventData: TypeAlias = dict[str, JSONValue]
+DecideEventName: TypeAlias = Literal["DECIDE"]
+FinalEventName: TypeAlias = Literal["FINAL"]
+StepCompletedEventName: TypeAlias = Literal["STEP_COMPLETED"]
 
 ANOMALY_VERDICT: Final = "ANOMALY_VERDICT"
 COLD_CONTEXT_VERDICT: Final = "COLD_CONTEXT_VERDICT"

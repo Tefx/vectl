@@ -11,7 +11,7 @@ from dataclasses import dataclass
 from types import MappingProxyType
 from typing import Final, Mapping
 
-from .types import ALL_EVENT_TYPES
+from .types import ALL_EVENT_TYPES, DECIDE, FINAL, STEP_COMPLETED
 
 
 @dataclass(frozen=True)
@@ -72,7 +72,10 @@ _TABLE: dict[str, EventRegistryRecord] = {
         required=("running_count", "actions"),
         optional=("claimable", "capacity"),
         owner="vectl.driver.loop",
-        compatibility="Version 1 baseline; additive optional fields only within v1.",
+        compatibility=(
+            "Version 1 baseline for registry-backed decision emission; preserve "
+            "required fields and add only optional fields within v1."
+        ),
     ),
     "ESCALATION_DEFERRED": _record(
         "ESCALATION_DEFERRED",
@@ -103,7 +106,11 @@ _TABLE: dict[str, EventRegistryRecord] = {
         required=("completed_summary", "total_duration_seconds"),
         optional=("halt_reason", "total_cost_usd", "total_tokens"),
         owner="vectl.driver.loop",
-        compatibility="Canonical summary event in v1; preserve envelope shape and add only optional fields within v1.",
+        compatibility=(
+            "Canonical summary event in v1; FINAL alone determines terminal outcome "
+            "for end-of-run consumers while HALT remains separate stop-causality. "
+            "Preserve envelope shape and add only optional fields within v1."
+        ),
     ),
     "GATE_REMEDIATION_DEFERRED": _record(
         "GATE_REMEDIATION_DEFERRED",
@@ -232,7 +239,10 @@ _TABLE: dict[str, EventRegistryRecord] = {
         required=("step_id", "elapsed_seconds"),
         optional=("cost", "evidence_len", "tokens"),
         owner="vectl.driver.loop",
-        compatibility="Version 1 baseline; additive optional fields only within v1.",
+        compatibility=(
+            "Version 1 baseline for terminal step-success emission; preserve "
+            "required fields and add only optional fields within v1."
+        ),
     ),
     "STEP_DISPATCHED": _record(
         "STEP_DISPATCHED",
@@ -255,6 +265,10 @@ _TABLE: dict[str, EventRegistryRecord] = {
         compatibility="Version 1 baseline; additive optional fields only within v1.",
     ),
 }
+
+DECIDE_EVENT_RECORD: Final[EventRegistryRecord] = _TABLE[DECIDE]
+FINAL_EVENT_RECORD: Final[EventRegistryRecord] = _TABLE[FINAL]
+STEP_COMPLETED_EVENT_RECORD: Final[EventRegistryRecord] = _TABLE[STEP_COMPLETED]
 
 EVENT_REGISTRY: Final[Mapping[str, EventRegistryRecord]] = MappingProxyType(_TABLE)
 

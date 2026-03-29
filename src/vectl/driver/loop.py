@@ -55,6 +55,14 @@ from .config import (
     load_config,
 )
 from .dispatch import render_prompt
+from .events.emitter import (
+    DECIDE_EVENT_DEF,
+    FINAL_EVENT_DEF,
+    STEP_COMPLETED_EVENT_DEF,
+    emit_decide,
+    emit_final,
+    emit_step_completed,
+)
 from .errors import ConfigError, JudgmentParseError, JudgmentTimeoutError, RunnerError
 from .judge import (
     Judge,
@@ -227,6 +235,11 @@ PLANNER_SOURCE_VERDICT_REJECT: Final[PlannerDispatchSourceVerdict] = "REJECT"
 LOOP_HANDLER_RUNTIME_CONTEXT: Final[type[RuntimeContext]] = RuntimeContext
 LOOP_ACTION_REGISTRY_SCOPE_STATEMENT: Final[str] = ACTION_REGISTRY_SCOPE_STATEMENT
 LOOP_PLANNER_ACTION_DECLARATIONS = PLANNER_DISPATCH_ACTION_DECLARATIONS
+LOOP_EVENT_HELPER_DEFS: Final[tuple[str, ...]] = (
+    DECIDE_EVENT_DEF.event,
+    FINAL_EVENT_DEF.event,
+    STEP_COMPLETED_EVENT_DEF.event,
+)
 
 
 RemainingJudgmentTriggerName = Literal[

@@ -3,10 +3,26 @@
 from __future__ import annotations
 
 import time
+import inspect
+from typing import get_type_hints
 
+from src.vectl.driver.events.emitter import (
+    DECIDE_EVENT_DEF,
+    FINAL_EVENT_DEF,
+    STEP_COMPLETED_EVENT_DEF,
+    emit_decide,
+    emit_final,
+    emit_step_completed,
+)
 from src.vectl.driver.events.registry import EVENT_REGISTRY, EventRegistryRecord
 from src.vectl.driver.events.sinks import FileObserver, NullObserver
-from src.vectl.driver.events.types import ALL_EVENT_TYPES, FINAL, STEP_DISPATCHED
+from src.vectl.driver.events.types import (
+    ALL_EVENT_TYPES,
+    DECIDE,
+    FINAL,
+    STEP_COMPLETED,
+    STEP_DISPATCHED,
+)
 from src.vectl.driver.observe import Event, Observer
 
 
@@ -67,6 +83,21 @@ class TestEventRegistry:
         record = EVENT_REGISTRY[FINAL]
         assert record.required == ("completed_summary", "total_duration_seconds")
         assert set(record.optional) == {"halt_reason", "total_cost_usd", "total_tokens"}
+        assert "terminal outcome" in record.compatibility
+
+    def test_decide_registry_contract_matches_adr(self) -> None:
+        record = EVENT_REGISTRY[DECIDE]
+        assert record.required == ("running_count", "actions")
+        assert record.optional == ("claimable", "capacity")
+        assert record.version == 1
+        assert record.owner == "vectl.driver.loop"
+
+    def test_step_completed_registry_contract_matches_adr(self) -> None:
+        record = EVENT_REGISTRY[STEP_COMPLETED]
+        assert record.required == ("step_id", "elapsed_seconds")
+        assert record.optional == ("cost", "evidence_len", "tokens")
+        assert record.version == 1
+        assert record.owner == "vectl.driver.loop"
 
     def test_registry_is_static_declaration_table(self) -> None:
         try:
@@ -82,6 +113,50 @@ class TestEventRegistry:
             pass
         else:
             raise AssertionError("EVENT_REGISTRY must be immutable")
+
+
+class TestTypedEmitterContracts:
+    def test_registry_backed_defs_use_exact_event_names(self) -> None:
+        assert DECIDE_EVENT_DEF is EVENT_REGISTRY[DECIDE]
+        assert FINAL_EVENT_DEF is EVENT_REGISTRY[FINAL]
+        assert STEP_COMPLETED_EVENT_DEF is EVENT_REGISTRY[STEP_COMPLETED]
+        assert (DECIDE_EVENT_DEF.event, FINAL_EVENT_DEF.event, STEP_COMPLETED_EVENT_DEF.event) == (
+            "DECIDE",
+            "FINAL",
+            "STEP_COMPLETED",
+        )
+
+    def test_typed_emitter_signatures_are_pinned(self) -> None:
+        assert list(inspect.signature(emit_decide).parameters) == [
+            "observer",
+            "running_count",
+            "actions",
+            "claimable",
+            "capacity",
+        ]
+        assert list(inspect.signature(emit_final).parameters) == [
+            "observer",
+            "completed_summary",
+            "total_duration_seconds",
+            "halt_reason",
+            "total_cost_usd",
+            "total_tokens",
+        ]
+        assert list(inspect.signature(emit_step_completed).parameters) == [
+            "observer",
+            "step_id",
+            "elapsed_seconds",
+            "cost",
+            "evidence_len",
+            "tokens",
+        ]
+
+    def test_typed_emitters_return_exact_event_literals(self) -> None:
+        assert str(get_type_hints(emit_decide)["return"]) == "typing.Literal['DECIDE']"
+        assert str(get_type_hints(emit_final)["return"]) == "typing.Literal['FINAL']"
+        assert (
+            str(get_type_hints(emit_step_completed)["return"]) == "typing.Literal['STEP_COMPLETED']"
+        )
 
 
 class TestEventLogging:

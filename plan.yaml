@@ -52431,6 +52431,55 @@ phases:
 
       - Suggested tests for NEEDS_TEST items:'
     agent: spec-verifier
+  - id: driver-continuity-hygiene-review.gate
+    name: Gate continuity hygiene verification
+    status: pending
+    description: 'As an INDEPENDENT REVIEWER (gate-reviewer), assess whether the continuity
+      hygiene remediation meets the quality bar for documentation sync.
+
+
+      YOU ARE THE QUALITY GATE. Block progress if:
+
+      - runtime liveness proof is missing
+
+      - safe stale quarantine widened beyond the approved class
+
+      - any blocking class stopped blocking
+
+      - CLI/runtime/spec evidence disagree
+
+
+      Verification scope: phase-check protecting doc-sync and final deep review.
+
+
+      review_depth: THOROUGH
+
+      review_depth_rationale:
+
+      - runtime startup behavior changed
+
+      - CLI and event surfaces were added
+
+      - stale-vs-active divergence is a known blocker class
+
+
+      cross_cutting_focus:
+
+      - startup hygiene before active recovery
+
+      - CLI/runtime semantic consistency
+
+      - quarantine auditability and blocking integrity'
+    verification: '- All verification steps completed successfully with evidence
+
+      - Runnable surfaces have real-path proof
+
+      - No unresolved blockers remain before doc updates and deep review'
+    depends_on:
+    - driver-continuity-hygiene-review.verify-unit-green
+    - driver-continuity-hygiene-review.liveness-probe
+    - driver-continuity-hygiene-review.spec-conformance
+    agent: gate-reviewer
 - id: driver-continuity-hygiene-doc-sync
   name: 'Driver Continuity Hygiene: Documentation Sync'
   status: locked

@@ -24,6 +24,7 @@ import logging
 import os
 import shutil
 import time
+from collections.abc import Awaitable, Callable
 from dataclasses import asdict, dataclass
 from datetime import datetime, timezone
 from fnmatch import fnmatch
@@ -41,6 +42,8 @@ from .action_registry import (
     ACTION_REGISTRY_SCOPE_STATEMENT,
     INITIAL_HANDLER_INPUT_CONTRACT,
     PLANNER_DISPATCH_ACTION_DECLARATIONS,
+    UnknownLoopActionError,
+    resolve_runtime_loop_action_declaration,
 )
 from .config import (
     DriverConfig,
@@ -117,6 +120,14 @@ if TYPE_CHECKING:
 
 
 _LOGGER = logging.getLogger(__name__)
+
+
+RegisteredLoopActionHandlerName = Literal[
+    "handle_dispatch",
+    "emit_complete_action_ignored",
+    "emit_wait",
+    "emit_escalation_deferred",
+]
 
 
 RUNTIME_CONTEXT_ROLLOUT_CONTRACT: Final[str] = (
@@ -3072,6 +3083,51 @@ async def _recover_all_stalled(state: DriverState, observer: Observer) -> None:
     observer.emit("RECOVERY", type="all_stalled")
 
 
+async def _registry_handle_dispatch(action: Action, context: RuntimeContext) -> None:
+    """Dispatch one execution action through ``handle_dispatch``."""
+
+    await handle_dispatch(action=action, context=context)
+
+
+async def _registry_emit_complete_action_ignored(action: Action, context: RuntimeContext) -> None:
+    """Emit complete-action compatibility event per registry declaration."""
+
+    context.observer.emit(
+        "COMPLETE_ACTION_IGNORED",
+        step_id=action.step_id,
+        reason=(
+            "Runtime completion authority is reconcile-only; "
+            "decide(action='complete') is legacy and ignored"
+        ),
+    )
+
+
+async def _registry_emit_wait(action: Action, context: RuntimeContext) -> None:
+    """Emit wait event per registry declaration."""
+
+    context.observer.emit("WAIT", reason=action.reason or "No action")
+
+
+async def _registry_emit_escalation_deferred(action: Action, context: RuntimeContext) -> None:
+    """Emit escalation deferred event per registry declaration."""
+
+    context.observer.emit(
+        "ESCALATION_DEFERRED",
+        step_id=action.step_id,
+        reason="Escalation handling beyond threshold is deferred",
+    )
+
+
+_REGISTERED_RUNTIME_ACTION_HANDLERS: Final[
+    dict[RegisteredLoopActionHandlerName, Callable[[Action, RuntimeContext], Awaitable[None]]]
+] = {
+    "handle_dispatch": _registry_handle_dispatch,
+    "emit_complete_action_ignored": _registry_emit_complete_action_ignored,
+    "emit_wait": _registry_emit_wait,
+    "emit_escalation_deferred": _registry_emit_escalation_deferred,
+}
+
+
 async def _run_main_loop(
     *,
     state: DriverState,
@@ -3123,28 +3179,20 @@ async def _run_main_loop(
             break
 
         for action in decide_output.actions:
-            if action.action == "claim_and_dispatch":
-                await handle_dispatch(
-                    action=action,
-                    context=runtime_context,
+            try:
+                declaration = resolve_runtime_loop_action_declaration(action.action)
+            except UnknownLoopActionError as exc:
+                raise PlanError(str(exc)) from exc
+
+            handler_name = cast(RegisteredLoopActionHandlerName, declaration.handler_contract)
+            handler = _REGISTERED_RUNTIME_ACTION_HANDLERS.get(handler_name)
+            if handler is None:
+                raise PlanError(
+                    "Loop action registry handler is not wired: "
+                    f"action_type={declaration.action_type}, handler={declaration.handler_contract}"
                 )
-            elif action.action == "complete":
-                observer.emit(
-                    "COMPLETE_ACTION_IGNORED",
-                    step_id=action.step_id,
-                    reason=(
-                        "Runtime completion authority is reconcile-only; "
-                        "decide(action='complete') is legacy and ignored"
-                    ),
-                )
-            elif action.action == "wait":
-                observer.emit("WAIT", reason=action.reason or "No action")
-            elif action.action == "escalate":
-                observer.emit(
-                    "ESCALATION_DEFERRED",
-                    step_id=action.step_id,
-                    reason="Escalation handling beyond threshold is deferred",
-                )
+
+            await handler(action, runtime_context)
 
         if state.running:
             completed = await state.wait_for_any()

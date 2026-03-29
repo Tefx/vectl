@@ -25,6 +25,27 @@ from unittest.mock import MagicMock, patch
 import pytest
 
 import src.vectl.driver.loop as loop_module
+from src.vectl.driver.action_registry import (
+    ACTION_HANDLER_CONTRACTS,
+    ACTION_REGISTRY_DECLARATION_MODE,
+    ACTION_REGISTRY_PUBLIC_DYNAMIC_REGISTRATION,
+    ACTION_REGISTRY_SCOPE_STATEMENT,
+    CLAIM_AND_DISPATCH_ACTION_TYPE,
+    COMPLETE_ACTION_TYPE,
+    ESCALATE_ACTION_TYPE,
+    EXECUTION_ACTION_DECLARATIONS,
+    INITIAL_HANDLER_INPUT_CONTRACT,
+    LAYERED_ACTION_REGISTRY,
+    PLANNER_ACTION_CATEGORY,
+    PLANNER_DISPATCH_ACTION_DECLARATIONS,
+    PLANNER_DISPATCH_EVENT_EXPECTATIONS,
+    PLANNER_DISPATCH_GATE_REJECT_ACTION_TYPE,
+    PLANNER_DISPATCH_REPLAN_ACTION_TYPE,
+    WAIT_ACTION_TYPE,
+    PlannerDispatchAction,
+    UnknownLoopActionError,
+    resolve_runtime_loop_action_declaration,
+)
 from src.vectl.driver.config import (
     DriverConfig,
     JudgeConfig,
@@ -33,24 +54,8 @@ from src.vectl.driver.config import (
     RunnerConfig,
     SessionConfig,
 )
-from src.vectl.driver.action_registry import (
-    ACTION_HANDLER_CONTRACTS,
-    INITIAL_HANDLER_INPUT_CONTRACT,
-)
 from src.vectl.driver.errors import ConfigError
 from src.vectl.driver.judge import Judge
-from src.vectl.driver.action_registry import (
-    ACTION_REGISTRY_DECLARATION_MODE,
-    ACTION_REGISTRY_PUBLIC_DYNAMIC_REGISTRATION,
-    ACTION_REGISTRY_SCOPE_STATEMENT,
-    LAYERED_ACTION_REGISTRY,
-    PLANNER_ACTION_CATEGORY,
-    PLANNER_DISPATCH_ACTION_DECLARATIONS,
-    PLANNER_DISPATCH_EVENT_EXPECTATIONS,
-    PLANNER_DISPATCH_GATE_REJECT_ACTION_TYPE,
-    PLANNER_DISPATCH_REPLAN_ACTION_TYPE,
-    PlannerDispatchAction,
-)
 from src.vectl.driver.loop import (
     COMPLETION_AUTHORITY_A1_CONTRACT,
     DEFERRED_REPLAN_BRANCHES,
@@ -69,12 +74,12 @@ from src.vectl.driver.loop import (
     shutdown,
 )
 from src.vectl.driver.observe import FileObserver
+from src.vectl.driver.runners import Runner
 from src.vectl.driver.runtime_context import (
     RUNTIME_CONTEXT_BOUNDARY_RULES,
     RUNTIME_CONTEXT_RESPONSIBILITY_SPLIT,
+    RuntimeContext,
 )
-from src.vectl.driver.runners import Runner
-from src.vectl.driver.runtime_context import RuntimeContext
 from src.vectl.driver.session import SessionPool
 from src.vectl.driver.types import (
     CompletedEntry,
@@ -371,6 +376,21 @@ class TestPlannerDispatchActionRegistryContract:
         assert ACTION_REGISTRY_DECLARATION_MODE == "static_declaration_table"
         assert ACTION_REGISTRY_PUBLIC_DYNAMIC_REGISTRATION is False
         assert all(decl.auditable_declaration for decl in PLANNER_DISPATCH_ACTION_DECLARATIONS)
+
+    def test_layered_registry_registers_existing_runtime_actions(self) -> None:
+        """Layered registry MUST include execution/control runtime loop actions."""
+        execution_action_types = {decl.action_type for decl in EXECUTION_ACTION_DECLARATIONS}
+        assert CLAIM_AND_DISPATCH_ACTION_TYPE in execution_action_types
+        assert WAIT_ACTION_TYPE in execution_action_types
+
+        control_action_types = {decl.action_type for decl in LAYERED_ACTION_REGISTRY["control"]}
+        assert COMPLETE_ACTION_TYPE in control_action_types
+        assert ESCALATE_ACTION_TYPE in control_action_types
+
+    def test_unknown_runtime_action_fails_at_registry_boundary(self) -> None:
+        """Unknown runtime actions MUST fail at action-registry boundary."""
+        with pytest.raises(UnknownLoopActionError, match="Unknown loop action"):
+            resolve_runtime_loop_action_declaration("unknown.action")
 
 
 class TestRuntimeContextContracts:

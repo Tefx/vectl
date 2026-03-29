@@ -50394,18 +50394,18 @@ phases:
 
 
       Use the documented commands from driver-live-smoke-implementation.update-docs
-      and the explicit model/override policy ratified by driver-live-smoke-foundation.ratify-live-smoke-policy.
+      and the explicit pinned model/override policy ratified by driver-live-smoke-foundation.ratify-live-smoke-policy.
 
 
       Run the ratified manual live invocations for:
 
-      - codex judge smoke
+      - codex judge smoke using gpt-5.4-mini
 
-      - opencode judge smoke
+      - opencode judge smoke using ollama-cloud/minimax-m2.7
 
-      - codex dispatch smoke
+      - codex dispatch smoke using gpt-5.4-mini
 
-      - opencode dispatch smoke
+      - opencode dispatch smoke using ollama-cloud/minimax-m2.7
 
       - combined live smoke selection
 
@@ -50415,7 +50415,8 @@ phases:
       - PASS with real runner evidence, or
 
       - explicit SKIP with justified evidence (runner missing, auth missing, opt-in
-      env absent, or preferred-model-unavailable fallback exercised per ratified policy)
+      env absent, or fallback exercised only for true runner unavailability/auth/runner
+      issues per ratified policy)
 
 
       Boundary checks:
@@ -50429,8 +50430,9 @@ phases:
 
       A missing binary/auth/opt-in gate is acceptable only when the skip is explicit
       and evidenced; silent pass is not acceptable.'
-    verification: '- Matrix evidence includes exact documented commands, exact model
-      ids, override mechanisms, output, and per-runner per-scenario verdicts.
+    verification: '- Matrix evidence includes exact documented commands, the exact
+      pinned model ids gpt-5.4-mini and ollama-cloud/minimax-m2.7, override mechanisms,
+      output, and per-runner per-scenario verdicts.
 
       - Each path is PASS, explicit FAILURE where required by the codex structured-output
       contract, or explicit SKIP with reason and captured output.

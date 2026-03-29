@@ -51704,3 +51704,10 @@ phases:
     and repair-continuity semantics before runtime code changes.
   depends_on:
   - driver-live-smoke-remediation
+- id: driver-continuity-hygiene-core
+  name: 'Driver Continuity Hygiene: Core Runtime'
+  status: locked
+  gate: Core continuity hygiene helpers and startup-stage wiring are implemented behind
+    the pinned contract, with stale-only auto-quarantine and blocking ambiguity preserved.
+  depends_on:
+  - driver-continuity-hygiene-foundation

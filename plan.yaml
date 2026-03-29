@@ -49131,3 +49131,15 @@ phases:
     cleanup.
   depends_on:
   - driver-evolution-review
+  steps:
+  - id: driver-reconcile-context-convergence.sync-current-contract-test
+    name: Restore truthful pinned reconcile signature test
+    status: pending
+    description: Test-only first step. Update `tests/test_driver_loop_contract.py`
+      so `test_loop_contract_signatures_are_pinned` matches the current migration-era
+      `reconcile(completed, state, judge, session_pool, observer, plan_path, config=None,
+      runners=None, *, context=None)` surface. No production or documentation changes
+      are allowed in this step.
+    verification: '`pytest tests/test_driver_loop_contract.py -k test_loop_contract_signatures_are_pinned`
+      passes and the diff is limited to `tests/test_driver_loop_contract.py`.'
+    agent: python-executor

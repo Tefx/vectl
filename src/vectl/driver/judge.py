@@ -20,7 +20,7 @@ import time
 from dataclasses import dataclass
 from pathlib import Path
 from tempfile import NamedTemporaryFile
-from typing import TYPE_CHECKING, Any, Literal, Protocol
+from typing import TYPE_CHECKING, Literal, Protocol
 
 from .errors import JudgmentParseError, JudgmentTimeoutError
 from .judgments import (
@@ -194,12 +194,176 @@ def decide_judge_recovery_policy(
     - docs/JUDGE-AGENT-PROMPT.md TYPE: escalation decision framework
     - docs/DRIVER-CONTINUITY-FOUNDATION.md Section 4 (Abort/failure handoff)
 
-    Implementation ownership is deferred to
-    ``driver-judge-hardening-recovery-policy.impl``.
+    Policy semantics:
+    - timeout: retry within retry budget, then fallback/halt
+    - parse/malformed/empty output: fallback if available, else halt
+    - verdict-driven: REPLAN->planner_remediation, RETRY->retry, HALT/REJECT->halt
+
+    The output is intentionally continuity-consumable and does not assume durable
+    resume/restart ownership.
     """
 
-    raise NotImplementedError(
-        "Recovery policy classification is deferred to driver-judge-hardening-recovery-policy.impl"
+    retry_budget = max(policy_input.retry_budget, 0)
+    fallback_runner = policy_input.fallback_runner_name
+    if fallback_runner is not None and not fallback_runner.strip():
+        fallback_runner = None
+
+    if policy_input.outcome_kind == "timeout":
+        if policy_input.failure_count <= retry_budget:
+            return JudgeContinuityPolicyOutput(
+                step_id=policy_input.step_id,
+                judgment_type=policy_input.judgment_type.value,
+                judge_outcome="timeout",
+                action="retry",
+                provenance="judge_transport_timeout",
+                continuity_recovery_reason="judge_timeout_within_retry_budget",
+                attempt_key=policy_input.attempt_key,
+            )
+        if fallback_runner is not None:
+            return JudgeContinuityPolicyOutput(
+                step_id=policy_input.step_id,
+                judgment_type=policy_input.judgment_type.value,
+                judge_outcome="timeout",
+                action="fallback",
+                provenance="judge_transport_timeout",
+                continuity_recovery_reason="judge_timeout_retry_budget_exhausted",
+                attempt_key=policy_input.attempt_key,
+                fallback_runner_name=fallback_runner,
+            )
+        return JudgeContinuityPolicyOutput(
+            step_id=policy_input.step_id,
+            judgment_type=policy_input.judgment_type.value,
+            judge_outcome="timeout",
+            action="halt",
+            provenance="judge_transport_timeout",
+            continuity_recovery_reason="judge_timeout_no_fallback_runner",
+            attempt_key=policy_input.attempt_key,
+            halt_reason="Judge timeout exceeded retry budget and no fallback is configured",
+        )
+
+    if policy_input.outcome_kind in {"parse_error", "malformed_output", "empty_output"}:
+        if fallback_runner is not None:
+            return JudgeContinuityPolicyOutput(
+                step_id=policy_input.step_id,
+                judgment_type=policy_input.judgment_type.value,
+                judge_outcome=policy_input.outcome_kind,
+                action="fallback",
+                provenance="judge_output_contract_violation",
+                continuity_recovery_reason="judge_output_unusable_fallback_runner_available",
+                attempt_key=policy_input.attempt_key,
+                fallback_runner_name=fallback_runner,
+            )
+        return JudgeContinuityPolicyOutput(
+            step_id=policy_input.step_id,
+            judgment_type=policy_input.judgment_type.value,
+            judge_outcome=policy_input.outcome_kind,
+            action="halt",
+            provenance="judge_output_contract_violation",
+            continuity_recovery_reason="judge_output_unusable_no_fallback_runner",
+            attempt_key=policy_input.attempt_key,
+            halt_reason=("Judge produced unusable output and no fallback runner is configured"),
+        )
+
+    verdict = policy_input.verdict
+    if verdict is None:
+        return JudgeContinuityPolicyOutput(
+            step_id=policy_input.step_id,
+            judgment_type=policy_input.judgment_type.value,
+            judge_outcome="missing_verdict",
+            action="halt",
+            provenance="judge_policy_input_invalid",
+            continuity_recovery_reason="verdict_outcome_without_verdict_payload",
+            attempt_key=policy_input.attempt_key,
+            halt_reason="Judge recovery policy received outcome=verdict without verdict payload",
+        )
+
+    verdict_name = verdict.verdict
+    reason_lower = verdict.reason.lower()
+    provenance = "judge_verdict"
+    marker = "provenance="
+    if marker in reason_lower:
+        after = reason_lower.split(marker, 1)[1]
+        token = after.split(",", 1)[0].split(";", 1)[0].split(" ", 1)[0].strip()
+        if token:
+            provenance = f"judge_verdict:{token}"
+
+    if verdict_name == "REPLAN":
+        instruction = verdict.planner_instruction
+        if instruction is None or not instruction.strip():
+            return JudgeContinuityPolicyOutput(
+                step_id=policy_input.step_id,
+                judgment_type=policy_input.judgment_type.value,
+                judge_outcome="REPLAN",
+                action="halt",
+                provenance=provenance,
+                continuity_recovery_reason="replan_without_planner_instruction",
+                attempt_key=policy_input.attempt_key,
+                halt_reason="REPLAN verdict missing planner_instruction",
+            )
+        return JudgeContinuityPolicyOutput(
+            step_id=policy_input.step_id,
+            judgment_type=policy_input.judgment_type.value,
+            judge_outcome="REPLAN",
+            action="planner_remediation",
+            provenance=provenance,
+            continuity_recovery_reason="judge_requested_planner_remediation",
+            attempt_key=policy_input.attempt_key,
+            planner_instruction=instruction,
+        )
+
+    if verdict_name == "RETRY":
+        return JudgeContinuityPolicyOutput(
+            step_id=policy_input.step_id,
+            judgment_type=policy_input.judgment_type.value,
+            judge_outcome="RETRY",
+            action="retry",
+            provenance=provenance,
+            continuity_recovery_reason="judge_requested_retry",
+            attempt_key=policy_input.attempt_key,
+        )
+
+    if verdict_name == "SWITCH_AGENT":
+        if fallback_runner is not None:
+            return JudgeContinuityPolicyOutput(
+                step_id=policy_input.step_id,
+                judgment_type=policy_input.judgment_type.value,
+                judge_outcome="SWITCH_AGENT",
+                action="fallback",
+                provenance=provenance,
+                continuity_recovery_reason="judge_requested_alternate_execution_route",
+                attempt_key=policy_input.attempt_key,
+                fallback_runner_name=fallback_runner,
+            )
+        return JudgeContinuityPolicyOutput(
+            step_id=policy_input.step_id,
+            judgment_type=policy_input.judgment_type.value,
+            judge_outcome="SWITCH_AGENT",
+            action="retry",
+            provenance=provenance,
+            continuity_recovery_reason="switch_agent_without_runner_fallback",
+            attempt_key=policy_input.attempt_key,
+        )
+
+    if verdict_name in {"HALT", "REJECT"}:
+        return JudgeContinuityPolicyOutput(
+            step_id=policy_input.step_id,
+            judgment_type=policy_input.judgment_type.value,
+            judge_outcome=verdict_name,
+            action="halt",
+            provenance=provenance,
+            continuity_recovery_reason="judge_requested_halt",
+            attempt_key=policy_input.attempt_key,
+            halt_reason=verdict.reason,
+        )
+
+    return JudgeContinuityPolicyOutput(
+        step_id=policy_input.step_id,
+        judgment_type=policy_input.judgment_type.value,
+        judge_outcome=verdict_name,
+        action="retry",
+        provenance=provenance,
+        continuity_recovery_reason="judge_verdict_default_retry",
+        attempt_key=policy_input.attempt_key,
     )
 
 
@@ -349,18 +513,18 @@ class Judge:
                 user_prompt=user_prompt,
             )
             verdict = self._parse_verdict(raw_output=raw_output, request=request)
-        except JudgmentTimeoutError:
+        except JudgmentTimeoutError as exc:
             raise JudgmentTimeoutError(
                 judgment_type=request.type.value,
                 step_id=request.step_id,
                 timeout_seconds=self._config.timeout,
-            )
+            ) from exc
         except JudgmentParseError as exc:
             raise JudgmentParseError(
                 judgment_type=request.type.value,
                 step_id=request.step_id,
                 raw_output=exc.raw_output,
-            )
+            ) from exc
 
         self._emit_judgment_event(
             request=request,

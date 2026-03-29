@@ -47,8 +47,13 @@ from .config import (
     load_config,
 )
 from .dispatch import render_prompt
-from .errors import ConfigError, RunnerError
-from .judge import Judge
+from .errors import ConfigError, JudgmentParseError, JudgmentTimeoutError, RunnerError
+from .judge import (
+    Judge,
+    JudgeOutcomeKind,
+    JudgeRecoveryPolicyInput,
+    decide_judge_recovery_policy,
+)
 from .judgments import JudgmentRequest, JudgmentType, JudgmentVerdict
 from .observe import Observer, create_observer
 from .policy import (
@@ -71,6 +76,7 @@ from .types import (
     ContinuityJournalEntry,
     ContinuityLedgerEntry,
     DriverState,
+    JudgeContinuityPolicyOutput,
     ReplaySafetyEnvelope,
     ReplayTokenSemantics,
     RunnerStatus,
@@ -936,6 +942,24 @@ def _judge_type_enabled(judge: Judge, judgment_type: JudgmentType) -> bool:
     if callable(is_enabled):
         return bool(is_enabled(judgment_type))
     return False
+
+
+def _classify_judge_parse_outcome(raw_output: str) -> JudgeOutcomeKind:
+    """Classify parse failures into policy outcome kinds.
+
+    Source: docs/DRIVER-ARCHITECTURE.md Section 2.10 verdict extraction
+    boundary (timeout/parse/malformed/empty handling split).
+    """
+
+    normalized = raw_output.strip()
+    if not normalized or "empty output from judge runner" in normalized.lower():
+        return "empty_output"
+
+    stripped = normalized.lstrip()
+    if stripped.startswith("{") or stripped.startswith("["):
+        return "malformed_output"
+
+    return "parse_error"
 
 
 def _collect_remaining_required_checks(plan: object, step_id: str) -> list[str]:
@@ -2205,19 +2229,96 @@ async def reconcile(
             failure_history=state.get_failure_history(completed.step_id),
             plan_summary=str(getattr(plan, "context", "")),
         )
-        failure_verdict = await judge.judge(failure_request)
-        disposition = _extract_failure_disposition(failure_verdict.reason)
-        observer.emit(
-            "FAILURE_VERDICT",
-            step_id=completed.step_id,
-            verdict=failure_verdict.verdict,
-            reason=failure_verdict.reason,
-            disposition=disposition or "",
-            remaining_checks=len(remaining_checks),
-        )
+        fallback_runner_name: str | None = None
+        if runtime_config is not None:
+            fallback_value = getattr(runtime_config, "fallback_runner", None)
+            if isinstance(fallback_value, str) and fallback_value.strip():
+                if fallback_value != completed.runner_name:
+                    fallback_runner_name = fallback_value
+
+        policy_output: JudgeContinuityPolicyOutput
+        failure_verdict: JudgmentVerdict | None = None
+        disposition: str | None = None
+
+        try:
+            failure_verdict = await judge.judge(failure_request)
+            disposition = _extract_failure_disposition(failure_verdict.reason)
+            observer.emit(
+                "FAILURE_VERDICT",
+                step_id=completed.step_id,
+                verdict=failure_verdict.verdict,
+                reason=failure_verdict.reason,
+                disposition=disposition or "",
+                remaining_checks=len(remaining_checks),
+            )
+            policy_output = decide_judge_recovery_policy(
+                JudgeRecoveryPolicyInput(
+                    step_id=completed.step_id,
+                    judgment_type=JudgmentType.FAILURE,
+                    outcome_kind="verdict",
+                    attempt_key=continuity_attempt_key,
+                    failure_count=count,
+                    retry_budget=2,
+                    fallback_runner_name=fallback_runner_name,
+                    verdict=failure_verdict,
+                )
+            )
+        except JudgmentTimeoutError:
+            policy_output = decide_judge_recovery_policy(
+                JudgeRecoveryPolicyInput(
+                    step_id=completed.step_id,
+                    judgment_type=JudgmentType.FAILURE,
+                    outcome_kind="timeout",
+                    attempt_key=continuity_attempt_key,
+                    failure_count=count,
+                    retry_budget=2,
+                    fallback_runner_name=fallback_runner_name,
+                )
+            )
+        except JudgmentParseError as exc:
+            policy_output = decide_judge_recovery_policy(
+                JudgeRecoveryPolicyInput(
+                    step_id=completed.step_id,
+                    judgment_type=JudgmentType.FAILURE,
+                    outcome_kind=_classify_judge_parse_outcome(exc.raw_output),
+                    attempt_key=continuity_attempt_key,
+                    failure_count=count,
+                    retry_budget=2,
+                    fallback_runner_name=fallback_runner_name,
+                )
+            )
+
+        observer.emit("JUDGE_FAILURE_POLICY", **asdict(policy_output))
+
+        if failure_verdict is None:
+            if policy_output.action == "fallback":
+                state.runner_failures[(completed.step_id, completed.runner_name)] = max(
+                    state.runner_failures.get((completed.step_id, completed.runner_name), 0),
+                    2,
+                )
+            if policy_output.action == "halt":
+                state.halt_requested = True
+                observer.emit(
+                    "HALT_REQUESTED",
+                    step_id=completed.step_id,
+                    reason=policy_output.halt_reason or policy_output.continuity_recovery_reason,
+                )
+
+            plan = defer_step(plan, completed.step_id, claims_path=claims_path)
+            save_plan(plan, path=plan_path, expected_hash=expected_hash)
+            observer.emit(
+                "STEP_FAILED",
+                step_id=completed.step_id,
+                failure_type=completed.result.status.value,
+                attempt=count,
+                error=completed.result.output,
+                judge_policy_action=policy_output.action,
+                judge_recovery_reason=policy_output.continuity_recovery_reason,
+            )
+            return
 
         requires_planner = (
-            failure_verdict.verdict == "REPLAN" or disposition == "downstream_blocker"
+            policy_output.action == "planner_remediation" or disposition == "downstream_blocker"
         )
         if requires_planner:
             if runtime_config is None or runtime_runners is None:
@@ -2225,10 +2326,10 @@ async def reconcile(
                     "FAILURE downstream-blocker remediation requires config/runners wiring "
                     "for planner dispatch"
                 )
-            if (
-                failure_verdict.planner_instruction is None
-                or not failure_verdict.planner_instruction.strip()
-            ):
+            planner_instruction = (
+                policy_output.planner_instruction or failure_verdict.planner_instruction
+            )
+            if planner_instruction is None or not planner_instruction.strip():
                 raise PlanError(
                     "FAILURE downstream_blocker/REPLAN verdict requires non-empty "
                     f"planner_instruction (step={completed.step_id})"
@@ -2239,7 +2340,7 @@ async def reconcile(
                     step_id=completed.step_id,
                     trigger="reconcile.failure_classification_replan",
                     judgment_type="FAILURE",
-                    planner_instruction=failure_verdict.planner_instruction,
+                    planner_instruction=planner_instruction,
                     source_verdict=PLANNER_SOURCE_VERDICT_REPLAN,
                 ),
                 config=runtime_config,

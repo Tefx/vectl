@@ -49439,13 +49439,43 @@ phases:
   - id: driver-reconcile-context-convergence.gate
     name: Gate reconcile context-only convergence
     status: pending
-    description: Final gate review for reconcile-only convergence. Confirm the stale
-      test was repaired first, the final context-only boundary landed cleanly, no
-      forbidden explicit runtime params remain on `reconcile()`, and scope did not
-      expand into unrelated completion-authority cleanup.
-    verification: Review all step evidence and block on any remaining dual-path reconcile
-      dependency injection, call-site/doc mismatch, or unjustified `handle_complete()`
-      churn.
+    description: 'Final gate for this narrow reconcile-only phase.
+
+
+      Block unless all are true:
+
+      1. first step repaired the stale migration-era contract test before refactor
+      work
+
+      2. final `reconcile()` contract is context-only
+
+      3. explicit migration-era reconcile params are gone
+
+      4. runtime call path uses the authoritative context-only boundary
+
+      5. remaining direct callsites/tests were migrated
+
+      6. docs match
+
+      7. phase did not expand into deleting or redesigning `handle_complete()` without
+      a proven direct dependency
+
+
+      Review depth: STANDARD with extra focus on hidden scope creep.'
+    verification: '- review evidence from every prior step
+
+      - block on any remaining dual-path reconcile boundary, callsite drift, or scope
+      expansion
+
+      - explicitly record whether `handle_complete()` remained out of scope'
+    evidence_template: "## Gate review\n- Step evidence reviewed:\n  `<list>`\n- Final\
+      \ reconcile signature:\n  `<paste>`\n- Forbidden params absent:\n  `yes|no`\n\
+      - Runtime path context-only:\n  `yes|no`\n- handle_complete scope respected:\n\
+      \  `yes|no`\n- Gate decision:\n  `OPEN | BLOCKED`"
+    refs:
+    - src/vectl/driver/loop.py
+    - tests/test_driver_loop_contract.py
+    - docs/DRIVER-ARCHITECTURE.md
     depends_on:
     - driver-reconcile-context-convergence.sync-current-contract-test
     - driver-reconcile-context-convergence.contract

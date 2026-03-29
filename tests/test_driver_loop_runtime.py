@@ -19,7 +19,7 @@ from __future__ import annotations
 
 import asyncio
 from pathlib import Path
-from typing import Any
+from typing import Any, cast
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -40,10 +40,15 @@ from src.vectl.driver.action_registry import (
     PLANNER_DISPATCH_ACTION_DECLARATIONS,
     PLANNER_DISPATCH_EVENT_EXPECTATIONS,
     PLANNER_DISPATCH_GATE_REJECT_ACTION_TYPE,
+    PLANNER_DISPATCH_GATE_REJECT_HANDLER_CONTRACT,
     PLANNER_DISPATCH_REPLAN_ACTION_TYPE,
+    PLANNER_DISPATCH_REPLAN_HANDLER_CONTRACT,
     WAIT_ACTION_TYPE,
     PlannerDispatchAction,
+    PlannerDispatchActionType,
     UnknownLoopActionError,
+    UnknownPlannerDispatchActionError,
+    resolve_planner_dispatch_action_declaration,
     resolve_runtime_loop_action_declaration,
 )
 from src.vectl.driver.config import (
@@ -391,6 +396,85 @@ class TestPlannerDispatchActionRegistryContract:
         """Unknown runtime actions MUST fail at action-registry boundary."""
         with pytest.raises(UnknownLoopActionError, match="Unknown loop action"):
             resolve_runtime_loop_action_declaration("unknown.action")
+
+    def test_planner_dispatch_uses_explicit_handler_contracts(self) -> None:
+        """Planner actions MUST declare explicit registry handler contracts."""
+        handlers_by_action = {
+            declaration.action_type: declaration.handler_contract
+            for declaration in PLANNER_DISPATCH_ACTION_DECLARATIONS
+        }
+        assert handlers_by_action[PLANNER_DISPATCH_REPLAN_ACTION_TYPE] == (
+            PLANNER_DISPATCH_REPLAN_HANDLER_CONTRACT
+        )
+        assert handlers_by_action[PLANNER_DISPATCH_GATE_REJECT_ACTION_TYPE] == (
+            PLANNER_DISPATCH_GATE_REJECT_HANDLER_CONTRACT
+        )
+
+    def test_unknown_planner_dispatch_action_fails_at_registry_boundary(self) -> None:
+        """Unknown planner actions MUST fail at planner registry boundary."""
+        with pytest.raises(UnknownPlannerDispatchActionError, match="Unknown planner dispatch"):
+            resolve_planner_dispatch_action_declaration(
+                cast(PlannerDispatchActionType, "planner.unknown")
+            )
+
+    @pytest.mark.anyio
+    async def test_loop_wires_planner_dispatch_through_registry_handler(
+        self,
+        driver_config: DriverConfig,
+        driver_state: DriverState,
+        mock_judge: Judge,
+        session_pool: SessionPool,
+        observer: FileObserver,
+        tmp_path: Path,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """Loop MUST dispatch planner actions via registry-backed handlers."""
+
+        captured: dict[str, Any] = {}
+
+        async def _capture_dispatch_planner(
+            request: loop_module.PlannerDispatchRequest,
+            *,
+            config: DriverConfig,
+            runners: dict[str, Runner],
+            observer: FileObserver,
+            plan_path: Path,
+        ) -> None:
+            captured["request"] = request
+            captured["config"] = config
+            captured["plan_path"] = plan_path
+
+        monkeypatch.setattr(loop_module, "dispatch_planner", _capture_dispatch_planner)
+
+        runtime_context = RuntimeContext(
+            state=driver_state,
+            config=driver_config,
+            runners={},
+            judge=mock_judge,
+            session_pool=session_pool,
+            observer=observer,
+            plan_path=tmp_path / "plan.yaml",
+        )
+
+        planner_action = PlannerDispatchAction(
+            action_type=PLANNER_DISPATCH_REPLAN_ACTION_TYPE,
+            step_id="core.impl",
+            trigger="handle_dispatch.preflight_replan",
+            judgment_type="PREFLIGHT",
+            planner_instruction="Strengthen verification criteria",
+            source_verdict="REPLAN",
+        )
+
+        await loop_module._dispatch_registered_planner_action(
+            action=planner_action,
+            context=runtime_context,
+        )
+
+        assert captured["request"].step_id == "core.impl"
+        assert captured["request"].trigger == "handle_dispatch.preflight_replan"
+        assert captured["request"].planner_instruction == "Strengthen verification criteria"
+        assert captured["config"] is driver_config
+        assert captured["plan_path"] == tmp_path / "plan.yaml"
 
 
 class TestRuntimeContextContracts:

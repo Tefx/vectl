@@ -42,7 +42,14 @@ from .action_registry import (
     ACTION_REGISTRY_SCOPE_STATEMENT,
     INITIAL_HANDLER_INPUT_CONTRACT,
     PLANNER_DISPATCH_ACTION_DECLARATIONS,
+    PLANNER_DISPATCH_GATE_REJECT_ACTION_TYPE,
+    PLANNER_DISPATCH_GATE_REJECT_HANDLER_CONTRACT,
+    PLANNER_DISPATCH_REPLAN_ACTION_TYPE,
+    PLANNER_DISPATCH_REPLAN_HANDLER_CONTRACT,
+    PlannerDispatchAction,
     UnknownLoopActionError,
+    UnknownPlannerDispatchActionError,
+    resolve_planner_dispatch_action_declaration,
     resolve_runtime_loop_action_declaration,
 )
 from .config import (
@@ -55,15 +62,12 @@ from .config import (
     load_config,
 )
 from .dispatch import render_prompt
+from .errors import ConfigError, JudgmentParseError, JudgmentTimeoutError, RunnerError
 from .events.emitter import (
     DECIDE_EVENT_DEF,
     FINAL_EVENT_DEF,
     STEP_COMPLETED_EVENT_DEF,
-    emit_decide,
-    emit_final,
-    emit_step_completed,
 )
-from .errors import ConfigError, JudgmentParseError, JudgmentTimeoutError, RunnerError
 from .judge import (
     Judge,
     JudgeOutcomeKind,
@@ -135,6 +139,11 @@ RegisteredLoopActionHandlerName = Literal[
     "emit_complete_action_ignored",
     "emit_wait",
     "emit_escalation_deferred",
+]
+
+RegisteredPlannerDispatchHandlerName = Literal[
+    "dispatch_planner_replan",
+    "dispatch_planner_gate_reject",
 ]
 
 
@@ -1776,6 +1785,15 @@ async def run(config_path: Path) -> None:
         }
         session_pool = SessionPool(config.session)
         judge = Judge(config.judge, observer)
+        startup_runtime_context = RuntimeContext(
+            state=state,
+            config=config,
+            runners=runners,
+            judge=judge,
+            session_pool=session_pool,
+            observer=observer,
+            plan_path=plan_path,
+        )
 
         plan, _ = load_plan_definition(plan_path)
         plan_step_ids = _all_plan_step_ids(plan)
@@ -1897,17 +1915,16 @@ async def run(config_path: Path) -> None:
                             "ANOMALY REPLAN verdict requires non-empty planner_instruction "
                             "for startup recovery"
                         )
-                    await dispatch_planner(
-                        PlannerDispatchRequest(
+                    await _dispatch_registered_planner_action(
+                        action=PlannerDispatchAction(
+                            action_type=PLANNER_DISPATCH_REPLAN_ACTION_TYPE,
                             step_id="startup.recovery",
                             trigger="run.startup_recovery_anomaly_replan",
                             judgment_type="ANOMALY",
                             planner_instruction=anomaly_verdict.planner_instruction,
+                            source_verdict=PLANNER_SOURCE_VERDICT_REPLAN,
                         ),
-                        config=config,
-                        runners=runners,
-                        observer=observer,
-                        plan_path=plan_path,
+                        context=startup_runtime_context,
                     )
 
                 if anomaly_verdict.verdict not in {"ACCEPT", "HALT", "REPLAN"}:
@@ -2043,12 +2060,24 @@ async def handle_dispatch(
                         judgment_type="PREFLIGHT",
                         verdict=preflight_verdict,
                     )
-                    await dispatch_planner(
-                        planner_request,
-                        config=config,
-                        runners=runners,
-                        observer=observer,
-                        plan_path=plan_path,
+                    await _dispatch_registered_planner_action(
+                        action=PlannerDispatchAction(
+                            action_type=PLANNER_DISPATCH_REPLAN_ACTION_TYPE,
+                            step_id=planner_request.step_id,
+                            trigger=planner_request.trigger,
+                            judgment_type=planner_request.judgment_type,
+                            planner_instruction=planner_request.planner_instruction,
+                            source_verdict=planner_request.source_verdict,
+                        ),
+                        context=RuntimeContext(
+                            state=state,
+                            config=config,
+                            runners=runners,
+                            judge=judge,
+                            session_pool=session_pool,
+                            observer=observer,
+                            plan_path=plan_path,
+                        ),
                     )
                     return
                 if preflight_verdict.verdict == "REJECT":
@@ -2495,18 +2524,24 @@ async def reconcile(
                                 f"fix chain (step={completed.step_id})"
                             )
 
-                        await dispatch_planner(
-                            PlannerDispatchRequest(
+                        await _dispatch_registered_planner_action(
+                            action=PlannerDispatchAction(
+                                action_type=PLANNER_DISPATCH_GATE_REJECT_ACTION_TYPE,
                                 step_id=completed.step_id,
                                 trigger=GATE_REMEDIATION_CHAIN_CONTRACT.planner_trigger,
                                 judgment_type="GATE",
                                 planner_instruction=batch_instruction,
                                 source_verdict=PLANNER_SOURCE_VERDICT_REJECT,
                             ),
-                            config=runtime_config,
-                            runners=runtime_runners,
-                            observer=observer,
-                            plan_path=plan_path,
+                            context=RuntimeContext(
+                                state=state,
+                                config=runtime_config,
+                                runners=runtime_runners,
+                                judge=judge,
+                                session_pool=session_pool,
+                                observer=observer,
+                                plan_path=plan_path,
+                            ),
                         )
 
                         claims_path = resolve_claims_path(plan_path)
@@ -2839,18 +2874,24 @@ async def reconcile(
                     f"planner_instruction (step={completed.step_id})"
                 )
 
-            await dispatch_planner(
-                PlannerDispatchRequest(
+            await _dispatch_registered_planner_action(
+                action=PlannerDispatchAction(
+                    action_type=PLANNER_DISPATCH_REPLAN_ACTION_TYPE,
                     step_id=completed.step_id,
                     trigger="reconcile.failure_classification_replan",
                     judgment_type="FAILURE",
                     planner_instruction=planner_instruction,
                     source_verdict=PLANNER_SOURCE_VERDICT_REPLAN,
                 ),
-                config=runtime_config,
-                runners=runtime_runners,
-                observer=observer,
-                plan_path=plan_path,
+                context=RuntimeContext(
+                    state=state,
+                    config=runtime_config,
+                    runners=runtime_runners,
+                    judge=judge,
+                    session_pool=session_pool,
+                    observer=observer,
+                    plan_path=plan_path,
+                ),
             )
             deferred_plan = defer_step(plan, completed.step_id, claims_path=claims_path)
             save_plan(deferred_plan, path=plan_path, expected_hash=expected_hash)
@@ -3129,6 +3170,94 @@ async def _registry_emit_escalation_deferred(action: Action, context: RuntimeCon
         step_id=action.step_id,
         reason="Escalation handling beyond threshold is deferred",
     )
+
+
+async def _registry_dispatch_planner_replan(
+    action: PlannerDispatchAction,
+    context: RuntimeContext,
+) -> None:
+    """Dispatch planner action for REPLAN-triggered branches."""
+
+    await dispatch_planner(
+        PlannerDispatchRequest(
+            step_id=action.step_id,
+            trigger=action.trigger,
+            judgment_type=action.judgment_type,
+            planner_instruction=action.planner_instruction,
+            source_verdict=action.source_verdict,
+        ),
+        config=context.config,
+        runners=dict(context.runners),
+        observer=context.observer,
+        plan_path=context.plan_path,
+    )
+
+
+async def _registry_dispatch_planner_gate_reject(
+    action: PlannerDispatchAction,
+    context: RuntimeContext,
+) -> None:
+    """Dispatch planner action for gate-reject remediation branches."""
+
+    await dispatch_planner(
+        PlannerDispatchRequest(
+            step_id=action.step_id,
+            trigger=action.trigger,
+            judgment_type=action.judgment_type,
+            planner_instruction=action.planner_instruction,
+            source_verdict=action.source_verdict,
+        ),
+        config=context.config,
+        runners=dict(context.runners),
+        observer=context.observer,
+        plan_path=context.plan_path,
+    )
+
+
+_REGISTERED_PLANNER_ACTION_HANDLERS: Final[
+    dict[
+        RegisteredPlannerDispatchHandlerName,
+        Callable[[PlannerDispatchAction, RuntimeContext], Awaitable[None]],
+    ]
+] = {
+    PLANNER_DISPATCH_REPLAN_HANDLER_CONTRACT: _registry_dispatch_planner_replan,
+    PLANNER_DISPATCH_GATE_REJECT_HANDLER_CONTRACT: _registry_dispatch_planner_gate_reject,
+}
+
+
+async def _dispatch_registered_planner_action(
+    *,
+    action: PlannerDispatchAction,
+    context: RuntimeContext,
+) -> None:
+    """Execute planner dispatch via explicit planner layer registry."""
+
+    try:
+        declaration = resolve_planner_dispatch_action_declaration(action.action_type)
+    except UnknownPlannerDispatchActionError as exc:
+        raise PlanError(str(exc)) from exc
+
+    if declaration.category != "planner":
+        raise PlanError(
+            "Planner dispatch action resolved to non-planner category: "
+            f"action_type={declaration.action_type}, category={declaration.category}"
+        )
+    if declaration.runtime_context_contract != "RuntimeContext":
+        raise PlanError(
+            "Planner dispatch registry declaration must use RuntimeContext: "
+            f"action_type={declaration.action_type}, "
+            f"runtime_context_contract={declaration.runtime_context_contract}"
+        )
+
+    handler_name = cast(RegisteredPlannerDispatchHandlerName, declaration.handler_contract)
+    handler = _REGISTERED_PLANNER_ACTION_HANDLERS.get(handler_name)
+    if handler is None:
+        raise PlanError(
+            "Planner action registry handler is not wired: "
+            f"action_type={declaration.action_type}, handler={declaration.handler_contract}"
+        )
+
+    await handler(action, context)
 
 
 _REGISTERED_RUNTIME_ACTION_HANDLERS: Final[

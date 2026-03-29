@@ -68,6 +68,12 @@ PLANNER_DISPATCH_REPLAN_ACTION_TYPE: Final[Literal["planner.dispatch_replan"]] =
 PLANNER_DISPATCH_GATE_REJECT_ACTION_TYPE: Final[Literal["planner.dispatch_gate_reject"]] = (
     "planner.dispatch_gate_reject"
 )
+PLANNER_DISPATCH_REPLAN_HANDLER_CONTRACT: Final[Literal["dispatch_planner_replan"]] = (
+    "dispatch_planner_replan"
+)
+PLANNER_DISPATCH_GATE_REJECT_HANDLER_CONTRACT: Final[Literal["dispatch_planner_gate_reject"]] = (
+    "dispatch_planner_gate_reject"
+)
 PLANNER_ACTION_CATEGORY: Final[Literal["planner"]] = "planner"
 ACTION_REGISTRY_DECLARATION_MODE: Final[Literal["static_declaration_table"]] = (
     "static_declaration_table"
@@ -203,7 +209,7 @@ PLANNER_DISPATCH_ACTION_DECLARATIONS: Final[tuple[ActionDeclaration, ...]] = (
         action_type=PLANNER_DISPATCH_REPLAN_ACTION_TYPE,
         category=PLANNER_ACTION_CATEGORY,
         payload_contract="PlannerDispatchAction",
-        handler_contract="PlannerDispatchHandler",
+        handler_contract=PLANNER_DISPATCH_REPLAN_HANDLER_CONTRACT,
         runtime_context_contract="RuntimeContext",
         event_expectations=PLANNER_DISPATCH_EVENT_EXPECTATIONS,
         included_in_registry_scope=True,
@@ -214,7 +220,7 @@ PLANNER_DISPATCH_ACTION_DECLARATIONS: Final[tuple[ActionDeclaration, ...]] = (
         action_type=PLANNER_DISPATCH_GATE_REJECT_ACTION_TYPE,
         category=PLANNER_ACTION_CATEGORY,
         payload_contract="PlannerDispatchAction",
-        handler_contract="PlannerDispatchHandler",
+        handler_contract=PLANNER_DISPATCH_GATE_REJECT_HANDLER_CONTRACT,
         runtime_context_contract="RuntimeContext",
         event_expectations=PLANNER_DISPATCH_EVENT_EXPECTATIONS,
         included_in_registry_scope=True,
@@ -299,9 +305,17 @@ _RUNTIME_LOOP_ACTION_INDEX: Final[dict[str, ActionDeclaration]] = {
     for declaration in (*EXECUTION_ACTION_DECLARATIONS, *CONTROL_ACTION_DECLARATIONS)
 }
 
+_PLANNER_DISPATCH_ACTION_INDEX: Final[dict[str, ActionDeclaration]] = {
+    declaration.action_type: declaration for declaration in PLANNER_DISPATCH_ACTION_DECLARATIONS
+}
+
 
 class UnknownLoopActionError(ValueError):
     """Raised when loop receives an action not declared in the registry."""
+
+
+class UnknownPlannerDispatchActionError(ValueError):
+    """Raised when planner dispatch action is not declared in registry."""
 
 
 def resolve_runtime_loop_action_declaration(action_type: str) -> ActionDeclaration:
@@ -323,6 +337,31 @@ def resolve_runtime_loop_action_declaration(action_type: str) -> ActionDeclarati
         raise UnknownLoopActionError(
             f"Unknown loop action '{action_type}' at registry boundary. "
             f"Declared runtime actions: {declared}"
+        )
+    return declaration
+
+
+def resolve_planner_dispatch_action_declaration(
+    action_type: PlannerDispatchActionType,
+) -> ActionDeclaration:
+    """Resolve one planner-dispatch declaration by action type.
+
+    Args:
+        action_type: Planner-dispatch action type to resolve.
+
+    Returns:
+        The static ``ActionDeclaration`` for ``action_type``.
+
+    Raises:
+        UnknownPlannerDispatchActionError: If ``action_type`` is not registry-declared.
+    """
+
+    declaration = _PLANNER_DISPATCH_ACTION_INDEX.get(action_type)
+    if declaration is None:
+        declared = ", ".join(sorted(_PLANNER_DISPATCH_ACTION_INDEX))
+        raise UnknownPlannerDispatchActionError(
+            f"Unknown planner dispatch action '{action_type}' at registry boundary. "
+            f"Declared planner actions: {declared}"
         )
     return declaration
 
@@ -461,8 +500,10 @@ __all__ = [
     "RECOVERY_ALL_STALLED_ACTION_TYPE",
     "RECOVERY_ALL_STALLED_EVENT_EXPECTATIONS",
     "PLANNER_DISPATCH_ACTION_DECLARATIONS",
+    "PLANNER_DISPATCH_GATE_REJECT_HANDLER_CONTRACT",
     "PLANNER_DISPATCH_EVENT_EXPECTATIONS",
     "PLANNER_DISPATCH_GATE_REJECT_ACTION_TYPE",
+    "PLANNER_DISPATCH_REPLAN_HANDLER_CONTRACT",
     "PLANNER_DISPATCH_REPLAN_ACTION_TYPE",
     "PlannerDispatchAction",
     "PlannerDispatchActionType",
@@ -472,7 +513,9 @@ __all__ = [
     "PlannerDispatchTriggerName",
     "RuntimeActionHandler",
     "UnknownLoopActionError",
+    "UnknownPlannerDispatchActionError",
     "WAIT_ACTION_TYPE",
     "WAIT_EVENT_EXPECTATIONS",
+    "resolve_planner_dispatch_action_declaration",
     "resolve_runtime_loop_action_declaration",
 ]

@@ -52515,6 +52515,31 @@ phases:
 
       - Blocking conditions remain explicitly documented'
     agent: doc-reviewer
+  - id: driver-continuity-hygiene-doc-sync.gate
+    name: Gate continuity hygiene docs sync
+    status: pending
+    description: 'As an INDEPENDENT REVIEWER (gate-reviewer), assess whether continuity
+      hygiene documentation is accurate, actionable, and aligned with runtime behavior.
+
+
+      Verification scope: phase-check protecting deep review.
+
+
+      Review criteria:
+
+      1. Operator docs describe `repair continuity` and startup quarantine correctly
+
+      2. Docs do not instruct deletion of continuity artifacts
+
+      3. Blocking conditions and auditability guarantees are explicit
+
+      4. CLI/runtime terminology is consistent'
+    verification: '- Documentation updates landed and match implementation evidence
+
+      - No stale or contradictory operator guidance remains'
+    depends_on:
+    - driver-continuity-hygiene-doc-sync.update-docs
+    agent: gate-reviewer
 - id: driver-continuity-hygiene-deep-review
   name: 'Driver Continuity Hygiene: Deep Review'
   status: locked

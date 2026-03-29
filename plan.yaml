@@ -43130,7 +43130,7 @@ phases:
       PASS'
   - id: driver-routing-hardening.gate
     name: Gate reserved routing hardening
-    status: pending
+    status: claimed
     description: 'step_type: gate
 
       Gate review for the reserved-key routing hardening phase.'
@@ -43148,6 +43148,8 @@ phases:
     - driver-routing-hardening.impl
     - driver-routing-hardening.verify
     agent: gate-reviewer
+    claimed_by: gate-reviewer
+    claimed_at: '2026-03-29T12:15:12.336674+00:00'
 - id: driver-enhancement-foundation
   name: Driver Post-Bootstrap Enhancement Foundation
   status: in_progress

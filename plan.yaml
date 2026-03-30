@@ -52190,7 +52190,7 @@ phases:
       \n- Deviations: none"
   - id: driver-continuity-hygiene-core.gate
     name: Gate continuity hygiene core runtime
-    status: pending
+    status: claimed
     description: 'As an INDEPENDENT REVIEWER (gate-reviewer), assess whether the core
       continuity hygiene runtime phase is ready for surface wiring.
 
@@ -52228,6 +52228,8 @@ phases:
     - driver-continuity-hygiene-core.impl-hygiene-storage
     - driver-continuity-hygiene-core.impl-startup-stage
     agent: gate-reviewer
+    claimed_by: gate-reviewer
+    claimed_at: '2026-03-30T11:58:00.759027+00:00'
 - id: driver-continuity-hygiene-surface
   name: 'Driver Continuity Hygiene: CLI & Observability'
   status: locked

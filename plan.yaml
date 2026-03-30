@@ -43821,7 +43821,7 @@ phases:
     agent: python-senior
 - id: driver-enhancement-runner-recovery
   name: 'Driver Enhancement: Advanced Runner Recovery'
-  status: pending
+  status: in_progress
   gate: Advanced recovery work remains blocked until the slimmed live codex/opencode
     judge and dispatch smoke implementation gate is complete.
   depends_on:
@@ -43922,7 +43922,7 @@ phases:
     agent: gate-reviewer
   - id: driver-enhancement-runner-recovery.design-and-test
     name: Design recovery boundary and write expected-red tests
-    status: pending
+    status: claimed
     description: 'step_type: test
 
       merged_contract_test: true
@@ -43973,6 +43973,8 @@ phases:
 
       - Outputs include both recovery boundary design notes and failing tests'
     agent: python-senior
+    claimed_by: python-senior
+    claimed_at: '2026-03-30T16:51:29.775646+00:00'
 - id: driver-enhancement-integration
   name: 'Driver Enhancement: Integration'
   status: locked

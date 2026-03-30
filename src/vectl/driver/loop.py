@@ -64,10 +64,11 @@ from .config import (
     load_config,
 )
 from .continuity_hygiene import (
+    ContinuityArtifactAssessment,
+    StartupHygieneStageInput,
     apply_quarantine,
     run_startup_hygiene_stage,
     scan_continuity_artifacts,
-    StartupHygieneStageInput,
 )
 from .dispatch import render_prompt
 from .errors import ConfigError, JudgmentParseError, JudgmentTimeoutError, RunnerError
@@ -76,7 +77,11 @@ from .events.emitter import (
     FINAL_EVENT_DEF,
     STEP_COMPLETED_EVENT_DEF,
     emit_decide,
+    emit_driver_lifecycle,
     emit_final,
+    emit_heartbeat_progress,
+    emit_planner_dispatch_progress,
+    emit_recovery_visibility,
     emit_startup_hygiene_blocked,
     emit_startup_hygiene_classify,
     emit_startup_hygiene_quarantine,
@@ -120,11 +125,15 @@ from .types import (
     JudgeContinuityPolicyOutput,
     ReplaySafetyEnvelope,
     ReplayTokenSemantics,
+    RunnerRecoveryBoundaryInput,
+    RunnerRecoveryBoundaryOutput,
+    RunnerRecoveryDecision,
     RunnerStatus,
     StartupRecoveryBoundaryInput,
     StartupRecoveryBoundaryOutput,
     StartupRecoveryController,
     StartupRecoveryDecision,
+    StartupRecoveryDisposition,
     StartupRecoveryJudgeInput,
     StartupRecoveryReconciliationFacts,
 )
@@ -619,6 +628,127 @@ Source:
 - docs/DRIVER-ARCHITECTURE.md Section 2.11 startup sequence
 - docs/DRIVER-CONTINUITY-FOUNDATION.md Section 4 and Section 7
 """
+
+
+RUNNER_RECOVERY_TAXONOMY: Final[tuple[str, ...]] = (
+    "clean_fail",
+    "crash",
+    "stall",
+    "no_progress",
+)
+"""Normative post-bootstrap watchdog/recovery taxonomy.
+
+Source:
+- step ``driver-enhancement-runner-recovery.design-and-test``
+- docs/DRIVER-CONTINUITY-FOUNDATION.md Section 4 and Section 7
+
+This taxonomy is intentionally separate from startup bootstrap recovery ordering.
+"""
+
+
+def evaluate_runner_recovery_boundary(
+    *,
+    boundary_input: RunnerRecoveryBoundaryInput,
+) -> RunnerRecoveryBoundaryOutput:
+    """Evaluate post-bootstrap watchdog/recovery matrix at loop boundary.
+
+    Source:
+    - step ``driver-enhancement-runner-recovery.design-and-test``
+
+    Design authority notes:
+    - Preserves continuity-owned bootstrap minimum replay/restart authority.
+    - Pins crash vs clean-fail and heartbeat-driven watchdog taxonomy at the
+      boundary without implementing runtime policy logic in this test-design step.
+    """
+
+    signal = boundary_input.signal
+    step_id = signal.step_id
+    attempt_key = signal.attempt_key
+    owner = "startup_recovery_controller"
+
+    heartbeat_age = signal.heartbeat_age_seconds
+    watchdog_timeout = signal.watchdog_timeout_seconds
+    heartbeat_stale = heartbeat_age is not None and heartbeat_age > watchdog_timeout
+
+    if signal.taxonomy == "crash":
+        reason = "crash_requires_controller_review"
+        decision = RunnerRecoveryDecision(
+            step_id=step_id,
+            disposition="halt",
+            reason=reason,
+            source_attempt_key=attempt_key,
+            restart_controller_owner=owner,
+        )
+        return RunnerRecoveryBoundaryOutput(
+            decisions=(decision,),
+            repair_actions=(),
+            blocked_reasons=(f"{step_id}:{reason}",),
+        )
+
+    if signal.taxonomy == "clean_fail":
+        reason = "clean_fail_restart_with_replay_guard"
+        decision = RunnerRecoveryDecision(
+            step_id=step_id,
+            disposition="restart",
+            reason=reason,
+            source_attempt_key=attempt_key,
+            restart_controller_owner=owner,
+        )
+        return RunnerRecoveryBoundaryOutput(
+            decisions=(decision,),
+            repair_actions=(f"restart:{step_id}:{reason}",),
+            blocked_reasons=(),
+        )
+
+    if signal.taxonomy == "no_progress":
+        if heartbeat_stale:
+            reason = "watchdog_heartbeat_gap_no_progress"
+            disposition: StartupRecoveryDisposition = "restart"
+            repair_actions = (f"restart:{step_id}:{reason}",)
+            blocked_reasons: tuple[str, ...] = ()
+        else:
+            reason = "no_progress_with_fresh_heartbeat_requires_manual_review"
+            disposition = "halt"
+            repair_actions = ()
+            blocked_reasons = (f"{step_id}:{reason}",)
+
+        decision = RunnerRecoveryDecision(
+            step_id=step_id,
+            disposition=disposition,
+            reason=reason,
+            source_attempt_key=attempt_key,
+            restart_controller_owner=owner,
+        )
+        return RunnerRecoveryBoundaryOutput(
+            decisions=(decision,),
+            repair_actions=repair_actions,
+            blocked_reasons=blocked_reasons,
+        )
+
+    # taxonomy == "stall"
+    if heartbeat_stale or not signal.process_alive:
+        reason = "stall_timeout_restart_with_watchdog_guard"
+        disposition = "restart"
+        repair_actions = (f"restart:{step_id}:{reason}",)
+        blocked_reasons = ()
+    else:
+        reason = "stall_with_fresh_heartbeat_requires_manual_review"
+        disposition = "halt"
+        repair_actions = ()
+        blocked_reasons = (f"{step_id}:{reason}",)
+
+    decision = RunnerRecoveryDecision(
+        step_id=step_id,
+        disposition=disposition,
+        reason=reason,
+        source_attempt_key=attempt_key,
+        restart_controller_owner=owner,
+    )
+    return RunnerRecoveryBoundaryOutput(
+        decisions=(decision,),
+        repair_actions=repair_actions,
+        blocked_reasons=blocked_reasons,
+    )
 
 
 def evaluate_startup_recovery_boundary(
@@ -1170,6 +1300,16 @@ async def dispatch_planner(
         judgment_type=request.judgment_type,
         runner=runner_name,
     )
+    emit_planner_dispatch_progress(
+        observer,
+        judgment_type=request.judgment_type,
+        phase="started",
+        runner=runner_name,
+        step_id=request.step_id,
+        trigger=request.trigger,
+        progress_index=0,
+        progress_total=2,
+    )
 
     prompt = _render_planner_prompt(request=request, plan_path=plan_path)
     handle = await runner.dispatch(
@@ -1178,6 +1318,18 @@ async def dispatch_planner(
         workdir=str(plan_path.parent),
     )
     result = await handle.wait()
+
+    emit_planner_dispatch_progress(
+        observer,
+        judgment_type=request.judgment_type,
+        phase="completed" if result.status == RunnerDispatchStatus.SUCCESS else "failed",
+        runner=runner_name,
+        step_id=request.step_id,
+        trigger=request.trigger,
+        progress_index=2,
+        progress_total=2,
+        session_id=result.session_id,
+    )
 
     if result.status != RunnerDispatchStatus.SUCCESS:
         observer.emit(
@@ -1840,7 +1992,7 @@ def _startup_judge_inputs_from_ledger_entries(
 
 def _hygiene_assessment_requires_startup_halt(
     *,
-    assessment: object,
+    assessment: ContinuityArtifactAssessment,
     plan_step_ids: set[str],
     claim_step_ids: set[str],
 ) -> bool:
@@ -1854,16 +2006,13 @@ def _hygiene_assessment_requires_startup_halt(
       state
     """
 
-    classification = getattr(assessment, "classification", None)
-    blocks = bool(getattr(assessment, "blocks_startup_recovery", False))
-    if not blocks:
+    if not assessment.blocks_startup_recovery:
         return False
 
-    if classification != "blocking_divergence":
+    if assessment.classification != "blocking_divergence":
         return True
 
-    artifact = getattr(assessment, "artifact", None)
-    parsed_step_id = getattr(artifact, "parsed_step_id", None)
+    parsed_step_id = assessment.artifact.parsed_step_id
     if not isinstance(parsed_step_id, str) or not parsed_step_id:
         return True
 
@@ -1900,6 +2049,17 @@ async def run(config_path: Path) -> None:
 
     observer = create_observer(config.observability)
     state = DriverState()
+    run_id = str(config_path.resolve())
+
+    emit_driver_lifecycle(observer, phase="startup", run_id=run_id)
+    emit_heartbeat_progress(
+        observer,
+        completed_count=0,
+        loop_iteration=0,
+        running_count=0,
+        waiting_count=0,
+        note="run.bootstrap",
+    )
 
     try:
         runners = {
@@ -2159,6 +2319,12 @@ async def run(config_path: Path) -> None:
                 plan_path=plan_path,
             )
     finally:
+        emit_driver_lifecycle(
+            observer,
+            phase="shutdown",
+            run_id=run_id,
+            note=state.final_halt_reason,
+        )
         await shutdown(state=state, observer=observer)
 
 
@@ -2649,6 +2815,17 @@ async def reconcile(
             summary="Runner completed successfully; reconciling merge and lifecycle mutations",
             replay_envelope=success_envelope,
         )
+        emit_recovery_visibility(
+            observer,
+            attempt_key=continuity_attempt_key,
+            event_kind="runner_success",
+            recorded_at=success_journal.recorded_at,
+            runner_name=completed.runner_name,
+            session_id=completed.result.session_id,
+            step_id=completed.step_id,
+            summary=success_journal.summary,
+            recovery_cursor="pre_merge",
+        )
         _persist_continuity_ledger(
             repo_root=continuity_repo_root,
             step_id=completed.step_id,
@@ -2912,6 +3089,17 @@ async def reconcile(
         session_id=completed.result.session_id,
         summary=completed.result.output,
         replay_envelope=failure_envelope,
+    )
+    emit_recovery_visibility(
+        observer,
+        attempt_key=continuity_attempt_key,
+        event_kind="failure",
+        recorded_at=failure_journal.recorded_at,
+        runner_name=completed.runner_name,
+        session_id=completed.result.session_id,
+        step_id=completed.step_id,
+        summary=failure_journal.summary,
+        recovery_cursor="awaiting_retry_or_escalation",
     )
     _persist_continuity_ledger(
         repo_root=continuity_repo_root,
@@ -3602,7 +3790,9 @@ async def _run_main_loop(
         plan_path=plan_path,
     )
 
+    loop_iteration = 0
     while not state.halt_requested:
+        loop_iteration += 1
         decide_output = decide(
             running_tasks=state.as_running_tasks(),
             completed_results=None,
@@ -3613,6 +3803,14 @@ async def _run_main_loop(
             observer,
             running_count=len(state.running),
             actions=[action.action for action in decide_output.actions],
+        )
+        emit_heartbeat_progress(
+            observer,
+            completed_count=state.completed_success_count + state.completed_failure_count,
+            loop_iteration=loop_iteration,
+            running_count=len(state.running),
+            waiting_count=0,
+            active_step_ids=sorted(state.running.keys()),
         )
 
         state.loop_detector.append(_serialize_actions_for_loop_guard(decide_output.actions))
@@ -3679,7 +3877,9 @@ __all__ = [
     "LOOP_PLANNER_ACTION_DECLARATIONS",
     "LOOP_EVENT_HELPER_DEFS",
     "STARTUP_RECOVERY_CONTRACT",
+    "RUNNER_RECOVERY_TAXONOMY",
     "StartupRecoveryContract",
+    "evaluate_runner_recovery_boundary",
     "dispatch_planner",
     "emit_decide",
     "emit_final",

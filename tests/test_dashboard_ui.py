@@ -6,6 +6,7 @@ Run with: uv run pytest -m playwright tests/test_dashboard_ui.py -v
 Source: RFC-dashboard.md
 """
 
+import os
 from pathlib import Path
 
 import pytest
@@ -21,8 +22,14 @@ from vectl.models import (
     StepStatus,
 )
 
-# Mark all tests as Playwright tests so they don't run in normal pytest
-pytestmark = pytest.mark.playwright
+# Mark all tests as Playwright tests and gate behind explicit opt-in.
+pytestmark = [
+    pytest.mark.playwright,
+    pytest.mark.skipif(
+        os.environ.get("VECTL_RUN_PLAYWRIGHT_UI") != "1",
+        reason="Playwright UI tests require isolated opt-in run (set VECTL_RUN_PLAYWRIGHT_UI=1)",
+    ),
+]
 
 
 def create_rich_test_plan() -> Plan:

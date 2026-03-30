@@ -12,24 +12,33 @@ Implementation notes:
 
 from __future__ import annotations
 
+from dataclasses import dataclass
 from typing import Final, Protocol, TypedDict
 
 from .registry import (
     DECIDE_EVENT_RECORD,
+    EVENT_REGISTRY,
     FINAL_EVENT_RECORD,
     STEP_COMPLETED_EVENT_RECORD,
-    get_event_record,
 )
 from .types import (
     DECIDE,
+    DRIVER_LIFECYCLE,
     FINAL,
-    STEP_COMPLETED,
+    HEARTBEAT_PROGRESS,
+    PLANNER_DISPATCH_PROGRESS,
+    RECOVERY_VISIBILITY,
     STARTUP_HYGIENE_BLOCKED,
     STARTUP_HYGIENE_CLASSIFY,
     STARTUP_HYGIENE_QUARANTINE,
     STARTUP_HYGIENE_SCAN,
+    STEP_COMPLETED,
     DecideEventName,
+    DriverLifecycleEventName,
     FinalEventName,
+    HeartbeatProgressEventName,
+    PlannerDispatchProgressEventName,
+    RecoveryVisibilityEventName,
     StepCompletedEventName,
 )
 
@@ -116,6 +125,87 @@ class _StartupHygieneBlockedPayloadRequired(TypedDict):
 
 class StartupHygieneBlockedPayload(_StartupHygieneBlockedPayloadRequired, total=False):
     pass
+
+
+@dataclass(frozen=True)
+class AdvancedObservabilityContract:
+    """Contract for post-bootstrap observability boundary expansion.
+
+    Source:
+    - step ``driver-enhancement-observability.design-and-test``
+    - docs/DRIVER-ARCHITECTURE.md Section 2.11 (loop-owned dispatch/recovery)
+    - docs/DRIVER-CONTINUITY-FOUNDATION.md Section 7 (journal boundaries)
+    """
+
+    source_step_id: str
+    implementation_owner_step: str
+    exposed_gaps: tuple[str, ...]
+
+
+ADVANCED_OBSERVABILITY_CONTRACT: Final[AdvancedObservabilityContract] = (
+    AdvancedObservabilityContract(
+        source_step_id="driver-enhancement-observability.design-and-test",
+        implementation_owner_step="driver-enhancement-observability.impl",
+        exposed_gaps=(
+            "missing lifecycle visibility after bootstrap",
+            "missing planner dispatch progress visibility",
+            "missing recovery event visibility preserving continuity journal boundaries",
+            "missing heartbeat/progress visibility for long-running loops",
+            "schema drift checks absent for additive observability surfaces",
+        ),
+    )
+)
+
+
+class _DriverLifecyclePayloadRequired(TypedDict):
+    phase: str
+    run_id: str
+
+
+class DriverLifecyclePayload(_DriverLifecyclePayloadRequired, total=False):
+    note: str
+    step_id: str
+
+
+class _PlannerDispatchProgressPayloadRequired(TypedDict):
+    judgment_type: str
+    phase: str
+    runner: str
+    step_id: str
+    trigger: str
+
+
+class PlannerDispatchProgressPayload(_PlannerDispatchProgressPayloadRequired, total=False):
+    message: str
+    progress_index: int
+    progress_total: int
+    session_id: str
+
+
+class _RecoveryVisibilityPayloadRequired(TypedDict):
+    attempt_key: str
+    event_kind: str
+    recorded_at: str
+    runner_name: str
+    session_id: str | None
+    step_id: str
+    summary: str
+
+
+class RecoveryVisibilityPayload(_RecoveryVisibilityPayloadRequired, total=False):
+    recovery_cursor: str
+
+
+class _HeartbeatProgressPayloadRequired(TypedDict):
+    completed_count: int
+    loop_iteration: int
+    running_count: int
+    waiting_count: int
+
+
+class HeartbeatProgressPayload(_HeartbeatProgressPayloadRequired, total=False):
+    active_step_ids: list[str]
+    note: str
 
 
 DECIDE_EVENT_DEF: Final = DECIDE_EVENT_RECORD
@@ -292,3 +382,178 @@ def emit_startup_hygiene_blocked(
 
     observer.emit(STARTUP_HYGIENE_BLOCKED, **payload)
     return STARTUP_HYGIENE_BLOCKED
+
+
+def emit_driver_lifecycle(
+    observer: SupportsEventEmit,
+    /,
+    *,
+    phase: str,
+    run_id: str,
+    note: str | None = None,
+    step_id: str | None = None,
+) -> DriverLifecycleEventName:
+    """Emit lifecycle transition telemetry for loop-level visibility.
+
+    Runtime implementation is deferred to ``driver-enhancement-observability.impl``.
+    """
+
+    payload: DriverLifecyclePayload = {
+        "phase": phase,
+        "run_id": run_id,
+    }
+    if note is not None:
+        payload["note"] = note
+    if step_id is not None:
+        payload["step_id"] = step_id
+
+    observer.emit(DRIVER_LIFECYCLE, **payload)
+    return DRIVER_LIFECYCLE
+
+
+def emit_planner_dispatch_progress(
+    observer: SupportsEventEmit,
+    /,
+    *,
+    judgment_type: str,
+    phase: str,
+    runner: str,
+    step_id: str,
+    trigger: str,
+    message: str | None = None,
+    progress_index: int | None = None,
+    progress_total: int | None = None,
+    session_id: str | None = None,
+) -> PlannerDispatchProgressEventName:
+    """Emit incremental planner-dispatch progress telemetry.
+
+    Runtime implementation is deferred to ``driver-enhancement-observability.impl``.
+    """
+
+    payload: PlannerDispatchProgressPayload = {
+        "judgment_type": judgment_type,
+        "phase": phase,
+        "runner": runner,
+        "step_id": step_id,
+        "trigger": trigger,
+    }
+    if message is not None:
+        payload["message"] = message
+    if progress_index is not None:
+        payload["progress_index"] = progress_index
+    if progress_total is not None:
+        payload["progress_total"] = progress_total
+    if session_id is not None:
+        payload["session_id"] = session_id
+
+    observer.emit(PLANNER_DISPATCH_PROGRESS, **payload)
+    return PLANNER_DISPATCH_PROGRESS
+
+
+def emit_recovery_visibility(
+    observer: SupportsEventEmit,
+    /,
+    *,
+    attempt_key: str,
+    event_kind: str,
+    recorded_at: str,
+    runner_name: str,
+    session_id: str | None,
+    step_id: str,
+    summary: str,
+    recovery_cursor: str | None = None,
+) -> RecoveryVisibilityEventName:
+    """Emit post-bootstrap recovery telemetry preserving journal minimums.
+
+    Runtime implementation is deferred to ``driver-enhancement-observability.impl``.
+    """
+
+    payload: RecoveryVisibilityPayload = {
+        "attempt_key": attempt_key,
+        "event_kind": event_kind,
+        "recorded_at": recorded_at,
+        "runner_name": runner_name,
+        "session_id": session_id,
+        "step_id": step_id,
+        "summary": summary,
+    }
+    if recovery_cursor is not None:
+        payload["recovery_cursor"] = recovery_cursor
+
+    observer.emit(RECOVERY_VISIBILITY, **payload)
+    return RECOVERY_VISIBILITY
+
+
+def emit_heartbeat_progress(
+    observer: SupportsEventEmit,
+    /,
+    *,
+    completed_count: int,
+    loop_iteration: int,
+    running_count: int,
+    waiting_count: int,
+    active_step_ids: list[str] | None = None,
+    note: str | None = None,
+) -> HeartbeatProgressEventName:
+    """Emit periodic loop heartbeat and progress counters.
+
+    Runtime implementation is deferred to ``driver-enhancement-observability.impl``.
+    """
+
+    payload: HeartbeatProgressPayload = {
+        "completed_count": completed_count,
+        "loop_iteration": loop_iteration,
+        "running_count": running_count,
+        "waiting_count": waiting_count,
+    }
+    if active_step_ids is not None:
+        payload["active_step_ids"] = active_step_ids
+    if note is not None:
+        payload["note"] = note
+
+    observer.emit(HEARTBEAT_PROGRESS, **payload)
+    return HEARTBEAT_PROGRESS
+
+
+def assert_advanced_observability_schema_alignment() -> tuple[str, ...]:
+    """Return schema drift findings for advanced observability surfaces.
+
+    Runtime implementation is deferred to ``driver-enhancement-observability.impl``.
+    """
+
+    drift: list[str] = []
+    expected: dict[str, tuple[tuple[str, ...], tuple[str, ...]]] = {
+        "DRIVER_LIFECYCLE": (("phase", "run_id"), ("note", "step_id")),
+        "PLANNER_DISPATCH_PROGRESS": (
+            ("judgment_type", "phase", "runner", "step_id", "trigger"),
+            ("message", "progress_index", "progress_total", "session_id"),
+        ),
+        "RECOVERY_VISIBILITY": (
+            (
+                "attempt_key",
+                "event_kind",
+                "recorded_at",
+                "runner_name",
+                "session_id",
+                "step_id",
+                "summary",
+            ),
+            ("recovery_cursor",),
+        ),
+        "HEARTBEAT_PROGRESS": (
+            ("completed_count", "loop_iteration", "running_count", "waiting_count"),
+            ("active_step_ids", "note"),
+        ),
+    }
+
+    for event_name, (required, optional) in expected.items():
+        record = EVENT_REGISTRY.get(event_name)
+        if record is None:
+            drift.append(f"missing_event:{event_name}")
+            continue
+        if record.required != required:
+            drift.append(f"required_mismatch:{event_name}")
+        if record.optional != optional:
+            drift.append(f"optional_mismatch:{event_name}")
+
+    return tuple(drift)

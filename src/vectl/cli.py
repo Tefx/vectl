@@ -759,7 +759,8 @@ Quick view: `vectl_status` (CLI fallback: `vectl status`)
 
 ### MCP vs CLI
 - Source of truth: `plan.yaml` (channel-agnostic).
-- **Always prefer MCP tools** (`vectl_status`, `vectl_claim`, `vectl_complete`, etc.) when available.
+- **Always prefer MCP tools** (``vectl_status``, ``vectl_claim``,
+  ``vectl_complete``, etc.) when available.
 - CLI fallback priority: `uv run vectl` > `vectl` > `uvx vectl`.
 - Evidence requirements are identical across MCP and CLI.
 
@@ -796,7 +797,8 @@ directly as a workaround. Use `vectl guide stuck` for troubleshooting.
   to preview and `--yes` to repair.
 
 ### For Architects / Planners
-- **Design Mode**: Run `vectl_guide` (CLI fallback: `vectl guide --on planning`) to learn the Architect Protocol.
+- **Design Mode**: Run ``vectl_guide`` (CLI fallback:
+  ``vectl guide --on planning``) to learn the Architect Protocol.
 - **Ambiguity = Failure**: Workers will hallucinate if steps are vague.
 - **Constraint Tools**:
   - `--evidence-template`: Force workers to provide specific proof (e.g., "Paste logs here").
@@ -1295,7 +1297,10 @@ def guide_cmd(
     """Show agent onboarding guide."""
     if on is None:
         combined = "\n---\n\n".join(g.strip() for g in _GUIDE_ALL)
-        combined += "\n\n---\n*Use `vectl_guide` (CLI fallback: `vectl guide --on <topic>`) to revisit one section.*"
+        combined += (
+            "\n\n---\n*Use ``vectl_guide`` (CLI fallback:\n"
+            "``vectl guide --on <topic>``) to revisit one section.*"
+        )
         out.print(Markdown(combined))
     else:
         guide = _GUIDE_TOPICS.get(on)
@@ -2623,24 +2628,13 @@ def repair_continuity_cmd(
 
     Source: docs/DRIVER-CONTINUITY-FOUNDATION.md §7 cross-cutting governance
     """
-    # Import via module file to avoid vectl.driver.__init__ importing broken loop module
-    import importlib.util
-    import sys
-
-    _spec = importlib.util.spec_from_file_location(
-        "vectl.driver.continuity_hygiene",
-        Path(__file__).parent / "driver" / "continuity_hygiene.py",
+    from vectl.driver.continuity_hygiene import (
+        StartupHygieneStageInput,
+        apply_quarantine,
+        load_quarantine_manifest,
+        run_startup_hygiene_stage,
+        scan_continuity_artifacts,
     )
-    assert _spec is not None and _spec.loader is not None
-    _ch = importlib.util.module_from_spec(_spec)
-    sys.modules["vectl.driver.continuity_hygiene"] = _ch
-    _spec.loader.exec_module(_ch)
-
-    StartupHygieneStageInput = _ch.StartupHygieneStageInput
-    apply_quarantine = _ch.apply_quarantine
-    load_quarantine_manifest = _ch.load_quarantine_manifest
-    run_startup_hygiene_stage = _ch.run_startup_hygiene_stage
-    scan_continuity_artifacts = _ch.scan_continuity_artifacts
 
     p, _, plan_path = _load(plan)
 
@@ -2651,7 +2645,7 @@ def repair_continuity_cmd(
 
     claims = load_claims(claims_path)
     repaired_claim_ids: set[str] = set()
-    for key, entry in claims.items():
+    for _key, entry in claims.items():
         if entry.branch == branch:
             repaired_claim_ids.add(entry.step_id)
 
@@ -2771,13 +2765,12 @@ def repair_continuity_cmd(
             step = a.artifact.parsed_step_id or "(unknown)"
             dest = a.quarantine_destination or "n/a"
             action_word = "Would quarantine" if dry_run else "Quarantined"
-            out.print(f"  [green]✓[/] {a.artifact.artifact_kind} {step} → {dest}")
+            out.print(f"  [green]✓[/] {action_word}: {a.artifact.artifact_kind} {step} → {dest}")
 
     # Show blocked artifacts (operator must resolve)
     if result.blocked_assessments:
-        out.print(
-            f"\n[red]Blocking artifacts (require operator action): {len(result.blocked_assessments)}[/]"
-        )
+        blocked_count = len(result.blocked_assessments)
+        out.print(f"\n[red]Blocking artifacts (require operator action): {blocked_count}[/]")
         for a in result.blocked_assessments:
             step = a.artifact.parsed_step_id or "(unknown)"
             kind = a.artifact.artifact_kind

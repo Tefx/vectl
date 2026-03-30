@@ -20,7 +20,6 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Final, Literal, Protocol
 
-
 ContinuityArtifactKind = Literal["ledger", "journal"]
 ContinuityArtifactClassification = Literal[
     "safe_stale_quarantine",

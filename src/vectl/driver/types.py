@@ -14,7 +14,6 @@ from __future__ import annotations
 
 import asyncio
 import time
-from collections.abc import Mapping
 from dataclasses import dataclass, field
 from enum import Enum
 from typing import TYPE_CHECKING, Literal, Protocol
@@ -39,6 +38,51 @@ class RunnerStatus(str, Enum):
     FAIL = "fail"
     STALL = "stall"
     TRANSPORT_ERROR = "transport_error"
+
+
+class StreamSignalKind(str, Enum):
+    """Incremental runner-stream signal kind.
+
+    Source:
+    - step ``driver-enhancement-streaming-progress.design-and-test`` scope
+      requires heartbeat/progress boundary design for post-bootstrap runner I/O.
+    """
+
+    HEARTBEAT = "heartbeat"
+    PROGRESS = "progress"
+
+
+@dataclass(frozen=True)
+class StreamProgressSignal:
+    """One incremental heartbeat/progress signal observed from a live runner.
+
+    Source:
+    - step ``driver-enhancement-streaming-progress.design-and-test`` requires
+      incremental JSONL consumption semantics and last-progress signal boundary.
+
+    Boundary note:
+    - This type captures live stream facts only.
+    - Final runner summary remains ``RunnerResult`` owned by process completion.
+    """
+
+    kind: StreamSignalKind
+    emitted_at_monotonic: float
+    sequence: int
+    message: str | None = None
+
+
+@dataclass(frozen=True)
+class StreamLivenessState:
+    """Live liveness boundary for an in-flight step execution.
+
+    Source:
+    - step ``driver-enhancement-streaming-progress.design-and-test`` requires
+      explicit live-state boundaries separate from final summary logic.
+    """
+
+    phase: Literal["running", "stalled", "completed"]
+    last_heartbeat_at_monotonic: float | None
+    last_progress: StreamProgressSignal | None
 
 
 @dataclass(frozen=True)
@@ -73,6 +117,7 @@ class RunningEntry:
     handle: RunnerHandle  # Protocol reference (see runners.py)
     worktree_path: str
     dispatched_at: float  # time.monotonic()
+    live_state: StreamLivenessState | None = None
 
 
 @dataclass
@@ -158,6 +203,9 @@ class DriverState:
     continuity_capability_snapshots: dict[str, str] = field(default_factory=dict)
     # Lifecycle-scoped step_id -> capability snapshot id cache.
 
+    streaming_live_state: dict[str, StreamLivenessState] = field(default_factory=dict)
+    # step_id -> live liveness snapshot from incremental runner stream.
+
     def as_running_tasks(self) -> list[RunningTask]:
         """Convert to vectl.models.RunningTask list for decide() input.
 
@@ -175,6 +223,27 @@ class DriverState:
             )
             for entry in self.running.values()
         ]
+
+    def record_stream_signal(self, *, step_id: str, signal: StreamProgressSignal) -> None:
+        """Record one live stream signal for a running step.
+
+        Source:
+        - step ``driver-enhancement-streaming-progress.design-and-test``
+          (design+expected-red) requires this runtime boundary to exist.
+
+        Implementation owner:
+        - ``driver-enhancement-streaming-progress.impl``
+        """
+        updated = StreamLivenessState(
+            phase="running",
+            last_heartbeat_at_monotonic=signal.emitted_at_monotonic,
+            last_progress=signal,
+        )
+        self.streaming_live_state[step_id] = updated
+
+        entry = self.running.get(step_id)
+        if entry is not None:
+            entry.live_state = updated
 
     def drain_completed(self) -> list[CompletedResult] | None:
         """Drain legacy completed_queue into vectl.models.CompletedResult list.
@@ -221,6 +290,27 @@ class DriverState:
         if not self.running:
             raise RuntimeError("No running tasks to wait for")
 
+        stream_tasks: dict[asyncio.Task[None], str] = {}
+
+        async def pump_stream(step_id: str, entry: RunningEntry) -> None:
+            entry.live_state = StreamLivenessState(
+                phase="running",
+                last_heartbeat_at_monotonic=time.monotonic(),
+                last_progress=None,
+            )
+            self.streaming_live_state[step_id] = entry.live_state
+
+            seen_sequence = 0
+            try:
+                async for _line in entry.handle.stream_jsonl():
+                    signal = entry.handle.last_progress_signal()
+                    if signal is None or signal.sequence <= seen_sequence:
+                        continue
+                    seen_sequence = signal.sequence
+                    self.record_stream_signal(step_id=step_id, signal=signal)
+            except (AttributeError, NotImplementedError):
+                return
+
         # Create wait tasks for all handles
         async def wait_for_entry(step_id: str, entry: RunningEntry) -> tuple[str, CompletedEntry]:
             result = await entry.handle.wait()
@@ -238,6 +328,9 @@ class DriverState:
             asyncio.create_task(wait_for_entry(step_id, entry)): step_id
             for step_id, entry in self.running.items()
         }
+        for step_id, entry in self.running.items():
+            stream_task = asyncio.create_task(pump_stream(step_id, entry))
+            stream_tasks[stream_task] = step_id
 
         done, _ = await asyncio.wait(tasks.keys(), return_when=asyncio.FIRST_COMPLETED)
         task = done.pop()
@@ -246,12 +339,41 @@ class DriverState:
         # Move from running map only.
         # Runtime completion authority is reconcile-only; this method returns the
         # completed entry directly to loop.py for immediate reconcile().
-        del self.running[step_id]
+        completed_entry = self.running.pop(step_id)
+
+        latest_progress: StreamProgressSignal | None = None
+        try:
+            latest_progress = completed_entry.handle.last_progress_signal()
+        except (AttributeError, NotImplementedError):
+            latest_progress = None
+
+        prior_live = self.streaming_live_state.get(step_id) or completed_entry.live_state
+        if latest_progress is None and prior_live is not None:
+            latest_progress = prior_live.last_progress
+
+        heartbeat_at = (
+            latest_progress.emitted_at_monotonic
+            if latest_progress is not None
+            else (
+                prior_live.last_heartbeat_at_monotonic
+                if prior_live is not None
+                else time.monotonic()
+            )
+        )
+
+        self.streaming_live_state[step_id] = StreamLivenessState(
+            phase="completed",
+            last_heartbeat_at_monotonic=heartbeat_at,
+            last_progress=latest_progress,
+        )
 
         # Cancel remaining tasks
         for t in tasks:
             if t is not task:
                 t.cancel()
+        for stream_task in stream_tasks:
+            if not stream_task.done():
+                stream_task.cancel()
 
         return completed
 
@@ -675,6 +797,86 @@ class StartupRecoveryBoundaryOutput:
 
     decisions: tuple[StartupRecoveryDecision, ...]
     resumable_handoffs: tuple[ContinuityHandoff, ...]
+    repair_actions: tuple[str, ...]
+    blocked_reasons: tuple[str, ...]
+
+
+RunnerRecoveryTaxonomy = Literal["clean_fail", "crash", "stall", "no_progress"]
+"""Post-bootstrap runner failure taxonomy at the loop/recovery boundary.
+
+Source:
+- step ``driver-enhancement-runner-recovery.design-and-test``
+- docs/DRIVER-CONTINUITY-FOUNDATION.md Section 4 and Section 7
+
+Taxonomy notes:
+- ``clean_fail``: runner returned an explicit semantic failure payload.
+- ``crash``: runner process exited unexpectedly before a clean failure payload.
+- ``stall``: runner exceeded configured stall timeout without classified crash.
+- ``no_progress``: watchdog heartbeat gap indicates execution made no forward progress.
+"""
+
+
+@dataclass(frozen=True)
+class RunnerRecoverySignal:
+    """Observed runtime recovery signal for one running attempt.
+
+    Source:
+    - step ``driver-enhancement-runner-recovery.design-and-test``
+    - docs/DRIVER-ARCHITECTURE.md Section 2.1 (RunnerStatus + running handle facts)
+    - docs/DRIVER-CONTINUITY-FOUNDATION.md Section 6 (transport boundary rules)
+    """
+
+    step_id: str
+    attempt_key: str
+    runner_name: str
+    taxonomy: RunnerRecoveryTaxonomy
+    heartbeat_age_seconds: float | None
+    watchdog_timeout_seconds: float
+    process_alive: bool
+    exit_code: int | None
+
+
+@dataclass(frozen=True)
+class RunnerRecoveryBoundaryInput:
+    """Loop-facing boundary input for post-bootstrap runner recovery decisions.
+
+    Source:
+    - step ``driver-enhancement-runner-recovery.design-and-test``
+    - docs/DRIVER-CONTINUITY-FOUNDATION.md Section 4 (restart/resume contract)
+    - docs/DRIVER-CONTINUITY-FOUNDATION.md Section 7 (continuity ownership)
+
+    Ownership notes:
+    - bootstrap-minimum replay envelope continuity remains authority-owned by
+      ``ContinuityHandoff`` + ``ContinuityLedgerEntry`` contracts.
+    - this boundary classifies watchdog/runtime recovery only; it does not
+      supersede startup restart-controller ownership.
+    """
+
+    signal: RunnerRecoverySignal
+    continuity_handoff: ContinuityHandoff | None
+    ledger_entry: ContinuityLedgerEntry | None
+
+
+@dataclass(frozen=True)
+class RunnerRecoveryDecision:
+    """Decision row for post-bootstrap watchdog/recovery matrix behavior.
+
+    Source:
+    - step ``driver-enhancement-runner-recovery.design-and-test``
+    """
+
+    step_id: str
+    disposition: StartupRecoveryDisposition
+    reason: str
+    source_attempt_key: str
+    restart_controller_owner: str
+
+
+@dataclass(frozen=True)
+class RunnerRecoveryBoundaryOutput:
+    """Boundary output for post-bootstrap watchdog/recovery decisions."""
+
+    decisions: tuple[RunnerRecoveryDecision, ...]
     repair_actions: tuple[str, ...]
     blocked_reasons: tuple[str, ...]
 

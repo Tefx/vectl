@@ -32,3 +32,6 @@ GEMINI.md
 .vectl/
 dev-timeline.html
 plan.yaml.lock
+
+# Conflict backup files
+*_Conflict.*

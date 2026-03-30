@@ -53988,7 +53988,7 @@ phases:
       - Gate now depends on remediation + retest chain'
   - id: shouldfix.gate
     name: 'Gate: All should-fix findings resolved'
-    status: pending
+    status: claimed
     description: 'As an INDEPENDENT REVIEWER, assess whether all 5 should-fix findings
       from the driver continuity hygiene gate review are fully resolved.
 
@@ -54034,6 +54034,8 @@ phases:
     - shouldfix.fix-regression-batch
     - shouldfix.retest-all-fixes
     agent: gate-reviewer
+    claimed_by: gate-reviewer
+    claimed_at: '2026-03-30T18:38:13.162789+00:00'
   - id: shouldfix.fix-regression-batch
     name: Fix regression failures surfaced by shouldfix verification
     status: done

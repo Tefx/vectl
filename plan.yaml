@@ -43966,7 +43966,7 @@ phases:
       - driver-enhancement-streaming-progress.impl'
 - id: driver-enhancement-runner-recovery
   name: 'Driver Enhancement: Advanced Runner Recovery'
-  status: in_progress
+  status: done
   gate: Advanced recovery work remains blocked until the slimmed live codex/opencode
     judge and dispatch smoke implementation gate is complete.
   depends_on:
@@ -44122,7 +44122,7 @@ phases:
       - Product implementation files modified: no'
   - id: driver-enhancement-runner-recovery.gate
     name: Gate runner recovery enhancement
-    status: claimed
+    status: done
     description: 'step_type: gate
 
       Gate the runner recovery enhancement phase.'
@@ -44138,6 +44138,32 @@ phases:
     agent: gate-reviewer
     claimed_by: gate-reviewer
     claimed_at: '2026-03-30T17:23:28.797503+00:00'
+    done_at: '2026-03-30T17:32:56.916742+00:00'
+    evidence: 'Artifact:
+
+      - Gate review session: ses_2c039c195ffebylUQHPyrrde1X
+
+      Verification:
+
+      - ruff check src/vectl/driver/loop.py -> pass
+
+      - expected-red recovery suite -> 5/5 passed
+
+      - hardening recovery tests -> pass
+
+      Gate checks:
+
+      - crash/clean_fail/stall/no_progress taxonomy behavior distinct and aligned
+
+      - watchdog/heartbeat driven decisions verified
+
+      - recovery matrix boundaries explicit (restart vs halt pathways)
+
+      - no blocking issues; minor mypy tuple-annotation notes marked non-blocking
+
+      Verdict:
+
+      - PASS'
   - id: driver-enhancement-runner-recovery.design-and-test
     name: Design recovery boundary and write expected-red tests
     status: done

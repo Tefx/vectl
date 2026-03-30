@@ -52287,7 +52287,7 @@ phases:
   steps:
   - id: driver-continuity-hygiene-surface.impl-cli-repair-continuity
     name: Implement `vectl repair continuity` CLI flow
-    status: claimed
+    status: done
     description: "step_type: implementation\nupstream_artifacts:\n  - path: src/vectl/driver/continuity_hygiene.py\n\
       \    from_step: driver-continuity-hygiene-foundation.contract\n    tier: contract\n\
       \  - path: tests/test_driver_recovery_black_box.py\n    from_step: driver-continuity-hygiene-foundation.blackbox-define-red\n\
@@ -52326,6 +52326,16 @@ phases:
     agent: python-executor
     claimed_by: python-executor
     claimed_at: '2026-03-30T12:06:57.978784+00:00'
+    done_at: '2026-03-30T12:28:18.421325+00:00'
+    evidence: "## Integration Evidence\n\n- Files changed: src/vectl/cli.py (+207\
+      \ lines)\n\n- Stub-only completion: NO\n\n- Command exercising full path:\n\
+      \  - `uv run vectl repair continuity --dry-run` → Shows blocking artifacts with\
+      \ classification\n  - `uv run vectl repair continuity --dry-run --json` → Machine-readable\
+      \ JSON with all required keys\n  - `uv run vectl repair continuity` → apply\
+      \ mode\n\n- Path exercised: continuity_hygiene.run_startup_hygiene_stage() →\
+      \ scan → CLI command → operator-visible result\n\n- Key design: Used importlib\
+      \ to load continuity_hygiene bypassing broken events import; quarantine is copy\
+      \ not delete; blocking divergence reported cleanly."
   - id: driver-continuity-hygiene-surface.impl-events-manifests
     name: Add continuity hygiene events, telemetry, and manifest surfacing
     status: claimed

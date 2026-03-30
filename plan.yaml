@@ -54036,7 +54036,7 @@ phases:
     agent: gate-reviewer
   - id: shouldfix.fix-regression-batch
     name: Fix regression failures surfaced by shouldfix verification
-    status: claimed
+    status: pending
     description: 'Batch remediation for regression failures surfaced by `shouldfix.verify-all-fixes`.
 
 
@@ -54085,8 +54085,6 @@ phases:
     depends_on:
     - shouldfix.verify-all-fixes
     agent: python-senior
-    claimed_by: python-senior
-    claimed_at: '2026-03-30T17:51:34.308006+00:00'
   - id: shouldfix.retest-all-fixes
     name: Retest shouldfix verification after regression batch
     status: pending

@@ -53710,7 +53710,7 @@ phases:
       PASS, spec-conformance CONFORMS, black-box PASS, final gate OPEN.'
 - id: driver-hygiene-shouldfix
   name: Driver Continuity Hygiene Should-Fix Remediation
-  status: in_progress
+  status: done
   context: 'Fix 5 should-fix findings (S1-S5) from the driver continuity hygiene gate
     review: conflict file cleanup + gitignore, ruff lint errors, importlib hack replacement,
     typing improvement, unused variable.'
@@ -53988,7 +53988,7 @@ phases:
       - Gate now depends on remediation + retest chain'
   - id: shouldfix.gate
     name: 'Gate: All should-fix findings resolved'
-    status: claimed
+    status: done
     description: 'As an INDEPENDENT REVIEWER, assess whether all 5 should-fix findings
       from the driver continuity hygiene gate review are fully resolved.
 
@@ -54036,6 +54036,32 @@ phases:
     agent: gate-reviewer
     claimed_by: gate-reviewer
     claimed_at: '2026-03-30T18:38:13.162789+00:00'
+    done_at: '2026-03-30T18:48:27.335201+00:00'
+    evidence: 'Artifact:
+
+      - Gate review session: ses_2bff598a2ffe3jtBXxGMB6bbYv
+
+      Verification:
+
+      - S4: find . -name ''*_Conflict.*'' -not -path ''./.git/*'' -not -path ''./.venv/*''
+      -not -path ''./.vectl/*'' -> 0
+
+      - S1: shouldfix target lint findings resolved in scoped files; initial fix commit
+      36085f99 addressed emitter/registry/continuity_hygiene/loop/cli findings
+
+      - S2: grep -n ''importlib'' src/vectl/cli.py -> no hack pattern matches
+
+      - S3: assessment typed as ContinuityArtifactAssessment; grep getattr(assessment
+      -> no matches
+
+      - S5: action_word definition/usage present in cli.py
+
+      - Regression: uv run pytest tests/ -v -> 2034 passed, 78 skipped, 34 xfailed,
+      17 xpassed
+
+      Gate verdict:
+
+      - OPEN (all shouldfix gate criteria satisfied for driver-hygiene-shouldfix phase)'
   - id: shouldfix.fix-regression-batch
     name: Fix regression failures surfaced by shouldfix verification
     status: done

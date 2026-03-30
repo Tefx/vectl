@@ -43701,7 +43701,7 @@ phases:
   steps:
   - id: driver-enhancement-streaming-progress.impl
     name: Implement incremental JSONL consumption and live progress state
-    status: pending
+    status: claimed
     description: "step_type: implementation\n\ntags:\n  - integration\n\nFill in stub\
       \ bodies and replace placeholder streaming hooks with working incremental consumption\
       \ logic on the existing runner/loop surfaces.\n\nUPSTREAM ARTIFACTS (from merged\
@@ -43763,6 +43763,8 @@ phases:
     depends_on:
     - driver-enhancement-streaming-progress.design-and-test
     agent: python-senior
+    claimed_by: python-senior
+    claimed_at: '2026-03-30T17:03:40.447046+00:00'
   - id: driver-enhancement-streaming-progress.verify
     name: Verify heartbeat progress and streaming-aware liveness
     status: pending

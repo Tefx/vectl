@@ -1834,6 +1834,43 @@ def _startup_judge_inputs_from_ledger_entries(
     return tuple(judge_inputs)
 
 
+def _hygiene_assessment_requires_startup_halt(
+    *,
+    assessment: object,
+    plan_step_ids: set[str],
+    claim_step_ids: set[str],
+) -> bool:
+    """Return whether a hygiene assessment must halt startup.
+
+    Source:
+    - step ``driver-continuity-hygiene-core.impl-startup-stage`` two-stage
+      recovery requirement
+    - gate preview requirement that active/current-claim divergence remains
+      blocking, while startup recovery still runs on remaining active continuity
+      state
+    """
+
+    classification = getattr(assessment, "classification", None)
+    blocks = bool(getattr(assessment, "blocks_startup_recovery", False))
+    if not blocks:
+        return False
+
+    if classification != "blocking_divergence":
+        return True
+
+    artifact = getattr(assessment, "artifact", None)
+    parsed_step_id = getattr(artifact, "parsed_step_id", None)
+    if not isinstance(parsed_step_id, str) or not parsed_step_id:
+        return True
+
+    in_plan = parsed_step_id in plan_step_ids
+    in_claims = parsed_step_id in claim_step_ids
+    if in_plan and in_claims:
+        return False
+
+    return True
+
+
 async def run(config_path: Path) -> None:
     """Main driver entry point.
 
@@ -1945,6 +1982,12 @@ async def run(config_path: Path) -> None:
 
         halt_reasons = list(startup_boundary.blocked_reasons)
         for blocked_assessment in startup_hygiene.blocked_assessments:
+            if not _hygiene_assessment_requires_startup_halt(
+                assessment=blocked_assessment,
+                plan_step_ids=plan_step_ids,
+                claim_step_ids=set(claim_step_ids),
+            ):
+                continue
             step_segment = blocked_assessment.artifact.parsed_step_id or "unknown"
             halt_reasons.append(f"hygiene_blocked:{step_segment}:{blocked_assessment.reason}")
         if corrupt_continuity_artifacts:

@@ -51963,7 +51963,7 @@ phases:
       \  - `d09235a` `Add continuity hygiene red-path black-box tests`"
   - id: driver-continuity-hygiene-foundation.gate
     name: Gate continuity hygiene foundation
-    status: pending
+    status: claimed
     description: 'As an INDEPENDENT REVIEWER (gate-reviewer), assess whether the continuity
       hygiene foundation phase is ready to unlock implementation.
 
@@ -52014,6 +52014,8 @@ phases:
     - driver-continuity-hygiene-foundation.test-define-red
     - driver-continuity-hygiene-foundation.blackbox-define-red
     agent: gate-reviewer
+    claimed_by: gate-reviewer
+    claimed_at: '2026-03-30T11:37:30.685939+00:00'
 - id: driver-continuity-hygiene-core
   name: 'Driver Continuity Hygiene: Core Runtime'
   status: locked

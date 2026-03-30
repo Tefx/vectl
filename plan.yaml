@@ -43958,7 +43958,7 @@ phases:
     agent: gate-reviewer
   - id: driver-enhancement-runner-recovery.design-and-test
     name: Design recovery boundary and write expected-red tests
-    status: claimed
+    status: done
     description: 'step_type: test
 
       merged_contract_test: true
@@ -44011,6 +44011,44 @@ phases:
     agent: python-senior
     claimed_by: python-senior
     claimed_at: '2026-03-30T16:51:29.775646+00:00'
+    done_at: '2026-03-30T17:01:38.920232+00:00'
+    evidence: 'EXPECTED_RED_ACCEPTED
+
+      Artifact:
+
+      - Commits: 8bd2496, c4e5493
+
+      - Files: src/vectl/driver/loop.py, src/vectl/driver/types.py, tests/test_driver_runner_recovery_expected_red.py
+
+      Verification:
+
+      - uv run pytest -v tests/test_driver_runner_recovery_expected_red.py -> expected
+      RED (1 passed, 4 failed)
+
+      - Failing cases are intentional NotImplementedError deferrals to downstream
+      impl
+
+      Spec link:
+
+      - docs/DRIVER-CONTINUITY-FOUNDATION.md §4 §6 §7
+
+      - docs/DRIVER-ARCHITECTURE.md §2.1
+
+      Test semantics:
+
+      - step_intent=test_define_red, expected_result=red, observed_result=red, failure_alignment=aligned
+
+      - Product implementation files modified: yes, minimal contract/stub surfaces
+      only; no runtime implementation logic
+
+      exposed_gaps:
+
+      - crash-vs-clean-fail branching, watchdog/heartbeat recovery matrix runtime
+      behavior unimplemented by design
+
+      Downstream owner:
+
+      - driver-enhancement-runner-recovery.impl'
 - id: driver-enhancement-integration
   name: 'Driver Enhancement: Integration'
   status: locked

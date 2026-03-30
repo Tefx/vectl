@@ -53175,7 +53175,7 @@ phases:
     agent: spec-verifier
   - id: driver-continuity-hygiene-deep-review.architecture-review
     name: Review continuity hygiene architecture and state boundaries
-    status: claimed
+    status: done
     description: 'Review module boundaries, dependency direction, and continuity-state
       safety.
 
@@ -53198,6 +53198,36 @@ phases:
     agent: software-architect
     claimed_by: software-architect
     claimed_at: '2026-03-30T13:29:08.621533+00:00'
+    done_at: '2026-03-30T13:32:22.720622+00:00'
+    evidence: '## Architecture Review
+
+
+      ### Decision: FAIL (structural issues found, not blockers)
+
+
+      **Issues identified**:
+
+      1. **Unbounded manifest storage**: `manifest.jsonl` is append-only with no retention/compaction
+      — grows monotonically across repeated quarantines
+
+      2. **Package boundary bypass**: `cli.py` uses `importlib.spec_from_file_location`
+      to load `continuity_hygiene` because `vectl.driver.__init__` eagerly imports
+      `loop` — a package boundary leak
+
+
+      **Verified sound**:
+
+      - Classification ownership: `continuity_hygiene.py` is canonical owner — PASS
+
+      - No auto-remap leak: detection-only, guardrail enforced — PASS
+
+      - Audit preservation: `shutil.copy2`, all manifest fields present — PASS
+
+      - Import direction: clean leaf module except CLI boundary issue
+
+
+      **Gate recommendation**: These are architectural concerns, not correctness blockers.
+      Consider future consolidation of manifest compaction and import normalization.'
   - id: driver-continuity-hygiene-deep-review.contract-strength
     name: Audit continuity hygiene contract strength
     status: claimed

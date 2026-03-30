@@ -52785,7 +52785,7 @@ phases:
       blocking correctly reported'
   - id: driver-continuity-hygiene-review.spec-conformance
     name: Audit continuity hygiene spec conformance
-    status: pending
+    status: claimed
     description: 'Spec conformance verification via adversarial divergence hunting.
 
       Agent: spec-verifier (dedicated, read-only, independent).
@@ -52841,6 +52841,8 @@ phases:
 
       - Suggested tests for NEEDS_TEST items:'
     agent: spec-verifier
+    claimed_by: spec-verifier
+    claimed_at: '2026-03-30T13:03:30.718205+00:00'
   - id: driver-continuity-hygiene-review.gate
     name: Gate continuity hygiene verification
     status: pending

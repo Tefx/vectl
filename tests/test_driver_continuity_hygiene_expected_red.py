@@ -26,6 +26,7 @@ from typing import Any
 
 import pytest
 
+from src.vectl.driver import continuity_hygiene as hygiene
 from src.vectl.driver.types import (
     ContinuityJournalEntry,
     ContinuityLedgerEntry,
@@ -63,19 +64,26 @@ def classify_artifact(
     claims_step_ids: set[str],
     corrupt_files: set[str] | None = None,
 ) -> HygieneClassificationResult:
-    """Classify a continuity artifact as safe_stale or blocking.
+    """Delegate classification to production continuity hygiene helper."""
 
-    This function does not yet exist. It should be implemented to:
-    1. Check if artifact's step_id is in plan
-    2. Check if artifact's step_id is in active claims
-    3. Check if artifact is corrupt
-    4. Return appropriate classification
+    raw = hygiene.classify_artifact(
+        artifact=artifact,
+        plan_step_ids=plan_step_ids,
+        claims_step_ids=claims_step_ids,
+        corrupt_files=corrupt_files,
+    )
+    if raw.classification == "safe_stale_quarantine":
+        classification = ArtifactClassification.SAFE_STALE
+    elif raw.classification == "ambiguous_blocking":
+        classification = ArtifactClassification.AMBIGUOUS
+    else:
+        classification = ArtifactClassification.BLOCKING
 
-    Currently raises AttributeError (function does not exist).
-    """
-    raise AttributeError(
-        "classify_artifact is not yet implemented. "
-        "See driver-continuity-hygiene-core.impl-hygiene-storage"
+    return HygieneClassificationResult(
+        artifact=artifact,
+        classification=classification,
+        reason=raw.reason,
+        blocking_repair_actions=raw.blocking_repair_actions,
     )
 
 
@@ -84,46 +92,47 @@ def quarantine_artifact(
     reason: str,
     quarantine_dir: Path,
 ) -> QuarantineResult:
-    """Quarantine an artifact by moving it to quarantine_dir, preserving original.
+    """Delegate quarantine write-path to production continuity hygiene helper."""
 
-    This function does not yet exist. It should:
-    1. Create destination path in quarantine_dir
-    2. Copy (not move) the artifact to preserve original
-    3. Record manifest entry with source_path, destination_path, reason, audit_timestamp
-    4. Return QuarantineResult with manifest entry and original_preserved=True
-
-    Currently raises AttributeError (function does not exist).
-    """
-    raise AttributeError(
-        "quarantine_artifact is not yet implemented. "
-        "See driver-continuity-hygiene-core.impl-hygiene-storage"
+    raw = hygiene.quarantine_artifact(
+        artifact=artifact,
+        reason=reason,
+        quarantine_dir=quarantine_dir,
+    )
+    return QuarantineResult(
+        manifest_entry=QuarantineManifestEntry(
+            source_path=raw.manifest_entry.original_path,
+            destination_path=raw.manifest_entry.quarantine_destination,
+            reason=raw.manifest_entry.reason,
+            audit_timestamp=raw.manifest_entry.audit_timestamp,
+            artifact_type=raw.manifest_entry.artifact_kind,
+            step_id=raw.manifest_entry.step_id or artifact.step_id,
+        ),
+        original_preserved=raw.original_preserved,
     )
 
 
 def get_quarantine_manifest(quarantine_dir: Path) -> list[QuarantineManifestEntry]:
-    """Load quarantine manifest entries from quarantine directory.
+    """Load quarantine manifest entries from production helper implementation."""
 
-    This function does not yet exist.
-
-    Currently raises AttributeError (function does not exist).
-    """
-    raise AttributeError(
-        "get_quarantine_manifest is not yet implemented. "
-        "See driver-continuity-hygiene-core.impl-hygiene-storage"
-    )
+    entries = hygiene.get_quarantine_manifest(quarantine_dir)
+    return [
+        QuarantineManifestEntry(
+            source_path=entry.original_path,
+            destination_path=entry.quarantine_destination,
+            reason=entry.reason,
+            audit_timestamp=entry.audit_timestamp,
+            artifact_type=entry.artifact_kind,
+            step_id=entry.step_id or "",
+        )
+        for entry in entries
+    ]
 
 
 def is_ambiguous_migration(step_id: str) -> bool:
-    """Check if a step_id pattern suggests ambiguous migration identity.
+    """Delegate ambiguous migration detection to production helper."""
 
-    This function does not yet exist.
-
-    Currently raises AttributeError (function does not exist).
-    """
-    raise AttributeError(
-        "is_ambiguous_migration is not yet implemented. "
-        "See driver-continuity-hygiene-core.impl-hygiene-storage"
-    )
+    return hygiene.is_ambiguous_migration(step_id)
 
 
 # =============================================================================

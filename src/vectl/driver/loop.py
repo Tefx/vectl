@@ -63,6 +63,12 @@ from .config import (
     SessionConfig,
     load_config,
 )
+from .continuity_hygiene import (
+    apply_quarantine,
+    run_startup_hygiene_stage,
+    scan_continuity_artifacts,
+    StartupHygieneStageInput,
+)
 from .dispatch import render_prompt
 from .errors import ConfigError, JudgmentParseError, JudgmentTimeoutError, RunnerError
 from .events.emitter import (
@@ -1886,7 +1892,36 @@ async def run(config_path: Path) -> None:
         )
 
         continuity_repo_root = _resolve_repo_root_from_plan(plan_path)
+        continuity_artifacts, corrupt_continuity_artifacts = scan_continuity_artifacts(
+            continuity_repo_root
+        )
+        quarantine_root = continuity_repo_root / ".vectl" / "continuity" / "quarantine"
+        startup_hygiene = run_startup_hygiene_stage(
+            stage_input=StartupHygieneStageInput(
+                current_branch=repaired_branch if isinstance(repaired_branch, str) else "",
+                current_plan_step_ids=tuple(sorted(plan_step_ids)),
+                repaired_current_branch_claim_step_ids=claim_step_ids,
+                artifacts=continuity_artifacts,
+                quarantine_root=str(quarantine_root),
+            )
+        )
+        startup_hygiene = apply_quarantine(
+            stage_result=startup_hygiene,
+            quarantine_root=quarantine_root,
+        )
+
+        safe_stale_ledger_step_ids = {
+            assessment.artifact.parsed_step_id
+            for assessment in startup_hygiene.assessments
+            if assessment.classification == "safe_stale_quarantine"
+            and assessment.artifact.artifact_kind == "ledger"
+            and assessment.artifact.parsed_step_id is not None
+        }
         ledger_entries, corrupt_ledger_files = _load_ledger_entries(continuity_repo_root)
+        if safe_stale_ledger_step_ids:
+            ledger_entries = tuple(
+                entry for entry in ledger_entries if entry.step_id not in safe_stale_ledger_step_ids
+            )
         startup_judge_failure_inputs = _startup_judge_inputs_from_ledger_entries(ledger_entries)
         startup_boundary = evaluate_startup_recovery_boundary(
             boundary_input=StartupRecoveryBoundaryInput(
@@ -1909,6 +1944,14 @@ async def run(config_path: Path) -> None:
         )
 
         halt_reasons = list(startup_boundary.blocked_reasons)
+        for blocked_assessment in startup_hygiene.blocked_assessments:
+            step_segment = blocked_assessment.artifact.parsed_step_id or "unknown"
+            halt_reasons.append(f"hygiene_blocked:{step_segment}:{blocked_assessment.reason}")
+        if corrupt_continuity_artifacts:
+            halt_reasons.extend(
+                f"continuity_corrupt:{Path(artifact_path).name}"
+                for artifact_path in corrupt_continuity_artifacts
+            )
         if corrupt_ledger_files:
             halt_reasons.extend(
                 f"ledger_corrupt:{ledger_file_name}" for ledger_file_name in corrupt_ledger_files

@@ -52126,7 +52126,7 @@ phases:
       \ preserved, invocation path changed)."
   - id: driver-continuity-hygiene-core.impl-startup-stage
     name: Wire startup hygiene stage before active recovery
-    status: claimed
+    status: done
     description: "step_type: implementation\nupstream_artifacts:\n  - path: src/vectl/driver/continuity_hygiene.py\n\
       \    from_step: driver-continuity-hygiene-foundation.contract\n    tier: contract\n\
       \  - path: tests/test_driver_recovery_black_box.py\n    from_step: driver-continuity-hygiene-foundation.blackbox-define-red\n\
@@ -52172,6 +52172,22 @@ phases:
     agent: python-senior
     claimed_by: python-senior
     claimed_at: '2026-03-30T11:51:51.483623+00:00'
+    done_at: '2026-03-30T11:57:35.883673+00:00'
+    evidence: "## Integration Evidence\n\n- Files changed: `src/vectl/driver/loop.py`\n\
+      \n- Stub-only completion: NO — added `_hygiene_assessment_requires_startup_halt()`\
+      \ gating logic enforcing two-stage startup behavior.\n\n- Command or test exercising\
+      \ the full path:\n  - `uv run pytest -q tests/test_driver_recovery_black_box.py`\
+      \ → 15 passed in 0.63s\n  - Selected integration: `uv run pytest -q tests/test_driver_recovery_black_box.py::TestEntrypointIntegration::test_entrypoint_halts_on_ledger_orphan\
+      \ tests/test_driver_recovery_black_box.py::TestEntrypointIntegration::test_entrypoint_emits_startup_recovery_decision_events\
+      \ tests/test_driver_continuity_hygiene_storage.py` → 7 passed in 0.67s\n\n-\
+      \ Path exercised:\n  continuity artifacts → scan → run_startup_hygiene_stage\
+      \ → quarantine → remaining ledger (safe-stale excluded) → evaluate_startup_recovery_boundary\
+      \ → run\n\n- Gate-reject conditions NOT triggered:\n  1. Startup does NOT halt\
+      \ on safe stale leftovers alone (safe-stale quarantined and excluded from boundary\
+      \ input)\n  2. No auto-repair beyond approved safe stale class (non-safe-stale\
+      \ remains blocking)\n  3. No deletion of continuity files (copy-to-quarantine\
+      \ preserved)\n  4. Active/current-claim divergence and ambiguity still block\n\
+      \n- Deviations: none"
   - id: driver-continuity-hygiene-core.gate
     name: Gate continuity hygiene core runtime
     status: pending

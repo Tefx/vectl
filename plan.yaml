@@ -53603,3 +53603,47 @@ phases:
     - shouldfix.cleanup-conflict-files
     - shouldfix.lint-and-typing-fix
     agent: integration-verifier
+  - id: shouldfix.gate
+    name: 'Gate: All should-fix findings resolved'
+    status: pending
+    description: 'As an INDEPENDENT REVIEWER, assess whether all 5 should-fix findings
+      from the driver continuity hygiene gate review are fully resolved.
+
+
+      review_depth: STANDARD
+
+      review_depth_rationale: Mechanical fixes, no known rework patterns, no cross-cutting
+      risk.
+
+
+      ## Gate Criteria
+
+      1. S4: Zero *_Conflict.* files in repo, pattern in .gitignore
+
+      2. S1: Zero ruff errors in the 5 affected files
+
+      3. S2: No importlib hack in cli.py — uses normal import
+
+      4. S3: assessment parameter typed as ContinuityArtifactAssessment, no getattr
+      chains
+
+      5. S5: action_word either used in output or removed
+
+      6. Regression: pytest passes, no new failures
+
+
+      ## Gate Decision
+
+      - OPEN: All 5 findings resolved, tests pass
+
+      - BLOCKED: Any finding not fully resolved'
+    verification: '- All 5 should-fix findings verified as resolved
+
+      - Verification step evidence reviewed and confirmed
+
+      - No regressions introduced
+
+      - Gate decision: OPEN or BLOCKED with specific blockers listed'
+    depends_on:
+    - shouldfix.verify-all-fixes
+    agent: gate-reviewer

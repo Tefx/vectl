@@ -52042,7 +52042,7 @@ phases:
       \ and non-ambiguous\n- Downstream implementation phase ready to proceed"
 - id: driver-continuity-hygiene-core
   name: 'Driver Continuity Hygiene: Core Runtime'
-  status: pending
+  status: in_progress
   gate: Core continuity hygiene helpers and startup-stage wiring are implemented behind
     the pinned contract, with stale-only auto-quarantine and blocking ambiguity preserved.
   depends_on:
@@ -52050,7 +52050,7 @@ phases:
   steps:
   - id: driver-continuity-hygiene-core.impl-hygiene-storage
     name: Implement continuity hygiene scan, classification, and quarantine storage
-    status: pending
+    status: claimed
     description: "step_type: implementation\nupstream_artifacts:\n  - path: src/vectl/driver/continuity_hygiene.py\n\
       \    from_step: driver-continuity-hygiene-foundation.contract\n    tier: contract\n\
       \  - path: tests/\n    from_step: driver-continuity-hygiene-foundation.test-define-red\n\
@@ -52098,6 +52098,8 @@ phases:
 
       - Confirmation that deletion/remap behavior is absent:'
     agent: python-senior
+    claimed_by: python-senior
+    claimed_at: '2026-03-30T11:42:10.114696+00:00'
   - id: driver-continuity-hygiene-core.impl-startup-stage
     name: Wire startup hygiene stage before active recovery
     status: pending

@@ -53403,7 +53403,7 @@ phases:
       PASS, spec-conformance CONFORMS, black-box PASS, final gate OPEN.'
 - id: driver-hygiene-shouldfix
   name: Driver Continuity Hygiene Should-Fix Remediation
-  status: pending
+  status: in_progress
   context: 'Fix 5 should-fix findings (S1-S5) from the driver continuity hygiene gate
     review: conflict file cleanup + gitignore, ruff lint errors, importlib hack replacement,
     typing improvement, unused variable.'
@@ -53412,7 +53412,7 @@ phases:
   steps:
   - id: shouldfix.cleanup-conflict-files
     name: 'S4: Delete conflict backup files and update gitignore'
-    status: pending
+    status: claimed
     description: 'Delete ALL 16 *_Conflict.* backup files polluting the repo and add
       the pattern to .gitignore.
 
@@ -53483,6 +53483,8 @@ phases:
     - tests/
     - .gitignore
     agent: python-executor
+    claimed_by: python-executor
+    claimed_at: '2026-03-30T16:51:44.184165+00:00'
   - id: shouldfix.lint-and-typing-fix
     name: 'S1+S2+S3+S5: Fix ruff lint, importlib hack, typing, unused var'
     status: pending

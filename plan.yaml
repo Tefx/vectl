@@ -52708,7 +52708,7 @@ phases:
     agent: integration-verifier
   - id: driver-continuity-hygiene-review.liveness-probe
     name: Run black-box startup and repair-continuity liveness probe
-    status: claimed
+    status: done
     description: 'As an INDEPENDENT TESTER (blind-tester), run the real entrypoints
       for continuity hygiene.
 
@@ -52761,6 +52761,28 @@ phases:
     agent: blind-tester
     claimed_by: blind-tester
     claimed_at: '2026-03-30T13:01:52.111960+00:00'
+    done_at: '2026-03-30T13:03:23.171584+00:00'
+    evidence: '## Seam-Level Integration Evidence
+
+
+      **Exact commands executed**: grep, ls, uv run vectl repair continuity --dry-run,
+      uv run vectl repair continuity --dry-run --json
+
+
+      **Actual output**:
+
+      - CLI registration at line 2599
+
+      - `uv run vectl repair continuity --dry-run` → works, shows 4 blocking artifacts
+
+      - `uv run vectl repair continuity --dry-run --json` → valid JSON
+
+
+      **Fixtures used**: None (Mode D liveness probe)
+
+
+      **Verification**: ALIVE — command fully functional, exit 0, dry-run respected,
+      blocking correctly reported'
   - id: driver-continuity-hygiene-review.spec-conformance
     name: Audit continuity hygiene spec conformance
     status: pending

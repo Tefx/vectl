@@ -54121,7 +54121,7 @@ phases:
       with helper implementations + loop wiring + schema alignment check'
   - id: shouldfix.retest-all-fixes
     name: Retest shouldfix verification after regression batch
-    status: pending
+    status: claimed
     description: 'Independent retest after `shouldfix.fix-regression-batch`.
 
 
@@ -54144,3 +54144,5 @@ phases:
     depends_on:
     - shouldfix.fix-regression-batch
     agent: integration-verifier
+    claimed_by: integration-verifier
+    claimed_at: '2026-03-30T18:31:21.327569+00:00'

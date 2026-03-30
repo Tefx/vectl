@@ -52514,7 +52514,7 @@ phases:
     agent: gate-reviewer
   - id: driver-continuity-hygiene-surface.impl-cli-repair-continuity-fix
     name: Fix vectl repair continuity CLI registration
-    status: claimed
+    status: done
     description: 'step_type: implementation
 
 
@@ -52538,6 +52538,21 @@ phases:
     agent: python-executor
     claimed_by: python-executor
     claimed_at: '2026-03-30T12:37:59.261714+00:00'
+    done_at: '2026-03-30T12:39:23.105088+00:00'
+    evidence: '## CLI Fix Confirmation
+
+
+      - Files changed: None — implementation already exists in cli.py at line 2599
+
+      - Command: `uv run vectl repair continuity --dry-run` → works
+
+      - JSON: `uv run vectl repair continuity --dry-run --json` → valid JSON
+
+      - grep confirms `@repair_app.command("continuity")` at line 2599
+
+
+      The CLI command was merged in an earlier commit that wasn''t accessible from
+      the stale worktree base.'
 - id: driver-continuity-hygiene-review
   name: 'Driver Continuity Hygiene: Verification & Gate'
   status: locked

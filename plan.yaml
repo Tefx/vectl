@@ -53395,3 +53395,11 @@ phases:
 
       Evidence: wiring-audit PASS, architecture FAIL (non-blocking), contract-strength
       PASS, spec-conformance CONFORMS, black-box PASS, final gate OPEN.'
+- id: driver-hygiene-shouldfix
+  name: Driver Continuity Hygiene Should-Fix Remediation
+  status: pending
+  context: 'Fix 5 should-fix findings (S1-S5) from the driver continuity hygiene gate
+    review: conflict file cleanup + gitignore, ruff lint errors, importlib hack replacement,
+    typing improvement, unused variable.'
+  depends_on:
+  - driver-continuity-hygiene-deep-review

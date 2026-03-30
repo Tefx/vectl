@@ -52042,7 +52042,7 @@ phases:
       \ and non-ambiguous\n- Downstream implementation phase ready to proceed"
 - id: driver-continuity-hygiene-core
   name: 'Driver Continuity Hygiene: Core Runtime'
-  status: in_progress
+  status: done
   gate: Core continuity hygiene helpers and startup-stage wiring are implemented behind
     the pinned contract, with stale-only auto-quarantine and blocking ambiguity preserved.
   depends_on:
@@ -52190,7 +52190,7 @@ phases:
       \n- Deviations: none"
   - id: driver-continuity-hygiene-core.gate
     name: Gate continuity hygiene core runtime
-    status: claimed
+    status: done
     description: 'As an INDEPENDENT REVIEWER (gate-reviewer), assess whether the core
       continuity hygiene runtime phase is ready for surface wiring.
 
@@ -52230,9 +52230,56 @@ phases:
     agent: gate-reviewer
     claimed_by: gate-reviewer
     claimed_at: '2026-03-30T11:58:00.759027+00:00'
+    done_at: '2026-03-30T12:06:17.173702+00:00'
+    evidence: '## Core Runtime Gate Review
+
+
+      ### Contract Conformance Verdict: CONFORMS
+
+      - `classify_artifact` implements correct precedence: corrupt_blocking > ambiguous_blocking
+      > blocking_divergence > safe_stale_quarantine
+
+      - `is_ambiguous_migration()` detects migration markers read-only (no remap)
+
+      - `apply_quarantine()` uses `shutil.copy2()` (copy, NOT move); manifest has
+      all required fields
+
+
+      ### Startup Ordering Verdict: CONFORMS
+
+      - `STARTUP_RECOVERY_SCAN_ORDER` correctly orders hygiene stage before active
+      recovery
+
+      - Safe-stale ledgers filtered BEFORE `_load_ledger_entries()`
+
+      - Recovery decisions consume hygiene-filtered state
+
+
+      ### Quarantine Auditability Verdict: CONFORMS
+
+      - Narrow eligibility: only when step_id absent from BOTH plan AND repaired claims
+
+      - Originals preserved via `shutil.copy2()`
+
+      - Manifest last-writer-wins; `STARTUP_HYGIENE_GUARDRAILS` forbid silent deletion/remap
+
+
+      ### Blocking Semantics Verdict: CONFORMS
+
+      - All blocking classes have `blocks_startup_recovery=True`, `quarantine_allowed=False`
+
+      - `_hygiene_assessment_requires_startup_halt()` propagates all blocking
+
+      - No bypass paths: corrupt/ambiguous/active-claims remain blocking
+
+
+      ### Tests: 38/38 passed
+
+
+      ### Decision: OPEN'
 - id: driver-continuity-hygiene-surface
   name: 'Driver Continuity Hygiene: CLI & Observability'
-  status: locked
+  status: pending
   gate: CLI repair-continuity surface, telemetry events, and wiring audit prove the
     operator-facing recovery path is reachable and fully registered.
   depends_on:

@@ -52620,7 +52620,7 @@ phases:
       - Commit: be1dd7b on vectl/step-driver-continuity-hygiene-surface.impl-cli-repair-continuity-actual'
 - id: driver-continuity-hygiene-review
   name: 'Driver Continuity Hygiene: Verification & Gate'
-  status: in_progress
+  status: done
   gate: Independent green verification, black-box liveness, and spec conformance prove
     startup recovery no longer halts on provably stale continuity leftovers while
     still blocking unsafe divergence.
@@ -52915,7 +52915,7 @@ phases:
       crash_restart_journal_present'
   - id: driver-continuity-hygiene-review.gate
     name: Gate continuity hygiene verification
-    status: claimed
+    status: done
     description: 'As an INDEPENDENT REVIEWER (gate-reviewer), assess whether the continuity
       hygiene remediation meets the quality bar for documentation sync.
 
@@ -52964,9 +52964,32 @@ phases:
     agent: gate-reviewer
     claimed_by: gate-reviewer
     claimed_at: '2026-03-30T13:11:27.315667+00:00'
+    done_at: '2026-03-30T13:14:49.833737+00:00'
+    evidence: '## Hygiene Verification Gate Review
+
+
+      ### Decision: OPEN
+
+
+      All verification criteria met:
+
+
+      1. **Runtime liveness**: PASS — `vectl repair continuity` ALIVE, startup integration
+      verified
+
+      2. **Safe stale quarantine**: PASS — dual-absence rule enforced, no widening
+
+      3. **Blocking integrity**: PASS — all 4 classifications maintain correct blocking
+      semantics
+
+      4. **CLI/runtime/spec agreement**: PASS — identical inputs, shared constants,
+      matching precedence
+
+
+      **All gate criteria satisfied. Remediation passes quality gate.**'
 - id: driver-continuity-hygiene-doc-sync
   name: 'Driver Continuity Hygiene: Documentation Sync'
-  status: locked
+  status: pending
   gate: Operator documentation reflects quarantine behavior, blocking conditions,
     and repair-continuity recovery UX.
   depends_on:

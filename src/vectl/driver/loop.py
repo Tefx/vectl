@@ -77,7 +77,11 @@ from .events.emitter import (
     FINAL_EVENT_DEF,
     STEP_COMPLETED_EVENT_DEF,
     emit_decide,
+    emit_driver_lifecycle,
     emit_final,
+    emit_heartbeat_progress,
+    emit_planner_dispatch_progress,
+    emit_recovery_visibility,
     emit_startup_hygiene_blocked,
     emit_startup_hygiene_classify,
     emit_startup_hygiene_quarantine,
@@ -1296,6 +1300,16 @@ async def dispatch_planner(
         judgment_type=request.judgment_type,
         runner=runner_name,
     )
+    emit_planner_dispatch_progress(
+        observer,
+        judgment_type=request.judgment_type,
+        phase="started",
+        runner=runner_name,
+        step_id=request.step_id,
+        trigger=request.trigger,
+        progress_index=0,
+        progress_total=2,
+    )
 
     prompt = _render_planner_prompt(request=request, plan_path=plan_path)
     handle = await runner.dispatch(
@@ -1304,6 +1318,18 @@ async def dispatch_planner(
         workdir=str(plan_path.parent),
     )
     result = await handle.wait()
+
+    emit_planner_dispatch_progress(
+        observer,
+        judgment_type=request.judgment_type,
+        phase="completed" if result.status == RunnerDispatchStatus.SUCCESS else "failed",
+        runner=runner_name,
+        step_id=request.step_id,
+        trigger=request.trigger,
+        progress_index=2,
+        progress_total=2,
+        session_id=result.session_id,
+    )
 
     if result.status != RunnerDispatchStatus.SUCCESS:
         observer.emit(
@@ -2023,6 +2049,17 @@ async def run(config_path: Path) -> None:
 
     observer = create_observer(config.observability)
     state = DriverState()
+    run_id = str(config_path.resolve())
+
+    emit_driver_lifecycle(observer, phase="startup", run_id=run_id)
+    emit_heartbeat_progress(
+        observer,
+        completed_count=0,
+        loop_iteration=0,
+        running_count=0,
+        waiting_count=0,
+        note="run.bootstrap",
+    )
 
     try:
         runners = {
@@ -2282,6 +2319,12 @@ async def run(config_path: Path) -> None:
                 plan_path=plan_path,
             )
     finally:
+        emit_driver_lifecycle(
+            observer,
+            phase="shutdown",
+            run_id=run_id,
+            note=state.final_halt_reason,
+        )
         await shutdown(state=state, observer=observer)
 
 
@@ -2772,6 +2815,17 @@ async def reconcile(
             summary="Runner completed successfully; reconciling merge and lifecycle mutations",
             replay_envelope=success_envelope,
         )
+        emit_recovery_visibility(
+            observer,
+            attempt_key=continuity_attempt_key,
+            event_kind="runner_success",
+            recorded_at=success_journal.recorded_at,
+            runner_name=completed.runner_name,
+            session_id=completed.result.session_id,
+            step_id=completed.step_id,
+            summary=success_journal.summary,
+            recovery_cursor="pre_merge",
+        )
         _persist_continuity_ledger(
             repo_root=continuity_repo_root,
             step_id=completed.step_id,
@@ -3035,6 +3089,17 @@ async def reconcile(
         session_id=completed.result.session_id,
         summary=completed.result.output,
         replay_envelope=failure_envelope,
+    )
+    emit_recovery_visibility(
+        observer,
+        attempt_key=continuity_attempt_key,
+        event_kind="failure",
+        recorded_at=failure_journal.recorded_at,
+        runner_name=completed.runner_name,
+        session_id=completed.result.session_id,
+        step_id=completed.step_id,
+        summary=failure_journal.summary,
+        recovery_cursor="awaiting_retry_or_escalation",
     )
     _persist_continuity_ledger(
         repo_root=continuity_repo_root,
@@ -3725,7 +3790,9 @@ async def _run_main_loop(
         plan_path=plan_path,
     )
 
+    loop_iteration = 0
     while not state.halt_requested:
+        loop_iteration += 1
         decide_output = decide(
             running_tasks=state.as_running_tasks(),
             completed_results=None,
@@ -3736,6 +3803,14 @@ async def _run_main_loop(
             observer,
             running_count=len(state.running),
             actions=[action.action for action in decide_output.actions],
+        )
+        emit_heartbeat_progress(
+            observer,
+            completed_count=state.completed_success_count + state.completed_failure_count,
+            loop_iteration=loop_iteration,
+            running_count=len(state.running),
+            waiting_count=0,
+            active_step_ids=sorted(state.running.keys()),
         )
 
         state.loop_detector.append(_serialize_actions_for_loop_guard(decide_output.actions))

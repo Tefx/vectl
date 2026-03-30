@@ -498,7 +498,6 @@ class TestSpecFixtureConformance:
             "*-verifier": "opencode",
             "*-auditor": "opencode",
             "*-planner": "opencode",
-            "default": "opencode",
         }
         assert driver_config_dict["fallback_runner"] == "opencode"
 

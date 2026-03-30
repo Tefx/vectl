@@ -17,12 +17,17 @@ from typing import Final, Protocol, TypedDict
 
 from .registry import (
     DECIDE_EVENT_RECORD,
+    EVENT_REGISTRY,
     FINAL_EVENT_RECORD,
     STEP_COMPLETED_EVENT_RECORD,
 )
 from .types import (
     DECIDE,
+    DRIVER_LIFECYCLE,
     FINAL,
+    HEARTBEAT_PROGRESS,
+    PLANNER_DISPATCH_PROGRESS,
+    RECOVERY_VISIBILITY,
     STARTUP_HYGIENE_BLOCKED,
     STARTUP_HYGIENE_CLASSIFY,
     STARTUP_HYGIENE_QUARANTINE,
@@ -393,7 +398,17 @@ def emit_driver_lifecycle(
     Runtime implementation is deferred to ``driver-enhancement-observability.impl``.
     """
 
-    raise NotImplementedError("driver lifecycle observability wiring deferred to impl step")
+    payload: DriverLifecyclePayload = {
+        "phase": phase,
+        "run_id": run_id,
+    }
+    if note is not None:
+        payload["note"] = note
+    if step_id is not None:
+        payload["step_id"] = step_id
+
+    observer.emit(DRIVER_LIFECYCLE, **payload)
+    return DRIVER_LIFECYCLE
 
 
 def emit_planner_dispatch_progress(
@@ -415,7 +430,24 @@ def emit_planner_dispatch_progress(
     Runtime implementation is deferred to ``driver-enhancement-observability.impl``.
     """
 
-    raise NotImplementedError("planner dispatch progress wiring deferred to impl step")
+    payload: PlannerDispatchProgressPayload = {
+        "judgment_type": judgment_type,
+        "phase": phase,
+        "runner": runner,
+        "step_id": step_id,
+        "trigger": trigger,
+    }
+    if message is not None:
+        payload["message"] = message
+    if progress_index is not None:
+        payload["progress_index"] = progress_index
+    if progress_total is not None:
+        payload["progress_total"] = progress_total
+    if session_id is not None:
+        payload["session_id"] = session_id
+
+    observer.emit(PLANNER_DISPATCH_PROGRESS, **payload)
+    return PLANNER_DISPATCH_PROGRESS
 
 
 def emit_recovery_visibility(
@@ -436,7 +468,20 @@ def emit_recovery_visibility(
     Runtime implementation is deferred to ``driver-enhancement-observability.impl``.
     """
 
-    raise NotImplementedError("recovery visibility wiring deferred to impl step")
+    payload: RecoveryVisibilityPayload = {
+        "attempt_key": attempt_key,
+        "event_kind": event_kind,
+        "recorded_at": recorded_at,
+        "runner_name": runner_name,
+        "session_id": session_id,
+        "step_id": step_id,
+        "summary": summary,
+    }
+    if recovery_cursor is not None:
+        payload["recovery_cursor"] = recovery_cursor
+
+    observer.emit(RECOVERY_VISIBILITY, **payload)
+    return RECOVERY_VISIBILITY
 
 
 def emit_heartbeat_progress(
@@ -455,7 +500,19 @@ def emit_heartbeat_progress(
     Runtime implementation is deferred to ``driver-enhancement-observability.impl``.
     """
 
-    raise NotImplementedError("heartbeat progress wiring deferred to impl step")
+    payload: HeartbeatProgressPayload = {
+        "completed_count": completed_count,
+        "loop_iteration": loop_iteration,
+        "running_count": running_count,
+        "waiting_count": waiting_count,
+    }
+    if active_step_ids is not None:
+        payload["active_step_ids"] = active_step_ids
+    if note is not None:
+        payload["note"] = note
+
+    observer.emit(HEARTBEAT_PROGRESS, **payload)
+    return HEARTBEAT_PROGRESS
 
 
 def assert_advanced_observability_schema_alignment() -> tuple[str, ...]:
@@ -464,4 +521,39 @@ def assert_advanced_observability_schema_alignment() -> tuple[str, ...]:
     Runtime implementation is deferred to ``driver-enhancement-observability.impl``.
     """
 
-    raise NotImplementedError("schema drift validation deferred to impl step")
+    drift: list[str] = []
+    expected: dict[str, tuple[tuple[str, ...], tuple[str, ...]]] = {
+        "DRIVER_LIFECYCLE": (("phase", "run_id"), ("note", "step_id")),
+        "PLANNER_DISPATCH_PROGRESS": (
+            ("judgment_type", "phase", "runner", "step_id", "trigger"),
+            ("message", "progress_index", "progress_total", "session_id"),
+        ),
+        "RECOVERY_VISIBILITY": (
+            (
+                "attempt_key",
+                "event_kind",
+                "recorded_at",
+                "runner_name",
+                "session_id",
+                "step_id",
+                "summary",
+            ),
+            ("recovery_cursor",),
+        ),
+        "HEARTBEAT_PROGRESS": (
+            ("completed_count", "loop_iteration", "running_count", "waiting_count"),
+            ("active_step_ids", "note"),
+        ),
+    }
+
+    for event_name, (required, optional) in expected.items():
+        record = EVENT_REGISTRY.get(event_name)
+        if record is None:
+            drift.append(f"missing_event:{event_name}")
+            continue
+        if record.required != required:
+            drift.append(f"required_mismatch:{event_name}")
+        if record.optional != optional:
+            drift.append(f"optional_mismatch:{event_name}")
+
+    return tuple(drift)

@@ -76,7 +76,6 @@ DRIVER_YAML_SPEC: dict[str, Any] = {
         "*-verifier": "opencode",
         "*-auditor": "opencode",
         "*-planner": "opencode",
-        "default": "opencode",
     },
     "fallback_runner": "opencode",
     "orchestration": {

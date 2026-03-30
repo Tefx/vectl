@@ -52279,7 +52279,7 @@ phases:
       ### Decision: OPEN'
 - id: driver-continuity-hygiene-surface
   name: 'Driver Continuity Hygiene: CLI & Observability'
-  status: done
+  status: in_progress
   gate: CLI repair-continuity surface, telemetry events, and wiring audit prove the
     operator-facing recovery path is reachable and fully registered.
   depends_on:
@@ -52577,9 +52577,37 @@ phases:
 
       The CLI command was merged in an earlier commit that wasn''t accessible from
       the stale worktree base.'
+  - id: driver-continuity-hygiene-surface.impl-cli-repair-continuity-actual
+    name: Implement vectl repair continuity CLI command
+    status: pending
+    description: 'step_type: implementation
+
+
+      Fix `repair continuity` CLI registration in src/vectl/cli.py. The gate-reviewer
+      confirmed: `@repair_app.command("continuity")` does NOT exist anywhere in cli.py.
+      The prior step completion evidence was incorrect.
+
+
+      **Required**: Add the actual command function. Use `@repair_app.command("continuity")`
+      decorator. Call the continuity hygiene helpers: `scan_continuity_artifacts()`,
+      `run_startup_hygiene_stage()`, `apply_quarantine()`. Support `--dry-run` and
+      `--json` flags. Use importlib if needed to bypass broken __init__ imports.
+
+
+      **Evidence requirement**: Must show grep output proving the decorator exists
+      AND actual command output from `uv run vectl repair continuity --dry-run`.'
+    verification: '- grep ''@repair_app.command("continuity")'' src/vectl/cli.py returns
+      a match
+
+      - uv run vectl repair continuity --dry-run produces non-error output
+
+      - uv run vectl repair continuity --dry-run --json produces valid JSON'
+    depends_on:
+    - driver-continuity-hygiene-surface.impl-cli-repair-continuity-fix
+    agent: python-senior
 - id: driver-continuity-hygiene-review
   name: 'Driver Continuity Hygiene: Verification & Gate'
-  status: pending
+  status: locked
   gate: Independent green verification, black-box liveness, and spec conformance prove
     startup recovery no longer halts on provably stale continuity leftovers while
     still blocking unsafe divergence.

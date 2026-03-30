@@ -21,6 +21,7 @@ from __future__ import annotations
 
 import asyncio
 import contextlib
+import json
 import time
 from collections.abc import AsyncIterator
 from typing import TYPE_CHECKING, Protocol
@@ -32,7 +33,7 @@ from .parsers import (
     GeminiOutputParser,
     OpenCodeOutputParser,
 )
-from .types import RunnerResult, RunnerStatus, StreamProgressSignal
+from .types import RunnerResult, RunnerStatus, StreamProgressSignal, StreamSignalKind
 
 if TYPE_CHECKING:
     from .config import RunnerConfig
@@ -256,10 +257,17 @@ class _SubprocessRunnerHandle:
         "session_id",
         "pid",
         "_last_progress",
+        "_progress_sequence",
         "_process",
         "_parser",
         "_runner_name",
         "_dispatch_started_at",
+        "_stdout_lines",
+        "_stderr_chunks",
+        "_stdout_task",
+        "_stderr_task",
+        "_stream_queue",
+        "_stream_started",
     )
 
     def __init__(
@@ -274,10 +282,104 @@ class _SubprocessRunnerHandle:
         self.session_id = session_id
         self.pid: int | None = process.pid
         self._last_progress: StreamProgressSignal | None = None
+        self._progress_sequence = 0
         self._process = process
         self._parser = parser
         self._runner_name = runner_name
         self._dispatch_started_at = dispatch_started_at
+        self._stdout_lines: list[str] = []
+        self._stderr_chunks: list[str] = []
+        self._stdout_task: asyncio.Task[None] | None = None
+        self._stderr_task: asyncio.Task[None] | None = None
+        self._stream_queue: asyncio.Queue[str | None] = asyncio.Queue()
+        self._stream_started = False
+
+    def _ensure_stream_tasks_started(self) -> None:
+        if self._stream_started:
+            return
+
+        self._stream_started = True
+        self._stdout_task = asyncio.create_task(self._consume_stdout())
+        self._stderr_task = asyncio.create_task(self._consume_stderr())
+
+    async def _consume_stdout(self) -> None:
+        stdout = self._process.stdout
+        if stdout is None:
+            await self._stream_queue.put(None)
+            return
+
+        try:
+            while True:
+                line = await stdout.readline()
+                if not line:
+                    break
+                text = line.decode("utf-8", errors="replace")
+                stripped = text.rstrip("\r\n")
+                if stripped:
+                    self._stdout_lines.append(stripped)
+                    self._update_progress_signal(stripped)
+                    await self._stream_queue.put(stripped)
+        finally:
+            await self._stream_queue.put(None)
+
+    async def _consume_stderr(self) -> None:
+        stderr = self._process.stderr
+        if stderr is None:
+            return
+
+        while True:
+            chunk = await stderr.readline()
+            if not chunk:
+                break
+            text = chunk.decode("utf-8", errors="replace")
+            stripped = text.rstrip("\r\n")
+            if stripped:
+                self._stderr_chunks.append(stripped)
+
+    def _update_progress_signal(self, line: str) -> None:
+        try:
+            payload = json.loads(line)
+        except json.JSONDecodeError:
+            return
+
+        if not isinstance(payload, dict):
+            return
+
+        event_type_raw = payload.get("type")
+        if not isinstance(event_type_raw, str):
+            return
+
+        message: str | None = None
+        if event_type_raw in {"step_start", "thread.started"}:
+            kind_enum = StreamSignalKind.HEARTBEAT
+            message = event_type_raw
+        elif event_type_raw in {"text", "item.completed"}:
+            kind_enum = StreamSignalKind.PROGRESS
+            if event_type_raw == "text":
+                part = payload.get("part")
+                if isinstance(part, dict):
+                    raw_text = part.get("text")
+                    if raw_text is not None:
+                        message = str(raw_text)
+            elif event_type_raw == "item.completed":
+                item = payload.get("item")
+                if isinstance(item, dict):
+                    raw_text = item.get("text")
+                    if raw_text is not None:
+                        message = str(raw_text)
+        elif event_type_raw in {"step_finish", "turn.completed"}:
+            kind_enum = StreamSignalKind.HEARTBEAT
+            message = event_type_raw
+        else:
+            return
+
+        self._progress_sequence += 1
+        self._last_progress = StreamProgressSignal(
+            kind=kind_enum,
+            emitted_at_monotonic=time.monotonic(),
+            sequence=self._progress_sequence,
+            message=message,
+        )
 
     def stream_jsonl(self) -> AsyncIterator[str]:
         """Yield incremental JSONL lines from live subprocess output.
@@ -285,10 +387,16 @@ class _SubprocessRunnerHandle:
         Implementation owner:
         - ``driver-enhancement-streaming-progress.impl``
         """
+        self._ensure_stream_tasks_started()
 
-        raise NotImplementedError(
-            "Incremental streaming is owned by driver-enhancement-streaming-progress.impl"
-        )
+        async def _iterator() -> AsyncIterator[str]:
+            while True:
+                line = await self._stream_queue.get()
+                if line is None:
+                    return
+                yield line
+
+        return _iterator()
 
     def last_progress_signal(self) -> StreamProgressSignal | None:
         """Return most recent observed heartbeat/progress signal.
@@ -296,10 +404,7 @@ class _SubprocessRunnerHandle:
         Implementation owner:
         - ``driver-enhancement-streaming-progress.impl``
         """
-
-        raise NotImplementedError(
-            "Last-progress signaling is owned by driver-enhancement-streaming-progress.impl"
-        )
+        return self._last_progress
 
     async def wait(self, timeout: float | None = None) -> RunnerResult:
         """Wait for process completion and parse runner output.
@@ -313,10 +418,13 @@ class _SubprocessRunnerHandle:
         Raises:
             RunnerError: If wait times out or subprocess wait fails.
         """
+        self._ensure_stream_tasks_started()
         try:
-            stdout_bytes, stderr_bytes = await asyncio.wait_for(
-                self._process.communicate(), timeout=timeout
-            )
+            if self._stdout_task is not None:
+                await asyncio.wait_for(asyncio.shield(self._stdout_task), timeout=timeout)
+            if self._stderr_task is not None:
+                await asyncio.wait_for(asyncio.shield(self._stderr_task), timeout=timeout)
+            await asyncio.wait_for(self._process.wait(), timeout=timeout)
         except TimeoutError as exc:
             await self.kill()
             raise RunnerError(
@@ -332,8 +440,8 @@ class _SubprocessRunnerHandle:
             ) from exc
 
         elapsed_seconds = time.monotonic() - self._dispatch_started_at
-        stdout_text = stdout_bytes.decode("utf-8", errors="replace")
-        stderr_text = stderr_bytes.decode("utf-8", errors="replace")
+        stdout_text = "\n".join(self._stdout_lines)
+        stderr_text = "\n".join(self._stderr_chunks)
         parse_input = stdout_text if stdout_text.strip() else stderr_text
 
         parsed = self._parser.parse(parse_input, elapsed_seconds=elapsed_seconds)

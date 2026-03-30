@@ -1109,3 +1109,100 @@ class TestRunnerDispatchIntegration:
         result = await handle.wait(timeout=2.0)
         assert result.status == RunnerStatus.SUCCESS
         assert handle.is_alive() is False
+
+    @pytest.mark.anyio
+    async def test_incremental_stream_updates_progress_before_runner_exit(self, tmp_path) -> None:
+        """Streaming updates heartbeat/progress before process completion."""
+        code = (
+            "import json,time;"
+            "print(json.dumps({'type':'step_start','sessionID':'sid-1'}), flush=True);"
+            "time.sleep(0.05);"
+            "print('not-json', flush=True);"
+            "time.sleep(0.05);"
+            "print(json.dumps({'type':'text','part':{'text':'tick'}}), flush=True);"
+            "time.sleep(0.05);"
+            "print(json.dumps({'type':'step_finish','part':{'status':'success'}}), flush=True)"
+        )
+        runner = OpenCodeRunner(
+            "opencode",
+            RunnerConfig(
+                command=sys.executable,
+                args=["-c", code],
+                prompt_mode="stdin",
+                output_parser="opencode_jsonl",
+            ),
+        )
+
+        handle = await runner.dispatch(
+            prompt="ignored",
+            agent="python-senior",
+            workdir=str(tmp_path),
+        )
+
+        stream = handle.stream_jsonl()
+        first_line = await anext(stream)
+        assert "step_start" in first_line
+        first_signal = handle.last_progress_signal()
+        assert first_signal is not None
+        assert first_signal.kind.value == "heartbeat"
+
+        malformed_line = await anext(stream)
+        assert malformed_line == "not-json"
+        signal_after_malformed = handle.last_progress_signal()
+        assert signal_after_malformed is not None
+        assert signal_after_malformed.sequence == first_signal.sequence
+
+        progress_line = await anext(stream)
+        assert '"type": "text"' in progress_line
+        progress_signal = handle.last_progress_signal()
+        assert progress_signal is not None
+        assert progress_signal.kind.value == "progress"
+        assert progress_signal.sequence > first_signal.sequence
+        assert progress_signal.message == "tick"
+
+        result = await handle.wait(timeout=2.0)
+        assert result.status == RunnerStatus.SUCCESS
+
+    @pytest.mark.anyio
+    async def test_progress_starvation_preserves_last_valid_signal(self, tmp_path) -> None:
+        """Malformed/no-progress chunks must not fabricate progress updates."""
+        code = (
+            "import json,time;"
+            "print(json.dumps({'type':'step_start','sessionID':'sid-1'}), flush=True);"
+            "time.sleep(0.05);"
+            "print('bad-1', flush=True);"
+            "time.sleep(0.05);"
+            "print('bad-2', flush=True);"
+            "time.sleep(0.05);"
+            "print(json.dumps({'type':'step_finish','part':{'status':'success'}}), flush=True)"
+        )
+        runner = OpenCodeRunner(
+            "opencode",
+            RunnerConfig(
+                command=sys.executable,
+                args=["-c", code],
+                prompt_mode="stdin",
+                output_parser="opencode_jsonl",
+            ),
+        )
+
+        handle = await runner.dispatch(
+            prompt="ignored",
+            agent="python-senior",
+            workdir=str(tmp_path),
+        )
+        stream = handle.stream_jsonl()
+
+        _ = await anext(stream)
+        base = handle.last_progress_signal()
+        assert base is not None
+        assert base.kind.value == "heartbeat"
+
+        _ = await anext(stream)
+        _ = await anext(stream)
+        after_malformed = handle.last_progress_signal()
+        assert after_malformed is not None
+        assert after_malformed.sequence == base.sequence
+
+        result = await handle.wait(timeout=2.0)
+        assert result.status == RunnerStatus.SUCCESS

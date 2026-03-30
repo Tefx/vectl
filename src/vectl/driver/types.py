@@ -14,7 +14,6 @@ from __future__ import annotations
 
 import asyncio
 import time
-from collections.abc import Mapping
 from dataclasses import dataclass, field
 from enum import Enum
 from typing import TYPE_CHECKING, Literal, Protocol
@@ -235,10 +234,16 @@ class DriverState:
         Implementation owner:
         - ``driver-enhancement-streaming-progress.impl``
         """
-
-        raise NotImplementedError(
-            "Streaming progress wiring is owned by driver-enhancement-streaming-progress.impl"
+        updated = StreamLivenessState(
+            phase="running",
+            last_heartbeat_at_monotonic=signal.emitted_at_monotonic,
+            last_progress=signal,
         )
+        self.streaming_live_state[step_id] = updated
+
+        entry = self.running.get(step_id)
+        if entry is not None:
+            entry.live_state = updated
 
     def drain_completed(self) -> list[CompletedResult] | None:
         """Drain legacy completed_queue into vectl.models.CompletedResult list.
@@ -285,6 +290,27 @@ class DriverState:
         if not self.running:
             raise RuntimeError("No running tasks to wait for")
 
+        stream_tasks: dict[asyncio.Task[None], str] = {}
+
+        async def pump_stream(step_id: str, entry: RunningEntry) -> None:
+            entry.live_state = StreamLivenessState(
+                phase="running",
+                last_heartbeat_at_monotonic=time.monotonic(),
+                last_progress=None,
+            )
+            self.streaming_live_state[step_id] = entry.live_state
+
+            seen_sequence = 0
+            try:
+                async for _line in entry.handle.stream_jsonl():
+                    signal = entry.handle.last_progress_signal()
+                    if signal is None or signal.sequence <= seen_sequence:
+                        continue
+                    seen_sequence = signal.sequence
+                    self.record_stream_signal(step_id=step_id, signal=signal)
+            except (AttributeError, NotImplementedError):
+                return
+
         # Create wait tasks for all handles
         async def wait_for_entry(step_id: str, entry: RunningEntry) -> tuple[str, CompletedEntry]:
             result = await entry.handle.wait()
@@ -302,6 +328,9 @@ class DriverState:
             asyncio.create_task(wait_for_entry(step_id, entry)): step_id
             for step_id, entry in self.running.items()
         }
+        for step_id, entry in self.running.items():
+            stream_task = asyncio.create_task(pump_stream(step_id, entry))
+            stream_tasks[stream_task] = step_id
 
         done, _ = await asyncio.wait(tasks.keys(), return_when=asyncio.FIRST_COMPLETED)
         task = done.pop()
@@ -310,12 +339,41 @@ class DriverState:
         # Move from running map only.
         # Runtime completion authority is reconcile-only; this method returns the
         # completed entry directly to loop.py for immediate reconcile().
-        del self.running[step_id]
+        completed_entry = self.running.pop(step_id)
+
+        latest_progress: StreamProgressSignal | None = None
+        try:
+            latest_progress = completed_entry.handle.last_progress_signal()
+        except (AttributeError, NotImplementedError):
+            latest_progress = None
+
+        prior_live = self.streaming_live_state.get(step_id) or completed_entry.live_state
+        if latest_progress is None and prior_live is not None:
+            latest_progress = prior_live.last_progress
+
+        heartbeat_at = (
+            latest_progress.emitted_at_monotonic
+            if latest_progress is not None
+            else (
+                prior_live.last_heartbeat_at_monotonic
+                if prior_live is not None
+                else time.monotonic()
+            )
+        )
+
+        self.streaming_live_state[step_id] = StreamLivenessState(
+            phase="completed",
+            last_heartbeat_at_monotonic=heartbeat_at,
+            last_progress=latest_progress,
+        )
 
         # Cancel remaining tasks
         for t in tasks:
             if t is not task:
                 t.cancel()
+        for stream_task in stream_tasks:
+            if not stream_task.done():
+                stream_task.cancel()
 
         return completed
 

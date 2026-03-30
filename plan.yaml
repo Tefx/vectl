@@ -53901,7 +53901,7 @@ phases:
       modified'
   - id: shouldfix.verify-all-fixes
     name: Verify all 5 should-fix findings are resolved
-    status: claimed
+    status: done
     description: 'As an INDEPENDENT TESTER, verify that all 5 should-fix findings
       from the gate review are resolved.
 
@@ -53967,6 +53967,25 @@ phases:
     agent: integration-verifier
     claimed_by: integration-verifier
     claimed_at: '2026-03-30T17:50:47.116581+00:00'
+    done_at: '2026-03-30T17:51:01.478934+00:00'
+    evidence: 'Artifact:
+
+      - Verification session: ses_2c02eeaecffe86jCO1nX37Ph1q
+
+      Verification:
+
+      - S1-S5 checklist checks passed
+
+      - Required regression command failed: uv run pytest tests/ -k ''not live'' ->
+      73 failed, 1917 passed
+
+      Disposition:
+
+      - Blocker surfaced and promoted to owned remediation via planner mutations
+
+      - New steps: shouldfix.fix-regression-batch, shouldfix.retest-all-fixes
+
+      - Gate now depends on remediation + retest chain'
   - id: shouldfix.gate
     name: 'Gate: All should-fix findings resolved'
     status: pending

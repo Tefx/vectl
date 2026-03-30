@@ -122,6 +122,9 @@ from .types import (
     ReplaySafetyEnvelope,
     ReplayTokenSemantics,
     RunnerStatus,
+    RunnerRecoveryBoundaryInput,
+    RunnerRecoveryBoundaryOutput,
+    RunnerRecoveryDecision,
     StartupRecoveryBoundaryInput,
     StartupRecoveryBoundaryOutput,
     StartupRecoveryController,
@@ -620,6 +623,44 @@ Source:
 - docs/DRIVER-ARCHITECTURE.md Section 2.11 startup sequence
 - docs/DRIVER-CONTINUITY-FOUNDATION.md Section 4 and Section 7
 """
+
+
+RUNNER_RECOVERY_TAXONOMY: Final[tuple[str, ...]] = (
+    "clean_fail",
+    "crash",
+    "stall",
+    "no_progress",
+)
+"""Normative post-bootstrap watchdog/recovery taxonomy.
+
+Source:
+- step ``driver-enhancement-runner-recovery.design-and-test``
+- docs/DRIVER-CONTINUITY-FOUNDATION.md Section 4 and Section 7
+
+This taxonomy is intentionally separate from startup bootstrap recovery ordering.
+"""
+
+
+def evaluate_runner_recovery_boundary(
+    *,
+    boundary_input: RunnerRecoveryBoundaryInput,
+) -> RunnerRecoveryBoundaryOutput:
+    """Evaluate post-bootstrap watchdog/recovery matrix at loop boundary.
+
+    Source:
+    - step ``driver-enhancement-runner-recovery.design-and-test``
+
+    Design authority notes:
+    - Preserves continuity-owned bootstrap minimum replay/restart authority.
+    - Pins crash vs clean-fail and heartbeat-driven watchdog taxonomy at the
+      boundary without implementing runtime policy logic in this test-design step.
+    """
+
+    _ = boundary_input
+    raise NotImplementedError(
+        "Deferred to driver-enhancement-runner-recovery.impl: "
+        "post-bootstrap watchdog/recovery matrix runtime implementation"
+    )
 
 
 def evaluate_startup_recovery_boundary(
@@ -3677,7 +3718,9 @@ __all__ = [
     "LOOP_PLANNER_ACTION_DECLARATIONS",
     "LOOP_EVENT_HELPER_DEFS",
     "STARTUP_RECOVERY_CONTRACT",
+    "RUNNER_RECOVERY_TAXONOMY",
     "StartupRecoveryContract",
+    "evaluate_runner_recovery_boundary",
     "dispatch_planner",
     "emit_decide",
     "emit_final",

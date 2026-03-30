@@ -679,6 +679,86 @@ class StartupRecoveryBoundaryOutput:
     blocked_reasons: tuple[str, ...]
 
 
+RunnerRecoveryTaxonomy = Literal["clean_fail", "crash", "stall", "no_progress"]
+"""Post-bootstrap runner failure taxonomy at the loop/recovery boundary.
+
+Source:
+- step ``driver-enhancement-runner-recovery.design-and-test``
+- docs/DRIVER-CONTINUITY-FOUNDATION.md Section 4 and Section 7
+
+Taxonomy notes:
+- ``clean_fail``: runner returned an explicit semantic failure payload.
+- ``crash``: runner process exited unexpectedly before a clean failure payload.
+- ``stall``: runner exceeded configured stall timeout without classified crash.
+- ``no_progress``: watchdog heartbeat gap indicates execution made no forward progress.
+"""
+
+
+@dataclass(frozen=True)
+class RunnerRecoverySignal:
+    """Observed runtime recovery signal for one running attempt.
+
+    Source:
+    - step ``driver-enhancement-runner-recovery.design-and-test``
+    - docs/DRIVER-ARCHITECTURE.md Section 2.1 (RunnerStatus + running handle facts)
+    - docs/DRIVER-CONTINUITY-FOUNDATION.md Section 6 (transport boundary rules)
+    """
+
+    step_id: str
+    attempt_key: str
+    runner_name: str
+    taxonomy: RunnerRecoveryTaxonomy
+    heartbeat_age_seconds: float | None
+    watchdog_timeout_seconds: float
+    process_alive: bool
+    exit_code: int | None
+
+
+@dataclass(frozen=True)
+class RunnerRecoveryBoundaryInput:
+    """Loop-facing boundary input for post-bootstrap runner recovery decisions.
+
+    Source:
+    - step ``driver-enhancement-runner-recovery.design-and-test``
+    - docs/DRIVER-CONTINUITY-FOUNDATION.md Section 4 (restart/resume contract)
+    - docs/DRIVER-CONTINUITY-FOUNDATION.md Section 7 (continuity ownership)
+
+    Ownership notes:
+    - bootstrap-minimum replay envelope continuity remains authority-owned by
+      ``ContinuityHandoff`` + ``ContinuityLedgerEntry`` contracts.
+    - this boundary classifies watchdog/runtime recovery only; it does not
+      supersede startup restart-controller ownership.
+    """
+
+    signal: RunnerRecoverySignal
+    continuity_handoff: ContinuityHandoff | None
+    ledger_entry: ContinuityLedgerEntry | None
+
+
+@dataclass(frozen=True)
+class RunnerRecoveryDecision:
+    """Decision row for post-bootstrap watchdog/recovery matrix behavior.
+
+    Source:
+    - step ``driver-enhancement-runner-recovery.design-and-test``
+    """
+
+    step_id: str
+    disposition: StartupRecoveryDisposition
+    reason: str
+    source_attempt_key: str
+    restart_controller_owner: str
+
+
+@dataclass(frozen=True)
+class RunnerRecoveryBoundaryOutput:
+    """Boundary output for post-bootstrap watchdog/recovery decisions."""
+
+    decisions: tuple[RunnerRecoveryDecision, ...]
+    repair_actions: tuple[str, ...]
+    blocked_reasons: tuple[str, ...]
+
+
 class StartupRecoveryController(Protocol):
     """Protocol for continuity-aware startup recovery planning.
 

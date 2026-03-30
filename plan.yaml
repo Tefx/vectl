@@ -52402,7 +52402,7 @@ phases:
       - 38/38 tests pass'
   - id: driver-continuity-hygiene-surface.wiring-audit
     name: Audit continuity hygiene wiring completeness
-    status: claimed
+    status: done
     description: 'Wiring completeness audit: verify every new public symbol and CLI/event
       surface introduced by continuity hygiene is reachable at runtime.
 
@@ -52452,6 +52452,25 @@ phases:
     agent: wiring-auditor
     claimed_by: wiring-auditor
     claimed_at: '2026-03-30T12:29:38.697263+00:00'
+    done_at: '2026-03-30T12:35:23.490930+00:00'
+    evidence: '## Wiring Audit Report
+
+
+      | Check | Result |
+
+      |-------|--------|
+
+      | CLI registration | FAIL — `repair continuity` not registered under repair_app
+      |
+
+      | Event registry alignment | PASS |
+
+      | Manifest field consumption | PASS |
+
+      | Contract consumption | PASS |
+
+
+      **Verdict**: FAIL — CLI command missing, merge failed from prior worktree.'
   - id: driver-continuity-hygiene-surface.gate
     name: Gate continuity hygiene CLI and observability surfaces
     status: pending

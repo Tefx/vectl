@@ -43801,7 +43801,7 @@ phases:
       - Deviation records: none'
   - id: driver-enhancement-streaming-progress.verify
     name: Verify heartbeat progress and streaming-aware liveness
-    status: pending
+    status: claimed
     description: 'step_type: verification
 
       Verification scope: phase-check protecting driver-enhancement-streaming-progress.gate.
@@ -43821,6 +43821,8 @@ phases:
     depends_on:
     - driver-enhancement-streaming-progress.impl
     agent: integration-verifier
+    claimed_by: integration-verifier
+    claimed_at: '2026-03-30T17:14:48.819594+00:00'
   - id: driver-enhancement-streaming-progress.gate
     name: Gate streaming and progress enhancement
     status: pending

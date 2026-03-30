@@ -44011,7 +44011,7 @@ phases:
       - Deviation records: none'
   - id: driver-enhancement-runner-recovery.verify
     name: Verify failure taxonomy watchdog and recovery matrix
-    status: pending
+    status: claimed
     description: 'step_type: verification
 
       Verification scope: phase-check protecting driver-enhancement-runner-recovery.gate.
@@ -44044,6 +44044,8 @@ phases:
     depends_on:
     - driver-enhancement-runner-recovery.impl
     agent: integration-verifier
+    claimed_by: integration-verifier
+    claimed_at: '2026-03-30T17:14:39.457364+00:00'
   - id: driver-enhancement-runner-recovery.gate
     name: Gate runner recovery enhancement
     status: pending

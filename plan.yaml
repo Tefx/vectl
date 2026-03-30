@@ -52279,7 +52279,7 @@ phases:
       ### Decision: OPEN'
 - id: driver-continuity-hygiene-surface
   name: 'Driver Continuity Hygiene: CLI & Observability'
-  status: pending
+  status: in_progress
   gate: CLI repair-continuity surface, telemetry events, and wiring audit prove the
     operator-facing recovery path is reachable and fully registered.
   depends_on:
@@ -52287,7 +52287,7 @@ phases:
   steps:
   - id: driver-continuity-hygiene-surface.impl-cli-repair-continuity
     name: Implement `vectl repair continuity` CLI flow
-    status: pending
+    status: claimed
     description: "step_type: implementation\nupstream_artifacts:\n  - path: src/vectl/driver/continuity_hygiene.py\n\
       \    from_step: driver-continuity-hygiene-foundation.contract\n    tier: contract\n\
       \  - path: tests/test_driver_recovery_black_box.py\n    from_step: driver-continuity-hygiene-foundation.blackbox-define-red\n\
@@ -52324,6 +52324,8 @@ phases:
 
       **Path exercised**: continuity helper -> CLI command -> operator-visible result'
     agent: python-executor
+    claimed_by: python-executor
+    claimed_at: '2026-03-30T12:06:57.978784+00:00'
   - id: driver-continuity-hygiene-surface.impl-events-manifests
     name: Add continuity hygiene events, telemetry, and manifest surfacing
     status: pending

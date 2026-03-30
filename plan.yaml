@@ -51702,7 +51702,7 @@ phases:
       - TimeoutExpired properly caught and converted to deterministic result'
 - id: driver-continuity-hygiene-foundation
   name: 'Driver Continuity Hygiene: Foundation'
-  status: in_progress
+  status: done
   gate: Contract and expected-red tests pin continuity hygiene classification, quarantine,
     and repair-continuity semantics before runtime code changes.
   depends_on:
@@ -51963,7 +51963,7 @@ phases:
       \  - `d09235a` `Add continuity hygiene red-path black-box tests`"
   - id: driver-continuity-hygiene-foundation.gate
     name: Gate continuity hygiene foundation
-    status: claimed
+    status: done
     description: 'As an INDEPENDENT REVIEWER (gate-reviewer), assess whether the continuity
       hygiene foundation phase is ready to unlock implementation.
 
@@ -52016,9 +52016,33 @@ phases:
     agent: gate-reviewer
     claimed_by: gate-reviewer
     claimed_at: '2026-03-30T11:37:30.685939+00:00'
+    done_at: '2026-03-30T11:41:36.486756+00:00'
+    evidence: "## Foundation Gate Review\n\n### Contract Purity Verdict: PASS\n- Types\
+      \ defined in fixtures (`tests/fixtures/helpers/continuity_hygiene.py`):\n  -\
+      \ `ArtifactClassification` (SAFE_STALE, BLOCKING, AMBIGUOUS)\n  - `HygieneArtifact`,\
+      \ `HygieneClassificationResult`\n  - `QuarantineManifestEntry`, `QuarantineResult`\n\
+      \  - `HygieneRecoveryScenario` fixtures\n- No implementation in `src/vectl/driver/`\
+      \ (intentional gap)\n- Stubs raise `AttributeError` with clear downstream owner\
+      \ reference\n\n### Acceptance Gap Coverage Verdict: PASS\n- Helper expected-RED\
+      \ tests (18): All fail as designed, covering:\n  - Safe stale classification\
+      \ for orphan ledgers (not in plan, claims repaired)\n  - Blocking classification\
+      \ for active-claim orphans\n  - Corrupt ledger detection = BLOCKING\n  - Ambiguous\
+      \ migration detection\n  - Quarantine manifest preservation (copy, not delete)\n\
+      - Black-box expected-RED tests (15 passing):\n  - Startup recovery matrix (halt/restart/resume)\n\
+      \  - Ledger loading with corrupt file handling\n  - Entrypoint integration emitting\
+      \ `STARTUP_RECOVERY_DECISION` events\n\n### Blocking Semantic Ambiguities: NONE\n\
+      - Classification authority: `_evaluate_startup_recovery_boundary_matrix` in\
+      \ `loop.py`\n- Safe stale requires claims repair: explicit in fixtures\n- Quarantine\
+      \ preserves original: explicit in test assertions\n- No deletion language, no\
+      \ silent remap, no ambiguous auto-repair\n\n### Files Not Existing (Intentional)\n\
+      - `src/vectl/driver/continuity_hygiene.py` — Deferred to impl phase\n- `src/vectl/driver/continuity_repair.py`\
+      \ — Deferred to impl phase\n- Test stubs reference downstream: `driver-continuity-hygiene-core.impl-hygiene-storage`\n\
+      \n### Decision: OPEN\n- Contract is pure (types only, no implementation)\n-\
+      \ Acceptance gap fully defined with expected-RED tests\n- Semantics explicit\
+      \ and non-ambiguous\n- Downstream implementation phase ready to proceed"
 - id: driver-continuity-hygiene-core
   name: 'Driver Continuity Hygiene: Core Runtime'
-  status: locked
+  status: pending
   gate: Core continuity hygiene helpers and startup-stage wiring are implemented behind
     the pinned contract, with stale-only auto-quarantine and blocking ambiguity preserved.
   depends_on:

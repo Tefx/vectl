@@ -43413,7 +43413,7 @@ phases:
       \ OPEN"
 - id: driver-enhancement-observability
   name: 'Driver Enhancement: Advanced Observability'
-  status: pending
+  status: in_progress
   gate: Post-bootstrap observability remains blocked until the slimmed live codex/opencode
     judge and dispatch smoke implementation gate is complete.
   depends_on:
@@ -43601,7 +43601,7 @@ phases:
     agent: gate-reviewer
   - id: driver-enhancement-observability.design-and-test
     name: Design telemetry boundary and write expected-red tests
-    status: pending
+    status: claimed
     description: 'step_type: test
 
       merged_contract_test: true
@@ -43652,6 +43652,8 @@ phases:
 
       - Outputs include both telemetry boundary design notes and failing tests'
     agent: python-senior
+    claimed_by: python-senior
+    claimed_at: '2026-03-30T16:51:23.199845+00:00'
 - id: driver-enhancement-streaming-progress
   name: 'Driver Enhancement: Streaming & Progress'
   status: pending

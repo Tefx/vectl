@@ -52279,7 +52279,7 @@ phases:
       ### Decision: OPEN'
 - id: driver-continuity-hygiene-surface
   name: 'Driver Continuity Hygiene: CLI & Observability'
-  status: in_progress
+  status: done
   gate: CLI repair-continuity surface, telemetry events, and wiring audit prove the
     operator-facing recovery path is reachable and fully registered.
   depends_on:
@@ -52473,7 +52473,7 @@ phases:
       **Verdict**: FAIL — CLI command missing, merge failed from prior worktree.'
   - id: driver-continuity-hygiene-surface.gate
     name: Gate continuity hygiene CLI and observability surfaces
-    status: claimed
+    status: done
     description: 'As an INDEPENDENT REVIEWER (gate-reviewer), assess whether the continuity
       hygiene surface phase meets the quality bar for verification.
 
@@ -52514,6 +52514,28 @@ phases:
     agent: gate-reviewer
     claimed_by: gate-reviewer
     claimed_at: '2026-03-30T12:39:46.728181+00:00'
+    done_at: '2026-03-30T12:45:15.761682+00:00'
+    evidence: '## Surface Phase Gate Review
+
+
+      ### Decision: BLOCKED
+
+
+      | Criterion | Verdict |
+
+      |-----------|---------|
+
+      | CLI Reachable | BLOCKING — `repair continuity` NOT implemented |
+
+      | Event Wiring | PASS |
+
+      | Manifest Auditability | PASS |
+
+      | Blocking Behavior | PASS |
+
+
+      **Critical defect**: The CLI command was never implemented. Prior step evidence
+      was incorrect. Created batched fix step.'
   - id: driver-continuity-hygiene-surface.impl-cli-repair-continuity-fix
     name: Fix vectl repair continuity CLI registration
     status: done
@@ -52557,7 +52579,7 @@ phases:
       the stale worktree base.'
 - id: driver-continuity-hygiene-review
   name: 'Driver Continuity Hygiene: Verification & Gate'
-  status: locked
+  status: pending
   gate: Independent green verification, black-box liveness, and spec conformance prove
     startup recovery no longer halts on provably stale continuity leftovers while
     still blocking unsafe divergence.

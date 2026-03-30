@@ -52512,6 +52512,30 @@ phases:
     - driver-continuity-hygiene-surface.impl-events-manifests
     - driver-continuity-hygiene-surface.wiring-audit
     agent: gate-reviewer
+  - id: driver-continuity-hygiene-surface.impl-cli-repair-continuity-fix
+    name: Fix vectl repair continuity CLI registration
+    status: pending
+    description: 'step_type: implementation
+
+
+      Fix `repair continuity` CLI registration in src/vectl/cli.py. The wiring audit
+      found the command was NOT registered under repair_app despite the worktree claiming
+      completion.
+
+
+      Required: add `@repair_app.command("continuity")` function that calls the continuity
+      hygiene helpers and exposes dry-run/apply/json output.
+
+
+      Do NOT create new test files — just fix the CLI registration in cli.py.'
+    verification: '- `uv run vectl repair continuity --dry-run` reaches the command
+
+      - `uv run vectl repair continuity --dry-run --json` outputs valid JSON
+
+      - grep finds `@repair_app.command("continuity")` in cli.py'
+    depends_on:
+    - driver-continuity-hygiene-surface.wiring-audit
+    agent: python-executor
 - id: driver-continuity-hygiene-review
   name: 'Driver Continuity Hygiene: Verification & Gate'
   status: locked

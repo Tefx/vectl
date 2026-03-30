@@ -53098,7 +53098,7 @@ phases:
       **Documentation is accurate, actionable, and aligned with runtime behavior.**'
 - id: driver-continuity-hygiene-deep-review
   name: 'Driver Continuity Hygiene: Deep Review'
-  status: pending
+  status: in_progress
   gate: Final independent audit confirms wiring, conformance, architecture boundaries,
     contract strength, and black-box behavior for continuity hygiene before later
     driver enhancements resume.
@@ -53107,7 +53107,7 @@ phases:
   steps:
   - id: driver-continuity-hygiene-deep-review.wiring-audit
     name: Full continuity hygiene wiring audit
-    status: pending
+    status: claimed
     description: 'Complete system wiring audit for continuity hygiene. Verify:
 
       - every new repair-continuity surface is registered and reachable
@@ -53123,6 +53123,8 @@ phases:
     verification: '- Wiring audit evidence covers CLI registration, event registration,
       manifest consumption, and stub absence'
     agent: wiring-auditor
+    claimed_by: wiring-auditor
+    claimed_at: '2026-03-30T13:23:37.062583+00:00'
   - id: driver-continuity-hygiene-deep-review.spec-conformance
     name: Full continuity hygiene conformance audit
     status: pending

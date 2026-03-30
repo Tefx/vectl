@@ -52402,7 +52402,7 @@ phases:
       - 38/38 tests pass'
   - id: driver-continuity-hygiene-surface.wiring-audit
     name: Audit continuity hygiene wiring completeness
-    status: pending
+    status: claimed
     description: 'Wiring completeness audit: verify every new public symbol and CLI/event
       surface introduced by continuity hygiene is reachable at runtime.
 
@@ -52450,6 +52450,8 @@ phases:
     - driver-continuity-hygiene-surface.impl-cli-repair-continuity
     - driver-continuity-hygiene-surface.impl-events-manifests
     agent: wiring-auditor
+    claimed_by: wiring-auditor
+    claimed_at: '2026-03-30T12:29:38.697263+00:00'
   - id: driver-continuity-hygiene-surface.gate
     name: Gate continuity hygiene CLI and observability surfaces
     status: pending

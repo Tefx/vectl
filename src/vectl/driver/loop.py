@@ -77,6 +77,10 @@ from .events.emitter import (
     STEP_COMPLETED_EVENT_DEF,
     emit_decide,
     emit_final,
+    emit_startup_hygiene_blocked,
+    emit_startup_hygiene_classify,
+    emit_startup_hygiene_quarantine,
+    emit_startup_hygiene_scan,
     emit_step_completed,
 )
 from .judge import (
@@ -1932,6 +1936,13 @@ async def run(config_path: Path) -> None:
         continuity_artifacts, corrupt_continuity_artifacts = scan_continuity_artifacts(
             continuity_repo_root
         )
+        emit_startup_hygiene_scan(
+            observer,
+            artifact_count=len(continuity_artifacts),
+            corrupt_count=len(corrupt_continuity_artifacts),
+            current_branch=repaired_branch if isinstance(repaired_branch, str) else "",
+            corrupt_paths=list(corrupt_continuity_artifacts),
+        )
         quarantine_root = continuity_repo_root / ".vectl" / "continuity" / "quarantine"
         startup_hygiene = run_startup_hygiene_stage(
             stage_input=StartupHygieneStageInput(
@@ -1942,10 +1953,31 @@ async def run(config_path: Path) -> None:
                 quarantine_root=str(quarantine_root),
             )
         )
+        for assessment in startup_hygiene.assessments:
+            emit_startup_hygiene_classify(
+                observer,
+                artifact_kind=assessment.artifact.artifact_kind,
+                classification=assessment.classification,
+                original_path=assessment.artifact.original_path,
+                step_id=assessment.artifact.parsed_step_id or "",
+                quarantine_destination=assessment.quarantine_destination,
+                safe_stale_rule_satisfied=assessment.safe_stale_rule_satisfied,
+            )
         startup_hygiene = apply_quarantine(
             stage_result=startup_hygiene,
             quarantine_root=quarantine_root,
         )
+        for entry in startup_hygiene.quarantine_manifest:
+            emit_startup_hygiene_quarantine(
+                observer,
+                artifact_kind=entry.artifact_kind,
+                classification=entry.classification,
+                destination_path=entry.quarantine_destination,
+                original_path=entry.original_path,
+                reason=entry.reason,
+                step_id=entry.step_id or "",
+                audit_timestamp=entry.audit_timestamp,
+            )
 
         safe_stale_ledger_step_ids = {
             assessment.artifact.parsed_step_id
@@ -1988,6 +2020,12 @@ async def run(config_path: Path) -> None:
                 claim_step_ids=set(claim_step_ids),
             ):
                 continue
+            emit_startup_hygiene_blocked(
+                observer,
+                classification=blocked_assessment.classification,
+                reason=blocked_assessment.reason,
+                step_id=blocked_assessment.artifact.parsed_step_id or "unknown",
+            )
             step_segment = blocked_assessment.artifact.parsed_step_id or "unknown"
             halt_reasons.append(f"hygiene_blocked:{step_segment}:{blocked_assessment.reason}")
         if corrupt_continuity_artifacts:
@@ -1995,10 +2033,24 @@ async def run(config_path: Path) -> None:
                 f"continuity_corrupt:{Path(artifact_path).name}"
                 for artifact_path in corrupt_continuity_artifacts
             )
+            for artifact_path in corrupt_continuity_artifacts:
+                emit_startup_hygiene_blocked(
+                    observer,
+                    classification="corrupt_blocking",
+                    reason=f"continuity_corrupt:{Path(artifact_path).name}",
+                    step_id=Path(artifact_path).stem,
+                )
         if corrupt_ledger_files:
             halt_reasons.extend(
                 f"ledger_corrupt:{ledger_file_name}" for ledger_file_name in corrupt_ledger_files
             )
+            for ledger_file_name in corrupt_ledger_files:
+                emit_startup_hygiene_blocked(
+                    observer,
+                    classification="corrupt_blocking",
+                    reason=f"ledger_corrupt:{ledger_file_name}",
+                    step_id=Path(ledger_file_name).stem,
+                )
         if halt_reasons:
             _emit_halt(
                 state=state,

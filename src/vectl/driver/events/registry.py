@@ -11,7 +11,16 @@ from dataclasses import dataclass
 from types import MappingProxyType
 from typing import Final, Mapping
 
-from .types import ALL_EVENT_TYPES, DECIDE, FINAL, STEP_COMPLETED
+from .types import (
+    ALL_EVENT_TYPES,
+    DECIDE,
+    FINAL,
+    STEP_COMPLETED,
+    STARTUP_HYGIENE_BLOCKED,
+    STARTUP_HYGIENE_CLASSIFY,
+    STARTUP_HYGIENE_QUARANTINE,
+    STARTUP_HYGIENE_SCAN,
+)
 
 
 @dataclass(frozen=True)
@@ -227,6 +236,50 @@ _TABLE: dict[str, EventRegistryRecord] = {
         required=("reason", "step_id"),
         owner="vectl.driver.loop",
         compatibility="Version 1 baseline; additive optional fields only within v1.",
+    ),
+    "STARTUP_HYGIENE_BLOCKED": _record(
+        "STARTUP_HYGIENE_BLOCKED",
+        required=("classification", "reason", "step_id"),
+        owner="vectl.driver.loop",
+        compatibility=(
+            "Version 1 baseline; hygiene-stage blocking telemetry that distinguishes "
+            "corrupt_blocking, blocking_divergence (active-claim), and ambiguous_blocking "
+            "from active recovery decisions."
+        ),
+    ),
+    "STARTUP_HYGIENE_CLASSIFY": _record(
+        "STARTUP_HYGIENE_CLASSIFY",
+        required=("artifact_kind", "classification", "original_path", "step_id"),
+        optional=("quarantine_destination", "safe_stale_rule_satisfied"),
+        owner="vectl.driver.loop",
+        compatibility=(
+            "Version 1 baseline; per-artifact classification telemetry from hygiene stage. "
+            "Distinguishes hygiene-stage quarantine from active recovery decisions."
+        ),
+    ),
+    "STARTUP_HYGIENE_QUARANTINE": _record(
+        "STARTUP_HYGIENE_QUARANTINE",
+        required=(
+            "artifact_kind",
+            "classification",
+            "destination_path",
+            "original_path",
+            "reason",
+            "step_id",
+        ),
+        optional=("audit_timestamp",),
+        owner="vectl.driver.loop",
+        compatibility=(
+            "Version 1 baseline; quarantine write-path telemetry with stable "
+            "reason/classification fields and manifest/log linkage."
+        ),
+    ),
+    "STARTUP_HYGIENE_SCAN": _record(
+        "STARTUP_HYGIENE_SCAN",
+        required=("artifact_count", "corrupt_count", "current_branch"),
+        optional=("corrupt_paths",),
+        owner="vectl.driver.loop",
+        compatibility="Version 1 baseline; hygiene scan summary before classification.",
     ),
     "STARTUP_RECOVERY_DECISION": _record(
         "STARTUP_RECOVERY_DECISION",

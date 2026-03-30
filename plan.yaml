@@ -52338,7 +52338,7 @@ phases:
       \ not delete; blocking divergence reported cleanly."
   - id: driver-continuity-hygiene-surface.impl-events-manifests
     name: Add continuity hygiene events, telemetry, and manifest surfacing
-    status: claimed
+    status: done
     description: "step_type: implementation\nupstream_artifacts:\n  - path: src/vectl/driver/continuity_hygiene.py\n\
       \    from_step: driver-continuity-hygiene-foundation.contract\n    tier: contract\n\
       \  - path: tests/test_driver_recovery_black_box.py\n    from_step: driver-continuity-hygiene-foundation.blackbox-define-red\n\
@@ -52364,6 +52364,42 @@ phases:
     agent: python-executor
     claimed_by: python-executor
     claimed_at: '2026-03-30T12:07:04.869310+00:00'
+    done_at: '2026-03-30T12:28:29.176670+00:00'
+    evidence: '## Events/Manifests Implementation Evidence
+
+
+      ### Files Changed
+
+      - `src/vectl/driver/events/types.py` (+4 event constants)
+
+      - `src/vectl/driver/events/registry.py` (+4 registry entries + imports)
+
+      - `src/vectl/driver/events/emitter.py` (+4 TypedDict + 4 emit helpers)
+
+      - `src/vectl/driver/loop.py` (+14 event emission call sites)
+
+
+      ### Event Registry Entries Added
+
+      1. `STARTUP_HYGIENE_SCAN` — scan summary with artifact_count, corrupt_count,
+      current_branch, corrupt_paths
+
+      2. `STARTUP_HYGIENE_CLASSIFY` — per-artifact classification with artifact_kind,
+      classification, original_path, step_id, quarantine_destination, safe_stale_rule_satisfied
+
+      3. `STARTUP_HYGIENE_QUARANTINE` — quarantine write-path with artifact_kind,
+      classification, destination_path, original_path, reason, step_id, audit_timestamp
+
+      4. `STARTUP_HYGIENE_BLOCKED` — blocking telemetry with classification, reason,
+      step_id
+
+
+      ### Registry/Types and Emitting Sites Stay Aligned: YES
+
+      - ALL_EVENT_TYPES and _TABLE updated; validation passes: `set(EVENT_REGISTRY)
+      == set(ALL_EVENT_TYPES)` ✓
+
+      - 38/38 tests pass'
   - id: driver-continuity-hygiene-surface.wiring-audit
     name: Audit continuity hygiene wiring completeness
     status: pending

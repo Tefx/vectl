@@ -12,6 +12,7 @@ Implementation notes:
 
 from __future__ import annotations
 
+from dataclasses import dataclass
 from typing import Final, Protocol, TypedDict
 
 from .registry import (
@@ -28,7 +29,11 @@ from .types import (
     STARTUP_HYGIENE_SCAN,
     STEP_COMPLETED,
     DecideEventName,
+    DriverLifecycleEventName,
     FinalEventName,
+    HeartbeatProgressEventName,
+    PlannerDispatchProgressEventName,
+    RecoveryVisibilityEventName,
     StepCompletedEventName,
 )
 
@@ -115,6 +120,87 @@ class _StartupHygieneBlockedPayloadRequired(TypedDict):
 
 class StartupHygieneBlockedPayload(_StartupHygieneBlockedPayloadRequired, total=False):
     pass
+
+
+@dataclass(frozen=True)
+class AdvancedObservabilityContract:
+    """Contract for post-bootstrap observability boundary expansion.
+
+    Source:
+    - step ``driver-enhancement-observability.design-and-test``
+    - docs/DRIVER-ARCHITECTURE.md Section 2.11 (loop-owned dispatch/recovery)
+    - docs/DRIVER-CONTINUITY-FOUNDATION.md Section 7 (journal boundaries)
+    """
+
+    source_step_id: str
+    implementation_owner_step: str
+    exposed_gaps: tuple[str, ...]
+
+
+ADVANCED_OBSERVABILITY_CONTRACT: Final[AdvancedObservabilityContract] = (
+    AdvancedObservabilityContract(
+        source_step_id="driver-enhancement-observability.design-and-test",
+        implementation_owner_step="driver-enhancement-observability.impl",
+        exposed_gaps=(
+            "missing lifecycle visibility after bootstrap",
+            "missing planner dispatch progress visibility",
+            "missing recovery event visibility preserving continuity journal boundaries",
+            "missing heartbeat/progress visibility for long-running loops",
+            "schema drift checks absent for additive observability surfaces",
+        ),
+    )
+)
+
+
+class _DriverLifecyclePayloadRequired(TypedDict):
+    phase: str
+    run_id: str
+
+
+class DriverLifecyclePayload(_DriverLifecyclePayloadRequired, total=False):
+    note: str
+    step_id: str
+
+
+class _PlannerDispatchProgressPayloadRequired(TypedDict):
+    judgment_type: str
+    phase: str
+    runner: str
+    step_id: str
+    trigger: str
+
+
+class PlannerDispatchProgressPayload(_PlannerDispatchProgressPayloadRequired, total=False):
+    message: str
+    progress_index: int
+    progress_total: int
+    session_id: str
+
+
+class _RecoveryVisibilityPayloadRequired(TypedDict):
+    attempt_key: str
+    event_kind: str
+    recorded_at: str
+    runner_name: str
+    session_id: str | None
+    step_id: str
+    summary: str
+
+
+class RecoveryVisibilityPayload(_RecoveryVisibilityPayloadRequired, total=False):
+    recovery_cursor: str
+
+
+class _HeartbeatProgressPayloadRequired(TypedDict):
+    completed_count: int
+    loop_iteration: int
+    running_count: int
+    waiting_count: int
+
+
+class HeartbeatProgressPayload(_HeartbeatProgressPayloadRequired, total=False):
+    active_step_ids: list[str]
+    note: str
 
 
 DECIDE_EVENT_DEF: Final = DECIDE_EVENT_RECORD
@@ -291,3 +377,91 @@ def emit_startup_hygiene_blocked(
 
     observer.emit(STARTUP_HYGIENE_BLOCKED, **payload)
     return STARTUP_HYGIENE_BLOCKED
+
+
+def emit_driver_lifecycle(
+    observer: SupportsEventEmit,
+    /,
+    *,
+    phase: str,
+    run_id: str,
+    note: str | None = None,
+    step_id: str | None = None,
+) -> DriverLifecycleEventName:
+    """Emit lifecycle transition telemetry for loop-level visibility.
+
+    Runtime implementation is deferred to ``driver-enhancement-observability.impl``.
+    """
+
+    raise NotImplementedError("driver lifecycle observability wiring deferred to impl step")
+
+
+def emit_planner_dispatch_progress(
+    observer: SupportsEventEmit,
+    /,
+    *,
+    judgment_type: str,
+    phase: str,
+    runner: str,
+    step_id: str,
+    trigger: str,
+    message: str | None = None,
+    progress_index: int | None = None,
+    progress_total: int | None = None,
+    session_id: str | None = None,
+) -> PlannerDispatchProgressEventName:
+    """Emit incremental planner-dispatch progress telemetry.
+
+    Runtime implementation is deferred to ``driver-enhancement-observability.impl``.
+    """
+
+    raise NotImplementedError("planner dispatch progress wiring deferred to impl step")
+
+
+def emit_recovery_visibility(
+    observer: SupportsEventEmit,
+    /,
+    *,
+    attempt_key: str,
+    event_kind: str,
+    recorded_at: str,
+    runner_name: str,
+    session_id: str | None,
+    step_id: str,
+    summary: str,
+    recovery_cursor: str | None = None,
+) -> RecoveryVisibilityEventName:
+    """Emit post-bootstrap recovery telemetry preserving journal minimums.
+
+    Runtime implementation is deferred to ``driver-enhancement-observability.impl``.
+    """
+
+    raise NotImplementedError("recovery visibility wiring deferred to impl step")
+
+
+def emit_heartbeat_progress(
+    observer: SupportsEventEmit,
+    /,
+    *,
+    completed_count: int,
+    loop_iteration: int,
+    running_count: int,
+    waiting_count: int,
+    active_step_ids: list[str] | None = None,
+    note: str | None = None,
+) -> HeartbeatProgressEventName:
+    """Emit periodic loop heartbeat and progress counters.
+
+    Runtime implementation is deferred to ``driver-enhancement-observability.impl``.
+    """
+
+    raise NotImplementedError("heartbeat progress wiring deferred to impl step")
+
+
+def assert_advanced_observability_schema_alignment() -> tuple[str, ...]:
+    """Return schema drift findings for advanced observability surfaces.
+
+    Runtime implementation is deferred to ``driver-enhancement-observability.impl``.
+    """
+
+    raise NotImplementedError("schema drift validation deferred to impl step")

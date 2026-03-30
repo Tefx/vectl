@@ -15,7 +15,11 @@ from typing import Final
 from .types import (
     ALL_EVENT_TYPES,
     DECIDE,
+    DRIVER_LIFECYCLE,
     FINAL,
+    HEARTBEAT_PROGRESS,
+    PLANNER_DISPATCH_PROGRESS,
+    RECOVERY_VISIBILITY,
     STEP_COMPLETED,
 )
 
@@ -83,6 +87,16 @@ _TABLE: dict[str, EventRegistryRecord] = {
             "required fields and add only optional fields within v1."
         ),
     ),
+    "DRIVER_LIFECYCLE": _record(
+        "DRIVER_LIFECYCLE",
+        required=("phase", "run_id"),
+        optional=("note", "step_id"),
+        owner="vectl.driver.loop",
+        compatibility=(
+            "Version 1 additive lifecycle telemetry contract; phases must remain "
+            "stable while optional fields can expand within v1."
+        ),
+    ),
     "ESCALATION_DEFERRED": _record(
         "ESCALATION_DEFERRED",
         required=("attempt", "deferred_branches", "reason", "step_id", "verdict"),
@@ -142,6 +156,16 @@ _TABLE: dict[str, EventRegistryRecord] = {
         owner="vectl.driver.loop",
         compatibility="Version 1 baseline; additive optional fields only within v1.",
     ),
+    "HEARTBEAT_PROGRESS": _record(
+        "HEARTBEAT_PROGRESS",
+        required=("completed_count", "loop_iteration", "running_count", "waiting_count"),
+        optional=("active_step_ids", "note"),
+        owner="vectl.driver.loop",
+        compatibility=(
+            "Version 1 additive heartbeat/progress telemetry; preserve counter "
+            "semantics and add only optional fields within v1."
+        ),
+    ),
     "JUDGE_FAILURE_POLICY": _record(
         "JUDGE_FAILURE_POLICY",
         owner="vectl.driver.loop",
@@ -179,6 +203,16 @@ _TABLE: dict[str, EventRegistryRecord] = {
         owner="vectl.driver.loop",
         compatibility="Version 1 baseline; additive optional fields only within v1.",
     ),
+    "PLANNER_DISPATCH_PROGRESS": _record(
+        "PLANNER_DISPATCH_PROGRESS",
+        required=("judgment_type", "phase", "runner", "step_id", "trigger"),
+        optional=("message", "progress_index", "progress_total", "session_id"),
+        owner="vectl.driver.loop",
+        compatibility=(
+            "Version 1 additive planner-dispatch progress telemetry; preserve "
+            "phase/trigger identity and add optional fields only within v1."
+        ),
+    ),
     "PLANNER_DISPATCH_STARTED": _record(
         "PLANNER_DISPATCH_STARTED",
         required=("judgment_type", "runner", "step_id", "trigger"),
@@ -214,6 +248,24 @@ _TABLE: dict[str, EventRegistryRecord] = {
         required=("type",),
         owner="vectl.driver.loop",
         compatibility="Version 1 baseline; additive optional fields only within v1.",
+    ),
+    "RECOVERY_VISIBILITY": _record(
+        "RECOVERY_VISIBILITY",
+        required=(
+            "attempt_key",
+            "event_kind",
+            "recorded_at",
+            "runner_name",
+            "session_id",
+            "step_id",
+            "summary",
+        ),
+        optional=("recovery_cursor",),
+        owner="vectl.driver.loop",
+        compatibility=(
+            "Version 1 additive post-bootstrap recovery telemetry that preserves "
+            "continuity minimum journal boundaries while allowing optional growth."
+        ),
     ),
     "RUNNER_FALLBACK": _record(
         "RUNNER_FALLBACK",

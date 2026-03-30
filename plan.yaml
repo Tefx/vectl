@@ -43692,7 +43692,7 @@ phases:
       - driver-enhancement-observability.impl'
 - id: driver-enhancement-streaming-progress
   name: 'Driver Enhancement: Streaming & Progress'
-  status: in_progress
+  status: done
   gate: Streaming/progress work remains blocked until the slimmed live codex/opencode
     judge and dispatch smoke implementation gate is complete.
   depends_on:
@@ -43861,7 +43861,7 @@ phases:
       - Product implementation files modified: no'
   - id: driver-enhancement-streaming-progress.gate
     name: Gate streaming and progress enhancement
-    status: claimed
+    status: done
     description: 'step_type: gate
 
       Gate the streaming-aware progress enhancement phase.'
@@ -43878,6 +43878,33 @@ phases:
     agent: gate-reviewer
     claimed_by: gate-reviewer
     claimed_at: '2026-03-30T17:23:37.873135+00:00'
+    done_at: '2026-03-30T17:33:20.660686+00:00'
+    evidence: 'Artifact:
+
+      - Gate review session: ses_2c039c153ffeO00gRCvu0lxaUf
+
+      Verification:
+
+      - mypy src/vectl/driver/runners.py src/vectl/driver/types.py -> pass
+
+      - ruff check on streaming implementation files -> pass
+
+      - pytest tests/test_driver_streaming_progress_expected_red.py tests/test_driver_runners.py
+      -> 72 passed
+
+      Gate checks:
+
+      - incremental JSONL consumption verified (no communicate path)
+
+      - heartbeat/progress/last-progress liveness updates verified during execution
+
+      - malformed chunk + progress-starvation handling verified
+
+      - no blocking issues identified
+
+      Verdict:
+
+      - PASS'
   - id: driver-enhancement-streaming-progress.design-and-test
     name: Design streaming boundary and write expected-red tests
     status: done

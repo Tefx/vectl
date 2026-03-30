@@ -52708,7 +52708,7 @@ phases:
     agent: integration-verifier
   - id: driver-continuity-hygiene-review.liveness-probe
     name: Run black-box startup and repair-continuity liveness probe
-    status: pending
+    status: claimed
     description: 'As an INDEPENDENT TESTER (blind-tester), run the real entrypoints
       for continuity hygiene.
 
@@ -52759,6 +52759,8 @@ phases:
 
       **Verification**: real-path proof for startup hygiene and repair continuity'
     agent: blind-tester
+    claimed_by: blind-tester
+    claimed_at: '2026-03-30T13:01:52.111960+00:00'
   - id: driver-continuity-hygiene-review.spec-conformance
     name: Audit continuity hygiene spec conformance
     status: pending

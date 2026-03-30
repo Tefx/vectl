@@ -43802,7 +43802,7 @@ phases:
     agent: gate-reviewer
   - id: driver-enhancement-streaming-progress.design-and-test
     name: Design streaming boundary and write expected-red tests
-    status: claimed
+    status: done
     description: 'step_type: test
 
       merged_contract_test: true
@@ -43855,6 +43855,37 @@ phases:
     agent: python-senior
     claimed_by: python-senior
     claimed_at: '2026-03-30T16:51:36.572804+00:00'
+    done_at: '2026-03-30T17:01:46.554605+00:00'
+    evidence: 'EXPECTED_RED_ACCEPTED
+
+      Artifact:
+
+      - Commits: 0596462, db4c043
+
+      - Files: src/vectl/driver/runners.py, src/vectl/driver/types.py, tests/test_driver_streaming_progress_expected_red.py
+
+      Verification:
+
+      - uv run pytest -q tests/test_driver_streaming_progress_expected_red.py -> expected
+      RED (4 failed)
+
+      - Failures align to targeted gaps: communicate-only transport still present;
+      stream/progress/liveness stubs not implemented
+
+      Spec link:
+
+      - driver-enhancement-streaming-progress.design-and-test step contract
+
+      Test semantics:
+
+      - step_intent=test_define_red, expected_result=red, observed_result=red, failure_alignment=true
+
+      - Product implementation files modified: yes, minimal signatures/docstrings/stubs
+      only; no runtime behavior implementation
+
+      Downstream owner:
+
+      - driver-enhancement-streaming-progress.impl'
 - id: driver-enhancement-runner-recovery
   name: 'Driver Enhancement: Advanced Runner Recovery'
   status: in_progress

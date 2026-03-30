@@ -52050,7 +52050,7 @@ phases:
   steps:
   - id: driver-continuity-hygiene-core.impl-hygiene-storage
     name: Implement continuity hygiene scan, classification, and quarantine storage
-    status: claimed
+    status: done
     description: "step_type: implementation\nupstream_artifacts:\n  - path: src/vectl/driver/continuity_hygiene.py\n\
       \    from_step: driver-continuity-hygiene-foundation.contract\n    tier: contract\n\
       \  - path: tests/\n    from_step: driver-continuity-hygiene-foundation.test-define-red\n\
@@ -52100,6 +52100,30 @@ phases:
     agent: python-senior
     claimed_by: python-senior
     claimed_at: '2026-03-30T11:42:10.114696+00:00'
+    done_at: '2026-03-30T11:51:23.691410+00:00'
+    evidence: "## Helper/Storage Implementation Evidence\n\n- Files changed:\n  -\
+      \ `src/vectl/driver/continuity_hygiene.py`\n    - Implemented continuity hygiene\
+      \ runtime: scanning ledger/journal, classification with explicit precedence\
+      \ (`corrupt_blocking > ambiguous_blocking > blocking_divergence > safe_stale_quarantine`),\
+      \ quarantine copy with manifest JSONL append, manifest read with last-writer-wins.\n\
+      \    - Helper APIs: `classify_artifact`, `quarantine_artifact`, `get_quarantine_manifest`,\
+      \ `is_ambiguous_migration`.\n  - `src/vectl/driver/loop.py`\n    - Wired startup\
+      \ hygiene stage before startup boundary evaluation; excludes safe-stale from\
+      \ boundary ledger eval; appends explicit block reasons.\n  - `tests/test_driver_continuity_hygiene_storage.py`\
+      \ (new)\n    - Focused tests: missing-directory fallback, corrupt blocking auditable\
+      \ scan, claims divergence precedence, quarantine copy+manifest+byte-preservation,\
+      \ manifest last-writer-wins.\n  - `tests/test_driver_continuity_hygiene_expected_red.py`\n\
+      \    - Replaced local stub raisers with delegating wrappers to production implementation.\n\
+      \n- Main-path tests:\n  - `uv run pytest -q tests/test_driver_continuity_hygiene_storage.py\
+      \ tests/test_driver_continuity_hygiene_expected_red.py tests/test_driver_recovery_black_box.py`\
+      \ → 38 passed in 0.68s\n\n- Quarantine manifest example:\n  - `{\"source_path\"\
+      : \".../.vectl/continuity/ledger/demo.json\", \"destination_path\": \".../.vectl/continuity/quarantine/ledger/demo.json\"\
+      , \"classification\": \"safe_stale_quarantine\", \"reason\": \"safe_stale_quarantine:\
+      \ absent_from_plan_and_repaired_claims\", \"audit_timestamp\": \"2026-03-30T11:50:36.470604+00:00\"\
+      }`\n\n- Confirmation: deletion/remap absent — `shutil.copy2` (no delete), no\
+      \ auto-remap, ambiguous = blocking.\n\n- Deviation record: test_error in expected_red\
+      \ tests — replaced hard-raise stubs with delegating wrappers (impact: assertions\
+      \ preserved, invocation path changed)."
   - id: driver-continuity-hygiene-core.impl-startup-stage
     name: Wire startup hygiene stage before active recovery
     status: pending

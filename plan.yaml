@@ -52989,7 +52989,7 @@ phases:
       **All gate criteria satisfied. Remediation passes quality gate.**'
 - id: driver-continuity-hygiene-doc-sync
   name: 'Driver Continuity Hygiene: Documentation Sync'
-  status: pending
+  status: in_progress
   gate: Operator documentation reflects quarantine behavior, blocking conditions,
     and repair-continuity recovery UX.
   depends_on:
@@ -52997,7 +52997,7 @@ phases:
   steps:
   - id: driver-continuity-hygiene-doc-sync.update-docs
     name: Update continuity hygiene operator and driver docs
-    status: pending
+    status: claimed
     description: 'Update documentation to match implemented continuity hygiene behavior.
 
 
@@ -53022,6 +53022,8 @@ phases:
 
       - Blocking conditions remain explicitly documented'
     agent: doc-reviewer
+    claimed_by: doc-reviewer
+    claimed_at: '2026-03-30T13:15:31.863555+00:00'
   - id: driver-continuity-hygiene-doc-sync.gate
     name: Gate continuity hygiene docs sync
     status: pending

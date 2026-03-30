@@ -54009,3 +54009,54 @@ phases:
     depends_on:
     - shouldfix.verify-all-fixes
     agent: gate-reviewer
+  - id: shouldfix.fix-regression-batch
+    name: Fix regression failures surfaced by shouldfix verification
+    status: pending
+    description: 'Batch remediation for regression failures surfaced by `shouldfix.verify-all-fixes`.
+
+
+      Collect ALL blocker and should_fix failures from the required regression run
+      `uv run pytest tests/ -k ''not live''` and any targeted verification reruns
+      needed to localize them. Fix the failures in one batch rather than one-by-one
+      loops. For each failure family, document provenance (`pre-existing`, `introduced_now`,
+      or `out-of-step-origin`) and disposition (`blocking-now`, `blocking-later`,
+      or `non-blocking`), and do not use provenance as a disposition.
+
+
+      Root-cause expectations:
+
+      - explain the shared root cause for each failure family, not only the first
+      visible symptom
+
+      - search for sibling occurrences before closing a failure family
+
+      - record why any remaining issue is deferred only if it does not intersect the
+      remaining gate
+
+
+      Scope boundaries:
+
+      - do not rewrite completed step evidence
+
+      - do not treat regression debt as out-of-scope if it still blocks the required
+      regression command
+
+
+      Deliverables:
+
+      - batched fixes for the blocker/should_fix regression families surfaced by verification
+
+      - remediation notes mapping each fixed failure family to provenance and disposition
+
+      - targeted rerun evidence showing each fixed failure family now passes'
+    verification: '- Run targeted pytest reruns that directly cover each fixed failure
+      family until the previously failing cases pass.
+
+      - Provide evidence that each blocker/should_fix family addressed by the batch
+      is resolved.
+
+      - Document provenance/disposition for every failure family considered, including
+      any justified non-blocking deferral.'
+    depends_on:
+    - shouldfix.verify-all-fixes
+    agent: python-senior

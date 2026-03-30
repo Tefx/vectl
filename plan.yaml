@@ -53290,7 +53290,7 @@ phases:
       **All contracts are explicit and non-vacuous.**'
   - id: driver-continuity-hygiene-deep-review.black-box-verification
     name: Black-box verify continuity hygiene from published surfaces
-    status: claimed
+    status: done
     description: 'Using only the spec, CLI surface, and driver entrypoints (not implementation
       process), verify continuity hygiene behavior.
 
@@ -53313,6 +53313,26 @@ phases:
     agent: blind-tester
     claimed_by: blind-tester
     claimed_at: '2026-03-30T13:43:28.705526+00:00'
+    done_at: '2026-03-30T13:48:51.709263+00:00'
+    evidence: '## Black-Box Verification
+
+
+      ### Verdict: PASS — All 7 tests PASS
+
+
+      1. CLI reachable: `vectl repair continuity --help` works, all options documented
+
+      2. Safe stale: quarantine copies preserved, manifest entries complete, original
+      bytes intact
+
+      3. Blocking: 3 blocking families (divergence, corrupt, ambiguous) correctly
+      identified and NOT quarantined
+
+      4. Audit output: JSON and human-readable outputs both valid with all required
+      fields
+
+
+      **All spec-derived fixtures tested end-to-end via published CLI surfaces only.**'
   - id: driver-continuity-hygiene-deep-review.gate
     name: Final gate continuity hygiene deep review
     status: pending

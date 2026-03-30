@@ -53537,3 +53537,69 @@ phases:
     - src/vectl/driver/events/registry.py
     - src/vectl/driver/continuity_hygiene.py
     agent: python-executor
+  - id: shouldfix.verify-all-fixes
+    name: Verify all 5 should-fix findings are resolved
+    status: pending
+    description: 'As an INDEPENDENT TESTER, verify that all 5 should-fix findings
+      from the gate review are resolved.
+
+
+      Independence Level: L1
+
+
+      ## Verification Checklist
+
+
+      ### S4: Conflict files deleted + gitignore updated
+
+      - find . -name ''*_Conflict.*'' -not -path ''./.git/*'' -not -path ''./.venv/*''
+      must return 0 results
+
+      - grep ''_Conflict'' .gitignore must show the pattern
+
+      - pytest --collect-only must not show false collection failures from conflict
+      files
+
+
+      ### S1: Ruff lint clean
+
+      - uv run ruff check src/vectl/driver/events/emitter.py src/vectl/driver/events/registry.py
+      src/vectl/driver/continuity_hygiene.py src/vectl/driver/loop.py src/vectl/cli.py
+      must return 0 errors
+
+
+      ### S2: importlib hack removed
+
+      - grep -rn ''importlib.util.spec_from_file_location'' src/vectl/cli.py must
+      return 0 matches
+
+      - The continuity_hygiene imports must work via normal import (from vectl.driver.continuity_hygiene
+      import ...)
+
+
+      ### S3: Proper typing on assessment parameter
+
+      - grep -n ''assessment: object'' src/vectl/driver/loop.py must return 0 matches
+
+      - grep -n ''getattr(assessment'' src/vectl/driver/loop.py must return 0 matches
+
+      - The function must use ContinuityArtifactAssessment type
+
+
+      ### S5: action_word used or removed
+
+      - uv run ruff check --select F841 src/vectl/cli.py must return 0 errors
+
+
+      ### Regression: Full test suite
+
+      - uv run pytest tests/ (excluding live_smoke) must pass with no new failures'
+    verification: '- All 5 finding-specific checks pass (see description)
+
+      - uv run pytest tests/ -k ''not live'' passes with no regressions
+
+      - uv run ruff check src/vectl/ returns no new errors in the touched files'
+    depends_on:
+    - shouldfix.cleanup-conflict-files
+    - shouldfix.lint-and-typing-fix
+    agent: integration-verifier

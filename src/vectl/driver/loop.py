@@ -64,10 +64,11 @@ from .config import (
     load_config,
 )
 from .continuity_hygiene import (
+    ContinuityArtifactAssessment,
+    StartupHygieneStageInput,
     apply_quarantine,
     run_startup_hygiene_stage,
     scan_continuity_artifacts,
-    StartupHygieneStageInput,
 )
 from .dispatch import render_prompt
 from .errors import ConfigError, JudgmentParseError, JudgmentTimeoutError, RunnerError
@@ -1840,7 +1841,7 @@ def _startup_judge_inputs_from_ledger_entries(
 
 def _hygiene_assessment_requires_startup_halt(
     *,
-    assessment: object,
+    assessment: ContinuityArtifactAssessment,
     plan_step_ids: set[str],
     claim_step_ids: set[str],
 ) -> bool:
@@ -1854,16 +1855,13 @@ def _hygiene_assessment_requires_startup_halt(
       state
     """
 
-    classification = getattr(assessment, "classification", None)
-    blocks = bool(getattr(assessment, "blocks_startup_recovery", False))
-    if not blocks:
+    if not assessment.blocks_startup_recovery:
         return False
 
-    if classification != "blocking_divergence":
+    if assessment.classification != "blocking_divergence":
         return True
 
-    artifact = getattr(assessment, "artifact", None)
-    parsed_step_id = getattr(artifact, "parsed_step_id", None)
+    parsed_step_id = assessment.artifact.parsed_step_id
     if not isinstance(parsed_step_id, str) or not parsed_step_id:
         return True
 

@@ -18,16 +18,15 @@ from .registry import (
     DECIDE_EVENT_RECORD,
     FINAL_EVENT_RECORD,
     STEP_COMPLETED_EVENT_RECORD,
-    get_event_record,
 )
 from .types import (
     DECIDE,
     FINAL,
-    STEP_COMPLETED,
     STARTUP_HYGIENE_BLOCKED,
     STARTUP_HYGIENE_CLASSIFY,
     STARTUP_HYGIENE_QUARANTINE,
     STARTUP_HYGIENE_SCAN,
+    STEP_COMPLETED,
     DecideEventName,
     FinalEventName,
     StepCompletedEventName,

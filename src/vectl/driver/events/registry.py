@@ -7,19 +7,16 @@ Authoritative source:
 
 from __future__ import annotations
 
+from collections.abc import Mapping
 from dataclasses import dataclass
 from types import MappingProxyType
-from typing import Final, Mapping
+from typing import Final
 
 from .types import (
     ALL_EVENT_TYPES,
     DECIDE,
     FINAL,
     STEP_COMPLETED,
-    STARTUP_HYGIENE_BLOCKED,
-    STARTUP_HYGIENE_CLASSIFY,
-    STARTUP_HYGIENE_QUARANTINE,
-    STARTUP_HYGIENE_SCAN,
 )
 
 

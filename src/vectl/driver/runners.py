@@ -22,6 +22,7 @@ from __future__ import annotations
 import asyncio
 import contextlib
 import time
+from collections.abc import AsyncIterator
 from typing import TYPE_CHECKING, Protocol
 
 from .errors import RunnerError, RunnerNotFoundError
@@ -31,7 +32,7 @@ from .parsers import (
     GeminiOutputParser,
     OpenCodeOutputParser,
 )
-from .types import RunnerResult, RunnerStatus
+from .types import RunnerResult, RunnerStatus, StreamProgressSignal
 
 if TYPE_CHECKING:
     from .config import RunnerConfig
@@ -75,6 +76,28 @@ class RunnerHandle(Protocol):
 
         Raises:
             RunnerError: On timeout or unexpected failure.
+        """
+        ...
+
+    def stream_jsonl(self) -> AsyncIterator[str]:
+        """Yield incremental JSONL lines from live runner stdout.
+
+        Source:
+        - step ``driver-enhancement-streaming-progress.design-and-test``
+          requires incremental JSONL consumption semantics.
+
+        Boundary note:
+        - This is live stream transport only.
+        - Final completion summary remains ``wait() -> RunnerResult``.
+        """
+        ...
+
+    def last_progress_signal(self) -> StreamProgressSignal | None:
+        """Return the most recent heartbeat/progress signal.
+
+        Source:
+        - step ``driver-enhancement-streaming-progress.design-and-test``
+          requires explicit last-progress boundary.
         """
         ...
 
@@ -232,6 +255,7 @@ class _SubprocessRunnerHandle:
     __slots__ = (
         "session_id",
         "pid",
+        "_last_progress",
         "_process",
         "_parser",
         "_runner_name",
@@ -249,10 +273,33 @@ class _SubprocessRunnerHandle:
     ) -> None:
         self.session_id = session_id
         self.pid: int | None = process.pid
+        self._last_progress: StreamProgressSignal | None = None
         self._process = process
         self._parser = parser
         self._runner_name = runner_name
         self._dispatch_started_at = dispatch_started_at
+
+    def stream_jsonl(self) -> AsyncIterator[str]:
+        """Yield incremental JSONL lines from live subprocess output.
+
+        Implementation owner:
+        - ``driver-enhancement-streaming-progress.impl``
+        """
+
+        raise NotImplementedError(
+            "Incremental streaming is owned by driver-enhancement-streaming-progress.impl"
+        )
+
+    def last_progress_signal(self) -> StreamProgressSignal | None:
+        """Return most recent observed heartbeat/progress signal.
+
+        Implementation owner:
+        - ``driver-enhancement-streaming-progress.impl``
+        """
+
+        raise NotImplementedError(
+            "Last-progress signaling is owned by driver-enhancement-streaming-progress.impl"
+        )
 
     async def wait(self, timeout: float | None = None) -> RunnerResult:
         """Wait for process completion and parse runner output.

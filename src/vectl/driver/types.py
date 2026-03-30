@@ -41,6 +41,51 @@ class RunnerStatus(str, Enum):
     TRANSPORT_ERROR = "transport_error"
 
 
+class StreamSignalKind(str, Enum):
+    """Incremental runner-stream signal kind.
+
+    Source:
+    - step ``driver-enhancement-streaming-progress.design-and-test`` scope
+      requires heartbeat/progress boundary design for post-bootstrap runner I/O.
+    """
+
+    HEARTBEAT = "heartbeat"
+    PROGRESS = "progress"
+
+
+@dataclass(frozen=True)
+class StreamProgressSignal:
+    """One incremental heartbeat/progress signal observed from a live runner.
+
+    Source:
+    - step ``driver-enhancement-streaming-progress.design-and-test`` requires
+      incremental JSONL consumption semantics and last-progress signal boundary.
+
+    Boundary note:
+    - This type captures live stream facts only.
+    - Final runner summary remains ``RunnerResult`` owned by process completion.
+    """
+
+    kind: StreamSignalKind
+    emitted_at_monotonic: float
+    sequence: int
+    message: str | None = None
+
+
+@dataclass(frozen=True)
+class StreamLivenessState:
+    """Live liveness boundary for an in-flight step execution.
+
+    Source:
+    - step ``driver-enhancement-streaming-progress.design-and-test`` requires
+      explicit live-state boundaries separate from final summary logic.
+    """
+
+    phase: Literal["running", "stalled", "completed"]
+    last_heartbeat_at_monotonic: float | None
+    last_progress: StreamProgressSignal | None
+
+
 @dataclass(frozen=True)
 class RunnerResult:
     """Parsed output from a completed runner process.
@@ -73,6 +118,7 @@ class RunningEntry:
     handle: RunnerHandle  # Protocol reference (see runners.py)
     worktree_path: str
     dispatched_at: float  # time.monotonic()
+    live_state: StreamLivenessState | None = None
 
 
 @dataclass
@@ -158,6 +204,9 @@ class DriverState:
     continuity_capability_snapshots: dict[str, str] = field(default_factory=dict)
     # Lifecycle-scoped step_id -> capability snapshot id cache.
 
+    streaming_live_state: dict[str, StreamLivenessState] = field(default_factory=dict)
+    # step_id -> live liveness snapshot from incremental runner stream.
+
     def as_running_tasks(self) -> list[RunningTask]:
         """Convert to vectl.models.RunningTask list for decide() input.
 
@@ -175,6 +224,21 @@ class DriverState:
             )
             for entry in self.running.values()
         ]
+
+    def record_stream_signal(self, *, step_id: str, signal: StreamProgressSignal) -> None:
+        """Record one live stream signal for a running step.
+
+        Source:
+        - step ``driver-enhancement-streaming-progress.design-and-test``
+          (design+expected-red) requires this runtime boundary to exist.
+
+        Implementation owner:
+        - ``driver-enhancement-streaming-progress.impl``
+        """
+
+        raise NotImplementedError(
+            "Streaming progress wiring is owned by driver-enhancement-streaming-progress.impl"
+        )
 
     def drain_completed(self) -> list[CompletedResult] | None:
         """Drain legacy completed_queue into vectl.models.CompletedResult list.

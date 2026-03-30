@@ -53403,3 +53403,77 @@ phases:
     typing improvement, unused variable.'
   depends_on:
   - driver-continuity-hygiene-deep-review
+  steps:
+  - id: shouldfix.cleanup-conflict-files
+    name: 'S4: Delete conflict backup files and update gitignore'
+    status: pending
+    description: 'Delete ALL 16 *_Conflict.* backup files polluting the repo and add
+      the pattern to .gitignore.
+
+
+      ## Finding: S4 (Highest Priority)
+
+      16 conflict backup files (*_Conflict.*) break pytest collection (7 false failures).
+
+
+      ## Files to Delete (ALL of these):
+
+      - docs/DRIVER-CONTINUITY-FOUNDATION_Tefxs-MacBook-Air.local_Mar-30-225505-2026_Conflict.md
+
+      - driver_Tefxs-MacBook-Air.local_Mar-30-225211-2026_Conflict.yaml
+
+      - src/vectl/decide_Tefxs-MacBook-Air.local_Mar-30-225235-2026_Conflict.py
+
+      - src/vectl/decision_state_Tefxs-MacBook-Air.local_Mar-30-225235-2026_Conflict.py
+
+      - src/vectl/driver/config_Tefxs-MacBook-Air.local_Mar-30-225244-2026_Conflict.py
+
+      - src/vectl/driver/events/emitter_Tefxs-MacBook-Air.local_Mar-30-225051-2026_Conflict.py
+
+      - src/vectl/driver/events/registry_Tefxs-MacBook-Air.local_Mar-30-225051-2026_Conflict.py
+
+      - src/vectl/driver/events/types_Tefxs-MacBook-Air.local_Mar-30-225051-2026_Conflict.py
+
+      - src/vectl/driver/observe_Tefxs-MacBook-Air.local_Mar-30-225244-2026_Conflict.py
+
+      - src/vectl/models_Tefxs-MacBook-Air.local_Mar-30-225236-2026_Conflict.py
+
+      - tests/live_smoke/helpers_Tefxs-MacBook-Air.local_Mar-30-225231-2026_Conflict.py
+
+      - tests/live_smoke/test_codex_judge_live_Tefxs-MacBook-Air.local_Mar-30-225226-2026_Conflict.py
+
+      - tests/test_decide_state_isolation_Tefxs-MacBook-Air.local_Mar-30-225211-2026_Conflict.py
+
+      - tests/test_driver_impl_Tefxs-MacBook-Air.local_Mar-30-225211-2026_Conflict.py
+
+      - tests/test_driver_judge_impl_runtime_Tefxs-MacBook-Air.local_Mar-30-225219-2026_Conflict.py
+
+      - tests/test_driver_judgment_expansion_flow_Tefxs-MacBook-Air.local_Mar-30-225219-2026_Conflict.py
+
+      - tests/test_driver_loop_runtime_Tefxs-MacBook-Air.local_Mar-30-225219-2026_Conflict.py
+
+      - tests/test_driver_observe_Tefxs-MacBook-Air.local_Mar-30-225226-2026_Conflict.py
+
+      - tests/test_driver_types_Tefxs-MacBook-Air.local_Mar-30-225226-2026_Conflict.py
+
+
+      ## Gitignore Update
+
+      Add this line to .gitignore: *_Conflict.*
+
+
+      ## Grep Hint (verify none remain after)
+
+      find . -name ''*_Conflict.*'' -not -path ''./.git/*'' -not -path ''./.venv/*'''
+    verification: '- find . -name ''*_Conflict.*'' -not -path ''./.git/*'' -not -path
+      ''./.venv/*'' returns 0 results
+
+      - grep ''_Conflict'' .gitignore shows the pattern is present
+
+      - pytest --collect-only completes without the 7 false collection failures'
+    refs:
+    - docs/
+    - src/vectl/
+    - tests/
+    - .gitignore
+    agent: python-executor

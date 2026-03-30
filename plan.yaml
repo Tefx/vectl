@@ -52997,7 +52997,7 @@ phases:
   steps:
   - id: driver-continuity-hygiene-doc-sync.update-docs
     name: Update continuity hygiene operator and driver docs
-    status: claimed
+    status: done
     description: 'Update documentation to match implemented continuity hygiene behavior.
 
 
@@ -53024,6 +53024,29 @@ phases:
     agent: doc-reviewer
     claimed_by: doc-reviewer
     claimed_at: '2026-03-30T13:15:31.863555+00:00'
+    done_at: '2026-03-30T13:19:56.765374+00:00'
+    evidence: '## Doc Sync Evidence
+
+
+      **Files changed**: README.md (+113 lines), docs/DRIVER-CONTINUITY-FOUNDATION.md
+      (+79 lines)
+
+
+      **Key changes**:
+
+      1. README.md: Added "Continuity Artifact Recovery" section with startup hygiene
+      stage, classification table, recovery commands, quarantine behavior, guardrails
+
+      2. README.md: Added "Startup Continuity Hygiene" subsection under Programmatic
+      Driver
+
+      3. DRIVER-CONTINUITY-FOUNDATION.md: Added §7a "Startup Hygiene and Quarantine"
+      with classification table, guardrails, quarantine structure, manifest format
+
+      4. Removed any text implying manual deletion is the intended recovery path
+
+
+      **Verification**: Commit 3ba2f59 created, docs align with implementation'
   - id: driver-continuity-hygiene-doc-sync.gate
     name: Gate continuity hygiene docs sync
     status: pending

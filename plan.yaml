@@ -53477,3 +53477,63 @@ phases:
     - tests/
     - .gitignore
     agent: python-executor
+  - id: shouldfix.lint-and-typing-fix
+    name: 'S1+S2+S3+S5: Fix ruff lint, importlib hack, typing, unused var'
+    status: pending
+    description: "Fix 4 related code quality findings in the driver continuity hygiene\
+      \ feature.\n\n## S1: Ruff Lint Errors (16 errors, most auto-fixable)\nRun: uv\
+      \ run ruff check --fix src/vectl/driver/events/emitter.py src/vectl/driver/events/registry.py\
+      \ src/vectl/driver/continuity_hygiene.py src/vectl/driver/loop.py src/vectl/cli.py\n\
+      \nThis handles: F401 (unused imports), I001 (import sorting), B007 (unused loop\
+      \ var).\nFor E501 (line length) in cli.py: manually wrap the 3 long lines (762,\
+      \ 799, 1298) — these are in guide text strings.\n\nAffected files:\n- src/vectl/driver/events/emitter.py\
+      \ — F401 (get_event_record unused), I001\n- src/vectl/driver/events/registry.py\
+      \ — F401 (4 unused STARTUP_HYGIENE_* imports), I001\n- src/vectl/driver/continuity_hygiene.py\
+      \ — I001\n- src/vectl/driver/loop.py — I001\n- src/vectl/cli.py — E501 (3 lines),\
+      \ B007 (line 2654: rename key to _key), F841 (line 2773: see S5)\n\n## S2: Replace\
+      \ importlib hack with direct import\nFile: src/vectl/cli.py, starting at line\
+      \ 2626.\n\nReplace the importlib.util.spec_from_file_location hack (lines 2626-2643)\
+      \ with:\n  from vectl.driver.continuity_hygiene import (\n      StartupHygieneStageInput,\n\
+      \      apply_quarantine,\n      load_quarantine_manifest,\n      run_startup_hygiene_stage,\n\
+      \      scan_continuity_artifacts,\n  )\n\nThe comment says \"avoid vectl.driver.__init__\
+      \ importing broken loop module\" — this is no longer needed since the driver\
+      \ module is healthy. If the direct import causes a circular import error at\
+      \ runtime, move the import inside the function body as a local import instead.\n\
+      \n## S3: Type the assessment parameter properly\nFile: src/vectl/driver/loop.py,\
+      \ line 1843.\n\nChange: assessment: object\nTo:     assessment: ContinuityArtifactAssessment\n\
+      \nImport ContinuityArtifactAssessment from vectl.driver.continuity_hygiene (it\
+      \ is already imported in this file via the continuity_hygiene import block at\
+      \ line 66-71). If it is not in the existing import, add it.\n\nThen remove the\
+      \ getattr chains in the function body (lines 1857-1866) and replace with direct\
+      \ attribute access:\n- getattr(assessment, \"classification\", None) -> assessment.classification\n\
+      - bool(getattr(assessment, \"blocks_startup_recovery\", False)) -> bool(assessment.blocks_startup_recovery)\n\
+      - getattr(assessment, \"artifact\", None) -> assessment.artifact\n- getattr(artifact,\
+      \ \"parsed_step_id\", None) -> assessment.artifact.parsed_step_id\n\nKeep the\
+      \ isinstance check for parsed_step_id (line 1867) since the field could be None.\n\
+      \n## S5: Fix unused action_word variable\nFile: src/vectl/cli.py, line 2773.\n\
+      \nEither use action_word in the f-string on line 2774:\n  out.print(f\"  [green]✓[/]\
+      \ {action_word}: {a.artifact.artifact_kind} {step} → {dest}\")\nOr remove the\
+      \ assignment entirely. Using it is preferred since it distinguishes dry-run\
+      \ output.\n\n## Completion Criteria (stub exclusion)\nThis is an IMPLEMENTATION\
+      \ step. All 4 findings must have substantive fixes."
+    verification: '- uv run ruff check src/vectl/driver/events/emitter.py src/vectl/driver/events/registry.py
+      src/vectl/driver/continuity_hygiene.py src/vectl/driver/loop.py src/vectl/cli.py
+      returns 0 errors
+
+      - grep -n ''importlib.util.spec_from_file_location'' src/vectl/cli.py returns
+      0 matches (S2 fixed)
+
+      - grep -n ''assessment: object'' src/vectl/driver/loop.py returns 0 matches
+      (S3 fixed)
+
+      - grep -n ''getattr(assessment'' src/vectl/driver/loop.py returns 0 matches
+      (S3 fixed)
+
+      - ruff check --select F841 src/vectl/cli.py returns 0 errors (S5 fixed)'
+    refs:
+    - src/vectl/cli.py
+    - src/vectl/driver/loop.py
+    - src/vectl/driver/events/emitter.py
+    - src/vectl/driver/events/registry.py
+    - src/vectl/driver/continuity_hygiene.py
+    agent: python-executor

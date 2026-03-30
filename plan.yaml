@@ -52915,7 +52915,7 @@ phases:
       crash_restart_journal_present'
   - id: driver-continuity-hygiene-review.gate
     name: Gate continuity hygiene verification
-    status: pending
+    status: claimed
     description: 'As an INDEPENDENT REVIEWER (gate-reviewer), assess whether the continuity
       hygiene remediation meets the quality bar for documentation sync.
 
@@ -52962,6 +52962,8 @@ phases:
     - driver-continuity-hygiene-review.liveness-probe
     - driver-continuity-hygiene-review.spec-conformance
     agent: gate-reviewer
+    claimed_by: gate-reviewer
+    claimed_at: '2026-03-30T13:11:27.315667+00:00'
 - id: driver-continuity-hygiene-doc-sync
   name: 'Driver Continuity Hygiene: Documentation Sync'
   status: locked

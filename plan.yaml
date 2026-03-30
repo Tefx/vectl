@@ -52328,7 +52328,7 @@ phases:
     claimed_at: '2026-03-30T12:06:57.978784+00:00'
   - id: driver-continuity-hygiene-surface.impl-events-manifests
     name: Add continuity hygiene events, telemetry, and manifest surfacing
-    status: pending
+    status: claimed
     description: "step_type: implementation\nupstream_artifacts:\n  - path: src/vectl/driver/continuity_hygiene.py\n\
       \    from_step: driver-continuity-hygiene-foundation.contract\n    tier: contract\n\
       \  - path: tests/test_driver_recovery_black_box.py\n    from_step: driver-continuity-hygiene-foundation.blackbox-define-red\n\
@@ -52352,6 +52352,8 @@ phases:
 
       - Proof: registry/types and emitting sites stay aligned'
     agent: python-executor
+    claimed_by: python-executor
+    claimed_at: '2026-03-30T12:07:04.869310+00:00'
   - id: driver-continuity-hygiene-surface.wiring-audit
     name: Audit continuity hygiene wiring completeness
     status: pending

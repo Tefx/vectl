@@ -52629,7 +52629,7 @@ phases:
   steps:
   - id: driver-continuity-hygiene-review.verify-unit-green
     name: Verify helper, manifest, and CLI seams go green
-    status: claimed
+    status: pending
     description: 'As an INDEPENDENT TESTER (integration-verifier), validate the continuity
       hygiene helper, manifest, and CLI seams from a fresh perspective.
 
@@ -52706,8 +52706,6 @@ phases:
 
       - PASS | ISSUES_FOUND | INCOMPLETE'
     agent: integration-verifier
-    claimed_by: integration-verifier
-    claimed_at: '2026-03-30T12:52:18.357500+00:00'
   - id: driver-continuity-hygiene-review.liveness-probe
     name: Run black-box startup and repair-continuity liveness probe
     status: claimed

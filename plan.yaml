@@ -52126,7 +52126,7 @@ phases:
       \ preserved, invocation path changed)."
   - id: driver-continuity-hygiene-core.impl-startup-stage
     name: Wire startup hygiene stage before active recovery
-    status: pending
+    status: claimed
     description: "step_type: implementation\nupstream_artifacts:\n  - path: src/vectl/driver/continuity_hygiene.py\n\
       \    from_step: driver-continuity-hygiene-foundation.contract\n    tier: contract\n\
       \  - path: tests/test_driver_recovery_black_box.py\n    from_step: driver-continuity-hygiene-foundation.blackbox-define-red\n\
@@ -52170,6 +52170,8 @@ phases:
     depends_on:
     - driver-continuity-hygiene-core.impl-hygiene-storage
     agent: python-senior
+    claimed_by: python-senior
+    claimed_at: '2026-03-30T11:51:51.483623+00:00'
   - id: driver-continuity-hygiene-core.gate
     name: Gate continuity hygiene core runtime
     status: pending

@@ -43701,7 +43701,7 @@ phases:
   steps:
   - id: driver-enhancement-streaming-progress.impl
     name: Implement incremental JSONL consumption and live progress state
-    status: claimed
+    status: done
     description: "step_type: implementation\n\ntags:\n  - integration\n\nFill in stub\
       \ bodies and replace placeholder streaming hooks with working incremental consumption\
       \ logic on the existing runner/loop surfaces.\n\nUPSTREAM ARTIFACTS (from merged\
@@ -43765,6 +43765,40 @@ phases:
     agent: python-senior
     claimed_by: python-senior
     claimed_at: '2026-03-30T17:03:40.447046+00:00'
+    done_at: '2026-03-30T17:13:53.349058+00:00'
+    evidence: 'Artifact:
+
+      - Commit: a09f5c5
+
+      - Files: src/vectl/driver/runners.py, src/vectl/driver/types.py, tests/test_driver_runners.py
+
+      Verification:
+
+      - uv run ruff check src/vectl/driver/runners.py src/vectl/driver/types.py tests/test_driver_runners.py
+      -> pass
+
+      - uv run mypy src/vectl/driver/runners.py src/vectl/driver/types.py -> pass
+
+      - uv run pytest -q tests/test_driver_runners.py -> 68 passed
+
+      - uv run pytest -q tests/test_driver_runners.py::TestRunnerDispatchIntegration::test_incremental_stream_updates_progress_before_runner_exit
+      tests/test_driver_runners.py::TestRunnerDispatchIntegration::test_progress_starvation_preserves_last_valid_signal
+      tests/test_driver_streaming_progress_expected_red.py -> 6 passed
+
+      Spec link:
+
+      - driver-enhancement-streaming-progress.impl
+
+      Integration Evidence:
+
+      - Path exercised: driver entrypoint -> runner stdout JSONL -> incremental reader
+      -> live liveness state
+
+      - Output showed chunk-by-chunk progress updates and final live phase completed
+
+      Notes:
+
+      - Deviation records: none'
   - id: driver-enhancement-streaming-progress.verify
     name: Verify heartbeat progress and streaming-aware liveness
     status: pending

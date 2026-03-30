@@ -53901,7 +53901,7 @@ phases:
       modified'
   - id: shouldfix.verify-all-fixes
     name: Verify all 5 should-fix findings are resolved
-    status: claimed
+    status: pending
     description: 'As an INDEPENDENT TESTER, verify that all 5 should-fix findings
       from the gate review are resolved.
 
@@ -53965,8 +53965,6 @@ phases:
     - shouldfix.cleanup-conflict-files
     - shouldfix.lint-and-typing-fix
     agent: integration-verifier
-    claimed_by: integration-verifier
-    claimed_at: '2026-03-30T17:35:20.494482+00:00'
   - id: shouldfix.gate
     name: 'Gate: All should-fix findings resolved'
     status: pending

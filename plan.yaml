@@ -43601,7 +43601,7 @@ phases:
     agent: gate-reviewer
   - id: driver-enhancement-observability.design-and-test
     name: Design telemetry boundary and write expected-red tests
-    status: claimed
+    status: done
     description: 'step_type: test
 
       merged_contract_test: true
@@ -43654,6 +43654,40 @@ phases:
     agent: python-senior
     claimed_by: python-senior
     claimed_at: '2026-03-30T16:51:23.199845+00:00'
+    done_at: '2026-03-30T17:01:26.882616+00:00'
+    evidence: 'EXPECTED_RED_ACCEPTED
+
+      Artifact:
+
+      - Commits: d2bf8b2, 8cd8aa6
+
+      - Files: src/vectl/driver/events/types.py, src/vectl/driver/events/registry.py,
+      src/vectl/driver/events/emitter.py, tests/test_driver_observability_expected_red.py
+
+      Verification:
+
+      - uv run pytest -q tests/test_driver_observability_expected_red.py -> expected
+      RED (7 collected, 2 passed, 5 failed)
+
+      - Failures align to declared gaps: lifecycle/planner-dispatch/recovery/heartbeat
+      visibility not yet wired; schema drift guard stub not implemented
+
+      Spec link:
+
+      - docs/DRIVER-ARCHITECTURE.md §2.11
+
+      - docs/DRIVER-CONTINUITY-FOUNDATION.md §7
+
+      Test semantics:
+
+      - step_intent=test_define_red, expected_result=red, observed_result=red, failure_alignment=aligned
+
+      - Product implementation files modified: yes, minimal additive contract/stub
+      surfaces only; no runtime behavior implementation
+
+      Downstream owner:
+
+      - driver-enhancement-observability.impl'
 - id: driver-enhancement-streaming-progress
   name: 'Driver Enhancement: Streaming & Progress'
   status: in_progress

@@ -54007,7 +54007,11 @@ phases:
 
       - Gate decision: OPEN or BLOCKED with specific blockers listed'
     depends_on:
+    - shouldfix.cleanup-conflict-files
+    - shouldfix.lint-and-typing-fix
     - shouldfix.verify-all-fixes
+    - shouldfix.fix-regression-batch
+    - shouldfix.retest-all-fixes
     agent: gate-reviewer
   - id: shouldfix.fix-regression-batch
     name: Fix regression failures surfaced by shouldfix verification

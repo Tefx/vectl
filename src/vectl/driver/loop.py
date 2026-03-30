@@ -121,14 +121,15 @@ from .types import (
     JudgeContinuityPolicyOutput,
     ReplaySafetyEnvelope,
     ReplayTokenSemantics,
-    RunnerStatus,
     RunnerRecoveryBoundaryInput,
     RunnerRecoveryBoundaryOutput,
     RunnerRecoveryDecision,
+    RunnerStatus,
     StartupRecoveryBoundaryInput,
     StartupRecoveryBoundaryOutput,
     StartupRecoveryController,
     StartupRecoveryDecision,
+    StartupRecoveryDisposition,
     StartupRecoveryJudgeInput,
     StartupRecoveryReconciliationFacts,
 )
@@ -656,10 +657,93 @@ def evaluate_runner_recovery_boundary(
       boundary without implementing runtime policy logic in this test-design step.
     """
 
-    _ = boundary_input
-    raise NotImplementedError(
-        "Deferred to driver-enhancement-runner-recovery.impl: "
-        "post-bootstrap watchdog/recovery matrix runtime implementation"
+    signal = boundary_input.signal
+    step_id = signal.step_id
+    attempt_key = signal.attempt_key
+    owner = "startup_recovery_controller"
+
+    heartbeat_age = signal.heartbeat_age_seconds
+    watchdog_timeout = signal.watchdog_timeout_seconds
+    heartbeat_stale = heartbeat_age is not None and heartbeat_age > watchdog_timeout
+
+    if signal.taxonomy == "crash":
+        reason = "crash_requires_controller_review"
+        decision = RunnerRecoveryDecision(
+            step_id=step_id,
+            disposition="halt",
+            reason=reason,
+            source_attempt_key=attempt_key,
+            restart_controller_owner=owner,
+        )
+        return RunnerRecoveryBoundaryOutput(
+            decisions=(decision,),
+            repair_actions=(),
+            blocked_reasons=(f"{step_id}:{reason}",),
+        )
+
+    if signal.taxonomy == "clean_fail":
+        reason = "clean_fail_restart_with_replay_guard"
+        decision = RunnerRecoveryDecision(
+            step_id=step_id,
+            disposition="restart",
+            reason=reason,
+            source_attempt_key=attempt_key,
+            restart_controller_owner=owner,
+        )
+        return RunnerRecoveryBoundaryOutput(
+            decisions=(decision,),
+            repair_actions=(f"restart:{step_id}:{reason}",),
+            blocked_reasons=(),
+        )
+
+    if signal.taxonomy == "no_progress":
+        if heartbeat_stale:
+            reason = "watchdog_heartbeat_gap_no_progress"
+            disposition: StartupRecoveryDisposition = "restart"
+            repair_actions = (f"restart:{step_id}:{reason}",)
+            blocked_reasons: tuple[str, ...] = ()
+        else:
+            reason = "no_progress_with_fresh_heartbeat_requires_manual_review"
+            disposition = "halt"
+            repair_actions = ()
+            blocked_reasons = (f"{step_id}:{reason}",)
+
+        decision = RunnerRecoveryDecision(
+            step_id=step_id,
+            disposition=disposition,
+            reason=reason,
+            source_attempt_key=attempt_key,
+            restart_controller_owner=owner,
+        )
+        return RunnerRecoveryBoundaryOutput(
+            decisions=(decision,),
+            repair_actions=repair_actions,
+            blocked_reasons=blocked_reasons,
+        )
+
+    # taxonomy == "stall"
+    if heartbeat_stale or not signal.process_alive:
+        reason = "stall_timeout_restart_with_watchdog_guard"
+        disposition = "restart"
+        repair_actions = (f"restart:{step_id}:{reason}",)
+        blocked_reasons = ()
+    else:
+        reason = "stall_with_fresh_heartbeat_requires_manual_review"
+        disposition = "halt"
+        repair_actions = ()
+        blocked_reasons = (f"{step_id}:{reason}",)
+
+    decision = RunnerRecoveryDecision(
+        step_id=step_id,
+        disposition=disposition,
+        reason=reason,
+        source_attempt_key=attempt_key,
+        restart_controller_owner=owner,
+    )
+    return RunnerRecoveryBoundaryOutput(
+        decisions=(decision,),
+        repair_actions=repair_actions,
+        blocked_reasons=blocked_reasons,
     )
 
 

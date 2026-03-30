@@ -51770,7 +51770,7 @@ phases:
       as `683ce89` with message `Pin continuity hygiene contracts`.'
   - id: driver-continuity-hygiene-foundation.test-define-red
     name: Define expected-red helper and manifest tests
-    status: claimed
+    status: done
     description: 'step_type: test
 
       step_intent: test_define_red
@@ -51839,6 +51839,39 @@ phases:
     agent: python-executor
     claimed_by: python-executor
     claimed_at: '2026-03-30T11:23:54.238849+00:00'
+    done_at: '2026-03-30T11:36:48.507451+00:00'
+    evidence: "## Expected-Red Test Definition Evidence\n\n- Tests added/updated:\n\
+      \  - `tests/fixtures/helpers/continuity_hygiene.py` (448 lines)\n    - Fixtures:\
+      \ `make_replay_envelope`, `make_journal_entry`, `make_ledger_entry`, `make_ledger_entry_success`,\
+      \ `make_ledger_entry_failure`\n    - Data classes: `ArtifactClassification`,\
+      \ `HygieneArtifact`, `HygieneClassificationResult`, `QuarantineManifestEntry`,\
+      \ `QuarantineResult`, `HygieneRecoveryScenario`\n    - Scenario factories: `make_safe_stale_ledger_scenario`,\
+      \ `make_blocking_orphan_ledger_scenario`, `make_corrupt_ledger_scenario`, `make_journal_only_safe_stale_scenario`,\
+      \ `make_quarantine_manifest_entry`\n    - Gap summary: `HYGIENE_EXPECTED_GAPS`,\
+      \ `get_hygiene_expected_gaps_summary()`\n  - `tests/test_driver_continuity_hygiene_expected_red.py`\
+      \ (690 lines)\n    - 18 tests across 9 test classes\n\n- Exposed gaps (for `driver-continuity-hygiene-core.impl-hygiene-storage`):\n\
+      \  1. `classify_artifact()` - No helper to classify artifact as safe_stale vs\
+      \ blocking\n  2. `quarantine_artifact()` - No quarantine function that preserves\
+      \ originals\n  3. `get_quarantine_manifest()` - No manifest loading from quarantine\
+      \ directory\n  4. `is_ambiguous_migration()` - No handling for ambiguous migration\
+      \ identity\n\n- Expected failures before implementation:\n  - 18/18 tests fail\
+      \ with `AttributeError: <function> is not yet implemented. See driver-continuity-hygiene-core.impl-hygiene-storage`\n\
+      \  - All 4 stub functions (`classify_artifact`, `quarantine_artifact`, `get_quarantine_manifest`,\
+      \ `is_ambiguous_migration`) raise AttributeError\n\n- Fixture spec source:\n\
+      \  - Artifact shapes validated against `.vectl/continuity/ledger/driver-continuity-hygiene-foundation.blackbox-define-red.json`\
+      \ (actual persisted ledger artifact)\n  - `recorded_at` uses ISO8601 string\
+      \ format (not `time.monotonic()` float)\n  - `ContinuityLedgerEntry` fields\
+      \ match exactly: `step_id`, `latest_attempt_key`, `status`, `runner_name`, `last_session_id`,\
+      \ `replay_envelope`, `last_journal_event`, `judge_policy`, `recovery_cursor`\n\
+      \n- Confirmation product code was not modified:\n  - `git diff HEAD~1 --stat\
+      \ src/` returns empty (no product code changes)\n  - Only tests/ directory was\
+      \ modified (2 new files, 1138 lines total)\n  - Commit: `abf8311` - \"Add continuity\
+      \ hygiene helper expected-red tests\"\n\n- Test categories by exposed gap:\n\
+      | Gap                     | Test Count | Status       |\n| -----------------------\
+      \ | ---------- | ------------ |\n| `classify_artifact`       | 9          |\
+      \ All fail red |\n| `quarantine_artifact`     | 6          | All fail red |\n\
+      | `get_quarantine_manifest` | 1          | Fail red     |\n| `is_ambiguous_migration`\
+      \  | 2          | All fail red |"
   - id: driver-continuity-hygiene-foundation.blackbox-define-red
     name: Define expected-red black-box startup and repair tests
     status: done

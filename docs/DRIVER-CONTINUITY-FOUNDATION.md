@@ -115,6 +115,77 @@ The key boundary is that process state and session cache are not durable continu
 - Minimum recovery telemetry is intentionally smaller than enhancement observability.
 - Journal write points must eventually cover success, failure, abort, and crash-adjacent restart edges.
 
+## 7a. Startup Hygiene and Quarantine
+
+The startup recovery controller runs a **hygiene stage** before active recovery to safely manage stale continuity artifacts:
+
+### Artifact Classification
+
+Each ledger/journal artifact is classified at startup:
+
+| Classification | Blocks Startup | Quarantine Allowed | Definition |
+|----------------|----------------|-------------------|------------|
+| `safe_stale_quarantine` | No | Yes | Step absent from plan and repaired claims; artifact may be quarantined |
+| `blocking_divergence` | Yes | No | Conflicts with current plan or repaired claims; requires operator action |
+| `corrupt_blocking` | Yes | No | Unparsable or missing step identity; requires operator action |
+| `ambiguous_blocking` | Yes | No | Migration/rename suspicion detected; requires operator action |
+
+### Guardrails (Non-Negotiable)
+
+Startup hygiene enforces these rules to prevent data loss:
+
+1. **No silent deletion** — Artifacts are never deleted during startup; safe-stale artifacts are copied to quarantine
+2. **No auto-remap of renamed step IDs** — If a step ID suggests migration (contains "migrated", "duplicate", "renamed", or "legacy_alias"), startup blocks rather than inferring identity
+3. **Corrupt files remain blocking** — Unparsable artifacts halt startup recovery until operator intervention
+4. **Current-claim disagreement remains blocking** — Divergence between ledger/journal and claims blocks startup
+5. **Ambiguous identity remains blocking** — Identity uncertainty blocks rather than auto-resolves
+
+### Quarantine Structure
+
+Safe-stale artifacts are copied (not moved) to:
+
+```
+.vectl/continuity/quarantine/
+├── ledger/
+│   └── {artifact-name}.json
+├── journal/
+│   └── {artifact-name}.jsonl
+└── manifest.jsonl
+```
+
+**Manifest format** (JSONL, append-only):
+```json
+{
+  "artifact_kind": "ledger",
+  "original_path": ".vectl/continuity/ledger/step-abc.json",
+  "reason": "safe_stale_quarantine: absent_from_plan_and_repaired_claims",
+  "classification": "safe_stale_quarantine",
+  "quarantine_destination": ".vectl/continuity/quarantine/ledger/step-abc.json",
+  "audit_timestamp": "2026-03-30T12:34:56+00:00",
+  "step_id": "auth.user-model"
+}
+```
+
+### Auditability
+
+- **Original bytes preserved** — Source files remain untouched; quarantine contains copies
+- **Append-only manifest** — Each quarantine operation appends to `manifest.jsonl`
+- **Last-writer-wins** — Duplicate entries for the same source path are resolved to the latest entry when loading
+- **Timestamped** — Every entry records UTC ISO timestamp for audit trails
+
+### Recovery Command
+
+```bash
+# Diagnose (safe, read-only)
+uvx vectl repair continuity --dry-run --json
+
+# Apply quarantine for safe-stale artifacts
+uvx vectl repair continuity
+
+# Manifest is queryable
+jq 'select(.step_id == "auth.user-model")' .vectl/continuity/quarantine/manifest.jsonl
+```
+
 ## 8. Shared abstractions
 
 - `ReplaySafetyEnvelope`
@@ -148,6 +219,14 @@ journal minimum, replay envelope, and startup recovery IO shapes are pinned.
 
 That phase can now wire restart/resume decision logic because per-runner
 continuity capability semantics and fresh-session fallback rules are pinned.
+
+### Safe for `driver-continuity-hygiene`
+
+That phase can now implement startup artifact classification and quarantine
+because the classification rules (`safe_stale_quarantine`, `blocking_divergence`,
+`corrupt_blocking`, `ambiguous_blocking`), quarantine manifest format, and
+auditability requirements are pinned. See §7a for guardrails and recovery
+command reference.
 
 ## 11. Deferrals and non-intersection rationale
 

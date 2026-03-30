@@ -63,6 +63,12 @@ from .config import (
     SessionConfig,
     load_config,
 )
+from .continuity_hygiene import (
+    apply_quarantine,
+    run_startup_hygiene_stage,
+    scan_continuity_artifacts,
+    StartupHygieneStageInput,
+)
 from .dispatch import render_prompt
 from .errors import ConfigError, JudgmentParseError, JudgmentTimeoutError, RunnerError
 from .events.emitter import (
@@ -71,6 +77,10 @@ from .events.emitter import (
     STEP_COMPLETED_EVENT_DEF,
     emit_decide,
     emit_final,
+    emit_startup_hygiene_blocked,
+    emit_startup_hygiene_classify,
+    emit_startup_hygiene_quarantine,
+    emit_startup_hygiene_scan,
     emit_step_completed,
 )
 from .judge import (
@@ -1828,6 +1838,43 @@ def _startup_judge_inputs_from_ledger_entries(
     return tuple(judge_inputs)
 
 
+def _hygiene_assessment_requires_startup_halt(
+    *,
+    assessment: object,
+    plan_step_ids: set[str],
+    claim_step_ids: set[str],
+) -> bool:
+    """Return whether a hygiene assessment must halt startup.
+
+    Source:
+    - step ``driver-continuity-hygiene-core.impl-startup-stage`` two-stage
+      recovery requirement
+    - gate preview requirement that active/current-claim divergence remains
+      blocking, while startup recovery still runs on remaining active continuity
+      state
+    """
+
+    classification = getattr(assessment, "classification", None)
+    blocks = bool(getattr(assessment, "blocks_startup_recovery", False))
+    if not blocks:
+        return False
+
+    if classification != "blocking_divergence":
+        return True
+
+    artifact = getattr(assessment, "artifact", None)
+    parsed_step_id = getattr(artifact, "parsed_step_id", None)
+    if not isinstance(parsed_step_id, str) or not parsed_step_id:
+        return True
+
+    in_plan = parsed_step_id in plan_step_ids
+    in_claims = parsed_step_id in claim_step_ids
+    if in_plan and in_claims:
+        return False
+
+    return True
+
+
 async def run(config_path: Path) -> None:
     """Main driver entry point.
 
@@ -1886,7 +1933,64 @@ async def run(config_path: Path) -> None:
         )
 
         continuity_repo_root = _resolve_repo_root_from_plan(plan_path)
+        continuity_artifacts, corrupt_continuity_artifacts = scan_continuity_artifacts(
+            continuity_repo_root
+        )
+        emit_startup_hygiene_scan(
+            observer,
+            artifact_count=len(continuity_artifacts),
+            corrupt_count=len(corrupt_continuity_artifacts),
+            current_branch=repaired_branch if isinstance(repaired_branch, str) else "",
+            corrupt_paths=list(corrupt_continuity_artifacts),
+        )
+        quarantine_root = continuity_repo_root / ".vectl" / "continuity" / "quarantine"
+        startup_hygiene = run_startup_hygiene_stage(
+            stage_input=StartupHygieneStageInput(
+                current_branch=repaired_branch if isinstance(repaired_branch, str) else "",
+                current_plan_step_ids=tuple(sorted(plan_step_ids)),
+                repaired_current_branch_claim_step_ids=claim_step_ids,
+                artifacts=continuity_artifacts,
+                quarantine_root=str(quarantine_root),
+            )
+        )
+        for assessment in startup_hygiene.assessments:
+            emit_startup_hygiene_classify(
+                observer,
+                artifact_kind=assessment.artifact.artifact_kind,
+                classification=assessment.classification,
+                original_path=assessment.artifact.original_path,
+                step_id=assessment.artifact.parsed_step_id or "",
+                quarantine_destination=assessment.quarantine_destination,
+                safe_stale_rule_satisfied=assessment.safe_stale_rule_satisfied,
+            )
+        startup_hygiene = apply_quarantine(
+            stage_result=startup_hygiene,
+            quarantine_root=quarantine_root,
+        )
+        for entry in startup_hygiene.quarantine_manifest:
+            emit_startup_hygiene_quarantine(
+                observer,
+                artifact_kind=entry.artifact_kind,
+                classification=entry.classification,
+                destination_path=entry.quarantine_destination,
+                original_path=entry.original_path,
+                reason=entry.reason,
+                step_id=entry.step_id or "",
+                audit_timestamp=entry.audit_timestamp,
+            )
+
+        safe_stale_ledger_step_ids = {
+            assessment.artifact.parsed_step_id
+            for assessment in startup_hygiene.assessments
+            if assessment.classification == "safe_stale_quarantine"
+            and assessment.artifact.artifact_kind == "ledger"
+            and assessment.artifact.parsed_step_id is not None
+        }
         ledger_entries, corrupt_ledger_files = _load_ledger_entries(continuity_repo_root)
+        if safe_stale_ledger_step_ids:
+            ledger_entries = tuple(
+                entry for entry in ledger_entries if entry.step_id not in safe_stale_ledger_step_ids
+            )
         startup_judge_failure_inputs = _startup_judge_inputs_from_ledger_entries(ledger_entries)
         startup_boundary = evaluate_startup_recovery_boundary(
             boundary_input=StartupRecoveryBoundaryInput(
@@ -1909,10 +2013,44 @@ async def run(config_path: Path) -> None:
         )
 
         halt_reasons = list(startup_boundary.blocked_reasons)
+        for blocked_assessment in startup_hygiene.blocked_assessments:
+            if not _hygiene_assessment_requires_startup_halt(
+                assessment=blocked_assessment,
+                plan_step_ids=plan_step_ids,
+                claim_step_ids=set(claim_step_ids),
+            ):
+                continue
+            emit_startup_hygiene_blocked(
+                observer,
+                classification=blocked_assessment.classification,
+                reason=blocked_assessment.reason,
+                step_id=blocked_assessment.artifact.parsed_step_id or "unknown",
+            )
+            step_segment = blocked_assessment.artifact.parsed_step_id or "unknown"
+            halt_reasons.append(f"hygiene_blocked:{step_segment}:{blocked_assessment.reason}")
+        if corrupt_continuity_artifacts:
+            halt_reasons.extend(
+                f"continuity_corrupt:{Path(artifact_path).name}"
+                for artifact_path in corrupt_continuity_artifacts
+            )
+            for artifact_path in corrupt_continuity_artifacts:
+                emit_startup_hygiene_blocked(
+                    observer,
+                    classification="corrupt_blocking",
+                    reason=f"continuity_corrupt:{Path(artifact_path).name}",
+                    step_id=Path(artifact_path).stem,
+                )
         if corrupt_ledger_files:
             halt_reasons.extend(
                 f"ledger_corrupt:{ledger_file_name}" for ledger_file_name in corrupt_ledger_files
             )
+            for ledger_file_name in corrupt_ledger_files:
+                emit_startup_hygiene_blocked(
+                    observer,
+                    classification="corrupt_blocking",
+                    reason=f"ledger_corrupt:{ledger_file_name}",
+                    step_id=Path(ledger_file_name).stem,
+                )
         if halt_reasons:
             _emit_halt(
                 state=state,

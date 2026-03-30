@@ -335,6 +335,103 @@ uvx vectl show <step-id>      # Check specific step
 uvx vectl repair claims --dry-run  # Should now show no changes
 ```
 
+---
+
+## Continuity Artifact Recovery (`vectl repair continuity`)
+
+When using the programmatic driver (`vectl drive`), continuity artifacts (ledger + journal) track session state for restart/resume safety. Stale artifacts can accumulate and must be managed safely.
+
+### Startup Hygiene Stage
+
+The driver runs a **startup hygiene stage** before active recovery:
+
+1. **Scan** continuity artifacts from `.vectl/continuity/ledger/` and `journal/`
+2. **Classify** each artifact against current plan and repaired claims
+3. **Quarantine** only provably stale artifacts (never delete)
+4. **Block** on ambiguous, corrupt, or divergent artifacts (require operator action)
+
+### Artifact Classifications
+
+| Classification | Blocks Startup | Action |
+|----------------|----------------|--------|
+| `safe_stale_quarantine` | No | Copy to quarantine, record in manifest |
+| `blocking_divergence` | Yes | Conflicts with plan or current claims |
+| `corrupt_blocking` | Yes | Unparsable or missing step identity |
+| `ambiguous_blocking` | Yes | Migration/rename suspicion (no auto-remap) |
+
+### Recovery Commands
+
+```bash
+# 1. Diagnose: preview classifications without quarantining (safe, read-only)
+uvx vectl repair continuity --dry-run
+
+# 2. Diagnose with JSON (machine-parseable output)
+uvx vectl repair continuity --dry-run --json
+
+# 3. Apply quarantine for safe-stale artifacts
+uvx vectl repair continuity
+
+# 4. Verify: check manifest and remaining blockers
+uvx vectl repair continuity --dry-run --json
+```
+
+### Quarantine Behavior
+
+- **Location**: `.vectl/continuity/quarantine/{ledger,journal}/`
+- **Manifest**: `.vectl/continuity/quarantine/manifest.jsonl` (append-only, audit trail)
+- **Policy**: Copy (not move) — original bytes preserved for auditability
+- **Safe stale rule**: Only artifacts for steps absent from both plan and repaired claims are quarantined
+
+### Guardrails
+
+Startup hygiene enforces these non-negotiable rules:
+- **No silent deletion** — artifacts are copied to quarantine, never deleted
+- **No auto-remap** — renamed or migrated step IDs remain blocking (operator must resolve)
+- **Corrupt files remain blocking** — unparsable artifacts require manual intervention
+- **Current-claim disagreement remains blocking** — divergence between ledger and claims blocks startup
+
+### Example Output
+
+```bash
+$ uvx vectl repair continuity --dry-run --json
+{
+  "dry_run": true,
+  "branch": "main",
+  "artifacts_scanned": 5,
+  "classifications": [
+    {
+      "artifact_kind": "ledger",
+      "original_path": ".vectl/continuity/ledger/step-abc.json",
+      "parsed_step_id": "auth.user-model",
+      "classification": "blocking_divergence",
+      "reason": "blocking_divergence: current_plan_step",
+      "blocks_startup_recovery": true
+    },
+    {
+      "artifact_kind": "journal",
+      "original_path": ".vectl/continuity/journal/step-xyz.jsonl",
+      "parsed_step_id": "api.migrate-user",
+      "classification": "safe_stale_quarantine",
+      "reason": "safe_stale_quarantine: absent_from_plan_and_repaired_claims",
+      "blocks_startup_recovery": false,
+      "quarantine_destination": ".vectl/continuity/quarantine/journal/step-xyz.jsonl"
+    }
+  ],
+  "blocked_count": 1,
+  "quarantined_count": 1
+}
+```
+
+### Post-Repair Verification
+
+```bash
+# Check quarantine manifest
+uvx vectl repair continuity --dry-run --json | jq '.quarantined_artifacts'
+
+# Verify no remaining blockers
+uvx vectl repair continuity --dry-run  # Should show no blocking artifacts
+```
+
 ## Programmatic Driver
 
 For automated plan execution, use the `vectl drive` command with a driver configuration file:
@@ -380,6 +477,22 @@ See [DRIVER-BLUEPRINT.md](DRIVER-BLUEPRINT.md) for complete configuration refere
 > Routing contract: `agent_routing.default` is invalid and rejected during
 > config validation. Use explicit exact/glob entries in `agent_routing` and
 > `fallback_runner` for default behavior.
+
+### Startup Continuity Hygiene
+
+On startup, the driver runs a **hygiene stage** to safely manage continuity artifacts (ledger + journal) that track session state for resume/restart:
+
+1. **Scan** artifacts from `.vectl/continuity/ledger/` and `journal/`
+2. **Classify** against current plan and repaired claims
+3. **Quarantine** safe-stale artifacts (copy to `.vectl/continuity/quarantine/`)
+4. **Block** on corrupt, ambiguous, or divergent artifacts (require operator action)
+
+**Critical guardrails**:
+- Startup **never deletes files** — artifacts are copied to quarantine, not removed
+- Startup **never auto-remaps renamed step IDs** — migration suspicion blocks startup
+- Corrupt or divergent artifacts remain blocking until operator resolves
+
+If startup detects blocking artifacts, use `vectl repair continuity --dry-run` to diagnose, then apply quarantine with `vectl repair continuity`. See [Continuity Artifact Recovery](#continuity-artifact-recovery-vectl-repair-continuity) for full details.
 
 ## Technical Details
 

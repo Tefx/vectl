@@ -43801,7 +43801,7 @@ phases:
       - Deviation records: none'
   - id: driver-enhancement-streaming-progress.verify
     name: Verify heartbeat progress and streaming-aware liveness
-    status: claimed
+    status: done
     description: 'step_type: verification
 
       Verification scope: phase-check protecting driver-enhancement-streaming-progress.gate.
@@ -43823,6 +43823,42 @@ phases:
     agent: integration-verifier
     claimed_by: integration-verifier
     claimed_at: '2026-03-30T17:14:48.819594+00:00'
+    done_at: '2026-03-30T17:22:42.912803+00:00'
+    evidence: 'Artifact:
+
+      - Verification session: ses_2c04b50c1ffeg9K2RocXXhA8nL
+
+      Verification:
+
+      - grep "\.communicate\(" src/vectl/driver/runners.py -> no matches
+
+      - uv run pytest -q tests/test_driver_streaming_progress_expected_red.py -> pass
+      (all 4)
+
+      - uv run pytest -q tests/test_driver_runners.py -> 68 passed
+
+      Findings:
+
+      - Incremental chunks consumed before process exit (timing evidence captured)
+
+      - Heartbeat/progress/last-progress signals update during execution
+
+      - Malformed chunks do not fabricate signals; starvation preserves last valid
+      signal
+
+      - wait_for_any transitions streaming liveness to completed
+
+      Test semantics:
+
+      - step_intent=verification
+
+      - expected_result=green
+
+      - observed_result=green
+
+      - failure_alignment=none
+
+      - Product implementation files modified: no'
   - id: driver-enhancement-streaming-progress.gate
     name: Gate streaming and progress enhancement
     status: pending

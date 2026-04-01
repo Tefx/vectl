@@ -54350,3 +54350,12 @@ phases:
     verification: No orphan exports, no dead config fields, and no unreachable selection
       branch remains.
     agent: wiring-auditor
+  - id: driver-agent-selection-deep-review.spec-conformance
+    name: Full spec conformance audit for agent selection
+    status: pending
+    description: Cross-check implemented planner/judge behavior against the finalized
+      design document at system level.
+    verification: System-level requirements table is complete and any drift is surfaced.
+    depends_on:
+    - driver-agent-selection-deep-review.wiring-audit
+    agent: spec-verifier

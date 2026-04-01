@@ -54249,3 +54249,8 @@ phases:
     depends_on:
     - driver-agent-selection-contract.define-red-tests
     agent: gate-reviewer
+- id: driver-agent-selection-implementation
+  name: Driver Agent Selection Implementation
+  status: locked
+  depends_on:
+  - driver-agent-selection-contract

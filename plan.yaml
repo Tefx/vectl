@@ -44298,6 +44298,7 @@ phases:
   - driver-enhancement-observability
   - driver-enhancement-streaming-progress
   - driver-enhancement-runner-recovery
+  - driver-agent-selection-bootstrap-validation
   steps:
   - id: driver-enhancement-integration.system-wiring
     name: Wire telemetry streaming and recovery into the shared driver loop

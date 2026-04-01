@@ -54302,3 +54302,13 @@ phases:
     depends_on:
     - driver-agent-selection-implementation.runtime-selection
     agent: spec-verifier
+  - id: driver-agent-selection-implementation.gate
+    name: Gate agent-selection implementation
+    status: pending
+    description: Gate review for the implementation phase.
+    verification: Implementation, wiring, and spec-conformance evidence are sufficient
+      to treat agent selection as a bootstrap prerequisite.
+    depends_on:
+    - driver-agent-selection-implementation.wiring-audit
+    - driver-agent-selection-implementation.spec-conformance
+    agent: gate-reviewer

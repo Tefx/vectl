@@ -1,4 +1,5 @@
 plan_path: plan.yaml
+planner_agent_name: vectl-planner-slim
 
 runners:
   opencode:
@@ -27,6 +28,7 @@ session:
 
 judge:
   runner: codex
+  agent_name: judge
   structured_output: true
   preflight: true
   evidence_validation: true

@@ -449,6 +449,7 @@ agent_routing:
   "*-planner": opencode
 
 fallback_runner: opencode
+planner_agent_name: vectl-planner-slim
 
 orchestration:
   max_parallelism: 5
@@ -462,6 +463,7 @@ session:
 
 judge:
   runner: opencode               # Default runner for all judgment calls
+  agent_name: judge              # Logical judge agent name used in runner argv/templates
   model: null                    # Override model (optional)
   structured_output: true        # Use model structured output where available
   timeout: 60                    # Judgment call timeout (seconds)

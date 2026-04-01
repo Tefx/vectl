@@ -1288,7 +1288,7 @@ async def dispatch_planner(
             f"(step={request.step_id}, trigger={request.trigger})"
         )
 
-    planner_agent = "vectl-planner"
+    planner_agent = config.planner_agent_name
     runner_name = config.route_agent(planner_agent)
     runner = runners.get(runner_name)
     if runner is None:
@@ -1312,7 +1312,11 @@ async def dispatch_planner(
         progress_total=2,
     )
 
-    prompt = _render_planner_prompt(request=request, plan_path=plan_path)
+    prompt = _render_planner_prompt(
+        request=request,
+        plan_path=plan_path,
+        planner_agent=planner_agent,
+    )
     handle = await runner.dispatch(
         prompt=prompt,
         agent=planner_agent,
@@ -1362,7 +1366,9 @@ async def dispatch_planner(
     )
 
 
-def _render_planner_prompt(*, request: PlannerDispatchRequest, plan_path: Path) -> str:
+def _render_planner_prompt(
+    *, request: PlannerDispatchRequest, plan_path: Path, planner_agent: str
+) -> str:
     """Render deterministic planner prompt for REPLAN dispatch.
 
     Source: docs/DRIVER-ARCHITECTURE.md Section 2.11 (`dispatch_planner`) and
@@ -1379,7 +1385,7 @@ def _render_planner_prompt(*, request: PlannerDispatchRequest, plan_path: Path) 
     }
     return "\n".join(
         [
-            "You are vectl-planner. Apply the requested replanning change.",
+            f"You are {planner_agent}. Apply the requested replanning change.",
             "",
             "## REPLAN Handoff",
             json.dumps(payload, ensure_ascii=False, indent=2),

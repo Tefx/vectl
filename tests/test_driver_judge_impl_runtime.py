@@ -303,6 +303,38 @@ def test_codex_command_reuses_driver_yaml_runner_config() -> None:
     assert "--output-schema" not in command
 
 
+def test_codex_command_renders_configurable_judge_agent_name() -> None:
+    driver_yaml = {
+        "runners": {
+            "codex": {
+                "command": "codex",
+                "args": ["exec", "--json", "-C", "{workdir}", "--agent", "{agent}"],
+                "prompt_mode": "stdin_dash",
+            }
+        },
+        "fallback_runner": "codex",
+        "judge": {"runner": "codex", "agent_name": "risk-judge"},
+    }
+
+    with tempfile.TemporaryDirectory() as td:
+        td_path = Path(td)
+        (td_path / "driver.yaml").write_text(yaml.dump(driver_yaml), encoding="utf-8")
+        original_cwd = Path.cwd()
+        try:
+            os.chdir(td_path)
+            observer = _ObserverSpy()
+            judge = Judge(
+                JudgeConfig(runner="codex", structured_output=True, agent_name="risk-judge"),
+                observer,
+            )
+            command, _ = judge._build_subprocess_command("system", "user")
+        finally:
+            os.chdir(original_cwd)
+
+    assert "--agent" in command
+    assert command[command.index("--agent") + 1] == "risk-judge"
+
+
 def test_codex_command_without_driver_yaml_contract_raises_parse_error() -> None:
     with tempfile.TemporaryDirectory() as td:
         td_path = Path(td)

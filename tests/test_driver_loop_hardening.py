@@ -622,6 +622,33 @@ async def test_handle_dispatch_preflight_replan_invokes_planner_and_skips_claim(
 
 
 @pytest.mark.anyio
+async def test_dispatch_planner_uses_configurable_planner_agent_name() -> None:
+    config = _base_config()
+    config.planner_agent_name = "custom-planner"
+    config.agent_routing["custom-planner"] = "opencode"
+    observer = _RecordingObserver()
+    runner = _Runner("opencode")
+
+    await dispatch_planner(
+        PlannerDispatchRequest(
+            step_id="core.impl",
+            trigger="handle_dispatch.preflight_replan",
+            judgment_type="PREFLIGHT",
+            planner_instruction="Split this work into spec then impl",
+        ),
+        config=config,
+        runners=cast(dict[str, Any], {"opencode": runner}),
+        observer=observer,
+        plan_path=Path("plan.yaml"),
+    )
+
+    assert runner.calls
+    assert runner.calls[0]["agent"] == "custom-planner"
+    prompt = cast(str, runner.calls[0]["prompt"])
+    assert "You are custom-planner." in prompt
+
+
+@pytest.mark.anyio
 async def test_handle_dispatch_preflight_replan_requires_planner_instruction(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:

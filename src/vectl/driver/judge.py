@@ -1012,7 +1012,7 @@ class Judge:
             command = [configured_command] + _render_runner_args(
                 configured_args,
                 workdir=str(Path.cwd()),
-                agent="judge",
+                agent=self._config.agent_name,
             )
             if configured_prompt_mode == "stdin_dash" and "-" not in command:
                 command.append("-")

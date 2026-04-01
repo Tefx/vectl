@@ -78,6 +78,7 @@ DRIVER_YAML_SPEC: dict[str, Any] = {
         "*-planner": "opencode",
     },
     "fallback_runner": "opencode",
+    "planner_agent_name": "vectl-planner-slim",
     "orchestration": {
         "max_parallelism": 5,
         "merge_strategy": "squash",
@@ -90,6 +91,7 @@ DRIVER_YAML_SPEC: dict[str, Any] = {
     },
     "judge": {
         "runner": "opencode",
+        "agent_name": "judge",
         "model": None,
         "structured_output": True,
         "timeout": 60,

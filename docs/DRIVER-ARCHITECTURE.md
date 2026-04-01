@@ -542,8 +542,11 @@ session:
   ttl_overrides:
     claude: 600
 
+planner_agent_name: vectl-planner-slim
+
 judge:
   runner: opencode
+  agent_name: judge
   structured_output: true
   timeout: 60
   preflight: true

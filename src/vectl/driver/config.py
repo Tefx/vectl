@@ -64,6 +64,7 @@ class JudgeConfig(BaseModel):
     """
 
     runner: str = "opencode"  # All sidecar/subagent calls default to opencode
+    agent_name: str = "judge"
     model: str | None = None
     structured_output: bool = True  # Use model structured output (see Architecture doc)
     timeout: int = 60  # Per-judgment timeout in seconds
@@ -116,6 +117,7 @@ class DriverConfig(BaseModel):
     """
 
     plan_path: str | None = None  # null = auto-detect via resolve_plan_path()
+    planner_agent_name: str = "vectl-planner"
     runners: dict[str, RunnerConfig]
     agent_routing: dict[str, str] = Field(default_factory=dict)
     fallback_runner: str = "opencode"

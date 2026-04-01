@@ -138,6 +138,7 @@ class TestJudgeConfig:
         """
         config = JudgeConfig()
         assert config.runner == "opencode"
+        assert config.agent_name == "judge"
         assert config.model is None
         assert config.structured_output is True
         assert config.timeout == 60
@@ -178,6 +179,13 @@ class TestJudgeConfig:
         assert isinstance(config.skip_preflight_for, list)
         config_with_skip = JudgeConfig(skip_preflight_for=["*.define", "*.gate"])
         assert config_with_skip.skip_preflight_for == ["*.define", "*.gate"]
+
+    def test_judge_config_agent_name_default_and_override(self) -> None:
+        config = JudgeConfig()
+        assert config.agent_name == "judge"
+
+        overridden = JudgeConfig(agent_name="risk-judge")
+        assert overridden.agent_name == "risk-judge"
 
 
 class TestOrchestrationConfig:
@@ -242,12 +250,21 @@ class TestDriverConfig:
             runners={"opencode": RunnerConfig(command="opencode")},
         )
         assert config.plan_path is None
+        assert config.planner_agent_name == "vectl-planner"
         assert config.agent_routing == {}
         assert config.fallback_runner == "opencode"
         assert isinstance(config.orchestration, OrchestrationConfig)
         assert isinstance(config.session, SessionConfig)
         assert isinstance(config.judge, JudgeConfig)
         assert isinstance(config.observability, ObservabilityConfig)
+
+    def test_driver_config_planner_agent_name_override(self) -> None:
+        config = DriverConfig(
+            runners={"opencode": RunnerConfig(command="opencode")},
+            planner_agent_name="vectl-planner-slim",
+        )
+
+        assert config.planner_agent_name == "vectl-planner-slim"
 
     def test_driver_config_route_agent_fallback(self) -> None:
         """DriverConfig.route_agent(agent) MUST fall back to fallback_runner
@@ -451,6 +468,7 @@ class TestSpecFixtureConformance:
         judge_config = JudgeConfig(**driver_config_dict["judge"])
 
         assert judge_config.runner == "opencode"
+        assert judge_config.agent_name == "judge"
         assert judge_config.model is None
         assert judge_config.structured_output is True
         assert judge_config.timeout == 60
@@ -500,6 +518,7 @@ class TestSpecFixtureConformance:
             "*-planner": "opencode",
         }
         assert driver_config_dict["fallback_runner"] == "opencode"
+        assert driver_config_dict["planner_agent_name"] == "vectl-planner-slim"
 
 
 class TestConfigInvariants:

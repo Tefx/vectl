@@ -54267,3 +54267,17 @@ phases:
       path: unsupported external-agent configuration is rejected at config-load/startup
       with explicit diagnostics.'
     agent: python-senior
+  - id: driver-agent-selection-implementation.runtime-selection
+    name: Implement runtime selection, preflight, and observability wiring
+    status: pending
+    description: Complete implementation within existing runtime surfaces so planner
+      and judge dispatch honor external-agent vs prompt-only mode exactly as specified,
+      perform agent-existence preflight, fail closed on unsupported or missing agents,
+      and emit explicit selection observability fields. Preserve existing judge structured-output
+      enforcement semantics.
+    verification: 'Main path: planner external-agent default and judge prompt-only
+      default dispatch correctly. Failure path: missing/unsupported external agent
+      hard-fails and emits explicit selection error events without fallback.'
+    depends_on:
+    - driver-agent-selection-implementation.config-migration
+    agent: python-senior

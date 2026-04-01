@@ -54208,3 +54208,9 @@ phases:
       - failure_alignment=none
 
       - product implementation files modified: no'
+- id: driver-agent-selection-contract
+  name: Driver Agent Selection Contract
+  status: pending
+  depends_on:
+  - driver-live-smoke-implementation
+  - driver-continuity-hygiene-deep-review

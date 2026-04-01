@@ -54359,3 +54359,13 @@ phases:
     depends_on:
     - driver-agent-selection-deep-review.wiring-audit
     agent: spec-verifier
+  - id: driver-agent-selection-deep-review.architecture-review
+    name: Review selection ownership and dependency boundaries
+    status: pending
+    description: Review whether config ownership, runtime selection ownership, and
+      runner capability/existence validation are placed in the correct modules.
+    verification: No split-truth or boundary regression remains across config, loop,
+      judge, and runner layers.
+    depends_on:
+    - driver-agent-selection-deep-review.wiring-audit
+    agent: software-architect

@@ -54379,3 +54379,14 @@ phases:
     depends_on:
     - driver-agent-selection-deep-review.wiring-audit
     agent: gate-reviewer
+  - id: driver-agent-selection-deep-review.black-box-verification
+    name: Black-box verify planner/judge selection behavior
+    status: pending
+    description: Using only public config/runtime surfaces, verify prompt-only and
+      external-agent behavior, including negative cases, without relying on implementation
+      context.
+    verification: Public-facing behavior matches the documented defaults and fail-closed
+      semantics.
+    depends_on:
+    - driver-agent-selection-deep-review.spec-conformance
+    agent: blind-tester

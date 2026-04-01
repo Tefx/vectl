@@ -54218,7 +54218,7 @@ phases:
       - product implementation files modified: no'
 - id: driver-agent-selection-contract
   name: Driver Agent Selection Contract
-  status: in_progress
+  status: done
   depends_on:
   - driver-live-smoke-implementation
   - driver-continuity-hygiene-deep-review
@@ -54272,7 +54272,7 @@ phases:
       docs/DRIVER-AGENT-SELECTION.md gaps; product implementation files modified=false.'
   - id: driver-agent-selection-contract.gate
     name: Gate agent-selection contract readiness
-    status: claimed
+    status: done
     description: Gate review for the contract/test-definition phase.
     verification: Contract is doc-anchored, test gaps are explicit, and implementation
       can proceed without redefining planner/judge semantics.
@@ -54281,9 +54281,15 @@ phases:
     agent: gate-reviewer
     claimed_by: gate-reviewer
     claimed_at: '2026-04-01T19:27:54.949343+00:00'
+    done_at: '2026-04-01T19:30:57.703882+00:00'
+    evidence: 'Gate verdict PASS. Verification: uv run pytest tests/test_driver_agent_selection_expected_red.py
+      -v (20 failed/12 passed expected RED), uv run mypy src/vectl/driver/config.py
+      --no-error-summary (pass), uv run ruff check src/vectl/driver/ (non-blocking
+      unrelated E501). Contract and tests are doc-anchored to docs/DRIVER-AGENT-SELECTION.md
+      and implementation can proceed without redefining planner/judge semantics.'
 - id: driver-agent-selection-implementation
   name: Driver Agent Selection Implementation
-  status: locked
+  status: pending
   depends_on:
   - driver-agent-selection-contract
   steps:

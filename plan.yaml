@@ -54218,14 +54218,14 @@ phases:
       - product implementation files modified: no'
 - id: driver-agent-selection-contract
   name: Driver Agent Selection Contract
-  status: pending
+  status: in_progress
   depends_on:
   - driver-live-smoke-implementation
   - driver-continuity-hygiene-deep-review
   steps:
   - id: driver-agent-selection-contract.pin-contract
     name: Pin planner/judge agent-selection contract
-    status: pending
+    status: claimed
     description: Contract step. Pin the authoritative nested planner/judge config
       shape, selection-mode rules, runner capability rules, migration semantics, fallback/error
       policy, observability fields, runtime matrix, and v1 scope from docs/DRIVER-AGENT-SELECTION.md.
@@ -54236,6 +54236,8 @@ phases:
       rejection cases, and runtime outcomes required for implementation. No product
       logic is shipped in this step.
     agent: software-architect
+    claimed_by: software-architect
+    claimed_at: '2026-04-01T19:12:22.117762+00:00'
   - id: driver-agent-selection-contract.define-red-tests
     name: Define expected-red tests for agent-selection semantics
     status: pending

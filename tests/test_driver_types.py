@@ -10,6 +10,7 @@ Blueprint Reference: DRIVER-BLUEPRINT.md Module Map (types.py)
 """
 
 import asyncio
+from typing import cast
 
 import pytest
 
@@ -115,6 +116,7 @@ class TestRunnerResult:
             tokens={"input": 200, "output": 100, "cache_read": 150},
         )
         assert result.cost_usd == 0.05
+        assert result.tokens is not None
         assert result.tokens["cache_read"] == 150
 
 
@@ -314,6 +316,44 @@ class TestDriverState:
         assert isinstance(state.loop_detector, list)
         state.loop_detector.append("action-sig-1")
         assert state.loop_detector == ["action-sig-1"]
+
+    def test_summary_reports_completed_when_not_halted(self) -> None:
+        state = DriverState()
+
+        summary = state.summary()
+        completed_summary = cast(dict[str, object], summary["completed_summary"])
+
+        assert completed_summary["terminal_outcome"] == "completed"
+        assert "halt_reason" not in summary
+
+    def test_summary_reports_halted_when_halt_requested(self) -> None:
+        state = DriverState()
+        state.halt_requested = True
+        state.final_halt_reason = "boom"
+
+        summary = state.summary()
+        completed_summary = cast(dict[str, object], summary["completed_summary"])
+
+        assert completed_summary["terminal_outcome"] == "halted"
+        assert summary["halt_reason"] == "boom"
+
+    def test_record_completion_metrics_sums_nested_token_payloads(self) -> None:
+        state = DriverState()
+        result = RunnerResult(
+            status=RunnerStatus.SUCCESS,
+            session_id="ses-1",
+            output="ok",
+            elapsed_seconds=1.0,
+            exit_code=0,
+            tokens=cast(
+                dict[str, int],
+                {"total": 27842, "input": 27820, "output": 22, "cache": {"write": 0, "read": 0}},
+            ),
+        )
+
+        state.record_completion_metrics(result)
+
+        assert state.total_tokens == 55684
 
 
 class TestMergeResult:

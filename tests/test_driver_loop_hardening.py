@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import subprocess
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, cast
@@ -21,10 +22,12 @@ from src.vectl.driver.loop import (
     PlannerDispatchRequest,
     _build_anomaly_request,
     _cleanup_orphan_worktrees,
+    _durability_commit_plan_if_dirty,
     _run_main_loop,
     dispatch_planner,
     handle_dispatch,
     reconcile,
+    shutdown,
 )
 from src.vectl.driver.runtime_context import RuntimeContext
 from src.vectl.driver.session import SessionPool
@@ -313,10 +316,15 @@ async def test_reconcile_routes_non_trivial_conflict(monkeypatch: pytest.MonkeyP
         elapsed_seconds=1.0,
     )
 
-    calls: dict[str, int] = {"defer": 0, "cleanup": 0}
+    calls: dict[str, int] = {"defer": 0, "cleanup": 0, "complete_step": 0}
 
     monkeypatch.setattr("src.vectl.driver.loop.load_plan_definition", lambda _p: (_FakePlan(), "h"))
-    monkeypatch.setattr("src.vectl.driver.loop.complete_step", lambda plan, *_a, **_k: plan)
+
+    def _complete_step(plan: object, *_a: object, **_k: object) -> object:
+        calls["complete_step"] += 1
+        return plan
+
+    monkeypatch.setattr("src.vectl.driver.loop.complete_step", _complete_step)
     monkeypatch.setattr("src.vectl.driver.loop.save_plan", lambda *_a, **_k: None)
 
     async def _merge(**_k: object) -> Success[MergeResult]:
@@ -362,6 +370,7 @@ async def test_reconcile_routes_non_trivial_conflict(monkeypatch: pytest.MonkeyP
 
     assert calls["defer"] == 1
     assert calls["cleanup"] == 0
+    assert calls["complete_step"] == 0
     assert any(e[0] == "MERGE_CONFLICTED" for e in observer.events)
 
 
@@ -378,6 +387,65 @@ def test_cleanup_orphan_worktrees_removes_unknown_dirs(tmp_path: Path) -> None:
 
     assert keep.exists()
     assert not orphan.exists()
+
+
+def test_plan_durability_commit_checkpoints_dirty_plan(tmp_path: Path) -> None:
+    repo = tmp_path / "repo"
+    repo.mkdir()
+    subprocess.run(["git", "init"], cwd=repo, check=True, capture_output=True)
+    subprocess.run(
+        ["git", "config", "user.email", "driver-test@example.com"],
+        cwd=repo,
+        check=True,
+        capture_output=True,
+    )
+    subprocess.run(
+        ["git", "config", "user.name", "Driver Test"],
+        cwd=repo,
+        check=True,
+        capture_output=True,
+    )
+    plan_path = repo / "plan.yaml"
+    plan_path.write_text("version: 1\nproject: demo\nphases: []\n", encoding="utf-8")
+    subprocess.run(["git", "add", "plan.yaml"], cwd=repo, check=True, capture_output=True)
+    subprocess.run(["git", "commit", "-m", "init"], cwd=repo, check=True, capture_output=True)
+
+    plan_path.write_text(
+        "version: 1\nproject: demo\ncontext: changed\nphases: []\n", encoding="utf-8"
+    )
+
+    _durability_commit_plan_if_dirty(plan_path=plan_path, reason="unit test")
+
+    status = subprocess.run(
+        ["git", "status", "--porcelain", "--", "plan.yaml"],
+        cwd=repo,
+        check=True,
+        capture_output=True,
+        text=True,
+    )
+    assert status.stdout.strip() == ""
+
+    log = subprocess.run(
+        ["git", "log", "--oneline", "-1"],
+        cwd=repo,
+        check=True,
+        capture_output=True,
+        text=True,
+    )
+    assert "[vectl-driver] durability: unit test" in log.stdout
+
+
+@pytest.mark.anyio
+async def test_shutdown_preserves_completed_terminal_outcome() -> None:
+    state = DriverState()
+    observer = _RecordingObserver()
+
+    await shutdown(state=state, observer=observer)
+
+    final_event = next(data for event, data in observer.events if event == "FINAL")
+    completed_summary = cast(dict[str, object], final_event["completed_summary"])
+    assert completed_summary["terminal_outcome"] == "completed"
+    assert "halt_reason" not in final_event
 
 
 @pytest.mark.anyio
@@ -1051,16 +1119,19 @@ async def test_reconcile_success_side_effects_fire_once(monkeypatch: pytest.Monk
         "cleanup": 0,
         "session_record": 0,
     }
+    sequence: list[str] = []
 
     monkeypatch.setattr("src.vectl.driver.loop.load_plan_definition", lambda _p: (_FakePlan(), "h"))
     monkeypatch.setattr("src.vectl.driver.loop.save_plan", lambda *_a, **_k: None)
 
     def _complete_step(plan: object, *_a: object, **_k: object) -> object:
         calls["complete_step"] += 1
+        sequence.append("complete_step")
         return plan
 
     async def _merge(**_k: object) -> Success[MergeResult]:
         calls["merge"] += 1
+        sequence.append("merge")
         return Success(MergeResult(outcome=MergeOutcome.CLEAN_MERGE, conflicted_files=()))
 
     async def _cleanup(*_a: object, **_k: object) -> Success[None]:
@@ -1092,6 +1163,7 @@ async def test_reconcile_success_side_effects_fire_once(monkeypatch: pytest.Monk
     assert calls["merge"] == 1
     assert calls["cleanup"] == 1
     assert calls["session_record"] == 1
+    assert sequence.index("merge") < sequence.index("complete_step")
     assert sum(1 for event, _ in observer.events if event == "STEP_COMPLETED") == 1
     assert sum(1 for event, _ in observer.events if event == "MERGE_COMPLETED") == 1
 

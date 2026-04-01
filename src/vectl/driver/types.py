@@ -16,6 +16,7 @@ import asyncio
 import time
 from dataclasses import dataclass, field
 from enum import Enum
+from numbers import Number
 from typing import TYPE_CHECKING, Literal, Protocol
 
 from vectl.decision_state import DecideState
@@ -505,7 +506,7 @@ class DriverState:
             self.total_cost_usd += result.cost_usd
 
         if result.tokens is not None:
-            token_total = sum(result.tokens.values())
+            token_total = _sum_numeric_token_values(result.tokens)
             if self.total_tokens is None:
                 self.total_tokens = 0
             self.total_tokens += token_total
@@ -537,6 +538,18 @@ class DriverState:
             summary["total_tokens"] = self.total_tokens
 
         return summary
+
+
+def _sum_numeric_token_values(payload: object) -> int:
+    """Recursively sum numeric token facts from nested runner payloads."""
+
+    if isinstance(payload, dict):
+        return sum(_sum_numeric_token_values(value) for value in payload.values())
+    if isinstance(payload, bool):
+        return 0
+    if isinstance(payload, Number):
+        return int(payload)
+    return 0
 
 
 @dataclass

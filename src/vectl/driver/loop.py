@@ -23,6 +23,7 @@ import json
 import logging
 import os
 import shutil
+import subprocess
 import time
 from collections.abc import Awaitable, Callable, Mapping
 from dataclasses import asdict, dataclass
@@ -30,7 +31,7 @@ from datetime import datetime, timezone
 from fnmatch import fnmatch
 from pathlib import Path
 from types import MappingProxyType
-from typing import TYPE_CHECKING, Final, Literal, Protocol, cast
+from typing import TYPE_CHECKING, Any, Final, Literal, Protocol, cast
 
 from vectl.claims import load_claims_for_branch, repair_claims
 from vectl.decide import decide
@@ -1746,6 +1747,83 @@ def _resolve_repo_root_from_plan(plan_path: Path) -> Path:
     return plan_abs.resolve().parent
 
 
+def _durability_commit_plan_if_dirty(*, plan_path: Path, reason: str) -> None:
+    """Commit canonical ``plan.yaml`` mutations before/after dispatch boundaries.
+
+    This encodes the orchestrator-owned durability barrier from the canonical
+    vectl orchestrator contract: if ``plan.yaml`` is dirty, the orchestrator is
+    the sole authority that may checkpoint it in git.
+    """
+
+    repo_root = _resolve_repo_root_from_plan(plan_path)
+    plan_abs = plan_path if plan_path.is_absolute() else (Path.cwd() / plan_path)
+    plan_abs = plan_abs.resolve()
+    try:
+        plan_rel = plan_abs.relative_to(repo_root)
+    except ValueError:
+        plan_rel = Path(plan_abs.name)
+
+    rel_text = os.fspath(plan_rel)
+    status = subprocess.run(
+        ["git", "status", "--porcelain", "--", rel_text],
+        cwd=repo_root,
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    if status.returncode != 0:
+        _LOGGER.debug(
+            "Skipping plan durability barrier; git status unavailable for %s: %s",
+            rel_text,
+            (status.stderr or status.stdout).strip(),
+        )
+        return
+    if not status.stdout.strip():
+        return
+
+    add = subprocess.run(
+        ["git", "add", "--", rel_text],
+        cwd=repo_root,
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    if add.returncode != 0:
+        raise PlanError(
+            f"Plan durability barrier failed during git add for {rel_text}: "
+            f"{(add.stderr or add.stdout).strip()}"
+        )
+
+    commit = subprocess.run(
+        ["git", "commit", "-m", f"[vectl-driver] durability: {reason}"],
+        cwd=repo_root,
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    if commit.returncode != 0:
+        combined = f"{commit.stdout}\n{commit.stderr}".lower()
+        if "nothing to commit" in combined or "no changes added to commit" in combined:
+            return
+        raise PlanError(
+            f"Plan durability barrier failed during git commit for {rel_text}: "
+            f"{(commit.stderr or commit.stdout).strip()}"
+        )
+
+
+def _save_plan_with_durability(
+    plan: Any,
+    *,
+    plan_path: Path,
+    expected_hash: str,
+    reason: str,
+) -> None:
+    """Persist plan state, then checkpoint git durability if the file is dirty."""
+
+    save_plan(plan, path=plan_path, expected_hash=expected_hash)
+    _durability_commit_plan_if_dirty(plan_path=plan_path, reason=reason)
+
+
 def _resolve_repo_root_from_worktree_path(worktree_path: str) -> Path:
     """Resolve repository root from an absolute or relative worktree path."""
 
@@ -2476,10 +2554,11 @@ async def handle_dispatch(
     claims_path = resolve_claims_path(plan_path)
     plan, _ = claim_step(plan, step_id, agent, claims_path=claims_path)
 
-    save_plan(
+    _save_plan_with_durability(
         plan,
-        path=plan_path,
+        plan_path=plan_path,
         expected_hash=expected_hash,
+        reason=f"claim {step_id}",
     )
 
     binding_result = await create_worktree(step_id, cwd=plan_path.parent)
@@ -2744,7 +2823,12 @@ async def handle_complete(
     plan, expected_hash = load_plan_definition(plan_path)
     claims_path = resolve_claims_path(plan_path)
     plan = complete_step(plan, action.step_id, evidence, claims_path=claims_path)
-    save_plan(plan, path=plan_path, expected_hash=expected_hash)
+    _save_plan_with_durability(
+        plan,
+        plan_path=plan_path,
+        expected_hash=expected_hash,
+        reason=f"complete {action.step_id}",
+    )
 
     emit_step_completed(
         observer,
@@ -2947,7 +3031,12 @@ async def reconcile(
                             completed.step_id,
                             claims_path=claims_path,
                         )
-                        save_plan(deferred_plan, path=plan_path, expected_hash=expected_hash)
+                        _save_plan_with_durability(
+                            deferred_plan,
+                            plan_path=plan_path,
+                            expected_hash=expected_hash,
+                            reason=f"defer {completed.step_id}",
+                        )
                         observer.emit(
                             "GATE_REMEDIATION_DEFERRED",
                             step_id=completed.step_id,
@@ -2960,10 +3049,6 @@ async def reconcile(
                             batched_issue_count=len(remediation_issues),
                         )
                         return
-
-        claims_path = resolve_claims_path(plan_path)
-        plan = complete_step(plan, completed.step_id, evidence, claims_path=claims_path)
-        save_plan(plan, path=plan_path, expected_hash=expected_hash)
 
         async with state.merge_lock:
             merge_result = await merge(
@@ -3004,11 +3089,26 @@ async def reconcile(
                 plan, expected_hash = load_plan_definition(plan_path)
                 claims_path = resolve_claims_path(plan_path)
                 plan = defer_step(plan, completed.step_id, claims_path=claims_path)
-                save_plan(plan, path=plan_path, expected_hash=expected_hash)
+                _save_plan_with_durability(
+                    plan,
+                    plan_path=plan_path,
+                    expected_hash=expected_hash,
+                    reason=f"defer {completed.step_id}",
+                )
                 return
 
             auto_resolved = merge_result.value.outcome.value == "auto_resolved_conflict"
             conflicting_files = list(merge_result.value.conflicted_files)
+
+        plan, expected_hash = load_plan_definition(plan_path)
+        claims_path = resolve_claims_path(plan_path)
+        plan = complete_step(plan, completed.step_id, evidence, claims_path=claims_path)
+        _save_plan_with_durability(
+            plan,
+            plan_path=plan_path,
+            expected_hash=expected_hash,
+            reason=f"complete {completed.step_id}",
+        )
 
         if completed.result.session_id:
             session_pool.record(
@@ -3256,7 +3356,12 @@ async def reconcile(
                 )
 
             plan = defer_step(plan, completed.step_id, claims_path=claims_path)
-            save_plan(plan, path=plan_path, expected_hash=expected_hash)
+            _save_plan_with_durability(
+                plan,
+                plan_path=plan_path,
+                expected_hash=expected_hash,
+                reason=f"defer {completed.step_id}",
+            )
             observer.emit(
                 "STEP_FAILED",
                 step_id=completed.step_id,
@@ -3306,7 +3411,12 @@ async def reconcile(
                 ),
             )
             deferred_plan = defer_step(plan, completed.step_id, claims_path=claims_path)
-            save_plan(deferred_plan, path=plan_path, expected_hash=expected_hash)
+            _save_plan_with_durability(
+                deferred_plan,
+                plan_path=plan_path,
+                expected_hash=expected_hash,
+                reason=f"defer {completed.step_id}",
+            )
             observer.emit(
                 "FAILURE_REMEDIATION_DEFERRED",
                 step_id=completed.step_id,
@@ -3317,7 +3427,12 @@ async def reconcile(
 
     if count < 3:
         plan = defer_step(plan, completed.step_id, claims_path=claims_path)
-        save_plan(plan, path=plan_path, expected_hash=expected_hash)
+        _save_plan_with_durability(
+            plan,
+            plan_path=plan_path,
+            expected_hash=expected_hash,
+            reason=f"defer {completed.step_id}",
+        )
         observer.emit(
             "STEP_FAILED",
             step_id=completed.step_id,
@@ -3363,7 +3478,7 @@ async def shutdown(state: DriverState, observer: Observer) -> None:
     """Graceful shutdown sequence.
 
     Contract pin from Section 2.11:
-    1. Set ``state.halt_requested = True``.
+    1. Preserve the caller-established terminal state (normal completion vs halt).
     2. Wait for running handles up to configured timeout bounds.
     3. Kill any remaining processes.
     4. Clean up orphan worktrees.
@@ -3373,8 +3488,6 @@ async def shutdown(state: DriverState, observer: Observer) -> None:
     The exact orchestration order is locked by ``GRACEFUL_SHUTDOWN_CONTRACT``;
     implementation details are deferred.
     """
-    state.halt_requested = True
-
     running_entries = list(state.running.values())
     for entry in running_entries:
         abort_attempt_key = _continuity_attempt_key(

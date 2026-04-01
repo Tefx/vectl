@@ -173,6 +173,20 @@ class TestOpenCodeOutputParser:
         assert result.output == "Working..."
         assert result.exit_code == 1
 
+    def test_parse_success_stream_without_explicit_status(self) -> None:
+        """Real opencode step_finish payloads may omit explicit status."""
+        parser = OpenCodeOutputParser()
+        stdout = """{"type": "step_start", "sessionID": "ses_real"}
+{"type": "text", "part": {"text": "Done"}}
+{"type": "step_finish", "part": {"reason": "stop", "tokens": {"total": 3, "input": 2, "output": 1, "cache": {"read": 0, "write": 0}}}}"""
+        result = parser.parse(stdout, elapsed_seconds=2.0)
+
+        assert result.status == RunnerStatus.SUCCESS
+        assert result.session_id == "ses_real"
+        assert result.output == "Done"
+        assert result.tokens is not None
+        assert result.tokens["total"] == 3
+
     def test_multiline_text_concatenation(self) -> None:
         """Multiple text events concatenate with newlines."""
         parser = OpenCodeOutputParser()

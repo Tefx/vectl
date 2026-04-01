@@ -493,3 +493,35 @@ class TestCombinedOutput:
         # Verify optional sections are NOT present
         assert "Session Context" not in result
         assert "Previous Attempt" not in result
+
+
+class TestWorkerAuthorityFooter:
+    """Tests for worker authority boundaries in the prompt footer."""
+
+    def test_footer_forbids_plan_mutation_commands(self) -> None:
+        assert "Do NOT call `vectl complete`" in PROMPT_TEMPLATE_FOOTER
+        assert "`vectl claim`" in PROMPT_TEMPLATE_FOOTER
+        assert "`vectl defer`" in PROMPT_TEMPLATE_FOOTER
+
+    def test_footer_declares_orchestrator_merge_authority(self) -> None:
+        assert "Do NOT merge or reconcile your worktree" in PROMPT_TEMPLATE_FOOTER
+        assert "orchestrator owns completion and merge authority" in PROMPT_TEMPLATE_FOOTER
+
+    def test_footer_requires_local_handoff_commit(self) -> None:
+        assert "local handoff commit" in PROMPT_TEMPLATE_FOOTER
+        assert "assigned worktree" in PROMPT_TEMPLATE_FOOTER
+
+    def test_prompt_includes_worktree_isolation_preamble(self) -> None:
+        result = render_prompt(
+            step_id="sandbox.write-proof",
+            agent="python-executor",
+            description="Create a proof file",
+            verification="Read the file",
+            refs=[],
+            worktree_path=".vectl/worktrees/sandbox.write-proof",
+            session_reuse=False,
+        )
+
+        assert "⚠️ WORKTREE ISOLATION ENABLED" in result
+        assert "ISOLATED Git Worktree" in result
+        assert "MUST NOT modify `plan.yaml`, `.git/vectl/claims.json`" in result

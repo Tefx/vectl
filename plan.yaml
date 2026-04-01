@@ -43416,9 +43416,14 @@ phases:
   status: in_progress
   gate: Post-bootstrap observability remains blocked until the slimmed live codex/opencode
     judge and dispatch smoke implementation gate is complete.
+  context: 'Driver Enhancement: Advanced Observability. No further observability execution
+    should continue until the driver-agent-selection-bootstrap-validation gate passes;
+    planner/judge selection is now a prerequisite before unfinished enhancement execution
+    resumes.'
   depends_on:
   - driver-live-smoke-implementation
   - driver-continuity-hygiene-deep-review
+  - driver-agent-selection-bootstrap-validation
   steps:
   - id: driver-enhancement-observability.impl
     name: Implement runtime telemetry for lifecycle dispatch and recovery

@@ -54240,3 +54240,12 @@ phases:
     depends_on:
     - driver-agent-selection-contract.pin-contract
     agent: python-executor
+  - id: driver-agent-selection-contract.gate
+    name: Gate agent-selection contract readiness
+    status: pending
+    description: Gate review for the contract/test-definition phase.
+    verification: Contract is doc-anchored, test gaps are explicit, and implementation
+      can proceed without redefining planner/judge semantics.
+    depends_on:
+    - driver-agent-selection-contract.define-red-tests
+    agent: gate-reviewer

@@ -54312,3 +54312,8 @@ phases:
     - driver-agent-selection-implementation.wiring-audit
     - driver-agent-selection-implementation.spec-conformance
     agent: gate-reviewer
+- id: driver-agent-selection-doc-sync
+  name: Driver Agent Selection Documentation Sync
+  status: locked
+  depends_on:
+  - driver-agent-selection-implementation

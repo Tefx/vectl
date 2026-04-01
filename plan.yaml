@@ -54341,3 +54341,12 @@ phases:
   status: locked
   depends_on:
   - driver-agent-selection-doc-sync
+  steps:
+  - id: driver-agent-selection-deep-review.wiring-audit
+    name: Full wiring audit for planner/judge selection
+    status: pending
+    description: Verify all new config fields, selection branches, and observability
+      payload fields are consumed by real runtime code paths.
+    verification: No orphan exports, no dead config fields, and no unreachable selection
+      branch remains.
+    agent: wiring-auditor

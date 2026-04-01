@@ -10,6 +10,7 @@ Blueprint Reference: docs/JUDGE-AGENT-PROMPT.md
 from __future__ import annotations
 
 import asyncio
+import json
 import os
 import tempfile
 from pathlib import Path
@@ -196,6 +197,62 @@ def test_extract_verdict_payload_partial_codex_events_raise_parse_error() -> Non
         _extract_verdict_payload(partial_stream)
 
 
+def test_extract_verdict_payload_codex_structured_output_envelope() -> None:
+    verdict = {
+        "verdict": "REPLAN",
+        "reason": "Need specs",
+        "suggested_action": None,
+        "planner_instruction": "Add missing schema and rollback steps",
+    }
+    stream = "\n".join(
+        [
+            '{"type":"thread.started","thread_id":"th-1"}',
+            json.dumps(
+                {
+                    "type": "item.completed",
+                    "item": {
+                        "output": {
+                            "structured_output": json.dumps(verdict),
+                        }
+                    },
+                }
+            ),
+        ]
+    )
+
+    payload = _extract_verdict_payload(stream)
+
+    assert json.loads(payload) == verdict
+
+
+def test_extract_verdict_payload_codex_result_envelope() -> None:
+    verdict = {
+        "verdict": "ACCEPT",
+        "reason": "Enough information",
+        "suggested_action": None,
+        "planner_instruction": None,
+    }
+    stream = "\n".join(
+        [
+            '{"type":"thread.started","thread_id":"th-1"}',
+            json.dumps(
+                {
+                    "type": "item.completed",
+                    "item": {
+                        "output": {
+                            "result": verdict,
+                        }
+                    },
+                }
+            ),
+        ]
+    )
+
+    payload = _extract_verdict_payload(stream)
+
+    assert json.loads(payload) == verdict
+
+
 def test_codex_command_reuses_driver_yaml_runner_config() -> None:
     driver_yaml = {
         "runners": {
@@ -243,7 +300,7 @@ def test_codex_command_reuses_driver_yaml_runner_config() -> None:
     assert "--dangerously-bypass-approvals-and-sandbox" in command
     assert "-C" in command
     assert "-" in command
-    assert "--output-schema" in command
+    assert "--output-schema" not in command
 
 
 def test_codex_command_without_driver_yaml_contract_raises_parse_error() -> None:

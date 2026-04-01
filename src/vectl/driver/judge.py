@@ -1017,10 +1017,6 @@ class Judge:
             if configured_prompt_mode == "stdin_dash" and "-" not in command:
                 command.append("-")
 
-            if self._config.structured_output and self._structured_schema_path is not None:
-                has_schema_flag = "--output-schema" in command
-                if not has_schema_flag:
-                    command.extend(["--output-schema", self._structured_schema_path])
             payload = f"SYSTEM PROMPT:\n{system_prompt}\n\n{user_prompt}"
             return command, payload
 
@@ -1166,10 +1162,29 @@ def _extract_verdict_payload(stdout_text: str) -> str:
                 text_parts.append(text.strip())
             continue
 
-        # Codex JSONL path: item.completed carries the text payload.
+        # Codex JSONL path: item.completed may carry structured output, result,
+        # or text payloads nested under item.output.
         if event.get("type") == "item.completed":
             item = event.get("item", {})
             if isinstance(item, dict):
+                output = item.get("output")
+                if isinstance(output, dict):
+                    structured_output = output.get("structured_output")
+                    if isinstance(structured_output, dict):
+                        return json.dumps(structured_output, ensure_ascii=False)
+                    if isinstance(structured_output, str) and structured_output.strip():
+                        return structured_output.strip()
+
+                    result = output.get("result")
+                    if isinstance(result, dict):
+                        return json.dumps(result, ensure_ascii=False)
+                    if isinstance(result, str) and result.strip():
+                        return result.strip()
+
+                    nested_text = output.get("text")
+                    if isinstance(nested_text, str) and nested_text.strip():
+                        text_parts.append(nested_text.strip())
+
                 text = item.get("text")
                 if isinstance(text, str) and text.strip():
                     text_parts.append(text.strip())

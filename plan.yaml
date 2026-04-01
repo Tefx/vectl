@@ -54214,3 +54214,17 @@ phases:
   depends_on:
   - driver-live-smoke-implementation
   - driver-continuity-hygiene-deep-review
+  steps:
+  - id: driver-agent-selection-contract.pin-contract
+    name: Pin planner/judge agent-selection contract
+    status: pending
+    description: Contract step. Pin the authoritative nested planner/judge config
+      shape, selection-mode rules, runner capability rules, migration semantics, fallback/error
+      policy, observability fields, runtime matrix, and v1 scope from docs/DRIVER-AGENT-SELECTION.md.
+      Lock the intended surfaces in src/vectl/driver/config.py, src/vectl/driver/loop.py,
+      src/vectl/driver/judge.py, src/vectl/driver/runners.py, and src/vectl/driver/observe.py
+      without introducing alternate public APIs.
+    verification: Contract cites exact doc sections and names the concrete fields,
+      rejection cases, and runtime outcomes required for implementation. No product
+      logic is shipped in this step.
+    agent: software-architect

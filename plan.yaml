@@ -54228,3 +54228,15 @@ phases:
       rejection cases, and runtime outcomes required for implementation. No product
       logic is shipped in this step.
     agent: software-architect
+  - id: driver-agent-selection-contract.define-red-tests
+    name: Define expected-red tests for agent-selection semantics
+    status: pending
+    description: Test-definition step. Add or update focused tests for nested planner/judge
+      config loading, legacy-field migration, capability rejection, preflight missing-agent
+      failure, no-silent-fallback behavior, and explicit selection observability payloads.
+      This step defines the gaps; red is expected before implementation.
+    verification: Tests are limited to tests/ plus fixtures/helpers; each doc rule
+      has at least one failing test or explicitly exposed gap before implementation.
+    depends_on:
+    - driver-agent-selection-contract.pin-contract
+    agent: python-executor

@@ -44420,6 +44420,10 @@ phases:
   status: locked
   gate: Final doc-sync plus independent deep review confirm the hardened and enhanced
     driver is safe, observable, and extension-ready.
+  context: 'Driver Enhancement: Review. Enhancement review remains downstream of driver-enhancement-integration
+    and the new driver-agent-selection-bootstrap-validation prerequisite, so unfinished
+    enhancement work should not be treated as bootstrap-ready until the selection
+    gate chain clears.'
   depends_on:
   - driver-routing-hardening
   - driver-enhancement-integration

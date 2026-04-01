@@ -54390,3 +54390,15 @@ phases:
     depends_on:
     - driver-agent-selection-deep-review.spec-conformance
     agent: blind-tester
+  - id: driver-agent-selection-deep-review.gate
+    name: Final deep-review gate for agent selection
+    status: pending
+    description: Final gate before bootstrap/self-host validation.
+    verification: Independent review confirms selection behavior is safe to use as
+      a prerequisite for resumed bootstrap and enhancement work.
+    depends_on:
+    - driver-agent-selection-deep-review.spec-conformance
+    - driver-agent-selection-deep-review.architecture-review
+    - driver-agent-selection-deep-review.contract-strength
+    - driver-agent-selection-deep-review.black-box-verification
+    agent: gate-reviewer

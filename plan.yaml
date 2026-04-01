@@ -54225,7 +54225,7 @@ phases:
   steps:
   - id: driver-agent-selection-contract.pin-contract
     name: Pin planner/judge agent-selection contract
-    status: claimed
+    status: done
     description: Contract step. Pin the authoritative nested planner/judge config
       shape, selection-mode rules, runner capability rules, migration semantics, fallback/error
       policy, observability fields, runtime matrix, and v1 scope from docs/DRIVER-AGENT-SELECTION.md.
@@ -54238,6 +54238,18 @@ phases:
     agent: software-architect
     claimed_by: software-architect
     claimed_at: '2026-04-01T19:12:22.117762+00:00'
+    done_at: '2026-04-01T19:20:18.798035+00:00'
+    evidence: 'Artifact: commit 7bfd2fa in isolated worktree.
+
+      Verification: uv run python -m compileall src/vectl/driver/config.py src/vectl/driver/loop.py
+      src/vectl/driver/judge.py src/vectl/driver/runners.py src/vectl/driver/observe.py
+      (passed); uv run ruff check same files (passed).
+
+      Spec link: docs/DRIVER-AGENT-SELECTION.md sections Config Contract, Runtime
+      Semantics, Capability Rules, Fallback and Error Policy, Observability Contract,
+      Migration Guidance, Runtime Matrix, v1 Scope Definition.
+
+      Notes: contract pin only; no product logic implemented.'
   - id: driver-agent-selection-contract.define-red-tests
     name: Define expected-red tests for agent-selection semantics
     status: pending

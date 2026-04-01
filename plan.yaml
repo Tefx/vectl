@@ -54252,7 +54252,7 @@ phases:
       Notes: contract pin only; no product logic implemented.'
   - id: driver-agent-selection-contract.define-red-tests
     name: Define expected-red tests for agent-selection semantics
-    status: claimed
+    status: done
     description: Test-definition step. Add or update focused tests for nested planner/judge
       config loading, legacy-field migration, capability rejection, preflight missing-agent
       failure, no-silent-fallback behavior, and explicit selection observability payloads.
@@ -54264,6 +54264,12 @@ phases:
     agent: python-executor
     claimed_by: python-executor
     claimed_at: '2026-04-01T19:21:13.080462+00:00'
+    done_at: '2026-04-01T19:27:14.549376+00:00'
+    evidence: 'EXPECTED_RED_ACCEPTED: Test-definition step completed red by design.
+      Added tests/test_driver_agent_selection_expected_red.py (32 tests) with 23 expected
+      failing tests exposing documented contract gaps and 9 gap-documenting passes.
+      step_intent=test_define_red; expected_result=red; observed_result=red; failure_alignment=matches
+      docs/DRIVER-AGENT-SELECTION.md gaps; product implementation files modified=false.'
   - id: driver-agent-selection-contract.gate
     name: Gate agent-selection contract readiness
     status: pending

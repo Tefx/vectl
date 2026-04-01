@@ -22,7 +22,7 @@ import time
 from dataclasses import dataclass
 from pathlib import Path
 from tempfile import NamedTemporaryFile
-from typing import TYPE_CHECKING, Literal, Protocol
+from typing import TYPE_CHECKING, Final, Literal, Protocol
 
 import yaml
 
@@ -39,6 +39,84 @@ from .types import JudgeContinuityPolicyOutput
 if TYPE_CHECKING:
     from .config import JudgeConfig
     from .observe import Observer
+
+
+JudgeSelectionMode = Literal["prompt_only", "external_agent"]
+
+
+@dataclass(frozen=True)
+class JudgeAgentSelectionContract:
+    """Pinned judge-side agent-selection contract.
+
+    Source:
+    - docs/DRIVER-AGENT-SELECTION.md ``Judge``
+    - docs/DRIVER-AGENT-SELECTION.md ``Judge: external-agent mode``
+    - docs/DRIVER-AGENT-SELECTION.md ``Judge: prompt-only mode``
+    - docs/DRIVER-AGENT-SELECTION.md ``Fallback and Error Policy``
+    - docs/DRIVER-AGENT-SELECTION.md ``v1 Scope Definition``
+
+    Boundary-only notes:
+    - This contract locks authority and rejection semantics.
+    - It intentionally does not migrate the current ``JudgeConfig`` runtime
+      fields in this step.
+    """
+
+    contract_id: str
+    source_step_id: str
+    config_shape: tuple[str, ...]
+    supported_modes: tuple[JudgeSelectionMode, ...]
+    prompt_authority_rules: tuple[str, ...]
+    structured_output_rules: tuple[str, ...]
+    rejection_cases: tuple[str, ...]
+    runtime_outcomes: tuple[str, ...]
+    migration_rules: tuple[str, ...]
+
+
+JUDGE_AGENT_SELECTION_CONTRACT: Final[JudgeAgentSelectionContract] = JudgeAgentSelectionContract(
+    contract_id="driver-judge-agent-selection-v1",
+    source_step_id="driver-agent-selection-contract.pin-contract",
+    config_shape=(
+        "judge.runner",
+        "judge.external_agent_name",
+        "judge.structured_output",
+        "judge.timeout",
+        "judge.preflight",
+        "judge.evidence_validation",
+        "judge.failure_classification",
+        "judge.escalation",
+        "judge.gate_assessment",
+        "judge.cold_context",
+        "judge.anomaly",
+    ),
+    supported_modes=("prompt_only", "external_agent"),
+    prompt_authority_rules=(
+        "external_agent mode must not inject vectl bundled judge prompt",
+        "prompt_only mode must inject vectl bundled judge prompt",
+        "prompt_only mode keeps bundled prompt as sole prompt authority",
+        "no hybrid prompt layering is allowed",
+    ),
+    structured_output_rules=(
+        "structured_output remains an output-contract concern in both modes",
+        "verdict-shape enforcement survives even when bundled prompt is absent in external mode",
+    ),
+    rejection_cases=(
+        "judge.external_agent_name set for runner without verified agent-selection capability",
+        "named external judge agent cannot be reliably verified during preflight",
+        "runner reports agent-not-found or unsupported-agent during invocation",
+    ),
+    runtime_outcomes=(
+        "judge.external_agent_name unset/null => bundled judge prompt runtime",
+        "judge.external_agent_name set + supported runner + existing agent => "
+        "external judge runtime without bundled prompt",
+        "judge.external_agent_name set + unsupported runner => hard config/startup error",
+        "judge.external_agent_name set + missing agent => hard startup/runtime error",
+    ),
+    migration_rules=(
+        "legacy judge.agent_name=judge migrates to judge.external_agent_name=null",
+        "non-default legacy judge.agent_name may migrate to "
+        "judge.external_agent_name with warning and validation",
+    ),
+)
 
 
 # =============================================================================
@@ -1223,8 +1301,10 @@ mechanisms to guarantee valid JSON verdicts, eliminating parse failures:
 
 | Runner     | Mechanism                          | Verdict extraction                    |
 |-----------|-----------------------------------|---------------------------------------|
-| Claude CLI | --json-schema <schema_file>       | Response structured_output = guaranteed valid JSON |
-| OpenCode   | --format json                     | Parse from JSONL text event (best-effort) |
+| Claude CLI | --json-schema <schema_file>       | Response structured_output = |
+|            |                                   | guaranteed valid JSON |
+| OpenCode   | --format json                     | Parse from JSONL text event |
+|            |                                   | (best-effort) |
 | Codex      | --output-schema <schema_file>     | Guaranteed structured output          |
 
 The JSON schema for the verdict is derived from JudgmentVerdict dataclass
@@ -1250,16 +1330,18 @@ Judge vs Rules Decision Boundary (from Architecture doc Section 2.10):
 
 Reconcile determines when to invoke the judge via a two-tier check:
 
-| Check                           | Mechanism                                      | Judge involvement              |
-|--------------------------------|------------------------------------------------|--------------------------------|
-| Evidence schema validation     | Rule-based: required fields, YAML parseable   | None (fast reject)             |
-| Evidence content adequacy       | Requires understanding                         | EVIDENCE judgment             |
-| Failure count < 3               | Rule-based threshold                          | None (automatic retry)         |
-| Failure count >= 3              | Needs classification                          | ESCALATION judgment           |
-| Preflight risk signals          | Keyword detection                             | PREFLIGHT judgment            |
-| Gate blocker vs suggestion      | Severity classification                       | GATE judgment for downstream  |
-| Claims/plan anomaly repair      | Anomaly type classification                    | ANOMALY judgment               |
-| Gate dispatch context pruning   | Inclusion/exclusion for isolation             | COLD_CONTEXT judgment          |
+| Check                         | Mechanism                            | Judge involvement        |
+|------------------------------|--------------------------------------|--------------------------|
+| Evidence schema validation   | Rule-based: required fields, YAML    | None (fast reject)       |
+|                              | parseable                            |                          |
+| Evidence content adequacy    | Requires understanding               | EVIDENCE judgment        |
+| Failure count < 3            | Rule-based threshold                 | None (automatic retry)   |
+| Failure count >= 3           | Needs classification                 | ESCALATION judgment      |
+| Preflight risk signals       | Keyword detection                    | PREFLIGHT judgment       |
+| Gate blocker vs suggestion   | Severity classification              | GATE judgment downstream |
+| Claims/plan anomaly repair   | Anomaly type classification          | ANOMALY judgment         |
+| Gate dispatch context        | Inclusion/exclusion for isolation    | COLD_CONTEXT judgment    |
+| pruning                      |                                      |                          |
 
 The boundary is: **rules handle structure; the judge handles semantics.**
 

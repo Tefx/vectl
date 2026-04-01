@@ -249,6 +249,84 @@ class DeferredRuntimeBranch:
     rationale: str
 
 
+@dataclass(frozen=True)
+class PlannerAgentSelectionLoopContract:
+    """Pinned planner/judge runtime selection outcomes owned by loop wiring.
+
+    Source:
+    - docs/DRIVER-AGENT-SELECTION.md ``Planner: external-agent mode``
+    - docs/DRIVER-AGENT-SELECTION.md ``Planner: prompt-only mode``
+    - docs/DRIVER-AGENT-SELECTION.md ``Fallback and Error Policy``
+    - docs/DRIVER-AGENT-SELECTION.md ``Runtime Matrix``
+    - docs/DRIVER-AGENT-SELECTION.md ``v1 Scope Definition``
+
+    Scope:
+    - pins loop-owned branching and runtime outcomes only
+    - does not migrate the current planner dispatch implementation in this step
+    """
+
+    contract_id: str
+    source_step_id: str
+    planner_authority_rules: tuple[str, ...]
+    judge_authority_rules: tuple[str, ...]
+    rejection_cases: tuple[str, ...]
+    observability_requirements: tuple[str, ...]
+    runtime_matrix_outcomes: tuple[str, ...]
+    deferred_runtime_changes: tuple[str, ...]
+
+
+AGENT_SELECTION_LOOP_CONTRACT: Final[PlannerAgentSelectionLoopContract] = (
+    PlannerAgentSelectionLoopContract(
+        contract_id="driver-agent-selection-loop-v1",
+        source_step_id="driver-agent-selection-contract.pin-contract",
+        planner_authority_rules=(
+            "planner external-agent mode uses planner.runner and passes named "
+            "agent only when the runner supports agent selection",
+            "planner external-agent mode must not inject bundled planner prompt",
+            "planner prompt-only mode uses planner.runner without --agent and "
+            "injects bundled planner prompt",
+            "planner behavior authority is singular per mode; hybrid prompt layering is forbidden",
+        ),
+        judge_authority_rules=(
+            "judge external-agent mode keeps structured output/verdict "
+            "enforcement but removes bundled judge prompt authority",
+            "judge prompt-only mode keeps bundled judge prompt as sole authority",
+        ),
+        rejection_cases=(
+            "configured runner missing from config.runners for planner or judge nested shape",
+            "external_agent_name selected for runner lacking capability declaration",
+            "external agent existence cannot be verified before first invocation",
+            "planner explicit null remains rejected in v1 until prompt-only planner ships",
+        ),
+        observability_requirements=(
+            "emit surface",
+            "emit runner",
+            "emit selection_mode",
+            "emit external_agent_name",
+            "emit prompt_source",
+            "emit explicit selection error event on unsupported/missing external agent",
+        ),
+        runtime_matrix_outcomes=(
+            "planner unset/null => prompt-only planner outcome once planner prompt-only ships",
+            "planner set + capable runner + existing agent => external planner agent outcome",
+            "planner set + incapable runner => hard config/startup error",
+            "planner set + missing agent => hard startup/runtime error",
+            "judge unset/null => bundled judge prompt outcome",
+            "judge set + capable runner + existing agent => external judge "
+            "outcome with no bundled prompt",
+            "judge set + incapable runner => hard config/startup error",
+            "judge set + missing agent => hard startup/runtime error",
+        ),
+        deferred_runtime_changes=(
+            "replace flat planner_agent_name routing with nested planner config selection contract",
+            "replace logical judge.agent_name dispatch semantics with "
+            "judge.external_agent_name contract",
+            "introduce preflight existence probe and fail-closed selection validation",
+        ),
+    )
+)
+
+
 ReplanTriggerName = Literal[
     "handle_dispatch.preflight_replan",
     "reconcile.evidence_replan",

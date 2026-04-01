@@ -54254,3 +54254,16 @@ phases:
   status: locked
   depends_on:
   - driver-agent-selection-contract
+  steps:
+  - id: driver-agent-selection-implementation.config-migration
+    name: Implement nested config and migration semantics
+    status: pending
+    description: Complete implementation within existing config surfaces to replace
+      the flat planner_agent_name / logical judge.agent_name behavior with nested
+      planner.external_agent_name and judge.external_agent_name semantics, including
+      runner capability metadata, config-load validation, and documented migration
+      behavior. Preserve existing unrelated driver config behavior.
+    verification: 'Main path: nested configs load and migrate as documented. Failure
+      path: unsupported external-agent configuration is rejected at config-load/startup
+      with explicit diagnostics.'
+    agent: python-senior

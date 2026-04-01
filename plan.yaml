@@ -54291,3 +54291,14 @@ phases:
     depends_on:
     - driver-agent-selection-implementation.runtime-selection
     agent: wiring-auditor
+  - id: driver-agent-selection-implementation.spec-conformance
+    name: Verify conformance to DRIVER-AGENT-SELECTION
+    status: pending
+    description: Independent spec-conformance review against docs/DRIVER-AGENT-SELECTION.md
+      for config shape, runtime semantics, migration rules, fallback policy, and observability
+      payloads.
+    verification: Evidence table maps each implemented rule to code and identifies
+      any divergence, partial match, or remaining ambiguity.
+    depends_on:
+    - driver-agent-selection-implementation.runtime-selection
+    agent: spec-verifier

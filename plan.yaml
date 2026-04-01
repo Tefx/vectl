@@ -54317,3 +54317,13 @@ phases:
   status: locked
   depends_on:
   - driver-agent-selection-implementation
+  steps:
+  - id: driver-agent-selection-doc-sync.update-docs
+    name: Update driver docs for planner/judge selection semantics
+    status: pending
+    description: Sync driver architecture, config examples, migration guidance, and
+      any operator-facing bootstrap notes to the implemented planner/judge selection
+      behavior.
+    verification: Docs reflect nested planner/judge config, defaults, fail-closed
+      behavior, and observability fields without legacy ambiguity.
+    agent: doc-reviewer

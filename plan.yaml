@@ -54402,3 +54402,8 @@ phases:
     - driver-agent-selection-deep-review.contract-strength
     - driver-agent-selection-deep-review.black-box-verification
     agent: gate-reviewer
+- id: driver-agent-selection-bootstrap-validation
+  name: Driver Agent Selection Formal Bootstrap Validation
+  status: locked
+  depends_on:
+  - driver-agent-selection-deep-review

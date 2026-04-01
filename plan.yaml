@@ -54281,3 +54281,13 @@ phases:
     depends_on:
     - driver-agent-selection-implementation.config-migration
     agent: python-senior
+  - id: driver-agent-selection-implementation.wiring-audit
+    name: Audit wiring completeness for new config and runtime surfaces
+    status: pending
+    description: Wiring audit for new planner/judge config fields, runtime selectors,
+      and emitted observability fields.
+    verification: No orphan config fields, no unreachable selection path, and all
+      new observability fields are wired to a real runtime caller.
+    depends_on:
+    - driver-agent-selection-implementation.runtime-selection
+    agent: wiring-auditor

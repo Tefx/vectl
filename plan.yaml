@@ -54272,13 +54272,15 @@ phases:
       docs/DRIVER-AGENT-SELECTION.md gaps; product implementation files modified=false.'
   - id: driver-agent-selection-contract.gate
     name: Gate agent-selection contract readiness
-    status: pending
+    status: claimed
     description: Gate review for the contract/test-definition phase.
     verification: Contract is doc-anchored, test gaps are explicit, and implementation
       can proceed without redefining planner/judge semantics.
     depends_on:
     - driver-agent-selection-contract.define-red-tests
     agent: gate-reviewer
+    claimed_by: gate-reviewer
+    claimed_at: '2026-04-01T19:27:54.949343+00:00'
 - id: driver-agent-selection-implementation
   name: Driver Agent Selection Implementation
   status: locked

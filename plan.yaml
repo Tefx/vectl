@@ -54556,7 +54556,7 @@ phases:
     agent: gate-reviewer
   - id: driver-agent-selection-doc-sync.fix-doc-defaults-status
     name: Fix stale default-runner and status docs
-    status: claimed
+    status: pending
     description: 'Batched documentation remediation for driver agent-selection doc
       sync.
 
@@ -54597,8 +54597,6 @@ phases:
     depends_on:
     - driver-agent-selection-doc-sync.update-docs
     agent: doc-reviewer
-    claimed_by: doc-reviewer
-    claimed_at: '2026-04-02T03:29:30.697942+00:00'
     done_at: '2026-04-02T03:26:29.291600+00:00'
     rejection_reason: 'Doc remediation incomplete: stale opencode-default wording
       remains in DRIVER-ARCHITECTURE.md and DRIVER-BLUEPRINT.md.'

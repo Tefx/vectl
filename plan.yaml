@@ -54702,7 +54702,7 @@ phases:
   steps:
   - id: driver-agent-selection-deep-review.wiring-audit
     name: Full wiring audit for planner/judge selection
-    status: claimed
+    status: done
     description: Verify all new config fields, selection branches, and observability
       payload fields are consumed by real runtime code paths.
     verification: No orphan exports, no dead config fields, and no unreachable selection
@@ -54712,6 +54712,12 @@ phases:
     agent: wiring-auditor
     claimed_by: wiring-auditor
     claimed_at: '2026-04-02T03:50:40.245357+00:00'
+    done_at: '2026-04-02T03:53:29.192779+00:00'
+    evidence: 'Post-remediation wiring audit PASS across all protocols. Dead exports
+      eliminated: DRIVER_AGENT_SELECTION_CONFIG_CONTRACT and JUDGE_AGENT_SELECTION_CONTRACT
+      removed; duplicate AgentSelectionMode alias resolved to single canonical definition.
+      Verified no orphan exports, no dead config fields, and no unreachable selection
+      branches.'
   - id: driver-agent-selection-deep-review.spec-conformance
     name: Full spec conformance audit for agent selection
     status: pending

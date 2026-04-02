@@ -54720,13 +54720,15 @@ phases:
       branches.'
   - id: driver-agent-selection-deep-review.spec-conformance
     name: Full spec conformance audit for agent selection
-    status: pending
+    status: claimed
     description: Cross-check implemented planner/judge behavior against the finalized
       design document at system level.
     verification: System-level requirements table is complete and any drift is surfaced.
     depends_on:
     - driver-agent-selection-deep-review.wiring-audit
     agent: spec-verifier
+    claimed_by: spec-verifier
+    claimed_at: '2026-04-02T03:53:41.797195+00:00'
   - id: driver-agent-selection-deep-review.architecture-review
     name: Review selection ownership and dependency boundaries
     status: pending

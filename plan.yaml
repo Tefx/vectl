@@ -44641,7 +44641,7 @@ phases:
     agent: integration-verifier
   - id: driver-enhancement-integration.full-plan-check
     name: Run repo-wide driver enhancement check
-    status: pending
+    status: claimed
     description: 'step_type: verification
 
       Verification scope: full-plan-check protecting driver-enhancement-review and
@@ -44670,6 +44670,8 @@ phases:
     depends_on:
     - driver-enhancement-integration.system-wiring
     agent: integration-verifier
+    claimed_by: integration-verifier
+    claimed_at: '2026-04-02T08:52:05.297535+00:00'
   - id: driver-enhancement-integration.gate
     name: Gate integrated driver enhancement wiring
     status: pending

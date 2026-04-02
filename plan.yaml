@@ -44762,7 +44762,7 @@ phases:
     agent: gate-reviewer
   - id: driver-enhancement-integration.fix-runner-default-fixtures
     name: Fix JudgeConfig runner default fixture/catalog alignment
-    status: pending
+    status: claimed
     description: 'step_type: implementation
 
       priority: HIGH
@@ -44858,6 +44858,8 @@ phases:
     depends_on:
     - driver-enhancement-integration.full-plan-check
     agent: python-senior
+    claimed_by: python-senior
+    claimed_at: '2026-04-02T09:07:39.408063+00:00'
   - id: driver-enhancement-integration.retest-runner-default-fixtures
     name: Retest runner default fixture/catalog remediation
     status: pending

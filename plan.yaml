@@ -54453,6 +54453,37 @@ phases:
     depends_on:
     - driver-agent-selection-implementation.gate
     agent: python-senior
+  - id: driver-agent-selection-implementation.retest-judge-runner-test-defaults
+    name: Retest batched judge-runner default remediation
+    status: pending
+    description: 'Independent retest after driver-agent-selection-implementation.fix-judge-runner-test-defaults
+      to prove the 7 blocking test defects are closed and the phase is gate-ready.
+
+
+      step_type: test
+
+      step_intent: retest_green
+
+      expected_result: green
+
+      verification_scope: phase-check
+
+
+      As an INDEPENDENT TESTER, rerun the corrected target file and related driver-agent-selection
+      suites from a fresh perspective. Goal: confirm the codex default expectation
+      is now enforced consistently and DriverConfig fixture construction no longer
+      violates invariants.'
+    verification: '- Must-green targeted retest: pytest tests/test_driver_agent_selection_expected_red.py
+      -v
+
+      - Must-green related suite retest: pytest tests/test_driver_agent_selection*.py
+      -v
+
+      - Evidence must show the previously failing 7-test family now passes and phase
+      is ready for gate review'
+    depends_on:
+    - driver-agent-selection-implementation.fix-judge-runner-test-defaults
+    agent: integration-verifier
 - id: driver-agent-selection-doc-sync
   name: Driver Agent Selection Documentation Sync
   status: locked

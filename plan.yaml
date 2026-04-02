@@ -54546,13 +54546,15 @@ phases:
       judge.external_agent_name; runner supports_agent_selection surfaced in examples.'
   - id: driver-agent-selection-doc-sync.gate
     name: Gate agent-selection doc sync
-    status: pending
+    status: claimed
     description: Gate review for documentation sync.
     verification: Operator-facing docs match implemented behavior and no stale legacy
       guidance remains.
     depends_on:
     - driver-agent-selection-doc-sync.update-docs
     agent: gate-reviewer
+    claimed_by: gate-reviewer
+    claimed_at: '2026-04-02T03:19:34.188229+00:00'
 - id: driver-agent-selection-deep-review
   name: Driver Agent Selection Deep Review
   status: locked

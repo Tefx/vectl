@@ -439,7 +439,9 @@ For automated plan execution, use the `vectl drive` command with a driver config
 ```bash
 # Create driver.yaml (see DRIVER-BLUEPRINT.md for full schema)
 cat > driver.yaml << 'EOF'
-planner_agent_name: vectl-planner-slim
+planner:
+  runner: opencode
+  external_agent_name: vectl-planner-slim
 
 runners:
   opencode:
@@ -447,6 +449,7 @@ runners:
     args: ["run", "--format", "json"]
     stall_timeout: 300
     output_parser: opencode_jsonl
+    supports_agent_selection: true
 
 agent_routing:
   python-senior: opencode
@@ -459,7 +462,7 @@ orchestration:
 
 judge:
   runner: opencode
-  agent_name: judge
+  external_agent_name: null
   preflight: true
   evidence_validation: true
 EOF

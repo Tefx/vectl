@@ -364,6 +364,7 @@ class RunnerConfig(BaseModel):
     output_parser: str = "claude_json"     # "claude_json" | "opencode_jsonl" | "codex_jsonl" | "gemini_json"
     persist_session: bool = True
     experimental: bool = False
+    supports_agent_selection: bool = False  # Whether runner supports --agent <name>
 
 
 class SessionConfig(BaseModel):
@@ -371,9 +372,14 @@ class SessionConfig(BaseModel):
     ttl_overrides: dict[str, int] = Field(default_factory=dict)
 
 
+class PlannerConfig(BaseModel):
+    runner: str = "opencode"
+    external_agent_name: str | None = None  # null = use bundled planner prompt
+
+
 class JudgeConfig(BaseModel):
     runner: str = "opencode"             # All sidecar/subagent calls default to opencode
-    model: str | None = None
+    external_agent_name: str | None = None  # null = use bundled judge prompt
     structured_output: bool = True       # Use model structured output (see note below)
     timeout: int = 60                    # Per-judgment timeout in seconds
     preflight: bool = True               # JudgmentType.PREFLIGHT
@@ -403,6 +409,7 @@ class DriverConfig(BaseModel):
     runners: dict[str, RunnerConfig]
     agent_routing: dict[str, str] = Field(default_factory=dict)
     fallback_runner: str = "opencode"
+    planner: PlannerConfig = Field(default_factory=PlannerConfig)
     orchestration: OrchestrationConfig = Field(default_factory=OrchestrationConfig)
     session: SessionConfig = Field(default_factory=SessionConfig)
     judge: JudgeConfig = Field(default_factory=JudgeConfig)
@@ -542,11 +549,13 @@ session:
   ttl_overrides:
     claude: 600
 
-planner_agent_name: vectl-planner-slim
+planner:
+  runner: opencode
+  external_agent_name: vectl-planner-slim
 
 judge:
   runner: opencode
-  agent_name: judge
+  external_agent_name: null
   structured_output: true
   timeout: 60
   preflight: true

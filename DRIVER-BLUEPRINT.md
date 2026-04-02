@@ -411,6 +411,7 @@ runners:
     session_id_regex: "^[0-9a-f]{8}-[0-9a-f]{4}-"
     output_parser: claude_json
     persist_session: true        # Don't pass --no-session-persistence
+    supports_agent_selection: false
 
   opencode:
     command: "opencode"
@@ -421,6 +422,7 @@ runners:
     session_id_regex: "^ses_[a-z0-9]+"
     output_parser: opencode_jsonl
     persist_session: true
+    supports_agent_selection: true
 
   codex:
     command: "codex"
@@ -430,6 +432,7 @@ runners:
     resume_command: ["codex", "exec", "resume", "--json", "--dangerously-bypass-approvals-and-sandbox"]
     session_id_regex: "^[0-9a-f]{8}-"
     output_parser: codex_jsonl
+    supports_agent_selection: false
 
   gemini:
     command: "gemini"
@@ -438,6 +441,7 @@ runners:
     stall_timeout: 600
     output_parser: gemini_json
     experimental: true           # Auth issues, not fully verified
+    supports_agent_selection: false
 
 agent_routing:
   python-senior: claude
@@ -449,7 +453,10 @@ agent_routing:
   "*-planner": opencode
 
 fallback_runner: opencode
-planner_agent_name: vectl-planner-slim
+
+planner:
+  runner: opencode
+  external_agent_name: vectl-planner-slim
 
 orchestration:
   max_parallelism: 5
@@ -463,8 +470,7 @@ session:
 
 judge:
   runner: opencode               # Default runner for all judgment calls
-  agent_name: judge              # Logical judge agent name used in runner argv/templates
-  model: null                    # Override model (optional)
+  external_agent_name: null      # null = use bundled judge prompt
   structured_output: true        # Use model structured output where available
   timeout: 60                    # Judgment call timeout (seconds)
   # Judgment types to enable (all true for full parity)

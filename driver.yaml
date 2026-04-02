@@ -1,5 +1,8 @@
 plan_path: plan.yaml
-planner_agent_name: vectl-planner-slim
+
+planner:
+  runner: opencode
+  external_agent_name: vectl-planner-slim
 
 runners:
   opencode:
@@ -8,6 +11,7 @@ runners:
     stall_timeout: 300
     output_parser: opencode_jsonl
     persist_session: true
+    supports_agent_selection: true
   codex:
     command: codex
     args: ["exec", "--json", "--dangerously-bypass-approvals-and-sandbox", "-C", "{workdir}"]
@@ -16,6 +20,7 @@ runners:
     resume_command: ["codex", "exec", "resume", "--json", "--dangerously-bypass-approvals-and-sandbox"]
     session_id_regex: "^[0-9a-f]{8}-"
     output_parser: codex_jsonl
+    supports_agent_selection: false
 
 fallback_runner: opencode
 
@@ -28,7 +33,7 @@ session:
 
 judge:
   runner: codex
-  agent_name: judge
+  external_agent_name: null
   structured_output: true
   preflight: true
   evidence_validation: true

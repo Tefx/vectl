@@ -54295,7 +54295,7 @@ phases:
   steps:
   - id: driver-agent-selection-implementation.config-migration
     name: Implement nested config and migration semantics
-    status: claimed
+    status: done
     description: Complete implementation within existing config surfaces to replace
       the flat planner_agent_name / logical judge.agent_name behavior with nested
       planner.external_agent_name and judge.external_agent_name semantics, including
@@ -54307,6 +54307,15 @@ phases:
     agent: python-senior
     claimed_by: python-senior
     claimed_at: '2026-04-02T02:09:21.999372+00:00'
+    done_at: '2026-04-02T02:16:54.651870+00:00'
+    evidence: 'Artifact: commit 1f62fe2 in isolated worktree.
+
+      Verification: uv run pytest -q tests/test_driver_config.py tests/test_driver_loop_hardening.py
+      tests/test_driver_judge_impl_runtime.py (79 passed, 0 failed); git status --short
+      clean.
+
+      Spec link: docs/DRIVER-AGENT-SELECTION.md sections Config Contract, Capability
+      Rules, Fallback and Error Policy, Migration Guidance.'
   - id: driver-agent-selection-implementation.runtime-selection
     name: Implement runtime selection, preflight, and observability wiring
     status: pending

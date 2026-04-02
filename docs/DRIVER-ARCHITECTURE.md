@@ -378,7 +378,7 @@ class PlannerConfig(BaseModel):
 
 
 class JudgeConfig(BaseModel):
-    runner: str = "opencode"             # All sidecar/subagent calls default to opencode
+    runner: str = "codex"                # Default judge runner is codex for structured output support
     external_agent_name: str | None = None  # null = use bundled judge prompt
     structured_output: bool = True       # Use model structured output (see note below)
     timeout: int = 60                    # Per-judgment timeout in seconds

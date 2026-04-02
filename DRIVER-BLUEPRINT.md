@@ -469,7 +469,7 @@ session:
     claude: 600                  # Claude prompt cache has longer effective window
 
 judge:
-  runner: opencode               # Default runner for all judgment calls
+  runner: codex                  # Default judge runner for structured output support
   external_agent_name: null      # null = use bundled judge prompt
   structured_output: true        # Use model structured output where available
   timeout: 60                    # Judgment call timeout (seconds)

@@ -54295,7 +54295,7 @@ phases:
   steps:
   - id: driver-agent-selection-implementation.config-migration
     name: Implement nested config and migration semantics
-    status: pending
+    status: claimed
     description: Complete implementation within existing config surfaces to replace
       the flat planner_agent_name / logical judge.agent_name behavior with nested
       planner.external_agent_name and judge.external_agent_name semantics, including
@@ -54305,6 +54305,8 @@ phases:
       path: unsupported external-agent configuration is rejected at config-load/startup
       with explicit diagnostics.'
     agent: python-senior
+    claimed_by: python-senior
+    claimed_at: '2026-04-02T02:09:21.999372+00:00'
   - id: driver-agent-selection-implementation.runtime-selection
     name: Implement runtime selection, preflight, and observability wiring
     status: pending

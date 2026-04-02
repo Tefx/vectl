@@ -54764,7 +54764,7 @@ phases:
     agent: gate-reviewer
   - id: driver-agent-selection-deep-review.remediate-dead-exports
     name: Remediate dead exports and duplicate selection aliases
-    status: pending
+    status: claimed
     description: 'Resolve wiring-audit dead-surface findings in the driver agent selection
       package.
 
@@ -54811,6 +54811,8 @@ phases:
 
       - No dead export or duplicate alias from this finding family remains'
     agent: python-senior
+    claimed_by: python-senior
+    claimed_at: '2026-04-02T03:45:58.109682+00:00'
 - id: driver-agent-selection-bootstrap-validation
   name: Driver Agent Selection Formal Bootstrap Validation
   status: locked

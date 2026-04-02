@@ -44762,7 +44762,7 @@ phases:
     agent: gate-reviewer
   - id: driver-enhancement-integration.fix-runner-default-fixtures
     name: Fix JudgeConfig runner default fixture/catalog alignment
-    status: claimed
+    status: done
     description: 'step_type: implementation
 
       priority: HIGH
@@ -44860,6 +44860,38 @@ phases:
     agent: python-senior
     claimed_by: python-senior
     claimed_at: '2026-04-02T09:07:39.408063+00:00'
+    done_at: '2026-04-02T09:11:36.326069+00:00'
+    evidence: '## Runner Default Fixture Alignment
+
+      - Root cause addressed: continuity capability-safety fixture used JudgeConfig
+      default codex while runner catalog omitted codex; planner external-agent validation
+      path also required supports_agent_selection alignment.
+
+      - Files/surfaces aligned: tests/fixtures/helpers/continuity_capability_safety.py
+      (added codex runner entry; set opencode supports_agent_selection=true).
+
+      - Sibling search performed: checked JudgeConfig(preflight=False) and runner-catalog
+      siblings; this fixture mismatch was remediation target.
+
+      - Contract preserved for external_agent validation: no src config semantics
+      changed; fixture now satisfies judge runner presence and planner external-agent
+      capability validation.
+
+      - Regression tests added/updated: none added; reran targeted regressions.
+
+      - Remaining ambiguity: none blocking.
+
+
+      Verification commands:
+
+      - uv run pytest -q tests/test_driver_continuity_capability_safety_red.py ->
+      reproduced pre-fix failure then passed after fix
+
+      - uv run pytest -q tests/test_driver_continuity_capability_safety_red.py tests/test_driver_agent_selection_expected_red.py
+      tests/repro/driver_agent_selection_bootstrap_smoke.py -> 42 passed
+
+
+      Artifact commit: f424c12'
   - id: driver-enhancement-integration.retest-runner-default-fixtures
     name: Retest runner default fixture/catalog remediation
     status: pending

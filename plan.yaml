@@ -54526,7 +54526,7 @@ phases:
   steps:
   - id: driver-agent-selection-doc-sync.update-docs
     name: Update driver docs for planner/judge selection semantics
-    status: claimed
+    status: done
     description: Sync driver architecture, config examples, migration guidance, and
       any operator-facing bootstrap notes to the implemented planner/judge selection
       behavior.
@@ -54535,6 +54535,15 @@ phases:
     agent: doc-reviewer
     claimed_by: project-guide
     claimed_at: '2026-04-02T03:16:19.529167+00:00'
+    done_at: '2026-04-02T03:19:14.732355+00:00'
+    evidence: 'Artifact: commit a5914ee.
+
+      Verification: git diff --name-only HEAD~1..HEAD includes only DRIVER-BLUEPRINT.md,
+      README.md, docs/DRIVER-ARCHITECTURE.md, driver.yaml.
+
+      Docs changed to align with docs/DRIVER-AGENT-SELECTION.md: planner_agent_name
+      -> nested planner.runner + planner.external_agent_name; judge.agent_name ->
+      judge.external_agent_name; runner supports_agent_selection surfaced in examples.'
   - id: driver-agent-selection-doc-sync.gate
     name: Gate agent-selection doc sync
     status: pending

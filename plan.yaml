@@ -54781,7 +54781,7 @@ phases:
       are compensated by concrete integration tests.
   - id: driver-agent-selection-deep-review.black-box-verification
     name: Black-box verify planner/judge selection behavior
-    status: pending
+    status: claimed
     description: Using only public config/runtime surfaces, verify prompt-only and
       external-agent behavior, including negative cases, without relying on implementation
       context.
@@ -54790,6 +54790,8 @@ phases:
     depends_on:
     - driver-agent-selection-deep-review.spec-conformance
     agent: blind-tester
+    claimed_by: blind-tester
+    claimed_at: '2026-04-02T07:34:47.810461+00:00'
   - id: driver-agent-selection-deep-review.gate
     name: Final deep-review gate for agent selection
     status: pending

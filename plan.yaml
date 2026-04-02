@@ -54696,18 +54696,20 @@ phases:
       opencode-default wording, and status wording consistent with Implemented state.
 - id: driver-agent-selection-deep-review
   name: Driver Agent Selection Deep Review
-  status: pending
+  status: in_progress
   depends_on:
   - driver-agent-selection-doc-sync
   steps:
   - id: driver-agent-selection-deep-review.wiring-audit
     name: Full wiring audit for planner/judge selection
-    status: pending
+    status: claimed
     description: Verify all new config fields, selection branches, and observability
       payload fields are consumed by real runtime code paths.
     verification: No orphan exports, no dead config fields, and no unreachable selection
       branch remains.
     agent: wiring-auditor
+    claimed_by: wiring-auditor
+    claimed_at: '2026-04-02T03:39:54.201492+00:00'
   - id: driver-agent-selection-deep-review.spec-conformance
     name: Full spec conformance audit for agent selection
     status: pending

@@ -54393,7 +54393,7 @@ phases:
     agent: gate-reviewer
   - id: driver-agent-selection-implementation.fix-judge-runner-test-defaults
     name: Fix batched judge-runner default test defects
-    status: claimed
+    status: done
     description: 'Fix ALL 7 blocking test defects reported by driver-agent-selection-implementation.gate
       in one batched change.
 
@@ -54461,6 +54461,17 @@ phases:
     agent: python-senior
     claimed_by: python-senior
     claimed_at: '2026-04-02T02:56:50.437605+00:00'
+    done_at: '2026-04-02T02:59:43.344912+00:00'
+    evidence: 'Artifact: commit 6d1a69c.
+
+      Verification: uv run pytest -q tests/test_driver_agent_selection_expected_red.py
+      (32 passed). Related suite run executed: uv run pytest -q tests/test_driver_config.py
+      tests/test_driver_judge*.py tests/test_driver_loop*.py (3 failed, 185 passed,
+      34 xfailed, 17 xpassed, 4 errors; failures outside this step scope).
+
+      Scope: only tests/test_driver_agent_selection_expected_red.py modified; fixed
+      all 7 targeted defects (judge default codex expectation + complete DriverConfig
+      runner fixtures).'
   - id: driver-agent-selection-implementation.retest-judge-runner-test-defaults
     name: Retest batched judge-runner default remediation
     status: pending

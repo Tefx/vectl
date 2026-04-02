@@ -54318,7 +54318,7 @@ phases:
       Rules, Fallback and Error Policy, Migration Guidance.'
   - id: driver-agent-selection-implementation.runtime-selection
     name: Implement runtime selection, preflight, and observability wiring
-    status: pending
+    status: claimed
     description: Complete implementation within existing runtime surfaces so planner
       and judge dispatch honor external-agent vs prompt-only mode exactly as specified,
       perform agent-existence preflight, fail closed on unsupported or missing agents,
@@ -54330,6 +54330,8 @@ phases:
     depends_on:
     - driver-agent-selection-implementation.config-migration
     agent: python-senior
+    claimed_by: python-senior
+    claimed_at: '2026-04-02T02:17:17.201212+00:00'
   - id: driver-agent-selection-implementation.wiring-audit
     name: Audit wiring completeness for new config and runtime surfaces
     status: pending

@@ -54380,7 +54380,7 @@ phases:
       for each area; verdict CONFORMS.
   - id: driver-agent-selection-implementation.gate
     name: Gate agent-selection implementation
-    status: claimed
+    status: pending
     description: Gate review for the implementation phase.
     verification: Implementation, wiring, and spec-conformance evidence are sufficient
       to treat agent selection as a bootstrap prerequisite.
@@ -54388,8 +54388,6 @@ phases:
     - driver-agent-selection-implementation.wiring-audit
     - driver-agent-selection-implementation.spec-conformance
     agent: gate-reviewer
-    claimed_by: gate-reviewer
-    claimed_at: '2026-04-02T02:45:30.181139+00:00'
 - id: driver-agent-selection-doc-sync
   name: Driver Agent Selection Documentation Sync
   status: locked

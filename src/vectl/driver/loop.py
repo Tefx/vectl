@@ -130,6 +130,7 @@ from .types import (
     RunnerRecoveryBoundaryInput,
     RunnerRecoveryBoundaryOutput,
     RunnerRecoveryDecision,
+    RunnerRecoverySignal,
     RunnerStatus,
     StartupRecoveryBoundaryInput,
     StartupRecoveryBoundaryOutput,
@@ -138,6 +139,7 @@ from .types import (
     StartupRecoveryDisposition,
     StartupRecoveryJudgeInput,
     StartupRecoveryReconciliationFacts,
+    StreamLivenessState,
 )
 from .worktree import (
     ConflictResolverDispatch,
@@ -3382,6 +3384,55 @@ async def reconcile(
     plan, expected_hash = load_plan_definition(plan_path)
     claims_path = resolve_claims_path(plan_path)
 
+    runner_recovery_boundary = evaluate_runner_recovery_boundary(
+        boundary_input=_build_runner_recovery_boundary_input(
+            completed=completed,
+            state=state,
+            config=config,
+            attempt_key=continuity_attempt_key,
+        )
+    )
+    runner_recovery_decision = (
+        runner_recovery_boundary.decisions[0] if runner_recovery_boundary.decisions else None
+    )
+    if runner_recovery_decision is not None:
+        observer.emit(
+            "RECOVERY",
+            type="runner_recovery_matrix",
+            step_id=completed.step_id,
+            attempt_key=runner_recovery_decision.source_attempt_key,
+            disposition=runner_recovery_decision.disposition,
+            reason=runner_recovery_decision.reason,
+            repair_actions=list(runner_recovery_boundary.repair_actions),
+            blocked_reasons=list(runner_recovery_boundary.blocked_reasons),
+        )
+
+    if runner_recovery_decision is not None and runner_recovery_decision.disposition == "halt":
+        state.halt_requested = True
+        state.final_halt_reason = runner_recovery_decision.reason
+        observer.emit(
+            "HALT_REQUESTED",
+            step_id=completed.step_id,
+            reason=runner_recovery_decision.reason,
+        )
+        plan = defer_step(plan, completed.step_id, claims_path=claims_path)
+        _save_plan_with_durability(
+            plan,
+            plan_path=plan_path,
+            expected_hash=expected_hash,
+            reason=f"defer {completed.step_id}",
+        )
+        observer.emit(
+            "STEP_FAILED",
+            step_id=completed.step_id,
+            failure_type=completed.result.status.value,
+            attempt=count,
+            error=completed.result.output,
+            judge_policy_action="halt",
+            judge_recovery_reason=runner_recovery_decision.reason,
+        )
+        return
+
     failure_step_description = ""
     found = plan.find_step(completed.step_id)
     if found is not None:
@@ -3813,6 +3864,79 @@ def _all_running_handles_dead(state: DriverState) -> bool:
     if not state.running:
         return False
     return all(not entry.handle.is_alive() for entry in state.running.values())
+
+
+def _classify_runner_recovery_taxonomy(
+    *,
+    completed: CompletedEntry,
+    live_state: object | None,
+) -> Literal["clean_fail", "crash", "stall", "no_progress"]:
+    """Classify post-bootstrap runner recovery taxonomy from integrated loop facts.
+
+    Source:
+    - step ``driver-enhancement-integration.system-wiring`` requires integrated
+      loop wiring to consume incremental liveness state, observability, and
+      recovery matrix decisions on the real runtime path.
+    - ``evaluate_runner_recovery_boundary`` taxonomy contract in this module.
+    """
+
+    status = completed.result.status
+    if status == RunnerStatus.STALL:
+        if isinstance(live_state, StreamLivenessState) and live_state.last_progress is None:
+            return "no_progress"
+        return "stall"
+
+    if status == RunnerStatus.FAIL:
+        exit_code = completed.result.exit_code
+        if exit_code is not None and exit_code >= 128:
+            return "crash"
+        return "clean_fail"
+
+    # TRANSPORT_ERROR and any future non-success statuses fail closed to
+    # crash/no-progress semantics based on concrete process facts.
+    if completed.result.exit_code not in (None, 0):
+        return "crash"
+    return "no_progress"
+
+
+def _build_runner_recovery_boundary_input(
+    *,
+    completed: CompletedEntry,
+    state: DriverState,
+    config: DriverConfig,
+    attempt_key: str,
+) -> RunnerRecoveryBoundaryInput:
+    """Build integrated runner-recovery boundary input from loop runtime state."""
+
+    live_state = state.streaming_live_state.get(completed.step_id)
+    heartbeat_age_seconds: float | None = None
+    if (
+        isinstance(live_state, StreamLivenessState)
+        and live_state.last_heartbeat_at_monotonic is not None
+    ):
+        heartbeat_age_seconds = max(0.0, time.monotonic() - live_state.last_heartbeat_at_monotonic)
+
+    runner_cfg = config.runners.get(completed.runner_name)
+    watchdog_timeout_seconds = float(runner_cfg.stall_timeout) if runner_cfg is not None else 300.0
+    taxonomy = _classify_runner_recovery_taxonomy(completed=completed, live_state=live_state)
+    process_alive = (
+        completed.result.status == RunnerStatus.STALL and completed.result.exit_code is None
+    )
+
+    return RunnerRecoveryBoundaryInput(
+        signal=RunnerRecoverySignal(
+            step_id=completed.step_id,
+            attempt_key=attempt_key,
+            runner_name=completed.runner_name,
+            taxonomy=taxonomy,
+            heartbeat_age_seconds=heartbeat_age_seconds,
+            watchdog_timeout_seconds=watchdog_timeout_seconds,
+            process_alive=process_alive,
+            exit_code=completed.result.exit_code,
+        ),
+        continuity_handoff=None,
+        ledger_entry=None,
+    )
 
 
 async def _recover_all_stalled(state: DriverState, observer: Observer) -> None:

@@ -44529,7 +44529,7 @@ phases:
       - driver-enhancement-runner-recovery.impl'
 - id: driver-enhancement-integration
   name: 'Driver Enhancement: Integration'
-  status: pending
+  status: in_progress
   gate: Shared loop wiring, end-to-end enhancement behavior, and repo-wide checks
     prove the fan-out branches work together on the real driver path.
   depends_on:
@@ -44540,7 +44540,7 @@ phases:
   steps:
   - id: driver-enhancement-integration.system-wiring
     name: Wire telemetry streaming and recovery into the shared driver loop
-    status: pending
+    status: claimed
     description: "step_type: implementation\n\ntags:\n  - integration\n\nSerial integration\
       \ step for the shared writable surfaces.\n\nScope:\n- join the observability,\
       \ streaming/progress, and recovery branches in the real driver loop\n- keep\
@@ -44567,6 +44567,8 @@ phases:
       - Proof: shared wiring changes are confined to the integration surface rather
       than scattered back into the branch phases'
     agent: python-senior
+    claimed_by: python-senior
+    claimed_at: '2026-04-02T08:44:17.867540+00:00'
   - id: driver-enhancement-integration.verify-e2e
     name: Verify end-to-end enhanced driver behavior
     status: pending

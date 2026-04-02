@@ -44742,7 +44742,7 @@ phases:
       - driver-enhancement-integration.retest-runner-default-fixtures'
   - id: driver-enhancement-integration.gate
     name: Gate integrated driver enhancement wiring
-    status: pending
+    status: claimed
     description: 'step_type: gate
 
       Gate the integrated enhancement wiring and evidence bundle.'
@@ -44760,6 +44760,8 @@ phases:
     - driver-enhancement-integration.full-plan-check
     - driver-enhancement-integration.retest-runner-default-fixtures
     agent: gate-reviewer
+    claimed_by: gate-reviewer
+    claimed_at: '2026-04-02T14:13:51.680421+00:00'
   - id: driver-enhancement-integration.fix-runner-default-fixtures
     name: Fix JudgeConfig runner default fixture/catalog alignment
     status: done

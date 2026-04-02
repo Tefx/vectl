@@ -45080,6 +45080,104 @@ phases:
     depends_on:
     - driver-enhancement-integration.retest-runner-default-fixtures
     agent: python-senior
+  - id: driver-enhancement-integration.retest-gate-type-and-e2e
+    name: 'Retest gate blockers: tuple typing and stable e2e artifact'
+    status: pending
+    description: 'step_type: test
+
+      step_intent: retest_green
+
+      expected_result: green
+
+      verification_scope: phase-check
+
+      As an INDEPENDENT TESTER (integration-verifier), validate the tuple typing remediation
+      and restored e2e artifact from a fresh perspective.
+
+
+      YOUR GOAL IS TO FIND PROBLEMS, not to confirm it works.
+
+
+      Test for:
+
+      - Happy path: mypy is green for the targeted driver files
+
+      - Edge cases: no remaining sibling tuple-shape mismatch survives in the same
+      loop/types seam
+
+      - Error scenarios: the e2e artifact path exists on Main, the integration test
+      file is present, and the test is actually executable rather than only checked
+      in
+
+
+      Document ALL findings. A test that discovers issues is a SUCCESS.
+
+      A test that finds nothing must justify the coverage achieved.
+
+
+      Independence Level: L1'
+    verification: 'phase-check protecting driver-enhancement-integration.gate.
+
+      - mypy for src/vectl/driver/loop.py and src/vectl/driver/types.py is green
+
+      - tests/integration/test_driver_enhancement_e2e.py is present on Main and executable
+      through the intended integration path
+
+      - Evidence includes exact commands and actual output for both typing and e2e
+      artifact checks'
+    evidence_template: '## Verification Report
+
+      **Tester**: integration-verifier
+
+      **Scope**: driver tuple typing + stable e2e artifact
+
+      **Independence Level**: L1
+
+
+      ### Commands executed
+
+      ```
+
+      <mypy command for target files>
+
+      <pytest or equivalent command exercising tests/integration/test_driver_enhancement_e2e.py>
+
+      ```
+
+
+      ### Output
+
+      ```
+
+      <paste actual output>
+
+      ```
+
+
+      ### Findings
+
+      | Severity | Description | Location | Reproduction |
+
+      |----------|-------------|----------|--------------|
+
+      | blocker/should_fix/suggestion | <issue or none> | <path> | <command> |
+
+
+      ### Coverage
+
+      - Mypy target files checked: yes/no
+
+      - E2E artifact present: yes/no
+
+      - E2E artifact executable: yes/no
+
+
+      ### Verdict
+
+      - PASS or ISSUES_FOUND'
+    depends_on:
+    - driver-enhancement-integration.fix-gate-type-and-e2e
+    agent: integration-verifier
 - id: driver-enhancement-review
   name: 'Driver Enhancement: Review'
   status: locked

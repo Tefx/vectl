@@ -991,7 +991,7 @@ Loading Behavior" section for drift detection (`verify_docs_packaged_sync()`).
 class Judge:
     """Unified judgment agent. Stateless per call.
 
-    Each invocation spawns a runner process (default: opencode) with
+    Each invocation spawns a runner process (default: codex) with
     the packaged judge system prompt and a structured user message. The judge
     returns a JSON verdict. Uses structured output when available
     (see Structured Output Strategy below).
@@ -1848,7 +1848,7 @@ Canonical driver events follow non-contradictory semantics defined by the regist
 - `save_plan()` uses `fcntl.flock` -- single-process safety only. Since the driver is the sole writer in its process, this is fine, but be aware that external `vectl` CLI calls during a drive could hit CAS conflicts.
 - The `merge_lock` MUST be a real `asyncio.Lock`, not a `threading.Lock` -- the loop is single-threaded async, not multi-threaded.
 - `Runner.dispatch()` implementations MUST set `stdin=PIPE` and write the prompt, then close stdin. Do not leave stdin open or the subprocess will hang.
-- The default judge runner is `opencode`. When using `claude` as judge runner, add `--no-session-persistence` and `--dangerously-skip-permissions`. Each runner uses its own non-interactive flags (opencode: `--format json`; codex: `--dangerously-bypass-approvals-and-sandbox`; gemini: `--approval-mode yolo`).
+- The default judge runner is `codex`. When using `claude` as judge runner, add `--no-session-persistence` and `--dangerously-skip-permissions`. Each runner uses its own non-interactive flags (opencode: `--format json`; codex: `--dangerously-bypass-approvals-and-sandbox`; gemini: `--approval-mode yolo`).
 - Session reuse is implemented in `session.py` with runner-aware matching and per-runner TTL overrides.
 
 ### 7.4.1 Live Smoke (Reduced Test-Surface Record)

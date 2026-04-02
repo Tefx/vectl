@@ -952,6 +952,6 @@ All other deps (pydantic, pyyaml, typer, rich) already in vectl.
 
 ### External runtime
 - `claude` CLI (direct invocation via `claude -p`, no wrapper scripts)
-- `opencode` CLI (default runner for workers and judgment agent)
+- `opencode` CLI (default runner for workers; judge default is codex)
 - `codex` / `gemini` CLI (optional, user-installed, config-injected)
 - `git` (system)

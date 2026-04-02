@@ -45100,7 +45100,7 @@ phases:
       Artifact commit: 505a1fd"
   - id: driver-enhancement-integration.retest-gate-type-and-e2e
     name: 'Retest gate blockers: tuple typing and stable e2e artifact'
-    status: pending
+    status: claimed
     description: 'step_type: test
 
       step_intent: retest_green
@@ -45196,6 +45196,8 @@ phases:
     depends_on:
     - driver-enhancement-integration.fix-gate-type-and-e2e
     agent: integration-verifier
+    claimed_by: integration-verifier
+    claimed_at: '2026-04-02T14:30:24.264983+00:00'
 - id: driver-enhancement-review
   name: 'Driver Enhancement: Review'
   status: locked

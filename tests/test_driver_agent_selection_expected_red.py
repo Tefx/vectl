@@ -77,7 +77,7 @@ class TestNestedPlannerJudgeConfigModels:
         assert config_ext.external_agent_name == "my-judge-agent"
 
         # Existing judge fields should still work
-        assert config.runner == "opencode"
+        assert config.runner == "codex"
         assert config.structured_output is True
         assert config.timeout == 60
 
@@ -92,7 +92,13 @@ class TestNestedPlannerJudgeConfigModels:
         from src.vectl.driver.config import DriverConfig, PlannerConfig, RunnerConfig
 
         config = DriverConfig(
-            runners={"opencode": RunnerConfig(command="opencode")},
+            runners={
+                "opencode": RunnerConfig(
+                    command="opencode",
+                    supports_agent_selection=True,
+                ),
+                "codex": RunnerConfig(command="codex"),
+            },
         )
 
         # Should have nested planner attribute that is a PlannerConfig
@@ -110,7 +116,13 @@ class TestNestedPlannerJudgeConfigModels:
         from src.vectl.driver.config import DriverConfig, RunnerConfig
 
         config = DriverConfig(
-            runners={"opencode": RunnerConfig(command="opencode")},
+            runners={
+                "opencode": RunnerConfig(
+                    command="opencode",
+                    supports_agent_selection=True,
+                ),
+                "codex": RunnerConfig(command="codex"),
+            },
         )
 
         # judge should be a proper nested config
@@ -731,7 +743,10 @@ class TestV1ScopeDefinition:
 
         config = DriverConfig(
             runners={
-                "opencode": RunnerConfig(command="opencode"),
+                "opencode": RunnerConfig(
+                    command="opencode",
+                    supports_agent_selection=True,
+                ),
             },
             judge={
                 "runner": "opencode",
@@ -753,6 +768,7 @@ class TestV1ScopeDefinition:
                     command="opencode",
                     supports_agent_selection=True,
                 ),
+                "codex": RunnerConfig(command="codex"),
             },
             planner=PlannerConfig(
                 runner="opencode",
@@ -810,6 +826,7 @@ class TestDefaultsContract:
                     command="opencode",
                     supports_agent_selection=True,
                 ),
+                "codex": RunnerConfig(command="codex"),
             },
         )
 
@@ -826,6 +843,10 @@ class TestDefaultsContract:
 
         config = DriverConfig(
             runners={
+                "opencode": RunnerConfig(
+                    command="opencode",
+                    supports_agent_selection=True,
+                ),
                 "codex": RunnerConfig(
                     command="codex",
                     supports_agent_selection=False,

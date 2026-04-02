@@ -54720,7 +54720,7 @@ phases:
       branches.'
   - id: driver-agent-selection-deep-review.spec-conformance
     name: Full spec conformance audit for agent selection
-    status: claimed
+    status: done
     description: Cross-check implemented planner/judge behavior against the finalized
       design document at system level.
     verification: System-level requirements table is complete and any drift is surfaced.
@@ -54729,6 +54729,13 @@ phases:
     agent: spec-verifier
     claimed_by: spec-verifier
     claimed_at: '2026-04-02T03:53:41.797195+00:00'
+    done_at: '2026-04-02T03:56:05.620418+00:00'
+    evidence: 'Full spec-conformance audit completed (43 requirements): 40 conforms,
+      1 partial, 2 not-found. Key drift surfaced: planner runtime selection dispatch
+      semantics (external-agent mode flag passing and conditional prompt injection)
+      are not implemented in dispatch path; judge path fully conforms. Recommendation
+      recorded to either implement planner runtime branching or explicitly defer planner
+      external-agent MUST semantics in spec.'
   - id: driver-agent-selection-deep-review.architecture-review
     name: Review selection ownership and dependency boundaries
     status: pending

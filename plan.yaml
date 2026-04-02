@@ -44982,6 +44982,104 @@ phases:
       on unsupported runners
 
       - Verdict: PASS'
+  - id: driver-enhancement-integration.fix-gate-type-and-e2e
+    name: 'Fix gate blockers: tuple typing and stable e2e artifact'
+    status: pending
+    description: 'step_type: implementation
+
+      Fix ALL gate blockers for the driver-enhancement-integration phase.
+
+
+      ## Blockers to Fix (ALL of these, not just the first)
+
+
+      symbolic_testing: false
+
+
+      ## Root Cause vs Symptom
+
+      - Root cause: tuple element typing drift across the driver loop/type surfaces
+      plus missing or unstable integration e2e artifact persistence on Main left the
+      gate without durable proof.
+
+      - Symptom: mypy tuple typing mismatches in src/vectl/driver/loop.py (around
+      lines 794 and 819) and src/vectl/driver/types.py (around line 551), plus absent/unstable
+      tests/integration/test_driver_enhancement_e2e.py evidence artifact despite prior
+      claim history.
+
+      - Why this fix is not surface-level: it must reconcile tuple contract expectations
+      at the driver loop/types seam and restore a stable executable e2e artifact/evidence
+      path in the repository state used by the gate.
+
+
+      ### B1: mypy tuple typing mismatches
+
+      Locations: src/vectl/driver/loop.py:~794, src/vectl/driver/loop.py:~819, src/vectl/driver/types.py:~551
+
+      Remediation: align tuple type declarations/usages so loop and types share one
+      authoritative tuple contract; fix both producer and consumer sides where needed
+      rather than casting away the mismatch.
+
+      Grep hint: rg -n "tuple|Tuple" src/vectl/driver/loop.py src/vectl/driver/types.py
+
+      IMPORTANT: search sibling tuple-shape uses beyond the listed locations.
+
+
+      ### B2: missing or unstable integration e2e artifact/evidence path
+
+      Locations: tests/integration/test_driver_enhancement_e2e.py, any supporting
+      fixture/evidence registration path required by that test
+
+      Remediation: restore a stable executable e2e artifact path on Main, ensure the
+      test file and any required fixtures/helpers are present, and make the evidence
+      path durable for gate consumption.
+
+      Grep hint: rg -n "driver_enhancement_e2e|enhancement_e2e|e2e artifact|e2e evidence"
+      tests src
+
+      IMPORTANT: search for sibling evidence references so the gate consumes the same
+      stable path everywhere.
+
+
+      ## Completion Criteria (stub exclusion)
+
+      This is an IMPLEMENTATION step. Stub-only completion is NOT acceptable.
+
+      Each deliverable MUST contain substantive logic that processes its inputs and
+      produces outputs that vary based on those inputs.
+
+
+      ## Out-of-scope guardrail
+
+      Do not broaden this step into unrelated driver enhancement cleanup; limit changes
+      to the tuple typing blocker family and restoration of the stable e2e artifact/evidence
+      path required by the gate.'
+    verification: '- Main path: targeted mypy checks for src/vectl/driver/loop.py
+      and src/vectl/driver/types.py pass without tuple mismatch errors
+
+      - Failure path: restored tests/integration/test_driver_enhancement_e2e.py artifact
+      path is present on Main, stable, and runnable by the downstream retest step
+
+      - Proof: sibling tuple-shape uses and sibling e2e evidence references were checked
+      so no parallel stale path remains'
+    evidence_template: '## Batched Blocker Fix Evidence
+
+      - Files changed:
+
+      - Tuple contract decision and touched producer/consumer sites:
+
+      - Stable e2e artifact/evidence path restored:
+
+      - Sibling search results for tuple shapes:
+
+      - Sibling search results for e2e evidence references:
+
+      - Commands prepared for retest:
+
+      '
+    depends_on:
+    - driver-enhancement-integration.retest-runner-default-fixtures
+    agent: python-senior
 - id: driver-enhancement-review
   name: 'Driver Enhancement: Review'
   status: locked

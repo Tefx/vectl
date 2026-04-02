@@ -54520,19 +54520,21 @@ phases:
       are outside this step scope and tied to separate test configs.'
 - id: driver-agent-selection-doc-sync
   name: Driver Agent Selection Documentation Sync
-  status: pending
+  status: in_progress
   depends_on:
   - driver-agent-selection-implementation
   steps:
   - id: driver-agent-selection-doc-sync.update-docs
     name: Update driver docs for planner/judge selection semantics
-    status: pending
+    status: claimed
     description: Sync driver architecture, config examples, migration guidance, and
       any operator-facing bootstrap notes to the implemented planner/judge selection
       behavior.
     verification: Docs reflect nested planner/judge config, defaults, fail-closed
       behavior, and observability fields without legacy ambiguity.
     agent: doc-reviewer
+    claimed_by: doc-reviewer
+    claimed_at: '2026-04-02T03:09:05.395963+00:00'
   - id: driver-agent-selection-doc-sync.gate
     name: Gate agent-selection doc sync
     status: pending

@@ -2589,6 +2589,14 @@ async def handle_dispatch(
 
     step_id = action.step_id
     agent = action.agent
+    dispatch_run_id = str(plan_path.resolve())
+
+    emit_driver_lifecycle(
+        observer,
+        phase="dispatch",
+        run_id=dispatch_run_id,
+        step_id=step_id,
+    )
 
     preflight_metadata_plan = None
     preflight_description = action.step_description or ""
@@ -2891,6 +2899,13 @@ async def handle_dispatch(
         worktree_path=str(binding.worktree_path),
     )
 
+    emit_driver_lifecycle(
+        observer,
+        phase="dispatch_registered",
+        run_id=dispatch_run_id,
+        step_id=step_id,
+    )
+
     observer.emit(
         "STEP_DISPATCHED",
         step_id=step_id,
@@ -3005,8 +3020,15 @@ async def reconcile(
             session_id=completed.result.session_id,
         )
     )
+    reconcile_run_id = str(plan_path.resolve())
 
     if completed.result.status == RunnerStatus.SUCCESS:
+        emit_driver_lifecycle(
+            observer,
+            phase="reconcile_success",
+            run_id=reconcile_run_id,
+            step_id=completed.step_id,
+        )
         success_envelope = _build_replay_envelope(
             step_id=completed.step_id,
             attempt_key=continuity_attempt_key,
@@ -3305,6 +3327,12 @@ async def reconcile(
         session_id=completed.result.session_id,
         scope="reconcile_failure",
         fingerprint=None,
+    )
+    emit_driver_lifecycle(
+        observer,
+        phase="reconcile_failure",
+        run_id=reconcile_run_id,
+        step_id=completed.step_id,
     )
     failure_journal = _persist_continuity_journal(
         repo_root=continuity_repo_root,
@@ -4062,10 +4090,29 @@ async def _run_main_loop(
             await _dispatch_registered_runtime_action(action=action, context=runtime_context)
 
         if state.running:
+            emit_heartbeat_progress(
+                observer,
+                completed_count=state.completed_success_count + state.completed_failure_count,
+                loop_iteration=loop_iteration,
+                running_count=len(state.running),
+                waiting_count=1,
+                active_step_ids=sorted(state.running.keys()),
+                note="run.wait_for_any",
+            )
             completed = await state.wait_for_any()
             await reconcile(
                 completed=completed,
                 context=runtime_context,
+            )
+
+            emit_heartbeat_progress(
+                observer,
+                completed_count=state.completed_success_count + state.completed_failure_count,
+                loop_iteration=loop_iteration,
+                running_count=len(state.running),
+                waiting_count=0,
+                active_step_ids=sorted(state.running.keys()),
+                note="run.post_reconcile",
             )
 
             if completed.result.status == RunnerStatus.STALL and _all_running_handles_dead(state):

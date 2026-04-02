@@ -551,9 +551,27 @@ def assert_advanced_observability_schema_alignment() -> tuple[str, ...]:
         if record is None:
             drift.append(f"missing_event:{event_name}")
             continue
-        if record.required != required:
+
+        actual_required = set(record.required)
+        expected_required = set(required)
+        required_missing = sorted(expected_required - actual_required)
+        required_extra = sorted(actual_required - expected_required)
+        if required_missing or required_extra:
             drift.append(f"required_mismatch:{event_name}")
-        if record.optional != optional:
+            for field_name in required_missing:
+                drift.append(f"required_missing:{event_name}:{field_name}")
+            for field_name in required_extra:
+                drift.append(f"required_extra:{event_name}:{field_name}")
+
+        actual_optional = set(record.optional)
+        expected_optional = set(optional)
+        optional_missing = sorted(expected_optional - actual_optional)
+        optional_extra = sorted(actual_optional - expected_optional)
+        if optional_missing or optional_extra:
             drift.append(f"optional_mismatch:{event_name}")
+            for field_name in optional_missing:
+                drift.append(f"optional_missing:{event_name}:{field_name}")
+            for field_name in optional_extra:
+                drift.append(f"optional_extra:{event_name}:{field_name}")
 
     return tuple(drift)

@@ -54553,6 +54553,49 @@ phases:
     depends_on:
     - driver-agent-selection-doc-sync.update-docs
     agent: gate-reviewer
+  - id: driver-agent-selection-doc-sync.fix-doc-defaults-status
+    name: Fix stale default-runner and status docs
+    status: pending
+    description: 'Batched documentation remediation for driver agent-selection doc
+      sync.
+
+
+      Fix ALL listed operator-facing doc defects in this phase only:
+
+      - docs/DRIVER-ARCHITECTURE.md must state the default judge runner is codex,
+      not opencode
+
+      - DRIVER-BLUEPRINT.md default judge runner comment must say codex, not opencode
+
+      - docs/DRIVER-AGENT-SELECTION.md must reflect implemented status and remove
+      Proposed/implemented ambiguity
+
+
+      Scope is limited to documentation synchronization for the driver agent-selection
+      surface. Update wording so defaults, comments, and status language consistently
+      match implemented behavior and no legacy opencode-default guidance remains.
+
+
+      ## Completion Criteria
+
+      - All three listed doc defects are corrected
+
+      - Default runner wording is consistently codex across touched docs
+
+      - Status language is unambiguous and matches implementation state
+
+      - No unrelated phase or code changes'
+    verification: All listed documentation defects are corrected in the specified
+      files and doc wording is internally consistent about codex as the default judge
+      runner and implementation status.
+    evidence_template: "## Documentation Remediation Evidence\n- Files updated:\n\
+      \  - docs/DRIVER-ARCHITECTURE.md\n  - DRIVER-BLUEPRINT.md\n  - docs/DRIVER-AGENT-SELECTION.md\n\
+      - Confirmed default judge runner wording: codex\n- Confirmed status wording\
+      \ matches implemented behavior\n- Remaining stale legacy/default ambiguity:\
+      \ none"
+    depends_on:
+    - driver-agent-selection-doc-sync.update-docs
+    agent: doc-reviewer
 - id: driver-agent-selection-deep-review
   name: Driver Agent Selection Deep Review
   status: locked

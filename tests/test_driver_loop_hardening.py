@@ -750,6 +750,65 @@ async def test_dispatch_planner_raises_on_runner_failure() -> None:
 
 
 @pytest.mark.anyio
+async def test_dispatch_planner_emits_selection_observability_fields() -> None:
+    config = _base_config()
+    observer = _RecordingObserver()
+    request = PlannerDispatchRequest(
+        step_id="core.impl",
+        trigger="handle_dispatch.preflight_replan",
+        judgment_type="PREFLIGHT",
+        planner_instruction="Split implementation",
+    )
+
+    await dispatch_planner(
+        request,
+        config=config,
+        runners=cast(dict[str, Any], {"opencode": _Runner("opencode")}),
+        observer=observer,
+        plan_path=Path("plan.yaml"),
+    )
+
+    started_events = [
+        data for event, data in observer.events if event == "PLANNER_DISPATCH_STARTED"
+    ]
+    assert len(started_events) == 1
+    started = started_events[0]
+    assert started["surface"] == "planner"
+    assert started["selection_mode"] == "external_agent"
+    assert started["external_agent_name"] == "vectl-planner-slim"
+    assert started["prompt_source"] is None
+
+
+@pytest.mark.anyio
+async def test_dispatch_planner_missing_external_agent_emits_selection_error_and_fails() -> None:
+    config = _base_config()
+    config.planner.external_agent_name = "missing-planner-agent"
+    observer = _RecordingObserver()
+    request = PlannerDispatchRequest(
+        step_id="core.impl",
+        trigger="handle_dispatch.preflight_replan",
+        judgment_type="PREFLIGHT",
+        planner_instruction="Split implementation",
+    )
+
+    with pytest.raises(PlanError, match="not in verified catalog"):
+        await dispatch_planner(
+            request,
+            config=config,
+            runners=cast(dict[str, Any], {"opencode": _Runner("opencode")}),
+            observer=observer,
+            plan_path=Path("plan.yaml"),
+        )
+
+    selection_errors = [data for event, data in observer.events if event == "AGENT_SELECTION_ERROR"]
+    assert len(selection_errors) == 1
+    payload = selection_errors[0]
+    assert payload["surface"] == "planner"
+    assert payload["selection_mode"] == "external_agent"
+    assert payload["external_agent_name"] == "missing-planner-agent"
+
+
+@pytest.mark.anyio
 async def test_dispatch_planner_requires_non_empty_instruction() -> None:
     config = _base_config()
     observer = _RecordingObserver()

@@ -34,6 +34,7 @@ from .judgments import (
     JudgmentType,
     JudgmentVerdict,
 )
+from .runners import verify_external_agent_selection
 from .types import JudgeContinuityPolicyOutput
 
 if TYPE_CHECKING:
@@ -42,6 +43,8 @@ if TYPE_CHECKING:
 
 
 JudgeSelectionMode = Literal["prompt_only", "external_agent"]
+
+JUDGE_PROMPT_SOURCE_BUNDLED: Final[str] = "bundled:vectl.driver/judge_agent_prompt.md"
 
 
 @dataclass(frozen=True)
@@ -667,12 +670,93 @@ class Judge:
         """
         self._config = config
         self._observer = observer
-        self._system_prompt = _load_judge_system_prompt()
+        self._system_prompt = (
+            _load_judge_system_prompt() if self._selection_mode() == "prompt_only" else ""
+        )
         self._structured_schema_path: str | None = None
         self._runner_override: JudgeRunner | None = None
+        self._selection_preflight_completed = False
 
         if self._config.structured_output and self._config.runner in {"claude", "codex"}:
             self._structured_schema_path = _write_schema_tempfile(VERDICT_SCHEMA)
+
+    def _selection_mode(self) -> JudgeSelectionMode:
+        """Resolve runtime judge selection mode from config shape.
+
+        Source:
+        - docs/DRIVER-AGENT-SELECTION.md ``Decision Summary``
+        - docs/DRIVER-AGENT-SELECTION.md ``Judge: external-agent mode``
+        - docs/DRIVER-AGENT-SELECTION.md ``Judge: prompt-only mode``
+        """
+        return "external_agent" if self._config.external_agent_name is not None else "prompt_only"
+
+    def _selection_prompt_source(self) -> str | None:
+        """Return prompt source observability marker for current selection mode."""
+        if self._selection_mode() == "prompt_only":
+            return JUDGE_PROMPT_SOURCE_BUNDLED
+        return None
+
+    def _selection_observability_fields(self) -> dict[str, object]:
+        """Build canonical observability fields for judge selection semantics."""
+        return {
+            "surface": "judge",
+            "runner": self._config.runner,
+            "selection_mode": self._selection_mode(),
+            "external_agent_name": self._config.external_agent_name,
+            "prompt_source": self._selection_prompt_source(),
+        }
+
+    def _emit_selection_error(self, *, step_id: str, error_kind: str, message: str) -> None:
+        """Emit explicit selection error event for fail-closed behavior.
+
+        Source:
+        - docs/DRIVER-AGENT-SELECTION.md ``Fallback and Error Policy``
+        - docs/DRIVER-AGENT-SELECTION.md ``Observability Contract``
+        """
+        self._observer.emit(
+            "AGENT_SELECTION_ERROR",
+            step_id=step_id,
+            error_kind=error_kind,
+            message=message,
+            **self._selection_observability_fields(),
+        )
+
+    def _ensure_external_agent_preflight(self, *, step_id: str) -> None:
+        """Run fail-closed external-agent preflight once before judge dispatch.
+
+        Source:
+        - docs/DRIVER-AGENT-SELECTION.md ``Startup/preflight validation``
+        - docs/DRIVER-AGENT-SELECTION.md ``Fallback and Error Policy``
+        """
+        if self._selection_mode() != "external_agent":
+            return
+        if self._selection_preflight_completed:
+            return
+
+        external_agent_name = self._config.external_agent_name
+        if external_agent_name is None:
+            raise JudgmentParseError(
+                judgment_type="unknown",
+                step_id=step_id,
+                raw_output="external-agent mode requires non-null external_agent_name",
+            )
+
+        ok, reason = verify_external_agent_selection(
+            runner_name=self._config.runner,
+            external_agent_name=external_agent_name,
+        )
+        if not ok:
+            error_kind = "unsupported_runner"
+            if "not in verified catalog" in reason:
+                error_kind = "missing_agent"
+            self._emit_selection_error(step_id=step_id, error_kind=error_kind, message=reason)
+            raise JudgmentParseError(
+                judgment_type="unknown",
+                step_id=step_id,
+                raw_output=reason,
+            )
+
+        self._selection_preflight_completed = True
 
     def is_enabled(self, judgment_type: JudgmentType) -> bool:
         """Check if a judgment type is enabled in config.
@@ -748,6 +832,7 @@ class Judge:
             self._emit_judgment_event(request=request, verdict=verdict, latency_ms=0.0)
             return verdict
 
+        self._ensure_external_agent_preflight(step_id=request.step_id)
         self._validate_request(request)
         user_prompt = self._render_request(request)
 
@@ -905,6 +990,21 @@ class Judge:
 
         if process.returncode not in (0, None):
             raw = stdout_text or stderr_text or f"runner exited {process.returncode}"
+            if self._selection_mode() == "external_agent":
+                normalized = raw.lower()
+                if "agent" in normalized and (
+                    "not found" in normalized
+                    or "unknown" in normalized
+                    or "unsupported" in normalized
+                ):
+                    error_kind = "missing_agent"
+                    if "unsupported" in normalized:
+                        error_kind = "unsupported_runner"
+                    self._emit_selection_error(
+                        step_id="unknown",
+                        error_kind=error_kind,
+                        message=raw,
+                    )
             raise JudgmentParseError(
                 judgment_type="unknown",
                 step_id="unknown",
@@ -1056,6 +1156,7 @@ class Judge:
             suggested_action=verdict.suggested_action,
             planner_instruction=verdict.planner_instruction,
             latency_ms=latency_ms,
+            **self._selection_observability_fields(),
         )
 
     def _build_subprocess_command(
@@ -1069,7 +1170,9 @@ class Judge:
         payload = user_prompt
 
         if runner == "claude":
-            command = [runner, "-p", "--output-format", "json", "--system-prompt", system_prompt]
+            command = [runner, "-p", "--output-format", "json"]
+            if system_prompt.strip():
+                command.extend(["--system-prompt", system_prompt])
             if self._config.structured_output and self._structured_schema_path is not None:
                 command.extend(["--json-schema", self._structured_schema_path])
             return command, payload
@@ -1096,16 +1199,16 @@ class Judge:
             if configured_prompt_mode == "stdin_dash" and "-" not in command:
                 command.append("-")
 
-            payload = f"SYSTEM PROMPT:\n{system_prompt}\n\n{user_prompt}"
+            payload = _compose_judge_payload(system_prompt=system_prompt, user_prompt=user_prompt)
             return command, payload
 
         if runner == "opencode":
             command = [runner, "run", "--format", "json"]
-            payload = f"SYSTEM PROMPT:\n{system_prompt}\n\n{user_prompt}"
+            payload = _compose_judge_payload(system_prompt=system_prompt, user_prompt=user_prompt)
             return command, payload
 
         command = [runner]
-        payload = f"SYSTEM PROMPT:\n{system_prompt}\n\n{user_prompt}"
+        payload = _compose_judge_payload(system_prompt=system_prompt, user_prompt=user_prompt)
         return command, payload
 
 
@@ -1183,6 +1286,18 @@ def _render_runner_args(args: list[str], *, workdir: str, agent: str) -> list[st
     for arg in args:
         rendered.append(arg.replace("{workdir}", workdir).replace("{agent}", agent))
     return rendered
+
+
+def _compose_judge_payload(*, system_prompt: str, user_prompt: str) -> str:
+    """Compose runner payload without hybrid prompt layering.
+
+    Source:
+    - docs/DRIVER-AGENT-SELECTION.md ``Judge: external-agent mode``
+    - docs/DRIVER-AGENT-SELECTION.md ``Judge: prompt-only mode``
+    """
+    if not system_prompt.strip():
+        return user_prompt
+    return f"SYSTEM PROMPT:\n{system_prompt}\n\n{user_prompt}"
 
 
 def _extract_verdict_payload(stdout_text: str) -> str:

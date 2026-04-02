@@ -99,6 +99,32 @@ class _RunnerTimeout:
         return ""
 
 
+class _RunnerCapture:
+    name = "fake-capture"
+
+    def __init__(self) -> None:
+        self.last_system_prompt: str | None = None
+
+    async def dispatch_structured(
+        self,
+        system_prompt: str,
+        user_prompt: str,
+        schema: dict[str, object],
+        timeout: float,
+    ) -> dict[str, object]:
+        self.last_system_prompt = system_prompt
+        return {
+            "verdict": "ACCEPT",
+            "reason": "ok",
+            "suggested_action": None,
+            "planner_instruction": None,
+        }
+
+    async def dispatch_text(self, system_prompt: str, user_prompt: str, timeout: float) -> str:
+        self.last_system_prompt = system_prompt
+        return ""
+
+
 def _request_preflight() -> JudgmentRequest:
     return JudgmentRequest(
         type=JudgmentType.PREFLIGHT,
@@ -183,6 +209,60 @@ def test_disabled_judgment_type_is_skipped_cleanly() -> None:
     event_type, payload = observer.events[0]
     assert event_type == "JUDGMENT"
     assert payload["verdict"] == "DEFER"
+
+
+def test_judgment_event_includes_selection_observability_fields_in_prompt_only_mode() -> None:
+    observer = _ObserverSpy()
+    judge = Judge(_judge_config(preflight=True), observer)
+    judge._runner_override = _RunnerSuccess()
+
+    asyncio.run(judge.judge(_request_preflight()))
+
+    event_type, payload = observer.events[0]
+    assert event_type == "JUDGMENT"
+    assert payload["surface"] == "judge"
+    assert payload["selection_mode"] == "prompt_only"
+    assert payload["external_agent_name"] is None
+    assert payload["prompt_source"] == "bundled:vectl.driver/judge_agent_prompt.md"
+
+
+def test_external_agent_missing_preflight_fails_closed_with_selection_error_event() -> None:
+    observer = _ObserverSpy()
+    judge = Judge(
+        JudgeConfig(
+            runner="opencode",
+            external_agent_name="missing-agent",
+            structured_output=True,
+            timeout=1,
+        ),
+        observer,
+    )
+    judge._runner_override = _RunnerSuccess()
+
+    with pytest.raises(JudgmentParseError, match="not in verified catalog"):
+        asyncio.run(judge.judge(_request_preflight()))
+
+    assert any(event == "AGENT_SELECTION_ERROR" for event, _ in observer.events)
+
+
+def test_external_agent_mode_omits_bundled_system_prompt() -> None:
+    observer = _ObserverSpy()
+    judge = Judge(
+        JudgeConfig(
+            runner="opencode",
+            external_agent_name="vectl-planner-slim",
+            structured_output=True,
+            timeout=1,
+        ),
+        observer,
+    )
+    capture = _RunnerCapture()
+    judge._runner_override = capture
+
+    verdict = asyncio.run(judge.judge(_request_preflight()))
+
+    assert verdict.verdict == "ACCEPT"
+    assert capture.last_system_prompt == ""
 
 
 def test_extract_verdict_payload_empty_output_raises_parse_error() -> None:

@@ -109,7 +109,7 @@ from .runner_continuity import (
     capability_snapshot_id,
     evaluate_resume_or_replay_safety,
 )
-from .runners import Runner, create_runner
+from .runners import Runner, create_runner, verify_external_agent_selection
 from .runners import RunnerStatus as RunnerDispatchStatus
 from .runtime_context import (
     ROLE_SPECIFIC_CONTEXTS_DEFERRED,
@@ -343,6 +343,7 @@ PlannerDispatchTriggerName = ReplanTriggerName | GateRejectPlannerTriggerName
 
 
 PlannerDispatchSourceVerdict = Literal["REPLAN", "REJECT"]
+AgentSelectionMode = Literal["prompt_only", "external_agent"]
 
 
 PLANNER_SOURCE_VERDICT_REPLAN: Final[PlannerDispatchSourceVerdict] = "REPLAN"
@@ -1372,7 +1373,31 @@ async def dispatch_planner(
             "planner.external_agent_name must be configured for planner dispatch "
             "until planner prompt-only dispatch is implemented"
         )
+
+    selection_mode: AgentSelectionMode = "external_agent"
+    prompt_source: str | None = None
     runner_name = config.route_agent(planner_agent)
+    ok, reason = verify_external_agent_selection(
+        runner_name=runner_name,
+        external_agent_name=planner_agent,
+    )
+    if not ok:
+        error_kind = "unsupported_runner"
+        if "not in verified catalog" in reason:
+            error_kind = "missing_agent"
+        observer.emit(
+            "AGENT_SELECTION_ERROR",
+            step_id=request.step_id,
+            surface="planner",
+            runner=runner_name,
+            selection_mode=selection_mode,
+            external_agent_name=planner_agent,
+            prompt_source=prompt_source,
+            error_kind=error_kind,
+            message=reason,
+        )
+        raise PlanError(reason)
+
     runner = runners.get(runner_name)
     if runner is None:
         raise RunnerError(runner_name, request.step_id, "planner runner not configured")
@@ -1383,6 +1408,10 @@ async def dispatch_planner(
         trigger=request.trigger,
         judgment_type=request.judgment_type,
         runner=runner_name,
+        surface="planner",
+        selection_mode=selection_mode,
+        external_agent_name=planner_agent,
+        prompt_source=prompt_source,
     )
     emit_planner_dispatch_progress(
         observer,
@@ -1428,6 +1457,10 @@ async def dispatch_planner(
             runner=runner_name,
             status=result.status.value,
             output=result.output,
+            surface="planner",
+            selection_mode=selection_mode,
+            external_agent_name=planner_agent,
+            prompt_source=prompt_source,
         )
         raise RunnerError(
             runner_name,
@@ -1446,6 +1479,10 @@ async def dispatch_planner(
         runner=runner_name,
         elapsed_seconds=result.elapsed_seconds,
         session_id=result.session_id,
+        surface="planner",
+        selection_mode=selection_mode,
+        external_agent_name=planner_agent,
+        prompt_source=prompt_source,
     )
 
 

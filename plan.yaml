@@ -54526,13 +54526,15 @@ phases:
   steps:
   - id: driver-agent-selection-doc-sync.update-docs
     name: Update driver docs for planner/judge selection semantics
-    status: pending
+    status: claimed
     description: Sync driver architecture, config examples, migration guidance, and
       any operator-facing bootstrap notes to the implemented planner/judge selection
       behavior.
     verification: Docs reflect nested planner/judge config, defaults, fail-closed
       behavior, and observability fields without legacy ambiguity.
     agent: doc-reviewer
+    claimed_by: project-guide
+    claimed_at: '2026-04-02T03:16:19.529167+00:00'
   - id: driver-agent-selection-doc-sync.gate
     name: Gate agent-selection doc sync
     status: pending

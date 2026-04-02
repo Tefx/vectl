@@ -54451,7 +54451,10 @@ phases:
       - Focus proof: targeted run shows corrected codex default expectation and no
       invariant failures from opencode-only DriverConfig fixtures'
     depends_on:
-    - driver-agent-selection-implementation.gate
+    - driver-agent-selection-implementation.config-migration
+    - driver-agent-selection-implementation.runtime-selection
+    - driver-agent-selection-implementation.wiring-audit
+    - driver-agent-selection-implementation.spec-conformance
     agent: python-senior
   - id: driver-agent-selection-implementation.retest-judge-runner-test-defaults
     name: Retest batched judge-runner default remediation

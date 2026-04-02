@@ -54763,7 +54763,7 @@ phases:
       FAIL due to split-truth config authority and planner runner ownership drift.'
   - id: driver-agent-selection-deep-review.contract-strength
     name: Audit contract strength for selection rules
-    status: pending
+    status: claimed
     description: Audit that contract/test coverage is non-vacuous for selection-mode,
       migration, and fail-closed rules.
     verification: Tests and contracts meaningfully exercise both valid and invalid
@@ -54771,6 +54771,8 @@ phases:
     depends_on:
     - driver-agent-selection-deep-review.wiring-audit
     agent: gate-reviewer
+    claimed_by: gate-reviewer
+    claimed_at: '2026-04-02T07:30:52.923225+00:00'
   - id: driver-agent-selection-deep-review.black-box-verification
     name: Black-box verify planner/judge selection behavior
     status: pending

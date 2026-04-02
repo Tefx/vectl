@@ -43413,7 +43413,7 @@ phases:
       \ OPEN"
 - id: driver-enhancement-observability
   name: 'Driver Enhancement: Advanced Observability'
-  status: in_progress
+  status: done
   gate: Post-bootstrap observability remains blocked until the slimmed live codex/opencode
     judge and dispatch smoke implementation gate is complete.
   context: 'Driver Enhancement: Advanced Observability. No further observability execution
@@ -43901,7 +43901,7 @@ phases:
       - driver-enhancement-observability.shouldfix-docstrings'
   - id: driver-enhancement-observability.shouldfix-docstrings-retest
     name: Retest observability after docstring cleanup
-    status: claimed
+    status: done
     description: Re-run relevant observability tests after the emitter docstring cleanup
       and confirm no regressions. Validate that documentation-only edits did not affect
       observability behavior or test expectations.
@@ -43915,6 +43915,24 @@ phases:
     agent: integration-verifier
     claimed_by: integration-verifier
     claimed_at: '2026-04-02T08:40:46.174391+00:00'
+    done_at: '2026-04-02T08:43:55.601753+00:00'
+    evidence: 'Artifact:
+
+      - PR: 36085f99 (docstring cleanup artifact under test)
+
+
+      Verification:
+
+      - Run: uv run pytest tests/test_driver_observe.py tests/test_driver_observability_expected_red.py
+      -v -> 34 passed
+
+      - Mapping note: plan-listed tests/unit/driver/events/test_emitter.py and tests/unit/driver/test_observability.py
+      are not present in this repository layout; equivalent flat tests/ targets executed
+
+
+      Spec link:
+
+      - driver-enhancement-observability.shouldfix-docstrings-retest'
 - id: driver-enhancement-streaming-progress
   name: 'Driver Enhancement: Streaming & Progress'
   status: done
@@ -44511,7 +44529,7 @@ phases:
       - driver-enhancement-runner-recovery.impl'
 - id: driver-enhancement-integration
   name: 'Driver Enhancement: Integration'
-  status: locked
+  status: pending
   gate: Shared loop wiring, end-to-end enhancement behavior, and repo-wide checks
     prove the fan-out branches work together on the real driver path.
   depends_on:

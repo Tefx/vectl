@@ -54289,7 +54289,7 @@ phases:
       and implementation can proceed without redefining planner/judge semantics.'
 - id: driver-agent-selection-implementation
   name: Driver Agent Selection Implementation
-  status: in_progress
+  status: done
   depends_on:
   - driver-agent-selection-contract
   steps:
@@ -54380,7 +54380,7 @@ phases:
       for each area; verdict CONFORMS.
   - id: driver-agent-selection-implementation.gate
     name: Gate agent-selection implementation
-    status: claimed
+    status: done
     description: Gate review for the implementation phase.
     verification: Implementation, wiring, and spec-conformance evidence are sufficient
       to treat agent selection as a bootstrap prerequisite.
@@ -54393,6 +54393,11 @@ phases:
     agent: gate-reviewer
     claimed_by: gate-reviewer
     claimed_at: '2026-04-02T03:03:22.830050+00:00'
+    done_at: '2026-04-02T03:08:45.581790+00:00'
+    evidence: 'Gate verdict PASS. Targeted agent-selection suite passes (tests/test_driver_agent_selection_expected_red.py:
+      32/32). Prior implementation evidence for config-migration/runtime-selection/wiring-audit/spec-conformance/retest
+      is sufficient and conforms to docs/DRIVER-AGENT-SELECTION.md. Remaining broader-suite
+      failures are outside this phase scope and attributed to other phase-owned fixtures.'
   - id: driver-agent-selection-implementation.fix-judge-runner-test-defaults
     name: Fix batched judge-runner default test defects
     status: done
@@ -54515,7 +54520,7 @@ phases:
       are outside this step scope and tied to separate test configs.'
 - id: driver-agent-selection-doc-sync
   name: Driver Agent Selection Documentation Sync
-  status: locked
+  status: pending
   depends_on:
   - driver-agent-selection-implementation
   steps:

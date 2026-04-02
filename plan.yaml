@@ -54738,7 +54738,7 @@ phases:
       external-agent MUST semantics in spec.'
   - id: driver-agent-selection-deep-review.architecture-review
     name: Review selection ownership and dependency boundaries
-    status: pending
+    status: claimed
     description: Review whether config ownership, runtime selection ownership, and
       runner capability/existence validation are placed in the correct modules.
     verification: No split-truth or boundary regression remains across config, loop,
@@ -54746,6 +54746,8 @@ phases:
     depends_on:
     - driver-agent-selection-deep-review.wiring-audit
     agent: software-architect
+    claimed_by: software-architect
+    claimed_at: '2026-04-02T07:26:54.341276+00:00'
   - id: driver-agent-selection-deep-review.contract-strength
     name: Audit contract strength for selection rules
     status: pending

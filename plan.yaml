@@ -54393,7 +54393,7 @@ phases:
     agent: gate-reviewer
   - id: driver-agent-selection-implementation.fix-judge-runner-test-defaults
     name: Fix batched judge-runner default test defects
-    status: pending
+    status: claimed
     description: 'Fix ALL 7 blocking test defects reported by driver-agent-selection-implementation.gate
       in one batched change.
 
@@ -54459,6 +54459,8 @@ phases:
     - driver-agent-selection-implementation.wiring-audit
     - driver-agent-selection-implementation.spec-conformance
     agent: python-senior
+    claimed_by: python-senior
+    claimed_at: '2026-04-02T02:56:50.437605+00:00'
   - id: driver-agent-selection-implementation.retest-judge-runner-test-defaults
     name: Retest batched judge-runner default remediation
     status: pending

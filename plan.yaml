@@ -54738,7 +54738,7 @@ phases:
       external-agent MUST semantics in spec.'
   - id: driver-agent-selection-deep-review.architecture-review
     name: Review selection ownership and dependency boundaries
-    status: claimed
+    status: done
     description: Review whether config ownership, runtime selection ownership, and
       runner capability/existence validation are placed in the correct modules.
     verification: No split-truth or boundary regression remains across config, loop,
@@ -54748,6 +54748,19 @@ phases:
     agent: software-architect
     claimed_by: software-architect
     claimed_at: '2026-04-02T07:26:54.341276+00:00'
+    done_at: '2026-04-02T07:29:56.831119+00:00'
+    evidence: 'Reviewed docs/DRIVER-AGENT-SELECTION.md against src/vectl/driver/config.py,
+      loop.py, judge.py, and runners.py plus tests/test_driver_config.py, tests/test_driver_judge_impl_runtime.py,
+      and tests/test_driver_loop_hardening.py. Findings: config ownership regressed
+      because judge.py re-reads driver.yaml via _load_runner_settings_from_driver_yaml
+      instead of consuming validated DriverConfig/JudgeConfig authority; runtime selection
+      ownership regressed on planner path because dispatch_planner uses config.route_agent(planner_agent)
+      rather than config.planner.runner despite the contract stating planner.runner
+      owns selection; capability/existence validation placement is mostly preserved
+      because config-load capability validation lives in config.py and fail-closed
+      existence verification is centralized in runners.verify_external_agent_selection
+      and invoked by loop/judge before dispatch. Overall architecture review verdict:
+      FAIL due to split-truth config authority and planner runner ownership drift.'
   - id: driver-agent-selection-deep-review.contract-strength
     name: Audit contract strength for selection rules
     status: pending

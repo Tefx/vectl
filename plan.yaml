@@ -54388,6 +54388,71 @@ phases:
     - driver-agent-selection-implementation.wiring-audit
     - driver-agent-selection-implementation.spec-conformance
     agent: gate-reviewer
+  - id: driver-agent-selection-implementation.fix-judge-runner-test-defaults
+    name: Fix batched judge-runner default test defects
+    status: pending
+    description: 'Fix ALL 7 blocking test defects reported by driver-agent-selection-implementation.gate
+      in one batched change.
+
+
+      ## Blockers to Fix (ALL of these, not just the first)
+
+      - tests/test_driver_agent_selection_expected_red.py asserts the wrong default
+      expectation: JudgeConfig.runner is expected to be opencode, but the authoritative
+      spec default is codex.
+
+      - Multiple tests construct DriverConfig with only an opencode runner while leaving
+      the default judge runner unresolved, causing invariant failures because the
+      default judge runner is codex.
+
+      - Scope is the full failing family: correct default-expectation assertions,
+      update shared test fixtures/builders, and normalize all affected tests so config
+      construction matches spec-defined defaults.
+
+
+      ## Root Cause vs Symptom
+
+      - Root cause: tests encode a stale default-runner assumption for judge configuration
+      and reuse inconsistent DriverConfig fixtures.
+
+      - Symptom: invariant failures and incorrect expected-red assertions across 7
+      tests.
+
+      - Why this fix is not surface-level: repair the shared expectation/fixture seam
+      so all affected tests align with the codex default rather than patching individual
+      assertions only.
+
+
+      ## Required search / sibling coverage
+
+      - Search for JudgeConfig default-runner assumptions and DriverConfig constructions
+      that specify only opencode while relying on judge defaults.
+
+      - Search siblings beyond the named failing file so all 7 defects are fixed in
+      one change.
+
+
+      ## Completion Criteria
+
+      - All 7 failing tests updated in one batched remediation.
+
+      - Shared test fixtures/builders align with spec default judge runner = codex.
+
+      - No remaining stale expectation that judge default runner is opencode.
+
+      - Do NOT touch any driver-enhancement-* phases or their step scope.
+
+      '
+    verification: '- Targeted verification: pytest tests/test_driver_agent_selection_expected_red.py
+      -v
+
+      - Related suite verification: pytest tests/test_driver_agent_selection*.py -v
+
+      - Focus proof: targeted run shows corrected codex default expectation and no
+      invariant failures from opencode-only DriverConfig fixtures'
+    depends_on:
+    - driver-agent-selection-implementation.gate
+    agent: python-senior
 - id: driver-agent-selection-doc-sync
   name: Driver Agent Selection Documentation Sync
   status: locked

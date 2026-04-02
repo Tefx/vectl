@@ -783,11 +783,13 @@ def evaluate_runner_recovery_boundary(
         )
 
     if signal.taxonomy == "no_progress":
+        repair_actions: tuple[str, ...]
+        blocked_reasons: tuple[str, ...]
         if heartbeat_stale:
             reason = "watchdog_heartbeat_gap_no_progress"
             disposition: StartupRecoveryDisposition = "restart"
             repair_actions = (f"restart:{step_id}:{reason}",)
-            blocked_reasons: tuple[str, ...] = ()
+            blocked_reasons = ()
         else:
             reason = "no_progress_with_fresh_heartbeat_requires_manual_review"
             disposition = "halt"

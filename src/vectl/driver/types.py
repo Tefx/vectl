@@ -547,8 +547,12 @@ def _sum_numeric_token_values(payload: object) -> int:
         return sum(_sum_numeric_token_values(value) for value in payload.values())
     if isinstance(payload, bool):
         return 0
-    if isinstance(payload, Number):
+    if isinstance(payload, int):
+        return payload
+    if isinstance(payload, float):
         return int(payload)
+    if isinstance(payload, Number):
+        return 0
     return 0
 
 

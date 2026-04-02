@@ -54552,6 +54552,7 @@ phases:
       guidance remains.
     depends_on:
     - driver-agent-selection-doc-sync.update-docs
+    - driver-agent-selection-doc-sync.retest-doc-audit
     agent: gate-reviewer
   - id: driver-agent-selection-doc-sync.fix-doc-defaults-status
     name: Fix stale default-runner and status docs

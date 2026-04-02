@@ -44540,7 +44540,7 @@ phases:
   steps:
   - id: driver-enhancement-integration.system-wiring
     name: Wire telemetry streaming and recovery into the shared driver loop
-    status: claimed
+    status: done
     description: "step_type: implementation\n\ntags:\n  - integration\n\nSerial integration\
       \ step for the shared writable surfaces.\n\nScope:\n- join the observability,\
       \ streaming/progress, and recovery branches in the real driver loop\n- keep\
@@ -44569,6 +44569,40 @@ phases:
     agent: python-senior
     claimed_by: python-senior
     claimed_at: '2026-04-02T08:44:17.867540+00:00'
+    done_at: '2026-04-02T08:51:31.870140+00:00'
+    evidence: 'Artifact:
+
+      - PR: ce9b0b85073308b6c3065eb2590be52b4929ab37
+
+
+      Verification:
+
+      - Run: uv run pytest -v tests/test_driver_loop_hardening.py::test_reconcile_no_progress_recovery_matrix_halts_with_fresh_heartbeat
+      tests/test_driver_loop_hardening.py::test_main_loop_all_stalled_recovery tests/test_driver_observability_expected_red.py::test_recovery_visibility_is_wired_during_reconcile_expected_red
+      tests/test_driver_streaming_progress_expected_red.py::test_wait_for_any_requires_streaming_aware_liveness_transition
+      tests/test_driver_runner_recovery_expected_red.py::test_runner_recovery_uses_heartbeat_gap_for_watchdog_decision_expected_red
+      -> 5 passed
+
+      - Run: uv run ruff check --fix src/vectl/driver/loop.py tests/test_driver_loop_hardening.py
+      -> fixed import-order issue, then clean
+
+      - Run: uv run spec-verifier src/vectl/driver/loop.py tests/test_driver_loop_hardening.py
+      -> executable unavailable in environment (captured as gap)
+
+
+      Spec link:
+
+      - driver-enhancement-integration.system-wiring
+
+      - docs/DRIVER-ARCHITECTURE.md (loop wiring ownership)
+
+
+      Commit hash(es): ce9b0b85073308b6c3065eb2590be52b4929ab37
+
+      Files changed: src/vectl/driver/loop.py, tests/test_driver_loop_hardening.py
+
+      Gaps/Notes: spec-verifier CLI unavailable; downstream integration verification
+      steps remain to cover broad/e2e checks.'
   - id: driver-enhancement-integration.verify-e2e
     name: Verify end-to-end enhanced driver behavior
     status: pending

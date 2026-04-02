@@ -55124,7 +55124,7 @@ phases:
   steps:
   - id: driver-agent-selection-bootstrap-validation.formal-bootstrap-smoke
     name: Run formal bootstrap/self-host validation with planner/judge selection
-    status: claimed
+    status: done
     description: Execute a real bootstrap/self-host validation path proving that the
       planner default runs in external-agent mode, the judge default runs in prompt-only
       mode, observability exposes those facts, and intentionally invalid external-agent
@@ -55135,6 +55135,41 @@ phases:
     agent: blind-tester
     claimed_by: blind-tester
     claimed_at: '2026-04-02T07:48:26.681668+00:00'
+    done_at: '2026-04-02T07:58:40.130318+00:00'
+    evidence: 'Artifact:
+
+      - PR: 72bba6c723056b6d04bc54726af226c5ae26f454
+
+
+      Verification:
+
+      - Run: .venv/bin/python -m pytest tests/repro/driver_agent_selection_bootstrap_smoke.py
+      -v -> 6 passed in 0.13s; planner emits selection_mode=external_agent, judge
+      emits selection_mode=prompt_only, invalid external-agent config fails closed
+      with explicit selection diagnostics
+
+
+      Spec link:
+
+      - docs/DRIVER-AGENT-SELECTION.md (Runtime Semantics, Fallback and Error Policy,
+      Observability Contract, Runtime Matrix, Defaults)
+
+
+      step_intent: validate real bootstrap/self-host flow selection behavior and observability
+
+      expected_result: planner external_agent mode and judge prompt_only mode observable;
+      fail-closed diagnostics on invalid external-agent config
+
+      observed_result: all expected signals present; negative-case fail-closed behavior
+      confirmed
+
+      failure_alignment: n/a (no failures)
+
+      product_implementation_files_modified: false
+
+      files_changed:
+
+      - tests/repro/driver_agent_selection_bootstrap_smoke.py'
   - id: driver-agent-selection-bootstrap-validation.gate
     name: Gate continued bootstrap and driver-enhancement work
     status: pending

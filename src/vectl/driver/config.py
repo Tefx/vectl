@@ -17,6 +17,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from fnmatch import fnmatch
 from pathlib import Path
+import warnings
 from typing import Final, Literal
 
 import yaml
@@ -202,6 +203,31 @@ class RunnerConfig(BaseModel):
     )
     persist_session: bool = True
     experimental: bool = False
+    supports_agent_selection: bool = False
+
+
+class PlannerConfig(BaseModel):
+    """Planner agent configuration.
+
+    Source: docs/DRIVER-AGENT-SELECTION.md ``Config Contract``
+    """
+
+    runner: str = "opencode"
+    external_agent_name: str | None = "vectl-planner-slim"
+
+    @model_validator(mode="after")
+    def _validate_external_agent_name(self) -> PlannerConfig:
+        """Reject blank planner external agent names.
+
+        Source: docs/DRIVER-AGENT-SELECTION.md ``Runtime Semantics``
+        (external-agent mode requires a non-empty name).
+        """
+        if self.external_agent_name is not None and not self.external_agent_name.strip():
+            raise ValueError(
+                "planner.external_agent_name must be non-empty when provided; "
+                "use null for prompt-only mode"
+            )
+        return self
 
 
 class SessionConfig(BaseModel):
@@ -222,8 +248,8 @@ class JudgeConfig(BaseModel):
     Blueprint: DRIVER-BLUEPRINT.md Configuration Schema, judge section
     """
 
-    runner: str = "opencode"  # All sidecar/subagent calls default to opencode
-    agent_name: str = "judge"
+    runner: str = "codex"
+    external_agent_name: str | None = None
     model: str | None = None
     structured_output: bool = True  # Use model structured output (see Architecture doc)
     timeout: int = 60  # Per-judgment timeout in seconds
@@ -235,6 +261,20 @@ class JudgeConfig(BaseModel):
     cold_context: bool = True  # JudgmentType.COLD_CONTEXT
     anomaly: bool = True  # JudgmentType.ANOMALY
     skip_preflight_for: list[str] = Field(default_factory=list)
+
+    @model_validator(mode="after")
+    def _validate_external_agent_name(self) -> JudgeConfig:
+        """Reject blank judge external agent names.
+
+        Source: docs/DRIVER-AGENT-SELECTION.md ``Runtime Semantics``
+        (external-agent mode requires a non-empty name).
+        """
+        if self.external_agent_name is not None and not self.external_agent_name.strip():
+            raise ValueError(
+                "judge.external_agent_name must be non-empty when provided; "
+                "use null for prompt-only mode"
+            )
+        return self
 
 
 class OrchestrationConfig(BaseModel):
@@ -276,7 +316,7 @@ class DriverConfig(BaseModel):
     """
 
     plan_path: str | None = None  # null = auto-detect via resolve_plan_path()
-    planner_agent_name: str = "vectl-planner"
+    planner: PlannerConfig = Field(default_factory=PlannerConfig)
     runners: dict[str, RunnerConfig]
     agent_routing: dict[str, str] = Field(default_factory=dict)
     fallback_runner: str = "opencode"
@@ -284,6 +324,65 @@ class DriverConfig(BaseModel):
     session: SessionConfig = Field(default_factory=SessionConfig)
     judge: JudgeConfig = Field(default_factory=JudgeConfig)
     observability: ObservabilityConfig = Field(default_factory=ObservabilityConfig)
+
+    @staticmethod
+    def _legacy_planner_agent_name_to_planner_config(
+        planner_agent_name: str | None,
+        resolved_runner: str,
+    ) -> PlannerConfig:
+        """Migrate legacy flat planner field into nested planner config.
+
+        Source: docs/DRIVER-AGENT-SELECTION.md ``Migration Guidance``
+        """
+        return PlannerConfig(
+            runner=resolved_runner,
+            external_agent_name=planner_agent_name,
+        )
+
+    @model_validator(mode="before")
+    @classmethod
+    def _migrate_legacy_agent_selection_fields(cls, data: object) -> object:
+        """Migrate legacy planner/judge fields into nested external-agent fields.
+
+        Source: docs/DRIVER-AGENT-SELECTION.md ``Migration Guidance``
+        """
+        if not isinstance(data, dict):
+            return data
+
+        normalized = dict(data)
+
+        legacy_planner_agent_name_present = "planner_agent_name" in normalized
+        legacy_planner_agent_name = normalized.pop("planner_agent_name", None)
+        planner_data = normalized.get("planner")
+        if planner_data is None and legacy_planner_agent_name_present:
+            fallback_runner = normalized.get("fallback_runner")
+            resolved_runner = (
+                str(fallback_runner)
+                if isinstance(fallback_runner, str) and fallback_runner.strip()
+                else PLANNER_AGENT_SELECTION_CONTRACT.default_runner
+            )
+            normalized["planner"] = {
+                "runner": resolved_runner,
+                "external_agent_name": legacy_planner_agent_name,
+            }
+
+        judge_data = normalized.get("judge")
+        if isinstance(judge_data, dict) and "external_agent_name" not in judge_data:
+            legacy_judge_agent_name = judge_data.pop("agent_name", None)
+            if legacy_judge_agent_name in (None, "", "judge"):
+                judge_data["external_agent_name"] = None
+            else:
+                warnings.warn(
+                    (
+                        "Migrated legacy judge.agent_name to judge.external_agent_name. "
+                        "This now requests explicit external-agent mode and will be "
+                        "validated against runner capabilities."
+                    ),
+                    stacklevel=2,
+                )
+                judge_data["external_agent_name"] = legacy_judge_agent_name
+
+        return normalized
 
     def route_agent(self, agent: str) -> str:
         """Resolve agent name to runner name via agent_routing config.
@@ -325,6 +424,49 @@ class DriverConfig(BaseModel):
                 f"judge.runner '{self.judge.runner}' not found in runners. "
                 f"Available runners: {list(self.runners.keys())}"
             )
+
+        # Check planner.runner exists
+        if self.planner.runner not in self.runners:
+            raise ValueError(
+                f"planner.runner '{self.planner.runner}' not found in runners. "
+                f"Available runners: {list(self.runners.keys())}"
+            )
+
+        return self
+
+    @model_validator(mode="after")
+    def _validate_external_agent_capabilities(self) -> DriverConfig:
+        """Reject unsupported external-agent selection at config load.
+
+        Source: docs/DRIVER-AGENT-SELECTION.md ``Capability Rules`` and
+        ``Validation stages - Config-load validation``.
+        """
+
+        def _validate_surface(
+            *, surface: str, runner: str, external_agent_name: str | None
+        ) -> None:
+            if external_agent_name is None:
+                return
+            runner_config = self.runners[runner]
+            if runner_config.supports_agent_selection:
+                return
+            raise ValueError(
+                f"{surface}.external_agent_name is set to '{external_agent_name}', but "
+                f"runner '{runner}' has supports_agent_selection=false. "
+                "Choose a runner with supports_agent_selection=true or set "
+                f"{surface}.external_agent_name to null for prompt-only mode."
+            )
+
+        _validate_surface(
+            surface="planner",
+            runner=self.planner.runner,
+            external_agent_name=self.planner.external_agent_name,
+        )
+        _validate_surface(
+            surface="judge",
+            runner=self.judge.runner,
+            external_agent_name=self.judge.external_agent_name,
+        )
 
         return self
 

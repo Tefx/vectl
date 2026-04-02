@@ -313,7 +313,7 @@ def test_codex_command_renders_configurable_judge_agent_name() -> None:
             }
         },
         "fallback_runner": "codex",
-        "judge": {"runner": "codex", "agent_name": "risk-judge"},
+        "judge": {"runner": "codex", "external_agent_name": "risk-judge"},
     }
 
     with tempfile.TemporaryDirectory() as td:
@@ -324,7 +324,11 @@ def test_codex_command_renders_configurable_judge_agent_name() -> None:
             os.chdir(td_path)
             observer = _ObserverSpy()
             judge = Judge(
-                JudgeConfig(runner="codex", structured_output=True, agent_name="risk-judge"),
+                JudgeConfig(
+                    runner="codex",
+                    structured_output=True,
+                    external_agent_name="risk-judge",
+                ),
                 observer,
             )
             command, _ = judge._build_subprocess_command("system", "user")

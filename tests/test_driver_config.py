@@ -19,8 +19,10 @@ from src.vectl.driver.config import (
     JudgeConfig,
     ObservabilityConfig,
     OrchestrationConfig,
+    PlannerConfig,
     RunnerConfig,
     SessionConfig,
+    load_config,
 )
 from src.vectl.driver.errors import ConfigError
 
@@ -53,6 +55,7 @@ class TestRunnerConfig:
         assert config.persist_session is True
         assert config.output_parser == "claude_json"
         assert config.experimental is False
+        assert config.supports_agent_selection is False
         assert config.resume_flag is None
         assert config.resume_command is None
         assert config.session_id_regex is None
@@ -91,6 +94,7 @@ class TestRunnerConfig:
             output_parser="claude_json",
             persist_session=False,
             experimental=True,
+            supports_agent_selection=True,
         )
         assert config.command == "claude"
         assert config.args == ["-p", "--json"]
@@ -102,6 +106,7 @@ class TestRunnerConfig:
         assert config.output_parser == "claude_json"
         assert config.persist_session is False
         assert config.experimental is True
+        assert config.supports_agent_selection is True
 
 
 class TestSessionConfig:
@@ -137,8 +142,8 @@ class TestJudgeConfig:
         Blueprint: DRIVER-BLUEPRINT.md Configuration Schema, judge section
         """
         config = JudgeConfig()
-        assert config.runner == "opencode"
-        assert config.agent_name == "judge"
+        assert config.runner == "codex"
+        assert config.external_agent_name is None
         assert config.model is None
         assert config.structured_output is True
         assert config.timeout == 60
@@ -180,12 +185,12 @@ class TestJudgeConfig:
         config_with_skip = JudgeConfig(skip_preflight_for=["*.define", "*.gate"])
         assert config_with_skip.skip_preflight_for == ["*.define", "*.gate"]
 
-    def test_judge_config_agent_name_default_and_override(self) -> None:
+    def test_judge_config_external_agent_name_default_and_override(self) -> None:
         config = JudgeConfig()
-        assert config.agent_name == "judge"
+        assert config.external_agent_name is None
 
-        overridden = JudgeConfig(agent_name="risk-judge")
-        assert overridden.agent_name == "risk-judge"
+        overridden = JudgeConfig(external_agent_name="risk-judge")
+        assert overridden.external_agent_name == "risk-judge"
 
 
 class TestOrchestrationConfig:
@@ -231,7 +236,8 @@ class TestDriverConfig:
         """
         config = DriverConfig(
             runners={
-                "opencode": RunnerConfig(command="opencode"),
+                "opencode": RunnerConfig(command="opencode", supports_agent_selection=True),
+                "codex": RunnerConfig(command="codex"),
             },
         )
         assert isinstance(config.runners, dict)
@@ -247,10 +253,15 @@ class TestDriverConfig:
         Contract pin from: docs/DRIVER-ARCHITECTURE.md Section 2.3
         """
         config = DriverConfig(
-            runners={"opencode": RunnerConfig(command="opencode")},
+            runners={
+                "opencode": RunnerConfig(command="opencode", supports_agent_selection=True),
+                "codex": RunnerConfig(command="codex"),
+            },
         )
         assert config.plan_path is None
-        assert config.planner_agent_name == "vectl-planner"
+        assert isinstance(config.planner, PlannerConfig)
+        assert config.planner.runner == "opencode"
+        assert config.planner.external_agent_name == "vectl-planner-slim"
         assert config.agent_routing == {}
         assert config.fallback_runner == "opencode"
         assert isinstance(config.orchestration, OrchestrationConfig)
@@ -258,13 +269,16 @@ class TestDriverConfig:
         assert isinstance(config.judge, JudgeConfig)
         assert isinstance(config.observability, ObservabilityConfig)
 
-    def test_driver_config_planner_agent_name_override(self) -> None:
+    def test_driver_config_planner_external_agent_override(self) -> None:
         config = DriverConfig(
-            runners={"opencode": RunnerConfig(command="opencode")},
-            planner_agent_name="vectl-planner-slim",
+            runners={
+                "opencode": RunnerConfig(command="opencode", supports_agent_selection=True),
+                "codex": RunnerConfig(command="codex"),
+            },
+            planner=PlannerConfig(runner="opencode", external_agent_name="vectl-planner-slim"),
         )
 
-        assert config.planner_agent_name == "vectl-planner-slim"
+        assert config.planner.external_agent_name == "vectl-planner-slim"
 
     def test_driver_config_route_agent_fallback(self) -> None:
         """DriverConfig.route_agent(agent) MUST fall back to fallback_runner
@@ -277,7 +291,8 @@ class TestDriverConfig:
         # But we can verify the default fallback_runner
         config = DriverConfig(
             runners={
-                "opencode": RunnerConfig(command="opencode"),
+                "opencode": RunnerConfig(command="opencode", supports_agent_selection=True),
+                "codex": RunnerConfig(command="codex"),
             },
             fallback_runner="opencode",
         )
@@ -292,7 +307,8 @@ class TestDriverConfig:
         config = DriverConfig(
             runners={
                 "claude": RunnerConfig(command="claude"),
-                "opencode": RunnerConfig(command="opencode"),
+                "opencode": RunnerConfig(command="opencode", supports_agent_selection=True),
+                "codex": RunnerConfig(command="codex"),
             },
             agent_routing={
                 "python-senior": "claude",
@@ -312,53 +328,133 @@ class TestLoadConfig:
         Contract pin from: docs/DRIVER-ARCHITECTURE.md Section 2.3
         Blueprint: DRIVER-BLUEPRINT.md Flow 1 (config = load_config(config_path))
 
-        Note: load_config is a stub (NotImplementedError), so we test Pydantic
-        validation directly here.
+        Source: docs/DRIVER-AGENT-SELECTION.md ``Migration Guidance``
         """
-        import yaml
-
-        from src.vectl.driver.config import DriverConfig, RunnerConfig
-
-        # Parse YAML
-        with open(temp_driver_yaml) as f:
-            data = yaml.safe_load(f)
-
-        # Validate Pydantic model structure
-        assert "runners" in data
-        assert "claude" in data["runners"]
-        assert "opencode" in data["runners"]
-
-        # DriverConfig should be constructible from the dict
-        # Note: load_config stub raises NotImplementedError, so we construct manually
-        runners = {
-            name: RunnerConfig(**runner_data) for name, runner_data in data["runners"].items()
-        }
-        config = DriverConfig(runners=runners)
+        config = load_config(temp_driver_yaml)
         assert "claude" in config.runners
         assert "opencode" in config.runners
+        assert config.planner.external_agent_name == "vectl-planner-slim"
+        assert config.judge.external_agent_name is None
 
     def test_load_config_missing_file(self, tmp_path: Path) -> None:
         """load_config(path) MUST raise ConfigError for missing file.
 
         Contract pin from: docs/DRIVER-ARCHITECTURE.md Section 2.3
         """
-        # load_config is a stub, so we test the pattern
         missing_path = tmp_path / "nonexistent.yaml"
         assert not missing_path.exists()
-        # When implemented, this should raise ConfigError
-        # For now, we verify the error class exists
-        assert ConfigError.__name__ == "ConfigError"
+        with pytest.raises(ConfigError, match="Configuration file not found"):
+            load_config(missing_path)
 
     def test_load_config_validation_error(self) -> None:
         """load_config(path) MUST raise ConfigError for Pydantic validation failure.
 
         Contract pin from: docs/DRIVER-ARCHITECTURE.md Section 2.3
         """
-        from pydantic import ValidationError
+        yaml_text = "judge:\n  runner: opencode\n"
+        with pytest.raises(ConfigError, match="Invalid configuration"):
+            import tempfile
 
-        # Test that DriverConfig validates required fields
-        with pytest.raises(ValidationError):
-            DriverConfig()  # Missing required 'runners'
+            with tempfile.NamedTemporaryFile(mode="w", suffix=".yaml", delete=False) as tmp:
+                tmp.write(yaml_text)
+                tmp.flush()
+                load_config(Path(tmp.name))
+
+    def test_load_config_migrates_legacy_planner_agent_name_field(self, tmp_path: Path) -> None:
+        yaml_text = """
+runners:
+  opencode:
+    command: opencode
+    supports_agent_selection: true
+  codex:
+    command: codex
+fallback_runner: opencode
+planner_agent_name: vectl-planner-slim
+judge:
+  runner: codex
+"""
+        config_path = tmp_path / "driver.yaml"
+        config_path.write_text(yaml_text)
+
+        config = load_config(config_path)
+
+        assert config.planner.runner == "opencode"
+        assert config.planner.external_agent_name == "vectl-planner-slim"
+
+    def test_load_config_migrates_legacy_judge_agent_name_default_to_prompt_only(
+        self, tmp_path: Path
+    ) -> None:
+        yaml_text = """
+runners:
+  opencode:
+    command: opencode
+    supports_agent_selection: true
+  codex:
+    command: codex
+fallback_runner: opencode
+planner:
+  runner: opencode
+  external_agent_name: vectl-planner-slim
+judge:
+  runner: codex
+  agent_name: judge
+"""
+        config_path = tmp_path / "driver.yaml"
+        config_path.write_text(yaml_text)
+
+        config = load_config(config_path)
+
+        assert config.judge.external_agent_name is None
+
+    def test_load_config_warns_when_migrating_custom_legacy_judge_agent_name(
+        self, tmp_path: Path
+    ) -> None:
+        yaml_text = """
+runners:
+  opencode:
+    command: opencode
+    supports_agent_selection: true
+fallback_runner: opencode
+planner:
+  runner: opencode
+  external_agent_name: vectl-planner-slim
+judge:
+  runner: opencode
+  agent_name: risk-judge
+"""
+        config_path = tmp_path / "driver.yaml"
+        config_path.write_text(yaml_text)
+
+        with pytest.warns(UserWarning, match="Migrated legacy judge.agent_name"):
+            config = load_config(config_path)
+
+        assert config.judge.external_agent_name == "risk-judge"
+
+
+class TestExternalAgentCapabilityValidation:
+    def test_rejects_planner_external_agent_on_unsupported_runner_with_diagnostics(self) -> None:
+        with pytest.raises(ValueError, match="planner.external_agent_name is set") as exc_info:
+            DriverConfig(
+                runners={
+                    "opencode": RunnerConfig(command="opencode", supports_agent_selection=False),
+                    "codex": RunnerConfig(command="codex"),
+                },
+                planner=PlannerConfig(runner="opencode", external_agent_name="vectl-planner-slim"),
+            )
+
+        assert "supports_agent_selection=false" in str(exc_info.value)
+
+    def test_rejects_judge_external_agent_on_unsupported_runner_with_diagnostics(self) -> None:
+        with pytest.raises(ValueError, match="judge.external_agent_name is set") as exc_info:
+            DriverConfig(
+                runners={
+                    "opencode": RunnerConfig(command="opencode", supports_agent_selection=True),
+                    "codex": RunnerConfig(command="codex", supports_agent_selection=False),
+                },
+                judge=JudgeConfig(runner="codex", external_agent_name="risk-judge"),
+            )
+
+        assert "supports_agent_selection=false" in str(exc_info.value)
 
 
 class TestSpecFixtureConformance:
@@ -406,6 +502,7 @@ class TestSpecFixtureConformance:
         assert runner.session_id_regex == "^ses_[a-z0-9]+"
         assert runner.output_parser == "opencode_jsonl"
         assert runner.persist_session is True
+        assert runner.supports_agent_selection is True
 
     def test_spec_fixture_codex_runner(self, driver_config_dict: dict) -> None:
         """Codex runner config matches spec exactly.
@@ -434,6 +531,7 @@ class TestSpecFixtureConformance:
         ]
         assert runner.session_id_regex == "^[0-9a-f]{8}-"
         assert runner.output_parser == "codex_jsonl"
+        assert runner.supports_agent_selection is False
 
     def test_spec_fixture_gemini_runner(self, driver_config_dict: dict) -> None:
         """Gemini runner config matches spec exactly (experimental).
@@ -449,6 +547,7 @@ class TestSpecFixtureConformance:
         assert runner.stall_timeout == 600
         assert runner.output_parser == "gemini_json"
         assert runner.experimental is True
+        assert runner.supports_agent_selection is False
 
     def test_spec_fixture_session_config(self, driver_config_dict: dict) -> None:
         """Session config matches spec exactly.
@@ -467,8 +566,8 @@ class TestSpecFixtureConformance:
         """
         judge_config = JudgeConfig(**driver_config_dict["judge"])
 
-        assert judge_config.runner == "opencode"
-        assert judge_config.agent_name == "judge"
+        assert judge_config.runner == "codex"
+        assert judge_config.external_agent_name is None
         assert judge_config.model is None
         assert judge_config.structured_output is True
         assert judge_config.timeout == 60
@@ -518,7 +617,7 @@ class TestSpecFixtureConformance:
             "*-planner": "opencode",
         }
         assert driver_config_dict["fallback_runner"] == "opencode"
-        assert driver_config_dict["planner_agent_name"] == "vectl-planner-slim"
+        assert driver_config_dict["planner"]["external_agent_name"] == "vectl-planner-slim"
 
 
 class TestConfigInvariants:
@@ -587,7 +686,7 @@ class TestAgentRoutingValidation:
 
         config_data = {
             "runners": {
-                "opencode": {"command": "opencode"},
+                "opencode": {"command": "opencode", "supports_agent_selection": True},
             },
             "agent_routing": {
                 "python-senior": "opencode",
@@ -619,7 +718,7 @@ class TestAgentRoutingValidation:
 
         config_data = {
             "runners": {
-                "opencode": {"command": "opencode"},
+                "opencode": {"command": "opencode", "supports_agent_selection": True},
             },
             "agent_routing": {
                 "default": "opencode",
@@ -644,15 +743,15 @@ class TestAgentRoutingValidation:
         """
         config = DriverConfig(
             runners={
-                "claude": {"command": "claude"},
-                "opencode": {"command": "opencode"},
+                "claude": RunnerConfig(command="claude"),
+                "opencode": RunnerConfig(command="opencode", supports_agent_selection=True),
             },
             agent_routing={
                 "python-senior": "claude",
                 "frontend-engineer": "claude",
             },
             fallback_runner="opencode",
-            judge={"runner": "opencode"},
+            judge=JudgeConfig(runner="opencode"),
         )
 
         # Exact match should work
@@ -670,15 +769,15 @@ class TestAgentRoutingValidation:
         """
         config = DriverConfig(
             runners={
-                "claude": {"command": "claude"},
-                "opencode": {"command": "opencode"},
+                "claude": RunnerConfig(command="claude"),
+                "opencode": RunnerConfig(command="opencode", supports_agent_selection=True),
             },
             agent_routing={
                 "*-tester": "opencode",
                 "*-reviewer": "claude",
             },
             fallback_runner="opencode",
-            judge={"runner": "opencode"},
+            judge=JudgeConfig(runner="opencode"),
         )
 
         # Glob match should work
@@ -699,14 +798,14 @@ class TestAgentRoutingValidation:
         # default routing handled by fallback_runner
         config = DriverConfig(
             runners={
-                "claude": {"command": "claude"},
-                "opencode": {"command": "opencode"},
+                "claude": RunnerConfig(command="claude"),
+                "opencode": RunnerConfig(command="opencode", supports_agent_selection=True),
             },
             agent_routing={
                 "python-senior": "claude",
             },
             fallback_runner="opencode",
-            judge={"runner": "opencode"},
+            judge=JudgeConfig(runner="opencode"),
         )
 
         # Unmatched agents should route to fallback_runner
@@ -724,14 +823,14 @@ class TestAgentRoutingValidation:
         """
         config = DriverConfig(
             runners={
-                "claude": {"command": "claude"},
-                "opencode": {"command": "opencode"},
+                "claude": RunnerConfig(command="claude"),
+                "opencode": RunnerConfig(command="opencode", supports_agent_selection=True),
             },
             agent_routing={
                 "python-senior": "claude",
             },
             fallback_runner="opencode",
-            judge={"runner": "opencode"},
+            judge=JudgeConfig(runner="opencode"),
         )
 
         # 'default' as an agent name should NOT match anything special
@@ -759,7 +858,7 @@ class TestConfigModelRoundTrip:
         """DriverConfig can be dumped and reconstructed."""
         config = DriverConfig(
             runners={
-                "opencode": RunnerConfig(command="opencode"),
+                "opencode": RunnerConfig(command="opencode", supports_agent_selection=True),
             },
             judge=JudgeConfig(runner="opencode"),
         )

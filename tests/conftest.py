@@ -27,6 +27,7 @@ DRIVER_YAML_SPEC: dict[str, Any] = {
             "session_id_regex": "^[0-9a-f]{8}-[0-9a-f]{4}-",
             "output_parser": "claude_json",
             "persist_session": True,
+            "supports_agent_selection": False,
         },
         "opencode": {
             "command": "opencode",
@@ -37,6 +38,7 @@ DRIVER_YAML_SPEC: dict[str, Any] = {
             "session_id_regex": "^ses_[a-z0-9]+",
             "output_parser": "opencode_jsonl",
             "persist_session": True,
+            "supports_agent_selection": True,
         },
         "codex": {
             "command": "codex",
@@ -58,6 +60,7 @@ DRIVER_YAML_SPEC: dict[str, Any] = {
             ],
             "session_id_regex": "^[0-9a-f]{8}-",
             "output_parser": "codex_jsonl",
+            "supports_agent_selection": False,
         },
         "gemini": {
             "command": "gemini",
@@ -66,6 +69,7 @@ DRIVER_YAML_SPEC: dict[str, Any] = {
             "stall_timeout": 600,
             "output_parser": "gemini_json",
             "experimental": True,
+            "supports_agent_selection": False,
         },
     },
     "agent_routing": {
@@ -78,7 +82,10 @@ DRIVER_YAML_SPEC: dict[str, Any] = {
         "*-planner": "opencode",
     },
     "fallback_runner": "opencode",
-    "planner_agent_name": "vectl-planner-slim",
+    "planner": {
+        "runner": "opencode",
+        "external_agent_name": "vectl-planner-slim",
+    },
     "orchestration": {
         "max_parallelism": 5,
         "merge_strategy": "squash",
@@ -90,8 +97,8 @@ DRIVER_YAML_SPEC: dict[str, Any] = {
         },
     },
     "judge": {
-        "runner": "opencode",
-        "agent_name": "judge",
+        "runner": "codex",
+        "external_agent_name": None,
         "model": None,
         "structured_output": True,
         "timeout": 60,
@@ -152,6 +159,7 @@ def minimal_driver_config_dict() -> dict[str, Any]:
         "runners": {
             "opencode": {
                 "command": "opencode",
+                "supports_agent_selection": True,
             },
         },
         "fallback_runner": "opencode",

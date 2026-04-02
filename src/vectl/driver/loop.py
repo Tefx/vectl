@@ -1366,7 +1366,12 @@ async def dispatch_planner(
             f"(step={request.step_id}, trigger={request.trigger})"
         )
 
-    planner_agent = config.planner_agent_name
+    planner_agent = config.planner.external_agent_name
+    if planner_agent is None:
+        raise PlanError(
+            "planner.external_agent_name must be configured for planner dispatch "
+            "until planner prompt-only dispatch is implemented"
+        )
     runner_name = config.route_agent(planner_agent)
     runner = runners.get(runner_name)
     if runner is None:

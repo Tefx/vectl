@@ -85,6 +85,13 @@ def _base_config() -> DriverConfig:
                 command="opencode",
                 args=["run", "--format", "json"],
                 output_parser="opencode_jsonl",
+                supports_agent_selection=True,
+            ),
+            "codex": RunnerConfig(
+                command="codex",
+                args=["exec", "--json", "-C", "{workdir}"],
+                prompt_mode="stdin_dash",
+                output_parser="codex_jsonl",
             ),
         },
         agent_routing={"python-executor": "claude"},
@@ -624,7 +631,7 @@ async def test_handle_dispatch_preflight_replan_invokes_planner_and_skips_claim(
 @pytest.mark.anyio
 async def test_dispatch_planner_uses_configurable_planner_agent_name() -> None:
     config = _base_config()
-    config.planner_agent_name = "custom-planner"
+    config.planner.external_agent_name = "custom-planner"
     config.agent_routing["custom-planner"] = "opencode"
     observer = _RecordingObserver()
     runner = _Runner("opencode")

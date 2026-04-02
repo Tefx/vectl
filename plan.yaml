@@ -44894,7 +44894,7 @@ phases:
       Artifact commit: f424c12'
   - id: driver-enhancement-integration.retest-runner-default-fixtures
     name: Retest runner default fixture/catalog remediation
-    status: pending
+    status: claimed
     description: 'step_type: verification
 
       step_intent: retest_green
@@ -44959,6 +44959,8 @@ phases:
     depends_on:
     - driver-enhancement-integration.fix-runner-default-fixtures
     agent: integration-verifier
+    claimed_by: integration-verifier
+    claimed_at: '2026-04-02T14:08:09.554311+00:00'
 - id: driver-enhancement-review
   name: 'Driver Enhancement: Review'
   status: locked

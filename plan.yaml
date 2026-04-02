@@ -54764,7 +54764,7 @@ phases:
     agent: gate-reviewer
   - id: driver-agent-selection-deep-review.remediate-dead-exports
     name: Remediate dead exports and duplicate selection aliases
-    status: claimed
+    status: done
     description: 'Resolve wiring-audit dead-surface findings in the driver agent selection
       package.
 
@@ -54813,6 +54813,13 @@ phases:
     agent: python-senior
     claimed_by: python-senior
     claimed_at: '2026-04-02T03:45:58.109682+00:00'
+    done_at: '2026-04-02T03:50:25.196988+00:00'
+    evidence: 'Artifact: commit 2ba6d06. Verification: rg "DRIVER_AGENT_SELECTION_CONFIG_CONTRACT|JUDGE_AGENT_SELECTION_CONTRACT"
+      src tests -> no matches; rg "^AgentSelectionMode = Literal" src/vectl/driver
+      -> single declaration in config.py; pytest -q tests/test_driver_config.py tests/test_driver_judge.py
+      tests/test_driver_loop_hardening.py -> 113 passed. Findings closed: removed
+      dead exports/contracts and duplicate alias declaration, canonicalized AgentSelectionMode
+      consumption.'
 - id: driver-agent-selection-bootstrap-validation
   name: Driver Agent Selection Formal Bootstrap Validation
   status: locked

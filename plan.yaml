@@ -44823,6 +44823,73 @@ phases:
     depends_on:
     - driver-enhancement-integration.full-plan-check
     agent: python-senior
+  - id: driver-enhancement-integration.retest-runner-default-fixtures
+    name: Retest runner default fixture/catalog remediation
+    status: pending
+    description: 'step_type: verification
+
+      step_intent: retest_green
+
+      expected_result: green
+
+      verification_scope: full-plan-check
+
+      priority: HIGH
+
+
+      As an INDEPENDENT TESTER (integration-verifier), validate that the runner-default
+      / fixture-catalog blocker family is resolved after remediation.
+
+
+      Failure context being retested:
+
+      - Prior broad sweep found 25 failed + 6 errors
+
+      - Cross-phase blocker centered on JudgeConfig.runner default `codex` conflicting
+      with fixture runner catalogs and planner external_agent validation paths
+
+
+      Broad verification command family to prove the blocker resolved:
+
+      - Run the same broad driver-enhancement integration / full-plan check command
+      family that exposed the failures
+
+      - Include targeted regression coverage for fixture/config alignment and planner
+      external_agent validation paths
+
+      - Treat missing evidence or partial reruns as incomplete
+
+
+      YOUR GOAL IS TO FIND REMAINING PROBLEMS, not to confirm it works.
+
+      Independence Level: L1'
+    verification: 'full-plan-check protecting driver-enhancement-integration.gate
+      and driver-enhancement-review.
+
+      - Re-run the broad verification command family used by driver-enhancement-integration.full-plan-check
+
+      - Execute targeted regression coverage for JudgeConfig.runner default `codex`,
+      fixture runner catalogs, and planner external_agent validation paths
+
+      - Green result required for this retest; any remaining failure in this blocker
+      family must be reported with reproduction and scope'
+    evidence_template: '## Retest Report
+
+      - Broad command family executed:
+
+      - Actual command(s):
+
+      - Targeted regression command(s):
+
+      - Remaining failures/errors in blocker family:
+
+      - Evidence that JudgeConfig.runner default, fixture catalogs, and external_agent
+      validation now agree:
+
+      - Verdict: PASS | ISSUES_FOUND | INCOMPLETE'
+    depends_on:
+    - driver-enhancement-integration.fix-runner-default-fixtures
+    agent: integration-verifier
 - id: driver-enhancement-review
   name: 'Driver Enhancement: Review'
   status: locked

@@ -54474,7 +54474,7 @@ phases:
       runner fixtures).'
   - id: driver-agent-selection-implementation.retest-judge-runner-test-defaults
     name: Retest batched judge-runner default remediation
-    status: pending
+    status: claimed
     description: 'Independent retest after driver-agent-selection-implementation.fix-judge-runner-test-defaults
       to prove the 7 blocking test defects are closed and the phase is gate-ready.
 
@@ -54503,6 +54503,8 @@ phases:
     depends_on:
     - driver-agent-selection-implementation.fix-judge-runner-test-defaults
     agent: integration-verifier
+    claimed_by: integration-verifier
+    claimed_at: '2026-04-02T03:00:04.867708+00:00'
 - id: driver-agent-selection-doc-sync
   name: Driver Agent Selection Documentation Sync
   status: locked

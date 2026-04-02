@@ -54474,7 +54474,7 @@ phases:
       runner fixtures).'
   - id: driver-agent-selection-implementation.retest-judge-runner-test-defaults
     name: Retest batched judge-runner default remediation
-    status: claimed
+    status: done
     description: 'Independent retest after driver-agent-selection-implementation.fix-judge-runner-test-defaults
       to prove the 7 blocking test defects are closed and the phase is gate-ready.
 
@@ -54505,6 +54505,12 @@ phases:
     agent: integration-verifier
     claimed_by: integration-verifier
     claimed_at: '2026-04-02T03:00:04.867708+00:00'
+    done_at: '2026-04-02T03:03:02.765701+00:00'
+    evidence: 'Retest completed. Targeted suite: uv run pytest -q tests/test_driver_agent_selection_expected_red.py
+      => 32 passed (target defects resolved). Broader related suite: uv run pytest
+      -q tests/test_driver_config.py tests/test_driver_judge*.py tests/test_driver_loop*.py
+      => 185 passed, 3 failed, 34 xfailed, 17 xpassed, 4 errors; remaining failures
+      are outside this step scope and tied to separate test configs.'
 - id: driver-agent-selection-doc-sync
   name: Driver Agent Selection Documentation Sync
   status: locked

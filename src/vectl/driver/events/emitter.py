@@ -393,10 +393,7 @@ def emit_driver_lifecycle(
     note: str | None = None,
     step_id: str | None = None,
 ) -> DriverLifecycleEventName:
-    """Emit lifecycle transition telemetry for loop-level visibility.
-
-    Runtime implementation is deferred to ``driver-enhancement-observability.impl``.
-    """
+    """Emit lifecycle transition telemetry for loop-level visibility."""
 
     payload: DriverLifecyclePayload = {
         "phase": phase,
@@ -425,10 +422,7 @@ def emit_planner_dispatch_progress(
     progress_total: int | None = None,
     session_id: str | None = None,
 ) -> PlannerDispatchProgressEventName:
-    """Emit incremental planner-dispatch progress telemetry.
-
-    Runtime implementation is deferred to ``driver-enhancement-observability.impl``.
-    """
+    """Emit incremental planner-dispatch progress telemetry."""
 
     payload: PlannerDispatchProgressPayload = {
         "judgment_type": judgment_type,
@@ -463,10 +457,7 @@ def emit_recovery_visibility(
     summary: str,
     recovery_cursor: str | None = None,
 ) -> RecoveryVisibilityEventName:
-    """Emit post-bootstrap recovery telemetry preserving journal minimums.
-
-    Runtime implementation is deferred to ``driver-enhancement-observability.impl``.
-    """
+    """Emit post-bootstrap recovery telemetry preserving journal minimums."""
 
     payload: RecoveryVisibilityPayload = {
         "attempt_key": attempt_key,
@@ -495,10 +486,7 @@ def emit_heartbeat_progress(
     active_step_ids: list[str] | None = None,
     note: str | None = None,
 ) -> HeartbeatProgressEventName:
-    """Emit periodic loop heartbeat and progress counters.
-
-    Runtime implementation is deferred to ``driver-enhancement-observability.impl``.
-    """
+    """Emit periodic loop heartbeat and progress counters."""
 
     payload: HeartbeatProgressPayload = {
         "completed_count": completed_count,
@@ -516,10 +504,7 @@ def emit_heartbeat_progress(
 
 
 def assert_advanced_observability_schema_alignment() -> tuple[str, ...]:
-    """Return schema drift findings for advanced observability surfaces.
-
-    Runtime implementation is deferred to ``driver-enhancement-observability.impl``.
-    """
+    """Return schema drift findings for advanced observability surfaces."""
 
     drift: list[str] = []
     expected: dict[str, tuple[tuple[str, ...], tuple[str, ...]]] = {

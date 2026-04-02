@@ -44894,7 +44894,7 @@ phases:
       Artifact commit: f424c12'
   - id: driver-enhancement-integration.retest-runner-default-fixtures
     name: Retest runner default fixture/catalog remediation
-    status: claimed
+    status: done
     description: 'step_type: verification
 
       step_intent: retest_green
@@ -44961,6 +44961,27 @@ phases:
     agent: integration-verifier
     claimed_by: integration-verifier
     claimed_at: '2026-04-02T14:08:09.554311+00:00'
+    done_at: '2026-04-02T14:13:30.684809+00:00'
+    evidence: '## Retest Report
+
+      - Broad command family executed: pytest tests/test_driver_config.py tests/test_driver_runners.py
+      tests/test_driver_agent_selection_expected_red.py
+
+      - Actual command(s): uv run pytest tests/test_driver_config.py tests/test_driver_runners.py
+      tests/test_driver_agent_selection_expected_red.py -v --tb=no
+
+      - Targeted regression command(s): JudgeConfig defaults and capability validation
+      tests; fixture conformance tests; runner config tests; agent-selection matrix
+      tests
+
+      - Remaining failures/errors in blocker family: none
+
+      - Evidence that JudgeConfig.runner default, fixture catalogs, and external_agent
+      validation now agree: 147 tests passed validating codex default, fixture catalogs
+      (including codex/opencode capability flags), and external-agent hard-error behavior
+      on unsupported runners
+
+      - Verdict: PASS'
 - id: driver-enhancement-review
   name: 'Driver Enhancement: Review'
   status: locked

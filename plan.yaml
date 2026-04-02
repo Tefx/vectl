@@ -54781,7 +54781,7 @@ phases:
       are compensated by concrete integration tests.
   - id: driver-agent-selection-deep-review.black-box-verification
     name: Black-box verify planner/judge selection behavior
-    status: claimed
+    status: done
     description: Using only public config/runtime surfaces, verify prompt-only and
       external-agent behavior, including negative cases, without relying on implementation
       context.
@@ -54792,6 +54792,135 @@ phases:
     agent: blind-tester
     claimed_by: blind-tester
     claimed_at: '2026-04-02T07:34:47.810461+00:00'
+    done_at: '2026-04-02T07:41:53.993100+00:00'
+    evidence: '## Black-Box Verification Complete
+
+
+      **Script**: `tests/repro/issue_agent_selection_blackbox.py`
+
+
+      **Result**: ✅ ALL 15 TESTS PASSED
+
+
+      ### Test Coverage
+
+
+      #### Test Suite 1: Prompt-Only Mode Configuration
+
+      - ✅ `test_prompt_only_mode_null_external_agent_name`: Config with null external_agent_name
+      creates prompt-only mode
+
+      - ✅ `test_prompt_only_mode_absent_field`: Config without external_agent_name
+      defaults to null (prompt-only)
+
+
+      #### Test Suite 2: External-Agent Mode Configuration
+
+      - ✅ `test_external_agent_mode_set_external_agent_name`: Config with set external_agent_name
+      on capable runner accepts external-agent mode
+
+
+      #### Test Suite 3: Fail-Closed Capability Validation
+
+      - ✅ `test_rejects_external_agent_on_unsupported_runner_judge`: Config rejects
+      external_agent_name on unsupported runner for judge (hard error with diagnostic
+      message)
+
+      - ✅ `test_rejects_external_agent_on_unsupported_runner_planner`: Config rejects
+      external_agent_name on unsupported runner for planner (hard error with diagnostic
+      message)
+
+
+      #### Test Suite 4: Defaults Contract
+
+      - ✅ `test_default_planner_uses_opencode_with_vectl_planner_slim`: Default planner
+      uses opencode runner with vectl-planner-slim agent
+
+      - ✅ `test_default_judge_uses_codex_with_null_external_agent`: Default judge
+      uses codex runner with null external_agent_name (prompt-only)
+
+
+      #### Test Suite 5: Legacy Field Migration
+
+      - ✅ `test_legacy_planner_agent_name_migrates_to_nested_field`: Old planner_agent_name
+      migrates to planner.external_agent_name
+
+      - ✅ `test_legacy_judge_agent_name_defaults_to_null`: Old judge.agent_name=''judge''
+      migrates to external_agent_name=null
+
+
+      #### Test Suite 6: No Silent Fallback (Fail-Closed)
+
+      - ✅ `test_external_agent_missing_runner_is_hard_error`: Missing runner causes
+      hard error (not silent fallback)
+
+      - ✅ `test_no_silent_fallback_to_runner_default`: External agent mode preserves
+      external_agent_name, never ignores it
+
+
+      #### Test Suite 7: Runtime Selection Mode Detection
+
+      - ✅ `test_selection_mode_can_be_determined_from_config`: Public API allows determining
+      selection mode from config
+
+      - ✅ `test_runner_capability_metadata_accessible`: Runner capability (supports_agent_selection)
+      is queryable from public API
+
+
+      #### Test Suite 8: Spec-Derived Fixtures
+
+      - ✅ `test_spec_fixture_exact_format`: Fixtures match docs/DRIVER-AGENT-SELECTION.md
+      spec format exactly (no convenience fields)
+
+      - ✅ `test_event_observability_fields`: Events include required observability
+      fields (selection_mode, external_agent_name, prompt_source)
+
+
+      ### Negative Cases Verified
+
+
+      All negative cases (fail-closed behaviors) working correctly:
+
+      1. External agent on unsupported runner → ValueError with diagnostic message
+
+      2. Missing runner reference → ValidationError
+
+      3. No silent degradation modes
+
+
+      ### Spec Conformance
+
+
+      All behaviors match docs/DRIVER-AGENT-SELECTION.md specifications:
+
+      - Runtime Semantics (lines 126-174)
+
+      - Config Contract (lines 65-124)
+
+      - Fallback and Error Policy (lines 197-226)
+
+      - Capability Rules (lines 175-195)
+
+      - Defaults Contract (lines 243-268)
+
+      - Migration Guidance (lines 269-330)
+
+      - Observability Contract (lines 228-241)
+
+
+      ### No Source Code Assumptions
+
+
+      All tests use ONLY public API:
+
+      - `from vectl.driver.config import DriverConfig, JudgeConfig, PlannerConfig,
+      RunnerConfig, load_config`
+
+      - No imports from internal modules
+
+      - No assumptions about implementation details
+
+      - Tests derived from spec documents only'
   - id: driver-agent-selection-deep-review.gate
     name: Final deep-review gate for agent selection
     status: pending

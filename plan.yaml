@@ -54353,7 +54353,7 @@ phases:
     agent: wiring-auditor
   - id: driver-agent-selection-implementation.spec-conformance
     name: Verify conformance to DRIVER-AGENT-SELECTION
-    status: claimed
+    status: done
     description: Independent spec-conformance review against docs/DRIVER-AGENT-SELECTION.md
       for config shape, runtime semantics, migration rules, fallback policy, and observability
       payloads.
@@ -54364,6 +54364,12 @@ phases:
     agent: spec-verifier
     claimed_by: spec-verifier
     claimed_at: '2026-04-02T02:33:21.308955+00:00'
+    done_at: '2026-04-02T02:37:48.249990+00:00'
+    evidence: Independent spec-conformance audit completed against docs/DRIVER-AGENT-SELECTION.md.
+      Evidence table mapped 25/25 requirements to implementation with zero divergences,
+      covering config shape, defaults, capability rules, validation, migration, runtime
+      semantics, fallback policy, and observability fields. Test references included
+      for each area; verdict CONFORMS.
   - id: driver-agent-selection-implementation.gate
     name: Gate agent-selection implementation
     status: pending

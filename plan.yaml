@@ -55172,7 +55172,7 @@ phases:
       - tests/repro/driver_agent_selection_bootstrap_smoke.py'
   - id: driver-agent-selection-bootstrap-validation.gate
     name: Gate continued bootstrap and driver-enhancement work
-    status: pending
+    status: claimed
     description: Go/no-go gate for continued formal bootstrap/self-host testing and
       unfinished driver-enhancement phases.
     verification: Bootstrap validation evidence is complete and agent-selection behavior
@@ -55180,3 +55180,5 @@ phases:
     depends_on:
     - driver-agent-selection-bootstrap-validation.formal-bootstrap-smoke
     agent: gate-reviewer
+    claimed_by: gate-reviewer
+    claimed_at: '2026-04-02T07:59:34.042338+00:00'

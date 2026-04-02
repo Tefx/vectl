@@ -54520,7 +54520,7 @@ phases:
       are outside this step scope and tied to separate test configs.'
 - id: driver-agent-selection-doc-sync
   name: Driver Agent Selection Documentation Sync
-  status: in_progress
+  status: done
   depends_on:
   - driver-agent-selection-implementation
   steps:
@@ -54546,7 +54546,7 @@ phases:
       judge.external_agent_name; runner supports_agent_selection surfaced in examples.'
   - id: driver-agent-selection-doc-sync.gate
     name: Gate agent-selection doc sync
-    status: claimed
+    status: done
     description: Gate review for documentation sync.
     verification: Operator-facing docs match implemented behavior and no stale legacy
       guidance remains.
@@ -54556,6 +54556,46 @@ phases:
     agent: gate-reviewer
     claimed_by: gate-reviewer
     claimed_at: '2026-04-02T03:37:52.414453+00:00'
+    done_at: '2026-04-02T03:39:04.183571+00:00'
+    evidence: 'Gate PASS: Documentation sync complete and verified.
+
+
+      Findings:
+
+      - All three touched documentation files consistently state codex as default
+      judge runner
+
+      - Code defaults (config.py:251 JudgeConfig.runner=''codex'', config.py:215 PlannerConfig.runner=''opencode'')
+      match documentation
+
+      - No stale opencode-as-default guidance for judge found
+
+      - docs/DRIVER-AGENT-SELECTION.md status is ''Implemented'' (not Proposed)
+
+      - Migration guidance for planner_agent_name -> nested config is clear
+
+      - Independent retest-doc-audit confirmed remediations complete
+
+
+      Verification:
+
+      - Grep searched for ''default judge opencode'' and ''judge runner default opencode''
+      — no matches
+
+      - Verified code default JudgeConfig.runner = "codex" matches doc statement at
+      DRIVER-ARCHITECTURE.md:1851
+
+      - Verified code default PlannerConfig.runner = "opencode" matches doc examples
+
+      - Verified Status field shows ''Implemented'' not ''Proposed''
+
+      - No INVAR.md at project root (no invar guard required)
+
+      - Phase is documentation-only, no new code to review
+
+
+      Confidence: HIGH (exhaustive doc verification, code-default alignment confirmed,
+      independent audit confirmation received)'
   - id: driver-agent-selection-doc-sync.fix-doc-defaults-status
     name: Fix stale default-runner and status docs
     status: done
@@ -54656,7 +54696,7 @@ phases:
       opencode-default wording, and status wording consistent with Implemented state.
 - id: driver-agent-selection-deep-review
   name: Driver Agent Selection Deep Review
-  status: locked
+  status: pending
   depends_on:
   - driver-agent-selection-doc-sync
   steps:

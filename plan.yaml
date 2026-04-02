@@ -54556,7 +54556,7 @@ phases:
     agent: gate-reviewer
   - id: driver-agent-selection-doc-sync.fix-doc-defaults-status
     name: Fix stale default-runner and status docs
-    status: claimed
+    status: done
     description: 'Batched documentation remediation for driver agent-selection doc
       sync.
 
@@ -54599,6 +54599,11 @@ phases:
     agent: doc-reviewer
     claimed_by: doc-reviewer
     claimed_at: '2026-04-02T03:25:23.654573+00:00'
+    done_at: '2026-04-02T03:26:29.291600+00:00'
+    evidence: 'Documentation remediation completed (commit d7624a6). Updated docs/DRIVER-ARCHITECTURE.md
+      judge default runner wording to codex, updated DRIVER-BLUEPRINT.md judge runner
+      comment, and changed docs/DRIVER-AGENT-SELECTION.md status to Implemented. Remaining
+      stale legacy/default ambiguity: none.'
   - id: driver-agent-selection-doc-sync.retest-doc-audit
     name: Audit driver agent-selection docs for stale legacy defaults
     status: pending

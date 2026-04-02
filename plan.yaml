@@ -54760,6 +54760,55 @@ phases:
     - driver-agent-selection-deep-review.contract-strength
     - driver-agent-selection-deep-review.black-box-verification
     agent: gate-reviewer
+  - id: driver-agent-selection-deep-review.remediate-dead-exports
+    name: Remediate dead exports and duplicate selection aliases
+    status: pending
+    description: 'Resolve wiring-audit dead-surface findings in the driver agent selection
+      package.
+
+
+      Scope:
+
+      - Remove or consume the unused DRIVER_AGENT_SELECTION_CONFIG_CONTRACT export
+      so runtime/public-surface ownership is explicit.
+
+      - Eliminate the duplicate AgentSelectionMode type alias in config.py so there
+      is one authoritative alias/type surface.
+
+      - Remove, document with an active consumer, or otherwise make reachable the
+      JUDGE_AGENT_SELECTION_CONTRACT export; dead exports are not acceptable.
+
+
+      Constraints:
+
+      - Limit work to the driver agent selection deep-review remediation surface;
+      do not modify driver-enhancement phases.
+
+      - Treat this as an implementation remediation step: complete the real export/type
+      cleanup, not a placeholder note.
+
+
+      Verification intent:
+
+      - Prove the targeted exports/type aliases are either consumed by runtime or
+      removed from the public surface.
+
+      - Prove no duplicate AgentSelectionMode alias remains in config.py or sibling
+      package exports.
+
+      - Provide grep/import-trace evidence showing the surviving contract exports
+      have live consumers or were intentionally removed.'
+    verification: '- Search/import-trace evidence shows DRIVER_AGENT_SELECTION_CONFIG_CONTRACT
+      is either removed or consumed by a real non-test caller
+
+      - Search/import-trace evidence shows JUDGE_AGENT_SELECTION_CONTRACT is either
+      removed or consumed/documented with a real non-test caller
+
+      - Exactly one authoritative AgentSelectionMode alias/type definition remains
+      in the driver agent selection config surface
+
+      - No dead export or duplicate alias from this finding family remains'
+    agent: python-senior
 - id: driver-agent-selection-bootstrap-validation
   name: Driver Agent Selection Formal Bootstrap Validation
   status: locked

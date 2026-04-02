@@ -43580,7 +43580,7 @@ phases:
     claimed_at: '2026-04-02T08:19:41.586322+00:00'
   - id: driver-enhancement-observability.verify
     name: Verify runtime telemetry schema and coverage
-    status: pending
+    status: claimed
     description: 'step_type: verification
 
       Verification scope: phase-check protecting driver-enhancement-observability.gate.
@@ -43610,6 +43610,8 @@ phases:
     depends_on:
     - driver-enhancement-observability.impl
     agent: spec-verifier
+    claimed_by: spec-verifier
+    claimed_at: '2026-04-02T08:20:10.485874+00:00'
   - id: driver-enhancement-observability.gate
     name: Gate observability enhancement
     status: pending

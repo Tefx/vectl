@@ -44675,7 +44675,7 @@ phases:
       - docs/DRIVER-CONTINUITY-FOUNDATION.md (recovery taxonomy)'
   - id: driver-enhancement-integration.full-plan-check
     name: Run repo-wide driver enhancement check
-    status: claimed
+    status: done
     description: 'step_type: verification
 
       Verification scope: full-plan-check protecting driver-enhancement-review and
@@ -44706,6 +44706,40 @@ phases:
     agent: integration-verifier
     claimed_by: integration-verifier
     claimed_at: '2026-04-02T08:52:05.297535+00:00'
+    done_at: '2026-04-02T09:06:56.645050+00:00'
+    evidence: 'Artifact:
+
+      - PR: aaa9af27 (verification artifact)
+
+
+      Verification:
+
+      - Run: uv run pytest tests/ -v --tb=short -> 2065 passed, 25 failed, 6 errors,
+      78 skipped
+
+      - Blocker identified: JudgeConfig runner/default + fixture catalog mismatch
+      causing validation failures across continuity/recovery/runtime-context suites
+
+
+      Spec link:
+
+      - driver-enhancement-integration.full-plan-check
+
+      - DRIVER-BLUEPRINT.md judge configuration contract
+
+
+      Disposition:
+
+      - severity: blocker (downstream-blocker)
+
+      - remediation ownership created in-plan before completion
+
+
+      Created batched remediation steps:
+
+      - driver-enhancement-integration.fix-runner-default-fixtures
+
+      - driver-enhancement-integration.retest-runner-default-fixtures'
   - id: driver-enhancement-integration.gate
     name: Gate integrated driver enhancement wiring
     status: pending

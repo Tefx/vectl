@@ -55118,13 +55118,13 @@ phases:
       consumption.'
 - id: driver-agent-selection-bootstrap-validation
   name: Driver Agent Selection Formal Bootstrap Validation
-  status: pending
+  status: in_progress
   depends_on:
   - driver-agent-selection-deep-review
   steps:
   - id: driver-agent-selection-bootstrap-validation.formal-bootstrap-smoke
     name: Run formal bootstrap/self-host validation with planner/judge selection
-    status: pending
+    status: claimed
     description: Execute a real bootstrap/self-host validation path proving that the
       planner default runs in external-agent mode, the judge default runs in prompt-only
       mode, observability exposes those facts, and intentionally invalid external-agent
@@ -55133,6 +55133,8 @@ phases:
       events show planner selection_mode=external_agent and judge selection_mode=prompt_only;
       negative-case probe hard-fails with explicit selection diagnostics and no fallback.
     agent: blind-tester
+    claimed_by: blind-tester
+    claimed_at: '2026-04-02T07:48:26.681668+00:00'
   - id: driver-agent-selection-bootstrap-validation.gate
     name: Gate continued bootstrap and driver-enhancement work
     status: pending

@@ -54707,6 +54707,8 @@ phases:
       payload fields are consumed by real runtime code paths.
     verification: No orphan exports, no dead config fields, and no unreachable selection
       branch remains.
+    depends_on:
+    - driver-agent-selection-deep-review.remediate-dead-exports
     agent: wiring-auditor
   - id: driver-agent-selection-deep-review.spec-conformance
     name: Full spec conformance audit for agent selection

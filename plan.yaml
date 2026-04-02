@@ -54318,7 +54318,7 @@ phases:
       Rules, Fallback and Error Policy, Migration Guidance.'
   - id: driver-agent-selection-implementation.runtime-selection
     name: Implement runtime selection, preflight, and observability wiring
-    status: claimed
+    status: done
     description: Complete implementation within existing runtime surfaces so planner
       and judge dispatch honor external-agent vs prompt-only mode exactly as specified,
       perform agent-existence preflight, fail closed on unsupported or missing agents,
@@ -54332,6 +54332,15 @@ phases:
     agent: python-senior
     claimed_by: python-senior
     claimed_at: '2026-04-02T02:17:17.201212+00:00'
+    done_at: '2026-04-02T02:32:47.711764+00:00'
+    evidence: 'Artifact: commit 18f4043 in isolated worktree.
+
+      Verification: uv run pytest -q tests/test_driver_judge_impl_runtime.py tests/test_driver_loop_hardening.py
+      tests/test_driver_observe.py (62 passed); uv run pytest -q tests/test_driver_config.py
+      -k "rejects_judge_external_agent_on_unsupported_runner_with_diagnostics or rejects_planner_external_agent_on_unsupported_runner_with_diagnostics"
+      (2 passed); uv run ruff check targeted files (passed).
+
+      Spec link: docs/DRIVER-AGENT-SELECTION.md.'
   - id: driver-agent-selection-implementation.wiring-audit
     name: Audit wiring completeness for new config and runtime surfaces
     status: pending

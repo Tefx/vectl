@@ -56,6 +56,7 @@ from .action_registry import (
     resolve_runtime_loop_action_declaration,
 )
 from .config import (
+    AgentSelectionMode,
     DriverConfig,
     JudgeConfig,
     ObservabilityConfig,
@@ -343,7 +344,6 @@ PlannerDispatchTriggerName = ReplanTriggerName | GateRejectPlannerTriggerName
 
 
 PlannerDispatchSourceVerdict = Literal["REPLAN", "REJECT"]
-AgentSelectionMode = Literal["prompt_only", "external_agent"]
 
 
 PLANNER_SOURCE_VERDICT_REPLAN: Final[PlannerDispatchSourceVerdict] = "REPLAN"

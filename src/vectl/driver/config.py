@@ -62,31 +62,6 @@ class AgentSelectionSurfaceContract:
     authority_reference: str
 
 
-@dataclass(frozen=True)
-class DriverAgentSelectionConfigContract:
-    """Pinned driver-wide selection contract and migration semantics.
-
-    Source:
-    - docs/DRIVER-AGENT-SELECTION.md ``Decision Summary``
-    - docs/DRIVER-AGENT-SELECTION.md ``Capability Rules``
-    - docs/DRIVER-AGENT-SELECTION.md ``Fallback and Error Policy``
-    - docs/DRIVER-AGENT-SELECTION.md ``Migration Guidance``
-    - docs/DRIVER-AGENT-SELECTION.md ``Runtime Matrix``
-    """
-
-    contract_id: str
-    source_step_id: str
-    docs_sections: tuple[str, ...]
-    shared_mode_rule: str
-    forbidden_public_fields: tuple[str, ...]
-    config_load_rejections: tuple[str, ...]
-    startup_rejections: tuple[str, ...]
-    invocation_failures: tuple[str, ...]
-    hard_no_fallback_policy: tuple[str, ...]
-    migration_semantics: tuple[str, ...]
-    runtime_matrix_outcomes: tuple[str, ...]
-
-
 PLANNER_AGENT_SELECTION_CONTRACT: Final[AgentSelectionSurfaceContract] = (
     AgentSelectionSurfaceContract(
         surface="planner",
@@ -106,80 +81,6 @@ PLANNER_AGENT_SELECTION_CONTRACT: Final[AgentSelectionSurfaceContract] = (
             "deferred; explicit null should be rejected until planner prompt-only ships"
         ),
         authority_reference="docs/DRIVER-AGENT-SELECTION.md#planner",
-    )
-)
-
-JUDGE_AGENT_SELECTION_CONTRACT: Final[AgentSelectionSurfaceContract] = (
-    AgentSelectionSurfaceContract(
-        surface="judge",
-        intended_model_name="JudgeConfig",
-        runner_field="judge.runner",
-        external_agent_name_field="judge.external_agent_name",
-        structured_output_field="judge.structured_output",
-        timeout_field="judge.timeout",
-        prompt_only_when="judge.external_agent_name is absent or null",
-        external_agent_when="judge.external_agent_name is non-empty",
-        bundled_prompt_allowed_in_external_mode=False,
-        bundled_prompt_required_in_prompt_only_mode=True,
-        default_runner="codex",
-        default_external_agent_name=None,
-        legacy_field="judge.agent_name",
-        v1_prompt_only_status="must ship",
-        authority_reference="docs/DRIVER-AGENT-SELECTION.md#judge",
-    )
-)
-
-DRIVER_AGENT_SELECTION_CONFIG_CONTRACT: Final[DriverAgentSelectionConfigContract] = (
-    DriverAgentSelectionConfigContract(
-        contract_id="driver-agent-selection-config-v1",
-        source_step_id="driver-agent-selection-contract.pin-contract",
-        docs_sections=(
-            "Decision Summary",
-            "Config Contract",
-            "Capability Rules",
-            "Fallback and Error Policy",
-            "Migration Guidance",
-            "Runtime Matrix",
-            "v1 Scope Definition",
-        ),
-        shared_mode_rule=(
-            "planner and judge use the same rule: external_agent_name present => "
-            "external_agent mode; absent/null => prompt_only mode; no hybrid mode"
-        ),
-        forbidden_public_fields=("mode", "prompt_profile"),
-        config_load_rejections=(
-            "planner.runner missing from runners",
-            "judge.runner missing from runners",
-            "external_agent_name set for runner lacking supports_agent_selection",
-            "planner.external_agent_name explicitly null in v1 before planner prompt-only ships",
-        ),
-        startup_rejections=(
-            "external-agent mode must verify named agent exists before first invocation",
-            "if existence cannot be verified reliably, fail closed",
-        ),
-        invocation_failures=(
-            "agent-not-found from runner is a hard error",
-            "unsupported-agent behavior from runner is a hard error",
-        ),
-        hard_no_fallback_policy=(
-            "do not fall back to runner default agent",
-            "do not fall back to prompt-only mode",
-            "do not substitute a different external agent",
-        ),
-        migration_semantics=(
-            "planner_agent_name -> planner.external_agent_name with resolved planner.runner",
-            "absent/null planner_agent_name -> planner.external_agent_name null",
-            "judge.agent_name=judge migrates to judge.external_agent_name null",
-            "non-default judge.agent_name may migrate to "
-            "judge.external_agent_name with warning and validation",
-        ),
-        runtime_matrix_outcomes=(
-            "unset/null external_agent_name => prompt_only runtime outcome",
-            "set external_agent_name + supported runner + existing agent => "
-            "external_agent runtime outcome",
-            "set external_agent_name + unsupported runner => hard config/startup error",
-            "set external_agent_name + missing agent => hard startup/runtime error",
-        ),
     )
 )
 

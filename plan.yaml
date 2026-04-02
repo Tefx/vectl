@@ -54343,7 +54343,7 @@ phases:
       Spec link: docs/DRIVER-AGENT-SELECTION.md.'
   - id: driver-agent-selection-implementation.wiring-audit
     name: Audit wiring completeness for new config and runtime surfaces
-    status: claimed
+    status: done
     description: Wiring audit for new planner/judge config fields, runtime selectors,
       and emitted observability fields.
     verification: No orphan config fields, no unreachable selection path, and all
@@ -54353,6 +54353,12 @@ phases:
     agent: wiring-auditor
     claimed_by: wiring-auditor
     claimed_at: '2026-04-02T02:42:23.223140+00:00'
+    done_at: '2026-04-02T02:45:18.718366+00:00'
+    evidence: Wiring audit PASS. Verified no orphan config fields, no unreachable
+      selection paths, and all observability fields wired. Checked PlannerConfig.external_agent_name,
+      JudgeConfig.external_agent_name, RunnerConfig.supports_agent_selection consumption;
+      AGENT_SELECTION_ERROR and selection observability fields are defined and emitted
+      in runtime paths.
   - id: driver-agent-selection-implementation.spec-conformance
     name: Verify conformance to DRIVER-AGENT-SELECTION
     status: done

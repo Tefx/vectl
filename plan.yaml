@@ -54596,6 +54596,40 @@ phases:
     depends_on:
     - driver-agent-selection-doc-sync.update-docs
     agent: doc-reviewer
+  - id: driver-agent-selection-doc-sync.retest-doc-audit
+    name: Audit driver agent-selection docs for stale legacy defaults
+    status: pending
+    description: 'Independent documentation audit after remediation.
+
+
+      Verify that driver agent-selection documentation no longer contains stale legacy
+      or default ambiguity for this phase''s documented surfaces.
+
+
+      Audit checks:
+
+      - docs/DRIVER-ARCHITECTURE.md states codex as the default judge runner
+
+      - DRIVER-BLUEPRINT.md default judge runner comment states codex
+
+      - docs/DRIVER-AGENT-SELECTION.md status language is implementation-aligned and
+      not still Proposed
+
+      - No stale opencode-as-default guidance remains across the touched driver agent-selection
+      docs
+
+
+      This is a read-only retest/doc-audit step for the doc-sync phase only.'
+    verification: Independent audit confirms the touched driver agent-selection docs
+      consistently describe codex as the default judge runner, implementation status
+      is unambiguous, and no stale legacy/default ambiguity remains.
+    evidence_template: "## Doc Audit Report\n- Files audited:\n  - docs/DRIVER-ARCHITECTURE.md\n\
+      \  - DRIVER-BLUEPRINT.md\n  - docs/DRIVER-AGENT-SELECTION.md\n- Default-runner\
+      \ ambiguity: none found\n- Legacy opencode-default wording: none found\n- Status\
+      \ ambiguity: none found\n- Verdict: PASS | ISSUES_FOUND"
+    depends_on:
+    - driver-agent-selection-doc-sync.fix-doc-defaults-status
+    agent: gate-reviewer
 - id: driver-agent-selection-deep-review
   name: Driver Agent Selection Deep Review
   status: locked

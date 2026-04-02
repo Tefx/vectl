@@ -364,6 +364,7 @@ class RunnerConfig(BaseModel):
     output_parser: str = "claude_json"     # "claude_json" | "opencode_jsonl" | "codex_jsonl" | "gemini_json"
     persist_session: bool = True
     experimental: bool = False
+    supports_agent_selection: bool = False  # Whether runner supports --agent <name>
 
 
 class SessionConfig(BaseModel):
@@ -371,9 +372,14 @@ class SessionConfig(BaseModel):
     ttl_overrides: dict[str, int] = Field(default_factory=dict)
 
 
+class PlannerConfig(BaseModel):
+    runner: str = "opencode"
+    external_agent_name: str | None = None  # null = use bundled planner prompt
+
+
 class JudgeConfig(BaseModel):
-    runner: str = "opencode"             # All sidecar/subagent calls default to opencode
-    model: str | None = None
+    runner: str = "codex"                # Default judge runner is codex for structured output support
+    external_agent_name: str | None = None  # null = use bundled judge prompt
     structured_output: bool = True       # Use model structured output (see note below)
     timeout: int = 60                    # Per-judgment timeout in seconds
     preflight: bool = True               # JudgmentType.PREFLIGHT
@@ -403,6 +409,7 @@ class DriverConfig(BaseModel):
     runners: dict[str, RunnerConfig]
     agent_routing: dict[str, str] = Field(default_factory=dict)
     fallback_runner: str = "opencode"
+    planner: PlannerConfig = Field(default_factory=PlannerConfig)
     orchestration: OrchestrationConfig = Field(default_factory=OrchestrationConfig)
     session: SessionConfig = Field(default_factory=SessionConfig)
     judge: JudgeConfig = Field(default_factory=JudgeConfig)
@@ -542,8 +549,13 @@ session:
   ttl_overrides:
     claude: 600
 
-judge:
+planner:
   runner: opencode
+  external_agent_name: vectl-planner-slim
+
+judge:
+  runner: codex
+  external_agent_name: null
   structured_output: true
   timeout: 60
   preflight: true
@@ -979,7 +991,7 @@ Loading Behavior" section for drift detection (`verify_docs_packaged_sync()`).
 class Judge:
     """Unified judgment agent. Stateless per call.
 
-    Each invocation spawns a runner process (default: opencode) with
+    Each invocation spawns a runner process (default: codex) with
     the packaged judge system prompt and a structured user message. The judge
     returns a JSON verdict. Uses structured output when available
     (see Structured Output Strategy below).
@@ -1836,7 +1848,7 @@ Canonical driver events follow non-contradictory semantics defined by the regist
 - `save_plan()` uses `fcntl.flock` -- single-process safety only. Since the driver is the sole writer in its process, this is fine, but be aware that external `vectl` CLI calls during a drive could hit CAS conflicts.
 - The `merge_lock` MUST be a real `asyncio.Lock`, not a `threading.Lock` -- the loop is single-threaded async, not multi-threaded.
 - `Runner.dispatch()` implementations MUST set `stdin=PIPE` and write the prompt, then close stdin. Do not leave stdin open or the subprocess will hang.
-- The default judge runner is `opencode`. When using `claude` as judge runner, add `--no-session-persistence` and `--dangerously-skip-permissions`. Each runner uses its own non-interactive flags (opencode: `--format json`; codex: `--dangerously-bypass-approvals-and-sandbox`; gemini: `--approval-mode yolo`).
+- The default judge runner is `codex`. When using `claude` as judge runner, add `--no-session-persistence` and `--dangerously-skip-permissions`. Each runner uses its own non-interactive flags (opencode: `--format json`; codex: `--dangerously-bypass-approvals-and-sandbox`; gemini: `--approval-mode yolo`).
 - Session reuse is implemented in `session.py` with runner-aware matching and per-runner TTL overrides.
 
 ### 7.4.1 Live Smoke (Reduced Test-Surface Record)

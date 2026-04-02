@@ -22,7 +22,7 @@ import time
 from dataclasses import dataclass
 from pathlib import Path
 from tempfile import NamedTemporaryFile
-from typing import TYPE_CHECKING, Literal, Protocol
+from typing import TYPE_CHECKING, Final, Literal, Protocol
 
 import yaml
 
@@ -34,11 +34,17 @@ from .judgments import (
     JudgmentType,
     JudgmentVerdict,
 )
+from .runners import verify_external_agent_selection
 from .types import JudgeContinuityPolicyOutput
 
 if TYPE_CHECKING:
     from .config import JudgeConfig
     from .observe import Observer
+
+
+JUDGE_PROMPT_SOURCE_BUNDLED: Final[str] = "bundled:vectl.driver/judge_agent_prompt.md"
+
+JudgeSelectionMode = Literal["prompt_only", "external_agent"]
 
 
 # =============================================================================
@@ -589,12 +595,93 @@ class Judge:
         """
         self._config = config
         self._observer = observer
-        self._system_prompt = _load_judge_system_prompt()
+        self._system_prompt = (
+            _load_judge_system_prompt() if self._selection_mode() == "prompt_only" else ""
+        )
         self._structured_schema_path: str | None = None
         self._runner_override: JudgeRunner | None = None
+        self._selection_preflight_completed = False
 
         if self._config.structured_output and self._config.runner in {"claude", "codex"}:
             self._structured_schema_path = _write_schema_tempfile(VERDICT_SCHEMA)
+
+    def _selection_mode(self) -> JudgeSelectionMode:
+        """Resolve runtime judge selection mode from config shape.
+
+        Source:
+        - docs/DRIVER-AGENT-SELECTION.md ``Decision Summary``
+        - docs/DRIVER-AGENT-SELECTION.md ``Judge: external-agent mode``
+        - docs/DRIVER-AGENT-SELECTION.md ``Judge: prompt-only mode``
+        """
+        return "external_agent" if self._config.external_agent_name is not None else "prompt_only"
+
+    def _selection_prompt_source(self) -> str | None:
+        """Return prompt source observability marker for current selection mode."""
+        if self._selection_mode() == "prompt_only":
+            return JUDGE_PROMPT_SOURCE_BUNDLED
+        return None
+
+    def _selection_observability_fields(self) -> dict[str, object]:
+        """Build canonical observability fields for judge selection semantics."""
+        return {
+            "surface": "judge",
+            "runner": self._config.runner,
+            "selection_mode": self._selection_mode(),
+            "external_agent_name": self._config.external_agent_name,
+            "prompt_source": self._selection_prompt_source(),
+        }
+
+    def _emit_selection_error(self, *, step_id: str, error_kind: str, message: str) -> None:
+        """Emit explicit selection error event for fail-closed behavior.
+
+        Source:
+        - docs/DRIVER-AGENT-SELECTION.md ``Fallback and Error Policy``
+        - docs/DRIVER-AGENT-SELECTION.md ``Observability Contract``
+        """
+        self._observer.emit(
+            "AGENT_SELECTION_ERROR",
+            step_id=step_id,
+            error_kind=error_kind,
+            message=message,
+            **self._selection_observability_fields(),
+        )
+
+    def _ensure_external_agent_preflight(self, *, step_id: str) -> None:
+        """Run fail-closed external-agent preflight once before judge dispatch.
+
+        Source:
+        - docs/DRIVER-AGENT-SELECTION.md ``Startup/preflight validation``
+        - docs/DRIVER-AGENT-SELECTION.md ``Fallback and Error Policy``
+        """
+        if self._selection_mode() != "external_agent":
+            return
+        if self._selection_preflight_completed:
+            return
+
+        external_agent_name = self._config.external_agent_name
+        if external_agent_name is None:
+            raise JudgmentParseError(
+                judgment_type="unknown",
+                step_id=step_id,
+                raw_output="external-agent mode requires non-null external_agent_name",
+            )
+
+        ok, reason = verify_external_agent_selection(
+            runner_name=self._config.runner,
+            external_agent_name=external_agent_name,
+        )
+        if not ok:
+            error_kind = "unsupported_runner"
+            if "not in verified catalog" in reason:
+                error_kind = "missing_agent"
+            self._emit_selection_error(step_id=step_id, error_kind=error_kind, message=reason)
+            raise JudgmentParseError(
+                judgment_type="unknown",
+                step_id=step_id,
+                raw_output=reason,
+            )
+
+        self._selection_preflight_completed = True
 
     def is_enabled(self, judgment_type: JudgmentType) -> bool:
         """Check if a judgment type is enabled in config.
@@ -670,6 +757,7 @@ class Judge:
             self._emit_judgment_event(request=request, verdict=verdict, latency_ms=0.0)
             return verdict
 
+        self._ensure_external_agent_preflight(step_id=request.step_id)
         self._validate_request(request)
         user_prompt = self._render_request(request)
 
@@ -827,6 +915,21 @@ class Judge:
 
         if process.returncode not in (0, None):
             raw = stdout_text or stderr_text or f"runner exited {process.returncode}"
+            if self._selection_mode() == "external_agent":
+                normalized = raw.lower()
+                if "agent" in normalized and (
+                    "not found" in normalized
+                    or "unknown" in normalized
+                    or "unsupported" in normalized
+                ):
+                    error_kind = "missing_agent"
+                    if "unsupported" in normalized:
+                        error_kind = "unsupported_runner"
+                    self._emit_selection_error(
+                        step_id="unknown",
+                        error_kind=error_kind,
+                        message=raw,
+                    )
             raise JudgmentParseError(
                 judgment_type="unknown",
                 step_id="unknown",
@@ -978,6 +1081,7 @@ class Judge:
             suggested_action=verdict.suggested_action,
             planner_instruction=verdict.planner_instruction,
             latency_ms=latency_ms,
+            **self._selection_observability_fields(),
         )
 
     def _build_subprocess_command(
@@ -991,7 +1095,9 @@ class Judge:
         payload = user_prompt
 
         if runner == "claude":
-            command = [runner, "-p", "--output-format", "json", "--system-prompt", system_prompt]
+            command = [runner, "-p", "--output-format", "json"]
+            if system_prompt.strip():
+                command.extend(["--system-prompt", system_prompt])
             if self._config.structured_output and self._structured_schema_path is not None:
                 command.extend(["--json-schema", self._structured_schema_path])
             return command, payload
@@ -1009,28 +1115,25 @@ class Judge:
                 )
 
             configured_command, configured_args, configured_prompt_mode = runner_settings
+            configured_agent_name = self._config.external_agent_name or "judge"
             command = [configured_command] + _render_runner_args(
                 configured_args,
                 workdir=str(Path.cwd()),
-                agent="judge",
+                agent=configured_agent_name,
             )
             if configured_prompt_mode == "stdin_dash" and "-" not in command:
                 command.append("-")
 
-            if self._config.structured_output and self._structured_schema_path is not None:
-                has_schema_flag = "--output-schema" in command
-                if not has_schema_flag:
-                    command.extend(["--output-schema", self._structured_schema_path])
-            payload = f"SYSTEM PROMPT:\n{system_prompt}\n\n{user_prompt}"
+            payload = _compose_judge_payload(system_prompt=system_prompt, user_prompt=user_prompt)
             return command, payload
 
         if runner == "opencode":
             command = [runner, "run", "--format", "json"]
-            payload = f"SYSTEM PROMPT:\n{system_prompt}\n\n{user_prompt}"
+            payload = _compose_judge_payload(system_prompt=system_prompt, user_prompt=user_prompt)
             return command, payload
 
         command = [runner]
-        payload = f"SYSTEM PROMPT:\n{system_prompt}\n\n{user_prompt}"
+        payload = _compose_judge_payload(system_prompt=system_prompt, user_prompt=user_prompt)
         return command, payload
 
 
@@ -1110,6 +1213,18 @@ def _render_runner_args(args: list[str], *, workdir: str, agent: str) -> list[st
     return rendered
 
 
+def _compose_judge_payload(*, system_prompt: str, user_prompt: str) -> str:
+    """Compose runner payload without hybrid prompt layering.
+
+    Source:
+    - docs/DRIVER-AGENT-SELECTION.md ``Judge: external-agent mode``
+    - docs/DRIVER-AGENT-SELECTION.md ``Judge: prompt-only mode``
+    """
+    if not system_prompt.strip():
+        return user_prompt
+    return f"SYSTEM PROMPT:\n{system_prompt}\n\n{user_prompt}"
+
+
 def _extract_verdict_payload(stdout_text: str) -> str:
     """Extract verdict JSON payload from runner output.
 
@@ -1166,10 +1281,29 @@ def _extract_verdict_payload(stdout_text: str) -> str:
                 text_parts.append(text.strip())
             continue
 
-        # Codex JSONL path: item.completed carries the text payload.
+        # Codex JSONL path: item.completed may carry structured output, result,
+        # or text payloads nested under item.output.
         if event.get("type") == "item.completed":
             item = event.get("item", {})
             if isinstance(item, dict):
+                output = item.get("output")
+                if isinstance(output, dict):
+                    structured_output = output.get("structured_output")
+                    if isinstance(structured_output, dict):
+                        return json.dumps(structured_output, ensure_ascii=False)
+                    if isinstance(structured_output, str) and structured_output.strip():
+                        return structured_output.strip()
+
+                    result = output.get("result")
+                    if isinstance(result, dict):
+                        return json.dumps(result, ensure_ascii=False)
+                    if isinstance(result, str) and result.strip():
+                        return result.strip()
+
+                    nested_text = output.get("text")
+                    if isinstance(nested_text, str) and nested_text.strip():
+                        text_parts.append(nested_text.strip())
+
                 text = item.get("text")
                 if isinstance(text, str) and text.strip():
                     text_parts.append(text.strip())
@@ -1208,8 +1342,10 @@ mechanisms to guarantee valid JSON verdicts, eliminating parse failures:
 
 | Runner     | Mechanism                          | Verdict extraction                    |
 |-----------|-----------------------------------|---------------------------------------|
-| Claude CLI | --json-schema <schema_file>       | Response structured_output = guaranteed valid JSON |
-| OpenCode   | --format json                     | Parse from JSONL text event (best-effort) |
+| Claude CLI | --json-schema <schema_file>       | Response structured_output = |
+|            |                                   | guaranteed valid JSON |
+| OpenCode   | --format json                     | Parse from JSONL text event |
+|            |                                   | (best-effort) |
 | Codex      | --output-schema <schema_file>     | Guaranteed structured output          |
 
 The JSON schema for the verdict is derived from JudgmentVerdict dataclass
@@ -1235,16 +1371,18 @@ Judge vs Rules Decision Boundary (from Architecture doc Section 2.10):
 
 Reconcile determines when to invoke the judge via a two-tier check:
 
-| Check                           | Mechanism                                      | Judge involvement              |
-|--------------------------------|------------------------------------------------|--------------------------------|
-| Evidence schema validation     | Rule-based: required fields, YAML parseable   | None (fast reject)             |
-| Evidence content adequacy       | Requires understanding                         | EVIDENCE judgment             |
-| Failure count < 3               | Rule-based threshold                          | None (automatic retry)         |
-| Failure count >= 3              | Needs classification                          | ESCALATION judgment           |
-| Preflight risk signals          | Keyword detection                             | PREFLIGHT judgment            |
-| Gate blocker vs suggestion      | Severity classification                       | GATE judgment for downstream  |
-| Claims/plan anomaly repair      | Anomaly type classification                    | ANOMALY judgment               |
-| Gate dispatch context pruning   | Inclusion/exclusion for isolation             | COLD_CONTEXT judgment          |
+| Check                         | Mechanism                            | Judge involvement        |
+|------------------------------|--------------------------------------|--------------------------|
+| Evidence schema validation   | Rule-based: required fields, YAML    | None (fast reject)       |
+|                              | parseable                            |                          |
+| Evidence content adequacy    | Requires understanding               | EVIDENCE judgment        |
+| Failure count < 3            | Rule-based threshold                 | None (automatic retry)   |
+| Failure count >= 3           | Needs classification                 | ESCALATION judgment      |
+| Preflight risk signals       | Keyword detection                    | PREFLIGHT judgment       |
+| Gate blocker vs suggestion   | Severity classification              | GATE judgment downstream |
+| Claims/plan anomaly repair   | Anomaly type classification          | ANOMALY judgment         |
+| Gate dispatch context        | Inclusion/exclusion for isolation    | COLD_CONTEXT judgment    |
+| pruning                      |                                      |                          |
 
 The boundary is: **rules handle structure; the judge handles semantics.**
 

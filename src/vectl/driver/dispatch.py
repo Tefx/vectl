@@ -130,6 +130,16 @@ PROMPT_TEMPLATE_HEADER = """You are {agent} working on step {step_id}.
 ## Working Directory
 
 {worktree_path}
+
+⚠️ WORKTREE ISOLATION ENABLED
+
+You are executing in an ISOLATED Git Worktree.
+1. You MUST perform all your work within the `{worktree_path}` directory.
+2. You MUST commit your changes to your isolated branch for handoff.
+3. You MUST NOT modify `plan.yaml`, `.git/vectl/claims.json`, or any orchestrator state files.
+4. When finished, simply return evidence. The orchestrator will merge your branch into main.
+
+Your task is EXACTLY what is described below. Do NOT expand scope.
 """
 
 PROMPT_TEMPLATE_SESSION_REUSE = """
@@ -162,8 +172,10 @@ PROMPT_TEMPLATE_FOOTER = """
 
 1. Implement the task described above.
 2. Ensure all verification criteria pass.
-3. Commit your changes with a clear message.
-4. Report completion via vectl complete with evidence.
+3. If you make code changes, create a local handoff commit in this assigned worktree with a clear message.
+4. Return a concise handoff report with outcome, files changed, verification commands/results, commit SHA (if any), and blockers.
+5. Do NOT call `vectl complete`, `vectl claim`, `vectl defer`, or any other plan-mutating command.
+6. Do NOT merge or reconcile your worktree into the main repository; the orchestrator owns completion and merge authority.
 
 When complete, report your findings.
 """

@@ -10,6 +10,7 @@ Blueprint Reference: docs/JUDGE-AGENT-PROMPT.md
 from __future__ import annotations
 
 import asyncio
+import json
 import os
 import tempfile
 from pathlib import Path
@@ -95,6 +96,32 @@ class _RunnerTimeout:
 
     async def dispatch_text(self, system_prompt: str, user_prompt: str, timeout: float) -> str:
         await asyncio.sleep(timeout + 0.2)
+        return ""
+
+
+class _RunnerCapture:
+    name = "fake-capture"
+
+    def __init__(self) -> None:
+        self.last_system_prompt: str | None = None
+
+    async def dispatch_structured(
+        self,
+        system_prompt: str,
+        user_prompt: str,
+        schema: dict[str, object],
+        timeout: float,
+    ) -> dict[str, object]:
+        self.last_system_prompt = system_prompt
+        return {
+            "verdict": "ACCEPT",
+            "reason": "ok",
+            "suggested_action": None,
+            "planner_instruction": None,
+        }
+
+    async def dispatch_text(self, system_prompt: str, user_prompt: str, timeout: float) -> str:
+        self.last_system_prompt = system_prompt
         return ""
 
 
@@ -184,6 +211,60 @@ def test_disabled_judgment_type_is_skipped_cleanly() -> None:
     assert payload["verdict"] == "DEFER"
 
 
+def test_judgment_event_includes_selection_observability_fields_in_prompt_only_mode() -> None:
+    observer = _ObserverSpy()
+    judge = Judge(_judge_config(preflight=True), observer)
+    judge._runner_override = _RunnerSuccess()
+
+    asyncio.run(judge.judge(_request_preflight()))
+
+    event_type, payload = observer.events[0]
+    assert event_type == "JUDGMENT"
+    assert payload["surface"] == "judge"
+    assert payload["selection_mode"] == "prompt_only"
+    assert payload["external_agent_name"] is None
+    assert payload["prompt_source"] == "bundled:vectl.driver/judge_agent_prompt.md"
+
+
+def test_external_agent_missing_preflight_fails_closed_with_selection_error_event() -> None:
+    observer = _ObserverSpy()
+    judge = Judge(
+        JudgeConfig(
+            runner="opencode",
+            external_agent_name="missing-agent",
+            structured_output=True,
+            timeout=1,
+        ),
+        observer,
+    )
+    judge._runner_override = _RunnerSuccess()
+
+    with pytest.raises(JudgmentParseError, match="not in verified catalog"):
+        asyncio.run(judge.judge(_request_preflight()))
+
+    assert any(event == "AGENT_SELECTION_ERROR" for event, _ in observer.events)
+
+
+def test_external_agent_mode_omits_bundled_system_prompt() -> None:
+    observer = _ObserverSpy()
+    judge = Judge(
+        JudgeConfig(
+            runner="opencode",
+            external_agent_name="vectl-planner-slim",
+            structured_output=True,
+            timeout=1,
+        ),
+        observer,
+    )
+    capture = _RunnerCapture()
+    judge._runner_override = capture
+
+    verdict = asyncio.run(judge.judge(_request_preflight()))
+
+    assert verdict.verdict == "ACCEPT"
+    assert capture.last_system_prompt == ""
+
+
 def test_extract_verdict_payload_empty_output_raises_parse_error() -> None:
     with pytest.raises(JudgmentParseError):
         _extract_verdict_payload("")
@@ -194,6 +275,62 @@ def test_extract_verdict_payload_partial_codex_events_raise_parse_error() -> Non
 {"type":"turn.started","turn_id":"turn-1"}"""
     with pytest.raises(JudgmentParseError):
         _extract_verdict_payload(partial_stream)
+
+
+def test_extract_verdict_payload_codex_structured_output_envelope() -> None:
+    verdict = {
+        "verdict": "REPLAN",
+        "reason": "Need specs",
+        "suggested_action": None,
+        "planner_instruction": "Add missing schema and rollback steps",
+    }
+    stream = "\n".join(
+        [
+            '{"type":"thread.started","thread_id":"th-1"}',
+            json.dumps(
+                {
+                    "type": "item.completed",
+                    "item": {
+                        "output": {
+                            "structured_output": json.dumps(verdict),
+                        }
+                    },
+                }
+            ),
+        ]
+    )
+
+    payload = _extract_verdict_payload(stream)
+
+    assert json.loads(payload) == verdict
+
+
+def test_extract_verdict_payload_codex_result_envelope() -> None:
+    verdict = {
+        "verdict": "ACCEPT",
+        "reason": "Enough information",
+        "suggested_action": None,
+        "planner_instruction": None,
+    }
+    stream = "\n".join(
+        [
+            '{"type":"thread.started","thread_id":"th-1"}',
+            json.dumps(
+                {
+                    "type": "item.completed",
+                    "item": {
+                        "output": {
+                            "result": verdict,
+                        }
+                    },
+                }
+            ),
+        ]
+    )
+
+    payload = _extract_verdict_payload(stream)
+
+    assert json.loads(payload) == verdict
 
 
 def test_codex_command_reuses_driver_yaml_runner_config() -> None:
@@ -243,7 +380,43 @@ def test_codex_command_reuses_driver_yaml_runner_config() -> None:
     assert "--dangerously-bypass-approvals-and-sandbox" in command
     assert "-C" in command
     assert "-" in command
-    assert "--output-schema" in command
+    assert "--output-schema" not in command
+
+
+def test_codex_command_renders_configurable_judge_agent_name() -> None:
+    driver_yaml = {
+        "runners": {
+            "codex": {
+                "command": "codex",
+                "args": ["exec", "--json", "-C", "{workdir}", "--agent", "{agent}"],
+                "prompt_mode": "stdin_dash",
+            }
+        },
+        "fallback_runner": "codex",
+        "judge": {"runner": "codex", "external_agent_name": "risk-judge"},
+    }
+
+    with tempfile.TemporaryDirectory() as td:
+        td_path = Path(td)
+        (td_path / "driver.yaml").write_text(yaml.dump(driver_yaml), encoding="utf-8")
+        original_cwd = Path.cwd()
+        try:
+            os.chdir(td_path)
+            observer = _ObserverSpy()
+            judge = Judge(
+                JudgeConfig(
+                    runner="codex",
+                    structured_output=True,
+                    external_agent_name="risk-judge",
+                ),
+                observer,
+            )
+            command, _ = judge._build_subprocess_command("system", "user")
+        finally:
+            os.chdir(original_cwd)
+
+    assert "--agent" in command
+    assert command[command.index("--agent") + 1] == "risk-judge"
 
 
 def test_codex_command_without_driver_yaml_contract_raises_parse_error() -> None:

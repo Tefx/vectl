@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import subprocess
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, cast
@@ -21,10 +22,12 @@ from src.vectl.driver.loop import (
     PlannerDispatchRequest,
     _build_anomaly_request,
     _cleanup_orphan_worktrees,
+    _durability_commit_plan_if_dirty,
     _run_main_loop,
     dispatch_planner,
     handle_dispatch,
     reconcile,
+    shutdown,
 )
 from src.vectl.driver.runtime_context import RuntimeContext
 from src.vectl.driver.session import SessionPool
@@ -82,6 +85,13 @@ def _base_config() -> DriverConfig:
                 command="opencode",
                 args=["run", "--format", "json"],
                 output_parser="opencode_jsonl",
+                supports_agent_selection=True,
+            ),
+            "codex": RunnerConfig(
+                command="codex",
+                args=["exec", "--json", "-C", "{workdir}"],
+                prompt_mode="stdin_dash",
+                output_parser="codex_jsonl",
             ),
         },
         agent_routing={"python-executor": "claude"},
@@ -313,10 +323,15 @@ async def test_reconcile_routes_non_trivial_conflict(monkeypatch: pytest.MonkeyP
         elapsed_seconds=1.0,
     )
 
-    calls: dict[str, int] = {"defer": 0, "cleanup": 0}
+    calls: dict[str, int] = {"defer": 0, "cleanup": 0, "complete_step": 0}
 
     monkeypatch.setattr("src.vectl.driver.loop.load_plan_definition", lambda _p: (_FakePlan(), "h"))
-    monkeypatch.setattr("src.vectl.driver.loop.complete_step", lambda plan, *_a, **_k: plan)
+
+    def _complete_step(plan: object, *_a: object, **_k: object) -> object:
+        calls["complete_step"] += 1
+        return plan
+
+    monkeypatch.setattr("src.vectl.driver.loop.complete_step", _complete_step)
     monkeypatch.setattr("src.vectl.driver.loop.save_plan", lambda *_a, **_k: None)
 
     async def _merge(**_k: object) -> Success[MergeResult]:
@@ -362,6 +377,7 @@ async def test_reconcile_routes_non_trivial_conflict(monkeypatch: pytest.MonkeyP
 
     assert calls["defer"] == 1
     assert calls["cleanup"] == 0
+    assert calls["complete_step"] == 0
     assert any(e[0] == "MERGE_CONFLICTED" for e in observer.events)
 
 
@@ -378,6 +394,65 @@ def test_cleanup_orphan_worktrees_removes_unknown_dirs(tmp_path: Path) -> None:
 
     assert keep.exists()
     assert not orphan.exists()
+
+
+def test_plan_durability_commit_checkpoints_dirty_plan(tmp_path: Path) -> None:
+    repo = tmp_path / "repo"
+    repo.mkdir()
+    subprocess.run(["git", "init"], cwd=repo, check=True, capture_output=True)
+    subprocess.run(
+        ["git", "config", "user.email", "driver-test@example.com"],
+        cwd=repo,
+        check=True,
+        capture_output=True,
+    )
+    subprocess.run(
+        ["git", "config", "user.name", "Driver Test"],
+        cwd=repo,
+        check=True,
+        capture_output=True,
+    )
+    plan_path = repo / "plan.yaml"
+    plan_path.write_text("version: 1\nproject: demo\nphases: []\n", encoding="utf-8")
+    subprocess.run(["git", "add", "plan.yaml"], cwd=repo, check=True, capture_output=True)
+    subprocess.run(["git", "commit", "-m", "init"], cwd=repo, check=True, capture_output=True)
+
+    plan_path.write_text(
+        "version: 1\nproject: demo\ncontext: changed\nphases: []\n", encoding="utf-8"
+    )
+
+    _durability_commit_plan_if_dirty(plan_path=plan_path, reason="unit test")
+
+    status = subprocess.run(
+        ["git", "status", "--porcelain", "--", "plan.yaml"],
+        cwd=repo,
+        check=True,
+        capture_output=True,
+        text=True,
+    )
+    assert status.stdout.strip() == ""
+
+    log = subprocess.run(
+        ["git", "log", "--oneline", "-1"],
+        cwd=repo,
+        check=True,
+        capture_output=True,
+        text=True,
+    )
+    assert "[vectl-driver] durability: unit test" in log.stdout
+
+
+@pytest.mark.anyio
+async def test_shutdown_preserves_completed_terminal_outcome() -> None:
+    state = DriverState()
+    observer = _RecordingObserver()
+
+    await shutdown(state=state, observer=observer)
+
+    final_event = next(data for event, data in observer.events if event == "FINAL")
+    completed_summary = cast(dict[str, object], final_event["completed_summary"])
+    assert completed_summary["terminal_outcome"] == "completed"
+    assert "halt_reason" not in final_event
 
 
 @pytest.mark.anyio
@@ -554,6 +629,33 @@ async def test_handle_dispatch_preflight_replan_invokes_planner_and_skips_claim(
 
 
 @pytest.mark.anyio
+async def test_dispatch_planner_uses_configurable_planner_agent_name() -> None:
+    config = _base_config()
+    config.planner.external_agent_name = "custom-planner"
+    config.agent_routing["custom-planner"] = "opencode"
+    observer = _RecordingObserver()
+    runner = _Runner("opencode")
+
+    await dispatch_planner(
+        PlannerDispatchRequest(
+            step_id="core.impl",
+            trigger="handle_dispatch.preflight_replan",
+            judgment_type="PREFLIGHT",
+            planner_instruction="Split this work into spec then impl",
+        ),
+        config=config,
+        runners=cast(dict[str, Any], {"opencode": runner}),
+        observer=observer,
+        plan_path=Path("plan.yaml"),
+    )
+
+    assert runner.calls
+    assert runner.calls[0]["agent"] == "custom-planner"
+    prompt = cast(str, runner.calls[0]["prompt"])
+    assert "You are custom-planner." in prompt
+
+
+@pytest.mark.anyio
 async def test_handle_dispatch_preflight_replan_requires_planner_instruction(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
@@ -645,6 +747,65 @@ async def test_dispatch_planner_raises_on_runner_failure() -> None:
         )
 
     assert any(event == "PLANNER_DISPATCH_FAILED" for event, _ in observer.events)
+
+
+@pytest.mark.anyio
+async def test_dispatch_planner_emits_selection_observability_fields() -> None:
+    config = _base_config()
+    observer = _RecordingObserver()
+    request = PlannerDispatchRequest(
+        step_id="core.impl",
+        trigger="handle_dispatch.preflight_replan",
+        judgment_type="PREFLIGHT",
+        planner_instruction="Split implementation",
+    )
+
+    await dispatch_planner(
+        request,
+        config=config,
+        runners=cast(dict[str, Any], {"opencode": _Runner("opencode")}),
+        observer=observer,
+        plan_path=Path("plan.yaml"),
+    )
+
+    started_events = [
+        data for event, data in observer.events if event == "PLANNER_DISPATCH_STARTED"
+    ]
+    assert len(started_events) == 1
+    started = started_events[0]
+    assert started["surface"] == "planner"
+    assert started["selection_mode"] == "external_agent"
+    assert started["external_agent_name"] == "vectl-planner-slim"
+    assert started["prompt_source"] is None
+
+
+@pytest.mark.anyio
+async def test_dispatch_planner_missing_external_agent_emits_selection_error_and_fails() -> None:
+    config = _base_config()
+    config.planner.external_agent_name = "missing-planner-agent"
+    observer = _RecordingObserver()
+    request = PlannerDispatchRequest(
+        step_id="core.impl",
+        trigger="handle_dispatch.preflight_replan",
+        judgment_type="PREFLIGHT",
+        planner_instruction="Split implementation",
+    )
+
+    with pytest.raises(PlanError, match="not in verified catalog"):
+        await dispatch_planner(
+            request,
+            config=config,
+            runners=cast(dict[str, Any], {"opencode": _Runner("opencode")}),
+            observer=observer,
+            plan_path=Path("plan.yaml"),
+        )
+
+    selection_errors = [data for event, data in observer.events if event == "AGENT_SELECTION_ERROR"]
+    assert len(selection_errors) == 1
+    payload = selection_errors[0]
+    assert payload["surface"] == "planner"
+    assert payload["selection_mode"] == "external_agent"
+    assert payload["external_agent_name"] == "missing-planner-agent"
 
 
 @pytest.mark.anyio
@@ -1051,16 +1212,19 @@ async def test_reconcile_success_side_effects_fire_once(monkeypatch: pytest.Monk
         "cleanup": 0,
         "session_record": 0,
     }
+    sequence: list[str] = []
 
     monkeypatch.setattr("src.vectl.driver.loop.load_plan_definition", lambda _p: (_FakePlan(), "h"))
     monkeypatch.setattr("src.vectl.driver.loop.save_plan", lambda *_a, **_k: None)
 
     def _complete_step(plan: object, *_a: object, **_k: object) -> object:
         calls["complete_step"] += 1
+        sequence.append("complete_step")
         return plan
 
     async def _merge(**_k: object) -> Success[MergeResult]:
         calls["merge"] += 1
+        sequence.append("merge")
         return Success(MergeResult(outcome=MergeOutcome.CLEAN_MERGE, conflicted_files=()))
 
     async def _cleanup(*_a: object, **_k: object) -> Success[None]:
@@ -1092,6 +1256,7 @@ async def test_reconcile_success_side_effects_fire_once(monkeypatch: pytest.Monk
     assert calls["merge"] == 1
     assert calls["cleanup"] == 1
     assert calls["session_record"] == 1
+    assert sequence.index("merge") < sequence.index("complete_step")
     assert sum(1 for event, _ in observer.events if event == "STEP_COMPLETED") == 1
     assert sum(1 for event, _ in observer.events if event == "MERGE_COMPLETED") == 1
 

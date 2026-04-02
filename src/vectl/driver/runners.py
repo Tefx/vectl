@@ -24,7 +24,8 @@ import contextlib
 import json
 import time
 from collections.abc import AsyncIterator
-from typing import TYPE_CHECKING, Protocol
+from dataclasses import dataclass
+from typing import TYPE_CHECKING, Final, Literal, Protocol
 
 from .errors import RunnerError, RunnerNotFoundError
 from .parsers import (
@@ -37,6 +38,150 @@ from .types import RunnerResult, RunnerStatus, StreamProgressSignal, StreamSigna
 
 if TYPE_CHECKING:
     from .config import RunnerConfig
+
+
+AgentSelectionSupportStatus = Literal["supported", "unsupported", "unverified"]
+
+
+@dataclass(frozen=True)
+class RunnerAgentSelectionCapability:
+    """Pinned agent-selection capability for one runner.
+
+    Source:
+    - docs/DRIVER-AGENT-SELECTION.md ``Capability Rules``
+    - docs/DRIVER-AGENT-SELECTION.md ``Runtime Matrix``
+
+    Invariants:
+    - ``supports_agent_selection`` governs whether planner/judge external-agent
+      mode may pass ``--agent`` (or equivalent) to this runner at all.
+    - ``selection_arg_template`` is descriptive contract metadata only in this
+      phase; it does not authorize runtime interpolation changes by itself.
+    - ``status`` stays fail-closed for unverified runners.
+    """
+
+    runner_name: str
+    supports_agent_selection: bool
+    status: AgentSelectionSupportStatus
+    selection_arg_template: str | None
+    evidence: str
+    rejection_outcome_when_selected: str
+
+
+RUNNER_AGENT_SELECTION_CAPABILITIES: Final[tuple[RunnerAgentSelectionCapability, ...]] = (
+    RunnerAgentSelectionCapability(
+        runner_name="opencode",
+        supports_agent_selection=True,
+        status="supported",
+        selection_arg_template="--agent {external_agent_name}",
+        evidence=(
+            "docs/DRIVER-AGENT-SELECTION.md Capability Rules: opencode supports "
+            "external agent selection via --agent"
+        ),
+        rejection_outcome_when_selected="n/a",
+    ),
+    RunnerAgentSelectionCapability(
+        runner_name="claude",
+        supports_agent_selection=False,
+        status="unsupported",
+        selection_arg_template=None,
+        evidence=(
+            "docs/DRIVER-AGENT-SELECTION.md names only opencode as presently verified; "
+            "unsupported runners must reject external_agent_name"
+        ),
+        rejection_outcome_when_selected="hard config/startup error",
+    ),
+    RunnerAgentSelectionCapability(
+        runner_name="codex",
+        supports_agent_selection=False,
+        status="unverified",
+        selection_arg_template=None,
+        evidence=(
+            "docs/DRIVER-AGENT-SELECTION.md: codex may support agent placeholder usage only "
+            "if vectl has a verified runner contract; v1 must fail closed until verified"
+        ),
+        rejection_outcome_when_selected="hard config/startup error",
+    ),
+    RunnerAgentSelectionCapability(
+        runner_name="gemini",
+        supports_agent_selection=False,
+        status="unverified",
+        selection_arg_template=None,
+        evidence=(
+            "docs/DRIVER-AGENT-SELECTION.md requires explicit capability metadata; no Gemini "
+            "verification exists in this contract"
+        ),
+        rejection_outcome_when_selected="hard config/startup error",
+    ),
+)
+
+RUNNER_AGENT_SELECTION_CAPABILITY_INDEX: Final[dict[str, RunnerAgentSelectionCapability]] = {
+    capability.runner_name: capability for capability in RUNNER_AGENT_SELECTION_CAPABILITIES
+}
+
+# Verified external-agent catalog used by runtime preflight checks.
+#
+# Source:
+# - docs/DRIVER-AGENT-SELECTION.md ``Defaults for This Project``
+# - docs/DRIVER-AGENT-SELECTION.md ``Startup/preflight validation``
+#
+# Policy:
+# - Only explicitly verified agents are accepted for a given runner.
+# - If a runner has no verified catalog entry, runtime selection fails closed.
+VERIFIED_EXTERNAL_AGENTS_BY_RUNNER: Final[dict[str, frozenset[str]]] = {
+    "opencode": frozenset({"vectl-planner", "vectl-planner-slim", "custom-planner"}),
+}
+
+
+def verify_external_agent_selection(
+    *, runner_name: str, external_agent_name: str
+) -> tuple[bool, str]:
+    """Fail-closed verification for runtime external-agent selection.
+
+    Args:
+        runner_name: Selected runner identifier.
+        external_agent_name: Requested external agent name.
+
+    Returns:
+        Tuple ``(ok, reason)`` where ``ok=True`` means selection is verified.
+
+    Source:
+    - docs/DRIVER-AGENT-SELECTION.md ``Capability Rules``
+    - docs/DRIVER-AGENT-SELECTION.md ``Startup/preflight validation``
+    - docs/DRIVER-AGENT-SELECTION.md ``Fallback and Error Policy``
+    """
+    capability = RUNNER_AGENT_SELECTION_CAPABILITY_INDEX.get(runner_name)
+    if capability is None:
+        return (
+            False,
+            f"runner '{runner_name}' has no agent-selection capability declaration; failing closed",
+        )
+
+    if not capability.supports_agent_selection:
+        return (
+            False,
+            f"runner '{runner_name}' does not support external agent selection",
+        )
+
+    verified_catalog = VERIFIED_EXTERNAL_AGENTS_BY_RUNNER.get(runner_name)
+    if verified_catalog is None:
+        return (
+            False,
+            (
+                f"runner '{runner_name}' has no verified external-agent catalog; "
+                "cannot verify existence reliably"
+            ),
+        )
+
+    if external_agent_name in verified_catalog:
+        return True, "verified"
+
+    return (
+        False,
+        (
+            f"external agent '{external_agent_name}' is not in verified catalog for "
+            f"runner '{runner_name}'"
+        ),
+    )
 
 
 # =============================================================================
@@ -992,8 +1137,11 @@ __all__ = [
     # Phase scoping
     "CORE_RUNNERS",
     "EXTENDED_RUNNERS",
+    "RUNNER_AGENT_SELECTION_CAPABILITY_INDEX",
+    "VERIFIED_EXTERNAL_AGENTS_BY_RUNNER",
     # Factory
     "create_runner",
+    "verify_external_agent_selection",
 ]
 
 

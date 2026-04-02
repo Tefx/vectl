@@ -23,6 +23,7 @@ import json
 import logging
 import os
 import shutil
+import subprocess
 import time
 from collections.abc import Awaitable, Callable, Mapping
 from dataclasses import asdict, dataclass
@@ -30,7 +31,7 @@ from datetime import datetime, timezone
 from fnmatch import fnmatch
 from pathlib import Path
 from types import MappingProxyType
-from typing import TYPE_CHECKING, Final, Literal, Protocol, cast
+from typing import TYPE_CHECKING, Any, Final, Literal, Protocol, cast
 
 from vectl.claims import load_claims_for_branch, repair_claims
 from vectl.decide import decide
@@ -55,6 +56,7 @@ from .action_registry import (
     resolve_runtime_loop_action_declaration,
 )
 from .config import (
+    AgentSelectionMode,
     DriverConfig,
     JudgeConfig,
     ObservabilityConfig,
@@ -108,7 +110,7 @@ from .runner_continuity import (
     capability_snapshot_id,
     evaluate_resume_or_replay_safety,
 )
-from .runners import Runner, create_runner
+from .runners import Runner, create_runner, verify_external_agent_selection
 from .runners import RunnerStatus as RunnerDispatchStatus
 from .runtime_context import (
     ROLE_SPECIFIC_CONTEXTS_DEFERRED,
@@ -246,6 +248,84 @@ class DeferredRuntimeBranch:
     branch: str
     deferred_to: str
     rationale: str
+
+
+@dataclass(frozen=True)
+class PlannerAgentSelectionLoopContract:
+    """Pinned planner/judge runtime selection outcomes owned by loop wiring.
+
+    Source:
+    - docs/DRIVER-AGENT-SELECTION.md ``Planner: external-agent mode``
+    - docs/DRIVER-AGENT-SELECTION.md ``Planner: prompt-only mode``
+    - docs/DRIVER-AGENT-SELECTION.md ``Fallback and Error Policy``
+    - docs/DRIVER-AGENT-SELECTION.md ``Runtime Matrix``
+    - docs/DRIVER-AGENT-SELECTION.md ``v1 Scope Definition``
+
+    Scope:
+    - pins loop-owned branching and runtime outcomes only
+    - does not migrate the current planner dispatch implementation in this step
+    """
+
+    contract_id: str
+    source_step_id: str
+    planner_authority_rules: tuple[str, ...]
+    judge_authority_rules: tuple[str, ...]
+    rejection_cases: tuple[str, ...]
+    observability_requirements: tuple[str, ...]
+    runtime_matrix_outcomes: tuple[str, ...]
+    deferred_runtime_changes: tuple[str, ...]
+
+
+AGENT_SELECTION_LOOP_CONTRACT: Final[PlannerAgentSelectionLoopContract] = (
+    PlannerAgentSelectionLoopContract(
+        contract_id="driver-agent-selection-loop-v1",
+        source_step_id="driver-agent-selection-contract.pin-contract",
+        planner_authority_rules=(
+            "planner external-agent mode uses planner.runner and passes named "
+            "agent only when the runner supports agent selection",
+            "planner external-agent mode must not inject bundled planner prompt",
+            "planner prompt-only mode uses planner.runner without --agent and "
+            "injects bundled planner prompt",
+            "planner behavior authority is singular per mode; hybrid prompt layering is forbidden",
+        ),
+        judge_authority_rules=(
+            "judge external-agent mode keeps structured output/verdict "
+            "enforcement but removes bundled judge prompt authority",
+            "judge prompt-only mode keeps bundled judge prompt as sole authority",
+        ),
+        rejection_cases=(
+            "configured runner missing from config.runners for planner or judge nested shape",
+            "external_agent_name selected for runner lacking capability declaration",
+            "external agent existence cannot be verified before first invocation",
+            "planner explicit null remains rejected in v1 until prompt-only planner ships",
+        ),
+        observability_requirements=(
+            "emit surface",
+            "emit runner",
+            "emit selection_mode",
+            "emit external_agent_name",
+            "emit prompt_source",
+            "emit explicit selection error event on unsupported/missing external agent",
+        ),
+        runtime_matrix_outcomes=(
+            "planner unset/null => prompt-only planner outcome once planner prompt-only ships",
+            "planner set + capable runner + existing agent => external planner agent outcome",
+            "planner set + incapable runner => hard config/startup error",
+            "planner set + missing agent => hard startup/runtime error",
+            "judge unset/null => bundled judge prompt outcome",
+            "judge set + capable runner + existing agent => external judge "
+            "outcome with no bundled prompt",
+            "judge set + incapable runner => hard config/startup error",
+            "judge set + missing agent => hard startup/runtime error",
+        ),
+        deferred_runtime_changes=(
+            "replace flat planner_agent_name routing with nested planner config selection contract",
+            "replace logical judge.agent_name dispatch semantics with "
+            "judge.external_agent_name contract",
+            "introduce preflight existence probe and fail-closed selection validation",
+        ),
+    )
+)
 
 
 ReplanTriggerName = Literal[
@@ -1287,8 +1367,37 @@ async def dispatch_planner(
             f"(step={request.step_id}, trigger={request.trigger})"
         )
 
-    planner_agent = "vectl-planner"
+    planner_agent = config.planner.external_agent_name
+    if planner_agent is None:
+        raise PlanError(
+            "planner.external_agent_name must be configured for planner dispatch "
+            "until planner prompt-only dispatch is implemented"
+        )
+
+    selection_mode: AgentSelectionMode = "external_agent"
+    prompt_source: str | None = None
     runner_name = config.route_agent(planner_agent)
+    ok, reason = verify_external_agent_selection(
+        runner_name=runner_name,
+        external_agent_name=planner_agent,
+    )
+    if not ok:
+        error_kind = "unsupported_runner"
+        if "not in verified catalog" in reason:
+            error_kind = "missing_agent"
+        observer.emit(
+            "AGENT_SELECTION_ERROR",
+            step_id=request.step_id,
+            surface="planner",
+            runner=runner_name,
+            selection_mode=selection_mode,
+            external_agent_name=planner_agent,
+            prompt_source=prompt_source,
+            error_kind=error_kind,
+            message=reason,
+        )
+        raise PlanError(reason)
+
     runner = runners.get(runner_name)
     if runner is None:
         raise RunnerError(runner_name, request.step_id, "planner runner not configured")
@@ -1299,6 +1408,10 @@ async def dispatch_planner(
         trigger=request.trigger,
         judgment_type=request.judgment_type,
         runner=runner_name,
+        surface="planner",
+        selection_mode=selection_mode,
+        external_agent_name=planner_agent,
+        prompt_source=prompt_source,
     )
     emit_planner_dispatch_progress(
         observer,
@@ -1311,7 +1424,11 @@ async def dispatch_planner(
         progress_total=2,
     )
 
-    prompt = _render_planner_prompt(request=request, plan_path=plan_path)
+    prompt = _render_planner_prompt(
+        request=request,
+        plan_path=plan_path,
+        planner_agent=planner_agent,
+    )
     handle = await runner.dispatch(
         prompt=prompt,
         agent=planner_agent,
@@ -1340,6 +1457,10 @@ async def dispatch_planner(
             runner=runner_name,
             status=result.status.value,
             output=result.output,
+            surface="planner",
+            selection_mode=selection_mode,
+            external_agent_name=planner_agent,
+            prompt_source=prompt_source,
         )
         raise RunnerError(
             runner_name,
@@ -1358,10 +1479,16 @@ async def dispatch_planner(
         runner=runner_name,
         elapsed_seconds=result.elapsed_seconds,
         session_id=result.session_id,
+        surface="planner",
+        selection_mode=selection_mode,
+        external_agent_name=planner_agent,
+        prompt_source=prompt_source,
     )
 
 
-def _render_planner_prompt(*, request: PlannerDispatchRequest, plan_path: Path) -> str:
+def _render_planner_prompt(
+    *, request: PlannerDispatchRequest, plan_path: Path, planner_agent: str
+) -> str:
     """Render deterministic planner prompt for REPLAN dispatch.
 
     Source: docs/DRIVER-ARCHITECTURE.md Section 2.11 (`dispatch_planner`) and
@@ -1378,7 +1505,7 @@ def _render_planner_prompt(*, request: PlannerDispatchRequest, plan_path: Path) 
     }
     return "\n".join(
         [
-            "You are vectl-planner. Apply the requested replanning change.",
+            f"You are {planner_agent}. Apply the requested replanning change.",
             "",
             "## REPLAN Handoff",
             json.dumps(payload, ensure_ascii=False, indent=2),
@@ -1744,6 +1871,83 @@ def _resolve_repo_root_from_plan(plan_path: Path) -> Path:
 
     plan_abs = plan_path if plan_path.is_absolute() else (Path.cwd() / plan_path)
     return plan_abs.resolve().parent
+
+
+def _durability_commit_plan_if_dirty(*, plan_path: Path, reason: str) -> None:
+    """Commit canonical ``plan.yaml`` mutations before/after dispatch boundaries.
+
+    This encodes the orchestrator-owned durability barrier from the canonical
+    vectl orchestrator contract: if ``plan.yaml`` is dirty, the orchestrator is
+    the sole authority that may checkpoint it in git.
+    """
+
+    repo_root = _resolve_repo_root_from_plan(plan_path)
+    plan_abs = plan_path if plan_path.is_absolute() else (Path.cwd() / plan_path)
+    plan_abs = plan_abs.resolve()
+    try:
+        plan_rel = plan_abs.relative_to(repo_root)
+    except ValueError:
+        plan_rel = Path(plan_abs.name)
+
+    rel_text = os.fspath(plan_rel)
+    status = subprocess.run(
+        ["git", "status", "--porcelain", "--", rel_text],
+        cwd=repo_root,
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    if status.returncode != 0:
+        _LOGGER.debug(
+            "Skipping plan durability barrier; git status unavailable for %s: %s",
+            rel_text,
+            (status.stderr or status.stdout).strip(),
+        )
+        return
+    if not status.stdout.strip():
+        return
+
+    add = subprocess.run(
+        ["git", "add", "--", rel_text],
+        cwd=repo_root,
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    if add.returncode != 0:
+        raise PlanError(
+            f"Plan durability barrier failed during git add for {rel_text}: "
+            f"{(add.stderr or add.stdout).strip()}"
+        )
+
+    commit = subprocess.run(
+        ["git", "commit", "-m", f"[vectl-driver] durability: {reason}"],
+        cwd=repo_root,
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    if commit.returncode != 0:
+        combined = f"{commit.stdout}\n{commit.stderr}".lower()
+        if "nothing to commit" in combined or "no changes added to commit" in combined:
+            return
+        raise PlanError(
+            f"Plan durability barrier failed during git commit for {rel_text}: "
+            f"{(commit.stderr or commit.stdout).strip()}"
+        )
+
+
+def _save_plan_with_durability(
+    plan: Any,
+    *,
+    plan_path: Path,
+    expected_hash: str,
+    reason: str,
+) -> None:
+    """Persist plan state, then checkpoint git durability if the file is dirty."""
+
+    save_plan(plan, path=plan_path, expected_hash=expected_hash)
+    _durability_commit_plan_if_dirty(plan_path=plan_path, reason=reason)
 
 
 def _resolve_repo_root_from_worktree_path(worktree_path: str) -> Path:
@@ -2476,10 +2680,11 @@ async def handle_dispatch(
     claims_path = resolve_claims_path(plan_path)
     plan, _ = claim_step(plan, step_id, agent, claims_path=claims_path)
 
-    save_plan(
+    _save_plan_with_durability(
         plan,
-        path=plan_path,
+        plan_path=plan_path,
         expected_hash=expected_hash,
+        reason=f"claim {step_id}",
     )
 
     binding_result = await create_worktree(step_id, cwd=plan_path.parent)
@@ -2744,7 +2949,12 @@ async def handle_complete(
     plan, expected_hash = load_plan_definition(plan_path)
     claims_path = resolve_claims_path(plan_path)
     plan = complete_step(plan, action.step_id, evidence, claims_path=claims_path)
-    save_plan(plan, path=plan_path, expected_hash=expected_hash)
+    _save_plan_with_durability(
+        plan,
+        plan_path=plan_path,
+        expected_hash=expected_hash,
+        reason=f"complete {action.step_id}",
+    )
 
     emit_step_completed(
         observer,
@@ -2947,7 +3157,12 @@ async def reconcile(
                             completed.step_id,
                             claims_path=claims_path,
                         )
-                        save_plan(deferred_plan, path=plan_path, expected_hash=expected_hash)
+                        _save_plan_with_durability(
+                            deferred_plan,
+                            plan_path=plan_path,
+                            expected_hash=expected_hash,
+                            reason=f"defer {completed.step_id}",
+                        )
                         observer.emit(
                             "GATE_REMEDIATION_DEFERRED",
                             step_id=completed.step_id,
@@ -2960,10 +3175,6 @@ async def reconcile(
                             batched_issue_count=len(remediation_issues),
                         )
                         return
-
-        claims_path = resolve_claims_path(plan_path)
-        plan = complete_step(plan, completed.step_id, evidence, claims_path=claims_path)
-        save_plan(plan, path=plan_path, expected_hash=expected_hash)
 
         async with state.merge_lock:
             merge_result = await merge(
@@ -3004,11 +3215,26 @@ async def reconcile(
                 plan, expected_hash = load_plan_definition(plan_path)
                 claims_path = resolve_claims_path(plan_path)
                 plan = defer_step(plan, completed.step_id, claims_path=claims_path)
-                save_plan(plan, path=plan_path, expected_hash=expected_hash)
+                _save_plan_with_durability(
+                    plan,
+                    plan_path=plan_path,
+                    expected_hash=expected_hash,
+                    reason=f"defer {completed.step_id}",
+                )
                 return
 
             auto_resolved = merge_result.value.outcome.value == "auto_resolved_conflict"
             conflicting_files = list(merge_result.value.conflicted_files)
+
+        plan, expected_hash = load_plan_definition(plan_path)
+        claims_path = resolve_claims_path(plan_path)
+        plan = complete_step(plan, completed.step_id, evidence, claims_path=claims_path)
+        _save_plan_with_durability(
+            plan,
+            plan_path=plan_path,
+            expected_hash=expected_hash,
+            reason=f"complete {completed.step_id}",
+        )
 
         if completed.result.session_id:
             session_pool.record(
@@ -3256,7 +3482,12 @@ async def reconcile(
                 )
 
             plan = defer_step(plan, completed.step_id, claims_path=claims_path)
-            save_plan(plan, path=plan_path, expected_hash=expected_hash)
+            _save_plan_with_durability(
+                plan,
+                plan_path=plan_path,
+                expected_hash=expected_hash,
+                reason=f"defer {completed.step_id}",
+            )
             observer.emit(
                 "STEP_FAILED",
                 step_id=completed.step_id,
@@ -3306,7 +3537,12 @@ async def reconcile(
                 ),
             )
             deferred_plan = defer_step(plan, completed.step_id, claims_path=claims_path)
-            save_plan(deferred_plan, path=plan_path, expected_hash=expected_hash)
+            _save_plan_with_durability(
+                deferred_plan,
+                plan_path=plan_path,
+                expected_hash=expected_hash,
+                reason=f"defer {completed.step_id}",
+            )
             observer.emit(
                 "FAILURE_REMEDIATION_DEFERRED",
                 step_id=completed.step_id,
@@ -3317,7 +3553,12 @@ async def reconcile(
 
     if count < 3:
         plan = defer_step(plan, completed.step_id, claims_path=claims_path)
-        save_plan(plan, path=plan_path, expected_hash=expected_hash)
+        _save_plan_with_durability(
+            plan,
+            plan_path=plan_path,
+            expected_hash=expected_hash,
+            reason=f"defer {completed.step_id}",
+        )
         observer.emit(
             "STEP_FAILED",
             step_id=completed.step_id,
@@ -3363,7 +3604,7 @@ async def shutdown(state: DriverState, observer: Observer) -> None:
     """Graceful shutdown sequence.
 
     Contract pin from Section 2.11:
-    1. Set ``state.halt_requested = True``.
+    1. Preserve the caller-established terminal state (normal completion vs halt).
     2. Wait for running handles up to configured timeout bounds.
     3. Kill any remaining processes.
     4. Clean up orphan worktrees.
@@ -3373,8 +3614,6 @@ async def shutdown(state: DriverState, observer: Observer) -> None:
     The exact orchestration order is locked by ``GRACEFUL_SHUTDOWN_CONTRACT``;
     implementation details are deferred.
     """
-    state.halt_requested = True
-
     running_entries = list(state.running.values())
     for entry in running_entries:
         abort_attempt_key = _continuity_attempt_key(

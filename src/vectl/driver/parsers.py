@@ -149,13 +149,28 @@ class OpenCodeOutputParser:
 
         # Determine status from step_finish
         status = RunnerStatus.FAIL
+        step_finish_seen = False
+        explicit_error_status = False
         tokens: dict | None = None
         for event in events:
             if event.get("type") == "step_finish":
+                step_finish_seen = True
                 part = event.get("part", {})
-                if part.get("status") == "success":
+                part_status = part.get("status")
+                if part_status == "success" or part_status is None:
                     status = RunnerStatus.SUCCESS
+                elif part_status == "error":
+                    status = RunnerStatus.FAIL
+                    explicit_error_status = True
                 tokens = part.get("tokens")
+
+        if (
+            step_finish_seen
+            and status == RunnerStatus.FAIL
+            and text_parts
+            and not explicit_error_status
+        ):
+            status = RunnerStatus.SUCCESS
 
         return RunnerResult(
             status=status,

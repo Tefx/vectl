@@ -15,11 +15,7 @@ from typing import Final
 from .types import (
     ALL_EVENT_TYPES,
     DECIDE,
-    DRIVER_LIFECYCLE,
     FINAL,
-    HEARTBEAT_PROGRESS,
-    PLANNER_DISPATCH_PROGRESS,
-    RECOVERY_VISIBILITY,
     STEP_COMPLETED,
 )
 
@@ -53,6 +49,21 @@ def _record(
 
 
 _TABLE: dict[str, EventRegistryRecord] = {
+    "AGENT_SELECTION_ERROR": _record(
+        "AGENT_SELECTION_ERROR",
+        required=(
+            "error_kind",
+            "external_agent_name",
+            "message",
+            "prompt_source",
+            "runner",
+            "selection_mode",
+            "step_id",
+            "surface",
+        ),
+        owner="vectl.driver.loop+judge",
+        compatibility="Version 1 additive explicit agent-selection hard-fail telemetry.",
+    ),
     "ANOMALY_VERDICT": _record(
         "ANOMALY_VERDICT",
         required=("anomaly_type", "reason", "step_id", "verdict"),
@@ -174,7 +185,16 @@ _TABLE: dict[str, EventRegistryRecord] = {
     "JUDGMENT": _record(
         "JUDGMENT",
         required=("type", "step_id", "verdict", "reason"),
-        optional=("latency_ms", "planner_instruction", "suggested_action"),
+        optional=(
+            "latency_ms",
+            "planner_instruction",
+            "suggested_action",
+            "surface",
+            "runner",
+            "selection_mode",
+            "external_agent_name",
+            "prompt_source",
+        ),
         owner="vectl.driver.judge",
         compatibility="Version 1 baseline; additive optional fields only within v1.",
     ),
@@ -194,12 +214,14 @@ _TABLE: dict[str, EventRegistryRecord] = {
     "PLANNER_DISPATCH_COMPLETED": _record(
         "PLANNER_DISPATCH_COMPLETED",
         required=("elapsed_seconds", "judgment_type", "runner", "session_id", "step_id", "trigger"),
+        optional=("surface", "selection_mode", "external_agent_name", "prompt_source"),
         owner="vectl.driver.loop",
         compatibility="Version 1 baseline; additive optional fields only within v1.",
     ),
     "PLANNER_DISPATCH_FAILED": _record(
         "PLANNER_DISPATCH_FAILED",
         required=("judgment_type", "output", "runner", "status", "step_id", "trigger"),
+        optional=("surface", "selection_mode", "external_agent_name", "prompt_source"),
         owner="vectl.driver.loop",
         compatibility="Version 1 baseline; additive optional fields only within v1.",
     ),
@@ -216,6 +238,7 @@ _TABLE: dict[str, EventRegistryRecord] = {
     "PLANNER_DISPATCH_STARTED": _record(
         "PLANNER_DISPATCH_STARTED",
         required=("judgment_type", "runner", "step_id", "trigger"),
+        optional=("surface", "selection_mode", "external_agent_name", "prompt_source"),
         owner="vectl.driver.loop",
         compatibility="Version 1 baseline; additive optional fields only within v1.",
     ),

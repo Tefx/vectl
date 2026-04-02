@@ -411,6 +411,7 @@ runners:
     session_id_regex: "^[0-9a-f]{8}-[0-9a-f]{4}-"
     output_parser: claude_json
     persist_session: true        # Don't pass --no-session-persistence
+    supports_agent_selection: false
 
   opencode:
     command: "opencode"
@@ -421,6 +422,7 @@ runners:
     session_id_regex: "^ses_[a-z0-9]+"
     output_parser: opencode_jsonl
     persist_session: true
+    supports_agent_selection: true
 
   codex:
     command: "codex"
@@ -430,6 +432,7 @@ runners:
     resume_command: ["codex", "exec", "resume", "--json", "--dangerously-bypass-approvals-and-sandbox"]
     session_id_regex: "^[0-9a-f]{8}-"
     output_parser: codex_jsonl
+    supports_agent_selection: false
 
   gemini:
     command: "gemini"
@@ -438,6 +441,7 @@ runners:
     stall_timeout: 600
     output_parser: gemini_json
     experimental: true           # Auth issues, not fully verified
+    supports_agent_selection: false
 
 agent_routing:
   python-senior: claude
@@ -450,6 +454,10 @@ agent_routing:
 
 fallback_runner: opencode
 
+planner:
+  runner: opencode
+  external_agent_name: vectl-planner-slim
+
 orchestration:
   max_parallelism: 5
   merge_strategy: squash
@@ -461,8 +469,8 @@ session:
     claude: 600                  # Claude prompt cache has longer effective window
 
 judge:
-  runner: opencode               # Default runner for all judgment calls
-  model: null                    # Override model (optional)
+  runner: codex                  # Default judge runner for structured output support
+  external_agent_name: null      # null = use bundled judge prompt
   structured_output: true        # Use model structured output where available
   timeout: 60                    # Judgment call timeout (seconds)
   # Judgment types to enable (all true for full parity)
@@ -944,6 +952,6 @@ All other deps (pydantic, pyyaml, typer, rich) already in vectl.
 
 ### External runtime
 - `claude` CLI (direct invocation via `claude -p`, no wrapper scripts)
-- `opencode` CLI (default runner for workers and judgment agent)
+- `opencode` CLI (default runner for workers; judge default is codex)
 - `codex` / `gemini` CLI (optional, user-installed, config-injected)
 - `git` (system)

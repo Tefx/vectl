@@ -113,6 +113,12 @@ def continuity_test_config(*, primary_runner: str) -> DriverConfig:
             command="opencode",
             args=["run", "--format", "json"],
             output_parser="opencode_jsonl",
+            supports_agent_selection=True,
+        ),
+        "codex": RunnerConfig(
+            command="codex",
+            args=["exec", "--json"],
+            output_parser="codex_jsonl",
         ),
         "gemini": RunnerConfig(
             command="gemini",

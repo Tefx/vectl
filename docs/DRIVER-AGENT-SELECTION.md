@@ -75,7 +75,7 @@ class PlannerConfig(BaseModel):
     external_agent_name: str | None = None
 
 class JudgeConfig(BaseModel):
-    runner: str = "opencode"
+    runner: str = "codex"
     external_agent_name: str | None = None
     structured_output: bool = True
     timeout: int = 60

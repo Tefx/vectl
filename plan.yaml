@@ -54556,7 +54556,7 @@ phases:
     agent: gate-reviewer
   - id: driver-agent-selection-doc-sync.fix-doc-defaults-status
     name: Fix stale default-runner and status docs
-    status: claimed
+    status: done
     description: 'Batched documentation remediation for driver agent-selection doc
       sync.
 
@@ -54599,7 +54599,12 @@ phases:
     agent: doc-reviewer
     claimed_by: project-guide
     claimed_at: '2026-04-02T03:31:36.923961+00:00'
-    done_at: '2026-04-02T03:26:29.291600+00:00'
+    done_at: '2026-04-02T03:34:03.788571+00:00'
+    evidence: Rework complete (commit 0effd62). Updated docs/DRIVER-ARCHITECTURE.md
+      default judge runner wording to codex and aligned docs/DRIVER-AGENT-SELECTION.md
+      JudgeConfig default runner to codex; verified DRIVER-BLUEPRINT.md wording already
+      reflects judge default codex. Status remains Implemented; stale opencode-default
+      ambiguity removed.
     rejection_reason: 'Doc remediation incomplete: stale opencode-default wording
       remains in DRIVER-ARCHITECTURE.md and DRIVER-BLUEPRINT.md.'
     rejection_history:

@@ -554,7 +554,7 @@ planner:
   external_agent_name: vectl-planner-slim
 
 judge:
-  runner: opencode
+  runner: codex
   external_agent_name: null
   structured_output: true
   timeout: 60

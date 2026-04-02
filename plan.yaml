@@ -43814,6 +43814,23 @@ phases:
       Downstream owner:
 
       - driver-enhancement-observability.impl'
+  - id: driver-enhancement-observability.shouldfix-docstrings
+    name: Update stale emitter docstrings
+    status: pending
+    description: Update stale emitter docstrings to reflect implemented runtime behavior
+      in src/vectl/driver/events/emitter.py. Scope is docstring cleanup only; no behavior
+      changes. Search for stale wording that still claims runtime implementation is
+      deferred and align the text with the implemented emitters. Use focused edits
+      in the emitter module only.
+    verification: '- Run: pytest tests/unit/driver/events/test_emitter.py -q
+
+      - Run: rg -n "Runtime implementation is deferred" src/vectl/driver/events/emitter.py
+
+      - Evidence must show targeted observability tests stay green and the stale phrase
+      is absent from src/vectl/driver/events/emitter.py.'
+    depends_on:
+    - driver-enhancement-observability.gate
+    agent: python-senior
 - id: driver-enhancement-streaming-progress
   name: 'Driver Enhancement: Streaming & Progress'
   status: done

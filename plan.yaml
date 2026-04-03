@@ -56266,6 +56266,48 @@ phases:
 
       - Evidence cites the exact isolation rule for independent tasks'
     agent: python-executor
+  - id: orch_roster_runtime.runtime_contract
+    name: Pin runtime contract and workspace mechanics boundary
+    status: pending
+    description: 'Pin the orchestration-plane runtime contract in src/vectl/orchestration/runtime.py
+      using docs/ORCHESTRATION-PLANE-ARCHITECTURE.md section 5.3 and docs/ORCHESTRATION-PLANE-INTERFACES.md
+      section 4.3.
+
+
+      Scope:
+
+      - define runtime snapshot/prepare/start/collect/cleanup surfaces
+
+      - keep runtime mechanical only
+
+      - preserve explicit workspace freshness obligations for isolation=workspace
+      and isolation=independent
+
+      - keep runner/worktree/parsing helpers close to execution collection rather
+      than in control
+
+
+      step_type: contract
+
+      contract_purity: ENFORCED
+
+      contract_outputs:
+
+      - signatures
+
+      - type_defs
+
+      - interfaces
+
+      - stubs'
+    verification: '- Runtime contract exposes snapshot/prepare/start/collect/cleanup
+      only
+
+      - Contract excludes plan-aware policy and blocked-state reasoning
+
+      - Evidence cites the isolation freshness requirements for workspace and independent
+      modes'
+    agent: python-executor
 - id: orch_core_authority
   name: Orchestration Plane Core Authority and Isolation
   status: locked

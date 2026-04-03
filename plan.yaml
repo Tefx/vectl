@@ -57962,7 +57962,7 @@ phases:
     claimed_at: '2026-04-03T19:07:05.540615+00:00'
   - id: orch_system_wiring.wiring_audit
     name: Audit wiring completeness for orchestration entry paths
-    status: claimed
+    status: done
     description: 'Wiring completeness audit for the orchestration-plane cutover.
 
 
@@ -57991,6 +57991,54 @@ phases:
     agent: wiring-auditor
     claimed_by: wiring-auditor
     claimed_at: '2026-04-03T19:07:11.858488+00:00'
+    done_at: '2026-04-03T19:11:22.472287+00:00'
+    evidence: "status: SUCCESS\nevidence: |\n  Artifact:\n  - **Entry Point Chain\
+      \ (VERIFIED)**:\n    - `src/vectl/cli.py::drive()` (line 3334) → delegates to\
+      \ `run_drive_cli_entrypoint()`\n    - `src/vectl/driver/__main__.py::main()`\
+      \ (line 22) → delegates to `run_driver_module_entrypoint()`\n    - `src/vectl/driver/entrypoint.py::SharedRuntimeEntrypointAdapter.invoke_async()`\
+      \ (line 121) → calls `asyncio.run(loop.run(config_path))`\n    - `src/vectl/driver/loop.py::run()`\
+      \ (line 2347) → ASYNC LIFECYCLE ENTRY POINT (EFFECTFUL - calls asyncio operations,\
+      \ runner dispatch, judge integration)\n  \n  - **Orchestration Surface Wiring\
+      \ (VERIFIED)**:\n    - `_build_orchestration_wiring()` (line 223-252) constructs\
+      \ all orchestration interfaces:\n      * `PlanCoreAdapter` (orchestration/core_adapter.py)\
+      \ - adapts vectl core lifecycle\n      * `OrchestrationRoster` (orchestration/roster.py)\
+      \ - reusable resource tracking\n      * `orchestration_runtime.Runtime` (orchestration/runtime.py)\
+      \ - workspace/worktree chore execution\n      * `PlanAwareControl` (orchestration/control.py)\
+      \ - plan-aware flow decisions\n      * `BoundResolver` (orchestration/resolver.py)\
+      \ - blocked/unresolved reasoning\n    - **Runtime Callers Exist**: Loop.py lines\
+      \ 231-252 (construction), 4310-4323 (usage in decide loop)\n  \n  - **Blocked/Unresolved\
+      \ Resolution Path (VERIFIED)**:\n    - Control determines \"resolve\" kind →\
+      \ `_route_resolution_via_orchestration()` (line 255-276)\n    - Calls `wiring.resolver.resolve(ResolutionCase)`\
+      \ → BoundResolver uses ResolverInvocationSurface\n    - Returns ResolutionReport\
+      \ → Control applies resolution → updated ControlDecision\n    - **Documented\
+      \ Contract**: docs/ORCHESTRATION-PLANE-RESOLUTION-CONTRACT.md\n  \n  - **Protocol\
+      \ Authenticity (VERIFIED)**:\n    - All protocols in `interfaces.py` (Control,\
+      \ Roster, Runtime, Resolver) are **implementation targets**, not shadowed stubs\n\
+      \    - Real implementations exist: `PlanAwareControl` (line 124-358 control.py),\
+      \ `Runtime` (line 78-250 runtime.py), `Roster` (line 59+ roster.py), `BoundResolver`\
+      \ (line 58-100 resolver.py)\n    - **No Cast Fraud**: No `cast()` of stubs to\
+      \ Protocol types detected\n    - **No Protocol Shadow**: Real implementations\
+      \ are wired in production (loop.py line 231-252)\n  \n  - **Test Coverage (VERIFIED)**:\n\
+      \    - 121 imports from vectl.orchestration in test files\n    - Integration\
+      \ tests: `tests/orchestration/integration/test_control_resolver_contract.py`,\
+      \ `test_control_isolation_flow.py`\n    - Unit tests: `tests/orchestration/unit/test_control.py`,\
+      \ `test_resolver.py`, `test_roster.py`\n  \n  Verification:\n  - **W13 Entry-to-Effect**:\
+      \ `loop.run()` (line 2347) is EFFECTFUL - performs async I/O (runner.dispatch,\
+      \ judge.judge, plan persistence), integrates with worktree operations, invokes\
+      \ decide/planner dispatch\n  - **W1 Dead Exports**: All orchestration public\
+      \ symbols have runtime callers in loop.py or tests\n  - **W2 Schema Fields**:\
+      \ CoreSnapshot/RosterSnapshot/RuntimeSnapshot written in adapters, read by Control.evaluate()\n\
+      \  - **W3 CLI Param Coverage**: `--config` parameter flows to `config_path`\
+      \ → DriverConfig → runtime bootstrap\n  - **W4 Command Registration**: `drive`\
+      \ registered via `@app.command()` decorator (cli.py line 3333)\n  - **W9 Transitive\
+      \ Reachability**: Entry points → entrypoint.py → loop.run() → orchestration\
+      \ wiring construction (all paths LIVE)\n  - **W10 Protocol Shadow Detection**:\
+      \ CORRECT - real implementations wired, no orphan real impls\n\n  Spec link:\n\
+      \  - docs/ORCHESTRATION-PLANE-INTERFACES.md (section 4: Control, Roster, Runtime,\
+      \ Resolver)\n  - docs/ORCHESTRATION-PLANE-IMPLEMENTATION-DESIGN.md (section\
+      \ 3.6: CoreAdapter)\n  - docs/ORCHESTRATION-PLANE-RESOLUTION-CONTRACT.md (resolution\
+      \ flow contract)\n  - docs/DRIVER-ARCHITECTURE.md (section 2.11: runtime loop\
+      \ contract)\n\nerror: null"
   - id: orch_system_wiring.gate
     name: Gate orchestration system wiring
     status: pending

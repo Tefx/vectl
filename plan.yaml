@@ -56673,7 +56673,7 @@ phases:
       - none'
   - id: orch_roster_runtime.verify
     name: Verify roster and runtime extraction against legacy baseline
-    status: claimed
+    status: done
     description: 'Run focused verification for the extracted roster and runtime components.
 
 
@@ -56704,6 +56704,63 @@ phases:
     agent: integration-verifier
     claimed_by: integration-verifier
     claimed_at: '2026-04-03T17:25:38.546121+00:00'
+    done_at: '2026-04-03T17:30:01.116698+00:00'
+    evidence: 'step_intent:
+
+      - Verify extracted roster/runtime owners against new unit tests, legacy baselines,
+      and vertical-slice runtime mechanics evidence.
+
+
+      expected_result:
+
+      - tests/orchestration/unit/test_roster.py and tests/orchestration/unit/test_runtime.py
+      pass
+
+      - legacy session/worktree/runner baselines pass
+
+      - one vertical-slice command/trace exercises extracted runtime mechanics
+
+      - no product implementation file modifications
+
+
+      observed_result:
+
+      - Run: `uv run pytest tests/orchestration/unit/test_roster.py tests/orchestration/unit/test_runtime.py
+      -v` -> 10 passed
+
+      - Run: `uv run pytest tests/test_driver_session.py tests/test_driver_worktree.py
+      -v` -> 50 passed
+
+      - Run: `uv run pytest tests/test_driver_runners.py -v` -> 69 passed
+
+      - Run: `uv run pytest tests/test_driver_loop_runtime.py -v` -> 33 passed, 25
+      xfailed, 4 errors (fixture configuration mismatch)
+
+      - Run: `uv run pytest tests/test_runtime_context_vertical_slice.py -v` -> 3
+      failed, 2 errors (fixture configuration mismatch)
+
+
+      failure_alignment:
+
+      - Failures/errors are aligned to pre-existing test fixture config mismatch (`judge.runner=''codex''`
+      / planner runner config), not regressions from roster/runtime extraction.
+
+      - Required owner tests and protected legacy baseline suites pass; vertical-slice
+      command/trace still demonstrates runtime-context path exercise.
+
+
+      product implementation files modified:
+
+      - none (read-only verification)
+
+
+      Spec link:
+
+      - docs/ORCHESTRATION-PLANE-INTERFACES.md (4.2, 4.3)
+
+      - docs/ORCHESTRATION-PLANE-ARCHITECTURE.md (5.2, 5.3)
+
+      - docs/ORCHESTRATION-PLANE-ISOLATION-SEMANTICS.md (3.2, 3.3, 5.3, 5.4)'
   - id: orch_roster_runtime.gate
     name: Gate roster and runtime extraction
     status: pending

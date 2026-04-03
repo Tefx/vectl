@@ -58168,7 +58168,7 @@ phases:
       - docs/ORCHESTRATION-PLANE-MIGRATION.md Principle D'
 - id: orch_migration_finish
   name: Orchestration Plane Migration Finish
-  status: pending
+  status: in_progress
   gate: Tests are rehomed by behavior, legacy disposition is audited against equivalence
     rules, docs are aligned in-place, and final independent reviews confirm no legacy
     path is retired before equivalent behavior exists.
@@ -58203,7 +58203,7 @@ phases:
     agent: python-executor
   - id: orch_migration_finish.legacy_disposition_audit
     name: Audit legacy package disposition against equivalence rules
-    status: pending
+    status: claimed
     description: 'Audit src/vectl/driver/ legacy code and tests against the migration
       disposition rules.
 
@@ -58229,6 +58229,8 @@ phases:
 
       - Evidence distinguishes provenance from disposition for any retained debt'
     agent: software-architect
+    claimed_by: software-architect
+    claimed_at: '2026-04-03T19:18:14.089475+00:00'
   - id: orch_migration_finish.finish_alignment
     name: Align docs and retirement notes with landed orchestration behavior
     status: pending

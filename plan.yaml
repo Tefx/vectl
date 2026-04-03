@@ -56935,6 +56935,45 @@ phases:
     without requiring premature legacy deletion.
   depends_on:
   - orch_resolver
+  steps:
+  - id: orch_system_wiring.impl
+    name: Wire legacy runtime entrypoints through orchestration components
+    status: pending
+    description: 'Serial integration step: wire the existing runnable driver entry/runtime
+      surfaces through the new orchestration package after component extraction.
+
+
+      Scope:
+
+      - adapt legacy driver entry/runtime paths to call orchestration control, roster,
+      runtime, resolver, and core_adapter surfaces
+
+      - preserve the current runnable baseline while moving responsibility into the
+      new package
+
+      - keep external invocation shapes alive during migration; do not require a big-bang
+      cutover
+
+      - use serial integration instead of parallel registry edits for shared entrypoint/wiring
+      files
+
+
+      This is an integration-tagged implementation step.
+
+
+      ## Completion Criteria (stub exclusion)
+
+      This is an IMPLEMENTATION step. Stub-only completion is NOT acceptable. Entry
+      paths must route to real orchestration implementations, not placeholder shims.'
+    verification: '- Main path: a real entry/runtime invocation reaches orchestration
+      control/runtime logic end-to-end
+
+      - Failure path: evidence shows unresolved or blocked flows still route through
+      the documented resolver path rather than legacy hidden logic
+
+      - Wiring evidence names the exact entrypoint files updated and the orchestration
+      surfaces they call'
+    agent: python-senior
 - id: orch_migration_finish
   name: Orchestration Plane Migration Finish
   status: locked

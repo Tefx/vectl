@@ -57014,7 +57014,7 @@ phases:
       - none'
   - id: orch_core_authority.spec_conformance
     name: Verify isolation semantics and core authority conformance
-    status: pending
+    status: claimed
     description: 'Adversarial spec conformance review for authoritative isolation
       semantics and core authority.
 
@@ -57039,6 +57039,8 @@ phases:
     depends_on:
     - orch_core_authority.impl
     agent: spec-verifier
+    claimed_by: spec-verifier
+    claimed_at: '2026-04-03T17:55:13.621376+00:00'
   - id: orch_core_authority.gate
     name: Gate core authority and isolation landing
     status: pending

@@ -56929,7 +56929,7 @@ phases:
       - docs/ORCHESTRATION-PLANE-IMPLEMENTATION-DESIGN.md sections 3.6 and 7'
   - id: orch_core_authority.impl
     name: Land authoritative isolation semantics and introduce core_adapter
-    status: pending
+    status: claimed
     description: 'Fill in stub bodies in src/vectl/orchestration/core_adapter.py and
       the authoritative core/step model surfaces per the contract from step orch_core_authority.contract.
 
@@ -56972,6 +56972,8 @@ phases:
     depends_on:
     - orch_core_authority.contract
     agent: python-senior
+    claimed_by: python-senior
+    claimed_at: '2026-04-03T17:46:49.074950+00:00'
   - id: orch_core_authority.spec_conformance
     name: Verify isolation semantics and core authority conformance
     status: pending

@@ -57512,7 +57512,7 @@ phases:
       - docs/ORCHESTRATION-PLANE-ISOLATION-SEMANTICS.md sections 5.3, 6, 10'
 - id: orch_resolver
   name: Orchestration Plane Resolver Landing
-  status: pending
+  status: in_progress
   gate: Resolver handles only blocked/unresolved reasoning via ResolutionCase/ResolutionReport,
     typed judgment support is rehomed cleanly, and control resnapshots and reevaluates
     after resolution.
@@ -57521,7 +57521,7 @@ phases:
   steps:
   - id: orch_resolver.contract
     name: Pin resolver and judgments contracts
-    status: pending
+    status: claimed
     description: 'Pin the orchestration-plane resolver contract in src/vectl/orchestration/resolver.py
       and rehome typed judgment support into src/vectl/orchestration/judgments.py.
 
@@ -57559,6 +57559,8 @@ phases:
       - Evidence records the clean separation between typed judgments and resolver
       invocation glue'
     agent: python-senior
+    claimed_by: python-senior
+    claimed_at: '2026-04-03T18:38:40.426148+00:00'
   - id: orch_resolver.impl
     name: Land resolver using ResolutionCase and ResolutionReport
     status: pending

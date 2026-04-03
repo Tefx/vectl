@@ -415,8 +415,14 @@ def validate_event_payload(record: EventRegistryRecord, payload: Mapping[str, ob
         payload: Event payload kwargs destined for the envelope ``data`` field.
 
     Raises:
+        ValueError: If payload omits required fields.
         ValueError: If payload includes a nested ``version`` shim.
     """
+
+    missing = tuple(field for field in record.required if field not in payload)
+    if missing:
+        joined = ", ".join(missing)
+        raise ValueError(f"{record.event} payload missing required fields: {joined}")
 
     if "version" in payload:
         raise ValueError(

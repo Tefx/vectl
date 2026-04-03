@@ -6,6 +6,7 @@ import inspect
 import time
 from typing import get_type_hints
 
+from src.vectl.driver.events import emitter as emitter_module
 from src.vectl.driver.events.emitter import (
     DECIDE_EVENT_DEF,
     FINAL_EVENT_DEF,
@@ -304,3 +305,52 @@ class TestSinkOwnershipSplit:
             assert "top-level envelope version" in str(exc)
         else:
             raise AssertionError("expected ValueError for nested payload version")
+
+    def test_file_observer_rejects_missing_required_fields(self, tmp_path) -> None:
+        from src.vectl.driver.config import ObservabilityConfig
+
+        observer = FileObserver(ObservabilityConfig(events_file=str(tmp_path / "events.jsonl")))
+        try:
+            observer.emit(
+                STEP_DISPATCHED,
+                step_id="core.impl",
+                agent="python-executor",
+                session_reuse=False,
+            )
+        except ValueError as exc:
+            assert "missing required fields" in str(exc)
+            assert "runner" in str(exc)
+        else:
+            raise AssertionError("expected ValueError for missing required fields")
+
+    def test_null_observer_rejects_missing_required_fields(self) -> None:
+        observer = NullObserver()
+        try:
+            observer.emit("DRIVER_LIFECYCLE", phase="startup")
+        except ValueError as exc:
+            assert "missing required fields" in str(exc)
+            assert "run_id" in str(exc)
+        else:
+            raise AssertionError("expected ValueError for missing required fields")
+
+
+class TestAdvancedObservabilitySchemaDriftGuard:
+    def test_schema_alignment_reports_field_level_required_mismatch(self, monkeypatch) -> None:
+        from src.vectl.driver.events.registry import EVENT_REGISTRY
+
+        drifted_registry = dict(EVENT_REGISTRY)
+        lifecycle_record = drifted_registry["DRIVER_LIFECYCLE"]
+        drifted_registry["DRIVER_LIFECYCLE"] = EventRegistryRecord(
+            event=lifecycle_record.event,
+            version=lifecycle_record.version,
+            required=("phase",),
+            optional=lifecycle_record.optional,
+            owner=lifecycle_record.owner,
+            compatibility=lifecycle_record.compatibility,
+        )
+        monkeypatch.setattr(emitter_module, "EVENT_REGISTRY", drifted_registry)
+
+        drift = emitter_module.assert_advanced_observability_schema_alignment()
+
+        assert "required_mismatch:DRIVER_LIFECYCLE" in drift
+        assert "required_missing:DRIVER_LIFECYCLE:run_id" in drift

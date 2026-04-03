@@ -8,6 +8,7 @@ from unittest.mock import MagicMock
 
 import pytest
 
+import src.vectl.driver.loop as loop_module
 from src.vectl.driver.config import (
     DriverConfig,
     JudgeConfig,
@@ -31,7 +32,13 @@ from src.vectl.driver.loop import (
 )
 from src.vectl.driver.runtime_context import RuntimeContext
 from src.vectl.driver.session import SessionPool
-from src.vectl.driver.types import CompletedEntry, DriverState, RunnerResult, RunnerStatus
+from src.vectl.driver.types import (
+    CompletedEntry,
+    DriverState,
+    RunnerResult,
+    RunnerStatus,
+    StreamLivenessState,
+)
 from src.vectl.driver.worktree import (
     ConflictResolverDispatch,
     MergeOutcome,
@@ -1306,3 +1313,65 @@ async def test_reconcile_failure_threshold_escalates_once(monkeypatch: pytest.Mo
     assert state.failure_count("core.impl") == 3
     assert sum(1 for event, _ in observer.events if event == "ESCALATION_VERDICT") == 1
     assert sum(1 for event, _ in observer.events if event == "ESCALATION_DEFERRED") == 1
+
+
+@pytest.mark.anyio
+async def test_reconcile_no_progress_recovery_matrix_halts_with_fresh_heartbeat(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    state = DriverState()
+    observer = _RecordingObserver()
+    completed = CompletedEntry(
+        step_id="core.impl",
+        agent="python-executor",
+        runner_name="opencode",
+        result=RunnerResult(
+            status=RunnerStatus.STALL,
+            session_id="ses-stall",
+            output="watchdog timeout without progress",
+            elapsed_seconds=1.0,
+            exit_code=None,
+        ),
+        worktree_path=".vectl/worktrees/core.impl",
+        elapsed_seconds=1.0,
+    )
+    state.streaming_live_state["core.impl"] = StreamLivenessState(
+        phase="running",
+        last_heartbeat_at_monotonic=loop_module.time.monotonic(),
+        last_progress=None,
+    )
+
+    monkeypatch.setattr("src.vectl.driver.loop.load_plan_definition", lambda _p: (_FakePlan(), "h"))
+    monkeypatch.setattr("src.vectl.driver.loop.save_plan", lambda *_a, **_k: None)
+    monkeypatch.setattr("src.vectl.driver.loop.defer_step", lambda plan, *_a, **_k: plan)
+
+    class _NoFailureJudge:
+        def is_enabled(self, judgment_type: JudgmentType) -> bool:
+            _ = judgment_type
+            return False
+
+    context = RuntimeContext(
+        state=state,
+        config=_base_config(),
+        judge=cast(Any, _NoFailureJudge()),
+        session_pool=SessionPool(SessionConfig(reuse_ttl=300)),
+        observer=observer,
+        plan_path=Path("plan.yaml"),
+        runners={},
+    )
+
+    await reconcile(completed=completed, context=context)
+
+    assert state.halt_requested is True
+    assert state.final_halt_reason == "no_progress_with_fresh_heartbeat_requires_manual_review"
+    assert any(
+        event == "RECOVERY"
+        and data.get("type") == "runner_recovery_matrix"
+        and data.get("disposition") == "halt"
+        for event, data in observer.events
+    )
+    assert any(
+        event == "HALT_REQUESTED"
+        and data.get("reason") == "no_progress_with_fresh_heartbeat_requires_manual_review"
+        for event, data in observer.events
+    )

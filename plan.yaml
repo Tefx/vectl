@@ -57777,7 +57777,7 @@ phases:
       - none (verification-only test additions)'
   - id: orch_resolver.gate
     name: Gate resolver landing
-    status: pending
+    status: claimed
     description: 'Gate review for resolver landing.
 
 
@@ -57806,6 +57806,8 @@ phases:
     - orch_resolver.impl
     - orch_resolver.verify
     agent: gate-reviewer
+    claimed_by: gate-reviewer
+    claimed_at: '2026-04-03T18:53:53.239634+00:00'
 - id: orch_system_wiring
   name: Orchestration Plane System Wiring
   status: locked

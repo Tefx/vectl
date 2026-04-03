@@ -56337,7 +56337,7 @@ phases:
   steps:
   - id: orch_roster_runtime.roster_contract
     name: Pin roster contract and isolation boundary
-    status: pending
+    status: claimed
     description: 'Pin the orchestration-plane roster contract in src/vectl/orchestration/roster.py
       using docs/ORCHESTRATION-PLANE-ARCHITECTURE.md section 5.2, docs/ORCHESTRATION-PLANE-INTERFACES.md
       section 4.2, and docs/ORCHESTRATION-PLANE-ISOLATION-SEMANTICS.md sections 5.3
@@ -56376,6 +56376,8 @@ phases:
 
       - Evidence cites the exact isolation rule for independent tasks'
     agent: python-executor
+    claimed_by: python-executor
+    claimed_at: '2026-04-03T16:59:43.540884+00:00'
   - id: orch_roster_runtime.runtime_contract
     name: Pin runtime contract and workspace mechanics boundary
     status: claimed

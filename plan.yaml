@@ -56103,6 +56103,60 @@ phases:
     without deleting legacy driver behavior.
   depends_on:
   - driver-enhancement-review
+  steps:
+  - id: orch_foundation.contracts
+    name: Establish orchestration package skeleton and shared contracts
+    status: pending
+    description: 'Create the initial src/vectl/orchestration/ package boundary and
+      contract-only modules per docs/ORCHESTRATION-PLANE-IMPLEMENTATION-DESIGN.md
+      sections 2-3 and docs/ORCHESTRATION-PLANE-INTERFACES.md sections 3-5.
+
+
+      Contract scope only:
+
+      - add __init__.py, contracts.py, judgments.py, control.py, roster.py, runtime.py,
+      resolver.py, core_adapter.py, config.py, events.py
+
+      - pin shared dataclasses and Protocols for CoreSnapshot, RosterSnapshot, RuntimeSnapshot,
+      ControlDecision, WorkLease, ExecutionRequest, ExecutionResult, ResolutionCase,
+      and ResolutionReport
+
+      - pin the four target component interfaces exactly as documented
+
+      - preserve the future architecture vocabulary: control, roster, runtime, resolver
+
+
+      Do NOT migrate behavior in this step.
+
+      Do NOT rename driver files wholesale.
+
+      Legacy driver code remains the executable baseline until equivalent new behavior
+      exists.
+
+
+      step_type: contract
+
+      contract_purity: ENFORCED
+
+      contract_outputs:
+
+      - signatures
+
+      - type_defs
+
+      - interfaces
+
+      - stubs'
+    verification: '- Package tree under src/vectl/orchestration/ exists with the documented
+      module names
+
+      - Shared contracts match the authoritative docs for the four orchestration-plane
+      components
+
+      - No product behavior is migrated out of src/vectl/driver/ yet
+
+      - Evidence includes the created module list and the pinned public interfaces'
+    agent: python-executor
 - id: orch_roster_runtime
   name: Orchestration Plane Roster and Runtime Extraction
   status: locked

@@ -58358,7 +58358,7 @@ phases:
       \nDeviation records:\n- none"
   - id: orch_migration_finish.final_review
     name: Run final orchestration migration review
-    status: pending
+    status: claimed
     description: 'Final independent review for the orchestration-plane migration finish.
 
 
@@ -58387,6 +58387,8 @@ phases:
     depends_on:
     - orch_migration_finish.finish_alignment
     agent: spec-verifier
+    claimed_by: spec-verifier
+    claimed_at: '2026-04-03T19:35:11.406800+00:00'
   - id: orch_migration_finish.gate
     name: Gate orchestration migration finish
     status: pending

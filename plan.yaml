@@ -56974,6 +56974,29 @@ phases:
       - Wiring evidence names the exact entrypoint files updated and the orchestration
       surfaces they call'
     agent: python-senior
+  - id: orch_system_wiring.liveness_probe
+    name: Probe orchestration entrypoint liveness and vertical slice
+    status: pending
+    description: 'Liveness probe for the new orchestration-plane runtime path.
+
+
+      Run a real entrypoint invocation through the wired orchestration package and
+      prove one complete vertical slice from user-facing invocation to observable
+      effect.
+
+
+      verification_scope: phase-check
+
+      This step protects the runnable-surface gate for orchestration entry wiring.'
+    verification: '- Entry point starts and accepts at least one real operation
+
+      - Evidence includes the exact command executed and actual output
+
+      - At least one complete path through entrypoint -> control -> runtime -> result
+      is shown'
+    depends_on:
+    - orch_system_wiring.impl
+    agent: blind-tester
 - id: orch_migration_finish
   name: Orchestration Plane Migration Finish
   status: locked

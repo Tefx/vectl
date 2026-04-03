@@ -56103,3 +56103,11 @@ phases:
     without deleting legacy driver behavior.
   depends_on:
   - driver-enhancement-review
+- id: orch_roster_runtime
+  name: Orchestration Plane Roster and Runtime Extraction
+  status: locked
+  gate: Reusable resource logic lives under roster, mechanical workspace/runner logic
+    lives under runtime, and legacy behavior remains preserved through baseline tests
+    and targeted vertical-slice proof.
+  depends_on:
+  - orch_foundation

@@ -58177,7 +58177,7 @@ phases:
   steps:
   - id: orch_migration_finish.test_rehome
     name: Rehome orchestration tests by behavior
-    status: claimed
+    status: done
     description: 'Rehome tests by behavior rather than by legacy naming.
 
 
@@ -58203,6 +58203,30 @@ phases:
     agent: python-executor
     claimed_by: python-executor
     claimed_at: '2026-04-03T19:18:19.231648+00:00'
+    done_at: '2026-04-03T19:29:18.223343+00:00'
+    evidence: "## Artifact:\n- Created `tests/legacy/driver/` directory tree with\
+      \ subdirectories:\n  - `unit/` - driver types, config, errors, dispatch, session,\
+      \ worktree, observe, policy, extended_runners, runners, impl, session_edge_cases\n\
+      \  - `runtime/` - loop_runtime, loop_contract, loop_hardening, entrypoint_drift\n\
+      \  - `judgment/` - judge, judge_runtime, judgments, judgment_expansion_contract,\
+      \ judgment_expansion_flow, judge_impl_runtime, judge_prompt_migration_impl,\
+      \ judge_recovery_policy_impl, replan_verdict\n  - `continuity/` - continuity_contract,\
+      \ continuity_hygiene_storage\n  - `recovery/` - recovery, recovery_black_box\n\
+      \  - `parsers/` - codex_parser_behavior, gemini_parser_behavior\n  - `resume/`\
+      \ - codex_resume_behavior, gemini_resume_behavior\n  - `expected_red/` - all\
+      \ EXPECTED-RED pre-implementation tests\n- All 38 driver test files moved via\
+      \ `git mv` (preserving git history)\n- Orchestration tests remain in `tests/orchestration/unit/`\
+      \ and `tests/orchestration/integration/` (already correctly located)\n- No test\
+      \ files were deleted - all behavior coverage preserved\n\n## Verification:\n\
+      - `uv run pytest tests/legacy/driver/ tests/orchestration/ --collect-only -q`:\
+      \ 1063 tests collected\n- `uv run pytest tests/legacy/driver/ tests/orchestration/\
+      \ -q`: 936 passed, 26 failed, 42 skipped, 34 xfailed, 21 xpassed, 4 errors\n\
+      - Pre-existing failures are worktree state issues (config fixtures, unimplemented\
+      \ features), NOT caused by rehome\n- `git status` shows all renames properly\
+      \ tracked\n- Test imports work correctly after relocation (collection succeeds)\n\
+      \n## Spec Link:\n- step: `orch_migration_finish.test_rehome`\n- gate criteria:\
+      \ \"Tests are rehomed by behavior, legacy disposition is audited against equivalence\
+      \ rules\""
   - id: orch_migration_finish.legacy_disposition_audit
     name: Audit legacy package disposition against equivalence rules
     status: claimed

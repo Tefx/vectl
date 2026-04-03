@@ -56782,6 +56782,47 @@ phases:
     after resolution.
   depends_on:
   - orch_control
+  steps:
+  - id: orch_resolver.contract
+    name: Pin resolver and judgments contracts
+    status: pending
+    description: 'Pin the orchestration-plane resolver contract in src/vectl/orchestration/resolver.py
+      and rehome typed judgment support into src/vectl/orchestration/judgments.py.
+
+
+      Scope:
+
+      - pin Resolver.resolve(case: ResolutionCase) -> ResolutionReport exactly as
+      documented
+
+      - separate typed/local judgment support from resolver invocation glue
+
+      - preserve the rule that resolver reasons over blocked or unresolved cases only
+
+      - forbid resolver from becoming permanent control authority
+
+
+      step_type: contract
+
+      contract_purity: ENFORCED
+
+      contract_outputs:
+
+      - signatures
+
+      - type_defs
+
+      - interfaces
+
+      - stubs'
+    verification: '- Resolver contract matches ResolutionCase/ResolutionReport requirements
+      exactly
+
+      - judgments.py remains a support module, not a fifth architecture component
+
+      - Evidence records the clean separation between typed judgments and resolver
+      invocation glue'
+    agent: python-senior
 - id: orch_system_wiring
   name: Orchestration Plane System Wiring
   status: locked

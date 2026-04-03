@@ -57156,3 +57156,34 @@ phases:
     - orch_migration_finish.test_rehome
     - orch_migration_finish.legacy_disposition_audit
     agent: python-senior
+  - id: orch_migration_finish.final_review
+    name: Run final orchestration migration review
+    status: pending
+    description: 'Final independent review for the orchestration-plane migration finish.
+
+
+      Review depth: THOROUGH.
+
+      Scope:
+
+      - full-plan-check for orchestration package boundaries, migration disposition,
+      and final documented behavior
+
+      - verify target docs remain authoritative and legacy docs remain reference-only
+
+      - confirm no legacy path was retired before equivalent behavior and tests existed
+
+      - confirm the final architecture is exactly control, roster, runtime, resolver
+
+
+      verification_scope: full-plan-check'
+    verification: '- Final evidence table covers architecture naming, authority, isolation
+      semantics, resolver contract, and migration disposition
+
+      - Review explicitly checks that driver is baseline-only and not the future architecture
+      concept
+
+      - Any remaining ambiguity is documented with non-retirement disposition'
+    depends_on:
+    - orch_migration_finish.finish_alignment
+    agent: spec-verifier

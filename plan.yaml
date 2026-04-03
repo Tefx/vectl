@@ -56400,6 +56400,37 @@ phases:
     depends_on:
     - orch_roster_runtime.runtime_contract
     agent: python-senior
+  - id: orch_roster_runtime.verify
+    name: Verify roster and runtime extraction against legacy baseline
+    status: pending
+    description: 'Run focused verification for the extracted roster and runtime components.
+
+
+      Scope:
+
+      - add tests under tests/orchestration/unit/ for roster and runtime owners
+
+      - rerun legacy baseline tests that still protect equivalent behavior
+
+      - prove one targeted vertical slice reaches extracted runtime mechanics without
+      deleting legacy entrypoints
+
+
+      verification_scope: phase-check
+
+      verification_style: behavior-preserving migration evidence'
+    verification: '- tests/orchestration/unit/test_roster.py and tests/orchestration/unit/test_runtime.py
+      exist and pass
+
+      - Legacy baseline tests covering session/worktree/runner behavior still pass
+      where new owners are equivalent
+
+      - Evidence includes one vertical-slice command or trace showing extracted runtime
+      mechanics are exercised'
+    depends_on:
+    - orch_roster_runtime.roster_impl
+    - orch_roster_runtime.runtime_impl
+    agent: integration-verifier
 - id: orch_core_authority
   name: Orchestration Plane Core Authority and Isolation
   status: locked

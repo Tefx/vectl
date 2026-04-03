@@ -56763,7 +56763,7 @@ phases:
       - docs/ORCHESTRATION-PLANE-ISOLATION-SEMANTICS.md (3.2, 3.3, 5.3, 5.4)'
   - id: orch_roster_runtime.gate
     name: Gate roster and runtime extraction
-    status: pending
+    status: claimed
     description: 'Gate review for roster/runtime extraction.
 
 
@@ -56791,6 +56791,8 @@ phases:
     - orch_roster_runtime.runtime_impl
     - orch_roster_runtime.verify
     agent: gate-reviewer
+    claimed_by: gate-reviewer
+    claimed_at: '2026-04-03T17:30:28.051189+00:00'
 - id: orch_core_authority
   name: Orchestration Plane Core Authority and Isolation
   status: locked

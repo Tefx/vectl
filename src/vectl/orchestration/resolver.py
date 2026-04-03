@@ -79,7 +79,25 @@ class BoundResolver:
         Returns:
             ResolutionReport parsed from invocation payload.
         """
-        ...
+        try:
+            payload = self.invocation.invoke(case)
+        except Exception as exc:
+            return ResolutionReport(
+                status="operator_required",
+                summary=f"Resolver invocation failed: {exc}",
+                evidence_refs=("resolver:invocation-failed",),
+                operator_message="Review resolver invocation failure and retry.",
+            )
+
+        try:
+            return map_payload_to_report(case=case, payload=payload)
+        except ValueError as exc:
+            return ResolutionReport(
+                status="operator_required",
+                summary=f"Resolver payload validation failed: {exc}",
+                evidence_refs=("resolver:payload-invalid",),
+                operator_message="Review resolver output formatting and retry.",
+            )
 
 
 def should_preserve_case_reason(case: ResolutionCase) -> bool:
@@ -96,7 +114,8 @@ def should_preserve_case_reason(case: ResolutionCase) -> bool:
     Returns:
         True only for blocked/unresolved reason classes.
     """
-    ...
+    normalized_reason = case.reason.strip().lower()
+    return "blocked" in normalized_reason or "unresolved" in normalized_reason
 
 
 def map_payload_to_report(case: ResolutionCase, payload: Mapping[str, object]) -> ResolutionReport:
@@ -113,7 +132,19 @@ def map_payload_to_report(case: ResolutionCase, payload: Mapping[str, object]) -
     Returns:
         Bounded report for control.
     """
-    ...
+    parsed_report = judgment_support.parse_resolution_report_payload(payload)
+    if not should_preserve_case_reason(case):
+        return parsed_report
+
+    if parsed_report.summary.startswith(case.reason):
+        return parsed_report
+
+    return ResolutionReport(
+        status=parsed_report.status,
+        summary=f"{case.reason} | {parsed_report.summary}",
+        evidence_refs=parsed_report.evidence_refs,
+        operator_message=parsed_report.operator_message,
+    )
 
 
 __all__ = [

@@ -56838,7 +56838,7 @@ phases:
       Gate verdict: PASS'
 - id: orch_core_authority
   name: Orchestration Plane Core Authority and Isolation
-  status: in_progress
+  status: done
   gate: IsolationMode is authoritative on Step/core surfaces, core_adapter is the
     single orchestration-plane core boundary, and default migration preserves existing
     plans without bulk rewrites.
@@ -57083,7 +57083,7 @@ phases:
       - docs/ORCHESTRATION-PLANE-INTERFACES.md'
   - id: orch_core_authority.gate
     name: Gate core authority and isolation landing
-    status: claimed
+    status: done
     description: 'Gate review for authoritative isolation semantics and core_adapter
       landing.
 
@@ -57115,9 +57115,58 @@ phases:
     agent: gate-reviewer
     claimed_by: gate-reviewer
     claimed_at: '2026-04-03T18:05:14.006282+00:00'
+    done_at: '2026-04-03T18:11:24.404910+00:00'
+    evidence: 'Artifact:
+
+      - Commits audited: ca195a6 (impl), b987391 (contract)
+
+      - Phase files verified: src/vectl/orchestration/core_adapter.py, src/vectl/io.py,
+      src/vectl/models.py, related tests
+
+
+      Verification:
+
+      - Phase-specific tests: 37 passed (core_adapter contract/impl + io isolation
+      cleanup)
+
+      - Type checks: mypy passed for core_adapter.py, io.py, models.py
+
+      - Lint: core_adapter/io pass; one pre-existing non-phase E501 in models.py
+
+      - Verified IsolationMode authoritative values/default and Step default migration
+      behavior
+
+      - Verified core_adapter is the single orchestration-plane bridge to official
+      core surfaces
+
+      - Verified prior blocker-class findings were pre-existing and non-intersecting
+      for this phase gate
+
+
+      Spec link:
+
+      - docs/ORCHESTRATION-PLANE-ISOLATION-SEMANTICS.md sections 2, 3, 10
+
+      - docs/ORCHESTRATION-PLANE-IMPLEMENTATION-DESIGN.md section 3.6
+
+      - docs/ORCHESTRATION-PLANE-ARCHITECTURE.md sections 2.1, 3 (G1), 7
+
+
+      Findings:
+
+      - blocker: []
+
+      - should_fix: pre-existing test_contracts type-introspection failures (5)
+
+      - suggestion: pre-existing models.py line-length comment
+
+      - tech_debt: []
+
+
+      Gate verdict: PASS'
 - id: orch_control
   name: Orchestration Plane Control Extraction
-  status: locked
+  status: pending
   gate: Plan-aware orchestration flow is carved into control using core_adapter, roster,
     and runtime without wholesale renaming of driver/loop.py and without smuggling
     runtime policy into mechanical layers.

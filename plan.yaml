@@ -56673,7 +56673,7 @@ phases:
       - none'
   - id: orch_roster_runtime.verify
     name: Verify roster and runtime extraction against legacy baseline
-    status: pending
+    status: claimed
     description: 'Run focused verification for the extracted roster and runtime components.
 
 
@@ -56702,6 +56702,8 @@ phases:
     - orch_roster_runtime.roster_impl
     - orch_roster_runtime.runtime_impl
     agent: integration-verifier
+    claimed_by: integration-verifier
+    claimed_at: '2026-04-03T17:25:38.546121+00:00'
   - id: orch_roster_runtime.gate
     name: Gate roster and runtime extraction
     status: pending

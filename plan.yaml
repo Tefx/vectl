@@ -57026,6 +57026,34 @@ phases:
     depends_on:
     - orch_system_wiring.impl
     agent: wiring-auditor
+  - id: orch_system_wiring.gate
+    name: Gate orchestration system wiring
+    status: pending
+    description: 'Gate review for orchestration system wiring.
+
+
+      Review depth: THOROUGH.
+
+      Cross-cutting focus:
+
+      - runnable entry surfaces are live through orchestration components
+
+      - vertical slice evidence is real, not mock-only
+
+      - retained legacy paths are transitional and justified
+
+
+      verification_scope: phase-check'
+    verification: '- Entry/runtime path is runnable through the orchestration package
+
+      - Wiring audit passes or justified residual shims are explicitly documented
+
+      - Evidence is sufficient to begin test rehome and legacy disposition work'
+    depends_on:
+    - orch_system_wiring.impl
+    - orch_system_wiring.liveness_probe
+    - orch_system_wiring.wiring_audit
+    agent: gate-reviewer
 - id: orch_migration_finish
   name: Orchestration Plane Migration Finish
   status: locked

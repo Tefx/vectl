@@ -56623,6 +56623,50 @@ phases:
     runtime policy into mechanical layers.
   depends_on:
   - orch_core_authority
+  steps:
+  - id: orch_control.contract
+    name: Pin control contract and decision boundary
+    status: pending
+    description: 'Pin the orchestration-plane control contract in src/vectl/orchestration/control.py
+      using docs/ORCHESTRATION-PLANE-ARCHITECTURE.md sections 5.1 and 6, docs/ORCHESTRATION-PLANE-INTERFACES.md
+      section 4.1, and docs/ORCHESTRATION-PLANE-IMPLEMENTATION-DESIGN.md step 5.
+
+
+      Scope:
+
+      - pin Control.evaluate(...) -> ControlDecision and apply_resolution(...) ->
+      ControlDecision
+
+      - define control as plan-aware orchestration flow only
+
+      - require control to consume authoritative core snapshots via core_adapter and
+      component snapshots from roster/runtime
+
+      - forbid wholesale renaming or bulk copying of driver/loop.py
+
+
+      step_type: contract
+
+      contract_purity: ENFORCED
+
+      contract_outputs:
+
+      - signatures
+
+      - type_defs
+
+      - interfaces
+
+      - stubs'
+    verification: '- Control contract exposes only evaluate/apply_resolution per the
+      authoritative docs
+
+      - Contract explicitly keeps runner/worktree mechanics and long-running reasoning
+      out of control
+
+      - Evidence records the legacy loop surfaces being decomposed by responsibility,
+      not by file rename'
+    agent: python-senior
 - id: orch_resolver
   name: Orchestration Plane Resolver Landing
   status: locked

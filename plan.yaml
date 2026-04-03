@@ -57512,7 +57512,7 @@ phases:
       - docs/ORCHESTRATION-PLANE-ISOLATION-SEMANTICS.md sections 5.3, 6, 10'
 - id: orch_resolver
   name: Orchestration Plane Resolver Landing
-  status: in_progress
+  status: done
   gate: Resolver handles only blocked/unresolved reasoning via ResolutionCase/ResolutionReport,
     typed judgment support is rehomed cleanly, and control resnapshots and reevaluates
     after resolution.
@@ -57777,7 +57777,7 @@ phases:
       - none (verification-only test additions)'
   - id: orch_resolver.gate
     name: Gate resolver landing
-    status: claimed
+    status: done
     description: 'Gate review for resolver landing.
 
 
@@ -57808,9 +57808,44 @@ phases:
     agent: gate-reviewer
     claimed_by: gate-reviewer
     claimed_at: '2026-04-03T18:53:53.239634+00:00'
+    done_at: '2026-04-03T18:58:14.305599+00:00'
+    evidence: 'Artifact:
+
+      - src/vectl/orchestration/resolver.py
+
+      - src/vectl/orchestration/judgments.py
+
+      - tests/orchestration/unit/test_resolver.py
+
+      - tests/orchestration/integration/test_control_resolver_contract.py
+
+
+      Verification:
+
+      - Resolver protocol surface remains bounded: `resolve(case: ResolutionCase)
+      -> ResolutionReport`
+
+      - Typed judgment support isolated in judgments.py; invocation glue in resolver.py
+
+      - No hidden authority transfer: bounded report statuses/fields enforced and
+      tested
+
+      - Control↔resolver contract conformance validated via unit + integration suites,
+      including post-resolution resnapshot path
+
+      - Gate reviewer verdict: PASS for downstream system wiring readiness
+
+
+      Spec link:
+
+      - docs/ORCHESTRATION-PLANE-RESOLUTION-CONTRACT.md sections 2-10
+
+      - docs/ORCHESTRATION-PLANE-INTERFACES.md sections 3.8-3.9, 4.1, 4.4, 5.3
+
+      - docs/ORCHESTRATION-PLANE-IMPLEMENTATION-DESIGN.md sections 3.5, 3.6, 5'
 - id: orch_system_wiring
   name: Orchestration Plane System Wiring
-  status: locked
+  status: pending
   gate: Legacy runtime entrypoints route through the orchestration package with real
     runnable behavior, and one end-to-end vertical slice proves the new plane is live
     without requiring premature legacy deletion.

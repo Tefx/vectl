@@ -56113,7 +56113,7 @@ phases:
   steps:
   - id: orch_foundation.contracts
     name: Establish orchestration package skeleton and shared contracts
-    status: claimed
+    status: done
     description: 'Create the initial src/vectl/orchestration/ package boundary and
       contract-only modules per docs/ORCHESTRATION-PLANE-IMPLEMENTATION-DESIGN.md
       sections 2-3 and docs/ORCHESTRATION-PLANE-INTERFACES.md sections 3-5.
@@ -56166,6 +56166,59 @@ phases:
     agent: python-executor
     claimed_by: python-executor
     claimed_at: '2026-04-03T16:38:49.531731+00:00'
+    done_at: '2026-04-03T16:45:18.664005+00:00'
+    evidence: 'Artifact:
+
+      - Commit: 0f264ba9fff9478580524ad1456b370ba2015dc2
+
+      - Branch: vectl/step-orch_foundation.contracts
+
+      - Worktree: /Users/tefx/Projects/vectl/.vectl/worktrees/orch_foundation.contracts
+
+
+      Verification:
+
+      - Run: `ls src/vectl/orchestration/` -> 11 modules created (__init__.py, contracts.py,
+      interfaces.py, control.py, roster.py, runtime.py, resolver.py, judgments.py,
+      core_adapter.py, config.py, events.py)
+
+      - Run: `python3 -c "from vectl.orchestration import *"` -> Package imports OK
+
+      - Verified shared types: CoreSnapshot, RosterSnapshot, RuntimeSnapshot, ControlDecision,
+      WorkLease, ExecutionRequest, ExecutionResult, ResolutionCase, ResolutionReport
+
+      - Verified component Protocols: Control, Roster, Runtime, Resolver
+
+      - Verified ControlDecision kinds: dispatch, resolve, wait, done
+
+      - Verified ResolutionReport statuses: unblocked, waiting, operator_required,
+      halt
+
+      - Verified no orchestration modules import from src/vectl/driver/
+
+      - Verified src/vectl/driver/ package unchanged (legacy baseline intact)
+
+
+      Spec link:
+
+      - docs/ORCHESTRATION-PLANE-IMPLEMENTATION-DESIGN.md (sections 2-3)
+
+      - docs/ORCHESTRATION-PLANE-INTERFACES.md (sections 3-5)
+
+
+      Module list with pinned interfaces:
+
+      - __init__.py: exports shared types and component protocols
+
+      - contracts.py: shared dataclasses / literals
+
+      - interfaces.py: Control, Roster, Runtime, Resolver Protocols
+
+      - control.py, roster.py, runtime.py, resolver.py, judgments.py, core_adapter.py,
+      config.py, events.py: stubs
+
+
+      Contract purity: ENFORCED — no behavior migrated; contract boundary only.'
   - id: orch_foundation.contract_tests
     name: Define orchestration package contract tests
     status: pending

@@ -45297,7 +45297,7 @@ phases:
       - PASS'
 - id: driver-enhancement-review
   name: 'Driver Enhancement: Review'
-  status: pending
+  status: in_progress
   gate: Final doc-sync plus independent deep review confirm the hardened and enhanced
     driver is safe, observable, and extension-ready.
   context: 'Driver Enhancement: Review. Enhancement review remains downstream of driver-enhancement-integration
@@ -45403,7 +45403,7 @@ phases:
     agent: spec-verifier
   - id: driver-enhancement-review.architecture-review
     name: Review enhancement architecture boundaries
-    status: pending
+    status: claimed
     description: 'step_type: review
 
 
@@ -45427,6 +45427,8 @@ phases:
 
       - Runtime / entrypoint / external contract boundaries remain aligned'
     agent: software-architect
+    claimed_by: software-architect
+    claimed_at: '2026-04-03T16:28:28.385261+00:00'
   - id: driver-enhancement-review.contract-strength
     name: Audit enhancement contract strength
     status: pending

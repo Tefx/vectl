@@ -56096,3 +56096,10 @@ phases:
       product_implementation_files_modified: false
 
       verdict: PASS'
+- id: orch_foundation
+  name: Orchestration Plane Foundation
+  status: locked
+  gate: Shared orchestration package skeleton and boundary contracts exist under src/vectl/orchestration/
+    without deleting legacy driver behavior.
+  depends_on:
+  - driver-enhancement-review

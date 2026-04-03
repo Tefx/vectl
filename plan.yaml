@@ -58674,7 +58674,7 @@ phases:
       stale path references reconciled.'
   - id: orch_migration_finish.retest_gate_evidence
     name: Re-test migration finish gate evidence after batched fix
-    status: claimed
+    status: pending
     description: 'Independent retest of the migration-finish gate blockers against
       the fixed repository state.
 
@@ -58764,5 +58764,3 @@ phases:
     depends_on:
     - orch_migration_finish.fix_gate_blockers
     agent: gate-reviewer
-    claimed_by: integration-verifier
-    claimed_at: '2026-04-03T19:54:01.225148+00:00'

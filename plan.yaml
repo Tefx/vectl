@@ -58466,7 +58466,7 @@ phases:
       before final pass.'
   - id: orch_migration_finish.fix_gate_blockers
     name: Batch-fix migration finish gate blockers
-    status: pending
+    status: claimed
     description: 'Fix ALL blockers found by orch_migration_finish.gate without removing
       the historical failed gate step.
 
@@ -58612,6 +58612,8 @@ phases:
     depends_on:
     - orch_migration_finish.gate
     agent: python-senior
+    claimed_by: python-senior
+    claimed_at: '2026-04-03T19:43:58.858667+00:00'
   - id: orch_migration_finish.retest_gate_evidence
     name: Re-test migration finish gate evidence after batched fix
     status: pending

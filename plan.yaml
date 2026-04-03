@@ -56190,6 +56190,32 @@ phases:
     depends_on:
     - orch_foundation.contracts
     agent: integration-verifier
+  - id: orch_foundation.gate
+    name: Gate orchestration foundation
+    status: pending
+    description: 'Gate review for orchestration foundation.
+
+
+      Review depth: STANDARD.
+
+      Check that the new package exists, contracts are minimal, and no behavior migration
+      or architectural drift happened during foundation work.
+
+
+      verification_scope: phase-check
+
+      Protects downstream gates for roster/runtime extraction and core authority migration.'
+    verification: '- Foundation modules exist under src/vectl/orchestration/
+
+      - Shared contract surfaces align with authoritative docs
+
+      - No legacy behavior or tests were prematurely deleted
+
+      - Evidence quality is sufficient to begin responsibility extraction'
+    depends_on:
+    - orch_foundation.contracts
+    - orch_foundation.contract_tests
+    agent: gate-reviewer
 - id: orch_roster_runtime
   name: Orchestration Plane Roster and Runtime Extraction
   status: locked

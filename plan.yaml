@@ -56744,6 +56744,36 @@ phases:
     depends_on:
     - orch_control.impl
     agent: integration-verifier
+  - id: orch_control.gate
+    name: Gate control extraction
+    status: pending
+    description: 'Gate review for control extraction.
+
+
+      Review depth: THOROUGH.
+
+      Cross-cutting focus:
+
+      - control is plan-aware only
+
+      - core remains authority through core_adapter
+
+      - runtime and roster boundaries stay intact
+
+
+      verification_scope: phase-check
+
+      Protects downstream resolver landing.'
+    verification: '- Control contract and implementation match the documented architecture
+
+      - No runtime mechanics or resolver-style reasoning leaked into control
+
+      - Evidence is sufficient to proceed to resolver integration'
+    depends_on:
+    - orch_control.contract
+    - orch_control.impl
+    - orch_control.verify
+    agent: gate-reviewer
 - id: orch_resolver
   name: Orchestration Plane Resolver Landing
   status: locked

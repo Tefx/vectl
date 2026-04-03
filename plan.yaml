@@ -56465,7 +56465,7 @@ phases:
     claimed_at: '2026-04-03T16:59:19.817608+00:00'
   - id: orch_roster_runtime.roster_impl
     name: Extract reusable resource logic into roster
-    status: claimed
+    status: done
     description: 'Fill in stub bodies in src/vectl/orchestration/roster.py per the
       contract from step orch_roster_runtime.roster_contract.
 
@@ -56511,6 +56511,51 @@ phases:
     agent: python-senior
     claimed_by: python-senior
     claimed_at: '2026-04-03T17:04:29.411085+00:00'
+    done_at: '2026-04-03T17:08:57.746244+00:00'
+    evidence: 'Artifact:
+
+      - Commit: 99d41dc (branch vectl/step-orch_roster_runtime.roster_impl)
+
+      - Files: src/vectl/orchestration/roster.py; tests/orchestration/unit/test_roster.py
+
+
+      Verification:
+
+      - Run: `uv run pytest -q tests/orchestration/unit/test_roster.py tests/test_driver_session.py
+      tests/test_driver_session_edge_cases.py` -> PASS (43 passed)
+
+      - Run: `uv run ruff check src/vectl/orchestration/roster.py tests/orchestration/unit/test_roster.py`
+      -> PASS
+
+      - Run: `git status --short` -> CLEAN after commit
+
+
+      Legacy-to-roster mapping:
+
+      - Reuse registry and TTL gating implemented through register/claim/snapshot
+      expiry cleanup
+
+      - Claim/release lifecycle tracked with role bookkeeping
+
+      - isolation=independent returns None (no warm reuse)
+
+      - Roster remains resource-only; no plan semantics introduced
+
+      - Legacy session implementation retained
+
+
+      Spec link:
+
+      - docs/ORCHESTRATION-PLANE-ARCHITECTURE.md (5.2, 12)
+
+      - docs/ORCHESTRATION-PLANE-INTERFACES.md (2, 4.2)
+
+      - docs/ORCHESTRATION-PLANE-ISOLATION-SEMANTICS.md (3.3, 4, 5.3, 6)
+
+
+      Deviation records:
+
+      - none'
   - id: orch_roster_runtime.runtime_impl
     name: Extract mechanical runner and workspace logic into runtime
     status: pending

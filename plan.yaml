@@ -57962,7 +57962,7 @@ phases:
     claimed_at: '2026-04-03T19:07:05.540615+00:00'
   - id: orch_system_wiring.wiring_audit
     name: Audit wiring completeness for orchestration entry paths
-    status: pending
+    status: claimed
     description: 'Wiring completeness audit for the orchestration-plane cutover.
 
 
@@ -57989,6 +57989,8 @@ phases:
     depends_on:
     - orch_system_wiring.impl
     agent: wiring-auditor
+    claimed_by: wiring-auditor
+    claimed_at: '2026-04-03T19:07:11.858488+00:00'
   - id: orch_system_wiring.gate
     name: Gate orchestration system wiring
     status: pending

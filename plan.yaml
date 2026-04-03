@@ -56337,7 +56337,7 @@ phases:
   steps:
   - id: orch_roster_runtime.roster_contract
     name: Pin roster contract and isolation boundary
-    status: claimed
+    status: done
     description: 'Pin the orchestration-plane roster contract in src/vectl/orchestration/roster.py
       using docs/ORCHESTRATION-PLANE-ARCHITECTURE.md section 5.2, docs/ORCHESTRATION-PLANE-INTERFACES.md
       section 4.2, and docs/ORCHESTRATION-PLANE-ISOLATION-SEMANTICS.md sections 5.3
@@ -56378,6 +56378,47 @@ phases:
     agent: python-executor
     claimed_by: python-executor
     claimed_at: '2026-04-03T16:59:43.540884+00:00'
+    done_at: '2026-04-03T17:03:59.689733+00:00'
+    evidence: 'Artifact:
+
+      - Commit: c1cee61 (branch vectl/step-orch_roster_runtime.roster_contract)
+
+
+      Verification:
+
+      - Run: `uv run mypy src/vectl/orchestration/roster.py --strict` -> success
+
+      - Run: import/flow check for snapshot/claim/release/register -> interfaces usable;
+      independent mode returns None
+
+      - Run: AST keyword scan for banned concepts (`continuity_group`, `session_reuse`)
+      -> PASS
+
+
+      Contract exposure:
+
+      - `snapshot() -> RosterSnapshot`
+
+      - `claim(role, isolation=IsolationMode.DEFAULT) -> WorkLease | None`
+
+      - `release(lease) -> None`
+
+      - `register(lease, expires_at) -> None`
+
+
+      Isolation rule citation:
+
+      - isolation=independent returns no reusable lease (`None`), enforcing no reuse
+      for independent tasks.
+
+
+      Spec link:
+
+      - docs/ORCHESTRATION-PLANE-ARCHITECTURE.md section 5.2
+
+      - docs/ORCHESTRATION-PLANE-INTERFACES.md section 4.2
+
+      - docs/ORCHESTRATION-PLANE-ISOLATION-SEMANTICS.md sections 5.3 and 6'
   - id: orch_roster_runtime.runtime_contract
     name: Pin runtime contract and workspace mechanics boundary
     status: claimed

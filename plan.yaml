@@ -56127,3 +56127,11 @@ phases:
     runtime policy into mechanical layers.
   depends_on:
   - orch_core_authority
+- id: orch_resolver
+  name: Orchestration Plane Resolver Landing
+  status: locked
+  gate: Resolver handles only blocked/unresolved reasoning via ResolutionCase/ResolutionReport,
+    typed judgment support is rehomed cleanly, and control resnapshots and reevaluates
+    after resolution.
+  depends_on:
+  - orch_control

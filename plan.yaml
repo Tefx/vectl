@@ -56354,6 +56354,52 @@ phases:
     depends_on:
     - orch_roster_runtime.roster_contract
     agent: python-senior
+  - id: orch_roster_runtime.runtime_impl
+    name: Extract mechanical runner and workspace logic into runtime
+    status: pending
+    description: 'Fill in stub bodies in src/vectl/orchestration/runtime.py per the
+      contract from step orch_roster_runtime.runtime_contract.
+
+
+      UPSTREAM ARTIFACTS:
+
+      - src/vectl/orchestration/runtime.py — signatures and boundary rules are authoritative
+
+      - tests/test_driver_worktree.py, tests/test_driver_runners.py, tests/test_driver_extended_runners.py
+      — baseline behavior is protected
+
+
+      YOUR SCOPE: replace stub markers with working logic that extracts mechanical
+      worktree/runner/parsing behavior from legacy driver/worktree.py, driver/runners.py,
+      and adjacent helpers into orchestration/runtime.py.
+
+
+      Required boundary rules:
+
+      - runtime owns workspace preparation, startup, collection, and cleanup only
+
+      - runtime must not make plan-aware dispatch or blockage decisions
+
+      - isolation=workspace and isolation=independent must enforce fresh workspace
+      behavior
+
+      - keep legacy runtime code until equivalent new behavior exists and is covered
+
+
+      ## Completion Criteria (stub exclusion)
+
+      This is an IMPLEMENTATION step. Stub-only completion is NOT acceptable.'
+    verification: '- Main path: runtime unit tests and targeted legacy worktree/runner
+      tests pass
+
+      - Failure path: regression coverage proves workspace and independent isolation
+      create fresh workspaces
+
+      - Evidence shows runtime remains mechanical and does not encode orchestration
+      policy'
+    depends_on:
+    - orch_roster_runtime.runtime_contract
+    agent: python-senior
 - id: orch_core_authority
   name: Orchestration Plane Core Authority and Isolation
   status: locked

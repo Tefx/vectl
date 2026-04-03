@@ -57694,7 +57694,7 @@ phases:
       - none'
   - id: orch_resolver.verify
     name: Verify control-resolver contract behavior
-    status: claimed
+    status: done
     description: 'Independent verification for the control ↔ resolver contract.
 
 
@@ -57720,6 +57720,61 @@ phases:
     agent: blind-tester
     claimed_by: blind-tester
     claimed_at: '2026-04-03T18:49:52.961712+00:00'
+    done_at: '2026-04-03T18:53:27.559286+00:00'
+    evidence: 'Artifact:
+
+      - Commit: 0f7bbcc (branch vectl/step-orch_resolver.verify)
+
+      - File: tests/orchestration/integration/test_control_resolver_contract.py
+
+
+      Verification:
+
+      - Run: `.venv/bin/python -m pytest tests/orchestration/integration/test_control_resolver_contract.py
+      -v` -> 7 passed
+
+      - Verified one unblocked and one operator_required end-to-end flow
+
+      - Verified resolver returns bounded ResolutionReport surface only
+
+      - Verified control invokes resolver only when normal flow cannot close and re-evaluates
+      after full resnapshot
+
+
+      Spec link:
+
+      - docs/ORCHESTRATION-PLANE-RESOLUTION-CONTRACT.md
+
+      - docs/ORCHESTRATION-PLANE-INTERFACES.md sections 3.8, 3.9, 4.1, 4.4, 5.3
+
+      - docs/ORCHESTRATION-PLANE-IMPLEMENTATION-DESIGN.md sections 3.5, 3.6
+
+
+      step_intent:
+
+      - Independent integration verification of control↔resolver contract boundaries.
+
+
+      expected_result:
+
+      - Resolver engagement only for blocked/unresolved paths; bounded report contract;
+      control resnapshot + reevaluate.
+
+
+      observed_result:
+
+      - All 7 integration contract tests passed across blocked/unresolved routing,
+      bounded report shape, and post-resolution reevaluation.
+
+
+      failure_alignment:
+
+      - none
+
+
+      product implementation files modified:
+
+      - none (verification-only test additions)'
   - id: orch_resolver.gate
     name: Gate resolver landing
     status: pending

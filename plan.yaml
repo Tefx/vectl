@@ -56143,3 +56143,11 @@ phases:
     without requiring premature legacy deletion.
   depends_on:
   - orch_resolver
+- id: orch_migration_finish
+  name: Orchestration Plane Migration Finish
+  status: locked
+  gate: Tests are rehomed by behavior, legacy disposition is audited against equivalence
+    rules, docs are aligned in-place, and final independent reviews confirm no legacy
+    path is retired before equivalent behavior exists.
+  depends_on:
+  - orch_system_wiring

@@ -45310,7 +45310,7 @@ phases:
   steps:
   - id: driver-enhancement-review.update-docs
     name: Sync driver enhancement docs
-    status: pending
+    status: claimed
     description: 'step_type: review
 
 
@@ -45338,6 +45338,8 @@ phases:
 
       - Runtime and recovery surfaces are documented at the right boundary'
     agent: doc-reviewer
+    claimed_by: doc-reviewer
+    claimed_at: '2026-04-03T16:32:54.718628+00:00'
   - id: driver-enhancement-review.wiring-audit
     name: Audit enhancement wiring completeness
     status: pending

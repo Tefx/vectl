@@ -10,8 +10,8 @@ from __future__ import annotations
 
 from datetime import datetime
 
-from vectl.orchestration.contracts import WorkLease
-from vectl.orchestration.roster import IsolationMode, Roster
+from vectl.orchestration.contracts import IsolationMode, WorkLease
+from vectl.orchestration.roster import Roster
 
 
 def _lease(role: str, session_id: str | None = "ses-1") -> WorkLease:

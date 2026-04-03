@@ -428,3 +428,14 @@ class TestResolutionReport:
 
         # Frozen dataclasses have __dataclass_fields__
         assert hasattr(ResolutionReport, "__dataclass_fields__")
+
+
+class TestIsolationModeContract:
+    """IsolationMode enum contract tests (isolation semantics doc section 2)."""
+
+    def test_isolation_mode_values_match_spec(self):
+        from vectl.orchestration.contracts import IsolationMode
+
+        assert IsolationMode.DEFAULT.value == "default"
+        assert IsolationMode.WORKSPACE.value == "workspace"
+        assert IsolationMode.INDEPENDENT.value == "independent"

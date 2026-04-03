@@ -36,28 +36,12 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from datetime import datetime
-from enum import Enum
 from typing import TYPE_CHECKING
 
-from vectl.orchestration.contracts import RosterSnapshot, WorkLease
+from vectl.orchestration.contracts import IsolationMode, RosterSnapshot, WorkLease
 
 if TYPE_CHECKING:
     pass
-
-
-class IsolationMode(Enum):
-    """
-    Isolation levels for roster resource matching.
-
-    These values affect whether a warm/reusable resource may be matched
-    when claiming a lease. They do NOT affect plan semantics.
-
-    Authority: docs/ORCHESTRATION-PLANE-ISOLATION-SEMANTICS.md section 2
-    """
-
-    DEFAULT = "default"
-    WORKSPACE = "workspace"
-    INDEPENDENT = "independent"
 
 
 @dataclass(frozen=True)

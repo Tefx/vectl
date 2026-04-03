@@ -12,6 +12,8 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Literal
 
+from vectl.models import IsolationMode
+
 
 @dataclass(frozen=True)
 class CoreSnapshot:

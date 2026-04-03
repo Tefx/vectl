@@ -10,12 +10,14 @@ from vectl.orchestration.contracts import (
     CoreSnapshot,
     ExecutionRequest,
     ExecutionResult,
+    IsolationMode,
     ResolutionCase,
     ResolutionReport,
     RosterSnapshot,
     RuntimeSnapshot,
     WorkLease,
 )
+from vectl.orchestration.core_adapter import CoreAdapter
 from vectl.orchestration.interfaces import (
     Control,
     Resolver,
@@ -29,11 +31,14 @@ __all__ = [
     "RosterSnapshot",
     "RuntimeSnapshot",
     "ControlDecision",
+    "IsolationMode",
     "WorkLease",
     "ExecutionRequest",
     "ExecutionResult",
     "ResolutionCase",
     "ResolutionReport",
+    # Core authority bridge contract (core_adapter.py)
+    "CoreAdapter",
     # Component interfaces (interfaces.py)
     "Control",
     "Roster",

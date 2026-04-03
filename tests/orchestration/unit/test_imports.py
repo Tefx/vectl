@@ -27,11 +27,13 @@ class TestPackageImports:
             CoreSnapshot,
             ExecutionRequest,
             ExecutionResult,
+            IsolationMode,
             ResolutionCase,
             ResolutionReport,
             RosterSnapshot,
             RuntimeSnapshot,
             WorkLease,
+            CoreAdapter,
         )
 
         # Verify they are classes/dataclasses
@@ -44,6 +46,8 @@ class TestPackageImports:
         assert ExecutionResult is not None
         assert ResolutionCase is not None
         assert ResolutionReport is not None
+        assert IsolationMode is not None
+        assert CoreAdapter is not None
 
     def test_import_all_protocols_from_package_root(self):
         """
@@ -70,7 +74,8 @@ class TestPackageImports:
         Verify __all__ exports match the documented interface boundary.
 
         Spec: docs/ORCHESTRATION-PLANE-INTERFACES.md sections 3-4
-        Expected: __all__ contains exactly the 13 documented symbols (9 types + 4 protocols).
+        Expected: __all__ contains exactly the 15 documented symbols
+        (11 shared contracts + core adapter + 4 protocols).
         """
         from vectl.orchestration import __all__
 
@@ -79,11 +84,13 @@ class TestPackageImports:
             "RosterSnapshot",
             "RuntimeSnapshot",
             "ControlDecision",
+            "IsolationMode",
             "WorkLease",
             "ExecutionRequest",
             "ExecutionResult",
             "ResolutionCase",
             "ResolutionReport",
+            "CoreAdapter",
         ]
         expected_protocols = [
             "Control",
@@ -109,6 +116,7 @@ class TestDirectModuleImports:
             CoreSnapshot,
             ExecutionRequest,
             ExecutionResult,
+            IsolationMode,
             ResolutionCase,
             ResolutionReport,
             RosterSnapshot,
@@ -128,8 +136,15 @@ class TestDirectModuleImports:
                 ExecutionResult,
                 ResolutionCase,
                 ResolutionReport,
+                IsolationMode,
             ]
         )
+
+    def test_import_core_adapter_from_module(self):
+        """Verify core authority bridge protocol import."""
+        from vectl.orchestration.core_adapter import CoreAdapter
+
+        assert CoreAdapter is not None
 
     def test_import_protocols_from_interfaces_module(self):
         """Verify all protocols importable from vectl.orchestration.interfaces."""

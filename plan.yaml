@@ -57350,7 +57350,7 @@ phases:
       - none'
   - id: orch_control.verify
     name: Verify control extraction against loop behavior
-    status: pending
+    status: claimed
     description: 'Independent verification for control extraction.
 
 
@@ -57377,6 +57377,8 @@ phases:
     depends_on:
     - orch_control.impl
     agent: integration-verifier
+    claimed_by: integration-verifier
+    claimed_at: '2026-04-03T18:28:39.402940+00:00'
   - id: orch_control.gate
     name: Gate control extraction
     status: pending

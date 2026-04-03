@@ -57254,7 +57254,7 @@ phases:
       - docs/ORCHESTRATION-PLANE-IMPLEMENTATION-DESIGN.md sections 3.2, 3.6, 4, 5.5'
   - id: orch_control.impl
     name: Carve plan-aware orchestration flow into control
-    status: claimed
+    status: done
     description: 'Fill in stub bodies in src/vectl/orchestration/control.py per the
       contract from step orch_control.contract.
 
@@ -57302,6 +57302,52 @@ phases:
     agent: python-senior
     claimed_by: python-senior
     claimed_at: '2026-04-03T18:21:52.243208+00:00'
+    done_at: '2026-04-03T18:28:07.069816+00:00'
+    evidence: 'Artifact:
+
+      - Commit: 9accce7 (branch vectl/step-orch_control.impl)
+
+      - Files: src/vectl/orchestration/control.py; tests/orchestration/unit/test_control.py
+
+      - Responsibility extraction: new control-only decision engine (PlanAwareControl)
+      consuming authoritative core snapshots and deciding only dispatch/resolve/wait/done
+
+
+      Verification:
+
+      - Run: `uv run ruff check src/vectl/orchestration/control.py tests/orchestration/unit/test_control.py`
+      -> pass
+
+      - Run: `uv run pytest -q tests/orchestration/unit/test_control.py` -> 10 passed
+
+      - Run: `uv run pytest -q tests/test_driver_loop_contract.py tests/test_driver_loop_runtime.py`
+      -> 40 passed, 25 xfailed, 4 errors
+
+      - Baseline error summary: pre-existing DriverConfig validation mismatch in runtime
+      baseline fixture, not introduced by control changes
+
+
+      Boundary proof:
+
+      - No runner/worktree mechanics or long-running reasoning added to control
+
+      - No baseline test modifications
+
+
+      Spec link:
+
+      - docs/ORCHESTRATION-PLANE-INTERFACES.md sections 3.4, 4.1, 5.1-5.3, 6
+
+      - docs/ORCHESTRATION-PLANE-IMPLEMENTATION-DESIGN.md sections 3.2, 3.6, 5, 9
+
+      - docs/ORCHESTRATION-PLANE-RESOLUTION-CONTRACT.md sections 3, 5, 6
+
+      - docs/ORCHESTRATION-PLANE-ARCHITECTURE.md sections 5.1, 6.1, 6.2
+
+
+      Deviation records:
+
+      - none'
   - id: orch_control.verify
     name: Verify control extraction against loop behavior
     status: pending

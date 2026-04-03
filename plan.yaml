@@ -57937,7 +57937,7 @@ phases:
       - none'
   - id: orch_system_wiring.liveness_probe
     name: Probe orchestration entrypoint liveness and vertical slice
-    status: pending
+    status: claimed
     description: 'Liveness probe for the new orchestration-plane runtime path.
 
 
@@ -57958,6 +57958,8 @@ phases:
     depends_on:
     - orch_system_wiring.impl
     agent: blind-tester
+    claimed_by: blind-tester
+    claimed_at: '2026-04-03T19:07:05.540615+00:00'
   - id: orch_system_wiring.wiring_audit
     name: Audit wiring completeness for orchestration entry paths
     status: pending

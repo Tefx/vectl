@@ -56465,7 +56465,7 @@ phases:
     claimed_at: '2026-04-03T16:59:19.817608+00:00'
   - id: orch_roster_runtime.roster_impl
     name: Extract reusable resource logic into roster
-    status: pending
+    status: claimed
     description: 'Fill in stub bodies in src/vectl/orchestration/roster.py per the
       contract from step orch_roster_runtime.roster_contract.
 
@@ -56509,6 +56509,8 @@ phases:
     depends_on:
     - orch_roster_runtime.roster_contract
     agent: python-senior
+    claimed_by: python-senior
+    claimed_at: '2026-04-03T17:04:29.411085+00:00'
   - id: orch_roster_runtime.runtime_impl
     name: Extract mechanical runner and workspace logic into runtime
     status: pending

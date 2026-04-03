@@ -24,6 +24,7 @@ from vectl.models import (
     AffinityMode,
     CASConflictError,
     Clipboard,
+    IsolationMode,
     Phase,
     PhaseStatus,
     Plan,
@@ -251,6 +252,48 @@ class TestAffinityCleanup:
 
         assert "affinity_override" not in string_constants
         assert "default_affinity" not in string_constants
+
+
+class TestIsolationCleanup:
+    def test_clean_dict_omits_default_isolation_value(self) -> None:
+        payload = {
+            "phases": [
+                {
+                    "steps": [
+                        {
+                            "id": "s1",
+                            "name": "Step 1",
+                            "isolation": Step.model_fields["isolation"].default,
+                        }
+                    ]
+                }
+            ]
+        }
+
+        cleaned = _clean_dict(payload)
+        step = cleaned["phases"][0]["steps"][0]
+
+        assert "isolation" not in step
+
+    def test_clean_dict_preserves_non_default_isolation_values(self) -> None:
+        payload = {
+            "phases": [
+                {
+                    "steps": [
+                        {
+                            "id": "s1",
+                            "name": "Step 1",
+                            "isolation": IsolationMode.INDEPENDENT,
+                        }
+                    ]
+                }
+            ]
+        }
+
+        cleaned = _clean_dict(payload)
+        step = cleaned["phases"][0]["steps"][0]
+
+        assert step["isolation"] == IsolationMode.INDEPENDENT
 
 
 class TestCAS:

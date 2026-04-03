@@ -56997,6 +56997,35 @@ phases:
     depends_on:
     - orch_system_wiring.impl
     agent: blind-tester
+  - id: orch_system_wiring.wiring_audit
+    name: Audit wiring completeness for orchestration entry paths
+    status: pending
+    description: 'Wiring completeness audit for the orchestration-plane cutover.
+
+
+      Required checks:
+
+      - legacy entrypoints call orchestration surfaces rather than hidden duplicate
+      logic
+
+      - new public orchestration surfaces have runtime callers
+
+      - no production entry path terminates at placeholder or legacy-only stubs
+
+      - blocking unresolved flow still reaches resolver via the documented contract
+
+
+      verification_scope: phase-check'
+    verification: '- Import/reachability evidence shows runtime callers for new orchestration
+      surfaces
+
+      - No orphan exports or unregistered entry wiring remain on the production path
+
+      - Evidence identifies any intentionally retained legacy shims and why they are
+      still needed'
+    depends_on:
+    - orch_system_wiring.impl
+    agent: wiring-auditor
 - id: orch_migration_finish
   name: Orchestration Plane Migration Finish
   status: locked

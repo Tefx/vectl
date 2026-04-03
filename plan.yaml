@@ -56157,6 +56157,39 @@ phases:
 
       - Evidence includes the created module list and the pinned public interfaces'
     agent: python-executor
+  - id: orch_foundation.contract_tests
+    name: Define orchestration package contract tests
+    status: pending
+    description: 'Author test-only coverage for the new orchestration package boundary
+      and contract signatures before behavior migration.
+
+
+      This step defines the acceptance gap only.
+
+      - add import/signature tests for the new package shape
+
+      - add spec-derived tests for the shared contract types and component Protocols
+
+      - use the exact documented names and minimal interfaces from docs/ORCHESTRATION-PLANE-INTERFACES.md
+
+      - modified files must stay under tests/
+
+
+      step_type: test
+
+      step_intent: test_define_red
+
+      expected_result: red'
+    verification: '- Tests live under tests/orchestration/unit/
+
+      - Expected-red or gap-defining assertions are documented explicitly
+
+      - Evidence lists exposed gaps without migrating behavior
+
+      - Fixtures and assertions use the exact documented package/module names'
+    depends_on:
+    - orch_foundation.contracts
+    agent: integration-verifier
 - id: orch_roster_runtime
   name: Orchestration Plane Roster and Runtime Extraction
   status: locked

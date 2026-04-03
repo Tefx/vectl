@@ -58766,3 +58766,47 @@ phases:
     agent: gate-reviewer
     claimed_by: software-architect
     claimed_at: '2026-04-03T19:55:19.488811+00:00'
+  - id: orch_migration_finish.fix_gate_blockers_round2
+    name: Batch-remediate unresolved migration finish blockers (round2)
+    status: pending
+    description: 'Execute one additional batched remediation loop for the unresolved
+      migration-finish blockers with objective repository-state changes only.
+
+
+      Scope all remaining blockers together:
+
+      - B1: tests/legacy/driver tree is absent while 38 legacy driver tests still
+      remain top-level; enact a concrete repo-state disposition so path reality and
+      claimed rehome state match.
+
+      - B3: no operational repository changes beyond plan.yaml currently demonstrate
+      disposition enactment; land concrete file/tree changes that implement the audited
+      disposition.
+
+      - B4: cross-step evidence remains inconsistent with filesystem/git reality;
+      update the repository and adjacent evidence artifacts so claims are provable
+      from the current tree and diff.
+
+
+      This step must make objective repo-state changes beyond plan.yaml and leave
+      prior failed/retest steps as historical record.'
+    verification: '- Verify concrete filesystem state after remediation with explicit
+      path existence checks for the relevant legacy and rehomed test locations
+
+      - Verify operational repository changes exist beyond plan.yaml using git status
+      and git diff/tree proof tied to the enacted disposition
+
+      - Verify the resulting repository state resolves B1, B3, and B4 consistently,
+      with no evidence claim contradicting current filesystem or git reality'
+    evidence_template: '- Path existence checks: paste commands and outputs proving
+      whether `tests/legacy/driver/` exists and where the 38 legacy driver tests now
+      live
+
+      - Git tree/diff proof: paste `git status --short` and targeted `git diff --stat`
+      / file-tree proof showing operational repo changes beyond `plan.yaml`
+
+      - Blocker disposition proof: map B1/B3/B4 to the exact files changed and explain
+      how each is now objectively verifiable from the repository state'
+    depends_on:
+    - orch_migration_finish.retest_gate_evidence
+    agent: python-senior

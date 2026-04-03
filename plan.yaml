@@ -56328,7 +56328,7 @@ phases:
       extraction.'
 - id: orch_roster_runtime
   name: Orchestration Plane Roster and Runtime Extraction
-  status: pending
+  status: in_progress
   gate: Reusable resource logic lives under roster, mechanical workspace/runner logic
     lives under runtime, and legacy behavior remains preserved through baseline tests
     and targeted vertical-slice proof.
@@ -56378,7 +56378,7 @@ phases:
     agent: python-executor
   - id: orch_roster_runtime.runtime_contract
     name: Pin runtime contract and workspace mechanics boundary
-    status: pending
+    status: claimed
     description: 'Pin the orchestration-plane runtime contract in src/vectl/orchestration/runtime.py
       using docs/ORCHESTRATION-PLANE-ARCHITECTURE.md section 5.3 and docs/ORCHESTRATION-PLANE-INTERFACES.md
       section 4.3.
@@ -56418,6 +56418,8 @@ phases:
       - Evidence cites the isolation freshness requirements for workspace and independent
       modes'
     agent: python-executor
+    claimed_by: python-executor
+    claimed_at: '2026-04-03T16:59:19.817608+00:00'
   - id: orch_roster_runtime.roster_impl
     name: Extract reusable resource logic into roster
     status: pending

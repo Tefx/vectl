@@ -57598,7 +57598,7 @@ phases:
       8, 10'
   - id: orch_resolver.impl
     name: Land resolver using ResolutionCase and ResolutionReport
-    status: claimed
+    status: done
     description: 'Fill in stub bodies in src/vectl/orchestration/resolver.py and src/vectl/orchestration/judgments.py
       per the contract from step orch_resolver.contract.
 
@@ -57645,6 +57645,53 @@ phases:
     agent: python-senior
     claimed_by: python-senior
     claimed_at: '2026-04-03T18:43:59.087606+00:00'
+    done_at: '2026-04-03T18:49:23.361078+00:00'
+    evidence: 'Artifact:
+
+      - Commit: b03a9f2 (branch vectl/step-orch_resolver.impl)
+
+      - Files: src/vectl/orchestration/judgments.py; src/vectl/orchestration/resolver.py;
+      tests/orchestration/unit/test_resolver.py
+
+
+      Verification:
+
+      - Run: `uv run pytest -q tests/orchestration/unit/test_resolver.py tests/orchestration/unit/test_control.py`
+      -> 18 passed
+
+      - Run: `uv run ruff check src/vectl/orchestration/judgments.py src/vectl/orchestration/resolver.py
+      tests/orchestration/unit/test_resolver.py` -> pass
+
+      - Run: `uv run mypy src/vectl/orchestration/judgments.py src/vectl/orchestration/resolver.py`
+      -> success
+
+      - Run: `uv run pytest -q tests/test_driver_judge.py tests/test_driver_judgments.py`
+      -> 105 passed
+
+
+      Criteria evidence:
+
+      - Bounded ResolutionReport outcomes for unblocked/waiting covered in test_resolver
+
+      - Regression path proves operator_required for uncloseable cases
+
+      - Typed judgment validation/parsing implemented in judgments.py; invocation
+      glue implemented in resolver.py
+
+
+      Spec link:
+
+      - docs/ORCHESTRATION-PLANE-RESOLUTION-CONTRACT.md sections 3.2, 5.1, 6, 8, 10
+
+      - docs/ORCHESTRATION-PLANE-IMPLEMENTATION-DESIGN.md sections 3.5, 3.9, step
+      6/6a, section 8
+
+      - docs/ORCHESTRATION-PLANE-INTERFACES.md section 4.4, rule D, section 5.3
+
+
+      Deviation records:
+
+      - none'
   - id: orch_resolver.verify
     name: Verify control-resolver contract behavior
     status: pending

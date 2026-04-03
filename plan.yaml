@@ -58304,7 +58304,7 @@ phases:
       - docs/ORCHESTRATION-PLANE-ARCHITECTURE.md'
   - id: orch_migration_finish.finish_alignment
     name: Align docs and retirement notes with landed orchestration behavior
-    status: pending
+    status: claimed
     description: 'Finish migration alignment after test rehome and legacy disposition
       audit.
 
@@ -58341,6 +58341,8 @@ phases:
     - orch_migration_finish.test_rehome
     - orch_migration_finish.legacy_disposition_audit
     agent: python-senior
+    claimed_by: python-senior
+    claimed_at: '2026-04-03T19:31:13.819870+00:00'
   - id: orch_migration_finish.final_review
     name: Run final orchestration migration review
     status: pending

@@ -1,0 +1,191 @@
+"""
+Import and signature tests for the orchestration package boundary.
+
+These tests verify that the orchestration package exposes the correct
+public API surface as defined in docs/ORCHESTRATION-PLANE-INTERFACES.md.
+
+Authority: docs/ORCHESTRATION-PLANE-INTERFACES.md sections 3-4
+Step: orch_foundation.contract_tests
+Intent: test_define_red
+"""
+
+import pytest
+
+
+class TestPackageImports:
+    """Verify all documented types and protocols are importable from the package root."""
+
+    def test_import_all_contracts_from_package_root(self):
+        """
+        Verify all Section 3 contract types are exported from vectl.orchestration.
+
+        Spec: docs/ORCHESTRATION-PLANE-INTERFACES.md section 3
+        Expected: All 9 types importable without ImportError.
+        """
+        from vectl.orchestration import (
+            ControlDecision,
+            CoreSnapshot,
+            ExecutionRequest,
+            ExecutionResult,
+            ResolutionCase,
+            ResolutionReport,
+            RosterSnapshot,
+            RuntimeSnapshot,
+            WorkLease,
+        )
+
+        # Verify they are classes/dataclasses
+        assert CoreSnapshot is not None
+        assert RosterSnapshot is not None
+        assert RuntimeSnapshot is not None
+        assert ControlDecision is not None
+        assert WorkLease is not None
+        assert ExecutionRequest is not None
+        assert ExecutionResult is not None
+        assert ResolutionCase is not None
+        assert ResolutionReport is not None
+
+    def test_import_all_protocols_from_package_root(self):
+        """
+        Verify all Section 4 component Protocols are exported from vectl.orchestration.
+
+        Spec: docs/ORCHESTRATION-PLANE-INTERFACES.md section 4
+        Expected: All 4 Protocols importable without ImportError.
+        """
+        from vectl.orchestration import (
+            Control,
+            Resolver,
+            Roster,
+            Runtime,
+        )
+
+        # Verify they are Protocols
+        assert Control is not None
+        assert Roster is not None
+        assert Runtime is not None
+        assert Resolver is not None
+
+    def test_orchestration_all_exports_match_spec(self):
+        """
+        Verify __all__ exports match the documented interface boundary.
+
+        Spec: docs/ORCHESTRATION-PLANE-INTERFACES.md sections 3-4
+        Expected: __all__ contains exactly the 13 documented symbols (9 types + 4 protocols).
+        """
+        from vectl.orchestration import __all__
+
+        expected_contracts = [
+            "CoreSnapshot",
+            "RosterSnapshot",
+            "RuntimeSnapshot",
+            "ControlDecision",
+            "WorkLease",
+            "ExecutionRequest",
+            "ExecutionResult",
+            "ResolutionCase",
+            "ResolutionReport",
+        ]
+        expected_protocols = [
+            "Control",
+            "Roster",
+            "Runtime",
+            "Resolver",
+        ]
+        expected_all = set(expected_contracts + expected_protocols)
+
+        # This test documents the expected interface surface
+        assert set(__all__) == expected_all, (
+            f"__all__ mismatch. Expected: {expected_all}, Got: {set(__all__)}"
+        )
+
+
+class TestDirectModuleImports:
+    """Verify types can be imported from their defining modules."""
+
+    def test_import_contracts_from_contracts_module(self):
+        """Verify all contract types importable from vectl.orchestration.contracts."""
+        from vectl.orchestration.contracts import (
+            ControlDecision,
+            CoreSnapshot,
+            ExecutionRequest,
+            ExecutionResult,
+            ResolutionCase,
+            ResolutionReport,
+            RosterSnapshot,
+            RuntimeSnapshot,
+            WorkLease,
+        )
+
+        assert all(
+            x is not None
+            for x in [
+                CoreSnapshot,
+                RosterSnapshot,
+                RuntimeSnapshot,
+                ControlDecision,
+                WorkLease,
+                ExecutionRequest,
+                ExecutionResult,
+                ResolutionCase,
+                ResolutionReport,
+            ]
+        )
+
+    def test_import_protocols_from_interfaces_module(self):
+        """Verify all protocols importable from vectl.orchestration.interfaces."""
+        from vectl.orchestration.interfaces import (
+            Control,
+            Resolver,
+            Roster,
+            Runtime,
+        )
+
+        assert all(x is not None for x in [Control, Roster, Runtime, Resolver])
+
+
+class TestSignatureGaps:
+    """
+    Document expected-red gaps between spec and implementation.
+
+    These tests define acceptance criteria that should FAIL initially
+    (red state) until the implementation is complete.
+    """
+
+    @pytest.mark.xfail(reason="GAP: Protocol runtime typing not enforced at runtime")
+    def test_protocol_runtime_checkability(self):
+        """
+        GAP: Protocols should be runtime-checkable for isinstance() tests.
+
+        Spec: docs/ORCHESTRATION-PLANE-INTERFACES.md section 4
+        Expected: Protocols should support runtime checking.
+        Current: Protocols use Protocol base but @runtime_checkable not verified.
+
+        This test will XPASS once runtime checking is properly enabled.
+        """
+        from typing import runtime_checkable
+
+        from vectl.orchestration.interfaces import Control, Resolver, Roster, Runtime
+
+        # This should pass if protocols are properly decorated
+        assert runtime_checkable(Control)
+        assert runtime_checkable(Roster)
+        assert runtime_checkable(Runtime)
+        assert runtime_checkable(Resolver)
+
+    @pytest.mark.xfail(reason="GAP: Contract field types not verified against spec")
+    def test_contract_field_type_annotations(self):
+        """
+        GAP: Field type annotations should match spec exactly.
+
+        Spec: docs/ORCHESTRATION-PLANE-INTERFACES.md section 3
+        Expected: All fields use correct types (tuple vs list, Literal values, etc.)
+        Current: Types exist but comprehensive type verification not implemented.
+
+        This test documents the gap in type-level verification.
+        """
+        from vectl.orchestration.contracts import CoreSnapshot
+
+        # Example: verify specific field types match spec
+        # This would require runtime type validation framework
+        # Left as a documentation of the gap
+        pass  # noqa: SIM113

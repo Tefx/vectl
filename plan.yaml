@@ -56556,6 +56556,33 @@ phases:
     depends_on:
     - orch_core_authority.contract
     agent: python-senior
+  - id: orch_core_authority.spec_conformance
+    name: Verify isolation semantics and core authority conformance
+    status: pending
+    description: 'Adversarial spec conformance review for authoritative isolation
+      semantics and core authority.
+
+
+      verification_scope: phase-check
+
+      Focus:
+
+      - exact IsolationMode values and defaults
+
+      - authoritative ownership of step isolation semantics
+
+      - no drift toward continuity_group or public session_reuse concepts
+
+      - core_adapter preserves official core authority boundaries'
+    verification: '- Requirement-by-requirement evidence table cites spec section
+      and implementation location
+
+      - Existing plans default correctly without bulk migration
+
+      - No public architecture surface contradicts the documented authority model'
+    depends_on:
+    - orch_core_authority.impl
+    agent: spec-verifier
 - id: orch_control
   name: Orchestration Plane Control Extraction
   status: locked

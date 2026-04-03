@@ -56590,7 +56590,7 @@ phases:
       - none'
   - id: orch_roster_runtime.runtime_impl
     name: Extract mechanical runner and workspace logic into runtime
-    status: pending
+    status: claimed
     description: 'Fill in stub bodies in src/vectl/orchestration/runtime.py per the
       contract from step orch_roster_runtime.runtime_contract.
 
@@ -56634,6 +56634,8 @@ phases:
     depends_on:
     - orch_roster_runtime.runtime_contract
     agent: python-senior
+    claimed_by: python-senior
+    claimed_at: '2026-04-03T17:18:37.398747+00:00'
   - id: orch_roster_runtime.verify
     name: Verify roster and runtime extraction against legacy baseline
     status: pending

@@ -57937,7 +57937,7 @@ phases:
       - none'
   - id: orch_system_wiring.liveness_probe
     name: Probe orchestration entrypoint liveness and vertical slice
-    status: claimed
+    status: done
     description: 'Liveness probe for the new orchestration-plane runtime path.
 
 
@@ -57960,6 +57960,64 @@ phases:
     agent: blind-tester
     claimed_by: blind-tester
     claimed_at: '2026-04-03T19:07:05.540615+00:00'
+    done_at: '2026-04-03T19:12:53.745431+00:00'
+    evidence: 'Artifact:
+
+      - Commit: c6b7cf1 (branch vectl/step-orch_system_wiring.liveness_probe)
+
+      - Probe artifacts: tests/repro/orch_liveness_probe.py, tests/repro/vertical_slice_probe.py
+
+
+      Verification:
+
+      - Run: `uv run python tests/repro/orch_liveness_probe.py` -> config parse, plan
+      load, orchestration wiring build, control evaluation, runtime/core snapshots,
+      resolver report observed
+
+      - Run: `uv run python tests/repro/vertical_slice_probe.py` -> entrypoint→control→runtime→result
+      vertical slice output
+
+      - Run: `uv run python -m vectl.driver driver.yaml` -> exit code 0; real entrypoint
+      invocation accepted
+
+
+      Spec link:
+
+      - docs/DRIVER-ARCHITECTURE.md
+
+      - docs/ORCHESTRATION-PLANE-IMPLEMENTATION-DESIGN.md section 6
+
+      - docs/ORCHESTRATION-PLANE-INTERFACES.md sections 4.3, 5.3
+
+      - docs/ORCHESTRATION-PLANE-RESOLUTION-CONTRACT.md
+
+
+      step_intent:
+
+      - Prove liveness via one complete user-facing vertical slice through orchestration
+      path.
+
+
+      expected_result:
+
+      - Entrypoint accepts real invocation and reaches control/runtime/result with
+      observable outputs.
+
+
+      observed_result:
+
+      - All probe commands succeeded; complete path entrypoint→control→runtime→resolver
+      result demonstrated.
+
+
+      failure_alignment:
+
+      - none
+
+
+      product implementation files modified:
+
+      - none (verification artifacts/tests only)'
   - id: orch_system_wiring.wiring_audit
     name: Audit wiring completeness for orchestration entry paths
     status: done

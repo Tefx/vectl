@@ -56328,7 +56328,7 @@ phases:
       extraction.'
 - id: orch_roster_runtime
   name: Orchestration Plane Roster and Runtime Extraction
-  status: in_progress
+  status: done
   gate: Reusable resource logic lives under roster, mechanical workspace/runner logic
     lives under runtime, and legacy behavior remains preserved through baseline tests
     and targeted vertical-slice proof.
@@ -56763,7 +56763,7 @@ phases:
       - docs/ORCHESTRATION-PLANE-ISOLATION-SEMANTICS.md (3.2, 3.3, 5.3, 5.4)'
   - id: orch_roster_runtime.gate
     name: Gate roster and runtime extraction
-    status: claimed
+    status: done
     description: 'Gate review for roster/runtime extraction.
 
 
@@ -56793,9 +56793,52 @@ phases:
     agent: gate-reviewer
     claimed_by: gate-reviewer
     claimed_at: '2026-04-03T17:30:28.051189+00:00'
+    done_at: '2026-04-03T17:34:24.123687+00:00'
+    evidence: 'Artifact:
+
+      - Commits: c1cee61, 99d41dc, e863f9a, 1587b8d, effe541
+
+      - Files: src/vectl/orchestration/roster.py; src/vectl/orchestration/runtime.py
+
+      - Tests: tests/orchestration/unit/test_roster.py; tests/orchestration/unit/test_runtime.py
+
+      - Legacy preserved: src/vectl/driver/session.py, worktree.py, runners.py
+
+
+      Verification:
+
+      - Run: `uv run pytest tests/orchestration/unit/test_roster.py tests/orchestration/unit/test_runtime.py
+      -v` -> 10 passed
+
+      - Run: `uv run pytest tests/test_driver_session.py tests/test_driver_worktree.py
+      tests/test_driver_runners.py -v` -> 135 passed
+
+      - Run: `uv run mypy src/vectl/orchestration/roster.py src/vectl/orchestration/runtime.py
+      --strict` -> success
+
+      - Run: `grep -rn ''continuity_group\|session_reuse.*public'' src/vectl/orchestration/`
+      -> no banned abstractions
+
+      - Verified roster surface (snapshot/claim/release/register) and runtime surface
+      (snapshot/prepare/start/collect/cleanup) match interfaces docs
+
+      - Verified independent isolation no-reuse and workspace/independent fresh workspace
+      behavior via tests
+
+
+      Spec link:
+
+      - docs/ORCHESTRATION-PLANE-ARCHITECTURE.md sections 5.2, 5.3
+
+      - docs/ORCHESTRATION-PLANE-INTERFACES.md sections 4.2, 4.3
+
+      - docs/ORCHESTRATION-PLANE-ISOLATION-SEMANTICS.md sections 2, 5.3, 5.4
+
+
+      Gate verdict: PASS'
 - id: orch_core_authority
   name: Orchestration Plane Core Authority and Isolation
-  status: locked
+  status: pending
   gate: IsolationMode is authoritative on Step/core surfaces, core_adapter is the
     single orchestration-plane core boundary, and default migration preserves existing
     plans without bulk rewrites.

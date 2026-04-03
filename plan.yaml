@@ -57117,3 +57117,42 @@ phases:
 
       - Evidence distinguishes provenance from disposition for any retained debt'
     agent: software-architect
+  - id: orch_migration_finish.finish_alignment
+    name: Align docs and retirement notes with landed orchestration behavior
+    status: pending
+    description: 'Finish migration alignment after test rehome and legacy disposition
+      audit.
+
+
+      Scope:
+
+      - update the authoritative documentation stack where implementation landing
+      requires clarification or migration progress notes
+
+      - update legacy/reference positioning so driver is clearly baseline-only, not
+      future architecture
+
+      - land only those legacy retirements or shims justified by the disposition audit
+
+      - preserve all remaining legacy code/tests until equivalent behavior exists
+      and is covered
+
+
+      This step folds documentation alignment into migration finish work; no separate
+      doc-sync phase is used.
+
+
+      ## Completion Criteria (stub exclusion)
+
+      This is an IMPLEMENTATION step. Stub-only completion is NOT acceptable.'
+    verification: '- Docs reflect the landed orchestration package and preserve the
+      target/legacy distinction
+
+      - Any retired legacy path is backed by equivalence evidence from the audit
+
+      - Any retained legacy path is documented as intentionally deferred rather than
+      silently ignored'
+    depends_on:
+    - orch_migration_finish.test_rehome
+    - orch_migration_finish.legacy_disposition_audit
+    agent: python-senior

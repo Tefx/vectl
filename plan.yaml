@@ -56511,6 +56511,51 @@ phases:
 
       - No rejected concepts are reintroduced in the public contract'
     agent: python-senior
+  - id: orch_core_authority.impl
+    name: Land authoritative isolation semantics and introduce core_adapter
+    status: pending
+    description: 'Fill in stub bodies in src/vectl/orchestration/core_adapter.py and
+      the authoritative core/step model surfaces per the contract from step orch_core_authority.contract.
+
+
+      UPSTREAM ARTIFACTS:
+
+      - src/vectl/orchestration/core_adapter.py — authoritative bridge contract
+
+      - src/vectl/models.py and core-facing tests — authoritative Step/core semantics
+      are protected
+
+
+      YOUR SCOPE: replace stub markers with working logic that lands IsolationMode
+      on the authoritative Step model, preserves default migration behavior for existing
+      plans, and introduces a single core_adapter boundary for orchestration-plane
+      reads/writes.
+
+
+      Required boundary rules:
+
+      - vectl core remains external authority
+
+      - omission of isolation continues to mean default
+
+      - no bulk rewrite of existing plan files is required
+
+      - no convenience helper may bypass official core surfaces
+
+
+      ## Completion Criteria (stub exclusion)
+
+      This is an IMPLEMENTATION step. Stub-only completion is NOT acceptable.'
+    verification: '- Main path: schema/model/io tests prove isolation defaults to
+      default for existing plans
+
+      - Failure path: regression coverage proves independent/workspace isolation semantics
+      surface through authoritative core reads without compatibility breakage
+
+      - Evidence shows core_adapter is the only orchestration-plane core bridge introduced'
+    depends_on:
+    - orch_core_authority.contract
+    agent: python-senior
 - id: orch_control
   name: Orchestration Plane Control Extraction
   status: locked

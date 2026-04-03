@@ -56583,6 +56583,38 @@ phases:
     depends_on:
     - orch_core_authority.impl
     agent: spec-verifier
+  - id: orch_core_authority.gate
+    name: Gate core authority and isolation landing
+    status: pending
+    description: 'Gate review for authoritative isolation semantics and core_adapter
+      landing.
+
+
+      Review depth: THOROUGH.
+
+      Cross-cutting focus:
+
+      - core remains authority
+
+      - isolation is authoritative task semantics
+
+      - no convenience bypasses or legacy concept leakage
+
+
+      verification_scope: phase-check
+
+      Protects downstream control extraction.'
+    verification: '- IsolationMode is authoritative and backwards-compatible
+
+      - core_adapter centralizes orchestration-plane access to core state/actions
+
+      - Evidence is strong enough to let control consume isolation and authoritative
+      core snapshots safely'
+    depends_on:
+    - orch_core_authority.contract
+    - orch_core_authority.impl
+    - orch_core_authority.spec_conformance
+    agent: gate-reviewer
 - id: orch_control
   name: Orchestration Plane Control Extraction
   status: locked

@@ -58304,7 +58304,7 @@ phases:
       - docs/ORCHESTRATION-PLANE-ARCHITECTURE.md'
   - id: orch_migration_finish.finish_alignment
     name: Align docs and retirement notes with landed orchestration behavior
-    status: claimed
+    status: done
     description: 'Finish migration alignment after test rehome and legacy disposition
       audit.
 
@@ -58343,6 +58343,19 @@ phases:
     agent: python-senior
     claimed_by: python-senior
     claimed_at: '2026-04-03T19:31:13.819870+00:00'
+    done_at: '2026-04-03T19:34:36.890708+00:00'
+    evidence: "Artifact:\n- Updated docs only:\n  - docs/ORCHESTRATION-PLANE-MIGRATION.md\n\
+      \  - docs/ORCHESTRATION-PLANE-IMPLEMENTATION-DESIGN.md\n  - docs/DRIVER-ARCHITECTURE.md\n\
+      - No code retirements/shims landed (disposition audit retireable_now=none)\n\
+      \nVerification:\n- Run: `git status --short` -> only the three docs files changed;\
+      \ no plan/orchestrator state files modified\n- Run: `uv run pytest tests/test_driver_session.py\
+      \ tests/test_driver_session_edge_cases.py -q` -> 37 passed\n- Run: `uv run pytest\
+      \ tests/orchestration -q` -> expected pre-existing contract-introspection failures;\
+      \ no docs-related runtime regression\n- Run: `git diff -- docs/...` -> confirms\
+      \ documentation/progress-positioning updates only\n\nSpec link:\n- docs/ORCHESTRATION-PLANE-MIGRATION.md\n\
+      - docs/ORCHESTRATION-PLANE-IMPLEMENTATION-DESIGN.md\n- docs/ORCHESTRATION-PLANE-ARCHITECTURE.md\n\
+      - docs/ADR-orchestration-plane-reset.md\n- upstream disposition authority: orch_migration_finish.legacy_disposition_audit\n\
+      \nDeviation records:\n- none"
   - id: orch_migration_finish.final_review
     name: Run final orchestration migration review
     status: pending

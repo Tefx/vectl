@@ -57187,3 +57187,35 @@ phases:
     depends_on:
     - orch_migration_finish.finish_alignment
     agent: spec-verifier
+  - id: orch_migration_finish.gate
+    name: Gate orchestration migration finish
+    status: pending
+    description: 'Final gate for orchestration-plane migration finish.
+
+
+      Review depth: THOROUGH.
+
+      Cross-cutting focus:
+
+      - exact four-component target architecture preserved
+
+      - core authority and isolation semantics remain authoritative
+
+      - tests were rehomed by behavior without losing leverage
+
+      - no legacy path retired without equivalent behavior and coverage
+
+
+      verification_scope: full-plan-check'
+    verification: '- Final migration evidence is complete and internally consistent
+
+      - Legacy retention/retirement decisions satisfy the migration rules
+
+      - The orchestration-plane plan is ready for execution without architectural
+      reinterpretation'
+    depends_on:
+    - orch_migration_finish.test_rehome
+    - orch_migration_finish.legacy_disposition_audit
+    - orch_migration_finish.finish_alignment
+    - orch_migration_finish.final_review
+    agent: gate-reviewer

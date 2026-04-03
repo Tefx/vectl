@@ -56896,6 +56896,37 @@ phases:
     depends_on:
     - orch_resolver.impl
     agent: blind-tester
+  - id: orch_resolver.gate
+    name: Gate resolver landing
+    status: pending
+    description: 'Gate review for resolver landing.
+
+
+      Review depth: THOROUGH.
+
+      Cross-cutting focus:
+
+      - resolver remains bounded and non-authoritative
+
+      - typed judgment support is separated cleanly
+
+      - control ↔ resolver contract matches the authoritative docs
+
+
+      verification_scope: phase-check
+
+      Protects downstream system wiring.'
+    verification: '- Resolver and judgments boundaries match the target architecture
+
+      - No hidden authority transfer or oversized action language was introduced
+
+      - Evidence is sufficient to wire runnable entry paths through the new orchestration
+      package'
+    depends_on:
+    - orch_resolver.contract
+    - orch_resolver.impl
+    - orch_resolver.verify
+    agent: gate-reviewer
 - id: orch_system_wiring
   name: Orchestration Plane System Wiring
   status: locked

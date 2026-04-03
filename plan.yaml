@@ -56224,6 +56224,48 @@ phases:
     and targeted vertical-slice proof.
   depends_on:
   - orch_foundation
+  steps:
+  - id: orch_roster_runtime.roster_contract
+    name: Pin roster contract and isolation boundary
+    status: pending
+    description: 'Pin the orchestration-plane roster contract in src/vectl/orchestration/roster.py
+      using docs/ORCHESTRATION-PLANE-ARCHITECTURE.md section 5.2, docs/ORCHESTRATION-PLANE-INTERFACES.md
+      section 4.2, and docs/ORCHESTRATION-PLANE-ISOLATION-SEMANTICS.md sections 5.3
+      and 6.
+
+
+      Scope:
+
+      - define the Roster protocol and owner-local types needed for reusable resource
+      bookkeeping
+
+      - preserve the rule that roster answers only resource questions, not plan questions
+
+      - keep session reuse, if retained, as an internal optimization only
+
+      - encode the no-reuse rule for isolation=independent
+
+
+      step_type: contract
+
+      contract_purity: ENFORCED
+
+      contract_outputs:
+
+      - signatures
+
+      - type_defs
+
+      - interfaces
+
+      - stubs'
+    verification: '- Roster contract exposes snapshot/claim/release/register only
+
+      - Contract text and code do not introduce plan-aware concepts, continuity_group,
+      or public session_reuse semantics
+
+      - Evidence cites the exact isolation rule for independent tasks'
+    agent: python-executor
 - id: orch_core_authority
   name: Orchestration Plane Core Authority and Isolation
   status: locked

@@ -56119,3 +56119,11 @@ phases:
     plans without bulk rewrites.
   depends_on:
   - orch_roster_runtime
+- id: orch_control
+  name: Orchestration Plane Control Extraction
+  status: locked
+  gate: Plan-aware orchestration flow is carved into control using core_adapter, roster,
+    and runtime without wholesale renaming of driver/loop.py and without smuggling
+    runtime policy into mechanical layers.
+  depends_on:
+  - orch_core_authority

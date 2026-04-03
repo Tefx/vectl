@@ -56590,7 +56590,7 @@ phases:
       - none'
   - id: orch_roster_runtime.runtime_impl
     name: Extract mechanical runner and workspace logic into runtime
-    status: claimed
+    status: done
     description: 'Fill in stub bodies in src/vectl/orchestration/runtime.py per the
       contract from step orch_roster_runtime.runtime_contract.
 
@@ -56636,6 +56636,41 @@ phases:
     agent: python-senior
     claimed_by: python-senior
     claimed_at: '2026-04-03T17:18:37.398747+00:00'
+    done_at: '2026-04-03T17:25:09.020083+00:00'
+    evidence: 'Artifact:
+
+      - Branch: vectl/step-orch_roster_runtime.runtime_impl
+
+      - Commits: 1587b8d, effe541
+
+      - Files: src/vectl/orchestration/runtime.py; tests/orchestration/unit/test_runtime.py
+
+
+      Verification:
+
+      - Run: `uv run pytest tests/orchestration/unit/test_runtime.py tests/test_driver_worktree.py
+      tests/test_driver_runners.py tests/test_driver_extended_runners.py` -> 121 passed
+
+      - Runtime unit coverage includes prepare/start/collect/cleanup lifecycle mechanics
+
+      - Coverage includes fresh workspace enforcement for isolation=workspace and
+      isolation=independent
+
+      - Legacy protection suites passed for worktree/runners/extended runners
+
+
+      Spec link:
+
+      - docs/ORCHESTRATION-PLANE-INTERFACES.md (Rule C, section 4.3, section 5.2)
+
+      - docs/ORCHESTRATION-PLANE-ISOLATION-SEMANTICS.md (sections 3.2, 3.3, 5.4)
+
+      - docs/ORCHESTRATION-PLANE-ARCHITECTURE.md (section 5.3, section 12)
+
+
+      Deviation records:
+
+      - none'
   - id: orch_roster_runtime.verify
     name: Verify roster and runtime extraction against legacy baseline
     status: pending

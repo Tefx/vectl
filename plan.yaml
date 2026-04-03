@@ -57166,7 +57166,7 @@ phases:
       Gate verdict: PASS'
 - id: orch_control
   name: Orchestration Plane Control Extraction
-  status: in_progress
+  status: done
   gate: Plan-aware orchestration flow is carved into control using core_adapter, roster,
     and runtime without wholesale renaming of driver/loop.py and without smuggling
     runtime policy into mechanical layers.
@@ -57439,7 +57439,7 @@ phases:
       - tests only (no src/ product code modifications)'
   - id: orch_control.gate
     name: Gate control extraction
-    status: claimed
+    status: done
     description: 'Gate review for control extraction.
 
 
@@ -57469,9 +57469,50 @@ phases:
     agent: gate-reviewer
     claimed_by: gate-reviewer
     claimed_at: '2026-04-03T18:34:58.004242+00:00'
+    done_at: '2026-04-03T18:37:50.283808+00:00'
+    evidence: 'Artifact:
+
+      - src/vectl/orchestration/control.py
+
+      - src/vectl/orchestration/contracts.py
+
+      - src/vectl/orchestration/core_adapter.py
+
+      - tests/orchestration/unit/test_control.py
+
+      - tests/orchestration/integration/test_control_isolation_flow.py
+
+
+      Verification:
+
+      - Control layer stays plan-aware only and consumes snapshots via CoreAdapter/roster/runtime
+      snapshot protocols
+
+      - No runtime mechanics/worktree/runner logic leaked into control
+
+      - Core authority preserved via core_adapter bridge; control does not bypass
+      official core surfaces
+
+      - Unit/integration coverage demonstrates dispatch/resolve/wait/done decision
+      paths and isolation propagation through authoritative core snapshots
+
+      - Gate reviewer verdict: PASS for resolver-phase readiness
+
+
+      Spec link:
+
+      - docs/ORCHESTRATION-PLANE-ARCHITECTURE.md sections 3, 5.1, 6, 7
+
+      - docs/ORCHESTRATION-PLANE-INTERFACES.md sections 4.1, 5
+
+      - docs/ORCHESTRATION-PLANE-IMPLEMENTATION-DESIGN.md sections 3.2, 3.6, 5
+
+      - docs/ORCHESTRATION-PLANE-RESOLUTION-CONTRACT.md sections 3, 5, 6
+
+      - docs/ORCHESTRATION-PLANE-ISOLATION-SEMANTICS.md sections 5.3, 6, 10'
 - id: orch_resolver
   name: Orchestration Plane Resolver Landing
-  status: locked
+  status: pending
   gate: Resolver handles only blocked/unresolved reasoning via ResolutionCase/ResolutionReport,
     typed judgment support is rehomed cleanly, and control resnapshots and reevaluates
     after resolution.

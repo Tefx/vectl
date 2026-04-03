@@ -57175,7 +57175,7 @@ phases:
   steps:
   - id: orch_control.contract
     name: Pin control contract and decision boundary
-    status: claimed
+    status: done
     description: 'Pin the orchestration-plane control contract in src/vectl/orchestration/control.py
       using docs/ORCHESTRATION-PLANE-ARCHITECTURE.md sections 5.1 and 6, docs/ORCHESTRATION-PLANE-INTERFACES.md
       section 4.1, and docs/ORCHESTRATION-PLANE-IMPLEMENTATION-DESIGN.md step 5.
@@ -57218,6 +57218,40 @@ phases:
     agent: python-senior
     claimed_by: python-senior
     claimed_at: '2026-04-03T18:11:56.964277+00:00'
+    done_at: '2026-04-03T18:15:42.929772+00:00'
+    evidence: 'Artifact:
+
+      - Commit: ce62413 (branch vectl/step-orch_control.contract)
+
+      - File: src/vectl/orchestration/control.py
+
+      - Added control contract surfaces and typed metadata for responsibility split
+
+
+      Verification:
+
+      - Run: `ruff check src/vectl/orchestration/control.py` -> passed
+
+      - Run: AST check on Control protocol methods -> only `evaluate` and `apply_resolution`
+
+      - Run: textual/mechanics exclusion checks -> no driver-loop import, no runner/worktree
+      mechanics leakage
+
+      - Run: required source checks -> core_adapter/roster/runtime snapshot inputs
+      explicitly required
+
+
+      Legacy loop decomposition evidence:
+
+      - Added explicit legacy-surface split metadata in control contract (responsibility
+      decomposition, not file rename)
+
+
+      Spec link:
+
+      - docs/ORCHESTRATION-PLANE-INTERFACES.md sections 3.2, 3.3, 4.1, 5.1, 5.2
+
+      - docs/ORCHESTRATION-PLANE-IMPLEMENTATION-DESIGN.md sections 3.2, 3.6, 4, 5.5'
   - id: orch_control.impl
     name: Carve plan-aware orchestration flow into control
     status: pending

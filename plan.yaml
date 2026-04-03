@@ -56431,6 +56431,36 @@ phases:
     - orch_roster_runtime.roster_impl
     - orch_roster_runtime.runtime_impl
     agent: integration-verifier
+  - id: orch_roster_runtime.gate
+    name: Gate roster and runtime extraction
+    status: pending
+    description: 'Gate review for roster/runtime extraction.
+
+
+      Review depth: STANDARD.
+
+      Check that roster owns reusable resource bookkeeping only, runtime owns mechanical
+      execution only, and legacy behavior/test leverage was preserved.
+
+
+      verification_scope: phase-check
+
+      Protects downstream core-authority and control phases.'
+    verification: '- Roster/runtime contracts and implementations align with the authoritative
+      architecture
+
+      - No plan-aware logic leaked into roster or runtime
+
+      - Legacy baseline behavior remains covered and preserved
+
+      - Evidence is sufficient to proceed to authoritative core/isolation migration'
+    depends_on:
+    - orch_roster_runtime.roster_contract
+    - orch_roster_runtime.runtime_contract
+    - orch_roster_runtime.roster_impl
+    - orch_roster_runtime.runtime_impl
+    - orch_roster_runtime.verify
+    agent: gate-reviewer
 - id: orch_core_authority
   name: Orchestration Plane Core Authority and Isolation
   status: locked

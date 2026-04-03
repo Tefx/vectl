@@ -56870,6 +56870,32 @@ phases:
     depends_on:
     - orch_resolver.contract
     agent: python-senior
+  - id: orch_resolver.verify
+    name: Verify control-resolver contract behavior
+    status: pending
+    description: 'Independent verification for the control ↔ resolver contract.
+
+
+      Scope:
+
+      - add orchestration integration tests covering blocked and unresolved cases
+
+      - verify control invokes resolver only when normal flow does not close
+
+      - verify resolver returns ResolutionReport and control reevaluates after resnapshot
+
+
+      verification_scope: phase-check'
+    verification: '- At least one unblocked case and one operator_required case are
+      exercised end-to-end
+
+      - Evidence shows resolver acts through allowed surfaces and returns a bounded
+      report
+
+      - Control reevaluation after resolution is explicitly demonstrated'
+    depends_on:
+    - orch_resolver.impl
+    agent: blind-tester
 - id: orch_system_wiring
   name: Orchestration Plane System Wiring
   status: locked

@@ -57845,7 +57845,7 @@ phases:
       - docs/ORCHESTRATION-PLANE-IMPLEMENTATION-DESIGN.md sections 3.5, 3.6, 5'
 - id: orch_system_wiring
   name: Orchestration Plane System Wiring
-  status: pending
+  status: in_progress
   gate: Legacy runtime entrypoints route through the orchestration package with real
     runnable behavior, and one end-to-end vertical slice proves the new plane is live
     without requiring premature legacy deletion.
@@ -57854,7 +57854,7 @@ phases:
   steps:
   - id: orch_system_wiring.impl
     name: Wire legacy runtime entrypoints through orchestration components
-    status: pending
+    status: claimed
     description: 'Serial integration step: wire the existing runnable driver entry/runtime
       surfaces through the new orchestration package after component extraction.
 
@@ -57890,6 +57890,8 @@ phases:
       - Wiring evidence names the exact entrypoint files updated and the orchestration
       surfaces they call'
     agent: python-senior
+    claimed_by: python-senior
+    claimed_at: '2026-04-03T18:58:58.656766+00:00'
   - id: orch_system_wiring.liveness_probe
     name: Probe orchestration entrypoint liveness and vertical slice
     status: pending

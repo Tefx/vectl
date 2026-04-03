@@ -37,7 +37,12 @@ from vectl.claims import load_claims_for_branch, repair_claims
 from vectl.decide import decide
 from vectl.io import load_plan_definition, save_plan
 from vectl.lifecycle import claim_step, complete_step, defer_step
-from vectl.models import Action, PlanError
+from vectl.models import Action, PlanError, PlanIOError
+from vectl.orchestration.contracts import ResolutionCase
+from vectl.orchestration.control import ControlInputSources, PlanAwareControl
+from vectl.orchestration.core_adapter import PlanCoreAdapter
+from vectl.orchestration.resolver import BoundResolver, ResolverInvocationSurface
+from vectl.orchestration.roster import Roster as OrchestrationRoster
 from vectl.plan_path import resolve_claims_path, resolve_plan_path
 
 from .action_registry import (
@@ -162,6 +167,113 @@ if TYPE_CHECKING:
 
 
 _LOGGER = logging.getLogger(__name__)
+
+
+@dataclass(frozen=True)
+class _OrchestrationWiring:
+    """Legacy loop bridge to orchestration-plane control/resolver surfaces.
+
+    Authority:
+    - plan step ``orch_system_wiring.impl`` integration scope
+    - docs/ORCHESTRATION-PLANE-IMPLEMENTATION-DESIGN.md section 6
+    """
+
+    core_adapter: PlanCoreAdapter
+    roster: OrchestrationRoster
+    runtime: Any
+    control: PlanAwareControl
+    resolver: BoundResolver
+
+
+@dataclass(frozen=True)
+class _LegacyResolverInvocation:
+    """Deterministic legacy invocation glue for orchestration resolver path.
+
+    Authority:
+    - docs/ORCHESTRATION-PLANE-INTERFACES.md section 5.3
+    - docs/ORCHESTRATION-PLANE-RESOLUTION-CONTRACT.md sections 5 and 8
+    """
+
+    def invoke(self, case: ResolutionCase) -> Mapping[str, object]:
+        if case.core.unresolved_reasons:
+            joined = "; ".join(case.core.unresolved_reasons)
+            return {
+                "status": "operator_required",
+                "summary": f"Unresolved authoritative state requires operator input: {joined}",
+                "evidence_refs": ("resolver:legacy-unresolved",),
+                "operator_message": "Resolve authoritative plan validation errors before retrying.",
+            }
+
+        if case.core.blocked_step_ids:
+            blocked_steps = ", ".join(case.core.blocked_step_ids)
+            return {
+                "status": "operator_required",
+                "summary": f"Blocked steps require manual unblock: {blocked_steps}",
+                "evidence_refs": ("resolver:legacy-blocked",),
+                "operator_message": "Unblock dependent steps or adjust plan state, then retry.",
+            }
+
+        return {
+            "status": "unblocked",
+            "summary": "Resolver found no remaining blocked/unresolved conditions",
+            "evidence_refs": ("resolver:legacy-unblocked",),
+        }
+
+
+def _build_orchestration_wiring(*, plan_path: Path) -> _OrchestrationWiring:
+    """Build orchestration-plane wiring used by legacy runtime loop.
+
+    Authority:
+    - plan step ``orch_system_wiring.impl``
+    - docs/ORCHESTRATION-PLANE-IMPLEMENTATION-DESIGN.md section 6
+    """
+
+    core_adapter = PlanCoreAdapter(plan_path)
+    roster = OrchestrationRoster()
+    from vectl.orchestration import runtime as orchestration_runtime
+
+    runtime = orchestration_runtime.Runtime()
+    control = PlanAwareControl(
+        sources=ControlInputSources(
+            core_adapter=core_adapter,
+            roster=roster,
+            runtime=runtime,
+        )
+    )
+    resolver = BoundResolver(
+        invocation=cast(ResolverInvocationSurface, _LegacyResolverInvocation())
+    )
+    return _OrchestrationWiring(
+        core_adapter=core_adapter,
+        roster=roster,
+        runtime=runtime,
+        control=control,
+        resolver=resolver,
+    )
+
+
+def _route_resolution_via_orchestration(
+    *,
+    wiring: _OrchestrationWiring,
+    decision_reason: str,
+    observer: Observer,
+) -> None:
+    """Route blocked/unresolved flow through orchestration resolver contract."""
+
+    core = wiring.core_adapter.snapshot()
+    roster = wiring.roster.snapshot()
+    runtime = wiring.runtime.snapshot()
+    report = wiring.resolver.resolve(
+        ResolutionCase(reason=decision_reason, core=core, roster=roster, runtime=runtime)
+    )
+    wiring.control.apply_resolution(report=report, core=core, roster=roster, runtime=runtime)
+    observer.emit(
+        "ORCHESTRATION_RESOLUTION",
+        status=report.status,
+        summary=report.summary,
+        reason=decision_reason,
+        evidence_refs=list(report.evidence_refs),
+    )
 
 
 RegisteredLoopActionHandlerName = Literal[
@@ -4183,9 +4295,32 @@ async def _run_main_loop(
         plan_path=plan_path,
     )
 
+    orchestration_wiring: _OrchestrationWiring | None
+    try:
+        orchestration_wiring = _build_orchestration_wiring(plan_path=plan_path)
+    except (PlanError, PlanIOError, OSError, ValueError) as exc:
+        observer.emit("ORCHESTRATION_WIRING_UNAVAILABLE", error=str(exc))
+        orchestration_wiring = None
+
     loop_iteration = 0
     while not state.halt_requested:
         loop_iteration += 1
+
+        if orchestration_wiring is not None:
+            try:
+                control_decision = orchestration_wiring.control.evaluate_current()
+            except (PlanError, PlanIOError, OSError, ValueError) as exc:
+                observer.emit("ORCHESTRATION_CONTROL_EVALUATION_FAILED", error=str(exc))
+            else:
+                if control_decision.kind == "resolve":
+                    _route_resolution_via_orchestration(
+                        wiring=orchestration_wiring,
+                        decision_reason=control_decision.reason,
+                        observer=observer,
+                    )
+                elif control_decision.kind == "done" and not state.running:
+                    break
+
         decide_output = decide(
             running_tasks=state.as_running_tasks(),
             completed_results=None,

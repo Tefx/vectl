@@ -57350,7 +57350,7 @@ phases:
       - none'
   - id: orch_control.verify
     name: Verify control extraction against loop behavior
-    status: claimed
+    status: done
     description: 'Independent verification for control extraction.
 
 
@@ -57379,6 +57379,64 @@ phases:
     agent: integration-verifier
     claimed_by: integration-verifier
     claimed_at: '2026-04-03T18:30:03.846058+00:00'
+    done_at: '2026-04-03T18:34:27.758120+00:00'
+    evidence: 'Artifact:
+
+      - Commit: 37998f4 (branch vectl/step-orch_control.verify)
+
+      - New tests: tests/orchestration/integration/test_control_isolation_flow.py
+      (+ package __init__)
+
+
+      Verification:
+
+      - Run: `uv run pytest tests/orchestration/unit/test_control.py tests/orchestration/unit/test_core_adapter_impl.py
+      tests/orchestration/unit/test_roster.py tests/orchestration/unit/test_runtime.py
+      tests/orchestration/integration/test_control_isolation_flow.py -v`
+
+      - Outcome: 38 passed total (15 integration + 23 unit/contract)
+
+
+      Spec link:
+
+      - docs/ORCHESTRATION-PLANE-ISOLATION-SEMANTICS.md sections 5.3, 6, 10
+
+      - docs/ORCHESTRATION-PLANE-IMPLEMENTATION-DESIGN.md section 3.6
+
+      - docs/ORCHESTRATION-PLANE-ARCHITECTURE.md section 7
+
+      - docs/ORCHESTRATION-PLANE-RESOLUTION-CONTRACT.md sections 3, 5, 6
+
+      - docs/ORCHESTRATION-PLANE-INTERFACES.md sections 4.1, 5
+
+
+      step_intent:
+
+      - Independent verification of control extraction for dispatch/resolve/wait/done
+      and isolation propagation through authoritative core snapshots.
+
+
+      expected_result:
+
+      - Control decision paths and isolation-aware dispatch behavior proven; legacy-equivalent
+      behavior preserved where new owner exists.
+
+
+      observed_result:
+
+      - All targeted orchestration verification suites passed; integration scenarios
+      validated dispatch, wait, resolve, done, conflict, and isolation propagation
+      paths.
+
+
+      failure_alignment:
+
+      - none (no failures)
+
+
+      product implementation files modified:
+
+      - tests only (no src/ product code modifications)'
   - id: orch_control.gate
     name: Gate control extraction
     status: pending

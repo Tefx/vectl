@@ -58177,7 +58177,7 @@ phases:
   steps:
   - id: orch_migration_finish.test_rehome
     name: Rehome orchestration tests by behavior
-    status: pending
+    status: claimed
     description: 'Rehome tests by behavior rather than by legacy naming.
 
 
@@ -58201,6 +58201,8 @@ phases:
 
       - Evidence shows behavior coverage was preserved during movement'
     agent: python-executor
+    claimed_by: python-executor
+    claimed_at: '2026-04-03T19:18:19.231648+00:00'
   - id: orch_migration_finish.legacy_disposition_audit
     name: Audit legacy package disposition against equivalence rules
     status: claimed

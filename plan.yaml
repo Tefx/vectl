@@ -57254,7 +57254,7 @@ phases:
       - docs/ORCHESTRATION-PLANE-IMPLEMENTATION-DESIGN.md sections 3.2, 3.6, 4, 5.5'
   - id: orch_control.impl
     name: Carve plan-aware orchestration flow into control
-    status: pending
+    status: claimed
     description: 'Fill in stub bodies in src/vectl/orchestration/control.py per the
       contract from step orch_control.contract.
 
@@ -57300,6 +57300,8 @@ phases:
     depends_on:
     - orch_control.contract
     agent: python-senior
+    claimed_by: python-senior
+    claimed_at: '2026-04-03T18:21:52.243208+00:00'
   - id: orch_control.verify
     name: Verify control extraction against loop behavior
     status: pending

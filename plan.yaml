@@ -57694,7 +57694,7 @@ phases:
       - none'
   - id: orch_resolver.verify
     name: Verify control-resolver contract behavior
-    status: pending
+    status: claimed
     description: 'Independent verification for the control ↔ resolver contract.
 
 
@@ -57718,6 +57718,8 @@ phases:
     depends_on:
     - orch_resolver.impl
     agent: blind-tester
+    claimed_by: blind-tester
+    claimed_at: '2026-04-03T18:49:52.961712+00:00'
   - id: orch_resolver.gate
     name: Gate resolver landing
     status: pending

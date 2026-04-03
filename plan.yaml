@@ -57845,7 +57845,7 @@ phases:
       - docs/ORCHESTRATION-PLANE-IMPLEMENTATION-DESIGN.md sections 3.5, 3.6, 5'
 - id: orch_system_wiring
   name: Orchestration Plane System Wiring
-  status: in_progress
+  status: done
   gate: Legacy runtime entrypoints route through the orchestration package with real
     runnable behavior, and one end-to-end vertical slice proves the new plane is live
     without requiring premature legacy deletion.
@@ -58099,7 +58099,7 @@ phases:
       \ contract)\n\nerror: null"
   - id: orch_system_wiring.gate
     name: Gate orchestration system wiring
-    status: claimed
+    status: done
     description: 'Gate review for orchestration system wiring.
 
 
@@ -58127,9 +58127,48 @@ phases:
     agent: gate-reviewer
     claimed_by: gate-reviewer
     claimed_at: '2026-04-03T19:14:02.865102+00:00'
+    done_at: '2026-04-03T19:17:30.209420+00:00'
+    evidence: 'Artifact:
+
+      - Orchestration package modules and protocol implementations verified live
+
+      - Wiring integration verified in src/vectl/driver/loop.py via `_build_orchestration_wiring()`
+      and `_route_resolution_via_orchestration()`
+
+      - Probe/test artifacts from system-wiring phase reused for gate evidence
+
+
+      Verification:
+
+      - Liveness probe: `uv run python tests/repro/orch_liveness_probe.py` -> ALIVE
+
+      - Vertical slice: `uv run python tests/repro/vertical_slice_probe.py` -> ALIVE
+      with full entrypoint→control→runtime→result path
+
+      - Integration suite: `uv run pytest tests/orchestration/integration/ -q` ->
+      15 passed
+
+      - Type check: `uv run mypy src/vectl/orchestration/ --ignore-missing-imports`
+      -> success
+
+      - Escape-hatch/stub scans show no production stub/escape-hatch anomalies
+
+      - Wiring audit confirms dead-export/transitive-reachability/protocol-shadow/entry-to-effect
+      checks pass
+
+
+      Spec link:
+
+      - docs/ORCHESTRATION-PLANE-IMPLEMENTATION-DESIGN.md sections 5, 6
+
+      - docs/ORCHESTRATION-PLANE-INTERFACES.md sections 4.1-4.4
+
+      - docs/ORCHESTRATION-PLANE-RESOLUTION-CONTRACT.md sections 2-5
+
+      - docs/ORCHESTRATION-PLANE-MIGRATION.md Principle D'
 - id: orch_migration_finish
   name: Orchestration Plane Migration Finish
-  status: locked
+  status: pending
   gate: Tests are rehomed by behavior, legacy disposition is audited against equivalence
     rules, docs are aligned in-place, and final independent reviews confirm no legacy
     path is retired before equivalent behavior exists.

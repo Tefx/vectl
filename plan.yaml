@@ -56111,3 +56111,11 @@ phases:
     and targeted vertical-slice proof.
   depends_on:
   - orch_foundation
+- id: orch_core_authority
+  name: Orchestration Plane Core Authority and Isolation
+  status: locked
+  gate: IsolationMode is authoritative on Step/core surfaces, core_adapter is the
+    single orchestration-plane core boundary, and default migration preserves existing
+    plans without bulk rewrites.
+  depends_on:
+  - orch_roster_runtime

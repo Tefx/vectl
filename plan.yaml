@@ -56221,7 +56221,7 @@ phases:
       Contract purity: ENFORCED — no behavior migrated; contract boundary only.'
   - id: orch_foundation.contract_tests
     name: Define orchestration package contract tests
-    status: pending
+    status: claimed
     description: 'Author test-only coverage for the new orchestration package boundary
       and contract signatures before behavior migration.
 
@@ -56252,6 +56252,8 @@ phases:
     depends_on:
     - orch_foundation.contracts
     agent: integration-verifier
+    claimed_by: integration-verifier
+    claimed_at: '2026-04-03T16:46:01.169605+00:00'
   - id: orch_foundation.gate
     name: Gate orchestration foundation
     status: pending

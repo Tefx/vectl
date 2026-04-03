@@ -58099,7 +58099,7 @@ phases:
       \ contract)\n\nerror: null"
   - id: orch_system_wiring.gate
     name: Gate orchestration system wiring
-    status: pending
+    status: claimed
     description: 'Gate review for orchestration system wiring.
 
 
@@ -58125,6 +58125,8 @@ phases:
     - orch_system_wiring.liveness_probe
     - orch_system_wiring.wiring_audit
     agent: gate-reviewer
+    claimed_by: gate-reviewer
+    claimed_at: '2026-04-03T19:14:02.865102+00:00'
 - id: orch_migration_finish
   name: Orchestration Plane Migration Finish
   status: locked

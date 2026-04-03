@@ -56421,7 +56421,7 @@ phases:
       - docs/ORCHESTRATION-PLANE-ISOLATION-SEMANTICS.md sections 5.3 and 6'
   - id: orch_roster_runtime.runtime_contract
     name: Pin runtime contract and workspace mechanics boundary
-    status: claimed
+    status: done
     description: 'Pin the orchestration-plane runtime contract in src/vectl/orchestration/runtime.py
       using docs/ORCHESTRATION-PLANE-ARCHITECTURE.md section 5.3 and docs/ORCHESTRATION-PLANE-INTERFACES.md
       section 4.3.
@@ -56463,6 +56463,38 @@ phases:
     agent: python-executor
     claimed_by: python-executor
     claimed_at: '2026-04-03T17:09:57.959896+00:00'
+    done_at: '2026-04-03T17:15:20.904958+00:00'
+    evidence: 'Artifact:
+
+      - Commit: e863f9a756930f5b1b4ceb473c8a970c78696e8a
+
+      - File: src/vectl/orchestration/runtime.py
+
+
+      Verification:
+
+      - Run: `pyright src/vectl/orchestration/runtime.py` -> 0 errors
+
+      - Run: `uv run python -c "from vectl.orchestration.runtime import Runtime"`
+      -> OK
+
+      - Verified contract surfaces: snapshot/prepare/start/collect/cleanup present
+      and typed
+
+      - Verified runtime remains mechanical only (no plan-aware policy, blocked-state
+      reasoning, or authority mutation)
+
+      - Verified isolation freshness obligations documented for workspace and independent
+      modes
+
+
+      Spec link:
+
+      - docs/ORCHESTRATION-PLANE-ARCHITECTURE.md section 5.3
+
+      - docs/ORCHESTRATION-PLANE-INTERFACES.md section 4.3
+
+      - docs/ORCHESTRATION-PLANE-ISOLATION-SEMANTICS.md sections 5.4, 5.5'
   - id: orch_roster_runtime.roster_impl
     name: Extract reusable resource logic into roster
     status: done

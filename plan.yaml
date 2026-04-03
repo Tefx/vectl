@@ -57598,7 +57598,7 @@ phases:
       8, 10'
   - id: orch_resolver.impl
     name: Land resolver using ResolutionCase and ResolutionReport
-    status: pending
+    status: claimed
     description: 'Fill in stub bodies in src/vectl/orchestration/resolver.py and src/vectl/orchestration/judgments.py
       per the contract from step orch_resolver.contract.
 
@@ -57643,6 +57643,8 @@ phases:
     depends_on:
     - orch_resolver.contract
     agent: python-senior
+    claimed_by: python-senior
+    claimed_at: '2026-04-03T18:43:59.087606+00:00'
   - id: orch_resolver.verify
     name: Verify control-resolver contract behavior
     status: pending

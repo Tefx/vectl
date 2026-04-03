@@ -56847,7 +56847,7 @@ phases:
   steps:
   - id: orch_core_authority.contract
     name: Pin IsolationMode and core_adapter contracts
-    status: claimed
+    status: done
     description: 'Pin the authoritative orchestration-plane core boundary using docs/ORCHESTRATION-PLANE-ISOLATION-SEMANTICS.md,
       docs/ORCHESTRATION-PLANE-ARCHITECTURE.md, and docs/ORCHESTRATION-PLANE-IMPLEMENTATION-DESIGN.md
       sections 3.6 and 7.
@@ -56888,6 +56888,45 @@ phases:
     agent: python-senior
     claimed_by: python-senior
     claimed_at: '2026-04-03T17:39:12.209525+00:00'
+    done_at: '2026-04-03T17:46:25.678848+00:00'
+    evidence: 'Artifact:
+
+      - Commit: 42a0bc3 (branch vectl/step-orch_core_authority.contract)
+
+      - Contract outputs touched: src/vectl/models.py, src/vectl/orchestration/contracts.py,
+      src/vectl/orchestration/core_adapter.py, src/vectl/orchestration/__init__.py,
+      src/vectl/orchestration/roster.py, contract/import tests
+
+
+      Verification:
+
+      - Run: ripgrep checks for IsolationMode literals/default in docs and src/vectl/models.py
+      -> values/default match docs exactly
+
+      - Run: ripgrep checks in src/vectl/orchestration/core_adapter.py -> bridge-oriented
+      surface (snapshot/step_isolation/claim_step/complete_step/defer_step), no shadow-core
+      semantics
+
+      - Run: ripgrep for rejected concepts (`continuity_group`, `session_reuse`) across
+      public contract surfaces -> none found
+
+      - Run: `uv run pytest -q tests/orchestration/unit/test_core_adapter_contract.py
+      tests/orchestration/unit/test_roster.py tests/test_models.py -k "isolation or
+      core_adapter or roster or TestStep"` -> 28 passed
+
+      - Run: `uv run pytest -q tests/orchestration/unit/test_contracts.py -k IsolationModeContract`
+      and import checks -> passing
+
+      - Run: `git status --short` -> clean
+
+
+      Spec link:
+
+      - docs/ORCHESTRATION-PLANE-ISOLATION-SEMANTICS.md
+
+      - docs/ORCHESTRATION-PLANE-ARCHITECTURE.md
+
+      - docs/ORCHESTRATION-PLANE-IMPLEMENTATION-DESIGN.md sections 3.6 and 7'
   - id: orch_core_authority.impl
     name: Land authoritative isolation semantics and introduce core_adapter
     status: pending

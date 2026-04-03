@@ -57854,7 +57854,7 @@ phases:
   steps:
   - id: orch_system_wiring.impl
     name: Wire legacy runtime entrypoints through orchestration components
-    status: claimed
+    status: done
     description: 'Serial integration step: wire the existing runnable driver entry/runtime
       surfaces through the new orchestration package after component extraction.
 
@@ -57892,6 +57892,49 @@ phases:
     agent: python-senior
     claimed_by: python-senior
     claimed_at: '2026-04-03T18:58:58.656766+00:00'
+    done_at: '2026-04-03T19:06:27.309326+00:00'
+    evidence: 'Artifact:
+
+      - Commit: c056822 (branch vectl/step-orch_system_wiring.impl)
+
+      - File: src/vectl/driver/loop.py
+
+
+      Verification:
+
+      - Run: `uv run ruff check src/vectl/driver/loop.py` -> pass
+
+      - Run: `uv run pytest -q tests/test_driver_loop_contract.py tests/orchestration/integration/test_control_resolver_contract.py`
+      -> 14 passed
+
+
+      Wiring evidence:
+
+      - Legacy loop now wires orchestration-plane surfaces: PlanCoreAdapter, PlanAwareControl,
+      OrchestrationRoster, BoundResolver
+
+      - Main loop evaluates orchestration control per iteration before legacy dispatch
+      path
+
+      - Blocked/unresolved routing flows via ResolutionCase -> BoundResolver -> ResolutionReport
+      path with orchestration resolution eventing
+
+      - Fail-safe fallback preserves runnable baseline when orchestration control
+      path unavailable
+
+
+      Spec link:
+
+      - docs/ORCHESTRATION-PLANE-IMPLEMENTATION-DESIGN.md sections 5, 6
+
+      - docs/ORCHESTRATION-PLANE-INTERFACES.md Rule A, Rule D, section 5.3
+
+      - docs/ORCHESTRATION-PLANE-MIGRATION.md section 5
+
+
+      Deviation records:
+
+      - none'
   - id: orch_system_wiring.liveness_probe
     name: Probe orchestration entrypoint liveness and vertical slice
     status: pending

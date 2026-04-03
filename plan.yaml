@@ -58437,3 +58437,151 @@ phases:
     agent: gate-reviewer
     claimed_by: gate-reviewer
     claimed_at: '2026-04-03T19:38:59.148181+00:00'
+  - id: orch_migration_finish.fix_gate_blockers
+    name: Batch-fix migration finish gate blockers
+    status: pending
+    description: 'Fix ALL blockers found by orch_migration_finish.gate without removing
+      the historical failed gate step.
+
+
+      Blockers batched in this single remediation path:
+
+      - B1: test rehome evidence mismatch / missing tests/legacy/driver rehome reality
+
+      - B3: legacy migration disposition not operationally enacted/evidenced
+
+      - B4: evidence integrity mismatch across migration_finish steps
+
+
+      Required outputs:
+
+      - Objective filesystem proof for the actual rehome state, including whether
+      tests/legacy/driver still exists, what replaced it, and where the rehomed behavior
+      now lives
+
+      - Objective git proof for the migration-finish evidence set, including tracked
+      paths, diffs, and any lingering legacy/disposition mismatches
+
+      - Reconciled evidence package so test_rehome, legacy_disposition_audit, finish_alignment,
+      and final_review all point at the same fixed-state reality
+
+
+      Required investigation/fix actions:
+
+      1. Reconcile rehome evidence against actual repository structure and record
+      the exact present-tense state of tests/legacy/driver.
+
+      2. Operationalize the legacy migration disposition by showing the enacted repo
+      state, not only narrative claims.
+
+      3. Repair evidence-integrity mismatches across migration_finish steps so all
+      cited paths/status claims are mutually consistent.
+
+      4. Search for sibling evidence inconsistencies beyond the named blockers; do
+      not stop at the first mismatch.
+
+
+      Objective proof requirements:
+
+      - filesystem proof: directory listings, path existence/non-existence checks,
+      and referenced file locations
+
+      - git proof: git status/diff/log or equivalent tracked-state evidence demonstrating
+      the fixed migration reality
+
+      - cross-step proof: a single reconciled mapping from blocker -> file/path/git
+      evidence -> corrected migration_finish claim
+
+
+      Out-of-scope guardrail:
+
+      - Do not delete or rewrite orch_migration_finish.gate history; treat it as the
+      preserved failed discovery step.
+
+      - Do not create additional remediation siblings in this phase.
+
+
+      ## Completion Criteria (stub exclusion)
+
+      This is an IMPLEMENTATION step. Stub-only completion is NOT acceptable. Each
+      deliverable MUST contain substantive evidence reconciliation and any necessary
+      repository updates so the recorded migration state varies based on actual filesystem
+      and git facts.'
+    verification: '- Main path: objective filesystem proof shows the real rehome/disposition
+      state for migration-finish paths, including tests/legacy/driver reality
+
+      - Failure path: focused regression check demonstrates prior evidence mismatches
+      no longer reproduce across migration_finish step claims
+
+      - Proof: reconciled blocker matrix covers B1, B3, and B4 with filesystem plus
+      git evidence, and no unresolved sibling mismatch remains in the migration_finish
+      evidence set'
+    evidence_template: '## Batched Remediation Evidence
+
+
+      ### Blocker Closure Matrix
+
+      | Blocker | Prior mismatch | Filesystem proof | Git proof | Fixed claim |
+
+      |---|---|---|---|---|
+
+      | B1 | <describe> | <ls/path existence output> | <git diff/status evidence>
+      | <corrected rehome reality> |
+
+      | B3 | <describe> | <repo state showing enactment> | <tracked-state proof> |
+      <operational disposition now evidenced> |
+
+      | B4 | <describe> | <cross-step path proof> | <git integrity proof> | <evidence
+      set now consistent> |
+
+
+      ### Filesystem Proof
+
+      ```text
+
+      <paste objective directory/path evidence>
+
+      ```
+
+
+      ### Git Proof
+
+      ```text
+
+      <paste git status/diff/log evidence>
+
+      ```
+
+
+      ### Cross-Step Consistency Map
+
+      - orch_migration_finish.test_rehome -> <paths/evidence>
+
+      - orch_migration_finish.legacy_disposition_audit -> <paths/evidence>
+
+      - orch_migration_finish.finish_alignment -> <paths/evidence>
+
+      - orch_migration_finish.final_review -> <paths/evidence>
+
+
+      ### Sibling Search
+
+      ```text
+
+      <paste search output showing additional mismatches checked>
+
+      ```
+
+
+      ### Verdict
+
+      - [ ] B1 closed
+
+      - [ ] B3 closed
+
+      - [ ] B4 closed
+
+      - [ ] No remaining migration_finish evidence-integrity mismatch found'
+    depends_on:
+    - orch_migration_finish.gate
+    agent: python-senior

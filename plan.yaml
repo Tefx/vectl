@@ -56221,7 +56221,7 @@ phases:
       Contract purity: ENFORCED — no behavior migrated; contract boundary only.'
   - id: orch_foundation.contract_tests
     name: Define orchestration package contract tests
-    status: claimed
+    status: done
     description: 'Author test-only coverage for the new orchestration package boundary
       and contract signatures before behavior migration.
 
@@ -56254,6 +56254,17 @@ phases:
     agent: integration-verifier
     claimed_by: integration-verifier
     claimed_at: '2026-04-03T16:46:01.169605+00:00'
+    done_at: '2026-04-03T16:51:55.324423+00:00'
+    evidence: "Artifact:\n- Commit: f7b6388\n\nVerification:\n- Run: `uv run pytest\
+      \ tests/orchestration/unit/ -v --tb=short` -> 62 collected, 53 passed, 5 failed,\
+      \ 4 xpassed\n- Tests created:\n  - tests/orchestration/unit/test_imports.py\n\
+      \  - tests/orchestration/unit/test_contracts.py\n  - tests/orchestration/unit/test_interfaces.py\n\
+      \nStep semantic fields:\n- step_intent: test_define_red\n- expected_result:\
+      \ red\n- observed_result: 5 failures, 4 xpasses\n- failure_alignment: failures\
+      \ match acceptance-gap expectations for unresolved runtime type resolution of\
+      \ annotations/literals\n- Product implementation files modified: false (tests-only\
+      \ changes under tests/orchestration/unit/)\n\nSpec link:\n- docs/ORCHESTRATION-PLANE-INTERFACES.md\
+      \ sections 3-4"
   - id: orch_foundation.gate
     name: Gate orchestration foundation
     status: pending

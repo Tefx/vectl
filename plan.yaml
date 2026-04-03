@@ -56838,7 +56838,7 @@ phases:
       Gate verdict: PASS'
 - id: orch_core_authority
   name: Orchestration Plane Core Authority and Isolation
-  status: pending
+  status: in_progress
   gate: IsolationMode is authoritative on Step/core surfaces, core_adapter is the
     single orchestration-plane core boundary, and default migration preserves existing
     plans without bulk rewrites.
@@ -56847,7 +56847,7 @@ phases:
   steps:
   - id: orch_core_authority.contract
     name: Pin IsolationMode and core_adapter contracts
-    status: pending
+    status: claimed
     description: 'Pin the authoritative orchestration-plane core boundary using docs/ORCHESTRATION-PLANE-ISOLATION-SEMANTICS.md,
       docs/ORCHESTRATION-PLANE-ARCHITECTURE.md, and docs/ORCHESTRATION-PLANE-IMPLEMENTATION-DESIGN.md
       sections 3.6 and 7.
@@ -56886,6 +56886,8 @@ phases:
 
       - No rejected concepts are reintroduced in the public contract'
     agent: python-senior
+    claimed_by: python-senior
+    claimed_at: '2026-04-03T17:39:12.209525+00:00'
   - id: orch_core_authority.impl
     name: Land authoritative isolation semantics and introduce core_adapter
     status: pending

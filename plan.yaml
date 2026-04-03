@@ -57062,3 +57062,30 @@ phases:
     path is retired before equivalent behavior exists.
   depends_on:
   - orch_system_wiring
+  steps:
+  - id: orch_migration_finish.test_rehome
+    name: Rehome orchestration tests by behavior
+    status: pending
+    description: 'Rehome tests by behavior rather than by legacy naming.
+
+
+      Scope:
+
+      - move or split tests into tests/orchestration/unit/, tests/orchestration/integration/,
+      and tests/legacy/driver/ according to the new behavior owner
+
+      - keep legacy baseline tests that still provide unique behavior coverage
+
+      - delete tests only when they assert a retired legacy concept rather than still-relevant
+      behavior
+
+
+      This is migration finish work, not a big-bang cleanup.'
+    verification: '- Rehome mapping shows old test -> new owner or retained legacy
+      location
+
+      - New orchestration tests protect landed owners; legacy-only baseline tests
+      remain where still needed
+
+      - Evidence shows behavior coverage was preserved during movement'
+    agent: python-executor

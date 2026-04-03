@@ -56823,6 +56823,53 @@ phases:
       - Evidence records the clean separation between typed judgments and resolver
       invocation glue'
     agent: python-senior
+  - id: orch_resolver.impl
+    name: Land resolver using ResolutionCase and ResolutionReport
+    status: pending
+    description: 'Fill in stub bodies in src/vectl/orchestration/resolver.py and src/vectl/orchestration/judgments.py
+      per the contract from step orch_resolver.contract.
+
+
+      UPSTREAM ARTIFACTS:
+
+      - src/vectl/orchestration/resolver.py and judgments.py — authoritative resolver
+      boundary and typed support contracts
+
+      - tests/test_driver_judge.py, tests/test_driver_judgments.py, and related blocked-flow
+      tests — baseline behavior is protected
+
+
+      YOUR SCOPE: replace stub markers with working logic that lands the resolver
+      contract, rehomes typed judgment support cleanly, and uses allowed official
+      surfaces for blocked-case resolution.
+
+
+      Required boundary rules:
+
+      - control creates ResolutionCase
+
+      - resolver returns ResolutionReport
+
+      - control resnapshots and reevaluates after resolution
+
+      - resolver must not become a permanent controller or mutate core truth through
+      hidden backchannels
+
+
+      ## Completion Criteria (stub exclusion)
+
+      This is an IMPLEMENTATION step. Stub-only completion is NOT acceptable.'
+    verification: '- Main path: resolver tests prove unblocked and waiting outcomes
+      produce bounded ResolutionReports
+
+      - Failure path: regression coverage proves operator_required is returned instead
+      of false certainty when the case cannot be closed
+
+      - Evidence shows typed judgments live in judgments.py while invocation glue
+      stays under resolver'
+    depends_on:
+    - orch_resolver.contract
+    agent: python-senior
 - id: orch_system_wiring
   name: Orchestration Plane System Wiring
   status: locked

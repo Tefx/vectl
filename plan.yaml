@@ -45431,7 +45431,7 @@ phases:
     claimed_at: '2026-04-03T16:28:28.385261+00:00'
   - id: driver-enhancement-review.contract-strength
     name: Audit enhancement contract strength
-    status: pending
+    status: claimed
     description: 'step_type: verification
 
       Verification scope: phase-check protecting driver-enhancement-review.gate.
@@ -45454,6 +45454,8 @@ phases:
 
       - Any under-specified contract is reported as blocking review debt'
     agent: gate-reviewer
+    claimed_by: gate-reviewer
+    claimed_at: '2026-04-03T16:32:21.744858+00:00'
   - id: driver-enhancement-review.black-box-verification
     name: Black-box verify enhanced driver liveness and visibility
     status: pending

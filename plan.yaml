@@ -58792,7 +58792,7 @@ phases:
       - Dependency chain: retest_gate_evidence -> fix_gate_blockers_round2 -> retest_gate_evidence_round2'
   - id: orch_migration_finish.fix_gate_blockers_round2
     name: Batch-remediate unresolved migration finish blockers (round2)
-    status: claimed
+    status: done
     description: 'Execute one additional batched remediation loop for the unresolved
       migration-finish blockers with objective repository-state changes only.
 
@@ -58836,6 +58836,50 @@ phases:
     agent: python-senior
     claimed_by: python-senior
     claimed_at: '2026-04-03T20:00:30.253373+00:00'
+    done_at: '2026-04-03T20:05:46.477902+00:00'
+    evidence: 'Path existence checks and objective state:
+
+      - `tests/legacy/driver` exists (dir)
+
+      - `tests/test_legacy_driver_layout.py` exists
+
+      - `docs/ORCH_MIGRATION_FINISH_FIX_GATE_BLOCKERS_ROUND2.md` exists
+
+      - top-level `tests/test_driver*.py` no longer present
+
+      - counts: legacy driver files = 38, top-level driver files = 0
+
+
+      Verification:
+
+      - Run: `uv run pytest tests/test_legacy_driver_layout.py -q` -> 1 passed
+
+
+      Git proof (non-plan operational changes):
+
+      - `git status --short "tests/test_driver*.py"` shows 38 deletions from old top-level
+      locations
+
+      - `git ls-files --others --exclude-standard ...` lists 38 new files under `tests/legacy/driver/`
+      + new regression test + remediation doc
+
+      - `git diff --stat -- "tests/test_driver*.py"` shows large deletion diff from
+      old paths (relocation enactment)
+
+      - `git status --short "plan.yaml" "src/vectl"` empty for plan/src modifications
+      (no orchestrator state mutation)
+
+
+      Blocker mapping:
+
+      - B1 fixed by actual rehome/path reality alignment (38 moved to `tests/legacy/driver`,
+      0 top-level remain)
+
+      - B3 fixed by concrete repo-state enactment beyond plan.yaml (rehomed files
+      + regression/doc artifacts)
+
+      - B4 fixed by cross-step objective consistency artifacts (`tests/test_legacy_driver_layout.py`,
+      remediation doc, filesystem+git proofs)'
   - id: orch_migration_finish.retest_gate_evidence_round2
     name: Re-test migration finish gate evidence after round2 remediation
     status: pending

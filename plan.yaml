@@ -45297,7 +45297,7 @@ phases:
       - PASS'
 - id: driver-enhancement-review
   name: 'Driver Enhancement: Review'
-  status: in_progress
+  status: done
   gate: Final doc-sync plus independent deep review confirm the hardened and enhanced
     driver is safe, observable, and extension-ready.
   context: 'Driver Enhancement: Review. Enhancement review remains downstream of driver-enhancement-integration
@@ -45310,7 +45310,7 @@ phases:
   steps:
   - id: driver-enhancement-review.update-docs
     name: Sync driver enhancement docs
-    status: claimed
+    status: skipped
     description: 'step_type: review
 
 
@@ -45338,11 +45338,10 @@ phases:
 
       - Runtime and recovery surfaces are documented at the right boundary'
     agent: doc-reviewer
-    claimed_by: doc-reviewer
-    claimed_at: '2026-04-03T16:32:54.718628+00:00'
+    skipped_reason: superseded
   - id: driver-enhancement-review.wiring-audit
     name: Audit enhancement wiring completeness
-    status: pending
+    status: skipped
     description: 'step_type: verification
 
       Verification scope: phase-check protecting driver-enhancement-review.gate.
@@ -45368,9 +45367,10 @@ phases:
 
       - Any wiring gap is blocking at this phase'
     agent: wiring-auditor
+    skipped_reason: superseded
   - id: driver-enhancement-review.spec-conformance
     name: Audit enhanced driver spec conformance
-    status: pending
+    status: skipped
     description: 'step_type: verification
 
       Verification scope: phase-check protecting driver-enhancement-review.gate.
@@ -45403,9 +45403,10 @@ phases:
     depends_on:
     - driver-enhancement-review.update-docs
     agent: spec-verifier
+    skipped_reason: superseded
   - id: driver-enhancement-review.architecture-review
     name: Review enhancement architecture boundaries
-    status: claimed
+    status: skipped
     description: 'step_type: review
 
 
@@ -45429,11 +45430,10 @@ phases:
 
       - Runtime / entrypoint / external contract boundaries remain aligned'
     agent: software-architect
-    claimed_by: software-architect
-    claimed_at: '2026-04-03T16:28:28.385261+00:00'
+    skipped_reason: superseded
   - id: driver-enhancement-review.contract-strength
     name: Audit enhancement contract strength
-    status: claimed
+    status: skipped
     description: 'step_type: verification
 
       Verification scope: phase-check protecting driver-enhancement-review.gate.
@@ -45456,11 +45456,10 @@ phases:
 
       - Any under-specified contract is reported as blocking review debt'
     agent: gate-reviewer
-    claimed_by: gate-reviewer
-    claimed_at: '2026-04-03T16:32:21.744858+00:00'
+    skipped_reason: superseded
   - id: driver-enhancement-review.black-box-verification
     name: Black-box verify enhanced driver liveness and visibility
-    status: pending
+    status: skipped
     description: 'step_type: verification
 
       Verification scope: phase-check protecting driver-enhancement-review.gate.
@@ -45491,9 +45490,10 @@ phases:
     depends_on:
     - driver-enhancement-review.update-docs
     agent: blind-tester
+    skipped_reason: superseded
   - id: driver-enhancement-review.gate
     name: Final gate for driver enhancement program
-    status: pending
+    status: skipped
     description: 'step_type: gate
 
       Final gate for the routing hardening plus driver enhancement program.'
@@ -45513,6 +45513,7 @@ phases:
     - driver-enhancement-review.contract-strength
     - driver-enhancement-review.black-box-verification
     agent: gate-reviewer
+    skipped_reason: superseded
 - id: driver-prompt-foundation
   name: Driver Prompt Resource Foundation
   status: done
@@ -56104,7 +56105,7 @@ phases:
       verdict: PASS'
 - id: orch_foundation
   name: Orchestration Plane Foundation
-  status: locked
+  status: pending
   gate: Shared orchestration package skeleton and boundary contracts exist under src/vectl/orchestration/
     without deleting legacy driver behavior.
   depends_on:

@@ -8,7 +8,7 @@ Authority: docs/ORCHESTRATION-PLANE-IMPLEMENTATION-DESIGN.md section 3.2
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, Protocol
+from typing import Final, Protocol
 
 from vectl.orchestration.contracts import (
     ControlDecision,
@@ -19,8 +19,7 @@ from vectl.orchestration.contracts import (
 )
 from vectl.orchestration.core_adapter import CoreAdapter
 
-if TYPE_CHECKING:
-    from typing import Final
+DEFAULT_DISPATCH_ROLE: Final[str] = "python-executor"
 
 
 class RosterSnapshotSource(Protocol):
@@ -123,6 +122,190 @@ class Control(Protocol):
 
 
 @dataclass(frozen=True)
+class PlanAwareControl:
+    """Deterministic orchestration-flow implementation.
+
+    Authority:
+        docs/ORCHESTRATION-PLANE-INTERFACES.md sections 4.1, 5.1, 5.2, 5.3
+        docs/ORCHESTRATION-PLANE-IMPLEMENTATION-DESIGN.md sections 3.2, 3.6, 5
+        docs/ORCHESTRATION-PLANE-RESOLUTION-CONTRACT.md sections 3, 5, 6
+
+    This implementation owns only flow decisions (dispatch/resolve/wait/done).
+    It does not perform plan mutations, runtime chores, or resolver reasoning.
+    """
+
+    sources: ControlInputSources
+    agent: str | None = None
+    fallback_role: str = DEFAULT_DISPATCH_ROLE
+
+    def evaluate_current(self) -> ControlDecision:
+        """Evaluate current snapshots read from authoritative sources.
+
+        Returns:
+            Next control decision from current core/roster/runtime snapshots.
+        """
+        core = self.sources.core_adapter.snapshot(agent=self.agent)
+        roster = self.sources.roster.snapshot()
+        runtime = self.sources.runtime.snapshot()
+        return self.evaluate(core=core, roster=roster, runtime=runtime)
+
+    def apply_resolution_current(self, report: ResolutionReport) -> ControlDecision:
+        """Apply resolver report against refreshed authoritative snapshots.
+
+        Args:
+            report: Resolver report to apply.
+
+        Returns:
+            Follow-up decision computed from refreshed state.
+        """
+        core = self.sources.core_adapter.snapshot(agent=self.agent)
+        roster = self.sources.roster.snapshot()
+        runtime = self.sources.runtime.snapshot()
+        return self.apply_resolution(report=report, core=core, roster=roster, runtime=runtime)
+
+    def evaluate(
+        self,
+        core: CoreSnapshot,
+        roster: RosterSnapshot,
+        runtime: RuntimeSnapshot,
+    ) -> ControlDecision:
+        """Evaluate authoritative/component snapshots into one control decision.
+
+        Args:
+            core: Authoritative core snapshot produced through ``CoreAdapter``.
+            roster: Current roster component snapshot.
+            runtime: Current runtime component snapshot.
+
+        Returns:
+            Next orchestration-plane control decision.
+        """
+        unresolved_reason = _format_unresolved_reason(core)
+        if unresolved_reason is not None:
+            return ControlDecision(kind="resolve", reason=unresolved_reason)
+
+        if _has_plan_complete_conflict(core):
+            return ControlDecision(
+                kind="resolve",
+                reason=(
+                    "Authoritative core snapshot conflict: plan_complete=True while "
+                    "claimable/in_progress/blocked still present"
+                ),
+            )
+
+        if core.plan_complete and _is_runtime_idle(runtime):
+            return ControlDecision(kind="done", reason="Plan complete and runtime idle")
+
+        if core.claimable_step_ids:
+            role = _select_dispatch_role(roster=roster, fallback_role=self.fallback_role)
+            return ControlDecision(
+                kind="dispatch",
+                reason="Claimable work available",
+                step_id=core.claimable_step_ids[0],
+                role=role,
+            )
+
+        if _has_active_work(core=core, runtime=runtime):
+            return ControlDecision(kind="wait", reason="Execution already in progress")
+
+        if core.blocked_step_ids:
+            blocked_steps = ", ".join(core.blocked_step_ids)
+            return ControlDecision(
+                kind="resolve",
+                reason=f"Blocked steps require resolution: {blocked_steps}",
+            )
+
+        return ControlDecision(
+            kind="wait",
+            reason="No claimable work yet, waiting for authoritative state changes",
+        )
+
+    def apply_resolution(
+        self,
+        report: ResolutionReport,
+        core: CoreSnapshot,
+        roster: RosterSnapshot,
+        runtime: RuntimeSnapshot,
+    ) -> ControlDecision:
+        """Apply resolver report and return a follow-up control decision.
+
+        Args:
+            report: Resolver output for a previously unresolved case.
+            core: Refreshed authoritative core snapshot.
+            roster: Refreshed roster component snapshot.
+            runtime: Refreshed runtime component snapshot.
+
+        Returns:
+            Follow-up control decision after applying resolver outcome.
+        """
+        if report.status == "unblocked":
+            return self.evaluate(core=core, roster=roster, runtime=runtime)
+
+        if report.status == "waiting":
+            return ControlDecision(kind="wait", reason=f"Resolver waiting: {report.summary}")
+
+        if report.status == "operator_required":
+            operator_suffix = ""
+            if report.operator_message:
+                operator_suffix = f" (operator_message={report.operator_message})"
+            return ControlDecision(
+                kind="wait",
+                reason=f"Resolver requires operator input: {report.summary}{operator_suffix}",
+            )
+
+        return ControlDecision(
+            kind="done", reason=f"Resolver halted orchestration: {report.summary}"
+        )
+
+
+def _is_runtime_idle(runtime: RuntimeSnapshot) -> bool:
+    """Return whether runtime reports no active or stalled work."""
+
+    return not (
+        runtime.active_workspaces or runtime.active_executions or runtime.stalled_executions
+    )
+
+
+def _has_active_work(core: CoreSnapshot, runtime: RuntimeSnapshot) -> bool:
+    """Return whether authoritative/runtime state shows active execution."""
+
+    return bool(
+        core.in_progress_step_ids
+        or runtime.active_workspaces
+        or runtime.active_executions
+        or runtime.stalled_executions
+    )
+
+
+def _has_plan_complete_conflict(core: CoreSnapshot) -> bool:
+    """Return True when plan-complete flag conflicts with remaining work surfaces."""
+
+    if not core.plan_complete:
+        return False
+    return bool(core.claimable_step_ids or core.in_progress_step_ids or core.blocked_step_ids)
+
+
+def _format_unresolved_reason(core: CoreSnapshot) -> str | None:
+    """Build unresolved-state explanation for ``kind='resolve'`` decisions."""
+
+    if not core.unresolved_reasons:
+        return None
+
+    if len(core.unresolved_reasons) == 1:
+        return f"Unresolved authoritative state: {core.unresolved_reasons[0]}"
+
+    joined = "; ".join(core.unresolved_reasons)
+    return f"Unresolved authoritative state: {joined}"
+
+
+def _select_dispatch_role(roster: RosterSnapshot, fallback_role: str) -> str:
+    """Select dispatch role from roster availability with deterministic fallback."""
+
+    if roster.available_agents:
+        return roster.available_agents[0]
+    return fallback_role
+
+
+@dataclass(frozen=True)
 class LegacyLoopSurfaceSplit:
     """Documented decomposition of legacy loop surfaces by responsibility.
 
@@ -166,8 +349,10 @@ LEGACY_LOOP_SURFACE_SPLIT: Final[LegacyLoopSurfaceSplit] = LegacyLoopSurfaceSpli
 __all__ = [
     "Control",
     "ControlInputSources",
+    "DEFAULT_DISPATCH_ROLE",
     "LegacyLoopSurfaceSplit",
     "LEGACY_LOOP_SURFACE_SPLIT",
+    "PlanAwareControl",
     "RosterSnapshotSource",
     "RuntimeSnapshotSource",
 ]

@@ -57521,7 +57521,7 @@ phases:
   steps:
   - id: orch_resolver.contract
     name: Pin resolver and judgments contracts
-    status: claimed
+    status: done
     description: 'Pin the orchestration-plane resolver contract in src/vectl/orchestration/resolver.py
       and rehome typed judgment support into src/vectl/orchestration/judgments.py.
 
@@ -57561,6 +57561,41 @@ phases:
     agent: python-senior
     claimed_by: python-senior
     claimed_at: '2026-04-03T18:38:40.426148+00:00'
+    done_at: '2026-04-03T18:43:25.890188+00:00'
+    evidence: 'Artifact:
+
+      - Commit: 76d9304 (branch vectl/step-orch_resolver.contract)
+
+      - Files: src/vectl/orchestration/resolver.py, src/vectl/orchestration/judgments.py
+
+
+      Verification:
+
+      - Run: `uv run ruff check src/vectl/orchestration/resolver.py src/vectl/orchestration/judgments.py`
+      -> pass
+
+      - Run: signature/type-hint inspection for `Resolver.resolve` and `BoundResolver.resolve`
+      -> exact `(case: ResolutionCase) -> ResolutionReport`
+
+      - Run: `uv run pytest -q tests/orchestration/unit/test_interfaces.py tests/orchestration/unit/test_imports.py`
+      -> 27 passed, 4 xpassed
+
+      - Run: grep checks confirm judgments.py contains typed/local judgment support
+      symbols and no invocation glue
+
+      - Run: grep checks confirm resolver invocation surface + blocked/unresolved
+      reason-preservation contract markers
+
+
+      Spec link:
+
+      - docs/ORCHESTRATION-PLANE-INTERFACES.md section 4.4
+
+      - docs/ORCHESTRATION-PLANE-IMPLEMENTATION-DESIGN.md sections 3.5, 3.9, step
+      6/6a
+
+      - docs/ORCHESTRATION-PLANE-RESOLUTION-CONTRACT.md sections 3.2, 4.2, 5.1, 7,
+      8, 10'
   - id: orch_resolver.impl
     name: Land resolver using ResolutionCase and ResolutionReport
     status: pending

@@ -57439,7 +57439,7 @@ phases:
       - tests only (no src/ product code modifications)'
   - id: orch_control.gate
     name: Gate control extraction
-    status: pending
+    status: claimed
     description: 'Gate review for control extraction.
 
 
@@ -57467,6 +57467,8 @@ phases:
     - orch_control.impl
     - orch_control.verify
     agent: gate-reviewer
+    claimed_by: gate-reviewer
+    claimed_at: '2026-04-03T18:34:58.004242+00:00'
 - id: orch_resolver
   name: Orchestration Plane Resolver Landing
   status: locked

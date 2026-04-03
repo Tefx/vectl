@@ -57089,3 +57089,31 @@ phases:
 
       - Evidence shows behavior coverage was preserved during movement'
     agent: python-executor
+  - id: orch_migration_finish.legacy_disposition_audit
+    name: Audit legacy package disposition against equivalence rules
+    status: pending
+    description: 'Audit src/vectl/driver/ legacy code and tests against the migration
+      disposition rules.
+
+
+      Required outputs:
+
+      - kept_now inventory
+
+      - retireable_now inventory with equivalence evidence
+
+      - deferred_cleanup inventory
+
+      - explicit reasons when a legacy path must remain because equivalent orchestration
+      behavior is not yet covered
+
+
+      This is a migration audit, not blanket deletion.'
+    verification: '- Every proposed legacy retirement cites the equivalence rule from
+      the migration docs
+
+      - No legacy path is marked retireable without equivalent behavior and tests
+      in the new owner
+
+      - Evidence distinguishes provenance from disposition for any retained debt'
+    agent: software-architect

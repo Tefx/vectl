@@ -58585,3 +58585,95 @@ phases:
     depends_on:
     - orch_migration_finish.gate
     agent: python-senior
+  - id: orch_migration_finish.retest_gate_evidence
+    name: Re-test migration finish gate evidence after batched fix
+    status: pending
+    description: 'Independent retest of the migration-finish gate blockers against
+      the fixed repository state.
+
+
+      Re-run gate-check evidence for all remediated findings:
+
+      - B1: test rehome evidence mismatch / tests/legacy/driver reality
+
+      - B3: legacy migration disposition operational enactment/evidence
+
+      - B4: evidence integrity across migration_finish steps
+
+
+      This retest must verify fixed-state reality using objective filesystem and git
+      proof, not summaries.
+
+      Treat orch_migration_finish.gate as historical failed discovery and assess whether
+      the remediated state now satisfies the same evidence bar.
+
+
+      verification_scope: full-plan-check
+
+      step_type: test
+
+      step_intent: retest_green
+
+      expected_result: green'
+    verification: '- Re-run the migration-finish gate-check evidence against the current
+      repo state and require green results for B1, B3, and B4
+
+      - Confirm objective filesystem proof matches the fixed-state claims, including
+      tests/legacy/driver rehome reality
+
+      - Confirm git proof is internally consistent across all migration_finish evidence
+      and no blocker-class mismatch remains'
+    evidence_template: '## Retest Evidence Report
+
+
+      ### Commands / Checks Executed
+
+      ```text
+
+      <paste exact filesystem and git verification commands>
+
+      ```
+
+
+      ### Objective Filesystem Proof
+
+      ```text
+
+      <paste path listings / existence checks / referenced file outputs>
+
+      ```
+
+
+      ### Objective Git Proof
+
+      ```text
+
+      <paste git status/diff/log outputs used for retest>
+
+      ```
+
+
+      ### Gate Blocker Retest Table
+
+      | Blocker | Expected green condition | Evidence | Result |
+
+      |---|---|---|---|
+
+      | B1 | Rehome evidence matches actual tests/legacy/driver reality | <proof>
+      | PASS/FAIL |
+
+      | B3 | Legacy migration disposition is operationally enacted and evidenced |
+      <proof> | PASS/FAIL |
+
+      | B4 | Migration_finish evidence is internally consistent across steps | <proof>
+      | PASS/FAIL |
+
+
+      ### Verdict
+
+      - [ ] GREEN: all blocker checks pass
+
+      - [ ] ISSUES_FOUND: remediation loop still incomplete'
+    depends_on:
+    - orch_migration_finish.fix_gate_blockers
+    agent: gate-reviewer

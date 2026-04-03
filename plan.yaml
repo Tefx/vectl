@@ -56135,3 +56135,11 @@ phases:
     after resolution.
   depends_on:
   - orch_control
+- id: orch_system_wiring
+  name: Orchestration Plane System Wiring
+  status: locked
+  gate: Legacy runtime entrypoints route through the orchestration package with real
+    runnable behavior, and one end-to-end vertical slice proves the new plane is live
+    without requiring premature legacy deletion.
+  depends_on:
+  - orch_resolver

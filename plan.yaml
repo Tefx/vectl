@@ -57083,7 +57083,7 @@ phases:
       - docs/ORCHESTRATION-PLANE-INTERFACES.md'
   - id: orch_core_authority.gate
     name: Gate core authority and isolation landing
-    status: claimed
+    status: pending
     description: 'Gate review for authoritative isolation semantics and core_adapter
       landing.
 
@@ -57113,8 +57113,6 @@ phases:
     - orch_core_authority.impl
     - orch_core_authority.spec_conformance
     agent: gate-reviewer
-    claimed_by: gate-reviewer
-    claimed_at: '2026-04-03T17:58:23.869297+00:00'
 - id: orch_control
   name: Orchestration Plane Control Extraction
   status: locked

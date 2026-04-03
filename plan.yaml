@@ -58466,7 +58466,7 @@ phases:
       before final pass.'
   - id: orch_migration_finish.fix_gate_blockers
     name: Batch-fix migration finish gate blockers
-    status: claimed
+    status: done
     description: 'Fix ALL blockers found by orch_migration_finish.gate without removing
       the historical failed gate step.
 
@@ -58614,6 +58614,64 @@ phases:
     agent: python-senior
     claimed_by: python-senior
     claimed_at: '2026-04-03T19:43:58.858667+00:00'
+    done_at: '2026-04-03T19:50:08.485380+00:00'
+    evidence: '## Batched Remediation Evidence
+
+
+      ### Blocker Closure Matrix
+
+      | Blocker | Prior mismatch | Filesystem proof | Git proof | Fixed claim |
+
+      |---|---|---|---|---|
+
+      | B1 | test rehome evidence mismatch vs repo reality | `tests/legacy/driver`
+      now exists; legacy_py_files=42; top-level `tests/test_driver*.py` none; collect-only
+      discovers rehomed paths | staged `R100` renames into `tests/legacy/driver/*`;
+      42 files changed, 0 insertions/deletions | Rehome is physically enacted in repository
+      layout |
+
+      | B3 | legacy disposition narrative not operationally evidenced | `src/vectl/driver/*`
+      retained while legacy baseline tests explicitly partitioned under `tests/legacy/driver/*`
+      | no retirement/deletion diff for legacy code paths; unchanged target docs where
+      expected | Disposition now reflected by operational repo state |
+
+      | B4 | cross-step evidence chain inconsistent/stale paths | stale driver-test
+      doc path identified and corrected; no stale `tests/test_driver_*.py` refs remain
+      in docs scan | diff shows one-line doc path correction plus rehome renames |
+      migration_finish evidence set reconciled to one concrete state |
+
+
+      ### Filesystem Proof
+
+      - Path existence scan: `exists_tests_legacy_driver=True`, `legacy_py_files=42`,
+      `top_level_test_driver_files=[]`, expected legacy subdirs present.
+
+      - Collect-only: `uv run pytest tests/legacy/driver tests/orchestration --collect-only
+      -q` collected from rehomed legacy tree.
+
+
+      ### Git Proof
+
+      - `git status --short --branch` shows 42 legacy test renames and doc-path correction.
+
+      - `git diff --cached --stat` reports 42 files changed by rename-only migration.
+
+      - path-focused diff checks show no unintended retirement in `src/vectl/driver`.
+
+
+      ### Cross-Step Consistency Map
+
+      - orch_migration_finish.test_rehome -> now backed by concrete `tests/legacy/driver/*`
+      rehome state.
+
+      - orch_migration_finish.legacy_disposition_audit -> now backed by retained legacy
+      code + explicitly retained legacy baseline test tree.
+
+      - orch_migration_finish.finish_alignment -> no contradiction between docs and
+      filesystem; target/legacy distinction preserved.
+
+      - orch_migration_finish.final_review -> non-retirement assertions remain true;
+      stale path references reconciled.'
   - id: orch_migration_finish.retest_gate_evidence
     name: Re-test migration finish gate evidence after batched fix
     status: pending

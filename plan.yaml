@@ -57166,7 +57166,7 @@ phases:
       Gate verdict: PASS'
 - id: orch_control
   name: Orchestration Plane Control Extraction
-  status: pending
+  status: in_progress
   gate: Plan-aware orchestration flow is carved into control using core_adapter, roster,
     and runtime without wholesale renaming of driver/loop.py and without smuggling
     runtime policy into mechanical layers.
@@ -57175,7 +57175,7 @@ phases:
   steps:
   - id: orch_control.contract
     name: Pin control contract and decision boundary
-    status: pending
+    status: claimed
     description: 'Pin the orchestration-plane control contract in src/vectl/orchestration/control.py
       using docs/ORCHESTRATION-PLANE-ARCHITECTURE.md sections 5.1 and 6, docs/ORCHESTRATION-PLANE-INTERFACES.md
       section 4.1, and docs/ORCHESTRATION-PLANE-IMPLEMENTATION-DESIGN.md step 5.
@@ -57216,6 +57216,8 @@ phases:
       - Evidence records the legacy loop surfaces being decomposed by responsibility,
       not by file rename'
     agent: python-senior
+    claimed_by: python-senior
+    claimed_at: '2026-04-03T18:11:56.964277+00:00'
   - id: orch_control.impl
     name: Carve plan-aware orchestration flow into control
     status: pending

@@ -56267,7 +56267,7 @@ phases:
       \ sections 3-4"
   - id: orch_foundation.gate
     name: Gate orchestration foundation
-    status: pending
+    status: claimed
     description: 'Gate review for orchestration foundation.
 
 
@@ -56291,6 +56291,8 @@ phases:
     - orch_foundation.contracts
     - orch_foundation.contract_tests
     agent: gate-reviewer
+    claimed_by: gate-reviewer
+    claimed_at: '2026-04-03T16:52:34.207971+00:00'
 - id: orch_roster_runtime
   name: Orchestration Plane Roster and Runtime Extraction
   status: locked

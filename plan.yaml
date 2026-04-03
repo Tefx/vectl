@@ -58810,3 +58810,29 @@ phases:
     depends_on:
     - orch_migration_finish.retest_gate_evidence
     agent: python-senior
+  - id: orch_migration_finish.retest_gate_evidence_round2
+    name: Re-test migration finish gate evidence after round2 remediation
+    status: pending
+    description: Perform one independent retest pass after the round2 batched remediation
+      loop. Reassess B1, B3, and B4 against the live repository state using objective
+      filesystem and git proof, keeping all earlier failed steps intact as historical
+      evidence.
+    verification: '- Re-run the migration-finish gate evidence review for B1, B3,
+      and B4 against the current repository state only
+
+      - Require explicit path existence checks for `tests/legacy/driver/` and the
+      final locations/count reality of the affected tests
+
+      - Require git tree/diff proof showing the operational changes that enacted disposition,
+      and verify cross-step evidence now matches filesystem/git reality'
+    evidence_template: '- Path existence retest: paste commands and outputs for `tests/legacy/driver/`
+      existence and affected test file locations/counts
+
+      - Git tree/diff retest: paste `git status --short`, targeted `git diff --stat`,
+      and any file-tree listings used to validate disposition enactment beyond `plan.yaml`
+
+      - Consistency verdict: for B1/B3/B4, state pass/fail with direct references
+      to the filesystem and git proof used'
+    depends_on:
+    - orch_migration_finish.fix_gate_blockers_round2
+    agent: gate-reviewer

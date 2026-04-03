@@ -56469,6 +56469,48 @@ phases:
     plans without bulk rewrites.
   depends_on:
   - orch_roster_runtime
+  steps:
+  - id: orch_core_authority.contract
+    name: Pin IsolationMode and core_adapter contracts
+    status: pending
+    description: 'Pin the authoritative orchestration-plane core boundary using docs/ORCHESTRATION-PLANE-ISOLATION-SEMANTICS.md,
+      docs/ORCHESTRATION-PLANE-ARCHITECTURE.md, and docs/ORCHESTRATION-PLANE-IMPLEMENTATION-DESIGN.md
+      sections 3.6 and 7.
+
+
+      Scope:
+
+      - define IsolationMode as the single authoritative task isolation field with
+      values default, workspace, independent
+
+      - pin the Step/core model impact without introducing continuity_group or architecture-level
+      session_reuse
+
+      - define core_adapter as the explicit orchestration-plane bridge for reading
+      authoritative core state and performing official core actions
+
+      - preserve vectl core as external authority
+
+
+      step_type: contract
+
+      contract_purity: ENFORCED
+
+      contract_outputs:
+
+      - signatures
+
+      - type_defs
+
+      - interfaces
+
+      - stubs'
+    verification: '- IsolationMode contract matches the authoritative docs exactly
+
+      - core_adapter contract reads as an authority bridge, not a shadow core
+
+      - No rejected concepts are reintroduced in the public contract'
+    agent: python-senior
 - id: orch_control
   name: Orchestration Plane Control Extraction
   status: locked

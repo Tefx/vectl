@@ -35,7 +35,7 @@ Banned abstractions (per architecture.md section 4 and 8.2):
 from __future__ import annotations
 
 from dataclasses import dataclass
-from datetime import datetime, timedelta
+from datetime import datetime
 from enum import Enum
 from typing import TYPE_CHECKING
 
@@ -99,6 +99,7 @@ class Roster:
             default_ttl_seconds: Default time-to-live for registered resources.
         """
         self._resources: dict[str, ResourceEntry] = {}
+        self._claimed_roles: set[str] = set()
         self._default_ttl = default_ttl_seconds
 
     def snapshot(self) -> RosterSnapshot:
@@ -112,23 +113,24 @@ class Roster:
         available: list[str] = []
         working: list[str] = []
 
-        for role, entry in self._resources.items():
-            if entry.expires_at <= now:
-                continue
-            working.append(role)
+        expired_roles = [role for role, entry in self._resources.items() if entry.expires_at <= now]
+        for role in expired_roles:
+            del self._resources[role]
+            self._claimed_roles.discard(role)
 
-        # available = roles with capacity not currently claimed
-        # For now, available = all non-expired minus a simple heuristic
-        # A real implementation would track claimed vs. registered more precisely.
-        # This stub reflects the contract shape without introducing plan semantics.
-        available = [r for r in working]
+        reusable_sessions: list[str] = []
+        for role, entry in self._resources.items():
+            if role in self._claimed_roles:
+                working.append(role)
+            else:
+                available.append(role)
+            if entry.lease.session_id:
+                reusable_sessions.append(entry.lease.session_id)
 
         return RosterSnapshot(
             available_agents=tuple(sorted(set(available))),
             working_agents=tuple(sorted(set(working))),
-            reusable_sessions=tuple(
-                r for r in self._resources if self._resources[r].lease.session_id
-            ),
+            reusable_sessions=tuple(sorted(set(reusable_sessions))),
             exhausted_roles=(),
         )
 
@@ -171,8 +173,9 @@ class Roster:
         if entry.expires_at <= now:
             # Expired; remove and treat as unavailable
             del self._resources[role]
+            self._claimed_roles.discard(role)
             return None
-
+        self._claimed_roles.add(role)
         return entry.lease
 
     def release(self, lease: WorkLease) -> None:
@@ -184,10 +187,8 @@ class Roster:
         """
         role = lease.role
         entry = self._resources.get(role)
-        if entry is not None and entry.lease is lease:
-            # Optionally reset TTL or just leave it
-            # For session reuse optimization, keep the resource warm
-            pass
+        if entry is not None and entry.lease == lease:
+            self._claimed_roles.discard(role)
 
     def register(
         self,
@@ -201,4 +202,10 @@ class Roster:
             lease: The WorkLease to register.
             expires_at: Unix timestamp when this lease expires.
         """
+        if expires_at <= datetime.now().timestamp():
+            self._resources.pop(lease.role, None)
+            self._claimed_roles.discard(lease.role)
+            return
+
         self._resources[lease.role] = ResourceEntry(lease=lease, expires_at=expires_at)
+        self._claimed_roles.discard(lease.role)

@@ -58405,7 +58405,7 @@ phases:
       - docs/ORCHESTRATION-PLANE-ISOLATION-SEMANTICS.md\n- docs/ORCHESTRATION-PLANE-MIGRATION.md"
   - id: orch_migration_finish.gate
     name: Gate orchestration migration finish
-    status: claimed
+    status: done
     description: 'Final gate for orchestration-plane migration finish.
 
 
@@ -58437,6 +58437,33 @@ phases:
     agent: gate-reviewer
     claimed_by: gate-reviewer
     claimed_at: '2026-04-03T19:38:59.148181+00:00'
+    done_at: '2026-04-03T19:43:32.054305+00:00'
+    evidence: 'Gate review executed and reconciled as blocker discovery step. Blockers
+      detected and batched into remediation path.
+
+
+      Detected issues (batched):
+
+      - B1: test rehome evidence mismatch vs filesystem/git state
+
+      - B3: migration disposition evidence not operationally enacted
+
+      - B4: evidence integrity mismatch across migration_finish evidence chain
+
+
+      Remediation action:
+
+      - Planner created batched fix step: orch_migration_finish.fix_gate_blockers
+
+      - Planner created retest step: orch_migration_finish.retest_gate_evidence
+
+      - Dependency chain: gate -> fix_gate_blockers -> retest_gate_evidence
+
+
+      Objective:
+
+      - resolve blocker-class evidence integrity and migration-disposition verification
+      before final pass.'
   - id: orch_migration_finish.fix_gate_blockers
     name: Batch-fix migration finish gate blockers
     status: pending

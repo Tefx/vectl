@@ -58674,7 +58674,7 @@ phases:
       stale path references reconciled.'
   - id: orch_migration_finish.retest_gate_evidence
     name: Re-test migration finish gate evidence after batched fix
-    status: claimed
+    status: done
     description: 'Independent retest of the migration-finish gate blockers against
       the fixed repository state.
 
@@ -58766,6 +58766,30 @@ phases:
     agent: gate-reviewer
     claimed_by: software-architect
     claimed_at: '2026-04-03T19:55:19.488811+00:00'
+    done_at: '2026-04-03T19:59:51.243151+00:00'
+    evidence: 'Retest executed against objective filesystem/git state and remained
+      red.
+
+
+      Observed blocker results:
+
+      - B1 FAIL: `tests/legacy/driver` absent; 38 top-level `tests/test_driver*.py`
+      remain; collect-only on `tests/legacy/driver` fails.
+
+      - B3 FAIL: remediation commit changed only `plan.yaml`; no operational changes
+      in tests/src-vectl-driver/docs disposition surfaces.
+
+      - B4 FAIL: migration_finish evidence claims do not match repository reality
+      (missing rehome paths and git rename proof).
+
+
+      Follow-up remediation planned:
+
+      - Added `orch_migration_finish.fix_gate_blockers_round2`
+
+      - Added `orch_migration_finish.retest_gate_evidence_round2`
+
+      - Dependency chain: retest_gate_evidence -> fix_gate_blockers_round2 -> retest_gate_evidence_round2'
   - id: orch_migration_finish.fix_gate_blockers_round2
     name: Batch-remediate unresolved migration finish blockers (round2)
     status: pending

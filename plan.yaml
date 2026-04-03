@@ -58229,7 +58229,7 @@ phases:
       \ rules\""
   - id: orch_migration_finish.legacy_disposition_audit
     name: Audit legacy package disposition against equivalence rules
-    status: claimed
+    status: done
     description: 'Audit src/vectl/driver/ legacy code and tests against the migration
       disposition rules.
 
@@ -58257,6 +58257,51 @@ phases:
     agent: software-architect
     claimed_by: software-architect
     claimed_at: '2026-04-03T19:18:14.089475+00:00'
+    done_at: '2026-04-03T19:29:56.600456+00:00'
+    evidence: 'Artifact:
+
+      - Delivered disposition inventories: kept_now, retireable_now, deferred_cleanup
+      for src/vectl/driver surfaces
+
+      - Included explicit equivalence/non-equivalence reasons per path with line-level
+      references and rule citations
+
+
+      Verification:
+
+      - Ran orchestration-owner coverage suite (`tests/orchestration/unit+integration`)
+      -> 43 passed
+
+      - Ran retained legacy baseline evidence suites (`tests/test_driver_session*.py`)
+      -> 37 passed
+
+      - Ran targeted legacy shim contract checks (`tests/test_driver_loop_runtime.py
+      -k completion_authority or deferred_replan_branches`) -> 4 passed
+
+      - Verified migration-rule references and disposition conditions against migration/design
+      docs
+
+
+      Key outcomes:
+
+      - kept_now: session/worktree/observe/events/judge/judgments/loop and other baseline
+      surfaces lacking full owner-equivalence
+
+      - retireable_now: none (no path met full equivalence + coverage threshold)
+
+      - deferred_cleanup: explicit transitional shims/entrypoints and legacy behavior
+      tests retained with reasons
+
+
+      Spec link:
+
+      - docs/ORCHESTRATION-PLANE-MIGRATION.md
+
+      - docs/ORCHESTRATION-PLANE-IMPLEMENTATION-DESIGN.md
+
+      - docs/ADR-orchestration-plane-reset.md
+
+      - docs/ORCHESTRATION-PLANE-ARCHITECTURE.md'
   - id: orch_migration_finish.finish_alignment
     name: Align docs and retirement notes with landed orchestration behavior
     status: pending

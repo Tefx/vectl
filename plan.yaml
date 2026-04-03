@@ -56308,6 +56308,52 @@ phases:
       - Evidence cites the isolation freshness requirements for workspace and independent
       modes'
     agent: python-executor
+  - id: orch_roster_runtime.roster_impl
+    name: Extract reusable resource logic into roster
+    status: pending
+    description: 'Fill in stub bodies in src/vectl/orchestration/roster.py per the
+      contract from step orch_roster_runtime.roster_contract.
+
+
+      UPSTREAM ARTIFACTS:
+
+      - src/vectl/orchestration/roster.py — signatures and boundary rules are authoritative
+
+      - tests/test_driver_session.py and tests/test_driver_session_edge_cases.py —
+      baseline behavior is protected
+
+
+      YOUR SCOPE: replace stub markers with working logic that extracts reusable session/resource
+      behavior from legacy driver/session.py into orchestration/roster.py while preserving
+      observable legacy behavior.
+
+
+      Required boundary rules:
+
+      - roster remains resource-only and not plan-aware
+
+      - session_reuse, if retained, stays an internal optimization only
+
+      - isolation=independent must prevent warm-resource reuse
+
+      - do not delete legacy session code until equivalent behavior exists and is
+      covered
+
+
+      ## Completion Criteria (stub exclusion)
+
+      This is an IMPLEMENTATION step. Stub-only completion is NOT acceptable.'
+    verification: '- Main path: roster unit tests and migrated session baseline tests
+      pass
+
+      - Failure path: regression coverage proves isolation=independent never reuses
+      a warm session/resource
+
+      - Evidence maps legacy session responsibilities to roster-owned behavior without
+      introducing plan semantics'
+    depends_on:
+    - orch_roster_runtime.roster_contract
+    agent: python-senior
 - id: orch_core_authority
   name: Orchestration Plane Core Authority and Isolation
   status: locked

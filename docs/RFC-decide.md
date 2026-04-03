@@ -1,5 +1,13 @@
 # RFC: `vectl_decide` — Deterministic Orchestration Advisor
 
+> NOTE: This RFC is a **pre-reset reference document**. It captures an earlier
+> deterministic-decision extraction design around `vectl_decide` and the legacy
+> `src/vectl/driver/` implementation path. It is still useful as historical and
+> implementation reference, but it is **not** the authoritative target
+> architecture after the orchestration-plane reset. For the current target
+> architecture, see `docs/ORCHESTRATION-PLANE-ARCHITECTURE.md` and
+> `docs/ADR-orchestration-plane-reset.md`.
+
 **Status:** Draft
 **Date:** 2026-03-15
 **Author:** tefx + Claude Opus 4.6
@@ -62,7 +70,8 @@ After:   Orchestrator (LLM) calls vectl_decide → receives actions → acts
 
 - Reads plan state (DAG, step statuses, dependencies)
 - Computes claimable steps respecting DAG ordering
-- Makes session reuse decisions (with time awareness)
+- Makes deterministic continuation/next-action decisions within the scope of
+  this pre-reset RFC design
 - Evaluates continuation guard (can_continue / must_stop)
 - Returns structured action list with step metadata
 - Logs decisions deterministically

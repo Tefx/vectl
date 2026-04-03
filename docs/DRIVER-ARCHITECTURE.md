@@ -2,6 +2,13 @@
 
 > Architecture specification for the programmatic orchestration engine.
 > Replaces the LLM-based orchestrator with a deterministic Python driver.
+>
+> NOTE: This document describes the **current implemented legacy package
+> `src/vectl/driver/`**. It is not the target future architecture after the
+> orchestration-plane reset, and `driver` is no longer a target architecture
+> concept. For the current target design, see
+> `docs/ORCHESTRATION-PLANE-ARCHITECTURE.md` and
+> `docs/ADR-orchestration-plane-reset.md`.
 
 **Status**: Implemented
 **Blueprint**: `DRIVER-BLUEPRINT.md`
@@ -16,6 +23,10 @@ canonical bootstrap-blocker continuity basis and contract repair. It defines the
 truthful continuity authority boundary, durable resume-state contracts,
 runner capability semantics, replay-safety envelope, and minimum recovery
 telemetry expected by downstream continuity phases.
+
+Here, legacy **continuity** terminology refers to session/runner persistence and
+recovery mechanisms in the existing implementation. It does **not** refer to the
+rejected `continuity_group` architecture concept from the reset design.
 
 **Event foundation**: `docs/ADR-driver-evolution-foundation.md` establishes the
 canonical event envelope (`{ts, event, version, data}`), the static event registry
@@ -90,8 +101,6 @@ src/vectl/driver/
 | `types.py` | `vectl.models` only | All driver modules |
 | `errors.py` | Nothing | All modules |
 | `judgments.py` | `types` | All other driver modules |
-
----
 
 ## 2. Module Specifications
 
@@ -1742,8 +1751,6 @@ Additional context comes from:
 
 No additional plan reads or LLM calls are needed for prompt rendering. The prompt
 is a deterministic string template, not LLM-generated.
-
----
 
 ## 6. Trade-offs
 

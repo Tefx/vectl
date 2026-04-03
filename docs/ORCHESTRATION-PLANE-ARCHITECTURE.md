@@ -1,0 +1,448 @@
+# Orchestration Plane Architecture
+
+> Full target architecture for the orchestration subsystem that depends on
+> `vectl core`.
+
+**Status:** Target architecture  
+**Authority:** `docs/ADR-orchestration-plane-reset.md`  
+**Scope:** Full target design, not an implementation slice  
+**Related docs:** `docs/ORCHESTRATION-PLANE-INTERFACES.md`, `docs/ORCHESTRATION-PLANE-RESOLUTION-CONTRACT.md`, `docs/ORCHESTRATION-PLANE-ISOLATION-SEMANTICS.md`, `docs/ORCHESTRATION-PLANE-IMPLEMENTATION-DESIGN.md`, `docs/ORCHESTRATION-PLANE-MIGRATION.md`  
+**Relationship to current code:** The current `src/vectl/driver/` codebase is an
+implemented historical/runtime baseline, not the future target shape described
+here. `driver` is treated here only as a legacy package path, not as a live
+architecture concept.
+
+---
+
+## 1. Purpose
+
+The orchestration plane exists to turn:
+
+- `vectl core` authority and state,
+- reusable agent/session resources,
+- mechanical runtime capabilities,
+- and complex blocker-resolution reasoning,
+
+into a coherent orchestration system.
+
+`vectl core` is not part of the orchestration plane. It is an external authority
+dependency that the orchestration plane consumes.
+
+---
+
+## 2. Top-Level Structure
+
+```text
+vectl core
+orchestration plane
+  - control
+  - roster
+  - runtime
+  - resolver
+```
+
+### 2.1 Layer Relationship
+
+- **`vectl core`** owns plan, lifecycle, claims, and existing authoritative
+  decision/query surfaces.
+- **`orchestration plane`** owns orchestration behavior over that authority.
+
+The orchestration plane is complete only when all four of its internal
+components cooperate. None of them individually substitutes for the whole plane.
+
+---
+
+## 3. Design Goals
+
+### G1. Preserve core authority
+
+The orchestration plane must consume `vectl core`; it must not re-own or fork
+plan/lifecycle/claims authority.
+
+### G2. Separate plan-aware control from resource mechanics
+
+Plan-aware decision flow, resource/session reuse, and mechanical runtime chores
+must remain distinct concerns.
+
+### G3. Keep tasks self-contained
+
+Task continuity should normally be carried by decomposition, descriptions, refs,
+and artifacts — not by implicit session memory contracts.
+
+### G4. Allow agentic flexibility where rules do not close the case
+
+The architecture must allow a reasoning role (`resolver`) to unblock cases that
+are not closed by normal orchestration flow.
+
+### G5. Minimize architecture-level concepts
+
+If a concept is merely an optimization and not a correctness boundary, it should
+stay out of the architectural surface unless proven necessary.
+
+---
+
+## 4. Non-Goals
+
+- Replacing `vectl core` authority
+- Making the legacy `src/vectl/driver/` package the target future architecture
+- Introducing continuity abstractions such as `continuity_group`
+- Promoting session reuse to a first-class task/planning concept
+- Hiding plan-aware control inside a resource registry
+
+---
+
+## 5. Component Model
+
+## 5.1 `control`
+
+### Responsibility
+
+`control` is the plan-aware control component of the orchestration plane.
+
+It owns:
+
+- reading core state together with orchestration-plane state
+- determining whether work can continue normally
+- determining whether the system is blocked or otherwise unresolved
+- deciding when to dispatch work using available resources
+- deciding when to invoke `resolver`
+
+### Non-responsibility
+
+It does **not** own:
+
+- plan/lifecycle/claims authority
+- mechanical runtime chores
+- resource reuse bookkeeping internals
+- long-lived open-ended reasoning
+
+### Why it exists
+
+Without `control`, plan-aware decisions would leak into `roster` or `runtime`
+and recreate a hidden scheduler/control brain under another name.
+
+### Relation to `vectl_decide`
+
+`vectl_decide` should currently be treated as an important existing
+deterministic-decision reference surface from the legacy system, not as a
+settled synonym for `control`.
+
+This document does **not** yet freeze whether future `control`:
+
+- directly reuses `vectl_decide`,
+- subsumes it,
+- or exposes a different deterministic decision surface.
+
+That mapping belongs to implementation design, not to this target architecture
+definition.
+
+---
+
+## 5.2 `roster`
+
+### Responsibility
+
+`roster` is the reusable agent/session resource registry.
+
+It owns:
+
+- registration of reusable agents/sessions
+- TTL / reuse-window bookkeeping after task completion
+- capability / runner / session metadata
+- claim / release of compatible reusable resources
+- visibility into reusable resource state
+
+### Non-responsibility
+
+It does **not** own:
+
+- plan semantics
+- blocked-state interpretation
+- next-step orchestration decisions
+
+### Boundary rule
+
+`roster` knows resources, not plans.
+
+If `roster` begins interpreting plan semantics or deciding whether work is
+blocked, the architecture collapses back into a renamed legacy-control blob.
+
+### Note on reuse
+
+Session/agent reuse is allowed as an internal `roster` optimization where
+useful. It is **not** a first-class architecture concept and should not be
+required for correctness.
+
+---
+
+## 5.3 `runtime`
+
+### Responsibility
+
+`runtime` handles mechanical non-core chores required by agents.
+
+It owns:
+
+- worktree/workspace preparation
+- cleanup / merge support
+- runner startup / resume / shutdown helpers
+- other purely mechanical environment support needed by agents
+
+### Non-responsibility
+
+It does **not** own:
+
+- plan-aware control
+- blocker reasoning
+- authority mutations outside existing core boundaries
+
+### Why it exists
+
+Mechanical execution concerns have different failure, retry, and audit semantics
+than plan-aware control or reasoning. Keeping them separate prevents unnecessary
+token use and keeps the system auditable.
+
+---
+
+## 5.4 `resolver`
+
+### Responsibility
+
+`resolver` is the reasoning role used when normal orchestration flow is blocked
+or unresolved.
+
+It owns:
+
+- investigating blockers
+- using vectl, runtime, and other allowed tools to determine how to unblock
+- returning control decisions or actions back into the orchestration plane
+
+### Non-responsibility
+
+It does **not** own:
+
+- permanent system authority
+- mechanical startup/dispatch mechanics
+- replacing the entire orchestration plane
+
+### Why it exists
+
+Not all blocker cases are closed by static rules. `resolver` is the place where
+the system permits broader reasoning without collapsing all orchestration into an
+always-on agentic surface.
+
+---
+
+## 6. Interaction Model
+
+## 6.1 Normal Flow
+
+```text
+core state
+  -> control reads core + orchestration-plane state
+  -> control determines claimable/dispatchable work
+  -> control asks roster for compatible reusable resources
+  -> if needed, runtime prepares execution environment
+  -> work is dispatched
+  -> completion updates core and orchestration-plane state
+```
+
+Key property: normal flow should not require `resolver`.
+
+---
+
+## 6.2 Blocked / Unresolved Flow
+
+```text
+core state + orchestration-plane state
+  -> control determines normal flow is not closed
+  -> control invokes resolver
+  -> resolver investigates using allowed tools
+  -> resolver returns control decisions/actions
+  -> control applies those decisions using roster/runtime/core surfaces
+```
+
+Key property: `resolver` is a reasoning role inside the orchestration plane, not
+the whole plane itself.
+
+---
+
+## 7. Authority and Ownership Matrix
+
+| Concern | Owner |
+|--------|-------|
+| Plan graph, lifecycle, claims, authoritative state | `vectl core` |
+| Plan-aware orchestration flow | `control` |
+| Reusable agent/session resource registry | `roster` |
+| Mechanical worktree/runner/environment chores | `runtime` |
+| Complex blocker investigation and unblock reasoning | `resolver` |
+
+---
+
+## 8. Task Semantics
+
+### 8.1 Self-contained task rule
+
+Tasks should be treated as self-contained.
+
+If task B depends on information from task A, that information should normally
+be carried by:
+
+- decomposition,
+- task description,
+- refs,
+- or explicit produced artifacts.
+
+The architecture should not introduce continuity abstractions to compensate for
+underspecified tasks.
+
+### 8.2 Banned continuity abstractions
+
+The following are rejected from the target architecture:
+
+- `continuity_group`
+- `session_reuse` as a task/planner/core concept
+
+`session_reuse` may exist only as an internal `roster` optimization.
+
+---
+
+## 9. Isolation Semantics
+
+Some tasks may require explicit isolation semantics, for example:
+
+- independent review
+- audit
+- black-box verification
+
+These are different from continuity/reuse optimizations. They appear to be real
+task semantics.
+
+### Architectural position
+
+If explicit isolation is required, that requirement belongs in authoritative task
+semantics (likely core/planner-level execution constraints), not in `resolver`
+guesswork and not in `roster` heuristics.
+
+The exact target semantic is defined in:
+
+- `docs/ORCHESTRATION-PLANE-ISOLATION-SEMANTICS.md`
+
+---
+
+## 10. Naming
+
+The orchestration-plane component names are fixed for this design round:
+
+- `control`
+- `roster`
+- `runtime`
+- `resolver`
+
+These should be preferred over earlier placeholders such as `servant` and
+`pool`, and over overloaded internal names such as an inner `orchestrator`
+component inside the orchestration plane.
+
+---
+
+## 11. Relationship to Current Legacy Package
+
+The current `src/vectl/driver/` code and related tests should be treated as:
+
+- an implemented legacy baseline,
+- a source of reusable mechanics,
+- a source of tests for existing runtime behavior,
+- and a migration/reference surface,
+
+but **not** as the target architecture.
+
+This includes `vectl_decide` and other deterministic decision logic already
+present in the codebase: they are relevant implementation/reference material,
+but they do not by themselves define the final `control` component contract.
+
+This means:
+
+- do not keep evolving the legacy package as if it were the final target shape,
+- do not immediately delete working code/tests that still define current
+  behavior,
+- and do not let the presence of current implementation modules redefine the new
+  architecture vocabulary.
+
+---
+
+## 12. Code/Test Disposition Principle
+
+Current legacy `src/vectl/driver/` code and related tests should **not** be
+broadly deleted at this stage.
+
+### Keep for now
+
+- working legacy package code under `src/vectl/driver/`
+- tests that validate current runtime mechanics, runner integration, continuity,
+  and orchestration behavior
+
+### Why
+
+- they provide executable reference behavior
+- they contain reusable mechanics for `runtime` and `roster`
+- deleting them now would destroy migration leverage and behavioral evidence
+
+### What to clean now
+
+- superseded speculative design documents
+- future-architecture prose that conflicts with this target architecture
+
+### What to clean later
+
+Only after equivalent behavior exists in the new orchestration-plane structure
+should corresponding legacy package code/tests be retired or rehomed.
+
+---
+
+## 13. Trade-offs
+
+### Gains
+
+- clear separation between authority, control, resources, mechanics, and
+  reasoning
+- fewer architecture-level concepts
+- less risk of hiding control logic inside resource/session machinery
+- preserves room for agentic flexibility without making it the whole system
+
+### Costs
+
+- introduces an explicit four-part orchestration vocabulary that implementers
+  must respect
+- does not yet settle the exact control↔resolver contract
+- preserves current implementation during transition instead of forcing an
+  immediate clean slate
+
+---
+
+## 14. Remaining Open Questions
+
+The following questions have now been resolved by companion target docs:
+
+- `control ↔ resolver` contract → `docs/ORCHESTRATION-PLANE-RESOLUTION-CONTRACT.md`
+- explicit isolation semantics → `docs/ORCHESTRATION-PLANE-ISOLATION-SEMANTICS.md`
+
+The main remaining open question is:
+
+1. How should current legacy package mechanics be mapped or extracted into
+   `control`, `roster`, and `runtime` without losing test coverage?
+
+---
+
+## 15. Summary
+
+The target system is:
+
+- `vectl core` as authority
+- `orchestration plane` as a separate subsystem over core
+- within that plane:
+  - `control` for plan-aware orchestration flow
+  - `roster` for reusable resources
+  - `runtime` for mechanical chores
+  - `resolver` for unresolved blocker reasoning
+
+This is the full target architecture for the next design phase.

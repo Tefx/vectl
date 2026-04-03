@@ -56715,6 +56715,35 @@ phases:
     depends_on:
     - orch_control.contract
     agent: python-senior
+  - id: orch_control.verify
+    name: Verify control extraction against loop behavior
+    status: pending
+    description: 'Independent verification for control extraction.
+
+
+      Scope:
+
+      - add tests under tests/orchestration/unit/ and tests/orchestration/integration/
+      for control behavior
+
+      - compare extracted control decisions against protected legacy loop behavior
+      where equivalent
+
+      - verify isolation semantics are propagated into dispatch decisions through
+      authoritative core snapshots
+
+
+      verification_scope: phase-check'
+    verification: '- Control tests prove dispatch/resolve/wait/done behavior on representative
+      core/roster/runtime snapshots
+
+      - Evidence shows isolation-aware dispatch decisions flow from authoritative
+      core data, not legacy heuristics alone
+
+      - Legacy equivalent behavior remains preserved where the new owner now exists'
+    depends_on:
+    - orch_control.impl
+    agent: integration-verifier
 - id: orch_resolver
   name: Orchestration Plane Resolver Landing
   status: locked

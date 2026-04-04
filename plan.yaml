@@ -62401,7 +62401,7 @@ phases:
       gate_open_allowed=true.'
   - id: orch_operator_recovery_cutover.spec_conformance
     name: Verify recovery and cutover spec conformance
-    status: claimed
+    status: done
     description: Spec conformance verification via adversarial divergence hunting
       for recovery outcomes, hygiene classifications, terminalization rules, and migration/cutover
       promises.
@@ -62418,6 +62418,10 @@ phases:
     agent: spec-verifier
     claimed_by: spec-verifier
     claimed_at: '2026-04-04T19:50:02.118508+00:00'
+    done_at: '2026-04-04T19:55:27.974327+00:00'
+    evidence: Spec conformance verification completed with blocker NEEDS_TEST on quarantine
+      no-silent-deletion behavior; gate_open_allowed=false; routed to batched remediation
+      step orch_operator_recovery_cutover.fix_recovery_contract_conformance.
   - id: orch_operator_recovery_cutover.gate
     name: Gate recovery, resume, and legacy-bridge phase
     status: pending

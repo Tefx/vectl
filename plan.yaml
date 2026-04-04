@@ -60155,6 +60155,8 @@ phases:
     - orch_operator_config_state.retest_green
     - orch_operator_config_state.spec_conformance
     - orch_operator_config_state.wiring_audit
+    - orch_operator_config_state.fix_runtime_resume_snapshot_binding
+    - orch_operator_config_state.retest_conformance_and_wiring
     agent: gate-reviewer
   - id: orch_operator_config_state.fix_runtime_resume_snapshot_binding
     name: Fix runtime wiring and resume snapshot binding blockers

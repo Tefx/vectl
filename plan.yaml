@@ -60168,9 +60168,15 @@ phases:
       - All implementation and verification steps completed successfully
 
       - No unresolved blockers remain in config provenance, freeze semantics, run
-      registry, or case-index behavior
+      registry, case-index behavior, or authority-document traceability
 
-      - Evidence is specific enough for downstream CLI/control/recovery integration'
+      - Evidence is specific enough for downstream CLI/control/recovery integration
+
+      - Authority citations used by config-state implementation/tests resolve to present
+      canonical doc sections'
+    refs:
+    - docs/ORCHESTRATION-PLANE-CLI-CONFIG-OBSERVABILITY-DESIGN.md
+    - src/vectl/orchestration/config.py
     depends_on:
     - orch_operator_config_state.impl_config_loader_freeze_tool_registry
     - orch_operator_config_state.impl_run_store_and_cases_index
@@ -60179,6 +60185,7 @@ phases:
     - orch_operator_config_state.wiring_audit
     - orch_operator_config_state.fix_runtime_resume_snapshot_binding
     - orch_operator_config_state.retest_conformance_and_wiring
+    - orch_operator_config_state.retest_gate_authority_reference_blocker
     agent: gate-reviewer
     claimed_by: gate-reviewer
     claimed_at: '2026-04-04T15:29:37.931674+00:00'

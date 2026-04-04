@@ -59234,7 +59234,7 @@ phases:
       - All migration-finish blocker-family checks green with filesystem+git evidence.'
 - id: orch_operator_contracts
   name: Orchestration Operator Surface Contracts
-  status: in_progress
+  status: done
   gate: Operator-surface contracts are pinned to the authoritative orchestration-plane
     docs; contract artifacts remain stub-only; no public surface or ownership boundary
     is left implicit.
@@ -59358,7 +59358,7 @@ phases:
       §§9,10.'
   - id: orch_operator_contracts.gate
     name: Gate operator-surface contracts
-    status: claimed
+    status: done
     description: 'Gate review: verify contract completeness, ownership separation,
       and stub-only purity for the orchestration operator surface.'
     verification: 'phase-check protecting orch_operator_tests:
@@ -59378,9 +59378,16 @@ phases:
     agent: gate-reviewer
     claimed_by: gate-reviewer
     claimed_at: '2026-04-04T12:14:15.710894+00:00'
+    done_at: '2026-04-04T12:19:54.134845+00:00'
+    evidence: Gate-reviewer audit validated contract completeness, ownership separation,
+      and stub-only purity across foundation/app-CLI/recovery-cutover contract steps;
+      no implementation logic detected in contract surfaces. Blind-tester Mode D liveness
+      probe confirmed `vectl orch` surface registration and consistent stub-only behavior
+      across command families (run/inspect/case/control/config). Evidence sufficient
+      to proceed to expected-red test-definition phase.
 - id: orch_operator_tests
   name: Orchestration Operator Surface Test Definitions
-  status: locked
+  status: pending
   gate: Expected-red test definitions expose the documented gaps without product implementation
     code; fixtures are spec-derived; downstream implementation work has explicit acceptance
     targets.

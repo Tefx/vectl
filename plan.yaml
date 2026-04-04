@@ -60825,3 +60825,19 @@ phases:
     depends_on:
     - orch_operator_deep_review.wiring_audit_full
     agent: gate-reviewer
+  - id: orch_operator_deep_review.black_box_verification
+    name: Run black-box verification from the public operator surface
+    status: pending
+    description: Using only the public docs and the real `vectl orch` interface, verify
+      config parsing, command reachability, blocked-case handling, recovery outcomes,
+      and artifact inspection patterns from a black-box perspective.
+    verification: 'full-plan-check protecting the final deep-review gate:
+
+      - Fixtures come from documented formats only
+
+      - At least one blocked-case and one recovery path are exercised black-box
+
+      - Evidence proves visible operator output, not internal helper correctness'
+    depends_on:
+    - orch_operator_deep_review.spec_conformance_full
+    agent: blind-tester

@@ -59492,3 +59492,67 @@ phases:
     retests.
   depends_on:
   - orch_operator_tests
+  steps:
+  - id: orch_operator_config_state.impl_config_loader_freeze_tool_registry
+    name: Implement config loader, freeze snapshot, and canonical tool registry
+    status: pending
+    description: 'step_type: implementation
+
+
+      Fill in stub bodies in src/vectl/orchestration/config.py and src/vectl/orchestration/tool_registry.py
+      per the contract from step orch_operator_contracts.foundation_contracts and
+      tests from step orch_operator_tests.config_state_red.
+
+
+      UPSTREAM ARTIFACTS (authoritative):
+
+      - src/vectl/orchestration/config.py — config schema, provenance fields, loader/freeze
+      signatures
+
+      - src/vectl/orchestration/tool_registry.py — canonical tool family/name/write-surface
+      declarations
+
+      - tests from orch_operator_tests.config_state_red are PROTECTED
+
+
+      YOUR SCOPE: Replace stub markers with working logic for config discovery, precedence,
+      validation, redaction-aware effective display data, frozen run snapshot writing,
+      and allowlist validation against the canonical tool registry.
+
+
+      State semantics:
+
+      - file/env/flag/default provenance must remain explicit
+
+      - the frozen snapshot is authoritative for a run once written
+
+      - unknown tool families or names are rejected, never coerced
+
+      - replacement-grade observability toggles documented as required must not degrade
+      into optional silent fallbacks
+
+
+      Out-of-scope guardrail:
+
+      - do not implement CLI command bodies here
+
+      - do not implement resolver execution or run-store append logic here
+
+
+      ## Completion Criteria (stub exclusion)
+
+      This is an IMPLEMENTATION step. Stub-only completion is NOT acceptable. Each
+      deliverable must contain substantive logic that processes inputs and produces
+      outputs that vary based on those inputs.'
+    verification: 'local-check protecting orch_operator_config_state.retest_green
+      and orch_operator_control_surface:
+
+      - Main path: targeted tests for config discovery, effective provenance, freeze
+      snapshot writing, and tool allowlist validation pass
+
+      - Failure path: regression coverage proves unknown tool family/name rejection
+      and required-surface toggles cannot be silently disabled
+
+      - Evidence includes focused command/test names and the frozen snapshot path
+      emitted by the implementation'
+    agent: python-executor

@@ -87,6 +87,7 @@ from vectl.models import (
     StepStatus,
     format_step_selector,
 )
+from vectl.orchestration.recovery import LegacyRunStatus
 from vectl.plan_path import (
     is_linked_worktree,
     resolve_claims_path,
@@ -421,17 +422,22 @@ repair_app = typer.Typer(help="Operator recovery commands.")
 app.add_typer(repair_app, name="repair")
 
 orch_app = typer.Typer(
-    help="Orchestration operator commands: run, resume, recover, inspect, case, control, config.",
+    help=(
+        "Orchestration operator commands: run, resume, recover, inspect, "
+        "case, control, config, migration."
+    ),
 )
 app.add_typer(orch_app, name="orch")
 orch_inspect_app = typer.Typer(help="Inspect orchestration runtime surfaces.")
 orch_case_app = typer.Typer(help="Case inspection and operator response surfaces.")
 orch_control_app = typer.Typer(help="Operator control actions (pause/unpause/stop).")
 orch_config_app = typer.Typer(help="Orchestration config surfaces.")
+orch_migration_app = typer.Typer(help="Legacy migration and cutover surfaces.")
 orch_app.add_typer(orch_inspect_app, name="inspect")
 orch_app.add_typer(orch_case_app, name="case")
 orch_app.add_typer(orch_control_app, name="control")
 orch_app.add_typer(orch_config_app, name="config")
+orch_app.add_typer(orch_migration_app, name="migration")
 
 PlanOption = typer.Option(
     None,
@@ -536,6 +542,15 @@ class OrchOutputMode(str, enum.Enum):
     JSONL = "jsonl"
 
 
+class OrchMigrationState(str, enum.Enum):
+    """CLI enum for legacy migration-state advancement."""
+
+    PARALLEL = "parallel"
+    PREFERRED = "preferred"
+    DEPRECATED = "deprecated"
+    RETIRED = "retired"
+
+
 OrchPlanOption = typer.Option(
     None,
     "--plan",
@@ -565,6 +580,10 @@ OrchDryRunOption = typer.Option(False, "--dry-run", help="Run in dry-run mode.")
 OrchLatestOption = typer.Option(False, "--latest", help="Select latest run automatically.")
 OrchWatchOption = typer.Option(False, "--watch", help="Poll once more before returning.")
 OrchFollowOption = typer.Option(False, "--follow", help="Follow once more before returning.")
+OrchMigrationStateArgument = typer.Argument(
+    ...,
+    help="Target migration state: parallel|preferred|deprecated|retired.",
+)
 
 
 def _build_orchestration_runtime_app(plan: Path | None) -> Any:
@@ -906,6 +925,67 @@ def orch_prune(
     result = app_runtime.prune(before=resolved_before, force=force)
     if not result.success:
         _die(result.message)
+    _emit_orch_payload(result, mode)
+
+
+# --- vectl orch migration (cutover validate / state advance) ---
+
+
+@orch_migration_app.command("validate-cutover")
+@orch_app.command("cutover-validate")
+def orch_migration_validate_cutover(
+    json_flag: bool = OrchJsonOption,
+    output: OrchOutputMode = OrchOutputOption,
+    plan: Path | None = OrchPlanOption,
+) -> None:
+    """Validate cutover readiness against migration retirement criteria.
+
+    Contract authority: recovery.py::CutoverValidator.validate_cutover_readiness()
+    """
+
+    mode = _resolve_orch_output_mode(output=output, json_flag=json_flag, jsonl_flag=False)
+    app_runtime = _build_orchestration_runtime_app_or_die(plan=plan)
+    result = app_runtime.cutover_validate()
+    _emit_orch_payload(result, mode)
+
+
+@orch_migration_app.command("advance-state")
+@orch_app.command("migration-advance-state")
+def orch_migration_advance_state(
+    status: OrchMigrationState = OrchMigrationStateArgument,
+    legacy_run_id: str | None = typer.Option(
+        None,
+        "--legacy-run-id",
+        help="Optional imported legacy run ID scope. Omit to update all imported runs.",
+    ),
+    json_flag: bool = OrchJsonOption,
+    output: OrchOutputMode = OrchOutputOption,
+    plan: Path | None = OrchPlanOption,
+) -> None:
+    """Advance imported legacy migration state via canonical bridge wiring.
+
+    Contract authority: recovery.py::RunStoreLegacyRunBridge.set_migration_status()
+    """
+
+    mode = _resolve_orch_output_mode(output=output, json_flag=json_flag, jsonl_flag=False)
+    app_runtime = _build_orchestration_runtime_app_or_die(plan=plan)
+
+    mapped_status: LegacyRunStatus
+    if status is OrchMigrationState.PARALLEL:
+        mapped_status = LegacyRunStatus.PARALLEL
+    elif status is OrchMigrationState.PREFERRED:
+        mapped_status = LegacyRunStatus.PREFERRED
+    elif status is OrchMigrationState.DEPRECATED:
+        mapped_status = LegacyRunStatus.DEPRECATED
+    else:
+        mapped_status = LegacyRunStatus.RETIRED
+
+    result = app_runtime.migration_advance_state(
+        status=mapped_status,
+        legacy_run_id=legacy_run_id,
+    )
+    if not result.success:
+        _orch_die_on_failure(result.message)
     _emit_orch_payload(result, mode)
 
 

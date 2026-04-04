@@ -55,6 +55,14 @@ class _ConfigResult:
     tools: tuple[str, ...] = ()
 
 
+@dataclass(frozen=True)
+class _CutoverResult:
+    can_cutover: bool
+    criteria_results: tuple[str, ...] = ()
+    blocking_items: tuple[str, ...] = ()
+    recommendations: tuple[str, ...] = ()
+
+
 class _FakeOrchApp:
     def __init__(self) -> None:
         self.calls: list[str] = []
@@ -157,6 +165,17 @@ class _FakeOrchApp:
         self.calls.append("config_tools")
         return _ConfigResult(show_output="tools", tools=("core", "orchestration"))
 
+    def cutover_validate(self) -> _CutoverResult:
+        self.calls.append("cutover_validate")
+        return _CutoverResult(can_cutover=True, criteria_results=("criterion.1: met",))
+
+    def migration_advance_state(
+        self, *, status: object, legacy_run_id: str | None = None
+    ) -> _Result:
+        self.calls.append("migration_advance_state")
+        del status, legacy_run_id
+        return _Result(success=True, message="advanced")
+
 
 def test_orch_command_registration_matrix() -> None:
     orch_help = runner.invoke(app, ["orch", "--help"])
@@ -164,12 +183,14 @@ def test_orch_command_registration_matrix() -> None:
     case_help = runner.invoke(app, ["orch", "case", "--help"])
     control_help = runner.invoke(app, ["orch", "control", "--help"])
     config_help = runner.invoke(app, ["orch", "config", "--help"])
+    migration_help = runner.invoke(app, ["orch", "migration", "--help"])
 
     assert orch_help.exit_code == 0
     assert inspect_help.exit_code == 0
     assert case_help.exit_code == 0
     assert control_help.exit_code == 0
     assert config_help.exit_code == 0
+    assert migration_help.exit_code == 0
 
     for expected in (
         "run",
@@ -181,6 +202,9 @@ def test_orch_command_registration_matrix() -> None:
         "case",
         "control",
         "config",
+        "migration",
+        "cutover-validate",
+        "migration-advance-state",
     ):
         assert expected in orch_help.output
     for expected in ("status", "events", "logs", "artifacts", "actions"):
@@ -191,6 +215,8 @@ def test_orch_command_registration_matrix() -> None:
         assert expected in control_help.output
     for expected in ("show", "validate", "tools"):
         assert expected in config_help.output
+    for expected in ("validate-cutover", "advance-state"):
+        assert expected in migration_help.output
 
 
 def test_orch_commands_delegate_through_orch_app_boundary(monkeypatch) -> None:
@@ -202,12 +228,30 @@ def test_orch_commands_delegate_through_orch_app_boundary(monkeypatch) -> None:
     assert runner.invoke(app, ["orch", "case", "list", "--json"]).exit_code == 0
     assert runner.invoke(app, ["orch", "control", "pause", "--step", "s1", "--json"]).exit_code == 0
     assert runner.invoke(app, ["orch", "config", "tools", "--json"]).exit_code == 0
+    assert runner.invoke(app, ["orch", "migration", "validate-cutover", "--json"]).exit_code == 0
+    assert (
+        runner.invoke(
+            app,
+            [
+                "orch",
+                "migration",
+                "advance-state",
+                "retired",
+                "--legacy-run-id",
+                "legacy-1",
+                "--json",
+            ],
+        ).exit_code
+        == 0
+    )
 
     assert "runs" in fake.calls
     assert "inspect_status" in fake.calls
     assert "case_list" in fake.calls
     assert "control_pause" in fake.calls
     assert "config_tools" in fake.calls
+    assert "cutover_validate" in fake.calls
+    assert "migration_advance_state" in fake.calls
 
 
 def test_orch_output_mode_conflict_is_rejected() -> None:

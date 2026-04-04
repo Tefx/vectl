@@ -62,9 +62,13 @@ from vectl.orchestration.inspection_queries import (
 )
 from vectl.orchestration.projections import replay_events_to_artifacts
 from vectl.orchestration.recovery import (
+    CutoverValidationResult,
+    CutoverValidator,
+    LegacyRunStatus,
     RecoveryAction,
     RecoveryOutcome,
     RecoveryReport,
+    RunStoreLegacyRunBridge,
     recovery_action_status,
     recovery_case_status,
 )
@@ -265,6 +269,8 @@ class OrchestrationApp:
     Public surface:
         - run()             (start/resume a run)
         - recover()         (recover from artifacts)
+        - cutover_validate() (validate migration cutover retirement criteria)
+        - migration_advance_state() (advance imported legacy migration state)
         - prune()           (prune old runs/artifacts)
         - runs()            (list runs)
         - inspect()          (inspect status/events/logs/artifacts/actions)
@@ -396,6 +402,8 @@ class OrchestrationApp:
                 run_id=run_id,
             )
 
+        allowlist_text = self._allowlist_text(frozen_snapshot.config.resolver.tool_allowlist)
+
         registry.save(
             RunRecord(
                 run_id=run_id,
@@ -407,7 +415,7 @@ class OrchestrationApp:
                 output_summary=(
                     "run initialized with frozen snapshot "
                     f"runner={frozen_snapshot.config.runtime.default_runner} "
-                    f"allowlist={self._allowlist_text(frozen_snapshot.config.resolver.tool_allowlist)} "
+                    f"allowlist={allowlist_text} "
                     f"workspace={workspace} execution_id={execution_id}"
                 ),
             )
@@ -1378,6 +1386,47 @@ class OrchestrationApp:
             )
         return tuple(results)
 
+    def cutover_validate(self) -> CutoverValidationResult:
+        """Validate migration cutover readiness against retirement criteria."""
+
+        config = self._effective_orchestration_config()
+        registry = self._run_registry(config=config)
+        return CutoverValidator(registry=registry).validate_cutover_readiness()
+
+    def migration_advance_state(
+        self,
+        *,
+        status: LegacyRunStatus,
+        legacy_run_id: str | None = None,
+    ) -> OrchestrationResult:
+        """Advance imported legacy migration state via canonical run-store bridge."""
+
+        config = self._effective_orchestration_config()
+        registry = self._run_registry(config=config)
+        targeted_records = registry.imported_legacy_runs(legacy_run_id=legacy_run_id)
+
+        if legacy_run_id is not None and not targeted_records:
+            return OrchestrationResult(
+                success=False,
+                message=f"Imported legacy run not found: {legacy_run_id}",
+            )
+
+        bridge = RunStoreLegacyRunBridge(registry=registry, plan_path=str(config.plan_path))
+        bridge.set_migration_status(status=status, legacy_run_id=legacy_run_id)
+
+        scope = (
+            "all imported legacy runs"
+            if legacy_run_id is None
+            else f"legacy_run_id={legacy_run_id}"
+        )
+        return OrchestrationResult(
+            success=True,
+            message=(
+                "migration state advanced via canonical run-store bridge "
+                f"scope={scope} status={status.value}"
+            ),
+        )
+
     def prune(
         self,
         before: float | None = None,
@@ -1440,7 +1489,7 @@ class OrchestrationApp:
             ),
         )
         runtime_snapshot = self._runtime.snapshot()
-        data = (
+        data: tuple[str, ...] = (
             f"step_id={step_id or ''}",
             f"total_count={runs.total_count}",
             f"latest_run_id={runs.latest_run_id or ''}",

@@ -29,6 +29,8 @@ def test_cutover_validator_passes_when_no_imported_runs_exist(tmp_path) -> None:
 
     assert result.can_cutover is True
     assert result.blocking_items == ()
+    assert len(result.criteria_results) == 4
+    assert all(item.startswith("criterion.") for item in result.criteria_results)
 
 
 def test_cutover_validator_blocks_non_retired_imports(tmp_path) -> None:
@@ -45,6 +47,10 @@ def test_cutover_validator_blocks_non_retired_imports(tmp_path) -> None:
     result = CutoverValidator(registry=registry).validate_cutover_readiness()
 
     assert result.can_cutover is False
+    assert any(
+        "criterion.3_docs_no_longer_primary_legacy_reference: blocked" in item
+        for item in result.criteria_results
+    )
     assert any("migration_state=preferred" in item for item in result.blocking_items)
     assert any("status=running" in item for item in result.blocking_items)
 

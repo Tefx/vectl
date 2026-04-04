@@ -19,6 +19,7 @@ from vectl.models import Phase, Plan, Step
 from vectl.orch_app import AppConfig, build_orchestration_app
 from vectl.orchestration.config import OrchestrationConfig
 from vectl.orchestration.control_channel import FilesystemControlChannel
+from vectl.orchestration.recovery import LegacyRunStatus
 from vectl.orchestration.run_store import RunRecord, RunRegistry, generate_run_id
 
 
@@ -49,6 +50,24 @@ def _build_app(tmp_path: Path):
         run_store_root=runs_root,
     )
     return build_orchestration_app(config)
+
+
+def _continuity_payload(step_id: str, session_id: str, event_id: str) -> dict[str, object]:
+    return {
+        "ledger": {
+            "step_id": step_id,
+            "session_id": session_id,
+            "runner": "python",
+            "status": "active",
+        },
+        "journal": {
+            "event_id": event_id,
+            "step_id": step_id,
+            "session_id": session_id,
+            "runner": "python",
+            "event_type": "resume_attempt",
+        },
+    }
 
 
 def test_build_composes_real_collaborators_without_noop_resolver_dependency(tmp_path: Path) -> None:
@@ -343,6 +362,39 @@ def test_recover_surfaces_imported_legacy_continuity_blockers(tmp_path: Path) ->
     assert result.success is False
     assert "Recovery blocked" in result.message
     assert imported.run_id in result.message
+
+
+def test_cutover_validate_surfaces_four_retirement_criteria(tmp_path: Path) -> None:
+    app = _build_app(tmp_path)
+    result = app.cutover_validate()
+
+    assert result.can_cutover is True
+    assert len(result.criteria_results) == 4
+    assert all(item.startswith("criterion.") for item in result.criteria_results)
+
+
+def test_migration_advance_state_updates_imported_run_record(tmp_path: Path) -> None:
+    app = _build_app(tmp_path)
+    assert app._config.run_store_root is not None
+    registry = RunRegistry(store_root=app._config.run_store_root)
+    imported = registry.import_legacy_run(
+        legacy_run_id="legacy-advance",
+        step_id="core.ready",
+        plan_path=str(app._config.plan_path),
+        status="running",
+        migration_state="parallel",
+        continuity_artifacts=_continuity_payload("core.ready", "sess-advance", "evt-advance"),
+    )
+
+    advanced = app.migration_advance_state(
+        status=LegacyRunStatus.DEPRECATED,
+        legacy_run_id="legacy-advance",
+    )
+
+    assert advanced.success is True
+    updated = registry.by_id(imported.run_id)
+    assert updated is not None
+    assert updated.legacy_migration_state == "deprecated"
 
 
 def test_resume_blocks_when_event_transcript_is_corrupt(tmp_path: Path) -> None:

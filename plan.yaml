@@ -59646,7 +59646,7 @@ phases:
       files modified=false. Commit from task: ses_2a75b7df8ffeWOA1M0W3wJXuUr.'
   - id: orch_operator_tests.gate
     name: Gate operator-surface test definitions
-    status: claimed
+    status: done
     description: 'Gate review: verify expected-red tests are spec-derived, non-ambiguous,
       and implementation-free.'
     verification: 'phase-check protecting all downstream implementation phases:
@@ -59664,6 +59664,13 @@ phases:
     agent: gate-reviewer
     claimed_by: gate-reviewer
     claimed_at: '2026-04-04T13:32:15.743558+00:00'
+    done_at: '2026-04-04T13:38:42.961257+00:00'
+    evidence: 'Gate review identified no blockers and one SHOULD_FIX issue: duplicate
+      test method definitions in tests/repro/test_orch_cli_recovery_red.py shadowing
+      earlier methods. Following anti-rework protocol, remediation path was created
+      via planner: `orch_operator_tests.fix-gate-should-fix-batched` then `orch_operator_tests.retest-gate-should-fix-batched`.
+      Gate audit evidence included wiring audit pass, escape-hatch audit pass, fixture-vs-integration
+      distinction, and expected-red semantic alignment.'
   - id: orch_operator_tests.fix-gate-should-fix-batched
     name: fix-gate-should-fix-batched
     status: pending

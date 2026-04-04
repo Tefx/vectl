@@ -59068,7 +59068,7 @@ phases:
       - orch_migration_finish.retest_gate_evidence_round4'
   - id: orch_migration_finish.fix_gate_blockers_round4
     name: Fix migration finish gate blockers round4
-    status: pending
+    status: claimed
     description: 'Batched round4 remediation for unresolved B4 from `orch_migration_finish.retest_gate_evidence_round3`.
       Keep all earlier failed/fix/retest steps unchanged as historical evidence.
 
@@ -59131,6 +59131,8 @@ phases:
     depends_on:
     - orch_migration_finish.retest_gate_evidence_round3
     agent: python-senior
+    claimed_by: python-senior
+    claimed_at: '2026-04-04T03:31:46.007633+00:00'
   - id: orch_migration_finish.retest_gate_evidence_round4
     name: Re-test migration finish gate evidence after round4 remediation
     status: pending

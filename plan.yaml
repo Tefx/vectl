@@ -60277,3 +60277,26 @@ phases:
     - orch_operator_control_surface.impl_orch_app_composition_root
     - orch_operator_control_surface.impl_vectl_orch_cli_surface
     agent: blind-tester
+  - id: orch_operator_control_surface.spec_conformance
+    name: Verify CLI, query, and control surface spec conformance
+    status: pending
+    description: Spec conformance verification via adversarial divergence hunting
+      for the `vectl orch` command tree, run selectors, live-read semantics, output
+      modes, and control/case command contracts.
+    verification: 'phase-check protecting orch_operator_recovery_cutover and system
+      wiring:
+
+      - Each touched command/flag/output requirement cites a spec section and implementation
+      file:line
+
+      - Cross-command naming and output consistency are checked explicitly
+
+      - Any behavioral claim requiring runtime evidence is marked NEEDS_TEST with
+      a concrete command suggestion'
+    depends_on:
+    - orch_operator_control_surface.impl_resolver_gateway
+    - orch_operator_control_surface.impl_control_channel
+    - orch_operator_control_surface.impl_inspection_queries
+    - orch_operator_control_surface.impl_orch_app_composition_root
+    - orch_operator_control_surface.impl_vectl_orch_cli_surface
+    agent: spec-verifier

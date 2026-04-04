@@ -62491,6 +62491,51 @@ phases:
     - orch_operator_system_wiring.replace_runtime_stubs
     - orch_operator_system_wiring.verify_e2e
     agent: gate-reviewer
+  - id: orch_operator_system_wiring.liveness_probe
+    name: Probe vectl orch entrypoint liveness
+    status: pending
+    description: 'Liveness probe for the runnable `vectl orch` surface using the real
+      entrypoint, not helper functions.
+
+
+      As an independent black-box tester, start the operator entrypoint after runtime-stub
+      replacement and prove:
+
+      - the command starts successfully with the documented invocation path
+
+      - the process stays alive for the expected startup window when a long-lived
+      mode is involved, or completes cleanly for one-shot commands
+
+      - at least one documented operator command reaches the real entrypoint and produces
+      expected output
+
+      - one intentionally blocked or recovery-aware invocation surfaces the expected
+      diagnostic rather than crashing or silently succeeding
+
+
+      This step exists to catch runnable-surface failures before cutover validation
+      and final deep review.'
+    verification: 'phase-check protecting orch_operator_cutover_validation and orch_operator_deep_review:
+
+      - Evidence includes the exact launch/invocation command and actual stdout/stderr
+
+      - Evidence proves startup/liveness of the real `vectl orch` surface, not only
+      internal helper behavior
+
+      - Evidence includes one successful operator invocation and one blocked/recovery-aware
+      invocation through the same entrypoint'
+    evidence_template: "## refs Read Confirmation (MANDATORY)\n\nFor each ref in this\
+      \ step:\n- <filename> — key passage or \"NOT READ: <reason>\"\n\nIf no refs\
+      \ were provided, state: \"No refs for this step.\"\n\n## Liveness Probe Evidence\n\
+      - Launch / invocation command:\n  ```\n  <exact command>\n  ```\n- Startup /\
+      \ liveness output:\n  ```\n  <actual stdout/stderr>\n  ```\n- Successful operation\
+      \ through real entrypoint:\n  ```\n  <command + output>\n  ```\n- Blocked /\
+      \ recovery-aware operation through real entrypoint:\n  ```\n  <command + output>\n\
+      \  ```\n- Entrypoint path exercised: <entrypoint -> app root -> control/read/recovery\
+      \ surface>\n- Verdict: PASS | ISSUES_FOUND | INCOMPLETE"
+    depends_on:
+    - orch_operator_system_wiring.replace_runtime_stubs
+    agent: blind-tester
 - id: orch_operator_cutover_validation
   name: Orchestration Operator Cutover Validation
   status: locked

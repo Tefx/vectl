@@ -59784,3 +59784,64 @@ phases:
       - Evidence includes the exact event command/test names and a sample envelope
       payload'
     agent: python-senior
+  - id: orch_operator_observability.impl_projections_runstateview_artifacts
+    name: Implement projections, RunStateView, and derived artifact writers
+    status: pending
+    description: 'step_type: implementation
+
+
+      Fill in stub bodies in src/vectl/orchestration/projections.py per the contract
+      from orch_operator_contracts.foundation_contracts and tests from orch_operator_tests.observability_red.
+
+
+      UPSTREAM ARTIFACTS:
+
+      - src/vectl/orchestration/projections.py — RunStateView and derived-artifact
+      contracts
+
+      - tests from orch_operator_tests.observability_red are PROTECTED
+
+
+      YOUR SCOPE: implement replay from canonical events into authoritative read models
+      and derived artifacts for:
+
+      - state/latest.json
+
+      - state/summary.json
+
+      - state/metrics.json
+
+      - required step/case artifact metadata hooks needed by later inspection surfaces
+
+
+      State semantics:
+
+      - projections are derivable from canonical events and must never become a competing
+      source of truth
+
+      - summary/metrics are reduced read models; event stream remains replay authority
+
+      - projection failure must surface PROJECTION_STALE and preserve diagnosability
+
+
+      Out-of-scope guardrail:
+
+      - do not implement CLI query formatting here
+
+      - do not own run-registry lookup or control-channel persistence here
+
+
+      ## Completion Criteria (stub exclusion)
+
+      This is an IMPLEMENTATION step. Stub-only completion is NOT acceptable.'
+    verification: 'local-check protecting orch_operator_observability.retest_green,
+      orch_operator_control_surface, and orch_operator_recovery_cutover:
+
+      - Main path: replay tests prove latest/summary/metrics derivation from canonical
+      events
+
+      - Failure path: regression tests cover projection persistence failure and PROJECTION_STALE
+      surfacing
+
+      - Evidence includes at least one replay fixture and the produced artifact paths'
+    agent: python-senior

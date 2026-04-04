@@ -61073,7 +61073,7 @@ phases:
     claimed_at: '2026-04-04T16:02:34.391810+00:00'
   - id: orch_operator_control_surface.impl_inspection_queries
     name: Implement inspection query DTOs over run store and projections
-    status: pending
+    status: claimed
     description: 'step_type: implementation
 
 
@@ -61121,6 +61121,8 @@ phases:
 
       - Evidence includes at least one shared fixture consumed by multiple query surfaces'
     agent: python-executor
+    claimed_by: python-executor
+    claimed_at: '2026-04-04T16:11:24.507494+00:00'
   - id: orch_operator_control_surface.mid_gate
     name: Quick gate for operator-surface pattern correctness
     status: pending

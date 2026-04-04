@@ -59903,3 +59903,12 @@ phases:
     - orch_operator_observability.retest_green
     - orch_operator_observability.spec_conformance
     agent: gate-reviewer
+- id: orch_operator_control_surface
+  name: Orchestration Control Channel, Queries, App Root, and CLI
+  status: locked
+  gate: Resolver gateway, control channel, inspection queries, orch_app wiring, and
+    vectl orch CLI behavior are implemented, seam-verified, and runnable from the
+    real CLI entrypoint.
+  depends_on:
+  - orch_operator_config_state
+  - orch_operator_observability

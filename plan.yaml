@@ -59352,3 +59352,44 @@ phases:
     targets.
   depends_on:
   - orch_operator_contracts
+  steps:
+  - id: orch_operator_tests.config_state_red
+    name: Define expected-red tests for config, freeze, run store, and case index
+    status: pending
+    description: 'step_type: test
+
+      step_intent: test_define_red
+
+      expected_result: red
+
+
+      Add test-only coverage for:
+
+      - config discovery, precedence, redaction provenance, and validation
+
+      - frozen config snapshot creation and resumed-run snapshot reuse rule
+
+      - run index append/read safety, `--latest` semantics, same-plan admission rule,
+      and case-index lifecycle
+
+      - minimal spec-derived config fixtures using the exact documented external shape
+
+
+      ## Spec-Fixture Conformance (MANDATORY)
+
+      At least one fixture must use the exact documented minimal YAML shape from the
+      config design, with no convenience fields beyond the spec.
+
+
+      Modified files must stay under tests/ plus fixtures/helpers only. Success means
+      the gaps are exposed without product-code changes.'
+    verification: 'local-check protecting orch_operator_config_state:
+
+      - New tests are limited to tests/ and fixtures/helpers
+
+      - Evidence names the exposed gaps / expected failures for config, run registry,
+      and case-index behavior
+
+      - At least one failing test cites the exact spec section for the minimal config
+      fixture'
+    agent: integration-verifier

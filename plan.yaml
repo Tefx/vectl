@@ -60503,6 +60503,77 @@ phases:
     depends_on:
     - orch_operator_config_state.retest_conformance_and_wiring
     agent: doc-reviewer
+  - id: orch_operator_config_state.retest_gate_authority_reference_blocker
+    name: Rerun config-state gate criteria after authority-reference remediation
+    status: pending
+    description: 'As an INDEPENDENT REVIEWER (`gate-reviewer`), rerun the gate criteria
+      for `orch_operator_config_state` after `orch_operator_config_state.fix_authority_reference_blocker`.
+
+
+      Scope: phase-check protecting `orch_operator_control_surface` and `orch_operator_recovery_cutover`
+      by confirming the authority-reference blocker is closed before downstream operator-surface
+      gating proceeds.
+
+
+      You must verify ALL of the following together:
+
+      - the authority basis cited by `src/vectl/orchestration/config.py` and related
+      config-state tests resolves to a present canonical doc artifact
+
+      - each cited section used for config/load/freeze/run-store semantics is traceable
+      to a live spec section
+
+      - remediation did not change runtime behavior expectations; it only repaired
+      authority-document coverage or citation targeting
+
+      - no remaining blocker exists that would cause `orch_operator_config_state.gate`
+      to fail on missing/stale authority sources
+
+
+      Required evidence:
+
+      - cite spec section -> implementation/test file mapping for each remediated
+      citation family
+
+      - state whether closure came from restoring/keeping the authority artifact or
+      retargeting citations to other canonical docs
+
+      - identify any remaining findings as `blocker`, `should_fix`, `suggestion`,
+      or `tech_debt`
+
+
+      step_type: test
+
+      step_intent: retest_green
+
+      expected_result: green
+
+
+      Rule anchors:
+
+      - reactive-steps.md §13 requires a retest step after blocker remediation and
+      preserves independent verification
+
+      - verification-design.md §14.1 requires independent review language and explicit
+      protected downstream gates
+
+      - gate-review.md §8 requires gate progression only after remediation evidence
+      is reviewed'
+    verification: 'phase-check protecting orch_operator_control_surface and orch_operator_recovery_cutover:
+
+      - Re-run the original gate blocker criteria for authority-document presence
+      and citation traceability
+
+      - Expected result: green
+
+      - Every remediated citation resolves to an existing canonical document section
+
+      - No runtime-behavior delta is introduced by the remediation
+
+      - Any remaining missing/stale authority reference is reported as a blocker'
+    depends_on:
+    - orch_operator_config_state.fix_authority_reference_blocker
+    agent: gate-reviewer
 - id: orch_operator_observability
   name: Orchestration Events, Projections, and Artifacts
   status: done

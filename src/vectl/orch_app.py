@@ -150,6 +150,10 @@ class RunResult:
     step_id: str
     status: Literal["pending", "running", "success", "fail", "stall"] | None = None
     output_summary: str = ""
+    source: Literal["orchestration_native", "legacy_imported"] = "orchestration_native"
+    legacy_run_id: str | None = None
+    legacy_migration_state: Literal["parallel", "preferred", "deprecated", "retired"] | None = None
+    continuity_blocker: str | None = None
 
 
 @dataclass(frozen=True)
@@ -969,6 +973,26 @@ class OrchestrationApp:
         Returns:
             OrchestrationResult with recovery outcome.
         """
+        # Legacy bridge import check: blocks recovery when imported runs have incomplete continuity
+        run_results = self.runs(step_id=step_id)
+        blocking_imports = [
+            result
+            for result in run_results
+            if result.source == "legacy_imported" and result.continuity_blocker
+        ]
+        if blocking_imports:
+            blockers = ", ".join(
+                f"{result.run_id}:{result.continuity_blocker}" for result in blocking_imports
+            )
+            return OrchestrationResult(
+                success=False,
+                message=(
+                    "Recovery blocked: imported legacy continuity minimums are incomplete; "
+                    f"operator migration action required ({blockers})"
+                ),
+                step_id=step_id,
+            )
+
         ambient = self._effective_orchestration_config()
         registry = self._run_registry(config=ambient)
 
@@ -1144,6 +1168,10 @@ class OrchestrationApp:
                     step_id=record.step_id,
                     status=record.status,
                     output_summary=record.output_summary,
+                    source=record.source,
+                    legacy_run_id=record.legacy_run_id,
+                    legacy_migration_state=record.legacy_migration_state,
+                    continuity_blocker=record.continuity_blocker,
                 )
             )
         return tuple(results)

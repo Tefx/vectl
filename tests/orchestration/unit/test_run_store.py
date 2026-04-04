@@ -167,3 +167,106 @@ def test_append_conflict_raises_after_retry_budget(tmp_path, monkeypatch) -> Non
     with pytest.raises(AppendConflictError) as exc_info:
         registry.save(RunRecord(run_id="01R", step_id="s", status="running", updated_at=1.0))
     assert exc_info.value.attempts == 2
+
+
+def test_unimported_legacy_artifacts_do_not_surface_as_native_runs(tmp_path) -> None:
+    legacy_path = tmp_path / "legacy" / "run-01.json"
+    legacy_path.parent.mkdir(parents=True, exist_ok=True)
+    legacy_path.write_text('{"legacy_run_id":"legacy-01","step_id":"core.ready"}', encoding="utf-8")
+
+    registry = RunRegistry(store_root=tmp_path)
+
+    assert registry.by_id("legacy-01") is None
+    assert registry.latest_for_step("core.ready") is None
+    assert registry.imported_legacy_runs() == ()
+
+
+def test_imported_legacy_run_is_visible_and_blocks_same_plan_when_active(tmp_path) -> None:
+    registry = RunRegistry(store_root=tmp_path)
+
+    imported = registry.import_legacy_run(
+        legacy_run_id="legacy-01",
+        step_id="core.ready",
+        plan_path="plan.yaml",
+        status="running",
+        migration_state="parallel",
+        continuity_artifacts={
+            "ledger": {
+                "step_id": "core.ready",
+                "session_id": "sess-1",
+                "runner": "python",
+                "status": "active",
+            },
+            "journal": {
+                "event_id": "evt-1",
+                "step_id": "core.ready",
+                "session_id": "sess-1",
+                "runner": "python",
+                "event_type": "resume_attempt",
+            },
+        },
+    )
+
+    assert imported.source == "legacy_imported"
+    assert imported.legacy_run_id == "legacy-01"
+    assert imported.legacy_migration_state == "parallel"
+    assert imported.continuity_blocker is None
+    assert registry.by_id(imported.run_id) is not None
+    with pytest.raises(SamePlanAdmissionError):
+        registry.assert_can_admit_same_plan("plan.yaml")
+
+
+def test_import_missing_continuity_minimums_creates_case_blocker(tmp_path) -> None:
+    registry = RunRegistry(store_root=tmp_path)
+
+    imported = registry.import_legacy_run(
+        legacy_run_id="legacy-02",
+        step_id="core.ready",
+        plan_path="plan.yaml",
+        status="running",
+        migration_state="preferred",
+        continuity_artifacts={
+            "ledger": {
+                "step_id": "core.ready",
+                "session_id": "sess-2",
+                "runner": "python",
+                "status": "active",
+            }
+        },
+    )
+
+    assert imported.status == "stall"
+    assert imported.continuity_blocker is not None
+    assert "journal entry is required" in imported.continuity_blocker
+    case_entries = registry.cases_for_run(imported.run_id)
+    assert len(case_entries) == 1
+    assert case_entries[0].status == "open"
+
+
+def test_retired_imported_legacy_run_does_not_block_same_plan_admission(tmp_path) -> None:
+    registry = RunRegistry(store_root=tmp_path)
+
+    registry.import_legacy_run(
+        legacy_run_id="legacy-retired",
+        step_id="core.ready",
+        plan_path="plan.yaml",
+        status="running",
+        migration_state="retired",
+        continuity_artifacts={
+            "ledger": {
+                "step_id": "core.ready",
+                "session_id": "sess-3",
+                "runner": "python",
+                "status": "completed",
+            },
+            "journal": {
+                "event_id": "evt-3",
+                "step_id": "core.ready",
+                "session_id": "sess-3",
+                "runner": "python",
+                "event_type": "cutover",
+            },
+        },
+    )
+
+    registry.assert_can_admit_same_plan("plan.yaml")

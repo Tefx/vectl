@@ -68,6 +68,10 @@ class RunRecord:
     finished_at: float | None = None
     artifact_root: str | None = None
     output_summary: str = ""
+    source: Literal["orchestration_native", "legacy_imported"] = "orchestration_native"
+    legacy_run_id: str | None = None
+    legacy_migration_state: Literal["parallel", "preferred", "deprecated", "retired"] | None = None
+    continuity_blocker: str | None = None
 
 
 @dataclass(frozen=True)
@@ -114,7 +118,12 @@ class SamePlanAdmissionError(RunStoreError):
     """Raised when same-plan admission discovers conflicting active runs."""
 
 
+class LegacyContinuityMinimumError(RunStoreError):
+    """Raised when imported legacy artifacts miss required continuity minimums."""
+
+
 RunStatus = Literal["pending", "running", "success", "fail", "stall"]
+LegacyMigrationState = Literal["parallel", "preferred", "deprecated", "retired"]
 Liveness = Literal["alive", "stale", "unknown"]
 RetryObserver = Callable[[Path, int, Exception], None]
 
@@ -122,6 +131,9 @@ _TERMINAL_STATUSES: frozenset[RunStatus] = frozenset({"success", "fail"})
 _DEFAULT_APPEND_RETRIES = 3
 _DEFAULT_APPEND_RETRY_DELAY_SECONDS = 0.02
 _CROCKFORD32 = "0123456789ABCDEFGHJKMNPQRSTVWXYZ"
+_ADMISSION_BLOCKING_LEGACY_STATES: frozenset[LegacyMigrationState] = frozenset(
+    {"parallel", "preferred", "deprecated"}
+)
 
 
 def _encode_crockford_32(value: int, length: int) -> str:
@@ -278,7 +290,88 @@ def _deserialize_run_record(payload: dict[str, object]) -> RunRecord:
             None if payload.get("artifact_root") is None else str(payload.get("artifact_root"))
         ),
         output_summary=str(payload.get("output_summary", "")),
+        source=cast(
+            Literal["orchestration_native", "legacy_imported"],
+            payload.get("source", "orchestration_native"),
+        ),
+        legacy_run_id=(
+            None if payload.get("legacy_run_id") is None else str(payload.get("legacy_run_id"))
+        ),
+        legacy_migration_state=cast(
+            LegacyMigrationState | None,
+            payload.get("legacy_migration_state"),
+        ),
+        continuity_blocker=(
+            None
+            if payload.get("continuity_blocker") is None
+            else str(payload.get("continuity_blocker"))
+        ),
     )
+
+
+def _legacy_journal_entry(continuity_artifacts: dict[str, object]) -> dict[str, object] | None:
+    journal_payload = continuity_artifacts.get("journal")
+    if isinstance(journal_payload, dict):
+        return cast(dict[str, object], journal_payload)
+    if isinstance(journal_payload, list) and journal_payload:
+        first = journal_payload[0]
+        if isinstance(first, dict):
+            return cast(dict[str, object], first)
+    return None
+
+
+def _validate_legacy_continuity_minimums(
+    *,
+    continuity_artifacts: dict[str, object] | None,
+    expected_step_id: str,
+) -> str | None:
+    if continuity_artifacts is None:
+        return "missing continuity artifacts: ledger and journal are required"
+
+    ledger_payload = continuity_artifacts.get("ledger")
+    if not isinstance(ledger_payload, dict):
+        return "missing continuity minimums: ledger object is required"
+
+    journal_entry = _legacy_journal_entry(continuity_artifacts)
+    if journal_entry is None:
+        return "missing continuity minimums: journal entry is required"
+
+    required_ledger_fields = ("step_id", "session_id", "runner", "status")
+    missing_ledger_fields = [
+        field
+        for field in required_ledger_fields
+        if str(ledger_payload.get(field, "")).strip() == ""
+    ]
+    if missing_ledger_fields:
+        joined = ", ".join(sorted(missing_ledger_fields))
+        return f"missing continuity minimums: ledger fields [{joined}]"
+
+    required_journal_fields = ("event_id", "step_id", "session_id", "runner", "event_type")
+    missing_journal_fields = [
+        field
+        for field in required_journal_fields
+        if str(journal_entry.get(field, "")).strip() == ""
+    ]
+    if missing_journal_fields:
+        joined = ", ".join(sorted(missing_journal_fields))
+        return f"missing continuity minimums: journal fields [{joined}]"
+
+    ledger_step_id = str(ledger_payload.get("step_id", "")).strip()
+    journal_step_id = str(journal_entry.get("step_id", "")).strip()
+    if ledger_step_id != expected_step_id or journal_step_id != expected_step_id:
+        return (
+            "blocking_divergence: continuity step identity does not match imported "
+            f"target_step_id={expected_step_id}"
+        )
+    return None
+
+
+def _legacy_state_blocks_same_plan(record: RunRecord) -> bool:
+    if record.source != "legacy_imported":
+        return _status_is_non_terminal(record.status)
+    if record.legacy_migration_state not in _ADMISSION_BLOCKING_LEGACY_STATES:
+        return False
+    return _status_is_non_terminal(record.status)
 
 
 def _deserialize_case_entry(payload: dict[str, object]) -> CaseIndexEntry:
@@ -429,6 +522,10 @@ class RunRegistry:
                 else str(run_artifact_root_path(self._store_root, record.run_id))
             ),
             output_summary=record.output_summary,
+            source=record.source,
+            legacy_run_id=record.legacy_run_id,
+            legacy_migration_state=record.legacy_migration_state,
+            continuity_blocker=record.continuity_blocker,
         )
 
         _append_jsonl_with_retry(
@@ -555,6 +652,82 @@ class RunRegistry:
         """Prune/remove run-linked cases from the case index."""
         return self.remove_cases_for_run(run_id)
 
+    def import_legacy_run(
+        self,
+        *,
+        legacy_run_id: str,
+        step_id: str,
+        plan_path: str,
+        status: RunStatus,
+        migration_state: LegacyMigrationState,
+        continuity_artifacts: dict[str, object] | None,
+        run_id: str | None = None,
+        imported_at: float | None = None,
+    ) -> RunRecord:
+        """Import a legacy run into the canonical orchestration run index."""
+        continuity_blocker = _validate_legacy_continuity_minimums(
+            continuity_artifacts=continuity_artifacts,
+            expected_step_id=step_id,
+        )
+        effective_status = "stall" if continuity_blocker is not None else status
+        effective_run_id = run_id or generate_run_id()
+        imported_timestamp = _current_timestamp() if imported_at is None else imported_at
+
+        output_summary = (
+            "legacy import registered via run-store canonical index "
+            f"legacy_run_id={legacy_run_id} migration_state={migration_state}"
+        )
+        if continuity_blocker is not None:
+            output_summary = f"{output_summary}; migration/recovery blocker={continuity_blocker}"
+
+        imported_record = RunRecord(
+            run_id=effective_run_id,
+            step_id=step_id,
+            plan_path=plan_path,
+            status=effective_status,
+            created_at=imported_timestamp,
+            started_at=imported_timestamp,
+            updated_at=imported_timestamp,
+            output_summary=output_summary,
+            source="legacy_imported",
+            legacy_run_id=legacy_run_id,
+            legacy_migration_state=migration_state,
+            continuity_blocker=continuity_blocker,
+        )
+        self.save(imported_record)
+
+        if continuity_blocker is not None:
+            case_id = generate_case_id()
+            case_path = f"cases/{case_id}.json"
+            self.append_case(
+                CaseIndexEntry(
+                    case_id=case_id,
+                    run_id=effective_run_id,
+                    status="open",
+                    updated_at=imported_timestamp,
+                    case_path=case_path,
+                )
+            )
+
+        return imported_record
+
+    def imported_legacy_runs(
+        self,
+        *,
+        step_id: str | None = None,
+        legacy_run_id: str | None = None,
+    ) -> tuple[RunRecord, ...]:
+        """Return imported legacy runs from canonical run-store index."""
+        records = [
+            record
+            for record in self._latest_records_by_run_id().values()
+            if record.source == "legacy_imported"
+            and (step_id is None or record.step_id == step_id)
+            and (legacy_run_id is None or record.legacy_run_id == legacy_run_id)
+        ]
+        records.sort(key=_run_sort_key, reverse=True)
+        return tuple(records)
+
     def can_admit_same_plan(
         self,
         plan_path: str,
@@ -566,7 +739,7 @@ class RunRegistry:
             record
             for record in self._latest_records_by_run_id().values()
             if record.plan_path == plan_path
-            and _status_is_non_terminal(record.status)
+            and _legacy_state_blocks_same_plan(record)
             and record.run_id != current_run_id
         ]
         conflicts.sort(key=_run_sort_key, reverse=True)
@@ -694,8 +867,10 @@ __all__ = [
     "CorruptJSONLError",
     "AppendConflictError",
     "SamePlanAdmissionError",
+    "LegacyContinuityMinimumError",
     "CasesIndex",
     "RunRegistry",
+    "LegacyMigrationState",
     "generate_run_id",
     "generate_case_id",
     "run_artifact_root_path",

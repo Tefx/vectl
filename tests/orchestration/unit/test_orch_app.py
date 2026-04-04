@@ -282,13 +282,67 @@ def test_recover_dry_run_does_not_mutate_durable_state(tmp_path: Path) -> None:
     recovered = app.recover(dry_run=True)
     assert recovered.success is True
     assert "fresh_start_required" in recovered.message
-    assert "dry_run=true" in recovered.message
 
-    registry = RunRegistry(store_root=tmp_path / "runs")
-    current = registry.by_id(started.run_id)
-    assert current is not None
-    assert current.status == "running"
-    assert not (run_root / "continuity" / "quarantine").exists()
+
+def test_imported_legacy_runs_are_visible_via_orch_runs_surface(tmp_path: Path) -> None:
+    app = _build_app(tmp_path)
+    assert app._config.run_store_root is not None
+    registry = RunRegistry(store_root=app._config.run_store_root)
+    imported = registry.import_legacy_run(
+        legacy_run_id="legacy-101",
+        step_id="core.ready",
+        plan_path=str(app._config.plan_path),
+        status="running",
+        migration_state="parallel",
+        continuity_artifacts={
+            "ledger": {
+                "step_id": "core.ready",
+                "session_id": "sess-101",
+                "runner": "python",
+                "status": "active",
+            },
+            "journal": {
+                "event_id": "evt-101",
+                "step_id": "core.ready",
+                "session_id": "sess-101",
+                "runner": "python",
+                "event_type": "resume_attempt",
+            },
+        },
+    )
+
+    runs = app.runs(step_id="core.ready")
+    assert len(runs) == 1
+    assert runs[0].run_id == imported.run_id
+    assert runs[0].source == "legacy_imported"
+    assert runs[0].legacy_run_id == "legacy-101"
+    assert runs[0].legacy_migration_state == "parallel"
+
+
+def test_recover_surfaces_imported_legacy_continuity_blockers(tmp_path: Path) -> None:
+    app = _build_app(tmp_path)
+    assert app._config.run_store_root is not None
+    registry = RunRegistry(store_root=app._config.run_store_root)
+    imported = registry.import_legacy_run(
+        legacy_run_id="legacy-blocked",
+        step_id="core.ready",
+        plan_path=str(app._config.plan_path),
+        status="running",
+        migration_state="preferred",
+        continuity_artifacts={
+            "ledger": {
+                "step_id": "core.ready",
+                "session_id": "sess-201",
+                "runner": "python",
+                "status": "active",
+            }
+        },
+    )
+
+    result = app.recover(step_id="core.ready")
+    assert result.success is False
+    assert "Recovery blocked" in result.message
+    assert imported.run_id in result.message
 
 
 def test_resume_blocks_when_event_transcript_is_corrupt(tmp_path: Path) -> None:

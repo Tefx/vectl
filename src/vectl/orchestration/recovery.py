@@ -17,15 +17,15 @@ is deferred to the recovery_cutover implementation phases.
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from enum import Enum
-from typing import TYPE_CHECKING, Literal, Protocol
+from typing import TYPE_CHECKING, Literal
 
 from vectl.orchestration.continuity_artifacts import (
-    ArtifactClassification,
     ContinuityJournalEntry,
     ContinuityLedgerEntry,
 )
+from vectl.orchestration.run_store import RunRegistry
 
 if TYPE_CHECKING:
     pass
@@ -337,6 +337,109 @@ class LegacyRunBridge:
         )
 
 
+class RunStoreLegacyRunBridge(LegacyRunBridge):
+    """Run-store backed legacy bridge without introducing a second authority path."""
+
+    def __init__(
+        self,
+        registry: RunRegistry,
+        *,
+        plan_path: str,
+    ) -> None:
+        self._registry = registry
+        self._plan_path = plan_path
+
+    def import_legacy_run(
+        self,
+        legacy_run_id: str,
+        target_step_id: str,
+    ) -> LegacyRunImport:
+        imported = self._registry.import_legacy_run(
+            legacy_run_id=legacy_run_id,
+            step_id=target_step_id,
+            plan_path=self._plan_path,
+            status="running",
+            migration_state="parallel",
+            continuity_artifacts=None,
+        )
+        state = imported.legacy_migration_state or "parallel"
+        return LegacyRunImport(
+            legacy_run_id=legacy_run_id,
+            target_step_id=target_step_id,
+            imported_at=imported.updated_at or imported.created_at or 0.0,
+            status=LegacyRunStatus(state),
+            compatibility_notes=("run_store_authority=canonical",),
+        )
+
+    def get_migration_status(
+        self,
+        legacy_run_id: str | None = None,
+    ) -> LegacyRunStatus:
+        if legacy_run_id is not None:
+            records = self._registry.imported_legacy_runs(legacy_run_id=legacy_run_id)
+            if records:
+                status = records[0].legacy_migration_state or "parallel"
+                return LegacyRunStatus(status)
+            return LegacyRunStatus.PARALLEL
+
+        records = self._registry.imported_legacy_runs()
+        if not records:
+            return LegacyRunStatus.PARALLEL
+        statuses = {
+            LegacyRunStatus(record.legacy_migration_state or "parallel") for record in records
+        }
+        for ordered in (
+            LegacyRunStatus.PARALLEL,
+            LegacyRunStatus.PREFERRED,
+            LegacyRunStatus.DEPRECATED,
+            LegacyRunStatus.RETIRED,
+        ):
+            if ordered in statuses:
+                return ordered
+        return LegacyRunStatus.PARALLEL
+
+    def set_migration_status(
+        self,
+        status: LegacyRunStatus,
+        legacy_run_id: str | None = None,
+    ) -> None:
+        mapped_status: Literal["parallel", "preferred", "deprecated", "retired"]
+        if status is LegacyRunStatus.PARALLEL:
+            mapped_status = "parallel"
+        elif status is LegacyRunStatus.PREFERRED:
+            mapped_status = "preferred"
+        elif status is LegacyRunStatus.DEPRECATED:
+            mapped_status = "deprecated"
+        else:
+            mapped_status = "retired"
+
+        if legacy_run_id is None:
+            records = self._registry.imported_legacy_runs()
+        else:
+            records = self._registry.imported_legacy_runs(legacy_run_id=legacy_run_id)
+
+        for record in records:
+            self._registry.save(
+                record.__class__(
+                    run_id=record.run_id,
+                    step_id=record.step_id,
+                    plan_path=record.plan_path,
+                    agent=record.agent,
+                    status=record.status,
+                    created_at=record.created_at,
+                    started_at=record.started_at,
+                    updated_at=record.updated_at,
+                    finished_at=record.finished_at,
+                    artifact_root=record.artifact_root,
+                    output_summary=record.output_summary,
+                    source=record.source,
+                    legacy_run_id=record.legacy_run_id,
+                    legacy_migration_state=mapped_status,
+                    continuity_blocker=record.continuity_blocker,
+                )
+            )
+
+
 # ---------------------------------------------------------------------
 # Cutover Validation Contracts
 # ---------------------------------------------------------------------
@@ -382,6 +485,9 @@ class CutoverValidator:
     implementation phases.
     """
 
+    def __init__(self, *, registry: RunRegistry | None = None) -> None:
+        self._registry = registry if registry is not None else RunRegistry()
+
     def validate_cutover_readiness(self) -> CutoverValidationResult:
         """
         Validate whether legacy-driver retirement criteria are met.
@@ -389,10 +495,95 @@ class CutoverValidator:
         Returns:
             CutoverValidationResult with per-criterion results.
 
-        Raises:
-            NotImplementedError: Until validator semantics are specified.
+        Returns:
+            CutoverValidationResult describing whether imported legacy runs are
+            retired and free of migration/recovery blockers.
         """
-        raise NotImplementedError("CutoverValidator.validate_cutover_readiness: not yet specified")
+        imported_runs = self._registry.imported_legacy_runs()
+        criteria_results: list[str] = []
+        blocking_items: list[str] = []
+        recommendations: list[str] = []
+
+        if not imported_runs:
+            criteria_results.append(
+                "criterion.legacy_presence: met "
+                "(no imported legacy runs registered in canonical run store)"
+            )
+            criteria_results.append(
+                "criterion.recovery_blockers: met (no continuity blockers or open migration cases)"
+            )
+            return CutoverValidationResult(
+                can_cutover=True,
+                criteria_results=tuple(criteria_results),
+                blocking_items=(),
+                recommendations=(),
+            )
+
+        criteria_results.append(
+            "criterion.legacy_presence: blocked "
+            f"({len(imported_runs)} imported legacy run(s) still tracked)"
+        )
+
+        for record in imported_runs:
+            legacy_ref = record.legacy_run_id or record.run_id
+            state = record.legacy_migration_state or LegacyRunStatus.PARALLEL.value
+
+            if state != LegacyRunStatus.RETIRED.value:
+                blocking_items.append(
+                    f"legacy_run_id={legacy_ref} migration_state={state} "
+                    "must reach retired before cutover"
+                )
+
+            if record.continuity_blocker:
+                blocking_items.append(
+                    f"legacy_run_id={legacy_ref} continuity_blocker={record.continuity_blocker}"
+                )
+
+            cases = self._registry.cases_for_run(record.run_id)
+            open_cases = [case for case in cases if case.status == "open"]
+            if open_cases:
+                case_ids = ",".join(case.case_id for case in open_cases)
+                blocking_items.append(
+                    f"legacy_run_id={legacy_ref} has open migration/recovery case(s): {case_ids}"
+                )
+
+            if record.status in {"running", "pending", "stall"}:
+                blocking_items.append(
+                    f"legacy_run_id={legacy_ref} remains active status={record.status}; "
+                    "resolve or retire before cutover"
+                )
+
+        if not blocking_items:
+            criteria_results.append(
+                "criterion.recovery_blockers: met "
+                "(all imported legacy runs are retired and clear of blockers)"
+            )
+            return CutoverValidationResult(
+                can_cutover=True,
+                criteria_results=tuple(criteria_results),
+                blocking_items=(),
+                recommendations=(),
+            )
+
+        criteria_results.append(
+            "criterion.recovery_blockers: blocked "
+            "(continuity blockers, active imported runs, or open migration cases remain)"
+        )
+        recommendations.append(
+            "resolve continuity minimum blockers and close migration/recovery "
+            "cases for imported runs"
+        )
+        recommendations.append(
+            "advance imported runs through preferred/deprecated to retired "
+            "before legacy-driver cutover"
+        )
+
+        return CutoverValidationResult(
+            can_cutover=False,
+            criteria_results=tuple(criteria_results),
+            blocking_items=tuple(blocking_items),
+            recommendations=tuple(recommendations),
+        )
 
 
 __all__ = [
@@ -406,6 +597,7 @@ __all__ = [
     "RecoveryHygieneResult",
     "RecoveryOutcome",
     "RecoveryReport",
+    "RunStoreLegacyRunBridge",
     "StartupRecoveryControllerInput",
     "StartupRecoveryControllerOutput",
 ]

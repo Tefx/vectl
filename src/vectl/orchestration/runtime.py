@@ -9,22 +9,13 @@ Authority: docs/ORCHESTRATION-PLANE-ISOLATION-SEMANTICS.md sections 5.4, 5.5
 from __future__ import annotations
 
 import asyncio
+import shutil
 import threading
 import uuid
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, Coroutine, TypeVar, cast
+from typing import TYPE_CHECKING, Any, Coroutine, Generic, TypeVar, cast
 
-from vectl.driver.worktree import (
-    WORKTREE_BASE_DIR,
-    Failure,
-    Result,
-    Success,
-    WorktreeBinding,
-    WorktreeError,
-    cleanup as worktree_cleanup,
-    create as worktree_create,
-)
 from vectl.orchestration.contracts import (
     ExecutionRequest,
     ExecutionResult,
@@ -36,6 +27,65 @@ if TYPE_CHECKING:
 
 
 _T = TypeVar("_T")
+_E = TypeVar("_E", bound=Exception)
+
+WORKTREE_BASE_DIR = Path(".vectl/worktrees")
+
+
+class WorktreeError(RuntimeError):
+    """Mechanical worktree/workspace operation error."""
+
+
+@dataclass(frozen=True)
+class WorktreeBinding:
+    """Minimal workspace binding returned by runtime worktree helpers."""
+
+    step_id: str
+    worktree_path: Path
+
+
+@dataclass(frozen=True)
+class Success(Generic[_T]):
+    value: _T
+
+
+@dataclass(frozen=True)
+class Failure(Generic[_E]):
+    error: _E
+
+
+Result = Success[_T] | Failure[_E]
+
+
+async def worktree_create(
+    step_id: str, base_dir: Path
+) -> Success[WorktreeBinding] | Failure[WorktreeError]:
+    """Create or ensure a mechanical workspace path for a step."""
+
+    try:
+        worktree_path = base_dir / step_id
+        worktree_path.mkdir(parents=True, exist_ok=True)
+        return Success(WorktreeBinding(step_id=step_id, worktree_path=worktree_path))
+    except OSError as exc:
+        return Failure(WorktreeError(f"Failed to create workspace for '{step_id}': {exc}"))
+
+
+async def worktree_cleanup(
+    step_id: str,
+    worktree_path: Path,
+    force: bool = True,
+) -> Success[None] | Failure[WorktreeError]:
+    """Remove a mechanical workspace path for a step."""
+
+    del step_id  # retained for surface compatibility
+    del force
+    try:
+        if worktree_path.exists():
+            shutil.rmtree(worktree_path)
+        return Success(None)
+    except OSError as exc:
+        return Failure(WorktreeError(f"Failed to cleanup workspace '{worktree_path}': {exc}"))
+
 
 _FRESH_WORKSPACE_HINTS: frozenset[str] = frozenset(
     {
@@ -256,7 +306,7 @@ def _request_requires_fresh_workspace(request: ExecutionRequest) -> bool:
     return any(ref in _FRESH_WORKSPACE_HINTS for ref in normalized_refs)
 
 
-def _run_create(step_id: str, base_dir: Path) -> "Result[WorktreeBinding, WorktreeError]":
+def _run_create(step_id: str, base_dir: Path) -> Success[WorktreeBinding] | Failure[WorktreeError]:
     """Run worktree_create from sync and async callers."""
 
     if _is_event_loop_running():
@@ -268,7 +318,7 @@ def _run_cleanup(
     step_id: str,
     worktree_path: Path,
     force: bool = True,
-) -> "Result[None, WorktreeError]":
+) -> Success[None] | Failure[WorktreeError]:
     """Run worktree_cleanup from sync and async callers."""
 
     if _is_event_loop_running():
@@ -292,14 +342,14 @@ def _is_event_loop_running() -> bool:
 
 def _create_workspace_sync(
     step_id: str, base_dir: Path
-) -> "Result[WorktreeBinding, WorktreeError]":
+) -> Success[WorktreeBinding] | Failure[WorktreeError]:
     """Synchronous wrapper for worktree creation."""
     return _run_async_in_thread(worktree_create(step_id=step_id, base_dir=base_dir))
 
 
 def _cleanup_workspace_sync(
     step_id: str, worktree_path: Path, force: bool
-) -> "Result[None, WorktreeError]":
+) -> Success[None] | Failure[WorktreeError]:
     """Synchronous wrapper for workspace cleanup."""
     return _run_async_in_thread(
         worktree_cleanup(step_id=step_id, worktree_path=worktree_path, force=force)

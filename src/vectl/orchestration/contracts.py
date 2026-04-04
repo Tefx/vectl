@@ -7,8 +7,6 @@ between control, roster, runtime, and resolver components.
 Authority: docs/ORCHESTRATION-PLANE-INTERFACES.md section 3
 """
 
-from __future__ import annotations
-
 from dataclasses import dataclass
 from typing import Literal
 

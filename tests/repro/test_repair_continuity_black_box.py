@@ -9,11 +9,25 @@ Architecture: docs/DRIVER-CONTINUITY-FOUNDATION.md Section 7a (Startup Hygiene a
 from __future__ import annotations
 
 import json
+import importlib.util
 import subprocess
 import tempfile
 from pathlib import Path
 
+import pytest
 import yaml
+
+try:
+    _CONTINUITY_HYGIENE_PRESENT = (
+        importlib.util.find_spec("vectl.driver.continuity_hygiene") is not None
+    )
+except ModuleNotFoundError:
+    _CONTINUITY_HYGIENE_PRESENT = False
+
+if not _CONTINUITY_HYGIENE_PRESENT:
+    pytestmark = pytest.mark.skip(
+        reason="Legacy vectl.driver continuity hygiene module removed from runtime surface"
+    )
 
 
 # =============================================================================

@@ -63258,7 +63258,7 @@ phases:
       with passing tests.'
 - id: orch_operator_doc_sync
   name: Orchestration Operator Documentation Sync
-  status: pending
+  status: in_progress
   gate: Project documentation matches the landed vectl orch behavior, config shape,
     artifact layout, and migration posture.
   depends_on:
@@ -63266,7 +63266,7 @@ phases:
   steps:
   - id: orch_operator_doc_sync.update_docs
     name: Update operator-surface docs to match implementation
-    status: pending
+    status: claimed
     description: Sync documentation with the landed `vectl orch` behavior. Update
       command examples, config examples, artifact-layout docs, migration posture,
       and any implementation-design notes that still reflect pre-landing stub state.
@@ -63278,6 +63278,8 @@ phases:
 
       - Legacy-shell posture is updated to match the validated migration state'
     agent: doc-reviewer
+    claimed_by: doc-reviewer
+    claimed_at: '2026-04-04T21:39:18.384210+00:00'
   - id: orch_operator_doc_sync.gate
     name: Gate operator-surface doc sync
     status: pending

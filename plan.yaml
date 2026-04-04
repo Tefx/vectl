@@ -59286,7 +59286,7 @@ phases:
       §5.'
   - id: orch_operator_contracts.app_cli_contracts
     name: Pin orch_app and vectl orch CLI contracts
-    status: claimed
+    status: done
     description: "step_type: contract\ncontract_purity: ENFORCED\ncontract_outputs:\n\
       \  - signatures\n  - interfaces\n  - stubs\n\nPin the exact operator entrypoint\
       \ contracts in:\n- src/vectl/orch_app.py\n- src/vectl/cli.py\n\nUse the documented\
@@ -59312,6 +59312,15 @@ phases:
     agent: python-executor
     claimed_by: python-executor
     claimed_at: '2026-04-04T11:58:38.713209+00:00'
+    done_at: '2026-04-04T12:13:51.076940+00:00'
+    evidence: 'Pinned `src/vectl/orch_app.py` and `src/vectl/cli.py` contract-only
+      entrypoint surfaces for all documented `vectl orch` command families (run/resume/recover/runs/prune,
+      inspect family, case family, control family, config family) with typed DTOs/signatures/stubs
+      and no runtime behavior. Verification: `python3 -m py_compile src/vectl/orch_app.py
+      src/vectl/cli.py` PASS; imports for `vectl.orch_app` and `vectl.cli` PASS. Commit:
+      fdad027c7d24394d65348ba7eb2508acb4268904. Spec links: ORCHESTRATION-PLANE-IMPLEMENTATION-DESIGN.md
+      §6; ORCHESTRATION-PLANE-ARCHITECTURE.md §§2,5; ORCHESTRATION-PLANE-INTERFACES.md
+      §§3,4; ORCHESTRATION-PLANE-RESOLUTION-CONTRACT.md §§3,5.'
   - id: orch_operator_contracts.recovery_cutover_contracts
     name: Pin recovery, continuity, and migration-cutover contracts
     status: claimed

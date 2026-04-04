@@ -60727,3 +60727,11 @@ phases:
     depends_on:
     - orch_operator_doc_sync.update_docs
     agent: gate-reviewer
+- id: orch_operator_deep_review
+  name: Orchestration Operator Deep Review
+  status: locked
+  gate: Independent final audits confirm full-plan quality, wiring completeness, spec
+    conformance, architecture adherence, contract strength, and black-box operator-surface
+    behavior.
+  depends_on:
+  - orch_operator_doc_sync

@@ -60416,6 +60416,91 @@ phases:
       on resume, ambient config drift is refused, and allowlist/runtime binding derives
       from frozen snapshot on runtime path. Remaining notes are non-blocking tech
       debt only (reserved continuity fields).'
+  - id: orch_operator_config_state.fix_authority_reference_blocker
+    name: Resolve authority-reference blocker for config-state citations
+    status: pending
+    description: 'Resolve the gate blocker that reported missing authority-document
+      coverage for orchestration config-state citations, without changing runtime
+      behavior.
+
+
+      Files to inspect/update:
+
+      - docs/ORCHESTRATION-PLANE-CLI-CONFIG-OBSERVABILITY-DESIGN.md
+
+      - src/vectl/orchestration/config.py
+
+      - src/vectl/orchestration/tool_registry.py
+
+      - tests/orchestration/unit/test_config_state_red.py
+
+      - tests/repro/test_orch_cli_recovery_red.py
+
+      - tests/repro/test_orch_observability_red.py
+
+
+      Goal:
+
+      - make every authority citation used by the config-state implementation/tests
+      point at a canonical, present spec source
+
+      - if the cited CLI/config/observability design document is the canonical authority,
+      ensure the required artifact/sections remain present and cited consistently
+
+      - otherwise retarget stale citations to existing canonical docs with the same
+      semantics
+
+
+      Constraints:
+
+      - no runtime-behavior changes
+
+      - no config-shape, loader, freeze, run-store, or resolver behavior changes
+
+      - only authority-document artifact and citation alignment work
+
+
+      Systemic search instructions:
+
+      - search for all references to `ORCHESTRATION-PLANE-CLI-CONFIG-OBSERVABILITY-DESIGN.md`
+
+      - search sibling authority comments/docstrings in orchestration config-state
+      modules and tests, not just the blocker location
+
+      - normalize any stale or split authority references so gate review can trace
+      each cited requirement to a live canonical doc section
+
+
+      Completion criteria:
+
+      - blocker-class missing/stale authority references are resolved across the config-state
+      file cluster
+
+      - each touched citation resolves to an existing canonical doc section
+
+      - runtime semantics remain unchanged
+
+
+      Rule anchors:
+
+      - reactive-steps.md §13.5 requires batched blocker remediation with sibling-search
+      instructions
+
+      - agent-routing.md §10.3 routes documentation remediation to `doc-reviewer`
+
+      - verification-design.md §4.0 requires an explicit disposition path for gate
+      blockers'
+    verification: '- Confirm every touched authority reference resolves to an existing
+      document/section
+
+      - Confirm no non-doc runtime files were behaviorally changed beyond citation/comment
+      alignment
+
+      - Record whether the blocker was closed by restoring the authority artifact
+      or by retargeting citations to canonical docs'
+    depends_on:
+    - orch_operator_config_state.gate
+    agent: doc-reviewer
 - id: orch_operator_observability
   name: Orchestration Events, Projections, and Artifacts
   status: done

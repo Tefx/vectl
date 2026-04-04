@@ -59358,7 +59358,7 @@ phases:
       §§9,10.'
   - id: orch_operator_contracts.gate
     name: Gate operator-surface contracts
-    status: pending
+    status: claimed
     description: 'Gate review: verify contract completeness, ownership separation,
       and stub-only purity for the orchestration operator surface.'
     verification: 'phase-check protecting orch_operator_tests:
@@ -59376,6 +59376,8 @@ phases:
     - orch_operator_contracts.app_cli_contracts
     - orch_operator_contracts.recovery_cutover_contracts
     agent: gate-reviewer
+    claimed_by: gate-reviewer
+    claimed_at: '2026-04-04T12:14:15.710894+00:00'
 - id: orch_operator_tests
   name: Orchestration Operator Surface Test Definitions
   status: locked

@@ -62555,7 +62555,7 @@ phases:
       with gate_open_allowed=false path verified. 32 tests passed.
   - id: orch_operator_recovery_cutover.reverify_recovery_contract_conformance
     name: Reverify recovery consumer-boundary and spec conformance
-    status: pending
+    status: claimed
     description: 'As an INDEPENDENT TESTER, rerun the failed recovery-cutover verifier
       families after batched remediation.
 
@@ -62664,6 +62664,8 @@ phases:
     depends_on:
     - orch_operator_recovery_cutover.fix_recovery_contract_conformance
     agent: integration-verifier
+    claimed_by: integration-verifier
+    claimed_at: '2026-04-04T20:37:36.090151+00:00'
 - id: orch_operator_system_wiring
   name: Orchestration Operator System Wiring
   status: locked

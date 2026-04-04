@@ -204,19 +204,28 @@ def _plan_to_dict(plan: Plan) -> dict[str, Any]:
     return _clean_dict(data)
 
 
-def _affinity_default_fields() -> dict[str, Any]:
-    """Return affinity-related model fields with their defaults."""
-    affinity_defaults: dict[str, Any] = {}
+def _cleanup_default_fields() -> dict[str, Any]:
+    """Return model fields eligible for default-value omission.
+
+    Authority:
+        docs/ORCHESTRATION-PLANE-ISOLATION-SEMANTICS.md section 6
+        docs/RFC-affinity.md
+
+    Includes:
+        - affinity-related defaults for cleaner YAML output
+        - step isolation default so omission continues to mean "default"
+    """
+    cleanup_defaults: dict[str, Any] = {}
     for model in (Step, Plan):
         for field_name, field in model.model_fields.items():
-            if "affinity" in field_name:
-                affinity_defaults[field_name] = field.default
-    return affinity_defaults
+            if "affinity" in field_name or field_name == "isolation":
+                cleanup_defaults[field_name] = field.default
+    return cleanup_defaults
 
 
 def _clean_dict(d: dict[str, Any]) -> dict[str, Any]:
     """Remove empty/default values for cleaner YAML output."""
-    affinity_fields = _affinity_default_fields()
+    cleanup_default_fields = _cleanup_default_fields()
 
     result: dict[str, Any] = {}
     for k, v in d.items():
@@ -237,9 +246,10 @@ def _clean_dict(d: dict[str, Any]) -> dict[str, Any]:
         elif v == "" and k not in ("project", "name", "id", "description"):
             continue
         # RFC: docs/RFC-affinity.md
-        # Exclude default affinity fields for cleaner YAML.
+        # Isolation semantics: docs/ORCHESTRATION-PLANE-ISOLATION-SEMANTICS.md section 6
+        # Exclude eligible default fields for cleaner YAML.
         # affinity_override: False means "no override" → omit from YAML.
-        elif k in affinity_fields and v == affinity_fields[k]:
+        elif k in cleanup_default_fields and v == cleanup_default_fields[k]:
             continue
         else:
             result[k] = v

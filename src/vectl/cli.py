@@ -2628,13 +2628,18 @@ def repair_continuity_cmd(
 
     Source: docs/DRIVER-CONTINUITY-FOUNDATION.md §7 cross-cutting governance
     """
-    from vectl.driver.continuity_hygiene import (
-        StartupHygieneStageInput,
-        apply_quarantine,
-        load_quarantine_manifest,
-        run_startup_hygiene_stage,
-        scan_continuity_artifacts,
-    )
+    import importlib
+
+    try:
+        hygiene_module = importlib.import_module("vectl.driver.continuity_hygiene")
+        StartupHygieneStageInput = hygiene_module.StartupHygieneStageInput
+        apply_quarantine = hygiene_module.apply_quarantine
+        load_quarantine_manifest = hygiene_module.load_quarantine_manifest
+        run_startup_hygiene_stage = hygiene_module.run_startup_hygiene_stage
+        scan_continuity_artifacts = hygiene_module.scan_continuity_artifacts
+    except ModuleNotFoundError:
+        _die("repair continuity is unavailable: legacy vectl.driver continuity module was removed")
+        return
 
     p, _, plan_path = _load(plan)
 
@@ -3343,6 +3348,8 @@ def drive(
     - docs/DRIVER-ARCHITECTURE.md (entrypoint unification)
     - DRIVER-BLUEPRINT.md (runtime driver entrypoint)
     """
-    from vectl.driver.entrypoint import get_runtime_adapter, run_drive_cli_entrypoint
+    if not config.exists():
+        _die(f"Config file not found: {config}")
+        return
 
-    raise typer.Exit(run_drive_cli_entrypoint(config=config, adapter=get_runtime_adapter()))
+    _die("drive is unavailable: legacy vectl.driver entrypoint was removed")

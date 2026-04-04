@@ -5,6 +5,7 @@ import pytest
 from vectl.models import (
     AffinityMode,
     Clipboard,
+    IsolationMode,
     Phase,
     PhaseStatus,
     Plan,
@@ -56,6 +57,15 @@ class TestStep:
         assert step.status == StepStatus.PENDING
         assert step.depends_on == []
         assert step.refs == []
+        assert step.isolation == IsolationMode.DEFAULT
+
+    def test_isolation_explicit_workspace(self):
+        step = Step(id="s1", name="Do thing", isolation=IsolationMode.WORKSPACE)
+        assert step.isolation == IsolationMode.WORKSPACE
+
+    def test_isolation_explicit_independent(self):
+        step = Step(id="s1", name="Do thing", isolation=IsolationMode.INDEPENDENT)
+        assert step.isolation == IsolationMode.INDEPENDENT
 
     def test_skipped_requires_reason(self):
         with pytest.raises(ValueError, match="skipped_reason is required"):

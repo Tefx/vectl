@@ -287,10 +287,12 @@ class TestCodexJudgeLive:
             from tests.live_smoke.helpers import _auth_checks
 
             _auth_checks["codex"] = False
-            skip_result = skip_if_auth_missing("codex")
-            if skip_result is not None:
-                assert "auth" in str(skip_result).lower()
-                pytest.skip("codex auth not available", allow_module_level=True)
+            with pytest.raises(pytest.skip.Exception) as exc_info:
+                skip_if_auth_missing("codex")
+
+            assert "auth" in str(exc_info.value).lower()
+            assert "codex" in str(exc_info.value).lower()
+            assert exc_info.value.allow_module_level is True
         finally:
             _auth_checks["codex"] = original_auth
 

@@ -62431,19 +62431,77 @@ phases:
   - id: orch_operator_system_wiring.replace_runtime_stubs
     name: Replace remaining runtime stubs and placeholder wiring
     status: pending
-    description: Replace any remaining stub or placeholder runtime targets in the
-      operator entrypoint path with real implementations from the landed operator
-      modules. Search for `_Runtime*`, `_Stub*`, `_Placeholder*`, NotImplementedError
-      placeholders, and compatibility shims in orch_app/cli/operator modules; remove
-      them from production wiring once real modules exist.
-    verification: 'phase-check protecting orch_operator_system_wiring.verify_e2e and
-      orch_operator_cutover_validation:
+    description: 'step_type: implementation
 
-      - Evidence lists every stub/placeholder found and whether it was removed or
-      remains intentionally deferred
 
-      - No production entrypoint path terminates at a stub or NotImplementedError
-      body'
+      tags: ["integration"]
+
+
+      Fill in and complete the real runtime wiring in src/vectl/orch_app.py, CLI operator
+      entrypoint modules, and any remaining operator runtime adapters by replacing
+      production stub/placeholder targets with real implementations from the landed
+      operator modules.
+
+
+      UPSTREAM ARTIFACTS:
+
+      - operator-surface contracts from orch_operator_contracts are AUTHORITATIVE
+
+      - recovery/resume outcomes and legacy-bridge semantics from orch_operator_recovery_cutover
+      are AUTHORITATIVE
+
+      - protected CLI/operator tests from orch_operator_tests are PROTECTED
+
+
+      YOUR SCOPE: remove `_Runtime*`, `_Stub*`, `_Placeholder*`, NotImplementedError
+      placeholders, and production compatibility shims from the real `vectl orch`
+      entrypoint path once the corresponding real implementation exists.
+
+
+      Failure-mode checklist:
+
+      - no production entrypoint path may terminate at a stub body, placeholder adapter,
+      or compatibility shim pretending to be the real target
+
+      - CLI registration, app-root wiring, and recovery-facing surfaces must all resolve
+      to the same runtime truth
+
+      - replacing one runtime target must not leave sibling command paths still pointed
+      at legacy or placeholder surfaces
+
+
+      Out-of-scope guardrail:
+
+      - do not redesign public operator contracts in this step; wire the existing
+      runtime contracts into the real entrypoint
+
+
+      ## Completion Criteria (stub exclusion)
+
+      This is an IMPLEMENTATION step. Stub-only completion is NOT acceptable.
+
+      Each deliverable MUST contain substantive runtime wiring that routes real entrypoint
+      traffic into real operator implementations.'
+    verification: 'phase-check protecting orch_operator_system_wiring.verify_e2e,
+      orch_operator_system_wiring.liveness_probe, and orch_operator_cutover_validation:
+
+      - Evidence lists every stub/placeholder/compatibility shim found and whether
+      it was removed or remains intentionally deferred
+
+      - No production entrypoint path terminates at a stub, placeholder, compatibility
+      shim, or NotImplementedError body
+
+      - Evidence identifies the final real entrypoint path for start, inspect, and
+      recovery-oriented commands'
+    evidence_template: "## refs Read Confirmation (MANDATORY)\n\nFor each ref in this\
+      \ step:\n- <filename> — key passage or \"NOT READ: <reason>\"\n\nIf no refs\
+      \ were provided, state: \"No refs for this step.\"\n\n## Stub Replacement Report\n\
+      - Runtime stubs / placeholders / shims found:\n  | Symbol or path | Location\
+      \ | Replaced? | Real target |\n- Remaining deferred placeholders:\n  | Symbol\
+      \ or path | Reason deferred | Why non-intersecting or owner |\n- Real entrypoint\
+      \ paths after replacement:\n  - start: <path>\n  - inspect/read: <path>\n  -\
+      \ recovery/resume: <path>\n- Proof no NotImplementedError or placeholder remains\
+      \ on production paths: <grep/search summary>"
     agent: python-senior
   - id: orch_operator_system_wiring.verify_e2e
     name: Verify end-to-end vectl orch data flow

@@ -62217,7 +62217,7 @@ phases:
   steps:
   - id: orch_operator_recovery_cutover.impl_recovery_resume_integration
     name: Implement recover and resume integration from continuity artifacts
-    status: claimed
+    status: pending
     description: 'step_type: implementation
 
 
@@ -62287,8 +62287,6 @@ phases:
       - Evidence includes exact artifact families consumed and explicit outcome enums
       produced'
     agent: python-senior
-    claimed_by: python-senior
-    claimed_at: '2026-04-04T17:56:58.327446+00:00'
   - id: orch_operator_recovery_cutover.impl_legacy_bridge_import
     name: Implement legacy-run bridge and import semantics for cutover
     status: claimed

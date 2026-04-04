@@ -61844,7 +61844,7 @@ phases:
       \ -> 15 passed"
   - id: orch_operator_control_surface.retest_spec_blockers_batch
     name: Re-test batched spec-conformance blockers for control/config CLI surface
-    status: claimed
+    status: done
     description: 'Re-run spec conformance for the remediated `vectl orch` control/config
       scope after batched fixes.
 
@@ -61915,6 +61915,47 @@ phases:
     agent: spec-verifier
     claimed_by: spec-verifier
     claimed_at: '2026-04-04T17:27:53.949970+00:00'
+    done_at: '2026-04-04T17:30:04.419694+00:00'
+    evidence: 'step_intent: retest_green
+
+      expected_result: green
+
+      observed_result: green
+
+
+      Retest scope verified:
+
+      - control pause/unpause forward `--reason`
+
+      - control stop forwards `--force`
+
+      - config show `--effective` is wired and behaviorally distinct
+
+      - explicit exit-code mappings for not-found/recovery/internal are implemented
+      and tested
+
+
+      Verification:
+
+      - uv run pytest -q tests/test_orch_cli_surface.py tests/orchestration/unit/test_orch_app.py
+      -> 15 passed
+
+      - file:line conformance table provided for §7.4, §7.5, and §6 mappings
+
+
+      failure_alignment: none
+
+      product_implementation_files_modified: NO
+
+      findings:
+
+      - blocker: none
+
+      - should_fix: none
+
+      - suggestion: none
+
+      - tech_debt: none'
 - id: orch_operator_recovery_cutover
   name: Orchestration Recovery, Resume, and Legacy Bridge
   status: locked

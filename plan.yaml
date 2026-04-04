@@ -62963,7 +62963,7 @@ phases:
   steps:
   - id: orch_operator_cutover_validation.replacement_workflow_smoke
     name: Validate replacement-promise operator workflows
-    status: claimed
+    status: done
     description: 'Blind workflow validation for the documented operator replacement
       promise. Exercise the seven required workflows through the real `vectl orch`
       surface: start run, inspect live status/events, pause/unpause/stop, inspect/respond
@@ -62982,6 +62982,10 @@ phases:
     agent: blind-tester
     claimed_by: blind-tester
     claimed_at: '2026-04-04T21:06:24.263382+00:00'
+    done_at: '2026-04-04T21:14:40.021034+00:00'
+    evidence: Replacement workflow smoke validated seven documented operator workflows
+      through real CLI commands with artifact observations; no workflow blocker reported
+      by tester.
   - id: orch_operator_cutover_validation.migration_state_audit
     name: Audit migration state model and legacy-retirement readiness
     status: done

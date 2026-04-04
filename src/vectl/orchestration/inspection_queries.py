@@ -204,9 +204,6 @@ class RunsQueryImpl:
             tuple(status for status in _RUN_STATUSES if status_counts.get(status, 0) > 0),
         )
 
-        step_ids = {record.step_id for record in records if record.step_id}
-        agents = {record.agent for record in records if record.agent}
-
         return RunsInspectView(
             step_id=inspect_query.step_id,
             agent=inspect_query.agent,
@@ -243,14 +240,14 @@ class RunsQueryImpl:
         if inspect_query.step_id:
             records = list(self._registry.all_for_step(inspect_query.step_id))
         elif inspect_query.agent:
-            all_records: dict[str, RunRecord] = self._registry._latest_records_by_run_id()
-            records = [r for r in all_records.values() if r.agent == inspect_query.agent]
+            records_by_run_id = self._registry._latest_records_by_run_id()
+            records = [r for r in records_by_run_id.values() if r.agent == inspect_query.agent]
             records.sort(key=lambda r: (r.updated_at or 0.0, r.run_id), reverse=True)
         elif inspect_query.status:
             records = list(self._registry.by_status(inspect_query.status))
         else:
-            all_records: dict[str, RunRecord] = self._registry._latest_records_by_run_id()
-            records = list(all_records.values())
+            records_by_run_id = self._registry._latest_records_by_run_id()
+            records = list(records_by_run_id.values())
             records.sort(key=lambda r: (r.updated_at or 0.0, r.run_id), reverse=True)
 
         # Apply limit/offset pagination

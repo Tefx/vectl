@@ -12,7 +12,7 @@ import sys
 import time
 from dataclasses import asdict, is_dataclass, replace
 from pathlib import Path
-from typing import Any, Literal, cast
+from typing import Any, Literal, NoReturn, cast
 
 import typer
 from rich.console import Console
@@ -245,9 +245,11 @@ def _get_next_steps_with_phase(plan: Plan, agent: str | None = None) -> list[tup
 # ---------------------------------------------------------------------------
 
 
-def _die(msg: str, code: int = 1) -> None:
+def _die(msg: str, code: int = 1, *, cause: Exception | None = None) -> NoReturn:
     console.print(f"[red bold]Error:[/] {msg}")
-    raise typer.Exit(code)
+    if cause is None:
+        raise typer.Exit(code)
+    raise typer.Exit(code) from cause
 
 
 def _check_not_linked_worktree(plan: Path | None = None) -> None:
@@ -626,10 +628,10 @@ def _orch_die_on_failure(message: str) -> None:
     _die(message, code=_orch_failure_exit_code(message))
 
 
-def _orch_internal_error(exc: Exception) -> None:
+def _orch_internal_error(exc: Exception) -> NoReturn:
     """Surface unexpected orchestration app exceptions as internal errors."""
 
-    _die(f"Internal orchestration error: {exc}", code=5)
+    _die(f"Internal orchestration error: {exc}", code=5, cause=exc)
 
 
 def _build_orchestration_runtime_app_or_die(plan: Path | None) -> Any:
@@ -639,7 +641,6 @@ def _build_orchestration_runtime_app_or_die(plan: Path | None) -> Any:
         return _build_orchestration_runtime_app(plan=plan)
     except Exception as exc:  # pragma: no cover - defensive internal mapping
         _orch_internal_error(exc)
-        raise AssertionError("unreachable")
 
 
 def _json_ready(value: Any) -> Any:

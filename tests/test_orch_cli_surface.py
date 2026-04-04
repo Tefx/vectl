@@ -9,8 +9,11 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
+import pytest
+import typer
 from typer.testing import CliRunner
 
+import vectl.cli as cli
 from vectl.cli import app
 
 runner = CliRunner()
@@ -292,3 +295,9 @@ def test_orch_internal_error_maps_to_exit_code_5(monkeypatch) -> None:
     result = runner.invoke(app, ["orch", "config", "show", "--effective"])
     assert result.exit_code == 5
     assert "Internal orchestration error" in result.output
+
+    with pytest.raises(typer.Exit) as exc_info:
+        cli._build_orchestration_runtime_app_or_die(plan=None)
+
+    assert isinstance(exc_info.value.__cause__, RuntimeError)
+    assert str(exc_info.value.__cause__) == "boom"

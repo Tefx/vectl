@@ -63286,7 +63286,7 @@ phases:
       and architecture notes to match landed vectl orch behavior.
   - id: orch_operator_doc_sync.gate
     name: Gate operator-surface doc sync
-    status: pending
+    status: claimed
     description: 'Gate review: verify documentation now matches the landed orchestration
       operator surface.'
     verification: 'phase-check protecting orch_operator_deep_review:
@@ -63297,6 +63297,8 @@ phases:
     depends_on:
     - orch_operator_doc_sync.update_docs
     agent: gate-reviewer
+    claimed_by: gate-reviewer
+    claimed_at: '2026-04-04T22:26:39.319435+00:00'
 - id: orch_operator_deep_review
   name: Orchestration Operator Deep Review
   status: locked

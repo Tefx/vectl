@@ -61749,6 +61749,7 @@ phases:
     - orch_operator_control_surface.fix_spec_blockers_batch
     - orch_operator_control_surface.retest_spec_blockers_batch
     - orch_operator_control_surface.wiring_audit
+    - orch_operator_control_surface.retest_gate_blockers_batch
     agent: gate-reviewer
   - id: orch_operator_control_surface.fix_spec_blockers_batch
     name: Fix batched spec-conformance blockers for control/config CLI surface

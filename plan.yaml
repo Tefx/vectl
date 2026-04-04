@@ -59344,3 +59344,11 @@ phases:
     - orch_operator_contracts.app_cli_contracts
     - orch_operator_contracts.recovery_cutover_contracts
     agent: gate-reviewer
+- id: orch_operator_tests
+  name: Orchestration Operator Surface Test Definitions
+  status: locked
+  gate: Expected-red test definitions expose the documented gaps without product implementation
+    code; fixtures are spec-derived; downstream implementation work has explicit acceptance
+    targets.
+  depends_on:
+  - orch_operator_contracts

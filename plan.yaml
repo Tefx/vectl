@@ -61611,7 +61611,7 @@ phases:
       product_implementation_files_modified: NO'
   - id: orch_operator_control_surface.spec_conformance
     name: Verify CLI, query, and control surface spec conformance
-    status: claimed
+    status: done
     description: Spec conformance verification via adversarial divergence hunting
       for the `vectl orch` command tree, run selectors, live-read semantics, output
       modes, and control/case command contracts.
@@ -61634,6 +61634,32 @@ phases:
     agent: spec-verifier
     claimed_by: spec-verifier
     claimed_at: '2026-04-04T17:18:51.517247+00:00'
+    done_at: '2026-04-04T17:18:59.491483+00:00'
+    evidence: 'Adversarial conformance review executed and produced blocker/should_fix
+      issue set.
+
+
+      Detected issues:
+
+      - blocker: control pause/unpause currently discard --reason and control stop
+      discards --force (spec §7.4 contract gap)
+
+      - should_fix: config show --effective behavior not wired
+
+      - should_fix: exit-code semantics require explicit checks/alignment coverage
+
+
+      Batched remediation planning:
+
+      - Added fix step: orch_operator_control_surface.fix_spec_blockers_batch
+
+      - Added retest step: orch_operator_control_surface.retest_spec_blockers_batch
+
+      - Updated gate dependencies to wait on batched fix+retest path.
+
+
+      This step is completed as issue-discovery + remediation-path-establishment per
+      batched-fix protocol.'
   - id: orch_operator_control_surface.wiring_audit
     name: Audit CLI and operator-surface wiring completeness
     status: claimed

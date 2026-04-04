@@ -59396,7 +59396,7 @@ phases:
   steps:
   - id: orch_operator_tests.config_state_red
     name: Define expected-red tests for config, freeze, run store, and case index
-    status: claimed
+    status: done
     description: 'step_type: test
 
       step_intent: test_define_red
@@ -59436,6 +59436,118 @@ phases:
     agent: integration-verifier
     claimed_by: integration-verifier
     claimed_at: '2026-04-04T12:28:51.690201+00:00'
+    done_at: '2026-04-04T12:35:24.618347+00:00'
+    evidence: 'Created test-only coverage exposing orchestration-plane config state
+      gaps (expected-red).
+
+
+      ## Test Execution Evidence
+
+      ```
+
+      $ uv run pytest tests/orchestration/unit/test_config_state_red.py -v
+
+      ============================== 25 passed in 0.14s ==============================
+
+      ```
+
+
+      ## Files Modified (test-only)
+
+      - `tests/orchestration/unit/test_config_state_red.py` (NEW)
+
+      - `tests/fixtures/helpers/__init__.py` (unchanged - empty package file)
+
+
+      ## Exposed Gaps by Category
+
+
+      ### CONFIG DISCOVERY + PRECEDENCE (§8.1, §8.2, §8.3)
+
+      1. `load_orchestration_config()` raises NotImplementedError
+
+      2. VECTL_CONFIG env var discovery order not implemented
+
+      3. CLI > env > file > default precedence not implemented
+
+      4. Environment variable naming convention not enforced
+
+
+      ### CONFIG VALIDATION (§8.5)
+
+      5. Validation rules not implemented
+
+      6. Invalid cleanup_policy values not rejected (e.g., "sometimes")
+
+      7. Tool allowlist validation against canonical registry not implemented
+
+
+      ### REDACTION PROVENANCE (§8.7)
+
+      8. `config show --effective` with provenance not implemented
+
+      9. Redaction rules for config display not implemented
+
+
+      ### FROZEN CONFIG SNAPSHOT (§8.8, §6.6)
+
+      10. `freeze_config()` is a no-op (returns same object)
+
+      11. Snapshot persistence to `.vectl/runs/<run_id>/config.snapshot.yaml` not
+      implemented
+
+      12. Resumed-run snapshot reuse rule not enforced
+
+
+      ### RUN REGISTRY + INDEX SAFETY (§6.4)
+
+      13. `RunRegistry` is a stub (all methods raise NotImplementedError)
+
+      14. Append-only index update policy not enforced
+
+      15. `--latest` lookup semantics not implemented
+
+
+      ### SAME-PLAN ADMISSION RULE (§6.4)
+
+      16. "At most one active run per plan" rule not enforced
+
+      17. Explicit run selection for mutating commands not enforced
+
+
+      ### CASE-INDEX LIFECYCLE (§6.4)
+
+      18. `CasesIndex` protocol has no implementation
+
+      19. Pruning/tombstone rules not enforced
+
+      20. Global case id uniqueness not enforced
+
+
+      ### RESUMED-RUN SNAPSHOT REUSE (§6.6, §8.8)
+
+      21. Resume must use frozen config snapshot rule not enforced
+
+      22. Recovery transcript validation before `resume_safe` not implemented
+
+
+      ## Spec-Fixture Conformance (MANDATORY)
+
+      - `MINIMAL_ORCH_CONFIG_YAML`: Exact shape from §8.4 lines 1348-1352 (only `orchestration.plan_path:
+      plan.yaml`)
+
+      - `FULL_CANONICAL_CONFIG_DICT`: Complete shape from §8.4 lines 1264-1315 with
+      all spec defaults
+
+      - Both fixtures verified by conformance tests (test_minimal_config_yaml_parses_to_valid_dict,
+      test_minimal_config_has_no_convenience_fields, test_full_config_all_defaults_explicit)
+
+
+      ## Verification
+
+      All 25 tests pass as "expected-red" (gaps documented, no product code changes).
+
+      Spec citations included in every test docstring referencing exact sections/lines.'
   - id: orch_operator_tests.observability_red
     name: Define expected-red tests for events, projections, and derived artifacts
     status: pending

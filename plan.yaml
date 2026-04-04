@@ -60541,3 +60541,22 @@ phases:
     - orch_operator_recovery_cutover.impl_recovery_resume_integration
     - orch_operator_recovery_cutover.impl_legacy_bridge_import
     agent: spec-verifier
+  - id: orch_operator_recovery_cutover.gate
+    name: Gate recovery, resume, and legacy-bridge phase
+    status: pending
+    description: 'Gate review: verify recover/resume, continuity hygiene, and legacy
+      bridge/import semantics are correct enough for final system wiring and cutover
+      validation.'
+    verification: 'phase-check protecting orch_operator_system_wiring and orch_operator_cutover_validation:
+
+      - No unresolved blockers remain in recovery outcome handling, hygiene classification,
+      or legacy import semantics
+
+      - Evidence demonstrates safe/blocked paths and cross-surface fact consistency'
+    depends_on:
+    - orch_operator_recovery_cutover.impl_recovery_resume_integration
+    - orch_operator_recovery_cutover.impl_legacy_bridge_import
+    - orch_operator_recovery_cutover.consumer_boundary_conformance
+    - orch_operator_recovery_cutover.retest_green
+    - orch_operator_recovery_cutover.spec_conformance
+    agent: gate-reviewer

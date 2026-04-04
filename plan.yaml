@@ -59232,3 +59232,11 @@ phases:
       Verdict:
 
       - All migration-finish blocker-family checks green with filesystem+git evidence.'
+- id: orch_operator_contracts
+  name: Orchestration Operator Surface Contracts
+  status: pending
+  gate: Operator-surface contracts are pinned to the authoritative orchestration-plane
+    docs; contract artifacts remain stub-only; no public surface or ownership boundary
+    is left implicit.
+  depends_on:
+  - orch_migration_finish

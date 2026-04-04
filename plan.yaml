@@ -59111,3 +59111,45 @@ phases:
     depends_on:
     - orch_migration_finish.retest_gate_evidence_round3
     agent: python-senior
+  - id: orch_migration_finish.retest_gate_evidence_round4
+    name: Re-test migration finish gate evidence after round4 remediation
+    status: pending
+    description: 'Independent round4 retest for unresolved B4 after `orch_migration_finish.fix_gate_blockers_round4`.
+      Reassess the live repository state only and keep historical failed steps unchanged.
+
+
+      This retest must verify B4 is green while previously closed B1 and B3 remain
+      green.
+
+
+      ## Required checks
+
+      - Re-run the migration-finish gate evidence review against current repository
+      state only.
+
+      - Verify cross-step consistency now holds between authoritative migration/disposition
+      claims and the actual filesystem/git layout.
+
+      - Confirm B4 is green with no remaining mismatch between claimed disposition
+      and current layout.
+
+      - Confirm B1 remains green: tracked rename proof and path existence evidence
+      still agree for every affected path.
+
+      - Confirm B3 remains green: non-plan repository evidence and final relocated
+      test layout still match the accepted migration outcome.
+
+      - Confirm earlier failed steps remain as historical evidence only and were not
+      rewritten.'
+    verification: '- Verify B4 green by proving authoritative migration/disposition
+      claims exactly match current filesystem/git layout
+
+      - Verify B1 remains green via tracked rename/path reality consistency checks
+
+      - Verify B3 remains green via accepted non-plan repo state and final layout
+      checks
+
+      - Confirm historical failed step records remain unchanged'
+    depends_on:
+    - orch_migration_finish.fix_gate_blockers_round4
+    agent: gate-reviewer

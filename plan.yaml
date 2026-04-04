@@ -62955,7 +62955,7 @@ phases:
       returned expected diagnostic.
 - id: orch_operator_cutover_validation
   name: Orchestration Operator Cutover Validation
-  status: in_progress
+  status: done
   gate: Replacement-grade operator workflows, migration state transitions, and legacy-retirement
     criteria are independently validated before docs and final deep review.
   depends_on:
@@ -63057,7 +63057,7 @@ phases:
       and authority-boundary analysis; disposition BLOCKED with explicit blocker ownership.
   - id: orch_operator_cutover_validation.gate
     name: Gate cutover validation
-    status: claimed
+    status: done
     description: 'Gate review: verify replacement-grade workflows and migration-state
       evidence are sufficient to treat `vectl orch` as the canonical non-web operator
       surface.'
@@ -63079,6 +63079,10 @@ phases:
     agent: gate-reviewer
     claimed_by: gate-reviewer
     claimed_at: '2026-04-04T21:35:00.925354+00:00'
+    done_at: '2026-04-04T21:39:06.043161+00:00'
+    evidence: Gate re-review PASS with gate_open_allowed=true; all four retirement
+      criteria proven and canonical CLI command surfaces for cutover validation and
+      migration-state advancement verified.
   - id: orch_operator_cutover_validation.fix_cutover_gate_blockers
     name: Fix cutover validation blockers
     status: done
@@ -63254,7 +63258,7 @@ phases:
       with passing tests.'
 - id: orch_operator_doc_sync
   name: Orchestration Operator Documentation Sync
-  status: locked
+  status: pending
   gate: Project documentation matches the landed vectl orch behavior, config shape,
     artifact layout, and migration posture.
   depends_on:

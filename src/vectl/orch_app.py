@@ -22,16 +22,24 @@ This contract step pins only typed boundaries and stub implementations.
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field
+from dataclasses import asdict, dataclass, field
 from pathlib import Path
-from typing import TYPE_CHECKING, Literal, Protocol
+from typing import TYPE_CHECKING, Literal
+
+from vectl.orchestration.config import (
+    OrchestrationConfig,
+    ResolverToolAllowlist,
+    freeze_config,
+    load_frozen_snapshot,
+)
+from vectl.orchestration.run_store import RunRecord, RunRegistry, generate_run_id
 
 if TYPE_CHECKING:
     from vectl.orchestration.control import Control
+    from vectl.orchestration.core_adapter import CoreAdapter
+    from vectl.orchestration.resolver import Resolver
     from vectl.orchestration.roster import Roster
     from vectl.orchestration.runtime import Runtime
-    from vectl.orchestration.resolver import Resolver
-    from vectl.orchestration.core_adapter import CoreAdapter
 
 
 # ---------------------------------------------------------------------
@@ -57,6 +65,8 @@ class AppConfig:
     worktree_base_dir: Path = field(default_factory=lambda: Path(".vectl/worktrees"))
     default_agent: str = "python-executor"
     resolver_timeout_seconds: float = 60.0
+    orchestration_config: OrchestrationConfig | None = None
+    run_store_root: Path | None = None
 
 
 # ---------------------------------------------------------------------
@@ -263,10 +273,45 @@ class OrchestrationApp:
             OrchestrationResult with run outcome.
 
         Raises:
-            NotImplementedError: Until run semantics are specified.
+            OSError: When frozen snapshot persistence fails.
         """
-        raise NotImplementedError(
-            "OrchestrationApp.run: run semantics not yet specified in design docs"
+        resolved_config = self._effective_orchestration_config()
+        resolved_agent = agent or self._config.default_agent
+        resolved_step_id = self._resolve_step_id(step_id=step_id, agent=resolved_agent)
+        if resolved_step_id is None:
+            return OrchestrationResult(
+                success=False,
+                message="No claimable step available for run start",
+            )
+
+        registry = self._run_registry(config=resolved_config)
+        run_id = generate_run_id()
+        run_root = registry.run_artifact_root(run_id)
+        frozen_snapshot = freeze_config(resolved_config, run_dir=run_root)
+
+        registry.save(
+            RunRecord(
+                run_id=run_id,
+                step_id=resolved_step_id,
+                plan_path=str(self._config.plan_path),
+                agent=resolved_agent,
+                status="running",
+                artifact_root=str(run_root),
+                output_summary=(
+                    "run initialized with frozen snapshot "
+                    f"runner={frozen_snapshot.config.runtime.default_runner} "
+                    f"allowlist={self._allowlist_text(frozen_snapshot.config.resolver.tool_allowlist)}"
+                ),
+            )
+        )
+
+        return OrchestrationResult(
+            success=True,
+            message=(
+                f"Run initialized with frozen config snapshot ({frozen_snapshot.snapshot_path})"
+            ),
+            step_id=resolved_step_id,
+            run_id=run_id,
         )
 
     def resume(
@@ -285,11 +330,106 @@ class OrchestrationApp:
             OrchestrationResult with resume outcome.
 
         Raises:
-            NotImplementedError: Until resume semantics are specified.
+            FileNotFoundError: If the run snapshot is missing.
         """
-        raise NotImplementedError(
-            "OrchestrationApp.resume: resume semantics not yet specified in design docs"
+        ambient = self._effective_orchestration_config()
+        registry = self._run_registry(config=ambient)
+        record = registry.by_id(run_id)
+        if record is None:
+            return OrchestrationResult(
+                success=False, message=f"Run not found: {run_id}", run_id=run_id
+            )
+
+        run_root = registry.run_artifact_root(run_id)
+        snapshot_path = run_root / "config.snapshot.yaml"
+        if not snapshot_path.exists():
+            return OrchestrationResult(
+                success=False,
+                message=(
+                    "Resume refused: frozen config snapshot missing for authoritative run "
+                    f"{run_id} ({snapshot_path})"
+                ),
+                step_id=record.step_id,
+                run_id=run_id,
+            )
+
+        frozen = load_frozen_snapshot(snapshot_path)
+        if not frozen.continuity.resume_enabled:
+            return OrchestrationResult(
+                success=False,
+                message=f"Resume disabled by frozen config snapshot for run {run_id}",
+                step_id=record.step_id,
+                run_id=run_id,
+            )
+
+        if self._binding_signature(frozen) != self._binding_signature(ambient):
+            return OrchestrationResult(
+                success=False,
+                message=(
+                    "Resume refused: ambient configuration differs from authoritative "
+                    f"frozen snapshot for run {run_id}"
+                ),
+                step_id=record.step_id,
+                run_id=run_id,
+            )
+
+        registry.save(
+            RunRecord(
+                run_id=run_id,
+                step_id=record.step_id,
+                plan_path=record.plan_path,
+                agent=record.agent,
+                status="running",
+                artifact_root=str(run_root),
+                output_summary=(
+                    "run resumed from authoritative frozen snapshot "
+                    f"runner={frozen.runtime.default_runner} "
+                    f"allowlist={self._allowlist_text(frozen.resolver.tool_allowlist)}"
+                ),
+            )
         )
+        return OrchestrationResult(
+            success=True,
+            message=f"Run resumed from frozen snapshot: {snapshot_path}",
+            step_id=record.step_id,
+            run_id=run_id,
+        )
+
+    def _effective_orchestration_config(self) -> OrchestrationConfig:
+        if self._config.orchestration_config is not None:
+            return self._config.orchestration_config
+        return OrchestrationConfig(plan_path=self._config.plan_path)
+
+    def _run_registry(self, config: OrchestrationConfig) -> RunRegistry:
+        if self._config.run_store_root is not None:
+            return RunRegistry(store_root=self._config.run_store_root)
+        return RunRegistry(store_root=config.runtime.artifact_root)
+
+    def _resolve_step_id(self, step_id: str | None, agent: str) -> str | None:
+        if step_id is not None:
+            return step_id
+        snapshot = self._core_adapter.snapshot(agent=agent)
+        if not snapshot.claimable_step_ids:
+            return None
+        return snapshot.claimable_step_ids[0]
+
+    def _binding_signature(self, config: OrchestrationConfig) -> dict[str, object]:
+        return {
+            "runtime": asdict(config.runtime),
+            "resolver": {
+                "enabled": config.resolver.enabled,
+                "invocation_timeout_seconds": config.resolver.invocation_timeout_seconds,
+                "max_tool_calls_per_invocation": config.resolver.max_tool_calls_per_invocation,
+                "max_tool_argument_bytes": config.resolver.max_tool_argument_bytes,
+                "tool_allowlist": asdict(config.resolver.tool_allowlist),
+            },
+            "continuity": asdict(config.continuity),
+        }
+
+    def _allowlist_text(self, allowlist: ResolverToolAllowlist) -> str:
+        if not allowlist.allowed_tool_families:
+            return "deny-all"
+        return ",".join(allowlist.allowed_tool_families)
 
     def recover(
         self,
@@ -689,10 +829,43 @@ def build_orchestration_app(
         A composed OrchestrationApp instance.
 
     Raises:
-        NotImplementedError: Until component wiring semantics are specified.
+        OSError: If authoritative plan path cannot be accessed.
     """
-    raise NotImplementedError(
-        "build_orchestration_app: component wiring not yet specified in design docs"
+    from vectl.orchestration.control import ControlInputSources, PlanAwareControl
+    from vectl.orchestration.core_adapter import PlanCoreAdapter
+    from vectl.orchestration.resolver import BoundResolver, ResolverInvocationSurface
+    from vectl.orchestration.roster import Roster
+    from vectl.orchestration.runtime import Runtime
+
+    class _NoopResolverInvocation(ResolverInvocationSurface):
+        def invoke(self, case: object) -> dict[str, object]:
+            del case
+            return {
+                "status": "waiting",
+                "summary": "Resolver invocation not configured in this phase",
+                "evidence_refs": ("resolver:noop",),
+            }
+
+    resolved_orchestration_config = config.orchestration_config
+    if resolved_orchestration_config is None:
+        resolved_orchestration_config = OrchestrationConfig(plan_path=config.plan_path)
+
+    core_adapter = PlanCoreAdapter(plan_path=config.plan_path)
+    roster = Roster(default_ttl_seconds=resolved_orchestration_config.roster.default_ttl_seconds)
+    runtime = Runtime()
+    control = PlanAwareControl(
+        sources=ControlInputSources(core_adapter=core_adapter, roster=roster, runtime=runtime),
+        agent=config.default_agent,
+        fallback_role=config.default_agent,
+    )
+    resolver = BoundResolver(invocation=_NoopResolverInvocation())
+    return OrchestrationApp(
+        config=config,
+        control=control,
+        roster=roster,
+        runtime=runtime,
+        resolver=resolver,
+        core_adapter=core_adapter,
     )
 
 

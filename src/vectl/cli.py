@@ -9,6 +9,7 @@ import enum
 import json
 import os
 import sys
+from dataclasses import replace
 from pathlib import Path
 
 import typer
@@ -528,6 +529,26 @@ OrchAgentOption = typer.Option(
 )
 
 
+def _build_orchestration_runtime_app(plan: Path | None):
+    """Compose orchestration app using frozen-capable runtime config wiring."""
+    from vectl.orch_app import AppConfig, build_orchestration_app
+    from vectl.orchestration.config import load_orchestration_config
+
+    loaded_config, _ = load_orchestration_config()
+    if plan is not None:
+        loaded_config = replace(loaded_config, plan_path=plan)
+
+    app_config = AppConfig(
+        plan_path=loaded_config.plan_path,
+        worktree_base_dir=loaded_config.runtime.workspace_root,
+        default_agent="python-executor",
+        resolver_timeout_seconds=loaded_config.resolver.invocation_timeout_seconds,
+        orchestration_config=loaded_config,
+        run_store_root=loaded_config.runtime.artifact_root,
+    )
+    return build_orchestration_app(app_config)
+
+
 # --- vectl orch run ---
 
 
@@ -543,9 +564,12 @@ def orch_run(
 
     Contract authority: orch_app.py::OrchestrationApp.run()
     """
-    from vectl.orch_app import OrchestrationApp, AppConfig
-
-    _die("vectl orch run: orchestration app wiring not yet implemented")
+    app_runtime = _build_orchestration_runtime_app(plan=plan)
+    result = app_runtime.run(step_id=step_id, agent=agent)
+    if not result.success:
+        _die(result.message)
+    out.print(f"run_id={_esc(result.run_id or '')} step_id={_esc(result.step_id or '')}")
+    out.print(_esc(result.message))
 
 
 # --- vectl orch resume ---
@@ -560,9 +584,12 @@ def orch_resume(
 
     Contract authority: orch_app.py::OrchestrationApp.resume()
     """
-    from vectl.orch_app import OrchestrationApp, AppConfig
-
-    _die("vectl orch resume: orchestration app wiring not yet implemented")
+    app_runtime = _build_orchestration_runtime_app(plan=plan)
+    result = app_runtime.resume(run_id=run_id)
+    if not result.success:
+        _die(result.message)
+    out.print(f"run_id={_esc(result.run_id or '')} step_id={_esc(result.step_id or '')}")
+    out.print(_esc(result.message))
 
 
 # --- vectl orch recover ---
@@ -578,7 +605,6 @@ def orch_recover(
 
     Contract authority: orch_app.py::OrchestrationApp.recover()
     """
-    from vectl.orch_app import OrchestrationApp, AppConfig
 
     _die("vectl orch recover: orchestration app wiring not yet implemented")
 
@@ -596,7 +622,6 @@ def orch_runs(
 
     Contract authority: orch_app.py::OrchestrationApp.runs()
     """
-    from vectl.orch_app import OrchestrationApp, AppConfig
 
     _die("vectl orch runs: orchestration app wiring not yet implemented")
 
@@ -614,7 +639,6 @@ def orch_prune(
 
     Contract authority: orch_app.py::OrchestrationApp.prune()
     """
-    from vectl.orch_app import OrchestrationApp, AppConfig
 
     _die("vectl orch prune: orchestration app wiring not yet implemented")
 

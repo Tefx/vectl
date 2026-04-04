@@ -62437,6 +62437,107 @@ phases:
     - orch_operator_recovery_cutover.retest_green
     - orch_operator_recovery_cutover.spec_conformance
     agent: gate-reviewer
+  - id: orch_operator_recovery_cutover.fix_recovery_contract_conformance
+    name: Fix recovery contract and quarantine conformance blockers
+    status: pending
+    description: 'Fix ALL verifier blockers for recovery-cutover conformance in one
+      batched remediation step.
+
+
+      ## Blockers to Fix (ALL of these, not just the first)
+
+
+      ## Root Cause vs Symptom
+
+      - Root cause: public recovery outcome/report contracts and downstream consumer
+      surfaces still permit semantic drift, while quarantine behavior lacks explicit
+      no-silent-deletion proof coverage tied to gate-open policy.
+
+      - Symptom: consumer_boundary_conformance reported RecoveryOutcome/RecoveryReport
+      mismatch across consumer surfaces; spec_conformance reported NEEDS_TEST on no-silent-deletion
+      quarantine behavior with gate_open_allowed=false.
+
+      - Why this fix is not surface-level: close the shared recovery-truth seam and
+      add the missing quarantine behavior wiring/coverage anchors together so downstream
+      verifiers can validate one coherent contract.
+
+
+      ### B1: RecoveryOutcome / RecoveryReport consumer-boundary conformance debt
+
+      Locations: operator recovery consumer surfaces, recovery outcome/report producers,
+      shared recovery fixtures/artifacts.
+
+      Remediation: align public recovery outcome/report semantics so status, actions,
+      case, recover, and report consumers all read the same resolved facts without
+      independent reinterpretation; remove or isolate any alternate derivation path
+      that can diverge from the shared recovery truth.
+
+      Grep hint: search for RecoveryOutcome|RecoveryReport usage across operator CLI/status/actions/case/recovery
+      surfaces and verify one resolved-fact source is consumed end-to-end.
+
+      IMPORTANT: search sibling consumer surfaces beyond the verifier''s cited locations.
+
+
+      ### B2: no-silent-deletion quarantine behavior remains NEEDS_TEST when gate_open_allowed=false
+
+      Locations: recovery quarantine handling, recovery/cutover gate-open policy,
+      related spec-driven verification fixtures.
+
+      Remediation: implement the missing behavior/test-support wiring so quarantine
+      handling proves no silent deletion when gate_open_allowed=false, and ensure
+      the observable outcome is represented in the public recovery/report contract.
+
+      Grep hint: search for quarantine, gate_open_allowed, deletion/removal, and recovery
+      cutover policy handling across runtime + spec-facing surfaces.
+
+      IMPORTANT: search sibling policy paths beyond the listed verifier findings.
+
+
+      ## Completion Criteria (stub exclusion)
+
+      This is an IMPLEMENTATION step. Stub-only completion is NOT acceptable.
+
+      Each deliverable MUST contain substantive logic that processes its inputs and
+      produces outputs that vary based on those inputs.
+
+
+      ## Completion Criteria
+
+      - ALL blocker families fixed, not just the first reported location
+
+      - RecoveryOutcome/RecoveryReport semantics are shared consistently across consumer
+      surfaces
+
+      - No-silent-deletion quarantine behavior is enforced and externally representable
+      when gate_open_allowed=false
+
+      - Sibling search completed for each blocker family
+
+      - Downstream consumer-boundary and spec-conformance rechecks can run green'
+    verification: 'local-check protecting orch_operator_system_wiring and orch_operator_cutover_validation:
+
+      - Main path: remediation updates eliminate RecoveryOutcome/RecoveryReport semantic
+      drift across recovery consumer surfaces
+
+      - Failure path: quarantine behavior preserves no-silent-deletion semantics when
+      gate_open_allowed=false and exposes the outcome in the public contract
+
+      - Proof: focused regressions or fixture-backed checks exist for both blocker
+      families; no remaining sibling path re-derives conflicting recovery facts'
+    evidence_template: "## refs Read Confirmation (MANDATORY)\n\nFor each ref in this\
+      \ step:\n- <filename> — key passage or \"NOT READ: <reason>\"\n\nIf no refs\
+      \ were provided, state: \"No refs for this step.\"\n\n## Blocker Family Closure\n\
+      - blocker_families_closed:\n  - RecoveryOutcome/RecoveryReport consumer-boundary\
+      \ conformance debt\n  - no-silent-deletion quarantine behavior with gate_open_allowed=false\n\
+      - sibling_search_summary: <paths searched and what changed>\n- root_cause_vs_symptom:\
+      \ <why the edits closed the shared seam instead of a single symptom>\n\n## Implementation\
+      \ Proof\n- commands_or_tests_used:\n  - <command>\n- highest_risk_failure_path:\
+      \ <how gate_open_allowed=false quarantine behavior was exercised>\n- remaining_gaps:\
+      \ <none or explicit follow-up>"
+    depends_on:
+    - orch_operator_recovery_cutover.consumer_boundary_conformance
+    - orch_operator_recovery_cutover.spec_conformance
+    agent: python-senior
 - id: orch_operator_system_wiring
   name: Orchestration Operator System Wiring
   status: locked

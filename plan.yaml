@@ -62688,7 +62688,7 @@ phases:
   steps:
   - id: orch_operator_system_wiring.replace_runtime_stubs
     name: Replace remaining runtime stubs and placeholder wiring
-    status: claimed
+    status: done
     description: 'step_type: implementation
 
 
@@ -62763,6 +62763,11 @@ phases:
     agent: python-senior
     claimed_by: python-senior
     claimed_at: '2026-04-04T20:45:17.368894+00:00'
+    done_at: '2026-04-04T20:53:20.720538+00:00'
+    evidence: Runtime stubs/placeholders replaced on production entrypoint paths;
+      commit e1c3e1c. Real start/inspect/recovery-resume entrypoint paths identified,
+      grep proved no placeholder/NotImplementedError on production paths, and targeted
+      tests passed.
   - id: orch_operator_system_wiring.verify_e2e
     name: Verify end-to-end vectl orch data flow
     status: pending

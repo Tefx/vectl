@@ -59324,3 +59324,23 @@ phases:
     depends_on:
     - orch_operator_contracts.foundation_contracts
     agent: python-executor
+  - id: orch_operator_contracts.gate
+    name: Gate operator-surface contracts
+    status: pending
+    description: 'Gate review: verify contract completeness, ownership separation,
+      and stub-only purity for the orchestration operator surface.'
+    verification: 'phase-check protecting orch_operator_tests:
+
+      - All contract steps completed with contract-only artifacts
+
+      - Config/events/projections/run_store/tool_registry/resolver_gateway/control_channel/inspection_queries/orch_app/cli
+      boundaries remain distinct
+
+      - No runnable behavior or persistence logic landed in contract steps
+
+      - Evidence quality is sufficient for downstream test-definition work'
+    depends_on:
+    - orch_operator_contracts.foundation_contracts
+    - orch_operator_contracts.app_cli_contracts
+    - orch_operator_contracts.recovery_cutover_contracts
+    agent: gate-reviewer

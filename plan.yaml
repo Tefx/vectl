@@ -60586,3 +60586,32 @@ phases:
       - No production entrypoint path terminates at a stub or NotImplementedError
       body'
     agent: python-senior
+  - id: orch_operator_system_wiring.verify_e2e
+    name: Verify end-to-end vectl orch data flow
+    status: pending
+    description: Early end-to-end operator vertical slice using the real `vectl orch`
+      entrypoint. Exercise one complete run path plus one blocked/recovery-aware path
+      so data flows from CLI -> orch_app -> control/read modules -> run artifacts
+      -> inspect/recover surfaces.
+    verification: 'phase-check protecting orch_operator_cutover_validation and doc
+      sync:
+
+      - Run exact commands through the real CLI, not helper functions
+
+      - Show one successful run-path artifact set and one blocked/recovery-aware path
+
+      - Evidence includes commands, outputs, and artifact locations proving the full
+      layer traversal'
+    evidence_template: 'Paste:
+
+      - exact `vectl orch` commands for one successful path and one blocked/recovery
+      path
+
+      - resulting run_id(s)
+
+      - artifact files written/read across the path
+
+      - observed CLI output'
+    depends_on:
+    - orch_operator_system_wiring.replace_runtime_stubs
+    agent: integration-verifier

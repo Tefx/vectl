@@ -381,7 +381,7 @@ tests/
     unit/
     integration/
   legacy/
-    driver/
+    driver/*.py   # flat baseline test layout during migration-finish
 ```
 
 Interpretation:
@@ -389,7 +389,11 @@ Interpretation:
 - `tests/orchestration/unit/` — target component-level tests (`control`,
   `roster`, `runtime`, `resolver`, `judgments`, `core_adapter`)
 - `tests/orchestration/integration/` — orchestration-plane interaction tests
-- `tests/legacy/driver/` — legacy baseline tests retained during migration
+- `tests/legacy/driver/*.py` — flat legacy baseline tests retained during migration
+
+Layout constraint for migration-finish: keep legacy driver tests directly under
+`tests/legacy/driver/` (no nested subdirectories expected for moved driver
+baseline tests).
 
 Existing tests do not need immediate movement, but new target tests should start
 using the future-oriented layout rather than reinforcing legacy naming.

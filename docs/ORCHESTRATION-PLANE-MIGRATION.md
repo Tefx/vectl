@@ -156,8 +156,11 @@ Recommended future test layout:
 ```text
 tests/orchestration/unit/
 tests/orchestration/integration/
-tests/legacy/driver/
+tests/legacy/driver/*.py   # flat legacy-driver baseline files (no nested subdirs)
 ```
+
+For migration-finish continuity, treat `tests/legacy/driver/` as a flat file
+set. Do not assume category subdirectories under this path.
 
 ### Important
 

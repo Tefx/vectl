@@ -60692,3 +60692,10 @@ phases:
     - orch_operator_cutover_validation.replacement_workflow_smoke
     - orch_operator_cutover_validation.migration_state_audit
     agent: gate-reviewer
+- id: orch_operator_doc_sync
+  name: Orchestration Operator Documentation Sync
+  status: locked
+  gate: Project documentation matches the landed vectl orch behavior, config shape,
+    artifact layout, and migration posture.
+  depends_on:
+  - orch_operator_cutover_validation

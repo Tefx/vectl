@@ -62679,7 +62679,7 @@ phases:
       proof path with gate_open_allowed=false handling.
 - id: orch_operator_system_wiring
   name: Orchestration Operator System Wiring
-  status: pending
+  status: in_progress
   gate: All operator-surface modules are wired into the real vectl orch entrypoint
     with no production stubs or placeholders remaining, and end-to-end CLI data flow
     is proven.
@@ -62688,7 +62688,7 @@ phases:
   steps:
   - id: orch_operator_system_wiring.replace_runtime_stubs
     name: Replace remaining runtime stubs and placeholder wiring
-    status: pending
+    status: claimed
     description: 'step_type: implementation
 
 
@@ -62761,6 +62761,8 @@ phases:
       \ recovery/resume: <path>\n- Proof no NotImplementedError or placeholder remains\
       \ on production paths: <grep/search summary>"
     agent: python-senior
+    claimed_by: python-senior
+    claimed_at: '2026-04-04T20:45:17.368894+00:00'
   - id: orch_operator_system_wiring.verify_e2e
     name: Verify end-to-end vectl orch data flow
     status: pending

@@ -61386,7 +61386,7 @@ phases:
       - No deviation records.'
   - id: orch_operator_control_surface.impl_vectl_orch_cli_surface
     name: Implement vectl orch CLI command group
-    status: claimed
+    status: done
     description: 'step_type: implementation
 
 
@@ -61442,6 +61442,40 @@ phases:
     agent: python-senior
     claimed_by: python-senior
     claimed_at: '2026-04-04T16:44:15.578252+00:00'
+    done_at: '2026-04-04T16:56:53.808144+00:00'
+    evidence: 'Commit hash(es): bb0f705
+
+      Files changed:
+
+      - src/vectl/cli.py
+
+      - tests/test_orch_cli_surface.py
+
+      Verification:
+
+      - uv run ruff check src/vectl/cli.py tests/test_orch_cli_surface.py -> passed
+
+      - uv run mypy src/vectl/cli.py tests/test_orch_cli_surface.py -> passed
+
+      - uv run pytest tests/test_orch_cli_surface.py -v -> 5 passed
+
+      - uv run pytest tests/repro/test_orch_cli_recovery_red.py -v -> 20 passed
+
+      - verified command registration matrix for orch/inspect/case/control/config
+      trees
+
+      Spec link:
+
+      - docs/ORCHESTRATION-PLANE-CLI-CONFIG-OBSERVABILITY-DESIGN.md §7.1–§7.5
+
+      - docs/ORCHESTRATION-PLANE-IMPLEMENTATION-DESIGN.md §6
+
+      Gaps/Notes:
+
+      - Implemented stubbed vectl orch handlers with orch_app delegation, output-mode
+      handling, selectors, and command subgroup registration.
+
+      - No deviation records.'
   - id: orch_operator_control_surface.cli_seam_integration_proof
     name: Prove vectl orch seam integration with real commands
     status: pending

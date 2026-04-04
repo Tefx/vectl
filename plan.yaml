@@ -60841,3 +60841,24 @@ phases:
     depends_on:
     - orch_operator_deep_review.spec_conformance_full
     agent: blind-tester
+  - id: orch_operator_deep_review.gate
+    name: Final gate for orchestration operator surface
+    status: pending
+    description: Final deep-review gate for the orchestration operator surface.
+    verification: 'full-plan-check protecting plan completion:
+
+      - All final audits completed with evidence
+
+      - No unresolved blocker remains in wiring, spec conformance, architecture, contract
+      strength, or black-box behavior
+
+      - Final decision states whether `vectl orch` is replacement-grade for the non-web
+      operator surface'
+    depends_on:
+    - orch_operator_deep_review.full_plan_check
+    - orch_operator_deep_review.wiring_audit_full
+    - orch_operator_deep_review.spec_conformance_full
+    - orch_operator_deep_review.architecture_review
+    - orch_operator_deep_review.contract_strength
+    - orch_operator_deep_review.black_box_verification
+    agent: gate-reviewer

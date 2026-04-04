@@ -61959,7 +61959,7 @@ phases:
       - tech_debt: none'
   - id: orch_operator_control_surface.fix_gate_blockers_batch
     name: Fix batched gate blockers for operator control surface
-    status: pending
+    status: claimed
     description: 'Fix ALL gate findings from `orch_operator_control_surface.gate`
       in one batch.
 
@@ -62048,6 +62048,8 @@ phases:
     - orch_operator_control_surface.spec_conformance
     - orch_operator_control_surface.wiring_audit
     agent: python-senior
+    claimed_by: python-senior
+    claimed_at: '2026-04-04T17:36:36.209470+00:00'
   - id: orch_operator_control_surface.retest_gate_blockers_batch
     name: Re-test batched gate blockers for operator control surface
     status: pending

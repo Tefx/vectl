@@ -59466,3 +59466,21 @@ phases:
 
       - No product implementation code is changed'
     agent: blind-tester
+  - id: orch_operator_tests.gate
+    name: Gate operator-surface test definitions
+    status: pending
+    description: 'Gate review: verify expected-red tests are spec-derived, non-ambiguous,
+      and implementation-free.'
+    verification: 'phase-check protecting all downstream implementation phases:
+
+      - Each test-definition step explicitly encodes expected red semantics
+
+      - Fixtures are derived from authoritative docs, including minimal config/message
+      shapes
+
+      - Downstream implementation/retest ownership is clear for every exposed gap'
+    depends_on:
+    - orch_operator_tests.config_state_red
+    - orch_operator_tests.observability_red
+    - orch_operator_tests.cli_recovery_red
+    agent: gate-reviewer

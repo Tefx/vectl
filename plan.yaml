@@ -59323,7 +59323,7 @@ phases:
       §§3,4; ORCHESTRATION-PLANE-RESOLUTION-CONTRACT.md §§3,5.'
   - id: orch_operator_contracts.recovery_cutover_contracts
     name: Pin recovery, continuity, and migration-cutover contracts
-    status: claimed
+    status: done
     description: "step_type: contract\ncontract_purity: ENFORCED\ncontract_outputs:\n\
       \  - signatures\n  - type_defs\n  - interfaces\n  - stubs\n\nPin the documented\
       \ recovery and migration contracts without implementation logic. Cover:\n- recovery/report\
@@ -59347,6 +59347,15 @@ phases:
     agent: python-executor
     claimed_by: python-executor
     claimed_at: '2026-04-04T12:08:19.613785+00:00'
+    done_at: '2026-04-04T12:13:58.391083+00:00'
+    evidence: 'Added contract-only recovery/continuity/migration-cutover surfaces
+      in `src/vectl/orchestration/continuity_artifacts.py` and `src/vectl/orchestration/recovery.py`
+      including machine-readable outcome enums, typed DTOs, and protocol/class boundaries
+      with NotImplemented stubs only. Verification: `python3 -m py_compile src/vectl/orchestration/continuity_artifacts.py
+      src/vectl/orchestration/recovery.py` PASS; module export imports PASS. Commit:
+      c584b27ec9805fcc1ec635cc367b2c8e82546013. Spec links: DRIVER-CONTINUITY-FOUNDATION.md
+      §§4,7a; ORCHESTRATION-PLANE-MIGRATION.md §§3,5; ORCHESTRATION-PLANE-ARCHITECTURE.md
+      §§9,10.'
   - id: orch_operator_contracts.gate
     name: Gate operator-surface contracts
     status: pending

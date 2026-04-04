@@ -62845,9 +62845,15 @@ phases:
   - id: orch_operator_deep_review.wiring_audit_full
     name: Run full wiring audit
     status: pending
-    description: Complete system wiring audit for the orchestration operator surface.
+    description: 'Complete system wiring audit for the orchestration operator surface.
       Verify every public export, CLI command, config field, artifact reader/writer,
       and recovery surface is reachable and consumed where the docs say it is.
+
+
+      This audit intentionally runs in parallel with the broad full-plan quality check.
+      It must not wait for `orch_operator_deep_review.full_plan_check`, because both
+      are independent final-boundary detectors whose findings fan in at the final
+      gate.'
     verification: 'full-plan-check protecting the final deep-review gate:
 
       - Every public export has a runtime caller
@@ -62857,9 +62863,56 @@ phases:
       - Every config field and artifact/read-model surface is consumed by non-test
       code or flagged as blocker
 
-      - No production NotImplementedError or placeholder remains in operator paths'
-    depends_on:
-    - orch_operator_deep_review.full_plan_check
+      - No production NotImplementedError or placeholder remains in operator paths
+
+      - Evidence explicitly states whether any issue intersects plan completion and
+      therefore blocks the final gate'
+    evidence_template: '## Wiring Audit Report
+
+
+      ### refs Read Confirmation (MANDATORY)
+
+      For each ref in this step:
+
+      - <filename> — key passage or "NOT READ: <reason>"
+
+
+      If no refs were provided, state: "No refs for this step."
+
+
+      **Orphan exports / unreachable public surfaces**:
+
+      ```
+
+      <search output or none found>
+
+      ```
+
+      **Unregistered CLI/operator commands**:
+
+      ```
+
+      <search output or none found>
+
+      ```
+
+      **Unconsumed config or artifact fields/readers**:
+
+      ```
+
+      <search output or none found>
+
+      ```
+
+      **Production placeholders / NotImplementedError on operator paths**:
+
+      ```
+
+      <search output or none found>
+
+      ```
+
+      **Intersection verdict**: BLOCKING_NOW | NON_BLOCKING_WITH_PROOF'
     agent: wiring-auditor
   - id: orch_operator_deep_review.spec_conformance_full
     name: Run full spec conformance audit

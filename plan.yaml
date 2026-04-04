@@ -60568,3 +60568,21 @@ phases:
     is proven.
   depends_on:
   - orch_operator_recovery_cutover
+  steps:
+  - id: orch_operator_system_wiring.replace_runtime_stubs
+    name: Replace remaining runtime stubs and placeholder wiring
+    status: pending
+    description: Replace any remaining stub or placeholder runtime targets in the
+      operator entrypoint path with real implementations from the landed operator
+      modules. Search for `_Runtime*`, `_Stub*`, `_Placeholder*`, NotImplementedError
+      placeholders, and compatibility shims in orch_app/cli/operator modules; remove
+      them from production wiring once real modules exist.
+    verification: 'phase-check protecting orch_operator_system_wiring.verify_e2e and
+      orch_operator_cutover_validation:
+
+      - Evidence lists every stub/placeholder found and whether it was removed or
+      remains intentionally deferred
+
+      - No production entrypoint path terminates at a stub or NotImplementedError
+      body'
+    agent: python-senior

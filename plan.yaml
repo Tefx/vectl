@@ -60338,7 +60338,7 @@ phases:
       and drift-refusal failure path. Commit: 48abcab.'
   - id: orch_operator_config_state.retest_conformance_and_wiring
     name: Retest config-state conformance and wiring blockers green
-    status: claimed
+    status: done
     description: 'As an INDEPENDENT REVIEWER (`gate-reviewer`), rerun the blocker
       checks from `orch_operator_config_state.spec_conformance` and `orch_operator_config_state.wiring_audit`
       after `orch_operator_config_state.fix_runtime_resume_snapshot_binding`.
@@ -60407,6 +60407,13 @@ phases:
     agent: gate-reviewer
     claimed_by: gate-reviewer
     claimed_at: '2026-04-04T15:20:34.234570+00:00'
+    done_at: '2026-04-04T15:29:26.733288+00:00'
+    evidence: 'Independent retest reran former blocker families from spec_conformance
+      + wiring_audit and verified closure: CLI->orch_app->config/run_store runtime
+      chain is active for run/resume, per-run frozen snapshot persists and is reused
+      on resume, ambient config drift is refused, and allowlist/runtime binding derives
+      from frozen snapshot on runtime path. Remaining notes are non-blocking tech
+      debt only (reserved continuity fields).'
 - id: orch_operator_observability
   name: Orchestration Events, Projections, and Artifacts
   status: done

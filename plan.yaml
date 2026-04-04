@@ -58974,3 +58974,45 @@ phases:
     depends_on:
     - orch_migration_finish.retest_gate_evidence_round2
     agent: python-senior
+  - id: orch_migration_finish.retest_gate_evidence_round3
+    name: Re-test migration finish gate evidence after round3 remediation
+    status: pending
+    description: 'Independent round3 retest for the migration-finish gate-evidence
+      blocker family after `orch_migration_finish.fix_gate_blockers_round3`. Keep
+      historical failed steps unchanged and reassess the live repository state only.
+
+
+      This retest must verify that tracked rename proof and filesystem reality now
+      agree for every affected path.
+
+
+      ## Required checks
+
+      - Re-run the migration-finish gate evidence review against current repository
+      state only.
+
+      - Require actual `git mv` evidence OR equivalent tracked-rename proof recognized
+      by git for each relocation.
+
+      - Require explicit path existence checks for original and final locations, including
+      `tests/legacy/driver/`.
+
+      - Confirm the final locations/count reality of the affected tests matches the
+      claimed disposition and tracked history.
+
+      - Confirm earlier failed steps remain as historical evidence only and were not
+      rewritten.'
+    verification: '- Re-run migration-finish gate evidence review for the round3 blocker
+      family
+
+      - Require actual `git mv` or equivalent tracked rename proof for each affected
+      relocation
+
+      - Require explicit path existence checks for original and final paths, including
+      `tests/legacy/driver/`
+
+      - Verify cross-step evidence now matches git/file-system reality and historical
+      failed steps remain unchanged'
+    depends_on:
+    - orch_migration_finish.fix_gate_blockers_round3
+    agent: gate-reviewer

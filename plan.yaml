@@ -60302,7 +60302,7 @@ phases:
       produced expected artifact paths in evidence. Commit: b5e4a1f7cbf644217eb1c85c95e28a5575cf920f.'
   - id: orch_operator_observability.retest_green
     name: Retest events, projections, and artifact derivation green
-    status: pending
+    status: claimed
     description: 'step_type: test
 
       step_intent: retest_green
@@ -60324,6 +60324,8 @@ phases:
     - orch_operator_observability.impl_event_envelope_registry_sinks
     - orch_operator_observability.impl_projections_runstateview_artifacts
     agent: integration-verifier
+    claimed_by: integration-verifier
+    claimed_at: '2026-04-04T14:32:07.660837+00:00'
   - id: orch_operator_observability.spec_conformance
     name: Verify event and projection spec conformance
     status: pending

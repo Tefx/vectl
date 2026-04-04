@@ -60808,3 +60808,20 @@ phases:
     depends_on:
     - orch_operator_deep_review.wiring_audit_full
     agent: software-architect
+  - id: orch_operator_deep_review.contract_strength
+    name: Audit contract strength and non-vacuous boundaries
+    status: pending
+    description: Verify contracts, typed DTOs, and boundary assertions added for the
+      orchestration operator surface are non-vacuous and still match the authoritative
+      docs.
+    verification: 'full-plan-check protecting the final deep-review gate:
+
+      - No identity/no-op contract boundary remains where a real behavioral assertion
+      is expected
+
+      - Public signatures still match the documented operator surface
+
+      - At least one failure-oriented example exists for the highest-risk contracts'
+    depends_on:
+    - orch_operator_deep_review.wiring_audit_full
+    agent: gate-reviewer

@@ -60154,3 +60154,59 @@ phases:
     depends_on:
     - orch_operator_control_surface.mid_gate
     agent: python-senior
+  - id: orch_operator_control_surface.impl_vectl_orch_cli_surface
+    name: Implement vectl orch CLI command group
+    status: pending
+    description: 'step_type: implementation
+
+
+      Fill in stub bodies in src/vectl/cli.py per the contract from orch_operator_contracts.app_cli_contracts,
+      the tests from orch_operator_tests.cli_recovery_red, and the orch_app boundary
+      from orch_operator_control_surface.impl_orch_app_composition_root.
+
+
+      UPSTREAM ARTIFACTS:
+
+      - src/vectl/cli.py command signatures/docstrings from orch_operator_contracts.app_cli_contracts
+      are AUTHORITATIVE
+
+      - src/vectl/orch_app.py app boundary from orch_operator_control_surface.impl_orch_app_composition_root
+      is AUTHORITATIVE
+
+      - tests from orch_operator_tests.cli_recovery_red are PROTECTED
+
+
+      YOUR SCOPE: replace stub markers with working CLI bodies for the documented
+      `vectl orch` command tree, including output-mode selection, run selectors, watch/follow
+      flags, config inspection commands, and operator action submission paths.
+
+
+      ## Gate Preview (what the gate WILL reject)
+
+      1. Missing sibling commands from the documented command tree
+
+      2. Human/json/jsonl mode drift across command families
+
+      3. CLI code re-deriving state instead of delegating to orch_app and inspection
+      queries
+
+      4. Handler-only completion without a runnable `vectl orch` entrypoint
+
+
+      ## Completion Criteria (stub exclusion)
+
+      This is an IMPLEMENTATION step. Stub-only completion is NOT acceptable.'
+    verification: 'local-check protecting cli_seam_integration_proof, liveness_probe,
+      orch_operator_recovery_cutover, and system wiring:
+
+      - Main path: targeted tests prove every documented command family is registered
+      and dispatches through orch_app
+
+      - Failure path: regression covers invalid selectors, output-mode errors, and
+      missing/blocked action acknowledgements
+
+      - Evidence includes a command registration matrix and no orphan command module/file
+      remains'
+    depends_on:
+    - orch_operator_control_surface.impl_orch_app_composition_root
+    agent: python-senior

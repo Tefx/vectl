@@ -60210,3 +60210,38 @@ phases:
     depends_on:
     - orch_operator_control_surface.impl_orch_app_composition_root
     agent: python-senior
+  - id: orch_operator_control_surface.cli_seam_integration_proof
+    name: Prove vectl orch seam integration with real commands
+    status: pending
+    description: 'Run seam-level integration proof using the real `vectl orch` CLI
+      entrypoint against fixture plans and run directories. This is not a stub smoke:
+      execute command sequences that prove the CLI, orch_app, queries, control-channel,
+      and gateway surfaces are actually connected end-to-end for the implemented subset.'
+    verification: 'L2 phase-check protecting orch_operator_recovery_cutover and system
+      wiring:
+
+      - Run exact `vectl orch ...` commands, not direct helper calls
+
+      - Demonstrate at least one inspect read path, one operator action path, and
+      one denied resolver action path
+
+      - Evidence includes exact commands, exit codes, and produced artifact/control
+      files'
+    evidence_template: 'Paste:
+
+      - exact `vectl orch` commands run
+
+      - exit codes
+
+      - artifact paths created/updated
+
+      - one example denied action/tool result
+
+      - one example successful read surface output'
+    depends_on:
+    - orch_operator_control_surface.impl_resolver_gateway
+    - orch_operator_control_surface.impl_control_channel
+    - orch_operator_control_surface.impl_inspection_queries
+    - orch_operator_control_surface.impl_orch_app_composition_root
+    - orch_operator_control_surface.impl_vectl_orch_cli_surface
+    agent: integration-verifier

@@ -62217,7 +62217,7 @@ phases:
   steps:
   - id: orch_operator_recovery_cutover.impl_recovery_resume_integration
     name: Implement recover and resume integration from continuity artifacts
-    status: claimed
+    status: done
     description: 'step_type: implementation
 
 
@@ -62289,6 +62289,11 @@ phases:
     agent: python-senior
     claimed_by: python-senior
     claimed_at: '2026-04-04T19:26:16.842173+00:00'
+    done_at: '2026-04-04T19:31:20.441594+00:00'
+    evidence: Implemented recover/resume integration; commit c4abb74; targeted lint/type/tests
+      passed (ruff, mypy, orchestration unit tests, CLI surface tests, recovery red
+      tests). Wired recover dry-run to real recovery engine and ensured scoped step-id
+      candidate selection in src/vectl/orch_app.py and src/vectl/cli.py.
   - id: orch_operator_recovery_cutover.impl_legacy_bridge_import
     name: Implement legacy-run bridge and import semantics for cutover
     status: claimed

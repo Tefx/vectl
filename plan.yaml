@@ -61844,7 +61844,7 @@ phases:
       \ -> 15 passed"
   - id: orch_operator_control_surface.retest_spec_blockers_batch
     name: Re-test batched spec-conformance blockers for control/config CLI surface
-    status: pending
+    status: claimed
     description: 'Re-run spec conformance for the remediated `vectl orch` control/config
       scope after batched fixes.
 
@@ -61913,6 +61913,8 @@ phases:
     depends_on:
     - orch_operator_control_surface.fix_spec_blockers_batch
     agent: spec-verifier
+    claimed_by: spec-verifier
+    claimed_at: '2026-04-04T17:27:53.949970+00:00'
 - id: orch_operator_recovery_cutover
   name: Orchestration Recovery, Resume, and Legacy Bridge
   status: locked

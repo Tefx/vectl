@@ -60425,7 +60425,7 @@ phases:
       debt only (reserved continuity fields).'
   - id: orch_operator_config_state.fix_authority_reference_blocker
     name: Resolve authority-reference blocker for config-state citations
-    status: pending
+    status: claimed
     description: 'Resolve the gate blocker that reported missing authority-document
       coverage for orchestration config-state citations, without changing runtime
       behavior.
@@ -60510,6 +60510,8 @@ phases:
     depends_on:
     - orch_operator_config_state.retest_conformance_and_wiring
     agent: doc-reviewer
+    claimed_by: doc-reviewer
+    claimed_at: '2026-04-04T15:40:04.210121+00:00'
   - id: orch_operator_config_state.retest_gate_authority_reference_blocker
     name: Rerun config-state gate criteria after authority-reference remediation
     status: pending

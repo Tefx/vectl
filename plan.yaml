@@ -60182,7 +60182,7 @@ phases:
     agent: gate-reviewer
   - id: orch_operator_config_state.fix_runtime_resume_snapshot_binding
     name: Fix runtime wiring and resume snapshot binding blockers
-    status: claimed
+    status: done
     description: 'Close the blocker family reported by `orch_operator_config_state.spec_conformance`
       and `orch_operator_config_state.wiring_audit` in one batched remediation pass.
 
@@ -60326,6 +60326,16 @@ phases:
     agent: python-senior
     claimed_by: python-senior
     claimed_at: '2026-04-04T15:10:25.897561+00:00'
+    done_at: '2026-04-04T15:20:15.495211+00:00'
+    evidence: 'Implemented batched remediation for config-state blockers: replaced
+      run/resume stub paths with runtime-reachable CLI->orch_app->config/run_store
+      wiring; run path now freezes and persists `config.snapshot.yaml`; resume path
+      reloads authoritative frozen snapshot and rejects ambient-config drift; runtime
+      consumption added for config fields and run_store helper authority maintained
+      for artifact-root resolution. Verification: `uv run pytest -q tests/orchestration/unit/test_config_state_impl.py
+      tests/orchestration/unit/test_run_store.py` -> 53 passed; `py_compile`/`mypy`/`ruff`
+      on changed runtime files PASS; targeted run/resume scripts prove success path
+      and drift-refusal failure path. Commit: 48abcab.'
   - id: orch_operator_config_state.retest_conformance_and_wiring
     name: Retest config-state conformance and wiring blockers green
     status: pending

@@ -61756,6 +61756,77 @@ phases:
     depends_on:
     - orch_operator_control_surface.spec_conformance
     agent: python-senior
+  - id: orch_operator_control_surface.retest_spec_blockers_batch
+    name: Re-test batched spec-conformance blockers for control/config CLI surface
+    status: pending
+    description: 'Re-run spec conformance for the remediated `vectl orch` control/config
+      scope after batched fixes.
+
+
+      step_type: test
+
+      step_intent: retest_green
+
+      expected_result: green
+
+
+      As an INDEPENDENT TESTER (spec-verifier), validate that the repaired control/config
+      CLI surface now conforms to spec §7.4 and spec §6 for this scope.
+
+
+      Required focus:
+
+      - `orch control pause` / `unpause` preserve and forward `--reason`
+
+      - `orch control stop` preserve and forward `--force`
+
+      - `orch config show --effective` is live and changes behavior per documented
+      semantics
+
+      - explicit exit-code behavior checks cover not-found / recovery / internal mappings
+      where applicable
+
+
+      Finding residual divergence is a successful retest outcome because it protects
+      the phase gate.'
+    verification: 'phase-check protecting orch_operator_control_surface.gate and downstream
+      recovery/cutover work:
+
+      - Each remediated requirement cites the relevant spec section and implementation
+      file:line
+
+      - Control reason/force propagation behavior matches the spec-required command
+      contract
+
+      - `config show --effective` semantics are no longer dead/unired
+
+      - Explicit exit-code behavior checks confirm not-found / recovery / internal
+      mappings where applicable
+
+      - Verdict for this retest scope is green before the phase gate proceeds'
+    evidence_template: '## Retest Spec Conformance Report
+
+      **Scope**: batched control/config remediation
+
+      **Expected result**: green
+
+
+      | Requirement | Spec Ref | Implementation | Verdict | Notes |
+
+      | --- | --- | --- | --- | --- |
+
+      | pause/unpause reason propagation | §7.4 |  |  |  |
+
+      | stop force propagation | §7.4 |  |  |  |
+
+      | config show effective semantics | §7.4 |  |  |  |
+
+      | exit-code mappings | §6 |  |  |  |
+
+      '
+    depends_on:
+    - orch_operator_control_surface.fix_spec_blockers_batch
+    agent: spec-verifier
 - id: orch_operator_recovery_cutover
   name: Orchestration Recovery, Resume, and Legacy Bridge
   status: locked

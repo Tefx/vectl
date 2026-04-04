@@ -60156,6 +60156,150 @@ phases:
     - orch_operator_config_state.spec_conformance
     - orch_operator_config_state.wiring_audit
     agent: gate-reviewer
+  - id: orch_operator_config_state.fix_runtime_resume_snapshot_binding
+    name: Fix runtime wiring and resume snapshot binding blockers
+    status: pending
+    description: 'Close the blocker family reported by `orch_operator_config_state.spec_conformance`
+      and `orch_operator_config_state.wiring_audit` in one batched remediation pass.
+
+
+      Files to modify:
+
+      - `src/vectl/orch_app.py`
+
+      - `src/vectl/cli.py`
+
+      - `src/vectl/orchestration/config.py`
+
+      - `src/vectl/orchestration/run_store.py`
+
+      - `src/vectl/orchestration/resolver_gateway.py` (only if the existing runtime
+      boundary needs it for frozen allowlist consumption)
+
+
+      Required outcomes (ALL of these, not just the first):
+
+      1. Replace the current `orch_app` / CLI run+resume stubs with real config-state/runtime
+      wiring sufficient for this phase''s documented surfaces.
+
+      2. Ensure a new run freezes config, persists `config.snapshot.yaml`, and binds
+      resolver allowlist/runtime decisions to the frozen per-run snapshot instead
+      of mutable ambient config.
+
+      3. Ensure `OrchestrationApp.resume()` and the `vectl orch resume` path reload
+      the persisted frozen snapshot for the selected run and refuse to silently re-derive
+      runtime config from ambient config when the frozen snapshot should be authoritative.
+
+      4. Consume the config fields introduced in this phase on non-test runtime paths
+      so the wiring audit no longer reports dead/unconsumed config fields.
+
+      5. Use `run_store` helpers as the authority for locating run artifact roots
+      / persisted run metadata; do not add alternate ad-hoc filesystem lookup paths
+      outside `run_store`.
+
+
+      Root cause vs symptom:
+
+      - Root cause: config-state artifacts were implemented in isolation, but the
+      run/resume entrypoints still terminate at `orch_app` / CLI stubs, so the frozen
+      snapshot and allowlist snapshot surfaces never become reachable at runtime.
+
+      - Symptom: spec conformance reports NOT_FOUND for resumed frozen-snapshot reuse
+      and allowlist snapshot binding, while wiring audit reports blocked reachability
+      and unconsumed config fields.
+
+      - Why this fix is not surface-level: it must connect config/run-store state
+      to the real run/resume runtime path, not just add more helper functions or tests.
+
+
+      Search for sibling surfaces before finishing:
+
+      - `rg -n "NotImplementedError|wiring not yet implemented" src/vectl/orch_app.py
+      src/vectl/cli.py`
+
+      - `rg -n "resume_enabled|tool_allowlist|config\.snapshot\.yaml|freeze_config|write_frozen_snapshot"
+      src/vectl/orchestration`
+
+      - `rg -n "run_artifact_root_path|latest_run|RunRegistry|CasesIndex" src/vectl/orchestration`
+
+
+      Constraints / non-goals:
+
+      - Do NOT redesign the public contracts already pinned in `orch_operator_contracts`.
+
+      - Do NOT implement recover/control/case/projection features that belong to downstream
+      phases.
+
+      - Do NOT bypass `orch_app` by re-implementing orchestration behavior directly
+      in CLI handlers.
+
+      - Do NOT change run-selection semantics beyond what is required for frozen-snapshot-authoritative
+      run/resume behavior.
+
+
+      Pattern anchors:
+
+      - Follow the existing freeze boundary in `src/vectl/orchestration/config.py::freeze_config()`
+      / `write_frozen_snapshot()`.
+
+      - Follow `src/vectl/orchestration/run_store.py` as the authority for run artifact
+      location and persisted run metadata.
+
+      - Preserve the contract split where CLI delegates to `OrchestrationApp` instead
+      of owning orchestration decisions.
+
+
+      Known risks to close explicitly:
+
+      - ambient config overriding frozen snapshot on resume
+
+      - allowlist validation using mutable current config instead of persisted per-run
+      snapshot
+
+      - dead config fields that are parsed/serialized but never consumed by runtime
+      code
+
+      - duplicate path resolution logic outside `run_store`
+
+
+      Deliverables:
+
+      - runtime-reachable run/resume config-state wiring
+
+      - resume-time frozen-snapshot reuse surface
+
+      - frozen allowlist snapshot binding on runtime path
+
+      - no orphan config-state fields introduced by this phase
+
+
+      Verification: per verification-design.md §4.4, include both main-path and failure-path
+      evidence.
+
+      - Main path: focused tests or targeted commands prove `vectl orch run` / `orch_app.run()`
+      freeze and persist the snapshot, and `vectl orch resume` / `orch_app.resume()`
+      consume it through runtime wiring.
+
+      - Failure path: evidence shows ambient config drift does not silently override
+      the persisted frozen snapshot / allowlist binding for resumed runs.
+
+      - Proof includes the exact files changed and the targeted commands/tests used.'
+    verification: '- Main path: targeted config-state/run-store tests and focused
+      run/resume commands demonstrate snapshot persistence and runtime reachability
+      through CLI -> orch_app -> config/run_store.
+
+      - Failure path: regression proof shows resumed runs bind to persisted frozen
+      snapshot / allowlist state rather than mutable ambient config.
+
+      - Wiring proof: no config field introduced by this phase remains unconsumed
+      on non-test runtime paths.
+
+      - Sibling search proof: grep hints above were checked for adjacent stub/unwired
+      surfaces.'
+    depends_on:
+    - orch_operator_config_state.spec_conformance
+    - orch_operator_config_state.wiring_audit
+    agent: python-senior
 - id: orch_operator_observability
   name: Orchestration Events, Projections, and Artifacts
   status: in_progress

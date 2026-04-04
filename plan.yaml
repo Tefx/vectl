@@ -60632,3 +60632,10 @@ phases:
     - orch_operator_system_wiring.replace_runtime_stubs
     - orch_operator_system_wiring.verify_e2e
     agent: gate-reviewer
+- id: orch_operator_cutover_validation
+  name: Orchestration Operator Cutover Validation
+  status: locked
+  gate: Replacement-grade operator workflows, migration state transitions, and legacy-retirement
+    criteria are independently validated before docs and final deep review.
+  depends_on:
+  - orch_operator_system_wiring

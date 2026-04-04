@@ -60959,7 +60959,7 @@ phases:
   steps:
   - id: orch_operator_control_surface.impl_resolver_gateway
     name: Implement resolver gateway with canonical tool authorization
-    status: pending
+    status: claimed
     description: 'step_type: implementation
 
 
@@ -61014,6 +61014,8 @@ phases:
       - Evidence includes sibling search confirming no bypass path around the canonical
       tool registry'
     agent: python-senior
+    claimed_by: python-senior
+    claimed_at: '2026-04-04T16:18:38.768679+00:00'
   - id: orch_operator_control_surface.impl_control_channel
     name: Implement file-based operator action control channel
     status: claimed

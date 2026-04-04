@@ -927,6 +927,7 @@ class OrchestrationApp:
     def control_pause(
         self,
         step_id: str | None = None,
+        reason: str | None = None,
     ) -> ControlResult:
         """
         Pause orchestration (stop dispatching new work).
@@ -935,6 +936,7 @@ class OrchestrationApp:
 
         Args:
             step_id: Optional specific step to pause.
+            reason: Optional pause reason from operator.
 
         Returns:
             ControlResult with pause outcome.
@@ -946,11 +948,12 @@ class OrchestrationApp:
         if error is not None:
             return ControlResult(action="pause", success=False, message=error)
         assert selected_run_id is not None
+        payload = (selected_run_id,) if reason is None else (selected_run_id, reason)
         send_to_control(
             ControlChannelMessage(
                 msg_type="control.pause",
                 sender="operator",
-                payload=(selected_run_id,),
+                payload=payload,
             )
         )
         return ControlResult(
@@ -960,6 +963,7 @@ class OrchestrationApp:
     def control_unpause(
         self,
         step_id: str | None = None,
+        reason: str | None = None,
     ) -> ControlResult:
         """
         Unpause orchestration (resume dispatching).
@@ -968,6 +972,7 @@ class OrchestrationApp:
 
         Args:
             step_id: Optional specific step to unpause.
+            reason: Optional unpause reason from operator.
 
         Returns:
             ControlResult with unpause outcome.
@@ -979,11 +984,12 @@ class OrchestrationApp:
         if error is not None:
             return ControlResult(action="unpause", success=False, message=error)
         assert selected_run_id is not None
+        payload = (selected_run_id,) if reason is None else (selected_run_id, reason)
         send_to_control(
             ControlChannelMessage(
                 msg_type="control.unpause",
                 sender="operator",
-                payload=(selected_run_id,),
+                payload=payload,
             )
         )
         return ControlResult(
@@ -995,6 +1001,7 @@ class OrchestrationApp:
     def control_stop(
         self,
         reason: str | None = None,
+        force: bool = False,
     ) -> ControlResult:
         """
         Stop orchestration entirely.
@@ -1003,6 +1010,7 @@ class OrchestrationApp:
 
         Args:
             reason: Optional reason for stopping.
+            force: Request immediate stop semantics.
 
         Returns:
             ControlResult with stop outcome.
@@ -1014,7 +1022,12 @@ class OrchestrationApp:
         if error is not None:
             return ControlResult(action="stop", success=False, message=error)
         assert selected_run_id is not None
-        payload = (selected_run_id,) if reason is None else (selected_run_id, reason)
+        payload_items = [selected_run_id]
+        if reason is not None:
+            payload_items.append(reason)
+        if force:
+            payload_items.append("force=true")
+        payload = tuple(payload_items)
         send_to_control(
             ControlChannelMessage(
                 msg_type="control.stop",
@@ -1032,6 +1045,7 @@ class OrchestrationApp:
 
     def config_show(
         self,
+        effective: bool = False,
     ) -> ConfigResult:
         """
         Show current orchestration configuration.
@@ -1045,13 +1059,49 @@ class OrchestrationApp:
             NotImplementedError: Until config show semantics are specified.
         """
         config = self._effective_orchestration_config()
-        show_output = (
-            f"plan_path={config.plan_path}\n"
-            f"artifact_root={config.runtime.artifact_root}\n"
-            f"workspace_root={config.runtime.workspace_root}\n"
-            f"resolver_enabled={config.resolver.enabled}\n"
-            f"allowlist={self._allowlist_text(config.resolver.tool_allowlist)}"
-        )
+        if effective:
+            show_output = (
+                f"plan_path={config.plan_path}\n"
+                f"roster.default_ttl_seconds={config.roster.default_ttl_seconds}\n"
+                f"roster.max_reuse_window_seconds={config.roster.max_reuse_window_seconds}\n"
+                f"runtime.default_runner={config.runtime.default_runner}\n"
+                f"runtime.artifact_root={config.runtime.artifact_root}\n"
+                f"runtime.workspace_root={config.runtime.workspace_root}\n"
+                f"runtime.isolation_default={config.runtime.isolation_default}\n"
+                f"runtime.cleanup_policy={config.runtime.cleanup_policy}\n"
+                f"control.idle_poll_interval_ms={config.control.idle_poll_interval_ms}\n"
+                f"control.max_resolution_attempts_per_case={config.control.max_resolution_attempts_per_case}\n"
+                f"control.action_ack_timeout_seconds={config.control.action_ack_timeout_seconds}\n"
+                f"resolver.enabled={config.resolver.enabled}\n"
+                f"resolver.invocation_timeout_seconds={config.resolver.invocation_timeout_seconds}\n"
+                f"resolver.max_tool_calls_per_invocation={config.resolver.max_tool_calls_per_invocation}\n"
+                f"resolver.max_tool_argument_bytes={config.resolver.max_tool_argument_bytes}\n"
+                f"resolver.tool_allowlist={self._allowlist_text(config.resolver.tool_allowlist)}\n"
+                f"continuity.resume_enabled={config.continuity.resume_enabled}\n"
+                f"continuity.stale_artifact_policy={config.continuity.stale_artifact_policy}\n"
+                f"continuity.replay_safety={config.continuity.replay_safety}\n"
+                f"observability.events_jsonl={config.observability.events_jsonl}\n"
+                f"observability.text_log={config.observability.text_log}\n"
+                f"observability.projected_state={config.observability.projected_state}\n"
+                "observability.heartbeat_stale_threshold_seconds="
+                f"{config.observability.heartbeat_stale_threshold_seconds}\n"
+                f"observability.per_step_artifacts={config.observability.per_step_artifacts}\n"
+                f"observability.per_case_artifacts={config.observability.per_case_artifacts}\n"
+                f"observability.redact_env_keys={','.join(config.observability.redact_env_keys)}\n"
+                f"observability.max_log_megabytes={config.observability.max_log_megabytes}\n"
+                f"observability.retention_days={config.observability.retention_days}\n"
+                f"operator.control_channel={config.operator.control_channel}\n"
+                f"operator.default_output={config.operator.default_output}\n"
+                f"operator.max_pending_actions={config.operator.max_pending_actions}"
+            )
+        else:
+            show_output = (
+                f"plan_path={config.plan_path}\n"
+                f"artifact_root={config.runtime.artifact_root}\n"
+                f"workspace_root={config.runtime.workspace_root}\n"
+                f"resolver_enabled={config.resolver.enabled}\n"
+                f"allowlist={self._allowlist_text(config.resolver.tool_allowlist)}"
+            )
         return ConfigResult(
             show_output=show_output, validation_passed=True, tools=canonical_tool_families()
         )

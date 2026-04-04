@@ -8,6 +8,7 @@ Authority:
 from __future__ import annotations
 
 from pathlib import Path
+from typing import Any, cast
 
 import pytest
 
@@ -15,6 +16,7 @@ from vectl.io import save_plan
 from vectl.models import Phase, Plan, Step
 from vectl.orch_app import AppConfig, build_orchestration_app
 from vectl.orchestration.config import OrchestrationConfig
+from vectl.orchestration.control_channel import FilesystemControlChannel
 from vectl.orchestration.run_store import RunRecord, RunRegistry, generate_run_id
 
 
@@ -82,6 +84,7 @@ def test_run_and_control_route_through_typed_boundaries(tmp_path: Path) -> None:
 
 def test_run_admission_failure_when_same_plan_already_has_active_run(tmp_path: Path) -> None:
     app = _build_app(tmp_path)
+    assert app._config.run_store_root is not None
     registry = RunRegistry(store_root=app._config.run_store_root)
     conflicting_run_id = generate_run_id()
     registry.save(
@@ -113,6 +116,7 @@ def test_build_fails_when_authoritative_plan_path_missing(tmp_path: Path) -> Non
 
 def test_control_pause_reports_ambiguous_run_selection(tmp_path: Path) -> None:
     app = _build_app(tmp_path)
+    assert app._config.run_store_root is not None
     registry = RunRegistry(store_root=app._config.run_store_root)
     for step_id in ("core.ready", "core.other"):
         registry.save(
@@ -128,3 +132,39 @@ def test_control_pause_reports_ambiguous_run_selection(tmp_path: Path) -> None:
     result = app.control_pause(step_id=None)
     assert result.success is False
     assert "Run selection is ambiguous" in result.message
+
+
+def test_control_reason_and_force_are_persisted_in_pending_actions(tmp_path: Path) -> None:
+    app = _build_app(tmp_path)
+    orch = cast(Any, app)
+    run_result = app.run(step_id="core.ready", agent="python-executor")
+    assert run_result.run_id is not None
+
+    pause = orch.control_pause(step_id="core.ready", reason="maintenance")
+    unpause = orch.control_unpause(step_id="core.ready", reason="resumed")
+    stop = orch.control_stop(reason="halt", force=True)
+    assert pause.success is True
+    assert unpause.success is True
+    assert stop.success is True
+
+    assert app._config.run_store_root is not None
+    channel = FilesystemControlChannel(runs_root=app._config.run_store_root)
+    requests = channel.list_requests(run_result.run_id, status="pending")
+    by_type = {request.msg_type: request for request in requests}
+
+    assert by_type["control.pause"].payload == (run_result.run_id, "maintenance")
+    assert by_type["control.unpause"].payload == (run_result.run_id, "resumed")
+    assert by_type["control.stop"].payload == (run_result.run_id, "halt", "force=true")
+
+
+def test_config_show_effective_returns_expanded_view(tmp_path: Path) -> None:
+    app = _build_app(tmp_path)
+    orch = cast(Any, app)
+
+    summary = orch.config_show(effective=False)
+    effective = orch.config_show(effective=True)
+
+    assert "artifact_root=" in summary.show_output
+    assert "control.idle_poll_interval_ms=" not in summary.show_output
+    assert "control.idle_poll_interval_ms=" in effective.show_output
+    assert "operator.max_pending_actions=" in effective.show_output

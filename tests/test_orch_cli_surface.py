@@ -55,6 +55,11 @@ class _ConfigResult:
 class _FakeOrchApp:
     def __init__(self) -> None:
         self.calls: list[str] = []
+        self.pause_reason: str | None = None
+        self.unpause_reason: str | None = None
+        self.stop_reason: str | None = None
+        self.stop_force: bool = False
+        self.config_show_effective: bool = False
 
     def run(self, *, step_id: str | None, agent: str | None) -> _Result:
         self.calls.append("run")
@@ -118,23 +123,27 @@ class _FakeOrchApp:
         del response
         return _Result(success=True, message="queued", step_id=case_id)
 
-    def control_pause(self, *, step_id: str | None = None):
+    def control_pause(self, *, step_id: str | None = None, reason: str | None = None):
         self.calls.append("control_pause")
+        self.pause_reason = reason
         del step_id
         return _Result(success=True, message="paused")
 
-    def control_unpause(self, *, step_id: str | None = None):
+    def control_unpause(self, *, step_id: str | None = None, reason: str | None = None):
         self.calls.append("control_unpause")
+        self.unpause_reason = reason
         del step_id
         return _Result(success=True, message="unpaused")
 
-    def control_stop(self, *, reason: str | None = None):
+    def control_stop(self, *, reason: str | None = None, force: bool = False):
         self.calls.append("control_stop")
-        del reason
+        self.stop_reason = reason
+        self.stop_force = force
         return _Result(success=True, message="stopped")
 
-    def config_show(self) -> _ConfigResult:
+    def config_show(self, *, effective: bool = False) -> _ConfigResult:
         self.calls.append("config_show")
+        self.config_show_effective = effective
         return _ConfigResult(show_output="show")
 
     def config_validate(self) -> _ConfigResult:
@@ -214,3 +223,72 @@ def test_orch_inspect_actions_requires_selector() -> None:
     result = runner.invoke(app, ["orch", "inspect", "actions"])
     assert result.exit_code == 1
     assert "Run selector required" in result.output
+
+
+def test_orch_control_and_config_flags_propagate_to_orch_app(monkeypatch) -> None:
+    fake = _FakeOrchApp()
+    monkeypatch.setattr("vectl.cli._build_orchestration_runtime_app", lambda plan: fake)
+
+    pause_result = runner.invoke(
+        app,
+        ["orch", "control", "pause", "--step", "s1", "--reason", "maintenance"],
+    )
+    unpause_result = runner.invoke(
+        app,
+        ["orch", "control", "unpause", "--step", "s1", "--reason", "resume"],
+    )
+    stop_result = runner.invoke(
+        app,
+        ["orch", "control", "stop", "--reason", "halt", "--force"],
+    )
+    config_result = runner.invoke(app, ["orch", "config", "show", "--effective"])
+
+    assert pause_result.exit_code == 0
+    assert unpause_result.exit_code == 0
+    assert stop_result.exit_code == 0
+    assert config_result.exit_code == 0
+
+    assert fake.pause_reason == "maintenance"
+    assert fake.unpause_reason == "resume"
+    assert fake.stop_reason == "halt"
+    assert fake.stop_force is True
+    assert fake.config_show_effective is True
+
+
+def test_orch_explicit_exit_code_mapping_for_not_found_and_recovery(monkeypatch) -> None:
+    fake = _FakeOrchApp()
+
+    def _resume_not_found(*, run_id: str) -> _Result:
+        del run_id
+        return _Result(success=False, message="Run not found: r-missing")
+
+    def _resume_recovery(*, run_id: str) -> _Result:
+        del run_id
+        return _Result(
+            success=False,
+            message="Resume refused: frozen config snapshot missing for authoritative run r1",
+        )
+
+    monkeypatch.setattr("vectl.cli._build_orchestration_runtime_app", lambda plan: fake)
+
+    monkeypatch.setattr(fake, "resume", _resume_not_found)
+    not_found = runner.invoke(app, ["orch", "resume", "r-missing"])
+    assert not_found.exit_code == 2
+    assert "Run not found" in not_found.output
+
+    monkeypatch.setattr(fake, "resume", _resume_recovery)
+    recovery = runner.invoke(app, ["orch", "resume", "r1"])
+    assert recovery.exit_code == 4
+    assert "Resume refused" in recovery.output
+
+
+def test_orch_internal_error_maps_to_exit_code_5(monkeypatch) -> None:
+    def _boom(plan):
+        del plan
+        raise RuntimeError("boom")
+
+    monkeypatch.setattr("vectl.cli._build_orchestration_runtime_app", _boom)
+
+    result = runner.invoke(app, ["orch", "config", "show", "--effective"])
+    assert result.exit_code == 5
+    assert "Internal orchestration error" in result.output

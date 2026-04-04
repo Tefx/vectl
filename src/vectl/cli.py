@@ -565,7 +565,7 @@ OrchWatchOption = typer.Option(False, "--watch", help="Poll once more before ret
 OrchFollowOption = typer.Option(False, "--follow", help="Follow once more before returning.")
 
 
-def _build_orchestration_runtime_app(plan: Path | None):
+def _build_orchestration_runtime_app(plan: Path | None) -> Any:
     """Compose orchestration app using frozen-capable runtime config wiring."""
     from vectl.orch_app import AppConfig, build_orchestration_app
     from vectl.orchestration.config import load_orchestration_config
@@ -604,6 +604,42 @@ def _resolve_orch_output_mode(
     if jsonl_flag:
         return OrchOutputMode.JSONL
     return output
+
+
+def _orch_failure_exit_code(message: str) -> int:
+    """Map orchestration failure messages to documented exit codes.
+
+    Authority: docs/ORCHESTRATION-PLANE-CLI-CONFIG-OBSERVABILITY-DESIGN.md §6
+    """
+
+    normalized = message.lower()
+    if "not found" in normalized or "no runs available" in normalized:
+        return 2
+    if "resume refused" in normalized or "recovery required" in normalized:
+        return 4
+    return 1
+
+
+def _orch_die_on_failure(message: str) -> None:
+    """Exit with explicit orchestration failure-class mapping."""
+
+    _die(message, code=_orch_failure_exit_code(message))
+
+
+def _orch_internal_error(exc: Exception) -> None:
+    """Surface unexpected orchestration app exceptions as internal errors."""
+
+    _die(f"Internal orchestration error: {exc}", code=5)
+
+
+def _build_orchestration_runtime_app_or_die(plan: Path | None) -> Any:
+    """Build orchestration runtime app with internal-error mapping."""
+
+    try:
+        return _build_orchestration_runtime_app(plan=plan)
+    except Exception as exc:  # pragma: no cover - defensive internal mapping
+        _orch_internal_error(exc)
+        raise AssertionError("unreachable")
 
 
 def _json_ready(value: Any) -> Any:
@@ -697,7 +733,7 @@ def orch_run(
     Contract authority: orch_app.py::OrchestrationApp.run()
     """
     mode = _resolve_orch_output_mode(output=output, json_flag=json_flag, jsonl_flag=False)
-    app_runtime = _build_orchestration_runtime_app(plan=plan)
+    app_runtime = _build_orchestration_runtime_app_or_die(plan=plan)
     if dry_run:
         _emit_orch_payload(
             {
@@ -709,9 +745,13 @@ def orch_run(
             mode,
         )
         return
-    result = app_runtime.run(step_id=step_id, agent=agent)
+    try:
+        result = app_runtime.run(step_id=step_id, agent=agent)
+    except Exception as exc:  # pragma: no cover - defensive internal mapping
+        _orch_internal_error(exc)
+        return
     if not result.success:
-        _die(result.message)
+        _orch_die_on_failure(result.message)
     _emit_orch_payload(result, mode)
 
 
@@ -732,7 +772,7 @@ def orch_resume(
     Contract authority: orch_app.py::OrchestrationApp.resume()
     """
     mode = _resolve_orch_output_mode(output=output, json_flag=json_flag, jsonl_flag=False)
-    app_runtime = _build_orchestration_runtime_app(plan=plan)
+    app_runtime = _build_orchestration_runtime_app_or_die(plan=plan)
     if run_id is not None and latest:
         _die("Specify either RUN_ID or --latest, not both")
     resolved_run_id = run_id
@@ -751,9 +791,13 @@ def orch_resume(
         )
         return
     assert resolved_run_id is not None
-    result = app_runtime.resume(run_id=resolved_run_id)
+    try:
+        result = app_runtime.resume(run_id=resolved_run_id)
+    except Exception as exc:  # pragma: no cover - defensive internal mapping
+        _orch_internal_error(exc)
+        return
     if not result.success:
-        _die(result.message)
+        _orch_die_on_failure(result.message)
     _emit_orch_payload(result, mode)
 
 
@@ -777,7 +821,7 @@ def orch_recover(
     """
     del yes
     mode = _resolve_orch_output_mode(output=output, json_flag=json_flag, jsonl_flag=False)
-    app_runtime = _build_orchestration_runtime_app(plan=plan)
+    app_runtime = _build_orchestration_runtime_app_or_die(plan=plan)
     if run_id is not None and latest:
         _die("Specify either RUN_ID or --latest, not both")
     resolved_run_id = run_id
@@ -797,9 +841,13 @@ def orch_recover(
             mode,
         )
         return
-    result = app_runtime.recover(step_id=resolved_step_id)
+    try:
+        result = app_runtime.recover(step_id=resolved_step_id)
+    except Exception as exc:  # pragma: no cover - defensive internal mapping
+        _orch_internal_error(exc)
+        return
     if not result.success:
-        _die(result.message)
+        _orch_die_on_failure(result.message)
     _emit_orch_payload(result, mode)
 
 
@@ -820,7 +868,7 @@ def orch_runs(
     Contract authority: orch_app.py::OrchestrationApp.runs()
     """
     mode = _resolve_orch_output_mode(output=output, json_flag=json_flag, jsonl_flag=False)
-    app_runtime = _build_orchestration_runtime_app(plan=plan)
+    app_runtime = _build_orchestration_runtime_app_or_die(plan=plan)
     runs = app_runtime.runs(step_id=step_id, limit=limit)
     if status is not None:
         runs = tuple(run for run in runs if run.status == status)
@@ -864,7 +912,7 @@ def orch_prune(
             mode,
         )
         return
-    app_runtime = _build_orchestration_runtime_app(plan=plan)
+    app_runtime = _build_orchestration_runtime_app_or_die(plan=plan)
     result = app_runtime.prune(before=resolved_before, force=force)
     if not result.success:
         _die(result.message)
@@ -890,7 +938,7 @@ def orch_inspect_status(
     Contract authority: orch_app.py::OrchestrationApp.inspect_status()
     """
     mode = _resolve_orch_output_mode(output=output, json_flag=json_flag, jsonl_flag=False)
-    app_runtime = _build_orchestration_runtime_app(plan=plan)
+    app_runtime = _build_orchestration_runtime_app_or_die(plan=plan)
     if run_id is not None and latest:
         _die("Specify either RUN_ID or --latest, not both")
     resolved_run = run_id or (_resolve_latest_run_id(app_runtime) if latest else None)
@@ -921,7 +969,7 @@ def orch_inspect_events(
     Contract authority: orch_app.py::OrchestrationApp.inspect_events()
     """
     mode = _resolve_orch_output_mode(output=output, json_flag=json_flag, jsonl_flag=jsonl_flag)
-    app_runtime = _build_orchestration_runtime_app(plan=plan)
+    app_runtime = _build_orchestration_runtime_app_or_die(plan=plan)
     if run_id is not None and latest:
         _die("Specify either RUN_ID or --latest, not both")
     resolved_run = run_id or (_resolve_latest_run_id(app_runtime) if latest else None)
@@ -951,7 +999,7 @@ def orch_inspect_logs(
     Contract authority: orch_app.py::OrchestrationApp.inspect_logs()
     """
     mode = _resolve_orch_output_mode(output=output, json_flag=json_flag, jsonl_flag=False)
-    app_runtime = _build_orchestration_runtime_app(plan=plan)
+    app_runtime = _build_orchestration_runtime_app_or_die(plan=plan)
     if run_id is not None and latest:
         _die("Specify either --run or --latest, not both")
     resolved_run = run_id or (_resolve_latest_run_id(app_runtime) if latest else None)
@@ -979,7 +1027,7 @@ def orch_inspect_artifacts(
     Contract authority: orch_app.py::OrchestrationApp.inspect_artifacts()
     """
     mode = _resolve_orch_output_mode(output=output, json_flag=json_flag, jsonl_flag=False)
-    app_runtime = _build_orchestration_runtime_app(plan=plan)
+    app_runtime = _build_orchestration_runtime_app_or_die(plan=plan)
     if run_id is not None and latest:
         _die("Specify either RUN_ID or --latest, not both")
     resolved_run = run_id or (_resolve_latest_run_id(app_runtime) if latest else None)
@@ -1007,7 +1055,7 @@ def orch_inspect_actions(
     Contract authority: orch_app.py::OrchestrationApp.inspect_actions()
     """
     mode = _resolve_orch_output_mode(output=output, json_flag=json_flag, jsonl_flag=False)
-    app_runtime = _build_orchestration_runtime_app(plan=plan)
+    app_runtime = _build_orchestration_runtime_app_or_die(plan=plan)
     if run_id is not None and latest:
         _die("Specify either --run or --latest, not both")
     resolved_run = run_id or (_resolve_latest_run_id(app_runtime) if latest else None)
@@ -1044,7 +1092,7 @@ def orch_case_list(
     Contract authority: orch_app.py::OrchestrationApp.case_list()
     """
     mode = _resolve_orch_output_mode(output=output, json_flag=json_flag, jsonl_flag=False)
-    app_runtime = _build_orchestration_runtime_app(plan=plan)
+    app_runtime = _build_orchestration_runtime_app_or_die(plan=plan)
     if run_id is not None and latest:
         _die("Specify either RUN_ID or --latest, not both")
     resolved_run = run_id or (_resolve_latest_run_id(app_runtime) if latest else None)
@@ -1076,7 +1124,7 @@ def orch_case_show(
     Contract authority: orch_app.py::OrchestrationApp.case_show()
     """
     mode = _resolve_orch_output_mode(output=output, json_flag=json_flag, jsonl_flag=False)
-    app_runtime = _build_orchestration_runtime_app(plan=plan)
+    app_runtime = _build_orchestration_runtime_app_or_die(plan=plan)
     payload = app_runtime.case_show(case_id=case_id)
     _emit_orch_payload(payload, mode)
     if watch:
@@ -1102,7 +1150,7 @@ def orch_case_respond(
     Contract authority: orch_app.py::OrchestrationApp.case_respond()
     """
     mode = _resolve_orch_output_mode(output=output, json_flag=json_flag, jsonl_flag=False)
-    app_runtime = _build_orchestration_runtime_app(plan=plan)
+    app_runtime = _build_orchestration_runtime_app_or_die(plan=plan)
     resolved_response = response
     if resolved_response is None and action is not None:
         parts = [f"action={action}"]
@@ -1138,17 +1186,20 @@ def orch_control_pause(
 
     Contract authority: orch_app.py::OrchestrationApp.control_pause()
     """
-    del reason
     mode = _resolve_orch_output_mode(output=output, json_flag=json_flag, jsonl_flag=False)
-    app_runtime = _build_orchestration_runtime_app(plan=plan)
+    app_runtime = _build_orchestration_runtime_app_or_die(plan=plan)
     if run_id is not None and latest:
         _die("Specify either RUN_ID or --latest, not both")
     resolved_run = run_id or (_resolve_latest_run_id(app_runtime) if latest else None)
     if step_id is None and resolved_run is not None:
         step_id = _step_id_for_run(app_runtime, resolved_run)
-    result = app_runtime.control_pause(step_id=step_id)
+    try:
+        result = app_runtime.control_pause(step_id=step_id, reason=reason)
+    except Exception as exc:  # pragma: no cover - defensive internal mapping
+        _orch_internal_error(exc)
+        return
     if not result.success:
-        _die(result.message)
+        _orch_die_on_failure(result.message)
     _emit_orch_payload(result, mode)
 
 
@@ -1167,17 +1218,20 @@ def orch_control_unpause(
 
     Contract authority: orch_app.py::OrchestrationApp.control_unpause()
     """
-    del reason
     mode = _resolve_orch_output_mode(output=output, json_flag=json_flag, jsonl_flag=False)
-    app_runtime = _build_orchestration_runtime_app(plan=plan)
+    app_runtime = _build_orchestration_runtime_app_or_die(plan=plan)
     if run_id is not None and latest:
         _die("Specify either RUN_ID or --latest, not both")
     resolved_run = run_id or (_resolve_latest_run_id(app_runtime) if latest else None)
     if step_id is None and resolved_run is not None:
         step_id = _step_id_for_run(app_runtime, resolved_run)
-    result = app_runtime.control_unpause(step_id=step_id)
+    try:
+        result = app_runtime.control_unpause(step_id=step_id, reason=reason)
+    except Exception as exc:  # pragma: no cover - defensive internal mapping
+        _orch_internal_error(exc)
+        return
     if not result.success:
-        _die(result.message)
+        _orch_die_on_failure(result.message)
     _emit_orch_payload(result, mode)
 
 
@@ -1196,17 +1250,20 @@ def orch_control_stop(
 
     Contract authority: orch_app.py::OrchestrationApp.control_stop()
     """
-    del force
     mode = _resolve_orch_output_mode(output=output, json_flag=json_flag, jsonl_flag=False)
-    app_runtime = _build_orchestration_runtime_app(plan=plan)
+    app_runtime = _build_orchestration_runtime_app_or_die(plan=plan)
     if run_id is not None and latest:
         _die("Specify either RUN_ID or --latest, not both")
     resolved_run = run_id or (_resolve_latest_run_id(app_runtime) if latest else None)
     if resolved_run is None and latest:
         _die("No runs available for --latest selector")
-    result = app_runtime.control_stop(reason=reason)
+    try:
+        result = app_runtime.control_stop(reason=reason, force=force)
+    except Exception as exc:  # pragma: no cover - defensive internal mapping
+        _orch_internal_error(exc)
+        return
     if not result.success:
-        _die(result.message)
+        _orch_die_on_failure(result.message)
     _emit_orch_payload(result, mode)
 
 
@@ -1225,10 +1282,13 @@ def orch_config_show(
 
     Contract authority: orch_app.py::OrchestrationApp.config_show()
     """
-    del effective
     mode = _resolve_orch_output_mode(output=output, json_flag=json_flag, jsonl_flag=False)
-    app_runtime = _build_orchestration_runtime_app(plan=plan)
-    payload = app_runtime.config_show()
+    app_runtime = _build_orchestration_runtime_app_or_die(plan=plan)
+    try:
+        payload = app_runtime.config_show(effective=effective)
+    except Exception as exc:  # pragma: no cover - defensive internal mapping
+        _orch_internal_error(exc)
+        return
     if mode == OrchOutputMode.HUMAN:
         out.print(_esc(payload.show_output))
         return
@@ -1271,7 +1331,7 @@ def orch_config_tools(
     Contract authority: orch_app.py::OrchestrationApp.config_tools()
     """
     mode = _resolve_orch_output_mode(output=output, json_flag=json_flag, jsonl_flag=False)
-    app_runtime = _build_orchestration_runtime_app(plan=plan)
+    app_runtime = _build_orchestration_runtime_app_or_die(plan=plan)
     payload = app_runtime.config_tools()
     if mode == OrchOutputMode.HUMAN:
         out.print(_esc(payload.show_output))

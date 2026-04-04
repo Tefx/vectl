@@ -59274,3 +59274,29 @@ phases:
       - Evidence includes a file list plus a note showing which doc section pins each
       public interface'
     agent: python-executor
+  - id: orch_operator_contracts.app_cli_contracts
+    name: Pin orch_app and vectl orch CLI contracts
+    status: pending
+    description: "step_type: contract\ncontract_purity: ENFORCED\ncontract_outputs:\n\
+      \  - signatures\n  - interfaces\n  - stubs\n\nPin the exact operator entrypoint\
+      \ contracts in:\n- src/vectl/orch_app.py\n- src/vectl/cli.py\n\nUse the documented\
+      \ `vectl orch` command tree and `src/vectl/orch_app.py` composition-root responsibility\
+      \ as the authoritative interface lock. Define typed app read/write boundaries,\
+      \ run-selection inputs, output-mode/result DTOs, and CLI command registration\
+      \ stubs for:\n- run / resume / recover / runs / prune\n- inspect status / events\
+      \ / logs / artifacts / actions\n- case list / show / respond\n- control pause\
+      \ / unpause / stop\n- config show / validate / tools\n\nMake semantics explicit\
+      \ on the documented interfaces only. Do NOT implement command bodies or runtime\
+      \ wiring here."
+    verification: 'local-check protecting orch_operator_tests and orch_operator_control_surface:
+
+      - `vectl orch` command families from the docs are represented by explicit CLI/app
+      signatures or stubs
+
+      - No undocumented helper CLI surface is introduced
+
+      - Evidence includes command-family coverage matrix mapping docs -> CLI/app contract
+      locations'
+    depends_on:
+    - orch_operator_contracts.foundation_contracts
+    agent: python-executor

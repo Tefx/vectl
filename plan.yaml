@@ -61478,7 +61478,7 @@ phases:
       - No deviation records.'
   - id: orch_operator_control_surface.cli_seam_integration_proof
     name: Prove vectl orch seam integration with real commands
-    status: pending
+    status: claimed
     description: 'Run seam-level integration proof using the real `vectl orch` CLI
       entrypoint against fixture plans and run directories. This is not a stub smoke:
       execute command sequences that prove the CLI, orch_app, queries, control-channel,
@@ -61511,6 +61511,8 @@ phases:
     - orch_operator_control_surface.impl_orch_app_composition_root
     - orch_operator_control_surface.impl_vectl_orch_cli_surface
     agent: integration-verifier
+    claimed_by: integration-verifier
+    claimed_at: '2026-04-04T16:57:17.314221+00:00'
   - id: orch_operator_control_surface.liveness_probe
     name: Probe runnable vectl orch CLI liveness
     status: pending

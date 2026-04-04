@@ -61552,7 +61552,7 @@ phases:
       product_implementation_files_modified: NO'
   - id: orch_operator_control_surface.liveness_probe
     name: Probe runnable vectl orch CLI liveness
-    status: claimed
+    status: done
     description: Blind liveness probe for the runnable `vectl orch` surface. Start
       the real entrypoint, keep it alive for the intended command lifecycle, exercise
       at least one documented operation, and verify expected output without relying
@@ -61584,6 +61584,31 @@ phases:
     agent: blind-tester
     claimed_by: blind-tester
     claimed_at: '2026-04-04T17:04:27.209885+00:00'
+    done_at: '2026-04-04T17:15:48.888746+00:00'
+    evidence: 'step_intent: runnable CLI liveness probe
+
+      expected_result: real `uv run vectl orch` entrypoint and documented operations
+      execute with expected outputs/exits
+
+      observed_result: green
+
+
+      Verification:
+
+      - uv run vectl orch --help -> command families listed, exit 0
+
+      - uv run vectl orch config validate -> configuration is valid, exit 0
+
+      - uv run vectl orch config tools -> registered/allowlist output, exit 0
+
+      - uv run vectl orch runs -> no results, exit 0
+
+      - uv run vectl orch run --dry-run -> success dry-run payload, exit 0
+
+
+      failure_alignment: none
+
+      product_implementation_files_modified: NO'
   - id: orch_operator_control_surface.spec_conformance
     name: Verify CLI, query, and control surface spec conformance
     status: claimed

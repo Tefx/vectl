@@ -59728,3 +59728,59 @@ phases:
     CLI/control use.
   depends_on:
   - orch_operator_tests
+  steps:
+  - id: orch_operator_observability.impl_event_envelope_registry_sinks
+    name: Implement canonical event envelope, registry, and sink surfaces
+    status: pending
+    description: 'step_type: implementation
+
+
+      Fill in stub bodies in src/vectl/orchestration/events.py per the contract from
+      orch_operator_contracts.foundation_contracts and tests from orch_operator_tests.observability_red.
+
+
+      UPSTREAM ARTIFACTS:
+
+      - src/vectl/orchestration/events.py — authoritative envelope, event family registry,
+      sink protocols
+
+      - tests from orch_operator_tests.observability_red are PROTECTED
+
+
+      YOUR SCOPE: implement canonical event JSONL framing, prev-hash / entry-hash
+      chaining, event-seq assignment hooks, registry validation, append-only sink
+      behavior, and corruption diagnostics that downstream recovery can consume.
+
+
+      Failure-mode checklist:
+
+      - truncated/malformed trailing records must surface corruption instead of silent
+      skip
+
+      - registry rejects unknown event names or payload-shape drift
+
+      - hashing canonicalization is deterministic across runs
+
+
+      Out-of-scope guardrail:
+
+      - do not implement projector read models or CLI rendering here
+
+      - do not implement resolver authorization here
+
+
+      ## Completion Criteria (stub exclusion)
+
+      This is an IMPLEMENTATION step. Stub-only completion is NOT acceptable.'
+    verification: 'local-check protecting orch_operator_observability.retest_green
+      and orch_operator_control_surface:
+
+      - Main path: targeted tests prove canonical framing, event sequencing, hash
+      chaining, and registry validation
+
+      - Failure path: targeted regression covers truncated record handling and unknown-event
+      rejection
+
+      - Evidence includes the exact event command/test names and a sample envelope
+      payload'
+    agent: python-senior

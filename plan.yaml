@@ -62064,7 +62064,7 @@ phases:
       \ -> passed"
   - id: orch_operator_control_surface.retest_gate_blockers_batch
     name: Re-test batched gate blockers for operator control surface
-    status: claimed
+    status: done
     description: 'As an INDEPENDENT TESTER (`integration-verifier`), rerun the type/lint
       checks and gate-relevant quality criteria for the blocker bundle found by `orch_operator_control_surface.gate`.
 
@@ -62144,6 +62144,42 @@ phases:
     agent: integration-verifier
     claimed_by: integration-verifier
     claimed_at: '2026-04-04T17:40:58.271980+00:00'
+    done_at: '2026-04-04T17:42:46.756751+00:00'
+    evidence: 'step_intent: retest_green
+
+      expected_result: green
+
+      observed_result: green
+
+
+      Verification commands:
+
+      - uv run mypy src/vectl/orchestration/inspection_queries.py -> success
+
+      - uv run ruff check --select F841 src/vectl/orchestration/inspection_queries.py
+      -> passed
+
+      - uv run ruff check --select B904 src/vectl/cli.py -> passed
+
+      - uv run mypy src/vectl/cli.py src/vectl/orchestration/inspection_queries.py
+      -> success
+
+      - uv run pytest -v tests/test_orch_cli_surface.py::test_orch_internal_error_maps_to_exit_code_5
+      -> passed
+
+
+      Conclusion:
+
+      - no remaining all_records redefinition issue
+
+      - no dead-local F841 issue for step_ids/agents
+
+      - no B904 issue on CLI internal error path
+
+
+      failure_alignment: none
+
+      product_implementation_files_modified: NO'
 - id: orch_operator_recovery_cutover
   name: Orchestration Recovery, Resume, and Legacy Bridge
   status: locked

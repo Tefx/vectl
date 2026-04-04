@@ -62894,7 +62894,7 @@ phases:
     agent: gate-reviewer
   - id: orch_operator_system_wiring.liveness_probe
     name: Probe vectl orch entrypoint liveness
-    status: claimed
+    status: done
     description: 'Liveness probe for the runnable `vectl orch` surface using the real
       entrypoint, not helper functions.
 
@@ -62939,6 +62939,10 @@ phases:
     agent: blind-tester
     claimed_by: blind-tester
     claimed_at: '2026-04-04T20:54:06.784006+00:00'
+    done_at: '2026-04-04T20:59:10.812913+00:00'
+    evidence: Blind liveness probe passed on real vectl orch entrypoint with exact
+      command outputs; successful operations observed and blocked recovery-aware invocation
+      returned expected diagnostic.
 - id: orch_operator_cutover_validation
   name: Orchestration Operator Cutover Validation
   status: locked

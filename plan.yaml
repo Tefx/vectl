@@ -60591,7 +60591,7 @@ phases:
       explicitly.
   - id: orch_operator_observability.gate
     name: Gate events, projections, and artifacts phase
-    status: pending
+    status: claimed
     description: 'Gate review: verify canonical events, projection replay, and derived
       artifacts are correct, auditable, and ready for control/CLI integration.'
     verification: 'phase-check protecting orch_operator_control_surface and orch_operator_recovery_cutover:
@@ -60606,6 +60606,8 @@ phases:
     - orch_operator_observability.retest_green
     - orch_operator_observability.spec_conformance
     agent: gate-reviewer
+    claimed_by: gate-reviewer
+    claimed_at: '2026-04-04T15:05:59.474905+00:00'
 - id: orch_operator_control_surface
   name: Orchestration Control Channel, Queries, App Root, and CLI
   status: locked

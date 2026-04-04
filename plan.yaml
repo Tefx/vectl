@@ -62679,7 +62679,7 @@ phases:
       proof path with gate_open_allowed=false handling.
 - id: orch_operator_system_wiring
   name: Orchestration Operator System Wiring
-  status: in_progress
+  status: done
   gate: All operator-surface modules are wired into the real vectl orch entrypoint
     with no production stubs or placeholders remaining, and end-to-end CLI data flow
     is proven.
@@ -62866,7 +62866,7 @@ phases:
       artifacts; proved full layer traversal and blocked recovery path behavior.
   - id: orch_operator_system_wiring.gate
     name: Gate operator system wiring
-    status: claimed
+    status: done
     description: 'Gate review: verify operator-surface shared wiring is complete and
       the real entrypoint uses the real implementations end-to-end.
 
@@ -62899,6 +62899,9 @@ phases:
     agent: gate-reviewer
     claimed_by: gate-reviewer
     claimed_at: '2026-04-04T20:59:25.492448+00:00'
+    done_at: '2026-04-04T21:05:47.742311+00:00'
+    evidence: Gate reviewer PASS with gate_open_allowed=true; no unresolved blockers
+      in production runtime wiring, liveness, or end-to-end entrypoint traversal.
   - id: orch_operator_system_wiring.liveness_probe
     name: Probe vectl orch entrypoint liveness
     status: done
@@ -62952,7 +62955,7 @@ phases:
       returned expected diagnostic.
 - id: orch_operator_cutover_validation
   name: Orchestration Operator Cutover Validation
-  status: locked
+  status: pending
   gate: Replacement-grade operator workflows, migration state transitions, and legacy-retirement
     criteria are independently validated before docs and final deep review.
   depends_on:

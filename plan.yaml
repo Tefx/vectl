@@ -60132,7 +60132,7 @@ phases:
       liveness classification, and same-plan admission with file:line mappings.
   - id: orch_operator_config_state.wiring_audit
     name: Audit config and run-store wiring completeness
-    status: claimed
+    status: done
     description: 'Wiring completeness audit: verify every new public config field,
       registry helper, and exported run-store surface is reachable and consumed at
       runtime.'
@@ -60150,6 +60150,13 @@ phases:
     agent: wiring-auditor
     claimed_by: wiring-auditor
     claimed_at: '2026-04-04T15:00:15.109882+00:00'
+    done_at: '2026-04-04T15:10:04.525364+00:00'
+    evidence: Wiring audit executed and identified blocker-class reachability gaps
+      (orch_app/CLI runtime stubs, test-only consumption for config-state surfaces,
+      protocol wiring omissions). Remediation ownership has been created in batched
+      step `orch_operator_config_state.fix_runtime_resume_snapshot_binding` with downstream
+      retest `orch_operator_config_state.retest_conformance_and_wiring`; gate now
+      depends on that remediation path.
   - id: orch_operator_config_state.gate
     name: Gate config, freeze, and run-store phase
     status: pending

@@ -62538,6 +62538,117 @@ phases:
     - orch_operator_recovery_cutover.consumer_boundary_conformance
     - orch_operator_recovery_cutover.spec_conformance
     agent: python-senior
+  - id: orch_operator_recovery_cutover.reverify_recovery_contract_conformance
+    name: Reverify recovery consumer-boundary and spec conformance
+    status: pending
+    description: 'As an INDEPENDENT TESTER, rerun the failed recovery-cutover verifier
+      families after batched remediation.
+
+
+      YOUR GOAL IS TO FIND PROBLEMS, not to confirm it works.
+
+
+      Scope:
+
+      - consumer-boundary conformance for RecoveryOutcome/RecoveryReport across status,
+      actions, case, recover, and report surfaces
+
+      - spec conformance for no-silent-deletion quarantine behavior when gate_open_allowed=false
+
+
+      Test for:
+
+      - Happy path: all listed consumer surfaces reflect the same resolved recovery
+      facts from a shared fixture/artifact without re-deriving them independently
+
+      - Edge cases: quarantine outcomes, halted/blocked recovery states, and legacy-cutover
+      continuations that must preserve the public recovery/report contract
+
+      - Error scenarios: any path where gate_open_allowed=false could silently delete/quash
+      quarantine state or produce divergent recovery semantics
+
+
+      Document ALL findings. A verification step that discovers issues is a SUCCESS.
+
+      Independence Level: L2
+
+
+      step_type: test
+
+      step_intent: retest_green
+
+      expected_result: green'
+    verification: 'phase-check protecting orch_operator_system_wiring and orch_operator_cutover_validation:
+
+      - expected_result: green
+
+      - Consumer-boundary recheck proves one shared recovery fact model across all
+      listed consumer surfaces
+
+      - Spec-conformance recheck closes NEEDS_TEST for no-silent-deletion quarantine
+      behavior when gate_open_allowed=false
+
+      - Evidence includes concrete commands/output and an explicit gate_open_allowed=false
+      proof path'
+    evidence_template: '## Verification Report
+
+
+      **Tester**: integration-verifier (independent of implementation)
+
+      **Scope**: recovery consumer-boundary + spec conformance remediation recheck
+
+      **Independence Level**: L2
+
+
+      ### refs Read Confirmation (MANDATORY)
+
+      For each ref in this step:
+
+      - <filename> — key passage or "NOT READ: <reason>"
+
+
+      If no refs were provided, state: "No refs for this step."
+
+
+      ### Recheck Execution
+
+      - consumer_boundary_command: <exact command or test>
+
+      - spec_conformance_command: <exact command or test>
+
+      - shared_fixture_or_artifact: <path or identifier>
+
+
+      ### Required Proof Register
+
+      | requirement_ref | behavior_claim | runtime_proof_expected | evidence_ref |
+      status | closure_path | gate_decision_basis |
+
+      | --- | --- | --- | --- | --- | --- | --- |
+
+      | <ref> | <claim> | <proof> | <evidence> | PROVEN/UNPROVEN/NEEDS_TEST | <closure>
+      | <open/block basis> |
+
+
+      ### Findings
+
+      | Severity | Description | Location | Reproduction |
+
+      | --- | --- | --- | --- |
+
+      | blocker/should_fix | <issue or none> | <location> | <steps> |
+
+
+      ### Verdict
+
+      - [ ] PASS
+
+      - [ ] ISSUES_FOUND
+
+      - [ ] INCOMPLETE'
+    depends_on:
+    - orch_operator_recovery_cutover.fix_recovery_contract_conformance
+    agent: integration-verifier
 - id: orch_operator_system_wiring
   name: Orchestration Operator System Wiring
   status: locked

@@ -69,29 +69,43 @@ The `vectl orch` command group provides orchestration-plane operations.
 
 ```
 vectl orch
-├── run [PLAN]                    # Start a new orchestrated run
+├── run [STEP_ID]                 # Start a new orchestrated run (auto-selects next if omitted)
 ├── resume [RUN_ID|--latest]      # Resume an existing run
 ├── recover [RUN_ID|--latest]     # Recover and diagnose a run
 ├── runs [--status STATUS]        # List runs
 ├── prune [--older-than DAYS]     # Clean up old runs
-├── inspect
-│   ├── status [RUN_ID]           # Show run status
-│   ├── events [RUN_ID]           # Show event stream
-│   ├── logs [RUN_ID]             # Show logs
-│   ├── artifacts [RUN_ID]        # List artifacts
-│   └── actions [RUN_ID]          # Show pending actions
-├── case
-│   ├── list [RUN_ID]             # List cases
-│   ├── show <CASE_ID>            # Show case details
-│   └── respond <CASE_ID>         # Respond to a case
-├── control
-│   ├── pause [RUN_ID]            # Pause run dispatch
-│   ├── unpause [RUN_ID]          # Resume run dispatch
-│   └── stop [RUN_ID]             # Stop a run
-└── config
-    ├── show                      # Show effective config
-    ├── validate [PATH]           # Validate config file
-    └── tools                     # List canonical tools
+├── status [RUN_ID]               # Show run status
+├── events [RUN_ID]               # Show event stream
+├── logs [--run RUN_ID]           # Show logs
+├── artifacts [RUN_ID]            # List artifacts
+├── actions [--run RUN_ID]        # Show pending actions
+├── case-list [RUN_ID]            # List cases
+├── case-show <CASE_ID>           # Show case details
+├── case-respond <CASE_ID>        # Respond to a case
+├── pause [RUN_ID]                # Pause run dispatch
+├── unpause [RUN_ID]              # Resume run dispatch
+├── stop [RUN_ID]                 # Stop a run
+├── config-show                   # Show effective config
+├── config-validate [PATH]        # Validate config file
+└── config-tools                  # List canonical tools
+
+# Subcommand variants (equivalent to flat commands above)
+vectl orch inspect status
+vectl orch inspect events
+vectl orch inspect logs
+vectl orch inspect artifacts
+vectl orch inspect actions
+vectl orch case list
+vectl orch case show
+vectl orch case respond
+vectl orch control pause
+vectl orch control unpause
+vectl orch control stop
+vectl orch config show
+vectl orch config validate
+vectl orch config tools
+vectl orch migration validate-cutover
+vectl orch migration advance-state
 ```
 
 ### 5.2 Global Flags
@@ -122,16 +136,19 @@ All commands accept:
 
 ### 7.1 Run Lifecycle Family
 
-#### `vectl orch run [PLAN]`
+#### `vectl orch run [STEP_ID]`
 
 Start a new orchestrated run.
 
 **Arguments:**
-- `PLAN`: Path to plan.yaml (optional, uses config default)
+- `STEP_ID`: Step ID to run (optional, auto-selects next if omitted)
 
 **Flags:**
+- `--agent AGENT`: Agent name for execution
 - `--dry-run`: Validate without executing
 - `--json`: Output run ID as JSON
+- `--output MODE`: Output mode (human, json, jsonl)
+- `--plan PATH`: Path to plan.yaml
 
 **Behavior:**
 1. Load and validate configuration
@@ -153,6 +170,9 @@ Resume an existing run.
 **Flags:**
 - `--latest`: Use most recently updated non-terminal run
 - `--dry-run`: Validate without resuming
+- `--json`: Output as JSON
+- `--output MODE`: Output mode (human, json, jsonl)
+- `--plan PATH`: Path to plan.yaml
 
 **Behavior:**
 1. Resolve run ID (explicit or --latest)
@@ -173,8 +193,12 @@ Diagnose and optionally repair a run.
 
 **Flags:**
 - `--latest`: Use most recently updated run
+- `--step STEP_ID`: Step ID to recover
 - `--dry-run`: Diagnose without modifying
 - `--json`: Output diagnostic report
+- `--output MODE`: Output mode (human, json, jsonl)
+- `--plan PATH`: Path to plan.yaml
+- `--yes, -y`: Skip confirmation prompt
 
 **Behavior:**
 1. Load run state
@@ -191,8 +215,12 @@ Diagnose and optionally repair a run.
 List runs from the run store index.
 
 **Flags:**
+- `--step STEP_ID`: Filter by step ID
 - `--status STATUS`: Filter by status (running, paused, completed, failed)
+- `--limit N, -n N`: Maximum runs to show (default: 100)
 - `--json`: Output as JSON array
+- `--output MODE`: Output mode (human, json, jsonl)
+- `--plan PATH`: Path to plan.yaml
 
 **Output columns:**
 - Run ID
@@ -209,8 +237,12 @@ Remove completed run artifacts.
 
 **Flags:**
 - `--older-than DAYS`: Only remove runs older than N days
+- `--before TIMESTAMP`: Unix timestamp threshold
 - `--dry-run`: Show what would be removed
+- `--force, -y`: Skip confirmation prompt
 - `--json`: Output report as JSON
+- `--output MODE`: Output mode (human, json, jsonl)
+- `--plan PATH`: Path to plan.yaml
 
 **Behavior:**
 1. Query run index for candidates
@@ -222,13 +254,17 @@ Remove completed run artifacts.
 
 ### 7.2 Inspect Family
 
-#### `vectl orch inspect status [RUN_ID|--latest]`
+#### `vectl orch status [RUN_ID|--latest]`
 
 Show projected run status.
 
 **Flags:**
+- `--latest`: Use most recently updated run
+- `--step STEP_ID`: Filter by step ID
 - `--watch`: Poll for updates
 - `--json`: Output as JSON
+- `--output MODE`: Output mode (human, json, jsonl)
+- `--plan PATH`: Path to plan.yaml
 
 **Output:**
 - Run ID
@@ -239,61 +275,87 @@ Show projected run status.
 
 ---
 
-#### `vectl orch inspect events [RUN_ID|--latest]`
+#### `vectl orch events [RUN_ID|--latest]`
 
 Read canonical event stream.
 
 **Flags:**
+- `--latest`: Use most recently updated run
+- `--step STEP_ID`: Filter by step ID
 - `--follow`: Tail for new events
+- `--limit N, -n N`: Maximum events to show (default: 100)
 - `--jsonl`: Output as JSON Lines
+- `--json`: Output as JSON
+- `--output MODE`: Output mode (human, json, jsonl)
+- `--plan PATH`: Path to plan.yaml
 
 **Output:** Event envelopes as JSON Lines
 
 ---
 
-#### `vectl orch inspect logs [RUN_ID|--latest]`
+#### `vectl orch logs [--run RUN_ID|--latest]`
 
 Show operator-friendly logs.
 
 **Flags:**
-- `--tail N`: Show last N lines
+- `--run RUN_ID`: Specific run ID
+- `--latest`: Use most recently updated run
+- `--step STEP_ID`: Filter by step ID
+- `--tail N`: Show last N lines (default: 100)
 - `--follow`: Follow log updates
+- `--json`: Output as JSON
+- `--output MODE`: Output mode (human, json, jsonl)
+- `--plan PATH`: Path to plan.yaml
 
 ---
 
-#### `vectl orch inspect artifacts [RUN_ID|--latest]`
+#### `vectl orch artifacts [RUN_ID|--latest]`
 
 List artifact paths and layout.
 
 **Flags:**
+- `--latest`: Use most recently updated run
+- `--step STEP_ID`: Filter by step ID
 - `--kind KIND`: Filter by artifact kind
 - `--json`: Output as JSON
+- `--output MODE`: Output mode (human, json, jsonl)
+- `--plan PATH`: Path to plan.yaml
 
 ---
 
-#### `vectl orch inspect actions [RUN_ID|--latest]`
+#### `vectl orch actions [--run RUN_ID|--latest]`
 
 Show pending/applied/rejected operator requests.
 
 **Flags:**
+- `--run RUN_ID`: Specific run ID
+- `--latest`: Use most recently updated run
 - `--status STATUS`: Filter by status
 - `--json`: Output as JSON
+- `--output MODE`: Output mode (human, json, jsonl)
+- `--plan PATH`: Path to plan.yaml
 
 ---
 
 ### 7.3 Case Family
 
-#### `vectl orch case list [RUN_ID|--latest]`
+#### `vectl orch case-list [RUN_ID|--latest]`
 
 List open or historical cases.
 
 **Flags:**
+- `--latest`: Use most recently updated run
+- `--status STATUS`: Filter by status (open, resolved, halt)
 - `--watch`: Poll for updates
 - `--json`: Output as JSON
+- `--output MODE`: Output mode (human, json, jsonl)
+- `--plan PATH`: Path to plan.yaml
+
+**Alias:** `vectl orch case list`
 
 ---
 
-#### `vectl orch case show <CASE_ID>`
+#### `vectl orch case-show <CASE_ID>`
 
 Inspect one case bundle.
 
@@ -303,73 +365,112 @@ Inspect one case bundle.
 **Flags:**
 - `--watch`: Poll for updates
 - `--json`: Output as JSON
+- `--output MODE`: Output mode (human, json, jsonl)
+- `--plan PATH`: Path to plan.yaml
+
+**Alias:** `vectl orch case show`
 
 ---
 
-#### `vectl orch case respond <CASE_ID> --action ACTION`
+#### `vectl orch case-respond <CASE_ID> [--action ACTION]`
 
 Submit bounded operator response.
 
 **Arguments:**
 - `CASE_ID`: Case identifier
 
-**Required Flags:**
-- `--action ACTION`: Response action
-
-**Optional Flags:**
+**Flags:**
+- `--action ACTION`: Response action token
 - `--data JSON`: Response payload
 - `--reason TEXT`: Human-readable reason
+- `--response TEXT`: Legacy response text alias
+- `--json`: Output as JSON
+- `--output MODE`: Output mode (human, json, jsonl)
+- `--plan PATH`: Path to plan.yaml
+
+**Alias:** `vectl orch case respond`
+
+**Note:** Requires either `--action` or `--response` flag
 
 ---
 
 ### 7.4 Control Family
 
-#### `vectl orch control pause [RUN_ID|--latest]`
+#### `vectl orch pause [RUN_ID|--latest]`
 
 Stop dispatching new work.
 
 **Flags:**
+- `--latest`: Use most recently updated run
+- `--step STEP_ID`: Specific step to pause
 - `--reason TEXT`: Pause reason
+- `--json`: Output as JSON
+- `--output MODE`: Output mode (human, json, jsonl)
+- `--plan PATH`: Path to plan.yaml
+
+**Alias:** `vectl orch control pause`
 
 ---
 
-#### `vectl orch control unpause [RUN_ID|--latest]`
+#### `vectl orch unpause [RUN_ID|--latest]`
 
 Resume normal dispatch from paused state.
 
 **Flags:**
+- `--latest`: Use most recently updated run
+- `--step STEP_ID`: Specific step to unpause
 - `--reason TEXT`: Unpause reason
+- `--json`: Output as JSON
+- `--output MODE`: Output mode (human, json, jsonl)
+- `--plan PATH`: Path to plan.yaml
+
+**Alias:** `vectl orch control unpause`
 
 ---
 
-#### `vectl orch control stop [RUN_ID|--latest]`
+#### `vectl orch stop [RUN_ID|--latest]`
 
 Graceful operator-requested stop.
 
 **Flags:**
-- `--reason TEXT`: Stop reason
+- `--latest`: Use most recently updated run
+- `--reason TEXT, -r TEXT`: Stop reason
 - `--force`: Immediate stop (may leave inconsistency)
+- `--json`: Output as JSON
+- `--output MODE`: Output mode (human, json, jsonl)
+- `--plan PATH`: Path to plan.yaml
+
+**Alias:** `vectl orch control stop`
 
 ---
 
 ### 7.5 Config Family
 
-#### `vectl orch config show`
+#### `vectl orch config-show`
 
 Show effective configuration.
 
 **Flags:**
 - `--effective`: Show merged config with sources
 - `--json`: Output as JSON
+- `--output MODE`: Output mode (human, json, jsonl)
+- `--plan PATH`: Path to plan.yaml
+
+**Alias:** `vectl orch config show`
 
 ---
 
-#### `vectl orch config validate [PATH]`
+#### `vectl orch config-validate [PATH]`
 
 Validate config shape and report sources/errors.
 
 **Arguments:**
 - `PATH`: Config file path (optional, uses discovery)
+
+**Flags:**
+- `--json`: Output as JSON
+- `--output MODE`: Output mode (human, json, jsonl)
+- `--plan PATH`: Path to plan.yaml
 
 **Behavior:**
 1. Discover config file (if not specified)
@@ -377,14 +478,50 @@ Validate config shape and report sources/errors.
 3. Validate against schema
 4. Report errors with line numbers
 
+**Exit codes:** 0 (valid), 3 (validation error)
+
+**Alias:** `vectl orch config validate`
+
 ---
 
-#### `vectl orch config tools`
+#### `vectl orch config-tools`
 
 List canonical tool registry for allowlist authoring.
 
 **Flags:**
 - `--json`: Output as JSON
+- `--output MODE`: Output mode (human, json, jsonl)
+- `--plan PATH`: Path to plan.yaml
+
+**Alias:** `vectl orch config tools`
+
+---
+
+### 7.6 Migration Family
+
+#### `vectl orch migration validate-cutover`
+
+Validate cutover readiness from legacy driver to orchestration plane.
+
+**Flags:**
+- `--json`: Output as JSON
+- `--output MODE`: Output mode (human, json, jsonl)
+- `--plan PATH`: Path to plan.yaml
+
+**Alias:** `vectl orch cutover-validate`
+
+---
+
+#### `vectl orch migration advance-state`
+
+Advance migration state for a legacy run.
+
+**Flags:**
+- `--run RUN_ID`: Run ID to advance (required)
+- `--to STATE`: Target migration state (parallel, preferred, deprecated, retired)
+- `--json`: Output as JSON
+- `--output MODE`: Output mode (human, json, jsonl)
+- `--plan PATH`: Path to plan.yaml
 
 ---
 

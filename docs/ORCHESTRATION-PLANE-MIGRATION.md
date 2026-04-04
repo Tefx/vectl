@@ -36,7 +36,9 @@ These are the current authoritative target docs:
 - `docs/ORCHESTRATION-PLANE-RESOLUTION-CONTRACT.md`
 - `docs/ORCHESTRATION-PLANE-ISOLATION-SEMANTICS.md`
 - `docs/ORCHESTRATION-PLANE-IMPLEMENTATION-DESIGN.md`
+- `docs/ORCHESTRATION-PLANE-CLI-CONFIG-OBSERVABILITY-DESIGN.md`
 - `docs/ORCHESTRATION-PLANE-MIGRATION.md`
+- `docs/ORCH-OPERATOR-CUTOVER-VALIDATION-MIGRATION-STATE-AUDIT.md`
 
 ### 2.2 Legacy implementation reference documents
 
@@ -129,6 +131,13 @@ A legacy code path may be retired only when:
 3. docs no longer rely on the legacy path as the primary executable reference,
 4. the migration does not erase currently known-good behavior.
 
+**Current migration status (as of cutover validation):**
+- `src/vectl/orchestration/` components (control, roster, runtime, resolver) are landed
+- `src/vectl/orch_app.py` provides the operator-facing composition root
+- `vectl orch` CLI commands are fully implemented
+- Legacy `src/vectl/driver/` package remains as reference baseline
+- Migration state tracking is available via `vectl orch runs` and `vectl orch migration` commands
+
 ---
 
 ## 6. Test Disposition Rule
@@ -197,6 +206,51 @@ Migration is succeeding when:
 - target component boundaries stay stable,
 - code moves by responsibility rather than by naming fashion,
 - and behavior/test evidence is preserved throughout.
+
+**Current status:**
+- [x] Target docs are the clear authority
+- [x] `src/vectl/orchestration/` package is landed with all four components
+- [x] `vectl orch` CLI is fully implemented
+- [x] Migration state tracking via `vectl orch migration` commands
+- [x] Cutover validation available via `vectl orch cutover-validate`
+- [x] Legacy `src/vectl/driver/` preserved as reference baseline
+
+## 9. Migration Posture
+
+### Current State
+
+The orchestration plane is **landed and operational**:
+
+1. **Components implemented:**
+   - `control.py` - `PlanAwareControl` with evaluate/apply_resolution
+   - `roster.py` - Resource registry with TTL and isolation enforcement
+   - `runtime.py` - Worktree/workspace preparation and execution support
+   - `resolver.py` - Blocked/unresolved case reasoning with `BoundResolver`
+   - `core_adapter.py` - `PlanCoreAdapter` over vectl core
+   - `config.py` - Full configuration loading, freezing, and validation
+   - `events.py` - Canonical event envelopes with hash-chain integrity
+   - `judgments.py` - Typed judgment support
+
+2. **Operator surface available:**
+   - `vectl orch run/resume/recover/runs/prune`
+   - `vectl orch status/events/logs/artifacts/actions`
+   - `vectl orch case-list/case-show/case-respond`
+   - `vectl orch pause/unpause/stop`
+   - `vectl orch config-show/config-validate/config-tools`
+   - `vectl orch migration validate-cutover/advance-state`
+
+3. **Legacy driver status:**
+   - Preserved under `src/vectl/driver/`
+   - Available as reference baseline
+   - Migration state tracked per-run
+
+### Operator Guidance
+
+For operators:
+- Use `vectl orch` commands for orchestration operations
+- Use `vectl orch cutover-validate` before relying on new surface
+- Check migration state via `vectl orch runs --status migrated`
+- Legacy `vectl drive` remains available during transition
 
 ---
 

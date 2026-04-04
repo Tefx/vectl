@@ -1,0 +1,76 @@
+status: "FAIL"
+evidence: |
+  Artifact:
+  - PR/commit: N/A (verification on current working tree)
+  
+  Verification:
+  - Run: consumer_boundary_conformance_verify.py -> FAIL (2 conformance debts)
+
+  behavioral_proof_register:
+  - runs() surface delegates to RunsQueryImpl which queries RunRegistry, not independent re-derivation
+  - case_list() surface delegates to CasesQueryImpl which queries RunRegistry._latest_cases_by_case_id(), not independent re-derivation
+  - CONFORMANCE DEBT: RecoveryOutcome enum is spec-defined but NOT consumed. Internal _RecoveryDecision uses different outcome strings: resume_safe, recover_and_resume, fresh_start_required, blocking_divergence, corrupt_blocking, ambiguous_blocking. Public enum values: recovered, blocked, quarantined, no_artifacts, operator_required, halt.
+  - CutoverValidator consumes RunRegistry.shared fixture, not independent re-derivation of imported run state
+  - CONFORMANCE DEBT: RecoveryReport DTO is defined in recovery.py but NOT returned by orch_app.recover(). orch_app.recover() returns OrchestrationResult instead. The spec-defined RecoveryReport with fields (outcome, actions, hygiene_results) is unused.
+
+  gate_open_allowed: false
+
+  FINDING SUMMARY:
+  ================================
+  PASSED CONFORMANCE CHECKS:
+  ----------------------------
+  1. runs() surface - PASS
+     - CLI `vectl orch runs` calls OrchestrationApp.runs()
+     - OrchestrationApp.runs() instantiates RunsQueryImpl(registry)
+     - RunsQueryImpl.query() calls registry._latest_records_by_run_id()
+     - No independent re-derivation: RunRecord.status is CONSUMED from shared fixture
+
+  2. case_list() surface - PASS
+     - CLI `vectl orch case list` calls OrchestrationApp.case_list()
+     - OrchestrationApp.case_list() instantiates CasesQueryImpl(registry)
+     - CasesQueryImpl.open_cases() calls registry._latest_cases_by_case_id()
+     - No independent re-derivation: CaseIndexEntry.status is CONSUMED from shared fixture
+
+  3. CutoverValidator.validate_cutover_readiness() - PASS
+     - consumes RunRegistry.imported_legacy_runs()
+     - consumes RunRegistry.cases_for_run()
+     - consumes record.continuity_blocker from shared fixture
+     - No independent re-derivation of migration state or recovery blockers
+
+  BLOCKING CONFORMANCE DEBTS:
+  ----------------------------
+  1. RecoveryOutcome enum NOT CONSUMED (spec-defined but unused)
+     - src/vectl/orchestration/recovery.py defines RecoveryOutcome enum
+     - Values: RECOVERED, BLOCKED, QUARANTINED, NO_ARTIFACTS, OPERATOR_REQUIRED, HALT
+     - orch_app._RecoveryDecision uses DIFFERENT outcome strings
+       - resume_safe, recover_and_resume, fresh_start_required
+       - blocking_divergence, corrupt_blocking, ambiguous_blocking
+     - INTERSECTION: {} (empty - no overlap)
+     - This means CLI `vectl orch recover` does NOT return enum-mapped outcomes
+
+  2. RecoveryReport DTO NOT RETURNED (spec-defined but unused)
+     - src/vectl/orchestration/recovery.py defines RecoveryReport dataclass
+     - Fields: outcome, message, step_id, run_id, actions, hygiene_results
+     - orch_app.recover() returns OrchestrationResult instead
+     - OrchestrationResult has fields: success, message, step_id, run_id
+     - Missing fields: outcome (RecoveryOutcome), actions, hygiene_results
+     - This means recovery facts are NOT exposed via the spec-defined surface
+
+  REQUIRED REMEDIATION:
+  ----------------------------
+  1. Map internal _RecoveryDecision.outcome to RecoveryOutcome enum
+     - resume_safe -> RECOVERED (or similar mapping)
+     - blocking_divergence -> BLOCKED
+     - fresh_start_required -> QUARANTINED (with artifact quarantine)
+     - etc.
+
+  2. Return RecoveryReport from orch_app.recover() instead of OrchestrationResult
+     - Include outcome: RecoveryOutcome
+     - Include actions: tuple[RecoveryAction, ...]
+     - Include hygiene_results: tuple[HygieneClassificationResult, ...]
+
+  3. Ensure CLI `vectl orch recover` surfaces the RecoveryReport fields
+     - Currently only surfaces OrchestrationResult.success and message
+     - Must surface outcome, actions, hygiene_results for operator visibility
+
+error: ""

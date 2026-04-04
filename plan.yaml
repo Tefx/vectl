@@ -61109,7 +61109,7 @@ phases:
       - Out-of-scope acceptance-policy logic intentionally not implemented.'
   - id: orch_operator_control_surface.impl_inspection_queries
     name: Implement inspection query DTOs over run store and projections
-    status: claimed
+    status: done
     description: 'step_type: implementation
 
 
@@ -61159,6 +61159,35 @@ phases:
     agent: python-executor
     claimed_by: python-executor
     claimed_at: '2026-04-04T16:11:24.507494+00:00'
+    done_at: '2026-04-04T16:26:23.366868+00:00'
+    evidence: 'Commit hash(es): 3c6f9cb
+
+      Files changed:
+
+      - src/vectl/orchestration/inspection_queries.py
+
+      Verification:
+
+      - python3 -m py_compile src/vectl/orchestration/inspection_queries.py -> OK
+
+      - uv run pytest tests/orchestration/unit/ -> 159 passed
+
+      - Inline integration check with shared RunRegistry fixture consumed by runs
+      and cases query surfaces
+
+      Spec link:
+
+      - plan step orch_operator_control_surface.impl_inspection_queries contracts
+      (joined DTO/query interfaces)
+
+      Gaps/Notes:
+
+      - Implemented RunsQueryImpl/CasesQueryImpl and query convenience functions consuming
+      canonical run_store/projection facts.
+
+      - No CLI formatting logic introduced.
+
+      - No deviation records.'
   - id: orch_operator_control_surface.mid_gate
     name: Quick gate for operator-surface pattern correctness
     status: pending

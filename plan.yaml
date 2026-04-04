@@ -61018,7 +61018,7 @@ phases:
     claimed_at: '2026-04-04T16:18:38.768679+00:00'
   - id: orch_operator_control_surface.impl_control_channel
     name: Implement file-based operator action control channel
-    status: claimed
+    status: done
     description: 'step_type: implementation
 
 
@@ -61073,6 +61073,40 @@ phases:
     agent: python-senior
     claimed_by: python-senior
     claimed_at: '2026-04-04T16:02:34.391810+00:00'
+    done_at: '2026-04-04T16:26:14.288591+00:00'
+    evidence: 'Commit hash(es): a5a60a8
+
+      Files changed:
+
+      - src/vectl/orchestration/control_channel.py
+
+      - tests/orchestration/unit/test_control_channel.py
+
+      Verification:
+
+      - uv run pytest -q tests/orchestration/unit/test_control_channel.py -> 7 passed
+
+      - uv run pytest -q tests/orchestration/unit/test_run_store.py tests/orchestration/unit/test_control_channel.py
+      -> 16 passed
+
+      - uv run ruff check src/vectl/orchestration/control_channel.py tests/orchestration/unit/test_control_channel.py
+      -> passed
+
+      - Verified control directory layout for run-local pending/applied/rejected paths
+
+      Spec link:
+
+      - docs/ORCHESTRATION-PLANE-CLI-CONFIG-OBSERVABILITY-DESIGN.md §7.2, §8.5
+
+      Gaps/Notes:
+
+      - Implemented filesystem-backed pending/applied/rejected lifecycle, timeout
+      acknowledgements, malformed/duplicate deterministic rejection, bounded pending
+      queue.
+
+      - No deviation records.
+
+      - Out-of-scope acceptance-policy logic intentionally not implemented.'
   - id: orch_operator_control_surface.impl_inspection_queries
     name: Implement inspection query DTOs over run store and projections
     status: claimed

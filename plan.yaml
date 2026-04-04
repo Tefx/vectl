@@ -59970,3 +59970,58 @@ phases:
       - Evidence includes sibling search confirming no bypass path around the canonical
       tool registry'
     agent: python-senior
+  - id: orch_operator_control_surface.impl_control_channel
+    name: Implement file-based operator action control channel
+    status: pending
+    description: 'step_type: implementation
+
+
+      Fill in stub bodies in src/vectl/orchestration/control_channel.py per the contract
+      from orch_operator_contracts.foundation_contracts and tests from orch_operator_tests.cli_recovery_red.
+
+
+      UPSTREAM ARTIFACTS:
+
+      - src/vectl/orchestration/control_channel.py — pending/applied/rejected action
+      contracts
+
+      - tests from orch_operator_tests.cli_recovery_red are PROTECTED
+
+
+      YOUR SCOPE: implement request persistence, acknowledgement lookup, bounded pending-action
+      handling, applied/rejected receipts, and file-layout semantics for operator
+      pause/unpause/stop and case responses.
+
+
+      Failure-mode checklist:
+
+      - duplicate or malformed action files must be rejected deterministically
+
+      - timed-out acknowledgements must surface as explicit operator-visible status,
+      not silent wait
+
+      - queue growth must respect max_pending_actions and preserve ordering semantics
+
+      - path normalization must remain run-local and not leak across runs
+
+
+      Out-of-scope guardrail:
+
+      - do not implement policy for whether an action should be accepted; only the
+      channel/persistence contract and acknowledgement mechanics
+
+
+      ## Completion Criteria (stub exclusion)
+
+      This is an IMPLEMENTATION step. Stub-only completion is NOT acceptable.'
+    verification: 'local-check protecting orch_operator_control_surface.mid_gate,
+      cli_seam_integration_proof, and orch_operator_recovery_cutover:
+
+      - Main path: targeted tests prove pending/applied/rejected flow and acknowledgement
+      lookup
+
+      - Failure path: regression tests cover malformed/duplicate action files, timeout
+      handling, and bounded queue enforcement
+
+      - Evidence includes the exact control directory layout used by tests'
+    agent: python-senior

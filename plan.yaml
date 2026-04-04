@@ -60351,3 +60351,11 @@ phases:
     - orch_operator_control_surface.spec_conformance
     - orch_operator_control_surface.wiring_audit
     agent: gate-reviewer
+- id: orch_operator_recovery_cutover
+  name: Orchestration Recovery, Resume, and Legacy Bridge
+  status: locked
+  gate: Recovery/resume behavior, continuity artifact handling, and legacy bridge/import
+    semantics satisfy the documented outcome model and are independently verified
+    before system wiring and cutover validation.
+  depends_on:
+  - orch_operator_control_surface

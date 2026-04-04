@@ -20,13 +20,27 @@ interface anchors with documented gaps.
 
 from __future__ import annotations
 
+from collections import Counter
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, Literal, Protocol
+from pathlib import Path
+from typing import TYPE_CHECKING, Literal, Protocol, cast
 
 from vectl.orchestration.contracts import CoreSnapshot, RosterSnapshot, RuntimeSnapshot
+from vectl.orchestration.run_store import CaseIndexEntry, RunRecord, RunRegistry
+from vectl.orchestration.projections import RunStateView
 
 if TYPE_CHECKING:
     pass
+
+
+# Status values shared across run-store and projections
+_RUN_STATUSES: tuple[Literal["pending", "running", "success", "fail", "stall"], ...] = (
+    "pending",
+    "running",
+    "success",
+    "fail",
+    "stall",
+)
 
 
 # ---------------------------------------------------------------------
@@ -139,6 +153,110 @@ class RunsQuery(Protocol):
         ...
 
 
+class RunsQueryImpl:
+    """
+    Concrete run registry query implementation.
+
+    Joins run-store records with optional projection state for
+    enriched run-state views. Does not re-derive liveness or status
+    independently; consumes canonical run-store and projection facts.
+
+    Args:
+        registry: RunRegistry instance for run-record lookups.
+        projection_root: Optional artifact root for RunStateView enrichment.
+    """
+
+    def __init__(
+        self,
+        registry: RunRegistry,
+        *,
+        projection_root: Path | None = None,
+    ) -> None:
+        self._registry = registry
+        self._projection_root = projection_root
+
+    def query(self, inspect_query: InspectQuery) -> RunsInspectView:
+        """
+        Execute a run registry query and return a joined RunsInspectView.
+
+        Applies step_id, agent, and status filters from ``inspect_query``.
+        Aggregates status counts from the filtered run records. When a
+        projection root is configured, enriches the view with the latest
+        RunStateView for the matching runs.
+
+        Args:
+            inspect_query: The query parameters.
+
+        Returns:
+            RunsInspectView with query results.
+        """
+        records = self._filtered_records(inspect_query)
+
+        run_ids = tuple(record.run_id for record in records)
+        latest_run_id: str | None = None
+        if records:
+            latest_record = max(records, key=lambda r: (r.updated_at or 0.0, r.run_id))
+            latest_run_id = latest_record.run_id
+
+        status_counts = Counter(record.status for record in records if record.status is not None)
+        statuses = cast(
+            "tuple[Literal['pending', 'running', 'success', 'fail', 'stall'], ...]",
+            tuple(status for status in _RUN_STATUSES if status_counts.get(status, 0) > 0),
+        )
+
+        step_ids = {record.step_id for record in records if record.step_id}
+        agents = {record.agent for record in records if record.agent}
+
+        return RunsInspectView(
+            step_id=inspect_query.step_id,
+            agent=inspect_query.agent,
+            runs=run_ids,
+            latest_run_id=latest_run_id,
+            total_count=len(records),
+            statuses=statuses,
+        )
+
+    def latest_for_step(self, step_id: str) -> str | None:
+        """
+        Return the run ID of the latest run for a step (--latest).
+
+        Args:
+            step_id: The step to look up.
+
+        Returns:
+            The latest run ID, or None.
+        """
+        record = self._registry.latest_for_step(step_id)
+        return record.run_id if record is not None else None
+
+    def _filtered_records(
+        self,
+        inspect_query: InspectQuery,
+    ) -> list[RunRecord]:
+        """
+        Return run records matching the inspect query filters.
+
+        Applies step_id, agent, and status filters in sequence.
+        """
+        records: list[RunRecord] = []
+
+        if inspect_query.step_id:
+            records = list(self._registry.all_for_step(inspect_query.step_id))
+        elif inspect_query.agent:
+            all_records: dict[str, RunRecord] = self._registry._latest_records_by_run_id()
+            records = [r for r in all_records.values() if r.agent == inspect_query.agent]
+            records.sort(key=lambda r: (r.updated_at or 0.0, r.run_id), reverse=True)
+        elif inspect_query.status:
+            records = list(self._registry.by_status(inspect_query.status))
+        else:
+            all_records: dict[str, RunRecord] = self._registry._latest_records_by_run_id()
+            records = list(all_records.values())
+            records.sort(key=lambda r: (r.updated_at or 0.0, r.run_id), reverse=True)
+
+        # Apply limit/offset pagination
+        return records[inspect_query.offset : inspect_query.offset + inspect_query.limit]
+
+
 class CasesQuery(Protocol):
     """
     Protocol for case/unresolved registry query operations.
@@ -176,6 +294,53 @@ class CasesQuery(Protocol):
         ...
 
 
+class CasesQueryImpl:
+    """
+    Concrete cases registry query implementation.
+
+    Consumes canonical case-index entries from the run store without
+    re-deriving case state independently.
+
+    Args:
+        registry: RunRegistry instance for case-index lookups.
+    """
+
+    def __init__(self, registry: RunRegistry) -> None:
+        self._registry = registry
+
+    def open_cases(self) -> tuple[str, ...]:
+        """
+        Return identifiers for all open (unresolved) cases.
+
+        Returns:
+            Tuple of open case identifiers.
+        """
+        latest_cases = self._registry._latest_cases_by_case_id()
+        open_ids = [case_id for case_id, entry in latest_cases.items() if entry.status == "open"]
+        return tuple(sorted(open_ids))
+
+    def by_step(self, step_id: str) -> tuple[str, ...]:
+        """
+        Return all case identifiers associated with a step.
+
+        Walks run records for the step and collects case identifiers
+        from the case index.
+
+        Args:
+            step_id: The step to look up.
+
+        Returns:
+            Tuple of case identifiers for the step.
+        """
+        run_records = self._registry.all_for_step(step_id)
+        case_ids: list[str] = []
+        for record in run_records:
+            for case_entry in self._registry.cases_for_run(record.run_id):
+                if case_entry.status == "open" and case_entry.case_id not in case_ids:
+                    case_ids.append(case_entry.case_id)
+        return tuple(sorted(case_ids))
+
+
 # ---------------------------------------------------------------------
 # Query Convenience Functions
 # ---------------------------------------------------------------------
@@ -192,22 +357,17 @@ def query_runs(
 
     Authority: docs/ORCHESTRATION-PLANE-IMPLEMENTATION-DESIGN.md (shared)
 
-    GAP: The default registry instance is not yet specified.
-
     Args:
         inspect_query: The query parameters.
         registry: Optional explicit query instance. If None, a default
-            registry must be globally available.
+            RunRegistry is constructed and used.
 
     Returns:
         RunsInspectView with query results.
-
-    Raises:
-        NotImplementedError: Until query semantics are specified.
     """
-    raise NotImplementedError(
-        "query_runs: default registry and query semantics not yet specified in design docs"
-    )
+    if registry is None:
+        registry = RunsQueryImpl(RunRegistry())
+    return registry.query(inspect_query)
 
 
 def query_cases(
@@ -219,23 +379,23 @@ def query_cases(
 
     Authority: docs/ORCHESTRATION-PLANE-IMPLEMENTATION-DESIGN.md (shared)
 
-    GAP: The default registry instance is not yet specified.
-
     Args:
-        cases_query: Optional query specifier (e.g., "open", step_id filter).
-            None means return all cases.
+        cases_query: Optional query specifier. "open" returns open cases;
+            a step_id string returns cases for that step. None returns
+            all open cases.
         registry: Optional explicit query instance. If None, a default
-            registry must be globally available.
+            RunRegistry is constructed and used.
 
     Returns:
         Tuple of matching case identifiers.
-
-    Raises:
-        NotImplementedError: Until query semantics are specified.
     """
-    raise NotImplementedError(
-        "query_cases: default registry and query semantics not yet specified in design docs"
-    )
+    if registry is None:
+        registry = CasesQueryImpl(RunRegistry())
+
+    if cases_query is None or cases_query == "open":
+        return registry.open_cases()
+    # Treat as step_id filter
+    return registry.by_step(cases_query)
 
 
 __all__ = [
@@ -243,6 +403,8 @@ __all__ = [
     "InspectQuery",
     "RunsQuery",
     "CasesQuery",
+    "RunsQueryImpl",
+    "CasesQueryImpl",
     "query_runs",
     "query_cases",
 ]

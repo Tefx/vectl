@@ -63135,6 +63135,102 @@ phases:
     - orch_operator_cutover_validation.replacement_workflow_smoke
     - orch_operator_cutover_validation.migration_state_audit
     agent: python-senior
+  - id: orch_operator_cutover_validation.reverify_cutover_operator_surface
+    name: Reverify cutover operator surface and gate prep
+    status: pending
+    description: 'Independent reverify/gate-prep for the batched cutover remediation.
+
+
+      step_type: verification
+
+      verification_scope: phase-check
+
+
+      As an INDEPENDENT TESTER, validate that the batched remediation closes both
+      blocker families before gate review.
+
+
+      Required checks:
+
+      - Replacement-grade cutover validation exercises all four retirement criteria
+      required by `ORCHESTRATION-PLANE-MIGRATION.md`
+
+      - Canonical operator command surface can run cutover validation and advance
+      migration state through the real operator workflow
+
+      - Evidence distinguishes success, blocked retirement, and migration-state transition
+      outcomes clearly enough for gate review
+
+
+      Finding issues is success for this step; surface any remaining blocker explicitly.'
+    verification: 'phase-check protecting orch_operator_cutover_validation.gate:
+
+      - Independent command-path verification proves the operator entrypoint exposes
+      cutover validation and migration-state advancement
+
+      - Independent validation evidence confirms all four retirement criteria are
+      checked
+
+      - Any remaining blocker is documented with reproduction and ownership'
+    evidence_template: '## Verification Report
+
+
+      **Tester**: integration-verifier (independent)
+
+      **Scope**: cutover validation + migration-state advancement operator surface
+
+      **Independence Level**: L1
+
+
+      ### refs Read Confirmation (MANDATORY)
+
+      No refs for this step.
+
+
+      ### Test Execution
+
+      - Commands executed:
+
+      ```
+
+      <paste exact operator commands>
+
+      ```
+
+      - Output summary:
+
+      ```
+
+      <paste actual output>
+
+      ```
+
+
+      ### Requirement Coverage
+
+      - Retirement criterion 1: <proved / blocked>
+
+      - Retirement criterion 2: <proved / blocked>
+
+      - Retirement criterion 3: <proved / blocked>
+
+      - Retirement criterion 4: <proved / blocked>
+
+      - Migration-state advancement path: <proved / blocked>
+
+
+      ### Verdict
+
+      - [ ] PASS
+
+      - [ ] ISSUES_FOUND
+
+      - [ ] INCOMPLETE
+
+      '
+    depends_on:
+    - orch_operator_cutover_validation.fix_cutover_gate_blockers
+    agent: integration-verifier
 - id: orch_operator_doc_sync
   name: Orchestration Operator Documentation Sync
   status: locked

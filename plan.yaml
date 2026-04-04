@@ -59977,7 +59977,7 @@ phases:
       new impl tests. Commit: 521f79e167ac50e77a18a4f2a85027071f307fda.'
   - id: orch_operator_config_state.impl_run_store_and_cases_index
     name: Implement run store, run registry, case index, and latest selection
-    status: claimed
+    status: done
     description: 'step_type: implementation
 
 
@@ -60057,6 +60057,15 @@ phases:
     agent: python-senior
     claimed_by: python-senior
     claimed_at: '2026-04-04T13:58:56.439842+00:00'
+    done_at: '2026-04-04T14:16:17.338667+00:00'
+    evidence: 'Implemented `src/vectl/orchestration/run_store.py` stubs for ULID run
+      identity handling, append-oriented index/cases JSONL updates, latest selection,
+      same-plan admission checks, artifact path discovery, and heartbeat/liveness
+      helpers. Verification: `uv run pytest -q tests/orchestration/unit/test_run_store.py`
+      -> 9 passed; `uv run ruff check src/vectl/orchestration/run_store.py tests/orchestration/unit/test_run_store.py`
+      PASS; `uv run mypy src/vectl/orchestration/run_store.py` PASS. Failure-path
+      coverage includes malformed trailing JSONL corruption surfacing, bounded append
+      retry behavior, and missing-heartbeat->unknown classification. Commit: d490f3a709271fbe7a8446e26768913626ade969.'
   - id: orch_operator_config_state.retest_green
     name: Retest config, freeze, and run-store behavior green
     status: pending

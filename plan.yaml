@@ -60328,7 +60328,7 @@ phases:
     claimed_at: '2026-04-04T14:32:07.660837+00:00'
   - id: orch_operator_observability.spec_conformance
     name: Verify event and projection spec conformance
-    status: claimed
+    status: done
     description: Spec conformance verification via adversarial divergence hunting
       for envelope fields, event families, artifact schemas, and projection meanings.
     verification: 'phase-check protecting orch_operator_control_surface:
@@ -60345,6 +60345,13 @@ phases:
     agent: spec-verifier
     claimed_by: spec-verifier
     claimed_at: '2026-04-04T14:32:19.955882+00:00'
+    done_at: '2026-04-04T14:51:41.104067+00:00'
+    evidence: Adversarial spec-conformance audit executed and reported requirement-level
+      verdicts with file:line citations. Findings include major divergences in event
+      envelope field naming/shape (`kind/timestamp/payload/seq` vs spec), event-family
+      taxonomy omissions, RunStateView structural drift, and partial/not-found artifact
+      writer coverage. Report also marks runtime-needed assertions and drift categories
+      explicitly.
   - id: orch_operator_observability.gate
     name: Gate events, projections, and artifacts phase
     status: pending

@@ -62506,10 +62506,25 @@ phases:
   - id: orch_operator_system_wiring.verify_e2e
     name: Verify end-to-end vectl orch data flow
     status: pending
-    description: Early end-to-end operator vertical slice using the real `vectl orch`
+    description: 'Early end-to-end operator vertical slice using the real `vectl orch`
       entrypoint. Exercise one complete run path plus one blocked/recovery-aware path
       so data flows from CLI -> orch_app -> control/read modules -> run artifacts
       -> inspect/recover surfaces.
+
+
+      Integration companion: provide seam-level real path evidence for operator entrypoint
+      wiring. Mock-heavy or helper-level evidence is insufficient.
+
+
+      Required proof paths:
+
+      - one successful start/inspect artifact path through the real CLI entrypoint
+
+      - one blocked or recovery-aware path proving the same runtime boundary handles
+      failure semantics correctly
+
+      - artifact and read-surface traversal showing the command reaches persisted
+      runtime evidence rather than only in-memory state'
     verification: 'phase-check protecting orch_operator_cutover_validation and doc
       sync:
 
@@ -62518,17 +62533,64 @@ phases:
       - Show one successful run-path artifact set and one blocked/recovery-aware path
 
       - Evidence includes commands, outputs, and artifact locations proving the full
-      layer traversal'
-    evidence_template: 'Paste:
+      layer traversal
 
-      - exact `vectl orch` commands for one successful path and one blocked/recovery
-      path
+      - Evidence states the exact path exercised: CLI -> orch_app -> control/read/recovery
+      modules -> artifacts -> inspect/recover surfaces'
+    evidence_template: '## Integration Evidence
 
-      - resulting run_id(s)
 
-      - artifact files written/read across the path
+      ### refs Read Confirmation (MANDATORY)
 
-      - observed CLI output'
+      For each ref in this step:
+
+      - <filename> — key passage or "NOT READ: <reason>"
+
+
+      If no refs were provided, state: "No refs for this step."
+
+
+      **Command or test exercising the full successful path**:
+
+      ```
+
+      <exact command>
+
+      ```
+
+
+      **Actual output**:
+
+      ```
+
+      <stdout/stderr>
+
+      ```
+
+
+      **Command or test exercising the blocked/recovery-aware path**:
+
+      ```
+
+      <exact command>
+
+      ```
+
+
+      **Actual output**:
+
+      ```
+
+      <stdout/stderr>
+
+      ```
+
+
+      **Artifact/read surfaces exercised**: <artifact paths and commands used to inspect
+      them>
+
+
+      **Path exercised**: CLI -> orch_app -> ... -> artifacts -> inspect/recover surface'
     depends_on:
     - orch_operator_system_wiring.replace_runtime_stubs
     agent: integration-verifier

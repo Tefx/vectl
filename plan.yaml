@@ -59893,7 +59893,7 @@ phases:
       defect). Tests remain spec-derived and implementation-free.'
 - id: orch_operator_config_state
   name: Orchestration Config, Freeze, and Run Store
-  status: in_progress
+  status: done
   gate: Config loading/freeze, tool metadata validation, run index/cases index behavior,
     and run-store persistence semantics satisfy the operator-surface docs and green
     retests.
@@ -60159,7 +60159,7 @@ phases:
       depends on that remediation path.
   - id: orch_operator_config_state.gate
     name: Gate config, freeze, and run-store phase
-    status: claimed
+    status: done
     description: 'Gate review: verify config/load/freeze behavior, tool allowlist
       validation, run-store persistence, and case-index rules are ready for downstream
       operator-surface integration.'
@@ -60189,6 +60189,56 @@ phases:
     agent: gate-reviewer
     claimed_by: gate-reviewer
     claimed_at: '2026-04-04T15:58:31.356034+00:00'
+    done_at: '2026-04-04T16:01:39.695295+00:00'
+    evidence: 'Artifact:
+
+      - Task: ses_2a6c80a82ffeMa9iNGGRtPmhwb (gate-reviewer)
+
+
+      Verification:
+
+      - Run: pytest tests/orchestration/unit/test_config_state_impl.py -> 45 passed
+
+      - Run: pytest tests/orchestration/unit/test_run_store.py -> 10 passed
+
+      - Run: pytest tests/orchestration/unit/test_config_state_red.py -> expected
+      red subset remains (6 failed, 24 passed)
+
+      - Run: mypy src/vectl/orchestration/config.py src/vectl/orchestration/run_store.py
+      src/vectl/orchestration/tool_registry.py -> passed
+
+      - Outcome: Gate criteria passed with no blocker/should_fix preventing progression;
+      one non-blocking should_fix on config.py file length maintainability.
+
+
+      Findings:
+
+      - blocker: none
+
+      - should_fix: src/vectl/orchestration/config.py length (maintainability)
+
+      - suggestion: docstring examples, optional JSONL schema versioning
+
+      - tech_debt: none
+
+
+      Step semantics:
+
+      - step_intent: gate_review
+
+      - expected_result: green
+
+      - observed_result: green
+
+      - failure_alignment: none
+
+      - product_implementation_files_modified: NO
+
+
+      Spec link:
+
+      - docs/ORCHESTRATION-PLANE-CLI-CONFIG-OBSERVABILITY-DESIGN.md §§8.1-8.8, §9,
+      §10'
   - id: orch_operator_config_state.fix_runtime_resume_snapshot_binding
     name: Fix runtime wiring and resume snapshot binding blockers
     status: done
@@ -60899,7 +60949,7 @@ phases:
       integration readiness verified.'
 - id: orch_operator_control_surface
   name: Orchestration Control Channel, Queries, App Root, and CLI
-  status: locked
+  status: pending
   gate: Resolver gateway, control channel, inspection queries, orch_app wiring, and
     vectl orch CLI behavior are implemented, seam-verified, and runnable from the
     real CLI entrypoint.

@@ -9,8 +9,10 @@ import enum
 import json
 import os
 import sys
-from dataclasses import replace
+import time
+from dataclasses import asdict, is_dataclass, replace
 from pathlib import Path
+from typing import Any, Literal, cast
 
 import typer
 from rich.console import Console
@@ -420,6 +422,14 @@ orch_app = typer.Typer(
     help="Orchestration operator commands: run, resume, recover, inspect, case, control, config.",
 )
 app.add_typer(orch_app, name="orch")
+orch_inspect_app = typer.Typer(help="Inspect orchestration runtime surfaces.")
+orch_case_app = typer.Typer(help="Case inspection and operator response surfaces.")
+orch_control_app = typer.Typer(help="Operator control actions (pause/unpause/stop).")
+orch_config_app = typer.Typer(help="Orchestration config surfaces.")
+orch_app.add_typer(orch_inspect_app, name="inspect")
+orch_app.add_typer(orch_case_app, name="case")
+orch_app.add_typer(orch_control_app, name="control")
+orch_app.add_typer(orch_config_app, name="config")
 
 PlanOption = typer.Option(
     None,
@@ -515,6 +525,15 @@ def merge_driver_cmd(
 # Authority: docs/ORCHESTRATION-PLANE-IMPLEMENTATION-DESIGN.md section 6
 # ---------------------------------------------------------------------------
 
+
+class OrchOutputMode(str, enum.Enum):
+    """CLI output mode for orchestration command surfaces."""
+
+    HUMAN = "human"
+    JSON = "json"
+    JSONL = "jsonl"
+
+
 OrchPlanOption = typer.Option(
     None,
     "--plan",
@@ -527,6 +546,23 @@ OrchAgentOption = typer.Option(
     "-a",
     help="Agent name to use for orchestration.",
 )
+OrchRunArgument = typer.Argument(None, help="Optional run selector.")
+OrchConfigPathArgument = typer.Argument(
+    None,
+    help="Optional config file path (mapped to --plan).",
+)
+OrchOutputOption = typer.Option(
+    OrchOutputMode.HUMAN,
+    "--output",
+    help="Output mode: human|json|jsonl",
+    case_sensitive=False,
+)
+OrchJsonOption = typer.Option(False, "--json", help="Emit machine-readable JSON output.")
+OrchJsonlOption = typer.Option(False, "--jsonl", help="Emit JSON Lines output.")
+OrchDryRunOption = typer.Option(False, "--dry-run", help="Run in dry-run mode.")
+OrchLatestOption = typer.Option(False, "--latest", help="Select latest run automatically.")
+OrchWatchOption = typer.Option(False, "--watch", help="Poll once more before returning.")
+OrchFollowOption = typer.Option(False, "--follow", help="Follow once more before returning.")
 
 
 def _build_orchestration_runtime_app(plan: Path | None):
@@ -549,6 +585,99 @@ def _build_orchestration_runtime_app(plan: Path | None):
     return build_orchestration_app(app_config)
 
 
+def _resolve_orch_output_mode(
+    *,
+    output: OrchOutputMode,
+    json_flag: bool,
+    jsonl_flag: bool,
+) -> OrchOutputMode:
+    """Resolve one concrete output mode with conflict checks."""
+
+    if json_flag and jsonl_flag:
+        _die("Conflicting output flags: --json and --jsonl are mutually exclusive")
+    if json_flag and output != OrchOutputMode.HUMAN:
+        _die("Conflicting output flags: --json cannot be combined with --output")
+    if jsonl_flag and output != OrchOutputMode.HUMAN:
+        _die("Conflicting output flags: --jsonl cannot be combined with --output")
+    if json_flag:
+        return OrchOutputMode.JSON
+    if jsonl_flag:
+        return OrchOutputMode.JSONL
+    return output
+
+
+def _json_ready(value: Any) -> Any:
+    """Convert CLI payload into JSON-serializable structure."""
+
+    if is_dataclass(value) and not isinstance(value, type):
+        return asdict(value)
+    if isinstance(value, tuple):
+        return [_json_ready(item) for item in value]
+    if isinstance(value, list):
+        return [_json_ready(item) for item in value]
+    if isinstance(value, dict):
+        return {str(k): _json_ready(v) for k, v in value.items()}
+    if isinstance(value, Path):
+        return str(value)
+    return value
+
+
+def _emit_orch_payload(value: Any, mode: OrchOutputMode) -> None:
+    """Emit orchestration payload in human/json/jsonl formats."""
+
+    payload = _json_ready(value)
+
+    if mode == OrchOutputMode.JSON:
+        typer.echo(json.dumps(payload, sort_keys=True))
+        return
+
+    if mode == OrchOutputMode.JSONL:
+        if isinstance(payload, list):
+            for item in payload:
+                typer.echo(json.dumps(item, sort_keys=True))
+        else:
+            typer.echo(json.dumps(payload, sort_keys=True))
+        return
+
+    if isinstance(payload, list):
+        if not payload:
+            out.print("[dim]No results.[/]")
+            return
+        for item in payload:
+            if isinstance(item, dict):
+                out.print(" ".join(f"{k}={_esc(str(v))}" for k, v in item.items()))
+            else:
+                out.print(_esc(str(item)))
+        return
+
+    if isinstance(payload, dict):
+        out.print("\n".join(f"{k}={_esc(str(v))}" for k, v in payload.items()))
+        return
+
+    out.print(_esc(str(payload)))
+
+
+def _resolve_latest_run_id(app_runtime: Any) -> str | None:
+    """Resolve latest non-terminal run ID from app boundary."""
+
+    runs = app_runtime.runs(limit=200)
+    for run in runs:
+        if run.status in {"running", "pending", "stall"}:
+            return run.run_id
+    if runs:
+        return runs[0].run_id
+    return None
+
+
+def _step_id_for_run(app_runtime: Any, run_id: str) -> str | None:
+    """Resolve step ID for run selector via app read boundary."""
+
+    for run in app_runtime.runs(limit=500):
+        if run.run_id == run_id:
+            return run.step_id
+    return None
+
+
 # --- vectl orch run ---
 
 
@@ -558,18 +687,32 @@ def orch_run(
         None, help="Step ID to run (auto-selects next if omitted)."
     ),
     agent: str | None = OrchAgentOption,
+    dry_run: bool = OrchDryRunOption,
+    json_flag: bool = OrchJsonOption,
+    output: OrchOutputMode = OrchOutputOption,
     plan: Path | None = OrchPlanOption,
 ) -> None:
     """Start or resume an orchestration run.
 
     Contract authority: orch_app.py::OrchestrationApp.run()
     """
+    mode = _resolve_orch_output_mode(output=output, json_flag=json_flag, jsonl_flag=False)
     app_runtime = _build_orchestration_runtime_app(plan=plan)
+    if dry_run:
+        _emit_orch_payload(
+            {
+                "success": True,
+                "message": "Dry-run only: run start validation completed",
+                "step_id": step_id,
+                "agent": agent,
+            },
+            mode,
+        )
+        return
     result = app_runtime.run(step_id=step_id, agent=agent)
     if not result.success:
         _die(result.message)
-    out.print(f"run_id={_esc(result.run_id or '')} step_id={_esc(result.step_id or '')}")
-    out.print(_esc(result.message))
+    _emit_orch_payload(result, mode)
 
 
 # --- vectl orch resume ---
@@ -577,19 +720,41 @@ def orch_run(
 
 @orch_app.command("resume")
 def orch_resume(
-    run_id: str = typer.Argument(..., help="Run identifier to resume."),
+    run_id: str | None = typer.Argument(None, help="Run identifier to resume."),
+    latest: bool = OrchLatestOption,
+    dry_run: bool = OrchDryRunOption,
+    json_flag: bool = OrchJsonOption,
+    output: OrchOutputMode = OrchOutputOption,
     plan: Path | None = OrchPlanOption,
 ) -> None:
     """Resume an existing orchestration run from artifacts.
 
     Contract authority: orch_app.py::OrchestrationApp.resume()
     """
+    mode = _resolve_orch_output_mode(output=output, json_flag=json_flag, jsonl_flag=False)
     app_runtime = _build_orchestration_runtime_app(plan=plan)
-    result = app_runtime.resume(run_id=run_id)
+    if run_id is not None and latest:
+        _die("Specify either RUN_ID or --latest, not both")
+    resolved_run_id = run_id
+    if latest:
+        resolved_run_id = _resolve_latest_run_id(app_runtime)
+    if resolved_run_id is None:
+        _die("Run selector required: provide RUN_ID or --latest")
+    if dry_run:
+        _emit_orch_payload(
+            {
+                "success": True,
+                "message": "Dry-run only: resume validation completed",
+                "run_id": resolved_run_id,
+            },
+            mode,
+        )
+        return
+    assert resolved_run_id is not None
+    result = app_runtime.resume(run_id=resolved_run_id)
     if not result.success:
         _die(result.message)
-    out.print(f"run_id={_esc(result.run_id or '')} step_id={_esc(result.step_id or '')}")
-    out.print(_esc(result.message))
+    _emit_orch_payload(result, mode)
 
 
 # --- vectl orch recover ---
@@ -597,7 +762,12 @@ def orch_resume(
 
 @orch_app.command("recover")
 def orch_recover(
+    run_id: str | None = typer.Argument(None, help="Run identifier to recover."),
+    latest: bool = OrchLatestOption,
     step_id: str | None = typer.Option(None, "--step", help="Step ID to recover."),
+    dry_run: bool = OrchDryRunOption,
+    json_flag: bool = OrchJsonOption,
+    output: OrchOutputMode = OrchOutputOption,
     yes: bool = typer.Option(False, "--yes", "-y", help="Skip confirmation prompt."),
     plan: Path | None = OrchPlanOption,
 ) -> None:
@@ -605,8 +775,32 @@ def orch_recover(
 
     Contract authority: orch_app.py::OrchestrationApp.recover()
     """
-
-    _die("vectl orch recover: orchestration app wiring not yet implemented")
+    del yes
+    mode = _resolve_orch_output_mode(output=output, json_flag=json_flag, jsonl_flag=False)
+    app_runtime = _build_orchestration_runtime_app(plan=plan)
+    if run_id is not None and latest:
+        _die("Specify either RUN_ID or --latest, not both")
+    resolved_run_id = run_id
+    if latest:
+        resolved_run_id = _resolve_latest_run_id(app_runtime)
+    resolved_step_id = step_id
+    if resolved_step_id is None and resolved_run_id is not None:
+        resolved_step_id = _step_id_for_run(app_runtime, resolved_run_id)
+    if dry_run:
+        _emit_orch_payload(
+            {
+                "success": True,
+                "message": "Dry-run only: recovery diagnostics completed",
+                "run_id": resolved_run_id,
+                "step_id": resolved_step_id,
+            },
+            mode,
+        )
+        return
+    result = app_runtime.recover(step_id=resolved_step_id)
+    if not result.success:
+        _die(result.message)
+    _emit_orch_payload(result, mode)
 
 
 # --- vectl orch runs ---
@@ -615,6 +809,9 @@ def orch_recover(
 @orch_app.command("runs")
 def orch_runs(
     step_id: str | None = typer.Option(None, "--step", help="Filter by step ID."),
+    status: str | None = typer.Option(None, "--status", help="Optional run status filter."),
+    json_flag: bool = OrchJsonOption,
+    output: OrchOutputMode = OrchOutputOption,
     limit: int = typer.Option(100, "--limit", "-n", help="Maximum runs to show."),
     plan: Path | None = OrchPlanOption,
 ) -> None:
@@ -622,8 +819,12 @@ def orch_runs(
 
     Contract authority: orch_app.py::OrchestrationApp.runs()
     """
-
-    _die("vectl orch runs: orchestration app wiring not yet implemented")
+    mode = _resolve_orch_output_mode(output=output, json_flag=json_flag, jsonl_flag=False)
+    app_runtime = _build_orchestration_runtime_app(plan=plan)
+    runs = app_runtime.runs(step_id=step_id, limit=limit)
+    if status is not None:
+        runs = tuple(run for run in runs if run.status == status)
+    _emit_orch_payload(runs, mode)
 
 
 # --- vectl orch prune ---
@@ -632,6 +833,14 @@ def orch_runs(
 @orch_app.command("prune")
 def orch_prune(
     before: float | None = typer.Option(None, "--before", help="Unix timestamp threshold."),
+    older_than: int | None = typer.Option(
+        None,
+        "--older-than",
+        help="Prune entries older than N days.",
+    ),
+    dry_run: bool = OrchDryRunOption,
+    json_flag: bool = OrchJsonOption,
+    output: OrchOutputMode = OrchOutputOption,
     force: bool = typer.Option(False, "--force", "-y", help="Skip confirmation prompt."),
     plan: Path | None = OrchPlanOption,
 ) -> None:
@@ -639,28 +848,71 @@ def orch_prune(
 
     Contract authority: orch_app.py::OrchestrationApp.prune()
     """
-
-    _die("vectl orch prune: orchestration app wiring not yet implemented")
+    mode = _resolve_orch_output_mode(output=output, json_flag=json_flag, jsonl_flag=False)
+    if older_than is not None and before is not None:
+        _die("Specify either --before or --older-than, not both")
+    resolved_before = before
+    if older_than is not None:
+        resolved_before = time.time() - float(older_than) * 86400.0
+    if dry_run:
+        _emit_orch_payload(
+            {
+                "success": True,
+                "message": "Dry-run only: prune candidate scan completed",
+                "before": resolved_before,
+            },
+            mode,
+        )
+        return
+    app_runtime = _build_orchestration_runtime_app(plan=plan)
+    result = app_runtime.prune(before=resolved_before, force=force)
+    if not result.success:
+        _die(result.message)
+    _emit_orch_payload(result, mode)
 
 
 # --- vectl orch inspect (status / events / logs / artifacts / actions) ---
 
 
+@orch_inspect_app.command("status")
 @orch_app.command("status")
 def orch_inspect_status(
+    run_id: str | None = OrchRunArgument,
+    latest: bool = OrchLatestOption,
     step_id: str | None = typer.Option(None, "--step", help="Step ID to inspect."),
+    watch: bool = OrchWatchOption,
+    json_flag: bool = OrchJsonOption,
+    output: OrchOutputMode = OrchOutputOption,
     plan: Path | None = OrchPlanOption,
 ) -> None:
     """Inspect current orchestration status.
 
     Contract authority: orch_app.py::OrchestrationApp.inspect_status()
     """
-    _die("vectl orch status: orchestration app wiring not yet implemented")
+    mode = _resolve_orch_output_mode(output=output, json_flag=json_flag, jsonl_flag=False)
+    app_runtime = _build_orchestration_runtime_app(plan=plan)
+    if run_id is not None and latest:
+        _die("Specify either RUN_ID or --latest, not both")
+    resolved_run = run_id or (_resolve_latest_run_id(app_runtime) if latest else None)
+    if resolved_run is not None and step_id is None:
+        step_id = _step_id_for_run(app_runtime, resolved_run)
+    payload = app_runtime.inspect_status(step_id=step_id)
+    _emit_orch_payload(payload, mode)
+    if watch:
+        payload = app_runtime.inspect_status(step_id=step_id)
+        _emit_orch_payload(payload, mode)
 
 
+@orch_inspect_app.command("events")
 @orch_app.command("events")
 def orch_inspect_events(
+    run_id: str | None = OrchRunArgument,
+    latest: bool = OrchLatestOption,
     step_id: str | None = typer.Option(None, "--step", help="Filter by step ID."),
+    follow: bool = OrchFollowOption,
+    jsonl_flag: bool = OrchJsonlOption,
+    json_flag: bool = OrchJsonOption,
+    output: OrchOutputMode = OrchOutputOption,
     limit: int = typer.Option(100, "--limit", "-n", help="Maximum events to show."),
     plan: Path | None = OrchPlanOption,
 ) -> None:
@@ -668,11 +920,28 @@ def orch_inspect_events(
 
     Contract authority: orch_app.py::OrchestrationApp.inspect_events()
     """
-    _die("vectl orch events: orchestration app wiring not yet implemented")
+    mode = _resolve_orch_output_mode(output=output, json_flag=json_flag, jsonl_flag=jsonl_flag)
+    app_runtime = _build_orchestration_runtime_app(plan=plan)
+    if run_id is not None and latest:
+        _die("Specify either RUN_ID or --latest, not both")
+    resolved_run = run_id or (_resolve_latest_run_id(app_runtime) if latest else None)
+    if resolved_run is not None and step_id is None:
+        step_id = _step_id_for_run(app_runtime, resolved_run)
+    payload = app_runtime.inspect_events(step_id=step_id, limit=limit)
+    _emit_orch_payload(payload.data, mode)
+    if follow:
+        payload = app_runtime.inspect_events(step_id=step_id, limit=limit)
+        _emit_orch_payload(payload.data, mode)
 
 
+@orch_inspect_app.command("logs")
 @orch_app.command("logs")
 def orch_inspect_logs(
+    latest: bool = OrchLatestOption,
+    tail: int = typer.Option(100, "--tail", help="Show only the last N log lines."),
+    follow: bool = OrchFollowOption,
+    json_flag: bool = OrchJsonOption,
+    output: OrchOutputMode = OrchOutputOption,
     run_id: str | None = typer.Option(None, "--run", help="Specific run ID."),
     step_id: str | None = typer.Option(None, "--step", help="Filter by step ID."),
     plan: Path | None = OrchPlanOption,
@@ -681,11 +950,27 @@ def orch_inspect_logs(
 
     Contract authority: orch_app.py::OrchestrationApp.inspect_logs()
     """
-    _die("vectl orch logs: orchestration app wiring not yet implemented")
+    mode = _resolve_orch_output_mode(output=output, json_flag=json_flag, jsonl_flag=False)
+    app_runtime = _build_orchestration_runtime_app(plan=plan)
+    if run_id is not None and latest:
+        _die("Specify either --run or --latest, not both")
+    resolved_run = run_id or (_resolve_latest_run_id(app_runtime) if latest else None)
+    payload = app_runtime.inspect_logs(run_id=resolved_run, step_id=step_id)
+    rows = payload.data[-tail:] if tail >= 0 else payload.data
+    _emit_orch_payload(rows, mode)
+    if follow:
+        rows = app_runtime.inspect_logs(run_id=resolved_run, step_id=step_id).data[-tail:]
+        _emit_orch_payload(rows, mode)
 
 
+@orch_inspect_app.command("artifacts")
 @orch_app.command("artifacts")
 def orch_inspect_artifacts(
+    run_id: str | None = OrchRunArgument,
+    latest: bool = OrchLatestOption,
+    kind: str | None = typer.Option(None, "--kind", help="Optional artifact kind filter token."),
+    json_flag: bool = OrchJsonOption,
+    output: OrchOutputMode = OrchOutputOption,
     step_id: str | None = typer.Option(None, "--step", help="Filter by step ID."),
     plan: Path | None = OrchPlanOption,
 ) -> None:
@@ -693,11 +978,27 @@ def orch_inspect_artifacts(
 
     Contract authority: orch_app.py::OrchestrationApp.inspect_artifacts()
     """
-    _die("vectl orch artifacts: orchestration app wiring not yet implemented")
+    mode = _resolve_orch_output_mode(output=output, json_flag=json_flag, jsonl_flag=False)
+    app_runtime = _build_orchestration_runtime_app(plan=plan)
+    if run_id is not None and latest:
+        _die("Specify either RUN_ID or --latest, not both")
+    resolved_run = run_id or (_resolve_latest_run_id(app_runtime) if latest else None)
+    if resolved_run is not None and step_id is None:
+        step_id = _step_id_for_run(app_runtime, resolved_run)
+    payload = app_runtime.inspect_artifacts(step_id=step_id)
+    rows = payload.data
+    if kind is not None:
+        rows = tuple(row for row in rows if f"kind={kind}" in row or kind in row)
+    _emit_orch_payload(rows, mode)
 
 
+@orch_inspect_app.command("actions")
 @orch_app.command("actions")
 def orch_inspect_actions(
+    latest: bool = OrchLatestOption,
+    status: str | None = typer.Option(None, "--status", help="Action status filter token."),
+    json_flag: bool = OrchJsonOption,
+    output: OrchOutputMode = OrchOutputOption,
     run_id: str | None = typer.Option(None, "--run", help="Specific run ID."),
     plan: Path | None = OrchPlanOption,
 ) -> None:
@@ -705,14 +1006,31 @@ def orch_inspect_actions(
 
     Contract authority: orch_app.py::OrchestrationApp.inspect_actions()
     """
-    _die("vectl orch actions: orchestration app wiring not yet implemented")
+    mode = _resolve_orch_output_mode(output=output, json_flag=json_flag, jsonl_flag=False)
+    app_runtime = _build_orchestration_runtime_app(plan=plan)
+    if run_id is not None and latest:
+        _die("Specify either --run or --latest, not both")
+    resolved_run = run_id or (_resolve_latest_run_id(app_runtime) if latest else None)
+    if resolved_run is None:
+        _die("Run selector required for action inspection: use --run or --latest")
+    payload = app_runtime.inspect_actions(run_id=resolved_run)
+    rows = payload.data
+    if status is not None:
+        rows = tuple(row for row in rows if f"status={status}" in row)
+    _emit_orch_payload(rows, mode)
 
 
 # --- vectl orch case (list / show / respond) ---
 
 
+@orch_case_app.command("list")
 @orch_app.command("case-list")
 def orch_case_list(
+    run_id: str | None = OrchRunArgument,
+    latest: bool = OrchLatestOption,
+    watch: bool = OrchWatchOption,
+    json_flag: bool = OrchJsonOption,
+    output: OrchOutputMode = OrchOutputOption,
     status: str | None = typer.Option(
         None,
         "--status",
@@ -725,39 +1043,94 @@ def orch_case_list(
 
     Contract authority: orch_app.py::OrchestrationApp.case_list()
     """
-    _die("vectl orch case-list: orchestration app wiring not yet implemented")
+    mode = _resolve_orch_output_mode(output=output, json_flag=json_flag, jsonl_flag=False)
+    app_runtime = _build_orchestration_runtime_app(plan=plan)
+    if run_id is not None and latest:
+        _die("Specify either RUN_ID or --latest, not both")
+    resolved_run = run_id or (_resolve_latest_run_id(app_runtime) if latest else None)
+    del resolved_run
+    allowed_statuses = {"open", "resolved", "halt"}
+    if status is not None and status not in allowed_statuses:
+        _die("Invalid --status value. Expected one of: open, resolved, halt")
+    typed_status = cast(
+        Literal["open", "resolved", "halt"] | None,
+        status if status in allowed_statuses else None,
+    )
+    payload = app_runtime.case_list(status=typed_status)
+    _emit_orch_payload(payload, mode)
+    if watch:
+        _emit_orch_payload(app_runtime.case_list(status=typed_status), mode)
 
 
+@orch_case_app.command("show")
 @orch_app.command("case-show")
 def orch_case_show(
     case_id: str = typer.Argument(..., help="Case identifier to show."),
+    watch: bool = OrchWatchOption,
+    json_flag: bool = OrchJsonOption,
+    output: OrchOutputMode = OrchOutputOption,
     plan: Path | None = OrchPlanOption,
 ) -> None:
     """Show detail for a specific case.
 
     Contract authority: orch_app.py::OrchestrationApp.case_show()
     """
-    _die("vectl orch case-show: orchestration app wiring not yet implemented")
+    mode = _resolve_orch_output_mode(output=output, json_flag=json_flag, jsonl_flag=False)
+    app_runtime = _build_orchestration_runtime_app(plan=plan)
+    payload = app_runtime.case_show(case_id=case_id)
+    _emit_orch_payload(payload, mode)
+    if watch:
+        _emit_orch_payload(app_runtime.case_show(case_id=case_id), mode)
 
 
+@orch_case_app.command("respond")
 @orch_app.command("case-respond")
 def orch_case_respond(
     case_id: str = typer.Argument(..., help="Case identifier to respond to."),
-    response: str = typer.Option(..., "--response", "-r", help="Operator response message."),
+    action: str | None = typer.Option(None, "--action", help="Bounded operator action token."),
+    data: str | None = typer.Option(None, "--data", help="Optional response payload string."),
+    reason: str | None = typer.Option(None, "--reason", help="Optional operator reason."),
+    response: str | None = typer.Option(
+        None, "--response", "-r", help="Legacy response text alias."
+    ),
+    json_flag: bool = OrchJsonOption,
+    output: OrchOutputMode = OrchOutputOption,
     plan: Path | None = OrchPlanOption,
 ) -> None:
     """Respond to a case (operator input to resolver).
 
     Contract authority: orch_app.py::OrchestrationApp.case_respond()
     """
-    _die("vectl orch case-respond: orchestration app wiring not yet implemented")
+    mode = _resolve_orch_output_mode(output=output, json_flag=json_flag, jsonl_flag=False)
+    app_runtime = _build_orchestration_runtime_app(plan=plan)
+    resolved_response = response
+    if resolved_response is None and action is not None:
+        parts = [f"action={action}"]
+        if data is not None:
+            parts.append(f"data={data}")
+        if reason is not None:
+            parts.append(f"reason={reason}")
+        resolved_response = " ".join(parts)
+    if resolved_response is None:
+        _die("Missing operator response: provide --action or --response")
+    assert resolved_response is not None
+    result = app_runtime.case_respond(case_id=case_id, response=resolved_response)
+    if not result.success:
+        _die(result.message)
+    _emit_orch_payload(result, mode)
 
 
 # --- vectl orch control (pause / unpause / stop) ---
 
 
+@orch_control_app.command("pause")
 @orch_app.command("pause")
 def orch_control_pause(
+    run_id: str | None = OrchRunArgument,
+    latest: bool = OrchLatestOption,
+    reason: str | None = typer.Option(None, "--reason", help="Optional pause reason."),
+    json_flag: bool = OrchJsonOption,
+    output: OrchOutputMode = OrchOutputOption,
     step_id: str | None = typer.Option(None, "--step", help="Specific step to pause."),
     plan: Path | None = OrchPlanOption,
 ) -> None:
@@ -765,11 +1138,28 @@ def orch_control_pause(
 
     Contract authority: orch_app.py::OrchestrationApp.control_pause()
     """
-    _die("vectl orch pause: orchestration app wiring not yet implemented")
+    del reason
+    mode = _resolve_orch_output_mode(output=output, json_flag=json_flag, jsonl_flag=False)
+    app_runtime = _build_orchestration_runtime_app(plan=plan)
+    if run_id is not None and latest:
+        _die("Specify either RUN_ID or --latest, not both")
+    resolved_run = run_id or (_resolve_latest_run_id(app_runtime) if latest else None)
+    if step_id is None and resolved_run is not None:
+        step_id = _step_id_for_run(app_runtime, resolved_run)
+    result = app_runtime.control_pause(step_id=step_id)
+    if not result.success:
+        _die(result.message)
+    _emit_orch_payload(result, mode)
 
 
+@orch_control_app.command("unpause")
 @orch_app.command("unpause")
 def orch_control_unpause(
+    run_id: str | None = OrchRunArgument,
+    latest: bool = OrchLatestOption,
+    reason: str | None = typer.Option(None, "--reason", help="Optional unpause reason."),
+    json_flag: bool = OrchJsonOption,
+    output: OrchOutputMode = OrchOutputOption,
     step_id: str | None = typer.Option(None, "--step", help="Specific step to unpause."),
     plan: Path | None = OrchPlanOption,
 ) -> None:
@@ -777,55 +1167,116 @@ def orch_control_unpause(
 
     Contract authority: orch_app.py::OrchestrationApp.control_unpause()
     """
-    _die("vectl orch unpause: orchestration app wiring not yet implemented")
+    del reason
+    mode = _resolve_orch_output_mode(output=output, json_flag=json_flag, jsonl_flag=False)
+    app_runtime = _build_orchestration_runtime_app(plan=plan)
+    if run_id is not None and latest:
+        _die("Specify either RUN_ID or --latest, not both")
+    resolved_run = run_id or (_resolve_latest_run_id(app_runtime) if latest else None)
+    if step_id is None and resolved_run is not None:
+        step_id = _step_id_for_run(app_runtime, resolved_run)
+    result = app_runtime.control_unpause(step_id=step_id)
+    if not result.success:
+        _die(result.message)
+    _emit_orch_payload(result, mode)
 
 
+@orch_control_app.command("stop")
 @orch_app.command("stop")
 def orch_control_stop(
+    run_id: str | None = OrchRunArgument,
+    latest: bool = OrchLatestOption,
     reason: str | None = typer.Option(None, "--reason", "-r", help="Reason for stopping."),
+    force: bool = typer.Option(False, "--force", help="Immediate stop request."),
+    json_flag: bool = OrchJsonOption,
+    output: OrchOutputMode = OrchOutputOption,
     plan: Path | None = OrchPlanOption,
 ) -> None:
     """Stop orchestration entirely.
 
     Contract authority: orch_app.py::OrchestrationApp.control_stop()
     """
-    _die("vectl orch stop: orchestration app wiring not yet implemented")
+    del force
+    mode = _resolve_orch_output_mode(output=output, json_flag=json_flag, jsonl_flag=False)
+    app_runtime = _build_orchestration_runtime_app(plan=plan)
+    if run_id is not None and latest:
+        _die("Specify either RUN_ID or --latest, not both")
+    resolved_run = run_id or (_resolve_latest_run_id(app_runtime) if latest else None)
+    if resolved_run is None and latest:
+        _die("No runs available for --latest selector")
+    result = app_runtime.control_stop(reason=reason)
+    if not result.success:
+        _die(result.message)
+    _emit_orch_payload(result, mode)
 
 
 # --- vectl orch config (show / validate / tools) ---
 
 
+@orch_config_app.command("show")
 @orch_app.command("config-show")
 def orch_config_show(
+    effective: bool = typer.Option(False, "--effective", help="Show effective merged config."),
+    json_flag: bool = OrchJsonOption,
+    output: OrchOutputMode = OrchOutputOption,
     plan: Path | None = OrchPlanOption,
 ) -> None:
     """Show current orchestration configuration.
 
     Contract authority: orch_app.py::OrchestrationApp.config_show()
     """
-    _die("vectl orch config-show: orchestration app wiring not yet implemented")
+    del effective
+    mode = _resolve_orch_output_mode(output=output, json_flag=json_flag, jsonl_flag=False)
+    app_runtime = _build_orchestration_runtime_app(plan=plan)
+    payload = app_runtime.config_show()
+    if mode == OrchOutputMode.HUMAN:
+        out.print(_esc(payload.show_output))
+        return
+    _emit_orch_payload(payload, mode)
 
 
+@orch_config_app.command("validate")
 @orch_app.command("config-validate")
 def orch_config_validate(
+    path: Path | None = OrchConfigPathArgument,
+    json_flag: bool = OrchJsonOption,
+    output: OrchOutputMode = OrchOutputOption,
     plan: Path | None = OrchPlanOption,
 ) -> None:
     """Validate current orchestration configuration.
 
     Contract authority: orch_app.py::OrchestrationApp.config_validate()
     """
-    _die("vectl orch config-validate: orchestration app wiring not yet implemented")
+    mode = _resolve_orch_output_mode(output=output, json_flag=json_flag, jsonl_flag=False)
+    target_plan = path if path is not None else plan
+    app_runtime = _build_orchestration_runtime_app(plan=target_plan)
+    payload = app_runtime.config_validate()
+    if mode == OrchOutputMode.HUMAN:
+        out.print(_esc(payload.show_output))
+    else:
+        _emit_orch_payload(payload, mode)
+    if not payload.validation_passed:
+        raise typer.Exit(3)
 
 
+@orch_config_app.command("tools")
 @orch_app.command("config-tools")
 def orch_config_tools(
+    json_flag: bool = OrchJsonOption,
+    output: OrchOutputMode = OrchOutputOption,
     plan: Path | None = OrchPlanOption,
 ) -> None:
     """Show registered tool families and allowlist.
 
     Contract authority: orch_app.py::OrchestrationApp.config_tools()
     """
-    _die("vectl orch config-tools: orchestration app wiring not yet implemented")
+    mode = _resolve_orch_output_mode(output=output, json_flag=json_flag, jsonl_flag=False)
+    app_runtime = _build_orchestration_runtime_app(plan=plan)
+    payload = app_runtime.config_tools()
+    if mode == OrchOutputMode.HUMAN:
+        out.print(_esc(payload.show_output))
+        return
+    _emit_orch_payload(payload, mode)
 
 
 @app.command()

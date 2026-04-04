@@ -61611,7 +61611,7 @@ phases:
       product_implementation_files_modified: NO'
   - id: orch_operator_control_surface.spec_conformance
     name: Verify CLI, query, and control surface spec conformance
-    status: claimed
+    status: pending
     description: Spec conformance verification via adversarial divergence hunting
       for the `vectl orch` command tree, run selectors, live-read semantics, output
       modes, and control/case command contracts.
@@ -61632,8 +61632,6 @@ phases:
     - orch_operator_control_surface.impl_orch_app_composition_root
     - orch_operator_control_surface.impl_vectl_orch_cli_surface
     agent: spec-verifier
-    claimed_by: spec-verifier
-    claimed_at: '2026-04-04T17:07:57.576248+00:00'
   - id: orch_operator_control_surface.wiring_audit
     name: Audit CLI and operator-surface wiring completeness
     status: claimed

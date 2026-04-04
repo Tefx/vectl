@@ -60699,3 +60699,18 @@ phases:
     artifact layout, and migration posture.
   depends_on:
   - orch_operator_cutover_validation
+  steps:
+  - id: orch_operator_doc_sync.update_docs
+    name: Update operator-surface docs to match implementation
+    status: pending
+    description: Sync documentation with the landed `vectl orch` behavior. Update
+      command examples, config examples, artifact-layout docs, migration posture,
+      and any implementation-design notes that still reflect pre-landing stub state.
+    verification: 'phase-check protecting final deep review:
+
+      - README/help/docs examples match the real CLI interface
+
+      - Config and artifact examples match actual parsing/output behavior
+
+      - Legacy-shell posture is updated to match the validated migration state'
+    agent: doc-reviewer

@@ -63266,7 +63266,7 @@ phases:
   steps:
   - id: orch_operator_doc_sync.update_docs
     name: Update operator-surface docs to match implementation
-    status: claimed
+    status: done
     description: Sync documentation with the landed `vectl orch` behavior. Update
       command examples, config examples, artifact-layout docs, migration posture,
       and any implementation-design notes that still reflect pre-landing stub state.
@@ -63280,6 +63280,10 @@ phases:
     agent: doc-reviewer
     claimed_by: doc-reviewer
     claimed_at: '2026-04-04T21:39:18.384210+00:00'
+    done_at: '2026-04-04T21:46:23.398595+00:00'
+    evidence: Documentation sync completed; commit db495820755d0d876c9d4ffaea063116ead7e628
+      updates CLI/config/observability design, implementation design, migration posture,
+      and architecture notes to match landed vectl orch behavior.
   - id: orch_operator_doc_sync.gate
     name: Gate operator-surface doc sync
     status: pending

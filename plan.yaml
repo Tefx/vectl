@@ -59387,7 +59387,7 @@ phases:
       to proceed to expected-red test-definition phase.
 - id: orch_operator_tests
   name: Orchestration Operator Surface Test Definitions
-  status: in_progress
+  status: done
   gate: Expected-red test definitions expose the documented gaps without product implementation
     code; fixtures are spec-derived; downstream implementation work has explicit acceptance
     targets.
@@ -59792,7 +59792,7 @@ phases:
       scope confined to the single repro file. Commit: a8e90610d8ced84e83f33a2b127058088e3c5b92.'
   - id: orch_operator_tests.retest-gate-should-fix-batched
     name: retest-gate-should-fix-batched
-    status: claimed
+    status: done
     description: 'step_type: test
 
       step_intent: retest_green
@@ -59885,9 +59885,15 @@ phases:
     agent: integration-verifier
     claimed_by: integration-verifier
     claimed_at: '2026-04-04T13:41:48.639042+00:00'
+    done_at: '2026-04-04T13:43:49.071990+00:00'
+    evidence: 'Independent retest confirmed should-fix closure: `pytest --collect-only
+      tests/repro/test_orch_cli_recovery_red.py` collected 20 unique tests without
+      collisions; AST duplicate-check returned `{}`; `pytest tests/repro/test_orch_cli_recovery_red.py
+      -q` failures remained expected-red wiring/contract-gap outcomes (no duplicate-definition
+      defect). Tests remain spec-derived and implementation-free.'
 - id: orch_operator_config_state
   name: Orchestration Config, Freeze, and Run Store
-  status: locked
+  status: pending
   gate: Config loading/freeze, tool metadata validation, run index/cases index behavior,
     and run-store persistence semantics satisfy the operator-surface docs and green
     retests.
@@ -60123,7 +60129,7 @@ phases:
     agent: gate-reviewer
 - id: orch_operator_observability
   name: Orchestration Events, Projections, and Artifacts
-  status: locked
+  status: pending
   gate: Canonical events, projection replay, and derived artifacts satisfy the documented
     envelope, registry, and artifact-schema rules and are green-verified for downstream
     CLI/control use.

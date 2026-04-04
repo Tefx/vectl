@@ -60754,3 +60754,22 @@ phases:
       - Any broad failure intersects the final gate and must be remediated before
       completion'
     agent: integration-verifier
+  - id: orch_operator_deep_review.wiring_audit_full
+    name: Run full wiring audit
+    status: pending
+    description: Complete system wiring audit for the orchestration operator surface.
+      Verify every public export, CLI command, config field, artifact reader/writer,
+      and recovery surface is reachable and consumed where the docs say it is.
+    verification: 'full-plan-check protecting the final deep-review gate:
+
+      - Every public export has a runtime caller
+
+      - Every documented CLI command is registered
+
+      - Every config field and artifact/read-model surface is consumed by non-test
+      code or flagged as blocker
+
+      - No production NotImplementedError or placeholder remains in operator paths'
+    depends_on:
+    - orch_operator_deep_review.full_plan_check
+    agent: wiring-auditor

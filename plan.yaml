@@ -61956,6 +61956,94 @@ phases:
       - suggestion: none
 
       - tech_debt: none'
+  - id: orch_operator_control_surface.fix_gate_blockers_batch
+    name: Fix batched gate blockers for operator control surface
+    status: pending
+    description: 'Fix ALL gate findings from `orch_operator_control_surface.gate`
+      in one batch.
+
+
+      ## Blockers to Fix (ALL of these, not just the first)
+
+
+      ### B1: mypy redefinition in inspection queries
+
+      Locations: `src/vectl/orchestration/inspection_queries.py`
+
+      Remediation: remove the `all_records` redefinition pattern so the function keeps
+      one type-consistent binding and preserves current query behavior.
+
+      Grep hint: search for `all_records` assignments/usages in `src/vectl/orchestration/inspection_queries.py`
+      and sibling query helpers to ensure no duplicate typed binding pattern remains.
+
+
+      ### B2: unused local variables in inspection queries
+
+      Locations: `src/vectl/orchestration/inspection_queries.py`
+
+      Remediation: remove or correctly consume unused locals `step_ids` and `agents`
+      without changing the externally visible query contract.
+
+      Grep hint: search for `step_ids` and `agents` definitions/usages in the module
+      and adjacent inspection-query helpers to avoid leaving sibling dead locals behind.
+
+
+      ### B3: exception chaining lint violation (B904)
+
+      Locations: `src/vectl/cli.py`
+
+      Remediation: update the internal-error raise path to chain the original exception
+      explicitly (`raise ... from err`) while preserving existing CLI error semantics.
+
+      Grep hint: search internal error handling / `except Exception` paths in `src/vectl/cli.py`
+      and nearby CLI entrypoints for sibling unchained re-raise patterns.
+
+
+      ## Root Cause vs Symptom
+
+      - Root cause: local cleanup/type-safety regressions remained in operator-surface
+      query and CLI error-handling code after the phase implementation landed.
+
+      - Symptom: mypy reports redefined name, Ruff reports unused locals, and B904
+      flags an unchained exception path.
+
+      - Why this fix is not surface-level: the work must remove the underlying duplicate-binding/dead-local
+      patterns and preserve causal exception context, not just suppress diagnostics.
+
+
+      ## Completion Criteria (stub exclusion)
+
+      This is an IMPLEMENTATION step. Stub-only completion is NOT acceptable.
+
+      Each deliverable MUST contain substantive logic edits that resolve the blocker
+      family while preserving the existing `vectl orch` control/query surface behavior.
+
+
+      ## Verification Scope
+
+      - local-check protecting `orch_operator_control_surface.gate`
+
+      - Address all listed findings in one batch
+
+      - Provide sibling-search evidence for inspection-query and CLI error-handling
+      patterns'
+    verification: '- Main path: targeted type/lint checks covering `src/vectl/orchestration/inspection_queries.py`
+      and `src/vectl/cli.py` pass
+
+      - Failure path: verify the internal CLI error path now preserves chained exception
+      context and no duplicate-binding pattern remains in inspection queries
+
+      - Proof: no remaining instances of the listed blocker patterns in the touched
+      locations'
+    evidence_template: "## Batched Gate Blocker Fix Evidence\n- Files changed:\n \
+      \ - src/vectl/orchestration/inspection_queries.py\n  - src/vectl/cli.py\n- Sibling\
+      \ search performed:\n  - all_records duplicate-binding scan: <results>\n  -\
+      \ step_ids/agents dead-local scan: <results>\n  - CLI unchained exception scan:\
+      \ <results>\n- Root cause closure:\n  - mypy redefinition resolved by: <summary>\n\
+      \  - unused locals resolved by: <summary>\n  - B904 chaining resolved by: <summary>"
+    depends_on:
+    - orch_operator_control_surface.gate
+    agent: python-senior
 - id: orch_operator_recovery_cutover
   name: Orchestration Recovery, Resume, and Legacy Bridge
   status: locked

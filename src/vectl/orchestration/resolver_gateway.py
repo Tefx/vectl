@@ -16,14 +16,126 @@ is not yet specified; this module records interface anchors with documented gaps
 
 from __future__ import annotations
 
-from collections.abc import Mapping
+from collections.abc import Callable
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Literal, Protocol
 
 from vectl.orchestration.contracts import ResolutionCase, ResolutionReport
+from vectl.orchestration.tool_registry import ToolFamilyRegistry, validate_allowlist
 
 if TYPE_CHECKING:
     pass
+
+
+_READ_ONLY_TOOLS: frozenset[str] = frozenset(
+    {
+        "status",
+        "show",
+        "read_events",
+        "read_state",
+        "read_case",
+    }
+)
+_WRITE_TOOLS: frozenset[str] = frozenset(
+    {
+        "claim",
+        "complete",
+        "defer",
+    }
+)
+
+
+@dataclass(frozen=True)
+class ResolverToolCall:
+    """Planned resolver tool call to be authorized by the gateway.
+
+    Authority: docs/ORCHESTRATION-PLANE-RESOLUTION-CONTRACT.md section 4.0
+
+    Args:
+        family: Canonical tool family identifier.
+        name: Canonical tool name.
+        surface: Access intent category for this tool request.
+            Must be ``"read"`` or ``"write"``.
+    """
+
+    family: str
+    name: str
+    surface: Literal["read", "write"]
+
+
+@dataclass(frozen=True)
+class GatewayAuditEvent:
+    """Machine-readable audit record for one resolver tool-call attempt.
+
+    Authority: docs/ORCHESTRATION-PLANE-RESOLUTION-CONTRACT.md sections 4 and 8
+
+    Attributes:
+        invocation_ref: Invocation reference for event correlation.
+        family: Tool family requested by resolver.
+        tool: Tool name requested by resolver.
+        requested_surface: Requested access surface (read/write).
+        outcome: Authorization outcome for this tool request.
+        reason_code: Stable machine-readable denial code, empty when allowed.
+        reason: Human-readable reason.
+    """
+
+    invocation_ref: str
+    family: str
+    tool: str
+    requested_surface: Literal["read", "write"]
+    outcome: Literal["allowed", "denied"]
+    reason_code: str = ""
+    reason: str = ""
+
+
+@dataclass(frozen=True)
+class GatewayDenial:
+    """Machine-readable denial descriptor for resolver authorization failures.
+
+    Authority: docs/ORCHESTRATION-PLANE-RESOLUTION-CONTRACT.md sections 4 and 8
+    """
+
+    family: str
+    tool: str
+    requested_surface: Literal["read", "write"]
+    reason_code: Literal[
+        "family_not_allowed",
+        "unknown_family",
+        "unknown_tool",
+        "surface_mismatch",
+    ]
+    reason: str
+
+
+class ResolverInvoker(Protocol):
+    """Resolver invocation callable used by :class:`AuditedResolverGateway`.
+
+    Authority: docs/ORCHESTRATION-PLANE-RESOLUTION-CONTRACT.md section 5
+    """
+
+    def __call__(
+        self,
+        case: ResolutionCase,
+        authorized_calls: tuple[ResolverToolCall, ...],
+        invocation_ref: str,
+    ) -> ResolutionReport:
+        """Execute resolver invocation after gateway authorization.
+
+        Args:
+            case: Resolution case provided by control.
+            authorized_calls: Tool calls allowed by the gateway.
+            invocation_ref: Correlation reference assigned by the gateway.
+
+        Returns:
+            Bounded machine-readable resolution report.
+        """
+        ...
+
+
+ResolverInvokeFn = Callable[
+    [ResolutionCase, tuple[ResolverToolCall, ...], str],
+    ResolutionReport,
+]
 
 
 # ---------------------------------------------------------------------
@@ -90,12 +202,15 @@ class GatewayInvocationResult:
         invocation_ref: Reference identifier for this invocation.
         tool_authorization_denied: Set of tool families denied by the gateway
             (useful for debugging authorization failures).
+        tool_call_audit: Machine-readable audit events for each requested tool
+            call (allowed or denied).
     """
 
     outcome: Literal["success", "authorization_denied", "invocation_error"]
     report: ResolutionReport | None = None
     invocation_ref: str | None = None
     tool_authorization_denied: tuple[str, ...] = ()
+    tool_call_audit: tuple[GatewayAuditEvent, ...] = ()
 
 
 # ---------------------------------------------------------------------
@@ -114,6 +229,8 @@ class AuthorizationError(Exception):
         self,
         message: str,
         denied_families: tuple[str, ...] = (),
+        denied: tuple[GatewayDenial, ...] = (),
+        audit_events: tuple[GatewayAuditEvent, ...] = (),
     ) -> None:
         """
         Initialize the authorization error.
@@ -121,9 +238,193 @@ class AuthorizationError(Exception):
         Args:
             message: Human-readable denial explanation.
             denied_families: Tuple of tool families that were denied.
+            denied: Machine-readable denied tool request details.
+            audit_events: Audit records for all attempted tool requests.
         """
         super().__init__(message)
         self.denied_families = denied_families
+        self.denied = denied
+        self.audit_events = audit_events
+
+
+@dataclass(frozen=True)
+class AuditedResolverGateway:
+    """Resolver gateway with allowlist enforcement and audit recording.
+
+    Authority: docs/ORCHESTRATION-PLANE-RESOLUTION-CONTRACT.md sections 4, 5, 8
+    Authority: docs/ORCHESTRATION-PLANE-CLI-CONFIG-OBSERVABILITY-DESIGN.md §8.6
+
+    This gateway enforces resolver-tool authorization against an explicit
+    per-invocation allowlist snapshot and records every tool attempt
+    (allowed or denied) in machine-readable audit events.
+    """
+
+    planned_tool_calls: tuple[ResolverToolCall, ...]
+    resolver_invoker: ResolverInvokeFn
+    invocation_ref_factory: Callable[[], str] = lambda: "resolver-gateway-invocation"
+
+    def invoke(
+        self,
+        case: ResolutionCase,
+        allowed_tool_families: tuple[str, ...],
+    ) -> GatewayInvocationResult:
+        """Authorize planned tool calls and invoke resolver on success.
+
+        Args:
+            case: The resolution case from control.
+            allowed_tool_families: Frozen explicit allowlist snapshot.
+
+        Returns:
+            GatewayInvocationResult describing invocation outcome.
+
+        Raises:
+            AuthorizationError: If any planned tool call is denied.
+        """
+        invocation_ref = self.invocation_ref_factory()
+        denials, _audit_events = _authorize_tool_calls(
+            planned_calls=self.planned_tool_calls,
+            allowed_tool_families=allowed_tool_families,
+            invocation_ref=invocation_ref,
+        )
+        if denials:
+            denied_families = tuple(dict.fromkeys(denial.family for denial in denials))
+            raise AuthorizationError(
+                message="resolver invocation denied by gateway allowlist",
+                denied_families=denied_families,
+                denied=denials,
+                audit_events=_audit_events,
+            )
+
+        report = self.resolver_invoker(case, self.planned_tool_calls, invocation_ref)
+        return GatewayInvocationResult(
+            outcome="success",
+            report=report,
+            invocation_ref=invocation_ref,
+            tool_call_audit=_audit_events,
+        )
+
+
+def _authorize_tool_calls(
+    planned_calls: tuple[ResolverToolCall, ...],
+    allowed_tool_families: tuple[str, ...],
+    invocation_ref: str,
+) -> tuple[tuple[GatewayDenial, ...], tuple[GatewayAuditEvent, ...]]:
+    """Authorize planned tool calls and return denials plus audit events.
+
+    Args:
+        planned_calls: Resolver-planned tool calls.
+        allowed_tool_families: Frozen per-run allowlist snapshot.
+        invocation_ref: Invocation correlation reference.
+
+    Returns:
+        Pair of ``(denials, audit_events)``.
+    """
+    registry = ToolFamilyRegistry()
+    denials: list[GatewayDenial] = []
+    audit_events: list[GatewayAuditEvent] = []
+
+    for call in planned_calls:
+        denial = _authorize_single_call(
+            call=call,
+            allowed_tool_families=allowed_tool_families,
+            registry=registry,
+        )
+        if denial is None:
+            audit_events.append(
+                GatewayAuditEvent(
+                    invocation_ref=invocation_ref,
+                    family=call.family,
+                    tool=call.name,
+                    requested_surface=call.surface,
+                    outcome="allowed",
+                )
+            )
+            continue
+
+        denials.append(denial)
+        audit_events.append(
+            GatewayAuditEvent(
+                invocation_ref=invocation_ref,
+                family=call.family,
+                tool=call.name,
+                requested_surface=call.surface,
+                outcome="denied",
+                reason_code=denial.reason_code,
+                reason=denial.reason,
+            )
+        )
+
+    return tuple(denials), tuple(audit_events)
+
+
+def _authorize_single_call(
+    call: ResolverToolCall,
+    allowed_tool_families: tuple[str, ...],
+    registry: ToolFamilyRegistry,
+) -> GatewayDenial | None:
+    """Authorize one tool call against canonical registry and allowlist.
+
+    Args:
+        call: Tool call request to authorize.
+        allowed_tool_families: Frozen per-run allowlist snapshot.
+        registry: Canonical tool family registry.
+
+    Returns:
+        ``None`` if allowed, else machine-readable denial.
+    """
+    if not validate_allowlist(call.family, allowed_tool_families):
+        return GatewayDenial(
+            family=call.family,
+            tool=call.name,
+            requested_surface=call.surface,
+            reason_code="family_not_allowed",
+            reason=(
+                f"tool family {call.family!r} is not in allowed snapshot {allowed_tool_families!r}"
+            ),
+        )
+
+    if not registry.is_registered(call.family):
+        return GatewayDenial(
+            family=call.family,
+            tool=call.name,
+            requested_surface=call.surface,
+            reason_code="unknown_family",
+            reason=f"unknown canonical tool family {call.family!r}",
+        )
+
+    if not registry.is_valid_tool(call.name, call.family):
+        metadata = registry.get(call.family)
+        allowed = metadata.allowed_operations if metadata is not None else ()
+        return GatewayDenial(
+            family=call.family,
+            tool=call.name,
+            requested_surface=call.surface,
+            reason_code="unknown_tool",
+            reason=(
+                f"tool {call.name!r} is not registered for family {call.family!r}; "
+                f"expected one of {allowed!r}"
+            ),
+        )
+
+    if call.surface == "read" and call.name in _WRITE_TOOLS:
+        return GatewayDenial(
+            family=call.family,
+            tool=call.name,
+            requested_surface=call.surface,
+            reason_code="surface_mismatch",
+            reason=f"tool {call.name!r} is write-surface and cannot be requested as read",
+        )
+
+    if call.surface == "write" and call.name in _READ_ONLY_TOOLS:
+        return GatewayDenial(
+            family=call.family,
+            tool=call.name,
+            requested_surface=call.surface,
+            reason_code="surface_mismatch",
+            reason=f"tool {call.name!r} is read-surface and cannot be requested as write",
+        )
+
+    return None
 
 
 # ---------------------------------------------------------------------
@@ -163,14 +464,24 @@ def authorize_and_invoke(
         NotImplementedError: Until invocation and default gateway semantics
             are specified.
     """
-    raise NotImplementedError(
-        "authorize_and_invoke: default gateway and invocation model not yet specified in design docs"
-    )
+    if gateway is None:
+        raise NotImplementedError(
+            "authorize_and_invoke: default gateway instance is not specified; "
+            "provide explicit gateway"
+        )
+
+    normalized_allowlist = tuple(dict.fromkeys(allowed_tool_families))
+    return gateway.invoke(case=case, allowed_tool_families=normalized_allowlist)
 
 
 __all__ = [
     "AuthorizationError",
+    "AuditedResolverGateway",
+    "GatewayAuditEvent",
+    "GatewayDenial",
     "GatewayInvocationResult",
+    "ResolverInvoker",
+    "ResolverToolCall",
     "ResolverGateway",
     "authorize_and_invoke",
 ]

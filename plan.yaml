@@ -63063,14 +63063,19 @@ phases:
       surface.'
     verification: 'phase-check protecting orch_operator_doc_sync and orch_operator_deep_review:
 
+      - Reverify evidence demonstrates CutoverValidator checks all four retirement
+      criteria from ORCHESTRATION-PLANE-MIGRATION.md
+
+      - Reverify evidence demonstrates the canonical operator surface supports cutover
+      validation and migration-state advancement
+
       - Retirement-gate criteria are either satisfied with evidence or explicitly
       still blocked with named ownership
 
       - No unresolved blocker remains in replacement workflows, migration policy,
       or legacy-retirement readiness'
     depends_on:
-    - orch_operator_cutover_validation.replacement_workflow_smoke
-    - orch_operator_cutover_validation.migration_state_audit
+    - orch_operator_cutover_validation.reverify_cutover_operator_surface
     agent: gate-reviewer
   - id: orch_operator_cutover_validation.fix_cutover_gate_blockers
     name: Fix cutover validation blockers

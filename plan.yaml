@@ -62044,6 +62044,86 @@ phases:
     depends_on:
     - orch_operator_control_surface.gate
     agent: python-senior
+  - id: orch_operator_control_surface.retest_gate_blockers_batch
+    name: Re-test batched gate blockers for operator control surface
+    status: pending
+    description: 'As an INDEPENDENT TESTER (`integration-verifier`), rerun the type/lint
+      checks and gate-relevant quality criteria for the blocker bundle found by `orch_operator_control_surface.gate`.
+
+
+      step_type: test
+
+      step_intent: retest_green
+
+      expected_result: green
+
+      verification_scope: phase-check protecting `orch_operator_control_surface.gate`
+
+
+      YOUR GOAL IS TO FIND REMAINING PROBLEMS, not to confirm it works.
+
+
+      Test for:
+
+      - mypy is clean for `src/vectl/orchestration/inspection_queries.py`
+
+      - lint is clean for unused locals in that module
+
+      - B904/internal error exception chaining is clean in `src/vectl/cli.py`
+
+      - no new gate-relevant regressions were introduced in the operator control surface
+      by the fix batch
+
+
+      Document all findings. Issues found means the retest succeeded at surfacing
+      remaining gaps.'
+    verification: 'phase-check protecting `orch_operator_control_surface.gate`:
+
+      - Re-run targeted type/lint checks relevant to the gate findings
+
+      - Confirm mypy no longer reports `all_records` redefinition
+
+      - Confirm lint no longer reports unused `step_ids` / `agents` or B904 on the
+      internal error path
+
+      - Expected result: green'
+    evidence_template: '## Retest Report
+
+      **Tester**: integration-verifier
+
+      **Scope**: gate blocker bundle for inspection queries + CLI internal error path
+
+      **Expected result**: green
+
+
+      ### Commands executed
+
+      ```
+
+      <paste exact type/lint commands>
+
+      ```
+
+
+      ### Findings
+
+      | Severity | Description | Location | Reproduction |
+
+      | --- | --- | --- | --- |
+
+      | blocker/should_fix/suggestion | <if any> | <path:line> | <command> |
+
+
+      ### Verdict
+
+      - [ ] PASS
+
+      - [ ] ISSUES_FOUND
+
+      - [ ] INCOMPLETE'
+    depends_on:
+    - orch_operator_control_surface.fix_gate_blockers_batch
+    agent: integration-verifier
 - id: orch_operator_recovery_cutover
   name: Orchestration Recovery, Resume, and Legacy Bridge
   status: locked

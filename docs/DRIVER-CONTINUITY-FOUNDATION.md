@@ -249,7 +249,7 @@ The truthful continuity-foundation artifacts now present in the repo are:
 - `src/vectl/driver/session.py` (`SESSION_CONTINUITY_AUTHORITIES`)
 - `src/vectl/driver/types.py` (`ReplaySafetyEnvelope`, `ContinuityJournalEntry`, `ContinuityLedgerEntry`, `ContinuityHandoff`, startup recovery controller IO/protocol)
 - `src/vectl/driver/runner_continuity.py`
-- `tests/test_driver_continuity_contract.py`
+- `tests/legacy/driver/test_driver_continuity_contract.py`
 
 No other continuity artifact or test should be cited unless it exists exactly by path.
 

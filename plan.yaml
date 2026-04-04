@@ -63072,6 +63072,69 @@ phases:
     - orch_operator_cutover_validation.replacement_workflow_smoke
     - orch_operator_cutover_validation.migration_state_audit
     agent: gate-reviewer
+  - id: orch_operator_cutover_validation.fix_cutover_gate_blockers
+    name: Fix cutover validation blockers
+    status: pending
+    description: 'Batched implementation remediation for the cutover-validation gate
+      blockers.
+
+
+      step_type: implementation
+
+
+      Fix BOTH blocker families in one change set:
+
+      1. Extend `CutoverValidator` so it validates all four retirement criteria required
+      by `ORCHESTRATION-PLANE-MIGRATION.md`, with explicit result/evidence coverage
+      for each criterion.
+
+      2. Add the missing operator command surface needed to run cutover validation
+      and advance migration state through the canonical non-web operator workflow.
+
+
+      Scope constraints:
+
+      - Keep completed validation evidence steps immutable; do not rewrite their deliverables.
+
+      - Preserve the existing operator/runtime contract and extend the canonical operator
+      surface rather than adding an alternate ad hoc path.
+
+      - Search for sibling wiring/call sites so the new command surface is reachable
+      from the real operator entrypoint, not just internally implemented.
+
+
+      Completion Criteria (stub exclusion)
+
+      This is an IMPLEMENTATION step. Stub-only completion is NOT acceptable.
+
+      Each deliverable MUST contain substantive logic that processes inputs and produces
+      outputs that vary based on those inputs.
+
+
+      Known blocker targets:
+
+      - P1: missing validation of all four retirement criteria
+
+      - P2: missing operator command surface for validation and migration-state advancement'
+    verification: 'local-check protecting orch_operator_cutover_validation.reverify_cutover_operator_surface:
+
+      - CutoverValidator reports against all four retirement criteria from ORCHESTRATION-PLANE-MIGRATION.md
+
+      - Canonical operator command surface exists for cutover validation and migration-state
+      advancement
+
+      - Wiring from operator entrypoint to the new/updated command path is complete'
+    evidence_template: "## Implementation Evidence\n\n### refs Read Confirmation (MANDATORY)\n\
+      No refs for this step.\n\n### Blocker Coverage\n- P1 retirement criteria addressed:\
+      \ <list all four criteria and implementation locations>\n- P2 operator command\
+      \ surface added/wired: <command path and entrypoint locations>\n\n### Sibling\
+      \ Search\n- Additional wiring/call sites checked:\n  - <path> — <why touched\
+      \ or why no change>\n\n### Completion Proof\n- Files changed: <list>\n- Substantive\
+      \ logic added (no stubs): <summary>\n- Remaining gaps: <none or explain>\n"
+    depends_on:
+    - orch_operator_cutover_validation.replacement_workflow_smoke
+    - orch_operator_cutover_validation.migration_state_audit
+    agent: python-senior
 - id: orch_operator_doc_sync
   name: Orchestration Operator Documentation Sync
   status: locked

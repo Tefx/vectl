@@ -60104,3 +60104,53 @@ phases:
     - orch_operator_control_surface.impl_control_channel
     - orch_operator_control_surface.impl_inspection_queries
     agent: gate-reviewer
+  - id: orch_operator_control_surface.impl_orch_app_composition_root
+    name: Implement orch_app composition root and runtime wiring
+    status: pending
+    description: 'step_type: implementation
+
+
+      Fill in stub bodies in src/vectl/orch_app.py per the contract from orch_operator_contracts.app_cli_contracts
+      and upstream artifacts from the config, observability, resolver-gateway, control-channel,
+      and inspection-query steps.
+
+
+      UPSTREAM ARTIFACTS:
+
+      - src/vectl/orch_app.py — signatures/docstrings from orch_operator_contracts.app_cli_contracts
+      are AUTHORITATIVE
+
+      - src/vectl/orchestration/config.py / run_store.py / events.py / projections.py
+      / resolver_gateway.py / control_channel.py / inspection_queries.py — upstream
+      implementation artifacts are AUTHORITATIVE at their boundaries
+
+
+      YOUR SCOPE: compose effective-config loading, config freeze, run selection,
+      core adapter/control/roster/runtime/resolver construction, event/log sink opening,
+      projection wiring, control-channel hookup, and typed read/write app service
+      boundaries for CLI use.
+
+
+      Do not silently rewrite upstream contracts. If a contract artifact is wrong
+      or incomplete, record a deviation instead of changing public signatures.
+
+
+      ## Completion Criteria (stub exclusion)
+
+      This is an IMPLEMENTATION step. Stub-only completion is NOT acceptable. The
+      composition root must start the real operator path and route documented commands
+      into real boundaries, not placeholders.'
+    verification: 'local-check protecting orch_operator_control_surface.impl_vectl_orch_cli_surface,
+      cli_seam_integration_proof, and liveness_probe:
+
+      - Main path: targeted tests prove orch_app builds real operator-surface collaborators
+      and routes commands through typed boundaries
+
+      - Failure path: regression covers admission failure, missing config, and missing
+      run-selection ambiguity handling
+
+      - Proof includes no private stub class remains as a production dependency in
+      the composition root'
+    depends_on:
+    - orch_operator_control_surface.mid_gate
+    agent: python-senior

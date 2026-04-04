@@ -60499,3 +60499,28 @@ phases:
     - orch_operator_recovery_cutover.impl_recovery_resume_integration
     - orch_operator_recovery_cutover.impl_legacy_bridge_import
     agent: integration-verifier
+  - id: orch_operator_recovery_cutover.retest_green
+    name: Retest recovery, resume, and legacy-bridge workflows green
+    status: pending
+    description: 'step_type: test
+
+      step_intent: retest_green
+
+      expected_result: green
+
+
+      As an independent tester, prove the documented recover/resume outcomes, hygiene
+      classifications, legacy import semantics, and replacement-facing operator workflows
+      now work green through the real CLI/app boundaries.'
+    verification: 'phase-check protecting system wiring and cutover validation:
+
+      - Recovery/resume command tests run through the real `vectl orch` surface
+
+      - Evidence covers at least one safe resume path and one blocking/fresh-start
+      path
+
+      - Imported-legacy-run behavior is explicitly tested and reported'
+    depends_on:
+    - orch_operator_recovery_cutover.impl_recovery_resume_integration
+    - orch_operator_recovery_cutover.impl_legacy_bridge_import
+    agent: blind-tester

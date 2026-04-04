@@ -61228,7 +61228,7 @@ phases:
       - No deviation records.'
   - id: orch_operator_control_surface.mid_gate
     name: Quick gate for operator-surface pattern correctness
-    status: claimed
+    status: done
     description: 'Quick gate: verify authorization, control-channel, and inspection-query
       patterns are correct before orch_app and CLI wiring proceed.
 
@@ -61257,6 +61257,45 @@ phases:
     agent: gate-reviewer
     claimed_by: gate-reviewer
     claimed_at: '2026-04-04T16:27:17.478363+00:00'
+    done_at: '2026-04-04T16:34:12.130605+00:00'
+    evidence: 'step_intent: gate_review
+
+      expected_result: green
+
+      observed_result: green
+
+
+      Verification:
+
+      - resolver allowlist enforcement verified through canonical ToolFamilyRegistry
+      path and denial reason coverage.
+
+      - control channel verified run-local/auditable semantics including normalization
+      and bounded queue behavior.
+
+      - inspection queries verified canonical run-store/projection fact consumption
+      without re-derivation.
+
+
+      Findings:
+
+      - blocker: none
+
+      - should_fix: none
+
+      - suggestion: none
+
+      - tech_debt: none
+
+
+      failure_alignment: none
+
+      product_implementation_files_modified: NO
+
+
+      Evidence source:
+
+      - gate-reviewer task ses_2a6ada31dffe1bN27zmxRMLqPH'
   - id: orch_operator_control_surface.impl_orch_app_composition_root
     name: Implement orch_app composition root and runtime wiring
     status: pending

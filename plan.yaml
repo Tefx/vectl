@@ -59792,7 +59792,7 @@ phases:
       scope confined to the single repro file. Commit: a8e90610d8ced84e83f33a2b127058088e3c5b92.'
   - id: orch_operator_tests.retest-gate-should-fix-batched
     name: retest-gate-should-fix-batched
-    status: pending
+    status: claimed
     description: 'step_type: test
 
       step_intent: retest_green
@@ -59883,6 +59883,8 @@ phases:
     depends_on:
     - orch_operator_tests.fix-gate-should-fix-batched
     agent: integration-verifier
+    claimed_by: integration-verifier
+    claimed_at: '2026-04-04T13:41:48.639042+00:00'
 - id: orch_operator_config_state
   name: Orchestration Config, Freeze, and Run Store
   status: locked

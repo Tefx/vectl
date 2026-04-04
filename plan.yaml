@@ -62702,18 +62702,66 @@ phases:
   - id: orch_operator_cutover_validation.migration_state_audit
     name: Audit migration state model and legacy-retirement readiness
     status: pending
-    description: Audit the parallel/preferred/deprecated/retired migration model against
-      the landed operator surface. Confirm the documented retirement gate, compatibility
-      matrix, in-flight legacy-run policy, and measurable promotion criteria are backed
-      by executable evidence or are explicitly still blocking.
+    description: 'Audit migration state model and legacy-retirement readiness against
+      the landed operator surface. Confirm the documented parallel/preferred/deprecated/retired
+      migration model, retirement gate, compatibility matrix, in-flight legacy-run
+      policy, imported-run authority boundary, and measurable promotion criteria are
+      backed by executable evidence or are explicitly still blocking.
+
+
+      Required focus areas:
+
+      - legacy retirement criteria and whether each is satisfied, blocked, or lacks
+      proof
+
+      - imported legacy-run authority boundaries versus orchestration-native authority
+
+      - same-plan admission and active-run coexistence policy during the cutover window
+
+      - whether any remaining transitional behavior still intersects final gates and
+      therefore requires explicit ownership'
     verification: 'phase-check protecting doc sync and deep review:
 
       - Audit maps each retirement criterion to concrete evidence or blocker ownership
 
-      - Legacy in-flight run policy and import assumptions are explicitly evaluated
+      - Legacy in-flight run policy, imported-run authority boundaries, and same-plan
+      admission assumptions are explicitly evaluated
 
       - No pre-existing/out-of-scope label is used as a disposition for a criterion
-      that still intersects final gates'
+      that still intersects final gates
+
+      - Final output states whether retirement readiness is OPEN or BLOCKED and why'
+    evidence_template: '## refs Read Confirmation (MANDATORY)
+
+
+      For each ref in this step:
+
+      - <filename> — key passage or "NOT READ: <reason>"
+
+
+      If no refs were provided, state: "No refs for this step."
+
+
+      ## Retirement Readiness Register
+
+      | Criterion | Evidence ref | Status (PROVEN|UNPROVEN|BLOCKED) | Intersection
+      with final gates | Owner |
+
+
+      ## Authority Boundary Audit
+
+      - Imported legacy-run authority boundary: <summary>
+
+      - Orchestration-native authority boundary: <summary>
+
+      - Same-plan admission / coexistence policy: <summary>
+
+
+      ## Final Disposition
+
+      - Retirement readiness: OPEN | BLOCKED
+
+      - Blocking criteria: <list or none>'
     agent: software-architect
   - id: orch_operator_cutover_validation.gate
     name: Gate cutover validation

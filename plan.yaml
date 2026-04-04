@@ -60714,3 +60714,16 @@ phases:
 
       - Legacy-shell posture is updated to match the validated migration state'
     agent: doc-reviewer
+  - id: orch_operator_doc_sync.gate
+    name: Gate operator-surface doc sync
+    status: pending
+    description: 'Gate review: verify documentation now matches the landed orchestration
+      operator surface.'
+    verification: 'phase-check protecting orch_operator_deep_review:
+
+      - Command, config, artifact, and migration docs reflect actual behavior
+
+      - No stale example or retired-surface guidance remains'
+    depends_on:
+    - orch_operator_doc_sync.update_docs
+    agent: gate-reviewer

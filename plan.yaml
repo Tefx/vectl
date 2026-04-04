@@ -59774,6 +59774,99 @@ phases:
     depends_on:
     - orch_operator_tests.gate
     agent: python-executor
+  - id: orch_operator_tests.retest-gate-should-fix-batched
+    name: retest-gate-should-fix-batched
+    status: pending
+    description: 'step_type: test
+
+      step_intent: retest_green
+
+      expected_result: green
+
+      agent_source: default
+
+      verification_scope: phase-check protecting `orch_operator_tests.gate` and downstream
+      implementation phases.
+
+      prior_loop:
+
+      - `orch_operator_tests.gate`
+
+      - `orch_operator_tests.fix-gate-should-fix-batched`
+
+      spec_refs:
+
+      - phase `orch_operator_tests`
+
+      - gate finding from `orch_operator_tests.gate`: duplicate test method definitions
+      in `tests/repro/test_orch_cli_recovery_red.py`
+
+      touch_paths under test:
+
+      - `tests/repro/test_orch_cli_recovery_red.py`
+
+      harness_refs:
+
+      - `pytest --collect-only tests/repro/test_orch_cli_recovery_red.py`
+
+      - targeted rerun of `tests/repro/test_orch_cli_recovery_red.py`
+
+      - duplicate-name audit via `rg` or AST scan
+
+
+      As an INDEPENDENT TESTER (`integration-verifier`), re-check the batched remediation
+      from `orch_operator_tests.fix-gate-should-fix-batched` from a fresh perspective.
+
+
+      YOUR GOAL IS TO FIND PROBLEMS, not to confirm it works.
+
+
+      Test for:
+
+      - Collection integrity: no duplicate `test_*` method names remain in `tests/repro/test_orch_cli_recovery_red.py`.
+
+      - Expected-red intent preservation: the repro tests still describe missing operator
+      functionality and fail only for the documented expected-red reasons, not because
+      later duplicate methods shadow earlier ones.
+
+      - Gate readiness: the should-fix finding is closed without weakening coverage
+      or changing test-definition scope.
+
+
+      Non-goals:
+
+      - Do not modify product code.
+
+      - Do not convert the expected-red suite into implementation-green tests.
+
+      - Do not remove coverage merely to make collection pass.
+
+
+      Independence Level: L1
+
+
+      rule_refs:
+
+      - `reactive-steps.md §13` retest must use an independent verification agent
+      and encode post-fix retest semantics
+
+      - `verification-design.md §4.1` verification agent must be independent from
+      the fix agent'
+    verification: "- Run: `pytest --collect-only tests/repro/test_orch_cli_recovery_red.py`\
+      \ and confirm the file collects without duplicate-name shadowing issues\n- Run:\
+      \ `python - <<'PY'\nimport ast\nfrom collections import Counter\npath = 'tests/repro/test_orch_cli_recovery_red.py'\n\
+      mod = ast.parse(open(path).read(), filename=path)\ncounts = Counter()\nfor node\
+      \ in ast.walk(mod):\n    if isinstance(node, ast.FunctionDef) and node.name.startswith('test_'):\n\
+      \        counts[node.name] += 1\ndupes = {k: v for k, v in counts.items() if\
+      \ v > 1}\nprint(dupes)\nassert not dupes, dupes\nPY` -> `{}`\n- Rerun the relevant\
+      \ repro suite with `pytest tests/repro/test_orch_cli_recovery_red.py -q` and\
+      \ confirm any failures remain expected-red/contract-gap failures rather than\
+      \ duplicate-definition collection defects\n- Confirm gate conditions still hold:\
+      \ tests remain spec-derived, implementation-free, and explicit about expected-red\
+      \ intent"
+    depends_on:
+    - orch_operator_tests.fix-gate-should-fix-batched
+    agent: integration-verifier
 - id: orch_operator_config_state
   name: Orchestration Config, Freeze, and Run Store
   status: locked

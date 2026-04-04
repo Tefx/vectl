@@ -61685,6 +61685,77 @@ phases:
     - orch_operator_control_surface.spec_conformance
     - orch_operator_control_surface.wiring_audit
     agent: gate-reviewer
+  - id: orch_operator_control_surface.fix_spec_blockers_batch
+    name: Fix batched spec-conformance blockers for control/config CLI surface
+    status: pending
+    description: "Batched remediation for spec-conformance findings across the runnable\
+      \ `vectl orch` control/config surface.\n\nstep_type: implementation\nprior_loop:\n\
+      \  - orch_operator_control_surface.spec_conformance\nremaining_blocker: Control\
+      \ and config CLI flags/semantics diverge from spec requirements for control\
+      \ propagation, effective config display, and exit-code mappings.\nwhy_new_loop:\
+      \ The failed spec-conformance step exposed multiple intersecting CLI contract\
+      \ gaps that share the same public control/config surface and should be fixed\
+      \ together rather than as serial tiny patches.\n\nFix ALL of these, not just\
+      \ the first:\n- BLOCKER: propagate control-command flags required by spec §7.4\n\
+      \  - `orch control pause` must preserve and forward `--reason`\n  - `orch control\
+      \ unpause` must preserve and forward `--reason`\n  - `orch control stop` must\
+      \ preserve and forward `--force`\n- SHOULD_FIX: wire `orch config show --effective`\
+      \ so the flag changes behavior per the documented effective-config semantics\n\
+      - SHOULD_FIX: close exit-code semantic gaps vs spec §6 by making not-found /\
+      \ recovery / internal-error mappings explicit and exercised where applicable\n\
+      \n## Root Cause vs Symptom\n- Root cause: CLI surface wiring currently drops\
+      \ or leaves dead several spec-defined flags/paths, so the implemented command\
+      \ tree does not carry the full control/config contract through to the underlying\
+      \ runtime surfaces.\n- Symptom: spec conformance found discarded `--reason`\
+      \ / `--force`, dead `--effective`, and missing explicit exercise of spec exit-code\
+      \ mappings.\n- Why this fix is not surface-level: update the real argument propagation/wiring\
+      \ and command semantics across sibling control/config paths, not just one command\
+      \ branch.\n\n## Systemic sibling search instructions\n- Search all control-command\
+      \ builders/dispatch sites for dropped option fields or partial propagation siblings\
+      \ beyond the listed commands.\n- Search config-show wiring for dead flags or\
+      \ ignored render-mode branches beyond `--effective`.\n- Search CLI exit-path\
+      \ mapping code and related tests for missing explicit not-found / recovery /\
+      \ internal-error coverage.\n\n## Completion Criteria (stub exclusion)\nThis\
+      \ is an IMPLEMENTATION step. Stub-only completion is NOT acceptable.\nEach deliverable\
+      \ MUST contain substantive logic that processes its inputs and produces outputs\
+      \ that vary based on those inputs.\n\n## Gate Preview\nThe gate will reject:\n\
+      1. Any control command that still acknowledges without forwarding spec-required\
+      \ reason/force fields\n2. Any `config show --effective` path that parses the\
+      \ flag but does not change resolved output behavior\n3. Any unresolved exit-code\
+      \ ambiguity for not-found, recovery, or internal-error mappings where the spec\
+      \ requires explicit behavior"
+    verification: 'local-check protecting orch_operator_control_surface.gate and downstream
+      recovery/cutover gates:
+
+      - control reason/force propagation behavior is implemented and covered for pause,
+      unpause, and stop
+
+      - `orch config show --effective` semantics are wired to the real config-display
+      path
+
+      - explicit exit-code behavior checks exist for not-found / recovery / internal
+      mappings where applicable
+
+      - sibling search confirms no equivalent dead/dropped flag path remains in the
+      touched control/config surface'
+    evidence_template: '## Batched Spec Blocker Fix Evidence
+
+      - Files changed:
+
+      - Control propagation proof (`pause --reason`, `unpause --reason`, `stop --force`):
+
+      - `config show --effective` wiring proof:
+
+      - Exit-code mapping proof (not-found / recovery / internal):
+
+      - Sibling search results:
+
+      - Remaining ambiguity / deferred items:
+
+      '
+    depends_on:
+    - orch_operator_control_surface.spec_conformance
+    agent: python-senior
 - id: orch_operator_recovery_cutover
   name: Orchestration Recovery, Resume, and Legacy Bridge
   status: locked

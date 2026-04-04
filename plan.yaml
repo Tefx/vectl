@@ -59699,3 +59699,24 @@ phases:
     - orch_operator_config_state.impl_config_loader_freeze_tool_registry
     - orch_operator_config_state.impl_run_store_and_cases_index
     agent: wiring-auditor
+  - id: orch_operator_config_state.gate
+    name: Gate config, freeze, and run-store phase
+    status: pending
+    description: 'Gate review: verify config/load/freeze behavior, tool allowlist
+      validation, run-store persistence, and case-index rules are ready for downstream
+      operator-surface integration.'
+    verification: 'phase-check protecting orch_operator_control_surface and orch_operator_recovery_cutover:
+
+      - All implementation and verification steps completed successfully
+
+      - No unresolved blockers remain in config provenance, freeze semantics, run
+      registry, or case-index behavior
+
+      - Evidence is specific enough for downstream CLI/control/recovery integration'
+    depends_on:
+    - orch_operator_config_state.impl_config_loader_freeze_tool_registry
+    - orch_operator_config_state.impl_run_store_and_cases_index
+    - orch_operator_config_state.retest_green
+    - orch_operator_config_state.spec_conformance
+    - orch_operator_config_state.wiring_audit
+    agent: gate-reviewer

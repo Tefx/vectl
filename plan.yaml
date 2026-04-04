@@ -60432,3 +60432,51 @@ phases:
       - Evidence includes exact artifact families consumed and explicit outcome enums
       produced'
     agent: python-senior
+  - id: orch_operator_recovery_cutover.impl_legacy_bridge_import
+    name: Implement legacy-run bridge and import semantics for cutover
+    status: pending
+    description: 'step_type: implementation
+
+
+      Fill in stub bodies in src/vectl/orchestration/run_store.py, src/vectl/orch_app.py,
+      and any migration-facing operator module per the contracts from orch_operator_contracts.recovery_cutover_contracts.
+
+
+      YOUR SCOPE: implement transitional legacy-run discovery/import behavior needed
+      to:
+
+      - expose imported legacy runs through the orchestration run store
+
+      - populate case-index entries for imported runs when required
+
+      - preserve the documented parallel/preferred/deprecated/retired state model
+
+      - keep imported legacy runs inspectable/recoverable without creating a second
+      authority path for orchestration-native runs
+
+
+      Failure-mode checklist:
+
+      - unimported legacy runs must not appear as orchestration-native runs accidentally
+
+      - imported legacy artifacts missing continuity minimums must surface as explicit
+      migration/recovery blockers
+
+      - same-plan admission must respect imported active runs where the docs require
+      it
+
+
+      ## Completion Criteria (stub exclusion)
+
+      This is an IMPLEMENTATION step. Stub-only completion is NOT acceptable.'
+    verification: 'local-check protecting recovery consumer conformance, green retest,
+      and cutover validation:
+
+      - Main path: targeted tests prove imported legacy runs become inspectable through
+      run_store/orch surfaces where supported
+
+      - Failure path: regression tests cover missing continuity minimums and unimported-run
+      exclusion
+
+      - Evidence states what remains transitional versus orchestration-native authority'
+    agent: python-senior

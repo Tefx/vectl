@@ -60338,7 +60338,7 @@ phases:
       and drift-refusal failure path. Commit: 48abcab.'
   - id: orch_operator_config_state.retest_conformance_and_wiring
     name: Retest config-state conformance and wiring blockers green
-    status: pending
+    status: claimed
     description: 'As an INDEPENDENT REVIEWER (`gate-reviewer`), rerun the blocker
       checks from `orch_operator_config_state.spec_conformance` and `orch_operator_config_state.wiring_audit`
       after `orch_operator_config_state.fix_runtime_resume_snapshot_binding`.
@@ -60405,6 +60405,8 @@ phases:
     depends_on:
     - orch_operator_config_state.fix_runtime_resume_snapshot_binding
     agent: gate-reviewer
+    claimed_by: gate-reviewer
+    claimed_at: '2026-04-04T15:20:34.234570+00:00'
 - id: orch_operator_observability
   name: Orchestration Events, Projections, and Artifacts
   status: done

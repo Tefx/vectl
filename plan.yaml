@@ -61662,7 +61662,7 @@ phases:
       batched-fix protocol.'
   - id: orch_operator_control_surface.wiring_audit
     name: Audit CLI and operator-surface wiring completeness
-    status: claimed
+    status: done
     description: 'Wiring completeness audit: verify every new public query/control/app
       symbol and every documented command family is reachable from the real `vectl
       orch` entrypoint.'
@@ -61686,6 +61686,41 @@ phases:
     agent: wiring-auditor
     claimed_by: wiring-auditor
     claimed_at: '2026-04-04T17:12:01.789211+00:00'
+    done_at: '2026-04-04T17:19:16.792538+00:00'
+    evidence: 'step_intent: wiring completeness audit of CLI/operator surface
+
+      expected_result: command families registered, runtime consumers wired, no runtime
+      stubs in entry paths
+
+      observed_result: green
+
+
+      Audit outcomes:
+
+      - All documented orch command families registered and reachable from CLI entrypoint
+
+      - All public OrchestrationApp methods have runtime consumers
+
+      - Runtime entry paths have substantive I/O effects; no executable NotImplementedError
+      stubs found
+
+      - Minor should_fix: AppConfig.worktree_base_dir appears unconsumed in current
+      runtime wiring
+
+
+      failure_alignment: none
+
+      product_implementation_files_modified: NO
+
+      findings:
+
+      - blocker: none
+
+      - should_fix: worktree_base_dir consumption gap
+
+      - suggestion: stale docstring NotImplementedError mentions cleanup
+
+      - tech_debt: dual registration complexity'
   - id: orch_operator_control_surface.gate
     name: Gate operator control surface
     status: pending

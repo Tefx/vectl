@@ -59720,3 +59720,11 @@ phases:
     - orch_operator_config_state.spec_conformance
     - orch_operator_config_state.wiring_audit
     agent: gate-reviewer
+- id: orch_operator_observability
+  name: Orchestration Events, Projections, and Artifacts
+  status: locked
+  gate: Canonical events, projection replay, and derived artifacts satisfy the documented
+    envelope, registry, and artifact-schema rules and are green-verified for downstream
+    CLI/control use.
+  depends_on:
+  - orch_operator_tests

@@ -60560,3 +60560,11 @@ phases:
     - orch_operator_recovery_cutover.retest_green
     - orch_operator_recovery_cutover.spec_conformance
     agent: gate-reviewer
+- id: orch_operator_system_wiring
+  name: Orchestration Operator System Wiring
+  status: locked
+  gate: All operator-surface modules are wired into the real vectl orch entrypoint
+    with no production stubs or placeholders remaining, and end-to-end CLI data flow
+    is proven.
+  depends_on:
+  - orch_operator_recovery_cutover

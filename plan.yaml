@@ -59393,3 +59393,35 @@ phases:
       - At least one failing test cites the exact spec section for the minimal config
       fixture'
     agent: integration-verifier
+  - id: orch_operator_tests.observability_red
+    name: Define expected-red tests for events, projections, and derived artifacts
+    status: pending
+    description: 'step_type: test
+
+      step_intent: test_define_red
+
+      expected_result: red
+
+
+      Add test-only coverage for:
+
+      - canonical event envelope hashing, prev-hash chain, event_seq ordering, and
+      corruption detection
+
+      - event registry payload validation for run/control/roster/runtime/resolver/projection/operator
+      families
+
+      - projection replay into `state/latest.json`, `state/summary.json`, and `state/metrics.json`
+
+      - required run, step, and case artifact schemas and path-normalization rules
+
+
+      Tests must expose the missing observability/projection behavior without adding
+      implementation logic.'
+    verification: 'local-check protecting orch_operator_observability:
+
+      - Evidence lists expected-red failures for envelope integrity, replay, and derived
+      artifact generation
+
+      - Tests remain test-only and cite the exact event/artifact sections they encode'
+    agent: integration-verifier

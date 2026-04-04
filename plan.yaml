@@ -60075,3 +60075,32 @@ phases:
 
       - Evidence includes at least one shared fixture consumed by multiple query surfaces'
     agent: python-executor
+  - id: orch_operator_control_surface.mid_gate
+    name: Quick gate for operator-surface pattern correctness
+    status: pending
+    description: 'Quick gate: verify authorization, control-channel, and inspection-query
+      patterns are correct before orch_app and CLI wiring proceed.
+
+
+      review_depth: QUICK
+
+      cross_cutting_focus:
+
+      - resolver allowlist enforcement must use the canonical tool registry
+
+      - control actions must remain run-local and auditable
+
+      - inspection queries must consume canonical joined facts rather than re-derive
+      them'
+    verification: 'phase-check protecting orch_operator_control_surface.impl_orch_app_composition_root
+      and orch_operator_control_surface.impl_vectl_orch_cli_surface:
+
+      - No blocker remains in the shared control/read patterns that later wiring would
+      amplify
+
+      - Gate feedback is concrete enough to prevent downstream rework'
+    depends_on:
+    - orch_operator_control_surface.impl_resolver_gateway
+    - orch_operator_control_surface.impl_control_channel
+    - orch_operator_control_surface.impl_inspection_queries
+    agent: gate-reviewer

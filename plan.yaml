@@ -61723,7 +61723,7 @@ phases:
       - tech_debt: dual registration complexity'
   - id: orch_operator_control_surface.gate
     name: Gate operator control surface
-    status: pending
+    status: claimed
     description: 'Gate review: verify the runnable `vectl orch` surface, its supporting
       control/read boundaries, and its seam/liveness evidence meet the quality bar
       for recovery and cutover work.'
@@ -61751,6 +61751,8 @@ phases:
     - orch_operator_control_surface.wiring_audit
     - orch_operator_control_surface.retest_gate_blockers_batch
     agent: gate-reviewer
+    claimed_by: gate-reviewer
+    claimed_at: '2026-04-04T17:43:09.635171+00:00'
   - id: orch_operator_control_surface.fix_spec_blockers_batch
     name: Fix batched spec-conformance blockers for control/config CLI surface
     status: done

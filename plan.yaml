@@ -62448,7 +62448,7 @@ phases:
     agent: gate-reviewer
   - id: orch_operator_recovery_cutover.fix_recovery_contract_conformance
     name: Fix recovery contract and quarantine conformance blockers
-    status: claimed
+    status: done
     description: 'Fix ALL verifier blockers for recovery-cutover conformance in one
       batched remediation step.
 
@@ -62549,6 +62549,10 @@ phases:
     agent: python-senior
     claimed_by: python-senior
     claimed_at: '2026-04-04T19:55:50.449323+00:00'
+    done_at: '2026-04-04T20:05:29.852947+00:00'
+    evidence: Batched blocker remediation completed; commit 143552e. Unified RecoveryReport/RecoveryOutcome
+      semantics across consumer surfaces and added no-silent-deletion quarantine contract+tests
+      with gate_open_allowed=false path verified. 32 tests passed.
   - id: orch_operator_recovery_cutover.reverify_recovery_contract_conformance
     name: Reverify recovery consumer-boundary and spec conformance
     status: pending

@@ -60639,3 +60639,23 @@ phases:
     criteria are independently validated before docs and final deep review.
   depends_on:
   - orch_operator_system_wiring
+  steps:
+  - id: orch_operator_cutover_validation.replacement_workflow_smoke
+    name: Validate replacement-promise operator workflows
+    status: pending
+    description: 'Blind workflow validation for the documented operator replacement
+      promise. Exercise the seven required workflows through the real `vectl orch`
+      surface: start run, inspect live status/events, pause/unpause/stop, inspect/respond
+      to blocked cases, recover interrupted runs, resume safe runs, and audit artifacts
+      after completion.'
+    verification: 'phase-check protecting doc sync and deep review:
+
+      - Evidence covers all seven replacement workflows with exact commands and outcomes
+
+      - Any workflow gap is reported as blocker-class debt because it intersects the
+      retirement gate
+
+      - Successful evidence includes real artifact navigation, not summaries only'
+    evidence_template: 'Paste a 7-row workflow table with: workflow, exact command(s),
+      outcome, artifact(s), blocker status'
+    agent: blind-tester

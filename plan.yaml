@@ -59240,3 +59240,37 @@ phases:
     is left implicit.
   depends_on:
   - orch_migration_finish
+  steps:
+  - id: orch_operator_contracts.foundation_contracts
+    name: Pin config, observability, store, and operator-boundary contracts
+    status: pending
+    description: "step_type: contract\ncontract_purity: ENFORCED\ncontract_outputs:\n\
+      \  - signatures\n  - type_defs\n  - interfaces\n  - stubs\n\nPin the authoritative\
+      \ operator-surface contracts in:\n- src/vectl/orchestration/config.py\n- src/vectl/orchestration/events.py\n\
+      - src/vectl/orchestration/projections.py\n- src/vectl/orchestration/run_store.py\n\
+      - src/vectl/orchestration/tool_registry.py\n- src/vectl/orchestration/resolver_gateway.py\n\
+      - src/vectl/orchestration/control_channel.py\n- src/vectl/orchestration/inspection_queries.py\n\
+      \nAuthoritative interfaces are the docs, not invention. Produce signatures,\
+      \ typed DTOs, schema constants, and stub-only module boundaries for:\n- orchestration\
+      \ config model / loader / freeze boundary\n- canonical event envelope / registry\
+      \ / sink protocols\n- RunStateView / projection replay and derived artifact\
+      \ contracts\n- run registry / cases index / --latest lookup interfaces\n- canonical\
+      \ tool family metadata and resolver allowlist validation surfaces\n- file-based\
+      \ operator action persistence/query boundaries\n- joined read-query DTOs for\
+      \ runs, inspect, and case surfaces\n\nDo NOT add implementation logic, persistence\
+      \ logic, or CLI behavior in this step. If a required public surface is underspecified,\
+      \ record the gap in docstrings/comments on the exact documented interface instead\
+      \ of expanding the API."
+    verification: 'local-check protecting orch_operator_tests and all downstream implementation
+      phases:
+
+      - Contract artifacts exist only in the listed operator-surface modules
+
+      - Added content is limited to signatures, types, docstrings, schema declarations,
+      and stubs (no working business logic)
+
+      - Every required surface named in the design docs has an explicit contract anchor
+
+      - Evidence includes a file list plus a note showing which doc section pins each
+      public interface'
+    agent: python-executor

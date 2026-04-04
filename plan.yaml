@@ -60949,7 +60949,7 @@ phases:
       integration readiness verified.'
 - id: orch_operator_control_surface
   name: Orchestration Control Channel, Queries, App Root, and CLI
-  status: in_progress
+  status: done
   gate: Resolver gateway, control channel, inspection queries, orch_app wiring, and
     vectl orch CLI behavior are implemented, seam-verified, and runnable from the
     real CLI entrypoint.
@@ -61723,7 +61723,7 @@ phases:
       - tech_debt: dual registration complexity'
   - id: orch_operator_control_surface.gate
     name: Gate operator control surface
-    status: claimed
+    status: done
     description: 'Gate review: verify the runnable `vectl orch` surface, its supporting
       control/read boundaries, and its seam/liveness evidence meet the quality bar
       for recovery and cutover work.'
@@ -61753,6 +61753,30 @@ phases:
     agent: gate-reviewer
     claimed_by: gate-reviewer
     claimed_at: '2026-04-04T17:43:09.635171+00:00'
+    done_at: '2026-04-04T17:49:20.539367+00:00'
+    evidence: 'Gate review PASS after blocker remediation.
+
+
+      Verification highlights:
+
+      - implementation + seam proof + liveness + spec conformance + wiring evidence
+      complete
+
+      - no unresolved blockers in CLI registration/output consistency/control acknowledgements/gateway
+      authorization
+
+      - runnable vectl orch surface validated end-to-end
+
+
+      Findings:
+
+      - blocker: none
+
+      - should_fix: none
+
+      - suggestion: none
+
+      - tech_debt: none'
   - id: orch_operator_control_surface.fix_spec_blockers_batch
     name: Fix batched spec-conformance blockers for control/config CLI surface
     status: done
@@ -62184,7 +62208,7 @@ phases:
       product_implementation_files_modified: NO'
 - id: orch_operator_recovery_cutover
   name: Orchestration Recovery, Resume, and Legacy Bridge
-  status: locked
+  status: pending
   gate: Recovery/resume behavior, continuity artifact handling, and legacy bridge/import
     semantics satisfy the documented outcome model and are independently verified
     before system wiring and cutover validation.

@@ -59845,3 +59845,27 @@ phases:
 
       - Evidence includes at least one replay fixture and the produced artifact paths'
     agent: python-senior
+  - id: orch_operator_observability.retest_green
+    name: Retest events, projections, and artifact derivation green
+    status: pending
+    description: 'step_type: test
+
+      step_intent: retest_green
+
+      expected_result: green
+
+
+      As an independent tester, prove the event envelope, registry, projection replay,
+      and derived artifact outputs satisfy the expected-red tests and contracts.'
+    verification: 'phase-check protecting orch_operator_control_surface and orch_operator_recovery_cutover:
+
+      - Expected-red tests from orch_operator_tests.observability_red now pass green
+      where implementation is present
+
+      - Evidence includes the main replay path and a corruption/failure-path regression
+
+      - Produced artifacts match the documented schemas and event families'
+    depends_on:
+    - orch_operator_observability.impl_event_envelope_registry_sinks
+    - orch_operator_observability.impl_projections_runstateview_artifacts
+    agent: integration-verifier

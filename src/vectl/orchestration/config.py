@@ -346,6 +346,31 @@ def write_frozen_snapshot(
     return snapshot_path
 
 
+def load_frozen_snapshot(snapshot_path: Path) -> OrchestrationConfig:
+    """Load a persisted frozen run snapshot.
+
+    Authority: docs/ORCHESTRATION-PLANE-CLI-CONFIG-OBSERVABILITY-DESIGN.md §8.8
+
+    Args:
+        snapshot_path: Path to ``config.snapshot.yaml``.
+
+    Returns:
+        Reconstructed ``OrchestrationConfig`` from snapshot content.
+
+    Raises:
+        FileNotFoundError: If the snapshot file is missing.
+        ValueError: If snapshot structure is not a mapping.
+    """
+    if not snapshot_path.exists():
+        raise FileNotFoundError(f"frozen config snapshot not found: {snapshot_path}")
+    payload = yaml.safe_load(snapshot_path.read_text(encoding="utf-8"))
+    if payload is None:
+        return OrchestrationConfig()
+    if not isinstance(payload, dict):
+        raise ValueError(f"invalid frozen config snapshot payload: {snapshot_path}")
+    return _dict_to_config(payload)
+
+
 def _serialize_tool_allowlist(
     allowlist: ResolverToolAllowlist | dict[str, tuple[str, ...]] | None,
 ) -> dict[str, list[str]]:
@@ -1077,6 +1102,7 @@ __all__ = [
     "ConfigValue",
     "ConfigValidationError",
     "freeze_config",
+    "load_frozen_snapshot",
     "load_orchestration_config",
     "validate_orchestration_config",
     "write_frozen_snapshot",

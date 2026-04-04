@@ -60359,3 +60359,76 @@ phases:
     before system wiring and cutover validation.
   depends_on:
   - orch_operator_control_surface
+  steps:
+  - id: orch_operator_recovery_cutover.impl_recovery_resume_integration
+    name: Implement recover and resume integration from continuity artifacts
+    status: pending
+    description: 'step_type: implementation
+
+
+      Fill in stub bodies in src/vectl/orch_app.py and any recovery-facing operator
+      modules per the contracts from orch_operator_contracts.recovery_cutover_contracts
+      and upstream continuity artifacts defined by the docs.
+
+
+      UPSTREAM ARTIFACTS:
+
+      - recovery/report DTOs from orch_operator_contracts.recovery_cutover_contracts
+      are AUTHORITATIVE
+
+      - run_store, events, projections, and control_channel behaviors from earlier
+      phases are AUTHORITATIVE
+
+      - tests from orch_operator_tests.cli_recovery_red are PROTECTED
+
+
+      YOUR SCOPE: implement `vectl orch recover` / `resume` orchestration using frozen
+      config, canonical events, projections, continuity ledger/journal, capability
+      snapshots, operator receipts, and run-local quarantine.
+
+
+      Failure-mode checklist:
+
+      - stale/unknown heartbeat or continuity ambiguity must block or require fresh
+      start per the decision matrix
+
+      - transcript/event corruption must stop replay and surface recovery-grade diagnostics
+
+      - `fresh_start_required` must terminalize the old run before same-plan restart
+      is permitted
+
+      - recover dry-run must not mutate durable state
+
+
+      State semantics:
+
+      - durable continuity facts and capability semantics jointly decide safe recovery
+      actions
+
+      - in-memory roster/runtime state is never recovery authority
+
+      - run-local quarantine supersedes the historical global path for orchestration-native
+      runs
+
+
+      Out-of-scope guardrail:
+
+      - do not silently broaden runner capabilities or replay policy beyond the documented
+      contract
+
+
+      ## Completion Criteria (stub exclusion)
+
+      This is an IMPLEMENTATION step. Stub-only completion is NOT acceptable.'
+    verification: 'local-check protecting recovery consumer conformance, green retest,
+      and system wiring:
+
+      - Main path: targeted tests prove resume_safe and recover_and_resume flows from
+      durable artifacts
+
+      - Failure path: regression tests cover blocking_divergence/corrupt_blocking/ambiguous_blocking
+      and fresh_start_required terminalization
+
+      - Evidence includes exact artifact families consumed and explicit outcome enums
+      produced'
+    agent: python-senior

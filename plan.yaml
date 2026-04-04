@@ -62866,7 +62866,7 @@ phases:
       artifacts; proved full layer traversal and blocked recovery path behavior.
   - id: orch_operator_system_wiring.gate
     name: Gate operator system wiring
-    status: pending
+    status: claimed
     description: 'Gate review: verify operator-surface shared wiring is complete and
       the real entrypoint uses the real implementations end-to-end.
 
@@ -62897,6 +62897,8 @@ phases:
     - orch_operator_system_wiring.verify_e2e
     - orch_operator_system_wiring.liveness_probe
     agent: gate-reviewer
+    claimed_by: gate-reviewer
+    claimed_at: '2026-04-04T20:59:25.492448+00:00'
   - id: orch_operator_system_wiring.liveness_probe
     name: Probe vectl orch entrypoint liveness
     status: done

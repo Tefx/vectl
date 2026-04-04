@@ -59146,7 +59146,7 @@ phases:
       \nDeviation records:\n- none"
   - id: orch_migration_finish.retest_gate_evidence_round4
     name: Re-test migration finish gate evidence after round4 remediation
-    status: pending
+    status: claimed
     description: 'Independent round4 retest for unresolved B4 after `orch_migration_finish.fix_gate_blockers_round4`.
       Reassess the live repository state only and keep historical failed steps unchanged.
 
@@ -59186,3 +59186,5 @@ phases:
     depends_on:
     - orch_migration_finish.fix_gate_blockers_round4
     agent: gate-reviewer
+    claimed_by: software-architect
+    claimed_at: '2026-04-04T03:35:16.595807+00:00'

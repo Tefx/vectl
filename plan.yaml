@@ -63079,7 +63079,7 @@ phases:
     agent: gate-reviewer
   - id: orch_operator_cutover_validation.fix_cutover_gate_blockers
     name: Fix cutover validation blockers
-    status: claimed
+    status: done
     description: 'Batched implementation remediation for the cutover-validation gate
       blockers.
 
@@ -63142,6 +63142,11 @@ phases:
     agent: python-senior
     claimed_by: python-senior
     claimed_at: '2026-04-04T21:19:17.024409+00:00'
+    done_at: '2026-04-04T21:28:48.209105+00:00'
+    evidence: 'Implemented batched cutover gate blockers fix; commit b54e209. P1:
+      CutoverValidator now validates all four retirement criteria. P2: Added canonical
+      operator command surface for cutover validation and migration-state advancement
+      with CLI->orch_app wiring. Verification: pytest/ruff/mypy passed.'
   - id: orch_operator_cutover_validation.reverify_cutover_operator_surface
     name: Reverify cutover operator surface and gate prep
     status: pending

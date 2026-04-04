@@ -60480,3 +60480,22 @@ phases:
 
       - Evidence states what remains transitional versus orchestration-native authority'
     agent: python-senior
+  - id: orch_operator_recovery_cutover.consumer_boundary_conformance
+    name: Verify shared recovery facts across operator consumer surfaces
+    status: pending
+    description: 'Consumer-boundary conformance check: prove CLI inspect status, inspect
+      actions, case surfaces, and recovery/report outputs interpret the same resolved
+      recovery facts from a shared fixture without re-deriving them independently.'
+    verification: 'phase-check protecting system wiring and cutover validation:
+
+      - A shared fixture or artifact snapshot is reused across status/actions/case/recover
+      surfaces
+
+      - Evidence shows the same resolved outcome/liveness/halt facts appear consistently
+      across those consumers
+
+      - Any remaining independent re-derivation is flagged as blocking debt'
+    depends_on:
+    - orch_operator_recovery_cutover.impl_recovery_resume_integration
+    - orch_operator_recovery_cutover.impl_legacy_bridge_import
+    agent: integration-verifier

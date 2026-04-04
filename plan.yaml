@@ -58919,7 +58919,7 @@ phases:
       \  - orch_migration_finish.retest_gate_evidence_round3"
   - id: orch_migration_finish.fix_gate_blockers_round3
     name: Fix migration finish gate blockers round3
-    status: claimed
+    status: done
     description: 'Batched round3 remediation for the failed `orch_migration_finish.retest_gate_evidence_round2`
       gate-evidence loop. Keep all earlier failed/fix/retest steps unchanged as historical
       evidence.
@@ -58987,6 +58987,23 @@ phases:
     agent: python-senior
     claimed_by: python-senior
     claimed_at: '2026-04-04T03:24:09.811791+00:00'
+    done_at: '2026-04-04T03:28:00.627965+00:00'
+    evidence: "Artifact:\n- Commit: 7f4a7b8 (branch vectl/step-orch_migration_finish.fix_gate_blockers_round3)\n\
+      - Added/updated:\n  - `tests/legacy/driver/*` (38 rehomed driver tests)\n  -\
+      \ `tests/legacy/driver/test_layout_regression.py`\n  - `docs/DRIVER-CONTINUITY-FOUNDATION.md`\
+      \ path update\n\nVerification:\n- Path reality:\n  - `tests/legacy/driver` exists\
+      \ and contains rehomed tests\n  - `top_level_driver_count=0`, `legacy_driver_count=38`\n\
+      - Git proof:\n  - commit includes R100 renames for all `tests/test_driver*.py`\
+      \ to `tests/legacy/driver/...`\n  - plus one added regression test and one doc\
+      \ path fix\n  - `git status --short` clean after commit\n- Regression check:\n\
+      \  - `uv run pytest tests/legacy/driver/test_layout_regression.py -q` -> 1 passed\n\
+      - Docs stale path check:\n  - no remaining `tests/test_driver*.py` refs in docs\
+      \ markdown scan\n\nSpec link:\n- docs/ORCHESTRATION-PLANE-MIGRATION.md (recommended\
+      \ `tests/legacy/driver/` layout)\n- docs/DRIVER-CONTINUITY-FOUNDATION.md (updated\
+      \ legacy path reference)\n\nBlocker closure intent:\n- B1: fixed via physical\
+      \ rehome + path/count evidence\n- B3: fixed via concrete non-plan repo changes\
+      \ and tracked renames\n- B4: fixed by aligning docs/evidence with actual filesystem+git\
+      \ state"
   - id: orch_migration_finish.retest_gate_evidence_round3
     name: Re-test migration finish gate evidence after round3 remediation
     status: pending

@@ -60106,7 +60106,7 @@ phases:
       expected_result=green, observed_result=green for implementation suites.'
   - id: orch_operator_config_state.spec_conformance
     name: Verify config and run-store spec conformance
-    status: claimed
+    status: done
     description: Spec conformance verification via adversarial divergence hunting
       for config, frozen snapshot, run registry, case index, and latest-selection
       semantics.
@@ -60124,6 +60124,12 @@ phases:
     agent: spec-verifier
     claimed_by: spec-verifier
     claimed_at: '2026-04-04T14:59:59.268956+00:00'
+    done_at: '2026-04-04T15:05:37.192809+00:00'
+    evidence: Adversarial spec-conformance audit rerun for config/freeze/run-store
+      scope; requirement-by-requirement verdicts now report conformance across discovery
+      order, validation rules, defaults, tool registry allowlist rejection, snapshot
+      path semantics, ULID identity, JSONL persistence/retry/corruption handling,
+      liveness classification, and same-plan admission with file:line mappings.
   - id: orch_operator_config_state.wiring_audit
     name: Audit config and run-store wiring completeness
     status: claimed

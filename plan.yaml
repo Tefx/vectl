@@ -60388,7 +60388,7 @@ phases:
     agent: gate-reviewer
 - id: orch_operator_observability
   name: Orchestration Events, Projections, and Artifacts
-  status: in_progress
+  status: done
   gate: Canonical events, projection replay, and derived artifacts satisfy the documented
     envelope, registry, and artifact-schema rules and are green-verified for downstream
     CLI/control use.
@@ -60591,7 +60591,7 @@ phases:
       explicitly.
   - id: orch_operator_observability.gate
     name: Gate events, projections, and artifacts phase
-    status: claimed
+    status: done
     description: 'Gate review: verify canonical events, projection replay, and derived
       artifacts are correct, auditable, and ready for control/CLI integration.'
     verification: 'phase-check protecting orch_operator_control_surface and orch_operator_recovery_cutover:
@@ -60608,6 +60608,10 @@ phases:
     agent: gate-reviewer
     claimed_by: gate-reviewer
     claimed_at: '2026-04-04T15:05:59.474905+00:00'
+    done_at: '2026-04-04T15:09:11.205597+00:00'
+    evidence: 'Gate review accepted observability phase readiness: canonical event
+      integrity, registry validation, projection replay artifacts, and downstream
+      integration readiness verified.'
 - id: orch_operator_control_surface
   name: Orchestration Control Channel, Queries, App Root, and CLI
   status: locked

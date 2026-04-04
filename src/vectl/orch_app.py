@@ -60,6 +60,13 @@ from vectl.orchestration.inspection_queries import (
     query_runs,
 )
 from vectl.orchestration.projections import replay_events_to_artifacts
+from vectl.orchestration.recovery import (
+    RecoveryAction,
+    RecoveryOutcome,
+    RecoveryReport,
+    recovery_action_status,
+    recovery_case_status,
+)
 from vectl.orchestration.resolver_gateway import (
     AuditedResolverGateway,
     AuthorizationError,
@@ -124,12 +131,14 @@ class OrchestrationResult:
         message: Human-readable result message.
         step_id: Optional step ID affected by the operation.
         run_id: Optional run identifier created by the operation.
+        recovery_report: Canonical recovery report when produced by recover().
     """
 
     success: bool
     message: str
     step_id: str | None = None
     run_id: str | None = None
+    recovery_report: RecoveryReport | None = None
 
 
 @dataclass(frozen=True)
@@ -293,6 +302,7 @@ class OrchestrationApp:
         self._text_log_path = self._logs_path()
         self._text_log_path.parent.mkdir(parents=True, exist_ok=True)
         self._text_log_path.touch(exist_ok=True)
+        self._latest_recovery_report: RecoveryReport | None = None
 
     # -----------------------------------------------------------------
     # Run / Resume / Recover / Prune
@@ -926,12 +936,13 @@ class OrchestrationApp:
         run_root: Path,
         run_id: str,
         reason: str,
-    ) -> tuple[str, ...]:
+    ) -> tuple[tuple[str, ...], bool]:
         continuity_root = self._continuity_root(run_root)
         quarantine_root = continuity_root / "quarantine"
         quarantine_root.mkdir(parents=True, exist_ok=True)
         manifest_path = quarantine_root / "manifest.jsonl"
         copied_paths: list[str] = []
+        source_artifact_paths: list[Path] = []
         for relative in (
             "ledger.json",
             "journal.jsonl",
@@ -944,6 +955,7 @@ class OrchestrationApp:
             destination = quarantine_root / source.name
             shutil.copy2(source, destination)
             copied_paths.append(str(destination))
+            source_artifact_paths.append(source)
             manifest_entry = {
                 "run_id": run_id,
                 "classification": "fresh_start_required",
@@ -955,7 +967,8 @@ class OrchestrationApp:
             with manifest_path.open("a", encoding="utf-8") as handle:
                 handle.write(json.dumps(manifest_entry, sort_keys=True))
                 handle.write("\n")
-        return tuple(copied_paths)
+        no_silent_deletion_preserved = all(source.exists() for source in source_artifact_paths)
+        return tuple(copied_paths), no_silent_deletion_preserved
 
     def recover(
         self,
@@ -984,14 +997,26 @@ class OrchestrationApp:
             blockers = ", ".join(
                 f"{result.run_id}:{result.continuity_blocker}" for result in blocking_imports
             )
-            return OrchestrationResult(
-                success=False,
+            report = RecoveryReport(
+                outcome=RecoveryOutcome.BLOCKED,
                 message=(
                     "Recovery blocked: imported legacy continuity minimums are incomplete; "
                     f"operator migration action required ({blockers})"
                 ),
                 step_id=step_id,
+                actions=(
+                    RecoveryAction(
+                        action_type="operator_migration_required",
+                        description="Imported legacy continuity minimums are incomplete.",
+                    ),
+                ),
+                operator_message=(
+                    "Resolve imported legacy continuity minimum blockers before recovery."
+                ),
+                gate_open_allowed=False,
+                no_silent_deletion_preserved=True,
             )
+            return self._recovery_result_from_report(report)
 
         ambient = self._effective_orchestration_config()
         registry = self._run_registry(config=ambient)
@@ -1002,14 +1027,19 @@ class OrchestrationApp:
         if step_id is not None:
             candidates = [record for record in candidates if record.step_id == step_id]
         if not candidates:
-            return OrchestrationResult(
-                success=True,
+            report = RecoveryReport(
+                outcome=RecoveryOutcome.NO_ARTIFACTS,
                 message="no_artifacts: no active run artifacts require recovery",
             )
+            return self._recovery_result_from_report(report)
 
         blocking: list[str] = []
         recover_and_resume: list[str] = []
         fresh_start_terminalized: list[str] = []
+        blocked_artifact_paths: list[str] = []
+        quarantined_artifact_paths: list[str] = []
+        no_silent_deletion_preserved = True
+        recovery_actions: list[RecoveryAction] = []
         for record in candidates:
             run_root = registry.run_artifact_root(record.run_id)
             snapshot_path = run_root / "config.snapshot.yaml"
@@ -1017,6 +1047,7 @@ class OrchestrationApp:
                 blocking.append(
                     f"run_id={record.run_id} outcome=corrupt_blocking missing={snapshot_path}"
                 )
+                blocked_artifact_paths.append(str(snapshot_path))
                 continue
 
             frozen = load_frozen_snapshot(snapshot_path)
@@ -1032,6 +1063,14 @@ class OrchestrationApp:
                         f"run_id={record.run_id} outcome=recover_and_resume dry_run=true "
                         f"artifact_families={','.join(decision.artifact_families)}"
                     )
+                    recovery_actions.append(
+                        RecoveryAction(
+                            action_type="recover_and_resume",
+                            step_id=record.step_id,
+                            description="Dry-run validated recover-and-resume path.",
+                            artifacts=decision.artifact_families,
+                        )
+                    )
                     continue
                 replay_result = self._replay_projection_for_run(
                     run_id=record.run_id,
@@ -1043,6 +1082,7 @@ class OrchestrationApp:
                     blocking.append(
                         f"run_id={record.run_id} outcome=corrupt_blocking detail={replay_message}"
                     )
+                    blocked_artifact_paths.append(str(run_root / "state" / "latest.json"))
                     continue
                 registry.save(
                     RunRecord(
@@ -1060,6 +1100,16 @@ class OrchestrationApp:
                     f"run_id={record.run_id} outcome=recover_and_resume "
                     f"artifact_families={','.join(decision.artifact_families)}"
                 )
+                recovery_actions.append(
+                    RecoveryAction(
+                        action_type="recover_and_resume",
+                        step_id=record.step_id,
+                        description=(
+                            "Recovered continuity and replayed events from durable artifacts."
+                        ),
+                        artifacts=decision.artifact_families,
+                    )
+                )
                 continue
 
             if decision.outcome == "fresh_start_required":
@@ -1068,12 +1118,22 @@ class OrchestrationApp:
                         f"run_id={record.run_id} outcome=fresh_start_required dry_run=true "
                         f"artifact_families={','.join(decision.artifact_families)}"
                     )
+                    recovery_actions.append(
+                        RecoveryAction(
+                            action_type="quarantine_dry_run",
+                            step_id=record.step_id,
+                            description="Dry-run validated fresh-start quarantine path.",
+                            artifacts=decision.artifact_families,
+                        )
+                    )
                     continue
-                quarantined = self._quarantine_for_fresh_start(
+                quarantined, preserved = self._quarantine_for_fresh_start(
                     run_root=run_root,
                     run_id=record.run_id,
                     reason=decision.message,
                 )
+                no_silent_deletion_preserved = no_silent_deletion_preserved and preserved
+                quarantined_artifact_paths.extend(quarantined)
                 now_ts = time.time()
                 registry.save(
                     RunRecord(
@@ -1100,25 +1160,82 @@ class OrchestrationApp:
                     f"run_id={record.run_id} outcome=fresh_start_required terminalized=true "
                     f"quarantine={len(quarantined)}"
                 )
+                recovery_actions.append(
+                    RecoveryAction(
+                        action_type="quarantine_and_terminalize",
+                        step_id=record.step_id,
+                        description=(
+                            "Quarantined stale artifacts and terminalized run for fresh start."
+                        ),
+                        artifacts=quarantined,
+                    )
+                )
                 continue
 
             blocking.append(
                 f"run_id={record.run_id} outcome={decision.outcome} detail={decision.message} "
                 f"artifact_families={','.join(decision.artifact_families)}"
             )
-
-        if blocking:
-            return OrchestrationResult(
-                success=False,
-                message=("recovery_blocked: " + " | ".join(blocking)),
+            blocked_artifact_paths.append(str(run_root / "continuity"))
+            recovery_actions.append(
+                RecoveryAction(
+                    action_type="blocked",
+                    step_id=record.step_id,
+                    description=decision.message,
+                    artifacts=decision.artifact_families,
+                )
             )
 
+        if blocking:
+            report = RecoveryReport(
+                outcome=RecoveryOutcome.BLOCKED,
+                message=("recovery_blocked: " + " | ".join(blocking)),
+                step_id=step_id,
+                actions=tuple(recovery_actions),
+                blocked_artifact_paths=tuple(blocked_artifact_paths),
+                quarantined_artifact_paths=tuple(quarantined_artifact_paths),
+                operator_message=(
+                    "Resolve blocking continuity artifacts before recovery gate can open."
+                ),
+                gate_open_allowed=False,
+                no_silent_deletion_preserved=no_silent_deletion_preserved,
+            )
+            return self._recovery_result_from_report(report)
+
         details = [*recover_and_resume, *fresh_start_terminalized]
-        return OrchestrationResult(
-            success=True,
+        report = RecoveryReport(
+            outcome=(
+                RecoveryOutcome.QUARANTINED
+                if fresh_start_terminalized
+                else RecoveryOutcome.RECOVERED
+            ),
             message=(
                 "recovery_complete: " + (" | ".join(details) if details else "no actions required")
             ),
+            step_id=step_id,
+            actions=tuple(recovery_actions),
+            blocked_artifact_paths=tuple(blocked_artifact_paths),
+            quarantined_artifact_paths=tuple(quarantined_artifact_paths),
+            gate_open_allowed=not bool(fresh_start_terminalized),
+            no_silent_deletion_preserved=bool(quarantined_artifact_paths)
+            and no_silent_deletion_preserved,
+        )
+        return self._recovery_result_from_report(report)
+
+    def _recovery_result_from_report(self, report: RecoveryReport) -> OrchestrationResult:
+        """Convert canonical RecoveryReport into OrchestrationResult surface."""
+
+        self._latest_recovery_report = report
+        success = report.outcome in {
+            RecoveryOutcome.RECOVERED,
+            RecoveryOutcome.QUARANTINED,
+            RecoveryOutcome.NO_ARTIFACTS,
+        }
+        return OrchestrationResult(
+            success=success,
+            message=report.message,
+            step_id=report.step_id,
+            recovery_report=report,
         )
 
     @dataclass(frozen=True)
@@ -1243,6 +1360,13 @@ class OrchestrationApp:
             f"latest_run_id={runs.latest_run_id or ''}",
             f"statuses={','.join(runs.statuses)}",
         )
+        if self._latest_recovery_report is not None:
+            report = self._latest_recovery_report
+            data = (
+                *data,
+                f"recovery_outcome={report.outcome.value}",
+                f"gate_open_allowed={report.gate_open_allowed}",
+            )
         return InspectResult(view_type="status", data=data)
 
     def inspect_events(
@@ -1370,6 +1494,20 @@ class OrchestrationApp:
                 rows.append(
                     f"status={status} action_id={request.action_id} type={request.msg_type}"
                 )
+        if self._latest_recovery_report is not None:
+            report = self._latest_recovery_report
+            mapped_status = recovery_action_status(report.outcome)
+            for index, action in enumerate(report.actions):
+                rows.append(
+                    " ".join(
+                        (
+                            f"status={mapped_status}",
+                            f"action_id=recovery-{index}",
+                            f"type={action.action_type}",
+                            f"step_id={action.step_id or ''}",
+                        )
+                    )
+                )
         return InspectResult(view_type="actions", data=tuple(rows))
 
     # -----------------------------------------------------------------
@@ -1399,6 +1537,15 @@ class OrchestrationApp:
         results: list[CaseResult] = [
             CaseResult(case_id=case_id, status="open", reason="") for case_id in ids
         ]
+        if self._latest_recovery_report is not None:
+            report = self._latest_recovery_report
+            results.append(
+                CaseResult(
+                    case_id="recovery.latest",
+                    status=recovery_case_status(report.outcome),
+                    reason=report.message,
+                )
+            )
         if status is not None:
             results = [case for case in results if case.status == status]
         return tuple(results)
@@ -1422,6 +1569,13 @@ class OrchestrationApp:
             NotImplementedError: Until case semantics are specified.
         """
         registry = self._run_registry(config=self._effective_orchestration_config())
+        if case_id == "recovery.latest" and self._latest_recovery_report is not None:
+            report = self._latest_recovery_report
+            return CaseResult(
+                case_id="recovery.latest",
+                status=recovery_case_status(report.outcome),
+                reason=report.message,
+            )
         entry = registry._latest_cases_by_case_id().get(case_id)
         if entry is None:
             return CaseResult(case_id=case_id, status=None, reason="Case not found")

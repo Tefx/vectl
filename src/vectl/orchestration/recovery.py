@@ -143,6 +143,8 @@ class RecoveryReport:
         blocked_artifact_paths: Tuple of artifact paths that are blocking recovery.
         quarantined_artifact_paths: Tuple of artifact paths that were quarantined.
         operator_message: Message to surface to the operator if intervention is needed.
+        gate_open_allowed: Whether startup/recovery gate may proceed after this report.
+        no_silent_deletion_preserved: Whether quarantine behavior preserved source artifacts.
     """
 
     outcome: RecoveryOutcome
@@ -154,6 +156,70 @@ class RecoveryReport:
     blocked_artifact_paths: tuple[str, ...] = ()
     quarantined_artifact_paths: tuple[str, ...] = ()
     operator_message: str | None = None
+    gate_open_allowed: bool = True
+    no_silent_deletion_preserved: bool = False
+
+
+def recovery_gate_open_allowed(outcome: RecoveryOutcome) -> bool:
+    """Return whether recovery outcome permits opening the gate.
+
+    Authority: step orch_operator_recovery_cutover.fix_recovery_contract_conformance
+    blocker family B1/B2 (shared semantics and gate_open_allowed behavior).
+
+    Args:
+        outcome: Recovery outcome to classify.
+
+    Returns:
+        True when recovery allows orchestration to continue without operator block.
+    """
+
+    return outcome in {
+        RecoveryOutcome.RECOVERED,
+        RecoveryOutcome.QUARANTINED,
+        RecoveryOutcome.NO_ARTIFACTS,
+    }
+
+
+def recovery_case_status(outcome: RecoveryOutcome) -> Literal["open", "resolved", "halt"]:
+    """Map recovery outcome to case-surface status without reinterpretation.
+
+    Authority: step orch_operator_recovery_cutover.fix_recovery_contract_conformance
+    blocker family B1 (status/case/recover/report seam alignment).
+
+    Args:
+        outcome: Recovery outcome to map.
+
+    Returns:
+        Case status for consumer-facing case surfaces.
+    """
+
+    if outcome is RecoveryOutcome.HALT:
+        return "halt"
+    if recovery_gate_open_allowed(outcome):
+        return "resolved"
+    return "open"
+
+
+def recovery_action_status(
+    outcome: RecoveryOutcome,
+) -> Literal["applied", "pending", "rejected"]:
+    """Map recovery outcome to action-surface status.
+
+    Authority: step orch_operator_recovery_cutover.fix_recovery_contract_conformance
+    blocker family B1 (status/actions/recover/report seam alignment).
+
+    Args:
+        outcome: Recovery outcome to map.
+
+    Returns:
+        Action status for consumer-facing inspect-actions surfaces.
+    """
+
+    if outcome is RecoveryOutcome.OPERATOR_REQUIRED:
+        return "pending"
+    if recovery_gate_open_allowed(outcome):
+        return "applied"
+    return "rejected"
 
 
 # ---------------------------------------------------------------------
@@ -597,6 +663,9 @@ __all__ = [
     "RecoveryHygieneResult",
     "RecoveryOutcome",
     "RecoveryReport",
+    "recovery_action_status",
+    "recovery_case_status",
+    "recovery_gate_open_allowed",
     "RunStoreLegacyRunBridge",
     "StartupRecoveryControllerInput",
     "StartupRecoveryControllerOutput",

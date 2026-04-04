@@ -62985,13 +62985,30 @@ phases:
   - id: orch_operator_deep_review.gate
     name: Final gate for orchestration operator surface
     status: pending
-    description: Final deep-review gate for the orchestration operator surface.
+    description: 'Final deep-review gate for the orchestration operator surface.
+
+
+      review_depth: THOROUGH
+
+      cross_cutting_focus:
+
+      - replacement-grade behavior across real `vectl orch` workflows
+
+      - runtime wiring completeness versus placeholder/stub regression
+
+      - recovery/cutover authority consistency across CLI, artifacts, and inspect/recover
+      surfaces
+
+      - final blocker intersection with plan completion'
     verification: 'full-plan-check protecting plan completion:
 
       - All final audits completed with evidence
 
-      - No unresolved blocker remains in wiring, spec conformance, architecture, contract
-      strength, or black-box behavior
+      - No unresolved blocker remains in broad quality, wiring, spec conformance,
+      architecture, contract strength, or black-box behavior
+
+      - Any issue with final-gate intersection has explicit remediation ownership;
+      pre-existing provenance alone is not an acceptable disposition
 
       - Final decision states whether `vectl orch` is replacement-grade for the non-web
       operator surface'

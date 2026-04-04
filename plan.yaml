@@ -59902,7 +59902,7 @@ phases:
   steps:
   - id: orch_operator_config_state.impl_config_loader_freeze_tool_registry
     name: Implement config loader, freeze snapshot, and canonical tool registry
-    status: claimed
+    status: done
     description: 'step_type: implementation
 
 
@@ -59965,6 +59965,16 @@ phases:
     agent: python-executor
     claimed_by: python-executor
     claimed_at: '2026-04-04T13:44:04.902566+00:00'
+    done_at: '2026-04-04T13:58:35.676356+00:00'
+    evidence: 'Implemented `config.py` and `tool_registry.py` stubs with functional
+      config discovery/precedence/validation, redaction-aware effective config data
+      paths, frozen run snapshot writing (`.vectl/runs/<run_id>/config.snapshot.yaml`),
+      and canonical tool allowlist validation rejecting unknown families/names. Verification:
+      `uv run ruff check src/vectl/orchestration/config.py src/vectl/orchestration/tool_registry.py`
+      PASS; `uv run mypy ...` PASS; `uv run pytest tests/orchestration/unit/test_config_state_impl.py
+      -v` -> 44 passed; `uv run pytest tests/orchestration/unit/test_config_state_red.py
+      -v` -> 25 passed (expected-red suite preserved). Files changed: config.py, tool_registry.py,
+      new impl tests. Commit: 521f79e167ac50e77a18a4f2a85027071f307fda.'
   - id: orch_operator_config_state.impl_run_store_and_cases_index
     name: Implement run store, run registry, case index, and latest selection
     status: pending

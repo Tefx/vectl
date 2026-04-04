@@ -59646,7 +59646,7 @@ phases:
       files modified=false. Commit from task: ses_2a75b7df8ffeWOA1M0W3wJXuUr.'
   - id: orch_operator_tests.gate
     name: Gate operator-surface test definitions
-    status: pending
+    status: claimed
     description: 'Gate review: verify expected-red tests are spec-derived, non-ambiguous,
       and implementation-free.'
     verification: 'phase-check protecting all downstream implementation phases:
@@ -59662,6 +59662,8 @@ phases:
     - orch_operator_tests.observability_red
     - orch_operator_tests.cli_recovery_red
     agent: gate-reviewer
+    claimed_by: gate-reviewer
+    claimed_at: '2026-04-04T13:32:15.743558+00:00'
 - id: orch_operator_config_state
   name: Orchestration Config, Freeze, and Run Store
   status: locked

@@ -60209,7 +60209,7 @@ phases:
     claimed_at: '2026-04-04T14:06:36.238364+00:00'
   - id: orch_operator_observability.impl_projections_runstateview_artifacts
     name: Implement projections, RunStateView, and derived artifact writers
-    status: pending
+    status: claimed
     description: 'step_type: implementation
 
 
@@ -60268,6 +60268,8 @@ phases:
 
       - Evidence includes at least one replay fixture and the produced artifact paths'
     agent: python-senior
+    claimed_by: python-senior
+    claimed_at: '2026-04-04T14:06:44.010105+00:00'
   - id: orch_operator_observability.retest_green
     name: Retest events, projections, and artifact derivation green
     status: pending

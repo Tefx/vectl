@@ -59550,7 +59550,7 @@ phases:
       Spec citations included in every test docstring referencing exact sections/lines.'
   - id: orch_operator_tests.observability_red
     name: Define expected-red tests for events, projections, and derived artifacts
-    status: claimed
+    status: done
     description: 'step_type: test
 
       step_intent: test_define_red
@@ -59582,6 +59582,16 @@ phases:
     agent: integration-verifier
     claimed_by: integration-verifier
     claimed_at: '2026-04-04T13:25:10.040376+00:00'
+    done_at: '2026-04-04T13:32:01.059112+00:00'
+    evidence: 'EXPECTED_RED_ACCEPTED. Added test-only observability/projection contract
+      suite at `tests/repro/test_orch_observability_red.py` encoding event envelope
+      hash/chain/ordering/corruption checks, event family taxonomy checks, replay
+      artifact expectations (`state/latest.json`, `state/summary.json`, `state/metrics.json`),
+      and run/step/case artifact schema/path-normalization requirements with spec
+      citations. Evidence lists 16 expected-red gaps for downstream green owner (`orch_operator_observability`).
+      Semantic fields: step_intent=test_define_red, expected_result=red, observed_result=red-aligned
+      gap exposure, failure_alignment=intended pre-implementation gaps, product implementation
+      files modified=false. Commit from task: ses_2a7547206ffednlSZOckcoLF6X.'
   - id: orch_operator_tests.cli_recovery_red
     name: Define expected-red black-box tests for vectl orch, control actions, and
       recovery workflows

@@ -59869,3 +59869,20 @@ phases:
     - orch_operator_observability.impl_event_envelope_registry_sinks
     - orch_operator_observability.impl_projections_runstateview_artifacts
     agent: integration-verifier
+  - id: orch_operator_observability.spec_conformance
+    name: Verify event and projection spec conformance
+    status: pending
+    description: Spec conformance verification via adversarial divergence hunting
+      for envelope fields, event families, artifact schemas, and projection meanings.
+    verification: 'phase-check protecting orch_operator_control_surface:
+
+      - Each requirement cites spec section plus implementation file:line
+
+      - Report flags naming drift, omission drift, and schema drift explicitly
+
+      - Behavioral claims about replay/order that need runtime proof are marked NEEDS_TEST
+      with concrete test suggestions'
+    depends_on:
+    - orch_operator_observability.impl_event_envelope_registry_sinks
+    - orch_operator_observability.impl_projections_runstateview_artifacts
+    agent: spec-verifier

@@ -245,9 +245,9 @@ class Runtime:
         """
         Collect results from an execution.
 
-        This is a mechanical collection stub. Callers provide actual result
-        injection. This returns None to indicate "still running" or a
-        placeholder result for testing.
+        This is a mechanical collection surface. Callers may inject actual
+        completion results through external runner integration. Returning
+        None indicates "still running".
 
         Args:
             execution_id: The execution identifier.
@@ -262,8 +262,8 @@ class Runtime:
                 output_summary=f"Unknown execution_id: {execution_id}",
             )
 
-        # Placeholder: actual collection requires runner integration
-        # which is external to this mechanical surface
+        # Collection remains non-blocking until runner integration reports
+        # a terminal execution result.
         return None
 
     def cleanup(self, workspace: str) -> None:

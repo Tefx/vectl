@@ -15,9 +15,9 @@ Public surfaces (this module):
     - OrchestrationResult            (typed result DTO returned by orchestration operations)
     - build_orchestration_app()      (factory for composing orchestration app from config)
 
-Note: This module addresses the ``orch_app`` composition-root responsibility.
-The exact wiring and runtime behavior are deferred to implementation phases.
-This contract step pins only typed boundaries and stub implementations.
+Note: This module addresses the ``orch_app`` composition-root responsibility
+and wires runtime start/resume/recovery entrypoints through concrete runtime
+execution requests.
 """
 
 from __future__ import annotations
@@ -39,6 +39,7 @@ from vectl.orchestration.config import (
     load_orchestration_config,
     validate_orchestration_config,
 )
+from vectl.orchestration.contracts import ExecutionRequest
 from vectl.orchestration.control_channel import (
     ControlChannelMessage,
     FilesystemControlChannel,
@@ -304,6 +305,26 @@ class OrchestrationApp:
         self._text_log_path.touch(exist_ok=True)
         self._latest_recovery_report: RecoveryReport | None = None
 
+    def _start_runtime_execution(
+        self,
+        *,
+        run_id: str,
+        step_id: str,
+        agent: str,
+        runner: str,
+        mode: Literal["start", "resume", "recover"],
+    ) -> tuple[str, str]:
+        request = ExecutionRequest(
+            step_id=step_id,
+            role=agent,
+            runner=runner,
+            work_refs=(f"run_id={run_id}", f"mode={mode}", "isolation=workspace"),
+            session_id=run_id,
+        )
+        workspace = self._runtime.prepare(request)
+        execution_id = self._runtime.start(request=request, workspace=workspace)
+        return workspace, execution_id
+
     # -----------------------------------------------------------------
     # Run / Resume / Recover / Prune
     # -----------------------------------------------------------------
@@ -359,6 +380,22 @@ class OrchestrationApp:
             run_root=run_root,
         )
 
+        try:
+            workspace, execution_id = self._start_runtime_execution(
+                run_id=run_id,
+                step_id=resolved_step_id,
+                agent=resolved_agent,
+                runner=frozen_snapshot.config.runtime.default_runner,
+                mode="start",
+            )
+        except Exception as exc:
+            return OrchestrationResult(
+                success=False,
+                message=f"Runtime wiring failure during run start: {exc}",
+                step_id=resolved_step_id,
+                run_id=run_id,
+            )
+
         registry.save(
             RunRecord(
                 run_id=run_id,
@@ -370,7 +407,8 @@ class OrchestrationApp:
                 output_summary=(
                     "run initialized with frozen snapshot "
                     f"runner={frozen_snapshot.config.runtime.default_runner} "
-                    f"allowlist={self._allowlist_text(frozen_snapshot.config.resolver.tool_allowlist)}"
+                    f"allowlist={self._allowlist_text(frozen_snapshot.config.resolver.tool_allowlist)} "
+                    f"workspace={workspace} execution_id={execution_id}"
                 ),
             )
         )
@@ -388,7 +426,16 @@ class OrchestrationApp:
             payload={"run_id": run_id, "status": "running"},
         )
         self._append_log(
-            f"run_id={run_id} step_id={resolved_step_id} status=running agent={resolved_agent}"
+            " ".join(
+                (
+                    f"run_id={run_id}",
+                    f"step_id={resolved_step_id}",
+                    "status=running",
+                    f"agent={resolved_agent}",
+                    f"workspace={workspace}",
+                    f"execution_id={execution_id}",
+                )
+            )
         )
 
         return OrchestrationResult(
@@ -496,6 +543,22 @@ class OrchestrationApp:
         if replay_result is not None:
             return replay_result
 
+        try:
+            workspace, execution_id = self._start_runtime_execution(
+                run_id=run_id,
+                step_id=record.step_id,
+                agent=record.agent or self._config.default_agent,
+                runner=frozen.runtime.default_runner,
+                mode="resume",
+            )
+        except Exception as exc:
+            return OrchestrationResult(
+                success=False,
+                message=f"Runtime wiring failure during resume: {exc}",
+                step_id=record.step_id,
+                run_id=run_id,
+            )
+
         registry.save(
             RunRecord(
                 run_id=run_id,
@@ -507,7 +570,8 @@ class OrchestrationApp:
                 output_summary=(
                     "resume_safe: run resumed from authoritative frozen snapshot "
                     f"runner={frozen.runtime.default_runner} "
-                    f"allowlist={self._allowlist_text(frozen.resolver.tool_allowlist)}"
+                    f"allowlist={self._allowlist_text(frozen.resolver.tool_allowlist)} "
+                    f"workspace={workspace} execution_id={execution_id}"
                 ),
             )
         )
@@ -1084,6 +1148,26 @@ class OrchestrationApp:
                     )
                     blocked_artifact_paths.append(str(run_root / "state" / "latest.json"))
                     continue
+                try:
+                    workspace, execution_id = self._start_runtime_execution(
+                        run_id=record.run_id,
+                        step_id=record.step_id,
+                        agent=record.agent or self._config.default_agent,
+                        runner=frozen.runtime.default_runner,
+                        mode="recover",
+                    )
+                except Exception as exc:
+                    blocking.append(
+                        " ".join(
+                            (
+                                f"run_id={record.run_id}",
+                                "outcome=runtime_wiring_failed",
+                                f"detail={exc}",
+                            )
+                        )
+                    )
+                    blocked_artifact_paths.append(str(run_root))
+                    continue
                 registry.save(
                     RunRecord(
                         run_id=record.run_id,
@@ -1093,7 +1177,8 @@ class OrchestrationApp:
                         status="running",
                         artifact_root=str(run_root),
                         output_summary="recover_and_resume: continuity and event replay succeeded "
-                        "from durable artifacts",
+                        "from durable artifacts "
+                        f"workspace={workspace} execution_id={execution_id}",
                     )
                 )
                 recover_and_resume.append(
@@ -1269,7 +1354,7 @@ class OrchestrationApp:
             Tuple of RunResult for matching runs.
 
         Raises:
-            NotImplementedError: Until runs listing semantics are specified.
+            OSError: Propagates storage read failures from the run registry.
         """
         registry = self._run_registry(config=self._effective_orchestration_config())
         inspect_query = InspectQuery(step_id=step_id, limit=limit, offset=0)
@@ -1311,7 +1396,7 @@ class OrchestrationApp:
             OrchestrationResult with prune outcome.
 
         Raises:
-            NotImplementedError: Until prune semantics are specified.
+            OSError: Propagates run-artifact deletion failures.
         """
         del force
         registry = self._run_registry(config=self._effective_orchestration_config())
@@ -1346,7 +1431,7 @@ class OrchestrationApp:
             InspectResult with status view.
 
         Raises:
-            NotImplementedError: Until inspect semantics are specified.
+            OSError: Propagates run store read failures.
         """
         runs = query_runs(
             InspectQuery(step_id=step_id, limit=100, offset=0),
@@ -1354,11 +1439,15 @@ class OrchestrationApp:
                 self._run_registry(config=self._effective_orchestration_config())
             ),
         )
+        runtime_snapshot = self._runtime.snapshot()
         data = (
             f"step_id={step_id or ''}",
             f"total_count={runs.total_count}",
             f"latest_run_id={runs.latest_run_id or ''}",
             f"statuses={','.join(runs.statuses)}",
+            f"active_workspaces={','.join(runtime_snapshot.active_workspaces)}",
+            f"active_executions={','.join(runtime_snapshot.active_executions)}",
+            f"stalled_executions={','.join(runtime_snapshot.stalled_executions)}",
         )
         if self._latest_recovery_report is not None:
             report = self._latest_recovery_report
@@ -1387,7 +1476,7 @@ class OrchestrationApp:
             InspectResult with events view.
 
         Raises:
-            NotImplementedError: Until inspect semantics are specified.
+            EventCorruptionError: If the event stream cannot be parsed.
         """
         events = load_event_jsonl(self._events_path())
         filtered = [event for event in events if step_id is None or event.step_id == step_id]
@@ -1416,7 +1505,7 @@ class OrchestrationApp:
             InspectResult with logs view.
 
         Raises:
-            NotImplementedError: Until inspect semantics are specified.
+            OSError: If orchestration text logs cannot be read.
         """
         selected_run_id, error = self._resolve_run_selection(run_id=run_id, step_id=step_id)
         if error is not None:
@@ -1443,7 +1532,7 @@ class OrchestrationApp:
             InspectResult with artifacts view.
 
         Raises:
-            NotImplementedError: Until inspect semantics are specified.
+            OSError: Propagates run store/artifact read failures.
         """
         results = self.runs(step_id=step_id, limit=100)
         artifact_refs: list[str] = []
@@ -1478,7 +1567,7 @@ class OrchestrationApp:
             InspectResult with actions view.
 
         Raises:
-            NotImplementedError: Until inspect semantics are specified.
+            OSError: Propagates control-channel listing failures.
         """
         selected_run_id, error = self._resolve_run_selection(run_id=run_id)
         if error is not None:
@@ -1530,7 +1619,7 @@ class OrchestrationApp:
             Tuple of CaseResult for matching cases.
 
         Raises:
-            NotImplementedError: Until case semantics are specified.
+            OSError: Propagates run store read failures.
         """
         registry = self._run_registry(config=self._effective_orchestration_config())
         ids = query_cases("open", registry=CasesQueryImpl(registry))
@@ -1566,7 +1655,7 @@ class OrchestrationApp:
             CaseResult with case detail.
 
         Raises:
-            NotImplementedError: Until case semantics are specified.
+            OSError: Propagates run store read failures.
         """
         registry = self._run_registry(config=self._effective_orchestration_config())
         if case_id == "recovery.latest" and self._latest_recovery_report is not None:
@@ -1601,7 +1690,7 @@ class OrchestrationApp:
             OrchestrationResult with response outcome.
 
         Raises:
-            NotImplementedError: Until case respond semantics are specified.
+            OSError: Propagates control-channel persistence failures.
         """
         registry = self._run_registry(config=self._effective_orchestration_config())
         entry = registry._latest_cases_by_case_id().get(case_id)
@@ -1643,7 +1732,7 @@ class OrchestrationApp:
             ControlResult with pause outcome.
 
         Raises:
-            NotImplementedError: Until control semantics are specified.
+            OSError: Propagates control-channel persistence failures.
         """
         selected_run_id, error = self._resolve_run_selection(run_id=None, step_id=step_id)
         if error is not None:
@@ -1679,7 +1768,7 @@ class OrchestrationApp:
             ControlResult with unpause outcome.
 
         Raises:
-            NotImplementedError: Until control semantics are specified.
+            OSError: Propagates control-channel persistence failures.
         """
         selected_run_id, error = self._resolve_run_selection(run_id=None, step_id=step_id)
         if error is not None:
@@ -1717,7 +1806,7 @@ class OrchestrationApp:
             ControlResult with stop outcome.
 
         Raises:
-            NotImplementedError: Until control semantics are specified.
+            OSError: Propagates control-channel persistence failures.
         """
         selected_run_id, error = self._resolve_run_selection(run_id=None)
         if error is not None:
@@ -1757,7 +1846,7 @@ class OrchestrationApp:
             ConfigResult with current configuration.
 
         Raises:
-            NotImplementedError: Until config show semantics are specified.
+            OSError: Propagates config materialization failures.
         """
         config = self._effective_orchestration_config()
         if effective:
@@ -1819,7 +1908,7 @@ class OrchestrationApp:
             ConfigResult with validation result.
 
         Raises:
-            NotImplementedError: Until config validate semantics are specified.
+            OSError: Propagates config materialization failures.
         """
         errors = validate_orchestration_config(self._effective_orchestration_config())
         if errors:
@@ -1849,7 +1938,7 @@ class OrchestrationApp:
             ConfigResult with registered tool families.
 
         Raises:
-            NotImplementedError: Until config tools semantics are specified.
+            OSError: Propagates config materialization failures.
         """
         resolved = self._effective_orchestration_config()
         configured_allowlist = resolved.resolver.tool_allowlist.allowed_tool_families

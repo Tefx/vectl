@@ -60773,3 +60773,20 @@ phases:
     depends_on:
     - orch_operator_deep_review.full_plan_check
     agent: wiring-auditor
+  - id: orch_operator_deep_review.spec_conformance_full
+    name: Run full spec conformance audit
+    status: pending
+    description: Full-system adversarial conformance audit focused on cross-cutting
+      and integration-level orchestration operator requirements that per-phase checks
+      could miss.
+    verification: 'full-plan-check protecting the final deep-review gate:
+
+      - Cross-phase command/output/config/artifact drift is audited end-to-end
+
+      - Report includes the full verdict table and top risks ranked by severity
+
+      - Re-check only the requirements whose context changed, plus emergent cross-module
+      properties'
+    depends_on:
+    - orch_operator_deep_review.wiring_audit_full
+    agent: spec-verifier

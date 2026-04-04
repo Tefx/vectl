@@ -59314,7 +59314,7 @@ phases:
     claimed_at: '2026-04-04T11:58:38.713209+00:00'
   - id: orch_operator_contracts.recovery_cutover_contracts
     name: Pin recovery, continuity, and migration-cutover contracts
-    status: pending
+    status: claimed
     description: "step_type: contract\ncontract_purity: ENFORCED\ncontract_outputs:\n\
       \  - signatures\n  - type_defs\n  - interfaces\n  - stubs\n\nPin the documented\
       \ recovery and migration contracts without implementation logic. Cover:\n- recovery/report\
@@ -59336,6 +59336,8 @@ phases:
     depends_on:
     - orch_operator_contracts.foundation_contracts
     agent: python-executor
+    claimed_by: python-executor
+    claimed_at: '2026-04-04T12:08:19.613785+00:00'
   - id: orch_operator_contracts.gate
     name: Gate operator-surface contracts
     status: pending

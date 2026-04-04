@@ -59664,6 +59664,116 @@ phases:
     agent: gate-reviewer
     claimed_by: gate-reviewer
     claimed_at: '2026-04-04T13:32:15.743558+00:00'
+  - id: orch_operator_tests.fix-gate-should-fix-batched
+    name: fix-gate-should-fix-batched
+    status: pending
+    description: 'step_type: implementation
+
+      priority: MEDIUM
+
+      agent_source: default
+
+      spec_refs:
+
+      - phase `orch_operator_tests`
+
+      - gate finding from `orch_operator_tests.gate`: duplicate test method definitions
+      in `tests/repro/test_orch_cli_recovery_red.py`
+
+      touch_paths:
+
+      - `tests/repro/test_orch_cli_recovery_red.py`
+
+      harness_refs:
+
+      - `pytest --collect-only tests/repro/test_orch_cli_recovery_red.py`
+
+      - `rg -n ''^\s*def\s+test_[A-Za-z0-9_]+'' tests/repro/test_orch_cli_recovery_red.py`
+
+
+      effective_scope: local test-definition cleanup protecting the `orch_operator_tests`
+      gate without changing product code.
+
+
+      Fix ALL should-fix findings from `orch_operator_tests.gate` in one batched remediation
+      step.
+
+
+      ## Should-fix items to include in the same batch (ALL of these, not just the
+      first)
+
+
+      ### S1: Duplicate test method names shadow earlier expected-red definitions
+
+      File: `tests/repro/test_orch_cli_recovery_red.py`
+
+      Duplicate methods reported by the gate:
+
+      - line 262 shadows line 181: `test_orch_inspect_events_exists`
+
+      - line 289 shadows line 198: `test_orch_inspect_logs_exists`
+
+      - line 316 shadows line 215: `test_orch_inspect_artifacts_exists`
+
+      - line 345 shadows line 232: `test_orch_inspect_actions_exists`
+
+
+      Required remediation:
+
+      - Update the duplicate method definitions so every `test_*` method name in this
+      file is unique and collectable.
+
+      - Preserve the existing expected-red semantics for the operator recovery surface;
+      these remain test-definition artifacts, not implementation work.
+
+      - Keep assertions/spec-derived intent intact; do NOT broaden assertions, delete
+      coverage, or convert the tests into green implementation proofs.
+
+
+      Grep hint:
+
+      - `rg -n ''^\s*def\s+test_[A-Za-z0-9_]+'' tests/repro/test_orch_cli_recovery_red.py`
+
+
+      Sibling search instructions:
+
+      - Review the full file for any other repeated `test_*` method names beyond the
+      four reported collisions before claiming done.
+
+      - If renaming or consolidating methods, keep nearby helper/fixture usage unchanged
+      unless required to preserve the existing expected-red contract.
+
+
+      ## Completion Criteria
+
+      - No duplicate `test_*` method names remain in `tests/repro/test_orch_cli_recovery_red.py`
+
+      - Earlier shadowed test definitions are no longer overwritten during collection
+
+      - Expected-red semantics and spec-derived assertions remain unchanged in intent
+
+      - No product code outside the repro test file is modified
+
+
+      rule_refs:
+
+      - `reactive-steps.md §13.5` batched fix step with grep hints and sibling search
+
+      - `agent-routing.md §11.5` executor step includes exact file path and non-goals'
+    verification: "- Run: `rg -n '^\\s*def\\s+test_[A-Za-z0-9_]+' tests/repro/test_orch_cli_recovery_red.py`\
+      \ and show that each collected test name is unique with no duplicate method-name\
+      \ collisions remaining\n- Run: `python - <<'PY'\nimport ast\nfrom collections\
+      \ import Counter\npath = 'tests/repro/test_orch_cli_recovery_red.py'\nmod =\
+      \ ast.parse(open(path).read(), filename=path)\ncounts = Counter()\nfor node\
+      \ in ast.walk(mod):\n    if isinstance(node, ast.FunctionDef) and node.name.startswith('test_'):\n\
+      \        counts[node.name] += 1\ndupes = {k: v for k, v in counts.items() if\
+      \ v > 1}\nprint(dupes)\nassert not dupes, dupes\nPY` -> `{}`\n- Confirm the\
+      \ edit stays confined to `tests/repro/test_orch_cli_recovery_red.py`\n- Confirm\
+      \ expected-red intent remains explicit and assertions are not broadened or converted\
+      \ into implementation-green checks"
+    depends_on:
+    - orch_operator_tests.gate
+    agent: python-executor
 - id: orch_operator_config_state
   name: Orchestration Config, Freeze, and Run Store
   status: locked

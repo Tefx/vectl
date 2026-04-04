@@ -61386,7 +61386,7 @@ phases:
       - No deviation records.'
   - id: orch_operator_control_surface.impl_vectl_orch_cli_surface
     name: Implement vectl orch CLI command group
-    status: pending
+    status: claimed
     description: 'step_type: implementation
 
 
@@ -61440,6 +61440,8 @@ phases:
     depends_on:
     - orch_operator_control_surface.impl_orch_app_composition_root
     agent: python-senior
+    claimed_by: python-senior
+    claimed_at: '2026-04-04T16:44:15.578252+00:00'
   - id: orch_operator_control_surface.cli_seam_integration_proof
     name: Prove vectl orch seam integration with real commands
     status: pending

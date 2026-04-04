@@ -60659,3 +60659,19 @@ phases:
     evidence_template: 'Paste a 7-row workflow table with: workflow, exact command(s),
       outcome, artifact(s), blocker status'
     agent: blind-tester
+  - id: orch_operator_cutover_validation.migration_state_audit
+    name: Audit migration state model and legacy-retirement readiness
+    status: pending
+    description: Audit the parallel/preferred/deprecated/retired migration model against
+      the landed operator surface. Confirm the documented retirement gate, compatibility
+      matrix, in-flight legacy-run policy, and measurable promotion criteria are backed
+      by executable evidence or are explicitly still blocking.
+    verification: 'phase-check protecting doc sync and deep review:
+
+      - Audit maps each retirement criterion to concrete evidence or blocker ownership
+
+      - Legacy in-flight run policy and import assumptions are explicitly evaluated
+
+      - No pre-existing/out-of-scope label is used as a disposition for a criterion
+      that still intersects final gates'
+    agent: software-architect

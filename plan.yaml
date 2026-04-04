@@ -63149,7 +63149,7 @@ phases:
       with CLI->orch_app wiring. Verification: pytest/ruff/mypy passed.'
   - id: orch_operator_cutover_validation.reverify_cutover_operator_surface
     name: Reverify cutover operator surface and gate prep
-    status: claimed
+    status: done
     description: 'Independent reverify/gate-prep for the batched cutover remediation.
 
 
@@ -63245,6 +63245,11 @@ phases:
     agent: integration-verifier
     claimed_by: integration-verifier
     claimed_at: '2026-04-04T21:28:58.277226+00:00'
+    done_at: '2026-04-04T21:34:55.896115+00:00'
+    evidence: 'Independent reverify indicates both blocker families resolved: four
+      retirement criteria validated in CutoverValidator and canonical CLI operator
+      surface now includes cutover validation + migration-state advancement commands
+      with passing tests.'
 - id: orch_operator_doc_sync
   name: Orchestration Operator Documentation Sync
   status: locked

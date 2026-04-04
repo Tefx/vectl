@@ -59556,3 +59556,83 @@ phases:
       - Evidence includes focused command/test names and the frozen snapshot path
       emitted by the implementation'
     agent: python-executor
+  - id: orch_operator_config_state.impl_run_store_and_cases_index
+    name: Implement run store, run registry, case index, and latest selection
+    status: pending
+    description: 'step_type: implementation
+
+
+      Fill in stub bodies in src/vectl/orchestration/run_store.py per the contract
+      from step orch_operator_contracts.foundation_contracts and tests from step orch_operator_tests.config_state_red.
+
+
+      UPSTREAM ARTIFACTS (authoritative):
+
+      - src/vectl/orchestration/run_store.py — run-id, registry, case-index, and artifact-discovery
+      contracts
+
+      - tests from orch_operator_tests.config_state_red are PROTECTED
+
+
+      YOUR SCOPE: Replace stub markers with working logic for:
+
+      - sortable ULID-based run identity handling
+
+      - append-safe index.jsonl and cases.jsonl updates
+
+      - `--latest` resolution rules
+
+      - same-plan admission checks
+
+      - run artifact root/path discovery
+
+      - heartbeat/liveness lookup helpers needed by inspection surfaces
+
+
+      Failure-mode checklist:
+
+      - malformed trailing JSONL record must surface corruption, not silent ignore
+
+      - transient append conflict retries must be bounded and observable
+
+      - pruning/removal must tombstone or remove matching case-index entries
+
+      - missing heartbeat yields `unknown`, not optimistic liveness
+
+      - same-plan admission rejects conflicting active runs before startup proceeds
+
+
+      State semantics:
+
+      - index.jsonl and cases.jsonl are append-oriented durable truth for operator
+      lookup
+
+      - tie-breaking is lexicographic by run_id after updated_at ordering
+
+      - active/non-terminal classification drives admission and `--latest`
+
+      - legacy imports are transitional compatibility data, not a second source of
+      truth
+
+
+      Out-of-scope guardrail:
+
+      - do not implement projector replay or CLI rendering here
+
+      - do not implement control-channel action persistence here
+
+
+      ## Completion Criteria (stub exclusion)
+
+      This is an IMPLEMENTATION step. Stub-only completion is NOT acceptable.'
+    verification: 'local-check protecting orch_operator_config_state.retest_green,
+      orch_operator_control_surface, and orch_operator_recovery_cutover:
+
+      - Main path: targeted tests prove index append/read, case-index updates, latest
+      selection, and same-plan admission
+
+      - Failure path: regression tests cover malformed trailing line handling, stale/missing
+      heartbeat classification, and append-conflict retry behavior
+
+      - Proof includes no alternate filesystem scan path for `--latest` outside run_store'
+    agent: python-senior

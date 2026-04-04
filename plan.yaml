@@ -58906,3 +58906,71 @@ phases:
     depends_on:
     - orch_migration_finish.fix_gate_blockers_round2
     agent: gate-reviewer
+  - id: orch_migration_finish.fix_gate_blockers_round3
+    name: Fix migration finish gate blockers round3
+    status: pending
+    description: 'Batched round3 remediation for the failed `orch_migration_finish.retest_gate_evidence_round2`
+      gate-evidence loop. Keep all earlier failed/fix/retest steps unchanged as historical
+      evidence.
+
+
+      Fix ALL remaining blockers in this blocker family, not just the first observed
+      symptom.
+
+
+      ## Root Cause vs Symptom
+
+      - Root cause: migration-finish evidence and repository reality are still not
+      aligned strongly enough to prove the intended tracked test relocations/dispositions.
+
+      - Symptom: gate evidence can still fail when filesystem state, tracked rename
+      history, or final path reality is ambiguous.
+
+      - Why previous fix failed: round2 evidence was not sufficient to prove the tracked
+      rename/disposition path with objective git/file-system corroboration for every
+      affected path.
+
+      - Why this fix is not surface-level: it must close the blocker family by reconciling
+      tracked rename evidence, final path existence, and current repository layout
+      together.
+
+
+      ## Required remediation scope
+
+      - Repair migration-finish evidence and/or underlying tracked file moves so the
+      repository demonstrates the intended rename/disposition clearly.
+
+      - Use actual `git mv` operations where possible; if an equivalent tracked rename
+      path was used instead, provide objective tracked-history proof that git recognizes
+      the rename/disposition.
+
+      - Verify final path reality with explicit existence checks for the moved/original
+      locations, including `tests/legacy/driver/` and all affected final destinations.
+
+      - Search for sibling affected test paths so no remaining ambiguous moved/original
+      path pair survives.
+
+
+      ## Completion Criteria
+
+      - ALL blockers in this round3 blocker family are addressed.
+
+      - Tracked rename proof exists for each affected relocation (`git mv` or equivalent
+      tracked rename evidence).
+
+      - Path existence checks confirm the final repository state at old and new locations.
+
+      - Historical failed steps remain unchanged.'
+    verification: '- Provide actual `git mv` command evidence OR equivalent tracked-rename
+      proof from git history/diff for each affected relocation
+
+      - Provide explicit path existence checks for original and final paths, including
+      `tests/legacy/driver/`
+
+      - Show no remaining ambiguity between tracked rename evidence and current filesystem
+      reality
+
+      - Preserve all historical failed steps unchanged'
+    depends_on:
+    - orch_migration_finish.retest_gate_evidence_round2
+    agent: python-senior

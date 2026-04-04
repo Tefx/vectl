@@ -59663,3 +59663,21 @@ phases:
     - orch_operator_config_state.impl_config_loader_freeze_tool_registry
     - orch_operator_config_state.impl_run_store_and_cases_index
     agent: integration-verifier
+  - id: orch_operator_config_state.spec_conformance
+    name: Verify config and run-store spec conformance
+    status: pending
+    description: Spec conformance verification via adversarial divergence hunting
+      for config, frozen snapshot, run registry, case index, and latest-selection
+      semantics.
+    verification: 'phase-check protecting orch_operator_control_surface:
+
+      - For each touched requirement, cite the spec section and implementation file:line
+
+      - Verdicts distinguish CONFORMS, DIVERGES, PARTIAL, NEEDS_TEST, NOT_FOUND, AMBIGUOUS_SPEC,
+      SPEC_POSSIBLY_STALE
+
+      - Naming, defaults, omission drift, and latest/admission semantics are covered'
+    depends_on:
+    - orch_operator_config_state.impl_config_loader_freeze_tool_registry
+    - orch_operator_config_state.impl_run_store_and_cases_index
+    agent: spec-verifier

@@ -62042,7 +62042,10 @@ phases:
       \ <results>\n- Root cause closure:\n  - mypy redefinition resolved by: <summary>\n\
       \  - unused locals resolved by: <summary>\n  - B904 chaining resolved by: <summary>"
     depends_on:
-    - orch_operator_control_surface.gate
+    - orch_operator_control_surface.impl_inspection_queries
+    - orch_operator_control_surface.impl_vectl_orch_cli_surface
+    - orch_operator_control_surface.spec_conformance
+    - orch_operator_control_surface.wiring_audit
     agent: python-senior
   - id: orch_operator_control_surface.retest_gate_blockers_batch
     name: Re-test batched gate blockers for operator control surface

@@ -23,8 +23,10 @@ import os
 import random
 import time
 from collections.abc import Callable
+from contextlib import contextmanager
 from dataclasses import asdict, dataclass
 from datetime import datetime
+from fcntl import LOCK_EX, LOCK_UN, flock
 from pathlib import Path
 from typing import TYPE_CHECKING, Literal, Protocol, cast
 
@@ -536,6 +538,73 @@ class RunRegistry:
             retry_observer=self._append_retry_observer,
         )
 
+    @property
+    def store_root(self) -> Path:
+        """Return authoritative run-store root path."""
+
+        return self._store_root
+
+    def latest_records(self) -> tuple[RunRecord, ...]:
+        """Return latest run record per run ID sorted by recency."""
+
+        records = list(self._latest_records_by_run_id().values())
+        records.sort(key=_run_sort_key, reverse=True)
+        return tuple(records)
+
+    def latest_cases(self, *, include_removed: bool = True) -> tuple[CaseIndexEntry, ...]:
+        """Return latest case entry per case ID sorted by recency."""
+
+        entries = list(self._latest_cases_by_case_id().values())
+        if not include_removed:
+            entries = [entry for entry in entries if entry.status != "removed"]
+        entries.sort(key=lambda entry: (entry.updated_at, entry.case_id), reverse=True)
+        return tuple(entries)
+
+    def case_by_id(self, case_id: str) -> CaseIndexEntry | None:
+        """Look up latest case entry by case identifier."""
+
+        return self._latest_cases_by_case_id().get(case_id)
+
+    @contextmanager
+    def admission_guard(self):
+        """Hold cross-process lock for same-plan admission and first durable save."""
+
+        self._store_root.mkdir(parents=True, exist_ok=True)
+        lock_path = self._store_root / ".admission.lock"
+        with lock_path.open("a+", encoding="utf-8") as handle:
+            flock(handle.fileno(), LOCK_EX)
+            try:
+                yield
+            finally:
+                flock(handle.fileno(), LOCK_UN)
+
+    def admit_for_start(
+        self,
+        *,
+        run_id: str,
+        step_id: str,
+        plan_path: str,
+        agent: str | None,
+        artifact_root: str,
+        output_summary: str,
+        current_run_id: str | None = None,
+    ) -> RunRecord:
+        """Atomically validate same-plan admission and persist pending run record."""
+
+        with self.admission_guard():
+            self.assert_can_admit_same_plan(plan_path=plan_path, current_run_id=current_run_id)
+            admitted = RunRecord(
+                run_id=run_id,
+                step_id=step_id,
+                plan_path=plan_path,
+                agent=agent,
+                status="pending",
+                artifact_root=artifact_root,
+                output_summary=output_summary,
+            )
+            self.save(admitted)
+            return admitted
+
     def by_id(self, run_id: str) -> RunRecord | None:
         """
         Look up a run record by run ID.
@@ -623,7 +692,7 @@ class RunRegistry:
         """Return latest non-removed case entries associated with ``run_id``."""
         records = [
             entry
-            for entry in self._latest_cases_by_case_id().values()
+            for entry in self.latest_cases(include_removed=False)
             if entry.run_id == run_id and entry.status != "removed"
         ]
         records.sort(key=lambda entry: (entry.updated_at, entry.case_id), reverse=True)
@@ -631,7 +700,7 @@ class RunRegistry:
 
     def remove_cases_for_run(self, run_id: str, *, updated_at: float | None = None) -> int:
         """Tombstone all active case-index entries for ``run_id``."""
-        latest_cases = self._latest_cases_by_case_id().values()
+        latest_cases = self.latest_cases(include_removed=False)
         candidates = [
             entry for entry in latest_cases if entry.run_id == run_id and entry.status != "removed"
         ]

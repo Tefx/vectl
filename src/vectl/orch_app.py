@@ -44,7 +44,6 @@ from vectl.orchestration.control_channel import (
     ControlChannelMessage,
     FilesystemControlChannel,
     send_to_control,
-    set_default_control_channel,
 )
 from vectl.orchestration.events import (
     EventCorruptionError,
@@ -368,13 +367,6 @@ class OrchestrationApp:
             )
 
         registry = self._run_registry(config=resolved_config)
-        try:
-            registry.assert_can_admit_same_plan(str(self._config.plan_path))
-        except Exception as exc:
-            return OrchestrationResult(
-                success=False,
-                message=f"Run admission denied: {exc}",
-            )
 
         run_id = generate_run_id()
         run_root = registry.run_artifact_root(run_id)
@@ -386,6 +378,27 @@ class OrchestrationApp:
             run_root=run_root,
         )
 
+        allowlist_text = self._allowlist_text(frozen_snapshot.config.resolver.tool_allowlist)
+
+        try:
+            registry.admit_for_start(
+                run_id=run_id,
+                step_id=resolved_step_id,
+                plan_path=str(self._config.plan_path),
+                agent=resolved_agent,
+                artifact_root=str(run_root),
+                output_summary=(
+                    "run admission persisted before runtime start "
+                    f"runner={frozen_snapshot.config.runtime.default_runner} "
+                    f"allowlist={allowlist_text}"
+                ),
+            )
+        except Exception as exc:
+            return OrchestrationResult(
+                success=False,
+                message=f"Run admission denied: {exc}",
+            )
+
         try:
             workspace, execution_id = self._start_runtime_execution(
                 run_id=run_id,
@@ -395,14 +408,25 @@ class OrchestrationApp:
                 mode="start",
             )
         except Exception as exc:
+            now_ts = time.time()
+            registry.save(
+                RunRecord(
+                    run_id=run_id,
+                    step_id=resolved_step_id,
+                    plan_path=str(self._config.plan_path),
+                    agent=resolved_agent,
+                    status="fail",
+                    artifact_root=str(run_root),
+                    finished_at=now_ts,
+                    output_summary=f"runtime start failed after durable admission: {exc}",
+                )
+            )
             return OrchestrationResult(
                 success=False,
                 message=f"Runtime wiring failure during run start: {exc}",
                 step_id=resolved_step_id,
                 run_id=run_id,
             )
-
-        allowlist_text = self._allowlist_text(frozen_snapshot.config.resolver.tool_allowlist)
 
         registry.save(
             RunRecord(
@@ -552,6 +576,21 @@ class OrchestrationApp:
             return replay_result
 
         try:
+            registry.save(
+                RunRecord(
+                    run_id=run_id,
+                    step_id=record.step_id,
+                    plan_path=record.plan_path,
+                    agent=record.agent,
+                    status="pending",
+                    artifact_root=str(run_root),
+                    output_summary=(
+                        "resume admission persisted before runtime start "
+                        f"runner={frozen.runtime.default_runner} "
+                        f"allowlist={self._allowlist_text(frozen.resolver.tool_allowlist)}"
+                    ),
+                )
+            )
             workspace, execution_id = self._start_runtime_execution(
                 run_id=run_id,
                 step_id=record.step_id,
@@ -560,6 +599,19 @@ class OrchestrationApp:
                 mode="resume",
             )
         except Exception as exc:
+            now_ts = time.time()
+            registry.save(
+                RunRecord(
+                    run_id=run_id,
+                    step_id=record.step_id,
+                    plan_path=record.plan_path,
+                    agent=record.agent,
+                    status="fail",
+                    artifact_root=str(run_root),
+                    finished_at=now_ts,
+                    output_summary=f"runtime resume failed after durable pending save: {exc}",
+                )
+            )
             return OrchestrationResult(
                 success=False,
                 message=f"Runtime wiring failure during resume: {exc}",
@@ -602,6 +654,16 @@ class OrchestrationApp:
         if self._config.run_store_root is not None:
             return RunRegistry(store_root=self._config.run_store_root)
         return RunRegistry(store_root=config.runtime.artifact_root)
+
+    def _control_channel(
+        self, config: OrchestrationConfig | None = None
+    ) -> FilesystemControlChannel:
+        resolved = config if config is not None else self._effective_orchestration_config()
+        registry = self._run_registry(config=resolved)
+        return FilesystemControlChannel(
+            runs_root=registry.store_root,
+            max_pending_actions=resolved.operator.max_pending_actions,
+        )
 
     def _resolve_step_id(self, step_id: str | None, agent: str) -> str | None:
         if step_id is not None:
@@ -1157,6 +1219,20 @@ class OrchestrationApp:
                     blocked_artifact_paths.append(str(run_root / "state" / "latest.json"))
                     continue
                 try:
+                    registry.save(
+                        RunRecord(
+                            run_id=record.run_id,
+                            step_id=record.step_id,
+                            plan_path=record.plan_path,
+                            agent=record.agent,
+                            status="pending",
+                            artifact_root=str(run_root),
+                            output_summary=(
+                                "recover admission persisted before runtime start "
+                                f"runner={frozen.runtime.default_runner}"
+                            ),
+                        )
+                    )
                     workspace, execution_id = self._start_runtime_execution(
                         run_id=record.run_id,
                         step_id=record.step_id,
@@ -1165,6 +1241,21 @@ class OrchestrationApp:
                         mode="recover",
                     )
                 except Exception as exc:
+                    now_ts = time.time()
+                    registry.save(
+                        RunRecord(
+                            run_id=record.run_id,
+                            step_id=record.step_id,
+                            plan_path=record.plan_path,
+                            agent=record.agent,
+                            status="fail",
+                            artifact_root=str(run_root),
+                            finished_at=now_ts,
+                            output_summary=(
+                                f"runtime recover failed after durable pending save: {exc}"
+                            ),
+                        )
+                    )
                     blocking.append(
                         " ".join(
                             (
@@ -1449,7 +1540,7 @@ class OrchestrationApp:
         """
         del force
         registry = self._run_registry(config=self._effective_orchestration_config())
-        latest = list(registry._latest_records_by_run_id().values())
+        latest = list(registry.latest_records())
         if before is not None:
             latest = [record for record in latest if (record.updated_at or 0.0) < before]
         removed_cases = 0
@@ -1623,7 +1714,7 @@ class OrchestrationApp:
             return InspectResult(view_type="actions", data=(f"error={error}",))
         assert selected_run_id is not None
         channel = FilesystemControlChannel(
-            runs_root=self._run_registry(config=self._effective_orchestration_config())._store_root,
+            runs_root=self._run_registry(config=self._effective_orchestration_config()).store_root,
             max_pending_actions=self._effective_orchestration_config().operator.max_pending_actions,
         )
         rows: list[str] = []
@@ -1714,7 +1805,7 @@ class OrchestrationApp:
                 status=recovery_case_status(report.outcome),
                 reason=report.message,
             )
-        entry = registry._latest_cases_by_case_id().get(case_id)
+        entry = registry.case_by_id(case_id)
         if entry is None:
             return CaseResult(case_id=case_id, status=None, reason="Case not found")
         return CaseResult(
@@ -1742,7 +1833,7 @@ class OrchestrationApp:
             OSError: Propagates control-channel persistence failures.
         """
         registry = self._run_registry(config=self._effective_orchestration_config())
-        entry = registry._latest_cases_by_case_id().get(case_id)
+        entry = registry.case_by_id(case_id)
         if entry is None:
             return OrchestrationResult(success=False, message=f"Case not found: {case_id}")
         message = ControlChannelMessage(
@@ -1750,7 +1841,7 @@ class OrchestrationApp:
             sender="operator",
             payload=(entry.run_id, case_id, response),
         )
-        send_to_control(message)
+        send_to_control(message, channel=self._control_channel())
         self._emit_event(
             kind="operator_action_requested",
             payload={"case_id": case_id, "action": response},
@@ -1793,7 +1884,8 @@ class OrchestrationApp:
                 msg_type="control.pause",
                 sender="operator",
                 payload=payload,
-            )
+            ),
+            channel=self._control_channel(),
         )
         return ControlResult(
             action="pause", success=True, message=f"Pause queued for {selected_run_id}"
@@ -1829,7 +1921,8 @@ class OrchestrationApp:
                 msg_type="control.unpause",
                 sender="operator",
                 payload=payload,
-            )
+            ),
+            channel=self._control_channel(),
         )
         return ControlResult(
             action="unpause",
@@ -1872,7 +1965,8 @@ class OrchestrationApp:
                 msg_type="control.stop",
                 sender="operator",
                 payload=payload,
-            )
+            ),
+            channel=self._control_channel(),
         )
         return ControlResult(
             action="stop", success=True, message=f"Stop queued for {selected_run_id}"
@@ -2108,12 +2202,6 @@ def build_orchestration_app(
         agent=config.default_agent,
         fallback_role=config.default_agent,
     )
-    control_channel = FilesystemControlChannel(
-        runs_root=(config.run_store_root or resolved_orchestration_config.runtime.artifact_root),
-        max_pending_actions=resolved_orchestration_config.operator.max_pending_actions,
-    )
-    set_default_control_channel(control_channel)
-
     resolver = BoundResolver(
         invocation=GatewayResolverInvocation(
             resolved_orchestration_config.resolver.tool_allowlist.allowed_tool_families

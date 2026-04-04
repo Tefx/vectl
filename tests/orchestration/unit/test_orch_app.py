@@ -123,6 +123,47 @@ def test_run_admission_failure_when_same_plan_already_has_active_run(tmp_path: P
     assert "Run admission denied" in result.message
 
 
+def test_run_persists_pending_before_runtime_start(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    app = _build_app(tmp_path)
+    assert app._config.run_store_root is not None
+    registry = RunRegistry(store_root=app._config.run_store_root)
+
+    original_start = app._runtime.start
+
+    def start_with_pending_check(*, request, workspace):
+        record = registry.by_id(request.session_id)
+        assert record is not None
+        assert record.status == "pending"
+        return original_start(request=request, workspace=workspace)
+
+    monkeypatch.setattr(app._runtime, "start", start_with_pending_check)
+
+    result = app.run(step_id="core.ready", agent="python-executor")
+    assert result.success is True
+
+
+def test_run_runtime_start_failure_terminalizes_after_durable_admission(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    app = _build_app(tmp_path)
+
+    def fail_start(*, request, workspace):
+        raise RuntimeError("boom")
+
+    monkeypatch.setattr(app._runtime, "start", fail_start)
+
+    result = app.run(step_id="core.ready", agent="python-executor")
+    assert result.success is False
+    assert result.run_id is not None
+    registry = RunRegistry(store_root=tmp_path / "runs")
+    record = registry.by_id(result.run_id)
+    assert record is not None
+    assert record.status == "fail"
+
+
 def test_build_fails_when_authoritative_plan_path_missing(tmp_path: Path) -> None:
     missing_plan = tmp_path / "missing-plan.yaml"
     config = AppConfig(

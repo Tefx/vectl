@@ -23,6 +23,7 @@ import hashlib
 import json
 import os
 import time
+from contextvars import ContextVar, Token
 from dataclasses import dataclass
 from pathlib import Path
 from typing import TYPE_CHECKING, Literal, Protocol, cast
@@ -455,23 +456,31 @@ class FilesystemControlChannel:
         )
 
 
-_DEFAULT_CONTROL_CHANNEL: ControlChannel | None = None
+_DEFAULT_CONTROL_CHANNEL: ContextVar[ControlChannel | None] = ContextVar(
+    "vectl_orch_control_channel",
+    default=None,
+)
 
 
-def set_default_control_channel(channel: ControlChannel) -> None:
-    """Set process-local default control-channel implementation."""
+def set_default_control_channel(channel: ControlChannel) -> Token[ControlChannel | None]:
+    """Bind default control-channel implementation for current execution context."""
 
-    global _DEFAULT_CONTROL_CHANNEL
-    _DEFAULT_CONTROL_CHANNEL = channel
+    return _DEFAULT_CONTROL_CHANNEL.set(channel)
+
+
+def reset_default_control_channel(token: Token[ControlChannel | None]) -> None:
+    """Reset context-bound control channel to the previous value."""
+
+    _DEFAULT_CONTROL_CHANNEL.reset(token)
 
 
 def get_default_control_channel() -> ControlChannel:
-    """Get process-local default control-channel implementation."""
+    """Get context-bound default control-channel implementation."""
 
-    global _DEFAULT_CONTROL_CHANNEL
-    if _DEFAULT_CONTROL_CHANNEL is None:
-        _DEFAULT_CONTROL_CHANNEL = FilesystemControlChannel()
-    return _DEFAULT_CONTROL_CHANNEL
+    existing = _DEFAULT_CONTROL_CHANNEL.get()
+    if existing is None:
+        return FilesystemControlChannel()
+    return existing
 
 
 def _normalize_component(raw: str) -> str:
@@ -734,6 +743,7 @@ __all__ = [
     "ActionAcknowledgement",
     "FilesystemControlChannel",
     "set_default_control_channel",
+    "reset_default_control_channel",
     "get_default_control_channel",
     "send_to_control",
     "InspectView",

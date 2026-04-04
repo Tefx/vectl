@@ -270,3 +270,76 @@ def test_retired_imported_legacy_run_does_not_block_same_plan_admission(tmp_path
     )
 
     registry.assert_can_admit_same_plan("plan.yaml")
+
+
+def test_public_latest_queries_are_authoritative_and_sorted(tmp_path) -> None:
+    registry = RunRegistry(store_root=tmp_path)
+    registry.save(
+        RunRecord(
+            run_id="01RUNA",
+            step_id="core.ready",
+            plan_path="plan.yaml",
+            status="running",
+            updated_at=1.0,
+        )
+    )
+    registry.save(
+        RunRecord(
+            run_id="01RUNB",
+            step_id="core.other",
+            plan_path="plan.yaml",
+            status="pending",
+            updated_at=2.0,
+        )
+    )
+
+    records = registry.latest_records()
+    assert [record.run_id for record in records] == ["01RUNB", "01RUNA"]
+
+
+def test_case_lookup_surfaces_latest_entry_and_filters_removed(tmp_path) -> None:
+    registry = RunRegistry(store_root=tmp_path)
+    registry.append_case(
+        CaseIndexEntry(
+            case_id="case-1",
+            run_id="01RUN",
+            status="open",
+            updated_at=1.0,
+            case_path="cases/case-1.json",
+        )
+    )
+    registry.append_case(
+        CaseIndexEntry(
+            case_id="case-1",
+            run_id="01RUN",
+            status="removed",
+            updated_at=2.0,
+            case_path="cases/case-1.json",
+        )
+    )
+
+    assert registry.case_by_id("case-1") is not None
+    assert registry.latest_cases(include_removed=False) == ()
+
+
+def test_admit_for_start_persists_pending_and_rejects_conflict(tmp_path) -> None:
+    registry = RunRegistry(store_root=tmp_path)
+    registry.save(
+        RunRecord(
+            run_id="01ACTIVE",
+            step_id="core.ready",
+            plan_path="plan.yaml",
+            status="running",
+            updated_at=5.0,
+        )
+    )
+
+    with pytest.raises(SamePlanAdmissionError):
+        registry.admit_for_start(
+            run_id="01NEW",
+            step_id="core.other",
+            plan_path="plan.yaml",
+            agent="python-executor",
+            artifact_root=str(tmp_path / "runs" / "01NEW"),
+            output_summary="pending admission",
+        )

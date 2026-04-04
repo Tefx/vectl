@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import threading
 from datetime import datetime, timezone
 from typing import Any, cast
 
@@ -16,10 +17,14 @@ import pytest
 
 from vectl.orchestration.events import (
     EventCorruptionError,
+    EventRegistry,
     EventValidationError,
     JsonlEventSink,
     OrchestrationEventEnvelope,
+    get_default_event_registry,
     load_event_jsonl,
+    reset_default_event_registry,
+    set_default_event_registry,
 )
 
 
@@ -152,3 +157,80 @@ def test_truncated_or_malformed_trailing_records_surface_corruption(tmp_path: An
     events_path.write_text(valid.to_jsonl_line() + "{not-json}\n", encoding="utf-8")
     with pytest.raises(EventCorruptionError, match="malformed json"):
         load_event_jsonl(events_path)
+
+
+def test_jsonl_sink_reloads_authoritative_tail_across_instances(tmp_path: Any) -> None:
+    events_path = tmp_path / "events.jsonl"
+    sink_a = JsonlEventSink(events_path)
+    sink_b = JsonlEventSink(events_path)
+
+    sink_a.emit(
+        OrchestrationEventEnvelope(
+            kind="control_dispatch",
+            timestamp=datetime(2026, 4, 4, 12, 0, 0, tzinfo=timezone.utc),
+            step_id="core.a",
+            payload={"step_id": "core.a", "agent": "python-executor"},
+            agent="python-executor",
+        )
+    )
+    sink_b.emit(
+        OrchestrationEventEnvelope(
+            kind="control_done",
+            timestamp=datetime(2026, 4, 4, 12, 0, 1, tzinfo=timezone.utc),
+            step_id="core.a",
+            payload={"step_id": "core.a", "status": "ok"},
+            agent="python-executor",
+        )
+    )
+    sink_a.emit(
+        OrchestrationEventEnvelope(
+            kind="control_wait",
+            timestamp=datetime(2026, 4, 4, 12, 0, 2, tzinfo=timezone.utc),
+            step_id="core.a",
+            payload={"step_id": "core.a", "reason": "waiting"},
+            agent="python-executor",
+        )
+    )
+
+    loaded = load_event_jsonl(events_path)
+    assert [event.seq for event in loaded] == [1, 2, 3]
+
+
+def test_jsonl_sink_parallel_writers_preserve_append_only_chain(tmp_path: Any) -> None:
+    events_path = tmp_path / "events.jsonl"
+    sink_a = JsonlEventSink(events_path)
+    sink_b = JsonlEventSink(events_path)
+
+    def _emit_batch(sink: JsonlEventSink, start: int) -> None:
+        for i in range(5):
+            sink.emit(
+                OrchestrationEventEnvelope(
+                    kind="control_dispatch",
+                    timestamp=datetime(2026, 4, 4, 12, 0, start + i, tzinfo=timezone.utc),
+                    step_id="core.parallel",
+                    payload={"step_id": "core.parallel", "agent": "python-executor"},
+                    agent="python-executor",
+                )
+            )
+
+    t1 = threading.Thread(target=_emit_batch, args=(sink_a, 0))
+    t2 = threading.Thread(target=_emit_batch, args=(sink_b, 10))
+    t1.start()
+    t2.start()
+    t1.join()
+    t2.join()
+
+    loaded = load_event_jsonl(events_path)
+    assert len(loaded) == 10
+    assert [event.seq for event in loaded] == list(range(1, 11))
+
+
+def test_default_registry_is_context_bound_and_resettable() -> None:
+    baseline = get_default_event_registry()
+    custom = EventRegistry()
+    token = set_default_event_registry(custom)
+    try:
+        assert get_default_event_registry() is custom
+    finally:
+        reset_default_event_registry(token)
+    assert get_default_event_registry() is baseline

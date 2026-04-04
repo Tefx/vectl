@@ -25,9 +25,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import TYPE_CHECKING, Literal, Protocol, cast
 
-from vectl.orchestration.contracts import CoreSnapshot, RosterSnapshot, RuntimeSnapshot
-from vectl.orchestration.run_store import CaseIndexEntry, RunRecord, RunRegistry
-from vectl.orchestration.projections import RunStateView
+from vectl.orchestration.run_store import RunRecord, RunRegistry
 
 if TYPE_CHECKING:
     pass
@@ -240,14 +238,12 @@ class RunsQueryImpl:
         if inspect_query.step_id:
             records = list(self._registry.all_for_step(inspect_query.step_id))
         elif inspect_query.agent:
-            records_by_run_id = self._registry._latest_records_by_run_id()
-            records = [r for r in records_by_run_id.values() if r.agent == inspect_query.agent]
+            records = [r for r in self._registry.latest_records() if r.agent == inspect_query.agent]
             records.sort(key=lambda r: (r.updated_at or 0.0, r.run_id), reverse=True)
         elif inspect_query.status:
             records = list(self._registry.by_status(inspect_query.status))
         else:
-            records_by_run_id = self._registry._latest_records_by_run_id()
-            records = list(records_by_run_id.values())
+            records = list(self._registry.latest_records())
             records.sort(key=lambda r: (r.updated_at or 0.0, r.run_id), reverse=True)
 
         # Apply limit/offset pagination
@@ -312,8 +308,7 @@ class CasesQueryImpl:
         Returns:
             Tuple of open case identifiers.
         """
-        latest_cases = self._registry._latest_cases_by_case_id()
-        open_ids = [case_id for case_id, entry in latest_cases.items() if entry.status == "open"]
+        open_ids = [entry.case_id for entry in self._registry.latest_cases(include_removed=False)]
         return tuple(sorted(open_ids))
 
     def by_step(self, step_id: str) -> tuple[str, ...]:

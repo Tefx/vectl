@@ -60226,7 +60226,7 @@ phases:
       with seq/prev_hash/entry_hash fields. Commit: 446f3e0fbbdd94729c74ab1ec81a64b3b1c611f8.'
   - id: orch_operator_observability.impl_projections_runstateview_artifacts
     name: Implement projections, RunStateView, and derived artifact writers
-    status: claimed
+    status: done
     description: 'step_type: implementation
 
 
@@ -60287,6 +60287,13 @@ phases:
     agent: python-senior
     claimed_by: python-senior
     claimed_at: '2026-04-04T14:06:44.010105+00:00'
+    done_at: '2026-04-04T14:16:33.321285+00:00'
+    evidence: 'Implemented `src/vectl/orchestration/projections.py` stubs for replay
+      from canonical events into derived artifacts (`state/latest.json`, `state/summary.json`,
+      `state/metrics.json`) plus step/case artifact metadata hooks and PROJECTION_STALE
+      diagnostics on persistence failure. Verification: `uv run pytest -v tests/orchestration/unit/test_projections_impl.py`
+      -> 3 passed; `ruff check` + `mypy` PASS; replay fixture `tests/fixtures/orchestration/replay_events.json`
+      produced expected artifact paths in evidence. Commit: b5e4a1f7cbf644217eb1c85c95e28a5575cf920f.'
   - id: orch_operator_observability.retest_green
     name: Retest events, projections, and artifact derivation green
     status: pending

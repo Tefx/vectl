@@ -61959,7 +61959,7 @@ phases:
       - tech_debt: none'
   - id: orch_operator_control_surface.fix_gate_blockers_batch
     name: Fix batched gate blockers for operator control surface
-    status: claimed
+    status: done
     description: 'Fix ALL gate findings from `orch_operator_control_surface.gate`
       in one batch.
 
@@ -62050,6 +62050,18 @@ phases:
     agent: python-senior
     claimed_by: python-senior
     claimed_at: '2026-04-04T17:36:36.209470+00:00'
+    done_at: '2026-04-04T17:40:42.120049+00:00'
+    evidence: "## Batched Gate Blocker Fix Evidence\n- Commit hash(es): 537bea05dd13c56839e6e2eba213a612406e562c\n\
+      - Files changed:\n  - src/vectl/orchestration/inspection_queries.py\n  - src/vectl/cli.py\n\
+      \  - tests/test_orch_cli_surface.py\n- Sibling search performed:\n  - duplicate\
+      \ all_records binding scan: none remaining\n  - dead locals step_ids/agents\
+      \ scan: none remaining\n  - unchained unreachable raise scan: none remaining\n\
+      - Root cause closure:\n  - removed duplicate local binding pattern causing mypy\
+      \ no-redef\n  - removed unused intermediate locals\n  - added chained cause\
+      \ propagation on internal error path\n- Verification:\n  - uv run mypy src/vectl/orchestration/inspection_queries.py\
+      \ -> success\n  - uv run ruff check --select F841,B904 src/vectl/orchestration/inspection_queries.py\
+      \ src/vectl/cli.py -> passed\n  - uv run pytest -v tests/test_orch_cli_surface.py::test_orch_internal_error_maps_to_exit_code_5\
+      \ -> passed"
   - id: orch_operator_control_surface.retest_gate_blockers_batch
     name: Re-test batched gate blockers for operator control surface
     status: pending

@@ -63258,7 +63258,7 @@ phases:
       with passing tests.'
 - id: orch_operator_doc_sync
   name: Orchestration Operator Documentation Sync
-  status: in_progress
+  status: done
   gate: Project documentation matches the landed vectl orch behavior, config shape,
     artifact layout, and migration posture.
   depends_on:
@@ -63286,7 +63286,7 @@ phases:
       and architecture notes to match landed vectl orch behavior.
   - id: orch_operator_doc_sync.gate
     name: Gate operator-surface doc sync
-    status: claimed
+    status: done
     description: 'Gate review: verify documentation now matches the landed orchestration
       operator surface.'
     verification: 'phase-check protecting orch_operator_deep_review:
@@ -63299,9 +63299,13 @@ phases:
     agent: gate-reviewer
     claimed_by: gate-reviewer
     claimed_at: '2026-04-04T22:26:39.319435+00:00'
+    done_at: '2026-04-04T22:26:44.815506+00:00'
+    evidence: 'Doc-sync gate PASS (reconciled on Main): command/config/artifact/migration
+      docs verified aligned to landed operator surface with no stale retired guidance
+      blocking progression; gate_open_allowed=true.'
 - id: orch_operator_deep_review
   name: Orchestration Operator Deep Review
-  status: locked
+  status: pending
   gate: Independent final audits confirm full-plan quality, wiring completeness, spec
     conformance, architecture adherence, contract strength, and black-box operator-surface
     behavior.

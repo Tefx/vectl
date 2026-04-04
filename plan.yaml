@@ -60106,7 +60106,7 @@ phases:
       expected_result=green, observed_result=green for implementation suites.'
   - id: orch_operator_config_state.spec_conformance
     name: Verify config and run-store spec conformance
-    status: claimed
+    status: pending
     description: Spec conformance verification via adversarial divergence hunting
       for config, frozen snapshot, run registry, case index, and latest-selection
       semantics.
@@ -60122,8 +60122,6 @@ phases:
     - orch_operator_config_state.impl_config_loader_freeze_tool_registry
     - orch_operator_config_state.impl_run_store_and_cases_index
     agent: spec-verifier
-    claimed_by: spec-verifier
-    claimed_at: '2026-04-04T14:23:41.424728+00:00'
   - id: orch_operator_config_state.wiring_audit
     name: Audit config and run-store wiring completeness
     status: claimed

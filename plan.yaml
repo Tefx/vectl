@@ -60959,7 +60959,7 @@ phases:
   steps:
   - id: orch_operator_control_surface.impl_resolver_gateway
     name: Implement resolver gateway with canonical tool authorization
-    status: claimed
+    status: done
     description: 'step_type: implementation
 
 
@@ -61016,6 +61016,44 @@ phases:
     agent: python-senior
     claimed_by: python-senior
     claimed_at: '2026-04-04T16:18:38.768679+00:00'
+    done_at: '2026-04-04T16:26:34.643288+00:00'
+    evidence: 'Commit hash(es): e4b91f5
+
+      Files changed:
+
+      - src/vectl/orchestration/resolver_gateway.py
+
+      - tests/orchestration/unit/test_resolver_gateway.py
+
+      Verification:
+
+      - uv run ruff check src/vectl/orchestration/resolver_gateway.py tests/orchestration/unit/test_resolver_gateway.py
+      -> passed
+
+      - uv run mypy src/vectl/orchestration/resolver_gateway.py tests/orchestration/unit/test_resolver_gateway.py
+      -> passed
+
+      - uv run pytest -v tests/orchestration/unit/test_resolver_gateway.py -> 5 passed
+
+      - uv run pytest -v tests/orchestration/unit/test_resolver.py tests/orchestration/integration/test_control_resolver_contract.py
+      -> 15 passed
+
+      - sibling search confirmed authorization path uses canonical tool registry
+
+      Spec link:
+
+      - docs/ORCHESTRATION-PLANE-RESOLUTION-CONTRACT.md §4.0, §4.1, §5, §8
+
+      - docs/ORCHESTRATION-PLANE-CLI-CONFIG-OBSERVABILITY-DESIGN.md §8.6
+
+      Gaps/Notes:
+
+      - Implemented allowlist enforcement, read/write surface checks, machine-readable
+      denial payloads, audited tool-call recording.
+
+      - No deviation records.
+
+      - Case open/close policy and CLI rendering remain out of scope.'
   - id: orch_operator_control_surface.impl_control_channel
     name: Implement file-based operator action control channel
     status: done

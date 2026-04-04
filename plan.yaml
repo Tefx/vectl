@@ -60159,7 +60159,7 @@ phases:
       depends on that remediation path.
   - id: orch_operator_config_state.gate
     name: Gate config, freeze, and run-store phase
-    status: claimed
+    status: pending
     description: 'Gate review: verify config/load/freeze behavior, tool allowlist
       validation, run-store persistence, and case-index rules are ready for downstream
       operator-surface integration.'
@@ -60187,8 +60187,6 @@ phases:
     - orch_operator_config_state.retest_conformance_and_wiring
     - orch_operator_config_state.retest_gate_authority_reference_blocker
     agent: gate-reviewer
-    claimed_by: gate-reviewer
-    claimed_at: '2026-04-04T15:52:54.717845+00:00'
   - id: orch_operator_config_state.fix_runtime_resume_snapshot_binding
     name: Fix runtime wiring and resume snapshot binding blockers
     status: done

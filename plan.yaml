@@ -59243,7 +59243,7 @@ phases:
   steps:
   - id: orch_operator_contracts.foundation_contracts
     name: Pin config, observability, store, and operator-boundary contracts
-    status: claimed
+    status: done
     description: "step_type: contract\ncontract_purity: ENFORCED\ncontract_outputs:\n\
       \  - signatures\n  - type_defs\n  - interfaces\n  - stubs\n\nPin the authoritative\
       \ operator-surface contracts in:\n- src/vectl/orchestration/config.py\n- src/vectl/orchestration/events.py\n\
@@ -59276,6 +59276,14 @@ phases:
     agent: python-executor
     claimed_by: python-executor
     claimed_at: '2026-04-04T11:49:20.542962+00:00'
+    done_at: '2026-04-04T11:58:13.200272+00:00'
+    evidence: 'Contract-only operator-surface modules pinned with typed DTOs/protocol
+      stubs across config/events/projections/run_store/tool_registry/resolver_gateway/control_channel/inspection_queries.
+      Verification: `python3 -m py_compile src/vectl/orchestration/{config,events,projections,run_store,tool_registry,resolver_gateway,control_channel,inspection_queries}.py`
+      PASS; import smoke for all 8 modules PASS. Commit: 93fadb4ce2a4783d5cd5ae4814e22d0675346a47.
+      Spec links: ORCHESTRATION-PLANE-IMPLEMENTATION-DESIGN.md §§3.7,3.8; ORCHESTRATION-PLANE-INTERFACES.md
+      §§3,4,5; ORCHESTRATION-PLANE-RESOLUTION-CONTRACT.md §§2,4,5,8; ORCHESTRATION-PLANE-ARCHITECTURE.md
+      §5.'
   - id: orch_operator_contracts.app_cli_contracts
     name: Pin orch_app and vectl orch CLI contracts
     status: pending

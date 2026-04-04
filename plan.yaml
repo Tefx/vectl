@@ -62351,7 +62351,7 @@ phases:
       tests.'
   - id: orch_operator_recovery_cutover.consumer_boundary_conformance
     name: Verify shared recovery facts across operator consumer surfaces
-    status: pending
+    status: claimed
     description: 'Consumer-boundary conformance check: prove CLI inspect status, inspect
       actions, case surfaces, and recovery/report outputs interpret the same resolved
       recovery facts from a shared fixture without re-deriving them independently.'
@@ -62368,6 +62368,8 @@ phases:
     - orch_operator_recovery_cutover.impl_recovery_resume_integration
     - orch_operator_recovery_cutover.impl_legacy_bridge_import
     agent: integration-verifier
+    claimed_by: integration-verifier
+    claimed_at: '2026-04-04T19:43:40.468548+00:00'
   - id: orch_operator_recovery_cutover.retest_green
     name: Retest recovery, resume, and legacy-bridge workflows green
     status: pending

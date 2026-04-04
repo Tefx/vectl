@@ -59484,3 +59484,11 @@ phases:
     - orch_operator_tests.observability_red
     - orch_operator_tests.cli_recovery_red
     agent: gate-reviewer
+- id: orch_operator_config_state
+  name: Orchestration Config, Freeze, and Run Store
+  status: locked
+  gate: Config loading/freeze, tool metadata validation, run index/cases index behavior,
+    and run-store persistence semantics satisfy the operator-surface docs and green
+    retests.
+  depends_on:
+  - orch_operator_tests

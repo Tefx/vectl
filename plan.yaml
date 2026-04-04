@@ -60532,7 +60532,7 @@ phases:
       produced expected artifact paths in evidence. Commit: b5e4a1f7cbf644217eb1c85c95e28a5575cf920f.'
   - id: orch_operator_observability.retest_green
     name: Retest events, projections, and artifact derivation green
-    status: claimed
+    status: done
     description: 'step_type: test
 
       step_intent: retest_green
@@ -60556,6 +60556,13 @@ phases:
     agent: integration-verifier
     claimed_by: integration-verifier
     claimed_at: '2026-04-04T15:00:20.424871+00:00'
+    done_at: '2026-04-04T15:05:44.248352+00:00'
+    evidence: 'Independent green retest passed for observability implementation: `tests/orchestration/unit/test_events.py`
+      (5/5), `tests/orchestration/unit/test_projections_impl.py` (3/3), corruption/failure
+      regressions (truncated JSONL, projection persistence failure->PROJECTION_STALE)
+      all verified. Evidence includes event-chain integrity, registry validation behavior,
+      replay artifact derivation (`state/latest.json`,`state/summary.json`,`state/metrics.json`),
+      and semantic fields.'
   - id: orch_operator_observability.spec_conformance
     name: Verify event and projection spec conformance
     status: done

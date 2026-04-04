@@ -60300,6 +60300,75 @@ phases:
     - orch_operator_config_state.spec_conformance
     - orch_operator_config_state.wiring_audit
     agent: python-senior
+  - id: orch_operator_config_state.retest_conformance_and_wiring
+    name: Retest config-state conformance and wiring blockers green
+    status: pending
+    description: 'As an INDEPENDENT REVIEWER (`gate-reviewer`), rerun the blocker
+      checks from `orch_operator_config_state.spec_conformance` and `orch_operator_config_state.wiring_audit`
+      after `orch_operator_config_state.fix_runtime_resume_snapshot_binding`.
+
+
+      Scope: phase-check protecting `orch_operator_control_surface` and the `orch_operator_config_state.gate`.
+
+
+      You must re-check ALL previously reported blocker families together:
+
+      - resumed-run frozen snapshot reuse is runtime-reachable and no longer NOT_FOUND
+
+      - resolver allowlist snapshot binding is enforced from the persisted per-run
+      snapshot, not mutable ambient config
+
+      - `config.py` / `run_store.py` surfaces are reachable through real `orch_app`
+      and CLI run/resume paths
+
+      - config fields introduced in this phase are consumed by non-test runtime code
+      or explicitly justified as downstream-owned without gate intersection
+
+
+      Required evidence:
+
+      - cite spec section -> implementation file:line for each formerly failing requirement
+
+      - show the runtime reachability chain CLI -> orch_app -> config/run_store (and
+      resolver gateway if touched)
+
+      - identify any remaining blockers as `blocker`, `should_fix`, `suggestion`,
+      or `tech_debt`
+
+      - explicitly state whether the prior NOT_FOUND and blocked-wiring findings are
+      closed
+
+
+      step_type: test
+
+      step_intent: retest_green
+
+      expected_result: green
+
+
+      Rule anchors:
+
+      - reactive-steps.md §13 requires a retest after the batched fix
+
+      - verification-design.md §4.0 requires a disposition path for broad verifier
+      findings
+
+      - gate-review.md §8.5 requires remediation ownership before gate progression'
+    verification: 'phase-check protecting orch_operator_control_surface and orch_operator_config_state.gate:
+
+      - Re-run the original spec-conformance and wiring-audit criteria against the
+      remediated surfaces
+
+      - Expected result: green
+
+      - Former NOT_FOUND findings for resume frozen-snapshot reuse and allowlist snapshot
+      binding are either closed with file:line evidence or remain explicit blockers
+
+      - Former blocked reachability / unconsumed-config findings are either closed
+      with runtime chain evidence or remain explicit blockers'
+    depends_on:
+    - orch_operator_config_state.fix_runtime_resume_snapshot_binding
+    agent: gate-reviewer
 - id: orch_operator_observability
   name: Orchestration Events, Projections, and Artifacts
   status: in_progress

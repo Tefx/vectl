@@ -61752,7 +61752,7 @@ phases:
     agent: gate-reviewer
   - id: orch_operator_control_surface.fix_spec_blockers_batch
     name: Fix batched spec-conformance blockers for control/config CLI surface
-    status: claimed
+    status: done
     description: "Batched remediation for spec-conformance findings across the runnable\
       \ `vectl orch` control/config surface.\n\nstep_type: implementation\nprior_loop:\n\
       \  - orch_operator_control_surface.spec_conformance\nremaining_blocker: Control\
@@ -61823,6 +61823,25 @@ phases:
     agent: python-senior
     claimed_by: python-senior
     claimed_at: '2026-04-04T17:19:37.139851+00:00'
+    done_at: '2026-04-04T17:27:31.232073+00:00'
+    evidence: "## Batched Spec Blocker Fix Evidence\n- Commit hash(es): 3df6042\n\
+      - Files changed:\n  - src/vectl/cli.py\n  - src/vectl/orch_app.py\n  - tests/test_orch_cli_surface.py\n\
+      \  - tests/orchestration/unit/test_orch_app.py\n\n- Control propagation proof\
+      \ (`pause --reason`, `unpause --reason`, `stop --force`):\n  - CLI forwards\
+      \ reason/force into app_runtime control methods.\n  - App boundary persists\
+      \ reason/force markers into control-channel payloads.\n  - Covered by tests\
+      \ in test_orch_cli_surface.py and test_orch_app.py.\n\n- `config show --effective`\
+      \ wiring proof:\n  - CLI passes effective flag to app_runtime.config_show(effective=...).\n\
+      \  - App config_show supports effective mode and distinct expanded output path.\n\
+      \  - Covered by targeted tests.\n\n- Exit-code mapping proof (not-found / recovery\
+      \ / internal):\n  - Added explicit mapping helpers for not-found(2), recovery(4),\
+      \ internal(5).\n  - Added tests asserting mappings for not-found/recovery/internal\
+      \ scenarios.\n\n- Sibling search results:\n  - No remaining `del reason`, `del\
+      \ force`, or `del effective` in touched control/config CLI surface.\n\n- Remaining\
+      \ ambiguity / deferred items:\n  - No contract deviations needed.\n  - Scope-limited\
+      \ to orch control/config surfaces and supporting app boundary wiring.\n\nVerification:\n\
+      - uv run pytest -q tests/test_orch_cli_surface.py tests/orchestration/unit/test_orch_app.py\
+      \ -> 15 passed"
   - id: orch_operator_control_surface.retest_spec_blockers_batch
     name: Re-test batched spec-conformance blockers for control/config CLI surface
     status: pending

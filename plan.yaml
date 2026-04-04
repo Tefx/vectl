@@ -59234,7 +59234,7 @@ phases:
       - All migration-finish blocker-family checks green with filesystem+git evidence.'
 - id: orch_operator_contracts
   name: Orchestration Operator Surface Contracts
-  status: pending
+  status: in_progress
   gate: Operator-surface contracts are pinned to the authoritative orchestration-plane
     docs; contract artifacts remain stub-only; no public surface or ownership boundary
     is left implicit.
@@ -59243,7 +59243,7 @@ phases:
   steps:
   - id: orch_operator_contracts.foundation_contracts
     name: Pin config, observability, store, and operator-boundary contracts
-    status: pending
+    status: claimed
     description: "step_type: contract\ncontract_purity: ENFORCED\ncontract_outputs:\n\
       \  - signatures\n  - type_defs\n  - interfaces\n  - stubs\n\nPin the authoritative\
       \ operator-surface contracts in:\n- src/vectl/orchestration/config.py\n- src/vectl/orchestration/events.py\n\
@@ -59274,6 +59274,8 @@ phases:
       - Evidence includes a file list plus a note showing which doc section pins each
       public interface'
     agent: python-executor
+    claimed_by: python-executor
+    claimed_at: '2026-04-04T11:49:20.542962+00:00'
   - id: orch_operator_contracts.app_cli_contracts
     name: Pin orch_app and vectl orch CLI contracts
     status: pending

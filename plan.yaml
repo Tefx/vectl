@@ -60068,7 +60068,7 @@ phases:
       retry behavior, and missing-heartbeat->unknown classification. Commit: d490f3a709271fbe7a8446e26768913626ade969.'
   - id: orch_operator_config_state.retest_green
     name: Retest config, freeze, and run-store behavior green
-    status: claimed
+    status: done
     description: 'step_type: test
 
       step_intent: retest_green
@@ -60095,6 +60095,15 @@ phases:
     agent: integration-verifier
     claimed_by: integration-verifier
     claimed_at: '2026-04-04T14:56:14.166313+00:00'
+    done_at: '2026-04-04T14:59:04.215436+00:00'
+    evidence: 'Independent green retest executed for config/freeze/run-store implementation.
+      Verification commands: `uv run pytest tests/orchestration/unit/test_config_state_impl.py
+      -v` (44 passed), `uv run pytest tests/orchestration/unit/test_run_store.py -v`
+      (9 passed), plus failure-path checks for malformed JSONL corruption, bounded
+      append retry/exhaustion, same-plan admission rejection, missing-heartbeat=>unknown,
+      and case-index tombstoning. Minimal fixture without convenience fields exercised
+      (`orchestration.plan_path` only). Semantic report provided with step_intent=retest_green,
+      expected_result=green, observed_result=green for implementation suites.'
   - id: orch_operator_config_state.spec_conformance
     name: Verify config and run-store spec conformance
     status: claimed

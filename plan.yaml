@@ -61752,7 +61752,7 @@ phases:
     agent: gate-reviewer
   - id: orch_operator_control_surface.fix_spec_blockers_batch
     name: Fix batched spec-conformance blockers for control/config CLI surface
-    status: pending
+    status: claimed
     description: "Batched remediation for spec-conformance findings across the runnable\
       \ `vectl orch` control/config surface.\n\nstep_type: implementation\nprior_loop:\n\
       \  - orch_operator_control_surface.spec_conformance\nremaining_blocker: Control\
@@ -61821,6 +61821,8 @@ phases:
     depends_on:
     - orch_operator_control_surface.spec_conformance
     agent: python-senior
+    claimed_by: python-senior
+    claimed_at: '2026-04-04T17:19:37.139851+00:00'
   - id: orch_operator_control_surface.retest_spec_blockers_batch
     name: Re-test batched spec-conformance blockers for control/config CLI surface
     status: pending

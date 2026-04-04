@@ -62208,7 +62208,7 @@ phases:
       product_implementation_files_modified: NO'
 - id: orch_operator_recovery_cutover
   name: Orchestration Recovery, Resume, and Legacy Bridge
-  status: pending
+  status: in_progress
   gate: Recovery/resume behavior, continuity artifact handling, and legacy bridge/import
     semantics satisfy the documented outcome model and are independently verified
     before system wiring and cutover validation.
@@ -62289,7 +62289,7 @@ phases:
     agent: python-senior
   - id: orch_operator_recovery_cutover.impl_legacy_bridge_import
     name: Implement legacy-run bridge and import semantics for cutover
-    status: pending
+    status: claimed
     description: 'step_type: implementation
 
 
@@ -62335,6 +62335,8 @@ phases:
 
       - Evidence states what remains transitional versus orchestration-native authority'
     agent: python-senior
+    claimed_by: python-senior
+    claimed_at: '2026-04-04T17:49:35.846138+00:00'
   - id: orch_operator_recovery_cutover.consumer_boundary_conformance
     name: Verify shared recovery facts across operator consumer surfaces
     status: pending

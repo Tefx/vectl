@@ -60245,3 +60245,35 @@ phases:
     - orch_operator_control_surface.impl_orch_app_composition_root
     - orch_operator_control_surface.impl_vectl_orch_cli_surface
     agent: integration-verifier
+  - id: orch_operator_control_surface.liveness_probe
+    name: Probe runnable vectl orch CLI liveness
+    status: pending
+    description: Blind liveness probe for the runnable `vectl orch` surface. Start
+      the real entrypoint, keep it alive for the intended command lifecycle, exercise
+      at least one documented operation, and verify expected output without relying
+      on implementation knowledge.
+    verification: 'L3 phase-check protecting orch_operator_recovery_cutover and system
+      wiring:
+
+      - Entry point starts via the real CLI and stays alive for the command lifecycle
+      under test
+
+      - At least one documented command reaches the real entrypoint path end-to-end
+
+      - Output and exit semantics match the documented surface for that command'
+    evidence_template: 'Paste:
+
+      - exact launch/invocation command
+
+      - observed startup/output text or JSON
+
+      - one successful end-to-end command path
+
+      - any stderr/exit-code details'
+    depends_on:
+    - orch_operator_control_surface.impl_resolver_gateway
+    - orch_operator_control_surface.impl_control_channel
+    - orch_operator_control_surface.impl_inspection_queries
+    - orch_operator_control_surface.impl_orch_app_composition_root
+    - orch_operator_control_surface.impl_vectl_orch_cli_surface
+    agent: blind-tester

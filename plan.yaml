@@ -61298,7 +61298,7 @@ phases:
       - gate-reviewer task ses_2a6ada31dffe1bN27zmxRMLqPH'
   - id: orch_operator_control_surface.impl_orch_app_composition_root
     name: Implement orch_app composition root and runtime wiring
-    status: claimed
+    status: done
     description: 'step_type: implementation
 
 
@@ -61348,6 +61348,42 @@ phases:
     agent: python-senior
     claimed_by: python-senior
     claimed_at: '2026-04-04T16:34:51.617277+00:00'
+    done_at: '2026-04-04T16:43:57.241542+00:00'
+    evidence: 'Commit hash(es): e8ec12e
+
+      Files changed:
+
+      - src/vectl/orch_app.py
+
+      - tests/orchestration/unit/test_orch_app.py
+
+      Verification:
+
+      - uv run pytest tests/orchestration/unit/test_orch_app.py -v -> 5 passed
+
+      - uv run ruff check src/vectl/orch_app.py tests/orchestration/unit/test_orch_app.py
+      -> passed
+
+      - uv run mypy src/vectl/orch_app.py -> passed
+
+      - uv run pytest tests/orchestration/unit/test_orch_app.py tests/orchestration/unit/test_resolver_gateway.py
+      tests/orchestration/unit/test_control_channel.py -v -> 17 passed
+
+      Spec link:
+
+      - docs/ORCHESTRATION-PLANE-IMPLEMENTATION-DESIGN.md §6
+
+      Gaps/Notes:
+
+      - Wired real collaborators in build_orchestration_app and removed noop resolver
+      production dependency.
+
+      - Implemented OrchestrationApp method bodies and typed boundary routing.
+
+      - Added regression tests for collaborator composition, admission failure, missing
+      plan path, and run-selection ambiguity.
+
+      - No deviation records.'
   - id: orch_operator_control_surface.impl_vectl_orch_cli_surface
     name: Implement vectl orch CLI command group
     status: pending

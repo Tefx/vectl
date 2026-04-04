@@ -59912,3 +59912,61 @@ phases:
   depends_on:
   - orch_operator_config_state
   - orch_operator_observability
+  steps:
+  - id: orch_operator_control_surface.impl_resolver_gateway
+    name: Implement resolver gateway with canonical tool authorization
+    status: pending
+    description: 'step_type: implementation
+
+
+      Fill in stub bodies in src/vectl/orchestration/resolver_gateway.py per contracts
+      from orch_operator_contracts.foundation_contracts and orch_operator_contracts.recovery_cutover_contracts,
+      and tests from orch_operator_tests.cli_recovery_red.
+
+
+      UPSTREAM ARTIFACTS:
+
+      - src/vectl/orchestration/resolver_gateway.py — authoritative gateway surface
+
+      - src/vectl/orchestration/tool_registry.py — canonical tool metadata from orch_operator_config_state.impl_config_loader_freeze_tool_registry
+
+      - tests from orch_operator_tests.cli_recovery_red are PROTECTED
+
+
+      YOUR SCOPE: implement resolver-tool allowlist enforcement, audited tool-call
+      recording, read/write-surface checks, and machine-readable denial/report data
+      for downstream control/recovery use.
+
+
+      State semantics:
+
+      - resolver reasons but never becomes core authority
+
+      - gateway enforces the frozen per-run allowlist snapshot, not mutable ambient
+      config
+
+      - denied tool attempts are auditable and preserved as explicit events
+
+
+      Out-of-scope guardrail:
+
+      - do not implement case-open/close orchestration decisions here
+
+      - do not own CLI rendering here
+
+
+      ## Completion Criteria (stub exclusion)
+
+      This is an IMPLEMENTATION step. Stub-only completion is NOT acceptable.'
+    verification: 'local-check protecting orch_operator_control_surface.mid_gate,
+      cli_seam_integration_proof, and orch_operator_recovery_cutover:
+
+      - Main path: targeted tests prove allowed tool calls pass through the gateway
+      with audited recording
+
+      - Failure path: regression tests prove disallowed tool family/name/write-surface
+      requests are denied with machine-readable reasons
+
+      - Evidence includes sibling search confirming no bypass path around the canonical
+      tool registry'
+    agent: python-senior

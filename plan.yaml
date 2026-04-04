@@ -59673,7 +59673,7 @@ phases:
       distinction, and expected-red semantic alignment.'
   - id: orch_operator_tests.fix-gate-should-fix-batched
     name: fix-gate-should-fix-batched
-    status: claimed
+    status: done
     description: 'step_type: implementation
 
       priority: MEDIUM
@@ -59783,6 +59783,13 @@ phases:
     agent: python-executor
     claimed_by: python-executor
     claimed_at: '2026-04-04T13:39:10.694651+00:00'
+    done_at: '2026-04-04T13:41:27.877947+00:00'
+    evidence: 'Batched remediation applied to `tests/repro/test_orch_cli_recovery_red.py`:
+      removed duplicate `test_*` method definitions shadowing inspect-family tests
+      and removed orphaned residual block while preserving expected-red semantics/spec-derived
+      assertions. Verification: `rg -n ''^\s*def\s+test_[A-Za-z0-9_]+'' tests/repro/test_orch_cli_recovery_red.py`
+      shows unique names; AST duplicate-check returned `{}` with assert pass; edit
+      scope confined to the single repro file. Commit: a8e90610d8ced84e83f33a2b127058088e3c5b92.'
   - id: orch_operator_tests.retest-gate-should-fix-batched
     name: retest-gate-should-fix-batched
     status: pending

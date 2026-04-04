@@ -59006,7 +59006,7 @@ phases:
       \ state"
   - id: orch_migration_finish.retest_gate_evidence_round3
     name: Re-test migration finish gate evidence after round3 remediation
-    status: claimed
+    status: done
     description: 'Independent round3 retest for the migration-finish gate-evidence
       blocker family after `orch_migration_finish.fix_gate_blockers_round3`. Keep
       historical failed steps unchanged and reassess the live repository state only.
@@ -59048,6 +59048,24 @@ phases:
     agent: gate-reviewer
     claimed_by: software-architect
     claimed_at: '2026-04-04T03:31:29.429135+00:00'
+    done_at: '2026-04-04T03:31:37.326896+00:00'
+    evidence: 'Retest result: FAIL (partial)
+
+      - B1: PASS (legacy test tree exists; top-level driver tests removed)
+
+      - B3: PASS (round3 commit provides concrete non-plan renames/additions)
+
+      - B4: FAIL (cross-step evidence inconsistency remains: prior migration claims
+      mention subdirectory layout while current enacted layout is flat under tests/legacy/driver)
+
+
+      Historical-failure preservation: retained.
+
+      Follow-up loop added for unresolved B4 only:
+
+      - orch_migration_finish.fix_gate_blockers_round4
+
+      - orch_migration_finish.retest_gate_evidence_round4'
   - id: orch_migration_finish.fix_gate_blockers_round4
     name: Fix migration finish gate blockers round4
     status: pending

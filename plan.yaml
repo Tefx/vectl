@@ -60497,9 +60497,11 @@ phases:
       alignment
 
       - Record whether the blocker was closed by restoring the authority artifact
-      or by retargeting citations to canonical docs'
+      or by retargeting citations to canonical docs
+
+      - Provide sibling-search evidence for the entire config-state citation family'
     depends_on:
-    - orch_operator_config_state.gate
+    - orch_operator_config_state.retest_conformance_and_wiring
     agent: doc-reviewer
 - id: orch_operator_observability
   name: Orchestration Events, Projections, and Artifacts

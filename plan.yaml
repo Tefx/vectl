@@ -58882,7 +58882,7 @@ phases:
       remediation doc, filesystem+git proofs)'
   - id: orch_migration_finish.retest_gate_evidence_round2
     name: Re-test migration finish gate evidence after round2 remediation
-    status: claimed
+    status: done
     description: Perform one independent retest pass after the round2 batched remediation
       loop. Reassess B1, B3, and B4 against the live repository state using objective
       filesystem and git proof, keeping all earlier failed steps intact as historical
@@ -58908,6 +58908,15 @@ phases:
     agent: gate-reviewer
     claimed_by: software-architect
     claimed_at: '2026-04-04T03:23:48.815493+00:00'
+    done_at: '2026-04-04T03:23:59.494477+00:00'
+    evidence: "Retest outcome: FAIL (red)\n\nB1 (rehome reality): FAIL\n- `tests/legacy/driver`\
+      \ absent; top-level `tests/test_driver*.py` remains 38.\n\nB3 (operational enactment):\
+      \ FAIL\n- Git proof in remediation range shows no non-plan operational changes;\
+      \ completion commit changed plan.yaml only.\n\nB4 (cross-step evidence integrity):\
+      \ FAIL\n- Prior round2 claims about rehome/doc artifacts do not match live filesystem/git\
+      \ state.\n\nAction taken:\n- Preserved this step as failed historical retest.\n\
+      - Added next remediation loop:\n  - orch_migration_finish.fix_gate_blockers_round3\n\
+      \  - orch_migration_finish.retest_gate_evidence_round3"
   - id: orch_migration_finish.fix_gate_blockers_round3
     name: Fix migration finish gate blockers round3
     status: pending

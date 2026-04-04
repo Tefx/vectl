@@ -415,6 +415,11 @@ app = typer.Typer(
 repair_app = typer.Typer(help="Operator recovery commands.")
 app.add_typer(repair_app, name="repair")
 
+orch_app = typer.Typer(
+    help="Orchestration operator commands: run, resume, recover, inspect, case, control, config.",
+)
+app.add_typer(orch_app, name="orch")
+
 PlanOption = typer.Option(
     None,
     "--plan",
@@ -502,6 +507,301 @@ def merge_driver_cmd(
 ) -> None:
     """Git merge-driver entrypoint for plan.yaml merges."""
     raise typer.Exit(merge_plans(base, ours, theirs))
+
+
+# ---------------------------------------------------------------------------
+# vectl orch: orchestration operator commands
+# Authority: docs/ORCHESTRATION-PLANE-IMPLEMENTATION-DESIGN.md section 6
+# ---------------------------------------------------------------------------
+
+OrchPlanOption = typer.Option(
+    None,
+    "--plan",
+    "-p",
+    help="Path to plan YAML file. Defaults to auto-discovery (walk-up). (env: VECTL_PLAN_PATH)",
+)
+OrchAgentOption = typer.Option(
+    None,
+    "--agent",
+    "-a",
+    help="Agent name to use for orchestration.",
+)
+
+
+# --- vectl orch run ---
+
+
+@orch_app.command("run")
+def orch_run(
+    step_id: str | None = typer.Argument(
+        None, help="Step ID to run (auto-selects next if omitted)."
+    ),
+    agent: str | None = OrchAgentOption,
+    plan: Path | None = OrchPlanOption,
+) -> None:
+    """Start or resume an orchestration run.
+
+    Contract authority: orch_app.py::OrchestrationApp.run()
+    """
+    from vectl.orch_app import OrchestrationApp, AppConfig
+
+    _die("vectl orch run: orchestration app wiring not yet implemented")
+
+
+# --- vectl orch resume ---
+
+
+@orch_app.command("resume")
+def orch_resume(
+    run_id: str = typer.Argument(..., help="Run identifier to resume."),
+    plan: Path | None = OrchPlanOption,
+) -> None:
+    """Resume an existing orchestration run from artifacts.
+
+    Contract authority: orch_app.py::OrchestrationApp.resume()
+    """
+    from vectl.orch_app import OrchestrationApp, AppConfig
+
+    _die("vectl orch resume: orchestration app wiring not yet implemented")
+
+
+# --- vectl orch recover ---
+
+
+@orch_app.command("recover")
+def orch_recover(
+    step_id: str | None = typer.Option(None, "--step", help="Step ID to recover."),
+    yes: bool = typer.Option(False, "--yes", "-y", help="Skip confirmation prompt."),
+    plan: Path | None = OrchPlanOption,
+) -> None:
+    """Recover orchestration state from continuity artifacts.
+
+    Contract authority: orch_app.py::OrchestrationApp.recover()
+    """
+    from vectl.orch_app import OrchestrationApp, AppConfig
+
+    _die("vectl orch recover: orchestration app wiring not yet implemented")
+
+
+# --- vectl orch runs ---
+
+
+@orch_app.command("runs")
+def orch_runs(
+    step_id: str | None = typer.Option(None, "--step", help="Filter by step ID."),
+    limit: int = typer.Option(100, "--limit", "-n", help="Maximum runs to show."),
+    plan: Path | None = OrchPlanOption,
+) -> None:
+    """List orchestration runs.
+
+    Contract authority: orch_app.py::OrchestrationApp.runs()
+    """
+    from vectl.orch_app import OrchestrationApp, AppConfig
+
+    _die("vectl orch runs: orchestration app wiring not yet implemented")
+
+
+# --- vectl orch prune ---
+
+
+@orch_app.command("prune")
+def orch_prune(
+    before: float | None = typer.Option(None, "--before", help="Unix timestamp threshold."),
+    force: bool = typer.Option(False, "--force", "-y", help="Skip confirmation prompt."),
+    plan: Path | None = OrchPlanOption,
+) -> None:
+    """Prune old runs and artifacts.
+
+    Contract authority: orch_app.py::OrchestrationApp.prune()
+    """
+    from vectl.orch_app import OrchestrationApp, AppConfig
+
+    _die("vectl orch prune: orchestration app wiring not yet implemented")
+
+
+# --- vectl orch inspect (status / events / logs / artifacts / actions) ---
+
+
+@orch_app.command("status")
+def orch_inspect_status(
+    step_id: str | None = typer.Option(None, "--step", help="Step ID to inspect."),
+    plan: Path | None = OrchPlanOption,
+) -> None:
+    """Inspect current orchestration status.
+
+    Contract authority: orch_app.py::OrchestrationApp.inspect_status()
+    """
+    _die("vectl orch status: orchestration app wiring not yet implemented")
+
+
+@orch_app.command("events")
+def orch_inspect_events(
+    step_id: str | None = typer.Option(None, "--step", help="Filter by step ID."),
+    limit: int = typer.Option(100, "--limit", "-n", help="Maximum events to show."),
+    plan: Path | None = OrchPlanOption,
+) -> None:
+    """Inspect orchestration events.
+
+    Contract authority: orch_app.py::OrchestrationApp.inspect_events()
+    """
+    _die("vectl orch events: orchestration app wiring not yet implemented")
+
+
+@orch_app.command("logs")
+def orch_inspect_logs(
+    run_id: str | None = typer.Option(None, "--run", help="Specific run ID."),
+    step_id: str | None = typer.Option(None, "--step", help="Filter by step ID."),
+    plan: Path | None = OrchPlanOption,
+) -> None:
+    """Inspect run logs.
+
+    Contract authority: orch_app.py::OrchestrationApp.inspect_logs()
+    """
+    _die("vectl orch logs: orchestration app wiring not yet implemented")
+
+
+@orch_app.command("artifacts")
+def orch_inspect_artifacts(
+    step_id: str | None = typer.Option(None, "--step", help="Filter by step ID."),
+    plan: Path | None = OrchPlanOption,
+) -> None:
+    """Inspect derived artifacts from runs.
+
+    Contract authority: orch_app.py::OrchestrationApp.inspect_artifacts()
+    """
+    _die("vectl orch artifacts: orchestration app wiring not yet implemented")
+
+
+@orch_app.command("actions")
+def orch_inspect_actions(
+    run_id: str | None = typer.Option(None, "--run", help="Specific run ID."),
+    plan: Path | None = OrchPlanOption,
+) -> None:
+    """Inspect actions taken during a run.
+
+    Contract authority: orch_app.py::OrchestrationApp.inspect_actions()
+    """
+    _die("vectl orch actions: orchestration app wiring not yet implemented")
+
+
+# --- vectl orch case (list / show / respond) ---
+
+
+@orch_app.command("case-list")
+def orch_case_list(
+    status: str | None = typer.Option(
+        None,
+        "--status",
+        "-s",
+        help="Filter by status: open, resolved, halt.",
+    ),
+    plan: Path | None = OrchPlanOption,
+) -> None:
+    """List cases (blocked/unresolved situations).
+
+    Contract authority: orch_app.py::OrchestrationApp.case_list()
+    """
+    _die("vectl orch case-list: orchestration app wiring not yet implemented")
+
+
+@orch_app.command("case-show")
+def orch_case_show(
+    case_id: str = typer.Argument(..., help="Case identifier to show."),
+    plan: Path | None = OrchPlanOption,
+) -> None:
+    """Show detail for a specific case.
+
+    Contract authority: orch_app.py::OrchestrationApp.case_show()
+    """
+    _die("vectl orch case-show: orchestration app wiring not yet implemented")
+
+
+@orch_app.command("case-respond")
+def orch_case_respond(
+    case_id: str = typer.Argument(..., help="Case identifier to respond to."),
+    response: str = typer.Option(..., "--response", "-r", help="Operator response message."),
+    plan: Path | None = OrchPlanOption,
+) -> None:
+    """Respond to a case (operator input to resolver).
+
+    Contract authority: orch_app.py::OrchestrationApp.case_respond()
+    """
+    _die("vectl orch case-respond: orchestration app wiring not yet implemented")
+
+
+# --- vectl orch control (pause / unpause / stop) ---
+
+
+@orch_app.command("pause")
+def orch_control_pause(
+    step_id: str | None = typer.Option(None, "--step", help="Specific step to pause."),
+    plan: Path | None = OrchPlanOption,
+) -> None:
+    """Pause orchestration (stop dispatching new work).
+
+    Contract authority: orch_app.py::OrchestrationApp.control_pause()
+    """
+    _die("vectl orch pause: orchestration app wiring not yet implemented")
+
+
+@orch_app.command("unpause")
+def orch_control_unpause(
+    step_id: str | None = typer.Option(None, "--step", help="Specific step to unpause."),
+    plan: Path | None = OrchPlanOption,
+) -> None:
+    """Unpause orchestration (resume dispatching).
+
+    Contract authority: orch_app.py::OrchestrationApp.control_unpause()
+    """
+    _die("vectl orch unpause: orchestration app wiring not yet implemented")
+
+
+@orch_app.command("stop")
+def orch_control_stop(
+    reason: str | None = typer.Option(None, "--reason", "-r", help="Reason for stopping."),
+    plan: Path | None = OrchPlanOption,
+) -> None:
+    """Stop orchestration entirely.
+
+    Contract authority: orch_app.py::OrchestrationApp.control_stop()
+    """
+    _die("vectl orch stop: orchestration app wiring not yet implemented")
+
+
+# --- vectl orch config (show / validate / tools) ---
+
+
+@orch_app.command("config-show")
+def orch_config_show(
+    plan: Path | None = OrchPlanOption,
+) -> None:
+    """Show current orchestration configuration.
+
+    Contract authority: orch_app.py::OrchestrationApp.config_show()
+    """
+    _die("vectl orch config-show: orchestration app wiring not yet implemented")
+
+
+@orch_app.command("config-validate")
+def orch_config_validate(
+    plan: Path | None = OrchPlanOption,
+) -> None:
+    """Validate current orchestration configuration.
+
+    Contract authority: orch_app.py::OrchestrationApp.config_validate()
+    """
+    _die("vectl orch config-validate: orchestration app wiring not yet implemented")
+
+
+@orch_app.command("config-tools")
+def orch_config_tools(
+    plan: Path | None = OrchPlanOption,
+) -> None:
+    """Show registered tool families and allowlist.
+
+    Contract authority: orch_app.py::OrchestrationApp.config_tools()
+    """
+    _die("vectl orch config-tools: orchestration app wiring not yet implemented")
 
 
 @app.command()

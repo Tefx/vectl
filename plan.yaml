@@ -62399,7 +62399,7 @@ phases:
     claimed_at: '2026-04-04T19:43:58.756363+00:00'
   - id: orch_operator_recovery_cutover.spec_conformance
     name: Verify recovery and cutover spec conformance
-    status: pending
+    status: claimed
     description: Spec conformance verification via adversarial divergence hunting
       for recovery outcomes, hygiene classifications, terminalization rules, and migration/cutover
       promises.
@@ -62414,6 +62414,8 @@ phases:
     - orch_operator_recovery_cutover.impl_recovery_resume_integration
     - orch_operator_recovery_cutover.impl_legacy_bridge_import
     agent: spec-verifier
+    claimed_by: spec-verifier
+    claimed_at: '2026-04-04T19:50:02.118508+00:00'
   - id: orch_operator_recovery_cutover.gate
     name: Gate recovery, resume, and legacy-bridge phase
     status: pending

@@ -59977,7 +59977,7 @@ phases:
       new impl tests. Commit: 521f79e167ac50e77a18a4f2a85027071f307fda.'
   - id: orch_operator_config_state.impl_run_store_and_cases_index
     name: Implement run store, run registry, case index, and latest selection
-    status: pending
+    status: claimed
     description: 'step_type: implementation
 
 
@@ -60055,6 +60055,8 @@ phases:
 
       - Proof includes no alternate filesystem scan path for `--latest` outside run_store'
     agent: python-senior
+    claimed_by: python-senior
+    claimed_at: '2026-04-04T13:58:56.439842+00:00'
   - id: orch_operator_config_state.retest_green
     name: Retest config, freeze, and run-store behavior green
     status: pending

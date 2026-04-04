@@ -59300,3 +59300,27 @@ phases:
     depends_on:
     - orch_operator_contracts.foundation_contracts
     agent: python-executor
+  - id: orch_operator_contracts.recovery_cutover_contracts
+    name: Pin recovery, continuity, and migration-cutover contracts
+    status: pending
+    description: "step_type: contract\ncontract_purity: ENFORCED\ncontract_outputs:\n\
+      \  - signatures\n  - type_defs\n  - interfaces\n  - stubs\n\nPin the documented\
+      \ recovery and migration contracts without implementation logic. Cover:\n- recovery/report\
+      \ DTOs and outcome enums for `vectl orch recover`\n- continuity artifact readers/writers\
+      \ needed by resume/recovery decisions\n- run-local quarantine and startup-hygiene\
+      \ classifications\n- legacy-run import/bridge contract surfaces needed for parallel/preferred/deprecated/retired\
+      \ migration states\n- replacement-grade cutover validation surfaces for legacy-driver\
+      \ retirement criteria\n\nLimit contract work to the exact documented surfaces\
+      \ in the operator modules and orch_app boundary. Do NOT implement replay, recovery,\
+      \ or import behavior yet."
+    verification: 'local-check protecting orch_operator_tests, orch_operator_recovery_cutover,
+      and orch_operator_cutover_validation:
+
+      - Recovery/cutover contracts cite the exact authoritative doc sections
+
+      - Outcome enums and minimum artifact-field contracts are explicit and machine-readable
+
+      - Contract outputs remain stub-only and do not embed recovery logic'
+    depends_on:
+    - orch_operator_contracts.foundation_contracts
+    agent: python-executor

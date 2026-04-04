@@ -62296,7 +62296,7 @@ phases:
       candidate selection in src/vectl/orch_app.py and src/vectl/cli.py.
   - id: orch_operator_recovery_cutover.impl_legacy_bridge_import
     name: Implement legacy-run bridge and import semantics for cutover
-    status: claimed
+    status: done
     description: 'step_type: implementation
 
 
@@ -62344,6 +62344,11 @@ phases:
     agent: python-senior
     claimed_by: python-senior
     claimed_at: '2026-04-04T19:32:03.383455+00:00'
+    done_at: '2026-04-04T19:37:25.347676+00:00'
+    evidence: 'Implemented legacy-run bridge/import semantics; commit bb8a41f. Added
+      CutoverValidator and blockers for non-retired imported runs/continuity minimum
+      failures/open cases. Verification passed: ruff and targeted orchestration unit
+      tests.'
   - id: orch_operator_recovery_cutover.consumer_boundary_conformance
     name: Verify shared recovery facts across operator consumer surfaces
     status: pending

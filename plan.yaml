@@ -62955,7 +62955,7 @@ phases:
       returned expected diagnostic.
 - id: orch_operator_cutover_validation
   name: Orchestration Operator Cutover Validation
-  status: pending
+  status: in_progress
   gate: Replacement-grade operator workflows, migration state transitions, and legacy-retirement
     criteria are independently validated before docs and final deep review.
   depends_on:
@@ -62982,7 +62982,7 @@ phases:
     agent: blind-tester
   - id: orch_operator_cutover_validation.migration_state_audit
     name: Audit migration state model and legacy-retirement readiness
-    status: pending
+    status: claimed
     description: 'Audit migration state model and legacy-retirement readiness against
       the landed operator surface. Confirm the documented parallel/preferred/deprecated/retired
       migration model, retirement gate, compatibility matrix, in-flight legacy-run
@@ -63044,6 +63044,8 @@ phases:
 
       - Blocking criteria: <list or none>'
     agent: software-architect
+    claimed_by: software-architect
+    claimed_at: '2026-04-04T21:05:56.597910+00:00'
   - id: orch_operator_cutover_validation.gate
     name: Gate cutover validation
     status: pending

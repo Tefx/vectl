@@ -62448,7 +62448,7 @@ phases:
     agent: gate-reviewer
   - id: orch_operator_recovery_cutover.fix_recovery_contract_conformance
     name: Fix recovery contract and quarantine conformance blockers
-    status: pending
+    status: claimed
     description: 'Fix ALL verifier blockers for recovery-cutover conformance in one
       batched remediation step.
 
@@ -62547,6 +62547,8 @@ phases:
     - orch_operator_recovery_cutover.consumer_boundary_conformance
     - orch_operator_recovery_cutover.spec_conformance
     agent: python-senior
+    claimed_by: python-senior
+    claimed_at: '2026-04-04T19:55:50.449323+00:00'
   - id: orch_operator_recovery_cutover.reverify_recovery_contract_conformance
     name: Reverify recovery consumer-boundary and spec conformance
     status: pending

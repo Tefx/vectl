@@ -62770,7 +62770,7 @@ phases:
       tests passed.
   - id: orch_operator_system_wiring.verify_e2e
     name: Verify end-to-end vectl orch data flow
-    status: claimed
+    status: done
     description: 'Early end-to-end operator vertical slice using the real `vectl orch`
       entrypoint. Exercise one complete run path plus one blocked/recovery-aware path
       so data flows from CLI -> orch_app -> control/read modules -> run artifacts
@@ -62861,6 +62861,9 @@ phases:
     agent: integration-verifier
     claimed_by: integration-verifier
     claimed_at: '2026-04-04T20:59:15.196998+00:00'
+    done_at: '2026-04-04T20:59:21.291084+00:00'
+    evidence: Independent E2E verification passed with real CLI commands and persisted
+      artifacts; proved full layer traversal and blocked recovery path behavior.
   - id: orch_operator_system_wiring.gate
     name: Gate operator system wiring
     status: pending

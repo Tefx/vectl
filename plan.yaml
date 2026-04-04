@@ -62598,18 +62598,34 @@ phases:
     name: Gate operator system wiring
     status: pending
     description: 'Gate review: verify operator-surface shared wiring is complete and
-      the real entrypoint uses the real implementations end-to-end.'
+      the real entrypoint uses the real implementations end-to-end.
+
+
+      review_depth: THOROUGH
+
+      review_depth_rationale:
+
+      - runnable `vectl orch` surface must be proven live, not only statically wired
+
+      - system wiring is the last barrier before replacement-workflow cutover validation
+
+      - placeholder/runtime-stub regressions would poison all downstream audits'
     verification: 'phase-check protecting orch_operator_cutover_validation and doc
       sync:
 
-      - No remaining production stub/placeholder blocks entrypoint execution
+      - No remaining production stub/placeholder block or compatibility shim blocks
+      entrypoint execution
 
       - End-to-end evidence proves the real CLI traverses all required layers
+
+      - Liveness evidence proves the documented `vectl orch` surface starts and accepts
+      at least one real operation
 
       - Shared registry/wiring conflicts are resolved in the integrated state'
     depends_on:
     - orch_operator_system_wiring.replace_runtime_stubs
     - orch_operator_system_wiring.verify_e2e
+    - orch_operator_system_wiring.liveness_probe
     agent: gate-reviewer
   - id: orch_operator_system_wiring.liveness_probe
     name: Probe vectl orch entrypoint liveness

@@ -59046,3 +59046,68 @@ phases:
     depends_on:
     - orch_migration_finish.fix_gate_blockers_round3
     agent: gate-reviewer
+  - id: orch_migration_finish.fix_gate_blockers_round4
+    name: Fix migration finish gate blockers round4
+    status: pending
+    description: 'Batched round4 remediation for unresolved B4 from `orch_migration_finish.retest_gate_evidence_round3`.
+      Keep all earlier failed/fix/retest steps unchanged as historical evidence.
+
+
+      Fix ALL remaining B4 blocker conditions in this blocker family, not just the
+      first observed symptom.
+
+
+      ## Root Cause vs Symptom
+
+      - Root cause: cross-step migration evidence, authoritative documentation claims,
+      and current filesystem/git layout are not yet reconciled to one exact disposition
+      statement.
+
+      - Symptom: gate review can still see a mismatch between claimed migration disposition
+      and the repository''s present tracked layout.
+
+      - Why previous fix failed: prior remediation improved tracked rename proof and
+      path reality, but did not fully close the cross-step consistency gap between
+      claimed disposition and authoritative documentation/evidence wording.
+
+      - Why this fix is not surface-level: it must reconcile the live repository layout
+      with the authoritative narrative rather than patching one evidence fragment.
+
+
+      ## Required remediation scope
+
+      - Explicitly reconcile cross-step consistency for B4 only.
+
+      - Make filesystem/git layout match the claimed migration disposition OR update
+      authoritative documentation claims to the exact current layout/disposition.
+
+      - Do NOT edit or rewrite historical failed step records; preserve them as immutable
+      history.
+
+      - If docs are updated, ensure they state the exact current layout and disposition
+      with no ambiguous legacy phrasing.
+
+      - Search for sibling authoritative claims so no contradictory migration-layout
+      statement remains.
+
+
+      ## Completion Criteria
+
+      - B4 is closed by exact agreement between current filesystem/git layout and
+      authoritative migration/disposition claims.
+
+      - Historical failed step records remain unchanged.
+
+      - No conflicting authoritative documentation claim remains about the affected
+      layout/disposition.'
+    verification: '- Reconcile authoritative docs/evidence with exact current filesystem/git
+      layout for the migration disposition
+
+      - Preserve historical failed step records unchanged
+
+      - Show no conflicting authoritative claim remains for the affected layout/disposition
+
+      - Scope is B4 only; do not regress B1/B3 closure evidence'
+    depends_on:
+    - orch_migration_finish.retest_gate_evidence_round3
+    agent: python-senior

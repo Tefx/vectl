@@ -62064,7 +62064,7 @@ phases:
       \ -> passed"
   - id: orch_operator_control_surface.retest_gate_blockers_batch
     name: Re-test batched gate blockers for operator control surface
-    status: pending
+    status: claimed
     description: 'As an INDEPENDENT TESTER (`integration-verifier`), rerun the type/lint
       checks and gate-relevant quality criteria for the blocker bundle found by `orch_operator_control_surface.gate`.
 
@@ -62142,6 +62142,8 @@ phases:
     depends_on:
     - orch_operator_control_surface.fix_gate_blockers_batch
     agent: integration-verifier
+    claimed_by: integration-verifier
+    claimed_at: '2026-04-04T17:40:58.271980+00:00'
 - id: orch_operator_recovery_cutover
   name: Orchestration Recovery, Resume, and Legacy Bridge
   status: locked

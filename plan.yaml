@@ -59636,3 +59636,30 @@ phases:
 
       - Proof includes no alternate filesystem scan path for `--latest` outside run_store'
     agent: python-senior
+  - id: orch_operator_config_state.retest_green
+    name: Retest config, freeze, and run-store behavior green
+    status: pending
+    description: 'step_type: test
+
+      step_intent: retest_green
+
+      expected_result: green
+
+
+      As an independent tester, prove the config/freeze/run-store implementation now
+      satisfies the contracts and expected-red tests. Use spec-derived fixtures and
+      include both normal and failure-path coverage for provenance, allowlist rejection,
+      index corruption, liveness classification, and same-plan admission.'
+    verification: 'phase-check protecting orch_operator_control_surface and orch_operator_recovery_cutover:
+
+      - Expected-red tests from orch_operator_tests.config_state_red now pass green
+      where implementation is present
+
+      - Evidence names exact commands/tests and includes both the main path and highest-risk
+      failure path
+
+      - Minimal config fixture without convenience fields is exercised'
+    depends_on:
+    - orch_operator_config_state.impl_config_loader_freeze_tool_registry
+    - orch_operator_config_state.impl_run_store_and_cases_index
+    agent: integration-verifier

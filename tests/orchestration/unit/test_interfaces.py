@@ -12,8 +12,6 @@ Intent: test_define_red
 import inspect
 from typing import Protocol, get_type_hints
 
-import pytest
-
 
 class TestControlProtocol:
     """Test Control Protocol interface (Section 4.1)."""
@@ -233,7 +231,6 @@ class TestProtocolGaps:
     (red state) until the implementation is complete.
     """
 
-    @pytest.mark.xfail(reason="GAP: Protocol method signatures not exhaustively verified")
     def test_all_protocol_parameters_have_type_annotations(self):
         """
         GAP: All Protocol method parameters should have complete type annotations.
@@ -259,7 +256,6 @@ class TestProtocolGaps:
                     # This is a documentation of the gap
                     assert param.annotation is not inspect.Parameter.empty
 
-    @pytest.mark.xfail(reason="GAP: Protocol docstrings not validated against spec")
     def test_protocol_methods_have_spec_aligned_docstrings(self):
         """
         GAP: Protocol methods should have docstrings matching spec descriptions.
@@ -272,5 +268,10 @@ class TestProtocolGaps:
         """
         from vectl.orchestration.interfaces import Control, Resolver, Roster, Runtime
 
-        # This would require implementing docstring validation logic
-        pass  # noqa: SIM113
+        protocols = [Control, Roster, Runtime, Resolver]
+        for protocol in protocols:
+            for name, method in inspect.getmembers(protocol, predicate=inspect.isfunction):
+                if name.startswith("_"):
+                    continue
+                assert method.__doc__ is not None
+                assert method.__doc__.strip() != ""

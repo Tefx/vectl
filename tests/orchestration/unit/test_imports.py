@@ -9,8 +9,6 @@ Step: orch_foundation.contract_tests
 Intent: test_define_red
 """
 
-import pytest
-
 
 class TestPackageImports:
     """Verify all documented types and protocols are importable from the package root."""
@@ -166,7 +164,6 @@ class TestSignatureGaps:
     (red state) until the implementation is complete.
     """
 
-    @pytest.mark.xfail(reason="GAP: Protocol runtime typing not enforced at runtime")
     def test_protocol_runtime_checkability(self):
         """
         GAP: Protocols should be runtime-checkable for isinstance() tests.
@@ -187,7 +184,6 @@ class TestSignatureGaps:
         assert runtime_checkable(Runtime)
         assert runtime_checkable(Resolver)
 
-    @pytest.mark.xfail(reason="GAP: Contract field types not verified against spec")
     def test_contract_field_type_annotations(self):
         """
         GAP: Field type annotations should match spec exactly.
@@ -198,9 +194,13 @@ class TestSignatureGaps:
 
         This test documents the gap in type-level verification.
         """
+        from typing import get_type_hints
+
         from vectl.orchestration.contracts import CoreSnapshot
 
-        # Example: verify specific field types match spec
-        # This would require runtime type validation framework
-        # Left as a documentation of the gap
-        pass  # noqa: SIM113
+        hints = get_type_hints(CoreSnapshot)
+        assert hints["plan_complete"] is bool
+        assert hints["claimable_step_ids"] == tuple[str, ...]
+        assert hints["in_progress_step_ids"] == tuple[str, ...]
+        assert hints["blocked_step_ids"] == tuple[str, ...]
+        assert hints["unresolved_reasons"] == tuple[str, ...]

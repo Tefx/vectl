@@ -59286,7 +59286,7 @@ phases:
       §5.'
   - id: orch_operator_contracts.app_cli_contracts
     name: Pin orch_app and vectl orch CLI contracts
-    status: pending
+    status: claimed
     description: "step_type: contract\ncontract_purity: ENFORCED\ncontract_outputs:\n\
       \  - signatures\n  - interfaces\n  - stubs\n\nPin the exact operator entrypoint\
       \ contracts in:\n- src/vectl/orch_app.py\n- src/vectl/cli.py\n\nUse the documented\
@@ -59310,6 +59310,8 @@ phases:
     depends_on:
     - orch_operator_contracts.foundation_contracts
     agent: python-executor
+    claimed_by: python-executor
+    claimed_at: '2026-04-04T11:58:38.713209+00:00'
   - id: orch_operator_contracts.recovery_cutover_contracts
     name: Pin recovery, continuity, and migration-cutover contracts
     status: pending

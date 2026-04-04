@@ -63079,7 +63079,7 @@ phases:
     agent: gate-reviewer
   - id: orch_operator_cutover_validation.fix_cutover_gate_blockers
     name: Fix cutover validation blockers
-    status: pending
+    status: claimed
     description: 'Batched implementation remediation for the cutover-validation gate
       blockers.
 
@@ -63140,6 +63140,8 @@ phases:
     - orch_operator_cutover_validation.replacement_workflow_smoke
     - orch_operator_cutover_validation.migration_state_audit
     agent: python-senior
+    claimed_by: python-senior
+    claimed_at: '2026-04-04T21:19:17.024409+00:00'
   - id: orch_operator_cutover_validation.reverify_cutover_operator_surface
     name: Reverify cutover operator surface and gate prep
     status: pending

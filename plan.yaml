@@ -61800,7 +61800,7 @@ phases:
       - Control reason/force propagation behavior matches the spec-required command
       contract
 
-      - `config show --effective` semantics are no longer dead/unired
+      - `config show --effective` semantics are no longer dead/unwired
 
       - Explicit exit-code behavior checks confirm not-found / recovery / internal
       mappings where applicable

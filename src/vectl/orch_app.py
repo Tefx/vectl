@@ -22,6 +22,10 @@ This contract step pins only typed boundaries and stub implementations.
 
 from __future__ import annotations
 
+import hashlib
+import json
+import shutil
+import time
 from dataclasses import asdict, dataclass, field, replace
 from datetime import datetime, timezone
 from pathlib import Path
@@ -42,6 +46,7 @@ from vectl.orchestration.control_channel import (
     set_default_control_channel,
 )
 from vectl.orchestration.events import (
+    EventCorruptionError,
     JsonlEventSink,
     OrchestrationEventEnvelope,
     OrchestrationEventKind,
@@ -54,13 +59,14 @@ from vectl.orchestration.inspection_queries import (
     query_cases,
     query_runs,
 )
+from vectl.orchestration.projections import replay_events_to_artifacts
 from vectl.orchestration.resolver_gateway import (
     AuditedResolverGateway,
     AuthorizationError,
     ResolverToolCall,
     authorize_and_invoke,
 )
-from vectl.orchestration.run_store import RunRecord, RunRegistry, generate_run_id
+from vectl.orchestration.run_store import CorruptJSONLError, RunRecord, RunRegistry, generate_run_id
 from vectl.orchestration.tool_registry import canonical_tool_families
 
 if TYPE_CHECKING:
@@ -332,6 +338,12 @@ class OrchestrationApp:
         run_id = generate_run_id()
         run_root = registry.run_artifact_root(run_id)
         frozen_snapshot = freeze_config(resolved_config, run_dir=run_root)
+        self._write_continuity_bootstrap(
+            run_id=run_id,
+            step_id=resolved_step_id,
+            frozen_config=frozen_snapshot.config,
+            run_root=run_root,
+        )
 
         registry.save(
             RunRecord(
@@ -433,6 +445,43 @@ class OrchestrationApp:
                 run_id=run_id,
             )
 
+        decision = self._evaluate_recovery_decision(
+            run_id=run_id,
+            expected_step_id=record.step_id,
+            frozen_config=frozen,
+            registry=registry,
+        )
+        if decision.outcome == "fresh_start_required":
+            return OrchestrationResult(
+                success=False,
+                message=(
+                    "Resume refused: fresh_start_required; run heartbeat is stale or unknown. "
+                    f"Use 'vectl orch recover {run_id}' to terminalize before restart. "
+                    f"artifact_families={','.join(decision.artifact_families)}"
+                ),
+                step_id=record.step_id,
+                run_id=run_id,
+            )
+        if decision.outcome != "resume_safe":
+            return OrchestrationResult(
+                success=False,
+                message=(
+                    "Resume refused: continuity classification is "
+                    f"{decision.outcome}. details={decision.message} "
+                    f"artifact_families={','.join(decision.artifact_families)}"
+                ),
+                step_id=record.step_id,
+                run_id=run_id,
+            )
+
+        replay_result = self._replay_projection_for_run(
+            run_id=run_id,
+            step_id=record.step_id,
+            run_root=run_root,
+        )
+        if replay_result is not None:
+            return replay_result
+
         registry.save(
             RunRecord(
                 run_id=run_id,
@@ -442,7 +491,7 @@ class OrchestrationApp:
                 status="running",
                 artifact_root=str(run_root),
                 output_summary=(
-                    "run resumed from authoritative frozen snapshot "
+                    "resume_safe: run resumed from authoritative frozen snapshot "
                     f"runner={frozen.runtime.default_runner} "
                     f"allowlist={self._allowlist_text(frozen.resolver.tool_allowlist)}"
                 ),
@@ -450,7 +499,10 @@ class OrchestrationApp:
         )
         return OrchestrationResult(
             success=True,
-            message=f"Run resumed from frozen snapshot: {snapshot_path}",
+            message=(
+                "resume_safe: Run resumed from frozen snapshot with replayed projections: "
+                f"{snapshot_path}"
+            ),
             step_id=record.step_id,
             run_id=run_id,
         )
@@ -563,9 +615,348 @@ class OrchestrationApp:
             return "deny-all"
         return ",".join(allowlist.allowed_tool_families)
 
+    def _continuity_root(self, run_root: Path) -> Path:
+        return run_root / "continuity"
+
+    def _capability_fingerprint(self, config: OrchestrationConfig) -> str:
+        canonical = json.dumps(self._binding_signature(config), sort_keys=True, default=str)
+        return hashlib.sha256(canonical.encode("utf-8")).hexdigest()
+
+    def _write_continuity_bootstrap(
+        self,
+        *,
+        run_id: str,
+        step_id: str,
+        frozen_config: OrchestrationConfig,
+        run_root: Path,
+    ) -> None:
+        continuity_root = self._continuity_root(run_root)
+        continuity_root.mkdir(parents=True, exist_ok=True)
+        now_ts = time.time()
+        capability_fingerprint = self._capability_fingerprint(frozen_config)
+
+        ledger_path = continuity_root / "ledger.json"
+        journal_path = continuity_root / "journal.jsonl"
+        capability_path = continuity_root / "capability.snapshot.json"
+        heartbeat_path = run_root / "heartbeat.json"
+
+        ledger_payload = {
+            "run_id": run_id,
+            "step_id": step_id,
+            "session_id": run_id,
+            "runner": frozen_config.runtime.default_runner,
+            "status": "active",
+            "created_at": now_ts,
+            "updated_at": now_ts,
+            "capability_snapshot": capability_fingerprint,
+            "replay_envelope": frozen_config.continuity.replay_safety,
+        }
+        ledger_path.write_text(json.dumps(ledger_payload, sort_keys=True) + "\n", encoding="utf-8")
+
+        journal_entry = {
+            "event_id": f"{run_id}-started",
+            "run_id": run_id,
+            "step_id": step_id,
+            "session_id": run_id,
+            "runner": frozen_config.runtime.default_runner,
+            "event_type": "run_started",
+            "timestamp": now_ts,
+            "outcome": None,
+            "details": ["bootstrap"],
+        }
+        with journal_path.open("a", encoding="utf-8") as handle:
+            handle.write(json.dumps(journal_entry, sort_keys=True))
+            handle.write("\n")
+
+        capability_path.write_text(
+            json.dumps(
+                {
+                    "run_id": run_id,
+                    "step_id": step_id,
+                    "fingerprint": capability_fingerprint,
+                    "created_at": now_ts,
+                },
+                sort_keys=True,
+            )
+            + "\n",
+            encoding="utf-8",
+        )
+        heartbeat_path.write_text(
+            json.dumps(
+                {
+                    "run_id": run_id,
+                    "pid": 0,
+                    "host_id": "orchestration",
+                    "started_at": now_ts,
+                    "last_heartbeat_at": now_ts,
+                },
+                sort_keys=True,
+            )
+            + "\n",
+            encoding="utf-8",
+        )
+
+    def _replay_projection_for_run(
+        self,
+        *,
+        run_id: str,
+        step_id: str,
+        run_root: Path,
+    ) -> OrchestrationResult | None:
+        try:
+            events = load_event_jsonl(self._events_path())
+        except EventCorruptionError as exc:
+            return OrchestrationResult(
+                success=False,
+                message=(
+                    "corrupt_blocking: transcript/event corruption stopped replay. "
+                    f"line={exc.line_no} reason={exc.reason}"
+                ),
+                step_id=step_id,
+                run_id=run_id,
+            )
+
+        relevant: list[OrchestrationEventEnvelope] = []
+        for event in events:
+            payload_run_id = None
+            payload = event.payload or {}
+            if "run_id" in payload:
+                payload_run_id = str(payload.get("run_id"))
+            if payload_run_id is not None and payload_run_id != run_id:
+                continue
+            if payload_run_id is None and event.step_id not in {None, step_id}:
+                continue
+            relevant.append(event)
+
+        replay_events_to_artifacts(events=tuple(relevant), artifact_root=run_root, run_id=run_id)
+        return None
+
+    def _evaluate_recovery_decision(
+        self,
+        *,
+        run_id: str,
+        expected_step_id: str,
+        frozen_config: OrchestrationConfig,
+        registry: RunRegistry,
+    ) -> _RecoveryDecision:
+        artifact_families = (
+            "frozen_config",
+            "canonical_events",
+            "projections",
+            "continuity_ledger",
+            "continuity_journal",
+            "capability_snapshot",
+            "operator_receipts",
+            "heartbeat",
+        )
+        run_root = registry.run_artifact_root(run_id)
+        continuity_root = self._continuity_root(run_root)
+        ledger_path = continuity_root / "ledger.json"
+        journal_path = continuity_root / "journal.jsonl"
+        capability_path = continuity_root / "capability.snapshot.json"
+
+        if not ledger_path.exists() or not journal_path.exists() or not capability_path.exists():
+            return self._RecoveryDecision(
+                outcome="corrupt_blocking",
+                message=(
+                    "required continuity artifacts missing "
+                    f"ledger={ledger_path.exists()} journal={journal_path.exists()} "
+                    f"capability={capability_path.exists()}"
+                ),
+                artifact_families=artifact_families,
+            )
+
+        try:
+            ledger_payload = json.loads(ledger_path.read_text(encoding="utf-8"))
+            capability_payload = json.loads(capability_path.read_text(encoding="utf-8"))
+        except json.JSONDecodeError as exc:
+            return self._RecoveryDecision(
+                outcome="corrupt_blocking",
+                message=f"unparsable continuity JSON: {exc}",
+                artifact_families=artifact_families,
+            )
+
+        if not isinstance(ledger_payload, dict) or not isinstance(capability_payload, dict):
+            return self._RecoveryDecision(
+                outcome="corrupt_blocking",
+                message="continuity artifacts must be JSON objects",
+                artifact_families=artifact_families,
+            )
+
+        ledger_step_id = str(ledger_payload.get("step_id", ""))
+        ledger_run_id = str(ledger_payload.get("run_id", ""))
+        if ledger_step_id != expected_step_id or ledger_run_id != run_id:
+            return self._RecoveryDecision(
+                outcome="blocking_divergence",
+                message=(
+                    "continuity ledger disagrees with run registry "
+                    f"ledger.step_id={ledger_step_id} expected.step_id={expected_step_id} "
+                    f"ledger.run_id={ledger_run_id} expected.run_id={run_id}"
+                ),
+                artifact_families=artifact_families,
+            )
+
+        try:
+            journal_lines = [
+                line
+                for line in journal_path.read_text(encoding="utf-8").splitlines()
+                if line.strip()
+            ]
+            journal_entries = [json.loads(line) for line in journal_lines]
+        except json.JSONDecodeError as exc:
+            return self._RecoveryDecision(
+                outcome="corrupt_blocking",
+                message=f"unparsable continuity journal: {exc}",
+                artifact_families=artifact_families,
+            )
+
+        for entry in journal_entries:
+            if not isinstance(entry, dict):
+                return self._RecoveryDecision(
+                    outcome="corrupt_blocking",
+                    message="continuity journal entry must be JSON object",
+                    artifact_families=artifact_families,
+                )
+            if str(entry.get("step_id", "")) != expected_step_id:
+                return self._RecoveryDecision(
+                    outcome="blocking_divergence",
+                    message=(
+                        "continuity journal disagrees with run registry "
+                        f"entry.step_id={entry.get('step_id')} expected.step_id={expected_step_id}"
+                    ),
+                    artifact_families=artifact_families,
+                )
+
+        expected_capability = self._capability_fingerprint(frozen_config)
+        recorded_capability = str(capability_payload.get("fingerprint", ""))
+        if not recorded_capability or recorded_capability != expected_capability:
+            return self._RecoveryDecision(
+                outcome="ambiguous_blocking",
+                message=(
+                    "capability snapshot mismatch for resume authority "
+                    f"recorded={recorded_capability or '<missing>'} expected={expected_capability}"
+                ),
+                artifact_families=artifact_families,
+            )
+
+        receipts_state = self._receipt_state(run_root)
+        if receipts_state == "ambiguous":
+            return self._RecoveryDecision(
+                outcome="ambiguous_blocking",
+                message="operator receipts are conflicting across applied/rejected statuses",
+                artifact_families=artifact_families,
+            )
+        if receipts_state == "corrupt":
+            return self._RecoveryDecision(
+                outcome="corrupt_blocking",
+                message="operator receipts contain malformed JSON payloads",
+                artifact_families=artifact_families,
+            )
+
+        try:
+            liveness = registry.liveness_for_run(
+                run_id,
+                stale_after_seconds=float(
+                    frozen_config.observability.heartbeat_stale_threshold_seconds
+                ),
+            )
+        except CorruptJSONLError as exc:
+            return self._RecoveryDecision(
+                outcome="corrupt_blocking",
+                message=f"heartbeat artifact is corrupt: {exc}",
+                artifact_families=artifact_families,
+            )
+
+        if liveness in {"stale", "unknown"}:
+            return self._RecoveryDecision(
+                outcome="fresh_start_required",
+                message=f"liveness={liveness}; continuity requires terminalization before restart",
+                artifact_families=artifact_families,
+            )
+
+        return self._RecoveryDecision(
+            outcome="resume_safe",
+            message="heartbeat alive and continuity artifacts are coherent",
+            artifact_families=artifact_families,
+        )
+
+    def _receipt_state(self, run_root: Path) -> Literal["ok", "ambiguous", "corrupt"]:
+        control_root = run_root / "control" / "actions"
+        applied = control_root / "applied"
+        rejected = control_root / "rejected"
+        if not applied.exists() and not rejected.exists():
+            return "ok"
+
+        def _load_action_ids(directory: Path) -> tuple[set[str], bool]:
+            ids: set[str] = set()
+            corrupt = False
+            if not directory.exists():
+                return ids, corrupt
+            for file_path in directory.glob("*.json"):
+                try:
+                    payload = json.loads(file_path.read_text(encoding="utf-8"))
+                except json.JSONDecodeError:
+                    corrupt = True
+                    continue
+                if not isinstance(payload, dict):
+                    corrupt = True
+                    continue
+                action_id = str(payload.get("action_id", "")).strip()
+                if not action_id:
+                    corrupt = True
+                    continue
+                ids.add(action_id)
+            return ids, corrupt
+
+        applied_ids, applied_corrupt = _load_action_ids(applied)
+        rejected_ids, rejected_corrupt = _load_action_ids(rejected)
+        if applied_corrupt or rejected_corrupt:
+            return "corrupt"
+        if applied_ids.intersection(rejected_ids):
+            return "ambiguous"
+        return "ok"
+
+    def _quarantine_for_fresh_start(
+        self,
+        *,
+        run_root: Path,
+        run_id: str,
+        reason: str,
+    ) -> tuple[str, ...]:
+        continuity_root = self._continuity_root(run_root)
+        quarantine_root = continuity_root / "quarantine"
+        quarantine_root.mkdir(parents=True, exist_ok=True)
+        manifest_path = quarantine_root / "manifest.jsonl"
+        copied_paths: list[str] = []
+        for relative in (
+            "ledger.json",
+            "journal.jsonl",
+            "capability.snapshot.json",
+            "../heartbeat.json",
+        ):
+            source = (continuity_root / relative).resolve()
+            if not source.exists() or not source.is_file():
+                continue
+            destination = quarantine_root / source.name
+            shutil.copy2(source, destination)
+            copied_paths.append(str(destination))
+            manifest_entry = {
+                "run_id": run_id,
+                "classification": "fresh_start_required",
+                "reason": reason,
+                "original_path": str(source),
+                "quarantine_destination": str(destination),
+                "audit_timestamp": datetime.now(timezone.utc).isoformat(),
+            }
+            with manifest_path.open("a", encoding="utf-8") as handle:
+                handle.write(json.dumps(manifest_entry, sort_keys=True))
+                handle.write("\n")
+        return tuple(copied_paths)
+
     def recover(
         self,
         step_id: str | None = None,
+        dry_run: bool = False,
     ) -> OrchestrationResult:
         """
         Recover orchestration state from continuity artifacts.
@@ -577,19 +968,147 @@ class OrchestrationApp:
 
         Returns:
             OrchestrationResult with recovery outcome.
-
-        Raises:
-            NotImplementedError: Until recovery semantics are specified.
         """
-        recovered = 0
-        for result in self.runs(step_id=step_id):
-            if result.status in {"running", "pending", "stall"}:
-                recovered += 1
+        ambient = self._effective_orchestration_config()
+        registry = self._run_registry(config=ambient)
+
+        candidates: list[RunRecord] = []
+        for status in ("running", "pending", "stall"):
+            candidates.extend(registry.by_status(status))
+        if step_id is not None:
+            candidates = [record for record in candidates if record.step_id == step_id]
+        if not candidates:
+            return OrchestrationResult(
+                success=True,
+                message="no_artifacts: no active run artifacts require recovery",
+            )
+
+        blocking: list[str] = []
+        recover_and_resume: list[str] = []
+        fresh_start_terminalized: list[str] = []
+        for record in candidates:
+            run_root = registry.run_artifact_root(record.run_id)
+            snapshot_path = run_root / "config.snapshot.yaml"
+            if not snapshot_path.exists():
+                blocking.append(
+                    f"run_id={record.run_id} outcome=corrupt_blocking missing={snapshot_path}"
+                )
+                continue
+
+            frozen = load_frozen_snapshot(snapshot_path)
+            decision = self._evaluate_recovery_decision(
+                run_id=record.run_id,
+                expected_step_id=record.step_id,
+                frozen_config=frozen,
+                registry=registry,
+            )
+            if decision.outcome == "resume_safe":
+                if dry_run:
+                    recover_and_resume.append(
+                        f"run_id={record.run_id} outcome=recover_and_resume dry_run=true "
+                        f"artifact_families={','.join(decision.artifact_families)}"
+                    )
+                    continue
+                replay_result = self._replay_projection_for_run(
+                    run_id=record.run_id,
+                    step_id=record.step_id,
+                    run_root=run_root,
+                )
+                if replay_result is not None:
+                    replay_message = replay_result.message
+                    blocking.append(
+                        f"run_id={record.run_id} outcome=corrupt_blocking detail={replay_message}"
+                    )
+                    continue
+                registry.save(
+                    RunRecord(
+                        run_id=record.run_id,
+                        step_id=record.step_id,
+                        plan_path=record.plan_path,
+                        agent=record.agent,
+                        status="running",
+                        artifact_root=str(run_root),
+                        output_summary="recover_and_resume: continuity and event replay succeeded "
+                        "from durable artifacts",
+                    )
+                )
+                recover_and_resume.append(
+                    f"run_id={record.run_id} outcome=recover_and_resume "
+                    f"artifact_families={','.join(decision.artifact_families)}"
+                )
+                continue
+
+            if decision.outcome == "fresh_start_required":
+                if dry_run:
+                    fresh_start_terminalized.append(
+                        f"run_id={record.run_id} outcome=fresh_start_required dry_run=true "
+                        f"artifact_families={','.join(decision.artifact_families)}"
+                    )
+                    continue
+                quarantined = self._quarantine_for_fresh_start(
+                    run_root=run_root,
+                    run_id=record.run_id,
+                    reason=decision.message,
+                )
+                now_ts = time.time()
+                registry.save(
+                    RunRecord(
+                        run_id=record.run_id,
+                        step_id=record.step_id,
+                        plan_path=record.plan_path,
+                        agent=record.agent,
+                        status="fail",
+                        artifact_root=str(run_root),
+                        finished_at=now_ts,
+                        output_summary=(
+                            "fresh_start_required: terminalized for same-plan restart. "
+                            f"quarantined={len(quarantined)}"
+                        ),
+                    )
+                )
+                self._emit_event(
+                    kind="run_final",
+                    step_id=record.step_id,
+                    agent=record.agent,
+                    payload={"run_id": record.run_id, "final_status": "fresh_start_required"},
+                )
+                fresh_start_terminalized.append(
+                    f"run_id={record.run_id} outcome=fresh_start_required terminalized=true "
+                    f"quarantine={len(quarantined)}"
+                )
+                continue
+
+            blocking.append(
+                f"run_id={record.run_id} outcome={decision.outcome} detail={decision.message} "
+                f"artifact_families={','.join(decision.artifact_families)}"
+            )
+
+        if blocking:
+            return OrchestrationResult(
+                success=False,
+                message=("recovery_blocked: " + " | ".join(blocking)),
+            )
+
+        details = [*recover_and_resume, *fresh_start_terminalized]
         return OrchestrationResult(
             success=True,
-            message=f"Recovery scan complete: {recovered} active run(s) require resume handling",
-            step_id=step_id,
+            message=(
+                "recovery_complete: " + (" | ".join(details) if details else "no actions required")
+            ),
         )
+
+    @dataclass(frozen=True)
+    class _RecoveryDecision:
+        outcome: Literal[
+            "resume_safe",
+            "recover_and_resume",
+            "fresh_start_required",
+            "blocking_divergence",
+            "corrupt_blocking",
+            "ambiguous_blocking",
+        ]
+        message: str
+        artifact_families: tuple[str, ...]
 
     def runs(
         self,

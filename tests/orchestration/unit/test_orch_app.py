@@ -7,6 +7,8 @@ Authority:
 
 from __future__ import annotations
 
+import json
+import time
 from pathlib import Path
 from typing import Any, cast
 
@@ -168,3 +170,158 @@ def test_config_show_effective_returns_expanded_view(tmp_path: Path) -> None:
     assert "control.idle_poll_interval_ms=" not in summary.show_output
     assert "control.idle_poll_interval_ms=" in effective.show_output
     assert "operator.max_pending_actions=" in effective.show_output
+
+
+def test_resume_safe_replays_from_durable_artifacts(tmp_path: Path) -> None:
+    app = _build_app(tmp_path)
+    started = app.run(step_id="core.ready", agent="python-executor")
+    assert started.success is True
+    assert started.run_id is not None
+
+    resumed = app.resume(started.run_id)
+    assert resumed.success is True
+    assert "resume_safe" in resumed.message
+
+    run_root = RunRegistry(store_root=tmp_path / "runs").run_artifact_root(started.run_id)
+    assert (run_root / "state" / "latest.json").exists()
+
+
+def test_recover_and_resume_from_durable_artifacts(tmp_path: Path) -> None:
+    app = _build_app(tmp_path)
+    started = app.run(step_id="core.ready", agent="python-executor")
+    assert started.success is True
+    assert started.run_id is not None
+
+    recovered = app.recover()
+    assert recovered.success is True
+    assert "recover_and_resume" in recovered.message
+    assert "artifact_families=" in recovered.message
+
+
+def test_recover_blocks_on_blocking_divergence(tmp_path: Path) -> None:
+    app = _build_app(tmp_path)
+    started = app.run(step_id="core.ready", agent="python-executor")
+    assert started.run_id is not None
+
+    run_root = RunRegistry(store_root=tmp_path / "runs").run_artifact_root(started.run_id)
+    ledger_path = run_root / "continuity" / "ledger.json"
+    ledger_payload = json.loads(ledger_path.read_text(encoding="utf-8"))
+    ledger_payload["step_id"] = "core.other"
+    ledger_path.write_text(json.dumps(ledger_payload) + "\n", encoding="utf-8")
+
+    recovered = app.recover()
+    assert recovered.success is False
+    assert "blocking_divergence" in recovered.message
+
+
+def test_recover_blocks_on_corrupt_blocking(tmp_path: Path) -> None:
+    app = _build_app(tmp_path)
+    started = app.run(step_id="core.ready", agent="python-executor")
+    assert started.run_id is not None
+
+    run_root = RunRegistry(store_root=tmp_path / "runs").run_artifact_root(started.run_id)
+    journal_path = run_root / "continuity" / "journal.jsonl"
+    journal_path.write_text('{"broken"\n', encoding="utf-8")
+
+    recovered = app.recover()
+    assert recovered.success is False
+    assert "corrupt_blocking" in recovered.message
+
+
+def test_recover_blocks_on_ambiguous_blocking(tmp_path: Path) -> None:
+    app = _build_app(tmp_path)
+    started = app.run(step_id="core.ready", agent="python-executor")
+    assert started.run_id is not None
+
+    run_root = RunRegistry(store_root=tmp_path / "runs").run_artifact_root(started.run_id)
+    capability_path = run_root / "continuity" / "capability.snapshot.json"
+    capability_payload = json.loads(capability_path.read_text(encoding="utf-8"))
+    capability_payload["fingerprint"] = "mismatch"
+    capability_path.write_text(json.dumps(capability_payload) + "\n", encoding="utf-8")
+
+    recovered = app.recover()
+    assert recovered.success is False
+    assert "ambiguous_blocking" in recovered.message
+
+
+def test_recover_terminalizes_fresh_start_required_before_restart(tmp_path: Path) -> None:
+    app = _build_app(tmp_path)
+    started = app.run(step_id="core.ready", agent="python-executor")
+    assert started.run_id is not None
+
+    run_root = RunRegistry(store_root=tmp_path / "runs").run_artifact_root(started.run_id)
+    heartbeat_path = run_root / "heartbeat.json"
+    heartbeat_payload = json.loads(heartbeat_path.read_text(encoding="utf-8"))
+    heartbeat_payload["last_heartbeat_at"] = time.time() - 1000.0
+    heartbeat_path.write_text(json.dumps(heartbeat_payload) + "\n", encoding="utf-8")
+
+    recovered = app.recover()
+    assert recovered.success is True
+    assert "fresh_start_required" in recovered.message
+
+    registry = RunRegistry(store_root=tmp_path / "runs")
+    terminal = registry.by_id(started.run_id)
+    assert terminal is not None
+    assert terminal.status == "fail"
+
+    restarted = app.run(step_id="core.other", agent="python-executor")
+    assert restarted.success is True
+
+
+def test_recover_dry_run_does_not_mutate_durable_state(tmp_path: Path) -> None:
+    app = _build_app(tmp_path)
+    started = app.run(step_id="core.ready", agent="python-executor")
+    assert started.run_id is not None
+
+    run_root = RunRegistry(store_root=tmp_path / "runs").run_artifact_root(started.run_id)
+    heartbeat_path = run_root / "heartbeat.json"
+    heartbeat_payload = json.loads(heartbeat_path.read_text(encoding="utf-8"))
+    heartbeat_payload["last_heartbeat_at"] = time.time() - 1000.0
+    heartbeat_path.write_text(json.dumps(heartbeat_payload) + "\n", encoding="utf-8")
+
+    recovered = app.recover(dry_run=True)
+    assert recovered.success is True
+    assert "fresh_start_required" in recovered.message
+    assert "dry_run=true" in recovered.message
+
+    registry = RunRegistry(store_root=tmp_path / "runs")
+    current = registry.by_id(started.run_id)
+    assert current is not None
+    assert current.status == "running"
+    assert not (run_root / "continuity" / "quarantine").exists()
+
+
+def test_resume_blocks_when_event_transcript_is_corrupt(tmp_path: Path) -> None:
+    app = _build_app(tmp_path)
+    started = app.run(step_id="core.ready", agent="python-executor")
+    assert started.run_id is not None
+
+    events_path = tmp_path / "runs" / "events.jsonl"
+    events_path.write_text('{"broken"\n', encoding="utf-8")
+
+    resumed = app.resume(started.run_id)
+    assert resumed.success is False
+    assert "corrupt_blocking" in resumed.message
+
+
+@pytest.mark.parametrize("missing_heartbeat", [True, False])
+def test_decision_matrix_blocks_or_requires_fresh_start_for_unknown_or_stale_heartbeat(
+    tmp_path: Path,
+    missing_heartbeat: bool,
+) -> None:
+    app = _build_app(tmp_path)
+    started = app.run(step_id="core.ready", agent="python-executor")
+    assert started.run_id is not None
+
+    run_root = RunRegistry(store_root=tmp_path / "runs").run_artifact_root(started.run_id)
+    heartbeat_path = run_root / "heartbeat.json"
+    if missing_heartbeat:
+        heartbeat_path.unlink()
+    else:
+        heartbeat_payload = json.loads(heartbeat_path.read_text(encoding="utf-8"))
+        heartbeat_payload["last_heartbeat_at"] = time.time() - 1000.0
+        heartbeat_path.write_text(json.dumps(heartbeat_payload) + "\n", encoding="utf-8")
+
+    recovered = app.recover(dry_run=True)
+    assert recovered.success is True
+    assert "fresh_start_required" in recovered.message

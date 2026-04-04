@@ -831,19 +831,8 @@ def orch_recover(
     resolved_step_id = step_id
     if resolved_step_id is None and resolved_run_id is not None:
         resolved_step_id = _step_id_for_run(app_runtime, resolved_run_id)
-    if dry_run:
-        _emit_orch_payload(
-            {
-                "success": True,
-                "message": "Dry-run only: recovery diagnostics completed",
-                "run_id": resolved_run_id,
-                "step_id": resolved_step_id,
-            },
-            mode,
-        )
-        return
     try:
-        result = app_runtime.recover(step_id=resolved_step_id)
+        result = app_runtime.recover(step_id=resolved_step_id, dry_run=dry_run)
     except Exception as exc:  # pragma: no cover - defensive internal mapping
         _orch_internal_error(exc)
         return

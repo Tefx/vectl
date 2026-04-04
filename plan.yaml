@@ -60675,3 +60675,20 @@ phases:
       - No pre-existing/out-of-scope label is used as a disposition for a criterion
       that still intersects final gates'
     agent: software-architect
+  - id: orch_operator_cutover_validation.gate
+    name: Gate cutover validation
+    status: pending
+    description: 'Gate review: verify replacement-grade workflows and migration-state
+      evidence are sufficient to treat `vectl orch` as the canonical non-web operator
+      surface.'
+    verification: 'phase-check protecting orch_operator_doc_sync and orch_operator_deep_review:
+
+      - Retirement-gate criteria are either satisfied with evidence or explicitly
+      still blocked with named ownership
+
+      - No unresolved blocker remains in replacement workflows, migration policy,
+      or legacy-retirement readiness'
+    depends_on:
+    - orch_operator_cutover_validation.replacement_workflow_smoke
+    - orch_operator_cutover_validation.migration_state_audit
+    agent: gate-reviewer

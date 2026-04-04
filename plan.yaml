@@ -62372,7 +62372,7 @@ phases:
     claimed_at: '2026-04-04T19:43:40.468548+00:00'
   - id: orch_operator_recovery_cutover.retest_green
     name: Retest recovery, resume, and legacy-bridge workflows green
-    status: claimed
+    status: done
     description: 'step_type: test
 
       step_intent: retest_green
@@ -62397,6 +62397,10 @@ phases:
     agent: blind-tester
     claimed_by: blind-tester
     claimed_at: '2026-04-04T19:43:58.756363+00:00'
+    done_at: '2026-04-04T19:52:40.736271+00:00'
+    evidence: 'Independent retest green: CLI/app recovery-resume flows and imported-legacy
+      behavior validated; observed_result=green; no product implementation files modified;
+      gate_open_allowed=true.'
   - id: orch_operator_recovery_cutover.spec_conformance
     name: Verify recovery and cutover spec conformance
     status: claimed

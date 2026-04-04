@@ -60790,3 +60790,21 @@ phases:
     depends_on:
     - orch_operator_deep_review.wiring_audit_full
     agent: spec-verifier
+  - id: orch_operator_deep_review.architecture_review
+    name: Review architecture, ownership, and concurrency safety
+    status: pending
+    description: Review the landed operator surface against the orchestration architecture
+      basis. Check module ownership, dependency direction, state-strata boundaries,
+      append-only persistence assumptions, and concurrency safety for any module-level
+      mutable state or shared registries.
+    verification: 'full-plan-check protecting the final deep-review gate:
+
+      - Config/events/projections/run_store/tool_registry/resolver_gateway/control_channel/inspection_queries/orch_app/cli
+      responsibilities remain distinct
+
+      - Durable truth vs derived read models is preserved
+
+      - Any module-level mutable state is bounded, isolated, and concurrency-safe'
+    depends_on:
+    - orch_operator_deep_review.wiring_audit_full
+    agent: software-architect

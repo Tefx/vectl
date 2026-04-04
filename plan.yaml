@@ -58168,7 +58168,7 @@ phases:
       - docs/ORCHESTRATION-PLANE-MIGRATION.md Principle D'
 - id: orch_migration_finish
   name: Orchestration Plane Migration Finish
-  status: in_progress
+  status: done
   gate: Tests are rehomed by behavior, legacy disposition is audited against equivalence
     rules, docs are aligned in-place, and final independent reviews confirm no legacy
     path is retired before equivalent behavior exists.
@@ -59146,7 +59146,7 @@ phases:
       \nDeviation records:\n- none"
   - id: orch_migration_finish.retest_gate_evidence_round4
     name: Re-test migration finish gate evidence after round4 remediation
-    status: claimed
+    status: done
     description: 'Independent round4 retest for unresolved B4 after `orch_migration_finish.fix_gate_blockers_round4`.
       Reassess the live repository state only and keep historical failed steps unchanged.
 
@@ -59188,3 +59188,47 @@ phases:
     agent: gate-reviewer
     claimed_by: software-architect
     claimed_at: '2026-04-04T03:35:16.595807+00:00'
+    done_at: '2026-04-04T03:37:58.150512+00:00'
+    evidence: 'Retest outcome: SUCCESS (green)
+
+
+      Objective path proof:
+
+      - `tests/legacy/driver` exists
+
+      - legacy file count = 39, nested subdir count = 0
+
+      - top-level `tests/test_driver*.py` count = 0
+
+
+      Objective git proof:
+
+      - round3 fix commit (`21c99d7`) includes non-plan changes: 38 renames + 1 new
+      layout regression test + 1 doc update
+
+      - round4 fix commit (`f2ab39c`) includes non-plan doc consistency updates (3
+      files)
+
+      - retest worktree clean beyond plan state
+
+
+      Docs consistency:
+
+      - no active docs expecting nested `tests/legacy/driver/<bucket>/...` layout
+
+      - authoritative migration docs now explicitly describe flat `tests/legacy/driver/*.py`
+      layout
+
+
+      Blocker results:
+
+      - B1 PASS
+
+      - B3 PASS
+
+      - B4 PASS
+
+
+      Verdict:
+
+      - All migration-finish blocker-family checks green with filesystem+git evidence.'

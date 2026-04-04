@@ -60025,3 +60025,53 @@ phases:
 
       - Evidence includes the exact control directory layout used by tests'
     agent: python-senior
+  - id: orch_operator_control_surface.impl_inspection_queries
+    name: Implement inspection query DTOs over run store and projections
+    status: pending
+    description: 'step_type: implementation
+
+
+      Fill in stub bodies in src/vectl/orchestration/inspection_queries.py per the
+      contract from orch_operator_contracts.foundation_contracts, using upstream artifacts
+      from orch_operator_config_state and orch_operator_observability.
+
+
+      UPSTREAM ARTIFACTS:
+
+      - src/vectl/orchestration/inspection_queries.py — authoritative joined DTO/query
+      interfaces
+
+      - src/vectl/orchestration/run_store.py from orch_operator_config_state.impl_run_store_and_cases_index
+
+      - src/vectl/orchestration/projections.py from orch_operator_observability.impl_projections_runstateview_artifacts
+
+
+      YOUR SCOPE: implement joined read-model queries for `runs`, `inspect status/events/logs/artifacts/actions`,
+      and `case list/show` without re-deriving core/runtime facts outside the established
+      boundaries.
+
+
+      ## Gate Preview (what the gate WILL reject)
+
+      1. Re-deriving liveness or status independently instead of consuming canonical
+      run-store/projection facts
+
+      2. Hidden CLI formatting logic in query-layer DTO assembly
+
+      3. Inconsistent field naming between status, case, and artifact surfaces
+
+
+      ## Completion Criteria (stub exclusion)
+
+      This is an IMPLEMENTATION step. Stub-only completion is NOT acceptable.'
+    verification: 'local-check protecting orch_operator_control_surface.mid_gate,
+      orch_app wiring, and CLI seam proof:
+
+      - Main path: targeted tests prove joined DTOs for runs/status/cases/artifacts/actions
+      consume canonical run-store and projection inputs
+
+      - Failure path: regression covers inconsistent or missing upstream facts without
+      independent re-derivation
+
+      - Evidence includes at least one shared fixture consumed by multiple query surfaces'
+    agent: python-executor

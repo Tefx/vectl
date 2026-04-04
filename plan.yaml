@@ -60324,3 +60324,30 @@ phases:
     - orch_operator_control_surface.impl_orch_app_composition_root
     - orch_operator_control_surface.impl_vectl_orch_cli_surface
     agent: wiring-auditor
+  - id: orch_operator_control_surface.gate
+    name: Gate operator control surface
+    status: pending
+    description: 'Gate review: verify the runnable `vectl orch` surface, its supporting
+      control/read boundaries, and its seam/liveness evidence meet the quality bar
+      for recovery and cutover work.'
+    verification: 'phase-check protecting orch_operator_recovery_cutover and orch_operator_system_wiring:
+
+      - All implementation, seam-proof, liveness, spec-conformance, and wiring-audit
+      evidence is complete
+
+      - No unresolved blockers remain in CLI registration, output consistency, control
+      acknowledgements, or gateway authorization behavior
+
+      - Runnable-surface evidence proves `vectl orch` is more than handler-only wiring'
+    depends_on:
+    - orch_operator_control_surface.impl_resolver_gateway
+    - orch_operator_control_surface.impl_control_channel
+    - orch_operator_control_surface.impl_inspection_queries
+    - orch_operator_control_surface.mid_gate
+    - orch_operator_control_surface.impl_orch_app_composition_root
+    - orch_operator_control_surface.impl_vectl_orch_cli_surface
+    - orch_operator_control_surface.cli_seam_integration_proof
+    - orch_operator_control_surface.liveness_probe
+    - orch_operator_control_surface.spec_conformance
+    - orch_operator_control_surface.wiring_audit
+    agent: gate-reviewer

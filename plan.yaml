@@ -60541,7 +60541,7 @@ phases:
       \ or resolver behavior changes"
   - id: orch_operator_config_state.retest_gate_authority_reference_blocker
     name: Rerun config-state gate criteria after authority-reference remediation
-    status: pending
+    status: claimed
     description: 'As an INDEPENDENT REVIEWER (`gate-reviewer`), rerun the gate criteria
       for `orch_operator_config_state` after `orch_operator_config_state.fix_authority_reference_blocker`.
 
@@ -60610,6 +60610,8 @@ phases:
     depends_on:
     - orch_operator_config_state.fix_authority_reference_blocker
     agent: gate-reviewer
+    claimed_by: gate-reviewer
+    claimed_at: '2026-04-04T15:47:28.175471+00:00'
 - id: orch_operator_observability
   name: Orchestration Events, Projections, and Artifacts
   status: done

@@ -65074,3 +65074,10 @@ phases:
     MCP surfaces.
   depends_on:
   - decide_refresh_contracts
+- id: decide_refresh_impl
+  name: vectl_decide Contract Refresh — Implementation
+  status: locked
+  gate: Refreshed vectl_decide contract is implemented, green on focused tests, and
+    conformant to the RFC.
+  depends_on:
+  - decide_refresh_tests

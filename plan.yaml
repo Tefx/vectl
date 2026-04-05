@@ -65723,6 +65723,78 @@ phases:
       \ note: confirm outputs are contract-only and contain no substantive execution\
       \ logic.\n"
     agent: software-architect
+  - id: orchestration_foundation_lock.define-red-contract-tests
+    name: Define red seam tests for runner backend and runtime lifecycle
+    status: pending
+    description: 'step_type: test
+
+      step_intent: test_define_red
+
+      expected_result: red
+
+      work_type: new_capability
+
+
+      Author tests that expose the two scoped gaps without implementing product logic.
+
+
+      Test-only scope:
+
+      - tests/** for orchestration-plane runner backend and runtime lifecycle
+
+      - minimal fixtures/helpers only if required
+
+
+      The tests must expose, at minimum:
+
+      1. missing or incomplete runner backend launch/poll/cleanup mechanical path
+
+      2. missing or incomplete runtime prepare/execute/reconcile/cleanup lifecycle
+      path
+
+      3. complete blocked until reconcile is merged|noop
+
+      4. resolver/runtime abnormal cases produce an operator-facing/user-facing notification
+      path
+
+      5. resolver mutation seam stays on approved vectl facade and main worktree only
+
+
+      ## Spec-Fixture Conformance (MANDATORY)
+
+      At least one fixture must be derived directly from the documented orchestration
+      interfaces / lifecycle rules and cite the spec sections it mirrors.
+
+
+      Do not implement backend/lifecycle logic in helpers. Success means the gap is
+      made visible with failing or xfail-style expectations that a downstream implementation
+      can close.
+
+      '
+    verification: 'Scope: local-check protecting orchestration_runner_backend and
+      orchestration_runtime_lifecycle implementation steps.
+
+      - Modified files are limited to tests/ plus minimal fixtures/helpers.
+
+      - The authored tests expose the missing backend/lifecycle behavior without changing
+      product code.
+
+      - Evidence explicitly identifies expected_failures or exposed_gaps for runner
+      backend, reconcile-before-complete, and user notification surfaces.
+
+      - expected_result remains red until downstream implementation steps land.'
+    evidence_template: "## refs Read Confirmation (MANDATORY)\n\nFor each ref in this\
+      \ step:\n- <filename> — key passage or \"NOT READ: <reason>\"\n\nIf no refs\
+      \ were provided, state: \"No refs for this step.\"\n\n## Red Test Definition\
+      \ Report\n- Test files added/updated:\n- Product files changed: NONE (required,\
+      \ or explain fixture-only exception)\n- Spec sections used for fixtures:\n-\
+      \ expected_failures / exposed_gaps:\n  - runner backend gap:\n  - runtime lifecycle\
+      \ gap:\n  - reconcile-before-complete gap:\n  - user-notification gap:\n  -\
+      \ approved-facade/main-worktree gap:\n- Downstream implementation owners:\n\
+      \  - orchestration_runner_backend.build-runner-backend\n  - orchestration_runtime_lifecycle.implement-worktree-lifecycle\n"
+    depends_on:
+    - orchestration_foundation_lock.pin-boundaries-and-contracts
+    agent: python-executor
 - id: orchestration_runner_backend
   name: Orchestration Runner Backend
   status: locked

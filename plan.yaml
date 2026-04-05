@@ -66685,3 +66685,10 @@ phases:
     recovery are durable and auditable across orch app and orchestration runtime metadata.
   depends_on:
   - orchestration_orch_app_routing
+- id: orchestration_upper_layer_review
+  name: Orchestration Upper-Layer Review
+  status: locked
+  gate: Upper-layer orchestration contracts are independently audited for wiring,
+    spec conformance, black-box behavior, and final gate readiness.
+  depends_on:
+  - orchestration_operator_recovery

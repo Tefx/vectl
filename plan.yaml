@@ -64629,7 +64629,7 @@ phases:
       - No behavior drift, no export drift.'
   - id: orch_operator_post_gate_cleanup.close-config-validation-red-gap-per-spec-8-5-or-explicit-durable-behavior
     name: Close config validation red-gap per spec §8.5 or explicit durable behavior
-    status: pending
+    status: claimed
     description: 'step_type: implementation
 
       work_type: proof_closure
@@ -64711,6 +64711,8 @@ phases:
     - src/vectl/orch_app.py
     - src/vectl/cli.py
     agent: python-executor
+    claimed_by: python-executor
+    claimed_at: '2026-04-05T07:51:26.207546+00:00'
   - id: orch_operator_post_gate_cleanup.add-projection-replay-end-to-end-runtime-proof
     name: Add projection replay end-to-end runtime proof
     status: done

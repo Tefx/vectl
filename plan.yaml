@@ -66663,6 +66663,210 @@ phases:
     canonical contract sync without reopening foundation runner/runtime boundaries.
   depends_on:
   - orchestration_runtime_wiring
+  steps:
+  - id: orchestration_dispatch_policy.lock-dispatch-role-profile-prompt-and-review-result-contracts
+    name: Lock dispatch, role-profile, prompt, and review-result contracts
+    status: pending
+    description: "step_type: contract\ncontract_purity: ENFORCED\ncontract_outputs:\n\
+      \  - signatures\n  - type_defs\n  - interfaces\n  - stubs\n\nPin the canonical\
+      \ upper-layer dispatch contract before implementation.\n\nRequired scope:\n\
+      - sync authoritative type and protocol definitions in src/vectl/orchestration/contracts.py\
+      \ with DispatchSpec, RoleProfile, RoleProfileRegistry, PromptBundle, PromptRegistry,\
+      \ StructuredReviewResult, ResolutionCase, and ResolutionReport\n- keep execution_context\
+      \ policy open to main_worktree and linked_worktree; do not narrow main_worktree\
+      \ to resolver-only\n- make review/gate non-pass outcomes machine-readable and\
+      \ suitable for ResolutionCase normalization\n- keep planner-family remediation\
+      \ as resolver-invoked resolution_subtask semantics, not ordinary normal-flow\
+      \ fallback\n- if code comments/docstrings in contracts.py contradict the canonical\
+      \ docs, update contract-level comments/docstrings only; do not implement runtime\
+      \ logic here\n\nAuthoritative interface lock:\n- execution_context is determined\
+      \ by RoleProfile.execution_context\n- resolver runs in main worktree\n- planner/gate-reviewer/reviewer-family\
+      \ roles may also run in main worktree when RoleProfile requires it\n- planner\
+      \ is a resolver remediation subagent, not a normal-flow fallback role\n"
+    verification: '- local-check: contracts.py exposes the locked upper-layer types/protocols
+      without embedding runtime/control business logic
+
+      - local-check: execution_context and output_contract semantics match the authoritative
+      docs exactly
+
+      - proof: contract artifacts are limited to signatures/types/docstrings/stubs
+      and do not complete implementation logic'
+    refs:
+    - docs/ORCHESTRATION-PLANE-DISPATCH-AND-PROMPT-POLICY.md
+    - docs/ORCHESTRATION-PLANE-INTERFACES.md
+    - docs/ORCHESTRATION-PLANE-RESOLUTION-CONTRACT.md
+    - src/vectl/orchestration/contracts.py
+    agent: software-architect
+  - id: orchestration_dispatch_policy.define-expected-red-tests-for-dispatch-policy-and-canonical-sync
+    name: Define expected-red tests for dispatch policy and canonical sync
+    status: pending
+    description: 'step_type: test
+
+      step_intent: test_define_red
+
+      expected_result: red
+
+
+      Define the dispatch/prompt/role policy gap before implementation logic is added.
+
+
+      Test-only scope:
+
+      - add or update tests under tests/orchestration/unit/ for DispatchSpec construction,
+      role-profile lookup, prompt rendering selection, main_worktree role policy,
+      and structured review-result normalization entrypoints
+
+      - include fixtures that prove non-pass review/gate outputs normalize into explicit
+      ResolutionCase input rather than prose guessing
+
+
+      Do not add product implementation code outside minimal fixtures/helpers.'
+    verification: '- local-check: modified files stay in tests/ plus minimal test
+      helpers
+
+      - local-check: tests encode expected-red gaps for dispatch policy, prompt policy,
+      and review-result normalization
+
+      - proof: expected failures or exposed gaps are recorded along with the downstream
+      implementation step'
+    refs:
+    - docs/ORCHESTRATION-PLANE-DISPATCH-AND-PROMPT-POLICY.md
+    - docs/ORCHESTRATION-PLANE-INTERFACES.md
+    - docs/ORCHESTRATION-PLANE-RESOLUTION-CONTRACT.md
+    - tests/orchestration/unit/test_orch_app.py
+    agent: python-executor
+  - id: orchestration_dispatch_policy.implement-dispatch-coordinator-policy-role-registry-prompt-registry-and-canonical-contract-sync
+    name: Implement dispatch coordinator policy, role registry, prompt registry, and
+      canonical contract sync
+    status: pending
+    description: 'step_type: implementation
+
+
+      Fill in stub bodies and policy helpers for the upper-layer dispatch surface
+      per the locked contract.
+
+
+      Scope:
+
+      - dispatch coordinator construction of DispatchSpec
+
+      - configuration-backed RoleProfileRegistry lookup and unknown-role failure
+
+      - centralized PromptRegistry rendering by role family
+
+      - execution_context routing by RoleProfile.execution_context, including main_worktree
+      reviewer/planner roles
+
+      - structured review-result normalization entrypoints needed by later routing
+
+
+      Touch only upper-layer dispatch/policy surfaces such as src/vectl/orchestration/contracts.py,
+      src/vectl/orchestration/config.py, src/vectl/orchestration/resolver_gateway.py,
+      src/vectl/orch_app.py, and new focused helpers under src/vectl/orchestration/.
+
+
+      Do not duplicate authority semantics in runtime or roster.
+
+      Do not route planner as ordinary fallback instead of resolver remediation subagent.
+
+      Stub-only completion is not acceptable.'
+    verification: '- phase-check: dispatch coordinator builds DispatchSpec from authoritative
+      step/resolution inputs and role profiles
+
+      - phase-check: prompt rendering is centralized and role-family specific
+
+      - phase-check: unknown role lookup fails explicitly; no silent downgrade of
+      specialized roles occurs
+
+      - phase-check: main_worktree execution context follows RoleProfile, not resolver
+      hardcoding
+
+      - protects downstream gates: orchestration_resolver_coordination.gate and orchestration_orch_app_routing.gate'
+    refs:
+    - docs/ORCHESTRATION-PLANE-DISPATCH-AND-PROMPT-POLICY.md
+    - docs/ORCHESTRATION-PLANE-INTERFACES.md
+    - docs/ORCHESTRATION-PLANE-RESOLUTION-CONTRACT.md
+    - src/vectl/orchestration/contracts.py
+    - src/vectl/orchestration/config.py
+    - src/vectl/orch_app.py
+    - src/vectl/orchestration/resolver_gateway.py
+    agent: python-senior
+  - id: orchestration_dispatch_policy.retest-dispatch-policy-and-canonical-contract-sync-green
+    name: Retest dispatch policy and canonical contract sync green
+    status: pending
+    description: 'step_type: test
+
+      step_intent: retest_green
+
+      expected_result: green
+
+
+      As an INDEPENDENT TESTER (integration-verifier), validate the upper-layer dispatch
+      policy from a fresh perspective.
+
+
+      Test for:
+
+      - happy path DispatchSpec generation for normal steps and resolver subtasks
+
+      - role-profile driven execution_context, including main_worktree reviewer/planner
+      roles
+
+      - centralized prompt selection by prompt family
+
+      - structured review-result parsing and normalization to explicit ResolutionCase
+      inputs
+
+      - explicit unknown-role failure behavior
+
+      '
+    verification: '- phase-check: targeted orchestration policy tests pass green
+
+      - phase-check: at least one test proves main_worktree non-resolver roles are
+      supported by RoleProfile
+
+      - phase-check: at least one test proves non-pass structured review output becomes
+      explicit ResolutionCase input
+
+      - protects downstream gates: orchestration_resolver_coordination.gate and orchestration_upper_layer_review.gate'
+    refs:
+    - docs/ORCHESTRATION-PLANE-DISPATCH-AND-PROMPT-POLICY.md
+    - docs/ORCHESTRATION-PLANE-INTERFACES.md
+    - docs/ORCHESTRATION-PLANE-RESOLUTION-CONTRACT.md
+    - tests/orchestration/unit/test_orch_app.py
+    agent: integration-verifier
+  - id: orchestration_dispatch_policy.gate-dispatch-policy
+    name: Gate dispatch policy
+    status: pending
+    description: 'As an INDEPENDENT REVIEWER (gate-reviewer), assess whether the orchestration_dispatch_policy
+      phase meets the quality bar for proceeding.
+
+
+      review_depth: THOROUGH
+
+      cross_cutting_focus:
+
+      - main_worktree policy driven by RoleProfile
+
+      - planner as resolver remediation subagent only
+
+      - structured review-result contract and normalization readiness
+
+
+      BLOCK if contract drift, silent role downgrade, prompt ownership leakage, or
+      prose-based review interpretation remains.'
+    verification: '- phase-check: all dispatch-policy steps complete with adequate
+      evidence
+
+      - phase-check: blocker-class obligations are proven or explicitly absent
+
+      - gate decision basis records any unresolved runtime/behavioral items and why
+      they do or do not intersect later gates'
+    refs:
+    - docs/ORCHESTRATION-PLANE-DISPATCH-AND-PROMPT-POLICY.md
+    - docs/ORCHESTRATION-PLANE-INTERFACES.md
+    - docs/ORCHESTRATION-PLANE-RESOLUTION-CONTRACT.md
+    agent: gate-reviewer
 - id: orchestration_resolver_coordination
   name: Orchestration Resolver Coordination
   status: locked

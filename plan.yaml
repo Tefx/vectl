@@ -64518,7 +64518,7 @@ phases:
   steps:
   - id: orch_operator_post_gate_cleanup.fix-orchestration-operator-type-annotations-and-lint-hygiene
     name: Fix orchestration operator type annotations and lint hygiene
-    status: claimed
+    status: done
     description: 'step_type: implementation
 
       work_type: technical_debt_remediation
@@ -64595,6 +64595,38 @@ phases:
     agent: python-executor
     claimed_by: python-executor
     claimed_at: '2026-04-05T07:41:42.029134+00:00'
+    done_at: '2026-04-05T07:44:10.659293+00:00'
+    evidence: '## refs Read Confirmation
+
+      - docs/ORCHESTRATION-PLANE-ARCHITECTURE.md — read
+
+      - docs/ORCHESTRATION-PLANE-IMPLEMENTATION-DESIGN.md — read
+
+      - src/vectl/orchestration/config.py — read
+
+      - src/vectl/orchestration/run_store.py — read
+
+      - src/vectl/orchestration/control_channel.py — read
+
+      - src/vectl/orchestration/__init__.py — read
+
+
+      Verification:
+
+      - uv run ruff check src/vectl/orchestration/config.py src/vectl/orchestration/run_store.py
+      src/vectl/orchestration/control_channel.py src/vectl/orchestration/__init__.py
+      -> All checks passed
+
+      - uv run mypy src/vectl/orchestration/config.py src/vectl/orchestration/run_store.py
+      src/vectl/orchestration/control_channel.py src/vectl/orchestration/__init__.py
+      -> Success: no issues found in 4 source files
+
+
+      Outcome:
+
+      - No code modifications required; target files already satisfy should-fix constraints.
+
+      - No behavior drift, no export drift.'
   - id: orch_operator_post_gate_cleanup.close-config-validation-red-gap-per-spec-8-5-or-explicit-durable-behavior
     name: Close config validation red-gap per spec §8.5 or explicit durable behavior
     status: claimed

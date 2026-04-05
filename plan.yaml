@@ -65431,6 +65431,42 @@ phases:
     - decide_refresh_impl.core
     - decide_refresh_impl.mcp-surface
     agent: integration-verifier
+  - id: decide_refresh_impl.spec-conformance
+    name: Verify RFC conformance
+    status: pending
+    description: 'Spec conformance verification via adversarial divergence hunting.
+      Scope: runner provenance, caller-owned advisor_state/next_state, top-level status/reason_code/message,
+      policy metadata, standalone advisor semantics, and MCP contract shape.'
+    verification: 'phase-check protecting doc_sync and deep_review: every blocker-class
+      RFC requirement is CONFORMS or gets explicit remediation ownership.'
+    evidence_template: '## Spec Conformance Report
+
+      ### refs Read Confirmation (MANDATORY)
+
+      For each ref in this step:
+
+      - <filename> — key passage or "NOT READ: <reason>"
+
+
+      ## Evidence Table
+
+      | R# | Spec Section | Requirement | Implementation | Verdict | Notes |
+
+
+      ## Coverage Summary
+
+      - CONFORMS:
+
+      - DIVERGES:
+
+      - NEEDS_TEST:
+
+      - NOT_FOUND:'
+    depends_on:
+    - decide_refresh_impl.models-state
+    - decide_refresh_impl.core
+    - decide_refresh_impl.mcp-surface
+    agent: spec-verifier
 - id: doc_sync
   name: Documentation Sync
   status: locked

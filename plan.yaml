@@ -66299,6 +66299,94 @@ phases:
     depends_on:
     - orchestration_runtime_lifecycle.implement-worktree-lifecycle
     agent: integration-verifier
+  - id: orchestration_runtime_lifecycle.gate
+    name: Gate runtime lifecycle
+    status: pending
+    description: 'As an INDEPENDENT REVIEWER (gate-reviewer), assess whether runtime
+      now owns the worktree/execution/reconcile lifecycle mechanically without absorbing
+      resolver policy.
+
+
+      review_depth: THOROUGH
+
+      review_depth_rationale:
+
+      - reconcile-before-complete is blocker-class behavior
+
+      - worktree lifecycle carries integrity and cleanup risk
+
+      - runtime has mutable execution/workspace tracking
+
+
+      cross_cutting_focus:
+
+      - complete only after reconcile=merged|noop
+
+      - resolver remains main-worktree only
+
+      - unresolved runtime failures are surfaced to operator/user
+
+
+      Gate Preview (what the gate WILL reject)
+
+      1. any path that marks work complete before reconcile merged|noop
+
+      2. runtime code that reasons about semantic resolution instead of detecting/surfacing
+      it
+
+      3. missing operator-facing/user-facing failure surfacing for unresolved runtime
+      problems
+
+      4. unsafe mutable-state handling around active executions/workspaces
+
+      '
+    verification: 'Scope: phase-check protecting orchestration_runtime_wiring.gate.
+
+      - All lifecycle steps completed with verifiable evidence.
+
+      - Behavioral proof register covers blocker-class runtime obligations.
+
+      - No semantic resolver-policy deepening leaked into runtime.
+
+      - OPEN only if unresolved runtime obligations are PROVEN or explicitly non-intersecting
+      with remaining runtime_wiring gate requirements.'
+    evidence_template: '## refs Read Confirmation (MANDATORY)
+
+
+      For each ref in this step:
+
+      - <filename> — key passage or "NOT READ: <reason>"
+
+
+      If no refs were provided, state: "No refs for this step."
+
+
+      ## Gate Review Report
+
+      | Step ID | Status | Evidence Quality | Concerns |
+
+      | ------- | ------ | ---------------- | -------- |
+
+      | orchestration_runtime_lifecycle.implement-worktree-lifecycle |  |  |  |
+
+      | orchestration_runtime_lifecycle.retest-lifecycle-green |  |  |  |
+
+
+      ## Gate Decision Basis
+
+      - requirement/proof refs reviewed:
+
+      - unresolved statuses (if any):
+
+      - why each unresolved item blocks or does not intersect runtime_wiring.gate:
+
+      - final recommendation: OPEN or BLOCK
+
+      '
+    depends_on:
+    - orchestration_runtime_lifecycle.implement-worktree-lifecycle
+    - orchestration_runtime_lifecycle.retest-lifecycle-green
+    agent: gate-reviewer
 - id: orchestration_runtime_wiring
   name: Orchestration Runner/Runtime Wiring
   status: locked

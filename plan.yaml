@@ -65322,6 +65322,39 @@ phases:
 
       - How next_state replacement semantics were implemented:'
     agent: python-senior
+  - id: decide_refresh_impl.core
+    name: Implement refreshed decide core logic
+    status: pending
+    description: Fill in implementation changes in src/vectl/decide.py so vectl_decide
+      emits the refreshed structured control summary and refreshed reuse semantics.
+      Replace continuation/halt_reason machine contract with status/reason_code/message.
+      Emit reuse_token/reuse_runner instead of overloading Action.task_id. Preserve
+      deterministic advisor behavior, standalone usability, repeated-failure memory,
+      TTL-based reuse eligibility, and debug-only decision_log.
+    verification: 'local-check protecting MCP implementation: focused decide tests
+      pass; dispatch/wait/blocked/done mapping is green; repeated_failures -> blocked
+      is green; unknown runner rejection is green.'
+    evidence_template: '## refs Read Confirmation (MANDATORY)
+
+      For each ref in this step:
+
+      - <filename> — key passage or "NOT READ: <reason>"
+
+
+      ## Implementation Evidence
+
+      - Files changed:
+
+      - Status/reason_code mapping implemented:
+
+      - Reuse_token/reuse_runner behavior implemented:
+
+      - Unknown runner rejection path:
+
+      - next_state replacement path:'
+    depends_on:
+    - decide_refresh_impl.models-state
+    agent: python-senior
 - id: doc_sync
   name: Documentation Sync
   status: locked

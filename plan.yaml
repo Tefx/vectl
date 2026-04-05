@@ -63523,9 +63523,12 @@ phases:
 
       - At least one blocked-case and one recovery path are exercised black-box
 
-      - Evidence proves visible operator output, not internal helper correctness'
+      - Evidence proves visible operator output, not internal helper correctness
+
+      - Behavioral proof closure for R19/R24 is present upstream with explicit `gate_open_allowed`
+      support before black-box continuation'
     depends_on:
-    - orch_operator_deep_review.spec_conformance_full
+    - orch_operator_deep_review.retest_behavioral_conformance_blockers
     agent: blind-tester
   - id: orch_operator_deep_review.gate
     name: Final gate for orchestration operator surface

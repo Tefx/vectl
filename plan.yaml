@@ -65504,6 +65504,31 @@ phases:
   gate: Documentation reflects the refreshed vectl_decide contract exactly.
   depends_on:
   - decide_refresh_impl
+  steps:
+  - id: doc_sync.update-vectl-decide-docs
+    name: Update vectl_decide documentation
+    status: pending
+    description: Sync documentation to the refreshed vectl_decide contract. Update
+      README.md, docs/DESIGN.md, and any decide-related descriptions/docstrings that
+      still mention continuation/halt_reason machine control, overloaded task_id reuse
+      semantics, or non-canonical state naming. Preserve standalone advisor positioning.
+    verification: 'phase-check protecting deep_review: docs match the refreshed contract
+      exactly and no stale decide wording remains.'
+    evidence_template: '## refs Read Confirmation (MANDATORY)
+
+      For each ref in this step:
+
+      - <filename> — key passage or "NOT READ: <reason>"
+
+
+      ## Doc Sync Report
+
+      - Docs updated:
+
+      - Stale wording removed:
+
+      - Remaining doc debt: none | <detail>'
+    agent: doc-reviewer
 - id: deep_review
   name: Deep Review (Independent Audit)
   status: locked

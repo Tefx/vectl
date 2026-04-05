@@ -65687,3 +65687,11 @@ phases:
     completing work.
   depends_on:
   - orchestration_foundation_lock
+- id: orchestration_runtime_wiring
+  name: Orchestration Runner/Runtime Wiring
+  status: locked
+  gate: Runner backend and runtime lifecycle are wired together with real integration
+    proof, spec conformance, and gate evidence for reconcile-before-complete behavior.
+  depends_on:
+  - orchestration_runner_backend
+  - orchestration_runtime_lifecycle

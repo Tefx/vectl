@@ -63585,7 +63585,7 @@ phases:
     agent: gate-reviewer
   - id: orch_operator_deep_review.fix_behavioral_conformance_blockers
     name: Fix blocker-class behavioral conformance gaps
-    status: claimed
+    status: done
     description: 'Batched remediation for blocker-class spec-conformance uncertainties
       from `orch_operator_deep_review.spec_conformance_full`.
 
@@ -63694,6 +63694,26 @@ phases:
     agent: python-senior
     claimed_by: python-senior
     claimed_at: '2026-04-05T05:58:46.844938+00:00'
+    done_at: '2026-04-05T06:04:16.817950+00:00'
+    evidence: "## refs Read Confirmation (MANDATORY)\n- tools/vectl/README.md — NOT\
+      \ READ: file not present in isolated worktree path; read returned file not found.\n\
+      \n## Behavioral Proof Register\n- R19 resolver allowlist runtime enforcement:\n\
+      \  - status: PROVEN\n  - evidence_ref: tests/orchestration/unit/test_resolver_gateway.py::test_allowlist_runtime_enforcement_varies_with_snapshot\n\
+      \  - gate_open_allowed: true\n  - basis: deny-by-default blocks invocation when\
+      \ family not allowlisted, and allows invocation when allowlist includes core.\n\
+      - R24 roster None interpretation behavior:\n  - status: PROVEN\n  - evidence_ref:\
+      \ tests/orchestration/unit/test_control.py::test_roster_none_claim_is_not_interpreted_as_plan_blockage\n\
+      \  - gate_open_allowed: true\n  - basis: control emits dispatch with fallback\
+      \ role after roster claim None, not resolve/blockage.\n- overall_gate_verdict:\n\
+      \  - gate_open_allowed: true\n  - basis: both blocker-class requirements now\
+      \ have executable runtime proof.\n\n## Runtime Evidence\n- Run: uv run pytest\
+      \ -q tests/orchestration/unit/test_resolver_gateway.py::test_allowlist_runtime_enforcement_varies_with_snapshot\
+      \ tests/orchestration/unit/test_control.py::test_roster_none_claim_is_not_interpreted_as_plan_blockage\
+      \ -> 2 passed\n- Run: uv run pytest -q tests/orchestration/unit/test_resolver_gateway.py\
+      \ tests/orchestration/unit/test_control.py -> 17 passed\n- Artifact: orchestration_behavioral_proof_register.yaml\
+      \ added with required structured fields.\n- Commit: 2aec196 (branch vectl/step-orch_operator_deep_review.fix_behavioral_conformance_blockers)\n\
+      \n## Scope Check\n- Both R19 and R24 addressed in batched step: yes\n- Remaining\
+      \ ambiguity: none"
   - id: orch_operator_deep_review.retest_behavioral_conformance_blockers
     name: Retest behavioral conformance blockers and decide gate-open eligibility
     status: pending

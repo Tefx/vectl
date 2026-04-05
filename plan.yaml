@@ -65880,6 +65880,58 @@ phases:
     leaks.
   depends_on:
   - orchestration_foundation_lock
+  steps:
+  - id: orchestration_runner_backend.build-runner-backend
+    name: Build the shared mechanical runner backend
+    status: pending
+    description: "step_type: implementation\nwork_type: new_capability\nupstream_artifacts:\n\
+      \  - path: src/vectl/orchestration/contracts.py\n    from_step: orchestration_foundation_lock.pin-boundaries-and-contracts\n\
+      \    tier: contract\n  - path: src/vectl/orchestration/interfaces.py\n    from_step:\
+      \ orchestration_foundation_lock.pin-boundaries-and-contracts\n    tier: contract\n\
+      \  - path: tests/orchestration/**\n    from_step: orchestration_foundation_lock.define-red-contract-tests\n\
+      \    tier: test\n\nFill in stub bodies and add the missing mechanical backend\
+      \ surface per the contract from step orchestration_foundation_lock.pin-boundaries-and-contracts.\n\
+      \nUPSTREAM ARTIFACTS (AUTHORITATIVE)\n- src/vectl/orchestration/contracts.py\
+      \ — runner/backend data contracts are locked\n- src/vectl/orchestration/interfaces.py\
+      \ — runtime/backend boundary signatures are locked\n- tests/orchestration/**\
+      \ — red gap-defining tests are protected\n\nYOUR SCOPE\n- Add the dedicated\
+      \ runner backend implementation module(s) for launch / poll / cleanup / capability\
+      \ reporting / registry lookup.\n- Keep the backend mechanical only.\n- Keep\
+      \ runtime integration limited to backend-facing helper seams only; do not wire\
+      \ runtime.start/collect/cleanup to the new backend yet.\n- Use Edit tool to\
+      \ modify bodies only within existing signatures and to add the dedicated backend\
+      \ module(s) required by the locked contract.\n\nLikely touch paths:\n- src/vectl/orchestration/runner_backend.py\n\
+      - src/vectl/orchestration/contracts.py\n- src/vectl/orchestration/interfaces.py\n\
+      - src/vectl/orchestration/runtime.py\n- tests/orchestration/test_runner_backend*.py\n\
+      \nOut-of-scope guardrails:\n- no resolver policy landing\n- no reconcile semantic\
+      \ deepening beyond backend return values/statuses\n- no control/operator surface\
+      \ work\n- no runtime worktree lifecycle implementation beyond the minimal backend\
+      \ seam needed for later wiring\n\n## Completion Criteria (stub exclusion)\n\
+      This is an IMPLEMENTATION step. Stub-only completion is NOT acceptable.\nEach\
+      \ deliverable MUST contain substantive logic that processes its inputs and returns\
+      \ launch/poll/cleanup results that vary based on runner input and process state.\n"
+    verification: 'Scope: local-check protecting orchestration_runner_backend.retest-backend-green
+      and orchestration_runtime_wiring.gate.
+
+      - Targeted runner-backend tests are updated and pass once implementation lands.
+
+      - Registry/capability lookup, launch, poll, and cleanup paths all have focused
+      regression coverage.
+
+      - Runtime worktree lifecycle and resolver/control policy remain unchanged except
+      for the narrow backend seam.
+
+      - No shared wiring/export surface is modified prematurely.'
+    evidence_template: "## refs Read Confirmation (MANDATORY)\n\nFor each ref in this\
+      \ step:\n- <filename> — key passage or \"NOT READ: <reason>\"\n\nIf no refs\
+      \ were provided, state: \"No refs for this step.\"\n\n## Implementation Report\n\
+      - Touched files:\n- Backend module(s) added:\n- Registry/capability seam location:\n\
+      - Launch path logic location:\n- Poll path logic location:\n- Cleanup path logic\
+      \ location:\n- Tests updated:\n- Out-of-scope confirmation:\n  - runtime lifecycle\
+      \ not wired end-to-end yet\n  - resolver policy unchanged\n  - control/operator\
+      \ surfaces unchanged\n- Deviation record (required if contract artifact needed\
+      \ correction):\n"
+    agent: python-executor
 - id: orchestration_runtime_lifecycle
   name: Orchestration Runtime Worktree Lifecycle
   status: locked

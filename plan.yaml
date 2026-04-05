@@ -66678,3 +66678,10 @@ phases:
     normalization, and resolution routing using the shared dispatch/runtime substrate.
   depends_on:
   - orchestration_resolver_coordination
+- id: orchestration_operator_recovery
+  name: Orchestration Operator / Conflict / Recovery Alignment
+  status: locked
+  gate: operator_required, conflict preservation, protected-path handling, and restart
+    recovery are durable and auditable across orch app and orchestration runtime metadata.
+  depends_on:
+  - orchestration_orch_app_routing

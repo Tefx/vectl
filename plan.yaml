@@ -65795,6 +65795,83 @@ phases:
     depends_on:
     - orchestration_foundation_lock.pin-boundaries-and-contracts
     agent: python-executor
+  - id: orchestration_foundation_lock.gate
+    name: Gate foundation lock
+    status: pending
+    description: 'As an INDEPENDENT REVIEWER (gate-reviewer), assess whether the foundation
+      contract lock is strong enough to prevent runner/runtime work from being polluted
+      by later resolver/control scope.
+
+
+      Review depth: STANDARD
+
+
+      Blocking checks:
+
+      1. Contracts pin the hard rules the user specified.
+
+      2. Red tests expose the two scoped gaps without leaking implementation.
+
+      3. Boundary ownership is explicit: runner backend = mechanical backend, runtime
+      = worktree lifecycle/reconcile sequencing, resolver = abnormal repair only.
+
+      4. No step in this phase silently expands into resolver full landing, merge/conflict
+      policy, or control/operator closure.
+
+      '
+    verification: 'Scope: phase-check protecting orchestration_runner_backend.gate
+      and orchestration_runtime_lifecycle.gate.
+
+      - All foundation steps completed with verifiable evidence.
+
+      - Hard-rule contract is explicit and reviewable.
+
+      - Red tests clearly define acceptance for downstream implementation.
+
+      - OPEN only if scope is still limited to the first two gaps plus foundation
+      lock.'
+    evidence_template: '## refs Read Confirmation (MANDATORY)
+
+
+      For each ref in this step:
+
+      - <filename> — key passage or "NOT READ: <reason>"
+
+
+      If no refs were provided, state: "No refs for this step."
+
+
+      ## Gate Review Report
+
+      | Step ID | Status | Evidence Quality | Concerns |
+
+      | ------- | ------ | ---------------- | -------- |
+
+      | orchestration_foundation_lock.pin-boundaries-and-contracts |  |  |  |
+
+      | orchestration_foundation_lock.define-red-contract-tests |  |  |  |
+
+
+      ## Scope-Protect Verdict
+
+      - Hard rules pinned:
+
+      - Resolver-scope pollution detected?:
+
+      - Merge/conflict policy deepening detected?:
+
+      - Control/operator closure expansion detected?:
+
+
+      ## Gate Decision Basis
+
+      - OPEN or BLOCK with exact blockers.
+
+      '
+    depends_on:
+    - orchestration_foundation_lock.pin-boundaries-and-contracts
+    - orchestration_foundation_lock.define-red-contract-tests
+    agent: gate-reviewer
 - id: orchestration_runner_backend
   name: Orchestration Runner Backend
   status: locked

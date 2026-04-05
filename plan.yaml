@@ -65355,6 +65355,38 @@ phases:
     depends_on:
     - decide_refresh_impl.models-state
     agent: python-senior
+  - id: decide_refresh_impl.mcp-surface
+    name: Implement refreshed MCP surface
+    status: pending
+    description: 'Implement the refreshed vectl_decide MCP tool surface in src/vectl/mcp_server.py.
+      Accept advisor_state explicitly, return refreshed output fields only, serialize
+      next_state/policy correctly, and preserve vectl_decide as a deterministic advisor
+      rather than an authority. tags: [integration]'
+    verification: 'local-check protecting phase verification: MCP vectl_decide tests
+      pass; advisor_state and next_state serialize correctly.'
+    evidence_template: '## Integration Evidence
+
+      ### refs Read Confirmation (MANDATORY)
+
+      For each ref in this step:
+
+      - <filename> — key passage or "NOT READ: <reason>"
+
+
+      **Command or test exercising the full path**:
+
+      <exact pytest command>
+
+
+      **Actual output**:
+
+      <paste stdout/stderr or test output>
+
+
+      **Path exercised**: tests/test_mcp.py -> vectl.mcp_server.vectl_decide -> vectl.decide.decide'
+    depends_on:
+    - decide_refresh_impl.core
+    agent: python-executor
 - id: doc_sync
   name: Documentation Sync
   status: locked

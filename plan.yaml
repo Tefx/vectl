@@ -65639,3 +65639,28 @@ phases:
 
       - Spec mismatches: none | <detail>'
     agent: blind-tester
+  - id: deep_review.gate
+    name: Final deep review gate
+    status: pending
+    description: Final deep review gate for refreshed vectl_decide contract.
+    verification: 'full-plan-check: all deep reviews complete; no unresolved blocker-class
+      divergence remains; refreshed vectl_decide contract is safe to treat as complete.'
+    evidence_template: '## refs Read Confirmation (MANDATORY)
+
+      For each ref in this step:
+
+      - <filename> — key passage or "NOT READ: <reason>"
+
+
+      ## Final Gate Decision
+
+      - Evidence reviewed:
+
+      - Blocking issues: none | <detail>
+
+      - Final recommendation: OPEN | BLOCKED'
+    depends_on:
+    - deep_review.decide-wiring
+    - deep_review.decide-architecture
+    - deep_review.decide-black-box
+    agent: gate-reviewer

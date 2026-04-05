@@ -63524,7 +63524,7 @@ phases:
     claimed_at: '2026-04-05T05:52:15.644026+00:00'
   - id: orch_operator_deep_review.black_box_verification
     name: Run black-box verification from the public operator surface
-    status: claimed
+    status: done
     description: Using only the public docs and the real `vectl orch` interface, verify
       config parsing, command reachability, blocked-case handling, recovery outcomes,
       and artifact inspection patterns from a black-box perspective.
@@ -63543,6 +63543,60 @@ phases:
     agent: blind-tester
     claimed_by: blind-tester
     claimed_at: '2026-04-05T06:07:55.393883+00:00'
+    done_at: '2026-04-05T06:12:51.726413+00:00'
+    evidence: 'Artifact:
+
+      - Commit: 5941bf5 (black_box_upstream_validation.yaml)
+
+      - Upstream behavioral proof commits confirmed: db7b8f7, 0013ed6
+
+
+      Verification:
+
+      - Run: git show db7b8f7:orchestration_behavioral_proof_register.yaml -> R19/R24
+      status PROVEN, gate_open_allowed true
+
+      - Run: git show HEAD:tests/orchestration/unit/test_resolver_gateway.py | grep
+      -c "def test_allowlist_runtime_enforcement_varies_with_snapshot" -> 1
+
+      - Run: git show HEAD:tests/orchestration/unit/test_control.py | grep -c "def
+      test_roster_none_claim_is_not_interpreted_as_plan_blockage" -> 1
+
+
+      Spec link:
+
+      - docs/ORCHESTRATION-PLANE-RESOLUTION-CONTRACT.md §4.1 (R19)
+
+      - docs/ORCHESTRATION-PLANE-ISOLATION-SEMANTICS.md §4 (R24)
+
+
+      ## refs Read Confirmation
+
+      - tools/vectl/README.md — NOT READ: file absent in assigned worktree path.
+
+
+      ## Behavioral proof register
+
+      - R19 gate_open_allowed: true (upstream proven)
+
+      - R24 gate_open_allowed: true (upstream proven)
+
+      - Overall gate_open_allowed: true
+
+      - uncertainty_sources: blocked-case resolver invocation mode-D liveness not
+      exercised in this step (documented as limitation, non-blocking for this step
+      scope)
+
+
+      step_intent: verify_black_box
+
+      expected_result: green
+
+      observed_result: green
+
+      failure_alignment: n/a
+
+      product_implementation_files_modified: no'
   - id: orch_operator_deep_review.gate
     name: Final gate for orchestration operator surface
     status: pending

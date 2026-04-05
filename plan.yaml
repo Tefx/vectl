@@ -67493,4 +67493,8 @@ phases:
     - docs/ORCHESTRATION-PLANE-OPERATOR-CONFLICT-RECOVERY.md
     - docs/ORCHESTRATION-PLANE-INTERFACES.md
     - docs/ORCHESTRATION-PLANE-RESOLUTION-CONTRACT.md
+    depends_on:
+    - orchestration_upper_layer_review.run-full-plan-upper-layer-wiring-audit
+    - orchestration_upper_layer_review.run-full-plan-upper-layer-spec-conformance-audit
+    - orchestration_upper_layer_review.run-black-box-upper-layer-orchestration-verification
     agent: gate-reviewer

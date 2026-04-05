@@ -64715,7 +64715,7 @@ phases:
     claimed_at: '2026-04-05T07:41:06.565164+00:00'
   - id: orch_operator_post_gate_cleanup.add-projection-replay-end-to-end-runtime-proof
     name: Add projection replay end-to-end runtime proof
-    status: claimed
+    status: pending
     description: 'step_type: verification
 
       step_intent: retest_green
@@ -64769,8 +64769,6 @@ phases:
     - src/vectl/orchestration/projections.py
     - src/vectl/orch_app.py
     agent: integration-verifier
-    claimed_by: integration-verifier
-    claimed_at: '2026-04-05T07:41:29.209921+00:00'
   - id: orch_operator_post_gate_cleanup.gate
     name: Retest and gate remaining deep-review should-fix and suggestions
     status: pending

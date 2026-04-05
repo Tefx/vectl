@@ -164,3 +164,51 @@ def test_write_surface_request_for_read_only_tool_is_denied() -> None:
         assert exc.denied[0].reason_code == "surface_mismatch"
     else:
         raise AssertionError("Expected AuthorizationError for surface mismatch")
+
+
+def test_allowlist_runtime_enforcement_varies_with_snapshot() -> None:
+    """Deny-by-default proof: same planned call denied/allowed by allowlist snapshot."""
+    case = _case()
+    invocations: list[str] = []
+
+    def _invoker(
+        request_case: ResolutionCase,
+        calls: tuple[ResolverToolCall, ...],
+        invocation_ref: str,
+    ) -> ResolutionReport:
+        assert request_case is case
+        assert calls == (ResolverToolCall(family="core", name="status", surface="read"),)
+        invocations.append(invocation_ref)
+        return ResolutionReport(
+            status="waiting",
+            summary="resolver call executed after allowlist authorization",
+            evidence_refs=("resolver://allowed",),
+        )
+
+    gateway = AuditedResolverGateway(
+        planned_tool_calls=(ResolverToolCall(family="core", name="status", surface="read"),),
+        resolver_invoker=_invoker,
+        invocation_ref_factory=lambda: "inv-runtime-proof",
+    )
+
+    try:
+        authorize_and_invoke(case=case, allowed_tool_families=(), gateway=gateway)
+    except AuthorizationError as exc:
+        assert exc.denied_families == ("core",)
+        assert len(exc.denied) == 1
+        assert exc.denied[0].reason_code == "family_not_allowed"
+    else:
+        raise AssertionError("Expected AuthorizationError for deny-all allowlist")
+
+    assert invocations == []
+
+    allowed_result = authorize_and_invoke(
+        case=case,
+        allowed_tool_families=("core",),
+        gateway=gateway,
+    )
+
+    assert allowed_result.outcome == "success"
+    assert allowed_result.report is not None
+    assert allowed_result.report.summary == "resolver call executed after allowlist authorization"
+    assert invocations == ["inv-runtime-proof"]

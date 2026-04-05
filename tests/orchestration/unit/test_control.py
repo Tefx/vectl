@@ -17,7 +17,12 @@ from vectl.orchestration.contracts import (
     RosterSnapshot,
     RuntimeSnapshot,
 )
-from vectl.orchestration.control import ControlInputSources, PlanAwareControl
+from vectl.orchestration.control import (
+    DEFAULT_DISPATCH_ROLE,
+    ControlInputSources,
+    PlanAwareControl,
+)
+from vectl.orchestration.roster import Roster
 
 
 def _core(
@@ -126,6 +131,27 @@ def test_evaluate_dispatches_claimable_step_with_available_role() -> None:
     assert decision.kind == "dispatch"
     assert decision.step_id == "core.impl"
     assert decision.role == "python-executor"
+
+
+def test_roster_none_claim_is_not_interpreted_as_plan_blockage() -> None:
+    """R24 behavioral proof: no reusable resource does not force resolve path."""
+    roster_component = Roster()
+    claim = roster_component.claim("python-executor")
+    assert claim is None
+
+    control = PlanAwareControl(
+        sources=ControlInputSources(
+            core_adapter=_FakeCoreAdapter(_core(claimable=("core.impl",))),
+            roster=_FakeRosterSource(roster_component.snapshot()),
+            runtime=_FakeRuntimeSource(_runtime()),
+        )
+    )
+
+    decision = control.evaluate_current()
+
+    assert decision.kind == "dispatch"
+    assert decision.step_id == "core.impl"
+    assert decision.role == DEFAULT_DISPATCH_ROLE
 
 
 def test_evaluate_waits_when_execution_is_already_active() -> None:

@@ -66671,3 +66671,10 @@ phases:
     outcomes.
   depends_on:
   - orchestration_dispatch_policy
+- id: orchestration_orch_app_routing
+  name: Orchestration App Routing
+  status: locked
+  gate: orch_app enforces claim-before-start, reconcile-before-complete, review-result
+    normalization, and resolution routing using the shared dispatch/runtime substrate.
+  depends_on:
+  - orchestration_resolver_coordination

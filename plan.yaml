@@ -64250,3 +64250,117 @@ phases:
       \ tests/orchestration/unit/test_runtime.py -> 47 passed\n\nArtifact: independent_architecture_retest_report.md\n\
       Commit: 525f667\n\nOverall verdict:\n- gate_open_allowed: true\n- remaining\
       \ blocker-class issue intersecting final gate: none"
+  - id: orch_operator_deep_review.fix_gate_artifact_freshness_and_lint
+    name: Fix stale consumer-boundary artifact freshness and lint blockers
+    status: pending
+    description: 'Fix ALL gate-intersecting issues from the failed deep-review gate
+      in one batched remediation step.
+
+
+      work_type: defect_repair
+
+      step_type: implementation
+
+      verification_scope: phase-check
+
+
+      touch_paths:
+
+      - consumer_boundary_conformance_report.yaml
+
+      - src/vectl/orchestration/continuity_artifacts.py
+
+      - src/vectl/orchestration/contracts.py
+
+
+      ## Blockers to Fix (ALL of these, not just the first)
+
+
+      ### B1: stale consumer-boundary conformance artifact
+
+      Issue: `consumer_boundary_conformance_report.yaml` is stale and falsely reports
+      unresolved blockers because artifact freshness no longer matches current code
+      truth.
+
+      Remediation:
+
+      - identify the authoritative regeneration path for the report
+
+      - regenerate the artifact from current code truth
+
+      - remove or correct any stale unresolved-blocker entries so the artifact reflects
+      the latest implementation state
+
+      - record the provenance of the mismatch (stale artifact vs current code) and
+      ensure the regeneration path is the single source for future refreshes in this
+      review loop
+
+      IMPORTANT: search for sibling freshness assumptions or duplicated report snapshots
+      beyond the named artifact if they can poison the gate decision basis
+
+
+      ### S1: F401 unused imports
+
+      Locations:
+
+      - `src/vectl/orchestration/continuity_artifacts.py`
+
+      - `src/vectl/orchestration/contracts.py`
+
+      Remediation:
+
+      - remove unused imports and keep public/exported semantics unchanged
+
+      - do not widen scope beyond lint cleanup needed for these files
+
+
+      ## Completion Criteria (stub exclusion)
+
+      This is an IMPLEMENTATION step. Stub-only completion is NOT acceptable.
+
+      Each deliverable MUST contain substantive logic or artifact correction that
+      closes the gate-intersecting blocker family and the named lint issues.
+
+
+      ## Out-of-scope guardrail
+
+      - no new behavior or API redesign
+
+      - no unrelated refactors outside the artifact freshness path and the named lint
+      cleanup'
+    verification: 'phase-check protecting `orch_operator_deep_review.gate`:
+
+      - Regenerated `consumer_boundary_conformance_report.yaml` matches current code
+      truth and no longer carries stale unresolved blockers
+
+      - Focused lint cleanup removes F401 findings from the two named files
+
+      - Gate decision basis is no longer poisoned by stale artifact state'
+    evidence_template: '## refs Read Confirmation (MANDATORY)
+
+
+      For each ref in this step:
+
+      - <filename> — key passage or "NOT READ: <reason>"
+
+
+      If no refs were provided, state: "No refs for this step."
+
+
+      ## Remediation Evidence
+
+      - Authoritative regeneration path used for `consumer_boundary_conformance_report.yaml`
+
+      - Exact command(s) used to regenerate the artifact
+
+      - Before/after summary of stale blocker entries corrected or removed
+
+      - Exact lint command(s) used for the two named files
+
+      - Confirmation that no unrelated files were changed beyond the remediation scope
+
+      - Short provenance note explaining why the artifact had become stale'
+    depends_on:
+    - orch_operator_deep_review.retest_behavioral_conformance_blockers
+    - orch_operator_deep_review.retest_architecture_blockers
+    agent: python-senior

@@ -63314,7 +63314,7 @@ phases:
   steps:
   - id: orch_operator_deep_review.full_plan_check
     name: Run full-plan orchestration quality check
-    status: claimed
+    status: pending
     description: 'Full-plan check: run the broadest agreed project-wide quality command
       family plus full orchestration smoke coverage at the nearest boundary before
       final audit. This protects the final deep review gate from being the first place
@@ -63330,8 +63330,6 @@ phases:
       - Any broad failure intersects the final gate and must be remediated before
       completion'
     agent: integration-verifier
-    claimed_by: integration-verifier
-    claimed_at: '2026-04-04T22:27:05.822041+00:00'
   - id: orch_operator_deep_review.wiring_audit_full
     name: Run full wiring audit
     status: done

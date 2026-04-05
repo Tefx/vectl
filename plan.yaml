@@ -67018,6 +67018,152 @@ phases:
     normalization, and resolution routing using the shared dispatch/runtime substrate.
   depends_on:
   - orchestration_resolver_coordination
+  steps:
+  - id: orchestration_orch_app_routing.implement-orch-app-routing-reconcile-gate-and-result-normalization
+    name: Implement orch_app routing, reconcile gate, and result normalization
+    status: pending
+    description: 'step_type: implementation
+
+
+      Implement upper-layer orch_app routing on top of the shared dispatch/runtime
+      substrate.
+
+
+      Scope:
+
+      - refresh core/roster/runtime snapshots before control evaluation
+
+      - on dispatch: perform approved claim before runtime start, then build DispatchSpec
+      and start execution
+
+      - on terminal success: invoke reconcile immediately and allow complete only
+      after reconcile=merged|noop
+
+      - on fail/stall/transport_error: route explicit non-closure instead of pretending
+      the step is complete
+
+      - parse structured review/gate results in the orch_app normalization path, not
+      in control
+
+      - normalize non-pass review output and parse failures into explicit ResolutionCase
+      objects
+
+      - route resolver outcomes unblocked|waiting|operator_required|halt correctly
+
+      - choose main_worktree vs linked_worktree by RoleProfile.execution_context'
+    verification: '- phase-check: claim happens before runtime start on dispatch
+
+      - phase-check: complete occurs only after reconcile merged|noop
+
+      - phase-check: review/gate non-pass output and parse failures become explicit
+      ResolutionCase input
+
+      - phase-check: resolver delegation uses shared dispatch/runtime substrate with
+      source_kind=resolution_subtask'
+    refs:
+    - docs/ORCHESTRATION-PLANE-ORCH-APP-ROUTING.md
+    - docs/ORCHESTRATION-PLANE-DISPATCH-AND-PROMPT-POLICY.md
+    - docs/ORCHESTRATION-PLANE-RESOLUTION-CONTRACT.md
+    - docs/ORCHESTRATION-PLANE-INTERFACES.md
+    - src/vectl/orch_app.py
+    agent: python-senior
+  - id: orchestration_orch_app_routing.prove-orch-app-routing-seam-end-to-end
+    name: Prove orch_app routing seam end-to-end
+    status: pending
+    description: 'step_type: test
+
+      step_intent: retest_green
+
+      expected_result: green
+
+
+      tags:
+
+      - integration
+
+
+      As an INDEPENDENT TESTER (integration-verifier), provide seam-level real-path
+      proof for orch_app routing.
+
+
+      Required path proof:
+
+      - dispatch path: claim before runtime start
+
+      - success path: no complete before reconcile closure
+
+      - review/gate path: non-pass structured result becomes ResolutionCase
+
+      - resolver path: resolution_subtask routing uses shared dispatch substrate'
+    verification: '- phase-check: at least one real orch_app path proves claim-before-start
+      and reconcile-before-complete
+
+      - phase-check: actual output shows explicit ResolutionCase routing for non-pass
+      review or parse failure
+
+      - phase-check: remaining mocks in related tests are justified'
+    refs:
+    - docs/ORCHESTRATION-PLANE-ORCH-APP-ROUTING.md
+    - src/vectl/orch_app.py
+    - tests/orchestration/unit/test_orch_app.py
+    agent: integration-verifier
+  - id: orchestration_orch_app_routing.audit-orch-app-routing-against-canonical-specs
+    name: Audit orch_app routing against canonical specs
+    status: pending
+    description: 'As an INDEPENDENT TESTER (spec-verifier), perform spec conformance
+      verification for the routing phase.
+
+
+      Focus areas:
+
+      - claim-before-start rule
+
+      - reconcile-before-complete rule
+
+      - review/gate parse location and normalization behavior
+
+      - operator_required routing semantics
+
+      - main_worktree vs linked_worktree selection by RoleProfile'
+    verification: '- phase-check: spec-conformance report covers each touched routing
+      requirement with implementation citations
+
+      - phase-check: any DIVERGES/PARTIAL/NEEDS_TEST findings are explicit for gate
+      review'
+    refs:
+    - docs/ORCHESTRATION-PLANE-ORCH-APP-ROUTING.md
+    - docs/ORCHESTRATION-PLANE-DISPATCH-AND-PROMPT-POLICY.md
+    - docs/ORCHESTRATION-PLANE-RESOLUTION-CONTRACT.md
+    - src/vectl/orch_app.py
+    agent: spec-verifier
+  - id: orchestration_orch_app_routing.gate-orch-app-routing
+    name: Gate orch_app routing
+    status: pending
+    description: 'As an INDEPENDENT REVIEWER (gate-reviewer), assess whether the orchestration_orch_app_routing
+      phase is ready for operator/conflict/recovery alignment.
+
+
+      review_depth: THOROUGH
+
+      cross_cutting_focus:
+
+      - claim-before-start
+
+      - reconcile-before-complete
+
+      - explicit ResolutionCase normalization
+
+      - RoleProfile-based execution context routing'
+    verification: '- phase-check: all orch_app routing steps completed with implementation,
+      integration, and spec evidence
+
+      - phase-check: blocker-class routing obligations are proven or explicitly block
+      downstream work'
+    refs:
+    - docs/ORCHESTRATION-PLANE-ORCH-APP-ROUTING.md
+    - docs/ORCHESTRATION-PLANE-DISPATCH-AND-PROMPT-POLICY.md
+    - docs/ORCHESTRATION-PLANE-RESOLUTION-CONTRACT.md
+    agent: gate-reviewer
 - id: orchestration_operator_recovery
   name: Orchestration Operator / Conflict / Recovery Alignment
   status: locked

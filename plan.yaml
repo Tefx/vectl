@@ -63485,7 +63485,7 @@ phases:
       Downstream steps and gate were rewired to depend on retest before gate open.'
   - id: orch_operator_deep_review.architecture_review
     name: Review architecture, ownership, and concurrency safety
-    status: claimed
+    status: pending
     description: Review the landed operator surface against the orchestration architecture
       basis. Check module ownership, dependency direction, state-strata boundaries,
       append-only persistence assumptions, and concurrency safety for any module-level
@@ -63501,8 +63501,6 @@ phases:
     depends_on:
     - orch_operator_deep_review.wiring_audit_full
     agent: software-architect
-    claimed_by: software-architect
-    claimed_at: '2026-04-05T05:52:27.333981+00:00'
   - id: orch_operator_deep_review.contract_strength
     name: Audit contract strength and non-vacuous boundaries
     status: claimed

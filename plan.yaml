@@ -65932,6 +65932,113 @@ phases:
       \ surfaces unchanged\n- Deviation record (required if contract artifact needed\
       \ correction):\n"
     agent: python-executor
+  - id: orchestration_runner_backend.retest-backend-green
+    name: Retest runner backend against locked backend contract
+    status: pending
+    description: 'step_type: test
+
+      step_intent: retest_green
+
+      expected_result: green
+
+
+      As an INDEPENDENT TESTER (integration-verifier), validate the new runner backend
+      from a fresh perspective.
+
+
+      YOUR GOAL IS TO FIND PROBLEMS, not to confirm it works.
+
+
+      Test for:
+
+      - happy path: registry lookup -> launch -> poll -> cleanup mechanical flow
+
+      - edge cases: unsupported runner, launch failure, poll status transitions, cleanup
+      after failure
+
+      - error scenarios: typed backend error surfaces remain mechanical and do not
+      absorb runtime/reconcile policy
+
+      - boundary check: runtime lifecycle is still not fully wired in this phase
+
+
+      Independence Level: L1
+
+
+      Actual output must include concrete command/test output, not just "tests pass".
+
+      '
+    verification: 'Scope: phase-check protecting orchestration_runner_backend.gate
+      and orchestration_runtime_wiring.gate.
+
+      - Green targeted tests prove launch/poll/cleanup mechanical behavior.
+
+      - Backend errors remain mechanical and typed.
+
+      - Evidence shows runtime lifecycle/wiring is intentionally still incomplete
+      here rather than silently expanded.
+
+      - Any issues found are recorded as blockers/should_fix, not hidden in summaries.'
+    evidence_template: '## refs Read Confirmation (MANDATORY)
+
+
+      For each ref in this step:
+
+      - <filename> — key passage or "NOT READ: <reason>"
+
+
+      If no refs were provided, state: "No refs for this step."
+
+
+      ## Verification Report
+
+      **Tester**: integration-verifier
+
+      **Scope**: runner backend mechanical substrate
+
+      **Independence Level**: L1
+
+
+      ### Test Execution
+
+      - Commands executed:
+
+      ```
+
+      <paste actual commands>
+
+      ```
+
+      - Actual output:
+
+      ```
+
+      <paste stdout/stderr or runner output>
+
+      ```
+
+
+      ### Issues Found
+
+      | Severity | Description | Location | Reproduction |
+
+      | -------- | ----------- | -------- | ------------ |
+
+
+      ### Coverage Assessment
+
+      - registry + capabilities verified:
+
+      - launch/poll/cleanup verified:
+
+      - typed error surfaces verified:
+
+      - intentionally not covered until runtime wiring:
+
+      '
+    depends_on:
+    - orchestration_runner_backend.build-runner-backend
+    agent: integration-verifier
 - id: orchestration_runtime_lifecycle
   name: Orchestration Runtime Worktree Lifecycle
   status: locked

@@ -65067,3 +65067,10 @@ phases:
   name: vectl_decide Contract Refresh — Contract Lock
   status: pending
   gate: Refreshed vectl_decide contract is pinned in code-facing surfaces before implementation.
+- id: decide_refresh_tests
+  name: vectl_decide Contract Refresh — Test Definitions
+  status: locked
+  gate: Expected-red tests expose the refreshed contract gap across core, state, and
+    MCP surfaces.
+  depends_on:
+  - decide_refresh_contracts

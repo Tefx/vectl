@@ -65679,3 +65679,11 @@ phases:
     leaks.
   depends_on:
   - orchestration_foundation_lock
+- id: orchestration_runtime_lifecycle
+  name: Orchestration Runtime Worktree Lifecycle
+  status: locked
+  gate: Runtime owns worktree prepare/execute/reconcile/cleanup lifecycle mechanically,
+    preserves hard rules, and surfaces unresolved runtime failures without silently
+    completing work.
+  depends_on:
+  - orchestration_foundation_lock

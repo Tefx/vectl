@@ -64733,3 +64733,151 @@ phases:
     - src/vectl/orchestration/projections.py
     - src/vectl/orch_app.py
     agent: integration-verifier
+  - id: orch_operator_post_gate_cleanup.gate
+    name: Retest and gate remaining deep-review should-fix and suggestions
+    status: pending
+    description: 'step_type: gate
+
+      verification_scope: full-plan-check
+
+
+      As an INDEPENDENT REVIEWER (gate-reviewer), confirm this post-gate cleanup phase
+      closes the remaining should-fix and suggestion-class findings from the latest
+      orchestration operator deep-review set.
+
+
+      YOU ARE THE QUALITY GATE. Block progress if any prior should-fix or suggestion
+      remains materially open, intersects downstream quality checks, or lacks evidence.
+
+
+      review_depth: THOROUGH
+
+      review_depth_rationale:
+
+      - post-deep-review cleanup must prove residual findings are actually closed
+
+      - scope spans type hygiene, config validation behavior, and replay-runtime evidence
+
+
+      cross_cutting_focus:
+
+      - config-validate runtime contract and exit-code conformance
+
+      - projection replay durability and runtime artifact production
+
+      - no residual lint/type hygiene regressions in the targeted orchestration files
+
+      '
+    verification: 'full-plan-check protecting plan completion for the cleanup phase:
+
+      - all three cleanup steps complete with adequate evidence
+
+      - `uv run ruff check src/vectl/orchestration/config.py src/vectl/orchestration/run_store.py
+      src/vectl/orchestration/control_channel.py src/vectl/orchestration/__init__.py`
+      passes
+
+      - `uv run mypy src/vectl/orchestration/config.py src/vectl/orchestration/run_store.py
+      src/vectl/orchestration/control_channel.py src/vectl/orchestration/__init__.py`
+      passes
+
+      - `uv run pytest tests/orchestration/unit/test_config_state_impl.py -k validation
+      -v` passes
+
+      - `uv run pytest tests/test_orch_cli_surface.py -k "config and validate" -v`
+      passes
+
+      - `uv run pytest tests/repro/test_orch_cli_recovery_red.py -k config_validate
+      -v` passes or stronger equivalent evidence is cited
+
+      - `uv run pytest tests/orchestration/unit/test_projections_impl.py -v` passes
+
+      - `uv run pytest tests/orchestration/unit/test_orch_app.py -k resume_safe_replays_from_durable_artifacts
+      -v` passes or stronger equivalent evidence is cited
+
+      - gate report explicitly states whether any should-fix/suggestion from the prior
+      deep-review set remains open'
+    evidence_template: '## Gate Review Report
+
+
+      **Reviewer**: gate-reviewer (independent of phase implementation)
+
+      **Phase**: orch_operator_post_gate_cleanup
+
+
+      ### refs Read Confirmation (MANDATORY)
+
+      For each ref in this step:
+
+      - <filename> — key passage or "NOT READ: <reason>"
+
+
+      If no refs were provided, state: "No refs for this step."
+
+
+      ### Commands rechecked
+
+      ```bash
+
+      uv run ruff check src/vectl/orchestration/config.py src/vectl/orchestration/run_store.py
+      src/vectl/orchestration/control_channel.py src/vectl/orchestration/__init__.py
+
+      uv run mypy src/vectl/orchestration/config.py src/vectl/orchestration/run_store.py
+      src/vectl/orchestration/control_channel.py src/vectl/orchestration/__init__.py
+
+      uv run pytest tests/orchestration/unit/test_config_state_impl.py -k validation
+      -v
+
+      uv run pytest tests/test_orch_cli_surface.py -k "config and validate" -v
+
+      uv run pytest tests/repro/test_orch_cli_recovery_red.py -k config_validate -v
+
+      uv run pytest tests/orchestration/unit/test_projections_impl.py -v
+
+      uv run pytest tests/orchestration/unit/test_orch_app.py -k resume_safe_replays_from_durable_artifacts
+      -v
+
+      ```
+
+
+      ### Step-by-step review
+
+      | Step ID | Status | Evidence Quality | Concerns |
+
+      | ------- | ------ | ---------------- | -------- |
+
+      | orch_operator_post_gate_cleanup.fix-orchestration-operator-type-annotations-and-lint-hygiene
+      | ✅/⚠️/❌ | excellent/adequate/insufficient/missing | <notes> |
+
+      | orch_operator_post_gate_cleanup.close-config-validation-red-gap-per-spec-8-5-or-explicit-durable-behavior
+      | ✅/⚠️/❌ | excellent/adequate/insufficient/missing | <notes> |
+
+      | orch_operator_post_gate_cleanup.add-projection-replay-end-to-end-runtime-proof
+      | ✅/⚠️/❌ | excellent/adequate/insufficient/missing | <notes> |
+
+
+      ### Prior-gate residuals register
+
+      | Finding family | Prior disposition | Now closed? | Evidence ref | Notes |
+
+      | -------------- | ----------------- | ----------- | ------------ | ----- |
+
+      | type/lint hygiene | should_fix/suggestion | yes/no | <ref> | <notes> |
+
+      | config validation | should_fix/suggestion | yes/no | <ref> | <notes> |
+
+      | projection replay runtime proof | should_fix/suggestion | yes/no | <ref> |
+      <notes> |
+
+
+      ### Gate Decision
+
+      - [ ] OPEN: no remaining should-fix/suggestion with gate intersection
+
+      - [ ] BLOCKED: residual issues remain and need follow-up ownership
+
+      '
+    depends_on:
+    - orch_operator_post_gate_cleanup.fix-orchestration-operator-type-annotations-and-lint-hygiene
+    - orch_operator_post_gate_cleanup.close-config-validation-red-gap-per-spec-8-5-or-explicit-durable-behavior
+    - orch_operator_post_gate_cleanup.add-projection-replay-end-to-end-runtime-proof
+    agent: gate-reviewer

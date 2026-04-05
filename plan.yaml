@@ -65081,3 +65081,9 @@ phases:
     conformant to the RFC.
   depends_on:
   - decide_refresh_tests
+- id: doc_sync
+  name: Documentation Sync
+  status: locked
+  gate: Documentation reflects the refreshed vectl_decide contract exactly.
+  depends_on:
+  - decide_refresh_impl

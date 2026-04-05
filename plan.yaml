@@ -64010,3 +64010,91 @@ phases:
     depends_on:
     - orch_operator_deep_review.architecture_review
     agent: python-senior
+  - id: orch_operator_deep_review.retest_architecture_blockers
+    name: Retest deep-review architecture blockers
+    status: pending
+    description: 'As an INDEPENDENT ARCHITECTURE REVIEWER (`software-architect`),
+      retest the four blocker families reported by `orch_operator_deep_review.architecture_review`
+      after the batched fix lands.
+
+
+      YOUR GOAL IS TO FIND REMAINING ARCHITECTURE, OWNERSHIP, OR CONCURRENCY DEFECTS,
+      not to confirm the fix.
+
+
+      Retest scope:
+
+      - B1 boundary integrity between inspection queries and RunRegistry ownership
+
+      - B2 concurrency/lifecycle safety for events + control-channel state ownership
+
+      - B3 durability and ordering guarantees for run admission + event sequencing
+
+      - B4 runtime workspace-root ownership through `RuntimeConfig.workspace_root`
+
+
+      Control-plane closure semantics are mandatory: produce an explicit proof/disposition
+      record for each blocker family, including whether it is PROVEN, NEEDS_TEST,
+      UNPROVEN, or UNCERTAIN_BLOCKING and whether it intersects the final gate.
+
+      '
+    verification: 'full-plan-check protecting `orch_operator_deep_review.gate`:
+
+      - Re-review all four reported blocker families from `orch_operator_deep_review.architecture_review`
+
+      - For each family, record requirement_ref, behavior_claim, runtime_proof_expected,
+      evidence_ref, status, closure_path, and gate_decision_basis
+
+      - Confirm no blocker-class architecture issue remains that intersects the final
+      deep-review gate
+
+      - If any blocker remains unproven, explicitly BLOCK gate-open eligibility'
+    evidence_template: '## Architecture Retest Report
+
+
+      **Tester**: software-architect (independent of implementation)
+
+      **Scope**: Architecture blocker retest for orch_operator_deep_review
+
+      **Independence Level**: L2
+
+
+      ### refs Read Confirmation (MANDATORY)
+
+      If no refs were provided, state: "No refs for this step."
+
+
+      ## Behavioral Proof Register
+
+      | requirement_ref | behavior_claim | runtime_proof_expected | evidence_ref |
+      status | closure_path | gate_decision_basis |
+
+      | --- | --- | --- | --- | --- | --- | --- |
+
+      | B1 | inspection queries do not cross private RunRegistry helper boundary |
+      <expected proof> | <evidence> | PROVEN/NEEDS_TEST/UNPROVEN/UNCERTAIN_BLOCKING
+      | <closure> | <basis> |
+
+      | B2 | events/control state ownership is concurrency-safe and runtime-scoped
+      | <expected proof> | <evidence> | PROVEN/NEEDS_TEST/UNPROVEN/UNCERTAIN_BLOCKING
+      | <closure> | <basis> |
+
+      | B3 | admission + event sequencing preserves ordered durable semantics | <expected
+      proof> | <evidence> | PROVEN/NEEDS_TEST/UNPROVEN/UNCERTAIN_BLOCKING | <closure>
+      | <basis> |
+
+      | B4 | runtime path ownership derives from RuntimeConfig.workspace_root | <expected
+      proof> | <evidence> | PROVEN/NEEDS_TEST/UNPROVEN/UNCERTAIN_BLOCKING | <closure>
+      | <basis> |
+
+
+      ## Gate Recommendation
+
+      - gate_open_allowed: <true|false>
+
+      - blocking_items: <list or none>
+
+      '
+    depends_on:
+    - orch_operator_deep_review.fix_architecture_blockers_batch
+    agent: software-architect

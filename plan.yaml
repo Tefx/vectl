@@ -66790,6 +66790,8 @@ phases:
     - src/vectl/orchestration/config.py
     - src/vectl/orch_app.py
     - src/vectl/orchestration/resolver_gateway.py
+    depends_on:
+    - orchestration_dispatch_policy.define-expected-red-tests-for-dispatch-policy-and-canonical-sync
     agent: python-senior
   - id: orchestration_dispatch_policy.retest-dispatch-policy-and-canonical-contract-sync-green
     name: Retest dispatch policy and canonical contract sync green

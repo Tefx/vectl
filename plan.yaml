@@ -66875,6 +66875,142 @@ phases:
     outcomes.
   depends_on:
   - orchestration_dispatch_policy
+  steps:
+  - id: orchestration_resolver_coordination.implement-resolver-coordination-review-failure-intake-and-approved-facade-mutation-path
+    name: Implement resolver coordination, review-failure intake, and approved-facade
+      mutation path
+    status: pending
+    description: 'step_type: implementation
+
+
+      Implement the upper-layer resolver coordination rules after dispatch policy
+      is locked.
+
+
+      Scope:
+
+      - consume explicit ResolutionCase input and return bounded ResolutionReport
+      output
+
+      - enforce that resolver only runs after normal flow does not close
+
+      - keep resolver in main worktree
+
+      - forbid resolver from claiming new normal work
+
+      - route review/gate non-pass outcomes and parse failures into explicit ResolutionCase
+      inputs
+
+      - when resolver performs authorized core mutation, use the approved vectl/core
+      facade only
+
+      - support planner as a resolver-invoked remediation subagent, not a normal-flow
+      fallback
+
+      - if resolver cannot close safely, surface operator_required explicitly with
+      user/operator message data
+
+
+      Touch likely surfaces: src/vectl/orchestration/resolver.py, src/vectl/orchestration/resolver_gateway.py,
+      src/vectl/orchestration/contracts.py, src/vectl/orch_app.py.
+
+
+      Stub-only completion is not acceptable.'
+    verification: '- phase-check: resolver entry occurs only for explicit non-closure
+      cases
+
+      - phase-check: resolver does not claim new work and uses approved facade for
+      authorized mutations
+
+      - phase-check: planner delegation uses resolution_subtask semantics and bounded
+      ResolutionReport outcomes
+
+      - protects downstream gates: orchestration_orch_app_routing.gate and orchestration_operator_recovery.gate'
+    refs:
+    - docs/ORCHESTRATION-PLANE-RESOLVER-COORDINATION.md
+    - docs/ORCHESTRATION-PLANE-RESOLUTION-CONTRACT.md
+    - docs/ORCHESTRATION-PLANE-DISPATCH-AND-PROMPT-POLICY.md
+    - docs/ORCHESTRATION-PLANE-INTERFACES.md
+    - src/vectl/orchestration/resolver.py
+    - src/vectl/orchestration/resolver_gateway.py
+    - src/vectl/orch_app.py
+    agent: python-senior
+  - id: orchestration_resolver_coordination.verify-resolver-coordination-and-planner-remediation-routing
+    name: Verify resolver coordination and planner-remediation routing
+    status: pending
+    description: 'step_type: test
+
+      step_intent: retest_green
+
+      expected_result: green
+
+
+      As an INDEPENDENT TESTER (integration-verifier), validate resolver coordination
+      from a fresh perspective.
+
+
+      Test for:
+
+      - review_failed and merge_conflict cases normalize into explicit ResolutionCase
+      handling
+
+      - resolver stays in main worktree and never performs claim for new work
+
+      - planner is invoked only as resolver remediation subagent when replan is required
+
+      - approved vectl facade is the only mutation path used for authorized resolver
+      repairs
+
+      - unresolved cases produce explicit operator_required outcomes rather than silent
+      wait'
+    verification: '- phase-check: targeted resolver coordination tests pass green
+
+      - phase-check: at least one test proves planner is resolver-owned remediation,
+      not normal-flow fallback
+
+      - phase-check: at least one test proves operator_required is explicit and auditable'
+    refs:
+    - docs/ORCHESTRATION-PLANE-RESOLVER-COORDINATION.md
+    - docs/ORCHESTRATION-PLANE-RESOLUTION-CONTRACT.md
+    - docs/ORCHESTRATION-PLANE-DISPATCH-AND-PROMPT-POLICY.md
+    - src/vectl/orchestration/resolver.py
+    - src/vectl/orchestration/resolver_gateway.py
+    agent: integration-verifier
+  - id: orchestration_resolver_coordination.gate-resolver-coordination
+    name: Gate resolver coordination
+    status: pending
+    description: 'As an INDEPENDENT REVIEWER (gate-reviewer), assess whether the orchestration_resolver_coordination
+      phase is ready for orch_app routing work.
+
+
+      review_depth: THOROUGH
+
+      cross_cutting_focus:
+
+      - resolver main-worktree and no-claim rule
+
+      - approved vectl facade mutation boundary
+
+      - planner as resolver remediation subagent
+
+      - explicit operator_required handling
+
+
+      BLOCK if resolver absorbs control authority, mutates outside official surfaces,
+      or silently downgrades unresolved cases.'
+    verification: '- phase-check: all resolver-coordination steps complete with adequate
+      evidence
+
+      - phase-check: unresolved behavioral obligations are either proven or explicitly
+      blocking
+
+      - gate decision basis records whether review-failure normalization and operator_required
+      closure are safe for downstream routing'
+    refs:
+    - docs/ORCHESTRATION-PLANE-RESOLVER-COORDINATION.md
+    - docs/ORCHESTRATION-PLANE-RESOLUTION-CONTRACT.md
+    - docs/ORCHESTRATION-PLANE-INTERFACES.md
+    agent: gate-reviewer
 - id: orchestration_orch_app_routing
   name: Orchestration App Routing
   status: locked

@@ -65467,6 +65467,37 @@ phases:
     - decide_refresh_impl.core
     - decide_refresh_impl.mcp-surface
     agent: spec-verifier
+  - id: decide_refresh_impl.gate
+    name: Gate decide_refresh_impl
+    status: pending
+    description: 'Gate review: verify the refreshed vectl_decide contract is implemented,
+      green, and conformant.'
+    verification: 'phase-check protecting doc_sync: implementation, verification,
+      and conformance all pass; task_id != session_id semantics preserved; standalone
+      advisor semantics preserved.'
+    evidence_template: '## refs Read Confirmation (MANDATORY)
+
+      For each ref in this step:
+
+      - <filename> — key passage or "NOT READ: <reason>"
+
+
+      ## Gate Review Report
+
+      - Contract implementation check:
+
+      - task_id semantics check:
+
+      - Standalone usage check:
+
+      - Gate decision: OPEN | BLOCKED'
+    depends_on:
+    - decide_refresh_impl.models-state
+    - decide_refresh_impl.core
+    - decide_refresh_impl.mcp-surface
+    - decide_refresh_impl.verify
+    - decide_refresh_impl.spec-conformance
+    agent: gate-reviewer
 - id: doc_sync
   name: Documentation Sync
   status: locked

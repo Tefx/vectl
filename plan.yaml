@@ -66986,6 +66986,8 @@ phases:
     - docs/ORCHESTRATION-PLANE-DISPATCH-AND-PROMPT-POLICY.md
     - src/vectl/orchestration/resolver.py
     - src/vectl/orchestration/resolver_gateway.py
+    depends_on:
+    - orchestration_resolver_coordination.implement-resolver-coordination-review-failure-intake-and-approved-facade-mutation-path
     agent: integration-verifier
   - id: orchestration_resolver_coordination.gate-resolver-coordination
     name: Gate resolver coordination

@@ -63334,7 +63334,7 @@ phases:
     claimed_at: '2026-04-04T22:27:05.822041+00:00'
   - id: orch_operator_deep_review.wiring_audit_full
     name: Run full wiring audit
-    status: claimed
+    status: done
     description: 'Complete system wiring audit for the orchestration operator surface.
       Verify every public export, CLI command, config field, artifact reader/writer,
       and recovery surface is reachable and consumed where the docs say it is.
@@ -63406,6 +63406,53 @@ phases:
     agent: wiring-auditor
     claimed_by: wiring-auditor
     claimed_at: '2026-04-05T05:43:40.402152+00:00'
+    done_at: '2026-04-05T05:49:23.652939+00:00'
+    evidence: '## Wiring Audit Report
+
+
+      ### refs Read Confirmation
+
+      - tools/vectl/README.md — NOT READ: File not found at specified path; referenced
+      docs/DESIGN.md and pyproject.toml instead as authoritative sources
+
+
+      ### W13: Entry-to-Effect Trace
+
+      All examined orchestration operator lifecycle surfaces are EFFECTFUL (Runtime.prepare/start/cleanup,
+      OrchestrationApp.run/resume/recover, FastMCP mcp.run, Typer app entry).
+
+
+      ### Orphan exports / unreachable public surfaces
+
+      - No dead exports in orchestration public surface; one placeholder outside scope
+      (`main.py:hello()`) identified as non-blocking.
+
+
+      ### Unregistered CLI/operator commands
+
+      - None found. All orch subcommands and aliases are registered and reachable
+      via `app.add_typer(...)` and decorators.
+
+
+      ### Unconsumed config or artifact fields/readers
+
+      - None found for orchestration config fields; fields are consumed by non-test
+      runtime code.
+
+
+      ### Production placeholders / NotImplementedError on operator paths
+
+      - NotImplementedError stubs exist in query/future/read-model surfaces, but audit
+      found they do not intersect operator action paths (run/resume/recover/control).
+
+
+      ### Intersection verdict
+
+      NON_BLOCKING_WITH_PROOF
+
+
+      All required operator execution paths are wired and effectful; no issue found
+      that intersects final gate plan completion for this phase.'
   - id: orch_operator_deep_review.spec_conformance_full
     name: Run full spec conformance audit
     status: pending

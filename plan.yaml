@@ -67338,6 +67338,10 @@ phases:
     refs:
     - docs/ORCHESTRATION-PLANE-OPERATOR-CONFLICT-RECOVERY.md
     - docs/ORCHESTRATION-PLANE-ORCH-APP-ROUTING.md
+    depends_on:
+    - orchestration_operator_recovery.implement-operator-notification-conflict-preservation-and-recovery-alignment
+    - orchestration_operator_recovery.verify-durable-operator-pause-and-recovery-behavior
+    - orchestration_operator_recovery.audit-operator-conflict-recovery-conformance
     agent: gate-reviewer
 - id: orchestration_upper_layer_review
   name: Orchestration Upper-Layer Review

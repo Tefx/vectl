@@ -66124,6 +66124,72 @@ phases:
     completing work.
   depends_on:
   - orchestration_foundation_lock
+  steps:
+  - id: orchestration_runtime_lifecycle.implement-worktree-lifecycle
+    name: Implement runtime worktree prepare/execute/reconcile/cleanup lifecycle
+    status: pending
+    description: "step_type: implementation\nwork_type: new_capability\nupstream_artifacts:\n\
+      \  - path: src/vectl/orchestration/contracts.py\n    from_step: orchestration_foundation_lock.pin-boundaries-and-contracts\n\
+      \    tier: contract\n  - path: src/vectl/orchestration/interfaces.py\n    from_step:\
+      \ orchestration_foundation_lock.pin-boundaries-and-contracts\n    tier: contract\n\
+      \  - path: tests/orchestration/**\n    from_step: orchestration_foundation_lock.define-red-contract-tests\n\
+      \    tier: test\n\nFill in stub bodies in src/vectl/orchestration/runtime.py\
+      \ and adjacent lifecycle helpers per the contract from step orchestration_foundation_lock.pin-boundaries-and-contracts.\n\
+      \nUPSTREAM ARTIFACTS (AUTHORITATIVE)\n- src/vectl/orchestration/contracts.py\
+      \ — RuntimeSnapshot / ExecutionRequest / ExecutionResult and reconcile-facing\
+      \ fields are locked\n- src/vectl/orchestration/interfaces.py — Runtime public\
+      \ surface is locked\n- tests/orchestration/** — red gap tests are protected\n\
+      \nYOUR SCOPE: Replace stub markers with working mechanical lifecycle logic only.\n\
+      Implement prepare -> execute -> reconcile-status capture -> cleanup sequencing\
+      \ for worktree-backed execution.\nUse Edit tool to modify bodies only.\n\nLikely\
+      \ touch paths:\n- src/vectl/orchestration/runtime.py\n- src/vectl/orchestration/contracts.py\n\
+      - src/vectl/orchestration/interfaces.py\n- src/vectl/orchestration/recovery.py\n\
+      - tests/orchestration/test_runtime_lifecycle*.py\n\nHard rules that MUST remain\
+      \ explicit in the implementation:\n- resolver always runs on the main worktree\n\
+      - claim always belongs to normal flow; resolver only performs abnormal repair-class\
+      \ mutation\n- resolver core mutation is routed through the approved vectl tool\
+      \ facade only\n- complete is forbidden before reconcile result is merged or\
+      \ noop\n- unresolved runtime problems must produce operator/user-facing notification\
+      \ evidence\n\nFailure-mode checklist (MANDATORY)\n- relative vs absolute worktree\
+      \ path behavior\n- missing-worktree / missing-branch fallback behavior\n- stale\
+      \ execution record vs fresh runtime snapshot precedence\n- reconcile=conflict\
+      \ / error / unresolved must block completion and surface operator message\n\
+      - cleanup after partial prepare/start failure\n\nState semantics\n- last-writer-wins:\
+      \ transient runtime tracking for active executions/workspaces only\n- must be\
+      \ preserved exactly: execution -> workspace binding, reconcile status, operator-facing\
+      \ failure message\n- backward-compatible legacy behavior: worktree creation/cleanup\
+      \ continues using standard git worktree semantics from ADR-worktree-support\n\
+      \nOut-of-scope guardrails\n- do not deepen resolver decision policy\n- do not\
+      \ land merge/conflict semantic resolution beyond mechanical detection + evidence\
+      \ capture\n- do not expand control/operator closure beyond surfacing the required\
+      \ unresolved-runtime message\n\n## Completion Criteria (stub exclusion)\nThis\
+      \ is an IMPLEMENTATION step. Stub-only completion is NOT acceptable.\nEach deliverable\
+      \ MUST contain substantive lifecycle logic that processes runtime inputs and\
+      \ blocks completion until reconcile is merged or noop.\n"
+    verification: 'Scope: local-check protecting orchestration_runtime_lifecycle.retest-lifecycle-green
+      and orchestration_runtime_wiring.gate.
+
+      - Focused runtime lifecycle tests prove prepare/execute/reconcile/cleanup behavior.
+
+      - Main path: successful prepare -> execute -> reconcile=merged|noop -> cleanup
+      passes.
+
+      - Failure path: reconcile conflict/unresolved and partial prepare/start failure
+      both preserve operator-facing evidence and prevent completion.
+
+      - Proof shows resolver/main-worktree and approved-facade constraints were not
+      violated.'
+    evidence_template: "## refs Read Confirmation (MANDATORY)\n\nFor each ref in this\
+      \ step:\n- <filename> — key passage or \"NOT READ: <reason>\"\n\nIf no refs\
+      \ were provided, state: \"No refs for this step.\"\n\n## Implementation Report\n\
+      - Touched files:\n- Prepare logic location:\n- Execute/start logic location:\n\
+      - Reconcile-status capture location:\n- Completion-blocking guard location:\n\
+      - Cleanup logic location:\n- Operator/user notification path location:\n- Failure-path\
+      \ regressions added:\n  - reconcile conflict/unresolved:\n  - partial prepare/start\
+      \ failure:\n  - cleanup after failure:\n- Concurrency / mutable-state note for\
+      \ runtime tracking:\n- Deviation record (required if contract artifact needed\
+      \ correction):\n"
+    agent: python-senior
 - id: orchestration_runtime_wiring
   name: Orchestration Runner/Runtime Wiring
   status: locked

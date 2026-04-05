@@ -63455,7 +63455,7 @@ phases:
       that intersects final gate plan completion for this phase.'
   - id: orch_operator_deep_review.spec_conformance_full
     name: Run full spec conformance audit
-    status: claimed
+    status: done
     description: Full-system adversarial conformance audit focused on cross-cutting
       and integration-level orchestration operator requirements that per-phase checks
       could miss.
@@ -63472,6 +63472,17 @@ phases:
     agent: spec-verifier
     claimed_by: spec-verifier
     claimed_at: '2026-04-05T05:52:41.958245+00:00'
+    done_at: '2026-04-05T05:58:24.330137+00:00'
+    evidence: 'Spec conformance audit completed and identified blocker-class behavioral
+      proof gaps (R19 resolver allowlist runtime enforcement; R24 roster None interpretation).
+      Per blocker protocol, remediation ownership was created via planner as batched
+      fix + retest steps:
+
+      - orch_operator_deep_review.fix_behavioral_conformance_blockers
+
+      - orch_operator_deep_review.retest_behavioral_conformance_blockers
+
+      Downstream steps and gate were rewired to depend on retest before gate open.'
   - id: orch_operator_deep_review.architecture_review
     name: Review architecture, ownership, and concurrency safety
     status: claimed

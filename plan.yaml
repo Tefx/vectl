@@ -63908,7 +63908,7 @@ phases:
       \ files modified: no"
   - id: orch_operator_deep_review.fix_architecture_blockers_batch
     name: Fix deep-review architecture blockers (batched)
-    status: pending
+    status: claimed
     description: 'Fix ALL blocker-class findings from `orch_operator_deep_review.architecture_review`
       in one batched remediation step.
 
@@ -64040,6 +64040,8 @@ phases:
     depends_on:
     - orch_operator_deep_review.architecture_review
     agent: python-senior
+    claimed_by: python-senior
+    claimed_at: '2026-04-05T06:24:07.594832+00:00'
   - id: orch_operator_deep_review.retest_architecture_blockers
     name: Retest deep-review architecture blockers
     status: pending

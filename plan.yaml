@@ -65063,3 +65063,7 @@ phases:
 
       - Cleanup phase objectives satisfied; no remaining prior deep-review should-fix/suggestion
       item blocks progression.'
+- id: decide_refresh_contracts
+  name: vectl_decide Contract Refresh — Contract Lock
+  status: pending
+  gate: Refreshed vectl_decide contract is pinned in code-facing surfaces before implementation.

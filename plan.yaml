@@ -63716,7 +63716,7 @@ phases:
       \ ambiguity: none"
   - id: orch_operator_deep_review.retest_behavioral_conformance_blockers
     name: Retest behavioral conformance blockers and decide gate-open eligibility
-    status: claimed
+    status: done
     description: 'Independent post-remediation verification for the batched R19/R24
       behavioral conformance blockers.
 
@@ -63802,3 +63802,21 @@ phases:
     agent: spec-verifier
     claimed_by: spec-verifier
     claimed_at: '2026-04-05T06:04:32.148480+00:00'
+    done_at: '2026-04-05T06:07:43.219411+00:00'
+    evidence: "## refs Read Confirmation (MANDATORY)\n- tools/vectl/README.md — NOT\
+      \ READ: file absent in assigned worktree path.\n\n## Independent Behavioral\
+      \ Proof Review\n- R19:\n  - status: PROVEN\n  - evidence_ref: tests/orchestration/unit/test_resolver_gateway.py::test_allowlist_runtime_enforcement_varies_with_snapshot\n\
+      \  - gate_open_allowed: true\n  - basis: deny-all allowlist raises family_not_allowed\
+      \ and blocks invoker; allowlist=(core) permits invocation.\n- R24:\n  - status:\
+      \ PROVEN\n  - evidence_ref: tests/orchestration/unit/test_control.py::test_roster_none_claim_is_not_interpreted_as_plan_blockage\n\
+      \  - gate_open_allowed: true\n  - basis: roster claim None leads control decision.kind=dispatch\
+      \ with fallback role, not resolve/blocked.\n\n## Retest Execution\n- Run: uv\
+      \ run pytest -q tests/orchestration/unit/test_resolver_gateway.py::test_allowlist_runtime_enforcement_varies_with_snapshot\
+      \ tests/orchestration/unit/test_control.py::test_roster_none_claim_is_not_interpreted_as_plan_blockage\
+      \ -> 2 passed\n- Run: uv run pytest -q tests/orchestration/unit/test_resolver_gateway.py\
+      \ tests/orchestration/unit/test_control.py tests/orchestration/unit/test_roster.py\
+      \ -> 23 passed\n- Artifact inspected: orchestration_behavioral_proof_register.yaml\n\
+      - Remaining blocker intersection: none\n\n## Overall Verdict\n- gate_open_allowed:\
+      \ true\n- remaining ambiguities: none\n- step_intent: retest_green\n- expected_result:\
+      \ green\n- observed_result: green\n- failure_alignment: n/a\n- product implementation\
+      \ files modified: no"

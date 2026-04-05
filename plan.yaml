@@ -65588,3 +65588,28 @@ phases:
 
       **Verdict**: PASS | ISSUES_FOUND'
     agent: wiring-auditor
+  - id: deep_review.decide-architecture
+    name: Review boundary and ownership correctness
+    status: pending
+    description: 'Review boundary correctness for refreshed vectl_decide: standalone-usable
+      outside orchestration plane; core authority semantics preserved; caller-owned
+      state ownership is coherent; roster/runtime semantics are not silently imported
+      into core advisor semantics.'
+    verification: 'phase-check protecting final gate: no boundary drift remains.'
+    evidence_template: '## refs Read Confirmation (MANDATORY)
+
+      For each ref in this step:
+
+      - <filename> — key passage or "NOT READ: <reason>"
+
+
+      ## Review Report
+
+      - Standalone usage boundary:
+
+      - Authority/advisor boundary:
+
+      - Caller-owned state boundary:
+
+      - Issues found: none | <detail>'
+    agent: software-architect

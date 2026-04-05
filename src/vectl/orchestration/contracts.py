@@ -12,6 +12,8 @@ from typing import Literal
 
 from vectl.models import IsolationMode
 
+__all__ = ["IsolationMode"]
+
 
 @dataclass(frozen=True)
 class CoreSnapshot:

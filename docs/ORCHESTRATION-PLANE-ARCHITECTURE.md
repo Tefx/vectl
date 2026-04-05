@@ -123,18 +123,13 @@ and recreate a hidden scheduler/control brain under another name.
 
 ### Relation to `vectl_decide`
 
-`vectl_decide` should currently be treated as an important existing
-deterministic-decision reference surface from the legacy system, not as a
-settled synonym for `control`.
+`vectl_decide` is the existing deterministic-decision reference surface from the
+legacy system. The landed `control` implementation (`src/vectl/orchestration/control.py`)
+exposes a new deterministic decision surface that subsumes `vectl_decide`'s
+responsibilities within the orchestration plane.
 
-This document does **not** yet freeze whether future `control`:
-
-- directly reuses `vectl_decide`,
-- subsumes it,
-- or exposes a different deterministic decision surface.
-
-That mapping belongs to implementation design, not to this target architecture
-definition.
+The `PlanAwareControl` class in the orchestration package is the authoritative
+implementation of the `control` component contract.
 
 ---
 

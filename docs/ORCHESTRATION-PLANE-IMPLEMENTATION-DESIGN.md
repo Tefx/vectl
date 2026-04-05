@@ -29,20 +29,31 @@ code changes should aim toward.
 
 ## 2. Target Package Shape
 
-Recommended new package:
+Current implementation package:
 
 ```text
 src/vectl/orchestration/
     __init__.py
-    contracts.py
-    judgments.py
-    control.py
-    roster.py
-    runtime.py
-    resolver.py
-    core_adapter.py
-    config.py
-    events.py
+    contracts.py          # Shared boundary types (landed)
+    control.py            # Plan-aware orchestration flow (landed)
+    roster.py             # Reusable agent/session registry (landed)
+    runtime.py            # Mechanical execution support (landed)
+    resolver.py           # Blocked/unresolved case reasoning (landed)
+    core_adapter.py       # Thin adapter over vectl core (landed)
+    config.py             # Shared orchestration config (landed)
+    events.py             # Canonical event envelopes (landed)
+    judgments.py          # Typed judgment helpers (landed)
+    interfaces.py         # Protocol definitions
+    tool_registry.py      # Canonical tool registry
+    run_store.py          # Run persistence
+    projections.py        # State projection replay
+    recovery.py           # Continuity/recovery
+    resolver_gateway.py   # Resolver invocation gateway
+    control_channel.py    # Operator control channel
+    continuity_artifacts.py # Artifact management
+    inspection_queries.py # Query surfaces
+
+src/vectl/orch_app.py   # Composition root (landed)
 ```
 
 ### Why this package
@@ -354,7 +365,27 @@ helpers into `judgments.py` so that:
 
 Move tests as each behavior gets a clear new owner.
 
----
+**Current test layout:**
+
+```text
+tests/
+  orchestration/
+    unit/
+      test_contracts.py
+      test_control.py
+      test_roster.py
+      test_runtime.py
+      test_resolver.py
+      test_judgments.py
+      test_config.py
+      test_events.py
+      test_core_adapter.py
+      test_orch_app.py
+    integration/
+      test_orchestration_integration.py
+  legacy/
+    driver/*.py   # flat baseline test layout during migration-finish
+```
 
 ## 6. Legacy Entrypoint Strategy
 

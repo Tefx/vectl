@@ -66039,6 +66039,83 @@ phases:
     depends_on:
     - orchestration_runner_backend.build-runner-backend
     agent: integration-verifier
+  - id: orchestration_runner_backend.gate
+    name: Gate runner backend
+    status: pending
+    description: 'As an INDEPENDENT REVIEWER (gate-reviewer), assess whether the runner
+      backend phase delivered only the mechanical execution substrate promised by
+      the design.
+
+
+      review_depth: STANDARD
+
+      review_depth_rationale:
+
+      - new backend/registry seam
+
+      - must stay mechanical-only and avoid runtime/resolver/control spillover
+
+
+      Gate Preview (what the gate WILL reject)
+
+      1. backend logic that silently wires full runtime lifecycle in this phase
+
+      2. resolver or control policy creeping into backend code
+
+      3. stub-only backend classes with no real launch/poll/cleanup behavior
+
+      '
+    verification: 'Scope: phase-check protecting orchestration_runtime_wiring.gate.
+
+      - All phase steps completed successfully.
+
+      - Evidence proves runner backend exists as a reusable mechanical substrate.
+
+      - No unresolved blocker leaks into runtime lifecycle ownership.
+
+      - OPEN only if the phase stayed within backend-only scope.'
+    evidence_template: '## refs Read Confirmation (MANDATORY)
+
+
+      For each ref in this step:
+
+      - <filename> — key passage or "NOT READ: <reason>"
+
+
+      If no refs were provided, state: "No refs for this step."
+
+
+      ## Gate Review Report
+
+      | Step ID | Status | Evidence Quality | Concerns |
+
+      | ------- | ------ | ---------------- | -------- |
+
+      | orchestration_runner_backend.build-runner-backend |  |  |  |
+
+      | orchestration_runner_backend.retest-backend-green |  |  |  |
+
+
+      ## Boundary Verdict
+
+      - backend remains mechanical-only:
+
+      - premature runtime wiring detected?:
+
+      - resolver/control contamination detected?:
+
+      - stub-only completion detected?:
+
+
+      ## Gate Decision Basis
+
+      - OPEN or BLOCK with exact blockers.
+
+      '
+    depends_on:
+    - orchestration_runner_backend.build-runner-backend
+    - orchestration_runner_backend.retest-backend-green
+    agent: gate-reviewer
 - id: orchestration_runtime_lifecycle
   name: Orchestration Runtime Worktree Lifecycle
   status: locked

@@ -67280,6 +67280,8 @@ phases:
     - src/vectl/orch_app.py
     - src/vectl/orchestration/recovery.py
     - src/vectl/orchestration/run_store.py
+    depends_on:
+    - orchestration_operator_recovery.implement-operator-notification-conflict-preservation-and-recovery-alignment
     agent: integration-verifier
   - id: orchestration_operator_recovery.audit-operator-conflict-recovery-conformance
     name: Audit operator/conflict/recovery conformance

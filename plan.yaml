@@ -63674,3 +63674,89 @@ phases:
     depends_on:
     - orch_operator_deep_review.spec_conformance_full
     agent: python-senior
+  - id: orch_operator_deep_review.retest_behavioral_conformance_blockers
+    name: Retest behavioral conformance blockers and decide gate-open eligibility
+    status: pending
+    description: 'Independent post-remediation verification for the batched R19/R24
+      behavioral conformance blockers.
+
+
+      step_type: test
+
+      step_intent: retest_green
+
+      expected_result: green
+
+      verification_scope: full-plan-check
+
+
+      As an independent verifier, re-check the repaired runtime behavior and proof
+      artifacts for:
+
+      - R19 — resolver allowlist runtime enforcement
+
+      - R24 — roster `None` interpretation behavior
+
+
+      Do not accept prose-only claims. Review the behavioral proof register, rerun
+      or inspect the runtime proof path, and issue an explicit `gate_open_allowed`
+      verdict for each requirement and overall.'
+    verification: 'full-plan-check protecting `orch_operator_deep_review.black_box_verification`
+      and `orch_operator_deep_review.gate`:
+
+      - Independently validate the behavioral proof register for R19 and R24
+
+      - Confirm runtime evidence is sufficient to move each requirement from blocker-class
+      uncertainty to a resolved disposition
+
+      - Emit explicit `gate_open_allowed: true|false` for R19, R24, and overall deep-review
+      continuation
+
+      - If any item remains `NEEDS_TEST`, `UNPROVEN`, or `UNCERTAIN_BLOCKING`, mark
+      gate-open not allowed'
+    evidence_template: '## refs Read Confirmation (MANDATORY)
+
+
+      If no refs were provided, state: "No refs for this step."
+
+
+      ## Independent Behavioral Proof Review
+
+      For each requirement (R19, R24), record:
+
+      - requirement_ref:
+
+      - behavior_claim reviewed:
+
+      - runtime_proof_expected:
+
+      - evidence_ref rechecked:
+
+      - status:
+
+      - closure_path:
+
+      - gate_decision_basis:
+
+      - gate_open_allowed:
+
+
+      ## Retest Execution
+
+      - Commands/tests executed or artifacts inspected:
+
+      - Actual outputs:
+
+      - Remaining blocker intersection with downstream gates: <none or explain>
+
+
+      ## Overall Verdict
+
+      - gate_open_allowed:
+
+      - rationale:
+
+      - remaining ambiguities: <none or list>'
+    depends_on:
+    - orch_operator_deep_review.fix_behavioral_conformance_blockers
+    agent: spec-verifier

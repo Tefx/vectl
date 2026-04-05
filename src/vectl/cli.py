@@ -1328,7 +1328,7 @@ def orch_control_stop(
     if resolved_run is None and latest:
         _die("No runs available for --latest selector")
     try:
-        result = app_runtime.control_stop(reason=reason, force=force)
+        result = app_runtime.control_stop(run_id=resolved_run, reason=reason, force=force)
     except Exception as exc:  # pragma: no cover - defensive internal mapping
         _orch_internal_error(exc)
         return

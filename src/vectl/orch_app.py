@@ -1958,6 +1958,7 @@ class OrchestrationApp:
 
     def control_stop(
         self,
+        run_id: str | None = None,
         reason: str | None = None,
         force: bool = False,
     ) -> ControlResult:
@@ -1967,6 +1968,7 @@ class OrchestrationApp:
         Authority: docs/ORCHESTRATION-PLANE-ARCHITECTURE.md section 5.1
 
         Args:
+            run_id: Optional explicit run identifier to stop.
             reason: Optional reason for stopping.
             force: Request immediate stop semantics.
 
@@ -1976,7 +1978,7 @@ class OrchestrationApp:
         Raises:
             OSError: Propagates control-channel persistence failures.
         """
-        selected_run_id, error = self._resolve_run_selection(run_id=None)
+        selected_run_id, error = self._resolve_run_selection(run_id=run_id)
         if error is not None:
             return ControlResult(action="stop", success=False, message=error)
         assert selected_run_id is not None

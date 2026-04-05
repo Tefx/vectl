@@ -266,7 +266,7 @@ def test_control_reason_and_force_are_persisted_in_pending_actions(tmp_path: Pat
 
     pause = orch.control_pause(step_id="core.ready", reason="maintenance")
     unpause = orch.control_unpause(step_id="core.ready", reason="resumed")
-    stop = orch.control_stop(reason="halt", force=True)
+    stop = orch.control_stop(run_id=run_result.run_id, reason="halt", force=True)
     assert pause.success is True
     assert unpause.success is True
     assert stop.success is True
@@ -279,6 +279,35 @@ def test_control_reason_and_force_are_persisted_in_pending_actions(tmp_path: Pat
     assert by_type["control.pause"].payload == (run_result.run_id, "maintenance")
     assert by_type["control.unpause"].payload == (run_result.run_id, "resumed")
     assert by_type["control.stop"].payload == (run_result.run_id, "halt", "force=true")
+
+
+def test_control_stop_uses_explicit_run_id_when_multiple_runs_exist(tmp_path: Path) -> None:
+    app = _build_app(tmp_path)
+    orch = cast(Any, app)
+    first = app.run(step_id="core.ready", agent="python-executor")
+    assert first.run_id is not None
+    assert app._config.run_store_root is not None
+    registry = RunRegistry(store_root=app._config.run_store_root)
+    second_run_id = generate_run_id()
+    registry.save(
+        RunRecord(
+            run_id=second_run_id,
+            step_id="core.other",
+            status="running",
+            updated_at=time.time(),
+            plan_path=str(app._config.plan_path),
+            agent="python-executor",
+        )
+    )
+
+    stop = orch.control_stop(run_id=first.run_id, reason="halt")
+
+    assert stop.success is True
+    assert first.run_id in stop.message
+
+    channel = FilesystemControlChannel(runs_root=app._config.run_store_root)
+    requests = channel.list_requests(first.run_id, status="pending")
+    assert any(request.msg_type == "control.stop" for request in requests)
 
 
 def test_config_show_effective_returns_expanded_view(tmp_path: Path) -> None:

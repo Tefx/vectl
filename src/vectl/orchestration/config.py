@@ -533,15 +533,43 @@ def _flatten_env_vars(prefix: str = ENV_PREFIX) -> dict[str, str]:
     Returns:
         Dict mapping config keys (without prefix) to env values.
     """
+    field_aliases = {
+        "runtime_artifact_root": "runtime.artifact_root",
+        "runtime_workspace_root": "runtime.workspace_root",
+        "runtime_default_runner": "runtime.default_runner",
+        "runtime_isolation_default": "runtime.isolation_default",
+        "runtime_cleanup_policy": "runtime.cleanup_policy",
+        "control_idle_poll_interval_ms": "control.idle_poll_interval_ms",
+        "control_max_resolution_attempts_per_case": "control.max_resolution_attempts_per_case",
+        "control_action_ack_timeout_seconds": "control.action_ack_timeout_seconds",
+        "resolver_enabled": "resolver.enabled",
+        "resolver_timeout_seconds": "resolver.timeout_seconds",
+        "resolver_max_tool_calls_per_invocation": "resolver.max_tool_calls_per_invocation",
+        "resolver_max_tool_argument_bytes": "resolver.max_tool_argument_bytes",
+        "continuity_resume_enabled": "continuity.resume_enabled",
+        "continuity_stale_artifact_policy": "continuity.stale_artifact_policy",
+        "continuity_replay_safety": "continuity.replay_safety",
+        "observability_events_jsonl": "observability.events_jsonl",
+        "observability_text_log": "observability.text_log",
+        "observability_projected_state": "observability.projected_state",
+        "observability_heartbeat_stale_threshold_seconds": (
+            "observability.heartbeat_stale_threshold_seconds"
+        ),
+        "observability_per_step_artifacts": "observability.per_step_artifacts",
+        "observability_per_case_artifacts": "observability.per_case_artifacts",
+        "observability_max_log_megabytes": "observability.max_log_megabytes",
+        "observability_retention_days": "observability.retention_days",
+        "operator_control_channel": "operator.control_channel",
+        "operator_default_output": "operator.default_output",
+        "operator_max_pending_actions": "operator.max_pending_actions",
+        "plan_path": "plan_path",
+    }
     result = {}
     for key, value in os.environ.items():
         if key.startswith(prefix):
             # Remove prefix and convert to config key format
             config_key = key[len(prefix) :].lower()
-            # Convert UNDERSCORE to dot for nested keys
-            # e.g., RUNTIME_ARTIFACT_ROOT -> runtime.artifact_root
-            parts = config_key.split("_")
-            result[".".join(parts)] = value
+            result[field_aliases.get(config_key, config_key.replace("_", "."))] = value
     return result
 
 
@@ -606,7 +634,7 @@ def _apply_env_overrides(
             subkey = key[len("operator.") :]
             updates.setdefault("operator", {})[subkey] = value
 
-    return _deep_update_config(config, updates)
+    return _deep_update_config(config, {"orchestration": updates})
 
 
 def _get_default(key: str) -> Any:

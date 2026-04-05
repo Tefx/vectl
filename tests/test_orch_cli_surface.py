@@ -70,6 +70,7 @@ class _FakeOrchApp:
         self.unpause_reason: str | None = None
         self.stop_reason: str | None = None
         self.stop_force: bool = False
+        self.stop_run_id: str | None = None
         self.config_show_effective: bool = False
 
     def run(self, *, step_id: str | None, agent: str | None) -> _Result:
@@ -146,8 +147,15 @@ class _FakeOrchApp:
         del step_id
         return _Result(success=True, message="unpaused")
 
-    def control_stop(self, *, reason: str | None = None, force: bool = False):
+    def control_stop(
+        self,
+        *,
+        run_id: str | None = None,
+        reason: str | None = None,
+        force: bool = False,
+    ):
         self.calls.append("control_stop")
+        self.stop_run_id = run_id
         self.stop_reason = reason
         self.stop_force = force
         return _Result(success=True, message="stopped")
@@ -297,9 +305,23 @@ def test_orch_control_and_config_flags_propagate_to_orch_app(monkeypatch) -> Non
 
     assert fake.pause_reason == "maintenance"
     assert fake.unpause_reason == "resume"
+    assert fake.stop_run_id is None
     assert fake.stop_reason == "halt"
     assert fake.stop_force is True
     assert fake.config_show_effective is True
+
+
+def test_orch_control_stop_forwards_explicit_run_id(monkeypatch) -> None:
+    fake = _FakeOrchApp()
+    monkeypatch.setattr("vectl.cli._build_orchestration_runtime_app", lambda plan: fake)
+    monkeypatch.setattr("vectl.cli._step_id_for_run", lambda app_runtime, run_id: "s1")
+
+    result = runner.invoke(app, ["orch", "control", "stop", "r1", "--reason", "halt", "--force"])
+
+    assert result.exit_code == 0
+    assert fake.stop_run_id == "r1"
+    assert fake.stop_reason == "halt"
+    assert fake.stop_force is True
 
 
 def test_orch_explicit_exit_code_mapping_for_not_found_and_recovery(monkeypatch) -> None:

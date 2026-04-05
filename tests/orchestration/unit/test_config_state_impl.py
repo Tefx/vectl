@@ -232,6 +232,21 @@ class TestConfigDiscovery:
         with pytest.raises(FileNotFoundError):
             load_orchestration_config(plan_path=tmp_path / "nonexistent.yaml")
 
+    def test_env_override_applies_runtime_artifact_and_workspace_roots(
+        self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+    ) -> None:
+        """Verify VECTL_ORCH runtime path overrides map to nested config fields."""
+        monkeypatch.chdir(tmp_path)
+        monkeypatch.delenv("VECTL_CONFIG", raising=False)
+        monkeypatch.setenv("VECTL_ORCH_RUNTIME_ARTIFACT_ROOT", "/tmp/custom_runs")
+        monkeypatch.setenv("VECTL_ORCH_RUNTIME_WORKSPACE_ROOT", "/tmp/custom_workspaces")
+
+        config, path = load_orchestration_config()
+
+        assert path is None
+        assert config.runtime.artifact_root == Path("/tmp/custom_runs")
+        assert config.runtime.workspace_root == Path("/tmp/custom_workspaces")
+
 
 # =============================================================================
 # Config Validation Tests

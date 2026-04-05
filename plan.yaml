@@ -67023,6 +67023,9 @@ phases:
     - docs/ORCHESTRATION-PLANE-RESOLVER-COORDINATION.md
     - docs/ORCHESTRATION-PLANE-RESOLUTION-CONTRACT.md
     - docs/ORCHESTRATION-PLANE-INTERFACES.md
+    depends_on:
+    - orchestration_resolver_coordination.implement-resolver-coordination-review-failure-intake-and-approved-facade-mutation-path
+    - orchestration_resolver_coordination.verify-resolver-coordination-and-planner-remediation-routing
     agent: gate-reviewer
 - id: orchestration_orch_app_routing
   name: Orchestration App Routing

@@ -64385,7 +64385,7 @@ phases:
       \ from current conformance tests.\n- Commit: 88a3542"
   - id: orch_operator_deep_review.retest_gate_artifact_freshness_and_lint
     name: Retest regenerated consumer-boundary artifact accuracy and lint cleanup
-    status: claimed
+    status: done
     description: 'Independent gate-precheck retest for the failed deep-review gate.
 
 
@@ -64458,3 +64458,12 @@ phases:
     agent: spec-verifier
     claimed_by: spec-verifier
     claimed_at: '2026-04-05T07:06:41.466307+00:00'
+    done_at: '2026-04-05T07:08:30.199179+00:00'
+    evidence: "## refs Read Confirmation\nNo refs for this step.\n\n## Gate-Precheck\
+      \ Retest Report\n- Expected result: GREEN\n- Regeneration/validation command:\n\
+      \  - uv run pytest -q tests/orchestration/unit/test_recovery_contract_conformance.py\n\
+      \  - Output: 2 passed\n- Lint command:\n  - uv run ruff check src/vectl/orchestration/continuity_artifacts.py\
+      \ src/vectl/orchestration/contracts.py\n  - Output: All checks passed\n- Verdict:\
+      \ PASS\n- gate_open_allowed: true\n\nArtifact accuracy proof:\n- consumer_boundary_conformance_report.yaml\
+      \ now PASS and no stale unresolved blockers.\n- Recovery contract conformance\
+      \ tests verify report alignment with current code truth."

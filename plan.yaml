@@ -65613,3 +65613,29 @@ phases:
 
       - Issues found: none | <detail>'
     agent: software-architect
+  - id: deep_review.decide-black-box
+    name: Black-box verify refreshed advisor contract
+    status: pending
+    description: Using only the RFC and public tool/function contract, construct minimal
+      advisor_state/running_tasks/completed_results fixtures; verify refreshed output
+      fields; verify removed fields are not required; verify standalone deterministic
+      advisor behavior is understandable without internal code.
+    verification: 'phase-check protecting final gate: black-box contract use is coherent
+      and matches spec.'
+    evidence_template: '## Verification Report
+
+      ### refs Read Confirmation (MANDATORY)
+
+      For each ref in this step:
+
+      - <filename> — key passage or "NOT READ: <reason>"
+
+
+      - Fixtures used:
+
+      - Commands executed:
+
+      - Actual output:
+
+      - Spec mismatches: none | <detail>'
+    agent: blind-tester

@@ -65671,6 +65671,58 @@ phases:
     implementation.
   depends_on:
   - orch_operator_post_gate_cleanup
+  steps:
+  - id: orchestration_foundation_lock.pin-boundaries-and-contracts
+    name: Pin runner/runtime boundaries and hard-rule contracts
+    status: pending
+    description: "step_type: contract\ncontract_purity: ENFORCED\ncontract_outputs:\n\
+      \  - signatures\n  - type_defs\n  - interfaces\n  - stubs\nwork_type: new_capability\n\
+      \nLock the orchestration-plane boundary for the next two gaps only.\n\nAuthoritative\
+      \ sources:\n- docs/ORCHESTRATION-PLANE-ARCHITECTURE.md: sections 5.3, 5.4, 6.1,\
+      \ 6.2, 7, 9\n- docs/ORCHESTRATION-PLANE-INTERFACES.md: sections 2, 3.3, 3.6,\
+      \ 3.7, 4.3, 5.2, 5.4\n- docs/ORCHESTRATION-PLANE-RUNNER-BACKEND.md: sections\
+      \ 5, 8, 9, 10, 11, 14\n- docs/ORCHESTRATION-PLANE-RUNTIME-WORKTREE-LIFECYCLE.md:\
+      \ sections 5, 6, 7, 8, 9, 10, 14, 15, 16, 17\n- docs/ORCHESTRATION-PLANE-RESOLUTION-CONTRACT.md:\
+      \ sections 4, 5, 6, 9, 10\n- docs/ORCHESTRATION-PLANE-ISOLATION-SEMANTICS.md:\
+      \ sections 2, 3.2, 3.3, 5.4, 5.5\n- docs/ADR-worktree-support.md: Decision/Core\
+      \ Design + Implementation\n\nRequired lock points (must be encoded in code-level\
+      \ contracts/docstrings/types, not prose-only):\n1. resolver always runs on the\
+      \ main worktree\n2. resolver core mutation uses approved vectl tool facade only\n\
+      3. complete may occur only after reconcile result is merged or noop\n4. claim\
+      \ belongs to normal flow only; resolver is limited to abnormal repair-style\
+      \ mutation\n5. unresolved runtime problems must surface an operator-facing/user-facing\
+      \ message\n6. runner backend owns launch/poll/cleanup + registry mechanics;\
+      \ runtime owns worktree lifecycle + reconcile sequencing; resolver does not\
+      \ absorb either ownership seam\n\nTouch only acceptance-defining surfaces:\n\
+      - src/vectl/orchestration/contracts.py\n- src/vectl/orchestration/interfaces.py\n\
+      - src/vectl/orchestration/runtime.py\n- src/vectl/orchestration/resolver.py\n\
+      - src/vectl/orchestration/resolver_gateway.py\n\nDo NOT ship substantive backend\
+      \ or lifecycle logic here. If the documented interface appears insufficient,\
+      \ record the exact conflict in comments/docstrings and stop short of redesign.\n"
+    verification: 'Scope: local-check protecting orchestration_runner_backend.gate
+      and orchestration_runtime_lifecycle.gate.
+
+      - Public signatures, typed contracts, and docstrings encode all six hard rules
+      above.
+
+      - No backend execution logic, reconcile policy logic, or resolver policy expansion
+      is introduced.
+
+      - Runtime/runner ownership seam is explicit and non-overlapping in the touched
+      contract surfaces.
+
+      - Resolver surface remains main-worktree/approved-facade constrained.'
+    evidence_template: "## refs Read Confirmation (MANDATORY)\n\nFor each ref in this\
+      \ step:\n- <filename> — key passage or \"NOT READ: <reason>\"\n\nIf no refs\
+      \ were provided, state: \"No refs for this step.\"\n\n## Contract Lock Report\n\
+      - Touched files:\n- Exact signatures / type fields pinned:\n- Hard rule encoding\
+      \ locations:\n  - resolver-main-worktree:\n  - approved-vectl-facade:\n  - reconcile-before-complete:\n\
+      \  - claim-normal-flow-only:\n  - unresolved-runtime-user-notification:\n- Out-of-scope\
+      \ protections preserved:\n  - resolver full landing not implemented\n  - merge/conflict\
+      \ policy not deepened\n  - control/operator closure not expanded\n- Stub-only\
+      \ note: confirm outputs are contract-only and contain no substantive execution\
+      \ logic.\n"
+    agent: software-architect
 - id: orchestration_runner_backend
   name: Orchestration Runner Backend
   status: locked

@@ -63876,3 +63876,137 @@ phases:
       \ true\n- remaining ambiguities: none\n- step_intent: retest_green\n- expected_result:\
       \ green\n- observed_result: green\n- failure_alignment: n/a\n- product implementation\
       \ files modified: no"
+  - id: orch_operator_deep_review.fix_architecture_blockers_batch
+    name: Fix deep-review architecture blockers (batched)
+    status: pending
+    description: 'Fix ALL blocker-class findings from `orch_operator_deep_review.architecture_review`
+      in one batched remediation step.
+
+
+      symbolic_testing: false
+
+
+      ## Blockers to Fix (ALL of these, not just the first)
+
+
+      ## Root Cause vs Symptom
+
+      - Root cause: orchestration operator control-plane boundaries currently leak
+      private helper ownership, process-global mutable registries, non-atomic run-admission/event
+      sequencing, and workspace-root authority bypass in runtime path resolution.
+
+      - Symptom: architecture review found boundary, concurrency, durability/order,
+      and config-ownership violations across inspection, events/control, admission
+      sequencing, and runtime workspace handling.
+
+      - Why this fix is not surface-level: it must remove the underlying shared-state
+      and ownership violations, not add wrappers around the current behavior.
+
+
+      ### B1: inspection queries depend on RunRegistry private helpers
+
+      Locations: inspection_queries, run registry helper boundary, related query wiring
+
+      Remediation: route inspection reads through an explicit public contract/read-model
+      boundary owned for query use; remove private-helper dependency from inspection
+      surfaces.
+
+      Grep hint: search for inspection query code reaching `_`-prefixed RunRegistry
+      helpers or private helper imports/usages.
+
+      IMPORTANT: Search for sibling query/read paths beyond the reported location.
+
+
+      ### B2: events/control_channel use process-global mutable registries
+
+      Locations: events, control_channel, shared registries, module-level mutable
+      state
+
+      Remediation: eliminate process-global mutable registry ownership or isolate
+      it behind bounded, concurrency-safe runtime-owned state with explicit lifecycle/reset
+      semantics.
+
+      Grep hint: search for module-level mutable containers/registries and shared
+      singleton state used by events/control flows.
+
+      IMPORTANT: Search for sibling shared-state patterns beyond the reported location.
+
+
+      ### B3: run admission + event sequencing non-atomic
+
+      Locations: run admission path, event append/emit ordering, persistence coordination
+
+      Remediation: make admission + event sequencing atomic at the authoritative durability
+      boundary or introduce a single ordered commit path that preserves admission/event
+      ordering guarantees.
+
+      Grep hint: search for split admission/write/emit paths where run acceptance
+      and event persistence occur in separate non-atomic operations.
+
+      IMPORTANT: Search for sibling ordering paths beyond the reported location.
+
+
+      ### B4: runtime hard-codes `.vectl/worktrees`
+
+      Locations: runtime workspace resolution, RuntimeConfig usage, path ownership/config
+      handling
+
+      Remediation: resolve workspace paths from `RuntimeConfig.workspace_root` and
+      remove hard-coded `.vectl/worktrees` ownership assumptions from runtime code.
+
+      Grep hint: search for literal `.vectl/worktrees` and direct path assembly that
+      bypasses RuntimeConfig.
+
+      IMPORTANT: Search for sibling hard-coded workspace assumptions beyond the reported
+      location.
+
+
+      ## Completion Criteria (stub exclusion)
+
+      This is an IMPLEMENTATION step. Stub-only completion is NOT acceptable.
+
+      Each deliverable MUST contain substantive logic that processes its inputs and
+      produces outputs that vary based on those inputs.
+
+
+      ## Known Risks / Gate Preview
+
+      - Gate will reject any remaining private-helper reach-through from query surfaces
+      into mutable runtime internals.
+
+      - Gate will reject module-level mutable registries without explicit concurrency,
+      reset, and bounded-growth semantics.
+
+      - Gate will reject ordering fixes that leave admission/event durability split
+      across multiple non-atomic operations.
+
+      - Gate will reject any runtime path logic that still bypasses `RuntimeConfig.workspace_root`.
+
+      '
+    verification: 'local-check protecting the final deep-review gate:
+
+      - Inspection/query surfaces no longer depend on private RunRegistry helpers
+
+      - Events/control registry state is runtime-owned, bounded, isolated, and concurrency-safe
+
+      - Run admission and event sequencing have a single atomic/ordered durability
+      path
+
+      - Runtime workspace resolution uses `RuntimeConfig.workspace_root` with no remaining
+      hard-coded `.vectl/worktrees` ownership path
+
+      - Focused regressions or targeted proof cover both the main path and the highest-risk
+      failure path for each blocker family'
+    evidence_template: "## refs Read Confirmation (MANDATORY)\n\nIf no refs were provided,\
+      \ state: \"No refs for this step.\"\n\n## Batched Blocker Fix Report\n- blocker_families_closed:\n\
+      \  - B1 private-helper boundary violation\n  - B2 process-global mutable registry\
+      \ violation\n  - B3 non-atomic admission/event sequencing violation\n  - B4\
+      \ runtime workspace-root ownership violation\n- sibling_search_evidence:\n \
+      \ - B1: <paths searched + result>\n  - B2: <paths searched + result>\n  - B3:\
+      \ <paths searched + result>\n  - B4: <paths searched + result>\n- main_path_proof:\
+      \ <targeted tests/checks/inspection proving corrected behavior>\n- highest_risk_failure_path_proof:\
+      \ <evidence for concurrency/order/config failure path>\n- remaining_blockers:\
+      \ <none or explicit residual risk>\n"
+    depends_on:
+    - orch_operator_deep_review.architecture_review
+    agent: python-senior

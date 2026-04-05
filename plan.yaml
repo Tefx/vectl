@@ -63559,7 +63559,10 @@ phases:
       pre-existing provenance alone is not an acceptable disposition
 
       - Final decision states whether `vectl orch` is replacement-grade for the non-web
-      operator surface'
+      operator surface
+
+      - Gate evidence includes the behavioral proof register disposition for R19/R24
+      and an explicit overall `gate_open_allowed` verdict'
     depends_on:
     - orch_operator_deep_review.full_plan_check
     - orch_operator_deep_review.wiring_audit_full
@@ -63567,6 +63570,7 @@ phases:
     - orch_operator_deep_review.architecture_review
     - orch_operator_deep_review.contract_strength
     - orch_operator_deep_review.black_box_verification
+    - orch_operator_deep_review.retest_behavioral_conformance_blockers
     agent: gate-reviewer
   - id: orch_operator_deep_review.fix_behavioral_conformance_blockers
     name: Fix blocker-class behavioral conformance gaps

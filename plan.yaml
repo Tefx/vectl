@@ -65529,6 +65529,27 @@ phases:
 
       - Remaining doc debt: none | <detail>'
     agent: doc-reviewer
+  - id: doc_sync.gate
+    name: Gate doc_sync
+    status: pending
+    description: 'Gate review: verify docs match the implemented vectl_decide contract.'
+    verification: 'phase-check protecting deep_review: documentation matches implementation
+      and RFC.'
+    evidence_template: '## refs Read Confirmation (MANDATORY)
+
+      For each ref in this step:
+
+      - <filename> — key passage or "NOT READ: <reason>"
+
+
+      ## Gate Review Report
+
+      - Doc/impl/spec alignment:
+
+      - Gate decision: OPEN | BLOCKED'
+    depends_on:
+    - doc_sync.update-vectl-decide-docs
+    agent: gate-reviewer
 - id: deep_review
   name: Deep Review (Independent Audit)
   status: locked

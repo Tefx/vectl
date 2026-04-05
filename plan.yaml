@@ -66543,3 +66543,55 @@ phases:
     depends_on:
     - orchestration_runtime_wiring.wire-runtime-to-backend
     agent: integration-verifier
+  - id: orchestration_runtime_wiring.spec-conformance
+    name: Audit runtime wiring against authoritative orchestration specs
+    status: pending
+    description: 'step_type: verification
+
+
+      Spec conformance verification via adversarial divergence hunting.
+
+      Agent: spec-verifier (dedicated, read-only, independent).
+
+
+      SCOPE: only the runner backend + runtime lifecycle + wiring behavior touched
+      by this plan.
+
+
+      FOCUS AREAS
+
+      - naming & format semantics for execution/reconcile/runtime snapshot fields
+
+      - omission drift for the five hard rules and backend/runtime ownership seam
+
+      - contract surface drift between docs and the wired runtime/backend code
+
+      - behavioral precedence claim: completion only after reconcile merged|noop (flag
+      NEEDS_TEST if proof is indirect)
+
+
+      For EACH requirement, cite the spec section and implementation file:line.
+
+      '
+    verification: 'Scope: phase-check protecting orchestration_runtime_wiring.gate.
+
+      - Full requirements register exists for touched specs only.
+
+      - Divergences, omissions, and NEEDS_TEST items are explicit.
+
+      - Gate cannot open while blocker-class spec/runtime obligations remain unproven
+      or divergent.
+
+      - Evidence cites exact spec sections and file:line implementations.'
+    evidence_template: "## Spec Conformance Report\n**Phase**: orchestration_runtime_wiring\n\
+      \n### refs Read Confirmation (MANDATORY)\nFor each ref in this step:\n- <filename>\
+      \ — key passage or \"NOT READ: <reason>\"\n\nIf no refs were provided, state:\
+      \ \"No refs for this step.\"\n\n## Requirements Register\n| R# | Spec Section\
+      \ | Requirement | Level | Checkable? |\n\n## Evidence Table\n| R# | Spec Section\
+      \ | Requirement | Implementation | Verdict | Notes |\nVerdicts: CONFORMS | DIVERGES\
+      \ | PARTIAL | NEEDS_TEST | NOT_FOUND | AMBIGUOUS_SPEC | SPEC_POSSIBLY_STALE\n\
+      \n## Coverage Summary\n- Total requirements:\n- CONFORMS:\n- DIVERGES:\n- PARTIAL:\n\
+      - NEEDS_TEST:\n- NOT_FOUND:\n- AMBIGUOUS_SPEC:\n\n## Top Risks\n- \n"
+    depends_on:
+    - orchestration_runtime_wiring.wire-runtime-to-backend
+    agent: spec-verifier

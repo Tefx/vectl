@@ -77,7 +77,14 @@ from vectl.orchestration.resolver_gateway import (
     ResolverToolCall,
     authorize_and_invoke,
 )
-from vectl.orchestration.run_store import CorruptJSONLError, RunRecord, RunRegistry, generate_run_id
+from vectl.orchestration.run_store import (
+    CorruptJSONLError,
+    RunRecord,
+    RunRegistry,
+    RunRegistryInspectionView,
+    SamePlanAdmissionError,
+    generate_run_id,
+)
 from vectl.orchestration.tool_registry import canonical_tool_families
 
 if TYPE_CHECKING:
@@ -108,7 +115,7 @@ class AppConfig:
     """
 
     plan_path: Path = field(default_factory=lambda: Path("plan.yaml"))
-    worktree_base_dir: Path = field(default_factory=lambda: Path(".vectl/worktrees"))
+    worktree_base_dir: Path = field(default_factory=lambda: Path(".vectl/workspaces"))
     default_agent: str = "python-executor"
     resolver_timeout_seconds: float = 60.0
     orchestration_config: OrchestrationConfig | None = None
@@ -330,6 +337,106 @@ class OrchestrationApp:
         execution_id = self._runtime.start(request=request, workspace=workspace)
         return workspace, execution_id
 
+    def _admit_start_and_persist_running(
+        self,
+        *,
+        registry: RunRegistry,
+        run_id: str,
+        step_id: str,
+        plan_path: str,
+        agent: str,
+        run_root: Path,
+        runner: str,
+        allowlist_text: str,
+        mode: Literal["start", "resume", "recover"],
+        current_run_id: str | None = None,
+        event_payloads: tuple[tuple[OrchestrationEventKind, dict[str, object]], ...] = (),
+    ) -> tuple[str, str]:
+        """Persist admission/start/status and events in one ordered lock path."""
+
+        with registry.admission_guard():
+            registry.assert_can_admit_same_plan(plan_path=plan_path, current_run_id=current_run_id)
+            registry.save(
+                RunRecord(
+                    run_id=run_id,
+                    step_id=step_id,
+                    plan_path=plan_path,
+                    agent=agent,
+                    status="pending",
+                    artifact_root=str(run_root),
+                    output_summary=(
+                        f"{mode} admission persisted before runtime start "
+                        f"runner={runner} allowlist={allowlist_text}"
+                    ),
+                )
+            )
+
+            try:
+                workspace, execution_id = self._start_runtime_execution(
+                    run_id=run_id,
+                    step_id=step_id,
+                    agent=agent,
+                    runner=runner,
+                    mode=mode,
+                )
+            except Exception as exc:
+                now_ts = time.time()
+                registry.save(
+                    RunRecord(
+                        run_id=run_id,
+                        step_id=step_id,
+                        plan_path=plan_path,
+                        agent=agent,
+                        status="fail",
+                        artifact_root=str(run_root),
+                        finished_at=now_ts,
+                        output_summary=f"runtime {mode} failed after durable admission: {exc}",
+                    )
+                )
+                raise
+
+            registry.save(
+                RunRecord(
+                    run_id=run_id,
+                    step_id=step_id,
+                    plan_path=plan_path,
+                    agent=agent,
+                    status="running",
+                    artifact_root=str(run_root),
+                    output_summary=(
+                        f"{mode}: run initialized with frozen snapshot "
+                        f"runner={runner} allowlist={allowlist_text} "
+                        f"workspace={workspace} execution_id={execution_id}"
+                    ),
+                )
+            )
+
+            try:
+                for kind, payload in event_payloads:
+                    self._emit_event(
+                        kind=kind,
+                        step_id=step_id,
+                        agent=agent,
+                        payload=payload,
+                    )
+            except Exception as exc:
+                now_ts = time.time()
+                registry.save(
+                    RunRecord(
+                        run_id=run_id,
+                        step_id=step_id,
+                        plan_path=plan_path,
+                        agent=agent,
+                        status="fail",
+                        artifact_root=str(run_root),
+                        finished_at=now_ts,
+                        output_summary=f"event sequencing failed during {mode}: {exc}",
+                    )
+                )
+                raise
+
+            return workspace, execution_id
+
     # -----------------------------------------------------------------
     # Run / Resume / Recover / Prune
     # -----------------------------------------------------------------
@@ -381,82 +488,36 @@ class OrchestrationApp:
         allowlist_text = self._allowlist_text(frozen_snapshot.config.resolver.tool_allowlist)
 
         try:
-            registry.admit_for_start(
+            workspace, execution_id = self._admit_start_and_persist_running(
+                registry=registry,
                 run_id=run_id,
                 step_id=resolved_step_id,
                 plan_path=str(self._config.plan_path),
                 agent=resolved_agent,
-                artifact_root=str(run_root),
-                output_summary=(
-                    "run admission persisted before runtime start "
-                    f"runner={frozen_snapshot.config.runtime.default_runner} "
-                    f"allowlist={allowlist_text}"
+                run_root=run_root,
+                runner=frozen_snapshot.config.runtime.default_runner,
+                allowlist_text=allowlist_text,
+                mode="start",
+                event_payloads=(
+                    (
+                        "run_started",
+                        {"run_id": run_id, "plan_path": str(self._config.plan_path)},
+                    ),
+                    ("run_status_changed", {"run_id": run_id, "status": "running"}),
                 ),
             )
-        except Exception as exc:
+        except SamePlanAdmissionError as exc:
             return OrchestrationResult(
                 success=False,
                 message=f"Run admission denied: {exc}",
             )
-
-        try:
-            workspace, execution_id = self._start_runtime_execution(
-                run_id=run_id,
-                step_id=resolved_step_id,
-                agent=resolved_agent,
-                runner=frozen_snapshot.config.runtime.default_runner,
-                mode="start",
-            )
         except Exception as exc:
-            now_ts = time.time()
-            registry.save(
-                RunRecord(
-                    run_id=run_id,
-                    step_id=resolved_step_id,
-                    plan_path=str(self._config.plan_path),
-                    agent=resolved_agent,
-                    status="fail",
-                    artifact_root=str(run_root),
-                    finished_at=now_ts,
-                    output_summary=f"runtime start failed after durable admission: {exc}",
-                )
-            )
             return OrchestrationResult(
                 success=False,
                 message=f"Runtime wiring failure during run start: {exc}",
                 step_id=resolved_step_id,
                 run_id=run_id,
             )
-
-        registry.save(
-            RunRecord(
-                run_id=run_id,
-                step_id=resolved_step_id,
-                plan_path=str(self._config.plan_path),
-                agent=resolved_agent,
-                status="running",
-                artifact_root=str(run_root),
-                output_summary=(
-                    "run initialized with frozen snapshot "
-                    f"runner={frozen_snapshot.config.runtime.default_runner} "
-                    f"allowlist={allowlist_text} "
-                    f"workspace={workspace} execution_id={execution_id}"
-                ),
-            )
-        )
-
-        self._emit_event(
-            kind="run_started",
-            step_id=resolved_step_id,
-            agent=resolved_agent,
-            payload={"run_id": run_id, "plan_path": str(self._config.plan_path)},
-        )
-        self._emit_event(
-            kind="run_status_changed",
-            step_id=resolved_step_id,
-            agent=resolved_agent,
-            payload={"run_id": run_id, "status": "running"},
-        )
         self._append_log(
             " ".join(
                 (
@@ -576,65 +637,25 @@ class OrchestrationApp:
             return replay_result
 
         try:
-            registry.save(
-                RunRecord(
-                    run_id=run_id,
-                    step_id=record.step_id,
-                    plan_path=record.plan_path,
-                    agent=record.agent,
-                    status="pending",
-                    artifact_root=str(run_root),
-                    output_summary=(
-                        "resume admission persisted before runtime start "
-                        f"runner={frozen.runtime.default_runner} "
-                        f"allowlist={self._allowlist_text(frozen.resolver.tool_allowlist)}"
-                    ),
-                )
-            )
-            workspace, execution_id = self._start_runtime_execution(
+            self._admit_start_and_persist_running(
+                registry=registry,
                 run_id=run_id,
                 step_id=record.step_id,
+                plan_path=record.plan_path or str(self._config.plan_path),
                 agent=record.agent or self._config.default_agent,
+                run_root=run_root,
                 runner=frozen.runtime.default_runner,
+                allowlist_text=self._allowlist_text(frozen.resolver.tool_allowlist),
                 mode="resume",
+                current_run_id=run_id,
             )
         except Exception as exc:
-            now_ts = time.time()
-            registry.save(
-                RunRecord(
-                    run_id=run_id,
-                    step_id=record.step_id,
-                    plan_path=record.plan_path,
-                    agent=record.agent,
-                    status="fail",
-                    artifact_root=str(run_root),
-                    finished_at=now_ts,
-                    output_summary=f"runtime resume failed after durable pending save: {exc}",
-                )
-            )
             return OrchestrationResult(
                 success=False,
                 message=f"Runtime wiring failure during resume: {exc}",
                 step_id=record.step_id,
                 run_id=run_id,
             )
-
-        registry.save(
-            RunRecord(
-                run_id=run_id,
-                step_id=record.step_id,
-                plan_path=record.plan_path,
-                agent=record.agent,
-                status="running",
-                artifact_root=str(run_root),
-                output_summary=(
-                    "resume_safe: run resumed from authoritative frozen snapshot "
-                    f"runner={frozen.runtime.default_runner} "
-                    f"allowlist={self._allowlist_text(frozen.resolver.tool_allowlist)} "
-                    f"workspace={workspace} execution_id={execution_id}"
-                ),
-            )
-        )
         return OrchestrationResult(
             success=True,
             message=(
@@ -1457,7 +1478,10 @@ class OrchestrationApp:
         """
         registry = self._run_registry(config=self._effective_orchestration_config())
         inspect_query = InspectQuery(step_id=step_id, limit=limit, offset=0)
-        inspect_view = query_runs(inspect_query, registry=RunsQueryImpl(registry))
+        inspect_view = query_runs(
+            inspect_query,
+            registry=RunsQueryImpl(RunRegistryInspectionView(registry)),
+        )
         results: list[RunResult] = []
         for run_id in inspect_view.runs:
             record = registry.by_id(run_id)
@@ -1576,7 +1600,9 @@ class OrchestrationApp:
         runs = query_runs(
             InspectQuery(step_id=step_id, limit=100, offset=0),
             registry=RunsQueryImpl(
-                self._run_registry(config=self._effective_orchestration_config())
+                RunRegistryInspectionView(
+                    self._run_registry(config=self._effective_orchestration_config())
+                )
             ),
         )
         runtime_snapshot = self._runtime.snapshot()
@@ -1762,7 +1788,7 @@ class OrchestrationApp:
             OSError: Propagates run store read failures.
         """
         registry = self._run_registry(config=self._effective_orchestration_config())
-        ids = query_cases("open", registry=CasesQueryImpl(registry))
+        ids = query_cases("open", registry=CasesQueryImpl(RunRegistryInspectionView(registry)))
         results: list[CaseResult] = [
             CaseResult(case_id=case_id, status="open", reason="") for case_id in ids
         ]
@@ -2196,7 +2222,7 @@ def build_orchestration_app(
 
     core_adapter = PlanCoreAdapter(plan_path=config.plan_path)
     roster = Roster(default_ttl_seconds=resolved_orchestration_config.roster.default_ttl_seconds)
-    runtime = Runtime()
+    runtime = Runtime(workspace_root=resolved_orchestration_config.runtime.workspace_root)
     control = PlanAwareControl(
         sources=ControlInputSources(core_adapter=core_adapter, roster=roster, runtime=runtime),
         agent=config.default_agent,

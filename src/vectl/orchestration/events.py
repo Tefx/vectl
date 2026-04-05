@@ -14,7 +14,6 @@ import hashlib
 import json
 import threading
 from collections.abc import Mapping, Sequence
-from contextvars import ContextVar, Token
 from dataclasses import dataclass, replace
 from datetime import datetime, timezone
 from fcntl import LOCK_EX, LOCK_UN, flock
@@ -376,6 +375,7 @@ class JsonlEventSink:
         self._path = Path(path)
         self._path.parent.mkdir(parents=True, exist_ok=True)
         self._lock_path = self._path.with_suffix(self._path.suffix + ".lock")
+        self._thread_lock = threading.Lock()
 
     def _authoritative_tail(self) -> tuple[int, str | None]:
         existing = load_event_jsonl(self._path)
@@ -384,13 +384,10 @@ class JsonlEventSink:
         tail = existing[-1]
         return ((tail.seq or 0), tail.entry_hash)
 
-    def _path_lock(self) -> threading.Lock:
-        return _lock_for_path(self._path)
-
     def emit(self, envelope: OrchestrationEventEnvelope) -> None:
         """Append one event preserving seq monotonicity and hash chain integrity."""
 
-        with self._path_lock():
+        with self._thread_lock:
             self._lock_path.parent.mkdir(parents=True, exist_ok=True)
             with self._lock_path.open("a+", encoding="utf-8") as lock_handle:
                 flock(lock_handle.fileno(), LOCK_EX)
@@ -482,60 +479,21 @@ class EventRegistry:
             handler.emit(envelope)
 
 
-_PATH_LOCKS: dict[Path, threading.Lock] = {}
-_PATH_LOCKS_GUARD = threading.Lock()
+def emit(envelope: OrchestrationEventEnvelope, *, registry: EventRegistry) -> None:
+    """Emit one orchestration event through an explicit registry instance."""
+
+    registry.emit(envelope)
 
 
-def _lock_for_path(path: Path) -> threading.Lock:
-    resolved = path.resolve()
-    with _PATH_LOCKS_GUARD:
-        existing = _PATH_LOCKS.get(resolved)
-        if existing is not None:
-            return existing
-        created = threading.Lock()
-        _PATH_LOCKS[resolved] = created
-        return created
+def register_sink(
+    kind: OrchestrationEventKind,
+    handler: EventSink,
+    *,
+    registry: EventRegistry,
+) -> None:
+    """Register a sink on an explicit event registry instance."""
 
-
-_default_registry_context: ContextVar[EventRegistry | None] = ContextVar(
-    "vectl_orch_event_registry",
-    default=None,
-)
-
-
-def set_default_event_registry(registry: EventRegistry) -> Token[EventRegistry | None]:
-    """Bind default event registry for current execution context."""
-
-    return _default_registry_context.set(registry)
-
-
-def reset_default_event_registry(token: Token[EventRegistry | None]) -> None:
-    """Reset context-bound default event registry using prior token."""
-
-    _default_registry_context.reset(token)
-
-
-def get_default_event_registry() -> EventRegistry:
-    """Return context-bound default event registry, creating one lazily."""
-
-    existing = _default_registry_context.get()
-    if existing is not None:
-        return existing
-    registry = EventRegistry()
-    _default_registry_context.set(registry)
-    return registry
-
-
-def emit(envelope: OrchestrationEventEnvelope) -> None:
-    """Emit one orchestration event through context-bound default registry."""
-
-    get_default_event_registry().emit(envelope)
-
-
-def register_sink(kind: OrchestrationEventKind, handler: EventSink) -> None:
-    """Register sink on context-bound default event registry."""
-
-    get_default_event_registry().register(kind, handler)
+    registry.register(kind, handler)
 
 
 __all__ = [
@@ -548,9 +506,6 @@ __all__ = [
     "OrchestrationEventEnvelope",
     "OrchestrationEventKind",
     "CANONICAL_EVENT_REGISTRY",
-    "get_default_event_registry",
-    "set_default_event_registry",
-    "reset_default_event_registry",
     "emit",
     "load_event_jsonl",
     "register_sink",

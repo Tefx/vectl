@@ -896,6 +896,53 @@ class RunRegistry:
         return latest
 
 
+class RunInspectionBoundary(Protocol):
+    """Public read boundary consumed by inspection/query surfaces."""
+
+    def latest_records(self) -> tuple[RunRecord, ...]: ...
+
+    def all_for_step(self, step_id: str) -> tuple[RunRecord, ...]: ...
+
+    def by_status(
+        self,
+        status: Literal["pending", "running", "success", "fail", "stall"],
+    ) -> tuple[RunRecord, ...]: ...
+
+    def latest_for_step(self, step_id: str) -> RunRecord | None: ...
+
+    def latest_cases(self, *, include_removed: bool = True) -> tuple[CaseIndexEntry, ...]: ...
+
+    def cases_for_run(self, run_id: str) -> tuple[CaseIndexEntry, ...]: ...
+
+
+@dataclass(frozen=True)
+class RunRegistryInspectionView:
+    """Adapter exposing a stable inspection read boundary over ``RunRegistry``."""
+
+    registry: RunRegistry
+
+    def latest_records(self) -> tuple[RunRecord, ...]:
+        return self.registry.latest_records()
+
+    def all_for_step(self, step_id: str) -> tuple[RunRecord, ...]:
+        return self.registry.all_for_step(step_id)
+
+    def by_status(
+        self,
+        status: Literal["pending", "running", "success", "fail", "stall"],
+    ) -> tuple[RunRecord, ...]:
+        return self.registry.by_status(status)
+
+    def latest_for_step(self, step_id: str) -> RunRecord | None:
+        return self.registry.latest_for_step(step_id)
+
+    def latest_cases(self, *, include_removed: bool = True) -> tuple[CaseIndexEntry, ...]:
+        return self.registry.latest_cases(include_removed=include_removed)
+
+    def cases_for_run(self, run_id: str) -> tuple[CaseIndexEntry, ...]:
+        return self.registry.cases_for_run(run_id)
+
+
 # ---------------------------------------------------------------------
 # --latest Lookup Convenience Function
 # ---------------------------------------------------------------------
@@ -939,6 +986,8 @@ __all__ = [
     "LegacyContinuityMinimumError",
     "CasesIndex",
     "RunRegistry",
+    "RunInspectionBoundary",
+    "RunRegistryInspectionView",
     "LegacyMigrationState",
     "generate_run_id",
     "generate_case_id",

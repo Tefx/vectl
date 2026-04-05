@@ -12,9 +12,10 @@ import asyncio
 import shutil
 import threading
 import uuid
+from collections.abc import Coroutine
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, Coroutine, Generic, TypeVar, cast
+from typing import TYPE_CHECKING, Any, Generic, TypeVar, cast
 
 from vectl.orchestration.contracts import (
     ExecutionRequest,
@@ -28,8 +29,6 @@ if TYPE_CHECKING:
 
 _T = TypeVar("_T")
 _E = TypeVar("_E", bound=Exception)
-
-WORKTREE_BASE_DIR = Path(".vectl/worktrees")
 
 
 class WorktreeError(RuntimeError):
@@ -108,7 +107,6 @@ __all__ = [
     "Failure",
     "Result",
     "Success",
-    "WORKTREE_BASE_DIR",
     "WorktreeBinding",
     "WorktreeError",
     "worktree_cleanup",
@@ -150,6 +148,7 @@ class Runtime:
     Authority: docs/ORCHESTRATION-PLANE-INTERFACES.md section 4.3
     """
 
+    workspace_root: Path = field(default_factory=lambda: Path(".vectl/workspaces"))
     _active_workspaces: dict[str, _WorkspaceState] = field(default_factory=dict)
     _active_executions: dict[str, str] = field(default_factory=dict)  # execution_id -> workspace
     _stalled_executions: set[str] = field(default_factory=set)
@@ -197,13 +196,13 @@ class Runtime:
                     self._active_executions.pop(stale_state.execution_id, None)
                     self._stalled_executions.discard(stale_state.execution_id)
 
-            existing_path = WORKTREE_BASE_DIR / request.step_id
+            existing_path = self.workspace_root / request.step_id
             if existing_path.exists():
                 cleanup_result = _run_cleanup(step_id=request.step_id, worktree_path=existing_path)
                 if isinstance(cleanup_result, Failure):
                     raise cleanup_result.error
 
-        binding_result = _run_create(step_id=request.step_id, base_dir=WORKTREE_BASE_DIR)
+        binding_result = _run_create(step_id=request.step_id, base_dir=self.workspace_root)
         if isinstance(binding_result, Failure):
             raise binding_result.error
         binding = binding_result.value

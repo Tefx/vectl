@@ -21,10 +21,8 @@ from vectl.orchestration.events import (
     EventValidationError,
     JsonlEventSink,
     OrchestrationEventEnvelope,
-    get_default_event_registry,
     load_event_jsonl,
-    reset_default_event_registry,
-    set_default_event_registry,
+    register_sink,
 )
 
 
@@ -225,12 +223,16 @@ def test_jsonl_sink_parallel_writers_preserve_append_only_chain(tmp_path: Any) -
     assert [event.seq for event in loaded] == list(range(1, 11))
 
 
-def test_default_registry_is_context_bound_and_resettable() -> None:
-    baseline = get_default_event_registry()
-    custom = EventRegistry()
-    token = set_default_event_registry(custom)
-    try:
-        assert get_default_event_registry() is custom
-    finally:
-        reset_default_event_registry(token)
-    assert get_default_event_registry() is baseline
+def test_register_sink_requires_explicit_registry_instance(tmp_path: Any) -> None:
+    registry = EventRegistry()
+    sink = JsonlEventSink(tmp_path / "events-explicit-registry.jsonl")
+
+    register_sink("control_dispatch", sink, registry=registry)
+    envelope = OrchestrationEventEnvelope(
+        kind="control_dispatch",
+        timestamp=datetime(2026, 4, 4, 12, 0, 0, tzinfo=timezone.utc),
+        step_id="core.a",
+        payload={"step_id": "core.a", "agent": "python-executor"},
+        agent="python-executor",
+    )
+    registry.emit(envelope)

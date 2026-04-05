@@ -10,9 +10,7 @@ from vectl.orchestration.control_channel import (
     ControlChannelMessage,
     FilesystemControlChannel,
     PendingActionLimitExceededError,
-    get_default_control_channel,
-    reset_default_control_channel,
-    set_default_control_channel,
+    send_to_control,
 )
 
 
@@ -134,16 +132,12 @@ def test_wait_for_ack_observes_async_applied_receipt(tmp_path) -> None:
     assert acknowledgement.status == "applied"
 
 
-def test_default_control_channel_is_context_bound_and_resettable(tmp_path) -> None:
-    baseline = get_default_control_channel()
-    custom = FilesystemControlChannel(runs_root=tmp_path / "custom")
+def test_send_to_control_requires_explicit_channel_instance(tmp_path) -> None:
+    channel = FilesystemControlChannel(runs_root=tmp_path / "custom")
 
-    token = set_default_control_channel(custom)
-    try:
-        assert get_default_control_channel() is custom
-    finally:
-        reset_default_control_channel(token)
-
-    restored = get_default_control_channel()
-    assert restored is not custom
-    assert restored.__class__ is baseline.__class__
+    send_to_control(
+        ControlChannelMessage(msg_type="control.pause", sender="op", payload=("run",)),
+        channel=channel,
+    )
+    pending = channel.list_requests("run")
+    assert len(pending) == 1

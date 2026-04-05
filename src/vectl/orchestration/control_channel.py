@@ -23,7 +23,6 @@ import hashlib
 import json
 import os
 import time
-from contextvars import ContextVar, Token
 from dataclasses import dataclass
 from pathlib import Path
 from typing import TYPE_CHECKING, Literal, Protocol, cast
@@ -456,33 +455,6 @@ class FilesystemControlChannel:
         )
 
 
-_DEFAULT_CONTROL_CHANNEL: ContextVar[ControlChannel | None] = ContextVar(
-    "vectl_orch_control_channel",
-    default=None,
-)
-
-
-def set_default_control_channel(channel: ControlChannel) -> Token[ControlChannel | None]:
-    """Bind default control-channel implementation for current execution context."""
-
-    return _DEFAULT_CONTROL_CHANNEL.set(channel)
-
-
-def reset_default_control_channel(token: Token[ControlChannel | None]) -> None:
-    """Reset context-bound control channel to the previous value."""
-
-    _DEFAULT_CONTROL_CHANNEL.reset(token)
-
-
-def get_default_control_channel() -> ControlChannel:
-    """Get context-bound default control-channel implementation."""
-
-    existing = _DEFAULT_CONTROL_CHANNEL.get()
-    if existing is None:
-        return FilesystemControlChannel()
-    return existing
-
-
 def _normalize_component(raw: str) -> str:
     normalized = quote(
         raw, safe="ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789._-%"
@@ -640,26 +612,22 @@ def _write_json_atomic(path: Path, payload: dict[str, object]) -> None:
 
 def send_to_control(
     message: ControlChannelMessage,
-    channel: ControlChannel | None = None,
+    channel: ControlChannel,
 ) -> None:
     """
     Convenience surface for sending a message to the control channel.
 
     Authority: docs/ORCHESTRATION-PLANE-IMPLEMENTATION-DESIGN.md section 3
 
-    GAP: The default channel instance when channel=None is not yet specified.
-
     Args:
         message: The message to send to control.
-        channel: Optional explicit channel. If None, a default channel
-            must be globally available.
+        channel: Explicit control-channel implementation.
 
     Raises:
         InvalidControlChannelMessageError: If message cannot be persisted.
         ControlChannelError: If persistence fails.
     """
-    resolved_channel = channel if channel is not None else get_default_control_channel()
-    resolved_channel.send(message)
+    channel.send(message)
 
 
 # ---------------------------------------------------------------------
@@ -742,9 +710,6 @@ __all__ = [
     "ActionReceipt",
     "ActionAcknowledgement",
     "FilesystemControlChannel",
-    "set_default_control_channel",
-    "reset_default_control_channel",
-    "get_default_control_channel",
     "send_to_control",
     "InspectView",
     "CaseView",

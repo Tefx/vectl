@@ -25,7 +25,12 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import TYPE_CHECKING, Literal, Protocol, cast
 
-from vectl.orchestration.run_store import RunRecord, RunRegistry
+from vectl.orchestration.run_store import (
+    RunInspectionBoundary,
+    RunRecord,
+    RunRegistry,
+    RunRegistryInspectionView,
+)
 
 if TYPE_CHECKING:
     pass
@@ -160,13 +165,13 @@ class RunsQueryImpl:
     independently; consumes canonical run-store and projection facts.
 
     Args:
-        registry: RunRegistry instance for run-record lookups.
+        registry: Read boundary for run-record lookups.
         projection_root: Optional artifact root for RunStateView enrichment.
     """
 
     def __init__(
         self,
-        registry: RunRegistry,
+        registry: RunInspectionBoundary,
         *,
         projection_root: Path | None = None,
     ) -> None:
@@ -295,10 +300,10 @@ class CasesQueryImpl:
     re-deriving case state independently.
 
     Args:
-        registry: RunRegistry instance for case-index lookups.
+        registry: Read boundary for case-index lookups.
     """
 
-    def __init__(self, registry: RunRegistry) -> None:
+    def __init__(self, registry: RunInspectionBoundary) -> None:
         self._registry = registry
 
     def open_cases(self) -> tuple[str, ...]:
@@ -358,7 +363,7 @@ def query_runs(
         RunsInspectView with query results.
     """
     if registry is None:
-        registry = RunsQueryImpl(RunRegistry())
+        registry = RunsQueryImpl(RunRegistryInspectionView(RunRegistry()))
     return registry.query(inspect_query)
 
 
@@ -382,7 +387,7 @@ def query_cases(
         Tuple of matching case identifiers.
     """
     if registry is None:
-        registry = CasesQueryImpl(RunRegistry())
+        registry = CasesQueryImpl(RunRegistryInspectionView(RunRegistry()))
 
     if cases_query is None or cases_query == "open":
         return registry.open_cases()

@@ -17,7 +17,7 @@ import pytest
 from vectl.io import save_plan
 from vectl.models import Phase, Plan, Step
 from vectl.orch_app import AppConfig, build_orchestration_app
-from vectl.orchestration.config import OrchestrationConfig
+from vectl.orchestration.config import OrchestrationConfig, RuntimeConfig
 from vectl.orchestration.control_channel import FilesystemControlChannel
 from vectl.orchestration.recovery import LegacyRunStatus
 from vectl.orchestration.run_store import RunRecord, RunRegistry, generate_run_id
@@ -164,6 +164,47 @@ def test_run_runtime_start_failure_terminalizes_after_durable_admission(
     assert record.status == "fail"
 
 
+def test_run_events_emit_only_after_running_record_is_durable(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    app = _build_app(tmp_path)
+    registry = RunRegistry(store_root=tmp_path / "runs")
+    observed_statuses: list[str | None] = []
+
+    original_emit = app._event_sink.emit
+
+    def emit_with_status_probe(envelope) -> None:
+        run_id = str((envelope.payload or {}).get("run_id", ""))
+        record = registry.by_id(run_id)
+        observed_statuses.append(None if record is None else record.status)
+        original_emit(envelope)
+
+    monkeypatch.setattr(app._event_sink, "emit", emit_with_status_probe)
+
+    result = app.run(step_id="core.ready", agent="python-executor")
+    assert result.success is True
+    assert observed_statuses == ["running", "running"]
+
+
+def test_run_event_persistence_failure_terminalizes_run(tmp_path: Path) -> None:
+    app = _build_app(tmp_path)
+    assert app._config.run_store_root is not None
+
+    def fail_emit(_envelope) -> None:
+        raise RuntimeError("event sink down")
+
+    app._event_sink.emit = fail_emit  # type: ignore[method-assign] # test fault injection
+
+    result = app.run(step_id="core.ready", agent="python-executor")
+    assert result.success is False
+    assert result.run_id is not None
+    registry = RunRegistry(store_root=app._config.run_store_root)
+    final = registry.by_id(result.run_id)
+    assert final is not None
+    assert final.status == "fail"
+
+
 def test_build_fails_when_authoritative_plan_path_missing(tmp_path: Path) -> None:
     missing_plan = tmp_path / "missing-plan.yaml"
     config = AppConfig(
@@ -174,6 +215,27 @@ def test_build_fails_when_authoritative_plan_path_missing(tmp_path: Path) -> Non
 
     with pytest.raises(FileNotFoundError, match="authoritative plan path not found"):
         build_orchestration_app(config)
+
+
+def test_build_wires_runtime_workspace_root_from_orchestration_config(tmp_path: Path) -> None:
+    plan_path = tmp_path / "plan.yaml"
+    runs_root = tmp_path / "runs"
+    workspace_root = tmp_path / "custom-workspaces"
+    _write_plan(plan_path)
+    config = AppConfig(
+        plan_path=plan_path,
+        orchestration_config=OrchestrationConfig(
+            plan_path=plan_path,
+            runtime=RuntimeConfig(workspace_root=workspace_root),
+        ),
+        run_store_root=runs_root,
+    )
+    app = build_orchestration_app(config)
+
+    result = app.run(step_id="core.ready", agent="python-executor")
+    assert result.success is True
+    assert workspace_root.exists()
+    assert any(workspace_root.iterdir())
 
 
 def test_control_pause_reports_ambiguous_run_selection(tmp_path: Path) -> None:

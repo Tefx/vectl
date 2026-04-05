@@ -62,11 +62,10 @@ def _request(step_id: str, work_refs: tuple[str, ...] = ()) -> ExecutionRequest:
 def test_prepare_start_collect_cleanup_lifecycle(
     temp_git_repo: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    runtime = Runtime()
-    base_dir = temp_git_repo / ".vectl" / "worktrees"
+    base_dir = temp_git_repo / ".vectl" / "workspaces"
+    runtime = Runtime(workspace_root=base_dir)
     base_dir.mkdir(parents=True, exist_ok=True)
     monkeypatch.chdir(temp_git_repo)
-    monkeypatch.setattr("vectl.orchestration.runtime.WORKTREE_BASE_DIR", base_dir)
 
     request = _request(step_id="runtime-lifecycle")
     workspace = runtime.prepare(request)
@@ -94,11 +93,10 @@ def test_prepare_fresh_isolation_recreates_workspace(
     monkeypatch: pytest.MonkeyPatch,
     hint: str,
 ) -> None:
-    runtime = Runtime()
-    base_dir = temp_git_repo / ".vectl" / "worktrees"
+    base_dir = temp_git_repo / ".vectl" / "workspaces"
+    runtime = Runtime(workspace_root=base_dir)
     base_dir.mkdir(parents=True, exist_ok=True)
     monkeypatch.chdir(temp_git_repo)
-    monkeypatch.setattr("vectl.orchestration.runtime.WORKTREE_BASE_DIR", base_dir)
 
     step_id = f"runtime-fresh-{hint.split('=')[-1]}"
     request = _request(step_id=step_id, work_refs=(hint,))
@@ -124,11 +122,10 @@ async def test_prepare_and_cleanup_work_inside_running_event_loop(
     temp_git_repo: Path,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    runtime = Runtime()
-    base_dir = temp_git_repo / ".vectl" / "worktrees"
+    base_dir = temp_git_repo / ".vectl" / "workspaces"
+    runtime = Runtime(workspace_root=base_dir)
     base_dir.mkdir(parents=True, exist_ok=True)
     monkeypatch.chdir(temp_git_repo)
-    monkeypatch.setattr("vectl.orchestration.runtime.WORKTREE_BASE_DIR", base_dir)
 
     request = _request(step_id="runtime-async-context", work_refs=("isolation=workspace",))
     workspace = runtime.prepare(request)

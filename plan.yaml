@@ -64066,7 +64066,7 @@ phases:
       \ -> 5 passed\n- remaining_blockers: none\n- commit: e02f48e"
   - id: orch_operator_deep_review.retest_architecture_blockers
     name: Retest deep-review architecture blockers
-    status: claimed
+    status: done
     description: 'As an INDEPENDENT ARCHITECTURE REVIEWER (`software-architect`),
       retest the four blocker families reported by `orch_operator_deep_review.architecture_review`
       after the batched fix lands.
@@ -64154,3 +64154,23 @@ phases:
     agent: software-architect
     claimed_by: software-architect
     claimed_at: '2026-04-05T06:42:06.636849+00:00'
+    done_at: '2026-04-05T06:45:34.178445+00:00'
+    evidence: "## Architecture Retest Report\nTester: software-architect (independent)\n\
+      \n### refs Read Confirmation\n- tools/vectl/README.md — read attempted; file\
+      \ not present in assigned worktree path.\n\n## Behavioral Proof Register\n-\
+      \ B1 status: PROVEN\n  - evidence_ref: inspection_queries boundaries + test_runs_query_reads_through_explicit_inspection_boundary\n\
+      \  - gate_decision_basis: inspection uses explicit RunInspectionBoundary/adapter;\
+      \ no private helper reach-through.\n- B2 status: PROVEN\n  - evidence_ref: events/control\
+      \ explicit instance ownership + parallel writer and explicit channel tests\n\
+      \  - gate_decision_basis: no process-global mutable default registry/channel\
+      \ patterns remain.\n- B3 status: PROVEN\n  - evidence_ref: _admit_start_and_persist_running\
+      \ ordering path + start/event durability tests\n  - gate_decision_basis: admission/pending/start/running/event\
+      \ sequencing verified with terminal failure path.\n- B4 status: PROVEN\n  -\
+      \ evidence_ref: runtime workspace root wiring + no .vectl/worktrees literals\
+      \ + configured root tests\n  - gate_decision_basis: runtime path ownership now\
+      \ config-driven via RuntimeConfig.workspace_root.\n\nAdditional verification:\n\
+      - uv run pytest -q tests/orchestration/unit/test_inspection_queries.py tests/orchestration/unit/test_events.py\
+      \ tests/orchestration/unit/test_control_channel.py tests/orchestration/unit/test_orch_app.py\
+      \ tests/orchestration/unit/test_runtime.py -> 47 passed\n\nArtifact: independent_architecture_retest_report.md\n\
+      Commit: 525f667\n\nOverall verdict:\n- gate_open_allowed: true\n- remaining\
+      \ blocker-class issue intersecting final gate: none"

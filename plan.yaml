@@ -64509,7 +64509,7 @@ phases:
       \ tests verify report alignment with current code truth."
 - id: orch_operator_post_gate_cleanup
   name: Orchestration Operator Post-Gate Cleanup
-  status: pending
+  status: in_progress
   gate: Close remaining should-fix and suggestion-class findings from the latest orchestration
     operator deep-review gate with targeted remediation, runtime proof, and an independent
     cleanup gate.
@@ -64595,7 +64595,7 @@ phases:
     agent: python-executor
   - id: orch_operator_post_gate_cleanup.close-config-validation-red-gap-per-spec-8-5-or-explicit-durable-behavior
     name: Close config validation red-gap per spec §8.5 or explicit durable behavior
-    status: pending
+    status: claimed
     description: 'step_type: implementation
 
       work_type: proof_closure
@@ -64677,6 +64677,8 @@ phases:
     - src/vectl/orch_app.py
     - src/vectl/cli.py
     agent: python-executor
+    claimed_by: python-executor
+    claimed_at: '2026-04-05T07:41:06.565164+00:00'
   - id: orch_operator_post_gate_cleanup.add-projection-replay-end-to-end-runtime-proof
     name: Add projection replay end-to-end runtime proof
     status: pending

@@ -67171,6 +67171,146 @@ phases:
     recovery are durable and auditable across orch app and orchestration runtime metadata.
   depends_on:
   - orchestration_orch_app_routing
+  steps:
+  - id: orchestration_operator_recovery.implement-operator-notification-conflict-preservation-and-recovery-alignment
+    name: Implement operator notification, conflict preservation, and recovery alignment
+    status: pending
+    description: 'step_type: implementation
+
+
+      Implement durable operator/conflict/recovery alignment for the upper orchestration
+      layer.
+
+
+      Scope:
+
+      - preserve operator_required as durable orchestration state
+
+      - persist NotificationRecord-style metadata, receipt state, and operator pause
+      state
+
+      - preserve merge_conflict and aborted reconcile evidence without silent protected-path
+      integration
+
+      - keep plan.yaml as protected path; do not silently integrate protected-path
+      changes
+
+      - reconstruct worktree, execution, reconcile, resolution-case, and operator-notification
+      state after restart before unsafe dispatch resumes
+
+      - prevent complete replay before reconcile closure after restart'
+    verification: '- phase-check: operator_required creates durable notification state
+      and paused routing
+
+      - phase-check: unresolved conflict and protected-path evidence survive restart
+
+      - phase-check: recovery reconstructs enough state to prevent unsafe dispatch
+      or duplicate complete'
+    refs:
+    - docs/ORCHESTRATION-PLANE-OPERATOR-CONFLICT-RECOVERY.md
+    - docs/ORCHESTRATION-PLANE-ORCH-APP-ROUTING.md
+    - docs/ORCHESTRATION-PLANE-RESOLVER-COORDINATION.md
+    - src/vectl/orch_app.py
+    - src/vectl/orchestration/runtime.py
+    - src/vectl/orchestration/recovery.py
+    - src/vectl/orchestration/run_store.py
+    - src/vectl/orchestration/continuity_artifacts.py
+    agent: python-senior
+  - id: orchestration_operator_recovery.verify-durable-operator-pause-and-recovery-behavior
+    name: Verify durable operator pause and recovery behavior
+    status: pending
+    description: 'step_type: test
+
+      step_intent: retest_green
+
+      expected_result: green
+
+
+      tags:
+
+      - integration
+
+
+      As an INDEPENDENT TESTER (integration-verifier), validate durable operator/conflict/recovery
+      behavior.
+
+
+      Required scenarios:
+
+      - resolver returns operator_required and orch_app creates durable notification
+      state
+
+      - unresolved merge_conflict survives process restart with evidence intact
+
+      - restart reconstructs enough runtime state to prevent unsafe dispatch and duplicate
+      complete
+
+      - protected-path conflict is surfaced explicitly rather than silently integrated'
+    verification: '- phase-check: operator notification persistence, restart-while-paused,
+      and restart-after-conflict tests pass green
+
+      - phase-check: at least one failure-path proof covers protected-path conflict
+      or duplicate-complete prevention'
+    refs:
+    - docs/ORCHESTRATION-PLANE-OPERATOR-CONFLICT-RECOVERY.md
+    - src/vectl/orch_app.py
+    - src/vectl/orchestration/recovery.py
+    - src/vectl/orchestration/run_store.py
+    agent: integration-verifier
+  - id: orchestration_operator_recovery.audit-operator-conflict-recovery-conformance
+    name: Audit operator/conflict/recovery conformance
+    status: pending
+    description: 'As an INDEPENDENT TESTER (spec-verifier), verify that operator notification,
+      conflict policy, and recovery behavior match the authoritative docs.
+
+
+      Focus areas:
+
+      - operator_required durable state and receipt semantics
+
+      - reconcile outcomes and protected-path handling
+
+      - recovery metadata set and restart invariants
+
+      - explicit pause/resume semantics after operator notification'
+    verification: '- phase-check: conformance report cites all touched operator/conflict/recovery
+      requirements
+
+      - phase-check: any NEEDS_TEST or DIVERGES items are explicit for gate review'
+    refs:
+    - docs/ORCHESTRATION-PLANE-OPERATOR-CONFLICT-RECOVERY.md
+    - docs/ORCHESTRATION-PLANE-ORCH-APP-ROUTING.md
+    - src/vectl/orch_app.py
+    - src/vectl/orchestration/recovery.py
+    - src/vectl/orchestration/runtime.py
+    agent: spec-verifier
+  - id: orchestration_operator_recovery.gate-operator-conflict-recovery-alignment
+    name: Gate operator/conflict/recovery alignment
+    status: pending
+    description: 'As an INDEPENDENT REVIEWER (gate-reviewer), assess whether durable
+      operator/conflict/recovery behavior is ready for final upper-layer review.
+
+
+      review_depth: THOROUGH
+
+      cross_cutting_focus:
+
+      - durable operator_required state
+
+      - protected-path handling for plan.yaml
+
+      - restart-safe invariants preventing duplicate complete
+
+      - auditable conflict evidence preservation'
+    verification: '- phase-check: all operator/conflict/recovery steps completed with
+      implementation, integration, and spec evidence
+
+      - phase-check: unresolved blocker-class restart or protected-path risks are
+      either proven closed or explicitly blocking'
+    refs:
+    - docs/ORCHESTRATION-PLANE-OPERATOR-CONFLICT-RECOVERY.md
+    - docs/ORCHESTRATION-PLANE-ORCH-APP-ROUTING.md
+    agent: gate-reviewer
 - id: orchestration_upper_layer_review
   name: Orchestration Upper-Layer Review
   status: locked

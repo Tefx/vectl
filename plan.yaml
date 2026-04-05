@@ -64507,3 +64507,11 @@ phases:
       \ PASS\n- gate_open_allowed: true\n\nArtifact accuracy proof:\n- consumer_boundary_conformance_report.yaml\
       \ now PASS and no stale unresolved blockers.\n- Recovery contract conformance\
       \ tests verify report alignment with current code truth."
+- id: orch_operator_post_gate_cleanup
+  name: Orchestration Operator Post-Gate Cleanup
+  status: pending
+  gate: Close remaining should-fix and suggestion-class findings from the latest orchestration
+    operator deep-review gate with targeted remediation, runtime proof, and an independent
+    cleanup gate.
+  depends_on:
+  - orch_operator_deep_review

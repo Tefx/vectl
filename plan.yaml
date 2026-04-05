@@ -65087,3 +65087,10 @@ phases:
   gate: Documentation reflects the refreshed vectl_decide contract exactly.
   depends_on:
   - decide_refresh_impl
+- id: deep_review
+  name: Deep Review (Independent Audit)
+  status: locked
+  gate: Independent reviewers confirm wiring, contract conformance, and standalone
+    advisor semantics.
+  depends_on:
+  - doc_sync

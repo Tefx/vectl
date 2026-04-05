@@ -65193,6 +65193,39 @@ phases:
 
       - Downstream implementation owner: decide_refresh_impl.models-state + decide_refresh_impl.core'
     agent: python-executor
+  - id: decide_refresh_tests.state-red
+    name: Define advisor_state expected-red tests
+    status: pending
+    description: 'step_type: test
+
+      step_intent: test_define_red
+
+      expected_result: red
+
+
+      Test-only step. Update tests/test_decide_state_isolation.py and related decide
+      tests to expose the caller-owned advisor_state contract: advisor_state is the
+      canonical external name; next_state is a full replacement object; completion_times/session_registry/failure_counts
+      are present; state=None is not treated as the intended agent/orchestrator path.'
+    verification: 'local-check protecting implementation: state/roundtrip assertions
+      are red and test-only.'
+    evidence_template: '## refs Read Confirmation (MANDATORY)
+
+      For each ref in this step:
+
+      - <filename> — key passage or "NOT READ: <reason>"
+
+
+      ## Exposed Gaps
+
+      - Tests added/updated:
+
+      - Replacement semantics asserted:
+
+      - Expected red assertions:
+
+      - Downstream implementation owner: decide_refresh_impl.models-state'
+    agent: python-executor
 - id: decide_refresh_impl
   name: vectl_decide Contract Refresh — Implementation
   status: locked

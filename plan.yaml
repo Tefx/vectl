@@ -66190,6 +66190,115 @@ phases:
       \ runtime tracking:\n- Deviation record (required if contract artifact needed\
       \ correction):\n"
     agent: python-senior
+  - id: orchestration_runtime_lifecycle.retest-lifecycle-green
+    name: Retest runtime lifecycle against worktree and reconcile hard rules
+    status: pending
+    description: 'step_type: test
+
+      step_intent: retest_green
+
+      expected_result: green
+
+
+      As an INDEPENDENT TESTER (integration-verifier), validate the runtime lifecycle
+      from a fresh perspective.
+
+
+      YOUR GOAL IS TO FIND PROBLEMS, not to confirm it works.
+
+
+      Test for:
+
+      - happy path: prepare -> execute -> reconcile merged|noop -> complete allowed
+      -> cleanup
+
+      - edge cases: workspace isolation modes, main-worktree resolver constraint,
+      cleanup after failed execution
+
+      - error scenarios: conflict/unresolved reconcile blocks completion and surfaces
+      operator/user-facing message
+
+      - integrity checks: worktree metadata and runtime snapshot remain coherent across
+      prepare/start/collect/cleanup
+
+
+      Independence Level: L2
+
+
+      If tests discover unresolved lifecycle issues, that is a successful verification
+      outcome and must be reported explicitly.
+
+      '
+    verification: 'Scope: phase-check protecting orchestration_runtime_lifecycle.gate
+      and orchestration_runtime_wiring.gate.
+
+      - Green tests prove successful lifecycle sequencing and cleanup.
+
+      - Semi-blind failure-path tests prove completion is blocked until reconcile
+      is merged|noop.
+
+      - Evidence includes actual command output and operator/user-facing message output
+      for unresolved runtime problems.
+
+      - Resolver/main-worktree constraint remains intact.'
+    evidence_template: '## refs Read Confirmation (MANDATORY)
+
+
+      For each ref in this step:
+
+      - <filename> — key passage or "NOT READ: <reason>"
+
+
+      If no refs were provided, state: "No refs for this step."
+
+
+      ## Verification Report
+
+      **Tester**: integration-verifier
+
+      **Scope**: runtime worktree lifecycle
+
+      **Independence Level**: L2
+
+
+      ### Test Execution
+
+      - Commands executed:
+
+      ```
+
+      <paste actual commands>
+
+      ```
+
+      - Actual output:
+
+      ```
+
+      <paste stdout/stderr>
+
+      ```
+
+
+      ### Behavioral Proof Register
+
+      | requirement_ref | behavior_claim | runtime_proof_expected | evidence_ref |
+      status | closure_path | gate_decision_basis |
+
+      | --------------- | -------------- | ---------------------- | ------------ |
+      ------ | ------------ | ------------------- |
+
+
+      ### Issues Found
+
+      | Severity | Description | Location | Reproduction |
+
+      | -------- | ----------- | -------- | ------------ |
+
+      '
+    depends_on:
+    - orchestration_runtime_lifecycle.implement-worktree-lifecycle
+    agent: integration-verifier
 - id: orchestration_runtime_wiring
   name: Orchestration Runner/Runtime Wiring
   status: locked

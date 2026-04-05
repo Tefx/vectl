@@ -65258,6 +65258,34 @@ phases:
 
       - Downstream implementation owner: decide_refresh_impl.mcp-surface'
     agent: python-executor
+  - id: decide_refresh_tests.gate
+    name: Gate decide_refresh_tests
+    status: pending
+    description: 'Gate review: verify refreshed tests define the contract gap clearly
+      across core, state, and MCP surfaces.'
+    verification: 'phase-check protecting implementation: red intent is explicit,
+      tests remain test-only, and core/state/MCP contract gaps are independently visible.'
+    evidence_template: '## refs Read Confirmation (MANDATORY)
+
+      For each ref in this step:
+
+      - <filename> — key passage or "NOT READ: <reason>"
+
+
+      ## Gate Review Report
+
+      - Core gap exposed:
+
+      - State gap exposed:
+
+      - MCP gap exposed:
+
+      - Gate decision: OPEN | BLOCKED'
+    depends_on:
+    - decide_refresh_tests.core-red
+    - decide_refresh_tests.state-red
+    - decide_refresh_tests.mcp-red
+    agent: gate-reviewer
 - id: decide_refresh_impl
   name: vectl_decide Contract Refresh — Implementation
   status: locked

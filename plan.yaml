@@ -65293,6 +65293,35 @@ phases:
     conformant to the RFC.
   depends_on:
   - decide_refresh_tests
+  steps:
+  - id: decide_refresh_impl.models-state
+    name: Implement refreshed models and state
+    status: pending
+    description: Fill in implementation changes in src/vectl/models.py and src/vectl/decision_state.py
+      per the pinned RFC contract. Implement runner provenance, caller-owned advisor_state
+      shape, next_state full replacement semantics, policy metadata support, and explicit
+      separation between task_id and reuse_token semantics. Do not introduce compatibility
+      dual-track fields.
+    verification: 'local-check protecting downstream core logic: focused model/state
+      tests pass; next_state is serializable full replacement data; task_id != session_id
+      semantics are preserved.'
+    evidence_template: '## refs Read Confirmation (MANDATORY)
+
+      For each ref in this step:
+
+      - <filename> — key passage or "NOT READ: <reason>"
+
+
+      ## Implementation Evidence
+
+      - Files changed:
+
+      - Exact refreshed fields implemented:
+
+      - How task_id != session_id was preserved:
+
+      - How next_state replacement semantics were implemented:'
+    agent: python-senior
 - id: doc_sync
   name: Documentation Sync
   status: locked

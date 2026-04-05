@@ -63638,6 +63638,7 @@ phases:
     - orch_operator_deep_review.contract_strength
     - orch_operator_deep_review.black_box_verification
     - orch_operator_deep_review.retest_behavioral_conformance_blockers
+    - orch_operator_deep_review.retest_architecture_blockers
     agent: gate-reviewer
   - id: orch_operator_deep_review.fix_behavioral_conformance_blockers
     name: Fix blocker-class behavioral conformance gaps

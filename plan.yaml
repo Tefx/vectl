@@ -64715,7 +64715,7 @@ phases:
     claimed_at: '2026-04-05T07:41:06.565164+00:00'
   - id: orch_operator_post_gate_cleanup.add-projection-replay-end-to-end-runtime-proof
     name: Add projection replay end-to-end runtime proof
-    status: claimed
+    status: done
     description: 'step_type: verification
 
       step_intent: retest_green
@@ -64771,6 +64771,45 @@ phases:
     agent: integration-verifier
     claimed_by: integration-verifier
     claimed_at: '2026-04-05T07:44:58.959593+00:00'
+    done_at: '2026-04-05T07:50:47.602984+00:00'
+    evidence: '## refs Read Confirmation
+
+      - docs/ORCHESTRATION-PLANE-CLI-CONFIG-OBSERVABILITY-DESIGN.md — read (§9.2 replay
+      contracts)
+
+      - tests/orchestration/unit/test_projections_impl.py — read
+
+      - tests/orchestration/unit/test_orch_app.py — read
+
+      - tests/repro/test_orch_observability_red.py — read
+
+      - src/vectl/orchestration/projections.py — read
+
+      - src/vectl/orch_app.py — read
+
+
+      Verification commands:
+
+      - uv run pytest tests/orchestration/unit/test_projections_impl.py -v -> 3 passed
+
+      - uv run pytest tests/orchestration/unit/test_orch_app.py::test_resume_safe_replays_from_durable_artifacts
+      -v -> 1 passed
+
+
+      Runtime proof outcomes:
+
+      - Verified end-to-end replay path produces artifacts: state/latest.json, state/summary.json,
+      state/metrics.json
+
+      - Verified cross-artifact seq-order consistency using last_event_seq
+
+      - Verified replay values derived via runtime/replay boundary (not fixture-only
+      schema assertion)
+
+
+      Commit:
+
+      - a4b2527 strengthen: add end-to-end runtime proof for projection replay artifacts'
   - id: orch_operator_post_gate_cleanup.gate
     name: Retest and gate remaining deep-review should-fix and suggestions
     status: pending

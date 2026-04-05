@@ -63585,7 +63585,7 @@ phases:
     agent: gate-reviewer
   - id: orch_operator_deep_review.fix_behavioral_conformance_blockers
     name: Fix blocker-class behavioral conformance gaps
-    status: pending
+    status: claimed
     description: 'Batched remediation for blocker-class spec-conformance uncertainties
       from `orch_operator_deep_review.spec_conformance_full`.
 
@@ -63692,6 +63692,8 @@ phases:
     depends_on:
     - orch_operator_deep_review.spec_conformance_full
     agent: python-senior
+    claimed_by: python-senior
+    claimed_at: '2026-04-05T05:58:46.844938+00:00'
   - id: orch_operator_deep_review.retest_behavioral_conformance_blockers
     name: Retest behavioral conformance blockers and decide gate-open eligibility
     status: pending

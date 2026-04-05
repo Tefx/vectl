@@ -66395,3 +66395,73 @@ phases:
   depends_on:
   - orchestration_runner_backend
   - orchestration_runtime_lifecycle
+  steps:
+  - id: orchestration_runtime_wiring.wire-runtime-to-backend
+    name: Wire runtime lifecycle to the shared runner backend
+    status: pending
+    description: "step_type: implementation\ntags:\n  - integration\nwork_type: new_capability\n\
+      upstream_artifacts:\n  - path: src/vectl/orchestration/runner_backend.py\n \
+      \   from_step: orchestration_runner_backend.build-runner-backend\n    tier:\
+      \ contract\n  - path: src/vectl/orchestration/runtime.py\n    from_step: orchestration_runtime_lifecycle.implement-worktree-lifecycle\n\
+      \    tier: contract\n  - path: tests/orchestration/**\n    from_step: orchestration_foundation_lock.define-red-contract-tests\n\
+      \    tier: test\n\nFill in stub bodies in the runtime/backend wiring seam using\
+      \ the already-built backend and lifecycle surfaces.\n\nUPSTREAM ARTIFACTS (AUTHORITATIVE)\n\
+      - runner backend module(s) from orchestration_runner_backend.build-runner-backend\n\
+      - runtime lifecycle logic from orchestration_runtime_lifecycle.implement-worktree-lifecycle\n\
+      - protected red/green tests from foundation and prior phase retests\n\nYOUR\
+      \ SCOPE\n- Connect runtime.prepare/start/collect/cleanup to the shared runner\
+      \ backend.\n- Preserve the ownership seam: backend stays mechanical launch/poll/cleanup\
+      \ substrate; runtime stays responsible for worktree/execution/reconcile lifecycle.\n\
+      - Ensure complete is only reachable after runtime observes reconcile=merged|noop.\n\
+      - Ensure unresolved runtime problems surface operator/user-facing output instead\
+      \ of silent success.\n- Do not expand into resolver full landing, merge/conflict\
+      \ policy deepening, or control/operator closure.\n\nPath exercised: runtime\
+      \ -> runner backend -> process state -> reconcile status -> runtime cleanup/completion\
+      \ gate\n\nLikely touch paths:\n- src/vectl/orchestration/runtime.py\n- src/vectl/orchestration/runner_backend.py\n\
+      - src/vectl/orchestration/contracts.py\n- src/vectl/orchestration/interfaces.py\n\
+      - tests/orchestration/test_runtime_wiring*.py\n\n## Completion Criteria (stub\
+      \ exclusion)\nThis is an IMPLEMENTATION step. Stub-only completion is NOT acceptable.\n\
+      Each deliverable MUST contain substantive integration logic that drives the\
+      \ real backend through the runtime entry path and preserves reconcile-before-complete\
+      \ behavior.\n"
+    verification: 'Scope: local-check protecting orchestration_runtime_wiring.integration-proof,
+      orchestration_runtime_wiring.spec-conformance, and orchestration_runtime_wiring.gate.
+
+      - Runtime entry path exercises the real backend, not stubs.
+
+      - Main path: runtime prepare/start/collect/cleanup flows through backend and
+      reaches reconcile gating correctly.
+
+      - Failure path: unresolved reconcile or backend failure preserves operator-facing
+      evidence and blocks completion.
+
+      - No resolver/control policy spillover.'
+    evidence_template: '## refs Read Confirmation (MANDATORY)
+
+
+      For each ref in this step:
+
+      - <filename> — key passage or "NOT READ: <reason>"
+
+
+      If no refs were provided, state: "No refs for this step."
+
+
+      ## Integration Implementation Report
+
+      - Touched files:
+
+      - Runtime->backend wiring location:
+
+      - Real backend entry path location:
+
+      - Reconcile-before-complete guard location:
+
+      - Operator/user notification location:
+
+      - Regression tests updated:
+
+      - Deviation record (required if upstream artifact needed correction):
+
+      '
+    agent: python-senior

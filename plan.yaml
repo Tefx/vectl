@@ -63716,7 +63716,7 @@ phases:
       \ ambiguity: none"
   - id: orch_operator_deep_review.retest_behavioral_conformance_blockers
     name: Retest behavioral conformance blockers and decide gate-open eligibility
-    status: pending
+    status: claimed
     description: 'Independent post-remediation verification for the batched R19/R24
       behavioral conformance blockers.
 
@@ -63800,3 +63800,5 @@ phases:
     depends_on:
     - orch_operator_deep_review.fix_behavioral_conformance_blockers
     agent: spec-verifier
+    claimed_by: spec-verifier
+    claimed_at: '2026-04-05T06:04:32.148480+00:00'

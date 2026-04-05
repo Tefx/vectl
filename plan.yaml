@@ -63314,7 +63314,7 @@ phases:
   steps:
   - id: orch_operator_deep_review.full_plan_check
     name: Run full-plan orchestration quality check
-    status: claimed
+    status: done
     description: 'Full-plan check: run the broadest agreed project-wide quality command
       family plus full orchestration smoke coverage at the nearest boundary before
       final audit. This protects the final deep review gate from being the first place
@@ -63332,6 +63332,47 @@ phases:
     agent: integration-verifier
     claimed_by: integration-verifier
     claimed_at: '2026-04-05T06:46:31.628796+00:00'
+    done_at: '2026-04-05T06:53:55.360543+00:00'
+    evidence: 'Full-plan orchestration quality check completed.
+
+
+      Broad quality command family:
+
+      - ruff check . --statistics -> style/lint findings only
+
+      - mypy src/vectl --config-file pyproject.toml -> Success: no issues found in
+      40 source files
+
+      - pytest tests/ -v -> 1572 passed, 18 failed (expected-red), 39 skipped
+
+      - pytest tests/ --cov=vectl --cov-report=term-missing -> 85% coverage
+
+
+      Orchestration smoke coverage:
+
+      - uv run vectl --help -> success
+
+      - uv run vectl orch --help -> success
+
+      - uv run vectl orch config-show -> success
+
+      - uv run vectl orch status -> success
+
+      - uv run vectl orch config-tools -> success
+
+      - uv run vectl validate -> Plan is valid
+
+
+      Expected-red semantics:
+
+      - Failing tests are marked expected-red/test_define_red and correspond to known
+      planned gaps; treated as semantic non-blockers for this step per policy.
+
+
+      Conclusion:
+
+      - Broad quality and orchestration smoke evidence collected; no newly introduced
+      blocker intersecting final deep-review gate without remediation ownership.'
   - id: orch_operator_deep_review.wiring_audit_full
     name: Run full wiring audit
     status: done

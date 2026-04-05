@@ -64253,7 +64253,7 @@ phases:
       \ blocker-class issue intersecting final gate: none"
   - id: orch_operator_deep_review.fix_gate_artifact_freshness_and_lint
     name: Fix stale consumer-boundary artifact freshness and lint blockers
-    status: claimed
+    status: done
     description: 'Fix ALL gate-intersecting issues from the failed deep-review gate
       in one batched remediation step.
 
@@ -64367,6 +64367,22 @@ phases:
     agent: python-senior
     claimed_by: python-senior
     claimed_at: '2026-04-05T07:01:51.382371+00:00'
+    done_at: '2026-04-05T07:06:30.486233+00:00'
+    evidence: "## refs Read Confirmation (MANDATORY)\n- tools/vectl/README.md — NOT\
+      \ READ: file absent in assigned worktree path.\n\n## Remediation Evidence\n\
+      - Authoritative regeneration path used for consumer_boundary_conformance_report.yaml:\n\
+      \  - tests/orchestration/unit/test_recovery_contract_conformance.py\n- Exact\
+      \ regeneration command:\n  - uv run pytest -q tests/orchestration/unit/test_recovery_contract_conformance.py\
+      \ -> 2 passed\n- Before/after stale blocker summary:\n  - Before: report incorrectly\
+      \ claimed unresolved blockers (RecoveryOutcome not consumed; RecoveryReport\
+      \ not returned)\n  - After: regenerated report reflects current code truth and\
+      \ removes false unresolved blocker entries\n- Lint commands for named files:\n\
+      \  - uv run ruff check src/vectl/orchestration/continuity_artifacts.py src/vectl/orchestration/contracts.py\n\
+      \  - Before: F401 for field/datetime/IsolationMode\n  - After: All checks passed\n\
+      - Scope confirmation:\n  - Changed files limited to consumer_boundary_conformance_report.yaml\
+      \ and the two named orchestration files\n- Provenance note:\n  - Artifact was\
+      \ stale relative to current implementation and verification timeline; regenerated\
+      \ from current conformance tests.\n- Commit: 88a3542"
   - id: orch_operator_deep_review.retest_gate_artifact_freshness_and_lint
     name: Retest regenerated consumer-boundary artifact accuracy and lint cleanup
     status: pending

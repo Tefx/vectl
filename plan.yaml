@@ -63334,7 +63334,7 @@ phases:
     claimed_at: '2026-04-04T22:27:05.822041+00:00'
   - id: orch_operator_deep_review.wiring_audit_full
     name: Run full wiring audit
-    status: pending
+    status: claimed
     description: 'Complete system wiring audit for the orchestration operator surface.
       Verify every public export, CLI command, config field, artifact reader/writer,
       and recovery surface is reachable and consumed where the docs say it is.
@@ -63404,6 +63404,8 @@ phases:
 
       **Intersection verdict**: BLOCKING_NOW | NON_BLOCKING_WITH_PROOF'
     agent: wiring-auditor
+    claimed_by: wiring-auditor
+    claimed_at: '2026-04-05T05:43:40.402152+00:00'
   - id: orch_operator_deep_review.spec_conformance_full
     name: Run full spec conformance audit
     status: pending

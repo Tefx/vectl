@@ -66663,3 +66663,11 @@ phases:
     canonical contract sync without reopening foundation runner/runtime boundaries.
   depends_on:
   - orchestration_runtime_wiring
+- id: orchestration_resolver_coordination
+  name: Orchestration Resolver Coordination
+  status: locked
+  gate: Resolver consumes explicit ResolutionCase input, uses approved vectl facade
+    for authorized mutations, never claims normal work, and returns bounded ResolutionReport
+    outcomes.
+  depends_on:
+  - orchestration_dispatch_policy

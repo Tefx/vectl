@@ -65671,3 +65671,11 @@ phases:
     implementation.
   depends_on:
   - orch_operator_post_gate_cleanup
+- id: orchestration_runner_backend
+  name: Orchestration Runner Backend
+  status: locked
+  gate: Shared runner backend exists as a mechanical execution substrate with registry,
+    launch/poll/cleanup contract, and targeted verification; no resolver/control policy
+    leaks.
+  depends_on:
+  - orchestration_foundation_lock

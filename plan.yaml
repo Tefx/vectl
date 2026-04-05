@@ -64364,3 +64364,76 @@ phases:
     - orch_operator_deep_review.retest_behavioral_conformance_blockers
     - orch_operator_deep_review.retest_architecture_blockers
     agent: python-senior
+  - id: orch_operator_deep_review.retest_gate_artifact_freshness_and_lint
+    name: Retest regenerated consumer-boundary artifact accuracy and lint cleanup
+    status: pending
+    description: 'Independent gate-precheck retest for the failed deep-review gate.
+
+
+      step_type: test
+
+      step_intent: retest_green
+
+      expected_result: green
+
+      verification_scope: phase-check
+
+
+      As an INDEPENDENT TESTER, verify that the regenerated `consumer_boundary_conformance_report.yaml`
+      accurately reflects current code truth and that lint cleanup removed the targeted
+      F401 issues.
+
+
+      Protects downstream gate: `orch_operator_deep_review.gate`
+
+
+      Required checks:
+
+      - confirm the report was regenerated from the authoritative path and no stale
+      unresolved blocker remains
+
+      - confirm the report''s blocker disposition matches current code truth for the
+      consumer-boundary surface
+
+      - run focused lint verification for `src/vectl/orchestration/continuity_artifacts.py`
+      and `src/vectl/orchestration/contracts.py`
+
+      - report any remaining mismatch as blocker-class debt for the gate'
+    verification: 'phase-check protecting `orch_operator_deep_review.gate`:
+
+      - Artifact accuracy proof is green: regenerated `consumer_boundary_conformance_report.yaml`
+      reflects current code truth with no false unresolved blockers
+
+      - Lint proof is green: no F401 remains in the two named files
+
+      - Evidence includes the exact regeneration and lint commands plus observed outputs'
+    evidence_template: '## refs Read Confirmation (MANDATORY)
+
+
+      For each ref in this step:
+
+      - <filename> — key passage or "NOT READ: <reason>"
+
+
+      If no refs were provided, state: "No refs for this step."
+
+
+      ## Gate-Precheck Retest Report
+
+      - Expected result: GREEN
+
+      - Exact command used to regenerate/validate `consumer_boundary_conformance_report.yaml`
+
+      - Actual output proving the artifact reflects current code truth
+
+      - Exact lint command for the two named files
+
+      - Actual lint output
+
+      - Verdict: PASS | ISSUES_FOUND | INCOMPLETE
+
+      - If issues remain, identify whether they block `orch_operator_deep_review.gate`
+      and why'
+    depends_on:
+    - orch_operator_deep_review.fix_gate_artifact_freshness_and_lint
+    agent: spec-verifier

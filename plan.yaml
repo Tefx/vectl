@@ -66656,3 +66656,10 @@ phases:
     - orchestration_runtime_wiring.integration-proof
     - orchestration_runtime_wiring.spec-conformance
     agent: gate-reviewer
+- id: orchestration_dispatch_policy
+  name: Orchestration Dispatch / Prompt / Role Policy
+  status: locked
+  gate: Lock and implement upper-layer dispatch semantics, role/prompt policy, and
+    canonical contract sync without reopening foundation runner/runtime boundaries.
+  depends_on:
+  - orchestration_runtime_wiring

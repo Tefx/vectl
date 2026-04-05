@@ -65387,6 +65387,50 @@ phases:
     depends_on:
     - decide_refresh_impl.core
     agent: python-executor
+  - id: decide_refresh_impl.verify
+    name: Verify refreshed decide implementation
+    status: pending
+    description: 'As an INDEPENDENT TESTER, validate the refreshed vectl_decide implementation
+      end-to-end.
+
+
+      step_type: test
+
+      step_intent: retest_green
+
+      expected_result: green
+
+
+      Run the full decide-related verification boundary: tests/test_decide.py, tests/test_decide_state_isolation.py,
+      and relevant vectl_decide MCP tests in tests/test_mcp.py. Verify advisor_state
+      roundtrip, runner provenance, structured top-level status, and standalone deterministic
+      advisor behavior.'
+    verification: 'full-plan-check protecting doc_sync and deep_review: all decide-related
+      tests pass; main path and highest-risk failure path are both green; no unresolved
+      blocker-class issue remains.'
+    evidence_template: '## Verification Report
+
+      ### refs Read Confirmation (MANDATORY)
+
+      For each ref in this step:
+
+      - <filename> — key passage or "NOT READ: <reason>"
+
+
+      - Commands executed:
+
+      - Actual output:
+
+      - advisor_state roundtrip evidence:
+
+      - repeated_failures/reuse provenance evidence:
+
+      - Issues found: none | <detail>'
+    depends_on:
+    - decide_refresh_impl.models-state
+    - decide_refresh_impl.core
+    - decide_refresh_impl.mcp-surface
+    agent: integration-verifier
 - id: doc_sync
   name: Documentation Sync
   status: locked

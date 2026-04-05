@@ -63565,3 +63565,112 @@ phases:
     - orch_operator_deep_review.contract_strength
     - orch_operator_deep_review.black_box_verification
     agent: gate-reviewer
+  - id: orch_operator_deep_review.fix_behavioral_conformance_blockers
+    name: Fix blocker-class behavioral conformance gaps
+    status: pending
+    description: 'Batched remediation for blocker-class spec-conformance uncertainties
+      from `orch_operator_deep_review.spec_conformance_full`.
+
+
+      work_type: proof_closure
+
+      step_type: implementation
+
+      symbolic_testing: false
+
+
+      Fix BOTH blocker-class items in one remediation pass, not separately:
+
+      1. R19 — resolver allowlist runtime enforcement needs executable behavioral
+      proof
+
+      2. R24 — roster `None` interpretation behavior needs executable behavioral proof
+
+
+      Required outputs:
+
+      - implement or adjust the runtime behavior and/or focused proof harness needed
+      to close both uncertainties
+
+      - produce a structured behavioral proof register covering each requirement with:
+      `requirement_ref`, `behavior_claim`, `runtime_proof_expected`, `evidence_ref`,
+      `status`, `closure_path`, `gate_decision_basis`
+
+      - include an explicit `gate_open_allowed` verdict for each requirement and for
+      the batched remediation overall
+
+
+      Root Cause vs Symptom:
+
+      - Root cause: final deep-review spec conformance found blocker-class behavioral
+      obligations that were not proven at runtime
+
+      - Symptom: R19 and R24 remained `NEEDS_TEST`, which intersects the remaining
+      deep-review gate
+
+      - Why this fix is not surface-level: it must close runtime proof obligations,
+      not merely restate spec text or narrow scope
+
+
+      Completion Criteria (stub exclusion):
+
+      This is an IMPLEMENTATION step. Stub-only completion is NOT acceptable. Any
+      added harness, checks, or logic must exercise real runtime behavior and produce
+      evidence that varies with inputs.'
+    verification: 'local-check protecting the remaining deep-review behavioral gate
+      path:
+
+      - Behavioral proof register exists for R19 and R24 with all mandatory fields
+
+      - Evidence demonstrates real runtime proof for resolver allowlist enforcement
+      and roster `None` interpretation
+
+      - Each item records an explicit `gate_open_allowed: true|false` verdict with
+      decision basis
+
+      - No blocker-class `NEEDS_TEST`, `UNPROVEN`, or `UNCERTAIN_BLOCKING` remains
+      for R19/R24 without explicit non-intersection proof'
+    evidence_template: '## refs Read Confirmation (MANDATORY)
+
+
+      If no refs were provided, state: "No refs for this step."
+
+
+      ## Behavioral Proof Register
+
+      For each requirement (R19, R24), provide:
+
+      - requirement_ref:
+
+      - behavior_claim:
+
+      - runtime_proof_expected:
+
+      - evidence_ref:
+
+      - status:
+
+      - closure_path:
+
+      - gate_decision_basis:
+
+      - gate_open_allowed:
+
+
+      ## Runtime Evidence
+
+      - Exact command(s) / test(s) run:
+
+      - Actual output or result artifacts:
+
+      - Why this closes blocker-class uncertainty for remaining gates:
+
+
+      ## Scope Check
+
+      - Both R19 and R24 addressed in this batched step: yes/no
+
+      - Remaining ambiguity: <none or list>'
+    depends_on:
+    - orch_operator_deep_review.spec_conformance_full
+    agent: python-senior

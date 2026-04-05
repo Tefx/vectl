@@ -64066,7 +64066,7 @@ phases:
       \ -> 5 passed\n- remaining_blockers: none\n- commit: e02f48e"
   - id: orch_operator_deep_review.retest_architecture_blockers
     name: Retest deep-review architecture blockers
-    status: pending
+    status: claimed
     description: 'As an INDEPENDENT ARCHITECTURE REVIEWER (`software-architect`),
       retest the four blocker families reported by `orch_operator_deep_review.architecture_review`
       after the batched fix lands.
@@ -64152,3 +64152,5 @@ phases:
     depends_on:
     - orch_operator_deep_review.fix_architecture_blockers_batch
     agent: software-architect
+    claimed_by: software-architect
+    claimed_at: '2026-04-05T06:42:06.636849+00:00'

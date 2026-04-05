@@ -65557,3 +65557,34 @@ phases:
     advisor semantics.
   depends_on:
   - doc_sync
+  steps:
+  - id: deep_review.decide-wiring
+    name: Audit decide wiring completeness
+    status: pending
+    description: 'Full wiring audit scoped to vectl_decide surfaces: no stale exported
+      fields, no stale runtime references to continuation/halt_reason machine control,
+      no stale task_id-as-reuse-handle assumptions, and advisor_state/next_state are
+      actually consumed and emitted by runtime code.'
+    verification: 'phase-check protecting final gate: no stale wiring remains across
+      refreshed decide surfaces.'
+    evidence_template: '## Wiring Audit Report
+
+      ### refs Read Confirmation (MANDATORY)
+
+      For each ref in this step:
+
+      - <filename> — key passage or "NOT READ: <reason>"
+
+
+      **Stale refs**:
+
+      <none found | list>
+
+
+      **advisor_state / next_state wiring**:
+
+      <evidence>
+
+
+      **Verdict**: PASS | ISSUES_FOUND'
+    agent: wiring-auditor

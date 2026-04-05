@@ -64629,7 +64629,7 @@ phases:
       - No behavior drift, no export drift.'
   - id: orch_operator_post_gate_cleanup.close-config-validation-red-gap-per-spec-8-5-or-explicit-durable-behavior
     name: Close config validation red-gap per spec §8.5 or explicit durable behavior
-    status: claimed
+    status: done
     description: 'step_type: implementation
 
       work_type: proof_closure
@@ -64713,6 +64713,53 @@ phases:
     agent: python-executor
     claimed_by: python-executor
     claimed_at: '2026-04-05T07:51:26.207546+00:00'
+    done_at: '2026-04-05T07:56:47.486025+00:00'
+    evidence: '## refs Read Confirmation
+
+      - docs/ORCHESTRATION-PLANE-CLI-CONFIG-OBSERVABILITY-DESIGN.md (§8.5) — read
+
+      - tests/orchestration/unit/test_config_state_impl.py — read
+
+      - tests/orchestration/unit/test_config_state_red.py — read
+
+      - tests/repro/test_orch_cli_recovery_red.py — read
+
+      - src/vectl/orchestration/config.py — read
+
+      - src/vectl/orch_app.py — read
+
+      - src/vectl/cli.py — read
+
+
+      Verification commands:
+
+      - uv run pytest tests/orchestration/unit/test_config_state_impl.py -k validation
+      -v -> 9 passed
+
+      - uv run pytest tests/test_orch_cli_surface.py -v -> 8 passed
+
+      - uv run pytest tests/repro/test_orch_cli_recovery_red.py -k config_validate
+      -v -> 1 passed
+
+      - uv run vectl orch config-validate -> configuration is valid
+
+      - uv run vectl orch config-validate --json -> validation_passed true
+
+
+      Disposition:
+
+      - §8.5 validation behavior is implemented and durable via validate_orchestration_config
+      + CLI/runtime path.
+
+      - No code changes were required in this step because behavior already satisfied
+      the required contract.
+
+      - Exit-path contract verified through CLI invocation evidence.
+
+
+      Commit/context:
+
+      - Branch HEAD at claim commit a2ee2589; no new commit needed (no code delta).'
   - id: orch_operator_post_gate_cleanup.add-projection-replay-end-to-end-runtime-proof
     name: Add projection replay end-to-end runtime proof
     status: done

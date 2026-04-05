@@ -67153,6 +67153,8 @@ phases:
     - docs/ORCHESTRATION-PLANE-DISPATCH-AND-PROMPT-POLICY.md
     - docs/ORCHESTRATION-PLANE-RESOLUTION-CONTRACT.md
     - src/vectl/orch_app.py
+    depends_on:
+    - orchestration_orch_app_routing.implement-orch-app-routing-reconcile-gate-and-result-normalization
     agent: spec-verifier
   - id: orchestration_orch_app_routing.gate-orch-app-routing
     name: Gate orch_app routing

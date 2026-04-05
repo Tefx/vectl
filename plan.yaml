@@ -65127,6 +65127,32 @@ phases:
     depends_on:
     - decide_refresh_contracts.pin-core-contract
     agent: python-executor
+  - id: decide_refresh_contracts.gate
+    name: Gate decide_refresh_contracts
+    status: pending
+    description: 'Gate review: verify the refreshed vectl_decide contract is pinned
+      before tests and implementation.'
+    verification: 'phase-check protecting decide_refresh_tests: refreshed contract
+      fields are pinned exactly; no compatibility shadow fields or stale continuation/halt_reason
+      contract semantics remain.'
+    evidence_template: '## refs Read Confirmation (MANDATORY)
+
+      For each ref in this step:
+
+      - <filename> — key passage or "NOT READ: <reason>"
+
+
+      ## Gate Review Report
+
+      - Contract completeness:
+
+      - Forbidden overlap check:
+
+      - Gate decision: OPEN | BLOCKED'
+    depends_on:
+    - decide_refresh_contracts.pin-core-contract
+    - decide_refresh_contracts.pin-mcp-contract
+    agent: gate-reviewer
 - id: decide_refresh_tests
   name: vectl_decide Contract Refresh — Test Definitions
   status: locked

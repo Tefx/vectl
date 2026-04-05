@@ -63524,7 +63524,7 @@ phases:
     claimed_at: '2026-04-05T05:52:15.644026+00:00'
   - id: orch_operator_deep_review.black_box_verification
     name: Run black-box verification from the public operator surface
-    status: pending
+    status: claimed
     description: Using only the public docs and the real `vectl orch` interface, verify
       config parsing, command reachability, blocked-case handling, recovery outcomes,
       and artifact inspection patterns from a black-box perspective.
@@ -63541,6 +63541,8 @@ phases:
     depends_on:
     - orch_operator_deep_review.retest_behavioral_conformance_blockers
     agent: blind-tester
+    claimed_by: blind-tester
+    claimed_at: '2026-04-05T06:07:55.393883+00:00'
   - id: orch_operator_deep_review.gate
     name: Final gate for orchestration operator surface
     status: pending

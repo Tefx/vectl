@@ -67183,6 +67183,10 @@ phases:
     - docs/ORCHESTRATION-PLANE-ORCH-APP-ROUTING.md
     - docs/ORCHESTRATION-PLANE-DISPATCH-AND-PROMPT-POLICY.md
     - docs/ORCHESTRATION-PLANE-RESOLUTION-CONTRACT.md
+    depends_on:
+    - orchestration_orch_app_routing.implement-orch-app-routing-reconcile-gate-and-result-normalization
+    - orchestration_orch_app_routing.prove-orch-app-routing-seam-end-to-end
+    - orchestration_orch_app_routing.audit-orch-app-routing-against-canonical-specs
     agent: gate-reviewer
 - id: orchestration_operator_recovery
   name: Orchestration Operator / Conflict / Recovery Alignment

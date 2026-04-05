@@ -67318,3 +67318,147 @@ phases:
     spec conformance, black-box behavior, and final gate readiness.
   depends_on:
   - orchestration_operator_recovery
+  steps:
+  - id: orchestration_upper_layer_review.run-full-plan-upper-layer-wiring-audit
+    name: Run full-plan upper-layer wiring audit
+    status: pending
+    description: 'Verification scope: full-plan-check protecting final upper-layer
+      completion.
+
+
+      As an INDEPENDENT AUDITOR (wiring-auditor), run a full-plan audit over the second-round
+      upper-layer orchestration surfaces.
+
+
+      Required checks:
+
+      - DispatchSpec / RoleProfile / PromptRegistry contracts are actually consumed
+      by orch_app and resolver paths
+
+      - review/gate normalization paths feed explicit ResolutionCase construction
+
+      - operator notification and recovery helpers are reachable from orch_app/runtime
+      restart flows
+
+      - no shadow authority logic has leaked into runtime or roster
+
+      - no protected-path handling bypass exists for plan.yaml'
+    verification: '- full-plan-check: wiring audit identifies orphaned or bypassed
+      upper-layer semantics before final gate
+
+      - full-plan-check: any repo-wide or cross-phase debt intersecting final completion
+      is made explicit with disposition'
+    refs:
+    - docs/ORCHESTRATION-PLANE-DISPATCH-AND-PROMPT-POLICY.md
+    - docs/ORCHESTRATION-PLANE-RESOLVER-COORDINATION.md
+    - docs/ORCHESTRATION-PLANE-ORCH-APP-ROUTING.md
+    - docs/ORCHESTRATION-PLANE-OPERATOR-CONFLICT-RECOVERY.md
+    - src/vectl/orch_app.py
+    - src/vectl/orchestration/
+    agent: wiring-auditor
+  - id: orchestration_upper_layer_review.run-full-plan-upper-layer-spec-conformance-audit
+    name: Run full-plan upper-layer spec conformance audit
+    status: pending
+    description: 'Verification scope: full-plan-check protecting final upper-layer
+      completion.
+
+
+      As an INDEPENDENT TESTER (spec-verifier), perform full-system adversarial conformance
+      review for the upper-layer orchestration plan.
+
+
+      Focus on emergent cross-phase properties:
+
+      - claim remains normal-flow only
+
+      - complete never occurs before reconcile merged|noop
+
+      - review/gate non-pass results become ResolutionCase inputs
+
+      - planner remains resolver remediation subagent
+
+      - operator_required remains explicit and durable across restart'
+    verification: '- full-plan-check: conformance report covers cross-phase obligations
+      that per-phase checks cannot see
+
+      - full-plan-check: every blocker-class requirement is PROVEN, DIVERGES, PARTIAL,
+      or NEEDS_TEST with explicit disposition'
+    refs:
+    - docs/ORCHESTRATION-PLANE-DISPATCH-AND-PROMPT-POLICY.md
+    - docs/ORCHESTRATION-PLANE-RESOLVER-COORDINATION.md
+    - docs/ORCHESTRATION-PLANE-ORCH-APP-ROUTING.md
+    - docs/ORCHESTRATION-PLANE-OPERATOR-CONFLICT-RECOVERY.md
+    - docs/ORCHESTRATION-PLANE-INTERFACES.md
+    - docs/ORCHESTRATION-PLANE-RESOLUTION-CONTRACT.md
+    agent: spec-verifier
+  - id: orchestration_upper_layer_review.run-black-box-upper-layer-orchestration-verification
+    name: Run black-box upper-layer orchestration verification
+    status: pending
+    description: 'Verification scope: full-plan-check protecting final upper-layer
+      completion.
+
+
+      As an INDEPENDENT TESTER (blind-tester), verify upper-layer orchestration behavior
+      using only public contracts and documented interfaces.
+
+
+      Required black-box scenarios:
+
+      - normal dispatch path claims before execution begins
+
+      - successful execution requires reconcile closure before complete
+
+      - non-pass review/gate output triggers explicit resolution behavior
+
+      - operator_required yields explicit user/operator notification state
+
+      - restart after unresolved conflict or operator pause does not silently resume
+      unsafe dispatch'
+    verification: '- full-plan-check: black-box evidence shows observable behavior
+      matches public contracts without relying on implementation internals
+
+      - full-plan-check: at least one failure-path scenario is exercised and auditable'
+    refs:
+    - docs/ORCHESTRATION-PLANE-INTERFACES.md
+    - docs/ORCHESTRATION-PLANE-RESOLUTION-CONTRACT.md
+    - docs/ORCHESTRATION-PLANE-ORCH-APP-ROUTING.md
+    - docs/ORCHESTRATION-PLANE-OPERATOR-CONFLICT-RECOVERY.md
+    agent: blind-tester
+  - id: orchestration_upper_layer_review.gate-upper-layer-review
+    name: Gate upper-layer review
+    status: pending
+    description: 'As an INDEPENDENT REVIEWER (gate-reviewer), perform the final upper-layer
+      deep review gate.
+
+
+      Verification scope: full-plan-check and final completion decision for the second-round
+      upper-layer orchestration plan.
+
+
+      review_depth: THOROUGH
+
+      cross_cutting_focus:
+
+      - no shadow authority outside vectl core/control boundaries
+
+      - reconcile-before-complete invariant across all upper-layer paths
+
+      - planner/remediation routing under resolver only
+
+      - durable operator pause/conflict/recovery behavior'
+    verification: '- full-plan-check: all upper-layer review steps complete with adequate
+      evidence
+
+      - full-plan-check: every blocker-class behavioral obligation is proven or explicitly
+      blocks completion
+
+      - final decision basis records unresolved items and why they do or do not intersect
+      final completion'
+    refs:
+    - docs/ORCHESTRATION-PLANE-DISPATCH-AND-PROMPT-POLICY.md
+    - docs/ORCHESTRATION-PLANE-RESOLVER-COORDINATION.md
+    - docs/ORCHESTRATION-PLANE-ORCH-APP-ROUTING.md
+    - docs/ORCHESTRATION-PLANE-OPERATOR-CONFLICT-RECOVERY.md
+    - docs/ORCHESTRATION-PLANE-INTERFACES.md
+    - docs/ORCHESTRATION-PLANE-RESOLUTION-CONTRACT.md
+    agent: gate-reviewer

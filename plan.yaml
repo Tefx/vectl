@@ -65664,3 +65664,10 @@ phases:
     - deep_review.decide-architecture
     - deep_review.decide-black-box
     agent: gate-reviewer
+- id: orchestration_foundation_lock
+  name: Orchestration Foundation Lock
+  status: pending
+  gate: Lock runner/runtime boundaries and hard rules before backend and lifecycle
+    implementation.
+  depends_on:
+  - orch_operator_post_gate_cleanup

@@ -7,12 +7,22 @@ Authority:
 
 from __future__ import annotations
 
+import shutil
 import subprocess
+from dataclasses import dataclass
 from pathlib import Path
 
 import pytest
 
 from vectl.orchestration.contracts import ExecutionRequest
+from vectl.orchestration.runner_registry import RunnerRegistry
+from vectl.orchestration.runners import (
+    RunnerCapabilities,
+    RunnerHandle,
+    RunnerLaunchResult,
+    RunnerPollResult,
+    RunnerResumeError,
+)
 from vectl.orchestration.runtime import Runtime
 
 
@@ -401,3 +411,287 @@ def test_capture_reconcile_result_updates_tracking_sets(
     )
     snapshot = runtime.snapshot()
     assert workspace not in snapshot.conflicted_reconciles
+
+
+def test_begin_reconcile_executes_real_merge_into_integration_context(
+    temp_git_repo: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """R20 main-path proof: reconcile performs real integration merge."""
+
+    base_dir = temp_git_repo / ".vectl" / "workspaces"
+    runtime = Runtime(workspace_root=base_dir)
+    base_dir.mkdir(parents=True, exist_ok=True)
+    monkeypatch.chdir(temp_git_repo)
+
+    request = _request(step_id="test-reconcile-real-merge")
+    workspace = runtime.prepare(request)
+    execution_id = runtime.start(request=request, workspace=workspace)
+
+    workspace_path = base_dir / request.step_id
+    merged_file = workspace_path / "feature.txt"
+    merged_file.write_text("integrated by runtime reconcile\n", encoding="utf-8")
+    subprocess.run(
+        ["git", "add", "feature.txt"], cwd=workspace_path, capture_output=True, check=True
+    )
+    subprocess.run(
+        ["git", "commit", "-m", "runtime reconcile content"],
+        cwd=workspace_path,
+        capture_output=True,
+        check=True,
+    )
+
+    state = runtime._active_workspaces[workspace]
+    assert state.execution_state is not None
+    state.execution_state.status = "success"
+
+    reconcile_result = runtime.begin_reconcile(execution_id)
+    assert reconcile_result is not None
+    assert reconcile_result.status == "merged"
+    assert (temp_git_repo / "feature.txt").read_text(encoding="utf-8") == (
+        "integrated by runtime reconcile\n"
+    )
+
+
+def test_begin_reconcile_returns_aborted_when_worktree_integrity_preflight_fails(
+    temp_git_repo: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """R26 failure-path proof: missing worktree fails integrity preflight."""
+
+    base_dir = temp_git_repo / ".vectl" / "workspaces"
+    runtime = Runtime(workspace_root=base_dir)
+    base_dir.mkdir(parents=True, exist_ok=True)
+    monkeypatch.chdir(temp_git_repo)
+
+    request = _request(step_id="test-reconcile-missing-worktree")
+    workspace = runtime.prepare(request)
+    execution_id = runtime.start(request=request, workspace=workspace)
+
+    state = runtime._active_workspaces[workspace]
+    assert state.execution_state is not None
+    state.execution_state.status = "success"
+
+    shutil.rmtree(base_dir / request.step_id)
+
+    reconcile_result = runtime.begin_reconcile(execution_id)
+    assert reconcile_result is not None
+    assert reconcile_result.status == "aborted"
+    assert "Worktree integrity preflight failed" in reconcile_result.summary
+
+
+def test_begin_reconcile_returns_aborted_when_integration_context_is_dirty(
+    temp_git_repo: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """R27 failure-path proof: dirty tracked integration context blocks reconcile."""
+
+    base_dir = temp_git_repo / ".vectl" / "workspaces"
+    runtime = Runtime(workspace_root=base_dir)
+    base_dir.mkdir(parents=True, exist_ok=True)
+    monkeypatch.chdir(temp_git_repo)
+
+    request = _request(step_id="test-reconcile-dirty-integration")
+    workspace = runtime.prepare(request)
+    execution_id = runtime.start(request=request, workspace=workspace)
+
+    workspace_path = base_dir / request.step_id
+    (workspace_path / "integration.txt").write_text("requires merge\n", encoding="utf-8")
+    subprocess.run(
+        ["git", "add", "integration.txt"], cwd=workspace_path, capture_output=True, check=True
+    )
+    subprocess.run(
+        ["git", "commit", "-m", "integration context preflight candidate"],
+        cwd=workspace_path,
+        capture_output=True,
+        check=True,
+    )
+
+    (temp_git_repo / "README.md").write_text("dirty tracked change\n", encoding="utf-8")
+
+    state = runtime._active_workspaces[workspace]
+    assert state.execution_state is not None
+    state.execution_state.status = "success"
+
+    reconcile_result = runtime.begin_reconcile(execution_id)
+    assert reconcile_result is not None
+    assert reconcile_result.status == "aborted"
+    assert "Integration-context preflight failed" in reconcile_result.summary
+
+
+def test_begin_reconcile_filters_protected_paths_before_merge(
+    temp_git_repo: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """R25 proof: protected plan.yaml changes are restored before reconcile."""
+
+    (temp_git_repo / "plan.yaml").write_text("project: protected\n", encoding="utf-8")
+    subprocess.run(["git", "add", "plan.yaml"], cwd=temp_git_repo, capture_output=True, check=True)
+    subprocess.run(
+        ["git", "commit", "-m", "add authoritative plan"],
+        cwd=temp_git_repo,
+        capture_output=True,
+        check=True,
+    )
+
+    base_dir = temp_git_repo / ".vectl" / "workspaces"
+    runtime = Runtime(workspace_root=base_dir)
+    base_dir.mkdir(parents=True, exist_ok=True)
+    monkeypatch.chdir(temp_git_repo)
+
+    request = _request(step_id="test-protected-path")
+    workspace = runtime.prepare(request)
+    execution_id = runtime.start(request=request, workspace=workspace)
+
+    workspace_path = base_dir / request.step_id
+    (workspace_path / "plan.yaml").write_text("project: tampered\n", encoding="utf-8")
+    subprocess.run(["git", "add", "plan.yaml"], cwd=workspace_path, capture_output=True, check=True)
+    subprocess.run(
+        ["git", "commit", "-m", "attempt protected path change"],
+        cwd=workspace_path,
+        capture_output=True,
+        check=True,
+    )
+
+    state = runtime._active_workspaces[workspace]
+    assert state.execution_state is not None
+    state.execution_state.status = "success"
+
+    reconcile_result = runtime.begin_reconcile(execution_id)
+    assert reconcile_result is not None
+    assert reconcile_result.status == "noop"
+    assert "protected_paths_restored:plan.yaml" in reconcile_result.artifact_refs
+    assert (temp_git_repo / "plan.yaml").read_text(encoding="utf-8") == "project: protected\n"
+
+
+def test_begin_reconcile_enforces_serialization_lock_conflict(
+    temp_git_repo: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """R24 failure-path proof: concurrent reconcile attempt fails fast."""
+
+    base_dir = temp_git_repo / ".vectl" / "workspaces"
+    runtime = Runtime(workspace_root=base_dir)
+    base_dir.mkdir(parents=True, exist_ok=True)
+    monkeypatch.chdir(temp_git_repo)
+
+    request = _request(step_id="test-reconcile-lock")
+    workspace = runtime.prepare(request)
+    execution_id = runtime.start(request=request, workspace=workspace)
+
+    state = runtime._active_workspaces[workspace]
+    assert state.execution_state is not None
+    state.execution_state.status = "success"
+
+    acquired = runtime._reconcile_lock.acquire(blocking=False)
+    assert acquired is True
+    try:
+        with pytest.raises(Exception, match="Reconcile lock busy"):
+            runtime.begin_reconcile(execution_id)
+    finally:
+        runtime._reconcile_lock.release()
+
+
+@dataclass
+class _ResumeCapableRunner:
+    """Test runner backend proving runtime resume-path substrate reuse wiring."""
+
+    launched: int = 0
+    resumed: int = 0
+
+    def capabilities(self) -> RunnerCapabilities:
+        return RunnerCapabilities(
+            runner_id="resume-capable",
+            supports_resume=True,
+            supports_cancel=True,
+            supports_streaming=False,
+        )
+
+    def launch(self, request: ExecutionRequest, workspace: Path) -> RunnerLaunchResult:
+        self.launched += 1
+        return RunnerLaunchResult(
+            handle=RunnerHandle(
+                runner="resume-capable", run_id=f"launch-{request.step_id}", session_id=None
+            ),
+            initial_summary="launch",
+        )
+
+    def resume(self, request: ExecutionRequest, workspace: Path) -> RunnerLaunchResult:
+        self.resumed += 1
+        return RunnerLaunchResult(
+            handle=RunnerHandle(
+                runner="resume-capable",
+                run_id=f"resume-{request.step_id}",
+                session_id=request.session_id,
+            ),
+            initial_summary="resume",
+        )
+
+    def poll(self, handle: RunnerHandle) -> RunnerPollResult:
+        return RunnerPollResult(status="running", output_summary="running")
+
+    def cancel(self, handle: RunnerHandle) -> None:
+        _ = handle
+
+
+def test_runtime_start_uses_resume_substrate_when_mode_requests_reuse(
+    temp_git_repo: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """R12 proof: runtime wiring consumes runner resume path for reuse mode."""
+
+    registry = RunnerRegistry()
+    runner = _ResumeCapableRunner()
+    registry.register("resume-capable", runner)
+
+    base_dir = temp_git_repo / ".vectl" / "workspaces"
+    runtime = Runtime(workspace_root=base_dir, _runner_registry=registry)
+    base_dir.mkdir(parents=True, exist_ok=True)
+    monkeypatch.chdir(temp_git_repo)
+
+    request = ExecutionRequest(
+        step_id="reuse-runner-substrate",
+        role="python-executor",
+        runner="resume-capable",
+        work_refs=("mode=resume", "isolation=workspace"),
+        session_id="sess-123",
+    )
+    workspace = runtime.prepare(request)
+    runtime.start(request=request, workspace=workspace)
+
+    assert runner.resumed == 1
+    assert runner.launched == 0
+
+
+def test_runtime_resume_requires_session_id_with_runner_resume_taxonomy(
+    temp_git_repo: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """R6 failure-path proof: resume wiring surfaces taxonomy fields for missing session."""
+
+    registry = RunnerRegistry()
+    runner = _ResumeCapableRunner()
+    registry.register("resume-capable", runner)
+
+    base_dir = temp_git_repo / ".vectl" / "workspaces"
+    runtime = Runtime(workspace_root=base_dir, _runner_registry=registry)
+    base_dir.mkdir(parents=True, exist_ok=True)
+    monkeypatch.chdir(temp_git_repo)
+
+    request = ExecutionRequest(
+        step_id="resume-missing-session",
+        role="python-executor",
+        runner="resume-capable",
+        work_refs=("mode=resume", "isolation=workspace"),
+        session_id=None,
+    )
+    workspace = runtime.prepare(request)
+
+    with pytest.raises(Exception, match="reason=session_missing"):
+        runtime.start(request=request, workspace=workspace)
+
+
+def test_runner_resume_error_exposes_required_taxonomy_fields() -> None:
+    """R6 main-path proof: RunnerResumeError includes runner_id and reason taxonomy."""
+
+    err = RunnerResumeError(
+        runner_id="resume-capable",
+        reason="session_invalid",
+        detail="session token expired",
+    )
+    assert err.runner_id == "resume-capable"
+    assert err.reason == "session_invalid"
+    assert "detail=session token expired" in str(err)

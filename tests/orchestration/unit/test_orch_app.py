@@ -15,7 +15,7 @@ from typing import Any, cast
 import pytest
 
 from vectl.io import save_plan
-from vectl.models import Phase, Plan, Step
+from vectl.models import IsolationMode, Phase, Plan, Step
 from vectl.orch_app import AppConfig, build_orchestration_app
 from vectl.orchestration.config import OrchestrationConfig, RuntimeConfig
 from vectl.orchestration.control_channel import FilesystemControlChannel
@@ -142,6 +142,54 @@ def test_run_persists_pending_before_runtime_start(
 
     result = app.run(step_id="core.ready", agent="python-executor")
     assert result.success is True
+
+
+def test_run_consumes_authoritative_step_isolation_for_runtime_request(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """R30 proof: runtime request isolation comes from authoritative core adapter."""
+
+    plan_path = tmp_path / "plan.yaml"
+    runs_root = tmp_path / "runs"
+    plan = Plan(
+        project="orch-app-isolation",
+        phases=[
+            Phase(
+                id="core",
+                name="Core",
+                steps=[
+                    Step(
+                        id="core.independent",
+                        name="Independent",
+                        isolation=IsolationMode.INDEPENDENT,
+                    )
+                ],
+            )
+        ],
+    )
+    save_plan(plan, plan_path)
+    app = build_orchestration_app(
+        AppConfig(
+            plan_path=plan_path,
+            orchestration_config=OrchestrationConfig(plan_path=plan_path),
+            run_store_root=runs_root,
+        )
+    )
+
+    captured_work_refs: list[tuple[str, ...]] = []
+    original_prepare = app._runtime.prepare
+
+    def probe_prepare(request):
+        captured_work_refs.append(request.work_refs)
+        return original_prepare(request)
+
+    monkeypatch.setattr(app._runtime, "prepare", probe_prepare)
+
+    result = app.run(step_id="core.independent", agent="python-executor")
+    assert result.success is True
+    assert captured_work_refs
+    assert "isolation=independent" in captured_work_refs[0]
 
 
 def test_run_runtime_start_failure_terminalizes_after_durable_admission(

@@ -326,11 +326,13 @@ class OrchestrationApp:
         runner: str,
         mode: Literal["start", "resume", "recover"],
     ) -> tuple[str, str]:
+        authoritative_isolation = self._core_adapter.step_isolation(step_id)
+        isolation_ref = f"isolation={authoritative_isolation.value}"
         request = ExecutionRequest(
             step_id=step_id,
             role=agent,
             runner=runner,
-            work_refs=(f"run_id={run_id}", f"mode={mode}", "isolation=workspace"),
+            work_refs=(f"run_id={run_id}", f"mode={mode}", isolation_ref),
             session_id=run_id,
         )
         workspace = self._runtime.prepare(request)

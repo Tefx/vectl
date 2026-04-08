@@ -6,11 +6,7 @@
 **Status:** Target architecture  
 **Authority:** `docs/ADR-orchestration-plane-reset.md`  
 **Scope:** Full target design, not an implementation slice  
-**Related docs:** `docs/ORCHESTRATION-PLANE-INTERFACES.md`, `docs/ORCHESTRATION-PLANE-RESOLUTION-CONTRACT.md`, `docs/ORCHESTRATION-PLANE-ISOLATION-SEMANTICS.md`, `docs/ORCHESTRATION-PLANE-IMPLEMENTATION-DESIGN.md`, `docs/ORCHESTRATION-PLANE-MIGRATION.md`  
-**Relationship to current code:** The current `src/vectl/driver/` codebase is an
-implemented historical/runtime baseline, not the future target shape described
-here. `driver` is treated here only as a legacy package path, not as a live
-architecture concept.
+**Related docs:** `docs/ORCHESTRATION-PLANE-INTERFACES.md`, `docs/ORCHESTRATION-PLANE-RESOLUTION-CONTRACT.md`, `docs/ORCHESTRATION-PLANE-ISOLATION-SEMANTICS.md`, `docs/ORCHESTRATION-PLANE-IMPLEMENTATION-DESIGN.md`
 
 ---
 
@@ -84,7 +80,6 @@ stay out of the architectural surface unless proven necessary.
 ## 4. Non-Goals
 
 - Replacing `vectl core` authority
-- Making the legacy `src/vectl/driver/` package the target future architecture
 - Introducing continuity abstractions such as `continuity_group`
 - Promoting session reuse to a first-class task/planning concept
 - Hiding plan-aware control inside a resource registry
@@ -340,61 +335,7 @@ component inside the orchestration plane.
 
 ---
 
-## 11. Relationship to Current Legacy Package
-
-The current `src/vectl/driver/` code and related tests should be treated as:
-
-- an implemented legacy baseline,
-- a source of reusable mechanics,
-- a source of tests for existing runtime behavior,
-- and a migration/reference surface,
-
-but **not** as the target architecture.
-
-This includes `vectl_decide` and other deterministic decision logic already
-present in the codebase: they are relevant implementation/reference material,
-but they do not by themselves define the final `control` component contract.
-
-This means:
-
-- do not keep evolving the legacy package as if it were the final target shape,
-- do not immediately delete working code/tests that still define current
-  behavior,
-- and do not let the presence of current implementation modules redefine the new
-  architecture vocabulary.
-
----
-
-## 12. Code/Test Disposition Principle
-
-Current legacy `src/vectl/driver/` code and related tests should **not** be
-broadly deleted at this stage.
-
-### Keep for now
-
-- working legacy package code under `src/vectl/driver/`
-- tests that validate current runtime mechanics, runner integration, continuity,
-  and orchestration behavior
-
-### Why
-
-- they provide executable reference behavior
-- they contain reusable mechanics for `runtime` and `roster`
-- deleting them now would destroy migration leverage and behavioral evidence
-
-### What to clean now
-
-- superseded speculative design documents
-- future-architecture prose that conflicts with this target architecture
-
-### What to clean later
-
-Only after equivalent behavior exists in the new orchestration-plane structure
-should corresponding legacy package code/tests be retired or rehomed.
-
----
-
-## 13. Trade-offs
+## 11. Trade-offs
 
 ### Gains
 
@@ -409,26 +350,17 @@ should corresponding legacy package code/tests be retired or rehomed.
 - introduces an explicit four-part orchestration vocabulary that implementers
   must respect
 - does not yet settle the exact control↔resolver contract
-- preserves current implementation during transition instead of forcing an
-  immediate clean slate
 
 ---
 
-## 14. Remaining Open Questions
-
-The following questions have now been resolved by companion target docs:
+## 12. Remaining Open Questions
 
 - `control ↔ resolver` contract → `docs/ORCHESTRATION-PLANE-RESOLUTION-CONTRACT.md`
 - explicit isolation semantics → `docs/ORCHESTRATION-PLANE-ISOLATION-SEMANTICS.md`
 
-The main remaining open question is:
-
-1. How should current legacy package mechanics be mapped or extracted into
-   `control`, `roster`, and `runtime` without losing test coverage?
-
 ---
 
-## 15. Summary
+## 13. Summary
 
 The target system is:
 

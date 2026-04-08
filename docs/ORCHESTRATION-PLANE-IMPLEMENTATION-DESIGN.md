@@ -6,7 +6,7 @@
 **Status:** Implementation design  
 **Architecture authority:** `docs/ORCHESTRATION-PLANE-ARCHITECTURE.md`  
 **Interface authority:** `docs/ORCHESTRATION-PLANE-INTERFACES.md`  
-**Related docs:** `docs/ORCHESTRATION-PLANE-RESOLUTION-CONTRACT.md`, `docs/ORCHESTRATION-PLANE-ISOLATION-SEMANTICS.md`, `docs/ORCHESTRATION-PLANE-MIGRATION.md`
+**Related docs:** `docs/ORCHESTRATION-PLANE-RESOLUTION-CONTRACT.md`, `docs/ORCHESTRATION-PLANE-ISOLATION-SEMANTICS.md`
 
 ---
 
@@ -19,8 +19,6 @@ It answers:
 
 1. What future package/module layout should the orchestration plane use?
 2. How should shared contracts be represented in code?
-3. How should legacy package responsibilities be extracted without destroying
-   working behavior?
 
 This is still design, not implementation. It defines the intended structure that
 code changes should aim toward.
@@ -59,8 +57,7 @@ src/vectl/orch_app.py   # Composition root (landed)
 ### Why this package
 
 - `orchestration` matches the target architecture name
-- it avoids reusing `driver` as a future concept
-- it is explicit enough to coexist with the legacy package during migration
+- it clearly separates the orchestration subsystem from core
 
 ---
 
@@ -263,30 +260,25 @@ The legacy package currently mixes two different things:
 
 The target package should preserve that distinction.
 
-### Disposition of legacy modules
+### Disposition
 
-- legacy `driver/judgments.py` should evolve toward `orchestration/judgments.py`
-- legacy `driver/judge.py` should not remain a future architecture concept; any
-  surviving invocation glue belongs under `resolver.py`
+- typed judgment schemas should evolve toward `orchestration/judgments.py`
+- any surviving invocation glue belongs under `resolver.py`
 
 ---
 
-## 4. Code-Level Ownership Map from Legacy Package
+## 4. Code-Level Ownership Map
 
-This complements the migration doc with a stronger code-design angle.
-
-| Legacy code | Target code shape | Implementation note |
+| Concern | Target code shape | Implementation note |
 |---|---|---|
-| `driver/session.py` | `orchestration/roster.py` | strongest early extraction candidate |
-| `driver/worktree.py` | `orchestration/runtime.py` | workspace mechanics |
-| `driver/runners.py` | `orchestration/runtime.py` | runner mechanics |
-| `driver/parsers.py` | `orchestration/runtime.py` or nearby helper | keep close to execution collection |
-| `driver/observe.py` + event registry concerns | `orchestration/events.py` | shared support owned by the orchestration plane |
-| `driver/loop.py` | split across `control.py` + small coordination glue | do not port wholesale |
-| `driver/judgments.py` | `orchestration/judgments.py` | typed/local schema support; not a top-level architecture component |
-| `driver/judge.py` | `orchestration/resolver.py` support | any surviving invocation glue belongs under blocked-case reasoning |
-| `driver/config.py` | `orchestration/config.py` bridge later | avoid premature config duplication |
-| `driver/types.py` | split into `contracts.py` plus owner-local internal types | do not carry over driver-shaped aggregation blindly |
+| session/resource registry | `orchestration/roster.py` | resource reuse and TTL |
+| workspace mechanics | `orchestration/runtime.py` | workspace prep and cleanup |
+| runner mechanics | `orchestration/runtime.py` | runner lifecycle |
+| event registry | `orchestration/events.py` | shared support owned by the orchestration plane |
+| orchestration loop decisions | `control.py` + small coordination glue | plan-aware dispatch/wait/done |
+| typed judgment schemas | `orchestration/judgments.py` | typed/local schema support |
+| blocked-case reasoning | `orchestration/resolver.py` | invocation glue under resolver |
+| configuration | `orchestration/config.py` | orchestration-specific config |
 
 ---
 
@@ -334,14 +326,13 @@ Why before `control` rewrite:
 - it keeps future `control` simpler
 - it prevents new plan-aware logic from scattering across modules
 
-### Step 5 — carve `control` out of legacy loop behavior
+### Step 5 — carve `control` out of loop behavior
 
-Implement `control` by extracting plan-aware flow logic from the legacy loop,
+Implement `control` by extracting plan-aware flow logic,
 using `core_adapter`, `roster`, and `runtime`.
 
 Important:
 
-- do not wholesale copy `loop.py`
 - move only the responsibility that truly belongs to `control`
 
 ### Step 6 — attach `resolver`
@@ -349,17 +340,8 @@ Important:
 Implement the `control ↔ resolver` contract using the target `ResolutionCase` /
 `ResolutionReport` model.
 
-Initial implementation may wrap or reuse legacy reasoning surfaces, but the
-orchestration-plane contract—not legacy module names—should define the boundary.
-
-### Step 6a — rehome typed judgment support cleanly
-
-Before or during resolver attachment, extract reusable typed judgment schemas and
-helpers into `judgments.py` so that:
-
-- local typed reasoning remains available to `control`
-- blocked-case invocation glue remains clearly under `resolver`
-- the legacy `judge.py` / `judgments.py` split is not collapsed into a new blob
+Initial implementation may wrap or reuse existing reasoning surfaces, but the
+orchestration-plane contract should define the boundary.
 
 ### Step 7 — rehome tests by behavior
 
@@ -383,51 +365,7 @@ tests/
       test_orch_app.py
     integration/
       test_orchestration_integration.py
-  legacy/
-    driver/*.py   # flat baseline test layout during migration-finish
 ```
-
-## 6. Legacy Entrypoint Strategy
-
-The orchestration plane should not require an immediate delete/replace cutover of
-legacy entrypoints.
-
-Recommended strategy:
-
-- keep current legacy entrypoints while target components are extracted
-- introduce new orchestration package surfaces alongside them
-- only later decide how CLI/MCP/runtime entrypoints should target the new plane
-
-This avoids conflating architecture migration with user-facing cutover.
-
----
-
-## 6a. Test Organization Convention
-
-Recommended future test layout:
-
-```text
-tests/
-  orchestration/
-    unit/
-    integration/
-  legacy/
-    driver/*.py   # flat baseline test layout during migration-finish
-```
-
-Interpretation:
-
-- `tests/orchestration/unit/` — target component-level tests (`control`,
-  `roster`, `runtime`, `resolver`, `judgments`, `core_adapter`)
-- `tests/orchestration/integration/` — orchestration-plane interaction tests
-- `tests/legacy/driver/*.py` — flat legacy baseline tests retained during migration
-
-Layout constraint for migration-finish: keep legacy driver tests directly under
-`tests/legacy/driver/` (no nested subdirectories expected for moved driver
-baseline tests).
-
-Existing tests do not need immediate movement, but new target tests should start
-using the future-oriented layout rather than reinforcing legacy naming.
 
 ---
 
@@ -487,7 +425,7 @@ use approved official surfaces and return a bounded report.
      architecture has collapsed
 
 2. **Bulk renaming without responsibility change**
-   - renaming `driver/loop.py` to `orchestration/control.py` is not a migration
+    - simply moving code without separating concerns is not a migration
 
 3. **Deleting tests before equivalent owners exist**
    - this destroys behavioral leverage
@@ -507,7 +445,6 @@ Code-level implementation work should begin from this document only when:
 - target docs are accepted as the design baseline
 - the package target `src/vectl/orchestration/` is accepted
 - the four target component responsibilities remain stable
-- migration is understood as responsibility extraction, not big-bang rewrite
 
 ---
 
@@ -520,6 +457,5 @@ The code-level design target is:
 - explicit component modules for `control`, `roster`, `runtime`, and `resolver`
 - a thin `core_adapter.py`
 - shared `config.py` / `events.py`
-- responsibility-driven extraction from the legacy package
 
 This is the implementation-design baseline for the next phase.

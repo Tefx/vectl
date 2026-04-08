@@ -4,23 +4,30 @@ Mechanical execution chores for the orchestration plane.
 Authority: docs/ORCHESTRATION-PLANE-ARCHITECTURE.md section 5.3
 Authority: docs/ORCHESTRATION-PLANE-INTERFACES.md section 4.3
 Authority: docs/ORCHESTRATION-PLANE-ISOLATION-SEMANTICS.md sections 5.4, 5.5
+Authority: docs/ORCHESTRATION-PLANE-RUNTIME-WORKTREE-LIFECYCLE.md
 """
 
 from __future__ import annotations
 
 import asyncio
 import shutil
+import subprocess
 import threading
+import time
 import uuid
 from collections.abc import Coroutine
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, Generic, TypeVar, cast
+from typing import TYPE_CHECKING, Any, Generic, Literal, TypeVar, cast
 
+from vectl.models import IsolationMode
 from vectl.orchestration.contracts import (
+    AgentExecutionState,
     ExecutionRequest,
     ExecutionResult,
+    ReconcileResult,
     RuntimeSnapshot,
+    WorktreeBinding,
 )
 
 if TYPE_CHECKING:
@@ -35,12 +42,8 @@ class WorktreeError(RuntimeError):
     """Mechanical worktree/workspace operation error."""
 
 
-@dataclass(frozen=True)
-class WorktreeBinding:
-    """Minimal workspace binding returned by runtime worktree helpers."""
-
-    step_id: str
-    worktree_path: Path
+class ReconcileError(RuntimeError):
+    """Error during reconciliation."""
 
 
 @dataclass(frozen=True)
@@ -64,14 +67,20 @@ async def worktree_create(
     try:
         worktree_path = base_dir / step_id
         worktree_path.mkdir(parents=True, exist_ok=True)
-        return Success(WorktreeBinding(step_id=step_id, worktree_path=worktree_path))
+        workspace_id = f"ws-{step_id}-{uuid.uuid4().hex[:8]}"
+        binding = WorktreeBinding(
+            workspace_id=workspace_id,
+            step_id=step_id,
+            worktree_path=str(worktree_path),
+        )
+        return Success(binding)
     except OSError as exc:
         return Failure(WorktreeError(f"Failed to create workspace for '{step_id}': {exc}"))
 
 
 async def worktree_cleanup(
     step_id: str,
-    worktree_path: Path,
+    worktree_path: Path | str,
     force: bool = True,
 ) -> Success[None] | Failure[WorktreeError]:
     """Remove a mechanical workspace path for a step."""
@@ -79,8 +88,9 @@ async def worktree_cleanup(
     del step_id  # retained for surface compatibility
     del force
     try:
-        if worktree_path.exists():
-            shutil.rmtree(worktree_path)
+        path = Path(worktree_path) if isinstance(worktree_path, str) else worktree_path
+        if path.exists():
+            shutil.rmtree(path)
         return Success(None)
     except OSError as exc:
         return Failure(WorktreeError(f"Failed to cleanup workspace '{worktree_path}': {exc}"))
@@ -104,7 +114,10 @@ _FRESH_WORKSPACE_HINTS: frozenset[str] = frozenset(
 # These are mechanical helpers that live near worktree lifecycle because
 # workspace cleanup is part of execution collection semantics.
 __all__ = [
+    "AgentExecutionState",
     "Failure",
+    "ReconcileError",
+    "ReconcileResult",
     "Result",
     "Success",
     "WorktreeBinding",
@@ -121,6 +134,27 @@ class _WorkspaceState:
     workspace: str
     binding: WorktreeBinding
     execution_id: str = ""
+    execution_state: AgentExecutionState | None = None
+    reconcile_state: ReconcileResult | None = None
+    reconcile_status: Literal[
+        "pending", "active", "merged", "noop", "merge_conflict", "aborted"
+    ] = "pending"
+
+
+@dataclass
+class _ExecutionHandle:
+    """Internal tracking for active subprocess executions."""
+
+    execution_id: str
+    process: subprocess.Popen[str] | None = None
+    returncode: int | None = None
+    stdout: str = ""
+    stderr: str = ""
+
+
+# Module-level registry of active execution processes.
+# Maps execution_id -> _ExecutionHandle
+_ACTIVE_PROCESSES: dict[str, _ExecutionHandle] = {}
 
 
 @dataclass
@@ -151,24 +185,32 @@ class Runtime:
         - ``independent``: runtime must provide a fresh isolated workspace/worktree
 
     Authority: docs/ORCHESTRATION-PLANE-INTERFACES.md section 4.3
+    Authority: docs/ORCHESTRATION-PLANE-RUNTIME-WORKTREE-LIFECYCLE.md
     """
 
     workspace_root: Path = field(default_factory=lambda: Path(".vectl/workspaces"))
     _active_workspaces: dict[str, _WorkspaceState] = field(default_factory=dict)
     _active_executions: dict[str, str] = field(default_factory=dict)  # execution_id -> workspace
     _stalled_executions: set[str] = field(default_factory=set)
+    _pending_reconciles: set[str] = field(default_factory=set)
+    _active_reconciles: set[str] = field(default_factory=set)
+    _conflicted_reconciles: set[str] = field(default_factory=set)
 
     def snapshot(self) -> RuntimeSnapshot:
         """
         Capture current runtime state.
 
         Returns:
-            RuntimeSnapshot representing active mechanical state.
+            RuntimeSnapshot representing active mechanical state including
+            reconcile lifecycle states.
         """
         return RuntimeSnapshot(
             active_workspaces=tuple(self._active_workspaces.keys()),
             active_executions=tuple(self._active_executions.keys()),
             stalled_executions=tuple(self._stalled_executions),
+            pending_reconciles=tuple(self._pending_reconciles),
+            active_reconciles=tuple(self._active_reconciles),
+            conflicted_reconciles=tuple(self._conflicted_reconciles),
         )
 
     def prepare(self, request: ExecutionRequest) -> str:
@@ -184,6 +226,9 @@ class Runtime:
 
         Returns:
             Workspace identifier for use in start() and cleanup().
+
+        Raises:
+            WorktreeError: If workspace creation fails.
         """
         workspace_id = f"ws-{request.step_id}-{uuid.uuid4().hex[:8]}"
 
@@ -203,14 +248,26 @@ class Runtime:
 
             existing_path = self.workspace_root / request.step_id
             if existing_path.exists():
-                cleanup_result = _run_cleanup(step_id=request.step_id, worktree_path=existing_path)
+                cleanup_result = _run_cleanup(
+                    step_id=request.step_id, worktree_path=str(existing_path)
+                )
                 if isinstance(cleanup_result, Failure):
                     raise cleanup_result.error
 
         binding_result = _run_create(step_id=request.step_id, base_dir=self.workspace_root)
         if isinstance(binding_result, Failure):
             raise binding_result.error
-        binding = binding_result.value
+
+        # Update binding with workspace_id
+        binding = WorktreeBinding(
+            workspace_id=workspace_id,
+            step_id=binding_result.value.step_id,
+            worktree_path=binding_result.value.worktree_path,
+            scratch_branch=binding_result.value.scratch_branch,
+            target_ref=binding_result.value.target_ref,
+            target_head_at_prepare=binding_result.value.target_head_at_prepare,
+            isolation=binding_result.value.isolation,
+        )
 
         self._active_workspaces[workspace_id] = _WorkspaceState(
             workspace=workspace_id,
@@ -224,6 +281,10 @@ class Runtime:
         """
         Start execution in prepared workspace.
 
+        Spawns a runner subprocess for the given execution request within the
+        prepared workspace. The subprocess runs asynchronously; callers use
+        collect() to poll for completion.
+
         Args:
             request: The execution request.
             workspace: Workspace identifier from prepare().
@@ -233,6 +294,7 @@ class Runtime:
 
         Raises:
             ValueError: If workspace is not found or not prepared.
+            WorktreeError: If subprocess spawning fails.
         """
         if workspace not in self._active_workspaces:
             raise ValueError(f"Workspace not found or not prepared: {workspace}")
@@ -243,21 +305,66 @@ class Runtime:
         state.execution_id = execution_id
         self._active_executions[execution_id] = workspace
 
+        # Resolve the runner command from the request.
+        runner_cmd = _resolve_runner_command(request.runner)
+        worktree_path = Path(state.binding.worktree_path)
+
+        # Build the subprocess arguments.
+        # The runner command is invoked with the worktree path as cwd.
+        try:
+            proc = subprocess.Popen(
+                runner_cmd,
+                cwd=str(worktree_path),
+                stdin=subprocess.PIPE,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                text=True,
+            )
+        except OSError as exc:
+            raise WorktreeError(
+                f"Failed to spawn runner '{request.runner}' for step '{request.step_id}': {exc}"
+            ) from exc
+
+        # Register the running process.
+        handle = _ExecutionHandle(
+            execution_id=execution_id,
+            process=proc,
+            returncode=None,
+            stdout="",
+            stderr="",
+        )
+        _ACTIVE_PROCESSES[execution_id] = handle
+
+        # Create initial execution state.
+        state.execution_state = AgentExecutionState(
+            execution_id=execution_id,
+            step_id=request.step_id,
+            workspace_id=workspace,
+            runner=request.runner,
+            runner_handle=execution_id,
+            session_id=request.session_id,
+            status="running",
+            started_at=_current_timestamp(),
+            last_update_at=_current_timestamp(),
+            artifact_refs=(),
+        )
+
         return execution_id
 
     def collect(self, execution_id: str) -> ExecutionResult | None:
         """
-        Collect results from an execution.
+        Collect results from an execution by polling the runner subprocess.
 
-        This is a mechanical collection surface. Callers may inject actual
-        completion results through external runner integration. Returning
-        None indicates "still running".
+        This mechanical collection surface polls the active subprocess for
+        completion and returns an ExecutionResult with the runner output.
+        Returning None indicates the subprocess is still running.
 
         Args:
             execution_id: The execution identifier.
 
         Returns:
-            ExecutionResult if complete, else None.
+            ExecutionResult if the subprocess has completed or is unknown,
+            else None indicating still running.
         """
         if execution_id not in self._active_executions:
             return ExecutionResult(
@@ -270,8 +377,270 @@ class Runtime:
                 ),
             )
 
-        # Collection remains non-blocking until runner integration reports
-        # a terminal execution result.
+        workspace_id = self._active_executions[execution_id]
+        state = self._active_workspaces.get(workspace_id)
+
+        if state is None or state.execution_state is None:
+            return None
+
+        # Look up the running subprocess handle.
+        handle = _ACTIVE_PROCESSES.get(execution_id)
+        if handle is None:
+            # No registered subprocess; still running or not started.
+            return None
+
+        proc = handle.process
+        if proc is None:
+            return None
+
+        # Try non-blocking poll first.
+        returncode = proc.poll()
+
+        if returncode is None:
+            # Process still running. Try a brief non-blocking wait to capture
+            # fast-completing processes that poll might miss due to kernel scheduling.
+            try:
+                returncode = proc.wait(timeout=0.001)
+            except subprocess.TimeoutExpired:
+                # Still running.
+                return None
+
+        # Subprocess has terminated. Capture output.
+        stdout, stderr = "", ""
+        try:
+            # Drain pipes if not yet drained.
+            stdout = proc.stdout.read() if proc.stdout else ""
+            stderr = proc.stderr.read() if proc.stderr else ""
+        except Exception:
+            pass
+
+        handle.returncode = returncode
+        handle.stdout = stdout
+        handle.stderr = stderr
+
+        # Determine the step_id from execution state.
+        step_id = state.execution_state.step_id
+
+        # Map returncode to status.
+        if returncode == 0:
+            status: Literal["success", "fail", "stall", "transport_error"] = "success"
+            output_summary = f"Runner completed successfully (exit 0)"
+        elif returncode in (-2, -15, -9):
+            # SIGINT (-2), SIGTERM (-15), SIGKILL (-9): terminated signal
+            status = "stall"
+            output_summary = f"Runner terminated by signal {abs(returncode)}"
+        else:
+            status = "fail"
+            output_summary = f"Runner failed with exit code {returncode}"
+
+        # Build the ExecutionResult.
+        result = ExecutionResult(
+            step_id=step_id,
+            status=status,
+            output_summary=output_summary,
+            session_id=state.execution_state.session_id,
+            operator_message=None,
+        )
+
+        # Update the execution state.
+        state.execution_state.status = status
+        state.execution_state.last_update_at = _current_timestamp()
+
+        # Track stalled executions.
+        if status in ("stall", "transport_error"):
+            self._stalled_executions.add(execution_id)
+
+        # Remove from active processes registry.
+        _ACTIVE_PROCESSES.pop(execution_id, None)
+
+        return result
+
+    def begin_reconcile(self, execution_id: str) -> ReconcileResult | None:
+        """
+        Begin the reconciliation phase for a completed execution.
+
+        This moves the execution from pending_reconcile to active_reconcile.
+
+        Args:
+            execution_id: The execution identifier.
+
+        Returns:
+            ReconcileResult if reconciliation completes immediately, else None.
+
+        Raises:
+            ValueError: If execution is not found or not ready for reconcile.
+        """
+        if execution_id not in self._active_executions:
+            raise ValueError(f"Execution not found: {execution_id}")
+
+        workspace_id = self._active_executions[execution_id]
+        state = self._active_workspaces.get(workspace_id)
+
+        if state is None:
+            raise ValueError(f"Workspace not found for execution: {execution_id}")
+
+        if state.execution_state is None:
+            raise ValueError(f"No execution state for: {execution_id}")
+
+        if state.execution_state.status not in ("success", "fail"):
+            raise ValueError(
+                f"Execution {execution_id} not ready for reconcile (status={state.execution_state.status})"
+            )
+
+        # Mark as pending reconcile
+        self._pending_reconciles.add(workspace_id)
+
+        return None
+
+    def capture_reconcile_result(
+        self,
+        execution_id: str,
+        status: Literal["merged", "noop", "merge_conflict", "aborted"],
+        summary: str = "",
+        conflict_files: tuple[str, ...] = (),
+        artifact_refs: tuple[str, ...] = (),
+    ) -> ReconcileResult:
+        """
+        Capture reconcile result from external integration.
+
+        This is the primary entry point for capturing reconcile outcomes.
+        The result determines whether completion is allowed.
+
+        Authority: docs/ORCHESTRATION-PLANE-RUNTIME-WORKTREE-LIFECYCLE.md section 9
+
+        Args:
+            execution_id: The execution identifier.
+            status: Reconcile status (merged, noop, merge_conflict, aborted).
+            summary: Human-readable summary of reconcile outcome.
+            conflict_files: Tuple of conflict file paths (if merge_conflict).
+            artifact_refs: Tuple of artifact references for reconciliation evidence.
+
+        Returns:
+            ReconcileResult capturing the reconcile outcome.
+
+        Raises:
+            ValueError: If execution or workspace not found.
+        """
+        if execution_id not in self._active_executions:
+            raise ValueError(f"Execution not found: {execution_id}")
+
+        workspace_id = self._active_executions[execution_id]
+        state = self._active_workspaces.get(workspace_id)
+
+        if state is None:
+            raise ValueError(f"Workspace not found for execution: {execution_id}")
+
+        result = ReconcileResult(
+            execution_id=execution_id,
+            workspace_id=workspace_id,
+            status=status,
+            summary=summary,
+            conflict_files=conflict_files,
+            artifact_refs=artifact_refs,
+        )
+
+        # Update reconcile state
+        state.reconcile_state = result
+        state.reconcile_status = status
+
+        # Update reconcile tracking sets
+        self._pending_reconciles.discard(workspace_id)
+        self._active_reconciles.discard(workspace_id)
+
+        if status == "merge_conflict":
+            self._conflicted_reconciles.add(workspace_id)
+        else:
+            self._conflicted_reconciles.discard(workspace_id)
+
+        return result
+
+    def can_complete(self, execution_id: str) -> tuple[bool, str]:
+        """
+        Check whether execution is allowed to complete.
+
+        Completion is allowed ONLY after reconcile returns 'merged' or 'noop'.
+        Execution success alone is NOT sufficient for completion.
+
+        Authority: docs/ORCHESTRATION-PLANE-RUNTIME-WORKTREE-LIFECYCLE.md Rule 4
+
+        Args:
+            execution_id: The execution identifier.
+
+        Returns:
+            Tuple of (can_complete, reason) where can_complete is True only
+            if reconcile returned merged or noop.
+        """
+        if execution_id not in self._active_executions:
+            return (False, f"Execution not found: {execution_id}")
+
+        workspace_id = self._active_executions[execution_id]
+        state = self._active_workspaces.get(workspace_id)
+
+        if state is None:
+            return (False, f"Workspace not found for execution: {execution_id}")
+
+        if state.reconcile_state is None:
+            return (
+                False,
+                f"Cannot complete: reconcile not yet captured for execution {execution_id}",
+            )
+
+        if state.reconcile_status not in ("merged", "noop"):
+            return (
+                False,
+                f"Cannot complete: reconcile status '{state.reconcile_status}' "
+                f"does not allow completion (requires merged/noop) for execution {execution_id}",
+            )
+
+        return (True, f"Reconcile status '{state.reconcile_status}' allows completion")
+
+    def get_unresolved_message(self, execution_id: str) -> str | None:
+        """
+        Get operator/user message for unresolved runtime issues.
+
+        If reconcile could not close mechanically (merge_conflict or aborted),
+        this returns a message that must be surfaced to the operator/user.
+
+        Authority: docs/ORCHESTRATION-PLANE-RUNTIME-WORKTREE-LIFECYCLE.md Rule 6
+
+        Args:
+            execution_id: The execution identifier.
+
+        Returns:
+            Operator message if unresolved, else None.
+        """
+        if execution_id not in self._active_executions:
+            return None
+
+        workspace_id = self._active_executions[execution_id]
+        state = self._active_workspaces.get(workspace_id)
+
+        if state is None or state.reconcile_state is None:
+            return None
+
+        if state.reconcile_status in ("merged", "noop"):
+            return None
+
+        if state.reconcile_status == "merge_conflict":
+            conflict_count = len(state.reconcile_state.conflict_files)
+            conflict_file_list = ", ".join(state.reconcile_state.conflict_files[:5])
+            if conflict_count > 5:
+                conflict_file_list += f", and {conflict_count - 5} more"
+
+            return (
+                f"Runtime could not mechanically resolve merge conflicts for execution {execution_id}. "
+                f"Conflicted files: {conflict_file_list}. "
+                f"Operator attention required before this can be treated as resolved. "
+                f"Reconcile summary: {state.reconcile_state.summary}"
+            )
+
+        if state.reconcile_status == "aborted":
+            return (
+                f"Runtime reconciliation aborted for execution {execution_id}. "
+                f"Reason: {state.reconcile_state.summary}. "
+                f"Operator attention required before this can be treated as resolved."
+            )
+
         return None
 
     def cleanup(self, workspace: str) -> None:
@@ -281,21 +650,63 @@ class Runtime:
         This removes the worktree and branch artifacts per the worktree
         lifecycle contract. It is mechanical cleanup, not policy.
 
+        Cleanup is BLOCKED if:
+        - execution is still active (starting/running)
+        - reconcile has unresolved status (merge_conflict/aborted)
+        - execution reached terminal state but reconcile not captured
+
+        Authority: docs/ORCHESTRATION-PLANE-RUNTIME-WORKTREE-LIFECYCLE.md section 13
+
         Args:
             workspace: Workspace identifier to clean up.
 
         Raises:
-            ValueError: If workspace is not found.
+            ValueError: If workspace is not found or cleanup is blocked.
         """
         if workspace not in self._active_workspaces:
             raise ValueError(f"Workspace not found: {workspace}")
 
-        state = self._active_workspaces.pop(workspace)
+        state = self._active_workspaces[workspace]
+
+        # Block cleanup if execution is still active
+        if state.execution_id and state.execution_state is not None:
+            if state.execution_state.status in ("starting", "running"):
+                raise ValueError(
+                    f"Cannot cleanup workspace {workspace}: execution {state.execution_id} is still active"
+                )
+
+            # If execution reached terminal state, reconcile must be captured
+            # This enforces Rule 4: "complete only after reconcile merged/noop"
+            if (
+                state.execution_state.status in ("success", "fail")
+                and state.reconcile_state is None
+            ):
+                raise ValueError(
+                    f"Cannot cleanup workspace {workspace}: reconcile not yet captured "
+                    f"for terminal execution {state.execution_id}"
+                )
+
+        # Block cleanup if reconcile has unresolved status
+        if state.reconcile_state is not None and state.reconcile_status in (
+            "merge_conflict",
+            "aborted",
+        ):
+            raise ValueError(
+                f"Cannot cleanup workspace {workspace}: unresolved reconcile status '{state.reconcile_status}' "
+                f"requires operator attention"
+            )
 
         # Clear any associated execution tracking
         if state.execution_id:
             self._active_executions.pop(state.execution_id, None)
             self._stalled_executions.discard(state.execution_id)
+
+        # Clear reconcile tracking
+        self._pending_reconciles.discard(workspace)
+        self._active_reconciles.discard(workspace)
+        self._conflicted_reconciles.discard(workspace)
+
+        self._active_workspaces.pop(workspace)
 
         # Perform mechanical worktree cleanup
         cleanup_result = _run_cleanup(
@@ -305,6 +716,43 @@ class Runtime:
         )
         if isinstance(cleanup_result, Failure):
             raise cleanup_result.error
+
+
+def _current_timestamp() -> float:
+    """Return current Unix timestamp."""
+    return time.time()
+
+
+def _resolve_runner_command(runner: str) -> list[str]:
+    """
+    Resolve the runner command for the given runner identifier.
+
+    The runner name maps to a concrete command. The command is invoked
+    as a subprocess with the workspace as its working directory.
+
+    Args:
+        runner: Runner identifier (e.g., "claude", "opencode", "test").
+
+    Returns:
+        Command as list of string arguments.
+
+    Raises:
+        WorktreeError: If the runner is unknown or not available.
+    """
+    # Map runner names to their commands.
+    # This is the mechanical runner backend seam: runner name -> subprocess command.
+    _RUNNER_COMMANDS: dict[str, list[str]] = {
+        "claude": ["claude", "--print-format", "json", "--no-input", "--extra-cd", ".."],
+        "opencode": ["opencode"],
+        "test": ["echo", "runner-test-placeholder"],
+    }
+
+    if runner not in _RUNNER_COMMANDS:
+        raise WorktreeError(
+            f"Unknown runner '{runner}'. Available runners: {list(_RUNNER_COMMANDS.keys())}"
+        )
+
+    return _RUNNER_COMMANDS[runner]
 
 
 def _request_requires_fresh_workspace(request: ExecutionRequest) -> bool:
@@ -324,7 +772,7 @@ def _run_create(step_id: str, base_dir: Path) -> Success[WorktreeBinding] | Fail
 
 def _run_cleanup(
     step_id: str,
-    worktree_path: Path,
+    worktree_path: Path | str,
     force: bool = True,
 ) -> Success[None] | Failure[WorktreeError]:
     """Run worktree_cleanup from sync and async callers."""
@@ -356,7 +804,7 @@ def _create_workspace_sync(
 
 
 def _cleanup_workspace_sync(
-    step_id: str, worktree_path: Path, force: bool
+    step_id: str, worktree_path: Path | str, force: bool
 ) -> Success[None] | Failure[WorktreeError]:
     """Synchronous wrapper for workspace cleanup."""
     return _run_async_in_thread(

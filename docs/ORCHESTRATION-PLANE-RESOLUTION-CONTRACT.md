@@ -73,17 +73,33 @@ Recommended shape:
 ```python
 @dataclass(frozen=True)
 class ResolutionCase:
+    case_id: str
+    case_source: Literal[
+        "runtime_failure",
+        "merge_conflict",
+        "review_failed",
+        "continuity_block",
+        "authority_ambiguity",
+        "unknown",
+    ]
     reason: str
+    summary: str | None
     core: CoreSnapshot
     roster: RosterSnapshot
     runtime: RuntimeSnapshot
+    blocked_step_ids: tuple[str, ...] = ()
+    artifact_refs: tuple[str, ...] = ()
 ```
 
 Interpretation:
 
+- `case_id` identifies one explicit resolution case
+- `case_source` identifies where the case came from without creating a large blocker taxonomy
 - `reason` is the minimal machine-readable explanation of why normal flow did
   not close
+- `summary` is an optional bounded human-readable summary
 - `core`, `roster`, and `runtime` provide the current state basis for reasoning
+- `blocked_step_ids` and `artifact_refs` provide optional coordination context and preserved evidence
 
 The case should be a snapshot of current known facts, not a speculative action
 plan.
@@ -125,7 +141,7 @@ Typical allowlist categories may include:
 
 - official vectl/core operations
 - orchestration-plane runtime/roster inspection or execution surfaces
-- planner/agent dispatch surfaces exposed by the orchestration plane
+- planner/coder/reviewer/agent dispatch surfaces exposed by the orchestration plane
 
 The exact list remains implementation policy, but the allowlist model itself is
 architecturally fixed.

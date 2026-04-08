@@ -516,10 +516,7 @@ class RunStoreLegacyRunBridge(LegacyRunBridge):
 @dataclass(frozen=True)
 class CutoverValidationResult:
     """
-    Result of validating readiness for legacy-driver retirement.
-
-    Authority: ORCHESTRATION-PLANE-MIGRATION.md section 5
-    (retirement criteria)
+    Result of validating readiness for orchestration-plane cutover.
 
     Attributes:
         can_cutover: True if all retirement criteria are met.
@@ -536,19 +533,13 @@ class CutoverValidationResult:
 
 class CutoverValidator:
     """
-    Surface for validating legacy-driver retirement readiness.
+    Surface for validating orchestration-plane cutover readiness.
 
-    Authority: ORCHESTRATION-PLANE-MIGRATION.md section 5
-    (retirement criteria)
-
-    Retirement criteria (per ORCHESTRATION-PLANE-MIGRATION.md section 5):
+    Retirement criteria:
         1. An equivalent target component implementation exists
         2. Behavior is covered by tests in the new location
-        3. Docs no longer rely on the legacy path as the primary executable reference
+        3. Docs no longer rely on legacy paths as the primary executable reference
         4. The migration does not erase currently known-good behavior
-
-    GAP: Concrete validation logic is deferred to recovery_cutover
-    implementation phases.
     """
 
     def __init__(self, *, registry: RunRegistry | None = None) -> None:
@@ -565,10 +556,7 @@ class CutoverValidator:
 
     def validate_cutover_readiness(self) -> CutoverValidationResult:
         """
-        Validate whether legacy-driver retirement criteria are met.
-
-        Returns:
-            CutoverValidationResult with per-criterion results.
+        Validate whether orchestration-plane cutover criteria are met.
 
         Returns:
             CutoverValidationResult describing whether imported legacy runs are
@@ -733,7 +721,7 @@ class CutoverValidator:
             )
             recommendations.append(
                 "advance imported runs through preferred/deprecated to retired "
-                "before legacy-driver cutover"
+                "before orchestration-plane cutover"
             )
 
         if not blocking_items:

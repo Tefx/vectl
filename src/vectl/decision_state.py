@@ -2,11 +2,6 @@
 
 This module is the sole runtime owner for the decide-side mutable memory used by
 session reuse and repeated-failure escalation decisions.
-
-Short-lived migration note:
-    ``vectl.decide.decide(..., state=None)`` may temporarily route to an internal
-    compatibility instance, but production driver runtime MUST pass an explicit
-    ``DecideState`` from ``DriverState.decide_state``.
 """
 
 from __future__ import annotations
@@ -31,8 +26,8 @@ class DecideState:
     Attributes:
         completion_times: Step completion timestamp by step ID, used for
             session-reuse TTL checks.
-        session_registry: Completed step -> session/task ID mapping for parent
-            session reuse.
+        session_registry: Completed step -> runner-specific reuse token mapping
+            for parent session reuse decisions.
         failure_counts: Consecutive failure counts by step ID for escalation
             threshold decisions.
     """
@@ -46,7 +41,8 @@ class DecideState:
 
         Args:
             step_id: Completed step identifier.
-            task_id: Session/task identifier associated with the completed step.
+            task_id: Runner-specific reuse token associated with the completed
+                step in the current decide contract.
             completed_at: Completion timestamp from ``time.time()``.
 
         Raises:
@@ -59,7 +55,7 @@ class DecideState:
         self.session_registry[step_id] = task_id
 
     def reusable_session(self, *, parent_step_id: str, now: float, reuse_ttl: int) -> str | None:
-        """Return reusable session/task ID for ``parent_step_id`` if still eligible.
+        """Return reusable runner token for ``parent_step_id`` if still eligible.
 
         Args:
             parent_step_id: Parent step candidate for reuse.
@@ -67,8 +63,8 @@ class DecideState:
             reuse_ttl: Reuse eligibility window in seconds.
 
         Returns:
-            Session/task ID when parent completion is within TTL and has a
-            registered session, otherwise ``None``.
+            Runner-specific reuse token when parent completion is within TTL and
+            has a registered entry, otherwise ``None``.
         """
         completed_at = self.completion_times.get(parent_step_id)
         if completed_at is None:

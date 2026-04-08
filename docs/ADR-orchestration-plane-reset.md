@@ -6,10 +6,9 @@
 
 ## Context
 
-Previous design work explored a future where the existing `src/vectl/driver/`
-implementation path became the main deterministic execution surface and
-gradually absorbed more orchestration responsibility. That line of design has
-been reset.
+Previous design work explored a future where an implementation path
+became the main deterministic execution surface and gradually absorbed more
+orchestration responsibility. That line of design has been reset.
 
 The new first-principles position is:
 
@@ -35,7 +34,6 @@ The current target documentation set is:
 - `docs/ORCHESTRATION-PLANE-RESOLUTION-CONTRACT.md`
 - `docs/ORCHESTRATION-PLANE-ISOLATION-SEMANTICS.md`
 - `docs/ORCHESTRATION-PLANE-IMPLEMENTATION-DESIGN.md`
-- `docs/ORCHESTRATION-PLANE-MIGRATION.md`
 
 ## Decision
 
@@ -142,11 +140,11 @@ nested `orchestrator` inside the orchestration plane.
 
 The following concepts are explicitly rejected for the current redesign:
 
-### 1. legacy `src/vectl/driver/` as the target future architecture
+### 1. legacy driver-centric design as the target future architecture
 
-The reset does **not** continue the prior drive-centric future design. Current
-`src/vectl/driver/` implementation documents remain useful as records of the
-existing codebase, but they are not the target orchestration-plane architecture.
+The reset does **not** continue the prior drive-centric future design. Those
+implementation documents have been removed. The orchestration-plane architecture
+now stands on its own as the target design.
 
 ### 2. `continuity_group`
 

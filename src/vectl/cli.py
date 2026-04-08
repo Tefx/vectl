@@ -484,11 +484,6 @@ DashboardOutputOption = typer.Option(
     "-o",
     help="Output file path for the HTML dashboard.",
 )
-DriveConfigOption = typer.Option(
-    Path("driver.yaml"),
-    "--config",
-    help="Path to driver YAML configuration file.",
-)
 
 
 # ---------------------------------------------------------------------------
@@ -3496,7 +3491,6 @@ def repair_claims_cmd(
 
 # ---------------------------------------------------------------------------
 # cli.12c: repair continuity (operator recovery)
-# Source: driver-continuity-hygiene-surface.impl-cli-repair-continuity
 # ---------------------------------------------------------------------------
 
 
@@ -3530,8 +3524,6 @@ def repair_continuity_cmd(
 
     Repair action: quarantine (copy to ``.vectl/continuity/quarantine/``) for safe stale.
     No silent deletion. Corrupt, ambiguous, or divergent artifacts are reported but not removed.
-
-    Source: docs/DRIVER-CONTINUITY-FOUNDATION.md §7 cross-cutting governance
     """
     import importlib
 
@@ -4232,29 +4224,3 @@ def dashboard(
         file_url = output.resolve().as_uri()
         webbrowser.open(file_url)
         console.print("[dim]Opening in browser...[/]")
-
-
-# ---------------------------------------------------------------------------
-# vectl drive: programmatic orchestration driver
-# Ref: DRIVER-BLUEPRINT.md lines 44, 115-122
-# ---------------------------------------------------------------------------
-
-
-@app.command()
-def drive(
-    config: Path = DriveConfigOption,
-) -> None:
-    """Auto-execute plan with programmatic orchestration.
-
-    Contract-only runtime entrypoint in this phase.
-
-    Source:
-    - Step ``driver-debt-cli-entrypoint-unification.contract``
-    - docs/DRIVER-ARCHITECTURE.md (entrypoint unification)
-    - DRIVER-BLUEPRINT.md (runtime driver entrypoint)
-    """
-    if not config.exists():
-        _die(f"Config file not found: {config}")
-        return
-
-    _die("drive is unavailable: legacy vectl.driver entrypoint was removed")

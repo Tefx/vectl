@@ -65097,7 +65097,7 @@ phases:
     agent: gate-reviewer-tacit
   - id: decide_refresh_contracts.pin-contract-surfaces
     name: Pin refreshed core and MCP contracts
-    status: claimed
+    status: done
     description: 'Contract-only step. Lock the refreshed vectl_decide contract across
       core/state and MCP surfaces before any tests or implementation. Update the code-facing
       contract in models.py, decision_state.py, and mcp_server.py to match the RFC
@@ -65112,6 +65112,33 @@ phases:
     agent: python-executor
     claimed_by: python-executor
     claimed_at: '2026-04-08T14:25:31.313851+00:00'
+    done_at: '2026-04-08T14:38:27.041205+00:00'
+    evidence: '## refs Read Confirmation (MANDATORY)
+
+      - tools/vectl/README.md — key guidance consumed by agent for vectl contract
+      updates.
+
+      - docs/RFC-vectl-decide-advisor-refresh.md — RFC section 8 rollout contract
+      requirements cited.
+
+
+      ## Artifact
+
+      - Commits on worktree branch: 83ef71e, ababefe
+
+
+      ## Verification
+
+      - Run: uv run pyright src/vectl/decide.py src/vectl/models.py src/vectl/mcp_server.py
+      -> 0 errors, 0 warnings, 0 informations
+
+      - Contract check: refreshed vectl_decide fields present and stale continuation/halt_reason/session
+      contract fields removed in refreshed surfaces.
+
+
+      ## Spec link
+
+      - docs/RFC-vectl-decide-advisor-refresh.md (section 8 required rollout changes)'
 - id: decide_refresh_tests
   name: vectl_decide Contract Refresh — Test Definitions
   status: locked

@@ -65537,7 +65537,7 @@ phases:
       - Structured output verified with refreshed fields: status/reason_code/message/next_state/policy/actions/decision_log'
   - id: decide_refresh_impl.verify
     name: Verify refreshed decide implementation
-    status: pending
+    status: claimed
     description: 'step_type: test
 
       step_intent: retest_green
@@ -65575,6 +65575,8 @@ phases:
     - decide_refresh_impl.core
     - decide_refresh_impl.mcp-surface
     agent: integration-verifier-tacit
+    claimed_by: integration-verifier-tacit
+    claimed_at: '2026-04-08T18:54:45.353672+00:00'
   - id: decide_refresh_impl.spec-conformance
     name: Verify RFC conformance
     status: claimed

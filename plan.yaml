@@ -65554,7 +65554,8 @@ phases:
   - id: deep_review.gate
     name: Final deep review gate
     status: pending
-    description: Final deep review gate for refreshed vectl_decide contract.
+    description: Final deep review gate for refreshed vectl_decide. Block if wiring,
+      boundary, or black-box contract reviews leave unresolved blocker-class divergence.
     verification: 'full-plan-check: all deep reviews complete; no unresolved blocker-class
       divergence remains; refreshed vectl_decide contract is safe to treat as complete.'
     evidence_template: '## refs Read Confirmation (MANDATORY)
@@ -65575,7 +65576,7 @@ phases:
     - deep_review.decide-wiring
     - deep_review.decide-architecture
     - deep_review.decide-black-box
-    agent: gate-reviewer
+    agent: gate-reviewer-tacit
 - id: orchestration_foundation_lock
   name: Orchestration Foundation Lock
   status: pending

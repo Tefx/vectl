@@ -65068,33 +65068,6 @@ phases:
   status: pending
   gate: Refreshed vectl_decide contract is pinned in code-facing surfaces before implementation.
   steps:
-  - id: decide_refresh_contracts.pin-mcp-contract
-    name: Pin refreshed MCP contract
-    status: pending
-    description: Contract step only. Update tool-facing contract notes for vectl_decide
-      in src/vectl/mcp_server.py so the MCP surface matches the RFC exactly. Pin advisor_state
-      as the canonical external state parameter name. Pin output fields to status,
-      reason_code, optional message, actions, next_state, policy, and optional decision_log.
-      Preserve standalone advisor semantics and do not narrow the tool into orchestration-plane-only
-      behavior.
-    verification: 'local-check protecting downstream MCP tests: the vectl_decide surface
-      describes the refreshed contract exactly and no stale continuation/halt_reason
-      contract language remains.'
-    evidence_template: '## refs Read Confirmation (MANDATORY)
-
-      For each ref in this step:
-
-      - <filename> — key passage or "NOT READ: <reason>"
-
-
-      ## Contract Outputs
-
-      - Updated tool input fields:
-
-      - Updated tool output fields:
-
-      - Explicit note confirming standalone-advisor semantics preserved:'
-    agent: python-executor
   - id: decide_refresh_contracts.gate
     name: Gate decide_refresh_contracts
     status: pending

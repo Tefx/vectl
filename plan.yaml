@@ -66765,33 +66765,14 @@ phases:
   - id: orchestration_upper_layer_review.gate-upper-layer-review
     name: Gate upper-layer review
     status: pending
-    description: 'As an INDEPENDENT REVIEWER (gate-reviewer), perform the final upper-layer
-      deep review gate.
-
-
-      Verification scope: full-plan-check and final completion decision for the second-round
-      upper-layer orchestration plan.
-
-
-      review_depth: THOROUGH
-
-      cross_cutting_focus:
-
-      - no shadow authority outside vectl core/control boundaries
-
-      - reconcile-before-complete invariant across all upper-layer paths
-
-      - planner/remediation routing under resolver only
-
-      - durable operator pause/conflict/recovery behavior'
-    verification: '- full-plan-check: all upper-layer review steps complete with adequate
-      evidence
-
-      - full-plan-check: every blocker-class behavioral obligation is proven or explicitly
-      blocks completion
-
-      - final decision basis records unresolved items and why they do or do not intersect
-      final completion'
+    description: Final upper-layer deep review gate. Block if shadow authority exists
+      outside approved boundaries, reconcile-before-complete is not proven across
+      all upper-layer paths, planner/remediation routing escapes resolver ownership,
+      or durable operator pause/conflict/recovery behavior is incomplete.
+    verification: 'full-plan-check and final completion decision: all upper-layer
+      review steps complete with adequate evidence; every blocker-class behavioral
+      obligation is proven or explicitly blocks completion; final decision basis records
+      unresolved items and their intersection with completion.'
     refs:
     - docs/ORCHESTRATION-PLANE-DISPATCH-AND-PROMPT-POLICY.md
     - docs/ORCHESTRATION-PLANE-RESOLVER-COORDINATION.md
@@ -66803,4 +66784,4 @@ phases:
     - orchestration_upper_layer_review.run-full-plan-upper-layer-wiring-audit
     - orchestration_upper_layer_review.run-full-plan-upper-layer-spec-conformance-audit
     - orchestration_upper_layer_review.run-black-box-upper-layer-orchestration-verification
-    agent: gate-reviewer
+    agent: gate-reviewer-tacit

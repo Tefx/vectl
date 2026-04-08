@@ -65212,14 +65212,14 @@ phases:
   - id: decide_refresh_impl.models-state
     name: Implement refreshed models and state
     status: pending
-    description: Fill in implementation changes in src/vectl/models.py and src/vectl/decision_state.py
-      per the pinned RFC contract. Implement runner provenance, caller-owned advisor_state
-      shape, next_state full replacement semantics, policy metadata support, and explicit
-      separation between task_id and reuse_token semantics. Do not introduce compatibility
-      dual-track fields.
+    description: Fill in the refreshed models/state implementation in src/vectl/models.py
+      and src/vectl/decision_state.py under the locked RFC contract. Land runner provenance,
+      caller-owned advisor_state, next_state full replacement semantics, policy metadata,
+      and explicit separation between task_id and reuse_token/reuse_runner. Do not
+      add compatibility shadow fields.
     verification: 'local-check protecting downstream core logic: focused model/state
-      tests pass; next_state is serializable full replacement data; task_id != session_id
-      semantics are preserved.'
+      tests pass; next_state is serializable replacement data; task_id remains distinct
+      from reuse identity.'
     evidence_template: '## refs Read Confirmation (MANDATORY)
 
       For each ref in this step:
@@ -65236,7 +65236,7 @@ phases:
       - How task_id != session_id was preserved:
 
       - How next_state replacement semantics were implemented:'
-    agent: python-senior
+    agent: python-senior-tacit
   - id: decide_refresh_impl.core
     name: Implement refreshed decide core logic
     status: pending

@@ -65711,7 +65711,7 @@ phases:
     agent: gate-reviewer-tacit
 - id: orchestration_foundation_lock
   name: Orchestration Foundation Lock
-  status: in_progress
+  status: done
   gate: Lock runner/runtime boundaries and hard rules before backend and lifecycle
     implementation.
   depends_on:
@@ -65876,7 +65876,7 @@ phases:
       \ NONE\n\n## Artifact\n- Commit: 1ddca22"
   - id: orchestration_foundation_lock.gate
     name: Gate foundation lock
-    status: claimed
+    status: done
     description: 'Gate review: verify the foundation lock is strong enough to prevent
       runner/runtime work from absorbing later resolver/control scope. Block if hard
       rules are not explicit, red tests leak implementation, ownership seams blur,
@@ -65928,9 +65928,49 @@ phases:
     agent: gate-reviewer-tacit
     claimed_by: gate-reviewer-tacit
     claimed_at: '2026-04-08T14:52:09.052818+00:00'
+    done_at: '2026-04-08T15:04:35.220793+00:00'
+    evidence: '## refs Read Confirmation (MANDATORY)
+
+      - tools/vectl/README.md — NOT READ reason documented by reviewer for missing
+      file path.
+
+      - docs/ORCHESTRATION-PLANE-INTERFACES.md, src/vectl/orchestration/contracts.py,
+      src/vectl/orchestration/interfaces.py, src/vectl/orchestration/resolver.py,
+      src/vectl/orchestration/resolver_gateway.py, tests/orchestration/unit/test_runner_backend_red.py
+      — independently reviewed.
+
+
+      ## Gate Review Report
+
+      | Step ID | Status | Evidence Quality | Concerns |
+
+      | ------- | ------ | ---------------- | -------- |
+
+      | orchestration_foundation_lock.pin-boundaries-and-contracts | DONE | HIGH |
+      none |
+
+      | orchestration_foundation_lock.define-red-contract-tests | DONE | HIGH | none
+      |
+
+
+      ## Scope-Protect Verdict
+
+      - Hard rules pinned: yes (all six encoded in contracts/interfaces/core adapter/runtime
+      surface)
+
+      - Resolver-scope pollution detected?: no
+
+      - Merge/conflict policy deepening detected?: no
+
+      - Control/operator closure expansion detected?: no
+
+
+      ## Gate Decision Basis
+
+      - OPEN. behavioral_proof_register provided and gate_open_allowed: true.'
 - id: orchestration_runner_backend
   name: Orchestration Runner Backend
-  status: locked
+  status: pending
   gate: Shared runner backend exists as a mechanical execution substrate with registry,
     launch/poll/cleanup contract, and targeted verification; no resolver/control policy
     leaks.
@@ -66120,7 +66160,7 @@ phases:
     agent: gate-reviewer-tacit
 - id: orchestration_runtime_lifecycle
   name: Orchestration Runtime Worktree Lifecycle
-  status: locked
+  status: pending
   gate: Runtime owns worktree prepare/execute/reconcile/cleanup lifecycle mechanically,
     preserves hard rules, and surfaces unresolved runtime failures without silently
     completing work.

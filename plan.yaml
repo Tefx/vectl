@@ -66690,7 +66690,7 @@ phases:
       -> success'
   - id: orchestration_runtime_wiring.integration-proof
     name: Prove runner/runtime integration end-to-end
-    status: claimed
+    status: done
     description: 'step_type: verification
 
 
@@ -66757,6 +66757,26 @@ phases:
     agent: integration-verifier-tacit
     claimed_by: integration-verifier
     claimed_at: '2026-04-08T17:57:03.409781+00:00'
+    done_at: '2026-04-08T18:10:25.544910+00:00'
+    evidence: "## Integration Evidence\n### refs Read Confirmation\n- runtime.py,\
+      \ runners.py, runner_registry.py, contracts.py\n- ORCHESTRATION-PLANE-RUNTIME-WORKTREE-LIFECYCLE.md\n\
+      - ORCHESTRATION-PLANE-INTERFACES.md\n- ORCHESTRATION-PLANE-RUNNER-BACKEND.md\n\
+      \n**Command exercising full path**\n- pytest runtime/lifecycle/backend/control\
+      \ integration scope:\n  `.venv/bin/python -m pytest tests/orchestration/unit/test_runtime.py\
+      \ tests/orchestration/unit/test_runtime_lifecycle.py tests/orchestration/unit/test_runner_backend_red.py\
+      \ tests/orchestration/unit/test_run_store.py tests/orchestration/unit/test_recovery.py\
+      \ tests/orchestration/integration/test_control_isolation_flow.py tests/orchestration/integration/test_control_resolver_contract.py\
+      \ -v --tb=short`\n\n**Actual output summary**\n- 65 passed, 2 xfailed, 0 failed\n\
+      \n**Path exercised**\n- runtime.prepare -> runtime.start -> backend launch/poll\
+      \ -> runtime.collect/reconcile gate -> runtime.cleanup\n- Happy path and failure\
+      \ blocking paths demonstrated (active execution cleanup block, unresolved reconcile\
+      \ block, unknown execution transport_error with operator_message, merged/noop\
+      \ allows completion).\n\n**Remaining mocks**\n- Limited test doubles for protocol\
+      \ isolation in control tests; no boundary-level mock substitution in runtime/backend\
+      \ lifecycle paths.\n\n## Behavioral Proof Register\n- reconcile-before-complete\
+      \ gate: PROVEN\n- unresolved runtime/backend surfacing to operator: PROVEN\n\
+      - cleanup safety barriers: PROVEN\n- git worktree prepare/cleanup path exercised:\
+      \ PROVEN"
   - id: orchestration_runtime_wiring.spec-conformance
     name: Audit runtime wiring against authoritative orchestration specs
     status: done

@@ -67531,7 +67531,7 @@ phases:
     claimed_at: '2026-04-08T16:28:52.711191+00:00'
   - id: parallel_gate_remediation.retest-runtime-lifecycle
     name: Retest runtime lifecycle git-worktree isolation
-    status: pending
+    status: claimed
     description: 'step_type: test
 
       step_intent: retest_green
@@ -67596,6 +67596,8 @@ phases:
     depends_on:
     - parallel_gate_remediation.fix-blockers
     agent: integration-verifier-tacit
+    claimed_by: integration-verifier-tacit
+    claimed_at: '2026-04-08T16:29:01.667051+00:00'
   - id: parallel_gate_remediation.gate
     name: Consolidated remediation gate
     status: pending

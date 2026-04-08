@@ -65068,36 +65068,6 @@ phases:
   status: pending
   gate: Refreshed vectl_decide contract is pinned in code-facing surfaces before implementation.
   steps:
-  - id: decide_refresh_contracts.pin-core-contract
-    name: Pin refreshed core contract
-    status: pending
-    description: 'Contract step only. Update code-facing contract surfaces for vectl_decide
-      in src/vectl/models.py and src/vectl/decision_state.py to match docs/RFC-vectl-decide-advisor-refresh.md
-      exactly. Pin: runner provenance on RunningTask and CompletedResult; caller-owned
-      advisor_state; next_state full replacement semantics; status/reason_code/message
-      top-level summary; policy metadata; Action reuse_token and reuse_runner; task_id
-      remains execution/task identity and is not session_id. Do not implement decision
-      logic in this step.'
-    verification: 'local-check protecting downstream tests and implementation: contract-defining
-      fields, names, and docstrings match the RFC exactly; no continuation/halt_reason
-      or overloaded reuse semantics remain in the refreshed contract surface.'
-    evidence_template: '## refs Read Confirmation (MANDATORY)
-
-      For each ref in this step:
-
-      - <filename> — key passage or "NOT READ: <reason>"
-
-
-      ## Contract Outputs
-
-      - Updated symbols/files:
-
-      - Exact pinned fields and enums:
-
-      - Explicit note confirming no business logic was added:
-
-      - Any contract ambiguity found: none | <detail>'
-    agent: python-executor
   - id: decide_refresh_contracts.pin-mcp-contract
     name: Pin refreshed MCP contract
     status: pending
@@ -65124,8 +65094,6 @@ phases:
       - Updated tool output fields:
 
       - Explicit note confirming standalone-advisor semantics preserved:'
-    depends_on:
-    - decide_refresh_contracts.pin-core-contract
     agent: python-executor
   - id: decide_refresh_contracts.gate
     name: Gate decide_refresh_contracts

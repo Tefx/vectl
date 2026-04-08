@@ -65341,7 +65341,7 @@ phases:
   gate: Refreshed vectl_decide contract is implemented, green on focused tests, and
     conformant to the RFC.
   depends_on:
-  - decide_refresh_tests
+  - parallel_gate_remediation
   steps:
   - id: decide_refresh_impl.models-state
     name: Implement refreshed models and state

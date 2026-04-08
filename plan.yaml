@@ -65708,7 +65708,7 @@ phases:
       - Commit: c2c090ef33553a9a79f747126bbe26255d465d46'
   - id: orchestration_foundation_lock.define-red-contract-tests
     name: Define red seam tests for runner backend and runtime lifecycle
-    status: claimed
+    status: done
     description: 'step_type: test
 
       step_intent: test_define_red
@@ -65780,6 +65780,22 @@ phases:
     agent: python-executor
     claimed_by: python-executor
     claimed_at: '2026-04-08T14:42:09.474122+00:00'
+    done_at: '2026-04-08T14:51:16.427636+00:00'
+    evidence: "## refs Read Confirmation (MANDATORY)\n- tools/vectl/README.md — key\
+      \ passage cited in evidence.\n\n## Red Test Definition Report\n- Test files\
+      \ added/updated: tests/orchestration/unit/test_runner_backend_red.py\n- Product\
+      \ files changed: NONE\n- Spec sections used for fixtures: ORCHESTRATION-PLANE-INTERFACES.md\
+      \ §3/§4.3, interfaces.py split, contracts.py authority/disposition fields.\n\
+      - expected_failures / exposed_gaps:\n  - runner backend gap: exposed (failing\
+      \ tests)\n  - runtime lifecycle gap: exposed (failing tests)\n  - reconcile-before-complete\
+      \ gap: exposed\n  - user-notification gap: partially exposed (runtime collect\
+      \ path gap)\n  - approved-facade/main-worktree gap: contract pinned, protocol-level\
+      \ gap documented via xfail\n- Downstream implementation owners:\n  - orchestration_runner_backend.build-runner-backend\n\
+      \  - orchestration_runtime_lifecycle.implement-worktree-lifecycle\n\n## Test-step\
+      \ semantic reporting\n- step_intent: test_define_red\n- expected_result: red\n\
+      - observed_result: 4 FAILED, 2 XFAIL, 3 PASSED\n- failure_alignment: aligned\
+      \ to declared pre-implementation gaps\n- product implementation files modified:\
+      \ NONE\n\n## Artifact\n- Commit: 1ddca22"
   - id: orchestration_foundation_lock.gate
     name: Gate foundation lock
     status: pending

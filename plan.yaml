@@ -68025,7 +68025,7 @@ phases:
       - R27 CONFORMS\n- R30 CONFORMS"
   - id: orchestration_runtime_wiring.retest-canonical-spec-blockers-batch
     name: Retest canonical-path runtime wiring blocker batch
-    status: claimed
+    status: done
     description: 'As an INDEPENDENT TESTER (integration-verifier-tacit), validate
       that the canonical-path runtime wiring blockers are actually closed from a fresh
       perspective.
@@ -68085,6 +68085,24 @@ phases:
     agent: integration-verifier-tacit
     claimed_by: integration-verifier-tacit
     claimed_at: '2026-04-08T21:43:24.824393+00:00'
+    done_at: '2026-04-08T22:00:41.334793+00:00'
+    evidence: "## refs Read Confirmation (MANDATORY)\n- runtime/contracts/interfaces/runners/core_adapter/orch_app/test\
+      \ suites reviewed for canonical-path requirement closure\n\n## Canonical Wiring\
+      \ Retest Report\n- Commands/tests executed:\n  - uv run pytest tests/orchestration/unit/test_runtime_lifecycle.py\
+      \ tests/orchestration/unit/test_runtime.py tests/orchestration/unit/test_contract_lock_boundaries.py\
+      \ tests/orchestration/unit/test_runner_backend_red.py tests/orchestration/unit/test_core_adapter_impl.py\
+      \ tests/orchestration/unit/test_core_adapter_contract.py tests/orchestration/integration/\
+      \ -v --tb=long\n- Requirement matrix checked: R6, R12, R20, R24, R25, R26, R27,\
+      \ R30\n- Main-path proof:\n  - real reconcile merge path on canonical runtime\
+      \ line validated with merged artifact checks\n- Highest-risk failure-path proof:\n\
+      \  - worktree integrity preflight failure aborts before merge and serialization\
+      \ conflict path rejects unsafe overlap\n- Remaining divergences with requirement\
+      \ ids:\n  - none for scoped requirement set; two known xfails remain outside\
+      \ this retest ownership and are documented\n\nstep_intent: retest_green\nexpected_result:\
+      \ green\nobserved_result: green\nfailure_alignment: matched expected green for\
+      \ scoped requirement matrix\nproduct_implementation_files_modified: no\n\nbehavioral_proof_register:\n\
+      - R6: VERIFIED\n- R12: VERIFIED\n- R20: VERIFIED\n- R24: VERIFIED\n- R25: VERIFIED\n\
+      - R26: VERIFIED\n- R27: VERIFIED\n- R30: VERIFIED\ngate_open_allowed: true"
 - id: orchestration_dispatch_policy
   name: Orchestration Dispatch / Prompt / Role Policy
   status: locked

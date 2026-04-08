@@ -66720,7 +66720,7 @@ phases:
     claimed_at: '2026-04-08T17:34:00.215053+00:00'
   - id: orchestration_runtime_wiring.spec-conformance
     name: Audit runtime wiring against authoritative orchestration specs
-    status: pending
+    status: claimed
     description: Spec conformance review for the wired runner backend + runtime lifecycle
       increment only. Audit field semantics, omission drift on the hard rules, ownership
       seam clarity, and the completion-after-reconcile requirement against the authoritative
@@ -66741,6 +66741,8 @@ phases:
     depends_on:
     - orchestration_runtime_wiring.wire-runtime-to-backend
     agent: spec-verifier-tacit
+    claimed_by: spec-verifier-tacit
+    claimed_at: '2026-04-08T17:34:54.120165+00:00'
   - id: orchestration_runtime_wiring.gate
     name: Gate runner/runtime wiring
     status: pending

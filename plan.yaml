@@ -65193,10 +65193,11 @@ phases:
       expected_result: red
 
 
-      Test-only step. Update tests/test_mcp.py so vectl_decide MCP assertions require
-      advisor_state input, refreshed output fields, explicit runner provenance, and
-      no continuation/halt_reason machine contract.'
-    verification: 'local-check protecting implementation: MCP tests are test-only
+      Test-only step. Update vectl_decide MCP tests so the tool requires advisor_state
+      input, refreshed top-level output fields, explicit runner provenance, and no
+      continuation/halt_reason machine contract. Keep scope limited to tests and minimal
+      helpers.'
+    verification: 'local-check protecting implementation: MCP tests remain test-only
       and expose the stale contract precisely.'
     evidence_template: '## refs Read Confirmation (MANDATORY)
 

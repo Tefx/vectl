@@ -65239,7 +65239,7 @@ phases:
     agent: gate-reviewer-tacit
   - id: decide_refresh_tests.core-state-red
     name: Define core and advisor_state expected-red tests
-    status: claimed
+    status: done
     description: 'step_type: test
 
       step_intent: test_define_red
@@ -65259,6 +65259,47 @@ phases:
     agent: python-executor
     claimed_by: python-executor
     claimed_at: '2026-04-08T14:51:54.996035+00:00'
+    done_at: '2026-04-08T15:04:11.027461+00:00'
+    evidence: '## refs Read Confirmation
+
+      - tools/vectl/README.md — consulted as orchestration/testing discipline reference.
+
+      - docs/RFC-vectl-decide-advisor-refresh.md — contract seams and refreshed field
+      semantics used for test assertions.
+
+
+      ## Artifact
+
+      - Commit: 1d9264ea7ed462d4e7e448a310d099a634c56fd7
+
+
+      ## Verification
+
+      - Run: uv run pytest tests/test_decide.py tests/test_decide_state_isolation.py
+      -v --tb=short -> 4 failed, 30 passed
+
+      - Exposed gaps: runner validation strictness, next_state full-replacement behavior,
+      reuse_token advisor_state round-trip.
+
+
+      ## Spec link
+
+      - docs/RFC-vectl-decide-advisor-refresh.md sections on runner provenance, advisor_state/next_state,
+      status/reason_code/message, policy metadata, and stale continuation/halt_reason
+      removal.
+
+
+      ## Test-step semantic reporting
+
+      - step_intent: test_define_red
+
+      - expected_result: red
+
+      - observed_result: red (4 failing tests exposing intended contract gaps)
+
+      - failure_alignment: aligned
+
+      - product implementation files modified: NONE'
 - id: decide_refresh_impl
   name: vectl_decide Contract Refresh — Implementation
   status: locked

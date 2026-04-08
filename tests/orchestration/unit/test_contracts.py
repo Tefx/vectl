@@ -122,10 +122,11 @@ class TestRuntimeSnapshot:
 
     def test_runtime_snapshot_fields_match_spec(self):
         """
-        Verify RuntimeSnapshot has exactly the 3 documented fields.
+        Verify RuntimeSnapshot has exactly the 6 documented fields.
 
         Spec: docs/ORCHESTRATION-PLANE-INTERFACES.md section 3.3
-        Fields: active_workspaces, active_executions, stalled_executions
+        Fields: active_workspaces, active_executions, stalled_executions,
+            pending_reconciles, active_reconciles, conflicted_reconciles
         """
         from vectl.orchestration.contracts import RuntimeSnapshot
 
@@ -133,6 +134,9 @@ class TestRuntimeSnapshot:
             "active_workspaces",
             "active_executions",
             "stalled_executions",
+            "pending_reconciles",
+            "active_reconciles",
+            "conflicted_reconciles",
         }
         actual_fields = {f.name for f in fields(RuntimeSnapshot)}
 
@@ -285,14 +289,14 @@ class TestExecutionResult:
 
     def test_execution_result_fields_match_spec(self):
         """
-        Verify ExecutionResult has exactly the 4 documented fields.
+        Verify ExecutionResult has exactly the 5 documented fields.
 
         Spec: docs/ORCHESTRATION-PLANE-INTERFACES.md section 3.7
-        Fields: step_id, status, output_summary, session_id
+        Fields: step_id, status, output_summary, session_id, operator_message
         """
         from vectl.orchestration.contracts import ExecutionResult
 
-        expected_fields = {"step_id", "status", "output_summary", "session_id"}
+        expected_fields = {"step_id", "status", "output_summary", "session_id", "operator_message"}
         actual_fields = {f.name for f in fields(ExecutionResult)}
 
         assert actual_fields == expected_fields, (

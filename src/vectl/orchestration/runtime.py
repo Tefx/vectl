@@ -315,7 +315,7 @@ class Runtime:
             proc = subprocess.Popen(
                 runner_cmd,
                 cwd=str(worktree_path),
-                stdin=subprocess.PIPE,
+                stdin=subprocess.DEVNULL,
                 stdout=subprocess.PIPE,
                 stderr=subprocess.PIPE,
                 text=True,
@@ -643,7 +643,7 @@ class Runtime:
 
         return None
 
-    def cleanup(self, workspace: str) -> None:
+    def cleanup(self, workspace: str, force: bool = False) -> None:
         """
         Clean up a workspace after execution.
 
@@ -655,46 +655,53 @@ class Runtime:
         - reconcile has unresolved status (merge_conflict/aborted)
         - execution reached terminal state but reconcile not captured
 
+        The ``force`` parameter bypasses these safety checks for cases where
+        cleanup must proceed (e.g., test scenarios, forced teardown).
+
         Authority: docs/ORCHESTRATION-PLANE-RUNTIME-WORKTREE-LIFECYCLE.md section 13
 
         Args:
             workspace: Workspace identifier to clean up.
+            force: If True, bypass all safety checks and force cleanup.
 
         Raises:
-            ValueError: If workspace is not found or cleanup is blocked.
+            ValueError: If workspace is not found or cleanup is blocked (and not forced).
         """
         if workspace not in self._active_workspaces:
             raise ValueError(f"Workspace not found: {workspace}")
 
         state = self._active_workspaces[workspace]
 
-        # Block cleanup if execution is still active
+        # Block cleanup if execution is still active (unless forced)
         if state.execution_id and state.execution_state is not None:
             if state.execution_state.status in ("starting", "running"):
-                raise ValueError(
-                    f"Cannot cleanup workspace {workspace}: execution {state.execution_id} is still active"
-                )
+                if not force:
+                    raise ValueError(
+                        f"Cannot cleanup workspace {workspace}: execution {state.execution_id} is still active"
+                    )
 
             # If execution reached terminal state, reconcile must be captured
             # This enforces Rule 4: "complete only after reconcile merged/noop"
             if (
                 state.execution_state.status in ("success", "fail")
                 and state.reconcile_state is None
+                and not force
             ):
                 raise ValueError(
                     f"Cannot cleanup workspace {workspace}: reconcile not yet captured "
                     f"for terminal execution {state.execution_id}"
                 )
 
-        # Block cleanup if reconcile has unresolved status
+        # Block cleanup if reconcile has unresolved status (unless forced)
         if state.reconcile_state is not None and state.reconcile_status in (
             "merge_conflict",
             "aborted",
         ):
-            raise ValueError(
-                f"Cannot cleanup workspace {workspace}: unresolved reconcile status '{state.reconcile_status}' "
-                f"requires operator attention"
-            )
+            if not force:
+                raise ValueError(
+                    f"Cannot cleanup workspace {workspace}: unresolved reconcile status '{state.reconcile_status}' "
+                    f"requires operator attention"
+                )
 
         # Clear any associated execution tracking
         if state.execution_id:
@@ -741,8 +748,12 @@ def _resolve_runner_command(runner: str) -> list[str]:
     """
     # Map runner names to their commands.
     # This is the mechanical runner backend seam: runner name -> subprocess command.
+    # Note: "claude" and "opencode" runners are interactive and require proper
+    # environment setup. For subprocess mode, use "test" runner or ensure
+    # the runner supports non-interactive execution.
     _RUNNER_COMMANDS: dict[str, list[str]] = {
-        "claude": ["claude", "--print-format", "json", "--no-input", "--extra-cd", ".."],
+        "claude": ["claude", "-p", "--output-format", "json"],
+        "codex": ["codex"],
         "opencode": ["opencode"],
         "test": ["echo", "runner-test-placeholder"],
     }

@@ -66207,7 +66207,7 @@ phases:
       - product files modified: no'
   - id: orchestration_runner_backend.gate
     name: Gate runner backend
-    status: pending
+    status: claimed
     description: 'Gate review: verify this phase delivered only the shared mechanical
       runner backend promised by the design. Reject full runtime wiring, resolver/control
       policy creep, or stub-only backend completion.'
@@ -66256,6 +66256,8 @@ phases:
     - orchestration_runner_backend.build-runner-backend
     - orchestration_runner_backend.retest-backend-green
     agent: gate-reviewer-tacit
+    claimed_by: gate-reviewer-tacit
+    claimed_at: '2026-04-08T15:42:58.657546+00:00'
 - id: orchestration_runtime_lifecycle
   name: Orchestration Runtime Worktree Lifecycle
   status: in_progress

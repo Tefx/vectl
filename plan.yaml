@@ -65537,7 +65537,7 @@ phases:
       - Structured output verified with refreshed fields: status/reason_code/message/next_state/policy/actions/decision_log'
   - id: decide_refresh_impl.verify
     name: Verify refreshed decide implementation
-    status: claimed
+    status: done
     description: 'step_type: test
 
       step_intent: retest_green
@@ -65577,6 +65577,35 @@ phases:
     agent: integration-verifier-tacit
     claimed_by: integration-verifier-tacit
     claimed_at: '2026-04-08T19:21:19.827094+00:00'
+    done_at: '2026-04-08T19:38:18.272579+00:00'
+    evidence: "## Verification Report\n### refs Read Confirmation (MANDATORY)\n- tools/vectl/README.md\
+      \ — NOT READ: file not present at path in worktree\n- src/vectl/decide.py —\
+      \ verified advisor_state input, status/reason_code/message output, reuse_token\
+      \ semantics, next_state replacement behavior\n- src/vectl/decision_state.py\
+      \ — verified isolated state factories and reusable_session TTL behavior\n- src/vectl/models.py\
+      \ — verified runner provenance fields and refreshed Action/DecideOutput contracts\n\
+      - src/vectl/mcp_server.py — verified vectl_decide MCP surface returns refreshed\
+      \ contract fields\n- tests/test_decide.py, tests/test_decide_state_isolation.py,\
+      \ tests/test_mcp.py — verified focused coverage for refreshed decide contract\n\
+      - docs/RFC-vectl-decide-advisor-refresh.md — verified refreshed contract requirements\n\
+      \n- Commands executed:\n  - uv run pytest tests/test_decide.py tests/test_decide_state_isolation.py\
+      \ -v --tb=long\n  - uv run pytest tests/test_mcp.py::TestVectlDecide -v --tb=long\n\
+      \  - uv run pytest tests/test_decide.py tests/test_decide_state_isolation.py\
+      \ tests/test_mcp.py -k \"decide\" -v --tb=long\n- Actual output:\n  - 37 decide-related\
+      \ tests passed\n  - one unrelated pre-existing failure in orchestration config\
+      \ red test family\n\n- advisor_state roundtrip evidence:\n  - explicit advisor_state\
+      \ -> next_state reuse roundtrip verified; full replacement semantics verified\n\
+      - repeated_failures/reuse provenance evidence:\n  - runner provenance validation\
+      \ enforced (runner required, unknown rejected)\n  - reuse_token/reuse_runner\
+      \ semantics verified (task_id remains execution identity)\n\n- Issues found:\
+      \ none (blocker-class)\n\nstep_intent: retest_green\nexpected_result: green\n\
+      observed_result: green\nfailure_alignment: matched expected green\nproduct_implementation_files_modified:\
+      \ no\n\nbehavioral_proof_register:\n- advisor_state roundtrip: VERIFIED\n- runner\
+      \ provenance: VERIFIED\n- structured status/reason_code/message contract: VERIFIED\n\
+      - standalone deterministic advisor behavior: VERIFIED\n- MCP surface contract\
+      \ shape: VERIFIED\ngate_open_allowed: true\nuncertainty_sources:\n- minor pydantic\
+      \ deprecation warning in test code path\n- unrelated pre-existing orchestration\
+      \ config red-test failure"
   - id: decide_refresh_impl.spec-conformance
     name: Verify RFC conformance
     status: claimed

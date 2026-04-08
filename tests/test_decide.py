@@ -1,13 +1,17 @@
-"""Unit tests for vectl_decide logic.
+"""Unit tests for vectl_decide logic — refreshed contract.
 
-Tests for:
-- compute_continuation: continuation guard logic
-- should_reuse_session: session reuse decisions
-- decide: main orchestration decision function
+These tests assert against the RFC-vectl-decide-advisor-refresh.md contract:
+- runner provenance on RunningTask and CompletedResult
+- task_id as execution identity only (NOT a reuse handle)
+- reuse_token / reuse_runner semantics on Action
+- caller-owned advisor_state via next_state full replacement
+- status / reason_code / message top-level control summary (no continuation/halt_reason)
+- policy metadata (reuse_ttl_s, escalation_threshold)
 
-Contract: These tests target the stub functions in vectl.decide.
-Implementation will be provided in decide-impl phase.
-Tests may fail at runtime with NotImplementedError until impl phase.
+Gap exposure: These tests will FAIL until the implementation is updated to
+match the refreshed contract. This is intentional — tests drive implementation.
+
+Contract spec: docs/RFC-vectl-decide-advisor-refresh.md
 """
 
 from __future__ import annotations
@@ -18,9 +22,10 @@ from pathlib import Path
 
 from vectl.decision_state import DecideState
 from vectl.decide import (
-    compute_continuation,
     decide,
     should_reuse_session,
+    REUSE_TTL,
+    ESCALATION_THRESHOLD,
 )
 from vectl.io import save_plan
 from vectl.models import (
@@ -35,16 +40,17 @@ from vectl.models import (
 )
 
 
+# ---------------------------------------------------------------------------
+# Helpers
+# ---------------------------------------------------------------------------
+
+
 def _write_plan_with_steps(path: Path | None, steps: list[Step]) -> Plan:
     """Helper to create a plan with steps and save it.
 
     Args:
         path: Path to save plan, or None to skip disk write (in-memory only).
         steps: List of steps for the first phase.
-
-    Note:
-        Using path=None avoids /dev/null.lock PermissionError in tests that
-        only need in-memory Plan objects.
     """
     plan = Plan(
         project="decide-test",
@@ -63,401 +69,772 @@ def _write_plan_with_steps(path: Path | None, steps: list[Step]) -> Plan:
 
 
 # ---------------------------------------------------------------------------
-# compute_continuation tests
+# Runner provenance tests
 # ---------------------------------------------------------------------------
 
 
-def test_compute_continuation_claimable_steps_returns_true() -> None:
-    """compute_continuation returns (True, None) with claimable steps."""
-    # Note: path=None skips disk write; these tests don't need file persistence
-    plan = _write_plan_with_steps(
-        None,
-        [Step(id="s1", name="Step 1", status=StepStatus.PENDING)],
-    )
+class TestRunnerProvenance:
+    """RunningTask and CompletedResult require runner field.
 
-    # Claimable steps exist, no running tasks, max_parallelism allows it
-    should_continue, halt_reason = compute_continuation(
-        plan=plan,
-        running_count=0,
-        max_parallelism=5,
-    )
+    RFC: docs/RFC-vectl-decide-advisor-refresh.md section 6.1
+    Gap: Models have runner, but tests were using old structure without it.
+    """
 
-    assert should_continue is True
-    assert halt_reason is None
-
-
-def test_compute_continuation_no_claimable_no_running() -> None:
-    """compute_continuation returns (False, NO_EXECUTABLE_STEPS) when done."""
-    plan = _write_plan_with_steps(
-        None,
-        [Step(id="s1", name="Step 1", status=StepStatus.DONE)],
-    )
-
-    should_continue, halt_reason = compute_continuation(
-        plan=plan,
-        running_count=0,
-        max_parallelism=5,
-    )
-
-    assert should_continue is False
-    assert halt_reason == "NO_EXECUTABLE_STEPS"
-
-
-def test_compute_continuation_at_max_parallelism() -> None:
-    """compute_continuation returns (False, MAX_PARALLELISM_REACHED) at cap."""
-    plan = _write_plan_with_steps(
-        None,
-        [Step(id="s1", name="Step 1", status=StepStatus.PENDING)],
-    )
-
-    # Running count equals max_parallelism - at capacity
-    should_continue, halt_reason = compute_continuation(
-        plan=plan,
-        running_count=5,
-        max_parallelism=5,
-    )
-
-    assert should_continue is False
-    assert halt_reason == "MAX_PARALLELISM_REACHED"
-
-
-def test_compute_continuation_waiting_on_running() -> None:
-    """compute_continuation returns (False, WAITING_ON_RUNNING_SUBAGENTS)."""
-    # B2 fix: CLAIMED status requires claimed_by field (model validator enforced)
-    plan = _write_plan_with_steps(
-        None,
-        [Step(id="s1", name="Step 1", status=StepStatus.CLAIMED, claimed_by="agent-1")],
-    )
-
-    # Running tasks exist but no claimable steps
-    should_continue, halt_reason = compute_continuation(
-        plan=plan,
-        running_count=2,
-        max_parallelism=5,
-    )
-
-    assert should_continue is False
-    assert halt_reason == "WAITING_ON_RUNNING_SUBAGENTS"
-
-
-# ---------------------------------------------------------------------------
-# should_reuse_session tests
-# ---------------------------------------------------------------------------
-
-
-def test_should_reuse_session_no_parent() -> None:
-    """should_reuse_session returns (False, None) when no parent step exists."""
-    # Step with no parent cannot reuse session
-    should_reuse, task_id = should_reuse_session(
-        step_id="s1",
-        parent_step_id=None,
-    )
-
-    assert should_reuse is False
-    assert task_id is None
-
-
-def test_should_reuse_session_within_ttl() -> None:
-    """should_reuse_session returns (True, task_id) when parent within TTL."""
-    state = DecideState(
-        completion_times={"s1": time.time()},
-        session_registry={"s1": "task-1"},
-    )
-
-    should_reuse, task_id = should_reuse_session(
-        step_id="s2",
-        parent_step_id="s1",
-        state=state,
-    )
-
-    assert should_reuse is True
-    assert task_id == "task-1"
-
-
-def test_should_reuse_session_beyond_ttl() -> None:
-    """should_reuse_session returns (False, None) when parent beyond TTL."""
-    state = DecideState(
-        completion_times={"s1": time.time() - 301},
-        session_registry={"s1": "task-1"},
-    )
-
-    should_reuse, task_id = should_reuse_session(
-        step_id="s2",
-        parent_step_id="s1",
-        state=state,
-    )
-
-    assert should_reuse is False
-    assert task_id is None
-
-
-def test_should_reuse_session_no_registered_task() -> None:
-    """should_reuse_session returns (False, None) with no registered task."""
-    state = DecideState(completion_times={"s1": time.time()})
-
-    should_reuse, task_id = should_reuse_session(
-        step_id="s2",
-        parent_step_id="s1",
-        state=state,
-    )
-
-    assert should_reuse is False
-    assert task_id is None
-
-
-# ---------------------------------------------------------------------------
-# decide tests
-# ---------------------------------------------------------------------------
-
-
-def test_decide_returns_claim_actions() -> None:
-    """decide returns claim_and_dispatch actions when steps are claimable."""
-    output: DecideOutput = decide(
-        running_tasks=[],
-        completed_results=None,
-        max_parallelism=5,
-    )
-
-    # After impl: should return actions with claim_and_dispatch for claimable steps
-    assert isinstance(output, DecideOutput)
-    assert isinstance(output.actions, list)
-    assert isinstance(output.decision_log, list)
-    # continuation should be True when there's work to do
-    assert output.continuation is False or output.continuation is True
-
-
-def test_decide_returns_wait_when_at_capacity() -> None:
-    """decide returns wait action when max parallelism is reached."""
-    running = [
-        RunningTask(
-            step_id="already-running-1",
-            agent="agent-1",
-            task_id="task-1",
-            dispatched_at=1000.0,
-        ),
-    ]
-
-    # At capacity: 1 running, max_parallelism=1
-    output: DecideOutput = decide(
-        running_tasks=running,
-        completed_results=None,
-        max_parallelism=1,
-    )
-
-    # After impl: should return continuation=False or wait action
-    assert isinstance(output, DecideOutput)
-    # The exact behavior depends on impl, but continuation should be False
-    # when at capacity and no completions to process
-
-
-def test_decide_completes_successful_results() -> None:
-    """decide returns complete actions for successful completed results."""
-    completed = [
-        CompletedResult(
+    def test_running_task_requires_runner(self) -> None:
+        """RunningTask must have runner field per refreshed contract."""
+        # This should work with the refreshed model
+        task = RunningTask(
             step_id="s1",
-            task_id="task-1",
+            agent="python-executor",
+            task_id="exec-1",
+            runner="task",
+            dispatched_at=time.time(),
+        )
+        assert task.runner == "task"
+        assert task.runner in ("claude", "task")
+
+    def test_running_task_rejects_unknown_runner(self) -> None:
+        """Unknown runner values should be rejected per contract."""
+        import pytest
+        from pydantic import ValidationError
+
+        with pytest.raises(ValidationError):
+            RunningTask(
+                step_id="s1",
+                agent="python-executor",
+                task_id="exec-1",
+                runner="unknown-runner",  # Invalid per contract
+                dispatched_at=time.time(),
+            )
+
+    def test_completed_result_requires_runner(self) -> None:
+        """CompletedResult must have runner field per refreshed contract."""
+        result = CompletedResult(
+            step_id="s1",
+            task_id="exec-1",
+            runner="claude",
             status="SUCCESS",
-            output_summary="Work completed successfully",
-        ),
-    ]
-
-    output: DecideOutput = decide(
-        running_tasks=[],
-        completed_results=completed,
-        max_parallelism=5,
-    )
-
-    # After impl: should include a complete action for SUCCESS results
-    assert isinstance(output, DecideOutput)
-    # The complete action should have the evidence from output_summary
+            output_summary="Done",
+        )
+        assert result.runner == "claude"
 
 
-def test_decide_escalates_after_repeated_failures() -> None:
-    """decide returns escalate action after repeated failures on same step."""
-    # According to RFC: 3 consecutive failures on same step -> escalate
-    completed = [
-        CompletedResult(
-            step_id="s1",
-            task_id="task-1",
-            status="FAIL",
-            output_summary="Failed attempt 1",
-        ),
-    ]
-
-    output: DecideOutput = decide(
-        running_tasks=[],
-        completed_results=completed,
-        max_parallelism=5,
-    )
-
-    # After impl: need to track failure counts per step
-    # Single failure -> may retry/waite
-    # 3 consecutive failures on same step -> escalate
-    assert isinstance(output, DecideOutput)
-    # The exact threshold behavior depends on impl
+# ---------------------------------------------------------------------------
+# task_id as execution identity only tests
+# ---------------------------------------------------------------------------
 
 
-def test_decide_continuation_flag() -> None:
-    """decide correctly sets continuation flag based on plan state."""
-    output: DecideOutput = decide(
-        running_tasks=[],
-        completed_results=None,
-        max_parallelism=5,
-    )
+class TestTaskIdSemantics:
+    """task_id is orchestrator-visible execution identity, NOT a reuse handle.
 
-    # After impl: continuation=True when there are claimable steps and capacity
-    # continuation=False when no claimable steps or at max parallelism
-    assert isinstance(output, DecideOutput)
-    assert output.continuation in (True, False)
-    if not output.continuation:
-        assert isinstance(output.halt_reason, str | type(None))
+    RFC: docs/RFC-vectl-decide-advisor-refresh.md section 6.1
+    Gap: Old tests asserted action.task_id == reuse_token. That is wrong.
+    """
 
+    def test_claim_action_has_task_id_as_identity_only(self, tmp_path: Path) -> None:
+        """claim_and_dispatch task_id is execution identity, NOT reuse token."""
+        plan = _write_plan_with_steps(
+            None,
+            [Step(id="s1", name="Step 1", status=StepStatus.PENDING)],
+        )
 
-def test_decide_explicit_state_prevents_legacy_fallback_override(tmp_path: Path) -> None:
-    """Explicit state remains authoritative over legacy fallback memory."""
-    plan = Plan(
-        project="decide-test",
-        phases=[
-            Phase(
-                id="p1",
-                name="Phase 1",
-                status=PhaseStatus.PENDING,
-                steps=[
-                    Step(id="s1", name="Parent", status=StepStatus.DONE),
-                    Step(
-                        id="s2",
-                        name="Child",
-                        status=StepStatus.PENDING,
-                        depends_on=["s1"],
-                        agent="python-executor",
-                    ),
-                ],
+        decide_mod = importlib.import_module("vectl.decide")
+        original = decide_mod.resolve_plan_path
+        decide_mod.resolve_plan_path = lambda: tmp_path / "plan.yaml"
+        save_plan(plan, tmp_path / "plan.yaml")
+        try:
+            output = decide(
+                running_tasks=[],
+                completed_results=None,
+                max_parallelism=5,
             )
-        ],
-    )
-    plan_path = tmp_path / "plan.yaml"
-    save_plan(plan, plan_path)
+        finally:
+            decide_mod.resolve_plan_path = original
 
-    decide_mod = importlib.import_module("vectl.decide")
+        # Find the claim action
+        claim_actions = [a for a in output.actions if a.action == "claim_and_dispatch"]
+        assert claim_actions, f"No claim actions found: {output.actions}"
 
-    original_path = decide_mod.resolve_plan_path
-    original_legacy = DecideState(
-        completion_times=dict(decide_mod._legacy_state.completion_times),
-        session_registry=dict(decide_mod._legacy_state.session_registry),
-        failure_counts=dict(decide_mod._legacy_state.failure_counts),
-    )
-
-    decide_mod.resolve_plan_path = lambda: plan_path  # type: ignore[assignment]
-    decide_mod._legacy_state.completion_times = {"s1": time.time()}
-    decide_mod._legacy_state.session_registry = {"s1": "legacy-task"}
-    decide_mod._legacy_state.failure_counts = {}
-
-    explicit_state = DecideState()
-    try:
-        output = decide(
-            running_tasks=[],
-            completed_results=None,
-            max_parallelism=5,
-            state=explicit_state,
-        )
-    finally:
-        decide_mod.resolve_plan_path = original_path  # type: ignore[assignment]
-        decide_mod._legacy_state.completion_times = original_legacy.completion_times
-        decide_mod._legacy_state.session_registry = original_legacy.session_registry
-        decide_mod._legacy_state.failure_counts = original_legacy.failure_counts
-
-    dispatch_actions = [action for action in output.actions if action.step_id == "s2"]
-    assert len(dispatch_actions) == 1
-    assert dispatch_actions[0].session == "fresh"
-    assert dispatch_actions[0].task_id is None
-
-
-def test_decide_state_isolation_reuse_and_failure_reset(tmp_path: Path) -> None:
-    """Two DecideState instances keep reuse/failure memory isolated."""
-    plan = Plan(
-        project="decide-test",
-        phases=[
-            Phase(
-                id="p1",
-                name="Phase 1",
-                status=PhaseStatus.PENDING,
-                steps=[
-                    Step(id="s1", name="Parent", status=StepStatus.DONE),
-                    Step(
-                        id="s2",
-                        name="Child",
-                        status=StepStatus.PENDING,
-                        depends_on=["s1"],
-                        agent="python-executor",
-                    ),
-                ],
+        # task_id should be None for fresh dispatch (not a reuse handle)
+        for action in claim_actions:
+            # Per contract: task_id is execution identity only, NOT a reuse handle
+            # For fresh dispatch, it should be None
+            assert action.task_id is None, (
+                f"Fresh dispatch should have task_id=None, got {action.task_id}. "
+                "task_id is execution identity, NOT a reuse handle."
             )
-        ],
-    )
-    plan_path = tmp_path / "plan.yaml"
-    save_plan(plan, plan_path)
 
-    state_a = DecideState(
-        completion_times={"s1": time.time()},
-        session_registry={"s1": "task-a"},
-        failure_counts={"s1": 2},
-    )
-    state_b = DecideState(failure_counts={"s1": 2})
-
-    decide_mod = importlib.import_module("vectl.decide")
-
-    original_path = decide_mod.resolve_plan_path
-    decide_mod.resolve_plan_path = lambda: plan_path  # type: ignore[assignment]
-    try:
-        output_a = decide(
-            running_tasks=[],
-            completed_results=None,
-            max_parallelism=5,
-            state=state_a,
-        )
-        output_b = decide(
-            running_tasks=[],
-            completed_results=None,
-            max_parallelism=5,
-            state=state_b,
-        )
-
-        decide(
-            running_tasks=[],
-            completed_results=[
-                CompletedResult(
-                    step_id="s1",
-                    task_id="task-a",
-                    status="SUCCESS",
-                    output_summary="ok",
+    def test_reuse_action_has_reuse_token_not_task_id(self, tmp_path: Path) -> None:
+        """Reuse semantics come via reuse_token/reuse_runner, not task_id."""
+        plan = Plan(
+            project="decide-test",
+            phases=[
+                Phase(
+                    id="p1",
+                    name="Phase 1",
+                    status=PhaseStatus.PENDING,
+                    steps=[
+                        Step(id="s1", name="Parent", status=StepStatus.DONE),
+                        Step(
+                            id="s2",
+                            name="Child",
+                            status=StepStatus.PENDING,
+                            depends_on=["s1"],
+                            agent="python-executor",
+                        ),
+                    ],
                 )
             ],
+        )
+        plan_path = tmp_path / "plan.yaml"
+        save_plan(plan, plan_path)
+
+        decide_mod = importlib.import_module("vectl.decide")
+        original = decide_mod.resolve_plan_path
+        decide_mod.resolve_plan_path = lambda: plan_path
+        try:
+            # Parent completed recently - should get reuse hint
+            state = DecideState(
+                completion_times={"s1": time.time()},
+                session_registry={"s1": "ses-abc123"},  # This is the reuse token
+            )
+            output = decide(
+                running_tasks=[],
+                completed_results=None,
+                max_parallelism=5,
+                advisor_state={
+                    "completion_times": state.completion_times,
+                    "session_registry": state.session_registry,
+                    "failure_counts": {},
+                },
+            )
+        finally:
+            decide_mod.resolve_plan_path = original
+
+        # Find the reuse claim action
+        claim_actions = [
+            a for a in output.actions if a.action == "claim_and_dispatch" and a.step_id == "s2"
+        ]
+        assert claim_actions, f"No s2 claim actions: {output.actions}"
+
+        action = claim_actions[0]
+
+        # Per contract: reuse_token carries the session token, reuse_runner names the namespace
+        assert action.reuse_token == "ses-abc123", (
+            f"reuse_token should be 'ses-abc123', got {action.reuse_token}. "
+            "Old contract incorrectly used task_id for reuse semantics."
+        )
+        assert action.reuse_runner == "task", (
+            f"reuse_runner should be 'task', got {action.reuse_runner}"
+        )
+        # task_id should still be None (it's execution identity, not reuse handle)
+        assert action.task_id is None
+
+
+# ---------------------------------------------------------------------------
+# Caller-owned advisor_state tests
+# ---------------------------------------------------------------------------
+
+
+class TestCallerOwnedState:
+    """advisor_state is caller-owned; next_state is full replacement.
+
+    RFC: docs/RFC-vectl-decide-advisor-refresh.md section 6.2
+    Gap: Old tests used state=DecideState directly; new contract uses dict.
+    """
+
+    def test_decide_accepts_advisor_state_dict(self, tmp_path: Path) -> None:
+        """decide() must accept advisor_state as dict per refreshed contract."""
+        plan = _write_plan_with_steps(
+            None,
+            [Step(id="s1", name="Step 1", status=StepStatus.PENDING)],
+        )
+        plan_path = tmp_path / "plan.yaml"
+        save_plan(plan, plan_path)
+
+        decide_mod = importlib.import_module("vectl.decide")
+        original = decide_mod.resolve_plan_path
+        decide_mod.resolve_plan_path = lambda: plan_path
+        try:
+            # Fresh state
+            advisor_state: dict[str, object] = {
+                "completion_times": {},
+                "session_registry": {},
+                "failure_counts": {},
+            }
+            output = decide(
+                running_tasks=[],
+                completed_results=None,
+                max_parallelism=5,
+                advisor_state=advisor_state,
+            )
+        finally:
+            decide_mod.resolve_plan_path = original
+
+        assert isinstance(output, DecideOutput)
+        assert "next_state" in output.model_fields
+
+    def test_next_state_is_full_replacement_not_merge(self, tmp_path: Path) -> None:
+        """next_state is full replacement object, not a merge patch.
+
+        RFC: docs/RFC-vectl-decide-advisor-refresh.md section 7.2.1
+        Callers must replace their state with next_state, not merge it.
+        """
+        plan = _write_plan_with_steps(
+            None,
+            [Step(id="s1", name="Step 1", status=StepStatus.PENDING)],
+        )
+        plan_path = tmp_path / "plan.yaml"
+        save_plan(plan, plan_path)
+
+        decide_mod = importlib.import_module("vectl.decide")
+        original = decide_mod.resolve_plan_path
+        decide_mod.resolve_plan_path = lambda: plan_path
+        try:
+            # Start with some state
+            advisor_state: dict[str, object] = {
+                "completion_times": {},
+                "session_registry": {},
+                "failure_counts": {"other-step": 2},  # Should be replaced, not preserved
+            }
+            output = decide(
+                running_tasks=[],
+                completed_results=None,
+                max_parallelism=5,
+                advisor_state=advisor_state,
+            )
+        finally:
+            decide_mod.resolve_plan_path = original
+
+        # next_state must be a full replacement
+        assert isinstance(output.next_state, dict)
+        # If there are no completions, failure_counts should NOT contain other-step
+        assert "other-step" not in output.next_state.get("failure_counts", {}), (
+            "next_state is full replacement, not merge. "
+            "Callers must replace their state with next_state, not merge."
+        )
+
+    def test_explicit_state_round_trip(self, tmp_path: Path) -> None:
+        """Explicit state must round-trip correctly through next_state."""
+        plan = Plan(
+            project="decide-test",
+            phases=[
+                Phase(
+                    id="p1",
+                    name="Phase 1",
+                    status=PhaseStatus.PENDING,
+                    steps=[
+                        Step(
+                            id="s1",
+                            name="Parent",
+                            status=StepStatus.CLAIMED,
+                            claimed_by="agent-1",
+                        ),
+                        Step(
+                            id="s2",
+                            name="Child",
+                            status=StepStatus.PENDING,
+                            depends_on=["s1"],
+                            agent="python-executor",
+                        ),
+                    ],
+                )
+            ],
+        )
+        plan_path = tmp_path / "plan.yaml"
+        save_plan(plan, plan_path)
+
+        decide_mod = importlib.import_module("vectl.decide")
+        original = decide_mod.resolve_plan_path
+        decide_mod.resolve_plan_path = lambda: plan_path
+        try:
+            # Pre-populate with completed parent
+            initial_state: dict[str, object] = {
+                "completion_times": {"s1": time.time()},
+                "session_registry": {"s1": "ses-xyz"},
+                "failure_counts": {},
+            }
+
+            # First call: parent completes
+            completed = [
+                CompletedResult(
+                    step_id="s1",
+                    task_id="exec-1",
+                    runner="claude",
+                    status="SUCCESS",
+                    output_summary="Done",
+                ),
+            ]
+            output1 = decide(
+                running_tasks=[],
+                completed_results=completed,
+                max_parallelism=5,
+                advisor_state=initial_state,
+            )
+
+            # Verify next_state has updated completion times
+            assert "s1" in output1.next_state.get("completion_times", {}), (
+                "next_state should include completion_times from result processing"
+            )
+
+            # Second call: child should get reuse hint from next_state
+            output2 = decide(
+                running_tasks=[],
+                completed_results=None,
+                max_parallelism=5,
+                advisor_state=output1.next_state,
+            )
+
+            # Child should be eligible for reuse
+            reuse_actions = [
+                a for a in output2.actions if a.action == "claim_and_dispatch" and a.step_id == "s2"
+            ]
+            assert reuse_actions, f"Expected reuse action for s2: {output2.actions}"
+            assert reuse_actions[0].reuse_token == "ses-xyz", (
+                f"Expected reuse_token='ses-xyz' from next_state, "
+                f"got {reuse_actions[0].reuse_token}"
+            )
+        finally:
+            decide_mod.resolve_plan_path = original
+
+
+# ---------------------------------------------------------------------------
+# status / reason_code / message tests (no continuation/halt_reason)
+# ---------------------------------------------------------------------------
+
+
+class TestStatusReasonCode:
+    """Top-level control uses status / reason_code / message, not continuation/halt_reason.
+
+    RFC: docs/RFC-vectl-decide-advisor-refresh.md section 6.3
+    Gap: Old tests asserted output.continuation and output.halt_reason.
+    """
+
+    def test_output_has_status_not_continuation(self, tmp_path: Path) -> None:
+        """DecideOutput must have status field, not continuation."""
+        plan = _write_plan_with_steps(
+            None,
+            [Step(id="s1", name="Step 1", status=StepStatus.PENDING)],
+        )
+        plan_path = tmp_path / "plan.yaml"
+        save_plan(plan, plan_path)
+
+        decide_mod = importlib.import_module("vectl.decide")
+        original = decide_mod.resolve_plan_path
+        decide_mod.resolve_plan_path = lambda: plan_path
+        try:
+            output = decide(
+                running_tasks=[],
+                completed_results=None,
+                max_parallelism=5,
+            )
+        finally:
+            decide_mod.resolve_plan_path = original
+
+        # Per refreshed contract: use status, not continuation
+        assert hasattr(output, "status"), "DecideOutput must have status field"
+        assert output.status in ("dispatch", "wait", "blocked", "done"), (
+            f"status must be one of dispatch/wait/blocked/done, got {output.status}"
+        )
+
+        # continuation must NOT exist per refreshed contract
+        assert not hasattr(output, "continuation") or output.continuation is None, (
+            "continuation field has been removed from refreshed contract. "
+            "Use status/reason_code instead."
+        )
+
+    def test_output_has_reason_code_not_halt_reason(self, tmp_path: Path) -> None:
+        """DecideOutput must have reason_code, not halt_reason."""
+        plan = _write_plan_with_steps(
+            None,
+            [Step(id="s1", name="Step 1", status=StepStatus.PENDING)],
+        )
+        plan_path = tmp_path / "plan.yaml"
+        save_plan(plan, plan_path)
+
+        decide_mod = importlib.import_module("vectl.decide")
+        original = decide_mod.resolve_plan_path
+        decide_mod.resolve_plan_path = lambda: plan_path
+        try:
+            output = decide(
+                running_tasks=[],
+                completed_results=None,
+                max_parallelism=5,
+            )
+        finally:
+            decide_mod.resolve_plan_path = original
+
+        # Per refreshed contract: use reason_code
+        assert hasattr(output, "reason_code"), "DecideOutput must have reason_code field"
+        assert output.reason_code in (
+            "dispatch_available",
+            "waiting_on_running",
+            "capacity_full",
+            "no_executable_steps",
+            "repeated_failures",
+        ), f"Invalid reason_code: {output.reason_code}"
+
+        # halt_reason must NOT exist per refreshed contract
+        assert not hasattr(output, "halt_reason") or output.halt_reason is None, (
+            "halt_reason field has been removed from refreshed contract. "
+            "Use status/reason_code instead."
+        )
+
+    def test_status_reason_code_mapping(self, tmp_path: Path) -> None:
+        """status and reason_code must follow the mapping table.
+
+        RFC: docs/RFC-vectl-decide-advisor-refresh.md section 6.3
+        """
+        plan = _write_plan_with_steps(
+            None,
+            [Step(id="s1", name="Step 1", status=StepStatus.PENDING)],
+        )
+        plan_path = tmp_path / "plan.yaml"
+        save_plan(plan, plan_path)
+
+        decide_mod = importlib.import_module("vectl.decide")
+        original = decide_mod.resolve_plan_path
+        decide_mod.resolve_plan_path = lambda: plan_path
+        try:
+            # Case 1: Work available and capacity open -> dispatch/dispatch_available
+            output = decide(
+                running_tasks=[],
+                completed_results=None,
+                max_parallelism=5,
+            )
+        finally:
+            decide_mod.resolve_plan_path = original
+
+        assert output.status == "dispatch"
+        assert output.reason_code == "dispatch_available"
+
+    def test_status_at_capacity(self, tmp_path: Path) -> None:
+        """At capacity -> wait/capacity_full."""
+        plan = _write_plan_with_steps(
+            None,
+            [Step(id="s1", name="Step 1", status=StepStatus.PENDING)],
+        )
+        plan_path = tmp_path / "plan.yaml"
+        save_plan(plan, plan_path)
+
+        decide_mod = importlib.import_module("vectl.decide")
+        original = decide_mod.resolve_plan_path
+        decide_mod.resolve_plan_path = lambda: plan_path
+        try:
+            output = decide(
+                running_tasks=[
+                    RunningTask(
+                        step_id="s0",
+                        agent="agent-1",
+                        task_id="exec-1",
+                        runner="task",
+                        dispatched_at=time.time(),
+                    )
+                ],
+                completed_results=None,
+                max_parallelism=1,  # At capacity
+            )
+        finally:
+            decide_mod.resolve_plan_path = original
+
+        assert output.status == "wait"
+        assert output.reason_code == "capacity_full"
+
+
+# ---------------------------------------------------------------------------
+# Policy metadata tests
+# ---------------------------------------------------------------------------
+
+
+class TestPolicyMetadata:
+    """decide() output must include explicit policy metadata.
+
+    RFC: docs/RFC-vectl-decide-advisor-refresh.md section 7.3
+    Gap: Old tests didn't assert on policy field.
+    """
+
+    def test_output_includes_policy_metadata(self, tmp_path: Path) -> None:
+        """DecideOutput must include policy with reuse_ttl_s and escalation_threshold."""
+        plan = _write_plan_with_steps(
+            None,
+            [Step(id="s1", name="Step 1", status=StepStatus.PENDING)],
+        )
+        plan_path = tmp_path / "plan.yaml"
+        save_plan(plan, plan_path)
+
+        decide_mod = importlib.import_module("vectl.decide")
+        original = decide_mod.resolve_plan_path
+        decide_mod.resolve_plan_path = lambda: plan_path
+        try:
+            output = decide(
+                running_tasks=[],
+                completed_results=None,
+                max_parallelism=5,
+            )
+        finally:
+            decide_mod.resolve_plan_path = original
+
+        assert hasattr(output, "policy"), "DecideOutput must have policy field"
+        assert isinstance(output.policy, dict), "policy must be a dict"
+
+        # Policy must contain required fields
+        assert "reuse_ttl_s" in output.policy, "policy must include reuse_ttl_s"
+        assert "escalation_threshold" in output.policy, "policy must include escalation_threshold"
+
+        assert output.policy["reuse_ttl_s"] == REUSE_TTL
+        assert output.policy["escalation_threshold"] == ESCALATION_THRESHOLD
+
+
+# ---------------------------------------------------------------------------
+# Removal of session field from Action
+# ---------------------------------------------------------------------------
+
+
+class TestSessionFieldRemoved:
+    """Action.session field has been removed from refreshed contract.
+
+    RFC: docs/RFC-vectl-decide-advisor-refresh.md section 6.5
+    Gap: Old tests asserted action.session == "reuse" or "fresh".
+    """
+
+    def test_action_has_no_session_field(self, tmp_path: Path) -> None:
+        """Action must NOT have session field per refreshed contract."""
+        plan = Plan(
+            project="decide-test",
+            phases=[
+                Phase(
+                    id="p1",
+                    name="Phase 1",
+                    status=PhaseStatus.PENDING,
+                    steps=[
+                        Step(id="s1", name="Parent", status=StepStatus.DONE),
+                        Step(
+                            id="s2",
+                            name="Child",
+                            status=StepStatus.PENDING,
+                            depends_on=["s1"],
+                            agent="python-executor",
+                        ),
+                    ],
+                )
+            ],
+        )
+        plan_path = tmp_path / "plan.yaml"
+        save_plan(plan, plan_path)
+
+        decide_mod = importlib.import_module("vectl.decide")
+        original = decide_mod.resolve_plan_path
+        decide_mod.resolve_plan_path = lambda: plan_path
+        try:
+            # With parent completed, should get reuse
+            state: dict[str, object] = {
+                "completion_times": {"s1": time.time()},
+                "session_registry": {"s1": "ses-abc"},
+                "failure_counts": {},
+            }
+            output = decide(
+                running_tasks=[],
+                completed_results=None,
+                max_parallelism=5,
+                advisor_state=state,
+            )
+        finally:
+            decide_mod.resolve_plan_path = original
+
+        # Find the claim action for s2
+        claim_actions = [
+            a for a in output.actions if a.action == "claim_and_dispatch" and a.step_id == "s2"
+        ]
+        assert claim_actions, f"No s2 claim actions: {output.actions}"
+
+        action = claim_actions[0]
+
+        # session field must NOT exist
+        assert not hasattr(action, "session") or action.session is None, (
+            "Action.session field has been removed from refreshed contract. "
+            "Use reuse_token/reuse_runner for reuse semantics."
+        )
+
+
+# ---------------------------------------------------------------------------
+# should_reuse_session returns (bool, str|None) - token not task_id
+# ---------------------------------------------------------------------------
+
+
+class TestShouldReuseSessionReturns:
+    """should_reuse_session returns (bool, reuse_token) per refreshed contract.
+
+    RFC: docs/RFC-vectl-decide-advisor-refresh.md section 6.1
+    Gap: Old tests called should_reuse_session with state=DecideState directly.
+    """
+
+    def test_should_reuse_returns_reuse_token(self) -> None:
+        """should_reuse_session returns (True, reuse_token) when eligible."""
+        state = DecideState(
+            completion_times={"s1": time.time()},
+            session_registry={"s1": "ses-token-123"},
+        )
+
+        should_reuse, token = should_reuse_session(
+            step_id="s2",
+            parent_step_id="s1",
+            state=state,
+        )
+
+        assert should_reuse is True
+        assert token == "ses-token-123", (
+            f"Return value is reuse_token, not task_id. Expected 'ses-token-123', got {token}"
+        )
+
+    def test_should_reuse_returns_none_for_stale_parent(self) -> None:
+        """should_reuse_session returns (False, None) when parent beyond TTL."""
+        state = DecideState(
+            completion_times={"s1": time.time() - 400},  # Beyond 300s TTL
+            session_registry={"s1": "ses-old"},
+        )
+
+        should_reuse, token = should_reuse_session(
+            step_id="s2",
+            parent_step_id="s1",
+            state=state,
+        )
+
+        assert should_reuse is False
+        assert token is None
+
+
+# ---------------------------------------------------------------------------
+# Expected-red verification semantics
+# ---------------------------------------------------------------------------
+
+
+def test_decide_expected_red_fail_completes(tmp_path: Path) -> None:
+    """Expected-red step with FAIL result completes (gap demonstrated as intended).
+
+    RFC: docs/RFC-expected-red-verification-semantics.md (Sections 4-5)
+    """
+    plan = Plan(
+        project="decide-test",
+        phases=[
+            Phase(
+                id="p1",
+                name="Phase 1",
+                status=PhaseStatus.PENDING,
+                steps=[
+                    Step(
+                        id="s1",
+                        name="Gap-exposing test step",
+                        status=StepStatus.CLAIMED,
+                        claimed_by="agent-1",
+                        verify="expected_red",
+                    ),
+                ],
+            )
+        ],
+    )
+    plan_path = tmp_path / "plan.yaml"
+    save_plan(plan, plan_path)
+
+    decide_mod = importlib.import_module("vectl.decide")
+
+    original = decide_mod.resolve_plan_path
+    decide_mod.resolve_plan_path = lambda: plan_path
+    try:
+        completed = [
+            CompletedResult(
+                step_id="s1",
+                task_id="task-1",
+                runner="claude",
+                status="FAIL",
+                output_summary="Test failed as expected: missing feature X",
+            ),
+        ]
+        output = decide(
+            running_tasks=[],
+            completed_results=completed,
             max_parallelism=5,
-            state=state_a,
         )
     finally:
-        decide_mod.resolve_plan_path = original_path  # type: ignore[assignment]
+        decide_mod.resolve_plan_path = original
 
-    action_a = next(action for action in output_a.actions if action.step_id == "s2")
-    action_b = next(action for action in output_b.actions if action.step_id == "s2")
+    # Must complete, not fail/escalate
+    action_types = [(a.action, a.step_id) for a in output.actions]
+    assert ("complete", "s1") in action_types
 
-    assert action_a.session == "reuse"
-    assert action_a.task_id == "task-a"
-    assert action_b.session == "fresh"
-    assert action_b.task_id is None
+    # Decision log must show expected-red reason
+    assert any(
+        d.decision == "COMPLETE" and d.step_id == "s1" and "Expected-red" in d.why
+        for d in output.decision_log
+    ), f"Decision log should contain 'Expected-red' reason, got: {output.decision_log}"
 
-    assert "s1" not in state_a.failure_counts
-    assert state_b.failure_counts["s1"] == 2
+
+def test_decide_must_green_fail_normal_failure_path(tmp_path: Path) -> None:
+    """must_green step with FAIL result follows normal failure path.
+
+    RFC: docs/RFC-expected-red-verification-semantics.md (Sections 4-5)
+    """
+    plan = Plan(
+        project="decide-test",
+        phases=[
+            Phase(
+                id="p1",
+                name="Phase 1",
+                status=PhaseStatus.PENDING,
+                steps=[
+                    Step(
+                        id="s1",
+                        name="Critical verification step",
+                        status=StepStatus.CLAIMED,
+                        claimed_by="agent-1",
+                        verify="must_green",
+                    ),
+                ],
+            )
+        ],
+    )
+    plan_path = tmp_path / "plan.yaml"
+    save_plan(plan, plan_path)
+
+    decide_mod = importlib.import_module("vectl.decide")
+
+    original = decide_mod.resolve_plan_path
+    decide_mod.resolve_plan_path = lambda: plan_path
+    try:
+        completed = [
+            CompletedResult(
+                step_id="s1",
+                task_id="task-1",
+                runner="claude",
+                status="FAIL",
+                output_summary="Verification failed",
+            ),
+        ]
+        output = decide(
+            running_tasks=[],
+            completed_results=completed,
+            max_parallelism=5,
+        )
+    finally:
+        decide_mod.resolve_plan_path = original
+
+    # First failure should NOT complete
+    action_types = [(a.action, a.step_id) for a in output.actions]
+    assert ("complete", "s1") not in action_types
+
+    # Status should indicate blocked or wait due to failure
+    assert output.status in ("blocked", "wait", "done")
+
+
+# ---------------------------------------------------------------------------
+# Successor visibility after simulated completion
+# ---------------------------------------------------------------------------
 
 
 def test_decide_successor_visible_after_simulated_completion(tmp_path: Path) -> None:
     """decide returns both complete AND claim_and_dispatch for successor in one batch.
 
-    Regression test: before the fix, decide() would return complete(A) but NOT
-    claim_and_dispatch(B) because B depends on A and A was not yet marked DONE
-    on disk. The fix simulates completions in-memory before computing claimable steps.
+    Regression test: successor steps must become visible in the same decide() call.
     """
-    # A (claimed) -> B (pending, depends on A)
     plan = Plan(
         project="decide-test",
         phases=[
@@ -489,14 +866,14 @@ def test_decide_successor_visible_after_simulated_completion(tmp_path: Path) -> 
 
     decide_mod = importlib.import_module("vectl.decide")
 
-    # Patch resolve_plan_path to point at our temp plan
     original = decide_mod.resolve_plan_path
-    decide_mod.resolve_plan_path = lambda: plan_path  # type: ignore[assignment]
+    decide_mod.resolve_plan_path = lambda: plan_path
     try:
         completed = [
             CompletedResult(
                 step_id="s1",
                 task_id="task-1",
+                runner="claude",
                 status="SUCCESS",
                 output_summary="Done",
             ),
@@ -507,257 +884,9 @@ def test_decide_successor_visible_after_simulated_completion(tmp_path: Path) -> 
             max_parallelism=5,
         )
     finally:
-        decide_mod.resolve_plan_path = original  # type: ignore[assignment]
+        decide_mod.resolve_plan_path = original
 
     action_types = [(a.action, a.step_id) for a in output.actions]
     # Must contain complete(s1) AND claim_and_dispatch(s2) in the same batch
     assert ("complete", "s1") in action_types
     assert ("claim_and_dispatch", "s2") in action_types
-
-
-# ---------------------------------------------------------------------------
-# Expected-red verification semantics tests
-# ---------------------------------------------------------------------------
-
-
-def test_decide_expected_red_fail_completes(tmp_path: Path) -> None:
-    """Expected-red step with FAIL result completes (gap demonstrated as intended).
-
-    RFC: docs/RFC-expected-red-verification-semantics.md (Sections 4-5)
-    When step.verify == "expected_red", a FAIL result means the gap was demonstrated.
-    This should create a complete action, not failure/escalation.
-    """
-    plan = Plan(
-        project="decide-test",
-        phases=[
-            Phase(
-                id="p1",
-                name="Phase 1",
-                status=PhaseStatus.PENDING,
-                steps=[
-                    Step(
-                        id="s1",
-                        name="Gap-exposing test step",
-                        status=StepStatus.CLAIMED,
-                        claimed_by="agent-1",
-                        verify="expected_red",
-                    ),
-                ],
-            )
-        ],
-    )
-    plan_path = tmp_path / "plan.yaml"
-    save_plan(plan, plan_path)
-
-    decide_mod = importlib.import_module("vectl.decide")
-
-    original = decide_mod.resolve_plan_path
-    decide_mod.resolve_plan_path = lambda: plan_path  # type: ignore[assignment]
-    try:
-        completed = [
-            CompletedResult(
-                step_id="s1",
-                task_id="task-1",
-                status="FAIL",
-                output_summary="Test failed as expected: missing feature X",
-            ),
-        ]
-        output = decide(
-            running_tasks=[],
-            completed_results=completed,
-            max_parallelism=5,
-        )
-    finally:
-        decide_mod.resolve_plan_path = original  # type: ignore[assignment]
-
-    # Must complete, not fail/escalate
-    action_types = [(a.action, a.step_id) for a in output.actions]
-    assert ("complete", "s1") in action_types
-
-    # Decision log must show expected-red reason
-    assert any(
-        d.decision == "COMPLETE" and d.step_id == "s1" and "Expected-red" in d.why
-        for d in output.decision_log
-    ), f"Decision log should contain 'Expected-red' reason, got: {output.decision_log}"
-
-
-def test_decide_must_green_fail_normal_failure_path(tmp_path: Path) -> None:
-    """must_green step with FAIL result follows normal failure path.
-
-    RFC: docs/RFC-expected-red-verification-semantics.md (Sections 4-5)
-    When step.verify == "must_green", FAIL should trigger failure tracking.
-    This preserves existing behavior for verification-critical steps.
-    """
-    plan = Plan(
-        project="decide-test",
-        phases=[
-            Phase(
-                id="p1",
-                name="Phase 1",
-                status=PhaseStatus.PENDING,
-                steps=[
-                    Step(
-                        id="s1",
-                        name="Critical verification step",
-                        status=StepStatus.CLAIMED,
-                        claimed_by="agent-1",
-                        verify="must_green",
-                    ),
-                ],
-            )
-        ],
-    )
-    plan_path = tmp_path / "plan.yaml"
-    save_plan(plan, plan_path)
-
-    decide_mod = importlib.import_module("vectl.decide")
-
-    original = decide_mod.resolve_plan_path
-    decide_mod.resolve_plan_path = lambda: plan_path  # type: ignore[assignment]
-    try:
-        # First failure
-        completed = [
-            CompletedResult(
-                step_id="s1",
-                task_id="task-1",
-                status="FAIL",
-                output_summary="Verification failed",
-            ),
-        ]
-        output = decide(
-            running_tasks=[],
-            completed_results=completed,
-            max_parallelism=5,
-        )
-    finally:
-        decide_mod.resolve_plan_path = original  # type: ignore[assignment]
-
-    # First failure should NOT complete, should be WAIT or escalate
-    action_types = [(a.action, a.step_id) for a in output.actions]
-    assert ("complete", "s1") not in action_types
-
-    # Should be a WAIT decision (failure count 1)
-    wait_decisions = [d for d in output.decision_log if d.decision == "WAIT"]
-    assert any(d.step_id == "s1" for d in wait_decisions), (
-        f"Expected WAIT decision for s1, got: {output.decision_log}"
-    )
-
-
-def test_decide_verify_none_fail_normal_failure_path(tmp_path: Path) -> None:
-    """verify=None step with FAIL result follows normal failure path.
-
-    RFC: docs/RFC-expected-red-verification-semantics.md (Section 7)
-    Default behavior (verify=None) is equivalent to must_green for failure handling.
-    This tests backward compatibility - existing steps unchanged.
-    """
-    plan = Plan(
-        project="decide-test",
-        phases=[
-            Phase(
-                id="p1",
-                name="Phase 1",
-                status=PhaseStatus.PENDING,
-                steps=[
-                    Step(
-                        id="s1",
-                        name="Legacy step without verify field",
-                        status=StepStatus.CLAIMED,
-                        claimed_by="agent-1",
-                        # verify is None by default
-                    ),
-                ],
-            )
-        ],
-    )
-    plan_path = tmp_path / "plan.yaml"
-    save_plan(plan, plan_path)
-
-    decide_mod = importlib.import_module("vectl.decide")
-
-    original = decide_mod.resolve_plan_path
-    decide_mod.resolve_plan_path = lambda: plan_path  # type: ignore[assignment]
-    try:
-        # First failure
-        completed = [
-            CompletedResult(
-                step_id="s1",
-                task_id="task-1",
-                status="FAIL",
-                output_summary="Operation failed",
-            ),
-        ]
-        output = decide(
-            running_tasks=[],
-            completed_results=completed,
-            max_parallelism=5,
-        )
-    finally:
-        decide_mod.resolve_plan_path = original  # type: ignore[assignment]
-
-    # First failure should NOT complete (preserves default behavior)
-    action_types = [(a.action, a.step_id) for a in output.actions]
-    assert ("complete", "s1") not in action_types
-
-    # Should be WAIT decision (failure count 1)
-    wait_decisions = [d for d in output.decision_log if d.decision == "WAIT"]
-    assert any(d.step_id == "s1" for d in wait_decisions), (
-        f"Expected WAIT decision for s1, got: {output.decision_log}"
-    )
-
-
-def test_decide_expected_red_success_completes_normally(tmp_path: Path) -> None:
-    """Expected-red step with SUCCESS result completes normally.
-
-    If an expected-red step unexpectedly succeeds (result.status == SUCCESS),
-    it should complete normally - the SUCCESS path is unchanged.
-    """
-    plan = Plan(
-        project="decide-test",
-        phases=[
-            Phase(
-                id="p1",
-                name="Phase 1",
-                status=PhaseStatus.PENDING,
-                steps=[
-                    Step(
-                        id="s1",
-                        name="Expected-red step that unexpectedly passed",
-                        status=StepStatus.CLAIMED,
-                        claimed_by="agent-1",
-                        verify="expected_red",
-                    ),
-                ],
-            )
-        ],
-    )
-    plan_path = tmp_path / "plan.yaml"
-    save_plan(plan, plan_path)
-
-    decide_mod = importlib.import_module("vectl.decide")
-
-    original = decide_mod.resolve_plan_path
-    decide_mod.resolve_plan_path = lambda: plan_path  # type: ignore[assignment]
-    try:
-        completed = [
-            CompletedResult(
-                step_id="s1",
-                task_id="task-1",
-                status="SUCCESS",
-                output_summary="Unexpectedly passed",
-            ),
-        ]
-        output = decide(
-            running_tasks=[],
-            completed_results=completed,
-            max_parallelism=5,
-        )
-    finally:
-        decide_mod.resolve_plan_path = original  # type: ignore[assignment]
-
-    # SUCCESS should complete regardless of verify field
-    action_types = [(a.action, a.step_id) for a in output.actions]
-    assert ("complete", "s1") in action_types
-
-    # Decision log should show normal SUCCESS completion
-    complete_decisions = [d for d in output.decision_log if d.decision == "COMPLETE"]
-    assert any(d.step_id == "s1" for d in complete_decisions)

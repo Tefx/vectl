@@ -65070,7 +65070,7 @@ phases:
   steps:
   - id: decide_refresh_contracts.gate
     name: Gate decide_refresh_contracts
-    status: pending
+    status: claimed
     description: 'Gate review: verify the refreshed vectl_decide contract is fully
       pinned before tests and implementation. Block if core/state and MCP surfaces
       disagree, if stale continuation/halt_reason semantics remain, or if any compatibility
@@ -65095,6 +65095,8 @@ phases:
     depends_on:
     - decide_refresh_contracts.pin-contract-surfaces
     agent: gate-reviewer-tacit
+    claimed_by: gate-reviewer-tacit
+    claimed_at: '2026-04-08T14:42:01.434200+00:00'
   - id: decide_refresh_contracts.pin-contract-surfaces
     name: Pin refreshed core and MCP contracts
     status: done

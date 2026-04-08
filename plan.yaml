@@ -65616,7 +65616,7 @@ phases:
   steps:
   - id: orchestration_foundation_lock.pin-boundaries-and-contracts
     name: Pin runner/runtime boundaries and hard-rule contracts
-    status: claimed
+    status: done
     description: "step_type: contract\ncontract_purity: ENFORCED\ncontract_outputs:\n\
       \  - signatures\n  - type_defs\n  - interfaces\n  - stubs\n\nLock the runner/runtime\
       \ foundation contract for the next two gaps only. Encode six hard rules in code-facing\
@@ -65644,6 +65644,43 @@ phases:
     agent: software-architect-tacit
     claimed_by: software-architect-tacit
     claimed_at: '2026-04-08T14:25:20.890290+00:00'
+    done_at: '2026-04-08T14:38:52.970892+00:00'
+    evidence: '## refs Read Confirmation (MANDATORY)
+
+      - tools/vectl/README.md — NOT READ: file not found in isolated worktree; agent
+      reported explicit missing-file reason.
+
+
+      ## Contract Lock Report
+
+      - Touched files: src/vectl/orchestration/contracts.py, src/vectl/orchestration/core_adapter.py,
+      src/vectl/orchestration/interfaces.py, src/vectl/orchestration/resolver.py,
+      src/vectl/orchestration/runtime.py, tests/orchestration/unit/test_contract_lock_boundaries.py,
+      tests/orchestration/unit/test_core_adapter_impl.py, tests/orchestration/unit/test_control.py,
+      tests/orchestration/integration/test_control_isolation_flow.py, tests/orchestration/integration/test_control_resolver_contract.py
+
+      - Exact signatures/types pinned for resolver execution site/facade mutation/claim
+      flow/reconcile disposition and lifecycle mutation protocol contracts.
+
+      - Hard rule encoding present for resolver-main-worktree, approved-vectl-facade,
+      reconcile-before-complete, claim-normal-flow-only, unresolved-runtime-user-notification.
+
+      - Out-of-scope protections preserved; no substantive backend/lifecycle implementation
+      landed.
+
+
+      ## Verification
+
+      - Run: uv run pytest tests/orchestration/unit/test_contract_lock_boundaries.py
+      tests/orchestration/unit/test_core_adapter_impl.py tests/orchestration/unit/test_runtime.py
+      tests/orchestration/unit/test_control.py tests/orchestration/unit/test_resolver_gateway.py
+      tests/orchestration/integration/test_control_resolver_contract.py tests/orchestration/integration/test_control_isolation_flow.py
+      -> 52 passed in 0.58s
+
+
+      ## Artifact
+
+      - Commit: c2c090ef33553a9a79f747126bbe26255d465d46'
   - id: orchestration_foundation_lock.define-red-contract-tests
     name: Define red seam tests for runner backend and runtime lifecycle
     status: pending

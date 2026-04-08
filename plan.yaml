@@ -65337,7 +65337,7 @@ phases:
       - product implementation files modified: NONE'
 - id: decide_refresh_impl
   name: vectl_decide Contract Refresh — Implementation
-  status: pending
+  status: in_progress
   gate: Refreshed vectl_decide contract is implemented, green on focused tests, and
     conformant to the RFC.
   depends_on:
@@ -65345,7 +65345,7 @@ phases:
   steps:
   - id: decide_refresh_impl.models-state
     name: Implement refreshed models and state
-    status: pending
+    status: claimed
     description: Fill in the refreshed models/state implementation in src/vectl/models.py
       and src/vectl/decision_state.py under the locked RFC contract. Land runner provenance,
       caller-owned advisor_state, next_state full replacement semantics, policy metadata,
@@ -65371,6 +65371,8 @@ phases:
 
       - How next_state replacement semantics were implemented:'
     agent: python-senior-tacit
+    claimed_by: python-senior-tacit
+    claimed_at: '2026-04-08T17:23:06.844769+00:00'
   - id: decide_refresh_impl.core
     name: Implement refreshed decide core logic
     status: pending

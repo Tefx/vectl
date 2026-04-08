@@ -65972,47 +65972,16 @@ phases:
       expected_result: green
 
 
-      As an INDEPENDENT TESTER (integration-verifier), validate the runtime lifecycle
-      from a fresh perspective.
-
-
-      YOUR GOAL IS TO FIND PROBLEMS, not to confirm it works.
-
-
-      Test for:
-
-      - happy path: prepare -> execute -> reconcile merged|noop -> complete allowed
-      -> cleanup
-
-      - edge cases: workspace isolation modes, main-worktree resolver constraint,
-      cleanup after failed execution
-
-      - error scenarios: conflict/unresolved reconcile blocks completion and surfaces
-      operator/user-facing message
-
-      - integrity checks: worktree metadata and runtime snapshot remain coherent across
-      prepare/start/collect/cleanup
-
-
-      Independence Level: L2
-
-
-      If tests discover unresolved lifecycle issues, that is a successful verification
-      outcome and must be reported explicitly.
-
-      '
-    verification: 'Scope: phase-check protecting orchestration_runtime_lifecycle.gate
-      and orchestration_runtime_wiring.gate.
-
-      - Green tests prove successful lifecycle sequencing and cleanup.
-
-      - Semi-blind failure-path tests prove completion is blocked until reconcile
-      is merged|noop.
-
-      - Evidence includes actual command output and operator/user-facing message output
-      for unresolved runtime problems.
-
-      - Resolver/main-worktree constraint remains intact.'
+      As an independent tester, validate runtime lifecycle behavior from a fresh perspective.
+      Prove the happy path prepare -> execute -> reconcile merged|noop -> complete
+      -> cleanup, plus workspace isolation, main-worktree resolver constraint, cleanup
+      after failure, and conflict/unresolved reconcile blocking with surfaced operator/user
+      messaging.'
+    verification: 'phase-check protecting orchestration_runtime_lifecycle.gate and
+      orchestration_runtime_wiring.gate: green tests prove lifecycle sequencing and
+      cleanup; semi-blind failure-path tests prove completion stays blocked until
+      reconcile merged|noop; actual message output is included for unresolved runtime
+      problems.'
     evidence_template: '## refs Read Confirmation (MANDATORY)
 
 
@@ -66070,7 +66039,7 @@ phases:
       '
     depends_on:
     - orchestration_runtime_lifecycle.implement-worktree-lifecycle
-    agent: integration-verifier
+    agent: integration-verifier-tacit
   - id: orchestration_runtime_lifecycle.gate
     name: Gate runtime lifecycle
     status: pending

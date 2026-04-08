@@ -67836,7 +67836,7 @@ phases:
     claimed_at: '2026-04-08T18:56:10.715518+00:00'
   - id: orchestration_runtime_wiring.fix-canonical-spec-blockers-batch
     name: Land canonical-path fixes for runtime wiring blocker batch
-    status: pending
+    status: claimed
     description: 'Fix ALL remaining blocker-class runtime wiring gaps on the canonical
       execution line.
 
@@ -67906,6 +67906,8 @@ phases:
     depends_on:
     - orchestration_runtime_wiring.fix-spec-blockers-batch
     agent: python-senior-tacit
+    claimed_by: python-senior-tacit
+    claimed_at: '2026-04-08T21:10:22.012331+00:00'
   - id: orchestration_runtime_wiring.retest-canonical-spec-blockers-batch
     name: Retest canonical-path runtime wiring blocker batch
     status: pending

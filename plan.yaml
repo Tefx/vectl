@@ -66417,52 +66417,18 @@ phases:
     name: Implement resolver coordination, review-failure intake, and approved-facade
       mutation path
     status: pending
-    description: 'step_type: implementation
-
-
-      Implement the upper-layer resolver coordination rules after dispatch policy
-      is locked.
-
-
-      Scope:
-
-      - consume explicit ResolutionCase input and return bounded ResolutionReport
-      output
-
-      - enforce that resolver only runs after normal flow does not close
-
-      - keep resolver in main worktree
-
-      - forbid resolver from claiming new normal work
-
-      - route review/gate non-pass outcomes and parse failures into explicit ResolutionCase
-      inputs
-
-      - when resolver performs authorized core mutation, use the approved vectl/core
-      facade only
-
-      - support planner as a resolver-invoked remediation subagent, not a normal-flow
-      fallback
-
-      - if resolver cannot close safely, surface operator_required explicitly with
-      user/operator message data
-
-
-      Touch likely surfaces: src/vectl/orchestration/resolver.py, src/vectl/orchestration/resolver_gateway.py,
-      src/vectl/orchestration/contracts.py, src/vectl/orch_app.py.
-
-
-      Stub-only completion is not acceptable.'
-    verification: '- phase-check: resolver entry occurs only for explicit non-closure
-      cases
-
-      - phase-check: resolver does not claim new work and uses approved facade for
-      authorized mutations
-
-      - phase-check: planner delegation uses resolution_subtask semantics and bounded
-      ResolutionReport outcomes
-
-      - protects downstream gates: orchestration_orch_app_routing.gate and orchestration_operator_recovery.gate'
+    description: Implement upper-layer resolver coordination after dispatch policy
+      is locked. Consume explicit ResolutionCase input and return bounded ResolutionReport
+      output; enforce that resolver runs only after normal flow does not close; keep
+      resolver on the main worktree; forbid resolver from claiming new normal work;
+      route review/gate non-pass outcomes and parse failures into explicit ResolutionCase
+      inputs; use only the approved vectl/core facade for authorized resolver mutations;
+      keep planner as resolver-invoked remediation subagent, not normal-flow fallback;
+      surface explicit operator_required when safe closure is not possible.
+    verification: 'phase-check: resolver entry occurs only for explicit non-closure
+      cases; resolver never claims new work and uses the approved facade for authorized
+      mutations; planner delegation stays resolution_subtask-scoped; protects orch_app_routing
+      and operator_recovery gates.'
     refs:
     - docs/ORCHESTRATION-PLANE-RESOLVER-COORDINATION.md
     - docs/ORCHESTRATION-PLANE-RESOLUTION-CONTRACT.md
@@ -66471,7 +66437,7 @@ phases:
     - src/vectl/orchestration/resolver.py
     - src/vectl/orchestration/resolver_gateway.py
     - src/vectl/orch_app.py
-    agent: python-senior
+    agent: python-senior-tacit
   - id: orchestration_resolver_coordination.verify-resolver-coordination-and-planner-remediation-routing
     name: Verify resolver coordination and planner-remediation routing
     status: pending

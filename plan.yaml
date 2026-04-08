@@ -66524,7 +66524,7 @@ phases:
     claimed_at: '2026-04-08T15:43:07.046357+00:00'
 - id: orchestration_runtime_wiring
   name: Orchestration Runner/Runtime Wiring
-  status: pending
+  status: in_progress
   gate: Runner backend and runtime lifecycle are wired together with real integration
     proof, spec conformance, and gate evidence for reconcile-before-complete behavior.
   depends_on:
@@ -66532,7 +66532,7 @@ phases:
   steps:
   - id: orchestration_runtime_wiring.wire-runtime-to-backend
     name: Wire runtime lifecycle to the shared runner backend
-    status: pending
+    status: claimed
     description: 'Connect runtime lifecycle to the shared runner backend using the
       already-built backend and lifecycle surfaces. Drive the real backend through
       runtime prepare/start/collect/cleanup while preserving the ownership seam: backend
@@ -66574,6 +66574,8 @@ phases:
 
       '
     agent: python-senior-tacit
+    claimed_by: python-senior-tacit
+    claimed_at: '2026-04-08T17:23:54.711589+00:00'
   - id: orchestration_runtime_wiring.integration-proof
     name: Prove runner/runtime integration end-to-end
     status: pending

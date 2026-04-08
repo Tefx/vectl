@@ -67826,6 +67826,78 @@ phases:
     agent: integration-verifier-tacit
     claimed_by: integration-verifier-tacit
     claimed_at: '2026-04-08T18:56:10.715518+00:00'
+  - id: orchestration_runtime_wiring.fix-canonical-spec-blockers-batch
+    name: Land canonical-path fixes for runtime wiring blocker batch
+    status: pending
+    description: 'Fix ALL remaining blocker-class runtime wiring gaps on the canonical
+      execution line.
+
+
+      ## Blockers to Fix (ALL of these, not just the first)
+
+      - Land the missing canonical-path fixes for R6, R20, R24, R25, R26, and R27
+      where evidence suggests the earlier closure exists only on a separate branch
+      or non-canonical line.
+
+      - Close the remaining partial gaps for R12 and R30 on the canonical path.
+
+      - Ensure requirement-matrix proof is produced from the branch that actually
+      backs current execution; do not rely on evidence from an unmerged or side branch.
+
+      - Search sibling runtime/backend wiring paths so the canonical path is fully
+      aligned.
+
+
+      ## Root Cause vs Symptom
+
+      - Root cause: blocker fixes are not fully present on the canonical execution
+      line, so retest still sees runtime wiring divergence despite prior evidence.
+
+      - Symptom: retest-spec-blockers-batch still fails R6/R20/R24/R25/R26/R27 and
+      reports R12/R30 partial.
+
+      - Why this fix is not surface-level: it must land and prove the authoritative
+      behavior on the current execution path, not only in isolated evidence or side
+      branches.
+
+
+      ## Completion Criteria
+
+      - Canonical execution path satisfies R6, R12, R20, R24, R25, R26, R27, and R30
+
+      - Requirement-matrix evidence comes from the canonical path under test
+
+      - Main path and highest-risk failure path are both covered'
+    verification: 'local-check protecting orchestration_runtime_wiring.gate: canonical
+      runtime wiring now closes R6/R12/R20/R24/R25/R26/R27/R30 with requirement-matrix
+      evidence from the active execution line; evidence includes one main-path proof
+      and one highest-risk failure-path proof.'
+    evidence_template: '## refs Read Confirmation (MANDATORY)
+
+      For each ref in this step:
+
+      - <filename> — key passage or "NOT READ: <reason>"
+
+
+      If no refs were provided, state: "No refs for this step."
+
+
+      ## Canonical Wiring Remediation Evidence
+
+      - Canonical path/files updated:
+
+      - Requirement refs closed: R6, R12, R20, R24, R25, R26, R27, R30
+
+      - Evidence that prior side-branch-only behavior is now on canonical path:
+
+      - Main-path proof:
+
+      - Highest-risk failure-path proof:
+
+      - Sibling search completed:'
+    depends_on:
+    - orchestration_runtime_wiring.fix-spec-blockers-batch
+    agent: python-senior-tacit
 - id: orchestration_dispatch_policy
   name: Orchestration Dispatch / Prompt / Role Policy
   status: locked

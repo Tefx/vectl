@@ -68003,7 +68003,7 @@ phases:
       - R27 CONFORMS\n- R30 CONFORMS"
   - id: orchestration_runtime_wiring.retest-canonical-spec-blockers-batch
     name: Retest canonical-path runtime wiring blocker batch
-    status: pending
+    status: claimed
     description: 'As an INDEPENDENT TESTER (integration-verifier-tacit), validate
       that the canonical-path runtime wiring blockers are actually closed from a fresh
       perspective.
@@ -68061,6 +68061,8 @@ phases:
     depends_on:
     - orchestration_runtime_wiring.fix-canonical-spec-blockers-batch
     agent: integration-verifier-tacit
+    claimed_by: integration-verifier-tacit
+    claimed_at: '2026-04-08T21:43:24.824393+00:00'
 - id: orchestration_dispatch_policy
   name: Orchestration Dispatch / Prompt / Role Policy
   status: locked

@@ -66448,30 +66448,15 @@ phases:
       expected_result: green
 
 
-      As an INDEPENDENT TESTER (integration-verifier), validate resolver coordination
-      from a fresh perspective.
-
-
-      Test for:
-
-      - review_failed and merge_conflict cases normalize into explicit ResolutionCase
-      handling
-
-      - resolver stays in main worktree and never performs claim for new work
-
-      - planner is invoked only as resolver remediation subagent when replan is required
-
-      - approved vectl facade is the only mutation path used for authorized resolver
-      repairs
-
-      - unresolved cases produce explicit operator_required outcomes rather than silent
-      wait'
-    verification: '- phase-check: targeted resolver coordination tests pass green
-
-      - phase-check: at least one test proves planner is resolver-owned remediation,
-      not normal-flow fallback
-
-      - phase-check: at least one test proves operator_required is explicit and auditable'
+      As an independent tester, validate resolver coordination from a fresh perspective.
+      Prove review_failed and merge_conflict cases normalize into explicit ResolutionCase
+      handling, resolver stays on the main worktree and never claims normal work,
+      planner is invoked only as resolver remediation subagent, the approved vectl
+      facade is the only mutation path, and unresolved cases become explicit operator_required
+      outcomes.'
+    verification: 'phase-check: targeted resolver tests pass green; at least one test
+      proves planner is resolver-owned remediation rather than normal-flow fallback;
+      at least one test proves operator_required is explicit and auditable.'
     refs:
     - docs/ORCHESTRATION-PLANE-RESOLVER-COORDINATION.md
     - docs/ORCHESTRATION-PLANE-RESOLUTION-CONTRACT.md
@@ -66480,7 +66465,7 @@ phases:
     - src/vectl/orchestration/resolver_gateway.py
     depends_on:
     - orchestration_resolver_coordination.implement-resolver-coordination-review-failure-intake-and-approved-facade-mutation-path
-    agent: integration-verifier
+    agent: integration-verifier-tacit
   - id: orchestration_resolver_coordination.gate-resolver-coordination
     name: Gate resolver coordination
     status: pending

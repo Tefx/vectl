@@ -67762,7 +67762,7 @@ phases:
     agent: gate-reviewer-tacit
   - id: parallel_gate_remediation.fix-runner-retest-fixtures
     name: Update runner backend retest fixtures
-    status: claimed
+    status: done
     description: 'Update stale assertions and fixtures in tests/orchestration/unit/test_runner_backend_red.py
       to align with delivered runner backend semantics without relaxing contract intent.
 
@@ -67809,3 +67809,41 @@ phases:
     agent: python-executor
     claimed_by: python-executor
     claimed_at: '2026-04-08T16:51:06.175600+00:00'
+    done_at: '2026-04-08T17:00:34.066284+00:00'
+    evidence: '## refs Read Confirmation (MANDATORY)
+
+      - tools/vectl/README.md — not available in worktree; used step-local spec intent
+      and affected test suite as authority.
+
+
+      Artifact:
+
+      - Commit: 911c417fdeb5fba75bbf10b279b0092ec99d4811
+
+
+      Verification:
+
+      - Run: uv run pytest tests/orchestration/unit/test_runner_backend_red.py -v
+      -> 7 passed, 2 xfailed
+
+      - Run: uv run pytest tests/orchestration/unit/test_runtime.py tests/orchestration/unit/test_runtime_lifecycle.py
+      -v -> 17 passed
+
+
+      Spec link:
+
+      - tests/orchestration/unit/test_runner_backend_red.py
+
+
+      Notes:
+
+      - Updated stale cleanup expectations for reconcile-gated behavior (force=True
+      where appropriate).
+
+      - Aligned collect semantics with delivered runner behavior (use deterministic
+      test runner semantics).
+
+      - Corrected unclaimed-step error expectation to delivered contract behavior.
+
+      - Preserved red-suite strictness (remaining xfails retained for intentionally
+      deferred gaps).'

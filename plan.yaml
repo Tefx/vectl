@@ -65340,7 +65340,7 @@ phases:
       - product implementation files modified: NONE'
   - id: decide_refresh_tests.fix-refreshed-red-seams
     name: Fix refreshed red-test seams for core/state and MCP
-    status: pending
+    status: claimed
     description: 'Fix ALL blocker-class red-test definition gaps surfaced by decide_refresh_tests.gate.
 
 
@@ -65409,6 +65409,8 @@ phases:
     - decide_refresh_tests.core-state-red
     - decide_refresh_tests.mcp-red
     agent: python-executor
+    claimed_by: python-executor
+    claimed_at: '2026-04-08T20:31:22.159513+00:00'
   - id: decide_refresh_tests.retest-refreshed-red-seams
     name: Retest refreshed red-test seams for core/state and MCP
     status: pending

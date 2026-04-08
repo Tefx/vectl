@@ -65479,7 +65479,7 @@ phases:
       - uv run mypy src/vectl/decide.py -> success'
   - id: decide_refresh_impl.mcp-surface
     name: Implement refreshed MCP surface
-    status: claimed
+    status: done
     description: Implement the refreshed vectl_decide MCP surface in src/vectl/mcp_server.py.
       Accept advisor_state explicitly, return only the refreshed output fields, serialize
       next_state and policy correctly, and preserve vectl_decide as a deterministic
@@ -65511,6 +65511,30 @@ phases:
     agent: python-executor
     claimed_by: python-executor
     claimed_at: '2026-04-08T18:13:39.009373+00:00'
+    done_at: '2026-04-08T18:33:58.396941+00:00'
+    evidence: '## Integration Evidence
+
+      ### refs Read Confirmation (MANDATORY)
+
+      - tests/test_mcp.py::TestVectlDecide, src/vectl/mcp_server.py, src/vectl/decide.py,
+      src/vectl/models.py reviewed.
+
+
+      **Command/test exercising full path**
+
+      - uv run pytest tests/test_mcp.py::TestVectlDecide -v --tb=short
+
+
+      **Actual output**
+
+      - 3 passed in 0.56s
+
+
+      **Path exercised**
+
+      - tests/test_mcp.py -> vectl.mcp_server.vectl_decide -> vectl.decide.decide
+
+      - Structured output verified with refreshed fields: status/reason_code/message/next_state/policy/actions/decision_log'
   - id: decide_refresh_impl.verify
     name: Verify refreshed decide implementation
     status: pending

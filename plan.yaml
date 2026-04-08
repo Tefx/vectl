@@ -66627,26 +66627,14 @@ phases:
       - integration
 
 
-      As an INDEPENDENT TESTER (integration-verifier), validate durable operator/conflict/recovery
-      behavior.
-
-
-      Required scenarios:
-
-      - resolver returns operator_required and orch_app creates durable notification
-      state
-
-      - unresolved merge_conflict survives process restart with evidence intact
-
-      - restart reconstructs enough runtime state to prevent unsafe dispatch and duplicate
-      complete
-
-      - protected-path conflict is surfaced explicitly rather than silently integrated'
-    verification: '- phase-check: operator notification persistence, restart-while-paused,
-      and restart-after-conflict tests pass green
-
-      - phase-check: at least one failure-path proof covers protected-path conflict
-      or duplicate-complete prevention'
+      As an independent tester, validate durable operator/conflict/recovery behavior.
+      Cover operator_required creating durable notification state, unresolved merge_conflict
+      surviving restart, restart reconstructing enough state to prevent unsafe dispatch
+      and duplicate complete, and protected-path conflict surfacing explicitly rather
+      than being silently integrated.'
+    verification: 'phase-check: operator notification persistence, restart-while-paused,
+      and restart-after-conflict tests pass green; at least one failure-path proof
+      covers protected-path conflict or duplicate-complete prevention.'
     refs:
     - docs/ORCHESTRATION-PLANE-OPERATOR-CONFLICT-RECOVERY.md
     - src/vectl/orch_app.py
@@ -66654,7 +66642,7 @@ phases:
     - src/vectl/orchestration/run_store.py
     depends_on:
     - orchestration_operator_recovery.implement-operator-notification-conflict-preservation-and-recovery-alignment
-    agent: integration-verifier
+    agent: integration-verifier-tacit
   - id: orchestration_operator_recovery.audit-operator-conflict-recovery-conformance
     name: Audit operator/conflict/recovery conformance
     status: pending

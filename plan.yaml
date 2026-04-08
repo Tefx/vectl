@@ -66144,29 +66144,18 @@ phases:
   - id: orchestration_runtime_wiring.integration-proof
     name: Prove runner/runtime integration end-to-end
     status: pending
-    description: "step_type: verification\ntags:\n  - integration\n\nAs an INDEPENDENT\
-      \ TESTER (integration-verifier), validate the runtime/runner path from a fresh\
-      \ perspective.\n\nYOUR GOAL IS TO FIND PROBLEMS, not to confirm it works.\n\n\
-      Integration Evidence required:\n- Command or test exercising the full path from\
-      \ runtime entrypoint through runner backend and back into reconcile/cleanup.\n\
-      - Actual output pasted, not summarized.\n- Path exercised must be explicit:\
-      \ runtime.prepare -> runtime.start -> runner backend launch/poll -> runtime\
-      \ collect/reconcile gate -> runtime.cleanup\n\nTest for:\n- happy path: end-to-end\
-      \ runtime/backend execution reaches reconcile merged|noop and only then allows\
-      \ completion\n- edge cases: backend error, unresolved reconcile, cleanup-after-failure,\
-      \ repeated polling before terminal result\n- boundary invariants: resolver stays\
-      \ main-worktree only; resolver mutation remains approved-facade-only; claim\
-      \ does not move into resolver\n\nIndependence Level: L2\n"
-    verification: 'Scope: phase-check protecting orchestration_runtime_wiring.gate.
+    description: 'step_type: verification
 
-      - Seam-level real path evidence is present with actual command/output.
 
-      - Green proof shows completion only after reconcile=merged|noop.
-
-      - Failure-path evidence shows unresolved runtime/backend problems surface operator/user-facing
-      output and block completion.
-
-      - Remaining mocks, if any, are justified.'
+      As an independent tester, prove the runtime -> runner backend seam end-to-end
+      with actual command/test output. The exercised path must be explicit: runtime.prepare
+      -> runtime.start -> backend launch/poll -> runtime collect/reconcile gate ->
+      runtime.cleanup. Prove both happy path completion after reconcile merged|noop
+      and failure-path blocking with surfaced operator/user output.'
+    verification: 'phase-check protecting orchestration_runtime_wiring.gate: seam-level
+      real-path evidence is present; reconcile-before-complete is directly proven;
+      unresolved runtime/backend problems surface output and block completion; remaining
+      mocks are justified.'
     evidence_template: '## Integration Evidence
 
 
@@ -66218,7 +66207,7 @@ phases:
       '
     depends_on:
     - orchestration_runtime_wiring.wire-runtime-to-backend
-    agent: integration-verifier
+    agent: integration-verifier-tacit
   - id: orchestration_runtime_wiring.spec-conformance
     name: Audit runtime wiring against authoritative orchestration specs
     status: pending

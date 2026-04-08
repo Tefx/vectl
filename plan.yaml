@@ -67223,3 +67223,145 @@ phases:
   depends_on:
   - decide_refresh_contracts
   - orchestration_foundation_lock
+  steps:
+  - id: parallel_gate_remediation.fix-blockers
+    name: Fix concurrent gate blockers
+    status: pending
+    description: 'step_type: implementation
+
+      work_type: defect_repair
+
+      verification_scope: local-check protecting parallel_gate_remediation.retest-decide-refresh-tests,
+      parallel_gate_remediation.retest-runner-backend, parallel_gate_remediation.retest-runtime-lifecycle,
+      and parallel_gate_remediation.gate
+
+      agent_source: project
+
+      symbolic_testing: false
+
+
+      Fix ALL blocker-class findings reported concurrently by decide_refresh_tests.gate,
+      orchestration_runner_backend.gate, and orchestration_runtime_lifecycle.gate.
+
+
+      ## Blockers to Fix (ALL of these, not just the first)
+
+
+      ## Root Cause vs Symptom
+
+      - Root cause: orchestration refresh work was accepted with split ownership and
+      mismatched phase boundaries, so test evidence, runner backend substrate, and
+      runtime lifecycle isolation no longer align on the same contract.
+
+      - Symptom: stale MCP assertions/evidence discrepancy; missing runner backend
+      contract/types/module and stub-level or wrong-phase delivery; Rule-1 violation
+      from plain directories instead of standard git worktree isolation.
+
+      - Why this fix is not surface-level: it must realign backend module ownership,
+      runtime worktree lifecycle semantics, and decide-refresh test evidence under
+      one consistent orchestration contract rather than patching a single failing
+      assertion.
+
+
+      ### B1: decide_refresh_tests stale MCP assertions and evidence mismatch
+
+      Locations: tests/test_mcp.py, tests/test_decide*.py, src/vectl/mcp_server.py,
+      src/vectl/decide.py
+
+      Remediation: refresh MCP decide assertions/evidence so the test-definition phase
+      records the actual refreshed contract semantics and no longer carries stale
+      machine-contract expectations.
+
+      Grep hint: rg -n "continuation|halt_reason|advisor_state|reason_code|reuse_token|reuse_runner"
+      tests src/vectl
+
+      IMPORTANT: search sibling assertions and evidence text beyond the originally
+      reported mismatch.
+
+
+      ### B2: runner backend delivered at stub/wrong-phase level
+
+      Locations: src/vectl/orchestration/runtime.py, src/vectl/orchestration/contracts.py,
+      src/vectl/orchestration/interfaces.py, src/vectl/orchestration/runner_backend.py,
+      tests/orchestration/**
+
+      Remediation: land the dedicated runner backend contract/types/module as the
+      authoritative mechanical substrate, move any misplaced runtime-facing delivery
+      back behind the backend boundary, and eliminate stub-only completion.
+
+      Grep hint: rg -n "runner_backend|RunnerBackend|capability|launch|poll|cleanup|NotImplementedError|_Runtime|_Stub|_Placeholder"
+      src/vectl/orchestration tests/orchestration
+
+      IMPORTANT: search for sibling backend seams and shared registry surfaces, not
+      just the named module.
+
+
+      ### B3: runtime lifecycle Rule-1 violation for worktree isolation
+
+      Locations: src/vectl/orchestration/runtime.py, src/vectl/orchestration/contracts.py,
+      tests/orchestration/unit/test_runtime*.py
+
+      Remediation: replace plain-directory execution paths with standard git worktree
+      isolation, preserve reconcile-before-complete semantics, and keep resolver mutations
+      on the main workspace through the approved vectl facade.
+
+      Grep hint: rg -n "mkdir|directory|worktree|prepare|cleanup|reconcile|main workspace|linked
+      worktree" src/vectl/orchestration tests/orchestration
+
+      IMPORTANT: search for sibling lifecycle paths that can still bypass git worktree
+      preparation or cleanup.
+
+
+      ## Completion Criteria (stub exclusion)
+
+      This is an IMPLEMENTATION step. Stub-only completion is NOT acceptable.
+
+      Each deliverable MUST contain substantive logic and contract alignment that
+      varies based on runner/worktree state and proves the three blocker families
+      were addressed together.
+
+      '
+    verification: '- Use targeted orchestration and decide test suites to prove the
+      refreshed MCP contract, real runner backend substrate, and git worktree lifecycle
+      semantics now align.
+
+      - Evidence must show sibling-search coverage for all three blocker families.
+
+      - Main path: refreshed decide/orchestration tests pass against the repaired
+      contract surfaces.
+
+      - Failure path: regressions prove plain-directory execution, stale MCP machine-contract
+      assertions, and stub-only runner backend completion are rejected.'
+    evidence_template: '## refs Read Confirmation (MANDATORY)
+
+      If no refs were provided, state: "No refs for this step."
+
+
+      ## Blocker Family Closure
+
+      - B1 stale MCP assertions/evidence: <files changed + why closed>
+
+      - B2 runner backend substrate/phase split: <files changed + why closed>
+
+      - B3 runtime worktree isolation: <files changed + why closed>
+
+
+      ## Root Cause vs Symptom
+
+      - root_cause: <text>
+
+      - symptom_paths: <text>
+
+      - sibling_search_commands: <paste rg commands>
+
+      - why_this_fix_is_not_surface_level: <text>
+
+
+      ## Verification Notes
+
+      - commands_run: <exact commands>
+
+      - main_path_result: <text>
+
+      - highest_risk_failure_path_result: <text>'
+    agent: python-senior-tacit

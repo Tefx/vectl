@@ -2,28 +2,81 @@
 Shared orchestration-plane boundary types.
 
 These types are owned by the orchestration plane and represent the contracts
-between control, roster, runtime, and resolver components.
+between control, roster, runtime, resolver, and the upper-layer dispatch/prompt
+policy surfaces.
 
 Authority: docs/ORCHESTRATION-PLANE-INTERFACES.md section 3
+Authority: docs/ORCHESTRATION-PLANE-DISPATCH-AND-PROMPT-POLICY.md
+Authority: docs/ORCHESTRATION-PLANE-RESOLUTION-CONTRACT.md
 Authority: docs/ADR-worktree-support.md section "Core Design"
 Authority: docs/DRIVER-ARCHITECTURE.md section 4 (completion authority)
 """
 
 from dataclasses import dataclass
-from typing import Literal, TypeAlias
+from typing import Literal, Protocol, TypeAlias
 
 from vectl.models import IsolationMode
 
 __all__ = [
     "AgentExecutionState",
+    "DispatchRoleSource",
+    "DispatchSourceKind",
+    "DispatchSpec",
+    "ExecutionContext",
     "IsolationMode",
+    "MutationPolicy",
+    "PromptBundle",
+    "PromptRegistry",
     "ReconcileDisposition",
     "ReconcileResult",
+    "ResolutionCaseSource",
     "ResolverAuthorityContract",
     "ResolverClaimFlow",
     "ResolverExecutionSite",
     "ResolverMutationSurface",
+    "ReviewOutcome",
+    "RoleOutputContract",
+    "RoleProfile",
+    "RoleProfileRegistry",
+    "SessionMode",
+    "StructuredReviewResult",
     "WorktreeBinding",
+]
+
+
+DispatchSourceKind: TypeAlias = Literal["step", "resolution_subtask"]
+DispatchRoleSource: TypeAlias = Literal[
+    "step.agent",
+    "default",
+    "fallback",
+    "resolver",
+]
+ExecutionContext: TypeAlias = Literal["linked_worktree", "main_worktree"]
+SessionMode: TypeAlias = Literal["fresh", "reuse"]
+MutationPolicy: TypeAlias = Literal[
+    "read_only",
+    "worktree_changes",
+    "vectl_facade_only",
+]
+RoleOutputContract: TypeAlias = Literal[
+    "freeform_evidence",
+    "structured_review_result",
+    "structured_plan_result",
+    "resolution_report",
+]
+ReviewOutcome: TypeAlias = Literal[
+    "pass",
+    "needs_fix",
+    "needs_replan",
+    "operator_required",
+]
+ResolutionCaseSource: TypeAlias = Literal[
+    "runtime_failure",
+    "merge_conflict",
+    "review_failed",
+    "continuity_block",
+    "authority_ambiguity",
+    "unknown",
 ]
 
 
@@ -77,6 +130,102 @@ class ResolverAuthorityContract:
     execution_site: ResolverExecutionSite = "main_worktree"
     mutation_surface: ResolverMutationSurface = "approved_vectl_facade_only"
     claim_flow: ResolverClaimFlow = "normal_flow_only"
+
+
+@dataclass(frozen=True)
+class DispatchSpec:
+    """Unified dispatch-layer semantic contract.
+
+    Authority: docs/ORCHESTRATION-PLANE-DISPATCH-AND-PROMPT-POLICY.md section 7.1
+
+    This contract bridges control output, authoritative step semantics,
+    role/profile policy, prompt rendering input, and runtime execution input.
+    It does not replace ``ExecutionRequest``; it precedes and informs it.
+    """
+
+    source_kind: DispatchSourceKind
+    source_id: str
+    role_id: str
+    role_source: DispatchRoleSource
+    execution_context: ExecutionContext
+    runner: str
+    session_mode: SessionMode
+    reuse_token: str | None = None
+    reuse_runner: str | None = None
+    step_id: str | None = None
+    description: str = ""
+    verification: str | None = None
+    refs: tuple[str, ...] = ()
+    evidence_template: str | None = None
+    verify_mode: Literal["must_green", "expected_red", "none"] = "none"
+    prompt_family: str = ""
+    output_contract: str = ""
+    mutation_policy: MutationPolicy = "read_only"
+
+
+@dataclass(frozen=True)
+class RoleProfile:
+    """Open role/profile contract for dispatch and prompt policy.
+
+    Authority: docs/ORCHESTRATION-PLANE-DISPATCH-AND-PROMPT-POLICY.md section 8.2
+
+    ``execution_context`` stays open to both ``linked_worktree`` and
+    ``main_worktree`` so planner, reviewer, and resolver-family roles can run in
+    the main worktree without redefining resolver as the only such actor.
+    """
+
+    role_id: str
+    prompt_family: str
+    template_id: str
+    execution_context: ExecutionContext
+    mutation_policy: MutationPolicy
+    session_policy: Literal["reuse_allowed", "reuse_forbidden"]
+    output_contract: RoleOutputContract
+    default_runner: str
+
+
+class RoleProfileRegistry(Protocol):
+    """Configuration-backed lookup for open-ended role IDs."""
+
+    def get(self, role_id: str) -> RoleProfile: ...
+
+    def has_role(self, role_id: str) -> bool: ...
+
+
+@dataclass(frozen=True)
+class PromptBundle:
+    """Rendered prompt material for a dispatch spec.
+
+    Authority: docs/ORCHESTRATION-PLANE-DISPATCH-AND-PROMPT-POLICY.md section 10.1
+    """
+
+    system_prompt: str
+    task_prompt: str
+    messages: tuple[dict[str, str], ...]
+
+
+class PromptRegistry(Protocol):
+    """Central prompt rendering boundary for role-aware dispatch."""
+
+    def render(self, spec: DispatchSpec) -> PromptBundle: ...
+
+    def has_role(self, role_id: str) -> bool: ...
+
+
+@dataclass(frozen=True)
+class StructuredReviewResult:
+    """Machine-readable review/gate outcome contract.
+
+    Authority: docs/ORCHESTRATION-PLANE-DISPATCH-AND-PROMPT-POLICY.md section 13.1
+
+    Non-pass outcomes are intended to normalize into explicit resolution cases
+    rather than prose-only control decisions.
+    """
+
+    review_outcome: ReviewOutcome
+    summary: str
+    findings: tuple[str, ...] = ()
+    evidence_refs: tuple[str, ...] = ()
 
 
 @dataclass(frozen=True)
@@ -313,16 +462,26 @@ class ResolutionCase:
     Problem handed from control to resolver when normal flow does not close.
 
     Attributes:
+        case_id: Explicit identifier for the resolution case.
+        case_source: Coarse source tag for how the case arose.
         reason: Why normal flow is blocked.
+        summary: Optional bounded human-readable case summary.
         core: Current core snapshot.
         roster: Current roster snapshot.
         runtime: Current runtime snapshot.
+        blocked_step_ids: Optional blocked-step coordination context.
+        artifact_refs: Optional evidence/artifact references preserved on the case.
     """
 
     reason: str
     core: CoreSnapshot
     roster: RosterSnapshot
     runtime: RuntimeSnapshot
+    case_id: str = ""
+    case_source: ResolutionCaseSource = "unknown"
+    summary: str | None = None
+    blocked_step_ids: tuple[str, ...] = ()
+    artifact_refs: tuple[str, ...] = ()
 
 
 @dataclass(frozen=True)

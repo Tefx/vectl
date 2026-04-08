@@ -65244,12 +65244,14 @@ phases:
     name: Gate decide_refresh_tests
     status: claimed
     description: 'Gate review: verify refreshed tests define the contract gap clearly
-      across core/state and MCP surfaces. Block if intent is not explicitly red, if
-      tests leak implementation, or if any refreshed contract seam is not independently
-      visible.'
-    verification: 'phase-check protecting implementation: red intent is explicit,
-      tests remain test-only, and core/state plus MCP contract gaps are independently
-      visible.'
+      across core/state and MCP surfaces, including the remediation for stale MCP
+      contract assertions. Block if intent is not explicitly red where required, if
+      tests leak implementation, if stale continuation/halt_reason/session acceptance
+      remains, or if any refreshed contract seam is not independently visible.'
+    verification: 'phase-check protecting decide_refresh_impl: red-test intent and
+      test-only scope remain explicit; refreshed core/state and MCP seams are independently
+      visible; stale continuation/halt_reason/session acceptance is removed; remediation
+      evidence includes one main-path proof and one stale-contract failure-path proof.'
     evidence_template: '## refs Read Confirmation (MANDATORY)
 
       For each ref in this step:
@@ -65269,6 +65271,7 @@ phases:
     depends_on:
     - decide_refresh_tests.core-state-red
     - decide_refresh_tests.mcp-red
+    - decide_refresh_tests.retest-refreshed-red-seams
     agent: gate-reviewer-tacit
     claimed_by: gate-reviewer-tacit
     claimed_at: '2026-04-08T19:39:25.028370+00:00'

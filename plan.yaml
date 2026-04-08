@@ -66564,26 +66564,13 @@ phases:
   - id: orchestration_orch_app_routing.gate-orch-app-routing
     name: Gate orch_app routing
     status: pending
-    description: 'As an INDEPENDENT REVIEWER (gate-reviewer), assess whether the orchestration_orch_app_routing
-      phase is ready for operator/conflict/recovery alignment.
-
-
-      review_depth: THOROUGH
-
-      cross_cutting_focus:
-
-      - claim-before-start
-
-      - reconcile-before-complete
-
-      - explicit ResolutionCase normalization
-
-      - RoleProfile-based execution context routing'
-    verification: '- phase-check: all orch_app routing steps completed with implementation,
-      integration, and spec evidence
-
-      - phase-check: blocker-class routing obligations are proven or explicitly block
-      downstream work'
+    description: 'Gate review: verify orch_app routing is ready for operator/conflict/recovery
+      alignment. Block if claim-before-start, reconcile-before-complete, explicit
+      ResolutionCase normalization, or RoleProfile-based execution-context routing
+      are not directly proven.'
+    verification: 'phase-check: all routing steps completed with implementation, integration,
+      and spec evidence; blocker-class routing obligations are proven or explicitly
+      blocking downstream work.'
     refs:
     - docs/ORCHESTRATION-PLANE-ORCH-APP-ROUTING.md
     - docs/ORCHESTRATION-PLANE-DISPATCH-AND-PROMPT-POLICY.md
@@ -66592,7 +66579,7 @@ phases:
     - orchestration_orch_app_routing.implement-orch-app-routing-reconcile-gate-and-result-normalization
     - orchestration_orch_app_routing.prove-orch-app-routing-seam-end-to-end
     - orchestration_orch_app_routing.audit-orch-app-routing-against-canonical-specs
-    agent: gate-reviewer
+    agent: gate-reviewer-tacit
 - id: orchestration_operator_recovery
   name: Orchestration Operator / Conflict / Recovery Alignment
   status: locked

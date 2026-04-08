@@ -67733,7 +67733,7 @@ phases:
       - PASS'
   - id: parallel_gate_remediation.gate
     name: Consolidated remediation gate
-    status: pending
+    status: claimed
     description: 'step_type: gate
 
       verification_scope: phase-check protecting decide_refresh_impl and orchestration_runtime_wiring
@@ -67811,6 +67811,8 @@ phases:
     - parallel_gate_remediation.retest-runner-backend
     - parallel_gate_remediation.retest-runtime-lifecycle
     agent: gate-reviewer-tacit
+    claimed_by: gate-reviewer-tacit
+    claimed_at: '2026-04-08T17:13:01.013206+00:00'
   - id: parallel_gate_remediation.fix-runner-retest-fixtures
     name: Update runner backend retest fixtures
     status: done

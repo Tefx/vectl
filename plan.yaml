@@ -66106,7 +66106,7 @@ phases:
       - OPEN. behavioral_proof_register provided and gate_open_allowed: true.'
 - id: orchestration_runner_backend
   name: Orchestration Runner Backend
-  status: in_progress
+  status: done
   gate: Shared runner backend exists as a mechanical execution substrate with registry,
     launch/poll/cleanup contract, and targeted verification; no resolver/control policy
     leaks.
@@ -66341,7 +66341,7 @@ phases:
       - product files modified: no'
   - id: orchestration_runner_backend.gate
     name: Gate runner backend
-    status: claimed
+    status: done
     description: 'Gate review: verify this phase delivered only the shared mechanical
       runner backend promised by the design. Reject full runtime wiring, resolver/control
       policy creep, or stub-only backend completion.'
@@ -66392,6 +66392,59 @@ phases:
     agent: gate-reviewer-tacit
     claimed_by: gate-reviewer-tacit
     claimed_at: '2026-04-08T19:53:19.184067+00:00'
+    done_at: '2026-04-08T20:25:28.212684+00:00'
+    evidence: '## refs Read Confirmation (MANDATORY)
+
+      - src/vectl/orchestration/contracts.py — reviewed ExecutionRequest/ExecutionResult/RuntimeSnapshot
+      contracts
+
+      - src/vectl/orchestration/interfaces.py — reviewed RunnerBackend/RuntimeLifecycle
+      protocols and boundaries
+
+      - src/vectl/orchestration/runtime.py — reviewed mechanical lifecycle ownership
+      and cleanup/reconcile gating
+
+      - src/vectl/orchestration/runners.py — reviewed real subprocess launch/poll
+      behavior
+
+      - src/vectl/orchestration/runner_registry.py — reviewed backend registry behavior
+
+      - tests/orchestration/unit/test_runtime.py, test_contracts.py, test_interfaces.py,
+      test_runner_backend_red.py — reviewed verification evidence
+
+      - tools/vectl/README.md — NOT READ (file absent at referenced path)
+
+
+      ## Gate Review Report
+
+      | Step ID | Status | Evidence Quality | Concerns |
+
+      | ------- | ------ | ---------------- | -------- |
+
+      | orchestration_runner_backend.build-runner-backend | DONE | Good: reusable
+      mechanical substrate with real subprocess backend and registry | pre-existing
+      lint line-length carryover |
+
+      | orchestration_runner_backend.retest-backend-green | DONE | Good: targeted
+      backend tests and red-gap retests green | none blocker-class |
+
+
+      ## Boundary Verdict
+
+      - backend remains mechanical-only: yes
+
+      - premature runtime wiring detected?: no
+
+      - resolver/control contamination detected?: no
+
+      - stub-only completion detected?: no
+
+
+      ## Gate Decision Basis
+
+      - OPEN (conditional pass) with no blocker-class issues for this phase
+
+      - targeted backend proofs green and phase stayed within backend-only scope'
 - id: orchestration_runtime_lifecycle
   name: Orchestration Runtime Worktree Lifecycle
   status: in_progress

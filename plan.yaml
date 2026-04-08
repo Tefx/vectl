@@ -67495,3 +67495,70 @@ phases:
     depends_on:
     - parallel_gate_remediation.fix-blockers
     agent: integration-verifier-tacit
+  - id: parallel_gate_remediation.retest-runtime-lifecycle
+    name: Retest runtime lifecycle git-worktree isolation
+    status: pending
+    description: 'step_type: test
+
+      step_intent: retest_green
+
+      expected_result: green
+
+      verification_scope: phase-check protecting parallel_gate_remediation.gate and
+      orchestration_runtime_wiring
+
+      agent_source: project
+
+
+      As an INDEPENDENT TESTER, re-validate the runtime-lifecycle blocker after the
+      unified fix lands. Confirm runtime execution uses standard git worktree isolation,
+      preserves reconcile-before-complete behavior, and no plain-directory fallback
+      path remains authorized.'
+    verification: '- Re-run focused runtime lifecycle tests.
+
+      - Confirm prepare/execute/reconcile/cleanup uses git worktree isolation rather
+      than plain directories.
+
+      - Confirm complete remains blocked until reconcile merged|noop and unresolved
+      runtime problems surface explicitly.
+
+      - expected_result: green.'
+    evidence_template: '## Verification Report
+
+
+      **Tester**: integration-verifier-tacit
+
+      **Scope**: runtime lifecycle blocker family
+
+      **Independence Level**: L1
+
+
+      ### refs Read Confirmation (MANDATORY)
+
+      If no refs were provided, state: "No refs for this step."
+
+
+      ### Test Execution
+
+      - commands_executed: <exact commands>
+
+      - output_summary: <key results>
+
+
+      ### Lifecycle Closure Checks
+
+      - git_worktree_isolation_used: <yes/no>
+
+      - plain_directory_path_eliminated: <yes/no>
+
+      - reconcile_before_complete_enforced: <yes/no>
+
+      - unresolved_failures_surface: <yes/no>
+
+
+      ### Verdict
+
+      - PASS | ISSUES_FOUND | INCOMPLETE'
+    depends_on:
+    - parallel_gate_remediation.fix-blockers
+    agent: integration-verifier-tacit

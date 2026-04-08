@@ -68209,7 +68209,7 @@ phases:
       - R26: VERIFIED\n- R27: VERIFIED\n- R30: VERIFIED\ngate_open_allowed: true"
 - id: orchestration_dispatch_policy
   name: Orchestration Dispatch / Prompt / Role Policy
-  status: pending
+  status: in_progress
   gate: Lock and implement upper-layer dispatch semantics, role/prompt policy, and
     canonical contract sync without reopening foundation runner/runtime boundaries.
   depends_on:
@@ -68217,7 +68217,7 @@ phases:
   steps:
   - id: orchestration_dispatch_policy.lock-dispatch-role-profile-prompt-and-review-result-contracts
     name: Lock dispatch, role-profile, prompt, and review-result contracts
-    status: pending
+    status: claimed
     description: "step_type: contract\ncontract_purity: ENFORCED\ncontract_outputs:\n\
       \  - signatures\n  - type_defs\n  - interfaces\n  - stubs\n\nLock the canonical\
       \ upper-layer dispatch contract before implementation. Pin authoritative type/protocol\
@@ -68237,6 +68237,8 @@ phases:
     - docs/ORCHESTRATION-PLANE-RESOLUTION-CONTRACT.md
     - src/vectl/orchestration/contracts.py
     agent: software-architect-tacit
+    claimed_by: software-architect-tacit
+    claimed_at: '2026-04-08T23:30:22.866254+00:00'
   - id: orchestration_dispatch_policy.define-expected-red-tests-for-dispatch-policy-and-canonical-sync
     name: Define expected-red tests for dispatch policy and canonical sync
     status: pending

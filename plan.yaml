@@ -67146,9 +67146,9 @@ phases:
       \  - control/operator closure\n\n## Gate Decision Basis\n- OPEN or BLOCK with\
       \ exact blockers.\n"
     depends_on:
-    - orchestration_runtime_wiring.wire-runtime-to-backend
     - orchestration_runtime_wiring.integration-proof
     - orchestration_runtime_wiring.spec-conformance
+    - orchestration_runtime_wiring.retest-spec-blockers-batch
     agent: gate-reviewer-tacit
   - id: orchestration_runtime_wiring.fix-spec-blockers-batch
     name: Fix spec blocker batch for runtime wiring

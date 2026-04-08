@@ -66472,7 +66472,7 @@ phases:
       - product files modified: none'
   - id: orchestration_runtime_lifecycle.gate
     name: Gate runtime lifecycle
-    status: pending
+    status: claimed
     description: 'Gate review: verify runtime now owns worktree/execution/reconcile
       lifecycle mechanically without absorbing resolver policy. Reject any path that
       completes before reconcile merged|noop, semantic resolution leakage into runtime,
@@ -66518,6 +66518,8 @@ phases:
     - orchestration_runtime_lifecycle.implement-worktree-lifecycle
     - orchestration_runtime_lifecycle.retest-lifecycle-green
     agent: gate-reviewer-tacit
+    claimed_by: gate-reviewer-tacit
+    claimed_at: '2026-04-08T15:43:07.046357+00:00'
 - id: orchestration_runtime_wiring
   name: Orchestration Runner/Runtime Wiring
   status: locked

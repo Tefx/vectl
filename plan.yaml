@@ -66529,33 +66529,20 @@ phases:
       - integration
 
 
-      As an INDEPENDENT TESTER (integration-verifier), provide seam-level real-path
-      proof for orch_app routing.
-
-
-      Required path proof:
-
-      - dispatch path: claim before runtime start
-
-      - success path: no complete before reconcile closure
-
-      - review/gate path: non-pass structured result becomes ResolutionCase
-
-      - resolver path: resolution_subtask routing uses shared dispatch substrate'
-    verification: '- phase-check: at least one real orch_app path proves claim-before-start
-      and reconcile-before-complete
-
-      - phase-check: actual output shows explicit ResolutionCase routing for non-pass
-      review or parse failure
-
-      - phase-check: remaining mocks in related tests are justified'
+      As an independent tester, provide seam-level real-path proof for orch_app routing.
+      Required paths: dispatch claims before runtime start; success never completes
+      before reconcile closure; non-pass review/gate output becomes ResolutionCase;
+      resolver routing uses the shared dispatch substrate as resolution_subtask.'
+    verification: 'phase-check: at least one real orch_app path proves claim-before-start
+      and reconcile-before-complete; actual output shows explicit ResolutionCase routing
+      for non-pass review or parse failure; remaining mocks in related tests are justified.'
     refs:
     - docs/ORCHESTRATION-PLANE-ORCH-APP-ROUTING.md
     - src/vectl/orch_app.py
     - tests/orchestration/unit/test_orch_app.py
     depends_on:
     - orchestration_orch_app_routing.implement-orch-app-routing-reconcile-gate-and-result-normalization
-    agent: integration-verifier
+    agent: integration-verifier-tacit
   - id: orchestration_orch_app_routing.audit-orch-app-routing-against-canonical-specs
     name: Audit orch_app routing against canonical specs
     status: pending

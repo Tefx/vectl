@@ -67903,7 +67903,7 @@ phases:
     claimed_at: '2026-04-08T18:56:10.715518+00:00'
   - id: orchestration_runtime_wiring.fix-canonical-spec-blockers-batch
     name: Land canonical-path fixes for runtime wiring blocker batch
-    status: claimed
+    status: done
     description: 'Fix ALL remaining blocker-class runtime wiring gaps on the canonical
       execution line.
 
@@ -67975,6 +67975,32 @@ phases:
     agent: python-senior-tacit
     claimed_by: python-senior-tacit
     claimed_at: '2026-04-08T21:10:22.012331+00:00'
+    done_at: '2026-04-08T21:43:00.512432+00:00'
+    evidence: "## refs Read Confirmation (MANDATORY)\n- src/vectl/orchestration/runtime.py\
+      \ — verified reconcile lock, real merge path, preflight checks, protected-path\
+      \ filtering, isolation/resume request plumbing\n- src/vectl/orchestration/runners.py\
+      \ — verified RunnerResumeError taxonomy and structured runner_id/reason attributes\n\
+      - src/vectl/orch_app.py — verified authoritative isolation consumption wiring\n\
+      - tests/orchestration/unit/test_runtime_lifecycle.py — verified requirement\
+      \ coverage tests for R6/R12/R20/R24/R25/R26/R27\n- tests/orchestration/unit/test_orch_app.py\
+      \ — verified R30 isolation test\n- README.md — reviewed project architecture\
+      \ context\n\n## Canonical Wiring Remediation Evidence\n- Canonical path/files\
+      \ updated:\n  - Cherry-picked prior blocker-fix commit onto canonical execution\
+      \ branch (resulting commit on step branch)\n  - Updated: src/vectl/orch_app.py,\
+      \ src/vectl/orchestration/runners.py, src/vectl/orchestration/runtime.py, tests/orchestration/unit/test_orch_app.py,\
+      \ tests/orchestration/unit/test_runtime_lifecycle.py\n- Requirement refs closed:\
+      \ R6, R12, R20, R24, R25, R26, R27, R30\n- Evidence prior side-branch-only behavior\
+      \ is now canonical:\n  - fix payload landed on active execution line and validated\
+      \ there\n- Main-path proof:\n  - real reconcile merge into integration context\
+      \ succeeds with merged content checks\n- Highest-risk failure-path proof:\n\
+      \  - integrity preflight failure and reconcile lock conflict both fail fast\
+      \ with correct taxonomy\n- Sibling search completed:\n  - references for reconcile\
+      \ lock, isolation mode, resume hints, and error taxonomy traced across orchestration\
+      \ surfaces\n\nVerification:\n- uv run pytest tests/orchestration/unit/test_runtime_lifecycle.py\
+      \ tests/orchestration/unit/test_orch_app.py tests/orchestration/unit/test_runtime.py\
+      \ -v\n- Result: 53 passed\n\nRequirement matrix result:\n- R6 CONFORMS\n- R12\
+      \ CONFORMS\n- R20 CONFORMS\n- R24 CONFORMS\n- R25 CONFORMS\n- R26 CONFORMS\n\
+      - R27 CONFORMS\n- R30 CONFORMS"
   - id: orchestration_runtime_wiring.retest-canonical-spec-blockers-batch
     name: Retest canonical-path runtime wiring blocker batch
     status: pending

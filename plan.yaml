@@ -66234,47 +66234,15 @@ phases:
   - id: orchestration_runtime_wiring.gate
     name: Gate runner/runtime wiring
     status: pending
-    description: 'As an INDEPENDENT REVIEWER (gate-reviewer), assess whether the runner
-      backend and runtime lifecycle are now integrated with proof strong enough to
-      close the first two orchestration-plane gaps.
-
-
-      review_depth: THOROUGH
-
-      review_depth_rationale:
-
-      - integration seam across backend + runtime
-
-      - blocker-class complete-after-reconcile rule
-
-      - unresolved runtime problems must surface to user/operator
-
-
-      Gate Preview (what the gate WILL reject)
-
-      1. integration proof that does not exercise the real runtime -> backend path
-
-      2. any evidence that complete can happen before reconcile merged|noop
-
-      3. unresolved runtime/backend failures without a surfaced operator/user message
-
-      4. spec drift on main-worktree resolver constraint or approved-facade mutation
-      boundary
-
-      5. scope creep into resolver full landing, merge/conflict policy deepening,
-      or control/operator closure
-
-      '
-    verification: 'Scope: phase-check for the scoped orchestration-plane plan increment.
-
-      - All runtime_wiring steps completed with independent integration + spec evidence.
-
-      - Reconcile-before-complete is directly proven, not inferred.
-
-      - User/operator surfacing exists for unresolved runtime problems.
-
-      - OPEN only if the increment closes foundation lock + runner backend + runtime
-      lifecycle + wiring, while leaving deferred resolver/merge/control phases untouched.'
+    description: 'Gate review: verify the foundation lock, runner backend, runtime
+      lifecycle, and wiring now close the first two orchestration-plane gaps with
+      direct proof. Reject indirect integration evidence, any path that completes
+      before reconcile merged|noop, unsurfaced runtime/backend failures, spec drift
+      on resolver/facade boundaries, or scope creep into later resolver/merge/control
+      work.'
+    verification: 'phase-check for the scoped orchestration increment: all runtime_wiring
+      steps completed with independent integration and spec evidence; reconcile-before-complete
+      is directly proven; user/operator surfacing exists for unresolved runtime problems.'
     evidence_template: "## refs Read Confirmation (MANDATORY)\n\nFor each ref in this\
       \ step:\n- <filename> — key passage or \"NOT READ: <reason>\"\n\nIf no refs\
       \ were provided, state: \"No refs for this step.\"\n\n## Gate Review Report\n\
@@ -66291,7 +66259,7 @@ phases:
     - orchestration_runtime_wiring.wire-runtime-to-backend
     - orchestration_runtime_wiring.integration-proof
     - orchestration_runtime_wiring.spec-conformance
-    agent: gate-reviewer
+    agent: gate-reviewer-tacit
 - id: orchestration_dispatch_policy
   name: Orchestration Dispatch / Prompt / Role Policy
   status: locked

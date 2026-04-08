@@ -67462,7 +67462,7 @@ phases:
     claimed_at: '2026-04-08T16:28:45.882823+00:00'
   - id: parallel_gate_remediation.retest-runner-backend
     name: Retest runner backend contract/module delivery
-    status: claimed
+    status: pending
     description: 'step_type: test
 
       step_intent: retest_green
@@ -67527,8 +67527,6 @@ phases:
     depends_on:
     - parallel_gate_remediation.fix-blockers
     agent: integration-verifier-tacit
-    claimed_by: integration-verifier-tacit
-    claimed_at: '2026-04-08T16:28:52.711191+00:00'
   - id: parallel_gate_remediation.retest-runtime-lifecycle
     name: Retest runtime lifecycle git-worktree isolation
     status: done

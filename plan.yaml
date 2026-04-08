@@ -67082,7 +67082,7 @@ phases:
       - R27 VERIFIED\n- R30 VERIFIED\ngate_open_allowed: true"
 - id: orchestration_runtime_wiring
   name: Orchestration Runner/Runtime Wiring
-  status: in_progress
+  status: done
   gate: Runner backend and runtime lifecycle are wired together with real integration
     proof, spec conformance, and gate evidence for reconcile-before-complete behavior.
   depends_on:
@@ -67608,7 +67608,7 @@ phases:
       \ class is missing and resolver→runner reuse is unwired."
   - id: orchestration_runtime_wiring.gate
     name: Gate runner/runtime wiring
-    status: claimed
+    status: done
     description: 'Gate review: verify the foundation lock, runner backend, runtime
       lifecycle, and wiring now close the first two orchestration-plane gaps with
       direct proof, including the canonical-path blocker remediation for R6/R12/R20/R24/R25/R26/R27/R30.
@@ -67641,6 +67641,42 @@ phases:
     agent: gate-reviewer-tacit
     claimed_by: gate-reviewer-tacit
     claimed_at: '2026-04-08T23:18:25.942901+00:00'
+    done_at: '2026-04-08T23:30:02.697086+00:00'
+    evidence: '## Gate Review Report
+
+      Runtime wiring gate closed with no blocker-class findings for phase scope.
+
+
+      Closure verdict:
+
+      - runner backend gap closed: yes
+
+      - runtime lifecycle gap closed: yes
+
+      - reconcile-before-complete directly proven: yes
+
+      - unresolved runtime/backend operator surfacing proven: yes
+
+      - deferred upper-layer scopes remained deferred: yes
+
+
+      Behavioral proof:
+
+      - canonical-path evidence present for R6/R12/R20/R24/R25/R26/R27/R30
+
+      - main-path and failure-path proofs present
+
+
+      gate decision: CONDITIONAL PASS
+
+      should_fix:
+
+      - isolate authoritative IsolationMode enum propagation (avoid string-hint coupling)
+
+      - add runner_id surface on RunnerNotFoundError per spec note
+
+
+      No blocker-class issue remains for this gate.'
   - id: orchestration_runtime_wiring.fix-spec-blockers-batch
     name: Fix spec blocker batch for runtime wiring
     status: done
@@ -68173,7 +68209,7 @@ phases:
       - R26: VERIFIED\n- R27: VERIFIED\n- R30: VERIFIED\ngate_open_allowed: true"
 - id: orchestration_dispatch_policy
   name: Orchestration Dispatch / Prompt / Role Policy
-  status: locked
+  status: pending
   gate: Lock and implement upper-layer dispatch semantics, role/prompt policy, and
     canonical contract sync without reopening foundation runner/runtime boundaries.
   depends_on:

@@ -67759,3 +67759,50 @@ phases:
     - parallel_gate_remediation.retest-runner-backend
     - parallel_gate_remediation.retest-runtime-lifecycle
     agent: gate-reviewer-tacit
+  - id: parallel_gate_remediation.fix-runner-retest-fixtures
+    name: Update runner backend retest fixtures
+    status: pending
+    description: 'Update stale assertions and fixtures in tests/orchestration/unit/test_runner_backend_red.py
+      to align with delivered runner backend semantics without relaxing contract intent.
+
+
+      Scope:
+
+      - refresh cleanup expectations now that cleanup is reconcile-gated
+
+      - align collect semantics assertions with delivered backend behavior
+
+      - update unclaimed-step error type expectations to the delivered contract
+
+      - preserve the red-suite intent by keeping failure-detection coverage strict
+      rather than weakening assertions
+
+
+      ## Completion Criteria (stub exclusion)
+
+      This is an IMPLEMENTATION step. Stub-only completion is NOT acceptable.
+
+      Each deliverable MUST contain substantive logic that processes its inputs and
+      produces outputs that vary based on those inputs.
+
+
+      ## refs Read Confirmation (MANDATORY)
+
+      For each ref in this step:
+
+      - No refs for this step.
+
+
+      Provide evidence showing which stale fixture/assertion expectations changed
+      and why they now match the delivered backend semantics while preserving contract
+      intent.'
+    verification: '- Focused runner backend red-suite fixtures/assertions updated
+      for delivered semantics
+
+      - Contract intent remains strict; no blanket assertion weakening
+
+      - Downstream retest step can exercise the updated suite against the current
+      backend behavior'
+    depends_on:
+    - parallel_gate_remediation.fix-blockers
+    agent: python-executor

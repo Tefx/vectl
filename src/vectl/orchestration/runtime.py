@@ -25,6 +25,7 @@ from vectl.orchestration.contracts import (
     AgentExecutionState,
     ExecutionRequest,
     ExecutionResult,
+    ReconcileDisposition,
     ReconcileResult,
     RuntimeSnapshot,
     WorktreeBinding,
@@ -75,7 +76,13 @@ async def worktree_create(
     Runtime must use standard git worktree flows for isolated execution.
     It must not substitute ad hoc directory creation for real worktree isolation.
 
-    This function creates a linked worktree with a scratch branch for isolation.
+    Per ORCHESTRATION-PLANE-RUNTIME-WORKTREE-LIFECYCLE.md section 6.1:
+    Prepare creates the isolated execution context via:
+    1. resolve target branch/ref
+    2. record target head commit at prepare time
+    3. create a scratch branch for the step
+    4. create a linked worktree using standard git worktree commands
+    5. persist worktree binding metadata
 
     Args:
         step_id: Step identifier for this workspace.
@@ -86,15 +93,17 @@ async def worktree_create(
         Failure with WorktreeError if creation failed.
     """
     try:
-        base_dir.mkdir(parents=True, exist_ok=True)
         worktree_path = base_dir / step_id
         scratch_branch = f"vectl/scratch/{step_id}-{uuid.uuid4().hex[:8]}"
 
+        # Step 1: Resolve target branch/ref from the repo root first.
+        # The repo root is the parent of base_dir (the .vectl/workspaces dir)
+        # or base_dir itself if it is the repo root.
         repo_root_result = subprocess.run(
             ["git", "rev-parse", "--show-toplevel"],
             capture_output=True,
             text=True,
-            cwd=str(base_dir),
+            cwd=str(base_dir) if base_dir.exists() else None,
         )
         if repo_root_result.returncode != 0:
             repo_root_result = subprocess.run(
@@ -112,6 +121,7 @@ async def worktree_create(
             raise WorktreeError(f"Failed to resolve git repository root for '{step_id}': {detail}")
         repo_root = repo_root_result.stdout.strip()
 
+        # Prune stale worktree metadata before creating new worktree.
         _ = subprocess.run(
             ["git", "worktree", "prune"],
             capture_output=True,
@@ -119,6 +129,16 @@ async def worktree_create(
             cwd=repo_root,
         )
 
+        # Step 2: Record target HEAD at prepare time for reconcile tracking.
+        head_result = subprocess.run(
+            ["git", "rev-parse", "HEAD"],
+            capture_output=True,
+            text=True,
+            cwd=repo_root,
+        )
+        target_head_at_prepare = head_result.stdout.strip() if head_result.returncode == 0 else ""
+
+        # Determine target ref (main branch or current branch).
         target_ref_result = subprocess.run(
             ["git", "symbolic-ref", "--quiet", "--short", "HEAD"],
             capture_output=True,
@@ -128,18 +148,10 @@ async def worktree_create(
         target_ref = (
             target_ref_result.stdout.strip() if target_ref_result.returncode == 0 else "HEAD"
         )
-
-        target_head_result = subprocess.run(
-            ["git", "rev-parse", "HEAD"],
-            capture_output=True,
-            text=True,
-            cwd=repo_root,
-        )
-        target_head_at_prepare = (
-            target_head_result.stdout.strip() if target_head_result.returncode == 0 else ""
-        )
         target_spec = target_ref if target_ref != "HEAD" else (target_head_at_prepare or "HEAD")
 
+        # Step 3 & 4: Create a linked worktree using standard git worktree.
+        # git worktree add creates the worktree directory; no mkdir needed.
         result = subprocess.run(
             ["git", "worktree", "add", "-b", scratch_branch, str(worktree_path), target_spec],
             capture_output=True,
@@ -151,7 +163,7 @@ async def worktree_create(
             detail = result.stderr.strip() or result.stdout.strip() or "unknown git error"
             raise WorktreeError(f"git worktree add failed for '{step_id}': {detail}")
 
-        # Success: git worktree created properly
+        # Step 5: Persist worktree binding metadata.
         workspace_id = f"ws-{step_id}-{uuid.uuid4().hex[:8]}"
 
         binding = WorktreeBinding(
@@ -254,6 +266,7 @@ _PROTECTED_RECONCILE_PATHS: frozenset[str] = frozenset({"plan.yaml"})
 __all__ = [
     "AgentExecutionState",
     "Failure",
+    "ReconcileDisposition",
     "ReconcileError",
     "ReconcileResult",
     "Result",
@@ -320,6 +333,14 @@ class Runtime:
     _runner_registry: RunnerRegistry = field(default_factory=build_default_runner_registry)
     _runner_handles: dict[str, RunnerHandle] = field(default_factory=dict)
     _reconcile_lock: threading.Lock = field(default_factory=threading.Lock, repr=False)
+    # Reconcile serialization lock per target ref.
+    # Per ORCHESTRATION-PLANE-RUNTIME-WORKTREE-LIFECYCLE.md section 9.3:
+    # "Concurrent reconcile into the same target branch is not [acceptable].
+    #  Runtime must therefore own an integration/reconcile lock so that
+    #  merge-back to a single target branch occurs serially."
+    _reconcile_lock_by_target: dict[str, str] = field(
+        default_factory=dict
+    )  # target_ref -> workspace_id
 
     def snapshot(self) -> RuntimeSnapshot:
         """
@@ -606,7 +627,13 @@ class Runtime:
         """
         Begin the reconciliation phase for a completed execution.
 
-        This moves the execution from pending_reconcile to active_reconcile.
+        Per ORCHESTRATION-PLANE-RUNTIME-WORKTREE-LIFECYCLE.md section 9.3:
+        Concurrent reconcile into the same target branch is not acceptable.
+        This method enforces serialization by acquiring a per-target-ref lock
+        before transitioning to active reconcile.
+
+        If another reconcile is already active for the same target ref,
+        this raises ReconcileError to prevent unsafe concurrent integration.
 
         Args:
             execution_id: The execution identifier.
@@ -616,6 +643,8 @@ class Runtime:
 
         Raises:
             ValueError: If execution is not found or not ready for reconcile.
+            ReconcileError: If a concurrent reconcile is already active for the
+                same target ref (serialization enforcement).
         """
         if execution_id not in self._active_executions:
             raise ValueError(f"Execution not found: {execution_id}")
@@ -643,6 +672,20 @@ class Runtime:
             "aborted",
         ):
             return state.reconcile_state
+
+        target_ref = state.binding.target_ref or "HEAD"
+        existing_holder = self._reconcile_lock_by_target.get(target_ref)
+        if existing_holder is not None and existing_holder != workspace_id:
+            raise ReconcileError(
+                f"Concurrent reconcile blocked: target ref '{target_ref}' is already "
+                f"being reconciled by workspace '{existing_holder}'. "
+                f"Workspace '{workspace_id}' must wait for serialization."
+            )
+
+        # Acquire the reconcile serialization lock for this target ref.
+        self._reconcile_lock_by_target[target_ref] = workspace_id
+
+        # Mark as pending reconcile
 
         self._pending_reconciles.add(workspace_id)
         if not self._reconcile_lock.acquire(blocking=False):
@@ -729,6 +772,15 @@ class Runtime:
             self._conflicted_reconciles.add(workspace_id)
         else:
             self._conflicted_reconciles.discard(workspace_id)
+
+        # Release the reconcile serialization lock for this target ref.
+        # Per ORCHESTRATION-PLANE-RUNTIME-WORKTREE-LIFECYCLE.md section 9.3,
+        # concurrent reconcile into the same target branch is not acceptable.
+        # Releasing the lock after reconcile completion allows the next queued
+        # reconcile to proceed.
+        target_ref = state.binding.target_ref or "HEAD"
+        if self._reconcile_lock_by_target.get(target_ref) == workspace_id:
+            del self._reconcile_lock_by_target[target_ref]
 
         return result
 
@@ -822,6 +874,38 @@ class Runtime:
 
         return None
 
+    def reconcile_disposition(self, execution_id: str) -> ReconcileDisposition | None:
+        """
+        Retrieve the reconcile disposition proof for a completed reconcile.
+
+        Per ORCHESTRATION-PLANE-RUNTIME-WORKTREE-LIFECYCLE.md Rule 4,
+        completion requires that reconcile returned 'merged' or 'noop'.
+        This method surfaces the reconcile disposition so that the core_adapter
+        can preserve it through the completion evidence flow.
+
+        Authority: docs/ORCHESTRATION-PLANE-RUNTIME-WORKTREE-LIFECYCLE.md section 9
+
+        Args:
+            execution_id: The execution identifier.
+
+        Returns:
+            The reconcile disposition ('merged' or 'noop') if reconcile has
+            completed with an accepted status, else None.
+        """
+        if execution_id not in self._active_executions:
+            return None
+
+        workspace_id = self._active_executions[execution_id]
+        state = self._active_workspaces.get(workspace_id)
+
+        if state is None or state.reconcile_state is None:
+            return None
+
+        if state.reconcile_status in ("merged", "noop"):
+            return cast(ReconcileDisposition, state.reconcile_status)
+
+        return None
+
     def cleanup(self, workspace: str, force: bool = False) -> None:
         """
         Clean up a workspace after execution.
@@ -907,6 +991,11 @@ class Runtime:
         self._pending_reconciles.discard(workspace)
         self._active_reconciles.discard(workspace)
         self._conflicted_reconciles.discard(workspace)
+
+        # Release reconcile serialization lock if held by this workspace
+        target_ref = state.binding.target_ref or "HEAD"
+        if self._reconcile_lock_by_target.get(target_ref) == workspace:
+            del self._reconcile_lock_by_target[target_ref]
 
         self._active_workspaces.pop(workspace)
 

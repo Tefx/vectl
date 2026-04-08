@@ -204,12 +204,18 @@ class PlanCoreAdapter:
             reconcile_disposition: Accepted reconcile closure proving runtime has
                 already merged or determined noop before lifecycle completion.
         """
-        _ = reconcile_disposition
+        # Preserve reconcile_disposition proof in the evidence surface.
+        # Per ORCHESTRATION-PLANE-RUNTIME-WORKTREE-LIFECYCLE.md Rule 4,
+        # completion is allowed only after reconcile returns 'merged' or 'noop'.
+        # The reconcile_disposition parameter is the runtime proof that
+        # this prerequisite was met. Dropping it (as the prior implementation
+        # did with `_ = reconcile_disposition`) broke the proof chain.
+        enriched_evidence = f"[reconcile_disposition={reconcile_disposition}] {evidence}"
         plan, file_hash = load_plan_definition(self._plan_path)
         updated_plan = core.complete_step(
             plan,
             step_id,
-            evidence,
+            enriched_evidence,
             claims_path=self._claims_path,
         )
         save_plan(updated_plan, self._plan_path, expected_hash=file_hash)

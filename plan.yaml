@@ -66211,7 +66211,7 @@ phases:
   steps:
   - id: orchestration_runtime_lifecycle.implement-worktree-lifecycle
     name: Implement runtime worktree prepare/execute/reconcile/cleanup lifecycle
-    status: claimed
+    status: done
     description: 'Complete runtime worktree lifecycle logic in src/vectl/orchestration/runtime.py
       and adjacent helpers under the locked contract. Implement prepare -> execute
       -> reconcile-status capture -> cleanup sequencing for worktree-backed execution
@@ -66239,6 +66239,44 @@ phases:
     agent: python-senior-tacit
     claimed_by: python-senior-tacit
     claimed_at: '2026-04-08T15:06:05.777981+00:00'
+    done_at: '2026-04-08T15:35:18.518729+00:00'
+    evidence: '## refs Read Confirmation (MANDATORY)
+
+      - tools/vectl/README.md, ORCHESTRATION-PLANE-RUNTIME-WORKTREE-LIFECYCLE.md,
+      contracts.py, runtime.py, interfaces.py, and runtime tests were read and used
+      by implementer.
+
+
+      ## Implementation Report
+
+      - Touched files: src/vectl/orchestration/contracts.py, src/vectl/orchestration/runtime.py,
+      tests/orchestration/unit/test_runtime.py, tests/orchestration/unit/test_runtime_lifecycle.py
+
+      - Prepare logic location: Runtime.prepare()
+
+      - Execute/start logic location: Runtime.start()
+
+      - Reconcile-status capture location: Runtime.begin_reconcile(), Runtime.capture_reconcile_result()
+
+      - Completion-blocking guard location: Runtime.can_complete()
+
+      - Cleanup logic location: Runtime.cleanup() with unresolved/active guards
+
+      - Operator/user notification path: Runtime.get_unresolved_message()
+
+      - Failure-path regressions added for reconcile conflict/unresolved, partial
+      failures, cleanup-after-failure.
+
+      - Concurrency note: workspace-state tracking sets for pending/active/conflicted
+      reconcile.
+
+      - Deviation record: none.
+
+
+      ## Verification
+
+      - Run: uv run python -m pytest tests/orchestration/unit/test_runtime_lifecycle.py
+      tests/orchestration/unit/test_runtime.py -v -> 17 passed'
   - id: orchestration_runtime_lifecycle.retest-lifecycle-green
     name: Retest runtime lifecycle against worktree and reconcile hard rules
     status: pending

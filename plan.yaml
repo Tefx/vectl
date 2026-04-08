@@ -66591,37 +66591,17 @@ phases:
   - id: orchestration_operator_recovery.implement-operator-notification-conflict-preservation-and-recovery-alignment
     name: Implement operator notification, conflict preservation, and recovery alignment
     status: pending
-    description: 'step_type: implementation
-
-
-      Implement durable operator/conflict/recovery alignment for the upper orchestration
-      layer.
-
-
-      Scope:
-
-      - preserve operator_required as durable orchestration state
-
-      - persist NotificationRecord-style metadata, receipt state, and operator pause
-      state
-
-      - preserve merge_conflict and aborted reconcile evidence without silent protected-path
-      integration
-
-      - keep plan.yaml as protected path; do not silently integrate protected-path
-      changes
-
-      - reconstruct worktree, execution, reconcile, resolution-case, and operator-notification
-      state after restart before unsafe dispatch resumes
-
-      - prevent complete replay before reconcile closure after restart'
-    verification: '- phase-check: operator_required creates durable notification state
-      and paused routing
-
-      - phase-check: unresolved conflict and protected-path evidence survive restart
-
-      - phase-check: recovery reconstructs enough state to prevent unsafe dispatch
-      or duplicate complete'
+    description: Implement durable operator/conflict/recovery alignment for the upper
+      orchestration layer. Preserve operator_required as durable orchestration state
+      with notification metadata, receipt state, and pause state; preserve merge_conflict
+      and aborted reconcile evidence without silent protected-path integration; keep
+      plan.yaml protected; reconstruct worktree/execution/reconcile/resolution/operator
+      state after restart before unsafe dispatch resumes; prevent complete replay
+      before reconcile closure after restart.
+    verification: 'phase-check: operator_required creates durable notification state
+      and paused routing; unresolved conflict and protected-path evidence survive
+      restart; recovery reconstructs enough state to prevent unsafe dispatch or duplicate
+      complete.'
     refs:
     - docs/ORCHESTRATION-PLANE-OPERATOR-CONFLICT-RECOVERY.md
     - docs/ORCHESTRATION-PLANE-ORCH-APP-ROUTING.md
@@ -66631,7 +66611,7 @@ phases:
     - src/vectl/orchestration/recovery.py
     - src/vectl/orchestration/run_store.py
     - src/vectl/orchestration/continuity_artifacts.py
-    agent: python-senior
+    agent: python-senior-tacit
   - id: orchestration_operator_recovery.verify-durable-operator-pause-and-recovery-behavior
     name: Verify durable operator pause and recovery behavior
     status: pending

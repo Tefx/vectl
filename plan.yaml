@@ -65802,7 +65802,7 @@ phases:
       \ NONE\n\n## Artifact\n- Commit: 1ddca22"
   - id: orchestration_foundation_lock.gate
     name: Gate foundation lock
-    status: pending
+    status: claimed
     description: 'Gate review: verify the foundation lock is strong enough to prevent
       runner/runtime work from absorbing later resolver/control scope. Block if hard
       rules are not explicit, red tests leak implementation, ownership seams blur,
@@ -65852,6 +65852,8 @@ phases:
     - orchestration_foundation_lock.pin-boundaries-and-contracts
     - orchestration_foundation_lock.define-red-contract-tests
     agent: gate-reviewer-tacit
+    claimed_by: gate-reviewer-tacit
+    claimed_at: '2026-04-08T14:52:09.052818+00:00'
 - id: orchestration_runner_backend
   name: Orchestration Runner Backend
   status: locked

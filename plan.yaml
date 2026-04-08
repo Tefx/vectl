@@ -65130,11 +65130,13 @@ phases:
   - id: decide_refresh_contracts.gate
     name: Gate decide_refresh_contracts
     status: pending
-    description: 'Gate review: verify the refreshed vectl_decide contract is pinned
-      before tests and implementation.'
+    description: 'Gate review: verify the refreshed vectl_decide contract is fully
+      pinned before tests and implementation. Block if core/state and MCP surfaces
+      disagree, if stale continuation/halt_reason semantics remain, or if any compatibility
+      shadow field survives.'
     verification: 'phase-check protecting decide_refresh_tests: refreshed contract
-      fields are pinned exactly; no compatibility shadow fields or stale continuation/halt_reason
-      contract semantics remain.'
+      fields are pinned exactly across core/state and MCP surfaces; no stale continuation/halt_reason
+      or overloaded reuse semantics remain.'
     evidence_template: '## refs Read Confirmation (MANDATORY)
 
       For each ref in this step:
@@ -65150,9 +65152,8 @@ phases:
 
       - Gate decision: OPEN | BLOCKED'
     depends_on:
-    - decide_refresh_contracts.pin-core-contract
-    - decide_refresh_contracts.pin-mcp-contract
-    agent: gate-reviewer
+    - decide_refresh_contracts.pin-contract-surfaces
+    agent: gate-reviewer-tacit
   - id: decide_refresh_contracts.pin-contract-surfaces
     name: Pin refreshed core and MCP contracts
     status: pending

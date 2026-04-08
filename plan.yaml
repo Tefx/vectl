@@ -67608,7 +67608,7 @@ phases:
       \ class is missing and resolver→runner reuse is unwired."
   - id: orchestration_runtime_wiring.gate
     name: Gate runner/runtime wiring
-    status: pending
+    status: claimed
     description: 'Gate review: verify the foundation lock, runner backend, runtime
       lifecycle, and wiring now close the first two orchestration-plane gaps with
       direct proof, including the canonical-path blocker remediation for R6/R12/R20/R24/R25/R26/R27/R30.
@@ -67639,6 +67639,8 @@ phases:
     - orchestration_runtime_wiring.retest-spec-blockers-batch
     - orchestration_runtime_wiring.retest-canonical-spec-blockers-batch
     agent: gate-reviewer-tacit
+    claimed_by: gate-reviewer-tacit
+    claimed_at: '2026-04-08T23:18:25.942901+00:00'
   - id: orchestration_runtime_wiring.fix-spec-blockers-batch
     name: Fix spec blocker batch for runtime wiring
     status: done

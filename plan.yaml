@@ -66759,7 +66759,7 @@ phases:
     claimed_at: '2026-04-08T17:34:00.215053+00:00'
   - id: orchestration_runtime_wiring.spec-conformance
     name: Audit runtime wiring against authoritative orchestration specs
-    status: claimed
+    status: done
     description: Spec conformance review for the wired runner backend + runtime lifecycle
       increment only. Audit field semantics, omission drift on the hard rules, ownership
       seam clarity, and the completion-after-reconcile requirement against the authoritative
@@ -66782,6 +66782,325 @@ phases:
     agent: spec-verifier-tacit
     claimed_by: spec-verifier-tacit
     claimed_at: '2026-04-08T17:34:54.120165+00:00'
+    done_at: '2026-04-08T17:55:21.643297+00:00'
+    evidence: "## Spec Conformance Report\n\n**Scope**: Runner Backend + Runtime Lifecycle\
+      \ increment only  \n**Date**: 2026-04-09  \n**Specs Audited**:\n- `docs/ORCHESTRATION-PLANE-RUNNER-BACKEND.md`\
+      \ (Sections 1-16)\n- `docs/ORCHESTRATION-PLANE-RUNTIME-WORKTREE-LIFECYCLE.md`\
+      \ (Sections 1-19)\n- `docs/ORCHESTRATION-PLANE-ARCHITECTURE.md` (Sections 1-13,\
+      \ ownership model)\n- `docs/ORCHESTRATION-PLANE-ISOLATION-SEMANTICS.md` (Sections\
+      \ 3, 5.4, 5.5)\n- `docs/ORCHESTRATION-PLANE-RESOLUTION-CONTRACT.md` (Sections\
+      \ 2-10)\n- `docs/ORCHESTRATION-PLANE-INTERFACES.md` (Section 4, Runtime/RunnerBackend/LifecycleMutationPort)\n\
+      \n### refs Read Confirmation (MANDATORY)\n- `tools/vectl/README.md` — NOT READ:\
+      \ not a spec source for this audit\n- **All authoritative specs above were read\
+      \ in full**\n\n---\n\n## Requirements Register\n\n| R# | Spec Section | Requirement\
+      \ | Level | Checkable? |\n|----|-------------|-------------|-------|------------|\n\
+      | R1 | RUNNER-BACKEND §8.1 | RunnerCapabilities dataclass: runner_id, supports_resume,\
+      \ supports_cancel, supports_streaming | Semantic | Yes |\n| R2 | RUNNER-BACKEND\
+      \ §8.2 | RunnerHandle dataclass: runner, run_id, session_id\\|None | Semantic\
+      \ | Yes |\n| R3 | RUNNER-BACKEND §8.3 | RunnerLaunchResult dataclass: handle,\
+      \ initial_summary | Semantic | Yes |\n| R4 | RUNNER-BACKEND §8.4 | RunnerPollResult\
+      \ status literals: running, success, fail, stall, transport_error | Semantic\
+      \ | Yes |\n| R5 | RUNNER-BACKEND §8.5 | Runner Protocol: capabilities(), launch(),\
+      \ resume(), poll(), cancel() | Semantic | Yes |\n| R6 | RUNNER-BACKEND §8.6\
+      \ | Error types: RunnerError base, RunnerNotFoundError with runner_id, RunnerLaunchError\
+      \ with reason literals, RunnerResumeError with reason literals, RunnerPollError\
+      \ with reason literals, RunnerCancelError with reason literals | Semantic |\
+      \ Yes |\n| R7 | RUNNER-BACKEND §9 | RunnerRegistry.get() must reject unknown\
+      \ runner IDs explicitly | Behavioral | Yes |\n| R8 | RUNNER-BACKEND §10.1 |\
+      \ runtime.start() must: validate workspace, resolve runner via registry, choose\
+      \ launch/resume, store handle, return execution ID | Behavioral | Yes |\n| R9\
+      \ | RUNNER-BACKEND §10.2 | runtime.collect() must: look up handle, call runner.poll(),\
+      \ return None when running, map terminal results to ExecutionResult | Behavioral\
+      \ | Yes |\n| R10 | RUNNER-BACKEND §10.3 | runtime.cleanup() must: cancel running\
+      \ work, release resources, clean workspace | Behavioral | Yes |\n| R11 | RUNNER-BACKEND\
+      \ §10.4 | poll() must be non-blocking; must not block waiting for completion\
+      \ | Behavioral | Yes |\n| R12 | RUNNER-BACKEND §13 | Runner backend must not:\
+      \ absorb plan-aware orchestration, absorb resolver reasoning, control should\
+      \ not know runner internals, avoid separate runtime/resolver execution systems\
+      \ | Semantic | Yes |\n| R13 | RUNTIME-LIFECYCLE §5 Rule 1 | Execution isolation\
+      \ MUST use standard git worktree; must NOT substitute ad hoc directory creation\
+      \ | Hard Rule | Yes |\n| R14 | RUNTIME-LIFECYCLE §5 Rule 2 | Resolver always\
+      \ runs on the main worktree | Semantic | Yes |\n| R15 | RUNTIME-LIFECYCLE §5\
+      \ Rule 3 | claim belongs to normal flow only; resolver MUST NOT claim new work\
+      \ | Semantic | Yes |\n| R16 | RUNTIME-LIFECYCLE §5 Rule 4 | complete MUST only\
+      \ occur after reconcile returns merged or noop; execution success alone is NOT\
+      \ sufficient | Hard Rule | Yes |\n| R17 | RUNTIME-LIFECYCLE §5 Rule 5 | Resolver\
+      \ mutation uses approved vectl tool facade only | Semantic | Yes |\n| R18 |\
+      \ RUNTIME-LIFECYCLE §5 Rule 6 | Unresolved runtime problems MUST surface to\
+      \ user/operator; must NOT silently collapse into ordinary wait | Hard Rule |\
+      \ Yes |\n| R19 | RUNTIME-LIFECYCLE §6.1 | Prepare: resolve target branch, record\
+      \ HEAD commit, create scratch branch, create linked worktree, persist WorktreeBinding\
+      \ | Behavioral | Yes |\n| R20 | RUNTIME-LIFECYCLE §6.3 | Reconcile: validate\
+      \ worktree integrity, validate integration context, apply protected-path rules,\
+      \ perform merge, emit merged/noop/merge_conflict/aborted | Behavioral | Yes\
+      \ |\n| R21 | RUNTIME-LIFECYCLE §7.2 | WorktreeBinding dataclass: workspace_id,\
+      \ step_id, worktree_path, scratch_branch, target_ref, target_head_at_prepare,\
+      \ isolation | Semantic | Yes |\n| R22 | RUNTIME-LIFECYCLE §8 | AgentExecutionState\
+      \ dataclass with all specified fields and status literals | Semantic | Yes |\n\
+      | R23 | RUNTIME-LIFECYCLE §9.2 | ReconcileResult dataclass: execution_id, workspace_id,\
+      \ status, summary, conflict_files, artifact_refs | Semantic | Yes |\n| R24 |\
+      \ RUNTIME-LIFECYCLE §9.3 | Reconcile must be serialized per target branch |\
+      \ Behavioral | Yes |\n| R25 | RUNTIME-LIFECYCLE §10 | Protected-path rules:\
+      \ plan.yaml must not be silently merged as step output | Hard Rule | Yes |\n\
+      | R26 | RUNTIME-LIFECYCLE §11.1 | Worktree integrity preflight before reconcile\
+      \ | Behavioral | Yes |\n| R27 | RUNTIME-LIFECYCLE §11.2 | Integration-context\
+      \ preflight before reconcile | Behavioral | Yes |\n| R28 | RUNTIME-LIFECYCLE\
+      \ §13 | Cleanup must not destroy worktree when execution active / reconcile\
+      \ unresolved / merge conflict unresolved / evidence not preserved | Hard Rule\
+      \ | Yes |\n| R29 | RUNTIME-LIFECYCLE §14 | RuntimeSnapshot: active_workspaces,\
+      \ active_executions, stalled_executions, pending_reconciles, active_reconciles,\
+      \ conflicted_reconciles | Semantic | Yes |\n| R30 | RUNTIME-LIFECYCLE §7.1.1\
+      \ | IsolationMode effects: workspace→fresh worktree; independent→fresh worktree\
+      \ + no session reuse | Behavioral | Yes |\n| R31 | INTERFACES §4 LifecycleMutationPort\
+      \ | complete_step requires reconcile_disposition=Literal[\"merged\",\"noop\"\
+      ]; claim_step requires flow=\"normal\" only | Hard Rule | Yes |\n| R32 | RUNNER-BACKEND\
+      \ §5 | One shared backend; runtime and resolver share launch/poll/cancel mechanics\
+      \ | Semantic | Yes |\n\n---\n\n## Evidence Table\n\n| R# | Spec Section | Requirement\
+      \ | Implementation | Verdict | Notes |\n|----|-------------|-------------|----------------|---------|-------|\n\
+      | R1 | RUNNER-BACKEND §8.1 | RunnerCapabilities dataclass with required fields\
+      \ | `runners.py:17-31` — All four fields present: `runner_id: str`, `supports_resume:\
+      \ bool`, `supports_cancel: bool`, `supports_streaming: bool` | CONFORMS | Exact\
+      \ field names and types match spec. |\n| R2 | RUNNER-BACKEND §8.2 | RunnerHandle\
+      \ dataclass: runner, run_id, session_id\\|None | `runners.py:34-40` — All fields\
+      \ match: `runner: str`, `run_id: str`, `session_id: str | None` | CONFORMS |\
+      \ Exact match. |\n| R3 | RUNNER-BACKEND §8.3 | RunnerLaunchResult dataclass:\
+      \ handle, initial_summary | `runners.py:43-48` — `handle: RunnerHandle`, `initial_summary:\
+      \ str` | CONFORMS | Exact match. |\n| R4 | RUNNER-BACKEND §8.4 | RunnerPollResult\
+      \ status literals | `runners.py:52-58` — `status: Literal[\"running\", \"success\"\
+      , \"fail\", \"stall\", \"transport_error\"]` plus `output_summary: str`, `session_id:\
+      \ str | None = None`, `evidence_refs: tuple[str, ...] = ()` | CONFORMS | All\
+      \ five status literals present, evidence_refs added (spec-compliant extension).\
+      \ |\n| R5 | RUNNER-BACKEND §8.5 | Runner Protocol methods | `runners.py:81-102`\
+      \ — Protocol with `capabilities()`, `launch()`, `resume()`, `poll()`, `cancel()`\
+      \ | CONFORMS | All five methods match. |\n| R6 | RUNNER-BACKEND §8.6 | Error\
+      \ types with structured reason literals | `runners.py:61-78` — `RunnerError`,\
+      \ `RunnerNotFoundError`, `RunnerLaunchError`, `RunnerPollError`, `RunnerCancelError`\
+      \ **BUT**: `RunnerNotFoundError` lacks `runner_id` field; `RunnerLaunchError`,\
+      \ `RunnerPollError`, `RunnerCancelError` lack `.reason` structured literals;\
+      \ `RunnerResumeError` is entirely MISSING | DIVERGES | (1) `RunnerResumeError`\
+      \ (spec §8.6) is absent from `runners.py`. SubprocessRunner.resume() raises\
+      \ `RunnerLaunchError` instead of `RunnerResumeError` (line 151). (2) Error classes\
+      \ lack the spec-mandated `.runner_id` and `.reason` attributes with Literal\
+      \ types. (3) `RunnerNotFoundError` is a bare class without the required `runner_id`\
+      \ attribute. |\n| R7 | RUNNER-BACKEND §9 | RunnerRegistry.get() must reject\
+      \ unknown runner IDs explicitly | `runner_registry.py:32-49` — `get()` raises\
+      \ `RunnerNotFoundError` with descriptive message listing available runners |\
+      \ CONFORMS | Explicit rejection with error listing matches spec rule \"unknown\
+      \ runner IDs must be rejected explicitly; caller code must not guess or silently\
+      \ substitute.\" |\n| R8 | RUNNER-BACKEND §10.1 | runtime.start() steps | `runtime.py:382-438`\
+      \ — validates workspace, resolves runner via registry (line 411-414), calls\
+      \ runner.launch() (line 417), stores handle (line 422), creates execution state,\
+      \ returns execution_id | CONFORMS | All five specified steps present. resume()\
+      \ path is not in Runtime.start() but SubprocessRunner.resume() raises appropriate\
+      \ error for unsupported resume. |\n| R9 | RUNNER-BACKEND §10.2 | runtime.collect()\
+      \ | `runtime.py:440-545` — Looks up execution (line 455-464), gets runner handle\
+      \ (line 472), calls runner.poll() (line 501), returns None when running (line\
+      \ 517-518), maps terminal results to ExecutionResult (lines 527-533) | CONFORMS\
+      \ | Matches spec behavior. Also has transport_error handling for unknown executions\
+      \ and missing handles. |\n| R10 | RUNNER-BACKEND §10.3 | runtime.cleanup() |\
+      \ `runtime.py:735-828` — Cancels running work when forced (lines 806-810), clears\
+      \ tracking state (lines 811-817), performs mechanical worktree cleanup (lines\
+      \ 822-828) | CONFORMS | Cleanup implements all spec requirements. Forced cleanup\
+      \ cancels active runner processes. |\n| R11 | RUNNER-BACKEND §10.4 | poll()\
+      \ must be non-blocking | `runners.py:153-194` (SubprocessRunner.poll) — Uses\
+      \ `process.poll()` (non-blocking) with a minimal fallback `process.wait(timeout=0.01)`,\
+      \ returns \"running\" on TimeoutExpired | CONFORMS | Non-blocking semantics\
+      \ preserved. 10ms timeout is effectively non-blocking. |\n| R12 | RUNNER-BACKEND\
+      \ §13 | Backend anti-patterns: no separate stacks, no control internals | `runners.py`\
+      \ is shared substrate used by `Runtime.start()` and `Runtime.collect()`. `ResolverGateway`\
+      \ in `resolver.py` uses separate invocation surface, not runner backend directly.\
+      \ `Control` in `control.py` does not access runner internals. | PARTIAL | The\
+      \ runner backend `Runner` protocol is shared as designed. However, there is\
+      \ no evidence that `resolver` paths actually reuse the runner backend substrate\
+      \ for blocked-case execution. The ResolverInvocationSurface produces `ResolutionReport`\
+      \ via gateway authorization, but does not dispatch through the runner backend\
+      \ for agentic execution. This is a structural gap: the spec says \"resolver\
+      \ should reuse the same runner backend substrate\" (§11) but the current implementation\
+      \ does not wire resolver execution through `Runner.launch()`. |\n| R13 | RUNTIME-LIFECYCLE\
+      \ §5 Rule 1 | Must use standard git worktree; no ad hoc directory creation |\
+      \ `runtime.py:67-151` (`worktree_create`) — Uses `git worktree add --detach`\
+      \ (line 107), `git rev-parse --show-toplevel` (lines 91-104), creates scratch\
+      \ branches with UUID suffix (line 89). No `os.mkdir` or `Path.mkdir` for workspace\
+      \ isolation. The only `mkdir` is `base_dir.mkdir(parents=True, exist_ok=True)`\
+      \ on line 87 for the parent directory. | CONFORMS | Implementation uses bona\
+      \ fide `git worktree add` for isolated execution. Parent directory creation\
+      \ is reasonable and not the prohibited \"ad hoc directory creation.\" |\n| R14\
+      \ | RUNTIME-LIFECYCLE §5 Rule 2 | Resolver always runs on main worktree | `contracts.py:30-37`\
+      \ — `ResolverExecutionSite = Literal[\"main_worktree\"]` and `ResolverMutationSurface\
+      \ = Literal[\"approved_vectl_facade_only\"]` are pinned type aliases. `resolver.py`\
+      \ BoundResolver docstring confirms invocation from main worktree only. | CONFORMS\
+      \ | Type-level enforcement plus contract lock in ResolverAuthorityContract (contracts.py:66-79).\
+      \ |\n| R15 | RUNTIME-LIFECYCLE §5 Rule 3 | claim belongs to normal flow only\
+      \ | `contracts.py:48-54` — `ResolverClaimFlow = Literal[\"normal_flow_only\"\
+      ]` type alias; `interfaces.py:339-348` — LifecycleMutationPort.claim_step()\
+      \ has `flow: Literal[\"normal\"] = \"normal\"` parameter. | CONFORMS | Both\
+      \ type-level and signature-level enforcement. Resolver never claims via alternate\
+      \ flow. |\n| R16 | RUNTIME-LIFECYCLE §5 Rule 4 | complete only after reconcile\
+      \ merged/noop | `runtime.py:646-684` — `can_complete()` returns False if reconcile_state\
+      \ is None, and returns False if reconcile_status is not \"merged\" or \"noop\"\
+      . Only returns True when reconcile is \"merged\" or \"noop\". `interfaces.py:350-357`\
+      \ — LifecycleMutationPort.complete_step() requires `reconcile_disposition: Literal[\"\
+      merged\", \"noop\"]`. | CONFORMS | Hard rule enforced at two levels: Runtime.can_complete()\
+      \ checks reconcile state before allowing completion, and LifecycleMutationPort\
+      \ pins the allowed dispositions in the type signature. |\n| R17 | RUNTIME-LIFECYCLE\
+      \ §5 Rule 5 | Resolver mutation through approved vectl facade only | `contracts.py:40-45`\
+      \ — `ResolverMutationSurface = Literal[\"approved_vectl_facade_only\"]`; `resolver.py`\
+      \ BoundResolver only uses invocation surface. `resolver_gateway.py` authorizes\
+      \ tool calls through allowlist. | CONFORMS | Type-level contract lock plus gateway\
+      \ authorization enforcement. |\n| R18 | RUNTIME-LIFECYCLE §5 Rule 6 | Unresolved\
+      \ problems must surface to user/operator | `runtime.py:686-733` — `get_unresolved_message()`\
+      \ returns explicit operator messages for `merge_conflict` (lines 713-724) and\
+      \ `aborted` (lines 726-730). `ExecutionResult.operator_message` (contracts.py:298-307)\
+      \ populated for transport errors in `runtime.py:460-515`. | CONFORMS | Three\
+      \ distinct surfacing mechanisms: (1) operator_message on ExecutionResult for\
+      \ transport failures, (2) get_unresolved_message() for unresolved reconcile,\
+      \ (3) ResolutionReport.operator_message for resolver escalation. None silently\
+      \ collapse to wait. |\n| R19 | RUNTIME-LIFECYCLE §6.1 | Prepare phase: resolve\
+      \ ref, record HEAD, create scratch branch, create worktree, persist WorktreeBinding\
+      \ | `runtime.py:67-151` (worktree_create) + `runtime.py:318-380` (Runtime.prepare)\
+      \ — Line 89: scratch branch, lines 91-104: resolve root, lines 107: worktree\
+      \ add, lines 121-127: get HEAD commit, lines 129-136: get target ref, lines\
+      \ 138-145: persist WorktreeBinding. | CONFORMS | All five specified actions\
+      \ are performed. WorktreeBinding stored in `_active_workspaces` dict. |\n| R20\
+      \ | RUNTIME-LIFECYCLE §6.3 | Reconcile: validate integrity, validate integration\
+      \ context, apply protected-path rules, perform merge | `runtime.py:547-643`\
+      \ — `begin_reconcile()` validates execution status before starting. `capture_reconcile_result()`\
+      \ accepts reconcile status. **BUT**: Neither `begin_reconcile()` nor `capture_reconcile_result()`\
+      \ performs actual git merge reconciliation. No worktree integrity preflight,\
+      \ no integration-context preflight, no protected-path enforcement, and no mechanical\
+      \ git merge. | DIVERGES | The reconcile model exists in data types (`ReconcileResult`\
+      \ with merged/noop/merge_conflict/aborted statuses), but the actual git reconciliation\
+      \ mechanics are not implemented. `capture_reconcile_result()` is a state-recording\
+      \ method, not a mechanical reconciliation. The spec requires actual git operations\
+      \ (validate worktree integrity, validate integration context, merge/rebase,\
+      \ detect conflicts). This is a significant behavioral gap. |\n| R21 | RUNTIME-LIFECYCLE\
+      \ §7.2 | WorktreeBinding dataclass fields | `contracts.py:143-165` — All fields\
+      \ present: `workspace_id`, `step_id`, `worktree_path`, `scratch_branch`, `target_ref`,\
+      \ `target_head_at_prepare`, `isolation`. Plus `isolation: IsolationMode | None`\
+      \ which matches the spec extension from Isolation Semantics. | CONFORMS | Exact\
+      \ match plus the required `isolation` field. |\n| R22 | RUNTIME-LIFECYCLE §8\
+      \ | AgentExecutionState with all specified fields | `contracts.py:168-205` —\
+      \ All fields present: `execution_id`, `step_id`, `workspace_id`, `runner`, `runner_handle`,\
+      \ `session_id`, `status` (with all 7 literals), `started_at`, `last_update_at`,\
+      \ `artifact_refs`. | CONFORMS | Exact match of all spec-mandated fields and\
+      \ status literals. |\n| R23 | RUNTIME-LIFECYCLE §9.2 | ReconcileResult dataclass\
+      \ | `contracts.py:208-229` — All fields present: `execution_id`, `workspace_id`,\
+      \ `status: Literal[\"merged\", \"noop\", \"merge_conflict\", \"aborted\"]`,\
+      \ `summary`, `conflict_files`, `artifact_refs`. | CONFORMS | Exact match. |\n\
+      | R24 | RUNTIME-LIFECYCLE §9.3 | Reconcile must be serialized per target branch\
+      \ | NOT FOUND in implementation. `runtime.py` has no reconcile lock, no serialization\
+      \ mechanism, no integration/reconcile lock. | NOT_FOUND | The spec requires\
+      \ \"Runtime must therefore own an integration/reconcile lock so that merge-back\
+      \ to a single target branch occurs serially.\" No implementation of this lock\
+      \ exists. |\n| R25 | RUNTIME-LIFECYCLE §10 | Protected-path rules: plan.yaml\
+      \ must not be silently merged | NOT FOUND in implementation. No protected-path\
+      \ filtering exists in `runtime.py` or any reconciliation path. | NOT_FOUND |\
+      \ The spec says \"Changes to protected paths must not be silently merged as\
+      \ step output. The runtime must either restore protected paths to target state\
+      \ before reconcile...or stop and surface the problem as unresolved.\" No implementation\
+      \ of this rule exists. |\n| R26 | RUNTIME-LIFECYCLE §11.1 | Worktree integrity\
+      \ preflight before reconcile | NOT FOUND in implementation. `begin_reconcile()`\
+      \ only checks `execution_state.status`, not filesystem/git integrity. | NOT_FOUND\
+      \ | Spec requires checking worktree path exists, scratch branch exists, HEAD\
+      \ not in unexpected state, git metadata intact. None of these checks are implemented.\
+      \ |\n| R27 | RUNTIME-LIFECYCLE §11.2 | Integration-context preflight before\
+      \ reconcile | NOT FOUND in implementation. No check for active merge/rebase/cherry-pick\
+      \ state or conflicting local mutation. | NOT FOUND | Spec requires checking\
+      \ that main integration context is not already mid-operation. Not implemented.\
+      \ |\n| R28 | RUNTIME-LIFECYCLE §13 | Cleanup must not destroy unresolved evidence\
+      \ | `runtime.py:735-828` — `cleanup()` blocks on: active execution status \"\
+      starting\"/\"running\" (lines 765-769), terminal execution without captured\
+      \ reconcile (lines 774-780), and unresolved reconcile status merge_conflict/aborted\
+      \ (lines 785-792). Only `force=True` bypasses these checks. | CONFORMS | All\
+      \ four spec conditions are enforced: execution active, reconcile unresolved,\
+      \ merge conflict unresolved, and (by extension) evidence preservation via state\
+      \ tracking before removal. |\n| R29 | RUNTIME-LIFECYCLE §14 | RuntimeSnapshot\
+      \ fields | `contracts.py:120-139` — All six fields present: `active_workspaces`,\
+      \ `active_executions`, `stalled_executions`, `pending_reconciles`, `active_reconciles`,\
+      \ `conflicted_reconciles`. Implementation in `runtime.py:301-316` populates\
+      \ all from tracking state. | CONFORMS | Exact match. |\n| R30 | RUNTIME-LIFECYCLE\
+      \ §7.1.1 / ISOLATION §5.4-5.5 | IsolationMode workspace/independent → fresh\
+      \ worktree | `runtime.py:336-357` — `_request_requires_fresh_workspace()` checks\
+      \ isolation hints in work_refs (lines 215-227), `prepare()` enforces fresh workspace\
+      \ by cleaning stale workspaces (lines 339-356) when isolation requires it. |\
+      \ PARTIAL | The implementation uses string-matching on `work_refs` metadata\
+      \ rather than the authoritative `isolation` field from `Step.isolation`. The\
+      \ `WorktreeBinding.isolation` field exists on the dataclass but `prepare()`\
+      \ does not read it from the request's isolation mode — it instead checks `work_refs`\
+      \ for heuristics. The spec (§7.1.1) says `isolation=workspace` and `isolation=independent`\
+      \ must guarantee fresh worktrees. The current approach works for the wired use\
+      \ case (orch_app passes `isolation=workspace` in work_refs) but doesn't consume\
+      \ the authoritative `IsolationMode` enum from the step definition. |\n| R31\
+      \ | INTERFACES §4 LifecycleMutationPort | complete_step requires reconcile_disposition;\
+      \ claim_step flow=normal only | `interfaces.py:329-357` — `claim_step(flow:\
+      \ Literal[\"normal\"] = \"normal\")` and `complete_step(reconcile_disposition:\
+      \ Literal[\"merged\", \"noop\"])` | CONFORMS | Both hard rules are enforced\
+      \ at the type/signature level. |\n| R32 | RUNNER-BACKEND §5/§11 | Runtime and\
+      \ Resolver share same runner backend substrate | `orch_app.py:2166-2237` — `build_orchestration_app()`\
+      \ creates a single `Runtime(workspace_root=...)` that holds the `_runner_registry`.\
+      \ The resolver is wired as `BoundResolver(invocation=GatewayResolverInvocation(...))`\
+      \ and does NOT dispatch through the runner backend for its own agentic execution.\
+      \ | PARTIAL | The runtime→runner backend wiring is complete. However, the resolver→runner\
+      \ backend reuse path specified in §11 (\"resolver should reuse the same runner\
+      \ backend substrate\") is NOT wired. The resolver produces `ResolutionReport`\
+      \ via a gateway that performs authorization checks but does not launch actual\
+      \ agentic execution through `Runner.launch()`. This is an architectural seam\
+      \ that the spec explicitly requires but remains unwired. |\n\n---\n\n## Behavioral\
+      \ Proof Ledger\n\n| Proof ID | R# | Claim | Evidence Reviewed | Status | Gate\
+      \ Impact | Next Proof Needed |\n|----------|----|-------|-------------------|--------|-------------|-------------------|\n\
+      | P1 | R7 | Registry rejects unknown runner ID | `runner_registry.py:44-49`\
+      \ — RunnerNotFoundError raised with message listing available runners | CONFORMS\
+      \ | — | — |\n| P2 | R16 | Completion blocked without reconcile merged/noop |\
+      \ `runtime.py:646-684` — can_complete() enforces; `interfaces.py:350-357` —\
+      \ type-level pin | CONFORMS | — | — |\n| P3 | R13 | Worktree uses real git worktree,\
+      \ not ad hoc dirs | `runtime.py:107` — `git worktree add --detach` | CONFORMS\
+      \ | — | — |\n| P4 | R24 | Reconcile serialization per target branch | No implementation\
+      \ found | NOT_FOUND | BLOCK_GATE | Implement reconcile lock |\n| P5 | R25 |\
+      \ Protected-path (plan.yaml) enforcement | No implementation found | NOT_FOUND\
+      \ | BLOCK_GATE | Implement protected-path filtering |\n| P6 | R26 | Worktree\
+      \ integrity preflight | No implementation found | NOT_FOUND | UNPROVEN | Implement\
+      \ integrity checks |\n| P7 | R27 | Integration-context preflight | No implementation\
+      \ found | NOT_FOUND | UNPROVEN | Implement context preflight |\n\n---\n\n##\
+      \ Coverage Summary\n\n- Total requirements: 32\n- CONFORMS: 21 (R1-R5, R7, R9-R11,\
+      \ R13-R15, R17-R19, R21-R23, R28-R29, R31)\n- DIVERGES: 2 (R6: RunnerError subclasses\
+      \ lack reason/runner_id attributes; RunnerResumeError missing. R20: Reconcile\
+      \ mechanics not implemented — capture_reconcile_result only records state)\n\
+      - PARTIAL: 2 (R12: Resolver doesn't reuse runner backend for execution; R30:\
+      \ Isolation uses work_refs heuristics instead of authoritative IsolationMode\
+      \ field)\n- NEEDS_TEST: 0\n- NOT_FOUND: 4 (R24: Reconcile serialization lock;\
+      \ R25: Protected-path filtering; R26: Worktree integrity preflight; R27: Integration-context\
+      \ preflight)\n- AMBIGUOUS_SPEC: 0\n- SPEC_POSSIBLY_STALE: 0\n\n## Top Risks\n\
+      \n1. **R20 (DIVERGES, Blocking)**: Reconcile mechanics are entirely hollow.\
+      \ `capture_reconcile_result()` records state but performs no actual git merge/rebase.\
+      \ The spec's hard-rule lifecycle (prepare → execute → reconcile → complete)\
+      \ has a void at the reconcile phase. This is the most significant gap: the system\
+      \ can mark reconcile as \"merged\" or \"noop\" without any mechanical verification.\n\
+      \n2. **R24/R25/R26/R27 (NOT_FOUND, Blocking)**: Four critical safety mechanisms\
+      \ are absent: reconcile serialization, protected-path filtering, worktree integrity\
+      \ preflight, and integration-context preflight. Together these mean the system\
+      \ has no mechanical guard against concurrent merge corruption, plan.yaml corruption,\
+      \ or operating on a damaged worktree.\n\n3. **R6 (DIVERGES, Non-blocking but\
+      \ spec-inaccurate)**: RunnerResumeError is entirely missing. SubprocessRunner.resume()\
+      \ raises RunnerLaunchError instead, violating the spec's error taxonomy. This\
+      \ means callers cannot distinguish resume failures from launch failures, which\
+      \ the spec specifically requires for proper error handling.\n\n4. **R12 (PARTIAL,\
+      \ Architectural seam)**: The resolver does not reuse the runner backend substrate\
+      \ for agentic execution. The spec is explicit that \"ordinary step execution\
+      \ and blocker-handling execution share launch/poll/cancel mechanics\" (§11).\
+      \ Without this wiring, a future resolver that needs to launch agent work will\
+      \ either duplicate execution logic or bypass the runner backend entirely.\n\n\
+      5. **R30 (PARTIAL, Semantic drift)**: Workspace freshness enforcement uses `work_refs`\
+      \ string matching (`isolation=workspace`) rather than the authoritative `IsolationMode`\
+      \ enum from the step definition. This creates a semantic seam where the spec\
+      \ says \"runtime must provide a fresh isolated workspace/worktree\" for `isolation=workspace`\
+      \ mode, but the implementation reads metadata hints rather than the authoritative\
+      \ field.\n\n## Gate Recommendation\n\n- **gate_open_allowed: false**\n- **rationale**:\
+      \ Two DIVERGES (R6 error model, R20 hollow reconcile), four NOT_FOUND (R24-R27\
+      \ critical safety mechanisms), and two PARTIALs (R12 resolver substrate reuse,\
+      \ R30 isolation mode) create blockers. The completion-after-reconcile hard rule\
+      \ (R16) is correctly enforced, but the reconcile phase it guards is an empty\
+      \ shell. The runner backend wiring is functionally present but the resume error\
+      \ class is missing and resolver→runner reuse is unwired."
   - id: orchestration_runtime_wiring.gate
     name: Gate runner/runtime wiring
     status: pending

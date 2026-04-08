@@ -65335,6 +65335,77 @@ phases:
       - failure_alignment: aligned
 
       - product implementation files modified: NONE'
+  - id: decide_refresh_tests.fix-refreshed-red-seams
+    name: Fix refreshed red-test seams for core/state and MCP
+    status: pending
+    description: 'Fix ALL blocker-class red-test definition gaps surfaced by decide_refresh_tests.gate.
+
+
+      step_type: test
+
+      step_intent: test_define_red
+
+      expected_result: red
+
+
+      Test-only remediation. Repair refreshed contract assertions so core/state and
+      MCP seams expose the current vectl_decide contract instead of stale continuation/halt_reason/session
+      semantics.
+
+
+      Required fixes:
+
+      - Update MCP red tests to assert advisor_state input and refreshed top-level
+      output fields: status, reason_code, next_state, policy, and reuse metadata/provenance.
+
+      - Remove stale machine-contract assertions for continuation, halt_reason, and
+      legacy session fields.
+
+      - Repair any core/state red-test definition errors so the refreshed gap is independently
+      visible there too.
+
+      - Keep scope limited to tests and minimal helpers; do NOT modify product implementation
+      files.
+
+
+      Completion criteria:
+
+      - tests/test_mcp.py exposes refreshed MCP contract seams directly
+
+      - core/state red tests expose refreshed seams directly
+
+      - stale-field assertions no longer define acceptance'
+    verification: 'local-check protecting decide_refresh_impl and decide_refresh_tests.gate:
+      updated tests remain test-only, pin refreshed MCP/core/state contract seams
+      precisely, and include at least one stale-contract failure example showing the
+      old assertions would now be rejected.'
+    evidence_template: '## refs Read Confirmation (MANDATORY)
+
+      For each ref in this step:
+
+      - <filename> — key passage or "NOT READ: <reason>"
+
+
+      If no refs were provided, state: "No refs for this step."
+
+
+      ## Test-Only Remediation Evidence
+
+      - Updated test files:
+
+      - Refreshed fields now asserted:
+
+      - Stale fields removed:
+
+      - Product implementation files changed: NONE (required)
+
+      - One stale-contract assertion/example that would now fail:
+
+      - Downstream step protected: decide_refresh_impl'
+    depends_on:
+    - decide_refresh_tests.core-state-red
+    - decide_refresh_tests.mcp-red
+    agent: python-executor
 - id: decide_refresh_impl
   name: vectl_decide Contract Refresh — Implementation
   status: in_progress

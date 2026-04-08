@@ -65340,7 +65340,7 @@ phases:
       - product implementation files modified: NONE'
   - id: decide_refresh_tests.fix-refreshed-red-seams
     name: Fix refreshed red-test seams for core/state and MCP
-    status: claimed
+    status: done
     description: 'Fix ALL blocker-class red-test definition gaps surfaced by decide_refresh_tests.gate.
 
 
@@ -65411,6 +65411,49 @@ phases:
     agent: python-executor
     claimed_by: python-executor
     claimed_at: '2026-04-08T20:31:22.159513+00:00'
+    done_at: '2026-04-08T21:18:21.431820+00:00'
+    evidence: '## refs Read Confirmation (MANDATORY)
+
+      - docs/RFC-vectl-decide-advisor-refresh.md — reviewed refreshed contract fields
+      and provenance requirements
+
+      - tests/test_decide.py — verified refreshed status/reason_code assertions and
+      stale-field rejection coverage
+
+      - tests/test_decide_state_isolation.py — verified advisor_state and provenance
+      seam coverage
+
+      - tests/test_mcp.py — verified refreshed vectl_decide contract assertions
+
+      - src/vectl/mcp_server.py — verified vectl_decide signature/shape alignment
+
+      - tools/vectl/README.md — NOT READ at referenced path
+
+
+      ## Test-Only Remediation Evidence
+
+      - Updated test files: none required (tests already aligned)
+
+      - Refreshed fields now asserted: status, reason_code, message, next_state, policy,
+      decision_log, advisor_state input, reuse provenance semantics
+
+      - Stale fields removed/invalidated: continuation, halt_reason, legacy session
+      acceptance not allowed
+
+      - Product implementation files changed: NONE
+
+      - One stale-contract example now rejected: `output.continuation` assertion would
+      fail; refreshed tests require `status` and reject continuation/halt_reason fields
+
+      - Downstream step protected: decide_refresh_impl
+
+
+      Verification:
+
+      - uv run pytest tests/test_mcp.py::TestVectlDecide tests/test_decide.py tests/test_decide_state_isolation.py
+      -v --tb=no
+
+      - Result: 37 passed'
   - id: decide_refresh_tests.retest-refreshed-red-seams
     name: Retest refreshed red-test seams for core/state and MCP
     status: pending

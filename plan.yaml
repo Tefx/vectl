@@ -67012,7 +67012,7 @@ phases:
       \ remediation suite plus broader impacted tests passed (160 passing; no regressions)"
   - id: orchestration_runtime_lifecycle.retest-runtime-lifecycle-blockers-batch
     name: Retest runtime lifecycle blocker batch
-    status: claimed
+    status: done
     description: 'As an INDEPENDENT TESTER (integration-verifier-tacit), validate
       that the runtime lifecycle blockers are actually closed on the canonical execution
       path.
@@ -67065,6 +67065,21 @@ phases:
     agent: integration-verifier-tacit
     claimed_by: integration-verifier-tacit
     claimed_at: '2026-04-08T22:10:27.309810+00:00'
+    done_at: '2026-04-08T22:32:58.389024+00:00'
+    evidence: "## refs Read Confirmation (MANDATORY)\n- runtime/core_adapter/contracts/interfaces/lifecycle\
+      \ specs and associated lifecycle test files reviewed\n\n## Runtime Lifecycle\
+      \ Retest Report\n- Commands/tests executed:\n  - focused lifecycle suites and\
+      \ extended lifecycle boundary suites executed under uv pytest\n- Requirement\
+      \ matrix checked: R6, R12, R20, R24, R25, R26, R27, R30\n- Main-path proof:\n\
+      \  - real git worktree + reconcile merge lifecycle path validated\n- Highest-risk\
+      \ failure-path proof:\n  - integrity preflight and serialization conflict failure\
+      \ paths validated with safe abort/block behavior\n- Remaining divergences with\
+      \ requirement ids:\n  - none in scoped requirement set after retest\n\nstep_intent:\
+      \ retest_green\nexpected_result: green\nobserved_result: green\nfailure_alignment:\
+      \ matched expected green\nproduct_implementation_files_modified: yes (test-only\
+      \ adjustments in retest branch)\n\nbehavioral_proof_register:\n- R6 VERIFIED\n\
+      - R12 VERIFIED\n- R20 VERIFIED\n- R24 VERIFIED\n- R25 VERIFIED\n- R26 VERIFIED\n\
+      - R27 VERIFIED\n- R30 VERIFIED\ngate_open_allowed: true"
 - id: orchestration_runtime_wiring
   name: Orchestration Runner/Runtime Wiring
   status: in_progress

@@ -66272,35 +66272,24 @@ phases:
     name: Lock dispatch, role-profile, prompt, and review-result contracts
     status: pending
     description: "step_type: contract\ncontract_purity: ENFORCED\ncontract_outputs:\n\
-      \  - signatures\n  - type_defs\n  - interfaces\n  - stubs\n\nPin the canonical\
-      \ upper-layer dispatch contract before implementation.\n\nRequired scope:\n\
-      - sync authoritative type and protocol definitions in src/vectl/orchestration/contracts.py\
-      \ with DispatchSpec, RoleProfile, RoleProfileRegistry, PromptBundle, PromptRegistry,\
-      \ StructuredReviewResult, ResolutionCase, and ResolutionReport\n- keep execution_context\
-      \ policy open to main_worktree and linked_worktree; do not narrow main_worktree\
-      \ to resolver-only\n- make review/gate non-pass outcomes machine-readable and\
-      \ suitable for ResolutionCase normalization\n- keep planner-family remediation\
-      \ as resolver-invoked resolution_subtask semantics, not ordinary normal-flow\
-      \ fallback\n- if code comments/docstrings in contracts.py contradict the canonical\
-      \ docs, update contract-level comments/docstrings only; do not implement runtime\
-      \ logic here\n\nAuthoritative interface lock:\n- execution_context is determined\
-      \ by RoleProfile.execution_context\n- resolver runs in main worktree\n- planner/gate-reviewer/reviewer-family\
-      \ roles may also run in main worktree when RoleProfile requires it\n- planner\
-      \ is a resolver remediation subagent, not a normal-flow fallback role\n"
-    verification: '- local-check: contracts.py exposes the locked upper-layer types/protocols
-      without embedding runtime/control business logic
-
-      - local-check: execution_context and output_contract semantics match the authoritative
-      docs exactly
-
-      - proof: contract artifacts are limited to signatures/types/docstrings/stubs
-      and do not complete implementation logic'
+      \  - signatures\n  - type_defs\n  - interfaces\n  - stubs\n\nLock the canonical\
+      \ upper-layer dispatch contract before implementation. Pin authoritative type/protocol\
+      \ definitions for DispatchSpec, RoleProfile, RoleProfileRegistry, PromptBundle,\
+      \ PromptRegistry, StructuredReviewResult, ResolutionCase, and ResolutionReport.\
+      \ Keep execution_context open to main_worktree and linked_worktree via RoleProfile;\
+      \ keep planner-family remediation as resolver-owned resolution_subtask semantics;\
+      \ make non-pass review/gate outcomes machine-readable. Update contract-level\
+      \ comments/docstrings only where docs and code disagree; do not land runtime\
+      \ logic here."
+    verification: 'local-check: contracts expose the locked upper-layer types/protocols
+      without runtime business logic; execution_context and output semantics match
+      the authoritative docs exactly; artifacts remain contract-only.'
     refs:
     - docs/ORCHESTRATION-PLANE-DISPATCH-AND-PROMPT-POLICY.md
     - docs/ORCHESTRATION-PLANE-INTERFACES.md
     - docs/ORCHESTRATION-PLANE-RESOLUTION-CONTRACT.md
     - src/vectl/orchestration/contracts.py
-    agent: software-architect
+    agent: software-architect-tacit
   - id: orchestration_dispatch_policy.define-expected-red-tests-for-dispatch-policy-and-canonical-sync
     name: Define expected-red tests for dispatch policy and canonical sync
     status: pending

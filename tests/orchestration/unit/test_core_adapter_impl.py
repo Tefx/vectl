@@ -84,7 +84,7 @@ def test_claim_and_complete_mutations_flow_through_core_surface(tmp_path: Path) 
     _, step = found
 
     assert step.status.value == "done"
-    assert step.evidence == "verified"
+    assert step.evidence == "[reconcile_disposition=merged] verified"
 
 
 def test_claim_rejects_non_normal_flow_contract(tmp_path: Path) -> None:

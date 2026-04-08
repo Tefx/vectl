@@ -65503,10 +65503,10 @@ phases:
   - id: deep_review.decide-architecture
     name: Review boundary and ownership correctness
     status: pending
-    description: 'Review boundary correctness for refreshed vectl_decide: standalone-usable
-      outside orchestration plane; core authority semantics preserved; caller-owned
-      state ownership is coherent; roster/runtime semantics are not silently imported
-      into core advisor semantics.'
+    description: Independent boundary review for refreshed vectl_decide. Verify standalone
+      usability outside the orchestration plane, preserved core authority semantics,
+      coherent caller-owned state ownership, and no silent import of roster/runtime
+      semantics into core advisor behavior.
     verification: 'phase-check protecting final gate: no boundary drift remains.'
     evidence_template: '## refs Read Confirmation (MANDATORY)
 
@@ -65524,7 +65524,7 @@ phases:
       - Caller-owned state boundary:
 
       - Issues found: none | <detail>'
-    agent: software-architect
+    agent: software-architect-tacit
   - id: deep_review.decide-black-box
     name: Black-box verify refreshed advisor contract
     status: pending

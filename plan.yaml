@@ -67567,6 +67567,7 @@ phases:
       - PASS | ISSUES_FOUND | INCOMPLETE'
     depends_on:
     - parallel_gate_remediation.fix-blockers
+    - parallel_gate_remediation.fix-runner-retest-fixtures
     agent: integration-verifier-tacit
   - id: parallel_gate_remediation.retest-runtime-lifecycle
     name: Retest runtime lifecycle git-worktree isolation

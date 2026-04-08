@@ -66546,26 +66546,13 @@ phases:
   - id: orchestration_orch_app_routing.audit-orch-app-routing-against-canonical-specs
     name: Audit orch_app routing against canonical specs
     status: pending
-    description: 'As an INDEPENDENT TESTER (spec-verifier), perform spec conformance
-      verification for the routing phase.
-
-
-      Focus areas:
-
-      - claim-before-start rule
-
-      - reconcile-before-complete rule
-
-      - review/gate parse location and normalization behavior
-
-      - operator_required routing semantics
-
-      - main_worktree vs linked_worktree selection by RoleProfile'
-    verification: '- phase-check: spec-conformance report covers each touched routing
-      requirement with implementation citations
-
-      - phase-check: any DIVERGES/PARTIAL/NEEDS_TEST findings are explicit for gate
-      review'
+    description: Independent spec conformance review for the routing phase. Audit
+      claim-before-start, reconcile-before-complete, review/gate parse location and
+      normalization, operator_required routing semantics, and execution_context selection
+      by RoleProfile against canonical specs.
+    verification: 'phase-check: the conformance report covers each touched routing
+      requirement with implementation citations; any DIVERGES, PARTIAL, or NEEDS_TEST
+      findings are explicit for gate review.'
     refs:
     - docs/ORCHESTRATION-PLANE-ORCH-APP-ROUTING.md
     - docs/ORCHESTRATION-PLANE-DISPATCH-AND-PROMPT-POLICY.md
@@ -66573,7 +66560,7 @@ phases:
     - src/vectl/orch_app.py
     depends_on:
     - orchestration_orch_app_routing.implement-orch-app-routing-reconcile-gate-and-result-normalization
-    agent: spec-verifier
+    agent: spec-verifier-tacit
   - id: orchestration_orch_app_routing.gate-orch-app-routing
     name: Gate orch_app routing
     status: pending

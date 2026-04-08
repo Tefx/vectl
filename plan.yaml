@@ -67225,7 +67225,7 @@ phases:
   steps:
   - id: parallel_gate_remediation.fix-blockers
     name: Fix concurrent gate blockers
-    status: claimed
+    status: done
     description: 'step_type: implementation
 
       work_type: defect_repair
@@ -67366,6 +67366,35 @@ phases:
     agent: python-senior-tacit
     claimed_by: python-senior-tacit
     claimed_at: '2026-04-08T16:11:47.194905+00:00'
+    done_at: '2026-04-08T16:26:23.144824+00:00'
+    evidence: "## refs Read Confirmation (MANDATORY)\n- tools/vectl/README.md — NOT\
+      \ READ: missing in worktree; implementer used authoritative nearby docs (README,\
+      \ ORCHESTRATION-PLANE-RUNNER-BACKEND.md, RFC-vectl-decide-advisor-refresh.md,\
+      \ ORCHESTRATION-PLANE-RUNTIME-WORKTREE-LIFECYCLE.md).\n\n## Blocker Family Closure\n\
+      - B1 stale MCP assertions/evidence: updated tests/test_mcp.py and decide/model\
+      \ surfaces to align refreshed contract, remove stale machine-contract expectations,\
+      \ validate runner provenance and state semantics.\n- B2 runner backend substrate/phase\
+      \ split: added dedicated runner backend substrate modules (runners.py, runner_registry.py)\
+      \ and rewired runtime launch/poll through registry + runner handles.\n- B3 runtime\
+      \ worktree isolation: replaced plain-directory fallback with standard git worktree\
+      \ add/remove path and typed failures.\n\n## Root Cause vs Symptom\n- root_cause:\
+      \ contract drift across decide tests/surfaces, backend substrate ownership,\
+      \ and lifecycle isolation fallback.\n- symptom_paths: tests/test_mcp.py, src/vectl/decide.py,\
+      \ src/vectl/models.py, src/vectl/orchestration/runtime.py.\n- sibling_search_commands:\n\
+      \  - rg -n \"continuation|halt_reason\" src/vectl/decide.py src/vectl/mcp_server.py\
+      \ tests/test_mcp.py\n  - rg -n \"mkdir\\(|shutil\\.rmtree|worktree add|worktree\
+      \ remove|fallback\" src/vectl/orchestration/runtime.py\n  - rg -n \"_resolve_runner_command|RunnerRegistry|SubprocessRunner|RunnerHandle|RunnerPollResult\"\
+      \ src/vectl/orchestration\n- why_this_fix_is_not_surface_level: introduces substrate\
+      \ contracts + runtime wiring + model validation + worktree enforcement, not\
+      \ assertion text-only edits.\n\n## Verification Notes\n- commands_run include:\
+      \ decide tests, vectl_decide MCP tests, mypy on touched sources, runtime worktree\
+      \ smoke, runner backend smoke, red-suite probe.\n- main_path_result: decide\
+      \ tests pass; vectl_decide MCP subset pass; mypy clean; worktree + runner smoke\
+      \ paths verified.\n- highest_risk_failure_path_result: remaining expected-red\
+      \ assertions in red-gap suite persist; blocker families addressed by focused\
+      \ checks.\n\n## Artifacts\n- Commit: 9860ef78d7d6fff9a84f15908d1739ff5457bbfa\n\
+      - Files changed: src/vectl/decide.py, src/vectl/models.py, src/vectl/orchestration/runner_registry.py,\
+      \ src/vectl/orchestration/runners.py, src/vectl/orchestration/runtime.py, tests/test_mcp.py"
   - id: parallel_gate_remediation.retest-decide-refresh-tests
     name: Retest decide refresh MCP/core contract evidence
     status: pending

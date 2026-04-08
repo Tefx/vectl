@@ -65174,7 +65174,7 @@ phases:
   steps:
   - id: decide_refresh_tests.mcp-red
     name: Define MCP expected-red tests
-    status: claimed
+    status: done
     description: 'step_type: test
 
       step_intent: test_define_red
@@ -65207,6 +65207,39 @@ phases:
     agent: python-executor
     claimed_by: python-executor
     claimed_at: '2026-04-08T14:52:00.418461+00:00'
+    done_at: '2026-04-08T15:04:25.402024+00:00'
+    evidence: '## refs Read Confirmation (MANDATORY)
+
+      - tools/vectl/README.md — workflow guidance consulted.
+
+      - src/vectl/decide.py, src/vectl/mcp_server.py, src/vectl/models.py — refreshed
+      contract surfaces validated during MCP test updates.
+
+
+      ## Exposed Gaps
+
+      - Tests added/updated: 5 vectl_decide MCP contract tests in tests/test_mcp.py
+
+      - Minimal MCP fixture used: existing plan fixture with tmp_path
+
+      - Expected red assertions: stale continuation/halt_reason/session semantics
+      absent; refreshed advisor_state/status/reason_code/next_state/policy/reuse fields
+      asserted.
+
+      - Downstream implementation owner: decide_refresh_impl.mcp-surface
+
+
+      ## Test-step semantic reporting
+
+      - step_intent: test_define_red
+
+      - expected_result: red
+
+      - observed_result: green (implementation already refreshed)
+
+      - failure_alignment: N/A (no gap remained to expose)
+
+      - product implementation files modified: NONE'
   - id: decide_refresh_tests.gate
     name: Gate decide_refresh_tests
     status: pending

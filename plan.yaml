@@ -65686,38 +65686,13 @@ phases:
   - id: orchestration_foundation_lock.gate
     name: Gate foundation lock
     status: pending
-    description: 'As an INDEPENDENT REVIEWER (gate-reviewer), assess whether the foundation
-      contract lock is strong enough to prevent runner/runtime work from being polluted
-      by later resolver/control scope.
-
-
-      Review depth: STANDARD
-
-
-      Blocking checks:
-
-      1. Contracts pin the hard rules the user specified.
-
-      2. Red tests expose the two scoped gaps without leaking implementation.
-
-      3. Boundary ownership is explicit: runner backend = mechanical backend, runtime
-      = worktree lifecycle/reconcile sequencing, resolver = abnormal repair only.
-
-      4. No step in this phase silently expands into resolver full landing, merge/conflict
-      policy, or control/operator closure.
-
-      '
-    verification: 'Scope: phase-check protecting orchestration_runner_backend.gate
-      and orchestration_runtime_lifecycle.gate.
-
-      - All foundation steps completed with verifiable evidence.
-
-      - Hard-rule contract is explicit and reviewable.
-
-      - Red tests clearly define acceptance for downstream implementation.
-
-      - OPEN only if scope is still limited to the first two gaps plus foundation
-      lock.'
+    description: 'Gate review: verify the foundation lock is strong enough to prevent
+      runner/runtime work from absorbing later resolver/control scope. Block if hard
+      rules are not explicit, red tests leak implementation, ownership seams blur,
+      or this phase expands beyond the first two gaps.'
+    verification: 'phase-check protecting orchestration_runner_backend.gate and orchestration_runtime_lifecycle.gate:
+      all foundation steps completed with verifiable evidence; hard-rule contract
+      is explicit and reviewable; red tests define downstream acceptance cleanly.'
     evidence_template: '## refs Read Confirmation (MANDATORY)
 
 
@@ -65759,7 +65734,7 @@ phases:
     depends_on:
     - orchestration_foundation_lock.pin-boundaries-and-contracts
     - orchestration_foundation_lock.define-red-contract-tests
-    agent: gate-reviewer
+    agent: gate-reviewer-tacit
 - id: orchestration_runner_backend
   name: Orchestration Runner Backend
   status: locked

@@ -65345,7 +65345,7 @@ phases:
   steps:
   - id: decide_refresh_impl.models-state
     name: Implement refreshed models and state
-    status: claimed
+    status: done
     description: Fill in the refreshed models/state implementation in src/vectl/models.py
       and src/vectl/decision_state.py under the locked RFC contract. Land runner provenance,
       caller-owned advisor_state, next_state full replacement semantics, policy metadata,
@@ -65373,6 +65373,38 @@ phases:
     agent: python-senior-tacit
     claimed_by: python-senior-tacit
     claimed_at: '2026-04-08T17:23:06.844769+00:00'
+    done_at: '2026-04-08T17:32:12.215912+00:00'
+    evidence: '## refs Read Confirmation (MANDATORY)
+
+      - RFC-vectl-decide-advisor-refresh.md and models/decide/mcp/decision_state surfaces
+      reviewed.
+
+
+      ## Implementation Evidence
+
+      - Files changed: none (implementation already present in worktree and verified).
+
+      - Exact refreshed fields implemented: runner provenance on RunningTask/CompletedResult,
+      Action reuse_token/reuse_runner with task_id execution identity only, DecideOutput
+      status/reason_code/message/actions/next_state/policy/decision_log, advisor_state
+      input.
+
+      - task_id != session/reuse identity preserved via separate reuse_token/reuse_runner
+      fields and task_id execution semantics.
+
+      - next_state replacement semantics implemented as full normalized object (completion_times/session_registry/failure_counts)
+      for caller replacement.
+
+
+      ## Verification
+
+      - uv run pytest -q tests/test_decide.py tests/test_decide_state_isolation.py
+      -> 34 passed
+
+      - uv run pytest -q tests/test_mcp.py -k vectl_decide -> 3 passed
+
+      - uv run pytest -q tests/test_extended_runner_protocol.py tests/test_decide.py
+      tests/test_decide_state_isolation.py -> 35 passed'
   - id: decide_refresh_impl.core
     name: Implement refreshed decide core logic
     status: pending

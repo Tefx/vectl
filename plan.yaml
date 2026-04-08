@@ -67819,7 +67819,7 @@ phases:
       - Commit: 9f76778f60ca45f7cd99feea4273be4a7daf3288'
   - id: orchestration_runtime_wiring.retest-spec-blockers-batch
     name: Retest spec blocker batch for runtime wiring
-    status: claimed
+    status: pending
     description: 'As an INDEPENDENT TESTER (integration-verifier-tacit), validate
       that the blocker-class runtime wiring spec gaps are actually closed from a fresh
       perspective.
@@ -67934,8 +67934,6 @@ phases:
     depends_on:
     - orchestration_runtime_wiring.fix-spec-blockers-batch
     agent: integration-verifier-tacit
-    claimed_by: integration-verifier-tacit
-    claimed_at: '2026-04-08T18:56:10.715518+00:00'
   - id: orchestration_runtime_wiring.fix-canonical-spec-blockers-batch
     name: Land canonical-path fixes for runtime wiring blocker batch
     status: done

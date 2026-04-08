@@ -66043,54 +66043,14 @@ phases:
   - id: orchestration_runtime_lifecycle.gate
     name: Gate runtime lifecycle
     status: pending
-    description: 'As an INDEPENDENT REVIEWER (gate-reviewer), assess whether runtime
-      now owns the worktree/execution/reconcile lifecycle mechanically without absorbing
-      resolver policy.
-
-
-      review_depth: THOROUGH
-
-      review_depth_rationale:
-
-      - reconcile-before-complete is blocker-class behavior
-
-      - worktree lifecycle carries integrity and cleanup risk
-
-      - runtime has mutable execution/workspace tracking
-
-
-      cross_cutting_focus:
-
-      - complete only after reconcile=merged|noop
-
-      - resolver remains main-worktree only
-
-      - unresolved runtime failures are surfaced to operator/user
-
-
-      Gate Preview (what the gate WILL reject)
-
-      1. any path that marks work complete before reconcile merged|noop
-
-      2. runtime code that reasons about semantic resolution instead of detecting/surfacing
-      it
-
-      3. missing operator-facing/user-facing failure surfacing for unresolved runtime
-      problems
-
-      4. unsafe mutable-state handling around active executions/workspaces
-
-      '
-    verification: 'Scope: phase-check protecting orchestration_runtime_wiring.gate.
-
-      - All lifecycle steps completed with verifiable evidence.
-
-      - Behavioral proof register covers blocker-class runtime obligations.
-
-      - No semantic resolver-policy deepening leaked into runtime.
-
-      - OPEN only if unresolved runtime obligations are PROVEN or explicitly non-intersecting
-      with remaining runtime_wiring gate requirements.'
+    description: 'Gate review: verify runtime now owns worktree/execution/reconcile
+      lifecycle mechanically without absorbing resolver policy. Reject any path that
+      completes before reconcile merged|noop, semantic resolution leakage into runtime,
+      missing operator/user failure surfacing, or unsafe mutable-state handling around
+      active executions/workspaces.'
+    verification: 'phase-check protecting orchestration_runtime_wiring.gate: lifecycle
+      evidence is complete; blocker-class runtime obligations are proven or explicitly
+      non-intersecting; no resolver-policy deepening leaked into runtime.'
     evidence_template: '## refs Read Confirmation (MANDATORY)
 
 
@@ -66127,7 +66087,7 @@ phases:
     depends_on:
     - orchestration_runtime_lifecycle.implement-worktree-lifecycle
     - orchestration_runtime_lifecycle.retest-lifecycle-green
-    agent: gate-reviewer
+    agent: gate-reviewer-tacit
 - id: orchestration_runtime_wiring
   name: Orchestration Runner/Runtime Wiring
   status: locked

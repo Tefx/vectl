@@ -67365,3 +67365,66 @@ phases:
 
       - highest_risk_failure_path_result: <text>'
     agent: python-senior-tacit
+  - id: parallel_gate_remediation.retest-decide-refresh-tests
+    name: Retest decide refresh MCP/core contract evidence
+    status: pending
+    description: 'step_type: test
+
+      step_intent: retest_green
+
+      expected_result: green
+
+      verification_scope: phase-check protecting parallel_gate_remediation.gate and
+      decide_refresh_impl
+
+      agent_source: project
+
+
+      As an INDEPENDENT TESTER, re-validate the decide_refresh_tests blocker after
+      the unified fix lands. Focus on stale MCP assertion removal, evidence/observed-result
+      consistency, and refreshed contract visibility across core/state and MCP surfaces.
+      Finding a remaining mismatch is a successful retest outcome and must be reported
+      precisely.'
+    verification: '- Re-run the refreshed decide/core-state and MCP contract tests.
+
+      - Confirm evidence semantics match observed results and no stale continuation/halt_reason
+      machine-contract assertions remain.
+
+      - expected_result: green.'
+    evidence_template: '## Verification Report
+
+
+      **Tester**: integration-verifier-tacit
+
+      **Scope**: decide_refresh_tests blocker family
+
+      **Independence Level**: L1
+
+
+      ### refs Read Confirmation (MANDATORY)
+
+      If no refs were provided, state: "No refs for this step."
+
+
+      ### Test Execution
+
+      - commands_executed: <exact commands>
+
+      - output_summary: <key results>
+
+
+      ### Contract Refresh Checks
+
+      - stale_assertions_removed: <yes/no + evidence>
+
+      - evidence_matches_observed_result: <yes/no + evidence>
+
+      - refreshed_fields_visible: <yes/no + evidence>
+
+
+      ### Verdict
+
+      - PASS | ISSUES_FOUND | INCOMPLETE'
+    depends_on:
+    - parallel_gate_remediation.fix-blockers
+    agent: integration-verifier-tacit

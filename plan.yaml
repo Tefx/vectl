@@ -66905,7 +66905,7 @@ phases:
     claimed_at: '2026-04-08T20:10:47.306300+00:00'
   - id: orchestration_runtime_lifecycle.fix-runtime-lifecycle-blockers-batch
     name: Fix runtime lifecycle blocker batch
-    status: claimed
+    status: done
     description: 'Fix ALL blocker-class lifecycle findings surfaced by orchestration_runtime_lifecycle.gate.
 
 
@@ -66988,6 +66988,28 @@ phases:
     agent: python-senior-tacit
     claimed_by: python-senior-tacit
     claimed_at: '2026-04-08T20:44:14.667462+00:00'
+    done_at: '2026-04-08T22:00:29.263802+00:00'
+    evidence: "## refs Read Confirmation (MANDATORY)\n- src/vectl/orchestration/runtime.py\
+      \ — verified removal of mkdir-only prep, per-target reconcile lock bookkeeping,\
+      \ reconcile disposition method, lock release behavior\n- src/vectl/orchestration/core_adapter.py\
+      \ — verified reconcile_disposition proof preserved in completion evidence path\n\
+      - src/vectl/orchestration/contracts.py / interfaces.py — verified disposition\
+      \ contracts and lifecycle mutation boundaries\n- docs/ORCHESTRATION-PLANE-RUNTIME-WORKTREE-LIFECYCLE.md\
+      \ — verified rules for git worktree, reconcile serialization, and completion\
+      \ gating\n\n## Runtime Lifecycle Remediation Evidence\n- Canonical git worktree\
+      \ path landed in:\n  - runtime worktree creation now relies on git worktree\
+      \ flow, not pre-mkdir setup\n- Reconcile serialization mechanism:\n  - per-target\
+      \ reconcile lock acquisition with conflict error on overlap; lock release on\
+      \ terminal reconcile/cleanup paths\n- reconcile_disposition proof path preserved\
+      \ in:\n  - core adapter complete path now carries disposition evidence instead\
+      \ of dropping it\n- Requirement refs covered: R6, R12, R20, R24, R25, R26, R27,\
+      \ R30\n- Main-path proof:\n  - lifecycle test proving real git-backed workspace/reconcile\
+      \ path and completion gating\n- Highest-risk failure-path proof:\n  - concurrent\
+      \ reconcile conflict blocked; unresolved reconcile and merge-conflict paths\
+      \ surface operator attention and preserve safety gates\n- Sibling search completed:\n\
+      \  - lifecycle/reconcile call paths traced across orchestration modules; no\
+      \ missed parallel path requiring same remediation\n\nVerification:\n- lifecycle\
+      \ remediation suite plus broader impacted tests passed (160 passing; no regressions)"
   - id: orchestration_runtime_lifecycle.retest-runtime-lifecycle-blockers-batch
     name: Retest runtime lifecycle blocker batch
     status: pending

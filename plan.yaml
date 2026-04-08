@@ -65065,7 +65065,7 @@ phases:
       item blocks progression.'
 - id: decide_refresh_contracts
   name: vectl_decide Contract Refresh — Contract Lock
-  status: pending
+  status: in_progress
   gate: Refreshed vectl_decide contract is pinned in code-facing surfaces before implementation.
   steps:
   - id: decide_refresh_contracts.gate
@@ -65097,7 +65097,7 @@ phases:
     agent: gate-reviewer-tacit
   - id: decide_refresh_contracts.pin-contract-surfaces
     name: Pin refreshed core and MCP contracts
-    status: pending
+    status: claimed
     description: 'Contract-only step. Lock the refreshed vectl_decide contract across
       core/state and MCP surfaces before any tests or implementation. Update the code-facing
       contract in models.py, decision_state.py, and mcp_server.py to match the RFC
@@ -65110,6 +65110,8 @@ phases:
       and MCP contract fields, names, and docstrings match the RFC exactly; no compatibility
       shadow fields or stale continuation/halt_reason language remains.'
     agent: python-executor
+    claimed_by: python-executor
+    claimed_at: '2026-04-08T14:25:31.313851+00:00'
 - id: decide_refresh_tests
   name: vectl_decide Contract Refresh — Test Definitions
   status: locked

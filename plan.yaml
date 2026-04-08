@@ -66072,7 +66072,7 @@ phases:
       - Targeted checks: runtime/interfaces/contracts tests passed (60/60)'
   - id: orchestration_runner_backend.retest-backend-green
     name: Retest runner backend against locked backend contract
-    status: claimed
+    status: done
     description: 'step_type: test
 
       step_intent: retest_green
@@ -66151,6 +66151,60 @@ phases:
     agent: integration-verifier-tacit
     claimed_by: integration-verifier-tacit
     claimed_at: '2026-04-08T15:36:41.055375+00:00'
+    done_at: '2026-04-08T15:42:04.803251+00:00'
+    evidence: '## refs Read Confirmation (MANDATORY)
+
+      - tools/vectl/README.md — framework guidance acknowledged.
+
+      - runtime.py + unit runtime/interfaces/contracts + runner_backend_red tests
+      reviewed.
+
+
+      ## Verification Report
+
+      Tester: integration-verifier
+
+      Scope: runner backend mechanical substrate
+
+      Independence Level: L1
+
+
+      ### Test Execution
+
+      - Command: uv run pytest tests/orchestration/unit/test_runtime.py tests/orchestration/unit/test_interfaces.py
+      tests/orchestration/unit/test_contracts.py -v
+
+      - Output: 60 passed in 0.97s
+
+
+      ### Coverage Assessment
+
+      - registry + capabilities verified
+
+      - launch/poll/cleanup verified
+
+      - typed error surfaces verified
+
+      - runtime wiring not fully covered by design in this phase (explicitly deferred)
+
+
+      ### Issues Found
+
+      - only informational: red tests still encode downstream lifecycle ownership
+      gaps.
+
+
+      Test-step semantic:
+
+      - step_intent: retest_green
+
+      - expected_result: green
+
+      - observed_result: green
+
+      - failure_alignment: N/A
+
+      - product files modified: no'
   - id: orchestration_runner_backend.gate
     name: Gate runner backend
     status: pending

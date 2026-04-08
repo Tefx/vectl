@@ -65220,9 +65220,12 @@ phases:
     name: Gate decide_refresh_tests
     status: pending
     description: 'Gate review: verify refreshed tests define the contract gap clearly
-      across core, state, and MCP surfaces.'
+      across core/state and MCP surfaces. Block if intent is not explicitly red, if
+      tests leak implementation, or if any refreshed contract seam is not independently
+      visible.'
     verification: 'phase-check protecting implementation: red intent is explicit,
-      tests remain test-only, and core/state/MCP contract gaps are independently visible.'
+      tests remain test-only, and core/state plus MCP contract gaps are independently
+      visible.'
     evidence_template: '## refs Read Confirmation (MANDATORY)
 
       For each ref in this step:
@@ -65240,10 +65243,9 @@ phases:
 
       - Gate decision: OPEN | BLOCKED'
     depends_on:
-    - decide_refresh_tests.core-red
-    - decide_refresh_tests.state-red
+    - decide_refresh_tests.core-state-red
     - decide_refresh_tests.mcp-red
-    agent: gate-reviewer
+    agent: gate-reviewer-tacit
   - id: decide_refresh_tests.core-state-red
     name: Define core and advisor_state expected-red tests
     status: pending

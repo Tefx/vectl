@@ -66367,34 +66367,15 @@ phases:
       expected_result: green
 
 
-      As an INDEPENDENT TESTER (integration-verifier), validate the upper-layer dispatch
-      policy from a fresh perspective.
-
-
-      Test for:
-
-      - happy path DispatchSpec generation for normal steps and resolver subtasks
-
-      - role-profile driven execution_context, including main_worktree reviewer/planner
-      roles
-
-      - centralized prompt selection by prompt family
-
-      - structured review-result parsing and normalization to explicit ResolutionCase
-      inputs
-
-      - explicit unknown-role failure behavior
-
-      '
-    verification: '- phase-check: targeted orchestration policy tests pass green
-
-      - phase-check: at least one test proves main_worktree non-resolver roles are
-      supported by RoleProfile
-
-      - phase-check: at least one test proves non-pass structured review output becomes
-      explicit ResolutionCase input
-
-      - protects downstream gates: orchestration_resolver_coordination.gate and orchestration_upper_layer_review.gate'
+      As an independent tester, validate upper-layer dispatch policy from a fresh
+      perspective. Prove happy-path DispatchSpec generation for normal steps and resolver
+      subtasks, RoleProfile-driven execution_context including main_worktree reviewer/planner
+      roles, centralized prompt selection, structured review-result normalization
+      to explicit ResolutionCase inputs, and explicit unknown-role failure behavior.'
+    verification: 'phase-check: targeted policy tests pass green; at least one test
+      proves main_worktree non-resolver roles are supported by RoleProfile; at least
+      one test proves non-pass structured review output becomes explicit ResolutionCase
+      input; protects resolver_coordination and upper_layer_review gates.'
     refs:
     - docs/ORCHESTRATION-PLANE-DISPATCH-AND-PROMPT-POLICY.md
     - docs/ORCHESTRATION-PLANE-INTERFACES.md
@@ -66402,7 +66383,7 @@ phases:
     - tests/orchestration/unit/test_orch_app.py
     depends_on:
     - orchestration_dispatch_policy.implement-dispatch-coordinator-policy-role-registry-prompt-registry-and-canonical-contract-sync
-    agent: integration-verifier
+    agent: integration-verifier-tacit
   - id: orchestration_dispatch_policy.gate-dispatch-policy
     name: Gate dispatch policy
     status: pending

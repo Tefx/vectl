@@ -65579,7 +65579,7 @@ phases:
     agent: gate-reviewer-tacit
 - id: orchestration_foundation_lock
   name: Orchestration Foundation Lock
-  status: pending
+  status: in_progress
   gate: Lock runner/runtime boundaries and hard rules before backend and lifecycle
     implementation.
   depends_on:
@@ -65587,7 +65587,7 @@ phases:
   steps:
   - id: orchestration_foundation_lock.pin-boundaries-and-contracts
     name: Pin runner/runtime boundaries and hard-rule contracts
-    status: pending
+    status: claimed
     description: "step_type: contract\ncontract_purity: ENFORCED\ncontract_outputs:\n\
       \  - signatures\n  - type_defs\n  - interfaces\n  - stubs\n\nLock the runner/runtime\
       \ foundation contract for the next two gaps only. Encode six hard rules in code-facing\
@@ -65613,6 +65613,8 @@ phases:
       \ note: confirm outputs are contract-only and contain no substantive execution\
       \ logic.\n"
     agent: software-architect-tacit
+    claimed_by: software-architect-tacit
+    claimed_at: '2026-04-08T14:25:20.890290+00:00'
   - id: orchestration_foundation_lock.define-red-contract-tests
     name: Define red seam tests for runner backend and runtime lifecycle
     status: pending

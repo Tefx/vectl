@@ -65456,7 +65456,7 @@ phases:
       - Result: 37 passed'
   - id: decide_refresh_tests.retest-refreshed-red-seams
     name: Retest refreshed red-test seams for core/state and MCP
-    status: pending
+    status: claimed
     description: 'As an INDEPENDENT TESTER (integration-verifier-tacit), verify that
       the refreshed red-test seams are now visible from a fresh perspective.
 
@@ -65504,6 +65504,8 @@ phases:
     depends_on:
     - decide_refresh_tests.fix-refreshed-red-seams
     agent: integration-verifier-tacit
+    claimed_by: integration-verifier-tacit
+    claimed_at: '2026-04-08T21:18:47.127397+00:00'
 - id: decide_refresh_impl
   name: vectl_decide Contract Refresh — Implementation
   status: in_progress

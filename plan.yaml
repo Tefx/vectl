@@ -65420,9 +65420,9 @@ phases:
     name: Update vectl_decide documentation
     status: pending
     description: Sync documentation to the refreshed vectl_decide contract. Update
-      README.md, docs/DESIGN.md, and any decide-related descriptions/docstrings that
-      still mention continuation/halt_reason machine control, overloaded task_id reuse
-      semantics, or non-canonical state naming. Preserve standalone advisor positioning.
+      README, DESIGN, and any decide-facing docs/docstrings that still mention continuation/halt_reason
+      machine control, overloaded task_id reuse semantics, or non-canonical state
+      naming. Preserve standalone advisor positioning.
     verification: 'phase-check protecting deep_review: docs match the refreshed contract
       exactly and no stale decide wording remains.'
     evidence_template: '## refs Read Confirmation (MANDATORY)
@@ -65439,7 +65439,7 @@ phases:
       - Stale wording removed:
 
       - Remaining doc debt: none | <detail>'
-    agent: doc-reviewer
+    agent: doc-reviewer-tacit
   - id: doc_sync.gate
     name: Gate doc_sync
     status: pending

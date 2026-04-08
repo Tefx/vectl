@@ -65153,6 +65153,21 @@ phases:
     - decide_refresh_contracts.pin-core-contract
     - decide_refresh_contracts.pin-mcp-contract
     agent: gate-reviewer
+  - id: decide_refresh_contracts.pin-contract-surfaces
+    name: Pin refreshed core and MCP contracts
+    status: pending
+    description: 'Contract-only step. Lock the refreshed vectl_decide contract across
+      core/state and MCP surfaces before any tests or implementation. Update the code-facing
+      contract in models.py, decision_state.py, and mcp_server.py to match the RFC
+      exactly: runner provenance on running/completed task records; caller-owned advisor_state;
+      next_state as full replacement; top-level status/reason_code/message; policy
+      metadata; explicit reuse_token and reuse_runner; task_id remains execution identity
+      only. Remove stale continuation/halt_reason semantics and keep vectl_decide
+      as a standalone deterministic advisor.'
+    verification: 'local-check protecting downstream tests and implementation: core/state
+      and MCP contract fields, names, and docstrings match the RFC exactly; no compatibility
+      shadow fields or stale continuation/halt_reason language remains.'
+    agent: python-executor
 - id: decide_refresh_tests
   name: vectl_decide Contract Refresh — Test Definitions
   status: locked

@@ -65118,38 +65118,6 @@ phases:
   depends_on:
   - decide_refresh_contracts
   steps:
-  - id: decide_refresh_tests.core-red
-    name: Define core expected-red tests
-    status: pending
-    description: 'step_type: test
-
-      step_intent: test_define_red
-
-      expected_result: red
-
-
-      Test-only step. Update tests/test_decide.py to expose the refreshed core contract
-      gap: runner provenance required; task_id remains execution/task identity; reuse_token
-      and reuse_runner drive reuse semantics; top-level status/reason_code/message
-      replace continuation/halt_reason; policy metadata is present; repeated_failures
-      maps to blocked.'
-    verification: 'local-check protecting implementation: modified files remain in
-      tests/; assertions expose the refreshed contract gap without product-code changes.'
-    evidence_template: '## refs Read Confirmation (MANDATORY)
-
-      For each ref in this step:
-
-      - <filename> — key passage or "NOT READ: <reason>"
-
-
-      ## Exposed Gaps
-
-      - Tests added/updated:
-
-      - Expected red assertions:
-
-      - Downstream implementation owner: decide_refresh_impl.models-state + decide_refresh_impl.core'
-    agent: python-executor
   - id: decide_refresh_tests.state-red
     name: Define advisor_state expected-red tests
     status: pending

@@ -65685,7 +65685,7 @@ phases:
       - Commit: c2c090ef33553a9a79f747126bbe26255d465d46'
   - id: orchestration_foundation_lock.define-red-contract-tests
     name: Define red seam tests for runner backend and runtime lifecycle
-    status: pending
+    status: claimed
     description: 'step_type: test
 
       step_intent: test_define_red
@@ -65755,6 +65755,8 @@ phases:
     depends_on:
     - orchestration_foundation_lock.pin-boundaries-and-contracts
     agent: python-executor
+    claimed_by: python-executor
+    claimed_at: '2026-04-08T14:42:09.474122+00:00'
   - id: orchestration_foundation_lock.gate
     name: Gate foundation lock
     status: pending

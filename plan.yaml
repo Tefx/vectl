@@ -65407,7 +65407,7 @@ phases:
       tests/test_decide_state_isolation.py -> 35 passed'
   - id: decide_refresh_impl.core
     name: Implement refreshed decide core logic
-    status: claimed
+    status: done
     description: Complete src/vectl/decide.py under the refreshed contract. Emit status/reason_code/message
       instead of continuation/halt_reason, use reuse_token/reuse_runner instead of
       overloading Action.task_id, and preserve deterministic standalone advisor behavior,
@@ -65438,6 +65438,45 @@ phases:
     agent: python-senior-tacit
     claimed_by: python-senior-tacit
     claimed_at: '2026-04-08T17:33:11.487608+00:00'
+    done_at: '2026-04-08T17:45:24.134326+00:00'
+    evidence: '## refs Read Confirmation (MANDATORY)
+
+      - RFC-vectl-decide-advisor-refresh.md, decide/models/mcp surfaces, decide tests/state-isolation
+      tests.
+
+
+      ## Implementation Evidence
+
+      - Files changed: src/vectl/decide.py, tests/test_decide.py
+
+      - Status/reason_code mapping implemented and continuation/halt_reason removed
+      from core behavior path.
+
+      - Reuse_token/reuse_runner behavior implemented with runner-qualified session
+      registry handling; task_id kept as execution identity (not reuse token).
+
+      - Unknown runner rejection path preserved via model validation and passing focused
+      tests.
+
+      - next_state replacement path preserved as full normalized replacement object;
+      repeated-failure memory persistence through threshold crossing implemented.
+
+      - decision_log made debug-gated (debug-only emission).
+
+
+      ## Verification
+
+      - uv run pytest tests/test_decide.py tests/test_decide_state_isolation.py -q
+      -> 37 passed
+
+      - uv run pytest tests/test_decide.py -k "unknown_runner or reuse_runner_propagates_from_advisor_state
+      or repeated_failure_memory_persists_after_threshold or decision_log_is_debug_only"
+      -q -> 4 passed
+
+      - uv run ruff check src/vectl/decide.py src/vectl/decision_state.py tests/test_decide.py
+      -> pass
+
+      - uv run mypy src/vectl/decide.py -> success'
   - id: decide_refresh_impl.mcp-surface
     name: Implement refreshed MCP surface
     status: pending

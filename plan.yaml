@@ -65456,7 +65456,7 @@ phases:
       - Result: 37 passed'
   - id: decide_refresh_tests.retest-refreshed-red-seams
     name: Retest refreshed red-test seams for core/state and MCP
-    status: claimed
+    status: done
     description: 'As an INDEPENDENT TESTER (integration-verifier-tacit), verify that
       the refreshed red-test seams are now visible from a fresh perspective.
 
@@ -65506,6 +65506,28 @@ phases:
     agent: integration-verifier-tacit
     claimed_by: integration-verifier-tacit
     claimed_at: '2026-04-08T21:18:47.127397+00:00'
+    done_at: '2026-04-08T21:33:26.582472+00:00'
+    evidence: "## refs Read Confirmation (MANDATORY)\n- tests/test_decide.py — verified\
+      \ refreshed core/state contract seam tests\n- tests/test_decide_state_isolation.py\
+      \ — verified advisor_state isolation/provenance seam tests\n- tests/test_mcp.py::TestVectlDecide\
+      \ — verified refreshed MCP contract seam tests\n- src/vectl/decide.py, src/vectl/decision_state.py,\
+      \ src/vectl/models.py, src/vectl/mcp_server.py — confirmed refreshed contract\
+      \ fields and stale-field removal\n- tools/vectl/README.md — not found at referenced\
+      \ path\n\n## Retest Report\n- Commands/tests executed:\n  - uv run pytest tests/test_decide.py\
+      \ tests/test_decide_state_isolation.py -v --tb=short\n  - uv run pytest tests/test_mcp.py::TestVectlDecide\
+      \ -v --tb=short\n- Main-path proof:\n  - 34 core/state tests + 3 MCP tests passed\
+      \ under refreshed contract seams\n- Failure-path proof (stale assertion rejected):\n\
+      \  - stale access to output.continuation/output.halt_reason/action.session raises\
+      \ AttributeError; stale keys absent from model_dump output\n- Refreshed fields\
+      \ observed:\n  - status, reason_code, next_state, policy, decision_log, advisor_state\
+      \ input, reuse_token/reuse_runner provenance\n- Remaining ambiguities:\n  -\
+      \ explicit negative stale-key assertions in MCP dict output could be strengthened,\
+      \ but stale keys are absent and seams are visible\n\nstep_intent: retest_green\n\
+      expected_result: green\nobserved_result: green\nfailure_alignment: matched expected\
+      \ green\nproduct_implementation_files_modified: no\n\nbehavioral_proof_register:\n\
+      - refreshed core/state seam visibility: VERIFIED\n- refreshed MCP seam visibility:\
+      \ VERIFIED\n- stale-field acceptance removed: VERIFIED\n- advisor_state isolation\
+      \ behavior: VERIFIED\n\ngate_open_allowed: true"
 - id: decide_refresh_impl
   name: vectl_decide Contract Refresh — Implementation
   status: in_progress

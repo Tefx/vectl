@@ -66469,33 +66469,14 @@ phases:
   - id: orchestration_resolver_coordination.gate-resolver-coordination
     name: Gate resolver coordination
     status: pending
-    description: 'As an INDEPENDENT REVIEWER (gate-reviewer), assess whether the orchestration_resolver_coordination
-      phase is ready for orch_app routing work.
-
-
-      review_depth: THOROUGH
-
-      cross_cutting_focus:
-
-      - resolver main-worktree and no-claim rule
-
-      - approved vectl facade mutation boundary
-
-      - planner as resolver remediation subagent
-
-      - explicit operator_required handling
-
-
-      BLOCK if resolver absorbs control authority, mutates outside official surfaces,
-      or silently downgrades unresolved cases.'
-    verification: '- phase-check: all resolver-coordination steps complete with adequate
-      evidence
-
-      - phase-check: unresolved behavioral obligations are either proven or explicitly
-      blocking
-
-      - gate decision basis records whether review-failure normalization and operator_required
-      closure are safe for downstream routing'
+    description: 'Gate review: verify resolver coordination is ready for orch_app
+      routing. Block if resolver absorbs control authority, mutates outside approved
+      surfaces, silently downgrades unresolved cases, or lets planner escape resolver-owned
+      remediation semantics.'
+    verification: 'phase-check: all resolver-coordination steps complete with adequate
+      evidence; unresolved behavioral obligations are either proven or explicitly
+      blocking; decision basis records whether review-failure normalization and operator_required
+      closure are safe for downstream routing.'
     refs:
     - docs/ORCHESTRATION-PLANE-RESOLVER-COORDINATION.md
     - docs/ORCHESTRATION-PLANE-RESOLUTION-CONTRACT.md
@@ -66503,7 +66484,7 @@ phases:
     depends_on:
     - orchestration_resolver_coordination.implement-resolver-coordination-review-failure-intake-and-approved-facade-mutation-path
     - orchestration_resolver_coordination.verify-resolver-coordination-and-planner-remediation-routing
-    agent: gate-reviewer
+    agent: gate-reviewer-tacit
 - id: orchestration_orch_app_routing
   name: Orchestration App Routing
   status: locked

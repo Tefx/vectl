@@ -67501,13 +67501,16 @@ phases:
     status: pending
     description: 'Gate review: verify the foundation lock, runner backend, runtime
       lifecycle, and wiring now close the first two orchestration-plane gaps with
-      direct proof. Reject indirect integration evidence, any path that completes
-      before reconcile merged|noop, unsurfaced runtime/backend failures, spec drift
-      on resolver/facade boundaries, or scope creep into later resolver/merge/control
+      direct proof, including the canonical-path blocker remediation for R6/R12/R20/R24/R25/R26/R27/R30.
+      Reject indirect integration evidence, side-branch-only fixes, any path that
+      completes before reconcile merged|noop, unsurfaced runtime/backend failures,
+      spec drift on resolver/facade boundaries, or scope creep into later resolver/merge/control
       work.'
     verification: 'phase-check for the scoped orchestration increment: all runtime_wiring
-      steps completed with independent integration and spec evidence; reconcile-before-complete
-      is directly proven; user/operator surfacing exists for unresolved runtime problems.'
+      steps completed with independent integration and spec evidence; canonical-path
+      requirement proof exists for R6/R12/R20/R24/R25/R26/R27/R30; reconcile-before-complete
+      is directly proven; user/operator surfacing exists for unresolved runtime problems;
+      main-path and highest-risk failure-path evidence are both present.'
     evidence_template: "## refs Read Confirmation (MANDATORY)\n\nFor each ref in this\
       \ step:\n- <filename> — key passage or \"NOT READ: <reason>\"\n\nIf no refs\
       \ were provided, state: \"No refs for this step.\"\n\n## Gate Review Report\n\
@@ -67524,6 +67527,7 @@ phases:
     - orchestration_runtime_wiring.integration-proof
     - orchestration_runtime_wiring.spec-conformance
     - orchestration_runtime_wiring.retest-spec-blockers-batch
+    - orchestration_runtime_wiring.retest-canonical-spec-blockers-batch
     agent: gate-reviewer-tacit
   - id: orchestration_runtime_wiring.fix-spec-blockers-batch
     name: Fix spec blocker batch for runtime wiring

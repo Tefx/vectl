@@ -65528,10 +65528,10 @@ phases:
   - id: deep_review.decide-black-box
     name: Black-box verify refreshed advisor contract
     status: pending
-    description: Using only the RFC and public tool/function contract, construct minimal
-      advisor_state/running_tasks/completed_results fixtures; verify refreshed output
-      fields; verify removed fields are not required; verify standalone deterministic
-      advisor behavior is understandable without internal code.
+    description: Using only the RFC and public contracts, construct minimal advisor_state/running_tasks/completed_results
+      fixtures; verify refreshed output fields, verify removed fields are not required,
+      and verify standalone deterministic advisor behavior is understandable without
+      reading implementation code.
     verification: 'phase-check protecting final gate: black-box contract use is coherent
       and matches spec.'
     evidence_template: '## Verification Report
@@ -65550,7 +65550,7 @@ phases:
       - Actual output:
 
       - Spec mismatches: none | <detail>'
-    agent: blind-tester
+    agent: blind-tester-tacit
   - id: deep_review.gate
     name: Final deep review gate
     status: pending

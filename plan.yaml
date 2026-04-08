@@ -66164,7 +66164,7 @@ phases:
     agent: gate-reviewer-tacit
 - id: orchestration_runtime_lifecycle
   name: Orchestration Runtime Worktree Lifecycle
-  status: pending
+  status: in_progress
   gate: Runtime owns worktree prepare/execute/reconcile/cleanup lifecycle mechanically,
     preserves hard rules, and surfaces unresolved runtime failures without silently
     completing work.
@@ -66173,7 +66173,7 @@ phases:
   steps:
   - id: orchestration_runtime_lifecycle.implement-worktree-lifecycle
     name: Implement runtime worktree prepare/execute/reconcile/cleanup lifecycle
-    status: pending
+    status: claimed
     description: 'Complete runtime worktree lifecycle logic in src/vectl/orchestration/runtime.py
       and adjacent helpers under the locked contract. Implement prepare -> execute
       -> reconcile-status capture -> cleanup sequencing for worktree-backed execution
@@ -66199,6 +66199,8 @@ phases:
       \ runtime tracking:\n- Deviation record (required if contract artifact needed\
       \ correction):\n"
     agent: python-senior-tacit
+    claimed_by: python-senior-tacit
+    claimed_at: '2026-04-08T15:06:05.777981+00:00'
   - id: orchestration_runtime_lifecycle.retest-lifecycle-green
     name: Retest runtime lifecycle against worktree and reconcile hard rules
     status: pending

@@ -66334,49 +66334,18 @@ phases:
     name: Implement dispatch coordinator policy, role registry, prompt registry, and
       canonical contract sync
     status: pending
-    description: 'step_type: implementation
-
-
-      Fill in stub bodies and policy helpers for the upper-layer dispatch surface
-      per the locked contract.
-
-
-      Scope:
-
-      - dispatch coordinator construction of DispatchSpec
-
-      - configuration-backed RoleProfileRegistry lookup and unknown-role failure
-
-      - centralized PromptRegistry rendering by role family
-
-      - execution_context routing by RoleProfile.execution_context, including main_worktree
-      reviewer/planner roles
-
-      - structured review-result normalization entrypoints needed by later routing
-
-
-      Touch only upper-layer dispatch/policy surfaces such as src/vectl/orchestration/contracts.py,
-      src/vectl/orchestration/config.py, src/vectl/orchestration/resolver_gateway.py,
-      src/vectl/orch_app.py, and new focused helpers under src/vectl/orchestration/.
-
-
-      Do not duplicate authority semantics in runtime or roster.
-
-      Do not route planner as ordinary fallback instead of resolver remediation subagent.
-
-      Stub-only completion is not acceptable.'
-    verification: '- phase-check: dispatch coordinator builds DispatchSpec from authoritative
-      step/resolution inputs and role profiles
-
-      - phase-check: prompt rendering is centralized and role-family specific
-
-      - phase-check: unknown role lookup fails explicitly; no silent downgrade of
-      specialized roles occurs
-
-      - phase-check: main_worktree execution context follows RoleProfile, not resolver
-      hardcoding
-
-      - protects downstream gates: orchestration_resolver_coordination.gate and orchestration_orch_app_routing.gate'
+    description: 'Implement the upper-layer dispatch surface under the locked contract:
+      DispatchSpec construction, configuration-backed RoleProfileRegistry lookup,
+      centralized PromptRegistry rendering, execution_context routing by RoleProfile,
+      and structured review-result normalization entrypoints needed downstream. Touch
+      only upper-layer dispatch/policy surfaces. Do not duplicate authority semantics
+      in runtime or roster, and do not route planner as ordinary fallback instead
+      of resolver remediation subagent.'
+    verification: 'phase-check: DispatchSpec builds from authoritative inputs and
+      role profiles; prompt rendering is centralized and role-family specific; unknown
+      role lookup fails explicitly; main_worktree execution follows RoleProfile rather
+      than resolver hardcoding; protects resolver_coordination and orch_app_routing
+      gates.'
     refs:
     - docs/ORCHESTRATION-PLANE-DISPATCH-AND-PROMPT-POLICY.md
     - docs/ORCHESTRATION-PLANE-INTERFACES.md
@@ -66387,7 +66356,7 @@ phases:
     - src/vectl/orchestration/resolver_gateway.py
     depends_on:
     - orchestration_dispatch_policy.define-expected-red-tests-for-dispatch-policy-and-canonical-sync
-    agent: python-senior
+    agent: python-senior-tacit
   - id: orchestration_dispatch_policy.retest-dispatch-policy-and-canonical-contract-sync-green
     name: Retest dispatch policy and canonical contract sync green
     status: pending

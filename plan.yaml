@@ -65406,6 +65406,56 @@ phases:
     - decide_refresh_tests.core-state-red
     - decide_refresh_tests.mcp-red
     agent: python-executor
+  - id: decide_refresh_tests.retest-refreshed-red-seams
+    name: Retest refreshed red-test seams for core/state and MCP
+    status: pending
+    description: 'As an INDEPENDENT TESTER (integration-verifier-tacit), verify that
+      the refreshed red-test seams are now visible from a fresh perspective.
+
+
+      YOUR GOAL IS TO FIND PROBLEMS, not to confirm it works.
+
+
+      Retest scope:
+
+      - core/state red tests encode the refreshed advisor_state contract correctly
+
+      - MCP red tests encode the refreshed top-level output contract correctly
+
+      - stale continuation/halt_reason/session assertions are absent from acceptance
+
+      - a stale-contract assertion or fixture would fail if reintroduced
+
+
+      This retest validates test-definition quality, not product implementation.'
+    verification: 'phase-check protecting decide_refresh_impl: refreshed contract
+      seams are independently visible across core/state and MCP tests; stale continuation/halt_reason/session
+      acceptance is gone; evidence includes one main-path proof and one failure-path
+      proof showing stale assertions are rejected.'
+    evidence_template: '## refs Read Confirmation (MANDATORY)
+
+      For each ref in this step:
+
+      - <filename> — key passage or "NOT READ: <reason>"
+
+
+      If no refs were provided, state: "No refs for this step."
+
+
+      ## Retest Report
+
+      - Commands/tests executed:
+
+      - Main-path proof:
+
+      - Failure-path proof (stale assertion/fixture rejected):
+
+      - Refreshed fields observed:
+
+      - Remaining ambiguities:'
+    depends_on:
+    - decide_refresh_tests.fix-refreshed-red-seams
+    agent: integration-verifier-tacit
 - id: decide_refresh_impl
   name: vectl_decide Contract Refresh — Implementation
   status: in_progress

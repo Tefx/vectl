@@ -67178,7 +67178,7 @@ phases:
     agent: gate-reviewer-tacit
   - id: orchestration_runtime_wiring.fix-spec-blockers-batch
     name: Fix spec blocker batch for runtime wiring
-    status: claimed
+    status: done
     description: "Fix ALL blocker-class findings from orchestration_runtime_wiring.spec-conformance.\n\
       \nsymbolic_testing: false\n\n## Blockers to Fix (ALL of these, not just the\
       \ first)\n\n### R6 — runner resume error taxonomy divergence\n- Add/align RunnerResumeError\
@@ -67292,6 +67292,72 @@ phases:
     agent: python-senior-tacit
     claimed_by: python-senior-tacit
     claimed_at: '2026-04-08T18:14:21.051800+00:00'
+    done_at: '2026-04-08T18:34:16.076264+00:00'
+    evidence: '## refs Read Confirmation (MANDATORY)
+
+      - ORCHESTRATION-PLANE-RUNNER-BACKEND.md, ORCHESTRATION-PLANE-RUNTIME-WORKTREE-LIFECYCLE.md,
+      ORCHESTRATION-PLANE-ISOLATION-SEMANTICS.md.
+
+      - runtime/runners/orch_app/tests read and updated.
+
+
+      ## Blocker Closure Report
+
+      - R6: RunnerResumeError taxonomy/fields aligned; resume error paths tested.
+
+      - R12: Runtime start supports resume substrate path when mode requests reuse.
+
+      - R20: Real reconcile execution added (not state-only recording).
+
+      - R24: Reconcile serialization lock implemented with conflict failure path.
+
+      - R25: Protected-path filtering/restoration for plan.yaml implemented.
+
+      - R26: Worktree integrity preflight implemented.
+
+      - R27: Integration-context preflight implemented.
+
+      - R30: Authoritative step isolation consumed by orch_app into runtime request;
+      runtime parses authoritative isolation mode.
+
+
+      ## Sibling Search Evidence
+
+      - rg-based sibling searches across runtime/runners/orch_app/tests for each blocker
+      family and coverage paths.
+
+
+      ## Main-Path Proof
+
+      - uv run pytest -q tests/orchestration/unit/test_runtime_lifecycle.py tests/orchestration/unit/test_orch_app.py
+      -> 49 passed
+
+      - uv run ruff check src/vectl/orchestration/runtime.py src/vectl/orchestration/runners.py
+      src/vectl/orch_app.py tests/orchestration/unit/test_runtime_lifecycle.py tests/orchestration/unit/test_orch_app.py
+      -> all checks passed
+
+      - uv run mypy src/vectl/orchestration/runtime.py src/vectl/orchestration/runners.py
+      src/vectl/orch_app.py tests/orchestration/unit/test_runtime_lifecycle.py tests/orchestration/unit/test_orch_app.py
+      -> success
+
+
+      ## Failure-Path Proof
+
+      - Dedicated tests for resume taxonomy failure, reconcile lock conflict, worktree
+      integrity preflight failure, integration-context preflight failure, and protected-path
+      enforcement pass.
+
+
+      ## Root Cause Closure
+
+      - Implemented authoritative runtime/backend reconcile, locking, preflight, protected-path,
+      taxonomy, substrate-reuse, and isolation semantics to close spec conformance
+      blockers.
+
+
+      ## Artifact
+
+      - Commit: 9f76778f60ca45f7cd99feea4273be4a7daf3288'
   - id: orchestration_runtime_wiring.retest-spec-blockers-batch
     name: Retest spec blocker batch for runtime wiring
     status: pending

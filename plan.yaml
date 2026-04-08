@@ -65407,7 +65407,7 @@ phases:
       tests/test_decide_state_isolation.py -> 35 passed'
   - id: decide_refresh_impl.core
     name: Implement refreshed decide core logic
-    status: pending
+    status: claimed
     description: Complete src/vectl/decide.py under the refreshed contract. Emit status/reason_code/message
       instead of continuation/halt_reason, use reuse_token/reuse_runner instead of
       overloading Action.task_id, and preserve deterministic standalone advisor behavior,
@@ -65436,6 +65436,8 @@ phases:
     depends_on:
     - decide_refresh_impl.models-state
     agent: python-senior-tacit
+    claimed_by: python-senior-tacit
+    claimed_at: '2026-04-08T17:33:11.487608+00:00'
   - id: decide_refresh_impl.mcp-surface
     name: Implement refreshed MCP surface
     status: pending

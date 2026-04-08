@@ -65303,21 +65303,17 @@ phases:
   - id: decide_refresh_impl.verify
     name: Verify refreshed decide implementation
     status: pending
-    description: 'As an INDEPENDENT TESTER, validate the refreshed vectl_decide implementation
-      end-to-end.
-
-
-      step_type: test
+    description: 'step_type: test
 
       step_intent: retest_green
 
       expected_result: green
 
 
-      Run the full decide-related verification boundary: tests/test_decide.py, tests/test_decide_state_isolation.py,
-      and relevant vectl_decide MCP tests in tests/test_mcp.py. Verify advisor_state
-      roundtrip, runner provenance, structured top-level status, and standalone deterministic
-      advisor behavior.'
+      As an independent tester, validate refreshed vectl_decide behavior end-to-end
+      across core, state, and MCP surfaces. Prove advisor_state roundtrip, runner
+      provenance, structured top-level status output, and standalone deterministic
+      advisor behavior with actual test output, not summaries.'
     verification: 'full-plan-check protecting doc_sync and deep_review: all decide-related
       tests pass; main path and highest-risk failure path are both green; no unresolved
       blocker-class issue remains.'
@@ -65343,7 +65339,7 @@ phases:
     - decide_refresh_impl.models-state
     - decide_refresh_impl.core
     - decide_refresh_impl.mcp-surface
-    agent: integration-verifier
+    agent: integration-verifier-tacit
   - id: decide_refresh_impl.spec-conformance
     name: Verify RFC conformance
     status: pending

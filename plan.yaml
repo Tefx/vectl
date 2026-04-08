@@ -66664,26 +66664,13 @@ phases:
   - id: orchestration_operator_recovery.gate-operator-conflict-recovery-alignment
     name: Gate operator/conflict/recovery alignment
     status: pending
-    description: 'As an INDEPENDENT REVIEWER (gate-reviewer), assess whether durable
-      operator/conflict/recovery behavior is ready for final upper-layer review.
-
-
-      review_depth: THOROUGH
-
-      cross_cutting_focus:
-
-      - durable operator_required state
-
-      - protected-path handling for plan.yaml
-
-      - restart-safe invariants preventing duplicate complete
-
-      - auditable conflict evidence preservation'
-    verification: '- phase-check: all operator/conflict/recovery steps completed with
-      implementation, integration, and spec evidence
-
-      - phase-check: unresolved blocker-class restart or protected-path risks are
-      either proven closed or explicitly blocking'
+    description: 'Gate review: verify durable operator/conflict/recovery behavior
+      is strong enough for final upper-layer review. Block on weak operator_required
+      durability, protected-path handling gaps, restart-safety regressions, or missing
+      conflict evidence preservation.'
+    verification: 'phase-check: all operator/conflict/recovery steps completed with
+      implementation, integration, and spec evidence; unresolved blocker-class restart
+      or protected-path risks are either proven closed or explicitly blocking.'
     refs:
     - docs/ORCHESTRATION-PLANE-OPERATOR-CONFLICT-RECOVERY.md
     - docs/ORCHESTRATION-PLANE-ORCH-APP-ROUTING.md
@@ -66691,7 +66678,7 @@ phases:
     - orchestration_operator_recovery.implement-operator-notification-conflict-preservation-and-recovery-alignment
     - orchestration_operator_recovery.verify-durable-operator-pause-and-recovery-behavior
     - orchestration_operator_recovery.audit-operator-conflict-recovery-conformance
-    agent: gate-reviewer
+    agent: gate-reviewer-tacit
 - id: orchestration_upper_layer_review
   name: Orchestration Upper-Layer Review
   status: locked

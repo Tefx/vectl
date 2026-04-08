@@ -2,16 +2,14 @@
 
 This module provides the vectl_decide algorithm for:
 - Session reuse decisions
-- Continuation state computation
+- Top-level status/reason_code signaling
 - Deterministic action dispatching
-
-Contract Phase: This module contains only stubs (NotImplementedError).
-Implementation will be provided in decide-impl phase.
 """
 
 from __future__ import annotations
 
 import time
+from typing import Literal
 
 from vectl.core import auto_unlock_phases, get_next_steps
 from vectl.decision_state import DecideState
@@ -35,15 +33,17 @@ from vectl.plan_path import resolve_plan_path
 # Time-to-live for session reuse eligibility (in seconds)
 REUSE_TTL: int = 300
 
+# Escalation threshold for consecutive failures
+ESCALATION_THRESHOLD: int = 3
+
 # Legacy state object retained for compatibility references in tests/tools.
 # Runtime callers should pass explicit state. For state=None we now isolate by
 # returning a fresh ephemeral DecideState per call.
 _legacy_state: DecideState = DecideState()
 
 DECIDE_RUNTIME_CONTEXT_BOUNDARY: str = (
-    "RuntimeContext rollout does not move decide-local ownership into driver handlers; "
-    "decide() remains the mutation boundary for DecideState passed via "
-    "DriverState.decide_state."
+    "RuntimeContext rollout does not move decide-local ownership into handlers; "
+    "decide() remains the mutation boundary for DecideState passed explicitly."
 )
 
 
@@ -53,11 +53,7 @@ DECIDE_RUNTIME_CONTEXT_BOUNDARY: str = (
 
 
 def _resolve_state(state: DecideState | None) -> DecideState:
-    """Resolve decide state with isolated fallback semantics.
-
-    Source: tests/test_decide_state_isolation.py (legacy leakage exposure) and
-    step ``driver-continuity-review.fix-gate-blockers`` should-fix scope.
-    """
+    """Resolve decide state with isolated fallback semantics."""
     if state is not None:
         return state
     return DecideState()
@@ -75,8 +71,8 @@ def should_reuse_session(
         parent_step_id: The parent step ID (for multi-phase handoff).
 
     Returns:
-        Tuple of (should_reuse, session_id_or_None):
-        - (True, session_id) if reuse is recommended
+        Tuple of (should_reuse, reuse_token_or_None):
+        - (True, reuse_token) if reuse is recommended
         - (False, None) if fresh session is required
 
     Notes:
@@ -91,79 +87,99 @@ def should_reuse_session(
     if parent_step_id is None:
         return (False, None)
 
-    task_id = decision_state.reusable_session(
+    reuse_token = decision_state.reusable_session(
         parent_step_id=parent_step_id,
         now=time.time(),
         reuse_ttl=REUSE_TTL,
     )
-    if task_id is None:
+    if reuse_token is None:
         return (False, None)
-    return (True, task_id)
+    return (True, reuse_token)
 
 
-def compute_continuation(
+def _compute_status(
     plan: Plan, running_count: int, max_parallelism: int
-) -> tuple[bool, str | None]:
-    """Compute whether the orchestrator should continue dispatching.
+) -> tuple[
+    Literal["dispatch", "wait", "blocked", "done"],
+    Literal[
+        "dispatch_available",
+        "waiting_on_running",
+        "capacity_full",
+        "no_executable_steps",
+        "repeated_failures",
+    ],
+    str,
+]:
+    """Compute top-level status and reason code.
 
-    Args:
-        plan: The current plan state.
-        running_count: Number of currently running tasks.
-        max_parallelism: Maximum allowed parallel dispatches.
+    RFC: docs/RFC-vectl-decide-advisor-refresh.md section 6.3
 
     Returns:
-        Tuple of (should_continue, halt_reason):
-        - (True, None) if orchestration should continue
-        - (False, "NO_EXECUTABLE_STEPS") if no claimable steps
-        - (False, "WAITING_ON_RUNNING_SUBAGENTS") if waiting for running tasks
-        - (False, "MAX_PARALLELISM_REACHED") if at capacity
+        Tuple of (status, reason_code, message):
+        - (dispatch, dispatch_available) if work available and capacity exists
+        - (wait, waiting_on_running) if running tasks exist and no dispatch
+        - (wait, capacity_full) if at parallelism limit
+        - (done, no_executable_steps) if no claimable steps and no running
+        - (blocked, repeated_failures) if repeated failures require attention
     """
     claimable = get_next_steps(plan)
     capacity = max_parallelism - running_count
 
     # Can dispatch new work
     if capacity > 0 and claimable:
-        return (True, None)
+        return ("dispatch", "dispatch_available", "Executable work available and capacity open.")
 
     # At capacity
     if capacity <= 0:
-        return (False, "MAX_PARALLELISM_REACHED")
+        return ("wait", "capacity_full", "Parallelism limit reached, waiting for running tasks.")
 
     # capacity > 0, claimable is empty
-    # Have capacity but nothing to claim
     if running_count > 0:
-        return (False, "WAITING_ON_RUNNING_SUBAGENTS")
+        return ("wait", "waiting_on_running", "Work in flight, waiting for completion.")
     else:
-        return (False, "NO_EXECUTABLE_STEPS")
+        return ("done", "no_executable_steps", "No executable steps available.")
 
 
 def decide(
     running_tasks: list[RunningTask],
     completed_results: list[CompletedResult] | None,
     max_parallelism: int,
-    state: DecideState | None = None,
+    advisor_state: dict[str, object] | None = None,
 ) -> DecideOutput:
     """Main decision function for vectl orchestration.
 
     Analyzes running tasks and completed results to determine
     what actions the orchestrator should take next.
 
+    RFC: docs/RFC-vectl-decide-advisor-refresh.md
+
     Args:
         running_tasks: Currently running tasks (in-flight work).
         completed_results: Tasks that have completed since last decision.
-            Runtime authority note:
-            ``driver-debt-completion-authority.contract`` pins that driver main
-            loop completion/failure ownership converges on
-            ``wait_for_any() -> reconcile()``. Driver runtime should not feed raw
-            runner completions here for completion-action generation.
         max_parallelism: Maximum allowed parallel dispatches.
-        state: Mutable decide-side memory container. Driver runtime must pass
-            ``DriverState.decide_state`` explicitly.
+        advisor_state: Caller-owned advisor state. If None, a fresh ephemeral
+            state is used per call (isolation mode). The caller-owned state
+            contract requires callers to pass their persisted state here and
+            replace it with next_state from the output.
 
     Returns:
-        DecideOutput with actions to execute and continuation state.
+        DecideOutput with:
+        - status / reason_code / message: top-level control summary
+        - actions: list of action payloads
+        - next_state: full replacement for caller-owned advisor state
+        - policy: explicit policy metadata (reuse_ttl_s, escalation_threshold)
+        - decision_log: optional debug/explanatory entries
     """
-    decision_state = _resolve_state(state)
+    # Resolve caller-owned state into internal DecideState
+    if advisor_state is not None:
+        # Reconstruct from caller-owned format
+        decision_state = DecideState(
+            completion_times=advisor_state.get("completion_times", {}),  # type: ignore[arg-type]
+            session_registry=advisor_state.get("session_registry", {}),  # type: ignore[arg-type]
+            failure_counts=advisor_state.get("failure_counts", {}),  # type: ignore[arg-type]
+        )
+    else:
+        decision_state = DecideState()
 
     # Load plan
     plan_path = resolve_plan_path()
@@ -290,20 +306,21 @@ def decide(
             parent_step_id = step.depends_on[0]
 
         # Check session reuse
-        should_reuse, task_id = should_reuse_session(
+        should_reuse, reuse_token = should_reuse_session(
             step.id,
             parent_step_id,
             state=decision_state,
         )
 
-        if should_reuse and task_id:
+        if should_reuse and reuse_token:
             actions.append(
                 Action(
                     action="claim_and_dispatch",
                     step_id=step.id,
                     agent=step.agent,
-                    session="reuse",
-                    task_id=task_id,
+                    task_id=None,
+                    reuse_token=reuse_token,
+                    reuse_runner="task",
                     step_description=step.description,
                     step_verification=step.verification,
                     step_refs=step.refs if step.refs else None,
@@ -313,7 +330,7 @@ def decide(
                 Decision(
                     decision="SESSION_REUSE",
                     step_id=step.id,
-                    why=f"Reusing session {task_id} from parent {parent_step_id}",
+                    why=f"Reusing prior runner token {reuse_token} from parent {parent_step_id}",
                 )
             )
         else:
@@ -322,7 +339,9 @@ def decide(
                     action="claim_and_dispatch",
                     step_id=step.id,
                     agent=step.agent,
-                    session="fresh",
+                    task_id=None,
+                    reuse_token=None,
+                    reuse_runner=None,
                     step_description=step.description,
                     step_verification=step.verification,
                     step_refs=step.refs if step.refs else None,
@@ -347,12 +366,43 @@ def decide(
             )
         )
 
-    # Compute continuation
-    continuation, halt_reason = compute_continuation(plan, running_count, max_parallelism)
+    # Compute top-level status and reason code
+    # Check for repeated failures that need attention
+    escalation_pending = any(
+        count >= ESCALATION_THRESHOLD for count in decision_state.failure_counts.values()
+    )
+    if escalation_pending:
+        status: Literal["dispatch", "wait", "blocked", "done"] = "blocked"
+        reason_code: Literal[
+            "dispatch_available",
+            "waiting_on_running",
+            "capacity_full",
+            "no_executable_steps",
+            "repeated_failures",
+        ] = "repeated_failures"
+        message = "Repeated failures require attention/escalation handling."
+    else:
+        status, reason_code, message = _compute_status(plan, running_count, max_parallelism)
+
+    # Build next_state as full replacement for caller-owned state
+    next_state: dict[str, object] = {
+        "completion_times": decision_state.completion_times,
+        "session_registry": decision_state.session_registry,
+        "failure_counts": decision_state.failure_counts,
+    }
+
+    # Build explicit policy metadata
+    policy: dict[str, object] = {
+        "reuse_ttl_s": REUSE_TTL,
+        "escalation_threshold": ESCALATION_THRESHOLD,
+    }
 
     return DecideOutput(
+        status=status,
+        reason_code=reason_code,
+        message=message,
         actions=actions,
-        continuation=continuation,
-        halt_reason=halt_reason,
+        next_state=next_state,
+        policy=policy,
         decision_log=decision_log,
     )

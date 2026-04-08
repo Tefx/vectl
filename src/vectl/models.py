@@ -680,34 +680,52 @@ class InitResult(BaseModel):
 class RunningTask(BaseModel):
     """A running task tracked by the orchestrator.
 
-    RFC: docs/RFC-decide.md
+    RFC: docs/RFC-vectl-decide-advisor-refresh.md
     Used by vectl_decide to track in-flight work for session reuse decisions.
+
+    Attributes:
+        step_id: Step identifier.
+        agent: Agent name.
+        task_id: Orchestrator-visible execution/task identifier (NOT a reuse handle).
+        runner: Runner namespace/source that owns any reuse semantics attached
+            to that task. Required; allowed values at rollout are "claude" and "task".
+        dispatched_at: time.time() when dispatched.
     """
 
     step_id: str
     agent: str
-    task_id: str  # opencode session ID, for reuse tracking
-    dispatched_at: float  # time.time() when dispatched
+    task_id: str
+    runner: str
+    dispatched_at: float
 
 
 class CompletedResult(BaseModel):
     """A completed task result from a sub-agent.
 
-    RFC: docs/RFC-decide.md
+    RFC: docs/RFC-vectl-decide-advisor-refresh.md
     Used by vectl_decide to process completion events.
+
+    Attributes:
+        step_id: Step identifier.
+        task_id: Task/execution identifier associated with the completed result.
+        runner: Runner namespace/source for this result.
+        status: SUCCESS or FAIL.
+        output_summary: Brief text from sub-agent (for evidence).
     """
 
     step_id: str
-    task_id: str  # opencode session ID
-    status: str  # SUCCESS | FAIL
-    output_summary: str  # brief text from sub-agent (for evidence)
+    task_id: str
+    runner: str
+    status: str
+    output_summary: str
 
 
 class Decision(BaseModel):
     """A single decision made by vectl_decide.
 
-    RFC: docs/RFC-decide.md
-    Logged for debugging and audit trail.
+    RFC: docs/RFC-vectl-decide-advisor-refresh.md
+    Logged for debugging and audit trail. Callers should not have to parse
+    prose to act correctly; machine-relevant signals are in structured fields.
     """
 
     decision: str  # SESSION_FRESH | SESSION_REUSE | CLAIM | COMPLETE | WAIT
@@ -718,16 +736,30 @@ class Decision(BaseModel):
 class Action(BaseModel):
     """A single action to be executed by the orchestrator.
 
-    RFC: docs/RFC-decide.md
-    Deterministic action output from vectl_decide.
+    RFC: docs/RFC-vectl-decide-advisor-refresh.md
+    Deterministic action output from vectl_decide. Action payloads should behave
+    like a discriminated union.
+
+    For claim_and_dispatch:
+        - task_id is the execution identity only (NOT a reuse handle)
+        - reuse_token: opaque runner-specific reuse token from parent context
+        - reuse_runner: runner namespace for the reuse token
+
+    For complete:
+        - evidence: completion evidence
+
+    For escalate/attention:
+        - reason: failure context
+        - context: recommendation
     """
 
     action: Literal["claim_and_dispatch", "complete", "wait", "escalate"]
     # For claim_and_dispatch:
     step_id: str | None = None
     agent: str | None = None
-    session: Literal["fresh", "reuse"] | None = None
-    task_id: str | None = None  # Only if session=reuse
+    task_id: str | None = None  # Execution identity only; NOT a reuse handle
+    reuse_token: str | None = None  # Opaque runner-specific reuse token
+    reuse_runner: str | None = None  # Runner namespace for reuse_token
     step_description: str | None = None
     step_verification: str | None = None
     step_refs: list[str] | None = None
@@ -741,11 +773,35 @@ class Action(BaseModel):
 class DecideOutput(BaseModel):
     """Structured output from vectl_decide.
 
-    RFC: docs/RFC-decide.md
-    Contains all actions the orchestrator must execute and continuation state.
+    RFC: docs/RFC-vectl-decide-advisor-refresh.md
+    Contains deterministic orchestration advisor output: top-level status summary,
+    actions to execute, next caller-owned state, and policy metadata.
+
+    Attributes:
+        status: Primary top-level control summary. One of: dispatch | wait | blocked | done.
+        reason_code: Machine-relevant reason code. One of: dispatch_available |
+            waiting_on_running | capacity_full | no_executable_steps | repeated_failures.
+            Complete set; unknown values should be treated as contract errors.
+        message: Optional human-readable summary string.
+        actions: List of action payloads (discriminated union).
+        next_state: Full replacement object for caller-owned advisor state.
+            Callers should replace their prior advisor state with this value.
+        policy: Explicit policy metadata with reuse_ttl_s and escalation_threshold.
+        decision_log: Optional debug/explanatory array. Callers should not need
+            to parse prose to act correctly; machine-relevant signals are in
+            structured fields above.
     """
 
-    actions: list[Action]
-    continuation: bool  # True = orchestrator must continue looping
-    halt_reason: str | None = None  # If continuation=False, why
-    decision_log: list[Decision]
+    status: Literal["dispatch", "wait", "blocked", "done"]
+    reason_code: Literal[
+        "dispatch_available",
+        "waiting_on_running",
+        "capacity_full",
+        "no_executable_steps",
+        "repeated_failures",
+    ]
+    message: str | None = None
+    actions: list[Action] = Field(default_factory=list)
+    next_state: dict[str, object] = Field(default_factory=dict)
+    policy: dict[str, object] = Field(default_factory=dict)
+    decision_log: list[Decision] = Field(default_factory=list)

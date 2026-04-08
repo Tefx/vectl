@@ -66281,7 +66281,7 @@ phases:
       tests/orchestration/unit/test_runtime.py -v -> 17 passed'
   - id: orchestration_runtime_lifecycle.retest-lifecycle-green
     name: Retest runtime lifecycle against worktree and reconcile hard rules
-    status: pending
+    status: claimed
     description: 'step_type: test
 
       step_intent: retest_green
@@ -66357,6 +66357,8 @@ phases:
     depends_on:
     - orchestration_runtime_lifecycle.implement-worktree-lifecycle
     agent: integration-verifier-tacit
+    claimed_by: integration-verifier-tacit
+    claimed_at: '2026-04-08T15:36:54.835448+00:00'
   - id: orchestration_runtime_lifecycle.gate
     name: Gate runtime lifecycle
     status: pending

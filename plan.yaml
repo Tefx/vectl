@@ -66335,7 +66335,7 @@ phases:
       tests/orchestration/unit/test_runtime.py -v -> 17 passed'
   - id: orchestration_runtime_lifecycle.retest-lifecycle-green
     name: Retest runtime lifecycle against worktree and reconcile hard rules
-    status: claimed
+    status: done
     description: 'step_type: test
 
       step_intent: retest_green
@@ -66413,6 +66413,61 @@ phases:
     agent: integration-verifier-tacit
     claimed_by: integration-verifier-tacit
     claimed_at: '2026-04-08T15:36:54.835448+00:00'
+    done_at: '2026-04-08T15:42:15.151947+00:00'
+    evidence: '## refs Read Confirmation (MANDATORY)
+
+      - tools/vectl/README.md — NOT READ with reason: verification-only focus; runtime
+      contract surfaces were directly validated.
+
+      - runtime.py lifecycle guard/message surfaces reviewed.
+
+
+      ## Verification Report
+
+      Tester: integration-verifier
+
+      Scope: runtime worktree lifecycle
+
+      Independence Level: L2
+
+
+      ### Test Execution
+
+      - Command: uv run python -m pytest tests/orchestration/unit/test_runtime_lifecycle.py
+      tests/orchestration/unit/test_runtime.py -v --tb=short
+
+      - Output: 17 passed in 1.85s
+
+
+      ### Behavioral Proof Register
+
+      - prepare/start/reconcile tracking: PASS
+
+      - can_complete merged|noop gate: PASS
+
+      - block without reconcile/conflict: PASS
+
+      - cleanup blocking active/unresolved: PASS
+
+      - unresolved operator message surfaced: PASS
+
+
+      ### Issues Found
+
+      - none
+
+
+      Test-step semantic:
+
+      - step_intent: retest_green
+
+      - expected_result: green
+
+      - observed_result: green
+
+      - failure_alignment: N/A
+
+      - product files modified: none'
   - id: orchestration_runtime_lifecycle.gate
     name: Gate runtime lifecycle
     status: pending

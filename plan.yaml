@@ -65805,43 +65805,15 @@ phases:
       expected_result: green
 
 
-      As an INDEPENDENT TESTER (integration-verifier), validate the new runner backend
-      from a fresh perspective.
-
-
-      YOUR GOAL IS TO FIND PROBLEMS, not to confirm it works.
-
-
-      Test for:
-
-      - happy path: registry lookup -> launch -> poll -> cleanup mechanical flow
-
-      - edge cases: unsupported runner, launch failure, poll status transitions, cleanup
-      after failure
-
-      - error scenarios: typed backend error surfaces remain mechanical and do not
-      absorb runtime/reconcile policy
-
-      - boundary check: runtime lifecycle is still not fully wired in this phase
-
-
-      Independence Level: L1
-
-
-      Actual output must include concrete command/test output, not just "tests pass".
-
-      '
-    verification: 'Scope: phase-check protecting orchestration_runner_backend.gate
-      and orchestration_runtime_wiring.gate.
-
-      - Green targeted tests prove launch/poll/cleanup mechanical behavior.
-
-      - Backend errors remain mechanical and typed.
-
-      - Evidence shows runtime lifecycle/wiring is intentionally still incomplete
-      here rather than silently expanded.
-
-      - Any issues found are recorded as blockers/should_fix, not hidden in summaries.'
+      As an independent tester, validate the new runner backend from a fresh perspective.
+      Exercise registry lookup -> launch -> poll -> cleanup, plus unsupported runner,
+      launch failure, poll transitions, and cleanup-after-failure. Prove the backend
+      stays mechanical and typed, and that runtime lifecycle wiring remains intentionally
+      incomplete in this phase.'
+    verification: 'phase-check protecting orchestration_runner_backend.gate and orchestration_runtime_wiring.gate:
+      green targeted tests prove launch/poll/cleanup behavior; backend errors remain
+      mechanical and typed; evidence shows runtime lifecycle is not silently absorbed
+      here.'
     evidence_template: '## refs Read Confirmation (MANDATORY)
 
 
@@ -65901,7 +65873,7 @@ phases:
       '
     depends_on:
     - orchestration_runner_backend.build-runner-backend
-    agent: integration-verifier
+    agent: integration-verifier-tacit
   - id: orchestration_runner_backend.gate
     name: Gate runner backend
     status: pending

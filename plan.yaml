@@ -65972,7 +65972,7 @@ phases:
       - OPEN. behavioral_proof_register provided and gate_open_allowed: true.'
 - id: orchestration_runner_backend
   name: Orchestration Runner Backend
-  status: pending
+  status: in_progress
   gate: Shared runner backend exists as a mechanical execution substrate with registry,
     launch/poll/cleanup contract, and targeted verification; no resolver/control policy
     leaks.
@@ -65981,7 +65981,7 @@ phases:
   steps:
   - id: orchestration_runner_backend.build-runner-backend
     name: Build the shared mechanical runner backend
-    status: pending
+    status: claimed
     description: "step_type: implementation\nwork_type: new_capability\nupstream_artifacts:\n\
       \  - path: src/vectl/orchestration/contracts.py\n    from_step: orchestration_foundation_lock.pin-boundaries-and-contracts\n\
       \    tier: contract\n  - path: src/vectl/orchestration/interfaces.py\n    from_step:\
@@ -66030,6 +66030,8 @@ phases:
       \ surfaces unchanged\n- Deviation record (required if contract artifact needed\
       \ correction):\n"
     agent: python-executor
+    claimed_by: python-executor
+    claimed_at: '2026-04-08T15:05:57.120569+00:00'
   - id: orchestration_runner_backend.retest-backend-green
     name: Retest runner backend against locked backend contract
     status: pending

@@ -68282,7 +68282,7 @@ phases:
       - Maintained contract-only purity (no runtime business logic)'
   - id: orchestration_dispatch_policy.define-expected-red-tests-for-dispatch-policy-and-canonical-sync
     name: Define expected-red tests for dispatch policy and canonical sync
-    status: pending
+    status: claimed
     description: 'step_type: test
 
       step_intent: test_define_red
@@ -68320,6 +68320,8 @@ phases:
     depends_on:
     - orchestration_dispatch_policy.lock-dispatch-role-profile-prompt-and-review-result-contracts
     agent: python-executor
+    claimed_by: python-executor
+    claimed_at: '2026-04-08T23:35:17.789629+00:00'
   - id: orchestration_dispatch_policy.implement-dispatch-coordinator-policy-role-registry-prompt-registry-and-canonical-contract-sync
     name: Implement dispatch coordinator policy, role registry, prompt registry, and
       canonical contract sync

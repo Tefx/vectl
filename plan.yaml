@@ -67217,3 +67217,9 @@ phases:
     - orchestration_upper_layer_review.run-full-plan-upper-layer-spec-conformance-audit
     - orchestration_upper_layer_review.run-black-box-upper-layer-orchestration-verification
     agent: gate-reviewer-tacit
+- id: parallel_gate_remediation
+  name: Parallel Gate Remediation
+  status: pending
+  depends_on:
+  - decide_refresh_contracts
+  - orchestration_foundation_lock

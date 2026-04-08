@@ -67397,7 +67397,7 @@ phases:
       \ src/vectl/orchestration/runners.py, src/vectl/orchestration/runtime.py, tests/test_mcp.py"
   - id: parallel_gate_remediation.retest-decide-refresh-tests
     name: Retest decide refresh MCP/core contract evidence
-    status: claimed
+    status: pending
     description: 'step_type: test
 
       step_intent: retest_green
@@ -67458,8 +67458,6 @@ phases:
     depends_on:
     - parallel_gate_remediation.fix-blockers
     agent: integration-verifier-tacit
-    claimed_by: integration-verifier-tacit
-    claimed_at: '2026-04-08T16:28:14.153541+00:00'
   - id: parallel_gate_remediation.retest-runner-backend
     name: Retest runner backend contract/module delivery
     status: pending

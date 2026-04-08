@@ -68364,7 +68364,7 @@ phases:
   - id: orchestration_dispatch_policy.implement-dispatch-coordinator-policy-role-registry-prompt-registry-and-canonical-contract-sync
     name: Implement dispatch coordinator policy, role registry, prompt registry, and
       canonical contract sync
-    status: pending
+    status: claimed
     description: 'Implement the upper-layer dispatch surface under the locked contract:
       DispatchSpec construction, configuration-backed RoleProfileRegistry lookup,
       centralized PromptRegistry rendering, execution_context routing by RoleProfile,
@@ -68388,6 +68388,8 @@ phases:
     depends_on:
     - orchestration_dispatch_policy.define-expected-red-tests-for-dispatch-policy-and-canonical-sync
     agent: python-senior-tacit
+    claimed_by: python-senior-tacit
+    claimed_at: '2026-04-08T23:48:00.182800+00:00'
   - id: orchestration_dispatch_policy.retest-dispatch-policy-and-canonical-contract-sync-green
     name: Retest dispatch policy and canonical contract sync green
     status: pending

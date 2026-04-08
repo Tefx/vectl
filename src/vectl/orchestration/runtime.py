@@ -10,7 +10,6 @@ Authority: docs/ORCHESTRATION-PLANE-RUNTIME-WORKTREE-LIFECYCLE.md
 from __future__ import annotations
 
 import asyncio
-import shutil
 import subprocess
 import threading
 import time
@@ -20,7 +19,6 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, Generic, Literal, TypeVar, cast
 
-from vectl.models import IsolationMode
 from vectl.orchestration.contracts import (
     AgentExecutionState,
     ExecutionRequest,
@@ -28,6 +26,13 @@ from vectl.orchestration.contracts import (
     ReconcileResult,
     RuntimeSnapshot,
     WorktreeBinding,
+)
+from vectl.orchestration.runner_registry import RunnerRegistry, build_default_runner_registry
+from vectl.orchestration.runners import (
+    RunnerHandle,
+    RunnerLaunchError,
+    RunnerNotFoundError,
+    RunnerPollError,
 )
 
 if TYPE_CHECKING:
@@ -62,20 +67,88 @@ Result = Success[_T] | Failure[_E]
 async def worktree_create(
     step_id: str, base_dir: Path
 ) -> Success[WorktreeBinding] | Failure[WorktreeError]:
-    """Create or ensure a mechanical workspace path for a step."""
+    """Create an isolated execution workspace using standard git worktree.
 
+    Per ORCHESTRATION-PLANE-RUNTIME-WORKTREE-LIFECYCLE.md section 5 Rule 1:
+    Runtime must use standard git worktree flows for isolated execution.
+    It must not substitute ad hoc directory creation for real worktree isolation.
+
+    This function creates a linked worktree with a scratch branch for isolation.
+
+    Args:
+        step_id: Step identifier for this workspace.
+        base_dir: Base directory for workspace naming (workspace_root/step_id).
+
+    Returns:
+        Success with WorktreeBinding if worktree was created.
+        Failure with WorktreeError if creation failed.
+    """
     try:
+        base_dir.mkdir(parents=True, exist_ok=True)
         worktree_path = base_dir / step_id
-        worktree_path.mkdir(parents=True, exist_ok=True)
+        scratch_branch = f"vectl/scratch/{step_id}-{uuid.uuid4().hex[:8]}"
+
+        repo_root_result = subprocess.run(
+            ["git", "rev-parse", "--show-toplevel"],
+            capture_output=True,
+            text=True,
+            cwd=str(base_dir),
+        )
+        if repo_root_result.returncode != 0:
+            detail = (
+                repo_root_result.stderr.strip()
+                or repo_root_result.stdout.strip()
+                or "unknown git error"
+            )
+            raise WorktreeError(f"Failed to resolve git repository root for '{step_id}': {detail}")
+        repo_root = repo_root_result.stdout.strip()
+
+        result = subprocess.run(
+            ["git", "worktree", "add", "--detach", str(worktree_path)],
+            capture_output=True,
+            text=True,
+            cwd=repo_root,
+        )
+
+        if result.returncode != 0:
+            detail = result.stderr.strip() or result.stdout.strip() or "unknown git error"
+            raise WorktreeError(f"git worktree add failed for '{step_id}': {detail}")
+
+        # Success: git worktree created properly
         workspace_id = f"ws-{step_id}-{uuid.uuid4().hex[:8]}"
+
+        # Get the current HEAD at prepare time for reconcile tracking
+        head_result = subprocess.run(
+            ["git", "rev-parse", "HEAD"],
+            capture_output=True,
+            text=True,
+            cwd=str(worktree_path),
+        )
+        target_head_at_prepare = head_result.stdout.strip() if head_result.returncode == 0 else ""
+
+        # Determine target ref (main branch or current branch)
+        ref_result = subprocess.run(
+            ["git", "rev-parse", "--abbrev-ref", "HEAD"],
+            capture_output=True,
+            text=True,
+            cwd=str(worktree_path),
+        )
+        target_ref = ref_result.stdout.strip() if ref_result.returncode == 0 else "HEAD"
+
         binding = WorktreeBinding(
             workspace_id=workspace_id,
             step_id=step_id,
             worktree_path=str(worktree_path),
+            scratch_branch=scratch_branch,
+            target_ref=target_ref,
+            target_head_at_prepare=target_head_at_prepare,
         )
         return Success(binding)
-    except OSError as exc:
-        return Failure(WorktreeError(f"Failed to create workspace for '{step_id}': {exc}"))
+
+    except WorktreeError as exc:
+        return Failure(exc)
+    except Exception as exc:
+        return Failure(WorktreeError(f"Failed to create worktree for '{step_id}': {exc}"))
 
 
 async def worktree_cleanup(
@@ -83,17 +156,60 @@ async def worktree_cleanup(
     worktree_path: Path | str,
     force: bool = True,
 ) -> Success[None] | Failure[WorktreeError]:
-    """Remove a mechanical workspace path for a step."""
+    """Remove a git worktree workspace for a step.
 
+    Per ORCHESTRATION-PLANE-RUNTIME-WORKTREE-LIFECYCLE.md:
+    Cleanup removes the linked worktree using 'git worktree remove'.
+
+    Args:
+        step_id: Step identifier (retained for surface compatibility).
+        worktree_path: Path to the worktree directory.
+        force: If True, force removal even with uncommitted changes.
+
+    Returns:
+        Success(None) if cleanup succeeded.
+        Failure with WorktreeError if cleanup failed.
+    """
     del step_id  # retained for surface compatibility
-    del force
     try:
         path = Path(worktree_path) if isinstance(worktree_path, str) else worktree_path
+
         if path.exists():
-            shutil.rmtree(path)
+            repo_root_result = subprocess.run(
+                ["git", "rev-parse", "--show-toplevel"],
+                capture_output=True,
+                text=True,
+                cwd=str(path),
+            )
+            if repo_root_result.returncode != 0:
+                detail = (
+                    repo_root_result.stderr.strip()
+                    or repo_root_result.stdout.strip()
+                    or "unknown git error"
+                )
+                raise WorktreeError(f"Failed to resolve git repository root for cleanup: {detail}")
+
+            cmd = ["git", "worktree", "remove"]
+            if force:
+                cmd.append("--force")
+            cmd.append(str(path))
+
+            result = subprocess.run(
+                cmd,
+                capture_output=True,
+                text=True,
+                cwd=repo_root_result.stdout.strip(),
+            )
+
+            if result.returncode != 0:
+                detail = result.stderr.strip() or result.stdout.strip() or "unknown git error"
+                raise WorktreeError(f"git worktree remove failed for '{path}': {detail}")
+
         return Success(None)
-    except OSError as exc:
-        return Failure(WorktreeError(f"Failed to cleanup workspace '{worktree_path}': {exc}"))
+    except WorktreeError as exc:
+        return Failure(exc)
+    except Exception as exc:
+        return Failure(WorktreeError(f"Failed to cleanup worktree '{worktree_path}': {exc}"))
 
 
 _FRESH_WORKSPACE_HINTS: frozenset[str] = frozenset(
@@ -142,22 +258,6 @@ class _WorkspaceState:
 
 
 @dataclass
-class _ExecutionHandle:
-    """Internal tracking for active subprocess executions."""
-
-    execution_id: str
-    process: subprocess.Popen[str] | None = None
-    returncode: int | None = None
-    stdout: str = ""
-    stderr: str = ""
-
-
-# Module-level registry of active execution processes.
-# Maps execution_id -> _ExecutionHandle
-_ACTIVE_PROCESSES: dict[str, _ExecutionHandle] = {}
-
-
-@dataclass
 class Runtime:
     """
     Mechanical execution chores for the orchestration plane.
@@ -195,6 +295,8 @@ class Runtime:
     _pending_reconciles: set[str] = field(default_factory=set)
     _active_reconciles: set[str] = field(default_factory=set)
     _conflicted_reconciles: set[str] = field(default_factory=set)
+    _runner_registry: RunnerRegistry = field(default_factory=build_default_runner_registry)
+    _runner_handles: dict[str, RunnerHandle] = field(default_factory=dict)
 
     def snapshot(self) -> RuntimeSnapshot:
         """
@@ -305,35 +407,19 @@ class Runtime:
         state.execution_id = execution_id
         self._active_executions[execution_id] = workspace
 
-        # Resolve the runner command from the request.
-        runner_cmd = _resolve_runner_command(request.runner)
         worktree_path = Path(state.binding.worktree_path)
-
-        # Build the subprocess arguments.
-        # The runner command is invoked with the worktree path as cwd.
         try:
-            proc = subprocess.Popen(
-                runner_cmd,
-                cwd=str(worktree_path),
-                stdin=subprocess.DEVNULL,
-                stdout=subprocess.PIPE,
-                stderr=subprocess.PIPE,
-                text=True,
-            )
-        except OSError as exc:
-            raise WorktreeError(
-                f"Failed to spawn runner '{request.runner}' for step '{request.step_id}': {exc}"
-            ) from exc
+            runner = self._runner_registry.get(request.runner)
+        except RunnerNotFoundError as exc:
+            raise WorktreeError(str(exc)) from exc
 
-        # Register the running process.
-        handle = _ExecutionHandle(
-            execution_id=execution_id,
-            process=proc,
-            returncode=None,
-            stdout="",
-            stderr="",
-        )
-        _ACTIVE_PROCESSES[execution_id] = handle
+        try:
+            launch_result = runner.launch(request=request, workspace=worktree_path)
+        except RunnerLaunchError as exc:
+            raise WorktreeError(
+                f"Failed to launch runner '{request.runner}' for step '{request.step_id}': {exc}"
+            ) from exc
+        self._runner_handles[execution_id] = launch_result.handle
 
         # Create initial execution state.
         state.execution_state = AgentExecutionState(
@@ -341,7 +427,7 @@ class Runtime:
             step_id=request.step_id,
             workspace_id=workspace,
             runner=request.runner,
-            runner_handle=execution_id,
+            runner_handle=launch_result.handle.run_id,
             session_id=request.session_id,
             status="running",
             started_at=_current_timestamp(),
@@ -383,62 +469,66 @@ class Runtime:
         if state is None or state.execution_state is None:
             return None
 
-        # Look up the running subprocess handle.
-        handle = _ACTIVE_PROCESSES.get(execution_id)
+        handle = self._runner_handles.get(execution_id)
         if handle is None:
-            # No registered subprocess; still running or not started.
-            return None
+            return ExecutionResult(
+                step_id=state.execution_state.step_id,
+                status="transport_error",
+                output_summary=f"Missing runner handle for execution_id: {execution_id}",
+                operator_message=(
+                    "Runtime lost the runner handle during collection; operator/user "
+                    "attention is required before treating this execution as resolved."
+                ),
+            )
 
-        proc = handle.process
-        if proc is None:
-            return None
-
-        # Try non-blocking poll first.
-        returncode = proc.poll()
-
-        if returncode is None:
-            # Process still running. Try a brief non-blocking wait to capture
-            # fast-completing processes that poll might miss due to kernel scheduling.
-            try:
-                returncode = proc.wait(timeout=0.001)
-            except subprocess.TimeoutExpired:
-                # Still running.
-                return None
-
-        # Subprocess has terminated. Capture output.
-        stdout, stderr = "", ""
         try:
-            # Drain pipes if not yet drained.
-            stdout = proc.stdout.read() if proc.stdout else ""
-            stderr = proc.stderr.read() if proc.stderr else ""
-        except Exception:
-            pass
+            runner = self._runner_registry.get(state.execution_state.runner)
+        except RunnerNotFoundError as exc:
+            state.execution_state.status = "transport_error"
+            state.execution_state.last_update_at = _current_timestamp()
+            self._stalled_executions.add(execution_id)
+            self._runner_handles.pop(execution_id, None)
+            return ExecutionResult(
+                step_id=state.execution_state.step_id,
+                status="transport_error",
+                output_summary=str(exc),
+                operator_message=(
+                    "Runtime requested an unknown runner backend; operator/user "
+                    "attention is required before treating this execution as resolved."
+                ),
+            )
+        try:
+            poll_result = runner.poll(handle)
+        except RunnerPollError as exc:
+            state.execution_state.status = "transport_error"
+            state.execution_state.last_update_at = _current_timestamp()
+            self._stalled_executions.add(execution_id)
+            self._runner_handles.pop(execution_id, None)
+            return ExecutionResult(
+                step_id=state.execution_state.step_id,
+                status="transport_error",
+                output_summary=f"Runner poll failed: {exc}",
+                operator_message=(
+                    "Runtime could not poll the runner backend; operator/user "
+                    "attention is required before treating this execution as resolved."
+                ),
+            )
 
-        handle.returncode = returncode
-        handle.stdout = stdout
-        handle.stderr = stderr
+        if poll_result.status == "running":
+            return None
 
         # Determine the step_id from execution state.
         step_id = state.execution_state.step_id
 
-        # Map returncode to status.
-        if returncode == 0:
-            status: Literal["success", "fail", "stall", "transport_error"] = "success"
-            output_summary = f"Runner completed successfully (exit 0)"
-        elif returncode in (-2, -15, -9):
-            # SIGINT (-2), SIGTERM (-15), SIGKILL (-9): terminated signal
-            status = "stall"
-            output_summary = f"Runner terminated by signal {abs(returncode)}"
-        else:
-            status = "fail"
-            output_summary = f"Runner failed with exit code {returncode}"
+        status = poll_result.status
+        output_summary = poll_result.output_summary
 
         # Build the ExecutionResult.
         result = ExecutionResult(
             step_id=step_id,
             status=status,
             output_summary=output_summary,
-            session_id=state.execution_state.session_id,
+            session_id=poll_result.session_id,
             operator_message=None,
         )
 
@@ -450,8 +540,7 @@ class Runtime:
         if status in ("stall", "transport_error"):
             self._stalled_executions.add(execution_id)
 
-        # Remove from active processes registry.
-        _ACTIVE_PROCESSES.pop(execution_id, None)
+        self._runner_handles.pop(execution_id, None)
 
         return result
 
@@ -705,6 +794,20 @@ class Runtime:
 
         # Clear any associated execution tracking
         if state.execution_id:
+            if (
+                force
+                and state.execution_state is not None
+                and state.execution_state.status
+                in (
+                    "starting",
+                    "running",
+                )
+            ):
+                handle = self._runner_handles.get(state.execution_id)
+                if handle is not None:
+                    runner = self._runner_registry.get(state.execution_state.runner)
+                    runner.cancel(handle)
+                    self._runner_handles.pop(state.execution_id, None)
             self._active_executions.pop(state.execution_id, None)
             self._stalled_executions.discard(state.execution_id)
 
@@ -728,42 +831,6 @@ class Runtime:
 def _current_timestamp() -> float:
     """Return current Unix timestamp."""
     return time.time()
-
-
-def _resolve_runner_command(runner: str) -> list[str]:
-    """
-    Resolve the runner command for the given runner identifier.
-
-    The runner name maps to a concrete command. The command is invoked
-    as a subprocess with the workspace as its working directory.
-
-    Args:
-        runner: Runner identifier (e.g., "claude", "opencode", "test").
-
-    Returns:
-        Command as list of string arguments.
-
-    Raises:
-        WorktreeError: If the runner is unknown or not available.
-    """
-    # Map runner names to their commands.
-    # This is the mechanical runner backend seam: runner name -> subprocess command.
-    # Note: "claude" and "opencode" runners are interactive and require proper
-    # environment setup. For subprocess mode, use "test" runner or ensure
-    # the runner supports non-interactive execution.
-    _RUNNER_COMMANDS: dict[str, list[str]] = {
-        "claude": ["claude", "-p", "--output-format", "json"],
-        "codex": ["codex"],
-        "opencode": ["opencode"],
-        "test": ["echo", "runner-test-placeholder"],
-    }
-
-    if runner not in _RUNNER_COMMANDS:
-        raise WorktreeError(
-            f"Unknown runner '{runner}'. Available runners: {list(_RUNNER_COMMANDS.keys())}"
-        )
-
-    return _RUNNER_COMMANDS[runner]
 
 
 def _request_requires_fresh_workspace(request: ExecutionRequest) -> bool:

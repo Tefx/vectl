@@ -7,7 +7,7 @@ from enum import Enum
 from pathlib import Path
 from typing import Literal
 
-from pydantic import BaseModel, Field, model_validator
+from pydantic import BaseModel, Field, field_validator, model_validator
 
 # ---------------------------------------------------------------------------
 # Enums
@@ -698,6 +698,16 @@ class RunningTask(BaseModel):
     runner: str
     dispatched_at: float
 
+    @field_validator("runner")
+    @classmethod
+    def validate_runner(cls, value: str) -> str:
+        """Validate runner provenance against current contract rollout values."""
+        allowed = {"claude", "task"}
+        if value not in allowed:
+            allowed_display = ", ".join(sorted(allowed))
+            raise ValueError(f"runner must be one of: {allowed_display}")
+        return value
+
 
 class CompletedResult(BaseModel):
     """A completed task result from a sub-agent.
@@ -718,6 +728,16 @@ class CompletedResult(BaseModel):
     runner: str
     status: str
     output_summary: str
+
+    @field_validator("runner")
+    @classmethod
+    def validate_runner(cls, value: str) -> str:
+        """Validate runner provenance against current contract rollout values."""
+        allowed = {"claude", "task"}
+        if value not in allowed:
+            allowed_display = ", ".join(sorted(allowed))
+            raise ValueError(f"runner must be one of: {allowed_display}")
+        return value
 
 
 class Decision(BaseModel):

@@ -140,6 +140,39 @@ def _compute_status(
         return ("done", "no_executable_steps", "No executable steps available.")
 
 
+def _plan_step_ids(plan: Plan) -> set[str]:
+    """Return all step identifiers present in ``plan``."""
+
+    return {step.id for phase in plan.phases for step in phase.steps}
+
+
+def _apply_advisory_completions(plan: Plan, completion_times: dict[str, float]) -> None:
+    """Apply caller-owned completion memory as in-memory advisory completions.
+
+    This preserves the refreshed contract where caller-owned advisor state is the
+    source of truth for simulated completion visibility across decide() calls.
+
+    Args:
+        plan: In-memory plan to mutate for advisory visibility only.
+        completion_times: Caller-owned completion timestamp map.
+    """
+
+    if not completion_times:
+        return
+
+    for step_id in completion_times:
+        found = plan.find_step(step_id)
+        if found is None:
+            continue
+        phase, step = found
+        if step.status in (StepStatus.DONE, StepStatus.SKIPPED):
+            continue
+        step.status = StepStatus.DONE
+        if all(s.status in (StepStatus.DONE, StepStatus.SKIPPED) for s in phase.steps):
+            phase.status = PhaseStatus.DONE
+    auto_unlock_phases(plan)
+
+
 def decide(
     running_tasks: list[RunningTask],
     completed_results: list[CompletedResult] | None,
@@ -170,20 +203,40 @@ def decide(
         - policy: explicit policy metadata (reuse_ttl_s, escalation_threshold)
         - decision_log: optional debug/explanatory entries
     """
+    # Load plan
+    plan_path = resolve_plan_path()
+    plan, _ = load_plan_definition(plan_path)
+    step_ids = _plan_step_ids(plan)
+
     # Resolve caller-owned state into internal DecideState
     if advisor_state is not None:
-        # Reconstruct from caller-owned format
+        raw_completion = advisor_state.get("completion_times", {})
+        raw_sessions = advisor_state.get("session_registry", {})
+        raw_failures = advisor_state.get("failure_counts", {})
+        completion_map = raw_completion if isinstance(raw_completion, dict) else {}
+        session_map = raw_sessions if isinstance(raw_sessions, dict) else {}
+        failure_map = raw_failures if isinstance(raw_failures, dict) else {}
+
+        completion_times = {
+            step_id: timestamp
+            for step_id, timestamp in completion_map.items()
+            if step_id in step_ids
+        }
+        session_registry = {
+            step_id: token for step_id, token in session_map.items() if step_id in step_ids
+        }
+        failure_counts = {
+            step_id: count for step_id, count in failure_map.items() if step_id in step_ids
+        }
         decision_state = DecideState(
-            completion_times=advisor_state.get("completion_times", {}),  # type: ignore[arg-type]
-            session_registry=advisor_state.get("session_registry", {}),  # type: ignore[arg-type]
-            failure_counts=advisor_state.get("failure_counts", {}),  # type: ignore[arg-type]
+            completion_times=completion_times,
+            session_registry=session_registry,
+            failure_counts=failure_counts,
         )
     else:
         decision_state = DecideState()
 
-    # Load plan
-    plan_path = resolve_plan_path()
-    plan, _ = load_plan_definition(plan_path)
+    _apply_advisory_completions(plan, decision_state.completion_times)
 
     actions: list[Action] = []
     decision_log: list[Decision] = []
@@ -191,12 +244,10 @@ def decide(
     # Process completed results
     if completed_results:
         for result in completed_results:
-            # Record completion time for session reuse
-            decision_state.record_completion(
-                step_id=result.step_id,
-                task_id=result.task_id,
-                completed_at=time.time(),
-            )
+            # Record completion time for advisory visibility.
+            # Do not overwrite runner reuse tokens with execution identifiers;
+            # task_id is execution identity, not a reuse handle.
+            decision_state.completion_times[result.step_id] = time.time()
 
             if result.status == "SUCCESS":
                 # Create complete action
@@ -386,9 +437,21 @@ def decide(
 
     # Build next_state as full replacement for caller-owned state
     next_state: dict[str, object] = {
-        "completion_times": decision_state.completion_times,
-        "session_registry": decision_state.session_registry,
-        "failure_counts": decision_state.failure_counts,
+        "completion_times": {
+            step_id: timestamp
+            for step_id, timestamp in decision_state.completion_times.items()
+            if step_id in step_ids
+        },
+        "session_registry": {
+            step_id: token
+            for step_id, token in decision_state.session_registry.items()
+            if step_id in step_ids
+        },
+        "failure_counts": {
+            step_id: count
+            for step_id, count in decision_state.failure_counts.items()
+            if step_id in step_ids
+        },
     }
 
     # Build explicit policy metadata

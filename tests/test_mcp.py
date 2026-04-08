@@ -860,7 +860,9 @@ class TestVectlLifecycle:
 
     def test_skip_locked_phase_with_force(self, plan_file: Path) -> None:
         """Locked phase can be skipped with force=True."""
-        result = vectl_lifecycle(action="skip-phase", target="beta", reason="superseded", force=True)
+        result = vectl_lifecycle(
+            action="skip-phase", target="beta", reason="superseded", force=True
+        )
         assert "Skipped phase" in result
         reloaded = _reload_plan(plan_file)
         assert reloaded["phases"][1]["status"] == PhaseStatus.DONE.value
@@ -2975,7 +2977,21 @@ class TestVectlDecide:
     """
 
     def test_vectl_decide_returns_structured_output(self, plan_file: Path) -> None:
-        """vectl_decide returns structured DecideOutput with actions, continuation, halt_reason."""
+        """vectl_decide returns structured DecideOutput per RFC-vectl-decide-advisor-refresh.
+
+        Refreshed contract fields:
+        - status: top-level control status (dispatch/wait/blocked/done)
+        - reason_code: structured reason for the status
+        - message: human-readable message
+        - actions: list of action payloads
+        - next_state: caller-owned advisor state replacement
+        - policy: explicit policy metadata (reuse_ttl_s, escalation_threshold)
+        - decision_log: optional debug/explanatory entries
+
+        Removed fields (stale):
+        - continuation: replaced by status
+        - halt_reason: replaced by reason_code
+        """
         # Import the tool - implementation may not exist yet (expected to fail)
         from vectl.mcp_server import vectl_decide as _vectl_decide_tool
 
@@ -2983,21 +2999,39 @@ class TestVectlDecide:
 
         result = vectl_decide(running_tasks=[])
 
-        # Verify structured output shape
+        # Verify structured output shape per refreshed contract
         assert isinstance(result, dict)
         assert "actions" in result
-        assert "continuation" in result
-        assert "halt_reason" in result
+        assert "status" in result
+        assert "reason_code" in result
+        assert "message" in result
+        assert "next_state" in result
+        assert "policy" in result
         assert "decision_log" in result
 
-        # continuation should be bool
-        assert isinstance(result["continuation"], bool)
+        # status is one of: dispatch, wait, blocked, done
+        assert result["status"] in ("dispatch", "wait", "blocked", "done")
+
+        # reason_code is one of: dispatch_available, waiting_on_running, capacity_full, no_executable_steps, repeated_failures
+        assert result["reason_code"] in (
+            "dispatch_available",
+            "waiting_on_running",
+            "capacity_full",
+            "no_executable_steps",
+            "repeated_failures",
+        )
 
         # actions should be a list
         assert isinstance(result["actions"], list)
 
         # decision_log should be a list
         assert isinstance(result["decision_log"], list)
+
+        # next_state is caller-owned state replacement
+        assert isinstance(result["next_state"], dict)
+        assert "completion_times" in result["next_state"]
+        assert "session_registry" in result["next_state"]
+        assert "failure_counts" in result["next_state"]
 
         # When no running tasks and plan has available steps, should recommend claim
         # Plan has a.1 available (pending, no deps)
@@ -3007,7 +3041,10 @@ class TestVectlDecide:
             assert action["action"] in ("claim_and_dispatch", "wait", "complete", "escalate")
 
     def test_vectl_decide_empty_plan(self, tmp_path: Path) -> None:
-        """vectl_decide handles empty plan (no phases/steps) gracefully."""
+        """vectl_decide handles empty plan (no phases/steps) gracefully.
+
+        Per refreshed contract: empty plan yields status=done, reason_code=no_executable_steps.
+        """
         from vectl.mcp_server import vectl_decide as _vectl_decide_tool
 
         vectl_decide = _vectl_decide_tool.fn  # type: ignore[attr-defined]
@@ -3022,12 +3059,14 @@ class TestVectlDecide:
 
             assert isinstance(result, dict)
             assert "actions" in result
-            assert "continuation" in result
+            assert "status" in result
+            assert "reason_code" in result
 
-            # Empty plan => no claimable steps => no continuation
-            assert result["continuation"] is False
-            # halt_reason should explain why
-            assert result["halt_reason"] is not None
+            # Empty plan => no claimable steps => status=done, reason_code=no_executable_steps
+            assert result["status"] == "done"
+            assert result["reason_code"] == "no_executable_steps"
+            # message should explain why
+            assert result["message"] is not None
             # No actions to take
             assert result["actions"] == []
         finally:
@@ -3037,7 +3076,10 @@ class TestVectlDecide:
                 os.environ["VECTL_PLAN_PATH"] = old
 
     def test_vectl_decide_with_running_tasks(self, plan_file: Path) -> None:
-        """vectl_decide respects running_tasks when making decisions."""
+        """vectl_decide respects running_tasks when making decisions.
+
+        Per refreshed contract: running_tasks must have runner field for provenance.
+        """
         from vectl.mcp_server import vectl_decide as _vectl_decide_tool
 
         vectl_decide = _vectl_decide_tool.fn  # type: ignore[attr-defined]
@@ -3048,6 +3090,7 @@ class TestVectlDecide:
                 "step_id": "a.1",
                 "agent": "python-engineer",
                 "task_id": "session-123",
+                "runner": "task",  # runner provenance per refreshed contract
                 "dispatched_at": 1700000000.0,  # Unix timestamp
             }
         ]
@@ -3056,11 +3099,11 @@ class TestVectlDecide:
 
         assert isinstance(result, dict)
         assert "actions" in result
-        assert "continuation" in result
+        assert "status" in result
 
         # With running task and a.1 in progress, a.2 shouldn't be claimable (depends on a.1)
-        # The continuation decision depends on max_parallelism and available capacity
-        # Plan has: a.1 (available), a.2 (depends on a.1), b.1 (locked by phase dependency)
+        # The status/reason_code depends on max_parallelism and available capacity
+        # Plan has: a.1 (running), a.2 (depends on a.1), b.1 (locked by phase dependency)
 
         # If capacity available but steps blocked by running deps, should wait
         # The exact behavior depends on implementation, but structure is validated
@@ -3070,7 +3113,10 @@ class TestVectlDecide:
             if action["action"] == "claim_and_dispatch":
                 assert "step_id" in action
                 assert "agent" in action
-                assert "session" in action  # "fresh" or "reuse"
+                # Per refreshed contract: reuse_token/reuse_runner, not session field
+                if "reuse_token" in action and action["reuse_token"] is not None:
+                    assert "reuse_runner" in action
+                    assert action["reuse_runner"] in ("task", "claude")
             elif action["action"] == "complete":
                 assert "step_id" in action
                 assert "evidence" in action

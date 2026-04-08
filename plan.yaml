@@ -66496,51 +66496,24 @@ phases:
   - id: orchestration_orch_app_routing.implement-orch-app-routing-reconcile-gate-and-result-normalization
     name: Implement orch_app routing, reconcile gate, and result normalization
     status: pending
-    description: 'step_type: implementation
-
-
-      Implement upper-layer orch_app routing on top of the shared dispatch/runtime
-      substrate.
-
-
-      Scope:
-
-      - refresh core/roster/runtime snapshots before control evaluation
-
-      - on dispatch: perform approved claim before runtime start, then build DispatchSpec
-      and start execution
-
-      - on terminal success: invoke reconcile immediately and allow complete only
-      after reconcile=merged|noop
-
-      - on fail/stall/transport_error: route explicit non-closure instead of pretending
-      the step is complete
-
-      - parse structured review/gate results in the orch_app normalization path, not
-      in control
-
-      - normalize non-pass review output and parse failures into explicit ResolutionCase
-      objects
-
-      - route resolver outcomes unblocked|waiting|operator_required|halt correctly
-
-      - choose main_worktree vs linked_worktree by RoleProfile.execution_context'
-    verification: '- phase-check: claim happens before runtime start on dispatch
-
-      - phase-check: complete occurs only after reconcile merged|noop
-
-      - phase-check: review/gate non-pass output and parse failures become explicit
-      ResolutionCase input
-
-      - phase-check: resolver delegation uses shared dispatch/runtime substrate with
-      source_kind=resolution_subtask'
+    description: Implement upper-layer orch_app routing on top of the shared dispatch/runtime
+      substrate. Refresh snapshots before control evaluation; claim before runtime
+      start; reconcile immediately on terminal success; allow complete only after
+      reconcile merged|noop; route fail/stall/transport_error as explicit non-closure;
+      normalize non-pass review output and parse failures into explicit ResolutionCase
+      objects inside orch_app; route resolver outcomes correctly; choose main_worktree
+      vs linked_worktree via RoleProfile.execution_context.
+    verification: 'phase-check: claim happens before runtime start; complete occurs
+      only after reconcile merged|noop; review/gate non-pass output and parse failures
+      become explicit ResolutionCase input; resolver delegation uses shared dispatch/runtime
+      substrate with source_kind=resolution_subtask.'
     refs:
     - docs/ORCHESTRATION-PLANE-ORCH-APP-ROUTING.md
     - docs/ORCHESTRATION-PLANE-DISPATCH-AND-PROMPT-POLICY.md
     - docs/ORCHESTRATION-PLANE-RESOLUTION-CONTRACT.md
     - docs/ORCHESTRATION-PLANE-INTERFACES.md
     - src/vectl/orch_app.py
-    agent: python-senior
+    agent: python-senior-tacit
   - id: orchestration_orch_app_routing.prove-orch-app-routing-seam-end-to-end
     name: Prove orch_app routing seam end-to-end
     status: pending

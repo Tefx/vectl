@@ -65337,7 +65337,7 @@ phases:
       - product implementation files modified: NONE'
 - id: decide_refresh_impl
   name: vectl_decide Contract Refresh — Implementation
-  status: locked
+  status: pending
   gate: Refreshed vectl_decide contract is implemented, green on focused tests, and
     conformant to the RFC.
   depends_on:
@@ -66522,7 +66522,7 @@ phases:
     claimed_at: '2026-04-08T15:43:07.046357+00:00'
 - id: orchestration_runtime_wiring
   name: Orchestration Runner/Runtime Wiring
-  status: locked
+  status: pending
   gate: Runner backend and runtime lifecycle are wired together with real integration
     proof, spec conformance, and gate evidence for reconcile-before-complete behavior.
   depends_on:
@@ -67218,7 +67218,7 @@ phases:
     agent: gate-reviewer-tacit
 - id: parallel_gate_remediation
   name: Parallel Gate Remediation
-  status: in_progress
+  status: done
   depends_on:
   - decide_refresh_contracts
   - orchestration_foundation_lock
@@ -67733,7 +67733,7 @@ phases:
       - PASS'
   - id: parallel_gate_remediation.gate
     name: Consolidated remediation gate
-    status: claimed
+    status: done
     description: 'step_type: gate
 
       verification_scope: phase-check protecting decide_refresh_impl and orchestration_runtime_wiring
@@ -67813,6 +67813,50 @@ phases:
     agent: gate-reviewer-tacit
     claimed_by: gate-reviewer-tacit
     claimed_at: '2026-04-08T17:13:01.013206+00:00'
+    done_at: '2026-04-08T17:22:27.930213+00:00'
+    evidence: '## Gate Review Report
+
+      Reviewer: gate-reviewer-tacit
+
+      Phase: parallel_gate_remediation
+
+
+      ### refs Read Confirmation
+
+      - runtime.py, runners.py, runner_registry.py, contracts.py, interfaces.py
+
+      - decide refresh tests and MCP decide tests
+
+
+      ### Blocker Register
+
+      | Family | Evidence reviewed | Status | Blocking? |
+
+      | --- | --- | --- | --- |
+
+      | decide_refresh_tests | refreshed contract tests (37 pass) + field inspection
+      | PROVEN/OPEN | NO |
+
+      | orchestration_runner_backend | backend substrate modules + focused tests (25
+      pass, 2 known xfail) | PROVEN/OPEN | NO |
+
+      | orchestration_runtime_lifecycle | worktree isolation + lifecycle tests (18
+      pass) | PROVEN/OPEN | NO |
+
+
+      ### Gate Decision Basis
+
+      - unresolved_statuses: none for the three blocker families
+
+      - non_intersection_evidence: pre-existing recovery conformance should-fix exists
+      but outside this remediation family
+
+      - downstream_dependency_barrier_checked: yes
+
+
+      ### Gate Decision
+
+      - OPEN (conditional pass with non-blocking pre-existing should-fix note)'
   - id: parallel_gate_remediation.fix-runner-retest-fixtures
     name: Update runner backend retest fixtures
     status: done

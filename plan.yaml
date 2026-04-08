@@ -65065,12 +65065,12 @@ phases:
       item blocks progression.'
 - id: decide_refresh_contracts
   name: vectl_decide Contract Refresh — Contract Lock
-  status: in_progress
+  status: done
   gate: Refreshed vectl_decide contract is pinned in code-facing surfaces before implementation.
   steps:
   - id: decide_refresh_contracts.gate
     name: Gate decide_refresh_contracts
-    status: claimed
+    status: done
     description: 'Gate review: verify the refreshed vectl_decide contract is fully
       pinned before tests and implementation. Block if core/state and MCP surfaces
       disagree, if stale continuation/halt_reason semantics remain, or if any compatibility
@@ -65097,6 +65097,29 @@ phases:
     agent: gate-reviewer-tacit
     claimed_by: gate-reviewer-tacit
     claimed_at: '2026-04-08T14:42:01.434200+00:00'
+    done_at: '2026-04-08T14:50:57.049026+00:00'
+    evidence: '## refs Read Confirmation (MANDATORY)
+
+      - tools/vectl/README.md — key governance passage cited by gate reviewer.
+
+      - docs/RFC-vectl-decide-advisor-refresh.md — rollout and contract sections validated
+      in gate evidence.
+
+
+      ## Gate Review Report
+
+      - Contract completeness: all RFC rollout contract requirements verified across
+      models.py/decide.py/mcp_server.py.
+
+      - Forbidden overlap check: no stale continuation/halt_reason/session machine-contract
+      fields remain.
+
+      - behavioral_proof_register provided with PROVEN entries and no uncertainty
+      sources.
+
+      - gate_open_allowed: true
+
+      - Gate decision: OPEN'
   - id: decide_refresh_contracts.pin-contract-surfaces
     name: Pin refreshed core and MCP contracts
     status: done
@@ -65143,7 +65166,7 @@ phases:
       - docs/RFC-vectl-decide-advisor-refresh.md (section 8 required rollout changes)'
 - id: decide_refresh_tests
   name: vectl_decide Contract Refresh — Test Definitions
-  status: locked
+  status: pending
   gate: Expected-red tests expose the refreshed contract gap across core, state, and
     MCP surfaces.
   depends_on:

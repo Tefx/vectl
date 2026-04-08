@@ -66914,6 +66914,59 @@ phases:
     - orchestration_runtime_lifecycle.implement-worktree-lifecycle
     - orchestration_runtime_lifecycle.retest-lifecycle-green
     agent: python-senior-tacit
+  - id: orchestration_runtime_lifecycle.retest-runtime-lifecycle-blockers-batch
+    name: Retest runtime lifecycle blocker batch
+    status: pending
+    description: 'As an INDEPENDENT TESTER (integration-verifier-tacit), validate
+      that the runtime lifecycle blockers are actually closed on the canonical execution
+      path.
+
+
+      YOUR GOAL IS TO FIND PROBLEMS, not to confirm it works.
+
+
+      Retest scope:
+
+      - git worktree lifecycle is used on the runtime path instead of mkdir-only setup
+
+      - reconcile serialization lock prevents unsafe overlap
+
+      - reconcile_disposition proof survives through core_adapter/runtime evidence
+      surfaces
+
+      - lifecycle-facing requirement coverage is explicit for R6, R12, R20, R24, R25,
+      R26, R27, and R30
+
+
+      This is a post-remediation retest and must produce green proof.'
+    verification: 'phase-check protecting orchestration_runtime_wiring.gate: commands/tests
+      executed prove R20/R24/R25/R26/R27/R30 on the real runtime lifecycle path and
+      prove non-regression for R6/R12; evidence includes at least one main-path proof
+      and one highest-risk failure-path proof with explicit requirement refs.'
+    evidence_template: '## refs Read Confirmation (MANDATORY)
+
+      For each ref in this step:
+
+      - <filename> — key passage or "NOT READ: <reason>"
+
+
+      If no refs were provided, state: "No refs for this step."
+
+
+      ## Runtime Lifecycle Retest Report
+
+      - Commands/tests executed:
+
+      - Requirement matrix checked: R6, R12, R20, R24, R25, R26, R27, R30
+
+      - Main-path proof:
+
+      - Highest-risk failure-path proof:
+
+      - Remaining divergences with requirement ids:'
+    depends_on:
+    - orchestration_runtime_lifecycle.fix-runtime-lifecycle-blockers-batch
+    agent: integration-verifier-tacit
 - id: orchestration_runtime_wiring
   name: Orchestration Runner/Runtime Wiring
   status: in_progress

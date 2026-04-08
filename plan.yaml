@@ -66785,13 +66785,15 @@ phases:
     name: Gate runtime lifecycle
     status: claimed
     description: 'Gate review: verify runtime now owns worktree/execution/reconcile
-      lifecycle mechanically without absorbing resolver policy. Reject any path that
-      completes before reconcile merged|noop, semantic resolution leakage into runtime,
-      missing operator/user failure surfacing, or unsafe mutable-state handling around
-      active executions/workspaces.'
+      lifecycle mechanically without absorbing resolver policy, including the batched
+      remediation for canonical git-worktree flow, reconcile serialization, and reconcile_disposition
+      proof preservation. Reject any path that completes before reconcile merged|noop,
+      semantic resolution leakage into runtime, missing operator/user failure surfacing,
+      dropped reconcile proof, or unsafe mutable-state handling around active executions/workspaces.'
     verification: 'phase-check protecting orchestration_runtime_wiring.gate: lifecycle
-      evidence is complete; blocker-class runtime obligations are proven or explicitly
-      non-intersecting; no resolver-policy deepening leaked into runtime.'
+      evidence is complete; blocker-class runtime obligations are proven for R20/R24/R25/R26/R27/R30
+      with non-regression evidence for R6/R12; no resolver-policy deepening leaked
+      into runtime; main-path and highest-risk failure-path proof are both present.'
     evidence_template: '## refs Read Confirmation (MANDATORY)
 
 
@@ -66828,6 +66830,7 @@ phases:
     depends_on:
     - orchestration_runtime_lifecycle.implement-worktree-lifecycle
     - orchestration_runtime_lifecycle.retest-lifecycle-green
+    - orchestration_runtime_lifecycle.retest-runtime-lifecycle-blockers-batch
     agent: gate-reviewer-tacit
     claimed_by: gate-reviewer-tacit
     claimed_at: '2026-04-08T20:10:47.306300+00:00'

@@ -66651,7 +66651,7 @@ phases:
       -> success'
   - id: orchestration_runtime_wiring.integration-proof
     name: Prove runner/runtime integration end-to-end
-    status: pending
+    status: claimed
     description: 'step_type: verification
 
 
@@ -66716,6 +66716,8 @@ phases:
     depends_on:
     - orchestration_runtime_wiring.wire-runtime-to-backend
     agent: integration-verifier-tacit
+    claimed_by: integration-verifier-tacit
+    claimed_at: '2026-04-08T17:34:00.215053+00:00'
   - id: orchestration_runtime_wiring.spec-conformance
     name: Audit runtime wiring against authoritative orchestration specs
     status: pending

@@ -66072,7 +66072,7 @@ phases:
       - Targeted checks: runtime/interfaces/contracts tests passed (60/60)'
   - id: orchestration_runner_backend.retest-backend-green
     name: Retest runner backend against locked backend contract
-    status: pending
+    status: claimed
     description: 'step_type: test
 
       step_intent: retest_green
@@ -66149,6 +66149,8 @@ phases:
     depends_on:
     - orchestration_runner_backend.build-runner-backend
     agent: integration-verifier-tacit
+    claimed_by: integration-verifier-tacit
+    claimed_at: '2026-04-08T15:36:41.055375+00:00'
   - id: orchestration_runner_backend.gate
     name: Gate runner backend
     status: pending

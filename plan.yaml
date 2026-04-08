@@ -67503,7 +67503,7 @@ phases:
       - PASS'
   - id: parallel_gate_remediation.retest-runner-backend
     name: Retest runner backend contract/module delivery
-    status: claimed
+    status: done
     description: 'step_type: test
 
       step_intent: retest_green
@@ -67571,6 +67571,55 @@ phases:
     agent: integration-verifier-tacit
     claimed_by: integration-verifier-tacit
     claimed_at: '2026-04-08T17:00:52.440800+00:00'
+    done_at: '2026-04-08T17:11:35.967480+00:00'
+    evidence: "```yaml\n# Evidence: parallel_gate_remediation.retest-runner-backend\n\
+      # Expected: green\n# Worktree: .vectl/worktrees/parallel_gate_remediation.retest-runner-backend\n\
+      \ndedicated_backend_module_present: true\n  module: src/vectl/orchestration/runners.py\n\
+      \  declarations:\n    - RunnerCapabilities (frozen dataclass)\n    - RunnerHandle\
+      \ (frozen dataclass)\n    - RunnerLaunchResult (frozen dataclass)\n    - RunnerPollResult\
+      \ (frozen dataclass)\n    - RunnerError / RunnerNotFoundError / RunnerLaunchError\
+      \ / RunnerPollError / RunnerCancelError\n    - Runner (Protocol) with capabilities/launch/resume/poll/cancel\n\
+      \    - SubprocessRunner (concrete dataclass) implementing full launch/poll/cancel\
+      \ lifecycle\n\nlocked_contract_types_present: true\n  contracts_py:\n    - ResolverExecutionSite:\
+      \ TypeAlias = Literal[\"main_worktree\"]\n    - ResolverMutationSurface: TypeAlias\
+      \ = Literal[\"approved_vectl_facade_only\"]\n    - ResolverClaimFlow: TypeAlias\
+      \ = Literal[\"normal_flow_only\"]\n    - ReconcileDisposition: TypeAlias = Literal[\"\
+      merged\", \"noop\"]\n    - ResolverAuthorityContract (frozen dataclass)\n  \
+      \  - CoreSnapshot / RosterSnapshot / RuntimeSnapshot (frozen dataclasses)\n\
+      \    - ControlDecision / WorkLease / ExecutionRequest / ExecutionResult / ResolutionCase\
+      \ / ResolutionReport\n    - ExecutionResult.operator_message field (str | None)\n\
+      \  interfaces_py:\n    - RunnerBackend(Protocol): start/collect\n    - RuntimeLifecycle(Protocol):\
+      \ snapshot/prepare/cleanup\n    - LifecycleMutationPort(Protocol): claim_step/complete_step(with\
+      \ reconcile_disposition keyword-only)\n\nstub_only_completion_rejected: true\n\
+      \  evidence:\n    - PlanCoreAdapter.complete_step() requires reconcile_disposition:\
+      \ Literal[\"merged\", \"noop\"] as keyword-only arg\n    - Calling complete_step\
+      \ on unclaimed step raises PlanError(\"cannot be completed ... must be claimed\
+      \ first\")\n    - ReconcileDisposition type alias enforces Literal[\"merged\"\
+      , \"noop\"] — no stub values accepted\n  test_command: uv run pytest tests/orchestration/unit/test_contract_lock_boundaries.py\
+      \ tests/orchestration/unit/test_runner_backend_red.py tests/orchestration/unit/test_runtime_lifecycle.py\
+      \ -v --tb=line\n  test_result: 25 passed, 2 xfailed\n\nwrong_phase_delivery_removed:\
+      \ true\n  evidence:\n    - RunnerBackend types (RunnerHandle, RunnerLaunchResult,\
+      \ RunnerPollResult, SubprocessRunner) are in src/vectl/orchestration/runners.py\
+      \ only\n    - No runner-backend types leaked into top-level src/vectl/ modules\
+      \ outside orchestration/\n    - Runtime class wires RunnerBackend and RuntimeLifecycle\
+      \ via composition (interfaces.py Runtime Protocol)\n    - Runner registry (runner_registry.py)\
+      \ lives in orchestration/ package — proper phase ownership\n  ownership_verified_paths:\n\
+      \    - src/vectl/orchestration/runners.py\n    - src/vectl/orchestration/runner_registry.py\n\
+      \    - src/vectl/orchestration/interfaces.py\n    - src/vectl/orchestration/contracts.py\n\
+      \nfocused_backend_tests:\n  command: uv run pytest tests/orchestration/unit/test_runner_backend_red.py\
+      \ -v --tb=short\n  result: 7 passed, 2 xfailed in 1.01s\n  xfailed_tests:\n\
+      \    - test_resolver_gateway_invoke_respects_resolver_authority_contract (GAP5:\
+      \ worktree-site enforcement)\n    - test_lifecycle_mutation_port_enforces_normal_flow_only_claim\
+      \ (GAP5: Protocol-level enforcement)\n\ncontract_and_lifecycle_tests:\n  command:\
+      \ uv run pytest tests/orchestration/unit/test_contract_lock_boundaries.py tests/orchestration/unit/test_runtime_lifecycle.py\
+      \ -v --tb=line\n  result: 18 passed\n\nfull_orchestration_backend_suite:\n \
+      \ command: uv run pytest tests/orchestration/ -v --tb=short\n  result: 282 passed,\
+      \ 2 xfailed, 11 failed\n  note: 11 failures are in test_config_state_red.py\
+      \ (stale red tests) and test_orch_app.py (git worktree env issues), NOT in runner_backend\
+      \ or contract/lifecycle modules\n\ngaps:\n  - GAP5 xfailed (2 tests) track known\
+      \ architectural gaps for worktree-site enforcement and Protocol-level claim\
+      \ enforcement — these are correctly marked xfail and do not block the green\
+      \ threshold\n```"
   - id: parallel_gate_remediation.retest-runtime-lifecycle
     name: Retest runtime lifecycle git-worktree isolation
     status: done

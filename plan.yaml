@@ -65981,7 +65981,7 @@ phases:
   steps:
   - id: orchestration_runner_backend.build-runner-backend
     name: Build the shared mechanical runner backend
-    status: claimed
+    status: done
     description: "step_type: implementation\nwork_type: new_capability\nupstream_artifacts:\n\
       \  - path: src/vectl/orchestration/contracts.py\n    from_step: orchestration_foundation_lock.pin-boundaries-and-contracts\n\
       \    tier: contract\n  - path: src/vectl/orchestration/interfaces.py\n    from_step:\
@@ -66032,6 +66032,44 @@ phases:
     agent: python-executor
     claimed_by: python-executor
     claimed_at: '2026-04-08T15:05:57.120569+00:00'
+    done_at: '2026-04-08T15:35:08.049112+00:00'
+    evidence: '## refs Read Confirmation (MANDATORY)
+
+      - tools/vectl/README.md — read by implementer as execution discipline reference.
+
+      - src/vectl/orchestration/contracts.py, interfaces.py, runtime.py, and runner-backend
+      red tests reviewed and used.
+
+
+      ## Implementation Report
+
+      - Touched files: src/vectl/orchestration/runtime.py, src/vectl/orchestration/contracts.py,
+      tests/orchestration/unit/test_contracts.py
+
+      - Backend module(s) added: mechanical runner backend seam in runtime via command
+      resolver, execution handle, active-process registry.
+
+      - Registry/capability seam location: runtime _RUNNER_COMMANDS / resolution path.
+
+      - Launch path logic: Runtime.start() subprocess launch + execution state tracking.
+
+      - Poll path logic: Runtime.collect() non-blocking poll + status mapping.
+
+      - Cleanup path logic: Runtime.cleanup() force path for mechanical cleanup test
+      scenarios.
+
+      - Tests updated: targeted runtime/interfaces/contracts test surfaces.
+
+      - Out-of-scope confirmation preserved: lifecycle end-to-end not wired, resolver
+      policy unchanged, control/operator surfaces unchanged.
+
+      - Deviation record: contract_gap on AgentExecutionState mutability to support
+      status updates during polling.
+
+
+      ## Verification
+
+      - Targeted checks: runtime/interfaces/contracts tests passed (60/60)'
   - id: orchestration_runner_backend.retest-backend-green
     name: Retest runner backend against locked backend contract
     status: pending

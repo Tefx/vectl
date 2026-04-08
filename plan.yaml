@@ -68217,7 +68217,7 @@ phases:
   steps:
   - id: orchestration_dispatch_policy.lock-dispatch-role-profile-prompt-and-review-result-contracts
     name: Lock dispatch, role-profile, prompt, and review-result contracts
-    status: claimed
+    status: done
     description: "step_type: contract\ncontract_purity: ENFORCED\ncontract_outputs:\n\
       \  - signatures\n  - type_defs\n  - interfaces\n  - stubs\n\nLock the canonical\
       \ upper-layer dispatch contract before implementation. Pin authoritative type/protocol\
@@ -68239,6 +68239,47 @@ phases:
     agent: software-architect-tacit
     claimed_by: software-architect-tacit
     claimed_at: '2026-04-08T23:30:22.866254+00:00'
+    done_at: '2026-04-08T23:34:51.102344+00:00'
+    evidence: 'Artifact:
+
+      - Commit: ce5ef4496f0595a3e035d96cec4cc617f5c2c3b5
+
+
+      Verification:
+
+      - python3 -m py_compile src/vectl/orchestration/contracts.py src/vectl/orchestration/__init__.py
+      -> PASS
+
+      - import smoke for new contract symbols -> PASS
+
+
+      Spec link:
+
+      - docs/ORCHESTRATION-PLANE-DISPATCH-AND-PROMPT-POLICY.md
+
+      - docs/ORCHESTRATION-PLANE-INTERFACES.md
+
+      - docs/ORCHESTRATION-PLANE-RESOLUTION-CONTRACT.md
+
+
+      Refs confirmation:
+
+      - dispatch/prompt/interface/resolution docs read and aligned
+
+      - tools/vectl/README.md not found at referenced path in isolated worktree
+
+
+      Summary:
+
+      - Added canonical dispatch policy contracts/types/protocols in orchestration
+      contracts surface
+
+      - Expanded ResolutionCase with machine-readable identifiers/source/blocked ids/artifact
+      refs
+
+      - Re-exported new symbols from orchestration package boundary
+
+      - Maintained contract-only purity (no runtime business logic)'
   - id: orchestration_dispatch_policy.define-expected-red-tests-for-dispatch-policy-and-canonical-sync
     name: Define expected-red tests for dispatch policy and canonical sync
     status: pending

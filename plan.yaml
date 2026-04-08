@@ -66727,30 +66727,15 @@ phases:
   - id: orchestration_upper_layer_review.run-full-plan-upper-layer-spec-conformance-audit
     name: Run full-plan upper-layer spec conformance audit
     status: pending
-    description: 'Verification scope: full-plan-check protecting final upper-layer
-      completion.
-
-
-      As an INDEPENDENT TESTER (spec-verifier), perform full-system adversarial conformance
-      review for the upper-layer orchestration plan.
-
-
-      Focus on emergent cross-phase properties:
-
-      - claim remains normal-flow only
-
-      - complete never occurs before reconcile merged|noop
-
-      - review/gate non-pass results become ResolutionCase inputs
-
-      - planner remains resolver remediation subagent
-
-      - operator_required remains explicit and durable across restart'
-    verification: '- full-plan-check: conformance report covers cross-phase obligations
-      that per-phase checks cannot see
-
-      - full-plan-check: every blocker-class requirement is PROVEN, DIVERGES, PARTIAL,
-      or NEEDS_TEST with explicit disposition'
+    description: 'Full-plan spec conformance audit for upper-layer orchestration.
+      Focus on emergent cross-phase properties: claim remains normal-flow only; complete
+      never occurs before reconcile merged|noop; review/gate non-pass results become
+      ResolutionCase inputs; planner remains resolver remediation subagent; operator_required
+      stays explicit and durable across restart.'
+    verification: 'full-plan-check protecting final upper-layer completion: the conformance
+      report covers cross-phase obligations that per-phase checks cannot see; every
+      blocker-class requirement is PROVEN, DIVERGES, PARTIAL, or NEEDS_TEST with explicit
+      disposition.'
     refs:
     - docs/ORCHESTRATION-PLANE-DISPATCH-AND-PROMPT-POLICY.md
     - docs/ORCHESTRATION-PLANE-RESOLVER-COORDINATION.md
@@ -66758,7 +66743,7 @@ phases:
     - docs/ORCHESTRATION-PLANE-OPERATOR-CONFLICT-RECOVERY.md
     - docs/ORCHESTRATION-PLANE-INTERFACES.md
     - docs/ORCHESTRATION-PLANE-RESOLUTION-CONTRACT.md
-    agent: spec-verifier
+    agent: spec-verifier-tacit
   - id: orchestration_upper_layer_review.run-black-box-upper-layer-orchestration-verification
     name: Run black-box upper-layer orchestration verification
     status: pending

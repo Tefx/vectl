@@ -66831,6 +66831,89 @@ phases:
     agent: gate-reviewer-tacit
     claimed_by: gate-reviewer-tacit
     claimed_at: '2026-04-08T20:10:47.306300+00:00'
+  - id: orchestration_runtime_lifecycle.fix-runtime-lifecycle-blockers-batch
+    name: Fix runtime lifecycle blocker batch
+    status: pending
+    description: 'Fix ALL blocker-class lifecycle findings surfaced by orchestration_runtime_lifecycle.gate.
+
+
+      ## Blockers to Fix (ALL of these, not just the first)
+
+      - Replace mkdir-based workspace creation with the required git worktree lifecycle
+      flow on the canonical runtime path.
+
+      - Add/consume reconcile serialization locking so concurrent reconcile paths
+      cannot overlap unsafely.
+
+      - Preserve and surface reconcile_disposition proof through core_adapter/runtime
+      evidence flow instead of dropping it.
+
+      - Search sibling lifecycle/reconcile call paths; do not patch only the first
+      failing branch.
+
+
+      ## Requirement alignment
+
+      This remediation must close the lifecycle-facing portions of R20, R24, R25,
+      R26, R27, and R30 and prove no regression against R6 and R12 where lifecycle
+      wiring consumes those contracts.
+
+
+      ## Root Cause vs Symptom
+
+      - Root cause: runtime lifecycle execution still diverges from authoritative
+      worktree/reconcile mechanics and loses reconcile proof on the canonical path.
+
+      - Symptom: gate evidence showed mkdir-only preparation, missing reconcile serialization,
+      and dropped reconcile_disposition proof.
+
+      - Why this fix is not surface-level: it must correct runtime mechanics and preserve
+      proof surfaces together on the real execution path.
+
+
+      ## Completion Criteria
+
+      - Canonical runtime path uses git worktree lifecycle instead of mkdir-only setup
+
+      - Reconcile serialization is enforced and failure-path evidence exists
+
+      - reconcile_disposition proof survives through runtime/core_adapter evidence
+      surfaces
+
+      - Main path and highest-risk failure path are both covered'
+    verification: 'local-check protecting orchestration_runtime_lifecycle.gate and
+      orchestration_runtime_wiring.gate: lifecycle remediation closes R20/R24/R25/R26/R27/R30
+      on the canonical runtime path and shows non-regression for R6/R12; evidence
+      includes one main-path proof and one highest-risk failure-path proof.'
+    evidence_template: '## refs Read Confirmation (MANDATORY)
+
+      For each ref in this step:
+
+      - <filename> — key passage or "NOT READ: <reason>"
+
+
+      If no refs were provided, state: "No refs for this step."
+
+
+      ## Runtime Lifecycle Remediation Evidence
+
+      - Canonical git worktree path landed in:
+
+      - Reconcile serialization mechanism:
+
+      - reconcile_disposition proof path preserved in:
+
+      - Requirement refs covered: R6, R12, R20, R24, R25, R26, R27, R30
+
+      - Main-path proof:
+
+      - Highest-risk failure-path proof:
+
+      - Sibling search completed:'
+    depends_on:
+    - orchestration_runtime_lifecycle.implement-worktree-lifecycle
+    - orchestration_runtime_lifecycle.retest-lifecycle-green
+    agent: python-senior-tacit
 - id: orchestration_runtime_wiring
   name: Orchestration Runner/Runtime Wiring
   status: in_progress

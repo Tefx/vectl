@@ -67397,7 +67397,7 @@ phases:
       \ src/vectl/orchestration/runners.py, src/vectl/orchestration/runtime.py, tests/test_mcp.py"
   - id: parallel_gate_remediation.retest-decide-refresh-tests
     name: Retest decide refresh MCP/core contract evidence
-    status: claimed
+    status: done
     description: 'step_type: test
 
       step_intent: retest_green
@@ -67460,6 +67460,47 @@ phases:
     agent: integration-verifier-tacit
     claimed_by: integration-verifier-tacit
     claimed_at: '2026-04-08T16:36:28.920693+00:00'
+    done_at: '2026-04-08T16:44:19.820375+00:00'
+    evidence: '## Verification Report
+
+      Tester: integration-verifier-tacit
+
+      Scope: decide_refresh_tests blocker family
+
+      Independence Level: L1
+
+
+      ### refs Read Confirmation
+
+      - src/vectl/decide.py, src/vectl/decision_state.py, src/vectl/models.py
+
+      - tests/test_decide.py, tests/test_decide_state_isolation.py, tests/test_mcp.py::TestVectlDecide
+
+      - docs/RFC-vectl-decide-advisor-refresh.md
+
+
+      ### Test Execution
+
+      - Command: pytest tests/test_decide.py tests/test_decide_state_isolation.py
+      tests/test_mcp.py::TestVectlDecide -v --tb=long
+
+      - Output summary: 37 passed, 0 failed, 0 skipped
+
+
+      ### Contract Refresh Checks
+
+      - stale_assertions_removed: yes (no positive continuation/halt_reason/session
+      assertions; stale fields absent in models)
+
+      - evidence_matches_observed_result: yes (status/reason_code/message/next_state/policy
+      and reuse_token/reuse_runner visible and asserted)
+
+      - refreshed_fields_visible: yes across core/state and MCP tests
+
+
+      ### Verdict
+
+      - PASS'
   - id: parallel_gate_remediation.retest-runner-backend
     name: Retest runner backend contract/module delivery
     status: pending

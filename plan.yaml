@@ -67562,3 +67562,83 @@ phases:
     depends_on:
     - parallel_gate_remediation.fix-blockers
     agent: integration-verifier-tacit
+  - id: parallel_gate_remediation.gate
+    name: Consolidated remediation gate
+    status: pending
+    description: 'step_type: gate
+
+      verification_scope: phase-check protecting decide_refresh_impl and orchestration_runtime_wiring
+
+      agent_source: project
+
+      review_depth: THOROUGH
+
+      review_depth_rationale:
+
+      - consolidates three concurrent blocker-class gate findings
+
+      - covers orchestration runtime, backend substrate, and decide-refresh contract
+      evidence alignment
+
+      - downstream phases must not bypass this replacement gate
+
+
+      As an INDEPENDENT REVIEWER, assess whether the unified remediation closes all
+      blocker-class findings from decide_refresh_tests.gate, orchestration_runner_backend.gate,
+      and orchestration_runtime_lifecycle.gate. BLOCK if any blocker family remains
+      open, if evidence is inconsistent across retests, or if downstream phases could
+      proceed without the repaired contract/runtime basis.'
+    verification: '- All three blocker families are either PROVEN closed or explicitly
+      re-blocked with concrete evidence.
+
+      - Retest evidence is specific, verifiable, and consistent across decide refresh,
+      runner backend, and runtime lifecycle seams.
+
+      - This gate replaces the blocked downstream dependency path from decide_refresh_tests,
+      orchestration_runner_backend, and orchestration_runtime_lifecycle.
+
+      - No downstream phase may proceed without this gate open.'
+    evidence_template: '## Gate Review Report
+
+
+      **Reviewer**: gate-reviewer-tacit
+
+      **Phase**: parallel_gate_remediation
+
+
+      ### refs Read Confirmation (MANDATORY)
+
+      If no refs were provided, state: "No refs for this step."
+
+
+      ### Blocker Register
+
+      | Family | Evidence reviewed | Status | Blocking? |
+
+      | --- | --- | --- | --- |
+
+      | decide_refresh_tests | <refs> | PROVEN/OPEN | YES/NO |
+
+      | orchestration_runner_backend | <refs> | PROVEN/OPEN | YES/NO |
+
+      | orchestration_runtime_lifecycle | <refs> | PROVEN/OPEN | YES/NO |
+
+
+      ### Gate Decision Basis
+
+      - unresolved_statuses: <list or none>
+
+      - non_intersection_evidence: <text or none>
+
+      - downstream_dependency_barrier_checked: <yes/no>
+
+
+      ### Gate Decision
+
+      - OPEN | BLOCKED'
+    depends_on:
+    - parallel_gate_remediation.fix-blockers
+    - parallel_gate_remediation.retest-decide-refresh-tests
+    - parallel_gate_remediation.retest-runner-backend
+    - parallel_gate_remediation.retest-runtime-lifecycle
+    agent: gate-reviewer-tacit

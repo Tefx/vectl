@@ -67150,6 +67150,120 @@ phases:
     - orchestration_runtime_wiring.integration-proof
     - orchestration_runtime_wiring.spec-conformance
     agent: gate-reviewer-tacit
+  - id: orchestration_runtime_wiring.fix-spec-blockers-batch
+    name: Fix spec blocker batch for runtime wiring
+    status: pending
+    description: "Fix ALL blocker-class findings from orchestration_runtime_wiring.spec-conformance.\n\
+      \nsymbolic_testing: false\n\n## Blockers to Fix (ALL of these, not just the\
+      \ first)\n\n### R6 — runner resume error taxonomy divergence\n- Add/align RunnerResumeError\
+      \ handling and required error taxonomy fields so runtime wiring emits the spec-required\
+      \ structure.\n- Search sibling resume/error emission paths; do not patch only\
+      \ the first failing branch.\n- Required regression tests:\n  - targeted tests\
+      \ for RunnerResumeError emission/translation\n  - targeted tests asserting required\
+      \ taxonomy fields are present in emitted/runtime-recorded errors\n\n### R20\
+      \ — reconcile mechanics are state-recording only\n- Replace record-only reconcile\
+      \ behavior with real reconcile operations on the runtime/backend path.\n- Ensure\
+      \ reconcile effects are observable through runtime behavior, not only persisted\
+      \ metadata.\n- Required regression tests:\n  - targeted reconcile execution\
+      \ test proving real reconcile actions occur\n  - regression test proving state-record-only\
+      \ behavior is no longer the terminal outcome\n\n### R24 — reconcile serialization\
+      \ lock NOT_FOUND\n- Implement/consume reconcile serialization locking so concurrent\
+      \ reconcile paths cannot overlap unsafely.\n- Required regression tests:\n \
+      \ - concurrency-focused test proving reconcile lock/serialization behavior\n\
+      \  - failure-path test covering conflicting reconcile attempts\n\n### R25 —\
+      \ protected-path filtering NOT_FOUND\n- Enforce protected-path filtering for\
+      \ runtime/backend reconcile operations.\n- Required regression tests:\n  - targeted\
+      \ protected-path rejection/filtering test\n  - sibling-path coverage test for\
+      \ all protected path classes touched by the wiring\n\n### R26 — worktree integrity\
+      \ preflight NOT_FOUND\n- Add real worktree integrity preflight before reconcile/runtime\
+      \ operations proceed.\n- Required regression tests:\n  - preflight failure test\
+      \ for invalid/broken worktree state\n  - positive-path test proving valid worktree\
+      \ passes and operation continues\n\n### R27 — integration-context preflight\
+      \ NOT_FOUND\n- Add integration-context preflight enforcement before runtime/backend\
+      \ reconcile operations proceed.\n- Required regression tests:\n  - missing/invalid\
+      \ integration-context failure test\n  - positive-path test proving valid context\
+      \ is required and consumed\n\n### R12 — runner-substrate reuse is PARTIAL\n\
+      - Close the remaining resolver runner-substrate reuse gap where it intersects\
+      \ the blocker-class runtime wiring flow.\n- Required regression tests:\n  -\
+      \ targeted reuse-path test proving resolver/runtime wiring consumes the intended\
+      \ substrate reuse behavior\n\n### R30 — authoritative IsolationMode consumption\
+      \ is PARTIAL\n- Close the remaining authoritative IsolationMode consumption\
+      \ gap in runtime/backend wiring.\n- Required regression tests:\n  - targeted\
+      \ test proving authoritative IsolationMode is consumed by runtime wiring rather\
+      \ than shadow/local interpretation\n\n## Root Cause vs Symptom\n- Root cause:\
+      \ runtime/backend wiring does not fully execute authoritative reconcile, preflight,\
+      \ isolation, and error-taxonomy obligations from the orchestration specs.\n\
+      - Symptom: spec-conformance found DIVERGES / NOT_FOUND / PARTIAL results across\
+      \ reconcile behavior, locking, preflights, protected-path filtering, and error\
+      \ surfaces.\n- Why this fix is not surface-level: it must close the runtime\
+      \ behavior and contract gaps together, with regression coverage for both main-path\
+      \ and highest-risk failure-path behavior.\n\n## Completion Criteria\n- ALL listed\
+      \ requirement gaps are closed together\n- Sibling search completed for each\
+      \ blocker family\n- Regression coverage added for main path and highest-risk\
+      \ failure path per item\n- Implementation evidence states where authoritative\
+      \ spec behavior is now enforced"
+    verification: '- Main path: targeted tests prove runtime/backend wiring now performs
+      real reconcile operations with authoritative IsolationMode and reuse behavior
+      consumed
+
+      - Failure path: targeted tests cover RunnerResumeError taxonomy, reconcile serialization
+      lock conflicts, protected-path filtering, worktree integrity preflight, and
+      integration-context preflight
+
+      - Proof: evidence identifies the exact tests added/updated for R6/R12/R20/R24/R25/R26/R27/R30
+      and shows sibling-search coverage for each blocker family'
+    evidence_template: '## refs Read Confirmation (MANDATORY)
+
+
+      For each ref in this step:
+
+      - <filename> — key passage or "NOT READ: <reason>"
+
+
+      If no refs were provided, state: "No refs for this step."
+
+
+      ## Blocker Closure Report
+
+      - R6: <files/tests updated>
+
+      - R12: <files/tests updated>
+
+      - R20: <files/tests updated>
+
+      - R24: <files/tests updated>
+
+      - R25: <files/tests updated>
+
+      - R26: <files/tests updated>
+
+      - R27: <files/tests updated>
+
+      - R30: <files/tests updated>
+
+
+      ## Sibling Search Evidence
+
+      - <blocker family> — <search performed / scope / result>
+
+
+      ## Main-Path Proof
+
+      - <exact test command(s) and key output>
+
+
+      ## Failure-Path Proof
+
+      - <exact test command(s) and key output>
+
+
+      ## Root Cause Closure
+
+      - <why the changes close the underlying spec/runtime gap rather than only the
+      observed symptom>'
+    depends_on:
+    - orchestration_runtime_wiring.wire-runtime-to-backend
+    agent: python-senior-tacit
 - id: orchestration_dispatch_policy
   name: Orchestration Dispatch / Prompt / Role Policy
   status: locked

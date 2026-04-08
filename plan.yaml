@@ -67012,7 +67012,7 @@ phases:
       \ remediation suite plus broader impacted tests passed (160 passing; no regressions)"
   - id: orchestration_runtime_lifecycle.retest-runtime-lifecycle-blockers-batch
     name: Retest runtime lifecycle blocker batch
-    status: pending
+    status: claimed
     description: 'As an INDEPENDENT TESTER (integration-verifier-tacit), validate
       that the runtime lifecycle blockers are actually closed on the canonical execution
       path.
@@ -67063,6 +67063,8 @@ phases:
     depends_on:
     - orchestration_runtime_lifecycle.fix-runtime-lifecycle-blockers-batch
     agent: integration-verifier-tacit
+    claimed_by: integration-verifier-tacit
+    claimed_at: '2026-04-08T22:10:27.309810+00:00'
 - id: orchestration_runtime_wiring
   name: Orchestration Runner/Runtime Wiring
   status: in_progress

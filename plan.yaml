@@ -65343,9 +65343,10 @@ phases:
   - id: decide_refresh_impl.spec-conformance
     name: Verify RFC conformance
     status: pending
-    description: 'Spec conformance verification via adversarial divergence hunting.
-      Scope: runner provenance, caller-owned advisor_state/next_state, top-level status/reason_code/message,
-      policy metadata, standalone advisor semantics, and MCP contract shape.'
+    description: Spec conformance verification via adversarial divergence hunting.
+      Audit runner provenance, caller-owned advisor_state/next_state, top-level status/reason_code/message,
+      policy metadata, standalone advisor semantics, and MCP contract shape against
+      the RFC, citing exact spec sections and implementation lines.
     verification: 'phase-check protecting doc_sync and deep_review: every blocker-class
       RFC requirement is CONFORMS or gets explicit remediation ownership.'
     evidence_template: '## Spec Conformance Report
@@ -65375,7 +65376,7 @@ phases:
     - decide_refresh_impl.models-state
     - decide_refresh_impl.core
     - decide_refresh_impl.mcp-surface
-    agent: spec-verifier
+    agent: spec-verifier-tacit
   - id: decide_refresh_impl.gate
     name: Gate decide_refresh_impl
     status: pending

@@ -67154,7 +67154,7 @@ phases:
     agent: gate-reviewer-tacit
   - id: orchestration_runtime_wiring.fix-spec-blockers-batch
     name: Fix spec blocker batch for runtime wiring
-    status: pending
+    status: claimed
     description: "Fix ALL blocker-class findings from orchestration_runtime_wiring.spec-conformance.\n\
       \nsymbolic_testing: false\n\n## Blockers to Fix (ALL of these, not just the\
       \ first)\n\n### R6 — runner resume error taxonomy divergence\n- Add/align RunnerResumeError\
@@ -67266,6 +67266,8 @@ phases:
     depends_on:
     - orchestration_runtime_wiring.wire-runtime-to-backend
     agent: python-senior-tacit
+    claimed_by: python-senior-tacit
+    claimed_at: '2026-04-08T18:14:21.051800+00:00'
   - id: orchestration_runtime_wiring.retest-spec-blockers-batch
     name: Retest spec blocker batch for runtime wiring
     status: pending

@@ -67762,7 +67762,7 @@ phases:
     agent: gate-reviewer-tacit
   - id: parallel_gate_remediation.fix-runner-retest-fixtures
     name: Update runner backend retest fixtures
-    status: pending
+    status: claimed
     description: 'Update stale assertions and fixtures in tests/orchestration/unit/test_runner_backend_red.py
       to align with delivered runner backend semantics without relaxing contract intent.
 
@@ -67807,3 +67807,5 @@ phases:
     depends_on:
     - parallel_gate_remediation.fix-blockers
     agent: python-executor
+    claimed_by: python-executor
+    claimed_at: '2026-04-08T16:51:06.175600+00:00'

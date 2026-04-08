@@ -65381,10 +65381,11 @@ phases:
     name: Gate decide_refresh_impl
     status: pending
     description: 'Gate review: verify the refreshed vectl_decide contract is implemented,
-      green, and conformant.'
+      green, and conformant. Block if task_id/reuse semantics drift, standalone advisor
+      semantics narrow, or verification/conformance evidence is incomplete.'
     verification: 'phase-check protecting doc_sync: implementation, verification,
-      and conformance all pass; task_id != session_id semantics preserved; standalone
-      advisor semantics preserved.'
+      and conformance all pass; task_id remains distinct from reuse identity; standalone
+      advisor semantics are preserved.'
     evidence_template: '## refs Read Confirmation (MANDATORY)
 
       For each ref in this step:
@@ -65407,7 +65408,7 @@ phases:
     - decide_refresh_impl.mcp-surface
     - decide_refresh_impl.verify
     - decide_refresh_impl.spec-conformance
-    agent: gate-reviewer
+    agent: gate-reviewer-tacit
 - id: doc_sync
   name: Documentation Sync
   status: locked

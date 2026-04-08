@@ -98,10 +98,25 @@ class _FakeCoreAdapter:
     def step_isolation(self, step_id: str) -> IsolationMode:
         raise NotImplementedError(f"test double: step_isolation({step_id})")
 
-    def claim_step(self, step_id: str, agent: str, force: bool = False) -> None:
+    def claim_step(
+        self,
+        step_id: str,
+        agent: str,
+        *,
+        force: bool = False,
+        flow: str = "normal",
+    ) -> None:
+        _ = flow
         raise NotImplementedError(f"test double: claim_step({step_id}, {agent})")
 
-    def complete_step(self, step_id: str, evidence: str) -> None:
+    def complete_step(
+        self,
+        step_id: str,
+        evidence: str,
+        *,
+        reconcile_disposition: str,
+    ) -> None:
+        _ = reconcile_disposition
         raise NotImplementedError(f"test double: complete_step({step_id})")
 
     def defer_step(self, step_id: str) -> None:

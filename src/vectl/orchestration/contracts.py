@@ -5,14 +5,75 @@ These types are owned by the orchestration plane and represent the contracts
 between control, roster, runtime, and resolver components.
 
 Authority: docs/ORCHESTRATION-PLANE-INTERFACES.md section 3
+Authority: docs/ADR-worktree-support.md section "Core Design"
+Authority: docs/DRIVER-ARCHITECTURE.md section 4 (completion authority)
 """
 
 from dataclasses import dataclass
-from typing import Literal
+from typing import Literal, TypeAlias
 
 from vectl.models import IsolationMode
 
-__all__ = ["IsolationMode"]
+__all__ = [
+    "IsolationMode",
+    "ReconcileDisposition",
+    "ResolverAuthorityContract",
+    "ResolverClaimFlow",
+    "ResolverExecutionSite",
+    "ResolverMutationSurface",
+]
+
+
+ResolverExecutionSite: TypeAlias = Literal["main_worktree"]
+"""Resolver execution location contract.
+
+The resolver contract is pinned to the main worktree. Resolver reasoning may
+inspect per-step runtime snapshots, but its own execution context must remain
+anchored to the canonical main worktree so plan reads/mutations do not drift to
+isolated scratch branches.
+"""
+
+
+ResolverMutationSurface: TypeAlias = Literal["approved_vectl_facade_only"]
+"""Resolver mutation authority contract.
+
+Resolver-side writes are limited to the approved vectl facade boundary. Direct
+mutation of plan/lifecycle state outside that facade is out of contract.
+"""
+
+
+ResolverClaimFlow: TypeAlias = Literal["normal_flow_only"]
+"""Resolver claim authority contract.
+
+Step claiming remains a normal-flow control/runtime activity. Resolver paths may
+diagnose or recommend, but must not turn blocked handling into an alternate
+claim authority.
+"""
+
+
+ReconcileDisposition: TypeAlias = Literal["merged", "noop"]
+"""Allowed reconcile dispositions before orchestration completion.
+
+Completion authority is pinned to the post-reconcile path only. A step may be
+completed through orchestration contracts only after reconcile reached one of
+these acceptance states.
+"""
+
+
+@dataclass(frozen=True)
+class ResolverAuthorityContract:
+    """Pinned resolver authority boundary for blocked/unresolved handling.
+
+    Attributes:
+        execution_site: Resolver runs from the canonical main worktree.
+        mutation_surface: Resolver mutations must go through the approved vectl
+            facade only.
+        claim_flow: Claiming remains reserved for normal flow, not resolver flow.
+    """
+
+    execution_site: ResolverExecutionSite = "main_worktree"
+    mutation_surface: ResolverMutationSurface = "approved_vectl_facade_only"
+    claim_flow: ResolverClaimFlow = "normal_flow_only"
 
 
 @dataclass(frozen=True)
@@ -135,12 +196,16 @@ class ExecutionResult:
         status: One of 'success', 'fail', 'stall', 'transport_error'.
         output_summary: Human-readable summary of results.
         session_id: Session used (if any).
+        operator_message: Operator/user-visible message required when runtime
+            cannot close the problem mechanically. Unresolved runtime failures
+            should surface this instead of silently collapsing into status only.
     """
 
     step_id: str
     status: Literal["success", "fail", "stall", "transport_error"]
     output_summary: str
     session_id: str | None = None
+    operator_message: str | None = None
 
 
 @dataclass(frozen=True)

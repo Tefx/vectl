@@ -6,7 +6,7 @@ Authority: docs/ORCHESTRATION-PLANE-INTERFACES.md section 4
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Protocol
+from typing import TYPE_CHECKING, Literal, Protocol, runtime_checkable
 
 from vectl.orchestration.contracts import (
     ControlDecision,
@@ -22,6 +22,60 @@ from vectl.orchestration.contracts import (
 
 if TYPE_CHECKING:
     pass
+
+
+@runtime_checkable
+class RunnerBackend(Protocol):
+    """Mechanical runner backend surface.
+
+    Responsibility:
+        Runner-process/session start and collection mechanics only.
+
+    Does Not Own:
+        - workspace/worktree lifecycle
+        - plan/lifecycle mutation authority
+        - blocked/unresolved interpretation
+
+    This split exists to keep runner mechanics from absorbing runtime lifecycle
+    policy. It is an ownership contract, not a new subsystem.
+    """
+
+    def start(self, request: ExecutionRequest, workspace: str) -> str:
+        """Start mechanical execution in a prepared workspace."""
+        ...
+
+    def collect(self, execution_id: str) -> ExecutionResult | None:
+        """Collect mechanical execution results without reinterpreting policy."""
+        ...
+
+
+@runtime_checkable
+class RuntimeLifecycle(Protocol):
+    """Mechanical runtime lifecycle surface.
+
+    Responsibility:
+        Workspace/worktree preparation, cleanup, and runtime state snapshots.
+
+    Does Not Own:
+        - runner backend execution internals
+        - plan/lifecycle mutation authority
+        - resolver reasoning
+
+    This split keeps runtime lifecycle ownership explicit and non-overlapping
+    with the runner backend.
+    """
+
+    def snapshot(self) -> RuntimeSnapshot:
+        """Capture current runtime lifecycle state."""
+        ...
+
+    def prepare(self, request: ExecutionRequest) -> str:
+        """Prepare workspace/worktree state for a future runner start."""
+        ...
+
+    def cleanup(self, workspace: str) -> None:
+        """Clean up lifecycle-owned workspace/worktree state."""
+        ...
 
 
 class Control(Protocol):
@@ -152,7 +206,7 @@ class Roster(Protocol):
         ...
 
 
-class Runtime(Protocol):
+class Runtime(RuntimeLifecycle, RunnerBackend, Protocol):
     """
     Mechanical execution chores.
 
@@ -168,6 +222,12 @@ class Runtime(Protocol):
         - plan-aware dispatch decisions
         - blocked-state reasoning
         - authority mutation semantics
+
+    Ownership Split:
+        ``Runtime`` composes two non-overlapping responsibilities:
+        ``RuntimeLifecycle`` owns workspace/worktree lifecycle and snapshots;
+        ``RunnerBackend`` owns start/collect mechanics. This contract pins the
+        split so backend execution logic does not absorb runtime lifecycle policy.
 
     Authority: docs/ORCHESTRATION-PLANE-INTERFACES.md section 4.3
     """
@@ -245,6 +305,11 @@ class Resolver(Protocol):
         - reusable resource bookkeeping
         - mechanical startup/dispatch chores
 
+    Contract Locks:
+        - resolver executes from the canonical main worktree
+        - resolver mutates only through the approved vectl facade
+        - resolver never becomes an alternate claim path
+
     Authority: docs/ORCHESTRATION-PLANE-INTERFACES.md section 4.4
     """
 
@@ -258,4 +323,36 @@ class Resolver(Protocol):
         Returns:
             ResolutionReport with findings and recommended action.
         """
+        ...
+
+
+class LifecycleMutationPort(Protocol):
+    """Approved orchestration mutation facade.
+
+    This is the narrow lifecycle-mutation port that runtime/control/resolver
+    seams are allowed to target. It pins two hard rules:
+
+    - claim is normal-flow only
+    - completion requires post-reconcile acceptance (``merged`` or ``noop``)
+    """
+
+    def claim_step(
+        self,
+        step_id: str,
+        agent: str,
+        *,
+        force: bool = False,
+        flow: Literal["normal"] = "normal",
+    ) -> None:
+        """Claim a step only from normal orchestration flow."""
+        ...
+
+    def complete_step(
+        self,
+        step_id: str,
+        evidence: str,
+        *,
+        reconcile_disposition: Literal["merged", "noop"],
+    ) -> None:
+        """Complete a step only after reconcile closed as ``merged`` or ``noop``."""
         ...

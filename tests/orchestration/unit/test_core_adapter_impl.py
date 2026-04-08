@@ -75,11 +75,26 @@ def test_claim_and_complete_mutations_flow_through_core_surface(tmp_path: Path) 
     save_plan(_build_plan_for_snapshot(), plan_path)
     adapter = PlanCoreAdapter(plan_path)
 
-    adapter.claim_step("core.ready", "python-executor")
-    adapter.complete_step("core.ready", "verified")
+    adapter.claim_step("core.ready", "python-executor", flow="normal")
+    adapter.complete_step("core.ready", "verified", reconcile_disposition="merged")
 
     updated_plan, _ = load_plan_definition(plan_path)
-    _, step = updated_plan.find_step("core.ready")
+    found = updated_plan.find_step("core.ready")
+    assert found is not None
+    _, step = found
 
     assert step.status.value == "done"
     assert step.evidence == "verified"
+
+
+def test_claim_rejects_non_normal_flow_contract(tmp_path: Path) -> None:
+    plan_path = tmp_path / "plan.yaml"
+    save_plan(_build_plan_for_snapshot(), plan_path)
+    adapter = PlanCoreAdapter(plan_path)
+
+    try:
+        adapter.claim_step("core.ready", "python-executor", flow="resolver")
+    except ValueError as exc:
+        assert "pinned to 'normal'" in str(exc)
+    else:
+        raise AssertionError("Expected ValueError for non-normal claim flow")

@@ -132,14 +132,19 @@ class Runtime:
         Worktree/workspace preparation and execution support.
 
     Owns:
-        - workspace/worktree preparation and cleanup
-        - runner startup / resume / shutdown helpers
+        - runtime lifecycle: workspace/worktree preparation and cleanup
+        - runner backend wiring: startup / resume / shutdown helpers
         - mechanical execution handles and collection
 
     Does Not Own:
         - plan-aware dispatch decisions
         - blocked-state reasoning
         - authority mutation semantics
+
+    Ownership Lock:
+        Runtime lifecycle ownership stays separate from runner backend ownership.
+        This class may host both surfaces for now, but contractually it must not
+        turn backend execution details into lifecycle/policy authority.
 
     Isolation Freshness (per ORCHESTRATION-PLANE-ISOLATION-SEMANTICS.md):
         - ``workspace``: runtime must provide a fresh isolated workspace/worktree
@@ -259,6 +264,10 @@ class Runtime:
                 step_id="unknown",
                 status="transport_error",
                 output_summary=f"Unknown execution_id: {execution_id}",
+                operator_message=(
+                    "Runtime could not reconcile the execution handle; operator/user "
+                    "attention is required before treating it as resolved."
+                ),
             )
 
         # Collection remains non-blocking until runner integration reports

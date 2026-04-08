@@ -67225,7 +67225,7 @@ phases:
   steps:
   - id: parallel_gate_remediation.fix-blockers
     name: Fix concurrent gate blockers
-    status: pending
+    status: claimed
     description: 'step_type: implementation
 
       work_type: defect_repair
@@ -67364,6 +67364,8 @@ phases:
 
       - highest_risk_failure_path_result: <text>'
     agent: python-senior-tacit
+    claimed_by: python-senior-tacit
+    claimed_at: '2026-04-08T16:11:47.194905+00:00'
   - id: parallel_gate_remediation.retest-decide-refresh-tests
     name: Retest decide refresh MCP/core contract evidence
     status: pending

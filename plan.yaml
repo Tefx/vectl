@@ -66747,36 +66747,21 @@ phases:
   - id: orchestration_upper_layer_review.run-black-box-upper-layer-orchestration-verification
     name: Run black-box upper-layer orchestration verification
     status: pending
-    description: 'Verification scope: full-plan-check protecting final upper-layer
-      completion.
-
-
-      As an INDEPENDENT TESTER (blind-tester), verify upper-layer orchestration behavior
-      using only public contracts and documented interfaces.
-
-
-      Required black-box scenarios:
-
-      - normal dispatch path claims before execution begins
-
-      - successful execution requires reconcile closure before complete
-
-      - non-pass review/gate output triggers explicit resolution behavior
-
-      - operator_required yields explicit user/operator notification state
-
-      - restart after unresolved conflict or operator pause does not silently resume
-      unsafe dispatch'
-    verification: '- full-plan-check: black-box evidence shows observable behavior
-      matches public contracts without relying on implementation internals
-
-      - full-plan-check: at least one failure-path scenario is exercised and auditable'
+    description: Full-plan black-box verification for upper-layer orchestration using
+      only public contracts and documented interfaces. Cover normal dispatch claiming
+      before execution, successful execution requiring reconcile closure before complete,
+      non-pass review/gate output triggering explicit resolution behavior, operator_required
+      yielding explicit notification state, and restart after unresolved conflict
+      or operator pause not silently resuming unsafe dispatch.
+    verification: 'full-plan-check protecting final upper-layer completion: black-box
+      evidence shows observable behavior matches public contracts without implementation
+      internals; at least one failure-path scenario is exercised and auditable.'
     refs:
     - docs/ORCHESTRATION-PLANE-INTERFACES.md
     - docs/ORCHESTRATION-PLANE-RESOLUTION-CONTRACT.md
     - docs/ORCHESTRATION-PLANE-ORCH-APP-ROUTING.md
     - docs/ORCHESTRATION-PLANE-OPERATOR-CONFLICT-RECOVERY.md
-    agent: blind-tester
+    agent: blind-tester-tacit
   - id: orchestration_upper_layer_review.gate-upper-layer-review
     name: Gate upper-layer review
     status: pending

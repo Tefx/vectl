@@ -76,7 +76,7 @@ from vectl.mcp_server import (
     vectl_validate as _vectl_validate_tool,
 )
 from vectl.migration import migrate_from_split_state
-from vectl.models import PhaseStatus, PlanError, PlanIOError, StepStatus
+from vectl.models import CompletedResult, PhaseStatus, PlanError, PlanIOError, StepStatus
 from vectl.plan_path import resolve_claims_path
 
 # FastMCP @mcp.tool() returns _ToolWrapper objects; unwrap to get the callable.
@@ -3124,3 +3124,71 @@ class TestVectlDecide:
                 assert "reason" in action
             elif action["action"] == "escalate":
                 assert "reason" in action
+
+    def test_vectl_decide_repeated_failures_return_blocked_status(self, tmp_path: Path) -> None:
+        """Repeated-failure decisions expose blocked/repeated_failures via MCP.
+
+        Source: docs/RFC-vectl-decide-advisor-refresh.md section 6.3 mapping
+        table requires repeated_failures -> blocked.
+        """
+        from vectl.mcp_server import vectl_decide as _vectl_decide_tool
+
+        vectl_decide = _vectl_decide_tool.fn  # type: ignore[attr-defined]
+
+        plan_file = tmp_path / "plan.yaml"
+        plan_file.write_text(
+            yaml.dump(
+                {
+                    "project": "decide-repeated-failures",
+                    "phases": [
+                        {
+                            "id": "alpha",
+                            "name": "Alpha",
+                            "status": "pending",
+                            "steps": [
+                                {
+                                    "id": "alpha.verify",
+                                    "name": "Verification",
+                                    "status": "claimed",
+                                    "claimed_by": "python-engineer",
+                                    "verify": "must_green",
+                                }
+                            ],
+                        }
+                    ],
+                }
+            )
+        )
+
+        old = os.environ.get("VECTL_PLAN_PATH")
+        os.environ["VECTL_PLAN_PATH"] = str(plan_file)
+        try:
+            result = vectl_decide(
+                running_tasks=[],
+                completed_results=[
+                    CompletedResult(
+                        step_id="alpha.verify",
+                        task_id="exec-3",
+                        runner="claude",
+                        status="FAIL",
+                        output_summary="Third consecutive failure",
+                    )
+                ],
+                advisor_state={
+                    "completion_times": {},
+                    "session_registry": {},
+                    "failure_counts": {"alpha.verify": 2},
+                },
+            )
+        finally:
+            if old is None:
+                os.environ.pop("VECTL_PLAN_PATH", None)
+            else:
+                os.environ["VECTL_PLAN_PATH"] = old
+
+        assert result["status"] == "blocked"
+        assert result["reason_code"] == "repeated_failures"
+        assert any(
+            action["action"] == "escalate" and action["step_id"] == "alpha.verify"
+            for action in result["actions"]
+        )

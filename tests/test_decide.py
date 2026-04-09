@@ -661,6 +661,66 @@ class TestStatusReasonCode:
         assert output.status == "wait"
         assert output.reason_code == "capacity_full"
 
+    def test_repeated_failures_map_to_blocked_status(self, tmp_path: Path) -> None:
+        """Repeated-failure threshold maps to blocked/repeated_failures.
+
+        Source: docs/RFC-vectl-decide-advisor-refresh.md section 6.3 mapping
+        table requires repeated_failures -> blocked.
+        """
+        plan = Plan(
+            project="decide-test",
+            phases=[
+                Phase(
+                    id="p1",
+                    name="Phase 1",
+                    status=PhaseStatus.PENDING,
+                    steps=[
+                        Step(
+                            id="s1",
+                            name="Critical verification step",
+                            status=StepStatus.CLAIMED,
+                            claimed_by="agent-1",
+                            verify="must_green",
+                        ),
+                    ],
+                )
+            ],
+        )
+        plan_path = tmp_path / "plan.yaml"
+        save_plan(plan, plan_path)
+
+        decide_mod = importlib.import_module("vectl.decide")
+        original = decide_mod.resolve_plan_path
+        decide_mod.resolve_plan_path = lambda: plan_path
+        try:
+            output = decide(
+                running_tasks=[],
+                completed_results=[
+                    CompletedResult(
+                        step_id="s1",
+                        task_id="task-1",
+                        runner="claude",
+                        status="FAIL",
+                        output_summary="Verification failed again",
+                    )
+                ],
+                max_parallelism=5,
+                advisor_state={
+                    "completion_times": {},
+                    "session_registry": {},
+                    "failure_counts": {"s1": ESCALATION_THRESHOLD - 1},
+                },
+            )
+        finally:
+            decide_mod.resolve_plan_path = original
+
+        assert output.status == "blocked"
+        assert output.reason_code == "repeated_failures"
+        assert any(
+            action.action == "escalate" and action.step_id == "s1" for action in output.actions
+        )
+        assert output.next_state.get("failure_counts", {}) == {}
+
 
 # ---------------------------------------------------------------------------
 # Policy metadata tests

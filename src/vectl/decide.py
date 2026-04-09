@@ -279,6 +279,7 @@ def decide(
 
     actions: list[Action] = []
     decision_log: list[Decision] = []
+    repeated_failure_triggered = False
 
     # Process completed results
     if completed_results:
@@ -340,6 +341,7 @@ def decide(
                 count = decision_state.register_failure(step_id=result.step_id)
 
                 if count >= 3:
+                    repeated_failure_triggered = True
                     # Escalate after 3 failures
                     actions.append(
                         Action(
@@ -460,7 +462,7 @@ def decide(
 
     # Compute top-level status and reason code
     # Check for repeated failures that need attention
-    escalation_pending = any(
+    escalation_pending = repeated_failure_triggered or any(
         count >= ESCALATION_THRESHOLD for count in decision_state.failure_counts.values()
     )
     if escalation_pending:

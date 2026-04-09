@@ -66240,7 +66240,7 @@ phases:
       \ commit: [vectl] step-doc_sync.update-vectl-decide-docs completed"
   - id: doc_sync.gate
     name: Gate doc_sync
-    status: pending
+    status: claimed
     description: 'Gate review: verify vectl_decide documentation matches the implemented
       refreshed contract exactly.'
     verification: 'phase-check protecting deep_review: documentation matches implementation
@@ -66260,6 +66260,8 @@ phases:
     depends_on:
     - doc_sync.update-vectl-decide-docs
     agent: gate-reviewer-tacit
+    claimed_by: gate-reviewer-tacit
+    claimed_at: '2026-04-09T08:49:41.447861+00:00'
 - id: deep_review
   name: Deep Review (Independent Audit)
   status: locked

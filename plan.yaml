@@ -68734,7 +68734,7 @@ phases:
   steps:
   - id: orchestration_orch_app_routing.implement-orch-app-routing-reconcile-gate-and-result-normalization
     name: Implement orch_app routing, reconcile gate, and result normalization
-    status: claimed
+    status: done
     description: Implement upper-layer orch_app routing on top of the shared dispatch/runtime
       substrate. Refresh snapshots before control evaluation; claim before runtime
       start; reconcile immediately on terminal success; allow complete only after
@@ -68755,6 +68755,47 @@ phases:
     agent: python-senior-tacit
     claimed_by: python-senior-tacit
     claimed_at: '2026-04-09T04:42:08.250055+00:00'
+    done_at: '2026-04-09T04:55:36.167446+00:00'
+    evidence: 'Artifact:
+
+      - Commit: 340552b
+
+      - Files: src/vectl/orch_app.py, tests/orchestration/unit/test_orch_app.py
+
+
+      Verification:
+
+      - uv run pytest tests/orchestration/unit/test_dispatch_policy.py tests/orchestration/unit/test_orch_app.py
+      -q -> 83 passed
+
+      - pyright on orch_app + tests -> 0 errors
+
+      - ruff check -> clean
+
+
+      Spec link:
+
+      - docs/ORCHESTRATION-PLANE-ORCH-APP-ROUTING.md
+
+      - docs/ORCHESTRATION-PLANE-DISPATCH-AND-PROMPT-POLICY.md
+
+      - docs/ORCHESTRATION-PLANE-RESOLUTION-CONTRACT.md
+
+      - docs/ORCHESTRATION-PLANE-INTERFACES.md
+
+
+      Summary:
+
+      - claim-before-runtime-start enforced on normal dispatch
+
+      - reconcile/complete gate enforced (complete only after merged/noop)
+
+      - fail/stall/transport_error and non-pass review/parse failures normalized into
+      explicit ResolutionCase
+
+      - resolver outcomes routed through refreshed control.apply_resolution
+
+      - execution_context carried via RoleProfile-driven DispatchSpec'
   - id: orchestration_orch_app_routing.prove-orch-app-routing-seam-end-to-end
     name: Prove orch_app routing seam end-to-end
     status: pending

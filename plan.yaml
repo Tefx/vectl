@@ -65529,7 +65529,7 @@ phases:
       \ behavior: VERIFIED\n\ngate_open_allowed: true"
   - id: decide_refresh_tests.fix-gate-mcp-contract-refresh-batch
     name: Fix gate MCP contract refresh blocker batch
-    status: pending
+    status: claimed
     description: 'Fix ALL blocker-class refreshed MCP red-test gaps surfaced by decide_refresh_tests.gate.
 
 
@@ -65607,6 +65607,8 @@ phases:
     depends_on:
     - decide_refresh_tests.retest-refreshed-red-seams
     agent: python-executor
+    claimed_by: python-executor
+    claimed_at: '2026-04-09T12:34:45.693516+00:00'
   - id: decide_refresh_tests.reverify-gate-mcp-contract-refresh-batch
     name: Reverify gate MCP contract refresh blocker batch
     status: pending

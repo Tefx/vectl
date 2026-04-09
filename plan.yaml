@@ -66797,7 +66797,7 @@ phases:
       \ dependency wired through new reverify path."
   - id: deep_review.fix-repeated-failure-pending-escalation-state
     name: Repair repeated-failure pending-escalation state persistence
-    status: claimed
+    status: done
     description: 'Fix repeated-failure status signaling across consecutive decide
       invocations.
 
@@ -66888,6 +66888,35 @@ phases:
     agent: python-senior-tacit
     claimed_by: python-senior-tacit
     claimed_at: '2026-04-09T09:58:26.189575+00:00'
+    done_at: '2026-04-09T10:05:54.320757+00:00'
+    evidence: "## refs Read Confirmation (MANDATORY)\n- docs/RFC-vectl-decide-advisor-refresh.md\
+      \ — reviewed sections 6.2.1/6.3/6.4/7.2 (next_state replacement + repeated_failures->blocked\
+      \ contract)\n- tools/vectl/README.md — NOT READ (missing path)\n- README.md\
+      \ — read for repo context fallback\n\n## Root-Cause Fix Evidence\n- prior_loop:\
+      \ deep_review.fix-repeated-failure-status-signaling -> deep_review.reverify-repeated-failure-status-signaling\n\
+      - why_previous_fix_failed:\n  - prior fix corrected trigger-cycle output but\
+      \ failed to persist unreconciled escalation marker in next_state; follow-up\
+      \ invocation could fall back to done/no_executable_steps.\n- root_cause_closed:\n\
+      \  - introduced durable `pending_escalations` state in decide-state/next_state.\n\
+      \  - threshold failure writes pending escalation marker.\n  - follow-up calls\
+      \ with unresolved escalation remain `blocked/repeated_failures`.\n  - reconciliation\
+      \ paths (success/expected-red) clear marker.\n- files changed:\n  - src/vectl/decide.py\n\
+      \  - src/vectl/decision_state.py\n  - tests/test_decide.py\n- tests updated:\n\
+      \  - repeated-failure trigger assertion extended to require persisted pending\
+      \ escalation\n  - new follow-up invocation test proves blocked persistence without\
+      \ re-emitting escalate\n- highest-risk failure path covered:\n  - trigger at\
+      \ threshold + carry next_state into subsequent call with no completions; verifies\
+      \ non-terminal blocked state persists\n- contract_consistency_note:\n  - preserved\
+      \ other status/reason mappings and refreshed output shape; no unrelated mapping\
+      \ regressions introduced\n- commands run:\n  - `uv run pytest tests/test_decide.py\
+      \ -k \"repeated_failures or pending_escalation\" -v`\n  - `uv run pytest tests/test_decide_state_isolation.py\
+      \ -k failure -v`\n  - `uv run pytest tests/test_decide.py -v`\n  - `uv run ruff\
+      \ check src/vectl/decide.py src/vectl/decision_state.py tests/test_decide.py`\n\
+      - outputs:\n  - targeted tests PASS\n  - `tests/test_decide.py`: 23 passed,\
+      \ 1 warning\n  - ruff: all checks passed\n\n## Commit Evidence\n- worker commit:\
+      \ `4313ec3` (`fix(decide): persist pending escalation state`)\n- merged to main\
+      \ via orchestrator commit: `[vectl] step-deep_review.fix-repeated-failure-pending-escalation-state\
+      \ completed`"
   - id: deep_review.reverify-repeated-failure-pending-escalation-state
     name: Reverify repeated-failure pending-escalation status persistence
     status: pending

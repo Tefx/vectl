@@ -72617,7 +72617,7 @@ phases:
   steps:
   - id: orchestration_upper_layer_review.run-full-plan-upper-layer-wiring-audit
     name: Run full-plan upper-layer wiring audit
-    status: claimed
+    status: done
     description: 'Verification scope: full-plan-check protecting final upper-layer
       completion.
 
@@ -72654,6 +72654,22 @@ phases:
     agent: wiring-auditor
     claimed_by: vectl-decide-orchestrator-tacit
     claimed_at: '2026-04-09T18:22:11.161139+00:00'
+    done_at: '2026-04-09T18:26:26.326657+00:00'
+    evidence: "Artifact:\n- Commit hash: N/A (read-only audit step; no code mutation)\n\
+      \nVerification:\n- Run: wiring-auditor full-plan audit over docs + `src/vectl/orch_app.py`\
+      \ + `src/vectl/orchestration/` -> PASS (5/5 checks)\n- Findings:\n  - DispatchSpec\
+      \ / RoleProfile / PromptRegistry contracts are wired through `OrchestrationApp`\
+      \ + `DispatchCoordinator` and consumed by runtime/terminal routing paths.\n\
+      \  - Review parse/normalization paths produce explicit `ResolutionCase` objects\
+      \ for non-pass and parse-failure outcomes.\n  - Operator notification + recovery\
+      \ gate/state reconstruction paths are reachable from restart/recover flows.\n\
+      \  - Runtime/roster/resolver surfaces preserve authority boundaries (no shadow\
+      \ authority leakage).\n  - Protected-path handling for `plan.yaml` is enforced\
+      \ via restore+evidence and reconcile gate semantics; no bypass path found.\n\
+      \nSpec link:\n- docs/ORCHESTRATION-PLANE-DISPATCH-AND-PROMPT-POLICY.md\n- docs/ORCHESTRATION-PLANE-RESOLVER-COORDINATION.md\n\
+      - docs/ORCHESTRATION-PLANE-ORCH-APP-ROUTING.md\n- docs/ORCHESTRATION-PLANE-OPERATOR-CONFLICT-RECOVERY.md\n\
+      \nDisposition:\n- Full-plan wiring audit: PASS. No orphaned/bypassed upper-layer\
+      \ semantics detected."
   - id: orchestration_upper_layer_review.run-full-plan-upper-layer-spec-conformance-audit
     name: Run full-plan upper-layer spec conformance audit
     status: pending

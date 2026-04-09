@@ -97,6 +97,39 @@ def should_reuse_session(
     return (True, reuse_token)
 
 
+def _reuse_runner_for_parent(
+    parent_step_id: str | None,
+    state: DecideState,
+) -> str | None:
+    """Return authoritative reuse runner provenance for ``parent_step_id``.
+
+    Source: step decide_refresh_impl.af1-r8-fix and
+    docs/RFC-vectl-decide-advisor-refresh.md section 6.1 require reuse hints to
+    carry runner provenance instead of hardcoded defaults.
+    """
+    if parent_step_id is None:
+        return None
+
+    reuse_runner = state.reusable_session_runner(
+        parent_step_id=parent_step_id,
+        now=time.time(),
+        reuse_ttl=REUSE_TTL,
+    )
+    if reuse_runner is not None:
+        return reuse_runner
+
+    # Minimal legacy compatibility: retain historical default only when caller
+    # state has a reusable token but no persisted runner provenance yet.
+    reuse_token = state.reusable_session(
+        parent_step_id=parent_step_id,
+        now=time.time(),
+        reuse_ttl=REUSE_TTL,
+    )
+    if reuse_token is not None:
+        return "task"
+    return None
+
+
 def _compute_status(
     plan: Plan, running_count: int, max_parallelism: int
 ) -> tuple[
@@ -212,9 +245,11 @@ def decide(
     if advisor_state is not None:
         raw_completion = advisor_state.get("completion_times", {})
         raw_sessions = advisor_state.get("session_registry", {})
+        raw_session_runners = advisor_state.get("session_runner_registry", {})
         raw_failures = advisor_state.get("failure_counts", {})
         completion_map = raw_completion if isinstance(raw_completion, dict) else {}
         session_map = raw_sessions if isinstance(raw_sessions, dict) else {}
+        session_runner_map = raw_session_runners if isinstance(raw_session_runners, dict) else {}
         failure_map = raw_failures if isinstance(raw_failures, dict) else {}
 
         completion_times = {
@@ -225,12 +260,16 @@ def decide(
         session_registry = {
             step_id: token for step_id, token in session_map.items() if step_id in step_ids
         }
+        session_runner_registry = {
+            step_id: runner for step_id, runner in session_runner_map.items() if step_id in step_ids
+        }
         failure_counts = {
             step_id: count for step_id, count in failure_map.items() if step_id in step_ids
         }
         decision_state = DecideState(
             completion_times=completion_times,
             session_registry=session_registry,
+            session_runner_registry=session_runner_registry,
             failure_counts=failure_counts,
         )
     else:
@@ -248,6 +287,7 @@ def decide(
             # Do not overwrite runner reuse tokens with execution identifiers;
             # task_id is execution identity, not a reuse handle.
             decision_state.completion_times[result.step_id] = time.time()
+            decision_state.session_runner_registry[result.step_id] = result.runner
 
             if result.status == "SUCCESS":
                 # Create complete action
@@ -364,6 +404,7 @@ def decide(
         )
 
         if should_reuse and reuse_token:
+            reuse_runner = _reuse_runner_for_parent(parent_step_id, decision_state)
             actions.append(
                 Action(
                     action="claim_and_dispatch",
@@ -371,7 +412,7 @@ def decide(
                     agent=step.agent,
                     task_id=None,
                     reuse_token=reuse_token,
-                    reuse_runner="task",
+                    reuse_runner=reuse_runner,
                     step_description=step.description,
                     step_verification=step.verification,
                     step_refs=step.refs if step.refs else None,
@@ -445,6 +486,11 @@ def decide(
         "session_registry": {
             step_id: token
             for step_id, token in decision_state.session_registry.items()
+            if step_id in step_ids
+        },
+        "session_runner_registry": {
+            step_id: runner
+            for step_id, runner in decision_state.session_runner_registry.items()
             if step_id in step_ids
         },
         "failure_counts": {

@@ -16,17 +16,17 @@ Contract spec: docs/RFC-vectl-decide-advisor-refresh.md
 
 from __future__ import annotations
 
-import time
 import importlib
+import time
 from pathlib import Path
 
-from vectl.decision_state import DecideState
 from vectl.decide import (
+    ESCALATION_THRESHOLD,
+    REUSE_TTL,
     decide,
     should_reuse_session,
-    REUSE_TTL,
-    ESCALATION_THRESHOLD,
 )
+from vectl.decision_state import DecideState
 from vectl.io import save_plan
 from vectl.models import (
     CompletedResult,
@@ -38,7 +38,6 @@ from vectl.models import (
     Step,
     StepStatus,
 )
-
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -229,6 +228,128 @@ class TestTaskIdSemantics:
         )
         # task_id should still be None (it's execution identity, not reuse handle)
         assert action.task_id is None
+
+    def test_reuse_runner_follows_completed_result_runner(self, tmp_path: Path) -> None:
+        """Same-cycle reuse preserves completion runner provenance.
+
+        Source: step decide_refresh_impl.af1-r8-fix and RFC section 6.1 require
+        reuse hints to carry authoritative runner provenance.
+        """
+        plan = Plan(
+            project="decide-test",
+            phases=[
+                Phase(
+                    id="p1",
+                    name="Phase 1",
+                    status=PhaseStatus.PENDING,
+                    steps=[
+                        Step(
+                            id="s1",
+                            name="Parent",
+                            status=StepStatus.CLAIMED,
+                            claimed_by="agent-1",
+                            agent="python-executor",
+                        ),
+                        Step(
+                            id="s2",
+                            name="Child",
+                            status=StepStatus.PENDING,
+                            depends_on=["s1"],
+                            agent="python-executor",
+                        ),
+                    ],
+                )
+            ],
+        )
+        plan_path = tmp_path / "plan.yaml"
+        save_plan(plan, plan_path)
+
+        decide_mod = importlib.import_module("vectl.decide")
+        original = decide_mod.resolve_plan_path
+        decide_mod.resolve_plan_path = lambda: plan_path
+        try:
+            output = decide(
+                running_tasks=[],
+                completed_results=[
+                    CompletedResult(
+                        step_id="s1",
+                        task_id="exec-1",
+                        runner="claude",
+                        status="SUCCESS",
+                        output_summary="Done",
+                    )
+                ],
+                max_parallelism=5,
+                advisor_state={
+                    "completion_times": {"s1": time.time()},
+                    "session_registry": {"s1": "ses-abc123"},
+                    "failure_counts": {},
+                },
+            )
+        finally:
+            decide_mod.resolve_plan_path = original
+
+        claim_actions = [
+            a for a in output.actions if a.action == "claim_and_dispatch" and a.step_id == "s2"
+        ]
+        assert claim_actions, f"No s2 claim actions: {output.actions}"
+        assert claim_actions[0].reuse_token == "ses-abc123"
+        assert claim_actions[0].reuse_runner == "claude"
+
+    def test_reuse_runner_round_trips_through_advisor_state(self, tmp_path: Path) -> None:
+        """Persisted advisor_state preserves reusable-session provenance.
+
+        Source: step decide_refresh_impl.af1-r8-fix R8 checklist requires
+        reuse_runner provenance to survive caller-owned state reuse.
+        """
+        plan = Plan(
+            project="decide-test",
+            phases=[
+                Phase(
+                    id="p1",
+                    name="Phase 1",
+                    status=PhaseStatus.PENDING,
+                    steps=[
+                        Step(id="s1", name="Parent", status=StepStatus.DONE),
+                        Step(
+                            id="s2",
+                            name="Child",
+                            status=StepStatus.PENDING,
+                            depends_on=["s1"],
+                            agent="python-executor",
+                        ),
+                    ],
+                )
+            ],
+        )
+        plan_path = tmp_path / "plan.yaml"
+        save_plan(plan, plan_path)
+
+        decide_mod = importlib.import_module("vectl.decide")
+        original = decide_mod.resolve_plan_path
+        decide_mod.resolve_plan_path = lambda: plan_path
+        try:
+            output = decide(
+                running_tasks=[],
+                completed_results=None,
+                max_parallelism=5,
+                advisor_state={
+                    "completion_times": {"s1": time.time()},
+                    "session_registry": {"s1": "ses-abc123"},
+                    "session_runner_registry": {"s1": "claude"},
+                    "failure_counts": {},
+                },
+            )
+        finally:
+            decide_mod.resolve_plan_path = original
+
+        claim_actions = [
+            a for a in output.actions if a.action == "claim_and_dispatch" and a.step_id == "s2"
+        ]
+        assert claim_actions, f"No s2 claim actions: {output.actions}"
+        assert claim_actions[0].reuse_token == "ses-abc123"
+        assert claim_actions[0].reuse_runner == "claude"
+        assert output.next_state.get("session_runner_registry") == {"s1": "claude"}
 
 
 # ---------------------------------------------------------------------------

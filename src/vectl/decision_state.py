@@ -28,21 +28,32 @@ class DecideState:
             session-reuse TTL checks.
         session_registry: Completed step -> runner-specific reuse token mapping
             for parent session reuse decisions.
+        session_runner_registry: Completed step -> runner namespace for the
+            authoritative reuse token provenance.
         failure_counts: Consecutive failure counts by step ID for escalation
             threshold decisions.
     """
 
     completion_times: dict[str, float] = field(default_factory=dict)
     session_registry: dict[str, str] = field(default_factory=dict)
+    session_runner_registry: dict[str, str] = field(default_factory=dict)
     failure_counts: dict[str, int] = field(default_factory=dict)
 
-    def record_completion(self, *, step_id: str, task_id: str, completed_at: float) -> None:
+    def record_completion(
+        self,
+        *,
+        step_id: str,
+        task_id: str,
+        runner: str,
+        completed_at: float,
+    ) -> None:
         """Record completion metadata for session reuse checks.
 
         Args:
             step_id: Completed step identifier.
             task_id: Runner-specific reuse token associated with the completed
                 step in the current decide contract.
+            runner: Runner namespace/source for ``task_id`` provenance.
             completed_at: Completion timestamp from ``time.time()``.
 
         Raises:
@@ -53,6 +64,7 @@ class DecideState:
 
         self.completion_times[step_id] = completed_at
         self.session_registry[step_id] = task_id
+        self.session_runner_registry[step_id] = runner
 
     def reusable_session(self, *, parent_step_id: str, now: float, reuse_ttl: int) -> str | None:
         """Return reusable runner token for ``parent_step_id`` if still eligible.
@@ -72,6 +84,27 @@ class DecideState:
         if now - completed_at > reuse_ttl:
             return None
         return self.session_registry.get(parent_step_id)
+
+    def reusable_session_runner(
+        self, *, parent_step_id: str, now: float, reuse_ttl: int
+    ) -> str | None:
+        """Return reusable runner provenance for ``parent_step_id`` if eligible.
+
+        Args:
+            parent_step_id: Parent step candidate for reuse.
+            now: Current timestamp from ``time.time()``.
+            reuse_ttl: Reuse eligibility window in seconds.
+
+        Returns:
+            Runner namespace for the reusable token when parent completion is
+            still within TTL, otherwise ``None``.
+        """
+        completed_at = self.completion_times.get(parent_step_id)
+        if completed_at is None:
+            return None
+        if now - completed_at > reuse_ttl:
+            return None
+        return self.session_runner_registry.get(parent_step_id)
 
     def register_failure(self, *, step_id: str) -> int:
         """Increment and return consecutive failure count for ``step_id``.

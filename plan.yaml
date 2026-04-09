@@ -65938,7 +65938,7 @@ phases:
       \ reappear."
   - id: decide_refresh_tests.reverify-root-cause-mcp-refreshed-assertions
     name: Reverify root-cause MCP refreshed assertions
-    status: claimed
+    status: done
     description: 'As an INDEPENDENT TESTER (integration-verifier-tacit), prove the
       authoritative MCP test surface now matches the refreshed decide contract.
 
@@ -65994,6 +65994,94 @@ phases:
     - decide_refresh_tests.fix-root-cause-mcp-refreshed-assertions
     claimed_by: integration-verifier-tacit
     claimed_at: '2026-04-09T14:05:21.461657+00:00'
+    done_at: '2026-04-09T14:12:49.625649+00:00'
+    evidence: "## Verification Report\n**Tester**: integration-verifier-tacit\n**Scope**:\
+      \ tests/test_mcp.py::TestVectlDecide refreshed MCP contract\n**Independence\
+      \ Level**: L1\n\n### refs Read Confirmation (MANDATORY)\n- tools/vectl/README.md\
+      \ — NOT READ: No such file exists in the repository. Confirmed via glob search\
+      \ (`**/vectl/README.md` returned empty; `tools/` directory does not exist at\
+      \ project root).\n- docs/RFC-vectl-decide-advisor-refresh.md (substituted as\
+      \ authoritative spec, found via glob) — Key passage: Section 6.3 \"Replace weak\
+      \ continuation signaling with structured top-level status\": `from: continuation:\
+      \ bool + halt_reason: str | None` → `to: status + reason_code + optional human-readable\
+      \ message`. Lines 256-257 explicitly state the field replacement mapping. Section\
+      \ 6.6 defines `reuse_token` and `reuse_runner` as new action-level fields, with\
+      \ `continuation/halt_reason/session` removed from the refreshed contract (line\
+      \ 285).\n\n### Command Proof\n- Exact command executed:\n```\nuv run pytest\
+      \ tests/test_mcp.py::TestVectlDecide -v\n```\n- Actual output:\n```\n=============================\
+      \ test session starts ==============================\nplatform darwin -- Python\
+      \ 3.12.12, pytest-9.0.2, pluggy-1.6.0 -- /Users/tefx/Projects/vectl/.venv/bin/python\n\
+      cachedir: .pytest_cache\nhypothesis profile 'default'\nrootdir: /Users/tefx/Projects/vectl\n\
+      configfile: pyproject.toml\nplugins: anyio-4.12.1, playwright-0.7.2, hypothesis-6.151.9,\
+      \ base-url-2.1.0, cov-7.0.0\ncollecting ... collected 4 items\n\ntests/test_mcp.py::TestVectlDecide::test_vectl_decide_returns_structured_output\
+      \ PASSED [ 25%]\ntests/test_mcp.py::TestVectlDecide::test_vectl_decide_empty_plan\
+      \ PASSED  [ 50%]\ntests/test_mcp.py::TestVectlDecide::test_vectl_decide_with_running_tasks\
+      \ PASSED [ 75%]\ntests/test_mcp.py::TestVectlDecide::test_vectl_decide_repeated_failures_return_blocked_status\
+      \ PASSED [100%]\n\n============================== 4 passed in 0.49s ==============================\n\
+      ```\n\n### Pattern Checks\n- Refreshed assertions present:\n  - **status**:\
+      \ ✅ PRESENT — 7 assertion sites across all 4 tests (lines 3011, 3022, 3056,\
+      \ 3088, 3097, 3140, 3242). Includes key-existence checks (`\"status\" in result`)\
+      \ and value-equality checks (`result[\"status\"] == \"dispatch\"`, `\"done\"\
+      `, `\"blocked\"`).\n  - **reason_code**: ✅ PRESENT — 7 assertion sites (lines\
+      \ 3012, 3025, 3057, 3089, 3098, 3141, 3243). Includes domain-value validation\
+      \ (`result[\"reason_code\"] in (\"dispatch_available\", \"waiting_on_running\"\
+      , ...)`) and specific equality checks.\n  - **next_state**: ✅ PRESENT — 11 assertion\
+      \ sites (lines 3014, 3041-3044, 3090, 3103-3104, 3142, 3147-3148, 3247-3248).\
+      \ Validates key presence, type, and sub-keys (`completion_times`, `session_registry`,\
+      \ `failure_counts`).\n  - **policy**: ✅ PRESENT — 10 assertion sites (lines\
+      \ 3015, 3048-3052, 3091, 3109, 3143, 3153, 3253). Validates `reuse_ttl_s` and\
+      \ `escalation_threshold` keys and integer types.\n  - **advisor_state**: ✅ PRESENT\
+      \ — 1 assertion site (line 3045): `assert \"advisor_state\" not in result` —\
+      \ verifies the refreshed contract does NOT emit `advisor_state` in output (it\
+      \ is an input-only field; output uses `next_state`). This is the correct refreshed\
+      \ behavior per RFC.\n  - **reuse_token**: ✅ PRESENT — 4 assertion sites (lines\
+      \ 3063, 3065, 3168, 3171). Validates key presence and type (`None or str`).\n\
+      \  - **reuse_runner**: ✅ PRESENT — 4 assertion sites (lines 3064, 3066, 3169,\
+      \ 3170). Validates key presence and domain values (`None, \"task\", \"claude\"\
+      `).\n\n- Stale acceptance assertions absent:\n  - **continuation**: ✅ ABSENT\
+      \ as acceptance assertion. All references are `assert \"continuation\" not in\
+      \ result` (5 sites: lines 3017, 3092, 3144, 3244 plus docstring references at\
+      \ lines 2992-2993). Zero lines assert `result[\"continuation\"]` or `result.continuation`\
+      \ as a positive acceptance. All `continuation` references are either (a) negative\
+      \ assertions confirming absence, or (b) docstrings explaining the replacement.\n\
+      \  - **halt_reason**: ✅ ABSENT as acceptance assertion. Same pattern: 5 `assert\
+      \ \"halt_reason\" not in result` sites (lines 3018, 3093, 3145, 3245) plus docstring\
+      \ at line 2993. Zero positive acceptance assertions.\n  - **session**: ✅ ABSENT\
+      \ as acceptance assertion. `session` appears only as: (1) `assert \"session\"\
+      \ not in result` (5 sites), (2) `assert \"session\" not in action` (2 sites),\
+      \ (3) `\"session_registry\"` in `next_state` sub-keys (unrelated to stale `session`\
+      \ top-level field), (4) `\"task_id\": \"session-123\"` as a test fixture value\
+      \ (unrelated). Zero positive acceptance assertions for a `session` field on\
+      \ result or action objects.\n\n### Distinction Notes\n- Comments/docstrings\
+      \ mentioning legacy fields:\n  - Line 2992: `- continuation: replaced by status`\
+      \ — docstring only, explanatory context\n  - Line 2993: `- halt_reason: replaced\
+      \ by reason_code` — docstring only, explanatory context\n  - Line 2973: `- Decides\
+      \ session reuse via reuse_token/reuse_runner with TTL awareness` — docstring,\
+      \ references the NEW reuse mechanism, not stale `session` field\n- Active assertion\
+      \ verdict: All 7 stale-field references in the TestVectlDecide class body are\
+      \ **negative assertions** (`assert \"FIELD\" not in result`/`action`), confirming\
+      \ the refreshed contract no longer emits those fields. There are **zero** positive\
+      \ acceptance assertions (`assert result[\"continuation\"] == ...`, etc.) for\
+      \ any stale field. The docstring mentions (lines 2992-2993) are clearly distinguished\
+      \ from assertions — they are inside the test method's triple-quoted docstring\
+      \ block, not executable test code.\n\n### Behavioral proof\n- behavioral_proof_register:\
+      \ All 4 TestVectlDecide tests pass (PASSED). The tests verify: (1) structured\
+      \ output with refreshed contract shape, (2) empty-plan edge case yields `status=done,\
+      \ reason_code=no_executable_steps`, (3) running_tasks input with runner provenance,\
+      \ (4) repeated failures yield `status=blocked, reason_code=repeated_failures`\
+      \ with escalate action. Each test also asserts the absence of stale fields (`continuation`,\
+      \ `halt_reason`, `session`) from result/action objects.\n- gate_open_allowed:\
+      \ true\n- uncertainty_sources: The required ref `tools/vectl/README.md` does\
+      \ not exist in the repository. This was confirmed via glob search at multiple\
+      \ path depths. The authoritative spec was found at `docs/RFC-vectl-decide-advisor-refresh.md`\
+      \ instead and confirmed to align with the test assertions.\n\n### Test-step\
+      \ semantic fields\n- step_intent: Verify that the authoritative MCP test surface\
+      \ (TestVectlDecide class) matches the refreshed decide contract per RFC-vectl-decide-advisor-refresh,\
+      \ with refreshed assertion fields present and stale acceptance assertions absent.\n\
+      - expected_result: green (4 passed, 0 skipped)\n- observed_result: green — 4\
+      \ passed, 0 skipped, 0 failed, 0.49s runtime\n- failure_alignment: N/A (no failures\
+      \ observed)\n- product_implementation_files_modified: no (verification-only\
+      \ step, no source changes made)\n\n### Verdict\n- PASS"
 - id: decide_refresh_impl
   name: vectl_decide Contract Refresh — Implementation
   status: done

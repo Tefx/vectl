@@ -65530,7 +65530,7 @@ phases:
       \ behavior: VERIFIED\n\ngate_open_allowed: true"
 - id: decide_refresh_impl
   name: vectl_decide Contract Refresh — Implementation
-  status: in_progress
+  status: done
   gate: Refreshed vectl_decide contract is implemented, green on focused tests, and
     conformant to the RFC.
   depends_on:
@@ -65878,7 +65878,7 @@ phases:
       blocker ownership in plan state.'
   - id: decide_refresh_impl.gate
     name: Gate decide_refresh_impl
-    status: claimed
+    status: done
     description: 'Gate review: verify the refreshed vectl_decide contract is implemented,
       green, and conformant. Block if task_id/reuse semantics drift, standalone advisor
       semantics narrow, or verification/conformance evidence is incomplete.'
@@ -65915,6 +65915,30 @@ phases:
     agent: gate-reviewer-tacit
     claimed_by: gate-reviewer-tacit
     claimed_at: '2026-04-09T08:27:26.450328+00:00'
+    done_at: '2026-04-09T08:40:08.938919+00:00'
+    evidence: "## refs Read Confirmation (MANDATORY)\n- docs/RFC-vectl-decide-advisor-refresh.md\
+      \ — read fully; verified §6.1 runner/task_id semantics, §6.2 caller-owned advisor_state,\
+      \ §6.3 status/reason_code mapping, §7.2 output fields, §7.3 policy metadata,\
+      \ §8 rollout changes.\n- src/vectl/decide.py — audited full file; verified claim_and_dispatch\
+      \ uses reuse_token/reuse_runner and task_id separation; verified status/reason_code\
+      \ mapping implementation.\n- src/vectl/models.py — verified RunningTask/CompletedResult\
+      \ runner validators and DecideOutput/Action schema literals.\n- src/vectl/decision_state.py\
+      \ — verified session_runner_registry provenance path.\n- tools/vectl/README.md\
+      \ — NOT FOUND (non-blocking; RFC remains authoritative).\n\n## Gate Review Report\n\
+      - Contract implementation check: PASS (all rollout contract fields and removals\
+      \ present; no stale continuation/halt_reason/session fields).\n- task_id semantics\
+      \ check: PASS (`task_id` kept as execution identity, reuse via `reuse_token`/`reuse_runner`).\n\
+      - Standalone usage check: PASS (caller-owned advisor_state isolation and full-replacement\
+      \ next_state semantics confirmed).\n- Runner provenance check: PASS with SHOULD_FIX\
+      \ note.\n- status/reason_code contract check: PASS (all 5 mappings and enum\
+      \ sets conform).\n\n## Behavioral proof register\n- runner provenance: PROVEN\n\
+      - status_reason_code: PROVEN\n- standalone semantics: PROVEN\n- task_id identity\
+      \ separation: PROVEN\n\ngate_open_allowed: true\n\n## Findings\n- blocker: none\n\
+      - should_fix:\n  1) `src/vectl/decide.py` legacy fallback in `_reuse_runner_for_parent()`\
+      \ defaults to `\"task\"` when reuse token exists but runner provenance missing;\
+      \ safe compatibility shim but contract-impure relative to RFC no-implicit-fallback\
+      \ language.\n  2) Minor pydantic deprecation warning in tests (non-blocking).\n\
+      \n## Gate decision\n- OPEN"
   - id: decide_refresh_impl.af1-r8-fix
     name: Fix runner provenance dispatch semantics and minimal escalation rigidity
       follow-up
@@ -66166,7 +66190,7 @@ phases:
       \ required contract proof items are green/proven; no blocker intersects doc_sync/deep_review."
 - id: doc_sync
   name: Documentation Sync
-  status: locked
+  status: pending
   gate: Documentation reflects the refreshed vectl_decide contract exactly.
   depends_on:
   - decide_refresh_impl

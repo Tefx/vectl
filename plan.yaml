@@ -70211,6 +70211,7 @@ phases:
     - orchestration_orch_app_routing.implement-orch-app-routing-reconcile-gate-and-result-normalization
     - orchestration_orch_app_routing.prove-orch-app-routing-seam-end-to-end
     - orchestration_orch_app_routing.audit-orch-app-routing-against-canonical-specs
+    - orchestration_orch_app_routing.reverify-audit-canonical-routing-divergence-batch
     agent: gate-reviewer-tacit
   - id: orchestration_orch_app_routing.fix-audit-canonical-routing-divergence-batch
     name: Fix audit canonical routing divergence batch

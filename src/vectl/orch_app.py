@@ -40,9 +40,12 @@ from vectl.orchestration.config import (
     validate_orchestration_config,
 )
 from vectl.orchestration.continuity_artifacts import (
+    DispatchRecoveryGate,
     NotificationKind,
     NotificationStatus,
+    OperatorNotificationRecord,
     PausedRoutingState,
+    RuntimeRecoveryRecord,
 )
 from vectl.orchestration.contracts import (
     ControlDecision,
@@ -1614,6 +1617,116 @@ class OrchestrationApp:
         no_silent_deletion_preserved = all(source.exists() for source in source_artifact_paths)
         return tuple(copied_paths), no_silent_deletion_preserved
 
+    def _recover_runtime_state(
+        self,
+        *,
+        record: RunRecord,
+    ) -> RuntimeRecoveryRecord | None:
+        """Normalize durable runtime recovery state for restart reporting.
+
+        Authority:
+            docs/ORCHESTRATION-PLANE-OPERATOR-CONFLICT-RECOVERY.md sections 6.2, 6.3, 6.4
+
+        Recovery preserves the persisted reconcile/operator barrier even when the
+        referenced worktree path is relative or currently absent. The stored
+        path remains authoritative; absolute normalization is added only when it
+        can be done without discarding the durable value.
+        """
+
+        runtime_state = record.runtime_state
+        if runtime_state is None:
+            return None
+
+        worktree_path_text = runtime_state.worktree_path
+        worktree_path = Path(worktree_path_text)
+        if not worktree_path.is_absolute() and worktree_path_text:
+            plan_root = self._config.plan_path.parent
+            worktree_path = (plan_root / worktree_path).resolve()
+            return replace(runtime_state, worktree_path=str(worktree_path))
+        return runtime_state
+
+    def _recover_dispatch_recovery_gate(
+        self,
+        *,
+        record: RunRecord,
+        runtime_state: RuntimeRecoveryRecord | None,
+        operator_notifications: tuple[OperatorNotificationRecord, ...],
+    ) -> DispatchRecoveryGate | None:
+        """Recover durable dispatch barrier from authoritative persisted state.
+
+        Authority:
+            docs/ORCHESTRATION-PLANE-OPERATOR-CONFLICT-RECOVERY.md sections 6.3, 6.4, 9
+            docs/ORCHESTRATION-PLANE-ORCH-APP-ROUTING.md section 6.3
+        """
+
+        if record.dispatch_recovery_gate is not None:
+            return record.dispatch_recovery_gate
+
+        reconcile_state = None if runtime_state is None else runtime_state.reconcile_state
+        blocked_case_id = operator_notifications[0].case_id if operator_notifications else None
+        if reconcile_state is not None and reconcile_state.status not in {"merged", "noop"}:
+            blocked_execution_id = reconcile_state.execution_id
+            if runtime_state is not None and runtime_state.execution_id:
+                blocked_execution_id = runtime_state.execution_id
+            return DispatchRecoveryGate(
+                status="blocked_pending_reconcile",
+                reason=(
+                    "reconcile state recovered from durable metadata requires explicit closure "
+                    f"before dispatch/complete may resume ({reconcile_state.status})"
+                ),
+                duplicate_complete_blocked=True,
+                unsafe_dispatch_blocked=True,
+                blocked_on_execution_id=blocked_execution_id,
+                blocked_on_case_id=blocked_case_id,
+            )
+
+        if operator_notifications:
+            return DispatchRecoveryGate(
+                status="blocked_pending_operator",
+                reason="operator notification recovered from durable metadata remains unresolved",
+                duplicate_complete_blocked=True,
+                unsafe_dispatch_blocked=True,
+                blocked_on_execution_id=None
+                if runtime_state is None
+                else runtime_state.execution_id,
+                blocked_on_case_id=blocked_case_id,
+            )
+
+        return None
+
+    def _recover_operator_notification_surface(
+        self,
+        *,
+        operator_notifications: tuple[OperatorNotificationRecord, ...],
+        runtime_state: RuntimeRecoveryRecord | None,
+    ) -> None:
+        """Reconstruct in-memory operator pause surface from durable metadata.
+
+        Authority:
+            docs/ORCHESTRATION-PLANE-OPERATOR-CONFLICT-RECOVERY.md sections 4.4, 4.5, 6.3
+            docs/ORCHESTRATION-PLANE-ORCH-APP-ROUTING.md sections 8.2, 10
+        """
+
+        if not operator_notifications:
+            self._latest_operator_notification = None
+            return
+
+        notification = operator_notifications[0]
+        self._latest_operator_notification = OperatorNotification(
+            notification_id=notification.notification_id,
+            case_id=notification.case_id,
+            run_id=notification.run_id
+            or (None if runtime_state is None else runtime_state.session_id),
+            kind=notification.kind,
+            status=notification.status,
+            summary=notification.summary,
+            evidence_refs=notification.evidence_refs,
+            operator_message=notification.operator_message,
+            paused_routing_state=notification.paused_routing_state,
+            created_at=notification.created_at,
+            updated_at=notification.updated_at,
+        )
+
     def recover(
         self,
         step_id: str | None = None,
@@ -1684,6 +1797,9 @@ class OrchestrationApp:
         quarantined_artifact_paths: list[str] = []
         no_silent_deletion_preserved = True
         recovery_actions: list[RecoveryAction] = []
+        recovered_runtime_state: RuntimeRecoveryRecord | None = None
+        recovered_operator_notifications: tuple[OperatorNotificationRecord, ...] = ()
+        recovered_dispatch_recovery_gate: DispatchRecoveryGate | None = None
         for record in candidates:
             run_root = registry.run_artifact_root(record.run_id)
             snapshot_path = run_root / "config.snapshot.yaml"
@@ -1700,6 +1816,13 @@ class OrchestrationApp:
                 expected_step_id=record.step_id,
                 frozen_config=frozen,
                 registry=registry,
+            )
+            recovered_runtime_state = self._recover_runtime_state(record=record)
+            recovered_operator_notifications = record.operator_notifications
+            recovered_dispatch_recovery_gate = self._recover_dispatch_recovery_gate(
+                record=record,
+                runtime_state=recovered_runtime_state,
+                operator_notifications=recovered_operator_notifications,
             )
             if decision.outcome == "resume_safe":
                 if dry_run:
@@ -1899,6 +2022,13 @@ class OrchestrationApp:
                 ),
                 gate_open_allowed=False,
                 no_silent_deletion_preserved=no_silent_deletion_preserved,
+                runtime_state=recovered_runtime_state,
+                operator_notifications=recovered_operator_notifications,
+                dispatch_recovery_gate=recovered_dispatch_recovery_gate,
+            )
+            self._recover_operator_notification_surface(
+                operator_notifications=recovered_operator_notifications,
+                runtime_state=recovered_runtime_state,
             )
             return self._recovery_result_from_report(report)
 
@@ -1919,6 +2049,13 @@ class OrchestrationApp:
             gate_open_allowed=not bool(fresh_start_terminalized),
             no_silent_deletion_preserved=bool(quarantined_artifact_paths)
             and no_silent_deletion_preserved,
+            runtime_state=recovered_runtime_state,
+            operator_notifications=recovered_operator_notifications,
+            dispatch_recovery_gate=recovered_dispatch_recovery_gate,
+        )
+        self._recover_operator_notification_surface(
+            operator_notifications=recovered_operator_notifications,
+            runtime_state=recovered_runtime_state,
         )
         return self._recovery_result_from_report(report)
 

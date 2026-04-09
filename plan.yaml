@@ -70781,7 +70781,7 @@ phases:
       \nEvidence source:\n- subagent task ses_28db0ac55ffegslh7rlqHmlMNi"
   - id: orchestration_orch_app_routing.gate-orch-app-routing
     name: Gate orch_app routing
-    status: pending
+    status: claimed
     description: 'Gate review: verify orch_app routing is ready for operator/conflict/recovery
       alignment. Block if claim-before-start, reconcile-before-complete, explicit
       ResolutionCase normalization, or RoleProfile-based execution-context routing
@@ -70799,6 +70799,8 @@ phases:
     - orchestration_orch_app_routing.audit-orch-app-routing-against-canonical-specs
     - orchestration_orch_app_routing.reverify-audit-canonical-routing-divergence-batch
     agent: gate-reviewer-tacit
+    claimed_by: gate-reviewer-tacit
+    claimed_at: '2026-04-09T15:02:15.082751+00:00'
   - id: orchestration_orch_app_routing.fix-audit-canonical-routing-divergence-batch
     name: Fix audit canonical routing divergence batch
     status: done

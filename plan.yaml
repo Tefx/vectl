@@ -72389,7 +72389,7 @@ phases:
       cycle.'
   - id: orchestration_operator_recovery.fix-gate-blockers-stale-heartbeat-and-contract-red-drift
     name: 'Fix gate blockers: stale-heartbeat recovery and contract/red-test drift'
-    status: claimed
+    status: done
     description: 'Fix ALL blockers found by gate review.
 
 
@@ -72502,6 +72502,40 @@ phases:
     agent: python-senior
     claimed_by: vectl-decide-orchestrator-tacit
     claimed_at: '2026-04-09T18:15:49.784025+00:00'
+    done_at: '2026-04-09T18:21:08.139214+00:00'
+    evidence: "## refs Read Confirmation (MANDATORY)\n\nFor each ref in this step:\n\
+      - tools/vectl/README.md — NOT READ: file does not exist in this repository (`/Users/tefx/Projects/vectl/tools/vectl/README.md`\
+      \ and `/Users/tefx/Projects/vectl/tools` both absent)\n\n## Blocker Fix Report\n\
+      - B1 root-cause closure:\n  - Updated `tests/orchestration/unit/test_recovery_contract_conformance.py`\
+      \ fixture to use a structurally valid plan (`phase.name` added) and added `assert\
+      \ started.success is True` before mutating continuity artifacts. This removed\
+      \ false NO_ARTIFACTS fallthrough caused by invalid-plan run-start failure.\n\
+      \  - Verified stale-heartbeat path now exercises real recovery classification\
+      \ (quarantine/terminalize) instead of setup-induced NO_ARTIFACTS.\n- B2 contract/test\
+      \ alignment closure:\n  - Updated `tests/orchestration/unit/test_imports.py`\
+      \ authoritative `__all__` lock to include currently exported dispatch/policy\
+      \ and contract symbols.\n  - Updated `tests/orchestration/unit/test_contracts.py`\
+      \ ResolutionCase field lock to match current dataclass surface (`case_id`, `case_source`,\
+      \ `summary`, `blocked_step_ids`, `artifact_refs` in addition to core snapshots/reason).\n\
+      - sibling search evidence for recovery semantics:\n  - `grep \"NO_ARTIFACTS|gate_open_allowed|fresh_start_required|quarantine\"\
+      \ src/vectl/{orch_app.py,orchestration/recovery.py}` confirmed stale-heartbeat/fresh-start/quarantine\
+      \ + gate semantics across sibling recovery/report builders.\n- sibling search\
+      \ evidence for expected-red/contract-lock drift:\n  - `grep \"__all__ mismatch|ResolutionCase\
+      \ field mismatch|xfail\\[GAP|expected_red\" tests/orchestration/**/*.py` confirmed\
+      \ related lock and expected-red suites and ensured updates were applied at contract-lock\
+      \ points.\n- commands/tests run:\n  - `uv run pytest tests/orchestration/unit/test_recovery_contract_conformance.py\
+      \ tests/orchestration/unit/test_operator_pause_conflict_recovery_red.py tests/orchestration/unit/test_dispatch_recovery_gate_enforcement.py\
+      \ -q` (initially failing recovery_conformance before fixes)\n  - `uv run pytest\
+      \ tests/orchestration/unit/test_imports.py tests/orchestration/unit/test_interfaces.py\
+      \ tests/orchestration/unit/test_dispatch_policy_red.py -q` (revealed __all__\
+      \ contract-lock drift)\n  - `uv run pytest tests/orchestration/unit/test_contracts.py\
+      \ tests/orchestration/integration/test_control_resolver_contract.py tests/orchestration/unit/test_recovery_contract_conformance.py\
+      \ tests/orchestration/unit/test_imports.py -q` (revealed ResolutionCase + recovery\
+      \ fixture drift)\n  - `uv run pytest tests/orchestration/unit/test_recovery_contract_conformance.py\
+      \ tests/orchestration/unit/test_contracts.py tests/orchestration/unit/test_imports.py\
+      \ tests/orchestration/unit/test_operator_pause_conflict_recovery_red.py tests/orchestration/unit/test_dispatch_recovery_gate_enforcement.py\
+      \ -q` => **90 passed**\n- remaining gaps (if any):\n  - None for this fix scope;\
+      \ next step is explicit regate/reverify step."
   - id: orchestration_operator_recovery.reverify-gate-blockers-stale-heartbeat-and-contract-red-drift
     name: Reverify/regate stale-heartbeat recovery and contract/red-test alignment
     status: pending

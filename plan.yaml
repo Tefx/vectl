@@ -65770,7 +65770,7 @@ phases:
       legacy assertions are absent on the tested surfaces.'
   - id: decide_refresh_tests.fix-root-cause-mcp-refreshed-assertions
     name: Fix root-cause MCP refreshed assertions
-    status: claimed
+    status: done
     description: 'Rewrite the authoritative MCP refreshed-contract tests in tests/test_mcp.py
       so the MCP surface asserts only the refreshed decide output contract.
 
@@ -65889,6 +65889,53 @@ phases:
     - decide_refresh_tests.reverify-gate-mcp-contract-refresh-batch
     claimed_by: general
     claimed_at: '2026-04-09T14:00:16.182359+00:00'
+    done_at: '2026-04-09T14:04:37.830972+00:00'
+    evidence: "## refs Read Confirmation (MANDATORY)\n- tools/vectl/README.md — NOT\
+      \ READ: file was not present in the isolated worktree at `.vectl/worktrees/decide_refresh_tests.fix-root-cause-mcp-refreshed-assertions`;\
+      \ I confirmed the worktree had `README.md` at root instead. No contradictory\
+      \ spec text was available from the requested path, so I followed the step description\
+      \ plus the RFC/test-class refs as authoritative for this task.\n- docs/RFC-vectl-decide-advisor-refresh.md\
+      \ — key passage: “from: `continuation: bool` + `halt_reason: str | None` / to:\
+      \ `status` + `reason_code` + optional human-readable `message`” and output includes\
+      \ `next_state`, `policy`, with required rollout updates to add `reuse_token`/`reuse_runner`\
+      \ and remove stale continuation/halt_reason assertions. [Proven]\n- tests/test_mcp.py::TestVectlDecide\
+      \ — key passage: the class docstring already states vectl_decide “Returns status/reason_code\
+      \ for top-level control summary” and “Decides session reuse via reuse_token/reuse_runner\
+      \ with TTL awareness,” making this the authoritative MCP seam to rewrite. [Proven]\n\
+      \n## MCP Root-Cause Rewrite Evidence\n- Updated test methods in tests/test_mcp.py:\n\
+      \  - `test_vectl_decide_returns_structured_output`\n  - `test_vectl_decide_empty_plan`\n\
+      \  - `test_vectl_decide_with_running_tasks`\n  - `test_vectl_decide_repeated_failures_return_blocked_status`\n\
+      - Stale assertions removed:\n  - removed permissive/stale acceptance by asserting\
+      \ top-level result does **not** expose `continuation`, `halt_reason`, or `session`\n\
+      \  - removed permissive reuse handling in `claim_and_dispatch` actions by asserting\
+      \ `session` is absent and `reuse_token`/`reuse_runner` are the contract fields\n\
+      - Refreshed assertions added for: status | reason_code | next_state | policy\
+      \ | advisor_state | reuse_token | reuse_runner\n  - `status`/`reason_code` asserted\
+      \ across all four tests\n  - `next_state` shape asserted across all four tests\n\
+      \  - `policy` fields `reuse_ttl_s` and `escalation_threshold` asserted\n  -\
+      \ `advisor_state` asserted as canonical input in `test_vectl_decide_returns_structured_output`\
+      \ via explicit `advisor_state=` call, with `next_state` as replacement output\
+      \ and no output-side `advisor_state`\n  - `reuse_token`/`reuse_runner` asserted\
+      \ on `claim_and_dispatch` action payloads\n- Sibling MCP assertion search performed:\n\
+      \  - searched `TestVectlDecide` for `continuation|halt_reason|session|reuse_token|reuse_runner|reason_code|advisor_state|next_state|status`\n\
+      \  - refreshed all sibling decide-contract tests in that class, not just one\
+      \ example\n- Product implementation files changed: NONE\n\n## Commands + Outputs\n\
+      - command: `git status --short`\n- output: ` M tests/test_mcp.py`\n\n- command:\
+      \ `git diff -- tests/test_mcp.py`\n- output: diff showed only `tests/test_mcp.py`\
+      \ changes tightening `TestVectlDecide` assertions around refreshed fields and\
+      \ stale-field absence.\n\n- command: `uv run pytest tests/test_mcp.py -k TestVectlDecide`\n\
+      - output: `4 passed, 171 deselected in 2.24s`\n\n- command: `git add tests/test_mcp.py\
+      \ && git commit -m \"test: refresh MCP decide contract assertions\" && git status\
+      \ --short`\n- output: `[vectl/step-decide_refresh_tests.fix-root-cause-mcp-refreshed-assertions\
+      \ bc51590] test: refresh MCP decide contract assertions`\n\n## Expected-red\
+      \ note\n- [Proven] This rewrite keeps the MCP seam contract-defining: it now\
+      \ explicitly requires refreshed fields and rejects stale continuation/halt_reason/session\
+      \ acceptance on the authoritative test surface.\n- [Proven] In this worktree,\
+      \ the targeted `TestVectlDecide` slice is currently green after the rewrite\
+      \ (`4 passed`), so the step metadata’s “expected-red” outcome did not reproduce\
+      \ locally. The intentional gap now exposed is future implementation drift at\
+      \ the MCP seam: these tests will fail if refreshed fields regress or stale fields\
+      \ reappear."
   - id: decide_refresh_tests.reverify-root-cause-mcp-refreshed-assertions
     name: Reverify root-cause MCP refreshed assertions
     status: pending

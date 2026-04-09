@@ -72389,7 +72389,7 @@ phases:
       cycle.'
   - id: orchestration_operator_recovery.fix-gate-blockers-stale-heartbeat-and-contract-red-drift
     name: 'Fix gate blockers: stale-heartbeat recovery and contract/red-test drift'
-    status: pending
+    status: claimed
     description: 'Fix ALL blockers found by gate review.
 
 
@@ -72500,6 +72500,8 @@ phases:
     depends_on:
     - orchestration_operator_recovery.gate-operator-conflict-recovery-alignment
     agent: python-senior
+    claimed_by: vectl-decide-orchestrator-tacit
+    claimed_at: '2026-04-09T18:15:49.784025+00:00'
   - id: orchestration_operator_recovery.reverify-gate-blockers-stale-heartbeat-and-contract-red-drift
     name: Reverify/regate stale-heartbeat recovery and contract/red-test alignment
     status: pending

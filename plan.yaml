@@ -71543,6 +71543,7 @@ phases:
     - orchestration_operator_recovery.implement-operator-notification-conflict-preservation-and-recovery-alignment
     - orchestration_operator_recovery.verify-durable-operator-pause-and-recovery-behavior
     - orchestration_operator_recovery.audit-operator-conflict-recovery-conformance
+    - orchestration_operator_recovery.reverify-operator-conflict-recovery-conformance-after-fix
     agent: gate-reviewer-tacit
   - id: orchestration_operator_recovery.contract-operator-notification-conflict-preservation-and-recovery-alignment
     name: Contract operator notification, conflict preservation, and recovery alignment

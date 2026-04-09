@@ -69847,6 +69847,121 @@ phases:
     - orchestration_orch_app_routing.prove-orch-app-routing-seam-end-to-end
     - orchestration_orch_app_routing.audit-orch-app-routing-against-canonical-specs
     agent: gate-reviewer-tacit
+  - id: orchestration_orch_app_routing.fix-audit-canonical-routing-divergence-batch
+    name: Fix audit canonical routing divergence batch
+    status: pending
+    description: 'Fix ALL blocker-class routing/spec divergences surfaced by orchestration_orch_app_routing.audit-orch-app-routing-against-canonical-specs.
+
+
+      work_type: authority_adjudication
+
+      step_type: implementation
+
+      agent_source: default
+
+
+      ## Blockers to Fix (ALL of these, not just the first)
+
+      - Restore canonical `operator_required` notification emission semantics: operator-facing
+      notification state must be emitted explicitly on the orch_app path rather than
+      inferred or silently skipped.
+
+      - Close claim hard-gate divergence: claim-before-start and reconcile-before-complete
+      semantics must remain authoritative on every routing branch.
+
+      - Complete resolver outcome routing coverage for canonical outcomes so no outcome
+      falls through without explicit handling.
+
+      - Apply canonical fallback role precedence when choosing execution-context /
+      role usage; remove partial or ad hoc precedence behavior.
+
+      - Search sibling routing branches in `orch_app` so the fix does not stop at
+      the first reported divergence.
+
+
+      ## Gate Preview (what the gate WILL reject)
+
+      1. Missing explicit operator notification emission on `operator_required`
+
+      2. Any resolver outcome branch without direct routing proof
+
+      3. Fallback role precedence inferred from local branch order instead of canonical
+      policy
+
+      4. Claim/reconcile hard-gate semantics weakened on alternate routing paths
+
+
+      ## Completion Criteria (stub exclusion)
+
+      This is an IMPLEMENTATION step. Stub-only completion is NOT acceptable.
+
+      Each deliverable MUST contain substantive routing logic and proof-oriented tests.
+
+
+      ## Acceptance Criteria
+
+      - `operator_required` emits the canonical notification / pause semantics
+
+      - resolver outcome routing is explicit and complete for all canonical outcomes
+      touched by the phase
+
+      - fallback role precedence usage is sourced from the canonical policy, not branch-local
+      heuristics
+
+      - proof tests demonstrate claim hard-gate and reconcile-before-complete behavior
+      still hold after the routing fix
+
+      '
+    verification: 'local-check protecting orchestration_orch_app_routing.audit-orch-app-routing-against-canonical-specs
+      and orchestration_orch_app_routing.gate-orch-app-routing: operator_required
+      emission semantics, resolver outcome routing completeness, fallback role precedence,
+      and claim/reconcile hard gates are all directly proven.'
+    refs:
+    - docs/ORCHESTRATION-PLANE-ORCH-APP-ROUTING.md
+    - docs/ORCHESTRATION-PLANE-DISPATCH-AND-PROMPT-POLICY.md
+    - docs/ORCHESTRATION-PLANE-RESOLUTION-CONTRACT.md
+    - docs/ORCHESTRATION-PLANE-INTERFACES.md
+    - src/vectl/orch_app.py
+    depends_on:
+    - orchestration_orch_app_routing.implement-orch-app-routing-reconcile-gate-and-result-normalization
+    - orchestration_orch_app_routing.prove-orch-app-routing-seam-end-to-end
+    agent: python-senior-tacit
+  - id: orchestration_orch_app_routing.reverify-audit-canonical-routing-divergence-batch
+    name: Reverify audit canonical routing divergence batch
+    status: pending
+    description: 'As an INDEPENDENT REVIEWER, rerun focused conformance and routing
+      proof review after orchestration_orch_app_routing.fix-audit-canonical-routing-divergence-batch.
+
+
+      Verification scope: phase-check protecting orchestration_orch_app_routing.gate-orch-app-routing.
+
+
+      Required checks:
+
+      - `operator_required` emits the canonical operator notification semantics with
+      explicit evidence
+
+      - resolver outcome routing is complete for the canonical outcome set touched
+      by orch_app
+
+      - fallback role precedence matches the canonical dispatch/prompt policy
+
+      - claim-before-start and reconcile-before-complete hard-gate semantics remain
+      intact on the remediated paths
+
+      '
+    verification: 'phase-check protecting orchestration_orch_app_routing.gate-orch-app-routing:
+      conformance report cites the authoritative routing specs and implementation
+      lines for operator_required emission, resolver outcome routing completeness,
+      fallback role precedence, and preserved claim/reconcile hard gates.'
+    refs:
+    - docs/ORCHESTRATION-PLANE-ORCH-APP-ROUTING.md
+    - docs/ORCHESTRATION-PLANE-DISPATCH-AND-PROMPT-POLICY.md
+    - docs/ORCHESTRATION-PLANE-RESOLUTION-CONTRACT.md
+    - src/vectl/orch_app.py
+    depends_on:
+    - orchestration_orch_app_routing.fix-audit-canonical-routing-divergence-batch
+    agent: spec-verifier-tacit
 - id: orchestration_operator_recovery
   name: Orchestration Operator / Conflict / Recovery Alignment
   status: locked

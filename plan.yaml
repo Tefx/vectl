@@ -68553,7 +68553,7 @@ phases:
   - id: orchestration_resolver_coordination.implement-resolver-coordination-review-failure-intake-and-approved-facade-mutation-path
     name: Implement resolver coordination, review-failure intake, and approved-facade
       mutation path
-    status: claimed
+    status: done
     description: Implement upper-layer resolver coordination after dispatch policy
       is locked. Consume explicit ResolutionCase input and return bounded ResolutionReport
       output; enforce that resolver runs only after normal flow does not close; keep
@@ -68577,6 +68577,49 @@ phases:
     agent: python-senior-tacit
     claimed_by: python-senior-tacit
     claimed_at: '2026-04-09T04:17:28.382781+00:00'
+    done_at: '2026-04-09T04:28:41.524564+00:00'
+    evidence: 'Artifact:
+
+      - Commit: d55f8c3
+
+      - Updated resolver coordination surfaces and tests for bounded resolution routing
+
+
+      Verification:
+
+      - ruff on touched files -> pass
+
+      - mypy on touched files -> pass
+
+      - targeted resolver/dispatch/orch_app suites -> 108 passed, 2 xfailed
+
+
+      Spec link:
+
+      - docs/ORCHESTRATION-PLANE-RESOLVER-COORDINATION.md
+
+      - docs/ORCHESTRATION-PLANE-RESOLUTION-CONTRACT.md
+
+      - docs/ORCHESTRATION-PLANE-DISPATCH-AND-PROMPT-POLICY.md
+
+      - docs/ORCHESTRATION-PLANE-INTERFACES.md
+
+
+      Refs confirmation:
+
+      - resolver coordination docs and relevant code surfaces read
+
+      - tools/vectl/README.md path absent in isolated worktree
+
+
+      Summary:
+
+      - Added explicit ResolutionCase intake + operator_required surfacing
+
+      - Enforced resolver main-worktree guardrails and blocked core.claim from resolver
+      path
+
+      - Preserved planner as resolver-scoped remediation routing only'
   - id: orchestration_resolver_coordination.verify-resolver-coordination-and-planner-remediation-routing
     name: Verify resolver coordination and planner-remediation routing
     status: pending

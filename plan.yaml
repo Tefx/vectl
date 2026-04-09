@@ -68726,7 +68726,7 @@ phases:
       - prefer case_source over reason-string matching in preserve-case logic'
 - id: orchestration_orch_app_routing
   name: Orchestration App Routing
-  status: pending
+  status: in_progress
   gate: orch_app enforces claim-before-start, reconcile-before-complete, review-result
     normalization, and resolution routing using the shared dispatch/runtime substrate.
   depends_on:
@@ -68734,7 +68734,7 @@ phases:
   steps:
   - id: orchestration_orch_app_routing.implement-orch-app-routing-reconcile-gate-and-result-normalization
     name: Implement orch_app routing, reconcile gate, and result normalization
-    status: pending
+    status: claimed
     description: Implement upper-layer orch_app routing on top of the shared dispatch/runtime
       substrate. Refresh snapshots before control evaluation; claim before runtime
       start; reconcile immediately on terminal success; allow complete only after
@@ -68753,6 +68753,8 @@ phases:
     - docs/ORCHESTRATION-PLANE-INTERFACES.md
     - src/vectl/orch_app.py
     agent: python-senior-tacit
+    claimed_by: python-senior-tacit
+    claimed_at: '2026-04-09T04:42:08.250055+00:00'
   - id: orchestration_orch_app_routing.prove-orch-app-routing-seam-end-to-end
     name: Prove orch_app routing seam end-to-end
     status: pending

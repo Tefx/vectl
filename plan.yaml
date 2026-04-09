@@ -66190,7 +66190,7 @@ phases:
       \ required contract proof items are green/proven; no blocker intersects doc_sync/deep_review."
 - id: doc_sync
   name: Documentation Sync
-  status: in_progress
+  status: done
   gate: Documentation reflects the refreshed vectl_decide contract exactly.
   depends_on:
   - decide_refresh_impl
@@ -66240,7 +66240,7 @@ phases:
       \ commit: [vectl] step-doc_sync.update-vectl-decide-docs completed"
   - id: doc_sync.gate
     name: Gate doc_sync
-    status: claimed
+    status: done
     description: 'Gate review: verify vectl_decide documentation matches the implemented
       refreshed contract exactly.'
     verification: 'phase-check protecting deep_review: documentation matches implementation
@@ -66262,9 +66262,27 @@ phases:
     agent: gate-reviewer-tacit
     claimed_by: gate-reviewer-tacit
     claimed_at: '2026-04-09T08:49:41.447861+00:00'
+    done_at: '2026-04-09T09:03:06.065579+00:00'
+    evidence: "## refs Read Confirmation (MANDATORY)\n- docs/RFC-vectl-decide-advisor-refresh.md\
+      \ — read and used as contract authority\n- docs/ORCHESTRATION-PLANE-DISPATCH-AND-PROMPT-POLICY.md\
+      \ — read for dispatch spec wording verification\n- tests/test_mcp.py — read\
+      \ for refreshed contract assertions\n- src/vectl/decide.py — read for status/reason_code\
+      \ and reuse semantics implementation\n- src/vectl/models.py — read for Action/DecideOutput\
+      \ schema verification\n- src/vectl/orchestration/contracts.py — read for DispatchSpec\
+      \ wording audit\n- src/vectl/mcp_server.py — read for tool description wording\
+      \ audit\n- tools/vectl/README.md — not found (non-blocking)\n\n## Gate Review\
+      \ Report\n- Doc/impl/spec alignment:\n  - Core vectl_decide contract docs and\
+      \ implementation aligned (status/reason_code, reuse_token/reuse_runner, advisor_state/next_state).\n\
+      \  - No blocker stale continuation/halt_reason machine-control wording remains\
+      \ in refreshed decide surfaces.\n- Findings:\n  - blocker: none\n  - should_fix:\n\
+      \    1) MCP tool description still says \"fresh or reused session\" instead\
+      \ of explicit reuse_token/reuse_runner wording.\n    2) Orchestration DispatchSpec\
+      \ still carries `session_mode: Literal[\"fresh\",\"reuse\"]` alongside reuse_token/reuse_runner\
+      \ (contract-impure wording overlap).\n- Gate decision: OPEN\n\ngate_open_allowed:\
+      \ true"
 - id: deep_review
   name: Deep Review (Independent Audit)
-  status: locked
+  status: pending
   gate: Independent reviewers confirm wiring, contract conformance, and standalone
     advisor semantics.
   depends_on:

@@ -66561,6 +66561,7 @@ phases:
     - deep_review.decide-architecture
     - deep_review.decide-black-box
     - deep_review.reverify-repeated-failure-status-signaling
+    - deep_review.reverify-repeated-failure-pending-escalation-state
     agent: gate-reviewer-tacit
   - id: deep_review.fix-repeated-failure-status-signaling
     name: Repair repeated-failure status/reason_code signaling

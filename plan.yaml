@@ -65770,7 +65770,7 @@ phases:
       legacy assertions are absent on the tested surfaces.'
   - id: decide_refresh_tests.fix-root-cause-mcp-refreshed-assertions
     name: Fix root-cause MCP refreshed assertions
-    status: pending
+    status: claimed
     description: 'Rewrite the authoritative MCP refreshed-contract tests in tests/test_mcp.py
       so the MCP surface asserts only the refreshed decide output contract.
 
@@ -65887,6 +65887,8 @@ phases:
       '
     depends_on:
     - decide_refresh_tests.reverify-gate-mcp-contract-refresh-batch
+    claimed_by: general
+    claimed_at: '2026-04-09T14:00:16.182359+00:00'
   - id: decide_refresh_tests.reverify-root-cause-mcp-refreshed-assertions
     name: Reverify root-cause MCP refreshed assertions
     status: pending

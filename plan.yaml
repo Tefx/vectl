@@ -72538,7 +72538,7 @@ phases:
       \ next step is explicit regate/reverify step."
   - id: orchestration_operator_recovery.reverify-gate-blockers-stale-heartbeat-and-contract-red-drift
     name: Reverify/regate stale-heartbeat recovery and contract/red-test alignment
-    status: pending
+    status: claimed
     description: 'Gate-oriented reverify step for blocker closure after orchestration_operator_recovery.gate-operator-conflict-recovery-alignment.
 
 
@@ -72588,6 +72588,8 @@ phases:
     depends_on:
     - orchestration_operator_recovery.fix-gate-blockers-stale-heartbeat-and-contract-red-drift
     agent: gate-reviewer-tacit
+    claimed_by: vectl-decide-orchestrator-tacit
+    claimed_at: '2026-04-09T18:21:20.485452+00:00'
 - id: orchestration_upper_layer_review
   name: Orchestration Upper-Layer Review
   status: locked

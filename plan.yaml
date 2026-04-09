@@ -68466,7 +68466,7 @@ phases:
       - `uv run mypy ...` -> no issues'
   - id: orchestration_runtime_lifecycle.reverify-gate-runtime-invariant-regressions-batch
     name: Reverify gate runtime invariant regressions batch
-    status: pending
+    status: claimed
     description: 'As an INDEPENDENT TESTER, reverify runtime lifecycle invariants
       after orchestration_runtime_lifecycle.fix-gate-runtime-invariant-regressions-batch.
 
@@ -68539,6 +68539,8 @@ phases:
     depends_on:
     - orchestration_runtime_lifecycle.fix-gate-runtime-invariant-regressions-batch
     agent: integration-verifier-tacit
+    claimed_by: integration-verifier-tacit
+    claimed_at: '2026-04-09T13:31:55.281509+00:00'
 - id: orchestration_runtime_wiring
   name: Orchestration Runner/Runtime Wiring
   status: done

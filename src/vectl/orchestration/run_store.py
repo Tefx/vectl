@@ -30,6 +30,13 @@ from fcntl import LOCK_EX, LOCK_UN, flock
 from pathlib import Path
 from typing import TYPE_CHECKING, Literal, Protocol, cast
 
+from vectl.orchestration.continuity_artifacts import (
+    DispatchRecoveryGate,
+    OperatorNotificationRecord,
+    ReconcileRecoveryState,
+    RuntimeRecoveryRecord,
+)
+
 if TYPE_CHECKING:
     pass
 
@@ -57,6 +64,12 @@ class RunRecord:
         created_at: Timestamp when the run record was created.
         finished_at: Timestamp when the run finished (if applicable).
         output_summary: Human-readable summary of run output.
+        runtime_state: Durable runtime/worktree/execution/reconcile state used
+            for restart-safe recovery.
+        operator_notifications: Durable operator-facing notifications linked to
+            the run. Pending/acknowledged entries keep routing paused.
+        dispatch_recovery_gate: Restart barrier preventing duplicate complete or
+            unsafe dispatch before reconcile/operator closure is restored.
     """
 
     run_id: str
@@ -74,6 +87,9 @@ class RunRecord:
     legacy_run_id: str | None = None
     legacy_migration_state: Literal["parallel", "preferred", "deprecated", "retired"] | None = None
     continuity_blocker: str | None = None
+    runtime_state: RuntimeRecoveryRecord | None = None
+    operator_notifications: tuple[OperatorNotificationRecord, ...] = ()
+    dispatch_recovery_gate: DispatchRecoveryGate | None = None
 
 
 @dataclass(frozen=True)
@@ -308,7 +324,169 @@ def _deserialize_run_record(payload: dict[str, object]) -> RunRecord:
             if payload.get("continuity_blocker") is None
             else str(payload.get("continuity_blocker"))
         ),
+        runtime_state=_deserialize_runtime_state(payload.get("runtime_state")),
+        operator_notifications=_deserialize_operator_notifications(
+            payload.get("operator_notifications")
+        ),
+        dispatch_recovery_gate=_deserialize_dispatch_recovery_gate(
+            payload.get("dispatch_recovery_gate")
+        ),
     )
+
+
+def _deserialize_operator_notification(payload: object) -> OperatorNotificationRecord | None:
+    if not isinstance(payload, dict):
+        return None
+    return OperatorNotificationRecord(
+        notification_id=str(payload.get("notification_id", "")),
+        case_id=str(payload.get("case_id", "")),
+        run_id=str(payload.get("run_id", "")),
+        kind=cast(
+            Literal["operator_required", "halt_notice"], payload.get("kind", "operator_required")
+        ),
+        status=cast(
+            Literal["pending", "acknowledged", "resolved", "dismissed"],
+            payload.get("status", "pending"),
+        ),
+        summary=str(payload.get("summary", "")),
+        operator_message=(
+            None
+            if payload.get("operator_message") is None
+            else str(payload.get("operator_message"))
+        ),
+        evidence_refs=_as_str_tuple(payload.get("evidence_refs")),
+        paused_routing_state=cast(
+            Literal[
+                "active",
+                "paused_operator_wait",
+                "paused_reconcile_conflict",
+                "paused_recovery_hold",
+            ],
+            payload.get("paused_routing_state", "paused_operator_wait"),
+        ),
+        created_at=_coerce_float(payload.get("created_at")),
+        updated_at=_coerce_float(payload.get("updated_at")),
+    )
+
+
+def _deserialize_operator_notifications(payload: object) -> tuple[OperatorNotificationRecord, ...]:
+    if not isinstance(payload, list):
+        return ()
+    records: list[OperatorNotificationRecord] = []
+    for item in payload:
+        record = _deserialize_operator_notification(item)
+        if record is not None:
+            records.append(record)
+    return tuple(records)
+
+
+def _deserialize_reconcile_state(payload: object) -> ReconcileRecoveryState | None:
+    if not isinstance(payload, dict):
+        return None
+    return ReconcileRecoveryState(
+        execution_id=str(payload.get("execution_id", "")),
+        workspace_id=str(payload.get("workspace_id", "")),
+        status=cast(
+            Literal["pending", "active", "merged", "noop", "merge_conflict", "aborted"],
+            payload.get("status", "pending"),
+        ),
+        summary=str(payload.get("summary", "")),
+        conflict_files=_as_str_tuple(payload.get("conflict_files")),
+        protected_paths=_as_str_tuple(payload.get("protected_paths")),
+        protected_path_policy=cast(
+            Literal["none", "restored_with_evidence", "blocked_explicitly"],
+            payload.get("protected_path_policy", "none"),
+        ),
+        target_ref=str(payload.get("target_ref", "")),
+        target_head_at_prepare=str(payload.get("target_head_at_prepare", "")),
+        artifact_refs=_as_str_tuple(payload.get("artifact_refs")),
+    )
+
+
+def _deserialize_runtime_state(payload: object) -> RuntimeRecoveryRecord | None:
+    if not isinstance(payload, dict):
+        return None
+    return RuntimeRecoveryRecord(
+        workspace_id=str(payload.get("workspace_id", "")),
+        step_id=str(payload.get("step_id", "")),
+        worktree_path=str(payload.get("worktree_path", "")),
+        scratch_branch=str(payload.get("scratch_branch", "")),
+        target_ref=str(payload.get("target_ref", "")),
+        target_head_at_prepare=str(payload.get("target_head_at_prepare", "")),
+        execution_id=str(payload.get("execution_id", "")),
+        runner=str(payload.get("runner", "")),
+        runner_handle=str(payload.get("runner_handle", "")),
+        session_id=(None if payload.get("session_id") is None else str(payload.get("session_id"))),
+        execution_status=cast(
+            Literal[
+                "starting",
+                "running",
+                "stall",
+                "success",
+                "fail",
+                "transport_error",
+                "cancelled",
+                "unknown",
+            ],
+            payload.get("execution_status", "unknown"),
+        ),
+        started_at=_coerce_float(payload.get("started_at")),
+        last_update_at=_coerce_float(payload.get("last_update_at")),
+        execution_artifact_refs=_as_str_tuple(payload.get("execution_artifact_refs")),
+        reconcile_state=_deserialize_reconcile_state(payload.get("reconcile_state")),
+        paused_routing_state=cast(
+            Literal[
+                "active",
+                "paused_operator_wait",
+                "paused_reconcile_conflict",
+                "paused_recovery_hold",
+            ],
+            payload.get("paused_routing_state", "active"),
+        ),
+    )
+
+
+def _deserialize_dispatch_recovery_gate(payload: object) -> DispatchRecoveryGate | None:
+    if not isinstance(payload, dict):
+        return None
+    return DispatchRecoveryGate(
+        status=cast(
+            Literal[
+                "dispatch_allowed",
+                "blocked_pending_reconcile",
+                "blocked_pending_operator",
+                "blocked_recovery_reentry",
+            ],
+            payload.get("status", "blocked_recovery_reentry"),
+        ),
+        reason=str(payload.get("reason", "")),
+        duplicate_complete_blocked=bool(payload.get("duplicate_complete_blocked", True)),
+        unsafe_dispatch_blocked=bool(payload.get("unsafe_dispatch_blocked", True)),
+        blocked_on_execution_id=(
+            None
+            if payload.get("blocked_on_execution_id") is None
+            else str(payload.get("blocked_on_execution_id"))
+        ),
+        blocked_on_case_id=(
+            None
+            if payload.get("blocked_on_case_id") is None
+            else str(payload.get("blocked_on_case_id"))
+        ),
+    )
+
+
+def _coerce_float(value: object) -> float:
+    if isinstance(value, (int, float)):
+        return float(value)
+    if isinstance(value, str) and value.strip() != "":
+        return float(value)
+    return 0.0
+
+
+def _as_str_tuple(value: object) -> tuple[str, ...]:
+    if not isinstance(value, list):
+        return ()
+    return tuple(str(item) for item in value)
 
 
 def _legacy_journal_entry(continuity_artifacts: dict[str, object]) -> dict[str, object] | None:
@@ -528,6 +706,9 @@ class RunRegistry:
             legacy_run_id=record.legacy_run_id,
             legacy_migration_state=record.legacy_migration_state,
             continuity_blocker=record.continuity_blocker,
+            runtime_state=record.runtime_state,
+            operator_notifications=record.operator_notifications,
+            dispatch_recovery_gate=record.dispatch_recovery_gate,
         )
 
         _append_jsonl_with_retry(

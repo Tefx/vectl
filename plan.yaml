@@ -71508,7 +71508,7 @@ phases:
       - product_implementation_files_modified: no'
   - id: orchestration_operator_recovery.audit-operator-conflict-recovery-conformance
     name: Audit operator/conflict/recovery conformance
-    status: pending
+    status: claimed
     description: Independent spec conformance review for operator notification, conflict
       policy, and recovery behavior. Audit operator_required durable state and receipt
       semantics, reconcile outcomes and protected-path handling, recovery metadata
@@ -71524,6 +71524,8 @@ phases:
     depends_on:
     - orchestration_operator_recovery.implement-operator-notification-conflict-preservation-and-recovery-alignment
     agent: spec-verifier-tacit
+    claimed_by: spec-verifier
+    claimed_at: '2026-04-09T16:23:22.697560+00:00'
   - id: orchestration_operator_recovery.gate-operator-conflict-recovery-alignment
     name: Gate operator/conflict/recovery alignment
     status: pending

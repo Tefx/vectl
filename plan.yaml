@@ -68214,6 +68214,131 @@ phases:
       \ adjustments in retest branch)\n\nbehavioral_proof_register:\n- R6 VERIFIED\n\
       - R12 VERIFIED\n- R20 VERIFIED\n- R24 VERIFIED\n- R25 VERIFIED\n- R26 VERIFIED\n\
       - R27 VERIFIED\n- R30 VERIFIED\ngate_open_allowed: true"
+  - id: orchestration_runtime_lifecycle.fix-gate-runtime-invariant-regressions-batch
+    name: Fix gate runtime invariant regressions batch
+    status: pending
+    description: 'Fix ALL blocker-class runtime regressions surfaced by orchestration_runtime_lifecycle.gate.
+
+
+      work_type: defect_repair
+
+      step_type: implementation
+
+      agent_source: default
+
+      symbolic_testing: false
+
+
+      ## Blockers to Fix (ALL of these, not just the first)
+
+      - Restore canonical git worktree preparation on the runtime path; `mkdir` must
+      not replace or bypass `git worktree` mechanics.
+
+      - Restore reconcile serialization / merge / proof handling so runtime does not
+      overlap reconcile flows unsafely or drop proof artifacts.
+
+      - Restore cleanup guards so active executions/workspaces cannot be cleaned up
+      prematurely or without the required safety checks.
+
+      - Add missing proof tests for both the main path and the highest-risk failure
+      paths covering prepare, reconcile, and cleanup invariants.
+
+      - Search sibling lifecycle paths; do not patch only the first failing branch.
+
+
+      ## Root Cause vs Symptom
+
+      - Root cause: runtime lifecycle mechanics regressed away from the canonical
+      worktree/reconcile/cleanup invariants and the proof surface no longer demonstrates
+      those invariants on the real path.
+
+      - Symptom: gate findings report mkdir replacing git worktree behavior, reconcile
+      serialization/merge/proof regressions, cleanup guard regressions, and missing
+      proof tests.
+
+      - Why previous fix failed: the earlier lifecycle blocker batch restored selected
+      mechanics but did not fully lock the canonical runtime invariants with durable
+      proof on every critical path.
+
+      - Why this fix is not surface-level: it must restore both runtime behavior and
+      the proof artifacts that show the invariants hold under failure as well as success.
+
+
+      ## Required Runtime Invariants
+
+      - prepare uses canonical `git worktree` lifecycle
+
+      - reconcile cannot complete concurrently without serialization guarantees
+
+      - reconcile merge/proof artifacts are preserved through runtime evidence surfaces
+
+      - cleanup refuses unsafe teardown when guards are active
+
+
+      ## Completion Criteria (stub exclusion)
+
+      This is an IMPLEMENTATION step. Stub-only completion is NOT acceptable.
+
+      Each deliverable MUST contain substantive lifecycle logic plus proof-oriented
+      regression coverage.
+
+      '
+    verification: 'local-check protecting orchestration_runtime_lifecycle.gate: runtime
+      invariants are restored for prepare, reconcile, and cleanup; evidence includes
+      exact commands, exact outputs, one main-path proof, one highest-risk failure-path
+      proof, and explicit runtime-invariant restoration notes.'
+    evidence_template: '## refs Read Confirmation (MANDATORY)
+
+      For each ref in this step:
+
+      - <filename> — key passage or "NOT READ: <reason>"
+
+
+      If no refs were provided, state: "No refs for this step."
+
+
+      ## Root-Cause Proof Artifacts (MANDATORY)
+
+      - blocker_fingerprint:
+
+      - root_cause_hypothesis:
+
+      - why_previous_fix_failed:
+
+      - environment_consistency_check:
+
+      - next_fix_constraint:
+
+
+      ## Runtime Invariant Restoration
+
+      - git worktree invariant restored in:
+
+      - reconcile serialization invariant restored in:
+
+      - reconcile merge/proof invariant restored in:
+
+      - cleanup guard invariant restored in:
+
+      - added proof tests:
+
+
+      ## Commands + Outputs (MANDATORY)
+
+      ```text
+
+      <paste exact commands>
+
+      ```
+
+      ```text
+
+      <paste exact outputs>
+
+      ```'
+    depends_on:
+    - orchestration_runtime_lifecycle.retest-runtime-lifecycle-blockers-batch
+    agent: python-senior-tacit
 - id: orchestration_runtime_wiring
   name: Orchestration Runner/Runtime Wiring
   status: done

@@ -66694,7 +66694,7 @@ phases:
       \ completed`"
   - id: deep_review.reverify-repeated-failure-status-signaling
     name: Reverify repeated-failure blocked/reason_code behavior
-    status: pending
+    status: claimed
     description: 'step_type: verification
 
       work_type: proof_closure
@@ -66772,6 +66772,8 @@ phases:
     depends_on:
     - deep_review.fix-repeated-failure-status-signaling
     agent: blind-tester-tacit
+    claimed_by: blind-tester-tacit
+    claimed_at: '2026-04-09T09:57:42.543281+00:00'
   - id: deep_review.fix-repeated-failure-pending-escalation-state
     name: Repair repeated-failure pending-escalation state persistence
     status: pending

@@ -71404,7 +71404,7 @@ phases:
       \n## Deviation Records\nNone."
   - id: orchestration_operator_recovery.verify-durable-operator-pause-and-recovery-behavior
     name: Verify durable operator pause and recovery behavior
-    status: claimed
+    status: done
     description: 'step_type: test
 
       step_intent: retest_green
@@ -71435,6 +71435,77 @@ phases:
     agent: integration-verifier-tacit
     claimed_by: integration-verifier-tacit
     claimed_at: '2026-04-09T16:04:06.901925+00:00'
+    done_at: '2026-04-09T16:15:50.921467+00:00'
+    evidence: '## refs Read Confirmation
+
+      - docs/ORCHESTRATION-PLANE-OPERATOR-CONFLICT-RECOVERY.md: read in full
+
+      - src/vectl/orch_app.py: read in full
+
+      - src/vectl/orchestration/recovery.py: read in full
+
+      - src/vectl/orchestration/run_store.py: read in full
+
+      - src/vectl/orchestration/continuity_artifacts.py: read in full
+
+
+      ## Verification Report
+
+      - Command: `uv run pytest tests/orchestration/unit/test_operator_pause_conflict_recovery_red.py
+      -v`
+
+      - Output: `20 passed in 2.25s` (0 failed, 0 skipped)
+
+
+      Requirement coverage proven green:
+
+      1) operator_required durable notification state
+
+      - persistence/receipt/paused state round-trip tests passed
+
+      - orch_app operator_required creates notification with paused state passed
+
+
+      2) unresolved merge_conflict survives restart
+
+      - merge_conflict and aborted reconcile persistence tests passed
+
+      - protected_path_policy round-trip tests passed
+
+
+      3) restart reconstructs state preventing unsafe dispatch/duplicate complete
+
+      - dispatch recovery gate persistence and closure tests passed
+
+      - recovery gate semantics tests passed
+
+      - recovery report now carries operator_notifications and dispatch_recovery_gate
+      passed
+
+
+      4) protected-path conflict surfaced explicitly
+
+      - recovery report surfaces reconcile protected_path_policy explicitly after
+      restart passed
+
+
+      Out-of-scope note:
+
+      - Separate failures in `test_recovery_contract_conformance.py` were observed
+      previously but are outside this step scope.
+
+
+      ## Test-step semantic fields
+
+      - step_intent: retest_green
+
+      - expected_result: green
+
+      - observed_result: green (20/20 passed)
+
+      - failure_alignment: N/A
+
+      - product_implementation_files_modified: no'
   - id: orchestration_operator_recovery.audit-operator-conflict-recovery-conformance
     name: Audit operator/conflict/recovery conformance
     status: claimed

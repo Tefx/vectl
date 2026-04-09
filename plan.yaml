@@ -71932,7 +71932,7 @@ phases:
       \ blockers B1/B2/B3 within phase scope."
   - id: orchestration_operator_recovery.reverify-operator-conflict-recovery-conformance-after-fix
     name: Reverify operator/conflict/recovery conformance after fix
-    status: pending
+    status: claimed
     description: 'As an INDEPENDENT TESTER (spec-verifier-tacit), re-audit the operator/conflict/recovery
       requirements from a fresh perspective after the batched remediation step.
 
@@ -72020,6 +72020,8 @@ phases:
     depends_on:
     - orchestration_operator_recovery.fix-operator-conflict-recovery-dispatch-and-resolution-gaps
     agent: spec-verifier-tacit
+    claimed_by: spec-verifier-tacit
+    claimed_at: '2026-04-09T16:46:01.033518+00:00'
 - id: orchestration_upper_layer_review
   name: Orchestration Upper-Layer Review
   status: locked

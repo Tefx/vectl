@@ -72022,6 +72022,87 @@ phases:
     agent: spec-verifier-tacit
     claimed_by: spec-verifier-tacit
     claimed_at: '2026-04-09T16:46:01.033518+00:00'
+  - id: orchestration_operator_recovery.fix-enforce-dispatch-recovery-gates-and-complete-step-consultation
+    name: Enforce dispatch recovery gates and complete-step consultation
+    status: pending
+    description: 'Fix ALL remaining operator/conflict/recovery enforcement blockers
+      found by reverify.
+
+
+      ## Blockers to Fix (ALL of these, not just the first)
+
+      - Ensure dispatch paths (`run`, `resume`, `recover` resume_safe, and the resolution
+      subtask path) consult paused operator state and DispatchRecoveryGate before
+      dispatch.
+
+      - Ensure `route_terminal_execution` performs an explicit DispatchRecoveryGate
+      duplicate-complete consultation before `complete_step`.
+
+      - Replace phantom verification by wiring real enforcement hooks so reconstructed
+      recovery state is actually consumed by dispatch/complete paths.
+
+
+      ## Root Cause vs Symptom
+
+      - Root cause: recovery and paused-operator state is reconstructed/reported,
+      but authoritative dispatch and completion paths do not consistently consume
+      the recovered gate state before acting.
+
+      - Symptom: conformance can appear satisfied by reconstructed state while real
+      dispatch/complete routes still bypass enforcement.
+
+      - Why this fix is not surface-level: it must close sibling enforcement gaps
+      across all authoritative dispatch and completion entry paths, not patch only
+      the single failing path.
+
+
+      ## Sibling Search Requirements
+
+      - Search all dispatch entry paths and resolution-triggered dispatch helpers
+      for shared gate-bypass patterns beyond the reported locations.
+
+      - Search all completion paths for duplicate-complete and DispatchRecoveryGate
+      consultation gaps before step completion.
+
+
+      ## Completion Criteria (stub exclusion)
+
+      This is an IMPLEMENTATION step. Stub-only completion is NOT acceptable.
+
+      Each deliverable MUST contain substantive enforcement logic that processes runtime
+      paused/recovery inputs and blocks, reroutes, or allows execution accordingly.'
+    verification: 'phase-check protecting the orchestration_operator_recovery gate:
+      authoritative dispatch and completion paths now consult paused-operator state
+      and DispatchRecoveryGate before dispatch/complete actions; sibling-path search
+      evidence shows no remaining bypass in run/resume/recover/resolution dispatch
+      paths or route_terminal_execution duplicate-complete handling.'
+    evidence_template: '## refs Read Confirmation (MANDATORY)
+
+
+      For each ref in this step:
+
+      - <filename> — key passage or "NOT READ: <reason>"
+
+
+      If no refs were provided, state: "No refs for this step."
+
+
+      ## Enforcement Fix Report
+
+      - Dispatch paths updated: <list>
+
+      - Completion paths updated: <list>
+
+      - Paused/recovery gate hooks added: <list>
+
+      - Sibling search evidence: <searched paths and findings>
+
+      - Remaining gaps: <none or list>
+
+      '
+    depends_on:
+    - orchestration_operator_recovery.reverify-operator-conflict-recovery-conformance-after-fix
+    agent: python-senior-tacit
 - id: orchestration_upper_layer_review
   name: Orchestration Upper-Layer Review
   status: locked

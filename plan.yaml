@@ -70256,7 +70256,7 @@ phases:
       \ noise; no blocker in required seam proofs."
   - id: orchestration_orch_app_routing.audit-orch-app-routing-against-canonical-specs
     name: Audit orch_app routing against canonical specs
-    status: pending
+    status: claimed
     description: Independent spec conformance review for the routing phase. Audit
       claim-before-start, reconcile-before-complete, review/gate parse location and
       normalization, operator_required routing semantics, and execution_context selection
@@ -70272,6 +70272,8 @@ phases:
     depends_on:
     - orchestration_orch_app_routing.implement-orch-app-routing-reconcile-gate-and-result-normalization
     agent: spec-verifier-tacit
+    claimed_by: spec-verifier-tacit
+    claimed_at: '2026-04-09T12:53:37.800360+00:00'
   - id: orchestration_orch_app_routing.gate-orch-app-routing
     name: Gate orch_app routing
     status: pending

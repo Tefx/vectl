@@ -66290,7 +66290,7 @@ phases:
   steps:
   - id: deep_review.decide-wiring
     name: Audit decide wiring completeness
-    status: pending
+    status: claimed
     description: 'Full wiring audit scoped to vectl_decide surfaces: no stale exported
       fields, no stale runtime references to continuation/halt_reason machine control,
       no stale task_id-as-reuse-handle assumptions, and advisor_state/next_state are
@@ -66318,6 +66318,8 @@ phases:
 
       **Verdict**: PASS | ISSUES_FOUND'
     agent: wiring-auditor
+    claimed_by: wiring-auditor
+    claimed_at: '2026-04-09T09:03:54.111596+00:00'
   - id: deep_review.decide-architecture
     name: Review boundary and ownership correctness
     status: claimed

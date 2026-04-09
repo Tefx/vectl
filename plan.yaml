@@ -69773,7 +69773,7 @@ phases:
       - execution_context carried via RoleProfile-driven DispatchSpec'
   - id: orchestration_orch_app_routing.prove-orch-app-routing-seam-end-to-end
     name: Prove orch_app routing seam end-to-end
-    status: claimed
+    status: done
     description: 'step_type: test
 
       step_intent: retest_green
@@ -69802,6 +69802,18 @@ phases:
     agent: integration-verifier-tacit
     claimed_by: integration-verifier-tacit
     claimed_at: '2026-04-09T10:25:45.535917+00:00'
+    done_at: '2026-04-09T10:47:06.928486+00:00'
+    evidence: "Integration proof completed for required orch_app routing seams.\n\n\
+      Artifacts:\n- Added `tests/orchestration/integration/test_orch_app_routing_seam.py`\n\
+      - Worker commit: `ba4911c`\n- Merged on main via `[vectl] step-orchestration_orch_app_routing.prove-orch-app-routing-seam-end-to-end\
+      \ completed`\n\nVerification evidence (subagent):\n- New seam proofs pass:\n\
+      \  - claim-before-start ordering\n  - durable pending run record before start\n\
+      \  - reconcile-before-complete ordering\n  - merge_conflict prevents complete\
+      \ and routes to ResolutionCase\n  - review outcomes needs_fix/needs_replan/operator_required/parse-failure\
+      \ route to ResolutionCase\n  - pass outcome allows complete\n- Reported 10 new\
+      \ integration tests PASS\n- Full orch_app suite report: 48 passed\n\nNotes:\n\
+      - Subagent reported unrelated/pre-existing failures in other files as non-scope\
+      \ noise; no blocker in required seam proofs."
   - id: orchestration_orch_app_routing.audit-orch-app-routing-against-canonical-specs
     name: Audit orch_app routing against canonical specs
     status: claimed

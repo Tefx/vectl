@@ -65938,7 +65938,7 @@ phases:
       \ reappear."
   - id: decide_refresh_tests.reverify-root-cause-mcp-refreshed-assertions
     name: Reverify root-cause MCP refreshed assertions
-    status: pending
+    status: claimed
     description: 'As an INDEPENDENT TESTER (integration-verifier-tacit), prove the
       authoritative MCP test surface now matches the refreshed decide contract.
 
@@ -65992,6 +65992,8 @@ phases:
       \ verdict:\n\n### Verdict\n- PASS | ISSUES_FOUND | INCOMPLETE\n"
     depends_on:
     - decide_refresh_tests.fix-root-cause-mcp-refreshed-assertions
+    claimed_by: integration-verifier-tacit
+    claimed_at: '2026-04-09T14:05:21.461657+00:00'
 - id: decide_refresh_impl
   name: vectl_decide Contract Refresh — Implementation
   status: done

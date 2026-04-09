@@ -68622,7 +68622,7 @@ phases:
       - Preserved planner as resolver-scoped remediation routing only'
   - id: orchestration_resolver_coordination.verify-resolver-coordination-and-planner-remediation-routing
     name: Verify resolver coordination and planner-remediation routing
-    status: pending
+    status: claimed
     description: 'step_type: test
 
       step_intent: retest_green
@@ -68648,6 +68648,8 @@ phases:
     depends_on:
     - orchestration_resolver_coordination.implement-resolver-coordination-review-failure-intake-and-approved-facade-mutation-path
     agent: integration-verifier-tacit
+    claimed_by: integration-verifier-tacit
+    claimed_at: '2026-04-09T04:29:13.478428+00:00'
   - id: orchestration_resolver_coordination.gate-resolver-coordination
     name: Gate resolver coordination
     status: pending

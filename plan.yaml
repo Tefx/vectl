@@ -66282,7 +66282,7 @@ phases:
       \ true"
 - id: deep_review
   name: Deep Review (Independent Audit)
-  status: in_progress
+  status: done
   gate: Independent reviewers confirm wiring, contract conformance, and standalone
     advisor semantics.
   depends_on:
@@ -66535,7 +66535,7 @@ phases:
       \ via orchestrator commit `[vectl] step-deep_review.decide-black-box completed`"
   - id: deep_review.gate
     name: Final deep review gate
-    status: claimed
+    status: done
     description: Final deep review gate for refreshed vectl_decide. Block if wiring,
       boundary, or black-box contract reviews leave unresolved blocker-class divergence.
     verification: 'full-plan-check: all deep reviews complete; no unresolved blocker-class
@@ -66565,6 +66565,18 @@ phases:
     agent: gate-reviewer-tacit
     claimed_by: gate-reviewer-tacit
     claimed_at: '2026-04-09T10:19:03.263397+00:00'
+    done_at: '2026-04-09T10:22:49.694702+00:00'
+    evidence: "## refs Read Confirmation (MANDATORY)\n- docs/RFC-vectl-decide-advisor-refresh.md\
+      \ — full review used as final contract authority\n- tools/vectl/README.md —\
+      \ NOT FOUND at requested path (non-blocking)\n\n## Final Gate Decision\n- Evidence\
+      \ reviewed:\n  1) deep_review.decide-architecture (PASS)\n  2) deep_review.decide-wiring\
+      \ (PASS)\n  3) deep_review.decide-black-box + two remediation/reverify loops\n\
+      \  4) loop1 fix/reverify closed trigger-path mapping issue but exposed follow-up\
+      \ persistence defect\n  5) loop2 root-cause fix added durable pending-escalation\
+      \ state and independent reverify confirmed no regression\n  6) automated verification\
+      \ summary: 53/53 tests pass (unit + mcp + spec-verify)\n- Blocking issues: none\n\
+      - Non-blocking SHOULD_FIX:\n  - RunningTask.dispatched_at currently write-only\
+      \ in decide logic\n- Final recommendation: OPEN\n\ngate_open_allowed: true"
   - id: deep_review.fix-repeated-failure-status-signaling
     name: Repair repeated-failure status/reason_code signaling
     status: done

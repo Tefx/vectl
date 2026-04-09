@@ -126,6 +126,48 @@ if TYPE_CHECKING:
 
 
 # ---------------------------------------------------------------------
+# Dispatch Recovery Gate Errors
+# ---------------------------------------------------------------------
+
+
+class DispatchBlockedError(Exception):
+    """Raised when dispatch is blocked by a recovery gate or paused operator state.
+
+    Authority:
+        docs/ORCHESTRATION-PLANE-OPERATOR-CONFLICT-RECOVERY.md sections 6.3, 6.4, 9
+        docs/ORCHESTRATION-PLANE-ORCH-APP-ROUTING.md section 6.3
+
+    This error is raised when:
+        - DispatchRecoveryGate indicates unsafe dispatch is blocked
+        - Paused operator notification prevents normal dispatch
+        - Duplicate complete is blocked by a recovery gate
+
+    The error preserves the gate reason so callers and operators can
+    understand why dispatch is blocked without silently bypassing it.
+    """
+
+    def __init__(self, message: str = "") -> None:
+        self.message = message
+        super().__init__(message)
+
+
+class DuplicateCompleteBlockedError(Exception):
+    """Raised when step completion is blocked because a recovery gate
+    indicates duplicate complete prevention is active.
+
+    Authority:
+        docs/ORCHESTRATION-PLANE-OPERATOR-CONFLICT-RECOVERY.md sections 6.4, 9
+
+    This ensures that after restart, a step cannot be completed until
+    reconcile closure is durably re-established.
+    """
+
+    def __init__(self, message: str = "") -> None:
+        self.message = message
+        super().__init__(message)
+
+
+# ---------------------------------------------------------------------
 # Application Configuration
 # ---------------------------------------------------------------------
 
@@ -540,6 +582,111 @@ class OrchestrationApp:
             self._emit_operator_case_resolved(case_id=case.case_id, resolution=report.status)
             self._latest_operator_notification = None
 
+    def _is_dispatch_blocked_by_gate(self) -> tuple[bool, str]:
+        """Check whether dispatch is blocked by a paused operator state or dispatch recovery gate.
+
+        Authority:
+            docs/ORCHESTRATION-PLANE-OPERATOR-CONFLICT-RECOVERY.md sections 6.3, 6.4, 9
+            docs/ORCHESTRATION-PLANE-ORCH-APP-ROUTING.md sections 6.3, 8, 10
+
+        This method consults:
+            1. The in-memory operator notification (if any) for paused routing state.
+            2. The latest recovery report's dispatch_recovery_gate (if any).
+
+        Returns:
+            Tuple of (is_blocked, reason). If is_blocked is True, reason explains
+            the block; if False, reason is the empty string.
+        """
+        # Check 1: Paused operator notification blocks dispatch.
+        # Authority: ORCH-APP-ROUTING.md section 10.4 — "orch app enters a paused
+        # operator-wait routing state" and "does not continue ordinary dispatch."
+        notification = self._latest_operator_notification
+        if notification is not None:
+            paused_state = notification.paused_routing_state
+            if paused_state != "active":
+                return (
+                    True,
+                    (
+                        f"dispatch blocked by paused operator notification: "
+                        f"paused_routing_state={paused_state} "
+                        f"case_id={notification.case_id} "
+                        f"notification_id={notification.notification_id}"
+                    ),
+                )
+
+        # Check 2: DispatchRecoveryGate blocks dispatch.
+        # Authority: OPERATOR-CONFLICT-RECOVERY.md section 6.4, 9 —
+        # "unsafe_dispatch_blocked stays true while restart recovery has not yet
+        # reconstituted pending reconcile/operator state coherently."
+        report = self._latest_recovery_report
+        if report is not None:
+            gate = report.dispatch_recovery_gate
+            if gate is not None:
+                if gate.unsafe_dispatch_blocked:
+                    return (
+                        True,
+                        (
+                            f"dispatch blocked by recovery gate: "
+                            f"status={gate.status} reason={gate.reason} "
+                            f"unsafe_dispatch_blocked={gate.unsafe_dispatch_blocked}"
+                        ),
+                    )
+
+        return (False, "")
+
+    def _is_complete_blocked_by_gate(self) -> tuple[bool, str]:
+        """Check whether step completion is blocked by a recovery gate's duplicate-complete prevention.
+
+        Authority:
+            docs/ORCHESTRATION-PLANE-OPERATOR-CONFLICT-RECOVERY.md sections 6.4, 9
+                "duplicate_complete_blocked stays true until reconcile closure is
+                 durably re-established as merged or noop."
+
+        This method is consulted BEFORE calling complete_step in
+        route_terminal_execution to prevent duplicate complete when recovery
+        state indicates the complete is not safe.
+
+        Returns:
+            Tuple of (is_blocked, reason). If is_blocked is True, reason explains
+            the block; if False, reason is the empty string.
+        """
+        # Check 1: Paused operator notification blocks completion.
+        # If operator notification is active but not resolved, we cannot
+        # complete because the operator has not yet reviewed the issue.
+        notification = self._latest_operator_notification
+        if notification is not None:
+            paused_state = notification.paused_routing_state
+            if paused_state != "active":
+                return (
+                    True,
+                    (
+                        f"complete blocked by paused operator notification: "
+                        f"paused_routing_state={paused_state} "
+                        f"case_id={notification.case_id} "
+                        f"notification_id={notification.notification_id}"
+                    ),
+                )
+
+        # Check 2: DispatchRecoveryGate.duplicate_complete_blocked blocks completion.
+        # Authority: OPERATOR-CONFLICT-RECOVERY.md section 9 —
+        # "duplicate_complete_blocked stays true until reconcile closure is
+        #  durably re-established as merged or noop."
+        report = self._latest_recovery_report
+        if report is not None:
+            gate = report.dispatch_recovery_gate
+            if gate is not None:
+                if gate.duplicate_complete_blocked:
+                    return (
+                        True,
+                        (
+                            f"complete blocked by recovery gate: "
+                            f"duplicate_complete_blocked={gate.duplicate_complete_blocked} "
+                            f"status={gate.status} reason={gate.reason}"
+                        ),
+                    )
+
+        return (False, "")
+
     def _emit_operator_case_opened(
         self,
         *,
@@ -642,7 +789,23 @@ class OrchestrationApp:
         refs: tuple[str, ...] = (),
         run_id: str,
     ) -> tuple[DispatchSpec, str, str]:
-        """Route resolver-owned subtask work through the shared runtime substrate."""
+        """Route resolver-owned subtask work through the shared runtime substrate.
+
+        Authority:
+            docs/ORCHESTRATION-PLANE-OPERATOR-CONFLICT-RECOVERY.md sections 6.3, 9
+            docs/ORCHESTRATION-PLANE-ORCH-APP-ROUTING.md section 6.3
+
+        Enforcement:
+            Dispatch is blocked when the recovery gate or paused operator state
+            indicates unsafe dispatch conditions. Resolution subtasks must not
+            bypass dispatch recovery gates.
+        """
+
+        blocked, block_reason = self._is_dispatch_blocked_by_gate()
+        if blocked:
+            raise DispatchBlockedError(
+                f"dispatch_resolution_subtask blocked by recovery gate: {block_reason}"
+            )
 
         spec = self._dispatch_coordinator.build_resolution_subtask_spec(
             case_id=case_id,
@@ -666,7 +829,27 @@ class OrchestrationApp:
         dispatch_spec: DispatchSpec,
         execution_result: ExecutionResult,
     ) -> ResolutionCase | None:
-        """Route terminal execution results through reconcile and completion gates."""
+        """Route terminal execution results through reconcile and completion gates.
+
+        Authority:
+            docs/ORCHESTRATION-PLANE-OPERATOR-CONFLICT-RECOVERY.md sections 6.4, 9
+            docs/ORCHESTRATION-PLANE-ORCH-APP-ROUTING.md section 6.3
+
+        Enforcement:
+            Before calling complete_step, this method explicitly consults the
+            DispatchRecoveryGate's duplicate_complete_blocked flag and the paused
+            operator notification state. If either blocks completion, a
+            DuplicateCompleteBlockedError is raised instead of silently completing.
+        """
+
+        # Gate: consult paused operator state and DispatchRecoveryGate
+        # before any completion path.
+        # Authority: OPERATOR-CONFLICT-RECOVERY.md 6.4, 9
+        complete_blocked, complete_reason = self._is_complete_blocked_by_gate()
+        if complete_blocked:
+            raise DuplicateCompleteBlockedError(
+                f"route_terminal_execution: complete blocked for step {step_id}: {complete_reason}"
+            )
 
         snapshots = self.refresh_snapshots(agent=dispatch_spec.role_id)
         if execution_result.status in ("fail", "stall", "transport_error"):
@@ -701,6 +884,15 @@ class OrchestrationApp:
         )
         if review_case is not None:
             return review_case
+
+        # Second gate: re-check after reconcile/resolve paths, because
+        # paused state might have been set during reconcile processing.
+        complete_blocked_2, complete_reason_2 = self._is_complete_blocked_by_gate()
+        if complete_blocked_2:
+            raise DuplicateCompleteBlockedError(
+                f"route_terminal_execution: complete blocked after reconcile for step {step_id}: "
+                f"{complete_reason_2}"
+            )
 
         can_complete, reason = self._runtime.can_complete(execution_id)
         if not can_complete:
@@ -805,6 +997,15 @@ class OrchestrationApp:
         dispatch_spec: DispatchSpec,
         mode: Literal["start", "resume", "recover"],
     ) -> tuple[str, str]:
+        # Gate: consult paused operator state and DispatchRecoveryGate
+        # before dispatch to runtime.
+        # Authority: OPERATOR-CONFLICT-RECOVERY.md 6.3, 9
+        blocked, block_reason = self._is_dispatch_blocked_by_gate()
+        if blocked:
+            raise DispatchBlockedError(
+                f"_start_runtime_execution: dispatch blocked for step {step_id}: {block_reason}"
+            )
+
         if dispatch_spec.source_kind == "step":
             authoritative_isolation = self._core_adapter.step_isolation(step_id)
             isolation_ref = f"isolation={authoritative_isolation.value}"
@@ -842,7 +1043,27 @@ class OrchestrationApp:
         current_run_id: str | None = None,
         event_payloads: tuple[tuple[OrchestrationEventKind, dict[str, object]], ...] = (),
     ) -> tuple[str, str]:
-        """Persist admission/start/status and events in one ordered lock path."""
+        """Persist admission/start/status and events in one ordered lock path.
+
+        Authority:
+            OPERATOR-CONFLICT-RECOVERY.md sections 6.3, 9
+            ORCH-APP-ROUTING.md section 6.3
+
+        Enforcement:
+            Dispatch is blocked when the recovery gate or paused operator state
+            indicates unsafe dispatch conditions. This method checks the gate
+            before dispatching to the runtime.
+        """
+
+        # Gate: consult paused operator state and DispatchRecoveryGate
+        # before dispatch to runtime in the admission path.
+        # Authority: OPERATOR-CONFLICT-RECOVERY.md 6.3, 9
+        blocked, block_reason = self._is_dispatch_blocked_by_gate()
+        if blocked:
+            raise DispatchBlockedError(
+                f"_admit_start_and_persist_running: dispatch blocked for step {step_id}: "
+                f"{block_reason}"
+            )
 
         with registry.admission_guard():
             registry.assert_can_admit_same_plan(plan_path=plan_path, current_run_id=current_run_id)

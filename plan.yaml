@@ -65868,6 +65868,121 @@ phases:
     - decide_refresh_impl.verify
     - decide_refresh_impl.spec-conformance
     agent: gate-reviewer-tacit
+  - id: decide_refresh_impl.af1-r8-fix
+    name: Fix runner provenance dispatch semantics and minimal escalation rigidity
+      follow-up
+    status: pending
+    description: 'Fix ALL blocker-class decide_refresh_impl spec-conformance findings
+      in one batch.
+
+
+      work_type: defect_repair
+
+      step_type: implementation
+
+      symbolic_testing: false
+
+
+      Scope:
+
+      - Repair AF1 in src/vectl/decide.py so reuse_runner provenance follows completed_result.runner
+      / reusable session provenance instead of hardcoding runner="task" at dispatch
+      creation.
+
+      - Address R8 minimally per RFC intent: preserve standalone advisor semantics
+      while relaxing or explicitly routing the hard-threshold escalation/reset behavior
+      so future conformance/gate review is not blocked by rigidity drift.
+
+
+      UPSTREAM ARTIFACTS:
+
+      - src/vectl/models.py — refreshed runner provenance contracts are AUTHORITATIVE
+
+      - src/vectl/decision_state.py — reusable session provenance / advisor-state
+      semantics are AUTHORITATIVE
+
+      - src/vectl/decide.py — status/reason_code / standalone advisor logic seam to
+      repair
+
+      - docs/RFC-vectl-decide-advisor-refresh.md — RFC intent and runner provenance
+      semantics are AUTHORITATIVE
+
+
+      ## Root Cause vs Symptom
+
+      - Root cause: dispatch creation currently severs runner provenance by forcing
+      reuse_runner to task instead of carrying reusable-session/completed-result runner
+      truth.
+
+      - Symptom: RFC conformance diverges for non-task reusable sessions even when
+      completed_result.runner is authoritative.
+
+      - Why this fix is not surface-level: repair must follow the provenance model
+      through dispatch creation without regressing status/reason_code contract or
+      standalone advisor behavior.
+
+
+      ## Completion Criteria (stub exclusion)
+
+      This is an IMPLEMENTATION step. Stub-only completion is NOT acceptable.
+
+      Each deliverable MUST contain substantive logic that processes its inputs and
+      produces outputs that vary based on those inputs.
+
+
+      ## Failure-mode checklist
+
+      - completed_result.runner provenance preserved when converting completion to
+      dispatch reuse intent
+
+      - reusable session provenance preserved when advisor_state is reused without
+      a fresh completion event
+
+      - no fallback silently rewrites valid non-task runners to task
+
+      - status/reason_code contract remains unchanged for standalone and non-reuse
+      paths
+
+      - standalone advisor semantics remain caller-owned and deterministic
+
+
+      ## State semantics
+
+      - last-writer-wins applies to latest authoritative reusable-session provenance
+      only when a newer completed result supersedes prior reuse data
+
+      - task_id remains execution identity and must not become reuse identity
+
+      - backward-compatible behavior: existing status/reason_code contract and standalone
+      advisor outcomes remain intact unless RFC text explicitly requires otherwise
+
+
+      ## Out-of-scope guardrail
+
+      - Do not redesign advisor policy broadly.
+
+      - Do not widen MCP/public contract beyond the refreshed RFC.
+
+      - If R8 needs more than a minimal RFC-aligned adjustment, document the remaining
+      escalation concern explicitly rather than silently redesigning thresholds.'
+    verification: 'phase-check protecting decide_refresh_impl.gate and doc_sync: AF1
+      runner provenance is repaired at dispatch creation; minimal R8 treatment is
+      RFC-aligned or explicitly escalated without regressing standalone advisor semantics
+      or status/reason_code contract.'
+    evidence_template: "## refs Read Confirmation (MANDATORY)\n\nFor each ref in this\
+      \ step:\n- <filename> — key passage or \"NOT READ: <reason>\"\n\n## Remediation\
+      \ Report\n- AF1 closure: <how reuse_runner provenance now follows authoritative\
+      \ runner truth>\n- R8 treatment: <minimal fix or explicit RFC-aligned escalation\
+      \ note>\n- Files changed: <list>\n- Failure modes checked:\n  - completed_result.runner\
+      \ preserved: <evidence>\n  - reusable-session provenance preserved: <evidence>\n\
+      \  - no task fallback drift: <evidence>\n  - standalone semantics unchanged:\
+      \ <evidence>\n- Deviation record (if any): <type / what / why / impact>\n"
+    depends_on:
+    - decide_refresh_impl.models-state
+    - decide_refresh_impl.core
+    - decide_refresh_impl.mcp-surface
+    - decide_refresh_impl.spec-conformance
+    agent: python-senior-tacit
 - id: doc_sync
   name: Documentation Sync
   status: locked

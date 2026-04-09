@@ -72749,7 +72749,7 @@ phases:
       \ contracts for both success and failure-path scenarios."
   - id: orchestration_upper_layer_review.gate-upper-layer-review
     name: Gate upper-layer review
-    status: pending
+    status: claimed
     description: Final upper-layer deep review gate. Block if shadow authority exists
       outside approved boundaries, reconcile-before-complete is not proven across
       all upper-layer paths, planner/remediation routing escapes resolver ownership,
@@ -72770,6 +72770,8 @@ phases:
     - orchestration_upper_layer_review.run-full-plan-upper-layer-spec-conformance-audit
     - orchestration_upper_layer_review.run-black-box-upper-layer-orchestration-verification
     agent: gate-reviewer-tacit
+    claimed_by: vectl-decide-orchestrator-tacit
+    claimed_at: '2026-04-09T18:44:49.040054+00:00'
 - id: parallel_gate_remediation
   name: Parallel Gate Remediation
   status: done

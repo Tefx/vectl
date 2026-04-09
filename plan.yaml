@@ -65983,6 +65983,89 @@ phases:
     - decide_refresh_impl.mcp-surface
     - decide_refresh_impl.spec-conformance
     agent: python-senior-tacit
+  - id: decide_refresh_impl.af1-r8-reverify
+    name: Reverify runner provenance and advisor contract after AF1/R8 remediation
+    status: pending
+    description: 'step_type: test
+
+      step_intent: retest_green
+
+      expected_result: green
+
+
+      As an independent verifier, revalidate decide_refresh_impl after AF1/R8 remediation.
+
+
+      Required proof:
+
+      - reuse_runner provenance now follows completed_result.runner and any reusable-session
+      provenance that survives into reuse decisions
+
+      - no regression in top-level status/reason_code contract across refreshed decide
+      outputs
+
+      - standalone advisor semantics still hold without orchestration runtime assumptions
+
+      - task_id remains execution identity, not reuse identity
+
+
+      YOUR GOAL IS TO FIND PROBLEMS, not to confirm it works.
+
+
+      Independence Level: L1
+
+      verification_scope: phase-check protecting decide_refresh_impl.gate and doc_sync'
+    verification: 'phase-check protecting decide_refresh_impl.gate and doc_sync: rerun
+      focused contract verification and report green only if runner provenance, status/reason_code
+      contract, and standalone advisor semantics all conform after the fix.'
+    evidence_template: '## refs Read Confirmation (MANDATORY)
+
+
+      For each ref in this step:
+
+      - <filename> — key passage or "NOT READ: <reason>"
+
+
+      ## Reverification Report
+
+      **Observed result**: green|issues_found|incomplete
+
+
+      ### Commands / tests exercised
+
+      - <exact command or test name>
+
+
+      ### Behavioral proof register
+
+      - runner provenance from completed_result.runner: PROVEN|DIVERGES|NEEDS_TEST
+
+      - reusable-session provenance reuse: PROVEN|DIVERGES|NEEDS_TEST
+
+      - status/reason_code contract stability: PROVEN|DIVERGES|NEEDS_TEST
+
+      - standalone advisor semantics: PROVEN|DIVERGES|NEEDS_TEST
+
+      - task_id distinct from reuse identity: PROVEN|DIVERGES|NEEDS_TEST
+
+
+      ### Findings
+
+      - blocker: <if any>
+
+      - should_fix: <if any>
+
+
+      ### Gate decision basis
+
+      - unresolved items: <none or list>
+
+      - why any unresolved item does/does not block doc_sync/deep_review
+
+      '
+    depends_on:
+    - decide_refresh_impl.af1-r8-fix
+    agent: spec-verifier-tacit
 - id: doc_sync
   name: Documentation Sync
   status: locked

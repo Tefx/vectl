@@ -37,6 +37,8 @@ from vectl.orchestration.contracts import (
     StructuredReviewResult,
 )
 from vectl.orchestration.control_channel import FilesystemControlChannel
+from vectl.orchestration.dispatch_policy import ConfigRoleProfileRegistry, DispatchCoordinator
+from vectl.orchestration.events import load_event_jsonl
 from vectl.orchestration.recovery import LegacyRunStatus
 from vectl.orchestration.run_store import RunRecord, RunRegistry, generate_run_id
 
@@ -235,6 +237,124 @@ def test_resolve_case_surfaces_operator_required_via_case_views(
     assert shown.reason == "human decision required"
 
 
+def test_resolve_case_emits_explicit_operator_notification_events(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    app = _build_app(tmp_path)
+    case = ResolutionCase(
+        case_id="case-operator-events",
+        case_source="review_failed",
+        reason="review outcome: operator_required",
+        summary="human approval required",
+        core=_core_snapshot(),
+        roster=_roster_snapshot(),
+        runtime=_runtime_snapshot(),
+        blocked_step_ids=("core.ready",),
+    )
+
+    monkeypatch.setattr(
+        app,
+        "_resolver",
+        type(
+            "_StubResolver",
+            (),
+            {
+                "resolve": lambda self, _case: ResolutionReport(
+                    status="operator_required",
+                    summary="resolver could not close safely",
+                    evidence_refs=("resolver://1",),
+                    operator_message="human decision required",
+                )
+            },
+        )(),
+    )
+
+    report = app.resolve_case(case)
+    assert report.status == "operator_required"
+
+    monkeypatch.setattr(
+        app,
+        "_resolver",
+        type(
+            "_StubResolverWait",
+            (),
+            {
+                "resolve": lambda self, _case: ResolutionReport(
+                    status="waiting", summary="awaiting input"
+                )
+            },
+        )(),
+    )
+    cleared = app.resolve_case(case)
+    assert cleared.status == "waiting"
+
+    events = load_event_jsonl(app._events_path())
+    assert [event.kind for event in events] == ["operator_case_opened", "operator_case_resolved"]
+    opened_payload = dict(events[0].payload or {})
+    resolved_payload = dict(events[1].payload or {})
+    assert opened_payload["case_id"] == "case-operator-events"
+    assert opened_payload["step_id"] == "core.ready"
+    assert opened_payload["resolution_status"] == "operator_required"
+    assert opened_payload["open_case_delta"] == 1
+    assert resolved_payload == {
+        "case_id": "case-operator-events",
+        "resolution": "waiting",
+        "open_case_delta": -1,
+    }
+
+
+@pytest.mark.parametrize(
+    ("status", "expected_kind", "expected_notification"),
+    [
+        ("unblocked", "dispatch", False),
+        ("waiting", "wait", False),
+        ("operator_required", "wait", True),
+        ("halt", "done", False),
+    ],
+)
+def test_route_resolution_case_covers_all_resolver_outcomes(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    status: Literal["unblocked", "waiting", "operator_required", "halt"],
+    expected_kind: Literal["dispatch", "wait", "done"],
+    expected_notification: bool,
+) -> None:
+    app = _build_app(tmp_path)
+    case = ResolutionCase(
+        case_id=f"case-{status}",
+        case_source="review_failed",
+        reason="resolver outcome proof",
+        summary="resolver outcome proof",
+        core=_core_snapshot(),
+        roster=_roster_snapshot(),
+        runtime=_runtime_snapshot(),
+        blocked_step_ids=("core.ready",),
+    )
+
+    monkeypatch.setattr(
+        app,
+        "_resolver",
+        type(
+            "_OutcomeResolver",
+            (),
+            {
+                "resolve": lambda self, _case: ResolutionReport(
+                    status=status,
+                    summary=f"resolver status={status}",
+                    operator_message=(
+                        "operator attention required" if status == "operator_required" else None
+                    ),
+                )
+            },
+        )(),
+    )
+
+    decision = app.route_resolution_case(case)
+
+    assert decision.kind == expected_kind
+    assert (app._latest_operator_notification is not None) is expected_notification
+
+
 def test_run_and_control_route_through_typed_boundaries(tmp_path: Path) -> None:
     app = _build_app(tmp_path)
 
@@ -331,6 +451,26 @@ def test_run_claims_before_runtime_start(tmp_path: Path, monkeypatch: pytest.Mon
         "claim:core.ready:python-executor:normal",
         "start:core.ready:python-executor",
     ]
+
+
+def test_run_refuses_runtime_start_when_authoritative_claim_fails(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    app = _build_app(tmp_path)
+    start_calls: list[str] = []
+    original_start = app._runtime.start
+
+    def start_with_probe(*, request, workspace):
+        start_calls.append(request.step_id)
+        return original_start(request=request, workspace=workspace)
+
+    monkeypatch.setattr(app._runtime, "start", start_with_probe)
+
+    result = app.run(step_id="core.other", agent="python-executor")
+
+    assert result.success is False
+    assert "unmet dependencies" in result.message
+    assert start_calls == []
 
 
 def test_run_consumes_authoritative_step_isolation_for_runtime_request(
@@ -432,6 +572,76 @@ def test_route_terminal_execution_completes_only_after_reconcile_allows_it(
 
     assert case is None
     assert calls == ["reconcile:exec-1", "can_complete:exec-1", "complete:core.ready:merged"]
+
+
+def test_route_terminal_execution_hard_gates_non_closing_reconcile_status(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    app = _build_app(tmp_path)
+    orch = cast(Any, app)
+    completed: list[str] = []
+
+    monkeypatch.setattr(
+        app._runtime,
+        "begin_reconcile",
+        lambda execution_id: ReconcileResult(
+            execution_id=execution_id,
+            workspace_id="ws-1",
+            status=cast(Any, "unexpected_non_closure"),
+            summary="runtime returned an unsupported reconcile status",
+        ),
+    )
+    monkeypatch.setattr(app._runtime, "can_complete", lambda _execution_id: (True, "ok"))
+    monkeypatch.setattr(app._runtime, "reconcile_disposition", lambda _execution_id: "merged")
+    monkeypatch.setattr(
+        app._core_adapter,
+        "complete_step",
+        lambda step_id, evidence, *, reconcile_disposition: completed.append(step_id),
+    )
+
+    case = orch.route_terminal_execution(
+        step_id="core.ready",
+        execution_id="exec-unexpected-reconcile",
+        dispatch_spec=DispatchSpec(
+            source_kind="step",
+            source_id="core.ready",
+            role_id="python-executor",
+            role_source="default",
+            execution_context="linked_worktree",
+            runner="codex",
+            session_mode="fresh",
+        ),
+        execution_result=ExecutionResult(
+            step_id="core.ready",
+            status="success",
+            output_summary="execution succeeded but reconcile did not close",
+        ),
+    )
+
+    assert case is not None
+    assert case.case_source == "runtime_failure"
+    assert completed == []
+
+
+def test_build_dispatch_spec_preserves_canonical_fallback_role_precedence(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    app = _build_app(tmp_path)
+    app._role_registry = ConfigRoleProfileRegistry(
+        default_role="python-executor", fallback_role="gate-reviewer"
+    )
+    captured_fallback_roles: list[str] = []
+    original_build_dispatch_spec = DispatchCoordinator.build_dispatch_spec
+
+    def capture_build_dispatch_spec(self, decision):
+        captured_fallback_roles.append(self.role_registry.fallback_role)
+        return original_build_dispatch_spec(self, decision)
+
+    monkeypatch.setattr(DispatchCoordinator, "build_dispatch_spec", capture_build_dispatch_spec)
+
+    spec = app.build_dispatch_spec(step_id="core.ready", role_hint="gate-reviewer")
+    assert spec.role_id == "gate-reviewer"
+    assert captured_fallback_roles == ["gate-reviewer"]
 
 
 def test_route_terminal_execution_non_pass_review_becomes_resolution_case(
@@ -899,7 +1109,7 @@ def test_recover_terminalizes_fresh_start_required_before_restart(tmp_path: Path
     assert terminal is not None
     assert terminal.status == "fail"
 
-    restarted = app.run(step_id="core.other", agent="python-executor")
+    restarted = app.run(step_id="core.ready", agent="python-executor")
     assert restarted.success is True
 
 

@@ -65242,7 +65242,7 @@ phases:
       - product implementation files modified: NONE'
   - id: decide_refresh_tests.gate
     name: Gate decide_refresh_tests
-    status: claimed
+    status: pending
     description: 'Gate review: verify refreshed tests define the contract gap clearly
       across core/state and MCP surfaces, including the remediation for stale MCP
       contract assertions. Block if intent is not explicitly red where required, if
@@ -65273,9 +65273,8 @@ phases:
     - decide_refresh_tests.mcp-red
     - decide_refresh_tests.retest-refreshed-red-seams
     - decide_refresh_tests.reverify-gate-mcp-contract-refresh-batch
+    - decide_refresh_tests.reverify-root-cause-mcp-refreshed-assertions
     agent: gate-reviewer-tacit
-    claimed_by: gate-reviewer-tacit
-    claimed_at: '2026-04-09T12:53:29.167496+00:00'
   - id: decide_refresh_tests.core-state-red
     name: Define core and advisor_state expected-red tests
     status: done
@@ -65769,6 +65768,230 @@ phases:
 
       - Verification indicates refreshed contract coverage is present and stale positive
       legacy assertions are absent on the tested surfaces.'
+  - id: decide_refresh_tests.fix-root-cause-mcp-refreshed-assertions
+    name: Fix root-cause MCP refreshed assertions
+    status: done
+    description: 'Rewrite the authoritative MCP refreshed-contract tests in tests/test_mcp.py
+      so the MCP surface asserts only the refreshed decide output contract.
+
+
+      work_type: proof_closure
+
+      step_type: test
+
+      step_intent: test_define_red
+
+      expected_result: red
+
+      agent_source: default
+
+      tags: ["integration"]
+
+
+      Refs / anchors:
+
+      - docs/RFC-vectl-decide-advisor-refresh.md
+
+      - tests/test_mcp.py::TestVectlDecide
+
+
+      Touch paths:
+
+      - tests/test_mcp.py
+
+
+      Required rewrite scope:
+
+      - remove stale MCP assertions or acceptance language for legacy `continuation`,
+      `halt_reason`, and `session` fields wherever TestVectlDecide still encodes them
+      as contract expectations
+
+      - add or tighten MCP assertions for refreshed contract fields: `status`, `reason_code`,
+      `next_state`, `policy`, `advisor_state`, `reuse_token`, and `reuse_runner`
+
+      - keep the surface test-only and expected-red where implementation proof is
+      still intentionally incomplete
+
+      - search sibling MCP assertions in the same class so the contract is refreshed
+      consistently, not only in one example
+
+
+      why_previous_fix_failed: the prior fix/reverify loop reported broad refreshed
+      coverage but did not modify the MCP test class itself, so stale contract expectations
+      and missing refreshed-field assertions remained on the authoritative MCP seam.
+
+
+      ## Root Cause vs Symptom
+
+      - Root cause: remediation relied on proof statements about MCP coverage instead
+      of rewriting the concrete MCP contract assertions in the authoritative test
+      class.
+
+      - Symptom: decide_refresh_tests.gate still finds stale continuation/halt_reason/session
+      expectations and zero refreshed MCP assertions for status/reason_code/next_state/policy/advisor_state/reuse_token/reuse_runner.
+
+      - Why this fix is not surface-level: completion requires changing the MCP test
+      surface itself and removing stale assertions, not only adding narrative evidence.
+
+
+      ## Completion Criteria
+
+      - tests/test_mcp.py::TestVectlDecide asserts the refreshed MCP contract fields
+      explicitly
+
+      - stale `continuation`, `halt_reason`, and `session` acceptance assertions are
+      removed from the MCP contract surface
+
+      - evidence names the exact test methods updated and the sibling search performed
+
+      - no product implementation files are touched'
+    verification: 'local-check protecting decide_refresh_tests.gate: the authoritative
+      MCP test class now asserts refreshed fields (status/reason_code/next_state/policy/advisor_state/reuse_token/reuse_runner)
+      and no longer encodes stale continuation/halt_reason/session acceptance.'
+    evidence_template: '## refs Read Confirmation (MANDATORY)
+
+      For each ref in this step:
+
+      - <filename> — key passage or "NOT READ: <reason>"
+
+
+      If no refs were provided, state: "No refs for this step."
+
+
+      ## MCP Root-Cause Rewrite Evidence
+
+      - Updated test methods in tests/test_mcp.py:
+
+      - Stale assertions removed:
+
+      - Refreshed assertions added for: status | reason_code | next_state | policy
+      | advisor_state | reuse_token | reuse_runner
+
+      - Sibling MCP assertion search performed:
+
+      - Product implementation files changed: NONE
+
+
+      ## Commands + Outputs
+
+      - command:
+
+      - output:
+
+
+      ## Expected-red note
+
+      - Explain why this remains a contract-defining test surface and what gap is
+      intentionally exposed.
+
+      '
+    depends_on:
+    - decide_refresh_tests.reverify-gate-mcp-contract-refresh-batch
+    claimed_by: general
+    claimed_at: '2026-04-09T14:00:16.182359+00:00'
+    done_at: '2026-04-09T14:04:37.830972+00:00'
+    evidence: "## refs Read Confirmation (MANDATORY)\n- tools/vectl/README.md — NOT\
+      \ READ: file was not present in the isolated worktree at `.vectl/worktrees/decide_refresh_tests.fix-root-cause-mcp-refreshed-assertions`;\
+      \ I confirmed the worktree had `README.md` at root instead. No contradictory\
+      \ spec text was available from the requested path, so I followed the step description\
+      \ plus the RFC/test-class refs as authoritative for this task.\n- docs/RFC-vectl-decide-advisor-refresh.md\
+      \ — key passage: “from: `continuation: bool` + `halt_reason: str | None` / to:\
+      \ `status` + `reason_code` + optional human-readable `message`” and output includes\
+      \ `next_state`, `policy`, with required rollout updates to add `reuse_token`/`reuse_runner`\
+      \ and remove stale continuation/halt_reason assertions. [Proven]\n- tests/test_mcp.py::TestVectlDecide\
+      \ — key passage: the class docstring already states vectl_decide “Returns status/reason_code\
+      \ for top-level control summary” and “Decides session reuse via reuse_token/reuse_runner\
+      \ with TTL awareness,” making this the authoritative MCP seam to rewrite. [Proven]\n\
+      \n## MCP Root-Cause Rewrite Evidence\n- Updated test methods in tests/test_mcp.py:\n\
+      \  - `test_vectl_decide_returns_structured_output`\n  - `test_vectl_decide_empty_plan`\n\
+      \  - `test_vectl_decide_with_running_tasks`\n  - `test_vectl_decide_repeated_failures_return_blocked_status`\n\
+      - Stale assertions removed:\n  - removed permissive/stale acceptance by asserting\
+      \ top-level result does **not** expose `continuation`, `halt_reason`, or `session`\n\
+      \  - removed permissive reuse handling in `claim_and_dispatch` actions by asserting\
+      \ `session` is absent and `reuse_token`/`reuse_runner` are the contract fields\n\
+      - Refreshed assertions added for: status | reason_code | next_state | policy\
+      \ | advisor_state | reuse_token | reuse_runner\n  - `status`/`reason_code` asserted\
+      \ across all four tests\n  - `next_state` shape asserted across all four tests\n\
+      \  - `policy` fields `reuse_ttl_s` and `escalation_threshold` asserted\n  -\
+      \ `advisor_state` asserted as canonical input in `test_vectl_decide_returns_structured_output`\
+      \ via explicit `advisor_state=` call, with `next_state` as replacement output\
+      \ and no output-side `advisor_state`\n  - `reuse_token`/`reuse_runner` asserted\
+      \ on `claim_and_dispatch` action payloads\n- Sibling MCP assertion search performed:\n\
+      \  - searched `TestVectlDecide` for `continuation|halt_reason|session|reuse_token|reuse_runner|reason_code|advisor_state|next_state|status`\n\
+      \  - refreshed all sibling decide-contract tests in that class, not just one\
+      \ example\n- Product implementation files changed: NONE\n\n## Commands + Outputs\n\
+      - command: `git status --short`\n- output: ` M tests/test_mcp.py`\n\n- command:\
+      \ `git diff -- tests/test_mcp.py`\n- output: diff showed only `tests/test_mcp.py`\
+      \ changes tightening `TestVectlDecide` assertions around refreshed fields and\
+      \ stale-field absence.\n\n- command: `uv run pytest tests/test_mcp.py -k TestVectlDecide`\n\
+      - output: `4 passed, 171 deselected in 2.24s`\n\n- command: `git add tests/test_mcp.py\
+      \ && git commit -m \"test: refresh MCP decide contract assertions\" && git status\
+      \ --short`\n- output: `[vectl/step-decide_refresh_tests.fix-root-cause-mcp-refreshed-assertions\
+      \ bc51590] test: refresh MCP decide contract assertions`\n\n## Expected-red\
+      \ note\n- [Proven] This rewrite keeps the MCP seam contract-defining: it now\
+      \ explicitly requires refreshed fields and rejects stale continuation/halt_reason/session\
+      \ acceptance on the authoritative test surface.\n- [Proven] In this worktree,\
+      \ the targeted `TestVectlDecide` slice is currently green after the rewrite\
+      \ (`4 passed`), so the step metadata’s “expected-red” outcome did not reproduce\
+      \ locally. The intentional gap now exposed is future implementation drift at\
+      \ the MCP seam: these tests will fail if refreshed fields regress or stale fields\
+      \ reappear."
+  - id: decide_refresh_tests.reverify-root-cause-mcp-refreshed-assertions
+    name: Reverify root-cause MCP refreshed assertions
+    status: pending
+    description: 'As an INDEPENDENT TESTER (integration-verifier-tacit), prove the
+      authoritative MCP test surface now matches the refreshed decide contract.
+
+
+      step_type: verification
+
+      verification_scope: phase-check
+
+      expected_result: green
+
+      agent_source: default
+
+      tags: ["integration"]
+
+
+      Scope: tests/test_mcp.py::TestVectlDecide
+
+      Protects downstream gate: decide_refresh_tests.gate
+
+
+      Required checks:
+
+      - command output shows the targeted MCP test class executes after the rewrite
+
+      - pattern checks prove refreshed assertions are present for `status`, `reason_code`,
+      `next_state`, `policy`, `advisor_state`, `reuse_token`, and `reuse_runner`
+
+      - pattern checks prove stale acceptance assertions for `continuation`, `halt_reason`,
+      and `session` are absent from the authoritative MCP contract surface
+
+      - evidence distinguishes active assertions from explanatory comments/docstrings
+      when reporting stale-field absence
+
+
+      Finding stale assertions is a successful verification outcome and must be reported
+      as blocker evidence.'
+    verification: 'phase-check protecting decide_refresh_tests.gate: targeted command
+      output plus pattern checks prove refreshed MCP assertions are present and stale
+      continuation/halt_reason/session acceptance assertions are absent from tests/test_mcp.py::TestVectlDecide.'
+    evidence_template: "## Verification Report\n**Tester**: integration-verifier-tacit\n\
+      **Scope**: tests/test_mcp.py::TestVectlDecide refreshed MCP contract\n**Independence\
+      \ Level**: L1\n\n### refs Read Confirmation (MANDATORY)\nFor each ref in this\
+      \ step:\n- <filename> — key passage or \"NOT READ: <reason>\"\n\nIf no refs\
+      \ were provided, state: \"No refs for this step.\"\n\n### Command Proof\n- Exact\
+      \ command executed:\n```\n<targeted pytest command>\n```\n- Actual output:\n\
+      ```\n<paste stdout/stderr>\n```\n\n### Pattern Checks\n- Refreshed assertions\
+      \ present:\n  - status:\n  - reason_code:\n  - next_state:\n  - policy:\n  -\
+      \ advisor_state:\n  - reuse_token:\n  - reuse_runner:\n- Stale acceptance assertions\
+      \ absent:\n  - continuation:\n  - halt_reason:\n  - session:\n\n### Distinction\
+      \ Notes\n- Comments/docstrings mentioning legacy fields:\n- Active assertion\
+      \ verdict:\n\n### Verdict\n- PASS | ISSUES_FOUND | INCOMPLETE\n"
+    depends_on:
+    - decide_refresh_tests.fix-root-cause-mcp-refreshed-assertions
 - id: decide_refresh_impl
   name: vectl_decide Contract Refresh — Implementation
   status: done
@@ -68068,7 +68291,7 @@ phases:
       - product files modified: none'
   - id: orchestration_runtime_lifecycle.gate
     name: Gate runtime lifecycle
-    status: pending
+    status: claimed
     description: 'Gate review: verify runtime now owns worktree/execution/reconcile
       lifecycle mechanically without absorbing resolver policy, including the batched
       remediation for canonical git-worktree flow, reconcile serialization, and reconcile_disposition
@@ -68118,6 +68341,8 @@ phases:
     - orchestration_runtime_lifecycle.retest-runtime-lifecycle-blockers-batch
     - orchestration_runtime_lifecycle.reverify-gate-runtime-invariant-regressions-batch
     agent: gate-reviewer-tacit
+    claimed_by: gate-reviewer-tacit
+    claimed_at: '2026-04-09T13:58:47.732127+00:00'
   - id: orchestration_runtime_lifecycle.fix-runtime-lifecycle-blockers-batch
     name: Fix runtime lifecycle blocker batch
     status: done
@@ -68297,7 +68522,7 @@ phases:
       - R27 VERIFIED\n- R30 VERIFIED\ngate_open_allowed: true"
   - id: orchestration_runtime_lifecycle.fix-gate-runtime-invariant-regressions-batch
     name: Fix gate runtime invariant regressions batch
-    status: claimed
+    status: done
     description: 'Fix ALL blocker-class runtime regressions surfaced by orchestration_runtime_lifecycle.gate.
 
 
@@ -68422,9 +68647,53 @@ phases:
     agent: python-senior-tacit
     claimed_by: python-senior-tacit
     claimed_at: '2026-04-09T12:53:55.875455+00:00'
+    done_at: '2026-04-09T13:31:03.859029+00:00'
+    evidence: 'Implemented and merged runtime lifecycle invariant restorations.
+
+
+      Artifacts:
+
+      - worker commit: 8727fdb (`fix(runtime): restore reconcile lifecycle invariants`)
+
+      - merged on main: `[vectl] step-orchestration_runtime_lifecycle.fix-gate-runtime-invariant-regressions-batch
+      completed`
+
+
+      Changed files:
+
+      - src/vectl/orchestration/runtime.py
+
+      - tests/test_runtime_lifecycle.py
+
+
+      Restored behaviors:
+
+      - successful reconcile path now captured via `capture_reconcile_result(...)`
+      (proof/disposition preserved)
+
+      - per-target reconcile lock release restored on successful reconcile
+
+      - cleanup sequencing preserves in-memory lifecycle state until cleanup operation
+      succeeds
+
+
+      Proof tests added:
+
+      - main-path reconcile capture + lock release
+
+      - highest-risk cleanup failure path preserves workspace/reconcile state
+
+
+      Verification:
+
+      - `uv run pytest -q tests/test_runtime_lifecycle.py` -> `29 passed`
+
+      - `uv run ruff check ...` -> pass
+
+      - `uv run mypy ...` -> no issues'
   - id: orchestration_runtime_lifecycle.reverify-gate-runtime-invariant-regressions-batch
     name: Reverify gate runtime invariant regressions batch
-    status: pending
+    status: done
     description: 'As an INDEPENDENT TESTER, reverify runtime lifecycle invariants
       after orchestration_runtime_lifecycle.fix-gate-runtime-invariant-regressions-batch.
 
@@ -68497,6 +68766,19 @@ phases:
     depends_on:
     - orchestration_runtime_lifecycle.fix-gate-runtime-invariant-regressions-batch
     agent: integration-verifier-tacit
+    claimed_by: integration-verifier-tacit
+    claimed_at: '2026-04-09T13:33:39.112110+00:00'
+    done_at: '2026-04-09T13:56:08.829446+00:00'
+    evidence: "Independent reverification completed for runtime lifecycle invariant\
+      \ restorations.\n\nVerifier summary:\n- PASS on required invariants after fix\
+      \ batch:\n  - canonical git worktree preparation\n  - reconcile serialization\
+      \ and merge/proof handling\n  - cleanup guard behavior\n- Reported command suite\
+      \ includes targeted lifecycle tests and integration checks with exact outputs.\n\
+      \nKey reported evidence:\n- Runtime lifecycle suites and integration checks\
+      \ passed for invariant scope.\n- One pre-existing test expectation defect identified\
+      \ (transitional pending_reconciles assertion), classified as non-regression.\n\
+      \nSource task:\n- ses_28d8c9a22ffewQCPLqLCA5QMOj\n\nDisposition:\n- reverify\
+      \ step complete (PASS)."
 - id: orchestration_runtime_wiring
   name: Orchestration Runner/Runtime Wiring
   status: done
@@ -70258,7 +70540,7 @@ phases:
       \ noise; no blocker in required seam proofs."
   - id: orchestration_orch_app_routing.audit-orch-app-routing-against-canonical-specs
     name: Audit orch_app routing against canonical specs
-    status: claimed
+    status: done
     description: Independent spec conformance review for the routing phase. Audit
       claim-before-start, reconcile-before-complete, review/gate parse location and
       normalization, operator_required routing semantics, and execution_context selection
@@ -70276,6 +70558,19 @@ phases:
     agent: spec-verifier-tacit
     claimed_by: spec-verifier-tacit
     claimed_at: '2026-04-09T12:53:37.800360+00:00'
+    done_at: '2026-04-09T13:31:34.101430+00:00'
+    evidence: "Independent spec conformance audit completed against canonical orchestration\
+      \ routing specs.\n\nPrimary findings captured:\n- Conforms: reconcile-before-complete\
+      \ gating, review normalization, parse-failure routing, resolution subtask source_kind\
+      \ and allowlist resolver invocation, post-resolution snapshot refresh.\n- Divergence/partial\
+      \ findings captured in report:\n  - operator_required routing/notification semantics\
+      \ required explicit remediation path\n  - fallback role precedence behavior\
+      \ required canonical tightening\n  - dispatch prompt/render invocation proof\
+      \ needed explicit follow-up evidence\n\nDisposition:\n- Audit step complete\
+      \ as conformance artifact (including blockers/partials where found).\n- Remediation\
+      \ ownership created and executed in `orchestration_orch_app_routing.fix-audit-canonical-routing-divergence-batch`.\n\
+      - Independent reverification remains as downstream step before gate closure.\n\
+      \nEvidence source:\n- subagent task ses_28db0ac55ffegslh7rlqHmlMNi"
   - id: orchestration_orch_app_routing.gate-orch-app-routing
     name: Gate orch_app routing
     status: pending
@@ -70298,7 +70593,7 @@ phases:
     agent: gate-reviewer-tacit
   - id: orchestration_orch_app_routing.fix-audit-canonical-routing-divergence-batch
     name: Fix audit canonical routing divergence batch
-    status: claimed
+    status: done
     description: 'Fix ALL blocker-class routing/spec divergences surfaced by orchestration_orch_app_routing.audit-orch-app-routing-against-canonical-specs.
 
 
@@ -70377,9 +70672,61 @@ phases:
     agent: python-senior-tacit
     claimed_by: python-senior-tacit
     claimed_at: '2026-04-09T12:53:49.200730+00:00'
+    done_at: '2026-04-09T13:30:26.627446+00:00'
+    evidence: 'Implemented blocker-batch routing fixes with canonical policy alignment.
+
+
+      Artifacts:
+
+      - worker commit: b015b59 (`fix(orch): enforce canonical routing gates`)
+
+      - merged on main: `[vectl] step-orchestration_orch_app_routing.fix-audit-canonical-routing-divergence-batch
+      completed`
+
+
+      Files changed:
+
+      - src/vectl/orch_app.py
+
+      - src/vectl/orchestration/events.py
+
+      - tests/orchestration/unit/test_orch_app.py
+
+      - tests/orchestration/integration/test_orch_app_routing_seam.py
+
+
+      Remediation coverage:
+
+      - explicit operator_required notification lifecycle + emitted operator_case_opened/operator_case_resolved
+      events
+
+      - claim hard-gate on run start branches
+
+      - reconcile hard-gate for non-closing statuses
+
+      - resolver outcome routing branch coverage expanded
+
+      - canonical fallback role precedence preserved in dispatch registry flow
+
+
+      Verification (reported):
+
+      - `uv run pytest -q tests/orchestration/unit/test_orch_app.py tests/orchestration/integration/test_orch_app_routing_seam.py`
+      -> `56 passed`
+
+      - `uv run ruff check ...` -> pass
+
+      - `uv run mypy ...` -> no issues
+
+
+      Scope constraints honored:
+
+      - no plan/orchestrator state mutation by worker
+
+      - no out-of-scope full-repo test sweep'
   - id: orchestration_orch_app_routing.reverify-audit-canonical-routing-divergence-batch
     name: Reverify audit canonical routing divergence batch
-    status: pending
+    status: claimed
     description: 'As an INDEPENDENT REVIEWER, rerun focused conformance and routing
       proof review after orchestration_orch_app_routing.fix-audit-canonical-routing-divergence-batch.
 
@@ -70413,6 +70760,8 @@ phases:
     depends_on:
     - orchestration_orch_app_routing.fix-audit-canonical-routing-divergence-batch
     agent: spec-verifier-tacit
+    claimed_by: spec-verifier-tacit
+    claimed_at: '2026-04-09T13:33:19.662150+00:00'
 - id: orchestration_operator_recovery
   name: Orchestration Operator / Conflict / Recovery Alignment
   status: locked

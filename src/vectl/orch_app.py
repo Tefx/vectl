@@ -483,19 +483,77 @@ class OrchestrationApp:
         """
 
         report = self._resolver.resolve(case)
+        self._update_operator_notification(case=case, report=report)
+        return report
+
+    def _update_operator_notification(
+        self,
+        *,
+        case: ResolutionCase,
+        report: ResolutionReport,
+    ) -> None:
+        """Maintain explicit operator notification state and observability events.
+
+        Authority:
+            docs/ORCHESTRATION-PLANE-ORCH-APP-ROUTING.md sections 8, 10, 12.2
+        """
+
+        existing = self._latest_operator_notification
         if report.status == "operator_required":
-            self._latest_operator_notification = OperatorNotification(
+            notice = OperatorNotification(
                 case_id=case.case_id,
                 summary=report.summary,
                 evidence_refs=report.evidence_refs,
                 operator_message=report.operator_message,
             )
-        elif (
-            self._latest_operator_notification is not None
-            and self._latest_operator_notification.case_id == case.case_id
-        ):
+            if existing is not None and existing.case_id != case.case_id:
+                self._emit_operator_case_resolved(case_id=existing.case_id, resolution="replaced")
+            if existing != notice:
+                self._emit_operator_case_opened(case=case, notice=notice)
+            self._latest_operator_notification = notice
+            return
+
+        if existing is not None and existing.case_id == case.case_id:
+            self._emit_operator_case_resolved(case_id=case.case_id, resolution=report.status)
             self._latest_operator_notification = None
-        return report
+
+    def _emit_operator_case_opened(
+        self,
+        *,
+        case: ResolutionCase,
+        notice: OperatorNotification,
+    ) -> None:
+        """Emit explicit operator-required case-opened state."""
+
+        step_id = case.blocked_step_ids[0] if case.blocked_step_ids else ""
+        self._emit_event(
+            kind="operator_case_opened",
+            step_id=step_id or None,
+            agent="operator",
+            payload={
+                "case_id": notice.case_id,
+                "step_id": step_id,
+                "resolution_status": "operator_required",
+                "summary": notice.summary,
+                "operator_message": notice.operator_message,
+                "evidence_refs": notice.evidence_refs,
+                "open_case_delta": 1,
+            },
+        )
+
+    def _emit_operator_case_resolved(self, *, case_id: str, resolution: str) -> None:
+        """Emit explicit operator-required case-resolved state."""
+
+        self._emit_event(
+            kind="operator_case_resolved",
+            step_id=None,
+            agent="operator",
+            payload={
+                "case_id": case_id,
+                "resolution": resolution,
+                "open_case_delta": -1,
+            },
+        )
 
     def route_resolution_case(
         self,
@@ -536,7 +594,7 @@ class OrchestrationApp:
         temporary_registry = ConfigRoleProfileRegistry(
             profiles=tuple(self._role_registry._profiles.values()),
             default_role=resolved_role,
-            fallback_role=resolved_role,
+            fallback_role=self._role_registry.fallback_role,
         )
         temporary_coordinator = DispatchCoordinator(
             role_registry=temporary_registry,
@@ -605,7 +663,7 @@ class OrchestrationApp:
             raise ValueError(
                 f"Reconcile did not produce a terminal result for execution {execution_id}"
             )
-        if reconcile_result.status in ("merge_conflict", "aborted"):
+        if reconcile_result.status not in ("merged", "noop"):
             return self._build_reconcile_resolution_case(
                 step_id=step_id,
                 reconcile_result=reconcile_result,
@@ -641,9 +699,9 @@ class OrchestrationApp:
         reconcile_result: ReconcileResult,
         snapshots: SnapshotBundle,
     ) -> ResolutionCase:
-        case_source: ResolutionCaseSource = "merge_conflict"
-        if reconcile_result.status == "aborted":
-            case_source = "runtime_failure"
+        case_source: ResolutionCaseSource = "runtime_failure"
+        if reconcile_result.status == "merge_conflict":
+            case_source = "merge_conflict"
         return ResolutionCase(
             case_id=f"case-{generate_run_id()}",
             case_source=case_source,
@@ -782,9 +840,7 @@ class OrchestrationApp:
 
             try:
                 if mode == "start":
-                    core_snapshot = self._core_adapter.snapshot(agent=agent)
-                    if step_id in core_snapshot.claimable_step_ids:
-                        self._core_adapter.claim_step(step_id, agent, flow="normal")
+                    self._core_adapter.claim_step(step_id, agent, flow="normal")
                 dispatch_spec = self.build_dispatch_spec(step_id=step_id, role_hint=agent)
                 workspace, execution_id = self._start_runtime_execution(
                     run_id=run_id,

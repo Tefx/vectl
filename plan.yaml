@@ -66491,7 +66491,7 @@ phases:
       \ → `36 passed, 1 warning`\n- Issues found: none"
   - id: deep_review.decide-black-box
     name: Black-box verify refreshed advisor contract
-    status: claimed
+    status: done
     description: Using only the RFC and public contracts, construct minimal advisor_state/running_tasks/completed_results
       fixtures; verify refreshed output fields, verify removed fields are not required,
       and verify standalone deterministic advisor behavior is understandable without
@@ -66517,6 +66517,22 @@ phases:
     agent: blind-tester-tacit
     claimed_by: blind-tester-tacit
     claimed_at: '2026-04-09T09:03:43.207589+00:00'
+    done_at: '2026-04-09T09:30:50.464707+00:00'
+    evidence: "## Verification Report\n### refs Read Confirmation (MANDATORY)\n- docs/RFC-vectl-decide-advisor-refresh.md\
+      \ — used as sole contract authority (sections 6.x/7.x semantics)\n- tools/vectl/README.md\
+      \ — not found in requested path (non-blocking)\n\n- Fixtures used:\n  - caller-owned\
+      \ advisor_state fixtures\n  - minimal running_tasks/completed_results fixtures\n\
+      \  - failure-threshold scenarios for repeated_failures signaling\n- Commands\
+      \ executed:\n  - `uv run python tests/repro/spec_verify_decide_contract.py`\n\
+      - Actual output:\n  - 15 checks total; 14 PASS, 1 FAIL in repeated-failure top-level\
+      \ status signaling path\n- Spec mismatches:\n  - BLOCKER: repeated-failure path\
+      \ can emit `status=done, reason_code=no_executable_steps` while escalation action\
+      \ exists; RFC expects `status=blocked, reason_code=repeated_failures` when repeated\
+      \ failure condition is active.\n\nRemediation ownership established (batched\
+      \ fix protocol):\n- `deep_review.fix-repeated-failure-status-signaling`\n- `deep_review.reverify-repeated-failure-status-signaling`\n\
+      - `deep_review.gate` dependency updated to include reverify step.\n\nArtifact\
+      \ committed:\n- tests/repro/spec_verify_decide_contract.py\n- merged to main\
+      \ via orchestrator commit `[vectl] step-deep_review.decide-black-box completed`"
   - id: deep_review.gate
     name: Final deep review gate
     status: pending

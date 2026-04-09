@@ -66057,7 +66057,7 @@ phases:
       \ vectl`)\n\n## Commit\n- abb9821 — fix(decide): preserve reuse runner provenance"
   - id: decide_refresh_impl.af1-r8-reverify
     name: Reverify runner provenance and advisor contract after AF1/R8 remediation
-    status: claimed
+    status: done
     description: 'step_type: test
 
       step_intent: retest_green
@@ -66140,6 +66140,28 @@ phases:
     agent: spec-verifier-tacit
     claimed_by: spec-verifier-tacit
     claimed_at: '2026-04-09T07:49:15.684815+00:00'
+    done_at: '2026-04-09T07:54:46.487520+00:00'
+    evidence: "## refs Read Confirmation\n- tools/vectl/README.md — NOT READ: file\
+      \ does not exist in worktree\n- docs/RFC-vectl-decide-advisor-refresh.md — read\
+      \ and cited for runner provenance, status/reason_code contract, caller-owned\
+      \ advisor_state semantics\n\n## Reverification Report\nObserved result: green\n\
+      \n### Commands / tests exercised\n- `uv run pytest tests/test_decide.py tests/test_decide_state_isolation.py\
+      \ -v --tb=short` → `36 passed, 1 warning`\n\n### Behavioral proof register\n\
+      - runner provenance from completed_result.runner: PROVEN\n  - models validate\
+      \ runner namespace (`claude|task`), decide stores runner provenance in session\
+      \ runner registry, tests confirm reuse_runner follows completed_result.runner.\n\
+      - reusable-session provenance reuse: PROVEN\n  - reuse action uses `reuse_token`\
+      \ + `reuse_runner`, advisor_state round-trip preserves `session_runner_registry`,\
+      \ tests validate `reuse_runner == \"claude\"` when persisted.\n- status/reason_code\
+      \ contract stability: PROVEN\n  - decide mapping and models literals match RFC\
+      \ status/reason_code contract; mapping tests pass.\n- standalone advisor semantics:\
+      \ PROVEN\n  - caller-owned `advisor_state` isolation preserved; no shared legacy-state\
+      \ contamination in isolation tests.\n- task_id distinct from reuse identity:\
+      \ PROVEN\n  - reuse uses `reuse_token`; `task_id` remains execution identity\
+      \ and is `None` on reuse dispatch actions.\n\n### Findings\n- blocker: none\n\
+      - should_fix: pydantic deprecation warning in test code path (non-contract,\
+      \ non-blocking)\n\n### Gate decision basis\n- unresolved items: none\n- all\
+      \ required contract proof items are green/proven; no blocker intersects doc_sync/deep_review."
 - id: doc_sync
   name: Documentation Sync
   status: locked

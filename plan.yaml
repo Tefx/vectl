@@ -72241,7 +72241,7 @@ phases:
       reviewer: vectl-decide-orchestrator-tacit
   - id: orchestration_operator_recovery.reverify-dispatch-recovery-gate-enforcement-after-fix
     name: Reverify dispatch recovery gate enforcement after fix
-    status: claimed
+    status: done
     description: 'As an INDEPENDENT TESTER (spec-verifier-tacit), re-audit the repaired
       operator/conflict/recovery enforcement from a fresh perspective after the enforcement
       fix.
@@ -72303,6 +72303,61 @@ phases:
     agent: spec-verifier-tacit
     claimed_by: spec-verifier
     claimed_at: '2026-04-09T17:44:32.517693+00:00'
+    done_at: '2026-04-09T17:55:10.974897+00:00'
+    evidence: '## refs Read Confirmation
+
+      - Reviewed full orch app and orchestration recovery/control/runtime/continuity
+      contract surfaces in worktree.
+
+
+      ## Reverification Report
+
+      Dispatch enforcement audited and proven on authoritative paths:
+
+      - `dispatch_resolution_subtask()` consults `_is_dispatch_blocked_by_gate()`
+      before dispatch.
+
+      - `_start_runtime_execution()` consults `_is_dispatch_blocked_by_gate()` before
+      runtime prepare/start.
+
+      - `_admit_start_and_persist_running()` consults `_is_dispatch_blocked_by_gate()`
+      before admission.
+
+      - `run()`/`resume()` covered via admission/start paths.
+
+
+      Completion enforcement audited and proven:
+
+      - `route_terminal_execution()` consults `_is_complete_blocked_by_gate()` pre-action
+      and post-reconcile before `complete_step`.
+
+      - runtime `can_complete` gate and core adapter reconcile disposition proof remain
+      in place.
+
+
+      Recovery enforcement audited and proven:
+
+      - `_recover_dispatch_recovery_gate()` reconstructs blocking gates from durable
+      reconcile/operator state.
+
+      - `_recover_operator_notification_surface()` restores paused operator notification
+      state.
+
+      - Recovery report persists reconstructed gate, then app-level gate checks consume
+      it.
+
+      - No dispatch/complete bypass path found among audited siblings.
+
+
+      gate_open_allowed: true
+
+      uncertainty_sources:
+
+      - Gate effectiveness assumes standard restart path invokes `recover()` before
+      new dispatch.
+
+      - In-memory gate state relies on reconstructable durable sources on each recovery
+      cycle.'
 - id: orchestration_upper_layer_review
   name: Orchestration Upper-Layer Review
   status: locked

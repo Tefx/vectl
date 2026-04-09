@@ -70934,7 +70934,7 @@ phases:
       - no out-of-scope full-repo test sweep'
   - id: orchestration_orch_app_routing.reverify-audit-canonical-routing-divergence-batch
     name: Reverify audit canonical routing divergence batch
-    status: claimed
+    status: pending
     description: 'As an INDEPENDENT REVIEWER, rerun focused conformance and routing
       proof review after orchestration_orch_app_routing.fix-audit-canonical-routing-divergence-batch.
 
@@ -70968,8 +70968,6 @@ phases:
     depends_on:
     - orchestration_orch_app_routing.fix-audit-canonical-routing-divergence-batch
     agent: spec-verifier-tacit
-    claimed_by: spec-verifier-tacit
-    claimed_at: '2026-04-09T13:33:19.662150+00:00'
 - id: orchestration_operator_recovery
   name: Orchestration Operator / Conflict / Recovery Alignment
   status: locked

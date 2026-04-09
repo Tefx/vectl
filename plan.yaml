@@ -71312,7 +71312,7 @@ phases:
   steps:
   - id: orchestration_operator_recovery.implement-operator-notification-conflict-preservation-and-recovery-alignment
     name: Implement operator notification, conflict preservation, and recovery alignment
-    status: pending
+    status: claimed
     description: "step_type: implementation\nagent_source: project\nupstream_artifacts:\n\
       \  - path: src/vectl/orch_app.py\n    from_step: orchestration_operator_recovery.contract-operator-notification-conflict-preservation-and-recovery-alignment\n\
       \    tier: contract\n  - path: src/vectl/orchestration/runtime.py\n    from_step:\
@@ -71375,6 +71375,8 @@ phases:
     - orchestration_operator_recovery.contract-operator-notification-conflict-preservation-and-recovery-alignment
     - orchestration_operator_recovery.define-red-tests-for-operator-pause-conflict-preservation-and-recovery-alignment
     agent: python-senior-tacit
+    claimed_by: python-senior-tacit
+    claimed_at: '2026-04-09T15:57:41.779898+00:00'
   - id: orchestration_operator_recovery.verify-durable-operator-pause-and-recovery-behavior
     name: Verify durable operator pause and recovery behavior
     status: pending

@@ -71933,7 +71933,7 @@ phases:
       \ blockers B1/B2/B3 within phase scope."
   - id: orchestration_operator_recovery.reverify-operator-conflict-recovery-conformance-after-fix
     name: Reverify operator/conflict/recovery conformance after fix
-    status: claimed
+    status: done
     description: 'As an INDEPENDENT TESTER (spec-verifier-tacit), re-audit the operator/conflict/recovery
       requirements from a fresh perspective after the batched remediation step.
 
@@ -72023,6 +72023,24 @@ phases:
     agent: spec-verifier-tacit
     claimed_by: spec-verifier-tacit
     claimed_at: '2026-04-09T16:46:01.033518+00:00'
+    done_at: '2026-04-09T16:53:03.187311+00:00'
+    evidence: "## refs Read Confirmation\n- Reviewed operator/conflict/recovery specs\
+      \ and implementation surfaces (`orch_app.py`, `recovery.py`, `runtime.py`, `continuity_artifacts.py`,\
+      \ related tests).\n\n## Requirement Closure Register\n- R1/R4/R5/R18/R24: BLOCKED\n\
+      - R13: PARTIAL/BLOCKED\n\n## Findings\n- gate_open_allowed: false\n- Critical\
+      \ blocker cluster:\n  1) paused operator state and DispatchRecoveryGate reconstructed\
+      \ but not enforced at authoritative dispatch entrypoints (`run`, `resume`, `recover`\
+      \ resume-safe, resolution-subtask dispatch)\n  2) duplicate-complete prevention\
+      \ not explicitly consulting DispatchRecoveryGate before completion path\n  3)\
+      \ reconstruction without enforcement created phantom-verification risk\n- Reverify\
+      \ indicated structural reconstruction exists, but behavioral gating hooks remain\
+      \ missing.\n\n## behavioral_proof_register\n- dispatch-gating enforcement: DIVERGES\
+      \ / BLOCKING\n- recovery reconstruction only: PROVEN (structural)\n- dispatch-recovery\
+      \ consultation obligation: DIVERGES / BLOCKING\n- complete replay prevention\
+      \ via explicit recovery gate consultation: NEEDS_FIX / BLOCKING\n\n## Remediation\
+      \ ownership\n- Planner added follow-up chain:\n  - `orchestration_operator_recovery.fix-enforce-dispatch-recovery-gates-and-complete-step-consultation`\n\
+      \  - `orchestration_operator_recovery.reverify-dispatch-recovery-gate-enforcement-after-fix`\n\
+      - Gate rewired to depend on the new post-fix reverify step."
   - id: orchestration_operator_recovery.fix-enforce-dispatch-recovery-gates-and-complete-step-consultation
     name: Enforce dispatch recovery gates and complete-step consultation
     status: pending

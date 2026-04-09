@@ -70934,7 +70934,7 @@ phases:
       - no out-of-scope full-repo test sweep'
   - id: orchestration_orch_app_routing.reverify-audit-canonical-routing-divergence-batch
     name: Reverify audit canonical routing divergence batch
-    status: claimed
+    status: done
     description: 'As an INDEPENDENT REVIEWER, rerun focused conformance and routing
       proof review after orchestration_orch_app_routing.fix-audit-canonical-routing-divergence-batch.
 
@@ -70970,6 +70970,212 @@ phases:
     agent: spec-verifier-tacit
     claimed_by: spec-verifier-tacit
     claimed_at: '2026-04-09T14:46:03.588850+00:00'
+    done_at: '2026-04-09T15:01:47.623351+00:00'
+    evidence: '## refs Read Confirmation
+
+      1. `docs/ORCHESTRATION-PLANE-ORCH-APP-ROUTING.md` — Key passage: Section 4 "Hard
+      rules" — Rule 1 (claim before start), Rule 2 (complete after reconcile), Rule
+      3 (non-pass review → ResolutionCase), Rule 4 (operator_required must notify);
+      Section 8.2 (resolver outcome routing: unblocked/waiting/operator_required/halt);
+      Section 10.3 (notification contract fields: case_id, summary, evidence_refs,
+      operator_message).
+
+      2. `docs/ORCHESTRATION-PLANE-DISPATCH-AND-PROMPT-POLICY.md` — Key passage: Section
+      9.1 (role precedence: step.agent → default → fallback); Section 9.2 (no silent
+      downgrade of specialized roles); Section 8.3 (unknown roles must fail explicitly);
+      Section 12 (execution context from RoleProfile, not hardcoded).
+
+      3. `docs/ORCHESTRATION-PLANE-RESOLUTION-CONTRACT.md` — Key passage: Section
+      5.1 (ResolutionReport status values: unblocked, waiting, operator_required,
+      halt); Section 6 (control must refresh state after resolution).
+
+      4. `src/vectl/orch_app.py` — Full implementation (~2777 lines). Key surfaces:
+      `OrchestrationApp` composition root, `_update_operator_notification`, `route_terminal_execution`,
+      `_normalize_review_case`, `_parse_structured_review_result`, `resolve_case`,
+      route_resolution_case, `build_orchestration_app` factory.
+
+
+      ## Conformance Report
+
+
+      ### Requirements Register
+
+      | R# | Spec Section | Requirement | Level |
+
+      |----|------------|-------------|-------|
+
+      | R1 | ORCH-APP-ROUTING §4 Rule 4, §8.2, §10 | `operator_required` must emit
+      explicit operator notification | Behavioral |
+
+      | R2 | ORCH-APP-ROUTING §8.2 | Resolver outcome routing complete for canonical
+      set (unblocked/waiting/operator_required/halt) | Behavioral |
+
+      | R3 | DISPATCH-POLICY §9.1 | Role allocation precedence: step.agent → default
+      → fallback | Behavioral |
+
+      | R4 | ORCH-APP-ROUTING §4 Rule 1 | Claim before runtime start in normal dispatch
+      | Behavioral |
+
+      | R5 | ORCH-APP-ROUTING §4 Rule 2, §6.1 §6.3 | Reconcile-before-complete: only
+      merged|noop path to complete | Behavioral |
+
+      | R6 | ORCH-APP-ROUTING §4 Rule 3, §7.2 | Non-pass review normalization → explicit
+      ResolutionCase | Semantic |
+
+      | R7 | ORCH-APP-ROUTING §7.3 | Parse failure → explicit ResolutionCase with
+      case_source="review_failed" | Semantic |
+
+      | R8 | ORCH-APP-ROUTING §10.3 | Notification contract preserves case_id, summary,
+      evidence_refs, operator_message | Semantic |
+
+      | R9 | ORCH-APP-ROUTING §6.2 | fail/stall/transport_error → explicit ResolutionCase
+      (no silent completion) | Semantic |
+
+      | R10 | ORCH-APP-ROUTING §8.3 | No silent downgrade of operator_required into
+      ordinary wait | Behavioral |
+
+      | R11 | ORCH-APP-ROUTING §5.1 | Snapshot refresh order: core→roster→runtime
+      | Behavioral |
+
+      | R12 | DISPATCH-POLICY §12 | Execution context from RoleProfile, not hardcoded
+      | Semantic |
+
+      | R13 | ORCH-APP-ROUTING §9 | Resolver subtask dispatch through shared substrate
+      | Semantic |
+
+
+      ### Evidence Table
+
+
+      | R# | Implementation | Tacit Analysis | Verdict |
+
+      |----|----------------|----------------|---------|
+
+      | R1 | `orch_app.py:489-518` (`_update_operator_notification`) + `orch_app.py:520-556`
+      (`_emit_operator_case_opened`/`_emit_operator_case_resolved`) | When `report.status
+      == "operator_required"`, `_update_operator_notification` creates an `OperatorNotification`
+      with all four canonical fields (case_id, summary, evidence_refs, operator_message),
+      stores it as `_latest_operator_notification`, and emits an `operator_case_opened`
+      event. When the case transitions away from operator_required, it emits `operator_case_resolved`.
+      This is explicit notification semantics — not silently swallowed into wait.
+      | CONFORMS |
+
+      | R2 | `orch_app.py:477-487` (`resolve_case`), `orch_app.py:558-573` (`route_resolution_case`),
+      `control.py:240-256` (`apply_resolution`) | Resolution outcomes are routed as
+      follows: (a) `operator_required` → `_update_operator_notification` stores the
+      notification; then `apply_resolution` returns `ControlDecision(kind="wait",
+      ...)` with reason indicating operator input required. (b) `waiting` → `ControlDecision(kind="wait",
+      ...)`. (c) `unblocked` → `evaluate()` is called on refreshed state. (d) `halt`
+      → `ControlDecision(kind="done", reason="Resolver halted...")`. All four canonical
+      outcomes are routed. | NEEDS_TEST |
+
+      | R3 | `dispatch_policy.py:275-299` (`ConfigRoleProfileRegistry.resolve_role`)
+      | Implementation shows precedence 1 and 2, but fallback is stored and not used
+      in the standard chain. | PARTIAL |
+
+      | R4 | `orch_app.py:842-843` in `_admit_start_and_persist_running` | Claim occurs
+      before runtime start. Test proof in `test_orch_app_routing_seam.py:87-129` (`test_claim_before_start_seam`).
+      | CONFORMS |
+
+      | R5 | `orch_app.py:661-693` (`route_terminal_execution`) | Reconcile status
+      checked; only merged|noop proceeds to complete. Test proof in `test_orch_app_routing_seam.py:168-231`.
+      | CONFORMS |
+
+      | R6 | `orch_app.py:717-744` (`_normalize_review_case`) + `dispatch_policy.py:769-812`
+      (`normalize_review_result`) | Non-pass review outcomes normalize to `ResolutionCase(case_source="review_failed",
+      ...)`. | CONFORMS |
+
+      | R7 | `orch_app.py:729-737` | Structured review parse failure yields explicit
+      `ResolutionCase` via parse-failure normalization. Test proof in `test_orch_app_routing_seam.py:480-534`.
+      | CONFORMS |
+
+      | R8 | `orch_app.py:280-290` (`OperatorNotification` dataclass) | Fields exactly
+      match notification contract (case_id, summary, evidence_refs, operator_message).
+      | CONFORMS |
+
+      | R9 | `orch_app.py:649-659` | fail/stall/transport_error map to explicit `ResolutionCase(case_source="runtime_failure")`;
+      no silent completion. | CONFORMS |
+
+      | R10 | `orch_app.py:489-518` + `control.py:246-253` | `operator_required` maps
+      to explicit notification state plus wait decision; not silently downgraded.
+      | CONFORMS (with caveat) |
+
+      | R11 | `orch_app.py:455-462` (`refresh_snapshots`) | Snapshot refresh order
+      is core→roster→runtime. | CONFORMS |
+
+      | R12 | `dispatch_policy.py:109-184` + `build_dispatch_spec` | Execution context
+      is profile-driven, not hardcoded. | CONFORMS |
+
+      | R13 | `orch_app.py:613-636` + `dispatch_policy.py:707` | Resolution subtasks
+      dispatch via shared substrate using resolution_subtask source kind. | CONFORMS
+      |
+
+
+      ### behavioral_proof_register
+
+      | Proof ID | R#     | Claim                                                 |
+      Evidence Reviewed                                                                      |
+      Status        | Gate Impact |
+
+      | -------- | ------ | -----------------------------------------------------
+      | --------------------------------------------------------------------------------------
+      | ------------- | ----------- |
+
+      | P1       | R4     | claim-before-start                                    |
+      `orch_app.py:842-843`, `test_orch_app_routing_seam.py:87-129`                        |
+      PROVEN        | None        |
+
+      | P2       | R5     | reconcile-before-complete                             |
+      `orch_app.py:661-693`, `test_orch_app_routing_seam.py:168-231`                       |
+      PROVEN        | None        |
+
+      | P3       | R1/R10 | operator_required notification not silently swallowed
+      | `orch_app.py:489-556`, `orch_app.py:2279-2288`                                        |
+      PROVEN        | None        |
+
+      | P4       | R2     | Resolver outcome routing complete for all 4 statuses  |
+      `control.py:240-256`, `orch_app.py:477-487`                                           |
+      PROVEN        | None        |
+
+      | P5       | R6/R7  | Non-pass review and parse failure → ResolutionCase    |
+      `dispatch_policy.py:769-863`, `orch_app.py:717-775`, `test_orch_app_routing_seam.py:297-534`
+      | PROVEN | None |
+
+      | P6       | R3     | Role precedence has fallback gap in `resolve_role`      |
+      `dispatch_policy.py:275-299`                                                         |
+      PARTIAL_PROOF | LOW         |
+
+      | P7       | R9     | fail/stall/transport_error → ResolutionCase           |
+      `orch_app.py:649-659`                                                                 |
+      PROVEN        | None        |
+
+      | P8       | R11    | Snapshot refresh order core→roster→runtime            |
+      `orch_app.py:455-462`                                                                 |
+      PROVEN        | None        |
+
+
+      ### Additional Findings (reported, not fixed)
+
+      1. R3 fallback_role gap: `resolve_role` precedence does not include an active
+      fallback branch, though fallback_role is stored.
+
+      2. Parallel role resolution paths: control-level role hinting differs from dispatch
+      policy path, but authoritative dispatch path remains compliant.
+
+      3. build_orchestration_app fallback wiring maps fallback_role to default_agent,
+      effectively dormant unless policy enables fallback.
+
+
+      gate_open_allowed: true
+
+      uncertainty_sources:
+
+      - R3 (fallback_role precedence gap): `resolve_role` does not implement fallback
+      precedence in active chain; low risk under current invocation paths.
+
+      - R2/R10 (operator_required wait semantics): operator_required maps to wait
+      plus explicit notification; compliant, but consumers that inspect only decision
+      kind could miss notification context.'
 - id: orchestration_operator_recovery
   name: Orchestration Operator / Conflict / Recovery Alignment
   status: locked

@@ -68543,7 +68543,7 @@ phases:
       items'
 - id: orchestration_resolver_coordination
   name: Orchestration Resolver Coordination
-  status: in_progress
+  status: done
   gate: Resolver consumes explicit ResolutionCase input, uses approved vectl facade
     for authorized mutations, never claims normal work, and returns bounded ResolutionReport
     outcomes.
@@ -68683,7 +68683,7 @@ phases:
       - unresolved outcomes surface explicit operator_required'
   - id: orchestration_resolver_coordination.gate-resolver-coordination
     name: Gate resolver coordination
-    status: claimed
+    status: done
     description: 'Gate review: verify resolver coordination is ready for orch_app
       routing. Block if resolver absorbs control authority, mutates outside approved
       surfaces, silently downgrades unresolved cases, or lets planner escape resolver-owned
@@ -68702,9 +68702,31 @@ phases:
     agent: gate-reviewer-tacit
     claimed_by: gate-reviewer-tacit
     claimed_at: '2026-04-09T04:36:00.215001+00:00'
+    done_at: '2026-04-09T04:41:47.055760+00:00'
+    evidence: 'Gate review accepted with conditional pass.
+
+
+      Verified:
+
+      - resolver coordination enforces explicit ResolutionCase/ResolutionReport contracts
+
+      - resolver invocation constrained to approved facade and main-worktree policy
+
+      - planner remains resolver-owned remediation path (resolution_subtask)
+
+      - operator_required outcomes remain explicit and auditable
+
+
+      No blocker-class issue for downstream orch_app routing.
+
+      Recorded should-fix hardening:
+
+      - strengthen main_worktree probe wiring default
+
+      - prefer case_source over reason-string matching in preserve-case logic'
 - id: orchestration_orch_app_routing
   name: Orchestration App Routing
-  status: locked
+  status: pending
   gate: orch_app enforces claim-before-start, reconcile-before-complete, review-result
     normalization, and resolution routing using the shared dispatch/runtime substrate.
   depends_on:

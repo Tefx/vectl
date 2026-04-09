@@ -65529,7 +65529,7 @@ phases:
       \ behavior: VERIFIED\n\ngate_open_allowed: true"
   - id: decide_refresh_tests.fix-gate-mcp-contract-refresh-batch
     name: Fix gate MCP contract refresh blocker batch
-    status: claimed
+    status: done
     description: 'Fix ALL blocker-class refreshed MCP red-test gaps surfaced by decide_refresh_tests.gate.
 
 
@@ -65609,6 +65609,26 @@ phases:
     agent: python-executor
     claimed_by: python-executor
     claimed_at: '2026-04-09T12:34:45.693516+00:00'
+    done_at: '2026-04-09T12:43:33.061661+00:00'
+    evidence: "## refs Read Confirmation (MANDATORY)\n- tools/vectl/README.md — not\
+      \ present in worktree path\n- test surfaces reviewed: tests/test_mcp.py::TestVectlDecide,\
+      \ tests/test_decide.py, tests/repro/spec_verify_decide_contract.py\n\n## MCP\
+      \ Red-Surface Remediation Evidence\n- Updated test files: none (verification\
+      \ found refreshed assertions already present on current branch state)\n- Product\
+      \ implementation files changed: NONE\n- Stale assertions removed: none needed\
+      \ in current state (no active positive assertions on continuation/halt_reason/session\
+      \ in scoped files)\n- Refreshed assertion matrix:\n  - status: covered (pass)\n\
+      \  - reason_code: covered (pass)\n  - next_state: covered (pass)\n  - reuse_token:\
+      \ covered (pass)\n  - reuse_runner: covered (pass)\n- Advisor-state / reuse\
+      \ provenance note:\n  - scoped tests cover caller-owned advisor_state and reuse\
+      \ metadata seams\n- One stale-contract failure example:\n  - historical gap\
+      \ marker remains only as comment/docstring, not active assertion\n\n## Commands\
+      \ + Outputs\n- `uv run pytest tests/test_mcp.py::TestVectlDecide tests/test_decide.py\
+      \ tests/repro/spec_verify_decide_contract.py -v`\n  - result: `42 passed, 1\
+      \ warning`\n- sibling search:\n  - pattern: stale positive continuation/halt_reason/session\
+      \ assertions\n  - result: no active stale positive assertions in scoped files\n\
+      \n## Notes\n- Execution reported as proof-closure/test-only; no source mutation\
+      \ required in this run."
   - id: decide_refresh_tests.reverify-gate-mcp-contract-refresh-batch
     name: Reverify gate MCP contract refresh blocker batch
     status: pending

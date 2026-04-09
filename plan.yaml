@@ -66771,6 +66771,97 @@ phases:
     depends_on:
     - deep_review.fix-repeated-failure-status-signaling
     agent: blind-tester-tacit
+  - id: deep_review.fix-repeated-failure-pending-escalation-state
+    name: Repair repeated-failure pending-escalation state persistence
+    status: pending
+    description: 'Fix repeated-failure status signaling across consecutive decide
+      invocations.
+
+
+      why_previous_fix_failed: The prior remediation corrected the trigger-path return
+      to blocked/repeated_failures with escalate action, but it did not preserve unreconciled
+      escalation memory in the carried next_state. A subsequent decide call without
+      reconciliation handling could therefore clear failure memory at the threshold
+      boundary and regress to the terminal done/no_executable_steps path.
+
+
+      Required scope:
+
+      - preserve persistent pending-escalation state semantics across decide invocations
+      once repeated failures cross the escalation threshold
+
+      - ensure carried next_state represents unreconciled escalation as durable control-plane
+      state, not transient trigger-only output
+
+      - keep top-level status contract-consistent while escalation remains unreconciled:
+      repeated-failure cases must not regress to done/no_executable_steps until reconciliation
+      or an explicit disposition path closes the escalation
+
+      - verify all related status/reason_code/action shaping follows the refreshed
+      advisor contract in docs/RFC-vectl-decide-advisor-refresh.md
+
+
+      ## Root Cause vs Symptom
+
+      - Root cause: escalation threshold logic emits the blocked/escalate result but
+      does not retain equivalent pending-escalation authority in advisor state for
+      later invocations
+
+      - Symptom: follow-up decide call with unresolved escalation can appear terminally
+      complete even though blocker-class escalation remains open
+
+      - Why this fix is not surface-level: it must align state persistence, top-level
+      status selection, and unreconciled escalation semantics rather than patching
+      one return branch
+
+
+      ## Completion Criteria (stub exclusion)
+
+      This is an IMPLEMENTATION step. Stub-only completion is NOT acceptable.
+
+      Each deliverable MUST contain substantive logic that processes its inputs and
+      produces outputs that vary based on those inputs.'
+    verification: '- Main path: repeated-failure trigger still returns blocked/repeated_failures
+      with escalate action
+
+      - Failure path: subsequent call with unresolved escalation still surfaces a
+      non-terminal blocked state and does not return done/no_executable_steps
+
+      - Proof: advisor state retains pending-escalation semantics until reconciliation/disposition
+      clears it'
+    evidence_template: '## refs Read Confirmation (MANDATORY)
+
+
+      For each ref in this step:
+
+      - docs/RFC-vectl-decide-advisor-refresh.md — key passage or "NOT READ: <reason>"
+
+
+      If no refs were provided, state: "No refs for this step."
+
+
+      ## Root-Cause Fix Evidence
+
+      - prior_loop: deep_review.fix-repeated-failure-status-signaling -> deep_review.reverify-repeated-failure-status-signaling
+
+      - why_previous_fix_failed: <explain the missing pending-escalation persistence>
+
+      - root_cause_closed: <how unreconciled escalation now persists across invocations>
+
+      - files changed: <list>
+
+      - tests updated: <list>
+
+      - highest-risk failure path covered: <follow-up invocation with unresolved escalation>
+
+      - contract_consistency_note: <why top-level status remains blocked until reconciliation>
+
+      - commands run: <exact commands>
+
+      - outputs: <paste relevant output>'
+    depends_on:
+    - deep_review.reverify-repeated-failure-status-signaling
+    agent: python-senior-tacit
 - id: orchestration_foundation_lock
   name: Orchestration Foundation Lock
   status: done

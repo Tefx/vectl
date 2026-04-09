@@ -66862,6 +66862,60 @@ phases:
     depends_on:
     - deep_review.reverify-repeated-failure-status-signaling
     agent: python-senior-tacit
+  - id: deep_review.reverify-repeated-failure-pending-escalation-state
+    name: Reverify repeated-failure pending-escalation status persistence
+    status: pending
+    description: 'As an INDEPENDENT TESTER (blind-tester-tacit), validate repeated-failure
+      escalation behavior from a fresh perspective.
+
+
+      YOUR GOAL IS TO FIND PROBLEMS, not to confirm it works.
+
+
+      Prove both of these behaviors:
+
+      - trigger call => blocked/repeated_failures with escalate action
+
+      - subsequent call using carried next_state while escalation remains unreconciled
+      does NOT return terminal done/no_executable_steps
+
+
+      Document whether pending-escalation state persists across decide invocations
+      without reconciliation handling.
+
+
+      Independence Level: L2'
+    verification: '- local-check protecting deep_review.gate
+
+      - Trigger call returns blocked status, repeated_failures reason_code, and escalate
+      action
+
+      - Follow-up call with unresolved escalation remains non-terminal and does not
+      return done/no_executable_steps
+
+      - Evidence includes actual command/output for both invocations and the carried
+      next_state used'
+    evidence_template: "## Verification Report\n\n**Tester**: blind-tester-tacit (independent\
+      \ of implementation)\n**Scope**: repeated-failure escalation persistence across\
+      \ consecutive decide invocations\n**Independence Level**: L2\n\n### refs Read\
+      \ Confirmation (MANDATORY)\nFor each ref in this step:\n- docs/RFC-vectl-decide-advisor-refresh.md\
+      \ — key passage or \"NOT READ: <reason>\"\n\nIf no refs were provided, state:\
+      \ \"No refs for this step.\"\n\n### Test Execution\n- Commands executed:\n \
+      \ ```\n  <actual commands>\n  ```\n- Trigger-call output:\n  ```\n  <blocked/repeated_failures\
+      \ + escalate action output>\n  ```\n- Follow-up-call output:\n  ```\n  <output\
+      \ proving unresolved escalation is still non-terminal>\n  ```\n- carried_next_state_excerpt:\n\
+      \  ```\n  <relevant next_state fragment>\n  ```\n\n### Behavioral Proof Register\n\
+      | requirement_ref | behavior_claim | runtime_proof_expected | evidence_ref |\
+      \ status | closure_path | gate_decision_basis |\n| --- | --- | --- | --- | ---\
+      \ | --- | --- |\n| RFC repeated-failure status | trigger call escalates as blocked/repeated_failures\
+      \ | first invocation output | <artifact> | PROVEN/UNPROVEN | <retest or closed>\
+      \ | protects deep_review.gate |\n| RFC unreconciled escalation persistence |\
+      \ follow-up invocation remains blocked while escalation is unresolved | second\
+      \ invocation output | <artifact> | PROVEN/UNPROVEN | <retest or closed> | protects\
+      \ deep_review.gate |\n\n### Verdict\n- [ ] PASS\n- [ ] ISSUES_FOUND\n- [ ] INCOMPLETE"
+    depends_on:
+    - deep_review.fix-repeated-failure-pending-escalation-state
+    agent: blind-tester-tacit
 - id: orchestration_foundation_lock
   name: Orchestration Foundation Lock
   status: done

@@ -71880,6 +71880,96 @@ phases:
     depends_on:
     - orchestration_operator_recovery.audit-operator-conflict-recovery-conformance
     agent: python-senior-tacit
+  - id: orchestration_operator_recovery.reverify-operator-conflict-recovery-conformance-after-fix
+    name: Reverify operator/conflict/recovery conformance after fix
+    status: pending
+    description: 'As an INDEPENDENT TESTER (spec-verifier-tacit), re-audit the operator/conflict/recovery
+      requirements from a fresh perspective after the batched remediation step.
+
+
+      YOUR GOAL IS TO FIND REMAINING PROBLEMS, not to confirm it works.
+
+
+      Reverify for:
+
+      - Happy path: operator_required and paused_routing block dispatch at the authoritative
+      main-loop decision path
+
+      - Restart path: durable recovery reconstructs outstanding ResolutionCase state
+      needed for continued operator/conflict handling
+
+      - Recovery gate path: reconstructed DispatchRecoveryGate is consulted before
+      dispatch and blocks or reroutes when required
+
+      - Error/bypass scenarios: sibling dispatch or recovery paths do not bypass the
+      repaired gating and reconstruction semantics
+
+
+      Independence Level: L1
+
+
+      This is a post-implementation reverify step and must evaluate green semantics
+      for the repaired requirements.'
+    verification: 'phase-check protecting the orchestration_operator_recovery gate:
+      conformance report explicitly closes or blocks R1/R4/R5/R13/R18/R24 and the
+      DispatchRecoveryGate consultation obligation; unresolved NEEDS_TEST, PARTIAL,
+      or DIVERGES findings remain gate-blocking.'
+    evidence_template: '## Verification Report
+
+
+      **Tester**: spec-verifier-tacit (independent of implementation)
+
+      **Scope**: operator/conflict/recovery re-audit after batched fix
+
+      **Independence Level**: L1
+
+
+      ### refs Read Confirmation (MANDATORY)
+
+      For each ref in this step:
+
+      - <filename> — key passage or "NOT READ: <reason>"
+
+
+      If no refs were provided, state: "No refs for this step."
+
+
+      ### Requirement Closure Register
+
+      - R1:
+
+      - R4:
+
+      - R5:
+
+      - R13:
+
+      - R18:
+
+      - R24:
+
+      - DispatchRecoveryGate consultation obligation:
+
+
+      ### Findings
+
+      | Severity | Requirement | Description | Location | Reproduction |
+
+      |----------|-------------|-------------|----------|--------------|
+
+      | blocker | <req> | <issue> | <file:line or path> | <steps> |
+
+
+      ### Verdict
+
+      - [ ] PASS
+
+      - [ ] ISSUES_FOUND
+
+      - [ ] INCOMPLETE'
+    depends_on:
+    - orchestration_operator_recovery.fix-operator-conflict-recovery-dispatch-and-resolution-gaps
+    agent: spec-verifier-tacit
 - id: orchestration_upper_layer_review
   name: Orchestration Upper-Layer Review
   status: locked

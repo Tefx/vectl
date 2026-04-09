@@ -71312,7 +71312,7 @@ phases:
   steps:
   - id: orchestration_operator_recovery.implement-operator-notification-conflict-preservation-and-recovery-alignment
     name: Implement operator notification, conflict preservation, and recovery alignment
-    status: claimed
+    status: done
     description: "step_type: implementation\nagent_source: project\nupstream_artifacts:\n\
       \  - path: src/vectl/orch_app.py\n    from_step: orchestration_operator_recovery.contract-operator-notification-conflict-preservation-and-recovery-alignment\n\
       \    tier: contract\n  - path: src/vectl/orchestration/runtime.py\n    from_step:\
@@ -71377,6 +71377,31 @@ phases:
     agent: python-senior-tacit
     claimed_by: python-senior-tacit
     claimed_at: '2026-04-09T15:57:41.779898+00:00'
+    done_at: '2026-04-09T16:03:10.151532+00:00'
+    evidence: "## refs Read Confirmation\nRead all required refs.\n- docs ORCHESTRATION-PLANE-OPERATOR-CONFLICT-RECOVERY\
+      \ / ORCH-APP-ROUTING / RESOLVER-COORDINATION for durable operator_required,\
+      \ reconcile closure gating, protected-path conflict policy, restart recovery\
+      \ invariants.\n- src/vectl/orch_app.py, runtime.py, recovery.py, run_store.py,\
+      \ continuity_artifacts.py for implementation and contract seams.\n- tests/orchestration/unit/test_operator_pause_conflict_recovery_red.py\
+      \ for expected-red gaps.\n\n## Implementation Evidence\n- Implemented recovery\
+      \ wiring in `src/vectl/orch_app.py` to reconstruct durable state after restart:\n\
+      \  - populates `RecoveryReport.runtime_state` from persisted `RunRecord`\n \
+      \ - populates `RecoveryReport.operator_notifications` from persisted `RunRecord`\n\
+      \  - populates `RecoveryReport.dispatch_recovery_gate` from persisted `RunRecord`,\
+      \ deriving blocking gate when absent but unresolved durable state exists\n \
+      \ - reconstructs `_latest_operator_notification` from durable notification metadata\n\
+      \  - normalizes relative recovered `worktree_path` against plan root while preserving\
+      \ missing-path fallback behavior\n- Preserved contract interfaces from prior\
+      \ contract step; no wholesale rewrites.\n- Scope limited to implementation closure\
+      \ for the expected-red durability gaps.\n\nFiles modified:\n- `src/vectl/orch_app.py`\n\
+      \n## Commands + Outputs\n- `uv run pytest -q tests/orchestration/unit/test_operator_pause_conflict_recovery_red.py`\n\
+      \  - before: 3 failed, 17 passed\n  - after: `20 passed in 1.41s`\n- `uv run\
+      \ pytest -q tests/orchestration/unit/test_orch_app.py tests/orchestration/unit/test_recovery.py\
+      \ tests/orchestration/unit/test_run_store.py`\n  - output: `65 passed in 7.91s`\n\
+      - `git commit -m \"fix(orch): restore durable recovery pause state\"`\n  - commit:\
+      \ `b4035ea`\n- `git status --short`\n  - clean\n- `git branch --show-current`\n\
+      \  - `vectl/step-orchestration_operator_recovery.implement-operator-notification-conflict-preservation-and-recovery-alignment`\n\
+      \n## Deviation Records\nNone."
   - id: orchestration_operator_recovery.verify-durable-operator-pause-and-recovery-behavior
     name: Verify durable operator pause and recovery behavior
     status: pending

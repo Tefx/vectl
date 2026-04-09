@@ -66919,7 +66919,7 @@ phases:
       \ completed`"
   - id: deep_review.reverify-repeated-failure-pending-escalation-state
     name: Reverify repeated-failure pending-escalation status persistence
-    status: claimed
+    status: done
     description: 'As an INDEPENDENT TESTER (blind-tester-tacit), validate repeated-failure
       escalation behavior from a fresh perspective.
 
@@ -66973,6 +66973,32 @@ phases:
     agent: blind-tester-tacit
     claimed_by: blind-tester-tacit
     claimed_at: '2026-04-09T10:06:37.802785+00:00'
+    done_at: '2026-04-09T10:18:31.537142+00:00'
+    evidence: "## Verification Report\n**Tester**: blind-tester-tacit (independent)\n\
+      **Scope**: repeated-failure escalation persistence across trigger and follow-up\
+      \ invocations\n\n### refs Read Confirmation (MANDATORY)\n- docs/RFC-vectl-decide-advisor-refresh.md\
+      \ — reviewed sections for repeated_failures mapping, failure memory, and next_state\
+      \ replacement semantics\n- src/vectl/decide.py / src/vectl/decision_state.py\
+      \ — signature-level inspection for state fields and behavior seam\n- tools/vectl/README.md\
+      \ — not available in path\n\n### Test Execution\n- Commands executed:\n  1.\
+      \ `uv run python tests/repro/issue_repeated_failure_escalation_persistence.py`\n\
+      \  2. `uv run python -m pytest tests/repro/issue_repeated_failure_escalation_persistence.py\
+      \ tests/test_decide.py::TestStatusReasonCode::test_repeated_failures_map_to_blocked_status\
+      \ tests/test_decide.py::TestStatusReasonCode::test_pending_escalation_keeps_followup_call_blocked\
+      \ -v`\n- Trigger-call output observed:\n  - status=blocked, reason_code=repeated_failures\n\
+      \  - escalate action present\n  - next_state.pending_escalations contains step\
+      \ marker\n- Follow-up-call output observed:\n  - status=blocked, reason_code=repeated_failures\n\
+      \  - no regression to done/no_executable_steps\n  - pending_escalations persists,\
+      \ no duplicate escalate action\n- Combined pytest result: 5 passed\n\n### carried_next_state_excerpt\n\
+      - `failure_counts` cleared after escalation trigger (expected)\n- durable blocker\
+      \ state retained in `pending_escalations` and carried into follow-up invocation\n\
+      \n### Behavioral Proof Register\n- repeated_failures maps to blocked: PASS\n\
+      - trigger emits escalate: PASS\n- next_state carries unresolved pending escalation:\
+      \ PASS\n- follow-up unresolved call remains non-terminal blocked: PASS\n- idempotency\
+      \ (no duplicate escalate on follow-up): PASS\n\n### Verdict\n- PASS\n\n### Artifact\n\
+      - Added/merged repro script: `tests/repro/issue_repeated_failure_escalation_persistence.py`\n\
+      - worker commit: `2e1d7bd`\n- merged to main via orchestrator commit: `[vectl]\
+      \ step-deep_review.reverify-repeated-failure-pending-escalation-state completed`"
 - id: orchestration_foundation_lock
   name: Orchestration Foundation Lock
   status: done

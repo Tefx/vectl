@@ -72500,6 +72500,58 @@ phases:
     depends_on:
     - orchestration_operator_recovery.gate-operator-conflict-recovery-alignment
     agent: python-senior
+  - id: orchestration_operator_recovery.reverify-gate-blockers-stale-heartbeat-and-contract-red-drift
+    name: Reverify/regate stale-heartbeat recovery and contract/red-test alignment
+    status: pending
+    description: 'Gate-oriented reverify step for blocker closure after orchestration_operator_recovery.gate-operator-conflict-recovery-alignment.
+
+
+      As an INDEPENDENT REVIEWER (gate-reviewer-tacit), verify that:
+
+      - stale-heartbeat recovery no longer falls through NO_ARTIFACTS with gate_open_allowed=true
+
+      - blocked/quarantined recovery semantics are preserved across recovery and inspect
+      consumer surfaces where required for blocker closure
+
+      - expected-red/config and contract-lock suites are aligned with the authoritative
+      contract surface and no longer create CI drift
+
+      - any remaining non-blocking drift is explicitly dispositioned before orchestration_upper_layer_review
+      proceeds'
+    verification: '- phase-check protecting orchestration_upper_layer_review and later
+      full-plan checks
+
+      - blocker-class stale-heartbeat recovery obligation is PROVEN or remains BLOCKING
+
+      - contract-lock / expected-red test alignment is green and no longer pollutes
+      CI
+
+      - gate decision basis records whether the phase may reopen'
+    evidence_template: '## refs Read Confirmation (MANDATORY)
+
+
+      For each ref in this step:
+
+      - <filename> — key passage or "NOT READ: <reason>"
+
+
+      If no refs were provided, state: "No refs for this step."
+
+
+      ## Reverify / Regate Report
+
+      - exact commands/tests reviewed:
+
+      - blocker B1 verdict:
+
+      - blocker B2 verdict:
+
+      - remaining unresolved statuses:
+
+      - gate decision basis (OPEN/BLOCK with reason):'
+    depends_on:
+    - orchestration_operator_recovery.fix-gate-blockers-stale-heartbeat-and-contract-red-drift
+    agent: gate-reviewer-tacit
 - id: orchestration_upper_layer_review
   name: Orchestration Upper-Layer Review
   status: locked

@@ -71304,7 +71304,7 @@ phases:
       kind could miss notification context.'
 - id: orchestration_operator_recovery
   name: Orchestration Operator / Conflict / Recovery Alignment
-  status: done
+  status: in_progress
   gate: operator_required, conflict preservation, protected-path handling, and restart
     recovery are durable and auditable across orch app and orchestration runtime metadata.
   depends_on:
@@ -72387,9 +72387,122 @@ phases:
 
       - In-memory gate state relies on reconstructable durable sources on each recovery
       cycle.'
+  - id: orchestration_operator_recovery.fix-gate-blockers-stale-heartbeat-and-contract-red-drift
+    name: 'Fix gate blockers: stale-heartbeat recovery and contract/red-test drift'
+    status: pending
+    description: 'Fix ALL blockers found by gate review.
+
+
+      ## Blockers to Fix (ALL of these, not just the first)
+
+
+      ### B1: stale-heartbeat recovery falls through NO_ARTIFACTS with gate_open_allowed=true
+
+      Locations: src/vectl/orch_app.py, src/vectl/orchestration/
+
+      Remediation: make stale-heartbeat recovery produce blocked/quarantined recovery
+      semantics with gate_open_allowed=false, preserve artifact/quarantine disposition,
+      and align inspect/recovery consumer surfaces with the same blocked outcome semantics.
+
+      Grep hint: search for NO_ARTIFACTS and gate_open_allowed handling across orch_app
+      and orchestration recovery helpers; verify no stale-heartbeat path leaves gate_open_allowed=true
+      when dispatch must remain blocked.
+
+      IMPORTANT: search sibling recovery/report builders beyond the initially failing
+      branch.
+
+
+      ### B2: expected-red/config and contract-lock tests drift from current contract
+      surface
+
+      Locations: tests/orchestration/unit/test_recovery_contract_conformance.py, related
+      expected-red config/contract-lock suites
+
+      Remediation: align expected-red markers and contract-lock assertions with the
+      currently authoritative contract surface so CI only fails on real regressions,
+      not stale xfail/shape assumptions.
+
+      Grep hint: search for expected-red headers without xfail markers, stale ResolutionCase
+      field-count assertions, and expanded __all__/contract export assertions across
+      orchestration tests.
+
+      IMPORTANT: search sibling contract-lock and expected-red suites beyond the cited
+      failures.
+
+
+      ## Root Cause vs Symptom
+
+      - Root cause: recovery outcome semantics and test contract locks drifted apart,
+      leaving stale-heartbeat recovery and expected-red/contract-lock suites inconsistent
+      with blocker-class restart rules.
+
+      - Symptom: stale-heartbeat recovery reports NO_ARTIFACTS with gate_open_allowed=true
+      and CI fails on stale xfail/assertion expectations.
+
+      - Why this fix is not surface-level: it must reconcile the shared recovery semantics
+      and the authoritative contract/test expectations across all sibling surfaces.
+
+
+      ## Completion Criteria
+
+      - ALL blocker findings from orchestration_operator_recovery.gate-operator-conflict-recovery-alignment
+      are closed
+
+      - stale-heartbeat recovery no longer permits gate_open_allowed=true on blocked/quarantined
+      paths
+
+      - sibling expected-red/config and contract-lock suites are aligned with the
+      current authoritative contract surface
+
+      - sibling search evidence is available for both blocker families
+
+
+      ## Completion Criteria (stub exclusion)
+
+      This is an IMPLEMENTATION step. Stub-only completion is NOT acceptable.
+
+      Each deliverable MUST contain substantive logic that processes its inputs and
+      produces outputs that vary based on those inputs.'
+    verification: '- phase-check protecting orchestration_operator_recovery and downstream
+      orchestration_upper_layer_review
+
+      - targeted recovery and contract-lock test families prove B1 and B2 are closed
+
+      - failure-path evidence shows stale-heartbeat recovery now blocks/quarantines
+      with gate_open_allowed=false
+
+      - sibling search evidence covers expected-red/xfail and contract-lock assertion
+      drift across related suites'
+    evidence_template: '## refs Read Confirmation (MANDATORY)
+
+
+      For each ref in this step:
+
+      - <filename> — key passage or "NOT READ: <reason>"
+
+
+      If no refs were provided, state: "No refs for this step."
+
+
+      ## Blocker Fix Report
+
+      - B1 root-cause closure:
+
+      - B2 contract/test alignment closure:
+
+      - sibling search evidence for recovery semantics:
+
+      - sibling search evidence for expected-red/contract-lock drift:
+
+      - commands/tests run:
+
+      - remaining gaps (if any):'
+    depends_on:
+    - orchestration_operator_recovery.gate-operator-conflict-recovery-alignment
+    agent: python-senior
 - id: orchestration_upper_layer_review
   name: Orchestration Upper-Layer Review
-  status: pending
+  status: locked
   gate: Upper-layer orchestration contracts are independently audited for wiring,
     spec conformance, black-box behavior, and final gate readiness.
   depends_on:

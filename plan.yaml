@@ -66543,6 +66543,106 @@ phases:
     - deep_review.decide-architecture
     - deep_review.decide-black-box
     agent: gate-reviewer-tacit
+  - id: deep_review.fix-repeated-failure-status-signaling
+    name: Repair repeated-failure status/reason_code signaling
+    status: pending
+    description: 'step_type: implementation
+
+      work_type: defect_repair
+
+
+      Fix the RFC mapping gap in the repeated-failure failure path for refreshed vectl_decide.
+
+
+      Scope:
+
+      - Preserve the refreshed top-level status/reason_code/message contract
+
+      - Repair repeated-failure scenarios so emitted top-level control summary matches
+      the RFC
+
+      - Keep other refreshed contracts intact; do not regress dispatch_available /
+      waiting_on_running / capacity_full / no_executable_steps behavior
+
+
+      Root cause vs symptom:
+
+      - Root cause: repeated-failure escalation is being emitted while top-level status/reason_code
+      still resolves to done/no_executable_steps
+
+      - Symptom: black-box reproduction reports escalate action alongside terminal
+      done/no_executable_steps output instead of blocked/repeated_failures
+
+      - Why this fix is not surface-level: align the failure-path authority so top-level
+      control summary and emitted escalation action describe the same repeated-failure
+      state
+
+
+      Known risks / sibling search:
+
+      - Search for all status/reason_code mapping branches and helper paths that can
+      independently derive no_executable_steps or repeated_failures
+
+      - Verify repeated-failure handling is not being overridden by a later empty-plan
+      / no-claimable-steps branch
+
+      - Preserve public output field names and refreshed contract shape
+
+
+      Touch focus:
+
+      - src/vectl/decide.py
+
+      - src/vectl/models.py
+
+      - tests/test_decide.py
+
+      - tests/test_mcp.py
+
+
+      ## Completion Criteria (stub exclusion)
+
+      This is an IMPLEMENTATION step. Stub-only completion is NOT acceptable.
+
+      Each deliverable MUST contain substantive logic that processes repeated-failure
+      inputs and emits blocked/repeated_failures when escalation is pending.
+
+      '
+    verification: 'phase-check protecting deep_review.gate: repeated-failure scenarios
+      emit top-level status=blocked and reason_code=repeated_failures while other
+      refreshed status/reason_code contracts remain intact.'
+    evidence_template: '## refs Read Confirmation (MANDATORY)
+
+
+      For each ref in this step:
+
+      - <filename> — key passage or "NOT READ: <reason>"
+
+
+      If no refs were provided, state: "No refs for this step."
+
+
+      ## Remediation Report
+
+      - Root cause addressed:
+
+      - Branches/helpers audited for sibling derivations:
+
+      - Files changed:
+
+      - Repeated-failure path updated without altering other refreshed contracts:
+
+
+      ## Verification Notes
+
+      - Targeted tests updated/added:
+
+      - Commands prepared for downstream reverify:
+
+      - Remaining ambiguity or follow-up:'
+    depends_on:
+    - deep_review.decide-black-box
+    agent: python-senior-tacit
 - id: orchestration_foundation_lock
   name: Orchestration Foundation Lock
   status: done

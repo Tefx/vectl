@@ -68683,7 +68683,7 @@ phases:
       - unresolved outcomes surface explicit operator_required'
   - id: orchestration_resolver_coordination.gate-resolver-coordination
     name: Gate resolver coordination
-    status: pending
+    status: claimed
     description: 'Gate review: verify resolver coordination is ready for orch_app
       routing. Block if resolver absorbs control authority, mutates outside approved
       surfaces, silently downgrades unresolved cases, or lets planner escape resolver-owned
@@ -68700,6 +68700,8 @@ phases:
     - orchestration_resolver_coordination.implement-resolver-coordination-review-failure-intake-and-approved-facade-mutation-path
     - orchestration_resolver_coordination.verify-resolver-coordination-and-planner-remediation-routing
     agent: gate-reviewer-tacit
+    claimed_by: gate-reviewer-tacit
+    claimed_at: '2026-04-09T04:36:00.215001+00:00'
 - id: orchestration_orch_app_routing
   name: Orchestration App Routing
   status: locked

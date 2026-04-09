@@ -71304,7 +71304,7 @@ phases:
       kind could miss notification context.'
 - id: orchestration_operator_recovery
   name: Orchestration Operator / Conflict / Recovery Alignment
-  status: in_progress
+  status: done
   gate: operator_required, conflict preservation, protected-path handling, and restart
     recovery are durable and auditable across orch app and orchestration runtime metadata.
   depends_on:
@@ -72538,7 +72538,7 @@ phases:
       \ next step is explicit regate/reverify step."
   - id: orchestration_operator_recovery.reverify-gate-blockers-stale-heartbeat-and-contract-red-drift
     name: Reverify/regate stale-heartbeat recovery and contract/red-test alignment
-    status: claimed
+    status: done
     description: 'Gate-oriented reverify step for blocker closure after orchestration_operator_recovery.gate-operator-conflict-recovery-alignment.
 
 
@@ -72590,9 +72590,26 @@ phases:
     agent: gate-reviewer-tacit
     claimed_by: vectl-decide-orchestrator-tacit
     claimed_at: '2026-04-09T18:21:20.485452+00:00'
+    done_at: '2026-04-09T18:21:44.472739+00:00'
+    evidence: "## refs Read Confirmation (MANDATORY)\n\nFor each ref in this step:\n\
+      - tools/vectl/README.md — NOT READ: file does not exist in this repository (`/Users/tefx/Projects/vectl/tools/vectl/README.md`\
+      \ and `/Users/tefx/Projects/vectl/tools` absent)\n\n## Reverify / Regate Report\n\
+      - exact commands/tests reviewed:\n  - `uv run pytest tests/orchestration/unit/test_recovery_contract_conformance.py\
+      \ tests/orchestration/unit/test_contracts.py tests/orchestration/unit/test_imports.py\
+      \ tests/orchestration/unit/test_operator_pause_conflict_recovery_red.py tests/orchestration/unit/test_dispatch_recovery_gate_enforcement.py\
+      \ -q`\n- blocker B1 verdict:\n  - PASS. `test_recovery_quarantine_preserves_artifacts_when_gate_open_blocked`\
+      \ and `test_recovery_report_semantics_are_shared_across_consumer_surfaces` are\
+      \ green under valid-plan fixture and exercise stale-heartbeat recovery semantics\
+      \ with blocked gate behavior.\n- blocker B2 verdict:\n  - PASS. Contract-lock\
+      \ suites for `ResolutionCase` fields and `vectl.orchestration.__all__` are aligned\
+      \ with current authoritative surface and pass in same run.\n- remaining unresolved\
+      \ statuses:\n  - None detected in scoped reverify family.\n- gate decision basis\
+      \ (OPEN/BLOCK with reason):\n  - OPEN for this blocker batch: both blocker families\
+      \ (B1 stale-heartbeat semantics and B2 contract/red drift) are green in targeted\
+      \ regate suite (90 passed)."
 - id: orchestration_upper_layer_review
   name: Orchestration Upper-Layer Review
-  status: locked
+  status: pending
   gate: Upper-layer orchestration contracts are independently audited for wiring,
     spec conformance, black-box behavior, and final gate readiness.
   depends_on:

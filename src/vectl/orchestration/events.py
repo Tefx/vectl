@@ -82,8 +82,20 @@ CANONICAL_EVENT_REGISTRY: Final[dict[str, EventSchema]] = {
     "projection_latest_updated": EventSchema(required_payload_keys=("run_id", "event_seq")),
     "projection_summary_updated": EventSchema(required_payload_keys=("run_id", "event_seq")),
     "projection_metrics_updated": EventSchema(required_payload_keys=("run_id", "event_seq")),
-    "operator_case_opened": EventSchema(required_payload_keys=("case_id", "step_id")),
-    "operator_case_resolved": EventSchema(required_payload_keys=("case_id", "resolution")),
+    "operator_case_opened": EventSchema(
+        required_payload_keys=("case_id", "step_id"),
+        optional_payload_keys=(
+            "resolution_status",
+            "summary",
+            "operator_message",
+            "evidence_refs",
+            "open_case_delta",
+        ),
+    ),
+    "operator_case_resolved": EventSchema(
+        required_payload_keys=("case_id", "resolution"),
+        optional_payload_keys=("open_case_delta",),
+    ),
     "operator_action_requested": EventSchema(required_payload_keys=("case_id", "action")),
 }
 

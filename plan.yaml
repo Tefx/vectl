@@ -71754,7 +71754,7 @@ phases:
       \ no"
   - id: orchestration_operator_recovery.fix-operator-conflict-recovery-dispatch-and-resolution-gaps
     name: Fix operator/conflict/recovery dispatch and resolution gaps
-    status: claimed
+    status: done
     description: 'Fix ALL blockers found by the failed operator/conflict/recovery
       conformance audit.
 
@@ -71901,6 +71901,35 @@ phases:
     agent: python-senior-tacit
     claimed_by: python-senior-tacit
     claimed_at: '2026-04-09T16:36:58.602998+00:00'
+    done_at: '2026-04-09T16:44:56.321807+00:00'
+    evidence: "## refs Read Confirmation\n- Read operator/conflict/recovery specs\
+      \ and routing/resolver specs.\n- Read `src/vectl/orch_app.py`, `src/vectl/orchestration/recovery.py`,\
+      \ `src/vectl/orchestration/runtime.py`.\n- `tools/vectl/README.md` not present\
+      \ in worktree; used repo README plus authoritative docs.\n\n## Root Cause Closure\n\
+      - Added authoritative pre-dispatch gate `_assert_dispatch_allowed(...)` in orch\
+      \ app.\n- Wired gating at both `_admit_start_and_persist_running(...)` and `_start_runtime_execution(...)`.\n\
+      - Enforced fail-closed behavior when:\n  - `_latest_operator_notification.paused_routing_state\
+      \ != \"active\"`\n  - reconstructed `DispatchRecoveryGate.unsafe_dispatch_blocked`\
+      \ is true\n- Added `_recover_resolution_case(...)` to reconstruct durable outstanding\
+      \ `ResolutionCase` from `RunRecord.runtime_state`, `operator_notifications`,\
+      \ and `dispatch_recovery_gate`.\n- Added `_apply_recovery_surfaces(...)` so\
+      \ recovered notification/case/gate become live authoritative app state used\
+      \ by subsequent dispatch decisions.\n- Recovery now blocks resume/dispatch while\
+      \ recovery gate remains unsafe and surfaces reconstructed blocked case via case\
+      \ APIs.\n\n## Sibling Search Evidence\n- Searched dispatch/recovery sibling\
+      \ paths for bypasses (`_start_runtime_execution`, `_admit_start_and_persist_running`,\
+      \ `dispatch_recovery_gate`, `_latest_operator_notification`, `_latest_resolution_case`).\n\
+      - Covered both dispatch entrypoints and recovered live-state consumers (`case_list`,\
+      \ `case_show`, `_recovery_result_from_report`, `_apply_recovery_surfaces`).\n\
+      - No remaining in-scope dispatch bypass identified.\n\n## Regression Coverage\n\
+      - `uv run pytest tests/orchestration/unit/test_orch_app.py -q` → `48 passed`\n\
+      - `uv run pytest tests/orchestration/unit/test_operator_pause_conflict_recovery_red.py\
+      \ -q` → `20 passed`\n- Added regressions:\n  - `test_recover_reconstructs_operator_pause_case_and_blocks_pre_dispatch`\n\
+      \  - `test_recover_reconstructs_merge_conflict_case_and_blocks_resolution_subtask_dispatch`\n\
+      - Additional note: changed-file `invar_guard` reported pre-existing structural\
+      \ policy findings in `src/vectl/orch_app.py` (size/shell-result style), not\
+      \ behavioral regressions from this step.\n\n## Residual Gaps\n- None for targeted\
+      \ blockers B1/B2/B3 within phase scope."
   - id: orchestration_operator_recovery.reverify-operator-conflict-recovery-conformance-after-fix
     name: Reverify operator/conflict/recovery conformance after fix
     status: pending

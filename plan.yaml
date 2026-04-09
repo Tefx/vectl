@@ -65878,7 +65878,7 @@ phases:
       blocker ownership in plan state.'
   - id: decide_refresh_impl.gate
     name: Gate decide_refresh_impl
-    status: pending
+    status: claimed
     description: 'Gate review: verify the refreshed vectl_decide contract is implemented,
       green, and conformant. Block if task_id/reuse semantics drift, standalone advisor
       semantics narrow, or verification/conformance evidence is incomplete.'
@@ -65913,6 +65913,8 @@ phases:
     - decide_refresh_impl.spec-conformance
     - decide_refresh_impl.af1-r8-reverify
     agent: gate-reviewer-tacit
+    claimed_by: gate-reviewer-tacit
+    claimed_at: '2026-04-09T08:27:26.450328+00:00'
   - id: decide_refresh_impl.af1-r8-fix
     name: Fix runner provenance dispatch semantics and minimal escalation rigidity
       follow-up

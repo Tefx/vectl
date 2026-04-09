@@ -72609,7 +72609,7 @@ phases:
       \ regate suite (90 passed)."
 - id: orchestration_upper_layer_review
   name: Orchestration Upper-Layer Review
-  status: in_progress
+  status: done
   gate: Upper-layer orchestration contracts are independently audited for wiring,
     spec conformance, black-box behavior, and final gate readiness.
   depends_on:
@@ -72749,7 +72749,7 @@ phases:
       \ contracts for both success and failure-path scenarios."
   - id: orchestration_upper_layer_review.gate-upper-layer-review
     name: Gate upper-layer review
-    status: claimed
+    status: done
     description: Final upper-layer deep review gate. Block if shadow authority exists
       outside approved boundaries, reconcile-before-complete is not proven across
       all upper-layer paths, planner/remediation routing escapes resolver ownership,
@@ -72772,6 +72772,27 @@ phases:
     agent: gate-reviewer-tacit
     claimed_by: vectl-decide-orchestrator-tacit
     claimed_at: '2026-04-09T18:44:49.040054+00:00'
+    done_at: '2026-04-09T18:47:59.895998+00:00'
+    evidence: 'Gate review: OPEN. Three independent audits converge on PASS:
+
+      1) Wiring audit (5/5 PASS): DispatchSpec/RoleProfile/PromptRegistry wired through
+      OrchestrationApp+DispatchCoordinator; review→ResolutionCase; operator notification+recovery
+      reachable; no shadow authority; no plan.yaml bypass.
+
+      2) Spec conformance (5/5 PROVEN): All five cross-phase invariants proven; G5.2
+      NEEDS_TEST and G5.3 PARTIAL explicitly classified as non-blocking with dispositions.
+
+      3) Black-box verification (5/5 PASS): 107 tests across 6 modules; all five scenarios
+      verified including failure-path (runtime_failure→ResolutionCase, not complete_step).
+
+
+      Must-fix blockers: None.
+
+      Non-blocking follow-ups: G5.2 (restart-durability round-trip test gap), G5.3
+      (paused-state transition mapping partial for current scope).
+
+      Rationale: Independent wiring/semantic/behavioral audit vectors all converge
+      on consistent PASS with no contradictions.'
 - id: parallel_gate_remediation
   name: Parallel Gate Remediation
   status: done

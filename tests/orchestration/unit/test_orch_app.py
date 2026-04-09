@@ -16,8 +16,23 @@ import pytest
 
 from vectl.io import save_plan
 from vectl.models import IsolationMode, Phase, Plan, Step
-from vectl.orch_app import AppConfig, build_orchestration_app
+from vectl.orch_app import (
+    AppConfig,
+    build_orchestration_app,
+    build_resolution_case,
+    build_review_parse_failure_case,
+    normalize_review_resolution_case,
+)
 from vectl.orchestration.config import OrchestrationConfig, RuntimeConfig
+from vectl.orchestration.contracts import (
+    ControlDecision,
+    CoreSnapshot,
+    ResolutionCase,
+    ResolutionReport,
+    RosterSnapshot,
+    RuntimeSnapshot,
+    StructuredReviewResult,
+)
 from vectl.orchestration.control_channel import FilesystemControlChannel
 from vectl.orchestration.recovery import LegacyRunStatus
 from vectl.orchestration.run_store import RunRecord, RunRegistry, generate_run_id
@@ -70,6 +85,33 @@ def _continuity_payload(step_id: str, session_id: str, event_id: str) -> dict[st
     }
 
 
+def _core_snapshot(*, blocked: tuple[str, ...] = ("core.ready",)) -> CoreSnapshot:
+    return CoreSnapshot(
+        plan_complete=False,
+        claimable_step_ids=(),
+        in_progress_step_ids=(),
+        blocked_step_ids=blocked,
+        unresolved_reasons=(),
+    )
+
+
+def _roster_snapshot() -> RosterSnapshot:
+    return RosterSnapshot(
+        available_agents=(),
+        working_agents=(),
+        reusable_sessions=(),
+        exhausted_roles=(),
+    )
+
+
+def _runtime_snapshot() -> RuntimeSnapshot:
+    return RuntimeSnapshot(
+        active_workspaces=(),
+        active_executions=(),
+        stalled_executions=(),
+    )
+
+
 def test_build_composes_real_collaborators_without_noop_resolver_dependency(tmp_path: Path) -> None:
     app = _build_app(tmp_path)
 
@@ -77,6 +119,116 @@ def test_build_composes_real_collaborators_without_noop_resolver_dependency(tmp_
     assert app._core_adapter.__class__.__name__ == "PlanCoreAdapter"
     assert app._resolver.__class__.__name__ == "BoundResolver"
     assert app._resolver.invocation.__class__.__name__ == "GatewayResolverInvocation"
+
+
+def test_build_resolution_case_requires_resolve_decision() -> None:
+    core = _core_snapshot()
+    roster = _roster_snapshot()
+    runtime = _runtime_snapshot()
+
+    with pytest.raises(ValueError, match="kind='resolve'"):
+        build_resolution_case(
+            case_id="case-1",
+            decision=ControlDecision(kind="wait", reason="still waiting"),
+            core=core,
+            roster=roster,
+            runtime=runtime,
+        )
+
+
+def test_build_resolution_case_uses_explicit_non_closure_input() -> None:
+    case = build_resolution_case(
+        case_id="case-1",
+        decision=ControlDecision(
+            kind="resolve", reason="Blocked steps require resolution: core.ready"
+        ),
+        core=_core_snapshot(blocked=("core.ready", "core.other")),
+        roster=_roster_snapshot(),
+        runtime=_runtime_snapshot(),
+        case_source="review_failed",
+        summary="review failed after gate",
+        artifact_refs=("artifact://gate",),
+    )
+
+    assert case.case_id == "case-1"
+    assert case.case_source == "review_failed"
+    assert case.blocked_step_ids == ("core.ready", "core.other")
+    assert case.artifact_refs == ("artifact://gate",)
+
+
+def test_review_non_pass_normalizes_to_resolution_case() -> None:
+    case = normalize_review_resolution_case(
+        StructuredReviewResult(
+            review_outcome="needs_fix",
+            summary="gate found defects",
+            evidence_refs=("artifact://review",),
+        ),
+        case_id="case-review-1",
+        core=_core_snapshot(),
+        roster=_roster_snapshot(),
+        runtime=_runtime_snapshot(),
+    )
+
+    assert case is not None
+    assert case.case_id == "case-review-1"
+    assert case.case_source == "review_failed"
+    assert case.artifact_refs == ("artifact://review",)
+
+
+def test_review_parse_failure_normalizes_to_resolution_case() -> None:
+    case = build_review_parse_failure_case(
+        raw_output="not parseable",
+        role_id="gate-reviewer",
+        case_id="case-parse-1",
+        core=_core_snapshot(),
+        roster=_roster_snapshot(),
+        runtime=_runtime_snapshot(),
+    )
+
+    assert case.case_id == "case-parse-1"
+    assert case.case_source == "review_failed"
+    assert "unparseable" in case.reason
+
+
+def test_resolve_case_surfaces_operator_required_via_case_views(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    app = _build_app(tmp_path)
+    case = ResolutionCase(
+        case_id="case-operator-1",
+        case_source="review_failed",
+        reason="review outcome: operator_required",
+        summary="human approval required",
+        core=_core_snapshot(),
+        roster=_roster_snapshot(),
+        runtime=_runtime_snapshot(),
+    )
+
+    monkeypatch.setattr(
+        app,
+        "_resolver",
+        type(
+            "_StubResolver",
+            (),
+            {
+                "resolve": lambda self, _case: ResolutionReport(
+                    status="operator_required",
+                    summary="resolver could not close safely",
+                    evidence_refs=("resolver://1",),
+                    operator_message="human decision required",
+                )
+            },
+        )(),
+    )
+
+    report = app.resolve_case(case)
+
+    assert report.status == "operator_required"
+    visible = {item.case_id: item for item in app.case_list(status="open")}
+    assert visible["case-operator-1"].reason == "human decision required"
+    shown = app.case_show("case-operator-1")
+    assert shown.status == "open"
+    assert shown.reason == "human decision required"
 
 
 def test_run_and_control_route_through_typed_boundaries(tmp_path: Path) -> None:

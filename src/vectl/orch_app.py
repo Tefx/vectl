@@ -39,12 +39,23 @@ from vectl.orchestration.config import (
     load_orchestration_config,
     validate_orchestration_config,
 )
-from vectl.orchestration.contracts import ExecutionRequest
+from vectl.orchestration.contracts import (
+    ControlDecision,
+    CoreSnapshot,
+    ExecutionRequest,
+    ResolutionCase,
+    ResolutionCaseSource,
+    ResolutionReport,
+    RosterSnapshot,
+    RuntimeSnapshot,
+    StructuredReviewResult,
+)
 from vectl.orchestration.control_channel import (
     ControlChannelMessage,
     FilesystemControlChannel,
     send_to_control,
 )
+from vectl.orchestration.dispatch_policy import normalize_parse_failure, normalize_review_result
 from vectl.orchestration.events import (
     EventCorruptionError,
     JsonlEventSink,
@@ -86,6 +97,7 @@ from vectl.orchestration.run_store import (
     generate_run_id,
 )
 from vectl.orchestration.tool_registry import canonical_tool_families
+from vectl.plan_path import is_linked_worktree
 
 if TYPE_CHECKING:
     from vectl.orchestration.control import Control
@@ -254,6 +266,94 @@ class ConfigResult:
     tools: tuple[str, ...] = ()
 
 
+@dataclass(frozen=True)
+class OperatorNotification:
+    """Explicit operator-visible resolver escalation state.
+
+    Authority: docs/ORCHESTRATION-PLANE-ORCH-APP-ROUTING.md section 10
+    """
+
+    case_id: str
+    summary: str
+    evidence_refs: tuple[str, ...] = ()
+    operator_message: str | None = None
+
+
+def build_resolution_case(
+    *,
+    case_id: str,
+    decision: ControlDecision,
+    core: CoreSnapshot,
+    roster: RosterSnapshot,
+    runtime: RuntimeSnapshot,
+    case_source: ResolutionCaseSource = "unknown",
+    summary: str | None = None,
+    blocked_step_ids: tuple[str, ...] | None = None,
+    artifact_refs: tuple[str, ...] = (),
+) -> ResolutionCase:
+    """Build an explicit ResolutionCase from a resolve decision.
+
+    Authority:
+        docs/ORCHESTRATION-PLANE-RESOLUTION-CONTRACT.md section 3
+        docs/ORCHESTRATION-PLANE-ORCH-APP-ROUTING.md sections 3 and 8
+    """
+
+    if decision.kind != "resolve":
+        raise ValueError("resolution cases may be built only from ControlDecision(kind='resolve')")
+
+    return ResolutionCase(
+        case_id=case_id,
+        case_source=case_source,
+        reason=decision.reason,
+        summary=summary,
+        core=core,
+        roster=roster,
+        runtime=runtime,
+        blocked_step_ids=core.blocked_step_ids if blocked_step_ids is None else blocked_step_ids,
+        artifact_refs=artifact_refs,
+    )
+
+
+def normalize_review_resolution_case(
+    result: StructuredReviewResult,
+    *,
+    case_id: str,
+    core: CoreSnapshot,
+    roster: RosterSnapshot,
+    runtime: RuntimeSnapshot,
+) -> ResolutionCase | None:
+    """Normalize structured review/gate output into explicit resolution intake."""
+
+    return normalize_review_result(
+        result=result,
+        case_id=case_id,
+        core=core,
+        roster=roster,
+        runtime=runtime,
+    )
+
+
+def build_review_parse_failure_case(
+    *,
+    raw_output: str,
+    role_id: str,
+    case_id: str,
+    core: CoreSnapshot,
+    roster: RosterSnapshot,
+    runtime: RuntimeSnapshot,
+) -> ResolutionCase:
+    """Build explicit resolution intake for structured review parse failures."""
+
+    return normalize_parse_failure(
+        raw_output=raw_output,
+        role_id=role_id,
+        case_id=case_id,
+        core=core,
+        roster=roster,
+        runtime=runtime,
+    )
+
+
 # ---------------------------------------------------------------------
 # Orchestration App Composition Root
 # ---------------------------------------------------------------------
@@ -316,6 +416,30 @@ class OrchestrationApp:
         self._text_log_path.parent.mkdir(parents=True, exist_ok=True)
         self._text_log_path.touch(exist_ok=True)
         self._latest_recovery_report: RecoveryReport | None = None
+        self._latest_operator_notification: OperatorNotification | None = None
+
+    def resolve_case(self, case: ResolutionCase) -> ResolutionReport:
+        """Resolve one explicit blocked/non-closure case through the bound resolver.
+
+        Authority:
+            docs/ORCHESTRATION-PLANE-RESOLUTION-CONTRACT.md sections 2, 3, 5
+            docs/ORCHESTRATION-PLANE-ORCH-APP-ROUTING.md sections 8 and 10
+        """
+
+        report = self._resolver.resolve(case)
+        if report.status == "operator_required":
+            self._latest_operator_notification = OperatorNotification(
+                case_id=case.case_id,
+                summary=report.summary,
+                evidence_refs=report.evidence_refs,
+                operator_message=report.operator_message,
+            )
+        elif (
+            self._latest_operator_notification is not None
+            and self._latest_operator_notification.case_id == case.case_id
+        ):
+            self._latest_operator_notification = None
+        return report
 
     def _start_runtime_execution(
         self,
@@ -1803,6 +1927,15 @@ class OrchestrationApp:
                     reason=report.message,
                 )
             )
+        if self._latest_operator_notification is not None:
+            notice = self._latest_operator_notification
+            results.append(
+                CaseResult(
+                    case_id=notice.case_id,
+                    status="open",
+                    reason=notice.operator_message or notice.summary,
+                )
+            )
         if status is not None:
             results = [case for case in results if case.status == status]
         return tuple(results)
@@ -1832,6 +1965,16 @@ class OrchestrationApp:
                 case_id="recovery.latest",
                 status=recovery_case_status(report.outcome),
                 reason=report.message,
+            )
+        if (
+            self._latest_operator_notification is not None
+            and case_id == self._latest_operator_notification.case_id
+        ):
+            notice = self._latest_operator_notification
+            return CaseResult(
+                case_id=notice.case_id,
+                status="open",
+                reason=notice.operator_message or notice.summary,
             )
         entry = registry.case_by_id(case_id)
         if entry is None:
@@ -2175,6 +2318,21 @@ def build_orchestration_app(
             if not isinstance(case, ResolutionCase):
                 raise TypeError("resolver invocation requires ResolutionCase")
 
+            is_linked, main_root = is_linked_worktree()
+            if is_linked:
+                main_root_text = str(main_root) if main_root is not None else "<unknown>"
+                return {
+                    "status": "operator_required",
+                    "summary": (
+                        "Resolver invocation blocked: resolver must run from the main worktree"
+                    ),
+                    "evidence_refs": (f"resolver_main_worktree={main_root_text}",),
+                    "operator_message": (
+                        "Rerun resolver from the canonical main worktree before attempting "
+                        "blocked-case repair."
+                    ),
+                }
+
             def _invoker(
                 _case: ResolutionCase,
                 _calls: tuple[ResolverToolCall, ...],
@@ -2187,12 +2345,12 @@ def build_orchestration_app(
                 )
 
             gateway = AuditedResolverGateway(
-                planned_tool_calls=(
+                (
                     ResolverToolCall(family="orchestration", name="read_state", surface="read"),
                     ResolverToolCall(family="orchestration", name="read_case", surface="read"),
                 ),
-                resolver_invoker=_invoker,
-                invocation_ref_factory=lambda: f"resolver-{generate_run_id()}",
+                _invoker,
+                lambda: f"resolver-{generate_run_id()}",
             )
             try:
                 result = authorize_and_invoke(
@@ -2262,5 +2420,9 @@ __all__ = [
     "CaseResult",
     "ControlResult",
     "ConfigResult",
+    "OperatorNotification",
+    "build_resolution_case",
+    "normalize_review_resolution_case",
+    "build_review_parse_failure_case",
     "build_orchestration_app",
 ]

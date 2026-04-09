@@ -22,6 +22,7 @@ from typing import TYPE_CHECKING, Literal, Protocol
 
 from vectl.orchestration.contracts import ResolutionCase, ResolutionReport
 from vectl.orchestration.tool_registry import ToolFamilyRegistry, validate_allowlist
+from vectl.plan_path import is_linked_worktree
 
 if TYPE_CHECKING:
     pass
@@ -43,6 +44,18 @@ _WRITE_TOOLS: frozenset[str] = frozenset(
         "defer",
     }
 )
+
+
+def _default_main_worktree_probe() -> bool:
+    """Return whether resolver invocation is running in the main worktree.
+
+    Authority:
+        docs/ORCHESTRATION-PLANE-RESOLVER-COORDINATION.md section 5
+        docs/ORCHESTRATION-PLANE-RUNTIME-WORKTREE-LIFECYCLE.md section 5
+    """
+
+    is_linked, _main_root = is_linked_worktree()
+    return not is_linked
 
 
 @dataclass(frozen=True)
@@ -103,6 +116,7 @@ class GatewayDenial:
         "unknown_family",
         "unknown_tool",
         "surface_mismatch",
+        "claim_not_allowed",
     ]
     reason: str
 
@@ -262,6 +276,7 @@ class AuditedResolverGateway:
     planned_tool_calls: tuple[ResolverToolCall, ...]
     resolver_invoker: ResolverInvokeFn
     invocation_ref_factory: Callable[[], str] = lambda: "resolver-gateway-invocation"
+    main_worktree_probe: Callable[[], bool] = lambda: True
 
     def invoke(
         self,
@@ -280,6 +295,9 @@ class AuditedResolverGateway:
         Raises:
             AuthorizationError: If any planned tool call is denied.
         """
+        if not self.main_worktree_probe():
+            raise AuthorizationError("resolver invocation blocked: not on main worktree")
+
         invocation_ref = self.invocation_ref_factory()
         denials, _audit_events = _authorize_tool_calls(
             planned_calls=self.planned_tool_calls,
@@ -372,6 +390,15 @@ def _authorize_single_call(
     Returns:
         ``None`` if allowed, else machine-readable denial.
     """
+    if call.family == "core" and call.name == "claim":
+        return GatewayDenial(
+            family=call.family,
+            tool=call.name,
+            requested_surface=call.surface,
+            reason_code="claim_not_allowed",
+            reason="resolver claim attempts are forbidden; claim remains part of normal flow",
+        )
+
     if not validate_allowlist(call.family, allowed_tool_families):
         return GatewayDenial(
             family=call.family,

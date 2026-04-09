@@ -65606,6 +65606,89 @@ phases:
     depends_on:
     - decide_refresh_tests.retest-refreshed-red-seams
     agent: python-executor
+  - id: decide_refresh_tests.reverify-gate-mcp-contract-refresh-batch
+    name: Reverify gate MCP contract refresh blocker batch
+    status: pending
+    description: 'As an INDEPENDENT TESTER, reverify the refreshed MCP red-test contract
+      after decide_refresh_tests.fix-gate-mcp-contract-refresh-batch.
+
+
+      Verification scope: phase-check protecting decide_refresh_tests.gate.
+
+
+      Required checks:
+
+      - stale `continuation`, `halt_reason`, and `session` assertions are absent from
+      the MCP acceptance surface
+
+      - refreshed assertions prove `status`, `reason_code`, `next_state`, `reuse_token`,
+      and `reuse_runner`
+
+      - refreshed reuse/advisor-state semantics are pinned as the authoritative contract
+
+      - evidence shows the surface remains a red-test definition step, not product
+      implementation
+
+      '
+    verification: 'phase-check protecting decide_refresh_tests.gate: refreshed MCP
+      red-surface assertions are complete and stale semantics are gone; command output
+      proves the targeted suite exercises the refreshed contract seams.'
+    evidence_template: '## Verification Report
+
+      **Tester**: integration-verifier-tacit
+
+      **Scope**: refreshed MCP red-test contract
+
+      **Independence Level**: L1
+
+
+      ### refs Read Confirmation (MANDATORY)
+
+      For each ref in this step:
+
+      - <filename> — key passage or "NOT READ: <reason>"
+
+
+      If no refs were provided, state: "No refs for this step."
+
+
+      ### Contract Check Matrix
+
+      - stale continuation assertions absent:
+
+      - stale halt_reason assertions absent:
+
+      - stale session assertions absent:
+
+      - status asserted:
+
+      - reason_code asserted:
+
+      - next_state asserted:
+
+      - reuse_token asserted:
+
+      - reuse_runner asserted:
+
+
+      ### Commands executed
+
+      ```text
+
+      <paste exact command>
+
+      ```
+
+      ### Actual output
+
+      ```text
+
+      <paste exact output>
+
+      ```'
+    depends_on:
+    - decide_refresh_tests.fix-gate-mcp-contract-refresh-batch
+    agent: integration-verifier-tacit
 - id: decide_refresh_impl
   name: vectl_decide Contract Refresh — Implementation
   status: done

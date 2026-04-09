@@ -70633,7 +70633,7 @@ phases:
       - prefer case_source over reason-string matching in preserve-case logic'
 - id: orchestration_orch_app_routing
   name: Orchestration App Routing
-  status: in_progress
+  status: done
   gate: orch_app enforces claim-before-start, reconcile-before-complete, review-result
     normalization, and resolution routing using the shared dispatch/runtime substrate.
   depends_on:
@@ -70781,7 +70781,7 @@ phases:
       \nEvidence source:\n- subagent task ses_28db0ac55ffegslh7rlqHmlMNi"
   - id: orchestration_orch_app_routing.gate-orch-app-routing
     name: Gate orch_app routing
-    status: claimed
+    status: done
     description: 'Gate review: verify orch_app routing is ready for operator/conflict/recovery
       alignment. Block if claim-before-start, reconcile-before-complete, explicit
       ResolutionCase normalization, or RoleProfile-based execution-context routing
@@ -70801,6 +70801,130 @@ phases:
     agent: gate-reviewer-tacit
     claimed_by: gate-reviewer-tacit
     claimed_at: '2026-04-09T15:02:15.082751+00:00'
+    done_at: '2026-04-09T15:14:02.609933+00:00'
+    evidence: "## refs Read Confirmation\n1. `docs/ORCHESTRATION-PLANE-ORCH-APP-ROUTING.md`\n\
+      \   Key passage: Section 4 Hard Rules — \"Rule 1: claim is part of normal dispatch\
+      \ flow; When normal flow dispatches a step, claim occurs before runtime execution\
+      \ starts. Rule 2: complete requires reconcile closure; complete must only occur\
+      \ after runtime reconcile returns merged or noop. Rule 3: review/gate failure\
+      \ must be explicit; Non-pass structured review/gate output must be normalized\
+      \ into explicit ResolutionCases. Rule 4: operator_required must notify the user/operator.\"\
+      \ Section 15 verification guidance lists 7 minimum implementation proofs.\n\n\
+      2. `docs/ORCHESTRATION-PLANE-DISPATCH-AND-PROMPT-POLICY.md`\n   Key passage:\
+      \ Section 7.1 DispatchSpec unified contract; Section 8.2 RoleProfile with execution_context\
+      \ field; Section 9.1 role allocation precedence (step.agent > default > fallback);\
+      \ Section 13.1 StructuredReviewResult schema; Section 14.1 normalization rule\
+      \ (non-pass → ResolutionCase); Section 15 planner as specialized remediation\
+      \ subagent under resolver with source_kind=resolution_subtask.\n\n3. `docs/ORCHESTRATION-PLANE-RESOLUTION-CONTRACT.md`\n\
+      \   Key passage: Section 3.2 ResolutionCase shape (case_id, case_source, reason,\
+      \ core/roster/runtime snapshots, blocked_step_ids, artifact_refs); Section 5.1\
+      \ ResolutionReport status meanings (unblocked/waiting/operator_required/halt);\
+      \ Section 6 control must refresh snapshots after resolution before evaluating.\n\
+      \n## Gate Review Report\n\nsummary:\n  verdict: \"CONDITIONAL PASS\"\n  confidence:\
+      \ \"High\"\n  issue_counts:\n    BLOCKING: 0\n    SHOULD_FIX: 1\n    SUGGESTION:\
+      \ 1\n\nautomated_gate_results:\n  type_checking: PASS (pyright 0 errors per\
+      \ step evidence)\n  linting: PASS (ruff clean per step evidence)\n  test_suite_orch_app_routing:\
+      \ PASS (56/56 tests pass)\n  test_suite_other_orchestration: 13 pre-existing\
+      \ failures (non-blocking for this gate)\n  wiring_audit: MANUAL_REVIEW — all\
+      \ routing surfaces (route_terminal_execution, resolve_case, route_resolution_case,\
+      \ dispatch_resolution_subtask) are wired through OrchestrationApp and consumed\
+      \ by CLI/integration tests\n  contract_audit: PASS — normalize_review_result\
+      \ and normalize_parse_failure produce explicit ResolutionCase with correct case_source;\
+      \ no vacuous contracts detected\n\ncross_cutting_scan_results:\n  sibling_patterns_found:\
+      \ 0\n  grep_command_used: \"grep -rn 'execution_context' src/vectl/ --include='*.py'\"\
+      \n\nrisk_tiering:\n  CRITICAL: 3 files (orch_app.py, contracts.py, dispatch_policy.py)\n\
+      \  STANDARD: 2 files (test_orch_app.py, test_orch_app_routing_seam.py)\n  LOW:\
+      \ 0 files\n\nexpert_findings:\n  E1_Spec_Alignment:\n    - claim-before-start\
+      \ (Routing Rule 1): PROVEN — _admit_start_and_persist_running() line 843 calls\
+      \ claim_step() before _start_runtime_execution(). Test: test_claim_before_start_seam\
+      \ asserts order[:2] shows claim before start.\n    - reconcile-before-complete\
+      \ (Routing Rule 2): PROVEN — route_terminal_execution() lines 661-693 call begin_reconcile(),\
+      \ check status in (\"merged\",\"noop\") before complete_step(). Merge_conflict/aborted\
+      \ routes to ResolutionCase. Test: test_reconcile_before_complete_seam, test_reconcile_merge_conflict_prevents_complete.\n\
+      \    - explicit ResolutionCase normalization (Routing Rule 3): PROVEN — _normalize_review_case()\
+      \ lines 717-744 delegates to normalize_review_result() and normalize_parse_failure()\
+      \ in dispatch_policy.py. All non-pass review_outcome values (needs_fix, needs_replan,\
+      \ operator_required) produce ResolutionCase(case_source=\"review_failed\").\
+      \ Parse failures produce ResolutionCase with \"unparseable\" in reason. Test:\
+      \ 6 dedicated tests covering each outcome + parse failure + pass positive control.\n\
+      \    - operator_required notification (Routing Rule 4): PROVEN — _update_operator_notification()\
+      \ lines 489-518 maintains _latest_operator_notification state, emits operator_case_opened/resolved\
+      \ events. OperatorNotification dataclass matches spec section 12.2 fields (case_id,\
+      \ summary, evidence_refs, operator_message). case_list()/case_show() surface\
+      \ operator_required as open cases. Test: test_resolve_case_surfaces_operator_required_via_case_views,\
+      \ test_resolve_case_emits_explicit_operator_notification_events.\n    - RoleProfile-based\
+      \ execution-context routing (Sec 11/12): PROVEN — _DEFAULT_ROLE_PROFILES define\
+      \ coder=linked_worktree, reviewer/planner/resolver=main_worktree. DispatchCoordinator.build_dispatch_spec()\
+      \ uses profile.execution_context (line 662). build_resolution_subtask_spec()\
+      \ uses profile.execution_context (line 711). _start_runtime_execution() passes\
+      \ execution_context in work_refs (line 798). Test: test_dispatch_resolution_subtask_uses_shared_runtime_subtask\
+      \ verifies source_kind=resolution_subtask + execution_context=main_worktree\
+      \ in runtime request.\n    - resolver uses shared dispatch/runtime substrate\
+      \ (Rule 5): PROVEN — dispatch_resolution_subtask() builds DispatchSpec(source_kind=\"\
+      resolution_subtask\") through DispatchCoordinator.build_resolution_subtask_spec(),\
+      \ then calls _start_runtime_execution(). Test: test_dispatch_resolution_subtask_uses_shared_runtime_substrate.\n\
+      \nshould_fix:\n  - id: S1\n    root_cause: \"Pre-existing test failures in other\
+      \ orchestration modules (13 total)\"\n    severity: SHOULD_FIX\n    locations:\n\
+      \      - file: \"tests/orchestration/unit/test_contracts.py\"\n        detail:\
+      \ \"test_resolution_case_fields_match_spec — ResolutionCase field ordering diverges\
+      \ from spec (case_id has default '' instead of being required)\"\n      - file:\
+      \ \"tests/orchestration/unit/test_contract_lock_boundaries.py\"\n        detail:\
+      \ \"test_resolution_case_stays_bounded_while_resolver_contract_is_exported\"\
+      \n      - file: \"tests/orchestration/unit/test_recovery_contract_conformance.py\"\
+      \n        detail: \"2 failures in recovery report semantics and gate_open_allowed\
+      \ flag\"\n      - file: \"tests/orchestration/unit/test_runtime_lifecycle.py\"\
+      \n        detail: \"test_capture_reconcile_result_updates_tracking_sets — pending_reconciles\
+      \ set not updated after reconcile\"\n      - file: \"tests/orchestration/unit/test_config_state_red.py\"\
+      \n        detail: \"6 red tests for config discovery/validation gaps (intentional\
+      \ red tests)\"\n      - file: \"tests/orchestration/unit/test_imports.py\"\n\
+      \        detail: \"test_orchestration_all_exports_match_spec — export list mismatch\"\
+      \n    remediation: \"Track as cross-phase tech debt. The ResolutionCase field\
+      \ ordering and tracking-set gaps should be addressed in a follow-up remediation\
+      \ phase. Config red tests are intentional spec-gap markers.\"\n\n## behavioral_proof_register\n\
+      - proof_id: \"P1\"\n  requirement_ref: \"ORCH-APP-ROUTING Rule 1 — claim-before-start\"\
+      \n  claim: \"OrchestrationApp.run() calls claim_step before runtime.start\"\n\
+      \  proof_type: \"integration\"\n  evidence_ref: \"tests/orchestration/integration/test_orch_app_routing_seam.py::test_claim_before_start_seam\
+      \ + test_claim_before_start_durable_before_start\"\n  status: \"PROVEN\"\n \
+      \ uncertainty_source: \"\"\n  gate_impact: \"OPEN_OK\"\n  next_action: \"\"\n\
+      \n- proof_id: \"P2\"\n  requirement_ref: \"ORCH-APP-ROUTING Rule 2 — reconcile-before-complete\"\
+      \n  claim: \"route_terminal_execution() completes step only after reconcile\
+      \ returns merged|noop\"\n  proof_type: \"integration\"\n  evidence_ref: \"tests/orchestration/integration/test_orch_app_routing_seam.py::test_reconcile_before_complete_seam\
+      \ + test_reconcile_merge_conflict_prevents_complete\"\n  status: \"PROVEN\"\n\
+      \  uncertainty_source: \"\"\n  gate_impact: \"OPEN_OK\"\n  next_action: \"\"\
+      \n\n- proof_id: \"P3\"\n  requirement_ref: \"ORCH-APP-ROUTING Rule 3 — explicit\
+      \ ResolutionCase normalization\"\n  claim: \"Non-pass review output and parse\
+      \ failures become explicit ResolutionCase\"\n  proof_type: \"integration\"\n\
+      \  evidence_ref: \"tests/orchestration/integration/test_orch_app_routing_seam.py::test_review_needs_fix_routes_to_resolution_case\
+      \ + test_review_parse_failure_routes_to_resolution_case + test_review_pass_allows_complete_step\"\
+      \n  status: \"PROVEN\"\n  uncertainty_source: \"\"\n  gate_impact: \"OPEN_OK\"\
+      \n  next_action: \"\"\n\n- proof_id: \"P4\"\n  requirement_ref: \"ORCH-APP-ROUTING\
+      \ Rule 4 — operator_required notification\"\n  claim: \"operator_required from\
+      \ resolver surfaces explicit operator notification state\"\n  proof_type: \"\
+      unit\"\n  evidence_ref: \"tests/orchestration/unit/test_orch_app.py::test_resolve_case_surfaces_operator_required_via_case_views\
+      \ + test_resolve_case_emits_explicit_operator_notification_events\"\n  status:\
+      \ \"PROVEN\"\n  uncertainty_source: \"\"\n  gate_impact: \"OPEN_OK\"\n  next_action:\
+      \ \"\"\n\n- proof_id: \"P5\"\n  requirement_ref: \"ORCH-APP-ROUTING Rule 5 —\
+      \ resolver uses shared dispatch/runtime substrate\"\n  claim: \"Resolver-subagent\
+      \ work goes through shared dispatch/runtime with source_kind=resolution_subtask\"\
+      \n  proof_type: \"unit\"\n  evidence_ref: \"tests/orchestration/unit/test_orch_app.py::test_dispatch_resolution_subtask_uses_shared_runtime_substrate\"\
+      \n  status: \"PROVEN\"\n  uncertainty_source: \"\"\n  gate_impact: \"OPEN_OK\"\
+      \n  next_action: \"\"\n\n- proof_id: \"P6\"\n  requirement_ref: \"DISPATCH-POLICY\
+      \ §12 — RoleProfile-based execution-context routing\"\n  claim: \"Execution\
+      \ context is determined by RoleProfile.execution_context, not hardcoded\"\n\
+      \  proof_type: \"unit\"\n  evidence_ref: \"tests/orchestration/unit/test_orch_app.py::test_run_consumes_authoritative_step_isolation_for_runtime_request\
+      \ + test_dispatch_resolution_subtask_uses_shared_runtime_substrate\"\n  status:\
+      \ \"PROVEN\"\n  uncertainty_source: \"\"\n  gate_impact: \"OPEN_OK\"\n  next_action:\
+      \ \"\"\n\n- proof_id: \"P7\"\n  requirement_ref: \"RESOLUTION-CONTRACT §6 —\
+      \ post-resolution snapshot refresh\"\n  claim: \"route_resolution_case() refreshes\
+      \ snapshots before control.apply_resolution()\"\n  proof_type: \"static_code_inspection\"\
+      \n  evidence_ref: \"src/vectl/orch_app.py lines 566-573: refresh_snapshots()\
+      \ called before _control.apply_resolution()\"\n  status: \"PROVEN\"\n  uncertainty_source:\
+      \ \"\"\n  gate_impact: \"OPEN_OK\"\n  next_action: \"\"\n\ngate_open_allowed:\
+      \ true\nuncertainty_sources:\n- \"ResolutionCase.case_id field has default ''\
+      \ instead of required per spec §3.2 (pre-existing, not introduced by this phase)\"\
+      \n- \"Runtime.pending_reconciles tracking set not populated after begin_reconcile\
+      \ (pre-existing, test_runtime_lifecycle failure)\"\n- \"13 pre-existing test\
+      \ failures in other orchestration modules outside this phase's scope\""
   - id: orchestration_orch_app_routing.fix-audit-canonical-routing-divergence-batch
     name: Fix audit canonical routing divergence batch
     status: done
@@ -71180,7 +71304,7 @@ phases:
       kind could miss notification context.'
 - id: orchestration_operator_recovery
   name: Orchestration Operator / Conflict / Recovery Alignment
-  status: locked
+  status: pending
   gate: operator_required, conflict preservation, protected-path handling, and restart
     recovery are durable and auditable across orch app and orchestration runtime metadata.
   depends_on:

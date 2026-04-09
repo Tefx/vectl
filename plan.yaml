@@ -68297,7 +68297,7 @@ phases:
       - R27 VERIFIED\n- R30 VERIFIED\ngate_open_allowed: true"
   - id: orchestration_runtime_lifecycle.fix-gate-runtime-invariant-regressions-batch
     name: Fix gate runtime invariant regressions batch
-    status: claimed
+    status: done
     description: 'Fix ALL blocker-class runtime regressions surfaced by orchestration_runtime_lifecycle.gate.
 
 
@@ -68422,6 +68422,50 @@ phases:
     agent: python-senior-tacit
     claimed_by: python-senior-tacit
     claimed_at: '2026-04-09T12:53:55.875455+00:00'
+    done_at: '2026-04-09T13:31:03.859029+00:00'
+    evidence: 'Implemented and merged runtime lifecycle invariant restorations.
+
+
+      Artifacts:
+
+      - worker commit: 8727fdb (`fix(runtime): restore reconcile lifecycle invariants`)
+
+      - merged on main: `[vectl] step-orchestration_runtime_lifecycle.fix-gate-runtime-invariant-regressions-batch
+      completed`
+
+
+      Changed files:
+
+      - src/vectl/orchestration/runtime.py
+
+      - tests/test_runtime_lifecycle.py
+
+
+      Restored behaviors:
+
+      - successful reconcile path now captured via `capture_reconcile_result(...)`
+      (proof/disposition preserved)
+
+      - per-target reconcile lock release restored on successful reconcile
+
+      - cleanup sequencing preserves in-memory lifecycle state until cleanup operation
+      succeeds
+
+
+      Proof tests added:
+
+      - main-path reconcile capture + lock release
+
+      - highest-risk cleanup failure path preserves workspace/reconcile state
+
+
+      Verification:
+
+      - `uv run pytest -q tests/test_runtime_lifecycle.py` -> `29 passed`
+
+      - `uv run ruff check ...` -> pass
+
+      - `uv run mypy ...` -> no issues'
   - id: orchestration_runtime_lifecycle.reverify-gate-runtime-invariant-regressions-batch
     name: Reverify gate runtime invariant regressions batch
     status: pending

@@ -71444,7 +71444,7 @@ phases:
     agent: gate-reviewer-tacit
   - id: orchestration_operator_recovery.contract-operator-notification-conflict-preservation-and-recovery-alignment
     name: Contract operator notification, conflict preservation, and recovery alignment
-    status: claimed
+    status: done
     description: "step_type: contract\ncontract_purity: ENFORCED\ncontract_outputs:\n\
       \  - signatures\n  - type_defs\n  - interfaces\n  - stubs\nagent_source: project\n\
       \nDefine the authoritative durability and restart-recovery contract for upper-layer\
@@ -71482,6 +71482,58 @@ phases:
     agent: python-senior-tacit
     claimed_by: python-senior-tacit
     claimed_at: '2026-04-09T15:17:07.802552+00:00'
+    done_at: '2026-04-09T15:25:01.411821+00:00'
+    evidence: "## refs Read Confirmation\n- `docs/ORCHESTRATION-PLANE-OPERATOR-CONFLICT-RECOVERY.md`\
+      \ read: \"`operator_required` is a durable orchestration state\", \"protected\
+      \ paths must never be silently integrated\", and recovery must preserve worktree/execution/reconcile/operator\
+      \ state.\n- `docs/ORCHESTRATION-PLANE-ORCH-APP-ROUTING.md` read: complete is\
+      \ allowed only after reconcile `merged|noop`; `operator_required` must notify\
+      \ explicitly and must not collapse into ordinary wait.\n- `docs/ORCHESTRATION-PLANE-RESOLVER-COORDINATION.md`\
+      \ read: resolver is blocked-case coordinator, does not claim new work, and `operator_required`\
+      \ must remain explicit.\n- `src/vectl/orch_app.py` read: `OperatorNotification`\
+      \ was minimal and `_latest_operator_notification` was in-memory only; `_update_operator_notification(...)`\
+      \ was the routing seam.\n- `src/vectl/orchestration/runtime.py` read: `_PROTECTED_RECONCILE_PATHS`,\
+      \ `snapshot()`, `capture_reconcile_result(...)`, and `can_complete(...)` were\
+      \ the relevant durability/closure seams.\n- `src/vectl/orchestration/recovery.py`\
+      \ read: `RecoveryReport` and startup recovery controller DTOs lacked runtime/operator\
+      \ recovery metadata.\n- `src/vectl/orchestration/run_store.py` read: `RunRecord`\
+      \ persisted only basic run fields; `_deserialize_run_record(...)`/`save(...)`\
+      \ were the durability seam.\n- `src/vectl/orchestration/continuity_artifacts.py`\
+      \ read: continuity ledger/journal/handoff contracts existed but did not encode\
+      \ restart-safe runtime/conflict/operator state.\n\n## Contract Artifacts\n-\
+      \ Added authoritative typed durability schemas in `src/vectl/orchestration/continuity_artifacts.py`:\n\
+      \  - `OperatorNotificationRecord`\n  - `ReconcileRecoveryState`\n  - `DispatchRecoveryGate`\n\
+      \  - `RuntimeRecoveryRecord`\n  - supporting literals for notification receipt,\
+      \ paused-routing, reconcile closure, and dispatch safety\n- Pinned continuity\
+      \ durability in `ContinuityLedgerEntry`, `ContinuityJournalEntry`, and `ContinuityHandoff`\
+      \ so restart authority can carry runtime state, operator notifications, and\
+      \ duplicate-complete/unsafe-dispatch guards.\n- Extended `src/vectl/orchestration/run_store.py::RunRecord`\
+      \ with nested durable recovery fields and pinned JSON rehydration for those\
+      \ contract shapes.\n- Extended `src/vectl/orchestration/recovery.py` DTOs so\
+      \ `RecoveryReport`, `StartupRecoveryControllerInput`, and `StartupRecoveryControllerOutput`\
+      \ explicitly carry runtime recovery state, open operator notifications, and\
+      \ dispatch recovery gates.\n- Expanded `src/vectl/orch_app.py::OperatorNotification`\
+      \ to lock durable receipt-state and paused-routing semantics without adding\
+      \ implementation logic.\n- Clarified `src/vectl/orchestration/runtime.py` contract\
+      \ docstrings so:\n  - `RuntimeSnapshot` is observability only, not restart authority\n\
+      \  - reconcile artifact refs must preserve conflict/abort/protected-path evidence\
+      \ explicitly\n  - completion barriers must survive restart to prevent duplicate\
+      \ complete\n- Commits:\n  - `24e42b4 docs(orchestration): lock recovery durability\
+      \ contracts`\n  - `19c7613 fix(orchestration): keep contract artifact module\
+      \ within guard limits`\n- NOT Done:\n  - no implementation logic for persistence/recovery\
+      \ orchestration\n  - no new recovery execution flow\n  - no tests added\n  -\
+      \ did not touch `plan.yaml`, `.git/vectl/claims.json`, or other orchestrator\
+      \ state files\n\n## Verification\n- command: `python3 -m py_compile \"src/vectl/orchestration/continuity_artifacts.py\"\
+      \ \"src/vectl/orchestration/recovery.py\" \"src/vectl/orchestration/run_store.py\"\
+      \ \"src/vectl/orch_app.py\" \"src/vectl/orchestration/runtime.py\"`\n- output:\
+      \ `<no stdout; exit 0>`\n- command: `PYTHONPATH=src python3 -c \"from vectl.orchestration.continuity_artifacts\
+      \ import DispatchRecoveryGate, NotificationKind, NotificationStatus, OperatorNotificationRecord,\
+      \ PausedRoutingState, ReconcileRecoveryState, RuntimeRecoveryRecord; from vectl.orchestration.recovery\
+      \ import RecoveryReport, StartupRecoveryControllerInput, StartupRecoveryControllerOutput;\
+      \ from vectl.orchestration.run_store import RunRecord; from vectl.orch_app import\
+      \ OperatorNotification; print('contract-imports-ok')\"`\n- output: `contract-imports-ok`\n\
+      - command: `git rev-parse HEAD`\n- output: `19c76133c7a772f96dd9acfb6d666d5318252c79`\n\
+      - command: `git status --short`\n- output: `<no stdout; worktree clean>`"
   - id: orchestration_operator_recovery.define-red-tests-for-operator-pause-conflict-preservation-and-recovery-alignment
     name: Define red tests for operator pause, conflict preservation, and recovery
       alignment

@@ -72713,7 +72713,7 @@ phases:
       \ obligations classified and explicit debt dispositions recorded."
   - id: orchestration_upper_layer_review.run-black-box-upper-layer-orchestration-verification
     name: Run black-box upper-layer orchestration verification
-    status: claimed
+    status: done
     description: Full-plan black-box verification for upper-layer orchestration using
       only public contracts and documented interfaces. Cover normal dispatch claiming
       before execution, successful execution requiring reconcile closure before complete,
@@ -72731,6 +72731,22 @@ phases:
     agent: blind-tester-tacit
     claimed_by: vectl-decide-orchestrator-tacit
     claimed_at: '2026-04-09T18:35:36.141885+00:00'
+    done_at: '2026-04-09T18:44:41.304768+00:00'
+    evidence: "Artifact:\n- Commit hash: N/A (verification-only step)\n\nVerification:\n\
+      - Run: blind-tester-tacit black-box verification against public contracts/docs\
+      \ and observable test behavior.\n- Scope covered (all PASS):\n  1) normal dispatch\
+      \ claims before execution,\n  2) successful execution requires reconcile merged|noop\
+      \ before complete,\n  3) non-pass review/gate outputs route to explicit ResolutionCase,\n\
+      \  4) operator_required produces explicit paused notification state,\n  5) restart\
+      \ after unresolved conflict/operator pause does not silently resume unsafe dispatch.\n\
+      - Failure-path evidence (required): runtime failure path verified to route to\
+      \ explicit `ResolutionCase(case_source=\"runtime_failure\")` and avoid `complete_step`.\n\
+      - Consolidated result from verifier report: 107 tests across 6 orchestration\
+      \ modules observed as passing with scenario-by-scenario evidence and contract\
+      \ mapping.\n\nSpec link:\n- docs/ORCHESTRATION-PLANE-INTERFACES.md\n- docs/ORCHESTRATION-PLANE-RESOLUTION-CONTRACT.md\n\
+      - docs/ORCHESTRATION-PLANE-ORCH-APP-ROUTING.md\n- docs/ORCHESTRATION-PLANE-OPERATOR-CONFLICT-RECOVERY.md\n\
+      \nDisposition:\n- Black-box upper-layer orchestration behavior aligns with public\
+      \ contracts for both success and failure-path scenarios."
   - id: orchestration_upper_layer_review.gate-upper-layer-review
     name: Gate upper-layer review
     status: pending

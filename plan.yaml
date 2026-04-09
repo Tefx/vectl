@@ -66057,7 +66057,7 @@ phases:
       \ vectl`)\n\n## Commit\n- abb9821 — fix(decide): preserve reuse runner provenance"
   - id: decide_refresh_impl.af1-r8-reverify
     name: Reverify runner provenance and advisor contract after AF1/R8 remediation
-    status: pending
+    status: claimed
     description: 'step_type: test
 
       step_intent: retest_green
@@ -66138,6 +66138,8 @@ phases:
     depends_on:
     - decide_refresh_impl.af1-r8-fix
     agent: spec-verifier-tacit
+    claimed_by: spec-verifier-tacit
+    claimed_at: '2026-04-09T07:49:15.684815+00:00'
 - id: doc_sync
   name: Documentation Sync
   status: locked

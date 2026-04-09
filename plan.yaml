@@ -66694,7 +66694,7 @@ phases:
       \ completed`"
   - id: deep_review.reverify-repeated-failure-status-signaling
     name: Reverify repeated-failure blocked/reason_code behavior
-    status: claimed
+    status: done
     description: 'step_type: verification
 
       work_type: proof_closure
@@ -66774,6 +66774,27 @@ phases:
     agent: blind-tester-tacit
     claimed_by: blind-tester-tacit
     claimed_at: '2026-04-09T09:57:42.543281+00:00'
+    done_at: '2026-04-09T09:57:57.585536+00:00'
+    evidence: "## refs Read Confirmation (MANDATORY)\n- docs/RFC-vectl-decide-advisor-refresh.md\
+      \ — verified mapping requirement `repeated_failures -> blocked`\n- public contracts/signatures\
+      \ and black-box repro harness reviewed\n- tools/vectl/README.md — unavailable\
+      \ in requested path\n\n## Black-Box Reverification Report\n- Fixtures used:\n\
+      \  - claimed-step plan + advisor_state round-trip\n  - 3 FAIL completed_results\
+      \ to trigger escalation threshold\n- Exact command(s) executed:\n  1) `uv run\
+      \ pytest tests/test_decide.py::TestStatusReasonCode::test_repeated_failures_map_to_blocked_status\
+      \ -xvs` (PASS)\n  2) `uv run pytest tests/repro/spec_verify_decide_contract.py::test_repeated_failures_status_blocked\
+      \ -xvs` (PASS)\n  3) `uv run python tests/repro/issue_repeated_failure_escalation_pending_done.py`\
+      \ (FAILED 2/3)\n- Actual top-level status observed:\n  - trigger call: `blocked/repeated_failures`\
+      \ (correct)\n  - subsequent unresolved call: `done/no_executable_steps` (incorrect)\n\
+      - Escalate action observed: yes on trigger call\n- Expected RFC mapping matched:\
+      \ partial/no\n\n## Findings\n| Severity | Description | Reproduction |\n| ---\
+      \ | --- | --- |\n| blocker | unresolved escalation memory across decide invocations\
+      \ regresses to terminal done/no_executable_steps before reconciliation | trigger\
+      \ threshold with 3 FAIL results, then call again with returned next_state and\
+      \ no completions |\n\n## Disposition\n- Verification artifact completed with\
+      \ blocker findings.\n- Downstream remediation ownership created:\n  - `deep_review.fix-repeated-failure-pending-escalation-state`\n\
+      \  - `deep_review.reverify-repeated-failure-pending-escalation-state`\n- Gate\
+      \ dependency wired through new reverify path."
   - id: deep_review.fix-repeated-failure-pending-escalation-state
     name: Repair repeated-failure pending-escalation state persistence
     status: pending

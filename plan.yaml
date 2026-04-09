@@ -66290,7 +66290,7 @@ phases:
   steps:
   - id: deep_review.decide-wiring
     name: Audit decide wiring completeness
-    status: claimed
+    status: done
     description: 'Full wiring audit scoped to vectl_decide surfaces: no stale exported
       fields, no stale runtime references to continuation/halt_reason machine control,
       no stale task_id-as-reuse-handle assumptions, and advisor_state/next_state are
@@ -66320,6 +66320,131 @@ phases:
     agent: wiring-auditor
     claimed_by: wiring-auditor
     claimed_at: '2026-04-09T09:03:54.111596+00:00'
+    done_at: '2026-04-09T09:19:43.918933+00:00'
+    evidence: '## Wiring Audit Report
+
+
+      ### refs Read Confirmation
+
+      - src/vectl/decide.py (517 lines) — FULL READ
+
+      - src/vectl/decision_state.py (131 lines) — FULL READ
+
+      - src/vectl/models.py (827 lines, RunningTask/CompletedResult/Action/DecideOutput
+      at lines 680-827) — FULL READ
+
+      - src/vectl/mcp_server.py (2177 lines, vectl_decide at lines 2022-2081) — FULL
+      READ
+
+      - docs/RFC-vectl-decide-advisor-refresh.md — FULL READ
+
+      - tests/test_decide.py (1013 lines) — FULL READ
+
+      - tests/test_decide_state_isolation.py (583 lines) — FULL READ
+
+      - tests/test_mcp.py (lines 2963-3112, TestVectlDecide) — READ
+
+      - pyproject.toml — READ
+
+      - src/vectl/orchestration/recovery.py (halt_reason field context) — READ
+
+
+      ### W13: Entry-to-Effect Trace
+
+      | Component | Lifecycle Method | Declared Effect | I/O Primitive Found | Verdict
+      |
+
+      |-----------|-----------------|-----------------|---------------------|---------|
+
+      | vectl_decide (MCP) | `@mcp.tool()` registration | HTTP/MCP tool | calls `_decide_impl`
+      → `decide()` | EFFECTFUL |
+
+      | `decide()` | N/A (function) | Plan load + decision | `resolve_plan_path()`
+      + `load_plan_definition()` | EFFECTFUL |
+
+
+      **0 SCAFFOLD, 0 HOLLOW, 0 STUB-METHOD.**
+
+
+      ### W1: Dead Exports
+
+      | Export | Location | Runtime Callers | Test Callers | Verdict |
+
+      |--------|----------|----------------|--------------|---------|
+
+      | `DecideState.record_completion()` | decision_state.py:42 | 0 | 0 | **DEAD**
+      |
+
+      | `DECIDE_RUNTIME_CONTEXT_BOUNDARY` | decide.py:44 | 0 | 0 | DEAD (informational)
+      |
+
+      | `DECIDE_STATE_RUNTIME_BOUNDARY` | decision_state.py:15 | 0 | 0 | DEAD (informational)
+      |
+
+      | All other decide exports | decide.py | ≥1 | ≥1 | LIVE |
+
+
+      ### W2: Schema Field Trace
+
+      All DecideOutput, DecideState, Action, RunningTask, CompletedResult fields are
+      LIVE with two exceptions:
+
+      - `RunningTask.dispatched_at`: **WRITE-ONLY** — accepted but never consumed
+      by decide logic (only `len(running_tasks)` counted)
+
+      - `DecideState.record_completion()` method: **DEAD** (0 callers; decide sets
+      fields inline)
+
+
+      **Stale refs**: None found.
+
+
+      ### W3-W12: All PASS
+
+      - W3: All MCP parameters have behavioral test coverage
+
+      - W4: MCP tool properly registered
+
+      - W5: Pydantic validators enforce runner ∈ {"claude", "task"}, no vacuous contracts
+
+      - W6: `REUSE_TTL` and `ESCALATION_THRESHOLD` both consumed and exposed in policy
+
+      - W7: 0 `@invar:allow` escape hatches
+
+      - W8: 0 PHANTOM dependencies, all pyproject.toml deps are LIVE
+
+      - W9: 0 STUB-REACHABLE entries
+
+      - W10: N/A — no Protocol/ABC in decide surfaces
+
+      - W11: 0 CAST-FRAUD, no `cast()` in decide surfaces
+
+      - W12: N/A — no frontend files
+
+
+      ### Specific Checks
+
+
+      **continuation/halt_reason**: NOT in DecideOutput, Action, or decide.py. Properly
+      replaced by `status`/`reason_code`. Only references are test assertions verifying
+      their removal and one `halt_reason` in orchestration/recovery.py (different
+      domain, not a decide surface).
+
+
+      **task_id-as-reuse-handle**: `Action.task_id` explicitly documented "NOT a reuse
+      handle". Reuse semantics carried by `Action.reuse_token` and `Action.reuse_runner`.
+      RunningTask/CompletedResult `task_id` is "orchestrator-visible execution/task
+      identifier". No stale usage found.
+
+
+      **advisor_state/next_state wiring**: `advisor_state` dict is properly parsed
+      into DecideState (lines 245-276) with plan step ID filtering. `next_state` dict
+      is built from DecideState (lines 480-501) including `session_runner_registry`.
+      MCP tool passes `advisor_state` through to `decide()` and returns `model_dump()`
+      which includes `next_state`. Round-trip verified.
+
+
+      **Verdict**: PASS'
   - id: deep_review.decide-architecture
     name: Review boundary and ownership correctness
     status: claimed

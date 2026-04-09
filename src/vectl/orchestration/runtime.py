@@ -280,7 +280,15 @@ __all__ = [
 
 @dataclass
 class _WorkspaceState:
-    """Internal mutable tracking for active workspace executions."""
+    """Internal mutable tracking for active workspace executions.
+
+    Contract note:
+        This in-memory shape is intentionally smaller than the durable
+        ``RuntimeRecoveryRecord`` contract in ``continuity_artifacts.py``.
+        Restart-safe recovery must preserve enough metadata to reconstruct this
+        state plus paused-routing and reconcile-evidence barriers before normal
+        dispatch or completion is permitted again.
+    """
 
     workspace: str
     binding: WorktreeBinding
@@ -349,6 +357,12 @@ class Runtime:
         Returns:
             RuntimeSnapshot representing active mechanical state including
             reconcile lifecycle states.
+
+        Contract note:
+            ``RuntimeSnapshot`` is loop-time observability only. It is not a
+            sufficient restart authority for operator/conflict recovery; durable
+            recovery must preserve worktree, execution, reconcile, and paused
+            routing metadata separately.
         """
         return RuntimeSnapshot(
             active_workspaces=tuple(self._active_workspaces.keys()),
@@ -742,6 +756,9 @@ class Runtime:
             summary: Human-readable summary of reconcile outcome.
             conflict_files: Tuple of conflict file paths (if merge_conflict).
             artifact_refs: Tuple of artifact references for reconciliation evidence.
+                For ``merge_conflict`` and ``aborted`` this must preserve enough
+                evidence for resolver/operator handling after restart. Protected-
+                path handling must be explicit in these refs rather than silent.
 
         Returns:
             ReconcileResult capturing the reconcile outcome.
@@ -797,6 +814,11 @@ class Runtime:
 
         Completion is allowed ONLY after reconcile returns 'merged' or 'noop'.
         Execution success alone is NOT sufficient for completion.
+
+        Contract note:
+            Recovery re-entry must re-establish the same barrier from durable
+            metadata so duplicate complete cannot occur merely because an
+            execution had already reached terminal success before crash/restart.
 
         Authority: docs/ORCHESTRATION-PLANE-RUNTIME-WORKTREE-LIFECYCLE.md Rule 4
 

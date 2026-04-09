@@ -57,6 +57,20 @@ class ArtifactClassification(str, Enum):
     AMBIGUOUS_BLOCKING = "ambiguous_blocking"
 
 
+NotificationKind = Literal["operator_required", "halt_notice"]
+NotificationStatus = Literal["pending", "acknowledged", "resolved", "dismissed"]
+PausedRoutingState = Literal[
+    "active", "paused_operator_wait", "paused_reconcile_conflict", "paused_recovery_hold"
+]
+ReconcileClosureStatus = Literal["pending", "active", "merged", "noop", "merge_conflict", "aborted"]
+DispatchSafetyStatus = Literal[
+    "dispatch_allowed",
+    "blocked_pending_reconcile",
+    "blocked_pending_operator",
+    "blocked_recovery_reentry",
+]
+
+
 # ---------------------------------------------------------------------
 # Continuity Artifact Schemas
 # ---------------------------------------------------------------------
@@ -81,6 +95,9 @@ class ContinuityLedgerEntry:
         updated_at: Unix timestamp when this entry was last updated.
         capability_snapshot: Capability snapshot at time of entry creation.
         replay_envelope: Replay safety envelope for this entry.
+        runtime_state: Authoritative runtime/worktree/execution/reconcile state.
+        operator_notifications: Durable notifications governing paused routing.
+        dispatch_recovery_gate: Restart barrier for complete/dispatch safety.
     """
 
     step_id: str
@@ -91,6 +108,124 @@ class ContinuityLedgerEntry:
     updated_at: float
     capability_snapshot: str = ""
     replay_envelope: str = ""
+    runtime_state: RuntimeRecoveryRecord | None = None
+    operator_notifications: tuple[OperatorNotificationRecord, ...] = ()
+    dispatch_recovery_gate: DispatchRecoveryGate | None = None
+
+
+@dataclass(frozen=True)
+class OperatorNotificationRecord:
+    """Durable operator notification state.
+
+    Authority:
+        docs/ORCHESTRATION-PLANE-OPERATOR-CONFLICT-RECOVERY.md sections 4, 6.2
+        docs/ORCHESTRATION-PLANE-ORCH-APP-ROUTING.md sections 8, 10
+
+    Invariants:
+        - ``status`` is authoritative receipt state and must survive restart.
+        - ``paused_routing_state`` remains non-``active`` until the
+          notification path is explicitly resolved or dismissed.
+        - ``notification_id`` is stable across restart/recovery re-entry.
+    """
+
+    notification_id: str
+    case_id: str
+    run_id: str
+    kind: NotificationKind
+    status: NotificationStatus = "pending"
+    summary: str = ""
+    operator_message: str | None = None
+    evidence_refs: tuple[str, ...] = ()
+    paused_routing_state: PausedRoutingState = "paused_operator_wait"
+    created_at: float = 0.0
+    updated_at: float = 0.0
+
+
+@dataclass(frozen=True)
+class ReconcileRecoveryState:
+    """Durable reconcile evidence preserved for restart-safe recovery.
+
+    Authority:
+        docs/ORCHESTRATION-PLANE-OPERATOR-CONFLICT-RECOVERY.md sections 5, 6.2, 6.4
+
+    Invariants:
+        - ``status`` preserves ``merge_conflict`` and ``aborted`` explicitly.
+        - ``protected_paths`` and ``protected_path_policy`` make protected-path
+          handling auditable and non-silent.
+        - ``artifact_refs`` preserve conflict or abort evidence until recovery
+          classifies the run as safely closed.
+    """
+
+    execution_id: str
+    workspace_id: str
+    status: ReconcileClosureStatus
+    summary: str = ""
+    conflict_files: tuple[str, ...] = ()
+    protected_paths: tuple[str, ...] = ()
+    protected_path_policy: Literal["none", "restored_with_evidence", "blocked_explicitly"] = "none"
+    target_ref: str = ""
+    target_head_at_prepare: str = ""
+    artifact_refs: tuple[str, ...] = ()
+
+
+@dataclass(frozen=True)
+class DispatchRecoveryGate:
+    """Durable dispatch/completion barrier used during restart re-entry.
+
+    Authority:
+        docs/ORCHESTRATION-PLANE-OPERATOR-CONFLICT-RECOVERY.md sections 6.3, 6.4, 9
+
+    Invariants:
+        - ``duplicate_complete_blocked`` stays true until reconcile closure is
+          durably re-established as ``merged`` or ``noop``.
+        - ``unsafe_dispatch_blocked`` stays true while restart recovery has not
+          yet reconstituted pending reconcile/operator state coherently.
+    """
+
+    status: DispatchSafetyStatus
+    reason: str = ""
+    duplicate_complete_blocked: bool = True
+    unsafe_dispatch_blocked: bool = True
+    blocked_on_execution_id: str | None = None
+    blocked_on_case_id: str | None = None
+
+
+@dataclass(frozen=True)
+class RuntimeRecoveryRecord:
+    """Authoritative runtime state required to reconstruct restart position.
+
+    Authority:
+        docs/ORCHESTRATION-PLANE-OPERATOR-CONFLICT-RECOVERY.md sections 6.2, 6.3, 6.4, 7
+
+    This record is intentionally broader than ``RuntimeSnapshot``. The snapshot
+    is loop-time observability; this record is restart authority.
+    """
+
+    workspace_id: str
+    step_id: str
+    worktree_path: str
+    scratch_branch: str
+    target_ref: str
+    target_head_at_prepare: str
+    execution_id: str = ""
+    runner: str = ""
+    runner_handle: str = ""
+    session_id: str | None = None
+    execution_status: Literal[
+        "starting",
+        "running",
+        "stall",
+        "success",
+        "fail",
+        "transport_error",
+        "cancelled",
+        "unknown",
+    ] = "unknown"
+    started_at: float = 0.0
+    last_update_at: float = 0.0
+    execution_artifact_refs: tuple[str, ...] = ()
+    reconcile_state: ReconcileRecoveryState | None = None
+    paused_routing_state: PausedRoutingState = "active"
 
 
 @dataclass(frozen=True)
@@ -111,6 +246,7 @@ class ContinuityJournalEntry:
         timestamp: Unix timestamp of this event.
         outcome: Outcome classification (success, failure, abort, crash_adjacent).
         details: Additional event details.
+        runtime_state: Optional recovery snapshot for restart-sensitive events.
     """
 
     event_id: str
@@ -121,6 +257,7 @@ class ContinuityJournalEntry:
     timestamp: float
     outcome: Literal["success", "failure", "abort", "crash_adjacent"] | None = None
     details: tuple[str, ...] = ()
+    runtime_state: RuntimeRecoveryRecord | None = None
 
 
 @dataclass(frozen=True)
@@ -137,6 +274,8 @@ class ContinuityHandoff:
         runner: Runner name.
         artifacts: Tuple of artifact references included in the handoff.
         timestamp: Unix timestamp of the handoff.
+        runtime_state: Restart-safe runtime state handed to the next session.
+        dispatch_recovery_gate: Dispatch/completion barrier preserved across handoff.
     """
 
     from_session: str
@@ -145,6 +284,8 @@ class ContinuityHandoff:
     runner: str
     artifacts: tuple[str, ...] = ()
     timestamp: float | None = None
+    runtime_state: RuntimeRecoveryRecord | None = None
+    dispatch_recovery_gate: DispatchRecoveryGate | None = None
 
 
 @dataclass(frozen=True)
@@ -439,7 +580,16 @@ __all__ = [
     "ContinuityHandoff",
     "ContinuityJournalEntry",
     "ContinuityLedgerEntry",
+    "DispatchRecoveryGate",
+    "DispatchSafetyStatus",
+    "NotificationKind",
+    "NotificationStatus",
+    "OperatorNotificationRecord",
+    "PausedRoutingState",
     "QuarantineManager",
     "QuarantineManifestEntry",
+    "ReconcileClosureStatus",
+    "ReconcileRecoveryState",
     "ReplaySafetyEnvelope",
+    "RuntimeRecoveryRecord",
 ]

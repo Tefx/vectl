@@ -39,6 +39,11 @@ from vectl.orchestration.config import (
     load_orchestration_config,
     validate_orchestration_config,
 )
+from vectl.orchestration.continuity_artifacts import (
+    NotificationKind,
+    NotificationStatus,
+    PausedRoutingState,
+)
 from vectl.orchestration.contracts import (
     ControlDecision,
     CoreSnapshot,
@@ -280,13 +285,28 @@ class ConfigResult:
 class OperatorNotification:
     """Explicit operator-visible resolver escalation state.
 
-    Authority: docs/ORCHESTRATION-PLANE-ORCH-APP-ROUTING.md section 10
+    Authority:
+        docs/ORCHESTRATION-PLANE-ORCH-APP-ROUTING.md section 10
+        docs/ORCHESTRATION-PLANE-OPERATOR-CONFLICT-RECOVERY.md section 4
+
+    Invariants:
+        - ``status`` is durable receipt state, not a transient UI hint.
+        - ``paused_routing_state`` remains non-``active`` while this notice is
+          the authoritative routing reason the app must not resume ordinary
+          dispatch.
     """
 
     case_id: str
     summary: str
+    notification_id: str = ""
+    run_id: str | None = None
+    kind: NotificationKind = "operator_required"
+    status: NotificationStatus = "pending"
     evidence_refs: tuple[str, ...] = ()
     operator_message: str | None = None
+    paused_routing_state: PausedRoutingState = "paused_operator_wait"
+    created_at: float = 0.0
+    updated_at: float = 0.0
 
 
 @dataclass(frozen=True)

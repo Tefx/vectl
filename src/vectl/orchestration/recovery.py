@@ -24,6 +24,9 @@ from typing import TYPE_CHECKING, Literal
 from vectl.orchestration.continuity_artifacts import (
     ContinuityJournalEntry,
     ContinuityLedgerEntry,
+    DispatchRecoveryGate,
+    OperatorNotificationRecord,
+    RuntimeRecoveryRecord,
 )
 from vectl.orchestration.run_store import RunRecord, RunRegistry
 
@@ -145,6 +148,12 @@ class RecoveryReport:
         operator_message: Message to surface to the operator if intervention is needed.
         gate_open_allowed: Whether startup/recovery gate may proceed after this report.
         no_silent_deletion_preserved: Whether quarantine behavior preserved source artifacts.
+        runtime_state: Authoritative recovered runtime/worktree/execution/
+            reconcile state, when available.
+        operator_notifications: Durable operator notifications still governing
+            paused routing after recovery.
+        dispatch_recovery_gate: Restart barrier proving duplicate-complete and
+            unsafe-dispatch prevention remains active until closure is restored.
     """
 
     outcome: RecoveryOutcome
@@ -158,6 +167,9 @@ class RecoveryReport:
     operator_message: str | None = None
     gate_open_allowed: bool = True
     no_silent_deletion_preserved: bool = False
+    runtime_state: RuntimeRecoveryRecord | None = None
+    operator_notifications: tuple[OperatorNotificationRecord, ...] = ()
+    dispatch_recovery_gate: DispatchRecoveryGate | None = None
 
 
 def recovery_gate_open_allowed(outcome: RecoveryOutcome) -> bool:
@@ -243,12 +255,20 @@ class StartupRecoveryControllerInput:
         active_runs: Tuple of active run identifiers known to the system.
         blocked_hygiene_artifacts: Tuple of artifact paths that hygiene classified
             as blocking.
+        run_records: Authoritative durable run records available for recovery.
+        runtime_states: Restart-sensitive runtime states reconstructed from the
+            durable store before dispatch can resume.
+        operator_notifications: Pending or acknowledged operator notifications
+            that must keep routing paused across restart.
     """
 
     continuity_ledger: tuple[ContinuityLedgerEntry, ...] = ()
     continuity_journal: tuple[ContinuityJournalEntry, ...] = ()
     active_runs: tuple[str, ...] = ()
     blocked_hygiene_artifacts: tuple[str, ...] = ()
+    run_records: tuple[RunRecord, ...] = ()
+    runtime_states: tuple[RuntimeRecoveryRecord, ...] = ()
+    operator_notifications: tuple[OperatorNotificationRecord, ...] = ()
 
 
 @dataclass(frozen=True)
@@ -266,6 +286,12 @@ class StartupRecoveryControllerOutput:
         halt_requested: True if the controller concluded orchestration should halt.
         halt_reason: Reason for halt if halt_requested is True.
         operator_messages: Tuple of messages to surface to the operator.
+        recovered_runtime_states: Runtime states restored into restart-safe
+            orchestration view.
+        operator_notifications: Notifications that must remain open after
+            restart because operator closure has not been durably recorded.
+        dispatch_recovery_gates: Dispatch/completion barriers that remain in
+            force until reconcile/operator closure is re-established.
     """
 
     startup_safe: bool
@@ -274,6 +300,9 @@ class StartupRecoveryControllerOutput:
     halt_requested: bool = False
     halt_reason: str = ""
     operator_messages: tuple[str, ...] = ()
+    recovered_runtime_states: tuple[RuntimeRecoveryRecord, ...] = ()
+    operator_notifications: tuple[OperatorNotificationRecord, ...] = ()
+    dispatch_recovery_gates: tuple[DispatchRecoveryGate, ...] = ()
 
 
 # ---------------------------------------------------------------------

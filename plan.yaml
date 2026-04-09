@@ -72672,7 +72672,7 @@ phases:
       \ semantics detected."
   - id: orchestration_upper_layer_review.run-full-plan-upper-layer-spec-conformance-audit
     name: Run full-plan upper-layer spec conformance audit
-    status: claimed
+    status: done
     description: 'Full-plan spec conformance audit for upper-layer orchestration.
       Focus on emergent cross-phase properties: claim remains normal-flow only; complete
       never occurs before reconcile merged|noop; review/gate non-pass results become
@@ -72692,6 +72692,25 @@ phases:
     agent: spec-verifier-tacit
     claimed_by: vectl-decide-orchestrator-tacit
     claimed_at: '2026-04-09T18:26:36.444696+00:00'
+    done_at: '2026-04-09T18:35:25.022706+00:00'
+    evidence: "Artifact:\n- Commit hash: N/A (audit-only step)\n\nVerification:\n\
+      - Run: spec-verifier-tacit full-plan conformance audit across upper-layer orchestration\
+      \ contracts/spec refs -> matrix produced with explicit dispositions.\n- Conformance\
+      \ matrix outcome:\n  - Claim remains normal-flow only: **PROVEN**\n  - Complete\
+      \ never occurs before reconcile merged|noop: **PROVEN**\n  - Review/gate non-pass\
+      \ results become ResolutionCase inputs: **PROVEN**\n  - Planner remains resolver\
+      \ remediation subagent: **PROVEN**\n  - operator_required stays explicit and\
+      \ durable across restart: **PROVEN + NEEDS_TEST** (durable crash/restart round-trip\
+      \ test coverage gap called out)\n- Explicit dispositions delivered for all non-PROVEN\
+      \ findings:\n  - G5.1 acceptable-by-design mapping (`operator_required` control\
+      \ decision kind) with orch-app paused-state enforcement\n  - G5.2 NEEDS_TEST\
+      \ for restart durability round-trip of operator notifications\n  - G5.3 PARTIAL\
+      \ for explicit transition wiring of additional paused routing states\n\nSpec\
+      \ link:\n- docs/ORCHESTRATION-PLANE-DISPATCH-AND-PROMPT-POLICY.md\n- docs/ORCHESTRATION-PLANE-RESOLVER-COORDINATION.md\n\
+      - docs/ORCHESTRATION-PLANE-ORCH-APP-ROUTING.md\n- docs/ORCHESTRATION-PLANE-OPERATOR-CONFLICT-RECOVERY.md\n\
+      - docs/ORCHESTRATION-PLANE-INTERFACES.md\n- docs/ORCHESTRATION-PLANE-RESOLUTION-CONTRACT.md\n\
+      \nDisposition:\n- Full-plan spec conformance audit completed with blocker-class\
+      \ obligations classified and explicit debt dispositions recorded."
   - id: orchestration_upper_layer_review.run-black-box-upper-layer-orchestration-verification
     name: Run black-box upper-layer orchestration verification
     status: pending

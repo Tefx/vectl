@@ -65801,7 +65801,7 @@ phases:
       \ config red-test failure"
   - id: decide_refresh_impl.spec-conformance
     name: Verify RFC conformance
-    status: claimed
+    status: pending
     description: Spec conformance verification via adversarial divergence hunting.
       Audit runner provenance, caller-owned advisor_state/next_state, top-level status/reason_code/message,
       policy metadata, standalone advisor semantics, and MCP contract shape against
@@ -65836,8 +65836,6 @@ phases:
     - decide_refresh_impl.core
     - decide_refresh_impl.mcp-surface
     agent: spec-verifier-tacit
-    claimed_by: spec-verifier-tacit
-    claimed_at: '2026-04-09T07:23:59.231367+00:00'
   - id: decide_refresh_impl.gate
     name: Gate decide_refresh_impl
     status: pending

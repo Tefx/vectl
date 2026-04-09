@@ -65801,7 +65801,7 @@ phases:
       \ config red-test failure"
   - id: decide_refresh_impl.spec-conformance
     name: Verify RFC conformance
-    status: claimed
+    status: done
     description: Spec conformance verification via adversarial divergence hunting.
       Audit runner provenance, caller-owned advisor_state/next_state, top-level status/reason_code/message,
       policy metadata, standalone advisor semantics, and MCP contract shape against
@@ -65838,6 +65838,44 @@ phases:
     agent: spec-verifier-tacit
     claimed_by: spec-verifier-tacit
     claimed_at: '2026-04-09T07:40:31.165984+00:00'
+    done_at: '2026-04-09T07:40:45.102913+00:00'
+    evidence: 'Spec conformance audit completed with blocker findings and remediation
+      ownership established.
+
+
+      Findings summary:
+
+      - BLOCKER: AF1 runner provenance divergence (`src/vectl/decide.py` hardcoded
+      `reuse_runner="task"`, violating RFC runner provenance semantics).
+
+      - SHOULD_FIX: R8 escalation rigidity concern.
+
+
+      Audit evidence source:
+
+      - subagent: spec-verifier-tacit
+
+      - task_id: ses_28edf18acffeiqbjX7fpa6Wnqn
+
+      - result: FAIL (used as verification signal, not final phase completion)
+
+      - refs confirmation: `tools/vectl/README.md` not found; primary RFC analyzed:
+      `docs/RFC-vectl-decide-advisor-refresh.md`.
+
+
+      Remediation ownership created before completion (batched fix protocol):
+
+      - decide_refresh_impl.af1-r8-fix (python-senior-tacit)
+
+      - decide_refresh_impl.af1-r8-reverify (spec-verifier-tacit)
+
+      - gate dependency updated so `decide_refresh_impl.gate` requires `decide_refresh_impl.af1-r8-reverify`.
+
+
+      Disposition:
+
+      - This step is complete as a conformance audit artifact with explicit downstream
+      blocker ownership in plan state.'
   - id: decide_refresh_impl.gate
     name: Gate decide_refresh_impl
     status: pending

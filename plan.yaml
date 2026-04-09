@@ -66564,7 +66564,7 @@ phases:
     agent: gate-reviewer-tacit
   - id: deep_review.fix-repeated-failure-status-signaling
     name: Repair repeated-failure status/reason_code signaling
-    status: pending
+    status: claimed
     description: 'step_type: implementation
 
       work_type: defect_repair
@@ -66662,6 +66662,8 @@ phases:
     depends_on:
     - deep_review.decide-black-box
     agent: python-senior-tacit
+    claimed_by: python-senior-tacit
+    claimed_at: '2026-04-09T09:31:23.648093+00:00'
   - id: deep_review.reverify-repeated-failure-status-signaling
     name: Reverify repeated-failure blocked/reason_code behavior
     status: pending

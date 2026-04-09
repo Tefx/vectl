@@ -71754,7 +71754,7 @@ phases:
       \ no"
   - id: orchestration_operator_recovery.fix-operator-conflict-recovery-dispatch-and-resolution-gaps
     name: Fix operator/conflict/recovery dispatch and resolution gaps
-    status: pending
+    status: claimed
     description: 'Fix ALL blockers found by the failed operator/conflict/recovery
       conformance audit.
 
@@ -71899,6 +71899,8 @@ phases:
     depends_on:
     - orchestration_operator_recovery.audit-operator-conflict-recovery-conformance
     agent: python-senior-tacit
+    claimed_by: python-senior-tacit
+    claimed_at: '2026-04-09T16:36:58.602998+00:00'
   - id: orchestration_operator_recovery.reverify-operator-conflict-recovery-conformance-after-fix
     name: Reverify operator/conflict/recovery conformance after fix
     status: pending

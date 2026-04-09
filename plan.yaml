@@ -71313,17 +71313,55 @@ phases:
   - id: orchestration_operator_recovery.implement-operator-notification-conflict-preservation-and-recovery-alignment
     name: Implement operator notification, conflict preservation, and recovery alignment
     status: pending
-    description: Implement durable operator/conflict/recovery alignment for the upper
-      orchestration layer. Preserve operator_required as durable orchestration state
-      with notification metadata, receipt state, and pause state; preserve merge_conflict
-      and aborted reconcile evidence without silent protected-path integration; keep
-      plan.yaml protected; reconstruct worktree/execution/reconcile/resolution/operator
-      state after restart before unsafe dispatch resumes; prevent complete replay
-      before reconcile closure after restart.
-    verification: 'phase-check: operator_required creates durable notification state
-      and paused routing; unresolved conflict and protected-path evidence survive
-      restart; recovery reconstructs enough state to prevent unsafe dispatch or duplicate
-      complete.'
+    description: "step_type: implementation\nagent_source: project\nupstream_artifacts:\n\
+      \  - path: src/vectl/orch_app.py\n    from_step: orchestration_operator_recovery.contract-operator-notification-conflict-preservation-and-recovery-alignment\n\
+      \    tier: contract\n  - path: src/vectl/orchestration/runtime.py\n    from_step:\
+      \ orchestration_operator_recovery.contract-operator-notification-conflict-preservation-and-recovery-alignment\n\
+      \    tier: contract\n  - path: src/vectl/orchestration/recovery.py\n    from_step:\
+      \ orchestration_operator_recovery.contract-operator-notification-conflict-preservation-and-recovery-alignment\n\
+      \    tier: contract\n  - path: src/vectl/orchestration/run_store.py\n    from_step:\
+      \ orchestration_operator_recovery.contract-operator-notification-conflict-preservation-and-recovery-alignment\n\
+      \    tier: contract\n  - path: src/vectl/orchestration/continuity_artifacts.py\n\
+      \    from_step: orchestration_operator_recovery.contract-operator-notification-conflict-preservation-and-recovery-alignment\n\
+      \    tier: contract\n  - path: tests/\n    from_step: orchestration_operator_recovery.define-red-tests-for-operator-pause-conflict-preservation-and-recovery-alignment\n\
+      \    tier: test\n\nFill in stub bodies and complete the implementation within\
+      \ the existing orchestration durability/recovery signatures per the contract\
+      \ from step orchestration_operator_recovery.contract-operator-notification-conflict-preservation-and-recovery-alignment.\n\
+      \nUPSTREAM ARTIFACTS (AUTHORITATIVE / PROTECTED):\n- Contract artifacts from\
+      \ orchestration_operator_recovery.contract-operator-notification-conflict-preservation-and-recovery-alignment\
+      \ are AUTHORITATIVE for signatures, durable-state fields, restart invariants,\
+      \ and protected-path conflict semantics.\n- Test cases from orchestration_operator_recovery.define-red-tests-for-operator-pause-conflict-preservation-and-recovery-alignment\
+      \ are PROTECTED and define the red gaps to close.\n\nYOUR SCOPE: Replace stub\
+      \ markers, incomplete persistence paths, or placeholder recovery logic with\
+      \ working orchestration logic only within the pinned interfaces. Preserve operator_required\
+      \ as durable orchestration state with notification metadata, receipt state,\
+      \ and pause state; preserve merge_conflict and aborted reconcile evidence without\
+      \ silent protected-path integration; reconstruct worktree/execution/reconcile/resolution/operator\
+      \ state after restart before unsafe dispatch resumes; prevent complete replay\
+      \ before reconcile closure after restart.\n\nIf a contract artifact is wrong\
+      \ or incomplete, document a deviation record (type, what, why, impact) — do\
+      \ NOT silently rewrite.\n\n## Failure-mode checklist\n- relative vs absolute\
+      \ path handling for persisted recovery / conflict artifacts\n- missing-file\
+      \ fallback behavior during restart recovery\n- explicit clear / null overwrite\
+      \ semantics for operator notification and conflict state\n- stale-definition\
+      \ vs new-state precedence when replayed state and persisted artifacts disagree\n\
+      - partial-write / CAS-conflict behavior for durable orchestration metadata\n\
+      \n## State semantics\n- last-writer-wins: operator notification receipt / pause\
+      \ state only where the contract explicitly permits newer persisted orchestration\
+      \ state to supersede older in-memory state\n- must preserve exactly: unresolved\
+      \ merge_conflict, aborted reconcile evidence, protected-path conflict evidence,\
+      \ and reconcile-closure gating state across restart\n- backward-compatible legacy\
+      \ behavior: plan.yaml remains protected, and restart may resume only after enough\
+      \ preserved state exists to prevent unsafe dispatch or duplicate complete\n\n\
+      ## Completion Criteria (stub exclusion)\nThis is an IMPLEMENTATION step. Stub-only\
+      \ completion is NOT acceptable.\nEach deliverable MUST contain substantive logic\
+      \ that processes its inputs and produces outputs that vary based on those inputs.\
+      \ Private stub classes or placeholder persistence/recovery paths do not satisfy\
+      \ this requirement."
+    verification: 'phase-check: post-contract implementation closes the expected-red
+      gaps; operator_required creates durable notification state and paused routing;
+      unresolved conflict and protected-path evidence survive restart; recovery reconstructs
+      enough state to prevent unsafe dispatch or duplicate complete.'
     refs:
     - docs/ORCHESTRATION-PLANE-OPERATOR-CONFLICT-RECOVERY.md
     - docs/ORCHESTRATION-PLANE-ORCH-APP-ROUTING.md
@@ -71333,6 +71371,9 @@ phases:
     - src/vectl/orchestration/recovery.py
     - src/vectl/orchestration/run_store.py
     - src/vectl/orchestration/continuity_artifacts.py
+    depends_on:
+    - orchestration_operator_recovery.contract-operator-notification-conflict-preservation-and-recovery-alignment
+    - orchestration_operator_recovery.define-red-tests-for-operator-pause-conflict-preservation-and-recovery-alignment
     agent: python-senior-tacit
   - id: orchestration_operator_recovery.verify-durable-operator-pause-and-recovery-behavior
     name: Verify durable operator pause and recovery behavior

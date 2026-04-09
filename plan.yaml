@@ -66643,6 +66643,86 @@ phases:
     depends_on:
     - deep_review.decide-black-box
     agent: python-senior-tacit
+  - id: deep_review.reverify-repeated-failure-status-signaling
+    name: Reverify repeated-failure blocked/reason_code behavior
+    status: pending
+    description: 'step_type: verification
+
+      work_type: proof_closure
+
+      verification_scope: phase-check
+
+
+      As an INDEPENDENT TESTER, rerun the black-box reproduction for repeated-failure
+      scenarios using only the RFC and public contract expectations.
+
+
+      Goal:
+
+      - confirm repeated-failure scenarios now emit top-level status=blocked and reason_code=repeated_failures
+
+      - confirm escalate action remains present where RFC expects repeated-failure
+      escalation handling
+
+      - confirm the reproduction no longer terminates as done/no_executable_steps
+      when repeated failures are pending
+
+
+      Use fresh black-box fixtures for advisor_state / running_tasks / completed_results
+      that exercise repeated-failure escalation.
+
+      Finding issues is success; missing the RFC-required blocked/repeated_failures
+      mapping is blocker-class.
+
+
+      Independence Level: L1'
+    verification: 'phase-check protecting deep_review.gate: black-box reproduction
+      proves repeated-failure scenarios produce top-level blocked/repeated_failures
+      output and no longer report done/no_executable_steps while escalation is pending.'
+    evidence_template: '## refs Read Confirmation (MANDATORY)
+
+
+      For each ref in this step:
+
+      - <filename> — key passage or "NOT READ: <reason>"
+
+
+      If no refs were provided, state: "No refs for this step."
+
+
+      ## Black-Box Reverification Report
+
+      - Fixtures used:
+
+      - Exact command(s) executed:
+
+      - Actual top-level status observed:
+
+      - Actual reason_code observed:
+
+      - Escalate action observed:
+
+      - Expected RFC mapping matched: yes|no
+
+
+      ## Findings
+
+      | Severity | Description | Reproduction |
+
+      | --- | --- | --- |
+
+      | blocker | <if mismatch remains> | <steps> |
+
+
+      ## Verdict
+
+      - PASS if repeated-failure scenario yields blocked/repeated_failures and no
+      done/no_executable_steps terminal summary appears while escalation is pending
+
+      - ISSUES_FOUND otherwise'
+    depends_on:
+    - deep_review.fix-repeated-failure-status-signaling
+    agent: blind-tester-tacit
 - id: orchestration_foundation_lock
   name: Orchestration Foundation Lock
   status: done

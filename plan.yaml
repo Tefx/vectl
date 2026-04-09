@@ -71537,7 +71537,7 @@ phases:
   - id: orchestration_operator_recovery.define-red-tests-for-operator-pause-conflict-preservation-and-recovery-alignment
     name: Define red tests for operator pause, conflict preservation, and recovery
       alignment
-    status: pending
+    status: claimed
     description: 'step_type: test
 
       step_intent: test_define_red
@@ -71595,6 +71595,8 @@ phases:
     depends_on:
     - orchestration_operator_recovery.contract-operator-notification-conflict-preservation-and-recovery-alignment
     agent: integration-verifier-tacit
+    claimed_by: integration-verifier-tacit
+    claimed_at: '2026-04-09T15:25:33.349893+00:00'
 - id: orchestration_upper_layer_review
   name: Orchestration Upper-Layer Review
   status: locked

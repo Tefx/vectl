@@ -32,12 +32,16 @@ class DecideState:
             authoritative reuse token provenance.
         failure_counts: Consecutive failure counts by step ID for escalation
             threshold decisions.
+        pending_escalations: Durable non-terminal blocker memory keyed by step
+            ID. Entries remain until the caller clears them via reconciliation or
+            a later success closes the escalation.
     """
 
     completion_times: dict[str, float] = field(default_factory=dict)
     session_registry: dict[str, str] = field(default_factory=dict)
     session_runner_registry: dict[str, str] = field(default_factory=dict)
     failure_counts: dict[str, int] = field(default_factory=dict)
+    pending_escalations: dict[str, str] = field(default_factory=dict)
 
     def record_completion(
         self,
@@ -126,6 +130,23 @@ class DecideState:
             step_id: Step identifier.
         """
         self.failure_counts.pop(step_id, None)
+
+    def mark_pending_escalation(self, *, step_id: str, reason_code: str) -> None:
+        """Persist a non-terminal escalation blocker for ``step_id``.
+
+        Args:
+            step_id: Step identifier.
+            reason_code: Machine-readable reason for the open escalation.
+        """
+        self.pending_escalations[step_id] = reason_code
+
+    def clear_pending_escalation(self, *, step_id: str) -> None:
+        """Clear any open escalation blocker for ``step_id``.
+
+        Args:
+            step_id: Step identifier.
+        """
+        self.pending_escalations.pop(step_id, None)
 
 
 __all__ = ["DECIDE_STATE_RUNTIME_BOUNDARY", "DecideState"]

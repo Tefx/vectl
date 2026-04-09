@@ -247,10 +247,14 @@ def decide(
         raw_sessions = advisor_state.get("session_registry", {})
         raw_session_runners = advisor_state.get("session_runner_registry", {})
         raw_failures = advisor_state.get("failure_counts", {})
+        raw_pending_escalations = advisor_state.get("pending_escalations", {})
         completion_map = raw_completion if isinstance(raw_completion, dict) else {}
         session_map = raw_sessions if isinstance(raw_sessions, dict) else {}
         session_runner_map = raw_session_runners if isinstance(raw_session_runners, dict) else {}
         failure_map = raw_failures if isinstance(raw_failures, dict) else {}
+        pending_escalation_map = (
+            raw_pending_escalations if isinstance(raw_pending_escalations, dict) else {}
+        )
 
         completion_times = {
             step_id: timestamp
@@ -266,11 +270,17 @@ def decide(
         failure_counts = {
             step_id: count for step_id, count in failure_map.items() if step_id in step_ids
         }
+        pending_escalations = {
+            step_id: reason_code
+            for step_id, reason_code in pending_escalation_map.items()
+            if step_id in step_ids and reason_code == "repeated_failures"
+        }
         decision_state = DecideState(
             completion_times=completion_times,
             session_registry=session_registry,
             session_runner_registry=session_runner_registry,
             failure_counts=failure_counts,
+            pending_escalations=pending_escalations,
         )
     else:
         decision_state = DecideState()
@@ -311,6 +321,7 @@ def decide(
                 )
                 # Reset failure count on success
                 decision_state.reset_failure(step_id=result.step_id)
+                decision_state.clear_pending_escalation(step_id=result.step_id)
             elif result.status == "FAIL":
                 # Check if this is an expected-red step (red outcome demonstrates gap)
                 found = plan.find_step(result.step_id)
@@ -334,6 +345,7 @@ def decide(
                         )
                         # Clear any prior failure count for this step
                         decision_state.reset_failure(step_id=result.step_id)
+                        decision_state.clear_pending_escalation(step_id=result.step_id)
                         continue  # skip the normal FAIL path
 
                 # Default FAIL path: must_green or verify=None
@@ -342,6 +354,10 @@ def decide(
 
                 if count >= 3:
                     repeated_failure_triggered = True
+                    decision_state.mark_pending_escalation(
+                        step_id=result.step_id,
+                        reason_code="repeated_failures",
+                    )
                     # Escalate after 3 failures
                     actions.append(
                         Action(
@@ -462,8 +478,10 @@ def decide(
 
     # Compute top-level status and reason code
     # Check for repeated failures that need attention
-    escalation_pending = repeated_failure_triggered or any(
-        count >= ESCALATION_THRESHOLD for count in decision_state.failure_counts.values()
+    escalation_pending = (
+        repeated_failure_triggered
+        or any(count >= ESCALATION_THRESHOLD for count in decision_state.failure_counts.values())
+        or bool(decision_state.pending_escalations)
     )
     if escalation_pending:
         status: Literal["dispatch", "wait", "blocked", "done"] = "blocked"
@@ -498,6 +516,11 @@ def decide(
         "failure_counts": {
             step_id: count
             for step_id, count in decision_state.failure_counts.items()
+            if step_id in step_ids
+        },
+        "pending_escalations": {
+            step_id: reason_code
+            for step_id, reason_code in decision_state.pending_escalations.items()
             if step_id in step_ids
         },
     }

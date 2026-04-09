@@ -720,6 +720,75 @@ class TestStatusReasonCode:
             action.action == "escalate" and action.step_id == "s1" for action in output.actions
         )
         assert output.next_state.get("failure_counts", {}) == {}
+        assert output.next_state.get("pending_escalations", {}) == {"s1": "repeated_failures"}
+
+    def test_pending_escalation_keeps_followup_call_blocked(self, tmp_path: Path) -> None:
+        """Unreconciled repeated-failure escalation persists via next_state.
+
+        Root cause: blocked/repeated_failures was previously trigger-cycle output
+        only. The carried next_state must preserve non-terminal escalation memory
+        so the next decide() call does not regress to done/no_executable_steps.
+        """
+        plan = Plan(
+            project="decide-test",
+            phases=[
+                Phase(
+                    id="p1",
+                    name="Phase 1",
+                    status=PhaseStatus.PENDING,
+                    steps=[
+                        Step(
+                            id="s1",
+                            name="Critical verification step",
+                            status=StepStatus.CLAIMED,
+                            claimed_by="agent-1",
+                            verify="must_green",
+                        ),
+                    ],
+                )
+            ],
+        )
+        plan_path = tmp_path / "plan.yaml"
+        save_plan(plan, plan_path)
+
+        decide_mod = importlib.import_module("vectl.decide")
+        original = decide_mod.resolve_plan_path
+        decide_mod.resolve_plan_path = lambda: plan_path
+        try:
+            trigger = decide(
+                running_tasks=[],
+                completed_results=[
+                    CompletedResult(
+                        step_id="s1",
+                        task_id="task-1",
+                        runner="claude",
+                        status="FAIL",
+                        output_summary="Verification failed again",
+                    )
+                ],
+                max_parallelism=5,
+                advisor_state={
+                    "completion_times": {},
+                    "session_registry": {},
+                    "failure_counts": {"s1": ESCALATION_THRESHOLD - 1},
+                },
+            )
+
+            followup = decide(
+                running_tasks=[],
+                completed_results=None,
+                max_parallelism=5,
+                advisor_state=trigger.next_state,
+            )
+        finally:
+            decide_mod.resolve_plan_path = original
+
+        assert trigger.status == "blocked"
+        assert trigger.reason_code == "repeated_failures"
+        assert followup.status == "blocked"
+        assert followup.reason_code == "repeated_failures"
+        assert followup.next_state.get("pending_escalations", {}) == {"s1": "repeated_failures"}
+        assert all(action.action != "escalate" for action in followup.actions)
 
 
 # ---------------------------------------------------------------------------

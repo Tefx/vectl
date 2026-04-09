@@ -66282,7 +66282,7 @@ phases:
       \ true"
 - id: deep_review
   name: Deep Review (Independent Audit)
-  status: pending
+  status: in_progress
   gate: Independent reviewers confirm wiring, contract conformance, and standalone
     advisor semantics.
   depends_on:
@@ -66320,7 +66320,7 @@ phases:
     agent: wiring-auditor
   - id: deep_review.decide-architecture
     name: Review boundary and ownership correctness
-    status: pending
+    status: claimed
     description: Independent boundary review for refreshed vectl_decide. Verify standalone
       usability outside the orchestration plane, preserved core authority semantics,
       coherent caller-owned state ownership, and no silent import of roster/runtime
@@ -66343,6 +66343,8 @@ phases:
 
       - Issues found: none | <detail>'
     agent: software-architect-tacit
+    claimed_by: software-architect-tacit
+    claimed_at: '2026-04-09T09:03:35.679813+00:00'
   - id: deep_review.decide-black-box
     name: Black-box verify refreshed advisor contract
     status: pending

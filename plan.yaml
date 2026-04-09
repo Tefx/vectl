@@ -68424,7 +68424,7 @@ phases:
       - Explicit unknown-role failure behavior implemented'
   - id: orchestration_dispatch_policy.retest-dispatch-policy-and-canonical-contract-sync-green
     name: Retest dispatch policy and canonical contract sync green
-    status: claimed
+    status: done
     description: 'step_type: test
 
       step_intent: retest_green
@@ -68451,6 +68451,45 @@ phases:
     agent: integration-verifier-tacit
     claimed_by: integration-verifier-tacit
     claimed_at: '2026-04-08T23:59:08.276085+00:00'
+    done_at: '2026-04-09T04:09:09.605031+00:00'
+    evidence: 'Artifact:
+
+      - Independent retest report completed for dispatch policy green verification
+
+
+      Verification:
+
+      - uv run pytest tests/orchestration/unit/test_dispatch_policy.py -v -> 45 passed
+
+      - uv run pytest tests/orchestration/unit/test_dispatch_policy_red.py -v -> 17
+      xfailed (expected red)
+
+      - combined targeted run -> green with expected xfails only
+
+
+      Spec link:
+
+      - docs/ORCHESTRATION-PLANE-DISPATCH-AND-PROMPT-POLICY.md
+
+      - docs/ORCHESTRATION-PLANE-INTERFACES.md
+
+      - docs/ORCHESTRATION-PLANE-RESOLUTION-CONTRACT.md
+
+
+      Refs confirmation:
+
+      - dispatch/prompt/interface/resolution docs reviewed
+
+      - corresponding dispatch policy sources/tests validated
+
+
+      Key proofs:
+
+      - main_worktree reviewer/planner role contexts validated
+
+      - non-pass structured review outcomes normalize to explicit ResolutionCase inputs
+
+      - unknown-role explicit failure behavior validated'
   - id: orchestration_dispatch_policy.gate-dispatch-policy
     name: Gate dispatch policy
     status: pending

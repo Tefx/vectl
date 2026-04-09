@@ -2997,7 +2997,13 @@ class TestVectlDecide:
 
         vectl_decide = _vectl_decide_tool.fn  # type: ignore[attr-defined]
 
-        result = vectl_decide(running_tasks=[])
+        input_advisor_state = {
+            "completion_times": {},
+            "session_registry": {},
+            "failure_counts": {},
+        }
+
+        result = vectl_decide(running_tasks=[], advisor_state=input_advisor_state)
 
         # Verify structured output shape per refreshed contract
         assert isinstance(result, dict)
@@ -3008,6 +3014,9 @@ class TestVectlDecide:
         assert "next_state" in result
         assert "policy" in result
         assert "decision_log" in result
+        assert "continuation" not in result
+        assert "halt_reason" not in result
+        assert "session" not in result
 
         # status is one of: dispatch, wait, blocked, done
         assert result["status"] in ("dispatch", "wait", "blocked", "done")
@@ -3027,18 +3036,35 @@ class TestVectlDecide:
         # decision_log should be a list
         assert isinstance(result["decision_log"], list)
 
-        # next_state is caller-owned state replacement
+        # advisor_state is the canonical caller-owned input and next_state is the
+        # full replacement output.
         assert isinstance(result["next_state"], dict)
         assert "completion_times" in result["next_state"]
         assert "session_registry" in result["next_state"]
         assert "failure_counts" in result["next_state"]
+        assert "advisor_state" not in result
+
+        # policy metadata is explicit in the refreshed contract.
+        assert isinstance(result["policy"], dict)
+        assert "reuse_ttl_s" in result["policy"]
+        assert "escalation_threshold" in result["policy"]
+        assert isinstance(result["policy"]["reuse_ttl_s"], int)
+        assert isinstance(result["policy"]["escalation_threshold"], int)
 
         # When no running tasks and plan has available steps, should recommend claim
         # Plan has a.1 available (pending, no deps)
-        if result["actions"]:
-            action = result["actions"][0]
-            assert "action" in action
-            assert action["action"] in ("claim_and_dispatch", "wait", "complete", "escalate")
+        assert result["status"] == "dispatch"
+        assert result["reason_code"] == "dispatch_available"
+        assert result["actions"]
+        action = result["actions"][0]
+        assert action["action"] == "claim_and_dispatch"
+        assert action["step_id"] == "a.1"
+        assert "agent" in action
+        assert "reuse_token" in action
+        assert "reuse_runner" in action
+        assert action["reuse_token"] is None or isinstance(action["reuse_token"], str)
+        assert action["reuse_runner"] in (None, "task", "claude")
+        assert "session" not in action
 
     def test_vectl_decide_empty_plan(self, tmp_path: Path) -> None:
         """vectl_decide handles empty plan (no phases/steps) gracefully.
@@ -3061,6 +3087,11 @@ class TestVectlDecide:
             assert "actions" in result
             assert "status" in result
             assert "reason_code" in result
+            assert "next_state" in result
+            assert "policy" in result
+            assert "continuation" not in result
+            assert "halt_reason" not in result
+            assert "session" not in result
 
             # Empty plan => no claimable steps => status=done, reason_code=no_executable_steps
             assert result["status"] == "done"
@@ -3069,6 +3100,13 @@ class TestVectlDecide:
             assert result["message"] is not None
             # No actions to take
             assert result["actions"] == []
+            assert isinstance(result["next_state"], dict)
+            assert result["next_state"].keys() >= {
+                "completion_times",
+                "session_registry",
+                "failure_counts",
+            }
+            assert result["policy"].keys() >= {"reuse_ttl_s", "escalation_threshold"}
         finally:
             if old is None:
                 os.environ.pop("VECTL_PLAN_PATH", None)
@@ -3100,6 +3138,19 @@ class TestVectlDecide:
         assert isinstance(result, dict)
         assert "actions" in result
         assert "status" in result
+        assert "reason_code" in result
+        assert "next_state" in result
+        assert "policy" in result
+        assert "continuation" not in result
+        assert "halt_reason" not in result
+        assert "session" not in result
+        assert isinstance(result["next_state"], dict)
+        assert result["next_state"].keys() >= {
+            "completion_times",
+            "session_registry",
+            "failure_counts",
+        }
+        assert result["policy"].keys() >= {"reuse_ttl_s", "escalation_threshold"}
 
         # With running task and a.1 in progress, a.2 shouldn't be claimable (depends on a.1)
         # The status/reason_code depends on max_parallelism and available capacity
@@ -3114,9 +3165,11 @@ class TestVectlDecide:
                 assert "step_id" in action
                 assert "agent" in action
                 # Per refreshed contract: reuse_token/reuse_runner, not session field
-                if "reuse_token" in action and action["reuse_token"] is not None:
-                    assert "reuse_runner" in action
-                    assert action["reuse_runner"] in ("task", "claude")
+                assert "reuse_token" in action
+                assert "reuse_runner" in action
+                assert action["reuse_runner"] in (None, "task", "claude")
+                assert action["reuse_token"] is None or isinstance(action["reuse_token"], str)
+                assert "session" not in action
             elif action["action"] == "complete":
                 assert "step_id" in action
                 assert "evidence" in action
@@ -3188,6 +3241,16 @@ class TestVectlDecide:
 
         assert result["status"] == "blocked"
         assert result["reason_code"] == "repeated_failures"
+        assert "continuation" not in result
+        assert "halt_reason" not in result
+        assert "session" not in result
+        assert isinstance(result["next_state"], dict)
+        assert result["next_state"].keys() >= {
+            "completion_times",
+            "session_registry",
+            "failure_counts",
+        }
+        assert result["policy"].keys() >= {"reuse_ttl_s", "escalation_threshold"}
         assert any(
             action["action"] == "escalate" and action["step_id"] == "alpha.verify"
             for action in result["actions"]

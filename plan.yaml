@@ -65886,6 +65886,62 @@ phases:
       '
     depends_on:
     - decide_refresh_tests.reverify-gate-mcp-contract-refresh-batch
+  - id: decide_refresh_tests.reverify-root-cause-mcp-refreshed-assertions
+    name: Reverify root-cause MCP refreshed assertions
+    status: pending
+    description: 'As an INDEPENDENT TESTER (integration-verifier-tacit), prove the
+      authoritative MCP test surface now matches the refreshed decide contract.
+
+
+      step_type: verification
+
+      verification_scope: phase-check
+
+      expected_result: green
+
+      agent_source: default
+
+      tags: ["integration"]
+
+
+      Scope: tests/test_mcp.py::TestVectlDecide
+
+      Protects downstream gate: decide_refresh_tests.gate
+
+
+      Required checks:
+
+      - command output shows the targeted MCP test class executes after the rewrite
+
+      - pattern checks prove refreshed assertions are present for `status`, `reason_code`,
+      `next_state`, `policy`, `advisor_state`, `reuse_token`, and `reuse_runner`
+
+      - pattern checks prove stale acceptance assertions for `continuation`, `halt_reason`,
+      and `session` are absent from the authoritative MCP contract surface
+
+      - evidence distinguishes active assertions from explanatory comments/docstrings
+      when reporting stale-field absence
+
+
+      Finding stale assertions is a successful verification outcome and must be reported
+      as blocker evidence.'
+    verification: 'phase-check protecting decide_refresh_tests.gate: targeted command
+      output plus pattern checks prove refreshed MCP assertions are present and stale
+      continuation/halt_reason/session acceptance assertions are absent from tests/test_mcp.py::TestVectlDecide.'
+    evidence_template: "## Verification Report\n**Tester**: integration-verifier-tacit\n\
+      **Scope**: tests/test_mcp.py::TestVectlDecide refreshed MCP contract\n**Independence\
+      \ Level**: L1\n\n### refs Read Confirmation (MANDATORY)\nFor each ref in this\
+      \ step:\n- <filename> — key passage or \"NOT READ: <reason>\"\n\nIf no refs\
+      \ were provided, state: \"No refs for this step.\"\n\n### Command Proof\n- Exact\
+      \ command executed:\n```\n<targeted pytest command>\n```\n- Actual output:\n\
+      ```\n<paste stdout/stderr>\n```\n\n### Pattern Checks\n- Refreshed assertions\
+      \ present:\n  - status:\n  - reason_code:\n  - next_state:\n  - policy:\n  -\
+      \ advisor_state:\n  - reuse_token:\n  - reuse_runner:\n- Stale acceptance assertions\
+      \ absent:\n  - continuation:\n  - halt_reason:\n  - session:\n\n### Distinction\
+      \ Notes\n- Comments/docstrings mentioning legacy fields:\n- Active assertion\
+      \ verdict:\n\n### Verdict\n- PASS | ISSUES_FOUND | INCOMPLETE\n"
+    depends_on:
+    - decide_refresh_tests.fix-root-cause-mcp-refreshed-assertions
 - id: decide_refresh_impl
   name: vectl_decide Contract Refresh — Implementation
   status: done

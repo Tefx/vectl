@@ -696,10 +696,17 @@ class Runtime:
 
         self._active_reconciles.add(workspace_id)
         try:
-            reconcile_result = _perform_reconcile(
+            raw_result = _perform_reconcile(
                 execution_id=execution_id,
                 workspace_id=workspace_id,
                 binding=state.binding,
+            )
+            reconcile_result = self.capture_reconcile_result(
+                execution_id=execution_id,
+                status=raw_result.status,
+                summary=raw_result.summary,
+                conflict_files=raw_result.conflict_files,
+                artifact_refs=raw_result.artifact_refs,
             )
         except ReconcileError as exc:
             reconcile_result = self.capture_reconcile_result(
@@ -968,38 +975,18 @@ class Runtime:
                     f"requires operator attention"
                 )
 
-        # Clear any associated execution tracking
-        if state.execution_id:
-            if (
-                force
-                and state.execution_state is not None
-                and state.execution_state.status
-                in (
-                    "starting",
-                    "running",
-                )
-            ):
-                handle = self._runner_handles.get(state.execution_id)
-                if handle is not None:
-                    runner = self._runner_registry.get(state.execution_state.runner)
-                    runner.cancel(handle)
-                    self._runner_handles.pop(state.execution_id, None)
-            self._active_executions.pop(state.execution_id, None)
-            self._stalled_executions.discard(state.execution_id)
-
-        # Clear reconcile tracking
-        self._pending_reconciles.discard(workspace)
-        self._active_reconciles.discard(workspace)
-        self._conflicted_reconciles.discard(workspace)
-
-        # Release reconcile serialization lock if held by this workspace
-        target_ref = state.binding.target_ref or "HEAD"
-        if self._reconcile_lock_by_target.get(target_ref) == workspace:
-            del self._reconcile_lock_by_target[target_ref]
-
-        self._active_workspaces.pop(workspace)
-
         # Perform mechanical worktree cleanup
+        if (
+            force
+            and state.execution_id
+            and state.execution_state is not None
+            and state.execution_state.status in ("starting", "running")
+        ):
+            handle = self._runner_handles.get(state.execution_id)
+            if handle is not None:
+                runner = self._runner_registry.get(state.execution_state.runner)
+                runner.cancel(handle)
+
         cleanup_result = _run_cleanup(
             step_id=state.binding.step_id,
             worktree_path=state.binding.worktree_path,
@@ -1007,6 +994,23 @@ class Runtime:
         )
         if isinstance(cleanup_result, Failure):
             raise cleanup_result.error
+
+        # Only drop runtime tracking after mechanical cleanup succeeds so that
+        # failed cleanup attempts preserve evidence and lifecycle state.
+        if state.execution_id:
+            self._active_executions.pop(state.execution_id, None)
+            self._stalled_executions.discard(state.execution_id)
+            self._runner_handles.pop(state.execution_id, None)
+
+        self._pending_reconciles.discard(workspace)
+        self._active_reconciles.discard(workspace)
+        self._conflicted_reconciles.discard(workspace)
+
+        target_ref = state.binding.target_ref or "HEAD"
+        if self._reconcile_lock_by_target.get(target_ref) == workspace:
+            del self._reconcile_lock_by_target[target_ref]
+
+        self._active_workspaces.pop(workspace, None)
 
 
 def _perform_reconcile(

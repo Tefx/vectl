@@ -9,7 +9,6 @@ Covers: R6 (claim-flow-normality), R12 (complete-after-reconcile), R20 (worktree
 
 from __future__ import annotations
 
-import os
 import subprocess
 import tempfile
 from pathlib import Path
@@ -18,22 +17,19 @@ from unittest.mock import MagicMock, patch
 import pytest
 
 from vectl.orchestration.contracts import (
-    CoreSnapshot,
     ExecutionRequest,
-    ReconcileDisposition,
     ReconcileResult,
-    RuntimeSnapshot,
     WorktreeBinding,
 )
 from vectl.orchestration.core_adapter import PlanCoreAdapter
 from vectl.orchestration.runtime import (
+    Failure,
     ReconcileError,
     Runtime,
     Success,
-    Failure,
+    WorktreeError,
     _request_requires_fresh_workspace,
 )
-
 
 # ---------------------------------------------------------------------------
 # R20: Canonical git worktree path replaces mkdir-only setup
@@ -139,6 +135,7 @@ class TestWorktreeCreateUsesGitWorktreeNotMkdir:
         """R20 proof: worktree_create must record target HEAD at prepare time
         per Section 6.1 step 2 of the lifecycle doc."""
         import asyncio
+
         from vectl.orchestration.runtime import worktree_create
 
         with tempfile.TemporaryDirectory() as tmpdir:
@@ -269,6 +266,32 @@ class TestReconcileSerialization:
         # (which means the lock was acquired and used correctly).
         assert result is not None
         assert result.status == "merged"
+
+    def test_begin_reconcile_captures_result_and_releases_target_lock(self) -> None:
+        """R24/R25 proof: begin_reconcile must persist reconcile proof and release serialization."""
+        runtime, workspace_id, execution_id = self._make_runtime_with_workspace(
+            step_id="step-proof", target_ref="main"
+        )
+
+        proof_result = ReconcileResult(
+            execution_id=execution_id,
+            workspace_id=workspace_id,
+            status="merged",
+            summary="Merged cleanly",
+            artifact_refs=("protected_paths_restored:plan.yaml",),
+        )
+
+        with patch("vectl.orchestration.runtime._perform_reconcile", return_value=proof_result):
+            result = runtime.begin_reconcile(execution_id)
+
+        reconcile_state = runtime._active_workspaces[workspace_id].reconcile_state
+        assert result == proof_result
+        assert runtime.reconcile_disposition(execution_id) == "merged"
+        assert reconcile_state == proof_result
+        assert runtime._active_workspaces[workspace_id].reconcile_status == "merged"
+        assert reconcile_state is not None
+        assert reconcile_state.artifact_refs == ("protected_paths_restored:plan.yaml",)
+        assert "main" not in runtime._reconcile_lock_by_target
 
     def test_concurrent_reconcile_same_target_raises_error(self) -> None:
         """R24 proof: A second reconcile on the same target ref must raise ReconcileError."""
@@ -572,7 +595,6 @@ class TestCoreAdapterReconcileDisposition:
         """R25 proof: PlanCoreAdapter.complete_step preserves reconcile_disposition
         in the enrichened evidence string, not dropping it with `_ = ...`."""
         # Create a minimal plan file
-        import yaml
         from vectl.models import Phase, PhaseStatus, Plan, Step, StepStatus
 
         plan = Plan(
@@ -622,9 +644,8 @@ class TestCoreAdapterReconcileDisposition:
 
     def test_complete_step_noop_disposition_in_evidence(self, tmp_path: Path) -> None:
         """R25 proof: noop disposition is also preserved in evidence."""
-        import yaml
-        from vectl.models import Phase, PhaseStatus, Plan, Step, StepStatus
         import vectl.io as vio
+        from vectl.models import Phase, PhaseStatus, Plan, Step, StepStatus
 
         plan = Plan(
             project="test-project",
@@ -801,6 +822,28 @@ class TestCleanupLifecycleEnforcement:
         assert "main" not in runtime._reconcile_lock_by_target, (
             "Force cleanup must release the reconcile lock"
         )
+
+    def test_cleanup_failure_preserves_workspace_state_and_lock(self) -> None:
+        """R27 proof: failed mechanical cleanup must not discard tracked evidence/state."""
+        runtime, workspace_id, execution_id, _ = self._make_runtime_with_workspace()
+        runtime.capture_reconcile_result(
+            execution_id=execution_id,
+            status="merged",
+            summary="Merged before cleanup",
+        )
+        runtime._reconcile_lock_by_target["main"] = workspace_id
+
+        with patch(
+            "vectl.orchestration.runtime._run_cleanup",
+            return_value=Failure(WorktreeError("cleanup boom")),
+        ):
+            with pytest.raises(WorktreeError, match="cleanup boom"):
+                runtime.cleanup(workspace_id)
+
+        assert workspace_id in runtime._active_workspaces
+        assert execution_id in runtime._active_executions
+        assert runtime._active_workspaces[workspace_id].reconcile_status == "merged"
+        assert runtime._reconcile_lock_by_target.get("main") == workspace_id
 
 
 # ---------------------------------------------------------------------------

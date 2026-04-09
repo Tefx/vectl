@@ -66538,10 +66538,13 @@ phases:
       - Blocking issues: none | <detail>
 
       - Final recommendation: OPEN | BLOCKED'
+    refs:
+    - docs/RFC-vectl-decide-advisor-refresh.md
     depends_on:
     - deep_review.decide-wiring
     - deep_review.decide-architecture
     - deep_review.decide-black-box
+    - deep_review.reverify-repeated-failure-status-signaling
     agent: gate-reviewer-tacit
   - id: deep_review.fix-repeated-failure-status-signaling
     name: Repair repeated-failure status/reason_code signaling

@@ -65166,7 +65166,7 @@ phases:
       - docs/RFC-vectl-decide-advisor-refresh.md (section 8 required rollout changes)'
 - id: decide_refresh_tests
   name: vectl_decide Contract Refresh — Test Definitions
-  status: in_progress
+  status: done
   gate: Expected-red tests expose the refreshed contract gap across core, state, and
     MCP surfaces.
   depends_on:
@@ -65242,7 +65242,7 @@ phases:
       - product implementation files modified: NONE'
   - id: decide_refresh_tests.gate
     name: Gate decide_refresh_tests
-    status: claimed
+    status: done
     description: 'Gate review: verify refreshed tests define the contract gap clearly
       across core/state and MCP surfaces, including the remediation for stale MCP
       contract assertions. Block if intent is not explicitly red where required, if
@@ -65277,6 +65277,87 @@ phases:
     agent: gate-reviewer-tacit
     claimed_by: gate-reviewer-tacit
     claimed_at: '2026-04-09T14:13:22.200783+00:00'
+    done_at: '2026-04-09T14:28:12.921320+00:00'
+    evidence: '## refs Read Confirmation (MANDATORY)
+
+      - `tools/vectl/README.md` — NOT READ: file not found at `/tools/vectl/README.md`.
+      Read project-level `README.md` instead. Key passage: vectl exposes 15 MCP tools
+      including `vectl_decide` for deterministic orchestration decisions.
+
+
+      ## Gate Review Report
+
+      - Core gap exposed: DecideOutput model uses `status`/`reason_code`/`message`
+      per RFC 6.3. `continuation` and `halt_reason` are ABSENT from models, implementation,
+      and MCP surface. Tests enforce absence with negative assertions.
+
+      - State gap exposed: `decide()` accepts `advisor_state: dict[str, object] |
+      None` (RFC 6.2), not `state=DecideState`. `next_state` is full replacement dict.
+      `test_next_state_is_full_replacement_not_merge` proves "ghost-step" keys are
+      pruned. Isolation tests prove no leakage into `_legacy_state`.
+
+      - MCP gap exposed: `vectl_decide` MCP tool signature uses `advisor_state` dict,
+      returns `model_dump()` dict. No stale fields.
+
+      - Stale contract removal: `continuation` absent from DecideOutput, `halt_reason`
+      absent from DecideOutput, `session` absent from Action. Verified via `model_fields`
+      inspection and grep across src/ and tests/. All test assertions for these fields
+      are negative (asserting absence).
+
+      - Remediation evidence — main-path proof: `test_reuse_runner_round_trips_through_advisor_state`
+      proves runner provenance round-trips through caller-owned state. Stale-contract
+      failure-path proof: `test_output_has_status_not_continuation` + `test_output_has_reason_code_not_halt_reason`
+      + `test_action_has_no_session_field` prove stale fields are absent.
+
+      - Gate decision: OPEN
+
+
+      ## behavioral_proof_register
+
+      - P1 (RFC 6.3: status/reason_code not continuation/halt_reason): PROVEN
+
+      - P2 (RFC 6.1: reuse_token/reuse_runner not session; task_id is identity only):
+      PROVEN
+
+      - P3 (RFC 6.2: caller-owned advisor_state, no module-global leakage): PROVEN
+
+      - P4 (RFC 6.1: runner provenance required and validated): PROVEN
+
+      - P5 (RFC 6.3/6.4: repeated_failures→blocked, pending_escalation persists):
+      PROVEN
+
+      - P6 (RFC 7.2: task_id is execution identity, None for fresh dispatch): PROVEN
+
+      - P7 (RFC 7.3: policy metadata with reuse_ttl_s, escalation_threshold): PROVEN
+
+      - P8 (RFC 6.5: Action.session removed): PROVEN
+
+
+      gate_open_allowed: true
+
+      uncertainty_sources: []
+
+
+      ## Automated Gate Results
+
+      - Test suite: 53/53 PASS (test_decide.py: 22, test_decide_state_isolation.py:
+      15, spec_verify_decide_contract.py: 15, plus 1 pytest deprecation warning)
+
+      - Contract strength audit: No vacuous contracts. No identity lambdas. All assertions
+      reference real conditions.
+
+      - Model field audit: DecideOutput has [status, reason_code, message, actions,
+      next_state, policy, decision_log]. Action has [reuse_token, reuse_runner] but
+      NOT session. RunningTask/CompletedResult have runner with validation.
+
+      - Stale field audit: continuation=ABSENT, halt_reason=ABSENT, Action.session=ABSENT
+      — all correctly removed per RFC.
+
+
+      ## SUGGESTION (not blocking)
+
+      - S1: test_decide.py (1142 lines) and spec_verify_decide_contract.py (930 lines)
+      are large. Consider splitting per test class when convenient.'
   - id: decide_refresh_tests.core-state-red
     name: Define core and advisor_state expected-red tests
     status: done

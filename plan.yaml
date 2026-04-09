@@ -65272,6 +65272,7 @@ phases:
     - decide_refresh_tests.core-state-red
     - decide_refresh_tests.mcp-red
     - decide_refresh_tests.retest-refreshed-red-seams
+    - decide_refresh_tests.reverify-gate-mcp-contract-refresh-batch
     agent: gate-reviewer-tacit
   - id: decide_refresh_tests.core-state-red
     name: Define core and advisor_state expected-red tests

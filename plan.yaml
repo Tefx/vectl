@@ -65242,7 +65242,7 @@ phases:
       - product implementation files modified: NONE'
   - id: decide_refresh_tests.gate
     name: Gate decide_refresh_tests
-    status: pending
+    status: claimed
     description: 'Gate review: verify refreshed tests define the contract gap clearly
       across core/state and MCP surfaces, including the remediation for stale MCP
       contract assertions. Block if intent is not explicitly red where required, if
@@ -65274,6 +65274,8 @@ phases:
     - decide_refresh_tests.retest-refreshed-red-seams
     - decide_refresh_tests.reverify-gate-mcp-contract-refresh-batch
     agent: gate-reviewer-tacit
+    claimed_by: gate-reviewer-tacit
+    claimed_at: '2026-04-09T13:34:31.691044+00:00'
   - id: decide_refresh_tests.core-state-red
     name: Define core and advisor_state expected-red tests
     status: done

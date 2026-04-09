@@ -72149,7 +72149,7 @@ phases:
       \ for targeted enforcement blockers in this step scope."
   - id: orchestration_operator_recovery.reverify-dispatch-recovery-gate-enforcement-after-fix
     name: Reverify dispatch recovery gate enforcement after fix
-    status: pending
+    status: claimed
     description: 'As an INDEPENDENT TESTER (spec-verifier-tacit), re-audit the repaired
       operator/conflict/recovery enforcement from a fresh perspective after the enforcement
       fix.
@@ -72209,6 +72209,8 @@ phases:
     depends_on:
     - orchestration_operator_recovery.fix-enforce-dispatch-recovery-gates-and-complete-step-consultation
     agent: spec-verifier-tacit
+    claimed_by: spec-verifier
+    claimed_at: '2026-04-09T17:05:31.091551+00:00'
 - id: orchestration_upper_layer_review
   name: Orchestration Upper-Layer Review
   status: locked

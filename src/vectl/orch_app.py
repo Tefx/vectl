@@ -3140,6 +3140,8 @@ def build_orchestration_app(
 
 __all__ = [
     "AppConfig",
+    "DispatchBlockedError",
+    "DuplicateCompleteBlockedError",
     "OrchestrationApp",
     "OrchestrationResult",
     "RunResult",

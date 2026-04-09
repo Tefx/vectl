@@ -71733,6 +71733,153 @@ phases:
       \ 3: dispatch gate not reconstructed from RunRecord\n  - Req 4: protected-path\
       \ reconcile state not surfaced in RecoveryReport\n- product_implementation_files_modified:\
       \ no"
+  - id: orchestration_operator_recovery.fix-operator-conflict-recovery-dispatch-and-resolution-gaps
+    name: Fix operator/conflict/recovery dispatch and resolution gaps
+    status: pending
+    description: 'Fix ALL blockers found by the failed operator/conflict/recovery
+      conformance audit.
+
+
+      ## Blockers to Fix (ALL of these, not just the first)
+
+
+      ### Root Cause vs Symptom
+
+      - Root cause: operator-required durable state, paused-routing state, reconstructed
+      recovery state, and dispatch recovery gating are not enforced from one authoritative
+      dispatch decision path.
+
+      - Symptom: the main loop can continue dispatch when operator_required / paused_routing
+      should block it; recovery rebuild is partial because durable ResolutionCase
+      state is not fully reconstructed; DispatchRecoveryGate can be rebuilt but still
+      not consulted before dispatch.
+
+      - Why this fix is not surface-level: it must align durable recovery reconstruction
+      and pre-dispatch gating semantics in the actual orchestration decision path,
+      not just add isolated checks.
+
+
+      ### B1: operator_required / paused_routing gating missing in main dispatch loop
+
+      Requirements: R1 / R4 / R5 / R18 / R24
+
+      Remediation: enforce operator_required and paused_routing gating in the authoritative
+      dispatch path used by the main loop, and prove protected dispatch cannot bypass
+      those durable controls.
+
+      Locations: src/vectl/orch_app.py, src/vectl/orchestration/runtime.py
+
+      Grep hint: search for dispatch entrypoints and operator_required / paused_routing
+      branches across orch app and orchestration runtime.
+
+      IMPORTANT: search for sibling dispatch paths beyond the currently reported call
+      site.
+
+
+      ### B2: recovery path does not reconstruct outstanding ResolutionCase from durable
+      store
+
+      Requirements: R13 (partial)
+
+      Remediation: rebuild outstanding ResolutionCase state from durable recovery
+      inputs so restart recovery restores the actionable case set needed for routing
+      and audit continuity.
+
+      Locations: src/vectl/orchestration/recovery.py, src/vectl/orchestration/runtime.py
+
+      Grep hint: search for durable recovery load / restore paths and ResolutionCase
+      reconstruction logic.
+
+      IMPORTANT: verify restart paths and non-happy-path recovery branches, not only
+      the primary restore helper.
+
+
+      ### B3: reconstructed DispatchRecoveryGate not consulted before dispatch
+
+      Requirements: dispatch recovery gate must influence dispatch eligibility after
+      reconstruction
+
+      Remediation: thread reconstructed DispatchRecoveryGate through the pre-dispatch
+      decision path and prevent dispatch when recovery gate state requires operator
+      recovery handling first.
+
+      Locations: src/vectl/orchestration/recovery.py, src/vectl/orch_app.py, src/vectl/orchestration/runtime.py
+
+      Grep hint: search for DispatchRecoveryGate construction, transport into runtime
+      state, and pre-dispatch consultation points.
+
+      IMPORTANT: confirm no sibling dispatch path bypasses the gate.
+
+
+      ## Completion Criteria (stub exclusion)
+
+      This is an IMPLEMENTATION step. Stub-only completion is NOT acceptable.
+
+      Each deliverable MUST contain substantive logic that processes its inputs and
+      produces outputs that vary based on those inputs.
+
+
+      ## Known Risks / Gate Preview
+
+      - Gate will reject any fix that reconstructs recovery metadata but still leaves
+      dispatch eligibility computed elsewhere.
+
+      - Gate will reject partial restart recovery that restores metadata without reconstructing
+      actionable outstanding ResolutionCase state.
+
+      - Gate will reject branch-local guards if another dispatch path can still bypass
+      operator_required, paused_routing, or DispatchRecoveryGate checks.'
+    verification: 'phase-check protecting the orchestration_operator_recovery gate:
+      operator_required and paused_routing are enforced in the authoritative pre-dispatch
+      path; outstanding ResolutionCase state is durably reconstructed on recovery;
+      reconstructed DispatchRecoveryGate is consulted before dispatch; focused regressions
+      cover both the main path and the highest-risk bypass/restart path.'
+    evidence_template: '## refs Read Confirmation (MANDATORY)
+
+
+      For each ref in this step:
+
+      - <filename> — key passage or "NOT READ: <reason>"
+
+
+      If no refs were provided, state: "No refs for this step."
+
+
+      ## Root Cause Closure
+
+      - authoritative dispatch path updated:
+
+      - operator_required / paused_routing gating location(s):
+
+      - durable ResolutionCase reconstruction location(s):
+
+      - DispatchRecoveryGate consultation location(s):
+
+
+      ## Sibling Search Evidence
+
+      - dispatch path siblings checked:
+
+      - recovery path siblings checked:
+
+      - remaining bypasses: none | <list>
+
+
+      ## Regression Coverage
+
+      - main-path regression:
+
+      - restart / recovery-path regression:
+
+      - dispatch-bypass regression:
+
+
+      ## Residual Gaps
+
+      - none | <list>'
+    depends_on:
+    - orchestration_operator_recovery.audit-operator-conflict-recovery-conformance
+    agent: python-senior-tacit
 - id: orchestration_upper_layer_review
   name: Orchestration Upper-Layer Review
   status: locked

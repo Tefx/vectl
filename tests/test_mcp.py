@@ -2960,7 +2960,7 @@ class TestVectlRecover:
 
 
 # ---------------------------------------------------------------------------
-# Tool: vectl_decide (RFC: docs/RFC-decide.md)
+# Tool: vectl_decide (RFC: docs/RFC-vectl-decide-advisor-refresh.md)
 # ---------------------------------------------------------------------------
 
 
@@ -2969,11 +2969,11 @@ class TestVectlDecide:
 
     vectl_decide makes orchestration decisions deterministic:
     - Computes claimable steps respecting DAG ordering
-    - Evaluates continuation guard (can_continue / must_stop)
-    - Decides session reuse (fresh vs reuse with TTL awareness)
+    - Returns status/reason_code for top-level control summary
+    - Decides session reuse via reuse_token/reuse_runner with TTL awareness
     - Returns structured action list with step metadata
 
-    RFC: docs/RFC-decide.md
+    RFC: docs/RFC-vectl-decide-advisor-refresh.md
     """
 
     def test_vectl_decide_returns_structured_output(self, plan_file: Path) -> None:

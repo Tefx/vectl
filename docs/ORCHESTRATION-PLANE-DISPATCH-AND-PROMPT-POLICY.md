@@ -187,7 +187,6 @@ class DispatchSpec:
 
     execution_context: Literal["linked_worktree", "main_worktree"]
     runner: str
-    session_mode: Literal["fresh", "reuse"]
     reuse_token: str | None = None
     reuse_runner: str | None = None
 

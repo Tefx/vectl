@@ -71404,7 +71404,7 @@ phases:
       \n## Deviation Records\nNone."
   - id: orchestration_operator_recovery.verify-durable-operator-pause-and-recovery-behavior
     name: Verify durable operator pause and recovery behavior
-    status: pending
+    status: claimed
     description: 'step_type: test
 
       step_intent: retest_green
@@ -71433,6 +71433,8 @@ phases:
     depends_on:
     - orchestration_operator_recovery.implement-operator-notification-conflict-preservation-and-recovery-alignment
     agent: integration-verifier-tacit
+    claimed_by: integration-verifier-tacit
+    claimed_at: '2026-04-09T16:04:06.901925+00:00'
   - id: orchestration_operator_recovery.audit-operator-conflict-recovery-conformance
     name: Audit operator/conflict/recovery conformance
     status: claimed

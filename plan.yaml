@@ -65526,6 +65526,86 @@ phases:
       - refreshed core/state seam visibility: VERIFIED\n- refreshed MCP seam visibility:\
       \ VERIFIED\n- stale-field acceptance removed: VERIFIED\n- advisor_state isolation\
       \ behavior: VERIFIED\n\ngate_open_allowed: true"
+  - id: decide_refresh_tests.fix-gate-mcp-contract-refresh-batch
+    name: Fix gate MCP contract refresh blocker batch
+    status: pending
+    description: 'Fix ALL blocker-class refreshed MCP red-test gaps surfaced by decide_refresh_tests.gate.
+
+
+      work_type: proof_closure
+
+      step_type: test
+
+      step_intent: test_define_red
+
+      expected_result: red
+
+      agent_source: default
+
+
+      ## Blockers to Fix (ALL of these, not just the first)
+
+      - Remove stale MCP assertions that still encode legacy `continuation`, `halt_reason`,
+      or `session` semantics on the red-test surface and any shared helpers they rely
+      on.
+
+      - Add refreshed contract assertions for `status`, `reason_code`, `next_state`,
+      `reuse_token`, and `reuse_runner` wherever the MCP seam defines acceptance.
+
+      - Ensure refreshed coverage treats `advisor_state` / reuse provenance as the
+      authoritative continuation surface rather than legacy session fields.
+
+      - Search sibling MCP assertions so stale semantics are not left behind in adjacent
+      cases.
+
+
+      ## Root Cause vs Symptom
+
+      - Root cause: the prior remediation refreshed part of the MCP red surface but
+      left stale contract assertions and incomplete refreshed-field coverage in the
+      authoritative MCP seam.
+
+      - Symptom: decide_refresh_tests.gate still reports stale continuation/halt_reason/session
+      acceptance and missing refreshed status/reason_code/reuse_token/reuse_runner
+      coverage.
+
+      - Why previous fix failed: the earlier loop corrected broad refreshed-field
+      expectations but did not fully remove all stale MCP seam assertions or prove
+      the refreshed reuse metadata contract everywhere the gate checks.
+
+      - Why this fix is not surface-level: acceptance must move entirely onto the
+      refreshed MCP contract, not merely add new assertions beside stale ones.
+
+
+      ## Completion Criteria
+
+      - MCP red-test acceptance no longer references legacy `continuation`, `halt_reason`,
+      or `session` fields
+
+      - Refreshed assertions cover `status`, `reason_code`, `next_state`, `reuse_token`,
+      and `reuse_runner`
+
+      - Evidence shows the MCP seam is still test-only and intentionally red-defining
+
+      - At least one stale-contract failure example is documented
+
+      '
+    verification: 'local-check protecting decide_refresh_tests.gate: MCP refreshed-contract
+      assertions are complete; stale continuation/halt_reason/session semantics are
+      removed from acceptance; evidence includes one stale-contract failure example
+      and one refreshed-contract assertion matrix.'
+    evidence_template: "## refs Read Confirmation (MANDATORY)\nFor each ref in this\
+      \ step:\n- <filename> — key passage or \"NOT READ: <reason>\"\n\nIf no refs\
+      \ were provided, state: \"No refs for this step.\"\n\n## MCP Red-Surface Remediation\
+      \ Evidence\n- Updated test files:\n- Product implementation files changed: NONE\
+      \ (required)\n- Stale assertions removed:\n- Refreshed assertion matrix:\n \
+      \ - status:\n  - reason_code:\n  - next_state:\n  - reuse_token:\n  - reuse_runner:\n\
+      - Advisor-state / reuse provenance note:\n- One stale-contract failure example:\n\
+      \n## Commands + Outputs\n```text\n<paste exact test command>\n```\n```text\n\
+      <paste exact output>\n```"
+    depends_on:
+    - decide_refresh_tests.retest-refreshed-red-seams
+    agent: python-executor
 - id: decide_refresh_impl
   name: vectl_decide Contract Refresh — Implementation
   status: done

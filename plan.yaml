@@ -65916,7 +65916,7 @@ phases:
   - id: decide_refresh_impl.af1-r8-fix
     name: Fix runner provenance dispatch semantics and minimal escalation rigidity
       follow-up
-    status: claimed
+    status: done
     description: 'Fix ALL blocker-class decide_refresh_impl spec-conformance findings
       in one batch.
 
@@ -66030,6 +66030,31 @@ phases:
     agent: python-senior-tacit
     claimed_by: python-senior-tacit
     claimed_at: '2026-04-09T07:40:58.187035+00:00'
+    done_at: '2026-04-09T07:48:57.815069+00:00'
+    evidence: "## refs Read Confirmation (MANDATORY)\n- tools/vectl/README.md — NOT\
+      \ READ: file not present in worktree (explicitly reported)\n- src/vectl/models.py\
+      \ — used to confirm Action/CompletedResult runner provenance contract\n- src/vectl/decision_state.py\
+      \ — used to confirm caller-owned state seam\n- src/vectl/decide.py — AF1 hardcoded\
+      \ reuse_runner source seam\n- docs/RFC-vectl-decide-advisor-refresh.md — runner\
+      \ provenance and advisor-state requirements\n\n## Remediation Report\n- AF1\
+      \ closure: reuse dispatch now derives `reuse_runner` from authoritative provenance\
+      \ (completed_result runner and persisted session provenance), not hardcoded\
+      \ `\"task\"`.\n- R8 treatment: minimal RFC-aligned approach using caller-owned\
+      \ session runner provenance (`session_runner_registry`) without redesigning\
+      \ broader policy surface.\n- Files changed:\n  - src/vectl/decide.py\n  - src/vectl/decision_state.py\n\
+      \  - tests/test_decide.py\n- Failure modes checked:\n  - completed_result.runner\
+      \ preserved: test `test_reuse_runner_follows_completed_result_runner`\n  - reusable-session\
+      \ provenance preserved: test `test_reuse_runner_round_trips_through_advisor_state`\n\
+      \  - no task fallback drift: authoritative non-task provenance preserved; fallback\
+      \ only when provenance missing\n  - standalone semantics unchanged: status/reason_code\
+      \ flow unchanged; fresh/non-reuse still `reuse_runner=None`\n- Deviation record:\
+      \ none\n\n## Verification\n- `uv run python -m pytest tests/test_decide.py -q`\
+      \ → `21 passed, 1 warning`\n- `uv run python -m pytest tests/test_decide_state_isolation.py\
+      \ -q` → `15 passed`\n- `uv run pyright src/vectl/decide.py src/vectl/decision_state.py`\
+      \ → `0 errors`\n- `uv run ruff check src/vectl/decide.py src/vectl/decision_state.py\
+      \ tests/test_decide.py` → `All checks passed`\n- `invar_invar_guard --changed`\
+      \ static passed; doctest blocked by env package metadata issue (`PackageNotFoundError:\
+      \ vectl`)\n\n## Commit\n- abb9821 — fix(decide): preserve reuse runner provenance"
   - id: decide_refresh_impl.af1-r8-reverify
     name: Reverify runner provenance and advisor contract after AF1/R8 remediation
     status: pending

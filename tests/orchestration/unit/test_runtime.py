@@ -79,6 +79,19 @@ def test_prepare_start_collect_cleanup_lifecycle(
     assert execution_id in running_snapshot.active_executions
     assert runtime.collect(execution_id) is None
 
+    # Mark execution as complete before cleanup
+    state = runtime._active_workspaces[workspace]
+    assert state.execution_state is not None
+    state.execution_state.status = "success"
+
+    # Capture reconcile result before cleanup
+    runtime.begin_reconcile(execution_id)
+    runtime.capture_reconcile_result(
+        execution_id=execution_id,
+        status="noop",
+        summary="No changes to merge",
+    )
+
     runtime.cleanup(workspace)
     final_snapshot = runtime.snapshot()
     assert final_snapshot.active_workspaces == ()

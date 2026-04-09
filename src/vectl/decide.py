@@ -2,16 +2,14 @@
 
 This module provides the vectl_decide algorithm for:
 - Session reuse decisions
-- Continuation state computation
+- Top-level status/reason_code signaling
 - Deterministic action dispatching
-
-Contract Phase: This module contains only stubs (NotImplementedError).
-Implementation will be provided in decide-impl phase.
 """
 
 from __future__ import annotations
 
 import time
+from typing import Literal
 
 from vectl.core import auto_unlock_phases, get_next_steps
 from vectl.decision_state import DecideState
@@ -35,15 +33,17 @@ from vectl.plan_path import resolve_plan_path
 # Time-to-live for session reuse eligibility (in seconds)
 REUSE_TTL: int = 300
 
+# Escalation threshold for consecutive failures
+ESCALATION_THRESHOLD: int = 3
+
 # Legacy state object retained for compatibility references in tests/tools.
 # Runtime callers should pass explicit state. For state=None we now isolate by
 # returning a fresh ephemeral DecideState per call.
 _legacy_state: DecideState = DecideState()
 
 DECIDE_RUNTIME_CONTEXT_BOUNDARY: str = (
-    "RuntimeContext rollout does not move decide-local ownership into driver handlers; "
-    "decide() remains the mutation boundary for DecideState passed via "
-    "DriverState.decide_state."
+    "RuntimeContext rollout does not move decide-local ownership into handlers; "
+    "decide() remains the mutation boundary for DecideState passed explicitly."
 )
 
 
@@ -53,11 +53,7 @@ DECIDE_RUNTIME_CONTEXT_BOUNDARY: str = (
 
 
 def _resolve_state(state: DecideState | None) -> DecideState:
-    """Resolve decide state with isolated fallback semantics.
-
-    Source: tests/test_decide_state_isolation.py (legacy leakage exposure) and
-    step ``driver-continuity-review.fix-gate-blockers`` should-fix scope.
-    """
+    """Resolve decide state with isolated fallback semantics."""
     if state is not None:
         return state
     return DecideState()
@@ -75,8 +71,8 @@ def should_reuse_session(
         parent_step_id: The parent step ID (for multi-phase handoff).
 
     Returns:
-        Tuple of (should_reuse, session_id_or_None):
-        - (True, session_id) if reuse is recommended
+        Tuple of (should_reuse, reuse_token_or_None):
+        - (True, reuse_token) if reuse is recommended
         - (False, None) if fresh session is required
 
     Notes:
@@ -91,96 +87,218 @@ def should_reuse_session(
     if parent_step_id is None:
         return (False, None)
 
-    task_id = decision_state.reusable_session(
+    reuse_token = decision_state.reusable_session(
         parent_step_id=parent_step_id,
         now=time.time(),
         reuse_ttl=REUSE_TTL,
     )
-    if task_id is None:
+    if reuse_token is None:
         return (False, None)
-    return (True, task_id)
+    return (True, reuse_token)
 
 
-def compute_continuation(
+def _reuse_runner_for_parent(
+    parent_step_id: str | None,
+    state: DecideState,
+) -> str | None:
+    """Return authoritative reuse runner provenance for ``parent_step_id``.
+
+    Source: step decide_refresh_impl.af1-r8-fix and
+    docs/RFC-vectl-decide-advisor-refresh.md section 6.1 require reuse hints to
+    carry runner provenance instead of hardcoded defaults.
+    """
+    if parent_step_id is None:
+        return None
+
+    reuse_runner = state.reusable_session_runner(
+        parent_step_id=parent_step_id,
+        now=time.time(),
+        reuse_ttl=REUSE_TTL,
+    )
+    if reuse_runner is not None:
+        return reuse_runner
+
+    # Minimal legacy compatibility: retain historical default only when caller
+    # state has a reusable token but no persisted runner provenance yet.
+    reuse_token = state.reusable_session(
+        parent_step_id=parent_step_id,
+        now=time.time(),
+        reuse_ttl=REUSE_TTL,
+    )
+    if reuse_token is not None:
+        return "task"
+    return None
+
+
+def _compute_status(
     plan: Plan, running_count: int, max_parallelism: int
-) -> tuple[bool, str | None]:
-    """Compute whether the orchestrator should continue dispatching.
+) -> tuple[
+    Literal["dispatch", "wait", "blocked", "done"],
+    Literal[
+        "dispatch_available",
+        "waiting_on_running",
+        "capacity_full",
+        "no_executable_steps",
+        "repeated_failures",
+    ],
+    str,
+]:
+    """Compute top-level status and reason code.
 
-    Args:
-        plan: The current plan state.
-        running_count: Number of currently running tasks.
-        max_parallelism: Maximum allowed parallel dispatches.
+    RFC: docs/RFC-vectl-decide-advisor-refresh.md section 6.3
 
     Returns:
-        Tuple of (should_continue, halt_reason):
-        - (True, None) if orchestration should continue
-        - (False, "NO_EXECUTABLE_STEPS") if no claimable steps
-        - (False, "WAITING_ON_RUNNING_SUBAGENTS") if waiting for running tasks
-        - (False, "MAX_PARALLELISM_REACHED") if at capacity
+        Tuple of (status, reason_code, message):
+        - (dispatch, dispatch_available) if work available and capacity exists
+        - (wait, waiting_on_running) if running tasks exist and no dispatch
+        - (wait, capacity_full) if at parallelism limit
+        - (done, no_executable_steps) if no claimable steps and no running
+        - (blocked, repeated_failures) if repeated failures require attention
     """
     claimable = get_next_steps(plan)
     capacity = max_parallelism - running_count
 
     # Can dispatch new work
     if capacity > 0 and claimable:
-        return (True, None)
+        return ("dispatch", "dispatch_available", "Executable work available and capacity open.")
 
     # At capacity
     if capacity <= 0:
-        return (False, "MAX_PARALLELISM_REACHED")
+        return ("wait", "capacity_full", "Parallelism limit reached, waiting for running tasks.")
 
     # capacity > 0, claimable is empty
-    # Have capacity but nothing to claim
     if running_count > 0:
-        return (False, "WAITING_ON_RUNNING_SUBAGENTS")
+        return ("wait", "waiting_on_running", "Work in flight, waiting for completion.")
     else:
-        return (False, "NO_EXECUTABLE_STEPS")
+        return ("done", "no_executable_steps", "No executable steps available.")
+
+
+def _plan_step_ids(plan: Plan) -> set[str]:
+    """Return all step identifiers present in ``plan``."""
+
+    return {step.id for phase in plan.phases for step in phase.steps}
+
+
+def _apply_advisory_completions(plan: Plan, completion_times: dict[str, float]) -> None:
+    """Apply caller-owned completion memory as in-memory advisory completions.
+
+    This preserves the refreshed contract where caller-owned advisor state is the
+    source of truth for simulated completion visibility across decide() calls.
+
+    Args:
+        plan: In-memory plan to mutate for advisory visibility only.
+        completion_times: Caller-owned completion timestamp map.
+    """
+
+    if not completion_times:
+        return
+
+    for step_id in completion_times:
+        found = plan.find_step(step_id)
+        if found is None:
+            continue
+        phase, step = found
+        if step.status in (StepStatus.DONE, StepStatus.SKIPPED):
+            continue
+        step.status = StepStatus.DONE
+        if all(s.status in (StepStatus.DONE, StepStatus.SKIPPED) for s in phase.steps):
+            phase.status = PhaseStatus.DONE
+    auto_unlock_phases(plan)
 
 
 def decide(
     running_tasks: list[RunningTask],
     completed_results: list[CompletedResult] | None,
     max_parallelism: int,
-    state: DecideState | None = None,
+    advisor_state: dict[str, object] | None = None,
 ) -> DecideOutput:
     """Main decision function for vectl orchestration.
 
     Analyzes running tasks and completed results to determine
     what actions the orchestrator should take next.
 
+    RFC: docs/RFC-vectl-decide-advisor-refresh.md
+
     Args:
         running_tasks: Currently running tasks (in-flight work).
         completed_results: Tasks that have completed since last decision.
-            Runtime authority note:
-            ``driver-debt-completion-authority.contract`` pins that driver main
-            loop completion/failure ownership converges on
-            ``wait_for_any() -> reconcile()``. Driver runtime should not feed raw
-            runner completions here for completion-action generation.
         max_parallelism: Maximum allowed parallel dispatches.
-        state: Mutable decide-side memory container. Driver runtime must pass
-            ``DriverState.decide_state`` explicitly.
+        advisor_state: Caller-owned advisor state. If None, a fresh ephemeral
+            state is used per call (isolation mode). The caller-owned state
+            contract requires callers to pass their persisted state here and
+            replace it with next_state from the output.
 
     Returns:
-        DecideOutput with actions to execute and continuation state.
+        DecideOutput with:
+        - status / reason_code / message: top-level control summary
+        - actions: list of action payloads
+        - next_state: full replacement for caller-owned advisor state
+        - policy: explicit policy metadata (reuse_ttl_s, escalation_threshold)
+        - decision_log: optional debug/explanatory entries
     """
-    decision_state = _resolve_state(state)
-
     # Load plan
     plan_path = resolve_plan_path()
     plan, _ = load_plan_definition(plan_path)
+    step_ids = _plan_step_ids(plan)
+
+    # Resolve caller-owned state into internal DecideState
+    if advisor_state is not None:
+        raw_completion = advisor_state.get("completion_times", {})
+        raw_sessions = advisor_state.get("session_registry", {})
+        raw_session_runners = advisor_state.get("session_runner_registry", {})
+        raw_failures = advisor_state.get("failure_counts", {})
+        raw_pending_escalations = advisor_state.get("pending_escalations", {})
+        completion_map = raw_completion if isinstance(raw_completion, dict) else {}
+        session_map = raw_sessions if isinstance(raw_sessions, dict) else {}
+        session_runner_map = raw_session_runners if isinstance(raw_session_runners, dict) else {}
+        failure_map = raw_failures if isinstance(raw_failures, dict) else {}
+        pending_escalation_map = (
+            raw_pending_escalations if isinstance(raw_pending_escalations, dict) else {}
+        )
+
+        completion_times = {
+            step_id: timestamp
+            for step_id, timestamp in completion_map.items()
+            if step_id in step_ids
+        }
+        session_registry = {
+            step_id: token for step_id, token in session_map.items() if step_id in step_ids
+        }
+        session_runner_registry = {
+            step_id: runner for step_id, runner in session_runner_map.items() if step_id in step_ids
+        }
+        failure_counts = {
+            step_id: count for step_id, count in failure_map.items() if step_id in step_ids
+        }
+        pending_escalations = {
+            step_id: reason_code
+            for step_id, reason_code in pending_escalation_map.items()
+            if step_id in step_ids and reason_code == "repeated_failures"
+        }
+        decision_state = DecideState(
+            completion_times=completion_times,
+            session_registry=session_registry,
+            session_runner_registry=session_runner_registry,
+            failure_counts=failure_counts,
+            pending_escalations=pending_escalations,
+        )
+    else:
+        decision_state = DecideState()
+
+    _apply_advisory_completions(plan, decision_state.completion_times)
 
     actions: list[Action] = []
     decision_log: list[Decision] = []
+    repeated_failure_triggered = False
 
     # Process completed results
     if completed_results:
         for result in completed_results:
-            # Record completion time for session reuse
-            decision_state.record_completion(
-                step_id=result.step_id,
-                task_id=result.task_id,
-                completed_at=time.time(),
-            )
+            # Record completion time for advisory visibility.
+            # Do not overwrite runner reuse tokens with execution identifiers;
+            # task_id is execution identity, not a reuse handle.
+            decision_state.completion_times[result.step_id] = time.time()
+            decision_state.session_runner_registry[result.step_id] = result.runner
 
             if result.status == "SUCCESS":
                 # Create complete action
@@ -203,6 +321,7 @@ def decide(
                 )
                 # Reset failure count on success
                 decision_state.reset_failure(step_id=result.step_id)
+                decision_state.clear_pending_escalation(step_id=result.step_id)
             elif result.status == "FAIL":
                 # Check if this is an expected-red step (red outcome demonstrates gap)
                 found = plan.find_step(result.step_id)
@@ -226,6 +345,7 @@ def decide(
                         )
                         # Clear any prior failure count for this step
                         decision_state.reset_failure(step_id=result.step_id)
+                        decision_state.clear_pending_escalation(step_id=result.step_id)
                         continue  # skip the normal FAIL path
 
                 # Default FAIL path: must_green or verify=None
@@ -233,6 +353,11 @@ def decide(
                 count = decision_state.register_failure(step_id=result.step_id)
 
                 if count >= 3:
+                    repeated_failure_triggered = True
+                    decision_state.mark_pending_escalation(
+                        step_id=result.step_id,
+                        reason_code="repeated_failures",
+                    )
                     # Escalate after 3 failures
                     actions.append(
                         Action(
@@ -290,20 +415,22 @@ def decide(
             parent_step_id = step.depends_on[0]
 
         # Check session reuse
-        should_reuse, task_id = should_reuse_session(
+        should_reuse, reuse_token = should_reuse_session(
             step.id,
             parent_step_id,
             state=decision_state,
         )
 
-        if should_reuse and task_id:
+        if should_reuse and reuse_token:
+            reuse_runner = _reuse_runner_for_parent(parent_step_id, decision_state)
             actions.append(
                 Action(
                     action="claim_and_dispatch",
                     step_id=step.id,
                     agent=step.agent,
-                    session="reuse",
-                    task_id=task_id,
+                    task_id=None,
+                    reuse_token=reuse_token,
+                    reuse_runner=reuse_runner,
                     step_description=step.description,
                     step_verification=step.verification,
                     step_refs=step.refs if step.refs else None,
@@ -313,7 +440,7 @@ def decide(
                 Decision(
                     decision="SESSION_REUSE",
                     step_id=step.id,
-                    why=f"Reusing session {task_id} from parent {parent_step_id}",
+                    why=f"Reusing prior runner token {reuse_token} from parent {parent_step_id}",
                 )
             )
         else:
@@ -322,7 +449,9 @@ def decide(
                     action="claim_and_dispatch",
                     step_id=step.id,
                     agent=step.agent,
-                    session="fresh",
+                    task_id=None,
+                    reuse_token=None,
+                    reuse_runner=None,
                     step_description=step.description,
                     step_verification=step.verification,
                     step_refs=step.refs if step.refs else None,
@@ -347,12 +476,67 @@ def decide(
             )
         )
 
-    # Compute continuation
-    continuation, halt_reason = compute_continuation(plan, running_count, max_parallelism)
+    # Compute top-level status and reason code
+    # Check for repeated failures that need attention
+    escalation_pending = (
+        repeated_failure_triggered
+        or any(count >= ESCALATION_THRESHOLD for count in decision_state.failure_counts.values())
+        or bool(decision_state.pending_escalations)
+    )
+    if escalation_pending:
+        status: Literal["dispatch", "wait", "blocked", "done"] = "blocked"
+        reason_code: Literal[
+            "dispatch_available",
+            "waiting_on_running",
+            "capacity_full",
+            "no_executable_steps",
+            "repeated_failures",
+        ] = "repeated_failures"
+        message = "Repeated failures require attention/escalation handling."
+    else:
+        status, reason_code, message = _compute_status(plan, running_count, max_parallelism)
+
+    # Build next_state as full replacement for caller-owned state
+    next_state: dict[str, object] = {
+        "completion_times": {
+            step_id: timestamp
+            for step_id, timestamp in decision_state.completion_times.items()
+            if step_id in step_ids
+        },
+        "session_registry": {
+            step_id: token
+            for step_id, token in decision_state.session_registry.items()
+            if step_id in step_ids
+        },
+        "session_runner_registry": {
+            step_id: runner
+            for step_id, runner in decision_state.session_runner_registry.items()
+            if step_id in step_ids
+        },
+        "failure_counts": {
+            step_id: count
+            for step_id, count in decision_state.failure_counts.items()
+            if step_id in step_ids
+        },
+        "pending_escalations": {
+            step_id: reason_code
+            for step_id, reason_code in decision_state.pending_escalations.items()
+            if step_id in step_ids
+        },
+    }
+
+    # Build explicit policy metadata
+    policy: dict[str, object] = {
+        "reuse_ttl_s": REUSE_TTL,
+        "escalation_threshold": ESCALATION_THRESHOLD,
+    }
 
     return DecideOutput(
+        status=status,
+        reason_code=reason_code,
+        message=message,
         actions=actions,
-        continuation=continuation,
-        halt_reason=halt_reason,
+        next_state=next_state,
+        policy=policy,
         decision_log=decision_log,
     )

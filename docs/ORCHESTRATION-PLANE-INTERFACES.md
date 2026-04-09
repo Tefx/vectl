@@ -5,10 +5,7 @@
 **Status:** Target interface specification  
 **Architecture authority:** `docs/ORCHESTRATION-PLANE-ARCHITECTURE.md`  
 **Related docs:** `docs/ORCHESTRATION-PLANE-RESOLUTION-CONTRACT.md`, `docs/ORCHESTRATION-PLANE-ISOLATION-SEMANTICS.md`  
-**Scope:** Full target boundaries; not an implementation slice  
-**Relationship to code:** This document defines the target interface shape for
-> `control`, `roster`, `runtime`, and `resolver`. It does not require the current
-> legacy package layout under `src/vectl/driver/` to remain intact.
+**Scope:** Full target boundaries; not an implementation slice
 
 ---
 
@@ -187,11 +184,28 @@ Problem handed from `control` to `resolver` when normal flow does not close.
 ```python
 @dataclass(frozen=True)
 class ResolutionCase:
+    case_id: str
+    case_source: Literal[
+        "runtime_failure",
+        "merge_conflict",
+        "review_failed",
+        "continuity_block",
+        "authority_ambiguity",
+        "unknown",
+    ]
     reason: str
+    summary: str | None
     core: CoreSnapshot
     roster: RosterSnapshot
     runtime: RuntimeSnapshot
+    blocked_step_ids: tuple[str, ...] = ()
+    artifact_refs: tuple[str, ...] = ()
 ```
+
+Important:
+- `case_source` is a coarse source tag, not a large blocker taxonomy.
+- `summary`, `blocked_step_ids`, and `artifact_refs` provide bounded coordination context.
+- `core`, `roster`, and `runtime` remain the authoritative state basis for reasoning.
 
 ### 3.9 `ResolutionReport`
 

@@ -166,6 +166,50 @@ def test_write_surface_request_for_read_only_tool_is_denied() -> None:
         raise AssertionError("Expected AuthorizationError for surface mismatch")
 
 
+def test_claim_tool_is_denied_even_when_core_family_is_allowlisted() -> None:
+    case = _case()
+
+    gateway = AuditedResolverGateway(
+        planned_tool_calls=(ResolverToolCall(family="core", name="claim", surface="write"),),
+        resolver_invoker=lambda _case, _calls, _inv_ref: ResolutionReport(
+            status="waiting",
+            summary="should not run",
+        ),
+        invocation_ref_factory=lambda: "inv-denied-claim",
+    )
+
+    try:
+        authorize_and_invoke(case=case, allowed_tool_families=("core",), gateway=gateway)
+    except AuthorizationError as exc:
+        assert len(exc.denied) == 1
+        assert exc.denied[0].reason_code == "claim_not_allowed"
+    else:
+        raise AssertionError("Expected AuthorizationError for forbidden resolver claim")
+
+
+def test_gateway_requires_main_worktree_execution_site() -> None:
+    case = _case()
+
+    gateway = AuditedResolverGateway(
+        planned_tool_calls=(
+            ResolverToolCall(family="orchestration", name="read_state", surface="read"),
+        ),
+        resolver_invoker=lambda _case, _calls, _inv_ref: ResolutionReport(
+            status="waiting",
+            summary="should not run",
+        ),
+        invocation_ref_factory=lambda: "inv-main-worktree",
+        main_worktree_probe=lambda: False,
+    )
+
+    try:
+        authorize_and_invoke(case=case, allowed_tool_families=("orchestration",), gateway=gateway)
+    except AuthorizationError as exc:
+        assert "not on main worktree" in str(exc)
+    else:
+        raise AssertionError("Expected AuthorizationError outside main worktree")
+
+
 def test_allowlist_runtime_enforcement_varies_with_snapshot() -> None:
     """Deny-by-default proof: same planned call denied/allowed by allowlist snapshot."""
     case = _case()

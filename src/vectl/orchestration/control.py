@@ -307,14 +307,10 @@ def _select_dispatch_role(roster: RosterSnapshot, fallback_role: str) -> str:
 
 @dataclass(frozen=True)
 class LegacyLoopSurfaceSplit:
-    """Documented decomposition of legacy loop surfaces by responsibility.
+    """Historical decomposition of orchestration loop surfaces by responsibility.
 
     Authority:
         docs/ORCHESTRATION-PLANE-IMPLEMENTATION-DESIGN.md section 4
-        docs/ORCHESTRATION-PLANE-IMPLEMENTATION-DESIGN.md section 5.5
-
-    This record is evidence-only contract metadata for migration planning.
-    It explicitly avoids wholesale ``driver/loop.py`` rename/copy migration.
     """
 
     control_surfaces: tuple[str, ...]

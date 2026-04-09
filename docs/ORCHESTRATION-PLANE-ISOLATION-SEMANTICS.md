@@ -196,8 +196,8 @@ annotation when they truly require stronger isolation.
 The legacy system already has partial notions related to isolation:
 
 - worktree isolation mechanics
-- `COLD_CONTEXT` judgment for gate/freeze dispatch in legacy driver docs
-- legacy isolation-focused tests and docs
+- `COLD_CONTEXT` judgment for gate/freeze dispatch
+- isolation-focused tests and docs
 
 Those remain valuable reference material, but they do not replace the need for a
 single authoritative step-level isolation semantic.

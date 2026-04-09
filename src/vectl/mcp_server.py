@@ -16,7 +16,7 @@ init, render, check, and decide):
   12. vectl_init   — initialize new vectl project (create plan.yaml + AGENTS.md/CLAUDE.md)
   13. vectl_render — render plan as Markdown stakeholder report
   14. vectl_check  — toggle/add checklist items in step descriptions
-  15. vectl_decide — deterministic orchestration advisor (session reuse, continuation)
+  15. vectl_decide — deterministic orchestration advisor (session reuse, status/reason_code)
 
 Tools generally return Markdown-formatted text.
 
@@ -2028,13 +2028,15 @@ def vectl_repair_claims(dry_run: bool = False, step_id: str | None = None) -> di
         "Deterministic orchestration advisor for agent workflow decisions. "
         "Analyzes running tasks and completed results to determine next actions: "
         "claim_and_dispatch (with fresh or reused session), complete, wait, or escalate. "
-        "Returns structured output with actions list, continuation flag, halt reason, "
-        "and decision log."
+        "Returns structured output with status/reason_code, actions list, "
+        "next_state (full replacement for caller-owned state), policy metadata, "
+        "and optional decision_log."
     ),
 )
 def vectl_decide(
     running_tasks: list[RunningTask],
     completed_results: list[CompletedResult] | None = None,
+    advisor_state: dict[str, object] | None = None,
     max_parallelism: int = 5,
 ) -> dict:
     """Deterministic orchestration advisor.
@@ -2043,24 +2045,35 @@ def vectl_decide(
     the orchestrator should take next. Supports session reuse decisions
     for efficient agent workflow continuation.
 
+    RFC: docs/RFC-vectl-decide-advisor-refresh.md
+
     Args:
         running_tasks: Currently running tasks (in-flight work).
-            Each task has step_id, agent, task_id, dispatched_at.
+            Each task has step_id, agent, task_id (execution identity only, NOT reuse handle),
+            runner (runner namespace), dispatched_at.
         completed_results: Tasks that have completed since last decision.
-            Each result has step_id, task_id, status (SUCCESS/FAIL), output_summary.
+            Each result has step_id, task_id, runner, status (SUCCESS/FAIL), output_summary.
+        advisor_state: Caller-owned state (completion_times, session_registry, failure_counts).
+            Pass your persisted state here; replace it with next_state from output.
+            If None, a fresh ephemeral state is used per call.
         max_parallelism: Maximum allowed parallel dispatches (default 5).
 
     Returns:
         Structured output containing:
-        - actions: list of Action objects (claim_and_dispatch, complete, wait, escalate)
-        - continuation: bool - whether orchestrator should continue looping
-        - halt_reason: str | None - reason for halting if continuation is False
-        - decision_log: list of Decision objects for debugging/audit
+        - status: dispatch | wait | blocked | done
+        - reason_code: dispatch_available | waiting_on_running | capacity_full |
+            no_executable_steps | repeated_failures
+        - message: optional human-readable summary
+        - actions: list of Action objects
+        - next_state: full replacement for caller-owned advisor state
+        - policy: explicit policy metadata (reuse_ttl_s, escalation_threshold)
+        - decision_log: optional debug/explanatory entries
     """
     result = _decide_impl(
         running_tasks=running_tasks,
         completed_results=completed_results,
         max_parallelism=max_parallelism,
+        advisor_state=advisor_state,
     )
     # Return as dict for MCP JSON serialization
     # Use exclude_none=False to ensure all expected fields are present even when None

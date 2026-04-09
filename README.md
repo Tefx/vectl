@@ -339,11 +339,11 @@ uvx vectl repair claims --dry-run  # Should now show no changes
 
 ## Continuity Artifact Recovery (`vectl repair continuity`)
 
-When using the programmatic driver (`vectl drive`), continuity artifacts (ledger + journal) track session state for restart/resume safety. Stale artifacts can accumulate and must be managed safely.
+Continuity artifacts (ledger + journal) track session state for restart/resume safety. Stale artifacts can accumulate and must be managed safely.
 
 ### Startup Hygiene Stage
 
-The driver runs a **startup hygiene stage** before active recovery:
+The orchestration plane runs a **startup hygiene stage** before active recovery:
 
 1. **Scan** continuity artifacts from `.vectl/continuity/ledger/` and `journal/`
 2. **Classify** each artifact against current plan and repaired claims
@@ -431,74 +431,6 @@ uvx vectl repair continuity --dry-run --json | jq '.quarantined_artifacts'
 # Verify no remaining blockers
 uvx vectl repair continuity --dry-run  # Should show no blocking artifacts
 ```
-
-## Programmatic Driver
-
-For automated plan execution, use the `vectl drive` command with a driver configuration file:
-
-```bash
-# Create driver.yaml (see DRIVER-BLUEPRINT.md for full schema)
-cat > driver.yaml << 'EOF'
-planner:
-  runner: opencode
-  external_agent_name: vectl-planner-slim
-
-runners:
-  opencode:
-    command: opencode
-    args: ["run", "--format", "json"]
-    stall_timeout: 300
-    output_parser: opencode_jsonl
-    supports_agent_selection: true
-
-agent_routing:
-  python-senior: opencode
-  "*-tester": opencode
-
-fallback_runner: opencode
-
-orchestration:
-  max_parallelism: 3
-
-judge:
-  runner: opencode
-  external_agent_name: null
-  preflight: true
-  evidence_validation: true
-EOF
-
-# Run the driver
-uvx vectl drive --config driver.yaml
-```
-
-The driver provides:
-- **Deterministic orchestration**: Decides actions based on plan state, not LLM judgment
-- **Session reuse**: Reuses agent sessions across dependent steps
-- **Failure handling**: Automatic retry, escalation, and runner fallback
-- **Git worktree isolation**: Each step runs in an isolated worktree
-- **Judgment agent**: LLM-based evaluation for evidence validation and escalation decisions
-
-See [DRIVER-BLUEPRINT.md](DRIVER-BLUEPRINT.md) for complete configuration reference.
-
-> Routing contract: `agent_routing.default` is invalid and rejected during
-> config validation. Use explicit exact/glob entries in `agent_routing` and
-> `fallback_runner` for default behavior.
-
-### Startup Continuity Hygiene
-
-On startup, the driver runs a **hygiene stage** to safely manage continuity artifacts (ledger + journal) that track session state for resume/restart:
-
-1. **Scan** artifacts from `.vectl/continuity/ledger/` and `journal/`
-2. **Classify** against current plan and repaired claims
-3. **Quarantine** safe-stale artifacts (copy to `.vectl/continuity/quarantine/`)
-4. **Block** on corrupt, ambiguous, or divergent artifacts (require operator action)
-
-**Critical guardrails**:
-- Startup **never deletes files** — artifacts are copied to quarantine, not removed
-- Startup **never auto-remaps renamed step IDs** — migration suspicion blocks startup
-- Corrupt or divergent artifacts remain blocking until operator resolves
-
-If startup detects blocking artifacts, use `vectl repair continuity --dry-run` to diagnose, then apply quarantine with `vectl repair continuity`. See [Continuity Artifact Recovery](#continuity-artifact-recovery-vectl-repair-continuity) for full details.
 
 ## Technical Details
 

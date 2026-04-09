@@ -7,7 +7,7 @@ Authority: docs/ORCHESTRATION-PLANE-IMPLEMENTATION-DESIGN.md section 3.6
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Protocol
+from typing import Literal, Protocol
 
 from vectl import core
 from vectl.io import load_plan_definition, save_plan
@@ -35,12 +35,37 @@ class CoreAdapter(Protocol):
         """Read authoritative step isolation semantics from core state."""
         ...
 
-    def claim_step(self, step_id: str, agent: str, force: bool = False) -> None:
-        """Execute claim through official core claim surface."""
+    def claim_step(
+        self,
+        step_id: str,
+        agent: str,
+        *,
+        force: bool = False,
+        flow: Literal["normal"] = "normal",
+    ) -> None:
+        """Execute claim through official core claim surface.
+
+        Contract lock:
+            ``flow`` is pinned to ``"normal"`` for orchestration runtime use.
+            Resolver and other exceptional paths must not treat this bridge as a
+            second claim authority.
+        """
         ...
 
-    def complete_step(self, step_id: str, evidence: str) -> None:
-        """Execute completion through official core completion surface."""
+    def complete_step(
+        self,
+        step_id: str,
+        evidence: str,
+        *,
+        reconcile_disposition: Literal["merged", "noop"],
+    ) -> None:
+        """Execute completion through official core completion surface.
+
+        Contract lock:
+            Completion is allowed only after runtime reconcile closed as
+            ``"merged"`` or ``"noop"``. The disposition is passed explicitly so
+            orchestration call sites cannot hide that prerequisite.
+        """
         ...
 
     def defer_step(self, step_id: str) -> None:
@@ -134,14 +159,26 @@ class PlanCoreAdapter:
         _, step = found
         return step.isolation
 
-    def claim_step(self, step_id: str, agent: str, force: bool = False) -> None:
+    def claim_step(
+        self,
+        step_id: str,
+        agent: str,
+        *,
+        force: bool = False,
+        flow: Literal["normal"] = "normal",
+    ) -> None:
         """Execute claim through official core claim surface.
 
         Args:
             step_id: Step selector to claim.
             agent: Claiming agent name.
             force: Whether to force claim for exclusive-affinity mismatches.
+            flow: Orchestration flow class. Pinned to ``"normal"`` for this
+                bridge so resolver/escalation paths do not claim through the
+                lifecycle facade.
         """
+        if flow != "normal":
+            raise ValueError("orchestration core adapter claim flow is pinned to 'normal'")
         plan, file_hash = load_plan_definition(self._plan_path)
         updated_plan, _ = core.claim_step(
             plan,
@@ -152,18 +189,33 @@ class PlanCoreAdapter:
         )
         save_plan(updated_plan, self._plan_path, expected_hash=file_hash)
 
-    def complete_step(self, step_id: str, evidence: str) -> None:
+    def complete_step(
+        self,
+        step_id: str,
+        evidence: str,
+        *,
+        reconcile_disposition: Literal["merged", "noop"],
+    ) -> None:
         """Execute completion through official core completion surface.
 
         Args:
             step_id: Step selector to complete.
             evidence: Completion evidence string.
+            reconcile_disposition: Accepted reconcile closure proving runtime has
+                already merged or determined noop before lifecycle completion.
         """
+        # Preserve reconcile_disposition proof in the evidence surface.
+        # Per ORCHESTRATION-PLANE-RUNTIME-WORKTREE-LIFECYCLE.md Rule 4,
+        # completion is allowed only after reconcile returns 'merged' or 'noop'.
+        # The reconcile_disposition parameter is the runtime proof that
+        # this prerequisite was met. Dropping it (as the prior implementation
+        # did with `_ = reconcile_disposition`) broke the proof chain.
+        enriched_evidence = f"[reconcile_disposition={reconcile_disposition}] {evidence}"
         plan, file_hash = load_plan_definition(self._plan_path)
         updated_plan = core.complete_step(
             plan,
             step_id,
-            evidence,
+            enriched_evidence,
             claims_path=self._claims_path,
         )
         save_plan(updated_plan, self._plan_path, expected_hash=file_hash)

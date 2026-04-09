@@ -21,6 +21,11 @@ class ResolverInvocationSurface(Protocol):
     Authority:
         docs/ORCHESTRATION-PLANE-IMPLEMENTATION-DESIGN.md sections 3.5 and 3.9
         docs/ORCHESTRATION-PLANE-RESOLUTION-CONTRACT.md sections 2, 4, 5, 8
+
+    Contract Locks:
+        - invocation executes from the canonical main worktree only
+        - mutation authority is limited to the approved vectl facade
+        - claiming remains outside resolver invocation; normal flow owns it
     """
 
     def invoke(self, case: ResolutionCase) -> Mapping[str, object]:
@@ -41,6 +46,9 @@ class Resolver(Protocol):
     Authority:
         docs/ORCHESTRATION-PLANE-INTERFACES.md section 4.4
         docs/ORCHESTRATION-PLANE-RESOLUTION-CONTRACT.md sections 3.2 and 5.1
+
+    The exported ``ResolverAuthorityContract`` type is normative for this seam.
+    Implementors must preserve that boundary rather than reinterpret it locally.
     """
 
     def resolve(self, case: ResolutionCase) -> ResolutionReport:
@@ -66,6 +74,8 @@ class BoundResolver:
     Note:
         This adapter is a boundary stub in this contract step.
         It intentionally does not implement permanent control authority.
+        It also does not create resolver-local claim/mutation authority beyond
+        the approved main-worktree vectl facade contract supplied in the case.
     """
 
     invocation: ResolverInvocationSurface

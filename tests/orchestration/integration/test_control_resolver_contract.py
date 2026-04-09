@@ -18,11 +18,9 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from typing import Literal
-from unittest.mock import MagicMock, call
 
 from vectl.models import IsolationMode
 from vectl.orchestration.contracts import (
-    ControlDecision,
     CoreSnapshot,
     ResolutionCase,
     ResolutionReport,
@@ -30,7 +28,7 @@ from vectl.orchestration.contracts import (
     RuntimeSnapshot,
 )
 from vectl.orchestration.control import ControlInputSources, PlanAwareControl
-from vectl.orchestration.resolver import BoundResolver, ResolverInvocationSurface
+from vectl.orchestration.resolver import BoundResolver
 
 
 def _core(
@@ -98,10 +96,25 @@ class _FakeCoreAdapter:
     def step_isolation(self, step_id: str) -> IsolationMode:
         raise NotImplementedError(f"test double: step_isolation({step_id})")
 
-    def claim_step(self, step_id: str, agent: str, force: bool = False) -> None:
+    def claim_step(
+        self,
+        step_id: str,
+        agent: str,
+        *,
+        force: bool = False,
+        flow: str = "normal",
+    ) -> None:
+        _ = flow
         raise NotImplementedError(f"test double: claim_step({step_id}, {agent})")
 
-    def complete_step(self, step_id: str, evidence: str) -> None:
+    def complete_step(
+        self,
+        step_id: str,
+        evidence: str,
+        *,
+        reconcile_disposition: str,
+    ) -> None:
+        _ = reconcile_disposition
         raise NotImplementedError(f"test double: complete_step({step_id})")
 
     def defer_step(self, step_id: str) -> None:
@@ -174,8 +187,6 @@ def test_control_invokes_resolver_only_when_normal_flow_does_not_close() -> None
         return_status="unblocked",
         return_summary="should not be called",
     )
-    resolver = BoundResolver(invocation=resolver_invocation)
-
     # Control sees claimable work with available agents
     control = PlanAwareControl(
         sources=ControlInputSources(
@@ -198,8 +209,6 @@ def test_control_invokes_resolver_only_when_normal_flow_does_not_close() -> None
         return_status="unblocked",
         return_summary="should not be called",
     )
-    resolver2 = BoundResolver(invocation=resolver_invocation2)
-
     # Control sees work in progress
     control2 = PlanAwareControl(
         sources=ControlInputSources(
@@ -222,8 +231,6 @@ def test_control_invokes_resolver_only_when_normal_flow_does_not_close() -> None
         return_status="unblocked",
         return_summary="should not be called",
     )
-    resolver3 = BoundResolver(invocation=resolver_invocation3)
-
     # Control sees complete plan and idle runtime
     control3 = PlanAwareControl(
         sources=ControlInputSources(
@@ -432,7 +439,9 @@ def test_resolver_returns_bounded_report_for_all_status_values() -> None:
         - "operator_required": stop until operator intervention
         - "halt": orchestration should stop
     """
-    test_cases = [
+    test_cases: list[
+        tuple[Literal["unblocked", "waiting", "operator_required", "halt"], str, object]
+    ] = [
         ("unblocked", "resolved via retry", ("run://1",)),
         ("waiting", "awaiting external reconciliation", ("ticket://123",)),
         ("operator_required", "manual intervention required", None),
@@ -675,5 +684,15 @@ def test_resolution_case_contains_current_state_not_speculation() -> None:
     # Bounded by frozen dataclass
     from dataclasses import fields
 
-    field_count = len(list(fields(ResolutionCase)))
-    assert field_count == 4, "Case is bounded to exactly 4 fields (reason, core, roster, runtime)"
+    field_names = tuple(field.name for field in fields(ResolutionCase))
+    assert field_names == (
+        "reason",
+        "core",
+        "roster",
+        "runtime",
+        "case_id",
+        "case_source",
+        "summary",
+        "blocked_step_ids",
+        "artifact_refs",
+    )

@@ -65631,7 +65631,7 @@ phases:
       \ required in this run."
   - id: decide_refresh_tests.reverify-gate-mcp-contract-refresh-batch
     name: Reverify gate MCP contract refresh blocker batch
-    status: claimed
+    status: done
     description: 'As an INDEPENDENT TESTER, reverify the refreshed MCP red-test contract
       after decide_refresh_tests.fix-gate-mcp-contract-refresh-batch.
 
@@ -65714,6 +65714,59 @@ phases:
     agent: integration-verifier-tacit
     claimed_by: integration-verifier-tacit
     claimed_at: '2026-04-09T12:43:55.322475+00:00'
+    done_at: '2026-04-09T12:48:01.498807+00:00'
+    evidence: '## Verification Report
+
+      **Tester**: integration-verifier-tacit
+
+      **Scope**: refreshed MCP red-test contract
+
+      **Independence Level**: L1
+
+
+      ### refs Read Confirmation (MANDATORY)
+
+      - tools/vectl/README.md — not found at requested path
+
+      - focused surfaces reviewed: tests/test_decide.py, tests/test_decide_state_isolation.py,
+      tests/test_mcp.py::TestVectlDecide
+
+
+      ### Contract Check Matrix
+
+      - stale continuation assertions absent: PASS (no active positive assertions;
+      only negative absence checks)
+
+      - stale halt_reason assertions absent: PASS (same)
+
+      - stale session assertions absent: PASS (same)
+
+      - status asserted: PASS
+
+      - reason_code asserted: PASS
+
+      - next_state asserted: PASS
+
+      - reuse_token asserted: PASS
+
+      - reuse_runner asserted: PASS
+
+
+      ### Commands executed
+
+      - `uv run pytest tests/test_decide.py tests/test_decide_state_isolation.py -v
+      --tb=short`
+
+
+      ### Actual output
+
+      - `38 passed, 1 warning`
+
+
+      ### Notes
+
+      - Verification indicates refreshed contract coverage is present and stale positive
+      legacy assertions are absent on the tested surfaces.'
 - id: decide_refresh_impl
   name: vectl_decide Contract Refresh — Implementation
   status: done

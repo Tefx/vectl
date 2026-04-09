@@ -68209,7 +68209,7 @@ phases:
       - R26: VERIFIED\n- R27: VERIFIED\n- R30: VERIFIED\ngate_open_allowed: true"
 - id: orchestration_dispatch_policy
   name: Orchestration Dispatch / Prompt / Role Policy
-  status: in_progress
+  status: done
   gate: Lock and implement upper-layer dispatch semantics, role/prompt policy, and
     canonical contract sync without reopening foundation runner/runtime boundaries.
   depends_on:
@@ -68492,7 +68492,7 @@ phases:
       - unknown-role explicit failure behavior validated'
   - id: orchestration_dispatch_policy.gate-dispatch-policy
     name: Gate dispatch policy
-    status: claimed
+    status: done
     description: 'Gate review: verify dispatch policy is locked and implemented strongly
       enough for downstream resolver and orch_app routing work. Block on contract
       drift, silent role downgrade, prompt ownership leakage, or prose-based review
@@ -68512,9 +68512,38 @@ phases:
     agent: gate-reviewer-tacit
     claimed_by: gate-reviewer-tacit
     claimed_at: '2026-04-09T04:09:43.279801+00:00'
+    done_at: '2026-04-09T04:16:35.711619+00:00'
+    evidence: 'Artifact:
+
+      - Dispatch policy gate review completed with conditional-pass verdict
+
+
+      Verification:
+
+      - green dispatch-policy suite passed; expected-red suite remained xfail as designed
+
+      - blocker-class obligations verified: no silent role downgrade, explicit unknown-role
+      failures, structured review normalization, prompt ownership in dispatch layer
+
+
+      Spec link:
+
+      - docs/ORCHESTRATION-PLANE-DISPATCH-AND-PROMPT-POLICY.md
+
+      - docs/ORCHESTRATION-PLANE-INTERFACES.md
+
+      - docs/ORCHESTRATION-PLANE-RESOLUTION-CONTRACT.md
+
+
+      Gate basis:
+
+      - OPEN (conditional) for downstream resolver coordination
+
+      - should-fix only: stale contract-lock tests and local lint hygiene; no blocker-class
+      items'
 - id: orchestration_resolver_coordination
   name: Orchestration Resolver Coordination
-  status: locked
+  status: pending
   gate: Resolver consumes explicit ResolutionCase input, uses approved vectl facade
     for authorized mutations, never claims normal work, and returns bounded ResolutionReport
     outcomes.

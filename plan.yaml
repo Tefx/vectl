@@ -66797,7 +66797,7 @@ phases:
       \ dependency wired through new reverify path."
   - id: deep_review.fix-repeated-failure-pending-escalation-state
     name: Repair repeated-failure pending-escalation state persistence
-    status: pending
+    status: claimed
     description: 'Fix repeated-failure status signaling across consecutive decide
       invocations.
 
@@ -66886,6 +66886,8 @@ phases:
     depends_on:
     - deep_review.reverify-repeated-failure-status-signaling
     agent: python-senior-tacit
+    claimed_by: python-senior-tacit
+    claimed_at: '2026-04-09T09:58:26.189575+00:00'
   - id: deep_review.reverify-repeated-failure-pending-escalation-state
     name: Reverify repeated-failure pending-escalation status persistence
     status: pending

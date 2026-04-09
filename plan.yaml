@@ -72043,7 +72043,7 @@ phases:
       - Gate rewired to depend on the new post-fix reverify step."
   - id: orchestration_operator_recovery.fix-enforce-dispatch-recovery-gates-and-complete-step-consultation
     name: Enforce dispatch recovery gates and complete-step consultation
-    status: claimed
+    status: done
     description: 'Fix ALL remaining operator/conflict/recovery enforcement blockers
       found by reverify.
 
@@ -72124,7 +72124,114 @@ phases:
     agent: python-senior-tacit
     claimed_by: python-senior
     claimed_at: '2026-04-09T17:15:17.206472+00:00'
-    done_at: '2026-04-09T17:04:59.942968+00:00'
+    done_at: '2026-04-09T17:41:23.824180+00:00'
+    evidence: '## Enforcement Fix Report
+
+
+      ### Commit
+
+      - **Hash**: `ff1818f` on branch `vectl/step-orchestration_operator_recovery.fix-enforce-dispatch-recovery-gates-and-complete-step-consultation`
+
+
+      ### Files Changed
+
+      - `src/vectl/orch_app.py` — core enforcement wiring
+
+      - `tests/orchestration/unit/test_dispatch_recovery_gate_enforcement.py` — 27
+      new tests
+
+
+      ### Symbols Added/Modified in `src/vectl/orch_app.py`
+
+
+      1. **`DispatchBlockedError`** (new class) — Raised when dispatch is blocked
+      by recovery gate or paused operator state
+
+      2. **`DuplicateCompleteBlockedError`** (new class) — Raised when step completion
+      is blocked by duplicate-complete prevention
+
+      3. **`OrchestrationApp._is_dispatch_blocked_by_gate()`** (new method) — Checks
+      `_latest_operator_notification.paused_routing_state` and `_latest_recovery_report.dispatch_recovery_gate.unsafe_dispatch_blocked`
+
+      4. **`OrchestrationApp._is_complete_blocked_by_gate()`** (new method) — Checks
+      `_latest_operator_notification.paused_routing_state` and `_latest_recovery_report.dispatch_recovery_gate.duplicate_complete_blocked`
+
+      5. **`OrchestrationApp.dispatch_resolution_subtask()`** (modified) — Calls `_is_dispatch_blocked_by_gate()`
+      before dispatching; raises `DispatchBlockedError` if blocked
+
+      6. **`OrchestrationApp.route_terminal_execution()`** (modified) — Calls `_is_complete_blocked_by_gate()`
+      twice (pre-reconcile and post-reconcile); raises `DuplicateCompleteBlockedError`
+      if blocked
+
+      7. **`OrchestrationApp._start_runtime_execution()`** (modified) — Calls `_is_dispatch_blocked_by_gate()`
+      before dispatching
+
+      8. **`OrchestrationApp._admit_start_and_persist_running()`** (modified) — Calls
+      `_is_dispatch_blocked_by_gate()` before admission path
+
+      9. **`__all__`** (modified) — Added `DispatchBlockedError` and `DuplicateCompleteBlockedError`
+      exports
+
+
+      ### Dispatch Entry Paths Audited (no bypass remains)
+
+      | Path | Gate Check | Error Type |
+
+      |------|-----------|-------------|
+
+      | `dispatch_resolution_subtask()` | `_is_dispatch_blocked_by_gate()` | `DispatchBlockedError`
+      |
+
+      | `route_terminal_execution()` pre-reconcile | `_is_complete_blocked_by_gate()`
+      | `DuplicateCompleteBlockedError` |
+
+      | `route_terminal_execution()` post-reconcile | `_is_complete_blocked_by_gate()`
+      | `DuplicateCompleteBlockedError` |
+
+      | `_start_runtime_execution()` | `_is_dispatch_blocked_by_gate()` | `DispatchBlockedError`
+      |
+
+      | `_admit_start_and_persist_running()` | `_is_dispatch_blocked_by_gate()` |
+      `DispatchBlockedError` |
+
+
+      `run()` and `resume()` path through `_admit_start_and_persist_running()` which
+      has the gate check.
+
+      `recover()` resume_safe path also goes through `_start_runtime_execution()`
+      which has the gate check.
+
+
+      ### Test Results
+
+      ```
+
+      27 passed in 1.03s — test_dispatch_recovery_gate_enforcement.py (ALL NEW)
+
+      20 passed in 1.33s — test_operator_pause_conflict_recovery_red.py (NO REGRESSIONS)
+
+      95 passed total — dispatch_policy + recovery + enforcement + red tests
+
+      ```
+
+
+      ### Sibling Search Evidence
+
+      Searched all dispatch entry paths (`run`, `resume`, `recover`, `dispatch_resolution_subtask`,
+      `route_terminal_execution`, `_start_runtime_execution`, `_admit_start_and_persist_running`)
+      for gate-bypass patterns. All paths now enforce gate checks. No remaining bypass
+      paths found.
+
+
+      ### NOT Done
+
+      - No changes to `recover()` resume_safe dispatch path beyond the `_start_runtime_execution`
+      gate (the method itself doesn''t need duplication since it delegates)
+
+      - No changes to existing tests in other test files (pre-existing failures are
+      unrelated)
+
+      - No changes to `run()` method body beyond delegation through `_admit_start_and_persist_running`'
     rejection_reason: completed step lacked material code changes; reverify found
       blockers still present
     rejection_history:

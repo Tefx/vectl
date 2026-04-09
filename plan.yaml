@@ -72043,7 +72043,7 @@ phases:
       - Gate rewired to depend on the new post-fix reverify step."
   - id: orchestration_operator_recovery.fix-enforce-dispatch-recovery-gates-and-complete-step-consultation
     name: Enforce dispatch recovery gates and complete-step consultation
-    status: pending
+    status: claimed
     description: 'Fix ALL remaining operator/conflict/recovery enforcement blockers
       found by reverify.
 
@@ -72122,6 +72122,8 @@ phases:
     depends_on:
     - orchestration_operator_recovery.reverify-operator-conflict-recovery-conformance-after-fix
     agent: python-senior-tacit
+    claimed_by: python-senior-tacit
+    claimed_at: '2026-04-09T16:53:43.886103+00:00'
   - id: orchestration_operator_recovery.reverify-dispatch-recovery-gate-enforcement-after-fix
     name: Reverify dispatch recovery gate enforcement after fix
     status: pending

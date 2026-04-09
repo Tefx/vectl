@@ -65843,8 +65843,9 @@ phases:
       green, and conformant. Block if task_id/reuse semantics drift, standalone advisor
       semantics narrow, or verification/conformance evidence is incomplete.'
     verification: 'phase-check protecting doc_sync: implementation, verification,
-      and conformance all pass; task_id remains distinct from reuse identity; standalone
-      advisor semantics are preserved.'
+      original conformance finding, and AF1/R8 reverify all pass; task_id remains
+      distinct from reuse identity; runner provenance follows authoritative reusable-session/completed-result
+      truth; standalone advisor semantics are preserved.'
     evidence_template: '## refs Read Confirmation (MANDATORY)
 
       For each ref in this step:
@@ -65861,12 +65862,16 @@ phases:
       - Standalone usage check:
 
       - Gate decision: OPEN | BLOCKED'
+    refs:
+    - docs/RFC-vectl-decide-advisor-refresh.md
+    - src/vectl/decide.py
     depends_on:
     - decide_refresh_impl.models-state
     - decide_refresh_impl.core
     - decide_refresh_impl.mcp-surface
     - decide_refresh_impl.verify
     - decide_refresh_impl.spec-conformance
+    - decide_refresh_impl.af1-r8-reverify
     agent: gate-reviewer-tacit
   - id: decide_refresh_impl.af1-r8-fix
     name: Fix runner provenance dispatch semantics and minimal escalation rigidity

@@ -65767,6 +65767,125 @@ phases:
 
       - Verification indicates refreshed contract coverage is present and stale positive
       legacy assertions are absent on the tested surfaces.'
+  - id: decide_refresh_tests.fix-root-cause-mcp-refreshed-assertions
+    name: Fix root-cause MCP refreshed assertions
+    status: pending
+    description: 'Rewrite the authoritative MCP refreshed-contract tests in tests/test_mcp.py
+      so the MCP surface asserts only the refreshed decide output contract.
+
+
+      work_type: proof_closure
+
+      step_type: test
+
+      step_intent: test_define_red
+
+      expected_result: red
+
+      agent_source: default
+
+      tags: ["integration"]
+
+
+      Refs / anchors:
+
+      - docs/RFC-vectl-decide-advisor-refresh.md
+
+      - tests/test_mcp.py::TestVectlDecide
+
+
+      Touch paths:
+
+      - tests/test_mcp.py
+
+
+      Required rewrite scope:
+
+      - remove stale MCP assertions or acceptance language for legacy `continuation`,
+      `halt_reason`, and `session` fields wherever TestVectlDecide still encodes them
+      as contract expectations
+
+      - add or tighten MCP assertions for refreshed contract fields: `status`, `reason_code`,
+      `next_state`, `policy`, `advisor_state`, `reuse_token`, and `reuse_runner`
+
+      - keep the surface test-only and expected-red where implementation proof is
+      still intentionally incomplete
+
+      - search sibling MCP assertions in the same class so the contract is refreshed
+      consistently, not only in one example
+
+
+      why_previous_fix_failed: the prior fix/reverify loop reported broad refreshed
+      coverage but did not modify the MCP test class itself, so stale contract expectations
+      and missing refreshed-field assertions remained on the authoritative MCP seam.
+
+
+      ## Root Cause vs Symptom
+
+      - Root cause: remediation relied on proof statements about MCP coverage instead
+      of rewriting the concrete MCP contract assertions in the authoritative test
+      class.
+
+      - Symptom: decide_refresh_tests.gate still finds stale continuation/halt_reason/session
+      expectations and zero refreshed MCP assertions for status/reason_code/next_state/policy/advisor_state/reuse_token/reuse_runner.
+
+      - Why this fix is not surface-level: completion requires changing the MCP test
+      surface itself and removing stale assertions, not only adding narrative evidence.
+
+
+      ## Completion Criteria
+
+      - tests/test_mcp.py::TestVectlDecide asserts the refreshed MCP contract fields
+      explicitly
+
+      - stale `continuation`, `halt_reason`, and `session` acceptance assertions are
+      removed from the MCP contract surface
+
+      - evidence names the exact test methods updated and the sibling search performed
+
+      - no product implementation files are touched'
+    verification: 'local-check protecting decide_refresh_tests.gate: the authoritative
+      MCP test class now asserts refreshed fields (status/reason_code/next_state/policy/advisor_state/reuse_token/reuse_runner)
+      and no longer encodes stale continuation/halt_reason/session acceptance.'
+    evidence_template: '## refs Read Confirmation (MANDATORY)
+
+      For each ref in this step:
+
+      - <filename> — key passage or "NOT READ: <reason>"
+
+
+      If no refs were provided, state: "No refs for this step."
+
+
+      ## MCP Root-Cause Rewrite Evidence
+
+      - Updated test methods in tests/test_mcp.py:
+
+      - Stale assertions removed:
+
+      - Refreshed assertions added for: status | reason_code | next_state | policy
+      | advisor_state | reuse_token | reuse_runner
+
+      - Sibling MCP assertion search performed:
+
+      - Product implementation files changed: NONE
+
+
+      ## Commands + Outputs
+
+      - command:
+
+      - output:
+
+
+      ## Expected-red note
+
+      - Explain why this remains a contract-defining test surface and what gap is
+      intentionally exposed.
+
+      '
+    depends_on:
+    - decide_refresh_tests.reverify-gate-mcp-contract-refresh-batch
 - id: decide_refresh_impl
   name: vectl_decide Contract Refresh — Implementation
   status: done

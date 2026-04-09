@@ -71401,6 +71401,105 @@ phases:
     - orchestration_operator_recovery.verify-durable-operator-pause-and-recovery-behavior
     - orchestration_operator_recovery.audit-operator-conflict-recovery-conformance
     agent: gate-reviewer-tacit
+  - id: orchestration_operator_recovery.contract-operator-notification-conflict-preservation-and-recovery-alignment
+    name: Contract operator notification, conflict preservation, and recovery alignment
+    status: pending
+    description: "step_type: contract\ncontract_purity: ENFORCED\ncontract_outputs:\n\
+      \  - signatures\n  - type_defs\n  - interfaces\n  - stubs\nagent_source: project\n\
+      \nDefine the authoritative durability and restart-recovery contract for upper-layer\
+      \ operator/conflict handling before implementation.\n\nPin and clarify the existing\
+      \ orchestration-layer interfaces in the touched files only; do not expand the\
+      \ public API surface. Make semantics explicit for:\n- durable operator_required\
+      \ notification metadata, receipt state, and paused-routing state\n- preserved\
+      \ merge_conflict / aborted reconcile evidence, including protected-path handling\
+      \ that must remain explicit and non-silent\n- recovery metadata required to\
+      \ reconstruct worktree / execution / reconcile / resolution / operator state\
+      \ after restart\n- duplicate-complete and unsafe-dispatch prevention until reconcile\
+      \ closure is re-established after restart\n\nAuthoritative interface scope:\n\
+      - src/vectl/orch_app.py — orchestration app routing / notification entrypoints\
+      \ already referenced by docs\n- src/vectl/orchestration/runtime.py — runtime\
+      \ durability / pause-state interfaces already consumed by orchestration flow\n\
+      - src/vectl/orchestration/recovery.py — restart reconstruction interfaces and\
+      \ invariants\n- src/vectl/orchestration/run_store.py — persisted run metadata\
+      \ shape and load/save expectations\n- src/vectl/orchestration/continuity_artifacts.py\
+      \ — preserved conflict / recovery artifact schema\n\nContract-only outputs are\
+      \ allowed: signature locks, typed state schemas, docstrings, invariant comments,\
+      \ and stubs. Implementation logic is forbidden.\n"
+    verification: 'local-check: authoritative contract artifacts define durability,
+      conflict-preservation, protected-path, and restart-recovery semantics without
+      shipping implementation logic; implementation step can fill stub bodies without
+      changing pinned interfaces.'
+    refs:
+    - docs/ORCHESTRATION-PLANE-OPERATOR-CONFLICT-RECOVERY.md
+    - docs/ORCHESTRATION-PLANE-ORCH-APP-ROUTING.md
+    - docs/ORCHESTRATION-PLANE-RESOLVER-COORDINATION.md
+    - src/vectl/orch_app.py
+    - src/vectl/orchestration/runtime.py
+    - src/vectl/orchestration/recovery.py
+    - src/vectl/orchestration/run_store.py
+    - src/vectl/orchestration/continuity_artifacts.py
+    agent: python-senior-tacit
+  - id: orchestration_operator_recovery.define-red-tests-for-operator-pause-conflict-preservation-and-recovery-alignment
+    name: Define red tests for operator pause, conflict preservation, and recovery
+      alignment
+    status: pending
+    description: 'step_type: test
+
+      step_intent: test_define_red
+
+      expected_result: red
+
+      agent_source: project
+
+
+      tags:
+
+      - integration
+
+
+      Define the gap before implementation by adding test-only coverage for durable
+      operator/conflict/recovery behavior.
+
+
+      Required expected-red coverage:
+
+      - operator_required persists notification metadata, receipt state, and paused-routing
+      state durably
+
+      - unresolved merge_conflict and aborted reconcile evidence survive restart without
+      silent protected-path integration
+
+      - restart reconstructs enough state to block unsafe dispatch and duplicate complete
+      until reconcile closure
+
+      - protected-path conflict behavior is surfaced explicitly after restart
+
+
+      Test scope is limited to tests plus minimal fixtures/helpers. Do not modify
+      product code. If a real integration path cannot yet run, expose the missing
+      seam explicitly and record the red failure as the implementation target.
+
+
+      ## Spec-Fixture Conformance (MANDATORY)
+
+      At least one fixture MUST derive directly from the authoritative operator/conflict/recovery
+      docs and use the documented minimal persisted shape without convenience fields
+      beyond the spec.
+
+      '
+    verification: 'local-check: test-only changes expose the operator/conflict/recovery
+      durability gap red before implementation; evidence names the exposed gaps and
+      the downstream implementation step that must close them.'
+    refs:
+    - docs/ORCHESTRATION-PLANE-OPERATOR-CONFLICT-RECOVERY.md
+    - docs/ORCHESTRATION-PLANE-ORCH-APP-ROUTING.md
+    - docs/ORCHESTRATION-PLANE-RESOLVER-COORDINATION.md
+    - src/vectl/orch_app.py
+    - src/vectl/orchestration/recovery.py
+    - src/vectl/orchestration/run_store.py
+    depends_on:
+    - orchestration_operator_recovery.contract-operator-notification-conflict-preservation-and-recovery-alignment
+    agent: integration-verifier-tacit
 - id: orchestration_upper_layer_review
   name: Orchestration Upper-Layer Review
   status: locked

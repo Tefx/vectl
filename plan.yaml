@@ -66190,14 +66190,14 @@ phases:
       \ required contract proof items are green/proven; no blocker intersects doc_sync/deep_review."
 - id: doc_sync
   name: Documentation Sync
-  status: pending
+  status: in_progress
   gate: Documentation reflects the refreshed vectl_decide contract exactly.
   depends_on:
   - decide_refresh_impl
   steps:
   - id: doc_sync.update-vectl-decide-docs
     name: Update vectl_decide documentation
-    status: pending
+    status: claimed
     description: Sync documentation to the refreshed vectl_decide contract. Update
       README, DESIGN, and any decide-facing docs/docstrings that still mention continuation/halt_reason
       machine control, overloaded task_id reuse semantics, or non-canonical state
@@ -66219,6 +66219,8 @@ phases:
 
       - Remaining doc debt: none | <detail>'
     agent: doc-reviewer-tacit
+    claimed_by: doc-reviewer-tacit
+    claimed_at: '2026-04-09T08:40:31.305460+00:00'
   - id: doc_sync.gate
     name: Gate doc_sync
     status: pending

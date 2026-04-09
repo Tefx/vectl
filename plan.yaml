@@ -71508,7 +71508,7 @@ phases:
       - product_implementation_files_modified: no'
   - id: orchestration_operator_recovery.audit-operator-conflict-recovery-conformance
     name: Audit operator/conflict/recovery conformance
-    status: claimed
+    status: done
     description: Independent spec conformance review for operator notification, conflict
       policy, and recovery behavior. Audit operator_required durable state and receipt
       semantics, reconcile outcomes and protected-path handling, recovery metadata
@@ -71526,6 +71526,24 @@ phases:
     agent: spec-verifier-tacit
     claimed_by: spec-verifier
     claimed_at: '2026-04-09T16:23:22.697560+00:00'
+    done_at: '2026-04-09T16:36:21.938909+00:00'
+    evidence: "## refs Read Confirmation\n- Reviewed operator/conflict/recovery specs\
+      \ and implementation surfaces in orch_app.py, recovery.py, runtime.py, continuity_artifacts.py,\
+      \ and related tests.\n\n## Conformance Report (blocked)\n- gate_open_allowed:\
+      \ false\n- blocker findings:\n  1. operator_required/paused_routing dispatch\
+      \ gating not enforced in orchestration loop (R1/R4/R5/R18/R24)\n  2. recovery\
+      \ does not reconstruct outstanding ResolutionCase objects from durable store\
+      \ (R13 partial)\n  3. DispatchRecoveryGate is reconstructed but not consulted\
+      \ before dispatch\n- verification commands included targeted tests (green on\
+      \ durability test suite) and static conformance audit; blocker remains behavioral/control-loop\
+      \ enforcement and recovery reconstruction semantics.\n\n## behavioral_proof_register\n\
+      - P1 (R1/R4/R18/R24 dispatch gating): NEEDS_TEST / BLOCKING\n- P2 (R5 operator-wait\
+      \ exit semantics): NEEDS_TEST / BLOCKING\n- P3 (R13 resolution-case reconstruction):\
+      \ PARTIAL\n- P4 (R14 complete replay barrier): PROVEN\n- P5 (R9 protected-path\
+      \ policy explicitness): PROVEN\n\n## Remediation ownership\n- Planner added\
+      \ remediation chain:\n  - `orchestration_operator_recovery.fix-operator-conflict-recovery-dispatch-and-resolution-gaps`\n\
+      \  - `orchestration_operator_recovery.reverify-operator-conflict-recovery-conformance-after-fix`\n\
+      - Gate rewired to depend on reverify step."
   - id: orchestration_operator_recovery.gate-operator-conflict-recovery-alignment
     name: Gate operator/conflict/recovery alignment
     status: pending

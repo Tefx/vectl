@@ -10,7 +10,7 @@ from __future__ import annotations
 import json
 import time
 from pathlib import Path
-from typing import Any, cast
+from typing import Any, Literal, cast
 
 import pytest
 
@@ -27,6 +27,9 @@ from vectl.orchestration.config import OrchestrationConfig, RuntimeConfig
 from vectl.orchestration.contracts import (
     ControlDecision,
     CoreSnapshot,
+    DispatchSpec,
+    ExecutionResult,
+    ReconcileResult,
     ResolutionCase,
     ResolutionReport,
     RosterSnapshot,
@@ -114,11 +117,12 @@ def _runtime_snapshot() -> RuntimeSnapshot:
 
 def test_build_composes_real_collaborators_without_noop_resolver_dependency(tmp_path: Path) -> None:
     app = _build_app(tmp_path)
+    orch = cast(Any, app)
 
-    assert app._control.__class__.__name__ == "PlanAwareControl"
-    assert app._core_adapter.__class__.__name__ == "PlanCoreAdapter"
-    assert app._resolver.__class__.__name__ == "BoundResolver"
-    assert app._resolver.invocation.__class__.__name__ == "GatewayResolverInvocation"
+    assert orch._control.__class__.__name__ == "PlanAwareControl"
+    assert orch._core_adapter.__class__.__name__ == "PlanCoreAdapter"
+    assert orch._resolver.__class__.__name__ == "BoundResolver"
+    assert orch._resolver.invocation.__class__.__name__ == "GatewayResolverInvocation"
 
 
 def test_build_resolution_case_requires_resolve_decision() -> None:
@@ -296,6 +300,39 @@ def test_run_persists_pending_before_runtime_start(
     assert result.success is True
 
 
+def test_run_claims_before_runtime_start(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    app = _build_app(tmp_path)
+    order: list[str] = []
+
+    original_claim = app._core_adapter.claim_step
+    original_start = app._runtime.start
+
+    def claim_step(
+        step_id: str,
+        agent: str,
+        *,
+        force: bool = False,
+        flow: Literal["normal"] = "normal",
+    ) -> None:
+        order.append(f"claim:{step_id}:{agent}:{flow}")
+        original_claim(step_id, agent, force=force, flow=flow)
+
+    def start_with_probe(*, request, workspace):
+        order.append(f"start:{request.step_id}:{request.role}")
+        return original_start(request=request, workspace=workspace)
+
+    monkeypatch.setattr(app._core_adapter, "claim_step", claim_step)
+    monkeypatch.setattr(app._runtime, "start", start_with_probe)
+
+    result = app.run(step_id="core.ready", agent="python-executor")
+
+    assert result.success is True
+    assert order[:2] == [
+        "claim:core.ready:python-executor:normal",
+        "start:core.ready:python-executor",
+    ]
+
+
 def test_run_consumes_authoritative_step_isolation_for_runtime_request(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
@@ -342,6 +379,192 @@ def test_run_consumes_authoritative_step_isolation_for_runtime_request(
     assert result.success is True
     assert captured_work_refs
     assert "isolation=independent" in captured_work_refs[0]
+    assert "execution_context=linked_worktree" in captured_work_refs[0]
+    assert "source_kind=step" in captured_work_refs[0]
+
+
+def test_route_terminal_execution_completes_only_after_reconcile_allows_it(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    app = _build_app(tmp_path)
+    orch = cast(Any, app)
+    calls: list[str] = []
+
+    def begin_reconcile(execution_id: str) -> ReconcileResult:
+        calls.append(f"reconcile:{execution_id}")
+        return ReconcileResult(
+            execution_id=execution_id,
+            workspace_id="ws-1",
+            status="merged",
+            summary="merged cleanly",
+        )
+
+    def can_complete(execution_id: str) -> tuple[bool, str]:
+        calls.append(f"can_complete:{execution_id}")
+        return True, "ok"
+
+    def complete_step(step_id: str, evidence: str, *, reconcile_disposition: str) -> None:
+        calls.append(f"complete:{step_id}:{reconcile_disposition}")
+
+    monkeypatch.setattr(app._runtime, "begin_reconcile", begin_reconcile)
+    monkeypatch.setattr(app._runtime, "can_complete", can_complete)
+    monkeypatch.setattr(app._runtime, "reconcile_disposition", lambda _execution_id: "merged")
+    monkeypatch.setattr(app._core_adapter, "complete_step", complete_step)
+
+    case = orch.route_terminal_execution(
+        step_id="core.ready",
+        execution_id="exec-1",
+        dispatch_spec=DispatchSpec(
+            source_kind="step",
+            source_id="core.ready",
+            role_id="python-executor",
+            role_source="default",
+            execution_context="linked_worktree",
+            runner="codex",
+            session_mode="fresh",
+        ),
+        execution_result=ExecutionResult(
+            step_id="core.ready",
+            status="success",
+            output_summary="verification passed",
+        ),
+    )
+
+    assert case is None
+    assert calls == ["reconcile:exec-1", "can_complete:exec-1", "complete:core.ready:merged"]
+
+
+def test_route_terminal_execution_non_pass_review_becomes_resolution_case(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    app = _build_app(tmp_path)
+    orch = cast(Any, app)
+    completed: list[str] = []
+
+    monkeypatch.setattr(
+        app._runtime,
+        "begin_reconcile",
+        lambda execution_id: ReconcileResult(
+            execution_id=execution_id,
+            workspace_id="ws-1",
+            status="noop",
+            summary="nothing to merge",
+        ),
+    )
+    monkeypatch.setattr(app._runtime, "can_complete", lambda _execution_id: (True, "ok"))
+    monkeypatch.setattr(app._runtime, "reconcile_disposition", lambda _execution_id: "noop")
+    monkeypatch.setattr(
+        app._core_adapter,
+        "complete_step",
+        lambda step_id, evidence, *, reconcile_disposition: completed.append(step_id),
+    )
+
+    case = orch.route_terminal_execution(
+        step_id="core.ready",
+        execution_id="exec-review",
+        dispatch_spec=DispatchSpec(
+            source_kind="step",
+            source_id="core.ready",
+            role_id="gate-reviewer",
+            role_source="default",
+            execution_context="main_worktree",
+            runner="codex",
+            session_mode="fresh",
+            output_contract="structured_review_result",
+        ),
+        execution_result=ExecutionResult(
+            step_id="core.ready",
+            status="success",
+            output_summary=json.dumps(
+                {
+                    "review_outcome": "needs_fix",
+                    "summary": "defects remain",
+                    "evidence_refs": ["artifact://review"],
+                }
+            ),
+        ),
+    )
+
+    assert case is not None
+    assert case.case_source == "review_failed"
+    assert completed == []
+
+
+def test_route_terminal_execution_parse_failure_becomes_resolution_case(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    app = _build_app(tmp_path)
+    orch = cast(Any, app)
+    monkeypatch.setattr(
+        app._runtime,
+        "begin_reconcile",
+        lambda execution_id: ReconcileResult(
+            execution_id=execution_id,
+            workspace_id="ws-1",
+            status="noop",
+            summary="nothing to merge",
+        ),
+    )
+    monkeypatch.setattr(app._runtime, "can_complete", lambda _execution_id: (True, "ok"))
+    monkeypatch.setattr(app._runtime, "reconcile_disposition", lambda _execution_id: "noop")
+    monkeypatch.setattr(
+        app._core_adapter,
+        "complete_step",
+        lambda *args, **kwargs: pytest.fail("complete_step must not run on parse failure"),
+    )
+
+    case = orch.route_terminal_execution(
+        step_id="core.ready",
+        execution_id="exec-parse",
+        dispatch_spec=DispatchSpec(
+            source_kind="step",
+            source_id="core.ready",
+            role_id="gate-reviewer",
+            role_source="default",
+            execution_context="main_worktree",
+            runner="codex",
+            session_mode="fresh",
+            output_contract="structured_review_result",
+        ),
+        execution_result=ExecutionResult(
+            step_id="core.ready",
+            status="success",
+            output_summary="not-json",
+        ),
+    )
+
+    assert case is not None
+    assert case.case_source == "review_failed"
+    assert "unparseable" in case.reason
+
+
+def test_dispatch_resolution_subtask_uses_shared_runtime_substrate(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    app = _build_app(tmp_path)
+    orch = cast(Any, app)
+    captured_requests: list[tuple[str, ...]] = []
+
+    original_prepare = app._runtime.prepare
+
+    def probe_prepare(request):
+        captured_requests.append(request.work_refs)
+        return original_prepare(request)
+
+    monkeypatch.setattr(app._runtime, "prepare", probe_prepare)
+
+    spec, _workspace, _execution_id = orch.dispatch_resolution_subtask(
+        case_id="case-1",
+        role_id="gate-reviewer",
+        description="review the blocked case",
+        run_id="run-1",
+    )
+
+    assert spec.source_kind == "resolution_subtask"
+    assert spec.execution_context == "main_worktree"
+    assert captured_requests
+    assert "source_kind=resolution_subtask" in captured_requests[0]
+    assert "execution_context=main_worktree" in captured_requests[0]
 
 
 def test_run_runtime_start_failure_terminalizes_after_durable_admission(

@@ -29,7 +29,7 @@ import time
 from dataclasses import asdict, dataclass, field, replace
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import TYPE_CHECKING, Literal
+from typing import TYPE_CHECKING, Literal, cast
 
 from vectl.orchestration.config import (
     OrchestrationConfig,
@@ -42,7 +42,10 @@ from vectl.orchestration.config import (
 from vectl.orchestration.contracts import (
     ControlDecision,
     CoreSnapshot,
+    DispatchSpec,
     ExecutionRequest,
+    ExecutionResult,
+    ReconcileResult,
     ResolutionCase,
     ResolutionCaseSource,
     ResolutionReport,
@@ -55,7 +58,14 @@ from vectl.orchestration.control_channel import (
     FilesystemControlChannel,
     send_to_control,
 )
-from vectl.orchestration.dispatch_policy import normalize_parse_failure, normalize_review_result
+from vectl.orchestration.dispatch_policy import (
+    ConfigPromptRegistry,
+    ConfigRoleProfileRegistry,
+    CoreStepDataAdapter,
+    DispatchCoordinator,
+    normalize_parse_failure,
+    normalize_review_result,
+)
 from vectl.orchestration.events import (
     EventCorruptionError,
     JsonlEventSink,
@@ -101,7 +111,7 @@ from vectl.plan_path import is_linked_worktree
 
 if TYPE_CHECKING:
     from vectl.orchestration.control import Control
-    from vectl.orchestration.core_adapter import CoreAdapter
+    from vectl.orchestration.core_adapter import CoreAdapter, PlanCoreAdapter
     from vectl.orchestration.resolver import Resolver
     from vectl.orchestration.roster import Roster
     from vectl.orchestration.runtime import Runtime
@@ -279,6 +289,15 @@ class OperatorNotification:
     operator_message: str | None = None
 
 
+@dataclass(frozen=True)
+class SnapshotBundle:
+    """Current orchestration snapshots read in routing order."""
+
+    core: CoreSnapshot
+    roster: RosterSnapshot
+    runtime: RuntimeSnapshot
+
+
 def build_resolution_case(
     *,
     case_id: str,
@@ -393,6 +412,9 @@ class OrchestrationApp:
         runtime: Runtime,
         resolver: Resolver,
         core_adapter: CoreAdapter,
+        role_registry: ConfigRoleProfileRegistry | None = None,
+        prompt_registry: ConfigPromptRegistry | None = None,
+        dispatch_coordinator: DispatchCoordinator | None = None,
     ) -> None:
         """
         Initialize the orchestration app with composed components.
@@ -417,6 +439,40 @@ class OrchestrationApp:
         self._text_log_path.touch(exist_ok=True)
         self._latest_recovery_report: RecoveryReport | None = None
         self._latest_operator_notification: OperatorNotification | None = None
+        self._role_registry = role_registry or ConfigRoleProfileRegistry(
+            default_role=config.default_agent,
+            fallback_role=config.default_agent,
+        )
+        self._prompt_registry = prompt_registry or ConfigPromptRegistry(
+            role_registry=self._role_registry
+        )
+        self._dispatch_coordinator = dispatch_coordinator or DispatchCoordinator(
+            role_registry=self._role_registry,
+            prompt_registry=self._prompt_registry,
+            step_adapter=CoreStepDataAdapter(cast("PlanCoreAdapter", core_adapter)),
+        )
+
+    def refresh_snapshots(self, *, agent: str | None = None) -> SnapshotBundle:
+        """Refresh orchestration snapshots in the required evaluation order."""
+
+        return SnapshotBundle(
+            core=self._core_adapter.snapshot(agent=agent),
+            roster=self._roster.snapshot(),
+            runtime=self._runtime.snapshot(),
+        )
+
+    def evaluate_control(
+        self, *, agent: str | None = None
+    ) -> tuple[SnapshotBundle, ControlDecision]:
+        """Refresh snapshots before invoking control evaluation."""
+
+        snapshots = self.refresh_snapshots(agent=agent)
+        decision = self._control.evaluate(
+            core=snapshots.core,
+            roster=snapshots.roster,
+            runtime=snapshots.runtime,
+        )
+        return snapshots, decision
 
     def resolve_case(self, case: ResolutionCase) -> ResolutionReport:
         """Resolve one explicit blocked/non-closure case through the bound resolver.
@@ -441,22 +497,249 @@ class OrchestrationApp:
             self._latest_operator_notification = None
         return report
 
+    def route_resolution_case(
+        self,
+        case: ResolutionCase,
+        *,
+        agent: str | None = None,
+    ) -> ControlDecision:
+        """Apply resolver outcome after refreshing authoritative snapshots."""
+
+        report = self.resolve_case(case)
+        refreshed = self.refresh_snapshots(agent=agent)
+        return self._control.apply_resolution(
+            report=report,
+            core=refreshed.core,
+            roster=refreshed.roster,
+            runtime=refreshed.runtime,
+        )
+
+    def build_dispatch_spec(
+        self,
+        *,
+        step_id: str,
+        role_hint: str | None = None,
+    ) -> DispatchSpec:
+        """Build a dispatch spec using role-profile policy."""
+
+        resolved_role = role_hint or self._config.default_agent
+        if resolved_role == self._role_registry.default_role:
+            return self._dispatch_coordinator.build_dispatch_spec(
+                ControlDecision(
+                    kind="dispatch",
+                    reason="orchestration app dispatch",
+                    step_id=step_id,
+                    role=resolved_role,
+                )
+            )
+
+        temporary_registry = ConfigRoleProfileRegistry(
+            profiles=tuple(self._role_registry._profiles.values()),
+            default_role=resolved_role,
+            fallback_role=resolved_role,
+        )
+        temporary_coordinator = DispatchCoordinator(
+            role_registry=temporary_registry,
+            prompt_registry=self._prompt_registry,
+            step_adapter=self._dispatch_coordinator.step_adapter,
+        )
+        return temporary_coordinator.build_dispatch_spec(
+            ControlDecision(
+                kind="dispatch",
+                reason="orchestration app dispatch",
+                step_id=step_id,
+                role=resolved_role,
+            )
+        )
+
+    def dispatch_resolution_subtask(
+        self,
+        *,
+        case_id: str,
+        role_id: str,
+        description: str,
+        refs: tuple[str, ...] = (),
+        run_id: str,
+    ) -> tuple[DispatchSpec, str, str]:
+        """Route resolver-owned subtask work through the shared runtime substrate."""
+
+        spec = self._dispatch_coordinator.build_resolution_subtask_spec(
+            case_id=case_id,
+            role_id=role_id,
+            description=description,
+            refs=refs,
+        )
+        workspace, execution_id = self._start_runtime_execution(
+            run_id=run_id,
+            step_id=spec.step_id or case_id,
+            dispatch_spec=spec,
+            mode="start",
+        )
+        return spec, workspace, execution_id
+
+    def route_terminal_execution(
+        self,
+        *,
+        step_id: str,
+        execution_id: str,
+        dispatch_spec: DispatchSpec,
+        execution_result: ExecutionResult,
+    ) -> ResolutionCase | None:
+        """Route terminal execution results through reconcile and completion gates."""
+
+        snapshots = self.refresh_snapshots(agent=dispatch_spec.role_id)
+        if execution_result.status in ("fail", "stall", "transport_error"):
+            return ResolutionCase(
+                case_id=f"case-{generate_run_id()}",
+                case_source="runtime_failure",
+                reason=f"runtime non-closure: {execution_result.status}",
+                summary=execution_result.output_summary,
+                core=snapshots.core,
+                roster=snapshots.roster,
+                runtime=snapshots.runtime,
+                blocked_step_ids=(step_id,),
+            )
+
+        reconcile_result = self._runtime.begin_reconcile(execution_id)
+        if reconcile_result is None:
+            raise ValueError(
+                f"Reconcile did not produce a terminal result for execution {execution_id}"
+            )
+        if reconcile_result.status in ("merge_conflict", "aborted"):
+            return self._build_reconcile_resolution_case(
+                step_id=step_id,
+                reconcile_result=reconcile_result,
+                snapshots=snapshots,
+            )
+
+        review_case = self._normalize_review_case(
+            raw_output=execution_result.output_summary,
+            role_id=dispatch_spec.role_id,
+            output_contract=dispatch_spec.output_contract,
+            snapshots=snapshots,
+        )
+        if review_case is not None:
+            return review_case
+
+        can_complete, reason = self._runtime.can_complete(execution_id)
+        if not can_complete:
+            raise ValueError(reason)
+        reconcile_disposition = self._runtime.reconcile_disposition(execution_id)
+        if reconcile_disposition is None:
+            raise ValueError("Reconcile disposition missing despite completion gate approval")
+        self._core_adapter.complete_step(
+            step_id,
+            execution_result.output_summary,
+            reconcile_disposition=reconcile_disposition,
+        )
+        return None
+
+    def _build_reconcile_resolution_case(
+        self,
+        *,
+        step_id: str,
+        reconcile_result: ReconcileResult,
+        snapshots: SnapshotBundle,
+    ) -> ResolutionCase:
+        case_source: ResolutionCaseSource = "merge_conflict"
+        if reconcile_result.status == "aborted":
+            case_source = "runtime_failure"
+        return ResolutionCase(
+            case_id=f"case-{generate_run_id()}",
+            case_source=case_source,
+            reason=f"reconcile non-closure: {reconcile_result.status}",
+            summary=reconcile_result.summary,
+            core=snapshots.core,
+            roster=snapshots.roster,
+            runtime=snapshots.runtime,
+            blocked_step_ids=(step_id,),
+            artifact_refs=reconcile_result.artifact_refs,
+        )
+
+    def _normalize_review_case(
+        self,
+        *,
+        raw_output: str,
+        role_id: str,
+        output_contract: str,
+        snapshots: SnapshotBundle,
+    ) -> ResolutionCase | None:
+        if output_contract != "structured_review_result":
+            return None
+        try:
+            parsed = self._parse_structured_review_result(raw_output)
+        except ValueError:
+            return build_review_parse_failure_case(
+                raw_output=raw_output,
+                role_id=role_id,
+                case_id=f"case-{generate_run_id()}",
+                core=snapshots.core,
+                roster=snapshots.roster,
+                runtime=snapshots.runtime,
+            )
+        return normalize_review_resolution_case(
+            parsed,
+            case_id=f"case-{generate_run_id()}",
+            core=snapshots.core,
+            roster=snapshots.roster,
+            runtime=snapshots.runtime,
+        )
+
+    def _parse_structured_review_result(self, raw_output: str) -> StructuredReviewResult:
+        """Parse strict JSON review output into StructuredReviewResult."""
+
+        try:
+            payload = json.loads(raw_output)
+        except json.JSONDecodeError as exc:
+            raise ValueError(f"review output is not valid JSON: {exc}") from exc
+        if not isinstance(payload, dict):
+            raise ValueError("review output must be a JSON object")
+        review_outcome = payload.get("review_outcome")
+        summary = payload.get("summary")
+        findings = payload.get("findings", [])
+        evidence_refs = payload.get("evidence_refs", [])
+        valid_outcomes = {"pass", "needs_fix", "needs_replan", "operator_required"}
+        if review_outcome not in valid_outcomes:
+            raise ValueError(f"unknown review_outcome: {review_outcome!r}")
+        if not isinstance(summary, str) or not summary.strip():
+            raise ValueError("summary must be a non-empty string")
+        if not isinstance(findings, list) or not all(isinstance(item, str) for item in findings):
+            raise ValueError("findings must be a list[str]")
+        if not isinstance(evidence_refs, list) or not all(
+            isinstance(item, str) for item in evidence_refs
+        ):
+            raise ValueError("evidence_refs must be a list[str]")
+        return StructuredReviewResult(
+            review_outcome=review_outcome,
+            summary=summary,
+            findings=tuple(findings),
+            evidence_refs=tuple(evidence_refs),
+        )
+
     def _start_runtime_execution(
         self,
         *,
         run_id: str,
         step_id: str,
-        agent: str,
-        runner: str,
+        dispatch_spec: DispatchSpec,
         mode: Literal["start", "resume", "recover"],
     ) -> tuple[str, str]:
-        authoritative_isolation = self._core_adapter.step_isolation(step_id)
-        isolation_ref = f"isolation={authoritative_isolation.value}"
+        if dispatch_spec.source_kind == "step":
+            authoritative_isolation = self._core_adapter.step_isolation(step_id)
+            isolation_ref = f"isolation={authoritative_isolation.value}"
+        else:
+            isolation_ref = "isolation=default"
         request = ExecutionRequest(
             step_id=step_id,
-            role=agent,
-            runner=runner,
-            work_refs=(f"run_id={run_id}", f"mode={mode}", isolation_ref),
+            role=dispatch_spec.role_id,
+            runner=dispatch_spec.runner,
+            work_refs=(
+                f"run_id={run_id}",
+                f"mode={mode}",
+                isolation_ref,
+                f"execution_context={dispatch_spec.execution_context}",
+                f"source_kind={dispatch_spec.source_kind}",
+            ),
             session_id=run_id,
         )
         workspace = self._runtime.prepare(request)
@@ -498,11 +781,15 @@ class OrchestrationApp:
             )
 
             try:
+                if mode == "start":
+                    core_snapshot = self._core_adapter.snapshot(agent=agent)
+                    if step_id in core_snapshot.claimable_step_ids:
+                        self._core_adapter.claim_step(step_id, agent, flow="normal")
+                dispatch_spec = self.build_dispatch_spec(step_id=step_id, role_hint=agent)
                 workspace, execution_id = self._start_runtime_execution(
                     run_id=run_id,
                     step_id=step_id,
-                    agent=agent,
-                    runner=runner,
+                    dispatch_spec=dispatch_spec,
                     mode=mode,
                 )
             except Exception as exc:
@@ -1380,11 +1667,14 @@ class OrchestrationApp:
                             ),
                         )
                     )
+                    dispatch_spec = self.build_dispatch_spec(
+                        step_id=record.step_id,
+                        role_hint=record.agent or self._config.default_agent,
+                    )
                     workspace, execution_id = self._start_runtime_execution(
                         run_id=record.run_id,
                         step_id=record.step_id,
-                        agent=record.agent or self._config.default_agent,
-                        runner=frozen.runtime.default_runner,
+                        dispatch_spec=dispatch_spec,
                         mode="recover",
                     )
                 except Exception as exc:
@@ -1463,6 +1753,9 @@ class OrchestrationApp:
                     run_id=record.run_id,
                     reason=decision.message,
                 )
+                current_core = self._core_adapter.snapshot(agent=record.agent)
+                if record.step_id in current_core.in_progress_step_ids:
+                    self._core_adapter.defer_step(record.step_id)
                 no_silent_deletion_preserved = no_silent_deletion_preserved and preserved
                 quarantined_artifact_paths.extend(quarantined)
                 now_ts = time.time()

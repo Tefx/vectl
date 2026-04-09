@@ -65916,7 +65916,7 @@ phases:
   - id: decide_refresh_impl.af1-r8-fix
     name: Fix runner provenance dispatch semantics and minimal escalation rigidity
       follow-up
-    status: pending
+    status: claimed
     description: 'Fix ALL blocker-class decide_refresh_impl spec-conformance findings
       in one batch.
 
@@ -66028,6 +66028,8 @@ phases:
     - decide_refresh_impl.mcp-surface
     - decide_refresh_impl.spec-conformance
     agent: python-senior-tacit
+    claimed_by: python-senior-tacit
+    claimed_at: '2026-04-09T07:40:58.187035+00:00'
   - id: decide_refresh_impl.af1-r8-reverify
     name: Reverify runner provenance and advisor contract after AF1/R8 remediation
     status: pending

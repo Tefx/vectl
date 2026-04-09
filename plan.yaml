@@ -66564,7 +66564,7 @@ phases:
     agent: gate-reviewer-tacit
   - id: deep_review.fix-repeated-failure-status-signaling
     name: Repair repeated-failure status/reason_code signaling
-    status: claimed
+    status: done
     description: 'step_type: implementation
 
       work_type: defect_repair
@@ -66664,6 +66664,33 @@ phases:
     agent: python-senior-tacit
     claimed_by: python-senior-tacit
     claimed_at: '2026-04-09T09:31:23.648093+00:00'
+    done_at: '2026-04-09T09:42:50.681481+00:00'
+    evidence: "## refs Read Confirmation (MANDATORY)\n- tools/vectl/README.md — NOT\
+      \ READ (path absent); repo README and RFC used instead\n- docs/RFC-vectl-decide-advisor-refresh.md\
+      \ — read for `repeated_failures -> blocked` mapping and standalone semantics\
+      \ constraints\n- src/vectl/decide.py / src/vectl/models.py / tests/test_decide.py\
+      \ / tests/test_mcp.py — read and updated as scoped\n\n## Remediation Report\n\
+      - Root cause addressed:\n  - repeated-failure escalation path reset failure\
+      \ state before top-level status synthesis, allowing mismatch (`escalate` action\
+      \ with terminal `done/no_executable_steps`).\n  - Added same-cycle repeated-failure\
+      \ trigger handling to ensure top-level summary returns `status=blocked`, `reason_code=repeated_failures`\
+      \ when threshold condition occurs.\n- Branches/helpers audited for sibling derivations:\n\
+      \  - `_compute_status` and final status selection in `src/vectl/decide.py`\n\
+      \  - model output contract in `src/vectl/models.py` (no schema changes needed)\n\
+      - Files changed:\n  - src/vectl/decide.py\n  - tests/test_decide.py\n  - tests/test_mcp.py\n\
+      - Repeated-failure path updated without altering other refreshed contracts:\n\
+      \  - preserved `dispatch_available->dispatch`, `waiting_on_running->wait`, `capacity_full->wait`,\
+      \ `no_executable_steps->done`\n  - preserved refreshed output shape and standalone\
+      \ advisor semantics\n\n## Verification Notes\n- Added/updated tests:\n  - `TestStatusReasonCode.test_repeated_failures_map_to_blocked_status`\n\
+      \  - `TestVectlDecide.test_vectl_decide_repeated_failures_return_blocked_status`\n\
+      - Commands:\n  - `uv run pytest tests/test_decide.py -k \"repeated_failures_map_to_blocked_status\
+      \ or verification_failure_requires_must_green_not_complete\"` → `1 passed, 21\
+      \ deselected`\n  - `uv run pytest tests/test_mcp.py -k \"vectl_decide_repeated_failures_return_blocked_status\
+      \ or vectl_decide_returns_structured_output\"` → `2 passed, 173 deselected`\n\
+      - Remaining ambiguity/follow-up:\n  - full suite not run in this step\n\n##\
+      \ Commit Evidence\n- worker branch commit: `3dbcb3e12ceb1b2a59219b96d80f1ac3036c9aa0`\n\
+      - merged to main via orchestrator commit: `[vectl] step-deep_review.fix-repeated-failure-status-signaling\
+      \ completed`"
   - id: deep_review.reverify-repeated-failure-status-signaling
     name: Reverify repeated-failure blocked/reason_code behavior
     status: pending

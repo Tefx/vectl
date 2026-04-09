@@ -68622,7 +68622,7 @@ phases:
       - Preserved planner as resolver-scoped remediation routing only'
   - id: orchestration_resolver_coordination.verify-resolver-coordination-and-planner-remediation-routing
     name: Verify resolver coordination and planner-remediation routing
-    status: claimed
+    status: done
     description: 'step_type: test
 
       step_intent: retest_green
@@ -68650,6 +68650,37 @@ phases:
     agent: integration-verifier-tacit
     claimed_by: integration-verifier-tacit
     claimed_at: '2026-04-09T04:29:13.478428+00:00'
+    done_at: '2026-04-09T04:35:41.197585+00:00'
+    evidence: 'Artifact:
+
+      - Independent resolver-coordination verification report delivered
+
+
+      Verification:
+
+      - targeted resolver/dispatch/control/orch_app suites -> 127 passed
+
+
+      Spec link:
+
+      - docs/ORCHESTRATION-PLANE-RESOLVER-COORDINATION.md
+
+      - docs/ORCHESTRATION-PLANE-RESOLUTION-CONTRACT.md
+
+      - docs/ORCHESTRATION-PLANE-DISPATCH-AND-PROMPT-POLICY.md
+
+
+      Proof points:
+
+      - review_failed/parse-failure normalization to explicit ResolutionCase
+
+      - resolver confined to main_worktree and denied normal-flow claim
+
+      - planner routing stays resolver-owned remediation subtask
+
+      - approved facade-only mutation path enforced
+
+      - unresolved outcomes surface explicit operator_required'
   - id: orchestration_resolver_coordination.gate-resolver-coordination
     name: Gate resolver coordination
     status: pending

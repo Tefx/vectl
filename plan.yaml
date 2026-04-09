@@ -66197,7 +66197,7 @@ phases:
   steps:
   - id: doc_sync.update-vectl-decide-docs
     name: Update vectl_decide documentation
-    status: claimed
+    status: done
     description: Sync documentation to the refreshed vectl_decide contract. Update
       README, DESIGN, and any decide-facing docs/docstrings that still mention continuation/halt_reason
       machine control, overloaded task_id reuse semantics, or non-canonical state
@@ -66221,6 +66221,23 @@ phases:
     agent: doc-reviewer-tacit
     claimed_by: doc-reviewer-tacit
     claimed_at: '2026-04-09T08:40:31.305460+00:00'
+    done_at: '2026-04-09T08:49:20.276712+00:00'
+    evidence: "## refs Read Confirmation (MANDATORY)\n- docs/RFC-vectl-decide-advisor-refresh.md\
+      \ — reviewed as source contract for status/reason_code, reuse_token/reuse_runner\
+      \ semantics, and caller-owned next_state replacement.\n- tools/vectl/README.md\
+      \ — not used by subagent; no blocking effect for this doc sync.\n\n## Doc Sync\
+      \ Report\n- Docs updated:\n  1) docs/ORCHESTRATION-PLANE-DISPATCH-AND-PROMPT-POLICY.md\n\
+      \     - Removed stale `session_mode: Literal[\"fresh\", \"reuse\"]` line.\n\
+      \     - Preserved canonical `reuse_token` and `reuse_runner` fields.\n  2) tests/test_mcp.py\n\
+      \     - RFC reference updated from `docs/RFC-decide.md` to `docs/RFC-vectl-decide-advisor-refresh.md`.\n\
+      \     - Stale wording updated from continuation-guard language to status/reason_code\
+      \ contract wording.\n     - Stale fresh-vs-reuse session phrasing replaced with\
+      \ reuse_token/reuse_runner semantics.\n- Stale wording removed:\n  - `session_mode:\
+      \ Literal[\"fresh\", \"reuse\"]`\n  - `continuation guard (can_continue / must_stop)`\n\
+      \  - stale `fresh vs reuse` phrasing\n  - superseded RFC-decide reference\n\
+      - Remaining doc debt: none\n\n## Commit Evidence\n- subagent branch commit:\
+      \ c1d88c3fcd1ab6a6b5b73a6ce670d968e38a2f34\n- merged on main via orchestrator\
+      \ commit: [vectl] step-doc_sync.update-vectl-decide-docs completed"
   - id: doc_sync.gate
     name: Gate doc_sync
     status: pending

@@ -68464,7 +68464,7 @@ phases:
       - product files modified: none'
   - id: orchestration_runtime_lifecycle.gate
     name: Gate runtime lifecycle
-    status: pending
+    status: claimed
     description: 'Gate review: verify runtime now owns worktree/execution/reconcile
       lifecycle mechanically without absorbing resolver policy, including the batched
       remediation for canonical git-worktree flow, reconcile serialization, and reconcile_disposition
@@ -68514,6 +68514,8 @@ phases:
     - orchestration_runtime_lifecycle.retest-runtime-lifecycle-blockers-batch
     - orchestration_runtime_lifecycle.reverify-gate-runtime-invariant-regressions-batch
     agent: gate-reviewer-tacit
+    claimed_by: gate-reviewer-tacit
+    claimed_at: '2026-04-09T14:29:34.395145+00:00'
   - id: orchestration_runtime_lifecycle.fix-runtime-lifecycle-blockers-batch
     name: Fix runtime lifecycle blocker batch
     status: done

@@ -68798,7 +68798,7 @@ phases:
       - execution_context carried via RoleProfile-driven DispatchSpec'
   - id: orchestration_orch_app_routing.prove-orch-app-routing-seam-end-to-end
     name: Prove orch_app routing seam end-to-end
-    status: pending
+    status: claimed
     description: 'step_type: test
 
       step_intent: retest_green
@@ -68825,6 +68825,8 @@ phases:
     depends_on:
     - orchestration_orch_app_routing.implement-orch-app-routing-reconcile-gate-and-result-normalization
     agent: integration-verifier-tacit
+    claimed_by: integration-verifier-tacit
+    claimed_at: '2026-04-09T04:56:10.821572+00:00'
   - id: orchestration_orch_app_routing.audit-orch-app-routing-against-canonical-specs
     name: Audit orch_app routing against canonical specs
     status: claimed

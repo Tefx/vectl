@@ -70298,7 +70298,7 @@ phases:
     agent: gate-reviewer-tacit
   - id: orchestration_orch_app_routing.fix-audit-canonical-routing-divergence-batch
     name: Fix audit canonical routing divergence batch
-    status: claimed
+    status: done
     description: 'Fix ALL blocker-class routing/spec divergences surfaced by orchestration_orch_app_routing.audit-orch-app-routing-against-canonical-specs.
 
 
@@ -70377,6 +70377,58 @@ phases:
     agent: python-senior-tacit
     claimed_by: python-senior-tacit
     claimed_at: '2026-04-09T12:53:49.200730+00:00'
+    done_at: '2026-04-09T13:30:26.627446+00:00'
+    evidence: 'Implemented blocker-batch routing fixes with canonical policy alignment.
+
+
+      Artifacts:
+
+      - worker commit: b015b59 (`fix(orch): enforce canonical routing gates`)
+
+      - merged on main: `[vectl] step-orchestration_orch_app_routing.fix-audit-canonical-routing-divergence-batch
+      completed`
+
+
+      Files changed:
+
+      - src/vectl/orch_app.py
+
+      - src/vectl/orchestration/events.py
+
+      - tests/orchestration/unit/test_orch_app.py
+
+      - tests/orchestration/integration/test_orch_app_routing_seam.py
+
+
+      Remediation coverage:
+
+      - explicit operator_required notification lifecycle + emitted operator_case_opened/operator_case_resolved
+      events
+
+      - claim hard-gate on run start branches
+
+      - reconcile hard-gate for non-closing statuses
+
+      - resolver outcome routing branch coverage expanded
+
+      - canonical fallback role precedence preserved in dispatch registry flow
+
+
+      Verification (reported):
+
+      - `uv run pytest -q tests/orchestration/unit/test_orch_app.py tests/orchestration/integration/test_orch_app_routing_seam.py`
+      -> `56 passed`
+
+      - `uv run ruff check ...` -> pass
+
+      - `uv run mypy ...` -> no issues
+
+
+      Scope constraints honored:
+
+      - no plan/orchestrator state mutation by worker
+
+      - no out-of-scope full-repo test sweep'
   - id: orchestration_orch_app_routing.reverify-audit-canonical-routing-divergence-batch
     name: Reverify audit canonical routing divergence batch
     status: pending

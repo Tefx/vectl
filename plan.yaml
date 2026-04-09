@@ -68339,6 +68339,81 @@ phases:
     depends_on:
     - orchestration_runtime_lifecycle.retest-runtime-lifecycle-blockers-batch
     agent: python-senior-tacit
+  - id: orchestration_runtime_lifecycle.reverify-gate-runtime-invariant-regressions-batch
+    name: Reverify gate runtime invariant regressions batch
+    status: pending
+    description: 'As an INDEPENDENT TESTER, reverify runtime lifecycle invariants
+      after orchestration_runtime_lifecycle.fix-gate-runtime-invariant-regressions-batch.
+
+
+      Verification scope: phase-check protecting orchestration_runtime_lifecycle.gate.
+
+
+      Required checks:
+
+      - canonical git worktree preparation is used on the runtime path
+
+      - reconcile serialization and merge/proof handling are preserved on both main
+      and failure paths
+
+      - cleanup guards block unsafe teardown
+
+      - root-cause proof artifacts, exact commands, and exact outputs are present
+
+      '
+    verification: 'phase-check protecting orchestration_runtime_lifecycle.gate: required
+      runtime invariants are restored and evidenced with exact commands/outputs, one
+      main-path proof, and one highest-risk failure-path proof.'
+    evidence_template: '## Verification Report
+
+      **Tester**: integration-verifier-tacit
+
+      **Scope**: runtime lifecycle invariant restoration
+
+      **Independence Level**: L2
+
+
+      ### refs Read Confirmation (MANDATORY)
+
+      For each ref in this step:
+
+      - <filename> — key passage or "NOT READ: <reason>"
+
+
+      If no refs were provided, state: "No refs for this step."
+
+
+      ## Runtime Invariant Checklist
+
+      - git worktree preparation proven:
+
+      - reconcile serialization proven:
+
+      - reconcile merge/proof preservation proven:
+
+      - cleanup guard proven:
+
+      - root-cause artifacts present:
+
+
+      ## Commands executed
+
+      ```text
+
+      <paste exact commands>
+
+      ```
+
+      ## Actual output
+
+      ```text
+
+      <paste exact output>
+
+      ```'
+    depends_on:
+    - orchestration_runtime_lifecycle.fix-gate-runtime-invariant-regressions-batch
+    agent: integration-verifier-tacit
 - id: orchestration_runtime_wiring
   name: Orchestration Runner/Runtime Wiring
   status: done

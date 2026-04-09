@@ -71304,7 +71304,7 @@ phases:
       kind could miss notification context.'
 - id: orchestration_operator_recovery
   name: Orchestration Operator / Conflict / Recovery Alignment
-  status: pending
+  status: in_progress
   gate: operator_required, conflict preservation, protected-path handling, and restart
     recovery are durable and auditable across orch app and orchestration runtime metadata.
   depends_on:
@@ -71444,7 +71444,7 @@ phases:
     agent: gate-reviewer-tacit
   - id: orchestration_operator_recovery.contract-operator-notification-conflict-preservation-and-recovery-alignment
     name: Contract operator notification, conflict preservation, and recovery alignment
-    status: pending
+    status: claimed
     description: "step_type: contract\ncontract_purity: ENFORCED\ncontract_outputs:\n\
       \  - signatures\n  - type_defs\n  - interfaces\n  - stubs\nagent_source: project\n\
       \nDefine the authoritative durability and restart-recovery contract for upper-layer\
@@ -71480,6 +71480,8 @@ phases:
     - src/vectl/orchestration/run_store.py
     - src/vectl/orchestration/continuity_artifacts.py
     agent: python-senior-tacit
+    claimed_by: python-senior-tacit
+    claimed_at: '2026-04-09T15:17:07.802552+00:00'
   - id: orchestration_operator_recovery.define-red-tests-for-operator-pause-conflict-preservation-and-recovery-alignment
     name: Define red tests for operator pause, conflict preservation, and recovery
       alignment

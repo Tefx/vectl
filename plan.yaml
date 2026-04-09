@@ -66447,7 +66447,7 @@ phases:
       **Verdict**: PASS'
   - id: deep_review.decide-architecture
     name: Review boundary and ownership correctness
-    status: claimed
+    status: done
     description: Independent boundary review for refreshed vectl_decide. Verify standalone
       usability outside the orchestration plane, preserved core authority semantics,
       coherent caller-owned state ownership, and no silent import of roster/runtime
@@ -66472,6 +66472,23 @@ phases:
     agent: software-architect-tacit
     claimed_by: software-architect-tacit
     claimed_at: '2026-04-09T09:03:35.679813+00:00'
+    done_at: '2026-04-09T09:27:42.930449+00:00'
+    evidence: "## refs Read Confirmation (MANDATORY)\n- tools/vectl/README.md — NOT\
+      \ READ (path missing under requested location)\n- README.md — reviewed in worktree\n\
+      - docs/RFC-vectl-decide-advisor-refresh.md — reviewed for standalone/advisor\
+      \ contracts\n- src/vectl/decide.py — reviewed for boundary and authority semantics\n\
+      - src/vectl/decision_state.py — reviewed for state ownership seam\n- src/vectl/models.py\
+      \ — reviewed for contract models\n- src/vectl/mcp_server.py — reviewed for public\
+      \ tool surface\n- tests/test_decide.py / tests/test_decide_state_isolation.py\
+      \ — reviewed and run\n\n## Review Report\n- Standalone usage boundary: PASS\
+      \ — refreshed decide surface remains usable outside orchestration plane; no\
+      \ `vectl.orchestration.*` dependency in core decide path.\n- Authority/advisor\
+      \ boundary: PASS — decide computes advisory actions/state only; no authoritative\
+      \ claim/complete/lifecycle mutation in decide core.\n- Caller-owned state boundary:\
+      \ PASS — advisor_state dict consumed and next_state emitted as replacement state;\
+      \ isolation semantics preserved (`advisor_state=None` ephemeral behavior validated).\n\
+      - Verification:\n  - `uv run pytest tests/test_decide.py tests/test_decide_state_isolation.py`\
+      \ → `36 passed, 1 warning`\n- Issues found: none"
   - id: deep_review.decide-black-box
     name: Black-box verify refreshed advisor contract
     status: claimed

@@ -65631,7 +65631,7 @@ phases:
       \ required in this run."
   - id: decide_refresh_tests.reverify-gate-mcp-contract-refresh-batch
     name: Reverify gate MCP contract refresh blocker batch
-    status: pending
+    status: claimed
     description: 'As an INDEPENDENT TESTER, reverify the refreshed MCP red-test contract
       after decide_refresh_tests.fix-gate-mcp-contract-refresh-batch.
 
@@ -65712,6 +65712,8 @@ phases:
     depends_on:
     - decide_refresh_tests.fix-gate-mcp-contract-refresh-batch
     agent: integration-verifier-tacit
+    claimed_by: integration-verifier-tacit
+    claimed_at: '2026-04-09T12:43:55.322475+00:00'
 - id: decide_refresh_impl
   name: vectl_decide Contract Refresh — Implementation
   status: done

@@ -72103,6 +72103,68 @@ phases:
     depends_on:
     - orchestration_operator_recovery.reverify-operator-conflict-recovery-conformance-after-fix
     agent: python-senior-tacit
+  - id: orchestration_operator_recovery.reverify-dispatch-recovery-gate-enforcement-after-fix
+    name: Reverify dispatch recovery gate enforcement after fix
+    status: pending
+    description: 'As an INDEPENDENT TESTER (spec-verifier-tacit), re-audit the repaired
+      operator/conflict/recovery enforcement from a fresh perspective after the enforcement
+      fix.
+
+
+      YOUR GOAL IS TO FIND REMAINING PROBLEMS, not to confirm it works.
+
+
+      Reverify for:
+
+      - Happy path: `run`, `resume`, `recover` resume_safe, and resolution-triggered
+      dispatch all consult paused operator state and DispatchRecoveryGate before dispatch.
+
+      - Completion path: `route_terminal_execution` performs explicit duplicate-complete
+      / DispatchRecoveryGate consultation before `complete_step`.
+
+      - Recovery path: reconstructed recovery state is actually consumed by enforcement
+      hooks rather than only reported.
+
+      - Bypass scenarios: sibling dispatch or completion paths do not bypass the repaired
+      gating semantics.
+
+
+      Independence Level: L1
+
+
+      This is a post-implementation reverify step and must evaluate green semantics
+      for the repaired requirements.'
+    verification: 'phase-check protecting the orchestration_operator_recovery gate:
+      conformance report explicitly proves authoritative dispatch and completion paths
+      consume paused/recovery gate state before action; unresolved NEEDS_TEST, PARTIAL,
+      DIVERGES, or phantom-enforcement findings remain gate-blocking.'
+    evidence_template: '## refs Read Confirmation (MANDATORY)
+
+
+      For each ref in this step:
+
+      - <filename> — key passage or "NOT READ: <reason>"
+
+
+      If no refs were provided, state: "No refs for this step."
+
+
+      ## Reverification Report
+
+      - Dispatch paths audited: <list>
+
+      - Completion paths audited: <list>
+
+      - Recovery enforcement proof: <list>
+
+      - Remaining blockers: <none or list>
+
+      - Gate recommendation: OPEN | BLOCK
+
+      '
+    depends_on:
+    - orchestration_operator_recovery.fix-enforce-dispatch-recovery-gates-and-complete-step-consultation
+    agent: spec-verifier-tacit
 - id: orchestration_upper_layer_review
   name: Orchestration Upper-Layer Review
   status: locked

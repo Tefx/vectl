@@ -75194,3 +75194,19 @@ phases:
     no hidden authority or policy drift remains.
   depends_on:
   - xfail_authority_and_entrypoint_enforcement
+  steps:
+  - id: xfail_finalization.doc-sync-expected-red-retirement
+    name: Doc sync expected-red retirement and governance
+    status: pending
+    description: Update the relevant orchestration docs and expected-red governance
+      docs so retired xfails are removed from the expected-red set and any intentionally
+      retained gaps have current lifecycle/owner rationale.
+    verification: '- Docs reflect retired xfails and any retained governed debt accurately
+
+      - Expected-red lifecycle guidance remains consistent with implementation status'
+    evidence_template: '- docs updated:
+
+      - retired vs retained expected-red items:
+
+      - commands/review performed:'
+    agent: project-guide

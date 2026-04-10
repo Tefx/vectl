@@ -74676,7 +74676,7 @@ phases:
       - Ref path `tools/vectl/README.md` unavailable in worktree per subagent report.'
 - id: xfail_config_and_dispatch_foundation
   name: 'XFail Remediation: Config and Dispatch Foundation'
-  status: in_progress
+  status: done
   gate: Retire the config precedence xfail and the dispatch-spec construction/verify-mode
     xfails by centralizing authoritative config precedence and DispatchSpec construction.
   depends_on:
@@ -74979,7 +74979,7 @@ phases:
       \ PROVEN"
   - id: xfail_config_and_dispatch_foundation.gate
     name: Gate config and dispatch foundation
-    status: claimed
+    status: done
     description: 'Gate review: verify config precedence and dispatch foundation xfail
       retirement is complete and no duplicate policy seam was introduced.
 
@@ -75012,9 +75012,92 @@ phases:
     agent: gate-reviewer-tacit
     claimed_by: gate-reviewer-tacit
     claimed_at: '2026-04-10T05:58:34.496291+00:00'
+    done_at: '2026-04-10T06:01:43.645446+00:00'
+    evidence: '## Gate Review Report: xfail_config_and_dispatch_foundation
+
+
+      ### Step Review Matrix
+
+
+      | Step | Status | Verdict |
+
+      |------|--------|---------|
+
+      | close-resolver-timeout-env-precedence-gap | ✓ done | PASS — canonical key
+      fix verified |
+
+      | centralize-dispatch-spec-construction | ✓ done | PASS — shadow path removed
+      |
+
+      | retest-config-and-dispatch-foundation | ✓ done | PASS — 27 passed, 15 xfailed
+      (pre-existing expected-red) |
+
+
+      ### Cross-Cutting Focus: Findings
+
+
+      #### 1. One Canonical Config Precedence Path — CONFIRMED
+
+      - `_apply_env_overrides()` in `src/vectl/orchestration/config.py` is the single
+      entry for env → config dict injection.
+
+      - `VECTL_ORCH_RESOLVER_TIMEOUT_SECONDS` now correctly maps through `_flatten_env_vars()`
+      → `resolver.timeout_seconds` (canonical dict key), and `_dict_to_config()` reads
+      `timeout_seconds` into the `ResolverConfig` model.
+
+      - The fix corrected a key mismatch where `_apply_env_overrides` previously wrote
+      to internal field key `invocation_timeout_seconds` while `_dict_to_config` reads
+      canonical `timeout_seconds` — now both use `timeout_seconds`, so the override
+      actually surfaces.
+
+      - Only 2 call sites for `_apply_env_overrides` (definition + `load_orchestration_config`
+      call) — no duplicate env parsing path in CLI or orch_app.
+
+      - Test proof: `test_config_state_red.py` — 25 passed.
+
+
+      #### 2. One Canonical Dispatch Coordinator Path — CONFIRMED
+
+      - `DispatchCoordinator.build_dispatch_spec` in `src/vectl/orchestration/dispatch_policy.py:616`
+      is the authoritative builder.
+
+      - `OrchApp.build_dispatch_spec` (line 745) delegates directly to `self._dispatch_coordinator.build_dispatch_spec(...)`
+      — no shadow path remains.
+
+      - Single `DispatchCoordinator()` instantiation in orch_app (line 514).
+
+      - `step_verify_to_verify_mode()` (line 86) is the sole normalization function
+      for `StepData.verify` → `DispatchSpec.verify_mode`.
+
+      - Test proof: 2 targeted dispatch_spec_construction / verify_mode tests pass.
+
+
+      #### 3. No Runtime-Side Policy Derivation Drift — CONFIRMED
+
+      - Previous shadow path (temporary registry/coordinator in orch_app) was removed
+      in the centralize step.
+
+      - Role resolution uses authoritative step semantics (`step.agent`) with `decision.role`
+      fallback — no secondary derive.
+
+      - `verify_mode` is set once in coordinator from `step_verify_to_verify_mode(step_data.verify)`
+      and consumed downstream without re-derivation.
+
+      - No `DispatchSpec` mutation or policy re-derivation found in orch_app or downstream
+      consumers.
+
+
+      ### Blocker Findings
+
+      - **None.** All three cross-cutting focus areas are satisfied. The 15 xfailed
+      tests in `test_dispatch_policy_red.py` are pre-existing expected-red tests unrelated
+      to this phase''s scope.
+
+
+      ### Gate Decision: OPEN'
 - id: xfail_role_prompt_and_review_normalization
   name: 'XFail Remediation: Role Prompt and Review Normalization'
-  status: locked
+  status: pending
   gate: Concrete role/prompt registries and structured review normalization are wired
     as the canonical policy seam, and the related expected-red tests are retired or
     intentionally reclassified with explicit evidence.

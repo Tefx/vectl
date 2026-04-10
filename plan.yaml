@@ -76431,7 +76431,7 @@ phases:
       \  - Product-vs-environment failure boundary documented to prevent misclassification."
   - id: live_smoke_real_runner_validation.gate
     name: Gate live-smoke real-runner validation
-    status: pending
+    status: claimed
     description: 'Final review for the real live-smoke validation phase.
 
 
@@ -76465,3 +76465,5 @@ phases:
     - live_smoke_real_runner_validation.retest-live-smoke-after-remediation
     - live_smoke_real_runner_validation.doc-sync-live-smoke-findings
     agent: gate-reviewer-tacit
+    claimed_by: gate-reviewer-tacit
+    claimed_at: '2026-04-10T07:18:31.909555+00:00'

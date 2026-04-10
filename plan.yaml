@@ -75547,7 +75547,7 @@ phases:
       \  - stale references: `docs/DRIVER-CONTINUITY-FOUNDATION.md`, `docs/ORCHESTRATION-PLANE-MIGRATION.md`"
   - id: retire_repair_continuity_legacy_surface.remove-or-shim-legacy-cli-surface
     name: Remove or convert legacy CLI surface to explicit retirement shim
-    status: claimed
+    status: done
     description: 'work_type: technical_debt_remediation
 
       step_type: implementation
@@ -75591,6 +75591,22 @@ phases:
     agent: python-senior-tacit
     claimed_by: python-senior-tacit
     claimed_at: '2026-04-10T06:03:42.652640+00:00'
+    done_at: '2026-04-10T06:09:18.833394+00:00'
+    evidence: "## CLI Retirement Evidence\n- retirement mode applied:\n  - Removed\
+      \ `@repair_app.command(\"continuity\")` and legacy implementation from `src/vectl/cli.py`.\n\
+      \  - Updated `README.md` to mark `vectl repair continuity` retired and point\
+      \ to `vectl orch recover`.\n  - Updated `docs/ORCHESTRATION-CLI-QUICKSTART.md`\
+      \ to align recovery guidance with `orch recover`.\n  - Replaced legacy black-box\
+      \ continuity test with retirement behavior coverage in `tests/repro/test_repair_continuity_retired.py`.\n\
+      - commands run:\n  - `uv run vectl repair --help`\n  - `uv run vectl repair\
+      \ continuity --help`\n  - `uv run vectl orch recover --help`\n  - `uv run python\
+      \ -c \"import pathlib; text=pathlib.Path('src/vectl/cli.py').read_text(); print('legacy_import_present=',\
+      \ 'vectl.driver.continuity_hygiene' in text)\"`\n  - `uv run pytest tests/repro/test_repair_continuity_retired.py`\n\
+      - help/output changes:\n  - `vectl repair --help` shows only `claims` subcommand.\n\
+      \  - `vectl repair continuity --help` returns `No such command 'continuity'.`\n\
+      \  - `vectl orch recover --help` remains available (`Usage: vectl orch recover\
+      \ [OPTIONS] [RUN_ID]`).\n- import-path cleanup proof:\n  - `legacy_import_present=\
+      \ False`\n  - retirement tests: `3 passed`."
   - id: retire_repair_continuity_legacy_surface.rewrite-or-remove-legacy-black-box-tests
     name: Rewrite or remove legacy black-box tests
     status: pending

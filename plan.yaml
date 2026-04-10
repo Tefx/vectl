@@ -78152,3 +78152,26 @@ phases:
 
       '
     agent: python-executor
+  - id: orch_plane_finalization.test-expectation-drift
+    name: Fix test expectation drift
+    status: pending
+    description: 'Lower-priority hygiene: reconcile pre-existing test expectation
+      drift where asserted exception types/messages no longer match the authoritative
+      runtime behavior; preserve product behavior unless the contract truly changed.'
+    verification: Targeted tests are updated or tightened to assert the real authoritative
+      exception behavior; no product logic is widened merely to satisfy stale expectations.
+    evidence_template: '## refs Read Confirmation (MANDATORY)
+
+      - Quote the key passage from each ref or write NOT READ: <reason>
+
+
+      ## Hygiene Evidence
+
+      - Drift cases addressed
+
+      - Why behavior stayed same or changed
+
+      - Targeted test list
+
+      '
+    agent: python-executor

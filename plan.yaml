@@ -75260,3 +75260,28 @@ phases:
     - xfail_finalization.doc-sync-expected-red-retirement
     - xfail_finalization.run-repo-wide-pytest-gate
     agent: gate-reviewer-tacit
+  - id: xfail_finalization.gate
+    name: Gate xfail remediation closure
+    status: pending
+    description: Final gate for the xfail-remediation plan. Distinguish phase-local
+      success from repo-wide readiness and require explicit disposition for any remaining
+      governed non-green statuses.
+    verification: '- Repo-wide gate evidence is acceptable
+
+      - Docs and governance are aligned
+
+      - Deep review finds no blocker-class hidden drift'
+    evidence_template: '## Gate Decision
+
+      - repo-wide gate summary
+
+      - docs/governance alignment summary
+
+      - residual governed statuses
+
+      - decision OPEN|BLOCKED'
+    depends_on:
+    - xfail_finalization.doc-sync-expected-red-retirement
+    - xfail_finalization.run-repo-wide-pytest-gate
+    - xfail_finalization.deep-review-xfail-remediation
+    agent: gate-reviewer-tacit

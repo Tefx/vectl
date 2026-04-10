@@ -78565,7 +78565,7 @@ phases:
       \ runtime defect."
   - id: orch_plane_finalization.full-gate
     name: Final remediation gate
-    status: pending
+    status: claimed
     description: Final gate for orchestration-plane remediation. Review lower-priority
       hygiene together with regression intersection from the two higher-priority phases
       so no live-authority or planner-boundary gap is reopened.
@@ -78590,3 +78590,5 @@ phases:
     - orch_plane_finalization.core-adapter-hygiene
     - orch_plane_finalization.test-expectation-drift
     agent: gate-reviewer-tacit
+    claimed_by: gate-reviewer-tacit
+    claimed_at: '2026-04-10T21:08:28.370718+00:00'

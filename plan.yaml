@@ -73975,7 +73975,7 @@ phases:
     claimed_at: '2026-04-10T03:16:03.948936+00:00'
   - id: repo_regression_behavior_alignment.resolve-reconcile-tracking-state-machine-drift
     name: Resolve reconcile tracking state-machine drift
-    status: pending
+    status: claimed
     description: Investigate and settle the mismatch between runtime lifecycle expectations
       and implementation for reconcile tracking sets (`pending_reconciles`, `active_reconciles`,
       `conflicted_reconciles`). Update implementation or tests only after re-establishing
@@ -73989,6 +73989,8 @@ phases:
 
       - Command: `uv run pytest tests/orchestration/unit/test_runtime_lifecycle.py
       -q` -> <outcome>'
+    claimed_by: general
+    claimed_at: '2026-04-10T03:16:36.812378+00:00'
   - id: repo_regression_contract_alignment.repin-resolution-case-boundary-locks
     name: Repin ResolutionCase boundary locks
     status: pending

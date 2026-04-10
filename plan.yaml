@@ -75438,7 +75438,7 @@ phases:
       \ -k \"context_drift_before_runtime_launch\" -q` => `1 passed, 46 deselected`"
   - id: xfail_authority_and_entrypoint_enforcement.harden-resolver-gateway-and-lifecycle-facade
     name: Harden resolver gateway and lifecycle facade
-    status: pending
+    status: claimed
     description: 'work_type: technical_debt_remediation
 
       step_type: implementation
@@ -75472,6 +75472,8 @@ phases:
     depends_on:
     - xfail_authority_and_entrypoint_enforcement.enforce-main-worktree-role-authority
     agent: python-senior-tacit
+    claimed_by: python-senior-tacit
+    claimed_at: '2026-04-10T07:07:44.528888+00:00'
   - id: xfail_authority_and_entrypoint_enforcement.retest-authority-enforcement
     name: Retest authority and entrypoint enforcement
     status: pending

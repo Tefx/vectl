@@ -74681,6 +74681,85 @@ phases:
     xfails by centralizing authoritative config precedence and DispatchSpec construction.
   depends_on:
   - repo_regression_full_suite_gate
+  steps:
+  - id: xfail_config_and_dispatch_foundation.close-resolver-timeout-env-precedence-gap
+    name: Close resolver-timeout env precedence gap
+    status: pending
+    description: 'work_type: technical_debt_remediation
+
+      step_type: implementation
+
+
+      Preserve-scope guardrail: close the single remaining config precedence xfail
+      by making `VECTL_ORCH_RESOLVER_TIMEOUT_SECONDS` flow through the canonical orchestration
+      config loader and precedence path only.
+
+
+      Scope:
+
+      - `src/vectl/orchestration/config.py`
+
+      - any canonical config wiring consumer needed for the env alias mapping
+
+      - `tests/orchestration/unit/test_config_state_red.py`
+
+
+      Requirements:
+
+      - Centralize env alias mapping in `load_orchestration_config()` / canonical
+      config path
+
+      - Do not add adapter-specific env parsing or duplicate precedence logic in entrypoints
+
+      - Retire the xfail only if the behavior is now implemented; otherwise keep governed
+      expected-red with updated rationale
+
+
+      Known risk:
+
+      - Config precedence must stay single-source-of-truth; no secondary parsing path
+      in CLI or orch_app.'
+    verification: '- `uv run pytest tests/orchestration/unit/test_config_state_red.py
+      -q`
+
+      - Scoped config red suite is green or any remaining non-green case is explicitly
+      governed with rationale
+
+      - No duplicate env parsing path is introduced outside canonical config loading'
+    evidence_template: '## refs Read Confirmation (MANDATORY)
+
+      For each ref in this step:
+
+      - <filename> — key passage or "NOT READ: <reason>"
+
+
+      ## Fix Evidence
+
+      - blocker_fingerprint: config-precedence / resolver-timeout-env-alias
+
+      - root_cause_hypothesis:
+
+      - files_changed:
+
+      - sibling_search_performed:
+
+
+      ## Main Path Proof
+
+      - how canonical config precedence now resolves the timeout env alias
+
+      - exact tests proving green behavior
+
+
+      ## Failure Path Proof
+
+      - how default/file semantics behave when env override is absent or invalid
+
+
+      ## Remaining Risk
+
+      - none | <details>'
+    agent: python-executor
 - id: xfail_role_prompt_and_review_normalization
   name: 'XFail Remediation: Role Prompt and Review Normalization'
   status: locked

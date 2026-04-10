@@ -75343,3 +75343,47 @@ phases:
 
       - files/specs to update next:'
     agent: software-architect-tacit
+  - id: retire_repair_continuity_legacy_surface.remove-or-shim-legacy-cli-surface
+    name: Remove or convert legacy CLI surface to explicit retirement shim
+    status: pending
+    description: 'work_type: technical_debt_remediation
+
+      step_type: implementation
+
+
+      Implement the retirement decision in the CLI.
+
+
+      Requirements:
+
+      - either remove `repair continuity` command registration entirely, or replace
+      it with an explicit retirement/deprecation shim that directs users to `vectl
+      orch recover`
+
+      - eliminate any runtime attempt to import `vectl.driver.continuity_hygiene`
+
+      - ensure help/public-surface behavior matches the chosen retirement mode
+
+      - do not leave a dead command that looks supported but fails at runtime due
+      to missing legacy module
+
+
+      Preferred outcome:
+
+      - hard removal if compatibility requirements do not block it'
+    verification: '- `uv run vectl --help` and related repair/orch help output reflect
+      the retirement decision
+
+      - No code path imports `vectl.driver.continuity_hygiene` from CLI runtime'
+    evidence_template: '## CLI Retirement Evidence
+
+      - retirement mode applied:
+
+      - commands run:
+
+      - help/output changes:
+
+      - import-path cleanup proof:'
+    depends_on:
+    - retire_repair_continuity_legacy_surface.lock-modern-recovery-authority-and-retirement-decision
+    agent: python-senior-tacit

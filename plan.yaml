@@ -73654,7 +73654,7 @@ phases:
     claimed_at: '2026-04-10T02:59:35.666427+00:00'
   - id: repo_regression_expected_red_cleanup.introduce-expected-red-lifecycle-marking
     name: Introduce expected-red lifecycle marking
-    status: claimed
+    status: done
     description: Establish a durable way to mark intentional red tests (for example
       marker/xfail discipline or equivalent test metadata) so future implementation
       phases must either flip, retire, or explicitly preserve them with rationale.
@@ -73667,6 +73667,60 @@ phases:
       - How future gates should consume this metadata:'
     claimed_by: general
     claimed_at: '2026-04-10T02:59:06.633295+00:00'
+    done_at: '2026-04-10T03:08:41.562685+00:00'
+    evidence: 'Marker/pattern chosen:
+
+      - Added canonical pytest marker pattern for intentional red lifecycle using
+      `expected_red_module(...)` / `pytest.mark.expected_red(owner=..., rationale=...,
+      lifecycle=...)`.
+
+      - Enforced metadata presence for `*_red.py` modules via collection-time check
+      in `tests/conftest.py`.
+
+
+      Files updated:
+
+      - pyproject.toml
+
+      - tests/conftest.py
+
+      - tests/expected_red.py
+
+      - tests/orchestration/unit/test_config_state_red.py
+
+      - tests/orchestration/unit/test_dispatch_policy_red.py
+
+      - tests/orchestration/unit/test_operator_pause_conflict_recovery_red.py
+
+      - tests/orchestration/unit/test_runner_backend_red.py
+
+      - tests/repro/test_orch_cli_recovery_red.py
+
+      - tests/repro/test_orch_observability_red.py
+
+
+      How future gates should consume this metadata:
+
+      - Use expected-red marker metadata as authoritative lifecycle marker and enforce
+      via collect-only checks on red suites.
+
+
+      Verification:
+
+      - `uv run pytest --collect-only tests/orchestration/unit/test_dispatch_policy_red.py
+      tests/orchestration/unit/test_runner_backend_red.py tests/orchestration/unit/test_config_state_red.py
+      tests/orchestration/unit/test_operator_pause_conflict_recovery_red.py tests/repro/test_orch_observability_red.py
+      tests/repro/test_orch_cli_recovery_red.py` -> collected 139 items.
+
+
+      Commit:
+
+      - 73f4d4b5307a0e0509c89819cf973fd9c16aa1cf
+
+
+      Gaps/Notes:
+
+      - Scope limited to touched stale-red locations and lifecycle mechanism only.'
   - id: repo_regression_triage.capture-full-suite-failure-inventory
     name: Capture full-suite failure inventory
     status: claimed

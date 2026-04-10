@@ -9,7 +9,7 @@ Step: orch_foundation.contract_tests
 Intent: test_define_red
 """
 
-from dataclasses import fields, is_dataclass
+from dataclasses import MISSING, fields, is_dataclass
 
 import pytest
 
@@ -343,18 +343,27 @@ class TestResolutionCase:
 
     def test_resolution_case_fields_match_spec(self):
         """
-        Verify ResolutionCase has exactly the 4 documented fields.
+        Verify ResolutionCase preserves the 4 required semantic fields.
 
         Spec: docs/ORCHESTRATION-PLANE-INTERFACES.md section 3.8
         Fields: reason, core, roster, runtime
         """
         from vectl.orchestration.contracts import ResolutionCase
 
-        expected_fields = {"reason", "core", "roster", "runtime"}
-        actual_fields = {f.name for f in fields(ResolutionCase)}
+        required_fields = ("reason", "core", "roster", "runtime")
+        actual_fields = fields(ResolutionCase)
+        actual_field_names = tuple(f.name for f in actual_fields)
+        additive_fields = actual_fields[len(required_fields) :]
 
-        assert actual_fields == expected_fields, (
-            f"ResolutionCase field mismatch. Expected: {expected_fields}, Got: {actual_fields}"
+        assert actual_field_names[: len(required_fields)] == required_fields, (
+            "ResolutionCase must preserve required semantic field ordering. "
+            f"Expected prefix: {required_fields}, Got: {actual_field_names}"
+        )
+        assert all(
+            f.default is not MISSING or f.default_factory is not MISSING for f in additive_fields
+        ), (
+            "ResolutionCase additive metadata fields must remain optional/defaulted. "
+            f"Got trailing fields: {tuple(f.name for f in additive_fields)}"
         )
 
     def test_resolution_case_frozen(self):

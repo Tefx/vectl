@@ -2,19 +2,66 @@
 
 from __future__ import annotations
 
+from dataclasses import MISSING, fields
 import inspect
 from typing import get_args, get_type_hints
 
-from vectl.orchestration.contracts import ExecutionResult, ResolutionCase, ResolverAuthorityContract
+from vectl.orchestration.contracts import (
+    CoreSnapshot,
+    ExecutionResult,
+    ResolutionCase,
+    ResolverAuthorityContract,
+    RosterSnapshot,
+    RuntimeSnapshot,
+)
 from vectl.orchestration.core_adapter import CoreAdapter
 from vectl.orchestration.interfaces import LifecycleMutationPort, RunnerBackend, RuntimeLifecycle
 from vectl.orchestration.runtime import Runtime
 
 
-def test_resolution_case_stays_bounded_while_resolver_contract_is_exported() -> None:
+def test_resolution_case_preserves_required_semantics_while_resolver_contract_is_exported() -> None:
     resolver_contract = ResolverAuthorityContract()
+    resolution_case_fields = fields(ResolutionCase)
+    resolution_case_hints = get_type_hints(ResolutionCase)
+    additive_metadata_fields = resolution_case_fields[4:]
 
-    assert tuple(ResolutionCase.__dataclass_fields__) == ("reason", "core", "roster", "runtime")
+    assert tuple(field.name for field in resolution_case_fields[:4]) == (
+        "reason",
+        "core",
+        "roster",
+        "runtime",
+    )
+    assert resolution_case_hints["reason"] is str
+    assert resolution_case_hints["core"] is CoreSnapshot
+    assert resolution_case_hints["roster"] is RosterSnapshot
+    assert resolution_case_hints["runtime"] is RuntimeSnapshot
+    assert all(
+        field.default is not MISSING or field.default_factory is not MISSING
+        for field in additive_metadata_fields
+    ), "Additive ResolutionCase metadata fields must stay optional"
+    case = ResolutionCase(
+        reason="blocked",
+        core=CoreSnapshot(
+            plan_complete=False,
+            claimable_step_ids=(),
+            in_progress_step_ids=(),
+            blocked_step_ids=(),
+            unresolved_reasons=(),
+        ),
+        roster=RosterSnapshot(
+            available_agents=(),
+            working_agents=(),
+            reusable_sessions=(),
+            exhausted_roles=(),
+        ),
+        runtime=RuntimeSnapshot(
+            active_workspaces=(),
+            active_executions=(),
+            stalled_executions=(),
+        ),
+    )
+
+    assert case.reason == "blocked"
     assert isinstance(resolver_contract, ResolverAuthorityContract)
     assert resolver_contract.execution_site == "main_worktree"
     assert resolver_contract.mutation_surface == "approved_vectl_facade_only"

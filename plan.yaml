@@ -75016,7 +75016,7 @@ phases:
 
       - commands/tests run:'
     depends_on:
-    - xfail_role_prompt_and_review_normalization.implement-concrete-prompt-registry
+    - xfail_role_prompt_and_review_normalization.implement-concrete-role-profile-registry
     agent: python-senior-tacit
   - id: xfail_role_prompt_and_review_normalization.retest-role-prompt-and-review
     name: Retest role, prompt, and review normalization

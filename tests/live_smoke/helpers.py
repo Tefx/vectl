@@ -8,7 +8,7 @@ Does NOT own scenario-specific parsing policy.
 Marker taxonomy (from DRIVER-LIVE-SMOKE-POLICY.md):
     - Shared marker: live_runner
     - Runner markers: codex_live, opencode_live
-    - Scenario markers: judge_live, dispatch_live
+    - Scenario markers: dispatch_live
 
 Skip semantics (exact):
     - live_runner_opt_in_missing: RUN_LIVE_RUNNER_TESTS is not exactly "1"
@@ -27,7 +27,6 @@ Evidence contract (exact):
 from __future__ import annotations
 
 import os
-import re
 import shlex
 import subprocess
 from dataclasses import dataclass
@@ -53,9 +52,6 @@ codex_live = pytest.mark.codex_live
 opencode_live = pytest.mark.opencode_live
 """Marks tests that use the opencode runner."""
 
-judge_live = pytest.mark.judge_live
-"""Marks tests that exercise judge/score behavior."""
-
 dispatch_live = pytest.mark.dispatch_live
 """Marks tests that exercise regular dispatch behavior."""
 
@@ -64,9 +60,9 @@ dispatch_live = pytest.mark.dispatch_live
 # Pinned model IDs (exact from policy)
 # =============================================================================
 
-# Codex judge/dispatch use the same model
+# Codex dispatch uses this pinned model
 CODEX_MODEL: str = "gpt-5.4-mini"
-# Opencode judge/dispatch use the same model
+# Opencode dispatch uses this pinned model
 OPENCODE_MODEL: str = "ollama-cloud/minimax-m2.7"
 
 # Model-to-runner mapping for override plumbing
@@ -77,8 +73,6 @@ RUNNER_FOR_MODEL: dict[str, str] = {
 
 # Scenario to runner mapping
 SCENARIO_RUNNER: dict[str, str] = {
-    "codex_judge": "codex",
-    "opencode_judge": "opencode",
     "codex_dispatch": "codex",
     "opencode_dispatch": "opencode",
 }
@@ -504,126 +498,6 @@ def build_model_override_args(runner_name: str, model: str) -> list[str]:
         # Opencode uses --model flag
         return ["--model", model]
     return []
-
-
-# =============================================================================
-# Verdict-shape assertion helpers
-# =============================================================================
-
-
-@dataclass
-class JudgeVerdict:
-    """Structured verdict from a judge run."""
-
-    decision: str | None = None
-    reasoning: str | None = None
-    confidence: float | None = None
-    raw_output: str = ""
-
-    # Parsing metadata
-    parse_error: str | None = None
-
-
-def parse_judge_output_json(output: str) -> JudgeVerdict:
-    """Parse judge output that should be JSON structured.
-
-    Args:
-        output: Raw stdout/stderr from judge run.
-
-    Returns:
-        JudgeVerdict with parsed fields or parse_error set.
-    """
-    import json
-
-    verdict = JudgeVerdict(raw_output=output)
-
-    try:
-        data = json.loads(output)
-        verdict.decision = data.get("decision")
-        verdict.reasoning = data.get("reasoning")
-        verdict.confidence = data.get("confidence")
-    except json.JSONDecodeError as exc:
-        verdict.parse_error = f"JSON parse failed: {exc}"
-
-    return verdict
-
-
-def parse_judge_output_text(output: str) -> JudgeVerdict:
-    """Parse judge output in text format (fallback).
-
-    This is a best-effort parser. For codex judge, structured output
-    is required - this is only for opencode judge tolerance.
-
-    Args:
-        output: Raw stdout/stderr from judge run.
-
-    Returns:
-        JudgeVerdict with best-effort extracted fields.
-    """
-    verdict = JudgeVerdict(raw_output=output)
-
-    # Try to extract decision from common patterns
-    decision_patterns = [
-        r"(?i)(?:decision|verdict|verdict):\s*(pass|fail|retry|escalate)",
-        r"(?i)(?:decision|verdict|verdict)\s*=\s*(\w+)",
-        r"^(pass|fail|retry|escalate)$",
-    ]
-
-    for pattern in decision_patterns:
-        match = re.search(pattern, output, re.MULTILINE)
-        if match:
-            verdict.decision = match.group(1).lower()
-            break
-
-    # Try to extract confidence
-    confidence_match = re.search(r"(?i)confidence[:\s]*(\d+(?:\.\d+)?)", output)
-    if confidence_match:
-        try:
-            verdict.confidence = float(confidence_match.group(1))
-        except ValueError:
-            pass
-
-    # Use remaining output as reasoning
-    lines = output.strip().split("\n")
-    if verdict.decision:
-        # Try to extract reasoning after decision line
-        for i, line in enumerate(lines):
-            if verdict.decision in line.lower() and i + 1 < len(lines):
-                verdict.reasoning = "\n".join(lines[i + 1 :]).strip()
-                break
-        if verdict.reasoning is None:
-            verdict.reasoning = output
-    else:
-        verdict.reasoning = output
-
-    return verdict
-
-
-def assert_judge_verdict_shape(verdict: JudgeVerdict) -> None:
-    """Assert that a judge verdict has the expected shape.
-
-    Args:
-        verdict: JudgeVerdict to validate.
-
-    Raises:
-        AssertionError: If verdict is malformed.
-    """
-    if verdict.parse_error:
-        raise AssertionError(
-            f"Judge output parse error: {verdict.parse_error}\nRaw output: {verdict.raw_output!r}"
-        )
-
-    if not verdict.decision:
-        raise AssertionError(
-            f"Judge verdict missing 'decision' field.\nRaw output: {verdict.raw_output!r}"
-        )
-
-    if verdict.decision not in ("pass", "fail", "retry", "escalate"):
-        raise AssertionError(
-            f"Judge verdict has unknown decision: {verdict.decision!r}\n"
-            f"Expected one of: pass, fail, retry, escalate.\n"
-            f"Raw output: {verdict.raw_output!r}"
-        )
 
 
 # =============================================================================

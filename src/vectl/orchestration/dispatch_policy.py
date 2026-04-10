@@ -22,29 +22,26 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import Literal, Protocol
 
+from vectl.orchestration.config import (
+    DEFAULT_DISPATCH_ROLE_ID,
+    default_role_profiles,
+    validate_role_profiles,
+)
 from vectl.orchestration.contracts import (
     ControlDecision,
     CoreSnapshot,
     DispatchRoleSource,
-    DispatchSourceKind,
     DispatchSpec,
-    ExecutionContext,
-    MutationPolicy,
     PromptBundle,
     PromptRegistry,
     ResolutionCase,
-    ResolutionCaseSource,
-    ReviewOutcome,
-    RoleOutputContract,
     RoleProfile,
     RoleProfileRegistry,
     RosterSnapshot,
     RuntimeSnapshot,
-    SessionMode,
     StructuredReviewResult,
 )
-from vectl.orchestration.core_adapter import CoreAdapter, PlanCoreAdapter
-
+from vectl.orchestration.core_adapter import PlanCoreAdapter
 
 # ---------------------------------------------------------------------
 # Errors
@@ -103,86 +100,6 @@ def step_verify_to_verify_mode(
 # Configuration-backed RoleProfileRegistry
 # ---------------------------------------------------------------------
 
-# Default role profiles per ORCHESTRATION-PLANE-DISPATCH-AND-PROMPT-POLICY.md §8, §11, §12.
-# These provide sensible defaults; configuration can add/override roles.
-
-_DEFAULT_ROLE_PROFILES: tuple[RoleProfile, ...] = (
-    # Coder family (§11.2): linked_worktree, worktree_changes, reuse_allowed
-    RoleProfile(
-        role_id="python-executor",
-        prompt_family="coder",
-        template_id="coder_executor",
-        execution_context="linked_worktree",
-        mutation_policy="worktree_changes",
-        session_policy="reuse_allowed",
-        output_contract="freeform_evidence",
-        default_runner="codex",
-    ),
-    RoleProfile(
-        role_id="python-senior",
-        prompt_family="coder",
-        template_id="coder_senior",
-        execution_context="linked_worktree",
-        mutation_policy="worktree_changes",
-        session_policy="reuse_allowed",
-        output_contract="freeform_evidence",
-        default_runner="codex",
-    ),
-    # Planner family (§11.3): main_worktree, vectl_facade_only, reuse_forbidden
-    RoleProfile(
-        role_id="vectl-planner",
-        prompt_family="planner",
-        template_id="planner_remediation",
-        execution_context="main_worktree",
-        mutation_policy="vectl_facade_only",
-        session_policy="reuse_forbidden",
-        output_contract="structured_plan_result",
-        default_runner="codex",
-    ),
-    # Reviewer family (§11.4): main_worktree, read_only, reuse_allowed
-    RoleProfile(
-        role_id="gate-reviewer",
-        prompt_family="reviewer",
-        template_id="reviewer_gate",
-        execution_context="main_worktree",
-        mutation_policy="read_only",
-        session_policy="reuse_allowed",
-        output_contract="structured_review_result",
-        default_runner="codex",
-    ),
-    RoleProfile(
-        role_id="doc-reviewer",
-        prompt_family="reviewer",
-        template_id="reviewer_doc",
-        execution_context="main_worktree",
-        mutation_policy="read_only",
-        session_policy="reuse_allowed",
-        output_contract="structured_review_result",
-        default_runner="codex",
-    ),
-    RoleProfile(
-        role_id="spec-readiness-auditor",
-        prompt_family="reviewer",
-        template_id="reviewer_spec_readiness",
-        execution_context="main_worktree",
-        mutation_policy="read_only",
-        session_policy="reuse_allowed",
-        output_contract="structured_review_result",
-        default_runner="codex",
-    ),
-    # Resolver family (§11.5): main_worktree, vectl_facade_only, reuse_forbidden
-    RoleProfile(
-        role_id="conflict-resolver",
-        prompt_family="resolver",
-        template_id="resolver_conflict",
-        execution_context="main_worktree",
-        mutation_policy="vectl_facade_only",
-        session_policy="reuse_forbidden",
-        output_contract="resolution_report",
-        default_runner="codex",
-    ),
-)
-
 
 @dataclass(frozen=True)
 class ConfigRoleProfileRegistry:
@@ -199,31 +116,28 @@ class ConfigRoleProfileRegistry:
     """
 
     _profiles: dict[str, RoleProfile] = field(default_factory=dict)
-    _default_role: str = "python-executor"
-    _fallback_role: str = "python-executor"
+    _default_role: str = DEFAULT_DISPATCH_ROLE_ID
 
     def __init__(
         self,
         profiles: tuple[RoleProfile, ...] | None = None,
-        default_role: str = "python-executor",
-        fallback_role: str = "python-executor",
+        default_role: str = DEFAULT_DISPATCH_ROLE_ID,
     ) -> None:
         """Initialize registry with optional profile overrides.
 
         Args:
-            profiles: Role profiles to register. If None, defaults are used.
+            profiles: Role profiles to register. If None, configuration defaults are used.
             default_role: Default role ID used when step.agent is absent.
-            fallback_role: Fallback role ID used only when explicitly allowed.
-            default_role: Role to use when step.agent is missing (§9.1 precedence 2).
-            fallback_role: Role to fall back to when explicitly allowed (§9.1 precedence 3).
         """
-        source_profiles = profiles if profiles is not None else _DEFAULT_ROLE_PROFILES
+        source_profiles = profiles if profiles is not None else default_role_profiles()
+        validation_errors = validate_role_profiles(source_profiles)
+        if validation_errors:
+            raise ValueError(validation_errors[0])
         profile_dict: dict[str, RoleProfile] = {}
         for p in source_profiles:
             profile_dict[p.role_id] = p
         object.__setattr__(self, "_profiles", profile_dict)
         object.__setattr__(self, "_default_role", default_role)
-        object.__setattr__(self, "_fallback_role", fallback_role)
 
     def get(self, role_id: str) -> RoleProfile:
         """Look up a role profile by ID.
@@ -267,11 +181,6 @@ class ConfigRoleProfileRegistry:
         """Return the configured default role ID."""
         return self._default_role
 
-    @property
-    def fallback_role(self) -> str:
-        """Return the configured fallback role ID."""
-        return self._fallback_role
-
     def resolve_role(
         self,
         step_agent: str | None,
@@ -285,7 +194,6 @@ class ConfigRoleProfileRegistry:
         Precedence:
             1. step.agent if present
             2. default role if step.agent is absent
-            3. fallback role only when explicitly allowed by policy
 
         The current implementation does not silently downgrade specialized
         roles (§9.2 anti-pattern).
@@ -338,9 +246,10 @@ _PLANNER_TASK_TEMPLATE = (
     "## Remediation Planning Task: {source_id}\n"
     "### Context\n{description}\n\n"
     "### Blocked Work\n{refs}\n\n"
-    "Produce a structured plan outcome with proposed_steps and retest_steps. "
-    "Your output contract is: structured_plan_result. "
-    "Do not claim new steps or modify the plan directly."
+    "Produce direct vectl-facade mutation instructions for remediation and retest handling. "
+    "Your output contract is: vectl_facade_mutation. "
+    "Do not claim new steps or modify the plan directly; "
+    "all mutations stay behind the approved vectl facade."
 )
 
 _REVIEWER_SYSTEM_PROMPT = (
@@ -358,15 +267,37 @@ _REVIEWER_TASK_TEMPLATE = (
 )
 
 _RESOLVER_SYSTEM_PROMPT = (
-    "You are a blocked-case resolution agent. You operate from the main worktree "
+    "You are the Blocked-Case Coordinator. You operate from the main worktree "
     "and may use approved vectl tool surfaces only. You must not claim new steps. "
-    "Produce a ResolutionReport (status, summary, evidence_refs, operator_message)."
+    "Produce a ResolutionReport (status, summary, evidence_refs, operator_message). "
+    "You are part of the canonical blocked-case coordinator resolver family used "
+    "for all blocked-case sources — "
+    "do not introduce conflict-specialized or reviewer-specific resolver sub-taxonomy. "
+    "Escalate to operator (operator_required) when automatic closure is unsafe."
+)
+_RESOLVER_TACIT_SYSTEM_PROMPT = (
+    "You are the Blocked-Case Coordinator (Tacit Edition). You operate from the main "
+    "worktree and may use approved vectl tool surfaces only. You must not claim new steps. "
+    "Produce a ResolutionReport (status, summary, evidence_refs, operator_message). "
+    "Use stronger pattern recognition to discover authority-safe repair or delegation paths "
+    "before concluding a case is operator-bound. Do not introduce conflict-specialized or "
+    "reviewer-specific resolver sub-taxonomy."
 )
 _RESOLVER_TASK_TEMPLATE = (
     "## Resolution Case: {source_id}\n"
     "### Context\n{description}\n\n"
     "### Blocked Steps\n{refs}\n\n"
     "Investigate and produce a resolution report. "
+    "You may use approved vectl tools to inspect and act. "
+    "Do not claim new steps or modify the plan outside the approved facade. "
+    "Escalate to operator when automatic closure is unsafe or unverifiable."
+)
+_RESOLVER_TACIT_TASK_TEMPLATE = (
+    "## Resolution Case: {source_id}\n"
+    "### Context\n{description}\n\n"
+    "### Blocked Steps\n{refs}\n\n"
+    "Investigate and produce a resolution report. "
+    "Look for hidden authority-safe repair or delegation paths before escalating. "
     "You may use approved vectl tools to inspect and act. "
     "Do not claim new steps or modify the plan outside the approved facade."
 )
@@ -412,10 +343,15 @@ class ConfigPromptRegistry:
         Returns:
             PromptBundle with system_prompt, task_prompt, and messages.
         """
+        profile = self._resolve_role_profile(spec.role_id)
         family = spec.prompt_family
         template_data = _build_template_data(spec)
 
-        system_prompt, task_template = _select_prompt_family(family)
+        system_prompt, task_template = _select_prompt_content(
+            family=family,
+            role_id=spec.role_id,
+            agent_id=profile.agent_id if profile is not None else spec.role_id,
+        )
         task_prompt = task_template.format_map(template_data)
 
         # Include role-specific context as messages
@@ -444,6 +380,14 @@ class ConfigPromptRegistry:
         # Fallback: check if the role family is known
         return role_id in _ROLE_FAMILY_MAP
 
+    def _resolve_role_profile(self, role_id: str) -> RoleProfile | None:
+        if self._role_registry is None:
+            return None
+        try:
+            return self._role_registry.get(role_id)
+        except KeyError:
+            return None
+
 
 def _build_template_data(spec: DispatchSpec) -> dict[str, str]:
     """Build formatting data from DispatchSpec for prompt template rendering.
@@ -470,8 +414,11 @@ def _build_template_data(spec: DispatchSpec) -> dict[str, str]:
     }
 
 
-def _select_prompt_family(
+def _select_prompt_content(
+    *,
     family: str,
+    role_id: str,
+    agent_id: str,
 ) -> tuple[str, str]:
     """Select system prompt and task template by role family.
 
@@ -479,6 +426,8 @@ def _select_prompt_family(
 
     Args:
         family: The prompt family identifier.
+        role_id: The resolved role identifier.
+        agent_id: The concrete agent/persona identifier.
 
     Returns:
         Tuple of (system_prompt, task_template).
@@ -490,6 +439,11 @@ def _select_prompt_family(
     if family == "reviewer":
         return (_REVIEWER_SYSTEM_PROMPT, _REVIEWER_TASK_TEMPLATE)
     if family == "resolver":
+        if (
+            agent_id == "blocked-case-coordinator-tacit"
+            or role_id == "blocked-case-coordinator-tacit"
+        ):
+            return (_RESOLVER_TACIT_SYSTEM_PROMPT, _RESOLVER_TACIT_TASK_TEMPLATE)
         return (_RESOLVER_SYSTEM_PROMPT, _RESOLVER_TASK_TEMPLATE)
     # Unknown family — use coder as base but note the family mismatch
     return (_CODER_SYSTEM_PROMPT, _CODER_TASK_TEMPLATE)
@@ -516,7 +470,9 @@ def _build_context_messages(spec: DispatchSpec) -> tuple[dict[str, str], ...]:
         messages.append(
             {
                 "role": "system",
-                "content": "MUTATION POLICY: vectl_facade_only. Only use approved vectl tool surfaces.",
+                "content": (
+                    "MUTATION POLICY: vectl_facade_only. Only use approved vectl tool surfaces."
+                ),
             }
         )
     elif spec.mutation_policy == "read_only":
@@ -531,13 +487,7 @@ def _build_context_messages(spec: DispatchSpec) -> tuple[dict[str, str], ...]:
 
 # Role ID -> prompt family mapping for has_role fallback
 _ROLE_FAMILY_MAP: dict[str, str] = {
-    "python-executor": "coder",
-    "python-senior": "coder",
-    "vectl-planner": "planner",
-    "gate-reviewer": "reviewer",
-    "doc-reviewer": "reviewer",
-    "spec-readiness-auditor": "reviewer",
-    "conflict-resolver": "resolver",
+    profile.role_id: profile.prompt_family for profile in default_role_profiles()
 }
 
 
@@ -653,7 +603,8 @@ class DispatchCoordinator:
         if step_data is None:
             raise ValueError(f"Step data not found for step_id={step_id!r}")
 
-        # 2. Resolve role (§9.1 precedence: step.agent > dispatch-request default > registry default)
+        # 2. Resolve role (§9.1 precedence: step.agent > dispatch-request
+        #    default > registry default)
         resolved_role, role_source = self.role_registry.resolve_role(
             step_data.agent,
             default_role_override=decision.role,

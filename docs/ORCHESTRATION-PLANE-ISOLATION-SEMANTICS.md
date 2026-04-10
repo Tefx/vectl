@@ -3,7 +3,7 @@
 > Authoritative semantics for tasks that require explicit execution isolation.
 
 **Status:** Target semantics  
-**Architecture authority:** `docs/ORCHESTRATION-PLANE-ARCHITECTURE.md`  
+**Architecture authority:** `docs/ORCHESTRATION-PLANE-ARCHITECTURE.md`, `docs/ADR-orchestration-role-profile-config-and-resolver-cleanup.md`  
 **Interface authority:** `docs/ORCHESTRATION-PLANE-INTERFACES.md`
 
 ---
@@ -196,11 +196,14 @@ annotation when they truly require stronger isolation.
 The legacy system already has partial notions related to isolation:
 
 - worktree isolation mechanics
-- `COLD_CONTEXT` judgment for gate/freeze dispatch
+- `COLD_CONTEXT` gate/freeze checks in legacy materials
 - isolation-focused tests and docs
 
 Those remain valuable reference material, but they do not replace the need for a
 single authoritative step-level isolation semantic.
+
+Historical `plan.yaml` and legacy isolation labels remain non-authoritative for
+new orchestration-plane terminology.
 
 ---
 

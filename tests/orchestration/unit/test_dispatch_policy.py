@@ -19,6 +19,7 @@ from __future__ import annotations
 
 import pytest
 
+from vectl.orchestration.config import OrchestrationConfig
 from vectl.orchestration.contracts import (
     ControlDecision,
     CoreSnapshot,
@@ -40,7 +41,6 @@ from vectl.orchestration.dispatch_policy import (
     normalize_review_result,
     step_verify_to_verify_mode,
 )
-
 
 # ---------------------------------------------------------------------
 # Fixtures
@@ -143,6 +143,7 @@ class TestConfigRoleProfileRegistry:
         profile = registry.get("python-executor")
         assert isinstance(profile, RoleProfile)
         assert profile.role_id == "python-executor"
+        assert profile.agent_id == "python-executor"
         assert profile.prompt_family == "coder"
         assert profile.execution_context == "linked_worktree"
         assert profile.mutation_policy == "worktree_changes"
@@ -155,12 +156,17 @@ class TestConfigRoleProfileRegistry:
         coder = registry.get("python-executor")
         planner = registry.get("vectl-planner")
         reviewer = registry.get("gate-reviewer")
-        resolver = registry.get("conflict-resolver")
+        resolver = registry.get("blocked-case-coordinator")
+        tacit_resolver = registry.get("blocked-case-coordinator-tacit")
 
         assert coder.execution_context == "linked_worktree"
         assert planner.execution_context == "main_worktree"
         assert reviewer.execution_context == "main_worktree"
         assert resolver.execution_context == "main_worktree"
+        assert tacit_resolver.execution_context == "main_worktree"
+        assert resolver.agent_id == "blocked-case-coordinator"
+        assert tacit_resolver.agent_id == "blocked-case-coordinator-tacit"
+        assert tacit_resolver.prompt_family == "resolver"
 
     def test_has_role_returns_true_for_known_role(self) -> None:
         """has_role() must return True for known roles."""
@@ -168,7 +174,8 @@ class TestConfigRoleProfileRegistry:
         assert registry.has_role("python-executor") is True
         assert registry.has_role("vectl-planner") is True
         assert registry.has_role("gate-reviewer") is True
-        assert registry.has_role("conflict-resolver") is True
+        assert registry.has_role("blocked-case-coordinator") is True
+        assert registry.has_role("blocked-case-coordinator-tacit") is True
 
     def test_has_role_returns_false_for_unknown_role(self) -> None:
         """has_role() must return False for unknown roles.
@@ -216,9 +223,32 @@ class TestConfigRoleProfileRegistry:
         Authority: §12.2 'Typical examples [main_worktree roles]: resolver-family'
         """
         registry = ConfigRoleProfileRegistry()
-        profile = registry.get("conflict-resolver")
-        assert profile.execution_context == "main_worktree"
-        assert profile.mutation_policy == "vectl_facade_only"
+        for role_id in ("blocked-case-coordinator", "blocked-case-coordinator-tacit"):
+            profile = registry.get(role_id)
+            assert profile.execution_context == "main_worktree"
+            assert profile.mutation_policy == "vectl_facade_only"
+
+    def test_default_resolver_profiles_preserve_cleaned_taxonomy(self) -> None:
+        """Default resolver profiles stay on blocked-case coordinator taxonomy only.
+
+        Authority: ADR-orchestration-role-profile-config-and-resolver-cleanup.md §Decision
+        """
+        registry = ConfigRoleProfileRegistry()
+        resolver_role_ids = {
+            role_id
+            for role_id in (
+                "blocked-case-coordinator",
+                "blocked-case-coordinator-tacit",
+            )
+            if registry.has_role(role_id)
+        }
+
+        assert resolver_role_ids == {
+            "blocked-case-coordinator",
+            "blocked-case-coordinator-tacit",
+        }
+        combined_surface = " ".join(sorted(resolver_role_ids)).lower()
+        assert "conflict" not in combined_surface
 
     def test_planner_family_roles_require_main_worktree(self) -> None:
         """Planner-family roles must require main_worktree execution context.
@@ -258,8 +288,8 @@ class TestConfigRoleProfileRegistry:
         """
         custom_role = RoleProfile(
             role_id="custom-agent",
+            agent_id="custom-agent",
             prompt_family="coder",
-            template_id="custom_template",
             execution_context="linked_worktree",
             mutation_policy="worktree_changes",
             session_policy="reuse_allowed",
@@ -272,12 +302,40 @@ class TestConfigRoleProfileRegistry:
         assert profile.role_id == "custom-agent"
         assert profile.default_runner == "custom-runner"
 
+    def test_main_worktree_family_policy_is_validated_for_custom_profiles(self) -> None:
+        """Canonical main-worktree family policy is enforced centrally."""
+        invalid_reviewer = RoleProfile(
+            role_id="custom-reviewer",
+            agent_id="custom-reviewer",
+            prompt_family="reviewer",
+            execution_context="linked_worktree",
+            mutation_policy="read_only",
+            session_policy="reuse_allowed",
+            output_contract="structured_review_result",
+            default_runner="codex",
+        )
+
+        with pytest.raises(ValueError, match="violates 'reviewer' family policy"):
+            ConfigRoleProfileRegistry(profiles=(invalid_reviewer,))
+
     def test_default_role_is_configurable(self) -> None:
         """Default role can be overridden via configuration."""
         registry = ConfigRoleProfileRegistry(default_role="python-senior")
         role, source = registry.resolve_role(step_agent=None)
         assert role == "python-senior"
         assert source == "default"
+
+    def test_registry_defaults_are_loaded_from_orchestration_config(self) -> None:
+        """Default registry authority comes from orchestration config, not dispatch code."""
+        config = OrchestrationConfig()
+        registry = ConfigRoleProfileRegistry(
+            profiles=config.role_profiles,
+            default_role=config.dispatch.default_role_id,
+        )
+
+        assert registry.default_role == config.dispatch.default_role_id
+        assert registry.has_role("blocked-case-coordinator") is True
+        assert registry.has_role("blocked-case-coordinator-tacit") is True
 
 
 # ---------------------------------------------------------------------
@@ -315,7 +373,7 @@ class TestConfigPromptRegistry:
         assert registry.has_role("python-executor") is True
         assert registry.has_role("vectl-planner") is True
         assert registry.has_role("gate-reviewer") is True
-        assert registry.has_role("conflict-resolver") is True
+        assert registry.has_role("blocked-case-coordinator") is True
 
     def test_has_role_delegates_to_role_registry_when_provided(self) -> None:
         """When a role_registry is provided, has_role delegates to it."""
@@ -409,8 +467,8 @@ class TestConfigPromptRegistry:
             or "planning" in bundle.system_prompt.lower()
         )
         assert (
-            "structured_plan_result" in bundle.task_prompt
-            or "structured plan" in bundle.task_prompt.lower()
+            "vectl_facade_mutation" in bundle.task_prompt
+            or "vectl facade" in bundle.task_prompt.lower()
         )
 
     def test_resolver_family_prompt_includes_facade_constraint(self) -> None:
@@ -424,7 +482,7 @@ class TestConfigPromptRegistry:
         spec = DispatchSpec(
             source_kind="resolution_subtask",
             source_id="case-456",
-            role_id="conflict-resolver",
+            role_id="blocked-case-coordinator",
             role_source="resolver",
             execution_context="main_worktree",
             runner="codex",
@@ -436,6 +494,43 @@ class TestConfigPromptRegistry:
         # System prompt should reference main worktree / vectl facade
         system_lower = bundle.system_prompt.lower()
         assert "vectl" in system_lower or "approved" in system_lower or "facade" in system_lower
+
+    def test_tacit_resolver_role_renders_distinct_prompt_content(self) -> None:
+        """Tacit resolver must not collapse to the standard resolver prompt."""
+        role_registry = ConfigRoleProfileRegistry()
+        registry = ConfigPromptRegistry(role_registry=role_registry)
+
+        standard = registry.render(
+            DispatchSpec(
+                source_kind="resolution_subtask",
+                source_id="case-standard",
+                role_id="blocked-case-coordinator",
+                role_source="resolver",
+                execution_context="main_worktree",
+                runner="codex",
+                session_mode="fresh",
+                prompt_family="resolver",
+                mutation_policy="vectl_facade_only",
+            )
+        )
+        tacit = registry.render(
+            DispatchSpec(
+                source_kind="resolution_subtask",
+                source_id="case-tacit",
+                role_id="blocked-case-coordinator-tacit",
+                role_source="resolver",
+                execution_context="main_worktree",
+                runner="codex",
+                session_mode="fresh",
+                prompt_family="resolver",
+                mutation_policy="vectl_facade_only",
+            )
+        )
+
+        assert standard.system_prompt != tacit.system_prompt
+        assert standard.task_prompt != tacit.task_prompt
+        assert "tacit edition" in tacit.system_prompt.lower()
+        assert "repair or delegation paths" in tacit.system_prompt.lower()
 
     def test_main_worktree_context_in_messages(self) -> None:
         """main_worktree execution context must appear in context messages."""
@@ -460,7 +555,7 @@ class TestConfigPromptRegistry:
         spec = DispatchSpec(
             source_kind="step",
             source_id="core.test",
-            role_id="conflict-resolver",
+            role_id="blocked-case-coordinator",
             role_source="resolver",
             execution_context="main_worktree",
             runner="codex",
@@ -677,7 +772,7 @@ class TestDispatchCoordinator:
         assert spec.role_source == "resolver"
         assert spec.execution_context == "main_worktree"
         assert spec.prompt_family == "planner"
-        assert spec.output_contract == "structured_plan_result"
+        assert spec.output_contract == "vectl_facade_mutation"
         assert spec.mutation_policy == "vectl_facade_only"
         assert spec.description == "Plan remediation for blocked step"
         assert spec.refs == ("evidence1", "evidence2")
@@ -806,7 +901,7 @@ class TestReviewResultNormalization:
         assert "file1.py" in normalized.artifact_refs
 
     def test_needs_replan_creates_resolution_case(self) -> None:
-        """review_outcome='needs_replan' must create ResolutionCase with case_source='review_failed'.
+        """review_outcome='needs_replan' must create ResolutionCase.
 
         Authority: §14.1 'needs_replan -> create explicit resolution case'
         """
@@ -823,7 +918,7 @@ class TestReviewResultNormalization:
         assert normalized.reason == "review outcome: needs_replan"
 
     def test_operator_required_creates_resolution_case(self) -> None:
-        """review_outcome='operator_required' must create ResolutionCase with case_source='review_failed'.
+        """review_outcome='operator_required' must create ResolutionCase.
 
         Authority: §14.1 'operator_required -> create explicit resolution case'
         """
@@ -900,7 +995,7 @@ class TestParseFailureNormalization:
             runtime=runtime,
         )
         # Preview should be truncated
-        assert "AAA" in case.summary  # First 200 chars will be in preview
+        assert "AAA" in (case.summary or "")  # First 200 chars will be in preview
 
 
 # ---------------------------------------------------------------------
@@ -947,8 +1042,8 @@ class TestPlannerSubagentRouting:
         assert spec.execution_context == "main_worktree"
         # Planner mutation policy is vectl_facade_only (§11.5)
         assert spec.mutation_policy == "vectl_facade_only"
-        # Planner output is structured_plan_result (§15.2)
-        assert spec.output_contract == "structured_plan_result"
+        # Planner output is vectl_facade_mutation (§15.3 / gate policy)
+        assert spec.output_contract == "vectl_facade_mutation"
 
     def test_no_silent_downgrade_of_planner_to_coder(self) -> None:
         """Planner must not be silently downgraded to coder role (§9.2).

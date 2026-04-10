@@ -1,7 +1,7 @@
 # Orchestration Plane Orchestration App Routing
 
 **Status:** Proposed  
-**Architecture authority:** `docs/ORCHESTRATION-PLANE-ARCHITECTURE.md`  
+**Architecture authority:** `docs/ORCHESTRATION-PLANE-ARCHITECTURE.md`, `docs/ADR-orchestration-role-profile-config-and-resolver-cleanup.md`  
 **Interface authority:** `docs/ORCHESTRATION-PLANE-INTERFACES.md`  
 **Related:** `docs/ORCHESTRATION-PLANE-RUNNER-BACKEND.md`, `docs/ORCHESTRATION-PLANE-RUNTIME-WORKTREE-LIFECYCLE.md`, `docs/ORCHESTRATION-PLANE-DISPATCH-AND-PROMPT-POLICY.md`, `docs/ORCHESTRATION-PLANE-RESOLVER-COORDINATION.md`
 
@@ -113,7 +113,7 @@ If `control.evaluate(...)` returns `dispatch`:
 1. orchestration app performs approved `claim` through `core_adapter` or an
    equivalent approved authority surface
 2. dispatch coordinator loads authoritative step data
-3. dispatch coordinator resolves role/profile
+3. dispatch coordinator resolves a config-backed role/profile
 4. dispatch coordinator builds `DispatchSpec`
 5. `PromptRegistry` renders prompt content
 6. runtime prepares execution context
@@ -247,11 +247,20 @@ For a `needs_replan` case:
 1. resolver decides to delegate to planner
 2. dispatch coordinator builds `DispatchSpec` with:
    - `source_kind="resolution_subtask"`
-   - planner role profile
+   - planner role profile loaded from orchestration config
    - `main_worktree` execution context
 3. planner runs
 4. resolver consumes structured planner output
-5. approved vectl tool facade applies any authoritative mutation required
+5. approved vectl tool facade applies any authoritative mutation required; the
+   planner itself never edits `plan.yaml`
+
+### 9.3 Role authority reminder
+
+The routing layer must preserve this split:
+
+- plan data references role IDs
+- orchestration config defines role profiles
+- orchestration core only loads, validates, and consumes
 
 ---
 
@@ -414,3 +423,6 @@ This keeps the architecture coherent:
 - user/operator escalation remains explicit and auditable
 
 without forcing any single component to absorb the whole system.
+
+Historical `plan.yaml` remains untouched and is not terminology authority for
+new orchestration-plane contracts.

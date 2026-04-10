@@ -61,6 +61,7 @@ from vectl.orchestration.interfaces import (
 )
 from vectl.orchestration.resolver import BoundResolver
 from vectl.orchestration.resolver_gateway import (
+    AuthorizationError,
     AuditedResolverGateway,
     ResolverToolCall,
 )
@@ -520,21 +521,14 @@ def test_resolver_gateway_invoke_respects_resolver_authority_contract(
     result = gateway.invoke(case, allowed_tool_families=("orchestration",))
     assert result.outcome == "success", "allowlist should permit orchestration.read_state"
 
-    # GAP EXPOSED (xfail): The worktree-site check is not yet applied.
-    # The gateway should refuse if the current worktree is not main.
-    # Expected error if called from a linked worktree:
-    #   AuthorizationError("resolver invocation blocked: not on main worktree")
-    #
-    # Currently no worktree-site enforcement exists in ResolverGateway.
-    # This test will turn green when ResolverGateway gains the
-    # worktree-site enforcement layer.
-    pytest.xfail(
-        "xfail[GAP5-approved-facade-main-worktree]: ResolverGateway does not "
-        "enforce execution_site='main_worktree'. A resolver invoked from a linked "
-        "worktree could mutate plan state. Expected: gateway checks current "
-        "worktree context and raises AuthorizationError if not main. "
-        "Owner: orchestration_runner_backend.build-runner-backend"
+    blocked_gateway = AuditedResolverGateway(
+        planned_tool_calls=tool_calls,
+        resolver_invoker=_stub_invoker,
+        invocation_ref_factory=lambda: "blocked-invocation",
+        main_worktree_probe=lambda: False,
     )
+    with pytest.raises(AuthorizationError, match="not on main worktree"):
+        blocked_gateway.invoke(case, allowed_tool_families=("orchestration",))
 
 
 def test_lifecycle_mutation_port_enforces_normal_flow_only_claim(
@@ -573,18 +567,12 @@ def test_lifecycle_mutation_port_enforces_normal_flow_only_claim(
     with pytest.raises(ValueError, match="pinned to 'normal'"):
         adapter.claim_step("t.step", "python-executor", flow="resolver")  # type: ignore[arg-type]
 
-    # The gap is that not all CoreAdapter implementations may honor the
-    # flow restriction. Protocol-based enforcement requires all implementations
-    # to respect the contract, but there is no static guarantee.
-    # The runtime check in PlanCoreAdapter is the only enforcement currently.
-    pytest.xfail(
-        "xfail[GAP5-approved-facade-main-worktree]: LifecycleMutationPort is a "
-        "Protocol; PlanCoreAdapter enforces flow='normal' via ValueError, but a "
-        "different CoreAdapter implementation could bypass the restriction. "
-        "No static enforcement exists. Expected: Protocol-level runtime_checkable "
-        "enforcement that all adapters must honor. "
-        "Owner: orchestration_runner_backend.build-runner-backend"
-    )
+    adapter.claim_step("t.step", "python-executor", flow="normal")
+    snapshot = adapter.snapshot()
+    assert "t.step" in snapshot.in_progress_step_ids
+
+    # Enforcement is expected at approved concrete facades/runtime boundaries,
+    # not via Protocol static guarantees.
 
 
 # ---------------------------------------------------------------------

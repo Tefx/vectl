@@ -11,8 +11,9 @@ from collections.abc import Mapping
 from dataclasses import dataclass
 from typing import Protocol
 
-from vectl.orchestration import judgments as judgment_support
+from vectl.orchestration.config import DEFAULT_RESOLVER_ROLE_ID
 from vectl.orchestration.contracts import ResolutionCase, ResolutionReport
+from vectl.orchestration.resolution_reports import parse_resolution_report_payload
 
 
 class ResolverInvocationSurface(Protocol):
@@ -28,11 +29,12 @@ class ResolverInvocationSurface(Protocol):
         - claiming remains outside resolver invocation; normal flow owns it
     """
 
-    def invoke(self, case: ResolutionCase) -> Mapping[str, object]:
+    def invoke(self, case: ResolutionCase, *, role_id: str) -> Mapping[str, object]:
         """Invoke allowed resolver tooling for one blocked/unresolved case.
 
         Args:
             case: Resolution case from control.
+            role_id: Configured resolver role selected from orchestration config.
 
         Returns:
             Machine-readable payload parsable into ResolutionReport.
@@ -79,6 +81,7 @@ class BoundResolver:
     """
 
     invocation: ResolverInvocationSurface
+    default_role_id: str = DEFAULT_RESOLVER_ROLE_ID
 
     def resolve(self, case: ResolutionCase) -> ResolutionReport:
         """Resolve case via invocation glue and typed report parsing.
@@ -90,7 +93,7 @@ class BoundResolver:
             ResolutionReport parsed from invocation payload.
         """
         try:
-            payload = self.invocation.invoke(case)
+            payload = self.invocation.invoke(case, role_id=self.default_role_id)
         except Exception as exc:
             return ResolutionReport(
                 status="operator_required",
@@ -142,7 +145,7 @@ def map_payload_to_report(case: ResolutionCase, payload: Mapping[str, object]) -
     Returns:
         Bounded report for control.
     """
-    parsed_report = judgment_support.parse_resolution_report_payload(payload)
+    parsed_report = parse_resolution_report_payload(payload)
     if not should_preserve_case_reason(case):
         return parsed_report
 
@@ -161,7 +164,7 @@ __all__ = [
     "BoundResolver",
     "Resolver",
     "ResolverInvocationSurface",
-    "judgment_support",
     "map_payload_to_report",
+    "parse_resolution_report_payload",
     "should_preserve_case_reason",
 ]

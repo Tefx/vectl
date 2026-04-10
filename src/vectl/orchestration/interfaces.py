@@ -310,6 +310,11 @@ class Resolver(Protocol):
         - resolver mutates only through the approved vectl facade
         - resolver never becomes an alternate claim path
 
+    Selection:
+        The orchestration app selects the resolver entry from
+        ``resolver.default_role_id`` and still expects the bounded
+        ``ResolutionCase -> ResolutionReport`` contract at this seam.
+
     Authority: docs/ORCHESTRATION-PLANE-INTERFACES.md section 4.4
     """
 

@@ -8,7 +8,9 @@ Authority:
 from __future__ import annotations
 
 import json
+import subprocess
 import time
+from dataclasses import replace
 from pathlib import Path
 from typing import Any, Literal, cast
 
@@ -23,7 +25,13 @@ from vectl.orch_app import (
     build_review_parse_failure_case,
     normalize_review_resolution_case,
 )
-from vectl.orchestration.config import OrchestrationConfig, RuntimeConfig
+from vectl.orchestration.config import (
+    OrchestrationConfig,
+    ResolverConfig,
+    ResolverToolAllowlist,
+    RuntimeConfig,
+    default_role_profiles,
+)
 from vectl.orchestration.contracts import (
     ControlDecision,
     CoreSnapshot,
@@ -32,6 +40,7 @@ from vectl.orchestration.contracts import (
     ReconcileResult,
     ResolutionCase,
     ResolutionReport,
+    RoleProfile,
     RosterSnapshot,
     RuntimeSnapshot,
     StructuredReviewResult,
@@ -40,7 +49,88 @@ from vectl.orchestration.control_channel import FilesystemControlChannel
 from vectl.orchestration.dispatch_policy import ConfigRoleProfileRegistry, DispatchCoordinator
 from vectl.orchestration.events import load_event_jsonl
 from vectl.orchestration.recovery import LegacyRunStatus
+from vectl.orchestration.resolver_gateway import GatewayInvocationResult
 from vectl.orchestration.run_store import RunRecord, RunRegistry, generate_run_id
+from vectl.orchestration.runner_registry import RunnerRegistry
+from vectl.orchestration.runners import (
+    RunnerCapabilities,
+    RunnerHandle,
+    RunnerLaunchResult,
+    RunnerPollResult,
+)
+
+
+@pytest.fixture
+def temp_git_repo(tmp_path: Path) -> Path:
+    """Create a temporary git repository with initial commit."""
+
+    repo_root = tmp_path / "repo"
+    repo_root.mkdir()
+
+    subprocess.run(["git", "init"], cwd=repo_root, capture_output=True, check=True)
+    subprocess.run(
+        ["git", "config", "user.email", "test@test.com"],
+        cwd=repo_root,
+        capture_output=True,
+        check=True,
+    )
+    subprocess.run(
+        ["git", "config", "user.name", "Test"],
+        cwd=repo_root,
+        capture_output=True,
+        check=True,
+    )
+
+    (repo_root / "README.md").write_text("# Orch App Test Repository\n")
+    subprocess.run(["git", "add", "README.md"], cwd=repo_root, capture_output=True, check=True)
+    subprocess.run(
+        ["git", "commit", "-m", "Initial commit"],
+        cwd=repo_root,
+        capture_output=True,
+        check=True,
+    )
+    return repo_root
+
+
+class _JsonSuccessRunner:
+    def __init__(self, payload: dict[str, object]) -> None:
+        self._payload = payload
+        self.launched = 0
+        self._handles: set[str] = set()
+
+    def capabilities(self) -> RunnerCapabilities:
+        return RunnerCapabilities(
+            runner_id="resolver-test",
+            supports_resume=False,
+            supports_cancel=True,
+            supports_streaming=False,
+        )
+
+    def launch(self, request, workspace: Path) -> RunnerLaunchResult:
+        self.launched += 1
+        run_id = f"resolver-test-{self.launched}"
+        self._handles.add(run_id)
+        return RunnerLaunchResult(
+            handle=RunnerHandle(
+                runner="resolver-test", run_id=run_id, session_id=request.session_id
+            ),
+            initial_summary=f"resolver-test started in {workspace}",
+        )
+
+    def resume(self, request, workspace: Path) -> RunnerLaunchResult:
+        raise AssertionError(f"resume not expected for {request.step_id} in {workspace}")
+
+    def poll(self, handle: RunnerHandle) -> RunnerPollResult:
+        assert handle.run_id in self._handles
+        self._handles.remove(handle.run_id)
+        return RunnerPollResult(
+            status="success",
+            output_summary=json.dumps(self._payload),
+            session_id=handle.session_id,
+        )
+
+    def cancel(self, handle: RunnerHandle) -> None:
+        self._handles.discard(handle.run_id)
 
 
 def _write_plan(plan_path: Path) -> None:
@@ -124,7 +214,140 @@ def test_build_composes_real_collaborators_without_noop_resolver_dependency(tmp_
     assert orch._control.__class__.__name__ == "PlanAwareControl"
     assert orch._core_adapter.__class__.__name__ == "PlanCoreAdapter"
     assert orch._resolver.__class__.__name__ == "BoundResolver"
-    assert orch._resolver.invocation.__class__.__name__ == "GatewayResolverInvocation"
+    assert orch._resolver.invocation.__class__.__name__ == "GatewayEnforcedResolverInvocation"
+
+
+def test_resolve_case_requires_gateway_live_path(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    app = _build_app(tmp_path)
+    seen: dict[str, object] = {}
+
+    def _fake_authorize_and_invoke(*, case, allowed_tool_families, gateway):
+        seen["case_id"] = case.case_id
+        seen["allowlist"] = allowed_tool_families
+        seen["gateway_class"] = gateway.__class__.__name__
+        return GatewayInvocationResult(
+            outcome="success",
+            invocation_ref="gw-1",
+            report=ResolutionReport(
+                status="waiting",
+                summary="resolver completed through gateway",
+                evidence_refs=("resolver://gateway",),
+            ),
+        )
+
+    monkeypatch.setattr("vectl.orch_app.authorize_and_invoke", _fake_authorize_and_invoke)
+    monkeypatch.setattr(
+        app._runtime,
+        "prepare",
+        lambda request: (_ for _ in ()).throw(
+            AssertionError("runtime must not be called when gateway is stubbed first")
+        ),
+    )
+
+    report = app.resolve_case(
+        ResolutionCase(
+            case_id="case-gateway",
+            case_source="review_failed",
+            reason="Blocked steps require resolution: core.ready",
+            summary="force gateway path",
+            core=_core_snapshot(),
+            roster=_roster_snapshot(),
+            runtime=_runtime_snapshot(),
+        )
+    )
+
+    assert report.status == "waiting"
+    assert seen["case_id"] == "case-gateway"
+    assert seen["allowlist"] == ("orchestration",)
+
+
+def test_resolve_case_returns_operator_required_when_gateway_denies(tmp_path: Path) -> None:
+    plan_path = tmp_path / "plan.yaml"
+    runs_root = tmp_path / "runs"
+    _write_plan(plan_path)
+    app = build_orchestration_app(
+        AppConfig(
+            plan_path=plan_path,
+            orchestration_config=OrchestrationConfig(
+                plan_path=plan_path,
+                resolver=ResolverConfig(tool_allowlist=ResolverToolAllowlist()),
+            ),
+            run_store_root=runs_root,
+        )
+    )
+
+    report = app.resolve_case(
+        ResolutionCase(
+            case_id="case-denied",
+            case_source="review_failed",
+            reason="Blocked steps require resolution: core.ready",
+            summary="deny by empty allowlist",
+            core=_core_snapshot(),
+            roster=_roster_snapshot(),
+            runtime=_runtime_snapshot(),
+        )
+    )
+
+    assert report.status == "operator_required"
+    assert "authorization denied" in report.summary.lower()
+    assert "resolver:authorization-denied" in report.evidence_refs
+
+
+def test_resolve_case_reaches_runtime_runner_through_gateway(
+    temp_git_repo: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.chdir(temp_git_repo)
+    plan_path = temp_git_repo / "plan.yaml"
+    runs_root = temp_git_repo / "runs"
+    _write_plan(plan_path)
+
+    role_profiles: tuple[RoleProfile, ...] = tuple(
+        replace(profile, default_runner="resolver-test")
+        if profile.role_id == "blocked-case-coordinator"
+        else profile
+        for profile in default_role_profiles()
+    )
+    app = build_orchestration_app(
+        AppConfig(
+            plan_path=plan_path,
+            orchestration_config=OrchestrationConfig(
+                plan_path=plan_path,
+                role_profiles=role_profiles,
+            ),
+            run_store_root=runs_root,
+        )
+    )
+
+    runner = _JsonSuccessRunner(
+        {
+            "status": "unblocked",
+            "summary": "resolved by runtime runner through gateway",
+            "evidence_refs": ["resolver://runtime-runner"],
+        }
+    )
+    registry = RunnerRegistry()
+    registry.register("resolver-test", runner)
+    app._runtime._runner_registry = registry
+
+    report = app.resolve_case(
+        ResolutionCase(
+            case_id="case-runtime-runner",
+            case_source="review_failed",
+            reason="Blocked steps require resolution: core.ready",
+            summary="runtime runner integration",
+            core=_core_snapshot(),
+            roster=_roster_snapshot(),
+            runtime=_runtime_snapshot(),
+            blocked_step_ids=("core.ready",),
+        )
+    )
+
+    assert report.status == "unblocked"
+    assert runner.launched == 1
+    assert "resolver://runtime-runner" in report.evidence_refs
+    assert any(ref.startswith("resolver_gateway_invocation=") for ref in report.evidence_refs)
 
 
 def test_build_resolution_case_requires_resolve_decision() -> None:
@@ -355,6 +578,209 @@ def test_route_resolution_case_covers_all_resolver_outcomes(
     assert (app._latest_operator_notification is not None) is expected_notification
 
 
+def test_resolve_case_invokes_configured_default_resolver_role(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    app = _build_app(tmp_path)
+    seen: dict[str, object] = {}
+
+    monkeypatch.setattr("vectl.orch_app.is_linked_worktree", lambda: (False, tmp_path))
+    monkeypatch.setattr(app._runtime, "prepare", lambda request: "ws-1")
+    monkeypatch.setattr(
+        app._runtime,
+        "start",
+        lambda *, request, workspace: (
+            seen.update(
+                {
+                    "role": request.role,
+                    "workspace": workspace,
+                    "work_refs": request.work_refs,
+                }
+            )
+            or "exec-1"
+        ),
+    )
+    monkeypatch.setattr(
+        app._runtime,
+        "collect",
+        lambda _execution_id: ExecutionResult(
+            step_id="case-blocked",
+            status="success",
+            output_summary=json.dumps(
+                {
+                    "status": "unblocked",
+                    "summary": "resolved by configured resolver role",
+                    "evidence_refs": ["resolver://default-role"],
+                }
+            ),
+        ),
+    )
+
+    report = app.resolve_case(
+        ResolutionCase(
+            case_id="case-blocked",
+            case_source="runtime_failure",
+            reason="Blocked steps require resolution: core.ready",
+            summary="repair the blocked step",
+            core=_core_snapshot(),
+            roster=_roster_snapshot(),
+            runtime=_runtime_snapshot(),
+            blocked_step_ids=("core.ready",),
+            artifact_refs=("artifact://blocked",),
+        )
+    )
+
+    assert report.status == "unblocked"
+    assert seen["role"] == "blocked-case-coordinator"
+    assert "resolver_role_id=blocked-case-coordinator" in cast(tuple[str, ...], seen["work_refs"])
+
+
+def test_resolve_case_supports_explicit_tacit_resolver_config_selection(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    plan_path = tmp_path / "plan.yaml"
+    runs_root = tmp_path / "runs"
+    _write_plan(plan_path)
+    app = build_orchestration_app(
+        AppConfig(
+            plan_path=plan_path,
+            orchestration_config=OrchestrationConfig(
+                plan_path=plan_path,
+                resolver=ResolverConfig(default_role_id="blocked-case-coordinator-tacit"),
+            ),
+            run_store_root=runs_root,
+        )
+    )
+    seen_roles: list[str] = []
+
+    monkeypatch.setattr("vectl.orch_app.is_linked_worktree", lambda: (False, tmp_path))
+    monkeypatch.setattr(
+        app._runtime, "prepare", lambda request: seen_roles.append(request.role) or "ws-1"
+    )
+    monkeypatch.setattr(app._runtime, "start", lambda *, request, workspace: "exec-tacit")
+    monkeypatch.setattr(
+        app._runtime,
+        "collect",
+        lambda _execution_id: ExecutionResult(
+            step_id="case-tacit",
+            status="success",
+            output_summary=json.dumps(
+                {
+                    "status": "waiting",
+                    "summary": "tacit resolver is gathering more context",
+                    "evidence_refs": ["resolver://tacit"],
+                }
+            ),
+        ),
+    )
+
+    report = app.resolve_case(
+        ResolutionCase(
+            case_id="case-tacit",
+            case_source="review_failed",
+            reason="Unresolved authoritative state: claim graph conflict",
+            summary="resolve the conflict",
+            core=_core_snapshot(),
+            roster=_roster_snapshot(),
+            runtime=_runtime_snapshot(),
+        )
+    )
+
+    assert report.status == "waiting"
+    assert seen_roles == ["blocked-case-coordinator-tacit"]
+
+
+def test_route_resolution_case_refreshes_state_after_real_resolver_invocation(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    app = _build_app(tmp_path)
+    refreshed_core = _core_snapshot(blocked=("core.other",))
+    refreshed_roster = _roster_snapshot()
+    refreshed_runtime = _runtime_snapshot()
+    snapshot_calls = {"core": 0, "roster": 0, "runtime": 0}
+    seen: dict[str, object] = {}
+
+    monkeypatch.setattr("vectl.orch_app.is_linked_worktree", lambda: (False, tmp_path))
+    monkeypatch.setattr(app._runtime, "prepare", lambda request: "ws-refresh")
+    monkeypatch.setattr(app._runtime, "start", lambda *, request, workspace: "exec-refresh")
+    monkeypatch.setattr(
+        app._runtime,
+        "collect",
+        lambda _execution_id: ExecutionResult(
+            step_id="case-refresh",
+            status="success",
+            output_summary=json.dumps(
+                {
+                    "status": "waiting",
+                    "summary": "resolver needs another pass",
+                    "evidence_refs": ["resolver://refresh"],
+                }
+            ),
+        ),
+    )
+    monkeypatch.setattr(
+        app._core_adapter,
+        "snapshot",
+        lambda agent=None: (
+            snapshot_calls.__setitem__("core", snapshot_calls["core"] + 1) or refreshed_core
+        ),
+    )
+    monkeypatch.setattr(
+        app._roster,
+        "snapshot",
+        lambda: (
+            snapshot_calls.__setitem__("roster", snapshot_calls["roster"] + 1) or refreshed_roster
+        ),
+    )
+    monkeypatch.setattr(
+        app._runtime,
+        "snapshot",
+        lambda: (
+            snapshot_calls.__setitem__("runtime", snapshot_calls["runtime"] + 1)
+            or refreshed_runtime
+        ),
+    )
+    monkeypatch.setattr(
+        app,
+        "_control",
+        type(
+            "_StubControl",
+            (),
+            {
+                "apply_resolution": lambda self, *, report, core, roster, runtime: (
+                    seen.update(
+                        {
+                            "report": report,
+                            "core": core,
+                            "roster": roster,
+                            "runtime": runtime,
+                        }
+                    )
+                    or ControlDecision(kind="wait", reason="refreshed state applied")
+                )
+            },
+        )(),
+    )
+
+    decision = app.route_resolution_case(
+        ResolutionCase(
+            case_id="case-refresh",
+            case_source="runtime_failure",
+            reason="Blocked steps require resolution: core.ready",
+            summary="refresh state after resolver output",
+            core=_core_snapshot(),
+            roster=_roster_snapshot(),
+            runtime=_runtime_snapshot(),
+            blocked_step_ids=("core.ready",),
+        )
+    )
+
+    assert decision.kind == "wait"
+    assert snapshot_calls == {"core": 1, "roster": 1, "runtime": 1}
+    assert cast(ResolutionReport, seen["report"]).status == "waiting"
+    assert seen["core"] == refreshed_core
+
+
 def test_run_and_control_route_through_typed_boundaries(tmp_path: Path) -> None:
     app = _build_app(tmp_path)
 
@@ -523,6 +949,41 @@ def test_run_consumes_authoritative_step_isolation_for_runtime_request(
     assert "source_kind=step" in captured_work_refs[0]
 
 
+def test_start_runtime_execution_blocks_context_drift_before_runtime_launch(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    app = _build_app(tmp_path)
+    orch = cast(Any, app)
+    prepare_called = False
+
+    original_prepare = app._runtime.prepare
+
+    def probe_prepare(request):
+        nonlocal prepare_called
+        prepare_called = True
+        return original_prepare(request)
+
+    monkeypatch.setattr(app._runtime, "prepare", probe_prepare)
+
+    with pytest.raises(ValueError, match="dispatch authority violation"):
+        orch._start_runtime_execution(
+            run_id="run-drift",
+            step_id="core.ready",
+            dispatch_spec=DispatchSpec(
+                source_kind="step",
+                source_id="core.ready",
+                role_id="gate-reviewer",
+                role_source="default",
+                execution_context="linked_worktree",
+                runner="codex",
+                session_mode="fresh",
+            ),
+            mode="start",
+        )
+
+    assert prepare_called is False
+
+
 def test_route_terminal_execution_completes_only_after_reconcile_allows_it(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
@@ -623,25 +1084,23 @@ def test_route_terminal_execution_hard_gates_non_closing_reconcile_status(
     assert completed == []
 
 
-def test_build_dispatch_spec_preserves_canonical_fallback_role_precedence(
+def test_build_dispatch_spec_preserves_canonical_default_role_precedence(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     app = _build_app(tmp_path)
-    app._role_registry = ConfigRoleProfileRegistry(
-        default_role="python-executor", fallback_role="gate-reviewer"
-    )
-    captured_fallback_roles: list[str] = []
+    app._role_registry = ConfigRoleProfileRegistry(default_role="python-executor")
+    captured_default_roles: list[str] = []
     original_build_dispatch_spec = DispatchCoordinator.build_dispatch_spec
 
     def capture_build_dispatch_spec(self, decision):
-        captured_fallback_roles.append(self.role_registry.fallback_role)
+        captured_default_roles.append(self.role_registry.default_role)
         return original_build_dispatch_spec(self, decision)
 
     monkeypatch.setattr(DispatchCoordinator, "build_dispatch_spec", capture_build_dispatch_spec)
 
     spec = app.build_dispatch_spec(step_id="core.ready", role_hint="gate-reviewer")
     assert spec.role_id == "gate-reviewer"
-    assert captured_fallback_roles == ["python-executor"]
+    assert captured_default_roles == ["python-executor"]
 
 
 def test_route_terminal_execution_non_pass_review_becomes_resolution_case(

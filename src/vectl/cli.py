@@ -593,7 +593,7 @@ def _build_orchestration_runtime_app(plan: Path | None) -> Any:
     app_config = AppConfig(
         plan_path=loaded_config.plan_path,
         worktree_base_dir=loaded_config.runtime.workspace_root,
-        default_agent="python-executor",
+        default_agent=loaded_config.dispatch.default_role_id,
         resolver_timeout_seconds=loaded_config.resolver.invocation_timeout_seconds,
         orchestration_config=loaded_config,
         run_store_root=loaded_config.runtime.artifact_root,

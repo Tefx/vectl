@@ -1,7 +1,7 @@
 # Orchestration Plane Resolver Coordination
 
 **Status:** Proposed  
-**Architecture authority:** `docs/ORCHESTRATION-PLANE-ARCHITECTURE.md`  
+**Architecture authority:** `docs/ORCHESTRATION-PLANE-ARCHITECTURE.md`, `docs/ADR-orchestration-role-profile-config-and-resolver-cleanup.md`, `docs/ADR-orchestration-role-agent-prompt-separation.md`  
 **Interface authority:** `docs/ORCHESTRATION-PLANE-INTERFACES.md`  
 **Related:** `docs/ORCHESTRATION-PLANE-RESOLUTION-CONTRACT.md`, `docs/ORCHESTRATION-PLANE-RUNNER-BACKEND.md`, `docs/ORCHESTRATION-PLANE-RUNTIME-WORKTREE-LIFECYCLE.md`, `docs/ORCHESTRATION-PLANE-DISPATCH-AND-PROMPT-POLICY.md`
 
@@ -29,6 +29,13 @@ This document clarifies:
 Resolver should be implemented as the orchestration plane's:
 
 > **blocked-case coordinator and repair orchestrator**
+
+The only default resolver agent IDs are `blocked-case-coordinator` and
+`blocked-case-coordinator-tacit`.
+
+They are one resolver family, not one concrete prompt. Both share the same
+contract and authority boundary, while remaining independently selectable agent
+variants.
 
 Resolver is first-class and agentic, but it does not replace the entire
 orchestration system.
@@ -94,8 +101,7 @@ vectl tool facade. It must not bypass authoritative surfaces.
 
 ### Rule 5 — resolver may call specialized subagents
 
-Resolver may invoke specialized subagents such as planner, coder, reviewer, or
-specialized conflict-resolution helpers.
+Resolver may invoke specialized subagents such as planner, coder, or reviewer.
 
 ### Rule 6 — resolver must notify the user/operator when it cannot complete safely
 
@@ -252,7 +258,7 @@ retest_steps:
 
 If planner output must become authoritative plan mutation, that mutation must be
 applied through the approved vectl tool facade under resolver/orchestrator
-control.
+control. Planner never edits `plan.yaml` directly.
 
 ---
 
@@ -263,8 +269,7 @@ Planner is not the only specialized subagent resolver may invoke.
 Resolver may also delegate to:
 
 - coder-family roles for directed repair work
-- reviewer-family roles for secondary judgment or verification
-- specialized conflict-resolution roles where needed
+- reviewer-family roles for secondary review or verification
 
 This keeps resolver itself narrow while still making it an effective blocked-case
 coordinator.
@@ -288,7 +293,7 @@ Resolver receives a `ResolutionCase(case_source="merge_conflict", ...)` with
 artifact refs and decides whether to:
 
 - self-handle
-- delegate to a conflict-resolution helper
+- delegate to a planner/coder/reviewer helper selected by policy
 - escalate to user/operator
 
 ---
@@ -340,6 +345,10 @@ Resolver should reuse:
 - prompt policy
 - shared runner backend
 
+Reuse here means shared contracts and central selection logic, not forced prompt
+identity collapse. Resolver-family roles may share policy while selecting
+distinct concrete agent prompts through role-profile configuration.
+
 What differs is the source of work:
 
 - ordinary dispatch derives from steps
@@ -387,6 +396,9 @@ The resolver design must avoid all of the following:
 - creating a second independent execution stack for resolver-spawned work
 - collapsing planner into resolver itself instead of treating planner as a
   specialized subagent
+
+Historical `plan.yaml` vocabulary and legacy resolver labels are
+non-authoritative for this target architecture.
 
 ---
 

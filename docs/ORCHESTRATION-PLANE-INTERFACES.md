@@ -3,7 +3,7 @@
 > Interface-boundary specification for the target `orchestration plane`.
 
 **Status:** Target interface specification  
-**Architecture authority:** `docs/ORCHESTRATION-PLANE-ARCHITECTURE.md`  
+**Architecture authority:** `docs/ORCHESTRATION-PLANE-ARCHITECTURE.md`, `docs/ADR-orchestration-role-agent-prompt-separation.md`  
 **Related docs:** `docs/ORCHESTRATION-PLANE-RESOLUTION-CONTRACT.md`, `docs/ORCHESTRATION-PLANE-ISOLATION-SEMANTICS.md`  
 **Scope:** Full target boundaries; not an implementation slice
 

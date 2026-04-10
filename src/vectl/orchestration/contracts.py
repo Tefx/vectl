@@ -48,7 +48,6 @@ DispatchSourceKind: TypeAlias = Literal["step", "resolution_subtask"]
 DispatchRoleSource: TypeAlias = Literal[
     "step.agent",
     "default",
-    "fallback",
     "resolver",
 ]
 ExecutionContext: TypeAlias = Literal["linked_worktree", "main_worktree"]
@@ -61,7 +60,7 @@ MutationPolicy: TypeAlias = Literal[
 RoleOutputContract: TypeAlias = Literal[
     "freeform_evidence",
     "structured_review_result",
-    "structured_plan_result",
+    "vectl_facade_mutation",
     "resolution_report",
 ]
 ReviewOutcome: TypeAlias = Literal[
@@ -175,8 +174,8 @@ class RoleProfile:
     """
 
     role_id: str
+    agent_id: str
     prompt_family: str
-    template_id: str
     execution_context: ExecutionContext
     mutation_policy: MutationPolicy
     session_policy: Literal["reuse_allowed", "reuse_forbidden"]

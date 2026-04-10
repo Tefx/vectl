@@ -4,7 +4,7 @@
 > prematurely deleting the current legacy package.
 
 **Status:** Implementation design  
-**Architecture authority:** `docs/ORCHESTRATION-PLANE-ARCHITECTURE.md`  
+**Architecture authority:** `docs/ORCHESTRATION-PLANE-ARCHITECTURE.md`, `docs/ADR-orchestration-role-profile-config-and-resolver-cleanup.md`  
 **Interface authority:** `docs/ORCHESTRATION-PLANE-INTERFACES.md`  
 **Related docs:** `docs/ORCHESTRATION-PLANE-RESOLUTION-CONTRACT.md`, `docs/ORCHESTRATION-PLANE-ISOLATION-SEMANTICS.md`
 
@@ -39,8 +39,8 @@ src/vectl/orchestration/
     resolver.py           # Blocked/unresolved case reasoning (landed)
     core_adapter.py       # Thin adapter over vectl core (landed)
     config.py             # Shared orchestration config (landed)
+    dispatch_policy.py    # Dispatch spec, role-profile loading, prompt rendering
     events.py             # Canonical event envelopes (landed)
-    judgments.py          # Typed judgment helpers (landed)
     interfaces.py         # Protocol definitions
     tool_registry.py      # Canonical tool registry
     run_store.py          # Run persistence
@@ -109,10 +109,10 @@ Implement the plan-aware orchestration flow.
 - session registry internals
 - long-running reasoning implementation
 
-### Local typed judgment support
+### Local typed support
 
-`control.py` may depend on shared typed judgment helpers/schemas from
-`judgments.py` when deterministic/local typed reasoning is useful.
+`control.py` may depend on shared contracts or local helpers for deterministic
+reasoning when useful.
 
 This does **not** create a fifth architecture component. It is code support
 under `control`, not a new top-level concept.
@@ -238,32 +238,24 @@ core-owned authority, and it is not a private submodule of one component.
 
 ---
 
-## 3.9 `judgments.py`
+## 3.9 `dispatch_policy.py`
 
 ### Responsibility
 
-Shared typed judgment helpers/schemas that remain useful in the target system.
+Own dispatch-spec construction support, config-backed role-profile loading, and
+prompt-rendering coordination.
 
 ### Expected contents
 
-- typed/local judgment enums and schemas that are still valuable outside the
-  legacy package
-- helper contracts for local typed reasoning that `control` may call directly
-- parsing/schema support that `resolver` may also reuse when appropriate
+- `DispatchSpec`-adjacent assembly support
+- `RoleProfileRegistry` implementation backed by orchestration config
+- prompt-rendering coordination shared by ordinary dispatch and resolver-spawned
+  subtasks
 
 ### Why this module exists
 
-The legacy package currently mixes two different things:
-
-- typed judgment schemas/contracts (`judgments.py`)
-- actual LLM invocation glue (`judge.py`)
-
-The target package should preserve that distinction.
-
-### Disposition
-
-- typed judgment schemas should evolve toward `orchestration/judgments.py`
-- any surviving invocation glue belongs under `resolver.py`
+Dispatch and role-profile policy is shared support, but it does not belong in
+`control` or `runtime`.
 
 ---
 
@@ -276,7 +268,7 @@ The target package should preserve that distinction.
 | runner mechanics | `orchestration/runtime.py` | runner lifecycle |
 | event registry | `orchestration/events.py` | shared support owned by the orchestration plane |
 | orchestration loop decisions | `control.py` + small coordination glue | plan-aware dispatch/wait/done |
-| typed judgment schemas | `orchestration/judgments.py` | typed/local schema support |
+| dispatch and role-profile policy | `orchestration/dispatch_policy.py` | config-backed dispatch assembly |
 | blocked-case reasoning | `orchestration/resolver.py` | invocation glue under resolver |
 | configuration | `orchestration/config.py` | orchestration-specific config |
 
@@ -293,7 +285,7 @@ Create:
 
 - `src/vectl/orchestration/__init__.py`
 - `contracts.py`
-- skeletal `control.py`, `roster.py`, `runtime.py`, `resolver.py`, `judgments.py`
+- skeletal `control.py`, `roster.py`, `runtime.py`, `resolver.py`, `dispatch_policy.py`
 - `core_adapter.py`
 
 No behavior migration yet; just the explicit package boundary.
@@ -358,7 +350,7 @@ tests/
       test_roster.py
       test_runtime.py
       test_resolver.py
-      test_judgments.py
+      test_dispatch_policy.py
       test_config.py
       test_events.py
       test_core_adapter.py
@@ -416,6 +408,12 @@ The resolution contract resolved in
 Do not prematurely invent a large bespoke action language if the resolver can
 use approved official surfaces and return a bounded report.
 
+### Planner mutation rule
+
+If planner output results in authoritative plan changes, those changes must be
+applied through the approved vectl facade. Direct `plan.yaml` edits remain out
+of bounds.
+
 ---
 
 ## 9. Anti-Patterns to Avoid in Implementation
@@ -434,7 +432,10 @@ use approved official surfaces and return a bounded report.
    - session reuse remains an internal optimization, not a planning API
 
 5. **Bypassing core authority through convenience helpers**
-   - all authoritative mutations must still flow through official core surfaces
+    - all authoritative mutations must still flow through official core surfaces
+
+6. **Treating legacy plan vocabulary as architecture authority**
+    - historical `plan.yaml` terms must not be revived as target contracts
 
 ---
 
@@ -456,6 +457,6 @@ The code-level design target is:
 - shared contracts in `contracts.py`
 - explicit component modules for `control`, `roster`, `runtime`, and `resolver`
 - a thin `core_adapter.py`
-- shared `config.py` / `events.py`
+- shared `config.py` / `dispatch_policy.py` / `events.py`
 
 This is the implementation-design baseline for the next phase.

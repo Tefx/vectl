@@ -73601,3 +73601,18 @@ phases:
       - Command(s) run:'
     depends_on:
     - repo_regression_expected_red_cleanup.realign-config-state-red-tests
+  - id: repo_regression_expected_red_cleanup.introduce-expected-red-lifecycle-marking
+    name: Introduce expected-red lifecycle marking
+    status: pending
+    description: Establish a durable way to mark intentional red tests (for example
+      marker/xfail discipline or equivalent test metadata) so future implementation
+      phases must either flip, retire, or explicitly preserve them with rationale.
+    verification: Repository has a consistent pattern for intentional red tests and
+      at least the touched stale-red locations follow it.
+    evidence_template: '- Marker/pattern chosen:
+
+      - Files updated:
+
+      - How future gates should consume this metadata:'
+    depends_on:
+    - repo_regression_expected_red_cleanup.realign-observability-red-tests-with-implemented-surfaces

@@ -75381,7 +75381,7 @@ phases:
       \ -q\n  Result: 11 passed, 6 deselected"
 - id: xfail_authority_and_entrypoint_enforcement
   name: 'XFail Remediation: Authority and Entrypoint Enforcement'
-  status: pending
+  status: in_progress
   gate: Main-worktree authority and normal-flow lifecycle mutation restrictions are
     enforced at approved runtime boundaries, and app-level wiring uses the centralized
     policy seam consistently.
@@ -75390,7 +75390,7 @@ phases:
   steps:
   - id: xfail_authority_and_entrypoint_enforcement.enforce-main-worktree-role-authority
     name: Enforce main-worktree role authority
-    status: pending
+    status: claimed
     description: 'work_type: technical_debt_remediation
 
       step_type: implementation
@@ -75417,6 +75417,8 @@ phases:
 
       - commands/tests run:'
     agent: python-senior-tacit
+    claimed_by: python-senior-tacit
+    claimed_at: '2026-04-10T07:04:50.820203+00:00'
   - id: xfail_authority_and_entrypoint_enforcement.harden-resolver-gateway-and-lifecycle-facade
     name: Harden resolver gateway and lifecycle facade
     status: pending

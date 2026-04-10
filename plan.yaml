@@ -74676,7 +74676,7 @@ phases:
       - Ref path `tools/vectl/README.md` unavailable in worktree per subagent report.'
 - id: xfail_config_and_dispatch_foundation
   name: 'XFail Remediation: Config and Dispatch Foundation'
-  status: pending
+  status: in_progress
   gate: Retire the config precedence xfail and the dispatch-spec construction/verify-mode
     xfails by centralizing authoritative config precedence and DispatchSpec construction.
   depends_on:
@@ -74684,7 +74684,7 @@ phases:
   steps:
   - id: xfail_config_and_dispatch_foundation.close-resolver-timeout-env-precedence-gap
     name: Close resolver-timeout env precedence gap
-    status: pending
+    status: claimed
     description: 'work_type: technical_debt_remediation
 
       step_type: implementation
@@ -74760,6 +74760,8 @@ phases:
 
       - none | <details>'
     agent: python-executor
+    claimed_by: python-executor
+    claimed_at: '2026-04-10T05:47:00.824348+00:00'
   - id: xfail_config_and_dispatch_foundation.centralize-dispatch-spec-construction
     name: Centralize DispatchSpec construction and verify-mode mapping
     status: pending

@@ -73667,13 +73667,15 @@ phases:
     claimed_at: '2026-04-10T02:59:06.633295+00:00'
   - id: repo_regression_triage.capture-full-suite-failure-inventory
     name: Capture full-suite failure inventory
-    status: pending
+    status: claimed
     description: Record the current failing set from `uv run pytest -q`, grouped by
       file/test and normalized into remediation buckets. Include all 27 current failures
       and any companion xfail/skip context relevant to disposal.
     verification: Failure inventory exists with every failing test assigned an initial
       category and owner hypothesis. Evidence includes the exact command run and summarized
       counts by bucket.
+    claimed_by: general
+    claimed_at: '2026-04-10T02:59:28.232329+00:00'
   - id: repo_regression_expected_red_cleanup.realign-observability-red-tests-with-implemented-surfaces
     name: Realign observability red tests with implemented surfaces
     status: claimed

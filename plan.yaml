@@ -77930,6 +77930,30 @@ phases:
     depends_on:
     - orch_plane_live_authority.contract-lock
     agent: python-senior-tacit
+  - id: orch_plane_live_authority.dynamic-tool-mediation
+    name: Make tool mediation dynamic
+    status: pending
+    description: Replace largely static resolver-gateway allowlist behavior with dynamic
+      tool mediation derived from the live dispatch/runtime authority path.
+    verification: Tests prove allowed tools come from runtime-mediated grants, and
+      denial cases fail when the live surface does not authorize the tool set.
+    evidence_template: '## refs Read Confirmation (MANDATORY)
+
+      - Quote the key passage from each ref or write NOT READ: <reason>
+
+
+      ## Implementation Evidence
+
+      - Runtime mediation source
+
+      - Static allowlist paths removed or narrowed
+
+      - Positive and negative test cases
+
+      '
+    depends_on:
+    - orch_plane_live_authority.contract-lock
+    agent: python-senior-tacit
 - id: orch_plane_planner_boundary
   name: Orchestration Plane Planner Boundary
   status: locked

@@ -75297,7 +75297,7 @@ phases:
     agent: gate-reviewer-tacit
   - id: xfail_role_prompt_and_review_normalization.realign-stale-red-tests-to-green-behavior
     name: Realign stale red tests to green behavior
-    status: claimed
+    status: done
     description: 'Convert stale expected-red assertions in `tests/orchestration/unit/test_dispatch_policy_red.py`
       for RoleProfileRegistry, PromptRegistry, and StructuredReviewResultNormalization
       into normal passing checks now that concrete implementations exist.
@@ -75334,6 +75334,17 @@ phases:
     agent: python-senior-tacit
     claimed_by: python-senior-tacit
     claimed_at: '2026-04-10T06:59:30.226123+00:00'
+    done_at: '2026-04-10T07:03:26.161257+00:00'
+    evidence: "Updated tests/orchestration/unit/test_dispatch_policy_red.py to replace\
+      \ stale xfail placeholders for RoleProfileRegistry, PromptRegistry, and StructuredReviewResult\
+      \ normalization coverage with concrete assertions against implemented runtime\
+      \ surfaces.\n- Wired imports to use normalize_review_result/normalize_parse_failure\
+      \ from vectl.orchestration.dispatch_policy.\n- Replaced protocol-None placeholders\
+      \ with ConfigRoleProfileRegistry and ConfigPromptRegistry usage.\n- Removed\
+      \ stale xfail blocks in the targeted suites and delegated helper shims to production\
+      \ normalizer functions.\nVerification:\n- uv run pytest tests/orchestration/unit/test_dispatch_policy_red.py\
+      \ -k \"RoleProfileRegistry or PromptRegistry or StructuredReviewResultNormalization\"\
+      \ -q\n  Result: 11 passed, 6 deselected"
 - id: xfail_authority_and_entrypoint_enforcement
   name: 'XFail Remediation: Authority and Entrypoint Enforcement'
   status: locked

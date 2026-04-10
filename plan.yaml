@@ -75646,7 +75646,7 @@ phases:
       \ retirement regressions\n  - no xfail failures observed in repo-wide gate run"
   - id: xfail_finalization.deep-review-xfail-remediation
     name: Deep review xfail remediation closure
-    status: claimed
+    status: done
     description: Independent deep review of the remediation set, with emphasis on
       hidden duplicate policy sources, authority bypasses, and documentation drift
       between expected-red governance and actual implementation.
@@ -75669,6 +75669,30 @@ phases:
     agent: gate-reviewer-tacit
     claimed_by: gate-reviewer-tacit
     claimed_at: '2026-04-10T07:13:35.690043+00:00'
+    done_at: '2026-04-10T07:14:34.318782+00:00'
+    evidence: "## Deep Review Report\n- subsystem audit summary\n  - Config precedence:\
+      \ `uv run pytest tests/orchestration/unit/test_config_state_red.py -q` => `25\
+      \ passed`.\n  - Dispatch coordinator + registry/normalizer centralization: exactly\
+      \ one canonical source found in `src/vectl/orchestration/dispatch_policy.py`\
+      \ for:\n    - `ConfigRoleProfileRegistry`\n    - `ConfigPromptRegistry`\n  \
+      \  - `normalize_review_result`\n    - `normalize_parse_failure`\n  - Authority\
+      \ enforcement seams:\n    - Pre-launch dispatch authority check: `src/vectl/orch_app.py::_validate_dispatch_authority`\n\
+      \    - Resolver main-worktree authority gate: `src/vectl/orchestration/resolver_gateway.py`\
+      \ (`main_worktree_probe` guard in `invoke`)\n    - Lifecycle mutation claim-flow\
+      \ enforcement at concrete facade: `src/vectl/orchestration/core_adapter.py::claim_step`\n\
+      \  - Repo-wide gate evidence already captured in this phase: `uv run pytest\
+      \ -q` => `1809 passed, 32 skipped, 0 failed, 0 xfailed, 1 warning`.\n- hidden\
+      \ bypass findings\n  - No duplicate policy source for role/prompt/review normalization\
+      \ surfaces.\n  - No authority bypass found in targeted seams (dispatch launch\
+      \ path, resolver gateway, lifecycle facade).\n- residual debt disposition\n\
+      \  - Active xfail outcomes in gate run: none.\n  - Latent governed red debt\
+      \ remains only as conditional `pytest.xfail(...)` scaffolding in other expected-red\
+      \ modules (e.g., observability/path-schema debt), but not currently active in\
+      \ repo-wide execution.\n  - Lifecycle/governance docs updated to keep retirement\
+      \ bookkeeping explicit (`docs/full-suite-failure-inventory-2026-04-10.md`, `docs/RFC-expected-red-verification-semantics.md`).\n\
+      - recommendation\n  - OPEN: remediation closure accepted. Keep latent expected-red\
+      \ guards explicitly governed and retire or formalize in future bucketed phases\
+      \ to avoid stale drift."
   - id: xfail_finalization.gate
     name: Gate xfail remediation closure
     status: pending

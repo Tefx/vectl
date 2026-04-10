@@ -78010,6 +78010,32 @@ phases:
     - orch_plane_live_authority.dynamic-tool-mediation
     - orch_plane_live_authority.prompt-registry-runtime
     agent: integration-verifier-tacit
+  - id: orch_plane_live_authority.gate
+    name: Gate live authority remediation
+    status: pending
+    description: Gate review for live authority remediation. Block if ordinary dispatch
+      can still bypass the live path, if roster is non-authoritative, or if tool/prompt
+      mediation remains statically flattened.
+    verification: Review contract lock, implementation evidence, and live proof together;
+      phase opens only if the dispatch authority path is single-source and dynamically
+      mediated.
+    evidence_template: '## refs Read Confirmation (MANDATORY)
+
+      - Quote the key passage from each ref or write NOT READ: <reason>
+
+
+      ## Gate Decision Basis
+
+      - Reviewed steps
+
+      - Blocking findings / none
+
+      - Why remaining debt does or does not intersect later gates
+
+      '
+    depends_on:
+    - orch_plane_live_authority.integration-proof
+    agent: gate-reviewer-tacit
 - id: orch_plane_planner_boundary
   name: Orchestration Plane Planner Boundary
   status: locked

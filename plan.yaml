@@ -76120,7 +76120,7 @@ phases:
       - gate decision OPEN|BLOCKED:\n  - OPEN"
 - id: live_smoke_real_runner_validation
   name: Live Smoke Real Runner Validation and Remediation
-  status: pending
+  status: in_progress
   gate: Real live-runner smoke coverage has been executed with explicit opt-in, any
     discovered issues are either fixed and independently retested or explicitly dispositioned,
     and evidence distinguishes environment/setup failures from genuine product defects.
@@ -76129,7 +76129,7 @@ phases:
   steps:
   - id: live_smoke_real_runner_validation.lock-live-runner-execution-matrix
     name: Lock live-runner execution matrix and prerequisites
-    status: pending
+    status: claimed
     description: 'work_type: validation_planning
 
       step_type: contract_lock
@@ -76174,6 +76174,8 @@ phases:
 
       - environment vs product failure boundary:'
     agent: software-architect-tacit
+    claimed_by: software-architect-tacit
+    claimed_at: '2026-04-10T07:15:10.494469+00:00'
   - id: live_smoke_real_runner_validation.run-real-live-smoke-matrix
     name: Run real live-smoke matrix
     status: pending

@@ -78285,7 +78285,7 @@ phases:
       \ on main: `43ded09`"
   - id: orch_plane_planner_boundary.live-proof
     name: Prove planner boundary live
-    status: pending
+    status: claimed
     description: Independent live proof that planner execution cannot bypass the vectl
       facade and cannot directly edit authoritative plan.yaml while still succeeding
       through the approved runtime path.
@@ -78311,6 +78311,8 @@ phases:
     depends_on:
     - orch_plane_planner_boundary.facade-enforcement
     agent: integration-verifier-tacit
+    claimed_by: integration-verifier-tacit
+    claimed_at: '2026-04-10T20:17:23.708920+00:00'
   - id: orch_plane_planner_boundary.gate
     name: Gate planner boundary remediation
     status: pending

@@ -73616,3 +73616,10 @@ phases:
       - How future gates should consume this metadata:'
     depends_on:
     - repo_regression_expected_red_cleanup.realign-observability-red-tests-with-implemented-surfaces
+- id: repo_regression_contract_alignment
+  name: Contract Lock and Boundary Realignment
+  status: locked
+  gate: Contract/lock tests reflect authoritative semantics and additive evolution
+    without pinning stale historical boundaries.
+  depends_on:
+  - repo_regression_expected_red_cleanup

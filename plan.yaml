@@ -74681,3 +74681,11 @@ phases:
     xfails by centralizing authoritative config precedence and DispatchSpec construction.
   depends_on:
   - repo_regression_full_suite_gate
+- id: xfail_role_prompt_and_review_normalization
+  name: 'XFail Remediation: Role Prompt and Review Normalization'
+  status: locked
+  gate: Concrete role/prompt registries and structured review normalization are wired
+    as the canonical policy seam, and the related expected-red tests are retired or
+    intentionally reclassified with explicit evidence.
+  depends_on:
+  - xfail_config_and_dispatch_foundation

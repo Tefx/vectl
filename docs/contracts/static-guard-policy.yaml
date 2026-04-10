@@ -1,0 +1,74 @@
+policy_id: static-guard-gate-policy
+version: 1
+status: active
+
+summary:
+  decision: advisory-full-scan-with-scoped-enforcement
+  statement: |
+    Repository-wide `uvx invar-tools guard --all` is advisory by default for this
+    repository. The enforced static-analysis gate for bounded remediation work is
+    the changed-files guard (`uvx invar-tools guard` / `invar_invar_guard`
+    with `changed=true`). Full-repository guard-all becomes an enforced release
+    gate only when a phase or release explicitly declares itself `release-strict`.
+
+rationale:
+  - |
+    Existing bounded rollout policy already documents that unrelated repository-wide
+    static debt must not block a narrow remediation branch.
+  - |
+    The repository config scopes invar guard away from `.vectl` and `tests`, which
+    aligns better with changed-file verification than with treating global debt as
+    a default blocker for every regression-remediation step.
+
+canonical_commands:
+  changed_files_gate:
+    command: uvx invar-tools guard
+    enforcement: required
+    use_when:
+      - bounded remediation step
+      - focused regression fix
+      - feature branch acceptance
+  full_repo_audit:
+    command: uvx invar-tools guard --all
+    enforcement: advisory
+    use_when:
+      - debt inventory
+      - release-readiness audit
+      - scheduled repo-wide cleanup review
+  full_repo_release_strict_gate:
+    command: uvx invar-tools guard --all
+    enforcement: required
+    use_when:
+      - release or phase text explicitly says `release-strict`
+      - gate criteria explicitly require a clean full-repo static scan
+
+gate_rules:
+  default_mode:
+    enforced_gate: changed-files
+    full_repo_guard_all: advisory
+  release_strict_override:
+    required: true
+    trigger: explicit `release-strict` wording in the governing gate/release text
+    note: |
+      Do not infer release-strict from generic words like "final", "full-suite",
+      or "regression gate" alone; the stricter full-repo static gate must be named.
+  failure_disposition:
+    changed_files_guard_failure: block the in-scope branch until fixed
+    full_repo_guard_all_failure_without_release_strict: |
+      Record as advisory repository debt and do not fail a bounded remediation gate
+      solely for unrelated out-of-scope findings.
+
+future_gate_application:
+  - |
+    Every future gate should state whether it is `release-strict`. If omitted,
+    apply changed-files guard as the enforced gate and treat `guard --all` as advisory.
+  - |
+    If a gate requires `guard --all`, it must say so explicitly and should explain
+    why repository-wide static debt is in scope for that gate.
+  - |
+    Evidence for bounded remediation should report both scoped guard status and,
+    if run, any advisory `guard --all` result separately so the two are not conflated.
+
+source_anchors:
+  - pyproject.toml
+  - docs/contracts/duplicate-id-rollout-policy.yaml

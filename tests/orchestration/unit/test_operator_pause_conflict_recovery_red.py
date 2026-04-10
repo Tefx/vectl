@@ -527,18 +527,22 @@ class TestRecoverySemanticsStructural:
         assert recovery_gate_open_allowed(RecoveryOutcome.BLOCKED) is False
         assert recovery_gate_open_allowed(RecoveryOutcome.HALT) is False
         assert recovery_gate_open_allowed(RecoveryOutcome.RECOVERED) is True
-        assert recovery_gate_open_allowed(RecoveryOutcome.QUARANTINED) is True
+        assert recovery_gate_open_allowed(RecoveryOutcome.QUARANTINED) is False
         assert recovery_gate_open_allowed(RecoveryOutcome.NO_ARTIFACTS) is True
 
     def test_recovery_case_status_maps_operator_required_to_open(self) -> None:
         assert recovery_case_status(RecoveryOutcome.OPERATOR_REQUIRED) == "open"
         assert recovery_case_status(RecoveryOutcome.BLOCKED) == "open"
+        assert recovery_case_status(RecoveryOutcome.QUARANTINED) == "open"
         assert recovery_case_status(RecoveryOutcome.HALT) == "halt"
         assert recovery_case_status(RecoveryOutcome.RECOVERED) == "resolved"
+        assert recovery_case_status(RecoveryOutcome.NO_ARTIFACTS) == "resolved"
 
     def test_recovery_action_status_maps_operator_required_to_pending(self) -> None:
         assert recovery_action_status(RecoveryOutcome.OPERATOR_REQUIRED) == "pending"
         assert recovery_action_status(RecoveryOutcome.RECOVERED) == "applied"
+        assert recovery_action_status(RecoveryOutcome.NO_ARTIFACTS) == "applied"
+        assert recovery_action_status(RecoveryOutcome.QUARANTINED) == "rejected"
 
 
 class TestCombinedPersistenceStructural:

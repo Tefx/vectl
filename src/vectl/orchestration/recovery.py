@@ -175,8 +175,14 @@ class RecoveryReport:
 def recovery_gate_open_allowed(outcome: RecoveryOutcome) -> bool:
     """Return whether recovery outcome permits opening the gate.
 
-    Authority: step orch_operator_recovery_cutover.fix_recovery_contract_conformance
+    Authority: step repo_regression_full_suite_gate.fix-recovery-contract-conformance-semantics
     blocker family B1/B2 (shared semantics and gate_open_allowed behavior).
+
+    QUARANTINED is NOT gate-open because quarantine terminalizes the run for a
+    fresh start; the gate must stay closed until re-dispatch. This aligns the
+    helper with the actual RecoveryReport field produced by OrchestratonApp.recover(),
+    which sets gate_open_allowed=False when fresh_start_terminalized is non-empty
+    (the only path that produces QUARANTINED).
 
     Args:
         outcome: Recovery outcome to classify.
@@ -187,7 +193,6 @@ def recovery_gate_open_allowed(outcome: RecoveryOutcome) -> bool:
 
     return outcome in {
         RecoveryOutcome.RECOVERED,
-        RecoveryOutcome.QUARANTINED,
         RecoveryOutcome.NO_ARTIFACTS,
     }
 
@@ -195,8 +200,12 @@ def recovery_gate_open_allowed(outcome: RecoveryOutcome) -> bool:
 def recovery_case_status(outcome: RecoveryOutcome) -> Literal["open", "resolved", "halt"]:
     """Map recovery outcome to case-surface status without reinterpretation.
 
-    Authority: step orch_operator_recovery_cutover.fix_recovery_contract_conformance
+    Authority: step repo_regression_full_suite_gate.fix-recovery-contract-conformance-semantics
     blocker family B1 (status/case/recover/report seam alignment).
+
+    QUARANTINED maps to "open" because quarantine terminalizes the run for a
+    fresh start; the gate stays closed and the case remains unresolved until
+    re-dispatch completes.
 
     Args:
         outcome: Recovery outcome to map.
@@ -217,8 +226,11 @@ def recovery_action_status(
 ) -> Literal["applied", "pending", "rejected"]:
     """Map recovery outcome to action-surface status.
 
-    Authority: step orch_operator_recovery_cutover.fix_recovery_contract_conformance
+    Authority: step repo_regression_full_suite_gate.fix-recovery-contract-conformance-semantics
     blocker family B1 (status/actions/recover/report seam alignment).
+
+    QUARANTINED maps to "rejected" because the gate is not open (fresh start
+    required); pending actions cannot proceed until re-dispatch.
 
     Args:
         outcome: Recovery outcome to map.

@@ -15,6 +15,7 @@ def _build_app(tmp_path: Path):
         "project: recovery-contract\n"
         "phases:\n"
         "  - id: core\n"
+        "    name: Core\n"
         "    steps:\n"
         "      - id: core.ready\n"
         "        name: Ready\n"

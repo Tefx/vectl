@@ -222,7 +222,9 @@ class ResolverConfig:
 
     enabled: bool = DEFAULT_RESOLVER_ENABLED
     default_role_id: str = DEFAULT_RESOLVER_ROLE_ID
-    tool_allowlist: ResolverToolAllowlist = field(default_factory=ResolverToolAllowlist)
+    tool_allowlist: ResolverToolAllowlist = field(
+        default_factory=lambda: ResolverToolAllowlist(allowed_tool_families=("orchestration",))
+    )
     invocation_timeout_seconds: float = DEFAULT_RESOLVER_TIMEOUT_SECONDS_CFG
     max_tool_calls_per_invocation: int = DEFAULT_MAX_TOOL_CALLS
     max_tool_argument_bytes: int = DEFAULT_MAX_TOOL_ARGUMENT_BYTES

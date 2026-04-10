@@ -23,7 +23,12 @@ from vectl.orch_app import (
     build_review_parse_failure_case,
     normalize_review_resolution_case,
 )
-from vectl.orchestration.config import OrchestrationConfig, ResolverConfig, RuntimeConfig
+from vectl.orchestration.config import (
+    OrchestrationConfig,
+    ResolverConfig,
+    ResolverToolAllowlist,
+    RuntimeConfig,
+)
 from vectl.orchestration.contracts import (
     ControlDecision,
     CoreSnapshot,
@@ -40,6 +45,7 @@ from vectl.orchestration.control_channel import FilesystemControlChannel
 from vectl.orchestration.dispatch_policy import ConfigRoleProfileRegistry, DispatchCoordinator
 from vectl.orchestration.events import load_event_jsonl
 from vectl.orchestration.recovery import LegacyRunStatus
+from vectl.orchestration.resolver_gateway import GatewayInvocationResult
 from vectl.orchestration.run_store import RunRecord, RunRegistry, generate_run_id
 
 
@@ -124,7 +130,85 @@ def test_build_composes_real_collaborators_without_noop_resolver_dependency(tmp_
     assert orch._control.__class__.__name__ == "PlanAwareControl"
     assert orch._core_adapter.__class__.__name__ == "PlanCoreAdapter"
     assert orch._resolver.__class__.__name__ == "BoundResolver"
-    assert orch._resolver.invocation.__class__.__name__ == "DefaultRoleResolverInvocation"
+    assert orch._resolver.invocation.__class__.__name__ == "GatewayEnforcedResolverInvocation"
+
+
+def test_resolve_case_requires_gateway_live_path(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    app = _build_app(tmp_path)
+    seen: dict[str, object] = {}
+
+    def _fake_authorize_and_invoke(*, case, allowed_tool_families, gateway):
+        seen["case_id"] = case.case_id
+        seen["allowlist"] = allowed_tool_families
+        seen["gateway_class"] = gateway.__class__.__name__
+        return GatewayInvocationResult(
+            outcome="success",
+            invocation_ref="gw-1",
+            report=ResolutionReport(
+                status="waiting",
+                summary="resolver completed through gateway",
+                evidence_refs=("resolver://gateway",),
+            ),
+        )
+
+    monkeypatch.setattr("vectl.orch_app.authorize_and_invoke", _fake_authorize_and_invoke)
+    monkeypatch.setattr(
+        app._runtime,
+        "prepare",
+        lambda request: (_ for _ in ()).throw(
+            AssertionError("runtime must not be called when gateway is stubbed first")
+        ),
+    )
+
+    report = app.resolve_case(
+        ResolutionCase(
+            case_id="case-gateway",
+            case_source="review_failed",
+            reason="Blocked steps require resolution: core.ready",
+            summary="force gateway path",
+            core=_core_snapshot(),
+            roster=_roster_snapshot(),
+            runtime=_runtime_snapshot(),
+        )
+    )
+
+    assert report.status == "waiting"
+    assert seen["case_id"] == "case-gateway"
+    assert seen["allowlist"] == ("orchestration",)
+
+
+def test_resolve_case_returns_operator_required_when_gateway_denies(tmp_path: Path) -> None:
+    plan_path = tmp_path / "plan.yaml"
+    runs_root = tmp_path / "runs"
+    _write_plan(plan_path)
+    app = build_orchestration_app(
+        AppConfig(
+            plan_path=plan_path,
+            orchestration_config=OrchestrationConfig(
+                plan_path=plan_path,
+                resolver=ResolverConfig(tool_allowlist=ResolverToolAllowlist()),
+            ),
+            run_store_root=runs_root,
+        )
+    )
+
+    report = app.resolve_case(
+        ResolutionCase(
+            case_id="case-denied",
+            case_source="review_failed",
+            reason="Blocked steps require resolution: core.ready",
+            summary="deny by empty allowlist",
+            core=_core_snapshot(),
+            roster=_roster_snapshot(),
+            runtime=_runtime_snapshot(),
+        )
+    )
+
+    assert report.status == "operator_required"
+    assert "authorization denied" in report.summary.lower()
+    assert "resolver:authorization-denied" in report.evidence_refs
 
 
 def test_build_resolution_case_requires_resolve_decision() -> None:

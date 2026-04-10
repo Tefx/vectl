@@ -100,6 +100,13 @@ from vectl.orchestration.recovery import (
     recovery_action_status,
     recovery_case_status,
 )
+from vectl.orchestration.resolver import map_payload_to_report
+from vectl.orchestration.resolver_gateway import (
+    AuditedResolverGateway,
+    AuthorizationError,
+    ResolverToolCall,
+    authorize_and_invoke,
+)
 from vectl.orchestration.run_store import (
     CorruptJSONLError,
     RunRecord,
@@ -3018,6 +3025,11 @@ def build_orchestration_app(
     from vectl.orchestration.roster import Roster
     from vectl.orchestration.runtime import Runtime
 
+    _DEFAULT_RESOLVER_GATEWAY_TOOL_CALLS: tuple[ResolverToolCall, ...] = (
+        ResolverToolCall(family="orchestration", name="read_case", surface="read"),
+        ResolverToolCall(family="orchestration", name="read_state", surface="read"),
+    )
+
     resolved_orchestration_config = config.orchestration_config
     if resolved_orchestration_config is None:
         loaded_config, _ = load_orchestration_config()
@@ -3173,6 +3185,86 @@ def build_orchestration_app(
                 }
             return payload
 
+    class GatewayEnforcedResolverInvocation(ResolverInvocationSurface):
+        def __init__(
+            self,
+            *,
+            delegate: ResolverInvocationSurface,
+            allowed_tool_families: tuple[str, ...],
+            planned_tool_calls: tuple[ResolverToolCall, ...],
+        ) -> None:
+            self._delegate = delegate
+            self._allowed_tool_families = allowed_tool_families
+            self._planned_tool_calls = planned_tool_calls
+
+        def invoke(self, case: object, *, role_id: str) -> dict[str, object]:
+            if not isinstance(case, ResolutionCase):
+                raise TypeError("resolver invocation requires ResolutionCase")
+
+            gateway = AuditedResolverGateway(
+                planned_tool_calls=self._planned_tool_calls,
+                resolver_invoker=lambda request_case, _calls, invocation_ref: self._invoke_delegate(
+                    request_case,
+                    role_id=role_id,
+                    invocation_ref=invocation_ref,
+                ),
+                invocation_ref_factory=lambda: f"resolver-gateway-{generate_run_id()}",
+                main_worktree_probe=lambda: not is_linked_worktree()[0],
+            )
+            try:
+                result = authorize_and_invoke(
+                    case=case,
+                    allowed_tool_families=self._allowed_tool_families,
+                    gateway=gateway,
+                )
+            except AuthorizationError as exc:
+                evidence_refs = ["resolver:authorization-denied"]
+                evidence_refs.extend(
+                    f"resolver_denied_family={family}" for family in exc.denied_families
+                )
+                return {
+                    "status": "operator_required",
+                    "summary": f"Resolver gateway authorization denied: {exc}",
+                    "evidence_refs": tuple(evidence_refs),
+                    "operator_message": (
+                        "Review resolver tool allowlist / execution site and retry."
+                    ),
+                }
+
+            report = result.report
+            if report is None:
+                return {
+                    "status": "operator_required",
+                    "summary": "Resolver gateway completed without a ResolutionReport",
+                    "evidence_refs": ("resolver:gateway-empty-report",),
+                    "operator_message": "Review resolver gateway wiring and retry.",
+                }
+            return {
+                "status": report.status,
+                "summary": report.summary,
+                "evidence_refs": list(report.evidence_refs),
+                "operator_message": report.operator_message,
+            }
+
+        def _invoke_delegate(
+            self,
+            case: ResolutionCase,
+            *,
+            role_id: str,
+            invocation_ref: str,
+        ) -> ResolutionReport:
+            payload = self._delegate.invoke(case, role_id=role_id)
+            report = map_payload_to_report(case=case, payload=payload)
+            gateway_ref = f"resolver_gateway_invocation={invocation_ref}"
+            if gateway_ref in report.evidence_refs:
+                return report
+            return ResolutionReport(
+                status=report.status,
+                summary=report.summary,
+                evidence_refs=report.evidence_refs + (gateway_ref,),
+                operator_message=report.operator_message,
+            )
+
     core_adapter = PlanCoreAdapter(plan_path=config.plan_path)
     roster = Roster(default_ttl_seconds=resolved_orchestration_config.roster.default_ttl_seconds)
     runtime = Runtime(workspace_root=resolved_orchestration_config.runtime.workspace_root)
@@ -3192,10 +3284,16 @@ def build_orchestration_app(
         dispatch_role=config.default_agent,
     )
     resolver = BoundResolver(
-        invocation=DefaultRoleResolverInvocation(
-            runtime=runtime,
-            dispatch_coordinator=dispatch_coordinator,
-            timeout_seconds=resolved_orchestration_config.resolver.invocation_timeout_seconds,
+        invocation=GatewayEnforcedResolverInvocation(
+            delegate=DefaultRoleResolverInvocation(
+                runtime=runtime,
+                dispatch_coordinator=dispatch_coordinator,
+                timeout_seconds=resolved_orchestration_config.resolver.invocation_timeout_seconds,
+            ),
+            allowed_tool_families=(
+                resolved_orchestration_config.resolver.tool_allowlist.allowed_tool_families
+            ),
+            planned_tool_calls=_DEFAULT_RESOLVER_GATEWAY_TOOL_CALLS,
         ),
         default_role_id=resolved_orchestration_config.resolver.default_role_id,
     )

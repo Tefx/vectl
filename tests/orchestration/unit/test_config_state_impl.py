@@ -238,6 +238,7 @@ class TestConfigDiscovery:
         assert "blocked-case-coordinator-tacit" in role_ids
         assert config.dispatch.default_role_id == "python-executor"
         assert config.resolver.default_role_id == "blocked-case-coordinator"
+        assert config.resolver.tool_allowlist.allowed_tool_families == ("orchestration",)
 
     def test_load_parses_role_profiles_and_default_role_ids(self, tmp_path: Path) -> None:
         """Verify file-backed config defines role registry and explicit role defaults."""

@@ -77649,7 +77649,7 @@ phases:
       \ recommend follow-up integration proof in future hardening cycle."
   - id: resolver_cleanup_finalization.architecture-review
     name: Review architecture cleanliness after cleanup
-    status: pending
+    status: claimed
     description: 'Architecture-level review after implementation and doc sync.
 
 
@@ -77689,6 +77689,8 @@ phases:
     - resolver_cleanup_finalization.doc-sync
     - resolver_cleanup_finalization.spec-conformance
     agent: software-architect-tacit
+    claimed_by: software-architect-tacit
+    claimed_at: '2026-04-10T16:07:47.088696+00:00'
   - id: resolver_cleanup_finalization.black-box-surface-check
     name: Black-box check of cleaned orchestration surfaces
     status: pending

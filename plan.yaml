@@ -75495,7 +75495,7 @@ phases:
       \ -q` => `9 passed`"
   - id: xfail_authority_and_entrypoint_enforcement.retest-authority-enforcement
     name: Retest authority and entrypoint enforcement
-    status: pending
+    status: claimed
     description: 'step_type: test
 
       step_intent: retest_green
@@ -75517,6 +75517,8 @@ phases:
     - xfail_authority_and_entrypoint_enforcement.enforce-main-worktree-role-authority
     - xfail_authority_and_entrypoint_enforcement.harden-resolver-gateway-and-lifecycle-facade
     agent: integration-verifier-tacit
+    claimed_by: integration-verifier-tacit
+    claimed_at: '2026-04-10T07:09:27.491410+00:00'
   - id: xfail_authority_and_entrypoint_enforcement.gate
     name: Gate authority and entrypoint enforcement
     status: pending

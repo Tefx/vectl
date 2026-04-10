@@ -76485,3 +76485,11 @@ phases:
     and lock the config-owned role-profile model before code migration begins.
   depends_on:
   - live_smoke_real_runner_validation
+- id: resolver_cleanup_core
+  name: 'Resolver Cleanup: Config, Wiring, and Surface Simplification'
+  status: locked
+  gate: Code path uses config-backed role profiles, program invokes the configured
+    blocked-case resolver directly, and legacy conflict/judge/template/fallback surfaces
+    are removed from current code and tests.
+  depends_on:
+  - resolver_cleanup_contracts

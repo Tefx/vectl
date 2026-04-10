@@ -74181,7 +74181,7 @@ phases:
     claimed_at: '2026-04-10T03:26:44.097889+00:00'
   - id: repo_regression_observability_gap_disposition.align-event-envelope-schema-tests
     name: Align event envelope schema tests
-    status: claimed
+    status: done
     description: Update observability repro tests so event envelope construction matches
       the current validated payload schema, or explicitly assert validation failure
       where that is the intended contract.
@@ -74194,6 +74194,42 @@ phases:
       - Command(s) run:'
     claimed_by: general
     claimed_at: '2026-04-10T03:26:21.251825+00:00'
+    done_at: '2026-04-10T03:32:45.240969+00:00'
+    evidence: 'Schema assumptions changed:
+
+      - Re-aligned observability repro to current `control_dispatch` payload contract
+      (requires payload with `step_id` and `agent`), and explicit validation-failure
+      expectation for empty payload.
+
+
+      Tests updated:
+
+      - Updated `tests/repro/test_orch_observability_red.py` event payload schema
+      validation assertions.
+
+
+      Command(s) run:
+
+      - `uv run python -m pytest tests/repro/test_orch_observability_red.py -q` ->
+      before 43 passed/5 xfailed; after 43 passed/5 xfailed.
+
+      - `uv run python -m pytest tests/repro -q` identified unrelated liveness fixture
+      failure outside this step scope.
+
+
+      Files changed:
+
+      - tests/repro/test_orch_observability_red.py
+
+
+      Commit:
+
+      - 47ebba2
+
+
+      Notes:
+
+      - Ref path `tools/vectl/README.md` unavailable in worktree per subagent report.'
   - id: repo_regression_surface_and_fixture_repair.fix-orch-liveness-fixture-assumptions
     name: Fix orchestration liveness fixture assumptions
     status: claimed

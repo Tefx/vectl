@@ -73690,7 +73690,7 @@ phases:
       - Command(s) run:'
   - id: repo_regression_expected_red_cleanup.realign-config-state-red-tests
     name: Realign config-state red tests to current behavior
-    status: pending
+    status: claimed
     description: Update `tests/orchestration/unit/test_config_state_red.py` so tests
       no longer expect `NotImplementedError` or noop semantics where implementation
       now exists. Preserve red intent only where a spec gap still truly remains.
@@ -73702,6 +73702,8 @@ phases:
 
       - Command: `uv run pytest tests/orchestration/unit/test_config_state_red.py
       -q` -> <outcome>'
+    claimed_by: general
+    claimed_at: '2026-04-10T02:59:13.884939+00:00'
 - id: repo_regression_semantic_alignment
   name: Repo Regression Semantic Alignment
   status: locked

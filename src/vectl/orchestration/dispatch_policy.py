@@ -246,10 +246,12 @@ _DEFAULT_ROLE_PROFILES: tuple[RoleProfile, ...] = (
         default_runner="codex",
     ),
     # Resolver family (§11.5): main_worktree, vectl_facade_only, reuse_forbidden
+    # After resolver cleanup: blocked-case-coordinator is the single default
+    # blocked-case resolver entry point (conflict-specialized taxonomy removed).
     RoleProfile(
-        role_id="conflict-resolver",
+        role_id="blocked-case-coordinator",
         prompt_family="resolver",
-        template_id="resolver_conflict",
+        template_id="resolver_blocked_case",
         execution_context="main_worktree",
         mutation_policy="vectl_facade_only",
         session_policy="reuse_forbidden",
@@ -434,9 +436,12 @@ _REVIEWER_TASK_TEMPLATE = (
 )
 
 _RESOLVER_SYSTEM_PROMPT = (
-    "You are a blocked-case resolution agent. You operate from the main worktree "
+    "You are the Blocked-Case Coordinator. You operate from the main worktree "
     "and may use approved vectl tool surfaces only. You must not claim new steps. "
-    "Produce a ResolutionReport (status, summary, evidence_refs, operator_message)."
+    "Produce a ResolutionReport (status, summary, evidence_refs, operator_message). "
+    "You are the single default entry point for all blocked-case sources — "
+    "do not introduce conflict-specialized or judge-specific resolver sub-taxonomy. "
+    "Escalate to operator (operator_required) when automatic closure is unsafe."
 )
 _RESOLVER_TASK_TEMPLATE = (
     "## Resolution Case: {source_id}\n"
@@ -444,7 +449,8 @@ _RESOLVER_TASK_TEMPLATE = (
     "### Blocked Steps\n{refs}\n\n"
     "Investigate and produce a resolution report. "
     "You may use approved vectl tools to inspect and act. "
-    "Do not claim new steps or modify the plan outside the approved facade."
+    "Do not claim new steps or modify the plan outside the approved facade. "
+    "Escalate to operator when automatic closure is unsafe or unverifiable."
 )
 
 

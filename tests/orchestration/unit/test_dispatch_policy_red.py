@@ -232,7 +232,7 @@ def test_dispatch_spec_main_worktree_roles_enforce_execution_context() -> None:
     resolver_spec = DispatchSpec(
         source_kind="step",
         source_id="resolver.test",
-        role_id="conflict-resolver",
+        role_id="blocked-case-coordinator",
         role_source="step.agent",
         execution_context="main_worktree",  # This is set but not enforced
         runner="codex",
@@ -240,7 +240,7 @@ def test_dispatch_spec_main_worktree_roles_enforce_execution_context() -> None:
     )
 
     # GAP EXPOSED (xfail): The execution_context is set correctly, but
-    # nothing enforces that conflict-resolver MUST run in main_worktree.
+    # nothing enforces that blocked-case-coordinator MUST run in main_worktree.
     # A bug could set execution_context='linked_worktree' for resolver family
     # and no validation would catch it.
     assert resolver_spec.execution_context == "main_worktree"
@@ -670,7 +670,7 @@ class TestMainWorktreeRolePolicy:
         """
         pytest.xfail(
             "xfail[GAP5-main-worktree-policy]: Resolver family roles "
-            "(conflict-resolver, etc.) must be validated to require main_worktree "
+            "(blocked-case-coordinator, etc.) must be validated to require main_worktree "
             "execution context. No RoleProfileRegistry implementation enforces this. "
             "Owner: orchestration_dispatch_policy.implement-role-profile-registry"
         )
@@ -678,7 +678,7 @@ class TestMainWorktreeRolePolicy:
         # Expected: A concrete registry would validate that resolver-family
         # roles are never dispatched to linked_worktree
         registry: RoleProfileRegistry = None  # type: ignore[assignment]
-        profile = registry.get("conflict-resolver")
+        profile = registry.get("blocked-case-coordinator")
         assert profile.execution_context == "main_worktree"
 
     def test_planner_family_roles_require_main_worktree_context(self) -> None:

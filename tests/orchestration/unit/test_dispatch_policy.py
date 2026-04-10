@@ -155,7 +155,7 @@ class TestConfigRoleProfileRegistry:
         coder = registry.get("python-executor")
         planner = registry.get("vectl-planner")
         reviewer = registry.get("gate-reviewer")
-        resolver = registry.get("conflict-resolver")
+        resolver = registry.get("blocked-case-coordinator")
 
         assert coder.execution_context == "linked_worktree"
         assert planner.execution_context == "main_worktree"
@@ -168,7 +168,7 @@ class TestConfigRoleProfileRegistry:
         assert registry.has_role("python-executor") is True
         assert registry.has_role("vectl-planner") is True
         assert registry.has_role("gate-reviewer") is True
-        assert registry.has_role("conflict-resolver") is True
+        assert registry.has_role("blocked-case-coordinator") is True
 
     def test_has_role_returns_false_for_unknown_role(self) -> None:
         """has_role() must return False for unknown roles.
@@ -216,7 +216,7 @@ class TestConfigRoleProfileRegistry:
         Authority: §12.2 'Typical examples [main_worktree roles]: resolver-family'
         """
         registry = ConfigRoleProfileRegistry()
-        profile = registry.get("conflict-resolver")
+        profile = registry.get("blocked-case-coordinator")
         assert profile.execution_context == "main_worktree"
         assert profile.mutation_policy == "vectl_facade_only"
 
@@ -331,7 +331,7 @@ class TestConfigPromptRegistry:
         assert registry.has_role("python-executor") is True
         assert registry.has_role("vectl-planner") is True
         assert registry.has_role("gate-reviewer") is True
-        assert registry.has_role("conflict-resolver") is True
+        assert registry.has_role("blocked-case-coordinator") is True
 
     def test_has_role_delegates_to_role_registry_when_provided(self) -> None:
         """When a role_registry is provided, has_role delegates to it."""
@@ -440,7 +440,7 @@ class TestConfigPromptRegistry:
         spec = DispatchSpec(
             source_kind="resolution_subtask",
             source_id="case-456",
-            role_id="conflict-resolver",
+            role_id="blocked-case-coordinator",
             role_source="resolver",
             execution_context="main_worktree",
             runner="codex",
@@ -476,7 +476,7 @@ class TestConfigPromptRegistry:
         spec = DispatchSpec(
             source_kind="step",
             source_id="core.test",
-            role_id="conflict-resolver",
+            role_id="blocked-case-coordinator",
             role_source="resolver",
             execution_context="main_worktree",
             runner="codex",

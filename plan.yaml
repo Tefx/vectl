@@ -75259,4 +75259,4 @@ phases:
     depends_on:
     - xfail_finalization.doc-sync-expected-red-retirement
     - xfail_finalization.run-repo-wide-pytest-gate
-    agent: deep-review
+    agent: gate-reviewer-tacit

@@ -76998,3 +76998,50 @@ phases:
     drift.
   depends_on:
   - resolver_cleanup_core
+  steps:
+  - id: resolver_cleanup_finalization.full-regression
+    name: Run full regression and residue audit
+    status: pending
+    description: 'Verification scope: full-plan-check protecting the entire resolver
+      cleanup finalization boundary.
+
+
+      Run the nearest broad regression commands and residue scans after cross-module
+      cleanup so late gates do not become the first place broad failures appear.
+
+
+      Required checks:
+
+      - repo-wide regression command(s)
+
+      - focused residue scans for deleted legacy concepts in current active surfaces
+
+      - proof that remaining historical records are not being treated as current architecture
+      authority'
+    verification: '- Full regression command(s) pass or findings are explicitly dispositioned.
+
+      - No current active code/doc/test surfaces retain deleted architecture terms.
+
+      - Historical plan/records remain untouched.'
+    evidence_template: '## refs Read Confirmation (MANDATORY)
+
+      For each ref in this step:
+
+      - <filename> — key passage or "NOT READ: <reason>"
+
+
+      If no refs were provided, state: "No refs for this step."
+
+
+      ## Full-Plan Check Report
+
+      - Commands executed:
+
+      - Output summary:
+
+      - Residue scan results:
+
+      - Historical-record boundary check:
+
+      '
+    agent: integration-verifier-tacit

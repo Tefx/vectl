@@ -76685,6 +76685,75 @@ phases:
     are removed from current code and tests.
   depends_on:
   - resolver_cleanup_contracts
+  steps:
+  - id: resolver_cleanup_core.migrate-role-profiles-to-config
+    name: Migrate role profiles to config authority
+    status: pending
+    description: 'Move ordinary role-profile authority out of orchestration code and
+      into config.
+
+
+      Touch paths:
+
+      - src/vectl/orchestration/config.py
+
+      - src/vectl/orchestration/contracts.py
+
+      - src/vectl/orchestration/dispatch_policy.py
+
+      - src/vectl/cli.py
+
+      - tests for config loading / dispatch policy / role registry
+
+
+      Required outcomes:
+
+      - Normal roles and the two new resolver roles load from config.
+
+      - `dispatch.default_role_id` and `resolver.default_role_id` become explicit
+      config-backed fields.
+
+      - Ordinary role semantics are no longer hardcoded in `_DEFAULT_ROLE_PROFILES`
+      or equivalent code-owned registries.
+
+      - Role validation remains centralized and explicit.
+
+
+      Known risks / gate preview:
+
+      - Hidden code defaults recreating a second source of truth will be rejected.
+
+      - Any fallback path that silently recreates hardcoded role lists will be rejected.
+
+      - Config schema and runtime loading must agree exactly.'
+    verification: '- Config-backed role registry loads ordinary roles and the two
+      resolver roles from config.
+
+      - No hidden hardcoded role-profile source remains for ordinary roles.
+
+      - Targeted config/dispatch tests pass.'
+    evidence_template: '## refs Read Confirmation (MANDATORY)
+
+      For each ref in this step:
+
+      - <filename> — key passage or "NOT READ: <reason>"
+
+
+      If no refs were provided, state: "No refs for this step."
+
+
+      ## Implementation Evidence
+
+      - Config fields added/updated:
+
+      - Code-owned role profile sources removed:
+
+      - Tests run:
+
+      - Remaining authority ambiguities:
+
+      '
+    agent: python-senior-tacit
 - id: resolver_cleanup_finalization
   name: 'Resolver Cleanup: Finalization, Doc Sync, and Deep Review'
   status: locked

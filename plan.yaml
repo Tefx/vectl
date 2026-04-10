@@ -73765,3 +73765,17 @@ phases:
     The gap between phase-local green and repo-wide red is closed.'
   depends_on:
   - repo_regression_observability_gap_disposition
+  steps:
+  - id: repo_regression_full_suite_gate.run-full-pytest-regression-gate
+    name: Run full pytest regression gate
+    status: pending
+    description: Run `uv run pytest -q` after all remediation work. Classify any remaining
+      non-passing tests as either true blockers or explicitly governed expected-red/skip
+      cases; raw unmanaged failures are not allowed.
+    verification: Full pytest output is captured and either fully green or reduced
+      to explicitly governed non-blocking statuses.
+    evidence_template: '- Command: `uv run pytest -q`
+
+      - Summary counts:
+
+      - Remaining non-passing tests and dispositions:'

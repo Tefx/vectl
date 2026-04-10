@@ -75155,7 +75155,7 @@ phases:
       \ `tests/orchestration/unit/test_dispatch_policy.py`."
   - id: xfail_role_prompt_and_review_normalization.implement-concrete-prompt-registry
     name: Implement concrete prompt registry
-    status: pending
+    status: claimed
     description: 'work_type: technical_debt_remediation
 
       step_type: implementation
@@ -75185,6 +75185,8 @@ phases:
     depends_on:
     - xfail_role_prompt_and_review_normalization.implement-concrete-role-profile-registry
     agent: python-senior-tacit
+    claimed_by: python-senior-tacit
+    claimed_at: '2026-04-10T06:48:57.110869+00:00'
   - id: xfail_role_prompt_and_review_normalization.implement-structured-review-normalizer
     name: Implement structured review result normalizer
     status: pending

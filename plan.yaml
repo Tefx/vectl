@@ -77001,7 +77001,7 @@ phases:
       \ entry`)\n- Cherry-picked on Main: `205021f`"
   - id: resolver_cleanup_core.remove-legacy-surfaces-and-dead-metadata
     name: Remove legacy resolver, judge, fallback, and dead metadata surfaces
-    status: pending
+    status: claimed
     description: 'Remove obsolete concepts from current code and tests after the new
       resolver path is wired.
 
@@ -77081,6 +77081,8 @@ phases:
     depends_on:
     - resolver_cleanup_core.wire-default-blocked-case-resolver
     agent: python-senior-tacit
+    claimed_by: python-senior-tacit
+    claimed_at: '2026-04-10T14:12:39.815071+00:00'
   - id: resolver_cleanup_core.verify-cleaned-runtime-and-contract-surfaces
     name: Verify cleaned runtime and contract surfaces
     status: pending

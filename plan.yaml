@@ -73637,7 +73637,7 @@ phases:
     - repo_regression_full_suite_gate.decide-static-guard-scope-and-enforcement
   - id: repo_regression_full_suite_gate.fix-recovery-contract-conformance-semantics
     name: Repair recovery contract conformance semantics
-    status: pending
+    status: claimed
     description: "work_type: defect_repair\nstep_type: implementation\nverification_scope:\
       \ local-check\nprotects_gates:\n  - repo_regression_full_suite_gate repo-wide\
       \ full-suite gate\n  - repo_regression_full_suite_gate.decide-static-guard-scope-and-enforcement\n\
@@ -73720,6 +73720,8 @@ phases:
     depends_on:
     - repo_regression_full_suite_gate.run-full-pytest-regression-gate
     agent: python-senior
+    claimed_by: python-senior
+    claimed_at: '2026-04-10T03:40:39.084026+00:00'
   - id: repo_regression_full_suite_gate.retest-recovery-contract-conformance-semantics
     name: Retest recovery contract conformance semantics
     status: pending

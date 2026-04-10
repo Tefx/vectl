@@ -77497,7 +77497,7 @@ phases:
       \ authority.**"
   - id: resolver_cleanup_finalization.doc-sync
     name: Sync documentation to cleaned architecture
-    status: claimed
+    status: pending
     description: 'Update user-facing and architecture-facing documentation so current
       docs reflect the cleaned resolver/config/planner model and no deleted concepts
       remain in active guidance.
@@ -77552,8 +77552,6 @@ phases:
     depends_on:
     - resolver_cleanup_finalization.full-regression
     agent: doc-reviewer-tacit
-    claimed_by: doc-reviewer-tacit
-    claimed_at: '2026-04-10T15:41:49.047315+00:00'
   - id: resolver_cleanup_finalization.spec-conformance
     name: Audit spec conformance of cleaned orchestration model
     status: claimed

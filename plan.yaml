@@ -77001,7 +77001,7 @@ phases:
       \ entry`)\n- Cherry-picked on Main: `205021f`"
   - id: resolver_cleanup_core.remove-legacy-surfaces-and-dead-metadata
     name: Remove legacy resolver, judge, fallback, and dead metadata surfaces
-    status: claimed
+    status: done
     description: 'Remove obsolete concepts from current code and tests after the new
       resolver path is wired.
 
@@ -77083,6 +77083,35 @@ phases:
     agent: python-senior-tacit
     claimed_by: python-senior-tacit
     claimed_at: '2026-04-10T14:12:39.815071+00:00'
+    done_at: '2026-04-10T14:27:53.428242+00:00'
+    evidence: "## refs Read Confirmation (MANDATORY)\n- tools/vectl/README.md — NOT\
+      \ READ: file not present in isolated worktree path.\n\n## Cleanup Evidence\n\
+      - Legacy concepts removed:\n  - Removed `fallback_role` from orchestration control/registry\
+      \ wiring; control now uses configured `dispatch_role`.\n  - Removed roster-order-based\
+      \ role selection (`roster.available_agents[0]`) from control dispatch path.\n\
+      \  - Replaced `judgments.py` with `resolution_reports.py`; updated resolver/package\
+      \ exports accordingly.\n  - Removed planner `structured_plan_result` contract\
+      \ use; planner semantics now direct `vectl_facade_mutation`.\n  - Deleted obsolete\
+      \ live-smoke judge surfaces: `tests/live_smoke/test_codex_judge_live.py`, `tests/live_smoke/test_opencode_judge_live.py`.\n\
+      - Residue grep results:\n  - `rg -n \"conflict-resolver|resolver_conflict|template_id|fallback_role|judge|judgment|judgments|structured_plan_result\"\
+      \ src/vectl/orchestration src/vectl/orch_app.py tests/orchestration/unit tests/live_smoke\
+      \ tests/conftest.py`\n  - Result: no matches in active scoped surfaces.\n- Control/dispatch\
+      \ simplifications applied:\n  - `PlanAwareControl.evaluate()` emits configured\
+      \ `dispatch_role` directly.\n  - `ConfigRoleProfileRegistry` no longer exposes\
+      \ deprecated fallback-role compatibility state.\n  - Planner prompt/role contract\
+      \ updated to direct vectl-facade mutation semantics.\n- Tests run:\n  - `uvx\
+      \ ruff check ...` on touched orchestration and test files -> All checks passed.\n\
+      \  - `python -m pytest -q tests/orchestration/unit/test_control.py tests/orchestration/unit/test_dispatch_policy.py\
+      \ tests/orchestration/unit/test_resolver.py tests/orchestration/unit/test_orch_app.py\
+      \ tests/live_smoke/test_codex_dispatch_live.py tests/live_smoke/test_opencode_dispatch_live.py`\
+      \ -> `146 passed, 8 skipped`.\n\n## Commit Evidence\n- Worker commit: `6dd111e`\
+      \ (`fix(orchestration): remove legacy resolver cleanup surfaces`)\n- Cherry-picked\
+      \ on Main: `aaf163a`\n\n## Files affected (high level)\n- `src/vectl/orchestration/control.py`\n\
+      - `src/vectl/orchestration/contracts.py`\n- `src/vectl/orchestration/dispatch_policy.py`\n\
+      - `src/vectl/orchestration/resolver.py`\n- `src/vectl/orchestration/__init__.py`\n\
+      - `src/vectl/orchestration/judgments.py` -> renamed `src/vectl/orchestration/resolution_reports.py`\n\
+      - `src/vectl/orch_app.py`\n- `tests/orchestration/unit/*` (targeted)\n- `tests/live_smoke/*`\
+      \ (judge surface cleanup)\n- `tests/conftest.py`"
   - id: resolver_cleanup_core.verify-cleaned-runtime-and-contract-surfaces
     name: Verify cleaned runtime and contract surfaces
     status: pending

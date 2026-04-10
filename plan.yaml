@@ -74137,7 +74137,7 @@ phases:
       - Subagent reported `tools/vectl/README.md` missing in worktree.'
 - id: repo_regression_surface_and_observability_alignment
   name: Repo Regression Surface and Observability Alignment
-  status: pending
+  status: in_progress
   gate: Repo fixtures, CLI/public surfaces, and observability repro expectations are
     aligned so remaining non-passing tests are either fixed or explicitly governed
     intentional debt.
@@ -74177,7 +74177,7 @@ phases:
       - Command: `uv run pytest tests/test_cli.py -k DriveCLI -q` -> <outcome>'
   - id: repo_regression_observability_gap_disposition.align-event-envelope-schema-tests
     name: Align event envelope schema tests
-    status: pending
+    status: claimed
     description: Update observability repro tests so event envelope construction matches
       the current validated payload schema, or explicitly assert validation failure
       where that is the intended contract.
@@ -74188,6 +74188,8 @@ phases:
       - Tests updated:
 
       - Command(s) run:'
+    claimed_by: general
+    claimed_at: '2026-04-10T03:26:21.251825+00:00'
   - id: repo_regression_surface_and_fixture_repair.fix-orch-liveness-fixture-assumptions
     name: Fix orchestration liveness fixture assumptions
     status: pending

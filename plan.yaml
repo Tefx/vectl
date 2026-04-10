@@ -74760,6 +74760,85 @@ phases:
 
       - none | <details>'
     agent: python-executor
+  - id: xfail_config_and_dispatch_foundation.centralize-dispatch-spec-construction
+    name: Centralize DispatchSpec construction and verify-mode mapping
+    status: pending
+    description: 'work_type: technical_debt_remediation
+
+      step_type: implementation
+
+
+      authority_basis: software-architect-tacit consultation
+
+
+      Finish the existing dispatch-policy seam so DispatchSpec is built from authoritative
+      step semantics plus role policy in one place.
+
+
+      Scope:
+
+      - `src/vectl/orchestration/dispatch_policy.py`
+
+      - `src/vectl/orch_app.py`
+
+      - `tests/orchestration/unit/test_dispatch_policy_red.py`
+
+
+      Requirements:
+
+      - Use one canonical dispatch coordinator path
+
+      - Wire `step.verify` to `DispatchSpec.verify_mode`
+
+      - Do not invent a second coordinator or runtime-side policy source
+
+      - Preserve the distinction between policy inputs and runtime mechanics
+
+
+      Known risks:
+
+      - hidden duplicate DispatchSpec assembly in orch_app
+
+      - verify-mode drift between tests and coordinator output'
+    verification: '- `test_dispatch_spec_construction_from_control_decision` is green
+
+      - `test_dispatch_spec_verify_mode_expected_red_wires_correctly` is green
+
+      - No duplicate DispatchSpec construction path remains in app wiring'
+    evidence_template: '## refs Read Confirmation (MANDATORY)
+
+      For each ref in this step:
+
+      - <filename> — key passage or "NOT READ: <reason>"
+
+
+      ## Fix Evidence
+
+      - blocker_fingerprint: dispatch-spec-construction / verify-mode-mapping
+
+      - root_cause_hypothesis:
+
+      - files_changed:
+
+      - sibling_search_performed:
+
+
+      ## Main Path Proof
+
+      - where DispatchSpec is now built authoritatively
+
+      - how verify_mode is derived from step semantics
+
+
+      ## Failure Path Proof
+
+      - what prevents app/runtime from bypassing the coordinator path
+
+
+      ## Remaining Risk
+
+      - none | <details>'
+    agent: python-senior-tacit
 - id: xfail_role_prompt_and_review_normalization
   name: 'XFail Remediation: Role Prompt and Review Normalization'
   status: locked

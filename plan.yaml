@@ -73643,13 +73643,15 @@ phases:
       drift with behavioral fixes.
   - id: repo_regression_triage.classify-failures-by-disposition
     name: Classify failures by disposition
-    status: pending
+    status: claimed
     description: 'Classify each failing test as one of: stale expected-red, stale
       contract/lock drift, likely behavior regression, missing fixture/environment,
       or CLI/public-surface mismatch. Mark whether the fix should be test-only, implementation-only,
       or paired.'
     verification: Every failing test has a disposition category and next-action type.
       Ambiguous items are explicitly called out instead of guessed.
+    claimed_by: general
+    claimed_at: '2026-04-10T02:59:35.666427+00:00'
   - id: repo_regression_expected_red_cleanup.introduce-expected-red-lifecycle-marking
     name: Introduce expected-red lifecycle marking
     status: claimed

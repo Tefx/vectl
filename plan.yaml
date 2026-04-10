@@ -73716,3 +73716,11 @@ phases:
       - Command: `uv run pytest tests/test_cli.py -k DriveCLI -q` -> <outcome>'
     depends_on:
     - repo_regression_surface_and_fixture_repair.fix-orch-liveness-fixture-assumptions
+- id: repo_regression_observability_gap_disposition
+  name: Observability Gap Disposition and Alignment
+  status: locked
+  gate: Observability repro failures are either implemented, rewritten against current
+    behavior, or intentionally retained with explicit expected-red disposition; none
+    remain as unmanaged raw failures in the full suite.
+  depends_on:
+  - repo_regression_surface_and_fixture_repair

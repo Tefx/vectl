@@ -76382,7 +76382,7 @@ phases:
       \ and are consistent with locked matrix policy."
   - id: live_smoke_real_runner_validation.doc-sync-live-smoke-findings
     name: Doc sync live-smoke findings and operating prerequisites
-    status: pending
+    status: claimed
     description: 'work_type: doc_sync
 
       step_type: documentation
@@ -76415,6 +76415,8 @@ phases:
     depends_on:
     - live_smoke_real_runner_validation.retest-live-smoke-after-remediation
     agent: project-guide
+    claimed_by: project-guide
+    claimed_at: '2026-04-10T07:17:27.424529+00:00'
   - id: live_smoke_real_runner_validation.gate
     name: Gate live-smoke real-runner validation
     status: pending

@@ -76129,7 +76129,7 @@ phases:
   steps:
   - id: live_smoke_real_runner_validation.lock-live-runner-execution-matrix
     name: Lock live-runner execution matrix and prerequisites
-    status: claimed
+    status: done
     description: 'work_type: validation_planning
 
       step_type: contract_lock
@@ -76176,6 +76176,28 @@ phases:
     agent: software-architect-tacit
     claimed_by: software-architect-tacit
     claimed_at: '2026-04-10T07:15:10.494469+00:00'
+    done_at: '2026-04-10T07:15:50.797399+00:00'
+    evidence: "## Live Matrix Decision\n- lanes to run:\n  1. codex × judge (`tests/live_smoke/test_codex_judge_live.py`)\n\
+      \  2. codex × dispatch (`tests/live_smoke/test_codex_dispatch_live.py`)\n  3.\
+      \ opencode × judge (`tests/live_smoke/test_opencode_judge_live.py`)\n  4. opencode\
+      \ × dispatch (`tests/live_smoke/test_opencode_dispatch_live.py`)\n- prerequisite\
+      \ checks:\n  - opt-in gate: `RUN_LIVE_RUNNER_TESTS` must be exactly `1`\n  -\
+      \ runner binaries on PATH\n  - auth/session availability per runner\n  - override\
+      \ support check when model override is required\n  - skip taxonomy must remain\
+      \ explicit (`live_runner_opt_in_missing`, `live_runner_binary_missing`, `live_runner_auth_missing`,\
+      \ `live_runner_override_unsupported`)\n- auth/binary assumptions:\n  - binary\
+      \ probe in this environment: `which codex` and `which opencode` both resolved\n\
+      \  - opt-in currently absent (`RUN_LIVE_RUNNER_TESTS` not set), so live invocations\
+      \ should be interpreted as environment-gated skips unless explicitly enabled\n\
+      \  - auth is treated as runner-specific preflight; absence should remain skip-governed,\
+      \ not product-failure\n- UI scope decision:\n  - In-scope for this phase: CLI\
+      \ live runner lanes above (judge/dispatch only)\n  - Out-of-scope for this phase:\
+      \ browser/UI smoke coverage (dashboard/UI suites), unless explicitly added by\
+      \ a downstream step\n- environment vs product failure boundary:\n  - Environment\
+      \ readiness failures (opt-in missing, binary missing, auth missing, override\
+      \ unsupported) => explicit skip with reason code\n  - Product failures => preflight\
+      \ passed, live subprocess invoked, non-skip assertion failure with full command/returncode/stdout/stderr\
+      \ evidence"
   - id: live_smoke_real_runner_validation.run-real-live-smoke-matrix
     name: Run real live-smoke matrix
     status: pending

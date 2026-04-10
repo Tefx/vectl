@@ -73637,7 +73637,7 @@ phases:
     - repo_regression_full_suite_gate.decide-static-guard-scope-and-enforcement
   - id: repo_regression_full_suite_gate.fix-recovery-contract-conformance-semantics
     name: Repair recovery contract conformance semantics
-    status: claimed
+    status: done
     description: "work_type: defect_repair\nstep_type: implementation\nverification_scope:\
       \ local-check\nprotects_gates:\n  - repo_regression_full_suite_gate repo-wide\
       \ full-suite gate\n  - repo_regression_full_suite_gate.decide-static-guard-scope-and-enforcement\n\
@@ -73722,6 +73722,29 @@ phases:
     agent: python-senior
     claimed_by: python-senior
     claimed_at: '2026-04-10T03:40:39.084026+00:00'
+    done_at: '2026-04-10T03:59:30.457446+00:00'
+    evidence: "## refs Read Confirmation\n- tests/orchestration/unit/test_recovery_contract_conformance.py\
+      \ — read; key scenarios validate shared consumer-surface semantics and quarantine\
+      \ artifact-preservation behavior.\n- src/vectl/orchestration/recovery.py — read;\
+      \ key functions: `recovery_gate_open_allowed`, `recovery_case_status`, `recovery_action_status`.\n\
+      - src/vectl/orch_app.py — read; consumer surfaces delegate to recovery helpers.\n\
+      \n## Fix Evidence\n- blocker_fingerprint: recovery-contract-conformance / NO_ARTIFACTS\
+      \ / gate_open_allowed\n- root_cause_hypothesis: helper-level semantics drift\
+      \ (`QUARANTINED` treated as gate-open-allowed) plus test fixture plan YAML missing\
+      \ phase name causing incorrect NO_ARTIFACTS path.\n- files_changed:\n  - src/vectl/orchestration/recovery.py\n\
+      \  - tests/orchestration/unit/test_recovery_contract_conformance.py\n  - tests/orchestration/unit/test_operator_pause_conflict_recovery_red.py\n\
+      - sibling_search_performed: recovery helper callsites across orch_app and tests\
+      \ confirmed all consumer surfaces derive status from shared helpers.\n\n## Main\
+      \ Path Proof\n- Removed `RecoveryOutcome.QUARANTINED` from gate-open-allowed\
+      \ set in authoritative helper.\n- Updated helper semantics/docs so case/action\
+      \ status mapping now consistently derives from one contract path.\n- Corrected\
+      \ test plan phase definition (`name: Core`) to ensure intended recovery scenario\
+      \ executes.\n\n## Failure Path Proof\n- Quarantine scenario now matches blocked\
+      \ gate semantics:\n  - `recovery_gate_open_allowed(QUARANTINED) == False`\n\
+      \  - corresponding case/action statuses become open/rejected and align with\
+      \ report `gate_open_allowed=False`.\n- Regression verification:\n  - `uv run\
+      \ pytest tests/orchestration/unit/test_recovery_contract_conformance.py tests/orchestration/unit/test_operator_pause_conflict_recovery_red.py\
+      \ -v` -> 22 passed.\n\n## Remaining Risk\n- none"
   - id: repo_regression_full_suite_gate.retest-recovery-contract-conformance-semantics
     name: Retest recovery contract conformance semantics
     status: pending

@@ -75495,7 +75495,7 @@ phases:
       \ -q` => `9 passed`"
   - id: xfail_authority_and_entrypoint_enforcement.retest-authority-enforcement
     name: Retest authority and entrypoint enforcement
-    status: claimed
+    status: done
     description: 'step_type: test
 
       step_intent: retest_green
@@ -75519,6 +75519,13 @@ phases:
     agent: integration-verifier-tacit
     claimed_by: integration-verifier-tacit
     claimed_at: '2026-04-10T07:09:27.491410+00:00'
+    done_at: '2026-04-10T07:09:48.020285+00:00'
+    evidence: "- Commands:\n  - `uv run pytest tests/orchestration/unit/test_dispatch_policy_red.py\
+      \ -k \"MainWorktreeRolePolicy\" -q`\n  - `uv run pytest tests/orchestration/unit/test_runner_backend_red.py\
+      \ -q`\n- Output:\n  - dispatch_policy_red (MainWorktreeRolePolicy): `3 passed,\
+      \ 14 deselected`\n  - runner_backend_red: `9 passed`\n- Remaining governed statuses:\n\
+      \  - None in the targeted authority/entrypoint enforcement scope; focused retest\
+      \ surfaces are green with command output captured."
   - id: xfail_authority_and_entrypoint_enforcement.gate
     name: Gate authority and entrypoint enforcement
     status: pending

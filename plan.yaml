@@ -73707,6 +73707,47 @@ phases:
     depends_on:
     - repo_regression_full_suite_gate.run-full-pytest-regression-gate
     agent: python-senior
+  - id: repo_regression_full_suite_gate.retest-recovery-contract-conformance-semantics
+    name: Retest recovery contract conformance semantics
+    status: pending
+    description: "step_type: test\nstep_intent: retest_green\nexpected_result: green\n\
+      verification_scope: phase-check\nprotects_gates:\n  - repo_regression_full_suite_gate\
+      \ repo-wide full-suite gate\n  - repo_regression_full_suite_gate.decide-static-guard-scope-and-enforcement\n\
+      \nAs an INDEPENDENT TESTER, re-run the focused recovery contract conformance\
+      \ suite and then the full repo pytest gate after the recovery semantic repair\
+      \ lands.\n\nRequired commands:\n1. `uv run pytest tests/orchestration/unit/test_recovery_contract_conformance.py\
+      \ -q`\n2. `uv run pytest -q`\n\nSuccess means both prior failing tests are green\
+      \ and the full-suite gate is green or reduced only to explicitly governed non-blocking\
+      \ statuses."
+    verification: '- Phase-check protecting downstream repo-wide gate-policy encoding
+
+      - `uv run pytest tests/orchestration/unit/test_recovery_contract_conformance.py
+      -q` passes
+
+      - `uv run pytest -q` passes, or any non-passing cases are explicitly governed
+      non-blocking statuses with evidence
+
+      - Evidence includes actual command output, not a summary-only claim'
+    evidence_template: "## Verification Report\n\n**Tester**: integration-verifier\
+      \ (independent)\n**Scope**: recovery contract conformance + full repo pytest\
+      \ gate\n**Independence Level**: L1\n\n### refs Read Confirmation (MANDATORY)\n\
+      For each ref in this step:\n- <filename> — key passage or \"NOT READ: <reason>\"\
+      \n\nIf no refs were provided, state: \"No refs for this step.\"\n\n### Commands\
+      \ executed\n```bash\nuv run pytest tests/orchestration/unit/test_recovery_contract_conformance.py\
+      \ -q\nuv run pytest -q\n```\n\n### Actual output\n```text\n<paste stdout/stderr>\n\
+      ```\n\n### Behavioral proof register\n- requirement_ref: shared recovery contract\
+      \ semantics across consumer surfaces\n  behavior_claim: focused recovery contract\
+      \ tests now pass\n  runtime_proof_expected: focused suite green\n  evidence_ref:\
+      \ <command output>\n  status: PROVEN|NEEDS_TEST|UNPROVEN\n  closure_path: <if\
+      \ not proven, why>\n  gate_decision_basis: blocks downstream policy encoding\
+      \ until green\n- requirement_ref: repo-wide full-suite gate\n  behavior_claim:\
+      \ repo pytest gate is green or explicitly governed\n  runtime_proof_expected:\
+      \ full `uv run pytest -q` result\n  evidence_ref: <command output>\n  status:\
+      \ PROVEN|NEEDS_TEST|UNPROVEN\n  closure_path: <if not proven, why>\n  gate_decision_basis:\
+      \ blocks downstream policy encoding until green/governed"
+    depends_on:
+    - repo_regression_full_suite_gate.fix-recovery-contract-conformance-semantics
+    agent: integration-verifier
 - id: repo_regression_test_intent_alignment
   name: Repo Regression Test Intent Alignment
   status: done

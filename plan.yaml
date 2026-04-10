@@ -76333,7 +76333,7 @@ phases:
       \ product failures would trigger code remediation in this step."
   - id: live_smoke_real_runner_validation.retest-live-smoke-after-remediation
     name: Retest live-smoke matrix after remediation
-    status: pending
+    status: claimed
     description: 'step_type: test
 
       step_intent: retest_green
@@ -76369,6 +76369,8 @@ phases:
     depends_on:
     - live_smoke_real_runner_validation.fix-live-smoke-product-defects-batch
     agent: integration-verifier-tacit
+    claimed_by: integration-verifier-tacit
+    claimed_at: '2026-04-10T07:16:58.697869+00:00'
   - id: live_smoke_real_runner_validation.doc-sync-live-smoke-findings
     name: Doc sync live-smoke findings and operating prerequisites
     status: pending

@@ -39,6 +39,13 @@ def test_resolution_case_preserves_required_semantics_while_resolver_contract_is
         field.default is not MISSING or field.default_factory is not MISSING
         for field in additive_metadata_fields
     ), "Additive ResolutionCase metadata fields must stay optional"
+    assert {
+        "case_id",
+        "case_source",
+        "summary",
+        "blocked_step_ids",
+        "artifact_refs",
+    } <= {field.name for field in additive_metadata_fields}
     case = ResolutionCase(
         reason="blocked",
         core=CoreSnapshot(

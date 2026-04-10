@@ -286,30 +286,25 @@ class TestEventRegistryPayloadValidation:
 
         Spec: §10 - Each event family has required payload fields.
         """
-        from vectl.orchestration.events import OrchestrationEventEnvelope
+        from vectl.orchestration.events import EventValidationError, OrchestrationEventEnvelope
 
-        # EXPECTED-RED: Need payload schema validation
-        # Current envelope has payload: tuple[str, ...] which doesn't enforce schema
-
-        # Try to create an event with missing required fields
-        # For run_started, should require run_id, plan_path, etc.
-        # Note: Since OrchestrationEventKind doesn't have 'run_started' yet,
-        # we use an existing kind and test the payload validation gap
-        try:
-            envelope = OrchestrationEventEnvelope(
+        with pytest.raises(EventValidationError, match="payload schema drift"):
+            OrchestrationEventEnvelope(
                 kind="control_dispatch",
                 timestamp=datetime.now(timezone.utc),
-                step_id=None,  # May be None for run-level events
-                payload={},  # Empty payload - should this be validated?
+                step_id=None,
+                payload={},
             )
-            # If we get here, it means payload validation is not enforced
-            # which is expected-red
-        except Exception:
-            # If validation fails, that's expected-red behavior
-            pass
 
-        # This test documents that payload schema validation is missing
-        # EXPECTED-RED: payload should be typed dict per event kind
+        envelope = OrchestrationEventEnvelope(
+            kind="control_dispatch",
+            timestamp=datetime.now(timezone.utc),
+            step_id="test.step",
+            agent="test-agent",
+            payload={"step_id": "test.step", "agent": "test-agent"},
+        )
+
+        assert envelope.payload == {"step_id": "test.step", "agent": "test-agent"}
 
 
 # ---------------------------------------------------------------------

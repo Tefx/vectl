@@ -75293,7 +75293,7 @@ phases:
       group is now green.'
   - id: xfail_role_prompt_and_review_normalization.gate
     name: Gate role, prompt, and review normalization
-    status: pending
+    status: claimed
     description: 'Gate review: ensure policy centralization is complete and no adapter-specific
       shadow registry/normalizer was introduced.'
     verification: '- Targeted xfails are retired
@@ -75312,6 +75312,8 @@ phases:
     - xfail_role_prompt_and_review_normalization.implement-structured-review-normalizer
     - xfail_role_prompt_and_review_normalization.retest-role-prompt-and-review
     agent: gate-reviewer-tacit
+    claimed_by: gate-reviewer-tacit
+    claimed_at: '2026-04-10T07:04:07.297094+00:00'
   - id: xfail_role_prompt_and_review_normalization.realign-stale-red-tests-to-green-behavior
     name: Realign stale red tests to green behavior
     status: done

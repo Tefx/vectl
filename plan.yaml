@@ -77906,6 +77906,30 @@ phases:
     depends_on:
     - orch_plane_live_authority.contract-lock
     agent: python-senior-tacit
+  - id: orch_plane_live_authority.roster-decision-path
+    name: Bring roster into dispatch authority
+    status: pending
+    description: Make roster resource/reuse state participate in the primary dispatch
+      decision path instead of remaining an advisory side seam.
+    verification: Decision-path tests prove roster snapshot changes can alter admission/reuse
+      outcomes and that roster-free authority branches are removed or blocked.
+    evidence_template: '## refs Read Confirmation (MANDATORY)
+
+      - Quote the key passage from each ref or write NOT READ: <reason>
+
+
+      ## Implementation Evidence
+
+      - Files changed
+
+      - Decision inputs now sourced from roster
+
+      - Tests covering changed outcomes
+
+      '
+    depends_on:
+    - orch_plane_live_authority.contract-lock
+    agent: python-senior-tacit
 - id: orch_plane_planner_boundary
   name: Orchestration Plane Planner Boundary
   status: locked

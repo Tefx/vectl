@@ -8,7 +8,9 @@ Authority:
 from __future__ import annotations
 
 import json
+import subprocess
 import time
+from dataclasses import replace
 from pathlib import Path
 from typing import Any, Literal, cast
 
@@ -28,6 +30,7 @@ from vectl.orchestration.config import (
     ResolverConfig,
     ResolverToolAllowlist,
     RuntimeConfig,
+    default_role_profiles,
 )
 from vectl.orchestration.contracts import (
     ControlDecision,
@@ -37,6 +40,7 @@ from vectl.orchestration.contracts import (
     ReconcileResult,
     ResolutionCase,
     ResolutionReport,
+    RoleProfile,
     RosterSnapshot,
     RuntimeSnapshot,
     StructuredReviewResult,
@@ -47,6 +51,86 @@ from vectl.orchestration.events import load_event_jsonl
 from vectl.orchestration.recovery import LegacyRunStatus
 from vectl.orchestration.resolver_gateway import GatewayInvocationResult
 from vectl.orchestration.run_store import RunRecord, RunRegistry, generate_run_id
+from vectl.orchestration.runner_registry import RunnerRegistry
+from vectl.orchestration.runners import (
+    RunnerCapabilities,
+    RunnerHandle,
+    RunnerLaunchResult,
+    RunnerPollResult,
+)
+
+
+@pytest.fixture
+def temp_git_repo(tmp_path: Path) -> Path:
+    """Create a temporary git repository with initial commit."""
+
+    repo_root = tmp_path / "repo"
+    repo_root.mkdir()
+
+    subprocess.run(["git", "init"], cwd=repo_root, capture_output=True, check=True)
+    subprocess.run(
+        ["git", "config", "user.email", "test@test.com"],
+        cwd=repo_root,
+        capture_output=True,
+        check=True,
+    )
+    subprocess.run(
+        ["git", "config", "user.name", "Test"],
+        cwd=repo_root,
+        capture_output=True,
+        check=True,
+    )
+
+    (repo_root / "README.md").write_text("# Orch App Test Repository\n")
+    subprocess.run(["git", "add", "README.md"], cwd=repo_root, capture_output=True, check=True)
+    subprocess.run(
+        ["git", "commit", "-m", "Initial commit"],
+        cwd=repo_root,
+        capture_output=True,
+        check=True,
+    )
+    return repo_root
+
+
+class _JsonSuccessRunner:
+    def __init__(self, payload: dict[str, object]) -> None:
+        self._payload = payload
+        self.launched = 0
+        self._handles: set[str] = set()
+
+    def capabilities(self) -> RunnerCapabilities:
+        return RunnerCapabilities(
+            runner_id="resolver-test",
+            supports_resume=False,
+            supports_cancel=True,
+            supports_streaming=False,
+        )
+
+    def launch(self, request, workspace: Path) -> RunnerLaunchResult:
+        self.launched += 1
+        run_id = f"resolver-test-{self.launched}"
+        self._handles.add(run_id)
+        return RunnerLaunchResult(
+            handle=RunnerHandle(
+                runner="resolver-test", run_id=run_id, session_id=request.session_id
+            ),
+            initial_summary=f"resolver-test started in {workspace}",
+        )
+
+    def resume(self, request, workspace: Path) -> RunnerLaunchResult:
+        raise AssertionError(f"resume not expected for {request.step_id} in {workspace}")
+
+    def poll(self, handle: RunnerHandle) -> RunnerPollResult:
+        assert handle.run_id in self._handles
+        self._handles.remove(handle.run_id)
+        return RunnerPollResult(
+            status="success",
+            output_summary=json.dumps(self._payload),
+            session_id=handle.session_id,
+        )
+
+    def cancel(self, handle: RunnerHandle) -> None:
+        self._handles.discard(handle.run_id)
 
 
 def _write_plan(plan_path: Path) -> None:
@@ -209,6 +293,61 @@ def test_resolve_case_returns_operator_required_when_gateway_denies(tmp_path: Pa
     assert report.status == "operator_required"
     assert "authorization denied" in report.summary.lower()
     assert "resolver:authorization-denied" in report.evidence_refs
+
+
+def test_resolve_case_reaches_runtime_runner_through_gateway(
+    temp_git_repo: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.chdir(temp_git_repo)
+    plan_path = temp_git_repo / "plan.yaml"
+    runs_root = temp_git_repo / "runs"
+    _write_plan(plan_path)
+
+    role_profiles: tuple[RoleProfile, ...] = tuple(
+        replace(profile, default_runner="resolver-test")
+        if profile.role_id == "blocked-case-coordinator"
+        else profile
+        for profile in default_role_profiles()
+    )
+    app = build_orchestration_app(
+        AppConfig(
+            plan_path=plan_path,
+            orchestration_config=OrchestrationConfig(
+                plan_path=plan_path,
+                role_profiles=role_profiles,
+            ),
+            run_store_root=runs_root,
+        )
+    )
+
+    runner = _JsonSuccessRunner(
+        {
+            "status": "unblocked",
+            "summary": "resolved by runtime runner through gateway",
+            "evidence_refs": ["resolver://runtime-runner"],
+        }
+    )
+    registry = RunnerRegistry()
+    registry.register("resolver-test", runner)
+    app._runtime._runner_registry = registry
+
+    report = app.resolve_case(
+        ResolutionCase(
+            case_id="case-runtime-runner",
+            case_source="review_failed",
+            reason="Blocked steps require resolution: core.ready",
+            summary="runtime runner integration",
+            core=_core_snapshot(),
+            roster=_roster_snapshot(),
+            runtime=_runtime_snapshot(),
+            blocked_step_ids=("core.ready",),
+        )
+    )
+
+    assert report.status == "unblocked"
+    assert runner.launched == 1
+    assert "resolver://runtime-runner" in report.evidence_refs
+    assert any(ref.startswith("resolver_gateway_invocation=") for ref in report.evidence_refs)
 
 
 def test_build_resolution_case_requires_resolve_decision() -> None:

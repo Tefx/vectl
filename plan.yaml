@@ -73676,7 +73676,7 @@ phases:
       counts by bucket.
   - id: repo_regression_expected_red_cleanup.realign-observability-red-tests-with-implemented-surfaces
     name: Realign observability red tests with implemented surfaces
-    status: pending
+    status: claimed
     description: Audit `tests/repro/test_orch_observability_red.py` for tests that
       now fail because event envelope fields, schemas, or implemented surfaces have
       legitimately advanced. Convert stale red assertions into current behavior checks
@@ -73688,6 +73688,8 @@ phases:
       - Remaining unresolved GAPs:
 
       - Command(s) run:'
+    claimed_by: general
+    claimed_at: '2026-04-10T02:59:21.662841+00:00'
   - id: repo_regression_expected_red_cleanup.realign-config-state-red-tests
     name: Realign config-state red tests to current behavior
     status: claimed

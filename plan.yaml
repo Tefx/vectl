@@ -75503,3 +75503,35 @@ phases:
     - retire_repair_continuity_legacy_surface.rewrite-or-remove-legacy-black-box-tests
     - retire_repair_continuity_legacy_surface.clean-stale-docs-and-spec-references
     agent: integration-verifier-tacit
+  - id: retire_repair_continuity_legacy_surface.gate
+    name: Gate legacy repair continuity retirement
+    status: pending
+    description: 'Final review for retirement of the legacy `repair continuity` surface.
+
+
+      Focus:
+
+      - public-surface honesty
+
+      - no dead CLI residue
+
+      - docs/tests/code all converge on orchestration-plane recovery
+
+      - no hidden dependency on removed driver continuity modules remains'
+    verification: '- retirement decision is coherent across code/docs/tests
+
+      - no stale blocker-class ambiguity remains about supported recovery surfaces'
+    evidence_template: '## Gate Review Report
+
+      - retirement decision consistency:
+
+      - residual ambiguity:
+
+      - gate decision OPEN|BLOCKED'
+    depends_on:
+    - retire_repair_continuity_legacy_surface.lock-modern-recovery-authority-and-retirement-decision
+    - retire_repair_continuity_legacy_surface.remove-or-shim-legacy-cli-surface
+    - retire_repair_continuity_legacy_surface.rewrite-or-remove-legacy-black-box-tests
+    - retire_repair_continuity_legacy_surface.clean-stale-docs-and-spec-references
+    - retire_repair_continuity_legacy_surface.retest-recovery-public-surface
+    agent: gate-reviewer-tacit

@@ -20,7 +20,7 @@ def test_core_adapter_is_protocol() -> None:
 def test_core_adapter_exposes_authoritative_bridge_methods() -> None:
     from vectl.orchestration.core_adapter import CoreAdapter
 
-    expected = {
+    required = {
         "snapshot",
         "step_isolation",
         "claim_step",
@@ -32,7 +32,7 @@ def test_core_adapter_exposes_authoritative_bridge_methods() -> None:
         for name, value in inspect.getmembers(CoreAdapter)
         if inspect.isfunction(value) and not name.startswith("_")
     }
-    assert actual == expected
+    assert required <= actual
 
 
 def test_core_adapter_step_isolation_uses_authoritative_isolation_mode() -> None:

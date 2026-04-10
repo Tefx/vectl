@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import shutil
 import subprocess
+import threading
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -23,6 +24,7 @@ from vectl.orchestration.runners import (
     RunnerPollResult,
     RunnerResumeError,
 )
+from vectl.orchestration import runtime as runtime_module
 from vectl.orchestration.runtime import Runtime
 
 
@@ -374,7 +376,7 @@ def test_cleanup_allows_after_merged_reconcile(
 def test_capture_reconcile_result_updates_tracking_sets(
     temp_git_repo: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    """Test that capture_reconcile_result correctly updates reconcile tracking sets."""
+    """Test reconcile tracking follows the documented runtime state machine."""
     base_dir = temp_git_repo / ".vectl" / "workspaces"
     runtime = Runtime(workspace_root=base_dir)
     base_dir.mkdir(parents=True, exist_ok=True)
@@ -388,9 +390,41 @@ def test_capture_reconcile_result_updates_tracking_sets(
     assert state.execution_state is not None
     state.execution_state.status = "success"
 
-    # Begin reconcile - should add to pending
-    runtime.begin_reconcile(execution_id)
-    assert workspace in runtime.snapshot().pending_reconciles
+    entered_reconcile = threading.Event()
+    finish_reconcile = threading.Event()
+
+    def fake_perform_reconcile(**_: object):
+        entered_reconcile.set()
+        finish_reconcile.wait(timeout=5)
+        return runtime_module.ReconcileResult(
+            execution_id=execution_id,
+            workspace_id=workspace,
+            status="merged",
+            summary="Merged",
+        )
+
+    monkeypatch.setattr(runtime_module, "_perform_reconcile", fake_perform_reconcile)
+
+    reconcile_thread = threading.Thread(
+        target=runtime.begin_reconcile,
+        args=(execution_id,),
+    )
+    reconcile_thread.start()
+    assert entered_reconcile.wait(timeout=5)
+
+    # pending/active are in-flight observability only while reconcile is running
+    in_flight = runtime.snapshot()
+    assert workspace in in_flight.pending_reconciles
+    assert workspace in in_flight.active_reconciles
+
+    finish_reconcile.set()
+    reconcile_thread.join(timeout=5)
+    assert not reconcile_thread.is_alive()
+
+    after_merge = runtime.snapshot()
+    assert workspace not in after_merge.pending_reconciles
+    assert workspace not in after_merge.active_reconciles
+    assert workspace not in after_merge.conflicted_reconciles
 
     # Capture merge_conflict - should move to conflicted set
     runtime.capture_reconcile_result(

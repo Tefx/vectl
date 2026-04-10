@@ -15,6 +15,7 @@ def _build_app(tmp_path: Path):
         "project: recovery-contract\n"
         "phases:\n"
         "  - id: core\n"
+        "    name: Core\n"
         "    steps:\n"
         "      - id: core.ready\n"
         "        name: Ready\n"
@@ -29,6 +30,7 @@ def _build_app(tmp_path: Path):
 def test_recovery_report_semantics_are_shared_across_consumer_surfaces(tmp_path: Path) -> None:
     app = _build_app(tmp_path)
     started = app.run(step_id="core.ready", agent="python-executor")
+    assert started.success is True
     assert started.run_id is not None
 
     run_root = RunRegistry(store_root=tmp_path / "runs").run_artifact_root(started.run_id)
@@ -60,6 +62,7 @@ def test_recovery_report_semantics_are_shared_across_consumer_surfaces(tmp_path:
 def test_recovery_quarantine_preserves_artifacts_when_gate_open_blocked(tmp_path: Path) -> None:
     app = _build_app(tmp_path)
     started = app.run(step_id="core.ready", agent="python-executor")
+    assert started.success is True
     assert started.run_id is not None
 
     run_root = RunRegistry(store_root=tmp_path / "runs").run_artifact_root(started.run_id)

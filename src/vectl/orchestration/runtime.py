@@ -655,6 +655,14 @@ class Runtime:
         Returns:
             ReconcileResult if reconciliation completes immediately, else None.
 
+        State-machine note:
+            ``pending_reconciles`` and ``active_reconciles`` are transient,
+            in-flight observability sets. A synchronous call that runs to
+            completion will usually clear both before callers can snapshot the
+            runtime again. Only unresolved ``merge_conflict`` outcomes persist
+            in ``conflicted_reconciles`` until an explicit later result clears
+            them.
+
         Raises:
             ValueError: If execution is not found or not ready for reconcile.
             ReconcileError: If a concurrent reconcile is already active for the

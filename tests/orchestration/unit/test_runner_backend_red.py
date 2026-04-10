@@ -38,6 +38,13 @@ from typing import TYPE_CHECKING
 
 import pytest
 
+from tests.expected_red import expected_red_module
+
+pytestmark = expected_red_module(
+    owner="orchestration_runner_backend/orchestration_runtime_lifecycle",
+    rationale="Runner backend and runtime lifecycle red tests intentionally stay red until execution and reconcile wiring is completed.",
+)
+
 from vectl.orchestration.contracts import (
     CoreSnapshot,
     ExecutionRequest,

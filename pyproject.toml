@@ -56,6 +56,7 @@ addopts = "-v --tb=short"
 markers = [
     "playwright: marks tests that require Playwright browser (deselect with '-m \"not playwright\"')",
     "network: marks tests that require network (for CDN resources)",
+    "expected_red(owner, rationale, lifecycle): intentional red tests that future phases must flip, retire, or explicitly preserve with rationale",
     # Live smoke test markers (from DRIVER-LIVE-SMOKE-POLICY.md)
     "live_runner: marks tests that are part of the live smoke test suite",
     "codex_live: marks tests that use the codex runner in live smoke",

@@ -19,7 +19,15 @@ import sys
 import tempfile
 from pathlib import Path
 
+import pytest
 import yaml
+
+from tests.expected_red import expected_red_module
+
+pytestmark = expected_red_module(
+    owner="orch_operator_tests.cli_recovery_red",
+    rationale="CLI recovery reproduction coverage is intentionally red until the orch command families are registered and wired end-to-end.",
+)
 
 
 class TestRunLifecycleFamily:

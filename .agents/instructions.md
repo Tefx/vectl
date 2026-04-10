@@ -50,8 +50,10 @@ directly as a workaround. Use `vectl guide stuck` for troubleshooting.
 ### For Architects / Planners
 - **Design Mode**: Run `vectl_guide` (CLI fallback: `vectl guide --on planning`) to learn the Architect Protocol.
 - **Ambiguity = Failure**: Workers will hallucinate if steps are vague.
+- **Phase-local vs repo-wide evidence**: bucket/phase verification proves local remediation only; it does **not** by itself prove repo-wide readiness.
+- **Explicit final-gate policy required**: any large remediation, freeze, or final gate that claims repository readiness must either name the repo-wide regression command(s) to run or explicitly encode the exception policy that allows repo-wide pass to be deferred/not required.
+- **Expected-red lifecycle must be governed**: if expected-red, xfail, skip, or advisory debt is tolerated at a final gate, the gate/evidence text must say why it is non-blocking, who owns it, and what lifecycle/disposition keeps it from being mistaken for an ungoverned regression.
 - **Constraint Tools**:
   - `--evidence-template`: Force workers to provide specific proof (e.g., "Paste logs here").
   - `--refs`: Pin specific files (e.g., "src/auth.py") to the worker's context.
 <!-- VECTL:AGENTS:END -->
-

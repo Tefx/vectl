@@ -245,11 +245,22 @@ _DEFAULT_ROLE_PROFILES: tuple[RoleProfile, ...] = (
         output_contract="structured_review_result",
         default_runner="codex",
     ),
-    # Resolver family (§11.5): main_worktree, vectl_facade_only, reuse_forbidden
-    # After resolver cleanup: blocked-case-coordinator is the single default
-    # blocked-case resolver entry point (conflict-specialized taxonomy removed).
+    # Resolver family (§11.5): main_worktree, vectl_facade_only, reuse_forbidden.
+    # ADR-orchestration-role-profile-config-and-resolver-cleanup.md freezes the
+    # canonical default resolver agents to blocked-case-coordinator and
+    # blocked-case-coordinator-tacit; legacy conflict/judge taxonomy is removed.
     RoleProfile(
         role_id="blocked-case-coordinator",
+        prompt_family="resolver",
+        template_id="resolver_blocked_case",
+        execution_context="main_worktree",
+        mutation_policy="vectl_facade_only",
+        session_policy="reuse_forbidden",
+        output_contract="resolution_report",
+        default_runner="codex",
+    ),
+    RoleProfile(
+        role_id="blocked-case-coordinator-tacit",
         prompt_family="resolver",
         template_id="resolver_blocked_case",
         execution_context="main_worktree",
@@ -439,7 +450,8 @@ _RESOLVER_SYSTEM_PROMPT = (
     "You are the Blocked-Case Coordinator. You operate from the main worktree "
     "and may use approved vectl tool surfaces only. You must not claim new steps. "
     "Produce a ResolutionReport (status, summary, evidence_refs, operator_message). "
-    "You are the single default entry point for all blocked-case sources — "
+    "You are part of the canonical blocked-case coordinator resolver family used "
+    "for all blocked-case sources — "
     "do not introduce conflict-specialized or judge-specific resolver sub-taxonomy. "
     "Escalate to operator (operator_required) when automatic closure is unsafe."
 )

@@ -156,11 +156,14 @@ class TestConfigRoleProfileRegistry:
         planner = registry.get("vectl-planner")
         reviewer = registry.get("gate-reviewer")
         resolver = registry.get("blocked-case-coordinator")
+        tacit_resolver = registry.get("blocked-case-coordinator-tacit")
 
         assert coder.execution_context == "linked_worktree"
         assert planner.execution_context == "main_worktree"
         assert reviewer.execution_context == "main_worktree"
         assert resolver.execution_context == "main_worktree"
+        assert tacit_resolver.execution_context == "main_worktree"
+        assert tacit_resolver.prompt_family == "resolver"
 
     def test_has_role_returns_true_for_known_role(self) -> None:
         """has_role() must return True for known roles."""
@@ -169,6 +172,7 @@ class TestConfigRoleProfileRegistry:
         assert registry.has_role("vectl-planner") is True
         assert registry.has_role("gate-reviewer") is True
         assert registry.has_role("blocked-case-coordinator") is True
+        assert registry.has_role("blocked-case-coordinator-tacit") is True
 
     def test_has_role_returns_false_for_unknown_role(self) -> None:
         """has_role() must return False for unknown roles.
@@ -216,9 +220,34 @@ class TestConfigRoleProfileRegistry:
         Authority: §12.2 'Typical examples [main_worktree roles]: resolver-family'
         """
         registry = ConfigRoleProfileRegistry()
-        profile = registry.get("blocked-case-coordinator")
-        assert profile.execution_context == "main_worktree"
-        assert profile.mutation_policy == "vectl_facade_only"
+        for role_id in ("blocked-case-coordinator", "blocked-case-coordinator-tacit"):
+            profile = registry.get(role_id)
+            assert profile.execution_context == "main_worktree"
+            assert profile.mutation_policy == "vectl_facade_only"
+
+    def test_default_resolver_profiles_preserve_cleaned_taxonomy(self) -> None:
+        """Default resolver profiles stay on blocked-case coordinator taxonomy only.
+
+        Authority: ADR-orchestration-role-profile-config-and-resolver-cleanup.md §Decision
+        """
+        registry = ConfigRoleProfileRegistry()
+        resolver_role_ids = {
+            role_id
+            for role_id in (
+                "blocked-case-coordinator",
+                "blocked-case-coordinator-tacit",
+            )
+            if registry.has_role(role_id)
+        }
+
+        assert resolver_role_ids == {
+            "blocked-case-coordinator",
+            "blocked-case-coordinator-tacit",
+        }
+        combined_surface = " ".join(sorted(resolver_role_ids)).lower()
+        assert "conflict" not in combined_surface
+        assert "judge" not in combined_surface
+        assert "judgment" not in combined_surface
 
     def test_planner_family_roles_require_main_worktree(self) -> None:
         """Planner-family roles must require main_worktree execution context.

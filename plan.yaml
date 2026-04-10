@@ -76815,6 +76815,88 @@ phases:
     depends_on:
     - resolver_cleanup_core.migrate-role-profiles-to-config
     agent: python-senior-tacit
+  - id: resolver_cleanup_core.remove-legacy-surfaces-and-dead-metadata
+    name: Remove legacy resolver, judge, fallback, and dead metadata surfaces
+    status: pending
+    description: 'Remove obsolete concepts from current code and tests after the new
+      resolver path is wired.
+
+
+      Touch paths:
+
+      - src/vectl/orchestration/dispatch_policy.py
+
+      - src/vectl/orchestration/contracts.py
+
+      - src/vectl/orchestration/control.py
+
+      - src/vectl/orchestration/judgments.py or its replacement target
+
+      - src/vectl/orchestration/__init__.py
+
+      - tests/orchestration/unit/*
+
+      - tests/live_smoke/*
+
+      - tests/conftest.py
+
+
+      Required removals:
+
+      - `conflict-resolver`
+
+      - `resolver_conflict`
+
+      - `judge` / `judgment` / `judgments`
+
+      - `template_id`
+
+      - `fallback_role`
+
+
+      Also simplify adjacent dead orchestration metadata where no live consumer remains
+      in this cleanup scope, including duplicated public interface copies and stale
+      control-surface split constants.
+
+
+      ## Gate Preview (what the gate WILL reject)
+
+      1. Any active current-surface use of the deleted legacy names
+
+      2. Role selection that still depends on roster.available_agents ordering
+
+      3. Any planner contract that still returns proposal-only plan output instead
+      of direct vectl-facade mutation semantics'
+    verification: '- Current code/tests/docs no longer expose the deleted legacy names
+      as active concepts.
+
+      - Control no longer selects dispatch role from roster capacity ordering.
+
+      - Targeted regression tests and grep-based residue checks pass.'
+    evidence_template: '## refs Read Confirmation (MANDATORY)
+
+      For each ref in this step:
+
+      - <filename> — key passage or "NOT READ: <reason>"
+
+
+      If no refs were provided, state: "No refs for this step."
+
+
+      ## Cleanup Evidence
+
+      - Legacy concepts removed:
+
+      - Residue grep results:
+
+      - Control/dispatch simplifications applied:
+
+      - Tests run:
+
+      '
+    depends_on:
+    - resolver_cleanup_core.wire-default-blocked-case-resolver
+    agent: python-senior-tacit
 - id: resolver_cleanup_finalization
   name: 'Resolver Cleanup: Finalization, Doc Sync, and Deep Review'
   status: locked

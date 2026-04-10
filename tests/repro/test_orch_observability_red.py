@@ -34,6 +34,21 @@ pytestmark = expected_red_module(
 
 # Note: pytest is not required - this file runs standalone
 
+
+def _make_control_dispatch_envelope(*, seq: int | None = None, prev_hash: str | None = None):
+    from vectl.orchestration.events import OrchestrationEventEnvelope
+
+    return OrchestrationEventEnvelope(
+        kind="control_dispatch",
+        timestamp=datetime.now(timezone.utc),
+        step_id="test.step",
+        agent="test-agent",
+        payload={"step_id": "test.step", "agent": "test-agent"},
+        seq=seq,
+        prev_hash=prev_hash,
+    )
+
+
 # ---------------------------------------------------------------------
 # Event Envelope Integrity Tests (§9.3)
 # ---------------------------------------------------------------------
@@ -48,22 +63,10 @@ class TestEventEnvelopeIntegrity:
         Spec: §9.3 - Each transcript.jsonl entry must include seq: int
         GAP: events.jsonl must have same integrity requirements.
         """
-        from vectl.orchestration.events import OrchestrationEventEnvelope
+        envelope = _make_control_dispatch_envelope()
 
-        # Create a minimal event envelope
-        envelope = OrchestrationEventEnvelope(
-            kind="control_dispatch",
-            timestamp=datetime.now(timezone.utc),
-            step_id="test.step",
-        )
-
-        # EXPECTED-RED: envelope should have seq field
-        # Current implementation does NOT have seq field
-        if not hasattr(envelope, "seq"):
-            raise AssertionError(
-                "GAP [schema]: OrchestrationEventEnvelope missing required 'seq' field\n"
-                "Per §9.3: Each event must have seq:int for append-order integrity"
-            )
+        assert hasattr(envelope, "seq")
+        assert envelope.seq is None
 
     def test_event_envelope_has_prev_hash_chain(self):
         """Verify event envelope includes prev_hash for chain integrity.
@@ -71,20 +74,10 @@ class TestEventEnvelopeIntegrity:
         Spec: §9.3 - Each entry must include prev_hash: str | null
         GAP: events.jsonl must support hash chain for verification.
         """
-        from vectl.orchestration.events import OrchestrationEventEnvelope
+        envelope = _make_control_dispatch_envelope()
 
-        envelope = OrchestrationEventEnvelope(
-            kind="control_dispatch",
-            timestamp=datetime.now(timezone.utc),
-            step_id="test.step",
-        )
-
-        # EXPECTED-RED: envelope should have prev_hash field
-        if not hasattr(envelope, "prev_hash"):
-            raise AssertionError(
-                "GAP [schema]: OrchestrationEventEnvelope missing required 'prev_hash' field\n"
-                "Per §9.3: Each event must have prev_hash:str|null for integrity chain"
-            )
+        assert hasattr(envelope, "prev_hash")
+        assert envelope.prev_hash is None
 
     def test_event_envelope_has_entry_hash(self):
         """Verify event envelope includes entry_hash for integrity verification.
@@ -92,20 +85,11 @@ class TestEventEnvelopeIntegrity:
         Spec: §9.3 - Each entry must include entry_hash: str
         GAP: events.jsonl must have SHA-256 hash of canonical JSON payload.
         """
-        from vectl.orchestration.events import OrchestrationEventEnvelope
+        envelope = _make_control_dispatch_envelope()
 
-        envelope = OrchestrationEventEnvelope(
-            kind="control_dispatch",
-            timestamp=datetime.now(timezone.utc),
-            step_id="test.step",
-        )
-
-        # EXPECTED-RED: envelope should have entry_hash field
-        if not hasattr(envelope, "entry_hash"):
-            raise AssertionError(
-                "GAP [schema]: OrchestrationEventEnvelope missing required 'entry_hash' field\n"
-                "Per §9.3: Each event must have entry_hash:str for integrity verification"
-            )
+        assert hasattr(envelope, "entry_hash")
+        assert isinstance(envelope.entry_hash, str)
+        assert len(envelope.entry_hash) == 64
 
     def test_event_envelope_hash_computation_is_sha256(self):
         """Verify event entry_hash is SHA-256 over canonical JSON serialization.
@@ -113,37 +97,17 @@ class TestEventEnvelopeIntegrity:
         Spec: §9.3 - Hash algorithm is SHA-256 over canonical JSON.
         GAP: Event envelope must compute hash correctly.
         """
-        from vectl.orchestration.events import OrchestrationEventEnvelope
-
-        # If we have prev_hash and entry_hash fields, verify hash algorithm
-        envelope = OrchestrationEventEnvelope(
-            kind="control_dispatch",
-            timestamp=datetime.now(timezone.utc),
-            step_id="test.step",
+        envelope = _make_control_dispatch_envelope()
+        canonical = json.dumps(
+            envelope._hash_payload(),
+            sort_keys=True,
+            separators=(",", ":"),
+            ensure_ascii=False,
         )
 
-        # EXPECTED-RED: Need compute_entry_hash method
-        # The method doesn't exist yet - this test documents the gap
-        compute_entry_hash = getattr(envelope, "compute_entry_hash", None)
-        if compute_entry_hash is None:
-            raise AssertionError(
-                "GAP [implementation]: OrchestrationEventEnvelope missing "
-                "'compute_entry_hash' method\n"
-                "Per §9.3: Must compute SHA-256 over canonical JSON serialization"
-            )
-
-        try:
-            hash_result = compute_entry_hash()
-            # Should be hex string of SHA-256
-            if not isinstance(hash_result, str) or len(hash_result) != 64:
-                raise AssertionError(
-                    f"GAP [hash]: entry_hash should be 64-char hex SHA-256, got: {hash_result}"
-                )
-        except NotImplementedError:
-            raise AssertionError(
-                "GAP [implementation]: compute_entry_hash() not implemented\n"
-                "Per §9.3: Must compute SHA-256 over canonical JSON serialization"
-            )
+        hash_result = envelope.compute_entry_hash()
+        assert hash_result == hashlib.sha256(canonical.encode("utf-8")).hexdigest()
+        assert envelope.entry_hash == hash_result
 
     def test_event_seq_ordering_is_monotonic(self):
         """Verify event_seq ordering is strict and monotonic.
@@ -336,7 +300,7 @@ class TestEventRegistryPayloadValidation:
                 kind="control_dispatch",
                 timestamp=datetime.now(timezone.utc),
                 step_id=None,  # May be None for run-level events
-                payload=(),  # Empty payload - should this be validated?
+                payload={},  # Empty payload - should this be validated?
             )
             # If we get here, it means payload validation is not enforced
             # which is expected-red
@@ -371,29 +335,38 @@ class TestProjectionReplay:
 
         Spec: §9.2 - state/latest.json contains canonical full projected state.
         """
-        from vectl.orchestration.projections import ProjectionReplay, RunStateView
+        from vectl.orchestration.projections import FileProjectionReplay, RunStateView
 
-        # Create mock implementation to test interface
-        class MockProjection(ProjectionReplay):
-            def replay(self, from_event_id=None):
-                raise NotImplementedError("GAP: replay not implemented")
-
-            def latest_state(self):
-                raise NotImplementedError("GAP: latest_state not implemented")
-
-        mock = MockProjection()
-
-        # EXPECTED-RED: Calling replay should produce RunStateView
-        try:
-            result = mock.replay()
-            # Verify result is tuple of RunStateView
-            if not all(isinstance(r, RunStateView) for r in result):
-                raise AssertionError("replay() must return tuple of RunStateView")
-        except NotImplementedError:
-            raise AssertionError(
-                "GAP [implementation]: ProjectionReplay.replay() not implemented\n"
-                "Per §9.2: Must replay events into RunStateView"
+        with tempfile.TemporaryDirectory() as tmpdir:
+            replay = FileProjectionReplay(
+                events=(
+                    {
+                        "seq": 1,
+                        "kind": "runtime_start",
+                        "timestamp": 100.0,
+                        "step_id": "test.step",
+                        "agent": "test-agent",
+                        "run_id": "run-123",
+                        "task_id": "task-1",
+                    },
+                    {
+                        "seq": 2,
+                        "kind": "runtime_collect",
+                        "timestamp": 105.0,
+                        "step_id": "test.step",
+                        "run_id": "run-123",
+                        "task_id": "task-1",
+                        "status": "success",
+                    },
+                ),
+                artifact_root=Path(tmpdir),
             )
+
+            result = replay.replay()
+            assert all(isinstance(r, RunStateView) for r in result)
+            latest_payload = json.loads((Path(tmpdir) / "state" / "latest.json").read_text())
+            assert latest_payload["run_id"] == "run-123"
+            assert latest_payload["status"] == "success"
 
     def test_state_latest_json_schema(self):
         """Verify state/latest.json has required schema.
@@ -505,43 +478,22 @@ class TestRunArtifactSchemas:
         Spec: §9.2 - final.json must have version, run_id, status,
         started_at, finished_at, summary, halt_reason, artifacts.
         """
-        from vectl.orchestration.projections import RunStateView
+        from vectl.orchestration.run_store import RunRecord
 
-        # EXPECTED-RED: Need FinalManifest or similar type
-        # final.json is terminal state - current types don't capture it
+        record = RunRecord(
+            run_id="01JX...",
+            step_id="test.step",
+            status="success",
+            created_at=1234567890.0,
+        )
 
-        # The final.json schema is:
-        # version, run_id, status, started_at, finished_at, summary,
-        # halt_reason (optional object with code/detail), artifacts
-
-        # Check if we have a type for this
-        try:
-            from vectl.orchestration.run_store import RunRecord
-
-            record = RunRecord(
-                run_id="01JX...",
-                step_id="test.step",
-                status="success",
-                created_at=1234567890.0,
-            )
-
-            # EXPECTED-RED: RunRecord doesn't have final.json fields
-            missing = []
-            if not hasattr(record, "summary"):
-                missing.append("summary")
-            if not hasattr(record, "halt_reason"):
-                missing.append("halt_reason")
-            if not hasattr(record, "artifacts"):
-                missing.append("artifacts")
-
-            if missing:
-                raise AssertionError(
-                    f"GAP [schema]: RunRecord missing final.json fields: {missing}\n"
-                    "Per §9.2: final.json must have summary, halt_reason, artifacts"
-                )
-        except ImportError:
-            raise AssertionError(
-                "GAP [import]: RunRecord type missing\nPer §9.2: Need type for final.json schema"
+        missing = [
+            field for field in ("summary", "halt_reason", "artifacts") if not hasattr(record, field)
+        ]
+        if missing:
+            pytest.xfail(
+                "EXPECTED-RED [schema debt]: final.json terminal manifest fields remain "
+                f"unmodeled on RunRecord: {missing}"
             )
 
     def test_final_json_halt_reason_schema(self):
@@ -575,14 +527,17 @@ class TestStepArtifactSchemas:
 
         Spec: §9.1 - step_key is percent-encoded, case-preserving, lossless decode.
         """
-        # EXPECTED-RED: Need normalize_step_key() function
         from vectl.orchestration import events
 
-        if not hasattr(events, "normalize_step_key"):
-            raise AssertionError(
-                "GAP [implementation]: Missing normalize_step_key function\n"
-                "Per §9.1: Must percent-encode step_id to filesystem-safe form"
+        normalize_step_key = getattr(events, "normalize_step_key", None)
+        if normalize_step_key is None:
+            pytest.xfail(
+                "EXPECTED-RED [path debt]: normalize_step_key is still missing for "
+                "filesystem-safe step artifact paths"
             )
+        assert normalize_step_key is not None
+        normalized = normalize_step_key("build/core")
+        assert normalized == "build%2Fcore"
 
     def test_step_key_preserves_case(self):
         """Verify step_key normalization preserves case.
@@ -597,9 +552,16 @@ class TestStepArtifactSchemas:
         ]
 
         for step_id, expected_preserved in test_cases:
-            # Would call normalize_step_key(step_id) here
-            # EXPECTED-RED: function doesn't exist
-            pass
+            from vectl.orchestration import events
+
+            normalize_step_key = getattr(events, "normalize_step_key", None)
+            if normalize_step_key is None:
+                pytest.xfail(
+                    "EXPECTED-RED [path debt]: normalize_step_key is still missing for "
+                    "case-preserving step artifact paths"
+                )
+            assert normalize_step_key is not None
+            assert normalize_step_key(step_id) == expected_preserved
 
     def test_step_key_percent_encodes_special_chars(self):
         """Verify step_key percent-encodes filesystem-unsafe characters.
@@ -614,23 +576,32 @@ class TestStepArtifactSchemas:
         ]
 
         for step_id, expected_key in test_cases:
-            # Would call normalize_step_key(step_id) here
-            # EXPECTED-RED: function doesn't exist
-            pass
+            from vectl.orchestration import events
+
+            normalize_step_key = getattr(events, "normalize_step_key", None)
+            if normalize_step_key is None:
+                pytest.xfail(
+                    "EXPECTED-RED [path debt]: normalize_step_key is still missing for "
+                    "percent-encoded step artifact paths"
+                )
+            assert normalize_step_key is not None
+            assert normalize_step_key(step_id) == expected_key
 
     def test_step_key_is_reversible(self):
         """Verify step_key normalization is lossless.
 
         Spec: §9.1 - Decoding must be lossless.
         """
-        # EXPECTED-RED: Need denormalize_step_key() function
         from vectl.orchestration import events
 
-        if not hasattr(events, "denormalize_step_key"):
-            raise AssertionError(
-                "GAP [implementation]: Missing denormalize_step_key function\n"
-                "Per §9.1: Must decode step_key back to original step_id"
+        denormalize_step_key = getattr(events, "denormalize_step_key", None)
+        if denormalize_step_key is None:
+            pytest.xfail(
+                "EXPECTED-RED [path debt]: denormalize_step_key is still missing for "
+                "lossless step artifact decoding"
             )
+        assert denormalize_step_key is not None
+        assert denormalize_step_key("build%2Fcore") == "build/core"
 
     def test_request_json_schema(self):
         """Verify request.json stores execution request.
@@ -774,18 +745,33 @@ class TestRunRegistrySchemas:
 
         Spec: §6.4 - --latest chooses most recently updated non-terminal run.
         """
-        from vectl.orchestration.run_store import latest_run
+        from vectl.orchestration.run_store import RunRecord, RunRegistry, latest_run
 
-        # EXPECTED-RED: latest_run() should be implemented
-        try:
-            result = latest_run("test.step")
-            raise AssertionError(
-                "GAP [wiring]: latest_run returned result without implementation\n"
-                "Per §6.4: latest_run must use run store boundary"
+        with tempfile.TemporaryDirectory() as tmpdir:
+            registry = RunRegistry(store_root=tmpdir)
+            registry.save(
+                RunRecord(
+                    run_id="run-success",
+                    step_id="test.step",
+                    status="success",
+                    created_at=10.0,
+                    updated_at=30.0,
+                )
             )
-        except NotImplementedError as e:
-            # Expected - function is a stub
-            pass
+            registry.save(
+                RunRecord(
+                    run_id="run-running",
+                    step_id="test.step",
+                    status="running",
+                    created_at=20.0,
+                    updated_at=20.0,
+                )
+            )
+
+            result = latest_run("test.step", registry=registry)
+            assert result is not None
+            assert result.run_id == "run-running"
+            assert result.status == "running"
 
 
 # ---------------------------------------------------------------------
@@ -883,44 +869,15 @@ class TestToolRegistryValidation:
         but §8.4 requires tool-level registry (core.status, core.show, etc.)
         This test documents the gap.
         """
-        # EXPECTED-RED: Current CANONICAL_TOOL_FAMILIES is family-level only
-        # §8.4 requires: {core: [status, show, claim, complete, defer]}
-        # Current has: ["vectl.core", ...] with no tool-level listing
+        from vectl.orchestration.tool_registry import ToolFamilyRegistry
 
-        # The validate_allowlist function exists but only checks family membership
-        try:
-            from vectl.orchestration.tool_registry import (
-                validate_allowlist,
-                CANONICAL_TOOL_FAMILIES,
-            )
+        registry = ToolFamilyRegistry()
+        metadata = registry.get("core")
 
-            # Check if validate_allowlist works at tool level
-            # Per §8.4, it should validate: "core.status" against {core: [...]}
-            # But current implementation only validates family membership
-
-            # This test documents the gap: tool-level registry is missing
-            # Expected: CANONICAL_TOOL_REGISTRY with nested structure
-            # Found: CANONICAL_TOOL_FAMILIES with flat family names
-
-            # Create a test to show the gap
-            if "vectl.core" in CANONICAL_TOOL_FAMILIES:
-                # Family exists, but there's no tool-level listing
-                pass  # This is the expected-red path
-
-            # The real gap: need CANONICAL_TOOL_REGISTRY with structure
-            # { "core": ["status", "show", "claim", "complete", "defer"], ...}
-            # But we only have CANONICAL_TOOL_FAMILIES = ("vectl.core", ...)
-
-            # Document the gap explicitly
-            raise AssertionError(
-                "GAP [registry]: Missing tool-level canonical registry\n"
-                "Per §8.4: Need CANONICAL_TOOL_REGISTRY with structure:\n"
-                "  {core: [status, show, claim, complete, defer],\n"
-                "   orchestration: [read_events, read_state, read_case]}\n"
-                "Found: CANONICAL_TOOL_FAMILIES is family-level only"
-            )
-        except ImportError:
-            raise AssertionError("GAP [import]: tool_registry module not found")
+        assert metadata is not None
+        assert {"status", "show", "claim", "complete", "defer"}.issubset(
+            set(metadata.allowed_operations)
+        )
 
     def test_tool_registry_orchestration_family_tools(self):
         """Verify orchestration family has required tools.
@@ -929,13 +886,13 @@ class TestToolRegistryValidation:
 
         NOTE: See test_tool_registry_core_family_tools for gap documentation.
         """
-        # Same gap as core family - expected-red
-        raise AssertionError(
-            "GAP [registry]: Missing tool-level canonical registry\n"
-            "Per §8.4: Need CANONICAL_TOOL_REGISTRY with orchestration tools:\n"
-            "  orchestration: [read_events, read_state, read_case]\n"
-            "Found: CANONICAL_TOOL_FAMILIES is family-level only"
-        )
+        from vectl.orchestration.tool_registry import ToolFamilyRegistry
+
+        registry = ToolFamilyRegistry()
+        metadata = registry.get("orchestration")
+
+        assert metadata is not None
+        assert {"read_events", "read_state", "read_case"}.issubset(set(metadata.allowed_operations))
 
     def test_tool_allowlist_validation(self):
         """Verify tool allowlist validates against registry.

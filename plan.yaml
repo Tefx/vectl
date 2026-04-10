@@ -77148,3 +77148,45 @@ phases:
     depends_on:
     - resolver_cleanup_finalization.full-regression
     agent: spec-verifier-tacit
+  - id: resolver_cleanup_finalization.architecture-review
+    name: Review architecture cleanliness after cleanup
+    status: pending
+    description: 'Architecture-level review after implementation and doc sync.
+
+
+      Review focus:
+
+      - whether any extra semantic layers still remain
+
+      - whether resolver/control/roster/runtime boundaries are clean
+
+      - whether config/plan/core ownership lines are crisp
+
+      - whether removed concepts could re-enter through surviving dead metadata or
+      duplicated abstractions'
+    verification: '- Architecture cleanliness memo delivered.
+
+      - Remaining MUST-fix drift, if any, is explicit before final gate.'
+    evidence_template: '## refs Read Confirmation (MANDATORY)
+
+      For each ref in this step:
+
+      - <filename> — key passage or "NOT READ: <reason>"
+
+
+      If no refs were provided, state: "No refs for this step."
+
+
+      ## Architecture Review Memo
+
+      - Boundary findings:
+
+      - Remaining drift risks:
+
+      - Clean end-state verdict:
+
+      '
+    depends_on:
+    - resolver_cleanup_finalization.doc-sync
+    - resolver_cleanup_finalization.spec-conformance
+    agent: software-architect-tacit

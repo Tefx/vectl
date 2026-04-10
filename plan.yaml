@@ -73521,3 +73521,11 @@ phases:
 
       - Preserved red-suite strictness (remaining xfails retained for intentionally
       deferred gaps).'
+- id: repo_regression_triage
+  name: Repo-Wide Regression Triage
+  status: pending
+  gate: All currently failing full-suite tests are classified into stale expected-red,
+    stale contract lock, true behavior drift, or environment/surface mismatch with
+    explicit disposition and fix target.
+  depends_on:
+  - orchestration_upper_layer_review

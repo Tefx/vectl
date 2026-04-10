@@ -73579,7 +73579,7 @@ phases:
   steps:
   - id: repo_regression_full_suite_gate.run-full-pytest-regression-gate
     name: Run full pytest regression gate
-    status: claimed
+    status: pending
     description: Run `uv run pytest -q` after all remediation work. Classify any remaining
       non-passing tests as either true blockers or explicitly governed expected-red/skip
       cases; raw unmanaged failures are not allowed.
@@ -73590,8 +73590,6 @@ phases:
       - Summary counts:
 
       - Remaining non-passing tests and dispositions:'
-    claimed_by: general
-    claimed_at: '2026-04-10T03:34:03.576729+00:00'
   - id: repo_regression_full_suite_gate.decide-static-guard-scope-and-enforcement
     name: Decide static guard scope and enforcement
     status: pending

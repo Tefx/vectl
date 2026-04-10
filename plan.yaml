@@ -77989,7 +77989,7 @@ phases:
     agent: python-senior-tacit
   - id: orch_plane_live_authority.dynamic-tool-mediation
     name: Make tool mediation dynamic
-    status: pending
+    status: claimed
     description: Replace largely static resolver-gateway allowlist behavior with dynamic
       tool mediation derived from the live dispatch/runtime authority path.
     verification: Tests prove allowed tools come from runtime-mediated grants, and
@@ -78011,6 +78011,8 @@ phases:
     depends_on:
     - orch_plane_live_authority.contract-lock
     agent: python-senior-tacit
+    claimed_by: python-senior-tacit
+    claimed_at: '2026-04-10T19:16:36.089723+00:00'
   - id: orch_plane_live_authority.prompt-registry-runtime
     name: Unhardcode prompt registry runtime mapping
     status: done

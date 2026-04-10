@@ -73585,3 +73585,19 @@ phases:
 
       - Command: `uv run pytest tests/orchestration/unit/test_config_state_red.py
       -q` -> <outcome>'
+  - id: repo_regression_expected_red_cleanup.realign-observability-red-tests-with-implemented-surfaces
+    name: Realign observability red tests with implemented surfaces
+    status: pending
+    description: Audit `tests/repro/test_orch_observability_red.py` for tests that
+      now fail because event envelope fields, schemas, or implemented surfaces have
+      legitimately advanced. Convert stale red assertions into current behavior checks
+      or explicit expected-red markers tied to remaining debt.
+    verification: Observable stale-red failures are removed from the repro suite;
+      only genuine unresolved gaps remain and are labeled intentionally.
+    evidence_template: '- Tests updated vs retained as intentional red:
+
+      - Remaining unresolved GAPs:
+
+      - Command(s) run:'
+    depends_on:
+    - repo_regression_expected_red_cleanup.realign-config-state-red-tests

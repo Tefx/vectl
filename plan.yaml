@@ -77911,7 +77911,7 @@ phases:
       \nCommit evidence:\n- Worker commit: `1d86dd7`\n- Cherry-picked on main: `7cf11c2`"
   - id: orch_plane_live_authority.dispatch-live-path
     name: Enforce ordinary dispatch live path
-    status: claimed
+    status: done
     description: Make ordinary dispatch traverse the same mandatory live authority
       path as resolver execution, using real runner/gateway/runtime seams rather than
       an ordinary-path shortcut.
@@ -77937,6 +77937,32 @@ phases:
     agent: python-senior-tacit
     claimed_by: python-senior-tacit
     claimed_at: '2026-04-10T19:05:49.511872+00:00'
+    done_at: '2026-04-10T19:12:34.154172+00:00'
+    evidence: "## refs Read Confirmation (MANDATORY)\n- tools/vectl/README.md — NOT\
+      \ READ: attempted path in isolated worktree did not exist.\n- docs/ORCHESTRATION-PLANE-LIVE-AUTHORITY-CONTRACT-LOCK.md\
+      \ — key invariant used: dispatch must re-read authoritative step and render\
+      \ via `PromptRegistry.render(spec)`; fail-closed if checkpoints missing.\n-\
+      \ docs/ORCHESTRATION-PLANE-ORCH-APP-ROUTING.md — key invariant used: `DispatchSpec`\
+      \ must be rendered by `PromptRegistry` before conversion to runtime execution\
+      \ input.\n\n## Implementation Evidence\n- Files changed:\n  - `src/vectl/orchestration/dispatch_policy.py`\n\
+      \  - `src/vectl/orch_app.py`\n  - `tests/orchestration/unit/test_orch_app.py`\n\
+      - Removed shortcut/bypass path:\n  - Added `DispatchCoordinator.render_prompt_bundle(...)`\
+      \ so ordinary dispatch must validate role/profile seam and render through `PromptRegistry`\
+      \ before runtime launch.\n  - `_start_runtime_execution(...)` now requires rendered\
+      \ prompt authority and injects `prompt_bundle_sha256=...` work ref into `ExecutionRequest`,\
+      \ eliminating prior launch-without-render checkpoint bypass.\n  - Added fail-closed\
+      \ `dispatch authority violation` when prompt/role authority seam cannot be satisfied.\n\
+      - Added/updated tests:\n  - `test_start_runtime_execution_renders_prompt_bundle_before_runtime_launch`\n\
+      \  - `test_start_runtime_execution_fails_closed_when_prompt_registry_lacks_role_support`\n\
+      \  - existing context-drift guard remains in place as sibling invariant.\n\n\
+      Verification:\n- `uv run python -m pytest tests/orchestration/unit/test_orch_app.py\
+      \ -k \"prompt_bundle or context_drift or prompt_registry_lacks_role_support\"\
+      \ -v` -> `3 passed, 52 deselected`\n- `uv run python -m pytest tests/orchestration/unit/test_dispatch_policy.py\
+      \ -k \"prompt_rendering_is_centralized\" -v` -> `1 passed, 48 deselected`\n\
+      - `uv run ruff check src/vectl/orch_app.py src/vectl/orchestration/dispatch_policy.py\
+      \ tests/orchestration/unit/test_orch_app.py` -> `All checks passed!`\n\nCommit\
+      \ evidence:\n- Worker commit: `7c7d7650a3154528d27300390e9d569cf159eac2`\n-\
+      \ Cherry-picked on main: `661d8fb`"
   - id: orch_plane_live_authority.roster-decision-path
     name: Bring roster into dispatch authority
     status: pending

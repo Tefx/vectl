@@ -75535,3 +75535,11 @@ phases:
     - retire_repair_continuity_legacy_surface.clean-stale-docs-and-spec-references
     - retire_repair_continuity_legacy_surface.retest-recovery-public-surface
     agent: gate-reviewer-tacit
+- id: live_smoke_real_runner_validation
+  name: Live Smoke Real Runner Validation and Remediation
+  status: locked
+  gate: Real live-runner smoke coverage has been executed with explicit opt-in, any
+    discovered issues are either fixed and independently retested or explicitly dispositioned,
+    and evidence distinguishes environment/setup failures from genuine product defects.
+  depends_on:
+  - retire_repair_continuity_legacy_surface

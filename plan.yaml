@@ -78520,7 +78520,7 @@ phases:
       \nCommit evidence:\n- Worker commit: `78c75a5`\n- Cherry-picked on main: `de87a09`"
   - id: orch_plane_finalization.test-expectation-drift
     name: Fix test expectation drift
-    status: pending
+    status: claimed
     description: 'Lower-priority hygiene: reconcile pre-existing test expectation
       drift where asserted exception types/messages no longer match the authoritative
       runtime behavior; preserve product behavior unless the contract truly changed.'
@@ -78541,6 +78541,8 @@ phases:
 
       '
     agent: python-executor
+    claimed_by: python-executor
+    claimed_at: '2026-04-10T21:02:35.719937+00:00'
   - id: orch_plane_finalization.full-gate
     name: Final remediation gate
     status: pending

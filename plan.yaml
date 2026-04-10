@@ -75106,7 +75106,7 @@ phases:
   steps:
   - id: xfail_role_prompt_and_review_normalization.implement-concrete-role-profile-registry
     name: Implement concrete role profile registry
-    status: claimed
+    status: done
     description: 'work_type: technical_debt_remediation
 
       step_type: implementation
@@ -75138,6 +75138,21 @@ phases:
     agent: python-senior-tacit
     claimed_by: python-senior-tacit
     claimed_at: '2026-04-10T06:44:06.121591+00:00'
+    done_at: '2026-04-10T06:48:11.160349+00:00'
+    evidence: "- concrete registry path: completed `ConfigRoleProfileRegistry` in\
+      \ `src/vectl/orchestration/dispatch_policy.py` with concrete `get()/has_role()`\
+      \ semantics, explicit `UnknownRoleError`, and centralized `_RoleFamilyPolicy`\
+      \ validation.\n- role families covered: coder (linked_worktree/worktree_changes/reuse_allowed),\
+      \ planner (main_worktree/vectl_facade_only/reuse_forbidden), reviewer (main_worktree/read_only/reuse_allowed),\
+      \ resolver (main_worktree/vectl_facade_only/reuse_forbidden).\n- unknown-role\
+      \ behavior: `get(\"unknown\")` raises `UnknownRoleError` with known-role list;\
+      \ `has_role()` returns False for unknown/empty roles; custom invalid reviewer-family\
+      \ linked_worktree profile is rejected by family-policy validation.\n- commands/tests\
+      \ run:\n  - `uv run pytest tests/orchestration/unit/test_dispatch_policy.py\
+      \ -q` -> `46 passed`\n  - `uv run pytest tests/orchestration/unit/test_dispatch_policy.py\
+      \ -q -k 'ConfigRoleProfileRegistry or main_worktree_family_policy_is_validated_for_custom_profiles'`\
+      \ -> `15 passed, 31 deselected`\n  - changed files: `src/vectl/orchestration/dispatch_policy.py`,\
+      \ `tests/orchestration/unit/test_dispatch_policy.py`."
   - id: xfail_role_prompt_and_review_normalization.implement-concrete-prompt-registry
     name: Implement concrete prompt registry
     status: pending

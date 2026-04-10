@@ -1,7 +1,7 @@
 # Orchestration Plane Dispatch and Prompt Policy
 
 **Status:** Proposed  
-**Architecture authority:** `docs/ORCHESTRATION-PLANE-ARCHITECTURE.md`, `docs/ADR-orchestration-role-profile-config-and-resolver-cleanup.md`, `docs/ADR-orchestration-role-agent-prompt-separation.md`  
+**Architecture authority:** `docs/ORCHESTRATION-PLANE-ARCHITECTURE.md`, `docs/ADR-orchestration-role-profile-config-and-resolver-cleanup.md`, `docs/ADR-orchestration-role-agent-prompt-separation.md`, `docs/ORCHESTRATION-PLANE-LIVE-AUTHORITY-CONTRACT-LOCK.md`  
 **Interface authority:** `docs/ORCHESTRATION-PLANE-INTERFACES.md`  
 **Related:** `docs/ORCHESTRATION-PLANE-RUNNER-BACKEND.md`, `docs/ORCHESTRATION-PLANE-RUNTIME-WORKTREE-LIFECYCLE.md`, `docs/ORCHESTRATION-PLANE-RESOLUTION-CONTRACT.md`, `docs/RFC-vectl-decide-advisor-refresh.md`
 
@@ -117,6 +117,9 @@ the same underlying role/profile and runner substrate.
 ---
 
 ## 6. Dispatch flow
+
+The live-authority checkpoints for this flow are locked by
+`docs/ORCHESTRATION-PLANE-LIVE-AUTHORITY-CONTRACT-LOCK.md`.
 
 ### 6.1 Normal flow
 

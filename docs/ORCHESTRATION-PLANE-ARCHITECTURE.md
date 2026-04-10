@@ -4,7 +4,7 @@
 > `vectl core`.
 
 **Status:** Target architecture  
-**Authority:** `docs/ADR-orchestration-role-profile-config-and-resolver-cleanup.md`, `docs/ADR-orchestration-role-agent-prompt-separation.md`  
+**Authority:** `docs/ADR-orchestration-role-profile-config-and-resolver-cleanup.md`, `docs/ADR-orchestration-role-agent-prompt-separation.md`, `docs/ORCHESTRATION-PLANE-LIVE-AUTHORITY-CONTRACT-LOCK.md`  
 **Scope:** Full target design, not an implementation slice  
 **Related docs:** `docs/ORCHESTRATION-PLANE-INTERFACES.md`, `docs/ORCHESTRATION-PLANE-RESOLUTION-CONTRACT.md`, `docs/ORCHESTRATION-PLANE-ISOLATION-SEMANTICS.md`, `docs/ORCHESTRATION-PLANE-IMPLEMENTATION-DESIGN.md`
 

@@ -4,7 +4,7 @@
 > system to normal orchestration flow.
 
 **Status:** Target contract  
-**Architecture authority:** `docs/ORCHESTRATION-PLANE-ARCHITECTURE.md`, `docs/ADR-orchestration-role-profile-config-and-resolver-cleanup.md`, `docs/ADR-orchestration-role-agent-prompt-separation.md`  
+**Architecture authority:** `docs/ORCHESTRATION-PLANE-ARCHITECTURE.md`, `docs/ADR-orchestration-role-profile-config-and-resolver-cleanup.md`, `docs/ADR-orchestration-role-agent-prompt-separation.md`, `docs/ORCHESTRATION-PLANE-LIVE-AUTHORITY-CONTRACT-LOCK.md`  
 **Interface authority:** `docs/ORCHESTRATION-PLANE-INTERFACES.md`
 
 ---
@@ -53,6 +53,9 @@ control detects unresolved state
 
 The system should continue from refreshed state, not from a hypothetical plan of
 what the resolver "intended".
+
+The live-authority lock for resolver mediation and post-resolution refresh is
+defined in `docs/ORCHESTRATION-PLANE-LIVE-AUTHORITY-CONTRACT-LOCK.md`.
 
 ---
 

@@ -75464,3 +75464,42 @@ phases:
     depends_on:
     - retire_repair_continuity_legacy_surface.remove-or-shim-legacy-cli-surface
     agent: project-guide
+  - id: retire_repair_continuity_legacy_surface.retest-recovery-public-surface
+    name: Retest recovery public surface after retirement cleanup
+    status: pending
+    description: 'step_type: test
+
+      step_intent: retest_green
+
+      expected_result: green
+
+
+      As an independent tester, verify the recovery public surface after legacy cleanup.
+
+
+      Required commands should be chosen to prove:
+
+      - the legacy `repair continuity` surface no longer masquerades as supported
+
+      - the supported recovery surface (`vectl orch recover` and related tests) remains
+      coherent
+
+      - no legacy-module-absent skip is masking black-box drift'
+    verification: '- Focused CLI/recovery tests are green
+
+      - Any legacy retirement behavior is explicit and tested
+
+      - No skip remains whose rationale is merely the missing legacy continuity module'
+    evidence_template: '## Verification Report
+
+      - commands executed:
+
+      - actual output:
+
+      - public-surface decision validated how:
+
+      - remaining governed statuses:'
+    depends_on:
+    - retire_repair_continuity_legacy_surface.rewrite-or-remove-legacy-black-box-tests
+    - retire_repair_continuity_legacy_surface.clean-stale-docs-and-spec-references
+    agent: integration-verifier-tacit

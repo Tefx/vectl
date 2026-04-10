@@ -12,7 +12,6 @@ import yaml
 
 from tests.expected_red import validate_expected_red_marker
 
-
 # =============================================================================
 # SPEC-FIXTURE CONFORMANCE: Exact driver.yaml format from blueprint
 # Source: DRIVER-BLUEPRINT.md lines 401-481
@@ -98,7 +97,7 @@ DRIVER_YAML_SPEC: dict[str, Any] = {
             "claude": 600,
         },
     },
-    "judge": {
+    "reviewer": {
         "runner": "codex",
         "external_agent_name": None,
         "model": None,
@@ -154,7 +153,7 @@ def minimal_driver_config_dict() -> dict[str, Any]:
 
     Per Architecture doc Section 2.3:
     - runners is required and non-empty
-    - judge.runner MUST exist in runners
+    - reviewer.runner MUST exist in runners
     - fallback_runner MUST exist in runners
     """
     return {
@@ -165,7 +164,7 @@ def minimal_driver_config_dict() -> dict[str, Any]:
             },
         },
         "fallback_runner": "opencode",
-        "judge": {
+        "reviewer": {
             "runner": "opencode",
         },
     }
@@ -181,13 +180,13 @@ def temp_driver_yaml(tmp_path: Path, driver_config_yaml: str) -> Path:
 
 @pytest.fixture
 def invalid_driver_config_missing_runner() -> dict[str, Any]:
-    """Invalid config: judge.runner not in runners."""
+    """Invalid config: reviewer.runner not in runners."""
     return {
         "runners": {
             "claude": {"command": "claude"},
         },
         "fallback_runner": "claude",
-        "judge": {
+        "reviewer": {
             "runner": "opencode",  # Not in runners!
         },
     }
@@ -201,7 +200,7 @@ def invalid_driver_config_missing_fallback() -> dict[str, Any]:
             "claude": {"command": "claude"},
         },
         "fallback_runner": "opencode",  # Not in runners!
-        "judge": {
+        "reviewer": {
             "runner": "claude",
         },
     }

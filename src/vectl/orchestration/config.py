@@ -249,7 +249,7 @@ _ROLE_FAMILY_POLICY: dict[str, _RoleFamilyPolicy] = {
         execution_context="main_worktree",
         mutation_policy="vectl_facade_only",
         session_policy="reuse_forbidden",
-        output_contract="structured_plan_result",
+        output_contract="vectl_facade_mutation",
     ),
     "reviewer": _RoleFamilyPolicy(
         execution_context="main_worktree",
@@ -294,7 +294,7 @@ def default_role_profiles() -> tuple[RoleProfile, ...]:
             execution_context="main_worktree",
             mutation_policy="vectl_facade_only",
             session_policy="reuse_forbidden",
-            output_contract="structured_plan_result",
+            output_contract="vectl_facade_mutation",
             default_runner="codex",
         ),
         RoleProfile(

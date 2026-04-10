@@ -30,8 +30,8 @@ from vectl.orchestration.dispatch_policy import (
     CoreStepDataAdapter,
     DispatchCoordinator,
     ReviewResultParseError,
-    StepDataAdapter,
     StepData,
+    StepDataAdapter,
     UnknownRoleError,
     normalize_parse_failure,
     normalize_review_result,
@@ -42,6 +42,10 @@ from vectl.orchestration.interfaces import (
     Resolver,
     Roster,
     Runtime,
+)
+from vectl.orchestration.resolution_reports import (
+    parse_resolution_report_payload,
+    validate_resolution_report_payload,
 )
 
 __all__ = [
@@ -81,4 +85,6 @@ __all__ = [
     "normalize_parse_failure",
     "step_verify_to_verify_mode",
     "CoreStepDataAdapter",
+    "parse_resolution_report_payload",
+    "validate_resolution_report_payload",
 ]

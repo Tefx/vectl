@@ -826,25 +826,23 @@ def test_route_terminal_execution_hard_gates_non_closing_reconcile_status(
     assert completed == []
 
 
-def test_build_dispatch_spec_preserves_canonical_fallback_role_precedence(
+def test_build_dispatch_spec_preserves_canonical_default_role_precedence(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     app = _build_app(tmp_path)
-    app._role_registry = ConfigRoleProfileRegistry(
-        default_role="python-executor", fallback_role="gate-reviewer"
-    )
-    captured_fallback_roles: list[str] = []
+    app._role_registry = ConfigRoleProfileRegistry(default_role="python-executor")
+    captured_default_roles: list[str] = []
     original_build_dispatch_spec = DispatchCoordinator.build_dispatch_spec
 
     def capture_build_dispatch_spec(self, decision):
-        captured_fallback_roles.append(self.role_registry.fallback_role)
+        captured_default_roles.append(self.role_registry.default_role)
         return original_build_dispatch_spec(self, decision)
 
     monkeypatch.setattr(DispatchCoordinator, "build_dispatch_spec", capture_build_dispatch_spec)
 
     spec = app.build_dispatch_spec(step_id="core.ready", role_hint="gate-reviewer")
     assert spec.role_id == "gate-reviewer"
-    assert captured_fallback_roles == ["python-executor"]
+    assert captured_default_roles == ["python-executor"]
 
 
 def test_route_terminal_execution_non_pass_review_becomes_resolution_case(

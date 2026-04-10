@@ -19,7 +19,7 @@ from vectl.orchestration.contracts import (
 )
 from vectl.orchestration.core_adapter import CoreAdapter
 
-DEFAULT_DISPATCH_ROLE: Final[str] = "python-executor"
+DEFAULT_DISPATCH_ROLE = "python-executor"
 
 
 class RosterSnapshotSource(Protocol):
@@ -136,7 +136,7 @@ class PlanAwareControl:
 
     sources: ControlInputSources
     agent: str | None = None
-    fallback_role: str = DEFAULT_DISPATCH_ROLE
+    dispatch_role: str = DEFAULT_DISPATCH_ROLE
 
     def evaluate_current(self) -> ControlDecision:
         """Evaluate current snapshots read from authoritative sources.
@@ -196,12 +196,11 @@ class PlanAwareControl:
             return ControlDecision(kind="done", reason="Plan complete and runtime idle")
 
         if core.claimable_step_ids:
-            role = _select_dispatch_role(roster=roster, fallback_role=self.fallback_role)
             return ControlDecision(
                 kind="dispatch",
                 reason="Claimable work available",
                 step_id=core.claimable_step_ids[0],
-                role=role,
+                role=self.dispatch_role,
             )
 
         if _has_active_work(core=core, runtime=runtime):
@@ -297,14 +296,6 @@ def _format_unresolved_reason(core: CoreSnapshot) -> str | None:
     return f"Unresolved authoritative state: {joined}"
 
 
-def _select_dispatch_role(roster: RosterSnapshot, fallback_role: str) -> str:
-    """Select dispatch role from roster availability with deterministic fallback."""
-
-    if roster.available_agents:
-        return roster.available_agents[0]
-    return fallback_role
-
-
 @dataclass(frozen=True)
 class LegacyLoopSurfaceSplit:
     """Historical decomposition of orchestration loop surfaces by responsibility.
@@ -336,7 +327,7 @@ LEGACY_LOOP_SURFACE_SPLIT: Final[LegacyLoopSurfaceSplit] = LegacyLoopSurfaceSpli
         "step isolation lookup",
     ),
     resolver_surfaces=(
-        "judge/reasoning invocation for unresolved cases",
+        "resolver invocation for unresolved cases",
         "resolution report parsing and outcome mapping",
     ),
 )

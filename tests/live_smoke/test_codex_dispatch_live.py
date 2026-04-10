@@ -1,7 +1,7 @@
 """Live smoke tests for codex dispatch path.
 
 Tests the real codex dispatch invocation path with:
-- Ordinary agent/task dispatch (not judge-only)
+- Ordinary agent/task dispatch
 - Explicit skip for missing binary, auth, or opt-in gate
 - Transport failure distinguished from task-output assertion failure
 

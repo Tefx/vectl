@@ -11,8 +11,8 @@ from collections.abc import Mapping
 from dataclasses import dataclass
 from typing import Protocol
 
-from vectl.orchestration import judgments as judgment_support
 from vectl.orchestration.contracts import ResolutionCase, ResolutionReport
+from vectl.orchestration.resolution_reports import parse_resolution_report_payload
 
 
 class ResolverInvocationSurface(Protocol):
@@ -144,7 +144,7 @@ def map_payload_to_report(case: ResolutionCase, payload: Mapping[str, object]) -
     Returns:
         Bounded report for control.
     """
-    parsed_report = judgment_support.parse_resolution_report_payload(payload)
+    parsed_report = parse_resolution_report_payload(payload)
     if not should_preserve_case_reason(case):
         return parsed_report
 
@@ -163,7 +163,7 @@ __all__ = [
     "BoundResolver",
     "Resolver",
     "ResolverInvocationSurface",
-    "judgment_support",
     "map_payload_to_report",
+    "parse_resolution_report_payload",
     "should_preserve_case_reason",
 ]

@@ -500,7 +500,6 @@ class OrchestrationApp:
         self._latest_operator_notification: OperatorNotification | None = None
         self._role_registry = role_registry or ConfigRoleProfileRegistry(
             default_role=config.default_agent,
-            fallback_role=config.default_agent,
         )
         self._prompt_registry = prompt_registry or ConfigPromptRegistry(
             role_registry=self._role_registry
@@ -629,7 +628,7 @@ class OrchestrationApp:
         return (False, "")
 
     def _is_complete_blocked_by_gate(self) -> tuple[bool, str]:
-        """Check whether step completion is blocked by a recovery gate's duplicate-complete prevention.
+        """Check whether a recovery gate blocks duplicate completion.
 
         Authority:
             docs/ORCHESTRATION-PLANE-OPERATOR-CONFLICT-RECOVERY.md sections 6.4, 9
@@ -3171,7 +3170,7 @@ def build_orchestration_app(
     control = PlanAwareControl(
         sources=ControlInputSources(core_adapter=core_adapter, roster=roster, runtime=runtime),
         agent=config.default_agent,
-        fallback_role=config.default_agent,
+        dispatch_role=config.default_agent,
     )
     resolver = BoundResolver(
         invocation=DefaultRoleResolverInvocation(

@@ -132,7 +132,7 @@ class _FakeRuntimeSource:
         return self.snapshot_value
 
 
-def test_evaluate_dispatches_claimable_step_with_available_role() -> None:
+def test_evaluate_dispatches_claimable_step_with_configured_role() -> None:
     control = PlanAwareControl(
         sources=ControlInputSources(
             core_adapter=_FakeCoreAdapter(_core(claimable=("core.impl",))),
@@ -167,6 +167,25 @@ def test_roster_none_claim_is_not_interpreted_as_plan_blockage() -> None:
     assert decision.kind == "dispatch"
     assert decision.step_id == "core.impl"
     assert decision.role == DEFAULT_DISPATCH_ROLE
+
+
+def test_evaluate_ignores_roster_available_agent_order_for_dispatch_role() -> None:
+    control = PlanAwareControl(
+        sources=ControlInputSources(
+            core_adapter=_FakeCoreAdapter(_core(claimable=("core.impl",))),
+            roster=_FakeRosterSource(
+                _roster(available_agents=("gate-reviewer", "python-executor"))
+            ),
+            runtime=_FakeRuntimeSource(_runtime()),
+        ),
+        dispatch_role="python-executor",
+    )
+
+    decision = control.evaluate_current()
+
+    assert decision.kind == "dispatch"
+    assert decision.step_id == "core.impl"
+    assert decision.role == "python-executor"
 
 
 def test_evaluate_waits_when_execution_is_already_active() -> None:

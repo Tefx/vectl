@@ -18,7 +18,7 @@ from vectl.orchestration.contracts import (
     RosterSnapshot,
     RuntimeSnapshot,
 )
-from vectl.orchestration.judgments import (
+from vectl.orchestration.resolution_reports import (
     parse_resolution_report_payload,
     validate_resolution_report_payload,
 )

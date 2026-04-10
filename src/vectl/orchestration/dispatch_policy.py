@@ -122,17 +122,13 @@ class ConfigRoleProfileRegistry:
         self,
         profiles: tuple[RoleProfile, ...] | None = None,
         default_role: str = DEFAULT_DISPATCH_ROLE_ID,
-        fallback_role: str | None = None,
     ) -> None:
         """Initialize registry with optional profile overrides.
 
         Args:
             profiles: Role profiles to register. If None, configuration defaults are used.
             default_role: Default role ID used when step.agent is absent.
-            fallback_role: Deprecated compatibility parameter. Ordinary role
-                defaulting is config-backed; this compatibility input is ignored.
         """
-        del fallback_role
         source_profiles = profiles if profiles is not None else default_role_profiles()
         validation_errors = validate_role_profiles(source_profiles)
         if validation_errors:
@@ -185,12 +181,6 @@ class ConfigRoleProfileRegistry:
         """Return the configured default role ID."""
         return self._default_role
 
-    @property
-    def fallback_role(self) -> str:
-        """Return the canonical ordinary default role ID."""
-
-        return self._default_role
-
     def resolve_role(
         self,
         step_agent: str | None,
@@ -204,7 +194,6 @@ class ConfigRoleProfileRegistry:
         Precedence:
             1. step.agent if present
             2. default role if step.agent is absent
-            3. fallback role only when explicitly allowed by policy
 
         The current implementation does not silently downgrade specialized
         roles (§9.2 anti-pattern).
@@ -257,9 +246,10 @@ _PLANNER_TASK_TEMPLATE = (
     "## Remediation Planning Task: {source_id}\n"
     "### Context\n{description}\n\n"
     "### Blocked Work\n{refs}\n\n"
-    "Produce a structured plan outcome with proposed_steps and retest_steps. "
-    "Your output contract is: structured_plan_result. "
-    "Do not claim new steps or modify the plan directly."
+    "Produce direct vectl-facade mutation instructions for remediation and retest handling. "
+    "Your output contract is: vectl_facade_mutation. "
+    "Do not claim new steps or modify the plan directly; "
+    "all mutations stay behind the approved vectl facade."
 )
 
 _REVIEWER_SYSTEM_PROMPT = (
@@ -282,7 +272,7 @@ _RESOLVER_SYSTEM_PROMPT = (
     "Produce a ResolutionReport (status, summary, evidence_refs, operator_message). "
     "You are part of the canonical blocked-case coordinator resolver family used "
     "for all blocked-case sources — "
-    "do not introduce conflict-specialized or judge-specific resolver sub-taxonomy. "
+    "do not introduce conflict-specialized or reviewer-specific resolver sub-taxonomy. "
     "Escalate to operator (operator_required) when automatic closure is unsafe."
 )
 _RESOLVER_TASK_TEMPLATE = (

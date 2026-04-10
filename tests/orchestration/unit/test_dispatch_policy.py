@@ -246,8 +246,6 @@ class TestConfigRoleProfileRegistry:
         }
         combined_surface = " ".join(sorted(resolver_role_ids)).lower()
         assert "conflict" not in combined_surface
-        assert "judge" not in combined_surface
-        assert "judgment" not in combined_surface
 
     def test_planner_family_roles_require_main_worktree(self) -> None:
         """Planner-family roles must require main_worktree execution context.
@@ -464,8 +462,8 @@ class TestConfigPromptRegistry:
             or "planning" in bundle.system_prompt.lower()
         )
         assert (
-            "structured_plan_result" in bundle.task_prompt
-            or "structured plan" in bundle.task_prompt.lower()
+            "vectl_facade_mutation" in bundle.task_prompt
+            or "vectl facade" in bundle.task_prompt.lower()
         )
 
     def test_resolver_family_prompt_includes_facade_constraint(self) -> None:
@@ -732,7 +730,7 @@ class TestDispatchCoordinator:
         assert spec.role_source == "resolver"
         assert spec.execution_context == "main_worktree"
         assert spec.prompt_family == "planner"
-        assert spec.output_contract == "structured_plan_result"
+        assert spec.output_contract == "vectl_facade_mutation"
         assert spec.mutation_policy == "vectl_facade_only"
         assert spec.description == "Plan remediation for blocked step"
         assert spec.refs == ("evidence1", "evidence2")
@@ -1002,8 +1000,8 @@ class TestPlannerSubagentRouting:
         assert spec.execution_context == "main_worktree"
         # Planner mutation policy is vectl_facade_only (§11.5)
         assert spec.mutation_policy == "vectl_facade_only"
-        # Planner output is structured_plan_result (§15.2)
-        assert spec.output_contract == "structured_plan_result"
+        # Planner output is vectl_facade_mutation (§15.3 / gate policy)
+        assert spec.output_contract == "vectl_facade_mutation"
 
     def test_no_silent_downgrade_of_planner_to_coder(self) -> None:
         """Planner must not be silently downgraded to coder role (§9.2).

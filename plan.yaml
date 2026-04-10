@@ -76806,7 +76806,7 @@ phases:
   steps:
   - id: resolver_cleanup_core.migrate-role-profiles-to-config
     name: Migrate role profiles to config authority
-    status: claimed
+    status: done
     description: 'Move ordinary role-profile authority out of orchestration code and
       into config.
 
@@ -76876,6 +76876,37 @@ phases:
     agent: python-senior-tacit
     claimed_by: python-senior-tacit
     claimed_at: '2026-04-10T13:29:59.593525+00:00'
+    done_at: '2026-04-10T13:50:40.345340+00:00'
+    evidence: "## refs Read Confirmation (MANDATORY)\n- tools/vectl/README.md — NOT\
+      \ READ: file does not exist at the dispatched worktree path.\n\n## Implementation\
+      \ Evidence\n- Config fields added/updated:\n  - `src/vectl/orchestration/config.py`\n\
+      \    - added `DispatchConfig.default_role_id`\n    - added `ResolverConfig.default_role_id`\n\
+      \    - added `OrchestrationConfig.role_profiles`\n    - added load/save wiring\
+      \ for `orchestration.role_profiles`, `orchestration.dispatch.default_role_id`,\
+      \ and `orchestration.resolver.default_role_id`\n    - centralized validation\
+      \ via `validate_role_profile()` / `validate_role_profiles()`\n  - `src/vectl/cli.py`\n\
+      \    - `_build_orchestration_runtime_app()` now sources `AppConfig.default_agent`\
+      \ from `loaded_config.dispatch.default_role_id`\n  - `src/vectl/orchestration/contracts.py`\n\
+      \    - removed `RoleProfile.template_id` field from runtime contract schema\n\
+      - Code-owned role profile sources removed:\n  - removed `_DEFAULT_ROLE_PROFILES`\
+      \ in `src/vectl/orchestration/dispatch_policy.py`\n  - removed dispatch-local\
+      \ role-family validation duplication\n  - `ConfigRoleProfileRegistry` now defaults\
+      \ from orchestration config helpers (config authority)\n  - compatibility `fallback_role`\
+      \ no longer introduces independent authority; aliases config-backed ordinary\
+      \ default\n- Tests run:\n  - `uv run --active ruff check src/vectl/orchestration/config.py\
+      \ src/vectl/orchestration/contracts.py src/vectl/orchestration/dispatch_policy.py\
+      \ src/vectl/cli.py tests/orchestration/unit/test_config_state_impl.py tests/orchestration/unit/test_dispatch_policy.py`\
+      \ -> All checks passed\n  - `uv run --active pytest tests/orchestration/unit/test_config_state_impl.py\
+      \ tests/orchestration/unit/test_dispatch_policy.py -q` -> `97 passed`\n- Remaining\
+      \ authority ambiguities:\n  - No ordinary role-profile authority remains in\
+      \ `dispatch_policy.py`.\n  - Out-of-scope compatibility `fallback_role` surface\
+      \ still exists in `src/vectl/orchestration/control.py` (not modified in this\
+      \ step).\n\n## Files Modified\n- `src/vectl/orchestration/config.py`\n- `src/vectl/orchestration/contracts.py`\n\
+      - `src/vectl/orchestration/dispatch_policy.py`\n- `src/vectl/cli.py`\n- `tests/orchestration/unit/test_config_state_impl.py`\n\
+      - `tests/orchestration/unit/test_dispatch_policy.py`\n\n## Commit Evidence\n\
+      - Worker branch commit: `d0e33faea6a218ed682c3fb7f4f87597e4f9c78c`\n- Cherry-picked\
+      \ on Main: `2ccfc5f`\n- Message: `fix(orchestration): source role profiles from\
+      \ config`"
   - id: resolver_cleanup_core.wire-default-blocked-case-resolver
     name: Wire program to configured blocked-case resolver
     status: pending

@@ -75294,7 +75294,7 @@ phases:
   steps:
   - id: retire_repair_continuity_legacy_surface.lock-modern-recovery-authority-and-retirement-decision
     name: Lock modern recovery authority and retirement decision
-    status: claimed
+    status: done
     description: 'work_type: technical_debt_remediation
 
       step_type: contract_lock
@@ -75343,6 +75343,26 @@ phases:
     agent: software-architect-tacit
     claimed_by: software-architect-tacit
     claimed_at: '2026-04-10T05:44:35.872867+00:00'
+    done_at: '2026-04-10T05:46:52.207906+00:00'
+    evidence: "## Decision Record\n- canonical recovery surface: `vectl orch recover\
+      \ [RUN_ID|--latest]` as the canonical recovery authority, backed by `src/vectl/cli.py`\
+      \ routing to `OrchestrationApp.recover()` (`src/vectl/orch_app.py`) and `RecoveryReport`\
+      \ contract (`src/vectl/orchestration/recovery.py`). `vectl repair claims` remains\
+      \ separate for claim-state repair.\n- retirement mode: removed\n- strongest\
+      \ evidence:\n  - `src/vectl/cli.py` legacy `repair continuity` path attempts\
+      \ import of `vectl.driver.continuity_hygiene` then hard-fails with “legacy module\
+      \ removed”.\n  - No surviving `vectl.driver.continuity_hygiene` implementation\
+      \ exists in repo.\n  - `tests/repro/test_repair_continuity_black_box.py` already\
+      \ treats missing module as legacy and skips.\n  - Orchestration architecture\
+      \ docs enforce single authority and no shadow recovery surface.\n  - Current\
+      \ operator docs define `vectl orch recover` as active recovery command.\n- migration\
+      \ message for operators: `vectl repair continuity` is removed. Use `vectl orch\
+      \ recover [RUN_ID|--latest]` (with `--dry-run --json` for diagnostics) for run/continuity\
+      \ recovery; use `vectl repair claims` for claim/plan divergence.\n- files/specs\
+      \ to update next:\n  - `src/vectl/cli.py` (remove legacy command residue)\n\
+      \  - `README.md` (remove/replace repair continuity section)\n  - `tests/repro/test_repair_continuity_black_box.py`\
+      \ (remove/retarget)\n  - `docs/ORCHESTRATION-CLI-QUICKSTART.md`\n  - `docs/ORCHESTRATION-PLANE-CLI-CONFIG-OBSERVABILITY-DESIGN.md`\n\
+      \  - stale references: `docs/DRIVER-CONTINUITY-FOUNDATION.md`, `docs/ORCHESTRATION-PLANE-MIGRATION.md`"
   - id: retire_repair_continuity_legacy_surface.remove-or-shim-legacy-cli-surface
     name: Remove or convert legacy CLI surface to explicit retirement shim
     status: pending

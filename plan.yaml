@@ -78237,7 +78237,7 @@ phases:
   steps:
   - id: orch_plane_planner_boundary.facade-enforcement
     name: Enforce planner mutation facade
-    status: claimed
+    status: done
     description: Harden planner execution so live planner mutations can only pass
       through the vectl facade/runtime boundary; direct plan.yaml edits and planner-side
       bypass paths must be blocked rather than merely discouraged.
@@ -78261,6 +78261,28 @@ phases:
     agent: python-senior-tacit
     claimed_by: python-senior-tacit
     claimed_at: '2026-04-10T20:02:25.510781+00:00'
+    done_at: '2026-04-10T20:12:08.040101+00:00'
+    evidence: "## refs Read Confirmation (MANDATORY)\n- tools/vectl/README.md — NOT\
+      \ READ: required file absent in isolated worktree path.\n\n## Implementation\
+      \ Evidence\n- Files changed:\n  - `src/vectl/orch_app.py`\n  - `src/vectl/orchestration/runtime.py`\n\
+      \  - `tests/orchestration/unit/test_orch_app.py`\n  - `tests/orchestration/unit/test_runtime.py`\n\
+      - Facade/runtime checks added:\n  - propagated `mutation_policy` + `output_contract`\
+      \ into runtime `ExecutionRequest.work_refs` from orchestration dispatch.\n \
+      \ - added explicit runtime guard in `Runtime.prepare()` to block `output_contract=vectl_facade_mutation`\
+      \ from linked-worktree runtime launch.\n  - added `_request_output_contract()`\
+      \ helper for explicit policy extraction.\n- Direct-edit/bypass paths blocked:\n\
+      \  - planner-class work (`vectl_facade_mutation`) can no longer launch through\
+      \ linked-worktree runtime path, preventing planner bypass/direct `plan.yaml`\
+      \ mutation through runtime execution.\n  - deny-path tests added:\n    - `test_prepare_rejects_planner_facade_execution_in_linked_worktree_runtime`\n\
+      \    - `test_start_runtime_execution_blocks_planner_worktree_bypass`\n  - allow-path\
+      \ proof retained:\n    - `test_claim_and_complete_mutations_flow_through_core_surface`\n\
+      \nVerification:\n- `./.venv/bin/python -m compileall src/vectl/orchestration/runtime.py\
+      \ src/vectl/orch_app.py` -> both compile successfully\n- `./.venv/bin/pytest\
+      \ tests/orchestration/unit/test_runtime.py tests/orchestration/unit/test_core_adapter_impl.py\
+      \ tests/orchestration/unit/test_orch_app.py -q` -> `71 passed`\n- `./.venv/bin/python\
+      \ -m pytest tests/orchestration/unit/test_runtime.py::test_prepare_rejects_planner_facade_execution_in_linked_worktree_runtime\
+      \ -q` -> `1 passed`\n\nCommit evidence:\n- Worker commit: `f3c7a2c`\n- Cherry-picked\
+      \ on main: `43ded09`"
   - id: orch_plane_planner_boundary.live-proof
     name: Prove planner boundary live
     status: pending

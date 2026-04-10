@@ -16,6 +16,28 @@ Observed suite result on this worktree:
 
 > Note: the task brief expected **27 current failures**, but the exact command above produced **31 current failures** in this worktree. This inventory records the observed 31-failure set without expanding scope.
 
+## Update — xfail retirement finalization (same date)
+
+Follow-up repo-wide gate command:
+
+```bash
+uv run pytest -q
+```
+
+Observed result after remediation:
+
+- 1809 passed
+- 32 skipped
+- 0 failed
+- 0 xfailed
+- 1 warning
+
+Expected-red retirement status updates:
+
+- `tests/orchestration/unit/test_dispatch_policy_red.py` no longer contributes xfails; role/prompt/review and main-worktree authority gaps were retired to green coverage.
+- `tests/orchestration/unit/test_runner_backend_red.py` no longer contributes xfails; resolver-gateway authority and lifecycle mutation enforcement gaps were retired to green coverage.
+- Any remaining non-green status in the gate run is skip-governed rather than xfail-governed.
+
 ## Normalized remediation buckets
 
 | Bucket | Count | Initial category | Owner hypothesis |
@@ -29,8 +51,8 @@ Observed suite result on this worktree:
 
 ## Companion xfail/skip context relevant to disposal
 
-- `tests/orchestration/unit/test_dispatch_policy_red.py` contributed **17 xfails** in the same run. Those remain quarantined as explicit expected-red dispatch/prompt-policy gaps, so they are adjacent backlog rather than new regressions.
-- `tests/orchestration/unit/test_runner_backend_red.py` contributed **2 xfails** in the same run. That is adjacent runner-backend backlog while one runtime-lifecycle test is now hard-failing.
+- Historical snapshot context: `tests/orchestration/unit/test_dispatch_policy_red.py` previously contributed **17 xfails** in this inventory snapshot; these were later retired to green in the same-day finalization pass.
+- Historical snapshot context: `tests/orchestration/unit/test_runner_backend_red.py` previously contributed **2 xfails** in this inventory snapshot; these were later retired to green in the same-day finalization pass.
 - The failing files below are **not** xfail-marked; several are documented in-file as `expected_result: red` / `EXPECTED-RED`, but currently fail as normal test failures.
 - The suite also reported **39 skips** (live smoke, dashboard UI, repair black-box coverage). Those skips appear orthogonal to the failing inventory and do not change initial disposal ordering for the failures below.
 

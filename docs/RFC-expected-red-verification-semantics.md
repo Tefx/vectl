@@ -153,6 +153,8 @@ If an expected-red item remains non-blocking at a final gate, record:
 - whether its lifecycle state is "gap intentionally preserved", "stale test to be removed",
   "xfail/skip with rationale", or another named disposition
 - the owner or follow-up gate expected to retire it
+- once retired, where governance was updated (inventory/docs/plan evidence) so the
+  expected-red set does not retain stale entries
 
 ### D. Update worker-facing prompts second, not first
 Prompts should reflect the new semantics, but only as a delivery mechanism for a system rule that already exists elsewhere.

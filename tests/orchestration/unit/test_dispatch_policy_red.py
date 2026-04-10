@@ -91,6 +91,8 @@ from vectl.orchestration.dispatch_policy import (
     ConfigRoleProfileRegistry,
     DispatchCoordinator,
     StepData,
+    normalize_parse_failure,
+    normalize_review_result,
 )
 
 
@@ -214,44 +216,12 @@ def test_dispatch_spec_verify_mode_expected_red_wires_correctly() -> None:
 
 
 def test_dispatch_spec_main_worktree_roles_enforce_execution_context() -> None:
-    """Roles in resolver/planner/reviewer families must require main_worktree.
+    """Resolver/planner/reviewer families are pinned to main_worktree."""
+    registry = ConfigRoleProfileRegistry()
 
-    GAP: DispatchSpec.execution_context is set per-role profile, but there is
-    no enforcement that certain role families (resolver, planner, reviewer) run
-    exclusively in main_worktree.
-
-    xfail scope:
-        - DispatchSpec.execution_context can be set to 'main_worktree' but nothing
-          enforces that resolver/planner/reviewer family roles MUST use it.
-
-    Authority:
-        - ORCHESTRATION-PLANE-DISPATCH-AND-PROMPT-POLICY.md §12 (execution-context policy)
-        - ORCHESTRATION-PLANE-DISPATCH-AND-PROMPT-POLICY.md §8.2 (RoleProfile.execution_context)
-    """
-    # Resolver family role
-    resolver_spec = DispatchSpec(
-        source_kind="step",
-        source_id="resolver.test",
-        role_id="blocked-case-coordinator",
-        role_source="step.agent",
-        execution_context="main_worktree",  # This is set but not enforced
-        runner="codex",
-        session_mode="fresh",
-    )
-
-    # GAP EXPOSED (xfail): The execution_context is set correctly, but
-    # nothing enforces that blocked-case-coordinator MUST run in main_worktree.
-    # A bug could set execution_context='linked_worktree' for resolver family
-    # and no validation would catch it.
-    assert resolver_spec.execution_context == "main_worktree"
-
-    pytest.xfail(
-        "xfail[GAP1-main-worktree-enforcement]: No enforcement exists that "
-        "resolver/planner/reviewer family roles must use main_worktree execution context. "
-        "A RoleProfileRegistry implementation should validate that these role families "
-        "are never dispatched to linked_worktree. "
-        "Owner: orchestration_dispatch_policy.implement-dispatch-coordinator"
-    )
+    assert registry.get("blocked-case-coordinator").execution_context == "main_worktree"
+    assert registry.get("vectl-planner").execution_context == "main_worktree"
+    assert registry.get("gate-reviewer").execution_context == "main_worktree"
 
 
 # ---------------------------------------------------------------------
@@ -262,81 +232,25 @@ def test_dispatch_spec_main_worktree_roles_enforce_execution_context() -> None:
 
 
 class TestRoleProfileRegistryProtocol:
-    """RoleProfileRegistry protocol exists but has no concrete implementation."""
+    """RoleProfileRegistry protocol behavior backed by concrete config registry."""
 
     def test_role_profile_registry_get_returns_concrete_profile(self) -> None:
-        """RoleProfileRegistry.get() must return a concrete RoleProfile.
+        """RoleProfileRegistry.get() returns a concrete profile for known roles."""
+        registry = ConfigRoleProfileRegistry()
 
-        GAP: RoleProfileRegistry is a Protocol (interface). No concrete
-        implementation exists that actually returns RoleProfile objects.
-
-        xfail scope:
-            - RoleProfileRegistry.get() raises NotImplementedError or returns None.
-
-        Authority:
-            - ORCHESTRATION-PLANE-DISPATCH-AND-PROMPT-POLICY.md §8.3 (RoleProfileRegistry protocol)
-        """
-        # This is the Protocol - it defines the interface but has no implementation
-        registry: RoleProfileRegistry = None  # type: ignore[assignment]
-
-        # GAP EXPOSED (xfail): No concrete implementation exists.
-        # A configuration-backed RoleProfileRegistry must be implemented.
-        pytest.xfail(
-            "xfail[GAP2-role-profile-registry]: RoleProfileRegistry is a Protocol with "
-            "no concrete implementation. A configuration-backed registry must be implemented "
-            "that loads role profiles from orchestration config and returns concrete "
-            "RoleProfile objects for known roles. "
-            "Owner: orchestration_dispatch_policy.implement-role-profile-registry"
-        )
-
-        # These would fail because registry is None (no implementation)
         profile = registry.get("python-executor")
         assert isinstance(profile, RoleProfile)
         assert profile.role_id == "python-executor"
 
     def test_role_profile_registry_has_role_unknown_role_returns_false(self) -> None:
-        """RoleProfileRegistry.has_role() must return False for unknown roles.
-
-        GAP: No concrete implementation to test.
-
-        xfail scope:
-            - has_role() not implemented.
-
-        Authority:
-            - ORCHESTRATION-PLANE-DISPATCH-AND-PROMPT-POLICY.md §8.3
-        """
-        registry: RoleProfileRegistry = None  # type: ignore[assignment]
-
-        pytest.xfail(
-            "xfail[GAP2-role-profile-registry]: RoleProfileRegistry.has_role() has no "
-            "concrete implementation. "
-            "Owner: orchestration_dispatch_policy.implement-role-profile-registry"
-        )
+        """RoleProfileRegistry.has_role() returns False for unknown roles."""
+        registry = ConfigRoleProfileRegistry()
 
         assert registry.has_role("unknown-role") is False
 
     def test_role_profile_registry_fails_explicitly_on_unknown_role(self) -> None:
-        """RoleProfileRegistry.get() must fail explicitly for unknown roles.
-
-        Spec §8.3: 'unknown roles must fail explicitly - the system must not
-        guess role meaning from string shape alone.'
-
-        GAP: No concrete implementation exists to enforce this rule.
-
-        xfail scope:
-            - get() not implemented to enforce explicit failure.
-
-        Authority:
-            - ORCHESTRATION-PLANE-DISPATCH-AND-PROMPT-POLICY.md §8.3 (rules)
-        """
-        registry: RoleProfileRegistry = None  # type: ignore[assignment]
-
-        pytest.xfail(
-            "xfail[GAP2-role-profile-registry]: RoleProfileRegistry.get() must fail "
-            "explicitly (raise KeyError or similar) for unknown roles per §8.3 rule. "
-            "No concrete implementation enforces this. "
-            "Owner: orchestration_dispatch_policy.implement-role-profile-registry"
-        )
+        """RoleProfileRegistry.get() fails explicitly for unknown roles."""
+        registry = ConfigRoleProfileRegistry()
 
         # Should raise, not return a default or guess
         with pytest.raises(KeyError):
@@ -351,21 +265,11 @@ class TestRoleProfileRegistryProtocol:
 
 
 class TestPromptRegistryProtocol:
-    """PromptRegistry protocol exists but has no concrete implementation."""
+    """PromptRegistry behavior backed by concrete config registry."""
 
     def test_prompt_registry_render_returns_prompt_bundle(self) -> None:
-        """PromptRegistry.render() must return a PromptBundle.
-
-        GAP: PromptRegistry is a Protocol (interface). No concrete
-        implementation exists that actually renders prompts.
-
-        xfail scope:
-            - PromptRegistry.render() raises NotImplementedError or returns None.
-
-        Authority:
-            - ORCHESTRATION-PLANE-DISPATCH-AND-PROMPT-POLICY.md §10.1 (PromptRegistry protocol)
-        """
-        registry: PromptRegistry = None  # type: ignore[assignment]
+        """PromptRegistry.render() returns a PromptBundle for known roles."""
+        registry = ConfigPromptRegistry(role_registry=ConfigRoleProfileRegistry())
 
         spec = DispatchSpec(
             source_kind="step",
@@ -378,54 +282,20 @@ class TestPromptRegistryProtocol:
             prompt_family="coder",
         )
 
-        pytest.xfail(
-            "xfail[GAP3-prompt-registry]: PromptRegistry is a Protocol with no concrete "
-            "implementation. A centralized PromptRegistry must be implemented that "
-            "renders role-specific prompts from PromptBundle. "
-            "Owner: orchestration_dispatch_policy.implement-prompt-registry"
-        )
-
         bundle = registry.render(spec)
         assert isinstance(bundle, PromptBundle)
         assert bundle.system_prompt  # should be non-empty
         assert bundle.task_prompt  # should be non-empty
 
     def test_prompt_registry_has_role_for_known_role(self) -> None:
-        """PromptRegistry.has_role() must return True for known roles.
-
-        GAP: No concrete implementation.
-
-        xfail scope:
-            - has_role() not implemented.
-
-        Authority:
-            - ORCHESTRATION-PLANE-DISPATCH-AND-PROMPT-POLICY.md §10.1
-        """
-        registry: PromptRegistry = None  # type: ignore[assignment]
-
-        pytest.xfail(
-            "xfail[GAP3-prompt-registry]: PromptRegistry.has_role() has no concrete "
-            "implementation. "
-            "Owner: orchestration_dispatch_policy.implement-prompt-registry"
-        )
+        """PromptRegistry.has_role() returns True for known roles."""
+        registry = ConfigPromptRegistry(role_registry=ConfigRoleProfileRegistry())
 
         assert registry.has_role("python-executor") is True
 
     def test_prompt_rendering_differs_by_role_family(self) -> None:
-        """Different role families must produce different prompt content.
-
-        Spec §11: 'Different roles may render from different prompt families.
-        The system must not assume all roles use the same prompt structure.'
-
-        GAP: No concrete implementation to verify this behavior.
-
-        xfail scope:
-            - No PromptRegistry implementation to demonstrate family differences.
-
-        Authority:
-            - ORCHESTRATION-PLANE-DISPATCH-AND-PROMPT-POLICY.md §11 (role-specific prompt families)
-        """
-        registry: PromptRegistry = None  # type: ignore[assignment]
+        """Different role families produce different prompt content."""
+        registry = ConfigPromptRegistry(role_registry=ConfigRoleProfileRegistry())
 
         coder_spec = DispatchSpec(
             source_kind="step",
@@ -447,13 +317,6 @@ class TestPromptRegistryProtocol:
             runner="codex",
             session_mode="fresh",
             prompt_family="reviewer",
-        )
-
-        pytest.xfail(
-            "xfail[GAP3-prompt-registry]: PromptRegistry must render different prompts "
-            "for different role families (coder vs reviewer vs planner vs resolver). "
-            "No concrete implementation exists. "
-            "Owner: orchestration_dispatch_policy.implement-prompt-registry"
         )
 
         coder_bundle = registry.render(coder_spec)
@@ -480,16 +343,7 @@ class TestStructuredReviewResultNormalization:
     """
 
     def test_structured_review_result_pass_normalizes_to_continue(self) -> None:
-        """review_outcome='pass' should signal normal flow continuation.
-
-        GAP: No normalizer exists to interpret StructuredReviewResult.
-
-        xfail scope:
-            - No normalize_review_result() or equivalent entrypoint exists.
-
-        Authority:
-            - ORCHESTRATION-PLANE-DISPATCH-AND-PROMPT-POLICY.md §14.1 (normalization rule)
-        """
+        """review_outcome='pass' signals normal flow continuation."""
         result = StructuredReviewResult(
             review_outcome="pass",
             summary="All checks passed",
@@ -497,42 +351,17 @@ class TestStructuredReviewResultNormalization:
             evidence_refs=("evidence1",),
         )
 
-        pytest.xfail(
-            "xfail[GAP4-review-normalization]: No normalizer exists to convert "
-            "StructuredReviewResult into explicit ResolutionCase or continue signal. "
-            "A normalize_review_result(result, case_id, core, roster, runtime) -> "
-            "ResolutionCase | None function must be implemented per §14. "
-            "Owner: orchestration_dispatch_policy.implement-review-result-normalizer"
-        )
-
         # When pass: return None (continue normal flow, no resolution case)
         normalized = _normalize_review_result_if_needed(result, "case-1", _dummy_snapshots())
         assert normalized is None, "pass outcome should not create a resolution case"
 
     def test_structured_review_result_needs_fix_normalizes_to_resolution_case(self) -> None:
-        """review_outcome='needs_fix' must create a ResolutionCase.
-
-        Spec §14.1: 'needs_fix' -> create explicit resolution case.
-
-        GAP: No normalizer exists.
-
-        xfail scope:
-            - normalize returns None or raises NotImplementedError.
-
-        Authority:
-            - ORCHESTRATION-PLANE-DISPATCH-AND-PROMPT-POLICY.md §14.1
-        """
+        """review_outcome='needs_fix' creates a ResolutionCase."""
         result = StructuredReviewResult(
             review_outcome="needs_fix",
             summary="Issues found that need fixing",
             findings=("Issue 1: missing import", "Issue 2: wrong type"),
             evidence_refs=("file1.py",),
-        )
-
-        pytest.xfail(
-            "xfail[GAP4-review-normalization]: review_outcome='needs_fix' must normalize "
-            "to ResolutionCase with case_source='review_failed'. No normalizer exists. "
-            "Owner: orchestration_dispatch_policy.implement-review-result-normalizer"
         )
 
         normalized = _normalize_review_result_if_needed(result, "case-2", _dummy_snapshots())
@@ -542,29 +371,12 @@ class TestStructuredReviewResultNormalization:
         assert normalized.reason == "review outcome: needs_fix"
 
     def test_structured_review_result_needs_replan_normalizes_to_resolution_case(self) -> None:
-        """review_outcome='needs_replan' must create a ResolutionCase.
-
-        Spec §14.1: 'needs_replan' -> create explicit resolution case.
-
-        GAP: No normalizer exists.
-
-        xfail scope:
-            - normalize returns None or raises NotImplementedError.
-
-        Authority:
-            - ORCHESTRATION-PLANE-DISPATCH-AND-PROMPT-POLICY.md §14.1
-        """
+        """review_outcome='needs_replan' creates a ResolutionCase."""
         result = StructuredReviewResult(
             review_outcome="needs_replan",
             summary="Design issue requires replanning",
             findings=("Architecture decision needs revision",),
             evidence_refs=(),
-        )
-
-        pytest.xfail(
-            "xfail[GAP4-review-normalization]: review_outcome='needs_replan' must normalize "
-            "to ResolutionCase. No normalizer exists. "
-            "Owner: orchestration_dispatch_policy.implement-review-result-normalizer"
         )
 
         normalized = _normalize_review_result_if_needed(result, "case-3", _dummy_snapshots())
@@ -574,18 +386,7 @@ class TestStructuredReviewResultNormalization:
     def test_structured_review_result_operator_required_normalizes_to_resolution_case(
         self,
     ) -> None:
-        """review_outcome='operator_required' must create a ResolutionCase.
-
-        Spec §14.1: 'operator_required' -> create explicit resolution case.
-
-        GAP: No normalizer exists.
-
-        xfail scope:
-            - normalize returns None or raises NotImplementedError.
-
-        Authority:
-            - ORCHESTRATION-PLANE-DISPATCH-AND-PROMPT-POLICY.md §14.1
-        """
+        """review_outcome='operator_required' creates a ResolutionCase."""
         result = StructuredReviewResult(
             review_outcome="operator_required",
             summary="Manual intervention needed",
@@ -593,40 +394,14 @@ class TestStructuredReviewResultNormalization:
             evidence_refs=(),
         )
 
-        pytest.xfail(
-            "xfail[GAP4-review-normalization]: review_outcome='operator_required' must normalize "
-            "to ResolutionCase. No normalizer exists. "
-            "Owner: orchestration_dispatch_policy.implement-review-result-normalizer"
-        )
-
         normalized = _normalize_review_result_if_needed(result, "case-4", _dummy_snapshots())
         assert normalized is not None, "operator_required must create a resolution case"
         assert normalized.case_source == "review_failed"
 
     def test_structured_review_result_parse_failure_creates_resolution_case(self) -> None:
-        """Non-parseable review output must create a ResolutionCase.
-
-        Spec §13.3: 'If a role declared as structured_review_result does not
-        return a parseable result, the system must treat this as a
-        review/result contract violation.'
-
-        GAP: No parse failure handling exists.
-
-        xfail scope:
-            - No parse failure detection or normalization.
-
-        Authority:
-            - ORCHESTRATION-PLANE-DISPATCH-AND-PROMPT-POLICY.md §13.3
-        """
+        """Non-parseable review output creates a ResolutionCase."""
         # Simulate a review result that couldn't be parsed into StructuredReviewResult
         # (could be prose-only output or malformed structured output)
-
-        pytest.xfail(
-            "xfail[GAP4-review-normalization]: When structured_review_result output "
-            "contract is violated (prose-only or malformed), a ResolutionCase with "
-            "case_source='review_failed' must be created per §13.3. No normalizer exists. "
-            "Owner: orchestration_dispatch_policy.implement-review-result-normalizer"
-        )
 
         # This would require a try/except around parsing and creating a case
         # The actual normalizer function should handle this
@@ -658,77 +433,26 @@ class TestMainWorktreeRolePolicy:
     """
 
     def test_resolver_family_roles_require_main_worktree_context(self) -> None:
-        """Roles in resolver family must require main_worktree execution context.
-
-        GAP: No enforcement that resolver family roles are pinned to main_worktree.
-
-        xfail scope:
-            - No RoleProfileRegistry implementation to enforce role-based context.
-
-        Authority:
-            - ORCHESTRATION-PLANE-DISPATCH-AND-PROMPT-POLICY.md §12.2
-        """
-        pytest.xfail(
-            "xfail[GAP5-main-worktree-policy]: Resolver family roles "
-            "(blocked-case-coordinator, etc.) must be validated to require main_worktree "
-            "execution context. No RoleProfileRegistry implementation enforces this. "
-            "Owner: orchestration_dispatch_policy.implement-role-profile-registry"
-        )
-
-        # Expected: A concrete registry would validate that resolver-family
-        # roles are never dispatched to linked_worktree
-        registry: RoleProfileRegistry = None  # type: ignore[assignment]
+        """Resolver family roles require main_worktree execution context."""
+        registry = ConfigRoleProfileRegistry()
         profile = registry.get("blocked-case-coordinator")
         assert profile.execution_context == "main_worktree"
 
     def test_planner_family_roles_require_main_worktree_context(self) -> None:
-        """Roles in planner family must require main_worktree execution context.
-
-        GAP: No enforcement that planner family roles are pinned to main_worktree.
-
-        xfail scope:
-            - No RoleProfileRegistry implementation to enforce role-based context.
-
-        Authority:
-            - ORCHESTRATION-PLANE-DISPATCH-AND-PROMPT-POLICY.md §12.2
-        """
-        pytest.xfail(
-            "xfail[GAP5-main-worktree-policy]: Planner family roles "
-            "(vectl-planner, etc.) must be validated to require main_worktree "
-            "execution context. No RoleProfileRegistry implementation enforces this. "
-            "Owner: orchestration_dispatch_policy.implement-role-profile-registry"
-        )
-
-        registry: RoleProfileRegistry = None  # type: ignore[assignment]
+        """Planner family roles require main_worktree execution context."""
+        registry = ConfigRoleProfileRegistry()
         profile = registry.get("vectl-planner")
         assert profile.execution_context == "main_worktree"
 
     def test_reviewer_family_roles_require_main_worktree_context(self) -> None:
-        """Roles in reviewer family must require main_worktree execution context.
-
-        GAP: No enforcement that reviewer family roles are pinned to main_worktree.
-
-        xfail scope:
-            - No RoleProfileRegistry implementation to enforce role-based context.
-
-        Authority:
-            - ORCHESTRATION-PLANE-DISPATCH-AND-PROMPT-POLICY.md §12.2
-        """
-        pytest.xfail(
-            "xfail[GAP5-main-worktree-policy]: Reviewer family roles "
-            "(gate-reviewer, doc-reviewer, spec-readiness-auditor) must be validated "
-            "to require main_worktree execution context. No RoleProfileRegistry "
-            "implementation enforces this. "
-            "Owner: orchestration_dispatch_policy.implement-role-profile-registry"
-        )
-
-        registry: RoleProfileRegistry = None  # type: ignore[assignment]
+        """Reviewer family roles require main_worktree execution context."""
+        registry = ConfigRoleProfileRegistry()
         profile = registry.get("gate-reviewer")
         assert profile.execution_context == "main_worktree"
 
 
 # ---------------------------------------------------------------------
-# Helper fixtures / stubs (will not execute since tests xfail)
+# Helper fixtures / stubs
 # ---------------------------------------------------------------------
 
 
@@ -761,16 +485,14 @@ def _normalize_review_result_if_needed(
     case_id: str,
     snapshots: tuple[CoreSnapshot, RosterSnapshot, RuntimeSnapshot],
 ) -> ResolutionCase | None:
-    """Placeholder for the normalizer that will be implemented.
-
-    This function does not exist yet. It should:
-    - Return None when result.review_outcome == 'pass' (continue normal flow)
-    - Return ResolutionCase when result.review_outcome is 'needs_fix',
-      'needs_replan', or 'operator_required'
-    """
-    raise NotImplementedError(
-        "normalize_review_result_if_needed not yet implemented. "
-        "Must be implemented per ORCHESTRATION-PLANE-DISPATCH-AND-PROMPT-POLICY.md §14"
+    """Delegate review-result normalization to dispatch-policy implementation."""
+    core, roster, runtime = snapshots
+    return normalize_review_result(
+        result=result,
+        case_id=case_id,
+        core=core,
+        roster=roster,
+        runtime=runtime,
     )
 
 
@@ -780,12 +502,13 @@ def _normalize_parse_failure(
     case_id: str,
     snapshots: tuple[CoreSnapshot, RosterSnapshot, RuntimeSnapshot],
 ) -> ResolutionCase | None:
-    """Placeholder for parse failure normalizer.
-
-    This function does not exist yet. It should create a ResolutionCase
-    when structured_review_result contract is violated (prose-only or malformed).
-    """
-    raise NotImplementedError(
-        "normalize_parse_failure not yet implemented. "
-        "Must be implemented per ORCHESTRATION-PLANE-DISPATCH-AND-PROMPT-POLICY.md §13.3"
+    """Delegate parse-failure normalization to dispatch-policy implementation."""
+    core, roster, runtime = snapshots
+    return normalize_parse_failure(
+        raw_output=raw_output,
+        role_id=role_id,
+        case_id=case_id,
+        core=core,
+        roster=roster,
+        runtime=runtime,
     )

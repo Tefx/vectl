@@ -726,6 +726,41 @@ def test_run_consumes_authoritative_step_isolation_for_runtime_request(
     assert "source_kind=step" in captured_work_refs[0]
 
 
+def test_start_runtime_execution_blocks_context_drift_before_runtime_launch(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    app = _build_app(tmp_path)
+    orch = cast(Any, app)
+    prepare_called = False
+
+    original_prepare = app._runtime.prepare
+
+    def probe_prepare(request):
+        nonlocal prepare_called
+        prepare_called = True
+        return original_prepare(request)
+
+    monkeypatch.setattr(app._runtime, "prepare", probe_prepare)
+
+    with pytest.raises(ValueError, match="dispatch authority violation"):
+        orch._start_runtime_execution(
+            run_id="run-drift",
+            step_id="core.ready",
+            dispatch_spec=DispatchSpec(
+                source_kind="step",
+                source_id="core.ready",
+                role_id="gate-reviewer",
+                role_source="default",
+                execution_context="linked_worktree",
+                runner="codex",
+                session_mode="fresh",
+            ),
+            mode="start",
+        )
+
+    assert prepare_called is False
+
+
 def test_route_terminal_execution_completes_only_after_reconcile_allows_it(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:

@@ -75677,7 +75677,7 @@ phases:
       reviewer: orchestrator
   - id: retire_repair_continuity_legacy_surface.clean-stale-docs-and-spec-references
     name: Clean stale docs and spec references
-    status: pending
+    status: claimed
     description: 'work_type: technical_debt_remediation
 
       step_type: doc_sync
@@ -75712,6 +75712,8 @@ phases:
     depends_on:
     - retire_repair_continuity_legacy_surface.remove-or-shim-legacy-cli-surface
     agent: project-guide
+    claimed_by: project-guide
+    claimed_at: '2026-04-10T06:34:52.498219+00:00'
   - id: retire_repair_continuity_legacy_surface.retest-recovery-public-surface
     name: Retest recovery public surface after retirement cleanup
     status: pending

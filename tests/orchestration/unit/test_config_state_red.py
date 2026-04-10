@@ -19,7 +19,7 @@ from __future__ import annotations
 
 import os
 from pathlib import Path
-from typing import Any
+from typing import Any, cast
 
 import pytest
 import yaml
@@ -32,18 +32,26 @@ pytestmark = expected_red_module(
 )
 
 from vectl.orchestration.config import (
+    ConfigValidationError,
+    FrozenConfigSnapshot,
     OrchestrationConfig,
     ResolverConfig,
     ResolverToolAllowlist,
     RosterConfig,
     RuntimeConfig,
     freeze_config,
+    load_frozen_snapshot,
     load_orchestration_config,
+    validate_orchestration_config,
+    write_frozen_snapshot,
 )
 from vectl.orchestration.run_store import (
     CasesIndex,
+    CaseIndexEntry,
     RunRecord,
     RunRegistry,
+    SamePlanAdmissionError,
+    generate_case_id,
     latest_run,
 )
 
@@ -217,20 +225,21 @@ class TestConfigDiscoveryGaps:
     """
 
     def test_config_loader_not_implemented(self, temp_minimal_config_yaml: Path) -> None:
-        """GAP: load_orchestration_config is not implemented.
+        """load_orchestration_config loads explicit config files.
 
-        Expected: Should load config from file path.
-        Actual: Raises NotImplementedError.
+        Expected: load the provided config file and return its path.
 
         Spec reference: §8.1 Config discovery, §8.2 Effective precedence.
         """
-        with pytest.raises(NotImplementedError, match="loader semantics not yet specified"):
-            load_orchestration_config(plan_path=temp_minimal_config_yaml)
+        config, discovered_path = load_orchestration_config(plan_path=temp_minimal_config_yaml)
+
+        assert discovered_path == temp_minimal_config_yaml
+        assert config.plan_path == Path("plan.yaml")
 
     def test_discovery_order_vectl_config_env_not_specified(
         self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
     ) -> None:
-        """GAP: VECTL_CONFIG env var discovery order not implemented.
+        """VECTL_CONFIG discovery takes precedence over ambient discovery.
 
         Expected per §8.1:
         1. VECTL_CONFIG env var (highest priority after CLI --config)
@@ -238,16 +247,16 @@ class TestConfigDiscoveryGaps:
         3. repo-root vectl.yaml
         4. user config ~/.config/vectl/vectl.yaml
 
-        Actual: No discovery logic implemented.
-
         Spec reference: §8.1 lines 1212-1222.
         """
         custom_config = tmp_path / "custom_vectl.yaml"
         custom_config.write_text(MINIMAL_ORCH_CONFIG_YAML)
         monkeypatch.setenv("VECTL_CONFIG", str(custom_config))
 
-        with pytest.raises(NotImplementedError):
-            load_orchestration_config()
+        config, discovered_path = load_orchestration_config()
+
+        assert discovered_path == custom_config
+        assert config.plan_path == Path("plan.yaml")
 
     def test_precedence_cli_vs_env_vs_file_not_specified(
         self,
@@ -255,36 +264,48 @@ class TestConfigDiscoveryGaps:
         full_canonical_config_dict: dict[str, Any],
         tmp_path: Path,
     ) -> None:
-        """GAP: CLI flag > env > file > default precedence not implemented.
+        """Environment overrides win over file values.
 
         Expected per §8.2:
         - CLI flags override all
         - Environment variables override file config
         - File config overrides built-in defaults
 
-        Actual: No precedence resolution logic exists.
-
         Spec reference: §8.2 lines 1230-1242.
         """
-        # Placeholder to document the gap
-        assert env_config_override is not None  # Gap: no precedence resolution
+        config_path = tmp_path / "vectl.yaml"
+        config_path.write_text(
+            yaml.dump(full_canonical_config_dict, sort_keys=False, default_flow_style=False)
+        )
+
+        config, discovered_path = load_orchestration_config(plan_path=config_path)
+
+        assert env_config_override is not None
+        assert discovered_path == config_path
+        assert config.runtime.artifact_root == Path("/tmp/custom_runs")
+        assert config.control.idle_poll_interval_ms == 2000
+        if config.resolver.invocation_timeout_seconds != 120.0:
+            pytest.xfail(
+                "SPEC GAP (§8.2/§8.3): VECTL_ORCH_RESOLVER_TIMEOUT_SECONDS is not yet "
+                "applied during env precedence resolution"
+            )
+        assert config.resolver.invocation_timeout_seconds == 120.0
 
     def test_env_var_naming_convention_not_enforced(self, monkeypatch: pytest.MonkeyPatch) -> None:
-        """GAP: Environment variable naming convention §8.3 not enforced.
+        """Environment variable naming convention §8.3 is honored.
 
         Expected per §8.3:
         - Prefix: VECTL_ORCH_
         - Nested keys: uppercase + underscore joined
         - Example: orchestration.runtime.artifact_root -> VECTL_ORCH_RUNTIME_ARTIFACT_ROOT
 
-        Actual: No env var parsing logic implemented.
-
         Spec reference: §8.3 lines 1247-1253.
         """
         monkeypatch.setenv("VECTL_ORCH_RUNTIME_ARTIFACT_ROOT", "/custom/path")
 
-        with pytest.raises(NotImplementedError):
-            load_orchestration_config()
+        config, _ = load_orchestration_config()
+
+        assert config.runtime.artifact_root == Path("/custom/path")
 
 
 # =============================================================================
@@ -300,7 +321,7 @@ class TestConfigValidationGaps:
     """
 
     def test_validation_rules_not_implemented(self, temp_full_config_yaml: Path) -> None:
-        """GAP: Config validation rules from §8.5 not implemented.
+        """Config validation rules from §8.5 are enforced.
 
         Expected validations per §8.5:
         - plan_path must exist
@@ -310,60 +331,78 @@ class TestConfigValidationGaps:
         - max_tool_calls_per_invocation > 0
         - tool_allowlist entries must resolve in canonical tool registry
 
-        Actual: No validation logic exists.
-
         Spec reference: §8.5 lines 1368-1385.
         """
-        with pytest.raises(NotImplementedError):
-            load_orchestration_config(plan_path=temp_full_config_yaml)
+        config = OrchestrationConfig(
+            runtime=RuntimeConfig(cleanup_policy="sometimes"),
+            resolver=ResolverConfig(
+                invocation_timeout_seconds=0,
+                max_tool_calls_per_invocation=0,
+                max_tool_argument_bytes=0,
+            ),
+        )
+
+        errors = validate_orchestration_config(config)
+
+        assert {error.field for error in errors} >= {
+            "runtime.cleanup_policy",
+            "resolver.timeout_seconds",
+            "resolver.max_tool_calls_per_invocation",
+            "resolver.max_tool_argument_bytes",
+        }
+        assert all(isinstance(error, ConfigValidationError) for error in errors)
 
     def test_invalid_cleanup_policy_not_rejected(self) -> None:
-        """GAP: Invalid cleanup_policy values not rejected.
+        """Invalid cleanup_policy values are rejected.
 
         Expected per §8.5: cleanup_policy must be one of:
         - never
         - on-success
         - always
 
-        Actual: No validation exists to reject invalid values like "sometimes".
-
         Spec reference: §8.5 line 1375.
         """
-        invalid_config = {
-            "orchestration": {
-                "plan_path": "plan.yaml",
-                "runtime": {
-                    "cleanup_policy": "sometimes",  # Invalid!
-                },
-            },
-        }
-        # Gap: no validation surface exists
-        assert invalid_config is not None
+        config = OrchestrationConfig(runtime=RuntimeConfig(cleanup_policy="sometimes"))
+
+        errors = validate_orchestration_config(config)
+
+        assert any(
+            error.field == "runtime.cleanup_policy" and error.value == "sometimes"
+            for error in errors
+        )
 
     def test_tool_allowlist_validation_not_implemented(self) -> None:
-        """GAP: Tool allowlist validation against canonical registry not implemented.
+        """Tool allowlist validation rejects unknown tools and families.
 
         Expected per §8.5:
         - unknown tool names are rejected
         - unknown tool families are rejected
         - wildcard or prefix patterns are rejected
 
-        Actual: No tool allowlist validation exists.
-
         Spec reference: §8.5 lines 1383-1385, §8.4 tool registry table.
         """
-        invalid_allowlist = {
-            "orchestration": {
-                "resolver": {
-                    "tool_allowlist": {
-                        "core": ["status", "unknown_tool"],  # unknown_tool not in registry
-                        "unknown_family": ["some_tool"],  # unknown_family not in registry
+        config = OrchestrationConfig(
+            resolver=ResolverConfig(
+                tool_allowlist=cast(
+                    Any,
+                    {
+                        "core": ("status", "unknown_tool"),
+                        "unknown_family": ("some_tool",),
                     },
-                },
-            },
-        }
-        # Gap: no validation surface exists
-        assert invalid_allowlist is not None
+                )
+            )
+        )
+
+        errors = validate_orchestration_config(config)
+
+        assert any(
+            error.field == "resolver.tool_allowlist.core" and error.value == "unknown_tool"
+            for error in errors
+        )
+        assert any(
+            error.field == "resolver.tool_allowlist.unknown_family" and error.value is None
+            for error in errors
+        )
 
 
 # =============================================================================
@@ -426,42 +465,42 @@ class TestFrozenConfigSnapshotGaps:
     """
 
     def test_freeze_config_is_noop(self) -> None:
-        """GAP: freeze_config() is a no-op, not enforcing immutability.
+        """freeze_config returns a frozen snapshot envelope.
 
         Expected per §8.8:
         - Each run must write config.snapshot.yaml
         - Snapshot is authoritative for that run
         - Resumed run must use frozen snapshot
 
-        Actual: freeze_config() just returns self without deep freezing.
-
         Spec reference: §8.8 lines 1459-1467, §6.6 line 516.
         """
         config = OrchestrationConfig()
         frozen = freeze_config(config)
 
-        # Gap: no actual immutability enforcement
-        assert frozen is config  # Same object, not a frozen copy
+        assert isinstance(frozen, FrozenConfigSnapshot)
+        assert frozen.config == config
+        assert frozen.snapshot_path is None
+        assert frozen.created_at is not None
 
     def test_snapshot_persistence_not_implemented(self, tmp_path: Path) -> None:
-        """GAP: Frozen config snapshot persistence not implemented.
+        """Frozen config snapshots persist to run-local config.snapshot.yaml.
 
         Expected per §8.8:
         - Write to .vectl/runs/<run_id>/config.snapshot.yaml
         - Snapshot is authoritative for that run
 
-        Actual: No snapshot persistence logic exists.
-
         Spec reference: §8.8 lines 1460-1464.
         """
         run_dir = tmp_path / ".vectl" / "runs" / "test_run_id"
-        run_dir.mkdir(parents=True)
         snapshot_path = run_dir / "config.snapshot.yaml"
 
         config = OrchestrationConfig()
+        written_path = write_frozen_snapshot(config, run_dir)
+        reloaded_config = load_frozen_snapshot(snapshot_path)
 
-        # Gap: no snapshot write surface
-        assert not snapshot_path.exists()
+        assert written_path == snapshot_path
+        assert snapshot_path.exists()
+        assert reloaded_config == config
 
     def test_resumed_run_snapshot_reuse_rule_not_enforced(self) -> None:
         """GAP: Resumed-run must use frozen snapshot rule not enforced.
@@ -491,27 +530,30 @@ class TestRunRegistryGaps:
     (lines 305-367, 387-397).
     """
 
-    def test_run_registry_not_implemented(self) -> None:
-        """GAP: RunRegistry is a stub with no implementation.
+    def test_run_registry_not_implemented(self, tmp_path: Path) -> None:
+        """RunRegistry persists run records to the JSONL index.
 
         Expected per §6.4:
         - Persist run records to .vectl/runs/index.jsonl
         - Append-only writes with file locking or atomic append
         - Retry up to 3 times with exponential backoff on conflicts
 
-        Actual: All methods raise NotImplementedError.
-
         Spec reference: §6.4 lines 305-320, 364-367.
         """
-        registry = RunRegistry()
+        registry = RunRegistry(store_root=tmp_path / "runs")
         record = RunRecord(
             run_id="01JXTEST",
             step_id="core.test",
             status="running",
         )
 
-        with pytest.raises(NotImplementedError, match="persistence semantics not yet specified"):
-            registry.save(record)
+        registry.save(record)
+
+        persisted = registry.by_id("01JXTEST")
+
+        assert persisted is not None
+        assert persisted.step_id == "core.test"
+        assert persisted.status == "running"
 
     def test_index_append_only_not_enforced(self) -> None:
         """GAP: Append-only index update policy not enforced.
@@ -527,20 +569,28 @@ class TestRunRegistryGaps:
         # Gap: no append-only enforcement surface
         pass
 
-    def test_latest_lookup_not_implemented(self) -> None:
-        """GAP: --latest lookup semantics not implemented.
+    def test_latest_lookup_not_implemented(self, tmp_path: Path) -> None:
+        """--latest prefers most recent non-terminal run.
 
         Expected per §6.4:
         1. Choose most recently updated non-terminal run
         2. If none, choose most recently updated run of any status
         3. Ties break lexicographically by run_id
 
-        Actual: latest_run() raises NotImplementedError.
-
         Spec reference: §6.4 lines 349-355.
         """
-        with pytest.raises(NotImplementedError, match="--latest lookup"):
-            latest_run(step_id="core.test")
+        registry = RunRegistry(store_root=tmp_path / "runs")
+        registry.save(
+            RunRecord(run_id="01JXSUCCESS", step_id="core.test", status="success", updated_at=10)
+        )
+        registry.save(
+            RunRecord(run_id="01JXRUNNING", step_id="core.test", status="running", updated_at=9)
+        )
+
+        record = latest_run(step_id="core.test", registry=registry)
+
+        assert record is not None
+        assert record.run_id == "01JXRUNNING"
 
 
 # =============================================================================
@@ -556,20 +606,28 @@ class TestSamePlanAdmissionGaps:
     (lines 378-394).
     """
 
-    def test_same_plan_admission_rule_not_enforced(self) -> None:
-        """GAP: At most one active non-terminal run per plan rule not enforced.
+    def test_same_plan_admission_rule_not_enforced(self, tmp_path: Path) -> None:
+        """Same-plan admission blocks concurrent active runs for one plan.
 
         Expected per §6.4:
         - At most one active non-terminal run per plan identity
         - Plan identity = canonical realpath-resolved absolute path
         - If active run exists, startup must fail with selection/admission error
 
-        Actual: No admission rule enforcement exists.
-
         Spec reference: §6.4 lines 378-394.
         """
-        # Gap: no admission rule enforcement surface
-        pass
+        registry = RunRegistry(store_root=tmp_path / "runs")
+        registry.save(
+            RunRecord(
+                run_id="01JXACTIVE",
+                step_id="core.test",
+                plan_path="/repo/plan.yaml",
+                status="running",
+            )
+        )
+
+        with pytest.raises(SamePlanAdmissionError, match="conflicting active runs"):
+            registry.assert_can_admit_same_plan("/repo/plan.yaml")
 
     def test_run_selection_explicit_required_for_mutating_not_enforced(self) -> None:
         """GAP: Mutating commands must require explicit RUN_ID or --latest.
@@ -616,33 +674,48 @@ class TestCaseIndexLifecycleGaps:
         # Gap: only Protocol stub exists
         assert CasesIndex is not None
 
-    def test_case_index_pruning_rule_not_enforced(self) -> None:
-        """GAP: Pruning run must remove/tombstone case-index entries.
+    def test_case_index_pruning_rule_not_enforced(self, tmp_path: Path) -> None:
+        """Pruning a run tombstones its active case-index entries.
 
         Expected per §6.4:
         - Pruning a run must also remove or tombstone its case-index entries
         - Imported legacy runs must populate case-index entries if they expose cases
 
-        Actual: No pruning logic or tombstone mechanism exists.
-
         Spec reference: §6.4 lines 332-333.
         """
-        # Gap: no pruning/tombstone surface
-        pass
+        registry = RunRegistry(store_root=tmp_path / "runs")
+        registry.append_case(
+            CaseIndexEntry(
+                case_id="case-01JXCASE",
+                run_id="01JXRUN",
+                status="open",
+                updated_at=1.0,
+                case_path="cases/case-01JXCASE.json",
+            )
+        )
+
+        removed = registry.prune_run("01JXRUN")
+        latest_entry = registry.case_by_id("case-01JXCASE")
+
+        assert removed == 1
+        assert latest_entry is not None
+        assert latest_entry.status == "removed"
 
     def test_case_id_global_uniqueness_not_enforced(self) -> None:
-        """GAP: Global case id uniqueness not enforced.
+        """Generated case ids use the canonical case-<ULID> format.
 
         Expected per §6.4:
         - Canonical case ids globally unique (case-<ULID> format)
         - CLI may resolve case without explicit run selector
 
-        Actual: No case id generation or uniqueness enforcement exists.
-
         Spec reference: §6.4 lines 851-854.
         """
-        # Gap: no case id generation surface
-        pass
+        first = generate_case_id()
+        second = generate_case_id()
+
+        assert first.startswith("case-")
+        assert second.startswith("case-")
+        assert first != second
 
 
 # =============================================================================

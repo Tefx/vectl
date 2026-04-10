@@ -1,79 +1,122 @@
 #!/usr/bin/env python3
-"""Liveness probe: orchestration system wiring.
+"""Liveness probe: supported orchestration CLI wiring.
 
 Step: orch_system_wiring.liveness_probe
-Intent: Prove complete vertical slice from entrypoint -> control -> runtime -> result.
+Intent: Prove the public orchestration CLI accepts a clean, test-local fixture.
 """
 
 from __future__ import annotations
 
+import os
 import subprocess
 import sys
+import tempfile
 from pathlib import Path
 
 
-def test_orch_liveness_module_entrypoint():
-    """Test: python -m vectl.driver accepts invocation and orchestrates."""
+def _write_local_orch_fixture(root: Path) -> None:
+    """Create a minimal, self-contained orchestration fixture."""
 
-    # ARRANGE: Use the actual driver.yaml in the worktree root
-    config_path = Path("driver.yaml")
-    if not config_path.exists():
-        print(f"FAIL: Config not found: {config_path}")
-        sys.exit(1)
+    (root / "plan.yaml").write_text(
+        """
+version: 1
+project: orch-liveness-test
+phases:
+  - id: core
+    name: Core
+    steps:
+      - id: core.ready
+        name: Ready
+        status: pending
+""".strip()
+        + "\n",
+        encoding="utf-8",
+    )
+    (root / "vectl.yaml").write_text(
+        """
+orchestration:
+  plan_path: plan.yaml
+""".strip()
+        + "\n",
+        encoding="utf-8",
+    )
 
-    # ACT: Invoke the driver module entrypoint
-    # Use timeout to prevent hanging if orchestration doesn't complete
-    result = subprocess.run(
-        ["uv", "run", "python", "-m", "vectl.driver", str(config_path)],
+
+def _init_git_repo(root: Path) -> None:
+    """Initialize the minimal git state required by orchestration worktrees."""
+
+    subprocess.run(
+        ["git", "init", "-b", "main"],
+        cwd=root,
         capture_output=True,
         text=True,
         timeout=10,
-        cwd=Path(__file__).parent.parent.parent,  # Worktree root
+        check=True,
+    )
+    subprocess.run(
+        ["git", "add", "plan.yaml", "vectl.yaml"],
+        cwd=root,
+        capture_output=True,
+        text=True,
+        timeout=10,
+        check=True,
+    )
+    commit_env = {
+        "GIT_AUTHOR_NAME": "orch-liveness",
+        "GIT_AUTHOR_EMAIL": "orch-liveness@example.com",
+        "GIT_COMMITTER_NAME": "orch-liveness",
+        "GIT_COMMITTER_EMAIL": "orch-liveness@example.com",
+    }
+    subprocess.run(
+        ["git", "commit", "-m", "init orchestration liveness fixture"],
+        cwd=root,
+        capture_output=True,
+        text=True,
+        timeout=10,
+        check=True,
+        env={**os.environ, **commit_env},
     )
 
-    # ASSERT: Verify entrypoint starts and produces output
-    # The driver should at least parse config and initialize orchestration
-    # Even if plan.yaml has no available steps, it should exit cleanly
 
-    print("=== STDOUT ===")
-    print(result.stdout)
-    print("=== STDERR ===")
-    print(result.stderr)
-    print("=== EXIT CODE ===")
-    print(result.returncode)
+def test_orch_liveness_cli_entrypoint():
+    """Test: `vectl orch run` works with a test-local clean fixture."""
 
-    # A liveness probe proves the system is not dead - it accepts input
-    # Exit code 0 = clean shutdown (no work to do)
-    # Exit code 1 = runtime error (but system started)
-    # Exit code 2 = usage error (argparsing failed - FAIL)
+    with tempfile.TemporaryDirectory() as tmpdir:
+        fixture_root = Path(tmpdir)
+        _write_local_orch_fixture(fixture_root)
+        _init_git_repo(fixture_root)
 
-    assert result.returncode != 2, "Entrypoint rejected invocation (usage error)"
+        # ACT: invoke the supported orchestration CLI against the local fixture
+        result = subprocess.run(
+            ["uv", "run", "vectl", "orch", "run", "--json"],
+            capture_output=True,
+            text=True,
+            timeout=20,
+            cwd=fixture_root,
+        )
 
-    # At minimum, the orchestration wiring must succeed:
-    # - Config parses
-    # - Plan loads
-    # - Control instantiates
-    # - Resolver binds
+        # ASSERT: verify the supported public CLI starts and produces a run result
 
-    # Check for evidence of orchestration in stderr (logging) or stdout
-    combined = result.stdout + result.stderr
+        print("=== STDOUT ===")
+        print(result.stdout)
+        print("=== STDERR ===")
+        print(result.stderr)
+        print("=== EXIT CODE ===")
+        print(result.returncode)
 
-    # If orchestration wired successfully, we should see NO error about it
-    assert "ORCHESTRATION_WIRING_UNAVAILABLE" not in combined, (
-        f"Orchestration wiring failed: {combined}"
-    )
+        assert result.returncode == 0, result.stderr or result.stdout
 
-    # If it started cleanly, it either:
-    # 1. Ran no steps (plan had nothing claimable) - clean exit
-    # 2. Ran some steps and completed
-    # Both are valid "alive" outcomes
+        combined = result.stdout + result.stderr
+        assert "Runtime wiring failure" not in combined, combined
+        assert '"success": true' in result.stdout, result.stdout
+        assert '"step_id": "core.ready"' in result.stdout, result.stdout
 
-    print(f"PASS: Entrypoint started with exit code {result.returncode}")
+        print(f"PASS: Supported CLI started with exit code {result.returncode}")
 
 
 if __name__ == "__main__":
     try:
-        test_orch_liveness_module_entrypoint()
+        test_orch_liveness_cli_entrypoint()
         sys.exit(0)
     except subprocess.TimeoutExpired:
         print("FAIL: Orchestration did not respond within timeout")

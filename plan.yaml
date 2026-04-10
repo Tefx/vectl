@@ -77649,7 +77649,7 @@ phases:
       \ recommend follow-up integration proof in future hardening cycle."
   - id: resolver_cleanup_finalization.architecture-review
     name: Review architecture cleanliness after cleanup
-    status: claimed
+    status: done
     description: 'Architecture-level review after implementation and doc sync.
 
 
@@ -77691,6 +77691,27 @@ phases:
     agent: software-architect-tacit
     claimed_by: software-architect-tacit
     claimed_at: '2026-04-10T16:07:47.088696+00:00'
+    done_at: '2026-04-10T16:19:32.240229+00:00'
+    evidence: "## refs Read Confirmation (MANDATORY)\nReviewed:\n- docs/ADR-orchestration-role-profile-config-and-resolver-cleanup.md\n\
+      - docs/ORCHESTRATION-PLANE-ARCHITECTURE.md\n- docs/ORCHESTRATION-PLANE-INTERFACES.md\n\
+      - docs/ORCHESTRATION-PLANE-IMPLEMENTATION-DESIGN.md\n- src/vectl/orchestration/control.py\n\
+      - src/vectl/orchestration/resolver.py\n- src/vectl/orchestration/roster.py\n\
+      - src/vectl/orchestration/runtime.py\n- src/vectl/orchestration/config.py\n\
+      - src/vectl/orchestration/core_adapter.py\n- src/vectl/orchestration/contracts.py\n\
+      - src/vectl/orchestration/interfaces.py\n- src/vectl/orchestration/dispatch_policy.py\n\
+      - src/vectl/orch_app.py\n- targeted tests in orchestration unit/integration\
+      \ scope\n\n## Architecture Review Memo\n- Boundary findings:\n  - Control is\
+      \ the sole plan-aware decision owner.\n  - Roster is resource-only; no plan\
+      \ semantics.\n  - Runtime is mechanical execution/worktree ownership only.\n\
+      \  - Resolver is bounded to ResolutionCase -> ResolutionReport with explicit\
+      \ authority constraints.\n  - Composition/wiring remains centralized in `orch_app.py`.\n\
+      - Remaining drift risks:\n  - Low risk of legacy-term re-entry via future convenience\
+      \ edits.\n  - Non-blocking seam watch item: `dispatch_policy.CoreStepDataAdapter`\
+      \ uses core-adapter private path access and should not expand into shadow plan\
+      \ read authority.\n- Clean end-state verdict:\n  - Clean end-state achieved\
+      \ for cleanup target; ownership lines are crisp and removed concepts are not\
+      \ active in current orchestration contracts.\n  - No blocker-class architecture\
+      \ drift identified."
   - id: resolver_cleanup_finalization.black-box-surface-check
     name: Black-box check of cleaned orchestration surfaces
     status: claimed

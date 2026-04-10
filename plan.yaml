@@ -78013,7 +78013,7 @@ phases:
     agent: python-senior-tacit
   - id: orch_plane_live_authority.prompt-registry-runtime
     name: Unhardcode prompt registry runtime mapping
-    status: pending
+    status: claimed
     description: Remove hardcoded PromptRegistry flattening seams so role/prompt selection
       remains runtime- and config-driven for future roles, not family-default hardwiring.
     verification: Config-backed role additions or fixture roles prove prompt selection
@@ -78035,6 +78035,8 @@ phases:
     depends_on:
     - orch_plane_live_authority.contract-lock
     agent: python-senior-tacit
+    claimed_by: python-senior-tacit
+    claimed_at: '2026-04-10T19:12:48.814844+00:00'
   - id: orch_plane_live_authority.integration-proof
     name: Independent live authority proof
     status: pending

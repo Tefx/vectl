@@ -613,7 +613,8 @@ def _apply_env_overrides(
         elif key.startswith("resolver."):
             subkey = key[len("resolver.") :]
             if subkey == "timeout_seconds":
-                updates.setdefault("resolver", {})["invocation_timeout_seconds"] = float(value)
+                # NOTE: _dict_to_config reads 'timeout_seconds' from the dict
+                updates.setdefault("resolver", {})["timeout_seconds"] = float(value)
             elif subkey == "enabled":
                 updates.setdefault("resolver", {})["enabled"] = value.lower() in (
                     "true",

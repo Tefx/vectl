@@ -75733,3 +75733,38 @@ phases:
     depends_on:
     - live_smoke_real_runner_validation.fix-live-smoke-product-defects-batch
     agent: integration-verifier-tacit
+  - id: live_smoke_real_runner_validation.doc-sync-live-smoke-findings
+    name: Doc sync live-smoke findings and operating prerequisites
+    status: pending
+    description: 'work_type: doc_sync
+
+      step_type: documentation
+
+
+      Update docs/guidance to reflect the real live-smoke execution contract and any
+      product changes made during remediation.
+
+
+      Requirements:
+
+      - document real prerequisites and opt-in expectations for live runner lanes
+
+      - if UI/browser checks were included, document how they are run separately
+
+      - capture any operator-facing caveats learned from real execution
+
+      - keep docs clear about environment prerequisites versus product health'
+    verification: '- User-facing or contributor-facing docs accurately describe how
+      to run live smoke and interpret outcomes
+
+      - No stale guidance implies these lanes should pass without opt-in/auth/binaries'
+    evidence_template: '## Doc Sync Evidence
+
+      - docs updated:
+
+      - prerequisite guidance added/changed:
+
+      - operational caveats captured:'
+    depends_on:
+    - live_smoke_real_runner_validation.retest-live-smoke-after-remediation
+    agent: project-guide

@@ -11,6 +11,7 @@ from collections.abc import Mapping
 from dataclasses import dataclass
 from typing import Protocol
 
+from vectl.orchestration.config import DEFAULT_RESOLVER_ROLE_ID
 from vectl.orchestration.contracts import ResolutionCase, ResolutionReport
 from vectl.orchestration.resolution_reports import parse_resolution_report_payload
 
@@ -80,7 +81,7 @@ class BoundResolver:
     """
 
     invocation: ResolverInvocationSurface
-    default_role_id: str
+    default_role_id: str = DEFAULT_RESOLVER_ROLE_ID
 
     def resolve(self, case: ResolutionCase) -> ResolutionReport:
         """Resolve case via invocation glue and typed report parsing.

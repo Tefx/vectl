@@ -75547,7 +75547,7 @@ phases:
       \  - stale references: `docs/DRIVER-CONTINUITY-FOUNDATION.md`, `docs/ORCHESTRATION-PLANE-MIGRATION.md`"
   - id: retire_repair_continuity_legacy_surface.remove-or-shim-legacy-cli-surface
     name: Remove or convert legacy CLI surface to explicit retirement shim
-    status: rejected
+    status: claimed
     description: 'work_type: technical_debt_remediation
 
       step_type: implementation
@@ -75590,7 +75590,7 @@ phases:
     - retire_repair_continuity_legacy_surface.lock-modern-recovery-authority-and-retirement-decision
     agent: python-senior-tacit
     claimed_by: python-senior-tacit
-    claimed_at: '2026-04-10T06:03:42.652640+00:00'
+    claimed_at: '2026-04-10T06:10:19.943576+00:00'
     done_at: '2026-04-10T06:09:18.833394+00:00'
     rejection_reason: 'Evidence/code mismatch: legacy repair continuity command and
       docs are still present in main (cli.py still registers command; README still

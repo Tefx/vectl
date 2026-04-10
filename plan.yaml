@@ -77857,7 +77857,7 @@ phases:
   steps:
   - id: orch_plane_live_authority.contract-lock
     name: Contract lock for live authority
-    status: claimed
+    status: done
     description: 'Contract lock: pin the ordinary-dispatch live-path invariants so
       dispatch, roster participation, tool mediation, and prompt-role separation all
       remain part of one authoritative runtime path; explicitly forbid static bypasses
@@ -77882,6 +77882,33 @@ phases:
     agent: software-architect-tacit
     claimed_by: software-architect-tacit
     claimed_at: '2026-04-10T19:00:36.104828+00:00'
+    done_at: '2026-04-10T19:05:31.282206+00:00'
+    evidence: "## refs Read Confirmation (MANDATORY)\n- tools/vectl/README.md — NOT\
+      \ READ: attempted at `/Users/tefx/Projects/vectl/.vectl/worktrees/orch_plane_live_authority.contract-lock/tools/vectl/README.md`,\
+      \ file not present in this worktree.\n\n## Contract Outputs\n- Locked invariants:\n\
+      \  - Ordinary dispatch live authority path explicitly fixed as `ControlDecision\
+      \ -> claim -> authoritative step reread -> live RoleProfile resolution -> DispatchSpec\
+      \ -> PromptRegistry.render -> runtime` with fail-closed checkpoints.\n  - Prompt\
+      \ seam ownership fixed to `DispatchSpec -> PromptRegistry.render(spec) -> PromptBundle`;\
+      \ prompt policy forbidden from living in control/runtime/runner.\n  - Roster\
+      \ constrained to lease/supply facts only; cannot reinterpret work intent or\
+      \ role semantics.\n  - Resolver mediation constrained to blocked-case flow and\
+      \ delegated subagent work must re-enter standard dispatch seam (`source_kind=\"\
+      resolution_subtask\"`).\n  - Anti-flattening lock: `agent_id` precedence over\
+      \ `prompt_family` fallback; blocked-case standard/tacit identities must remain\
+      \ distinct concrete prompt identities.\n- Forbidden shortcuts/static seams:\n\
+      \  - no static step->prompt or role->system prompt authority tables\n  - no\
+      \ runtime-side inference of role/profile/mutation policy\n  - no boot-time stale\
+      \ map as sole dispatch authority\n  - no control-side pre-rendered prompt return\n\
+      \  - no resolver bypass of PromptRegistry or ad-hoc prompt blobs\n  - no resolver\
+      \ direct ordinary-plan claim/mutation bypass\n- Runtime surfaces covered:\n\
+      \  - ordinary step dispatch\n  - resolver-spawned subagent dispatch\n  - role-profile\
+      \ lookup in dispatch prep\n  - prompt registry render path\n  - roster lease\
+      \ path\n  - control refresh after resolution\n- Docs updated:\n  - `docs/ORCHESTRATION-PLANE-LIVE-AUTHORITY-CONTRACT-LOCK.md`\
+      \ (new authority)\n  - `docs/ORCHESTRATION-PLANE-ARCHITECTURE.md`\n  - `docs/ORCHESTRATION-PLANE-DISPATCH-AND-PROMPT-POLICY.md`\n\
+      \  - `docs/ORCHESTRATION-PLANE-INTERFACES.md`\n  - `docs/ORCHESTRATION-PLANE-ORCH-APP-ROUTING.md`\n\
+      \  - `docs/ORCHESTRATION-PLANE-RESOLUTION-CONTRACT.md`\n  - `docs/ORCHESTRATION-PLANE-RESOLVER-COORDINATION.md`\n\
+      \nCommit evidence:\n- Worker commit: `1d86dd7`\n- Cherry-picked on main: `7cf11c2`"
   - id: orch_plane_live_authority.dispatch-live-path
     name: Enforce ordinary dispatch live path
     status: pending

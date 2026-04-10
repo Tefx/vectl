@@ -77554,7 +77554,7 @@ phases:
     agent: doc-reviewer-tacit
   - id: resolver_cleanup_finalization.spec-conformance
     name: Audit spec conformance of cleaned orchestration model
-    status: claimed
+    status: done
     description: 'Spec conformance verification via adversarial divergence hunting.
 
 
@@ -77600,6 +77600,30 @@ phases:
     agent: spec-verifier-tacit
     claimed_by: spec-verifier-tacit
     claimed_at: '2026-04-10T15:42:32.607654+00:00'
+    done_at: '2026-04-10T16:02:33.303343+00:00'
+    evidence: "## refs Read Confirmation (MANDATORY)\n- docs/ADR-orchestration-role-profile-config-and-resolver-cleanup.md\
+      \ — read\n- src/vectl/orchestration/config.py — read\n- src/vectl/orchestration/dispatch_policy.py\
+      \ — read\n- src/vectl/orchestration/resolver.py — read\n- src/vectl/orchestration/contracts.py\
+      \ — read\n- docs/ORCHESTRATION-PLANE-DISPATCH-AND-PROMPT-POLICY.md — read\n\
+      - docs/ORCHESTRATION-PLANE-ARCHITECTURE.md — read\n\n## Spec Conformance Report\n\
+      - Requirements checked:\n  - R1 config-owned ordinary role profiles: CONFORMS\
+      \ (`default_role_profiles()` authoritative; no dispatch-owned role table).\n\
+      \  - R2 resolver default agents limited to blocked-case pair: CONFORMS (both\
+      \ in config defaults and registry).\n  - R3 deleted legacy concepts removed\
+      \ from target architecture surfaces: CONFORMS (zero hits in src/tests; ADR-only\
+      \ historical mention).\n  - R4 planner mutation boundary via vectl-facade-only\
+      \ semantics: STATIC CONFORMS; runtime behavioral proof flagged NEEDS_TEST.\n\
+      \  - R5 program invokes configured blocked-case resolver directly: CONFORMS\
+      \ (`BoundResolver` role flow proven).\n  - R6 historical plan records non-authoritative\
+      \ for terminology: CONFORMS in authoritative docs.\n- Divergences:\n  - none\
+      \ blocker-class.\n- NEEDS_TEST items:\n  - planner mutation boundary behavioral\
+      \ proof at runtime (non-blocking, static enforcement strong).\n- Verdict:\n\
+      \  - PASS (5 conforms, 0 diverges, 1 non-blocking NEEDS_TEST)\n\n## Behavioral\
+      \ Proof Note\n- Static controls verified:\n  - planner role policy = `mutation_policy:\
+      \ vectl_facade_only`, `output_contract: vectl_facade_mutation`\n  - dispatch\
+      \ prompt policy explicitly forbids direct plan edits\n  - no runtime orchestration\
+      \ code path that directly mutates `plan.yaml`\n- Gate impact:\n  - non-blocking;\
+      \ recommend follow-up integration proof in future hardening cycle."
   - id: resolver_cleanup_finalization.architecture-review
     name: Review architecture cleanliness after cleanup
     status: pending

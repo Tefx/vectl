@@ -73757,3 +73757,11 @@ phases:
       - Commands/tests run:'
     depends_on:
     - repo_regression_observability_gap_disposition.align-event-envelope-schema-tests
+- id: repo_regression_full_suite_gate
+  name: Repo-Wide Full Suite Gate
+  status: locked
+  gate: 'The repository demonstrates repo-wide health: full pytest passes, or any
+    non-passing tests are explicitly accepted as xfail/skip with governed rationale.
+    The gap between phase-local green and repo-wide red is closed.'
+  depends_on:
+  - repo_regression_observability_gap_disposition

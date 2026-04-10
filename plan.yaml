@@ -73575,7 +73575,7 @@ phases:
     non-passing tests are explicitly accepted as xfail/skip with governed rationale.
     The gap between phase-local green and repo-wide red is closed.'
   depends_on:
-  - repo_regression_observability_gap_disposition
+  - repo_regression_surface_and_observability_alignment
   steps:
   - id: repo_regression_full_suite_gate.run-full-pytest-regression-gate
     name: Run full pytest regression gate

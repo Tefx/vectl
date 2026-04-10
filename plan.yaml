@@ -77911,7 +77911,7 @@ phases:
       \nCommit evidence:\n- Worker commit: `1d86dd7`\n- Cherry-picked on main: `7cf11c2`"
   - id: orch_plane_live_authority.dispatch-live-path
     name: Enforce ordinary dispatch live path
-    status: pending
+    status: claimed
     description: Make ordinary dispatch traverse the same mandatory live authority
       path as resolver execution, using real runner/gateway/runtime seams rather than
       an ordinary-path shortcut.
@@ -77935,6 +77935,8 @@ phases:
     depends_on:
     - orch_plane_live_authority.contract-lock
     agent: python-senior-tacit
+    claimed_by: python-senior-tacit
+    claimed_at: '2026-04-10T19:05:49.511872+00:00'
   - id: orch_plane_live_authority.roster-decision-path
     name: Bring roster into dispatch authority
     status: pending

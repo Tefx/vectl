@@ -77861,3 +77861,10 @@ phases:
     with live proof that direct plan.yaml editing or facade bypass is blocked.
   depends_on:
   - orch_plane_live_authority
+- id: orch_plane_finalization
+  name: Orchestration Plane Finalization
+  status: locked
+  gate: Lower-priority hygiene is closed without reopening live-path authority gaps,
+    and final review confirms the remediation chain is coherent.
+  depends_on:
+  - orch_plane_planner_boundary

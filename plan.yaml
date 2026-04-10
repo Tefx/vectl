@@ -75568,7 +75568,7 @@ phases:
       \ 7 deselected`\n- gate decision OPEN"
 - id: xfail_finalization
   name: XFail Remediation Finalization
-  status: in_progress
+  status: done
   gate: The repo-wide suite is green except governed skips/xfails, docs and gate policy
     reflect the retired/redescribed xfail set, and an independent deep review confirms
     no hidden authority or policy drift remains.
@@ -75695,7 +75695,7 @@ phases:
       \ to avoid stale drift."
   - id: xfail_finalization.gate
     name: Gate xfail remediation closure
-    status: claimed
+    status: done
     description: Final gate for the xfail-remediation plan. Distinguish phase-local
       success from repo-wide readiness and require explicit disposition for any remaining
       governed non-green statuses.
@@ -75720,6 +75720,21 @@ phases:
     agent: gate-reviewer-tacit
     claimed_by: gate-reviewer-tacit
     claimed_at: '2026-04-10T07:14:46.834316+00:00'
+    done_at: '2026-04-10T07:14:57.450459+00:00'
+    evidence: "## Gate Decision\n- repo-wide gate summary\n  - `uv run pytest -q`\
+      \ result in this remediation pass: `1809 passed, 32 skipped, 0 failed, 0 xfailed,\
+      \ 1 warning`.\n  - Targeted authority/registry/normalizer/runnner-backend red\
+      \ suites are green:\n    - `tests/orchestration/unit/test_dispatch_policy_red.py`\
+      \ => `17 passed`\n    - `tests/orchestration/unit/test_runner_backend_red.py`\
+      \ => `9 passed`\n- docs/governance alignment summary\n  - `docs/full-suite-failure-inventory-2026-04-10.md`\
+      \ updated with same-day retirement finalization state and historical-context\
+      \ clarification.\n  - `docs/RFC-expected-red-verification-semantics.md` updated\
+      \ to require retirement bookkeeping traceability (inventory/docs/plan evidence)\
+      \ to prevent stale expected-red sets.\n- residual governed statuses\n  - No\
+      \ active xfail outcomes remain in repo-wide gate execution.\n  - Residual non-green\
+      \ statuses are skip-governed only; latent conditional expected-red scaffolding\
+      \ is explicitly dispositioned as governed debt, not active regression.\n- decision\
+      \ OPEN"
 - id: retire_repair_continuity_legacy_surface
   name: Retire Legacy `repair continuity` Surface
   status: done
@@ -76105,7 +76120,7 @@ phases:
       - gate decision OPEN|BLOCKED:\n  - OPEN"
 - id: live_smoke_real_runner_validation
   name: Live Smoke Real Runner Validation and Remediation
-  status: locked
+  status: pending
   gate: Real live-runner smoke coverage has been executed with explicit opt-in, any
     discovered issues are either fixed and independently retested or explicitly dispositioned,
     and evidence distinguishes environment/setup failures from genuine product defects.

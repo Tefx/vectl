@@ -73779,3 +73779,19 @@ phases:
       - Summary counts:
 
       - Remaining non-passing tests and dispositions:'
+  - id: repo_regression_full_suite_gate.decide-static-guard-scope-and-enforcement
+    name: Decide static guard scope and enforcement
+    status: pending
+    description: Decide whether `uvx invar-tools guard --all` is a release gate, advisory
+      audit, or changed-files gate for this repository. Prevent full-repo static debt
+      from being confused with regressions in narrowly remediated work unless the
+      project explicitly wants release-level strictness.
+    verification: Repository has an explicit policy for when full guard-all is required
+      versus when scoped/static advisory results are acceptable.
+    evidence_template: '- Guard policy decision:
+
+      - Command(s) reviewed:
+
+      - How future gates should apply this policy:'
+    depends_on:
+    - repo_regression_full_suite_gate.run-full-pytest-regression-gate

@@ -75427,3 +75427,40 @@ phases:
     depends_on:
     - retire_repair_continuity_legacy_surface.remove-or-shim-legacy-cli-surface
     agent: python-senior-tacit
+  - id: retire_repair_continuity_legacy_surface.clean-stale-docs-and-spec-references
+    name: Clean stale docs and spec references
+    status: pending
+    description: 'work_type: technical_debt_remediation
+
+      step_type: doc_sync
+
+
+      Remove stale documentation/spec references that still describe `repair continuity`
+      as a modern supported recovery surface.
+
+
+      Requirements:
+
+      - update README and operator docs to point to `vectl orch recover`
+
+      - clean stale authority references to removed driver continuity docs where they
+      no longer represent current source of truth
+
+      - if historical mention is kept, label it explicitly as retired/legacy
+
+      - ensure docs do not send users toward removed runtime surfaces'
+    verification: '- User-facing docs consistently present orchestration-plane recovery
+      as the supported path
+
+      - No stale doc claims present `repair continuity` as active functionality unless
+      clearly labeled retired'
+    evidence_template: '## Doc Sync Evidence
+
+      - docs updated:
+
+      - stale references removed or relabeled:
+
+      - modern replacement path shown as:'
+    depends_on:
+    - retire_repair_continuity_legacy_surface.remove-or-shim-legacy-cli-surface
+    agent: project-guide

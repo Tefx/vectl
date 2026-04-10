@@ -75075,6 +75075,36 @@ phases:
     policy seam consistently.
   depends_on:
   - xfail_role_prompt_and_review_normalization
+  steps:
+  - id: xfail_authority_and_entrypoint_enforcement.enforce-main-worktree-role-authority
+    name: Enforce main-worktree role authority
+    status: pending
+    description: 'work_type: technical_debt_remediation
+
+      step_type: implementation
+
+
+      Close the planner/resolver/reviewer-family execution-context xfails by enforcing
+      main-worktree authority at the approved policy/runtime boundary.
+
+
+      Requirements:
+
+      - enforce main-worktree for planner/resolver/reviewer families through centralized
+      role policy plus entrypoint validation
+
+      - do not rely on runner mechanics alone
+
+      - touched dispatch-policy red tests for main-worktree role families must retire'
+    verification: '- Main-worktree role-family xfails in dispatch_policy_red are green
+
+      - authority is validated before mechanical launch'
+    evidence_template: '- authority rule location:
+
+      - role families enforced:
+
+      - commands/tests run:'
+    agent: python-senior-tacit
 - id: xfail_finalization
   name: XFail Remediation Finalization
   status: locked

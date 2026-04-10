@@ -75547,7 +75547,7 @@ phases:
       \  - stale references: `docs/DRIVER-CONTINUITY-FOUNDATION.md`, `docs/ORCHESTRATION-PLANE-MIGRATION.md`"
   - id: retire_repair_continuity_legacy_surface.remove-or-shim-legacy-cli-surface
     name: Remove or convert legacy CLI surface to explicit retirement shim
-    status: pending
+    status: claimed
     description: 'work_type: technical_debt_remediation
 
       step_type: implementation
@@ -75589,6 +75589,8 @@ phases:
     depends_on:
     - retire_repair_continuity_legacy_surface.lock-modern-recovery-authority-and-retirement-decision
     agent: python-senior-tacit
+    claimed_by: python-senior-tacit
+    claimed_at: '2026-04-10T06:03:42.652640+00:00'
   - id: retire_repair_continuity_legacy_surface.rewrite-or-remove-legacy-black-box-tests
     name: Rewrite or remove legacy black-box tests
     status: pending

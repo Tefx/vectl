@@ -78110,7 +78110,7 @@ phases:
       \nCommit evidence:\n- Worker commit: `d393f27`\n- Cherry-picked on main: `90bbd19`"
   - id: orch_plane_live_authority.integration-proof
     name: Independent live authority proof
-    status: claimed
+    status: done
     description: 'Independent integration proof for ordinary dispatch plus resolver-adjacent
       authority: verify live runners, roster participation, dynamic tool mediation,
       and prompt separation all hold on the real path.'
@@ -78142,6 +78142,35 @@ phases:
     agent: integration-verifier-tacit
     claimed_by: integration-verifier-tacit
     claimed_at: '2026-04-10T19:35:36.380528+00:00'
+    done_at: '2026-04-10T19:44:02.510028+00:00'
+    evidence: "## refs Read Confirmation (MANDATORY)\n- tools/vectl/README.md — NOT\
+      \ READ: required file absent in isolated worktree path.\n- docs/ORCHESTRATION-PLANE-LIVE-AUTHORITY-CONTRACT-LOCK.md\
+      \ — verified required live dispatch checkpoints, prompt seam, roster supply-only\
+      \ boundary, dynamic mediation, and fail-closed rules.\n- src/vectl/orch_app.py\
+      \ / dispatch_policy.py / resolver_gateway.py / roster.py / contracts.py — verified\
+      \ runtime wiring and authority checks.\n\n## Integration Evidence\n- Exact commands/tests\
+      \ run:\n  - `.venv/bin/python -m pytest tests/orchestration/ -v --tb=short`\
+      \ -> `467 passed, 1 failed`\n  - `.venv/bin/python -m pytest tests/orchestration/integration/\
+      \ -v --tb=short` -> `32 passed, 0 failed`\n  - `.venv/bin/python -m pytest tests/orchestration/unit/test_orch_app.py\
+      \ -v --tb=short` -> `61 passed, 0 failed`\n- Actual output/checkpoint evidence:\n\
+      \  - Ordinary dispatch prompt seam enforces role/profile authority checks before\
+      \ runtime launch; invalid prompt_family/output_contract/mutation_policy fail\
+      \ closed.\n  - Roster-derived inputs bind reuse/session facts while preserving\
+      \ role/work intent; mismatched lease role raises roster authority violation.\n\
+      \  - Dynamic resolver mediation derives tool calls/families from live case inputs\
+      \ (including artifact refs), with explicit allow/deny and gateway audit evidence.\n\
+      \  - role/agent/prompt-family separation preserved; standard/tacit resolver\
+      \ prompts remain distinct.\n- Evidence refs proving live authority path:\n \
+      \ - dispatch authority violations are explicit (no silent fallback)\n  - resolver\
+      \ mediation evidence refs emitted (`resolver_mediation_role`, `resolver_mediation_calls`,\
+      \ `resolver_mediation_allowlist`)\n  - gateway denial path exercised with audit\
+      \ event evidence\n- Remaining gaps:\n  - 1 pre-existing test expectation drift\
+      \ in `test_dispatch_recovery_gate_enforcement` (fixture builds incomplete `DispatchSpec`\
+      \ with empty `prompt_family`; now rejected earlier by new authority checks).\n\
+      \  - This is a fixture/expectation alignment item (not production runtime regression)\
+      \ and is already planned under `orch_plane_finalization.test-expectation-drift`.\n\
+      \nDisposition:\n- Integration proof accepted with one documented non-blocking\
+      \ drift item routed to dedicated finalization step."
   - id: orch_plane_live_authority.gate
     name: Gate live authority remediation
     status: pending

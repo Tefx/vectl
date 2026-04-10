@@ -75381,7 +75381,7 @@ phases:
       \ -q\n  Result: 11 passed, 6 deselected"
 - id: xfail_authority_and_entrypoint_enforcement
   name: 'XFail Remediation: Authority and Entrypoint Enforcement'
-  status: in_progress
+  status: done
   gate: Main-worktree authority and normal-flow lifecycle mutation restrictions are
     enforced at approved runtime boundaries, and app-level wiring uses the centralized
     policy seam consistently.
@@ -75528,7 +75528,7 @@ phases:
       \ surfaces are green with command output captured."
   - id: xfail_authority_and_entrypoint_enforcement.gate
     name: Gate authority and entrypoint enforcement
-    status: claimed
+    status: done
     description: 'Gate review: ensure authority enforcement now lives in the intended
       seams (role policy, resolver gateway, approved lifecycle facade, orch_app composition)
       and not in ad hoc backend branches.'
@@ -75549,9 +75549,26 @@ phases:
     agent: gate-reviewer-tacit
     claimed_by: gate-reviewer-tacit
     claimed_at: '2026-04-10T07:09:54.381769+00:00'
+    done_at: '2026-04-10T07:10:25.473451+00:00'
+    evidence: "## Gate Review Report\n- authority seam audit\n  - `src/vectl/orch_app.py`\
+      \ enforces pre-launch dispatch authority via `_validate_dispatch_authority`\
+      \ before runtime prepare/start.\n  - `src/vectl/orchestration/resolver_gateway.py`\
+      \ enforces resolver main-worktree boundary via `main_worktree_probe` gate in\
+      \ `AuditedResolverGateway.invoke`.\n  - `src/vectl/orchestration/core_adapter.py`\
+      \ remains concrete lifecycle mutation enforcement boundary for `claim_step(...,\
+      \ flow=\"normal\")`.\n  - Targeted stale red markers removed:\n    - no `xfail[GAP1-main-worktree-enforcement]`\n\
+      \    - no `xfail[GAP5-main-worktree-policy]`\n    - no `xfail[GAP5-approved-facade-main-worktree]`\n\
+      - remaining bypass risks\n  - No remaining bypass observed in targeted authority\
+      \ seams; checks are anchored at approved concrete boundaries (orch app entrypoint,\
+      \ resolver gateway, core adapter), not protocol-only assumptions.\n- verification\
+      \ evidence\n  - `uv run pytest tests/orchestration/unit/test_dispatch_policy_red.py\
+      \ -k \"MainWorktreeRolePolicy\" -q` => `3 passed, 14 deselected`\n  - `uv run\
+      \ pytest tests/orchestration/unit/test_runner_backend_red.py -k \"resolver_gateway_invoke_respects_resolver_authority_contract\
+      \ or lifecycle_mutation_port_enforces_normal_flow_only_claim\" -q` => `2 passed,\
+      \ 7 deselected`\n- gate decision OPEN"
 - id: xfail_finalization
   name: XFail Remediation Finalization
-  status: locked
+  status: pending
   gate: The repo-wide suite is green except governed skips/xfails, docs and gate policy
     reflect the retired/redescribed xfail set, and an independent deep review confirms
     no hidden authority or policy drift remains.

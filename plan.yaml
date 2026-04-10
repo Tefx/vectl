@@ -76843,6 +76843,8 @@ phases:
       - Remaining authority ambiguities:
 
       '
+    depends_on:
+    - resolver_cleanup_core.fix-gate-shouldfix-batch
     agent: python-senior-tacit
   - id: resolver_cleanup_core.wire-default-blocked-case-resolver
     name: Wire program to configured blocked-case resolver

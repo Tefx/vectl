@@ -73624,7 +73624,7 @@ phases:
     - repo_regression_full_suite_gate.decide-static-guard-scope-and-enforcement
 - id: repo_regression_test_intent_alignment
   name: Repo Regression Test Intent Alignment
-  status: in_progress
+  status: done
   gate: Full-suite failures are inventoried, classified, and stale expected-red tests
     are realigned to current behavior or explicitly governed as intentional red with
     lifecycle metadata.
@@ -73633,7 +73633,7 @@ phases:
   steps:
   - id: repo_regression_triage.define-remediation-execution-sequence
     name: Define remediation execution sequence
-    status: claimed
+    status: done
     description: 'Translate the classified failures into an execution order that minimizes
       thrash: expected-red cleanup, contract lock realignment, semantic/runtime drift
       resolution, fixture/CLI surface repair, observability debt triage, then final
@@ -73643,6 +73643,49 @@ phases:
       drift with behavioral fixes.
     claimed_by: general
     claimed_at: '2026-04-10T03:12:36.815931+00:00'
+    done_at: '2026-04-10T03:15:40.878578+00:00'
+    evidence: 'Artifact:
+
+      - Commit hash: e80a5c9867daf1458922e322aad76380a2413bfa
+
+      - Document: docs/repo_regression_remediation_execution_sequence.md
+
+
+      Verification:
+
+      - `git branch --show-current` -> vectl/step-repo_regression_triage.define-remediation-execution-sequence
+
+      - `git rev-parse HEAD` -> e80a5c9867daf1458922e322aad76380a2413bfa
+
+      - New document maps bucket classes A-F to ordered downstream remediation sequence
+      with dependency guardrails.
+
+
+      Sequence mapped:
+
+      1) expected-red cleanup
+
+      2) contract lock realignment
+
+      3) semantic/runtime drift resolution
+
+      4) fixture/CLI surface repair
+
+      5) observability debt triage
+
+      6) final full-suite gate
+
+
+      Spec link:
+
+      - docs/repo_regression_failure_dispositions.yaml
+
+      - docs/full-suite-failure-inventory-2026-04-10.md
+
+
+      Notes:
+
+      - Subagent reported ref path `tools/vectl/README.md` missing in worktree.'
   - id: repo_regression_triage.classify-failures-by-disposition
     name: Classify failures by disposition
     status: done
@@ -73908,7 +73951,7 @@ phases:
       no plan/orchestrator state files modified.'
 - id: repo_regression_semantic_alignment
   name: Repo Regression Semantic Alignment
-  status: locked
+  status: pending
   gate: Contract locks, runtime state-machine expectations, and current implementation
     converge on authoritative semantics without stale exact-shape boundaries or unresolved
     behavior drift in the failing scope.

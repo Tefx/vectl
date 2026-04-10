@@ -1,7 +1,7 @@
 # Orchestration Plane Resolver Coordination
 
 **Status:** Proposed  
-**Architecture authority:** `docs/ORCHESTRATION-PLANE-ARCHITECTURE.md`, `docs/ADR-orchestration-role-profile-config-and-resolver-cleanup.md`  
+**Architecture authority:** `docs/ORCHESTRATION-PLANE-ARCHITECTURE.md`, `docs/ADR-orchestration-role-profile-config-and-resolver-cleanup.md`, `docs/ADR-orchestration-role-agent-prompt-separation.md`  
 **Interface authority:** `docs/ORCHESTRATION-PLANE-INTERFACES.md`  
 **Related:** `docs/ORCHESTRATION-PLANE-RESOLUTION-CONTRACT.md`, `docs/ORCHESTRATION-PLANE-RUNNER-BACKEND.md`, `docs/ORCHESTRATION-PLANE-RUNTIME-WORKTREE-LIFECYCLE.md`, `docs/ORCHESTRATION-PLANE-DISPATCH-AND-PROMPT-POLICY.md`
 
@@ -32,6 +32,10 @@ Resolver should be implemented as the orchestration plane's:
 
 The only default resolver agent IDs are `blocked-case-coordinator` and
 `blocked-case-coordinator-tacit`.
+
+They are one resolver family, not one concrete prompt. Both share the same
+contract and authority boundary, while remaining independently selectable agent
+variants.
 
 Resolver is first-class and agentic, but it does not replace the entire
 orchestration system.
@@ -340,6 +344,10 @@ Resolver should reuse:
 - role/profile policy
 - prompt policy
 - shared runner backend
+
+Reuse here means shared contracts and central selection logic, not forced prompt
+identity collapse. Resolver-family roles may share policy while selecting
+distinct concrete agent prompts through role-profile configuration.
 
 What differs is the source of work:
 

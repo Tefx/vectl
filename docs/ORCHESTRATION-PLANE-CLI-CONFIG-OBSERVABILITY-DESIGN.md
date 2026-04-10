@@ -3,7 +3,7 @@
 > Canonical specification for orchestration-plane CLI commands, configuration system, and observability contracts.
 
 **Status:** Design specification  
-**Architecture authority:** `docs/ORCHESTRATION-PLANE-ARCHITECTURE.md`, `docs/ADR-orchestration-role-profile-config-and-resolver-cleanup.md`  
+**Architecture authority:** `docs/ORCHESTRATION-PLANE-ARCHITECTURE.md`, `docs/ADR-orchestration-role-profile-config-and-resolver-cleanup.md`, `docs/ADR-orchestration-role-agent-prompt-separation.md`  
 **Implementation authority:** `docs/ORCHESTRATION-PLANE-IMPLEMENTATION-DESIGN.md`  
 **Related docs:** `docs/ORCHESTRATION-PLANE-RESOLUTION-CONTRACT.md`, `docs/ORCHESTRATION-PLANE-ISOLATION-SEMANTICS.md`
 
@@ -662,6 +662,17 @@ orchestration:
     default_output: human
     max_pending_actions: 100
 ```
+
+Interpretation:
+
+- `role_profiles.<role_id>` is the authoritative config key selected by plan or
+  orchestration routing
+- `agent_id` identifies the concrete runtime agent/persona implementation
+- `prompt_family` identifies the shared prompt-contract family
+
+For ordinary roles these may coincide. For resolver defaults they intentionally
+permit one shared resolver family with two distinct concrete agent prompts:
+`blocked-case-coordinator` and `blocked-case-coordinator-tacit`.
 
 ### 8.5 Validation Rules
 

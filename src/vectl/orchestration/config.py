@@ -272,6 +272,7 @@ def default_role_profiles() -> tuple[RoleProfile, ...]:
     return (
         RoleProfile(
             role_id="python-executor",
+            agent_id="python-executor",
             prompt_family="coder",
             execution_context="linked_worktree",
             mutation_policy="worktree_changes",
@@ -281,6 +282,7 @@ def default_role_profiles() -> tuple[RoleProfile, ...]:
         ),
         RoleProfile(
             role_id="python-senior",
+            agent_id="python-senior",
             prompt_family="coder",
             execution_context="linked_worktree",
             mutation_policy="worktree_changes",
@@ -290,6 +292,7 @@ def default_role_profiles() -> tuple[RoleProfile, ...]:
         ),
         RoleProfile(
             role_id="vectl-planner",
+            agent_id="vectl-planner",
             prompt_family="planner",
             execution_context="main_worktree",
             mutation_policy="vectl_facade_only",
@@ -299,6 +302,7 @@ def default_role_profiles() -> tuple[RoleProfile, ...]:
         ),
         RoleProfile(
             role_id="gate-reviewer",
+            agent_id="gate-reviewer",
             prompt_family="reviewer",
             execution_context="main_worktree",
             mutation_policy="read_only",
@@ -308,6 +312,7 @@ def default_role_profiles() -> tuple[RoleProfile, ...]:
         ),
         RoleProfile(
             role_id="doc-reviewer",
+            agent_id="doc-reviewer",
             prompt_family="reviewer",
             execution_context="main_worktree",
             mutation_policy="read_only",
@@ -317,6 +322,7 @@ def default_role_profiles() -> tuple[RoleProfile, ...]:
         ),
         RoleProfile(
             role_id="spec-readiness-auditor",
+            agent_id="spec-readiness-auditor",
             prompt_family="reviewer",
             execution_context="main_worktree",
             mutation_policy="read_only",
@@ -326,6 +332,7 @@ def default_role_profiles() -> tuple[RoleProfile, ...]:
         ),
         RoleProfile(
             role_id="blocked-case-coordinator",
+            agent_id="blocked-case-coordinator",
             prompt_family="resolver",
             execution_context="main_worktree",
             mutation_policy="vectl_facade_only",
@@ -335,6 +342,7 @@ def default_role_profiles() -> tuple[RoleProfile, ...]:
         ),
         RoleProfile(
             role_id="blocked-case-coordinator-tacit",
+            agent_id="blocked-case-coordinator-tacit",
             prompt_family="resolver",
             execution_context="main_worktree",
             mutation_policy="vectl_facade_only",
@@ -578,7 +586,7 @@ def _config_to_dict(config: OrchestrationConfig) -> dict[str, Any]:
     """Convert OrchestrationConfig to a dict for YAML serialization."""
     role_profiles = {
         profile.role_id: {
-            "agent_id": profile.role_id,
+            "agent_id": profile.agent_id,
             "prompt_family": profile.prompt_family,
             "execution_context": profile.execution_context,
             "mutation_policy": profile.mutation_policy,
@@ -924,11 +932,12 @@ def _dict_to_config(data: dict[str, Any]) -> OrchestrationConfig:
             if not isinstance(raw_profile, dict):
                 raise ValueError(f"role profile {role_id!r} must be a mapping")
             agent_id = raw_profile.get("agent_id", role_id)
-            if agent_id != role_id:
-                raise ValueError(f"role profile key {role_id!r} must match agent_id {agent_id!r}")
+            if not isinstance(agent_id, str) or not agent_id.strip():
+                raise ValueError(f"role profile {role_id!r} must define a non-empty agent_id")
             parsed_profiles.append(
                 RoleProfile(
                     role_id=role_id,
+                    agent_id=agent_id,
                     prompt_family=str(raw_profile.get("prompt_family", "")),
                     execution_context=cast(
                         ExecutionContext,

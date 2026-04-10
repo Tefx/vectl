@@ -143,6 +143,7 @@ class TestConfigRoleProfileRegistry:
         profile = registry.get("python-executor")
         assert isinstance(profile, RoleProfile)
         assert profile.role_id == "python-executor"
+        assert profile.agent_id == "python-executor"
         assert profile.prompt_family == "coder"
         assert profile.execution_context == "linked_worktree"
         assert profile.mutation_policy == "worktree_changes"
@@ -163,6 +164,8 @@ class TestConfigRoleProfileRegistry:
         assert reviewer.execution_context == "main_worktree"
         assert resolver.execution_context == "main_worktree"
         assert tacit_resolver.execution_context == "main_worktree"
+        assert resolver.agent_id == "blocked-case-coordinator"
+        assert tacit_resolver.agent_id == "blocked-case-coordinator-tacit"
         assert tacit_resolver.prompt_family == "resolver"
 
     def test_has_role_returns_true_for_known_role(self) -> None:
@@ -285,6 +288,7 @@ class TestConfigRoleProfileRegistry:
         """
         custom_role = RoleProfile(
             role_id="custom-agent",
+            agent_id="custom-agent",
             prompt_family="coder",
             execution_context="linked_worktree",
             mutation_policy="worktree_changes",
@@ -302,6 +306,7 @@ class TestConfigRoleProfileRegistry:
         """Canonical main-worktree family policy is enforced centrally."""
         invalid_reviewer = RoleProfile(
             role_id="custom-reviewer",
+            agent_id="custom-reviewer",
             prompt_family="reviewer",
             execution_context="linked_worktree",
             mutation_policy="read_only",
@@ -489,6 +494,43 @@ class TestConfigPromptRegistry:
         # System prompt should reference main worktree / vectl facade
         system_lower = bundle.system_prompt.lower()
         assert "vectl" in system_lower or "approved" in system_lower or "facade" in system_lower
+
+    def test_tacit_resolver_role_renders_distinct_prompt_content(self) -> None:
+        """Tacit resolver must not collapse to the standard resolver prompt."""
+        role_registry = ConfigRoleProfileRegistry()
+        registry = ConfigPromptRegistry(role_registry=role_registry)
+
+        standard = registry.render(
+            DispatchSpec(
+                source_kind="resolution_subtask",
+                source_id="case-standard",
+                role_id="blocked-case-coordinator",
+                role_source="resolver",
+                execution_context="main_worktree",
+                runner="codex",
+                session_mode="fresh",
+                prompt_family="resolver",
+                mutation_policy="vectl_facade_only",
+            )
+        )
+        tacit = registry.render(
+            DispatchSpec(
+                source_kind="resolution_subtask",
+                source_id="case-tacit",
+                role_id="blocked-case-coordinator-tacit",
+                role_source="resolver",
+                execution_context="main_worktree",
+                runner="codex",
+                session_mode="fresh",
+                prompt_family="resolver",
+                mutation_policy="vectl_facade_only",
+            )
+        )
+
+        assert standard.system_prompt != tacit.system_prompt
+        assert standard.task_prompt != tacit.task_prompt
+        assert "tacit edition" in tacit.system_prompt.lower()
+        assert "repair or delegation paths" in tacit.system_prompt.lower()
 
     def test_main_worktree_context_in_messages(self) -> None:
         """main_worktree execution context must appear in context messages."""
@@ -953,7 +995,7 @@ class TestParseFailureNormalization:
             runtime=runtime,
         )
         # Preview should be truncated
-        assert "AAA" in case.summary  # First 200 chars will be in preview
+        assert "AAA" in (case.summary or "")  # First 200 chars will be in preview
 
 
 # ---------------------------------------------------------------------

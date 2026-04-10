@@ -4,7 +4,7 @@
 > `vectl core`.
 
 **Status:** Target architecture  
-**Authority:** `docs/ADR-orchestration-role-profile-config-and-resolver-cleanup.md`  
+**Authority:** `docs/ADR-orchestration-role-profile-config-and-resolver-cleanup.md`, `docs/ADR-orchestration-role-agent-prompt-separation.md`  
 **Scope:** Full target design, not an implementation slice  
 **Related docs:** `docs/ORCHESTRATION-PLANE-INTERFACES.md`, `docs/ORCHESTRATION-PLANE-RESOLUTION-CONTRACT.md`, `docs/ORCHESTRATION-PLANE-ISOLATION-SEMANTICS.md`, `docs/ORCHESTRATION-PLANE-IMPLEMENTATION-DESIGN.md`
 
@@ -368,6 +368,11 @@ The only default resolver agents are:
 Additional resolver-like roles require explicit configuration and must not be
 treated as built-in defaults.
 
+These two defaults share one resolver contract (`ResolutionCase` ->
+`ResolutionReport`) and one policy family (`main_worktree`,
+`vectl_facade_only`, no ordinary claim semantics), but they are distinct agent
+identities and must remain independently selectable at runtime.
+
 ### 10.3 Historical plan non-authority
 
 Historical `plan.yaml` content remains untouched execution history. It does not
@@ -419,5 +424,12 @@ And the supporting authority split is:
 - plan references roles
 - config defines role profiles
 - orchestration core only loads, validates, and consumes
+
+Within config-defined role profiles:
+
+- `role_id` is the orchestration-facing identity
+- `agent_id` is the concrete runtime agent/persona identity
+- `prompt_family` is the shared contract family, not a command to collapse
+  every role in that family to one concrete prompt
 
 This is the full target architecture for the next design phase.

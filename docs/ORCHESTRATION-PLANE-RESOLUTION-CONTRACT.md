@@ -4,7 +4,7 @@
 > system to normal orchestration flow.
 
 **Status:** Target contract  
-**Architecture authority:** `docs/ORCHESTRATION-PLANE-ARCHITECTURE.md`, `docs/ADR-orchestration-role-profile-config-and-resolver-cleanup.md`  
+**Architecture authority:** `docs/ORCHESTRATION-PLANE-ARCHITECTURE.md`, `docs/ADR-orchestration-role-profile-config-and-resolver-cleanup.md`, `docs/ADR-orchestration-role-agent-prompt-separation.md`  
 **Interface authority:** `docs/ORCHESTRATION-PLANE-INTERFACES.md`
 
 ---
@@ -25,6 +25,10 @@ The answer in this architecture is:
 
 The only default resolver agents are `blocked-case-coordinator` and
 `blocked-case-coordinator-tacit`.
+
+They share the same bounded resolver contract and authority rules, but they are
+distinct runtime agent identities rather than aliases that must collapse to one
+identical system prompt.
 
 This is intentionally **not** a pure directive-only design. The `resolver`
 exists to reason and act where rules do not close the case. But it still does

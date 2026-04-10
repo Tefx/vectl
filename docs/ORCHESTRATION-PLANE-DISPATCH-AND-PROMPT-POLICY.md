@@ -1,7 +1,7 @@
 # Orchestration Plane Dispatch and Prompt Policy
 
 **Status:** Proposed  
-**Architecture authority:** `docs/ORCHESTRATION-PLANE-ARCHITECTURE.md`, `docs/ADR-orchestration-role-profile-config-and-resolver-cleanup.md`  
+**Architecture authority:** `docs/ORCHESTRATION-PLANE-ARCHITECTURE.md`, `docs/ADR-orchestration-role-profile-config-and-resolver-cleanup.md`, `docs/ADR-orchestration-role-agent-prompt-separation.md`  
 **Interface authority:** `docs/ORCHESTRATION-PLANE-INTERFACES.md`  
 **Related:** `docs/ORCHESTRATION-PLANE-RUNNER-BACKEND.md`, `docs/ORCHESTRATION-PLANE-RUNTIME-WORKTREE-LIFECYCLE.md`, `docs/ORCHESTRATION-PLANE-RESOLUTION-CONTRACT.md`, `docs/RFC-vectl-decide-advisor-refresh.md`
 
@@ -289,6 +289,18 @@ class RoleProfile:
     default_runner: str
 ```
 
+Interpretation:
+
+- `role_id` selects orchestration semantics and remains the plan-facing identity.
+- `agent_id` selects the concrete agent/persona prompt implementation used at runtime.
+- `prompt_family` selects the shared contract scaffold for a class of roles.
+
+`agent_id` and `role_id` may be identical for many ordinary roles, but the
+architecture must not require them to be identical. This distinction is what
+allows resolver defaults such as `blocked-case-coordinator` and
+`blocked-case-coordinator-tacit` to share one resolver contract while still
+using distinct agent prompts.
+
 ### 8.3 RoleProfileRegistry
 
 Recommended minimum protocol:
@@ -415,6 +427,21 @@ This preserves the architecture:
 - `runtime` remains mechanical
 - runner backend remains transport/mechanics only
 
+### 10.4 Prompt selection precedence
+
+Prompt rendering must not collapse all roles in a family to one concrete system
+prompt.
+
+Required precedence:
+
+1. select concrete prompt content from `RoleProfile.agent_id` when the role has a
+   specialized agent/persona implementation
+2. fall back to `prompt_family` shared templates only when no specialized
+   agent/persona override exists
+
+This keeps prompt ownership centralized while preserving role-level behavioral
+differences where the architecture explicitly requires them.
+
 ---
 
 ## 11. Role-specific prompt families
@@ -483,6 +510,14 @@ Resolver-family templates must reflect:
 - no claim of new work
 - approved vectl tool facade mutation policy
 - explicit escalation when automatic closure is not possible
+
+Additionally:
+
+- `blocked-case-coordinator` and `blocked-case-coordinator-tacit` share the same
+  resolver contract and policy invariants
+- but they must not be forced through one identical concrete system prompt
+- the tacit resolver variant should be realized as a distinct agent/persona
+  prompt selected through `agent_id`, not by inventing a new resolver taxonomy
 
 ---
 

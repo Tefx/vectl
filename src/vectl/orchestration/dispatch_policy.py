@@ -275,6 +275,14 @@ _RESOLVER_SYSTEM_PROMPT = (
     "do not introduce conflict-specialized or reviewer-specific resolver sub-taxonomy. "
     "Escalate to operator (operator_required) when automatic closure is unsafe."
 )
+_RESOLVER_TACIT_SYSTEM_PROMPT = (
+    "You are the Blocked-Case Coordinator (Tacit Edition). You operate from the main "
+    "worktree and may use approved vectl tool surfaces only. You must not claim new steps. "
+    "Produce a ResolutionReport (status, summary, evidence_refs, operator_message). "
+    "Use stronger pattern recognition to discover authority-safe repair or delegation paths "
+    "before concluding a case is operator-bound. Do not introduce conflict-specialized or "
+    "reviewer-specific resolver sub-taxonomy."
+)
 _RESOLVER_TASK_TEMPLATE = (
     "## Resolution Case: {source_id}\n"
     "### Context\n{description}\n\n"
@@ -283,6 +291,15 @@ _RESOLVER_TASK_TEMPLATE = (
     "You may use approved vectl tools to inspect and act. "
     "Do not claim new steps or modify the plan outside the approved facade. "
     "Escalate to operator when automatic closure is unsafe or unverifiable."
+)
+_RESOLVER_TACIT_TASK_TEMPLATE = (
+    "## Resolution Case: {source_id}\n"
+    "### Context\n{description}\n\n"
+    "### Blocked Steps\n{refs}\n\n"
+    "Investigate and produce a resolution report. "
+    "Look for hidden authority-safe repair or delegation paths before escalating. "
+    "You may use approved vectl tools to inspect and act. "
+    "Do not claim new steps or modify the plan outside the approved facade."
 )
 
 
@@ -326,10 +343,15 @@ class ConfigPromptRegistry:
         Returns:
             PromptBundle with system_prompt, task_prompt, and messages.
         """
+        profile = self._resolve_role_profile(spec.role_id)
         family = spec.prompt_family
         template_data = _build_template_data(spec)
 
-        system_prompt, task_template = _select_prompt_family(family)
+        system_prompt, task_template = _select_prompt_content(
+            family=family,
+            role_id=spec.role_id,
+            agent_id=profile.agent_id if profile is not None else spec.role_id,
+        )
         task_prompt = task_template.format_map(template_data)
 
         # Include role-specific context as messages
@@ -358,6 +380,14 @@ class ConfigPromptRegistry:
         # Fallback: check if the role family is known
         return role_id in _ROLE_FAMILY_MAP
 
+    def _resolve_role_profile(self, role_id: str) -> RoleProfile | None:
+        if self._role_registry is None:
+            return None
+        try:
+            return self._role_registry.get(role_id)
+        except KeyError:
+            return None
+
 
 def _build_template_data(spec: DispatchSpec) -> dict[str, str]:
     """Build formatting data from DispatchSpec for prompt template rendering.
@@ -384,8 +414,11 @@ def _build_template_data(spec: DispatchSpec) -> dict[str, str]:
     }
 
 
-def _select_prompt_family(
+def _select_prompt_content(
+    *,
     family: str,
+    role_id: str,
+    agent_id: str,
 ) -> tuple[str, str]:
     """Select system prompt and task template by role family.
 
@@ -393,6 +426,8 @@ def _select_prompt_family(
 
     Args:
         family: The prompt family identifier.
+        role_id: The resolved role identifier.
+        agent_id: The concrete agent/persona identifier.
 
     Returns:
         Tuple of (system_prompt, task_template).
@@ -404,6 +439,11 @@ def _select_prompt_family(
     if family == "reviewer":
         return (_REVIEWER_SYSTEM_PROMPT, _REVIEWER_TASK_TEMPLATE)
     if family == "resolver":
+        if (
+            agent_id == "blocked-case-coordinator-tacit"
+            or role_id == "blocked-case-coordinator-tacit"
+        ):
+            return (_RESOLVER_TACIT_SYSTEM_PROMPT, _RESOLVER_TACIT_TASK_TEMPLATE)
         return (_RESOLVER_SYSTEM_PROMPT, _RESOLVER_TASK_TEMPLATE)
     # Unknown family — use coder as base but note the family mismatch
     return (_CODER_SYSTEM_PROMPT, _CODER_TASK_TEMPLATE)

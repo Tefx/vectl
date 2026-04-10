@@ -289,6 +289,13 @@ class TestConfigDiscovery:
             "blocked-case-coordinator",
             "blocked-case-coordinator-tacit",
         }
+        profile_by_role = {profile.role_id: profile for profile in config.role_profiles}
+        assert profile_by_role["python-executor"].agent_id == "python-executor"
+        assert profile_by_role["blocked-case-coordinator"].agent_id == "blocked-case-coordinator"
+        assert (
+            profile_by_role["blocked-case-coordinator-tacit"].agent_id
+            == "blocked-case-coordinator-tacit"
+        )
 
     def test_missing_explicit_file_raises(self, tmp_path: Path) -> None:
         """Verify load_orchestration_config() raises for missing explicit file."""

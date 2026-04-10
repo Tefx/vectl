@@ -174,6 +174,7 @@ class RoleProfile:
     """
 
     role_id: str
+    agent_id: str
     prompt_family: str
     execution_context: ExecutionContext
     mutation_policy: MutationPolicy

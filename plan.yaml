@@ -73583,20 +73583,6 @@ phases:
     remain as unmanaged raw failures in the full suite.
   depends_on:
   - repo_regression_surface_and_fixture_repair
-  steps:
-  - id: repo_regression_observability_gap_disposition.align-event-envelope-schema-tests
-    name: Align event envelope schema tests
-    status: pending
-    description: Update observability repro tests so event envelope construction matches
-      the current validated payload schema, or explicitly assert validation failure
-      where that is the intended contract.
-    verification: Event-envelope-related repro tests no longer fail due to stale constructor
-      assumptions.
-    evidence_template: '- Schema assumptions changed:
-
-      - Tests updated:
-
-      - Command(s) run:'
 - id: repo_regression_full_suite_gate
   name: Repo-Wide Full Suite Gate
   status: locked
@@ -73820,3 +73806,16 @@ phases:
       - Surface/test changes:
 
       - Command: `uv run pytest tests/test_cli.py -k DriveCLI -q` -> <outcome>'
+  - id: repo_regression_observability_gap_disposition.align-event-envelope-schema-tests
+    name: Align event envelope schema tests
+    status: pending
+    description: Update observability repro tests so event envelope construction matches
+      the current validated payload schema, or explicitly assert validation failure
+      where that is the intended contract.
+    verification: Event-envelope-related repro tests no longer fail due to stale constructor
+      assumptions.
+    evidence_template: '- Schema assumptions changed:
+
+      - Tests updated:
+
+      - Command(s) run:'

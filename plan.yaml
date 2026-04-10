@@ -75097,7 +75097,7 @@ phases:
       ### Gate Decision: OPEN'
 - id: xfail_role_prompt_and_review_normalization
   name: 'XFail Remediation: Role Prompt and Review Normalization'
-  status: in_progress
+  status: done
   gate: Concrete role/prompt registries and structured review normalization are wired
     as the canonical policy seam, and the related expected-red tests are retired or
     intentionally reclassified with explicit evidence.
@@ -75293,7 +75293,7 @@ phases:
       group is now green.'
   - id: xfail_role_prompt_and_review_normalization.gate
     name: Gate role, prompt, and review normalization
-    status: claimed
+    status: done
     description: 'Gate review: ensure policy centralization is complete and no adapter-specific
       shadow registry/normalizer was introduced.'
     verification: '- Targeted xfails are retired
@@ -75314,6 +75314,21 @@ phases:
     agent: gate-reviewer-tacit
     claimed_by: gate-reviewer-tacit
     claimed_at: '2026-04-10T07:04:07.297094+00:00'
+    done_at: '2026-04-10T07:04:41.991444+00:00'
+    evidence: "## Gate Review Report\n- registry centralization check\n  - Verified\
+      \ targeted registry-related xfail tags are retired from `tests/orchestration/unit/test_dispatch_policy_red.py`:\n\
+      \    - `xfail[GAP2-role-profile-registry]` absent\n    - `xfail[GAP3-prompt-registry]`\
+      \ absent\n    - `xfail[GAP4-review-normalization]` absent\n  - Remaining xfails\
+      \ in file are only GAP1/GAP5 main_worktree policy surfaces.\n- normalizer centralization\
+      \ check\n  - Canonical implementation surfaces present in one policy module\
+      \ only:\n    - `src/vectl/orchestration/dispatch_policy.py:263` `ConfigRoleProfileRegistry`\n\
+      \    - `src/vectl/orchestration/dispatch_policy.py:452` `ConfigPromptRegistry`\n\
+      \    - `src/vectl/orchestration/dispatch_policy.py:851` `normalize_review_result`\n\
+      \    - `src/vectl/orchestration/dispatch_policy.py:897` `normalize_parse_failure`\n\
+      \  - No alternate/shadow definitions found in `src/**/*.py` for these symbols.\n\
+      - verification command\n  - `uv run pytest tests/orchestration/unit/test_dispatch_policy_red.py\
+      \ -k \"RoleProfileRegistry or PromptRegistry or StructuredReviewResultNormalization\"\
+      \ -q`\n  - Output: `11 passed, 6 deselected`\n- gate decision OPEN"
   - id: xfail_role_prompt_and_review_normalization.realign-stale-red-tests-to-green-behavior
     name: Realign stale red tests to green behavior
     status: done
@@ -75366,7 +75381,7 @@ phases:
       \ -q\n  Result: 11 passed, 6 deselected"
 - id: xfail_authority_and_entrypoint_enforcement
   name: 'XFail Remediation: Authority and Entrypoint Enforcement'
-  status: locked
+  status: pending
   gate: Main-worktree authority and normal-flow lifecycle mutation restrictions are
     enforced at approved runtime boundaries, and app-level wiring uses the centralized
     policy seam consistently.

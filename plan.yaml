@@ -73633,7 +73633,7 @@ phases:
   steps:
   - id: repo_regression_triage.define-remediation-execution-sequence
     name: Define remediation execution sequence
-    status: pending
+    status: claimed
     description: 'Translate the classified failures into an execution order that minimizes
       thrash: expected-red cleanup, contract lock realignment, semantic/runtime drift
       resolution, fixture/CLI surface repair, observability debt triage, then final
@@ -73641,6 +73641,8 @@ phases:
     verification: A concrete ordered remediation sequence exists and maps each bucket
       to a downstream phase/step. Sequence is dependency-safe and avoids mixing test
       drift with behavioral fixes.
+    claimed_by: general
+    claimed_at: '2026-04-10T03:12:36.815931+00:00'
   - id: repo_regression_triage.classify-failures-by-disposition
     name: Classify failures by disposition
     status: done

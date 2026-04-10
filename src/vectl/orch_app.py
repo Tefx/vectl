@@ -969,6 +969,8 @@ class OrchestrationApp:
         dispatch_spec: DispatchSpec,
         mode: Literal["start", "resume", "recover"],
     ) -> tuple[str, str]:
+        self._validate_dispatch_authority(dispatch_spec)
+
         # Gate: consult paused operator state and DispatchRecoveryGate
         # before dispatch to runtime.
         # Authority: OPERATOR-CONFLICT-RECOVERY.md 6.3, 9
@@ -999,6 +1001,23 @@ class OrchestrationApp:
         workspace = self._runtime.prepare(request)
         execution_id = self._runtime.start(request=request, workspace=workspace)
         return workspace, execution_id
+
+    def _validate_dispatch_authority(self, dispatch_spec: DispatchSpec) -> None:
+        """Validate dispatch authority before any mechanical runtime launch.
+
+        Enforces that runtime launch metadata cannot drift from centralized role
+        policy authority. This protects main-worktree families (planner,
+        reviewer, resolver) from accidental execution-context downgrade.
+        """
+
+        profile = self._dispatch_coordinator.role_registry.get(dispatch_spec.role_id)
+        if dispatch_spec.execution_context != profile.execution_context:
+            raise ValueError(
+                "dispatch authority violation: "
+                f"role={dispatch_spec.role_id!r} requires "
+                f"execution_context={profile.execution_context!r} but got "
+                f"{dispatch_spec.execution_context!r}"
+            )
 
     def _admit_start_and_persist_running(
         self,

@@ -24,7 +24,7 @@ import random
 import time
 from collections.abc import Callable
 from contextlib import contextmanager
-from dataclasses import asdict, dataclass
+from dataclasses import asdict, dataclass, field
 from datetime import datetime
 from fcntl import LOCK_EX, LOCK_UN, flock
 from pathlib import Path
@@ -90,6 +90,40 @@ class RunRecord:
     runtime_state: RuntimeRecoveryRecord | None = None
     operator_notifications: tuple[OperatorNotificationRecord, ...] = ()
     dispatch_recovery_gate: DispatchRecoveryGate | None = None
+    summary: "RunSummary" = field(default_factory=lambda: RunSummary())
+    halt_reason: "HaltReason | None" = None
+    artifacts: tuple["RunArtifact", ...] = ()
+
+
+@dataclass(frozen=True)
+class RunSummary:
+    """Terminal summary counters persisted into ``final.json`` surfaces."""
+
+    steps_completed: int = 0
+    steps_failed: int = 0
+    cases_opened: int = 0
+    cases_operator_required: int = 0
+    active_leases_final: int = 0
+    active_executions_final: int = 0
+
+
+@dataclass(frozen=True)
+class HaltReason:
+    """Structured terminal halt reason for final run manifests."""
+
+    code: str
+    detail: str = ""
+    related_case_id: str | None = None
+    related_step_id: str | None = None
+
+
+@dataclass(frozen=True)
+class RunArtifact:
+    """Artifact reference included in a terminal run manifest."""
+
+    artifact_ref: str
+    path: str = ""
+    artifact_type: str = "generic"
 
 
 @dataclass(frozen=True)
@@ -331,7 +365,65 @@ def _deserialize_run_record(payload: dict[str, object]) -> RunRecord:
         dispatch_recovery_gate=_deserialize_dispatch_recovery_gate(
             payload.get("dispatch_recovery_gate")
         ),
+        summary=_deserialize_run_summary(payload.get("summary")),
+        halt_reason=_deserialize_halt_reason(payload.get("halt_reason")),
+        artifacts=_deserialize_run_artifacts(payload.get("artifacts")),
     )
+
+
+def _deserialize_run_summary(payload: object) -> RunSummary:
+    if not isinstance(payload, dict):
+        return RunSummary()
+    return RunSummary(
+        steps_completed=_coerce_int(payload.get("steps_completed")),
+        steps_failed=_coerce_int(payload.get("steps_failed")),
+        cases_opened=_coerce_int(payload.get("cases_opened")),
+        cases_operator_required=_coerce_int(payload.get("cases_operator_required")),
+        active_leases_final=_coerce_int(payload.get("active_leases_final")),
+        active_executions_final=_coerce_int(payload.get("active_executions_final")),
+    )
+
+
+def _deserialize_halt_reason(payload: object) -> HaltReason | None:
+    if not isinstance(payload, dict):
+        return None
+    code = str(payload.get("code", ""))
+    if not code:
+        return None
+    return HaltReason(
+        code=code,
+        detail=str(payload.get("detail", "")),
+        related_case_id=(
+            None if payload.get("related_case_id") is None else str(payload.get("related_case_id"))
+        ),
+        related_step_id=(
+            None if payload.get("related_step_id") is None else str(payload.get("related_step_id"))
+        ),
+    )
+
+
+def _deserialize_run_artifact(payload: object) -> RunArtifact | None:
+    if not isinstance(payload, dict):
+        return None
+    artifact_ref = str(payload.get("artifact_ref", ""))
+    if not artifact_ref:
+        return None
+    return RunArtifact(
+        artifact_ref=artifact_ref,
+        path=str(payload.get("path", "")),
+        artifact_type=str(payload.get("artifact_type", "generic")),
+    )
+
+
+def _deserialize_run_artifacts(payload: object) -> tuple[RunArtifact, ...]:
+    if not isinstance(payload, list):
+        return ()
+    artifacts: list[RunArtifact] = []
+    for item in payload:
+        artifact = _deserialize_run_artifact(item)
+        if artifact is not None:
+            artifacts.append(artifact)
+    return tuple(artifacts)
 
 
 def _deserialize_operator_notification(payload: object) -> OperatorNotificationRecord | None:
@@ -481,6 +573,18 @@ def _coerce_float(value: object) -> float:
     if isinstance(value, str) and value.strip() != "":
         return float(value)
     return 0.0
+
+
+def _coerce_int(value: object) -> int:
+    if isinstance(value, bool):
+        return int(value)
+    if isinstance(value, int):
+        return value
+    if isinstance(value, float):
+        return int(value)
+    if isinstance(value, str) and value.strip() != "":
+        return int(float(value))
+    return 0
 
 
 def _as_str_tuple(value: object) -> tuple[str, ...]:
@@ -709,6 +813,9 @@ class RunRegistry:
             runtime_state=record.runtime_state,
             operator_notifications=record.operator_notifications,
             dispatch_recovery_gate=record.dispatch_recovery_gate,
+            summary=record.summary,
+            halt_reason=record.halt_reason,
+            artifacts=record.artifacts,
         )
 
         _append_jsonl_with_retry(
@@ -1156,6 +1263,9 @@ def latest_run(step_id: str, registry: RunRegistry | None = None) -> RunRecord |
 
 __all__ = [
     "RunRecord",
+    "RunSummary",
+    "HaltReason",
+    "RunArtifact",
     "RunStatus",
     "CaseIndexEntry",
     "HeartbeatArtifact",

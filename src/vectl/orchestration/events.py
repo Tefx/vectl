@@ -19,6 +19,7 @@ from datetime import datetime, timezone
 from fcntl import LOCK_EX, LOCK_UN, flock
 from pathlib import Path
 from typing import Any, Final, Literal, Protocol, cast
+from urllib.parse import quote, unquote
 
 
 @dataclass(frozen=True)
@@ -112,6 +113,25 @@ class EventCorruptionError(ValueError):
         self.reason = reason
         self.raw_line = raw_line
         super().__init__(f"event log corruption at line {line_no}: {reason}; raw={raw_line!r}")
+
+
+def normalize_step_key(step_id: str) -> str:
+    """Return the canonical filesystem-safe step key for a step ID.
+
+    Authority:
+        tests/repro/test_orch_observability_red.py::TestStepArtifactSchemas
+
+    The contract requires percent-encoding for bytes outside ``[A-Za-z0-9._-]``
+    while preserving case and allowing lossless decode.
+    """
+
+    return quote(step_id, safe="ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789._-")
+
+
+def denormalize_step_key(step_key: str) -> str:
+    """Decode a canonical step key back into the original step ID."""
+
+    return unquote(step_key)
 
 
 def _canonical_json(value: Any) -> str:
@@ -518,8 +538,10 @@ __all__ = [
     "OrchestrationEventEnvelope",
     "OrchestrationEventKind",
     "CANONICAL_EVENT_REGISTRY",
+    "denormalize_step_key",
     "emit",
     "load_event_jsonl",
+    "normalize_step_key",
     "register_sink",
     "validate_payload",
 ]

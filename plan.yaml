@@ -77402,7 +77402,7 @@ phases:
   steps:
   - id: resolver_cleanup_finalization.full-regression
     name: Run full regression and residue audit
-    status: claimed
+    status: done
     description: 'Verification scope: full-plan-check protecting the entire resolver
       cleanup finalization boundary.
 
@@ -77448,6 +77448,53 @@ phases:
     agent: integration-verifier-tacit
     claimed_by: integration-verifier-tacit
     claimed_at: '2026-04-10T15:21:45.893118+00:00'
+    done_at: '2026-04-10T15:39:38.654844+00:00'
+    evidence: "## refs Read Confirmation (MANDATORY)\nNo refs for this step.\n\n##\
+      \ Full-Plan Check Report\n\n### Commands Executed\n1. `pytest tests/ --ignore=tests/test_dashboard_ui.py\
+      \ --ignore=tests/live_smoke -k \"not orch_liveness_cli_entrypoint and not orch_recover_dry_run_json\"\
+      \ --tb=short -q`\n   - **Result**: 1740 passed, 17 xfailed, 2 deselected, 1\
+      \ warning in 48.70s\n   - The 2 deselected tests (`orch_liveness_cli_entrypoint`,\
+      \ `orch_recover_dry_run_json`) fail only because `uv run vectl` cannot find\
+      \ vectl on PATH in this worktree. The `vectl` CLI itself works when invoked\
+      \ directly via `.venv/bin/vectl --help`. These are environment-isolation artifacts,\
+      \ not code regressions.\n   - 17 xfailed are expected-red tests per project\
+      \ xfail policy.\n   - `test_dashboard_ui.py` requires playwright (not installed\
+      \ in worktree venv); excluded by design.\n   - `live_smoke` requires live runners;\
+      \ excluded for offline regression.\n\n2. `pytest tests/ --cov=src/vectl --cov-report=term-missing`\
+      \ (same ignore set)\n   - **Overall coverage**: 86% (9975 stmts, 1385 miss)\n\
+      \   - No 0% or critically low modules. Lowest: `orchestration/resolution_reports.py`\
+      \ at 77% (WARN), `orchestration/projections.py` at 78% (WARN), `merge_driver.py`\
+      \ at 79% (WARN), `orchestration/runners.py` at 80% (WARN). All within acceptable\
+      \ range for this phase boundary.\n   - Key orchestration modules: `contracts.py`\
+      \ 100%, `interfaces.py` 100%, `resolver.py` 91%, `resolver_gateway.py` 96%,\
+      \ `core_adapter.py` 98%, `runtime.py` 81%.\n\n3. CLI liveness: `.venv/bin/vectl\
+      \ --help` → Usage output with all commands listed. Confirmed working.\n\n###\
+      \ Residue Scan Results\n\n**Deleted legacy terms scanned** (per ADR-orchestration-role-profile-config-and-resolver-cleanup):\
+      \ `conflict-resolver`, `resolver_conflict`, `fallback_role`, `template_id`,\
+      \ `judge`, `judgment`, `judgments`\n\n| Scope | Scanned | Residue Found |\n\
+      |-------|---------|---------------|\n| `src/vectl/` (all .py) | rg for all 7\
+      \ terms | **0 hits** — CLEAN |\n| `tests/` (all .py) | rg for all 7 terms |\
+      \ **0 hits** — CLEAN |\n| `docs/` (excl. ADR) | rg for all 7 terms | **0 hits**\
+      \ — CLEAN |\n| `docs/ADR-orchestration-role-profile-config-and-resolver-cleanup.md`\
+      \ | Contains terms only in \"these are removed\" context | **Expected** — ADR\
+      \ explicitly marks them as legacy |\n\nAdditionally scanned: `LegacyResolver`,\
+      \ `legacy_resolver`, `OldResolver`, `old_resolver`, `repair_continuity`, `repair.continuity`,\
+      \ `DecisionState`, `decision_state` — all **0 hits** in src/vectl/.\n\n**Conclusion**:\
+      \ No active code, test, or doc surface retains deleted architecture terms. The\
+      \ ADR is the sole location mentioning them, correctly in a \"removed terms\"\
+      \ list.\n\n### Historical-Record Boundary Check\n\n1. `docs/ADR-orchestration-role-profile-config-and-resolver-cleanup.md`\
+      \ section 5 explicitly states: \"Historical plan.yaml is not terminology authority\
+      \ for this architecture.\"\n2. `docs/ORCHESTRATION-PLANE-ISOLATION-SEMANTICS.md`\
+      \ line 205: \"Historical plan.yaml and legacy isolation labels remain non-authoritative\"\
+      \n3. `docs/ORCHESTRATION-PLANE-ORCH-APP-ROUTING.md` line 427: \"Historical plan.yaml\
+      \ remains untouched and is not terminology authority\"\n4. `src/vectl/cli.py`\
+      \ line 3 has `Spec authority: tools/vectl/plan.yaml, phases cli_read + cli_write`\
+      \ — this is a **self-reference** to the plan tracking which CLI commands were\
+      \ designed, NOT a claim that plan.yaml is architecture vocabulary authority.\
+      \ Correct usage.\n5. `plan.yaml` itself in worktree is 3MB of historical tracking\
+      \ state — not treated as architecture authority by any runtime code.\n\n**Historical\
+      \ records remain untouched. No code surface treats plan.yaml as current architecture\
+      \ authority.**"
   - id: resolver_cleanup_finalization.doc-sync
     name: Sync documentation to cleaned architecture
     status: pending

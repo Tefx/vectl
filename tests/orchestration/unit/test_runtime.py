@@ -14,7 +14,7 @@ from pathlib import Path
 import pytest
 
 from vectl.orchestration.contracts import ExecutionRequest
-from vectl.orchestration.runtime import Runtime
+from vectl.orchestration.runtime import Runtime, WorktreeError
 
 
 @pytest.fixture
@@ -128,6 +128,34 @@ def test_prepare_fresh_isolation_recreates_workspace(
     assert snapshot.active_workspaces == (second_workspace,)
 
     runtime.cleanup(second_workspace)
+
+
+def test_prepare_rejects_planner_facade_execution_in_linked_worktree_runtime(
+    temp_git_repo: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    base_dir = temp_git_repo / ".vectl" / "workspaces"
+    runtime = Runtime(workspace_root=base_dir)
+    base_dir.mkdir(parents=True, exist_ok=True)
+    monkeypatch.chdir(temp_git_repo)
+
+    request = ExecutionRequest(
+        step_id="case-planner-1",
+        role="vectl-planner",
+        runner="codex",
+        work_refs=(
+            "execution_context=main_worktree",
+            "mutation_policy=vectl_facade_only",
+            "output_contract=vectl_facade_mutation",
+            "source_kind=resolution_subtask",
+        ),
+        session_id=None,
+    )
+
+    with pytest.raises(WorktreeError, match="vectl_facade_mutation"):
+        runtime.prepare(request)
+
+    assert runtime.snapshot().active_workspaces == ()
 
 
 @pytest.mark.anyio

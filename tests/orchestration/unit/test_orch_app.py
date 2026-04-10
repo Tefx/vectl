@@ -56,6 +56,7 @@ from vectl.orchestration.dispatch_policy import (
 from vectl.orchestration.events import load_event_jsonl
 from vectl.orchestration.recovery import LegacyRunStatus
 from vectl.orchestration.resolver_gateway import GatewayInvocationResult, ResolverToolCall
+from vectl.orchestration.runtime import WorktreeError
 from vectl.orchestration.run_store import RunRecord, RunRegistry, generate_run_id
 from vectl.orchestration.runner_registry import RunnerRegistry
 from vectl.orchestration.runners import (
@@ -439,6 +440,28 @@ def test_resolve_case_reaches_runtime_runner_through_gateway(
     assert runner.launched == 1
     assert "resolver://runtime-runner" in report.evidence_refs
     assert any(ref.startswith("resolver_gateway_invocation=") for ref in report.evidence_refs)
+
+
+def test_start_runtime_execution_blocks_planner_worktree_bypass(tmp_path: Path) -> None:
+    app = _build_app(tmp_path)
+    orch = cast(Any, app)
+
+    dispatch_spec = orch._dispatch_coordinator.build_resolution_subtask_spec(
+        case_id="case-planner-1",
+        role_id="vectl-planner",
+        description="Plan a safe facade mutation",
+    )
+
+    with pytest.raises(
+        WorktreeError,
+        match=r"plan\.yaml outside the authorized mutation boundary",
+    ):
+        orch._start_runtime_execution(
+            run_id="run-planner-1",
+            step_id="case-planner-1",
+            dispatch_spec=dispatch_spec,
+            mode="start",
+        )
 
 
 def test_build_resolution_case_requires_resolve_decision() -> None:

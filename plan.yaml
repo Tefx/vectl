@@ -77849,7 +77849,7 @@ phases:
       \ resolver cleanup phase boundary)"
 - id: orch_plane_live_authority
   name: Orchestration Plane Live Authority
-  status: in_progress
+  status: done
   gate: Dispatch, roster, prompt, and resolver mediation run through the real live
     authority path with dynamic runtime evidence and no static-bypass seam.
   depends_on:
@@ -78173,7 +78173,7 @@ phases:
       \ drift item routed to dedicated finalization step."
   - id: orch_plane_live_authority.gate
     name: Gate live authority remediation
-    status: claimed
+    status: done
     description: Gate review for live authority remediation. Block if ordinary dispatch
       can still bypass the live path, if roster is non-authoritative, or if tool/prompt
       mediation remains statically flattened.
@@ -78199,9 +78199,37 @@ phases:
     agent: gate-reviewer-tacit
     claimed_by: gate-reviewer-tacit
     claimed_at: '2026-04-10T19:44:18.793423+00:00'
+    done_at: '2026-04-10T20:02:05.204272+00:00'
+    evidence: "## refs Read Confirmation (MANDATORY)\n- docs/ORCHESTRATION-PLANE-LIVE-AUTHORITY-CONTRACT-LOCK.md\
+      \ — full sections 1-9 reviewed against implementation.\n- src/vectl/orch_app.py\
+      \ — reviewed live authority seams: roster binding, dispatch authority validation,\
+      \ runtime launch path, runtime mediation source, gateway-enforced resolver invocation.\n\
+      - src/vectl/orchestration/dispatch_policy.py — reviewed prompt registry render,\
+      \ role profile registry, dispatch coordinator spec/render seams, agent-id prompt\
+      \ precedence.\n- src/vectl/orchestration/contracts.py / config.py — reviewed\
+      \ DispatchSpec/RoleProfile separation and default role profile contracts.\n\
+      - tests/orchestration/unit/test_orch_app.py / test_dispatch_policy.py / test_dispatch_recovery_gate_enforcement.py\
+      \ — reviewed new authority tests and one drifted fixture.\n\n## Gate Decision\
+      \ Basis\n- Reviewed steps:\n  - orch_plane_live_authority.contract-lock\n  -\
+      \ orch_plane_live_authority.dispatch-live-path\n  - orch_plane_live_authority.roster-decision-path\n\
+      \  - orch_plane_live_authority.dynamic-tool-mediation\n  - orch_plane_live_authority.prompt-registry-runtime\n\
+      \  - orch_plane_live_authority.integration-proof\n- Blocking findings:\n  -\
+      \ none\n- Gate focus verdicts:\n  - ordinary dispatch prompt seam live-path\
+      \ enforced + fail-closed: PROVEN\n  - roster contributes supply/reuse facts\
+      \ without role-intent rewrite: PROVEN\n  - resolver mediation dynamic from live\
+      \ case inputs with allow/deny evidence: PROVEN\n  - role_id/agent_id/prompt_family\
+      \ separation preserved; no family flatten regression: PROVEN\n- Remaining debt\
+      \ and gate intersection:\n  - one test fixture expectation drift in `test_dispatch_recovery_gate_enforcement`\
+      \ (incomplete DispatchSpec fixture now rejected earlier by authority checks).\n\
+      \  - classified SHOULD_FIX non-blocking; no runtime regression; already routed\
+      \ to `orch_plane_finalization.test-expectation-drift`.\n\nbehavioral_proof_register:\n\
+      - P1 dispatch live authority checkpoints: PROVEN\n- P2 roster boundary (facts-only,\
+      \ no role rewrite): PROVEN\n- P3 dynamic mediation and deny-by-default: PROVEN\n\
+      - P4 agent_id precedence over family fallback: PROVEN\n- P5 fail-closed authority\
+      \ behavior: PROVEN\n\ngate_open_allowed: true"
 - id: orch_plane_planner_boundary
   name: Orchestration Plane Planner Boundary
-  status: locked
+  status: pending
   gate: Planner-facing execution is forced through vectl facade/runtime boundaries,
     with live proof that direct plan.yaml editing or facade bypass is blocked.
   depends_on:

@@ -7,7 +7,7 @@ Authority: docs/ORCHESTRATION-PLANE-IMPLEMENTATION-DESIGN.md section 3.6
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Literal, Protocol
+from typing import TYPE_CHECKING, Literal, Protocol
 
 from vectl import core
 from vectl.io import load_plan_definition, save_plan
@@ -229,6 +229,43 @@ class PlanCoreAdapter:
         plan, file_hash = load_plan_definition(self._plan_path)
         updated_plan = core.defer_step(plan, step_id, claims_path=self._claims_path)
         save_plan(updated_plan, self._plan_path, expected_hash=file_hash)
+
+    # ---------------------------------------------------------------------
+    # Step data loading (dispatch boundary)
+    # ---------------------------------------------------------------------
+
+    def load_step_data_for_dispatch(self, step_id: str):
+        """Load step data for dispatch coordination through the official core seam.
+
+        This is the stable public boundary for the dispatch coordinator's
+        step-data loading needs. Callers must not access _plan_path or other
+        internal state to obtain plan data.
+
+        Authority: docs/ORCHESTRATION-PLANE-IMPLEMENTATION-DESIGN.md §3.6
+
+        Args:
+            step_id: Step identifier.
+
+        Returns:
+            StepData if found, else None.
+        """
+        # Late import to avoid circular dependency with dispatch_policy.py
+        from vectl.orchestration.dispatch_policy import StepData
+
+        plan, _ = load_plan_definition(self._plan_path)
+        found = plan.find_step(step_id)
+        if found is None:
+            return None
+        _, step = found
+        return StepData(
+            step_id=step.id,
+            description=step.description,
+            verification=step.verification,
+            refs=tuple(step.refs),
+            evidence_template=step.evidence_template,
+            verify=step.verify,
+            agent=step.agent,
+        )
 
 
 def _is_plan_complete(plan: Plan) -> bool:

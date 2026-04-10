@@ -744,8 +744,10 @@ class DispatchCoordinator:
 class CoreStepDataAdapter:
     """StepDataAdapter implementation backed by PlanCoreAdapter.
 
-    Loads authoritative step data from the plan through vectl core.
-    Uses the concrete PlanCoreAdapter which has a _plan_path attribute.
+    Loads authoritative step data from the plan through the official
+    PlanCoreAdapter public seam. Does not access PlanCoreAdapter internals.
+
+    Authority: docs/ORCHESTRATION-PLANE-IMPLEMENTATION-DESIGN.md §3.6
     """
 
     def __init__(self, core_adapter: PlanCoreAdapter) -> None:
@@ -760,27 +762,7 @@ class CoreStepDataAdapter:
         Returns:
             StepData if found, else None.
         """
-        from vectl.io import load_plan_definition
-
-        try:
-            plan, _ = load_plan_definition(self._core_adapter._plan_path)
-        except Exception:
-            return None
-
-        found = plan.find_step(step_id)
-        if found is None:
-            return None
-
-        _, step = found
-        return StepData(
-            step_id=step.id,
-            description=step.description,
-            verification=step.verification,
-            refs=tuple(step.refs),
-            evidence_template=step.evidence_template,
-            verify=step.verify,
-            agent=step.agent,
-        )
+        return self._core_adapter.load_step_data_for_dispatch(step_id)
 
 
 # ---------------------------------------------------------------------

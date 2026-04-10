@@ -75247,7 +75247,7 @@ phases:
       => 5 xfailed.'
   - id: xfail_role_prompt_and_review_normalization.retest-role-prompt-and-review
     name: Retest role, prompt, and review normalization
-    status: pending
+    status: claimed
     description: 'step_type: test
 
       step_intent: retest_green
@@ -75274,6 +75274,8 @@ phases:
     - xfail_role_prompt_and_review_normalization.implement-structured-review-normalizer
     - xfail_role_prompt_and_review_normalization.realign-stale-red-tests-to-green-behavior
     agent: integration-verifier-tacit
+    claimed_by: python-senior-tacit
+    claimed_at: '2026-04-10T07:03:32.491697+00:00'
   - id: xfail_role_prompt_and_review_normalization.gate
     name: Gate role, prompt, and review normalization
     status: pending

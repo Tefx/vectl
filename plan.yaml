@@ -78110,7 +78110,7 @@ phases:
       \nCommit evidence:\n- Worker commit: `d393f27`\n- Cherry-picked on main: `90bbd19`"
   - id: orch_plane_live_authority.integration-proof
     name: Independent live authority proof
-    status: pending
+    status: claimed
     description: 'Independent integration proof for ordinary dispatch plus resolver-adjacent
       authority: verify live runners, roster participation, dynamic tool mediation,
       and prompt separation all hold on the real path.'
@@ -78140,6 +78140,8 @@ phases:
     - orch_plane_live_authority.dynamic-tool-mediation
     - orch_plane_live_authority.prompt-registry-runtime
     agent: integration-verifier-tacit
+    claimed_by: integration-verifier-tacit
+    claimed_at: '2026-04-10T19:35:36.380528+00:00'
   - id: orch_plane_live_authority.gate
     name: Gate live authority remediation
     status: pending

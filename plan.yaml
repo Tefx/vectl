@@ -75528,7 +75528,7 @@ phases:
       \ surfaces are green with command output captured."
   - id: xfail_authority_and_entrypoint_enforcement.gate
     name: Gate authority and entrypoint enforcement
-    status: pending
+    status: claimed
     description: 'Gate review: ensure authority enforcement now lives in the intended
       seams (role policy, resolver gateway, approved lifecycle facade, orch_app composition)
       and not in ad hoc backend branches.'
@@ -75547,6 +75547,8 @@ phases:
     - xfail_authority_and_entrypoint_enforcement.harden-resolver-gateway-and-lifecycle-facade
     - xfail_authority_and_entrypoint_enforcement.retest-authority-enforcement
     agent: gate-reviewer-tacit
+    claimed_by: gate-reviewer-tacit
+    claimed_at: '2026-04-10T07:09:54.381769+00:00'
 - id: xfail_finalization
   name: XFail Remediation Finalization
   status: locked

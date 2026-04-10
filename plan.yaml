@@ -73951,7 +73951,7 @@ phases:
       no plan/orchestrator state files modified.'
 - id: repo_regression_semantic_alignment
   name: Repo Regression Semantic Alignment
-  status: pending
+  status: in_progress
   gate: Contract locks, runtime state-machine expectations, and current implementation
     converge on authoritative semantics without stale exact-shape boundaries or unresolved
     behavior drift in the failing scope.
@@ -73960,7 +73960,7 @@ phases:
   steps:
   - id: repo_regression_contract_alignment.audit-other-tight-locks-in-failing-scope
     name: Audit other over-tight locks in failing scope
-    status: pending
+    status: claimed
     description: Search the failing-scope tests for other exact-field-count or exact-export-shape
       assertions likely to drift after legitimate contract evolution, and align them
       to semantic invariants where appropriate.
@@ -73971,6 +73971,8 @@ phases:
       - Adjustments made:
 
       - Search/test evidence:'
+    claimed_by: general
+    claimed_at: '2026-04-10T03:16:03.948936+00:00'
   - id: repo_regression_behavior_alignment.resolve-reconcile-tracking-state-machine-drift
     name: Resolve reconcile tracking state-machine drift
     status: pending

@@ -75568,7 +75568,7 @@ phases:
       \ 7 deselected`\n- gate decision OPEN"
 - id: xfail_finalization
   name: XFail Remediation Finalization
-  status: pending
+  status: in_progress
   gate: The repo-wide suite is green except governed skips/xfails, docs and gate policy
     reflect the retired/redescribed xfail set, and an independent deep review confirms
     no hidden authority or policy drift remains.
@@ -75592,7 +75592,7 @@ phases:
     agent: project-guide
   - id: xfail_finalization.run-repo-wide-pytest-gate
     name: Run repo-wide pytest gate for xfail retirement
-    status: pending
+    status: claimed
     description: 'step_type: test
 
       step_intent: retest_green
@@ -75615,6 +75615,8 @@ phases:
 
       - Remaining governed non-green statuses and rationale:'
     agent: integration-verifier-tacit
+    claimed_by: integration-verifier-tacit
+    claimed_at: '2026-04-10T07:10:32.607266+00:00'
   - id: xfail_finalization.deep-review-xfail-remediation
     name: Deep review xfail remediation closure
     status: pending

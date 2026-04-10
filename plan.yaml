@@ -73811,3 +73811,11 @@ phases:
       - Example evidence expectations for future gates:'
     depends_on:
     - repo_regression_full_suite_gate.decide-static-guard-scope-and-enforcement
+- id: repo_regression_test_intent_alignment
+  name: Repo Regression Test Intent Alignment
+  status: pending
+  gate: Full-suite failures are inventoried, classified, and stale expected-red tests
+    are realigned to current behavior or explicitly governed as intentional red with
+    lifecycle metadata.
+  depends_on:
+  - orchestration_upper_layer_review

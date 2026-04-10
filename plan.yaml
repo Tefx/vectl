@@ -75105,6 +75105,42 @@ phases:
 
       - commands/tests run:'
     agent: python-senior-tacit
+  - id: xfail_authority_and_entrypoint_enforcement.harden-resolver-gateway-and-lifecycle-facade
+    name: Harden resolver gateway and lifecycle facade
+    status: pending
+    description: 'work_type: technical_debt_remediation
+
+      step_type: implementation
+
+
+      Close the remaining runner-backend expected-red gaps by enforcing authority
+      in the approved resolver gateway and lifecycle mutation facade.
+
+
+      Requirements:
+
+      - ResolverGateway rejects linked-worktree invocation when main-worktree authority
+      is required
+
+      - lifecycle mutation path keeps normal-flow-only claim restriction in the approved
+      injected facade
+
+      - do not try to make Protocol alone carry enforcement; use approved concrete
+      facade/wrapper
+
+      - preserve reconcile-disposition requirements for completion paths'
+    verification: '- Runner-backend red tests are green for resolver authority and
+      lifecycle mutation enforcement
+
+      - authority checks live at approved runtime boundaries, not duplicated elsewhere'
+    evidence_template: '- gateway enforcement path:
+
+      - lifecycle facade enforcement path:
+
+      - commands/tests run:'
+    depends_on:
+    - xfail_authority_and_entrypoint_enforcement.enforce-main-worktree-role-authority
+    agent: python-senior-tacit
 - id: xfail_finalization
   name: XFail Remediation Finalization
   status: locked

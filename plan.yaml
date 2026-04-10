@@ -76909,7 +76909,7 @@ phases:
       \ config`"
   - id: resolver_cleanup_core.wire-default-blocked-case-resolver
     name: Wire program to configured blocked-case resolver
-    status: claimed
+    status: pending
     description: 'Replace the legacy resolver invocation path with a real config-driven
       default resolver entry.
 
@@ -76968,8 +76968,6 @@ phases:
     depends_on:
     - resolver_cleanup_core.migrate-role-profiles-to-config
     agent: python-senior-tacit
-    claimed_by: python-senior-tacit
-    claimed_at: '2026-04-10T13:50:59.659184+00:00'
   - id: resolver_cleanup_core.remove-legacy-surfaces-and-dead-metadata
     name: Remove legacy resolver, judge, fallback, and dead metadata surfaces
     status: pending

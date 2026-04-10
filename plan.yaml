@@ -73677,3 +73677,11 @@ phases:
 
       - Command: `uv run pytest tests/orchestration/unit/test_runtime_lifecycle.py
       -q` -> <outcome>'
+- id: repo_regression_surface_and_fixture_repair
+  name: CLI Surface and Fixture Repair
+  status: locked
+  gate: Repo fixtures and public CLI surfaces required by the full suite are either
+    restored, intentionally removed with test updates, or otherwise aligned so full-suite
+    failures no longer arise from missing files or stale command expectations.
+  depends_on:
+  - repo_regression_behavior_alignment

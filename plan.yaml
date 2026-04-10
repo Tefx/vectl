@@ -77954,6 +77954,30 @@ phases:
     depends_on:
     - orch_plane_live_authority.contract-lock
     agent: python-senior-tacit
+  - id: orch_plane_live_authority.prompt-registry-runtime
+    name: Unhardcode prompt registry runtime mapping
+    status: pending
+    description: Remove hardcoded PromptRegistry flattening seams so role/prompt selection
+      remains runtime- and config-driven for future roles, not family-default hardwiring.
+    verification: Config-backed role additions or fixture roles prove prompt selection
+      stays role-specific without code edits to hardcoded registry tables.
+    evidence_template: '## refs Read Confirmation (MANDATORY)
+
+      - Quote the key passage from each ref or write NOT READ: <reason>
+
+
+      ## Implementation Evidence
+
+      - Runtime mapping seam changed
+
+      - New role fixture or config proof
+
+      - No family-level flattening remains
+
+      '
+    depends_on:
+    - orch_plane_live_authority.contract-lock
+    agent: python-senior-tacit
 - id: orch_plane_planner_boundary
   name: Orchestration Plane Planner Boundary
   status: locked

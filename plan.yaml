@@ -75695,7 +75695,7 @@ phases:
       \ to avoid stale drift."
   - id: xfail_finalization.gate
     name: Gate xfail remediation closure
-    status: pending
+    status: claimed
     description: Final gate for the xfail-remediation plan. Distinguish phase-local
       success from repo-wide readiness and require explicit disposition for any remaining
       governed non-green statuses.
@@ -75718,6 +75718,8 @@ phases:
     - xfail_finalization.run-repo-wide-pytest-gate
     - xfail_finalization.deep-review-xfail-remediation
     agent: gate-reviewer-tacit
+    claimed_by: gate-reviewer-tacit
+    claimed_at: '2026-04-10T07:14:46.834316+00:00'
 - id: retire_repair_continuity_legacy_surface
   name: Retire Legacy `repair continuity` Surface
   status: done

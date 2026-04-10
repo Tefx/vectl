@@ -73539,14 +73539,14 @@ phases:
   - repo_regression_triage
 - id: repo_regression_contract_alignment
   name: Contract Lock and Boundary Realignment
-  status: pending
+  status: done
   gate: Contract/lock tests reflect authoritative semantics and additive evolution
     without pinning stale historical boundaries.
   depends_on:
   - repo_regression_expected_red_cleanup
 - id: repo_regression_behavior_alignment
   name: Behavior and Runtime Semantic Alignment
-  status: locked
+  status: pending
   gate: Behavioral tests, runtime state-machine expectations, and current implementation
     converge on one authoritative contract with no silent semantic drift remaining
     in the failing scope.

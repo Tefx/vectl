@@ -75577,7 +75577,7 @@ phases:
   steps:
   - id: xfail_finalization.doc-sync-expected-red-retirement
     name: Doc sync expected-red retirement and governance
-    status: pending
+    status: claimed
     description: Update the relevant orchestration docs and expected-red governance
       docs so retired xfails are removed from the expected-red set and any intentionally
       retained gaps have current lifecycle/owner rationale.
@@ -75590,6 +75590,8 @@ phases:
 
       - commands/review performed:'
     agent: project-guide
+    claimed_by: project-guide
+    claimed_at: '2026-04-10T07:13:10.768610+00:00'
   - id: xfail_finalization.run-repo-wide-pytest-gate
     name: Run repo-wide pytest gate for xfail retirement
     status: done

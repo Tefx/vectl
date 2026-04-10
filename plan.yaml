@@ -73652,3 +73652,11 @@ phases:
       - Search/test evidence:'
     depends_on:
     - repo_regression_contract_alignment.repin-resolution-case-boundary-locks
+- id: repo_regression_behavior_alignment
+  name: Behavior and Runtime Semantic Alignment
+  status: locked
+  gate: Behavioral tests, runtime state-machine expectations, and current implementation
+    converge on one authoritative contract with no silent semantic drift remaining
+    in the failing scope.
+  depends_on:
+  - repo_regression_contract_alignment

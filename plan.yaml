@@ -73531,7 +73531,7 @@ phases:
   - orchestration_upper_layer_review
 - id: repo_regression_expected_red_cleanup
   name: Expected-Red Cleanup and Test Intent Realignment
-  status: locked
+  status: done
   gate: Tests that still encode pre-implementation GAP expectations are either converted
     to current green assertions, moved to explicit xfail/skip with rationale, or removed
     in favor of authoritative green coverage.
@@ -73539,7 +73539,7 @@ phases:
   - repo_regression_triage
 - id: repo_regression_contract_alignment
   name: Contract Lock and Boundary Realignment
-  status: locked
+  status: pending
   gate: Contract/lock tests reflect authoritative semantics and additive evolution
     without pinning stale historical boundaries.
   depends_on:

@@ -73539,17 +73539,6 @@ phases:
     verification: Failure inventory exists with every failing test assigned an initial
       category and owner hypothesis. Evidence includes the exact command run and summarized
       counts by bucket.
-  - id: repo_regression_triage.classify-failures-by-disposition
-    name: Classify failures by disposition
-    status: pending
-    description: 'Classify each failing test as one of: stale expected-red, stale
-      contract/lock drift, likely behavior regression, missing fixture/environment,
-      or CLI/public-surface mismatch. Mark whether the fix should be test-only, implementation-only,
-      or paired.'
-    verification: Every failing test has a disposition category and next-action type.
-      Ambiguous items are explicitly called out instead of guessed.
-    depends_on:
-    - repo_regression_triage.capture-full-suite-failure-inventory
 - id: repo_regression_expected_red_cleanup
   name: Expected-Red Cleanup and Test Intent Realignment
   status: locked
@@ -73818,6 +73807,15 @@ phases:
     verification: A concrete ordered remediation sequence exists and maps each bucket
       to a downstream phase/step. Sequence is dependency-safe and avoids mixing test
       drift with behavioral fixes.
+  - id: repo_regression_triage.classify-failures-by-disposition
+    name: Classify failures by disposition
+    status: pending
+    description: 'Classify each failing test as one of: stale expected-red, stale
+      contract/lock drift, likely behavior regression, missing fixture/environment,
+      or CLI/public-surface mismatch. Mark whether the fix should be test-only, implementation-only,
+      or paired.'
+    verification: Every failing test has a disposition category and next-action type.
+      Ambiguous items are explicitly called out instead of guessed.
 - id: repo_regression_semantic_alignment
   name: Repo Regression Semantic Alignment
   status: locked

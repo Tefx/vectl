@@ -77190,3 +77190,38 @@ phases:
     - resolver_cleanup_finalization.doc-sync
     - resolver_cleanup_finalization.spec-conformance
     agent: software-architect-tacit
+  - id: resolver_cleanup_finalization.black-box-surface-check
+    name: Black-box check of cleaned orchestration surfaces
+    status: pending
+    description: 'Using only the current public docs and exposed interfaces, verify
+      the cleaned orchestration surfaces no longer present legacy resolver/judge behavior
+      and that blocked-case handling is understandable through the published model.
+
+
+      This is a black-box check for surface clarity, not an internal code review.'
+    verification: '- Published docs/interfaces are sufficient to understand the cleaned
+      model.
+
+      - No legacy surface confusion remains in active operator/developer guidance.'
+    evidence_template: '## refs Read Confirmation (MANDATORY)
+
+      For each ref in this step:
+
+      - <filename> — key passage or "NOT READ: <reason>"
+
+
+      If no refs were provided, state: "No refs for this step."
+
+
+      ## Black-Box Surface Report
+
+      - Surfaces checked:
+
+      - Confusions found:
+
+      - Verdict:
+
+      '
+    depends_on:
+    - resolver_cleanup_finalization.doc-sync
+    agent: blind-tester-tacit

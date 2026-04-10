@@ -75165,6 +75165,27 @@ phases:
     - xfail_authority_and_entrypoint_enforcement.enforce-main-worktree-role-authority
     - xfail_authority_and_entrypoint_enforcement.harden-resolver-gateway-and-lifecycle-facade
     agent: integration-verifier-tacit
+  - id: xfail_authority_and_entrypoint_enforcement.gate
+    name: Gate authority and entrypoint enforcement
+    status: pending
+    description: 'Gate review: ensure authority enforcement now lives in the intended
+      seams (role policy, resolver gateway, approved lifecycle facade, orch_app composition)
+      and not in ad hoc backend branches.'
+    verification: '- Targeted authority xfails are retired
+
+      - No shadow authority policy path was introduced'
+    evidence_template: '## Gate Review Report
+
+      - authority seam audit
+
+      - remaining bypass risks
+
+      - gate decision OPEN|BLOCKED'
+    depends_on:
+    - xfail_authority_and_entrypoint_enforcement.enforce-main-worktree-role-authority
+    - xfail_authority_and_entrypoint_enforcement.harden-resolver-gateway-and-lifecycle-facade
+    - xfail_authority_and_entrypoint_enforcement.retest-authority-enforcement
+    agent: gate-reviewer-tacit
 - id: xfail_finalization
   name: XFail Remediation Finalization
   status: locked

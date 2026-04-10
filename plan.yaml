@@ -74880,6 +74880,39 @@ phases:
     - xfail_config_and_dispatch_foundation.close-resolver-timeout-env-precedence-gap
     - xfail_config_and_dispatch_foundation.centralize-dispatch-spec-construction
     agent: integration-verifier-tacit
+  - id: xfail_config_and_dispatch_foundation.gate
+    name: Gate config and dispatch foundation
+    status: pending
+    description: 'Gate review: verify config precedence and dispatch foundation xfail
+      retirement is complete and no duplicate policy seam was introduced.
+
+
+      review_depth: THOROUGH
+
+      cross_cutting_focus:
+
+      - one canonical config precedence path
+
+      - one canonical dispatch coordinator path
+
+      - no runtime-side policy derivation drift'
+    verification: '- All phase steps completed
+
+      - Focused retest evidence is acceptable
+
+      - No remaining blocker-class drift in config precedence or DispatchSpec construction'
+    evidence_template: '## Gate Review Report
+
+      - step review matrix
+
+      - blocker findings
+
+      - gate decision OPEN|BLOCKED'
+    depends_on:
+    - xfail_config_and_dispatch_foundation.close-resolver-timeout-env-precedence-gap
+    - xfail_config_and_dispatch_foundation.centralize-dispatch-spec-construction
+    - xfail_config_and_dispatch_foundation.retest-config-and-dispatch-foundation
+    agent: gate-reviewer-tacit
 - id: xfail_role_prompt_and_review_normalization
   name: 'XFail Remediation: Role Prompt and Review Normalization'
   status: locked

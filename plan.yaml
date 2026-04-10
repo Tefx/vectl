@@ -76629,6 +76629,54 @@ phases:
     depends_on:
     - resolver_cleanup_contracts.freeze-clean-architecture
     agent: forgemaster-tacit
+  - id: resolver_cleanup_contracts.gate
+    name: Gate contract and persona lock
+    status: pending
+    description: 'Gate review: confirm the architecture freeze and persona creation
+      steps establish a single clean target model before code migration starts.
+
+
+      review_depth: THOROUGH
+
+      cross_cutting_focus:
+
+      - config-owned role semantics
+
+      - single blocked-case resolver entrypoint
+
+      - planner mutation boundary
+
+      - no surviving target-state mention of conflict-resolver or judge semantics'
+    verification: '- All phase steps completed successfully.
+
+      - Evidence collected and reviewed.
+
+      - No unresolved blockers remain.
+
+      - Ready for code/config migration.'
+    evidence_template: '## refs Read Confirmation (MANDATORY)
+
+      For each ref in this step:
+
+      - <filename> — key passage or "NOT READ: <reason>"
+
+
+      If no refs were provided, state: "No refs for this step."
+
+
+      ## Gate Review Report
+
+      - Step evidence reviewed:
+
+      - Remaining blockers:
+
+      - Gate decision basis:
+
+      '
+    depends_on:
+    - resolver_cleanup_contracts.freeze-clean-architecture
+    - resolver_cleanup_contracts.create-blocked-case-personas
+    agent: gate-reviewer-tacit
 - id: resolver_cleanup_core
   name: 'Resolver Cleanup: Config, Wiring, and Surface Simplification'
   status: locked

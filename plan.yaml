@@ -75591,3 +75591,54 @@ phases:
 
       - environment vs product failure boundary:'
     agent: software-architect-tacit
+  - id: live_smoke_real_runner_validation.run-real-live-smoke-matrix
+    name: Run real live-smoke matrix
+    status: pending
+    description: 'step_type: test
+
+      step_intent: runtime_validation
+
+      expected_result: evidence_first
+
+
+      Execute the explicit opt-in real-runner smoke lanes under the locked execution
+      matrix.
+
+
+      Requirements:
+
+      - run the selected codex/opencode judge/dispatch live smoke tests with real
+      binaries/auth if available
+
+      - capture full command, returncode, stdout, stderr for every failing subprocess
+      assertion per live smoke evidence contract
+
+      - distinguish environment/prerequisite failures from genuine product failures
+
+      - if optional UI/browser smoke was declared in-scope, run it under its own opt-in
+      lane and keep evidence separate
+
+
+      Failure handling:
+
+      - product defects discovered here should feed the remediation batch step
+
+      - pure env/auth/binary gaps should be dispositioned, not treated as code bugs'
+    verification: '- Live matrix execution evidence is captured with environment/product
+      distinction
+
+      - Any failures are bucketed into prerequisite vs product defect classes'
+    evidence_template: '## Live Execution Report
+
+      - commands executed:
+
+      - lanes run:
+
+      - prerequisite failures:
+
+      - product failures:
+
+      - raw evidence locations:'
+    depends_on:
+    - live_smoke_real_runner_validation.lock-live-runner-execution-matrix
+    agent: integration-verifier-tacit

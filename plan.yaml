@@ -75097,7 +75097,7 @@ phases:
       ### Gate Decision: OPEN'
 - id: xfail_role_prompt_and_review_normalization
   name: 'XFail Remediation: Role Prompt and Review Normalization'
-  status: pending
+  status: in_progress
   gate: Concrete role/prompt registries and structured review normalization are wired
     as the canonical policy seam, and the related expected-red tests are retired or
     intentionally reclassified with explicit evidence.
@@ -75106,7 +75106,7 @@ phases:
   steps:
   - id: xfail_role_prompt_and_review_normalization.implement-concrete-role-profile-registry
     name: Implement concrete role profile registry
-    status: pending
+    status: claimed
     description: 'work_type: technical_debt_remediation
 
       step_type: implementation
@@ -75136,6 +75136,8 @@ phases:
 
       - commands/tests run:'
     agent: python-senior-tacit
+    claimed_by: python-senior-tacit
+    claimed_at: '2026-04-10T06:44:06.121591+00:00'
   - id: xfail_role_prompt_and_review_normalization.implement-concrete-prompt-registry
     name: Implement concrete prompt registry
     status: pending

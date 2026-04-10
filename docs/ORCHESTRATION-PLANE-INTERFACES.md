@@ -3,7 +3,7 @@
 > Interface-boundary specification for the target `orchestration plane`.
 
 **Status:** Target interface specification  
-**Architecture authority:** `docs/ORCHESTRATION-PLANE-ARCHITECTURE.md`, `docs/ADR-orchestration-role-agent-prompt-separation.md`  
+**Architecture authority:** `docs/ORCHESTRATION-PLANE-ARCHITECTURE.md`, `docs/ADR-orchestration-role-agent-prompt-separation.md`, `docs/ORCHESTRATION-PLANE-LIVE-AUTHORITY-CONTRACT-LOCK.md`  
 **Related docs:** `docs/ORCHESTRATION-PLANE-RESOLUTION-CONTRACT.md`, `docs/ORCHESTRATION-PLANE-ISOLATION-SEMANTICS.md`  
 **Scope:** Full target boundaries; not an implementation slice
 
@@ -67,6 +67,13 @@ refs, and explicit artifacts — not by architecture-level continuity concepts.
 Session reuse may exist as an internal `roster` optimization. It must not become
 part of the public task/planning contract unless a future architecture decision
 explicitly promotes it.
+
+### Rule G — Live authority beats cached convenience
+
+If a dispatch, prompt, roster, or resolver decision depends on authority held by
+core state, role-profile state, or current resolution state, implementations
+must consume the live surface at the routing seam rather than silently relying
+on a precomputed shortcut.
 
 ---
 

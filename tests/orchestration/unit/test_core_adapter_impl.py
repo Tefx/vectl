@@ -98,3 +98,53 @@ def test_claim_rejects_non_normal_flow_contract(tmp_path: Path) -> None:
         assert "pinned to 'normal'" in str(exc)
     else:
         raise AssertionError("Expected ValueError for non-normal claim flow")
+
+
+def test_load_step_data_for_dispatch_public_seam(tmp_path: Path) -> None:
+    """Verify load_step_data_for_dispatch is the stable public boundary."""
+    plan_path = tmp_path / "plan.yaml"
+    plan = Plan(
+        project="dispatch-boundary-test",
+        phases=[
+            Phase(
+                id="core",
+                name="Core",
+                steps=[
+                    Step(
+                        id="core.test",
+                        name="Test",
+                        description="A test step",
+                        verification="pass",
+                        refs=("docs/SPEC.md",),
+                        evidence_template="## Evidence\n",
+                        verify="expected_red",
+                        agent="python-executor",
+                    ),
+                ],
+            )
+        ],
+    )
+    save_plan(plan, plan_path)
+    adapter = PlanCoreAdapter(plan_path)
+
+    result = adapter.load_step_data_for_dispatch("core.test")
+
+    assert result is not None
+    assert result.step_id == "core.test"
+    assert result.description == "A test step"
+    assert result.verification == "pass"
+    assert result.refs == ("docs/SPEC.md",)
+    assert result.evidence_template == "## Evidence\n"
+    assert result.verify == "expected_red"
+    assert result.agent == "python-executor"
+
+
+def test_load_step_data_for_dispatch_returns_none_for_missing_step(tmp_path: Path) -> None:
+    """Verify load_step_data_for_dispatch returns None for unknown step."""
+    plan_path = tmp_path / "plan.yaml"
+    save_plan(_build_plan_for_snapshot(), plan_path)
+    adapter = PlanCoreAdapter(plan_path)
+
+    result = adapter.load_step_data_for_dispatch("core.nonexistent")
+
+    assert result is None

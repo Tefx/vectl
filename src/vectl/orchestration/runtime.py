@@ -390,6 +390,14 @@ class Runtime:
         Raises:
             WorktreeError: If workspace creation fails.
         """
+        planner_output_contract = _request_output_contract(request)
+        if planner_output_contract == "vectl_facade_mutation":
+            raise WorktreeError(
+                "Runtime worktree launch blocked: vectl_facade_mutation requests must stay on "
+                "the approved vectl facade because linked-worktree execution could directly edit "
+                "plan.yaml outside the authorized mutation boundary"
+            )
+
         workspace_id = f"ws-{request.step_id}-{uuid.uuid4().hex[:8]}"
 
         stale_workspaces = [
@@ -1303,6 +1311,28 @@ def _request_prefers_resume(request: ExecutionRequest) -> bool:
 
     normalized_refs = {ref.strip().lower() for ref in request.work_refs}
     return any(ref in _RESUME_MODE_HINTS for ref in normalized_refs)
+
+
+def _request_output_contract(request: ExecutionRequest) -> str:
+    """Return declared output contract from execution metadata, if present.
+
+    Authority:
+        docs/ORCHESTRATION-PLANE-DISPATCH-AND-PROMPT-POLICY.md section 15
+        src/vectl/orchestration/config.py planner family policy
+
+    The runtime uses this to reject planner-class work from the linked-worktree
+    launch path. Planner output contract ``vectl_facade_mutation`` means the
+    agent is only allowed to mutate state through the approved vectl facade, so
+    launching it inside a writable execution worktree would create a direct-edit
+    bypass to ``plan.yaml``.
+    """
+
+    prefix = "output_contract="
+    for ref in request.work_refs:
+        normalized_ref = ref.strip()
+        if normalized_ref.startswith(prefix):
+            return normalized_ref[len(prefix) :]
+    return ""
 
 
 def _run_create(step_id: str, base_dir: Path) -> Success[WorktreeBinding] | Failure[WorktreeError]:

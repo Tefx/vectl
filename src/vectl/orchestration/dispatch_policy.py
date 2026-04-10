@@ -67,6 +67,15 @@ class ReviewResultParseError(ValueError):
     """
 
 
+class DispatchAuthorityError(ValueError):
+    """Raised when dispatch skips required live prompt/role checkpoints.
+
+    Authority: docs/ORCHESTRATION-PLANE-LIVE-AUTHORITY-CONTRACT-LOCK.md §3.4, §4.1
+    'If any checkpoint cannot be satisfied, dispatch must fail explicitly rather
+    than silently degrading to a static seam.'
+    """
+
+
 # ---------------------------------------------------------------------
 # Step verify-mode mapping
 # ---------------------------------------------------------------------
@@ -302,6 +311,14 @@ _RESOLVER_TACIT_TASK_TEMPLATE = (
     "Do not claim new steps or modify the plan outside the approved facade."
 )
 
+_PROMPT_CONTENT_BY_AGENT_ID: dict[str, tuple[str, str]] = {
+    "blocked-case-coordinator": (_RESOLVER_SYSTEM_PROMPT, _RESOLVER_TASK_TEMPLATE),
+    "blocked-case-coordinator-tacit": (
+        _RESOLVER_TACIT_SYSTEM_PROMPT,
+        _RESOLVER_TACIT_TASK_TEMPLATE,
+    ),
+}
+
 
 @dataclass(frozen=True)
 class ConfigPromptRegistry:
@@ -432,6 +449,9 @@ def _select_prompt_content(
     Returns:
         Tuple of (system_prompt, task_template).
     """
+    prompt_by_agent = _PROMPT_CONTENT_BY_AGENT_ID.get(agent_id)
+    if prompt_by_agent is not None:
+        return prompt_by_agent
     if family == "coder":
         return (_CODER_SYSTEM_PROMPT, _CODER_TASK_TEMPLATE)
     if family == "planner":
@@ -439,11 +459,6 @@ def _select_prompt_content(
     if family == "reviewer":
         return (_REVIEWER_SYSTEM_PROMPT, _REVIEWER_TASK_TEMPLATE)
     if family == "resolver":
-        if (
-            agent_id == "blocked-case-coordinator-tacit"
-            or role_id == "blocked-case-coordinator-tacit"
-        ):
-            return (_RESOLVER_TACIT_SYSTEM_PROMPT, _RESOLVER_TACIT_TASK_TEMPLATE)
         return (_RESOLVER_SYSTEM_PROMPT, _RESOLVER_TASK_TEMPLATE)
     # Unknown family — use coder as base but note the family mismatch
     return (_CODER_SYSTEM_PROMPT, _CODER_TASK_TEMPLATE)
@@ -562,6 +577,50 @@ class DispatchCoordinator:
     prompt_registry: PromptRegistry
     step_adapter: StepDataAdapter
     runner: str = "codex"
+
+    def render_prompt_bundle(self, spec: DispatchSpec) -> PromptBundle:
+        """Render the authoritative prompt bundle for a live dispatch spec.
+
+        Authority:
+            docs/ORCHESTRATION-PLANE-LIVE-AUTHORITY-CONTRACT-LOCK.md §3.1, §3.4, §4.1
+            docs/ORCHESTRATION-PLANE-ORCH-APP-ROUTING.md §12.1
+
+        Args:
+            spec: Dispatch spec to validate and render.
+
+        Returns:
+            Prompt bundle rendered from the authoritative live dispatch spec.
+
+        Raises:
+            DispatchAuthorityError: If prompt/role checkpoints are missing.
+        """
+        profile = self.role_registry.get(spec.role_id)
+        if spec.prompt_family != profile.prompt_family:
+            raise DispatchAuthorityError(
+                f"role {spec.role_id!r} requires prompt_family={profile.prompt_family!r} "
+                f"but got {spec.prompt_family!r}"
+            )
+        if spec.output_contract != profile.output_contract:
+            raise DispatchAuthorityError(
+                f"role {spec.role_id!r} requires output_contract={profile.output_contract!r} "
+                f"but got {spec.output_contract!r}"
+            )
+        if spec.mutation_policy != profile.mutation_policy:
+            raise DispatchAuthorityError(
+                f"role {spec.role_id!r} requires mutation_policy={profile.mutation_policy!r} "
+                f"but got {spec.mutation_policy!r}"
+            )
+        if not self.prompt_registry.has_role(spec.role_id):
+            raise DispatchAuthorityError(
+                f"prompt registry has no authoritative support for role {spec.role_id!r}"
+            )
+
+        prompt_bundle = self.prompt_registry.render(spec)
+        if not prompt_bundle.system_prompt.strip() or not prompt_bundle.task_prompt.strip():
+            raise DispatchAuthorityError(
+                f"prompt registry returned incomplete prompt bundle for role {spec.role_id!r}"
+            )
+        return prompt_bundle
 
     def build_dispatch_spec(
         self,
@@ -685,8 +744,10 @@ class DispatchCoordinator:
 class CoreStepDataAdapter:
     """StepDataAdapter implementation backed by PlanCoreAdapter.
 
-    Loads authoritative step data from the plan through vectl core.
-    Uses the concrete PlanCoreAdapter which has a _plan_path attribute.
+    Loads authoritative step data from the plan through the official
+    PlanCoreAdapter public seam. Does not access PlanCoreAdapter internals.
+
+    Authority: docs/ORCHESTRATION-PLANE-IMPLEMENTATION-DESIGN.md §3.6
     """
 
     def __init__(self, core_adapter: PlanCoreAdapter) -> None:
@@ -701,27 +762,7 @@ class CoreStepDataAdapter:
         Returns:
             StepData if found, else None.
         """
-        from vectl.io import load_plan_definition
-
-        try:
-            plan, _ = load_plan_definition(self._core_adapter._plan_path)
-        except Exception:
-            return None
-
-        found = plan.find_step(step_id)
-        if found is None:
-            return None
-
-        _, step = found
-        return StepData(
-            step_id=step.id,
-            description=step.description,
-            verification=step.verification,
-            refs=tuple(step.refs),
-            evidence_template=step.evidence_template,
-            verify=step.verify,
-            agent=step.agent,
-        )
+        return self._core_adapter.load_step_data_for_dispatch(step_id)
 
 
 # ---------------------------------------------------------------------
@@ -830,6 +871,7 @@ __all__ = [
     "ConfigPromptRegistry",
     "ConfigRoleProfileRegistry",
     "CoreStepDataAdapter",
+    "DispatchAuthorityError",
     "DispatchCoordinator",
     "ReviewResultParseError",
     "StepDataAdapter",

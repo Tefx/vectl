@@ -20,6 +20,7 @@ from vectl.io import save_plan
 from vectl.models import IsolationMode, Phase, Plan, Step
 from vectl.orch_app import (
     AppConfig,
+    CaseRuntimeToolMediationSource,
     build_orchestration_app,
     build_resolution_case,
     build_review_parse_failure_case,
@@ -44,12 +45,18 @@ from vectl.orchestration.contracts import (
     RosterSnapshot,
     RuntimeSnapshot,
     StructuredReviewResult,
+    WorkLease,
 )
 from vectl.orchestration.control_channel import FilesystemControlChannel
-from vectl.orchestration.dispatch_policy import ConfigRoleProfileRegistry, DispatchCoordinator
+from vectl.orchestration.dispatch_policy import (
+    ConfigPromptRegistry,
+    ConfigRoleProfileRegistry,
+    DispatchCoordinator,
+)
 from vectl.orchestration.events import load_event_jsonl
 from vectl.orchestration.recovery import LegacyRunStatus
-from vectl.orchestration.resolver_gateway import GatewayInvocationResult
+from vectl.orchestration.resolver_gateway import GatewayInvocationResult, ResolverToolCall
+from vectl.orchestration.runtime import WorktreeError
 from vectl.orchestration.run_store import RunRecord, RunRegistry, generate_run_id
 from vectl.orchestration.runner_registry import RunnerRegistry
 from vectl.orchestration.runners import (
@@ -217,6 +224,51 @@ def test_build_composes_real_collaborators_without_noop_resolver_dependency(tmp_
     assert orch._resolver.invocation.__class__.__name__ == "GatewayEnforcedResolverInvocation"
 
 
+def test_runtime_mediation_source_narrows_allowlist_to_live_case_tools() -> None:
+    source = CaseRuntimeToolMediationSource(configured_allowlist_families=("core", "orchestration"))
+
+    mediation = source.resolve(
+        ResolutionCase(
+            case_id="case-runtime-mediation",
+            case_source="review_failed",
+            reason="Blocked steps require resolution: core.ready",
+            core=_core_snapshot(),
+            roster=_roster_snapshot(),
+            runtime=_runtime_snapshot(),
+        ),
+        role_id="blocked-case-coordinator",
+    )
+
+    assert mediation.planned_tool_calls == (
+        ResolverToolCall(family="orchestration", name="read_case", surface="read"),
+    )
+    assert mediation.allowed_tool_families == ("orchestration",)
+    assert "resolver_mediation_calls=orchestration.read_case:read" in mediation.evidence_refs
+
+
+def test_runtime_mediation_source_uses_case_artifact_directives() -> None:
+    source = CaseRuntimeToolMediationSource(configured_allowlist_families=("core",))
+
+    mediation = source.resolve(
+        ResolutionCase(
+            case_id="",
+            case_source="review_failed",
+            reason="Blocked steps require resolution: core.ready",
+            core=_core_snapshot(),
+            roster=_roster_snapshot(),
+            runtime=_runtime_snapshot(),
+            artifact_refs=("resolver_tool=core.status:read",),
+        ),
+        role_id="blocked-case-coordinator",
+    )
+
+    assert mediation.planned_tool_calls == (
+        ResolverToolCall(family="core", name="status", surface="read"),
+    )
+    assert mediation.allowed_tool_families == ("core",)
+    assert "resolver_mediation_allowlist=core" in mediation.evidence_refs
+
+
 def test_resolve_case_requires_gateway_live_path(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
@@ -293,6 +345,46 @@ def test_resolve_case_returns_operator_required_when_gateway_denies(tmp_path: Pa
     assert report.status == "operator_required"
     assert "authorization denied" in report.summary.lower()
     assert "resolver:authorization-denied" in report.evidence_refs
+    assert "resolver_mediation_calls=orchestration.read_case:read" in report.evidence_refs
+
+
+def test_resolve_case_denies_runtime_mediated_tool_outside_config_allowlist(
+    temp_git_repo: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.chdir(temp_git_repo)
+    plan_path = temp_git_repo / "plan.yaml"
+    runs_root = temp_git_repo / "runs"
+    _write_plan(plan_path)
+    app = build_orchestration_app(
+        AppConfig(
+            plan_path=plan_path,
+            orchestration_config=OrchestrationConfig(
+                plan_path=plan_path,
+                resolver=ResolverConfig(
+                    tool_allowlist=ResolverToolAllowlist(allowed_tool_families=("orchestration",))
+                ),
+            ),
+            run_store_root=runs_root,
+        )
+    )
+
+    report = app.resolve_case(
+        ResolutionCase(
+            case_id="",
+            case_source="review_failed",
+            reason="Blocked steps require resolution: core.ready",
+            summary="runtime-mediated core tool should be denied",
+            core=_core_snapshot(),
+            roster=_roster_snapshot(),
+            runtime=_runtime_snapshot(),
+            artifact_refs=("resolver_tool=core.status:read",),
+        )
+    )
+
+    assert report.status == "operator_required"
+    assert "authorization denied" in report.summary.lower()
+    assert "resolver_denied_family=core" in report.evidence_refs
+    assert "resolver_mediation_calls=core.status:read" in report.evidence_refs
 
 
 def test_resolve_case_reaches_runtime_runner_through_gateway(
@@ -348,6 +440,28 @@ def test_resolve_case_reaches_runtime_runner_through_gateway(
     assert runner.launched == 1
     assert "resolver://runtime-runner" in report.evidence_refs
     assert any(ref.startswith("resolver_gateway_invocation=") for ref in report.evidence_refs)
+
+
+def test_start_runtime_execution_blocks_planner_worktree_bypass(tmp_path: Path) -> None:
+    app = _build_app(tmp_path)
+    orch = cast(Any, app)
+
+    dispatch_spec = orch._dispatch_coordinator.build_resolution_subtask_spec(
+        case_id="case-planner-1",
+        role_id="vectl-planner",
+        description="Plan a safe facade mutation",
+    )
+
+    with pytest.raises(
+        WorktreeError,
+        match=r"plan\.yaml outside the authorized mutation boundary",
+    ):
+        orch._start_runtime_execution(
+            run_id="run-planner-1",
+            step_id="case-planner-1",
+            dispatch_spec=dispatch_spec,
+            mode="start",
+        )
 
 
 def test_build_resolution_case_requires_resolve_decision() -> None:
@@ -984,6 +1098,110 @@ def test_start_runtime_execution_blocks_context_drift_before_runtime_launch(
     assert prepare_called is False
 
 
+def test_start_runtime_execution_renders_prompt_bundle_before_runtime_launch(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Ordinary dispatch must pass through PromptRegistry before runtime launch.
+
+    Authority:
+        docs/ORCHESTRATION-PLANE-LIVE-AUTHORITY-CONTRACT-LOCK.md §3.1, §3.4, §4.1
+        docs/ORCHESTRATION-PLANE-ORCH-APP-ROUTING.md §12.1
+    """
+
+    app = _build_app(tmp_path)
+    base_prompt_registry = ConfigPromptRegistry(role_registry=app._role_registry)
+
+    class RecordingPromptRegistry:
+        def __init__(self) -> None:
+            self.render_calls: list[str] = []
+
+        def render(self, spec: DispatchSpec):
+            self.render_calls.append(spec.role_id)
+            return base_prompt_registry.render(spec)
+
+        def has_role(self, role_id: str) -> bool:
+            return base_prompt_registry.has_role(role_id)
+
+    prompt_registry = RecordingPromptRegistry()
+    app._dispatch_coordinator = DispatchCoordinator(
+        role_registry=app._role_registry,
+        prompt_registry=prompt_registry,
+        step_adapter=app._dispatch_coordinator.step_adapter,
+    )
+
+    captured_work_refs: list[tuple[str, ...]] = []
+    original_prepare = app._runtime.prepare
+
+    def probe_prepare(request):
+        captured_work_refs.append(request.work_refs)
+        return original_prepare(request)
+
+    monkeypatch.setattr(app._runtime, "prepare", probe_prepare)
+
+    result = app.run(step_id="core.ready", agent="python-executor")
+
+    assert result.success is True
+    assert prompt_registry.render_calls == ["python-executor"]
+    assert captured_work_refs
+    assert any(ref.startswith("prompt_bundle_sha256=") for ref in captured_work_refs[0])
+
+
+def test_start_runtime_execution_fails_closed_when_prompt_registry_lacks_role_support(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Ordinary dispatch must fail closed if the prompt seam cannot prove role authority.
+
+    Authority: docs/ORCHESTRATION-PLANE-LIVE-AUTHORITY-CONTRACT-LOCK.md §3.4, §4.3
+    """
+
+    app = _build_app(tmp_path)
+    orch = cast(Any, app)
+
+    class MissingRolePromptRegistry:
+        def render(self, spec: DispatchSpec):
+            pytest.fail(f"render should not run when role support is missing for {spec.role_id}")
+
+        def has_role(self, role_id: str) -> bool:
+            return False
+
+    app._dispatch_coordinator = DispatchCoordinator(
+        role_registry=app._role_registry,
+        prompt_registry=MissingRolePromptRegistry(),
+        step_adapter=app._dispatch_coordinator.step_adapter,
+    )
+
+    prepare_called = False
+    original_prepare = app._runtime.prepare
+
+    def probe_prepare(request):
+        nonlocal prepare_called
+        prepare_called = True
+        return original_prepare(request)
+
+    monkeypatch.setattr(app._runtime, "prepare", probe_prepare)
+
+    with pytest.raises(ValueError, match="prompt registry has no authoritative support"):
+        orch._start_runtime_execution(
+            run_id="run-missing-prompt-role",
+            step_id="core.ready",
+            dispatch_spec=DispatchSpec(
+                source_kind="step",
+                source_id="core.ready",
+                role_id="python-executor",
+                role_source="default",
+                execution_context="linked_worktree",
+                runner="codex",
+                session_mode="fresh",
+                prompt_family="coder",
+                output_contract="freeform_evidence",
+                mutation_policy="worktree_changes",
+            ),
+            mode="start",
+        )
+
+    assert prepare_called is False
+
+
 def test_route_terminal_execution_completes_only_after_reconcile_allows_it(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
@@ -1101,6 +1319,94 @@ def test_build_dispatch_spec_preserves_canonical_default_role_precedence(
     spec = app.build_dispatch_spec(step_id="core.ready", role_hint="gate-reviewer")
     assert spec.role_id == "gate-reviewer"
     assert captured_default_roles == ["python-executor"]
+
+
+def test_build_dispatch_spec_binds_live_roster_reuse_without_rewriting_role(
+    tmp_path: Path,
+) -> None:
+    app = _build_app(tmp_path)
+    app._roster.register(
+        WorkLease(
+            role="python-executor",
+            runner="claude",
+            agent_id="python-executor",
+            session_id="session-123",
+        ),
+        expires_at=time.time() + 60.0,
+    )
+
+    spec = app.build_dispatch_spec(step_id="core.ready", role_hint="python-executor")
+
+    assert spec.role_id == "python-executor"
+    assert spec.runner == "claude"
+    assert spec.session_mode == "reuse"
+    assert spec.reuse_token == "session-123"
+    assert spec.reuse_runner == "claude"
+
+
+def test_build_dispatch_spec_rejects_roster_role_rewrite(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    app = _build_app(tmp_path)
+
+    def incompatible_claim(role: str, *, isolation: IsolationMode) -> WorkLease:
+        _ = role
+        _ = isolation
+        return WorkLease(
+            role="gate-reviewer",
+            runner="claude",
+            agent_id="gate-reviewer",
+            session_id="session-123",
+        )
+
+    monkeypatch.setattr(app._roster, "claim", incompatible_claim)
+
+    with pytest.raises(ValueError, match="roster authority violation"):
+        app.build_dispatch_spec(step_id="core.ready", role_hint="python-executor")
+
+
+def test_start_runtime_execution_turns_roster_reuse_into_resume_request(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    app = _build_app(tmp_path)
+    orch = cast(Any, app)
+    captured_execution_requests: list[tuple[str, str | None]] = []
+
+    def probe_prepare(request: Any) -> str:
+        captured_execution_requests.append((request.work_refs[1], request.session_id))
+        return "ws-captured"
+
+    def probe_start(*, request: Any, workspace: str) -> str:
+        _ = workspace
+        return "exec-captured"
+
+    monkeypatch.setattr(app._runtime, "prepare", probe_prepare)
+    monkeypatch.setattr(app._runtime, "start", probe_start)
+
+    dispatch_spec = DispatchSpec(
+        source_kind="step",
+        source_id="core.ready",
+        role_id="python-executor",
+        role_source="default",
+        execution_context="linked_worktree",
+        runner="claude",
+        session_mode="reuse",
+        reuse_token="session-123",
+        reuse_runner="claude",
+        prompt_family="coder",
+        output_contract="freeform_evidence",
+        mutation_policy="worktree_changes",
+    )
+
+    workspace, execution_id = orch._start_runtime_execution(
+        run_id="run-123",
+        step_id="core.ready",
+        dispatch_spec=dispatch_spec,
+        mode="start",
+    )
+
+    assert (workspace, execution_id) == ("ws-captured", "exec-captured")
+    assert captured_execution_requests == [("mode=resume", "session-123")]
 
 
 def test_route_terminal_execution_non_pass_review_becomes_resolution_case(

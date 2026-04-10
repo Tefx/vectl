@@ -76909,7 +76909,7 @@ phases:
       \ config`"
   - id: resolver_cleanup_core.wire-default-blocked-case-resolver
     name: Wire program to configured blocked-case resolver
-    status: claimed
+    status: done
     description: 'Replace the legacy resolver invocation path with a real config-driven
       default resolver entry.
 
@@ -76970,6 +76970,35 @@ phases:
     agent: python-senior-tacit
     claimed_by: python-senior-tacit
     claimed_at: '2026-04-10T13:53:59.920390+00:00'
+    done_at: '2026-04-10T14:12:12.418506+00:00'
+    evidence: "## refs Read Confirmation (MANDATORY)\n- tools/vectl/README.md — NOT\
+      \ READ: required file not found in isolated worktree path.\n\n## Wiring Evidence\n\
+      - Configured resolver.default_role_id path:\n  - `src/vectl/orchestration/resolver.py`:\
+      \ `BoundResolver` now carries `default_role_id` and forwards it into invocation.\n\
+      \  - `src/vectl/orch_app.py`: legacy gateway stub resolver path replaced with\
+      \ `DefaultRoleResolverInvocation` that dispatches resolution subtasks using\
+      \ `resolver.default_role_id`, parses `resolution_report`, and returns bounded\
+      \ resolver payloads.\n  - `src/vectl/orchestration/interfaces.py`: resolver\
+      \ seam documentation updated to pin selection to `resolver.default_role_id`\
+      \ while preserving `ResolutionCase -> ResolutionReport`.\n- Runtime invocation\
+      \ proof:\n  - `tests/orchestration/unit/test_orch_app.py::test_resolve_case_invokes_configured_default_resolver_role`\n\
+      \  - `tests/orchestration/unit/test_orch_app.py::test_resolve_case_supports_explicit_tacit_resolver_config_selection`\n\
+      \  - `tests/orchestration/unit/test_orch_app.py::test_route_resolution_case_refreshes_state_after_real_resolver_invocation`\n\
+      \  - `tests/orchestration/unit/test_resolver.py::test_bound_resolver_forwards_configured_default_role_id`\n\
+      - Tests run:\n  - `./.venv/bin/python -m pytest tests/orchestration/unit/test_resolver.py\
+      \ tests/orchestration/unit/test_orch_app.py tests/orchestration/unit/test_config_state_impl.py::TestConfigDiscovery::test_default_config_contains_config_backed_role_registry\
+      \ tests/orchestration/unit/test_config_state_impl.py::TestConfigDiscovery::test_load_parses_role_profiles_and_default_role_ids\
+      \ tests/orchestration/unit/test_config_state_impl.py::TestConfigValidation::test_resolver_default_role_must_reference_resolver_family\
+      \ tests/orchestration/unit/test_dispatch_policy.py::TestConfigRoleProfileRegistry::test_get_returns_different_profiles_for_different_roles\
+      \ tests/orchestration/unit/test_dispatch_policy.py::TestConfigRoleProfileRegistry::test_resolver_family_roles_require_main_worktree\
+      \ tests/orchestration/integration/test_control_resolver_contract.py -q` -> `70\
+      \ passed in 4.66s`\n  - `./.venv/bin/python -m mypy src/vectl/orch_app.py src/vectl/orchestration/resolver.py\
+      \ src/vectl/orchestration/interfaces.py` -> `Success: no issues found in 3 source\
+      \ files`\n- Remaining stub/legacy invocation traces:\n  - Grep for `Resolver\
+      \ invocation recorded through gateway authorization|GatewayResolverInvocation`\
+      \ in target resolver invocation surfaces returns no matches.\n\n## Commit Evidence\n\
+      - Worker commit: `195ad13` (`fix(orchestration): wire config-driven resolver\
+      \ entry`)\n- Cherry-picked on Main: `205021f`"
   - id: resolver_cleanup_core.remove-legacy-surfaces-and-dead-metadata
     name: Remove legacy resolver, judge, fallback, and dead metadata surfaces
     status: pending

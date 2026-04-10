@@ -73637,3 +73637,18 @@ phases:
       - Required invariants preserved:
 
       - Command(s) run:'
+  - id: repo_regression_contract_alignment.audit-other-tight-locks-in-failing-scope
+    name: Audit other over-tight locks in failing scope
+    status: pending
+    description: Search the failing-scope tests for other exact-field-count or exact-export-shape
+      assertions likely to drift after legitimate contract evolution, and align them
+      to semantic invariants where appropriate.
+    verification: No remaining failing-scope lock test relies on stale exact-shape
+      assumptions without explicit rationale.
+    evidence_template: '- Additional locks found:
+
+      - Adjustments made:
+
+      - Search/test evidence:'
+    depends_on:
+    - repo_regression_contract_alignment.repin-resolution-case-boundary-locks

@@ -76797,7 +76797,7 @@ phases:
       \ remains authoritative."
 - id: resolver_cleanup_core
   name: 'Resolver Cleanup: Config, Wiring, and Surface Simplification'
-  status: in_progress
+  status: done
   gate: Code path uses config-backed role profiles, program invokes the configured
     blocked-case resolver directly, and legacy conflict/judge/template/fallback surfaces
     are removed from current code and tests.
@@ -77247,7 +77247,7 @@ phases:
       ### Verdict: PASS'
   - id: resolver_cleanup_core.gate
     name: Gate config and surface cleanup
-    status: claimed
+    status: done
     description: 'Gate review: verify config-backed role ownership, program-level
       blocked-case resolver wiring, and legacy-surface deletion are complete.
 
@@ -77293,6 +77293,33 @@ phases:
     agent: gate-reviewer-tacit
     claimed_by: gate-reviewer-tacit
     claimed_at: '2026-04-10T15:07:58.630738+00:00'
+    done_at: '2026-04-10T15:21:24.296766+00:00'
+    evidence: "## refs Read Confirmation (MANDATORY)\n- src/vectl/orchestration/config.py\
+      \ — read\n- src/vectl/orchestration/dispatch_policy.py — read\n- src/vectl/orchestration/resolver.py\
+      \ — read\n- src/vectl/orchestration/contracts.py — read\n- src/vectl/orchestration/control.py\
+      \ — read\n- src/vectl/orchestration/resolution_reports.py — read\n- src/vectl/orchestration/__init__.py\
+      \ — read\n- src/vectl/orch_app.py — read\n\n## Gate Review Report\n- Step evidence\
+      \ reviewed:\n  - `resolver_cleanup_core.fix-gate-shouldfix-batch`: tacit resolver\
+      \ role profile resolved in defaults/registry.\n  - `resolver_cleanup_core.migrate-role-profiles-to-config`:\
+      \ `_DEFAULT_ROLE_PROFILES` removed; config is role authority; default role IDs\
+      \ config-backed.\n  - `resolver_cleanup_core.wire-default-blocked-case-resolver`:\
+      \ resolver default role wiring maintained with config override path; regression\
+      \ rework applied.\n  - `resolver_cleanup_core.remove-legacy-surfaces-and-dead-metadata`:\
+      \ legacy conflict/judge/template/fallback surfaces removed; judgments->resolution_reports\
+      \ rename completed.\n  - `resolver_cleanup_core.verify-cleaned-runtime-and-contract-surfaces`:\
+      \ orchestration suite pass with residue scans clean.\n- Cross-cutting drift\
+      \ checks:\n  - no code-owned ordinary role truth remains (config authority only).\n\
+      \  - no active code/test drift for conflict/judge/template/fallback legacy names.\n\
+      \  - planner mutation boundary explicit as vectl-facade mutation semantics.\n\
+      - Gate decision basis:\n  - all blocker-class checks satisfied in code/test\
+      \ surfaces.\n  - one doc-only stale term (`structured_plan_result`) identified\
+      \ as SHOULD_FIX, non-blocking for code gate.\n\n## Behavioral Proof Register\n\
+      - Config-backed role profiles as sole authority: PROVEN\n- Default and tacit\
+      \ blocked-case resolver registry lookup: PROVEN\n- Resolver default path from\
+      \ config -> resolver invocation: PROVEN\n- Planner mutation boundary non-proposal-only:\
+      \ PROVEN\n- Legacy taxonomy removal in code/tests: PROVEN\n- gate_open_allowed:\
+      \ true\n\n## Verdict\n- CONDITIONAL PASS (BLOCKING=0, SHOULD_FIX=1 doc-only\
+      \ drift)\n- Ready to proceed to `resolver_cleanup_finalization`."
   - id: resolver_cleanup_core.fix-gate-shouldfix-batch
     name: resolver_cleanup_core.fix-gate-shouldfix-batch
     status: done
@@ -77366,7 +77393,7 @@ phases:
       \ lookup for tacit resolver succeeds.\n- No legacy conflict/judge taxonomy reintroduced."
 - id: resolver_cleanup_finalization
   name: 'Resolver Cleanup: Finalization, Doc Sync, and Deep Review'
-  status: locked
+  status: pending
   gate: Full regression, documentation, spec-conformance, architecture review, and
     black-box review all confirm the cleaned orchestration model without legacy resolver/judge
     drift.

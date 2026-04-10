@@ -73723,7 +73723,7 @@ phases:
       - Scope limited to touched stale-red locations and lifecycle mechanism only.'
   - id: repo_regression_triage.capture-full-suite-failure-inventory
     name: Capture full-suite failure inventory
-    status: claimed
+    status: done
     description: Record the current failing set from `uv run pytest -q`, grouped by
       file/test and normalized into remediation buckets. Include all 27 current failures
       and any companion xfail/skip context relevant to disposal.
@@ -73732,6 +73732,19 @@ phases:
       counts by bucket.
     claimed_by: general
     claimed_at: '2026-04-10T02:59:28.232329+00:00'
+    done_at: '2026-04-10T03:11:59.336562+00:00'
+    evidence: "Artifact:\n- Commit hash: 14ca9be5b89405c03f799834eba1c1389c3d2d16\n\
+      - Inventory file: docs/full-suite-failure-inventory-2026-04-10.md\n\nVerification:\n\
+      - `uv run pytest -q` -> 31 failed, 1754 passed, 39 skipped, 19 xfailed, 1 warning\
+      \ (51.41s).\n- Inventory includes normalized buckets and per-bucket counts:\n\
+      \  - stale expected-red config/run-registry vs implemented surfaces: 7\n  -\
+      \ orchestration contract/export surface drift: 3\n  - recovery status/quarantine\
+      \ semantics drift: 2\n  - runtime reconcile tracking regression: 1\n  - missing/incomplete\
+      \ driver CLI + liveness fixture: 7\n  - observability contract backlog/stale\
+      \ expected-red probes: 11\n\nSpec link:\n- docs/ORCHESTRATION-PLANE-CLI-CONFIG-OBSERVABILITY-DESIGN.md\n\
+      - docs/ORCHESTRATION-PLANE-INTERFACES.md\n- docs/ORCHESTRATION-PLANE-DISPATCH-AND-PROMPT-POLICY.md\n\
+      \nNotes:\n- Step description referenced 27 failures; command observed 31 failures\
+      \ in this run and inventory explicitly records that discrepancy."
   - id: repo_regression_expected_red_cleanup.realign-observability-red-tests-with-implemented-surfaces
     name: Realign observability red tests with implemented surfaces
     status: done

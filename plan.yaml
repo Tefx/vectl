@@ -74165,7 +74165,7 @@ phases:
     claimed_at: '2026-04-10T03:26:26.690450+00:00'
   - id: repo_regression_surface_and_fixture_repair.reconcile-drive-cli-public-surface
     name: Reconcile drive CLI public surface
-    status: pending
+    status: claimed
     description: Determine whether `drive` is still a supported CLI command/import
       surface. Then either restore/register the command and import path or update/remove
       stale tests to match the current supported interface. Spec, implementation,
@@ -74177,6 +74177,8 @@ phases:
       - Surface/test changes:
 
       - Command: `uv run pytest tests/test_cli.py -k DriveCLI -q` -> <outcome>'
+    claimed_by: general
+    claimed_at: '2026-04-10T03:26:44.097889+00:00'
   - id: repo_regression_observability_gap_disposition.align-event-envelope-schema-tests
     name: Align event envelope schema tests
     status: claimed

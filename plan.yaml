@@ -76382,7 +76382,7 @@ phases:
       \ and are consistent with locked matrix policy."
   - id: live_smoke_real_runner_validation.doc-sync-live-smoke-findings
     name: Doc sync live-smoke findings and operating prerequisites
-    status: claimed
+    status: done
     description: 'work_type: doc_sync
 
       step_type: documentation
@@ -76417,6 +76417,18 @@ phases:
     agent: project-guide
     claimed_by: project-guide
     claimed_at: '2026-04-10T07:17:27.424529+00:00'
+    done_at: '2026-04-10T07:18:25.658508+00:00'
+    evidence: "## Doc Sync Evidence\n- docs updated:\n  - Added `docs/LIVE-SMOKE-REAL-RUNNER-VALIDATION-2026-04-10.md`\
+      \ with locked live-runner matrix scope, prerequisite contract, executed commands,\
+      \ observed outcomes, and classification boundary.\n- prerequisite guidance added/changed:\n\
+      \  - Explicit opt-in, binary, auth/session, and override checks documented as\
+      \ preconditions before product-failure classification.\n  - Explicit governed\
+      \ skip reason set documented:\n    - `live_runner_opt_in_missing`\n    - `live_runner_binary_missing`\n\
+      \    - `live_runner_auth_missing`\n    - `live_runner_override_unsupported`\n\
+      - operational caveats captured:\n  - This phase is CLI live-runner only; browser/UI\
+      \ smoke is out-of-scope.\n  - Current run outcome recorded (`60 passed, 17 skipped,\
+      \ 0 failed`) with skips attributed to opt-in prerequisites, not product defects.\n\
+      \  - Product-vs-environment failure boundary documented to prevent misclassification."
   - id: live_smoke_real_runner_validation.gate
     name: Gate live-smoke real-runner validation
     status: pending

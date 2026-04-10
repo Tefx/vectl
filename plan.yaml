@@ -75592,7 +75592,7 @@ phases:
     agent: project-guide
   - id: xfail_finalization.run-repo-wide-pytest-gate
     name: Run repo-wide pytest gate for xfail retirement
-    status: claimed
+    status: done
     description: 'step_type: test
 
       step_intent: retest_green
@@ -75617,6 +75617,14 @@ phases:
     agent: integration-verifier-tacit
     claimed_by: integration-verifier-tacit
     claimed_at: '2026-04-10T07:10:32.607266+00:00'
+    done_at: '2026-04-10T07:11:35.722771+00:00'
+    evidence: "- Command: `uv run pytest -q`\n- Summary counts: `1809 passed, 32 skipped,\
+      \ 1 warning in 50.50s`\n- Retired xfails:\n  - `tests/orchestration/unit/test_dispatch_policy_red.py`\
+      \ GAP2/GAP3/GAP4 + main-worktree GAP1/GAP5 surfaces now green\n  - `tests/orchestration/unit/test_runner_backend_red.py`\
+      \ resolver-gateway authority + lifecycle mutation enforcement surfaces now green\n\
+      - Remaining governed non-green statuses and rationale:\n  - 32 skipped tests\
+      \ are expected/environmental skips (live-smoke and UI-skip surfaces), not xfail\
+      \ retirement regressions\n  - no xfail failures observed in repo-wide gate run"
   - id: xfail_finalization.deep-review-xfail-remediation
     name: Deep review xfail remediation closure
     status: pending

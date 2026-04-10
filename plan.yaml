@@ -78419,7 +78419,7 @@ phases:
       directly edit plan.yaml outside the authorized mutation boundary"'
   - id: orch_plane_planner_boundary.gate
     name: Gate planner boundary remediation
-    status: pending
+    status: claimed
     description: Gate review for planner-boundary remediation. Block if live planner
       execution can still reach plan.yaml outside the vectl facade or if runtime enforcement
       remains proof-light.
@@ -78442,6 +78442,8 @@ phases:
     depends_on:
     - orch_plane_planner_boundary.live-proof
     agent: gate-reviewer-tacit
+    claimed_by: gate-reviewer-tacit
+    claimed_at: '2026-04-10T20:44:15.009818+00:00'
 - id: orch_plane_finalization
   name: Orchestration Plane Finalization
   status: locked

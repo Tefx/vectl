@@ -76493,3 +76493,11 @@ phases:
     are removed from current code and tests.
   depends_on:
   - resolver_cleanup_contracts
+- id: resolver_cleanup_finalization
+  name: 'Resolver Cleanup: Finalization, Doc Sync, and Deep Review'
+  status: locked
+  gate: Full regression, documentation, spec-conformance, architecture review, and
+    black-box review all confirm the cleaned orchestration model without legacy resolver/judge
+    drift.
+  depends_on:
+  - resolver_cleanup_core

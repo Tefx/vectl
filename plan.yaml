@@ -73562,3 +73562,11 @@ phases:
       drift with behavioral fixes.
     depends_on:
     - repo_regression_triage.classify-failures-by-disposition
+- id: repo_regression_expected_red_cleanup
+  name: Expected-Red Cleanup and Test Intent Realignment
+  status: locked
+  gate: Tests that still encode pre-implementation GAP expectations are either converted
+    to current green assertions, moved to explicit xfail/skip with rationale, or removed
+    in favor of authoritative green coverage.
+  depends_on:
+  - repo_regression_triage

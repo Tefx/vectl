@@ -77965,7 +77965,7 @@ phases:
       \ Cherry-picked on main: `661d8fb`"
   - id: orch_plane_live_authority.roster-decision-path
     name: Bring roster into dispatch authority
-    status: claimed
+    status: done
     description: Make roster resource/reuse state participate in the primary dispatch
       decision path instead of remaining an advisory side seam.
     verification: Decision-path tests prove roster snapshot changes can alter admission/reuse
@@ -77989,6 +77989,29 @@ phases:
     agent: python-senior-tacit
     claimed_by: python-senior-tacit
     claimed_at: '2026-04-10T19:23:57.416685+00:00'
+    done_at: '2026-04-10T19:35:21.279137+00:00'
+    evidence: "## refs Read Confirmation (MANDATORY)\n- tools/vectl/README.md — NOT\
+      \ READ: required file absent in isolated worktree path.\n- docs/ORCHESTRATION-PLANE-LIVE-AUTHORITY-CONTRACT-LOCK.md\
+      \ — key passages used:\n  - roster may supply availability/lease facts only;\
+      \ may not choose step/role meaning\n  - control decides intent first; roster\
+      \ answers whether suitable resource can satisfy that intent.\n- docs/ORCHESTRATION-PLANE-ISOLATION-SEMANTICS.md\
+      \ — key passage used: roster enforces reuse side of semantic.\n- docs/ORCHESTRATION-PLANE-INTERFACES.md\
+      \ — key passage used: session reuse can be a roster optimization.\n\n## Implementation\
+      \ Evidence\n- Files changed:\n  - `src/vectl/orch_app.py`\n  - `tests/orchestration/unit/test_orch_app.py`\n\
+      - Decision inputs now sourced from roster:\n  - Added roster binding on ordinary\
+      \ dispatch live path (`_bind_roster_dispatch_inputs(...)`).\n  - Dispatch spec\
+      \ now incorporates roster lease facts for compatible runner and reuse token/session\
+      \ mode.\n  - Runtime launch consumes roster-derived reuse (`mode=resume`, session\
+      \ id from roster token when provided).\n  - Boundary guard: roster lease role\
+      \ must exactly match requested role; mismatch raises `roster authority violation`.\n\
+      \  - Role/work intent remains control+dispatch-coordinator authority (roster\
+      \ cannot rewrite semantics).\n- Tests covering changed outcomes:\n  - `test_build_dispatch_spec_binds_live_roster_reuse_without_rewriting_role`\n\
+      \  - `test_build_dispatch_spec_rejects_roster_role_rewrite`\n  - `test_start_runtime_execution_turns_roster_reuse_into_resume_request`\n\
+      \nVerification:\n- `.venv/bin/python -m pytest tests/orchestration/unit/test_orch_app.py\
+      \ -q` -> `61 passed`\n- `.venv/bin/python -m mypy src/vectl/orch_app.py` ->\
+      \ `Success: no issues found`\n- `uv run --with ruff ruff check src/vectl/orch_app.py\
+      \ tests/orchestration/unit/test_orch_app.py` -> `All checks passed!`\n\nCommit\
+      \ evidence:\n- Worker commit: `f7f25fb`\n- Cherry-picked on main: `f5499b0`"
   - id: orch_plane_live_authority.dynamic-tool-mediation
     name: Make tool mediation dynamic
     status: done

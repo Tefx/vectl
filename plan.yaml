@@ -77102,3 +77102,49 @@ phases:
     depends_on:
     - resolver_cleanup_finalization.full-regression
     agent: doc-reviewer-tacit
+  - id: resolver_cleanup_finalization.spec-conformance
+    name: Audit spec conformance of cleaned orchestration model
+    status: pending
+    description: 'Spec conformance verification via adversarial divergence hunting.
+
+
+      Focus only on the resolver/config/planner-role-profile surfaces changed by this
+      cleanup.
+
+
+      Must check:
+
+      - config is the source of truth for ordinary role profiles
+
+      - program invokes configured blocked-case resolver directly
+
+      - planner mutation semantics match the updated contract
+
+      - deleted concepts are absent from current authoritative surfaces'
+    verification: '- Requirement-by-requirement evidence table produced.
+
+      - Divergences, if any, are explicit and dispositioned.'
+    evidence_template: '## refs Read Confirmation (MANDATORY)
+
+      For each ref in this step:
+
+      - <filename> — key passage or "NOT READ: <reason>"
+
+
+      If no refs were provided, state: "No refs for this step."
+
+
+      ## Spec Conformance Report
+
+      - Requirements checked:
+
+      - Divergences:
+
+      - NEEDS_TEST items:
+
+      - Verdict:
+
+      '
+    depends_on:
+    - resolver_cleanup_finalization.full-regression
+    agent: spec-verifier-tacit

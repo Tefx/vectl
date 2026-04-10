@@ -75387,3 +75387,43 @@ phases:
     depends_on:
     - retire_repair_continuity_legacy_surface.lock-modern-recovery-authority-and-retirement-decision
     agent: python-senior-tacit
+  - id: retire_repair_continuity_legacy_surface.rewrite-or-remove-legacy-black-box-tests
+    name: Rewrite or remove legacy black-box tests
+    status: pending
+    description: 'work_type: technical_debt_remediation
+
+      step_type: test_realignment
+
+
+      Realign the skipped black-box tests so they no longer silently preserve a retired
+      public surface.
+
+
+      Requirements:
+
+      - if `repair continuity` is removed, delete or replace `tests/repro/test_repair_continuity_black_box.py`
+      with retirement-surface assertions as appropriate
+
+      - if a retirement shim is kept, rewrite tests to validate explicit retirement
+      messaging, not functional continuity repair behavior
+
+      - where appropriate, add or retarget black-box coverage toward `vectl orch recover`
+      instead of the legacy driver-centric command
+
+      - remove skip-based masking of product-surface drift'
+    verification: '- No skipped suite remains solely because the retired continuity-hygiene
+      module is absent
+
+      - Replacement/retargeted tests match the chosen public-surface contract'
+    evidence_template: '## Test Realignment Evidence
+
+      - legacy tests removed/rewritten:
+
+      - replacement coverage:
+
+      - skip masking removed how:
+
+      - commands/tests run:'
+    depends_on:
+    - retire_repair_continuity_legacy_surface.remove-or-shim-legacy-cli-surface
+    agent: python-senior-tacit

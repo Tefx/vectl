@@ -76485,6 +76485,80 @@ phases:
     and lock the config-owned role-profile model before code migration begins.
   depends_on:
   - live_smoke_real_runner_validation
+  steps:
+  - id: resolver_cleanup_contracts.freeze-clean-architecture
+    name: Freeze clean architecture and config ownership
+    status: pending
+    description: 'Work type: technical_debt_remediation.
+
+
+      Freeze the final architecture and contract vocabulary for resolver cleanup.
+
+
+      Required outcomes:
+
+      - Ordinary role profiles are config-owned, not hardcoded in orchestration code.
+
+      - The only default resolver agents are `blocked-case-coordinator` and `blocked-case-coordinator-tacit`.
+
+      - `conflict-resolver`, `resolver_conflict`, `judge/judgment/judgments`, `template_id`,
+      and `fallback_role` are removed from the target architecture.
+
+      - Planner remains orchestrator-invoked but performs plan mutation directly through
+      the approved vectl facade, never by editing `plan.yaml`.
+
+      - Historical `plan.yaml` remains untouched and is explicitly non-authoritative
+      for new architecture terms.
+
+
+      Touch paths:
+
+      - docs/ADR-orchestration-role-profile-config-and-resolver-cleanup.md
+
+      - docs/ORCHESTRATION-PLANE-ARCHITECTURE.md
+
+      - docs/ORCHESTRATION-PLANE-DISPATCH-AND-PROMPT-POLICY.md
+
+      - docs/ORCHESTRATION-PLANE-RESOLUTION-CONTRACT.md
+
+      - docs/ORCHESTRATION-PLANE-RESOLVER-COORDINATION.md
+
+      - docs/ORCHESTRATION-PLANE-ORCH-APP-ROUTING.md
+
+      - docs/ORCHESTRATION-PLANE-IMPLEMENTATION-DESIGN.md
+
+      - docs/ORCHESTRATION-PLANE-CLI-CONFIG-OBSERVABILITY-DESIGN.md
+
+      - docs/ORCHESTRATION-PLANE-ISOLATION-SEMANTICS.md'
+    verification: '- New cleanup ADR exists and states the final architecture unambiguously.
+
+      - Updated architecture docs no longer treat conflict-resolver, judge, template_id,
+      or fallback_role as target concepts.
+
+      - Docs explicitly state: plan references roles, config defines role profiles,
+      orchestration core only loads/validates/consumes.'
+    evidence_template: '## refs Read Confirmation (MANDATORY)
+
+      For each ref in this step:
+
+      - <filename> — key passage or "NOT READ: <reason>"
+
+
+      If no refs were provided, state: "No refs for this step."
+
+
+      ## Contract Freeze Evidence
+
+      - ADR/doc sections updated:
+
+      - Final architecture summary:
+
+      - Explicit deletions locked:
+
+      - Historical plan non-authority note confirmed:
+
+      '
+    agent: software-architect-tacit
 - id: resolver_cleanup_core
   name: 'Resolver Cleanup: Config, Wiring, and Surface Simplification'
   status: locked

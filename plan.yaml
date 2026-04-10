@@ -73560,21 +73560,6 @@ phases:
     failures no longer arise from missing files or stale command expectations.
   depends_on:
   - repo_regression_behavior_alignment
-  steps:
-  - id: repo_regression_surface_and_fixture_repair.fix-orch-liveness-fixture-assumptions
-    name: Fix orchestration liveness fixture assumptions
-    status: pending
-    description: Repair `tests/repro/test_orch_liveness.py` so it no longer depends
-      on an implicit repo-root `driver.yaml` unless that file is truly part of the
-      supported public fixture surface. Prefer test-local fixture generation over
-      ambient repo assumptions.
-    verification: Liveness repro test passes in a clean repo checkout without hidden
-      local setup.
-    evidence_template: '- Fixture strategy chosen:
-
-      - File/test changes:
-
-      - Command: `uv run pytest tests/repro/test_orch_liveness.py -q` -> <outcome>'
 - id: repo_regression_observability_gap_disposition
   name: Observability Gap Disposition and Alignment
   status: locked
@@ -73819,3 +73804,17 @@ phases:
       - Tests updated:
 
       - Command(s) run:'
+  - id: repo_regression_surface_and_fixture_repair.fix-orch-liveness-fixture-assumptions
+    name: Fix orchestration liveness fixture assumptions
+    status: pending
+    description: Repair `tests/repro/test_orch_liveness.py` so it no longer depends
+      on an implicit repo-root `driver.yaml` unless that file is truly part of the
+      supported public fixture surface. Prefer test-local fixture generation over
+      ambient repo assumptions.
+    verification: Liveness repro test passes in a clean repo checkout without hidden
+      local setup.
+    evidence_template: '- Fixture strategy chosen:
+
+      - File/test changes:
+
+      - Command: `uv run pytest tests/repro/test_orch_liveness.py -q` -> <outcome>'

@@ -77714,7 +77714,7 @@ phases:
       \ drift identified."
   - id: resolver_cleanup_finalization.black-box-surface-check
     name: Black-box check of cleaned orchestration surfaces
-    status: claimed
+    status: done
     description: 'Using only the current public docs and exposed interfaces, verify
       the cleaned orchestration surfaces no longer present legacy resolver/judge behavior
       and that blocked-case handling is understandable through the published model.
@@ -77749,6 +77749,22 @@ phases:
     agent: blind-tester-tacit
     claimed_by: blind-tester-tacit
     claimed_at: '2026-04-10T16:07:52.471063+00:00'
+    done_at: '2026-04-10T16:19:44.844397+00:00'
+    evidence: "## refs Read Confirmation (MANDATORY)\n- docs/ORCHESTRATION-PLANE-ARCHITECTURE.md\
+      \ — read\n- docs/ORCHESTRATION-PLANE-RESOLVER-COORDINATION.md — read\n- docs/ORCHESTRATION-PLANE-RESOLUTION-CONTRACT.md\
+      \ — read\n- docs/ORCHESTRATION-PLANE-INTERFACES.md — read\n- docs/ADR-orchestration-role-profile-config-and-resolver-cleanup.md\
+      \ — read\n- docs/ORCHESTRATION-PLANE-OPERATOR-CONFLICT-RECOVERY.md — read\n\n\
+      ## Black-Box Surface Report\n- Surfaces checked:\n  1) public orchestration\
+      \ contracts/exports (`ResolutionCase`, `ResolutionReport`, `ControlDecision`,\
+      \ `StructuredReviewResult`, `ResolverAuthorityContract`, `RoleProfile`)\n  2)\
+      \ case_source and status literal domains against published docs\n  3) resolver\
+      \ authority constraints (`main_worktree`, `approved_vectl_facade_only`, `normal_flow_only`)\n\
+      \  4) default resolver roles (`blocked-case-coordinator`, `blocked-case-coordinator-tacit`)\n\
+      \  5) CLI/operator surfaces for resolver/case flows\n- Confusions found:\n \
+      \ - none blocker-class.\n  - legacy deleted terms are absent from active surfaces;\
+      \ only ADR historical removal record retains them explicitly as removed.\n-\
+      \ Verdict:\n  - CLEAN: public docs/interfaces sufficiently communicate cleaned\
+      \ model; no legacy resolver/judge confusion remains in active guidance."
   - id: resolver_cleanup_finalization.gate
     name: Final gate for resolver cleanup
     status: pending

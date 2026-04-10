@@ -74814,7 +74814,7 @@ phases:
       - none'
   - id: xfail_config_and_dispatch_foundation.centralize-dispatch-spec-construction
     name: Centralize DispatchSpec construction and verify-mode mapping
-    status: claimed
+    status: done
     description: 'work_type: technical_debt_remediation
 
       step_type: implementation
@@ -74893,6 +74893,34 @@ phases:
     agent: python-senior-tacit
     claimed_by: python-senior-tacit
     claimed_at: '2026-04-10T05:50:58.738698+00:00'
+    done_at: '2026-04-10T05:56:14.762419+00:00'
+    evidence: "## refs Read Confirmation (MANDATORY)\nFor each ref in this step:\n\
+      - src/vectl/orchestration/dispatch_policy.py — DispatchCoordinator now resolves\
+      \ role from authoritative step semantics + decision override and maps StepData.verify\
+      \ via step_verify_to_verify_mode before constructing DispatchSpec.\n- src/vectl/orch_app.py\
+      \ — app build_dispatch_spec path now delegates directly to canonical dispatch\
+      \ coordinator and no longer creates temporary registry/coordinator.\n- tests/orchestration/unit/test_dispatch_policy_red.py\
+      \ — targeted red tests now assert canonical app→coordinator seam and expected_red\
+      \ verify_mode wiring.\n\n## Fix Evidence\n- blocker_fingerprint: dispatch-spec-construction\
+      \ / verify-mode-mapping\n- root_cause_hypothesis: app had a shadow dispatch-policy\
+      \ path (temporary registry/coordinator) and coordinator role resolution missed\
+      \ decision.role fallback when step.agent absent; this split authority and caused\
+      \ stale-red behavior.\n- files_changed:\n  - src/vectl/orchestration/dispatch_policy.py\n\
+      \  - src/vectl/orch_app.py\n  - tests/orchestration/unit/test_dispatch_policy_red.py\n\
+      \  - tests/orchestration/unit/test_orch_app.py\n- sibling_search_performed:\n\
+      \  - `uv run pytest tests/orchestration/unit/test_dispatch_policy.py tests/orchestration/unit/test_orch_app.py\
+      \ -q`\n\n## Main Path Proof\n- Authoritative build location: `DispatchCoordinator.build_dispatch_spec`\
+      \ (dispatch_policy.py); orch_app now routes all build_dispatch_spec calls through\
+      \ this coordinator.\n- verify_mode derivation: authoritative `StepData.verify`\
+      \ is normalized through `step_verify_to_verify_mode(...)` into `DispatchSpec.verify_mode`.\n\
+      \n## Failure Path Proof\n- Bypass prevention: removed app-side temporary coordinator\
+      \ construction; role_hint is carried as decision.role only, and runtime continues\
+      \ consuming built spec/request without deriving policy.\n\n## Remaining Risk\n\
+      - none\n\nVerification:\n- Required: `uv run pytest tests/orchestration/unit/test_dispatch_policy_red.py\
+      \ -k \"dispatch_spec_construction or verify_mode\" -q` → `2 passed, 15 deselected`\n\
+      - Additional: `uv run pytest tests/orchestration/unit/test_dispatch_policy.py\
+      \ tests/orchestration/unit/test_orch_app.py -q` → `91 passed`\n- Step branch\
+      \ commit: `c97f4d3`"
   - id: xfail_config_and_dispatch_foundation.retest-config-and-dispatch-foundation
     name: Retest config precedence and dispatch foundation
     status: pending

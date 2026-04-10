@@ -73819,3 +73819,11 @@ phases:
     lifecycle metadata.
   depends_on:
   - orchestration_upper_layer_review
+- id: repo_regression_semantic_alignment
+  name: Repo Regression Semantic Alignment
+  status: locked
+  gate: Contract locks, runtime state-machine expectations, and current implementation
+    converge on authoritative semantics without stale exact-shape boundaries or unresolved
+    behavior drift in the failing scope.
+  depends_on:
+  - repo_regression_test_intent_alignment

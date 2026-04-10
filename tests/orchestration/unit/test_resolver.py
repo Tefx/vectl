@@ -94,16 +94,20 @@ def test_parse_resolution_report_payload_rejects_unknown_fields() -> None:
 @dataclass(frozen=True)
 class _FakeInvocation:
     payload: dict[str, object]
+    role_ids: list[str] | None = None
 
-    def invoke(self, case: ResolutionCase) -> dict[str, object]:
+    def invoke(self, case: ResolutionCase, *, role_id: str) -> dict[str, object]:
         _ = case
+        if self.role_ids is not None:
+            self.role_ids.append(role_id)
         return self.payload
 
 
 @dataclass(frozen=True)
 class _FailingInvocation:
-    def invoke(self, case: ResolutionCase) -> dict[str, object]:
+    def invoke(self, case: ResolutionCase, *, role_id: str) -> dict[str, object]:
         _ = case
+        _ = role_id
         raise RuntimeError("tool timeout")
 
 
@@ -116,7 +120,8 @@ def test_bound_resolver_returns_bounded_report_for_unblocked_case() -> None:
                 "summary": "resolved after retrying official surface",
                 "evidence_refs": ["run://abc"],
             }
-        )
+        ),
+        default_role_id="blocked-case-coordinator",
     )
 
     report = resolver.resolve(case)
@@ -136,7 +141,8 @@ def test_bound_resolver_returns_bounded_report_for_waiting_case() -> None:
                 "evidence_refs": ["case://waiting"],
                 "operator_message": None,
             }
-        )
+        ),
+        default_role_id="blocked-case-coordinator",
     )
 
     report = resolver.resolve(case)
@@ -148,13 +154,36 @@ def test_bound_resolver_returns_bounded_report_for_waiting_case() -> None:
 
 def test_bound_resolver_returns_operator_required_instead_of_false_certainty() -> None:
     case = _case("Blocked steps require resolution: core.blocked")
-    resolver = BoundResolver(invocation=_FailingInvocation())
+    resolver = BoundResolver(
+        invocation=_FailingInvocation(),
+        default_role_id="blocked-case-coordinator",
+    )
 
     report = resolver.resolve(case)
 
     assert report.status == "operator_required"
     assert "failed" in report.summary.lower()
     assert report.evidence_refs == ("resolver:invocation-failed",)
+
+
+def test_bound_resolver_forwards_configured_default_role_id() -> None:
+    case = _case("Blocked steps require resolution: core.blocked")
+    seen_role_ids: list[str] = []
+    resolver = BoundResolver(
+        invocation=_FakeInvocation(
+            {
+                "status": "waiting",
+                "summary": "awaiting resolver follow-up",
+            },
+            role_ids=seen_role_ids,
+        ),
+        default_role_id="blocked-case-coordinator-tacit",
+    )
+
+    report = resolver.resolve(case)
+
+    assert report.status == "waiting"
+    assert seen_role_ids == ["blocked-case-coordinator-tacit"]
 
 
 def test_should_preserve_case_reason_only_for_blocked_or_unresolved() -> None:

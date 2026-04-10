@@ -28,11 +28,12 @@ class ResolverInvocationSurface(Protocol):
         - claiming remains outside resolver invocation; normal flow owns it
     """
 
-    def invoke(self, case: ResolutionCase) -> Mapping[str, object]:
+    def invoke(self, case: ResolutionCase, *, role_id: str) -> Mapping[str, object]:
         """Invoke allowed resolver tooling for one blocked/unresolved case.
 
         Args:
             case: Resolution case from control.
+            role_id: Configured resolver role selected from orchestration config.
 
         Returns:
             Machine-readable payload parsable into ResolutionReport.
@@ -79,6 +80,7 @@ class BoundResolver:
     """
 
     invocation: ResolverInvocationSurface
+    default_role_id: str
 
     def resolve(self, case: ResolutionCase) -> ResolutionReport:
         """Resolve case via invocation glue and typed report parsing.
@@ -90,7 +92,7 @@ class BoundResolver:
             ResolutionReport parsed from invocation payload.
         """
         try:
-            payload = self.invocation.invoke(case)
+            payload = self.invocation.invoke(case, role_id=self.default_role_id)
         except Exception as exc:
             return ResolutionReport(
                 status="operator_required",

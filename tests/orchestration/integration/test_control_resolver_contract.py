@@ -153,8 +153,9 @@ class _FakeResolverInvocation:
     return_status: Literal["unblocked", "waiting", "operator_required", "halt"]
     return_summary: str
 
-    def invoke(self, case: ResolutionCase) -> dict[str, object]:
+    def invoke(self, case: ResolutionCase, *, role_id: str) -> dict[str, object]:
         """Record invocation and return configured report."""
+        _ = role_id
         payload: dict[str, object] = {
             "status": self.return_status,
             "summary": self.return_summary,
@@ -293,7 +294,10 @@ def test_blocked_case_unblocked_resolution_end_to_end() -> None:
 
     # STEP 2: Resolver investigates and returns "unblocked"
 
-    resolver = BoundResolver(invocation=resolver_invocation)
+    resolver = BoundResolver(
+        invocation=resolver_invocation,
+        default_role_id="blocked-case-coordinator",
+    )
 
     # Create resolution case (what control would pass to resolver)
     case = ResolutionCase(
@@ -391,7 +395,10 @@ def test_unresolved_case_operator_required_resolution_end_to_end() -> None:
 
     # STEP 2: Resolver fails to resolve and returns "operator_required"
 
-    resolver = BoundResolver(invocation=resolver_invocation)
+    resolver = BoundResolver(
+        invocation=resolver_invocation,
+        default_role_id="blocked-case-coordinator",
+    )
 
     case = ResolutionCase(
         reason=decision_before.reason,
@@ -454,7 +461,10 @@ def test_resolver_returns_bounded_report_for_all_status_values() -> None:
             return_status=status,
             return_summary=summary,
         )
-        resolver = BoundResolver(invocation=resolver_invocation)
+        resolver = BoundResolver(
+            invocation=resolver_invocation,
+            default_role_id="blocked-case-coordinator",
+        )
 
         case = ResolutionCase(
             reason="Test case",
@@ -590,7 +600,10 @@ def test_resolver_forbidden_from_becoming_permanent_controller() -> None:
         return_summary="Resolver investigated and unblocked via official surface",
     )
 
-    resolver = BoundResolver(invocation=resolver_invocation)
+    resolver = BoundResolver(
+        invocation=resolver_invocation,
+        default_role_id="blocked-case-coordinator",
+    )
 
     case = ResolutionCase(
         reason="Blocked step",

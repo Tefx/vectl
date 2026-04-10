@@ -23,7 +23,7 @@ from vectl.orch_app import (
     build_review_parse_failure_case,
     normalize_review_resolution_case,
 )
-from vectl.orchestration.config import OrchestrationConfig, RuntimeConfig
+from vectl.orchestration.config import OrchestrationConfig, ResolverConfig, RuntimeConfig
 from vectl.orchestration.contracts import (
     ControlDecision,
     CoreSnapshot,
@@ -124,7 +124,7 @@ def test_build_composes_real_collaborators_without_noop_resolver_dependency(tmp_
     assert orch._control.__class__.__name__ == "PlanAwareControl"
     assert orch._core_adapter.__class__.__name__ == "PlanCoreAdapter"
     assert orch._resolver.__class__.__name__ == "BoundResolver"
-    assert orch._resolver.invocation.__class__.__name__ == "GatewayResolverInvocation"
+    assert orch._resolver.invocation.__class__.__name__ == "DefaultRoleResolverInvocation"
 
 
 def test_build_resolution_case_requires_resolve_decision() -> None:
@@ -353,6 +353,209 @@ def test_route_resolution_case_covers_all_resolver_outcomes(
 
     assert decision.kind == expected_kind
     assert (app._latest_operator_notification is not None) is expected_notification
+
+
+def test_resolve_case_invokes_configured_default_resolver_role(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    app = _build_app(tmp_path)
+    seen: dict[str, object] = {}
+
+    monkeypatch.setattr("vectl.orch_app.is_linked_worktree", lambda: (False, tmp_path))
+    monkeypatch.setattr(app._runtime, "prepare", lambda request: "ws-1")
+    monkeypatch.setattr(
+        app._runtime,
+        "start",
+        lambda *, request, workspace: (
+            seen.update(
+                {
+                    "role": request.role,
+                    "workspace": workspace,
+                    "work_refs": request.work_refs,
+                }
+            )
+            or "exec-1"
+        ),
+    )
+    monkeypatch.setattr(
+        app._runtime,
+        "collect",
+        lambda _execution_id: ExecutionResult(
+            step_id="case-blocked",
+            status="success",
+            output_summary=json.dumps(
+                {
+                    "status": "unblocked",
+                    "summary": "resolved by configured resolver role",
+                    "evidence_refs": ["resolver://default-role"],
+                }
+            ),
+        ),
+    )
+
+    report = app.resolve_case(
+        ResolutionCase(
+            case_id="case-blocked",
+            case_source="runtime_failure",
+            reason="Blocked steps require resolution: core.ready",
+            summary="repair the blocked step",
+            core=_core_snapshot(),
+            roster=_roster_snapshot(),
+            runtime=_runtime_snapshot(),
+            blocked_step_ids=("core.ready",),
+            artifact_refs=("artifact://blocked",),
+        )
+    )
+
+    assert report.status == "unblocked"
+    assert seen["role"] == "blocked-case-coordinator"
+    assert "resolver_role_id=blocked-case-coordinator" in cast(tuple[str, ...], seen["work_refs"])
+
+
+def test_resolve_case_supports_explicit_tacit_resolver_config_selection(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    plan_path = tmp_path / "plan.yaml"
+    runs_root = tmp_path / "runs"
+    _write_plan(plan_path)
+    app = build_orchestration_app(
+        AppConfig(
+            plan_path=plan_path,
+            orchestration_config=OrchestrationConfig(
+                plan_path=plan_path,
+                resolver=ResolverConfig(default_role_id="blocked-case-coordinator-tacit"),
+            ),
+            run_store_root=runs_root,
+        )
+    )
+    seen_roles: list[str] = []
+
+    monkeypatch.setattr("vectl.orch_app.is_linked_worktree", lambda: (False, tmp_path))
+    monkeypatch.setattr(
+        app._runtime, "prepare", lambda request: seen_roles.append(request.role) or "ws-1"
+    )
+    monkeypatch.setattr(app._runtime, "start", lambda *, request, workspace: "exec-tacit")
+    monkeypatch.setattr(
+        app._runtime,
+        "collect",
+        lambda _execution_id: ExecutionResult(
+            step_id="case-tacit",
+            status="success",
+            output_summary=json.dumps(
+                {
+                    "status": "waiting",
+                    "summary": "tacit resolver is gathering more context",
+                    "evidence_refs": ["resolver://tacit"],
+                }
+            ),
+        ),
+    )
+
+    report = app.resolve_case(
+        ResolutionCase(
+            case_id="case-tacit",
+            case_source="review_failed",
+            reason="Unresolved authoritative state: claim graph conflict",
+            summary="resolve the conflict",
+            core=_core_snapshot(),
+            roster=_roster_snapshot(),
+            runtime=_runtime_snapshot(),
+        )
+    )
+
+    assert report.status == "waiting"
+    assert seen_roles == ["blocked-case-coordinator-tacit"]
+
+
+def test_route_resolution_case_refreshes_state_after_real_resolver_invocation(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    app = _build_app(tmp_path)
+    refreshed_core = _core_snapshot(blocked=("core.other",))
+    refreshed_roster = _roster_snapshot()
+    refreshed_runtime = _runtime_snapshot()
+    snapshot_calls = {"core": 0, "roster": 0, "runtime": 0}
+    seen: dict[str, object] = {}
+
+    monkeypatch.setattr("vectl.orch_app.is_linked_worktree", lambda: (False, tmp_path))
+    monkeypatch.setattr(app._runtime, "prepare", lambda request: "ws-refresh")
+    monkeypatch.setattr(app._runtime, "start", lambda *, request, workspace: "exec-refresh")
+    monkeypatch.setattr(
+        app._runtime,
+        "collect",
+        lambda _execution_id: ExecutionResult(
+            step_id="case-refresh",
+            status="success",
+            output_summary=json.dumps(
+                {
+                    "status": "waiting",
+                    "summary": "resolver needs another pass",
+                    "evidence_refs": ["resolver://refresh"],
+                }
+            ),
+        ),
+    )
+    monkeypatch.setattr(
+        app._core_adapter,
+        "snapshot",
+        lambda agent=None: (
+            snapshot_calls.__setitem__("core", snapshot_calls["core"] + 1) or refreshed_core
+        ),
+    )
+    monkeypatch.setattr(
+        app._roster,
+        "snapshot",
+        lambda: (
+            snapshot_calls.__setitem__("roster", snapshot_calls["roster"] + 1) or refreshed_roster
+        ),
+    )
+    monkeypatch.setattr(
+        app._runtime,
+        "snapshot",
+        lambda: (
+            snapshot_calls.__setitem__("runtime", snapshot_calls["runtime"] + 1)
+            or refreshed_runtime
+        ),
+    )
+    monkeypatch.setattr(
+        app,
+        "_control",
+        type(
+            "_StubControl",
+            (),
+            {
+                "apply_resolution": lambda self, *, report, core, roster, runtime: (
+                    seen.update(
+                        {
+                            "report": report,
+                            "core": core,
+                            "roster": roster,
+                            "runtime": runtime,
+                        }
+                    )
+                    or ControlDecision(kind="wait", reason="refreshed state applied")
+                )
+            },
+        )(),
+    )
+
+    decision = app.route_resolution_case(
+        ResolutionCase(
+            case_id="case-refresh",
+            case_source="runtime_failure",
+            reason="Blocked steps require resolution: core.ready",
+            summary="refresh state after resolver output",
+            core=_core_snapshot(),
+            roster=_roster_snapshot(),
+            runtime=_runtime_snapshot(),
+            blocked_step_ids=("core.ready",),
+        )
+    )
+
+    assert decision.kind == "wait"
+    assert snapshot_calls == {"core": 1, "roster": 1, "runtime": 1}
+    assert cast(ResolutionReport, seen["report"]).status == "waiting"
+    assert seen["core"] == refreshed_core
 
 
 def test_run_and_control_route_through_typed_boundaries(tmp_path: Path) -> None:

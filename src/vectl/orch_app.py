@@ -100,12 +100,6 @@ from vectl.orchestration.recovery import (
     recovery_action_status,
     recovery_case_status,
 )
-from vectl.orchestration.resolver_gateway import (
-    AuditedResolverGateway,
-    AuthorizationError,
-    ResolverToolCall,
-    authorize_and_invoke,
-)
 from vectl.orchestration.run_store import (
     CorruptJSONLError,
     RunRecord,
@@ -3014,12 +3008,20 @@ def build_orchestration_app(
     if not config.plan_path.exists():
         raise FileNotFoundError(f"authoritative plan path not found: {config.plan_path}")
 
-    class GatewayResolverInvocation(ResolverInvocationSurface):
-        def __init__(self, allowlist: tuple[str, ...]) -> None:
-            self._allowlist = allowlist
+    class DefaultRoleResolverInvocation(ResolverInvocationSurface):
+        def __init__(
+            self,
+            *,
+            runtime: Runtime,
+            dispatch_coordinator: DispatchCoordinator,
+            timeout_seconds: float,
+        ) -> None:
+            self._runtime = runtime
+            self._dispatch_coordinator = dispatch_coordinator
+            self._timeout_seconds = timeout_seconds
 
-        def invoke(self, case: object) -> dict[str, object]:
-            from vectl.orchestration.contracts import ResolutionCase, ResolutionReport
+        def invoke(self, case: object, *, role_id: str) -> dict[str, object]:
+            from vectl.orchestration.contracts import ResolutionCase
 
             if not isinstance(case, ResolutionCase):
                 raise TypeError("resolver invocation requires ResolutionCase")
@@ -3039,67 +3041,145 @@ def build_orchestration_app(
                     ),
                 }
 
-            def _invoker(
-                _case: ResolutionCase,
-                _calls: tuple[ResolverToolCall, ...],
-                invocation_ref: str,
-            ) -> ResolutionReport:
-                return ResolutionReport(
-                    status="waiting",
-                    summary="Resolver invocation recorded through gateway authorization",
-                    evidence_refs=(f"resolver_invocation_ref={invocation_ref}",),
-                )
-
-            gateway = AuditedResolverGateway(
-                (
-                    ResolverToolCall(family="orchestration", name="read_state", surface="read"),
-                    ResolverToolCall(family="orchestration", name="read_case", surface="read"),
-                ),
-                _invoker,
-                lambda: f"resolver-{generate_run_id()}",
+            dispatch_spec = self._dispatch_coordinator.build_resolution_subtask_spec(
+                case_id=case.case_id or f"case-{generate_run_id()}",
+                role_id=role_id,
+                description=self._case_description(case),
+                refs=case.artifact_refs,
             )
+            request = ExecutionRequest(
+                step_id=dispatch_spec.step_id or dispatch_spec.source_id,
+                role=dispatch_spec.role_id,
+                runner=dispatch_spec.runner,
+                work_refs=(
+                    f"resolver_case_id={case.case_id}",
+                    f"resolver_case_source={case.case_source}",
+                    f"resolver_role_id={dispatch_spec.role_id}",
+                    f"execution_context={dispatch_spec.execution_context}",
+                    f"source_kind={dispatch_spec.source_kind}",
+                    *case.artifact_refs,
+                ),
+                session_id=f"resolver-{generate_run_id()}",
+            )
+
             try:
-                result = authorize_and_invoke(
-                    case=case,
-                    allowed_tool_families=self._allowlist,
-                    gateway=gateway,
-                )
-            except AuthorizationError as exc:
+                workspace = self._runtime.prepare(request)
+                execution_id = self._runtime.start(request=request, workspace=workspace)
+            except Exception as exc:
                 return {
                     "status": "operator_required",
-                    "summary": f"Resolver authorization denied: {exc}",
-                    "evidence_refs": tuple(
-                        f"denied_family={family}" for family in exc.denied_families
-                    ),
-                    "operator_message": "Expand resolver allowlist or route to operator.",
+                    "summary": f"Resolver runtime start failed: {exc}",
+                    "evidence_refs": (f"resolver_role_id={dispatch_spec.role_id}",),
+                    "operator_message": "Review resolver runtime startup and retry.",
                 }
 
-            report = result.report
-            if report is None:
-                return {
-                    "status": "waiting",
-                    "summary": "Resolver gateway returned no report",
-                    "evidence_refs": (),
-                }
+            deadline = time.monotonic() + self._timeout_seconds
+            while time.monotonic() <= deadline:
+                result = self._runtime.collect(execution_id)
+                if result is None:
+                    time.sleep(0.01)
+                    continue
+                return self._result_to_payload(
+                    result=result,
+                    execution_id=execution_id,
+                    role_id=dispatch_spec.role_id,
+                )
+
             return {
-                "status": report.status,
-                "summary": report.summary,
-                "evidence_refs": report.evidence_refs,
-                "operator_message": report.operator_message,
+                "status": "operator_required",
+                "summary": (
+                    "Resolver runtime timed out before producing a ResolutionReport payload"
+                ),
+                "evidence_refs": (
+                    f"resolver_execution_id={execution_id}",
+                    f"resolver_role_id={dispatch_spec.role_id}",
+                ),
+                "operator_message": "Review resolver timeout and retry the blocked case.",
             }
+
+        def _case_description(self, case: ResolutionCase) -> str:
+            summary = case.summary or case.reason
+            blocked_steps = ", ".join(case.blocked_step_ids)
+            if blocked_steps:
+                return f"Resolve blocked case {case.case_id} for {blocked_steps}: {summary}"
+            return f"Resolve blocked case {case.case_id}: {summary}"
+
+        def _result_to_payload(
+            self,
+            *,
+            result: ExecutionResult,
+            execution_id: str,
+            role_id: str,
+        ) -> dict[str, object]:
+            if result.status != "success":
+                return {
+                    "status": "operator_required",
+                    "summary": (
+                        f"Resolver runtime returned {result.status}: {result.output_summary}"
+                    ),
+                    "evidence_refs": (
+                        f"resolver_execution_id={execution_id}",
+                        f"resolver_role_id={role_id}",
+                    ),
+                    "operator_message": result.operator_message
+                    or "Review resolver runtime failure and retry.",
+                }
+
+            try:
+                payload = json.loads(result.output_summary)
+            except json.JSONDecodeError:
+                return {
+                    "status": "operator_required",
+                    "summary": (
+                        "Resolver runtime returned non-JSON output for the "
+                        "resolution_report contract"
+                    ),
+                    "evidence_refs": (
+                        f"resolver_execution_id={execution_id}",
+                        f"resolver_role_id={role_id}",
+                    ),
+                    "operator_message": "Review resolver output formatting and retry.",
+                }
+            if not isinstance(payload, dict):
+                return {
+                    "status": "operator_required",
+                    "summary": (
+                        "Resolver runtime returned a non-object payload for the "
+                        "resolution_report contract"
+                    ),
+                    "evidence_refs": (
+                        f"resolver_execution_id={execution_id}",
+                        f"resolver_role_id={role_id}",
+                    ),
+                    "operator_message": "Review resolver output formatting and retry.",
+                }
+            return payload
 
     core_adapter = PlanCoreAdapter(plan_path=config.plan_path)
     roster = Roster(default_ttl_seconds=resolved_orchestration_config.roster.default_ttl_seconds)
     runtime = Runtime(workspace_root=resolved_orchestration_config.runtime.workspace_root)
+    role_registry = ConfigRoleProfileRegistry(
+        profiles=resolved_orchestration_config.role_profiles,
+        default_role=resolved_orchestration_config.dispatch.default_role_id,
+    )
+    prompt_registry = ConfigPromptRegistry(role_registry=role_registry)
+    dispatch_coordinator = DispatchCoordinator(
+        role_registry=role_registry,
+        prompt_registry=prompt_registry,
+        step_adapter=CoreStepDataAdapter(core_adapter),
+    )
     control = PlanAwareControl(
         sources=ControlInputSources(core_adapter=core_adapter, roster=roster, runtime=runtime),
         agent=config.default_agent,
         fallback_role=config.default_agent,
     )
     resolver = BoundResolver(
-        invocation=GatewayResolverInvocation(
-            resolved_orchestration_config.resolver.tool_allowlist.allowed_tool_families
-        )
+        invocation=DefaultRoleResolverInvocation(
+            runtime=runtime,
+            dispatch_coordinator=dispatch_coordinator,
+            timeout_seconds=resolved_orchestration_config.resolver.invocation_timeout_seconds,
+        ),
+        default_role_id=resolved_orchestration_config.resolver.default_role_id,
     )
 
     app_config = replace(
@@ -3114,6 +3194,9 @@ def build_orchestration_app(
         runtime=runtime,
         resolver=resolver,
         core_adapter=core_adapter,
+        role_registry=role_registry,
+        prompt_registry=prompt_registry,
+        dispatch_coordinator=dispatch_coordinator,
     )
 
 

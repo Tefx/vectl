@@ -275,6 +275,8 @@ class ConfigRoleProfileRegistry:
     def resolve_role(
         self,
         step_agent: str | None,
+        *,
+        default_role_override: str | None = None,
     ) -> tuple[str, DispatchRoleSource]:
         """Resolve role allocation per §9.1 precedence.
 
@@ -290,12 +292,19 @@ class ConfigRoleProfileRegistry:
 
         Args:
             step_agent: The step.agent value (may be None).
+            default_role_override: Optional dispatch-time default role to use
+                only when step.agent is absent. This preserves the canonical
+                precedence boundary while allowing the orchestration app to
+                request a non-global default without constructing a second
+                registry/coordinator policy source.
 
         Returns:
             Tuple of (resolved_role_id, role_source).
         """
         if step_agent is not None and step_agent.strip():
             return (step_agent, "step.agent")
+        if default_role_override is not None and default_role_override.strip():
+            return (default_role_override, "default")
         return (self._default_role, "default")
 
 
@@ -644,8 +653,11 @@ class DispatchCoordinator:
         if step_data is None:
             raise ValueError(f"Step data not found for step_id={step_id!r}")
 
-        # 2. Resolve role (§9.1 precedence: step.agent > default)
-        resolved_role, role_source = self.role_registry.resolve_role(step_data.agent)
+        # 2. Resolve role (§9.1 precedence: step.agent > dispatch-request default > registry default)
+        resolved_role, role_source = self.role_registry.resolve_role(
+            step_data.agent,
+            default_role_override=decision.role,
+        )
 
         # 3. Look up role profile
         profile = self.role_registry.get(resolved_role)

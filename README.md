@@ -337,100 +337,27 @@ uvx vectl repair claims --dry-run  # Should now show no changes
 
 ---
 
-## Continuity Artifact Recovery (`vectl repair continuity`)
+## Continuity Recovery (`vectl orch recover`)
 
-Continuity artifacts (ledger + journal) track session state for restart/resume safety. Stale artifacts can accumulate and must be managed safely.
-
-### Startup Hygiene Stage
-
-The orchestration plane runs a **startup hygiene stage** before active recovery:
-
-1. **Scan** continuity artifacts from `.vectl/continuity/ledger/` and `journal/`
-2. **Classify** each artifact against current plan and repaired claims
-3. **Quarantine** only provably stale artifacts (never delete)
-4. **Block** on ambiguous, corrupt, or divergent artifacts (require operator action)
-
-### Artifact Classifications
-
-| Classification | Blocks Startup | Action |
-|----------------|----------------|--------|
-| `safe_stale_quarantine` | No | Copy to quarantine, record in manifest |
-| `blocking_divergence` | Yes | Conflicts with plan or current claims |
-| `corrupt_blocking` | Yes | Unparsable or missing step identity |
-| `ambiguous_blocking` | Yes | Migration/rename suspicion (no auto-remap) |
-
-### Recovery Commands
+`vectl repair continuity` is retired. The supported recovery surface is:
 
 ```bash
-# 1. Diagnose: preview classifications without quarantining (safe, read-only)
-uvx vectl repair continuity --dry-run
-
-# 2. Diagnose with JSON (machine-parseable output)
-uvx vectl repair continuity --dry-run --json
-
-# 3. Apply quarantine for safe-stale artifacts
-uvx vectl repair continuity
-
-# 4. Verify: check manifest and remaining blockers
-uvx vectl repair continuity --dry-run --json
+uv run vectl orch recover [RUN_ID|--latest]
 ```
 
-### Quarantine Behavior
-
-- **Location**: `.vectl/continuity/quarantine/{ledger,journal}/`
-- **Manifest**: `.vectl/continuity/quarantine/manifest.jsonl` (append-only, audit trail)
-- **Policy**: Copy (not move) — original bytes preserved for auditability
-- **Safe stale rule**: Only artifacts for steps absent from both plan and repaired claims are quarantined
-
-### Guardrails
-
-Startup hygiene enforces these non-negotiable rules:
-- **No silent deletion** — artifacts are copied to quarantine, never deleted
-- **No auto-remap** — renamed or migrated step IDs remain blocking (operator must resolve)
-- **Corrupt files remain blocking** — unparsable artifacts require manual intervention
-- **Current-claim disagreement remains blocking** — divergence between ledger and claims blocks startup
-
-### Example Output
+Use dry-run JSON diagnostics when triaging startup/recovery state:
 
 ```bash
-$ uvx vectl repair continuity --dry-run --json
-{
-  "dry_run": true,
-  "branch": "main",
-  "artifacts_scanned": 5,
-  "classifications": [
-    {
-      "artifact_kind": "ledger",
-      "original_path": ".vectl/continuity/ledger/step-abc.json",
-      "parsed_step_id": "auth.user-model",
-      "classification": "blocking_divergence",
-      "reason": "blocking_divergence: current_plan_step",
-      "blocks_startup_recovery": true
-    },
-    {
-      "artifact_kind": "journal",
-      "original_path": ".vectl/continuity/journal/step-xyz.jsonl",
-      "parsed_step_id": "api.migrate-user",
-      "classification": "safe_stale_quarantine",
-      "reason": "safe_stale_quarantine: absent_from_plan_and_repaired_claims",
-      "blocks_startup_recovery": false,
-      "quarantine_destination": ".vectl/continuity/quarantine/journal/step-xyz.jsonl"
-    }
-  ],
-  "blocked_count": 1,
-  "quarantined_count": 1
-}
+uv run vectl orch recover --latest --dry-run --json
 ```
 
-### Post-Repair Verification
+For claim/plan consistency repair, use `repair claims` (separate surface):
 
 ```bash
-# Check quarantine manifest
-uvx vectl repair continuity --dry-run --json | jq '.quarantined_artifacts'
-
-# Verify no remaining blockers
-uvx vectl repair continuity --dry-run  # Should show no blocking artifacts
+uv run vectl repair claims --dry-run
 ```
+
+Recovery behavior, quarantine semantics, and operator handling are defined by the orchestration-plane recovery contracts and implementation (`src/vectl/orchestration/recovery.py`, `src/vectl/orch_app.py`).
 
 ## Technical Details
 

@@ -1,8 +1,8 @@
 """
 Recovery and cutover contracts for orchestration run recovery and legacy migration.
 
-Authority: docs/DRIVER-CONTINUITY-FOUNDATION.md sections 4, 7a
-Authority: docs/ORCHESTRATION-PLANE-MIGRATION.md sections 3, 5
+Authority: docs/ORCHESTRATION-PLANE-OPERATOR-CONFLICT-RECOVERY.md
+Authority: docs/ADR-orchestration-plane-reset.md
 Authority: docs/ORCHESTRATION-PLANE-ARCHITECTURE.md sections 9, 10
 
 This module provides typed contracts for:
@@ -43,7 +43,7 @@ class RecoveryOutcome(str, Enum):
     """
     Outcome classification for recovery operations.
 
-    Authority: DRIVER-CONTINUITY-FOUNDATION.md section 7a (guardrails)
+    Authority: ORCHESTRATION-PLANE-OPERATOR-CONFLICT-RECOVERY.md (guardrails)
 
     Values:
         RECOVERED: Recovery succeeded; orchestration can continue.
@@ -66,7 +66,7 @@ class RecoveryHygieneResult(str, Enum):
     """
     Outcome for startup hygiene classification of a single artifact.
 
-    Authority: DRIVER-CONTINUITY-FOUNDATION.md section 7a, table
+    Authority: ORCHESTRATION-PLANE-OPERATOR-CONFLICT-RECOVERY.md
 
     Values:
         SAFE_STALE_QUARANTINE: Safe to quarantine; does not block startup.
@@ -109,7 +109,7 @@ class HygieneClassificationResult:
     """
     Result of classifying a single artifact during startup hygiene.
 
-    Authority: DRIVER-CONTINUITY-FOUNDATION.md section 7a, table
+    Authority: ORCHESTRATION-PLANE-OPERATOR-CONFLICT-RECOVERY.md
 
     Attributes:
         artifact_path: Path to the classified artifact.
@@ -131,7 +131,7 @@ class RecoveryReport:
     """
     Report produced by a recovery operation.
 
-    Authority: DRIVER-CONTINUITY-FOUNDATION.md sections 4, 7a
+    Authority: ORCHESTRATION-PLANE-OPERATOR-CONFLICT-RECOVERY.md
 
     This is the canonical recovery outcome DTO returned by ``OrchestrationApp.recover()``
     and consumed by the startup recovery controller.
@@ -249,7 +249,7 @@ def recovery_action_status(
 # ---------------------------------------------------------------------
 # Startup Recovery Controller Contracts
 # ---------------------------------------------------------------------
-# Authority: DRIVER-CONTINUITY-FOUNDATION.md section 4
+# Authority: ORCHESTRATION-PLANE-ARCHITECTURE.md
 # (StartupRecoveryControllerInput/Output)
 
 
@@ -258,7 +258,7 @@ class StartupRecoveryControllerInput:
     """
     Input to the startup recovery controller.
 
-    Authority: DRIVER-CONTINUITY-FOUNDATION.md section 4
+    Authority: ORCHESTRATION-PLANE-ARCHITECTURE.md
     (StartupRecoveryControllerInput)
 
     Attributes:
@@ -288,7 +288,7 @@ class StartupRecoveryControllerOutput:
     """
     Output from the startup recovery controller.
 
-    Authority: DRIVER-CONTINUITY-FOUNDATION.md section 4
+    Authority: ORCHESTRATION-PLANE-ARCHITECTURE.md
     (StartupRecoveryControllerOutput)
 
     Attributes:
@@ -320,14 +320,14 @@ class StartupRecoveryControllerOutput:
 # ---------------------------------------------------------------------
 # Legacy Run Bridge / Import Contracts
 # ---------------------------------------------------------------------
-# Authority: ORCHESTRATION-PLANE-MIGRATION.md sections 3, 5
+# Authority: ORCH-OPERATOR-CUTOVER-VALIDATION-MIGRATION-STATE-AUDIT.md
 
 
 class LegacyRunStatus(str, Enum):
     """
     Migration status of a legacy run.
 
-    Authority: ORCHESTRATION-PLANE-MIGRATION.md section 5
+    Authority: ORCH-OPERATOR-CUTOVER-VALIDATION-MIGRATION-STATE-AUDIT.md
     (retirement criteria)
 
     Values:
@@ -348,7 +348,7 @@ class LegacyRunImport:
     """
     Contract for importing a legacy run into the new orchestration surface.
 
-    Authority: ORCHESTRATION-PLANE-MIGRATION.md sections 3, 5
+    Authority: ORCH-OPERATOR-CUTOVER-VALIDATION-MIGRATION-STATE-AUDIT.md
 
     GAP: The exact import mapping and compatibility translation are deferred
     to the recovery_cutover implementation phases.
@@ -373,7 +373,7 @@ class LegacyRunBridge:
     """
     Surface for bridging legacy run state into the new orchestration plane.
 
-    Authority: ORCHESTRATION-PLANE-MIGRATION.md sections 3, 5
+    Authority: ORCH-OPERATOR-CUTOVER-VALIDATION-MIGRATION-STATE-AUDIT.md
 
     This is the composition boundary for translating legacy continuity artifacts
     into new orchestration plane surfaces.
@@ -550,7 +550,7 @@ class RunStoreLegacyRunBridge(LegacyRunBridge):
 # ---------------------------------------------------------------------
 # Cutover Validation Contracts
 # ---------------------------------------------------------------------
-# Authority: ORCHESTRATION-PLANE-MIGRATION.md section 5
+# Authority: ORCH-OPERATOR-CUTOVER-VALIDATION-MIGRATION-STATE-AUDIT.md
 # (retirement criteria)
 
 

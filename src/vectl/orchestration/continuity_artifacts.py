@@ -1,8 +1,8 @@
 """
 Continuity artifact reader/writer contracts for recovery and resume decisions.
 
-Authority: docs/DRIVER-CONTINUITY-FOUNDATION.md sections 4, 7a
-Authority: docs/ORCHESTRATION-PLANE-MIGRATION.md section 4
+Authority: docs/ORCHESTRATION-PLANE-OPERATOR-CONFLICT-RECOVERY.md
+Authority: docs/ORCHESTRATION-PLANE-ARCHITECTURE.md
 
 This module provides typed contracts for the durability/read/write surfaces
 used by resume and recovery decisions:
@@ -31,14 +31,14 @@ if TYPE_CHECKING:
 # ---------------------------------------------------------------------
 # Artifact Classification (startup hygiene / quarantine)
 # ---------------------------------------------------------------------
-# Authority: DRIVER-CONTINUITY-FOUNDATION.md section 7a
+# Authority: ORCHESTRATION-PLANE-OPERATOR-CONFLICT-RECOVERY.md
 
 
 class ArtifactClassification(str, Enum):
     """
     Startup hygiene artifact classification.
 
-    Authority: DRIVER-CONTINUITY-FOUNDATION.md section 7a, table
+    Authority: ORCHESTRATION-PLANE-OPERATOR-CONFLICT-RECOVERY.md
 
     Values:
         SAFE_STALE_QUARANTINE: Step absent from plan and repaired claims;
@@ -81,7 +81,7 @@ class ContinuityLedgerEntry:
     """
     Durable restart/resume fact record.
 
-    Authority: DRIVER-CONTINUITY-FOUNDATION.md section 4 (Durable continuity contract)
+    Authority: ORCHESTRATION-PLANE-ARCHITECTURE.md (durable continuity contract)
 
     This is the authoritative durable record of a continuity fact.
     It must survive process death and be consumable at startup.
@@ -233,7 +233,7 @@ class ContinuityJournalEntry:
     """
     Minimum recovery telemetry / bootstrap journal entry.
 
-    Authority: DRIVER-CONTINUITY-FOUNDATION.md section 4 (Minimum recovery telemetry)
+    Authority: ORCHESTRATION-PLANE-OPERATOR-CONFLICT-RECOVERY.md (minimum recovery telemetry)
 
     This is the narrow bootstrap journal for restart decisions only.
 
@@ -265,7 +265,7 @@ class ContinuityHandoff:
     """
     Resume handoff between orchestration sessions.
 
-    Authority: DRIVER-CONTINUITY-FOUNDATION.md section 4 (ContinuityHandoff)
+    Authority: ORCHESTRATION-PLANE-OPERATOR-CONFLICT-RECOVERY.md (continuity handoff)
 
     Attributes:
         from_session: Session ID being handed off from.
@@ -293,7 +293,7 @@ class ReplaySafetyEnvelope:
     """
     Replay/idempotency safety boundary.
 
-    Authority: DRIVER-CONTINUITY-FOUNDATION.md section 4 (Replay/idempotency identity)
+    Authority: ORCHESTRATION-PLANE-OPERATOR-CONFLICT-RECOVERY.md (replay/idempotency identity)
 
     This envelope gates replay safety. No downstream continuity phase may infer
     replay safety solely from runner support for resume.
@@ -316,7 +316,7 @@ class ReplaySafetyEnvelope:
 # ---------------------------------------------------------------------
 # Quarantine Manifest Entry
 # ---------------------------------------------------------------------
-# Authority: DRIVER-CONTINUITY-FOUNDATION.md section 7a, quarantine manifest format
+# Authority: ORCHESTRATION-PLANE-OPERATOR-CONFLICT-RECOVERY.md (quarantine manifest format)
 
 
 @dataclass(frozen=True)
@@ -324,7 +324,7 @@ class QuarantineManifestEntry:
     """
     Quarantine operation manifest entry.
 
-    Authority: DRIVER-CONTINUITY-FOUNDATION.md section 7a (manifest format)
+    Authority: ORCHESTRATION-PLANE-OPERATOR-CONFLICT-RECOVERY.md (manifest format)
 
     Attributes:
         artifact_kind: Kind of artifact (e.g., "ledger", "journal").
@@ -356,7 +356,7 @@ class ArtifactReader(Protocol):
     """
     Protocol for reading continuity artifacts.
 
-    Authority: DRIVER-CONTINUITY-FOUNDATION.md section 4
+    Authority: ORCHESTRATION-PLANE-ARCHITECTURE.md
 
     GAP: Concrete persistence implementation is deferred.
     """
@@ -434,7 +434,7 @@ class ArtifactWriter(Protocol):
     """
     Protocol for writing continuity artifacts.
 
-    Authority: DRIVER-CONTINUITY-FOUNDATION.md section 4
+    Authority: ORCHESTRATION-PLANE-ARCHITECTURE.md
 
     GAP: Concrete persistence implementation is deferred.
     """
@@ -491,14 +491,14 @@ class ArtifactWriter(Protocol):
 # ---------------------------------------------------------------------
 # Quarantine Manager Protocol
 # ---------------------------------------------------------------------
-# Authority: DRIVER-CONTINUITY-FOUNDATION.md section 7a
+# Authority: ORCHESTRATION-PLANE-OPERATOR-CONFLICT-RECOVERY.md
 
 
 class QuarantineManager:
     """
     Run-local quarantine and startup hygiene manager.
 
-    Authority: DRIVER-CONTINUITY-FOUNDATION.md section 7a
+    Authority: ORCHESTRATION-PLANE-OPERATOR-CONFLICT-RECOVERY.md
 
     GAP: Concrete quarantine implementation is deferred to recovery_cutover
     implementation phases. This contract pins the classification surface,

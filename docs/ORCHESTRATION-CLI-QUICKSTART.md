@@ -136,6 +136,9 @@ uv run vectl orch resume RUN_ID --dry-run --json
 uv run vectl orch recover RUN_ID
 ```
 
+> 说明：旧命令 `vectl repair continuity` 已退役，不再作为支持的恢复入口。
+> 请统一使用 `vectl orch recover`。
+
 只做 recovery 诊断：
 
 ```bash

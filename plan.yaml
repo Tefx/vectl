@@ -74674,3 +74674,1402 @@ phases:
       Notes:
 
       - Ref path `tools/vectl/README.md` unavailable in worktree per subagent report.'
+- id: xfail_config_and_dispatch_foundation
+  name: 'XFail Remediation: Config and Dispatch Foundation'
+  status: done
+  gate: Retire the config precedence xfail and the dispatch-spec construction/verify-mode
+    xfails by centralizing authoritative config precedence and DispatchSpec construction.
+  depends_on:
+  - repo_regression_full_suite_gate
+  steps:
+  - id: xfail_config_and_dispatch_foundation.close-resolver-timeout-env-precedence-gap
+    name: Close resolver-timeout env precedence gap
+    status: done
+    description: 'work_type: technical_debt_remediation
+
+      step_type: implementation
+
+
+      Preserve-scope guardrail: close the single remaining config precedence xfail
+      by making `VECTL_ORCH_RESOLVER_TIMEOUT_SECONDS` flow through the canonical orchestration
+      config loader and precedence path only.
+
+
+      Scope:
+
+      - `src/vectl/orchestration/config.py`
+
+      - any canonical config wiring consumer needed for the env alias mapping
+
+      - `tests/orchestration/unit/test_config_state_red.py`
+
+
+      Requirements:
+
+      - Centralize env alias mapping in `load_orchestration_config()` / canonical
+      config path
+
+      - Do not add adapter-specific env parsing or duplicate precedence logic in entrypoints
+
+      - Retire the xfail only if the behavior is now implemented; otherwise keep governed
+      expected-red with updated rationale
+
+
+      Known risk:
+
+      - Config precedence must stay single-source-of-truth; no secondary parsing path
+      in CLI or orch_app.'
+    verification: '- `uv run pytest tests/orchestration/unit/test_config_state_red.py
+      -q`
+
+      - Scoped config red suite is green or any remaining non-green case is explicitly
+      governed with rationale
+
+      - No duplicate env parsing path is introduced outside canonical config loading'
+    evidence_template: '## refs Read Confirmation (MANDATORY)
+
+      For each ref in this step:
+
+      - <filename> — key passage or "NOT READ: <reason>"
+
+
+      ## Fix Evidence
+
+      - blocker_fingerprint: config-precedence / resolver-timeout-env-alias
+
+      - root_cause_hypothesis:
+
+      - files_changed:
+
+      - sibling_search_performed:
+
+
+      ## Main Path Proof
+
+      - how canonical config precedence now resolves the timeout env alias
+
+      - exact tests proving green behavior
+
+
+      ## Failure Path Proof
+
+      - how default/file semantics behave when env override is absent or invalid
+
+
+      ## Remaining Risk
+
+      - none | <details>'
+    agent: python-executor
+    claimed_by: python-executor
+    claimed_at: '2026-04-10T05:47:00.824348+00:00'
+    done_at: '2026-04-10T05:50:18.370199+00:00'
+    evidence: '## refs Read Confirmation (MANDATORY)
+
+      For each ref in this step:
+
+      - `docs/ORCHESTRATION-PLANE-CLI-CONFIG-OBSERVABILITY-DESIGN.md` — §8.3 env naming
+      convention and §8.2 precedence (env > file > defaults)
+
+      - `tests/orchestration/unit/test_config_state_red.py` — target xfail case around
+      resolver timeout precedence
+
+      - `src/vectl/orchestration/config.py` — canonical load/apply/convert path
+
+
+      ## Fix Evidence
+
+      - blocker_fingerprint: config-precedence / resolver-timeout-env-alias
+
+      - root_cause_hypothesis: canonical env alias mapping was correct, but `_apply_env_overrides()`
+      wrote to internal field key `invocation_timeout_seconds` while `_dict_to_config()`
+      reads canonical key `timeout_seconds`, so env override never surfaced.
+
+      - files_changed: `src/vectl/orchestration/config.py` (one-line key fix)
+
+      - sibling_search_performed: checked `invocation_timeout_seconds` callsites;
+      no parallel override path remains.
+
+
+      ## Main Path Proof
+
+      - `_flatten_env_vars()` maps `VECTL_ORCH_RESOLVER_TIMEOUT_SECONDS` → `resolver.timeout_seconds`.
+
+      - `_apply_env_overrides()` now writes `updates["resolver"]["timeout_seconds"]`
+      (canonical key), allowing `_deep_update_config()` and `_dict_to_config()` to
+      carry value through.
+
+      - Test proof: `uv run pytest tests/orchestration/unit/test_config_state_red.py
+      -q` → `25 passed`.
+
+
+      ## Failure Path Proof
+
+      - Env absent: override no-op, default/file precedence preserved.
+
+      - Env invalid: float parse raises `ValueError` (fail-fast), no silent corruption.
+
+
+      ## Remaining Risk
+
+      - none'
+  - id: xfail_config_and_dispatch_foundation.centralize-dispatch-spec-construction
+    name: Centralize DispatchSpec construction and verify-mode mapping
+    status: done
+    description: 'work_type: technical_debt_remediation
+
+      step_type: implementation
+
+
+      authority_basis: software-architect-tacit consultation
+
+
+      Finish the existing dispatch-policy seam so DispatchSpec is built from authoritative
+      step semantics plus role policy in one place.
+
+
+      Scope:
+
+      - `src/vectl/orchestration/dispatch_policy.py`
+
+      - `src/vectl/orch_app.py`
+
+      - `tests/orchestration/unit/test_dispatch_policy_red.py`
+
+
+      Requirements:
+
+      - Use one canonical dispatch coordinator path
+
+      - Wire `step.verify` to `DispatchSpec.verify_mode`
+
+      - Do not invent a second coordinator or runtime-side policy source
+
+      - Preserve the distinction between policy inputs and runtime mechanics
+
+
+      Known risks:
+
+      - hidden duplicate DispatchSpec assembly in orch_app
+
+      - verify-mode drift between tests and coordinator output'
+    verification: '- `test_dispatch_spec_construction_from_control_decision` is green
+
+      - `test_dispatch_spec_verify_mode_expected_red_wires_correctly` is green
+
+      - No duplicate DispatchSpec construction path remains in app wiring'
+    evidence_template: '## refs Read Confirmation (MANDATORY)
+
+      For each ref in this step:
+
+      - <filename> — key passage or "NOT READ: <reason>"
+
+
+      ## Fix Evidence
+
+      - blocker_fingerprint: dispatch-spec-construction / verify-mode-mapping
+
+      - root_cause_hypothesis:
+
+      - files_changed:
+
+      - sibling_search_performed:
+
+
+      ## Main Path Proof
+
+      - where DispatchSpec is now built authoritatively
+
+      - how verify_mode is derived from step semantics
+
+
+      ## Failure Path Proof
+
+      - what prevents app/runtime from bypassing the coordinator path
+
+
+      ## Remaining Risk
+
+      - none | <details>'
+    agent: python-senior-tacit
+    claimed_by: python-senior-tacit
+    claimed_at: '2026-04-10T05:50:58.738698+00:00'
+    done_at: '2026-04-10T05:56:14.762419+00:00'
+    evidence: "## refs Read Confirmation (MANDATORY)\nFor each ref in this step:\n\
+      - src/vectl/orchestration/dispatch_policy.py — DispatchCoordinator now resolves\
+      \ role from authoritative step semantics + decision override and maps StepData.verify\
+      \ via step_verify_to_verify_mode before constructing DispatchSpec.\n- src/vectl/orch_app.py\
+      \ — app build_dispatch_spec path now delegates directly to canonical dispatch\
+      \ coordinator and no longer creates temporary registry/coordinator.\n- tests/orchestration/unit/test_dispatch_policy_red.py\
+      \ — targeted red tests now assert canonical app→coordinator seam and expected_red\
+      \ verify_mode wiring.\n\n## Fix Evidence\n- blocker_fingerprint: dispatch-spec-construction\
+      \ / verify-mode-mapping\n- root_cause_hypothesis: app had a shadow dispatch-policy\
+      \ path (temporary registry/coordinator) and coordinator role resolution missed\
+      \ decision.role fallback when step.agent absent; this split authority and caused\
+      \ stale-red behavior.\n- files_changed:\n  - src/vectl/orchestration/dispatch_policy.py\n\
+      \  - src/vectl/orch_app.py\n  - tests/orchestration/unit/test_dispatch_policy_red.py\n\
+      \  - tests/orchestration/unit/test_orch_app.py\n- sibling_search_performed:\n\
+      \  - `uv run pytest tests/orchestration/unit/test_dispatch_policy.py tests/orchestration/unit/test_orch_app.py\
+      \ -q`\n\n## Main Path Proof\n- Authoritative build location: `DispatchCoordinator.build_dispatch_spec`\
+      \ (dispatch_policy.py); orch_app now routes all build_dispatch_spec calls through\
+      \ this coordinator.\n- verify_mode derivation: authoritative `StepData.verify`\
+      \ is normalized through `step_verify_to_verify_mode(...)` into `DispatchSpec.verify_mode`.\n\
+      \n## Failure Path Proof\n- Bypass prevention: removed app-side temporary coordinator\
+      \ construction; role_hint is carried as decision.role only, and runtime continues\
+      \ consuming built spec/request without deriving policy.\n\n## Remaining Risk\n\
+      - none\n\nVerification:\n- Required: `uv run pytest tests/orchestration/unit/test_dispatch_policy_red.py\
+      \ -k \"dispatch_spec_construction or verify_mode\" -q` → `2 passed, 15 deselected`\n\
+      - Additional: `uv run pytest tests/orchestration/unit/test_dispatch_policy.py\
+      \ tests/orchestration/unit/test_orch_app.py -q` → `91 passed`\n- Step branch\
+      \ commit: `c97f4d3`"
+  - id: xfail_config_and_dispatch_foundation.retest-config-and-dispatch-foundation
+    name: Retest config precedence and dispatch foundation
+    status: done
+    description: 'step_type: test
+
+      step_intent: retest_green
+
+      expected_result: green
+
+      verification_scope: phase-check
+
+
+      As an independent tester, re-run the focused suites covering the config precedence
+      gap and the initial dispatch coordinator gap.
+
+
+      Required commands:
+
+      - `uv run pytest tests/orchestration/unit/test_config_state_red.py -q`
+
+      - `uv run pytest tests/orchestration/unit/test_dispatch_policy_red.py -k "dispatch_spec_construction
+      or verify_mode" -q`
+
+
+      Success means the scoped xfails retired by this phase are green and no new unmanaged
+      failures appear in the touched seam.'
+    verification: '- Focused suites are green for the targeted scenarios
+
+      - Evidence includes actual command outputs and any remaining governed statuses'
+    evidence_template: "## Verification Report\n### refs Read Confirmation (MANDATORY)\n\
+      For each ref in this step:\n- <filename> — key passage or \"NOT READ: <reason>\"\
+      \n\n### Commands executed\n- uv run pytest tests/orchestration/unit/test_config_state_red.py\
+      \ -q\n- uv run pytest tests/orchestration/unit/test_dispatch_policy_red.py -k\
+      \ \"dispatch_spec_construction or verify_mode\" -q\n\n### Actual output\n<paste\
+      \ stdout/stderr>\n\n### Behavioral proof register\n- requirement_ref: config\
+      \ precedence timeout env alias\n  status: PROVEN|UNPROVEN\n- requirement_ref:\
+      \ dispatch-spec construction + verify-mode mapping\n  status: PROVEN|UNPROVEN"
+    depends_on:
+    - xfail_config_and_dispatch_foundation.close-resolver-timeout-env-precedence-gap
+    - xfail_config_and_dispatch_foundation.centralize-dispatch-spec-construction
+    agent: integration-verifier-tacit
+    claimed_by: integration-verifier-tacit
+    claimed_at: '2026-04-10T05:56:35.235557+00:00'
+    done_at: '2026-04-10T05:58:03.675081+00:00'
+    evidence: "## Verification Report\n### refs Read Confirmation (MANDATORY)\nFor\
+      \ each ref in this step:\n- tests/orchestration/unit/test_config_state_red.py\
+      \ — precedence/env alias scenarios covered including resolver-timeout precedence\
+      \ case.\n- tests/orchestration/unit/test_dispatch_policy_red.py — targeted dispatch\
+      \ spec construction and verify_mode scenarios covered.\n\n### Commands executed\n\
+      - uv run pytest tests/orchestration/unit/test_config_state_red.py -q\n- uv run\
+      \ pytest tests/orchestration/unit/test_dispatch_policy_red.py -k \"dispatch_spec_construction\
+      \ or verify_mode\" -q\n\n### Actual output\n- Command 1: 25 passed in ~0.69s\n\
+      - Command 2: 2 passed, 15 deselected in ~0.69s\n\n### Behavioral proof register\n\
+      - requirement_ref: config precedence timeout env alias\n  status: PROVEN\n-\
+      \ requirement_ref: dispatch-spec construction + verify-mode mapping\n  status:\
+      \ PROVEN"
+  - id: xfail_config_and_dispatch_foundation.gate
+    name: Gate config and dispatch foundation
+    status: done
+    description: 'Gate review: verify config precedence and dispatch foundation xfail
+      retirement is complete and no duplicate policy seam was introduced.
+
+
+      review_depth: THOROUGH
+
+      cross_cutting_focus:
+
+      - one canonical config precedence path
+
+      - one canonical dispatch coordinator path
+
+      - no runtime-side policy derivation drift'
+    verification: '- All phase steps completed
+
+      - Focused retest evidence is acceptable
+
+      - No remaining blocker-class drift in config precedence or DispatchSpec construction'
+    evidence_template: '## Gate Review Report
+
+      - step review matrix
+
+      - blocker findings
+
+      - gate decision OPEN|BLOCKED'
+    depends_on:
+    - xfail_config_and_dispatch_foundation.close-resolver-timeout-env-precedence-gap
+    - xfail_config_and_dispatch_foundation.centralize-dispatch-spec-construction
+    - xfail_config_and_dispatch_foundation.retest-config-and-dispatch-foundation
+    agent: gate-reviewer-tacit
+    claimed_by: gate-reviewer-tacit
+    claimed_at: '2026-04-10T05:58:34.496291+00:00'
+    done_at: '2026-04-10T06:01:43.645446+00:00'
+    evidence: '## Gate Review Report: xfail_config_and_dispatch_foundation
+
+
+      ### Step Review Matrix
+
+
+      | Step | Status | Verdict |
+
+      |------|--------|---------|
+
+      | close-resolver-timeout-env-precedence-gap | ✓ done | PASS — canonical key
+      fix verified |
+
+      | centralize-dispatch-spec-construction | ✓ done | PASS — shadow path removed
+      |
+
+      | retest-config-and-dispatch-foundation | ✓ done | PASS — 27 passed, 15 xfailed
+      (pre-existing expected-red) |
+
+
+      ### Cross-Cutting Focus: Findings
+
+
+      #### 1. One Canonical Config Precedence Path — CONFIRMED
+
+      - `_apply_env_overrides()` in `src/vectl/orchestration/config.py` is the single
+      entry for env → config dict injection.
+
+      - `VECTL_ORCH_RESOLVER_TIMEOUT_SECONDS` now correctly maps through `_flatten_env_vars()`
+      → `resolver.timeout_seconds` (canonical dict key), and `_dict_to_config()` reads
+      `timeout_seconds` into the `ResolverConfig` model.
+
+      - The fix corrected a key mismatch where `_apply_env_overrides` previously wrote
+      to internal field key `invocation_timeout_seconds` while `_dict_to_config` reads
+      canonical `timeout_seconds` — now both use `timeout_seconds`, so the override
+      actually surfaces.
+
+      - Only 2 call sites for `_apply_env_overrides` (definition + `load_orchestration_config`
+      call) — no duplicate env parsing path in CLI or orch_app.
+
+      - Test proof: `test_config_state_red.py` — 25 passed.
+
+
+      #### 2. One Canonical Dispatch Coordinator Path — CONFIRMED
+
+      - `DispatchCoordinator.build_dispatch_spec` in `src/vectl/orchestration/dispatch_policy.py:616`
+      is the authoritative builder.
+
+      - `OrchApp.build_dispatch_spec` (line 745) delegates directly to `self._dispatch_coordinator.build_dispatch_spec(...)`
+      — no shadow path remains.
+
+      - Single `DispatchCoordinator()` instantiation in orch_app (line 514).
+
+      - `step_verify_to_verify_mode()` (line 86) is the sole normalization function
+      for `StepData.verify` → `DispatchSpec.verify_mode`.
+
+      - Test proof: 2 targeted dispatch_spec_construction / verify_mode tests pass.
+
+
+      #### 3. No Runtime-Side Policy Derivation Drift — CONFIRMED
+
+      - Previous shadow path (temporary registry/coordinator in orch_app) was removed
+      in the centralize step.
+
+      - Role resolution uses authoritative step semantics (`step.agent`) with `decision.role`
+      fallback — no secondary derive.
+
+      - `verify_mode` is set once in coordinator from `step_verify_to_verify_mode(step_data.verify)`
+      and consumed downstream without re-derivation.
+
+      - No `DispatchSpec` mutation or policy re-derivation found in orch_app or downstream
+      consumers.
+
+
+      ### Blocker Findings
+
+      - **None.** All three cross-cutting focus areas are satisfied. The 15 xfailed
+      tests in `test_dispatch_policy_red.py` are pre-existing expected-red tests unrelated
+      to this phase''s scope.
+
+
+      ### Gate Decision: OPEN'
+- id: xfail_role_prompt_and_review_normalization
+  name: 'XFail Remediation: Role Prompt and Review Normalization'
+  status: pending
+  gate: Concrete role/prompt registries and structured review normalization are wired
+    as the canonical policy seam, and the related expected-red tests are retired or
+    intentionally reclassified with explicit evidence.
+  depends_on:
+  - xfail_config_and_dispatch_foundation
+  steps:
+  - id: xfail_role_prompt_and_review_normalization.implement-concrete-role-profile-registry
+    name: Implement concrete role profile registry
+    status: pending
+    description: 'work_type: technical_debt_remediation
+
+      step_type: implementation
+
+
+      Implement or finish the canonical `RoleProfileRegistry` concrete path in `dispatch_policy.py`
+      using configuration-backed/default-backed role semantics.
+
+
+      Requirements:
+
+      - known roles return concrete `RoleProfile`
+
+      - unknown roles fail explicitly
+
+      - `has_role()` reports accurately
+
+      - main-worktree family policy is encoded centrally, not scattered across callsites'
+    verification: '- Targeted RoleProfileRegistry xfails are green
+
+      - Role-family execution-context policy is centralized in the registry/path chosen'
+    evidence_template: '- concrete registry path:
+
+      - role families covered:
+
+      - unknown-role behavior:
+
+      - commands/tests run:'
+    agent: python-senior-tacit
+  - id: xfail_role_prompt_and_review_normalization.implement-concrete-prompt-registry
+    name: Implement concrete prompt registry
+    status: pending
+    description: 'work_type: technical_debt_remediation
+
+      step_type: implementation
+
+
+      Implement or finish the canonical `PromptRegistry` concrete path in `dispatch_policy.py`
+      so role-family prompt bundles render through one registry.
+
+
+      Requirements:
+
+      - render returns `PromptBundle`
+
+      - `has_role()` behaves concretely
+
+      - role-family prompt differentiation is visible through the registry path
+
+      - no deep runtime module creates role prompts ad hoc'
+    verification: '- Targeted PromptRegistry xfails are green
+
+      - Prompt rendering differences come from the canonical registry path'
+    evidence_template: '- prompt registry path:
+
+      - role families differentiated:
+
+      - commands/tests run:'
+    depends_on:
+    - xfail_role_prompt_and_review_normalization.implement-concrete-role-profile-registry
+    agent: python-senior-tacit
+  - id: xfail_role_prompt_and_review_normalization.implement-structured-review-normalizer
+    name: Implement structured review result normalizer
+    status: pending
+    description: 'work_type: technical_debt_remediation
+
+      step_type: implementation
+
+
+      Implement or finish normalization from `StructuredReviewResult` to either continue
+      signal or `ResolutionCase`, preserving one authoritative mapping in dispatch
+      policy / orchestration routing.
+
+
+      Requirements:
+
+      - `pass` normalizes to continue / no case
+
+      - `needs_fix`, `needs_replan`, `operator_required`, parse failure normalize
+      to explicit `ResolutionCase`
+
+      - no prose-only fallback interpretation outside the normalizer'
+    verification: '- Structured review normalization xfails are green
+
+      - No parallel normalization path exists in orch_app or runtime'
+    evidence_template: '- normalization mapping:
+
+      - case_source mapping decisions:
+
+      - commands/tests run:'
+    depends_on:
+    - xfail_role_prompt_and_review_normalization.implement-concrete-role-profile-registry
+    agent: python-senior-tacit
+  - id: xfail_role_prompt_and_review_normalization.retest-role-prompt-and-review
+    name: Retest role, prompt, and review normalization
+    status: pending
+    description: 'step_type: test
+
+      step_intent: retest_green
+
+      expected_result: green
+
+
+      Run focused dispatch-policy-red coverage for role registry, prompt registry,
+      and structured review normalization.'
+    verification: '- All targeted dispatch-policy red tests for registry/prompt/review
+      normalization are green
+
+      - Evidence includes actual command output'
+    evidence_template: '- Command: `uv run pytest tests/orchestration/unit/test_dispatch_policy_red.py
+      -k "RoleProfileRegistry or PromptRegistry or StructuredReviewResultNormalization"
+      -q`
+
+      - Output:
+
+      - Remaining governed statuses:'
+    depends_on:
+    - xfail_role_prompt_and_review_normalization.implement-concrete-role-profile-registry
+    - xfail_role_prompt_and_review_normalization.implement-concrete-prompt-registry
+    - xfail_role_prompt_and_review_normalization.implement-structured-review-normalizer
+    agent: integration-verifier-tacit
+  - id: xfail_role_prompt_and_review_normalization.gate
+    name: Gate role, prompt, and review normalization
+    status: pending
+    description: 'Gate review: ensure policy centralization is complete and no adapter-specific
+      shadow registry/normalizer was introduced.'
+    verification: '- Targeted xfails are retired
+
+      - One canonical policy source remains'
+    evidence_template: '## Gate Review Report
+
+      - registry centralization check
+
+      - normalizer centralization check
+
+      - gate decision OPEN|BLOCKED'
+    depends_on:
+    - xfail_role_prompt_and_review_normalization.implement-concrete-role-profile-registry
+    - xfail_role_prompt_and_review_normalization.implement-concrete-prompt-registry
+    - xfail_role_prompt_and_review_normalization.implement-structured-review-normalizer
+    - xfail_role_prompt_and_review_normalization.retest-role-prompt-and-review
+    agent: gate-reviewer-tacit
+- id: xfail_authority_and_entrypoint_enforcement
+  name: 'XFail Remediation: Authority and Entrypoint Enforcement'
+  status: locked
+  gate: Main-worktree authority and normal-flow lifecycle mutation restrictions are
+    enforced at approved runtime boundaries, and app-level wiring uses the centralized
+    policy seam consistently.
+  depends_on:
+  - xfail_role_prompt_and_review_normalization
+  steps:
+  - id: xfail_authority_and_entrypoint_enforcement.enforce-main-worktree-role-authority
+    name: Enforce main-worktree role authority
+    status: pending
+    description: 'work_type: technical_debt_remediation
+
+      step_type: implementation
+
+
+      Close the planner/resolver/reviewer-family execution-context xfails by enforcing
+      main-worktree authority at the approved policy/runtime boundary.
+
+
+      Requirements:
+
+      - enforce main-worktree for planner/resolver/reviewer families through centralized
+      role policy plus entrypoint validation
+
+      - do not rely on runner mechanics alone
+
+      - touched dispatch-policy red tests for main-worktree role families must retire'
+    verification: '- Main-worktree role-family xfails in dispatch_policy_red are green
+
+      - authority is validated before mechanical launch'
+    evidence_template: '- authority rule location:
+
+      - role families enforced:
+
+      - commands/tests run:'
+    agent: python-senior-tacit
+  - id: xfail_authority_and_entrypoint_enforcement.harden-resolver-gateway-and-lifecycle-facade
+    name: Harden resolver gateway and lifecycle facade
+    status: pending
+    description: 'work_type: technical_debt_remediation
+
+      step_type: implementation
+
+
+      Close the remaining runner-backend expected-red gaps by enforcing authority
+      in the approved resolver gateway and lifecycle mutation facade.
+
+
+      Requirements:
+
+      - ResolverGateway rejects linked-worktree invocation when main-worktree authority
+      is required
+
+      - lifecycle mutation path keeps normal-flow-only claim restriction in the approved
+      injected facade
+
+      - do not try to make Protocol alone carry enforcement; use approved concrete
+      facade/wrapper
+
+      - preserve reconcile-disposition requirements for completion paths'
+    verification: '- Runner-backend red tests are green for resolver authority and
+      lifecycle mutation enforcement
+
+      - authority checks live at approved runtime boundaries, not duplicated elsewhere'
+    evidence_template: '- gateway enforcement path:
+
+      - lifecycle facade enforcement path:
+
+      - commands/tests run:'
+    depends_on:
+    - xfail_authority_and_entrypoint_enforcement.enforce-main-worktree-role-authority
+    agent: python-senior-tacit
+  - id: xfail_authority_and_entrypoint_enforcement.retest-authority-enforcement
+    name: Retest authority and entrypoint enforcement
+    status: pending
+    description: 'step_type: test
+
+      step_intent: retest_green
+
+      expected_result: green
+
+
+      Run focused suites covering main-worktree authority and runner-backend authority
+      hardening.'
+    verification: '- main-worktree family tests are green
+
+      - runner-backend red tests are green
+
+      - evidence includes actual command output'
+    evidence_template: "- Commands:\n  - `uv run pytest tests/orchestration/unit/test_dispatch_policy_red.py\
+      \ -k \"MainWorktreeRolePolicy\" -q`\n  - `uv run pytest tests/orchestration/unit/test_runner_backend_red.py\
+      \ -q`\n- Output:\n- Remaining governed statuses:"
+    depends_on:
+    - xfail_authority_and_entrypoint_enforcement.enforce-main-worktree-role-authority
+    - xfail_authority_and_entrypoint_enforcement.harden-resolver-gateway-and-lifecycle-facade
+    agent: integration-verifier-tacit
+  - id: xfail_authority_and_entrypoint_enforcement.gate
+    name: Gate authority and entrypoint enforcement
+    status: pending
+    description: 'Gate review: ensure authority enforcement now lives in the intended
+      seams (role policy, resolver gateway, approved lifecycle facade, orch_app composition)
+      and not in ad hoc backend branches.'
+    verification: '- Targeted authority xfails are retired
+
+      - No shadow authority policy path was introduced'
+    evidence_template: '## Gate Review Report
+
+      - authority seam audit
+
+      - remaining bypass risks
+
+      - gate decision OPEN|BLOCKED'
+    depends_on:
+    - xfail_authority_and_entrypoint_enforcement.enforce-main-worktree-role-authority
+    - xfail_authority_and_entrypoint_enforcement.harden-resolver-gateway-and-lifecycle-facade
+    - xfail_authority_and_entrypoint_enforcement.retest-authority-enforcement
+    agent: gate-reviewer-tacit
+- id: xfail_finalization
+  name: XFail Remediation Finalization
+  status: locked
+  gate: The repo-wide suite is green except governed skips/xfails, docs and gate policy
+    reflect the retired/redescribed xfail set, and an independent deep review confirms
+    no hidden authority or policy drift remains.
+  depends_on:
+  - xfail_authority_and_entrypoint_enforcement
+  steps:
+  - id: xfail_finalization.doc-sync-expected-red-retirement
+    name: Doc sync expected-red retirement and governance
+    status: pending
+    description: Update the relevant orchestration docs and expected-red governance
+      docs so retired xfails are removed from the expected-red set and any intentionally
+      retained gaps have current lifecycle/owner rationale.
+    verification: '- Docs reflect retired xfails and any retained governed debt accurately
+
+      - Expected-red lifecycle guidance remains consistent with implementation status'
+    evidence_template: '- docs updated:
+
+      - retired vs retained expected-red items:
+
+      - commands/review performed:'
+    agent: project-guide
+  - id: xfail_finalization.run-repo-wide-pytest-gate
+    name: Run repo-wide pytest gate for xfail retirement
+    status: pending
+    description: 'step_type: test
+
+      step_intent: retest_green
+
+      expected_result: green
+
+
+      Run the full repo-wide pytest sweep after xfail remediation. Success means the
+      previous 20 xfails are retired or any remaining non-green statuses are explicitly
+      governed and justified by current policy.'
+    verification: '- `uv run pytest -q` is green or only governed non-blocking statuses
+      remain with explicit evidence
+
+      - Evidence enumerates retired xfails versus any retained governed statuses'
+    evidence_template: '- Command: `uv run pytest -q`
+
+      - Summary counts:
+
+      - Retired xfails:
+
+      - Remaining governed non-green statuses and rationale:'
+    agent: integration-verifier-tacit
+  - id: xfail_finalization.deep-review-xfail-remediation
+    name: Deep review xfail remediation closure
+    status: pending
+    description: Independent deep review of the remediation set, with emphasis on
+      hidden duplicate policy sources, authority bypasses, and documentation drift
+      between expected-red governance and actual implementation.
+    verification: '- Review covers config precedence, dispatch coordinator, registry/normalizer
+      centralization, authority enforcement, and repo-wide gate evidence
+
+      - Any residual xfail/debt is explicitly dispositioned'
+    evidence_template: '## Deep Review Report
+
+      - subsystem audit summary
+
+      - hidden bypass findings
+
+      - residual debt disposition
+
+      - recommendation'
+    depends_on:
+    - xfail_finalization.doc-sync-expected-red-retirement
+    - xfail_finalization.run-repo-wide-pytest-gate
+    agent: gate-reviewer-tacit
+  - id: xfail_finalization.gate
+    name: Gate xfail remediation closure
+    status: pending
+    description: Final gate for the xfail-remediation plan. Distinguish phase-local
+      success from repo-wide readiness and require explicit disposition for any remaining
+      governed non-green statuses.
+    verification: '- Repo-wide gate evidence is acceptable
+
+      - Docs and governance are aligned
+
+      - Deep review finds no blocker-class hidden drift'
+    evidence_template: '## Gate Decision
+
+      - repo-wide gate summary
+
+      - docs/governance alignment summary
+
+      - residual governed statuses
+
+      - decision OPEN|BLOCKED'
+    depends_on:
+    - xfail_finalization.doc-sync-expected-red-retirement
+    - xfail_finalization.run-repo-wide-pytest-gate
+    - xfail_finalization.deep-review-xfail-remediation
+    agent: gate-reviewer-tacit
+- id: retire_repair_continuity_legacy_surface
+  name: Retire Legacy `repair continuity` Surface
+  status: in_progress
+  gate: Legacy `vectl repair continuity` residue is removed or converted into an explicit
+    retirement shim, all tests/docs align to `vectl orch recover`, and no stale public-surface
+    claims remain.
+  depends_on:
+  - repo_regression_full_suite_gate
+  steps:
+  - id: retire_repair_continuity_legacy_surface.lock-modern-recovery-authority-and-retirement-decision
+    name: Lock modern recovery authority and retirement decision
+    status: done
+    description: 'work_type: technical_debt_remediation
+
+      step_type: contract_lock
+
+
+      Codify the architectural decision that legacy `vectl repair continuity` is retired
+      and that the supported recovery/quarantine authority is the orchestration-plane
+      recovery surface.
+
+
+      Requirements:
+
+      - confirm `vectl orch recover` and orchestration recovery modules are the canonical
+      recovery surface
+
+      - identify whether legacy CLI should be fully removed or retained only as an
+      explicit retirement shim pointing users to `orch recover`
+
+      - record the operator-facing replacement contract and migration note
+
+      - do not revive `vectl.driver.continuity_hygiene`
+
+
+      Decision policy:
+
+      - prefer removal if no compatibility contract requires the old command
+
+      - if a shim is retained, it must be explicit, non-ambiguous, and tested as retirement
+      behavior rather than functional recovery behavior'
+    verification: '- A single canonical recovery authority is identified with explicit
+      retirement decision for `repair continuity`
+
+      - No plan step in this phase assumes revival of the removed driver continuity
+      hygiene module'
+    evidence_template: '## Decision Record
+
+      - canonical recovery surface:
+
+      - retirement mode: removed | retirement-shim
+
+      - strongest evidence:
+
+      - migration message for operators:
+
+      - files/specs to update next:'
+    agent: software-architect-tacit
+    claimed_by: software-architect-tacit
+    claimed_at: '2026-04-10T05:44:35.872867+00:00'
+    done_at: '2026-04-10T05:46:52.207906+00:00'
+    evidence: "## Decision Record\n- canonical recovery surface: `vectl orch recover\
+      \ [RUN_ID|--latest]` as the canonical recovery authority, backed by `src/vectl/cli.py`\
+      \ routing to `OrchestrationApp.recover()` (`src/vectl/orch_app.py`) and `RecoveryReport`\
+      \ contract (`src/vectl/orchestration/recovery.py`). `vectl repair claims` remains\
+      \ separate for claim-state repair.\n- retirement mode: removed\n- strongest\
+      \ evidence:\n  - `src/vectl/cli.py` legacy `repair continuity` path attempts\
+      \ import of `vectl.driver.continuity_hygiene` then hard-fails with “legacy module\
+      \ removed”.\n  - No surviving `vectl.driver.continuity_hygiene` implementation\
+      \ exists in repo.\n  - `tests/repro/test_repair_continuity_black_box.py` already\
+      \ treats missing module as legacy and skips.\n  - Orchestration architecture\
+      \ docs enforce single authority and no shadow recovery surface.\n  - Current\
+      \ operator docs define `vectl orch recover` as active recovery command.\n- migration\
+      \ message for operators: `vectl repair continuity` is removed. Use `vectl orch\
+      \ recover [RUN_ID|--latest]` (with `--dry-run --json` for diagnostics) for run/continuity\
+      \ recovery; use `vectl repair claims` for claim/plan divergence.\n- files/specs\
+      \ to update next:\n  - `src/vectl/cli.py` (remove legacy command residue)\n\
+      \  - `README.md` (remove/replace repair continuity section)\n  - `tests/repro/test_repair_continuity_black_box.py`\
+      \ (remove/retarget)\n  - `docs/ORCHESTRATION-CLI-QUICKSTART.md`\n  - `docs/ORCHESTRATION-PLANE-CLI-CONFIG-OBSERVABILITY-DESIGN.md`\n\
+      \  - stale references: `docs/DRIVER-CONTINUITY-FOUNDATION.md`, `docs/ORCHESTRATION-PLANE-MIGRATION.md`"
+  - id: retire_repair_continuity_legacy_surface.remove-or-shim-legacy-cli-surface
+    name: Remove or convert legacy CLI surface to explicit retirement shim
+    status: done
+    description: 'work_type: technical_debt_remediation
+
+      step_type: implementation
+
+
+      Implement the retirement decision in the CLI.
+
+
+      Requirements:
+
+      - either remove `repair continuity` command registration entirely, or replace
+      it with an explicit retirement/deprecation shim that directs users to `vectl
+      orch recover`
+
+      - eliminate any runtime attempt to import `vectl.driver.continuity_hygiene`
+
+      - ensure help/public-surface behavior matches the chosen retirement mode
+
+      - do not leave a dead command that looks supported but fails at runtime due
+      to missing legacy module
+
+
+      Preferred outcome:
+
+      - hard removal if compatibility requirements do not block it'
+    verification: '- `uv run vectl --help` and related repair/orch help output reflect
+      the retirement decision
+
+      - No code path imports `vectl.driver.continuity_hygiene` from CLI runtime'
+    evidence_template: '## CLI Retirement Evidence
+
+      - retirement mode applied:
+
+      - commands run:
+
+      - help/output changes:
+
+      - import-path cleanup proof:'
+    depends_on:
+    - retire_repair_continuity_legacy_surface.lock-modern-recovery-authority-and-retirement-decision
+    agent: python-senior-tacit
+    claimed_by: python-senior-tacit
+    claimed_at: '2026-04-10T06:10:19.943576+00:00'
+    done_at: '2026-04-10T06:13:47.426552+00:00'
+    evidence: "## CLI Retirement Evidence\n- retirement mode applied:\n  - Removed\
+      \ legacy `repair continuity` command registration and implementation from `src/vectl/cli.py`.\n\
+      \  - Legacy runtime import path (`vectl.driver.continuity_hygiene`) was removed\
+      \ with the command.\n- commands run:\n  - `uv run vectl repair --help`\n  -\
+      \ `uv run vectl repair continuity --help`\n  - `uv run vectl orch recover --help`\n\
+      \  - `uv run python -c \"import pathlib; text=pathlib.Path('src/vectl/cli.py').read_text();\
+      \ print('legacy_import_present=', 'vectl.driver.continuity_hygiene' in text)\"\
+      `\n- help/output changes:\n  - `vectl repair --help` now lists only `claims`.\n\
+      \  - `vectl repair continuity --help` now errors with `No such command 'continuity'.`\n\
+      \  - `vectl orch recover --help` remains available and unchanged as supported\
+      \ recovery surface.\n- import-path cleanup proof:\n  - Script output: `legacy_import_present=\
+      \ False`\n  - Branch commit: `61a1d25`"
+    rejection_reason: 'Evidence/code mismatch: legacy repair continuity command and
+      docs are still present in main (cli.py still registers command; README still
+      documents it).'
+    rejection_history:
+    - reason: 'Evidence/code mismatch: legacy repair continuity command and docs are
+        still present in main (cli.py still registers command; README still documents
+        it).'
+      timestamp: '2026-04-10T06:10:11.690924+00:00'
+      reviewer: orchestrator
+  - id: retire_repair_continuity_legacy_surface.rewrite-or-remove-legacy-black-box-tests
+    name: Rewrite or remove legacy black-box tests
+    status: done
+    description: 'work_type: technical_debt_remediation
+
+      step_type: test_realignment
+
+
+      Realign the skipped black-box tests so they no longer silently preserve a retired
+      public surface.
+
+
+      Requirements:
+
+      - if `repair continuity` is removed, delete or replace `tests/repro/test_repair_continuity_black_box.py`
+      with retirement-surface assertions as appropriate
+
+      - if a retirement shim is kept, rewrite tests to validate explicit retirement
+      messaging, not functional continuity repair behavior
+
+      - where appropriate, add or retarget black-box coverage toward `vectl orch recover`
+      instead of the legacy driver-centric command
+
+      - remove skip-based masking of product-surface drift'
+    verification: '- No skipped suite remains solely because the retired continuity-hygiene
+      module is absent
+
+      - Replacement/retargeted tests match the chosen public-surface contract'
+    evidence_template: '## Test Realignment Evidence
+
+      - legacy tests removed/rewritten:
+
+      - replacement coverage:
+
+      - skip masking removed how:
+
+      - commands/tests run:'
+    depends_on:
+    - retire_repair_continuity_legacy_surface.remove-or-shim-legacy-cli-surface
+    agent: python-senior-tacit
+    claimed_by: python-senior-tacit
+    claimed_at: '2026-04-10T06:32:35.612675+00:00'
+    done_at: '2026-04-10T06:34:34.900520+00:00'
+    evidence: "## Test Realignment Evidence\n- legacy tests removed/rewritten:\n \
+      \ - Rewrote `tests/repro/test_repair_continuity_black_box.py` from legacy continuity-hygiene\
+      \ behavior suite into retirement-surface black-box checks.\n  - Removed `vectl.driver.continuity_hygiene`\
+      \ probe and `pytest.mark.skip` masking.\n- replacement coverage:\n  - Asserts\
+      \ `vectl repair --help` no longer advertises `continuity`.\n  - Asserts `vectl\
+      \ repair continuity --help` fails explicitly with `No such command 'continuity'`.\n\
+      \  - Asserts supported surface `vectl orch recover --step core.ready --dry-run\
+      \ --json --plan <tmp>` returns success with `recovery_report.outcome=no_artifacts`\
+      \ and `gate_open_allowed=true`.\n- skip masking removed how:\n  - Legacy module-absence\
+      \ skip gate deleted; tests execute unconditionally.\n- commands/tests run:\n\
+      \  - `uv run pytest -q tests/repro/test_repair_continuity_black_box.py` -> `3\
+      \ passed`.\n  - Branch commit: `316367b`."
+    rejection_reason: 'Evidence/code mismatch: legacy skip-gated test file remains
+      unchanged in main.'
+    rejection_history:
+    - reason: 'Evidence/code mismatch: legacy skip-gated test file remains unchanged
+        in main.'
+      timestamp: '2026-04-10T06:32:23.181693+00:00'
+      reviewer: orchestrator
+  - id: retire_repair_continuity_legacy_surface.clean-stale-docs-and-spec-references
+    name: Clean stale docs and spec references
+    status: done
+    description: 'work_type: technical_debt_remediation
+
+      step_type: doc_sync
+
+
+      Remove stale documentation/spec references that still describe `repair continuity`
+      as a modern supported recovery surface.
+
+
+      Requirements:
+
+      - update README and operator docs to point to `vectl orch recover`
+
+      - clean stale authority references to removed driver continuity docs where they
+      no longer represent current source of truth
+
+      - if historical mention is kept, label it explicitly as retired/legacy
+
+      - ensure docs do not send users toward removed runtime surfaces'
+    verification: '- User-facing docs consistently present orchestration-plane recovery
+      as the supported path
+
+      - No stale doc claims present `repair continuity` as active functionality unless
+      clearly labeled retired'
+    evidence_template: '## Doc Sync Evidence
+
+      - docs updated:
+
+      - stale references removed or relabeled:
+
+      - modern replacement path shown as:'
+    depends_on:
+    - retire_repair_continuity_legacy_surface.remove-or-shim-legacy-cli-surface
+    agent: project-guide
+    claimed_by: project-guide
+    claimed_at: '2026-04-10T06:34:52.498219+00:00'
+    done_at: '2026-04-10T06:38:29.670275+00:00'
+    evidence: "## Doc Sync Evidence\n- docs updated:\n  - `README.md`: removed legacy\
+      \ functional `vectl repair continuity` usage section and replaced with retirement\
+      \ note + supported recovery path (`vectl orch recover`) and separate `repair\
+      \ claims` guidance.\n  - `docs/ORCHESTRATION-CLI-QUICKSTART.md`: added explicit\
+      \ note that `vectl repair continuity` is retired and `vectl orch recover` is\
+      \ the supported entrypoint.\n- stale references removed or relabeled:\n  - Removed\
+      \ stale `docs/DRIVER-CONTINUITY-FOUNDATION.md` and `docs/ORCHESTRATION-PLANE-MIGRATION.md`\
+      \ authority references from:\n    - `src/vectl/orchestration/continuity_artifacts.py`\n\
+      \    - `src/vectl/orchestration/recovery.py`\n  - Repointed authority notes\
+      \ to active docs:\n    - `docs/ORCHESTRATION-PLANE-OPERATOR-CONFLICT-RECOVERY.md`\n\
+      \    - `docs/ORCHESTRATION-PLANE-ARCHITECTURE.md`\n    - `docs/ADR-orchestration-plane-reset.md`\n\
+      \    - `docs/ORCH-OPERATOR-CUTOVER-VALIDATION-MIGRATION-STATE-AUDIT.md`\n- modern\
+      \ replacement path shown as:\n  - `uv run vectl orch recover [RUN_ID|--latest]`\n\
+      \  - diagnostics: `uv run vectl orch recover --latest --dry-run --json`\n  -\
+      \ claim consistency remains under `uv run vectl repair claims --dry-run`\n\n\
+      Verification:\n- Search check confirms no remaining `DRIVER-CONTINUITY-FOUNDATION.md`\
+      \ or `ORCHESTRATION-PLANE-MIGRATION.md` references in orchestration source files.\n\
+      - Branch commit: `c7edd4b`."
+  - id: retire_repair_continuity_legacy_surface.retest-recovery-public-surface
+    name: Retest recovery public surface after retirement cleanup
+    status: pending
+    description: 'step_type: test
+
+      step_intent: retest_green
+
+      expected_result: green
+
+
+      As an independent tester, verify the recovery public surface after legacy cleanup.
+
+
+      Required commands should be chosen to prove:
+
+      - the legacy `repair continuity` surface no longer masquerades as supported
+
+      - the supported recovery surface (`vectl orch recover` and related tests) remains
+      coherent
+
+      - no legacy-module-absent skip is masking black-box drift'
+    verification: '- Focused CLI/recovery tests are green
+
+      - Any legacy retirement behavior is explicit and tested
+
+      - No skip remains whose rationale is merely the missing legacy continuity module'
+    evidence_template: '## Verification Report
+
+      - commands executed:
+
+      - actual output:
+
+      - public-surface decision validated how:
+
+      - remaining governed statuses:'
+    depends_on:
+    - retire_repair_continuity_legacy_surface.rewrite-or-remove-legacy-black-box-tests
+    - retire_repair_continuity_legacy_surface.clean-stale-docs-and-spec-references
+    agent: integration-verifier-tacit
+  - id: retire_repair_continuity_legacy_surface.gate
+    name: Gate legacy repair continuity retirement
+    status: pending
+    description: 'Final review for retirement of the legacy `repair continuity` surface.
+
+
+      Focus:
+
+      - public-surface honesty
+
+      - no dead CLI residue
+
+      - docs/tests/code all converge on orchestration-plane recovery
+
+      - no hidden dependency on removed driver continuity modules remains'
+    verification: '- retirement decision is coherent across code/docs/tests
+
+      - no stale blocker-class ambiguity remains about supported recovery surfaces'
+    evidence_template: '## Gate Review Report
+
+      - retirement decision consistency:
+
+      - residual ambiguity:
+
+      - gate decision OPEN|BLOCKED'
+    depends_on:
+    - retire_repair_continuity_legacy_surface.lock-modern-recovery-authority-and-retirement-decision
+    - retire_repair_continuity_legacy_surface.remove-or-shim-legacy-cli-surface
+    - retire_repair_continuity_legacy_surface.rewrite-or-remove-legacy-black-box-tests
+    - retire_repair_continuity_legacy_surface.clean-stale-docs-and-spec-references
+    - retire_repair_continuity_legacy_surface.retest-recovery-public-surface
+    agent: gate-reviewer-tacit
+- id: live_smoke_real_runner_validation
+  name: Live Smoke Real Runner Validation and Remediation
+  status: locked
+  gate: Real live-runner smoke coverage has been executed with explicit opt-in, any
+    discovered issues are either fixed and independently retested or explicitly dispositioned,
+    and evidence distinguishes environment/setup failures from genuine product defects.
+  depends_on:
+  - xfail_finalization
+  steps:
+  - id: live_smoke_real_runner_validation.lock-live-runner-execution-matrix
+    name: Lock live-runner execution matrix and prerequisites
+    status: pending
+    description: 'work_type: validation_planning
+
+      step_type: contract_lock
+
+
+      Define the exact real-runner validation matrix for this phase before execution.
+
+
+      Requirements:
+
+      - enumerate codex/opencode x judge/dispatch live smoke lanes to run
+
+      - state required opt-in flags, binaries, auth/session prerequisites, and any
+      model override assumptions
+
+      - separate environment readiness checks from product-behavior assertions
+
+      - define which optional browser/UI smoke checks are in-scope versus out-of-scope
+      for this phase
+
+
+      Important:
+
+      - this step does not fix product bugs; it locks the real-runner execution contract
+      so later failures are interpretable
+
+      - skip semantics remain valid only for missing external prerequisites, not hidden
+      product defects'
+    verification: '- A concrete execution matrix exists with explicit prerequisites
+      and lane list
+
+      - In-scope vs out-of-scope live/browser checks are unambiguous'
+    evidence_template: '## Live Matrix Decision
+
+      - lanes to run:
+
+      - prerequisite checks:
+
+      - auth/binary assumptions:
+
+      - UI scope decision:
+
+      - environment vs product failure boundary:'
+    agent: software-architect-tacit
+  - id: live_smoke_real_runner_validation.run-real-live-smoke-matrix
+    name: Run real live-smoke matrix
+    status: pending
+    description: 'step_type: test
+
+      step_intent: runtime_validation
+
+      expected_result: evidence_first
+
+
+      Execute the explicit opt-in real-runner smoke lanes under the locked execution
+      matrix.
+
+
+      Requirements:
+
+      - run the selected codex/opencode judge/dispatch live smoke tests with real
+      binaries/auth if available
+
+      - capture full command, returncode, stdout, stderr for every failing subprocess
+      assertion per live smoke evidence contract
+
+      - distinguish environment/prerequisite failures from genuine product failures
+
+      - if optional UI/browser smoke was declared in-scope, run it under its own opt-in
+      lane and keep evidence separate
+
+
+      Failure handling:
+
+      - product defects discovered here should feed the remediation batch step
+
+      - pure env/auth/binary gaps should be dispositioned, not treated as code bugs'
+    verification: '- Live matrix execution evidence is captured with environment/product
+      distinction
+
+      - Any failures are bucketed into prerequisite vs product defect classes'
+    evidence_template: '## Live Execution Report
+
+      - commands executed:
+
+      - lanes run:
+
+      - prerequisite failures:
+
+      - product failures:
+
+      - raw evidence locations:'
+    depends_on:
+    - live_smoke_real_runner_validation.lock-live-runner-execution-matrix
+    agent: integration-verifier-tacit
+  - id: live_smoke_real_runner_validation.fix-live-smoke-product-defects-batch
+    name: Fix live-smoke product defects batch
+    status: pending
+    description: 'work_type: technical_debt_remediation
+
+      step_type: implementation_batch
+
+
+      Fix all genuine product defects discovered by the real live-smoke matrix.
+
+
+      Requirements:
+
+      - only address failures classified as product defects, not missing auth/binary/opt-in
+      prerequisites
+
+      - preserve live-smoke evidence contract and avoid weakening assertions just
+      to make lanes green
+
+      - keep fixes within the supported runner/dispatch/judge/public-surface behavior
+      implied by the executed matrix
+
+      - if no product defects are found, explicitly record that this step is a no-op
+      by evidence
+
+
+      Potential touch areas:
+
+      - runner integration wiring
+
+      - subprocess invocation and capture behavior
+
+      - live output parsing/normalization
+
+      - dispatch/judge result shaping
+
+      - dashboard/ui smoke issues only if UI lane was explicitly in-scope'
+    verification: '- Each product failure from the live matrix is either fixed or
+      explicitly deferred with rationale
+
+      - No environment-only issue is misclassified as a product bug'
+    evidence_template: '## Remediation Batch Evidence
+
+      - product defects fixed:
+
+      - no-op or deferred items:
+
+      - files changed:
+
+      - why assertions remain honest:'
+    depends_on:
+    - live_smoke_real_runner_validation.run-real-live-smoke-matrix
+    agent: python-senior-tacit
+  - id: live_smoke_real_runner_validation.retest-live-smoke-after-remediation
+    name: Retest live-smoke matrix after remediation
+    status: pending
+    description: 'step_type: test
+
+      step_intent: retest_green
+
+      expected_result: green_or_governed_prereq_only
+
+
+      Re-run the real live-smoke matrix after the remediation batch.
+
+
+      Requirements:
+
+      - rerun every in-scope lane from the execution matrix
+
+      - demonstrate that product failures were fixed
+
+      - any remaining non-green status must be prerequisite-only and explicitly evidenced
+
+      - if UI/browser lane was in-scope, include its rerun outcome separately'
+    verification: '- Previously observed product defects are no longer reproducing
+
+      - Remaining skips/failures are only prerequisite/environment governed statuses,
+      if any'
+    evidence_template: '## Retest Report
+
+      - commands re-run:
+
+      - product issues closed:
+
+      - remaining prerequisite-only statuses:
+
+      - comparison vs initial matrix:'
+    depends_on:
+    - live_smoke_real_runner_validation.fix-live-smoke-product-defects-batch
+    agent: integration-verifier-tacit
+  - id: live_smoke_real_runner_validation.doc-sync-live-smoke-findings
+    name: Doc sync live-smoke findings and operating prerequisites
+    status: pending
+    description: 'work_type: doc_sync
+
+      step_type: documentation
+
+
+      Update docs/guidance to reflect the real live-smoke execution contract and any
+      product changes made during remediation.
+
+
+      Requirements:
+
+      - document real prerequisites and opt-in expectations for live runner lanes
+
+      - if UI/browser checks were included, document how they are run separately
+
+      - capture any operator-facing caveats learned from real execution
+
+      - keep docs clear about environment prerequisites versus product health'
+    verification: '- User-facing or contributor-facing docs accurately describe how
+      to run live smoke and interpret outcomes
+
+      - No stale guidance implies these lanes should pass without opt-in/auth/binaries'
+    evidence_template: '## Doc Sync Evidence
+
+      - docs updated:
+
+      - prerequisite guidance added/changed:
+
+      - operational caveats captured:'
+    depends_on:
+    - live_smoke_real_runner_validation.retest-live-smoke-after-remediation
+    agent: project-guide
+  - id: live_smoke_real_runner_validation.gate
+    name: Gate live-smoke real-runner validation
+    status: pending
+    description: 'Final review for the real live-smoke validation phase.
+
+
+      Focus:
+
+      - execution matrix was explicit and honest
+
+      - product defects found under real runner conditions were fixed or explicitly
+      dispositioned
+
+      - remaining non-green statuses are environment/prerequisite governed only
+
+      - docs reflect the real operating contract'
+    verification: '- Phase evidence cleanly separates prerequisite failures from product
+      failures
+
+      - Final gate can explain why any remaining skips are acceptable'
+    evidence_template: '## Gate Review Report
+
+      - matrix integrity:
+
+      - product defect closure:
+
+      - remaining governed prerequisite statuses:
+
+      - gate decision OPEN|BLOCKED'
+    depends_on:
+    - live_smoke_real_runner_validation.lock-live-runner-execution-matrix
+    - live_smoke_real_runner_validation.run-real-live-smoke-matrix
+    - live_smoke_real_runner_validation.fix-live-smoke-product-defects-batch
+    - live_smoke_real_runner_validation.retest-live-smoke-after-remediation
+    - live_smoke_real_runner_validation.doc-sync-live-smoke-findings
+    agent: gate-reviewer-tacit

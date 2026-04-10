@@ -61,6 +61,8 @@ expected_failures / exposed_gaps:
 
 from __future__ import annotations
 
+from typing import Any, cast
+
 import pytest
 
 from tests.expected_red import expected_red_module
@@ -83,6 +85,46 @@ from vectl.orchestration.contracts import (
     RuntimeSnapshot,
     StructuredReviewResult,
 )
+from vectl.orch_app import AppConfig, OrchestrationApp
+from vectl.orchestration.dispatch_policy import (
+    ConfigPromptRegistry,
+    ConfigRoleProfileRegistry,
+    DispatchCoordinator,
+    StepData,
+)
+
+
+class StubStepDataAdapter:
+    def __init__(self, steps: dict[str, StepData]) -> None:
+        self._steps = steps
+
+    def load_step_data(self, step_id: str) -> StepData | None:
+        return self._steps.get(step_id)
+
+
+class CountingDispatchCoordinator(DispatchCoordinator):
+    def __init__(
+        self,
+        *,
+        role_registry: ConfigRoleProfileRegistry,
+        prompt_registry: ConfigPromptRegistry,
+        step_adapter: StubStepDataAdapter,
+    ) -> None:
+        super().__init__(
+            role_registry=role_registry,
+            prompt_registry=prompt_registry,
+            step_adapter=step_adapter,
+        )
+        self.decisions: list[ControlDecision] = []
+
+    def build_dispatch_spec(self, decision: ControlDecision) -> DispatchSpec:
+        self.decisions.append(decision)
+        return super().build_dispatch_spec(decision)
+
+
+class _Noop:
+    pass
+
 
 # ---------------------------------------------------------------------
 # GAP 1: DispatchSpec construction from ControlDecision + step data
@@ -93,110 +135,82 @@ from vectl.orchestration.contracts import (
 
 
 def test_dispatch_spec_construction_from_control_decision() -> None:
-    """Dispatch coordinator must build DispatchSpec from ControlDecision + step data.
-
-    GAP: There is no dispatch coordinator that:
-        1. Loads authoritative step data given step_id
-        2. Resolves role profile for the selected role
-        3. Builds a complete DispatchSpec
-
-    xfail scope:
-        - No concrete dispatch coordinator implementation exists.
-        - DispatchSpec fields cannot be fully populated from ControlDecision alone.
-
-    Authority:
-        - ORCHESTRATION-PLANE-DISPATCH-AND-PROMPT-POLICY.md §6.1 (normal flow)
-        - ORCHESTRATION-PLANE-DISPATCH-AND-PROMPT-POLICY.md §7.1 (DispatchSpec shape)
-        - ORCHESTRATION-PLANE-DISPATCH-AND-PROMPT-POLICY.md §8.3
-          (RoleProfileRegistry role resolution)
-    """
-    decision = ControlDecision(
-        kind="dispatch",
-        reason="test",
+    """DispatchSpec construction is centralized through the coordinator path."""
+    step_data = StepData(
         step_id="core.test-step",
-        role="python-executor",
+        description="Test step",
+        verification="Run focused verification",
+        refs=("ref1",),
+        evidence_template="Paste logs",
+        verify=None,
+        agent=None,
+    )
+    coordinator = CountingDispatchCoordinator(
+        role_registry=ConfigRoleProfileRegistry(),
+        prompt_registry=ConfigPromptRegistry(),
+        step_adapter=StubStepDataAdapter({"core.test-step": step_data}),
+    )
+    app = OrchestrationApp(
+        config=AppConfig(default_agent="python-executor"),
+        control=cast(Any, _Noop()),
+        roster=cast(Any, _Noop()),
+        runtime=cast(Any, _Noop()),
+        resolver=cast(Any, _Noop()),
+        core_adapter=cast(Any, _Noop()),
+        dispatch_coordinator=coordinator,
     )
 
-    # DispatchSpec can be constructed directly for the expected shape,
-    # but there is no coordinator that wires it from control output.
-    spec = DispatchSpec(
-        source_kind="step",
-        source_id=decision.step_id or "",
-        role_id=decision.role or "",
-        role_source="step.agent",
-        execution_context="linked_worktree",
-        runner="codex",
-        session_mode="fresh",
-        step_id=decision.step_id,
-        description="Test step",
-        verification="Test verification",
-        refs=("ref1",),
-        verify_mode="none",
-        prompt_family="coder",
-        output_contract="freeform_evidence",
-        mutation_policy="worktree_changes",
-    )
+    spec = app.build_dispatch_spec(step_id="core.test-step", role_hint="gate-reviewer")
 
     assert spec.step_id == "core.test-step"
-    assert spec.role_id == "python-executor"
-    assert spec.execution_context == "linked_worktree"
-
-    # GAP EXPOSED (xfail): The actual dispatch coordinator that wires
-    # ControlDecision → DispatchSpec does not exist. This test shows
-    # what the output should look like, but the coordination logic is missing.
-    pytest.xfail(
-        "xfail[GAP1-dispatch-spec-construction]: No dispatch coordinator exists to build "
-        "DispatchSpec from ControlDecision + authoritative step data. The fields above "
-        "are hand-populated. A concrete dispatch coordinator (orch_app helper or similar) "
-        "must be implemented that: (1) loads step semantics, (2) resolves RoleProfile, "
-        "(3) builds complete DispatchSpec. "
-        "Owner: orchestration_dispatch_policy.implement-dispatch-coordinator"
-    )
+    assert spec.source_kind == "step"
+    assert spec.source_id == "core.test-step"
+    assert spec.description == "Test step"
+    assert spec.verification == "Run focused verification"
+    assert spec.refs == ("ref1",)
+    assert spec.evidence_template == "Paste logs"
+    assert spec.role_id == "gate-reviewer"
+    assert spec.role_source == "default"
+    assert spec.execution_context == "main_worktree"
+    assert coordinator.decisions == [
+        ControlDecision(
+            kind="dispatch",
+            reason="orchestration app dispatch",
+            step_id="core.test-step",
+            role="gate-reviewer",
+        )
+    ]
 
 
 def test_dispatch_spec_verify_mode_expected_red_wires_correctly() -> None:
-    """DispatchSpec.verify_mode='expected_red' must be wired from step.verify.
-
-    GAP: vectl core (decide.py) handles expected_red logic for step completion,
-    but the dispatch layer has no coordinator that wires step.verify to
-    DispatchSpec.verify_mode. The verify_mode field exists but cannot be
-    populated from step data without a dispatch coordinator.
-
-    xfail scope:
-        - No dispatch coordinator exists to wire step.verify -> DispatchSpec.verify_mode.
-        - verify_mode is hand-populated; no code automatically derives it.
-
-    Authority:
-        - ORCHESTRATION-PLANE-DISPATCH-AND-PROMPT-POLICY.md §7.1 (verify_mode field)
-        - vectl/models.py Step.verify (the source)
-    """
-    # This is what the wired DispatchSpec should look like after dispatch
-    # coordinator does step.verify -> DispatchSpec.verify_mode mapping
-    spec = DispatchSpec(
-        source_kind="step",
-        source_id="core.test-step",
-        role_id="python-executor",
-        role_source="step.agent",
-        execution_context="linked_worktree",
-        runner="codex",
-        session_mode="fresh",
-        step_id="core.test-step",
-        verify_mode="expected_red",  # This should be auto-wired from step.verify
+    """DispatchSpec.verify_mode is derived from authoritative step.verify."""
+    coordinator = DispatchCoordinator(
+        role_registry=ConfigRoleProfileRegistry(),
+        prompt_registry=ConfigPromptRegistry(),
+        step_adapter=StubStepDataAdapter(
+            {
+                "core.test-step": StepData(
+                    step_id="core.test-step",
+                    description="Test step",
+                    verification="Observe expected red",
+                    refs=(),
+                    evidence_template="",
+                    verify="expected_red",
+                    agent="python-executor",
+                )
+            }
+        ),
+    )
+    spec = coordinator.build_dispatch_spec(
+        ControlDecision(
+            kind="dispatch",
+            reason="test",
+            step_id="core.test-step",
+            role="python-executor",
+        )
     )
 
     assert spec.verify_mode == "expected_red"
-
-    # GAP EXPOSED (xfail): verify_mode='expected_red' is hand-populated here.
-    # The dispatch coordinator does not exist to automatically wire step.verify
-    # to DispatchSpec.verify_mode. The vectl core handles expected_red at
-    # decision time, but the dispatch layer cannot populate this field without
-    # the coordinator.
-    pytest.xfail(
-        "xfail[GAP1-verify-mode-expected-red]: No dispatch coordinator exists to wire "
-        "step.verify ('expected_red'|'must_green'|None) to DispatchSpec.verify_mode. "
-        "The verify_mode field exists but cannot be automatically populated. "
-        "Owner: orchestration_dispatch_policy.implement-dispatch-coordinator"
-    )
 
 
 def test_dispatch_spec_main_worktree_roles_enforce_execution_context() -> None:

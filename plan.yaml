@@ -73570,7 +73570,7 @@ phases:
   - repo_regression_surface_and_fixture_repair
 - id: repo_regression_full_suite_gate
   name: Repo-Wide Full Suite Gate
-  status: in_progress
+  status: done
   gate: 'The repository demonstrates repo-wide health: full pytest passes, or any
     non-passing tests are explicitly accepted as xfail/skip with governed rationale.
     The gap between phase-local green and repo-wide red is closed.'
@@ -73662,7 +73662,7 @@ phases:
       - a23ed33'
   - id: repo_regression_full_suite_gate.encode-repo-wide-final-gate-into-plan-policy
     name: Encode repo-wide final gate into plan policy
-    status: claimed
+    status: done
     description: Update plan/gate guidance so future large remediation efforts cannot
       be declared complete without an explicit repo-wide regression pass (or an explicit
       exception policy). Capture how expected-red lifecycle data and full-suite status
@@ -73678,6 +73678,49 @@ phases:
     - repo_regression_full_suite_gate.decide-static-guard-scope-and-enforcement
     claimed_by: general
     claimed_at: '2026-04-10T04:07:07.986499+00:00'
+    done_at: '2026-04-10T04:10:06.669227+00:00'
+    evidence: 'Policy change summary:
+
+      - Encoded policy that phase-local verification is insufficient for claims of
+      repo-wide readiness.
+
+      - Encoded explicit requirement that large-remediation final gates must run an
+      explicit repo-wide regression command or explicitly cite exception policy.
+
+      - Encoded governed expected-red/xfail/skip/advisory evidence requirements (lifecycle/disposition/owner
+      rationale) for final gates.
+
+
+      Where encoded:
+
+      - .agents/instructions.md
+
+      - docs/repo_regression_remediation_execution_sequence.md
+
+      - docs/RFC-expected-red-verification-semantics.md
+
+
+      Example evidence expectations for future gates:
+
+      - Provide separate phase-local scoped evidence and aggregate repo-wide command
+      evidence (e.g., `uv run pytest -q`).
+
+      - If exceptions remain, enumerate each with non-blocking rationale, lifecycle
+      disposition, and owner/follow-up.
+
+
+      Files changed:
+
+      - .agents/instructions.md
+
+      - docs/repo_regression_remediation_execution_sequence.md
+
+      - docs/RFC-expected-red-verification-semantics.md
+
+
+      Commit:
+
+      - c8e814ac0c56e3cb3affb852c02e015639fd9407'
   - id: repo_regression_full_suite_gate.fix-recovery-contract-conformance-semantics
     name: Repair recovery contract conformance semantics
     status: done

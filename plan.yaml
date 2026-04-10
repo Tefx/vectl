@@ -76333,7 +76333,7 @@ phases:
       \ product failures would trigger code remediation in this step."
   - id: live_smoke_real_runner_validation.retest-live-smoke-after-remediation
     name: Retest live-smoke matrix after remediation
-    status: claimed
+    status: done
     description: 'step_type: test
 
       step_intent: retest_green
@@ -76371,6 +76371,15 @@ phases:
     agent: integration-verifier-tacit
     claimed_by: integration-verifier-tacit
     claimed_at: '2026-04-10T07:16:58.697869+00:00'
+    done_at: '2026-04-10T07:17:18.057630+00:00'
+    evidence: "## Retest Report\n- commands re-run:\n  - `uv run pytest tests/live_smoke\
+      \ -q -rs`\n- product issues closed:\n  - no product-failure regressions present\
+      \ in retest (`0 failed`); no additional product fixes required.\n- remaining\
+      \ prerequisite-only statuses:\n  - `17 skipped`, all due to live-runner opt-in\
+      \ preconditions (`RUN_LIVE_RUNNER_TESTS=1` not set / preflight opt-in missing).\n\
+      - comparison vs initial matrix:\n  - unchanged outcome from initial matrix run:\
+      \ `60 passed, 17 skipped, 0 failed`.\n  - skip reasons remain prerequisite-only\
+      \ and are consistent with locked matrix policy."
   - id: live_smoke_real_runner_validation.doc-sync-live-smoke-findings
     name: Doc sync live-smoke findings and operating prerequisites
     status: pending

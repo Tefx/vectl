@@ -78013,7 +78013,7 @@ phases:
     agent: python-senior-tacit
   - id: orch_plane_live_authority.prompt-registry-runtime
     name: Unhardcode prompt registry runtime mapping
-    status: claimed
+    status: done
     description: Remove hardcoded PromptRegistry flattening seams so role/prompt selection
       remains runtime- and config-driven for future roles, not family-default hardwiring.
     verification: Config-backed role additions or fixture roles prove prompt selection
@@ -78037,6 +78037,26 @@ phases:
     agent: python-senior-tacit
     claimed_by: python-senior-tacit
     claimed_at: '2026-04-10T19:12:48.814844+00:00'
+    done_at: '2026-04-10T19:16:19.967997+00:00'
+    evidence: "## refs Read Confirmation (MANDATORY)\n- tools/vectl/README.md — NOT\
+      \ READ: required path absent in isolated worktree.\n- docs/ADR-orchestration-role-agent-prompt-separation.md\
+      \ — key passage used: `role_id`, `agent_id`, `prompt_family` are distinct; prompt\
+      \ rendering precedence is `agent_id` first then family fallback.\n\n## Implementation\
+      \ Evidence\n- Runtime mapping seam changed:\n  - `src/vectl/orchestration/dispatch_policy.py`\n\
+      \  - replaced resolver-specific hardcoded flatten branch with `_PROMPT_CONTENT_BY_AGENT_ID`\
+      \ lookup.\n  - `_select_prompt_content()` now resolves by `agent_id` first,\
+      \ then `prompt_family` fallback.\n  - removed old role-id-based tacit flatten\
+      \ seam.\n- New role fixture/config proof:\n  - `tests/orchestration/unit/test_config_state_impl.py::test_load_preserves_role_id_agent_id_prompt_family_separation_for_future_role`\n\
+      \  - proves config preserves future role separation (`role_id=future-resolver-role`,\
+      \ `agent_id=blocked-case-coordinator-tacit`, `prompt_family=resolver`).\n- No\
+      \ family-level flattening remains:\n  - `tests/orchestration/unit/test_dispatch_policy.py::test_agent_id_precedence_preserves_tacit_prompt_for_future_role_id`\n\
+      \  - proves future role ID with tacit `agent_id` still renders tacit prompt\
+      \ content.\n  - targeted search confirms no remaining role-id-based flatten\
+      \ branch in runtime code.\n\nVerification:\n- `uv run python -m pytest tests/orchestration/unit/test_dispatch_policy.py\
+      \ tests/orchestration/unit/test_config_state_impl.py -q` -> `100 passed`\n-\
+      \ `uv run ruff check src/vectl/orchestration/dispatch_policy.py tests/orchestration/unit/test_dispatch_policy.py\
+      \ tests/orchestration/unit/test_config_state_impl.py` -> `All checks passed!`\n\
+      \nCommit evidence:\n- Worker commit: `d393f27`\n- Cherry-picked on main: `90bbd19`"
   - id: orch_plane_live_authority.integration-proof
     name: Independent live authority proof
     status: pending

@@ -78068,6 +78068,34 @@ phases:
 
       '
     agent: python-senior-tacit
+  - id: orch_plane_planner_boundary.live-proof
+    name: Prove planner boundary live
+    status: pending
+    description: Independent live proof that planner execution cannot bypass the vectl
+      facade and cannot directly edit authoritative plan.yaml while still succeeding
+      through the approved runtime path.
+    verification: Evidence must show one approved planner mutation path succeeds through
+      the facade and one or more bypass/direct-edit attempts fail with the expected
+      boundary error.
+    evidence_template: '## refs Read Confirmation (MANDATORY)
+
+      - Quote the key passage from each ref or write NOT READ: <reason>
+
+
+      ## Live Boundary Evidence
+
+      - Exact commands/tests run
+
+      - Approved-path proof
+
+      - Bypass/direct-edit failure proof
+
+      - Observed error types/messages
+
+      '
+    depends_on:
+    - orch_plane_planner_boundary.facade-enforcement
+    agent: integration-verifier-tacit
 - id: orch_plane_finalization
   name: Orchestration Plane Finalization
   status: locked

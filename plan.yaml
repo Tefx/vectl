@@ -75247,7 +75247,7 @@ phases:
       => 5 xfailed.'
   - id: xfail_role_prompt_and_review_normalization.retest-role-prompt-and-review
     name: Retest role, prompt, and review normalization
-    status: claimed
+    status: done
     description: 'step_type: test
 
       step_intent: retest_green
@@ -75276,6 +75276,21 @@ phases:
     agent: integration-verifier-tacit
     claimed_by: python-senior-tacit
     claimed_at: '2026-04-10T07:03:32.491697+00:00'
+    done_at: '2026-04-10T07:03:47.154879+00:00'
+    evidence: '- Command: `uv run pytest tests/orchestration/unit/test_dispatch_policy_red.py
+      -k "RoleProfileRegistry or PromptRegistry or StructuredReviewResultNormalization"
+      -q`
+
+      - Output: `11 passed, 6 deselected`
+
+      - Command: `uv run pytest tests/orchestration/unit/test_dispatch_policy_red.py
+      -q`
+
+      - Output: `13 passed, 4 xfailed`
+
+      - Remaining governed statuses: 4 xfailed remain in this file (non-targeted GAP1/GAP5
+      main_worktree policy xfail surfaces); targeted RoleProfileRegistry/PromptRegistry/StructuredReviewResultNormalization
+      group is now green.'
   - id: xfail_role_prompt_and_review_normalization.gate
     name: Gate role, prompt, and review normalization
     status: pending

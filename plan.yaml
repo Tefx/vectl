@@ -76120,7 +76120,7 @@ phases:
       - gate decision OPEN|BLOCKED:\n  - OPEN"
 - id: live_smoke_real_runner_validation
   name: Live Smoke Real Runner Validation and Remediation
-  status: in_progress
+  status: done
   gate: Real live-runner smoke coverage has been executed with explicit opt-in, any
     discovered issues are either fixed and independently retested or explicitly dispositioned,
     and evidence distinguishes environment/setup failures from genuine product defects.
@@ -76431,7 +76431,7 @@ phases:
       \  - Product-vs-environment failure boundary documented to prevent misclassification."
   - id: live_smoke_real_runner_validation.gate
     name: Gate live-smoke real-runner validation
-    status: claimed
+    status: done
     description: 'Final review for the real live-smoke validation phase.
 
 
@@ -76467,3 +76467,14 @@ phases:
     agent: gate-reviewer-tacit
     claimed_by: gate-reviewer-tacit
     claimed_at: '2026-04-10T07:18:31.909555+00:00'
+    done_at: '2026-04-10T07:18:42.205064+00:00'
+    evidence: "## Gate Review Report\n- matrix integrity:\n  - Locked matrix covers\
+      \ the four required lanes (codex/opencode × judge/dispatch), with explicit prerequisite\
+      \ contract and in-scope/out-of-scope boundaries documented in `docs/LIVE-SMOKE-REAL-RUNNER-VALIDATION-2026-04-10.md`.\n\
+      - product defect closure:\n  - Live matrix execution and retest showed no product\
+      \ failures (`60 passed, 17 skipped, 0 failed`), so remediation batch correctly\
+      \ no-op’d without weakening assertions.\n- remaining governed prerequisite statuses:\n\
+      \  - 17 skips remain prerequisite-governed (`RUN_LIVE_RUNNER_TESTS` opt-in missing),\
+      \ explicitly classified as environment readiness rather than product defects.\n\
+      \  - Skip-governed status remains acceptable per matrix contract.\n- gate decision\
+      \ OPEN"

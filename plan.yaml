@@ -77767,7 +77767,7 @@ phases:
       \ model; no legacy resolver/judge confusion remains in active guidance."
   - id: resolver_cleanup_finalization.gate
     name: Final gate for resolver cleanup
-    status: pending
+    status: claimed
     description: 'Gate review: verify the cleaned orchestration model is complete,
       documented, regression-checked, and free of current legacy resolver/judge drift.
 
@@ -77816,3 +77816,5 @@ phases:
     - resolver_cleanup_finalization.architecture-review
     - resolver_cleanup_finalization.black-box-surface-check
     agent: gate-reviewer-tacit
+    claimed_by: gate-reviewer-tacit
+    claimed_at: '2026-04-10T16:20:07.925690+00:00'

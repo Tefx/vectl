@@ -46,7 +46,11 @@ from vectl.orchestration.contracts import (
     StructuredReviewResult,
 )
 from vectl.orchestration.control_channel import FilesystemControlChannel
-from vectl.orchestration.dispatch_policy import ConfigRoleProfileRegistry, DispatchCoordinator
+from vectl.orchestration.dispatch_policy import (
+    ConfigPromptRegistry,
+    ConfigRoleProfileRegistry,
+    DispatchCoordinator,
+)
 from vectl.orchestration.events import load_event_jsonl
 from vectl.orchestration.recovery import LegacyRunStatus
 from vectl.orchestration.resolver_gateway import GatewayInvocationResult
@@ -977,6 +981,110 @@ def test_start_runtime_execution_blocks_context_drift_before_runtime_launch(
                 execution_context="linked_worktree",
                 runner="codex",
                 session_mode="fresh",
+            ),
+            mode="start",
+        )
+
+    assert prepare_called is False
+
+
+def test_start_runtime_execution_renders_prompt_bundle_before_runtime_launch(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Ordinary dispatch must pass through PromptRegistry before runtime launch.
+
+    Authority:
+        docs/ORCHESTRATION-PLANE-LIVE-AUTHORITY-CONTRACT-LOCK.md §3.1, §3.4, §4.1
+        docs/ORCHESTRATION-PLANE-ORCH-APP-ROUTING.md §12.1
+    """
+
+    app = _build_app(tmp_path)
+    base_prompt_registry = ConfigPromptRegistry(role_registry=app._role_registry)
+
+    class RecordingPromptRegistry:
+        def __init__(self) -> None:
+            self.render_calls: list[str] = []
+
+        def render(self, spec: DispatchSpec):
+            self.render_calls.append(spec.role_id)
+            return base_prompt_registry.render(spec)
+
+        def has_role(self, role_id: str) -> bool:
+            return base_prompt_registry.has_role(role_id)
+
+    prompt_registry = RecordingPromptRegistry()
+    app._dispatch_coordinator = DispatchCoordinator(
+        role_registry=app._role_registry,
+        prompt_registry=prompt_registry,
+        step_adapter=app._dispatch_coordinator.step_adapter,
+    )
+
+    captured_work_refs: list[tuple[str, ...]] = []
+    original_prepare = app._runtime.prepare
+
+    def probe_prepare(request):
+        captured_work_refs.append(request.work_refs)
+        return original_prepare(request)
+
+    monkeypatch.setattr(app._runtime, "prepare", probe_prepare)
+
+    result = app.run(step_id="core.ready", agent="python-executor")
+
+    assert result.success is True
+    assert prompt_registry.render_calls == ["python-executor"]
+    assert captured_work_refs
+    assert any(ref.startswith("prompt_bundle_sha256=") for ref in captured_work_refs[0])
+
+
+def test_start_runtime_execution_fails_closed_when_prompt_registry_lacks_role_support(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Ordinary dispatch must fail closed if the prompt seam cannot prove role authority.
+
+    Authority: docs/ORCHESTRATION-PLANE-LIVE-AUTHORITY-CONTRACT-LOCK.md §3.4, §4.3
+    """
+
+    app = _build_app(tmp_path)
+    orch = cast(Any, app)
+
+    class MissingRolePromptRegistry:
+        def render(self, spec: DispatchSpec):
+            pytest.fail(f"render should not run when role support is missing for {spec.role_id}")
+
+        def has_role(self, role_id: str) -> bool:
+            return False
+
+    app._dispatch_coordinator = DispatchCoordinator(
+        role_registry=app._role_registry,
+        prompt_registry=MissingRolePromptRegistry(),
+        step_adapter=app._dispatch_coordinator.step_adapter,
+    )
+
+    prepare_called = False
+    original_prepare = app._runtime.prepare
+
+    def probe_prepare(request):
+        nonlocal prepare_called
+        prepare_called = True
+        return original_prepare(request)
+
+    monkeypatch.setattr(app._runtime, "prepare", probe_prepare)
+
+    with pytest.raises(ValueError, match="prompt registry has no authoritative support"):
+        orch._start_runtime_execution(
+            run_id="run-missing-prompt-role",
+            step_id="core.ready",
+            dispatch_spec=DispatchSpec(
+                source_kind="step",
+                source_id="core.ready",
+                role_id="python-executor",
+                role_source="default",
+                execution_context="linked_worktree",
+                runner="codex",
+                session_mode="fresh",
+                prompt_family="coder",
+                output_contract="freeform_evidence",
+                mutation_policy="worktree_changes",
             ),
             mode="start",
         )

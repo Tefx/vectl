@@ -53,6 +53,7 @@ from vectl.orchestration.contracts import (
     DispatchSpec,
     ExecutionRequest,
     ExecutionResult,
+    PromptBundle,
     ReconcileResult,
     ResolutionCase,
     ResolutionCaseSource,
@@ -70,6 +71,7 @@ from vectl.orchestration.dispatch_policy import (
     ConfigPromptRegistry,
     ConfigRoleProfileRegistry,
     CoreStepDataAdapter,
+    DispatchAuthorityError,
     DispatchCoordinator,
     normalize_parse_failure,
     normalize_review_result,
@@ -976,7 +978,7 @@ class OrchestrationApp:
         dispatch_spec: DispatchSpec,
         mode: Literal["start", "resume", "recover"],
     ) -> tuple[str, str]:
-        self._validate_dispatch_authority(dispatch_spec)
+        prompt_bundle_ref = self._validate_dispatch_authority(dispatch_spec)
 
         # Gate: consult paused operator state and DispatchRecoveryGate
         # before dispatch to runtime.
@@ -1002,6 +1004,7 @@ class OrchestrationApp:
                 isolation_ref,
                 f"execution_context={dispatch_spec.execution_context}",
                 f"source_kind={dispatch_spec.source_kind}",
+                prompt_bundle_ref,
             ),
             session_id=run_id,
         )
@@ -1009,13 +1012,21 @@ class OrchestrationApp:
         execution_id = self._runtime.start(request=request, workspace=workspace)
         return workspace, execution_id
 
-    def _validate_dispatch_authority(self, dispatch_spec: DispatchSpec) -> None:
+    def _validate_dispatch_authority(self, dispatch_spec: DispatchSpec) -> str:
         """Validate dispatch authority before any mechanical runtime launch.
 
         Enforces that runtime launch metadata cannot drift from centralized role
         policy authority. This protects main-worktree families (planner,
         reviewer, resolver) from accidental execution-context downgrade.
+
+        Returns:
+            Stable runtime work-ref proving PromptRegistry rendered the live bundle.
         """
+
+        try:
+            prompt_bundle = self._dispatch_coordinator.render_prompt_bundle(dispatch_spec)
+        except DispatchAuthorityError as exc:
+            raise ValueError(f"dispatch authority violation: {exc}") from exc
 
         profile = self._dispatch_coordinator.role_registry.get(dispatch_spec.role_id)
         if dispatch_spec.execution_context != profile.execution_context:
@@ -1025,6 +1036,21 @@ class OrchestrationApp:
                 f"execution_context={profile.execution_context!r} but got "
                 f"{dispatch_spec.execution_context!r}"
             )
+        return self._prompt_bundle_work_ref(prompt_bundle)
+
+    def _prompt_bundle_work_ref(self, prompt_bundle: PromptBundle) -> str:
+        """Return stable work-ref proving PromptRegistry rendered the live bundle."""
+
+        digest = hashlib.sha256()
+        digest.update(prompt_bundle.system_prompt.encode("utf-8"))
+        digest.update(b"\x00")
+        digest.update(prompt_bundle.task_prompt.encode("utf-8"))
+        for message in prompt_bundle.messages:
+            digest.update(b"\x00")
+            digest.update(message.get("role", "").encode("utf-8"))
+            digest.update(b":")
+            digest.update(message.get("content", "").encode("utf-8"))
+        return f"prompt_bundle_sha256={digest.hexdigest()}"
 
     def _admit_start_and_persist_running(
         self,

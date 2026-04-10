@@ -67,6 +67,15 @@ class ReviewResultParseError(ValueError):
     """
 
 
+class DispatchAuthorityError(ValueError):
+    """Raised when dispatch skips required live prompt/role checkpoints.
+
+    Authority: docs/ORCHESTRATION-PLANE-LIVE-AUTHORITY-CONTRACT-LOCK.md §3.4, §4.1
+    'If any checkpoint cannot be satisfied, dispatch must fail explicitly rather
+    than silently degrading to a static seam.'
+    """
+
+
 # ---------------------------------------------------------------------
 # Step verify-mode mapping
 # ---------------------------------------------------------------------
@@ -563,6 +572,50 @@ class DispatchCoordinator:
     step_adapter: StepDataAdapter
     runner: str = "codex"
 
+    def render_prompt_bundle(self, spec: DispatchSpec) -> PromptBundle:
+        """Render the authoritative prompt bundle for a live dispatch spec.
+
+        Authority:
+            docs/ORCHESTRATION-PLANE-LIVE-AUTHORITY-CONTRACT-LOCK.md §3.1, §3.4, §4.1
+            docs/ORCHESTRATION-PLANE-ORCH-APP-ROUTING.md §12.1
+
+        Args:
+            spec: Dispatch spec to validate and render.
+
+        Returns:
+            Prompt bundle rendered from the authoritative live dispatch spec.
+
+        Raises:
+            DispatchAuthorityError: If prompt/role checkpoints are missing.
+        """
+        profile = self.role_registry.get(spec.role_id)
+        if spec.prompt_family != profile.prompt_family:
+            raise DispatchAuthorityError(
+                f"role {spec.role_id!r} requires prompt_family={profile.prompt_family!r} "
+                f"but got {spec.prompt_family!r}"
+            )
+        if spec.output_contract != profile.output_contract:
+            raise DispatchAuthorityError(
+                f"role {spec.role_id!r} requires output_contract={profile.output_contract!r} "
+                f"but got {spec.output_contract!r}"
+            )
+        if spec.mutation_policy != profile.mutation_policy:
+            raise DispatchAuthorityError(
+                f"role {spec.role_id!r} requires mutation_policy={profile.mutation_policy!r} "
+                f"but got {spec.mutation_policy!r}"
+            )
+        if not self.prompt_registry.has_role(spec.role_id):
+            raise DispatchAuthorityError(
+                f"prompt registry has no authoritative support for role {spec.role_id!r}"
+            )
+
+        prompt_bundle = self.prompt_registry.render(spec)
+        if not prompt_bundle.system_prompt.strip() or not prompt_bundle.task_prompt.strip():
+            raise DispatchAuthorityError(
+                f"prompt registry returned incomplete prompt bundle for role {spec.role_id!r}"
+            )
+        return prompt_bundle
+
     def build_dispatch_spec(
         self,
         decision: ControlDecision,
@@ -830,6 +883,7 @@ __all__ = [
     "ConfigPromptRegistry",
     "ConfigRoleProfileRegistry",
     "CoreStepDataAdapter",
+    "DispatchAuthorityError",
     "DispatchCoordinator",
     "ReviewResultParseError",
     "StepDataAdapter",

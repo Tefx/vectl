@@ -75390,7 +75390,7 @@ phases:
   steps:
   - id: xfail_authority_and_entrypoint_enforcement.enforce-main-worktree-role-authority
     name: Enforce main-worktree role authority
-    status: claimed
+    status: done
     description: 'work_type: technical_debt_remediation
 
       step_type: implementation
@@ -75419,6 +75419,23 @@ phases:
     agent: python-senior-tacit
     claimed_by: python-senior-tacit
     claimed_at: '2026-04-10T07:04:50.820203+00:00'
+    done_at: '2026-04-10T07:07:33.889067+00:00'
+    evidence: "- authority rule location:\n  - Central family authority remains in\
+      \ `src/vectl/orchestration/dispatch_policy.py` via `_ROLE_FAMILY_POLICY` + `_validate_role_profile`.\n\
+      \  - Added runtime entrypoint authority validation in `src/vectl/orch_app.py`\
+      \ (`_validate_dispatch_authority`, invoked at start of `_start_runtime_execution`)\
+      \ to block execution-context drift before runtime prepare/start.\n- role families\
+      \ enforced:\n  - planner (`vectl-planner`) => `main_worktree`\n  - resolver\
+      \ (`conflict-resolver`) => `main_worktree`\n  - reviewer (`gate-reviewer`, etc.)\
+      \ => `main_worktree`\n  - Enforcement path now checks dispatch spec context\
+      \ against authoritative role profile before mechanical launch.\n- touched tests:\n\
+      \  - `tests/orchestration/unit/test_dispatch_policy_red.py`: retired remaining\
+      \ main-worktree policy xfails (GAP1/GAP5) by asserting concrete `ConfigRoleProfileRegistry`\
+      \ family behavior.\n  - `tests/orchestration/unit/test_orch_app.py`: added `test_start_runtime_execution_blocks_context_drift_before_runtime_launch`\
+      \ to verify pre-launch authority validation rejects mismatched execution_context.\n\
+      - commands/tests run:\n  - `uv run pytest tests/orchestration/unit/test_dispatch_policy_red.py\
+      \ -q` => `17 passed`\n  - `uv run pytest tests/orchestration/unit/test_orch_app.py\
+      \ -k \"context_drift_before_runtime_launch\" -q` => `1 passed, 46 deselected`"
   - id: xfail_authority_and_entrypoint_enforcement.harden-resolver-gateway-and-lifecycle-facade
     name: Harden resolver gateway and lifecycle facade
     status: pending

@@ -77080,6 +77080,53 @@ phases:
     - resolver_cleanup_core.remove-legacy-surfaces-and-dead-metadata
     - resolver_cleanup_core.verify-cleaned-runtime-and-contract-surfaces
     agent: gate-reviewer-tacit
+  - id: resolver_cleanup_core.fix-gate-shouldfix-batch
+    name: resolver_cleanup_core.fix-gate-shouldfix-batch
+    status: pending
+    description: 'Batched should-fix remediation before core migration proceeds.
+
+
+      Address gate finding S1 from `resolver_cleanup_contracts.gate` by making the
+      documented default resolver agent `blocked-case-coordinator-tacit` resolvable
+      through config-backed/default RoleProfile authority.
+
+
+      Scope:
+
+      - add or confirm the `blocked-case-coordinator-tacit` RoleProfile in config/default
+      profiles
+
+      - align default resolver lookup so dispatch of the tacit blocked-case resolver
+      succeeds without `UnknownRoleError`
+
+      - preserve resolver-cleanup direction by preventing any reintroduction of legacy
+      conflict/judge taxonomy
+
+
+      Acceptance lock:
+
+      - `blocked-case-coordinator-tacit` is present in the authoritative config/default
+      role profile set
+
+      - registry/default-role lookup for the tacit resolver succeeds
+
+      - no conflict/judge taxonomy is reintroduced in config, resolver defaults, or
+      related metadata
+
+
+      Completion Criteria (stub exclusion)
+
+      This is an IMPLEMENTATION step. Stub-only completion is NOT acceptable. Each
+      deliverable MUST contain substantive logic/configuration that changes runtime
+      lookup behavior and preserves the resolver-cleanup contract.'
+    verification: '- `blocked-case-coordinator-tacit` RoleProfile present in config/default
+      profiles
+
+      - registry lookup for the tacit role succeeds without `UnknownRoleError`
+
+      - focused regression confirms no reintroduction of conflict/judge taxonomy in
+      resolver-facing config/default/profile surfaces'
+    agent: python-senior-tacit
 - id: resolver_cleanup_finalization
   name: 'Resolver Cleanup: Finalization, Doc Sync, and Deep Review'
   status: locked

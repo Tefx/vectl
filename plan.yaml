@@ -75467,7 +75467,7 @@ phases:
     agent: gate-reviewer-tacit
 - id: retire_repair_continuity_legacy_surface
   name: Retire Legacy `repair continuity` Surface
-  status: in_progress
+  status: done
   gate: Legacy `vectl repair continuity` residue is removed or converted into an explicit
     retirement shim, all tests/docs align to `vectl orch recover`, and no stale public-surface
     claims remain.
@@ -75804,7 +75804,7 @@ phases:
       \ now 5/6 complete; remaining step is `doc-sync` (documentation synchronisation)."
   - id: retire_repair_continuity_legacy_surface.gate
     name: Gate legacy repair continuity retirement
-    status: claimed
+    status: done
     description: 'Final review for retirement of the legacy `repair continuity` surface.
 
 
@@ -75836,6 +75836,18 @@ phases:
     agent: gate-reviewer-tacit
     claimed_by: gate-reviewer-tacit
     claimed_at: '2026-04-10T06:41:52.747845+00:00'
+    done_at: '2026-04-10T06:43:52.698571+00:00'
+    evidence: "## Gate Review Report\n- retirement decision consistency:\n  - Code:\
+      \ legacy `repair continuity` command and legacy module import path removed from\
+      \ `src/vectl/cli.py`.\n  - Tests: `tests/repro/test_repair_continuity_black_box.py`\
+      \ rewritten to validate retirement behavior and supported `orch recover` surface.\n\
+      \  - Docs: `README.md` and `docs/ORCHESTRATION-CLI-QUICKSTART.md` now state\
+      \ `repair continuity` is retired and point to `vectl orch recover`; stale authority\
+      \ references in orchestration continuity/recovery modules were relabeled to\
+      \ current docs.\n  - Runtime verification: focused recovery suites pass (`23\
+      \ passed`).\n- residual ambiguity:\n  - none blocker-class. Legacy command mention\
+      \ remains only as explicit retirement note in README, not as supported functionality.\n\
+      - gate decision OPEN|BLOCKED:\n  - OPEN"
 - id: live_smoke_real_runner_validation
   name: Live Smoke Real Runner Validation and Remediation
   status: locked

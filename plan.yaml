@@ -76754,6 +76754,67 @@ phases:
 
       '
     agent: python-senior-tacit
+  - id: resolver_cleanup_core.wire-default-blocked-case-resolver
+    name: Wire program to configured blocked-case resolver
+    status: pending
+    description: 'Replace the legacy resolver invocation path with a real config-driven
+      default resolver entry.
+
+
+      Touch paths:
+
+      - src/vectl/orch_app.py
+
+      - src/vectl/orchestration/resolver.py
+
+      - src/vectl/orchestration/interfaces.py
+
+      - resolver-facing runtime/invocation tests
+
+
+      Required outcomes:
+
+      - Program blocked/unresolved flow calls `resolver.default_role_id`.
+
+      - Default shipped value is `blocked-case-coordinator`.
+
+      - `blocked-case-coordinator-tacit` is callable by explicit config selection.
+
+      - Resolver path returns ResolutionReport and refreshes state; it is no longer
+      a legacy stub semantics path.
+
+
+      Dependency rationale: data_flow from config-backed role profile migration.'
+    verification: '- Blocked-case program path invokes configured resolver.default_role_id.
+
+      - Both new resolver personas can be selected through config.
+
+      - Resolver path tests prove ResolutionCase -> ResolutionReport behavior remains
+      valid.'
+    evidence_template: '## refs Read Confirmation (MANDATORY)
+
+      For each ref in this step:
+
+      - <filename> — key passage or "NOT READ: <reason>"
+
+
+      If no refs were provided, state: "No refs for this step."
+
+
+      ## Wiring Evidence
+
+      - Configured resolver.default_role_id path:
+
+      - Runtime invocation proof:
+
+      - Tests run:
+
+      - Remaining stub/legacy invocation traces:
+
+      '
+    depends_on:
+    - resolver_cleanup_core.migrate-role-profiles-to-config
+    agent: python-senior-tacit
 - id: resolver_cleanup_finalization
   name: 'Resolver Cleanup: Finalization, Doc Sync, and Deep Review'
   status: locked

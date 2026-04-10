@@ -77965,7 +77965,7 @@ phases:
       \ Cherry-picked on main: `661d8fb`"
   - id: orch_plane_live_authority.roster-decision-path
     name: Bring roster into dispatch authority
-    status: pending
+    status: claimed
     description: Make roster resource/reuse state participate in the primary dispatch
       decision path instead of remaining an advisory side seam.
     verification: Decision-path tests prove roster snapshot changes can alter admission/reuse
@@ -77987,6 +77987,8 @@ phases:
     depends_on:
     - orch_plane_live_authority.contract-lock
     agent: python-senior-tacit
+    claimed_by: python-senior-tacit
+    claimed_at: '2026-04-10T19:23:57.416685+00:00'
   - id: orch_plane_live_authority.dynamic-tool-mediation
     name: Make tool mediation dynamic
     status: done

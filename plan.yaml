@@ -73738,3 +73738,22 @@ phases:
       - Tests updated:
 
       - Command(s) run:'
+  - id: repo_regression_observability_gap_disposition.decide-implement-vs-xfail-for-remaining-observability-gaps
+    name: Decide implement versus xfail for remaining observability gaps
+    status: pending
+    description: For remaining observability repro failures (projection replay, final.json
+      schema, step-key normalization, latest_run boundary, canonical tool registry,
+      etc.), decide item-by-item whether to implement now or retain as intentional
+      expected-red debt with explicit lifecycle marking.
+    verification: 'Every remaining observability repro failure has an explicit disposition:
+      fixed now, xfail with rationale, or moved out of the full-suite blocking path
+      intentionally.'
+    evidence_template: '- Remaining gaps table:
+
+      - Implement-now items:
+
+      - Intentional xfail items with rationale:
+
+      - Commands/tests run:'
+    depends_on:
+    - repo_regression_observability_gap_disposition.align-event-envelope-schema-tests

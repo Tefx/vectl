@@ -77225,3 +77225,54 @@ phases:
     depends_on:
     - resolver_cleanup_finalization.doc-sync
     agent: blind-tester-tacit
+  - id: resolver_cleanup_finalization.gate
+    name: Final gate for resolver cleanup
+    status: pending
+    description: 'Gate review: verify the cleaned orchestration model is complete,
+      documented, regression-checked, and free of current legacy resolver/judge drift.
+
+
+      review_depth: THOROUGH
+
+      cross_cutting_focus:
+
+      - config as ordinary role-profile source of truth
+
+      - single blocked-case resolver entrypoint
+
+      - planner direct vectl-facade mutation boundary
+
+      - absence of deleted legacy concepts in active current surfaces'
+    verification: '- All finalization steps completed successfully.
+
+      - Evidence collected and reviewed.
+
+      - No unresolved blockers remain.
+
+      - Clean architecture accepted.'
+    evidence_template: '## refs Read Confirmation (MANDATORY)
+
+      For each ref in this step:
+
+      - <filename> — key passage or "NOT READ: <reason>"
+
+
+      If no refs were provided, state: "No refs for this step."
+
+
+      ## Final Gate Report
+
+      - Evidence reviewed:
+
+      - Remaining blockers:
+
+      - Gate decision basis:
+
+      '
+    depends_on:
+    - resolver_cleanup_finalization.full-regression
+    - resolver_cleanup_finalization.doc-sync
+    - resolver_cleanup_finalization.spec-conformance
+    - resolver_cleanup_finalization.architecture-review
+    - resolver_cleanup_finalization.black-box-surface-check
+    agent: gate-reviewer-tacit

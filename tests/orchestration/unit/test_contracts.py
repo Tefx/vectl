@@ -346,7 +346,7 @@ class TestResolutionCase:
         Verify ResolutionCase preserves the 4 required semantic fields.
 
         Spec: docs/ORCHESTRATION-PLANE-INTERFACES.md section 3.8
-        Fields: reason, core, roster, runtime
+        Fields: reason, core, roster, runtime, case metadata, and evidence refs
         """
         from vectl.orchestration.contracts import ResolutionCase
 

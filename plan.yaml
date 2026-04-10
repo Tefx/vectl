@@ -75642,3 +75642,56 @@ phases:
     depends_on:
     - live_smoke_real_runner_validation.lock-live-runner-execution-matrix
     agent: integration-verifier-tacit
+  - id: live_smoke_real_runner_validation.fix-live-smoke-product-defects-batch
+    name: Fix live-smoke product defects batch
+    status: pending
+    description: 'work_type: technical_debt_remediation
+
+      step_type: implementation_batch
+
+
+      Fix all genuine product defects discovered by the real live-smoke matrix.
+
+
+      Requirements:
+
+      - only address failures classified as product defects, not missing auth/binary/opt-in
+      prerequisites
+
+      - preserve live-smoke evidence contract and avoid weakening assertions just
+      to make lanes green
+
+      - keep fixes within the supported runner/dispatch/judge/public-surface behavior
+      implied by the executed matrix
+
+      - if no product defects are found, explicitly record that this step is a no-op
+      by evidence
+
+
+      Potential touch areas:
+
+      - runner integration wiring
+
+      - subprocess invocation and capture behavior
+
+      - live output parsing/normalization
+
+      - dispatch/judge result shaping
+
+      - dashboard/ui smoke issues only if UI lane was explicitly in-scope'
+    verification: '- Each product failure from the live matrix is either fixed or
+      explicitly deferred with rationale
+
+      - No environment-only issue is misclassified as a product bug'
+    evidence_template: '## Remediation Batch Evidence
+
+      - product defects fixed:
+
+      - no-op or deferred items:
+
+      - files changed:
+
+      - why assertions remain honest:'
+    depends_on:
+    - live_smoke_real_runner_validation.run-real-live-smoke-matrix
+    agent: python-senior-tacit

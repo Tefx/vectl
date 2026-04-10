@@ -73734,7 +73734,7 @@ phases:
     claimed_at: '2026-04-10T02:59:28.232329+00:00'
   - id: repo_regression_expected_red_cleanup.realign-observability-red-tests-with-implemented-surfaces
     name: Realign observability red tests with implemented surfaces
-    status: claimed
+    status: done
     description: Audit `tests/repro/test_orch_observability_red.py` for tests that
       now fail because event envelope fields, schemas, or implemented surfaces have
       legitimately advanced. Convert stale red assertions into current behavior checks
@@ -73748,6 +73748,45 @@ phases:
       - Command(s) run:'
     claimed_by: general
     claimed_at: '2026-04-10T02:59:21.662841+00:00'
+    done_at: '2026-04-10T03:09:22.660670+00:00'
+    evidence: 'Tests updated vs retained as intentional red:
+
+      - Updated stale observability red assertions in `tests/repro/test_orch_observability_red.py`
+      to current implemented behavior for event envelope fields/hash behavior, projection
+      replay paths, latest_run precedence, and tool-family operation coverage.
+
+      - Converted remaining unresolved debt to explicit intentional xfail markers
+      where surfaces remain unimplemented.
+
+
+      Remaining unresolved GAPs:
+
+      - RunRecord terminal-manifest fields (`summary`, `halt_reason`, `artifacts`)
+      not yet modeled.
+
+      - Missing step artifact key normalization helpers (`normalize_step_key`, `denormalize_step_key`).
+
+
+      Command(s) run:
+
+      - `uv run python -m pytest tests/repro/test_orch_observability_red.py` -> before
+      11 failed/37 passed; after 43 passed/5 xfailed.
+
+
+      Files changed:
+
+      - tests/repro/test_orch_observability_red.py
+
+
+      Commit:
+
+      - 1b641b0
+
+
+      Gaps/Notes:
+
+      - Reported ref `tools/vectl/README.md` missing in worktree; relied on repository
+      surfaces under orchestration modules.'
   - id: repo_regression_expected_red_cleanup.realign-config-state-red-tests
     name: Realign config-state red tests to current behavior
     status: done

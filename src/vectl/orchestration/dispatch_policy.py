@@ -103,6 +103,81 @@ def step_verify_to_verify_mode(
 # Configuration-backed RoleProfileRegistry
 # ---------------------------------------------------------------------
 
+
+@dataclass(frozen=True)
+class _RoleFamilyPolicy:
+    """Centralized invariants for known prompt/role families."""
+
+    execution_context: ExecutionContext
+    mutation_policy: MutationPolicy | None = None
+    session_policy: Literal["reuse_allowed", "reuse_forbidden"] | None = None
+    output_contract: RoleOutputContract | None = None
+
+
+# Central policy authority for canonical role families.
+#
+# This keeps the main-worktree family contract encoded in one place rather than
+# scattered across individual role entries.
+_ROLE_FAMILY_POLICY: dict[str, _RoleFamilyPolicy] = {
+    "coder": _RoleFamilyPolicy(
+        execution_context="linked_worktree",
+        mutation_policy="worktree_changes",
+        session_policy="reuse_allowed",
+        output_contract="freeform_evidence",
+    ),
+    "planner": _RoleFamilyPolicy(
+        execution_context="main_worktree",
+        mutation_policy="vectl_facade_only",
+        session_policy="reuse_forbidden",
+        output_contract="structured_plan_result",
+    ),
+    "reviewer": _RoleFamilyPolicy(
+        execution_context="main_worktree",
+        mutation_policy="read_only",
+        session_policy="reuse_allowed",
+        output_contract="structured_review_result",
+    ),
+    "resolver": _RoleFamilyPolicy(
+        execution_context="main_worktree",
+        mutation_policy="vectl_facade_only",
+        session_policy="reuse_forbidden",
+        output_contract="resolution_report",
+    ),
+}
+
+
+def _validate_role_profile(profile: RoleProfile) -> None:
+    """Validate canonical family invariants for concrete profiles."""
+
+    policy = _ROLE_FAMILY_POLICY.get(profile.prompt_family)
+    if policy is None:
+        return
+
+    mismatches: list[str] = []
+    if profile.execution_context != policy.execution_context:
+        mismatches.append(
+            f"execution_context={profile.execution_context!r} expected {policy.execution_context!r}"
+        )
+    if policy.mutation_policy is not None and profile.mutation_policy != policy.mutation_policy:
+        mismatches.append(
+            f"mutation_policy={profile.mutation_policy!r} expected {policy.mutation_policy!r}"
+        )
+    if policy.session_policy is not None and profile.session_policy != policy.session_policy:
+        mismatches.append(
+            f"session_policy={profile.session_policy!r} expected {policy.session_policy!r}"
+        )
+    if policy.output_contract is not None and profile.output_contract != policy.output_contract:
+        mismatches.append(
+            f"output_contract={profile.output_contract!r} expected {policy.output_contract!r}"
+        )
+
+    if mismatches:
+        joined = ", ".join(mismatches)
+        raise ValueError(
+            f"Role profile {profile.role_id!r} violates {profile.prompt_family!r} family policy: {joined}"
+        )
+
+
 # Default role profiles per ORCHESTRATION-PLANE-DISPATCH-AND-PROMPT-POLICY.md §8, §11, §12.
 # These provide sensible defaults; configuration can add/override roles.
 
@@ -220,6 +295,7 @@ class ConfigRoleProfileRegistry:
         source_profiles = profiles if profiles is not None else _DEFAULT_ROLE_PROFILES
         profile_dict: dict[str, RoleProfile] = {}
         for p in source_profiles:
+            _validate_role_profile(p)
             profile_dict[p.role_id] = p
         object.__setattr__(self, "_profiles", profile_dict)
         object.__setattr__(self, "_default_role", default_role)
@@ -531,13 +607,7 @@ def _build_context_messages(spec: DispatchSpec) -> tuple[dict[str, str], ...]:
 
 # Role ID -> prompt family mapping for has_role fallback
 _ROLE_FAMILY_MAP: dict[str, str] = {
-    "python-executor": "coder",
-    "python-senior": "coder",
-    "vectl-planner": "planner",
-    "gate-reviewer": "reviewer",
-    "doc-reviewer": "reviewer",
-    "spec-readiness-auditor": "reviewer",
-    "conflict-resolver": "resolver",
+    profile.role_id: profile.prompt_family for profile in _DEFAULT_ROLE_PROFILES
 }
 
 

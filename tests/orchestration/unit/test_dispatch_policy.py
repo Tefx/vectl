@@ -272,6 +272,22 @@ class TestConfigRoleProfileRegistry:
         assert profile.role_id == "custom-agent"
         assert profile.default_runner == "custom-runner"
 
+    def test_main_worktree_family_policy_is_validated_for_custom_profiles(self) -> None:
+        """Canonical main-worktree family policy is enforced centrally."""
+        invalid_reviewer = RoleProfile(
+            role_id="custom-reviewer",
+            prompt_family="reviewer",
+            template_id="reviewer_custom",
+            execution_context="linked_worktree",
+            mutation_policy="read_only",
+            session_policy="reuse_allowed",
+            output_contract="structured_review_result",
+            default_runner="codex",
+        )
+
+        with pytest.raises(ValueError, match="violates 'reviewer' family policy"):
+            ConfigRoleProfileRegistry(profiles=(invalid_reviewer,))
+
     def test_default_role_is_configurable(self) -> None:
         """Default role can be overridden via configuration."""
         registry = ConfigRoleProfileRegistry(default_role="python-senior")

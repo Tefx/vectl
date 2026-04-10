@@ -75141,6 +75141,30 @@ phases:
     depends_on:
     - xfail_authority_and_entrypoint_enforcement.enforce-main-worktree-role-authority
     agent: python-senior-tacit
+  - id: xfail_authority_and_entrypoint_enforcement.retest-authority-enforcement
+    name: Retest authority and entrypoint enforcement
+    status: pending
+    description: 'step_type: test
+
+      step_intent: retest_green
+
+      expected_result: green
+
+
+      Run focused suites covering main-worktree authority and runner-backend authority
+      hardening.'
+    verification: '- main-worktree family tests are green
+
+      - runner-backend red tests are green
+
+      - evidence includes actual command output'
+    evidence_template: "- Commands:\n  - `uv run pytest tests/orchestration/unit/test_dispatch_policy_red.py\
+      \ -k \"MainWorktreeRolePolicy\" -q`\n  - `uv run pytest tests/orchestration/unit/test_runner_backend_red.py\
+      \ -q`\n- Output:\n- Remaining governed statuses:"
+    depends_on:
+    - xfail_authority_and_entrypoint_enforcement.enforce-main-worktree-role-authority
+    - xfail_authority_and_entrypoint_enforcement.harden-resolver-gateway-and-lifecycle-facade
+    agent: integration-verifier-tacit
 - id: xfail_finalization
   name: XFail Remediation Finalization
   status: locked

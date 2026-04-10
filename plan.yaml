@@ -75199,7 +75199,7 @@ phases:
       \ no additional code changes required."
   - id: xfail_role_prompt_and_review_normalization.implement-structured-review-normalizer
     name: Implement structured review result normalizer
-    status: claimed
+    status: done
     description: 'work_type: technical_debt_remediation
 
       step_type: implementation
@@ -75231,6 +75231,20 @@ phases:
     agent: python-senior-tacit
     claimed_by: python-senior-tacit
     claimed_at: '2026-04-10T06:52:23.085813+00:00'
+    done_at: '2026-04-10T06:57:02.327388+00:00'
+    evidence: 'Verified existing canonical review normalization seam in src/vectl/orchestration/dispatch_policy.py
+      and src/vectl/orch_app.py. normalize_review_result returns None for pass and
+      ResolutionCase(case_source=''review_failed'', reason=''review outcome: <outcome>'')
+      for needs_fix/needs_replan/operator_required; normalize_parse_failure emits
+      explicit review_failed contract-violation cases and orch_app routes structured_review_result
+      outputs only through _normalize_review_case with no prose fallback. Focused
+      verification: `uv run pytest tests/orchestration/unit/test_dispatch_policy.py
+      -k "ReviewResultNormalization or ParseFailureNormalization"` => 7 passed; `uv
+      run pytest tests/orchestration/unit/test_orch_app.py -k "review_non_pass or
+      review_parse_failure or route_terminal_execution_non_pass_review or route_terminal_execution_parse_failure"`
+      => 4 passed. Observed red-spec file remains intentionally xfailed: `uv run pytest
+      tests/orchestration/unit/test_dispatch_policy_red.py -k "StructuredReviewResultNormalization"`
+      => 5 xfailed.'
   - id: xfail_role_prompt_and_review_normalization.retest-role-prompt-and-review
     name: Retest role, prompt, and review normalization
     status: pending

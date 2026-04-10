@@ -76909,7 +76909,7 @@ phases:
       \ config`"
   - id: resolver_cleanup_core.wire-default-blocked-case-resolver
     name: Wire program to configured blocked-case resolver
-    status: rejected
+    status: claimed
     description: 'Replace the legacy resolver invocation path with a real config-driven
       default resolver entry.
 
@@ -76969,7 +76969,7 @@ phases:
     - resolver_cleanup_core.migrate-role-profiles-to-config
     agent: python-senior-tacit
     claimed_by: python-senior-tacit
-    claimed_at: '2026-04-10T13:53:59.920390+00:00'
+    claimed_at: '2026-04-10T14:47:14.842945+00:00'
     done_at: '2026-04-10T14:12:12.418506+00:00'
     rejection_reason: 'downstream verification found regression: BoundResolver constructor
       contract update not reflected in runner backend red test'

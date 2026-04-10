@@ -76488,7 +76488,7 @@ phases:
   steps:
   - id: resolver_cleanup_contracts.freeze-clean-architecture
     name: Freeze clean architecture and config ownership
-    status: claimed
+    status: done
     description: 'Work type: technical_debt_remediation.
 
 
@@ -76561,6 +76561,58 @@ phases:
     agent: software-architect-tacit
     claimed_by: software-architect-tacit
     claimed_at: '2026-04-10T12:17:29.133669+00:00'
+    done_at: '2026-04-10T12:30:17.448220+00:00'
+    evidence: "## refs Read Confirmation (MANDATORY)\nFor each ref in this step:\n\
+      - tools/vectl/README.md — NOT READ: called `read` on `/Users/tefx/Projects/vectl/.vectl/worktrees/resolver_cleanup_contracts.freeze-clean-architecture/tools/vectl/README.md`,\
+      \ but the file does not exist in this isolated worktree\n\n## Contract Freeze\
+      \ Evidence\n- ADR/doc sections updated:\n  - Added `docs/ADR-orchestration-role-profile-config-and-resolver-cleanup.md`\
+      \ as the new accepted authority for the freeze\n  - `docs/ORCHESTRATION-PLANE-ARCHITECTURE.md`:\n\
+      \    - §8.3 freezes the authority split: plan references `role_id`, config defines\
+      \ role profiles, core only loads/validates/consumes\n    - §10.2 freezes default\
+      \ resolver agents to `blocked-case-coordinator` and `blocked-case-coordinator-tacit`\n\
+      \    - §10.3 marks historical `plan.yaml` as non-authoritative\n  - `docs/ORCHESTRATION-PLANE-DISPATCH-AND-PROMPT-POLICY.md`:\n\
+      \    - §8.4 makes `RoleProfileRegistry` config-backed\n    - §9.1 removes fallback-role\
+      \ behavior and requires explicit failure instead of silent invention\n    -\
+      \ `RoleProfile` shape removes `template_id` and adds config-owned `agent_id`\n\
+      \    - §11.5 freezes resolver-family defaults to the two blocked-case coordinator\
+      \ agents\n    - §15.3 says planner mutations go through approved vectl facade\
+      \ and never edit `plan.yaml`\n  - `docs/ORCHESTRATION-PLANE-RESOLUTION-CONTRACT.md`:\n\
+      \    - front matter now ties to cleanup ADR\n    - intro freezes the only default\
+      \ resolver agents\n    - §10 forbids direct `plan.yaml` editing for plan mutation\n\
+      \    - §11 marks historical vocabulary as legacy-only\n  - `docs/ORCHESTRATION-PLANE-RESOLVER-COORDINATION.md`:\n\
+      \    - §2 freezes default resolver agents\n    - Rule 5 narrows delegation to\
+      \ planner/coder/reviewer\n    - §9.3 says planner never edits `plan.yaml`\n\
+      \  - `docs/ORCHESTRATION-PLANE-ORCH-APP-ROUTING.md`:\n    - dispatch routing\
+      \ now resolves config-backed role profiles\n    - planner example states orchestrator\
+      \ applies mutations via approved vectl facade\n    - §9.3 repeats the plan/config/core\
+      \ authority split\n  - `docs/ORCHESTRATION-PLANE-IMPLEMENTATION-DESIGN.md`:\n\
+      \    - removes `judgments.py` from target package shape\n    - replaces it with\
+      \ `dispatch_policy.py` for config-backed role-profile/dispatch support\n   \
+      \ - adds planner mutation rule via vectl facade only\n  - `docs/ORCHESTRATION-PLANE-CLI-CONFIG-OBSERVABILITY-DESIGN.md`:\n\
+      \    - config principles now state role profiles are config-owned\n    - schema\
+      \ now defines `role_profiles` in config, including the two resolver defaults\n\
+      \    - validation rules require resolver default to be one of the two blocked-case\
+      \ coordinator IDs\n    - frozen snapshot note says historical `plan.yaml` is\
+      \ not authority for role vocabulary\n  - `docs/ORCHESTRATION-PLANE-ISOLATION-SEMANTICS.md`:\n\
+      \    - removes legacy judgment wording\n    - marks historical `plan.yaml` and\
+      \ legacy labels as non-authoritative\n- Final architecture summary:\n  - Plan/work\
+      \ items reference roles only\n  - Orchestration configuration defines ordinary\
+      \ role profiles\n  - Orchestration core only loads, validates, and consumes\
+      \ those profiles\n  - The only default resolver agents are `blocked-case-coordinator`\
+      \ and `blocked-case-coordinator-tacit`\n  - Planner remains orchestrator-invoked\
+      \ and any authoritative mutation flows through the approved vectl facade, never\
+      \ by editing `plan.yaml`\n- Explicit deletions locked:\n  - ADR explicitly removes\
+      \ `conflict-resolver`, `resolver_conflict`, `judge`, `judgment`, `judgments`,\
+      \ `template_id`, and `fallback_role` from the target architecture\n  - Post-update\
+      \ grep across `docs/ORCHESTRATION-PLANE-*.md` for `conflict-resolver|resolver_conflict|judge|judgment|judgments|template_id|fallback_role`\
+      \ returned no matches\n- Historical plan non-authority note confirmed:\n  -\
+      \ ADR §Decision item 5\n  - `ORCHESTRATION-PLANE-ARCHITECTURE.md` §10.3\n  -\
+      \ `ORCHESTRATION-PLANE-DISPATCH-AND-PROMPT-POLICY.md` §15.3\n  - `ORCHESTRATION-PLANE-RESOLUTION-CONTRACT.md`\
+      \ §11\n  - `ORCHESTRATION-PLANE-ORCH-APP-ROUTING.md` final note\n  - `ORCHESTRATION-PLANE-CLI-CONFIG-OBSERVABILITY-DESIGN.md`\
+      \ §8.8\n  - `ORCHESTRATION-PLANE-ISOLATION-SEMANTICS.md` §7 legacy context note\n\
+      \nCommit evidence:\n- Branch: `vectl/step-resolver_cleanup_contracts.freeze-clean-architecture`\n\
+      - Commit: `c78735f1e8da625ca48f84eb814a1e0a24a79c1a`\n- Cherry-picked to `Main`:\
+      \ `3e0faae`\n- Commit message: `docs: freeze resolver cleanup architecture contract`"
   - id: resolver_cleanup_contracts.create-blocked-case-personas
     name: Create blocked-case resolver personas
     status: pending

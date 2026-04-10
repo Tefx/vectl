@@ -75735,7 +75735,7 @@ phases:
       - Branch commit: `c7edd4b`."
   - id: retire_repair_continuity_legacy_surface.retest-recovery-public-surface
     name: Retest recovery public surface after retirement cleanup
-    status: claimed
+    status: done
     description: 'step_type: test
 
       step_intent: retest_green
@@ -75774,6 +75774,34 @@ phases:
     agent: integration-verifier-tacit
     claimed_by: integration-verifier-tacit
     claimed_at: '2026-04-10T06:38:50.260197+00:00'
+    done_at: '2026-04-10T06:40:49.073663+00:00'
+    evidence: "## Verification Report\n\n### Commands Executed\n\n1. `uv run vectl\
+      \ repair --help`\n2. `uv run vectl repair continuity --help`\n3. `uv run vectl\
+      \ orch recover --help`\n4. `uv run pytest -q tests/repro/test_repair_continuity_black_box.py\
+      \ tests/repro/test_orch_cli_recovery_red.py`\n\n### Actual Output\n\n**`vectl\
+      \ repair --help`** — Shows `repair` group with only `claims` subcommand. No\
+      \ `continuity` listed:\n```\nUsage: vectl repair [OPTIONS] COMMAND [ARGS]...\n\
+      \ Operator recovery commands.\n Commands:\n   claims  Repair claims.json consistency\
+      \ against plan.yaml (current branch scope).\n```\n\n**`vectl repair continuity\
+      \ --help`** — Explicit error refusing legacy subcommand:\n```\nError: No such\
+      \ command 'continuity'.\n```\n\n**`vectl orch recover --help`** — Healthy recovery\
+      \ surface with full option set:\n```\nUsage: vectl orch recover [OPTIONS] [RUN_ID]\n\
+      \ Recover orchestration state from continuity artifacts.\n Arguments: [RUN_ID]\n\
+      \ Options: --latest, --step, --dry-run, --json, --output, --yes, --plan, --help\n\
+      ```\n\n**Test suite** — All 23 tests green:\n```\ntests/repro/test_repair_continuity_black_box.py\
+      \ ...  (3 passed)\ntests/repro/test_orch_cli_recovery_red.py ............ (20\
+      \ passed)\n23 passed in 5.42s\n```\n\n### Public-Surface Decision Validated\
+      \ How\n\n- **Legacy `repair continuity` no longer appears as supported**: `vectl\
+      \ repair --help` lists only `claims`; invoking `repair continuity` returns an\
+      \ explicit `No such command 'continuity'` error — confirming the legacy subcommand\
+      \ is fully retired.\n- **`repair continuity` invocation behavior is explicit**:\
+      \ The CLI rejects `continuity` with a clear error message rather than silently\
+      \ failing or redirecting.\n- **`orch recover` surface remains healthy**: `vectl\
+      \ orch recover --help` displays full usage, arguments, and options without errors\
+      \ — the canonical recovery path is intact.\n- **Focused tests green**: All 3\
+      \ black-box tests for repair continuity retirement and all 20 orch CLI recovery\
+      \ tests pass.\n\n### Remaining Governed Statuses\n\nStep `retire_repair_continuity_legacy_surface`\
+      \ now 5/6 complete; remaining step is `doc-sync` (documentation synchronisation)."
   - id: retire_repair_continuity_legacy_surface.gate
     name: Gate legacy repair continuity retirement
     status: pending

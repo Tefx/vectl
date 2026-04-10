@@ -77114,7 +77114,7 @@ phases:
       \ (judge surface cleanup)\n- `tests/conftest.py`"
   - id: resolver_cleanup_core.verify-cleaned-runtime-and-contract-surfaces
     name: Verify cleaned runtime and contract surfaces
-    status: claimed
+    status: pending
     description: 'Independent verification of the cleanup seam after config migration,
       new resolver wiring, and legacy-surface removal.
 
@@ -77159,8 +77159,6 @@ phases:
     depends_on:
     - resolver_cleanup_core.remove-legacy-surfaces-and-dead-metadata
     agent: integration-verifier-tacit
-    claimed_by: integration-verifier-tacit
-    claimed_at: '2026-04-10T14:28:20.670322+00:00'
   - id: resolver_cleanup_core.gate
     name: Gate config and surface cleanup
     status: pending

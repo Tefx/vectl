@@ -75234,8 +75234,6 @@ phases:
       - Retired xfails:
 
       - Remaining governed non-green statuses and rationale:'
-    depends_on:
-    - xfail_finalization.doc-sync-expected-red-retirement
     agent: integration-verifier-tacit
   - id: xfail_finalization.deep-review-xfail-remediation
     name: Deep review xfail remediation closure

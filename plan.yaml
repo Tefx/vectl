@@ -78229,7 +78229,7 @@ phases:
       \ behavior: PROVEN\n\ngate_open_allowed: true"
 - id: orch_plane_planner_boundary
   name: Orchestration Plane Planner Boundary
-  status: in_progress
+  status: done
   gate: Planner-facing execution is forced through vectl facade/runtime boundaries,
     with live proof that direct plan.yaml editing or facade bypass is blocked.
   depends_on:
@@ -78419,7 +78419,7 @@ phases:
       directly edit plan.yaml outside the authorized mutation boundary"'
   - id: orch_plane_planner_boundary.gate
     name: Gate planner boundary remediation
-    status: claimed
+    status: done
     description: Gate review for planner-boundary remediation. Block if live planner
       execution can still reach plan.yaml outside the vectl facade or if runtime enforcement
       remains proof-light.
@@ -78444,9 +78444,31 @@ phases:
     agent: gate-reviewer-tacit
     claimed_by: gate-reviewer-tacit
     claimed_at: '2026-04-10T20:44:15.009818+00:00'
+    done_at: '2026-04-10T20:55:07.426649+00:00'
+    evidence: "## refs Read Confirmation (MANDATORY)\n- src/vectl/orchestration/runtime.py\
+      \ — reviewed `prepare()` block for `vectl_facade_mutation` + `_request_output_contract()`\
+      \ extraction.\n- src/vectl/orchestration/contracts.py — reviewed literal contract\
+      \ pins for mutation surface/policies/output contracts.\n- src/vectl/orchestration/config.py\
+      \ — reviewed planner role-family and role-profile contract pins.\n- src/vectl/orch_app.py\
+      \ — reviewed dispatch authority validation before runtime prepare and propagation\
+      \ of policy/output refs.\n- src/vectl/io.py — reviewed CAS/file-lock/atomic\
+      \ write protections.\n- tests/orchestration/unit/test_runtime.py, test_orch_app.py,\
+      \ test_core_adapter_impl.py, test_contract_lock_boundaries.py, test_dispatch_policy.py,\
+      \ tests/test_io.py, tests/test_manual_yaml_edit.py — reviewed relevant proofs.\n\
+      - tools/vectl/README.md — NOT READ: file absent in worktree.\n\n## Gate Decision\
+      \ Basis\n- Reviewed steps:\n  - orch_plane_planner_boundary.facade-enforcement\n\
+      \  - orch_plane_planner_boundary.live-proof\n- Blocking findings:\n  - none\n\
+      - Residual risk disposition:\n  - low residual only for internal direct Runtime\
+      \ construction paths; public orchestration/CLI/MCP path remains bounded via\
+      \ dispatch authority + runtime block + CAS.\n- behavioral_proof_register:\n\
+      \  - P1 approved facade mutation path only: PROVEN\n  - P2 runtime block on\
+      \ planner worktree bypass: PROVEN\n  - P3 no silent fallback on boundary violations:\
+      \ PROVEN\n  - P4 CAS conflict rejection on direct plan edit: PROVEN\n  - P5\
+      \ dispatch authority prevents execution-context downgrade: PROVEN\n- gate_open_allowed:\
+      \ true"
 - id: orch_plane_finalization
   name: Orchestration Plane Finalization
-  status: locked
+  status: pending
   gate: Lower-priority hygiene is closed without reopening live-path authority gaps,
     and final review confirms the remediation chain is coherent.
   depends_on:

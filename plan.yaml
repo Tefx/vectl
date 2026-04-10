@@ -74146,7 +74146,7 @@ phases:
   steps:
   - id: repo_regression_observability_gap_disposition.decide-implement-vs-xfail-for-remaining-observability-gaps
     name: Decide implement versus xfail for remaining observability gaps
-    status: pending
+    status: claimed
     description: For remaining observability repro failures (projection replay, final.json
       schema, step-key normalization, latest_run boundary, canonical tool registry,
       etc.), decide item-by-item whether to implement now or retain as intentional
@@ -74161,6 +74161,8 @@ phases:
       - Intentional xfail items with rationale:
 
       - Commands/tests run:'
+    claimed_by: general
+    claimed_at: '2026-04-10T03:26:26.690450+00:00'
   - id: repo_regression_surface_and_fixture_repair.reconcile-drive-cli-public-surface
     name: Reconcile drive CLI public surface
     status: pending

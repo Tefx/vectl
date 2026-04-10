@@ -73550,18 +73550,6 @@ phases:
       Ambiguous items are explicitly called out instead of guessed.
     depends_on:
     - repo_regression_triage.capture-full-suite-failure-inventory
-  - id: repo_regression_triage.define-remediation-execution-sequence
-    name: Define remediation execution sequence
-    status: pending
-    description: 'Translate the classified failures into an execution order that minimizes
-      thrash: expected-red cleanup, contract lock realignment, semantic/runtime drift
-      resolution, fixture/CLI surface repair, observability debt triage, then final
-      full-suite gate.'
-    verification: A concrete ordered remediation sequence exists and maps each bucket
-      to a downstream phase/step. Sequence is dependency-safe and avoids mixing test
-      drift with behavioral fixes.
-    depends_on:
-    - repo_regression_triage.classify-failures-by-disposition
 - id: repo_regression_expected_red_cleanup
   name: Expected-Red Cleanup and Test Intent Realignment
   status: locked
@@ -73819,6 +73807,17 @@ phases:
     lifecycle metadata.
   depends_on:
   - orchestration_upper_layer_review
+  steps:
+  - id: repo_regression_triage.define-remediation-execution-sequence
+    name: Define remediation execution sequence
+    status: pending
+    description: 'Translate the classified failures into an execution order that minimizes
+      thrash: expected-red cleanup, contract lock realignment, semantic/runtime drift
+      resolution, fixture/CLI surface repair, observability debt triage, then final
+      full-suite gate.'
+    verification: A concrete ordered remediation sequence exists and maps each bucket
+      to a downstream phase/step. Sequence is dependency-safe and avoids mixing test
+      drift with behavioral fixes.
 - id: repo_regression_semantic_alignment
   name: Repo Regression Semantic Alignment
   status: locked

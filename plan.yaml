@@ -75293,3 +75293,53 @@ phases:
     claims remain.
   depends_on:
   - xfail_finalization
+  steps:
+  - id: retire_repair_continuity_legacy_surface.lock-modern-recovery-authority-and-retirement-decision
+    name: Lock modern recovery authority and retirement decision
+    status: pending
+    description: 'work_type: technical_debt_remediation
+
+      step_type: contract_lock
+
+
+      Codify the architectural decision that legacy `vectl repair continuity` is retired
+      and that the supported recovery/quarantine authority is the orchestration-plane
+      recovery surface.
+
+
+      Requirements:
+
+      - confirm `vectl orch recover` and orchestration recovery modules are the canonical
+      recovery surface
+
+      - identify whether legacy CLI should be fully removed or retained only as an
+      explicit retirement shim pointing users to `orch recover`
+
+      - record the operator-facing replacement contract and migration note
+
+      - do not revive `vectl.driver.continuity_hygiene`
+
+
+      Decision policy:
+
+      - prefer removal if no compatibility contract requires the old command
+
+      - if a shim is retained, it must be explicit, non-ambiguous, and tested as retirement
+      behavior rather than functional recovery behavior'
+    verification: '- A single canonical recovery authority is identified with explicit
+      retirement decision for `repair continuity`
+
+      - No plan step in this phase assumes revival of the removed driver continuity
+      hygiene module'
+    evidence_template: '## Decision Record
+
+      - canonical recovery surface:
+
+      - retirement mode: removed | retirement-shim
+
+      - strongest evidence:
+
+      - migration message for operators:
+
+      - files/specs to update next:'
+    agent: software-architect-tacit

@@ -78520,7 +78520,7 @@ phases:
       \nCommit evidence:\n- Worker commit: `78c75a5`\n- Cherry-picked on main: `de87a09`"
   - id: orch_plane_finalization.test-expectation-drift
     name: Fix test expectation drift
-    status: claimed
+    status: done
     description: 'Lower-priority hygiene: reconcile pre-existing test expectation
       drift where asserted exception types/messages no longer match the authoritative
       runtime behavior; preserve product behavior unless the contract truly changed.'
@@ -78543,6 +78543,26 @@ phases:
     agent: python-executor
     claimed_by: python-executor
     claimed_at: '2026-04-10T21:02:35.719937+00:00'
+    done_at: '2026-04-10T21:07:33.684517+00:00'
+    evidence: "## refs Read Confirmation (MANDATORY)\n- tools/vectl/README.md — NOT\
+      \ READ: file absent in isolated worktree path.\n- src/vectl/orchestration/contracts.py\
+      \ — DispatchSpec contract reviewed; `prompt_family` authority field must align\
+      \ with role profile.\n- src/vectl/orchestration/config.py — `python-executor`\
+      \ role profile requires `prompt_family=\"coder\"`.\n- src/vectl/orch_app.py\
+      \ — `_start_runtime_execution` validates dispatch authority before gate check.\n\
+      - tests/orchestration/unit/test_dispatch_recovery_gate_enforcement.py — target\
+      \ fixture reviewed and aligned.\n\n## Hygiene Evidence\n- Drift cases addressed:\n\
+      \  - `test_start_runtime_raises_on_dispatch_blocked` fixture now includes authoritative\
+      \ `prompt_family=\"coder\"` for `python-executor`, so test exercises intended\
+      \ gate path instead of failing early on authority mismatch.\n- Why behavior\
+      \ stayed same or changed:\n  - Runtime behavior unchanged; dispatch authority\
+      \ validation remains correct and precedes gate checks.\n  - Change is fixture/expectation\
+      \ alignment so intended `DispatchBlockedError` path is tested.\n- Targeted test\
+      \ list:\n  - `tests/orchestration/unit/test_dispatch_recovery_gate_enforcement.py`\
+      \ (target case + full file)\n  - orchestration unit suite re-verified in prior\
+      \ integration proof context; no blocking regression intersections.\n\nDisposition:\n\
+      - expectation drift considered resolved for phase-gate purposes; no blocking\
+      \ runtime defect."
   - id: orch_plane_finalization.full-gate
     name: Final remediation gate
     status: pending

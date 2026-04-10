@@ -77854,3 +77854,10 @@ phases:
     authority path with dynamic runtime evidence and no static-bypass seam.
   depends_on:
   - resolver_cleanup_finalization
+- id: orch_plane_planner_boundary
+  name: Orchestration Plane Planner Boundary
+  status: locked
+  gate: Planner-facing execution is forced through vectl facade/runtime boundaries,
+    with live proof that direct plan.yaml editing or facade bypass is blocked.
+  depends_on:
+  - orch_plane_live_authority

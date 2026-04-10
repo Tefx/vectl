@@ -107,6 +107,7 @@ from vectl.orchestration.resolver_gateway import (
     AuditedResolverGateway,
     AuthorizationError,
     ResolverToolCall,
+    ResolverToolMediation,
     authorize_and_invoke,
 )
 from vectl.orchestration.run_store import (
@@ -364,6 +365,94 @@ class SnapshotBundle:
     core: CoreSnapshot
     roster: RosterSnapshot
     runtime: RuntimeSnapshot
+
+
+@dataclass(frozen=True)
+class CaseRuntimeToolMediationSource:
+    """Derive gateway mediation from live resolution-case inputs.
+
+    Authority:
+        docs/ORCHESTRATION-PLANE-LIVE-AUTHORITY-CONTRACT-LOCK.md section 6.2
+        docs/ORCHESTRATION-PLANE-RESOLUTION-CONTRACT.md sections 3.2, 4.0, 4.1
+
+    This source narrows configured allowlists to only the tool families requested
+    by the live case. The default live-path inspection is ``read_case`` when a
+    case identifier exists. Additional tool requests may be carried through
+    ``ResolutionCase.artifact_refs`` using ``resolver_tool=<family>.<tool>[:surface]``.
+    """
+
+    configured_allowlist_families: tuple[str, ...]
+
+    def resolve(self, case: ResolutionCase, *, role_id: str) -> ResolverToolMediation:
+        """Build a runtime mediation decision for one case.
+
+        Args:
+            case: Live resolution case being authorized.
+            role_id: Resolver role chosen for this invocation.
+
+        Returns:
+            Runtime mediation decision for the gateway.
+        """
+
+        requested_calls: list[ResolverToolCall] = []
+        if case.case_id:
+            requested_calls.append(
+                ResolverToolCall(family="orchestration", name="read_case", surface="read")
+            )
+        requested_calls.extend(_artifact_ref_mediation_calls(case.artifact_refs))
+
+        planned_tool_calls = tuple(dict.fromkeys(requested_calls))
+        requested_families = tuple(dict.fromkeys(call.family for call in planned_tool_calls))
+        allowed_tool_families = tuple(
+            family for family in requested_families if family in self.configured_allowlist_families
+        )
+
+        call_text = ",".join(
+            f"{call.family}.{call.name}:{call.surface}" for call in planned_tool_calls
+        )
+        allowlist_text = ",".join(allowed_tool_families)
+        return ResolverToolMediation(
+            planned_tool_calls=planned_tool_calls,
+            allowed_tool_families=allowed_tool_families,
+            evidence_refs=(
+                f"resolver_mediation_role={role_id}",
+                f"resolver_mediation_calls={call_text or 'none'}",
+                f"resolver_mediation_allowlist={allowlist_text or 'deny-all'}",
+            ),
+        )
+
+
+def _artifact_ref_mediation_calls(artifact_refs: tuple[str, ...]) -> tuple[ResolverToolCall, ...]:
+    """Parse case-carried runtime mediation directives.
+
+    Authority:
+        docs/ORCHESTRATION-PLANE-LIVE-AUTHORITY-CONTRACT-LOCK.md section 6.2
+        docs/ORCHESTRATION-PLANE-RESOLUTION-CONTRACT.md section 3.2
+
+    Args:
+        artifact_refs: Live case evidence references.
+
+    Returns:
+        Parsed resolver tool calls declared by the case.
+    """
+
+    calls: list[ResolverToolCall] = []
+    prefix = "resolver_tool="
+    for ref in artifact_refs:
+        if not ref.startswith(prefix):
+            continue
+        directive = ref[len(prefix) :]
+        tool_path, separator, surface_text = directive.partition(":")
+        family, dot, tool_name = tool_path.partition(".")
+        if not family or not dot or not tool_name:
+            continue
+        surface: Literal["read", "write"] = "read"
+        if separator:
+            if surface_text not in {"read", "write"}:
+                continue
+            surface = cast(Literal["read", "write"], surface_text)
+        calls.append(ResolverToolCall(family=family, name=tool_name, surface=surface))
+    return tuple(calls)
 
 
 def build_resolution_case(
@@ -3051,11 +3140,6 @@ def build_orchestration_app(
     from vectl.orchestration.roster import Roster
     from vectl.orchestration.runtime import Runtime
 
-    _DEFAULT_RESOLVER_GATEWAY_TOOL_CALLS: tuple[ResolverToolCall, ...] = (
-        ResolverToolCall(family="orchestration", name="read_case", surface="read"),
-        ResolverToolCall(family="orchestration", name="read_state", surface="read"),
-    )
-
     resolved_orchestration_config = config.orchestration_config
     if resolved_orchestration_config is None:
         loaded_config, _ = load_orchestration_config()
@@ -3216,23 +3300,24 @@ def build_orchestration_app(
             self,
             *,
             delegate: ResolverInvocationSurface,
-            allowed_tool_families: tuple[str, ...],
-            planned_tool_calls: tuple[ResolverToolCall, ...],
+            mediation_source: CaseRuntimeToolMediationSource,
         ) -> None:
             self._delegate = delegate
-            self._allowed_tool_families = allowed_tool_families
-            self._planned_tool_calls = planned_tool_calls
+            self._mediation_source = mediation_source
 
         def invoke(self, case: object, *, role_id: str) -> dict[str, object]:
             if not isinstance(case, ResolutionCase):
                 raise TypeError("resolver invocation requires ResolutionCase")
 
+            mediation = self._mediation_source.resolve(case, role_id=role_id)
+
             gateway = AuditedResolverGateway(
-                planned_tool_calls=self._planned_tool_calls,
+                planned_tool_calls=mediation.planned_tool_calls,
                 resolver_invoker=lambda request_case, _calls, invocation_ref: self._invoke_delegate(
                     request_case,
                     role_id=role_id,
                     invocation_ref=invocation_ref,
+                    mediation=mediation,
                 ),
                 invocation_ref_factory=lambda: f"resolver-gateway-{generate_run_id()}",
                 main_worktree_probe=lambda: not is_linked_worktree()[0],
@@ -3240,11 +3325,12 @@ def build_orchestration_app(
             try:
                 result = authorize_and_invoke(
                     case=case,
-                    allowed_tool_families=self._allowed_tool_families,
+                    allowed_tool_families=mediation.allowed_tool_families,
                     gateway=gateway,
                 )
             except AuthorizationError as exc:
                 evidence_refs = ["resolver:authorization-denied"]
+                evidence_refs.extend(mediation.evidence_refs)
                 evidence_refs.extend(
                     f"resolver_denied_family={family}" for family in exc.denied_families
                 )
@@ -3278,16 +3364,23 @@ def build_orchestration_app(
             *,
             role_id: str,
             invocation_ref: str,
+            mediation: ResolverToolMediation,
         ) -> ResolutionReport:
             payload = self._delegate.invoke(case, role_id=role_id)
             report = map_payload_to_report(case=case, payload=payload)
+            evidence_refs = list(report.evidence_refs)
+            for ref in mediation.evidence_refs:
+                if ref not in evidence_refs:
+                    evidence_refs.append(ref)
             gateway_ref = f"resolver_gateway_invocation={invocation_ref}"
-            if gateway_ref in report.evidence_refs:
+            if gateway_ref not in evidence_refs:
+                evidence_refs.append(gateway_ref)
+            if tuple(evidence_refs) == report.evidence_refs:
                 return report
             return ResolutionReport(
                 status=report.status,
                 summary=report.summary,
-                evidence_refs=report.evidence_refs + (gateway_ref,),
+                evidence_refs=tuple(evidence_refs),
                 operator_message=report.operator_message,
             )
 
@@ -3316,10 +3409,11 @@ def build_orchestration_app(
                 dispatch_coordinator=dispatch_coordinator,
                 timeout_seconds=resolved_orchestration_config.resolver.invocation_timeout_seconds,
             ),
-            allowed_tool_families=(
-                resolved_orchestration_config.resolver.tool_allowlist.allowed_tool_families
+            mediation_source=CaseRuntimeToolMediationSource(
+                configured_allowlist_families=(
+                    resolved_orchestration_config.resolver.tool_allowlist.allowed_tool_families
+                )
             ),
-            planned_tool_calls=_DEFAULT_RESOLVER_GATEWAY_TOOL_CALLS,
         ),
         default_role_id=resolved_orchestration_config.resolver.default_role_id,
     )

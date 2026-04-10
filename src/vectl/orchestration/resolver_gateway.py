@@ -77,6 +77,23 @@ class ResolverToolCall:
 
 
 @dataclass(frozen=True)
+class ResolverToolMediation:
+    """Runtime mediation decision for one resolver invocation.
+
+    Authority: docs/ORCHESTRATION-PLANE-LIVE-AUTHORITY-CONTRACT-LOCK.md section 6.2
+
+    Attributes:
+        planned_tool_calls: Tool calls requested by the live mediation source.
+        allowed_tool_families: Gateway allowlist narrowed to the live request.
+        evidence_refs: Machine-readable evidence emitted by the mediation source.
+    """
+
+    planned_tool_calls: tuple[ResolverToolCall, ...] = ()
+    allowed_tool_families: tuple[str, ...] = ()
+    evidence_refs: tuple[str, ...] = ()
+
+
+@dataclass(frozen=True)
 class GatewayAuditEvent:
     """Machine-readable audit record for one resolver tool-call attempt.
 
@@ -509,6 +526,7 @@ __all__ = [
     "GatewayInvocationResult",
     "ResolverInvoker",
     "ResolverToolCall",
+    "ResolverToolMediation",
     "ResolverGateway",
     "authorize_and_invoke",
 ]

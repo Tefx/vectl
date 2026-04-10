@@ -20,6 +20,7 @@ from vectl.io import save_plan
 from vectl.models import IsolationMode, Phase, Plan, Step
 from vectl.orch_app import (
     AppConfig,
+    CaseRuntimeToolMediationSource,
     build_orchestration_app,
     build_resolution_case,
     build_review_parse_failure_case,
@@ -53,7 +54,7 @@ from vectl.orchestration.dispatch_policy import (
 )
 from vectl.orchestration.events import load_event_jsonl
 from vectl.orchestration.recovery import LegacyRunStatus
-from vectl.orchestration.resolver_gateway import GatewayInvocationResult
+from vectl.orchestration.resolver_gateway import GatewayInvocationResult, ResolverToolCall
 from vectl.orchestration.run_store import RunRecord, RunRegistry, generate_run_id
 from vectl.orchestration.runner_registry import RunnerRegistry
 from vectl.orchestration.runners import (
@@ -221,6 +222,51 @@ def test_build_composes_real_collaborators_without_noop_resolver_dependency(tmp_
     assert orch._resolver.invocation.__class__.__name__ == "GatewayEnforcedResolverInvocation"
 
 
+def test_runtime_mediation_source_narrows_allowlist_to_live_case_tools() -> None:
+    source = CaseRuntimeToolMediationSource(configured_allowlist_families=("core", "orchestration"))
+
+    mediation = source.resolve(
+        ResolutionCase(
+            case_id="case-runtime-mediation",
+            case_source="review_failed",
+            reason="Blocked steps require resolution: core.ready",
+            core=_core_snapshot(),
+            roster=_roster_snapshot(),
+            runtime=_runtime_snapshot(),
+        ),
+        role_id="blocked-case-coordinator",
+    )
+
+    assert mediation.planned_tool_calls == (
+        ResolverToolCall(family="orchestration", name="read_case", surface="read"),
+    )
+    assert mediation.allowed_tool_families == ("orchestration",)
+    assert "resolver_mediation_calls=orchestration.read_case:read" in mediation.evidence_refs
+
+
+def test_runtime_mediation_source_uses_case_artifact_directives() -> None:
+    source = CaseRuntimeToolMediationSource(configured_allowlist_families=("core",))
+
+    mediation = source.resolve(
+        ResolutionCase(
+            case_id="",
+            case_source="review_failed",
+            reason="Blocked steps require resolution: core.ready",
+            core=_core_snapshot(),
+            roster=_roster_snapshot(),
+            runtime=_runtime_snapshot(),
+            artifact_refs=("resolver_tool=core.status:read",),
+        ),
+        role_id="blocked-case-coordinator",
+    )
+
+    assert mediation.planned_tool_calls == (
+        ResolverToolCall(family="core", name="status", surface="read"),
+    )
+    assert mediation.allowed_tool_families == ("core",)
+    assert "resolver_mediation_allowlist=core" in mediation.evidence_refs
+
+
 def test_resolve_case_requires_gateway_live_path(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
@@ -297,6 +343,46 @@ def test_resolve_case_returns_operator_required_when_gateway_denies(tmp_path: Pa
     assert report.status == "operator_required"
     assert "authorization denied" in report.summary.lower()
     assert "resolver:authorization-denied" in report.evidence_refs
+    assert "resolver_mediation_calls=orchestration.read_case:read" in report.evidence_refs
+
+
+def test_resolve_case_denies_runtime_mediated_tool_outside_config_allowlist(
+    temp_git_repo: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.chdir(temp_git_repo)
+    plan_path = temp_git_repo / "plan.yaml"
+    runs_root = temp_git_repo / "runs"
+    _write_plan(plan_path)
+    app = build_orchestration_app(
+        AppConfig(
+            plan_path=plan_path,
+            orchestration_config=OrchestrationConfig(
+                plan_path=plan_path,
+                resolver=ResolverConfig(
+                    tool_allowlist=ResolverToolAllowlist(allowed_tool_families=("orchestration",))
+                ),
+            ),
+            run_store_root=runs_root,
+        )
+    )
+
+    report = app.resolve_case(
+        ResolutionCase(
+            case_id="",
+            case_source="review_failed",
+            reason="Blocked steps require resolution: core.ready",
+            summary="runtime-mediated core tool should be denied",
+            core=_core_snapshot(),
+            roster=_roster_snapshot(),
+            runtime=_runtime_snapshot(),
+            artifact_refs=("resolver_tool=core.status:read",),
+        )
+    )
+
+    assert report.status == "operator_required"
+    assert "authorization denied" in report.summary.lower()
+    assert "resolver_denied_family=core" in report.evidence_refs
+    assert "resolver_mediation_calls=core.status:read" in report.evidence_refs
 
 
 def test_resolve_case_reaches_runtime_runner_through_gateway(

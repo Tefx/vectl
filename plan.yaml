@@ -75615,7 +75615,7 @@ phases:
       reviewer: orchestrator
   - id: retire_repair_continuity_legacy_surface.rewrite-or-remove-legacy-black-box-tests
     name: Rewrite or remove legacy black-box tests
-    status: rejected
+    status: claimed
     description: 'work_type: technical_debt_remediation
 
       step_type: test_realignment
@@ -75654,7 +75654,7 @@ phases:
     - retire_repair_continuity_legacy_surface.remove-or-shim-legacy-cli-surface
     agent: python-senior-tacit
     claimed_by: python-senior-tacit
-    claimed_at: '2026-04-10T06:26:42.002942+00:00'
+    claimed_at: '2026-04-10T06:32:35.612675+00:00'
     done_at: '2026-04-10T06:30:57.599503+00:00'
     rejection_reason: 'Evidence/code mismatch: legacy skip-gated test file remains
       unchanged in main.'

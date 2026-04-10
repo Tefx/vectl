@@ -73993,7 +73993,7 @@ phases:
     claimed_at: '2026-04-10T03:16:36.812378+00:00'
   - id: repo_regression_contract_alignment.repin-resolution-case-boundary-locks
     name: Repin ResolutionCase boundary locks
-    status: claimed
+    status: done
     description: Update `tests/orchestration/unit/test_contract_lock_boundaries.py`
       and any sibling lock tests so they verify required semantic fields and invariants
       for `ResolutionCase` without failing on legitimate additive metadata fields.
@@ -74006,6 +74006,49 @@ phases:
       - Command(s) run:'
     claimed_by: general
     claimed_at: '2026-04-10T03:16:44.223315+00:00'
+    done_at: '2026-04-10T03:21:09.542910+00:00'
+    evidence: 'Boundary lock changes:
+
+      - Updated ResolutionCase boundary tests to pin required semantic prefix fields/types
+      and allow additive trailing metadata when optional/defaulted.
+
+      - Added constructor-level semantic validation and additive-field optionality
+      guard.
+
+      - Applied same contract to sibling boundary lock tests.
+
+
+      Required invariants preserved:
+
+      - Tests fail if required semantic fields are removed/reordered or type contracts
+      break.
+
+      - Tests fail if additive metadata becomes required.
+
+      - Legitimate additive metadata no longer triggers stale exact-shape failures.
+
+
+      Command(s) run:
+
+      - `uv run pytest tests/orchestration/unit/test_contract_lock_boundaries.py tests/orchestration/unit/test_contracts.py`
+      -> 38 passed.
+
+
+      Files changed:
+
+      - tests/orchestration/unit/test_contract_lock_boundaries.py
+
+      - tests/orchestration/unit/test_contracts.py
+
+
+      Commit:
+
+      - 934da47
+
+
+      Notes:
+
+      - Subagent reported `tools/vectl/README.md` missing in worktree.'
 - id: repo_regression_surface_and_observability_alignment
   name: Repo Regression Surface and Observability Alignment
   status: locked

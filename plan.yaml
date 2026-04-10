@@ -76200,7 +76200,7 @@ phases:
       \ evidence"
   - id: live_smoke_real_runner_validation.run-real-live-smoke-matrix
     name: Run real live-smoke matrix
-    status: pending
+    status: claimed
     description: 'step_type: test
 
       step_intent: runtime_validation
@@ -76249,6 +76249,8 @@ phases:
     depends_on:
     - live_smoke_real_runner_validation.lock-live-runner-execution-matrix
     agent: integration-verifier-tacit
+    claimed_by: integration-verifier-tacit
+    claimed_at: '2026-04-10T07:15:57.903152+00:00'
   - id: live_smoke_real_runner_validation.fix-live-smoke-product-defects-batch
     name: Fix live-smoke product defects batch
     status: pending

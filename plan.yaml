@@ -77989,7 +77989,7 @@ phases:
     agent: python-senior-tacit
   - id: orch_plane_live_authority.dynamic-tool-mediation
     name: Make tool mediation dynamic
-    status: claimed
+    status: done
     description: Replace largely static resolver-gateway allowlist behavior with dynamic
       tool mediation derived from the live dispatch/runtime authority path.
     verification: Tests prove allowed tools come from runtime-mediated grants, and
@@ -78013,6 +78013,30 @@ phases:
     agent: python-senior-tacit
     claimed_by: python-senior-tacit
     claimed_at: '2026-04-10T19:16:36.089723+00:00'
+    done_at: '2026-04-10T19:23:36.725537+00:00'
+    evidence: "## refs Read Confirmation (MANDATORY)\n- tools/vectl/README.md — NOT\
+      \ READ: required path not present in isolated worktree.\n- docs/ORCHESTRATION-PLANE-LIVE-AUTHORITY-CONTRACT-LOCK.md\
+      \ §6.2 — key invariant used: mediation decisions must derive from live case\
+      \ snapshots/allowed surfaces, not static remediation script.\n- docs/ORCHESTRATION-PLANE-RESOLUTION-CONTRACT.md\
+      \ §4.0 — key invariants used: explicit allowlist, optional narrowing, deny-by-default.\n\
+      \n## Implementation Evidence\n- Runtime mediation source:\n  - `src/vectl/orchestration/resolver_gateway.py`:\
+      \ added `ResolverToolMediation`.\n  - `src/vectl/orch_app.py`: added `CaseRuntimeToolMediationSource`\
+      \ and runtime-derived mediation for gateway invocation.\n  - Authorization now\
+      \ derives `planned_tool_calls` + narrowed allowlist at invocation time from\
+      \ live `ResolutionCase` and optional artifact directives (`resolver_tool=<family>.<tool>[:surface]`).\n\
+      \  - Success/deny paths now emit mediation evidence refs (`resolver_mediation_role=...`,\
+      \ `resolver_mediation_calls=...`, `resolver_mediation_allowlist=...`).\n- Static\
+      \ allowlist paths removed or narrowed:\n  - removed static `_DEFAULT_RESOLVER_GATEWAY_TOOL_CALLS`\
+      \ usage.\n  - removed unconditional static `read_state` planning path.\n  -\
+      \ gateway allowlist narrowed to runtime-mediation-derived families instead of\
+      \ blindly passing configured family tuple.\n- Positive and negative test cases:\n\
+      \  - positive:\n    - `test_runtime_mediation_source_narrows_allowlist_to_live_case_tools`\n\
+      \    - `test_runtime_mediation_source_uses_case_artifact_directives`\n  - negative:\n\
+      \    - `test_resolve_case_returns_operator_required_when_gateway_denies` (updated\
+      \ evidence assertions)\n    - `test_resolve_case_denies_runtime_mediated_tool_outside_config_allowlist`\n\
+      \nVerification:\n- `uv run pytest tests/orchestration/unit/test_orch_app.py\
+      \ tests/orchestration/unit/test_resolver_gateway.py` -> `66 passed`\n\nCommit\
+      \ evidence:\n- Worker commit: `3e81ae5`\n- Cherry-picked on main: `f5e98d8`"
   - id: orch_plane_live_authority.prompt-registry-runtime
     name: Unhardcode prompt registry runtime mapping
     status: done

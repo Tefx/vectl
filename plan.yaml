@@ -78468,7 +78468,7 @@ phases:
       \ true"
 - id: orch_plane_finalization
   name: Orchestration Plane Finalization
-  status: in_progress
+  status: done
   gate: Lower-priority hygiene is closed without reopening live-path authority gaps,
     and final review confirms the remediation chain is coherent.
   depends_on:
@@ -78565,7 +78565,7 @@ phases:
       \ runtime defect."
   - id: orch_plane_finalization.full-gate
     name: Final remediation gate
-    status: claimed
+    status: done
     description: Final gate for orchestration-plane remediation. Review lower-priority
       hygiene together with regression intersection from the two higher-priority phases
       so no live-authority or planner-boundary gap is reopened.
@@ -78592,3 +78592,42 @@ phases:
     agent: gate-reviewer-tacit
     claimed_by: gate-reviewer-tacit
     claimed_at: '2026-04-10T21:08:28.370718+00:00'
+    done_at: '2026-04-10T21:22:17.082480+00:00'
+    evidence: '## refs Read Confirmation (MANDATORY)
+
+      - `tools/vectl/README.md`: NOT READ — file does not exist at that path in worktree;
+      reviewer documented this as a pre-existing doc-path reference issue and used
+      repo-root README plus orchestration docs for spec provenance.
+
+
+      ## Gate Decision Basis
+
+      - Reviewed steps: `orch_plane_live_authority.*`, `orch_plane_planner_boundary.*`,
+      `orch_plane_finalization.core-adapter-hygiene`, `orch_plane_finalization.test-expectation-drift`.
+
+      - Regression intersection check: no evidence of reopened live-authority or planner-boundary
+      bypass risk.
+
+      - Blocking findings: none.
+
+
+      ## Additional required reporting
+
+      - step_intent: final remediation gate for orchestration-plane.
+
+      - expected_result: gate opens only if non-regressive and targeted tests green.
+
+      - observed_result: full suite green (1808 passed, 25 skipped, 0 failed); orchestration
+      suite green (474 passed, 0 failed); gate_open_allowed TRUE.
+
+      - failure_alignment: N/A (no failures).
+
+      - implementation file modification by this gate step: none.
+
+      - behavioral_proof_register: prior live-authority/planner-boundary proofs remain
+      unrebutted; boundary hygiene proof present.
+
+      - gate_open_allowed: TRUE
+
+      - uncertainty sources: required ref path missing (`tools/vectl/README.md`) noted
+      as pre-existing documentation path issue.'

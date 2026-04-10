@@ -78173,7 +78173,7 @@ phases:
       \ drift item routed to dedicated finalization step."
   - id: orch_plane_live_authority.gate
     name: Gate live authority remediation
-    status: pending
+    status: claimed
     description: Gate review for live authority remediation. Block if ordinary dispatch
       can still bypass the live path, if roster is non-authoritative, or if tool/prompt
       mediation remains statically flattened.
@@ -78197,6 +78197,8 @@ phases:
     depends_on:
     - orch_plane_live_authority.integration-proof
     agent: gate-reviewer-tacit
+    claimed_by: gate-reviewer-tacit
+    claimed_at: '2026-04-10T19:44:18.793423+00:00'
 - id: orch_plane_planner_boundary
   name: Orchestration Plane Planner Boundary
   status: locked

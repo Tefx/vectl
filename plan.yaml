@@ -75735,7 +75735,7 @@ phases:
       - Branch commit: `c7edd4b`."
   - id: retire_repair_continuity_legacy_surface.retest-recovery-public-surface
     name: Retest recovery public surface after retirement cleanup
-    status: pending
+    status: claimed
     description: 'step_type: test
 
       step_intent: retest_green
@@ -75772,6 +75772,8 @@ phases:
     - retire_repair_continuity_legacy_surface.rewrite-or-remove-legacy-black-box-tests
     - retire_repair_continuity_legacy_surface.clean-stale-docs-and-spec-references
     agent: integration-verifier-tacit
+    claimed_by: integration-verifier-tacit
+    claimed_at: '2026-04-10T06:38:50.260197+00:00'
   - id: retire_repair_continuity_legacy_surface.gate
     name: Gate legacy repair continuity retirement
     status: pending

@@ -74839,6 +74839,47 @@ phases:
 
       - none | <details>'
     agent: python-senior-tacit
+  - id: xfail_config_and_dispatch_foundation.retest-config-and-dispatch-foundation
+    name: Retest config precedence and dispatch foundation
+    status: pending
+    description: 'step_type: test
+
+      step_intent: retest_green
+
+      expected_result: green
+
+      verification_scope: phase-check
+
+
+      As an independent tester, re-run the focused suites covering the config precedence
+      gap and the initial dispatch coordinator gap.
+
+
+      Required commands:
+
+      - `uv run pytest tests/orchestration/unit/test_config_state_red.py -q`
+
+      - `uv run pytest tests/orchestration/unit/test_dispatch_policy_red.py -k "dispatch_spec_construction
+      or verify_mode" -q`
+
+
+      Success means the scoped xfails retired by this phase are green and no new unmanaged
+      failures appear in the touched seam.'
+    verification: '- Focused suites are green for the targeted scenarios
+
+      - Evidence includes actual command outputs and any remaining governed statuses'
+    evidence_template: "## Verification Report\n### refs Read Confirmation (MANDATORY)\n\
+      For each ref in this step:\n- <filename> — key passage or \"NOT READ: <reason>\"\
+      \n\n### Commands executed\n- uv run pytest tests/orchestration/unit/test_config_state_red.py\
+      \ -q\n- uv run pytest tests/orchestration/unit/test_dispatch_policy_red.py -k\
+      \ \"dispatch_spec_construction or verify_mode\" -q\n\n### Actual output\n<paste\
+      \ stdout/stderr>\n\n### Behavioral proof register\n- requirement_ref: config\
+      \ precedence timeout env alias\n  status: PROVEN|UNPROVEN\n- requirement_ref:\
+      \ dispatch-spec construction + verify-mode mapping\n  status: PROVEN|UNPROVEN"
+    depends_on:
+    - xfail_config_and_dispatch_foundation.close-resolver-timeout-env-precedence-gap
+    - xfail_config_and_dispatch_foundation.centralize-dispatch-spec-construction
+    agent: integration-verifier-tacit
 - id: xfail_role_prompt_and_review_normalization
   name: 'XFail Remediation: Role Prompt and Review Normalization'
   status: locked

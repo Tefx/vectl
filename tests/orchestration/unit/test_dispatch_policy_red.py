@@ -63,6 +63,13 @@ from __future__ import annotations
 
 import pytest
 
+from tests.expected_red import expected_red_module
+
+pytestmark = expected_red_module(
+    owner="orchestration_dispatch_policy",
+    rationale="Dispatch-policy gaps are intentional red coverage until the dispatch coordinator and registry wiring land.",
+)
+
 from vectl.orchestration.contracts import (
     ControlDecision,
     CoreSnapshot,

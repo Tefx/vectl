@@ -24,6 +24,13 @@ from typing import Any
 import pytest
 import yaml
 
+from tests.expected_red import expected_red_module
+
+pytestmark = expected_red_module(
+    owner="orchestration_config_state",
+    rationale="Config-state gaps are intentional red coverage until orchestration config discovery, frozen snapshots, and run registry semantics are implemented.",
+)
+
 from vectl.orchestration.config import (
     OrchestrationConfig,
     ResolverConfig,

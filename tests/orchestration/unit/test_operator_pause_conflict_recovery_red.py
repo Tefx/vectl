@@ -41,6 +41,13 @@ from typing import Any, Literal, cast
 
 import pytest
 
+from tests.expected_red import expected_red_module
+
+pytestmark = expected_red_module(
+    owner="orchestration_operator_conflict_recovery",
+    rationale="Conflict-recovery behavioral guarantees are intentionally red until orch-app routing and recovery wiring preserve and rehydrate them end-to-end.",
+)
+
 from vectl.orch_app import AppConfig, OperatorNotification, build_orchestration_app
 from vectl.orchestration.config import OrchestrationConfig
 from vectl.orchestration.continuity_artifacts import (

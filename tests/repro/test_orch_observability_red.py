@@ -23,6 +23,15 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
+import pytest
+
+from tests.expected_red import expected_red_module
+
+pytestmark = expected_red_module(
+    owner="orch_operator_tests.observability_red",
+    rationale="Observability reproduction coverage is intentionally red until the orchestration event, projection, and artifact contracts are implemented.",
+)
+
 # Note: pytest is not required - this file runs standalone
 
 # ---------------------------------------------------------------------

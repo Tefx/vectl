@@ -76806,7 +76806,7 @@ phases:
   steps:
   - id: resolver_cleanup_core.migrate-role-profiles-to-config
     name: Migrate role profiles to config authority
-    status: pending
+    status: claimed
     description: 'Move ordinary role-profile authority out of orchestration code and
       into config.
 
@@ -76874,6 +76874,8 @@ phases:
     depends_on:
     - resolver_cleanup_core.fix-gate-shouldfix-batch
     agent: python-senior-tacit
+    claimed_by: python-senior-tacit
+    claimed_at: '2026-04-10T13:29:59.593525+00:00'
   - id: resolver_cleanup_core.wire-default-blocked-case-resolver
     name: Wire program to configured blocked-case resolver
     status: pending

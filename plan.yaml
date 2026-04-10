@@ -77556,7 +77556,7 @@ phases:
     claimed_at: '2026-04-10T15:41:49.047315+00:00'
   - id: resolver_cleanup_finalization.spec-conformance
     name: Audit spec conformance of cleaned orchestration model
-    status: pending
+    status: claimed
     description: 'Spec conformance verification via adversarial divergence hunting.
 
 
@@ -77600,6 +77600,8 @@ phases:
     depends_on:
     - resolver_cleanup_finalization.full-regression
     agent: spec-verifier-tacit
+    claimed_by: spec-verifier-tacit
+    claimed_at: '2026-04-10T15:42:32.607654+00:00'
   - id: resolver_cleanup_finalization.architecture-review
     name: Review architecture cleanliness after cleanup
     status: pending

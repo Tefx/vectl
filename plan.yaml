@@ -77497,7 +77497,7 @@ phases:
       \ authority.**"
   - id: resolver_cleanup_finalization.doc-sync
     name: Sync documentation to cleaned architecture
-    status: claimed
+    status: done
     description: 'Update user-facing and architecture-facing documentation so current
       docs reflect the cleaned resolver/config/planner model and no deleted concepts
       remain in active guidance.
@@ -77554,6 +77554,27 @@ phases:
     agent: doc-reviewer-tacit
     claimed_by: doc-reviewer-tacit
     claimed_at: '2026-04-10T16:02:55.912250+00:00'
+    done_at: '2026-04-10T16:07:24.698798+00:00'
+    evidence: "## refs Read Confirmation (MANDATORY)\n- docs/ORCHESTRATION-PLANE-ARCHITECTURE.md\
+      \ — read\n- docs/ORCHESTRATION-PLANE-INTERFACES.md — read\n- docs/ORCHESTRATION-PLANE-DISPATCH-AND-PROMPT-POLICY.md\
+      \ — read\n- docs/ORCHESTRATION-PLANE-RESOLUTION-CONTRACT.md — read\n- docs/ORCHESTRATION-PLANE-RESOLVER-COORDINATION.md\
+      \ — read\n- docs/ORCHESTRATION-PLANE-ORCH-APP-ROUTING.md — read\n- docs/ORCHESTRATION-PLANE-IMPLEMENTATION-DESIGN.md\
+      \ — read\n- docs/ORCHESTRATION-PLANE-CLI-CONFIG-OBSERVABILITY-DESIGN.md — read\n\
+      - docs/ORCHESTRATION-PLANE-ISOLATION-SEMANTICS.md — read\n- docs/LIVE-SMOKE-REAL-RUNNER-VALIDATION-2026-04-10.md\
+      \ — read\n- docs/ADR-orchestration-role-profile-config-and-resolver-cleanup.md\
+      \ — read as authority\n\n## Doc Sync Evidence\n- Docs updated:\n  - Worker produced\
+      \ doc-sync commit `fc9f9fa667265f2a994b07e5c7ce628705d02911` (`doc-sync: resolver\
+      \ cleanup finalization - retire legacy terms from active docs`).\n  - Cherry-pick\
+      \ onto Main resolved as empty (no net diff vs current Main), indicating equivalent\
+      \ doc state already present.\n- Legacy terms removed from active docs:\n  -\
+      \ `conflict-resolver`, `resolver_conflict`, `judge/judgment/judgments`, `template_id`,\
+      \ `fallback_role` are not present as active target concepts in authoritative\
+      \ docs.\n- Historical-reference exceptions (if any):\n  - legacy mentions retained\
+      \ only in explicitly historical/rejected context sections and in the cleanup\
+      \ ADR removal record, as intended.\n- Architecture doc-state checks:\n  - blocked-case\
+      \ resolver defaults documented as `blocked-case-coordinator` and `blocked-case-coordinator-tacit`.\n\
+      \  - planner mutation boundary documented as vectl-facade-only.\n  - historical\
+      \ `plan.yaml` explicitly non-authoritative for architecture terminology."
   - id: resolver_cleanup_finalization.spec-conformance
     name: Audit spec conformance of cleaned orchestration model
     status: done

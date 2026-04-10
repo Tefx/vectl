@@ -75646,7 +75646,7 @@ phases:
       \ retirement regressions\n  - no xfail failures observed in repo-wide gate run"
   - id: xfail_finalization.deep-review-xfail-remediation
     name: Deep review xfail remediation closure
-    status: pending
+    status: claimed
     description: Independent deep review of the remediation set, with emphasis on
       hidden duplicate policy sources, authority bypasses, and documentation drift
       between expected-red governance and actual implementation.
@@ -75667,6 +75667,8 @@ phases:
     - xfail_finalization.doc-sync-expected-red-retirement
     - xfail_finalization.run-repo-wide-pytest-gate
     agent: gate-reviewer-tacit
+    claimed_by: gate-reviewer-tacit
+    claimed_at: '2026-04-10T07:13:35.690043+00:00'
   - id: xfail_finalization.gate
     name: Gate xfail remediation closure
     status: pending

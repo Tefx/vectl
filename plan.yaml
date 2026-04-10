@@ -73562,7 +73562,7 @@ phases:
   - repo_regression_behavior_alignment
 - id: repo_regression_observability_gap_disposition
   name: Observability Gap Disposition and Alignment
-  status: pending
+  status: done
   gate: Observability repro failures are either implemented, rewritten against current
     behavior, or intentionally retained with explicit expected-red disposition; none
     remain as unmanaged raw failures in the full suite.

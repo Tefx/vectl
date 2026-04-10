@@ -78043,6 +78043,31 @@ phases:
     with live proof that direct plan.yaml editing or facade bypass is blocked.
   depends_on:
   - orch_plane_live_authority
+  steps:
+  - id: orch_plane_planner_boundary.facade-enforcement
+    name: Enforce planner mutation facade
+    status: pending
+    description: Harden planner execution so live planner mutations can only pass
+      through the vectl facade/runtime boundary; direct plan.yaml edits and planner-side
+      bypass paths must be blocked rather than merely discouraged.
+    verification: Targeted runtime/unit coverage proves planner mutation entrypoints
+      enforce authoritative path checks, main-workspace policy, and facade-only mutation
+      flow.
+    evidence_template: '## refs Read Confirmation (MANDATORY)
+
+      - Quote the key passage from each ref or write NOT READ: <reason>
+
+
+      ## Implementation Evidence
+
+      - Files changed
+
+      - Facade/runtime checks added
+
+      - Direct-edit or bypass paths removed/blocked
+
+      '
+    agent: python-senior-tacit
 - id: orch_plane_finalization
   name: Orchestration Plane Finalization
   status: locked

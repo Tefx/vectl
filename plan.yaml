@@ -76200,7 +76200,7 @@ phases:
       \ evidence"
   - id: live_smoke_real_runner_validation.run-real-live-smoke-matrix
     name: Run real live-smoke matrix
-    status: claimed
+    status: done
     description: 'step_type: test
 
       step_intent: runtime_validation
@@ -76251,6 +76251,21 @@ phases:
     agent: integration-verifier-tacit
     claimed_by: integration-verifier-tacit
     claimed_at: '2026-04-10T07:15:57.903152+00:00'
+    done_at: '2026-04-10T07:16:26.098118+00:00'
+    evidence: "## Live Execution Report\n- commands executed:\n  - `uv run pytest\
+      \ tests/live_smoke -q`\n  - `uv run pytest tests/live_smoke -q -rs`\n- lanes\
+      \ run:\n  - codex × dispatch (`tests/live_smoke/test_codex_dispatch_live.py`)\n\
+      \  - codex × judge (`tests/live_smoke/test_codex_judge_live.py`)\n  - opencode\
+      \ × dispatch (`tests/live_smoke/test_opencode_dispatch_live.py`)\n  - opencode\
+      \ × judge (`tests/live_smoke/test_opencode_judge_live.py`)\n- prerequisite failures:\n\
+      \  - 17 skips total; skip reasons are preflight/opt-in only:\n    - `Live runner\
+      \ tests require RUN_LIVE_RUNNER_TESTS=1`\n    - `live_runner preflight failed:\
+      \ live_runner_opt_in_missing`\n    - `RUN_LIVE_RUNNER_TESTS=1 required`\n  -\
+      \ No binary-missing/auth-missing skip reason observed in this run.\n- product\
+      \ failures:\n  - none observed\n- raw evidence locations:\n  - pytest stdout\
+      \ from both commands captured in this step evidence (suite summary + `-rs` short\
+      \ skip info)\n- outcome summary:\n  - `60 passed, 17 skipped, 0 failed` for\
+      \ live-smoke matrix"
   - id: live_smoke_real_runner_validation.fix-live-smoke-product-defects-batch
     name: Fix live-smoke product defects batch
     status: pending

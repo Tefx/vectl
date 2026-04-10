@@ -77393,7 +77393,7 @@ phases:
       \ lookup for tacit resolver succeeds.\n- No legacy conflict/judge taxonomy reintroduced."
 - id: resolver_cleanup_finalization
   name: 'Resolver Cleanup: Finalization, Doc Sync, and Deep Review'
-  status: in_progress
+  status: done
   gate: Full regression, documentation, spec-conformance, architecture review, and
     black-box review all confirm the cleaned orchestration model without legacy resolver/judge
     drift.
@@ -77767,7 +77767,7 @@ phases:
       \ model; no legacy resolver/judge confusion remains in active guidance."
   - id: resolver_cleanup_finalization.gate
     name: Final gate for resolver cleanup
-    status: claimed
+    status: done
     description: 'Gate review: verify the cleaned orchestration model is complete,
       documented, regression-checked, and free of current legacy resolver/judge drift.
 
@@ -77818,3 +77818,32 @@ phases:
     agent: gate-reviewer-tacit
     claimed_by: gate-reviewer-tacit
     claimed_at: '2026-04-10T16:20:07.925690+00:00'
+    done_at: '2026-04-10T16:54:36.900725+00:00'
+    evidence: "## refs Read Confirmation (MANDATORY)\nReviewed refs and authoritative\
+      \ surfaces:\n- docs/ADR-orchestration-role-profile-config-and-resolver-cleanup.md\n\
+      - docs/ORCHESTRATION-PLANE-ARCHITECTURE.md\n- docs/ORCHESTRATION-PLANE-INTERFACES.md\n\
+      - docs/ORCHESTRATION-PLANE-DISPATCH-AND-PROMPT-POLICY.md\n- docs/ORCHESTRATION-PLANE-RESOLUTION-CONTRACT.md\n\
+      - docs/ORCHESTRATION-PLANE-RESOLVER-COORDINATION.md\n- docs/ORCHESTRATION-PLANE-ORCH-APP-ROUTING.md\n\
+      - docs/ORCHESTRATION-PLANE-ISOLATION-SEMANTICS.md\n- src/vectl/orchestration/{config,dispatch_policy,resolver,contracts,control,runtime,core_adapter}.py\n\
+      - src/vectl/orch_app.py\n\n## Final Gate Report\n- Evidence reviewed:\n  - full-regression:\
+      \ repo-wide regression command suite passed with explicit disposition of environment-limited\
+      \ deselections.\n  - spec-conformance: requirements table provided (5 conforms,\
+      \ 1 non-blocking NEEDS_TEST on runtime proof for planner mutation policy).\n\
+      \  - doc-sync: active docs synchronized to cleaned model; legacy terms retained\
+      \ only as explicit historical references.\n  - architecture-review + black-box-surface-check:\
+      \ boundary clarity and surface understandability confirmed.\n- Remaining blockers:\n\
+      \  - none blocker-class.\n- Gate decision basis:\n  - config is sole ordinary\
+      \ role-profile source of truth.\n  - blocked-case resolver entrypoint is config-driven\
+      \ and validated.\n  - planner mutation boundary encoded as vectl-facade semantics.\n\
+      \  - deleted legacy concepts absent from active code/test/doc surfaces.\n\n\
+      ## Behavioral Proof Register\n- P1 config-owned role profile authority: PROVEN\n\
+      - P2 default/tacit blocked-case resolver roles constrained and resolvable: PROVEN\n\
+      - P3 legacy deleted terms absent in active surfaces: PROVEN\n- P4 planner mutation\
+      \ boundary static enforcement: PROVEN (runtime LLM compliance proof remains\
+      \ non-blocking NEEDS_TEST)\n- P5 historical plan records non-authoritative for\
+      \ terminology: PROVEN\n- gate_open_allowed: true\n\n## Findings summary\n- BLOCKING:\
+      \ 0\n- SHOULD_FIX: 2 (non-blocking)\n  - private attribute coupling seam in\
+      \ dispatch policy adapter\n  - pre-existing test drift (exception type assertion\
+      \ mismatch)\n- SUGGESTION: 1 (defense-in-depth runtime guard for planner mutation\
+      \ compliance)\n\nVerdict: CONDITIONAL PASS (clean architecture accepted for\
+      \ resolver cleanup phase boundary)"

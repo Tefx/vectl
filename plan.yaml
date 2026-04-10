@@ -73579,7 +73579,7 @@ phases:
   steps:
   - id: repo_regression_full_suite_gate.run-full-pytest-regression-gate
     name: Run full pytest regression gate
-    status: claimed
+    status: done
     description: Run `uv run pytest -q` after all remediation work. Classify any remaining
       non-passing tests as either true blockers or explicitly governed expected-red/skip
       cases; raw unmanaged failures are not allowed.
@@ -73592,6 +73592,17 @@ phases:
       - Remaining non-passing tests and dispositions:'
     claimed_by: general
     claimed_at: '2026-04-10T03:40:05.558727+00:00'
+    done_at: '2026-04-10T03:40:18.791610+00:00'
+    evidence: "Command: `uv run pytest -q`\n\nSummary counts:\n- 1782 passed, 2 failed,\
+      \ 39 skipped, 20 xfailed, 1 warning.\n\nRemaining non-passing tests and dispositions:\n\
+      - Governed non-blocking statuses:\n  - 39 skips (live-smoke and dashboard opt-in\
+      \ gating)\n  - 20 xfails (intentional expected-red modules with marker governance)\n\
+      - Blockers detected (unmanaged failures):\n  1. tests/orchestration/unit/test_recovery_contract_conformance.py::test_recovery_report_semantics_are_shared_across_consumer_surfaces\n\
+      \  2. tests/orchestration/unit/test_recovery_contract_conformance.py::test_recovery_quarantine_preserves_artifacts_when_gate_open_blocked\n\
+      \nDisposition action:\n- Batched remediation path created in plan:\n  - repo_regression_full_suite_gate.fix-recovery-contract-conformance-semantics\n\
+      \  - repo_regression_full_suite_gate.retest-recovery-contract-conformance-semantics\n\
+      - Downstream policy steps were dependency-gated behind retest.\n\nNotes:\n-\
+      \ No files were changed in this gate execution step."
   - id: repo_regression_full_suite_gate.decide-static-guard-scope-and-enforcement
     name: Decide static guard scope and enforcement
     status: pending

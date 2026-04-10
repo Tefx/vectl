@@ -76480,7 +76480,7 @@ phases:
       \ OPEN"
 - id: resolver_cleanup_contracts
   name: 'Resolver Cleanup: Contract & Persona Lock'
-  status: in_progress
+  status: done
   gate: Freeze the post-cleanup architecture, create the new default resolver personas,
     and lock the config-owned role-profile model before code migration begins.
   depends_on:
@@ -76719,7 +76719,7 @@ phases:
       \ with blocked-case-coordinator in role profile registry`"
   - id: resolver_cleanup_contracts.gate
     name: Gate contract and persona lock
-    status: claimed
+    status: done
     description: 'Gate review: confirm the architecture freeze and persona creation
       steps establish a single clean target model before code migration starts.
 
@@ -76767,9 +76767,37 @@ phases:
     agent: gate-reviewer-tacit
     claimed_by: gate-reviewer-tacit
     claimed_at: '2026-04-10T12:49:02.071331+00:00'
+    done_at: '2026-04-10T13:20:35.029658+00:00'
+    evidence: "## refs Read Confirmation (MANDATORY)\n- tools/vectl/README.md — NOT\
+      \ READ at `tools/vectl/README.md` in worktree; reviewer used `README.md` at\
+      \ project root and cited core invariants (DAG enforcement, evidence requirements,\
+      \ claim locking).\n\n## Gate Review Report\n- Step evidence reviewed:\n  - `resolver_cleanup_contracts.freeze-clean-architecture`\
+      \ completed with Main commit `3e0faae` and ADR/doc freeze updates.\n  - `resolver_cleanup_contracts.create-blocked-case-personas`\
+      \ completed with Main commit `f762a31` and runtime role/profile/test updates.\n\
+      - Remaining blockers:\n  - `blocker`: none\n  - `should_fix`: S1 — `blocked-case-coordinator-tacit`\
+      \ is documented as frozen default resolver agent but missing RoleProfile in\
+      \ `_DEFAULT_ROLE_PROFILES`, causing potential `UnknownRoleError` on direct dispatch.\n\
+      - Gate decision basis:\n  - Architecture freeze docs are internally consistent\
+      \ and legacy target terms are removed from target-state docs.\n  - Persona contracts\
+      \ and registration are present and aligned.\n  - One `should_fix` remains and\
+      \ is explicitly routed into batched remediation before core migration.\n\n##\
+      \ Behavioral Proof Register\n- P1 PROVEN: `blocked-case-coordinator` dispatch\
+      \ profile exists.\n- P2 UNPROVEN/SHOULD_FIX: tacit variant profile missing in\
+      \ defaults; remediation required.\n- P3 PROVEN: no target-state conflict/judge\
+      \ taxonomy in frozen docs.\n- P4 PROVEN: planner mutation boundary is vectl\
+      \ facade only.\n- gate_open_allowed: true (conditional pass with explicit should-fix\
+      \ ownership)\n\n## Batched fix ownership created\n- Planner remediation executed.\n\
+      - New remediation step added: `resolver_cleanup_core.fix-gate-shouldfix-batch`.\n\
+      - `resolver_cleanup_core.migrate-role-profiles-to-config` updated to depend\
+      \ on new fix step.\n- New step verification locks:\n  - tacit RoleProfile present\
+      \ in config/default profiles\n  - registry lookup succeeds without UnknownRoleError\n\
+      \  - no reintroduction of conflict/judge taxonomy\n\n## Notes\n- Cross-phase\
+      \ direct step dependency to `resolver_cleanup_contracts.gate` was not representable\
+      \ by mutate constraints; phase-level dependency on `resolver_cleanup_contracts`\
+      \ remains authoritative."
 - id: resolver_cleanup_core
   name: 'Resolver Cleanup: Config, Wiring, and Surface Simplification'
-  status: locked
+  status: pending
   gate: Code path uses config-backed role profiles, program invokes the configured
     blocked-case resolver directly, and legacy conflict/judge/template/fallback surfaces
     are removed from current code and tests.

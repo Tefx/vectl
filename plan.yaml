@@ -76478,3 +76478,10 @@ phases:
       \ explicitly classified as environment readiness rather than product defects.\n\
       \  - Skip-governed status remains acceptable per matrix contract.\n- gate decision\
       \ OPEN"
+- id: resolver_cleanup_contracts
+  name: 'Resolver Cleanup: Contract & Persona Lock'
+  status: pending
+  gate: Freeze the post-cleanup architecture, create the new default resolver personas,
+    and lock the config-owned role-profile model before code migration begins.
+  depends_on:
+  - live_smoke_real_runner_validation

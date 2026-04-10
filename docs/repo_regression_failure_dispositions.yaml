@@ -1,0 +1,298 @@
+summary:
+  generated_from: "uv run pytest -q"
+  total_failures: 31
+  categories:
+    stale_expected_red: 24
+    stale_contract_lock_drift: 3
+    likely_behavior_regression: 2
+    missing_fixture_environment: 0
+    cli_public_surface_mismatch: 2
+  next_action_types:
+    test_only: 29
+    implementation_only: 2
+    paired: 0
+  note: >-
+    Classifications are evidence-based from current tests, source, and docs. Where
+    intent is not explicit in docs, ambiguity is called out in the item note instead
+    of guessed.
+
+failing_tests:
+  - test: tests/orchestration/unit/test_config_state_red.py::TestConfigDiscoveryGaps::test_config_loader_not_implemented
+    disposition: stale_expected_red
+    next_action_type: test_only
+    confidence: Proven
+    rationale: load_orchestration_config() is implemented in src/vectl/orchestration/config.py:859-907, while the test still expects NotImplementedError.
+    sources:
+      - tests/orchestration/unit/test_config_state_red.py:212-243
+      - src/vectl/orchestration/config.py:859-907
+
+  - test: tests/orchestration/unit/test_config_state_red.py::TestConfigDiscoveryGaps::test_discovery_order_vectl_config_env_not_specified
+    disposition: stale_expected_red
+    next_action_type: test_only
+    confidence: Proven
+    rationale: The discovery order is implemented and the test still asserts the old stub behavior.
+    sources:
+      - tests/orchestration/unit/test_config_state_red.py:223-243
+      - src/vectl/orchestration/config.py:867-907
+
+  - test: tests/orchestration/unit/test_config_state_red.py::TestConfigDiscoveryGaps::test_env_var_naming_convention_not_enforced
+    disposition: stale_expected_red
+    next_action_type: test_only
+    confidence: Proven
+    rationale: Environment overrides are applied during config load, but the test still expects NotImplementedError.
+    sources:
+      - tests/orchestration/unit/test_config_state_red.py:265-280
+      - src/vectl/orchestration/config.py:902-907
+
+  - test: tests/orchestration/unit/test_config_state_red.py::TestConfigValidationGaps::test_validation_rules_not_implemented
+    disposition: stale_expected_red
+    next_action_type: test_only
+    confidence: Proven
+    rationale: Validation exists in validate_orchestration_config(); the red test still expects the loader path to be unimplemented.
+    sources:
+      - tests/orchestration/unit/test_config_state_red.py:295-311
+      - src/vectl/orchestration/config.py:933-1114
+
+  - test: tests/orchestration/unit/test_config_state_red.py::TestFrozenConfigSnapshotGaps::test_freeze_config_is_noop
+    disposition: stale_expected_red
+    next_action_type: test_only
+    confidence: Proven
+    rationale: freeze_config() now returns FrozenConfigSnapshot with config.freeze() and optional snapshot persistence, not the original object.
+    sources:
+      - tests/orchestration/unit/test_config_state_red.py:421-437
+      - src/vectl/orchestration/config.py:824-856
+
+  - test: tests/orchestration/unit/test_config_state_red.py::TestRunRegistryGaps::test_run_registry_not_implemented
+    disposition: stale_expected_red
+    next_action_type: test_only
+    confidence: Proven
+    rationale: RunRegistry.save() appends normalized RunRecord payloads; the red test still expects a stub exception.
+    sources:
+      - tests/orchestration/unit/test_config_state_red.py:487-507
+      - src/vectl/orchestration/run_store.py:671-720
+
+  - test: tests/orchestration/unit/test_config_state_red.py::TestRunRegistryGaps::test_latest_lookup_not_implemented
+    disposition: stale_expected_red
+    next_action_type: test_only
+    confidence: Proven
+    rationale: latest_run()/RunRegistry.latest_for_step() are implemented, so the old expected-red assertion is stale.
+    sources:
+      - tests/orchestration/unit/test_config_state_red.py:523-536
+      - src/vectl/orchestration/run_store.py:807-827
+      - src/vectl/orchestration/run_store.py:1132-1138
+
+  - test: tests/orchestration/unit/test_contract_lock_boundaries.py::test_resolution_case_stays_bounded_while_resolver_contract_is_exported
+    disposition: stale_contract_lock_drift
+    next_action_type: test_only
+    confidence: Proven
+    rationale: The locked test still pins the old 4-field ResolutionCase, but the current interface docs and implementation include case_id, case_source, summary, blocked_step_ids, and artifact_refs.
+    sources:
+      - tests/orchestration/unit/test_contract_lock_boundaries.py:14-22
+      - docs/ORCHESTRATION-PLANE-INTERFACES.md:180-208
+      - src/vectl/orchestration/contracts.py
+
+  - test: tests/orchestration/unit/test_contracts.py::TestResolutionCase::test_resolution_case_fields_match_spec
+    disposition: stale_contract_lock_drift
+    next_action_type: test_only
+    confidence: Proven
+    rationale: The test cites section 3.8 but section 3.8 now documents the expanded ResolutionCase shape, so the lock is stale relative to spec.
+    sources:
+      - tests/orchestration/unit/test_contracts.py:344-358
+      - docs/ORCHESTRATION-PLANE-INTERFACES.md:180-208
+      - docs/ORCHESTRATION-PLANE-RESOLUTION-CONTRACT.md:71-103
+
+  - test: tests/orchestration/unit/test_imports.py::TestPackageImports::test_orchestration_all_exports_match_spec
+    disposition: cli_public_surface_mismatch
+    next_action_type: test_only
+    confidence: Common
+    rationale: __all__ now exports broader orchestration package helpers than this test expects. This is a public-surface mismatch; docs do not pin a narrower export table, so the safer next move is updating the test unless package narrowing is explicitly desired.
+    sources:
+      - tests/orchestration/unit/test_imports.py:80-104
+      - src/vectl/orchestration/__init__.py:8-84
+      - docs/ORCHESTRATION-PLANE-DISPATCH-AND-PROMPT-POLICY.md:263-309
+
+  - test: tests/orchestration/unit/test_recovery_contract_conformance.py::test_recovery_report_semantics_are_shared_across_consumer_surfaces
+    disposition: likely_behavior_regression
+    next_action_type: implementation_only
+    confidence: Common
+    rationale: This is a non-red conformance test exercising live app behavior. Failure means inspect_actions()/synthetic case surfaces no longer align with recover() output for the same run state.
+    sources:
+      - tests/orchestration/unit/test_recovery_contract_conformance.py:29-57
+      - src/vectl/orch_app.py:2002-2281
+      - src/vectl/orchestration/recovery.py:195-234
+
+  - test: tests/orchestration/unit/test_recovery_contract_conformance.py::test_recovery_quarantine_preserves_artifacts_when_gate_open_blocked
+    disposition: likely_behavior_regression
+    next_action_type: implementation_only
+    confidence: Common
+    rationale: The contract test expects stale-heartbeat recovery to quarantine and block gate-open, but current recover() returned a gate-open path instead. That indicates a behavior seam regression or selection bug, not an expected-red test.
+    sources:
+      - tests/orchestration/unit/test_recovery_contract_conformance.py:60-85
+      - src/vectl/orch_app.py:2156-2271
+      - src/vectl/orchestration/recovery.py:175-234
+
+  - test: tests/orchestration/unit/test_runtime_lifecycle.py::test_capture_reconcile_result_updates_tracking_sets
+    disposition: stale_contract_lock_drift
+    next_action_type: test_only
+    confidence: Common
+    rationale: begin_reconcile() now performs reconcile immediately and capture_reconcile_result() clears pending state before returning, so asserting pending_reconciles after begin_reconcile() no longer matches the synchronous lifecycle contract.
+    sources:
+      - tests/orchestration/unit/test_runtime_lifecycle.py:374-413
+      - src/vectl/orchestration/runtime.py:640-809
+
+  - test: tests/repro/test_orch_liveness.py::test_orch_liveness_module_entrypoint
+    disposition: cli_public_surface_mismatch
+    next_action_type: test_only
+    confidence: Common
+    rationale: The test assumes a repo-root driver.yaml and python -m vectl.driver entrypoint, but the legacy driver-centric architecture was explicitly reset and the module/config are absent in this worktree.
+    sources:
+      - tests/repro/test_orch_liveness.py:15-31
+      - docs/ADR-orchestration-plane-reset.md:143-147
+      - src/vectl/cli.py:3531-3538
+
+  - test: tests/repro/test_orch_observability_red.py::TestEventEnvelopeIntegrity::test_event_envelope_has_seq_field
+    disposition: stale_expected_red
+    next_action_type: test_only
+    confidence: Proven
+    rationale: seq exists on OrchestrationEventEnvelope; this expected-red test now fails earlier because control_dispatch payload validation is enforced.
+    sources:
+      - tests/repro/test_orch_observability_red.py:36-57
+      - src/vectl/orchestration/events.py:155-225
+
+  - test: tests/repro/test_orch_observability_red.py::TestEventEnvelopeIntegrity::test_event_envelope_has_prev_hash_chain
+    disposition: stale_expected_red
+    next_action_type: test_only
+    confidence: Proven
+    rationale: prev_hash exists; the test fixture is stale because it no longer supplies the required payload for control_dispatch.
+    sources:
+      - tests/repro/test_orch_observability_red.py:59-78
+      - src/vectl/orchestration/events.py:155-225
+
+  - test: tests/repro/test_orch_observability_red.py::TestEventEnvelopeIntegrity::test_event_envelope_has_entry_hash
+    disposition: stale_expected_red
+    next_action_type: test_only
+    confidence: Proven
+    rationale: entry_hash exists and is computed automatically; the failing constructor setup is stale expected-red scaffolding.
+    sources:
+      - tests/repro/test_orch_observability_red.py:80-99
+      - src/vectl/orchestration/events.py:195-225
+
+  - test: tests/repro/test_orch_observability_red.py::TestEventEnvelopeIntegrity::test_event_envelope_hash_computation_is_sha256
+    disposition: stale_expected_red
+    next_action_type: test_only
+    confidence: Proven
+    rationale: compute_entry_hash() exists and uses SHA-256 over canonical JSON; the test still constructs an invalid control_dispatch envelope.
+    sources:
+      - tests/repro/test_orch_observability_red.py:101-137
+      - src/vectl/orchestration/events.py:117-125
+      - src/vectl/orchestration/events.py:221-225
+
+  - test: tests/repro/test_orch_observability_red.py::TestProjectionReplay::test_projection_replay_produces_latest_json
+    disposition: stale_expected_red
+    next_action_type: test_only
+    confidence: Proven
+    rationale: The test fails by intentionally instantiating a mock ProjectionReplay that raises NotImplementedError; that is self-authored expected-red scaffolding rather than a live product failure.
+    sources:
+      - tests/repro/test_orch_observability_red.py:347-387
+
+  - test: tests/repro/test_orch_observability_red.py::TestRunArtifactSchemas::test_final_json_schema
+    disposition: stale_expected_red
+    next_action_type: test_only
+    confidence: Proven
+    rationale: The file explicitly documents itself as expected-red gap coverage, and this assertion is checking for still-missing future-schema fields on RunRecord.
+    sources:
+      - tests/repro/test_orch_observability_red.py:490-536
+      - tests/repro/test_orch_observability_red.py:1-13
+
+  - test: tests/repro/test_orch_observability_red.py::TestStepArtifactSchemas::test_step_key_path_normalization
+    disposition: stale_expected_red
+    next_action_type: test_only
+    confidence: Proven
+    rationale: This repro file is expected-red by design and is still asserting a future helper surface that has not been promoted into the green suite.
+    sources:
+      - tests/repro/test_orch_observability_red.py:561-576
+      - tests/repro/test_orch_observability_red.py:1-13
+
+  - test: tests/repro/test_orch_observability_red.py::TestStepArtifactSchemas::test_step_key_is_reversible
+    disposition: stale_expected_red
+    next_action_type: test_only
+    confidence: Proven
+    rationale: Same expected-red gap coverage as the normalization test; current failure is documenting an unfixed future helper, not a regression in a green contract.
+    sources:
+      - tests/repro/test_orch_observability_red.py:612-624
+      - tests/repro/test_orch_observability_red.py:1-13
+
+  - test: tests/repro/test_orch_observability_red.py::TestRunRegistrySchemas::test_latest_run_resolution
+    disposition: stale_expected_red
+    next_action_type: test_only
+    confidence: Proven
+    rationale: latest_run() is implemented, and this expected-red test deliberately raises if the implementation returns a result.
+    sources:
+      - tests/repro/test_orch_observability_red.py:763-779
+      - src/vectl/orchestration/run_store.py:1132-1138
+
+  - test: tests/repro/test_orch_observability_red.py::TestToolRegistryValidation::test_tool_registry_core_family_tools
+    disposition: stale_expected_red
+    next_action_type: test_only
+    confidence: Proven
+    rationale: The test unconditionally raises an expected-red assertion even though tool-level metadata already exists in ToolFamily.allowed_operations.
+    sources:
+      - tests/repro/test_orch_observability_red.py:868-914
+      - src/vectl/orchestration/tool_registry.py:65-95
+
+  - test: tests/repro/test_orch_observability_red.py::TestToolRegistryValidation::test_tool_registry_orchestration_family_tools
+    disposition: stale_expected_red
+    next_action_type: test_only
+    confidence: Proven
+    rationale: Same expected-red fixture issue as the core-family case; the test is hard-coded to fail instead of validating current metadata.
+    sources:
+      - tests/repro/test_orch_observability_red.py:916-929
+      - src/vectl/orchestration/tool_registry.py:65-95
+
+  - test: tests/test_cli.py::TestDriveCLI::test_drive_command_exists
+    disposition: stale_expected_red
+    next_action_type: test_only
+    confidence: Proven
+    rationale: The TestDriveCLI block is explicitly labeled EXPECTED-RED until a future implementation step lands.
+    sources:
+      - tests/test_cli.py:3928-3944
+
+  - test: tests/test_cli.py::TestDriveCLI::test_drive_config_flag_recognized
+    disposition: stale_expected_red
+    next_action_type: test_only
+    confidence: Proven
+    rationale: Same EXPECTED-RED suite as the other drive CLI failures.
+    sources:
+      - tests/test_cli.py:3946-3951
+
+  - test: tests/test_cli.py::TestDriveCLI::test_drive_default_config_is_driver_yaml
+    disposition: stale_expected_red
+    next_action_type: test_only
+    confidence: Proven
+    rationale: Same EXPECTED-RED suite as the other drive CLI failures.
+    sources:
+      - tests/test_cli.py:3953-3957
+
+  - test: tests/test_cli.py::TestDriveCLI::test_drive_no_longer_imports_removed_driver_entrypoint
+    disposition: stale_expected_red
+    next_action_type: test_only
+    confidence: Proven
+    rationale: The suite is still documented as expected-red and the missing drive symbol matches that unfinished-state framing.
+    sources:
+      - tests/test_cli.py:3971-3979
+
+  - test: tests/test_cli.py::TestDriveCLI::test_drive_help_shows_ref_to_blueprint
+    disposition: stale_expected_red
+    next_action_type: test_only
+    confidence: Proven
+    rationale: Same EXPECTED-RED suite as the other drive CLI failures.
+    sources:
+      - tests/test_cli.py:3989-3993
+
+  - test: tests/test_cli.py::TestDriveCLI::test_drive_help_shows_docstring_description
+    disposition: stale_expected_red
+    next_action_type: test_only
+    confidence: Proven
+    rationale: Same EXPECTED-RED suite as the other drive CLI failures.
+    sources:
+      - tests/test_cli.py:3995-3999

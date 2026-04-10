@@ -76719,7 +76719,7 @@ phases:
       \ with blocked-case-coordinator in role profile registry`"
   - id: resolver_cleanup_contracts.gate
     name: Gate contract and persona lock
-    status: pending
+    status: claimed
     description: 'Gate review: confirm the architecture freeze and persona creation
       steps establish a single clean target model before code migration starts.
 
@@ -76765,6 +76765,8 @@ phases:
     - resolver_cleanup_contracts.freeze-clean-architecture
     - resolver_cleanup_contracts.create-blocked-case-personas
     agent: gate-reviewer-tacit
+    claimed_by: gate-reviewer-tacit
+    claimed_at: '2026-04-10T12:49:02.071331+00:00'
 - id: resolver_cleanup_core
   name: 'Resolver Cleanup: Config, Wiring, and Surface Simplification'
   status: locked

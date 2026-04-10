@@ -73622,6 +73622,91 @@ phases:
       - Example evidence expectations for future gates:'
     depends_on:
     - repo_regression_full_suite_gate.decide-static-guard-scope-and-enforcement
+  - id: repo_regression_full_suite_gate.fix-recovery-contract-conformance-semantics
+    name: Repair recovery contract conformance semantics
+    status: pending
+    description: "work_type: defect_repair\nstep_type: implementation\nverification_scope:\
+      \ local-check\nprotects_gates:\n  - repo_regression_full_suite_gate repo-wide\
+      \ full-suite gate\n  - repo_regression_full_suite_gate.decide-static-guard-scope-and-enforcement\n\
+      \nRepair the shared recovery contract semantics behind both failing tests in\
+      \ `tests/orchestration/unit/test_recovery_contract_conformance.py`.\n\nScope:\n\
+      - Align `RecoveryOutcome.NO_ARTIFACTS` semantics across recovery helpers and\
+      \ consumer surfaces\n- Reconcile blocked-row / quarantine artifact preservation\
+      \ behavior with `gate_open_allowed`\n- Update the authoritative recovery contract\
+      \ implementation so consumer surfaces share the same resolved fact instead of\
+      \ drifting per-surface\n\nRefs / likely touch paths:\n- `tests/orchestration/unit/test_recovery_contract_conformance.py`\n\
+      - `src/vectl/orchestration/recovery.py`\n- `src/vectl/orch_app.py`\n\n## Blockers\
+      \ to Fix (ALL of these, not just the first)\n### B1: shared consumer-surface\
+      \ semantics drift\n- Failure: `test_recovery_report_semantics_are_shared_across_consumer_surfaces`\n\
+      - Suspected root cause: `NO_ARTIFACTS` and blocked-row reporting semantics diverged\
+      \ between recovery contract helpers and rendered consumer status surfaces\n\
+      - Grep hint: `NO_ARTIFACTS|gate_open_allowed|recovery_gate_open_allowed|status_data`\n\
+      \n### B2: quarantine artifact preservation / gate-open drift\n- Failure: `test_recovery_quarantine_preserves_artifacts_when_gate_open_blocked`\n\
+      - Suspected root cause: quarantine/blocked reporting disagrees about whether\
+      \ artifacts remain preserved when gate opening is blocked\n- Grep hint: `quarantine|blocked|artifact|gate_open_allowed`\n\
+      \n## Root Cause vs Symptom\n- Root cause: one recovery contract fact is being\
+      \ interpreted inconsistently across recovery helpers and consumer/reporting\
+      \ surfaces\n- Symptom: contract conformance tests disagree on blocked rows and\
+      \ `gate_open_allowed` behavior for `NO_ARTIFACTS` / quarantine scenarios\n-\
+      \ Why this fix is not surface-level: fix the shared contract and downstream\
+      \ consumption path, not just assertions in one surface\n\n## Completion Criteria\
+      \ (stub exclusion)\nThis is an IMPLEMENTATION step. Stub-only completion is\
+      \ NOT acceptable.\nEach deliverable MUST contain substantive logic that processes\
+      \ its inputs and produces outputs that vary based on those inputs."
+    verification: '- Local-check protecting the repo_regression_full_suite_gate phase
+      boundary
+
+      - Recovery contract helpers and consumer/reporting surfaces agree on `NO_ARTIFACTS`,
+      blocked-row, artifact-preservation, and `gate_open_allowed` semantics
+
+      - Focused regression evidence demonstrates the highest-risk failure path (quarantine
+      artifacts preserved while gate opening remains blocked) in addition to the main
+      shared-semantics path'
+    evidence_template: '## refs Read Confirmation (MANDATORY)
+
+
+      For each ref in this step:
+
+      - <filename> — key passage or "NOT READ: <reason>"
+
+
+      If no refs were provided, state: "No refs for this step."
+
+
+      ## Fix Evidence
+
+      - blocker_fingerprint: recovery-contract-conformance / NO_ARTIFACTS / gate_open_allowed
+
+      - root_cause_hypothesis: <shared contract drift across helpers and consumer
+      surfaces>
+
+      - files_changed: <list>
+
+      - sibling_search_performed: <grep terms used and what was found>
+
+
+      ## Main Path Proof
+
+      - Explain how shared recovery semantics are now derived from one authoritative
+      contract
+
+      - Cite the exact implementation locations changed
+
+
+      ## Failure Path Proof
+
+      - Show how quarantine / blocked artifact-preservation behavior now matches `gate_open_allowed`
+      expectations
+
+      - Include the exact scenario or test name used to prove the failure path
+
+
+      ## Remaining Risk
+
+      - any unresolved ambiguity or `none`'
+    depends_on:
+    - repo_regression_full_suite_gate.run-full-pytest-regression-gate
+    agent: python-senior
 - id: repo_regression_test_intent_alignment
   name: Repo Regression Test Intent Alignment
   status: done

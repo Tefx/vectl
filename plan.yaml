@@ -76797,7 +76797,7 @@ phases:
       \ remains authoritative."
 - id: resolver_cleanup_core
   name: 'Resolver Cleanup: Config, Wiring, and Surface Simplification'
-  status: pending
+  status: in_progress
   gate: Code path uses config-backed role profiles, program invokes the configured
     blocked-case resolver directly, and legacy conflict/judge/template/fallback surfaces
     are removed from current code and tests.
@@ -77112,7 +77112,7 @@ phases:
     agent: gate-reviewer-tacit
   - id: resolver_cleanup_core.fix-gate-shouldfix-batch
     name: resolver_cleanup_core.fix-gate-shouldfix-batch
-    status: pending
+    status: claimed
     description: 'Batched should-fix remediation before core migration proceeds.
 
 
@@ -77157,6 +77157,8 @@ phases:
       - focused regression confirms no reintroduction of conflict/judge taxonomy in
       resolver-facing config/default/profile surfaces'
     agent: python-senior-tacit
+    claimed_by: python-senior-tacit
+    claimed_at: '2026-04-10T13:21:06.010787+00:00'
 - id: resolver_cleanup_finalization
   name: 'Resolver Cleanup: Finalization, Doc Sync, and Deep Review'
   status: locked

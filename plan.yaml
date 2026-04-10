@@ -75577,7 +75577,7 @@ phases:
   steps:
   - id: xfail_finalization.doc-sync-expected-red-retirement
     name: Doc sync expected-red retirement and governance
-    status: claimed
+    status: done
     description: Update the relevant orchestration docs and expected-red governance
       docs so retired xfails are removed from the expected-red set and any intentionally
       retained gaps have current lifecycle/owner rationale.
@@ -75592,6 +75592,23 @@ phases:
     agent: project-guide
     claimed_by: project-guide
     claimed_at: '2026-04-10T07:13:10.768610+00:00'
+    done_at: '2026-04-10T07:13:22.593849+00:00'
+    evidence: "- docs updated:\n  - `docs/full-suite-failure-inventory-2026-04-10.md`\n\
+      \    - Added same-day finalization update block with repo-wide gate results\
+      \ (`1809 passed, 32 skipped, 0 failed, 0 xfailed, 1 warning`).\n    - Converted\
+      \ prior dispatch-policy/runner-backend xfail statements to historical context\
+      \ and marked them retired-to-green.\n  - `docs/RFC-expected-red-verification-semantics.md`\n\
+      \    - Added lifecycle governance requirement to record retirement bookkeeping\
+      \ locations (inventory/docs/plan evidence) to prevent stale expected-red entries.\n\
+      - retired vs retained expected-red items:\n  - Retired (documented):\n    -\
+      \ `tests/orchestration/unit/test_dispatch_policy_red.py` xfail surfaces\n  \
+      \  - `tests/orchestration/unit/test_runner_backend_red.py` xfail surfaces\n\
+      \  - Retained governed non-green statuses:\n    - Skip-governed tests only (no\
+      \ xfailed in repo-wide gate run).\n- commands/review performed:\n  - `uv run\
+      \ pytest -q` (repo-wide gate; evidence source for finalization update)\n  -\
+      \ `git diff -- docs/full-suite-failure-inventory-2026-04-10.md docs/RFC-expected-red-verification-semantics.md`\n\
+      \  - content verification search for `0 xfailed`, `retired to green`, and lifecycle\
+      \ stale-entry governance wording."
   - id: xfail_finalization.run-repo-wide-pytest-gate
     name: Run repo-wide pytest gate for xfail retirement
     status: done

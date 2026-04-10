@@ -75237,3 +75237,26 @@ phases:
     depends_on:
     - xfail_finalization.doc-sync-expected-red-retirement
     agent: integration-verifier-tacit
+  - id: xfail_finalization.deep-review-xfail-remediation
+    name: Deep review xfail remediation closure
+    status: pending
+    description: Independent deep review of the remediation set, with emphasis on
+      hidden duplicate policy sources, authority bypasses, and documentation drift
+      between expected-red governance and actual implementation.
+    verification: '- Review covers config precedence, dispatch coordinator, registry/normalizer
+      centralization, authority enforcement, and repo-wide gate evidence
+
+      - Any residual xfail/debt is explicitly dispositioned'
+    evidence_template: '## Deep Review Report
+
+      - subsystem audit summary
+
+      - hidden bypass findings
+
+      - residual debt disposition
+
+      - recommendation'
+    depends_on:
+    - xfail_finalization.doc-sync-expected-red-retirement
+    - xfail_finalization.run-repo-wide-pytest-gate
+    agent: deep-review

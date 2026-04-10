@@ -75210,3 +75210,30 @@ phases:
 
       - commands/review performed:'
     agent: project-guide
+  - id: xfail_finalization.run-repo-wide-pytest-gate
+    name: Run repo-wide pytest gate for xfail retirement
+    status: pending
+    description: 'step_type: test
+
+      step_intent: retest_green
+
+      expected_result: green
+
+
+      Run the full repo-wide pytest sweep after xfail remediation. Success means the
+      previous 20 xfails are retired or any remaining non-green statuses are explicitly
+      governed and justified by current policy.'
+    verification: '- `uv run pytest -q` is green or only governed non-blocking statuses
+      remain with explicit evidence
+
+      - Evidence enumerates retired xfails versus any retained governed statuses'
+    evidence_template: '- Command: `uv run pytest -q`
+
+      - Summary counts:
+
+      - Retired xfails:
+
+      - Remaining governed non-green statuses and rationale:'
+    depends_on:
+    - xfail_finalization.doc-sync-expected-red-retirement
+    agent: integration-verifier-tacit

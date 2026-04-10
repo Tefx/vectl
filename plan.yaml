@@ -73960,7 +73960,7 @@ phases:
   steps:
   - id: repo_regression_contract_alignment.audit-other-tight-locks-in-failing-scope
     name: Audit other over-tight locks in failing scope
-    status: claimed
+    status: done
     description: Search the failing-scope tests for other exact-field-count or exact-export-shape
       assertions likely to drift after legitimate contract evolution, and align them
       to semantic invariants where appropriate.
@@ -73973,6 +73973,50 @@ phases:
       - Search/test evidence:'
     claimed_by: general
     claimed_at: '2026-04-10T03:16:03.948936+00:00'
+    done_at: '2026-04-10T03:21:19.980359+00:00'
+    evidence: 'Additional locks found:
+
+      - Exact ResolutionCase field-shape assertions in tests/orchestration/unit/test_contract_lock_boundaries.py
+      and tests/orchestration/integration/test_control_resolver_contract.py.
+
+      - Exact export/method shape locks in tests/orchestration/unit/test_imports.py
+      and tests/orchestration/unit/test_core_adapter_contract.py.
+
+
+      Adjustments made:
+
+      - Relaxed exact-shape checks into semantic invariant checks for required fields/exports/methods
+      while allowing additive compatible contract evolution.
+
+
+      Search/test evidence:
+
+      - `uv run pytest -q tests/orchestration/unit/test_contract_lock_boundaries.py
+      tests/orchestration/integration/test_control_resolver_contract.py tests/orchestration/unit/test_core_adapter_contract.py
+      tests/orchestration/unit/test_imports.py` -> after changes 23 passed (before:
+      2 failed, 21 passed).
+
+
+      Files changed:
+
+      - tests/orchestration/unit/test_contract_lock_boundaries.py
+
+      - tests/orchestration/integration/test_control_resolver_contract.py
+
+      - tests/orchestration/unit/test_core_adapter_contract.py
+
+      - tests/orchestration/unit/test_imports.py
+
+
+      Commit:
+
+      - 2fe0ae2
+
+
+      Notes:
+
+      - `tools/vectl/README.md` unavailable in worktree per subagent; explicit out-of-scope
+      lock file left unchanged.'
   - id: repo_regression_behavior_alignment.resolve-reconcile-tracking-state-machine-drift
     name: Resolve reconcile tracking state-machine drift
     status: claimed

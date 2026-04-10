@@ -78096,6 +78096,31 @@ phases:
     depends_on:
     - orch_plane_planner_boundary.facade-enforcement
     agent: integration-verifier-tacit
+  - id: orch_plane_planner_boundary.gate
+    name: Gate planner boundary remediation
+    status: pending
+    description: Gate review for planner-boundary remediation. Block if live planner
+      execution can still reach plan.yaml outside the vectl facade or if runtime enforcement
+      remains proof-light.
+    verification: Review enforcement changes and live proof together; phase opens
+      only if approved mutation flow is exclusive and bypass evidence is closed.
+    evidence_template: '## refs Read Confirmation (MANDATORY)
+
+      - Quote the key passage from each ref or write NOT READ: <reason>
+
+
+      ## Gate Decision Basis
+
+      - Reviewed steps
+
+      - Blocking findings / none
+
+      - Residual risk disposition
+
+      '
+    depends_on:
+    - orch_plane_planner_boundary.live-proof
+    agent: gate-reviewer-tacit
 - id: orch_plane_finalization
   name: Orchestration Plane Finalization
   status: locked

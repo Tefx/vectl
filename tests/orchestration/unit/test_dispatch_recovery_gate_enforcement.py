@@ -533,6 +533,7 @@ class TestStartRuntimeExecutionGateEnforcement:
             step_id="core.deploy",
             description="Deploy step",
             verify_mode="none",
+            prompt_family="coder",
             output_contract="freeform_evidence",
             mutation_policy="worktree_changes",
         )

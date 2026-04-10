@@ -74921,6 +74921,39 @@ phases:
     intentionally reclassified with explicit evidence.
   depends_on:
   - xfail_config_and_dispatch_foundation
+  steps:
+  - id: xfail_role_prompt_and_review_normalization.implement-concrete-role-profile-registry
+    name: Implement concrete role profile registry
+    status: pending
+    description: 'work_type: technical_debt_remediation
+
+      step_type: implementation
+
+
+      Implement or finish the canonical `RoleProfileRegistry` concrete path in `dispatch_policy.py`
+      using configuration-backed/default-backed role semantics.
+
+
+      Requirements:
+
+      - known roles return concrete `RoleProfile`
+
+      - unknown roles fail explicitly
+
+      - `has_role()` reports accurately
+
+      - main-worktree family policy is encoded centrally, not scattered across callsites'
+    verification: '- Targeted RoleProfileRegistry xfails are green
+
+      - Role-family execution-context policy is centralized in the registry/path chosen'
+    evidence_template: '- concrete registry path:
+
+      - role families covered:
+
+      - unknown-role behavior:
+
+      - commands/tests run:'
+    agent: python-senior-tacit
 - id: xfail_authority_and_entrypoint_enforcement
   name: 'XFail Remediation: Authority and Entrypoint Enforcement'
   status: locked

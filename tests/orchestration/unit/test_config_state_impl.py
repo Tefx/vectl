@@ -298,6 +298,37 @@ class TestConfigDiscovery:
             == "blocked-case-coordinator-tacit"
         )
 
+    def test_load_preserves_role_id_agent_id_prompt_family_separation_for_future_role(
+        self, tmp_path: Path
+    ) -> None:
+        """Config role profiles must keep role identity distinct from prompt identity."""
+        config_content = {
+            "orchestration": {
+                "role_profiles": {
+                    "future-resolver-role": {
+                        "agent_id": "blocked-case-coordinator-tacit",
+                        "prompt_family": "resolver",
+                        "execution_context": "main_worktree",
+                        "mutation_policy": "vectl_facade_only",
+                        "session_policy": "reuse_forbidden",
+                        "output_contract": "resolution_report",
+                        "default_runner": "codex",
+                    }
+                }
+            }
+        }
+        config_file = tmp_path / "vectl.yaml"
+        config_file.write_text(yaml.dump(config_content))
+
+        config, path = load_orchestration_config(plan_path=config_file)
+
+        assert path == config_file
+        assert len(config.role_profiles) == 1
+        profile = config.role_profiles[0]
+        assert profile.role_id == "future-resolver-role"
+        assert profile.agent_id == "blocked-case-coordinator-tacit"
+        assert profile.prompt_family == "resolver"
+
     def test_missing_explicit_file_raises(self, tmp_path: Path) -> None:
         """Verify load_orchestration_config() raises for missing explicit file."""
         with pytest.raises(FileNotFoundError):

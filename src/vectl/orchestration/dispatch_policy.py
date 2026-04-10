@@ -311,6 +311,14 @@ _RESOLVER_TACIT_TASK_TEMPLATE = (
     "Do not claim new steps or modify the plan outside the approved facade."
 )
 
+_PROMPT_CONTENT_BY_AGENT_ID: dict[str, tuple[str, str]] = {
+    "blocked-case-coordinator": (_RESOLVER_SYSTEM_PROMPT, _RESOLVER_TASK_TEMPLATE),
+    "blocked-case-coordinator-tacit": (
+        _RESOLVER_TACIT_SYSTEM_PROMPT,
+        _RESOLVER_TACIT_TASK_TEMPLATE,
+    ),
+}
+
 
 @dataclass(frozen=True)
 class ConfigPromptRegistry:
@@ -441,6 +449,9 @@ def _select_prompt_content(
     Returns:
         Tuple of (system_prompt, task_template).
     """
+    prompt_by_agent = _PROMPT_CONTENT_BY_AGENT_ID.get(agent_id)
+    if prompt_by_agent is not None:
+        return prompt_by_agent
     if family == "coder":
         return (_CODER_SYSTEM_PROMPT, _CODER_TASK_TEMPLATE)
     if family == "planner":
@@ -448,11 +459,6 @@ def _select_prompt_content(
     if family == "reviewer":
         return (_REVIEWER_SYSTEM_PROMPT, _REVIEWER_TASK_TEMPLATE)
     if family == "resolver":
-        if (
-            agent_id == "blocked-case-coordinator-tacit"
-            or role_id == "blocked-case-coordinator-tacit"
-        ):
-            return (_RESOLVER_TACIT_SYSTEM_PROMPT, _RESOLVER_TACIT_TASK_TEMPLATE)
         return (_RESOLVER_SYSTEM_PROMPT, _RESOLVER_TASK_TEMPLATE)
     # Unknown family — use coder as base but note the family mismatch
     return (_CODER_SYSTEM_PROMPT, _CODER_TASK_TEMPLATE)

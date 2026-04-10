@@ -532,6 +532,38 @@ class TestConfigPromptRegistry:
         assert "tacit edition" in tacit.system_prompt.lower()
         assert "repair or delegation paths" in tacit.system_prompt.lower()
 
+    def test_agent_id_precedence_preserves_tacit_prompt_for_future_role_id(self) -> None:
+        """Prompt selection must use agent_id before prompt_family fallback."""
+        future_role = RoleProfile(
+            role_id="future-resolver-role",
+            agent_id="blocked-case-coordinator-tacit",
+            prompt_family="resolver",
+            execution_context="main_worktree",
+            mutation_policy="vectl_facade_only",
+            session_policy="reuse_forbidden",
+            output_contract="resolution_report",
+            default_runner="codex",
+        )
+        role_registry = ConfigRoleProfileRegistry(profiles=(future_role,))
+        registry = ConfigPromptRegistry(role_registry=role_registry)
+
+        bundle = registry.render(
+            DispatchSpec(
+                source_kind="resolution_subtask",
+                source_id="case-future-role",
+                role_id="future-resolver-role",
+                role_source="resolver",
+                execution_context="main_worktree",
+                runner="codex",
+                session_mode="fresh",
+                prompt_family="resolver",
+                mutation_policy="vectl_facade_only",
+            )
+        )
+
+        assert "tacit edition" in bundle.system_prompt.lower()
+        assert "repair or delegation paths" in bundle.system_prompt.lower()
+
     def test_main_worktree_context_in_messages(self) -> None:
         """main_worktree execution context must appear in context messages."""
         registry = ConfigPromptRegistry()

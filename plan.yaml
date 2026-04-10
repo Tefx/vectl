@@ -73747,7 +73747,7 @@ phases:
       \ -v` -> 22 passed.\n\n## Remaining Risk\n- none"
   - id: repo_regression_full_suite_gate.retest-recovery-contract-conformance-semantics
     name: Retest recovery contract conformance semantics
-    status: pending
+    status: claimed
     description: "step_type: test\nstep_intent: retest_green\nexpected_result: green\n\
       verification_scope: phase-check\nprotects_gates:\n  - repo_regression_full_suite_gate\
       \ repo-wide full-suite gate\n  - repo_regression_full_suite_gate.decide-static-guard-scope-and-enforcement\n\
@@ -73786,6 +73786,8 @@ phases:
     depends_on:
     - repo_regression_full_suite_gate.fix-recovery-contract-conformance-semantics
     agent: integration-verifier
+    claimed_by: integration-verifier
+    claimed_at: '2026-04-10T03:59:53.784405+00:00'
 - id: repo_regression_test_intent_alignment
   name: Repo Regression Test Intent Alignment
   status: done

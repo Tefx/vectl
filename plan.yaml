@@ -73529,16 +73529,6 @@ phases:
     explicit disposition and fix target.
   depends_on:
   - orchestration_upper_layer_review
-  steps:
-  - id: repo_regression_triage.capture-full-suite-failure-inventory
-    name: Capture full-suite failure inventory
-    status: pending
-    description: Record the current failing set from `uv run pytest -q`, grouped by
-      file/test and normalized into remediation buckets. Include all 27 current failures
-      and any companion xfail/skip context relevant to disposal.
-    verification: Failure inventory exists with every failing test assigned an initial
-      category and owner hypothesis. Evidence includes the exact command run and summarized
-      counts by bucket.
 - id: repo_regression_expected_red_cleanup
   name: Expected-Red Cleanup and Test Intent Realignment
   status: locked
@@ -73814,6 +73804,15 @@ phases:
       - Files updated:
 
       - How future gates should consume this metadata:'
+  - id: repo_regression_triage.capture-full-suite-failure-inventory
+    name: Capture full-suite failure inventory
+    status: pending
+    description: Record the current failing set from `uv run pytest -q`, grouped by
+      file/test and normalized into remediation buckets. Include all 27 current failures
+      and any companion xfail/skip context relevant to disposal.
+    verification: Failure inventory exists with every failing test assigned an initial
+      category and owner hypothesis. Evidence includes the exact command run and summarized
+      counts by bucket.
 - id: repo_regression_semantic_alignment
   name: Repo Regression Semantic Alignment
   status: locked

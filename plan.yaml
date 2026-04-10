@@ -75543,3 +75543,51 @@ phases:
     and evidence distinguishes environment/setup failures from genuine product defects.
   depends_on:
   - retire_repair_continuity_legacy_surface
+  steps:
+  - id: live_smoke_real_runner_validation.lock-live-runner-execution-matrix
+    name: Lock live-runner execution matrix and prerequisites
+    status: pending
+    description: 'work_type: validation_planning
+
+      step_type: contract_lock
+
+
+      Define the exact real-runner validation matrix for this phase before execution.
+
+
+      Requirements:
+
+      - enumerate codex/opencode x judge/dispatch live smoke lanes to run
+
+      - state required opt-in flags, binaries, auth/session prerequisites, and any
+      model override assumptions
+
+      - separate environment readiness checks from product-behavior assertions
+
+      - define which optional browser/UI smoke checks are in-scope versus out-of-scope
+      for this phase
+
+
+      Important:
+
+      - this step does not fix product bugs; it locks the real-runner execution contract
+      so later failures are interpretable
+
+      - skip semantics remain valid only for missing external prerequisites, not hidden
+      product defects'
+    verification: '- A concrete execution matrix exists with explicit prerequisites
+      and lane list
+
+      - In-scope vs out-of-scope live/browser checks are unambiguous'
+    evidence_template: '## Live Matrix Decision
+
+      - lanes to run:
+
+      - prerequisite checks:
+
+      - auth/binary assumptions:
+
+      - UI scope decision:
+
+      - environment vs product failure boundary:'
+    agent: software-architect-tacit

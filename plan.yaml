@@ -75615,7 +75615,7 @@ phases:
       reviewer: orchestrator
   - id: retire_repair_continuity_legacy_surface.rewrite-or-remove-legacy-black-box-tests
     name: Rewrite or remove legacy black-box tests
-    status: claimed
+    status: done
     description: 'work_type: technical_debt_remediation
 
       step_type: test_realignment
@@ -75655,7 +75655,19 @@ phases:
     agent: python-senior-tacit
     claimed_by: python-senior-tacit
     claimed_at: '2026-04-10T06:32:35.612675+00:00'
-    done_at: '2026-04-10T06:30:57.599503+00:00'
+    done_at: '2026-04-10T06:34:34.900520+00:00'
+    evidence: "## Test Realignment Evidence\n- legacy tests removed/rewritten:\n \
+      \ - Rewrote `tests/repro/test_repair_continuity_black_box.py` from legacy continuity-hygiene\
+      \ behavior suite into retirement-surface black-box checks.\n  - Removed `vectl.driver.continuity_hygiene`\
+      \ probe and `pytest.mark.skip` masking.\n- replacement coverage:\n  - Asserts\
+      \ `vectl repair --help` no longer advertises `continuity`.\n  - Asserts `vectl\
+      \ repair continuity --help` fails explicitly with `No such command 'continuity'`.\n\
+      \  - Asserts supported surface `vectl orch recover --step core.ready --dry-run\
+      \ --json --plan <tmp>` returns success with `recovery_report.outcome=no_artifacts`\
+      \ and `gate_open_allowed=true`.\n- skip masking removed how:\n  - Legacy module-absence\
+      \ skip gate deleted; tests execute unconditionally.\n- commands/tests run:\n\
+      \  - `uv run pytest -q tests/repro/test_repair_continuity_black_box.py` -> `3\
+      \ passed`.\n  - Branch commit: `316367b`."
     rejection_reason: 'Evidence/code mismatch: legacy skip-gated test file remains
       unchanged in main.'
     rejection_history:

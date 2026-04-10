@@ -75287,12 +75287,12 @@ phases:
     agent: gate-reviewer-tacit
 - id: retire_repair_continuity_legacy_surface
   name: Retire Legacy `repair continuity` Surface
-  status: locked
+  status: pending
   gate: Legacy `vectl repair continuity` residue is removed or converted into an explicit
     retirement shim, all tests/docs align to `vectl orch recover`, and no stale public-surface
     claims remain.
   depends_on:
-  - xfail_finalization
+  - repo_regression_full_suite_gate
   steps:
   - id: retire_repair_continuity_legacy_surface.lock-modern-recovery-authority-and-retirement-decision
     name: Lock modern recovery authority and retirement decision

@@ -77112,7 +77112,7 @@ phases:
     agent: gate-reviewer-tacit
   - id: resolver_cleanup_core.fix-gate-shouldfix-batch
     name: resolver_cleanup_core.fix-gate-shouldfix-batch
-    status: claimed
+    status: done
     description: 'Batched should-fix remediation before core migration proceeds.
 
 
@@ -77159,6 +77159,28 @@ phases:
     agent: python-senior-tacit
     claimed_by: python-senior-tacit
     claimed_at: '2026-04-10T13:21:06.010787+00:00'
+    done_at: '2026-04-10T13:29:36.946280+00:00'
+    evidence: "Artifact:\n- Worker commit: `d230cd6` (`fix(orchestration): register\
+      \ tacit blocked-case resolver`)\n- Cherry-picked on Main: `47a3bd3`\n\nVerification:\n\
+      - Run: `uv sync --group dev` -> populated worktree `.venv` after confirming\
+      \ pytest module missing.\n- Run: `.venv/bin/python -m pytest tests/orchestration/unit/test_dispatch_policy.py\
+      \ -q` -> `47 passed in 0.70s`.\n- Run: registry lookup script for `blocked-case-coordinator-tacit`\
+      \ -> role lookup succeeded and printed:\n  - role_id: `blocked-case-coordinator-tacit`\n\
+      \  - prompt_family: `resolver`\n  - execution_context: `main_worktree`\n  -\
+      \ mutation_policy: `vectl_facade_only`\n- Run: focused taxonomy regression tests\
+      \ in `tests/orchestration/unit/test_dispatch_policy.py` -> pass.\n\nSpec link:\n\
+      - `docs/ADR-orchestration-role-profile-config-and-resolver-cleanup.md` (Decision:\
+      \ only default resolver agents are `blocked-case-coordinator` and `blocked-case-coordinator-tacit`).\n\
+      - `docs/ORCHESTRATION-PLANE-CLI-CONFIG-OBSERVABILITY-DESIGN.md` (§8.4/§8.5 role-profile\
+      \ + validation semantics).\n\n## refs Read Confirmation\n- `tools/vectl/README.md`\
+      \ — NOT READ: file absent at worktree path; read call returned file-not-found.\n\
+      - `docs/ADR-orchestration-role-profile-config-and-resolver-cleanup.md` — key\
+      \ passage confirms two default resolver agents.\n- `docs/ORCHESTRATION-PLANE-CLI-CONFIG-OBSERVABILITY-DESIGN.md`\
+      \ — key passage includes tacit resolver profile and default resolver validation\
+      \ domain.\n\nFiles changed:\n- `src/vectl/orchestration/dispatch_policy.py`\n\
+      - `tests/orchestration/unit/test_dispatch_policy.py`\n\nOutcome:\n- Added `blocked-case-coordinator-tacit`\
+      \ into authoritative default RoleProfile set.\n- Default role/profile registry\
+      \ lookup for tacit resolver succeeds.\n- No legacy conflict/judge taxonomy reintroduced."
 - id: resolver_cleanup_finalization
   name: 'Resolver Cleanup: Finalization, Doc Sync, and Deep Review'
   status: locked

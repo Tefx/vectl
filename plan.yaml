@@ -74684,7 +74684,7 @@ phases:
   steps:
   - id: xfail_config_and_dispatch_foundation.close-resolver-timeout-env-precedence-gap
     name: Close resolver-timeout env precedence gap
-    status: claimed
+    status: done
     description: 'work_type: technical_debt_remediation
 
       step_type: implementation
@@ -74762,6 +74762,56 @@ phases:
     agent: python-executor
     claimed_by: python-executor
     claimed_at: '2026-04-10T05:47:00.824348+00:00'
+    done_at: '2026-04-10T05:50:18.370199+00:00'
+    evidence: '## refs Read Confirmation (MANDATORY)
+
+      For each ref in this step:
+
+      - `docs/ORCHESTRATION-PLANE-CLI-CONFIG-OBSERVABILITY-DESIGN.md` — §8.3 env naming
+      convention and §8.2 precedence (env > file > defaults)
+
+      - `tests/orchestration/unit/test_config_state_red.py` — target xfail case around
+      resolver timeout precedence
+
+      - `src/vectl/orchestration/config.py` — canonical load/apply/convert path
+
+
+      ## Fix Evidence
+
+      - blocker_fingerprint: config-precedence / resolver-timeout-env-alias
+
+      - root_cause_hypothesis: canonical env alias mapping was correct, but `_apply_env_overrides()`
+      wrote to internal field key `invocation_timeout_seconds` while `_dict_to_config()`
+      reads canonical key `timeout_seconds`, so env override never surfaced.
+
+      - files_changed: `src/vectl/orchestration/config.py` (one-line key fix)
+
+      - sibling_search_performed: checked `invocation_timeout_seconds` callsites;
+      no parallel override path remains.
+
+
+      ## Main Path Proof
+
+      - `_flatten_env_vars()` maps `VECTL_ORCH_RESOLVER_TIMEOUT_SECONDS` → `resolver.timeout_seconds`.
+
+      - `_apply_env_overrides()` now writes `updates["resolver"]["timeout_seconds"]`
+      (canonical key), allowing `_deep_update_config()` and `_dict_to_config()` to
+      carry value through.
+
+      - Test proof: `uv run pytest tests/orchestration/unit/test_config_state_red.py
+      -q` → `25 passed`.
+
+
+      ## Failure Path Proof
+
+      - Env absent: override no-op, default/file precedence preserved.
+
+      - Env invalid: float parse raises `ValueError` (fail-fast), no silent corruption.
+
+
+      ## Remaining Risk
+
+      - none'
   - id: xfail_config_and_dispatch_foundation.centralize-dispatch-spec-construction
     name: Centralize DispatchSpec construction and verify-mode mapping
     status: pending

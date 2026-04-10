@@ -73570,7 +73570,7 @@ phases:
   - repo_regression_surface_and_fixture_repair
 - id: repo_regression_full_suite_gate
   name: Repo-Wide Full Suite Gate
-  status: locked
+  status: pending
   gate: 'The repository demonstrates repo-wide health: full pytest passes, or any
     non-passing tests are explicitly accepted as xfail/skip with governed rationale.
     The gap between phase-local green and repo-wide red is closed.'
@@ -74137,7 +74137,7 @@ phases:
       - Subagent reported `tools/vectl/README.md` missing in worktree.'
 - id: repo_regression_surface_and_observability_alignment
   name: Repo Regression Surface and Observability Alignment
-  status: in_progress
+  status: done
   gate: Repo fixtures, CLI/public surfaces, and observability repro expectations are
     aligned so remaining non-passing tests are either fixed or explicitly governed
     intentional debt.
@@ -74216,7 +74216,7 @@ phases:
       - No observability repro failures were moved out of blocking path.'
   - id: repo_regression_surface_and_fixture_repair.reconcile-drive-cli-public-surface
     name: Reconcile drive CLI public surface
-    status: claimed
+    status: done
     description: Determine whether `drive` is still a supported CLI command/import
       surface. Then either restore/register the command and import path or update/remove
       stale tests to match the current supported interface. Spec, implementation,
@@ -74230,6 +74230,43 @@ phases:
       - Command: `uv run pytest tests/test_cli.py -k DriveCLI -q` -> <outcome>'
     claimed_by: general
     claimed_at: '2026-04-10T03:26:44.097889+00:00'
+    done_at: '2026-04-10T03:33:19.329519+00:00'
+    evidence: 'Supported surface decision:
+
+      - Determined `drive` is retired and not a supported public CLI/import surface.
+
+      - Evidence from current CLI registrations and architecture docs favors `orch`
+      surfaces.
+
+
+      Surface/test changes:
+
+      - Updated `tests/test_cli.py` `TestDriveCLI` coverage from stale `drive` expectations
+      to regression checks asserting retirement and validating supported `orch` help/entry
+      surfaces.
+
+      - Added assertions that `drive` is absent, `orch` help surfaces are present,
+      and `vectl.cli` exports `orch_app` not `drive`.
+
+
+      Command:
+
+      - `uv run pytest tests/test_cli.py -k DriveCLI -q` -> 8 passed, 231 deselected.
+
+
+      Files changed:
+
+      - tests/test_cli.py
+
+
+      Commit:
+
+      - a123fea
+
+
+      Notes:
+
+      - Ref path `tools/vectl/README.md` unavailable in worktree per subagent report.'
   - id: repo_regression_observability_gap_disposition.align-event-envelope-schema-tests
     name: Align event envelope schema tests
     status: done

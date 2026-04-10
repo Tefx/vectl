@@ -73700,3 +73700,19 @@ phases:
       - File/test changes:
 
       - Command: `uv run pytest tests/repro/test_orch_liveness.py -q` -> <outcome>'
+  - id: repo_regression_surface_and_fixture_repair.reconcile-drive-cli-public-surface
+    name: Reconcile drive CLI public surface
+    status: pending
+    description: Determine whether `drive` is still a supported CLI command/import
+      surface. Then either restore/register the command and import path or update/remove
+      stale tests to match the current supported interface. Spec, implementation,
+      and tests must converge.
+    verification: '`TestDriveCLI` passes or is intentionally converted to a supported-surface
+      test with clear rationale.'
+    evidence_template: '- Supported surface decision:
+
+      - Surface/test changes:
+
+      - Command: `uv run pytest tests/test_cli.py -k DriveCLI -q` -> <outcome>'
+    depends_on:
+    - repo_regression_surface_and_fixture_repair.fix-orch-liveness-fixture-assumptions

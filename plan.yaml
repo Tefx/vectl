@@ -74283,7 +74283,7 @@ phases:
       - Ref path `tools/vectl/README.md` unavailable in worktree per subagent report.'
   - id: repo_regression_surface_and_fixture_repair.fix-orch-liveness-fixture-assumptions
     name: Fix orchestration liveness fixture assumptions
-    status: claimed
+    status: done
     description: Repair `tests/repro/test_orch_liveness.py` so it no longer depends
       on an implicit repo-root `driver.yaml` unless that file is truly part of the
       supported public fixture surface. Prefer test-local fixture generation over
@@ -74297,3 +74297,37 @@ phases:
       - Command: `uv run pytest tests/repro/test_orch_liveness.py -q` -> <outcome>'
     claimed_by: general
     claimed_at: '2026-04-10T03:26:36.329455+00:00'
+    done_at: '2026-04-10T03:33:09.405236+00:00'
+    evidence: 'Fixture strategy chosen:
+
+      - Replaced ambient repo-root `driver.yaml` assumption with fully test-local
+      temporary fixture generation.
+
+      - Test now writes local `plan.yaml` + `vectl.yaml`, initializes minimal git
+      repo, then exercises supported `vectl orch run --json` surface.
+
+
+      File/test changes:
+
+      - Updated tests/repro/test_orch_liveness.py with local fixture helpers and CLI
+      entrypoint liveness flow.
+
+
+      Command:
+
+      - `uv run pytest tests/repro/test_orch_liveness.py -q` -> 1 passed.
+
+
+      Files changed:
+
+      - tests/repro/test_orch_liveness.py
+
+
+      Commit:
+
+      - 27ded27
+
+
+      Notes:
+
+      - Ref path `tools/vectl/README.md` unavailable in worktree per subagent report.'

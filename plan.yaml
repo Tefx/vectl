@@ -78285,7 +78285,7 @@ phases:
       \ on main: `43ded09`"
   - id: orch_plane_planner_boundary.live-proof
     name: Prove planner boundary live
-    status: claimed
+    status: done
     description: Independent live proof that planner execution cannot bypass the vectl
       facade and cannot directly edit authoritative plan.yaml while still succeeding
       through the approved runtime path.
@@ -78313,6 +78313,110 @@ phases:
     agent: integration-verifier-tacit
     claimed_by: integration-verifier-tacit
     claimed_at: '2026-04-10T20:17:23.708920+00:00'
+    done_at: '2026-04-10T20:41:26.837740+00:00'
+    evidence: '## refs Read Confirmation
+
+      - `src/vectl/io.py`: Read in full (317 lines). Key passages: `_PLAN_YAML_HEADER`
+      lines 26-35 declare "MANAGED FILE — DO NOT EDIT DIRECTLY"; `save_plan()` lines
+      69-88 performs CAS check with `_locked_plan_file()` file lock; `CASConflictError`
+      raised at line 116 when hash mismatches; `_write_plan_content()` lines 133-148
+      uses atomic rename pattern.
+
+      - `src/vectl/cli.py`: Read signature survey (4095 lines). Key: `_save_plan()`
+      line 305 calls `recalc_lock_status()` before persist, catches `CASConflictError`
+      at line 322 with explicit error message.
+
+      - `src/vectl/orchestration/runtime.py`: Read lines 380-430 and 1310-1360. Key:
+      `prepare()` at line 393-399 raises `WorktreeError` when `planner_output_contract
+      == "vectl_facade_mutation"` — blocks worktree launch for planner-class requests.
+
+      - `src/vectl/orchestration/contracts.py`: Read lines 1-150. Key: `ResolverMutationSurface`
+      type alias is `Literal["approved_vectl_facade_only"]` (line 92); `ResolverAuthorityContract`
+      pins `mutation_surface="approved_vectl_facade_only"` (line 130); `MutationPolicy`
+      includes `"vectl_facade_only"` (line 58); `RoleOutputContract` includes `"vectl_facade_mutation"`
+      (line 63).
+
+      - `tests/orchestration/unit/test_contract_lock_boundaries.py`: Read in full
+      (115 lines). Line 74 asserts `resolver_contract.mutation_surface == "approved_vectl_facade_only"`.
+
+      - `tests/orchestration/unit/test_runtime.py`: Read lines 120-176. Lines 133-158
+      test `test_prepare_rejects_planner_facade_execution_in_linked_worktree_runtime`.
+
+      - `tests/test_manual_yaml_edit.py`: Read in full (221 lines). Tests lock self-correction
+      on save.
+
+      - `tests/test_io.py::TestCAS`: 5 tests for CAS success, conflict, new file,
+      no-hash, and serialization.
+
+
+      ## Live Boundary Evidence
+
+
+      ### Approved-path proof (PASS)
+
+      - `claim_step()` + `complete_step()` + `save_plan()` with CAS round-trip: step
+      status → `done`, evidence → `"approved-path-evidence"`. Verified persisted to
+      disk and reloaded.
+
+
+      ### Bypass/direct-edit failure proof (PASS)
+
+      - **CAS conflict detection**: Direct edit to `plan.yaml` (changing `project:`
+      field) invalidates hash; subsequent `save_plan(plan, path, expected_hash=original_hash)`
+      raises `CASConflictError("CAS conflict: /tmp/.../plan.yaml was modified by another
+      process")`.
+
+      - **Lock self-correction**: Manually writing PENDING status for a phase with
+      unmet dependency → loaded as PENDING → `_save_plan()` calls `recalc_lock_status()`
+      → phase corrected to LOCKED. Changes returned: `[''p2'']`. Phase status transitions:
+      `PENDING → LOCKED`.
+
+      - **Runtime worktree block**: `ExecutionRequest` with `output_contract=vectl_facade_mutation`
+      + `mutation_policy=vectl_facade_only` → `runtime.prepare()` raises `WorktreeError("Runtime
+      worktree launch blocked: vectl_facade_mutation requests must stay on the approved
+      vectl facade because linked-worktree execution could directly edit plan.yaml
+      outside the authorized mutation boundary")`.
+
+
+      ### No silent fallback proof (PASS)
+
+      - Regular (non-planner) `ExecutionRequest` with `isolation=workspace` → workspace
+      created successfully: `ws-regular-executor-step-48740e1c`. Boundary enforcement
+      is selective, not blanket-block.
+
+
+      ### Contract pinning proof (PASS)
+
+      - `ResolverAuthorityContract()` → `execution_site="main_worktree"`, `mutation_surface="approved_vectl_facade_only"`,
+      `claim_flow="normal_flow_only"`. Type aliases enforce these at static level.
+
+
+      ### Existing unit test corroboration (16/16 PASS)
+
+      ```
+
+      tests/test_manual_yaml_edit.py::TestManualYamlEditLockCorrection (3 tests) —
+      PASS
+
+      tests/test_manual_yaml_edit.py::TestRecalcLockDryRun (2 tests) — PASS
+
+      tests/test_io.py::TestCAS (5 tests) — PASS
+
+      tests/orchestration/unit/test_contract_lock_boundaries.py (5 tests) — PASS
+
+      tests/orchestration/unit/test_runtime.py::test_prepare_rejects_planner_facade_execution_in_linked_worktree_runtime
+      — PASS
+
+      ```
+
+
+      ### Observed error types/messages
+
+      - `CASConflictError`: "CAS conflict: {path} was modified by another process"
+
+      - `WorktreeError`: "Runtime worktree launch blocked: vectl_facade_mutation requests
+      must stay on the approved vectl facade because linked-worktree execution could
+      directly edit plan.yaml outside the authorized mutation boundary"'
   - id: orch_plane_planner_boundary.gate
     name: Gate planner boundary remediation
     status: pending

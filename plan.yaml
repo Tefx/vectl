@@ -75018,6 +75018,34 @@ phases:
     depends_on:
     - xfail_role_prompt_and_review_normalization.implement-concrete-prompt-registry
     agent: python-senior-tacit
+  - id: xfail_role_prompt_and_review_normalization.retest-role-prompt-and-review
+    name: Retest role, prompt, and review normalization
+    status: pending
+    description: 'step_type: test
+
+      step_intent: retest_green
+
+      expected_result: green
+
+
+      Run focused dispatch-policy-red coverage for role registry, prompt registry,
+      and structured review normalization.'
+    verification: '- All targeted dispatch-policy red tests for registry/prompt/review
+      normalization are green
+
+      - Evidence includes actual command output'
+    evidence_template: '- Command: `uv run pytest tests/orchestration/unit/test_dispatch_policy_red.py
+      -k "RoleProfileRegistry or PromptRegistry or StructuredReviewResultNormalization"
+      -q`
+
+      - Output:
+
+      - Remaining governed statuses:'
+    depends_on:
+    - xfail_role_prompt_and_review_normalization.implement-concrete-role-profile-registry
+    - xfail_role_prompt_and_review_normalization.implement-concrete-prompt-registry
+    - xfail_role_prompt_and_review_normalization.implement-structured-review-normalizer
+    agent: integration-verifier-tacit
 - id: xfail_authority_and_entrypoint_enforcement
   name: 'XFail Remediation: Authority and Entrypoint Enforcement'
   status: locked

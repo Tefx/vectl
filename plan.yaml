@@ -75542,7 +75542,7 @@ phases:
     discovered issues are either fixed and independently retested or explicitly dispositioned,
     and evidence distinguishes environment/setup failures from genuine product defects.
   depends_on:
-  - retire_repair_continuity_legacy_surface
+  - xfail_finalization
   steps:
   - id: live_smoke_real_runner_validation.lock-live-runner-execution-matrix
     name: Lock live-runner execution matrix and prerequisites

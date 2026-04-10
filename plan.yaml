@@ -78476,7 +78476,7 @@ phases:
   steps:
   - id: orch_plane_finalization.core-adapter-hygiene
     name: Reduce CoreStepDataAdapter coupling
-    status: claimed
+    status: done
     description: 'Lower-priority hygiene: narrow the CoreStepDataAdapter private/internal
       coupling seam so orchestration code depends on a stable adapter boundary instead
       of incidental internals.'
@@ -78499,6 +78499,25 @@ phases:
     agent: python-executor
     claimed_by: python-executor
     claimed_at: '2026-04-10T20:55:25.569321+00:00'
+    done_at: '2026-04-10T21:02:11.387897+00:00'
+    evidence: "## refs Read Confirmation (MANDATORY)\n- tools/vectl/README.md — NOT\
+      \ READ: file absent in isolated worktree path.\n- docs/ORCHESTRATION-PLANE-IMPLEMENTATION-DESIGN.md\
+      \ §3.6 — key invariant used: adapter is orchestration-plane bridge over official\
+      \ core surfaces, not shadow authority.\n- src/vectl/orchestration/core_adapter.py\
+      \ — public seam reviewed and used for dispatch step data loading.\n- src/vectl/orchestration/dispatch_policy.py\
+      \ — previous private `_plan_path` coupling removed from CoreStepDataAdapter\
+      \ path.\n\n## Hygiene Evidence\n- Files changed:\n  - `src/vectl/orchestration/core_adapter.py`\n\
+      \  - `src/vectl/orchestration/dispatch_policy.py`\n  - `tests/orchestration/unit/test_core_adapter_impl.py`\n\
+      \  - `tests/orchestration/unit/test_dispatch_policy.py`\n- Coupling seam reduced:\n\
+      \  - Removed CoreStepDataAdapter direct private-path access (`_core_adapter._plan_path`).\n\
+      \  - Added public seam `PlanCoreAdapter.load_step_data_for_dispatch(step_id)`\
+      \ and delegated adapter loading to it.\n- Targeted tests updated:\n  - `test_load_step_data_for_dispatch_public_seam`\n\
+      \  - `test_load_step_data_for_dispatch_returns_none_for_missing_step`\n  - `TestCoreStepDataAdapterBoundary::test_adapter_delegates_to_public_core_seam`\n\
+      \  - `TestCoreStepDataAdapterBoundary::test_adapter_returns_none_for_missing_step`\n\
+      \nVerification:\n- type checks clean (0 errors)\n- targeted orchestration tests\
+      \ pass (61 passed for targeted set)\n- full orchestration verification run passed\
+      \ except pre-existing unrelated failure family (already tracked separately)\n\
+      \nCommit evidence:\n- Worker commit: `78c75a5`\n- Cherry-picked on main: `de87a09`"
   - id: orch_plane_finalization.test-expectation-drift
     name: Fix test expectation drift
     status: pending

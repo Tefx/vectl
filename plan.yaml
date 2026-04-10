@@ -76944,6 +76944,52 @@ phases:
     depends_on:
     - resolver_cleanup_core.remove-legacy-surfaces-and-dead-metadata
     agent: integration-verifier-tacit
+  - id: resolver_cleanup_core.gate
+    name: Gate config and surface cleanup
+    status: pending
+    description: 'Gate review: verify config-backed role ownership, program-level
+      blocked-case resolver wiring, and legacy-surface deletion are complete.
+
+
+      review_depth: THOROUGH
+
+      cross_cutting_focus:
+
+      - no code-owned ordinary role truth remains
+
+      - no judge/conflict/template/fallback drift remains
+
+      - planner mutation boundary is explicit and non-proposal-only'
+    verification: '- All phase work complete.
+
+      - Verification evidence reviewed.
+
+      - No unresolved blockers for finalization.'
+    evidence_template: '## refs Read Confirmation (MANDATORY)
+
+      For each ref in this step:
+
+      - <filename> — key passage or "NOT READ: <reason>"
+
+
+      If no refs were provided, state: "No refs for this step."
+
+
+      ## Gate Review Report
+
+      - Step evidence reviewed:
+
+      - Cross-cutting drift checks:
+
+      - Gate decision basis:
+
+      '
+    depends_on:
+    - resolver_cleanup_core.migrate-role-profiles-to-config
+    - resolver_cleanup_core.wire-default-blocked-case-resolver
+    - resolver_cleanup_core.remove-legacy-surfaces-and-dead-metadata
+    - resolver_cleanup_core.verify-cleaned-runtime-and-contract-surfaces
+    agent: gate-reviewer-tacit
 - id: resolver_cleanup_finalization
   name: 'Resolver Cleanup: Finalization, Doc Sync, and Deep Review'
   status: locked

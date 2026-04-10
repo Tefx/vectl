@@ -4,7 +4,7 @@
 > `vectl core`.
 
 **Status:** Target architecture  
-**Authority:** `docs/ADR-orchestration-plane-reset.md`  
+**Authority:** `docs/ADR-orchestration-role-profile-config-and-resolver-cleanup.md`  
 **Scope:** Full target design, not an implementation slice  
 **Related docs:** `docs/ORCHESTRATION-PLANE-INTERFACES.md`, `docs/ORCHESTRATION-PLANE-RESOLUTION-CONTRACT.md`, `docs/ORCHESTRATION-PLANE-ISOLATION-SEMANTICS.md`, `docs/ORCHESTRATION-PLANE-IMPLEMENTATION-DESIGN.md`
 
@@ -74,6 +74,11 @@ are not closed by normal orchestration flow.
 
 If a concept is merely an optimization and not a correctness boundary, it should
 stay out of the architectural surface unless proven necessary.
+
+### G6. Keep role vocabulary configuration-owned
+
+Plan data may reference role IDs, but ordinary role-profile definitions belong to
+orchestration configuration rather than orchestration-core code.
 
 ---
 
@@ -262,6 +267,8 @@ the whole plane itself.
 | Concern | Owner |
 |--------|-------|
 | Plan graph, lifecycle, claims, authoritative state | `vectl core` |
+| Role references on plan-side work items | authoritative plan data |
+| Ordinary role-profile definitions | orchestration configuration |
 | Plan-aware orchestration flow | `control` |
 | Reusable agent/session resource registry | `roster` |
 | Mechanical worktree/runner/environment chores | `runtime` |
@@ -295,6 +302,17 @@ The following are rejected from the target architecture:
 
 `session_reuse` may exist only as an internal `roster` optimization.
 
+### 8.3 Role authority split
+
+The target architecture freezes the role boundary as:
+
+- plan/task data references `role_id`
+- orchestration configuration defines the role profile for that `role_id`
+- orchestration core only loads, validates, and consumes those profiles
+
+This prevents plan documents from becoming an accidental second source of truth
+for prompt, runner, mutation, or execution policy semantics.
+
 ---
 
 ## 9. Isolation Semantics
@@ -311,7 +329,7 @@ task semantics.
 ### Architectural position
 
 If explicit isolation is required, that requirement belongs in authoritative task
-semantics (likely core/planner-level execution constraints), not in `resolver`
+semantics (likely core/plan-level execution constraints), not in `resolver`
 guesswork and not in `roster` heuristics.
 
 The exact target semantic is defined in:
@@ -333,6 +351,28 @@ These should be preferred over earlier placeholders such as `servant` and
 `pool`, and over overloaded internal names such as an inner `orchestrator`
 component inside the orchestration plane.
 
+### 10.1 Removed target terms
+
+Legacy resolver aliases, legacy review vocabulary, and deprecated dispatch-shape
+fields are removed from the target architecture. Historical appearances are
+non-authoritative; see
+`docs/ADR-orchestration-role-profile-config-and-resolver-cleanup.md`.
+
+### 10.2 Default resolver agents
+
+The only default resolver agents are:
+
+- `blocked-case-coordinator`
+- `blocked-case-coordinator-tacit`
+
+Additional resolver-like roles require explicit configuration and must not be
+treated as built-in defaults.
+
+### 10.3 Historical plan non-authority
+
+Historical `plan.yaml` content remains untouched execution history. It does not
+define target orchestration-plane terminology or override this architecture.
+
 ---
 
 ## 11. Trade-offs
@@ -349,14 +389,16 @@ component inside the orchestration plane.
 
 - introduces an explicit four-part orchestration vocabulary that implementers
   must respect
-- does not yet settle the exact control↔resolver contract
+- requires configuration hygiene so role-profile drift does not move into code
 
 ---
 
 ## 12. Remaining Open Questions
 
-- `control ↔ resolver` contract → `docs/ORCHESTRATION-PLANE-RESOLUTION-CONTRACT.md`
-- explicit isolation semantics → `docs/ORCHESTRATION-PLANE-ISOLATION-SEMANTICS.md`
+- whether packaged default configuration should ship these role profiles in a
+  checked-in config file or equivalent config resource
+- whether non-default resolver specializations will ever justify distinct
+  configured role IDs beyond the two frozen defaults
 
 ---
 
@@ -371,5 +413,11 @@ The target system is:
   - `roster` for reusable resources
   - `runtime` for mechanical chores
   - `resolver` for unresolved blocker reasoning
+
+And the supporting authority split is:
+
+- plan references roles
+- config defines role profiles
+- orchestration core only loads, validates, and consumes
 
 This is the full target architecture for the next design phase.

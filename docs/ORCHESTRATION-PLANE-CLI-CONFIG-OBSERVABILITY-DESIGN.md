@@ -3,7 +3,7 @@
 > Canonical specification for orchestration-plane CLI commands, configuration system, and observability contracts.
 
 **Status:** Design specification  
-**Architecture authority:** `docs/ORCHESTRATION-PLANE-ARCHITECTURE.md`  
+**Architecture authority:** `docs/ORCHESTRATION-PLANE-ARCHITECTURE.md`, `docs/ADR-orchestration-role-profile-config-and-resolver-cleanup.md`  
 **Implementation authority:** `docs/ORCHESTRATION-PLANE-IMPLEMENTATION-DESIGN.md`  
 **Related docs:** `docs/ORCHESTRATION-PLANE-RESOLUTION-CONTRACT.md`, `docs/ORCHESTRATION-PLANE-ISOLATION-SEMANTICS.md`
 
@@ -47,6 +47,8 @@ This document defines:
 3. **Immutable snapshots**: Run configuration is frozen at start time
 4. **Observable by design**: All state changes emit events
 5. **Mechanical sympathy**: Projection replay must be deterministic
+6. **Role profiles are config-owned**: orchestration code must not invent
+   ordinary role profiles in code
 
 ---
 
@@ -546,6 +548,9 @@ Configuration is discovered in this priority order (first wins):
 
 If no config file is found, built-in defaults are used.
 
+However, ordinary role-profile definitions remain configuration-owned. The core
+may not synthesize ordinary role profiles as hidden code defaults.
+
 ### 8.2 Config Precedence
 
 Once discovered, configuration values are merged with this precedence (highest first):
@@ -581,7 +586,36 @@ VECTL_ORCH_OBSERVABILITY_RETENTION_DAYS=7
 ```yaml
 orchestration:
   plan_path: plan.yaml
-  
+
+  role_profiles:
+    python-executor:
+      agent_id: python-executor
+      prompt_family: coder
+      execution_context: linked_worktree
+      mutation_policy: worktree_changes
+      session_policy: reuse_allowed
+      output_contract: freeform_evidence
+      default_runner: codex
+    blocked-case-coordinator:
+      agent_id: blocked-case-coordinator
+      prompt_family: resolver
+      execution_context: main_worktree
+      mutation_policy: vectl_facade_only
+      session_policy: reuse_forbidden
+      output_contract: resolution_report
+      default_runner: codex
+    blocked-case-coordinator-tacit:
+      agent_id: blocked-case-coordinator-tacit
+      prompt_family: resolver
+      execution_context: main_worktree
+      mutation_policy: vectl_facade_only
+      session_policy: reuse_forbidden
+      output_contract: resolution_report
+      default_runner: codex
+  defaults:
+    ordinary_role: python-executor
+    resolver_role: blocked-case-coordinator
+
   roster:
     default_ttl_seconds: 300.0
     max_reuse_window_seconds: 600.0
@@ -646,6 +680,8 @@ Configuration is validated against these rules:
 | `observability.max_log_megabytes` | Must be > 0 |
 | `operator.max_pending_actions` | Must be > 0 |
 | `resolver.tool_allowlist` | Entries must validate against canonical registry |
+| `orchestration.role_profiles` | Must be present for any role used by orchestration |
+| `orchestration.defaults.resolver_role` | Must be `blocked-case-coordinator` or `blocked-case-coordinator-tacit` |
 
 ### 8.6 Tool Registry
 
@@ -701,6 +737,9 @@ At run start, configuration is frozen and written to:
 
 **Format:**
 Same as config file schema, with all values fully resolved (no env references).
+
+Historical `plan.yaml` remains untouched run input/history. It is not
+authoritative for role-profile vocabulary or orchestration contract terms.
 
 **Metadata:**
 - `created_at`: Timestamp when snapshot was created

@@ -4,7 +4,7 @@
 > system to normal orchestration flow.
 
 **Status:** Target contract  
-**Architecture authority:** `docs/ORCHESTRATION-PLANE-ARCHITECTURE.md`  
+**Architecture authority:** `docs/ORCHESTRATION-PLANE-ARCHITECTURE.md`, `docs/ADR-orchestration-role-profile-config-and-resolver-cleanup.md`  
 **Interface authority:** `docs/ORCHESTRATION-PLANE-INTERFACES.md`
 
 ---
@@ -22,6 +22,9 @@ The answer in this architecture is:
 - `resolver` decides **how** to investigate and unblock,
 - `resolver` may use approved tools and official authority surfaces,
 - and `control` regains control by re-reading state after resolution.
+
+The only default resolver agents are `blocked-case-coordinator` and
+`blocked-case-coordinator-tacit`.
 
 This is intentionally **not** a pure directive-only design. The `resolver`
 exists to reason and act where rules do not close the case. But it still does
@@ -217,7 +220,7 @@ would produce incorrect orchestration behavior.
 ## 7. Relationship to Deterministic Local Surfaces
 
 This contract does **not** require a rigid global catalog of which problems are
-"judge problems" versus "resolver problems".
+"closed by deterministic local rules" versus "resolver-handled".
 
 The rule is simpler:
 
@@ -255,10 +258,19 @@ resolving, but must not absorb their ownership.
   `halt`, not false certainty.
 - If tooling fails during resolution, the report must surface that failure in
   `summary` / `evidence_refs`.
+- If resolution requires plan mutation, it must occur through the approved vectl
+  facade; direct `plan.yaml` editing is forbidden.
 
 ---
 
-## 11. Consequences
+## 11. Historical terminology rule
+
+Historical `plan.yaml` contents and earlier doc vocabulary remain legacy context
+only. They are not authoritative for target resolver naming or contract terms.
+
+---
+
+## 12. Consequences
 
 ### Gains
 
@@ -275,7 +287,7 @@ resolving, but must not absorb their ownership.
 
 ---
 
-## 12. Summary
+## 13. Summary
 
 The `control ↔ resolver` contract is:
 

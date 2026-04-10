@@ -1,7 +1,7 @@
 # Orchestration Plane Dispatch and Prompt Policy
 
 **Status:** Proposed  
-**Architecture authority:** `docs/ORCHESTRATION-PLANE-ARCHITECTURE.md`  
+**Architecture authority:** `docs/ORCHESTRATION-PLANE-ARCHITECTURE.md`, `docs/ADR-orchestration-role-profile-config-and-resolver-cleanup.md`  
 **Interface authority:** `docs/ORCHESTRATION-PLANE-INTERFACES.md`  
 **Related:** `docs/ORCHESTRATION-PLANE-RUNNER-BACKEND.md`, `docs/ORCHESTRATION-PLANE-RUNTIME-WORKTREE-LIFECYCLE.md`, `docs/ORCHESTRATION-PLANE-RESOLUTION-CONTRACT.md`, `docs/RFC-vectl-decide-advisor-refresh.md`
 
@@ -34,7 +34,6 @@ Existing fragments include:
 - `step.verification`
 - `step.refs`
 - `default_agent`
-- `fallback_role`
 - `ControlDecision(kind="dispatch", step_id, role)`
 
 What is missing is a single policy that answers:
@@ -183,7 +182,7 @@ class DispatchSpec:
     source_id: str
 
     role_id: str
-    role_source: Literal["step.agent", "default", "fallback", "resolver"]
+    role_source: Literal["step.agent", "default", "resolver"]
 
     execution_context: Literal["linked_worktree", "main_worktree"]
     runner: str
@@ -255,7 +254,8 @@ Examples may include:
 - `gate-reviewer`
 - `doc-reviewer`
 - `spec-readiness-auditor`
-- `conflict-resolver`
+- `blocked-case-coordinator`
+- `blocked-case-coordinator-tacit`
 
 but the contract must support future roles without rewriting orchestration-plane
  logic.
@@ -268,8 +268,8 @@ Recommended minimum shape:
 @dataclass(frozen=True)
 class RoleProfile:
     role_id: str
+    agent_id: str
     prompt_family: str
-    template_id: str
 
     execution_context: Literal["linked_worktree", "main_worktree"]
     mutation_policy: Literal[
@@ -317,6 +317,12 @@ Minimum expectation:
 - adding a new role must be possible by adding a new role profile entry rather
   than rewriting core dispatch logic
 
+The frozen authority split is:
+
+- plan/task data references roles
+- configuration defines role profiles
+- orchestration core only loads, validates, and consumes
+
 Recommended shape at implementation time:
 
 - orchestration config contains role-profile entries
@@ -325,13 +331,17 @@ Recommended shape at implementation time:
 Related values such as:
 
 - default agent / default role
-- fallback role
 - role -> runner default
 
 must all be sourced from the same explicit orchestration configuration path or a
 clearly referenced adjacent config source.
 
 The system must not rely on hidden in-code defaults once this contract is adopted.
+
+The only default resolver agent IDs are:
+
+- `blocked-case-coordinator`
+- `blocked-case-coordinator-tacit`
 
 ---
 
@@ -343,12 +353,13 @@ For ordinary step dispatch, role allocation follows:
 
 1. `step.agent` if present
 2. orchestration default role if `step.agent` is absent
-3. fallback role only when explicitly allowed by policy
+3. if neither resolves cleanly, dispatch must fail explicitly and route through
+   ordinary orchestration error handling rather than silently inventing a role
 
 ### 9.2 No silent downgrade of specialized roles
 
 The system must not silently downgrade specialized roles such as planning,
-review, or conflict-resolution work into ordinary coder roles.
+review, or blocked-case coordination work into ordinary coder roles.
 
 If a requested role cannot be satisfied under policy, the system should wait,
 resolve, or surface an explicit problem rather than silently rewriting intent.
@@ -463,8 +474,8 @@ consume mechanically.
 
 Typical roles:
 
-- `conflict-resolver`
-- future specialized resolution roles
+- `blocked-case-coordinator`
+- `blocked-case-coordinator-tacit`
 
 Resolver-family templates must reflect:
 
@@ -621,7 +632,7 @@ the only valid resolver delegation target.
 Depending on the case, resolver may also invoke:
 
 - coder-family roles for directed repair work
-- reviewer-family roles for secondary judgment or verification
+- reviewer-family roles for secondary review or verification
 
 These are first-class supported delegation paths under resolver-owned
 blocked-case coordination.
@@ -651,7 +662,10 @@ Planner does not itself own core authority semantics.
 
 If planner output must become authoritative plan mutation, that mutation must be
 applied through the approved vectl tool facade under resolver/orchestrator
-control.
+control. Planner never edits `plan.yaml` directly.
+
+Historical `plan.yaml` remains untouched execution history and is not
+authoritative for target role-profile vocabulary.
 
 ---
 

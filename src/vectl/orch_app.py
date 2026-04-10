@@ -750,33 +750,12 @@ class OrchestrationApp:
     ) -> DispatchSpec:
         """Build a dispatch spec using role-profile policy."""
 
-        resolved_role = role_hint or self._config.default_agent
-        if resolved_role == self._role_registry.default_role:
-            return self._dispatch_coordinator.build_dispatch_spec(
-                ControlDecision(
-                    kind="dispatch",
-                    reason="orchestration app dispatch",
-                    step_id=step_id,
-                    role=resolved_role,
-                )
-            )
-
-        temporary_registry = ConfigRoleProfileRegistry(
-            profiles=tuple(self._role_registry._profiles.values()),
-            default_role=resolved_role,
-            fallback_role=self._role_registry.fallback_role,
-        )
-        temporary_coordinator = DispatchCoordinator(
-            role_registry=temporary_registry,
-            prompt_registry=self._prompt_registry,
-            step_adapter=self._dispatch_coordinator.step_adapter,
-        )
-        return temporary_coordinator.build_dispatch_spec(
+        return self._dispatch_coordinator.build_dispatch_spec(
             ControlDecision(
                 kind="dispatch",
                 reason="orchestration app dispatch",
                 step_id=step_id,
-                role=resolved_role,
+                role=role_hint or self._config.default_agent,
             )
         )
 

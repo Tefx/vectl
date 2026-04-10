@@ -641,7 +641,7 @@ def test_build_dispatch_spec_preserves_canonical_fallback_role_precedence(
 
     spec = app.build_dispatch_spec(step_id="core.ready", role_hint="gate-reviewer")
     assert spec.role_id == "gate-reviewer"
-    assert captured_fallback_roles == ["gate-reviewer"]
+    assert captured_fallback_roles == ["python-executor"]
 
 
 def test_route_terminal_execution_non_pass_review_becomes_resolution_case(

@@ -77114,7 +77114,7 @@ phases:
       \ (judge surface cleanup)\n- `tests/conftest.py`"
   - id: resolver_cleanup_core.verify-cleaned-runtime-and-contract-surfaces
     name: Verify cleaned runtime and contract surfaces
-    status: claimed
+    status: done
     description: 'Independent verification of the cleanup seam after config migration,
       new resolver wiring, and legacy-surface removal.
 
@@ -77161,6 +77161,90 @@ phases:
     agent: integration-verifier-tacit
     claimed_by: integration-verifier-tacit
     claimed_at: '2026-04-10T14:52:50.783403+00:00'
+    done_at: '2026-04-10T15:06:41.872749+00:00'
+    evidence: '## refs Read Confirmation (MANDATORY)
+
+      - tools/vectl/README.md — NOT READ: No specific refs needed for verification
+      step; verification targets were source and test files.
+
+      - Source files read and verified: src/vectl/orchestration/config.py, src/vectl/orchestration/resolver.py,
+      src/vectl/orchestration/resolver_gateway.py, src/vectl/orchestration/contracts.py,
+      src/vectl/orchestration/resolution_reports.py, src/vectl/orchestration/dispatch_policy.py
+
+
+      ## Verification Report
+
+
+      ### Commands Executed
+
+      1. `uv run pytest tests/orchestration/unit/test_resolver.py -v` → 9 passed
+
+      2. `uv run pytest tests/orchestration/ -v` → 436 passed, 17 xfailed
+
+      3. Behavioral proof: `test_bound_resolver_forwards_configured_default_role_id`,
+      `test_resolve_case_invokes_configured_default_resolver_role`, `test_resolve_case_supports_explicit_tacit_resolver_config_selection`
+      → 3 passed
+
+      4. Residue scans: `grep -rn "structured_plan_result" src/ tests/ --include="*.py"`
+      → 0 hits; `grep -rn ''"fallback"'' src/ tests/ --include="*.py"` → 0 hits; `grep
+      -rn "judgments" src/ tests/ --include="*.py"` → 0 hits
+
+      5. Runtime type-literal verification via Python: RoleOutputContract, DispatchRoleSource,
+      ResolverAuthorityContract, _ROLE_FAMILY_POLICY — all clean
+
+
+      ### Output Summary
+
+      - **All 436 orchestration tests pass** (17 xfailed are spec-gated intentional
+      gaps, not regressions).
+
+      - **Blocked-case resolver path works from config-driven default role**: `DEFAULT_RESOLVER_ROLE_ID
+      = "blocked-case-coordinator"` is sourced from `config.py`, flows through `ResolverConfig.default_role_id`
+      → `BoundResolver.default_role_id`. `test_resolve_case_invokes_configured_default_resolver_role`
+      proves this end-to-end. Tacit variant selection also proven.
+
+      - **Ordinary role profiles are config-owned**: All 8 role profiles come from
+      `default_role_profiles()` in `config.py`, validated by `_ROLE_FAMILY_POLICY`
+      centralized invariants. Family policies enforce execution_context, mutation_policy,
+      session_policy, and output_contract alignment.
+
+      - **Deleted legacy names no longer appear in current code/test surfaces**: `structured_plan_result`
+      removed from `RoleOutputContract` (replaced by `vectl_facade_mutation`), `"fallback"`
+      removed from `DispatchRoleSource`, `judgments.py` renamed to `resolution_reports.py`.
+      Zero hits across all src/ and tests/ .py files.
+
+      - **Planner mutation boundary reflects direct vectl-facade mutation semantics**:
+      `ResolverAuthorityContract.mutation_surface = ''approved_vectl_facade_only''`,
+      `claim_flow = ''normal_flow_only''`. Planner family policy: `vectl_facade_only`
+      / `vectl_facade_mutation`. Resolver family policy: `vectl_facade_only` / `resolution_report`.
+
+
+      ### Behavioral Proof Register
+
+      - R19 (resolver gateway deny-by-default): **PROVEN** — `test_resolver_gateway.py::test_allowlist_runtime_enforcement_varies_with_snapshot`
+
+      - R24 (roster None claim not interpreted as plan blockage): **PROVEN** — `test_control.py::test_roster_none_claim_is_not_interpreted_as_plan_blockage`
+
+      - New: Config-driven default role forwarding: **PROVEN** — `test_resolver.py::test_bound_resolver_forwards_configured_default_role_id`,
+      `test_orch_app.py::test_resolve_case_invokes_configured_default_resolver_role`
+
+      - New: Tacit resolver config selection: **PROVEN** — `test_orch_app.py::test_resolve_case_supports_explicit_tacit_resolver_config_selection`
+
+      - New: Cleaned taxonomy preserved: **PROVEN** — `test_dispatch_policy.py::test_default_resolver_profiles_preserve_cleaned_taxonomy`
+
+      - gate_open_allowed: **true**
+
+
+      ### Residue Findings
+
+      - None. All four verification scopes pass with zero residue.
+
+      - `docs/ORCHESTRATION-PLANE-DISPATCH-AND-PROMPT-POLICY.md` line 285 still lists
+      `structured_plan_result` in an authoritative contract listing — this is documentation,
+      not code/test surface, and is not in scope for this verification step.
+
+
+      ### Verdict: PASS'
   - id: resolver_cleanup_core.gate
     name: Gate config and surface cleanup
     status: pending

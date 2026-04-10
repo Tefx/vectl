@@ -74674,3 +74674,10 @@ phases:
       Notes:
 
       - Ref path `tools/vectl/README.md` unavailable in worktree per subagent report.'
+- id: xfail_config_and_dispatch_foundation
+  name: 'XFail Remediation: Config and Dispatch Foundation'
+  status: pending
+  gate: Retire the config precedence xfail and the dispatch-spec construction/verify-mode
+    xfails by centralizing authoritative config precedence and DispatchSpec construction.
+  depends_on:
+  - repo_regression_full_suite_gate

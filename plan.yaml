@@ -75677,7 +75677,7 @@ phases:
       reviewer: orchestrator
   - id: retire_repair_continuity_legacy_surface.clean-stale-docs-and-spec-references
     name: Clean stale docs and spec references
-    status: claimed
+    status: done
     description: 'work_type: technical_debt_remediation
 
       step_type: doc_sync
@@ -75714,6 +75714,25 @@ phases:
     agent: project-guide
     claimed_by: project-guide
     claimed_at: '2026-04-10T06:34:52.498219+00:00'
+    done_at: '2026-04-10T06:38:29.670275+00:00'
+    evidence: "## Doc Sync Evidence\n- docs updated:\n  - `README.md`: removed legacy\
+      \ functional `vectl repair continuity` usage section and replaced with retirement\
+      \ note + supported recovery path (`vectl orch recover`) and separate `repair\
+      \ claims` guidance.\n  - `docs/ORCHESTRATION-CLI-QUICKSTART.md`: added explicit\
+      \ note that `vectl repair continuity` is retired and `vectl orch recover` is\
+      \ the supported entrypoint.\n- stale references removed or relabeled:\n  - Removed\
+      \ stale `docs/DRIVER-CONTINUITY-FOUNDATION.md` and `docs/ORCHESTRATION-PLANE-MIGRATION.md`\
+      \ authority references from:\n    - `src/vectl/orchestration/continuity_artifacts.py`\n\
+      \    - `src/vectl/orchestration/recovery.py`\n  - Repointed authority notes\
+      \ to active docs:\n    - `docs/ORCHESTRATION-PLANE-OPERATOR-CONFLICT-RECOVERY.md`\n\
+      \    - `docs/ORCHESTRATION-PLANE-ARCHITECTURE.md`\n    - `docs/ADR-orchestration-plane-reset.md`\n\
+      \    - `docs/ORCH-OPERATOR-CUTOVER-VALIDATION-MIGRATION-STATE-AUDIT.md`\n- modern\
+      \ replacement path shown as:\n  - `uv run vectl orch recover [RUN_ID|--latest]`\n\
+      \  - diagnostics: `uv run vectl orch recover --latest --dry-run --json`\n  -\
+      \ claim consistency remains under `uv run vectl repair claims --dry-run`\n\n\
+      Verification:\n- Search check confirms no remaining `DRIVER-CONTINUITY-FOUNDATION.md`\
+      \ or `ORCHESTRATION-PLANE-MIGRATION.md` references in orchestration source files.\n\
+      - Branch commit: `c7edd4b`."
   - id: retire_repair_continuity_legacy_surface.retest-recovery-public-surface
     name: Retest recovery public surface after retirement cleanup
     status: pending

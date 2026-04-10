@@ -74814,7 +74814,7 @@ phases:
       - none'
   - id: xfail_config_and_dispatch_foundation.centralize-dispatch-spec-construction
     name: Centralize DispatchSpec construction and verify-mode mapping
-    status: pending
+    status: claimed
     description: 'work_type: technical_debt_remediation
 
       step_type: implementation
@@ -74891,6 +74891,8 @@ phases:
 
       - none | <details>'
     agent: python-senior-tacit
+    claimed_by: python-senior-tacit
+    claimed_at: '2026-04-10T05:50:58.738698+00:00'
   - id: xfail_config_and_dispatch_foundation.retest-config-and-dispatch-foundation
     name: Retest config precedence and dispatch foundation
     status: pending

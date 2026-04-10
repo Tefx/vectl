@@ -73578,21 +73578,6 @@ phases:
       - Command(s) run:'
     depends_on:
     - repo_regression_expected_red_cleanup.realign-config-state-red-tests
-  - id: repo_regression_expected_red_cleanup.introduce-expected-red-lifecycle-marking
-    name: Introduce expected-red lifecycle marking
-    status: pending
-    description: Establish a durable way to mark intentional red tests (for example
-      marker/xfail discipline or equivalent test metadata) so future implementation
-      phases must either flip, retire, or explicitly preserve them with rationale.
-    verification: Repository has a consistent pattern for intentional red tests and
-      at least the touched stale-red locations follow it.
-    evidence_template: '- Marker/pattern chosen:
-
-      - Files updated:
-
-      - How future gates should consume this metadata:'
-    depends_on:
-    - repo_regression_expected_red_cleanup.realign-observability-red-tests-with-implemented-surfaces
 - id: repo_regression_contract_alignment
   name: Contract Lock and Boundary Realignment
   status: locked
@@ -73816,6 +73801,19 @@ phases:
       or paired.'
     verification: Every failing test has a disposition category and next-action type.
       Ambiguous items are explicitly called out instead of guessed.
+  - id: repo_regression_expected_red_cleanup.introduce-expected-red-lifecycle-marking
+    name: Introduce expected-red lifecycle marking
+    status: pending
+    description: Establish a durable way to mark intentional red tests (for example
+      marker/xfail discipline or equivalent test metadata) so future implementation
+      phases must either flip, retire, or explicitly preserve them with rationale.
+    verification: Repository has a consistent pattern for intentional red tests and
+      at least the touched stale-red locations follow it.
+    evidence_template: '- Marker/pattern chosen:
+
+      - Files updated:
+
+      - How future gates should consume this metadata:'
 - id: repo_regression_semantic_alignment
   name: Repo Regression Semantic Alignment
   status: locked

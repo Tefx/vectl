@@ -74979,7 +74979,7 @@ phases:
       \ PROVEN"
   - id: xfail_config_and_dispatch_foundation.gate
     name: Gate config and dispatch foundation
-    status: pending
+    status: claimed
     description: 'Gate review: verify config precedence and dispatch foundation xfail
       retirement is complete and no duplicate policy seam was introduced.
 
@@ -75010,6 +75010,8 @@ phases:
     - xfail_config_and_dispatch_foundation.centralize-dispatch-spec-construction
     - xfail_config_and_dispatch_foundation.retest-config-and-dispatch-foundation
     agent: gate-reviewer-tacit
+    claimed_by: gate-reviewer-tacit
+    claimed_at: '2026-04-10T05:58:34.496291+00:00'
 - id: xfail_role_prompt_and_review_normalization
   name: 'XFail Remediation: Role Prompt and Review Normalization'
   status: locked

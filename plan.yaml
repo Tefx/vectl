@@ -73662,7 +73662,7 @@ phases:
       - a23ed33'
   - id: repo_regression_full_suite_gate.encode-repo-wide-final-gate-into-plan-policy
     name: Encode repo-wide final gate into plan policy
-    status: pending
+    status: claimed
     description: Update plan/gate guidance so future large remediation efforts cannot
       be declared complete without an explicit repo-wide regression pass (or an explicit
       exception policy). Capture how expected-red lifecycle data and full-suite status
@@ -73676,6 +73676,8 @@ phases:
       - Example evidence expectations for future gates:'
     depends_on:
     - repo_regression_full_suite_gate.decide-static-guard-scope-and-enforcement
+    claimed_by: general
+    claimed_at: '2026-04-10T04:07:07.986499+00:00'
   - id: repo_regression_full_suite_gate.fix-recovery-contract-conformance-semantics
     name: Repair recovery contract conformance semantics
     status: done

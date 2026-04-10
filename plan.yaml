@@ -73623,3 +73623,17 @@ phases:
     without pinning stale historical boundaries.
   depends_on:
   - repo_regression_expected_red_cleanup
+  steps:
+  - id: repo_regression_contract_alignment.repin-resolution-case-boundary-locks
+    name: Repin ResolutionCase boundary locks
+    status: pending
+    description: Update `tests/orchestration/unit/test_contract_lock_boundaries.py`
+      and any sibling lock tests so they verify required semantic fields and invariants
+      for `ResolutionCase` without failing on legitimate additive metadata fields.
+    verification: Contract boundary tests pass and still fail if required ResolutionCase
+      semantics are removed.
+    evidence_template: '- Boundary lock changes:
+
+      - Required invariants preserved:
+
+      - Command(s) run:'

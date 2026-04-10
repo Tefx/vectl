@@ -73643,7 +73643,7 @@ phases:
       drift with behavioral fixes.
   - id: repo_regression_triage.classify-failures-by-disposition
     name: Classify failures by disposition
-    status: claimed
+    status: done
     description: 'Classify each failing test as one of: stale expected-red, stale
       contract/lock drift, likely behavior regression, missing fixture/environment,
       or CLI/public-surface mismatch. Mark whether the fix should be test-only, implementation-only,
@@ -73652,6 +73652,60 @@ phases:
       Ambiguous items are explicitly called out instead of guessed.
     claimed_by: general
     claimed_at: '2026-04-10T02:59:35.666427+00:00'
+    done_at: '2026-04-10T03:12:17.491237+00:00'
+    evidence: 'Artifact:
+
+      - Commit hash: c7855cb
+
+      - File: docs/repo_regression_failure_dispositions.yaml
+
+
+      Verification:
+
+      - `uv run pytest -q` -> 31 failing tests / 1754 passed / 39 skipped / 19 xfailed.
+
+      - `uv run python -c "import pathlib, yaml; p=pathlib.Path(''docs/repo_regression_failure_dispositions.yaml'');
+      data=yaml.safe_load(p.read_text()); print(data[''summary''][''total_failures'']);
+      print(len(data[''failing_tests'']))"` -> 31 / 31.
+
+
+      Disposition summary:
+
+      - stale expected-red: 24
+
+      - stale contract/lock drift: 3
+
+      - likely behavior regression: 2
+
+      - CLI/public-surface mismatch: 2
+
+      - missing fixture/environment: 0
+
+
+      Next-action summary:
+
+      - test-only: 29
+
+      - implementation-only: 2
+
+      - paired: 0
+
+
+      Spec link:
+
+      - docs/ORCHESTRATION-PLANE-INTERFACES.md §3.8
+
+      - docs/ORCHESTRATION-PLANE-RESOLUTION-CONTRACT.md
+
+      - docs/ORCHESTRATION-PLANE-CLI-CONFIG-OBSERVABILITY-DESIGN.md §§8-10
+
+      - docs/ADR-orchestration-plane-reset.md
+
+
+      Notes:
+
+      - `tools/vectl/README.md` not found in worktree per subagent report; classification
+      artifact includes ambiguity callouts explicitly.'
   - id: repo_regression_expected_red_cleanup.introduce-expected-red-lifecycle-marking
     name: Introduce expected-red lifecycle marking
     status: done

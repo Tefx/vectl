@@ -73951,7 +73951,7 @@ phases:
       no plan/orchestrator state files modified.'
 - id: repo_regression_semantic_alignment
   name: Repo Regression Semantic Alignment
-  status: in_progress
+  status: done
   gate: Contract locks, runtime state-machine expectations, and current implementation
     converge on authoritative semantics without stale exact-shape boundaries or unresolved
     behavior drift in the failing scope.
@@ -74019,7 +74019,7 @@ phases:
       lock file left unchanged.'
   - id: repo_regression_behavior_alignment.resolve-reconcile-tracking-state-machine-drift
     name: Resolve reconcile tracking state-machine drift
-    status: claimed
+    status: done
     description: Investigate and settle the mismatch between runtime lifecycle expectations
       and implementation for reconcile tracking sets (`pending_reconciles`, `active_reconciles`,
       `conflicted_reconciles`). Update implementation or tests only after re-establishing
@@ -74035,6 +74035,48 @@ phases:
       -q` -> <outcome>'
     claimed_by: general
     claimed_at: '2026-04-10T03:16:36.812378+00:00'
+    done_at: '2026-04-10T03:21:29.032713+00:00'
+    evidence: 'Authoritative state-machine decision:
+
+      - `pending_reconciles` and `active_reconciles` are transient in-flight sets
+      during synchronous `begin_reconcile()`.
+
+      - `conflicted_reconciles` persists only for unresolved merge-conflict states.
+
+      - Semantics were explicitly documented and aligned to runtime lifecycle expectations.
+
+
+      Impl vs test changes:
+
+      - Updated `src/vectl/orchestration/runtime.py` docstring to codify reconcile
+      set lifecycle.
+
+      - Updated `tests/orchestration/unit/test_runtime_lifecycle.py` to verify in-flight
+      presence and post-return clearing behavior, plus conflict persistence/clearance
+      transitions.
+
+
+      Command:
+
+      - `uv run pytest tests/orchestration/unit/test_runtime_lifecycle.py -q` -> 21
+      passed.
+
+
+      Files changed:
+
+      - src/vectl/orchestration/runtime.py
+
+      - tests/orchestration/unit/test_runtime_lifecycle.py
+
+
+      Commit:
+
+      - ac546ce
+
+
+      Notes:
+
+      - `tools/vectl/README.md` missing in worktree per subagent report.'
   - id: repo_regression_contract_alignment.repin-resolution-case-boundary-locks
     name: Repin ResolutionCase boundary locks
     status: done
@@ -74095,7 +74137,7 @@ phases:
       - Subagent reported `tools/vectl/README.md` missing in worktree.'
 - id: repo_regression_surface_and_observability_alignment
   name: Repo Regression Surface and Observability Alignment
-  status: locked
+  status: pending
   gate: Repo fixtures, CLI/public surfaces, and observability repro expectations are
     aligned so remaining non-passing tests are either fixed or explicitly governed
     intentional debt.

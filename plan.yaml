@@ -74194,7 +74194,7 @@ phases:
     claimed_at: '2026-04-10T03:26:21.251825+00:00'
   - id: repo_regression_surface_and_fixture_repair.fix-orch-liveness-fixture-assumptions
     name: Fix orchestration liveness fixture assumptions
-    status: pending
+    status: claimed
     description: Repair `tests/repro/test_orch_liveness.py` so it no longer depends
       on an implicit repo-root `driver.yaml` unless that file is truly part of the
       supported public fixture surface. Prefer test-local fixture generation over
@@ -74206,3 +74206,5 @@ phases:
       - File/test changes:
 
       - Command: `uv run pytest tests/repro/test_orch_liveness.py -q` -> <outcome>'
+    claimed_by: general
+    claimed_at: '2026-04-10T03:26:36.329455+00:00'

@@ -76615,7 +76615,7 @@ phases:
       \ `3e0faae`\n- Commit message: `docs: freeze resolver cleanup architecture contract`"
   - id: resolver_cleanup_contracts.create-blocked-case-personas
     name: Create blocked-case resolver personas
-    status: pending
+    status: claimed
     description: 'Create and register the two new default resolver personas:
 
       - `blocked-case-coordinator`
@@ -76683,6 +76683,8 @@ phases:
     depends_on:
     - resolver_cleanup_contracts.freeze-clean-architecture
     agent: forgemaster-tacit
+    claimed_by: forgemaster-tacit
+    claimed_at: '2026-04-10T12:30:45.640717+00:00'
   - id: resolver_cleanup_contracts.gate
     name: Gate contract and persona lock
     status: pending

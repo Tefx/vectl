@@ -75768,3 +75768,39 @@ phases:
     depends_on:
     - live_smoke_real_runner_validation.retest-live-smoke-after-remediation
     agent: project-guide
+  - id: live_smoke_real_runner_validation.gate
+    name: Gate live-smoke real-runner validation
+    status: pending
+    description: 'Final review for the real live-smoke validation phase.
+
+
+      Focus:
+
+      - execution matrix was explicit and honest
+
+      - product defects found under real runner conditions were fixed or explicitly
+      dispositioned
+
+      - remaining non-green statuses are environment/prerequisite governed only
+
+      - docs reflect the real operating contract'
+    verification: '- Phase evidence cleanly separates prerequisite failures from product
+      failures
+
+      - Final gate can explain why any remaining skips are acceptable'
+    evidence_template: '## Gate Review Report
+
+      - matrix integrity:
+
+      - product defect closure:
+
+      - remaining governed prerequisite statuses:
+
+      - gate decision OPEN|BLOCKED'
+    depends_on:
+    - live_smoke_real_runner_validation.lock-live-runner-execution-matrix
+    - live_smoke_real_runner_validation.run-real-live-smoke-matrix
+    - live_smoke_real_runner_validation.fix-live-smoke-product-defects-batch
+    - live_smoke_real_runner_validation.retest-live-smoke-after-remediation
+    - live_smoke_real_runner_validation.doc-sync-live-smoke-findings
+    agent: gate-reviewer-tacit

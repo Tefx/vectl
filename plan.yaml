@@ -76909,7 +76909,7 @@ phases:
       \ config`"
   - id: resolver_cleanup_core.wire-default-blocked-case-resolver
     name: Wire program to configured blocked-case resolver
-    status: claimed
+    status: done
     description: 'Replace the legacy resolver invocation path with a real config-driven
       default resolver entry.
 
@@ -76970,7 +76970,28 @@ phases:
     agent: python-senior-tacit
     claimed_by: python-senior-tacit
     claimed_at: '2026-04-10T14:47:14.842945+00:00'
-    done_at: '2026-04-10T14:12:12.418506+00:00'
+    done_at: '2026-04-10T14:51:21.057243+00:00'
+    evidence: "## refs Read Confirmation (MANDATORY)\nFor each ref in this step:\n\
+      - src/vectl/orchestration/resolver.py — `BoundResolver` now carries default\
+      \ role behavior and forwards role_id into invocation.\n- src/vectl/orchestration/config.py\
+      \ — canonical resolver default remains `DEFAULT_RESOLVER_ROLE_ID = \"blocked-case-coordinator\"\
+      ` and validation restricts resolver family defaults.\n- src/vectl/orchestration/interfaces.py\
+      \ — resolver selection defined by `resolver.default_role_id` contract.\n- tests/orchestration/unit/test_runner_backend_red.py\
+      \ — regression site confirmed/fixed.\n\n## Wiring Evidence\n- Configured resolver.default_role_id\
+      \ path:\n  - `BoundResolver` default role parameter now defaults to canonical\
+      \ config constant while preserving explicit config override from orch_app wiring.\n\
+      - Runtime invocation proof:\n  - failing red path now instantiates resolver\
+      \ successfully and returns operator-required report instead of constructor TypeError.\n\
+      - Tests run:\n  - `uv run --group dev pytest -q tests/orchestration/unit/test_runner_backend_red.py::test_resolver_invocation_failure_produces_operator_message`\
+      \ -> `1 passed`\n  - `uv run --group dev pytest -q tests/orchestration/unit/test_resolver.py\
+      \ tests/orchestration/unit/test_resolver_gateway.py tests/orchestration/unit/test_orch_app.py\
+      \ -k resolver` -> `25 passed, 41 deselected`\n- Remaining stub/legacy invocation\
+      \ traces:\n  - No reintroduced legacy resolver taxonomy in touched surfaces.\n\
+      \  - Resolver invocation remains config-driven and ResolutionCase -> ResolutionReport\
+      \ semantics preserved.\n\n## Commit Evidence\n- Worker rework commit: `89d4e01`\
+      \ (`fix(orchestration): restore BoundResolver default resolver role`)\n- Cherry-picked\
+      \ on Main: `610af38`\n- Reason for rework: downstream verification regression\
+      \ (missing BoundResolver constructor arg) now remediated."
     rejection_reason: 'downstream verification found regression: BoundResolver constructor
       contract update not reflected in runner backend red test'
     rejection_history:

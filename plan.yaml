@@ -77849,7 +77849,7 @@ phases:
       \ resolver cleanup phase boundary)"
 - id: orch_plane_live_authority
   name: Orchestration Plane Live Authority
-  status: pending
+  status: in_progress
   gate: Dispatch, roster, prompt, and resolver mediation run through the real live
     authority path with dynamic runtime evidence and no static-bypass seam.
   depends_on:
@@ -77857,7 +77857,7 @@ phases:
   steps:
   - id: orch_plane_live_authority.contract-lock
     name: Contract lock for live authority
-    status: pending
+    status: claimed
     description: 'Contract lock: pin the ordinary-dispatch live-path invariants so
       dispatch, roster participation, tool mediation, and prompt-role separation all
       remain part of one authoritative runtime path; explicitly forbid static bypasses
@@ -77880,6 +77880,8 @@ phases:
 
       '
     agent: software-architect-tacit
+    claimed_by: software-architect-tacit
+    claimed_at: '2026-04-10T19:00:36.104828+00:00'
   - id: orch_plane_live_authority.dispatch-live-path
     name: Enforce ordinary dispatch live path
     status: pending

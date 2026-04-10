@@ -77847,3 +77847,10 @@ phases:
       \ mismatch)\n- SUGGESTION: 1 (defense-in-depth runtime guard for planner mutation\
       \ compliance)\n\nVerdict: CONDITIONAL PASS (clean architecture accepted for\
       \ resolver cleanup phase boundary)"
+- id: orch_plane_live_authority
+  name: Orchestration Plane Live Authority
+  status: pending
+  gate: Dispatch, roster, prompt, and resolver mediation run through the real live
+    authority path with dynamic runtime evidence and no static-bypass seam.
+  depends_on:
+  - resolver_cleanup_finalization

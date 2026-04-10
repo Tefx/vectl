@@ -77880,6 +77880,32 @@ phases:
 
       '
     agent: software-architect-tacit
+  - id: orch_plane_live_authority.dispatch-live-path
+    name: Enforce ordinary dispatch live path
+    status: pending
+    description: Make ordinary dispatch traverse the same mandatory live authority
+      path as resolver execution, using real runner/gateway/runtime seams rather than
+      an ordinary-path shortcut.
+    verification: Targeted unit and live-smoke coverage prove ordinary dispatch reaches
+      the real authority path for codex and opencode, with evidence refs showing the
+      live path actually executed.
+    evidence_template: '## refs Read Confirmation (MANDATORY)
+
+      - Quote the key passage from each ref or write NOT READ: <reason>
+
+
+      ## Implementation Evidence
+
+      - Files changed
+
+      - Removed shortcut/bypass path
+
+      - Added/updated tests
+
+      '
+    depends_on:
+    - orch_plane_live_authority.contract-lock
+    agent: python-senior-tacit
 - id: orch_plane_planner_boundary
   name: Orchestration Plane Planner Boundary
   status: locked

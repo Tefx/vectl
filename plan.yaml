@@ -76480,7 +76480,7 @@ phases:
       \ OPEN"
 - id: resolver_cleanup_contracts
   name: 'Resolver Cleanup: Contract & Persona Lock'
-  status: pending
+  status: in_progress
   gate: Freeze the post-cleanup architecture, create the new default resolver personas,
     and lock the config-owned role-profile model before code migration begins.
   depends_on:
@@ -76488,7 +76488,7 @@ phases:
   steps:
   - id: resolver_cleanup_contracts.freeze-clean-architecture
     name: Freeze clean architecture and config ownership
-    status: pending
+    status: claimed
     description: 'Work type: technical_debt_remediation.
 
 
@@ -76559,6 +76559,8 @@ phases:
 
       '
     agent: software-architect-tacit
+    claimed_by: software-architect-tacit
+    claimed_at: '2026-04-10T12:17:29.133669+00:00'
   - id: resolver_cleanup_contracts.create-blocked-case-personas
     name: Create blocked-case resolver personas
     status: pending

@@ -77247,7 +77247,7 @@ phases:
       ### Verdict: PASS'
   - id: resolver_cleanup_core.gate
     name: Gate config and surface cleanup
-    status: pending
+    status: claimed
     description: 'Gate review: verify config-backed role ownership, program-level
       blocked-case resolver wiring, and legacy-surface deletion are complete.
 
@@ -77291,6 +77291,8 @@ phases:
     - resolver_cleanup_core.remove-legacy-surfaces-and-dead-metadata
     - resolver_cleanup_core.verify-cleaned-runtime-and-contract-surfaces
     agent: gate-reviewer-tacit
+    claimed_by: gate-reviewer-tacit
+    claimed_at: '2026-04-10T15:07:58.630738+00:00'
   - id: resolver_cleanup_core.fix-gate-shouldfix-batch
     name: resolver_cleanup_core.fix-gate-shouldfix-batch
     status: done

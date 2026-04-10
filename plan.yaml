@@ -73566,23 +73566,6 @@ phases:
     in the failing scope.
   depends_on:
   - repo_regression_contract_alignment
-  steps:
-  - id: repo_regression_behavior_alignment.resolve-reconcile-tracking-state-machine-drift
-    name: Resolve reconcile tracking state-machine drift
-    status: pending
-    description: Investigate and settle the mismatch between runtime lifecycle expectations
-      and implementation for reconcile tracking sets (`pending_reconciles`, `active_reconciles`,
-      `conflicted_reconciles`). Update implementation or tests only after re-establishing
-      the authoritative state machine.
-    verification: '`tests/orchestration/unit/test_runtime_lifecycle.py` passes for
-      the affected scenarios and the chosen reconcile-state semantics are explicit
-      in code/tests.'
-    evidence_template: '- Authoritative state-machine decision:
-
-      - Impl vs test changes:
-
-      - Command: `uv run pytest tests/orchestration/unit/test_runtime_lifecycle.py
-      -q` -> <outcome>'
 - id: repo_regression_surface_and_fixture_repair
   name: CLI Surface and Fixture Repair
   status: locked
@@ -73817,6 +73800,22 @@ phases:
       - Adjustments made:
 
       - Search/test evidence:'
+  - id: repo_regression_behavior_alignment.resolve-reconcile-tracking-state-machine-drift
+    name: Resolve reconcile tracking state-machine drift
+    status: pending
+    description: Investigate and settle the mismatch between runtime lifecycle expectations
+      and implementation for reconcile tracking sets (`pending_reconciles`, `active_reconciles`,
+      `conflicted_reconciles`). Update implementation or tests only after re-establishing
+      the authoritative state machine.
+    verification: '`tests/orchestration/unit/test_runtime_lifecycle.py` passes for
+      the affected scenarios and the chosen reconcile-state semantics are explicit
+      in code/tests.'
+    evidence_template: '- Authoritative state-machine decision:
+
+      - Impl vs test changes:
+
+      - Command: `uv run pytest tests/orchestration/unit/test_runtime_lifecycle.py
+      -q` -> <outcome>'
 - id: repo_regression_surface_and_observability_alignment
   name: Repo Regression Surface and Observability Alignment
   status: locked

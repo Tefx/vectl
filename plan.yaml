@@ -74923,7 +74923,7 @@ phases:
       \ commit: `c97f4d3`"
   - id: xfail_config_and_dispatch_foundation.retest-config-and-dispatch-foundation
     name: Retest config precedence and dispatch foundation
-    status: claimed
+    status: done
     description: 'step_type: test
 
       step_intent: retest_green
@@ -74964,6 +74964,19 @@ phases:
     agent: integration-verifier-tacit
     claimed_by: integration-verifier-tacit
     claimed_at: '2026-04-10T05:56:35.235557+00:00'
+    done_at: '2026-04-10T05:58:03.675081+00:00'
+    evidence: "## Verification Report\n### refs Read Confirmation (MANDATORY)\nFor\
+      \ each ref in this step:\n- tests/orchestration/unit/test_config_state_red.py\
+      \ — precedence/env alias scenarios covered including resolver-timeout precedence\
+      \ case.\n- tests/orchestration/unit/test_dispatch_policy_red.py — targeted dispatch\
+      \ spec construction and verify_mode scenarios covered.\n\n### Commands executed\n\
+      - uv run pytest tests/orchestration/unit/test_config_state_red.py -q\n- uv run\
+      \ pytest tests/orchestration/unit/test_dispatch_policy_red.py -k \"dispatch_spec_construction\
+      \ or verify_mode\" -q\n\n### Actual output\n- Command 1: 25 passed in ~0.69s\n\
+      - Command 2: 2 passed, 15 deselected in ~0.69s\n\n### Behavioral proof register\n\
+      - requirement_ref: config precedence timeout env alias\n  status: PROVEN\n-\
+      \ requirement_ref: dispatch-spec construction + verify-mode mapping\n  status:\
+      \ PROVEN"
   - id: xfail_config_and_dispatch_foundation.gate
     name: Gate config and dispatch foundation
     status: pending

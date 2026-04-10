@@ -73523,7 +73523,7 @@ phases:
       deferred gaps).'
 - id: repo_regression_triage
   name: Repo-Wide Regression Triage
-  status: pending
+  status: done
   gate: All currently failing full-suite tests are classified into stale expected-red,
     stale contract lock, true behavior drift, or environment/surface mismatch with
     explicit disposition and fix target.

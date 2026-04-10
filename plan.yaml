@@ -73750,7 +73750,7 @@ phases:
     claimed_at: '2026-04-10T02:59:21.662841+00:00'
   - id: repo_regression_expected_red_cleanup.realign-config-state-red-tests
     name: Realign config-state red tests to current behavior
-    status: claimed
+    status: done
     description: Update `tests/orchestration/unit/test_config_state_red.py` so tests
       no longer expect `NotImplementedError` or noop semantics where implementation
       now exists. Preserve red intent only where a spec gap still truly remains.
@@ -73764,6 +73764,40 @@ phases:
       -q` -> <outcome>'
     claimed_by: general
     claimed_at: '2026-04-10T02:59:13.884939+00:00'
+    done_at: '2026-04-10T03:09:07.554808+00:00'
+    evidence: 'Changed expectations:
+
+      - Updated config-state red tests to assert implemented behavior instead of NotImplemented/noop
+      placeholders for config loading, env precedence areas, validation checks, frozen
+      snapshot handling, and run-registry behavior.
+
+
+      Remaining intentional red cases:
+
+      - Kept `TestConfigDiscoveryGaps::test_precedence_cli_vs_env_vs_file_not_specified`
+      as intentional xfail for unresolved resolver-timeout env-precedence spec gap.
+
+
+      Command:
+
+      - `uv run pytest tests/orchestration/unit/test_config_state_red.py -q` -> 24
+      passed, 1 xfailed.
+
+
+      Files changed:
+
+      - tests/orchestration/unit/test_config_state_red.py
+
+
+      Commit:
+
+      - 75d8e90
+
+
+      Gaps/Notes:
+
+      - Step execution noted `tools/vectl/README.md` unavailable in isolated worktree;
+      no plan/orchestrator state files modified.'
 - id: repo_regression_semantic_alignment
   name: Repo Regression Semantic Alignment
   status: locked

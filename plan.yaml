@@ -74986,6 +74986,38 @@ phases:
     depends_on:
     - xfail_role_prompt_and_review_normalization.implement-concrete-role-profile-registry
     agent: python-senior-tacit
+  - id: xfail_role_prompt_and_review_normalization.implement-structured-review-normalizer
+    name: Implement structured review result normalizer
+    status: pending
+    description: 'work_type: technical_debt_remediation
+
+      step_type: implementation
+
+
+      Implement or finish normalization from `StructuredReviewResult` to either continue
+      signal or `ResolutionCase`, preserving one authoritative mapping in dispatch
+      policy / orchestration routing.
+
+
+      Requirements:
+
+      - `pass` normalizes to continue / no case
+
+      - `needs_fix`, `needs_replan`, `operator_required`, parse failure normalize
+      to explicit `ResolutionCase`
+
+      - no prose-only fallback interpretation outside the normalizer'
+    verification: '- Structured review normalization xfails are green
+
+      - No parallel normalization path exists in orch_app or runtime'
+    evidence_template: '- normalization mapping:
+
+      - case_source mapping decisions:
+
+      - commands/tests run:'
+    depends_on:
+    - xfail_role_prompt_and_review_normalization.implement-concrete-prompt-registry
+    agent: python-senior-tacit
 - id: xfail_authority_and_entrypoint_enforcement
   name: 'XFail Remediation: Authority and Entrypoint Enforcement'
   status: locked

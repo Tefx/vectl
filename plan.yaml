@@ -78468,7 +78468,7 @@ phases:
       \ true"
 - id: orch_plane_finalization
   name: Orchestration Plane Finalization
-  status: pending
+  status: in_progress
   gate: Lower-priority hygiene is closed without reopening live-path authority gaps,
     and final review confirms the remediation chain is coherent.
   depends_on:
@@ -78476,7 +78476,7 @@ phases:
   steps:
   - id: orch_plane_finalization.core-adapter-hygiene
     name: Reduce CoreStepDataAdapter coupling
-    status: pending
+    status: claimed
     description: 'Lower-priority hygiene: narrow the CoreStepDataAdapter private/internal
       coupling seam so orchestration code depends on a stable adapter boundary instead
       of incidental internals.'
@@ -78497,6 +78497,8 @@ phases:
 
       '
     agent: python-executor
+    claimed_by: python-executor
+    claimed_at: '2026-04-10T20:55:25.569321+00:00'
   - id: orch_plane_finalization.test-expectation-drift
     name: Fix test expectation drift
     status: pending

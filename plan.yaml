@@ -76615,7 +76615,7 @@ phases:
       \ `3e0faae`\n- Commit message: `docs: freeze resolver cleanup architecture contract`"
   - id: resolver_cleanup_contracts.create-blocked-case-personas
     name: Create blocked-case resolver personas
-    status: claimed
+    status: done
     description: 'Create and register the two new default resolver personas:
 
       - `blocked-case-coordinator`
@@ -76685,6 +76685,38 @@ phases:
     agent: forgemaster-tacit
     claimed_by: forgemaster-tacit
     claimed_at: '2026-04-10T12:30:45.640717+00:00'
+    done_at: '2026-04-10T12:48:34.632957+00:00'
+    evidence: "## refs Read Confirmation (MANDATORY)\n- tools/vectl/README.md — NOT\
+      \ READ: File not found at worktree path; the README is at project root instead\
+      \ (README.md). Key passage used: \"vectl manages what agents see, when they\
+      \ see it, and what they must prove\" (DAG enforcement, evidence requirements,\
+      \ claim locking, orchestrator-managed plan state).\n\n## Persona Creation Evidence\n\
+      - Persona IDs created:\n  - `blocked-case-coordinator`\n  - `blocked-case-coordinator-tacit`\n\
+      - Contract summary for each:\n  - `blocked-case-coordinator`: ResolutionCase\
+      \ input contract and ResolutionReport output contract; main_worktree assumptions;\
+      \ vectl-facade-only mutation boundary; no ordinary claim semantics; planner/reviewer/coder\
+      \ delegation allowed via resolution subtasks; explicit operator escalation when\
+      \ auto-closure unsafe.\n  - `blocked-case-coordinator-tacit`: same contract\
+      \ with tacit priming and veto posture; still forbids conflict/judge sub-taxonomy.\n\
+      - Registry/availability proof:\n  - Both personas registered via `tela_larva_register`\
+      \ and loadable via `tela_larva_resolve`; `tela_larva_list` includes both IDs.\n\
+      \  - Role profile `blocked-case-coordinator` registered in `_DEFAULT_ROLE_PROFILES`\
+      \ in `src/vectl/orchestration/dispatch_policy.py` with resolver family, main_worktree\
+      \ context, vectl_facade_only mutation, reuse_forbidden session policy, and resolution_report\
+      \ output contract.\n  - `_ROLE_FAMILY_MAP` derived from `_DEFAULT_ROLE_PROFILES`\
+      \ includes `blocked-case-coordinator`.\n  - `ConfigRoleProfileRegistry.get(\"\
+      blocked-case-coordinator\")` and `has_role(\"blocked-case-coordinator\")` pass\
+      \ in orchestration tests.\n- Drift checks (no conflict/judge taxonomy):\n  -\
+      \ `src/` and `tests/` Python code no longer reference `conflict-resolver` in\
+      \ target surfaces touched by this step.\n  - `_RESOLVER_SYSTEM_PROMPT` explicitly\
+      \ forbids conflict-specialized or judge-specific resolver sub-taxonomy.\n  -\
+      \ `template_id` changed from `resolver_conflict` to `resolver_blocked_case`.\n\
+      \  - Orchestration test suite reported passing in worker evidence (425 total,\
+      \ 17 xfailed).\n\n## Files changed\n- `src/vectl/orchestration/dispatch_policy.py`\n\
+      - `tests/orchestration/unit/test_dispatch_policy.py`\n- `tests/orchestration/unit/test_dispatch_policy_red.py`\n\
+      \n## Commit evidence\n- Worker branch commit: `46c7455`\n- Cherry-picked on\
+      \ Main: `f762a31`\n- Commit message: `feat(resolver): replace conflict-resolver\
+      \ with blocked-case-coordinator in role profile registry`"
   - id: resolver_cleanup_contracts.gate
     name: Gate contract and persona lock
     status: pending

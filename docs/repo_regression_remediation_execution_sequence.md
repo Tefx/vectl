@@ -42,6 +42,26 @@ This sequence translates the classified failure buckets into a dependency-safe e
 - Bucket F is deferred until last among remediation buckets because it contains both stale tests and real backlog; triaging it earlier would reintroduce thrash.
 - The final full-suite gate is valid only if each prior phase lands independently and re-verifies its own bucket before the aggregate run.
 
+## Final-gate policy for future large remediations
+
+- Phase-local re-verification is **required but not sufficient** for a gate that claims repository readiness.
+- Any future large-remediation/final gate must explicitly choose one of these policies:
+  1. **Repo-wide regression required** — name the aggregate command(s) (for example `uv run pytest -q`) and require them to pass.
+  2. **Explicit exception policy** — state why a repo-wide pass is not yet required, which failures are governed/non-blocking, and what follow-up gate or owner carries the remaining debt.
+- Do not imply repo-wide readiness from prose such as "final gate", "freeze", or "regression complete" unless the governing gate text also names the aggregate command or exception policy.
+- Expected-red/xfail/skip items must be tracked as lifecycle-governed exceptions, not left as unexplained red output at the end of remediation.
+
+## Evidence expectations for repo-wide readiness gates
+
+- Keep **phase-local evidence** separate from **repo-wide gate evidence**.
+- Phase-local evidence should show each bucket's scoped rerun and its result.
+- Repo-wide gate evidence should show the named aggregate command, exit/result summary, and whether the suite is fully green or green except for explicitly governed exceptions.
+- If exceptions remain, evidence must list:
+  - the failing/xfail/skip/expected-red item
+  - why it is non-blocking
+  - its lifecycle disposition (for example: stale expected-red removed, converted to green, intentionally xfailed with rationale, or deferred under named follow-up policy)
+  - the owner/follow-up gate responsible for clearing it
+
 ## Recommended verification sequence
 
 1. Execute the bucket-local tests for Bucket A.

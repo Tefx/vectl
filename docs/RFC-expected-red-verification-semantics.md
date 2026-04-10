@@ -138,6 +138,22 @@ For `expected_red`, completion evidence should include:
 - what gap was demonstrated
 - confirmation that no out-of-scope implementation change was performed
 
+For phase or release gates that summarize repo-wide readiness, expected-red evidence
+must also carry lifecycle/disposition context so aggregate verification is not
+misread. At minimum, gate evidence should distinguish:
+
+- **phase-local verification** — the scoped check that proved the step/bucket intent
+- **repo-wide readiness evidence** — the aggregate regression run (if required) or
+  the explicit exception policy that explains why aggregate green is deferred
+
+If an expected-red item remains non-blocking at a final gate, record:
+
+- the exact test/check still red or waived
+- why it is governed rather than accidental
+- whether its lifecycle state is "gap intentionally preserved", "stale test to be removed",
+  "xfail/skip with rationale", or another named disposition
+- the owner or follow-up gate expected to retire it
+
 ### D. Update worker-facing prompts second, not first
 Prompts should reflect the new semantics, but only as a delivery mechanism for a system rule that already exists elsewhere.
 

@@ -73827,3 +73827,11 @@ phases:
     behavior drift in the failing scope.
   depends_on:
   - repo_regression_test_intent_alignment
+- id: repo_regression_surface_and_observability_alignment
+  name: Repo Regression Surface and Observability Alignment
+  status: locked
+  gate: Repo fixtures, CLI/public surfaces, and observability repro expectations are
+    aligned so remaining non-passing tests are either fixed or explicitly governed
+    intentional debt.
+  depends_on:
+  - repo_regression_semantic_alignment

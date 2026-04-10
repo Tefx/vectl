@@ -78128,3 +78128,27 @@ phases:
     and final review confirms the remediation chain is coherent.
   depends_on:
   - orch_plane_planner_boundary
+  steps:
+  - id: orch_plane_finalization.core-adapter-hygiene
+    name: Reduce CoreStepDataAdapter coupling
+    status: pending
+    description: 'Lower-priority hygiene: narrow the CoreStepDataAdapter private/internal
+      coupling seam so orchestration code depends on a stable adapter boundary instead
+      of incidental internals.'
+    verification: Targeted unit coverage proves the adapter uses stable contract seams
+      and does not add new private orch_app/internal reach-through.
+    evidence_template: '## refs Read Confirmation (MANDATORY)
+
+      - Quote the key passage from each ref or write NOT READ: <reason>
+
+
+      ## Hygiene Evidence
+
+      - Files changed
+
+      - Coupling seam reduced
+
+      - Targeted tests updated
+
+      '
+    agent: python-executor

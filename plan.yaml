@@ -75695,3 +75695,41 @@ phases:
     depends_on:
     - live_smoke_real_runner_validation.run-real-live-smoke-matrix
     agent: python-senior-tacit
+  - id: live_smoke_real_runner_validation.retest-live-smoke-after-remediation
+    name: Retest live-smoke matrix after remediation
+    status: pending
+    description: 'step_type: test
+
+      step_intent: retest_green
+
+      expected_result: green_or_governed_prereq_only
+
+
+      Re-run the real live-smoke matrix after the remediation batch.
+
+
+      Requirements:
+
+      - rerun every in-scope lane from the execution matrix
+
+      - demonstrate that product failures were fixed
+
+      - any remaining non-green status must be prerequisite-only and explicitly evidenced
+
+      - if UI/browser lane was in-scope, include its rerun outcome separately'
+    verification: '- Previously observed product defects are no longer reproducing
+
+      - Remaining skips/failures are only prerequisite/environment governed statuses,
+      if any'
+    evidence_template: '## Retest Report
+
+      - commands re-run:
+
+      - product issues closed:
+
+      - remaining prerequisite-only statuses:
+
+      - comparison vs initial matrix:'
+    depends_on:
+    - live_smoke_real_runner_validation.fix-live-smoke-product-defects-batch
+    agent: integration-verifier-tacit

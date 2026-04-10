@@ -75804,7 +75804,7 @@ phases:
       \ now 5/6 complete; remaining step is `doc-sync` (documentation synchronisation)."
   - id: retire_repair_continuity_legacy_surface.gate
     name: Gate legacy repair continuity retirement
-    status: pending
+    status: claimed
     description: 'Final review for retirement of the legacy `repair continuity` surface.
 
 
@@ -75834,6 +75834,8 @@ phases:
     - retire_repair_continuity_legacy_surface.clean-stale-docs-and-spec-references
     - retire_repair_continuity_legacy_surface.retest-recovery-public-surface
     agent: gate-reviewer-tacit
+    claimed_by: gate-reviewer-tacit
+    claimed_at: '2026-04-10T06:41:52.747845+00:00'
 - id: live_smoke_real_runner_validation
   name: Live Smoke Real Runner Validation and Remediation
   status: locked

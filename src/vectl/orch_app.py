@@ -61,6 +61,7 @@ from vectl.orchestration.contracts import (
     RosterSnapshot,
     RuntimeSnapshot,
     StructuredReviewResult,
+    WorkLease,
 )
 from vectl.orchestration.control_channel import (
     ControlChannelMessage,
@@ -841,7 +842,7 @@ class OrchestrationApp:
     ) -> DispatchSpec:
         """Build a dispatch spec using role-profile policy."""
 
-        return self._dispatch_coordinator.build_dispatch_spec(
+        dispatch_spec = self._dispatch_coordinator.build_dispatch_spec(
             ControlDecision(
                 kind="dispatch",
                 reason="orchestration app dispatch",
@@ -849,6 +850,40 @@ class OrchestrationApp:
                 role=role_hint or self._config.default_agent,
             )
         )
+        return self._bind_roster_dispatch_inputs(step_id=step_id, dispatch_spec=dispatch_spec)
+
+    def _bind_roster_dispatch_inputs(
+        self,
+        *,
+        step_id: str,
+        dispatch_spec: DispatchSpec,
+    ) -> DispatchSpec:
+        """Bind live roster lease facts into an authoritative dispatch spec.
+
+        Authority:
+            docs/ORCHESTRATION-PLANE-LIVE-AUTHORITY-CONTRACT-LOCK.md sections 3.1, 5.1, 5.3
+            docs/ORCHESTRATION-PLANE-INTERFACES.md sections 2.G, 4.2
+            docs/ORCHESTRATION-PLANE-ISOLATION-SEMANTICS.md section 5.3
+
+        The dispatch coordinator remains authoritative for step intent and role
+        meaning. Roster may contribute only compatible supply facts for that
+        already-chosen role.
+        """
+
+        claim = getattr(self._roster, "claim", None)
+        if not callable(claim):
+            return dispatch_spec
+
+        isolation = self._core_adapter.step_isolation(step_id)
+        lease = claim(dispatch_spec.role_id, isolation=isolation)
+        if lease is None:
+            return dispatch_spec
+        if not isinstance(lease, WorkLease):
+            raise TypeError(
+                "roster authority violation: claim() must return WorkLease | None, "
+                f"got {type(lease).__name__}"
+            )
+        return _apply_roster_lease(dispatch_spec=dispatch_spec, lease=lease)
 
     def dispatch_resolution_subtask(
         self,
@@ -1083,19 +1118,23 @@ class OrchestrationApp:
             isolation_ref = f"isolation={authoritative_isolation.value}"
         else:
             isolation_ref = "isolation=default"
+        request_mode = _dispatch_request_mode(mode=mode, dispatch_spec=dispatch_spec)
+        session_id: str | None = run_id
+        if dispatch_spec.session_mode == "reuse":
+            session_id = dispatch_spec.reuse_token
         request = ExecutionRequest(
             step_id=step_id,
             role=dispatch_spec.role_id,
             runner=dispatch_spec.runner,
             work_refs=(
                 f"run_id={run_id}",
-                f"mode={mode}",
+                f"mode={request_mode}",
                 isolation_ref,
                 f"execution_context={dispatch_spec.execution_context}",
                 f"source_kind={dispatch_spec.source_kind}",
                 prompt_bundle_ref,
             ),
-            session_id=run_id,
+            session_id=session_id,
         )
         workspace = self._runtime.prepare(request)
         execution_id = self._runtime.start(request=request, workspace=workspace)
@@ -3434,6 +3473,40 @@ def build_orchestration_app(
         prompt_registry=prompt_registry,
         dispatch_coordinator=dispatch_coordinator,
     )
+
+
+def _apply_roster_lease(*, dispatch_spec: DispatchSpec, lease: WorkLease) -> DispatchSpec:
+    """Project roster lease facts onto dispatch without changing role intent."""
+
+    if lease.role != dispatch_spec.role_id:
+        raise ValueError(
+            "roster authority violation: "
+            f"lease role {lease.role!r} does not satisfy requested role {dispatch_spec.role_id!r}"
+        )
+
+    session_mode: Literal["fresh", "reuse"] = "fresh"
+    if lease.session_id:
+        session_mode = "reuse"
+
+    return replace(
+        dispatch_spec,
+        runner=lease.runner,
+        session_mode=session_mode,
+        reuse_token=lease.session_id,
+        reuse_runner=lease.runner if lease.session_id else None,
+    )
+
+
+def _dispatch_request_mode(
+    *, mode: Literal["start", "resume", "recover"], dispatch_spec: DispatchSpec
+) -> str:
+    """Return runtime request mode while preserving explicit recovery flows."""
+
+    if mode != "start":
+        return mode
+    if dispatch_spec.session_mode == "reuse":
+        return "resume"
+    return mode
 
 
 __all__ = [

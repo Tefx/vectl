@@ -45,6 +45,7 @@ from vectl.orchestration.contracts import (
     RosterSnapshot,
     RuntimeSnapshot,
     StructuredReviewResult,
+    WorkLease,
 )
 from vectl.orchestration.control_channel import FilesystemControlChannel
 from vectl.orchestration.dispatch_policy import (
@@ -1295,6 +1296,94 @@ def test_build_dispatch_spec_preserves_canonical_default_role_precedence(
     spec = app.build_dispatch_spec(step_id="core.ready", role_hint="gate-reviewer")
     assert spec.role_id == "gate-reviewer"
     assert captured_default_roles == ["python-executor"]
+
+
+def test_build_dispatch_spec_binds_live_roster_reuse_without_rewriting_role(
+    tmp_path: Path,
+) -> None:
+    app = _build_app(tmp_path)
+    app._roster.register(
+        WorkLease(
+            role="python-executor",
+            runner="claude",
+            agent_id="python-executor",
+            session_id="session-123",
+        ),
+        expires_at=time.time() + 60.0,
+    )
+
+    spec = app.build_dispatch_spec(step_id="core.ready", role_hint="python-executor")
+
+    assert spec.role_id == "python-executor"
+    assert spec.runner == "claude"
+    assert spec.session_mode == "reuse"
+    assert spec.reuse_token == "session-123"
+    assert spec.reuse_runner == "claude"
+
+
+def test_build_dispatch_spec_rejects_roster_role_rewrite(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    app = _build_app(tmp_path)
+
+    def incompatible_claim(role: str, *, isolation: IsolationMode) -> WorkLease:
+        _ = role
+        _ = isolation
+        return WorkLease(
+            role="gate-reviewer",
+            runner="claude",
+            agent_id="gate-reviewer",
+            session_id="session-123",
+        )
+
+    monkeypatch.setattr(app._roster, "claim", incompatible_claim)
+
+    with pytest.raises(ValueError, match="roster authority violation"):
+        app.build_dispatch_spec(step_id="core.ready", role_hint="python-executor")
+
+
+def test_start_runtime_execution_turns_roster_reuse_into_resume_request(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    app = _build_app(tmp_path)
+    orch = cast(Any, app)
+    captured_execution_requests: list[tuple[str, str | None]] = []
+
+    def probe_prepare(request: Any) -> str:
+        captured_execution_requests.append((request.work_refs[1], request.session_id))
+        return "ws-captured"
+
+    def probe_start(*, request: Any, workspace: str) -> str:
+        _ = workspace
+        return "exec-captured"
+
+    monkeypatch.setattr(app._runtime, "prepare", probe_prepare)
+    monkeypatch.setattr(app._runtime, "start", probe_start)
+
+    dispatch_spec = DispatchSpec(
+        source_kind="step",
+        source_id="core.ready",
+        role_id="python-executor",
+        role_source="default",
+        execution_context="linked_worktree",
+        runner="claude",
+        session_mode="reuse",
+        reuse_token="session-123",
+        reuse_runner="claude",
+        prompt_family="coder",
+        output_contract="freeform_evidence",
+        mutation_policy="worktree_changes",
+    )
+
+    workspace, execution_id = orch._start_runtime_execution(
+        run_id="run-123",
+        step_id="core.ready",
+        dispatch_spec=dispatch_spec,
+        mode="start",
+    )
+
+    assert (workspace, execution_id) == ("ws-captured", "exec-captured")
+    assert captured_execution_requests == [("mode=resume", "session-123")]
 
 
 def test_route_terminal_execution_non_pass_review_becomes_resolution_case(

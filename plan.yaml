@@ -74697,3 +74697,11 @@ phases:
     policy seam consistently.
   depends_on:
   - xfail_role_prompt_and_review_normalization
+- id: xfail_finalization
+  name: XFail Remediation Finalization
+  status: locked
+  gate: The repo-wide suite is green except governed skips/xfails, docs and gate policy
+    reflect the retired/redescribed xfail set, and an independent deep review confirms
+    no hidden authority or policy drift remains.
+  depends_on:
+  - xfail_authority_and_entrypoint_enforcement

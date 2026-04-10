@@ -73537,21 +73537,6 @@ phases:
     in favor of authoritative green coverage.
   depends_on:
   - repo_regression_triage
-  steps:
-  - id: repo_regression_expected_red_cleanup.realign-config-state-red-tests
-    name: Realign config-state red tests to current behavior
-    status: pending
-    description: Update `tests/orchestration/unit/test_config_state_red.py` so tests
-      no longer expect `NotImplementedError` or noop semantics where implementation
-      now exists. Preserve red intent only where a spec gap still truly remains.
-    verification: Scoped config-state red suite passes or remaining red cases are
-      explicitly marked xfail/skip with linked rationale.
-    evidence_template: '- Changed expectations:
-
-      - Remaining intentional red cases:
-
-      - Command: `uv run pytest tests/orchestration/unit/test_config_state_red.py
-      -q` -> <outcome>'
 - id: repo_regression_contract_alignment
   name: Contract Lock and Boundary Realignment
   status: locked
@@ -73811,6 +73796,20 @@ phases:
       - Remaining unresolved GAPs:
 
       - Command(s) run:'
+  - id: repo_regression_expected_red_cleanup.realign-config-state-red-tests
+    name: Realign config-state red tests to current behavior
+    status: pending
+    description: Update `tests/orchestration/unit/test_config_state_red.py` so tests
+      no longer expect `NotImplementedError` or noop semantics where implementation
+      now exists. Preserve red intent only where a spec gap still truly remains.
+    verification: Scoped config-state red suite passes or remaining red cases are
+      explicitly marked xfail/skip with linked rationale.
+    evidence_template: '- Changed expectations:
+
+      - Remaining intentional red cases:
+
+      - Command: `uv run pytest tests/orchestration/unit/test_config_state_red.py
+      -q` -> <outcome>'
 - id: repo_regression_semantic_alignment
   name: Repo Regression Semantic Alignment
   status: locked

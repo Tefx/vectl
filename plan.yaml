@@ -77854,6 +77854,32 @@ phases:
     authority path with dynamic runtime evidence and no static-bypass seam.
   depends_on:
   - resolver_cleanup_finalization
+  steps:
+  - id: orch_plane_live_authority.contract-lock
+    name: Contract lock for live authority
+    status: pending
+    description: 'Contract lock: pin the ordinary-dispatch live-path invariants so
+      dispatch, roster participation, tool mediation, and prompt-role separation all
+      remain part of one authoritative runtime path; explicitly forbid static bypasses
+      and family-level prompt flattening.'
+    verification: Authority contract text and test anchors are updated so downstream
+      work has one enforceable runtime invariant set; forbidden shortcuts are named
+      explicitly.
+    evidence_template: '## refs Read Confirmation (MANDATORY)
+
+      - Quote the key invariant from each ref or write NOT READ: <reason>
+
+
+      ## Contract Outputs
+
+      - Locked invariants
+
+      - Forbidden shortcuts/static seams
+
+      - Runtime surfaces covered
+
+      '
+    agent: software-architect-tacit
 - id: orch_plane_planner_boundary
   name: Orchestration Plane Planner Boundary
   status: locked

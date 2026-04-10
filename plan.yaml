@@ -73546,7 +73546,7 @@ phases:
   - repo_regression_expected_red_cleanup
 - id: repo_regression_behavior_alignment
   name: Behavior and Runtime Semantic Alignment
-  status: pending
+  status: done
   gate: Behavioral tests, runtime state-machine expectations, and current implementation
     converge on one authoritative contract with no silent semantic drift remaining
     in the failing scope.
@@ -73554,7 +73554,7 @@ phases:
   - repo_regression_contract_alignment
 - id: repo_regression_surface_and_fixture_repair
   name: CLI Surface and Fixture Repair
-  status: locked
+  status: pending
   gate: Repo fixtures and public CLI surfaces required by the full suite are either
     restored, intentionally removed with test updates, or otherwise aligned so full-suite
     failures no longer arise from missing files or stale command expectations.

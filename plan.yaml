@@ -74689,3 +74689,11 @@ phases:
     intentionally reclassified with explicit evidence.
   depends_on:
   - xfail_config_and_dispatch_foundation
+- id: xfail_authority_and_entrypoint_enforcement
+  name: 'XFail Remediation: Authority and Entrypoint Enforcement'
+  status: locked
+  gate: Main-worktree authority and normal-flow lifecycle mutation restrictions are
+    enforced at approved runtime boundaries, and app-level wiring uses the centralized
+    policy seam consistently.
+  depends_on:
+  - xfail_role_prompt_and_review_normalization

@@ -73605,7 +73605,7 @@ phases:
       \ No files were changed in this gate execution step."
   - id: repo_regression_full_suite_gate.decide-static-guard-scope-and-enforcement
     name: Decide static guard scope and enforcement
-    status: claimed
+    status: done
     description: Decide whether `uvx invar-tools guard --all` is a release gate, advisory
       audit, or changed-files gate for this repository. Prevent full-repo static debt
       from being confused with regressions in narrowly remediated work unless the
@@ -73621,6 +73621,45 @@ phases:
     - repo_regression_full_suite_gate.retest-recovery-contract-conformance-semantics
     claimed_by: general
     claimed_at: '2026-04-10T04:04:04.263365+00:00'
+    done_at: '2026-04-10T04:06:47.031127+00:00'
+    evidence: 'Guard policy decision:
+
+      - Added explicit policy in `docs/contracts/static-guard-policy.yaml`.
+
+      - Decision: `uvx invar-tools guard --all` is advisory by default; changed-files
+      guard is enforced for bounded remediation gates.
+
+      - Exception: `guard --all` becomes enforced only when gate/release text explicitly
+      marks release-strict full-repo static enforcement.
+
+
+      Command(s) reviewed:
+
+      - inspected `pyproject.toml` invar guard settings and existing bounded-gate
+      policy references.
+
+      - created policy artifact and committed on isolated branch.
+
+
+      How future gates should apply this policy:
+
+      - Non-release-strict gates enforce changed-files guard; full guard-all reported
+      as advisory.
+
+      - Release-strict full-repo static blocking must be explicitly stated in gate
+      text.
+
+      - Gate evidence should separate scoped enforcement from advisory full-scan output.
+
+
+      Files changed:
+
+      - docs/contracts/static-guard-policy.yaml
+
+
+      Commit:
+
+      - a23ed33'
   - id: repo_regression_full_suite_gate.encode-repo-wide-final-gate-into-plan-policy
     name: Encode repo-wide final gate into plan policy
     status: pending

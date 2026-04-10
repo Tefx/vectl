@@ -78229,7 +78229,7 @@ phases:
       \ behavior: PROVEN\n\ngate_open_allowed: true"
 - id: orch_plane_planner_boundary
   name: Orchestration Plane Planner Boundary
-  status: pending
+  status: in_progress
   gate: Planner-facing execution is forced through vectl facade/runtime boundaries,
     with live proof that direct plan.yaml editing or facade bypass is blocked.
   depends_on:
@@ -78237,7 +78237,7 @@ phases:
   steps:
   - id: orch_plane_planner_boundary.facade-enforcement
     name: Enforce planner mutation facade
-    status: pending
+    status: claimed
     description: Harden planner execution so live planner mutations can only pass
       through the vectl facade/runtime boundary; direct plan.yaml edits and planner-side
       bypass paths must be blocked rather than merely discouraged.
@@ -78259,6 +78259,8 @@ phases:
 
       '
     agent: python-senior-tacit
+    claimed_by: python-senior-tacit
+    claimed_at: '2026-04-10T20:02:25.510781+00:00'
   - id: orch_plane_planner_boundary.live-proof
     name: Prove planner boundary live
     status: pending

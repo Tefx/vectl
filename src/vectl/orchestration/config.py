@@ -20,10 +20,16 @@ from __future__ import annotations
 import os
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, Final
+from typing import TYPE_CHECKING, Any, Final, Literal, cast
 
 import yaml
 
+from vectl.orchestration.contracts import (
+    ExecutionContext,
+    MutationPolicy,
+    RoleOutputContract,
+    RoleProfile,
+)
 from vectl.orchestration.tool_registry import (
     CANONICAL_TOOL_FAMILIES,
     validate_tool_allowlist,
@@ -71,6 +77,8 @@ DEFAULT_RETENTION_DAYS: Final[int] = 30
 DEFAULT_CONTROL_CHANNEL: Final[str] = "filesystem"
 DEFAULT_DEFAULT_OUTPUT: Final[str] = "human"
 DEFAULT_MAX_PENDING_ACTIONS: Final[int] = 100
+DEFAULT_DISPATCH_ROLE_ID: Final[str] = "python-executor"
+DEFAULT_RESOLVER_ROLE_ID: Final[str] = "blocked-case-coordinator"
 
 # Config file name
 CONFIG_FILE_NAME: Final[str] = "vectl.yaml"
@@ -149,6 +157,20 @@ class RosterConfig:
 
 
 @dataclass(frozen=True)
+class DispatchConfig:
+    """Dispatch-component configuration fragment.
+
+    Authority: docs/ORCHESTRATION-PLANE-DISPATCH-AND-PROMPT-POLICY.md §8.4, §9.1
+
+    Attributes:
+        default_role_id: Role used for ordinary step dispatch when step.agent is
+            absent.
+    """
+
+    default_role_id: str = DEFAULT_DISPATCH_ROLE_ID
+
+
+@dataclass(frozen=True)
 class RuntimeConfig:
     """
     Runtime-component configuration fragment.
@@ -199,10 +221,176 @@ class ResolverConfig:
     """
 
     enabled: bool = DEFAULT_RESOLVER_ENABLED
+    default_role_id: str = DEFAULT_RESOLVER_ROLE_ID
     tool_allowlist: ResolverToolAllowlist = field(default_factory=ResolverToolAllowlist)
     invocation_timeout_seconds: float = DEFAULT_RESOLVER_TIMEOUT_SECONDS_CFG
     max_tool_calls_per_invocation: int = DEFAULT_MAX_TOOL_CALLS
     max_tool_argument_bytes: int = DEFAULT_MAX_TOOL_ARGUMENT_BYTES
+
+
+@dataclass(frozen=True)
+class _RoleFamilyPolicy:
+    """Centralized invariants for known prompt/role families."""
+
+    execution_context: Literal["linked_worktree", "main_worktree"]
+    mutation_policy: Literal["read_only", "worktree_changes", "vectl_facade_only"] | None = None
+    session_policy: Literal["reuse_allowed", "reuse_forbidden"] | None = None
+    output_contract: RoleOutputContract | None = None
+
+
+_ROLE_FAMILY_POLICY: dict[str, _RoleFamilyPolicy] = {
+    "coder": _RoleFamilyPolicy(
+        execution_context="linked_worktree",
+        mutation_policy="worktree_changes",
+        session_policy="reuse_allowed",
+        output_contract="freeform_evidence",
+    ),
+    "planner": _RoleFamilyPolicy(
+        execution_context="main_worktree",
+        mutation_policy="vectl_facade_only",
+        session_policy="reuse_forbidden",
+        output_contract="structured_plan_result",
+    ),
+    "reviewer": _RoleFamilyPolicy(
+        execution_context="main_worktree",
+        mutation_policy="read_only",
+        session_policy="reuse_allowed",
+        output_contract="structured_review_result",
+    ),
+    "resolver": _RoleFamilyPolicy(
+        execution_context="main_worktree",
+        mutation_policy="vectl_facade_only",
+        session_policy="reuse_forbidden",
+        output_contract="resolution_report",
+    ),
+}
+
+
+def default_role_profiles() -> tuple[RoleProfile, ...]:
+    """Return built-in configuration defaults for role profiles."""
+
+    return (
+        RoleProfile(
+            role_id="python-executor",
+            prompt_family="coder",
+            execution_context="linked_worktree",
+            mutation_policy="worktree_changes",
+            session_policy="reuse_allowed",
+            output_contract="freeform_evidence",
+            default_runner="codex",
+        ),
+        RoleProfile(
+            role_id="python-senior",
+            prompt_family="coder",
+            execution_context="linked_worktree",
+            mutation_policy="worktree_changes",
+            session_policy="reuse_allowed",
+            output_contract="freeform_evidence",
+            default_runner="codex",
+        ),
+        RoleProfile(
+            role_id="vectl-planner",
+            prompt_family="planner",
+            execution_context="main_worktree",
+            mutation_policy="vectl_facade_only",
+            session_policy="reuse_forbidden",
+            output_contract="structured_plan_result",
+            default_runner="codex",
+        ),
+        RoleProfile(
+            role_id="gate-reviewer",
+            prompt_family="reviewer",
+            execution_context="main_worktree",
+            mutation_policy="read_only",
+            session_policy="reuse_allowed",
+            output_contract="structured_review_result",
+            default_runner="codex",
+        ),
+        RoleProfile(
+            role_id="doc-reviewer",
+            prompt_family="reviewer",
+            execution_context="main_worktree",
+            mutation_policy="read_only",
+            session_policy="reuse_allowed",
+            output_contract="structured_review_result",
+            default_runner="codex",
+        ),
+        RoleProfile(
+            role_id="spec-readiness-auditor",
+            prompt_family="reviewer",
+            execution_context="main_worktree",
+            mutation_policy="read_only",
+            session_policy="reuse_allowed",
+            output_contract="structured_review_result",
+            default_runner="codex",
+        ),
+        RoleProfile(
+            role_id="blocked-case-coordinator",
+            prompt_family="resolver",
+            execution_context="main_worktree",
+            mutation_policy="vectl_facade_only",
+            session_policy="reuse_forbidden",
+            output_contract="resolution_report",
+            default_runner="codex",
+        ),
+        RoleProfile(
+            role_id="blocked-case-coordinator-tacit",
+            prompt_family="resolver",
+            execution_context="main_worktree",
+            mutation_policy="vectl_facade_only",
+            session_policy="reuse_forbidden",
+            output_contract="resolution_report",
+            default_runner="codex",
+        ),
+    )
+
+
+def validate_role_profile(profile: RoleProfile) -> list[str]:
+    """Validate one role profile against centralized family invariants."""
+
+    policy = _ROLE_FAMILY_POLICY.get(profile.prompt_family)
+    if policy is None:
+        return []
+
+    mismatches: list[str] = []
+    if profile.execution_context != policy.execution_context:
+        mismatches.append(
+            f"execution_context={profile.execution_context!r} expected {policy.execution_context!r}"
+        )
+    if policy.mutation_policy is not None and profile.mutation_policy != policy.mutation_policy:
+        mismatches.append(
+            f"mutation_policy={profile.mutation_policy!r} expected {policy.mutation_policy!r}"
+        )
+    if policy.session_policy is not None and profile.session_policy != policy.session_policy:
+        mismatches.append(
+            f"session_policy={profile.session_policy!r} expected {policy.session_policy!r}"
+        )
+    if policy.output_contract is not None and profile.output_contract != policy.output_contract:
+        mismatches.append(
+            f"output_contract={profile.output_contract!r} expected {policy.output_contract!r}"
+        )
+    return mismatches
+
+
+def validate_role_profiles(profiles: tuple[RoleProfile, ...]) -> list[str]:
+    """Validate registry-wide role profile constraints."""
+
+    errors: list[str] = []
+    seen_role_ids: set[str] = set()
+    for profile in profiles:
+        if profile.role_id in seen_role_ids:
+            errors.append(f"duplicate role profile {profile.role_id!r}")
+        else:
+            seen_role_ids.add(profile.role_id)
+
+        family_errors = validate_role_profile(profile)
+        if family_errors:
+            message = (
+                f"Role profile {profile.role_id!r} violates "
+                f"{profile.prompt_family!r} family policy: " + ", ".join(family_errors)
+            )
+            errors.append(message)
+    return errors
 
 
 @dataclass(frozen=True)
@@ -273,6 +461,8 @@ class OrchestrationConfig:
     """
 
     plan_path: Path = Path("plan.yaml")
+    role_profiles: tuple[RoleProfile, ...] = field(default_factory=default_role_profiles)
+    dispatch: DispatchConfig = field(default_factory=DispatchConfig)
     roster: RosterConfig = field(default_factory=RosterConfig)
     runtime: RuntimeConfig = field(default_factory=RuntimeConfig)
     control: ControlConfig = field(default_factory=ControlConfig)
@@ -386,9 +576,25 @@ def _serialize_tool_allowlist(
 
 def _config_to_dict(config: OrchestrationConfig) -> dict[str, Any]:
     """Convert OrchestrationConfig to a dict for YAML serialization."""
+    role_profiles = {
+        profile.role_id: {
+            "agent_id": profile.role_id,
+            "prompt_family": profile.prompt_family,
+            "execution_context": profile.execution_context,
+            "mutation_policy": profile.mutation_policy,
+            "session_policy": profile.session_policy,
+            "output_contract": profile.output_contract,
+            "default_runner": profile.default_runner,
+        }
+        for profile in config.role_profiles
+    }
     return {
         "orchestration": {
             "plan_path": str(config.plan_path),
+            "role_profiles": role_profiles,
+            "dispatch": {
+                "default_role_id": config.dispatch.default_role_id,
+            },
             "roster": {
                 "default_ttl_seconds": config.roster.default_ttl_seconds,
                 "max_reuse_window_seconds": config.roster.max_reuse_window_seconds,
@@ -407,6 +613,7 @@ def _config_to_dict(config: OrchestrationConfig) -> dict[str, Any]:
             },
             "resolver": {
                 "enabled": config.resolver.enabled,
+                "default_role_id": config.resolver.default_role_id,
                 "timeout_seconds": config.resolver.invocation_timeout_seconds,
                 "max_tool_calls_per_invocation": config.resolver.max_tool_calls_per_invocation,
                 "max_tool_argument_bytes": config.resolver.max_tool_argument_bytes,
@@ -539,10 +746,12 @@ def _flatten_env_vars(prefix: str = ENV_PREFIX) -> dict[str, str]:
         "runtime_default_runner": "runtime.default_runner",
         "runtime_isolation_default": "runtime.isolation_default",
         "runtime_cleanup_policy": "runtime.cleanup_policy",
+        "dispatch_default_role_id": "dispatch.default_role_id",
         "control_idle_poll_interval_ms": "control.idle_poll_interval_ms",
         "control_max_resolution_attempts_per_case": "control.max_resolution_attempts_per_case",
         "control_action_ack_timeout_seconds": "control.action_ack_timeout_seconds",
         "resolver_enabled": "resolver.enabled",
+        "resolver_default_role_id": "resolver.default_role_id",
         "resolver_timeout_seconds": "resolver.timeout_seconds",
         "resolver_max_tool_calls_per_invocation": "resolver.max_tool_calls_per_invocation",
         "resolver_max_tool_argument_bytes": "resolver.max_tool_argument_bytes",
@@ -594,6 +803,8 @@ def _apply_env_overrides(
     for key, value in env_vars.items():
         if key == "plan_path":
             updates["plan_path"] = Path(value)
+        elif key == "dispatch.default_role_id":
+            updates.setdefault("dispatch", {})["default_role_id"] = value
         elif key.startswith("runtime."):
             subkey = key[len("runtime.") :]
             if subkey == "artifact_root" or subkey == "workspace_root":
@@ -621,6 +832,8 @@ def _apply_env_overrides(
                     "1",
                     "yes",
                 )
+            elif subkey == "default_role_id":
+                updates.setdefault("resolver", {})["default_role_id"] = value
             else:
                 updates.setdefault("resolver", {})[subkey] = (
                     int(value) if isinstance(_get_default(key), int) else value
@@ -646,10 +859,12 @@ def _get_default(key: str) -> Any:
         "runtime.workspace_root": DEFAULT_WORKSPACE_ROOT,
         "runtime.isolation_default": DEFAULT_ISOLATION_DEFAULT,
         "runtime.cleanup_policy": DEFAULT_CLEANUP_POLICY,
+        "dispatch.default_role_id": DEFAULT_DISPATCH_ROLE_ID,
         "control.idle_poll_interval_ms": DEFAULT_IDLE_POLL_INTERVAL_MS,
         "control.max_resolution_attempts_per_case": DEFAULT_MAX_RESOLUTION_ATTEMPTS,
         "control.action_ack_timeout_seconds": DEFAULT_ACTION_ACK_TIMEOUT_SECONDS,
         "resolver.enabled": DEFAULT_RESOLVER_ENABLED,
+        "resolver.default_role_id": DEFAULT_RESOLVER_ROLE_ID,
         "resolver.timeout_seconds": DEFAULT_RESOLVER_TIMEOUT_SECONDS_CFG,
         "resolver.max_tool_calls_per_invocation": DEFAULT_MAX_TOOL_CALLS,
         "resolver.max_tool_argument_bytes": DEFAULT_MAX_TOOL_ARGUMENT_BYTES,
@@ -698,6 +913,44 @@ def _dict_to_config(data: dict[str, Any]) -> OrchestrationConfig:
     """Convert a dict to an OrchestrationConfig."""
     orch = data.get("orchestration", {})
 
+    raw_role_profiles = orch.get("role_profiles")
+    if raw_role_profiles is None:
+        role_profiles = default_role_profiles()
+    else:
+        if not isinstance(raw_role_profiles, dict):
+            raise ValueError("orchestration.role_profiles must be a mapping")
+        parsed_profiles: list[RoleProfile] = []
+        for role_id, raw_profile in raw_role_profiles.items():
+            if not isinstance(raw_profile, dict):
+                raise ValueError(f"role profile {role_id!r} must be a mapping")
+            agent_id = raw_profile.get("agent_id", role_id)
+            if agent_id != role_id:
+                raise ValueError(f"role profile key {role_id!r} must match agent_id {agent_id!r}")
+            parsed_profiles.append(
+                RoleProfile(
+                    role_id=role_id,
+                    prompt_family=str(raw_profile.get("prompt_family", "")),
+                    execution_context=cast(
+                        ExecutionContext,
+                        str(raw_profile.get("execution_context", "linked_worktree")),
+                    ),
+                    mutation_policy=cast(
+                        MutationPolicy,
+                        str(raw_profile.get("mutation_policy", "read_only")),
+                    ),
+                    session_policy=cast(
+                        Literal["reuse_allowed", "reuse_forbidden"],
+                        str(raw_profile.get("session_policy", "reuse_forbidden")),
+                    ),
+                    output_contract=cast(
+                        RoleOutputContract,
+                        str(raw_profile.get("output_contract", "freeform_evidence")),
+                    ),
+                    default_runner=str(raw_profile.get("default_runner", DEFAULT_RUNNER)),
+                )
+            )
+        role_profiles = tuple(parsed_profiles)
+
     # Parse resolver tool_allowlist
     raw_allowlist = orch.get("resolver", {}).get("tool_allowlist", {})
     if isinstance(raw_allowlist, dict):
@@ -714,6 +967,12 @@ def _dict_to_config(data: dict[str, Any]) -> OrchestrationConfig:
 
     return OrchestrationConfig(
         plan_path=Path(orch.get("plan_path", "plan.yaml")),
+        role_profiles=role_profiles,
+        dispatch=DispatchConfig(
+            default_role_id=orch.get("dispatch", {}).get(
+                "default_role_id", DEFAULT_DISPATCH_ROLE_ID
+            ),
+        ),
         roster=RosterConfig(
             default_ttl_seconds=float(
                 orch.get("roster", {}).get("default_ttl_seconds", DEFAULT_ROSTER_TTL_SECONDS)
@@ -750,6 +1009,9 @@ def _dict_to_config(data: dict[str, Any]) -> OrchestrationConfig:
         ),
         resolver=ResolverConfig(
             enabled=bool(orch.get("resolver", {}).get("enabled", DEFAULT_RESOLVER_ENABLED)),
+            default_role_id=orch.get("resolver", {}).get(
+                "default_role_id", DEFAULT_RESOLVER_ROLE_ID
+            ),
             tool_allowlist=resolved_allowlist,
             invocation_timeout_seconds=float(
                 orch.get("resolver", {}).get(
@@ -1088,6 +1350,55 @@ def validate_orchestration_config(
                 )
             )
 
+    role_profile_errors = validate_role_profiles(config.role_profiles)
+    for reason in role_profile_errors:
+        errors.append(
+            ConfigValidationError(
+                field="role_profiles",
+                value="<registry>",
+                reason=reason,
+            )
+        )
+
+    profile_by_id = {profile.role_id: profile for profile in config.role_profiles}
+    if config.dispatch.default_role_id not in profile_by_id:
+        errors.append(
+            ConfigValidationError(
+                field="dispatch.default_role_id",
+                value=config.dispatch.default_role_id,
+                reason="must reference a configured role profile",
+            )
+        )
+
+    resolver_profile = profile_by_id.get(config.resolver.default_role_id)
+    if resolver_profile is None:
+        errors.append(
+            ConfigValidationError(
+                field="resolver.default_role_id",
+                value=config.resolver.default_role_id,
+                reason="must reference a configured role profile",
+            )
+        )
+    elif resolver_profile.prompt_family != "resolver":
+        errors.append(
+            ConfigValidationError(
+                field="resolver.default_role_id",
+                value=config.resolver.default_role_id,
+                reason="must reference a resolver-family role profile",
+            )
+        )
+    elif config.resolver.default_role_id not in {
+        "blocked-case-coordinator",
+        "blocked-case-coordinator-tacit",
+    }:
+        errors.append(
+            ConfigValidationError(
+                field="resolver.default_role_id",
+                value=config.resolver.default_role_id,
+                reason=("must be 'blocked-case-coordinator' or 'blocked-case-coordinator-tacit'"),
+            )
+        )
+
     # Path existence checks (optional)
     if check_paths_exist:
         if not config.plan_path.exists():
@@ -1118,8 +1429,11 @@ def validate_orchestration_config(
 __all__ = [
     "DEFAULT_ROSTER_TTL_SECONDS",
     "DEFAULT_RESOLVER_TIMEOUT_SECONDS",
+    "DEFAULT_DISPATCH_ROLE_ID",
+    "DEFAULT_RESOLVER_ROLE_ID",
     "OrchestrationConfig",
     "ResolverToolAllowlist",
+    "DispatchConfig",
     "RosterConfig",
     "RuntimeConfig",
     "ControlConfig",
@@ -1130,9 +1444,12 @@ __all__ = [
     "FrozenConfigSnapshot",
     "ConfigValue",
     "ConfigValidationError",
+    "default_role_profiles",
     "freeze_config",
     "load_frozen_snapshot",
     "load_orchestration_config",
+    "validate_role_profile",
+    "validate_role_profiles",
     "validate_orchestration_config",
     "write_frozen_snapshot",
 ]

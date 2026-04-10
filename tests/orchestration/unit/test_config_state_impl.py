@@ -16,6 +16,7 @@ import pytest
 import yaml
 
 from vectl.orchestration.config import (
+    DispatchConfig,
     FrozenConfigSnapshot,
     ObservabilityConfig,
     OrchestrationConfig,
@@ -227,6 +228,68 @@ class TestConfigDiscovery:
         assert path is None  # No config file found
         assert config.plan_path.name == "plan.yaml"  # Default
 
+    def test_default_config_contains_config_backed_role_registry(self) -> None:
+        """Verify built-in config defaults carry ordinary and resolver role profiles."""
+        config = OrchestrationConfig()
+
+        role_ids = {profile.role_id for profile in config.role_profiles}
+        assert "python-executor" in role_ids
+        assert "blocked-case-coordinator" in role_ids
+        assert "blocked-case-coordinator-tacit" in role_ids
+        assert config.dispatch.default_role_id == "python-executor"
+        assert config.resolver.default_role_id == "blocked-case-coordinator"
+
+    def test_load_parses_role_profiles_and_default_role_ids(self, tmp_path: Path) -> None:
+        """Verify file-backed config defines role registry and explicit role defaults."""
+        config_content = {
+            "orchestration": {
+                "role_profiles": {
+                    "python-executor": {
+                        "agent_id": "python-executor",
+                        "prompt_family": "coder",
+                        "execution_context": "linked_worktree",
+                        "mutation_policy": "worktree_changes",
+                        "session_policy": "reuse_allowed",
+                        "output_contract": "freeform_evidence",
+                        "default_runner": "codex",
+                    },
+                    "blocked-case-coordinator": {
+                        "agent_id": "blocked-case-coordinator",
+                        "prompt_family": "resolver",
+                        "execution_context": "main_worktree",
+                        "mutation_policy": "vectl_facade_only",
+                        "session_policy": "reuse_forbidden",
+                        "output_contract": "resolution_report",
+                        "default_runner": "codex",
+                    },
+                    "blocked-case-coordinator-tacit": {
+                        "agent_id": "blocked-case-coordinator-tacit",
+                        "prompt_family": "resolver",
+                        "execution_context": "main_worktree",
+                        "mutation_policy": "vectl_facade_only",
+                        "session_policy": "reuse_forbidden",
+                        "output_contract": "resolution_report",
+                        "default_runner": "codex",
+                    },
+                },
+                "dispatch": {"default_role_id": "python-executor"},
+                "resolver": {"default_role_id": "blocked-case-coordinator"},
+            }
+        }
+        config_file = tmp_path / "vectl.yaml"
+        config_file.write_text(yaml.dump(config_content))
+
+        config, path = load_orchestration_config(plan_path=config_file)
+
+        assert path == config_file
+        assert config.dispatch.default_role_id == "python-executor"
+        assert config.resolver.default_role_id == "blocked-case-coordinator"
+        assert {profile.role_id for profile in config.role_profiles} == {
+            "python-executor",
+            "blocked-case-coordinator",
+            "blocked-case-coordinator-tacit",
+        }
+
     def test_missing_explicit_file_raises(self, tmp_path: Path) -> None:
         """Verify load_orchestration_config() raises for missing explicit file."""
         with pytest.raises(FileNotFoundError):
@@ -315,6 +378,22 @@ class TestConfigValidation:
         errors = validate_orchestration_config(config)
         assert len(errors) == 1
         assert "observability.retention_days" in errors[0].field
+
+    def test_dispatch_default_role_must_reference_configured_profile(self) -> None:
+        """Verify dispatch default role must exist in the config-backed registry."""
+        config = OrchestrationConfig(dispatch=DispatchConfig(default_role_id="missing-role"))
+
+        errors = validate_orchestration_config(config)
+
+        assert any(error.field == "dispatch.default_role_id" for error in errors)
+
+    def test_resolver_default_role_must_reference_resolver_family(self) -> None:
+        """Verify resolver default role cannot point at an ordinary coder role."""
+        config = OrchestrationConfig(resolver=ResolverConfig(default_role_id="python-executor"))
+
+        errors = validate_orchestration_config(config)
+
+        assert any(error.field == "resolver.default_role_id" for error in errors)
 
     def test_tool_allowlist_unknown_family_rejected(self) -> None:
         """Verify unknown tool family in allowlist is rejected."""

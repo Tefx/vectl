@@ -19,6 +19,7 @@ from __future__ import annotations
 
 import pytest
 
+from vectl.orchestration.config import OrchestrationConfig
 from vectl.orchestration.contracts import (
     ControlDecision,
     CoreSnapshot,
@@ -40,7 +41,6 @@ from vectl.orchestration.dispatch_policy import (
     normalize_review_result,
     step_verify_to_verify_mode,
 )
-
 
 # ---------------------------------------------------------------------
 # Fixtures
@@ -288,7 +288,6 @@ class TestConfigRoleProfileRegistry:
         custom_role = RoleProfile(
             role_id="custom-agent",
             prompt_family="coder",
-            template_id="custom_template",
             execution_context="linked_worktree",
             mutation_policy="worktree_changes",
             session_policy="reuse_allowed",
@@ -306,7 +305,6 @@ class TestConfigRoleProfileRegistry:
         invalid_reviewer = RoleProfile(
             role_id="custom-reviewer",
             prompt_family="reviewer",
-            template_id="reviewer_custom",
             execution_context="linked_worktree",
             mutation_policy="read_only",
             session_policy="reuse_allowed",
@@ -323,6 +321,18 @@ class TestConfigRoleProfileRegistry:
         role, source = registry.resolve_role(step_agent=None)
         assert role == "python-senior"
         assert source == "default"
+
+    def test_registry_defaults_are_loaded_from_orchestration_config(self) -> None:
+        """Default registry authority comes from orchestration config, not dispatch code."""
+        config = OrchestrationConfig()
+        registry = ConfigRoleProfileRegistry(
+            profiles=config.role_profiles,
+            default_role=config.dispatch.default_role_id,
+        )
+
+        assert registry.default_role == config.dispatch.default_role_id
+        assert registry.has_role("blocked-case-coordinator") is True
+        assert registry.has_role("blocked-case-coordinator-tacit") is True
 
 
 # ---------------------------------------------------------------------
@@ -851,7 +861,7 @@ class TestReviewResultNormalization:
         assert "file1.py" in normalized.artifact_refs
 
     def test_needs_replan_creates_resolution_case(self) -> None:
-        """review_outcome='needs_replan' must create ResolutionCase with case_source='review_failed'.
+        """review_outcome='needs_replan' must create ResolutionCase.
 
         Authority: §14.1 'needs_replan -> create explicit resolution case'
         """
@@ -868,7 +878,7 @@ class TestReviewResultNormalization:
         assert normalized.reason == "review outcome: needs_replan"
 
     def test_operator_required_creates_resolution_case(self) -> None:
-        """review_outcome='operator_required' must create ResolutionCase with case_source='review_failed'.
+        """review_outcome='operator_required' must create ResolutionCase.
 
         Authority: §14.1 'operator_required -> create explicit resolution case'
         """

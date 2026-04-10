@@ -176,7 +176,6 @@ class RoleProfile:
 
     role_id: str
     prompt_family: str
-    template_id: str
     execution_context: ExecutionContext
     mutation_policy: MutationPolicy
     session_policy: Literal["reuse_allowed", "reuse_forbidden"]

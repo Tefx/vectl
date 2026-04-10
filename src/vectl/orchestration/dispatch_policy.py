@@ -22,29 +22,26 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import Literal, Protocol
 
+from vectl.orchestration.config import (
+    DEFAULT_DISPATCH_ROLE_ID,
+    default_role_profiles,
+    validate_role_profiles,
+)
 from vectl.orchestration.contracts import (
     ControlDecision,
     CoreSnapshot,
     DispatchRoleSource,
-    DispatchSourceKind,
     DispatchSpec,
-    ExecutionContext,
-    MutationPolicy,
     PromptBundle,
     PromptRegistry,
     ResolutionCase,
-    ResolutionCaseSource,
-    ReviewOutcome,
-    RoleOutputContract,
     RoleProfile,
     RoleProfileRegistry,
     RosterSnapshot,
     RuntimeSnapshot,
-    SessionMode,
     StructuredReviewResult,
 )
-from vectl.orchestration.core_adapter import CoreAdapter, PlanCoreAdapter
-
+from vectl.orchestration.core_adapter import PlanCoreAdapter
 
 # ---------------------------------------------------------------------
 # Errors
@@ -105,174 +102,6 @@ def step_verify_to_verify_mode(
 
 
 @dataclass(frozen=True)
-class _RoleFamilyPolicy:
-    """Centralized invariants for known prompt/role families."""
-
-    execution_context: ExecutionContext
-    mutation_policy: MutationPolicy | None = None
-    session_policy: Literal["reuse_allowed", "reuse_forbidden"] | None = None
-    output_contract: RoleOutputContract | None = None
-
-
-# Central policy authority for canonical role families.
-#
-# This keeps the main-worktree family contract encoded in one place rather than
-# scattered across individual role entries.
-_ROLE_FAMILY_POLICY: dict[str, _RoleFamilyPolicy] = {
-    "coder": _RoleFamilyPolicy(
-        execution_context="linked_worktree",
-        mutation_policy="worktree_changes",
-        session_policy="reuse_allowed",
-        output_contract="freeform_evidence",
-    ),
-    "planner": _RoleFamilyPolicy(
-        execution_context="main_worktree",
-        mutation_policy="vectl_facade_only",
-        session_policy="reuse_forbidden",
-        output_contract="structured_plan_result",
-    ),
-    "reviewer": _RoleFamilyPolicy(
-        execution_context="main_worktree",
-        mutation_policy="read_only",
-        session_policy="reuse_allowed",
-        output_contract="structured_review_result",
-    ),
-    "resolver": _RoleFamilyPolicy(
-        execution_context="main_worktree",
-        mutation_policy="vectl_facade_only",
-        session_policy="reuse_forbidden",
-        output_contract="resolution_report",
-    ),
-}
-
-
-def _validate_role_profile(profile: RoleProfile) -> None:
-    """Validate canonical family invariants for concrete profiles."""
-
-    policy = _ROLE_FAMILY_POLICY.get(profile.prompt_family)
-    if policy is None:
-        return
-
-    mismatches: list[str] = []
-    if profile.execution_context != policy.execution_context:
-        mismatches.append(
-            f"execution_context={profile.execution_context!r} expected {policy.execution_context!r}"
-        )
-    if policy.mutation_policy is not None and profile.mutation_policy != policy.mutation_policy:
-        mismatches.append(
-            f"mutation_policy={profile.mutation_policy!r} expected {policy.mutation_policy!r}"
-        )
-    if policy.session_policy is not None and profile.session_policy != policy.session_policy:
-        mismatches.append(
-            f"session_policy={profile.session_policy!r} expected {policy.session_policy!r}"
-        )
-    if policy.output_contract is not None and profile.output_contract != policy.output_contract:
-        mismatches.append(
-            f"output_contract={profile.output_contract!r} expected {policy.output_contract!r}"
-        )
-
-    if mismatches:
-        joined = ", ".join(mismatches)
-        raise ValueError(
-            f"Role profile {profile.role_id!r} violates {profile.prompt_family!r} family policy: {joined}"
-        )
-
-
-# Default role profiles per ORCHESTRATION-PLANE-DISPATCH-AND-PROMPT-POLICY.md §8, §11, §12.
-# These provide sensible defaults; configuration can add/override roles.
-
-_DEFAULT_ROLE_PROFILES: tuple[RoleProfile, ...] = (
-    # Coder family (§11.2): linked_worktree, worktree_changes, reuse_allowed
-    RoleProfile(
-        role_id="python-executor",
-        prompt_family="coder",
-        template_id="coder_executor",
-        execution_context="linked_worktree",
-        mutation_policy="worktree_changes",
-        session_policy="reuse_allowed",
-        output_contract="freeform_evidence",
-        default_runner="codex",
-    ),
-    RoleProfile(
-        role_id="python-senior",
-        prompt_family="coder",
-        template_id="coder_senior",
-        execution_context="linked_worktree",
-        mutation_policy="worktree_changes",
-        session_policy="reuse_allowed",
-        output_contract="freeform_evidence",
-        default_runner="codex",
-    ),
-    # Planner family (§11.3): main_worktree, vectl_facade_only, reuse_forbidden
-    RoleProfile(
-        role_id="vectl-planner",
-        prompt_family="planner",
-        template_id="planner_remediation",
-        execution_context="main_worktree",
-        mutation_policy="vectl_facade_only",
-        session_policy="reuse_forbidden",
-        output_contract="structured_plan_result",
-        default_runner="codex",
-    ),
-    # Reviewer family (§11.4): main_worktree, read_only, reuse_allowed
-    RoleProfile(
-        role_id="gate-reviewer",
-        prompt_family="reviewer",
-        template_id="reviewer_gate",
-        execution_context="main_worktree",
-        mutation_policy="read_only",
-        session_policy="reuse_allowed",
-        output_contract="structured_review_result",
-        default_runner="codex",
-    ),
-    RoleProfile(
-        role_id="doc-reviewer",
-        prompt_family="reviewer",
-        template_id="reviewer_doc",
-        execution_context="main_worktree",
-        mutation_policy="read_only",
-        session_policy="reuse_allowed",
-        output_contract="structured_review_result",
-        default_runner="codex",
-    ),
-    RoleProfile(
-        role_id="spec-readiness-auditor",
-        prompt_family="reviewer",
-        template_id="reviewer_spec_readiness",
-        execution_context="main_worktree",
-        mutation_policy="read_only",
-        session_policy="reuse_allowed",
-        output_contract="structured_review_result",
-        default_runner="codex",
-    ),
-    # Resolver family (§11.5): main_worktree, vectl_facade_only, reuse_forbidden.
-    # ADR-orchestration-role-profile-config-and-resolver-cleanup.md freezes the
-    # canonical default resolver agents to blocked-case-coordinator and
-    # blocked-case-coordinator-tacit; legacy conflict/judge taxonomy is removed.
-    RoleProfile(
-        role_id="blocked-case-coordinator",
-        prompt_family="resolver",
-        template_id="resolver_blocked_case",
-        execution_context="main_worktree",
-        mutation_policy="vectl_facade_only",
-        session_policy="reuse_forbidden",
-        output_contract="resolution_report",
-        default_runner="codex",
-    ),
-    RoleProfile(
-        role_id="blocked-case-coordinator-tacit",
-        prompt_family="resolver",
-        template_id="resolver_blocked_case",
-        execution_context="main_worktree",
-        mutation_policy="vectl_facade_only",
-        session_policy="reuse_forbidden",
-        output_contract="resolution_report",
-        default_runner="codex",
-    ),
-)
-
-
-@dataclass(frozen=True)
 class ConfigRoleProfileRegistry:
     """Configuration-backed lookup for open-ended role IDs.
 
@@ -287,32 +116,32 @@ class ConfigRoleProfileRegistry:
     """
 
     _profiles: dict[str, RoleProfile] = field(default_factory=dict)
-    _default_role: str = "python-executor"
-    _fallback_role: str = "python-executor"
+    _default_role: str = DEFAULT_DISPATCH_ROLE_ID
 
     def __init__(
         self,
         profiles: tuple[RoleProfile, ...] | None = None,
-        default_role: str = "python-executor",
-        fallback_role: str = "python-executor",
+        default_role: str = DEFAULT_DISPATCH_ROLE_ID,
+        fallback_role: str | None = None,
     ) -> None:
         """Initialize registry with optional profile overrides.
 
         Args:
-            profiles: Role profiles to register. If None, defaults are used.
+            profiles: Role profiles to register. If None, configuration defaults are used.
             default_role: Default role ID used when step.agent is absent.
-            fallback_role: Fallback role ID used only when explicitly allowed.
-            default_role: Role to use when step.agent is missing (§9.1 precedence 2).
-            fallback_role: Role to fall back to when explicitly allowed (§9.1 precedence 3).
+            fallback_role: Deprecated compatibility parameter. Ordinary role
+                defaulting is config-backed; this compatibility input is ignored.
         """
-        source_profiles = profiles if profiles is not None else _DEFAULT_ROLE_PROFILES
+        del fallback_role
+        source_profiles = profiles if profiles is not None else default_role_profiles()
+        validation_errors = validate_role_profiles(source_profiles)
+        if validation_errors:
+            raise ValueError(validation_errors[0])
         profile_dict: dict[str, RoleProfile] = {}
         for p in source_profiles:
-            _validate_role_profile(p)
             profile_dict[p.role_id] = p
         object.__setattr__(self, "_profiles", profile_dict)
         object.__setattr__(self, "_default_role", default_role)
-        object.__setattr__(self, "_fallback_role", fallback_role)
 
     def get(self, role_id: str) -> RoleProfile:
         """Look up a role profile by ID.
@@ -358,8 +187,9 @@ class ConfigRoleProfileRegistry:
 
     @property
     def fallback_role(self) -> str:
-        """Return the configured fallback role ID."""
-        return self._fallback_role
+        """Return the canonical ordinary default role ID."""
+
+        return self._default_role
 
     def resolve_role(
         self,
@@ -610,7 +440,9 @@ def _build_context_messages(spec: DispatchSpec) -> tuple[dict[str, str], ...]:
         messages.append(
             {
                 "role": "system",
-                "content": "MUTATION POLICY: vectl_facade_only. Only use approved vectl tool surfaces.",
+                "content": (
+                    "MUTATION POLICY: vectl_facade_only. Only use approved vectl tool surfaces."
+                ),
             }
         )
     elif spec.mutation_policy == "read_only":
@@ -625,7 +457,7 @@ def _build_context_messages(spec: DispatchSpec) -> tuple[dict[str, str], ...]:
 
 # Role ID -> prompt family mapping for has_role fallback
 _ROLE_FAMILY_MAP: dict[str, str] = {
-    profile.role_id: profile.prompt_family for profile in _DEFAULT_ROLE_PROFILES
+    profile.role_id: profile.prompt_family for profile in default_role_profiles()
 }
 
 
@@ -741,7 +573,8 @@ class DispatchCoordinator:
         if step_data is None:
             raise ValueError(f"Step data not found for step_id={step_id!r}")
 
-        # 2. Resolve role (§9.1 precedence: step.agent > dispatch-request default > registry default)
+        # 2. Resolve role (§9.1 precedence: step.agent > dispatch-request
+        #    default > registry default)
         resolved_role, role_source = self.role_registry.resolve_role(
             step_data.agent,
             default_role_override=decision.role,

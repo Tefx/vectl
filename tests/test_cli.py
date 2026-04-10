@@ -3920,80 +3920,70 @@ class TestClaimMismatchVisibility:
 
 
 # ---------------------------------------------------------------------------
-# vectl drive: CLI integration tests (EXPECTED-RED contract tests)
-# Ref: DRIVER-BLUEPRINT.md lines 44, 115-122
+# vectl drive: retired public surface regression tests
+# Ref: docs/ADR-orchestration-plane-reset.md, section "legacy driver-centric
+#      design as the target future architecture"
 # ---------------------------------------------------------------------------
 
 
 class TestDriveCLI:
-    """Tests for vectl drive CLI command.
+    """Regression coverage for the retired legacy ``drive`` surface.
 
-    These tests verify:
-    - CLI flag parsing expectations
-    - Config resolution and validation handoff
-    - Runtime entrypoint wiring contract
-
-    EXPECTED-RED: The driver implementation is not yet complete.
-    These tests should fail until driver-cli-integration.impl-cli-drive lands.
+    The current public CLI exposes orchestration functionality under ``orch``.
+    The old ``drive`` command/import contract was part of the rejected
+    driver-centric design and should remain absent.
     """
 
-    def test_drive_command_exists(self):
-        """Verify the drive command is registered in the CLI app."""
+    def test_drive_command_is_not_registered(self):
+        """Verify the removed drive command is not registered."""
         result = runner.invoke(app, ["drive", "--help"])
+        assert result.exit_code != 0
+        assert "No such command 'drive'" in result.output
+
+    def test_root_help_exposes_orch_surface_instead(self):
+        """Verify the supported public surface points users to ``orch``."""
+        result = runner.invoke(app, ["--help"])
         assert result.exit_code == 0
-        assert "drive" in result.output.lower()
+        assert "orch" in result.output
+        assert "Orchestration operator commands" in result.output
 
-    def test_drive_config_flag_recognized(self):
-        """Verify --config flag is recognized by the drive command."""
-        result = runner.invoke(app, ["drive", "--help"])
+    def test_orch_group_help_is_available(self):
+        """Verify the supported orchestration command group is available."""
+        result = runner.invoke(app, ["orch", "--help"])
         assert result.exit_code == 0
-        assert "--config" in result.output
-        assert "PATH" in result.output
+        assert "run" in result.output
+        assert "resume" in result.output
+        assert "config" in result.output
 
-    def test_drive_default_config_is_driver_yaml(self):
-        """Verify default config path is driver.yaml."""
-        result = runner.invoke(app, ["drive", "--help"])
-        assert result.exit_code == 0
-        assert "driver.yaml" in result.output
-
-    def test_drive_error_on_missing_config(self):
-        """Verify drive command exits properly when config file is missing.
-
-        This tests the failure path: when the config file doesn't exist,
-        the command should exit with an error message.
-        """
+    def test_drive_invocation_reports_removed_surface(self):
+        """Verify direct drive invocation fails as a missing command."""
         result = runner.invoke(app, ["drive", "--config", "/nonexistent/path/driver.yaml"])
-        # Should fail because config doesn't exist
         assert result.exit_code != 0
-        # Should show error about config file not found
-        assert "not found" in result.output.lower() or "error" in result.output.lower()
+        assert "No such command 'drive'" in result.output
 
-    def test_drive_no_longer_imports_removed_driver_entrypoint(self):
-        """Verify drive command no longer depends on removed driver package."""
-        # Read the cli.py source to verify the import contract
-        import inspect
+    def test_drive_python_import_surface_is_absent(self):
+        """Verify ``vectl.cli`` no longer exports a ``drive`` entrypoint."""
+        import vectl.cli as cli
 
-        from vectl.cli import drive
+        assert not hasattr(cli, "drive")
+        assert hasattr(cli, "orch_app")
 
-        source = inspect.getsource(drive)
-        assert "vectl.driver.entrypoint" not in source
-
-    def test_drive_with_explicit_config_path(self):
-        """Verify --config flag accepts an explicit path."""
-        result = runner.invoke(app, ["drive", "--config", "/tmp/test-driver.yaml"])
-        # Should fail with NotImplementedError, not with flag parsing error
-        assert result.exit_code != 0
-        # If flag parsing failed, we'd see "no such option" in output
-        assert "no such option" not in result.output.lower()
-
-    def test_drive_help_shows_ref_to_blueprint(self):
-        """Verify help text references the DRIVER-BLUEPRINT.md."""
-        result = runner.invoke(app, ["drive", "--help"])
+    def test_orch_run_help_is_available(self):
+        """Verify supported orchestration execution help is available."""
+        result = runner.invoke(app, ["orch", "run", "--help"])
         assert result.exit_code == 0
-        assert "DRIVER-BLUEPRINT" in result.output
+        assert "Start or resume an orchestration run" in result.output
 
-    def test_drive_help_shows_docstring_description(self):
-        """Verify help text shows the command description."""
-        result = runner.invoke(app, ["drive", "--help"])
+    def test_orch_status_help_is_available(self):
+        """Verify supported orchestration inspection help is available."""
+        result = runner.invoke(app, ["orch", "status", "--help"])
         assert result.exit_code == 0
-        assert "auto-execute" in result.output.lower() or "orchestration" in result.output.lower()
+        assert "Inspect current orchestration status" in result.output
+
+    def test_orch_surface_replaces_drive_for_operator_workflows(self):
+        """Verify operator-facing workflows live under ``orch`` instead of ``drive``."""
+        result = runner.invoke(app, ["orch", "--help"])
+        assert result.exit_code == 0
+        assert "pause" in result.output
+        assert "unpause" in result.output
+        assert "stop" in result.output

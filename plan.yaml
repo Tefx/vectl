@@ -73652,7 +73652,7 @@ phases:
       Ambiguous items are explicitly called out instead of guessed.
   - id: repo_regression_expected_red_cleanup.introduce-expected-red-lifecycle-marking
     name: Introduce expected-red lifecycle marking
-    status: pending
+    status: claimed
     description: Establish a durable way to mark intentional red tests (for example
       marker/xfail discipline or equivalent test metadata) so future implementation
       phases must either flip, retire, or explicitly preserve them with rationale.
@@ -73663,6 +73663,8 @@ phases:
       - Files updated:
 
       - How future gates should consume this metadata:'
+    claimed_by: general
+    claimed_at: '2026-04-10T02:59:06.633295+00:00'
   - id: repo_regression_triage.capture-full-suite-failure-inventory
     name: Capture full-suite failure inventory
     status: pending

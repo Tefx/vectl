@@ -74923,7 +74923,7 @@ phases:
       \ commit: `c97f4d3`"
   - id: xfail_config_and_dispatch_foundation.retest-config-and-dispatch-foundation
     name: Retest config precedence and dispatch foundation
-    status: pending
+    status: claimed
     description: 'step_type: test
 
       step_intent: retest_green
@@ -74962,6 +74962,8 @@ phases:
     - xfail_config_and_dispatch_foundation.close-resolver-timeout-env-precedence-gap
     - xfail_config_and_dispatch_foundation.centralize-dispatch-spec-construction
     agent: integration-verifier-tacit
+    claimed_by: integration-verifier-tacit
+    claimed_at: '2026-04-10T05:56:35.235557+00:00'
   - id: xfail_config_and_dispatch_foundation.gate
     name: Gate config and dispatch foundation
     status: pending

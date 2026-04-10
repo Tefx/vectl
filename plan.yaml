@@ -77045,3 +77045,60 @@ phases:
 
       '
     agent: integration-verifier-tacit
+  - id: resolver_cleanup_finalization.doc-sync
+    name: Sync documentation to cleaned architecture
+    status: pending
+    description: 'Update user-facing and architecture-facing documentation so current
+      docs reflect the cleaned resolver/config/planner model and no deleted concepts
+      remain in active guidance.
+
+
+      Touch paths:
+
+      - docs/ORCHESTRATION-PLANE-ARCHITECTURE.md
+
+      - docs/ORCHESTRATION-PLANE-INTERFACES.md
+
+      - docs/ORCHESTRATION-PLANE-DISPATCH-AND-PROMPT-POLICY.md
+
+      - docs/ORCHESTRATION-PLANE-RESOLUTION-CONTRACT.md
+
+      - docs/ORCHESTRATION-PLANE-RESOLVER-COORDINATION.md
+
+      - docs/ORCHESTRATION-PLANE-ORCH-APP-ROUTING.md
+
+      - docs/ORCHESTRATION-PLANE-IMPLEMENTATION-DESIGN.md
+
+      - docs/ORCHESTRATION-PLANE-CLI-CONFIG-OBSERVABILITY-DESIGN.md
+
+      - docs/ORCHESTRATION-PLANE-ISOLATION-SEMANTICS.md
+
+      - docs/LIVE-SMOKE-REAL-RUNNER-VALIDATION-2026-04-10.md'
+    verification: '- All active docs reflect the cleaned architecture.
+
+      - Planner mutation boundary and config-owned role profiles are documented.
+
+      - No active docs retain deleted legacy terms except preserved historical references
+      explicitly marked as historical.'
+    evidence_template: '## refs Read Confirmation (MANDATORY)
+
+      For each ref in this step:
+
+      - <filename> — key passage or "NOT READ: <reason>"
+
+
+      If no refs were provided, state: "No refs for this step."
+
+
+      ## Doc Sync Evidence
+
+      - Docs updated:
+
+      - Legacy terms removed from active docs:
+
+      - Historical-reference exceptions (if any):
+
+      '
+    depends_on:
+    - resolver_cleanup_finalization.full-regression
+    agent: doc-reviewer-tacit

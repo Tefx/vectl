@@ -74146,7 +74146,7 @@ phases:
   steps:
   - id: repo_regression_observability_gap_disposition.decide-implement-vs-xfail-for-remaining-observability-gaps
     name: Decide implement versus xfail for remaining observability gaps
-    status: claimed
+    status: done
     description: For remaining observability repro failures (projection replay, final.json
       schema, step-key normalization, latest_run boundary, canonical tool registry,
       etc.), decide item-by-item whether to implement now or retain as intentional
@@ -74163,6 +74163,57 @@ phases:
       - Commands/tests run:'
     claimed_by: general
     claimed_at: '2026-04-10T03:26:26.690450+00:00'
+    done_at: '2026-04-10T03:32:56.545600+00:00'
+    evidence: 'Remaining gaps table:
+
+      - projection replay: already green, retained in blocking path.
+
+      - final.json schema anchors: implemented now.
+
+      - step-key normalization/reversibility: implemented now.
+
+      - latest_run boundary: already green.
+
+      - canonical tool registry checks: already green.
+
+
+      Implement-now items:
+
+      - Added step-key normalize/denormalize helpers and exports in `src/vectl/orchestration/events.py`.
+
+      - Added terminal-manifest schema anchors and wiring in `src/vectl/orchestration/run_store.py`
+      (`summary`, `halt_reason`, `artifacts`).
+
+
+      Intentional xfail items with rationale:
+
+      - None remaining in `tests/repro/test_orch_observability_red.py` after this
+      step.
+
+
+      Commands/tests run:
+
+      - `uv run pytest tests/repro/test_orch_observability_red.py -q -rxX` -> before
+      43 passed/5 xfailed; after 48 passed.
+
+      - `uv run pytest tests/orchestration/unit/test_run_store.py -q` -> 16 passed.
+
+
+      Files changed:
+
+      - src/vectl/orchestration/events.py
+
+      - src/vectl/orchestration/run_store.py
+
+
+      Commit:
+
+      - 04f1dce
+
+
+      Notes:
+
+      - No observability repro failures were moved out of blocking path.'
   - id: repo_regression_surface_and_fixture_repair.reconcile-drive-cli-public-surface
     name: Reconcile drive CLI public surface
     status: claimed

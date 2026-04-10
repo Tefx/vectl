@@ -77693,7 +77693,7 @@ phases:
     claimed_at: '2026-04-10T16:07:47.088696+00:00'
   - id: resolver_cleanup_finalization.black-box-surface-check
     name: Black-box check of cleaned orchestration surfaces
-    status: pending
+    status: claimed
     description: 'Using only the current public docs and exposed interfaces, verify
       the cleaned orchestration surfaces no longer present legacy resolver/judge behavior
       and that blocked-case handling is understandable through the published model.
@@ -77726,6 +77726,8 @@ phases:
     depends_on:
     - resolver_cleanup_finalization.doc-sync
     agent: blind-tester-tacit
+    claimed_by: blind-tester-tacit
+    claimed_at: '2026-04-10T16:07:52.471063+00:00'
   - id: resolver_cleanup_finalization.gate
     name: Final gate for resolver cleanup
     status: pending

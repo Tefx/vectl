@@ -78175,3 +78175,30 @@ phases:
 
       '
     agent: python-executor
+  - id: orch_plane_finalization.full-gate
+    name: Final remediation gate
+    status: pending
+    description: Final gate for orchestration-plane remediation. Review lower-priority
+      hygiene together with regression intersection from the two higher-priority phases
+      so no live-authority or planner-boundary gap is reopened.
+    verification: Gate opens only if hygiene work stays non-regressive, targeted tests
+      are green, and no evidence suggests reopened live-path/planner-boundary bypass
+      risk.
+    evidence_template: '## refs Read Confirmation (MANDATORY)
+
+      - Quote the key passage from each ref or write NOT READ: <reason>
+
+
+      ## Gate Decision Basis
+
+      - Reviewed steps
+
+      - Regression intersection check
+
+      - Blocking findings / none
+
+      '
+    depends_on:
+    - orch_plane_finalization.core-adapter-hygiene
+    - orch_plane_finalization.test-expectation-drift
+    agent: gate-reviewer-tacit

@@ -76559,6 +76559,76 @@ phases:
 
       '
     agent: software-architect-tacit
+  - id: resolver_cleanup_contracts.create-blocked-case-personas
+    name: Create blocked-case resolver personas
+    status: pending
+    description: 'Create and register the two new default resolver personas:
+
+      - `blocked-case-coordinator`
+
+      - `blocked-case-coordinator-tacit`
+
+
+      They are the only default blocked-case resolver agents after cleanup.
+
+
+      Required contract:
+
+      - Input contract centered on ResolutionCase
+
+      - Output contract centered on ResolutionReport
+
+      - main_worktree execution assumptions
+
+      - vectl-facade-only mutation boundary
+
+      - no ordinary claim semantics
+
+      - planner/reviewer/coder delegation allowed where appropriate
+
+      - explicit operator escalation when automatic closure is unsafe
+
+
+      Touch paths / surfaces:
+
+      - system agent/persona registry for available agents
+
+      - any persona-spec resources or prompt contract definitions used by the runtime
+      environment
+
+
+      Do NOT reintroduce conflict-specialized resolver taxonomy. These personas are
+      the single default blocked-case entry pair.'
+    verification: '- Both personas exist and are loadable by the system agent registry.
+
+      - Their contracts match the frozen resolver architecture.
+
+      - No new judge/conflict-specialized resolver concept is introduced during persona
+      creation.'
+    evidence_template: '## refs Read Confirmation (MANDATORY)
+
+      For each ref in this step:
+
+      - <filename> — key passage or "NOT READ: <reason>"
+
+
+      If no refs were provided, state: "No refs for this step."
+
+
+      ## Persona Creation Evidence
+
+      - Persona IDs created:
+
+      - Contract summary for each:
+
+      - Registry/availability proof:
+
+      - Drift checks (no conflict/judge taxonomy):
+
+      '
+    depends_on:
+    - resolver_cleanup_contracts.freeze-clean-architecture
+    agent: forgemaster-tacit
 - id: resolver_cleanup_core
   name: 'Resolver Cleanup: Config, Wiring, and Surface Simplification'
   status: locked

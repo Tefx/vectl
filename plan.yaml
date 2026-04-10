@@ -76268,7 +76268,7 @@ phases:
       \ live-smoke matrix"
   - id: live_smoke_real_runner_validation.fix-live-smoke-product-defects-batch
     name: Fix live-smoke product defects batch
-    status: claimed
+    status: done
     description: 'work_type: technical_debt_remediation
 
       step_type: implementation_batch
@@ -76321,6 +76321,16 @@ phases:
     agent: python-senior-tacit
     claimed_by: python-senior-tacit
     claimed_at: '2026-04-10T07:16:43.262809+00:00'
+    done_at: '2026-04-10T07:16:51.774117+00:00'
+    evidence: "## Remediation Batch Evidence\n- product defects fixed:\n  - none required\
+      \ in this batch; live-smoke matrix produced no product-failure assertions.\n\
+      - no-op or deferred items:\n  - no-op for implementation remediation.\n  - 17\
+      \ skipped live-smoke cases were environment/prerequisite-gated (`RUN_LIVE_RUNNER_TESTS`\
+      \ opt-in missing), not product defects, so they are not candidates for product\
+      \ bug fixing in this step.\n- files changed:\n  - none\n- why assertions remain\
+      \ honest:\n  - no test assertions were weakened or rewritten.\n  - classification\
+      \ boundary preserved: environment preflight skips stay skip-governed; only real\
+      \ product failures would trigger code remediation in this step."
   - id: live_smoke_real_runner_validation.retest-live-smoke-after-remediation
     name: Retest live-smoke matrix after remediation
     status: pending

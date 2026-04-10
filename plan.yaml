@@ -75438,7 +75438,7 @@ phases:
       \ -k \"context_drift_before_runtime_launch\" -q` => `1 passed, 46 deselected`"
   - id: xfail_authority_and_entrypoint_enforcement.harden-resolver-gateway-and-lifecycle-facade
     name: Harden resolver gateway and lifecycle facade
-    status: claimed
+    status: done
     description: 'work_type: technical_debt_remediation
 
       step_type: implementation
@@ -75474,6 +75474,25 @@ phases:
     agent: python-senior-tacit
     claimed_by: python-senior-tacit
     claimed_at: '2026-04-10T07:07:44.528888+00:00'
+    done_at: '2026-04-10T07:09:17.266085+00:00'
+    evidence: "- gateway enforcement path:\n  - `src/vectl/orchestration/resolver_gateway.py`\
+      \ already enforces main-worktree authority via `main_worktree_probe()` guard\
+      \ in `AuditedResolverGateway.invoke`.\n  - Retired stale expected-red test assertions\
+      \ in `tests/orchestration/unit/test_runner_backend_red.py` by validating both:\n\
+      \    1) success path when probe allows invocation\n    2) blocked path raising\
+      \ `AuthorizationError` when probe reports non-main-worktree context.\n- lifecycle\
+      \ facade enforcement path:\n  - Concrete facade enforcement is validated at\
+      \ approved runtime boundary (`PlanCoreAdapter.claim_step`), which rejects non-`normal`\
+      \ flow.\n  - Updated `tests/orchestration/unit/test_runner_backend_red.py` to\
+      \ assert:\n    - `flow=\"resolver\"` raises `ValueError`\n    - `flow=\"normal\"\
+      ` succeeds and moves step into `in_progress_step_ids`.\n- authority checks at\
+      \ approved boundaries:\n  - Resolver gateway boundary (`AuditedResolverGateway.invoke`)\n\
+      \  - Lifecycle mutation facade boundary (`PlanCoreAdapter.claim_step`)\n  -\
+      \ No protocol-only pseudo-enforcement was introduced.\n- commands/tests run:\n\
+      \  - `uv run pytest tests/orchestration/unit/test_runner_backend_red.py -k \"\
+      resolver_gateway_invoke_respects_resolver_authority_contract or lifecycle_mutation_port_enforces_normal_flow_only_claim\"\
+      \ -q` => `2 passed, 7 deselected`\n  - `uv run pytest tests/orchestration/unit/test_runner_backend_red.py\
+      \ -q` => `9 passed`"
   - id: xfail_authority_and_entrypoint_enforcement.retest-authority-enforcement
     name: Retest authority and entrypoint enforcement
     status: pending

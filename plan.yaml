@@ -79991,3 +79991,10 @@ phases:
     depends_on:
     - config_role_profile_overrides_verify.independent-rfc-retest
     agent: integration-verifier-tacit
+- id: opencode_runner_contracts
+  name: OpenCode Runner Contracts
+  status: pending
+  gate: OpenCode orchestration contract, prompt artifact model, and recovery/session
+    semantics are pinned with no ambiguity before runner implementation begins.
+  depends_on:
+  - cli_blackbox_finalization

@@ -674,6 +674,72 @@ def _merge_role_profiles(
             )
         profile_by_id[profile.role_id] = profile
 
+    # §6.1 rule 4 / §6.3: Family-policy validation for overridden profiles.
+    # Overridden profiles must still satisfy family invariants.
+    # Errors reference the override path per RFC §7.2.
+    family_errors: list[RoleProfileOverrideError] = []
+    for role_id in overrides:
+        effective = profile_by_id[role_id]
+        policy = _ROLE_FAMILY_POLICY.get(effective.prompt_family)
+        if policy is None:
+            continue
+        # Check each overridden field against family policy
+        if effective.execution_context != policy.execution_context:
+            family_errors.append(
+                RoleProfileOverrideError(
+                    field=f"role_profile_overrides.{role_id}.execution_context",
+                    value=effective.execution_context,
+                    reason=(
+                        f"role_profile_overrides.{role_id}.execution_context "
+                        f"violates {effective.prompt_family} family policy"
+                    ),
+                )
+            )
+        if (
+            policy.mutation_policy is not None
+            and effective.mutation_policy != policy.mutation_policy
+        ):
+            family_errors.append(
+                RoleProfileOverrideError(
+                    field=f"role_profile_overrides.{role_id}.mutation_policy",
+                    value=effective.mutation_policy,
+                    reason=(
+                        f"role_profile_overrides.{role_id}.mutation_policy "
+                        f"violates {effective.prompt_family} family policy"
+                    ),
+                )
+            )
+        if policy.session_policy is not None and effective.session_policy != policy.session_policy:
+            family_errors.append(
+                RoleProfileOverrideError(
+                    field=f"role_profile_overrides.{role_id}.session_policy",
+                    value=effective.session_policy,
+                    reason=(
+                        f"role_profile_overrides.{role_id}.session_policy "
+                        f"violates {effective.prompt_family} family policy"
+                    ),
+                )
+            )
+        if (
+            policy.output_contract is not None
+            and effective.output_contract != policy.output_contract
+        ):
+            family_errors.append(
+                RoleProfileOverrideError(
+                    field=f"role_profile_overrides.{role_id}.output_contract",
+                    value=effective.output_contract,
+                    reason=(
+                        f"role_profile_overrides.{role_id}.output_contract "
+                        f"violates {effective.prompt_family} family policy"
+                    ),
+                )
+            )
+
+    if family_errors:
+        first = family_errors[0]
+        all_messages = "; ".join(e.reason for e in family_errors)
+        raise RoleProfileOverrideError(first.field, first.value, all_messages)
+
     # Maintain ordering: built-in profiles first (in their original order),
     # then custom profiles (in their definition order)
     builtin_order = [p.role_id for p in builtin_profiles]

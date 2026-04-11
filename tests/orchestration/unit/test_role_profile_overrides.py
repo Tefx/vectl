@@ -24,7 +24,6 @@ from vectl.orchestration.config import (
     ConfigValidationError,
     OrchestrationConfig,
     RoleProfileOverrideError,
-    _ALLOWED_OVERRIDE_FIELDS,
     _apply_role_profile_override,
     _builtin_role_ids,
     _dict_to_config,
@@ -218,8 +217,13 @@ class TestOverrideValidation:
     def test_override_unknown_builtin_rejected(self) -> None:
         """RFC §6.1 rule 1: Override target must exist in built-ins."""
         builtin = default_role_profiles()
-        with pytest.raises(RoleProfileOverrideError, match="unknown built-in role"):
+        with pytest.raises(
+            RoleProfileOverrideError, match="unknown built-in role in role_profile_overrides"
+        ) as exc_info:
             _merge_role_profiles(builtin, {"nonexistent": {"default_runner": "opencode"}}, ())
+        err = exc_info.value
+        assert err.field == "role_profile_overrides.nonexistent"
+        assert "unknown built-in role in role_profile_overrides" in err.reason
 
     def test_override_targeting_custom_role_rejected(self) -> None:
         """RFC §6.1 rule 3: Override cannot target a custom role."""
@@ -236,22 +240,48 @@ class TestOverrideValidation:
                 default_runner="codex",
             ),
         )
-        with pytest.raises(RoleProfileOverrideError, match="cannot target custom role"):
+        with pytest.raises(
+            RoleProfileOverrideError, match="cannot target custom role defined in role_profiles"
+        ) as exc_info:
             _merge_role_profiles(builtin, {"my-role": {"default_runner": "opencode"}}, custom)
+        err = exc_info.value
+        assert err.field == "role_profile_overrides.my-role"
+        assert "cannot target custom role" in err.reason
 
     def test_override_unknown_field_rejected(self) -> None:
         """RFC §6.1 rule 2: Unknown override fields are rejected."""
         builtin = default_role_profiles()
-        with pytest.raises(RoleProfileOverrideError, match="unknown override field"):
+        with pytest.raises(RoleProfileOverrideError, match="unknown override field") as exc_info:
             _merge_role_profiles(builtin, {"python-executor": {"nonexistent_field": "value"}}, ())
+        err = exc_info.value
+        assert "nonexistent_field" in err.reason
 
     def test_all_allowed_override_fields_accepted(self) -> None:
-        """Each field in _ALLOWED_OVERRIDE_FIELDS is accepted for override."""
+        """Each field in _ALLOWED_OVERRIDE_FIELDS is accepted for override.
+
+        Family-policy-constrained fields (execution_context, mutation_policy,
+        session_policy, output_contract) must use values compatible with the
+        target role's prompt_family. agent_id and default_runner have no
+        family-policy constraints and accept any string.
+        """
         builtin = default_role_profiles()
-        # Test each allowed field separately
-        for field_name in _ALLOWED_OVERRIDE_FIELDS:
+        # Unconstrained fields: can be set to any string
+        for field_name in ("agent_id", "default_runner"):
             overrides = {"python-executor": {field_name: "test-value"}}
-            # This should not raise — if it does, the field was rejected
+            result = _merge_role_profiles(builtin, overrides, ())
+            by_id = _profile_by_id(result)
+            assert by_id["python-executor"].role_id == "python-executor"
+
+        # Constrained fields: must use values that match the coder family
+        # policy (which python-executor belongs to).
+        coder_compatible = {
+            "execution_context": "linked_worktree",
+            "mutation_policy": "worktree_changes",
+            "session_policy": "reuse_allowed",
+            "output_contract": "freeform_evidence",
+        }
+        for field_name, value in coder_compatible.items():
+            overrides = {"python-executor": {field_name: value}}
             result = _merge_role_profiles(builtin, overrides, ())
             by_id = _profile_by_id(result)
             assert by_id["python-executor"].role_id == "python-executor"
@@ -282,8 +312,12 @@ class TestCustomRoleValidation:
         )
         with pytest.raises(
             RoleProfileOverrideError, match="shadows built-in role.*use role_profile_overrides"
-        ):
+        ) as exc_info:
             _merge_role_profiles(builtin, {}, shadow)
+        err = exc_info.value
+        assert err.field == "role_profiles.python-executor"
+        assert "shadows built-in role" in err.reason
+        assert "use role_profile_overrides instead" in err.reason
 
     def test_custom_role_with_unique_id_accepted(self) -> None:
         """Custom role with a unique (non-builtin) ID is accepted."""
@@ -314,15 +348,22 @@ class TestFamilyPolicyValidation:
     """Verify that family-policy violations are caught on merged profiles."""
 
     def test_override_causes_family_policy_violation(self) -> None:
-        """RFC §6.1 rule 4: Overridden profile must satisfy family policy."""
+        """RFC §6.1 rule 4: Overridden profile must satisfy family policy.
+
+        Family-policy violations from overrides are caught at merge time
+        and raise RoleProfileOverrideError per RFC §7.2.
+        """
         builtin = default_role_profiles()
         # python-executor uses 'coder' family which requires linked_worktree
         overrides = {"python-executor": {"execution_context": "main_worktree"}}
-        merged = _merge_role_profiles(builtin, overrides, ())
-        violations = validate_role_profiles(merged)
-        assert len(violations) > 0
-        assert "python-executor" in violations[0]
-        assert "family policy" in violations[0]
+        with pytest.raises(
+            RoleProfileOverrideError,
+            match="execution_context violates coder family policy",
+        ) as exc_info:
+            _merge_role_profiles(builtin, overrides, ())
+        err = exc_info.value
+        assert err.field == "role_profile_overrides.python-executor.execution_context"
+        assert "coder family policy" in err.reason
 
 
 # ---------------------------------------------------------------------------
@@ -615,7 +656,7 @@ class TestValidationWithOverrides:
         assert len(errors) == 0
 
     def test_family_policy_violation_after_override_detected(self) -> None:
-        """Family-policy violation caused by override is detected."""
+        """Family-policy violation caused by override is detected at config load time."""
         data: dict[str, Any] = {
             "orchestration": {
                 "role_profile_overrides": {
@@ -623,10 +664,13 @@ class TestValidationWithOverrides:
                 },
             }
         }
-        config = _dict_to_config(data)
-        errors = validate_orchestration_config(config)
-        family_errors = [e for e in errors if e.field == "role_profiles"]
-        assert len(family_errors) > 0
+        with pytest.raises(
+            RoleProfileOverrideError,
+            match="execution_context violates coder family policy",
+        ) as exc_info:
+            _dict_to_config(data)
+        err = exc_info.value
+        assert err.field == "role_profile_overrides.python-executor.execution_context"
 
     def test_dispatch_default_role_still_validated_after_override(self) -> None:
         """dispatch.default_role_id is validated against effective registry."""
@@ -683,3 +727,219 @@ class TestApplyRoleProfileOverride:
         python_exec = _profile_by_id(builtin)["python-executor"]
         result = _apply_role_profile_override(python_exec, {})
         assert result == python_exec
+
+
+# ---------------------------------------------------------------------------
+# RFC §7.2: Validation error contracts — stable error strings
+# ---------------------------------------------------------------------------
+
+
+class TestValidationErrorContracts:
+    """Verify RFC §7.2 required error message formats and contract stability.
+
+    These tests assert that the error strings produced by validation are
+    concrete, stable, and match the format specified in the RFC. Any change
+    to these strings is a breaking change that requires RFC amendment.
+    """
+
+    # -- §6.1 rule 1: unknown built-in target in role_profile_overrides --
+
+    def test_unknown_builtin_target_error_format(self) -> None:
+        """Error format: 'unknown built-in role in role_profile_overrides: <role_id>'"""
+        builtin = default_role_profiles()
+        with pytest.raises(RoleProfileOverrideError) as exc_info:
+            _merge_role_profiles(builtin, {"nonexistent-role": {"default_runner": "opencode"}}, ())
+        err = exc_info.value
+        assert err.field == "role_profile_overrides.nonexistent-role"
+        assert "unknown built-in role in role_profile_overrides" in err.reason
+
+    def test_unknown_builtin_target_via_config_file_error_format(self, tmp_path: Path) -> None:
+        """Unknown built-in target raises RoleProfileOverrideError via config file."""
+        config_content = {
+            "orchestration": {
+                "role_profile_overrides": {
+                    "ghost-role": {"default_runner": "opencode"},
+                },
+            }
+        }
+        config_file = tmp_path / "vectl.yaml"
+        config_file.write_text(yaml.dump(config_content))
+
+        with pytest.raises(RoleProfileOverrideError) as exc_info:
+            load_orchestration_config(plan_path=config_file)
+        err = exc_info.value
+        assert err.field == "role_profile_overrides.ghost-role"
+        assert "unknown built-in role in role_profile_overrides" in err.reason
+
+    # -- §6.1 rule 3: custom-role override target rejected --
+
+    def test_custom_role_override_target_error_format(self) -> None:
+        """Error format: 'role_profile_overrides.<role_id> cannot target custom role defined in role_profiles'"""
+        builtin = default_role_profiles()
+        custom = (
+            RoleProfile(
+                role_id="my-custom-role",
+                agent_id="my-custom-role",
+                prompt_family="reviewer",
+                execution_context="main_worktree",
+                mutation_policy="read_only",
+                session_policy="reuse_allowed",
+                output_contract="structured_review_result",
+                default_runner="codex",
+            ),
+        )
+        with pytest.raises(RoleProfileOverrideError) as exc_info:
+            _merge_role_profiles(
+                builtin, {"my-custom-role": {"default_runner": "opencode"}}, custom
+            )
+        err = exc_info.value
+        assert err.field == "role_profile_overrides.my-custom-role"
+        assert "cannot target custom role defined in role_profiles" in err.reason
+
+    # -- §6.2 rule 2/4: built-in shadowing in role_profiles --
+
+    def test_builtin_shadowing_error_format(self) -> None:
+        """Error format: 'role_profiles.<role_id> shadows built-in role; use role_profile_overrides instead'"""
+        builtin = default_role_profiles()
+        shadow = (
+            RoleProfile(
+                role_id="python-executor",
+                agent_id="python-executor",
+                prompt_family="coder",
+                execution_context="linked_worktree",
+                mutation_policy="worktree_changes",
+                session_policy="reuse_allowed",
+                output_contract="freeform_evidence",
+                default_runner="codex",
+            ),
+        )
+        with pytest.raises(RoleProfileOverrideError) as exc_info:
+            _merge_role_profiles(builtin, {}, shadow)
+        err = exc_info.value
+        assert err.field == "role_profiles.python-executor"
+        assert "shadows built-in role" in err.reason
+        assert "use role_profile_overrides instead" in err.reason
+
+    # -- §6.1 rule 4: family-policy violations through overrides --
+
+    def test_override_execution_context_family_policy_error_format(self) -> None:
+        """Error format: 'role_profile_overrides.<role_id>.execution_context violates <family> family policy'"""
+        builtin = default_role_profiles()
+        overrides = {"python-executor": {"execution_context": "main_worktree"}}
+        with pytest.raises(RoleProfileOverrideError) as exc_info:
+            _merge_role_profiles(builtin, overrides, ())
+        err = exc_info.value
+        assert err.field == "role_profile_overrides.python-executor.execution_context"
+        assert err.value == "main_worktree"
+        assert "execution_context violates coder family policy" in err.reason
+
+    def test_override_mutation_policy_family_policy_error_format(self) -> None:
+        """Override of mutation_policy that violates family policy is rejected."""
+        builtin = default_role_profiles()
+        # python-executor belongs to coder family: mutation_policy must be worktree_changes
+        overrides = {"python-executor": {"mutation_policy": "read_only"}}
+        with pytest.raises(RoleProfileOverrideError) as exc_info:
+            _merge_role_profiles(builtin, overrides, ())
+        err = exc_info.value
+        assert err.field == "role_profile_overrides.python-executor.mutation_policy"
+        assert "mutation_policy violates coder family policy" in err.reason
+
+    def test_override_session_policy_family_policy_error_format(self) -> None:
+        """Override of session_policy that violates family policy is rejected."""
+        builtin = default_role_profiles()
+        # python-executor belongs to coder family: session_policy must be reuse_allowed
+        overrides = {"python-executor": {"session_policy": "reuse_forbidden"}}
+        with pytest.raises(RoleProfileOverrideError) as exc_info:
+            _merge_role_profiles(builtin, overrides, ())
+        err = exc_info.value
+        assert err.field == "role_profile_overrides.python-executor.session_policy"
+        assert "session_policy violates coder family policy" in err.reason
+
+    def test_override_output_contract_family_policy_error_format(self) -> None:
+        """Override of output_contract that violates family policy is rejected."""
+        builtin = default_role_profiles()
+        # python-executor belongs to coder family: output_contract must be freeform_evidence
+        overrides = {"python-executor": {"output_contract": "structured_review_result"}}
+        with pytest.raises(RoleProfileOverrideError) as exc_info:
+            _merge_role_profiles(builtin, overrides, ())
+        err = exc_info.value
+        assert err.field == "role_profile_overrides.python-executor.output_contract"
+        assert "output_contract violates coder family policy" in err.reason
+
+    def test_multiple_family_policy_violations_collected(self) -> None:
+        """Multiple family-policy violations are reported together."""
+        builtin = default_role_profiles()
+        # Override two fields that both violate coder family policy
+        overrides = {
+            "python-executor": {
+                "execution_context": "main_worktree",
+                "mutation_policy": "read_only",
+            }
+        }
+        with pytest.raises(RoleProfileOverrideError) as exc_info:
+            _merge_role_profiles(builtin, overrides, ())
+        err = exc_info.value
+        # All violation messages should be present (joined with '; ')
+        assert "execution_context violates coder family policy" in err.reason
+        assert "mutation_policy violates coder family policy" in err.reason
+
+    def test_family_policy_violation_via_config_file(self, tmp_path: Path) -> None:
+        """Family-policy violation from override raises RoleProfileOverrideError via config file."""
+        config_content = {
+            "orchestration": {
+                "role_profile_overrides": {
+                    "python-executor": {"execution_context": "main_worktree"},
+                },
+            }
+        }
+        config_file = tmp_path / "vectl.yaml"
+        config_file.write_text(yaml.dump(config_content))
+
+        with pytest.raises(RoleProfileOverrideError) as exc_info:
+            load_orchestration_config(plan_path=config_file)
+        err = exc_info.value
+        assert err.field == "role_profile_overrides.python-executor.execution_context"
+        assert "execution_context violates coder family policy" in err.reason
+
+    # -- §6.1 rule 2: unknown override field --
+
+    def test_unknown_override_field_error_format(self) -> None:
+        """Unknown override field produces actionable error with allowed fields."""
+        builtin = default_role_profiles()
+        with pytest.raises(RoleProfileOverrideError) as exc_info:
+            _merge_role_profiles(builtin, {"python-executor": {"bogus_field": "value"}}, ())
+        err = exc_info.value
+        assert err.field == "role_profile_overrides.python-executor.bogus_field"
+        assert "unknown override field" in err.reason
+
+    # -- §6.3 default_role_id must exist in final registry --
+
+    def test_invalid_default_role_id_after_valid_overrides(self) -> None:
+        """dispatch.default_role_id is still validated after valid overrides."""
+        data: dict[str, Any] = {
+            "orchestration": {
+                "role_profile_overrides": {
+                    "python-executor": {"default_runner": "opencode"},
+                },
+                "dispatch": {"default_role_id": "nonexistent-role"},
+            }
+        }
+        config = _dict_to_config(data)
+        errors = validate_orchestration_config(config)
+        assert any(e.field == "dispatch.default_role_id" for e in errors)
+
+    # -- Error contract stability: RoleProfileOverrideError attributes --
+
+    def test_error_attributes_are_stable(self) -> None:
+        """RoleProfileOverrideError has stable field, value, reason attributes."""
+        builtin = default_role_profiles()
+        with pytest.raises(RoleProfileOverrideError) as exc_info:
+            _merge_role_profiles(builtin, {"nonexistent": {"default_runner": "opencode"}}, ())
+        err = exc_info.value
+        assert isinstance(err.field, str)
+        assert isinstance(err.value, str)
+        assert isinstance(err.reason, str)
+        # Verify string representation includes all attributes
+        error_str = str(err)
+        assert "role_profile_overrides.nonexistent" in error_str
+        assert "unknown built-in role" in error_str

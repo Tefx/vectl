@@ -79156,31 +79156,6 @@ phases:
     depends_on:
     - cli_blackbox_finalization.full-plan-check
     agent: doc-reviewer-tacit
-  - id: cli_blackbox_finalization.deep-review-spec
-    name: Audit CLI black-box spec conformance
-    status: pending
-    description: Independent spec conformance audit for the CLI surfaces covered by
-      this campaign. Compare documented command semantics, selectors, and output expectations
-      against the hardened black-box behavior.
-    verification: Spec-code/test drift for the covered CLI surfaces is enumerated
-      explicitly with conforming vs diverging requirements.
-    evidence_template: '## refs Read Confirmation (MANDATORY)
-
-      For each ref in this step:
-
-      - <filename> — key passage or "NOT READ: <reason>"
-
-
-      ## Spec Conformance Report
-
-      - Requirements checked
-
-      - Divergences / none
-
-      - Suggested follow-up if any'
-    depends_on:
-    - cli_blackbox_finalization.full-plan-check
-    agent: spec-verifier-tacit
   - id: cli_blackbox_finalization.deep-review-contract-strength
     name: Audit test contract strength for CLI black-box suites
     status: pending
@@ -79286,7 +79261,6 @@ phases:
     depends_on:
     - cli_blackbox_finalization.full-plan-check
     - cli_blackbox_finalization.doc-sync
-    - cli_blackbox_finalization.deep-review-spec
     - cli_blackbox_finalization.deep-review-contract-strength
     - cli_blackbox_finalization.deep-review-blackbox
     agent: gate-reviewer-tacit

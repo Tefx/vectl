@@ -79998,3 +79998,10 @@ phases:
     semantics are pinned with no ambiguity before runner implementation begins.
   depends_on:
   - cli_blackbox_finalization
+- id: opencode_runner_impl
+  name: OpenCode Runner Implementation
+  status: locked
+  gate: Dedicated OpenCode runner, prompt materialization, runtime integration, and
+    automatic recovery fallback are implemented per RFC.
+  depends_on:
+  - opencode_runner_contracts

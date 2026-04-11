@@ -79269,7 +79269,7 @@ phases:
       - Concurrency proof: concurrency suite green (no regressions)."
   - id: cli_blackbox_surface_safety_ops.retest-surface-safety-matrix
     name: Retest selector, housekeeping, config, and concurrency matrix
-    status: pending
+    status: claimed
     description: 'step_type: test
 
       step_intent: retest_green
@@ -79306,6 +79306,8 @@ phases:
     - cli_blackbox_surface_safety_ops.define-surface-safety-tests
     - cli_blackbox_surface_safety_ops.fix-surface-safety-behavior
     agent: integration-verifier-tacit
+    claimed_by: integration-verifier-tacit
+    claimed_at: '2026-04-11T13:04:48.588478+00:00'
 - id: cli_blackbox_finalization
   name: CLI Black-Box Tests Finalization
   status: locked

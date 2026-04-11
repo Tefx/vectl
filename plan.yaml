@@ -80108,6 +80108,37 @@ phases:
     automatic recovery fallback are implemented per RFC.
   depends_on:
   - opencode_runner_contracts
+  steps:
+  - id: opencode_runner_impl.prompt-materialization
+    name: Implement prompt materialization pipeline
+    status: pending
+    description: 'Implement prompt/artifact materialization from dispatch authority
+      into durable run artifacts and workspace execution copies.
+
+
+      Scope:
+
+      - write `prompt_bundle.json` and `runner_prompt.md` to authoritative run input
+      artifacts
+
+      - write workspace copy at `.vectl/orch/runner_prompt.md`
+
+      - populate required `VECTL_ORCH_*` environment variables from authoritative
+      paths
+
+      - ensure artifacts exist for both initial launch and recovery fallback
+
+
+      Refs:
+
+      - docs/RFC-opencode-orchestration-runner.md sections 8 and 10.2
+
+      - src/vectl/orch_app.py
+
+      - src/vectl/orchestration/contracts.py'
+    verification: Targeted tests prove prompt artifacts are written with the required
+      schema, paths, and workspace copies before runner launch.
+    agent: python-senior-tacit
 - id: opencode_runner_verification
   name: OpenCode Runner Verification
   status: locked

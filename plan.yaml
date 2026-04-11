@@ -78631,3 +78631,11 @@ phases:
 
       - uncertainty sources: required ref path missing (`tools/vectl/README.md`) noted
       as pre-existing documentation path issue.'
+- id: cli_blackbox_active_control_recovery
+  name: CLI Black-Box Active Control and Recovery
+  status: pending
+  gate: Active-run CLI control requests and non-dry-run recovery are proven through
+    real isolated subprocess scenarios, with runnable evidence and no reopened orchestration
+    lifecycle gap.
+  depends_on:
+  - orch_plane_finalization

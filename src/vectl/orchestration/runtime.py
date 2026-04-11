@@ -32,6 +32,7 @@ from vectl.orchestration.contracts import (
 )
 from vectl.orchestration.runner_registry import RunnerRegistry, build_default_runner_registry
 from vectl.orchestration.runners import (
+    RunnerCancelError,
     RunnerHandle,
     RunnerLaunchError,
     RunnerNotFoundError,
@@ -645,6 +646,63 @@ class Runtime:
 
         return result
 
+    def terminate_execution(self, execution_id: str) -> bool:
+        """Attempt to terminate a running execution by cancelling the runner handle.
+
+        Authority:
+            docs/ORCHESTRATION-PLANE-CLI-CONFIG-OBSERVABILITY-DESIGN.md §7.4
+                'Persist a control.stop request… terminal state change is asynchronous'
+
+        This method sends a terminate signal to the runner subprocess associated
+        with the given execution_id. It is intended to be called when a
+        ``control.stop`` request is consumed from the control channel during the
+        dispatch collect loop.
+
+        Args:
+            execution_id: The execution identifier for the running process.
+
+        Returns:
+            True if termination was attempted and the runner handle was found,
+            False if the execution_id was unknown or no handle existed.
+        """
+        if execution_id not in self._active_executions:
+            return False
+
+        workspace_id = self._active_executions.get(execution_id)
+        if workspace_id is None:
+            return False
+
+        state = self._active_workspaces.get(workspace_id)
+        if state is None or state.execution_state is None:
+            return False
+
+        handle = self._runner_handles.get(execution_id)
+        if handle is None:
+            return False
+
+        runner = self._runner_registry.get(state.execution_state.runner)
+        try:
+            runner.cancel(handle)
+        except RunnerCancelError:
+            pass  # Best-effort: the process may already be dead
+
+        # Update execution state to reflect stop requested.
+        state.execution_state = AgentExecutionState(
+            execution_id=execution_id,
+            step_id=state.execution_state.step_id,
+            workspace_id=workspace_id,
+            runner=state.execution_state.runner,
+            runner_handle=state.execution_state.runner_handle,
+            session_id=state.execution_state.session_id,
+            status="stall",
+            started_at=state.execution_state.started_at,
+            last_update_at=_current_timestamp(),
+            artifact_refs=state.execution_state.artifact_refs,
+        )
+        self._stalled_executions.add(execution_id)
+
+        return True
+
     def begin_reconcile(self, execution_id: str) -> ReconcileResult | None:
         """
         Begin the reconciliation phase for a completed execution.
@@ -1157,7 +1215,16 @@ def _validate_worktree_integrity(*, binding: WorktreeBinding, workspace_path: Pa
 
 
 def _validate_integration_context(repo_root: Path) -> None:
-    """Validate main integration context safety preflight."""
+    """Validate main integration context safety preflight.
+
+    Per ORCHESTRATION-PLANE-RUNTIME-WORKTREE-LIFECYCLE.md section 9,
+    reconcile requires a clean integration context.  However, files that
+    are part of the protected-paths set (currently ``plan.yaml``) are
+    expected to be modified by the orchestration flow itself (claim/complete
+    operations).  Those files are restored to their pre-worktree state by
+    ``_restore_protected_paths`` before the actual merge, so their presence
+    in the dirty list is not a safety violation.
+    """
 
     git_dir = Path(_git_stdout(["rev-parse", "--git-dir"], cwd=repo_root))
     if not git_dir.is_absolute():
@@ -1178,9 +1245,22 @@ def _validate_integration_context(repo_root: Path) -> None:
         cwd=repo_root,
     )
     if status_output.strip():
-        raise ReconcileError(
-            "Integration-context preflight failed: local tracked mutations make reconcile unsafe"
+        # Allow protected paths (plan.yaml) to be dirty in the integration
+        # context because the orchestration flow modifies them as part of
+        # claim/complete operations.  They are restored during reconcile.
+        dirty_paths = tuple(
+            line.strip().split(maxsplit=1)[-1]
+            for line in status_output.strip().splitlines()
+            if line.strip()
         )
+        unprotected_dirty = tuple(
+            path for path in dirty_paths if path not in _PROTECTED_RECONCILE_PATHS
+        )
+        if unprotected_dirty:
+            raise ReconcileError(
+                "Integration-context preflight failed: "
+                "local tracked mutations make reconcile unsafe"
+            )
 
 
 def _list_changed_paths(*, workspace_path: Path, base_ref: str) -> tuple[str, ...]:

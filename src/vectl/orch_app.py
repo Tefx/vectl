@@ -245,7 +245,7 @@ class RunResult:
 
     run_id: str
     step_id: str
-    status: Literal["pending", "running", "success", "fail", "stall"] | None = None
+    status: Literal["pending", "running", "success", "fail", "stall", "paused"] | None = None
     output_summary: str = ""
     source: Literal["orchestration_native", "legacy_imported"] = "orchestration_native"
     legacy_run_id: str | None = None
@@ -1308,6 +1308,373 @@ class OrchestrationApp:
     # Run / Resume / Recover / Prune
     # -----------------------------------------------------------------
 
+    def _consume_control_requests(
+        self,
+        *,
+        run_id: str,
+        execution_id: str,
+        registry: RunRegistry,
+        agent: str,
+        step_id: str,
+        run_root: Path,
+    ) -> Literal["continue_dispatch", "pause_dispatch", "stop_dispatch"] | None:
+        """Check and consume pending control channel requests for a running execution.
+
+        Authority:
+            docs/ORCHESTRATION-PLANE-CLI-CONFIG-OBSERVABILITY-DESIGN.md §7.4
+                'control requests must be consumed, not only queued'
+            docs/ORCHESTRATION-PLANE-CLI-CONFIG-OBSERVABILITY-DESIGN.md §9.3
+                'Acknowledgement creates applied/ receipt'
+
+        This method checks the control channel for pending requests targeting
+        the given run_id and acts on them:
+          - control.pause: acknowledges as applied, returns pause_dispatch
+          - control.unpause: acknowledges as applied, returns continue_dispatch
+          - control.stop: terminates the runner, acknowledges as applied,
+            emits a control_stop event, and returns stop_dispatch
+
+        Returns:
+            Dispatch directive:
+              - None: no pending control requests
+              - "continue_dispatch": unpause consumed, continue normally
+              - "pause_dispatch": pause consumed, should pause dispatch
+              - "stop_dispatch": stop consumed, runner terminated
+        """
+        channel = self._control_channel()
+        pending = channel.list_requests(run_id, status="pending")
+        if not pending:
+            return None
+
+        for request in pending:
+            action_id = request.action_id
+            msg_type = request.msg_type
+
+            if msg_type == "control.pause":
+                # Acknowledge the pause request as applied.
+                channel.acknowledge_applied(run_id=run_id, action_id=action_id)
+                self._emit_event(
+                    kind="control_pause",
+                    step_id=step_id,
+                    agent="operator",
+                    payload={
+                        "run_id": run_id,
+                        "action_id": action_id,
+                        "status": "applied",
+                    },
+                )
+                self._append_log(
+                    f"run_id={run_id} step_id={step_id} control_pause_applied action_id={action_id}"
+                )
+                return "pause_dispatch"
+
+            if msg_type == "control.unpause":
+                # Acknowledge the unpause request as applied.
+                channel.acknowledge_applied(run_id=run_id, action_id=action_id)
+                self._emit_event(
+                    kind="control_unpause",
+                    step_id=step_id,
+                    agent="operator",
+                    payload={
+                        "run_id": run_id,
+                        "action_id": action_id,
+                        "status": "applied",
+                    },
+                )
+                self._append_log(
+                    f"run_id={run_id} step_id={step_id} control_unpause_applied "
+                    f"action_id={action_id}"
+                )
+                return "continue_dispatch"
+
+            if msg_type == "control.stop":
+                # Terminate the runner and acknowledge as applied.
+                terminated = self._runtime.terminate_execution(execution_id)
+                channel.acknowledge_applied(run_id=run_id, action_id=action_id)
+                self._emit_event(
+                    kind="control_stop",
+                    step_id=step_id,
+                    agent="operator",
+                    payload={
+                        "run_id": run_id,
+                        "action_id": action_id,
+                        "status": "applied",
+                        "runner_terminated": terminated,
+                    },
+                )
+                self._append_log(
+                    f"run_id={run_id} step_id={step_id} control_stop_applied "
+                    f"action_id={action_id} runner_terminated={terminated}"
+                )
+                return "stop_dispatch"
+
+            # Unknown request type — reject it.
+            channel.acknowledge_rejected(
+                run_id=run_id, action_id=action_id, reason=f"unknown msg_type: {msg_type}"
+            )
+            self._emit_event(
+                kind="operator_action_requested",
+                step_id=step_id,
+                agent="operator",
+                payload={
+                    "run_id": run_id,
+                    "action_id": action_id,
+                    "status": "rejected",
+                    "reason": f"unknown msg_type: {msg_type}",
+                },
+            )
+
+        return None
+
+    def _collect_and_route_terminal(
+        self,
+        *,
+        registry: RunRegistry,
+        run_id: str,
+        step_id: str,
+        execution_id: str,
+        dispatch_spec: DispatchSpec,
+        agent: str,
+        run_root: Path,
+        max_poll_iterations: int = 600,
+        poll_interval_seconds: float = 0.1,
+    ) -> OrchestrationResult:
+        """Collect runner output and route through reconcile/completion.
+
+        Authority:
+            docs/ORCHESTRATION-PLANE-ARCHITECTURE.md sections 6.1, 6.2
+            docs/ORCHESTRATION-PLANE-RUNTIME-WORKTREE-LIFECYCLE.md
+            docs/ORCHESTRATION-PLANE-CLI-CONFIG-OBSERVABILITY-DESIGN.md §7.4
+                'control actions must be consumed, not only queued'
+
+        This orchestration loop polls runtime.collect() until the runner
+        subprocess completes, AND checks the control channel for pending
+        operator requests (pause/unpause/stop) on each iteration.
+
+        Control request consumption:
+            - control.pause: acknowledged as applied, dispatch pauses
+            - control.unpause: acknowledged as applied, dispatch resumes
+            - control.stop: runner is terminated, run transitions to
+              terminal stopped state
+
+        Args:
+            registry: Run registry for status persistence.
+            run_id: Run identifier.
+            step_id: Step being executed.
+            execution_id: Runtime execution identifier from start().
+            dispatch_spec: Dispatch spec used for the run.
+            agent: Agent name that claimed the step.
+            run_root: Artifact root for this run.
+            max_poll_iterations: Maximum poll iterations before giving up.
+            poll_interval_seconds: Sleep interval between poll attempts.
+
+        Returns:
+            OrchestrationResult with terminal outcome.
+        """
+        execution_result: ExecutionResult | None = None
+        for _ in range(max_poll_iterations):
+            # Check for pending control channel requests.
+            # Authority: §7.4 — 'control actions must be consumed, not only queued'
+            # Pause state is persisted in the run registry (status="paused"),
+            # not in a local variable. The dispatch loop continues polling the
+            # runner while paused — the runner subprocess keeps running.
+            control_directive = self._consume_control_requests(
+                run_id=run_id,
+                execution_id=execution_id,
+                registry=registry,
+                agent=agent,
+                step_id=step_id,
+                run_root=run_root,
+            )
+
+            if control_directive == "stop_dispatch":
+                # Runner has been terminated by the stop request.
+                # Transition run to terminal stopped state.
+                now_ts = time.time()
+                registry.save(
+                    RunRecord(
+                        run_id=run_id,
+                        step_id=step_id,
+                        plan_path=str(self._config.plan_path),
+                        agent=agent,
+                        status="fail",
+                        artifact_root=str(run_root),
+                        finished_at=now_ts,
+                        output_summary=(
+                            f"Run stopped by operator control request for step {step_id}"
+                        ),
+                    )
+                )
+                self._emit_event(
+                    kind="run_final",
+                    step_id=step_id,
+                    agent=agent,
+                    payload={"run_id": run_id, "final_status": "stopped"},
+                )
+                self._append_log(f"run_id={run_id} step_id={step_id} status=stopped agent={agent}")
+                return OrchestrationResult(
+                    success=False,
+                    message=f"Run stopped by operator control request for step {step_id}",
+                    step_id=step_id,
+                    run_id=run_id,
+                )
+
+            if control_directive == "pause_dispatch":
+                registry.save(
+                    RunRecord(
+                        run_id=run_id,
+                        step_id=step_id,
+                        plan_path=str(self._config.plan_path),
+                        agent=agent,
+                        status="paused",
+                        artifact_root=str(run_root),
+                        output_summary=(
+                            f"Run paused by operator control request for step {step_id}"
+                        ),
+                    )
+                )
+                self._emit_event(
+                    kind="run_status_changed",
+                    step_id=step_id,
+                    agent=agent,
+                    payload={"run_id": run_id, "status": "paused"},
+                )
+
+            if control_directive == "continue_dispatch":
+                # Unpause consumed — resume from paused state.
+                registry.save(
+                    RunRecord(
+                        run_id=run_id,
+                        step_id=step_id,
+                        plan_path=str(self._config.plan_path),
+                        agent=agent,
+                        status="running",
+                        artifact_root=str(run_root),
+                        output_summary=(
+                            f"Run unpaused by operator control request for step {step_id}"
+                        ),
+                    )
+                )
+                self._emit_event(
+                    kind="run_status_changed",
+                    step_id=step_id,
+                    agent=agent,
+                    payload={"run_id": run_id, "status": "running"},
+                )
+
+            # If paused, keep polling but don't advance dispatch. The runner
+            # subprocess continues running; we just don't advance new steps.
+            # When unpaused, dispatch resumes normally.
+
+            result = self._runtime.collect(execution_id)
+            if result is None:
+                time.sleep(poll_interval_seconds)
+                continue
+            execution_result = result
+            break
+
+        if execution_result is None:
+            now_ts = time.time()
+            registry.save(
+                RunRecord(
+                    run_id=run_id,
+                    step_id=step_id,
+                    plan_path=str(self._config.plan_path),
+                    agent=agent,
+                    status="stall",
+                    artifact_root=str(run_root),
+                    finished_at=now_ts,
+                    output_summary=(
+                        f"Runner did not complete within poll window "
+                        f"(max_iterations={max_poll_iterations})"
+                    ),
+                )
+            )
+            self._emit_event(
+                kind="run_final",
+                step_id=step_id,
+                agent=agent,
+                payload={"run_id": run_id, "final_status": "stall"},
+            )
+            return OrchestrationResult(
+                success=False,
+                message=f"Runner did not complete within poll window for step {step_id}",
+                step_id=step_id,
+                run_id=run_id,
+            )
+
+        resolution_case = self.route_terminal_execution(
+            step_id=step_id,
+            execution_id=execution_id,
+            dispatch_spec=dispatch_spec,
+            execution_result=execution_result,
+        )
+
+        # Determine final terminal status from the outcome.
+        if resolution_case is None:
+            # Step was completed successfully through the reconcile/completion path.
+            final_status: Literal["success", "fail", "stall"] = "success"
+            output_summary = execution_result.output_summary
+        else:
+            # A resolution case was created — this is a non-closure that
+            # needs operator/resolver attention. Mark as fail so the run
+            # record reflects the need for intervention.
+            final_status = "fail"
+            output_summary = (
+                f"Resolution case created: {resolution_case.reason} "
+                f"(case_id={resolution_case.case_id})"
+            )
+
+        now_ts = time.time()
+        registry.save(
+            RunRecord(
+                run_id=run_id,
+                step_id=step_id,
+                plan_path=str(self._config.plan_path),
+                agent=agent,
+                status=final_status,
+                artifact_root=str(run_root),
+                finished_at=now_ts,
+                output_summary=output_summary,
+            )
+        )
+        self._emit_event(
+            kind="run_final",
+            step_id=step_id,
+            agent=agent,
+            payload={"run_id": run_id, "final_status": final_status},
+        )
+        self._append_log(
+            " ".join(
+                (
+                    f"run_id={run_id}",
+                    f"step_id={step_id}",
+                    f"status={final_status}",
+                    f"agent={agent}",
+                    f"execution_result_status={execution_result.status}",
+                )
+            )
+        )
+
+        if resolution_case is not None:
+            return OrchestrationResult(
+                success=False,
+                message=(
+                    f"Step {step_id} produced a resolution case: {resolution_case.reason} "
+                    f"(case_id={resolution_case.case_id})"
+                ),
+                step_id=step_id,
+                run_id=run_id,
+            )
+
+        return OrchestrationResult(
+            success=True,
+            message=(
+                f"Step {step_id} completed successfully (reconcile_disposition=merged or noop)"
+            ),
+            step_id=step_id,
+            run_id=run_id,
+        )
+
     def run(
         self,
         step_id: str | None = None,
@@ -1398,13 +1765,15 @@ class OrchestrationApp:
             )
         )
 
-        return OrchestrationResult(
-            success=True,
-            message=(
-                f"Run initialized with frozen config snapshot ({frozen_snapshot.snapshot_path})"
-            ),
-            step_id=resolved_step_id,
+        dispatch_spec = self.build_dispatch_spec(step_id=resolved_step_id, role_hint=resolved_agent)
+        return self._collect_and_route_terminal(
+            registry=registry,
             run_id=run_id,
+            step_id=resolved_step_id,
+            execution_id=execution_id,
+            dispatch_spec=dispatch_spec,
+            agent=resolved_agent,
+            run_root=run_root,
         )
 
     def resume(
@@ -1504,7 +1873,7 @@ class OrchestrationApp:
             return replay_result
 
         try:
-            self._admit_start_and_persist_running(
+            workspace, execution_id = self._admit_start_and_persist_running(
                 registry=registry,
                 run_id=run_id,
                 step_id=record.step_id,
@@ -1523,14 +1892,18 @@ class OrchestrationApp:
                 step_id=record.step_id,
                 run_id=run_id,
             )
-        return OrchestrationResult(
-            success=True,
-            message=(
-                "resume_safe: Run resumed from frozen snapshot with replayed projections: "
-                f"{snapshot_path}"
-            ),
-            step_id=record.step_id,
+
+        dispatch_spec = self.build_dispatch_spec(
+            step_id=record.step_id, role_hint=record.agent or self._config.default_agent
+        )
+        return self._collect_and_route_terminal(
+            registry=registry,
             run_id=run_id,
+            step_id=record.step_id,
+            execution_id=execution_id,
+            dispatch_spec=dispatch_spec,
+            agent=record.agent or self._config.default_agent,
+            run_root=run_root,
         )
 
     def _effective_orchestration_config(self) -> OrchestrationConfig:
@@ -1600,9 +1973,16 @@ class OrchestrationApp:
             handle.write(f"{timestamp} {line}\n")
 
     def _active_run_ids(self, step_id: str | None = None) -> tuple[str, ...]:
+        """Return active (non-terminal) run IDs, including paused runs.
+
+        Authority:
+            docs/ORCHESTRATION-PLANE-CLI-CONFIG-OBSERVABILITY-DESIGN.md §7.4
+                'pause' queues a pause request; the run remains active but
+                paused, and is selectable by --latest.
+        """
         registry = self._run_registry(config=self._effective_orchestration_config())
         candidates: list[RunRecord] = []
-        for status in ("running", "pending", "stall"):
+        for status in ("running", "pending", "stall", "paused"):
             candidates.extend(registry.by_status(status))
         if step_id is not None:
             candidates = [record for record in candidates if record.step_id == step_id]
@@ -2291,10 +2671,27 @@ class OrchestrationApp:
                         f"workspace={workspace} execution_id={execution_id}",
                     )
                 )
-                recover_and_resume.append(
-                    f"run_id={record.run_id} outcome=recover_and_resume "
-                    f"artifact_families={','.join(decision.artifact_families)}"
+                terminal_result = self._collect_and_route_terminal(
+                    registry=registry,
+                    run_id=record.run_id,
+                    step_id=record.step_id,
+                    execution_id=execution_id,
+                    dispatch_spec=dispatch_spec,
+                    agent=record.agent or self._config.default_agent,
+                    run_root=run_root,
                 )
+                if terminal_result.success:
+                    recover_and_resume.append(
+                        f"run_id={record.run_id} outcome=recover_and_resume_completed "
+                        f"artifact_families={','.join(decision.artifact_families)}"
+                    )
+                else:
+                    blocking.append(
+                        f"run_id={record.run_id} outcome=recover_and_resume_failed "
+                        f"detail={terminal_result.message} "
+                        f"artifact_families={','.join(decision.artifact_families)}"
+                    )
+                    blocked_artifact_paths.append(str(run_root))
                 recovery_actions.append(
                     RecoveryAction(
                         action_type="recover_and_resume",

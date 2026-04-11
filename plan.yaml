@@ -78707,7 +78707,7 @@ phases:
       - Downstream implementation owner: `cli_blackbox_active_control_recovery.fix-active-control-recovery-behavior`"
   - id: cli_blackbox_active_control_recovery.fix-active-control-recovery-behavior
     name: Close active-control consumption and recovery terminalization gaps
-    status: claimed
+    status: done
     description: "step_type: implementation\nverification_scope: phase-check\n\nClose\
       \ behavior gaps in orchestration control/recovery paths only after the tester-owned\
       \ black-box matrix from `cli_blackbox_active_control_recovery.define-active-control-recovery-tests`\
@@ -78777,6 +78777,37 @@ phases:
     agent: python-senior-tacit
     claimed_by: python-senior-tacit
     claimed_at: '2026-04-11T10:36:00.484899+00:00'
+    done_at: '2026-04-11T11:13:30.732749+00:00'
+    evidence: "## refs Read Confirmation (MANDATORY)\n- tools/vectl/README.md — NOT\
+      \ READ: file not present at required path; doc-path issue noted.\n- docs/ORCHESTRATION-PLANE-CLI-CONFIG-OBSERVABILITY-DESIGN.md\
+      \ — read (control family semantics, action ack lifecycle, event registry).\n\
+      - docs/ORCHESTRATION-PLANE-OPERATOR-CONFLICT-RECOVERY.md — read (recovery phases/invariants).\n\
+      - docs/ORCHESTRATION-PLANE-ORCH-APP-ROUTING.md — read (normal routing/execution\
+      \ result routing).\n\n## Root Cause vs Symptom\n- Root cause: `_collect_and_route_terminal`\
+      \ polled runner completion only and did not consume pending control-channel\
+      \ requests; pause/unpause/stop requests remained queued without applied/rejected\
+      \ receipts, no control events emitted, and stop did not terminate execution.\n\
+      - Symptom: control-consumption tests observed pending-only requests; expected\
+      \ control events/status transitions missing.\n- Why this change closes the family:\
+      \ added control request consumption inside dispatch poll loop plus runtime termination\
+      \ path and status/event/ack transitions.\n\n## Implementation Evidence\n- Files\
+      \ changed:\n  - src/vectl/orch_app.py\n  - src/vectl/orchestration/runtime.py\n\
+      \  - src/vectl/orchestration/events.py\n  - src/vectl/orchestration/run_store.py\n\
+      - Exact pytest commands (subagent evidence):\n  - `.venv/bin/python -m pytest\
+      \ tests/repro/test_orch_cli_full_flow.py tests/repro/test_orch_cli_control_consumption.py\
+      \ tests/repro/test_orch_cli_recovery_live.py -v` → 31 passed\n  - `.venv/bin/python\
+      \ -m pytest tests/orchestration/unit/test_orch_app.py tests/orchestration/unit/test_control_channel.py\
+      \ tests/orchestration/unit/test_run_store.py tests/orchestration/unit/test_runtime.py\
+      \ -v` → 91 passed\n  - `.venv/bin/python -m pytest tests/ --ignore=tests/repro/test_orch_liveness.py\
+      \ --ignore=tests/repro/test_orch_cli_recovery_red.py --ignore=tests/repro/test_orch_observability_red.py\
+      \ --ignore=tests/repro/test_repair_continuity_black_box.py -q` → 1775 passed,\
+      \ 25 skipped\n- Active-run control consumption proof: dispatch loop now checks\
+      \ pending control requests each poll iteration; pause/unpause/stop are acknowledged\
+      \ (applied/rejected), emit control events, and drive run status transitions;\
+      \ stop invokes runtime termination.\n- Recover-to-terminal proof: recovery tests\
+      \ remain green; no indefinite-running reopen observed in this scope.\n- Remaining\
+      \ risk/deviation: `tools/vectl/README.md` path missing; termination is best-effort\
+      \ by runner handle availability; no protected-test rewrites reported."
   - id: cli_blackbox_active_control_recovery.retest-active-control-recovery
     name: Retest active-control and recovery black-box matrix
     status: pending

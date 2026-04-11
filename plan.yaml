@@ -79789,3 +79789,10 @@ phases:
       \ invariant wording\n  - documented non-blocking environment debts (isolated\
       \ worktree guard and tmpdir `uv run vectl` caveat)\n- Remaining doc debt: none\
       \ in this step scope."
+- id: config_role_profile_overrides_impl
+  name: Role Profile Overrides Implementation
+  status: pending
+  gate: Role profile overrides loader, validation, provenance, and RFC-required tests
+    are implemented with no ambiguity in built-in vs custom role semantics.
+  depends_on:
+  - cli_blackbox_finalization

@@ -80073,6 +80073,34 @@ phases:
     depends_on:
     - opencode_runner_contracts.execution-request-contract
     agent: python-senior-tacit
+  - id: opencode_runner_contracts.gate
+    name: Verify contract completeness against RFC
+    status: pending
+    description: 'Verify the contract phase fully matches docs/RFC-opencode-orchestration-runner.md
+      before implementation proceeds.
+
+
+      Scope:
+
+      - request/session fields are pinned
+
+      - prompt artifact contract is pinned
+
+      - recovery truth persistence is pinned
+
+      - no remaining ambiguity exists in CLI/session handoff semantics
+
+
+      Refs:
+
+      - docs/RFC-opencode-orchestration-runner.md
+
+      - contract/doc changes from this phase'
+    verification: Targeted contract/documentation checks are green and an implementer
+      can build the runner without guessing missing contract semantics.
+    depends_on:
+    - opencode_runner_contracts.prompt-artifact-contract
+    agent: integration-verifier-tacit
 - id: opencode_runner_impl
   name: OpenCode Runner Implementation
   status: locked

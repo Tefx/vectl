@@ -80054,6 +80054,65 @@ phases:
       Spec link:
 
       - docs/RFC-role-profile-overrides.md §13'
+- id: config_role_profile_overrides_verify
+  name: Role Profile Overrides Verification
+  status: in_progress
+  gate: RFC-required tests, effective provenance output, and changed-file verification
+    prove the clean-break role profile override semantics end-to-end.
+  depends_on:
+  - config_role_profile_overrides_impl
+  steps:
+  - id: config_role_profile_overrides_verify.independent-rfc-retest
+    name: Retest role profile overrides RFC behavior
+    status: claimed
+    description: 'Independently rerun the RFC-targeted config loader, config validation,
+      and config-show provenance tests.
+
+
+      Scope:
+
+      - RFC-required test matrix is green
+
+      - no old built-in shadowing path remains accepted
+
+      - `config-show --effective` exposes human and JSON provenance output
+
+
+      Refs:
+
+      - docs/RFC-role-profile-overrides.md
+
+      - tests added/updated in implementation phase'
+    verification: Targeted pytest modules for config loader, config validate, and
+      config-show all pass with explicit provenance assertions.
+    agent: integration-verifier-tacit
+    claimed_by: integration-verifier-tacit
+    claimed_at: '2026-04-11T21:50:45.607046+00:00'
+  - id: config_role_profile_overrides_verify.final-changed-scope-check
+    name: Run final changed-scope verification
+    status: pending
+    description: 'Run final changed-scope verification for the RFC implementation.
+
+
+      Scope:
+
+      - changed Python/config surfaces pass repo-standard checks
+
+      - RFC behavior is visible through CLI/config-show
+
+      - no regression in config validation path for unaffected defaults
+
+
+      Refs:
+
+      - docs/RFC-role-profile-overrides.md
+
+      - changed config/CLI modules'
+    verification: Changed-scope verification command(s) pass and the CLI/config surfaces
+      behave according to the RFC clean-break rules.
+    depends_on:
+    - config_role_profile_overrides_verify.independent-rfc-retest
+    agent: integration-verifier-tacit
   - id: config_role_profile_overrides_impl.fix-roundtrip-and-env-isolation
     name: Fix config round-trip serialization and env-isolation test bleed
     status: pending
@@ -80149,71 +80208,7 @@ phases:
       - Sibling-search results for related serialization or discovery leaks
 
       - Residual risks (if any)'
-    depends_on:
-    - config_role_profile_overrides_impl.merge-loader-and-registry
-    - config_role_profile_overrides_impl.validation-and-error-contract
-    - config_role_profile_overrides_impl.provenance-effective-config-show
-    - config_role_profile_overrides_impl.rfc-required-tests
     agent: python-senior-tacit
-- id: config_role_profile_overrides_verify
-  name: Role Profile Overrides Verification
-  status: in_progress
-  gate: RFC-required tests, effective provenance output, and changed-file verification
-    prove the clean-break role profile override semantics end-to-end.
-  depends_on:
-  - config_role_profile_overrides_impl
-  steps:
-  - id: config_role_profile_overrides_verify.independent-rfc-retest
-    name: Retest role profile overrides RFC behavior
-    status: claimed
-    description: 'Independently rerun the RFC-targeted config loader, config validation,
-      and config-show provenance tests.
-
-
-      Scope:
-
-      - RFC-required test matrix is green
-
-      - no old built-in shadowing path remains accepted
-
-      - `config-show --effective` exposes human and JSON provenance output
-
-
-      Refs:
-
-      - docs/RFC-role-profile-overrides.md
-
-      - tests added/updated in implementation phase'
-    verification: Targeted pytest modules for config loader, config validate, and
-      config-show all pass with explicit provenance assertions.
-    agent: integration-verifier-tacit
-    claimed_by: integration-verifier-tacit
-    claimed_at: '2026-04-11T21:50:45.607046+00:00'
-  - id: config_role_profile_overrides_verify.final-changed-scope-check
-    name: Run final changed-scope verification
-    status: pending
-    description: 'Run final changed-scope verification for the RFC implementation.
-
-
-      Scope:
-
-      - changed Python/config surfaces pass repo-standard checks
-
-      - RFC behavior is visible through CLI/config-show
-
-      - no regression in config validation path for unaffected defaults
-
-
-      Refs:
-
-      - docs/RFC-role-profile-overrides.md
-
-      - changed config/CLI modules'
-    verification: Changed-scope verification command(s) pass and the CLI/config surfaces
-      behave according to the RFC clean-break rules.
-    depends_on:
-    - config_role_profile_overrides_verify.independent-rfc-retest
-    agent: integration-verifier-tacit
 - id: opencode_runner_contracts
   name: OpenCode Runner Contracts
   status: done

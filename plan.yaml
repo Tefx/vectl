@@ -80092,7 +80092,7 @@ phases:
       - Runner process launch/wiring intentionally out of scope.'
   - id: opencode_runner_contracts.prompt-artifact-contract
     name: Lock prompt artifact and runner handoff contract
-    status: pending
+    status: claimed
     description: 'Implement the RFC-defined prompt materialization and runner handoff
       contract before runner code is written.
 
@@ -80122,6 +80122,8 @@ phases:
     depends_on:
     - opencode_runner_contracts.execution-request-contract
     agent: python-senior-tacit
+    claimed_by: python-senior-tacit
+    claimed_at: '2026-04-11T19:16:35.251109+00:00'
   - id: opencode_runner_contracts.gate
     name: Verify contract completeness against RFC
     status: pending

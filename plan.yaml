@@ -79877,7 +79877,7 @@ phases:
       to implemented merge semantics.'
   - id: config_role_profile_overrides_impl.validation-and-error-contract
     name: Implement validation and migration-directed errors
-    status: claimed
+    status: done
     description: 'Implement RFC-required validation behavior and explicit error contracts.
 
 
@@ -79907,6 +79907,34 @@ phases:
     agent: python-senior-tacit
     claimed_by: python-senior-tacit
     claimed_at: '2026-04-11T20:42:10.027222+00:00'
+    done_at: '2026-04-11T21:09:44.500781+00:00'
+    evidence: 'Artifact:
+
+      - worker session: ses_281b73f09ffeNOhXegOBY4Cc5E
+
+
+      Verification:
+
+      - uv run pytest tests/orchestration/unit/test_role_profile_overrides.py -v ->
+      55 passed
+
+
+      Files changed:
+
+      - src/vectl/orchestration/config.py
+
+      - tests/orchestration/unit/test_role_profile_overrides.py
+
+
+      Spec link:
+
+      - docs/RFC-role-profile-overrides.md §§6,7.2
+
+
+      Notes:
+
+      - Family-policy override violations now enforced with structured override error
+      paths/messages.'
   - id: config_role_profile_overrides_impl.provenance-effective-config-show
     name: Implement provenance in config-show effective output
     status: claimed

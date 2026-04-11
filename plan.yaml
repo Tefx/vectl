@@ -80581,7 +80581,7 @@ phases:
       intentionally deferred as separate concerns.'
   - id: opencode_runner_impl.recovery-fallback
     name: Implement automatic recovery fallback semantics
-    status: pending
+    status: claimed
     description: 'Implement OpenCode recovery policy per RFC.
 
 
@@ -80615,6 +80615,8 @@ phases:
     depends_on:
     - opencode_runner_impl.runtime-continuity-integration
     agent: python-senior-tacit
+    claimed_by: python-senior-tacit
+    claimed_at: '2026-04-11T21:50:53.970956+00:00'
   - id: opencode_runner_impl.gate
     name: Verify implementation completeness against RFC
     status: pending

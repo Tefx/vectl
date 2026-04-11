@@ -78900,7 +78900,7 @@ phases:
   steps:
   - id: cli_blackbox_recovery_faults_cases.define-fault-case-tests
     name: Define recovery-fault and case-escalation black-box tests
-    status: claimed
+    status: done
     description: "step_type: test\nstep_intent: test_define_red\nexpected_result:\
       \ red\nverification_scope: local-check\n\nBlind black-box test design step for\
       \ recovery-fault and case-escalation behavior. Define the expected-red matrix\
@@ -78939,6 +78939,25 @@ phases:
     agent: blind-tester-tacit
     claimed_by: blind-tester-tacit
     claimed_at: '2026-04-11T11:34:56.417956+00:00'
+    done_at: '2026-04-11T12:02:38.826888+00:00'
+    evidence: "## refs Read Confirmation (MANDATORY)\n- docs/ORCHESTRATION-PLANE-CLI-CONFIG-OBSERVABILITY-DESIGN.md\
+      \ — read (CLI surface, config snapshot, observability/event/projection/case\
+      \ artifacts).\n- docs/ORCHESTRATION-PLANE-OPERATOR-CONFLICT-RECOVERY.md — read\
+      \ (operator state model, recovery invariants, no-silent-deletion policy).\n\
+      - docs/ORCHESTRATION-PLANE-RUNNER-BACKEND.md — read (runner status/error contracts\
+      \ and registry behavior).\n- tools/vectl/README.md — NOT READ: required path\
+      \ missing.\n\n## Expected-Red Proof\n- Exact pytest command:\n  `uv run pytest\
+      \ tests/repro/test_orch_cli_recovery_faults.py tests/repro/test_orch_cli_case_lifecycle.py\
+      \ tests/repro/test_orch_cli_runner_faults.py -v`\n- Outcome: 30 collected, 29\
+      \ passed with 1 expected-red gap documented.\n- Fault matrix covered:\n  - missing\
+      \ config snapshot\n  - corrupt continuity/event/projection artifacts\n  - fresh-start-required/quarantine\
+      \ behavior\n  - recovery exit-code behavior\n  - runner fail/stall/transport-error\
+      \ behaviors\n  - case list/show/respond lifecycle and case artifact layout\n\
+      - Real case creation exposed: yes (case-lifecycle suite verifies case creation/inspection\
+      \ after runner faults).\n- Remaining blocker-class gaps:\n  1) `no_silent_deletion_preserved=False`\
+      \ in recovery report conflicts with no-silent-deletion invariant and requires\
+      \ fix ownership.\n  2) Additional broader expected-red surfaces remain outside\
+      \ this step scope and were documented as out-of-step debt."
   - id: cli_blackbox_recovery_faults_cases.fix-fault-case-behavior
     name: Close recovery-fault handling and case lifecycle gaps
     status: pending

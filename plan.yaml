@@ -79042,3 +79042,37 @@ phases:
     - cli_blackbox_recovery_faults_cases.define-fault-case-tests
     - cli_blackbox_recovery_faults_cases.fix-fault-case-behavior
     agent: integration-verifier-tacit
+  - id: cli_blackbox_recovery_faults_cases.liveness-probe
+    name: Probe runnable CLI liveness for fault and case surfaces
+    status: pending
+    description: 'step_type: verification
+
+      verification_scope: phase-check protecting downstream gate `cli_blackbox_recovery_faults_cases.gate`
+
+
+      Blind probe of faulted runnable CLI surfaces. Start representative fail/stall
+      scenarios and confirm the public CLI can still emit inspectable status, events,
+      and case outputs without relying on implementation internals.'
+    verification: CLI entrypoints for recovery and case inspection start successfully
+      against faulted fixtures and produce observable outputs through the documented
+      command family.
+    evidence_template: '## refs Read Confirmation (MANDATORY)
+
+      For each ref in this step:
+
+      - <filename> — key passage or "NOT READ: <reason>"
+
+
+      ## Liveness Evidence
+
+      - Fault scenario started
+
+      - CLI commands issued
+
+      - Observable status/events/case output
+
+      - Any unreachable surface'
+    depends_on:
+    - cli_blackbox_recovery_faults_cases.define-fault-case-tests
+    - cli_blackbox_recovery_faults_cases.fix-fault-case-behavior
+    agent: blind-tester-tacit

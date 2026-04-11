@@ -79002,3 +79002,43 @@ phases:
     depends_on:
     - cli_blackbox_recovery_faults_cases.define-fault-case-tests
     agent: python-senior-tacit
+  - id: cli_blackbox_recovery_faults_cases.retest-fault-case-matrix
+    name: Retest recovery-fault and case-escalation matrix
+    status: pending
+    description: 'step_type: test
+
+      step_intent: retest_green
+
+      expected_result: green
+
+      verification_scope: phase-check protecting downstream gate `cli_blackbox_recovery_faults_cases.gate`
+
+
+      Independently rerun the full recovery fault and case lifecycle black-box matrix
+      from clean temp repos. Validate corrupted-artifact handling, runner fail/stall
+      paths, and case commands only through public CLI subprocesses.'
+    verification: Targeted pytest runs are green and include explicit outputs for
+      blocked recoveries, quarantined fresh-starts, and real case list/show/respond
+      flows.
+    evidence_template: '## refs Read Confirmation (MANDATORY)
+
+      For each ref in this step:
+
+      - <filename> — key passage or "NOT READ: <reason>"
+
+
+      ## Verification Report
+
+      - Commands executed
+
+      - Actual outputs
+
+      - Recovery fault verdicts
+
+      - Case lifecycle verdicts
+
+      - Headline: PASS | PASS_WITH_DEBT | FAIL'
+    depends_on:
+    - cli_blackbox_recovery_faults_cases.define-fault-case-tests
+    - cli_blackbox_recovery_faults_cases.fix-fault-case-behavior
+    agent: integration-verifier-tacit

@@ -79803,7 +79803,7 @@ phases:
   steps:
   - id: config_role_profile_overrides_impl.merge-loader-and-registry
     name: Implement role_profile_overrides merge loader
-    status: claimed
+    status: done
     description: 'Implement RFC-defined config loader behavior in `src/vectl/orchestration/config.py`.
 
 
@@ -79841,6 +79841,40 @@ phases:
     agent: python-senior-tacit
     claimed_by: python-senior-tacit
     claimed_at: '2026-04-11T20:00:53.524741+00:00'
+    done_at: '2026-04-11T20:41:32.517493+00:00'
+    evidence: 'Artifact:
+
+      - worker session: ses_281dd14d5ffdvO7pj543KrXBuF
+
+
+      Verification:
+
+      - 42 new role_profile_overrides tests pass
+
+      - 49 existing config tests pass (excluding 2 env-dependent pre-existing failures)
+
+
+      Files changed:
+
+      - src/vectl/orchestration/config.py
+
+      - tests/orchestration/unit/test_config_state_impl.py
+
+      - tests/orchestration/unit/test_role_profile_overrides.py
+
+
+      Spec link:
+
+      - docs/RFC-role-profile-overrides.md §§4,5,6
+
+
+      Gaps/Notes:
+
+      - Provenance display for config-show effective and migration bridge behavior
+      are out of this step scope.
+
+      - Environment-dependent config discovery failures are pre-existing and unrelated
+      to implemented merge semantics.'
   - id: config_role_profile_overrides_impl.validation-and-error-contract
     name: Implement validation and migration-directed errors
     status: pending

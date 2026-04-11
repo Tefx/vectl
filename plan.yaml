@@ -80064,7 +80064,7 @@ phases:
   steps:
   - id: config_role_profile_overrides_verify.independent-rfc-retest
     name: Retest role profile overrides RFC behavior
-    status: claimed
+    status: pending
     description: 'Independently rerun the RFC-targeted config loader, config validation,
       and config-show provenance tests after the batched fix step resolves the known
       blocking issues.
@@ -80097,8 +80097,6 @@ phases:
     depends_on:
     - config_role_profile_overrides_impl.fix-roundtrip-and-env-isolation
     agent: integration-verifier-tacit
-    claimed_by: integration-verifier-tacit
-    claimed_at: '2026-04-11T21:50:45.607046+00:00'
   - id: config_role_profile_overrides_verify.final-changed-scope-check
     name: Run final changed-scope verification
     status: pending

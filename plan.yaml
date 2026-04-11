@@ -80207,6 +80207,42 @@ phases:
     depends_on:
     - opencode_runner_impl.dedicated-runner
     agent: python-senior-tacit
+  - id: opencode_runner_impl.recovery-fallback
+    name: Implement automatic recovery fallback semantics
+    status: pending
+    description: 'Implement OpenCode recovery policy per RFC.
+
+
+      Scope:
+
+      - prefer native session resume
+
+      - validate session artifacts before native resume
+
+      - automatically relaunch from preserved prompt artifacts on native resume failure
+      or invalid session artifacts
+
+      - fail explicitly only when both native resume and prompt-based relaunch are
+      unavailable
+
+      - persist `recovered_via=native_session_resume|fresh_relaunch` in continuity
+      artifacts, event payloads, and summaries
+
+
+      Refs:
+
+      - docs/RFC-opencode-orchestration-runner.md section 10
+
+      - src/vectl/orch_app.py
+
+      - src/vectl/orchestration/runtime.py
+
+      - continuity/recovery artifacts'
+    verification: Recovery-focused tests prove native resume is attempted first, fallback
+      relaunch is automatic, and recovery truth is persisted explicitly.
+    depends_on:
+    - opencode_runner_impl.runtime-continuity-integration
+    agent: python-senior-tacit
 - id: opencode_runner_verification
   name: OpenCode Runner Verification
   status: locked

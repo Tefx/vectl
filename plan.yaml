@@ -80169,7 +80169,7 @@ phases:
       phase.'
   - id: opencode_runner_contracts.gate
     name: Verify contract completeness against RFC
-    status: pending
+    status: claimed
     description: 'Verify the contract phase fully matches docs/RFC-opencode-orchestration-runner.md
       before implementation proceeds.
 
@@ -80195,6 +80195,8 @@ phases:
     depends_on:
     - opencode_runner_contracts.prompt-artifact-contract
     agent: integration-verifier-tacit
+    claimed_by: integration-verifier-tacit
+    claimed_at: '2026-04-11T19:39:35.950537+00:00'
 - id: opencode_runner_impl
   name: OpenCode Runner Implementation
   status: locked

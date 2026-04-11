@@ -79009,17 +79009,22 @@ phases:
   - id: cli_blackbox_surface_safety_ops.fix-surface-safety-behavior
     name: Close selector, housekeeping, config, and concurrency surface gaps
     status: pending
-    description: "step_type: implementation\nverification_scope: phase-check protecting\
-      \ downstream gate `cli_blackbox_surface_safety_ops.gate`\n\nFix the bounded\
-      \ public-surface behaviors exposed by `cli_blackbox_surface_safety_ops.define-surface-safety-tests`\
-      \ without redesigning the CLI command family.\n\nUPSTREAM ARTIFACTS:\n- tests/repro/test_orch_cli_selector_safety.py\
-      \ — selector expectations are PROTECTED\n- tests/repro/test_orch_cli_prune_config.py\
-      \ — prune/config expectations are PROTECTED\n- tests/repro/test_orch_cli_concurrency.py\
+    description: "step_type: implementation\nverification_scope: phase-check\n\nClose\
+      \ selector, housekeeping, config, and concurrency surface gaps only after the\
+      \ tester-owned black-box matrix from `cli_blackbox_surface_safety_ops.define-surface-safety-tests`\
+      \ proves real public-surface failures.\n\nThis step may implement both product\
+      \ fixes and complex harness support where needed, because multi-run fixture\
+      \ repos, env override validation, and concurrency race harnesses are non-trivial.\n\
+      \nUPSTREAM ARTIFACTS:\n- tester-owned black-box expectations from `cli_blackbox_surface_safety_ops.define-surface-safety-tests`\
+      \ are AUTHORITATIVE\n- tests/repro/test_orch_cli_selector_safety.py — selector\
+      \ expectations are PROTECTED\n- tests/repro/test_orch_cli_prune_config.py —\
+      \ prune/config expectations are PROTECTED\n- tests/repro/test_orch_cli_concurrency.py\
       \ — concurrency expectations are PROTECTED\n\nScope anchors:\n- spec_refs:\n\
       \  - docs/ORCHESTRATION-PLANE-CLI-CONFIG-OBSERVABILITY-DESIGN.md §7.*\n  - docs/ORCHESTRATION-CLI-QUICKSTART.md\
       \ §§7-11\n- touch_paths:\n  - src/vectl/cli.py\n  - src/vectl/orch_app.py\n\
       \  - src/vectl/orchestration/run_store.py\n  - src/vectl/orchestration/runtime.py\n\
-      \  - tests/repro/test_orch_cli_selector_safety.py\n- harness_refs:\n  - multi-run\
+      \  - tests/repro/test_orch_cli_selector_safety.py\n  - tests/repro/test_orch_cli_prune_config.py\n\
+      \  - tests/repro/test_orch_cli_concurrency.py\n- harness_refs:\n  - multi-run\
       \ fixture repos\n  - env override roots\n  - parallel subprocess launch harness\n\
       - authoritative_interface: existing public CLI only\n\nFailure-mode checklist:\n\
       - ambiguous active-run selection must error clearly\n- prune must never delete\

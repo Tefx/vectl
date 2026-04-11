@@ -78633,7 +78633,7 @@ phases:
       as pre-existing documentation path issue.'
 - id: cli_blackbox_active_control_recovery
   name: 'CLI Black-Box Tests: Active Control and Recovery'
-  status: pending
+  status: in_progress
   gate: 'Lightweight test milestone: red test definition, bounded fixes if needed,
     and green retest for active-run control plus non-dry-run recovery through real
     CLI subprocesses.'
@@ -78645,7 +78645,7 @@ phases:
   steps:
   - id: cli_blackbox_active_control_recovery.define-active-control-recovery-tests
     name: Define active-control and recovery black-box tests
-    status: pending
+    status: claimed
     description: "step_type: test\nstep_intent: test_define_red\nexpected_result:\
       \ red\nverification_scope: local-check\n\nBlind black-box test design step for\
       \ active-run control and non-dry-run recovery using isolated temp repos, real\
@@ -78684,6 +78684,8 @@ phases:
 
       - Downstream implementation owner: cli_blackbox_active_control_recovery.fix-active-control-recovery-behavior'
     agent: blind-tester-tacit
+    claimed_by: blind-tester-tacit
+    claimed_at: '2026-04-11T09:39:01.806955+00:00'
   - id: cli_blackbox_active_control_recovery.fix-active-control-recovery-behavior
     name: Close active-control consumption and recovery terminalization gaps
     status: pending

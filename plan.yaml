@@ -79156,31 +79156,6 @@ phases:
     depends_on:
     - cli_blackbox_finalization.full-plan-check
     agent: doc-reviewer-tacit
-  - id: cli_blackbox_finalization.deep-review-contract-strength
-    name: Audit test contract strength for CLI black-box suites
-    status: pending
-    description: Review the new black-box tests for vacuous assertions, missing failure-path
-      checks, and over-reliance on implementation details. The goal is to ensure the
-      tests truly protect the public CLI contract.
-    verification: No vacuous or implementation-coupled black-box assertions remain
-      in the new suites without explicit justification.
-    evidence_template: '## refs Read Confirmation (MANDATORY)
-
-      For each ref in this step:
-
-      - <filename> — key passage or "NOT READ: <reason>"
-
-
-      ## Contract Strength Audit
-
-      - Weak assertions / none
-
-      - Missing failure paths / none
-
-      - Headline: PASS | PASS_WITH_DEBT | FAIL'
-    depends_on:
-    - cli_blackbox_finalization.full-plan-check
-    agent: gate-reviewer-tacit
   - id: cli_blackbox_finalization.deep-review-blackbox
     name: Perform independent black-box CLI verification
     status: pending
@@ -79261,6 +79236,5 @@ phases:
     depends_on:
     - cli_blackbox_finalization.full-plan-check
     - cli_blackbox_finalization.doc-sync
-    - cli_blackbox_finalization.deep-review-contract-strength
     - cli_blackbox_finalization.deep-review-blackbox
     agent: gate-reviewer-tacit

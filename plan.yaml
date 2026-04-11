@@ -78797,3 +78797,48 @@ phases:
     - cli_blackbox_active_control_recovery.define-active-control-recovery-tests
     - cli_blackbox_active_control_recovery.fix-active-control-recovery-behavior
     agent: integration-verifier-tacit
+  - id: cli_blackbox_active_control_recovery.liveness-probe
+    name: Probe runnable CLI liveness for active-control scenarios
+    status: pending
+    description: 'step_type: verification
+
+      verification_scope: phase-check protecting downstream gate `cli_blackbox_active_control_recovery.gate`
+
+
+      Blind liveness probe for the runnable CLI surface touched in this phase.
+
+
+      Required evidence:
+
+      - exact command that starts the active-run scenario
+
+      - proof that the CLI starts, the slow runner stays alive long enough for control
+      commands, and at least one control command reaches the real entrypoint path
+
+      - proof that recovery command starts and returns structured output through the
+      public CLI'
+    verification: Entry point starts, active-run scenario remains live long enough
+      for control interaction, and recover command executes through the real CLI path
+      with expected structured output.
+    evidence_template: '## refs Read Confirmation (MANDATORY)
+
+      For each ref in this step:
+
+      - <filename> — key passage or "NOT READ: <reason>"
+
+
+      ## Liveness Evidence
+
+      - CLI command(s)
+
+      - Active-run proof
+
+      - Control-entrypoint proof
+
+      - Recovery-entrypoint proof
+
+      - Observed output'
+    depends_on:
+    - cli_blackbox_active_control_recovery.define-active-control-recovery-tests
+    - cli_blackbox_active_control_recovery.fix-active-control-recovery-behavior
+    agent: blind-tester-tacit

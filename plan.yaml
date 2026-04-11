@@ -80817,7 +80817,7 @@ phases:
       on branch `vectl/step-opencode_runner_impl.recovery-fallback`'
 - id: opencode_runner_verification
   name: OpenCode Runner Verification
-  status: pending
+  status: in_progress
   gate: Unit, integration, and live OpenCode evidence prove the runner is real, session-aware,
     recoverable, and automation-grade before downstream config work begins.
   depends_on:
@@ -80825,7 +80825,7 @@ phases:
   steps:
   - id: opencode_runner_verification.unit-tests
     name: Add and run OpenCode runner unit coverage
-    status: pending
+    status: claimed
     description: 'Add and run unit coverage for OpenCode runner substrate.
 
 
@@ -80850,6 +80850,8 @@ phases:
     verification: Targeted unit pytest modules for runner substrate and prompt materialization
       pass.
     agent: integration-verifier-tacit
+    claimed_by: integration-verifier-tacit
+    claimed_at: '2026-04-11T22:22:02.553842+00:00'
   - id: opencode_runner_verification.integration-tests
     name: Run OpenCode orchestration integration tests
     status: pending

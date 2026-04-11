@@ -79270,3 +79270,37 @@ phases:
     - cli_blackbox_surface_safety_ops.define-surface-safety-tests
     - cli_blackbox_surface_safety_ops.fix-surface-safety-behavior
     agent: integration-verifier-tacit
+  - id: cli_blackbox_surface_safety_ops.liveness-probe
+    name: Probe runnable CLI liveness for selector and housekeeping surfaces
+    status: pending
+    description: 'step_type: verification
+
+      verification_scope: phase-check protecting downstream gate `cli_blackbox_surface_safety_ops.gate`
+
+
+      Blind liveness probe for the CLI surfaces touched here. Confirm the real entrypoints
+      for run/runs/status/prune/config continue to start and produce observable output
+      under multi-run and env-override fixtures.'
+    verification: CLI entrypoints for the selector/housekeeping/config surfaces start
+      successfully and produce observable output through public commands under stressed
+      fixtures.
+    evidence_template: '## refs Read Confirmation (MANDATORY)
+
+      For each ref in this step:
+
+      - <filename> — key passage or "NOT READ: <reason>"
+
+
+      ## Liveness Evidence
+
+      - Commands issued
+
+      - Fixture type
+
+      - Observable outputs
+
+      - Any surface that failed to start'
+    depends_on:
+    - cli_blackbox_surface_safety_ops.define-surface-safety-tests
+    - cli_blackbox_surface_safety_ops.fix-surface-safety-behavior
+    agent: blind-tester-tacit

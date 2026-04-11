@@ -78859,11 +78859,14 @@ phases:
   - id: cli_blackbox_recovery_faults_cases.fix-fault-case-behavior
     name: Close recovery-fault handling and case lifecycle gaps
     status: pending
-    description: "step_type: implementation\nverification_scope: phase-check protecting\
-      \ downstream gate `cli_blackbox_recovery_faults_cases.gate`\n\nFill in the orchestration\
-      \ behavior required for black-box recovery fault handling and real case lifecycle\
-      \ coverage, bounded by the failing proofs from `cli_blackbox_recovery_faults_cases.define-fault-case-tests`.\n\
-      \nUPSTREAM ARTIFACTS:\n- tests/repro/test_orch_cli_recovery_faults.py — recovery\
+    description: "step_type: implementation\nverification_scope: phase-check\n\nClose\
+      \ recovery-fault handling and case lifecycle gaps only after the tester-owned\
+      \ black-box matrix from `cli_blackbox_recovery_faults_cases.define-fault-case-tests`\
+      \ proves real bad-path gaps.\n\nThis step may implement both product fixes and\
+      \ complex fault-harness support where needed, because corrupted continuity fixtures\
+      \ and fail/stall runner shims are non-trivial test infrastructure.\n\nUPSTREAM\
+      \ ARTIFACTS:\n- tester-owned black-box expectations from `cli_blackbox_recovery_faults_cases.define-fault-case-tests`\
+      \ are AUTHORITATIVE\n- tests/repro/test_orch_cli_recovery_faults.py — recovery\
       \ fault expectations are PROTECTED\n- tests/repro/test_orch_cli_case_lifecycle.py\
       \ — case lifecycle expectations are PROTECTED\n- tests/repro/test_orch_cli_runner_faults.py\
       \ — runner fail/stall expectations are PROTECTED\n\nScope anchors:\n- spec_refs:\n\
@@ -78871,7 +78874,8 @@ phases:
       \  - docs/ORCHESTRATION-PLANE-OPERATOR-CONFLICT-RECOVERY.md\n  - docs/ORCHESTRATION-PLANE-RUNNER-BACKEND.md\n\
       - touch_paths:\n  - src/vectl/orch_app.py\n  - src/vectl/orchestration/runtime.py\n\
       \  - src/vectl/orchestration/run_store.py\n  - src/vectl/orchestration/recovery.py\n\
-      \  - tests/repro/test_orch_cli_recovery_faults.py\n- harness_refs:\n  - corrupted\
+      \  - tests/repro/test_orch_cli_recovery_faults.py\n  - tests/repro/test_orch_cli_case_lifecycle.py\n\
+      \  - tests/repro/test_orch_cli_runner_faults.py\n- harness_refs:\n  - corrupted\
       \ continuity artifacts\n  - fake fail/stall/transport-error runners\n- authoritative_interface:\
       \ existing public recovery/case commands only\n\nFailure-mode checklist:\n-\
       \ missing snapshot must block clearly\n- corrupt artifacts must not produce\

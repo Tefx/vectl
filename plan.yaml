@@ -80581,7 +80581,7 @@ phases:
       intentionally deferred as separate concerns.'
   - id: opencode_runner_impl.recovery-fallback
     name: Implement automatic recovery fallback semantics
-    status: claimed
+    status: done
     description: 'Implement OpenCode recovery policy per RFC.
 
 
@@ -80617,6 +80617,51 @@ phases:
     agent: python-senior-tacit
     claimed_by: python-senior-tacit
     claimed_at: '2026-04-11T21:50:53.970956+00:00'
+    done_at: '2026-04-11T22:13:43.180240+00:00'
+    evidence: "## Recovery Fallback Implementation — RFC §10-12\n\n### Files Modified\n\
+      - `src/vectl/orchestration/recovery_fallback.py` (NEW, 702 lines)\n- `tests/orchestration/integration/test_recovery_fallback.py`\
+      \ (NEW, 1047 lines)\n- `src/vectl/orchestration/__init__.py` (MODIFIED, +21\
+      \ exports)\n\n### Implementation Summary\nAll RFC §10-12 recovery fallback semantics\
+      \ implemented:\n\n1. **§10.1 `validate_session_for_resume()`** — Full check\
+      \ sequence:\n   - session.json exists and is valid JSON\n   - Required fields\
+      \ present and non-empty (run_id, step_id, agent_id, runner)\n   - Runner matches\
+      \ expected runner (§6.3)\n   - Prompt bundle artifacts present and valid (delegates\
+      \ to `validate_prompt_artifacts_for_recovery`)\n   - Returns `SessionValidationResult`\
+      \ with explicit failure reasons\n\n2. **§10.2-10.3 `recover_with_fallback()`**\
+      \ — Native-resume-first, fresh-relaunch-fallback:\n   - Attempts native session\
+      \ resume validation first\n   - If native resume fails, automatically falls\
+      \ back to fresh relaunch\n   - Creates `RecoveryFallbackResult` with correct\
+      \ `recovered_via` truth label\n   - Persists both resume and recover attempt\
+      \ artifacts (§10.4)\n   - Returns `RecoveryContinuity(recovered_via=None)` when\
+      \ both paths fail (§10.2 explicit failure)\n\n3. **§10.3-10.4 Persistence functions**\
+      \ — Consistent artifact storage:\n   - `persist_recovery_continuity()` — writes\
+      \ continuity.json\n   - `persist_recovery_attempt()` — writes resume_attempt.json\
+      \ / recover_attempt.json\n   - `persist_recovery_fallback_result()` — convenience\
+      \ wrapper writing all artifacts\n   - `read_recovery_continuity()` / `read_recovery_attempt()`\
+      \ — read-back with graceful None on missing/corrupt\n\n4. **Truth labeling**\
+      \ — `RecoveredVia` type alias enforces semantic distinction:\n   - `native_session_resume`\
+      \ ≠ `fresh_relaunch` (§10.3 mandatory distinction)\n   - Labels persist through\
+      \ write/read round-trips\n\n### Verification Output\n```\nruff check: All checks\
+      \ passed ✅\nmypy: Success: no issues found ✅\npytest: 27 passed in 0.28s ✅\n\
+      ```\n\nTest classes covering all §10 behaviors:\n- TestSessionValidation (9\
+      \ tests): all validation check paths\n- TestRecoveryFallbackNativeResume (1\
+      \ test): native resume chosen when session valid\n- TestRecoveryFallbackFreshRelaunch\
+      \ (3 tests): fresh relaunch when session invalid\n- TestRecoveryTruthLabeling\
+      \ (3 tests): truth labels distinct and persist correctly\n- TestRecoveryAttemptArtifacts\
+      \ (3 tests): attempt artifacts for both paths\n- TestRecoveryFallbackExplicitFailure\
+      \ (2 tests): both paths fail → null continuity\n- TestRecoveryArtifactReadback\
+      \ (5 tests): read-back round-trip + corrupt/missing handling\n- TestRecoveryFallbackEndToEnd\
+      \ (1 test): consistent with orch_app patterns\n\n### Design Decisions\n- D1:\
+      \ Used `validate_prompt_artifacts_for_recovery()` from `prompt_materialization.py`\
+      \ for §10.2 prompt validation (canonical source, per R9)\n- D2: Used `RecoveryAttempt`/`RecoveryContinuity`\
+      \ contracts from `contracts.py` (existing types, per R9)\n- D3: `read_recovery_attempt()`\
+      \ parameter `attempt_kind: Literal[\"resume\", \"recover\"]` with `cast()` for\
+      \ mypy — preserves type contract while handling JSON deserialization\n\n###\
+      \ Commit\n`feat(orchestration): implement recovery fallback semantics per RFC\
+      \ §10-12` on branch `vectl/step-opencode_runner_impl.recovery-fallback`\n\n\
+      ### NOT Done\n- Integration with `orch_app.py` runtime (separate step scope)\n\
+      - Wire-up in `OpenCodeRunner.prepare_or_recover()` (separate step scope)\n-\
+      \ Any changes outside the recovery_fallback module + tests"
   - id: opencode_runner_impl.gate
     name: Verify implementation completeness against RFC
     status: pending

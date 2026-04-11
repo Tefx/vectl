@@ -79125,7 +79125,7 @@ phases:
   steps:
   - id: cli_blackbox_surface_safety_ops.define-surface-safety-tests
     name: Define selector, housekeeping, config, and concurrency black-box tests
-    status: claimed
+    status: done
     description: "step_type: test\nstep_intent: test_define_red\nexpected_result:\
       \ red\nverification_scope: local-check\n\nBlind black-box test design step for\
       \ remaining public CLI safety surfaces. Define the expected-red matrix and assertions\
@@ -79161,6 +79161,22 @@ phases:
     agent: blind-tester-tacit
     claimed_by: blind-tester-tacit
     claimed_at: '2026-04-11T12:31:41.838078+00:00'
+    done_at: '2026-04-11T12:46:53.648552+00:00'
+    evidence: "## refs Read Confirmation (MANDATORY)\n- docs/ORCHESTRATION-PLANE-CLI-CONFIG-OBSERVABILITY-DESIGN.md\
+      \ — read (flags, selector families, env/config precedence, exit-code contract,\
+      \ run registry).\n- docs/ORCHESTRATION-CLI-QUICKSTART.md — read (prune, --plan,\
+      \ env override usage).\n- tools/vectl/README.md — NOT READ: missing at required\
+      \ path.\n\n## Expected-Red Proof\n- Exact pytest command:\n  `uv run pytest\
+      \ tests/repro/test_orch_cli_selector_safety.py tests/repro/test_orch_cli_prune_config.py\
+      \ tests/repro/test_orch_cli_concurrency.py -v`\n- Matrix rows covered: selector\
+      \ ambiguity/absence, explicit run precedence, prune safety, --plan/env-root\
+      \ overrides, json/exit-code contracts, concurrency races.\n- Outcome: 33 tests\
+      \ total — 28 passed, 2 skipped, 3 expected-red gaps surfaced.\n- Open surfaces\
+      \ (expected-red):\n  1) `orch status --latest` with zero runs returns 0 instead\
+      \ of not-found style signaling.\n  2) `orch recover --latest` with zero runs\
+      \ returns success/no_artifacts instead of strict not-found selector behavior.\n\
+      \  3) `orch recover` without selector succeeds/no_artifacts instead of requiring\
+      \ selector per strict selector-safety expectation."
   - id: cli_blackbox_surface_safety_ops.fix-surface-safety-behavior
     name: Close selector, housekeeping, config, and concurrency surface gaps
     status: pending

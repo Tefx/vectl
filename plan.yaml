@@ -78901,10 +78901,12 @@ phases:
     - cli_blackbox_active_control_recovery.liveness-probe
     agent: gate-reviewer-tacit
 - id: cli_blackbox_recovery_faults_cases
-  name: CLI Black-Box Recovery Faults and Case Escalation
+  name: 'CLI Black-Box Tests: Recovery Faults and Cases'
   status: locked
-  gate: Recovery bad paths, runner failure/stall behavior, and real case escalation
-    are covered by black-box tests with explicit blocker-class dispositions.
+  gate: 'Lightweight test milestone: define bad-path black-box tests, close only proven
+    gaps, and retest recovery-fault and case-lifecycle behavior.'
+  context: test_plan_only=true. Focus on bad-path and operator-surface verification,
+    not broad review ceremony.
   depends_on:
   - cli_blackbox_active_control_recovery
   steps:

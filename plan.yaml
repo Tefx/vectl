@@ -80243,6 +80243,36 @@ phases:
     depends_on:
     - opencode_runner_impl.runtime-continuity-integration
     agent: python-senior-tacit
+  - id: opencode_runner_impl.gate
+    name: Verify implementation completeness against RFC
+    status: pending
+    description: 'Verify the implementation phase fully covers docs/RFC-opencode-orchestration-runner.md
+      before independent verification.
+
+
+      Scope:
+
+      - dedicated runner exists
+
+      - prompt materialization and handoff are implemented
+
+      - runtime/session/recovery semantics are wired
+
+      - automatic fallback is implemented with explicit recovery truth
+
+      - no bare `SubprocessRunner("opencode")` path remains authoritative
+
+
+      Refs:
+
+      - docs/RFC-opencode-orchestration-runner.md
+
+      - changed implementation files'
+    verification: Changed-scope implementation checks and targeted tests are sufficient
+      to hand off to independent verification without missing required feature scope.
+    depends_on:
+    - opencode_runner_impl.recovery-fallback
+    agent: integration-verifier-tacit
 - id: opencode_runner_verification
   name: OpenCode Runner Verification
   status: locked

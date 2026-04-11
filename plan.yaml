@@ -79304,3 +79304,60 @@ phases:
     - cli_blackbox_surface_safety_ops.define-surface-safety-tests
     - cli_blackbox_surface_safety_ops.fix-surface-safety-behavior
     agent: blind-tester-tacit
+  - id: cli_blackbox_surface_safety_ops.gate
+    name: Gate selector, housekeeping, config, and concurrency proof
+    status: pending
+    description: 'Gate review: verify the remaining CLI black-box surface safety debt
+      is closed with reproducible evidence.
+
+
+      review_depth: THOROUGH
+
+      review_depth_rationale:
+
+      - includes race and safety hazards
+
+      - protects future full-plan checks from rediscovering known selector/prune issues
+
+      - spans multiple command families and runtime roots
+
+
+      cross_cutting_focus:
+
+      - ambiguous-selection clarity
+
+      - active-run prune safety
+
+      - env/config authority correctness
+
+      - concurrency non-corruption'
+    verification: '- All phase steps completed successfully
+
+      - Runnable CLI evidence present for the touched surfaces
+
+      - No unresolved blocker-class selector/prune/config/concurrency gap remains
+      unowned
+
+      - Ready for finalization'
+    evidence_template: '## refs Read Confirmation (MANDATORY)
+
+      For each ref in this step:
+
+      - <filename> — key passage or "NOT READ: <reason>"
+
+
+      ## Gate Review Report
+
+      - Step-by-step review
+
+      - Safety findings
+
+      - Blocking findings / none
+
+      - OPEN or BLOCKED'
+    depends_on:
+    - cli_blackbox_surface_safety_ops.define-surface-safety-tests
+    - cli_blackbox_surface_safety_ops.fix-surface-safety-behavior
+    - cli_blackbox_surface_safety_ops.retest-surface-safety-matrix
+    - cli_blackbox_surface_safety_ops.liveness-probe
+    agent: gate-reviewer-tacit

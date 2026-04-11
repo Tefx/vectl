@@ -79794,8 +79794,12 @@ phases:
   status: in_progress
   gate: Role profile overrides loader, validation, provenance, and RFC-required tests
     are implemented with no ambiguity in built-in vs custom role semantics.
+  context: 'work_type=new_capability but implementation scope is config/runtime semantics
+    only. Source of truth: docs/RFC-role-profile-overrides.md. Keep plan lean: implement
+    merge logic, explicit validation, provenance output, and tests. This phase intentionally
+    runs after the OpenCode runner RFC work.'
   depends_on:
-  - cli_blackbox_finalization
+  - opencode_runner_verification
   steps:
   - id: config_role_profile_overrides_impl.merge-loader-and-registry
     name: Implement role_profile_overrides merge loader

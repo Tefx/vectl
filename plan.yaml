@@ -81189,7 +81189,7 @@ phases:
       to live-smoke)'
   - id: opencode_runner_verification.live-smoke
     name: Run real OpenCode live smoke
-    status: pending
+    status: claimed
     description: 'Run real OpenCode live smoke to prove the runner is automation-grade.
 
 
@@ -81216,6 +81216,8 @@ phases:
     depends_on:
     - opencode_runner_verification.integration-tests
     agent: integration-verifier-tacit
+    claimed_by: integration-verifier-tacit
+    claimed_at: '2026-04-11T23:04:12.244631+00:00'
   - id: opencode_runner_verification.final-gate
     name: Run final OpenCode runner verification gate
     status: pending

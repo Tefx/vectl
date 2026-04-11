@@ -79156,32 +79156,6 @@ phases:
     depends_on:
     - cli_blackbox_finalization.full-plan-check
     agent: doc-reviewer-tacit
-  - id: cli_blackbox_finalization.deep-review-architecture
-    name: Review orchestration test architecture and concurrency safety
-    status: pending
-    description: Independent architecture review focused on whether the new black-box
-      harnesses preserve correct module boundaries, runtime-root isolation, and concurrency
-      safety assumptions. Emphasize process-group control, temp repo isolation, and
-      no cross-run state leakage.
-    verification: No structural testing harness smell undermines the claimed CLI black-box
-      coverage or creates hidden cross-run coupling.
-    evidence_template: '## refs Read Confirmation (MANDATORY)
-
-      For each ref in this step:
-
-      - <filename> — key passage or "NOT READ: <reason>"
-
-
-      ## Architecture Review Report
-
-      - Boundary findings
-
-      - Concurrency findings
-
-      - Residual risk / none'
-    depends_on:
-    - cli_blackbox_finalization.full-plan-check
-    agent: software-architect-tacit
   - id: cli_blackbox_finalization.deep-review-spec
     name: Audit CLI black-box spec conformance
     status: pending
@@ -79313,7 +79287,6 @@ phases:
     - cli_blackbox_finalization.full-plan-check
     - cli_blackbox_finalization.doc-sync
     - cli_blackbox_finalization.deep-review-spec
-    - cli_blackbox_finalization.deep-review-architecture
     - cli_blackbox_finalization.deep-review-contract-strength
     - cli_blackbox_finalization.deep-review-blackbox
     agent: gate-reviewer-tacit

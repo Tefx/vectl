@@ -80484,7 +80484,7 @@ phases:
       - docs/RFC-opencode-orchestration-runner.md §§9,15'
   - id: opencode_runner_impl.runtime-continuity-integration
     name: Integrate OpenCode runner into runtime and continuity
-    status: pending
+    status: claimed
     description: 'Wire OpenCodeRunner into runtime/orch_app dispatch and continuity
       flows.
 
@@ -80517,6 +80517,8 @@ phases:
     depends_on:
     - opencode_runner_impl.dedicated-runner
     agent: python-senior-tacit
+    claimed_by: python-senior-tacit
+    claimed_at: '2026-04-11T21:10:55.368450+00:00'
   - id: opencode_runner_impl.recovery-fallback
     name: Implement automatic recovery fallback semantics
     status: pending

@@ -78707,7 +78707,7 @@ phases:
       - Downstream implementation owner: `cli_blackbox_active_control_recovery.fix-active-control-recovery-behavior`"
   - id: cli_blackbox_active_control_recovery.fix-active-control-recovery-behavior
     name: Close active-control consumption and recovery terminalization gaps
-    status: pending
+    status: claimed
     description: "step_type: implementation\nverification_scope: phase-check\n\nClose\
       \ behavior gaps in orchestration control/recovery paths only after the tester-owned\
       \ black-box matrix from `cli_blackbox_active_control_recovery.define-active-control-recovery-tests`\
@@ -78775,6 +78775,8 @@ phases:
     depends_on:
     - cli_blackbox_active_control_recovery.define-active-control-recovery-tests
     agent: python-senior-tacit
+    claimed_by: python-senior-tacit
+    claimed_at: '2026-04-11T10:36:00.484899+00:00'
   - id: cli_blackbox_active_control_recovery.retest-active-control-recovery
     name: Retest active-control and recovery black-box matrix
     status: pending

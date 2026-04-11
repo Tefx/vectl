@@ -79997,7 +79997,7 @@ phases:
     agent: integration-verifier-tacit
 - id: opencode_runner_contracts
   name: OpenCode Runner Contracts
-  status: pending
+  status: in_progress
   gate: OpenCode orchestration contract, prompt artifact model, and recovery/session
     semantics are pinned with no ambiguity before runner implementation begins.
   depends_on:
@@ -80005,7 +80005,7 @@ phases:
   steps:
   - id: opencode_runner_contracts.execution-request-contract
     name: Lock execution request and session contract
-    status: pending
+    status: claimed
     description: 'Implement the RFC-defined contract shape and contract-facing documentation
       lock for OpenCode orchestration.
 
@@ -80041,6 +80041,8 @@ phases:
     verification: Contract tests and/or interface assertions prove the new request/session
       fields and recovery truth labels are consistent across code-facing interfaces.
     agent: python-senior-tacit
+    claimed_by: python-senior-tacit
+    claimed_at: '2026-04-11T18:41:54.195854+00:00'
   - id: opencode_runner_contracts.prompt-artifact-contract
     name: Lock prompt artifact and runner handoff contract
     status: pending

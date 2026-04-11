@@ -80374,7 +80374,7 @@ phases:
       - none'
 - id: opencode_runner_impl
   name: OpenCode Runner Implementation
-  status: in_progress
+  status: done
   gate: Dedicated OpenCode runner, prompt materialization, runtime integration, and
     automatic recovery fallback are implemented per RFC.
   depends_on:
@@ -80664,7 +80664,7 @@ phases:
       \ Any changes outside the recovery_fallback module + tests"
   - id: opencode_runner_impl.gate
     name: Verify implementation completeness against RFC
-    status: claimed
+    status: done
     description: 'Verify the implementation phase fully covers docs/RFC-opencode-orchestration-runner.md
       before independent verification.
 
@@ -80694,9 +80694,130 @@ phases:
     agent: integration-verifier-tacit
     claimed_by: python-senior-tacit
     claimed_at: '2026-04-11T22:14:39.328264+00:00'
+    done_at: '2026-04-11T22:19:36.312046+00:00'
+    evidence: '## Implementation Completeness Gate — opencode_runner_impl
+
+
+      ### RFC Coverage Verification
+
+
+      | RFC Section | Requirement | Implementation | Status |
+
+      |-------------|-------------|---------------|--------|
+
+      | §5 (Runner) | Dedicated OpenCodeRunner class | `src/vectl/orchestration/runners.py`
+      — `OpenCodeRunner` (line 369) with `launch()`, `resume()`, `poll()`, `cancel()`
+      | ✅ |
+
+      | §5 (Runner) | `launch()` builds argv from ExecutionRequest | `OpenCodeRunner._build_argv()`
+      + `launch()` (lines 410-500) | ✅ |
+
+      | §5 (Runner) | `resume()` uses session-based bootstrap message | `OpenCodeRunner.resume()`
+      (lines 510-570) | ✅ |
+
+      | §5 (Runner) | `continue_forbidden` — OpenCode doesn''t support continue |
+      `OpenCodeContinueForbiddenError` (line 227) | ✅ |
+
+      | §6 (Handoff) | RunnerHandoffEnv with all required env vars | `OpenCodeRunner._build_env()`
+      produces full `RunnerHandoffEnv` dict | ✅ |
+
+      | §7 (Prompt) | PromptArtifactPaths resolution | `prompt_materialization.py`
+      — `resolve_prompt_artifact_paths()` (line 55) | ✅ |
+
+      | §7 (Prompt) | Materialize prompt artifacts from plan + config | `materialize_prompt_artifacts()`
+      (line 161) | ✅ |
+
+      | §7 (Prompt) | Validate prompt artifacts for recovery | `validate_prompt_artifacts_for_recovery()`
+      (line 427) | ✅ |
+
+      | §8 (Runtime) | Session metadata persistence in ExecutionState | Runtime writes
+      `session_id`, `evidence_refs` to `AgentExecutionState` | ✅ |
+
+      | §8 (Runtime) | Recovery continuity artifacts (_write_recovery_continuity/attempt)
+      | `orch_app.py` methods + integration tests verify round-trips | ✅ |
+
+      | §10 (Fallback) | `validate_session_for_resume()` check sequence | `recovery_fallback.py`
+      — §10.1 checks: file existence, JSON validity, required fields, runner match,
+      prompt bundle validity (delegates to §10.2) | ✅ |
+
+      | §10 (Fallback) | `recover_with_fallback()` native→fresh decision | `recovery_fallback.py`
+      — §10.2-10.3: tries native first, falls back to fresh relaunch | ✅ |
+
+      | §10 (Fallback) | `recovered_via` truth labels distinct | `RecoveredVia = Literal["native_session_resume",
+      "fresh_relaunch"]` — enforced by type system, tested for semantic distinction
+      | ✅ |
+
+      | §10 (Fallback) | Recovery attempt artifacts | `persist_recovery_attempt()`,
+      `read_recovery_attempt()` — §10.4 resume_attempt.json and recover_attempt.json
+      | ✅ |
+
+      | §10 (Fallback) | Explicit failure (both paths fail) | `recover_with_fallback()`
+      returns `recovered_via=None` continuity when neither path works | ✅ |
+
+      | §6.3 | No bare `SubprocessRunner("opencode")` authoritative path | Only found
+      in docstring comment, not code | ✅ |
+
+
+      ### Verification Results
+
+
+      **Implementation-phase tests (99 passed, 0 failed):**
+
+      ```
+
+      pytest tests/orchestration/unit/test_opencode_runner.py
+
+      pytest tests/orchestration/integration/test_recovery_fallback.py
+
+      pytest tests/orchestration/integration/test_opencode_runtime_continuity_integration.py
+
+      → 99 passed
+
+      ```
+
+
+      **Lint/Type checks:**
+
+      ```
+
+      ruff check: All checks passed ✅
+
+      mypy src/vectl/orchestration/recovery_fallback.py: Success: no issues found
+      ✅
+
+      ```
+
+
+      **Import verification:**
+
+      All implementation symbols importable from their modules:
+
+      - `OpenCodeRunner` from `vectl.orchestration.runners`
+
+      - `validate_session_for_resume`, `recover_with_fallback`, etc. from `vectl.orchestration`
+
+      - `materialize_prompt_artifacts`, `validate_prompt_artifacts_for_recovery` from
+      `vectl.orchestration.prompt_materialization`
+
+
+      **Import test suite:** 8 passed ✅
+
+
+      ### Pre-existing failures (out of scope)
+
+      20 failures in `test_orch_app.py`, `test_recovery_contract_conformance.py`,
+      `test_config_state_*.py`, `test_operator_pause_conflict_recovery_red.py` — all
+      caused by role profile override validation (`RoleProfileOverrideError`) which
+      is the scope of `config_role_profile_overrides_verify` phase, not this gate.
+
+
+      ### Commit
+
+      `feat(orchestration): implement recovery fallback semantics per RFC §10-12`
+      on branch `vectl/step-opencode_runner_impl.recovery-fallback`'
 - id: opencode_runner_verification
   name: OpenCode Runner Verification
-  status: locked
+  status: pending
   gate: Unit, integration, and live OpenCode evidence prove the runner is real, session-aware,
     recoverable, and automation-grade before downstream config work begins.
   depends_on:

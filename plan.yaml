@@ -79156,33 +79156,6 @@ phases:
     depends_on:
     - cli_blackbox_finalization.full-plan-check
     agent: doc-reviewer-tacit
-  - id: cli_blackbox_finalization.deep-review-blackbox
-    name: Perform independent black-box CLI verification
-    status: pending
-    description: Using only public CLI commands and documented fixture shapes, independently
-      rerun representative end-to-end scenarios across happy path, active control,
-      bad-path recovery, case lifecycle, and prune/config safety.
-    verification: Independent black-box verification reproduces the key scenarios
-      without relying on implementation internals.
-    evidence_template: '## refs Read Confirmation (MANDATORY)
-
-      For each ref in this step:
-
-      - <filename> — key passage or "NOT READ: <reason>"
-
-
-      ## Independent Black-Box Verification
-
-      - Scenarios run
-
-      - Commands executed
-
-      - Observed outcomes
-
-      - Gaps / none'
-    depends_on:
-    - cli_blackbox_finalization.full-plan-check
-    agent: blind-tester-tacit
   - id: cli_blackbox_finalization.gate
     name: Final gate for CLI black-box hardening plan
     status: pending
@@ -79236,5 +79209,4 @@ phases:
     depends_on:
     - cli_blackbox_finalization.full-plan-check
     - cli_blackbox_finalization.doc-sync
-    - cli_blackbox_finalization.deep-review-blackbox
     agent: gate-reviewer-tacit

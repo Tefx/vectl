@@ -79865,3 +79865,36 @@ phases:
     depends_on:
     - config_role_profile_overrides_impl.merge-loader-and-registry
     agent: python-senior-tacit
+  - id: config_role_profile_overrides_impl.provenance-effective-config-show
+    name: Implement provenance in config-show effective output
+    status: pending
+    description: 'Implement RFC-required provenance surface for `config-show --effective`.
+
+
+      Scope:
+
+      - expose provenance categories `default`, `override`, `custom`
+
+      - human output: one fully-qualified field path per line with source annotation
+
+      - structured output: include `role_profile_provenance` object with `value` and
+      `source`
+
+      - keep provenance generation in config inspection/reporting path, not runtime
+      dispatch semantics
+
+
+      Refs:
+
+      - docs/RFC-role-profile-overrides.md section 7.1
+
+      - src/vectl/orch_app.py
+
+      - src/vectl/cli.py
+
+      - src/vectl/orchestration/config.py'
+    verification: CLI/config-show tests prove human and JSON output shapes match RFC
+      examples and categories.
+    depends_on:
+    - config_role_profile_overrides_impl.merge-loader-and-registry
+    agent: python-senior-tacit

@@ -78965,19 +78965,21 @@ phases:
     name: Define selector, housekeeping, config, and concurrency black-box tests
     status: pending
     description: "step_type: test\nstep_intent: test_define_red\nexpected_result:\
-      \ red\nverification_scope: local-check protecting downstream gate `cli_blackbox_surface_safety_ops.gate`\n\
-      \nAuthor the remaining public-surface black-box tests for:\n- ambiguous `--latest`\
-      \ selection with multiple active runs\n- explicit run_id precedence and selector\
-      \ conflict handling\n- prune safety, especially no deletion of active runs\n\
-      - `--plan PATH` and env-var runtime-root override behavior\n- stable `--json`/human\
-      \ output contracts and exit codes\n- concurrent CLI races (`orch run` vs `orch\
-      \ run`, recover vs run, stop vs recover)\n\nScope anchors:\n- spec_refs:\n \
-      \ - docs/ORCHESTRATION-PLANE-CLI-CONFIG-OBSERVABILITY-DESIGN.md §7.*\n  - docs/ORCHESTRATION-CLI-QUICKSTART.md\
-      \ §§7-11\n- touch_paths:\n  - tests/repro/test_orch_cli_selector_safety.py\n\
-      \  - tests/repro/test_orch_cli_prune_config.py\n  - tests/repro/test_orch_cli_concurrency.py\n\
-      - harness_refs:\n  - multi-process fixture repos with multiple runs\n  - env\
-      \ override roots for artifacts/workspaces\n- authoritative_interface: existing\
-      \ public CLI only"
+      \ red\nverification_scope: local-check\n\nBlind black-box test design step for\
+      \ remaining public CLI safety surfaces. Define the expected-red matrix and assertions\
+      \ from docs/help/public behavior, not implementation internals. If test files\
+      \ are written here, they must preserve blind black-box discipline.\n\nTarget\
+      \ matrix:\n- ambiguous `--latest` selection with multiple active runs\n- explicit\
+      \ run_id precedence and selector conflict handling\n- prune safety, especially\
+      \ no deletion of active runs\n- `--plan PATH` and env-var runtime-root override\
+      \ behavior\n- stable `--json`/human output contracts and exit codes\n- concurrent\
+      \ CLI races (`orch run` vs `orch run`, recover vs run, stop vs recover)\n\n\
+      Scope anchors:\n- spec_refs:\n  - docs/ORCHESTRATION-PLANE-CLI-CONFIG-OBSERVABILITY-DESIGN.md\
+      \ §7.*\n  - docs/ORCHESTRATION-CLI-QUICKSTART.md §§7-11\n- touch_paths:\n  -\
+      \ tests/repro/test_orch_cli_selector_safety.py\n  - tests/repro/test_orch_cli_prune_config.py\n\
+      \  - tests/repro/test_orch_cli_concurrency.py\n- harness_refs:\n  - multi-process\
+      \ fixture repos with multiple runs\n  - env override roots for artifacts/workspaces\n\
+      - authoritative_interface: existing public CLI only"
     verification: Targeted pytest invocation exposes remaining selector/housekeeping/config/concurrency
       gaps through public CLI subprocesses and real temp repos.
     evidence_template: '## refs Read Confirmation (MANDATORY)
@@ -78994,7 +78996,7 @@ phases:
       - Matrix rows covered
 
       - Which surfaces remain open'
-    agent: python-executor
+    agent: blind-tester-tacit
   - id: cli_blackbox_surface_safety_ops.fix-surface-safety-behavior
     name: Close selector, housekeeping, config, and concurrency surface gaps
     status: pending

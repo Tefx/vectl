@@ -80366,3 +80366,32 @@ phases:
     depends_on:
     - opencode_runner_verification.integration-tests
     agent: integration-verifier-tacit
+  - id: opencode_runner_verification.final-gate
+    name: Run final OpenCode runner verification gate
+    status: pending
+    description: 'Run final changed-scope verification for the full OpenCode runner
+      feature.
+
+
+      Scope:
+
+      - unit, integration, and live smoke evidence all pass
+
+      - unchanged unaffected runner paths remain healthy enough for changed-scope
+      confidence
+
+      - no remaining ambiguity exists in launch/resume/recovery semantics
+
+      - previous stall failure is closed by proof, not by assumption
+
+
+      Refs:
+
+      - docs/RFC-opencode-orchestration-runner.md
+
+      - changed implementation and test files'
+    verification: Changed-scope verification command(s) and targeted proof set pass;
+      feature is ready to unblock downstream config work.
+    depends_on:
+    - opencode_runner_verification.live-smoke
+    agent: integration-verifier-tacit

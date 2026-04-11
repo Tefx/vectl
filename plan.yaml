@@ -79361,3 +79361,10 @@ phases:
     - cli_blackbox_surface_safety_ops.retest-surface-safety-matrix
     - cli_blackbox_surface_safety_ops.liveness-probe
     agent: gate-reviewer-tacit
+- id: cli_blackbox_finalization
+  name: CLI Black-Box Finalization
+  status: locked
+  gate: Repo-level CLI black-box coverage is verified, documentation is synced, independent
+    audits are complete, and final gate confirms remaining risk disposition.
+  depends_on:
+  - cli_blackbox_surface_safety_ops

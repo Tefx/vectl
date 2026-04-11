@@ -408,6 +408,97 @@ def validate_role_profile(profile: RoleProfile) -> list[str]:
     return mismatches
 
 
+# ---------------------------------------------------------------------
+# Role Profile Provenance (RFC §7.1)
+# ---------------------------------------------------------------------
+
+
+@dataclass(frozen=True)
+class RoleFieldProvenance:
+    """Provenance for a single role profile field value.
+
+    Authority: docs/RFC-role-profile-overrides.md §7.1
+
+    Attributes:
+        value: The effective field value.
+        source: Provenance category — one of ``default``, ``override``, ``custom``.
+    """
+
+    value: str
+    source: Literal["default", "override", "custom"]
+
+
+def build_role_profile_provenance(
+    config: OrchestrationConfig,
+) -> dict[str, dict[str, RoleFieldProvenance]]:
+    """Build per-field provenance for every role profile in *config*.
+
+    Authority: docs/RFC-role-profile-overrides.md §7.1
+
+    Provenance categories (per §7.1):
+
+    - ``default`` — the value matches the built-in default for this role/field.
+    - ``override`` — the role is built-in but the field value differs from the
+      built-in default (i.e. a ``role_profile_overrides`` entry patched it).
+    - ``custom`` — the role is a user-defined custom role (not a built-in).
+
+    This function inspects the *effective* configuration and compares each
+    role profile field against built-in defaults to determine provenance.
+    It is a config inspection surface, not a runtime dispatch concern.
+
+    Args:
+        config: An effective ``OrchestrationConfig`` (already merged).
+
+    Returns:
+        Mapping of ``role_id -> {field_name -> RoleFieldProvenance}``.
+    """
+    builtin_ids = _builtin_role_ids()
+    builtin_defaults = {p.role_id: p for p in default_role_profiles()}
+    provenance: dict[str, dict[str, RoleFieldProvenance]] = {}
+
+    # Fields to track provenance for (must match RoleProfile attributes)
+    profile_fields = (
+        "agent_id",
+        "prompt_family",
+        "execution_context",
+        "mutation_policy",
+        "session_policy",
+        "output_contract",
+        "default_runner",
+    )
+
+    for profile in config.role_profiles:
+        role_id = profile.role_id
+        field_provenance: dict[str, RoleFieldProvenance] = {}
+
+        if role_id not in builtin_ids:
+            # Custom role — all fields are "custom" provenance
+            for field_name in profile_fields:
+                field_value = getattr(profile, field_name)
+                field_provenance[field_name] = RoleFieldProvenance(
+                    value=str(field_value),
+                    source="custom",
+                )
+        else:
+            # Built-in role — compare against defaults
+            default_profile = builtin_defaults[role_id]
+            for field_name in profile_fields:
+                field_value = getattr(profile, field_name)
+                default_value = getattr(default_profile, field_name)
+                if str(field_value) != str(default_value):
+                    source: Literal["default", "override", "custom"] = "override"
+                else:
+                    source = "default"
+                field_provenance[field_name] = RoleFieldProvenance(
+                    value=str(field_value),
+                    source=source,
+                )
+
+        provenance[role_id] = field_provenance
+
+    return provenance
+
+
 def validate_role_profiles(profiles: tuple[RoleProfile, ...]) -> list[str]:
     """Validate registry-wide role profile constraints."""
 
@@ -1830,6 +1921,8 @@ __all__ = [
     "ConfigValidationError",
     "RoleProfileOverrideError",
     "default_role_profiles",
+    "build_role_profile_provenance",
+    "RoleFieldProvenance",
     "freeze_config",
     "load_frozen_snapshot",
     "load_orchestration_config",

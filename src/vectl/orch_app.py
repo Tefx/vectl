@@ -29,11 +29,13 @@ import time
 from dataclasses import asdict, dataclass, field, replace
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import TYPE_CHECKING, Literal, cast
+from typing import TYPE_CHECKING, Any, Literal, cast
 
 from vectl.orchestration.config import (
     OrchestrationConfig,
     ResolverToolAllowlist,
+    RoleFieldProvenance,
+    build_role_profile_provenance,
     freeze_config,
     load_frozen_snapshot,
     load_orchestration_config,
@@ -328,18 +330,20 @@ class ConfigResult:
     Typed result for config operations.
 
     Authority: docs/ORCHESTRATION-PLANE-IMPLEMENTATION-DESIGN.md section 3.7
-
-    GAP: The exact config result schema is not yet fully specified.
+    Authority: docs/RFC-role-profile-overrides.md §7.1
 
     Attributes:
         show_output: Output from config show operation.
         validation_passed: True if config validation passed.
         tools: Tuple of registered tool family identifiers.
+        role_profile_provenance: Per-field provenance for role profiles
+            (populated when ``effective=True``). Maps ``role_id -> {field_name -> RoleFieldProvenance}``.
     """
 
     show_output: str = ""
     validation_passed: bool = False
     tools: tuple[str, ...] = ()
+    role_profile_provenance: dict[str, dict[str, Any]] | None = None
 
 
 @dataclass(frozen=True)
@@ -3513,6 +3517,11 @@ class OrchestrationApp:
         Show current orchestration configuration.
 
         Authority: docs/ORCHESTRATION-PLANE-IMPLEMENTATION-DESIGN.md section 3.7
+        Authority: docs/RFC-role-profile-overrides.md §7.1
+
+        When ``effective=True``, includes role profile provenance per RFC §7.1:
+        each role profile field is annotated with its source category
+        (``default``, ``override``, or ``custom``).
 
         Returns:
             ConfigResult with current configuration.
@@ -3521,6 +3530,19 @@ class OrchestrationApp:
             OSError: Propagates config materialization failures.
         """
         config = self._effective_orchestration_config()
+
+        # Build role profile provenance (RFC §7.1)
+        role_profile_provenance: dict[str, dict[str, RoleFieldProvenance]] = {}
+        role_profile_lines: list[str] = []
+
+        if effective:
+            role_profile_provenance = build_role_profile_provenance(config)
+            for role_id, fields in role_profile_provenance.items():
+                for field_name, prov in fields.items():
+                    role_profile_lines.append(
+                        f"role_profiles.{role_id}.{field_name} = {prov.value} (source={prov.source})"
+                    )
+
         if effective:
             show_output = (
                 f"plan_path={config.plan_path}\n"
@@ -3556,6 +3578,9 @@ class OrchestrationApp:
                 f"operator.default_output={config.operator.default_output}\n"
                 f"operator.max_pending_actions={config.operator.max_pending_actions}"
             )
+            # Append role profile provenance lines (RFC §7.1)
+            if role_profile_lines:
+                show_output += "\n" + "\n".join(role_profile_lines)
         else:
             show_output = (
                 f"plan_path={config.plan_path}\n"
@@ -3564,8 +3589,23 @@ class OrchestrationApp:
                 f"resolver_enabled={config.resolver.enabled}\n"
                 f"allowlist={self._allowlist_text(config.resolver.tool_allowlist)}"
             )
+
+        # Convert RoleFieldProvenance dataclasses to JSON-ready dicts
+        provenance_json: dict[str, dict[str, dict[str, str]]] | None = None
+        if effective:
+            provenance_json = {
+                role_id: {
+                    field_name: {"value": prov.value, "source": prov.source}
+                    for field_name, prov in fields.items()
+                }
+                for role_id, fields in role_profile_provenance.items()
+            }
+
         return ConfigResult(
-            show_output=show_output, validation_passed=True, tools=canonical_tool_families()
+            show_output=show_output,
+            validation_passed=True,
+            tools=canonical_tool_families(),
+            role_profile_provenance=provenance_json,
         )
 
     def config_validate(

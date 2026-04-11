@@ -80280,3 +80280,31 @@ phases:
     recoverable, and automation-grade before downstream config work begins.
   depends_on:
   - opencode_runner_impl
+  steps:
+  - id: opencode_runner_verification.unit-tests
+    name: Add and run OpenCode runner unit coverage
+    status: pending
+    description: 'Add and run unit coverage for OpenCode runner substrate.
+
+
+      Scope:
+
+      - runner registry resolves OpenCodeRunner
+
+      - expanded execution request contract is exercised
+
+      - prompt artifact materialization shape is verified
+
+      - launch/resume/poll/cancel command construction is verified
+
+      - typed runner errors and recovery truth persistence helpers are verified
+
+
+      Refs:
+
+      - docs/RFC-opencode-orchestration-runner.md section 13.1
+
+      - tests around orchestration config/runtime/runner substrate'
+    verification: Targeted unit pytest modules for runner substrate and prompt materialization
+      pass.
+    agent: integration-verifier-tacit

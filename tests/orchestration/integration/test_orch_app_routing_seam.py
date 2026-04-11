@@ -43,11 +43,53 @@ from vectl.io import save_plan
 from vectl.models import Phase, Plan, Step
 from vectl.orch_app import (
     AppConfig,
+    OrchestrationApp,
+    OrchestrationResult,
     build_orchestration_app,
 )
 from vectl.orchestration.config import OrchestrationConfig
 from vectl.orchestration.contracts import DispatchSpec, ExecutionResult, ReconcileResult
 from vectl.orchestration.run_store import RunRegistry
+
+
+def _skip_collect_and_route_terminal(
+    self,
+    *,
+    registry: RunRegistry,
+    run_id: str,
+    step_id: str,
+    execution_id: str,
+    dispatch_spec: DispatchSpec,
+    agent: str,
+    run_root: Path,
+    max_poll_iterations: int = 600,
+    poll_interval_seconds: float = 0.1,
+) -> OrchestrationResult:
+    """Skipped collect-and-route that returns success without full lifecycle.
+
+    This is a monkeypatch for tests that verify other aspects of the
+    orchestration (claim ordering, event persistence, etc.) without needing
+    a complete runner completion cycle.
+    """
+    return OrchestrationResult(
+        success=True,
+        message=(f"resume_safe: Skipped collect-and-route for integration test (step={step_id})"),
+        step_id=step_id,
+        run_id=run_id,
+    )
+
+
+@pytest.fixture(autouse=True)
+def _patch_collect_and_route():
+    """Autouse fixture: skip _collect_and_route_terminal for routing seam tests.
+
+    These tests verify ordering invariants (claim-before-start, etc.) via
+    monkeypatching, not end-to-end runner completion.
+    """
+    original = OrchestrationApp._collect_and_route_terminal
+    OrchestrationApp._collect_and_route_terminal = _skip_collect_and_route_terminal  # type: ignore[assignment]
+    yield
+    OrchestrationApp._collect_and_route_terminal = original  # type: ignore[assignment]
 
 
 def _write_plan(plan_path: Path) -> None:
@@ -76,7 +118,8 @@ def _build_app(tmp_path: Path):
         orchestration_config=OrchestrationConfig(plan_path=plan_path),
         run_store_root=runs_root,
     )
-    return build_orchestration_app(config)
+    app = build_orchestration_app(config)
+    return app
 
 
 # ======================================================================

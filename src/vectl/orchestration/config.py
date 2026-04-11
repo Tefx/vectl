@@ -29,6 +29,7 @@ from vectl.orchestration.contracts import (
     MutationPolicy,
     RoleOutputContract,
     RoleProfile,
+    SessionPolicy,
 )
 from vectl.orchestration.tool_registry import (
     CANONICAL_TOOL_FAMILIES,
@@ -86,6 +87,31 @@ CONFIG_FILE_NAME: Final[str] = "vectl.yaml"
 ENV_PREFIX: Final[str] = "VECTL_ORCH_"
 # User config directory
 USER_CONFIG_DIR: Final[str] = "~/.config/vectl"
+
+# Role profile override fields allowed by RFC §6.1
+_ALLOWED_OVERRIDE_FIELDS: Final[frozenset[str]] = frozenset(
+    {
+        "agent_id",
+        "prompt_family",
+        "execution_context",
+        "mutation_policy",
+        "session_policy",
+        "output_contract",
+        "default_runner",
+    }
+)
+
+
+def _builtin_role_ids() -> frozenset[str]:
+    """Return the set of built-in role IDs from ``default_role_profiles()``.
+
+    Authority: docs/RFC-role-profile-overrides.md §5.1, §6.1
+
+    Built-in role IDs are the authoritative target set for
+    ``role_profile_overrides``. Custom roles defined in
+    ``role_profiles`` are not valid override targets.
+    """
+    return frozenset(p.role_id for p in default_role_profiles())
 
 
 # ---------------------------------------------------------------------
@@ -401,6 +427,261 @@ def validate_role_profiles(profiles: tuple[RoleProfile, ...]) -> list[str]:
             )
             errors.append(message)
     return errors
+
+
+# ---------------------------------------------------------------------
+# Role Profile Override and Merge Logic
+# Authority: docs/RFC-role-profile-overrides.md §5, §6
+# ---------------------------------------------------------------------
+
+
+def _parse_role_profile_overrides(
+    raw_overrides: dict[str, dict[str, Any]],
+) -> dict[str, dict[str, str]]:
+    """Parse raw ``role_profile_overrides`` from config YAML.
+
+    Authority: docs/RFC-role-profile-overrides.md §4, §6.1
+
+    Each entry must be a mapping of field names to string values.
+    Unknown fields are preserved here for validation to reject later.
+
+    Args:
+        raw_overrides: The ``role_profile_overrides`` dict from parsed YAML.
+
+    Returns:
+        Mapping of role_id -> field overrides (string values).
+
+    Raises:
+        ValueError: If the overrides structure is malformed.
+    """
+    if not isinstance(raw_overrides, dict):
+        raise ValueError("orchestration.role_profile_overrides must be a mapping")
+
+    parsed: dict[str, dict[str, str]] = {}
+    for role_id, fields in raw_overrides.items():
+        if not isinstance(fields, dict):
+            raise ValueError(f"orchestration.role_profile_overrides.{role_id!r} must be a mapping")
+        field_map: dict[str, str] = {}
+        for field_name, field_value in fields.items():
+            field_map[str(field_name)] = str(field_value)
+        parsed[str(role_id)] = field_map
+
+    return parsed
+
+
+def _parse_custom_role_profiles(
+    raw_profiles: dict[str, dict[str, Any]],
+) -> tuple[RoleProfile, ...]:
+    """Parse raw ``role_profiles`` entries as custom role definitions.
+
+    Authority: docs/RFC-role-profile-overrides.md §4.2, §5, §6.2
+
+    This parses ``role_profiles`` entries identically to the existing
+    ``_dict_to_config`` parsing, producing ``RoleProfile`` instances.
+
+    Args:
+        raw_profiles: The ``role_profiles`` dict from parsed YAML.
+
+    Returns:
+        Tuple of parsed RoleProfile instances.
+    """
+    parsed_profiles: list[RoleProfile] = []
+    for role_id, raw_profile in raw_profiles.items():
+        if not isinstance(raw_profile, dict):
+            raise ValueError(f"role profile {role_id!r} must be a mapping")
+        agent_id = raw_profile.get("agent_id", role_id)
+        if not isinstance(agent_id, str) or not agent_id.strip():
+            raise ValueError(f"role profile {role_id!r} must define a non-empty agent_id")
+        parsed_profiles.append(
+            RoleProfile(
+                role_id=role_id,
+                agent_id=agent_id,
+                prompt_family=str(raw_profile.get("prompt_family", "")),
+                execution_context=cast(
+                    ExecutionContext,
+                    str(raw_profile.get("execution_context", "linked_worktree")),
+                ),
+                mutation_policy=cast(
+                    MutationPolicy,
+                    str(raw_profile.get("mutation_policy", "read_only")),
+                ),
+                session_policy=cast(
+                    SessionPolicy,
+                    str(raw_profile.get("session_policy", "reuse_forbidden")),
+                ),
+                output_contract=cast(
+                    RoleOutputContract,
+                    str(raw_profile.get("output_contract", "freeform_evidence")),
+                ),
+                default_runner=str(raw_profile.get("default_runner", DEFAULT_RUNNER)),
+            )
+        )
+    return tuple(parsed_profiles)
+
+
+def _apply_role_profile_override(
+    base_profile: RoleProfile,
+    overrides: dict[str, str],
+) -> RoleProfile:
+    """Apply field overrides to a built-in role profile.
+
+    Authority: docs/RFC-role-profile-overrides.md §5
+
+    Only allowed fields are applied; unknown fields should have been
+    rejected by validation prior to calling this function.
+
+    Args:
+        base_profile: The built-in RoleProfile to patch.
+        overrides: Field name -> value overrides.
+
+    Returns:
+        A new RoleProfile with overrides applied.
+    """
+    profile_dict = {
+        "agent_id": base_profile.agent_id,
+        "prompt_family": base_profile.prompt_family,
+        "execution_context": base_profile.execution_context,
+        "mutation_policy": base_profile.mutation_policy,
+        "session_policy": base_profile.session_policy,
+        "output_contract": base_profile.output_contract,
+        "default_runner": base_profile.default_runner,
+    }
+
+    for field_name, field_value in overrides.items():
+        if field_name in _ALLOWED_OVERRIDE_FIELDS:
+            profile_dict[field_name] = field_value
+
+    return RoleProfile(
+        role_id=base_profile.role_id,
+        agent_id=profile_dict["agent_id"],
+        prompt_family=profile_dict["prompt_family"],
+        execution_context=cast(ExecutionContext, profile_dict["execution_context"]),
+        mutation_policy=cast(MutationPolicy, profile_dict["mutation_policy"]),
+        session_policy=cast(SessionPolicy, profile_dict["session_policy"]),
+        output_contract=cast(RoleOutputContract, profile_dict["output_contract"]),
+        default_runner=profile_dict["default_runner"],
+    )
+
+
+def _merge_role_profiles(
+    builtin_profiles: tuple[RoleProfile, ...],
+    overrides: dict[str, dict[str, str]],
+    custom_profiles: tuple[RoleProfile, ...],
+) -> tuple[RoleProfile, ...]:
+    """Build the effective role profile registry per RFC §5.
+
+    Authority: docs/RFC-role-profile-overrides.md §5
+
+    Resolution order:
+    1. Start from ``default_role_profiles()``
+    2. Apply ``role_profile_overrides`` to matching built-in roles
+    3. Add explicit custom roles from ``role_profiles``
+    4. Validate the final registry
+
+    Args:
+        builtin_profiles: Built-in role profiles.
+        overrides: Parsed overrides (role_id -> field -> value).
+        custom_profiles: Custom role profiles from ``role_profiles``.
+
+    Returns:
+        Effective tuple of RoleProfile instances.
+
+    Raises:
+        RoleProfileOverrideError: If validation rules from §6 are violated.
+    """
+    builtin_ids = _builtin_role_ids()
+    custom_ids = {p.role_id for p in custom_profiles}
+    errors: list[RoleProfileOverrideError] = []
+
+    # §6.1 rule 1: override targets must exist in built-ins
+    for role_id in overrides:
+        if role_id not in builtin_ids:
+            errors.append(
+                RoleProfileOverrideError(
+                    field=f"role_profile_overrides.{role_id}",
+                    value=role_id,
+                    reason=f"unknown built-in role in role_profile_overrides: {role_id!r}",
+                )
+            )
+
+    # §6.1 rule 3: override targets cannot reference custom roles
+    for role_id in overrides:
+        if role_id in custom_ids:
+            errors.append(
+                RoleProfileOverrideError(
+                    field=f"role_profile_overrides.{role_id}",
+                    value=role_id,
+                    reason=(
+                        f"role_profile_overrides.{role_id} cannot target custom role "
+                        f"defined in role_profiles"
+                    ),
+                )
+            )
+
+    # §6.1 rule 2: override fields must be in allowed set
+    for role_id, field_overrides in overrides.items():
+        for field_name in field_overrides:
+            if field_name not in _ALLOWED_OVERRIDE_FIELDS:
+                errors.append(
+                    RoleProfileOverrideError(
+                        field=f"role_profile_overrides.{role_id}.{field_name}",
+                        value=field_name,
+                        reason=(
+                            f"unknown override field {field_name!r}; "
+                            f"allowed fields: {sorted(_ALLOWED_OVERRIDE_FIELDS)}"
+                        ),
+                    )
+                )
+
+    # §6.2 rule 2/4: custom role_ids must not shadow built-ins
+    for profile in custom_profiles:
+        if profile.role_id in builtin_ids:
+            errors.append(
+                RoleProfileOverrideError(
+                    field=f"role_profiles.{profile.role_id}",
+                    value=profile.role_id,
+                    reason=(
+                        f"role_profiles.{profile.role_id} shadows built-in role; "
+                        f"use role_profile_overrides instead"
+                    ),
+                )
+            )
+
+    if errors:
+        # Raise the first error with full context
+        first = errors[0]
+        all_messages = "; ".join(e.reason for e in errors)
+        raise RoleProfileOverrideError(first.field, first.value, all_messages)
+
+    # Step 1-2: Build effective built-in profiles with overrides applied
+    profile_by_id: dict[str, RoleProfile] = {}
+    for profile in builtin_profiles:
+        if profile.role_id in overrides:
+            profile = _apply_role_profile_override(profile, overrides[profile.role_id])
+        profile_by_id[profile.role_id] = profile
+
+    # Step 3: Add custom profiles (no shadowing since validated above)
+    for profile in custom_profiles:
+        if profile.role_id in profile_by_id:
+            # Should not happen due to validation, but defensive check
+            raise RoleProfileOverrideError(
+                field=f"role_profiles.{profile.role_id}",
+                value=profile.role_id,
+                reason=(
+                    f"role_profiles.{profile.role_id} shadows built-in role; "
+                    f"use role_profile_overrides instead"
+                ),
+            )
+        profile_by_id[profile.role_id] = profile
+
+    # Maintain ordering: built-in profiles first (in their original order),
+    # then custom profiles (in their definition order)
+    builtin_order = [p.role_id for p in builtin_profiles]
+    ordered_ids = builtin_order + [
+        p.role_id for p in custom_profiles if p.role_id not in builtin_order
+    ]
+
+    return tuple(profile_by_id[rid] for rid in ordered_ids if rid in profile_by_id)
 
 
 @dataclass(frozen=True)
@@ -920,47 +1201,48 @@ def _deep_update_config(
 
 
 def _dict_to_config(data: dict[str, Any]) -> OrchestrationConfig:
-    """Convert a dict to an OrchestrationConfig."""
+    """Convert a dict to an OrchestrationConfig.
+
+    Authority: docs/RFC-role-profile-overrides.md §5
+
+    Resolution order for role profiles per the RFC:
+
+    1. Start from ``default_role_profiles()``
+    2. Apply ``role_profile_overrides`` to matching built-in roles
+    3. Add explicit custom roles from ``role_profiles``
+    4. Validate the final registry
+
+    This keeps ``role_profiles`` as custom-role definitions only (§4).
+    ``role_profile_overrides`` patches built-in roles (§4, §6.1).
+    """
     orch = data.get("orchestration", {})
 
+    # --- Role profile merge (RFC §5) ---
+    raw_role_profile_overrides = orch.get("role_profile_overrides")
     raw_role_profiles = orch.get("role_profiles")
-    if raw_role_profiles is None:
+
+    if raw_role_profile_overrides is not None or raw_role_profiles is not None:
+        # RFC §5: Build effective registry through merge
+        # 1. Start from built-in defaults
+        builtin_profiles = default_role_profiles()
+
+        # 2. Parse overrides (may be empty)
+        overrides: dict[str, dict[str, str]] = {}
+        if raw_role_profile_overrides is not None:
+            overrides = _parse_role_profile_overrides(raw_role_profile_overrides)
+
+        # 3. Parse custom role profiles (may be empty)
+        custom_profiles: tuple[RoleProfile, ...] = ()
+        if raw_role_profiles is not None:
+            if not isinstance(raw_role_profiles, dict):
+                raise ValueError("orchestration.role_profiles must be a mapping")
+            custom_profiles = _parse_custom_role_profiles(raw_role_profiles)
+
+        # 4. Merge and validate (raises RoleProfileOverrideError on violations)
+        role_profiles = _merge_role_profiles(builtin_profiles, overrides, custom_profiles)
+    elif raw_role_profiles is None:
+        # No overrides, no custom roles: use built-in defaults
         role_profiles = default_role_profiles()
-    else:
-        if not isinstance(raw_role_profiles, dict):
-            raise ValueError("orchestration.role_profiles must be a mapping")
-        parsed_profiles: list[RoleProfile] = []
-        for role_id, raw_profile in raw_role_profiles.items():
-            if not isinstance(raw_profile, dict):
-                raise ValueError(f"role profile {role_id!r} must be a mapping")
-            agent_id = raw_profile.get("agent_id", role_id)
-            if not isinstance(agent_id, str) or not agent_id.strip():
-                raise ValueError(f"role profile {role_id!r} must define a non-empty agent_id")
-            parsed_profiles.append(
-                RoleProfile(
-                    role_id=role_id,
-                    agent_id=agent_id,
-                    prompt_family=str(raw_profile.get("prompt_family", "")),
-                    execution_context=cast(
-                        ExecutionContext,
-                        str(raw_profile.get("execution_context", "linked_worktree")),
-                    ),
-                    mutation_policy=cast(
-                        MutationPolicy,
-                        str(raw_profile.get("mutation_policy", "read_only")),
-                    ),
-                    session_policy=cast(
-                        Literal["reuse_allowed", "reuse_forbidden"],
-                        str(raw_profile.get("session_policy", "reuse_forbidden")),
-                    ),
-                    output_contract=cast(
-                        RoleOutputContract,
-                        str(raw_profile.get("output_contract", "freeform_evidence")),
-                    ),
-                    default_runner=str(raw_profile.get("default_runner", DEFAULT_RUNNER)),
-                )
-            )
-        role_profiles = tuple(parsed_profiles)
 
     # Parse resolver tool_allowlist
     raw_allowlist = orch.get("resolver", {}).get("tool_allowlist", {})
@@ -1202,6 +1484,31 @@ class ConfigValidationError(ValueError):
         self.value = value
         self.reason = reason
         super().__init__(f"config validation failed: {field} = {value!r}: {reason}")
+
+
+class RoleProfileOverrideError(ValueError):
+    """Raised when role profile override or custom-role validation fails.
+
+    Authority: docs/RFC-role-profile-overrides.md §6.1, §6.2
+
+    This error covers the rejection cases defined by the RFC:
+
+    - Override targets a role ID not present in built-ins (§6.1 rule 1)
+    - Override contains unknown fields (§6.1 rule 2)
+    - Override targets a custom role from ``role_profiles`` (§6.1 rule 3)
+    - ``role_profiles`` entry shadows a built-in role ID (§6.2 rule 2/4)
+
+    Attributes:
+        field: Dot-separated config path (e.g. ``role_profile_overrides.python-executor``).
+        value: The invalid value encountered.
+        reason: Human-readable reason with migration guidance.
+    """
+
+    def __init__(self, field: str, value: Any, reason: str) -> None:
+        self.field = field
+        self.value = value
+        self.reason = reason
+        super().__init__(f"role profile override validation failed: {field}: {reason}")
 
 
 def validate_orchestration_config(
@@ -1455,6 +1762,7 @@ __all__ = [
     "FrozenConfigSnapshot",
     "ConfigValue",
     "ConfigValidationError",
+    "RoleProfileOverrideError",
     "default_role_profiles",
     "freeze_config",
     "load_frozen_snapshot",

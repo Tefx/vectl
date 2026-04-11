@@ -241,29 +241,22 @@ class TestConfigDiscovery:
         assert config.resolver.tool_allowlist.allowed_tool_families == ("orchestration",)
 
     def test_load_parses_role_profiles_and_default_role_ids(self, tmp_path: Path) -> None:
-        """Verify file-backed config defines role registry and explicit role defaults."""
+        """Verify file-backed config defines role registry with overrides and custom roles.
+
+        Authority: docs/RFC-role-profile-overrides.md §4, §5
+
+        role_profiles defines custom roles only; built-in role overrides use
+        role_profile_overrides. The effective registry merges built-in defaults
+        + overrides + custom roles.
+        """
         config_content = {
             "orchestration": {
+                "role_profile_overrides": {
+                    "python-executor": {"default_runner": "opencode"},
+                    "blocked-case-coordinator": {"default_runner": "opencode"},
+                },
                 "role_profiles": {
-                    "python-executor": {
-                        "agent_id": "python-executor",
-                        "prompt_family": "coder",
-                        "execution_context": "linked_worktree",
-                        "mutation_policy": "worktree_changes",
-                        "session_policy": "reuse_allowed",
-                        "output_contract": "freeform_evidence",
-                        "default_runner": "codex",
-                    },
-                    "blocked-case-coordinator": {
-                        "agent_id": "blocked-case-coordinator",
-                        "prompt_family": "resolver",
-                        "execution_context": "main_worktree",
-                        "mutation_policy": "vectl_facade_only",
-                        "session_policy": "reuse_forbidden",
-                        "output_contract": "resolution_report",
-                        "default_runner": "codex",
-                    },
-                    "blocked-case-coordinator-tacit": {
+                    "my-custom-resolver": {
                         "agent_id": "blocked-case-coordinator-tacit",
                         "prompt_family": "resolver",
                         "execution_context": "main_worktree",
@@ -285,23 +278,54 @@ class TestConfigDiscovery:
         assert path == config_file
         assert config.dispatch.default_role_id == "python-executor"
         assert config.resolver.default_role_id == "blocked-case-coordinator"
-        assert {profile.role_id for profile in config.role_profiles} == {
-            "python-executor",
-            "blocked-case-coordinator",
-            "blocked-case-coordinator-tacit",
-        }
+        # Effective registry includes all built-ins + custom role
+        role_ids = {profile.role_id for profile in config.role_profiles}
+        assert "python-executor" in role_ids
+        assert "blocked-case-coordinator" in role_ids
+        assert "my-custom-resolver" in role_ids
+        # Override took effect
         profile_by_role = {profile.role_id: profile for profile in config.role_profiles}
-        assert profile_by_role["python-executor"].agent_id == "python-executor"
-        assert profile_by_role["blocked-case-coordinator"].agent_id == "blocked-case-coordinator"
-        assert (
-            profile_by_role["blocked-case-coordinator-tacit"].agent_id
-            == "blocked-case-coordinator-tacit"
-        )
+        assert profile_by_role["python-executor"].default_runner == "opencode"
+        assert profile_by_role["blocked-case-coordinator"].default_runner == "opencode"
+
+    def test_load_rejects_builtin_shadow_in_role_profiles(self, tmp_path: Path) -> None:
+        """Verify role_profiles that shadow built-in IDs are rejected.
+
+        Authority: docs/RFC-role-profile-overrides.md §6.2 rule 2/4
+        """
+        from vectl.orchestration.config import RoleProfileOverrideError
+
+        config_content = {
+            "orchestration": {
+                "role_profiles": {
+                    "python-executor": {
+                        "agent_id": "python-executor",
+                        "prompt_family": "coder",
+                        "execution_context": "linked_worktree",
+                        "mutation_policy": "worktree_changes",
+                        "session_policy": "reuse_allowed",
+                        "output_contract": "freeform_evidence",
+                        "default_runner": "codex",
+                    },
+                },
+            }
+        }
+        config_file = tmp_path / "vectl.yaml"
+        config_file.write_text(yaml.dump(config_content))
+
+        with pytest.raises(RoleProfileOverrideError, match="shadows built-in role"):
+            load_orchestration_config(plan_path=config_file)
 
     def test_load_preserves_role_id_agent_id_prompt_family_separation_for_future_role(
         self, tmp_path: Path
     ) -> None:
-        """Config role profiles must keep role identity distinct from prompt identity."""
+        """Config role profiles must keep role identity distinct from prompt identity.
+
+        Authority: docs/RFC-role-profile-overrides.md §4.2, §5
+
+        role_profiles defines custom roles. The effective registry includes
+        built-in defaults plus the custom role.
+        """
         config_content = {
             "orchestration": {
                 "role_profiles": {
@@ -323,8 +347,10 @@ class TestConfigDiscovery:
         config, path = load_orchestration_config(plan_path=config_file)
 
         assert path == config_file
-        assert len(config.role_profiles) == 1
-        profile = config.role_profiles[0]
+        # The effective registry has built-in defaults + custom role
+        profile_by_role = {profile.role_id: profile for profile in config.role_profiles}
+        assert "future-resolver-role" in profile_by_role
+        profile = profile_by_role["future-resolver-role"]
         assert profile.role_id == "future-resolver-role"
         assert profile.agent_id == "blocked-case-coordinator-tacit"
         assert profile.prompt_family == "resolver"

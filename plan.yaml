@@ -80308,3 +80308,32 @@ phases:
     verification: Targeted unit pytest modules for runner substrate and prompt materialization
       pass.
     agent: integration-verifier-tacit
+  - id: opencode_runner_verification.integration-tests
+    name: Run OpenCode orchestration integration tests
+    status: pending
+    description: 'Run integration tests for runtime/orch_app continuity with OpenCode.
+
+
+      Scope:
+
+      - runtime launches OpenCode-backed work and collects terminal result
+
+      - stop/cancel reaches active OpenCode execution
+
+      - recovery prefers native session continuation when possible
+
+      - automatic fresh relaunch fallback works when session continuation is unavailable
+
+      - `recovered_via` truth is explicit in artifacts and summaries
+
+
+      Refs:
+
+      - docs/RFC-opencode-orchestration-runner.md section 13.2
+
+      - orchestration integration tests added in implementation phase'
+    verification: Targeted integration pytest modules are green and prove runtime/recovery
+      semantics end-to-end with controlled shims.
+    depends_on:
+    - opencode_runner_verification.unit-tests
+    agent: integration-verifier-tacit

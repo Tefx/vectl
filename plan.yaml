@@ -80266,7 +80266,7 @@ phases:
   steps:
   - id: opencode_runner_impl.prompt-materialization
     name: Implement prompt materialization pipeline
-    status: claimed
+    status: done
     description: 'Implement prompt/artifact materialization from dispatch authority
       into durable run artifacts and workspace execution copies.
 
@@ -80296,6 +80296,43 @@ phases:
     agent: python-senior-tacit
     claimed_by: python-senior-tacit
     claimed_at: '2026-04-11T20:00:42.778953+00:00'
+    done_at: '2026-04-11T20:41:24.361726+00:00'
+    evidence: 'Artifact:
+
+      - worker session: ses_281dd14dcffeRIWDji9WXjAAPz
+
+
+      Verification:
+
+      - 60 passed in test_prompt_artifact_contract.py
+
+      - 62 passed in test_orch_app.py
+
+      - 514 passed in orchestration tests (excluding 2 pre-existing config discovery
+      failures)
+
+
+      Files changed:
+
+      - src/vectl/orchestration/prompt_materialization.py
+
+      - src/vectl/orch_app.py
+
+      - tests/orchestration/unit/test_prompt_artifact_contract.py
+
+
+      Spec link:
+
+      - docs/RFC-opencode-orchestration-runner.md §§8,10.2
+
+
+      Gaps/Notes:
+
+      - Recovery path wiring for validate_prompt_artifacts_for_recovery remains separate
+      integration concern.
+
+      - Resolver invocation path keeps empty prompt artifact fields by design for
+      its separate flow.'
   - id: opencode_runner_impl.dedicated-runner
     name: Implement dedicated OpenCodeRunner
     status: pending

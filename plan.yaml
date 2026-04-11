@@ -79966,3 +79966,28 @@ phases:
     verification: Targeted pytest modules for config loader, config validate, and
       config-show all pass with explicit provenance assertions.
     agent: integration-verifier-tacit
+  - id: config_role_profile_overrides_verify.final-changed-scope-check
+    name: Run final changed-scope verification
+    status: pending
+    description: 'Run final changed-scope verification for the RFC implementation.
+
+
+      Scope:
+
+      - changed Python/config surfaces pass repo-standard checks
+
+      - RFC behavior is visible through CLI/config-show
+
+      - no regression in config validation path for unaffected defaults
+
+
+      Refs:
+
+      - docs/RFC-role-profile-overrides.md
+
+      - changed config/CLI modules'
+    verification: Changed-scope verification command(s) pass and the CLI/config surfaces
+      behave according to the RFC clean-break rules.
+    depends_on:
+    - config_role_profile_overrides_verify.independent-rfc-retest
+    agent: integration-verifier-tacit

@@ -79115,7 +79115,7 @@ phases:
       \ liveness test)."
 - id: cli_blackbox_surface_safety_ops
   name: 'CLI Black-Box Tests: Surface Safety and Ops'
-  status: pending
+  status: in_progress
   gate: 'Lightweight test milestone: define selector/prune/config/concurrency black-box
     tests, fix only failing surfaces, and retest the matrix.'
   context: test_plan_only=true. Finish remaining public CLI safety coverage with minimal
@@ -79125,7 +79125,7 @@ phases:
   steps:
   - id: cli_blackbox_surface_safety_ops.define-surface-safety-tests
     name: Define selector, housekeeping, config, and concurrency black-box tests
-    status: pending
+    status: claimed
     description: "step_type: test\nstep_intent: test_define_red\nexpected_result:\
       \ red\nverification_scope: local-check\n\nBlind black-box test design step for\
       \ remaining public CLI safety surfaces. Define the expected-red matrix and assertions\
@@ -79159,6 +79159,8 @@ phases:
 
       - Which surfaces remain open'
     agent: blind-tester-tacit
+    claimed_by: blind-tester-tacit
+    claimed_at: '2026-04-11T12:31:41.838078+00:00'
   - id: cli_blackbox_surface_safety_ops.fix-surface-safety-behavior
     name: Close selector, housekeeping, config, and concurrency surface gaps
     status: pending

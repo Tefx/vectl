@@ -58,6 +58,9 @@ from vectl.orchestration.contracts import (
     PromptArtifactPaths,
     PromptBundle,
     ReconcileResult,
+    RecoveryAttempt,
+    RecoveryContinuity,
+    RecoveredVia,
     RequestMode,
     ResolutionCase,
     ResolutionCaseSource,
@@ -1800,6 +1803,7 @@ class OrchestrationApp:
             step_id=resolved_step_id,
             frozen_config=frozen_snapshot.config,
             run_root=run_root,
+            runner=frozen_snapshot.config.runtime.default_runner,
         )
 
         allowlist_text = self._allowlist_text(frozen_snapshot.config.resolver.tool_allowlist)
@@ -2128,7 +2132,34 @@ class OrchestrationApp:
         step_id: str,
         frozen_config: OrchestrationConfig,
         run_root: Path,
+        runner: str | None = None,
+        session_id: str | None = None,
+        request_mode: str | None = None,
     ) -> None:
+        """Write session-aware continuity bootstrap artifacts.
+
+        Authority: docs/ORCHESTRATION-PLANE-ARCHITECTURE.md,
+            docs/RFC-opencode-orchestration-runner.md section 11
+
+        When ``runner`` and ``session_id`` are provided (OpenCode-backed runs),
+        the continuity ledger and journal record the actual session identity
+        instead of the placeholder ``run_id``.
+
+        Args:
+            run_id: Unique run identifier.
+            step_id: Step being executed.
+            frozen_config: Frozen orchestration config for capability fingerprint.
+            run_root: Artifact root for the run.
+            runner: Runner identifier (e.g. ``opencode``). Falls back to
+                ``frozen_config.runtime.default_runner`` if not provided.
+            session_id: Session identifier from runner handle. Falls back to
+                ``run_id`` if not provided (placeholder for non-session runners).
+            request_mode: Launch mode (``start``, ``resume``, ``recover``).
+                Written into the ledger for recovery context.
+        """
+        effective_runner = runner or frozen_config.runtime.default_runner
+        effective_session_id = session_id or run_id
+        effective_mode = request_mode or "start"
         continuity_root = self._continuity_root(run_root)
         continuity_root.mkdir(parents=True, exist_ok=True)
         now_ts = time.time()
@@ -2142,8 +2173,9 @@ class OrchestrationApp:
         ledger_payload = {
             "run_id": run_id,
             "step_id": step_id,
-            "session_id": run_id,
-            "runner": frozen_config.runtime.default_runner,
+            "session_id": effective_session_id,
+            "runner": effective_runner,
+            "request_mode": effective_mode,
             "status": "active",
             "created_at": now_ts,
             "updated_at": now_ts,
@@ -2156,8 +2188,9 @@ class OrchestrationApp:
             "event_id": f"{run_id}-started",
             "run_id": run_id,
             "step_id": step_id,
-            "session_id": run_id,
-            "runner": frozen_config.runtime.default_runner,
+            "session_id": effective_session_id,
+            "runner": effective_runner,
+            "request_mode": effective_mode,
             "event_type": "run_started",
             "timestamp": now_ts,
             "outcome": None,
@@ -2194,6 +2227,86 @@ class OrchestrationApp:
             + "\n",
             encoding="utf-8",
         )
+
+    def _write_recovery_continuity(
+        self,
+        *,
+        run_root: Path,
+        continuity: RecoveryContinuity,
+    ) -> Path:
+        """Persist recovery path truth label at ``recovery/continuity.json``.
+
+        Authority: docs/RFC-opencode-orchestration-runner.md section 10.3
+
+        The system must not collapse native session resume and fresh relaunch
+        into the same label. This method writes the authoritative ``recovered_via``
+        truth so that downstream consumers (summaries, event payloads, audit) can
+        distinguish the actual path taken.
+
+        Args:
+            run_root: Artifact root for the run (e.g. ``.vectl/runs/<run_id>``).
+            continuity: The RecoveryContinuity record to persist.
+
+        Returns:
+            Path to the written continuity.json file.
+        """
+        recovery_dir = run_root / "recovery"
+        recovery_dir.mkdir(parents=True, exist_ok=True)
+        continuity_path = recovery_dir / "continuity.json"
+        payload = {
+            "recovered_via": continuity.recovered_via,
+            "run_id": continuity.run_id,
+            "step_id": continuity.step_id,
+            "agent_id": continuity.agent_id,
+            "runner": continuity.runner,
+            "session_id": continuity.session_id,
+            "timestamp": continuity.timestamp,
+        }
+        continuity_path.write_text(
+            json.dumps(payload, sort_keys=True) + "\n",
+            encoding="utf-8",
+        )
+        return continuity_path
+
+    def _write_recovery_attempt(
+        self,
+        *,
+        run_root: Path,
+        attempt: RecoveryAttempt,
+    ) -> Path:
+        """Persist individual resume/recover attempt record.
+
+        Authority: docs/RFC-opencode-orchestration-runner.md section 10.4
+
+        Records whether native session validation succeeded, why it may have
+        failed, whether fallback relaunch was used, and resulting identifiers.
+
+        Args:
+            run_root: Artifact root for the run (e.g. ``.vectl/runs/<run_id>``).
+            attempt: The RecoveryAttempt record to persist.
+
+        Returns:
+            Path to the written attempt JSON file.
+        """
+        recovery_dir = run_root / "recovery"
+        recovery_dir.mkdir(parents=True, exist_ok=True)
+        filename = (
+            "resume_attempt.json" if attempt.attempt_kind == "resume" else "recover_attempt.json"
+        )
+        attempt_path = recovery_dir / filename
+        payload = {
+            "attempt_kind": attempt.attempt_kind,
+            "native_validation_ok": attempt.native_validation_ok,
+            "native_validation_failure_reason": attempt.native_validation_failure_reason,
+            "fallback_relaunch_used": attempt.fallback_relaunch_used,
+            "resulting_run_id": attempt.resulting_run_id,
+            "resulting_session_id": attempt.resulting_session_id,
+        }
+        attempt_path.write_text(
+            json.dumps(payload, sort_keys=True) + "\n",
+            encoding="utf-8",
+        )
+        return attempt_path
 
     def _replay_projection_for_run(
         self,
@@ -2714,6 +2827,34 @@ class OrchestrationApp:
                         dispatch_spec=dispatch_spec,
                         mode="recover",
                     )
+                    # Authority: RFC-opencode-orchestration-runner.md section 10.3
+                    # Write recovery continuity truth label distinguishing
+                    # native_session_resume from fresh_relaunch.
+                    now_iso = datetime.now(timezone.utc).isoformat()
+                    self._write_recovery_continuity(
+                        run_root=run_root,
+                        continuity=RecoveryContinuity(
+                            recovered_via="native_session_resume",
+                            run_id=record.run_id,
+                            step_id=record.step_id,
+                            agent_id=record.agent or self._config.default_agent,
+                            runner=frozen.runtime.default_runner,
+                            session_id=getattr(record, "session_id", None),
+                            timestamp=now_iso,
+                        ),
+                    )
+                    # Authority: RFC-opencode-orchestration-runner.md section 10.4
+                    # Write recovery attempt record for audit trail.
+                    self._write_recovery_attempt(
+                        run_root=run_root,
+                        attempt=RecoveryAttempt(
+                            attempt_kind="recover",
+                            native_validation_ok=True,
+                            fallback_relaunch_used=False,
+                            resulting_run_id=record.run_id,
+                            resulting_session_id=getattr(record, "session_id", None),
+                        ),
+                    )
                 except Exception as exc:
                     now_ts = time.time()
                     registry.save(
@@ -2806,6 +2947,34 @@ class OrchestrationApp:
                     run_root=run_root,
                     run_id=record.run_id,
                     reason=decision.message,
+                )
+                # Authority: RFC-opencode-orchestration-runner.md section 10.3
+                # The fresh_start_required path terminalizes the stale run.
+                # Write recovery continuity truth distinguishing from native_session_resume.
+                now_iso = datetime.now(timezone.utc).isoformat()
+                self._write_recovery_continuity(
+                    run_root=run_root,
+                    continuity=RecoveryContinuity(
+                        recovered_via="fresh_relaunch",
+                        run_id=record.run_id,
+                        step_id=record.step_id,
+                        agent_id=record.agent or self._config.default_agent,
+                        runner=frozen.runtime.default_runner,
+                        session_id=None,
+                        timestamp=now_iso,
+                    ),
+                )
+                # Authority: RFC-opencode-orchestration-runner.md section 10.4
+                # Write recovery attempt record for audit trail.
+                self._write_recovery_attempt(
+                    run_root=run_root,
+                    attempt=RecoveryAttempt(
+                        attempt_kind="recover",
+                        native_validation_ok=False,
+                        native_validation_failure_reason=decision.message,
+                        fallback_relaunch_used=True,
+                        resulting_run_id=record.run_id,
+                    ),
                 )
                 current_core = self._core_adapter.snapshot(agent=record.agent)
                 if record.step_id in current_core.in_progress_step_ids:

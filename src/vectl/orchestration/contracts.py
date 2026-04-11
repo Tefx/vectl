@@ -360,6 +360,7 @@ class AgentExecutionState:
     Execution tracking state for agent work.
 
     Authority: docs/ORCHESTRATION-PLANE-RUNTIME-WORKTREE-LIFECYCLE.md section 8
+    Authority: docs/RFC-opencode-orchestration-runner.md section 7.3
 
     Attributes:
         execution_id: Unique execution identifier.
@@ -372,6 +373,13 @@ class AgentExecutionState:
         started_at: Unix timestamp when execution started.
         last_update_at: Unix timestamp of last state update.
         artifact_refs: Tuple of artifact references produced.
+        evidence_refs: Tuple of runner evidence references (stdout/stderr refs,
+            session artifacts). Populated from RunnerPollResult on completion.
+            Authority: docs/RFC-opencode-orchestration-runner.md section 7.3
+        request_mode: Launch mode that created this execution.
+            Authority: docs/RFC-opencode-orchestration-runner.md section 6.1
+        session_policy: Session reuse policy for this execution.
+            Authority: docs/RFC-opencode-orchestration-runner.md section 6.2
     """
 
     execution_id: str
@@ -392,6 +400,9 @@ class AgentExecutionState:
     started_at: float = 0.0
     last_update_at: float = 0.0
     artifact_refs: tuple[str, ...] = ()
+    evidence_refs: tuple[str, ...] = ()
+    request_mode: RequestMode = "start"
+    session_policy: SessionPolicy = "reuse_forbidden"
 
 
 @dataclass(frozen=True)

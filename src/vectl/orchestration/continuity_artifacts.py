@@ -196,6 +196,7 @@ class RuntimeRecoveryRecord:
 
     Authority:
         docs/ORCHESTRATION-PLANE-OPERATOR-CONFLICT-RECOVERY.md sections 6.2, 6.3, 6.4, 7
+        docs/RFC-opencode-orchestration-runner.md section 7 (session/evidence fields)
 
     This record is intentionally broader than ``RuntimeSnapshot``. The snapshot
     is loop-time observability; this record is restart authority.
@@ -224,6 +225,9 @@ class RuntimeRecoveryRecord:
     started_at: float = 0.0
     last_update_at: float = 0.0
     execution_artifact_refs: tuple[str, ...] = ()
+    evidence_refs: tuple[str, ...] = ()
+    request_mode: Literal["start", "resume", "recover"] = "start"
+    session_policy: Literal["reuse_allowed", "reuse_forbidden"] = "reuse_forbidden"
     reconcile_state: ReconcileRecoveryState | None = None
     paused_routing_state: PausedRoutingState = "active"
 

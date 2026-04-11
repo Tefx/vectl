@@ -79368,3 +79368,35 @@ phases:
     audits are complete, and final gate confirms remaining risk disposition.
   depends_on:
   - cli_blackbox_surface_safety_ops
+  steps:
+  - id: cli_blackbox_finalization.full-plan-check
+    name: Run full CLI black-box plan verification
+    status: pending
+    description: "verification_scope: full-plan-check protecting downstream gate `cli_blackbox_finalization.gate`\n\
+      \nRun the full authoritative CLI black-box matrix at the nearest appropriate\
+      \ boundary so later gates do not rediscover the same broad failures. Include\
+      \ the new repro suites plus the relevant orchestration integration suites that\
+      \ prove plan advancement, recovery semantics, and runtime-root safety.\n\nScope\
+      \ anchors:\n- spec_refs:\n  - docs/ORCHESTRATION-PLANE-CLI-CONFIG-OBSERVABILITY-DESIGN.md\n\
+      \  - docs/ORCHESTRATION-CLI-QUICKSTART.md\n- touch_paths:\n  - tests/repro/\n\
+      \  - tests/orchestration/integration/\n  - tests/orchestration/unit/test_recovery_contract_conformance.py\n\
+      - authoritative_interface: public `vectl orch ...` CLI surfaces"
+    verification: Full targeted matrix is green, outputs are attached, and any remaining
+      skipped/deferred items have explicit non-intersection rationale.
+    evidence_template: '## refs Read Confirmation (MANDATORY)
+
+      For each ref in this step:
+
+      - <filename> — key passage or "NOT READ: <reason>"
+
+
+      ## Full-Plan Verification Report
+
+      - Command list
+
+      - Suite results
+
+      - Any remaining explicit non-blocking gaps
+
+      - Headline: PASS | PASS_WITH_DEBT | FAIL'
+    agent: integration-verifier-tacit

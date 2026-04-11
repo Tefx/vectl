@@ -80139,6 +80139,39 @@ phases:
     verification: Targeted tests prove prompt artifacts are written with the required
       schema, paths, and workspace copies before runner launch.
     agent: python-senior-tacit
+  - id: opencode_runner_impl.dedicated-runner
+    name: Implement dedicated OpenCodeRunner
+    status: pending
+    description: 'Implement a dedicated `OpenCodeRunner` and register it for runner_id
+      `opencode`.
+
+
+      Scope:
+
+      - replace bare `SubprocessRunner("opencode")` registration with `OpenCodeRunner`
+
+      - freeze one-shot launch command per RFC
+
+      - freeze deterministic session continuation command using `opencode run --session
+      <session_id>`
+
+      - explicitly disallow `--continue` semantics in orchestration
+
+      - preserve stdout/stderr/session evidence refs and typed runner errors
+
+
+      Refs:
+
+      - docs/RFC-opencode-orchestration-runner.md sections 9 and 15
+
+      - src/vectl/orchestration/runners.py
+
+      - src/vectl/orchestration/runner_registry.py'
+    verification: Runner-level tests prove launch, resume, poll, and cancel behavior
+      match the frozen OpenCode CLI contract.
+    depends_on:
+    - opencode_runner_impl.prompt-materialization
+    agent: python-senior-tacit
 - id: opencode_runner_verification
   name: OpenCode Runner Verification
   status: locked

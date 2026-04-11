@@ -79400,3 +79400,29 @@ phases:
 
       - Headline: PASS | PASS_WITH_DEBT | FAIL'
     agent: integration-verifier-tacit
+  - id: cli_blackbox_finalization.doc-sync
+    name: Sync CLI black-box test docs and operator guidance
+    status: pending
+    description: Update project documentation so CLI/operator guidance, quickstart
+      examples, and any testing notes match the hardened black-box coverage and observed
+      behavior. Focus on documented control/recover/case/prune semantics and any clarified
+      exit-code or artifact expectations.
+    verification: Relevant docs match the implemented and verified CLI behavior; no
+      stale examples remain for the covered command families.
+    evidence_template: '## refs Read Confirmation (MANDATORY)
+
+      For each ref in this step:
+
+      - <filename> — key passage or "NOT READ: <reason>"
+
+
+      ## Doc Sync Report
+
+      - Docs updated
+
+      - Behavior clarified
+
+      - Remaining doc debt'
+    depends_on:
+    - cli_blackbox_finalization.full-plan-check
+    agent: doc-reviewer-tacit

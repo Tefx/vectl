@@ -78810,7 +78810,7 @@ phases:
       \ by runner handle availability; no protected-test rewrites reported."
   - id: cli_blackbox_active_control_recovery.retest-active-control-recovery
     name: Retest active-control and recovery black-box matrix
-    status: pending
+    status: claimed
     description: 'step_type: test
 
       step_intent: retest_green
@@ -78861,6 +78861,8 @@ phases:
     - cli_blackbox_active_control_recovery.define-active-control-recovery-tests
     - cli_blackbox_active_control_recovery.fix-active-control-recovery-behavior
     agent: integration-verifier-tacit
+    claimed_by: integration-verifier-tacit
+    claimed_at: '2026-04-11T11:13:58.713315+00:00'
 - id: cli_blackbox_recovery_faults_cases
   name: 'CLI Black-Box Tests: Recovery Faults and Cases'
   status: locked

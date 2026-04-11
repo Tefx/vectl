@@ -55,11 +55,13 @@ from vectl.orchestration.contracts import (
     ExecutionResult,
     PromptBundle,
     ReconcileResult,
+    RequestMode,
     ResolutionCase,
     ResolutionCaseSource,
     ResolutionReport,
     RosterSnapshot,
     RuntimeSnapshot,
+    SessionPolicy,
     StructuredReviewResult,
     WorkLease,
 )
@@ -1122,6 +1124,9 @@ class OrchestrationApp:
         session_id: str | None = run_id
         if dispatch_spec.session_mode == "reuse":
             session_id = dispatch_spec.reuse_token
+        session_policy: SessionPolicy = (
+            "reuse_allowed" if dispatch_spec.session_mode == "reuse" else "reuse_forbidden"
+        )
         request = ExecutionRequest(
             step_id=step_id,
             role=dispatch_spec.role_id,
@@ -1136,6 +1141,11 @@ class OrchestrationApp:
                 f"source_kind={dispatch_spec.source_kind}",
                 prompt_bundle_ref,
             ),
+            agent_id=dispatch_spec.role_id,
+            prompt_bundle_path="",
+            runner_prompt_path="",
+            request_mode=request_mode,
+            session_policy=session_policy,
             session_id=session_id,
         )
         workspace = self._runtime.prepare(request)
@@ -3638,6 +3648,11 @@ def build_orchestration_app(
                     f"source_kind={dispatch_spec.source_kind}",
                     *case.artifact_refs,
                 ),
+                agent_id=dispatch_spec.role_id,
+                prompt_bundle_path="",
+                runner_prompt_path="",
+                request_mode="start",
+                session_policy="reuse_forbidden",
                 session_id=f"resolver-{generate_run_id()}",
             )
 
@@ -3899,14 +3914,14 @@ def _apply_roster_lease(*, dispatch_spec: DispatchSpec, lease: WorkLease) -> Dis
 
 def _dispatch_request_mode(
     *, mode: Literal["start", "resume", "recover"], dispatch_spec: DispatchSpec
-) -> str:
+) -> RequestMode:
     """Return runtime request mode while preserving explicit recovery flows."""
 
     if mode != "start":
         return mode
     if dispatch_spec.session_mode == "reuse":
         return "resume"
-    return mode
+    return "start"
 
 
 __all__ = [

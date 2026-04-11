@@ -256,14 +256,28 @@ class TestExecutionRequest:
 
     def test_execution_request_fields_match_spec(self):
         """
-        Verify ExecutionRequest has exactly the 5 documented fields.
+        Verify ExecutionRequest has exactly the documented fields.
 
         Spec: docs/ORCHESTRATION-PLANE-INTERFACES.md section 3.6
-        Fields: step_id, role, runner, work_refs, session_id
+        Authority: docs/RFC-opencode-orchestration-runner.md section 7.1
+        Fields: step_id, role, runner, work_refs, agent_id,
+                prompt_bundle_path, runner_prompt_path, request_mode,
+                session_policy, session_id
         """
         from vectl.orchestration.contracts import ExecutionRequest
 
-        expected_fields = {"step_id", "role", "runner", "work_refs", "session_id"}
+        expected_fields = {
+            "step_id",
+            "role",
+            "runner",
+            "work_refs",
+            "agent_id",
+            "prompt_bundle_path",
+            "runner_prompt_path",
+            "request_mode",
+            "session_policy",
+            "session_id",
+        }
         actual_fields = {f.name for f in fields(ExecutionRequest)}
 
         assert actual_fields == expected_fields, (
@@ -276,6 +290,119 @@ class TestExecutionRequest:
 
         # Frozen dataclasses have __dataclass_fields__
         assert hasattr(ExecutionRequest, "__dataclass_fields__")
+
+    def test_execution_request_request_mode_literal_values(self):
+        """
+        Verify ExecutionRequest.request_mode uses correct Literal values.
+
+        Authority: docs/RFC-opencode-orchestration-runner.md section 6.1
+        """
+        from typing import Literal, get_args, get_origin
+
+        from vectl.orchestration.contracts import ExecutionRequest
+
+        field_types = {f.name: f.type for f in fields(ExecutionRequest)}
+        mode_type = field_types["request_mode"]
+
+        assert get_origin(mode_type) is Literal
+        mode_values = set(get_args(mode_type))
+        expected_values = {"start", "resume", "recover"}
+
+        assert mode_values == expected_values, (
+            f"ExecutionRequest.request_mode Literal mismatch. "
+            f"Expected: {expected_values}, Got: {mode_values}"
+        )
+
+    def test_execution_request_session_policy_literal_values(self):
+        """
+        Verify ExecutionRequest.session_policy uses correct Literal values.
+
+        Authority: docs/RFC-opencode-orchestration-runner.md section 6.2
+        """
+        from typing import Literal, get_args, get_origin
+
+        from vectl.orchestration.contracts import ExecutionRequest
+
+        field_types = {f.name: f.type for f in fields(ExecutionRequest)}
+        policy_type = field_types["session_policy"]
+
+        assert get_origin(policy_type) is Literal
+        policy_values = set(get_args(policy_type))
+        expected_values = {"reuse_allowed", "reuse_forbidden"}
+
+        assert policy_values == expected_values, (
+            f"ExecutionRequest.session_policy Literal mismatch. "
+            f"Expected: {expected_values}, Got: {policy_values}"
+        )
+
+    def test_execution_request_defaults(self):
+        """
+        Verify ExecutionRequest new fields have correct defaults.
+
+        Authority: docs/RFC-opencode-orchestration-runner.md section 7.1
+        """
+        from vectl.orchestration.contracts import ExecutionRequest
+
+        request = ExecutionRequest(
+            step_id="core.step",
+            role="python-executor",
+            runner="opencode",
+            work_refs=(),
+        )
+        assert request.request_mode == "start"
+        assert request.session_policy == "reuse_forbidden"
+        assert request.agent_id == ""
+        assert request.prompt_bundle_path == ""
+        assert request.runner_prompt_path == ""
+        assert request.session_id is None
+
+    def test_execution_request_explicit_mode_and_policy(self):
+        """
+        Verify ExecutionRequest accepts explicit mode and policy values.
+
+        Authority: docs/RFC-opencode-orchestration-runner.md section 7.1
+        """
+        from vectl.orchestration.contracts import ExecutionRequest
+
+        request = ExecutionRequest(
+            step_id="core.step",
+            role="python-executor",
+            runner="opencode",
+            work_refs=(),
+            request_mode="resume",
+            session_policy="reuse_allowed",
+            session_id="session-abc",
+            agent_id="python-executor",
+            prompt_bundle_path="/path/to/bundle.json",
+            runner_prompt_path="/path/to/prompt.md",
+        )
+        assert request.request_mode == "resume"
+        assert request.session_policy == "reuse_allowed"
+        assert request.session_id == "session-abc"
+        assert request.agent_id == "python-executor"
+        assert request.prompt_bundle_path == "/path/to/bundle.json"
+        assert request.runner_prompt_path == "/path/to/prompt.md"
+
+    def test_execution_request_backward_compatible(self):
+        """
+        Verify ExecutionRequest remains backward compatible with old construction.
+
+        Authority: docs/RFC-opencode-orchestration-runner.md section 7.4
+        New fields have defaults, so existing call sites continue to work.
+        """
+        from vectl.orchestration.contracts import ExecutionRequest
+
+        # Minimal old-style construction still works
+        request = ExecutionRequest(
+            step_id="phase.step",
+            role="python-executor",
+            runner="claude",
+            work_refs=(),
+            session_id=None,
+        )
+        assert request.step_id == "phase.step"
+        assert request.request_mode == "start"
+        assert request.session_policy == "reuse_forbidden"
 
 
 class TestExecutionResult:
@@ -452,3 +579,257 @@ class TestIsolationModeContract:
         assert IsolationMode.DEFAULT.value == "default"
         assert IsolationMode.WORKSPACE.value == "workspace"
         assert IsolationMode.INDEPENDENT.value == "independent"
+
+
+class TestRequestMode:
+    """
+    Test RequestMode type alias contract.
+
+    Authority: docs/RFC-opencode-orchestration-runner.md section 6.1
+    """
+
+    def test_request_mode_literal_values(self):
+        """Verify RequestMode is a Literal with the three defined values."""
+        from typing import Literal, get_args, get_origin
+
+        from vectl.orchestration.contracts import RequestMode
+
+        assert get_origin(RequestMode) is Literal
+        assert set(get_args(RequestMode)) == {"start", "resume", "recover"}
+
+
+class TestSessionPolicy:
+    """
+    Test SessionPolicy type alias contract.
+
+    Authority: docs/RFC-opencode-orchestration-runner.md section 6.2
+    """
+
+    def test_session_policy_literal_values(self):
+        """Verify SessionPolicy is a Literal with the two defined values."""
+        from typing import Literal, get_args, get_origin
+
+        from vectl.orchestration.contracts import SessionPolicy
+
+        assert get_origin(SessionPolicy) is Literal
+        assert set(get_args(SessionPolicy)) == {"reuse_allowed", "reuse_forbidden"}
+
+
+class TestRecoveredVia:
+    """
+    Test RecoveredVia type alias contract.
+
+    Authority: docs/RFC-opencode-orchestration-runner.md section 10.3
+    """
+
+    def test_recovered_via_literal_values(self):
+        """Verify RecoveredVia distinguishes the two recovery paths."""
+        from typing import Literal, get_args, get_origin
+
+        from vectl.orchestration.contracts import RecoveredVia
+
+        assert get_origin(RecoveredVia) is Literal
+        assert set(get_args(RecoveredVia)) == {"native_session_resume", "fresh_relaunch"}
+
+    def test_recovered_via_truth_labels_are_distinct(self):
+        """
+        Verify the two RecoveredVia values are distinct strings.
+
+        Authority: RFC section 10.3 - 'The system must not collapse these two
+        recovery paths into the same label.'
+        """
+        from vectl.orchestration.contracts import RecoveredVia
+
+        from typing import get_args
+
+        values = list(get_args(RecoveredVia))
+        assert len(values) == len(set(values)), (
+            f"RecoveredVia values must be distinct, got: {values}"
+        )
+
+
+class TestRecoveryContinuity:
+    """
+    Test RecoveryContinuity contract type (RFC section 10.3).
+
+    Authority: docs/RFC-opencode-orchestration-runner.md section 10.3
+    """
+
+    def test_recovery_continuity_is_dataclass(self):
+        """Verify RecoveryContinuity is a dataclass."""
+        from vectl.orchestration.contracts import RecoveryContinuity
+
+        assert is_dataclass(RecoveryContinuity)
+
+    def test_recovery_continuity_fields_match_spec(self):
+        """
+        Verify RecoveryContinuity has the documented fields.
+
+        Authority: docs/RFC-opencode-orchestration-runner.md section 10.3
+        Fields: recovered_via, run_id, step_id, agent_id, runner,
+                session_id, timestamp
+        """
+        from vectl.orchestration.contracts import RecoveryContinuity
+
+        expected_fields = {
+            "recovered_via",
+            "run_id",
+            "step_id",
+            "agent_id",
+            "runner",
+            "session_id",
+            "timestamp",
+        }
+        actual_fields = {f.name for f in fields(RecoveryContinuity)}
+
+        assert actual_fields == expected_fields, (
+            f"RecoveryContinuity field mismatch. Expected: {expected_fields}, Got: {actual_fields}"
+        )
+
+    def test_recovery_continuity_frozen(self):
+        """Verify RecoveryContinuity is frozen (immutable)."""
+        from vectl.orchestration.contracts import RecoveryContinuity
+
+        assert hasattr(RecoveryContinuity, "__dataclass_fields__")
+
+    def test_recovery_continuity_recovered_via_type(self):
+        """Verify recovered_via field uses RecoveredVia type."""
+        from typing import Literal, get_args, get_origin
+
+        from vectl.orchestration.contracts import RecoveryContinuity, RecoveredVia
+
+        field_types = {f.name: f.type for f in fields(RecoveryContinuity)}
+        recovered_via_type = field_types["recovered_via"]
+
+        assert get_origin(recovered_via_type) is Literal
+        assert set(get_args(recovered_via_type)) == set(get_args(RecoveredVia))
+
+    def test_recovery_continuity_required_and_optional_fields(self):
+        """Verify recovered_via is required; all others defaulted."""
+        from vectl.orchestration.contracts import RecoveryContinuity
+
+        # Minimal construction (only required field)
+        continuity = RecoveryContinuity(recovered_via="native_session_resume")
+        assert continuity.recovered_via == "native_session_resume"
+        assert continuity.run_id == ""
+        assert continuity.step_id == ""
+        assert continuity.session_id is None
+        assert continuity.timestamp == ""
+
+    def test_recovery_continuity_both_paths(self):
+        """Verify both recovery path labels are valid recovered_via values."""
+        from vectl.orchestration.contracts import RecoveryContinuity
+
+        native = RecoveryContinuity(
+            recovered_via="native_session_resume",
+            run_id="run-001",
+            session_id="session-abc",
+        )
+        assert native.recovered_via == "native_session_resume"
+        assert native.session_id == "session-abc"
+
+        fresh = RecoveryContinuity(
+            recovered_via="fresh_relaunch",
+            run_id="run-002",
+        )
+        assert fresh.recovered_via == "fresh_relaunch"
+        assert fresh.session_id is None
+
+
+class TestRecoveryAttempt:
+    """
+    Test RecoveryAttempt contract type (RFC section 10.4).
+
+    Authority: docs/RFC-opencode-orchestration-runner.md section 10.4
+    """
+
+    def test_recovery_attempt_is_dataclass(self):
+        """Verify RecoveryAttempt is a dataclass."""
+        from vectl.orchestration.contracts import RecoveryAttempt
+
+        assert is_dataclass(RecoveryAttempt)
+
+    def test_recovery_attempt_fields_match_spec(self):
+        """
+        Verify RecoveryAttempt has the documented fields.
+
+        Authority: docs/RFC-opencode-orchestration-runner.md section 10.4
+        Fields: attempt_kind, native_validation_ok,
+                native_validation_failure_reason, fallback_relaunch_used,
+                resulting_run_id, resulting_session_id
+        """
+        from vectl.orchestration.contracts import RecoveryAttempt
+
+        expected_fields = {
+            "attempt_kind",
+            "native_validation_ok",
+            "native_validation_failure_reason",
+            "fallback_relaunch_used",
+            "resulting_run_id",
+            "resulting_session_id",
+        }
+        actual_fields = {f.name for f in fields(RecoveryAttempt)}
+
+        assert actual_fields == expected_fields, (
+            f"RecoveryAttempt field mismatch. Expected: {expected_fields}, Got: {actual_fields}"
+        )
+
+    def test_recovery_attempt_frozen(self):
+        """Verify RecoveryAttempt is frozen (immutable)."""
+        from vectl.orchestration.contracts import RecoveryAttempt
+
+        assert hasattr(RecoveryAttempt, "__dataclass_fields__")
+
+    def test_recovery_attempt_attempt_kind_literal_values(self):
+        """Verify attempt_kind field uses Literal["resume", "recover"]."""
+        from typing import Literal, get_args, get_origin
+
+        from vectl.orchestration.contracts import RecoveryAttempt
+
+        field_types = {f.name: f.type for f in fields(RecoveryAttempt)}
+        kind_type = field_types["attempt_kind"]
+
+        assert get_origin(kind_type) is Literal
+        kind_values = set(get_args(kind_type))
+        assert kind_values == {"resume", "recover"}
+
+    def test_recovery_attempt_minimal_construction(self):
+        """Verify only attempt_kind is required; all others defaulted."""
+        from vectl.orchestration.contracts import RecoveryAttempt
+
+        attempt = RecoveryAttempt(attempt_kind="resume")
+        assert attempt.attempt_kind == "resume"
+        assert attempt.native_validation_ok is False
+        assert attempt.native_validation_failure_reason == ""
+        assert attempt.fallback_relaunch_used is False
+        assert attempt.resulting_run_id == ""
+        assert attempt.resulting_session_id is None
+
+    def test_recovery_attempt_resume_scenario(self):
+        """Verify construction for a native resume scenario."""
+        from vectl.orchestration.contracts import RecoveryAttempt
+
+        attempt = RecoveryAttempt(
+            attempt_kind="resume",
+            native_validation_ok=True,
+            resulting_run_id="run-001",
+            resulting_session_id="session-abc",
+        )
+        assert attempt.native_validation_ok is True
+        assert attempt.fallback_relaunch_used is False
+        assert attempt.resulting_session_id == "session-abc"
+
+    def test_recovery_attempt_recover_with_fallback(self):
+        """Verify construction for a recover scenario that falls back to fresh relaunch."""
+        from vectl.orchestration.contracts import RecoveryAttempt
+
+        attempt = RecoveryAttempt(
+            attempt_kind="recover",
+            native_validation_ok=False,
+            native_validation_failure_reason="session.json missing runner field",
+            fallback_relaunch_used=True,
+            resulting_run_id="run-002",
+        )
+        assert attempt.native_validation_ok is False
+        assert attempt.fallback_relaunch_used is True
+        assert attempt.resulting_session_id is None

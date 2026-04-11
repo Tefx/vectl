@@ -161,6 +161,8 @@ class WorkLease:
 
 Mechanical execution request into `runtime`.
 
+Authority: docs/RFC-opencode-orchestration-runner.md sections 6.1, 6.2, 7.1
+
 ```python
 @dataclass(frozen=True)
 class ExecutionRequest:
@@ -168,8 +170,25 @@ class ExecutionRequest:
     role: str
     runner: str
     work_refs: tuple[str, ...]
+    agent_id: str = ""
+    prompt_bundle_path: str = ""
+    runner_prompt_path: str = ""
+    request_mode: Literal["start", "resume", "recover"] = "start"
+    session_policy: Literal["reuse_allowed", "reuse_forbidden"] = "reuse_forbidden"
     session_id: str | None = None
 ```
+
+- `request_mode`: Launch mode semantics. `start` begins a fresh execution;
+  `resume` continues an existing session; `recover` reconstructs from durable
+  artifacts, preferring native session continuation and falling back to fresh
+  relaunch.
+- `session_policy`: Whether orchestration may reuse an existing session.
+  `reuse_forbidden` forces fresh execution semantics; `reuse_allowed` permits
+  session continuation.
+- `agent_id`: Agent identifier for the execution (authoritative resolution of
+  role to agent).
+- `prompt_bundle_path`: Path to the rendered prompt bundle artifact.
+- `runner_prompt_path`: Path to the runner-specific prompt artifact.
 
 ### 3.7 `ExecutionResult`
 
@@ -231,6 +250,64 @@ Important:
 - `resolver` returns a bounded report to `control`.
 - `control` must refresh state and resume normal evaluation from refreshed
   reality.
+
+---
+
+### 3.10 Recovery Types
+
+Recovery truth types defined in `contracts.py`.
+
+Authority: docs/RFC-opencode-orchestration-runner.md section 10
+
+#### Type Aliases
+
+```python
+RequestMode: TypeAlias = Literal["start", "resume", "recover"]
+SessionPolicy: TypeAlias = Literal["reuse_allowed", "reuse_forbidden"]
+RecoveredVia: TypeAlias = Literal["native_session_resume", "fresh_relaunch"]
+```
+
+- `RequestMode`: Launch mode for execution. `start` begins fresh; `resume`
+  continues an existing session; `recover` reconstructs from durable artifacts.
+- `SessionPolicy`: Whether session reuse is permitted. `reuse_allowed` permits
+  orchestration to provide an existing session; `reuse_forbidden` forces fresh
+  execution semantics.
+- `RecoveredVia`: Truth label distinguishing the two recovery paths. The system
+  must not collapse these into the same label. Persisted in `continuity.json`.
+
+#### 3.10.1 `RecoveryContinuity`
+
+```python
+@dataclass(frozen=True)
+class RecoveryContinuity:
+    recovered_via: RecoveredVia
+    run_id: str = ""
+    step_id: str = ""
+    agent_id: str = ""
+    runner: str = ""
+    session_id: str | None = None
+    timestamp: str = ""
+```
+
+Persisted at `.vectl/runs/<run_id>/recovery/continuity.json`. Mirrors into
+recovery attempt artifacts and human-readable summaries.
+
+#### 3.10.2 `RecoveryAttempt`
+
+```python
+@dataclass(frozen=True)
+class RecoveryAttempt:
+    attempt_kind: Literal["resume", "recover"]
+    native_validation_ok: bool = False
+    native_validation_failure_reason: str = ""
+    fallback_relaunch_used: bool = False
+    resulting_run_id: str = ""
+    resulting_session_id: str | None = None
+```
+
+Records whether native session validation succeeded, why it failed (if it did),
+whether fallback relaunch was used, and resulting identifiers. Persisted at
+`.vectl/runs/<run_id>/recovery/resume_attempt.json` or `recover_attempt.json`.
 
 ---
 

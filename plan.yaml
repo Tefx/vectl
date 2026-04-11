@@ -80092,7 +80092,7 @@ phases:
       - Runner process launch/wiring intentionally out of scope.'
   - id: opencode_runner_contracts.prompt-artifact-contract
     name: Lock prompt artifact and runner handoff contract
-    status: claimed
+    status: done
     description: 'Implement the RFC-defined prompt materialization and runner handoff
       contract before runner code is written.
 
@@ -80124,6 +80124,49 @@ phases:
     agent: python-senior-tacit
     claimed_by: python-senior-tacit
     claimed_at: '2026-04-11T19:16:35.251109+00:00'
+    done_at: '2026-04-11T19:39:07.934177+00:00'
+    evidence: 'Artifact:
+
+      - commit hash: 96d2ba724008b4a060f2ff7fd5f83cefb792acaf (worker branch)
+
+      - worker session: ses_282061003ffeFzEWo6GPGgL8Xn
+
+
+      Verification:
+
+      - Run: .venv/bin/python -m pytest tests/orchestration/unit/test_prompt_artifact_contract.py
+      tests/orchestration/unit/test_contracts.py tests/orchestration/unit/test_imports.py
+      tests/orchestration/unit/test_interfaces.py tests/test_extended_runner_protocol.py
+      -v -> 134 passed
+
+      - Run: .venv/bin/python -m pytest tests/orchestration/ tests/test_extended_runner_protocol.py
+      --tb=short -> 550 passed, 2 pre-existing host-config discovery failures
+
+
+      Files changed:
+
+      - src/vectl/orchestration/contracts.py
+
+      - src/vectl/orchestration/__init__.py
+
+      - src/vectl/orchestration/prompt_materialization.py
+
+      - tests/orchestration/unit/test_prompt_artifact_contract.py
+
+      - docs/ORCHESTRATION-PLANE-RUNNER-BACKEND.md
+
+
+      Spec link:
+
+      - docs/RFC-opencode-orchestration-runner.md §§8,9.2
+
+      - docs/ORCHESTRATION-PLANE-RUNNER-BACKEND.md §14.1
+
+
+      Gaps/Notes:
+
+      - Live process launch and orch_app wiring intentionally deferred to implementation
+      phase.'
   - id: opencode_runner_contracts.gate
     name: Verify contract completeness against RFC
     status: pending

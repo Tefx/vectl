@@ -79053,7 +79053,7 @@ phases:
       \ fail/stall/transport_error visibility and case respond/state behavior preserved."
   - id: cli_blackbox_recovery_faults_cases.retest-fault-case-matrix
     name: Retest recovery-fault and case-escalation matrix
-    status: pending
+    status: claimed
     description: 'step_type: test
 
       step_intent: retest_green
@@ -79091,6 +79091,8 @@ phases:
     - cli_blackbox_recovery_faults_cases.define-fault-case-tests
     - cli_blackbox_recovery_faults_cases.fix-fault-case-behavior
     agent: integration-verifier-tacit
+    claimed_by: integration-verifier-tacit
+    claimed_at: '2026-04-11T12:12:11.851212+00:00'
 - id: cli_blackbox_surface_safety_ops
   name: 'CLI Black-Box Tests: Surface Safety and Ops'
   status: locked

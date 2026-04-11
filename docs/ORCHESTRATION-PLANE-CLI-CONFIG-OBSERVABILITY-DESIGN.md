@@ -184,7 +184,12 @@ Resume an existing run.
 3. Restore projected state via replay
 4. Resume dispatch
 
-**Exit codes:** 0, 1, 2, 4, 5
+**Selector Safety (Hardened Behavior):**
+- When `--latest` is specified but no matching run exists, exits with code 2 (Not found)
+- When neither `RUN_ID` nor `--latest` is provided, exits with code 3 (Validation error)
+- No implicit run creation or fallback occurs
+
+**Exit codes:** 0, 1, 2, 3, 4, 5
 
 ---
 
@@ -210,7 +215,14 @@ Recover orchestration state from continuity artifacts.
 3. Detect gaps or corruption
 4. Report or repair / resume from durable artifacts
 
-**Exit codes:** 0, 1, 2, 4, 5
+**Recovery Semantics (Hardened Behavior):**
+- `--dry-run`: Read-only diagnostics; no modifications made
+- Non `--dry-run`: Performs actual recovery actions (repairs, state transitions)
+- **No-silent-deletion invariant**: Recovery never silently deletes run data; destructive operations require explicit confirmation or `--yes` flag
+- `--latest` resolution: If no matching run exists, exits with code 2 (Not found)
+- Missing selector: If neither `RUN_ID` nor `--latest` provided, exits with code 3 (Validation error)
+
+**Exit codes:** 0, 1, 2, 3, 4, 5
 
 ---
 
@@ -262,6 +274,9 @@ Prune old runs and artifacts.
 
 Show projected run status.
 
+**Arguments:**
+- `RUN_ID`: Run identifier (optional if `--latest`)
+
 **Flags:**
 - `--latest`: Use most recently updated run
 - `--step STEP_ID`: Filter by step ID
@@ -270,12 +285,19 @@ Show projected run status.
 - `--output MODE`: Output mode (human, json, jsonl)
 - `--plan PATH`: Path to the plan/config target
 
+**Selector Safety (Hardened Behavior):**
+- When `--latest` is specified but no matching run exists, the command exits with code 2 (Not found)
+- When neither `RUN_ID` nor `--latest` is provided, the command exits with code 3 (Validation error)
+- No implicit fallback or run creation occurs
+
 **Output:**
 - Run ID
 - Status
 - Active step (if any)
 - Open case count
 - Last event sequence
+
+**Exit codes:** 0, 2, 3, 5
 
 ---
 
@@ -404,6 +426,9 @@ Submit bounded operator response.
 
 Queue a pause request so dispatch can stop.
 
+**Arguments:**
+- `RUN_ID`: Run identifier (optional if `--latest`)
+
 **Flags:**
 - `--latest`: Use most recently updated run
 - `--step STEP_ID`: Specific step to pause
@@ -411,6 +436,10 @@ Queue a pause request so dispatch can stop.
 - `--json`: Output as JSON
 - `--output MODE`: Output mode (human, json, jsonl)
 - `--plan PATH`: Path to the plan/config target
+
+**Selector Safety (Hardened Behavior):**
+- When `--latest` is specified but no matching run exists, exits with code 2 (Not found)
+- When neither `RUN_ID` nor `--latest` is provided, exits with code 3 (Validation error)
 
 **Alias:** `vectl orch control pause`
 
@@ -420,6 +449,9 @@ Queue a pause request so dispatch can stop.
 
 Queue an unpause request so dispatch can resume.
 
+**Arguments:**
+- `RUN_ID`: Run identifier (optional if `--latest`)
+
 **Flags:**
 - `--latest`: Use most recently updated run
 - `--step STEP_ID`: Specific step to unpause
@@ -428,6 +460,10 @@ Queue an unpause request so dispatch can resume.
 - `--output MODE`: Output mode (human, json, jsonl)
 - `--plan PATH`: Path to the plan/config target
 
+**Selector Safety (Hardened Behavior):**
+- When `--latest` is specified but no matching run exists, exits with code 2 (Not found)
+- When neither `RUN_ID` nor `--latest` is provided, exits with code 3 (Validation error)
+
 **Alias:** `vectl orch control unpause`
 
 ---
@@ -435,6 +471,9 @@ Queue an unpause request so dispatch can resume.
 #### `vectl orch stop [RUN_ID|--latest]`
 
 Queue a stop request for a run.
+
+**Arguments:**
+- `RUN_ID`: Run identifier (optional if `--latest`)
 
 **Flags:**
 - `--latest`: Use most recently updated run
@@ -448,6 +487,10 @@ Queue a stop request for a run.
 1. Resolve run ID
 2. Persist a `control.stop` request for the selected run
 3. Return success once the request is queued; terminal state change is asynchronous
+
+**Selector Safety (Hardened Behavior):**
+- When `--latest` is specified but no matching run exists, exits with code 2 (Not found)
+- When neither `RUN_ID` nor `--latest` is provided, exits with code 3 (Validation error)
 
 **Alias:** `vectl orch control stop`
 
@@ -964,3 +1007,38 @@ This specification defines:
 3. **Observability**: Events (§9.3), projection (§9.2), artifacts (§9.3), registry (§10)
 
 Implementation must maintain compatibility with these contracts.
+
+---
+
+## 13. Non-Blocking Environment Debts
+
+This section documents known behavioral constraints that do not block normal operation but may affect specific edge-case scenarios.
+
+### 13.1 Isolated Worktree Mode
+
+When running in isolated worktree mode (e.g., via the orchestration isolation framework):
+
+- **Worktree Guard Behavior**: Worktree path resolution follows the semantics defined in `docs/ADR-worktree-support.md`, but isolated runs may experience slightly different path resolution timing compared to standard worktree execution.
+- **Authority Preservation**: The main worktree's `plan.yaml` remains the authoritative source regardless of isolation mode.
+
+### 13.2 Temporary Directory Execution
+
+When using environment variables to redirect runtime roots to temporary directories:
+
+```bash
+VECTL_ORCH_RUNTIME_ARTIFACT_ROOT=/tmp/vectl_runs \
+VECTL_ORCH_RUNTIME_WORKSPACE_ROOT=/tmp/vectl_workspaces \
+uv run vectl orch config-show
+```
+
+- **Caveat**: Executing `uv run vectl` from within a temporary directory (rather than from the project root while merely pointing environment variables at `/tmp`) may encounter resolution issues if the temporary directory lacks the necessary Python project structure (`.venv`, `pyproject.toml`).
+- **Recommendation**: Always run commands from the project root, using environment variables to redirect artifact/workspace paths.
+
+### 13.3 Debt Classification
+
+These items are classified as **non-blocking** because:
+
+1. They affect only specific operational modes (isolated runs, tempdir redirection)
+2. Standard workflows (project-root execution, standard worktree mode) are unaffected
+3. Workarounds are documented and available
+4. They do not compromise the core safety invariants (selector safety, no-silent-deletion)

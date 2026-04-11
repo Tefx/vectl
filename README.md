@@ -351,6 +351,13 @@ Use dry-run JSON diagnostics when triaging startup/recovery state:
 uv run vectl orch recover --latest --dry-run --json
 ```
 
+**Recovery semantics (hardened behavior):**
+
+- `--dry-run`: Diagnostic-only mode; no state modifications performed
+- Non `--dry-run`: Performs actual recovery actions including repairs and state transitions
+- **No-silent-deletion invariant**: Recovery operations never silently delete run data; any destructive action requires explicit `--yes` confirmation or the `--force` flag
+- `--latest` selector safety: If no matching run exists, exits with error code 2 (Not found); no implicit fallback or run creation occurs
+
 For claim/plan consistency repair, use `repair claims` (separate surface):
 
 ```bash

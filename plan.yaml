@@ -81009,7 +81009,7 @@ phases:
       - none'
   - id: opencode_runner_verification.integration-tests
     name: Run OpenCode orchestration integration tests
-    status: claimed
+    status: done
     description: 'Run integration tests for runtime/orch_app continuity with OpenCode.
 
 
@@ -81038,6 +81038,84 @@ phases:
     agent: integration-verifier-tacit
     claimed_by: integration-verifier-tacit
     claimed_at: '2026-04-11T22:37:53.650542+00:00'
+    done_at: '2026-04-11T22:47:23.231849+00:00'
+    evidence: '## Integration Verification Evidence
+
+
+      ### Test Execution
+
+      - 20 integration tests: **ALL PASS**, 0 skipped, 0 failures, 1.6s
+
+      - No Mock/MagicMock/@patch in integration test file (P2 clean)
+
+
+      ### What IS Proven (Contract Surface Integrity)
+
+      1. ExecutionRequest fields (request_mode, session_policy, session_id, agent_id)
+      persist through Runtime.prepare→start and appear in AgentExecutionState (3 tests)
+
+      2. Session metadata flows through Runtime.collect() (2 tests)
+
+      3. RecoveryContinuity serialization round-trips with correct recovered_via labels
+      (native_session_resume vs fresh_relaunch) (6 tests)
+
+      4. Continuity bootstrap writes runner/session_id to ledger.json and journal.jsonl
+      (3 tests)
+
+      5. RuntimeRecoveryRecord round-trips through RunStore with expanded fields (1
+      test)
+
+      6. AgentExecutionState expanded fields survive dataclass replace() (2 tests)
+
+      7. Both recovery artifacts coexist in recovery/ directory (1 test)
+
+      8. Backward-compatible defaults for missing serialized fields (1 test)
+
+
+      ### What IS NOT Proven (Behavioral Dispatch Gaps)
+
+      1. **No cancel/terminate test**: No test calls Runtime.terminate_execution()
+      or OpenCodeRunner.cancel(). The cancel-to-SIGTERM path is only unit-tested with
+      mock Popen.
+
+      2. **No recovery decision test**: No test calls orch_app.recover() which contains
+      the decision logic (lines 2780-2897) choosing native_session_resume vs fresh_relaunch.
+      Artifacts are written directly via `_write_recovery_continuity()`, bypassing
+      the decision tree.
+
+      3. **No OpenCodeRunner dispatch test**: All Runtime tests use runner="test"
+      (SubprocessRunner with echo command). No test dispatches through OpenCodeRunner.launch/resume
+      with real argv construction.
+
+      4. **No fresh relaunch fallback test**: RecoveryAttempt(fallback_relaunch_used=True)
+      is constructed manually, not triggered by recovery decision logic.
+
+
+      ### Coverage Data
+
+      - orch_app.py: 24% (recover() unexercised by integration)
+
+      - recovery.py: 49%
+
+      - recovery_fallback.py: 29%
+
+      - runtime.py: 34%
+
+      - runners.py: 51%
+
+
+      ### Verdict
+
+      Tests prove **data integrity** (serialization, persistence, field propagation)
+      but NOT **behavioral dispatch** (cancel reachability, recovery decision logic,
+      OpenCodeRunner runtime integration). The step scope items about "stop/cancel
+      reaches active OpenCode execution" and "recovery prefers native session continuation"
+      remain unproven at integration level. Live smoke (next step) should close the
+      behavioral gap.
+
+
+      status: PASS_WITH_DEBT (structural integrity proven; behavioral gaps deferred
+      to live-smoke)'
   - id: opencode_runner_verification.live-smoke
     name: Run real OpenCode live smoke
     status: pending

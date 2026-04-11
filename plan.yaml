@@ -78687,20 +78687,25 @@ phases:
   - id: cli_blackbox_active_control_recovery.fix-active-control-recovery-behavior
     name: Close active-control consumption and recovery terminalization gaps
     status: pending
-    description: "step_type: implementation\nverification_scope: phase-check protecting\
-      \ downstream gate `cli_blackbox_active_control_recovery.gate`\n\nFill in behavior\
-      \ gaps in orchestration control/recovery paths per the failing black-box proofs\
-      \ from step `cli_blackbox_active_control_recovery.define-active-control-recovery-tests`.\n\
-      \nUPSTREAM ARTIFACTS:\n- tests/repro/test_orch_cli_full_flow.py — active-run\
-      \ control and recovery scenarios are PROTECTED\n- tests/repro/test_orch_cli_control_consumption.py\
+    description: "step_type: implementation\nverification_scope: phase-check\n\nClose\
+      \ behavior gaps in orchestration control/recovery paths only after the tester-owned\
+      \ black-box matrix from `cli_blackbox_active_control_recovery.define-active-control-recovery-tests`\
+      \ proves a real gap.\n\nThis step may implement both product fixes and complex\
+      \ test-harness support where required, because the active-control/recovery scenarios\
+      \ involve slow-runner shims, live subprocess orchestration, and non-trivial\
+      \ fixture control.\n\nUPSTREAM ARTIFACTS:\n- tester-owned black-box expectations\
+      \ from `cli_blackbox_active_control_recovery.define-active-control-recovery-tests`\
+      \ are AUTHORITATIVE\n- tests/repro/test_orch_cli_full_flow.py — active-run control\
+      \ and recovery scenarios are PROTECTED\n- tests/repro/test_orch_cli_control_consumption.py\
       \ — public CLI control-consumption expectations are PROTECTED\n- tests/repro/test_orch_cli_recovery_live.py\
       \ — recover-to-terminal expectations are PROTECTED\n\nScope anchors:\n- spec_refs:\n\
       \  - docs/ORCHESTRATION-PLANE-CLI-CONFIG-OBSERVABILITY-DESIGN.md §7.1-7.4\n\
       \  - docs/ORCHESTRATION-PLANE-OPERATOR-CONFLICT-RECOVERY.md\n  - docs/ORCHESTRATION-PLANE-ORCH-APP-ROUTING.md\n\
       - touch_paths:\n  - src/vectl/orch_app.py\n  - src/vectl/orchestration/control_channel.py\n\
       \  - src/vectl/orchestration/runtime.py\n  - src/vectl/orchestration/run_store.py\n\
-      \  - tests/repro/test_orch_cli_full_flow.py\n- harness_refs:\n  - isolated fake\
-      \ slow-runner shim via PATH\n  - run store continuity artifacts under `.vectl/runs`\n\
+      \  - tests/repro/test_orch_cli_full_flow.py\n  - tests/repro/test_orch_cli_control_consumption.py\n\
+      \  - tests/repro/test_orch_cli_recovery_live.py\n- harness_refs:\n  - isolated\
+      \ fake slow-runner shim via PATH\n  - run store continuity artifacts under `.vectl/runs`\n\
       - authoritative_interface: public CLI control/recover surfaces only\n\nFailure-mode\
       \ checklist:\n- control actions must be consumed, not only queued\n- stop must\
       \ drive runner termination or terminalization evidence\n- recover non-dry-run\

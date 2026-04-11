@@ -16,10 +16,10 @@ from vectl.orchestration.contracts import (
     PromptArtifactPaths,
     PromptBundle,
     PromptRegistry,
+    ReconcileResult,
+    RecoveredVia,
     RecoveryAttempt,
     RecoveryContinuity,
-    RecoveredVia,
-    ReconcileResult,
     RequestMode,
     ResolutionCase,
     ResolutionCaseSource,
@@ -53,6 +53,17 @@ from vectl.orchestration.interfaces import (
     Resolver,
     Roster,
     Runtime,
+)
+from vectl.orchestration.recovery_fallback import (
+    RecoveryFallbackResult,
+    SessionValidationResult,
+    persist_recovery_attempt,
+    persist_recovery_continuity,
+    persist_recovery_fallback_result,
+    read_recovery_attempt,
+    read_recovery_continuity,
+    recover_with_fallback,
+    validate_session_for_resume,
 )
 from vectl.orchestration.resolution_reports import (
     parse_resolution_report_payload,
@@ -109,4 +120,14 @@ __all__ = [
     "CoreStepDataAdapter",
     "parse_resolution_report_payload",
     "validate_resolution_report_payload",
+    # Recovery fallback (recovery_fallback.py)
+    "RecoveryFallbackResult",
+    "SessionValidationResult",
+    "persist_recovery_attempt",
+    "persist_recovery_continuity",
+    "persist_recovery_fallback_result",
+    "read_recovery_attempt",
+    "read_recovery_continuity",
+    "recover_with_fallback",
+    "validate_session_for_resume",
 ]

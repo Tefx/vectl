@@ -79791,7 +79791,7 @@ phases:
       \ in this step scope."
 - id: config_role_profile_overrides_impl
   name: Role Profile Overrides Implementation
-  status: done
+  status: in_progress
   gate: Role profile overrides loader, validation, provenance, and RFC-required tests
     are implemented with no ambiguity in built-in vs custom role semantics.
   context: 'work_type=new_capability but implementation scope is config/runtime semantics
@@ -80054,6 +80054,107 @@ phases:
       Spec link:
 
       - docs/RFC-role-profile-overrides.md §13'
+  - id: config_role_profile_overrides_impl.fix-roundtrip-and-env-isolation
+    name: Fix config round-trip serialization and env-isolation test bleed
+    status: pending
+    description: 'Fix BOTH blocking issues surfaced by config_role_profile_overrides_verify.independent-rfc-retest.
+
+
+      Issue set:
+
+      1. `_config_to_dict` emits built-in role IDs under `role_profiles`, but `_dict_to_config`
+      rejects those built-in IDs under RFC §6.2. Repair serialization/deserialization
+      symmetry so effective config round-trip preserves RFC clean-break semantics
+      instead of emitting data that the loader rejects.
+
+      2. Discovery/config tests bleed host env config from `~/.config/vectl/vectl.yaml`.
+      Harden the affected tests and/or config-discovery seam so the RFC-targeted test
+      matrix runs with deterministic isolation and cannot be polluted by ambient user
+      config.
+
+
+      Files/seams likely touched:
+
+      - src/... config serialization / loader path for role profile overrides
+
+      - tests covering config discovery / config loader / config-show provenance
+
+
+      ## Root Cause vs Symptom
+
+      - Root cause: config serialization currently emits an externalized shape that
+      is not accepted by the authoritative loader/validator rules for built-in role
+      IDs.
+
+      - Symptom: round-trip tests fail because saved/effective config cannot be reloaded
+      under the same RFC semantics.
+
+      - Root cause: config discovery tests inherit ambient filesystem config from
+      the executing machine.
+
+      - Symptom: discovery tests pass/fail based on `~/.config/vectl/vectl.yaml` presence
+      instead of the intended fixture-controlled environment.
+
+      - Why this fix is not surface-level: close the symmetry contract and the test-environment
+      authority boundary together so the independent retest can prove RFC behavior
+      instead of host-specific artifacts.
+
+
+      ## Completion Criteria (stub exclusion)
+
+      This is an IMPLEMENTATION step. Stub-only completion is NOT acceptable.
+
+      Each deliverable MUST contain substantive logic that processes inputs and produces
+      outputs that vary based on those inputs.
+
+
+      ## Required sibling search
+
+      - Search all config serialization/deserialization paths for other emit/parse
+      mismatches around `role_profiles`, built-in role IDs, and effective config output.
+
+      - Search all affected tests/helpers for other home-directory or ambient-config
+      discovery leaks beyond the immediately failing tests.'
+    verification: '- Round-trip regression covers `_config_to_dict` -> `_dict_to_config`
+      symmetry for built-in and override role-profile cases under RFC §6.2
+
+      - Discovery/config tests prove deterministic isolation from `~/.config/vectl/vectl.yaml`
+      and other ambient home-config state
+
+      - Evidence identifies sibling-search results for serialization symmetry and
+      env-config bleed surfaces'
+    evidence_template: '## refs Read Confirmation (MANDATORY)
+
+
+      For each ref in this step:
+
+      - <filename> — key passage or "NOT READ: <reason>"
+
+
+      If no refs were provided, state: "No refs for this step."
+
+
+      ## Fix Evidence
+
+      - Root-cause summary for round-trip serialization mismatch
+
+      - Root-cause summary for ambient config bleed in tests
+
+      - Files changed
+
+      - Regression tests added/updated for round-trip symmetry
+
+      - Isolation strategy used for home-config bleed prevention
+
+      - Sibling-search results for related serialization or discovery leaks
+
+      - Residual risks (if any)'
+    depends_on:
+    - config_role_profile_overrides_impl.merge-loader-and-registry
+    - config_role_profile_overrides_impl.validation-and-error-contract
+    - config_role_profile_overrides_impl.provenance-effective-config-show
+    - config_role_profile_overrides_impl.rfc-required-tests
+    agent: python-senior-tacit
 - id: config_role_profile_overrides_verify
   name: Role Profile Overrides Verification
   status: in_progress

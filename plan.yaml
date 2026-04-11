@@ -80124,7 +80124,7 @@ phases:
     agent: integration-verifier-tacit
   - id: config_role_profile_overrides_impl.fix-roundtrip-and-env-isolation
     name: Fix config round-trip serialization and env-isolation test bleed
-    status: pending
+    status: claimed
     description: 'Fix BOTH blocking issues surfaced by config_role_profile_overrides_verify.independent-rfc-retest.
 
 
@@ -80218,6 +80218,8 @@ phases:
 
       - Residual risks (if any)'
     agent: python-senior-tacit
+    claimed_by: python-senior-tacit
+    claimed_at: '2026-04-11T22:37:47.420008+00:00'
 - id: opencode_runner_contracts
   name: OpenCode Runner Contracts
   status: done

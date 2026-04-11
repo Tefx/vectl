@@ -80264,7 +80264,7 @@ phases:
   steps:
   - id: opencode_runner_impl.prompt-materialization
     name: Implement prompt materialization pipeline
-    status: claimed
+    status: pending
     description: 'Implement prompt/artifact materialization from dispatch authority
       into durable run artifacts and workspace execution copies.
 
@@ -80292,8 +80292,6 @@ phases:
     verification: Targeted tests prove prompt artifacts are written with the required
       schema, paths, and workspace copies before runner launch.
     agent: python-senior-tacit
-    claimed_by: python-senior-tacit
-    claimed_at: '2026-04-11T19:59:43.958700+00:00'
   - id: opencode_runner_impl.dedicated-runner
     name: Implement dedicated OpenCodeRunner
     status: pending

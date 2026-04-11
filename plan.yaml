@@ -79156,31 +79156,6 @@ phases:
     depends_on:
     - cli_blackbox_finalization.full-plan-check
     agent: doc-reviewer-tacit
-  - id: cli_blackbox_finalization.deep-review-wiring
-    name: Audit CLI black-box wiring completeness
-    status: pending
-    description: Deep-review wiring audit for the CLI black-box campaign. Verify command
-      aliases, config overrides, runtime-root selection, and action/case inspection
-      surfaces are all reachable through the public CLI and backed by real consumers.
-    verification: No orphan CLI surfaces or unconsumed runtime/config paths remain
-      in the tested command families.
-    evidence_template: '## refs Read Confirmation (MANDATORY)
-
-      For each ref in this step:
-
-      - <filename> — key passage or "NOT READ: <reason>"
-
-
-      ## Wiring Audit Report
-
-      - Reachability findings
-
-      - Orphan surfaces / none
-
-      - Headline: PASS | PASS_WITH_DEBT | FAIL'
-    depends_on:
-    - cli_blackbox_finalization.full-plan-check
-    agent: wiring-auditor
   - id: cli_blackbox_finalization.deep-review-architecture
     name: Review orchestration test architecture and concurrency safety
     status: pending
@@ -79337,7 +79312,6 @@ phases:
     depends_on:
     - cli_blackbox_finalization.full-plan-check
     - cli_blackbox_finalization.doc-sync
-    - cli_blackbox_finalization.deep-review-wiring
     - cli_blackbox_finalization.deep-review-spec
     - cli_blackbox_finalization.deep-review-architecture
     - cli_blackbox_finalization.deep-review-contract-strength

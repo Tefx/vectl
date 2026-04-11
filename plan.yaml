@@ -79941,3 +79941,28 @@ phases:
     prove the clean-break role profile override semantics end-to-end.
   depends_on:
   - config_role_profile_overrides_impl
+  steps:
+  - id: config_role_profile_overrides_verify.independent-rfc-retest
+    name: Retest role profile overrides RFC behavior
+    status: pending
+    description: 'Independently rerun the RFC-targeted config loader, config validation,
+      and config-show provenance tests.
+
+
+      Scope:
+
+      - RFC-required test matrix is green
+
+      - no old built-in shadowing path remains accepted
+
+      - `config-show --effective` exposes human and JSON provenance output
+
+
+      Refs:
+
+      - docs/RFC-role-profile-overrides.md
+
+      - tests added/updated in implementation phase'
+    verification: Targeted pytest modules for config loader, config validate, and
+      config-show all pass with explicit provenance assertions.
+    agent: integration-verifier-tacit

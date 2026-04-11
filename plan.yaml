@@ -79791,7 +79791,7 @@ phases:
       \ in this step scope."
 - id: config_role_profile_overrides_impl
   name: Role Profile Overrides Implementation
-  status: pending
+  status: in_progress
   gate: Role profile overrides loader, validation, provenance, and RFC-required tests
     are implemented with no ambiguity in built-in vs custom role semantics.
   depends_on:

@@ -200,6 +200,7 @@ Validation rules:
 1. custom role IDs must be globally unique in the final registry
 2. custom role IDs must not shadow built-in role IDs
 3. all roles loaded from `role_profiles` must satisfy the same family-policy validation as built-ins
+4. if `role_profiles.<role_id>` matches a built-in role ID, validation must fail with a migration-directed error that tells the user to use `role_profile_overrides`
 
 ### 6.3 Final registry validation
 
@@ -218,7 +219,39 @@ The effective config output should show the final merged profiles.
 
 This RFC requires provenance for role profile fields in the same change.
 
-Example:
+Required output contracts:
+
+#### Human output
+
+Human output must use one line per fully-qualified field path:
+
+```text
+role_profiles.python-executor.default_runner = opencode (source=override)
+role_profiles.doc-reviewer.default_runner = codex (source=default)
+role_profiles.my-custom-reviewer.default_runner = opencode (source=custom)
+```
+
+#### Structured output (`--json` / `--output json`)
+
+Structured output must include a `role_profile_provenance` object with this shape:
+
+```yaml
+role_profile_provenance:
+  python-executor:
+    default_runner:
+      value: opencode
+      source: override
+  doc-reviewer:
+    default_runner:
+      value: codex
+      source: default
+  my-custom-reviewer:
+    default_runner:
+      value: opencode
+      source: custom
+```
+
+Illustrative human example:
 
 ```text
 role_profiles.python-executor.default_runner = opencode (source=override)
@@ -240,11 +273,16 @@ This provenance may be implemented inside the config inspection surface rather t
 
 Validation errors should be explicit and corrective.
 
-Recommended examples:
+Required error message formats:
 
-- `unknown built-in role in role_profile_overrides: python-executorr`
-- `role_profiles.python-executor shadows built-in role; use role_profile_overrides instead`
-- `role_profile_overrides.python-executor.output_contract violates coder family policy`
+- `unknown built-in role in role_profile_overrides: <role_id>`
+- `role_profiles.<role_id> shadows built-in role; use role_profile_overrides instead`
+- `role_profile_overrides.<role_id> cannot target custom role defined in role_profiles`
+- `role_profile_overrides.<role_id>.<field> violates <prompt_family> family policy`
+
+These errors should be surfaced through the existing configuration validation path
+using `ConfigValidationError` (or an equivalent structured validation error type
+if the implementation refactors validation internals).
 
 ### 7.3 Future CLI affordances
 
@@ -261,6 +299,8 @@ Not required for the initial implementation, but useful follow-ups:
 The main implementation should live in:
 
 - `src/vectl/orchestration/config.py`
+- `src/vectl/orch_app.py` / config inspection surface for effective provenance rendering
+- `src/vectl/cli.py` for final CLI output wiring if the existing payload surface requires extension
 
 This keeps the behavior localized to the configuration loader and validator.
 
@@ -350,7 +390,24 @@ That is enough to remove the main user pain while preserving the current explici
 1. Should vectl emit a migration hint when it detects copied built-in roles in `role_profiles`?
    - Recommendation: yes, eventually, but not required for the first implementation.
 
-## 13. Decision Summary
+## 13. Test Requirements
+
+The implementation must include tests for at least these scenarios:
+
+| Scenario | Expected Result |
+|----------|-----------------|
+| `role_profiles` defines a built-in role ID | validation error with migration-directed message |
+| `role_profile_overrides` targets an unknown built-in role | validation error |
+| `role_profile_overrides` targets a custom role from `role_profiles` | validation error |
+| valid built-in override | final effective registry contains patched field values |
+| valid custom role definition | final effective registry includes the custom role |
+| family-policy violation through override | validation error |
+| human `config-show --effective` | required one-line provenance format is present |
+| structured `config-show --effective --json` | `role_profile_provenance` object has correct `value` / `source` shape |
+
+These tests should live close to existing orchestration config loader and CLI/config inspection tests.
+
+## 14. Decision Summary
 
 This RFC recommends:
 

@@ -79179,7 +79179,7 @@ phases:
       \ selector per strict selector-safety expectation."
   - id: cli_blackbox_surface_safety_ops.fix-surface-safety-behavior
     name: Close selector, housekeeping, config, and concurrency surface gaps
-    status: pending
+    status: claimed
     description: "step_type: implementation\nverification_scope: phase-check\n\nClose\
       \ selector, housekeeping, config, and concurrency surface gaps only after the\
       \ tester-owned black-box matrix from `cli_blackbox_surface_safety_ops.define-surface-safety-tests`\
@@ -79241,6 +79241,8 @@ phases:
     depends_on:
     - cli_blackbox_surface_safety_ops.define-surface-safety-tests
     agent: python-senior-tacit
+    claimed_by: python-senior-tacit
+    claimed_at: '2026-04-11T12:47:11.261516+00:00'
   - id: cli_blackbox_surface_safety_ops.retest-surface-safety-matrix
     name: Retest selector, housekeeping, config, and concurrency matrix
     status: pending

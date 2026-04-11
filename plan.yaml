@@ -78632,11 +78632,14 @@ phases:
       - uncertainty sources: required ref path missing (`tools/vectl/README.md`) noted
       as pre-existing documentation path issue.'
 - id: cli_blackbox_active_control_recovery
-  name: CLI Black-Box Active Control and Recovery
+  name: 'CLI Black-Box Tests: Active Control and Recovery'
   status: pending
-  gate: Active-run CLI control requests and non-dry-run recovery are proven through
-    real isolated subprocess scenarios, with runnable evidence and no reopened orchestration
-    lifecycle gap.
+  gate: 'Lightweight test milestone: red test definition, bounded fixes if needed,
+    and green retest for active-run control plus non-dry-run recovery through real
+    CLI subprocesses.'
+  context: 'test_plan_only=true. This is a testing campaign, not a feature-delivery
+    stream. Use the minimal loop: define tests -> fix only what the tests prove missing
+    -> retest.'
   depends_on:
   - orch_plane_finalization
   steps:

@@ -79567,7 +79567,7 @@ phases:
       tests.'
 - id: cli_blackbox_finalization
   name: CLI Black-Box Tests Finalization
-  status: in_progress
+  status: done
   gate: 'Final testing wrap-up only: run the full relevant suite and sync docs if
     command behavior or usage guidance changed.'
   context: test_plan_only=true. No deep-review requirement by default; close with
@@ -79750,7 +79750,7 @@ phases:
       non-intersecting with product correctness.'
   - id: cli_blackbox_finalization.doc-sync
     name: Sync CLI black-box test docs and operator guidance
-    status: claimed
+    status: done
     description: Update project documentation so CLI/operator guidance, quickstart
       examples, and any testing notes match the hardened black-box coverage and observed
       behavior. Focus on documented control/recover/case/prune semantics and any clarified
@@ -79776,3 +79776,16 @@ phases:
     agent: doc-reviewer-tacit
     claimed_by: doc-reviewer-tacit
     claimed_at: '2026-04-11T13:35:45.883804+00:00'
+    done_at: '2026-04-11T14:23:57.744814+00:00'
+    evidence: "## refs Read Confirmation (MANDATORY)\n- docs/ORCHESTRATION-CLI-QUICKSTART.md\
+      \ — updated with selector-safety and recovery semantics clarifications plus\
+      \ non-blocking debt notes.\n- docs/ORCHESTRATION-PLANE-CLI-CONFIG-OBSERVABILITY-DESIGN.md\
+      \ — updated command-surface behavior notes and added non-blocking environment\
+      \ debt section.\n- README.md — updated recovery/selector-safety semantics summary.\n\
+      - tools/vectl/README.md — NOT READ: missing.\n\n## Doc Sync Report\n- Docs updated:\
+      \ 3 files (`README.md`, `docs/ORCHESTRATION-CLI-QUICKSTART.md`, `docs/ORCHESTRATION-PLANE-CLI-CONFIG-OBSERVABILITY-DESIGN.md`).\n\
+      - Behavior clarified:\n  - selector safety (`--latest`/missing-selector failure\
+      \ behavior)\n  - recovery dry-run vs non-dry-run semantics\n  - no-silent-deletion\
+      \ invariant wording\n  - documented non-blocking environment debts (isolated\
+      \ worktree guard and tmpdir `uv run vectl` caveat)\n- Remaining doc debt: none\
+      \ in this step scope."

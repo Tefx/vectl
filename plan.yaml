@@ -78904,3 +78904,41 @@ phases:
     are covered by black-box tests with explicit blocker-class dispositions.
   depends_on:
   - cli_blackbox_active_control_recovery
+  steps:
+  - id: cli_blackbox_recovery_faults_cases.define-fault-case-tests
+    name: Define recovery-fault and case-escalation black-box tests
+    status: pending
+    description: "step_type: test\nstep_intent: test_define_red\nexpected_result:\
+      \ red\nverification_scope: local-check protecting downstream gate `cli_blackbox_recovery_faults_cases.gate`\n\
+      \nAuthor focused CLI black-box tests that expose currently unproven or likely-missing\
+      \ fault behavior:\n- missing `config.snapshot.yaml`\n- corrupt continuity /\
+      \ event / projection artifacts\n- fresh-start-required recovery path\n- runner\
+      \ fail, stall, or transport-error path that should produce a real case\n- case\
+      \ list/show/respond lifecycle after a real fault\n\nScope anchors:\n- spec_refs:\n\
+      \  - docs/ORCHESTRATION-PLANE-CLI-CONFIG-OBSERVABILITY-DESIGN.md §7.1-7.4\n\
+      \  - docs/ORCHESTRATION-PLANE-OPERATOR-CONFLICT-RECOVERY.md\n  - docs/ORCHESTRATION-PLANE-RUNNER-BACKEND.md\n\
+      - touch_paths:\n  - tests/repro/test_orch_cli_recovery_faults.py\n  - tests/repro/test_orch_cli_case_lifecycle.py\n\
+      \  - tests/repro/test_orch_cli_runner_faults.py\n- harness_refs:\n  - isolated\
+      \ fixture repo with deliberately damaged continuity artifacts\n  - fake fail/stall\
+      \ runner shims in PATH\n- authoritative_interface: public CLI recovery/case/control\
+      \ surfaces only"
+    verification: Targeted pytest invocation proves which fault behaviors are still
+      open by failing through public CLI subprocesses with exact artifact manipulations
+      documented.
+    evidence_template: '## refs Read Confirmation (MANDATORY)
+
+      For each ref in this step:
+
+      - <filename> — key passage or "NOT READ: <reason>"
+
+
+      ## Expected-Red Proof
+
+      - Exact pytest command
+
+      - Fault matrix covered
+
+      - Real case creation exposed: yes|no
+
+      - Remaining blocker-class gaps'
+    agent: python-executor

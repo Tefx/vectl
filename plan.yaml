@@ -79937,7 +79937,7 @@ phases:
       paths/messages.'
   - id: config_role_profile_overrides_impl.provenance-effective-config-show
     name: Implement provenance in config-show effective output
-    status: claimed
+    status: done
     description: 'Implement RFC-required provenance surface for `config-show --effective`.
 
 
@@ -79970,6 +79970,29 @@ phases:
     agent: python-senior-tacit
     claimed_by: python-senior-tacit
     claimed_at: '2026-04-11T20:42:02.597545+00:00'
+    done_at: '2026-04-11T21:10:03.980518+00:00'
+    evidence: 'Artifact:
+
+      - worker session: ses_281b73f40ffea8fo70okVU3b41
+
+
+      Verification:
+
+      - test_config_show_provenance.py and related config tests: 61 passed
+
+
+      Files changed:
+
+      - src/vectl/orchestration/config.py
+
+      - src/vectl/orch_app.py
+
+      - tests/orchestration/unit/test_config_show_provenance.py
+
+
+      Spec link:
+
+      - docs/RFC-role-profile-overrides.md §7.1'
   - id: config_role_profile_overrides_impl.rfc-required-tests
     name: Add RFC required tests
     status: pending

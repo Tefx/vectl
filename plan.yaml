@@ -80066,7 +80066,8 @@ phases:
     name: Retest role profile overrides RFC behavior
     status: claimed
     description: 'Independently rerun the RFC-targeted config loader, config validation,
-      and config-show provenance tests.
+      and config-show provenance tests after the batched fix step resolves the known
+      blocking issues.
 
 
       Scope:
@@ -80077,6 +80078,12 @@ phases:
 
       - `config-show --effective` exposes human and JSON provenance output
 
+      - config serialization round-trip no longer emits RFC-invalid built-in role
+      IDs under `role_profiles`
+
+      - test outcomes are deterministic and isolated from ambient `~/.config/vectl/vectl.yaml`
+      discovery bleed
+
 
       Refs:
 
@@ -80084,7 +80091,11 @@ phases:
 
       - tests added/updated in implementation phase'
     verification: Targeted pytest modules for config loader, config validate, and
-      config-show all pass with explicit provenance assertions.
+      config-show all pass with explicit provenance assertions, round-trip serialization
+      coverage, and proof that ambient home-config state does not affect discovery
+      outcomes.
+    depends_on:
+    - config_role_profile_overrides_impl.fix-roundtrip-and-env-isolation
     agent: integration-verifier-tacit
     claimed_by: integration-verifier-tacit
     claimed_at: '2026-04-11T21:50:45.607046+00:00'

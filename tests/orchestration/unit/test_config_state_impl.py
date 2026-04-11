@@ -198,6 +198,11 @@ class TestConfigDiscovery:
         config_file = tmp_path / "custom_vectl.yaml"
         config_file.write_text(yaml.dump(config_content))
         monkeypatch.setenv("VECTL_CONFIG", str(config_file))
+        # Prevent ambient home-config from interfering with discovery
+        monkeypatch.setattr(
+            "vectl.orchestration.config.USER_CONFIG_DIR",
+            str(tmp_path / "nonexistent_user_config"),
+        )
 
         config, path = load_orchestration_config()
         assert path == config_file
@@ -212,6 +217,11 @@ class TestConfigDiscovery:
 
         # Clear VECTL_CONFIG to avoid interference
         monkeypatch.delenv("VECTL_CONFIG", raising=False)
+        # Prevent ambient home-config from interfering with discovery
+        monkeypatch.setattr(
+            "vectl.orchestration.config.USER_CONFIG_DIR",
+            str(tmp_path / "nonexistent_user_config"),
+        )
 
         config, path = load_orchestration_config()
         assert path == config_file
@@ -223,6 +233,11 @@ class TestConfigDiscovery:
         """Verify load_orchestration_config() returns defaults when no config file."""
         monkeypatch.chdir(tmp_path)
         monkeypatch.delenv("VECTL_CONFIG", raising=False)
+        # Prevent ambient home-config from interfering with discovery
+        monkeypatch.setattr(
+            "vectl.orchestration.config.USER_CONFIG_DIR",
+            str(tmp_path / "nonexistent_user_config"),
+        )
 
         config, path = load_orchestration_config()
         assert path is None  # No config file found
@@ -366,6 +381,11 @@ class TestConfigDiscovery:
         """Verify VECTL_ORCH runtime path overrides map to nested config fields."""
         monkeypatch.chdir(tmp_path)
         monkeypatch.delenv("VECTL_CONFIG", raising=False)
+        # Prevent ambient home-config from interfering with discovery
+        monkeypatch.setattr(
+            "vectl.orchestration.config.USER_CONFIG_DIR",
+            str(tmp_path / "nonexistent_user_config"),
+        )
         monkeypatch.setenv("VECTL_ORCH_RUNTIME_ARTIFACT_ROOT", "/tmp/custom_runs")
         monkeypatch.setenv("VECTL_ORCH_RUNTIME_WORKSPACE_ROOT", "/tmp/custom_workspaces")
 

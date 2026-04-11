@@ -1023,9 +1023,40 @@ def _serialize_tool_allowlist(
 
 
 def _config_to_dict(config: OrchestrationConfig) -> dict[str, Any]:
-    """Convert OrchestrationConfig to a dict for YAML serialization."""
-    role_profiles = {
-        profile.role_id: {
+    """Convert OrchestrationConfig to a dict for YAML serialization.
+
+    Authority: docs/RFC-role-profile-overrides.md §4, §5
+
+    Serialization symmetry contract: the dict produced by this function
+    MUST be consumable by ``_dict_to_config`` without validation errors.
+    This requires separating built-in profile changes into
+    ``role_profile_overrides`` and custom profiles into ``role_profiles``,
+    matching the RFC clean-break semantics that ``_dict_to_config`` enforces.
+
+    Built-in role IDs that differ from defaults are emitted as
+    ``role_profile_overrides`` (only the changed fields), preserving
+    the RFC §6.1/§6.2 invariant that ``role_profiles`` is custom-only.
+    """
+    # Separate built-in overrides from custom role profiles per RFC §4/§5.
+    builtin_ids = _builtin_role_ids()
+    builtin_defaults = {p.role_id: p for p in default_role_profiles()}
+
+    # Track fields for provenance to determine which built-in fields changed.
+    profile_fields = (
+        "agent_id",
+        "prompt_family",
+        "execution_context",
+        "mutation_policy",
+        "session_policy",
+        "output_contract",
+        "default_runner",
+    )
+
+    role_profile_overrides: dict[str, dict[str, str]] = {}
+    role_profiles: dict[str, dict[str, str]] = {}
+
+    for profile in config.role_profiles:
+        profile_dict = {
             "agent_id": profile.agent_id,
             "prompt_family": profile.prompt_family,
             "execution_context": profile.execution_context,
@@ -1034,64 +1065,84 @@ def _config_to_dict(config: OrchestrationConfig) -> dict[str, Any]:
             "output_contract": profile.output_contract,
             "default_runner": profile.default_runner,
         }
-        for profile in config.role_profiles
+
+        if profile.role_id in builtin_ids:
+            # Built-in role: emit only changed fields as an override.
+            default_profile = builtin_defaults[profile.role_id]
+            overrides: dict[str, str] = {}
+            for field_name in profile_fields:
+                current_value = getattr(profile, field_name)
+                default_value = getattr(default_profile, field_name)
+                if str(current_value) != str(default_value):
+                    overrides[field_name] = str(current_value)
+            if overrides:
+                role_profile_overrides[profile.role_id] = overrides
+            # If no fields changed, the default is implicit — omit entirely.
+        else:
+            # Custom role: emit full profile under role_profiles.
+            role_profiles[profile.role_id] = profile_dict
+
+    orch: dict[str, Any] = {"plan_path": str(config.plan_path)}
+
+    # Conditionally include role_profiles and role_profile_overrides
+    # to preserve RFC §4/§5 clean-break semantics and enable round-trip.
+    if role_profiles:
+        orch["role_profiles"] = role_profiles
+    if role_profile_overrides:
+        orch["role_profile_overrides"] = role_profile_overrides
+
+    orch["dispatch"] = {
+        "default_role_id": config.dispatch.default_role_id,
     }
-    return {
-        "orchestration": {
-            "plan_path": str(config.plan_path),
-            "role_profiles": role_profiles,
-            "dispatch": {
-                "default_role_id": config.dispatch.default_role_id,
-            },
-            "roster": {
-                "default_ttl_seconds": config.roster.default_ttl_seconds,
-                "max_reuse_window_seconds": config.roster.max_reuse_window_seconds,
-            },
-            "runtime": {
-                "default_runner": config.runtime.default_runner,
-                "artifact_root": str(config.runtime.artifact_root),
-                "workspace_root": str(config.runtime.workspace_root),
-                "isolation_default": config.runtime.isolation_default,
-                "cleanup_policy": config.runtime.cleanup_policy,
-            },
-            "control": {
-                "idle_poll_interval_ms": config.control.idle_poll_interval_ms,
-                "max_resolution_attempts_per_case": config.control.max_resolution_attempts_per_case,
-                "action_ack_timeout_seconds": config.control.action_ack_timeout_seconds,
-            },
-            "resolver": {
-                "enabled": config.resolver.enabled,
-                "default_role_id": config.resolver.default_role_id,
-                "timeout_seconds": config.resolver.invocation_timeout_seconds,
-                "max_tool_calls_per_invocation": config.resolver.max_tool_calls_per_invocation,
-                "max_tool_argument_bytes": config.resolver.max_tool_argument_bytes,
-                "tool_allowlist": _serialize_tool_allowlist(config.resolver.tool_allowlist),
-            },
-            "continuity": {
-                "resume_enabled": config.continuity.resume_enabled,
-                "stale_artifact_policy": config.continuity.stale_artifact_policy,
-                "replay_safety": config.continuity.replay_safety,
-            },
-            "observability": {
-                "events_jsonl": config.observability.events_jsonl,
-                "text_log": config.observability.text_log,
-                "projected_state": config.observability.projected_state,
-                "heartbeat_stale_threshold_seconds": (
-                    config.observability.heartbeat_stale_threshold_seconds
-                ),
-                "per_step_artifacts": config.observability.per_step_artifacts,
-                "per_case_artifacts": config.observability.per_case_artifacts,
-                "redact_env_keys": list(config.observability.redact_env_keys),
-                "max_log_megabytes": config.observability.max_log_megabytes,
-                "retention_days": config.observability.retention_days,
-            },
-            "operator": {
-                "control_channel": config.operator.control_channel,
-                "default_output": config.operator.default_output,
-                "max_pending_actions": config.operator.max_pending_actions,
-            },
-        },
+    orch["roster"] = {
+        "default_ttl_seconds": config.roster.default_ttl_seconds,
+        "max_reuse_window_seconds": config.roster.max_reuse_window_seconds,
     }
+    orch["runtime"] = {
+        "default_runner": config.runtime.default_runner,
+        "artifact_root": str(config.runtime.artifact_root),
+        "workspace_root": str(config.runtime.workspace_root),
+        "isolation_default": config.runtime.isolation_default,
+        "cleanup_policy": config.runtime.cleanup_policy,
+    }
+    orch["control"] = {
+        "idle_poll_interval_ms": config.control.idle_poll_interval_ms,
+        "max_resolution_attempts_per_case": config.control.max_resolution_attempts_per_case,
+        "action_ack_timeout_seconds": config.control.action_ack_timeout_seconds,
+    }
+    orch["resolver"] = {
+        "enabled": config.resolver.enabled,
+        "default_role_id": config.resolver.default_role_id,
+        "timeout_seconds": config.resolver.invocation_timeout_seconds,
+        "max_tool_calls_per_invocation": config.resolver.max_tool_calls_per_invocation,
+        "max_tool_argument_bytes": config.resolver.max_tool_argument_bytes,
+        "tool_allowlist": _serialize_tool_allowlist(config.resolver.tool_allowlist),
+    }
+    orch["continuity"] = {
+        "resume_enabled": config.continuity.resume_enabled,
+        "stale_artifact_policy": config.continuity.stale_artifact_policy,
+        "replay_safety": config.continuity.replay_safety,
+    }
+    orch["observability"] = {
+        "events_jsonl": config.observability.events_jsonl,
+        "text_log": config.observability.text_log,
+        "projected_state": config.observability.projected_state,
+        "heartbeat_stale_threshold_seconds": (
+            config.observability.heartbeat_stale_threshold_seconds
+        ),
+        "per_step_artifacts": config.observability.per_step_artifacts,
+        "per_case_artifacts": config.observability.per_case_artifacts,
+        "redact_env_keys": list(config.observability.redact_env_keys),
+        "max_log_megabytes": config.observability.max_log_megabytes,
+        "retention_days": config.observability.retention_days,
+    }
+    orch["operator"] = {
+        "control_channel": config.operator.control_channel,
+        "default_output": config.operator.default_output,
+        "max_pending_actions": config.operator.max_pending_actions,
+    }
+
+    return {"orchestration": orch}
 
 
 # ---------------------------------------------------------------------

@@ -80825,7 +80825,7 @@ phases:
   steps:
   - id: opencode_runner_verification.unit-tests
     name: Add and run OpenCode runner unit coverage
-    status: claimed
+    status: done
     description: 'Add and run unit coverage for OpenCode runner substrate.
 
 
@@ -80852,6 +80852,54 @@ phases:
     agent: integration-verifier-tacit
     claimed_by: integration-verifier-tacit
     claimed_at: '2026-04-11T22:22:02.553842+00:00'
+    done_at: '2026-04-11T22:34:35.983539+00:00'
+    evidence: 'Artifact:
+
+      - verifier session: ses_2815c6ab7fferbSXqLQj3PJ98I
+
+
+      Verification:
+
+      - Unit verification suite: 188 passed, 0 failed, 0 skipped
+
+      - Coverage evidence indicates OpenCode substrate target coverage complete (registry/contracts/prompt
+      materialization and OpenCode-specific runner paths)
+
+
+      step_intent:
+
+      - Verify OpenCode runner substrate unit coverage and behavior contracts.
+
+      expected_result:
+
+      - Targeted substrate unit modules pass with comprehensive coverage.
+
+      observed_result:
+
+      - PASS with full targeted unit verification.
+
+      failure_alignment:
+
+      - N/A
+
+      behavioral_proof_register:
+
+      - Registry resolves OpenCodeRunner
+
+      - Request contract and recovery dataclasses validated
+
+      - launch/resume/poll/cancel and typed errors validated
+
+      - prompt artifact shape validated
+
+
+      gate_open_allowed:
+
+      - true
+
+      uncertainty_sources:
+
+      - none'
   - id: opencode_runner_verification.integration-tests
     name: Run OpenCode orchestration integration tests
     status: pending

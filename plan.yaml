@@ -79907,7 +79907,7 @@ phases:
     agent: python-senior-tacit
   - id: config_role_profile_overrides_impl.provenance-effective-config-show
     name: Implement provenance in config-show effective output
-    status: pending
+    status: claimed
     description: 'Implement RFC-required provenance surface for `config-show --effective`.
 
 
@@ -79938,6 +79938,8 @@ phases:
     depends_on:
     - config_role_profile_overrides_impl.merge-loader-and-registry
     agent: python-senior-tacit
+    claimed_by: python-senior-tacit
+    claimed_at: '2026-04-11T20:42:02.597545+00:00'
   - id: config_role_profile_overrides_impl.rfc-required-tests
     name: Add RFC required tests
     status: pending

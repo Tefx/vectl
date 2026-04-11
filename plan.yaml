@@ -79130,3 +79130,10 @@ phases:
     - cli_blackbox_recovery_faults_cases.retest-fault-case-matrix
     - cli_blackbox_recovery_faults_cases.liveness-probe
     agent: gate-reviewer-tacit
+- id: cli_blackbox_surface_safety_ops
+  name: CLI Black-Box Surface Safety and Operations Matrix
+  status: locked
+  gate: Selector ambiguity, housekeeping safety, config/env overrides, output contracts,
+    and concurrency safety are covered by black-box CLI tests before finalization.
+  depends_on:
+  - cli_blackbox_recovery_faults_cases

@@ -78744,3 +78744,56 @@ phases:
     depends_on:
     - cli_blackbox_active_control_recovery.define-active-control-recovery-tests
     agent: python-senior-tacit
+  - id: cli_blackbox_active_control_recovery.retest-active-control-recovery
+    name: Retest active-control and recovery black-box matrix
+    status: pending
+    description: 'step_type: test
+
+      step_intent: retest_green
+
+      expected_result: green
+
+      verification_scope: phase-check protecting downstream gate `cli_blackbox_active_control_recovery.gate`
+
+
+      As an independent verifier, rerun the active-run control and non-dry-run recovery
+      CLI black-box matrix from a fresh temp repo and confirm green behavior through
+      the public CLI only.
+
+
+      Focus:
+
+      - pause/unpause/stop requests on a genuinely running run
+
+      - actions/event surfaces reflecting the consumed or queued state correctly
+
+      - recover `--latest` non-dry-run leading to terminal closure with plan advancement
+      evidence
+
+
+      Use only public CLI subprocesses plus fixture setup commands.'
+    verification: Targeted pytest runs for the active-control/recovery black-box suite
+      are green; outputs include actual command transcripts and terminal run status
+      proof.
+    evidence_template: '## refs Read Confirmation (MANDATORY)
+
+      For each ref in this step:
+
+      - <filename> — key passage or "NOT READ: <reason>"
+
+
+      ## Verification Report
+
+      - Commands executed
+
+      - Actual outputs
+
+      - Active-run control result
+
+      - Recovery terminal result
+
+      - Headline: PASS | PASS_WITH_DEBT | FAIL'
+    depends_on:
+    - cli_blackbox_active_control_recovery.define-active-control-recovery-tests
+    - cli_blackbox_active_control_recovery.fix-active-control-recovery-behavior
+    agent: integration-verifier-tacit

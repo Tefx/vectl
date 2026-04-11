@@ -80373,7 +80373,7 @@ phases:
       its separate flow.'
   - id: opencode_runner_impl.dedicated-runner
     name: Implement dedicated OpenCodeRunner
-    status: pending
+    status: claimed
     description: 'Implement a dedicated `OpenCodeRunner` and register it for runner_id
       `opencode`.
 
@@ -80404,6 +80404,8 @@ phases:
     depends_on:
     - opencode_runner_impl.prompt-materialization
     agent: python-senior-tacit
+    claimed_by: python-senior-tacit
+    claimed_at: '2026-04-11T20:42:15.681159+00:00'
   - id: opencode_runner_impl.runtime-continuity-integration
     name: Integrate OpenCode runner into runtime and continuity
     status: pending

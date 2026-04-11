@@ -78816,10 +78816,12 @@ phases:
     name: Define recovery-fault and case-escalation black-box tests
     status: pending
     description: "step_type: test\nstep_intent: test_define_red\nexpected_result:\
-      \ red\nverification_scope: local-check protecting downstream gate `cli_blackbox_recovery_faults_cases.gate`\n\
-      \nAuthor focused CLI black-box tests that expose currently unproven or likely-missing\
-      \ fault behavior:\n- missing `config.snapshot.yaml`\n- corrupt continuity /\
-      \ event / projection artifacts\n- fresh-start-required recovery path\n- runner\
+      \ red\nverification_scope: local-check\n\nBlind black-box test design step for\
+      \ recovery-fault and case-escalation behavior. Define the expected-red matrix\
+      \ from public CLI semantics and docs, not implementation internals. If test\
+      \ files are written here, they must preserve blind black-box discipline.\n\n\
+      Target fault families:\n- missing `config.snapshot.yaml`\n- corrupt continuity\
+      \ / event / projection artifacts\n- fresh-start-required recovery path\n- runner\
       \ fail, stall, or transport-error path that should produce a real case\n- case\
       \ list/show/respond lifecycle after a real fault\n\nScope anchors:\n- spec_refs:\n\
       \  - docs/ORCHESTRATION-PLANE-CLI-CONFIG-OBSERVABILITY-DESIGN.md §7.1-7.4\n\
@@ -78848,7 +78850,7 @@ phases:
       - Real case creation exposed: yes|no
 
       - Remaining blocker-class gaps'
-    agent: python-executor
+    agent: blind-tester-tacit
   - id: cli_blackbox_recovery_faults_cases.fix-fault-case-behavior
     name: Close recovery-fault handling and case lifecycle gaps
     status: pending

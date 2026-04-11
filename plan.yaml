@@ -79567,7 +79567,7 @@ phases:
       tests.'
 - id: cli_blackbox_finalization
   name: CLI Black-Box Tests Finalization
-  status: pending
+  status: in_progress
   gate: 'Final testing wrap-up only: run the full relevant suite and sync docs if
     command behavior or usage guidance changed.'
   context: test_plan_only=true. No deep-review requirement by default; close with
@@ -79577,7 +79577,7 @@ phases:
   steps:
   - id: cli_blackbox_finalization.full-plan-check
     name: Run full CLI black-box plan verification
-    status: pending
+    status: claimed
     description: "verification_scope: full-plan-check protecting downstream gate `cli_blackbox_finalization.gate`\n\
       \nRun the full authoritative CLI black-box matrix at the nearest appropriate\
       \ boundary so later gates do not rediscover the same broad failures. Include\
@@ -79606,6 +79606,8 @@ phases:
 
       - Headline: PASS | PASS_WITH_DEBT | FAIL'
     agent: integration-verifier-tacit
+    claimed_by: integration-verifier-tacit
+    claimed_at: '2026-04-11T13:18:22.711235+00:00'
   - id: cli_blackbox_finalization.doc-sync
     name: Sync CLI black-box test docs and operator guidance
     status: pending

@@ -76,7 +76,7 @@ class RunRecord:
     step_id: str
     plan_path: str | None = None
     agent: str | None = None
-    status: Literal["pending", "running", "success", "fail", "stall"] | None = None
+    status: Literal["pending", "running", "success", "fail", "stall", "paused"] | None = None
     created_at: float | None = None
     started_at: float | None = None
     updated_at: float | None = None
@@ -174,12 +174,13 @@ class LegacyContinuityMinimumError(RunStoreError):
     """Raised when imported legacy artifacts miss required continuity minimums."""
 
 
-RunStatus = Literal["pending", "running", "success", "fail", "stall"]
+RunStatus = Literal["pending", "running", "success", "fail", "stall", "paused"]
 LegacyMigrationState = Literal["parallel", "preferred", "deprecated", "retired"]
 Liveness = Literal["alive", "stale", "unknown"]
 RetryObserver = Callable[[Path, int, Exception], None]
 
 _TERMINAL_STATUSES: frozenset[RunStatus] = frozenset({"success", "fail"})
+_NON_TERMINAL_STATUSES: frozenset[RunStatus] = frozenset({"pending", "running", "stall", "paused"})
 _DEFAULT_APPEND_RETRIES = 3
 _DEFAULT_APPEND_RETRY_DELAY_SECONDS = 0.02
 _CROCKFORD32 = "0123456789ABCDEFGHJKMNPQRSTVWXYZ"
@@ -722,7 +723,7 @@ class CasesIndex(Protocol):
 
     def by_status(
         self,
-        status: Literal["pending", "running", "success", "fail", "stall"],
+        status: Literal["pending", "running", "success", "fail", "stall", "paused"],
     ) -> tuple[RunRecord, ...]:
         """
         Return all run records with a given status.
@@ -955,7 +956,7 @@ class RunRegistry:
 
     def by_status(
         self,
-        status: Literal["pending", "running", "success", "fail", "stall"],
+        status: Literal["pending", "running", "success", "fail", "stall", "paused"],
     ) -> tuple[RunRecord, ...]:
         """Return all latest run records with ``status``."""
         records = [
@@ -1193,7 +1194,7 @@ class RunInspectionBoundary(Protocol):
 
     def by_status(
         self,
-        status: Literal["pending", "running", "success", "fail", "stall"],
+        status: Literal["pending", "running", "success", "fail", "stall", "paused"],
     ) -> tuple[RunRecord, ...]: ...
 
     def latest_for_step(self, step_id: str) -> RunRecord | None: ...
@@ -1217,7 +1218,7 @@ class RunRegistryInspectionView:
 
     def by_status(
         self,
-        status: Literal["pending", "running", "success", "fail", "stall"],
+        status: Literal["pending", "running", "success", "fail", "stall", "paused"],
     ) -> tuple[RunRecord, ...]:
         return self.registry.by_status(status)
 

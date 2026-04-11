@@ -1,14 +1,16 @@
 # Orchestration CLI Quick Start
 
-`vectl orch` 是 `vectl` 的 orchestration 操作入口，用来启动、观察、控制、恢复一次 orchestration run。
+[中文](ORCHESTRATION-CLI-QUICKSTART_zh.md)
 
-## 1. 先确认 CLI 可用
+`vectl orch` is the orchestration entrypoint in `vectl`. You use it to start, inspect, control, and recover orchestration runs.
+
+## 1. Confirm the CLI works
 
 ```bash
 uv run vectl orch --help
 ```
 
-查看配置是否正常：
+Check the current orchestration config:
 
 ```bash
 uv run vectl orch config-show
@@ -16,154 +18,159 @@ uv run vectl orch config-validate
 uv run vectl orch config-tools
 ```
 
-如果你想看展开后的生效配置：
+If you want the fully expanded effective config:
 
 ```bash
 uv run vectl orch config-show --effective
 ```
 
-## 2. 最小启动流程
+## 2. Minimal start flow
 
-### 启动一个 run
+### Start a run
 
 ```bash
 uv run vectl orch run
 ```
 
-或指定 step：
+Or start a specific step:
 
 ```bash
 uv run vectl orch run core.ready
 ```
 
-仅做校验、不真正执行：
+Validate only, without executing:
 
 ```bash
 uv run vectl orch run core.ready --dry-run --json
 ```
 
-## 3. 查看运行状态
+## 3. Inspect run state
 
-列出 run：
+List runs:
 
 ```bash
 uv run vectl orch runs
 ```
 
-查看最新 run 状态：
+Show the latest run status:
 
 ```bash
 uv run vectl orch status --latest
 ```
 
-查看指定 run：
+Show a specific run:
 
 ```bash
 uv run vectl orch status RUN_ID
 ```
 
-查看事件流：
+> **Selector safety (hardened behavior):** if `--latest` cannot resolve a run, the command fails explicitly. Mutating commands such as `resume`, `recover`, and `stop` also fail explicitly when you omit both `RUN_ID` and `--latest`.
+
+Show the event stream:
 
 ```bash
 uv run vectl orch events --latest
 ```
 
-查看日志：
+Show logs:
 
 ```bash
 uv run vectl orch logs --latest
-# 或
+# or
 uv run vectl orch logs --run RUN_ID
 ```
 
-查看工件：
+Show artifacts:
 
 ```bash
 uv run vectl orch artifacts --latest
 ```
 
-查看控制动作：
+Show control actions:
 
 ```bash
 uv run vectl orch actions --latest
 ```
 
-## 4. 控制 run
+## 4. Control a run
 
-### 暂停调度
+### Pause dispatch
 
 ```bash
 uv run vectl orch pause RUN_ID --reason "maintenance"
 ```
 
-### 恢复调度
+### Resume dispatch
 
 ```bash
 uv run vectl orch unpause RUN_ID --reason "resume"
 ```
 
-### 请求停止
+### Request stop
 
 ```bash
 uv run vectl orch stop RUN_ID --reason "stop requested"
 ```
 
-> 注意：`stop` 会排队写入 `control.stop` 请求，不是 CLI 同步立即终止。
+> `stop` queues a `control.stop` request. It is not a synchronous, immediate process kill at the CLI boundary.
 
-## 5. 恢复与续跑
+## 5. Resume and recover
 
-恢复最近一次 run：
+Resume the latest run:
 
 ```bash
 uv run vectl orch resume --latest
 ```
 
-恢复指定 run：
+Resume a specific run:
 
 ```bash
 uv run vectl orch resume RUN_ID
 ```
 
-仅校验恢复路径：
+Validate the resume path only:
 
 ```bash
 uv run vectl orch resume RUN_ID --dry-run --json
 ```
 
-做 recovery：
+Run recovery:
 
 ```bash
 uv run vectl orch recover RUN_ID
 ```
 
-> 说明：旧命令 `vectl repair continuity` 已退役，不再作为支持的恢复入口。
-> 请统一使用 `vectl orch recover`。
+> The legacy command `vectl repair continuity` is retired. Use `vectl orch recover` as the supported recovery surface.
 
-只做 recovery 诊断：
+Run recovery diagnostics only:
 
 ```bash
 uv run vectl orch recover RUN_ID --dry-run --json
 ```
 
-## 6. 清理旧数据
+> **Recovery semantics (hardened behavior):**
+> - `--dry-run` is diagnostic only and does not mutate state.
+> - Non-`--dry-run` performs actual recovery actions.
+> - Recovery follows the **no-silent-deletion invariant**: run data is never deleted silently without explicit confirmation semantics.
+> - `--latest` fails explicitly if no run exists; it does not silently fall back or create a new run.
 
-预览 prune：
+## 6. Prune old data
+
+Preview prune:
 
 ```bash
 uv run vectl orch prune --older-than 7 --dry-run --json
 ```
 
-真正 prune：
+Apply prune:
 
 ```bash
 uv run vectl orch prune --older-than 7 --force
 ```
 
-## 7. 常用输出格式
+## 7. Common output formats
 
-### 人类可读
-
-默认就是：
+### Human-readable
 
 ```bash
 uv run vectl orch status --latest
@@ -171,37 +178,33 @@ uv run vectl orch status --latest
 
 ### JSON
 
-适合集成脚本：
-
 ```bash
 uv run vectl orch status --latest --json
 ```
 
 ### JSONL
 
-适合事件流：
-
 ```bash
 uv run vectl orch events --latest --jsonl
 ```
 
-## 8. 指定计划/配置目标
+## 8. Target a specific plan/config
 
-多数子命令都支持：
+Most subcommands support:
 
 ```bash
 --plan PATH
 ```
 
-例如：
+Example:
 
 ```bash
 uv run vectl orch run resolver-phase.step1 --plan /tmp/orch_test_plan.yaml
 ```
 
-## 9. 用环境变量覆盖运行目录
+## 9. Override runtime directories with environment variables
 
-例如把工件和 workspace 放到临时目录：
+Example:
 
 ```bash
 VECTL_ORCH_RUNTIME_ARTIFACT_ROOT=/tmp/vectl_runs \
@@ -209,7 +212,11 @@ VECTL_ORCH_RUNTIME_WORKSPACE_ROOT=/tmp/vectl_workspaces \
 uv run vectl orch config-show --effective --plan /tmp/orch_test_plan.yaml
 ```
 
-## 10. 最推荐的新手顺序
+> **Known non-blocking environment debt:**
+> - **`uv run vectl` from a temporary directory:** if you execute `uv run vectl` inside a temp directory that does not contain the expected Python project context (`.venv`, `pyproject.toml`), command resolution can fail. Prefer running from the project root and only redirect artifact/workspace paths with `VECTL_ORCH_*`.
+> - **Isolated worktree guard behavior:** isolated worktree execution may differ slightly from non-isolated execution because worktree safety guards are intentionally active. The main worktree `plan.yaml` remains authoritative.
+
+## 10. Recommended first-run order
 
 ```bash
 uv run vectl orch --help
@@ -222,7 +229,7 @@ uv run vectl orch events --latest
 uv run vectl orch artifacts --latest
 ```
 
-## 11. 常见命令速查
+## 11. Command reference cheat sheet
 
 ```bash
 uv run vectl orch run [STEP_ID]

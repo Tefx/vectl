@@ -166,7 +166,7 @@ class RecoveryReport:
     quarantined_artifact_paths: tuple[str, ...] = ()
     operator_message: str | None = None
     gate_open_allowed: bool = True
-    no_silent_deletion_preserved: bool = False
+    no_silent_deletion_preserved: bool = True
     runtime_state: RuntimeRecoveryRecord | None = None
     operator_notifications: tuple[OperatorNotificationRecord, ...] = ()
     dispatch_recovery_gate: DispatchRecoveryGate | None = None

@@ -36,6 +36,18 @@ phases:
         """
 orchestration:
   plan_path: plan.yaml
+  runtime:
+    default_runner: test
+    artifact_root: .vectl/runs
+  role_profiles:
+    python-executor:
+      agent_id: python-executor
+      prompt_family: coder
+      execution_context: linked_worktree
+      mutation_policy: worktree_changes
+      session_policy: reuse_allowed
+      output_contract: freeform_evidence
+      default_runner: test
 """.strip()
         + "\n",
         encoding="utf-8",

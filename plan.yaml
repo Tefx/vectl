@@ -78633,7 +78633,7 @@ phases:
       as pre-existing documentation path issue.'
 - id: cli_blackbox_active_control_recovery
   name: 'CLI Black-Box Tests: Active Control and Recovery'
-  status: in_progress
+  status: done
   gate: 'Lightweight test milestone: red test definition, bounded fixes if needed,
     and green retest for active-run control plus non-dry-run recovery through real
     CLI subprocesses.'
@@ -78810,7 +78810,7 @@ phases:
       \ by runner handle availability; no protected-test rewrites reported."
   - id: cli_blackbox_active_control_recovery.retest-active-control-recovery
     name: Retest active-control and recovery black-box matrix
-    status: claimed
+    status: done
     description: 'step_type: test
 
       step_intent: retest_green
@@ -78863,9 +78863,34 @@ phases:
     agent: integration-verifier-tacit
     claimed_by: integration-verifier-tacit
     claimed_at: '2026-04-11T11:13:58.713315+00:00'
+    done_at: '2026-04-11T11:34:35.925651+00:00'
+    evidence: "## refs Read Confirmation (MANDATORY)\n- `tools/vectl/README.md` —\
+      \ NOT READ at required path; verifier read repo `README.md` orchestration surface\
+      \ sections.\n- `tests/repro/test_orch_cli_control_consumption.py` — read; validates\
+      \ control request persistence and channel send/acknowledge lifecycle.\n- `tests/repro/test_orch_cli_recovery_live.py`\
+      \ — read; validates non-dry-run recovery/report fields/terminal outcomes.\n\
+      - `tests/test_orch_cli_surface.py` — read; validates CLI registration/delegation/flags/exit\
+      \ mapping.\n- `tests/repro/test_orch_cli_recovery_red.py` — read; expected-red\
+      \ CLI family registration probes.\n- `tests/repro/test_orch_cli_full_flow.py`\
+      \ — read; active control lifecycle and full-flow checks.\n\n## Verification\
+      \ Report\n- Commands executed:\n  - `uv run pytest tests/test_orch_cli_surface.py\
+      \ -v` → 9 passed\n  - `uv run pytest tests/repro/test_orch_cli_control_consumption.py\
+      \ -v -s` → 9 passed\n  - `uv run pytest tests/repro/test_orch_cli_recovery_live.py\
+      \ -v -s` → 11 passed\n  - `uv run pytest tests/repro/test_orch_cli_recovery_red.py\
+      \ -v` → 20 passed\n  - `uv run pytest tests/repro/test_orch_cli_full_flow.py\
+      \ -v -s` → 11 passed\n  - Aggregate: 60 passed, 0 failed\n- Actual outputs (spot-check):\n\
+      \  - `orch control stop --latest --json` returns success with queued stop action\n\
+      \  - `orch actions --latest --json` shows pending control action entries\n \
+      \ - `orch recover --latest --json` returns structured `recovery_report` with\
+      \ `outcome=no_artifacts` and `gate_open_allowed=true`\n- Active-run control\
+      \ result: command surfaces and persistence/ack paths verified; active-process\
+      \ pause/unpause lifecycle remains non-blocking debt without live long-running\
+      \ agent process.\n- Recovery terminal result: non-dry-run recover returns structured\
+      \ terminal-compatible outcome and report fields; no indefinite-running reopen\
+      \ observed.\n- Headline: PASS_WITH_DEBT"
 - id: cli_blackbox_recovery_faults_cases
   name: 'CLI Black-Box Tests: Recovery Faults and Cases'
-  status: locked
+  status: pending
   gate: 'Lightweight test milestone: define bad-path black-box tests, close only proven
     gaps, and retest recovery-fault and case-lifecycle behavior.'
   context: test_plan_only=true. Focus on bad-path and operator-surface verification,

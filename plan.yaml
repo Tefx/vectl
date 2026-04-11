@@ -79179,7 +79179,7 @@ phases:
       \ selector per strict selector-safety expectation."
   - id: cli_blackbox_surface_safety_ops.fix-surface-safety-behavior
     name: Close selector, housekeeping, config, and concurrency surface gaps
-    status: claimed
+    status: done
     description: "step_type: implementation\nverification_scope: phase-check\n\nClose\
       \ selector, housekeeping, config, and concurrency surface gaps only after the\
       \ tester-owned black-box matrix from `cli_blackbox_surface_safety_ops.define-surface-safety-tests`\
@@ -79243,6 +79243,30 @@ phases:
     agent: python-senior-tacit
     claimed_by: python-senior-tacit
     claimed_at: '2026-04-11T12:47:11.261516+00:00'
+    done_at: '2026-04-11T13:04:26.851234+00:00'
+    evidence: "## refs Read Confirmation (MANDATORY)\n- tests/repro/test_orch_cli_selector_safety.py\
+      \ — read (ambiguous/latest/missing-selector cases).\n- tests/repro/test_orch_cli_prune_config.py\
+      \ — read.\n- tests/repro/test_orch_cli_concurrency.py — read.\n- src/vectl/cli.py\
+      \ — read and modified.\n- src/vectl/orch_app.py / run_store.py / runtime.py\
+      \ — reviewed for scope verification.\n- docs/ORCHESTRATION-PLANE-CLI-CONFIG-OBSERVABILITY-DESIGN.md\
+      \ — read (selector/exit-code contracts).\n\n## Root Cause vs Symptom\n- Root\
+      \ cause: CLI argument-validation did not enforce selector-safety before falling\
+      \ through to success/empty responses on zero-run cases; recover lacked explicit\
+      \ selector requirement.\n- Surface families closed:\n  - `status --latest` zero-run\
+      \ now not-found exit behavior.\n  - `recover --latest` zero-run now not-found\
+      \ exit behavior.\n  - `recover`/`resume` without selector now validation error.\n\
+      \  - `stop --latest` zero-run now explicit not-found code alignment.\n- Non-goals/residual\
+      \ debt: read-only inspect commands with latest may still return empty-success\
+      \ where acceptable; two precedence tests remain skipped due environment run-creation\
+      \ constraints.\n\n## Implementation Evidence\n- Files changed: `src/vectl/cli.py`.\n\
+      - Commands run:\n  - `uv run pytest tests/repro/test_orch_cli_selector_safety.py`\
+      \ → 11 passed, 2 skipped (previously had selector-safety failures)\n  - `uv\
+      \ run pytest tests/repro/test_orch_cli_prune_config.py` → 11 passed\n  - `uv\
+      \ run pytest tests/repro/test_orch_cli_concurrency.py` → 9 passed\n  - Combined:\
+      \ 31 passed, 2 skipped, 0 failed\n- Selector safety proof: explicit `_die(...,\
+      \ code=2/3)` guards added for missing/empty latest selectors across status/recover/resume/stop\
+      \ paths.\n- Prune safety proof: prune/config suite green (no regressions).\n\
+      - Concurrency proof: concurrency suite green (no regressions)."
   - id: cli_blackbox_surface_safety_ops.retest-surface-safety-matrix
     name: Retest selector, housekeeping, config, and concurrency matrix
     status: pending

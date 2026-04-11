@@ -81009,7 +81009,7 @@ phases:
       - none'
   - id: opencode_runner_verification.integration-tests
     name: Run OpenCode orchestration integration tests
-    status: pending
+    status: claimed
     description: 'Run integration tests for runtime/orch_app continuity with OpenCode.
 
 
@@ -81036,6 +81036,8 @@ phases:
     depends_on:
     - opencode_runner_verification.unit-tests
     agent: integration-verifier-tacit
+    claimed_by: integration-verifier-tacit
+    claimed_at: '2026-04-11T22:37:53.650542+00:00'
   - id: opencode_runner_verification.live-smoke
     name: Run real OpenCode live smoke
     status: pending

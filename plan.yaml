@@ -79231,3 +79231,42 @@ phases:
     depends_on:
     - cli_blackbox_surface_safety_ops.define-surface-safety-tests
     agent: python-senior-tacit
+  - id: cli_blackbox_surface_safety_ops.retest-surface-safety-matrix
+    name: Retest selector, housekeeping, config, and concurrency matrix
+    status: pending
+    description: 'step_type: test
+
+      step_intent: retest_green
+
+      expected_result: green
+
+      verification_scope: phase-check protecting downstream gate `cli_blackbox_surface_safety_ops.gate`
+
+
+      Independently rerun the full remaining CLI black-box matrix for selectors, prune/config,
+      output contracts, and concurrency hazards using fresh temp repos and public
+      CLI subprocesses only.'
+    verification: Targeted pytest runs are green and include explicit proofs for ambiguity
+      handling, active-run prune safety, env override behavior, and race protection.
+    evidence_template: '## refs Read Confirmation (MANDATORY)
+
+      For each ref in this step:
+
+      - <filename> — key passage or "NOT READ: <reason>"
+
+
+      ## Verification Report
+
+      - Commands executed
+
+      - Actual outputs
+
+      - Selector/prune/config verdicts
+
+      - Concurrency verdicts
+
+      - Headline: PASS | PASS_WITH_DEBT | FAIL'
+    depends_on:
+    - cli_blackbox_surface_safety_ops.define-surface-safety-tests
+    - cli_blackbox_surface_safety_ops.fix-surface-safety-behavior
+    agent: integration-verifier-tacit

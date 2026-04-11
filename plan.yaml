@@ -79791,7 +79791,7 @@ phases:
       \ in this step scope."
 - id: config_role_profile_overrides_impl
   name: Role Profile Overrides Implementation
-  status: in_progress
+  status: done
   gate: Role profile overrides loader, validation, provenance, and RFC-required tests
     are implemented with no ambiguity in built-in vs custom role semantics.
   context: 'work_type=new_capability but implementation scope is config/runtime semantics
@@ -79995,7 +79995,7 @@ phases:
       - docs/RFC-role-profile-overrides.md §7.1'
   - id: config_role_profile_overrides_impl.rfc-required-tests
     name: Add RFC required tests
-    status: claimed
+    status: done
     description: 'Add or update the minimal test matrix required by the RFC.
 
 
@@ -80031,9 +80031,32 @@ phases:
     agent: python-senior-tacit
     claimed_by: python-senior-tacit
     claimed_at: '2026-04-11T21:10:50.027162+00:00'
+    done_at: '2026-04-11T21:50:08.479460+00:00'
+    evidence: 'Artifact:
+
+      - worker session: ses_2819d43eaffe7y5pWO7UPcbl4Z
+
+      - commit: eee6b149f741a7ddf00e5eb2cd1b6d3639163140
+
+
+      Verification:
+
+      - uv run pytest tests/orchestration/unit/test_role_profile_overrides.py tests/orchestration/unit/test_config_show_provenance.py
+      tests/orchestration/unit/test_rfc_role_profile_overrides_matrix.py -v --tb=short
+      -> 120 passed
+
+
+      Files changed:
+
+      - tests/orchestration/unit/test_rfc_role_profile_overrides_matrix.py
+
+
+      Spec link:
+
+      - docs/RFC-role-profile-overrides.md §13'
 - id: config_role_profile_overrides_verify
   name: Role Profile Overrides Verification
-  status: locked
+  status: pending
   gate: RFC-required tests, effective provenance output, and changed-file verification
     prove the clean-break role profile override semantics end-to-end.
   depends_on:

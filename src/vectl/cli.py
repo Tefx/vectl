@@ -785,14 +785,21 @@ def orch_resume(
     """Resume an existing orchestration run from artifacts.
 
     Contract authority: orch_app.py::OrchestrationApp.resume()
+    Selector safety authority: docs/ORCHESTRATION-PLANE-CLI-CONFIG-OBSERVABILITY-DESIGN.md §7.1, §6
+      §7.1 — resume accepts [RUN_ID|--latest]
+      §6   — exit 2 = not found, exit 3 = validation
     """
     mode = _resolve_orch_output_mode(output=output, json_flag=json_flag, jsonl_flag=False)
     app_runtime = _build_orchestration_runtime_app_or_die(plan=plan)
     if run_id is not None and latest:
         _die("Specify either RUN_ID or --latest, not both")
+    if run_id is None and not latest:
+        _die("Resume requires explicit selector: provide RUN_ID or --latest", code=3)
     resolved_run_id = run_id
     if latest:
         resolved_run_id = _resolve_latest_run_id(app_runtime)
+    if latest and resolved_run_id is None:
+        _die("No runs available for --latest selector", code=2)
     if resolved_run_id is None:
         _die("Run selector required: provide RUN_ID or --latest")
     if dry_run:
@@ -833,15 +840,22 @@ def orch_recover(
     """Recover orchestration state from continuity artifacts.
 
     Contract authority: orch_app.py::OrchestrationApp.recover()
+    Selector safety authority: docs/ORCHESTRATION-PLANE-CLI-CONFIG-OBSERVABILITY-DESIGN.md §7.1, §6
+      §7.1 — recover accepts [RUN_ID|--latest]
+      §6   — exit 2 = not found
     """
     del yes
     mode = _resolve_orch_output_mode(output=output, json_flag=json_flag, jsonl_flag=False)
     app_runtime = _build_orchestration_runtime_app_or_die(plan=plan)
     if run_id is not None and latest:
         _die("Specify either RUN_ID or --latest, not both")
+    if run_id is None and not latest:
+        _die("Recover requires explicit selector: provide RUN_ID or --latest", code=3)
     resolved_run_id = run_id
     if latest:
         resolved_run_id = _resolve_latest_run_id(app_runtime)
+    if latest and resolved_run_id is None:
+        _die("No runs available for --latest selector", code=2)
     resolved_step_id = step_id
     if resolved_step_id is None and resolved_run_id is not None:
         resolved_step_id = _step_id_for_run(app_runtime, resolved_run_id)
@@ -1001,12 +1015,15 @@ def orch_inspect_status(
     """Inspect current orchestration status.
 
     Contract authority: orch_app.py::OrchestrationApp.inspect_status()
+    Selector safety authority: docs/ORCHESTRATION-PLANE-CLI-CONFIG-OBSERVABILITY-DESIGN.md §7.2, §6
     """
     mode = _resolve_orch_output_mode(output=output, json_flag=json_flag, jsonl_flag=False)
     app_runtime = _build_orchestration_runtime_app_or_die(plan=plan)
     if run_id is not None and latest:
         _die("Specify either RUN_ID or --latest, not both")
     resolved_run = run_id or (_resolve_latest_run_id(app_runtime) if latest else None)
+    if latest and resolved_run is None:
+        _die("No runs available for --latest selector", code=2)
     if resolved_run is not None and step_id is None:
         step_id = _step_id_for_run(app_runtime, resolved_run)
     payload = app_runtime.inspect_status(step_id=step_id)
@@ -1321,7 +1338,7 @@ def orch_control_stop(
         _die("Specify either RUN_ID or --latest, not both")
     resolved_run = run_id or (_resolve_latest_run_id(app_runtime) if latest else None)
     if resolved_run is None and latest:
-        _die("No runs available for --latest selector")
+        _die("No runs available for --latest selector", code=2)
     try:
         result = app_runtime.control_stop(run_id=resolved_run, reason=reason, force=force)
     except Exception as exc:  # pragma: no cover - defensive internal mapping

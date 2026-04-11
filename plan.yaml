@@ -80005,3 +80005,10 @@ phases:
     automatic recovery fallback are implemented per RFC.
   depends_on:
   - opencode_runner_contracts
+- id: opencode_runner_verification
+  name: OpenCode Runner Verification
+  status: locked
+  gate: Unit, integration, and live OpenCode evidence prove the runner is real, session-aware,
+    recoverable, and automation-grade before downstream config work begins.
+  depends_on:
+  - opencode_runner_impl

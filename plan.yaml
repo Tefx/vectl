@@ -78960,7 +78960,7 @@ phases:
       \ this step scope and were documented as out-of-step debt."
   - id: cli_blackbox_recovery_faults_cases.fix-fault-case-behavior
     name: Close recovery-fault handling and case lifecycle gaps
-    status: claimed
+    status: done
     description: "step_type: implementation\nverification_scope: phase-check\n\nClose\
       \ recovery-fault handling and case lifecycle gaps only after the tester-owned\
       \ black-box matrix from `cli_blackbox_recovery_faults_cases.define-fault-case-tests`\
@@ -79024,6 +79024,33 @@ phases:
     agent: python-senior-tacit
     claimed_by: python-senior-tacit
     claimed_at: '2026-04-11T12:02:55.047728+00:00'
+    done_at: '2026-04-11T12:11:57.680022+00:00'
+    evidence: "## refs Read Confirmation (MANDATORY)\n- docs/ORCHESTRATION-PLANE-CLI-CONFIG-OBSERVABILITY-DESIGN.md\
+      \ — read (recover semantics, snapshot authority, projection/event integrity).\n\
+      - docs/ORCHESTRATION-PLANE-OPERATOR-CONFLICT-RECOVERY.md — read (§6.4 no-silent-deletion\
+      \ invariant).\n- docs/ORCHESTRATION-PLANE-RUNNER-BACKEND.md — read (runner statuses/errors/registry\
+      \ contract).\n- tools/vectl/README.md — NOT READ at required path.\n- tests/repro/test_orch_cli_recovery_faults.py\
+      \ — read (critical no_silent_deletion flag test).\n- tests/repro/test_orch_cli_case_lifecycle.py\
+      \ — read.\n- tests/repro/test_orch_cli_runner_faults.py — read.\n- src/vectl/orch_app.py\
+      \ and src/vectl/orchestration/recovery.py — read.\n\n## Root Cause vs Symptom\n\
+      - Root cause:\n  1) `RecoveryReport.no_silent_deletion_preserved` defaulted\
+      \ to `False`.\n  2) `recover()` final report used `bool(quarantined_artifact_paths)\
+      \ and no_silent_deletion_preserved`, forcing `False` when no quarantine happened.\n\
+      - Fault families closed:\n  - no_silent_deletion invariant now correctly true\
+      \ for NO_ARTIFACTS/RECOVERED/QUARANTINED semantics.\n  - missing snapshot blocking,\
+      \ corrupt-artifact detection, fresh-start-required quarantine, runner fault\
+      \ surfaces, and case lifecycle remained green.\n- Deviation from docs: none.\n\
+      \n## Implementation Evidence\n- Files changed:\n  - src/vectl/orchestration/recovery.py\
+      \ (default `no_silent_deletion_preserved=True`)\n  - src/vectl/orch_app.py (remove\
+      \ erroneous `bool(quarantined_artifact_paths)` gate in final report)\n- Commands\
+      \ run:\n  - `uv run pytest tests/repro/test_orch_cli_recovery_faults.py -v`\
+      \ → 11 passed\n  - `uv run pytest tests/repro/test_orch_cli_case_lifecycle.py\
+      \ -v` → 10 passed\n  - `uv run pytest tests/repro/test_orch_cli_runner_faults.py\
+      \ -v` → 9 passed\n  - `uv run pytest -k \"recovery\" -v` → 100 passed\n- Bad-path\
+      \ outputs:\n  - Before: `no_silent_deletion_preserved=False` triggered expected-red\
+      \ assertion.\n  - After: same path returns `no_silent_deletion_preserved=True`\
+      \ and passes.\n- Case lifecycle proof:\n  - Targeted matrix green with runner\
+      \ fail/stall/transport_error visibility and case respond/state behavior preserved."
   - id: cli_blackbox_recovery_faults_cases.retest-fault-case-matrix
     name: Retest recovery-fault and case-escalation matrix
     status: pending

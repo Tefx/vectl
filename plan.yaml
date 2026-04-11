@@ -80337,3 +80337,32 @@ phases:
     depends_on:
     - opencode_runner_verification.unit-tests
     agent: integration-verifier-tacit
+  - id: opencode_runner_verification.live-smoke
+    name: Run real OpenCode live smoke
+    status: pending
+    description: 'Run real OpenCode live smoke to prove the runner is automation-grade.
+
+
+      Scope:
+
+      - `vectl orch run` completes a real task with `runtime.default_runner=opencode`
+
+      - `status`, `events`, `logs`, and `artifacts` form a coherent execution story
+
+      - deterministic session continuation path is exercised with `opencode run --session
+      <session_id>`
+
+      - at least one recovery path proves automatic fresh relaunch when native resume
+      is unavailable
+
+
+      Refs:
+
+      - docs/RFC-opencode-orchestration-runner.md section 13.3
+
+      - real OpenCode CLI contract locked in RFC section 15'
+    verification: Live smoke evidence is attached and the previous poll-window stall
+      failure is no longer reproducible on ordinary OpenCode one-shot execution.
+    depends_on:
+    - opencode_runner_verification.integration-tests
+    agent: integration-verifier-tacit

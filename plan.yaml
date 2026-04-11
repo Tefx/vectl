@@ -80064,7 +80064,7 @@ phases:
   steps:
   - id: config_role_profile_overrides_verify.independent-rfc-retest
     name: Retest role profile overrides RFC behavior
-    status: claimed
+    status: done
     description: 'Independently rerun the RFC-targeted config loader, config validation,
       and config-show provenance tests after the batched fix step resolves the known
       blocking issues.
@@ -80099,6 +80099,154 @@ phases:
     agent: integration-verifier-tacit
     claimed_by: integration-verifier-tacit
     claimed_at: '2026-04-11T23:04:06.451563+00:00'
+    done_at: '2026-04-11T23:09:02.222394+00:00'
+    evidence: '## Independent RFC-Targeted Config Loader, Validation, and Config-Show
+      Provenance Re-Test
+
+
+      ### Step Intent
+
+      Independently rerun RFC-targeted config loader, validation, and config-show
+      provenance tests after the roundtrip/env-isolation fix. Verify:
+
+      1. RFC-required test matrix is green
+
+      2. No old built-in shadowing path remains accepted
+
+      3. config-show --effective exposes human and JSON provenance output
+
+
+      ### Expected Result
+
+      - All 208 RFC-targeted tests pass (6 test files)
+
+      - Built-in role ID shadowing via role_profiles is universally rejected
+
+      - Unknown built-in override targets are rejected
+
+      - Custom role override targets are rejected
+
+      - Family-policy violations are caught and reported
+
+      - Config round-trip (_config_to_dict → _dict_to_config) is symmetric (no built-in
+      IDs leak into role_profiles)
+
+      - Env isolation prevents home-config bleed
+
+      - config_show(effective=True) produces human-readable provenance with (source=default|override|custom)
+
+      - config_show(effective=True) produces JSON role_profile_provenance with {value,
+      source} structure
+
+      - config_show(effective=False) produces NO provenance (summary mode)
+
+
+      ### Observed Result
+
+      **All tests pass: 208 passed, 0 failed, 0 errors, 0 xfailed (0.96s)**
+
+
+      Test file breakdown:
+
+      - test_rfc_role_profile_overrides_matrix.py: 47 PASSED (RFC §13 rows 1–8 full
+      matrix)
+
+      - test_role_profile_overrides.py: 55 PASSED (merge logic, validation, error
+      contracts)
+
+      - test_config_show_provenance.py: 18 PASSED (human & JSON provenance)
+
+      - test_config_roundtrip_and_isolation.py: 12 PASSED (round-trip symmetry + env
+      isolation)
+
+      - test_config_state_impl.py: 76 PASSED (config discovery, validation, freeze)
+
+      - test_config_state_red.py: 0 failed (all expected-red/gap tests pass)
+
+
+      **Runtime verification (adversarial probes):**
+
+      1. Built-in shadowing via role_profiles → RoleProfileOverrideError REJECTED
+      ✅
+
+      2. Unknown built-in override → RoleProfileOverrideError REJECTED ✅
+
+      3. Valid override applied correctly → python-executor.default_runner=opencode
+      ✅
+
+      4. _config_to_dict round-trip: 0 built-in IDs under role_profiles key ✅
+
+      5. build_role_profile_provenance: source categories {default, override, custom}
+      all correctly classified ✅
+
+      6. config_show(effective=True): 56 provenance lines with (source=default) annotations
+      ✅; override source=override ✅; custom source=custom ✅
+
+      7. config_show(effective=False): no source= annotations, no role_profiles. lines,
+      role_profile_provenance=None ✅
+
+      8. JSON provenance: {value, source} structure confirmed ✅; JSON-serializable
+      ✅
+
+
+      ### Failure Alignment
+
+      None. Zero test failures, zero behavioral discrepancies.
+
+
+      ### Behavioral Proof Register
+
+      - RFC §6.1 rule 1 (unknown built-in target): REJECTS with correct field/reason
+      ✅
+
+      - RFC §6.1 rule 2 (unknown override field): REJECTS with actionable error ✅
+
+      - RFC §6.1 rule 3 (custom role override target): REJECTS with correct field/reason
+      ✅
+
+      - RFC §6.1 rule 4 (family-policy violations): REJECTS on merge + config file
+      ✅
+
+      - RFC §6.1 rule 5 (role_id immutability): Override preserves role_id ✅
+
+      - RFC §6.2 rule 2/4 (built-in shadowing): REJECTS with migration directive ✅
+
+      - RFC §7.1 (provenance): Human (source=X) and JSON ({value, source}) ✅
+
+      - RFC §7.2 (error contracts): Stable field/value/reason attributes ✅
+
+      - Round-trip symmetry: _config_to_dict → _dict_to_config idempotent ✅
+
+      - Env isolation: monkeypatch USER_CONFIG_DIR prevents home-config bleed ✅
+
+
+      ### Gate Open Allowed
+
+      YES — all RFC §13 test matrix rows green, no built-in shadowing path accepted,
+      config-show --effective exposes full provenance in both human and JSON formats.
+
+
+      ### Uncertainty Sources
+
+      None identified. The test matrix is comprehensive (8 RFC rows × multiple entry
+      points each), env isolation is deterministic, and round-trip symmetry is verified.
+
+
+      ### Verification Commands and Outcomes
+
+      ```bash
+
+      # Command: pytest -v (6 test files, 208 tests)
+
+      # Outcome: 208 passed in 0.96s
+
+
+      # Command: python runtime probes for shadowing rejection, provenance source
+      categories, and config_show output
+
+      # Outcome: All adversarial probes behave as specified by RFC
+
+      ```'
   - id: config_role_profile_overrides_verify.final-changed-scope-check
     name: Run final changed-scope verification
     status: pending

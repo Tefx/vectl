@@ -80002,6 +80002,45 @@ phases:
     semantics are pinned with no ambiguity before runner implementation begins.
   depends_on:
   - cli_blackbox_finalization
+  steps:
+  - id: opencode_runner_contracts.execution-request-contract
+    name: Lock execution request and session contract
+    status: pending
+    description: 'Implement the RFC-defined contract shape and contract-facing documentation
+      lock for OpenCode orchestration.
+
+
+      Scope:
+
+      - extend `ExecutionRequest` with the required prompt/session fields from docs/RFC-opencode-orchestration-runner.md
+
+      - pin `request_mode` semantics (`start`, `resume`, `recover`)
+
+      - pin `session_policy` interaction rules for OpenCode
+
+      - pin `recovered_via` truth labels and continuity persistence expectations
+
+      - update interface-facing contract definitions/docs as needed so the new fields
+      are authoritative everywhere
+
+
+      Refs:
+
+      - docs/RFC-opencode-orchestration-runner.md sections 6, 7, 10
+
+      - docs/ORCHESTRATION-PLANE-INTERFACES.md
+
+      - src/vectl/orchestration/contracts.py
+
+
+      Out of scope:
+
+      - runner process launch code
+
+      - live command wiring'
+    verification: Contract tests and/or interface assertions prove the new request/session
+      fields and recovery truth labels are consistent across code-facing interfaces.
+    agent: python-senior-tacit
 - id: opencode_runner_impl
   name: OpenCode Runner Implementation
   status: locked

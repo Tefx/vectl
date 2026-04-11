@@ -80424,7 +80424,7 @@ phases:
       its separate flow.'
   - id: opencode_runner_impl.dedicated-runner
     name: Implement dedicated OpenCodeRunner
-    status: claimed
+    status: done
     description: 'Implement a dedicated `OpenCodeRunner` and register it for runner_id
       `opencode`.
 
@@ -80457,6 +80457,29 @@ phases:
     agent: python-senior-tacit
     claimed_by: python-senior-tacit
     claimed_at: '2026-04-11T20:42:15.681159+00:00'
+    done_at: '2026-04-11T21:10:10.798872+00:00'
+    evidence: 'Artifact:
+
+      - worker session: ses_281b73efdffeklAPYyw4g3Hzwk
+
+
+      Verification:
+
+      - runner and contract suites: 180 tests passed
+
+
+      Files changed:
+
+      - src/vectl/orchestration/runners.py
+
+      - src/vectl/orchestration/runner_registry.py
+
+      - tests/orchestration/unit/test_opencode_runner.py
+
+
+      Spec link:
+
+      - docs/RFC-opencode-orchestration-runner.md §§9,15'
   - id: opencode_runner_impl.runtime-continuity-integration
     name: Integrate OpenCode runner into runtime and continuity
     status: pending

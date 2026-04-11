@@ -78942,3 +78942,63 @@ phases:
 
       - Remaining blocker-class gaps'
     agent: python-executor
+  - id: cli_blackbox_recovery_faults_cases.fix-fault-case-behavior
+    name: Close recovery-fault handling and case lifecycle gaps
+    status: pending
+    description: "step_type: implementation\nverification_scope: phase-check protecting\
+      \ downstream gate `cli_blackbox_recovery_faults_cases.gate`\n\nFill in the orchestration\
+      \ behavior required for black-box recovery fault handling and real case lifecycle\
+      \ coverage, bounded by the failing proofs from `cli_blackbox_recovery_faults_cases.define-fault-case-tests`.\n\
+      \nUPSTREAM ARTIFACTS:\n- tests/repro/test_orch_cli_recovery_faults.py — recovery\
+      \ fault expectations are PROTECTED\n- tests/repro/test_orch_cli_case_lifecycle.py\
+      \ — case lifecycle expectations are PROTECTED\n- tests/repro/test_orch_cli_runner_faults.py\
+      \ — runner fail/stall expectations are PROTECTED\n\nScope anchors:\n- spec_refs:\n\
+      \  - docs/ORCHESTRATION-PLANE-CLI-CONFIG-OBSERVABILITY-DESIGN.md §7.1-7.4\n\
+      \  - docs/ORCHESTRATION-PLANE-OPERATOR-CONFLICT-RECOVERY.md\n  - docs/ORCHESTRATION-PLANE-RUNNER-BACKEND.md\n\
+      - touch_paths:\n  - src/vectl/orch_app.py\n  - src/vectl/orchestration/runtime.py\n\
+      \  - src/vectl/orchestration/run_store.py\n  - src/vectl/orchestration/recovery.py\n\
+      \  - tests/repro/test_orch_cli_recovery_faults.py\n- harness_refs:\n  - corrupted\
+      \ continuity artifacts\n  - fake fail/stall/transport-error runners\n- authoritative_interface:\
+      \ existing public recovery/case commands only\n\nFailure-mode checklist:\n-\
+      \ missing snapshot must block clearly\n- corrupt artifacts must not produce\
+      \ fake-green recoveries\n- fresh-start-required must quarantine/terminalize\
+      \ deterministically\n- faulted runner outcomes must create inspectable cases\
+      \ when required\n- case respond must be visible to subsequent CLI state surfaces\n\
+      \n## Completion Criteria (stub exclusion)\nThis is an IMPLEMENTATION step. Stub-only\
+      \ completion is NOT acceptable."
+    verification: '- Main path: targeted black-box tests for recovery faults and case
+      lifecycle pass
+
+      - Failure path: corrupt/missing-artifact scenarios now report the correct blocked/quarantine
+      behavior
+
+      - Proof: real case surfaces reflect runner fault outcomes where the docs require
+      them'
+    evidence_template: '## refs Read Confirmation (MANDATORY)
+
+      For each ref in this step:
+
+      - <filename> — key passage or "NOT READ: <reason>"
+
+
+      ## Root Cause vs Symptom
+
+      - Root cause:
+
+      - Fault families closed:
+
+      - Any deviation from docs:
+
+
+      ## Implementation Evidence
+
+      - Files changed
+
+      - Commands run
+
+      - Bad-path outputs
+
+      - Case lifecycle proof'
+    depends_on:
+    - cli_blackbox_recovery_faults_cases.define-fault-case-tests
+    agent: python-senior-tacit

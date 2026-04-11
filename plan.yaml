@@ -79995,7 +79995,7 @@ phases:
       - docs/RFC-role-profile-overrides.md §7.1'
   - id: config_role_profile_overrides_impl.rfc-required-tests
     name: Add RFC required tests
-    status: pending
+    status: claimed
     description: 'Add or update the minimal test matrix required by the RFC.
 
 
@@ -80029,6 +80029,8 @@ phases:
     - config_role_profile_overrides_impl.validation-and-error-contract
     - config_role_profile_overrides_impl.provenance-effective-config-show
     agent: python-senior-tacit
+    claimed_by: python-senior-tacit
+    claimed_at: '2026-04-11T21:10:50.027162+00:00'
 - id: config_role_profile_overrides_verify
   name: Role Profile Overrides Verification
   status: locked

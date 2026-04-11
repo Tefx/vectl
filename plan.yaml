@@ -78890,7 +78890,7 @@ phases:
       \ observed.\n- Headline: PASS_WITH_DEBT"
 - id: cli_blackbox_recovery_faults_cases
   name: 'CLI Black-Box Tests: Recovery Faults and Cases'
-  status: in_progress
+  status: done
   gate: 'Lightweight test milestone: define bad-path black-box tests, close only proven
     gaps, and retest recovery-fault and case-lifecycle behavior.'
   context: test_plan_only=true. Focus on bad-path and operator-surface verification,
@@ -79053,7 +79053,7 @@ phases:
       \ fail/stall/transport_error visibility and case respond/state behavior preserved."
   - id: cli_blackbox_recovery_faults_cases.retest-fault-case-matrix
     name: Retest recovery-fault and case-escalation matrix
-    status: claimed
+    status: done
     description: 'step_type: test
 
       step_intent: retest_green
@@ -79093,9 +79093,29 @@ phases:
     agent: integration-verifier-tacit
     claimed_by: integration-verifier-tacit
     claimed_at: '2026-04-11T12:12:11.851212+00:00'
+    done_at: '2026-04-11T12:31:23.944026+00:00'
+    evidence: "## refs Read Confirmation (MANDATORY)\n- tests/repro/test_orch_cli_recovery_faults.py\
+      \ — verified fault matrix coverage.\n- tests/repro/test_orch_cli_case_lifecycle.py\
+      \ — verified case lifecycle command behavior.\n- tests/repro/test_orch_cli_runner_faults.py\
+      \ — verified runner fault surface behavior.\n- tests/expected_red.py / tests/conftest.py\
+      \ / pyproject.toml — verified expected-red marker and collection metadata plumbing.\n\
+      \n## Verification Report\n- Commands executed:\n  - `uv run pytest tests/repro/test_orch_cli_recovery_faults.py\
+      \ tests/repro/test_orch_cli_case_lifecycle.py tests/repro/test_orch_cli_runner_faults.py\
+      \ -v --tb=long`\n  - `uv run pytest tests/repro/test_orch_cli_recovery_live.py\
+      \ tests/repro/test_orch_cli_recovery_red.py tests/repro/test_orch_cli_control_consumption.py\
+      \ tests/repro/test_orch_cli_full_flow.py tests/repro/test_repair_continuity_black_box.py\
+      \ -v --tb=short`\n  - `uv run pytest tests/repro/ -v --tb=short`\n- Actual outputs:\n\
+      \  - Targeted matrix: 30/30 passed.\n  - Extended related suites: 54/54 passed.\n\
+      \  - Full repro directory: 132 passed, 1 out-of-scope liveness failure.\n- Recovery\
+      \ fault verdicts: missing snapshot, corrupt continuity variants, fresh-start/quarantine/no-silent-deletion\
+      \ assertions and recovery output contracts all pass in targeted scope.\n- Case\
+      \ lifecycle verdicts: case-list/show/respond surfaces and status-filter behavior\
+      \ pass in black-box CLI checks.\n- Headline: PASS_WITH_DEBT (non-blocking debts\
+      \ documented around unregistered shim role behavior and broader out-of-scope\
+      \ liveness test)."
 - id: cli_blackbox_surface_safety_ops
   name: 'CLI Black-Box Tests: Surface Safety and Ops'
-  status: locked
+  status: pending
   gate: 'Lightweight test milestone: define selector/prune/config/concurrency black-box
     tests, fix only failing surfaces, and retest the matrix.'
   context: test_plan_only=true. Finish remaining public CLI safety coverage with minimal

@@ -6,12 +6,39 @@ Authority: docs/ORCHESTRATION-PLANE-RUNNER-BACKEND.md section 9
 from __future__ import annotations
 
 from dataclasses import dataclass, field
+from pathlib import Path
 
+from vectl.orchestration.contracts import OpenCodeLaunchConfig
 from vectl.orchestration.runners import (
     Runner,
     RunnerNotFoundError,
     SubprocessRunner,
 )
+
+# Lazy import to avoid circular dependency; OpenCodeRunner is resolved at
+# registration time via get_opencode_runner().
+
+
+def get_opencode_runner(
+    artifact_root: Path | None = None,
+    config: OpenCodeLaunchConfig | None = None,
+) -> Runner:
+    """Construct a properly configured OpenCodeRunner.
+
+    Args:
+        artifact_root: Root directory for run artifacts. Defaults to
+            ``.vectl/runs`` relative to current working directory.
+        config: Launch configuration. Defaults to ``OpenCodeLaunchConfig()``.
+
+    Returns:
+        Configured OpenCodeRunner instance.
+    """
+    from vectl.orchestration.runners import OpenCodeRunner
+
+    return OpenCodeRunner(
+        artifact_root=artifact_root or Path(".vectl/runs"),
+        config=config or OpenCodeLaunchConfig(),
+    )
 
 
 @dataclass
@@ -51,7 +78,14 @@ class RunnerRegistry:
 
 
 def build_default_runner_registry() -> RunnerRegistry:
-    """Build default subprocess-backed runner registry."""
+    """Build default runner registry with OpenCode as a dedicated adapter.
+
+    Authority: docs/RFC-opencode-orchestration-runner.md sections 9, 15
+
+    The ``opencode`` runner is registered as an ``OpenCodeRunner`` (not
+    a bare ``SubprocessRunner("opencode")``) so that launch, resume, and
+    session semantics follow the frozen CLI contract.
+    """
 
     registry = RunnerRegistry()
     registry.register(
@@ -62,7 +96,7 @@ def build_default_runner_registry() -> RunnerRegistry:
         ),
     )
     registry.register("codex", SubprocessRunner(runner_id="codex", command=("codex",)))
-    registry.register("opencode", SubprocessRunner(runner_id="opencode", command=("opencode",)))
+    registry.register("opencode", get_opencode_runner())
     registry.register(
         "test", SubprocessRunner(runner_id="test", command=("echo", "runner-test-placeholder"))
     )

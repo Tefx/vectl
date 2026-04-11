@@ -79898,3 +79898,39 @@ phases:
     depends_on:
     - config_role_profile_overrides_impl.merge-loader-and-registry
     agent: python-senior-tacit
+  - id: config_role_profile_overrides_impl.rfc-required-tests
+    name: Add RFC required tests
+    status: pending
+    description: 'Add or update the minimal test matrix required by the RFC.
+
+
+      Required coverage:
+
+      - built-in role in `role_profiles` => validation error
+
+      - unknown built-in in `role_profile_overrides` => validation error
+
+      - custom role targeted by override => validation error
+
+      - valid built-in override => effective registry patched
+
+      - valid custom role => final registry includes custom role
+
+      - family-policy violation via override => validation error
+
+      - human `config-show --effective` provenance output
+
+      - JSON `config-show --effective` `role_profile_provenance` shape
+
+
+      Refs:
+
+      - docs/RFC-role-profile-overrides.md section 13
+
+      - existing orchestration config/CLI tests'
+    verification: Targeted pytest modules covering config loader, config validate,
+      and config-show are green and map directly to the RFC test matrix.
+    depends_on:
+    - config_role_profile_overrides_impl.validation-and-error-contract
+    - config_role_profile_overrides_impl.provenance-effective-config-show
+    agent: python-senior-tacit

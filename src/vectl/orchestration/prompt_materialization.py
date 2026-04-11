@@ -22,7 +22,7 @@ from __future__ import annotations
 
 import hashlib
 import json
-from dataclasses import asdict
+from dataclasses import asdict, dataclass
 from pathlib import Path
 from typing import TYPE_CHECKING, Literal
 
@@ -396,3 +396,126 @@ def build_opencode_launch_env(
     base = dict(parent_env or os.environ)
     base.update(handoff_env.as_dict())
     return base
+
+
+# ---------------------------------------------------------------------
+# Recovery Validation
+# ---------------------------------------------------------------------
+
+
+@dataclass(frozen=True)
+class PromptArtifactValidation:
+    """Result of validating prompt artifacts for recovery.
+
+    Authority: docs/RFC-opencode-orchestration-runner.md section 10.2
+
+    Attributes:
+        valid: Whether all prompt artifacts pass validation.
+        reason: Human-readable description of validation outcome.
+        prompt_bundle_path: Path to the validated prompt bundle, if valid.
+        runner_prompt_path: Path to the validated runner prompt, if valid.
+        workspace_prompt_path: Expected workspace copy path, if valid.
+    """
+
+    valid: bool
+    reason: str
+    prompt_bundle_path: str = ""
+    runner_prompt_path: str = ""
+    workspace_prompt_path: str = ""
+
+
+def validate_prompt_artifacts_for_recovery(
+    *,
+    artifact_root: Path,
+    run_id: str,
+    workspace: Path,
+) -> PromptArtifactValidation:
+    """Validate that prompt artifacts exist and are valid for recovery fallback.
+
+    Authority: docs/RFC-opencode-orchestration-runner.md section 10.2
+
+    Minimum prompt artifact validity criteria before fresh relaunch:
+
+    1. ``<artifact_root>/<run_id>/input/prompt_bundle.json`` exists
+    2. ``prompt_bundle.json`` parses as valid JSON
+    3. ``prompt_bundle.json`` contains non-empty values for:
+       ``role_id``, ``agent_id``, ``runner``, ``system_prompt``,
+       ``task_prompt``, ``prompt_bundle_sha256``
+    4. ``<artifact_root>/<run_id>/input/runner_prompt.md`` exists
+    5. ``runner_prompt.md`` is non-empty text
+
+    Args:
+        artifact_root: Root directory for run artifacts (e.g. ``.vectl/runs``).
+        run_id: Unique run identifier.
+        workspace: Absolute path to the execution workspace.
+
+    Returns:
+        PromptArtifactValidation indicating whether recovery is possible
+        from these prompt artifacts.
+    """
+    paths = resolve_prompt_artifact_paths(
+        artifact_root=artifact_root,
+        run_id=run_id,
+        workspace=workspace,
+    )
+
+    # Check 1: prompt_bundle.json must exist
+    bundle_path = Path(paths.prompt_bundle_path)
+    if not bundle_path.exists():
+        return PromptArtifactValidation(
+            valid=False,
+            reason=f"prompt_bundle.json not found at {bundle_path}",
+        )
+
+    # Check 2: prompt_bundle.json must parse as valid JSON
+    try:
+        bundle_data = json.loads(bundle_path.read_text(encoding="utf-8"))
+    except (json.JSONDecodeError, UnicodeDecodeError) as exc:
+        return PromptArtifactValidation(
+            valid=False,
+            reason=f"prompt_bundle.json is not valid JSON: {exc}",
+        )
+
+    # Check 3: Required fields must be non-empty
+    required_bundle_fields = (
+        "role_id",
+        "agent_id",
+        "runner",
+        "system_prompt",
+        "task_prompt",
+        "prompt_bundle_sha256",
+    )
+    for field_name in required_bundle_fields:
+        value = bundle_data.get(field_name)
+        if not isinstance(value, str) or not value.strip():
+            return PromptArtifactValidation(
+                valid=False,
+                reason=(
+                    f"prompt_bundle.json field {field_name!r} is missing or empty; "
+                    f"recovery requires all of {required_bundle_fields}"
+                ),
+            )
+
+    # Check 4: runner_prompt.md must exist
+    prompt_path = Path(paths.runner_prompt_path)
+    if not prompt_path.exists():
+        return PromptArtifactValidation(
+            valid=False,
+            reason=f"runner_prompt.md not found at {prompt_path}",
+        )
+
+    # Check 5: runner_prompt.md must be non-empty
+    prompt_content = prompt_path.read_text(encoding="utf-8")
+    if not prompt_content.strip():
+        return PromptArtifactValidation(
+            valid=False,
+            reason=f"runner_prompt.md is empty at {prompt_path}",
+        )
+
+    return PromptArtifactValidation(
+        valid=True,
+        reason="All prompt artifacts are valid for recovery.",
+        prompt_bundle_path=paths.prompt_bundle_path,
+        runner_prompt_path=paths.runner_prompt_path,
+        workspace_prompt_path=paths.workspace_prompt_path,
+    )

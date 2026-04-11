@@ -53,6 +53,7 @@ from vectl.orchestration.contracts import (
     DispatchSpec,
     ExecutionRequest,
     ExecutionResult,
+    PromptArtifactPaths,
     PromptBundle,
     ReconcileResult,
     RequestMode,
@@ -60,6 +61,7 @@ from vectl.orchestration.contracts import (
     ResolutionCaseSource,
     ResolutionReport,
     RosterSnapshot,
+    RunnerHandoffEnv,
     RuntimeSnapshot,
     SessionPolicy,
     StructuredReviewResult,
@@ -94,6 +96,13 @@ from vectl.orchestration.inspection_queries import (
     query_runs,
 )
 from vectl.orchestration.projections import replay_events_to_artifacts
+from vectl.orchestration.prompt_materialization import (
+    build_runner_handoff_env,
+    materialize_prompt_artifacts,
+    resolve_prompt_artifact_paths,
+    validate_prompt_artifacts_for_recovery,
+    PromptArtifactValidation,
+)
 from vectl.orchestration.recovery import (
     CutoverValidationResult,
     CutoverValidator,
@@ -1104,7 +1113,26 @@ class OrchestrationApp:
         dispatch_spec: DispatchSpec,
         mode: Literal["start", "resume", "recover"],
     ) -> tuple[str, str]:
-        prompt_bundle_ref = self._validate_dispatch_authority(dispatch_spec)
+        # Authority: RFC-opencode-orchestration-runner.md sections 8, 10.2
+        # Materialize prompt artifacts before runtime launch so that
+        # the runner can read them and recovery can fall back to them.
+        prompt_bundle = self._render_validated_prompt_bundle(dispatch_spec)
+        artifact_root = self._artifact_root_for_run(run_id)
+        workspace = self._resolve_workspace_for_run(run_id)
+
+        # Resolve paths and materialize artifacts.
+        artifact_paths = resolve_prompt_artifact_paths(
+            artifact_root=artifact_root,
+            run_id=run_id,
+            workspace=workspace,
+        )
+        materialize_prompt_artifacts(
+            bundle=prompt_bundle,
+            artifact_paths=artifact_paths,
+            role_id=dispatch_spec.role_id,
+            agent_id=dispatch_spec.role_id,
+            runner=dispatch_spec.runner,
+        )
 
         # Gate: consult paused operator state and DispatchRecoveryGate
         # before dispatch to runtime.
@@ -1127,6 +1155,7 @@ class OrchestrationApp:
         session_policy: SessionPolicy = (
             "reuse_allowed" if dispatch_spec.session_mode == "reuse" else "reuse_forbidden"
         )
+        prompt_bundle_ref = self._prompt_bundle_work_ref(prompt_bundle)
         request = ExecutionRequest(
             step_id=step_id,
             role=dispatch_spec.role_id,
@@ -1142,8 +1171,8 @@ class OrchestrationApp:
                 prompt_bundle_ref,
             ),
             agent_id=dispatch_spec.role_id,
-            prompt_bundle_path="",
-            runner_prompt_path="",
+            prompt_bundle_path=artifact_paths.prompt_bundle_path,
+            runner_prompt_path=artifact_paths.runner_prompt_path,
             request_mode=request_mode,
             session_policy=session_policy,
             session_id=session_id,
@@ -1152,17 +1181,14 @@ class OrchestrationApp:
         execution_id = self._runtime.start(request=request, workspace=workspace)
         return workspace, execution_id
 
-    def _validate_dispatch_authority(self, dispatch_spec: DispatchSpec) -> str:
-        """Validate dispatch authority before any mechanical runtime launch.
+    def _render_validated_prompt_bundle(self, dispatch_spec: DispatchSpec) -> PromptBundle:
+        """Render prompt bundle from dispatch coordinator with authority validation.
 
-        Enforces that runtime launch metadata cannot drift from centralized role
-        policy authority. This protects main-worktree families (planner,
-        reviewer, resolver) from accidental execution-context downgrade.
+        Authority: RFC-opencode-orchestration-runner.md section 8.3
 
         Returns:
-            Stable runtime work-ref proving PromptRegistry rendered the live bundle.
+            Validated PromptBundle ready for materialization.
         """
-
         try:
             prompt_bundle = self._dispatch_coordinator.render_prompt_bundle(dispatch_spec)
         except DispatchAuthorityError as exc:
@@ -1176,6 +1202,49 @@ class OrchestrationApp:
                 f"execution_context={profile.execution_context!r} but got "
                 f"{dispatch_spec.execution_context!r}"
             )
+        return prompt_bundle
+
+    def _artifact_root_for_run(self, run_id: str) -> Path:
+        """Resolve the artifact root path for a run.
+
+        Args:
+            run_id: The run identifier.
+
+        Returns:
+            Path to artifact root (e.g. ``.vectl/runs``).
+        """
+        return (
+            self._run_registry(config=self._effective_orchestration_config())
+            .run_artifact_root(run_id)
+            .parent
+        )
+
+    def _resolve_workspace_for_run(self, run_id: str) -> Path:
+        """Resolve the workspace path for a run.
+
+        For isolated worktree executions, returns the worktree path.
+        Falls back to the configured workspace root for non-isolated runs.
+
+        Args:
+            run_id: The run identifier.
+
+        Returns:
+            Absolute path to the execution workspace.
+        """
+        config = self._effective_orchestration_config()
+        return Path(config.runtime.workspace_root)
+
+    def _validate_dispatch_authority(self, dispatch_spec: DispatchSpec) -> str:
+        """Validate dispatch authority before any mechanical runtime launch.
+
+        Enforces that runtime launch metadata cannot drift from centralized role
+        policy authority. This protects main-worktree families (planner,
+        reviewer, resolver) from accidental execution-context downgrade.
+
+        Returns:
+            Stable runtime work-ref proving PromptRegistry rendered the live bundle.
+        """
+        prompt_bundle = self._render_validated_prompt_bundle(dispatch_spec)
         return self._prompt_bundle_work_ref(prompt_bundle)
 
     def _prompt_bundle_work_ref(self, prompt_bundle: PromptBundle) -> str:

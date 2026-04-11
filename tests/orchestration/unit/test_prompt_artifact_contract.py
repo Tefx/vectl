@@ -37,6 +37,8 @@ from vectl.orchestration.prompt_materialization import (
     compute_prompt_bundle_sha256,
     materialize_prompt_artifacts,
     resolve_prompt_artifact_paths,
+    validate_prompt_artifacts_for_recovery,
+    PromptArtifactValidation,
 )
 
 
@@ -908,3 +910,440 @@ class TestEndToEndHandoffContract:
         cfg = OpenCodeLaunchConfig()
         assert cfg.file_flag == ".vectl/orch/runner_prompt.md"
         assert "Read the attached runner prompt file" in cfg.bootstrap_start
+
+
+# ---------------------------------------------------------------------
+# 11. Recovery validation contract tests
+# ---------------------------------------------------------------------
+
+
+class TestPromptArtifactValidation:
+    """Prove prompt artifact validation meets RFC §10.2 recovery criteria.
+
+    Authority: docs/RFC-opencode-orchestration-runner.md section 10.2
+
+    Minimum prompt artifact validity criteria before fresh relaunch:
+    1. prompt_bundle.json exists and is valid JSON
+    2. prompt_bundle.json has non-empty required fields
+    3. runner_prompt.md exists and is non-empty
+    """
+
+    def test_valid_artifacts_pass_validation(self, tmp_path: Path) -> None:
+        """Fully valid artifacts must pass validation."""
+        artifact_root = tmp_path / "runs"
+        workspace = tmp_path / "ws"
+        artifact_root.mkdir()
+        workspace.mkdir()
+
+        paths = resolve_prompt_artifact_paths(
+            artifact_root=artifact_root,
+            run_id="run-recover",
+            workspace=workspace,
+        )
+        bundle = PromptBundle(
+            system_prompt="System instructions.",
+            task_prompt="Execute the task.",
+            messages=({"role": "user", "content": "context"},),
+        )
+        materialize_prompt_artifacts(
+            bundle=bundle,
+            artifact_paths=paths,
+            role_id="python-senior-tacit",
+            agent_id="python-senior-tacit",
+            runner="opencode",
+        )
+
+        result = validate_prompt_artifacts_for_recovery(
+            artifact_root=artifact_root,
+            run_id="run-recover",
+            workspace=workspace,
+        )
+        assert result.valid is True
+        assert "prompt_bundle.json" in result.prompt_bundle_path
+        assert "runner_prompt.md" in result.runner_prompt_path
+        assert ".vectl/orch" in result.workspace_prompt_path
+
+    def test_missing_bundle_fails_validation(self, tmp_path: Path) -> None:
+        """Missing prompt_bundle.json must fail validation with clear reason."""
+        artifact_root = tmp_path / "runs"
+        workspace = tmp_path / "ws"
+        artifact_root.mkdir()
+        workspace.mkdir()
+
+        result = validate_prompt_artifacts_for_recovery(
+            artifact_root=artifact_root,
+            run_id="run-missing-bundle",
+            workspace=workspace,
+        )
+        assert result.valid is False
+        assert "prompt_bundle.json" in result.reason
+        assert "not found" in result.reason
+
+    def test_invalid_json_bundle_fails_validation(self, tmp_path: Path) -> None:
+        """Corrupt JSON in prompt_bundle.json must fail validation."""
+        artifact_root = tmp_path / "runs"
+        workspace = tmp_path / "ws"
+        artifact_root.mkdir()
+        workspace.mkdir()
+
+        run_dir = artifact_root / "run-corrupt" / "input"
+        run_dir.mkdir(parents=True)
+        (run_dir / "prompt_bundle.json").write_text("NOT VALID JSON{{{")
+
+        result = validate_prompt_artifacts_for_recovery(
+            artifact_root=artifact_root,
+            run_id="run-corrupt",
+            workspace=workspace,
+        )
+        assert result.valid is False
+        assert "not valid JSON" in result.reason
+
+    def test_missing_required_field_fails_validation(self, tmp_path: Path) -> None:
+        """Missing required field in prompt_bundle.json must fail validation."""
+        artifact_root = tmp_path / "runs"
+        workspace = tmp_path / "ws"
+        artifact_root.mkdir()
+        workspace.mkdir()
+
+        run_dir = artifact_root / "run-incomplete" / "input"
+        run_dir.mkdir(parents=True)
+
+        # Missing role_id, agent_id, runner, etc.
+        incomplete_payload = {
+            "system_prompt": "sys",
+            "task_prompt": "task",
+            "prompt_bundle_sha256": "abc",
+        }
+        (run_dir / "prompt_bundle.json").write_text(json.dumps(incomplete_payload, indent=2))
+        (run_dir / "runner_prompt.md").write_text("# Task\nDo it.")
+
+        result = validate_prompt_artifacts_for_recovery(
+            artifact_root=artifact_root,
+            run_id="run-incomplete",
+            workspace=workspace,
+        )
+        assert result.valid is False
+        assert "role_id" in result.reason
+
+    def test_empty_field_fails_validation(self, tmp_path: Path) -> None:
+        """Empty required field in prompt_bundle.json must fail validation."""
+        artifact_root = tmp_path / "runs"
+        workspace = tmp_path / "ws"
+        artifact_root.mkdir()
+        workspace.mkdir()
+
+        run_dir = artifact_root / "run-empty" / "input"
+        run_dir.mkdir(parents=True)
+
+        payload_with_empty = {
+            "role_id": "python-senior-tacit",
+            "agent_id": "python-senior-tacit",
+            "runner": "opencode",
+            "system_prompt": "",
+            "task_prompt": "task",
+            "prompt_bundle_sha256": "abc",
+        }
+        (run_dir / "prompt_bundle.json").write_text(json.dumps(payload_with_empty, indent=2))
+        (run_dir / "runner_prompt.md").write_text("# Task\nDo it.")
+
+        result = validate_prompt_artifacts_for_recovery(
+            artifact_root=artifact_root,
+            run_id="run-empty",
+            workspace=workspace,
+        )
+        assert result.valid is False
+        assert "system_prompt" in result.reason
+
+    def test_missing_runner_prompt_fails_validation(self, tmp_path: Path) -> None:
+        """Missing runner_prompt.md must fail validation."""
+        artifact_root = tmp_path / "runs"
+        workspace = tmp_path / "ws"
+        artifact_root.mkdir()
+        workspace.mkdir()
+
+        run_dir = artifact_root / "run-no-prompt" / "input"
+        run_dir.mkdir(parents=True)
+
+        valid_payload = {
+            "role_id": "python-senior-tacit",
+            "agent_id": "python-senior-tacit",
+            "runner": "opencode",
+            "system_prompt": "sys",
+            "task_prompt": "task",
+            "prompt_bundle_sha256": "abc",
+            "messages": [],
+        }
+        (run_dir / "prompt_bundle.json").write_text(json.dumps(valid_payload, indent=2))
+        # Do NOT write runner_prompt.md
+
+        result = validate_prompt_artifacts_for_recovery(
+            artifact_root=artifact_root,
+            run_id="run-no-prompt",
+            workspace=workspace,
+        )
+        assert result.valid is False
+        assert "runner_prompt.md" in result.reason
+
+    def test_empty_runner_prompt_fails_validation(self, tmp_path: Path) -> None:
+        """Empty runner_prompt.md must fail validation."""
+        artifact_root = tmp_path / "runs"
+        workspace = tmp_path / "ws"
+        artifact_root.mkdir()
+        workspace.mkdir()
+
+        run_dir = artifact_root / "run-blank-prompt" / "input"
+        run_dir.mkdir(parents=True)
+
+        valid_payload = {
+            "role_id": "python-senior-tacit",
+            "agent_id": "python-senior-tacit",
+            "runner": "opencode",
+            "system_prompt": "sys",
+            "task_prompt": "task",
+            "prompt_bundle_sha256": "abc",
+            "messages": [],
+        }
+        (run_dir / "prompt_bundle.json").write_text(json.dumps(valid_payload, indent=2))
+        (run_dir / "runner_prompt.md").write_text("   \n  \n  ")
+
+        result = validate_prompt_artifacts_for_recovery(
+            artifact_root=artifact_root,
+            run_id="run-blank-prompt",
+            workspace=workspace,
+        )
+        assert result.valid is False
+        assert "empty" in result.reason
+
+    def test_materialized_artifacts_pass_validation(self, tmp_path: Path) -> None:
+        """Artifacts produced by materialize_prompt_artifacts must pass validation.
+
+        This is a round-trip test: materialize then validate.
+        Authority: RFC §10.2 — the same artifacts written at launch must
+        be usable for recovery fallback.
+        """
+        artifact_root = tmp_path / "runs"
+        workspace = tmp_path / "ws"
+        artifact_root.mkdir()
+        workspace.mkdir()
+
+        paths = resolve_prompt_artifact_paths(
+            artifact_root=artifact_root,
+            run_id="run-roundtrip",
+            workspace=workspace,
+        )
+        bundle = PromptBundle(
+            system_prompt="You are a senior Python engineer.",
+            task_prompt="Implement the prompt materialization pipeline.",
+            messages=({"role": "user", "content": "Additional context"},),
+        )
+        materialize_prompt_artifacts(
+            bundle=bundle,
+            artifact_paths=paths,
+            role_id="python-senior-tacit",
+            agent_id="python-senior-tacit",
+            runner="opencode",
+        )
+
+        result = validate_prompt_artifacts_for_recovery(
+            artifact_root=artifact_root,
+            run_id="run-roundtrip",
+            workspace=workspace,
+        )
+        assert result.valid is True
+        assert result.prompt_bundle_path == paths.prompt_bundle_path
+        assert result.runner_prompt_path == paths.runner_prompt_path
+        assert result.workspace_prompt_path == paths.workspace_prompt_path
+
+    def test_validation_result_is_frozen_dataclass(self) -> None:
+        """PromptArtifactValidation must be frozen."""
+        from dataclasses import is_dataclass
+
+        assert is_dataclass(PromptArtifactValidation)
+        with pytest.raises(AttributeError):
+            result = PromptArtifactValidation(
+                valid=True,
+                reason="test",
+            )
+            result.valid = False  # type: ignore[misc]
+
+    def test_validation_result_fields_match_spec(self) -> None:
+        """PromptArtifactValidation must have the documented fields.
+
+        Authority: RFC §10.2
+        """
+        from dataclasses import fields as dc_fields
+
+        expected = {
+            "valid",
+            "reason",
+            "prompt_bundle_path",
+            "runner_prompt_path",
+            "workspace_prompt_path",
+        }
+        actual = {f.name for f in dc_fields(PromptArtifactValidation)}
+        assert actual == expected, (
+            f"PromptArtifactValidation field mismatch. Expected: {expected}, Got: {actual}"
+        )
+
+
+# ---------------------------------------------------------------------
+# 12. Integration: materialization-to-recovery round-trip
+# ---------------------------------------------------------------------
+
+
+class TestMaterializationRecoveryIntegration:
+    """Prove the complete materialization pipeline produces artifacts
+    that satisfy recovery validation and handoff requirements.
+
+    Authority: RFC §8, §10.2
+
+    This section tests the end-to-end pipeline from DispatchSpec
+    through artifact writing, validation, and env construction.
+    """
+
+    def test_materialize_then_validate_then_env(self, tmp_path: Path) -> None:
+        """Full pipeline: materialize -> validate -> build handoff env.
+
+        This test proves that the same materialized artifacts that satisfy
+        launch requirements also satisfy recovery validation, and that
+        handoff env vars point to the correct artifact paths.
+        """
+        artifact_root = tmp_path / "runs"
+        workspace = tmp_path / "ws"
+        artifact_root.mkdir()
+        workspace.mkdir()
+
+        run_id = "run-integration-1"
+        step_id = "core.validate"
+        agent_id = "python-senior-tacit"
+
+        # Step 1: Resolve paths
+        paths = resolve_prompt_artifact_paths(
+            artifact_root=artifact_root,
+            run_id=run_id,
+            workspace=workspace,
+        )
+
+        # Step 2: Materialize artifacts
+        bundle = PromptBundle(
+            system_prompt="System instructions.",
+            task_prompt="Validate the contracts.",
+            messages=(),
+        )
+        materialize_prompt_artifacts(
+            bundle=bundle,
+            artifact_paths=paths,
+            role_id=agent_id,
+            agent_id=agent_id,
+            runner="opencode",
+        )
+
+        # Step 3: Validate artifacts for recovery (RFC §10.2)
+        validation = validate_prompt_artifacts_for_recovery(
+            artifact_root=artifact_root,
+            run_id=run_id,
+            workspace=workspace,
+        )
+        assert validation.valid is True
+
+        # Step 4: Build handoff env (RFC §8.5)
+        handoff = build_runner_handoff_env(
+            run_id=run_id,
+            step_id=step_id,
+            agent_id=agent_id,
+            artifact_paths=paths,
+        )
+        assert handoff.VECTL_ORCH_RUN_ID == run_id
+        assert handoff.VECTL_ORCH_STEP_ID == step_id
+        assert handoff.VECTL_ORCH_AGENT_ID == agent_id
+        assert handoff.VECTL_ORCH_PROMPT_PATH == paths.workspace_prompt_path
+        assert handoff.VECTL_ORCH_PROMPT_BUNDLE_PATH == paths.prompt_bundle_path
+
+        # Step 5: Verify the handoff env dict is usable for subprocess
+        env_dict = handoff.as_dict()
+        assert env_dict["VECTL_ORCH_PROMPT_PATH"] == paths.workspace_prompt_path
+        assert Path(env_dict["VECTL_ORCH_PROMPT_BUNDLE_PATH"]).exists()
+        assert Path(env_dict["VECTL_ORCH_PROMPT_PATH"]).exists()
+
+    def test_workspace_copy_exists_for_runner_startup(self, tmp_path: Path) -> None:
+        """The workspace copy must be readable at the expected path for runner startup.
+
+        Authority: RFC §8.2, §8.5
+
+        The runner reads the prompt from the workspace copy at
+        .vectl/orch/runner_prompt.md (relative to workspace root).
+        """
+        artifact_root = tmp_path / "runs"
+        workspace = tmp_path / "ws"
+        artifact_root.mkdir()
+        workspace.mkdir()
+
+        paths = resolve_prompt_artifact_paths(
+            artifact_root=artifact_root,
+            run_id="run-ws-copy",
+            workspace=workspace,
+        )
+        bundle = PromptBundle(
+            system_prompt="System instructions.",
+            task_prompt="Execute the task.",
+            messages=(),
+        )
+        materialize_prompt_artifacts(
+            bundle=bundle,
+            artifact_paths=paths,
+            role_id="python-senior-tacit",
+            agent_id="python-senior-tacit",
+            runner="opencode",
+        )
+
+        # Workspace copy must exist and be readable
+        ws_prompt = Path(paths.workspace_prompt_path)
+        assert ws_prompt.exists(), f"Workspace prompt not found at {ws_prompt}"
+
+        # The workspace-relative path must match RFC §8.2
+        assert paths.workspace_prompt_relative == ".vectl/orch/runner_prompt.md"
+
+        # Content must match authority copy
+        authority_content = Path(paths.runner_prompt_path).read_text()
+        workspace_content = ws_prompt.read_text()
+        assert authority_content == workspace_content
+
+    def test_authority_bundle_contains_required_recovery_fields(self, tmp_path: Path) -> None:
+        """The materialized prompt_bundle.json must contain all required
+        fields for recovery validation (RFC §10.2).
+
+        Authority: RFC §10.2 — prompt_bundle.json must contain non-empty
+        values for role_id, agent_id, runner, system_prompt, task_prompt,
+        prompt_bundle_sha256.
+        """
+        artifact_root = tmp_path / "runs"
+        workspace = tmp_path / "ws"
+        artifact_root.mkdir()
+        workspace.mkdir()
+
+        paths = resolve_prompt_artifact_paths(
+            artifact_root=artifact_root,
+            run_id="run-bundle-fields",
+            workspace=workspace,
+        )
+        bundle = PromptBundle(
+            system_prompt="System instructions.",
+            task_prompt="Execute the task.",
+            messages=({"role": "user", "content": "context"},),
+        )
+        materialize_prompt_artifacts(
+            bundle=bundle,
+            artifact_paths=paths,
+            role_id="python-senior-tacit",
+            agent_id="python-senior-tacit",
+            runner="opencode",
+        )
+
+        bundle_data = json.loads(Path(paths.prompt_bundle_path).read_text())
+        # RFC §10.2 required fields
+        assert bundle_data["role_id"] == "python-senior-tacit"
+        assert bundle_data["agent_id"] == "python-senior-tacit"
+        assert bundle_data["runner"] == "opencode"
+        assert bundle_data["system_prompt"] == "System instructions."
+        assert bundle_data["task_prompt"] == "Execute the task."
+        assert len(bundle_data["prompt_bundle_sha256"]) == 64

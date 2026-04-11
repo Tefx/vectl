@@ -80124,7 +80124,7 @@ phases:
     agent: integration-verifier-tacit
   - id: config_role_profile_overrides_impl.fix-roundtrip-and-env-isolation
     name: Fix config round-trip serialization and env-isolation test bleed
-    status: claimed
+    status: done
     description: 'Fix BOTH blocking issues surfaced by config_role_profile_overrides_verify.independent-rfc-retest.
 
 
@@ -80220,6 +80220,75 @@ phases:
     agent: python-senior-tacit
     claimed_by: python-senior-tacit
     claimed_at: '2026-04-11T22:37:47.420008+00:00'
+    done_at: '2026-04-11T23:00:28.796330+00:00'
+    evidence: "## refs Read Confirmation\nNo refs for this step (no ref pins).\n\n\
+      ## Fix Evidence\n\n### Root-cause summary for round-trip serialization mismatch\n\
+      **Root cause**: `_config_to_dict()` emitted ALL role profiles (both built-in\
+      \ and custom) under the `role_profiles` key. When `_dict_to_config()` consumed\
+      \ this dict, it processed `role_profiles` entries as custom roles via `_parse_custom_role_profiles()`,\
+      \ then `_merge_role_profiles()` rejected built-in IDs under that key per RFC\
+      \ §6.2 (\"shadows built-in role; use role_profile_overrides instead\"). This\
+      \ caused frozen snapshot round-trips (`write_frozen_snapshot` → `load_frozen_snapshot`)\
+      \ and `_deep_update_config()` (which calls `_config_to_dict` → `_dict_to_config`\
+      \ internally) to fail with `RoleProfileOverrideError`.\n\n**Fix**: Rewrote `_config_to_dict()`\
+      \ to separate built-in profiles from custom profiles per RFC §4/§5 semantics:\n\
+      - Built-in profiles with changed fields → `role_profile_overrides` (only changed\
+      \ fields)\n- Built-in profiles at defaults → omitted entirely (implicit)\n-\
+      \ Custom (non-built-in) profiles → `role_profiles` (full definition)\n\nThis\
+      \ ensures the serialized form is cleanly consumable by `_dict_to_config()` and\
+      \ maintains RFC §6.2 invariant that `role_profiles` is custom-only.\n\n### Root-cause\
+      \ summary for ambient config bleed in tests\n**Root cause**: Tests calling `load_orchestration_config()`\
+      \ without an explicit path parameter triggered config discovery, which falls\
+      \ through to `~/.config/vectl/vectl.yaml` (step 4 in the discovery order). The\
+      \ host machine has a pre-RFC config file at that path with built-in role IDs\
+      \ under `role_profiles`, causing `RoleProfileOverrideError` when the new RFC-enforcing\
+      \ code processes it.\n\n**Fix**: Added `monkeypatch.setattr(\"vectl.orchestration.config.USER_CONFIG_DIR\"\
+      , ...)` to redirect home-config discovery to a non-existent path for all tests\
+      \ that call `load_orchestration_config()` without an explicit path. For `test_recovery_contract_conformance.py`,\
+      \ provided explicit `OrchestrationConfig` to `AppConfig` so `load_orchestration_config()`\
+      \ is never called without isolation.\n\n### Files changed\n1. `src/vectl/orchestration/config.py`\
+      \ — Rewrote `_config_to_dict()` to use RFC §4/§5 clean-break serialization (built-in\
+      \ changes → `role_profile_overrides`, custom → `role_profiles`)\n2. `tests/orchestration/unit/test_config_state_impl.py`\
+      \ — Added `monkeypatch.setattr(USER_CONFIG_DIR)` to 4 test methods that call\
+      \ `load_orchestration_config()` without explicit path\n3. `tests/orchestration/unit/test_config_state_red.py`\
+      \ — Added `monkeypatch.setattr(USER_CONFIG_DIR)` to 2 test methods that call\
+      \ `load_orchestration_config()` without explicit path; updated `test_env_var_naming_convention_not_enforced`\
+      \ signature to accept `tmp_path`\n4. `tests/orchestration/unit/test_recovery_contract_conformance.py`\
+      \ — Provided explicit `OrchestrationConfig(plan_path=plan_path)` to `AppConfig`\
+      \ to prevent ambient discovery\n5. `tests/orchestration/unit/test_config_roundtrip_and_isolation.py`\
+      \ — NEW FILE: 12 regression tests covering round-trip symmetry and env isolation\n\
+      \n### Regression tests added/updated\n- **9 round-trip symmetry tests** (TestConfigRoundTripSymmetry):\n\
+      \  - `test_default_config_roundtrip` — Default config round-trips without errors\n\
+      \  - `test_default_config_serialized_no_role_profiles_key` — Defaults omit both\
+      \ keys\n  - `test_override_only_config_roundtrip` — Override-only config round-trips\
+      \ correctly\n  - `test_custom_role_only_config_roundtrip` — Custom-only config\
+      \ round-trips correctly\n  - `test_override_and_custom_roundtrip` — Both together\
+      \ round-trip correctly\n  - `test_no_builtin_ids_in_serialized_role_profiles`\
+      \ — Proves RFC §6.2 invariant holds across multiple config states\n  - `test_frozen_snapshot_roundtrip`\
+      \ — Frozen snapshot write→load round-trips with overrides\n  - `test_deep_update_config_roundtrip`\
+      \ — `_deep_update_config` no longer crashes\n  - `test_multiple_overrides_roundtrip`\
+      \ — Multiple overrides round-trip correctly\n- **3 env isolation tests** (TestConfigDiscoveryEnvIsolation):\n\
+      \  - `test_no_config_returns_defaults_without_home_config_bleed` — Proves no\
+      \ home-config bleed\n  - `test_cwd_config_isolated_from_home_config` — Cwd discovery\
+      \ isolated\n  - `test_env_override_isolated_from_home_config` — Env override\
+      \ isolated\n\n### Isolation strategy for home-config bleed prevention\n`monkeypatch.setattr(\"\
+      vectl.orchestration.config.USER_CONFIG_DIR\", str(tmp_path / \"nonexistent_user_config\"\
+      ))` redirects the home config directory lookup to a non-existent path, preventing\
+      \ `~/.config/vectl/vectl.yaml` from being discovered during tests.\n\n### Sibling-search\
+      \ results\nSearched all files for `_config_to_dict`, `_deep_update_config`,\
+      \ `load_orchestration_config`, and `_discover_config_file`:\n- **`_config_to_dict`**:\
+      \ Called by `write_frozen_snapshot` and `_deep_update_config` — both now work\
+      \ correctly with the fix\n- **`_deep_update_config`**: Called by `_apply_env_overrides`\
+      \ — was broken before, now works\n- **`load_orchestration_config`**: Used by\
+      \ `orch_app.py` (production, user config is intentional), `cli.py` (production),\
+      \ and tests. 4 test files fixed for isolation\n- **`_discover_config_file`**:\
+      \ Only in `config.py` itself\n\n### Residual risks\n- The host `~/.config/vectl/vectl.yaml`\
+      \ uses a pre-RFC `role_profiles` format with built-in IDs. Production code (`cli.py`,\
+      \ `orch_app.py`) will now correctly reject this file. Users with this config\
+      \ format must migrate to `role_profile_overrides` format. This is by-design\
+      \ per RFC §6.2.\n- Tests outside this branch sibling that call `load_orchestration_config()`\
+      \ without explicit path may need similar `monkeypatch.setattr(USER_CONFIG_DIR)`\
+      \ treatment (out of scope for this step)."
 - id: opencode_runner_contracts
   name: OpenCode Runner Contracts
   status: done

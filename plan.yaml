@@ -79796,3 +79796,42 @@ phases:
     are implemented with no ambiguity in built-in vs custom role semantics.
   depends_on:
   - cli_blackbox_finalization
+  steps:
+  - id: config_role_profile_overrides_impl.merge-loader-and-registry
+    name: Implement role_profile_overrides merge loader
+    status: pending
+    description: 'Implement RFC-defined config loader behavior in `src/vectl/orchestration/config.py`.
+
+
+      Scope:
+
+      - parse `orchestration.role_profile_overrides`
+
+      - start from `default_role_profiles()`
+
+      - apply overrides only to built-in roles
+
+      - treat `role_profiles` as custom-role definitions only
+
+      - reject built-in shadowing under `role_profiles`
+
+      - reject override attempts against custom roles
+
+      - keep final runtime-facing `OrchestrationConfig` effective-only
+
+
+      Refs:
+
+      - docs/RFC-role-profile-overrides.md
+
+      - src/vectl/orchestration/config.py
+
+
+      Out of scope:
+
+      - migration bridge semantics
+
+      - wildcard/template/inheritance behavior'
+    verification: Loader-level tests or direct config model assertions prove effective
+      registry construction follows RFC order and semantics.
+    agent: python-senior-tacit

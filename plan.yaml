@@ -78647,20 +78647,22 @@ phases:
     name: Define active-control and recovery black-box tests
     status: pending
     description: "step_type: test\nstep_intent: test_define_red\nexpected_result:\
-      \ red\nverification_scope: local-check protecting downstream gate `cli_blackbox_active_control_recovery.gate`\n\
-      \nCreate or extend real CLI black-box tests for active-run control and non-dry-run\
-      \ recovery using isolated temp repos, real git init, real `vectl` subprocess\
-      \ invocation, and a controllable slow runner shim.\n\nScope anchors:\n- spec_refs:\n\
+      \ red\nverification_scope: local-check\n\nBlind black-box test design step for\
+      \ active-run control and non-dry-run recovery using isolated temp repos, real\
+      \ git init, real `vectl` subprocess invocation, and a controllable slow runner\
+      \ shim.\n\nThis step is tester-first: define the black-box matrix, expected-red\
+      \ assertions, CLI transcripts to capture, and failure-oriented scenarios without\
+      \ relying on implementation internals. If test files are written here, they\
+      \ must preserve blind black-box discipline.\n\nScope anchors:\n- spec_refs:\n\
       \  - docs/ORCHESTRATION-PLANE-CLI-CONFIG-OBSERVABILITY-DESIGN.md §7.1-7.4\n\
       \  - docs/ORCHESTRATION-CLI-QUICKSTART.md §§5-11\n- touch_paths:\n  - tests/repro/test_orch_cli_full_flow.py\n\
       \  - tests/repro/test_orch_cli_control_consumption.py\n  - tests/repro/test_orch_cli_recovery_live.py\n\
       - harness_refs:\n  - tests/repro/\n  - tmp fixture repo with real `plan.yaml`,\
       \ `vectl.yaml`, git metadata, runner shim in PATH\n- authoritative_interface:\
       \ public CLI commands `vectl orch run|pause|unpause|stop|actions|recover|events|status`\n\
-      \nTest-only scope. Expose the currently unproven behaviors without broad product\
-      \ rewrites:\n- pause/unpause/stop on an actually running run\n- recover `--latest`\
-      \ non-dry-run reaching terminal closure\n- control request consumption vs mere\
-      \ queueing\n\nEvidence must show exact CLI commands, return codes, stdout/stderr,\
+      \nTarget behaviors:\n- pause/unpause/stop on an actually running run\n- recover\
+      \ `--latest` non-dry-run reaching terminal closure\n- control request consumption\
+      \ vs mere queueing\n\nEvidence must show exact CLI commands, return codes, stdout/stderr,\
       \ and which expectations are still red."
     verification: Targeted pytest invocation for the new/updated black-box files runs
       and exposes the intended gap without relying on product code changes beyond
@@ -78681,7 +78683,7 @@ phases:
       - Modified files are tests-only: yes|no
 
       - Downstream implementation owner: cli_blackbox_active_control_recovery.fix-active-control-recovery-behavior'
-    agent: python-executor
+    agent: blind-tester-tacit
   - id: cli_blackbox_active_control_recovery.fix-active-control-recovery-behavior
     name: Close active-control consumption and recovery terminalization gaps
     status: pending

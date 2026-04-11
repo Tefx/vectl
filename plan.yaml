@@ -79997,7 +79997,7 @@ phases:
     agent: integration-verifier-tacit
 - id: opencode_runner_contracts
   name: OpenCode Runner Contracts
-  status: in_progress
+  status: done
   gate: OpenCode orchestration contract, prompt artifact model, and recovery/session
     semantics are pinned with no ambiguity before runner implementation begins.
   depends_on:
@@ -80169,7 +80169,7 @@ phases:
       phase.'
   - id: opencode_runner_contracts.gate
     name: Verify contract completeness against RFC
-    status: claimed
+    status: done
     description: 'Verify the contract phase fully matches docs/RFC-opencode-orchestration-runner.md
       before implementation proceeds.
 
@@ -80197,9 +80197,66 @@ phases:
     agent: integration-verifier-tacit
     claimed_by: integration-verifier-tacit
     claimed_at: '2026-04-11T19:39:35.950537+00:00'
+    done_at: '2026-04-11T19:59:14.934098+00:00'
+    evidence: 'Artifact:
+
+      - verifier session: ses_281f0fc1cffe4FvBSEnrR68Jls
+
+
+      Verification:
+
+      - Run: .venv/bin/python -m pytest tests/orchestration/unit/test_contracts.py
+      tests/orchestration/unit/test_prompt_artifact_contract.py -v -> 102 passed
+
+      - Contract-to-RFC mapping reviewed for sections 6–10 and 15 with no unresolved
+      ambiguity.
+
+
+      step_intent:
+
+      - Verify contract phase completeness before runner implementation.
+
+      expected_result:
+
+      - Request/session fields, prompt artifacts/handoff, and recovery truth contracts
+      are pinned with no guesswork.
+
+      observed_result:
+
+      - PASS; contract semantics pinned and test-backed.
+
+      failure_alignment:
+
+      - N/A (no failures observed)
+
+      product_implementation_files_modified:
+
+      - No; only contracts/docs/tests layer.
+
+
+      behavioral_proof_register:
+
+      - 102 contract tests passing; no skips/failures.
+
+      - ExecutionRequest and recovery dataclasses aligned with RFC literals.
+
+      - Prompt artifact paths/env vars/argv semantics pinned and tested.
+
+      - Resume semantics use --session, not --continue.
+
+      - End-to-end contract pipeline checks pass for resolve/materialize/env/argv.
+
+
+      gate_open_allowed:
+
+      - yes
+
+      explicit_uncertainty_sources:
+
+      - none'
 - id: opencode_runner_impl
   name: OpenCode Runner Implementation
-  status: locked
+  status: pending
   gate: Dedicated OpenCode runner, prompt materialization, runtime integration, and
     automatic recovery fallback are implemented per RFC.
   depends_on:

@@ -80005,7 +80005,7 @@ phases:
   steps:
   - id: opencode_runner_contracts.execution-request-contract
     name: Lock execution request and session contract
-    status: claimed
+    status: done
     description: 'Implement the RFC-defined contract shape and contract-facing documentation
       lock for OpenCode orchestration.
 
@@ -80043,6 +80043,53 @@ phases:
     agent: python-senior-tacit
     claimed_by: python-senior-tacit
     claimed_at: '2026-04-11T18:41:54.195854+00:00'
+    done_at: '2026-04-11T19:15:12.180330+00:00'
+    evidence: 'Artifact:
+
+      - commit hash: (to be recorded after orchestrator merge)
+
+      - worker session: ses_28225b8beffeT79kAD7kZNX32p
+
+
+      Verification:
+
+      - Run: .venv/bin/python -m pytest tests/orchestration/unit/test_contracts.py
+      -v -> 55 passed
+
+      - Run: .venv/bin/python -m pytest tests/orchestration/unit/test_imports.py tests/orchestration/unit/test_contract_lock_boundaries.py
+      tests/orchestration/unit/test_runner_backend_red.py tests/orchestration/unit/test_orch_app.py
+      tests/test_extended_runner_protocol.py -v -> 140 passed
+
+      - Run: .venv/bin/python -m pytest tests/orchestration/unit/test_recovery_contract_conformance.py
+      tests/orchestration/unit/test_runtime_lifecycle.py -v -> 82 passed
+
+
+      Files changed:
+
+      - src/vectl/orchestration/contracts.py
+
+      - src/vectl/orchestration/__init__.py
+
+      - src/vectl/orch_app.py
+
+      - docs/ORCHESTRATION-PLANE-INTERFACES.md
+
+      - tests/orchestration/unit/test_contracts.py
+
+
+      Spec link:
+
+      - docs/RFC-opencode-orchestration-runner.md §§6,7,10
+
+      - docs/ORCHESTRATION-PLANE-INTERFACES.md §§3.6,3.10
+
+
+      Gaps/Notes:
+
+      - Runtime helpers still consume work_refs for request semantics; direct consumption
+      of new request fields intentionally out of scope for this contract step.
+
+      - Runner process launch/wiring intentionally out of scope.'
   - id: opencode_runner_contracts.prompt-artifact-contract
     name: Lock prompt artifact and runner handoff contract
     status: pending

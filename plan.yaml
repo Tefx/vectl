@@ -79137,3 +79137,38 @@ phases:
     and concurrency safety are covered by black-box CLI tests before finalization.
   depends_on:
   - cli_blackbox_recovery_faults_cases
+  steps:
+  - id: cli_blackbox_surface_safety_ops.define-surface-safety-tests
+    name: Define selector, housekeeping, config, and concurrency black-box tests
+    status: pending
+    description: "step_type: test\nstep_intent: test_define_red\nexpected_result:\
+      \ red\nverification_scope: local-check protecting downstream gate `cli_blackbox_surface_safety_ops.gate`\n\
+      \nAuthor the remaining public-surface black-box tests for:\n- ambiguous `--latest`\
+      \ selection with multiple active runs\n- explicit run_id precedence and selector\
+      \ conflict handling\n- prune safety, especially no deletion of active runs\n\
+      - `--plan PATH` and env-var runtime-root override behavior\n- stable `--json`/human\
+      \ output contracts and exit codes\n- concurrent CLI races (`orch run` vs `orch\
+      \ run`, recover vs run, stop vs recover)\n\nScope anchors:\n- spec_refs:\n \
+      \ - docs/ORCHESTRATION-PLANE-CLI-CONFIG-OBSERVABILITY-DESIGN.md §7.*\n  - docs/ORCHESTRATION-CLI-QUICKSTART.md\
+      \ §§7-11\n- touch_paths:\n  - tests/repro/test_orch_cli_selector_safety.py\n\
+      \  - tests/repro/test_orch_cli_prune_config.py\n  - tests/repro/test_orch_cli_concurrency.py\n\
+      - harness_refs:\n  - multi-process fixture repos with multiple runs\n  - env\
+      \ override roots for artifacts/workspaces\n- authoritative_interface: existing\
+      \ public CLI only"
+    verification: Targeted pytest invocation exposes remaining selector/housekeeping/config/concurrency
+      gaps through public CLI subprocesses and real temp repos.
+    evidence_template: '## refs Read Confirmation (MANDATORY)
+
+      For each ref in this step:
+
+      - <filename> — key passage or "NOT READ: <reason>"
+
+
+      ## Expected-Red Proof
+
+      - Exact pytest command
+
+      - Matrix rows covered
+
+      - Which surfaces remain open'
+    agent: python-executor

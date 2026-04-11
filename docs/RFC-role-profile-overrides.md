@@ -81,17 +81,13 @@ and keep existing `role_profiles` semantics unchanged.
 
 | Key | Meaning |
 |-----|---------|
-| `role_profiles` | Define new custom roles explicitly; legacy built-in shadowing remains temporarily supported during migration |
+| `role_profiles` | Define new custom roles explicitly |
 | `role_profile_overrides` | Patch built-in roles by role ID |
 
 This preserves explicitness:
 
 - `role_profiles` means **define/add roles**
 - `role_profile_overrides` means **patch built-ins**
-
-For backward compatibility, existing configs that redefine built-in roles under
-`role_profiles` are still accepted in the initial rollout, but they should be
-treated as a deprecated compatibility path rather than the preferred model.
 
 ## 4. Proposed Config Shapes
 
@@ -165,18 +161,15 @@ If the target role ID does not exist in built-ins, validation must fail.
 
 ### 5.2 Important semantic rule
 
-`role_profiles` should primarily define new custom roles.
+`role_profiles` should define new custom roles only.
 
-However, for backward compatibility, the initial rollout should still accept
-configs that redefine built-in role IDs under `role_profiles`.
+It should **not** silently replace a built-in role.
 
-Recommended staged behavior:
+If a config file defines a `role_profiles.<role_id>` that already exists in built-ins,
+the loader should reject it with a validation error and direct the user to
+`role_profile_overrides`.
 
-1. **Initial rollout:** accept built-in role shadowing under `role_profiles`, but emit a deprecation warning that directs users to `role_profile_overrides`
-2. **Future cleanup release:** optionally escalate that warning into a validation error once migration tooling exists
-
-This keeps the rollout safe while still steering the config model toward the
-clearer long-term semantics.
+This keeps the semantics explicit and avoids ambiguous replacement behavior.
 
 ## 6. Validation Rules
 
@@ -196,17 +189,17 @@ Validation rules:
 
 1. override target role ID must exist in built-ins
 2. unknown override fields must be rejected
-3. the patched profile must still satisfy family-policy validation
-4. the patched role ID remains unchanged
+3. override targets that refer to custom roles from `role_profiles` must be rejected
+4. the patched profile must still satisfy family-policy validation
+5. the patched role ID remains unchanged
 
 ### 6.2 `role_profiles`
 
 Validation rules:
 
 1. custom role IDs must be globally unique in the final registry
-2. if a `role_profiles.<role_id>` shadows a built-in role in the initial rollout, emit a deprecation warning
+2. custom role IDs must not shadow built-in role IDs
 3. all roles loaded from `role_profiles` must satisfy the same family-policy validation as built-ins
-4. future cleanup release may convert built-in shadowing from warning to validation error
 
 ### 6.3 Final registry validation
 
@@ -223,7 +216,7 @@ After merge:
 
 The effective config output should show the final merged profiles.
 
-Recommended future improvement: include provenance for role profile fields.
+This RFC requires provenance for role profile fields in the same change.
 
 Example:
 
@@ -235,6 +228,14 @@ role_profiles.my-custom-reviewer.default_runner = opencode (source=custom)
 
 This is especially important because config merge behavior is otherwise invisible to users.
 
+Minimum provenance categories:
+
+- `default`
+- `override`
+- `custom`
+
+This provenance may be implemented inside the config inspection surface rather than the runtime config model itself.
+
 ### 7.2 `config-validate`
 
 Validation errors should be explicit and corrective.
@@ -242,7 +243,7 @@ Validation errors should be explicit and corrective.
 Recommended examples:
 
 - `unknown built-in role in role_profile_overrides: python-executorr`
-- `role_profiles.python-executor shadows built-in role; this legacy form is deprecated, use role_profile_overrides instead`
+- `role_profiles.python-executor shadows built-in role; use role_profile_overrides instead`
 - `role_profile_overrides.python-executor.output_contract violates coder family policy`
 
 ### 7.3 Future CLI affordances
@@ -279,6 +280,9 @@ Recommended internal flow:
 The runtime should not need to know whether a field came from defaults,
 override config, or custom role definition.
 
+Provenance should be computed and surfaced by config inspection/reporting paths,
+not by making runtime dispatch depend on provenance metadata.
+
 ### 8.3 Suggested helper functions
 
 Examples of likely internal helpers:
@@ -309,11 +313,12 @@ The target is narrow:
 
 ### Backward compatibility
 
-This proposal is backward compatible in the initial rollout:
+This proposal intentionally changes config semantics for configs that currently
+shadow built-in roles under `role_profiles`.
 
 - existing configs without `role_profile_overrides` continue to work unchanged
-- existing full explicit `role_profiles` configs continue to work
-- existing configs that shadow built-in roles under `role_profiles` continue to work, but should receive a deprecation warning
+- existing `role_profiles` configs that define custom roles continue to work unchanged
+- configs that use `role_profiles` to redefine built-in roles must be updated to `role_profile_overrides`
 
 ### Migration benefit
 
@@ -328,13 +333,6 @@ For user-level configs:
 2. replace copied built-in roles with `role_profile_overrides`
 3. leave `role_profiles` only for truly custom roles
 
-For rollout sequencing:
-
-1. ship `role_profile_overrides`
-2. warn on built-in shadowing under `role_profiles`
-3. optionally add migration tooling or `config-init --example role-overrides`
-4. only later consider rejecting built-in shadowing entirely
-
 ## 11. Why This Is the Smallest Useful Change
 
 This RFC intentionally avoids rewriting the entire config model.
@@ -347,28 +345,21 @@ It adds:
 
 That is enough to remove the main user pain while preserving the current explicitness of the config model.
 
-## 12. Open Questions
+## 12. Remaining Open Question
 
-1. Should provenance for effective role fields be added in the same change, or later?
-   - Recommendation: later is acceptable, but it is strongly desirable.
-
-2. Should `role_profile_overrides` be allowed to patch custom roles from `role_profiles`?
-   - Recommendation: no. Keep it built-in-only.
-
-3. Should vectl emit a migration hint when it detects copied built-in roles in `role_profiles`?
+1. Should vectl emit a migration hint when it detects copied built-in roles in `role_profiles`?
    - Recommendation: yes, eventually, but not required for the first implementation.
-
-4. Should built-in shadowing under `role_profiles` remain supported indefinitely?
-   - Recommendation: no. Keep it only as a migration bridge.
 
 ## 13. Decision Summary
 
 This RFC recommends:
 
 1. add `orchestration.role_profile_overrides`
-2. keep `role_profiles` as the long-term place for custom roles
-3. support built-in shadowing under `role_profiles` only as a deprecated compatibility path in the initial rollout
-4. validate override targets explicitly
-5. keep merge logic in `config.py`
+2. keep `role_profiles` for defining custom roles only
+3. reject built-in role shadowing from `role_profiles`
+4. make `role_profile_overrides` built-in-only; it must not patch custom roles
+5. expose field provenance in `config-show --effective` in the same change
+6. validate override targets explicitly
+7. keep merge logic in `config.py`
 
 This gives users a simple way to customize built-ins without forcing full registry copies and without introducing implicit merge behavior.

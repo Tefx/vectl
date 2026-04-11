@@ -78960,7 +78960,7 @@ phases:
       \ this step scope and were documented as out-of-step debt."
   - id: cli_blackbox_recovery_faults_cases.fix-fault-case-behavior
     name: Close recovery-fault handling and case lifecycle gaps
-    status: pending
+    status: claimed
     description: "step_type: implementation\nverification_scope: phase-check\n\nClose\
       \ recovery-fault handling and case lifecycle gaps only after the tester-owned\
       \ black-box matrix from `cli_blackbox_recovery_faults_cases.define-fault-case-tests`\
@@ -79022,6 +79022,8 @@ phases:
     depends_on:
     - cli_blackbox_recovery_faults_cases.define-fault-case-tests
     agent: python-senior-tacit
+    claimed_by: python-senior-tacit
+    claimed_at: '2026-04-11T12:02:55.047728+00:00'
   - id: cli_blackbox_recovery_faults_cases.retest-fault-case-matrix
     name: Retest recovery-fault and case-escalation matrix
     status: pending

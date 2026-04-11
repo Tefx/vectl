@@ -80172,6 +80172,41 @@ phases:
     depends_on:
     - opencode_runner_impl.prompt-materialization
     agent: python-senior-tacit
+  - id: opencode_runner_impl.runtime-continuity-integration
+    name: Integrate OpenCode runner into runtime and continuity
+    status: pending
+    description: 'Wire OpenCodeRunner into runtime/orch_app dispatch and continuity
+      flows.
+
+
+      Scope:
+
+      - pass the expanded execution request fields through orch_app/runtime
+
+      - persist session metadata and evidence refs in execution state
+
+      - preserve `recovered_via` truth in continuity artifacts and summaries
+
+      - integrate session-aware state with continuity and run-store artifacts
+
+      - wire reusable session metadata into roster/session bookkeeping where RFC requires
+      it
+
+
+      Refs:
+
+      - docs/RFC-opencode-orchestration-runner.md sections 7, 10, 11, 12
+
+      - src/vectl/orchestration/runtime.py
+
+      - src/vectl/orch_app.py
+
+      - continuity/run-store surfaces'
+    verification: Integration tests prove runtime dispatch, state persistence, and
+      continuity metadata are coherent for OpenCode-backed runs.
+    depends_on:
+    - opencode_runner_impl.dedicated-runner
+    agent: python-senior-tacit
 - id: opencode_runner_verification
   name: OpenCode Runner Verification
   status: locked

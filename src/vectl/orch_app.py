@@ -2819,8 +2819,7 @@ class OrchestrationApp:
             blocked_artifact_paths=tuple(blocked_artifact_paths),
             quarantined_artifact_paths=tuple(quarantined_artifact_paths),
             gate_open_allowed=not bool(fresh_start_terminalized),
-            no_silent_deletion_preserved=bool(quarantined_artifact_paths)
-            and no_silent_deletion_preserved,
+            no_silent_deletion_preserved=no_silent_deletion_preserved,
             runtime_state=recovered_runtime_state,
             operator_notifications=recovered_operator_notifications,
             dispatch_recovery_gate=recovered_dispatch_recovery_gate,

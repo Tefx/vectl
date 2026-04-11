@@ -80041,6 +80041,38 @@ phases:
     verification: Contract tests and/or interface assertions prove the new request/session
       fields and recovery truth labels are consistent across code-facing interfaces.
     agent: python-senior-tacit
+  - id: opencode_runner_contracts.prompt-artifact-contract
+    name: Lock prompt artifact and runner handoff contract
+    status: pending
+    description: 'Implement the RFC-defined prompt materialization and runner handoff
+      contract before runner code is written.
+
+
+      Scope:
+
+      - pin authority artifact locations under `.vectl/runs/<run_id>/input/`
+
+      - pin workspace copy location `.vectl/orch/runner_prompt.md`
+
+      - pin required `VECTL_ORCH_*` environment variables
+
+      - pin the requirement to attach `--file .vectl/orch/runner_prompt.md`
+
+      - update relevant docs/contracts so prompt handoff is stable and testable
+
+
+      Refs:
+
+      - docs/RFC-opencode-orchestration-runner.md sections 8 and 9.2
+
+      - src/vectl/orch_app.py
+
+      - docs/ORCHESTRATION-PLANE-RUNNER-BACKEND.md'
+    verification: Prompt artifact contract tests or direct assertions prove all required
+      paths, env vars, and handoff fields are pinned before runner implementation.
+    depends_on:
+    - opencode_runner_contracts.execution-request-contract
+    agent: python-senior-tacit
 - id: opencode_runner_impl
   name: OpenCode Runner Implementation
   status: locked

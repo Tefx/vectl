@@ -80507,7 +80507,7 @@ phases:
       - docs/RFC-opencode-orchestration-runner.md §§9,15'
   - id: opencode_runner_impl.runtime-continuity-integration
     name: Integrate OpenCode runner into runtime and continuity
-    status: claimed
+    status: done
     description: 'Wire OpenCodeRunner into runtime/orch_app dispatch and continuity
       flows.
 
@@ -80542,6 +80542,41 @@ phases:
     agent: python-senior-tacit
     claimed_by: python-senior-tacit
     claimed_at: '2026-04-11T21:10:55.368450+00:00'
+    done_at: '2026-04-11T21:50:16.952276+00:00'
+    evidence: 'Artifact:
+
+      - worker session: ses_2819d43e0ffd2yOTer4a9UyMf4
+
+
+      Verification:
+
+      - integration and related suites: 301 passed (0 failures from this change)
+
+
+      Files changed:
+
+      - src/vectl/orchestration/contracts.py
+
+      - src/vectl/orchestration/runtime.py
+
+      - src/vectl/orchestration/continuity_artifacts.py
+
+      - src/vectl/orchestration/run_store.py
+
+      - src/vectl/orch_app.py
+
+      - tests/orchestration/integration/test_opencode_runtime_continuity_integration.py
+
+
+      Spec link:
+
+      - docs/RFC-opencode-orchestration-runner.md §§7,10,11,12
+
+
+      Gaps/Notes:
+
+      - Full session.json native validation and roster release feedback-loop wiring
+      intentionally deferred as separate concerns.'
   - id: opencode_runner_impl.recovery-fallback
     name: Implement automatic recovery fallback semantics
     status: pending

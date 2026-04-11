@@ -79877,7 +79877,7 @@ phases:
       to implemented merge semantics.'
   - id: config_role_profile_overrides_impl.validation-and-error-contract
     name: Implement validation and migration-directed errors
-    status: pending
+    status: claimed
     description: 'Implement RFC-required validation behavior and explicit error contracts.
 
 
@@ -79905,6 +79905,8 @@ phases:
     depends_on:
     - config_role_profile_overrides_impl.merge-loader-and-registry
     agent: python-senior-tacit
+    claimed_by: python-senior-tacit
+    claimed_at: '2026-04-11T20:42:10.027222+00:00'
   - id: config_role_profile_overrides_impl.provenance-effective-config-show
     name: Implement provenance in config-show effective output
     status: claimed

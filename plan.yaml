@@ -80249,7 +80249,7 @@ phases:
       ```'
   - id: config_role_profile_overrides_verify.final-changed-scope-check
     name: Run final changed-scope verification
-    status: pending
+    status: claimed
     description: 'Run final changed-scope verification for the RFC implementation.
 
 
@@ -80272,6 +80272,8 @@ phases:
     depends_on:
     - config_role_profile_overrides_verify.independent-rfc-retest
     agent: integration-verifier-tacit
+    claimed_by: integration-verifier-tacit
+    claimed_at: '2026-04-12T06:45:41.371157+00:00'
   - id: config_role_profile_overrides_impl.fix-roundtrip-and-env-isolation
     name: Fix config round-trip serialization and env-isolation test bleed
     status: done

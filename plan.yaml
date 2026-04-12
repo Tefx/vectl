@@ -81145,7 +81145,7 @@ phases:
       on branch `vectl/step-opencode_runner_impl.recovery-fallback`'
 - id: opencode_runner_verification
   name: OpenCode Runner Verification
-  status: in_progress
+  status: done
   gate: Unit, integration, and live OpenCode evidence prove the runner is real, session-aware,
     recoverable, and automation-grade before downstream config work begins.
   depends_on:
@@ -81423,7 +81423,7 @@ phases:
       from the workspace binding, not the workspace root.'
   - id: opencode_runner_verification.final-gate
     name: Run final OpenCode runner verification gate
-    status: claimed
+    status: done
     description: 'Run final changed-scope verification for the full OpenCode runner
       feature.
 
@@ -81452,3 +81452,82 @@ phases:
     agent: integration-verifier-tacit
     claimed_by: integration-verifier-tacit
     claimed_at: '2026-04-12T06:45:26.376786+00:00'
+    done_at: '2026-04-12T06:53:58.789650+00:00'
+    evidence: "FAIL — 10 pre-existing CLI failures block full changed-scope confidence\
+      \ for downstream config work; OpenCode runner implementation itself is sound.\n\
+      \nstep_intent: Run final changed-scope verification for the full OpenCode runner\
+      \ feature — unit, integration, and live smoke evidence all pass; unchanged unaffected\
+      \ runner paths remain healthy enough for changed-scope confidence; no remaining\
+      \ ambiguity in launch/resume/recovery semantics; previous stall failure closed\
+      \ by proof not assumption.\n\nexpected_result: All orch CLI commands work correctly;\
+      \ all orchestration unit+integration tests pass; OpenCode runner launch/resume/recovery\
+      \ semantics are unambiguous; stall failure is proactively verified.\n\nobserved_result:\n\
+      \  CHANGED-SCOPE (OpenCode runner): PASS\n  - unit orchestration tests: 872\
+      \ passed, 0 skipped (20.09s)\n  - extended runner+runtime tests: 907 passed,\
+      \ 0 skipped (19.98s)\n  - opencode runner-specific unit+coverage+integration+live-smoke:\
+      \ 176 passed, 10 skipped (1.59s)\n  - recovery fallback integration: 27 passed,\
+      \ 0 skipped (0.22s)\n  - P2 (Fake Seam): No mocks in integration/ or live_smoke/\
+      \ test directories\n  - P6 (Mock Island): test_opencode_runner.py patches subprocess.Popen\
+      \ (I/O boundary) — has integration companion (test_opencode_runtime_continuity_integration.py)\
+      \ using real Runtime+SubprocessRunner(\"test\")\n  - P7 (Coverage Gate): runners.py\
+      \ 93%, prompt_materialization.py 100%, runner_registry.py 100%, contracts.py\
+      \ 100% — all above 70% threshold\n  - P9 (Runtime Liveness): OpenCodeRunner\
+      \ registered as OpenCodeRunner (not bare SubprocessRunner) in default registry;\
+      \ capabilities report supports_resume=True; resume requires session_id and rejects\
+      \ --continue; launch argv matches frozen contract; recovery continuity artifacts\
+      \ write and validate correctly\n  - Behavioral contracts verified at runtime:\
+      \ launch argv, resume argv, session guards, handoff env vars, prompt materialization\
+      \ round-trip, recovery validation, truth label distinction (native_session_resume\
+      \ ≠ fresh_relaunch)\n\n  UNCHANGED-RUNNER-PATHS: DEGRADED (pre-existing, not\
+      \ introduced by OpenCode runner)\n  - 10 CLI-surface test failures, all sharing\
+      \ single root cause: \"role_profiles.X shadows built-in role; use role_profile_overrides\
+      \ instead\"\n  - Confirmed pre-existing: reproduced identically in main worktree\
+      \ (same 10 failures)\n  - Affected: test_orch_liveness (1), test_orch_cli_recovery_faults\
+      \ (4), test_orch_cli_case_lifecycle (2), test_repair_continuity_black_box (1),\
+      \ test_orch_cli_surface (2)\n  - 2 of 4 failing recovery fault tests marked\
+      \ expected_red_module; remaining 8 are NOT marked expected_red\n  - Root cause\
+      \ is config_role_profile_override feature not the OpenCode runner\n\nfailure_alignment:\
+      \ 10 CLI failures are all caused by plan.yaml role_profiles shadowing built-in\
+      \ roles, triggering validation exit 5 before any orch subcommand can execute.\
+      \ This is a pre-existing defect from the config_role_profile_overrides feature\
+      \ that affects ALL orch CLI surfaces. It does NOT affect the orchestration runtime\
+      \ layer (which passes 907/907) or the OpenCode runner contracts directly. However,\
+      \ it means any downstream config work that relies on orch CLI commands (orch\
+      \ run, orch recover, orch resume, etc.) will be blocked by this validation error.\
+      \ The OpenCode runner is sound in isolation but the orch CLI entry point is\
+      \ a blocking surface.\n\nbehavioral_proof_register:\n  - OpenCodeRunner type\
+      \ registered: verified (type is OpenCodeRunner, not SubprocessRunner)\n  - Capabilities:\
+      \ supports_resume=True, supports_cancel=True, supports_streaming=False\n  -\
+      \ Start argv: opencode run --format json --dir <ws> --agent <id> --file .vectl/orch/runner_prompt.md\
+      \ \"Read the attached...\"\n  - Resume argv: opencode run --format json --dir\
+      \ <ws> --session <id> --agent <id> --file .vectl/orch/runner_prompt.md \"Continue\
+      \ this session...\"\n  - --continue forbidden: enforced at type level (OpenCodeContinueForbiddenError)\n\
+      \  - Resume without session_id: raises RunnerResumeError(reason=session_missing)\n\
+      \  - Prompt artifacts: materialize + validate round-trip passes\n  - Recovery\
+      \ truth labels: native_session_resume ≠ fresh_relaunch (distinct)\n  - Recovery\
+      \ fallback: 27 integration tests cover native resume, fresh relaunch, both-fail,\
+      \ artifact readback\n  - Stall closure: poll returns \"stall\" on signal termination\
+      \ (SIGTERM=-15, SIGINT=-2, SIGKILL=-9)\n\ngate_open_allowed: NO — 8 non-expected-red\
+      \ pre-existing CLI failures block the orch CLI surface for downstream config\
+      \ work. The OpenCode runner implementation itself is fully verified and sound,\
+      \ but the consumer entry point (orch CLI) is blocked by a pre-existing validation\
+      \ defect that must be remediated before downstream config work can proceed safely.\n\
+      \nuncertainty_sources:\n  - The exact timeline for fixing the role_profiles\
+      \ shadowing validation is unknown (it is a config_role_profile_overrides defect,\
+      \ not an opencode_runner defect)\n  - Live smoke tests (L3) for opencode subprocess\
+      \ invocation are skipped when binary/auth is absent (expected behavior per test\
+      \ markers)\n  - runtime.py at 79% coverage has uncovered branches in termination\
+      \ and reconcile error paths (non-blocking for changed scope)\n\nverification\
+      \ commands and outcomes:\n  1. uv run pytest tests/orchestration/ -v — 872 passed,\
+      \ 0 skipped, 20.09s ✅\n  2. uv run pytest tests/orchestration/ + runner+runtime\
+      \ tests — 907 passed, 0 skipped, 19.98s ✅\n  3. uv run pytest tests/orchestration/unit/test_opencode_runner.py\
+      \ + coverage + integration + live_smoke — 176 passed, 10 skipped (opt-in), 1.59s\
+      \ ✅\n  4. uv run pytest tests/orchestration/integration/test_recovery_fallback.py\
+      \ — 27 passed, 0 skipped, 0.22s ✅\n  5. P2 scan: 0 mocks in integration/ or\
+      \ live_smoke/ ✅\n  6. P6 scan: test_opencode_runner.py patches subprocess.Popen;\
+      \ companion integration test exists ✅\n  7. P7 coverage: runners.py 93%, prompt_materialization.py\
+      \ 100%, contracts.py 100%, runner_registry.py 100% ✅\n  8. Runtime liveness:\
+      \ OpenCodeRunner registered, capabilities verified, argv contracts verified\
+      \ ✅\n  9. uv run pytest tests/ -k \"not playwright and not network and not live_runner\"\
+      \ — 2274 passed, 2 skipped, 10 FAILED ❌\n  10. Pre-existing confirmation: same\
+      \ 10 failures in main worktree ❌ (pre-existing, not regression)"

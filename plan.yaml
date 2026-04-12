@@ -81421,7 +81421,7 @@ phases:
       from the workspace binding, not the workspace root.'
   - id: opencode_runner_verification.final-gate
     name: Run final OpenCode runner verification gate
-    status: pending
+    status: claimed
     description: 'Run final changed-scope verification for the full OpenCode runner
       feature.
 
@@ -81448,3 +81448,5 @@ phases:
     depends_on:
     - opencode_runner_verification.live-smoke
     agent: integration-verifier-tacit
+    claimed_by: integration-verifier-tacit
+    claimed_at: '2026-04-12T06:45:26.376786+00:00'

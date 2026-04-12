@@ -349,7 +349,7 @@ def build_opencode_launch_argv(
         "--format",
         cfg.format_flag,
         cfg.dir_flag_key,
-        str(workspace),
+        str(workspace.resolve()),
     ]
 
     if session_id is not None:
@@ -361,6 +361,7 @@ def build_opencode_launch_argv(
             agent_id,
             "--file",
             cfg.file_flag,
+            "--",
         ]
     )
 

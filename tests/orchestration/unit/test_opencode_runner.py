@@ -346,6 +346,41 @@ class TestOpenCodeRunnerLaunchEnv:
         env = runner._build_launch_env(request=request, workspace=workspace)
         assert env["VECTL_ORCH_RUN_ID"] == "phase.impl.step"
 
+    def test_launch_env_uses_run_id_from_prompt_bundle_path(self) -> None:
+        """When present, run_id is derived from prompt bundle artifact path."""
+        runner = OpenCodeRunner(artifact_root=Path("/runs"))
+        request = ExecutionRequest(
+            step_id="phase.impl.step",
+            role="python-senior-tacit",
+            runner="opencode",
+            work_refs=(),
+            agent_id="python-senior-tacit",
+            prompt_bundle_path="/runs/01TESTRUN/input/prompt_bundle.json",
+            runner_prompt_path="/runs/01TESTRUN/input/runner_prompt.md",
+        )
+        workspace = Path("/ws")
+
+        env = runner._build_launch_env(request=request, workspace=workspace)
+        assert env["VECTL_ORCH_RUN_ID"] == "01TESTRUN"
+        assert env["VECTL_ORCH_PROMPT_BUNDLE_PATH"] == "/runs/01TESTRUN/input/prompt_bundle.json"
+
+    def test_launch_env_work_refs_run_id_overrides_prompt_path(self) -> None:
+        """work_refs run_id takes precedence when both sources exist."""
+        runner = OpenCodeRunner(artifact_root=Path("/runs"))
+        request = ExecutionRequest(
+            step_id="phase.impl.step",
+            role="python-senior-tacit",
+            runner="opencode",
+            work_refs=("run_id=01WORKREF",),
+            agent_id="python-senior-tacit",
+            prompt_bundle_path="/runs/01PATH/input/prompt_bundle.json",
+            runner_prompt_path="/runs/01PATH/input/runner_prompt.md",
+        )
+        workspace = Path("/ws")
+
+        env = runner._build_launch_env(request=request, workspace=workspace)
+        assert env["VECTL_ORCH_RUN_ID"] == "01WORKREF"
+
     def test_launch_env_agent_id_correct(self) -> None:
         """VECTL_ORCH_AGENT_ID must use request.agent_id."""
         runner = OpenCodeRunner(artifact_root=Path("/runs"))

@@ -14,6 +14,8 @@ from typing import Literal, Protocol
 from vectl.orchestration.contracts import (
     ExecutionRequest,
     OpenCodeLaunchConfig,
+    PromptArtifactPaths,
+    _RUNNER_PROMPT_WORKSPACE_RELATIVE,
 )
 from vectl.orchestration.prompt_materialization import (
     build_opencode_launch_argv,
@@ -460,18 +462,71 @@ class OpenCodeRunner:
         Returns:
             Complete environment dict for subprocess launch.
         """
-        paths = resolve_prompt_artifact_paths(
-            artifact_root=self.artifact_root,
-            run_id=request.step_id,
+        run_id = self._resolve_handoff_run_id(request)
+        paths = self._resolve_handoff_paths(
+            request=request,
             workspace=workspace,
+            run_id=run_id,
         )
         handoff_env = build_runner_handoff_env(
-            run_id=request.step_id,
+            run_id=run_id,
             step_id=request.step_id,
             agent_id=request.agent_id or "opencode",
             artifact_paths=paths,
         )
         return build_opencode_launch_env(handoff_env=handoff_env)
+
+    @staticmethod
+    def _run_id_from_work_refs(work_refs: tuple[str, ...]) -> str | None:
+        for ref in work_refs:
+            if ref.startswith("run_id="):
+                value = ref.partition("=")[2].strip()
+                if value:
+                    return value
+        return None
+
+    @staticmethod
+    def _run_id_from_prompt_bundle_path(prompt_bundle_path: str) -> str | None:
+        if not prompt_bundle_path:
+            return None
+        path = Path(prompt_bundle_path)
+        # Expected: <artifact_root>/<run_id>/input/prompt_bundle.json
+        if len(path.parts) < 3:
+            return None
+        parent = path.parent
+        if parent.name != "input":
+            return None
+        run_id = parent.parent.name
+        return run_id or None
+
+    def _resolve_handoff_run_id(self, request: ExecutionRequest) -> str:
+        run_id = self._run_id_from_work_refs(request.work_refs)
+        if run_id:
+            return run_id
+        run_id = self._run_id_from_prompt_bundle_path(request.prompt_bundle_path)
+        if run_id:
+            return run_id
+        return request.step_id
+
+    def _resolve_handoff_paths(
+        self,
+        *,
+        request: ExecutionRequest,
+        workspace: Path,
+        run_id: str,
+    ) -> PromptArtifactPaths:
+        if request.prompt_bundle_path and request.runner_prompt_path:
+            return PromptArtifactPaths(
+                prompt_bundle_path=request.prompt_bundle_path,
+                runner_prompt_path=request.runner_prompt_path,
+                workspace_prompt_path=str(workspace / _RUNNER_PROMPT_WORKSPACE_RELATIVE),
+                workspace_prompt_relative=_RUNNER_PROMPT_WORKSPACE_RELATIVE,
+            )
+        return resolve_prompt_artifact_paths(
+            artifact_root=self.artifact_root,
+            run_id=run_id,
+            workspace=workspace,
+        )
 
     def _spawn_process(
         self,

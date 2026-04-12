@@ -63,6 +63,7 @@ markers = [
     "opencode_live: marks tests that use the opencode runner in live smoke",
     "judge_live: marks tests that exercise judge/score behavior in live smoke",
     "dispatch_live: marks tests that exercise regular dispatch behavior in live smoke",
+    "long_live: marks opt-in long-running live runner soak scenarios",
 ]
 
 [tool.ruff]

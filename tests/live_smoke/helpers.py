@@ -55,6 +55,9 @@ opencode_live = pytest.mark.opencode_live
 dispatch_live = pytest.mark.dispatch_live
 """Marks tests that exercise regular dispatch behavior."""
 
+long_live = pytest.mark.long_live
+"""Marks opt-in long-running live runner scenarios."""
+
 
 # =============================================================================
 # Pinned model IDs (exact from policy)
@@ -113,6 +116,22 @@ def is_live_runner_opted_in() -> bool:
         True only if RUN_LIVE_RUNNER_TESTS is exactly "1".
     """
     return os.environ.get(RUN_LIVE_RUNNER_TESTS_ENVAR, "") == "1"
+
+
+RUN_LONG_LIVE_RUNNER_TESTS_ENVAR: str = "RUN_LONG_LIVE_RUNNER_TESTS"
+"""Environment variable that gates long-running live smoke tests.
+
+Must be exactly "1" to enable long-running live scenarios.
+"""
+
+
+def is_long_live_runner_opted_in() -> bool:
+    """Check if long-running live smoke tests are opted in.
+
+    Returns:
+        True only if RUN_LONG_LIVE_RUNNER_TESTS is exactly "1".
+    """
+    return os.environ.get(RUN_LONG_LIVE_RUNNER_TESTS_ENVAR, "") == "1"
 
 
 # =============================================================================

@@ -1121,25 +1121,20 @@ class OrchestrationApp:
         mode: Literal["start", "resume", "recover"],
     ) -> tuple[str, str]:
         # Authority: RFC-opencode-orchestration-runner.md sections 8, 10.2
-        # Materialize prompt artifacts before runtime launch so that
-        # the runner can read them and recovery can fall back to them.
+        #
+        # Prompt path consistency contract (hotfix):
+        # The workspace path used for prompt materialization MUST be the same
+        # worktree path that the runner receives via --dir. Before this fix,
+        # _resolve_workspace_for_run() returned the workspace root (e.g.
+        # .vectl/workspaces/), but runtime.start() launches the runner inside
+        # a per-step worktree (e.g. .vectl/workspaces/core.ready-abcd/). The
+        # runner then reads --file .vectl/orch/runner_prompt.md relative to
+        # the worktree, but the prompt was materialized in the workspace root.
+        #
+        # Fix: call prepare() first to establish the worktree, then get the
+        # worktree path from the runtime, and use that path for prompt
+        # materialization so the prompt file lands where the runner expects it.
         prompt_bundle = self._render_validated_prompt_bundle(dispatch_spec)
-        artifact_root = self._artifact_root_for_run(run_id)
-        workspace = self._resolve_workspace_for_run(run_id)
-
-        # Resolve paths and materialize artifacts.
-        artifact_paths = resolve_prompt_artifact_paths(
-            artifact_root=artifact_root,
-            run_id=run_id,
-            workspace=workspace,
-        )
-        materialize_prompt_artifacts(
-            bundle=prompt_bundle,
-            artifact_paths=artifact_paths,
-            role_id=dispatch_spec.role_id,
-            agent_id=dispatch_spec.role_id,
-            runner=dispatch_spec.runner,
-        )
 
         # Gate: consult paused operator state and DispatchRecoveryGate
         # before dispatch to runtime.
@@ -1163,6 +1158,9 @@ class OrchestrationApp:
             "reuse_allowed" if dispatch_spec.session_mode == "reuse" else "reuse_forbidden"
         )
         prompt_bundle_ref = self._prompt_bundle_work_ref(prompt_bundle)
+
+        # Build request with placeholder prompt paths; these will be updated
+        # after prepare() establishes the worktree path.
         request = ExecutionRequest(
             step_id=step_id,
             role=dispatch_spec.role_id,
@@ -1178,15 +1176,47 @@ class OrchestrationApp:
                 prompt_bundle_ref,
             ),
             agent_id=dispatch_spec.role_id,
+            prompt_bundle_path="",  # placeholder; filled after prepare()
+            runner_prompt_path="",  # placeholder; filled after prepare()
+            request_mode=request_mode,
+            session_policy=session_policy,
+            session_id=session_id,
+        )
+
+        # Prepare the worktree first so we know the actual execution directory.
+        workspace_id = self._runtime.prepare(request)
+        worktree_path = self._runtime.workspace_worktree_path(workspace_id)
+
+        # Now materialize prompt artifacts into the correct worktree path.
+        artifact_root = self._artifact_root_for_run(run_id)
+        artifact_paths = resolve_prompt_artifact_paths(
+            artifact_root=artifact_root,
+            run_id=run_id,
+            workspace=worktree_path,
+        )
+        materialize_prompt_artifacts(
+            bundle=prompt_bundle,
+            artifact_paths=artifact_paths,
+            role_id=dispatch_spec.role_id,
+            agent_id=dispatch_spec.role_id,
+            runner=dispatch_spec.runner,
+        )
+
+        # Update the request with validated prompt artifact paths.
+        request = ExecutionRequest(
+            step_id=step_id,
+            role=dispatch_spec.role_id,
+            runner=dispatch_spec.runner,
+            work_refs=request.work_refs,
+            agent_id=dispatch_spec.role_id,
             prompt_bundle_path=artifact_paths.prompt_bundle_path,
             runner_prompt_path=artifact_paths.runner_prompt_path,
             request_mode=request_mode,
             session_policy=session_policy,
             session_id=session_id,
         )
-        workspace = self._runtime.prepare(request)
-        execution_id = self._runtime.start(request=request, workspace=workspace)
-        return workspace, execution_id
+        execution_id = self._runtime.start(request=request, workspace=workspace_id)
+        return workspace_id, execution_id
 
     def _render_validated_prompt_bundle(self, dispatch_spec: DispatchSpec) -> PromptBundle:
         """Render prompt bundle from dispatch coordinator with authority validation.

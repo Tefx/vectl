@@ -456,6 +456,26 @@ class Runtime:
 
         return workspace_id
 
+    def workspace_worktree_path(self, workspace: str) -> Path:
+        """Return the absolute worktree path for a prepared workspace.
+
+        The caller must have called ``prepare()`` to create the workspace
+        before calling this method.
+
+        Args:
+            workspace: Workspace identifier returned by ``prepare()``.
+
+        Returns:
+            Absolute path to the worktree directory for the workspace.
+
+        Raises:
+            ValueError: If the workspace identifier is not found among
+                active workspaces.
+        """
+        if workspace not in self._active_workspaces:
+            raise ValueError(f"Workspace not found or not prepared: {workspace}")
+        return Path(self._active_workspaces[workspace].binding.worktree_path)
+
     def start(self, request: ExecutionRequest, workspace: str) -> str:
         """
         Start execution in prepared workspace.

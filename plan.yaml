@@ -80056,7 +80056,7 @@ phases:
       - docs/RFC-role-profile-overrides.md §13'
 - id: config_role_profile_overrides_verify
   name: Role Profile Overrides Verification
-  status: in_progress
+  status: done
   gate: RFC-required tests, effective provenance output, and changed-file verification
     prove the clean-break role profile override semantics end-to-end.
   depends_on:
@@ -80249,7 +80249,7 @@ phases:
       ```'
   - id: config_role_profile_overrides_verify.final-changed-scope-check
     name: Run final changed-scope verification
-    status: claimed
+    status: done
     description: 'Run final changed-scope verification for the RFC implementation.
 
 
@@ -80274,6 +80274,40 @@ phases:
     agent: integration-verifier-tacit
     claimed_by: integration-verifier-tacit
     claimed_at: '2026-04-12T06:45:41.371157+00:00'
+    done_at: '2026-04-12T06:54:55.996593+00:00'
+    evidence: 'Artifact:
+
+      - verifier session: ses_27f8f1e15ffej7GxfrfzyXW3IQ
+
+
+      Verification:
+
+      - RFC-focused suites and changed-scope checks pass (114 + 51 + full orchestration
+      unit suite green)
+
+      - CLI config-show effective provenance and validation rejection scenarios verified
+
+
+      step_intent:
+
+      - Final changed-scope verification of role profile override RFC implementation.
+
+      expected_result:
+
+      - Changed config/CLI surfaces pass and RFC behavior is observable without regressions.
+
+      observed_result:
+
+      - PASS with gate_open_allowed=true.
+
+      behavioral_proof_register:
+
+      - merge/override semantics, error contracts, provenance surfaces, round-trip
+      symmetry, and default path validation all verified.
+
+      uncertainty_sources:
+
+      - none'
   - id: config_role_profile_overrides_impl.fix-roundtrip-and-env-isolation
     name: Fix config round-trip serialization and env-isolation test bleed
     status: done

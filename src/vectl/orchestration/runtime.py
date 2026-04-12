@@ -456,6 +456,26 @@ class Runtime:
 
         return workspace_id
 
+    def workspace_worktree_path(self, workspace: str) -> Path:
+        """Return the absolute worktree path for a prepared workspace.
+
+        The caller must have called ``prepare()`` to create the workspace
+        before calling this method.
+
+        Args:
+            workspace: Workspace identifier returned by ``prepare()``.
+
+        Returns:
+            Absolute path to the worktree directory for the workspace.
+
+        Raises:
+            ValueError: If the workspace identifier is not found among
+                active workspaces.
+        """
+        if workspace not in self._active_workspaces:
+            raise ValueError(f"Workspace not found or not prepared: {workspace}")
+        return Path(self._active_workspaces[workspace].binding.worktree_path)
+
     def start(self, request: ExecutionRequest, workspace: str) -> str:
         """
         Start execution in prepared workspace.
@@ -524,17 +544,23 @@ class Runtime:
         self._runner_handles[execution_id] = launch_result.handle
 
         # Create initial execution state.
+        # Authority: RFC-opencode-orchestration-runner.md section 7.1
+        # Expanded fields (request_mode, session_policy) are persisted for
+        # recovery continuity and session-aware state reconstruction.
         state.execution_state = AgentExecutionState(
             execution_id=execution_id,
             step_id=request.step_id,
             workspace_id=workspace,
             runner=request.runner,
             runner_handle=launch_result.handle.run_id,
-            session_id=request.session_id,
+            session_id=launch_result.handle.session_id or request.session_id,
             status="running",
             started_at=_current_timestamp(),
             last_update_at=_current_timestamp(),
             artifact_refs=(),
+            evidence_refs=(),
+            request_mode=request.request_mode,
+            session_policy=request.session_policy,
         )
 
         return execution_id
@@ -635,8 +661,14 @@ class Runtime:
         )
 
         # Update the execution state.
+        # Authority: RFC-opencode-orchestration-runner.md section 7.3
+        # Propagate session_id and evidence_refs from poll result into
+        # durable execution state so recovery can reconstruct session truth.
         state.execution_state.status = status
         state.execution_state.last_update_at = _current_timestamp()
+        if poll_result.session_id is not None:
+            state.execution_state.session_id = poll_result.session_id
+        state.execution_state.evidence_refs = poll_result.evidence_refs
 
         # Track stalled executions.
         if status in ("stall", "transport_error"):
@@ -698,6 +730,9 @@ class Runtime:
             started_at=state.execution_state.started_at,
             last_update_at=_current_timestamp(),
             artifact_refs=state.execution_state.artifact_refs,
+            evidence_refs=state.execution_state.evidence_refs,
+            request_mode=state.execution_state.request_mode,
+            session_policy=state.execution_state.session_policy,
         )
         self._stalled_executions.add(execution_id)
 

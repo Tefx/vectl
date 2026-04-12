@@ -12,10 +12,41 @@ Authority: docs/ADR-worktree-support.md section "Core Design"
 Authority: docs/DRIVER-ARCHITECTURE.md section 4 (completion authority)
 """
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Literal, Protocol, TypeAlias
 
 from vectl.models import IsolationMode
+
+RequestMode: TypeAlias = Literal["start", "resume", "recover"]
+"""Execution request launch mode.
+
+Authority: docs/RFC-opencode-orchestration-runner.md section 6.1
+
+- ``start``: Begin a fresh execution; create a new session if needed.
+- ``resume``: Continue an existing session-backed execution.
+- ``recover``: Reconstruct execution from durable artifacts, preferring native
+  session continuation and falling back to fresh relaunch.
+"""
+
+SessionPolicy: TypeAlias = Literal["reuse_allowed", "reuse_forbidden"]
+"""Session reuse policy for execution requests.
+
+Authority: docs/RFC-opencode-orchestration-runner.md section 6.2
+
+- ``reuse_allowed``: Orchestration may provide an existing session for
+  continued work.
+- ``reuse_forbidden``: Orchestration must force fresh execution semantics.
+"""
+
+RecoveredVia: TypeAlias = Literal["native_session_resume", "fresh_relaunch"]
+"""Recovery path truth label.
+
+Authority: docs/RFC-opencode-orchestration-runner.md section 10.3
+
+The system must not collapse these two recovery paths into the same label.
+They are persisted in ``continuity.json`` and mirrored into recovery event
+payloads and human-readable summaries.
+"""
 
 __all__ = [
     "AgentExecutionState",
@@ -23,17 +54,27 @@ __all__ = [
     "DispatchSourceKind",
     "DispatchSpec",
     "ExecutionContext",
+    "ExecutionRequest",
+    "ExecutionResult",
     "IsolationMode",
     "MutationPolicy",
+    "OpenCodeLaunchConfig",
+    "PromptArtifactPaths",
     "PromptBundle",
     "PromptRegistry",
     "ReconcileDisposition",
     "ReconcileResult",
+    "RecoveryAttempt",
+    "RecoveryContinuity",
+    "RecoveredVia",
+    "RequestMode",
     "ResolutionCaseSource",
     "ResolverAuthorityContract",
     "ResolverClaimFlow",
     "ResolverExecutionSite",
     "ResolverMutationSurface",
+    "RunnerHandoffEnv",
+    "SessionPolicy",
     "ReviewOutcome",
     "RoleOutputContract",
     "RoleProfile",
@@ -319,6 +360,7 @@ class AgentExecutionState:
     Execution tracking state for agent work.
 
     Authority: docs/ORCHESTRATION-PLANE-RUNTIME-WORKTREE-LIFECYCLE.md section 8
+    Authority: docs/RFC-opencode-orchestration-runner.md section 7.3
 
     Attributes:
         execution_id: Unique execution identifier.
@@ -331,6 +373,13 @@ class AgentExecutionState:
         started_at: Unix timestamp when execution started.
         last_update_at: Unix timestamp of last state update.
         artifact_refs: Tuple of artifact references produced.
+        evidence_refs: Tuple of runner evidence references (stdout/stderr refs,
+            session artifacts). Populated from RunnerPollResult on completion.
+            Authority: docs/RFC-opencode-orchestration-runner.md section 7.3
+        request_mode: Launch mode that created this execution.
+            Authority: docs/RFC-opencode-orchestration-runner.md section 6.1
+        session_policy: Session reuse policy for this execution.
+            Authority: docs/RFC-opencode-orchestration-runner.md section 6.2
     """
 
     execution_id: str
@@ -351,6 +400,9 @@ class AgentExecutionState:
     started_at: float = 0.0
     last_update_at: float = 0.0
     artifact_refs: tuple[str, ...] = ()
+    evidence_refs: tuple[str, ...] = ()
+    request_mode: RequestMode = "start"
+    session_policy: SessionPolicy = "reuse_forbidden"
 
 
 @dataclass(frozen=True)
@@ -418,11 +470,21 @@ class ExecutionRequest:
     """
     Mechanical execution request into runtime.
 
+    Authority: docs/ORCHESTRATION-PLANE-INTERFACES.md section 3.6
+    Authority: docs/RFC-opencode-orchestration-runner.md section 7.1
+
     Attributes:
         step_id: Step being executed.
         role: Role performing the execution.
         runner: Runner identifier.
         work_refs: References to work artifacts.
+        agent_id: Agent identifier for the execution.
+        prompt_bundle_path: Path to the rendered prompt bundle artifact.
+        runner_prompt_path: Path to the runner-specific prompt artifact.
+        request_mode: Launch mode semantics (``start``, ``resume``, ``recover``).
+            Authority: docs/RFC-opencode-orchestration-runner.md section 6.1
+        session_policy: Whether an existing session may be reused.
+            Authority: docs/RFC-opencode-orchestration-runner.md section 6.2
         session_id: Session to use (if any).
     """
 
@@ -430,6 +492,11 @@ class ExecutionRequest:
     role: str
     runner: str
     work_refs: tuple[str, ...]
+    agent_id: str = ""
+    prompt_bundle_path: str = ""
+    runner_prompt_path: str = ""
+    request_mode: RequestMode = "start"
+    session_policy: SessionPolicy = "reuse_forbidden"
     session_id: str | None = None
 
 
@@ -453,6 +520,61 @@ class ExecutionResult:
     output_summary: str
     session_id: str | None = None
     operator_message: str | None = None
+
+
+@dataclass(frozen=True)
+class RecoveryContinuity:
+    """Recovery path truth label persisted at ``continuity.json``.
+
+    Authority: docs/RFC-opencode-orchestration-runner.md section 10.3
+
+    The system must not collapse native session resume and fresh relaunch
+    into the same label. This contract enforces that distinction at the
+    type level.
+
+    Attributes:
+        recovered_via: Which recovery path was actually taken.
+        run_id: The run identifier this continuity record belongs to.
+        step_id: The step identifier this continuity record belongs to.
+        agent_id: The agent identifier for the recovered execution.
+        runner: The runner used for the recovered execution.
+        session_id: The session identifier, if a native session was reused.
+        timestamp: ISO-8601 timestamp of when recovery was recorded.
+    """
+
+    recovered_via: RecoveredVia
+    run_id: str = ""
+    step_id: str = ""
+    agent_id: str = ""
+    runner: str = ""
+    session_id: str | None = None
+    timestamp: str = ""
+
+
+@dataclass(frozen=True)
+class RecoveryAttempt:
+    """Individual resume or recover attempt record.
+
+    Authority: docs/RFC-opencode-orchestration-runner.md section 10.4
+
+    Records whether native session validation succeeded, why it may have
+    failed, whether fallback relaunch was used, and resulting identifiers.
+
+    Attributes:
+        attempt_kind: Whether this was a resume attempt or a recover attempt.
+        native_validation_ok: Whether native session validation passed.
+        native_validation_failure_reason: Why validation failed, if it did.
+        fallback_relaunch_used: Whether a fresh relaunch was used as fallback.
+        resulting_run_id: The run identifier after the attempt.
+        resulting_session_id: The session identifier after the attempt, if any.
+    """
+
+    attempt_kind: Literal["resume", "recover"]
+    native_validation_ok: bool = False
+    native_validation_failure_reason: str = ""
+    fallback_relaunch_used: bool = False
+    resulting_run_id: str = ""
+    resulting_session_id: str | None = None
 
 
 @dataclass(frozen=True)
@@ -499,3 +621,181 @@ class ResolutionReport:
     summary: str
     evidence_refs: tuple[str, ...] = ()
     operator_message: str | None = None
+
+
+# ---------------------------------------------------------------------
+# Prompt Artifact and Runner Handoff Contracts
+# ---------------------------------------------------------------------
+
+# Authority: docs/RFC-opencode-orchestration-runner.md sections 8, 8.5, 9.2
+#
+# These types pin the stable contract for prompt materialization and
+# runner handoff *before* runner code is written. They freeze:
+#   1. Artifact authority and workspace copy locations
+#   2. Required VECTL_ORCH_* environment variables
+#   3. OpenCode --file attachment and launch command contract
+
+
+_RUNS_INPUT_DIR: Literal["input"] = "input"
+"""Relative subdirectory under a run's artifact root for input artifacts.
+
+Authority: docs/RFC-opencode-orchestration-runner.md section 8.1
+
+Every run's authoritative prompt artifacts must be materialized under::
+
+    .vectl/runs/<run_id>/input/
+
+This constant exists so that path resolution is derived from one frozen
+definition rather than scattered string literals.
+"""
+
+_PROMPT_BUNDLE_FILENAME: Literal["prompt_bundle.json"] = "prompt_bundle.json"
+"""Filename for the structured prompt bundle JSON artifact.
+
+Authority: docs/RFC-opencode-orchestration-runner.md section 8.3
+"""
+
+_RUNNER_PROMPT_FILENAME: Literal["runner_prompt.md"] = "runner_prompt.md"
+"""Filename for the runner-consumable flattened prompt Markdown artifact.
+
+Authority: docs/RFC-opencode-orchestration-runner.md section 8.4
+"""
+
+_WORKSPACE_ORCH_DIR: Literal[".vectl/orch"] = ".vectl/orch"
+"""Relative workspace directory for orchestration runtime artifacts.
+
+Authority: docs/RFC-opencode-orchestration-runner.md section 8.2
+"""
+
+_RUNNER_PROMPT_WORKSPACE_RELATIVE: Literal[".vectl/orch/runner_prompt.md"] = (
+    ".vectl/orch/runner_prompt.md"
+)
+"""Workspace-relative path to the runner-consumable prompt copy.
+
+Authority: docs/RFC-opencode-orchestration-runner.md section 8.2, 8.5
+
+The workspace should receive a runner-readable prompt copy at this path,
+allowing runner startup to use a stable file path inside the execution
+workspace.
+"""
+
+
+@dataclass(frozen=True)
+class PromptArtifactPaths:
+    """Frozen contract pinning all prompt artifact location semantics.
+
+    Authority: docs/RFC-opencode-orchestration-runner.md section 8
+
+    This dataclass pins the three required prompt artifact locations:
+
+    1. **Authority prompt bundle** (structured JSON):
+       ``<artifact_root>/<run_id>/input/prompt_bundle.json``
+    2. **Authority runner prompt** (flattened Markdown):
+       ``<artifact_root>/<run_id>/input/runner_prompt.md``
+    3. **Workspace copy** (runner-consumable Markdown):
+       ``<workspace>/.vectl/orch/runner_prompt.md``
+
+    Attributes:
+        prompt_bundle_path: Absolute path to the structured prompt bundle JSON
+            under the run's authoritative artifact root.
+        runner_prompt_path: Absolute path to the flattened runner prompt
+            Markdown under the run's authoritative artifact root.
+        workspace_prompt_path: Absolute path to the workspace copy of the
+            runner prompt. This is the canonical location the runner reads
+            at startup.
+        workspace_prompt_relative: Workspace-relative path string for the
+            runner prompt copy. Always equals ``.vectl/orch/runner_prompt.md``.
+    """
+
+    prompt_bundle_path: str
+    runner_prompt_path: str
+    workspace_prompt_path: str
+    workspace_prompt_relative: str = _RUNNER_PROMPT_WORKSPACE_RELATIVE
+
+
+@dataclass(frozen=True)
+class RunnerHandoffEnv:
+    """Frozen contract pinning the required VECTL_ORCH_* environment variables.
+
+    Authority: docs/RFC-opencode-orchestration-runner.md section 8.5
+
+    The process environment must include these variables for OpenCode runner
+    handoff. They provide the runner with stable references to orchestration
+    identity and prompt artifact locations.
+
+    Attributes:
+        VECTL_ORCH_RUN_ID: The run identifier for this orchestration execution.
+        VECTL_ORCH_STEP_ID: The step being executed.
+        VECTL_ORCH_AGENT_ID: The agent identifier for the execution.
+        VECTL_ORCH_PROMPT_PATH: Path to the workspace-copy runner prompt file.
+        VECTL_ORCH_PROMPT_BUNDLE_PATH: Path to the structured prompt bundle JSON.
+    """
+
+    VECTL_ORCH_RUN_ID: str
+    VECTL_ORCH_STEP_ID: str
+    VECTL_ORCH_AGENT_ID: str
+    VECTL_ORCH_PROMPT_PATH: str
+    VECTL_ORCH_PROMPT_BUNDLE_PATH: str
+
+    def as_dict(self) -> dict[str, str]:
+        """Render handoff environment as a plain dict suitable for ``subprocess`` env.
+
+        Returns:
+            Dictionary mapping each VECTL_ORCH_* variable name to its value.
+        """
+        return {
+            "VECTL_ORCH_RUN_ID": self.VECTL_ORCH_RUN_ID,
+            "VECTL_ORCH_STEP_ID": self.VECTL_ORCH_STEP_ID,
+            "VECTL_ORCH_AGENT_ID": self.VECTL_ORCH_AGENT_ID,
+            "VECTL_ORCH_PROMPT_PATH": self.VECTL_ORCH_PROMPT_PATH,
+            "VECTL_ORCH_PROMPT_BUNDLE_PATH": self.VECTL_ORCH_PROMPT_BUNDLE_PATH,
+        }
+
+
+_OPENCODE_BOOTSTRAP_MESSAGE_START: Literal[
+    "Read the attached runner prompt file, execute the requested task in the current workspace, and then exit."
+] = "Read the attached runner prompt file, execute the requested task in the current workspace, and then exit."
+"""Frozen one-shot bootstrap message for OpenCode start mode.
+
+Authority: docs/RFC-opencode-orchestration-runner.md section 9.2
+"""
+
+_OPENCODE_BOOTSTRAP_MESSAGE_RESUME: Literal[
+    "Continue this session by executing the attached runner prompt in the current workspace."
+] = "Continue this session by executing the attached runner prompt in the current workspace."
+"""Frozen one-shot bootstrap message for OpenCode resume mode.
+
+Authority: docs/RFC-opencode-orchestration-runner.md section 9.3
+"""
+
+
+@dataclass(frozen=True)
+class OpenCodeLaunchConfig:
+    """Frozen contract pinning the OpenCode launch command surface and flags.
+
+    Authority: docs/RFC-opencode-orchestration-runner.md sections 9.2, 9.3
+
+    This dataclass pins the complete OpenCode launch contract, including the
+    required ``--file`` attachment. The handoff mechanism is frozen as:
+
+        workspace prompt file + explicit env vars + ``--file`` attachment
+        + bounded bootstrap message.
+
+    Attributes:
+        file_flag: The workspace-relative path passed via ``--file``.
+            Always equals ``.vectl/orch/runner_prompt.md``.
+        format_flag: The output format flag for OpenCode. Always ``json``.
+        dir_flag_key: The directory flag name. Always ``--dir``.
+        agent_flag_key: The agent selection flag name. Always ``--agent``.
+        session_flag_key: The session continuation flag name. Always ``--session``.
+        bootstrap_start: The bounded one-shot bootstrap message for start mode.
+        bootstrap_resume: The bounded one-shot bootstrap message for resume mode.
+    """
+
+    file_flag: str = _RUNNER_PROMPT_WORKSPACE_RELATIVE
+    format_flag: Literal["json"] = "json"
+    dir_flag_key: Literal["--dir"] = "--dir"
+    agent_flag_key: Literal["--agent"] = "--agent"
+    session_flag_key: Literal["--session"] = "--session"
+    bootstrap_start: str = _OPENCODE_BOOTSTRAP_MESSAGE_START
+    bootstrap_resume: str = _OPENCODE_BOOTSTRAP_MESSAGE_RESUME

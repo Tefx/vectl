@@ -526,6 +526,15 @@ def _deserialize_runtime_state(payload: object) -> RuntimeRecoveryRecord | None:
         started_at=_coerce_float(payload.get("started_at")),
         last_update_at=_coerce_float(payload.get("last_update_at")),
         execution_artifact_refs=_as_str_tuple(payload.get("execution_artifact_refs")),
+        evidence_refs=_as_str_tuple(payload.get("evidence_refs")),
+        request_mode=cast(
+            Literal["start", "resume", "recover"],
+            payload.get("request_mode", "start"),
+        ),
+        session_policy=cast(
+            Literal["reuse_allowed", "reuse_forbidden"],
+            payload.get("session_policy", "reuse_forbidden"),
+        ),
         reconcile_state=_deserialize_reconcile_state(payload.get("reconcile_state")),
         paused_routing_state=cast(
             Literal[

@@ -450,14 +450,29 @@ Recommended code additions:
 
 - `src/vectl/orchestration/runners.py`
 - `src/vectl/orchestration/runner_registry.py`
+- `src/vectl/orchestration/prompt_materialization.py`
 - one or more concrete runner adapters under `src/vectl/orchestration/`
 
 Required code updates:
 
 - `src/vectl/orchestration/runtime.py`
-- `src/vectl/orchestration/contracts.py`
+- `src/vectl/orchestration/contracts.py` (prompt artifact + handoff types)
 - `src/vectl/orchestration/interfaces.py`
 - `src/vectl/orchestration/resolver.py` (only for substrate reuse, not to turn resolver into the backend)
+
+### 14.1 Prompt artifact contract (frozen)
+
+Authority: `docs/RFC-opencode-orchestration-runner.md` sections 8, 8.5, 9.2
+
+The prompt materialization and runner handoff contract is frozen in:
+
+- `PromptArtifactPaths` — pins the three artifact locations
+- `RunnerHandoffEnv` — pins the five required `VECTL_ORCH_*` environment variables
+- `OpenCodeLaunchConfig` — pins the `--file` attachment and frozen command contract
+- `prompt_materialization.py` — provides path resolution, env construction,
+  artifact writing, and launch argv construction
+
+The contract is tested by `tests/orchestration/unit/test_prompt_artifact_contract.py`.
 
 ---
 

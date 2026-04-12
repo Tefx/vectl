@@ -252,6 +252,11 @@ class TestConfigDiscoveryGaps:
         custom_config = tmp_path / "custom_vectl.yaml"
         custom_config.write_text(MINIMAL_ORCH_CONFIG_YAML)
         monkeypatch.setenv("VECTL_CONFIG", str(custom_config))
+        # Prevent ambient home-config from interfering with discovery
+        monkeypatch.setattr(
+            "vectl.orchestration.config.USER_CONFIG_DIR",
+            str(tmp_path / "nonexistent_user_config"),
+        )
 
         config, discovered_path = load_orchestration_config()
 
@@ -291,7 +296,9 @@ class TestConfigDiscoveryGaps:
             )
         assert config.resolver.invocation_timeout_seconds == 120.0
 
-    def test_env_var_naming_convention_not_enforced(self, monkeypatch: pytest.MonkeyPatch) -> None:
+    def test_env_var_naming_convention_not_enforced(
+        self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+    ) -> None:
         """Environment variable naming convention §8.3 is honored.
 
         Expected per §8.3:
@@ -302,6 +309,12 @@ class TestConfigDiscoveryGaps:
         Spec reference: §8.3 lines 1247-1253.
         """
         monkeypatch.setenv("VECTL_ORCH_RUNTIME_ARTIFACT_ROOT", "/custom/path")
+        # Prevent ambient home-config from interfering with discovery
+        monkeypatch.setattr(
+            "vectl.orchestration.config.USER_CONFIG_DIR",
+            str(tmp_path / "nonexistent_user_config"),
+        )
+        monkeypatch.delenv("VECTL_CONFIG", raising=False)
 
         config, _ = load_orchestration_config()
 

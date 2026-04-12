@@ -29,11 +29,13 @@ import time
 from dataclasses import asdict, dataclass, field, replace
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import TYPE_CHECKING, Literal, cast
+from typing import TYPE_CHECKING, Any, Literal, cast
 
 from vectl.orchestration.config import (
     OrchestrationConfig,
     ResolverToolAllowlist,
+    RoleFieldProvenance,
+    build_role_profile_provenance,
     freeze_config,
     load_frozen_snapshot,
     load_orchestration_config,
@@ -53,13 +55,20 @@ from vectl.orchestration.contracts import (
     DispatchSpec,
     ExecutionRequest,
     ExecutionResult,
+    PromptArtifactPaths,
     PromptBundle,
     ReconcileResult,
+    RecoveryAttempt,
+    RecoveryContinuity,
+    RecoveredVia,
+    RequestMode,
     ResolutionCase,
     ResolutionCaseSource,
     ResolutionReport,
     RosterSnapshot,
+    RunnerHandoffEnv,
     RuntimeSnapshot,
+    SessionPolicy,
     StructuredReviewResult,
     WorkLease,
 )
@@ -92,6 +101,13 @@ from vectl.orchestration.inspection_queries import (
     query_runs,
 )
 from vectl.orchestration.projections import replay_events_to_artifacts
+from vectl.orchestration.prompt_materialization import (
+    build_runner_handoff_env,
+    materialize_prompt_artifacts,
+    resolve_prompt_artifact_paths,
+    validate_prompt_artifacts_for_recovery,
+    PromptArtifactValidation,
+)
 from vectl.orchestration.recovery import (
     CutoverValidationResult,
     CutoverValidator,
@@ -317,18 +333,20 @@ class ConfigResult:
     Typed result for config operations.
 
     Authority: docs/ORCHESTRATION-PLANE-IMPLEMENTATION-DESIGN.md section 3.7
-
-    GAP: The exact config result schema is not yet fully specified.
+    Authority: docs/RFC-role-profile-overrides.md §7.1
 
     Attributes:
         show_output: Output from config show operation.
         validation_passed: True if config validation passed.
         tools: Tuple of registered tool family identifiers.
+        role_profile_provenance: Per-field provenance for role profiles
+            (populated when ``effective=True``). Maps ``role_id -> {field_name -> RoleFieldProvenance}``.
     """
 
     show_output: str = ""
     validation_passed: bool = False
     tools: tuple[str, ...] = ()
+    role_profile_provenance: dict[str, dict[str, Any]] | None = None
 
 
 @dataclass(frozen=True)
@@ -1102,7 +1120,21 @@ class OrchestrationApp:
         dispatch_spec: DispatchSpec,
         mode: Literal["start", "resume", "recover"],
     ) -> tuple[str, str]:
-        prompt_bundle_ref = self._validate_dispatch_authority(dispatch_spec)
+        # Authority: RFC-opencode-orchestration-runner.md sections 8, 10.2
+        #
+        # Prompt path consistency contract (hotfix):
+        # The workspace path used for prompt materialization MUST be the same
+        # worktree path that the runner receives via --dir. Before this fix,
+        # _resolve_workspace_for_run() returned the workspace root (e.g.
+        # .vectl/workspaces/), but runtime.start() launches the runner inside
+        # a per-step worktree (e.g. .vectl/workspaces/core.ready-abcd/). The
+        # runner then reads --file .vectl/orch/runner_prompt.md relative to
+        # the worktree, but the prompt was materialized in the workspace root.
+        #
+        # Fix: call prepare() first to establish the worktree, then get the
+        # worktree path from the runtime, and use that path for prompt
+        # materialization so the prompt file lands where the runner expects it.
+        prompt_bundle = self._render_validated_prompt_bundle(dispatch_spec)
 
         # Gate: consult paused operator state and DispatchRecoveryGate
         # before dispatch to runtime.
@@ -1122,6 +1154,13 @@ class OrchestrationApp:
         session_id: str | None = run_id
         if dispatch_spec.session_mode == "reuse":
             session_id = dispatch_spec.reuse_token
+        session_policy: SessionPolicy = (
+            "reuse_allowed" if dispatch_spec.session_mode == "reuse" else "reuse_forbidden"
+        )
+        prompt_bundle_ref = self._prompt_bundle_work_ref(prompt_bundle)
+
+        # Build request with placeholder prompt paths; these will be updated
+        # after prepare() establishes the worktree path.
         request = ExecutionRequest(
             step_id=step_id,
             role=dispatch_spec.role_id,
@@ -1136,23 +1175,57 @@ class OrchestrationApp:
                 f"source_kind={dispatch_spec.source_kind}",
                 prompt_bundle_ref,
             ),
+            agent_id=dispatch_spec.role_id,
+            prompt_bundle_path="",  # placeholder; filled after prepare()
+            runner_prompt_path="",  # placeholder; filled after prepare()
+            request_mode=request_mode,
+            session_policy=session_policy,
             session_id=session_id,
         )
-        workspace = self._runtime.prepare(request)
-        execution_id = self._runtime.start(request=request, workspace=workspace)
-        return workspace, execution_id
 
-    def _validate_dispatch_authority(self, dispatch_spec: DispatchSpec) -> str:
-        """Validate dispatch authority before any mechanical runtime launch.
+        # Prepare the worktree first so we know the actual execution directory.
+        workspace_id = self._runtime.prepare(request)
+        worktree_path = self._runtime.workspace_worktree_path(workspace_id)
 
-        Enforces that runtime launch metadata cannot drift from centralized role
-        policy authority. This protects main-worktree families (planner,
-        reviewer, resolver) from accidental execution-context downgrade.
+        # Now materialize prompt artifacts into the correct worktree path.
+        artifact_root = self._artifact_root_for_run(run_id)
+        artifact_paths = resolve_prompt_artifact_paths(
+            artifact_root=artifact_root,
+            run_id=run_id,
+            workspace=worktree_path,
+        )
+        materialize_prompt_artifacts(
+            bundle=prompt_bundle,
+            artifact_paths=artifact_paths,
+            role_id=dispatch_spec.role_id,
+            agent_id=dispatch_spec.role_id,
+            runner=dispatch_spec.runner,
+        )
+
+        # Update the request with validated prompt artifact paths.
+        request = ExecutionRequest(
+            step_id=step_id,
+            role=dispatch_spec.role_id,
+            runner=dispatch_spec.runner,
+            work_refs=request.work_refs,
+            agent_id=dispatch_spec.role_id,
+            prompt_bundle_path=artifact_paths.prompt_bundle_path,
+            runner_prompt_path=artifact_paths.runner_prompt_path,
+            request_mode=request_mode,
+            session_policy=session_policy,
+            session_id=session_id,
+        )
+        execution_id = self._runtime.start(request=request, workspace=workspace_id)
+        return workspace_id, execution_id
+
+    def _render_validated_prompt_bundle(self, dispatch_spec: DispatchSpec) -> PromptBundle:
+        """Render prompt bundle from dispatch coordinator with authority validation.
+
+        Authority: RFC-opencode-orchestration-runner.md section 8.3
 
         Returns:
-            Stable runtime work-ref proving PromptRegistry rendered the live bundle.
+            Validated PromptBundle ready for materialization.
         """
-
         try:
             prompt_bundle = self._dispatch_coordinator.render_prompt_bundle(dispatch_spec)
         except DispatchAuthorityError as exc:
@@ -1166,6 +1239,49 @@ class OrchestrationApp:
                 f"execution_context={profile.execution_context!r} but got "
                 f"{dispatch_spec.execution_context!r}"
             )
+        return prompt_bundle
+
+    def _artifact_root_for_run(self, run_id: str) -> Path:
+        """Resolve the artifact root path for a run.
+
+        Args:
+            run_id: The run identifier.
+
+        Returns:
+            Path to artifact root (e.g. ``.vectl/runs``).
+        """
+        return (
+            self._run_registry(config=self._effective_orchestration_config())
+            .run_artifact_root(run_id)
+            .parent
+        )
+
+    def _resolve_workspace_for_run(self, run_id: str) -> Path:
+        """Resolve the workspace path for a run.
+
+        For isolated worktree executions, returns the worktree path.
+        Falls back to the configured workspace root for non-isolated runs.
+
+        Args:
+            run_id: The run identifier.
+
+        Returns:
+            Absolute path to the execution workspace.
+        """
+        config = self._effective_orchestration_config()
+        return Path(config.runtime.workspace_root)
+
+    def _validate_dispatch_authority(self, dispatch_spec: DispatchSpec) -> str:
+        """Validate dispatch authority before any mechanical runtime launch.
+
+        Enforces that runtime launch metadata cannot drift from centralized role
+        policy authority. This protects main-worktree families (planner,
+        reviewer, resolver) from accidental execution-context downgrade.
+
+        Returns:
+            Stable runtime work-ref proving PromptRegistry rendered the live bundle.
+        """
+        prompt_bundle = self._render_validated_prompt_bundle(dispatch_spec)
         return self._prompt_bundle_work_ref(prompt_bundle)
 
     def _prompt_bundle_work_ref(self, prompt_bundle: PromptBundle) -> str:
@@ -1717,6 +1833,7 @@ class OrchestrationApp:
             step_id=resolved_step_id,
             frozen_config=frozen_snapshot.config,
             run_root=run_root,
+            runner=frozen_snapshot.config.runtime.default_runner,
         )
 
         allowlist_text = self._allowlist_text(frozen_snapshot.config.resolver.tool_allowlist)
@@ -2045,7 +2162,34 @@ class OrchestrationApp:
         step_id: str,
         frozen_config: OrchestrationConfig,
         run_root: Path,
+        runner: str | None = None,
+        session_id: str | None = None,
+        request_mode: str | None = None,
     ) -> None:
+        """Write session-aware continuity bootstrap artifacts.
+
+        Authority: docs/ORCHESTRATION-PLANE-ARCHITECTURE.md,
+            docs/RFC-opencode-orchestration-runner.md section 11
+
+        When ``runner`` and ``session_id`` are provided (OpenCode-backed runs),
+        the continuity ledger and journal record the actual session identity
+        instead of the placeholder ``run_id``.
+
+        Args:
+            run_id: Unique run identifier.
+            step_id: Step being executed.
+            frozen_config: Frozen orchestration config for capability fingerprint.
+            run_root: Artifact root for the run.
+            runner: Runner identifier (e.g. ``opencode``). Falls back to
+                ``frozen_config.runtime.default_runner`` if not provided.
+            session_id: Session identifier from runner handle. Falls back to
+                ``run_id`` if not provided (placeholder for non-session runners).
+            request_mode: Launch mode (``start``, ``resume``, ``recover``).
+                Written into the ledger for recovery context.
+        """
+        effective_runner = runner or frozen_config.runtime.default_runner
+        effective_session_id = session_id or run_id
+        effective_mode = request_mode or "start"
         continuity_root = self._continuity_root(run_root)
         continuity_root.mkdir(parents=True, exist_ok=True)
         now_ts = time.time()
@@ -2059,8 +2203,9 @@ class OrchestrationApp:
         ledger_payload = {
             "run_id": run_id,
             "step_id": step_id,
-            "session_id": run_id,
-            "runner": frozen_config.runtime.default_runner,
+            "session_id": effective_session_id,
+            "runner": effective_runner,
+            "request_mode": effective_mode,
             "status": "active",
             "created_at": now_ts,
             "updated_at": now_ts,
@@ -2073,8 +2218,9 @@ class OrchestrationApp:
             "event_id": f"{run_id}-started",
             "run_id": run_id,
             "step_id": step_id,
-            "session_id": run_id,
-            "runner": frozen_config.runtime.default_runner,
+            "session_id": effective_session_id,
+            "runner": effective_runner,
+            "request_mode": effective_mode,
             "event_type": "run_started",
             "timestamp": now_ts,
             "outcome": None,
@@ -2111,6 +2257,86 @@ class OrchestrationApp:
             + "\n",
             encoding="utf-8",
         )
+
+    def _write_recovery_continuity(
+        self,
+        *,
+        run_root: Path,
+        continuity: RecoveryContinuity,
+    ) -> Path:
+        """Persist recovery path truth label at ``recovery/continuity.json``.
+
+        Authority: docs/RFC-opencode-orchestration-runner.md section 10.3
+
+        The system must not collapse native session resume and fresh relaunch
+        into the same label. This method writes the authoritative ``recovered_via``
+        truth so that downstream consumers (summaries, event payloads, audit) can
+        distinguish the actual path taken.
+
+        Args:
+            run_root: Artifact root for the run (e.g. ``.vectl/runs/<run_id>``).
+            continuity: The RecoveryContinuity record to persist.
+
+        Returns:
+            Path to the written continuity.json file.
+        """
+        recovery_dir = run_root / "recovery"
+        recovery_dir.mkdir(parents=True, exist_ok=True)
+        continuity_path = recovery_dir / "continuity.json"
+        payload = {
+            "recovered_via": continuity.recovered_via,
+            "run_id": continuity.run_id,
+            "step_id": continuity.step_id,
+            "agent_id": continuity.agent_id,
+            "runner": continuity.runner,
+            "session_id": continuity.session_id,
+            "timestamp": continuity.timestamp,
+        }
+        continuity_path.write_text(
+            json.dumps(payload, sort_keys=True) + "\n",
+            encoding="utf-8",
+        )
+        return continuity_path
+
+    def _write_recovery_attempt(
+        self,
+        *,
+        run_root: Path,
+        attempt: RecoveryAttempt,
+    ) -> Path:
+        """Persist individual resume/recover attempt record.
+
+        Authority: docs/RFC-opencode-orchestration-runner.md section 10.4
+
+        Records whether native session validation succeeded, why it may have
+        failed, whether fallback relaunch was used, and resulting identifiers.
+
+        Args:
+            run_root: Artifact root for the run (e.g. ``.vectl/runs/<run_id>``).
+            attempt: The RecoveryAttempt record to persist.
+
+        Returns:
+            Path to the written attempt JSON file.
+        """
+        recovery_dir = run_root / "recovery"
+        recovery_dir.mkdir(parents=True, exist_ok=True)
+        filename = (
+            "resume_attempt.json" if attempt.attempt_kind == "resume" else "recover_attempt.json"
+        )
+        attempt_path = recovery_dir / filename
+        payload = {
+            "attempt_kind": attempt.attempt_kind,
+            "native_validation_ok": attempt.native_validation_ok,
+            "native_validation_failure_reason": attempt.native_validation_failure_reason,
+            "fallback_relaunch_used": attempt.fallback_relaunch_used,
+            "resulting_run_id": attempt.resulting_run_id,
+            "resulting_session_id": attempt.resulting_session_id,
+        }
+        attempt_path.write_text(
+            json.dumps(payload, sort_keys=True) + "\n",
+            encoding="utf-8",
+        )
+        return attempt_path
 
     def _replay_projection_for_run(
         self,
@@ -2631,6 +2857,34 @@ class OrchestrationApp:
                         dispatch_spec=dispatch_spec,
                         mode="recover",
                     )
+                    # Authority: RFC-opencode-orchestration-runner.md section 10.3
+                    # Write recovery continuity truth label distinguishing
+                    # native_session_resume from fresh_relaunch.
+                    now_iso = datetime.now(timezone.utc).isoformat()
+                    self._write_recovery_continuity(
+                        run_root=run_root,
+                        continuity=RecoveryContinuity(
+                            recovered_via="native_session_resume",
+                            run_id=record.run_id,
+                            step_id=record.step_id,
+                            agent_id=record.agent or self._config.default_agent,
+                            runner=frozen.runtime.default_runner,
+                            session_id=getattr(record, "session_id", None),
+                            timestamp=now_iso,
+                        ),
+                    )
+                    # Authority: RFC-opencode-orchestration-runner.md section 10.4
+                    # Write recovery attempt record for audit trail.
+                    self._write_recovery_attempt(
+                        run_root=run_root,
+                        attempt=RecoveryAttempt(
+                            attempt_kind="recover",
+                            native_validation_ok=True,
+                            fallback_relaunch_used=False,
+                            resulting_run_id=record.run_id,
+                            resulting_session_id=getattr(record, "session_id", None),
+                        ),
+                    )
                 except Exception as exc:
                     now_ts = time.time()
                     registry.save(
@@ -2723,6 +2977,34 @@ class OrchestrationApp:
                     run_root=run_root,
                     run_id=record.run_id,
                     reason=decision.message,
+                )
+                # Authority: RFC-opencode-orchestration-runner.md section 10.3
+                # The fresh_start_required path terminalizes the stale run.
+                # Write recovery continuity truth distinguishing from native_session_resume.
+                now_iso = datetime.now(timezone.utc).isoformat()
+                self._write_recovery_continuity(
+                    run_root=run_root,
+                    continuity=RecoveryContinuity(
+                        recovered_via="fresh_relaunch",
+                        run_id=record.run_id,
+                        step_id=record.step_id,
+                        agent_id=record.agent or self._config.default_agent,
+                        runner=frozen.runtime.default_runner,
+                        session_id=None,
+                        timestamp=now_iso,
+                    ),
+                )
+                # Authority: RFC-opencode-orchestration-runner.md section 10.4
+                # Write recovery attempt record for audit trail.
+                self._write_recovery_attempt(
+                    run_root=run_root,
+                    attempt=RecoveryAttempt(
+                        attempt_kind="recover",
+                        native_validation_ok=False,
+                        native_validation_failure_reason=decision.message,
+                        fallback_relaunch_used=True,
+                        resulting_run_id=record.run_id,
+                    ),
                 )
                 current_core = self._core_adapter.snapshot(agent=record.agent)
                 if record.step_id in current_core.in_progress_step_ids:
@@ -3434,6 +3716,11 @@ class OrchestrationApp:
         Show current orchestration configuration.
 
         Authority: docs/ORCHESTRATION-PLANE-IMPLEMENTATION-DESIGN.md section 3.7
+        Authority: docs/RFC-role-profile-overrides.md §7.1
+
+        When ``effective=True``, includes role profile provenance per RFC §7.1:
+        each role profile field is annotated with its source category
+        (``default``, ``override``, or ``custom``).
 
         Returns:
             ConfigResult with current configuration.
@@ -3442,6 +3729,19 @@ class OrchestrationApp:
             OSError: Propagates config materialization failures.
         """
         config = self._effective_orchestration_config()
+
+        # Build role profile provenance (RFC §7.1)
+        role_profile_provenance: dict[str, dict[str, RoleFieldProvenance]] = {}
+        role_profile_lines: list[str] = []
+
+        if effective:
+            role_profile_provenance = build_role_profile_provenance(config)
+            for role_id, fields in role_profile_provenance.items():
+                for field_name, prov in fields.items():
+                    role_profile_lines.append(
+                        f"role_profiles.{role_id}.{field_name} = {prov.value} (source={prov.source})"
+                    )
+
         if effective:
             show_output = (
                 f"plan_path={config.plan_path}\n"
@@ -3477,6 +3777,9 @@ class OrchestrationApp:
                 f"operator.default_output={config.operator.default_output}\n"
                 f"operator.max_pending_actions={config.operator.max_pending_actions}"
             )
+            # Append role profile provenance lines (RFC §7.1)
+            if role_profile_lines:
+                show_output += "\n" + "\n".join(role_profile_lines)
         else:
             show_output = (
                 f"plan_path={config.plan_path}\n"
@@ -3485,8 +3788,23 @@ class OrchestrationApp:
                 f"resolver_enabled={config.resolver.enabled}\n"
                 f"allowlist={self._allowlist_text(config.resolver.tool_allowlist)}"
             )
+
+        # Convert RoleFieldProvenance dataclasses to JSON-ready dicts
+        provenance_json: dict[str, dict[str, dict[str, str]]] | None = None
+        if effective:
+            provenance_json = {
+                role_id: {
+                    field_name: {"value": prov.value, "source": prov.source}
+                    for field_name, prov in fields.items()
+                }
+                for role_id, fields in role_profile_provenance.items()
+            }
+
         return ConfigResult(
-            show_output=show_output, validation_passed=True, tools=canonical_tool_families()
+            show_output=show_output,
+            validation_passed=True,
+            tools=canonical_tool_families(),
+            role_profile_provenance=provenance_json,
         )
 
     def config_validate(
@@ -3638,6 +3956,11 @@ def build_orchestration_app(
                     f"source_kind={dispatch_spec.source_kind}",
                     *case.artifact_refs,
                 ),
+                agent_id=dispatch_spec.role_id,
+                prompt_bundle_path="",
+                runner_prompt_path="",
+                request_mode="start",
+                session_policy="reuse_forbidden",
                 session_id=f"resolver-{generate_run_id()}",
             )
 
@@ -3899,14 +4222,14 @@ def _apply_roster_lease(*, dispatch_spec: DispatchSpec, lease: WorkLease) -> Dis
 
 def _dispatch_request_mode(
     *, mode: Literal["start", "resume", "recover"], dispatch_spec: DispatchSpec
-) -> str:
+) -> RequestMode:
     """Return runtime request mode while preserving explicit recovery flows."""
 
     if mode != "start":
         return mode
     if dispatch_spec.session_mode == "reuse":
         return "resume"
-    return mode
+    return "start"
 
 
 __all__ = [

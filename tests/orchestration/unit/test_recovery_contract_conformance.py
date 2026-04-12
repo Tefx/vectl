@@ -7,6 +7,7 @@ from pathlib import Path
 import pytest
 
 from vectl.orch_app import AppConfig, OrchestrationApp, OrchestrationResult, build_orchestration_app
+from vectl.orchestration.config import OrchestrationConfig
 from vectl.orchestration.contracts import DispatchSpec
 from vectl.orchestration.recovery import recovery_action_status, recovery_case_status
 from vectl.orchestration.run_store import RunRegistry
@@ -66,7 +67,15 @@ def _build_app(tmp_path: Path):
         plan_contents,
         encoding="utf-8",
     )
-    app = build_orchestration_app(AppConfig(plan_path=plan_path, run_store_root=tmp_path / "runs"))
+    # Provide explicit OrchestrationConfig to avoid home-config discovery bleed
+    # from ~/.config/vectl/vectl.yaml which may use pre-RFC role_profiles format.
+    orch_config = OrchestrationConfig(plan_path=plan_path)
+    app_config = AppConfig(
+        plan_path=plan_path,
+        orchestration_config=orch_config,
+        run_store_root=tmp_path / "runs",
+    )
+    app = build_orchestration_app(app_config)
     return app
 
 

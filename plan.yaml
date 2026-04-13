@@ -81642,3 +81642,11 @@ phases:
     OpenCode acceptance contract.
   depends_on:
   - orch_drive_live_acceptance
+- id: orch_drive_deep_review
+  name: Orchestration Drive Deep Review
+  status: locked
+  gate: Independent audit confirms wiring, spec conformance, architecture boundaries,
+    black-box CLI behavior, and that the real OpenCode acceptance matrix is green
+    and authoritative.
+  depends_on:
+  - orch_drive_doc_sync

@@ -82524,6 +82524,10 @@ phases:
     refs:
     - docs/ORCHESTRATION-PLANE-CLI-CONFIG-OBSERVABILITY-DESIGN.md
     - docs/RFC-orch-drive.md
+    depends_on:
+    - orch_drive_surfaces.cli-drive-lifecycle-surface
+    - orch_drive_surfaces.inspection-and-control-surface
+    - orch_drive_surfaces.config-and-observability-upgrades
     agent: blind-tester-tacit
   - id: orch_drive_surfaces.gate-surfaces-phase
     name: gate surfaces phase

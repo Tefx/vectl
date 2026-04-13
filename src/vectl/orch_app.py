@@ -864,8 +864,8 @@ class OrchestrationApp:
             ControlDecision(
                 kind="dispatch",
                 reason="orchestration app dispatch",
-                step_id=step_id,
-                role=role_hint or self._config.default_agent,
+                step_ids=(step_id,),
+                role_bindings={step_id: role_hint or self._config.default_agent},
             )
         )
         return self._bind_roster_dispatch_inputs(step_id=step_id, dispatch_spec=dispatch_spec)

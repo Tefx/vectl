@@ -2,28 +2,34 @@
 Typed resolution-report helpers and schemas.
 
 Authority: docs/ORCHESTRATION-PLANE-IMPLEMENTATION-DESIGN.md section 3.9
+Authority: docs/RFC-orch-drive.md section 12.2 (planner_request extension)
 """
 
 from __future__ import annotations
 
 from collections.abc import Mapping
-from typing import Literal, TypedDict, cast
+from typing import TYPE_CHECKING, Literal, TypedDict, cast
 
 from vectl.orchestration.contracts import ResolutionReport
 
+if TYPE_CHECKING:
+    from vectl.orchestration.contracts import PlannerRequest
 
-class ResolutionReportPayload(TypedDict):
+
+class ResolutionReportPayload(TypedDict, total=False):
     """Machine-readable payload shape expected from resolver invocation glue.
 
     Authority:
         docs/ORCHESTRATION-PLANE-RESOLUTION-CONTRACT.md sections 5.1 and 8
         docs/ORCHESTRATION-PLANE-IMPLEMENTATION-DESIGN.md sections 3.5 and 3.9
+        docs/RFC-orch-drive.md section 12.2 (planner_request extension)
     """
 
     status: str
     summary: str
     evidence_refs: tuple[str, ...]
     operator_message: str | None
+    planner_request: Mapping[str, object]
 
 
 _ALLOWED_REPORT_STATUSES: frozenset[str] = frozenset(
@@ -32,7 +38,9 @@ _ALLOWED_REPORT_STATUSES: frozenset[str] = frozenset(
 
 _REQUIRED_REPORT_FIELDS: frozenset[str] = frozenset({"status", "summary"})
 
-_OPTIONAL_REPORT_FIELDS: frozenset[str] = frozenset({"evidence_refs", "operator_message"})
+_OPTIONAL_REPORT_FIELDS: frozenset[str] = frozenset(
+    {"evidence_refs", "operator_message", "planner_request"}
+)
 
 _ALLOWED_REPORT_FIELDS: frozenset[str] = _REQUIRED_REPORT_FIELDS | _OPTIONAL_REPORT_FIELDS
 
@@ -99,6 +107,21 @@ def validate_resolution_report_payload(payload: Mapping[str, object]) -> None:
                 "ResolutionReport payload field 'operator_message' must be string or null"
             )
 
+    if "planner_request" in payload and payload["planner_request"] is not None:
+        planner = payload["planner_request"]
+        if not isinstance(planner, dict):
+            raise ValueError(
+                "ResolutionReport payload field 'planner_request' must be a mapping or null"
+            )
+        if "reason" not in planner:
+            raise ValueError(
+                "ResolutionReport payload field 'planner_request' must contain 'reason'"
+            )
+        if not isinstance(planner["reason"], str):
+            raise ValueError(
+                "ResolutionReport payload field 'planner_request.reason' must be string"
+            )
+
 
 def parse_resolution_report_payload(payload: Mapping[str, object]) -> ResolutionReport:
     """Parse machine-readable resolver payload into ResolutionReport.
@@ -132,11 +155,37 @@ def parse_resolution_report_payload(payload: Mapping[str, object]) -> Resolution
     else:
         operator_message = None
 
+    # Parse optional planner_request (RFC-orch-drive section 12.2)
+    planner_request: PlannerRequest | None = None
+    planner_request_raw = payload.get("planner_request")
+    if isinstance(planner_request_raw, dict):
+        from vectl.orchestration.contracts import PlannerRequest
+
+        affected_steps_raw = planner_request_raw.get("affected_steps", ())
+        affected_steps: tuple[str, ...] = (
+            tuple(affected_steps_raw) if isinstance(affected_steps_raw, (tuple, list)) else ()
+        )
+        pr_evidence_refs_raw = planner_request_raw.get("evidence_refs", ())
+        pr_evidence_refs: tuple[str, ...] = (
+            tuple(pr_evidence_refs_raw) if isinstance(pr_evidence_refs_raw, (tuple, list)) else ()
+        )
+        constraints_raw = planner_request_raw.get("constraints", ())
+        constraints: tuple[str, ...] = (
+            tuple(constraints_raw) if isinstance(constraints_raw, (tuple, list)) else ()
+        )
+        planner_request = PlannerRequest(
+            reason=str(planner_request_raw.get("reason", "")),
+            affected_steps=affected_steps,
+            evidence_refs=pr_evidence_refs,
+            constraints=constraints,
+        )
+
     return ResolutionReport(
         status=status,
         summary=summary,
         evidence_refs=evidence_refs,
         operator_message=operator_message,
+        planner_request=planner_request,
     )
 
 

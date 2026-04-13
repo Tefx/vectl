@@ -196,11 +196,12 @@ class PlanAwareControl:
             return ControlDecision(kind="done", reason="Plan complete and runtime idle")
 
         if core.claimable_step_ids:
+            step_id = core.claimable_step_ids[0]
             return ControlDecision(
                 kind="dispatch",
                 reason="Claimable work available",
-                step_id=core.claimable_step_ids[0],
-                role=self.dispatch_role,
+                step_ids=(step_id,),
+                role_bindings={step_id: self.dispatch_role},
             )
 
         if _has_active_work(core=core, runtime=runtime):

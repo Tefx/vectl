@@ -148,8 +148,8 @@ def test_dispatch_decision_from_authoritative_core_snapshot() -> None:
     decision = control.evaluate_current()
 
     assert decision.kind == "dispatch"
-    assert decision.step_id == "phase.step"
-    assert decision.role == "python-executor"
+    assert decision.step_ids == ("phase.step",)
+    assert decision.role_bindings == {"phase.step": "python-executor"}
     assert "Claimable work available" in decision.reason
 
 
@@ -203,7 +203,7 @@ def test_resolve_decision_preserves_unresolved_truth_from_core() -> None:
     decision = control.evaluate_current()
 
     assert decision.kind == "resolve"
-    assert decision.step_id is None
+    assert decision.step_ids == ()
     assert "unresolved" in decision.reason.lower()
 
 
@@ -262,7 +262,7 @@ def test_resolution_unblocked_re_evaluate_from_refreshed_state() -> None:
     )
 
     assert decision.kind == "dispatch"
-    assert decision.step_id == "phase.step"
+    assert decision.step_ids == ("phase.step",)
 
 
 def test_resolution_waiting_maps_to_wait() -> None:

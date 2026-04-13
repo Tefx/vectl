@@ -178,8 +178,8 @@ def test_dispatch_spec_construction_from_control_decision() -> None:
         ControlDecision(
             kind="dispatch",
             reason="orchestration app dispatch",
-            step_id="core.test-step",
-            role="gate-reviewer",
+            step_ids=("core.test-step",),
+            role_bindings={"core.test-step": "gate-reviewer"},
         )
     ]
 
@@ -207,8 +207,8 @@ def test_dispatch_spec_verify_mode_expected_red_wires_correctly() -> None:
         ControlDecision(
             kind="dispatch",
             reason="test",
-            step_id="core.test-step",
-            role="python-executor",
+            step_ids=("core.test-step",),
+            role_bindings={"core.test-step": "python-executor"},
         )
     )
 

@@ -144,8 +144,8 @@ def test_evaluate_dispatches_claimable_step_with_configured_role() -> None:
     decision = control.evaluate_current()
 
     assert decision.kind == "dispatch"
-    assert decision.step_id == "core.impl"
-    assert decision.role == "python-executor"
+    assert decision.step_ids == ("core.impl",)
+    assert decision.role_bindings == {"core.impl": "python-executor"}
 
 
 def test_roster_none_claim_is_not_interpreted_as_plan_blockage() -> None:
@@ -165,8 +165,8 @@ def test_roster_none_claim_is_not_interpreted_as_plan_blockage() -> None:
     decision = control.evaluate_current()
 
     assert decision.kind == "dispatch"
-    assert decision.step_id == "core.impl"
-    assert decision.role == DEFAULT_DISPATCH_ROLE
+    assert decision.step_ids == ("core.impl",)
+    assert decision.role_bindings == {"core.impl": DEFAULT_DISPATCH_ROLE}
 
 
 def test_evaluate_ignores_roster_available_agent_order_for_dispatch_role() -> None:
@@ -184,8 +184,8 @@ def test_evaluate_ignores_roster_available_agent_order_for_dispatch_role() -> No
     decision = control.evaluate_current()
 
     assert decision.kind == "dispatch"
-    assert decision.step_id == "core.impl"
-    assert decision.role == "python-executor"
+    assert decision.step_ids == ("core.impl",)
+    assert decision.role_bindings == {"core.impl": "python-executor"}
 
 
 def test_evaluate_waits_when_execution_is_already_active() -> None:
@@ -235,7 +235,7 @@ def test_evaluate_unresolved_reasons_yield_resolve_not_dispatch_regression() -> 
     decision = control.evaluate_current()
 
     assert decision.kind == "resolve"
-    assert decision.step_id is None
+    assert decision.step_ids == ()
     assert "unresolved" in decision.reason.lower()
 
 
@@ -268,7 +268,7 @@ def test_apply_resolution_unblocked_re_evaluates_from_refreshed_state() -> None:
     )
 
     assert decision.kind == "dispatch"
-    assert decision.step_id == "core.impl"
+    assert decision.step_ids == ("core.impl",)
 
 
 def test_apply_resolution_waiting_maps_to_wait() -> None:

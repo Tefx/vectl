@@ -200,7 +200,7 @@ def test_control_invokes_resolver_only_when_normal_flow_does_not_close() -> None
     decision = control.evaluate_current()
 
     assert decision.kind == "dispatch", "Normal dispatch path should not invoke resolver"
-    assert decision.step_id == "phase.step"
+    assert decision.step_ids == ("phase.step",)
     assert len(resolver_invocation.payloads) == 0, "Resolver should NOT be invoked for dispatch"
 
     # CASE 2: Normal wait path - resolver should NOT be invoked
@@ -335,8 +335,8 @@ def test_blocked_case_unblocked_resolution_end_to_end() -> None:
 
     # STEP 4: Control dispatches from refreshed state
     assert decision_after.kind == "dispatch"
-    assert decision_after.step_id == "phase.blocked_step"
-    assert decision_after.role == "python-executor"
+    assert decision_after.step_ids == ("phase.blocked_step",)
+    assert decision_after.role_bindings == {"phase.blocked_step": "python-executor"}
 
     # Verify control re-read snapshots (called snapshot methods)
     assert refreshed_core_adapter.calls == 1, "Control must re-read core snapshot"
@@ -573,7 +573,7 @@ def test_control_refreshes_all_snapshots_after_resolution() -> None:
 
     # Decision must be based on refreshed state (claimable step2), not stale state
     assert decision2.kind == "dispatch"
-    assert decision2.step_id == "phase.step2", "Must use refreshed core, not stale core"
+    assert decision2.step_ids == ("phase.step2",), "Must use refreshed core, not stale core"
 
 
 def test_resolver_forbidden_from_becoming_permanent_controller() -> None:
@@ -629,7 +629,9 @@ def test_resolver_forbidden_from_becoming_permanent_controller() -> None:
     from dataclasses import fields
 
     field_count = len(list(fields(ResolutionReport)))
-    assert field_count == 4, "Report is bounded to exactly 4 fields"
+    assert field_count == 5, (
+        "Report is bounded to exactly 5 fields (status, summary, evidence_refs, operator_message, planner_request)"
+    )
 
     # Control must apply its own evaluation logic after receiving report
     control = PlanAwareControl(

@@ -81574,6 +81574,50 @@ phases:
     docs before runtime logic changes begin.
   depends_on:
   - opencode_runner_verification
+  steps:
+  - id: orch_drive_contracts.drive-types-lock
+    name: Lock drive scheduling types and mutation bundle contracts
+    status: pending
+    description: 'Contract step.
+
+
+      Touch paths:
+
+      - src/vectl/orchestration/contracts.py
+
+      - src/vectl/orchestration/interfaces.py
+
+      - tests/orchestration/**
+
+
+      Lock the shared code contract for DriveRecord, ChildRunRef, DriveBarrier, PlannerRequest,
+      PlannerMutationBundle, and the expanded ControlDecision shape. Pin the authoritative
+      fields/status enums/invariants from the READY docs without adding scheduler
+      logic bodies.
+
+
+      Contract-only scope: signatures, dataclasses/models, enums/type aliases, docstrings,
+      and placeholder adapters only. Do not land runtime scheduling logic in this
+      step.'
+    verification: Contract artifacts match the READY doc field sets and invariants
+      for drive scheduling types; no scheduler logic lands beyond typed placeholders.
+    evidence_template: '## refs Read Confirmation (MANDATORY)
+
+      For each ref in this step:
+
+      - <filename> — key passage or "NOT READ: <reason>"
+
+
+      ## Contract Lock Evidence
+
+      - Types/signatures locked:
+
+      - Files changed:
+
+      - Proof no scheduler logic landed beyond placeholders:
+
+      - Any deviation record (type / what / why / impact): none|<details>'
+    agent: python-senior-tacit
 - id: orch_drive_state_store
   name: Orchestration Drive Persistence & Store
   status: locked

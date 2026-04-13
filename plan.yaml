@@ -82211,6 +82211,136 @@ phases:
     surfaces widen.
   depends_on:
   - orch_drive_driver
+  steps:
+  - id: orch_drive_barriers.review-gate-integration
+    name: review gate integration
+    status: pending
+    description: 'Implementation step.
+
+
+      Touch paths:
+
+      - src/vectl/orchestration/review_gate.py
+
+      - src/vectl/orchestration/driver.py
+
+      - src/vectl/orchestration/control.py
+
+      - tests/orchestration/test_review_gate*.py
+
+
+      Fill in stub bodies so terminal child-run outputs flow through the bounded review
+      gate and return pass / needs_fix / needs_replan / operator_required with machine-readable
+      continuation semantics. The scheduler must keep step identity stable for needs_fix
+      and enter planner-owned replan only for needs_replan.
+
+
+      This is an IMPLEMENTATION step. Stub-only completion is NOT acceptable.'
+    verification: 'Main path: review gate tests prove all four statuses map to correct
+      scheduler behavior. Failure path: regressions prove child-run success cannot
+      complete a step before review/reconcile/completion gates.'
+    refs:
+    - docs/RFC-orch-drive.md
+    - docs/ORCHESTRATION-PLANE-INTERFACES.md
+    agent: python-senior-tacit
+  - id: orch_drive_barriers.resolver-loop-integration
+    name: resolver loop integration
+    status: pending
+    description: 'Implementation step.
+
+
+      Touch paths:
+
+      - src/vectl/orchestration/resolver.py
+
+      - src/vectl/orchestration/driver.py
+
+      - src/vectl/orchestration/control.py
+
+      - tests/orchestration/test_resolver_loop*.py
+
+
+      Fill in stub bodies so barrier entry creates ResolutionCase snapshots, invokes
+      resolver only for non-closed flow, preserves evidence/artifacts, refreshes authoritative
+      state afterward, and continues with unblocked / waiting / operator_required
+      / halt semantics.
+
+
+      This is an IMPLEMENTATION step. Stub-only completion is NOT acceptable.'
+    verification: 'Main path: resolver-loop tests prove barrier entry, invocation
+      payloads, and post-resolution refresh/continuation work. Failure path: regressions
+      prove stale pre-resolution state is never reused.'
+    refs:
+    - docs/RFC-orch-drive.md
+    - docs/ORCHESTRATION-PLANE-RESOLUTION-CONTRACT.md
+    - docs/ORCHESTRATION-PLANE-INTERFACES.md
+    agent: python-senior-tacit
+  - id: orch_drive_barriers.planner-loop-integration
+    name: planner loop integration
+    status: pending
+    description: 'Implementation step.
+
+
+      Touch paths:
+
+      - src/vectl/orchestration/driver.py
+
+      - src/vectl/orchestration/control.py
+
+      - src/vectl/orchestration/contracts.py
+
+      - tests/orchestration/test_planner_loop*.py
+
+
+      Fill in stub bodies so planner requests enter barrier mode, spawn planner child
+      work, parse machine-readable mutation bundles, apply them only through vectl/core
+      facades, invalidate superseded unstarted leases, and reopen the frontier from
+      refreshed authoritative state.
+
+
+      This is an IMPLEMENTATION step. Stub-only completion is NOT acceptable.'
+    verification: 'Main path: planner-loop tests prove needs_replan leads to planner
+      invocation, mutation application, and frontier reopen. Failure path: regressions
+      prove the planner never edits plan.yaml directly and stale leases are invalidated
+      truthfully.'
+    refs:
+    - docs/RFC-orch-drive.md
+    - docs/ORCHESTRATION-PLANE-INTERFACES.md
+    - docs/ORCHESTRATION-PLANE-IMPLEMENTATION-DESIGN.md
+    agent: python-senior-tacit
+  - id: orch_drive_barriers.verify-barrier-loops
+    name: verify barrier loops
+    status: pending
+    description: 'Independent verification of review/resolver/planner barrier semantics.
+
+
+      Verify:
+
+      - review status mapping
+
+      - resolver invocation contract and post-resolution refresh
+
+      - planner invocation + mutation application through official facades
+
+      - frontier reopening after mutation
+
+      - operator-required and halt boundaries'
+    verification: 'Expected result: green. Independent verifier confirms the barrier
+      loop now closes review, resolver, and planner cases without hidden authority
+      drift.'
+    refs:
+    - docs/RFC-orch-drive.md
+    - docs/ORCHESTRATION-PLANE-RESOLUTION-CONTRACT.md
+    agent: integration-verifier-tacit
+  - id: orch_drive_barriers.gate-barrier-phase
+    name: gate barrier phase
+    status: pending
+    description: Gate review for orch_drive_barriers. Open only if review failures,
+      resolver cases, and planner mutation bundles all have truthful scheduler continuation
+      semantics.
+    verification: All barrier steps complete; independent verification found no unresolved
+      blockers in review/resolver/planner integration.
+    agent: gate-reviewer-tacit
 - id: orch_drive_surfaces
   name: Orchestration Drive CLI, Inspection, Control, Config, and Observability
   status: locked

@@ -81667,6 +81667,46 @@ phases:
     depends_on:
     - orch_drive_contracts.drive-types-lock
     agent: python-senior-tacit
+  - id: orch_drive_contracts.contract-conformance
+    name: Verify contract lock against READY orchestration docs
+    status: pending
+    description: 'Independent contract/spec conformance check for the new full scheduler
+      contract surface.
+
+
+      Scope:
+
+      - drive scheduling types
+
+      - driver/control/runtime/review-gate interfaces
+
+      - drive CLI lifecycle surface
+
+
+      This verifier checks that the code-facing contract lock matches the READY docs
+      before implementation phases mutate runtime logic.'
+    verification: 'Expected result: green. Independent conformance report confirms
+      the locked contract surface matches READY docs and identifies any drift before
+      implementation proceeds.'
+    evidence_template: '## refs Read Confirmation (MANDATORY)
+
+      For each ref in this step:
+
+      - <filename> — key passage or "NOT READ: <reason>"
+
+
+      ## Verification Report
+
+      - Files inspected:
+
+      - Contract mismatches found: none|<list>
+
+      - Blocking drift: none|<list>
+
+      - Headline: PASS | PASS_WITH_DEBT | FAIL'
+    depends_on:
+    - orch_drive_contracts.driver-surface-lock
+    agent: spec-verifier-tacit
 - id: orch_drive_state_store
   name: Orchestration Drive Persistence & Store
   status: locked

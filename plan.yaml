@@ -82455,6 +82455,8 @@ phases:
     refs:
     - docs/RFC-orch-drive.md
     - docs/ORCHESTRATION-PLANE-CLI-CONFIG-OBSERVABILITY-DESIGN.md
+    depends_on:
+    - orch_drive_surfaces.cli-drive-lifecycle-surface
     agent: python-senior-tacit
   - id: orch_drive_surfaces.config-and-observability-upgrades
     name: config and observability upgrades

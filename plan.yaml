@@ -82348,6 +82348,140 @@ phases:
     independently probed before recovery and final real-runner acceptance.
   depends_on:
   - orch_drive_barriers
+  steps:
+  - id: orch_drive_surfaces.cli-drive-lifecycle-surface
+    name: cli drive lifecycle surface
+    status: pending
+    description: 'Implementation step.
+
+
+      Touch paths:
+
+      - src/vectl/orch_app.py
+
+      - src/vectl/cli.py
+
+      - tests/orchestration/test_cli_drive*.py
+
+
+      Fill in stub bodies for `vectl orch drive`, `drive-status`, `drive-runs`, `drive-resume`,
+      and `drive-recover`, including drive-scoped selector validation, output modes,
+      and correct exit-code boundaries.
+
+
+      This is a CLI/server entrypoint step. Stub-only completion is NOT acceptable.'
+    verification: 'Main path: CLI lifecycle tests prove drive start/status/runs/resume/recover
+      selectors and outputs. Failure path: regressions prove `orch run` rejects when
+      an active drive exists and invalid child-run selectors fail with exit code 2.'
+    refs:
+    - docs/RFC-orch-drive.md
+    - docs/ORCHESTRATION-PLANE-CLI-CONFIG-OBSERVABILITY-DESIGN.md
+    - docs/ORCHESTRATION-PLANE-IMPLEMENTATION-DESIGN.md
+    agent: python-senior-tacit
+  - id: orch_drive_surfaces.inspection-and-control-surface
+    name: inspection and control surface
+    status: pending
+    description: 'Implementation step.
+
+
+      Touch paths:
+
+      - src/vectl/orchestration/control_channel.py
+
+      - src/vectl/orchestration/inspection_queries.py
+
+      - src/vectl/cli.py
+
+      - tests/orchestration/test_drive_queries*.py
+
+
+      Fill in stub bodies for drive-scoped status/events/logs/artifacts/actions/case-list/case-show/case-respond
+      and pause/unpause/stop control semantics. Child-run drill-down must be explicit
+      and bounded to the selected drive.
+
+
+      This is a CLI/server entrypoint step. Stub-only completion is NOT acceptable.'
+    verification: 'Main path: query/control tests prove drive-scoped inspection and
+      control behavior. Failure path: regressions prove child-run drill-down never
+      escapes drive scope and stop --force semantics preserve artifacts/control notes
+      correctly.'
+    refs:
+    - docs/RFC-orch-drive.md
+    - docs/ORCHESTRATION-PLANE-CLI-CONFIG-OBSERVABILITY-DESIGN.md
+    agent: python-senior-tacit
+  - id: orch_drive_surfaces.config-and-observability-upgrades
+    name: config and observability upgrades
+    status: pending
+    description: 'Implementation step.
+
+
+      Touch paths:
+
+      - src/vectl/orchestration/config.py
+
+      - src/vectl/orchestration/events.py
+
+      - src/vectl/orchestration/projections.py
+
+      - src/vectl/orchestration/tool_registry.py
+
+      - tests/orchestration/test_drive_events*.py
+
+
+      Fill in stub bodies for drive config extension, frozen config provenance, canonical
+      event envelopes, drive event families, replay-safe projections, and artifact
+      schema wiring for cases and step results.
+
+
+      This is an IMPLEMENTATION step. Stub-only completion is NOT acceptable.
+
+
+      Failure modes to cover:
+
+      - envelope hash / seq chain drift
+
+      - missing drive event family members
+
+      - replay/projection mismatch after restart
+
+      - config precedence drift between frozen and ambient values.'
+    verification: 'Main path: config/event/projection tests pass. Failure path: regressions
+      prove event chain integrity, frozen config provenance, and replay semantics
+      hold under restart and mixed child-run timelines.'
+    refs:
+    - docs/ORCHESTRATION-PLANE-CLI-CONFIG-OBSERVABILITY-DESIGN.md
+    - docs/RFC-orch-drive.md
+    agent: python-senior-tacit
+  - id: orch_drive_surfaces.drive-cli-liveness-probe
+    name: drive cli liveness probe
+    status: pending
+    description: 'Independent runnable-surface probe.
+
+
+      Actually invoke the real CLI drive entrypoint and prove:
+
+      - the command resolves/creates the active drive
+
+      - the process remains alive through at least one collect/evaluate cycle when
+      appropriate
+
+      - one documented inspection/control command reaches the real driver path end-to-end
+
+      - output is drive-scoped, not child-run-scoped by default'
+    verification: 'Expected result: green. This is runnable-surface evidence, not
+      handler-only evidence.'
+    refs:
+    - docs/ORCHESTRATION-PLANE-CLI-CONFIG-OBSERVABILITY-DESIGN.md
+    - docs/RFC-orch-drive.md
+    agent: blind-tester-tacit
+  - id: orch_drive_surfaces.gate-surfaces-phase
+    name: gate surfaces phase
+    status: pending
+    description: Gate review for orch_drive_surfaces. Open only if drive-scoped CLI/config/observability/control
+      surfaces are runnable, wired, and bounded correctly.
+    verification: All surface steps complete; runnable liveness evidence exists; no
+      unresolved blockers remain in drive-scoped selectors, control, config, or events.
+    agent: gate-reviewer-tacit
 - id: orch_drive_recovery
   name: Orchestration Drive Resume, Recover, and Active-Control Semantics
   status: locked

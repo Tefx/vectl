@@ -82603,6 +82603,107 @@ phases:
     alone cannot pass this phase.'
   depends_on:
   - orch_drive_recovery
+  steps:
+  - id: orch_drive_live_acceptance.real-opencode-acceptance-harness
+    name: real opencode acceptance harness
+    status: pending
+    description: 'Implementation step.
+
+
+      Touch paths:
+
+      - tests/orchestration/test_opencode_drive_*.py
+
+      - tests/orchestration/fixtures/**
+
+      - tests/orchestration/helpers/**
+
+
+      Build the real OpenCode acceptance harness for the full scheduler. Fixtures
+      and helpers may be added, but the authoritative acceptance path must execute
+      the real OpenCode runner and real worktree/merge/runtime surfaces rather than
+      mocks or shims.
+
+
+      Required matrix coverage to encode:
+
+      - linear DAG auto-drain
+
+      - multi-phase DAG auto-drain
+
+      - parallel ready frontier dispatch
+
+      - bounded parallelism enforcement
+
+      - real worktree child runs with real merge back
+
+      - long-running parallel branch execution
+
+      - runtime failure -> resolver -> continue
+
+      - merge conflict -> resolver -> continue|operator boundary
+
+      - review needs_replan -> planner mutation -> continue
+
+      - drive resume and drive recover
+
+      - pause/unpause/stop under parallel child runs
+
+      - phase/plan auto-close'
+    verification: Harness code and fixtures are ready for real OpenCode execution;
+      no mock-only seam is used as authoritative acceptance.
+    refs:
+    - docs/RFC-orch-drive.md
+    - docs/ORCHESTRATION-PLANE-CLI-CONFIG-OBSERVABILITY-DESIGN.md
+    agent: python-senior-tacit
+  - id: orch_drive_live_acceptance.real-opencode-acceptance-matrix
+    name: real opencode acceptance matrix
+    status: pending
+    description: 'Independent real-runner verification step.
+
+
+      Run the full authoritative OpenCode matrix with real runner, real worktrees,
+      real merge/reconcile, real resolver/planner continuation, and real drive control
+      surfaces. Mock/shim-only success is not acceptable evidence.'
+    verification: 'Expected result: green. Concrete required classes: linear DAG auto-drain;
+      multi-phase auto-drain; parallel ready frontier; bounded parallelism; real worktree+merge;
+      long-running parallel branches; runtime failure -> resolver -> continue; merge
+      conflict -> resolver -> continue|operator boundary; review needs_replan -> planner
+      mutation -> continue; drive resume; drive recover; pause/unpause/stop under
+      parallel child runs; phase/plan auto-close.'
+    refs:
+    - docs/RFC-orch-drive.md
+    agent: integration-verifier-tacit
+  - id: orch_drive_live_acceptance.full-plan-guard
+    name: full plan guard
+    status: pending
+    description: 'Full-plan-check boundary after the real acceptance harness lands.
+
+
+      Run the authoritative broad verification command at the nearest appropriate
+      boundary instead of deferring repo-wide failure discovery to a later gate.'
+    verification: Run the authoritative project broad check (`uvx invar-tools guard
+      --all`) and record whether any remaining repo-wide blocker intersects the final
+      acceptance gate.
+    refs:
+    - docs/RFC-orch-drive.md
+    agent: integration-verifier-tacit
+  - id: orch_drive_live_acceptance.gate-live-acceptance-phase
+    name: gate live acceptance phase
+    status: pending
+    description: 'Final implementation acceptance gate for orch_drive_live_acceptance.
+
+
+      BLOCK unless real OpenCode evidence is green for all required matrix classes.
+      Mock/shim-only evidence cannot open this gate.'
+    verification: 'Required real-runner classes named explicitly and green: linear
+      DAG auto-drain; multi-phase auto-drain; parallel ready frontier; bounded parallelism;
+      real worktree+merge; long-running parallel branches; runtime failure -> resolver
+      -> continue; merge conflict -> resolver -> continue|operator boundary; review
+      needs_replan -> planner mutation -> continue; drive resume; drive recover; pause/unpause/stop
+      under parallel child runs; phase/plan auto-close. Broad guard output must not
+      reveal blocker-class intersections.'
+    agent: gate-reviewer-tacit
 - id: orch_drive_doc_sync
   name: Orchestration Drive Documentation Sync
   status: locked

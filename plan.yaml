@@ -82711,6 +82711,42 @@ phases:
     OpenCode acceptance contract.
   depends_on:
   - orch_drive_live_acceptance
+  steps:
+  - id: orch_drive_doc_sync.update-drive-docs
+    name: update drive docs
+    status: pending
+    description: 'Update documentation to match the implemented full scheduler.
+
+
+      Required sync targets:
+
+      - drive lifecycle commands and selector rules
+
+      - control/review/resolver/planner continuation semantics
+
+      - drive config and frozen parameter semantics
+
+      - drive event families, artifacts, and projection/replay behavior
+
+      - real OpenCode acceptance expectations and limitations'
+    verification: Docs reflect the implemented drive/runtime/control/recovery surfaces
+      and the real OpenCode acceptance contract without stale single-run language.
+    refs:
+    - docs/RFC-orch-drive.md
+    - docs/ORCHESTRATION-PLANE-INTERFACES.md
+    - docs/ORCHESTRATION-PLANE-ARCHITECTURE.md
+    - docs/ORCHESTRATION-PLANE-IMPLEMENTATION-DESIGN.md
+    - docs/ORCHESTRATION-PLANE-RESOLUTION-CONTRACT.md
+    - docs/ORCHESTRATION-PLANE-CLI-CONFIG-OBSERVABILITY-DESIGN.md
+    agent: doc-reviewer-tacit
+  - id: orch_drive_doc_sync.gate-doc-sync-phase
+    name: gate doc sync phase
+    status: pending
+    description: Gate review for orch_drive_doc_sync. Open only if docs now match
+      the implemented full scheduler and its real OpenCode acceptance rule.
+    verification: Doc sync complete; no blocking spec/document drift remains for the
+      new drive scheduler surfaces.
+    agent: gate-reviewer-tacit
 - id: orch_drive_deep_review
   name: Orchestration Drive Deep Review
   status: locked

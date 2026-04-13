@@ -81858,7 +81858,7 @@ phases:
   steps:
   - id: orch_drive_state_store.run-store-drive-records
     name: Implement durable drive records and child-run persistence
-    status: claimed
+    status: done
     description: 'Implementation step.
 
 
@@ -81922,6 +81922,38 @@ phases:
     agent: python-senior-tacit
     claimed_by: python-senior-tacit
     claimed_at: '2026-04-13T21:04:03.402893+00:00'
+    done_at: '2026-04-13T21:33:16.483568+00:00'
+    evidence: '## refs Read Confirmation
+
+      - src/vectl/orchestration/contracts.py, run_store.py, projections.py, tests/orchestration/unit/test_run_store_drive.py
+      inspected; `tools/vectl/README.md` not found at specified path (used repo README).
+
+
+      ## Expected-Red Proof
+
+      - Regression-focused tests were added first for active-vs-terminal lookup, restart
+      persistence, and replay truthfulness; no separate expected-red guard artifact
+      provided.
+
+
+      ## Implementation Evidence
+
+      - Files changed: src/vectl/orchestration/run_store.py; src/vectl/orchestration/projections.py;
+      tests/orchestration/unit/test_run_store_drive.py.
+
+      - Implemented durable DriveRecord/ChildRunRef persistence, active/terminal lookup,
+      child-run indexing, admission conflict guard, and replay-derived active child
+      run facts.
+
+
+      ## Green Proof
+
+      - Targeted persistence suites and full orchestration test suites passed (reported
+      49 new tests; 131 targeted; 990 total).
+
+      - Highest-risk failure paths exercised: terminal exclusion in active lookup;
+      mixed-status child-run filtering; restart reload durability; replay rebuilding
+      active_child_run_ids.'
   - id: orch_drive_state_store.lease-and-freeze-persistence
     name: Implement scheduler-owned lease persistence and frozen drive parameters
     status: pending

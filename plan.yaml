@@ -81567,3 +81567,10 @@ phases:
       \ ✅\n  9. uv run pytest tests/ -k \"not playwright and not network and not live_runner\"\
       \ — 2274 passed, 2 skipped, 10 FAILED ❌\n  10. Pre-existing confirmation: same\
       \ 10 failures in main worktree ❌ (pre-existing, not regression)"
+- id: orch_drive_contracts
+  name: Orchestration Drive Contracts & Interfaces
+  status: pending
+  gate: Contracts for full-plan drive scheduling are locked against the READY orchestration
+    docs before runtime logic changes begin.
+  depends_on:
+  - opencode_runner_verification

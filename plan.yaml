@@ -81618,6 +81618,55 @@ phases:
 
       - Any deviation record (type / what / why / impact): none|<details>'
     agent: python-senior-tacit
+  - id: orch_drive_contracts.driver-surface-lock
+    name: Lock driver, control, runtime, review-gate, and drive CLI entrypoint contracts
+    status: pending
+    description: 'Contract step.
+
+
+      Touch paths:
+
+      - src/vectl/orchestration/driver.py
+
+      - src/vectl/orchestration/control.py
+
+      - src/vectl/orchestration/runtime.py
+
+      - src/vectl/orchestration/review_gate.py
+
+      - src/vectl/orch_app.py
+
+      - src/vectl/cli.py
+
+
+      Pin the authoritative public API for start_drive/run_drive_loop/resume_drive/recover_drive,
+      control.evaluate/apply_resolution/apply_planner_result, runtime prepare/start/collect/reconcile
+      hooks, review gate output contract, and drive-scoped CLI selectors/entrypoints.
+      This step may add signatures, result types, and docstrings but must not implement
+      loop behavior.'
+    verification: Pinned public interfaces match READY docs for driver/runtime/control/review-gate/CLI
+      surfaces and remain contract-only.
+    evidence_template: '## refs Read Confirmation (MANDATORY)
+
+      For each ref in this step:
+
+      - <filename> — key passage or "NOT READ: <reason>"
+
+
+      ## Contract Lock Evidence
+
+      - Interfaces/signatures locked:
+
+      - CLI commands/selectors pinned:
+
+      - Files changed:
+
+      - Proof no loop/runtime logic landed beyond placeholders:
+
+      - Any deviation record (type / what / why / impact): none|<details>'
+    depends_on:
+    - orch_drive_contracts.drive-types-lock
+    agent: python-senior-tacit
 - id: orch_drive_state_store
   name: Orchestration Drive Persistence & Store
   status: locked

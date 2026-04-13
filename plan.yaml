@@ -81970,6 +81970,8 @@ phases:
     - docs/RFC-orch-drive.md
     - docs/ORCHESTRATION-PLANE-CLI-CONFIG-OBSERVABILITY-DESIGN.md
     - docs/ORCHESTRATION-PLANE-ARCHITECTURE.md
+    depends_on:
+    - orch_drive_control.batch-frontier-decision-expansion
     agent: python-senior-tacit
   - id: orch_drive_control.verify-control-decisions
     name: verify control decisions

@@ -81569,7 +81569,7 @@ phases:
       \ 10 failures in main worktree ❌ (pre-existing, not regression)"
 - id: orch_drive_contracts
   name: Orchestration Drive Contracts & Interfaces
-  status: in_progress
+  status: done
   gate: Contracts for full-plan drive scheduling are locked against the READY orchestration
     docs before runtime logic changes begin.
   depends_on:
@@ -81805,7 +81805,7 @@ phases:
       \ PASS_WITH_DEBT."
   - id: orch_drive_contracts.gate
     name: Gate contracts phase
-    status: claimed
+    status: done
     description: Gate review for orch_drive_contracts. Open only if the full scheduler
       contract surface is locked cleanly and implementation phases can proceed without
       re-deriving public semantics from raw code.
@@ -81818,9 +81818,38 @@ phases:
     agent: gate-reviewer-tacit
     claimed_by: gate-reviewer-tacit
     claimed_at: '2026-04-13T20:53:10.659177+00:00'
+    done_at: '2026-04-13T21:03:38.434340+00:00'
+    evidence: 'Artifact:
+
+      - Commits on main from prior contract steps: [vectl] step-orch_drive_contracts.drive-types-lock
+      completed; [vectl] step-orch_drive_contracts.driver-surface-lock completed.
+
+
+      Verification:
+
+      - Independent gate review performed against RFC/interface docs and current code.
+
+      - Verdict: PASS_WITH_DEBT; proof_gap_status NON_BLOCKING; blocking_status CLOSED;
+      gate_open_allowed true.
+
+      - Verified contract surfaces for drive types, control/runtime/driver/review-gate
+      interfaces, and drive CLI stubs are locked and implementation-ready.
+
+      - Non-blocking debt recorded: planner applyable empty dispatch_batch tension,
+      missing drive-runs/events (expected for later implementation phases), minor
+      lint debt.
+
+
+      Spec link:
+
+      - docs/RFC-orch-drive.md (sections 7-22)
+
+      - docs/ORCHESTRATION-PLANE-INTERFACES.md
+
+      - docs/ORCHESTRATION-PLANE-ARCHITECTURE.md'
 - id: orch_drive_state_store
   name: Orchestration Drive Persistence & Store
-  status: locked
+  status: pending
   gate: Drive/session persistence, child-run refs, scheduler-owned leases, and frozen
     drive parameters are durable and independently verified before scheduler logic
     widens.

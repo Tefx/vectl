@@ -82232,6 +82232,10 @@ phases:
       durable, authoritative, and ready for review/resolver/planner barrier integration.
     verification: All driver steps complete; independent verification found no unresolved
       blockers in drive-loop or auto-close semantics.
+    depends_on:
+    - orch_drive_driver.driver-loop-core
+    - orch_drive_driver.phase-and-plan-auto-close
+    - orch_drive_driver.verify-driver-loop
     agent: gate-reviewer-tacit
 - id: orch_drive_barriers
   name: Orchestration Drive Review / Resolver / Planner Barriers

@@ -82308,6 +82308,8 @@ phases:
     - docs/RFC-orch-drive.md
     - docs/ORCHESTRATION-PLANE-RESOLUTION-CONTRACT.md
     - docs/ORCHESTRATION-PLANE-INTERFACES.md
+    depends_on:
+    - orch_drive_barriers.review-gate-integration
     agent: python-senior-tacit
   - id: orch_drive_barriers.planner-loop-integration
     name: planner loop integration

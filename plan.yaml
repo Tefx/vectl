@@ -81748,7 +81748,7 @@ phases:
       - Any deviation record: none.'
   - id: orch_drive_contracts.contract-conformance
     name: Verify contract lock against READY orchestration docs
-    status: claimed
+    status: done
     description: 'Independent contract/spec conformance check for the new full scheduler
       contract surface.
 
@@ -81788,6 +81788,21 @@ phases:
     agent: spec-verifier-tacit
     claimed_by: spec-verifier-tacit
     claimed_at: '2026-04-13T20:41:59.935287+00:00'
+    done_at: '2026-04-13T20:52:43.397287+00:00'
+    evidence: "## refs Read Confirmation\n- docs/RFC-orch-drive.md — reviewed authoritative\
+      \ drive scheduling/CLI/data model/transition and continuation sections.\n- docs/ORCHESTRATION-PLANE-INTERFACES.md\
+      \ — reviewed shared types and component protocol contracts.\n- docs/ORCHESTRATION-PLANE-ARCHITECTURE.md\
+      \ — reviewed component ownership/authority boundaries.\n\n## Verification Report\n\
+      - Files inspected: contracts.py, control.py, driver.py, runtime.py, resolver.py,\
+      \ review_gate.py, roster.py, dispatch_policy.py, interfaces.py, events.py, cli.py,\
+      \ orch_app.py.\n- Contract mismatches found:\n  1) control.apply_planner_result\
+      \ emits `dispatch_batch` with empty `step_ids` on planner `applyable` (contract\
+      \ tension with non-empty invariant);\n  2) ChildRunRef discriminator fields\
+      \ are nullable (Python adaptation);\n  3) ReconcileResult includes extra implementation\
+      \ fields;\n  4) `drive-runs` CLI command not yet present;\n  5) drive-level\
+      \ event families not yet present.\n- Blocking drift: none (gaps are expected\
+      \ for later implementation phases or non-blocking adaptations).\n- Headline:\
+      \ PASS_WITH_DEBT."
   - id: orch_drive_contracts.gate
     name: Gate contracts phase
     status: pending

@@ -81849,7 +81849,7 @@ phases:
       - docs/ORCHESTRATION-PLANE-ARCHITECTURE.md'
 - id: orch_drive_state_store
   name: Orchestration Drive Persistence & Store
-  status: pending
+  status: in_progress
   gate: Drive/session persistence, child-run refs, scheduler-owned leases, and frozen
     drive parameters are durable and independently verified before scheduler logic
     widens.
@@ -81858,7 +81858,7 @@ phases:
   steps:
   - id: orch_drive_state_store.run-store-drive-records
     name: Implement durable drive records and child-run persistence
-    status: pending
+    status: claimed
     description: 'Implementation step.
 
 
@@ -81920,6 +81920,8 @@ phases:
 
       '
     agent: python-senior-tacit
+    claimed_by: python-senior-tacit
+    claimed_at: '2026-04-13T21:04:03.402893+00:00'
   - id: orch_drive_state_store.lease-and-freeze-persistence
     name: Implement scheduler-owned lease persistence and frozen drive parameters
     status: pending

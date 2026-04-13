@@ -82823,6 +82823,8 @@ phases:
       the implemented full scheduler and its real OpenCode acceptance rule.
     verification: Doc sync complete; no blocking spec/document drift remains for the
       new drive scheduler surfaces.
+    depends_on:
+    - orch_drive_doc_sync.update-drive-docs
     agent: gate-reviewer-tacit
 - id: orch_drive_deep_review
   name: Orchestration Drive Deep Review

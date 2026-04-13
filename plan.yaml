@@ -81582,3 +81582,11 @@ phases:
     widens.
   depends_on:
   - orch_drive_contracts
+- id: orch_drive_control
+  name: Orchestration Drive Control Decisions
+  status: locked
+  gate: Control emits authoritative batch/frontier, replan, resolve, wait, done, and
+    halt decisions with same-plan admission rules validated before runtime/driver
+    composition.
+  depends_on:
+  - orch_drive_state_store

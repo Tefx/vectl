@@ -81882,6 +81882,9 @@ phases:
     refs:
     - docs/RFC-orch-drive.md
     - docs/ORCHESTRATION-PLANE-CLI-CONFIG-OBSERVABILITY-DESIGN.md
+    depends_on:
+    - orch_drive_state_store.run-store-drive-records
+    - orch_drive_state_store.lease-and-freeze-persistence
     agent: integration-verifier-tacit
   - id: orch_drive_state_store.gate-persistence-phase
     name: Gate persistence phase

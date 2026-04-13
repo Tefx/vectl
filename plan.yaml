@@ -82500,6 +82500,8 @@ phases:
     refs:
     - docs/ORCHESTRATION-PLANE-CLI-CONFIG-OBSERVABILITY-DESIGN.md
     - docs/RFC-orch-drive.md
+    depends_on:
+    - orch_drive_surfaces.inspection-and-control-surface
     agent: python-senior-tacit
   - id: orch_drive_surfaces.drive-cli-liveness-probe
     name: drive cli liveness probe

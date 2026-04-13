@@ -81900,6 +81900,102 @@ phases:
     composition.
   depends_on:
   - orch_drive_state_store
+  steps:
+  - id: orch_drive_control.batch-frontier-decision-expansion
+    name: batch frontier decision expansion
+    status: pending
+    description: 'Implementation step.
+
+
+      Touch paths:
+
+      - src/vectl/orchestration/control.py
+
+      - src/vectl/orchestration/contracts.py
+
+      - src/vectl/orchestration/dispatch_policy.py
+
+      - tests/orchestration/test_control*.py
+
+
+      Fill in stub bodies so control emits the full scheduler decision model: dispatch_batch,
+      resolve, replan, wait, done, and halt. Include deterministic frontier ordering,
+      role bindings for every dispatched step, bounded capacity accounting, and barrier_required
+      handling.
+
+
+      This is an IMPLEMENTATION step. Stub-only completion is NOT acceptable.'
+    verification: 'Main path: control tests prove multi-step frontier dispatch and
+      decision invariants. Failure path: regressions prove invalid empty dispatches,
+      missing role bindings, or stale done/halt classification are rejected.'
+    refs:
+    - docs/RFC-orch-drive.md
+    - docs/ORCHESTRATION-PLANE-INTERFACES.md
+    - docs/ORCHESTRATION-PLANE-ARCHITECTURE.md
+    agent: python-senior-tacit
+  - id: orch_drive_control.same-plan-admission-rewrite
+    name: same plan admission rewrite
+    status: pending
+    description: 'Implementation step.
+
+
+      Touch paths:
+
+      - src/vectl/orchestration/control.py
+
+      - src/vectl/orchestration/run_store.py
+
+      - src/vectl/orch_app.py
+
+      - tests/orchestration/test_admission*.py
+
+
+      Rewrite same-plan admission around active drive authority: `orch drive` resolves-or-creates
+      one active drive per plan; `orch run` rejects when an active drive exists for
+      that same plan; child-run admission is scheduler-owned and lease-addressable.
+
+
+      This is an IMPLEMENTATION step. Stub-only completion is NOT acceptable.'
+    verification: 'Main path: admission tests prove one active drive per plan and
+      correct child-run admission rules. Failure path: regressions prove active-drive
+      exclusion and same-plan run rejection work under reload/history cases.'
+    refs:
+    - docs/RFC-orch-drive.md
+    - docs/ORCHESTRATION-PLANE-CLI-CONFIG-OBSERVABILITY-DESIGN.md
+    - docs/ORCHESTRATION-PLANE-ARCHITECTURE.md
+    agent: python-senior-tacit
+  - id: orch_drive_control.verify-control-decisions
+    name: verify control decisions
+    status: pending
+    description: 'Independent verification of batch/frontier control semantics.
+
+
+      Verify:
+
+      - dispatch_batch invariants
+
+      - capacity accounting
+
+      - resolve vs replan branching
+
+      - same-plan active-drive exclusion
+
+      - correct done/halt/wait classification'
+    verification: 'Expected result: green. Independent verifier reports whether control
+      now behaves like the READY full scheduler instead of a single-step loop.'
+    refs:
+    - docs/RFC-orch-drive.md
+    - docs/ORCHESTRATION-PLANE-INTERFACES.md
+    agent: integration-verifier-tacit
+  - id: orch_drive_control.gate-control-phase
+    name: gate control phase
+    status: pending
+    description: Gate review for orch_drive_control. Open only if control authority
+      is widened cleanly enough that runtime and driver work can compose against the
+      expanded scheduler contract.
+    verification: All control steps complete; independent verification found no unresolved
+      blockers in decision semantics or same-plan admission.
+    agent: gate-reviewer-tacit
 - id: orch_drive_runtime
   name: Orchestration Drive Runtime Parallel Child Runs
   status: locked

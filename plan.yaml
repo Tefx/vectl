@@ -81956,7 +81956,7 @@ phases:
       active_child_run_ids.'
   - id: orch_drive_state_store.lease-and-freeze-persistence
     name: Implement scheduler-owned lease persistence and frozen drive parameters
-    status: pending
+    status: claimed
     description: 'Implementation step.
 
 
@@ -82020,6 +82020,8 @@ phases:
     depends_on:
     - orch_drive_state_store.run-store-drive-records
     agent: python-senior-tacit
+    claimed_by: python-senior-tacit
+    claimed_at: '2026-04-13T21:33:28.500024+00:00'
   - id: orch_drive_state_store.verify-drive-persistence-substrate
     name: Verify drive persistence substrate
     status: pending

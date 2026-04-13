@@ -81859,6 +81859,39 @@ phases:
     depends_on:
     - orch_drive_state_store.run-store-drive-records
     agent: python-senior-tacit
+  - id: orch_drive_state_store.verify-drive-persistence-substrate
+    name: Verify drive persistence substrate
+    status: pending
+    description: 'Independent verification of durable drive state substrate.
+
+
+      Verify:
+
+      - one active drive per plan identity
+
+      - terminal drive history remains immutable
+
+      - child-run persistence and replay survive restart
+
+      - frozen drive parameters are reused by resume/recover
+
+      - unstarted lease invalidation works after planner mutation'
+    verification: 'Expected result: green. Independent verifier exercises persistence/replay
+      semantics and reports blocker-class drift before control/runtime phases build
+      on them.'
+    refs:
+    - docs/RFC-orch-drive.md
+    - docs/ORCHESTRATION-PLANE-CLI-CONFIG-OBSERVABILITY-DESIGN.md
+    agent: integration-verifier-tacit
+  - id: orch_drive_state_store.gate-persistence-phase
+    name: Gate persistence phase
+    status: pending
+    description: Gate review for orch_drive_state_store. Open only if durable drive
+      state, child-run persistence, lease ownership, and frozen drive parameters are
+      ready for control/runtime composition.
+    verification: All persistence steps complete; independent verification found no
+      unresolved blockers; later scheduler phases can trust the durable substrate.
+    agent: gate-reviewer-tacit
 - id: orch_drive_control
   name: Orchestration Drive Control Decisions
   status: locked

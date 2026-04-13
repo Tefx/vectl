@@ -1271,6 +1271,578 @@ def latest_run(step_id: str, registry: RunRegistry | None = None) -> RunRecord |
     return resolved_registry.latest_for_step(step_id)
 
 
+# ---------------------------------------------------------------------
+# Drive Store — DriveRecord / ChildRunRef durable persistence
+# ---------------------------------------------------------------------
+# Authority: docs/RFC-orch-drive.md sections 8, 9
+#
+# DriveStore provides JSONL-based durable persistence for DriveRecord
+# and ChildRunRef, with active-drive lookup (ignoring terminal history),
+# child-run indexing, and projection replay for scheduler-loop inputs.
+
+from vectl.orchestration.contracts import (
+    BarrierReason,
+    ChildRunKind,
+    ChildRunRef,
+    ChildRunStatus,
+    DriveBarrier,
+    DriveRecord,
+    DriveStatus,
+)
+
+_DRIVE_STORE_DIR = "drives"
+_DRIVES_INDEX_FILENAME = "drives.jsonl"
+_CHILD_RUNS_INDEX_FILENAME = "child_runs.jsonl"
+
+TERMINAL_DRIVE_STATUSES: frozenset[DriveStatus] = frozenset(
+    {"completed", "halted", "failed_unrecoverable", "stopped"}
+)
+"""Drive statuses that are terminal (no further transitions valid).
+
+Authority: docs/RFC-orch-drive.md section 8.2
+"""
+
+_ACTIVE_CHILD_RUN_STATUSES: frozenset[ChildRunStatus] = frozenset({"pending", "running"})
+"""Child run statuses that count as active for frontier/scheduling purposes.
+
+Authority: docs/RFC-orch-drive.md section 8.3
+"""
+
+
+def _deserialize_drive_barrier(payload: object) -> DriveBarrier | None:
+    """Deserialize a DriveBarrier from a raw dict payload."""
+    if not isinstance(payload, dict):
+        return None
+    reason_raw = str(payload.get("reason", "runtime_failure"))
+    # Validate barrier reason against the Literal type
+    valid_reasons: frozenset[str] = frozenset(
+        {
+            "runtime_failure",
+            "merge_conflict",
+            "review_failed",
+            "planner_needed",
+            "recovery_gate",
+            "operator_pause",
+        }
+    )
+    reason: BarrierReason = (
+        cast(BarrierReason, reason_raw)
+        if reason_raw in valid_reasons
+        else cast(BarrierReason, "runtime_failure")
+    )
+    return DriveBarrier(
+        reason=reason,
+        entered_at=_coerce_float(payload.get("entered_at")),
+        case_ids=_as_str_tuple(payload.get("case_ids")),
+        pending_resolver_run_id=(
+            None
+            if payload.get("pending_resolver_run_id") is None
+            else str(payload.get("pending_resolver_run_id"))
+        ),
+        pending_planner_run_id=(
+            None
+            if payload.get("pending_planner_run_id") is None
+            else str(payload.get("pending_planner_run_id"))
+        ),
+        active_child_run_ids_at_entry=_as_str_tuple(payload.get("active_child_run_ids_at_entry")),
+    )
+
+
+_DRIVE_STORE_DIR = "drives"
+
+
+def _deserialize_drive_record(payload: dict[str, object]) -> DriveRecord:
+    """Deserialize a DriveRecord from a raw dict payload."""
+    barrier_raw = payload.get("barrier")
+    barrier = _deserialize_drive_barrier(barrier_raw) if barrier_raw is not None else None
+
+    operator_pause_state_raw = payload.get("operator_pause_state", "active")
+    operator_pause_state: Literal["active", "paused"] = (
+        "paused" if str(operator_pause_state_raw) == "paused" else "active"
+    )
+
+    return DriveRecord(
+        drive_id=str(payload.get("drive_id", "")),
+        plan_path=str(payload.get("plan_path", "")),
+        status=cast(DriveStatus, payload.get("status", "running")),
+        started_at=_coerce_float(payload.get("started_at")),
+        updated_at=_coerce_float(payload.get("updated_at")),
+        finished_at=(
+            None
+            if payload.get("finished_at") is None
+            else _coerce_float(payload.get("finished_at"))
+        ),
+        agent=str(payload.get("agent", "")),
+        max_parallelism=_coerce_int(payload.get("max_parallelism")),
+        active_child_run_ids=_as_str_tuple(payload.get("active_child_run_ids")),
+        frontier_step_ids=_as_str_tuple(payload.get("frontier_step_ids")),
+        blocked_case_ids=_as_str_tuple(payload.get("blocked_case_ids")),
+        barrier=barrier,
+        operator_pause_state=operator_pause_state,
+        summary=str(payload.get("summary", "")),
+    )
+
+
+def _deserialize_child_run_ref(payload: dict[str, object]) -> ChildRunRef:
+    """Deserialize a ChildRunRef from a raw dict payload."""
+    return ChildRunRef(
+        run_id=str(payload.get("run_id", "")),
+        drive_id=str(payload.get("drive_id", "")),
+        kind=cast(ChildRunKind, payload.get("kind", "step")),
+        status=cast(ChildRunStatus, payload.get("status", "pending")),
+        step_id=(None if payload.get("step_id") is None else str(payload.get("step_id"))),
+        case_id=(None if payload.get("case_id") is None else str(payload.get("case_id"))),
+        planner_request_id=(
+            None
+            if payload.get("planner_request_id") is None
+            else str(payload.get("planner_request_id"))
+        ),
+        workspace=str(payload.get("workspace", "")),
+        runner=str(payload.get("runner", "")),
+        session_id=(None if payload.get("session_id") is None else str(payload.get("session_id"))),
+        artifact_root=str(payload.get("artifact_root", "")),
+    )
+
+
+def _drive_sort_key(record: DriveRecord) -> tuple[float, str]:
+    """Sort key for DriveRecord: (updated_at, drive_id)."""
+    return (record.updated_at, record.drive_id)
+
+
+def _child_run_sort_key(ref: ChildRunRef) -> tuple[float, str]:
+    """Sort key for ChildRunRef by updated_at derived from run_id prefix."""
+    return (0.0, ref.run_id)
+
+
+class DriveStoreError(RuntimeError):
+    """Base class for drive store failures."""
+
+
+class DriveAdmissionConflictError(DriveStoreError):
+    """Raised when drive admission discovers a conflicting active drive.
+
+    Attributes:
+        active_drive_id: The drive_id of the conflicting active drive.
+    """
+
+    def __init__(self, message: str, *, active_drive_id: str) -> None:
+        super().__init__(message)
+        self.active_drive_id = active_drive_id
+        self.message = message
+
+
+class DriveStore:
+    """Durable persistence for DriveRecord and ChildRunRef.
+
+    Authority: docs/RFC-orch-drive.md sections 8, 9
+
+    This store provides:
+        - JSONL-based append-only persistence for DriveRecord
+        - JSONL-based append-only persistence for ChildRunRef
+        - Active-drive lookup (ignoring terminal history)
+        - Historical terminal drive retention
+        - Child-run indexing (per-drive, per-step, per-kind)
+        - Projection replay that rebuilds active_child_run_ids and
+          frontier_step_ids from child runs
+
+    The storage layout under ``store_root`` (default ``.vectl/drives/``)::
+
+        .vectl/drives/
+            drives.jsonl          # DriveRecord append-only log
+            child_runs.jsonl      # ChildRunRef append-only log
+
+    Args:
+        store_root: Root directory for drive store files.
+        max_append_retries: Maximum retries for JSONL append contention.
+        append_retry_delay_seconds: Delay between append retries.
+        append_retry_observer: Callback for observing append retries.
+    """
+
+    def __init__(
+        self,
+        store_root: Path | str = ".vectl/drives",
+        *,
+        max_append_retries: int = _DEFAULT_APPEND_RETRIES,
+        append_retry_delay_seconds: float = _DEFAULT_APPEND_RETRY_DELAY_SECONDS,
+        append_retry_observer: RetryObserver | None = None,
+    ) -> None:
+        self._store_root = Path(store_root)
+        self._drives_path = self._store_root / _DRIVES_INDEX_FILENAME
+        self._child_runs_path = self._store_root / _CHILD_RUNS_INDEX_FILENAME
+        self._max_append_retries = max_append_retries
+        self._append_retry_delay_seconds = append_retry_delay_seconds
+        self._append_retry_observer = append_retry_observer
+
+    @property
+    def store_root(self) -> Path:
+        """Return authoritative drive-store root path."""
+        return self._store_root
+
+    # -----------------------------------------------------------------
+    # DriveRecord persistence
+    # -----------------------------------------------------------------
+
+    def save_drive(self, record: DriveRecord) -> None:
+        """Persist a DriveRecord to the append-only JSONL index.
+
+        The record is normalized: if ``updated_at`` is 0 (unset), it is
+        set to the current timestamp so that latest-wins replay works
+        correctly.
+
+        Args:
+            record: The DriveRecord to persist.
+        """
+        now = _current_timestamp()
+        normalized_updated_at = record.updated_at if record.updated_at > 0.0 else now
+
+        normalized_started_at = record.started_at if record.started_at > 0.0 else now
+
+        normalized_record = DriveRecord(
+            drive_id=record.drive_id,
+            plan_path=record.plan_path,
+            status=record.status,
+            started_at=normalized_started_at,
+            updated_at=normalized_updated_at,
+            finished_at=record.finished_at,
+            agent=record.agent,
+            max_parallelism=record.max_parallelism,
+            active_child_run_ids=record.active_child_run_ids,
+            frontier_step_ids=record.frontier_step_ids,
+            blocked_case_ids=record.blocked_case_ids,
+            barrier=record.barrier,
+            operator_pause_state=record.operator_pause_state,
+            summary=record.summary,
+        )
+
+        _append_jsonl_with_retry(
+            self._drives_path,
+            asdict(normalized_record),
+            max_retries=self._max_append_retries,
+            retry_delay_seconds=self._append_retry_delay_seconds,
+            retry_observer=self._append_retry_observer,
+        )
+
+    def load_drive(self, drive_id: str) -> DriveRecord | None:
+        """Load the latest DriveRecord for a given drive_id.
+
+        Args:
+            drive_id: The drive identifier to look up.
+
+        Returns:
+            The latest DriveRecord for the drive, or None if not found.
+        """
+        latest = self._latest_drives_by_id()
+        return latest.get(drive_id)
+
+    def active_drives(self) -> tuple[DriveRecord, ...]:
+        """Return all active (non-terminal) drives, sorted by recency.
+
+        Only drives with a non-terminal status are returned. Terminal
+        drives (completed, halted, failed_unrecoverable, stopped) are
+        retained in the JSONL log for history but excluded from active
+        lookup.
+
+        Returns:
+            Tuple of active DriveRecords, sorted by updated_at descending.
+        """
+        latest = self._latest_drives_by_id()
+        active = [
+            record for record in latest.values() if record.status not in TERMINAL_DRIVE_STATUSES
+        ]
+        active.sort(key=_drive_sort_key, reverse=True)
+        return tuple(active)
+
+    def active_drive_for_plan(self, plan_path: str) -> DriveRecord | None:
+        """Return the single active drive for a plan, or None.
+
+        If multiple active drives exist for the same plan path (should
+        not happen under normal admission control), returns the most
+        recently updated one.
+
+        Args:
+            plan_path: Canonical absolute path to ``plan.yaml``.
+
+        Returns:
+            The most recent active DriveRecord for the plan, or None.
+        """
+        for record in self.active_drives():
+            if record.plan_path == plan_path:
+                return record
+        return None
+
+    def terminal_drives(self) -> tuple[DriveRecord, ...]:
+        """Return all terminal drives, sorted by finished_at descending.
+
+        Terminal drives are retained for historical inspection and
+        recovery reference.
+
+        Returns:
+            Tuple of terminal DriveRecords, sorted by recency.
+        """
+        latest = self._latest_drives_by_id()
+        terminal = [
+            record for record in latest.values() if record.status in TERMINAL_DRIVE_STATUSES
+        ]
+        terminal.sort(key=_drive_sort_key, reverse=True)
+        return tuple(terminal)
+
+    def all_drives(self) -> tuple[DriveRecord, ...]:
+        """Return all drives (active and terminal), sorted by recency.
+
+        Returns:
+            Tuple of all DriveRecords, sorted by updated_at descending.
+        """
+        latest = self._latest_drives_by_id()
+        records = list(latest.values())
+        records.sort(key=_drive_sort_key, reverse=True)
+        return tuple(records)
+
+    # -----------------------------------------------------------------
+    # ChildRunRef persistence
+    # -----------------------------------------------------------------
+
+    def save_child_run(self, ref: ChildRunRef) -> None:
+        """Persist a ChildRunRef to the append-only JSONL index.
+
+        Args:
+            ref: The ChildRunRef to persist.
+        """
+        _append_jsonl_with_retry(
+            self._child_runs_path,
+            asdict(ref),
+            max_retries=self._max_append_retries,
+            retry_delay_seconds=self._append_retry_delay_seconds,
+            retry_observer=self._append_retry_observer,
+        )
+
+    def child_runs_for_drive(self, drive_id: str) -> tuple[ChildRunRef, ...]:
+        """Return all child run refs for a given drive.
+
+        Args:
+            drive_id: The drive identifier to look up.
+
+        Returns:
+            Tuple of ChildRunRef entries for the drive, newest first.
+        """
+        latest = self._latest_child_runs_by_id()
+        refs = [ref for ref in latest.values() if ref.drive_id == drive_id]
+        refs.sort(key=_child_run_sort_key, reverse=True)
+        return tuple(refs)
+
+    def active_child_runs_for_drive(self, drive_id: str) -> tuple[ChildRunRef, ...]:
+        """Return active child run refs for a drive.
+
+        Active child runs have status in ``{"pending", "running"}``.
+
+        Args:
+            drive_id: The drive identifier to look up.
+
+        Returns:
+            Tuple of active ChildRunRef entries for the drive.
+        """
+        latest = self._latest_child_runs_by_id()
+        refs = [
+            ref
+            for ref in latest.values()
+            if ref.drive_id == drive_id and ref.status in _ACTIVE_CHILD_RUN_STATUSES
+        ]
+        refs.sort(key=_child_run_sort_key, reverse=True)
+        return tuple(refs)
+
+    def child_runs_for_step(self, drive_id: str, step_id: str) -> tuple[ChildRunRef, ...]:
+        """Return child run refs for a specific step within a drive.
+
+        Args:
+            drive_id: The drive identifier.
+            step_id: The step identifier.
+
+        Returns:
+            Tuple of ChildRunRef entries matching the drive and step.
+        """
+        latest = self._latest_child_runs_by_id()
+        refs = [
+            ref
+            for ref in latest.values()
+            if ref.drive_id == drive_id and ref.kind == "step" and ref.step_id == step_id
+        ]
+        refs.sort(key=_child_run_sort_key, reverse=True)
+        return tuple(refs)
+
+    def child_runs_by_kind(self, drive_id: str, kind: ChildRunKind) -> tuple[ChildRunRef, ...]:
+        """Return child run refs for a drive filtered by kind.
+
+        Args:
+            drive_id: The drive identifier.
+            kind: Child run kind (step, resolver, planner).
+
+        Returns:
+            Tuple of ChildRunRef entries matching the drive and kind.
+        """
+        latest = self._latest_child_runs_by_id()
+        refs = [ref for ref in latest.values() if ref.drive_id == drive_id and ref.kind == kind]
+        refs.sort(key=_child_run_sort_key, reverse=True)
+        return tuple(refs)
+
+    def child_run_by_id(self, run_id: str) -> ChildRunRef | None:
+        """Look up a child run ref by its run_id.
+
+        Args:
+            run_id: The child run identifier.
+
+        Returns:
+            The latest ChildRunRef if found, else None.
+        """
+        return self._latest_child_runs_by_id().get(run_id)
+
+    # -----------------------------------------------------------------
+    # Drive admission
+    # -----------------------------------------------------------------
+
+    def assert_can_admit_drive(self, plan_path: str) -> None:
+        """Raise if an active drive already exists for the given plan.
+
+        Authority: docs/RFC-orch-drive.md section 14.1
+
+        A drive cannot be started when an active drive already exists
+        for the same plan identity.
+
+        Args:
+            plan_path: Canonical absolute path to ``plan.yaml``.
+
+        Raises:
+            DriveAdmissionConflictError: If a conflicting active drive exists.
+        """
+        existing = self.active_drive_for_plan(plan_path)
+        if existing is not None:
+            raise DriveAdmissionConflictError(
+                f"active drive already exists for plan '{plan_path}': drive_id={existing.drive_id}",
+                active_drive_id=existing.drive_id,
+            )
+
+    # -----------------------------------------------------------------
+    # Projection replay for scheduler loop
+    # -----------------------------------------------------------------
+
+    def replay_drive_state(self, drive_id: str) -> DriveRecord:
+        """Rebuild DriveRecord from persisted child runs.
+
+        Authority: docs/RFC-orch-drive.md section 9
+
+        The scheduler loop needs authoritative ``active_child_run_ids``
+        and ``frontier_step_ids``. This method rebuilds those from the
+        persisted child-run index, producing a DriveRecord that reflects
+        the true current state.
+
+        The persisted DriveRecord is authoritative for all fields EXCEPT
+        ``active_child_run_ids`` and ``frontier_step_ids``, which are
+        always derived from the child-run index on replay.
+
+        If no persisted DriveRecord exists, raises DriveStoreError.
+
+        Args:
+            drive_id: The drive to replay state for.
+
+        Returns:
+            A DriveRecord with ``active_child_run_ids`` and
+            ``frontier_step_ids`` rebuilt from child runs.
+
+        Raises:
+            DriveStoreError: If no DriveRecord exists for the drive_id.
+        """
+        persisted = self.load_drive(drive_id)
+        if persisted is None:
+            raise DriveStoreError(f"no DriveRecord found for drive_id={drive_id!r}")
+
+        child_refs = self.child_runs_for_drive(drive_id)
+        active_ids = tuple(
+            ref.run_id for ref in child_refs if ref.status in _ACTIVE_CHILD_RUN_STATUSES
+        )
+
+        # Frontier step IDs: step child runs that have succeeded and whose
+        # dependents are not yet running/pending. For now, the frontier is
+        # derived from the persisted record; only active_child_run_ids is
+        # rebuilt from child runs.
+        # Future: frontier could be derived from plan DAG + child run outcomes.
+
+        rebuilt = DriveRecord(
+            drive_id=persisted.drive_id,
+            plan_path=persisted.plan_path,
+            status=persisted.status,
+            started_at=persisted.started_at,
+            updated_at=persisted.updated_at,
+            finished_at=persisted.finished_at,
+            agent=persisted.agent,
+            max_parallelism=persisted.max_parallelism,
+            active_child_run_ids=active_ids,
+            frontier_step_ids=persisted.frontier_step_ids,
+            blocked_case_ids=persisted.blocked_case_ids,
+            barrier=persisted.barrier,
+            operator_pause_state=persisted.operator_pause_state,
+            summary=persisted.summary,
+        )
+        return rebuilt
+
+    def replay_active_child_run_ids(self, drive_id: str) -> tuple[str, ...]:
+        """Rebuild active_child_run_ids from the child-run index.
+
+        This is a lightweight projection input for the scheduler loop:
+        instead of replaying the full drive state, callers can get just
+        the active child run IDs.
+
+        Args:
+            drive_id: The drive to project.
+
+        Returns:
+            Tuple of active child run IDs for the drive.
+        """
+        active_refs = self.active_child_runs_for_drive(drive_id)
+        return tuple(ref.run_id for ref in active_refs)
+
+    # -----------------------------------------------------------------
+    # Internal index loading
+    # -----------------------------------------------------------------
+
+    def _latest_drives_by_id(self) -> dict[str, DriveRecord]:
+        """Load all drive records, returning latest per drive_id."""
+        entries = _read_jsonl(self._drives_path)
+        latest: dict[str, DriveRecord] = {}
+        for payload in entries:
+            record = _deserialize_drive_record(payload)
+            previous = latest.get(record.drive_id)
+            if previous is None or _drive_sort_key(record) >= _drive_sort_key(previous):
+                latest[record.drive_id] = record
+        return latest
+
+    def _latest_child_runs_by_id(self) -> dict[str, ChildRunRef]:
+        """Load all child run refs, returning latest per run_id.
+
+        Uses append-order as tiebreaker: later entries in the JSONL
+        file always win, since child run updates are appended in order.
+        """
+        if not self._child_runs_path.exists():
+            return {}
+
+        entries: list[dict[str, object]] = []
+        for line in self._child_runs_path.read_text(encoding="utf-8").splitlines():
+            line = line.strip()
+            if not line:
+                continue
+            try:
+                parsed = json.loads(line)
+            except json.JSONDecodeError as exc:
+                raise CorruptJSONLError(f"Malformed child_run JSONL record: {exc.msg}") from exc
+            if not isinstance(parsed, dict):
+                raise CorruptJSONLError("Malformed child_run JSONL record: expected object")
+            entries.append(cast(dict[str, object], parsed))
+
+        latest: dict[str, ChildRunRef] = {}
+        for payload in entries:
+            ref = _deserialize_child_run_ref(payload)
+            # Later entries always win (append-order wins)
+            latest[ref.run_id] = ref
+        return latest
+
+
 __all__ = [
     "RunRecord",
     "RunSummary",
@@ -1296,4 +1868,9 @@ __all__ = [
     "heartbeat_path",
     "classify_liveness",
     "latest_run",
+    # Drive store types
+    "DriveStore",
+    "DriveStoreError",
+    "DriveAdmissionConflictError",
+    "TERMINAL_DRIVE_STATUSES",
 ]

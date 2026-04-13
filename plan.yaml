@@ -82536,6 +82536,11 @@ phases:
       surfaces are runnable, wired, and bounded correctly.
     verification: All surface steps complete; runnable liveness evidence exists; no
       unresolved blockers remain in drive-scoped selectors, control, config, or events.
+    depends_on:
+    - orch_drive_surfaces.cli-drive-lifecycle-surface
+    - orch_drive_surfaces.inspection-and-control-surface
+    - orch_drive_surfaces.config-and-observability-upgrades
+    - orch_drive_surfaces.drive-cli-liveness-probe
     agent: gate-reviewer-tacit
 - id: orch_drive_recovery
   name: Orchestration Drive Resume, Recover, and Active-Control Semantics

@@ -81614,3 +81614,10 @@ phases:
     surfaces widen.
   depends_on:
   - orch_drive_driver
+- id: orch_drive_surfaces
+  name: Orchestration Drive CLI, Inspection, Control, Config, and Observability
+  status: locked
+  gate: Drive-scoped CLI/control/inspection/config/event surfaces are runnable and
+    independently probed before recovery and final real-runner acceptance.
+  depends_on:
+  - orch_drive_barriers

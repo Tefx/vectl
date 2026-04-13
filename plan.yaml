@@ -82742,6 +82742,8 @@ phases:
       parallel child runs; phase/plan auto-close.'
     refs:
     - docs/RFC-orch-drive.md
+    depends_on:
+    - orch_drive_live_acceptance.real-opencode-acceptance-harness
     agent: integration-verifier-tacit
   - id: orch_drive_live_acceptance.full-plan-guard
     name: full plan guard

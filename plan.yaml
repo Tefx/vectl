@@ -81894,6 +81894,10 @@ phases:
       ready for control/runtime composition.
     verification: All persistence steps complete; independent verification found no
       unresolved blockers; later scheduler phases can trust the durable substrate.
+    depends_on:
+    - orch_drive_state_store.run-store-drive-records
+    - orch_drive_state_store.lease-and-freeze-persistence
+    - orch_drive_state_store.verify-drive-persistence-substrate
     agent: gate-reviewer-tacit
 - id: orch_drive_control
   name: Orchestration Drive Control Decisions

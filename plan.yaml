@@ -81577,7 +81577,7 @@ phases:
   steps:
   - id: orch_drive_contracts.drive-types-lock
     name: Lock drive scheduling types and mutation bundle contracts
-    status: claimed
+    status: done
     description: 'Contract step.
 
 
@@ -81620,6 +81620,41 @@ phases:
     agent: python-senior-tacit
     claimed_by: python-senior-tacit
     claimed_at: '2026-04-13T19:24:05.289175+00:00'
+    done_at: '2026-04-13T20:15:25.391041+00:00'
+    evidence: '## refs Read Confirmation
+
+      - `docs/RFC-orch-drive.md` — Key passages: Section 8 (DriveRecord, ChildRunRef,
+      DriveBarrier field sets), Section 8.2 (DriveStatus values), Section 8.3 (ChildRunRef
+      fields), Section 8.4 (DriveBarrier fields + BarrierReason mapping), Section
+      8.5 (PlannerMutationBundle + PlannerMutationItem schemas), Section 8.5.1 (mutation
+      action types), Section 9.2.1 (expanded ControlDecision shape with dispatch_batch,
+      step_ids, role_bindings, planner_request, barrier_required), Section 12.2 (PlannerRequest
+      shape in ResolutionReport), Section 13.3 (PlannerMutationBundle output contract),
+      Section 13.5 (planner bundle status transitions).
+
+
+      ## Contract Lock Evidence
+
+      - Types/signatures locked: DriveStatus, ChildRunKind, ChildRunStatus, BarrierReason,
+      PlannerMutationAction, PlannerBundleStatus; DriveRecord, ChildRunRef, DriveBarrier,
+      PlannerRequest, PlannerMutationItem, PlannerMutationBundle; expanded ControlDecision
+      and ResolutionReport.planner_request; PlannerAdapter protocol and resolution
+      report payload parser contract updates.
+
+      - Files changed: src/vectl/orchestration/contracts.py; src/vectl/orchestration/interfaces.py;
+      src/vectl/orchestration/__init__.py; src/vectl/orchestration/control.py; src/vectl/orchestration/dispatch_policy.py;
+      src/vectl/orch_app.py; src/vectl/orchestration/resolution_reports.py; tests/orchestration/unit/test_drive_contracts.py;
+      tests/orchestration/unit/test_contracts.py; tests/orchestration/unit/test_control.py;
+      tests/orchestration/unit/test_dispatch_policy.py; tests/orchestration/unit/test_dispatch_policy_red.py;
+      tests/orchestration/integration/test_control_isolation_flow.py; tests/orchestration/integration/test_control_resolver_contract.py.
+
+      - Proof no scheduler logic landed beyond placeholders: no scheduling loop bodies
+      introduced in contract/interface modules; PlannerAdapter remains Protocol stubs;
+      new dataclasses are frozen and contract-only.
+
+      - Verification: all 941 tests pass.
+
+      - Any deviation record: none.'
   - id: orch_drive_contracts.driver-surface-lock
     name: Lock driver, control, runtime, review-gate, and drive CLI entrypoint contracts
     status: pending

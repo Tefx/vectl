@@ -81598,3 +81598,11 @@ phases:
     loop lands.
   depends_on:
   - orch_drive_control
+- id: orch_drive_driver
+  name: Orchestration Drive Loop
+  status: locked
+  gate: Driver session loop composes control/runtime/roster/resolver facts, persists
+    barriers/frontier/progress, and auto-closes phases/plans only through authoritative
+    surfaces.
+  depends_on:
+  - orch_drive_runtime

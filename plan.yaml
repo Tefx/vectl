@@ -82901,6 +82901,8 @@ phases:
     refs:
     - docs/RFC-orch-drive.md
     - docs/ORCHESTRATION-PLANE-CLI-CONFIG-OBSERVABILITY-DESIGN.md
+    depends_on:
+    - orch_drive_deep_review.spec-conformance
     agent: blind-tester-tacit
   - id: orch_drive_deep_review.final-gate
     name: final gate

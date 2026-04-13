@@ -81606,3 +81606,11 @@ phases:
     surfaces.
   depends_on:
   - orch_drive_runtime
+- id: orch_drive_barriers
+  name: Orchestration Drive Review / Resolver / Planner Barriers
+  status: locked
+  gate: Review failures, resolver cases, and planner mutation bundles are integrated
+    into the scheduler barrier loop with truthful continuation rules before operator
+    surfaces widen.
+  depends_on:
+  - orch_drive_driver

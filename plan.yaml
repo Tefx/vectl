@@ -82649,6 +82649,9 @@ phases:
     refs:
     - docs/RFC-orch-drive.md
     - docs/ORCHESTRATION-PLANE-CLI-CONFIG-OBSERVABILITY-DESIGN.md
+    depends_on:
+    - orch_drive_recovery.drive-resume-and-recover-semantics
+    - orch_drive_recovery.active-control-under-parallel-child-runs
     agent: integration-verifier-tacit
   - id: orch_drive_recovery.gate-recovery-phase
     name: gate recovery phase

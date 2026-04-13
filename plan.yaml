@@ -82120,6 +82120,10 @@ phases:
       are ready for driver-loop composition and real worktree child-run execution.
     verification: All runtime steps complete; independent verification found no unresolved
       blockers in parallel child-run or reconcile mechanics.
+    depends_on:
+    - orch_drive_runtime.parallel-child-run-runtime
+    - orch_drive_runtime.worktree-merge-reconcile-mechanics
+    - orch_drive_runtime.verify-runtime-parallel-child-runs
     agent: gate-reviewer-tacit
 - id: orch_drive_driver
   name: Orchestration Drive Loop

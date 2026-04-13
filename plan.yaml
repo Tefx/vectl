@@ -81628,3 +81628,10 @@ phases:
     truthful, durable, and independently verified before real-runner matrix execution.
   depends_on:
   - orch_drive_surfaces
+- id: orch_drive_live_acceptance
+  name: Orchestration Drive Real OpenCode Acceptance
+  status: locked
+  gate: 'Real OpenCode orchestration acceptance is the authoritative proof: mocks/shims
+    alone cannot pass this phase.'
+  depends_on:
+  - orch_drive_recovery

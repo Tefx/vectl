@@ -82776,6 +82776,10 @@ phases:
       needs_replan -> planner mutation -> continue; drive resume; drive recover; pause/unpause/stop
       under parallel child runs; phase/plan auto-close. Broad guard output must not
       reveal blocker-class intersections.'
+    depends_on:
+    - orch_drive_live_acceptance.real-opencode-acceptance-harness
+    - orch_drive_live_acceptance.real-opencode-acceptance-matrix
+    - orch_drive_live_acceptance.full-plan-guard
     agent: gate-reviewer-tacit
 - id: orch_drive_doc_sync
   name: Orchestration Drive Documentation Sync

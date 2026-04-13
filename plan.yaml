@@ -81728,6 +81728,71 @@ phases:
     widens.
   depends_on:
   - orch_drive_contracts
+  steps:
+  - id: orch_drive_state_store.run-store-drive-records
+    name: Implement durable drive records and child-run persistence
+    status: pending
+    description: 'Implementation step.
+
+
+      Touch paths:
+
+      - src/vectl/orchestration/contracts.py
+
+      - src/vectl/orchestration/run_store.py
+
+      - src/vectl/orchestration/projections.py
+
+      - tests/orchestration/test_run_store*.py
+
+
+      Fill in stub bodies for durable DriveRecord and ChildRunRef persistence, including
+      active drive lookup, historical terminal drive retention, child-run indexing,
+      and projection inputs needed by the scheduler loop.
+
+
+      This is an IMPLEMENTATION step. Stub-only completion is NOT acceptable.
+
+
+      Failure modes to cover:
+
+      - active-drive lookup ignores terminal history only
+
+      - child-run persistence survives restart/reload
+
+      - projection replay rebuilds active_child_run/frontier facts truthfully.'
+    verification: 'Main path: targeted persistence tests for DriveRecord/ChildRunRef
+      round-trip and replay pass. Failure path: regression coverage proves active-vs-terminal
+      drive lookup and child-run replay behave correctly.'
+    evidence_template: '## refs Read Confirmation (MANDATORY)
+
+      For each ref in this step:
+
+      - <filename> — key passage or "NOT READ: <reason>"
+
+
+      ## Expected-Red Proof (MANDATORY)
+
+      - Property/contract or regression added first:
+
+      - invar_guard failing output proving the gap:
+
+
+      ## Implementation Evidence
+
+      - Files changed:
+
+      - Durable persistence behavior completed:
+
+
+      ## Green Proof
+
+      - invar_guard / targeted persistence checks now pass:
+
+      - Highest-risk failure path exercised:
+
+      '
+    agent: python-senior-tacit
 - id: orch_drive_control
   name: Orchestration Drive Control Decisions
   status: locked

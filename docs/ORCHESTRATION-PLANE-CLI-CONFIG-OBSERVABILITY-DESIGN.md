@@ -551,6 +551,48 @@ List canonical tool registry for allowlist authoring.
 
 ### 7.6 Migration Family
 
+### 7.7 Drive Lifecycle Family
+
+#### `vectl orch drive`
+
+Start or continue full-plan orchestration for the selected plan.
+
+**Flags:**
+- `--agent ROLE`: Default dispatch role for ordinary step work
+- `--max-parallelism N`: Parallel frontier limit (default 4, min 1, max 32)
+- `--json`: Output drive result as JSON
+- `--output MODE`: Output mode (human, json, jsonl)
+- `--plan PATH`: Path to the plan/config target
+
+**Behavior:**
+1. Resolve or create the active drive for the plan
+2. Freeze drive creation parameters on first creation
+3. Enter the drive loop until terminal status or operator boundary
+
+**Exit codes:** 0, 1, 2, 3, 4, 5
+
+#### `vectl orch drive-status [DRIVE_ID|--latest]`
+
+Show drive aggregate status including frontier, active child runs, barrier, and summary.
+
+#### `vectl orch drive-runs [DRIVE_ID|--latest]`
+
+List child runs belonging to one drive.
+
+#### `vectl orch drive-resume [DRIVE_ID|--latest]`
+
+Resume an interrupted active drive using frozen drive parameters.
+
+#### `vectl orch drive-recover [DRIVE_ID|--latest]`
+
+Recover drive state from durable drive and child-run artifacts.
+
+#### Drive-scoped selector rules
+
+- when an active drive exists, inspection and control defaults target the drive
+- `--child-run-id <RUN_ID>` is exclusive with positional `DRIVE_ID` and `--latest`
+- a child-run selector that does not belong to the selected drive must fail with exit code `2`
+- `orch run` must fail with exit code `2` if an active drive exists for the same plan
 #### `vectl orch migration validate-cutover`
 
 Validate orchestration-plane cutover readiness.
@@ -717,6 +759,27 @@ For ordinary roles these may coincide. For resolver defaults they intentionally
 permit one shared resolver family with two distinct concrete agent prompts:
 `blocked-case-coordinator` and `blocked-case-coordinator-tacit`.
 
+### 8.4.1 Drive Configuration Extension
+
+The config schema is extended with a drive section:
+
+```yaml
+orchestration:
+  drive:
+    max_parallelism: 4
+    collect_poll_interval_ms: 250
+    resolver_timeout_seconds: 300
+    planner_timeout_seconds: 300
+```
+
+Validation:
+- `drive.max_parallelism` must be between 1 and 32 inclusive
+- `drive.collect_poll_interval_ms` must be > 0
+- `drive.resolver_timeout_seconds` must be > 0
+- `drive.planner_timeout_seconds` must be > 0
+
+Drive creation parameters are frozen into the drive record on first `orch drive`
+creation and reused by drive resume/recover.
 ### 8.5 Validation Rules
 
 Configuration is validated against these rules:
@@ -977,6 +1040,38 @@ Projection must emit events for state updates.
 See §9.2 for projection replay semantics.
 
 ---
+
+### 10.4 Drive Event Family
+
+Drive-capable implementations must emit at least these event kinds:
+
+- `drive_started`
+- `drive_status_changed`
+- `drive_barrier_entered`
+- `drive_barrier_cleared`
+- `planner_invoked`
+- `planner_applied`
+- `resolver_invoked`
+- `resolver_returned`
+- `child_run_admitted`
+- `child_run_final`
+- `drive_final`
+
+Minimum drive event envelope:
+
+```json
+{
+  "seq": 42,
+  "prev_hash": "sha256:...",
+  "entry_hash": "sha256:...",
+  "timestamp": "2026-04-14T12:00:00Z",
+  "kind": "drive_status_changed",
+  "drive_id": "drv_01K...",
+  "run_id": null,
+  "step_id": null,
+  "payload": {}
+}
+```
 
 ## 11. Implementation Notes
 

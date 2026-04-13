@@ -6,7 +6,7 @@
 **Status:** Implementation design  
 **Architecture authority:** `docs/ORCHESTRATION-PLANE-ARCHITECTURE.md`, `docs/ADR-orchestration-role-profile-config-and-resolver-cleanup.md`  
 **Interface authority:** `docs/ORCHESTRATION-PLANE-INTERFACES.md`  
-**Related docs:** `docs/ORCHESTRATION-PLANE-RESOLUTION-CONTRACT.md`, `docs/ORCHESTRATION-PLANE-ISOLATION-SEMANTICS.md`
+**Related docs:** `docs/ORCHESTRATION-PLANE-RESOLUTION-CONTRACT.md`, `docs/ORCHESTRATION-PLANE-ISOLATION-SEMANTICS.md`, `docs/RFC-orch-drive.md`
 
 ---
 
@@ -40,6 +40,8 @@ src/vectl/orchestration/
     core_adapter.py       # Thin adapter over vectl core (landed)
     config.py             # Shared orchestration config (landed)
     dispatch_policy.py    # Dispatch spec, role-profile loading, prompt rendering
+    review_gate.py        # Bounded post-execution review normalization
+    driver.py             # Drive-level orchestration loop and barrier management
     events.py             # Canonical event envelopes (landed)
     interfaces.py         # Protocol definitions
     tool_registry.py      # Canonical tool registry
@@ -257,6 +259,107 @@ prompt-rendering coordination.
 Dispatch and role-profile policy is shared support, but it does not belong in
 `control` or `runtime`.
 
+## 3.10 `review_gate.py`
+
+### Responsibility
+
+Normalize post-execution review outputs into bounded `ReviewGateResult` values.
+
+### Expected contents
+
+- machine-readable review parsing
+- review result validation
+- translation from execution artifacts into one bounded review outcome
+
+### Must not contain
+
+- frontier scheduling
+- plan mutation
+- resolver reasoning
+- runtime process control
+
+### Why this module exists
+
+Review normalization is shared support. It should not be hidden inside
+`driver.py`, and it should not inflate `resolver.py` into a generic post-run
+decision engine.
+
+## 3.11 `driver.py`
+
+### Responsibility
+
+Implement the durable drive loop that composes `control`, `roster`, `runtime`,
+and `resolver` into one plan-level orchestration session.
+
+### Expected contents
+
+- drive session persistence coordination
+- frontier dispatch loop
+- barrier entry/exit management
+- resolver/planner child-run orchestration
+- phase/plan auto-close coordination
+- multi-run inspection/control glue consumed by `orch_app.py`
+
+### Public API shape
+
+```python
+def start_drive(plan_path: Path, *, agent: str, max_parallelism: int) -> DriveRecord: ...
+
+def run_drive_loop(drive_id: str) -> DriveRecord: ...
+
+def resume_drive(drive_id: str) -> DriveRecord: ...
+
+def recover_drive(drive_id: str, *, dry_run: bool = False) -> RecoveryReport: ...
+```
+
+`orch_app.py` remains the CLI composition root. It wires CLI inputs into the
+driver module and is responsible for drive-scoped selector validation before
+handing execution to `driver.py`.
+
+### Drive store shape
+
+Drive persistence layout:
+
+```text
+.vectl/
+  drives/
+    index.jsonl
+    <drive_id>/
+      drive_record.json
+      child_runs.jsonl
+```
+
+Rules:
+
+- `drive_record.json` stores the canonical `DriveRecord`
+- `child_runs.jsonl` stores append-only `ChildRunRef` updates for that drive
+- `.vectl/drives/index.jsonl` stores `drive_id`, `plan_path`, `status`,
+  `started_at`, and `updated_at`
+- writes must use temp-file + rename atomicity
+
+### orch_app / driver boundary
+
+- `orch_app.py` owns CLI argument parsing, selector resolution, selector
+  validation, and wiring CLI inputs into driver calls
+- `driver.py` owns the orchestration loop, barrier management, child-run
+  coordination, and drive-state persistence
+- `orch_app.py` calls into `driver.py`; `driver.py` must not import CLI types or
+  argparse/Typer result objects
+
+### Must not contain
+
+- new plan-aware decision policy that should live in `control`
+- reusable resource internals that belong to `roster`
+- raw runner mechanics that belong to `runtime`
+- free-form planner or resolver reasoning logic
+
+### Why this module exists
+
+`driver.py` is a composition and loop layer, not a fifth architecture component.
+It exists so that plan-level orchestration session state does not collapse back
+into `orch_app.py` or leak hidden scheduler behavior into `runtime` or
+`roster`.
+
 ---
 
 ## 4. Code-Level Ownership Map
@@ -267,99 +370,69 @@ Dispatch and role-profile policy is shared support, but it does not belong in
 | workspace mechanics | `orchestration/runtime.py` | workspace prep and cleanup |
 | runner mechanics | `orchestration/runtime.py` | runner lifecycle |
 | event registry | `orchestration/events.py` | shared support owned by the orchestration plane |
-| orchestration loop decisions | `control.py` + small coordination glue | plan-aware dispatch/wait/done |
-| dispatch and role-profile policy | `orchestration/dispatch_policy.py` | config-backed dispatch assembly |
+| dispatch and role-profile support | `orchestration/dispatch_policy.py` | shared support, not plan-aware control |
+| drive session loop / barriers / aggregate progress | `orchestration/driver.py` | composition layer, not fifth component |
+| orchestration loop decisions | `control.py` + `driver.py` coordination | plan-aware dispatch, resolve, replan, wait, done |
 | blocked-case reasoning | `orchestration/resolver.py` | invocation glue under resolver |
-| configuration | `orchestration/config.py` | orchestration-specific config |
-
----
+| authoritative plan mutation from planner output | vectl facade over core | planner never edits `plan.yaml` directly |
 
 ## 5. Recommended Extraction Order
 
-This order is not a product-scope statement. It is an implementation-design
-sequence chosen to preserve behavior and test leverage.
+The original extraction order assumed a single-run orchestration loop. Full drive
+orchestration changes that. The updated implementation order is:
 
 ### Step 1 — establish the new package and contracts
 
-Create:
-
-- `src/vectl/orchestration/__init__.py`
-- `contracts.py`
-- skeletal `control.py`, `roster.py`, `runtime.py`, `resolver.py`, `dispatch_policy.py`
-- `core_adapter.py`
-
-No behavior migration yet; just the explicit package boundary.
+Create/extend the `orchestration` package and land authoritative shared types in
+`contracts.py` plus interface documentation updates.
 
 ### Step 2 — extract `roster`
 
-Move reusable session/resource logic out of the legacy package shape first.
-
-Why first:
-
-- narrowest responsibility
-- already strongly identified in migration mapping
-- easiest place to enforce "resources, not plans"
+Move reusable resource tracking out of the old loop first.
 
 ### Step 3 — extract `runtime`
 
-Move worktree/runner mechanical support next.
-
-Why next:
-
-- also relatively narrow and mechanical
-- behavior can be preserved with lower conceptual risk than `control`
+Move mechanical workspace/runner concerns into `runtime.py`, preserving single-run
+behavior before widening to child-run orchestration.
 
 ### Step 4 — introduce `core_adapter`
 
-Make core reads/writes explicit through one boundary.
-
-Why before `control` rewrite:
-
-- it keeps future `control` simpler
-- it prevents new plan-aware logic from scattering across modules
+Centralize authoritative plan reads/writes behind the core adapter.
 
 ### Step 5 — carve `control` out of loop behavior
 
-Implement `control` by extracting plan-aware flow logic,
-using `core_adapter`, `roster`, and `runtime`.
+Implement `control` as the plan-aware decision authority using core, roster, and
+runtime snapshots. At this stage the decision surface must already include
+batch/frontier, resolve, replan, wait, done, and halt.
 
-Important:
+### Step 6 — introduce `driver`
 
-- move only the responsibility that truly belongs to `control`
+Add `driver.py` as the durable orchestration-session loop that composes
+`control`, `roster`, `runtime`, and `resolver`. This is the point where the
+system stops being only a single-run operator.
 
-### Step 6 — attach `resolver`
+### Step 7 — attach `resolver`
 
 Implement the `control ↔ resolver` contract using the target `ResolutionCase` /
-`ResolutionReport` model.
+`ResolutionReport` model and barrier-aware continuation.
 
-Initial implementation may wrap or reuse existing reasoning surfaces, but the
-orchestration-plane contract should define the boundary.
+### Step 8 — attach planner mutation flow
 
-### Step 7 — rehome tests by behavior
+Implement planner child runs, machine-readable mutation bundle parsing, and vectl
+facade application. The driver remains authoritative for reopening frontier work
+after mutation.
 
-Move tests as each behavior gets a clear new owner.
+### Step 9 — rehome tests by behavior
 
-**Current test layout:**
+Move tests as each behavior gets a clear owner and add real OpenCode drive-level
+acceptance suites for:
 
-```text
-tests/
-  orchestration/
-    unit/
-      test_contracts.py
-      test_control.py
-      test_roster.py
-      test_runtime.py
-      test_resolver.py
-      test_dispatch_policy.py
-      test_config.py
-      test_events.py
-      test_core_adapter.py
-      test_orch_app.py
-    integration/
-      test_orchestration_integration.py
-```
+- full DAG drain
+- parallel frontier execution
+- resolver continuation
+- planner/replan continuation
+- recovery and control under active child runs
 
----
 
 ## 7. Isolation Schema Impact
 
@@ -417,27 +490,29 @@ of bounds.
 ---
 
 ## 9. Anti-Patterns to Avoid in Implementation
-
-1. **Recreating `drive` under a new package name**
+1. **Recreating plan-aware control inside `runtime` or `roster`**
    - if `roster` becomes plan-aware, or `runtime` starts deciding flow, the
      architecture has collapsed
 
-2. **Bulk renaming without responsibility change**
-    - simply moving code without separating concerns is not a migration
+2. **Treating `driver.py` as a fifth architecture component**
+   - `driver.py` is allowed as a composition/loop layer
+   - it must not become a new owner of plan-aware decision policy that belongs in
+     `control`
 
-3. **Deleting tests before equivalent owners exist**
+3. **Bulk renaming without responsibility change**
+   - simply moving code without separating concerns is not a migration
+
+4. **Deleting tests before equivalent owners exist**
    - this destroys behavioral leverage
 
-4. **Encoding optimization concepts as public contracts**
+5. **Encoding optimization concepts as public contracts**
    - session reuse remains an internal optimization, not a planning API
 
-5. **Bypassing core authority through convenience helpers**
-    - all authoritative mutations must still flow through official core surfaces
+6. **Bypassing core authority through convenience helpers**
+   - all authoritative mutations must still flow through official core surfaces
 
-6. **Treating legacy plan vocabulary as architecture authority**
-    - historical `plan.yaml` terms must not be revived as target contracts
-
----
+7. **Treating legacy plan vocabulary as architecture authority**
+   - historical `plan.yaml` terms must not be revived as target contracts
 
 ## 10. Minimum Done Condition for Entering Code Work
 

@@ -97,6 +97,7 @@ class ResolutionCase:
     core: CoreSnapshot
     roster: RosterSnapshot
     runtime: RuntimeSnapshot
+    drive: DriveRecord | None = None
     blocked_step_ids: tuple[str, ...] = ()
     artifact_refs: tuple[str, ...] = ()
 ```
@@ -108,7 +109,7 @@ Interpretation:
 - `reason` is the minimal machine-readable explanation of why normal flow did
   not close
 - `summary` is an optional bounded human-readable summary
-- `core`, `roster`, and `runtime` provide the current state basis for reasoning
+- `core`, `roster`, `runtime`, and optional `drive` provide the current state basis for reasoning
 - `blocked_step_ids` and `artifact_refs` provide optional coordination context and preserved evidence
 
 The case should be a snapshot of current known facts, not a speculative action
@@ -182,6 +183,7 @@ class ResolutionReport:
     summary: str
     evidence_refs: tuple[str, ...] = ()
     operator_message: str | None = None
+    planner_request: PlannerRequest | None = None
 ```
 
 ### Status meanings
@@ -193,6 +195,10 @@ class ResolutionReport:
 - **`operator_required`**: automated resolution should stop until operator input
   is provided
 - **`halt`**: resolver concluded that orchestration should stop
+
+If `planner_request` is present, the orchestration loop may transition directly
+from resolver handling into planner-owned replan work without reopening normal
+frontier dispatch in between.
 
 ## 5.2 Why report, not directive-only
 

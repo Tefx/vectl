@@ -81569,7 +81569,7 @@ phases:
       \ 10 failures in main worktree ❌ (pre-existing, not regression)"
 - id: orch_drive_contracts
   name: Orchestration Drive Contracts & Interfaces
-  status: pending
+  status: in_progress
   gate: Contracts for full-plan drive scheduling are locked against the READY orchestration
     docs before runtime logic changes begin.
   depends_on:
@@ -81577,7 +81577,7 @@ phases:
   steps:
   - id: orch_drive_contracts.drive-types-lock
     name: Lock drive scheduling types and mutation bundle contracts
-    status: pending
+    status: claimed
     description: 'Contract step.
 
 
@@ -81618,6 +81618,8 @@ phases:
 
       - Any deviation record (type / what / why / impact): none|<details>'
     agent: python-senior-tacit
+    claimed_by: python-senior-tacit
+    claimed_at: '2026-04-13T19:24:05.289175+00:00'
   - id: orch_drive_contracts.driver-surface-lock
     name: Lock driver, control, runtime, review-gate, and drive CLI entrypoint contracts
     status: pending

@@ -82489,6 +82489,113 @@ phases:
     truthful, durable, and independently verified before real-runner matrix execution.
   depends_on:
   - orch_drive_surfaces
+  steps:
+  - id: orch_drive_recovery.drive-resume-and-recover-semantics
+    name: drive resume and recover semantics
+    status: pending
+    description: 'Implementation step.
+
+
+      Touch paths:
+
+      - src/vectl/orchestration/recovery.py
+
+      - src/vectl/orchestration/driver.py
+
+      - src/vectl/orchestration/run_store.py
+
+      - tests/orchestration/test_drive_recovery*.py
+
+
+      Fill in stub bodies so resume/recover restore active child runs, barrier state,
+      operator pause state, planner/resolver pending state, aggregate progress, and
+      truthful continuation precedence between persisted facts, live runtime facts,
+      and durable terminal artifacts.
+
+
+      This is an IMPLEMENTATION step. Stub-only completion is NOT acceptable.
+
+
+      Failure modes to cover:
+
+      - stale persisted running state with missing live process
+
+      - persisted running state with durable terminal artifact
+
+      - frontier recompute when core authority changed
+
+      - open case requires barrier re-entry before frontier reopen.'
+    verification: 'Main path: resume/recover tests prove truthful continuation with
+      restored barrier/progress state. Failure path: precedence regressions prove
+      stale persisted convenience never beats live authoritative core/runtime/artifact
+      truth.'
+    refs:
+    - docs/RFC-orch-drive.md
+    - docs/ORCHESTRATION-PLANE-INTERFACES.md
+    agent: python-senior-tacit
+  - id: orch_drive_recovery.active-control-under-parallel-child-runs
+    name: active control under parallel child runs
+    status: pending
+    description: 'Implementation step.
+
+
+      Touch paths:
+
+      - src/vectl/orchestration/control_channel.py
+
+      - src/vectl/orchestration/driver.py
+
+      - src/vectl/orchestration/runtime.py
+
+      - tests/orchestration/test_drive_active_control*.py
+
+
+      Fill in stub bodies so pause/unpause/stop operate truthfully while multiple
+      child runs are active. Control transitions must stabilize or classify active
+      children, preserve artifacts, and respect stop --force semantics without silently
+      dropping drive state.
+
+
+      This is an IMPLEMENTATION step. Stub-only completion is NOT acceptable.'
+    verification: 'Main path: active-control tests prove pause/unpause/stop work under
+      parallel children. Failure path: regressions prove stalled children become explicit
+      operator barriers with preserved evidence instead of hanging forever.'
+    refs:
+    - docs/RFC-orch-drive.md
+    - docs/ORCHESTRATION-PLANE-CLI-CONFIG-OBSERVABILITY-DESIGN.md
+    agent: python-senior-tacit
+  - id: orch_drive_recovery.verify-recovery-and-active-control
+    name: verify recovery and active control
+    status: pending
+    description: 'Independent verification of resume/recover/control semantics under
+      live drive state.
+
+
+      Verify:
+
+      - truthful continuation precedence
+
+      - barrier re-entry before frontier reopen
+
+      - restored progress/pause/barrier state
+
+      - pause/unpause/stop under parallel child runs
+
+      - operator block on stabilization timeout'
+    verification: 'Expected result: green. Independent verifier confirms recovery/control
+      semantics are ready for real OpenCode matrix execution.'
+    refs:
+    - docs/RFC-orch-drive.md
+    - docs/ORCHESTRATION-PLANE-CLI-CONFIG-OBSERVABILITY-DESIGN.md
+    agent: integration-verifier-tacit
+  - id: orch_drive_recovery.gate-recovery-phase
+    name: gate recovery phase
+    status: pending
+    description: Gate review for orch_drive_recovery. Open only if resume/recover
+      and active-control semantics are truthful under active drive concurrency.
+    verification: All recovery steps complete; independent verification found no unresolved
+      blockers in truthful continuation or active-control behavior.
+    agent: gate-reviewer-tacit
 - id: orch_drive_live_acceptance
   name: Orchestration Drive Real OpenCode Acceptance
   status: locked

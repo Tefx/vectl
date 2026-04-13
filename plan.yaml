@@ -82623,6 +82623,8 @@ phases:
     refs:
     - docs/RFC-orch-drive.md
     - docs/ORCHESTRATION-PLANE-CLI-CONFIG-OBSERVABILITY-DESIGN.md
+    depends_on:
+    - orch_drive_recovery.drive-resume-and-recover-semantics
     agent: python-senior-tacit
   - id: orch_drive_recovery.verify-recovery-and-active-control
     name: verify recovery and active control

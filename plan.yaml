@@ -82007,6 +82007,10 @@ phases:
       expanded scheduler contract.
     verification: All control steps complete; independent verification found no unresolved
       blockers in decision semantics or same-plan admission.
+    depends_on:
+    - orch_drive_control.batch-frontier-decision-expansion
+    - orch_drive_control.same-plan-admission-rewrite
+    - orch_drive_control.verify-control-decisions
     agent: gate-reviewer-tacit
 - id: orch_drive_runtime
   name: Orchestration Drive Runtime Parallel Child Runs

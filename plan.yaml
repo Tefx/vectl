@@ -82109,6 +82109,9 @@ phases:
     refs:
     - docs/RFC-orch-drive.md
     - docs/ORCHESTRATION-PLANE-INTERFACES.md
+    depends_on:
+    - orch_drive_runtime.parallel-child-run-runtime
+    - orch_drive_runtime.worktree-merge-reconcile-mechanics
     agent: integration-verifier-tacit
   - id: orch_drive_runtime.gate-runtime-phase
     name: gate runtime phase

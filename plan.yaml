@@ -81574,3 +81574,11 @@ phases:
     docs before runtime logic changes begin.
   depends_on:
   - opencode_runner_verification
+- id: orch_drive_state_store
+  name: Orchestration Drive Persistence & Store
+  status: locked
+  gate: Drive/session persistence, child-run refs, scheduler-owned leases, and frozen
+    drive parameters are durable and independently verified before scheduler logic
+    widens.
+  depends_on:
+  - orch_drive_contracts

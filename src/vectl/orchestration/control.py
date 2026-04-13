@@ -13,6 +13,9 @@ from typing import Final, Protocol
 from vectl.orchestration.contracts import (
     ControlDecision,
     CoreSnapshot,
+    DriveBarrier,
+    DriveRecord,
+    PlannerMutationBundle,
     ResolutionReport,
     RosterSnapshot,
     RuntimeSnapshot,
@@ -78,8 +81,11 @@ class Control(Protocol):
     Authority:
         docs/ORCHESTRATION-PLANE-INTERFACES.md section 4.1
         docs/ORCHESTRATION-PLANE-IMPLEMENTATION-DESIGN.md section 3.2
+        docs/RFC-orch-drive.md section 9
 
-    Public surface intentionally exposes only evaluate/apply_resolution.
+    Public surface exposes evaluate, apply_resolution, and apply_planner_result.
+    The drive-aware signatures accept optional ``drive`` and ``barrier``
+    parameters for full drive scheduling integration.
     """
 
     def evaluate(
@@ -87,13 +93,26 @@ class Control(Protocol):
         core: CoreSnapshot,
         roster: RosterSnapshot,
         runtime: RuntimeSnapshot,
+        drive: DriveRecord | None = None,
+        barrier: DriveBarrier | None = None,
+        open_case_ids: tuple[str, ...] = (),
+        recovery_gate_blocked: bool = False,
     ) -> ControlDecision:
         """Evaluate authoritative/component snapshots into one control decision.
+
+        The drive-aware signature allows the control component to factor
+        in drive state, barrier state, open cases, and recovery gate
+        status when computing its decision.
 
         Args:
             core: Authoritative core snapshot produced through ``CoreAdapter``.
             roster: Current roster component snapshot.
             runtime: Current runtime component snapshot.
+            drive: Current drive record, if a drive session is active.
+            barrier: Current barrier state, if the drive is in barrier mode.
+            open_case_ids: Open resolution case identifiers.
+            recovery_gate_blocked: Whether the recovery gate is currently
+                blocking dispatch.
 
         Returns:
             Next orchestration-plane control decision.
@@ -106,17 +125,62 @@ class Control(Protocol):
         core: CoreSnapshot,
         roster: RosterSnapshot,
         runtime: RuntimeSnapshot,
+        drive: DriveRecord | None = None,
+        barrier: DriveBarrier | None = None,
     ) -> ControlDecision:
         """Apply resolver report and return a follow-up control decision.
+
+        Authority: docs/RFC-orch-drive.md section 12.3
+        Authority: docs/ORCHESTRATION-PLANE-INTERFACES.md section 4.1
 
         Args:
             report: Resolver output for a previously unresolved case.
             core: Refreshed authoritative core snapshot.
             roster: Refreshed roster component snapshot.
             runtime: Refreshed runtime component snapshot.
+            drive: Current drive record, if a drive session is active.
+            barrier: Current barrier state, if the drive is in barrier mode.
 
         Returns:
             Follow-up control decision after applying resolver outcome.
+        """
+        ...
+
+    def apply_planner_result(
+        self,
+        bundle: PlannerMutationBundle,
+        core: CoreSnapshot,
+        roster: RosterSnapshot,
+        runtime: RuntimeSnapshot,
+        drive: DriveRecord | None = None,
+        barrier: DriveBarrier | None = None,
+    ) -> ControlDecision:
+        """Apply planner mutation bundle and return a follow-up control decision.
+
+        Authority: docs/RFC-orch-drive.md section 13.5
+        Authority: docs/ORCHESTRATION-PLANE-INTERFACES.md section 4.1
+
+        Continuation rules (RFC-orch-drive.md section 13.5):
+            - ``applyable``: attempt facade apply; on success return to
+              ``kind='dispatch_batch'`` or ``kind='wait'``
+            - ``operator_required``: transition drive to ``blocked_operator``
+            - ``halt``: transition drive to ``halted``
+
+        Facade apply disposition rule:
+            - ordinary facade apply failure enters ``blocked_operator``
+            - only corruption-level or invariant-breaking apply failure
+              may enter ``failed_unrecoverable``
+
+        Args:
+            bundle: Machine-readable planner output contract.
+            core: Refreshed authoritative core snapshot.
+            roster: Refreshed roster component snapshot.
+            runtime: Refreshed runtime component snapshot.
+            drive: Current drive record, if a drive session is active.
+            barrier: Current barrier state, if the drive is in barrier mode.
+
+        Returns:
+            Follow-up control decision after applying planner outcome.
         """
         ...
 
@@ -168,6 +232,10 @@ class PlanAwareControl:
         core: CoreSnapshot,
         roster: RosterSnapshot,
         runtime: RuntimeSnapshot,
+        drive: DriveRecord | None = None,
+        barrier: DriveBarrier | None = None,
+        open_case_ids: tuple[str, ...] = (),
+        recovery_gate_blocked: bool = False,
     ) -> ControlDecision:
         """Evaluate authoritative/component snapshots into one control decision.
 
@@ -175,10 +243,42 @@ class PlanAwareControl:
             core: Authoritative core snapshot produced through ``CoreAdapter``.
             roster: Current roster component snapshot.
             runtime: Current runtime component snapshot.
+            drive: Current drive record, if a drive session is active.
+            barrier: Current barrier state, if the drive is in barrier mode.
+            open_case_ids: Open resolution case identifiers.
+            recovery_gate_blocked: Whether the recovery gate is currently
+                blocking dispatch.
 
         Returns:
             Next orchestration-plane control decision.
         """
+        # If a barrier is active, drive scheduling must not dispatch.
+        # Authority: RFC-orch-drive.md section 5.4, 9.2
+        if barrier is not None:
+            return ControlDecision(
+                kind="wait",
+                reason=f"Barrier active: {barrier.reason}",
+                barrier_required=True,
+            )
+
+        # If recovery gate blocks dispatch, no new work admitted.
+        # Authority: RFC-orch-drive.md section 8.4.1
+        if recovery_gate_blocked:
+            return ControlDecision(
+                kind="wait",
+                reason="Recovery gate blocks dispatch",
+                barrier_required=True,
+            )
+
+        # If open cases exist and drive is active, route to resolve.
+        # Authority: RFC-orch-drive.md section 9.2
+        if open_case_ids and drive is not None:
+            return ControlDecision(
+                kind="resolve",
+                reason=f"Open cases require resolution: {', '.join(open_case_ids)}",
+                case_ids=open_case_ids,
+            )
+
         unresolved_reason = _format_unresolved_reason(core)
         if unresolved_reason is not None:
             return ControlDecision(kind="resolve", reason=unresolved_reason)
@@ -196,6 +296,25 @@ class PlanAwareControl:
             return ControlDecision(kind="done", reason="Plan complete and runtime idle")
 
         if core.claimable_step_ids:
+            # Drive-aware batch dispatch: when a drive is active,
+            # return dispatch_batch with the full claimable frontier.
+            # Authority: RFC-orch-drive.md section 9.3, 9.4
+            if drive is not None:
+                step_ids = core.claimable_step_ids
+                role_bindings = {step_id: self.dispatch_role for step_id in step_ids}
+                active_step_count = len(drive.active_child_run_ids)
+                capacity_used = min(len(step_ids), drive.max_parallelism - active_step_count)
+                capacity_remaining = drive.max_parallelism - active_step_count - capacity_used
+                batch_ids = step_ids[:capacity_used] if capacity_used > 0 else ()
+                batch_bindings = {sid: role_bindings[sid] for sid in batch_ids}
+                return ControlDecision(
+                    kind="dispatch_batch",
+                    reason="Claimable work available (drive-aware)",
+                    step_ids=batch_ids,
+                    role_bindings=batch_bindings,
+                    capacity_used=capacity_used,
+                    capacity_remaining=max(0, capacity_remaining),
+                )
             step_id = core.claimable_step_ids[0]
             return ControlDecision(
                 kind="dispatch",
@@ -225,6 +344,8 @@ class PlanAwareControl:
         core: CoreSnapshot,
         roster: RosterSnapshot,
         runtime: RuntimeSnapshot,
+        drive: DriveRecord | None = None,
+        barrier: DriveBarrier | None = None,
     ) -> ControlDecision:
         """Apply resolver report and return a follow-up control decision.
 
@@ -233,12 +354,29 @@ class PlanAwareControl:
             core: Refreshed authoritative core snapshot.
             roster: Refreshed roster component snapshot.
             runtime: Refreshed runtime component snapshot.
+            drive: Current drive record, if a drive session is active.
+            barrier: Current barrier state, if the drive is in barrier mode.
 
         Returns:
             Follow-up control decision after applying resolver outcome.
         """
         if report.status == "unblocked":
-            return self.evaluate(core=core, roster=roster, runtime=runtime)
+            # If resolver also requests planner, prefer replan transition.
+            # Authority: RFC-orch-drive.md section 12.3
+            if report.planner_request is not None:
+                return ControlDecision(
+                    kind="replan",
+                    reason=f"Resolver requests planner: {report.planner_request.reason}",
+                    planner_request=report.planner_request,
+                    barrier_required=True,
+                )
+            return self.evaluate(
+                core=core,
+                roster=roster,
+                runtime=runtime,
+                drive=drive,
+                barrier=barrier,
+            )
 
         if report.status == "waiting":
             return ControlDecision(kind="wait", reason=f"Resolver waiting: {report.summary}")
@@ -254,6 +392,51 @@ class PlanAwareControl:
 
         return ControlDecision(
             kind="done", reason=f"Resolver halted orchestration: {report.summary}"
+        )
+
+    def apply_planner_result(
+        self,
+        bundle: PlannerMutationBundle,
+        core: CoreSnapshot,
+        roster: RosterSnapshot,
+        runtime: RuntimeSnapshot,
+        drive: DriveRecord | None = None,
+        barrier: DriveBarrier | None = None,
+    ) -> ControlDecision:
+        """Apply planner mutation bundle and return a follow-up control decision.
+
+        Authority: docs/RFC-orch-drive.md section 13.5
+
+        Args:
+            bundle: Machine-readable planner output contract.
+            core: Refreshed authoritative core snapshot.
+            roster: Refreshed roster component snapshot.
+            runtime: Refreshed runtime component snapshot.
+            drive: Current drive record, if a drive session is active.
+            barrier: Current barrier state, if the drive is in barrier mode.
+
+        Returns:
+            Follow-up control decision after applying planner outcome.
+        """
+        if bundle.status == "applyable":
+            return ControlDecision(
+                kind="dispatch_batch",
+                reason=f"Planner mutations applied: {bundle.summary}",
+                step_ids=(),
+            )
+
+        if bundle.status == "operator_required":
+            return ControlDecision(
+                kind="wait",
+                reason=f"Planner requires operator intervention: {bundle.summary}",
+                barrier_required=True,
+            )
+
+        # bundle.status == "halt"
+        return ControlDecision(
+            kind="halt",
+            reason=f"Planner halted: {bundle.summary}",
+            barrier_required=True,
         )
 
 

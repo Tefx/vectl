@@ -1421,6 +1421,155 @@ def orch_config_tools(
     _emit_orch_payload(payload, mode)
 
 
+# ---------------------------------------------------------------------------
+# vectl orch drive: drive-scoped orchestration commands
+# Authority: docs/RFC-orch-drive.md sections 7.2, 7.3
+# ---------------------------------------------------------------------------
+
+
+OrchDriveIdArgument = typer.Argument(
+    None,
+    help="Drive identifier (omit to use --latest).",
+)
+OrchMaxParallelismOption = typer.Option(
+    4,
+    "--max-parallelism",
+    help="Maximum concurrent step child runs (1-32, default 4).",
+)
+OrchDryRunDriveOption = typer.Option(
+    False, "--dry-run", help="Compute result without applying changes."
+)
+
+
+@orch_app.command("drive")
+def orch_drive(
+    agent: str | None = OrchAgentOption,
+    max_parallelism: int = OrchMaxParallelismOption,
+    json_flag: bool = OrchJsonOption,
+    output: OrchOutputMode = OrchOutputOption,
+    plan: Path | None = OrchPlanOption,
+) -> None:
+    """Start or resolve a full-plan orchestration drive.
+
+    Authority: docs/RFC-orch-drive.md section 7.2
+
+    If an active drive already exists for the same plan, this command fails
+    with exit code 2 and reports the active drive_id.
+
+    Contract authority: orch_app.py::OrchestrationApp.start_drive()
+    """
+    mode = _resolve_orch_output_mode(output=output, json_flag=json_flag, jsonl_flag=False)
+    app_runtime = _build_orchestration_runtime_app_or_die(plan=plan)
+    if max_parallelism < 1 or max_parallelism > 32:
+        _die(
+            f"max-parallelism must be between 1 and 32, got {max_parallelism}",
+            code=2,
+        )
+    try:
+        result = app_runtime.start_drive(
+            agent=agent or "",
+            max_parallelism=max_parallelism,
+        )
+    except Exception as exc:
+        _orch_internal_error(exc)
+        return
+    _emit_orch_payload(result, mode)
+
+
+@orch_app.command("drive-status")
+def orch_drive_status(
+    drive_id: str | None = OrchDriveIdArgument,
+    latest: bool = OrchLatestOption,
+    json_flag: bool = OrchJsonOption,
+    output: OrchOutputMode = OrchOutputOption,
+    plan: Path | None = OrchPlanOption,
+) -> None:
+    """Show current drive status.
+
+    Authority: docs/RFC-orch-drive.md section 7.2
+
+    Contract authority: orch_app.py::OrchestrationApp.drive_status()
+    """
+    mode = _resolve_orch_output_mode(output=output, json_flag=json_flag, jsonl_flag=False)
+    app_runtime = _build_orchestration_runtime_app_or_die(plan=plan)
+    if drive_id is not None and latest:
+        _die("Specify either DRIVE_ID or --latest, not both")
+    if drive_id is None and not latest:
+        _die("Drive status requires explicit selector: provide DRIVE_ID or --latest", code=3)
+    resolved_drive_id = drive_id or ""
+    try:
+        result = app_runtime.drive_status(drive_id=resolved_drive_id)
+    except Exception as exc:
+        _orch_internal_error(exc)
+        return
+    _emit_orch_payload(result, mode)
+
+
+@orch_app.command("drive-resume")
+def orch_drive_resume(
+    drive_id: str | None = OrchDriveIdArgument,
+    latest: bool = OrchLatestOption,
+    json_flag: bool = OrchJsonOption,
+    output: OrchOutputMode = OrchOutputOption,
+    plan: Path | None = OrchPlanOption,
+) -> None:
+    """Resume an interrupted drive session.
+
+    Authority: docs/RFC-orch-drive.md section 7.2
+
+    Contract authority: orch_app.py::OrchestrationApp.resume_drive()
+    """
+    mode = _resolve_orch_output_mode(output=output, json_flag=json_flag, jsonl_flag=False)
+    app_runtime = _build_orchestration_runtime_app_or_die(plan=plan)
+    if drive_id is not None and latest:
+        _die("Specify either DRIVE_ID or --latest, not both")
+    if drive_id is None and not latest:
+        _die("Drive resume requires explicit selector: provide DRIVE_ID or --latest", code=3)
+    resolved_drive_id = drive_id or ""
+    if latest and not resolved_drive_id:
+        _die("No active drive available for --latest selector", code=2)
+    if not resolved_drive_id:
+        _die("Drive resume requires a DRIVE_ID or --latest selector")
+    try:
+        result = app_runtime.resume_drive(drive_id=resolved_drive_id)
+    except Exception as exc:
+        _orch_internal_error(exc)
+        return
+    _emit_orch_payload(result, mode)
+
+
+@orch_app.command("drive-recover")
+def orch_drive_recover(
+    drive_id: str | None = OrchDriveIdArgument,
+    latest: bool = OrchLatestOption,
+    dry_run: bool = OrchDryRunDriveOption,
+    yes: bool = typer.Option(False, "--yes", "-y", help="Skip confirmation prompt."),
+    json_flag: bool = OrchJsonOption,
+    output: OrchOutputMode = OrchOutputOption,
+    plan: Path | None = OrchPlanOption,
+) -> None:
+    """Recover a drive from interrupted state.
+
+    Authority: docs/RFC-orch-drive.md section 7.2
+
+    Contract authority: orch_app.py::OrchestrationApp.recover_drive()
+    """
+    del yes
+    mode = _resolve_orch_output_mode(output=output, json_flag=json_flag, jsonl_flag=False)
+    app_runtime = _build_orchestration_runtime_app_or_die(plan=plan)
+    if drive_id is not None and latest:
+        _die("Specify either DRIVE_ID or --latest, not both")
+    if drive_id is None and not latest:
+        _die("Drive recover requires explicit selector: provide DRIVE_ID or --latest", code=3)
+    resolved_drive_id = drive_id or ""
+    try:
+        result = app_runtime.recover_drive(drive_id=resolved_drive_id, dry_run=dry_run)
+    except Exception as exc:
+        _orch_internal_error(exc)
+        return
+    _emit_orch_payload(result, mode)
+
+
 @app.command()
 def render(
     phase: str | None = typer.Option(None, "--phase", help="Render only this phase."),

@@ -53,6 +53,7 @@ from vectl.orchestration.contracts import (
     ControlDecision,
     CoreSnapshot,
     DispatchSpec,
+    DriveRecord,
     ExecutionRequest,
     ExecutionResult,
     PromptArtifactPaths,
@@ -85,6 +86,15 @@ from vectl.orchestration.dispatch_policy import (
     DispatchCoordinator,
     normalize_parse_failure,
     normalize_review_result,
+)
+from vectl.orchestration.driver import (
+    DriveAdmissionError,
+    DriveLoopResult,
+    DriveRecoverResult,
+    DriveResumeResult,
+    DriveStartResult,
+    DriveStatusResult,
+    MaxParallelismError,
 )
 from vectl.orchestration.events import (
     EventCorruptionError,
@@ -570,6 +580,10 @@ class OrchestrationApp:
     Public surface:
         - run()             (start/resume a run)
         - recover()         (recover from artifacts)
+        - start_drive()     (start/resolve a drive for a plan)
+        - run_drive_loop()  (execute one drive scheduling loop pass)
+        - resume_drive()    (resume an interrupted drive)
+        - recover_drive()   (recover a drive from interrupted state)
         - cutover_validate() (validate migration cutover retirement criteria)
         - migration_advance_state() (advance imported legacy migration state)
         - prune()           (prune old runs/artifacts)
@@ -1790,6 +1804,90 @@ class OrchestrationApp:
             step_id=step_id,
             run_id=run_id,
         )
+
+    # -----------------------------------------------------------------
+    # Drive-scoped entrypoints
+    # Authority: docs/RFC-orch-drive.md sections 7, 10, 14, 15
+    # -----------------------------------------------------------------
+
+    def start_drive(
+        self,
+        *,
+        agent: str = "",
+        max_parallelism: int = 4,
+    ) -> DriveStartResult:
+        """Start or resolve a drive for the current plan.
+
+        Authority: docs/RFC-orch-drive.md sections 7.2, 14.1
+
+        If an active drive already exists for the same plan, this raises
+        ``DriveAdmissionError`` with the existing ``drive_id``.
+
+        Args:
+            agent: Agent role that owns this drive.
+            max_parallelism: Maximum concurrent step child runs (1-32, default 4).
+
+        Returns:
+            DriveStartResult with the drive identifier and initial state.
+
+        Raises:
+            DriveAdmissionError: If an active drive already exists for this plan.
+            MaxParallelismError: If max_parallelism is outside [1, 32].
+        """
+        raise NotImplementedError("start_drive: drive orchestration loop not yet implemented")
+
+    def run_drive_loop(self, drive_id: str) -> DriveLoopResult:
+        """Execute one drive scheduling loop pass.
+
+        Authority: docs/RFC-orch-drive.md section 10
+
+        Args:
+            drive_id: The drive to run one loop pass for.
+
+        Returns:
+            DriveLoopResult capturing the terminal or paused state.
+        """
+        raise NotImplementedError("run_drive_loop: drive orchestration loop not yet implemented")
+
+    def resume_drive(self, drive_id: str) -> DriveResumeResult:
+        """Resume an interrupted drive session.
+
+        Authority: docs/RFC-orch-drive.md section 15.1
+
+        Args:
+            drive_id: The drive to resume.
+
+        Returns:
+            DriveResumeResult with restored state.
+        """
+        raise NotImplementedError("resume_drive: drive resume not yet implemented")
+
+    def recover_drive(self, drive_id: str, *, dry_run: bool = False) -> DriveRecoverResult:
+        """Recover a drive from interrupted state.
+
+        Authority: docs/RFC-orch-drive.md section 15.2
+
+        Args:
+            drive_id: The drive to recover.
+            dry_run: If True, compute recovery plan without applying changes.
+
+        Returns:
+            DriveRecoverResult with recovery outcomes.
+        """
+        raise NotImplementedError("recover_drive: drive recovery not yet implemented")
+
+    def drive_status(self, drive_id: str) -> DriveStatusResult:
+        """Inspect current drive status.
+
+        Authority: docs/RFC-orch-drive.md section 7.2
+
+        Args:
+            drive_id: The drive to inspect.
+
+        Returns:
+            DriveStatusResult with current drive state.
+        """
+        raise NotImplementedError("drive_status: drive inspection not yet implemented")
 
     def run(
         self,

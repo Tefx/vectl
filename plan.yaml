@@ -82004,6 +82004,102 @@ phases:
     loop lands.
   depends_on:
   - orch_drive_control
+  steps:
+  - id: orch_drive_runtime.parallel-child-run-runtime
+    name: parallel child run runtime
+    status: pending
+    description: 'Implementation step.
+
+
+      Touch paths:
+
+      - src/vectl/orchestration/runtime.py
+
+      - src/vectl/orchestration/contracts.py
+
+      - src/vectl/orchestration/roster.py
+
+      - tests/orchestration/test_runtime_parallel*.py
+
+
+      Fill in stub bodies for real bounded parallel child-run prepare/start/collect
+      behavior. The runtime remains mechanical only, but must support multiple concurrent
+      step child runs under one drive with truthful run_id/session/workspace/artifact
+      bookkeeping.
+
+
+      This is an IMPLEMENTATION step. Stub-only completion is NOT acceptable.'
+    verification: 'Main path: runtime tests prove multiple active step child runs
+      can start and collect independently within capacity. Failure path: regressions
+      prove resolver/planner barrier runs do not consume ordinary frontier capacity.'
+    refs:
+    - docs/RFC-orch-drive.md
+    - docs/ORCHESTRATION-PLANE-INTERFACES.md
+    - docs/ORCHESTRATION-PLANE-ARCHITECTURE.md
+    agent: python-senior-tacit
+  - id: orch_drive_runtime.worktree-merge-reconcile-mechanics
+    name: worktree merge reconcile mechanics
+    status: pending
+    description: 'Implementation step.
+
+
+      Touch paths:
+
+      - src/vectl/orchestration/runtime.py
+
+      - src/vectl/orchestration/recovery.py
+
+      - src/vectl/orchestration/continuity_artifacts.py
+
+      - tests/orchestration/test_runtime_reconcile*.py
+
+
+      Fill in stub bodies for real worktree/workspace preparation, merge-back/reconcile
+      initiation, artifact preservation, and cleanup ordering for child runs. Runtime
+      must preserve truthful artifacts on failure/merge conflict instead of hiding
+      them behind synthetic success.
+
+
+      This is an IMPLEMENTATION step. Stub-only completion is NOT acceptable.'
+    verification: 'Main path: runtime reconciliation tests prove worktree child runs
+      produce real artifacts and reconcile hooks. Failure path: regressions prove
+      merge conflicts/failures preserve artifacts and do not report false success.'
+    refs:
+    - docs/RFC-orch-drive.md
+    - docs/ORCHESTRATION-PLANE-INTERFACES.md
+    - docs/ORCHESTRATION-PLANE-CLI-CONFIG-OBSERVABILITY-DESIGN.md
+    agent: python-senior-tacit
+  - id: orch_drive_runtime.verify-runtime-parallel-child-runs
+    name: verify runtime parallel child runs
+    status: pending
+    description: 'Independent verification of the widened runtime mechanics.
+
+
+      Verify:
+
+      - bounded parallel child-run start/collect
+
+      - stable run_id/session/workspace bookkeeping
+
+      - real worktree artifact preservation
+
+      - merge/reconcile handoff behavior
+
+      - resolver/planner child-run capacity exclusion'
+    verification: 'Expected result: green. Independent verifier confirms runtime is
+      now a truthful mechanical substrate for the driver loop.'
+    refs:
+    - docs/RFC-orch-drive.md
+    - docs/ORCHESTRATION-PLANE-INTERFACES.md
+    agent: integration-verifier-tacit
+  - id: orch_drive_runtime.gate-runtime-phase
+    name: gate runtime phase
+    status: pending
+    description: Gate review for orch_drive_runtime. Open only if runtime mechanics
+      are ready for driver-loop composition and real worktree child-run execution.
+    verification: All runtime steps complete; independent verification found no unresolved
+      blockers in parallel child-run or reconcile mechanics.
+    agent: gate-reviewer-tacit
 - id: orch_drive_driver
   name: Orchestration Drive Loop
   status: locked

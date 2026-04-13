@@ -82884,6 +82884,8 @@ phases:
     refs:
     - docs/ORCHESTRATION-PLANE-ARCHITECTURE.md
     - docs/ORCHESTRATION-PLANE-IMPLEMENTATION-DESIGN.md
+    depends_on:
+    - orch_drive_deep_review.wiring-audit
     agent: minimalist-architect-tacit
   - id: orch_drive_deep_review.black-box-drive-verification
     name: black box drive verification

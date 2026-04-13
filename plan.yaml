@@ -81635,3 +81635,10 @@ phases:
     alone cannot pass this phase.'
   depends_on:
   - orch_drive_recovery
+- id: orch_drive_doc_sync
+  name: Orchestration Drive Documentation Sync
+  status: locked
+  gate: Docs match implemented drive/session/control/recovery surfaces and the real
+    OpenCode acceptance contract.
+  depends_on:
+  - orch_drive_live_acceptance

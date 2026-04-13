@@ -81805,7 +81805,7 @@ phases:
       \ PASS_WITH_DEBT."
   - id: orch_drive_contracts.gate
     name: Gate contracts phase
-    status: pending
+    status: claimed
     description: Gate review for orch_drive_contracts. Open only if the full scheduler
       contract surface is locked cleanly and implementation phases can proceed without
       re-deriving public semantics from raw code.
@@ -81816,6 +81816,8 @@ phases:
     - orch_drive_contracts.driver-surface-lock
     - orch_drive_contracts.contract-conformance
     agent: gate-reviewer-tacit
+    claimed_by: gate-reviewer-tacit
+    claimed_at: '2026-04-13T20:53:10.659177+00:00'
 - id: orch_drive_state_store
   name: Orchestration Drive Persistence & Store
   status: locked

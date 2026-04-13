@@ -81793,6 +81793,70 @@ phases:
 
       '
     agent: python-senior-tacit
+  - id: orch_drive_state_store.lease-and-freeze-persistence
+    name: Implement scheduler-owned lease persistence and frozen drive parameters
+    status: pending
+    description: 'Implementation step.
+
+
+      Touch paths:
+
+      - src/vectl/orchestration/contracts.py
+
+      - src/vectl/orchestration/run_store.py
+
+      - src/vectl/orchestration/config.py
+
+      - tests/orchestration/test_drive_config*.py
+
+
+      Fill in stub bodies for scheduler-owned lease ownership (`drive_id + step_id
+      + run_id`) and frozen drive creation parameters (max_parallelism and timeout
+      settings) persisted on first drive creation and reused by resume/recover.
+
+
+      This is an IMPLEMENTATION step. Stub-only completion is NOT acceptable.
+
+
+      Failure modes to cover:
+
+      - same-plan new drive blocked while active drive exists
+
+      - planner mutation invalidates unstarted leases cleanly
+
+      - resume/recover reuses frozen drive parameters instead of ambient config drift.'
+    verification: 'Main path: lease ownership and drive config freeze tests pass.
+      Failure path: regression coverage proves invalidated unstarted leases are released
+      and frozen parameters survive config changes.'
+    evidence_template: '## refs Read Confirmation (MANDATORY)
+
+      For each ref in this step:
+
+      - <filename> — key passage or "NOT READ: <reason>"
+
+
+      ## Expected-Red Proof (MANDATORY)
+
+      - Property/contract or regression added first:
+
+      - invar_guard failing output proving the gap:
+
+
+      ## Implementation Evidence
+
+      - Files changed:
+
+      - Lease/freeze semantics completed:
+
+
+      ## Green Proof
+
+      - invar_guard / targeted lease+config checks now pass:
+
+      - Highest-risk failure path exercised:
+
+      '
+    agent: python-senior-tacit
 - id: orch_drive_control
   name: Orchestration Drive Control Decisions
   status: locked

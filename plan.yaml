@@ -82925,4 +82925,9 @@ phases:
     verification: Final gate opens only with explicit green real OpenCode acceptance
       evidence plus acceptable deep-review findings. Mock/shim-only evidence is non-authoritative
       and cannot pass.
+    depends_on:
+    - orch_drive_deep_review.wiring-audit
+    - orch_drive_deep_review.spec-conformance
+    - orch_drive_deep_review.architecture-review
+    - orch_drive_deep_review.black-box-drive-verification
     agent: gate-reviewer-tacit

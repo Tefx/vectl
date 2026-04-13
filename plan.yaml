@@ -81748,7 +81748,7 @@ phases:
       - Any deviation record: none.'
   - id: orch_drive_contracts.contract-conformance
     name: Verify contract lock against READY orchestration docs
-    status: pending
+    status: claimed
     description: 'Independent contract/spec conformance check for the new full scheduler
       contract surface.
 
@@ -81786,6 +81786,8 @@ phases:
     depends_on:
     - orch_drive_contracts.driver-surface-lock
     agent: spec-verifier-tacit
+    claimed_by: spec-verifier-tacit
+    claimed_at: '2026-04-13T20:41:59.935287+00:00'
   - id: orch_drive_contracts.gate
     name: Gate contracts phase
     status: pending

@@ -82108,6 +82108,101 @@ phases:
     surfaces.
   depends_on:
   - orch_drive_runtime
+  steps:
+  - id: orch_drive_driver.driver-loop-core
+    name: driver loop core
+    status: pending
+    description: 'Implementation step.
+
+
+      Touch paths:
+
+      - src/vectl/orchestration/driver.py
+
+      - src/vectl/orchestration/control.py
+
+      - src/vectl/orchestration/run_store.py
+
+      - tests/orchestration/test_driver_loop*.py
+
+
+      Fill in stub bodies for start_drive, run_drive_loop, and resume entrypoints
+      so the scheduler loop loads/creates the active drive, refreshes snapshots, evaluates
+      control, admits child runs up to capacity, collects terminal child runs, persists
+      barrier/frontier/progress, and reaches only valid drive terminal states.
+
+
+      This is an IMPLEMENTATION step. Stub-only completion is NOT acceptable.'
+    verification: 'Main path: driver-loop tests prove normal dispatch/collect/wait/done
+      flow. Failure path: regressions prove invalid terminal states, stale snapshots
+      after barrier work, or incorrect capacity use are rejected.'
+    refs:
+    - docs/RFC-orch-drive.md
+    - docs/ORCHESTRATION-PLANE-INTERFACES.md
+    - docs/ORCHESTRATION-PLANE-IMPLEMENTATION-DESIGN.md
+    agent: python-senior-tacit
+  - id: orch_drive_driver.phase-and-plan-auto-close
+    name: phase and plan auto close
+    status: pending
+    description: 'Implementation step.
+
+
+      Touch paths:
+
+      - src/vectl/orchestration/driver.py
+
+      - src/vectl/orchestration/core_adapter.py
+
+      - src/vectl/orchestration/review_gate.py
+
+      - tests/orchestration/test_drive_autoclose*.py
+
+
+      Fill in stub bodies so successful child-run execution flows through review/reconcile/completion
+      gates, then auto-closes completed phases through approved lifecycle surfaces
+      and marks the plan/drive completed only when no active child runs, barriers,
+      or operator blocks remain.
+
+
+      This is an IMPLEMENTATION step. Stub-only completion is NOT acceptable.'
+    verification: 'Main path: auto-close tests prove completed phases/plans advance
+      through authoritative lifecycle surfaces. Failure path: regressions prove child-run
+      success alone does not bypass review/reconcile/completion gates.'
+    refs:
+    - docs/RFC-orch-drive.md
+    - docs/ORCHESTRATION-PLANE-INTERFACES.md
+    agent: python-senior-tacit
+  - id: orch_drive_driver.verify-driver-loop
+    name: verify driver loop
+    status: pending
+    description: 'Independent verification of the drive session loop.
+
+
+      Verify:
+
+      - active drive create/resolve behavior
+
+      - dispatch/collect/wait/done loop semantics
+
+      - valid terminal states only
+
+      - authoritative auto-close behavior
+
+      - stale snapshot refresh after barrier work'
+    verification: 'Expected result: green. Independent verifier confirms the system
+      now has a real drive loop rather than a single-run primitive with wrappers.'
+    refs:
+    - docs/RFC-orch-drive.md
+    - docs/ORCHESTRATION-PLANE-IMPLEMENTATION-DESIGN.md
+    agent: integration-verifier-tacit
+  - id: orch_drive_driver.gate-driver-phase
+    name: gate driver phase
+    status: pending
+    description: Gate review for orch_drive_driver. Open only if the drive loop is
+      durable, authoritative, and ready for review/resolver/planner barrier integration.
+    verification: All driver steps complete; independent verification found no unresolved
+      blockers in drive-loop or auto-close semantics.
+    agent: gate-reviewer-tacit
 - id: orch_drive_barriers
   name: Orchestration Drive Review / Resolver / Planner Barriers
   status: locked

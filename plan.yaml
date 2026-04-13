@@ -82758,6 +82758,8 @@ phases:
       acceptance gate.
     refs:
     - docs/RFC-orch-drive.md
+    depends_on:
+    - orch_drive_live_acceptance.real-opencode-acceptance-matrix
     agent: integration-verifier-tacit
   - id: orch_drive_live_acceptance.gate-live-acceptance-phase
     name: gate live acceptance phase

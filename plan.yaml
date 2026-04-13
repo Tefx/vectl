@@ -82221,6 +82221,9 @@ phases:
     refs:
     - docs/RFC-orch-drive.md
     - docs/ORCHESTRATION-PLANE-IMPLEMENTATION-DESIGN.md
+    depends_on:
+    - orch_drive_driver.driver-loop-core
+    - orch_drive_driver.phase-and-plan-auto-close
     agent: integration-verifier-tacit
   - id: orch_drive_driver.gate-driver-phase
     name: gate driver phase

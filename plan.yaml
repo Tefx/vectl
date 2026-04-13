@@ -81657,7 +81657,7 @@ phases:
       - Any deviation record: none.'
   - id: orch_drive_contracts.driver-surface-lock
     name: Lock driver, control, runtime, review-gate, and drive CLI entrypoint contracts
-    status: pending
+    status: claimed
     description: 'Contract step.
 
 
@@ -81704,6 +81704,8 @@ phases:
     depends_on:
     - orch_drive_contracts.drive-types-lock
     agent: python-senior-tacit
+    claimed_by: python-senior-tacit
+    claimed_at: '2026-04-13T20:15:54.576609+00:00'
   - id: orch_drive_contracts.contract-conformance
     name: Verify contract lock against READY orchestration docs
     status: pending

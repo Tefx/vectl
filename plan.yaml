@@ -81590,3 +81590,11 @@ phases:
     composition.
   depends_on:
   - orch_drive_state_store
+- id: orch_drive_runtime
+  name: Orchestration Drive Runtime Parallel Child Runs
+  status: locked
+  gate: Runtime mechanics support real bounded parallel child runs, real worktrees,
+    merge/reconcile handoff, and child-run lifecycle evidence before the full driver
+    loop lands.
+  depends_on:
+  - orch_drive_control

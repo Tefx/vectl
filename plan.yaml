@@ -82755,3 +82755,89 @@ phases:
     and authoritative.
   depends_on:
   - orch_drive_doc_sync
+  steps:
+  - id: orch_drive_deep_review.wiring-audit
+    name: wiring audit
+    status: pending
+    description: 'Full wiring audit for the full scheduler implementation.
+
+
+      Verify every new public symbol, CLI drive command, config field, and event family
+      member is reachable and consumed at runtime. Block on orphan exports, unregistered
+      commands, unconsumed config fields, missing drive event families, or lingering
+      scheduler stubs.'
+    verification: Wiring report covers CLI commands, config fields, events, projections,
+      and drive/runtime integration surfaces.
+    refs:
+    - docs/RFC-orch-drive.md
+    - docs/ORCHESTRATION-PLANE-CLI-CONFIG-OBSERVABILITY-DESIGN.md
+    agent: wiring-auditor
+  - id: orch_drive_deep_review.spec-conformance
+    name: spec conformance
+    status: pending
+    description: 'Independent spec-conformance audit for the implemented full scheduler.
+
+
+      Focus on drive lifecycle commands, scheduler decisions, recovery precedence,
+      planner/resolver continuation, drive-scoped selectors, config freeze semantics,
+      and drive event envelopes.'
+    verification: Spec verifier produces a requirement/evidence table and flags any
+      drift between READY docs and implementation.
+    refs:
+    - docs/RFC-orch-drive.md
+    - docs/ORCHESTRATION-PLANE-INTERFACES.md
+    - docs/ORCHESTRATION-PLANE-RESOLUTION-CONTRACT.md
+    - docs/ORCHESTRATION-PLANE-CLI-CONFIG-OBSERVABILITY-DESIGN.md
+    agent: spec-verifier-tacit
+  - id: orch_drive_deep_review.architecture-review
+    name: architecture review
+    status: pending
+    description: 'Independent architecture review for the full scheduler.
+
+
+      Check that drive remains a session model rather than a fifth authority component,
+      control remains plan-aware authority, runtime remains mechanical, resolver remains
+      bounded, and planner mutation still flows only through vectl/core facades.'
+    verification: Architecture review confirms ownership boundaries, dependency direction,
+      and cross-module truth surfaces remain aligned with the READY design.
+    refs:
+    - docs/ORCHESTRATION-PLANE-ARCHITECTURE.md
+    - docs/ORCHESTRATION-PLANE-IMPLEMENTATION-DESIGN.md
+    agent: minimalist-architect-tacit
+  - id: orch_drive_deep_review.black-box-drive-verification
+    name: black box drive verification
+    status: pending
+    description: 'Black-box verification using only documented CLI/config surfaces
+      and public behavior.
+
+
+      Create drive runs from documented inputs, inspect drive state via public commands,
+      and verify real drive-scoped behavior without relying on implementation internals.'
+    verification: Black-box evidence proves the documented full scheduler behavior
+      is externally real, not just internally unit-tested.
+    refs:
+    - docs/RFC-orch-drive.md
+    - docs/ORCHESTRATION-PLANE-CLI-CONFIG-OBSERVABILITY-DESIGN.md
+    agent: blind-tester-tacit
+  - id: orch_drive_deep_review.final-gate
+    name: final gate
+    status: pending
+    description: 'Final deep-review gate for the full scheduler.
+
+
+      BLOCK unless:
+
+      - wiring/spec/architecture/black-box audits are acceptable
+
+      - the real OpenCode acceptance phase is green
+
+      - the concrete real-runner matrix classes remain explicitly satisfied: linear
+      DAG auto-drain; multi-phase auto-drain; parallel ready frontier; bounded parallelism;
+      real worktree+merge; long-running parallel branches; runtime failure -> resolver
+      -> continue; merge conflict -> resolver -> continue|operator boundary; review
+      needs_replan -> planner mutation -> continue; drive resume; drive recover; pause/unpause/stop
+      under parallel child runs; phase/plan auto-close'
+    verification: Final gate opens only with explicit green real OpenCode acceptance
+      evidence plus acceptable deep-review findings. Mock/shim-only evidence is non-authoritative
+      and cannot pass.
+    agent: gate-reviewer-tacit

@@ -81856,6 +81856,8 @@ phases:
       - Highest-risk failure path exercised:
 
       '
+    depends_on:
+    - orch_drive_state_store.run-store-drive-records
     agent: python-senior-tacit
 - id: orch_drive_control
   name: Orchestration Drive Control Decisions

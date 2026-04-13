@@ -82343,6 +82343,8 @@ phases:
     - docs/RFC-orch-drive.md
     - docs/ORCHESTRATION-PLANE-INTERFACES.md
     - docs/ORCHESTRATION-PLANE-IMPLEMENTATION-DESIGN.md
+    depends_on:
+    - orch_drive_barriers.resolver-loop-integration
     agent: python-senior-tacit
   - id: orch_drive_barriers.verify-barrier-loops
     name: verify barrier loops

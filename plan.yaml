@@ -82867,6 +82867,8 @@ phases:
     - docs/ORCHESTRATION-PLANE-INTERFACES.md
     - docs/ORCHESTRATION-PLANE-RESOLUTION-CONTRACT.md
     - docs/ORCHESTRATION-PLANE-CLI-CONFIG-OBSERVABILITY-DESIGN.md
+    depends_on:
+    - orch_drive_deep_review.wiring-audit
     agent: spec-verifier-tacit
   - id: orch_drive_deep_review.architecture-review
     name: architecture review

@@ -81657,7 +81657,7 @@ phases:
       - Any deviation record: none.'
   - id: orch_drive_contracts.driver-surface-lock
     name: Lock driver, control, runtime, review-gate, and drive CLI entrypoint contracts
-    status: claimed
+    status: done
     description: 'Contract step.
 
 
@@ -81706,6 +81706,46 @@ phases:
     agent: python-senior-tacit
     claimed_by: python-senior-tacit
     claimed_at: '2026-04-13T20:15:54.576609+00:00'
+    done_at: '2026-04-13T20:41:45.707539+00:00'
+    evidence: '## refs Read Confirmation
+
+      - tools/vectl/README.md — NOT READ: file not found at expected path; authoritative
+      docs used.
+
+      - docs/RFC-orch-drive.md — Sections 7, 8, 9, 10, 12, 13, 17 used to lock command
+      model, data model, decision model, loop semantics, resolver/planner contracts,
+      closure rules.
+
+      - docs/ORCHESTRATION-PLANE-INTERFACES.md — Sections 3 and 4 used to lock shared
+      types and component protocols.
+
+      - docs/ORCHESTRATION-PLANE-ARCHITECTURE.md — Sections 2 and 5 used for ownership
+      boundaries.
+
+      - src/vectl/orchestration/contracts.py / control.py / runtime.py / orch_app.py
+      / cli.py — inspected to align signatures.
+
+
+      ## Contract Lock Evidence
+
+      - Interfaces/signatures locked: DriveDriver protocol; DriveStartResult/DriveLoopResult/DriveResumeResult/DriveRecoverResult/DriveStatusResult;
+      ReviewGate protocol/result; Control protocol evaluate/apply_resolution/apply_planner_result
+      drive-aware signatures; OrchestrationApp drive entrypoint method signatures;
+      CLI drive command signatures/selectors.
+
+      - CLI commands/selectors pinned: `vectl orch drive`, `drive-status`, `drive-resume`,
+      `drive-recover` with documented selector flags.
+
+      - Files changed: src/vectl/orchestration/driver.py (new); src/vectl/orchestration/review_gate.py
+      (new); src/vectl/orchestration/control.py; src/vectl/orch_app.py; src/vectl/cli.py.
+
+      - Proof no loop/runtime logic landed beyond placeholders: drive entrypoints
+      are NotImplementedError stubs or protocol ellipsis bodies only; no scheduler/runtime
+      loop bodies introduced.
+
+      - Verification: orchestration unit suite passed (reported 854 tests).
+
+      - Any deviation record: none.'
   - id: orch_drive_contracts.contract-conformance
     name: Verify contract lock against READY orchestration docs
     status: pending

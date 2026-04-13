@@ -81707,6 +81707,19 @@ phases:
     depends_on:
     - orch_drive_contracts.driver-surface-lock
     agent: spec-verifier-tacit
+  - id: orch_drive_contracts.gate
+    name: Gate contracts phase
+    status: pending
+    description: Gate review for orch_drive_contracts. Open only if the full scheduler
+      contract surface is locked cleanly and implementation phases can proceed without
+      re-deriving public semantics from raw code.
+    verification: All contract steps complete; conformance report is acceptable; no
+      unresolved authority conflict remains for drive/session scheduling interfaces.
+    depends_on:
+    - orch_drive_contracts.drive-types-lock
+    - orch_drive_contracts.driver-surface-lock
+    - orch_drive_contracts.contract-conformance
+    agent: gate-reviewer-tacit
 - id: orch_drive_state_store
   name: Orchestration Drive Persistence & Store
   status: locked

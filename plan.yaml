@@ -82527,7 +82527,7 @@ phases:
       - tools/vectl/README.md — NOT READ: file absent at specified path.'
   - id: orch_drive_runtime.worktree-merge-reconcile-mechanics
     name: worktree merge reconcile mechanics
-    status: claimed
+    status: done
     description: 'Implementation step.
 
 
@@ -82561,6 +82561,65 @@ phases:
     agent: python-senior-tacit
     claimed_by: python-senior-tacit
     claimed_at: '2026-04-14T05:31:33.237465+00:00'
+    done_at: '2026-04-14T05:51:55.244827+00:00'
+    evidence: "## Implementation Summary\n\nFilled in worktree merge/reconcile mechanics\
+      \ for child runs with truthful artifact preservation on failure/merge conflict.\n\
+      \n### Files Modified\n\n1. **`src/vectl/orchestration/runtime.py`** (+163 lines)\n\
+      \   - `begin_reconcile_child_run(execution_id)` — Wraps `begin_reconcile()`\
+      \ with child-run-aware `ReconcileRecoveryState` construction. On `merge_conflict`/`aborted`,\
+      \ enriches `artifact_refs` with worktree binding context (`worktree_path`, `scratch_branch`,\
+      \ `target_ref`) for resolver investigation per ORCHESTRATION-PLANE-RUNTIME-WORKTREE-LIFECYCLE.md\
+      \ §12.5. Derives `protected_path_policy` from reconcile result's `protected_paths_restored:`\
+      \ prefix in `artifact_refs`.\n   - `cleanup_child_run(workspace, force)` — Delegates\
+      \ to `cleanup()` which enforces the full lifecycle barrier: blocks while execution\
+      \ active, blocks when reconcile uncaptured, blocks on unresolved `merge_conflict`/`aborted`.\
+      \ No silent evidence destruction.\n   - Added imports for `ReconcileClosureStatus`,\
+      \ `ReconcileRecoveryState`, `build_reconcile_recovery_state` from `continuity_artifacts`.\n\
+      \n2. **`src/vectl/orchestration/continuity_artifacts.py`** (+62 lines)\n   -\
+      \ `build_reconcile_recovery_state()` — Bridge function creating `ReconcileRecoveryState`\
+      \ from runtime reconcile data. Preserves conflict files, protected path policy,\
+      \ target ref metadata truthfully. Enforces that `merge_conflict` and `aborted`\
+      \ statuses carry sufficient evidence for recovery re-entry per ORCHESTRATION-PLANE-OPERATOR-CONFLICT-RECOVERY.md\
+      \ §5, §6.2.\n   - Added `build_reconcile_recovery_state` to `__all__`.\n\n3.\
+      \ **`tests/orchestration/test_runtime_reconcile_mechanics.py`** (new, 647 lines,\
+      \ 20 tests)\n   - `TestBeginReconcileChildRunMainPath` (3 tests): noop reconcile\
+      \ produces result+recovery state, merged reconcile produces result+recovery\
+      \ state, ChildRunRef queryable after reconcile\n   - `TestBeginReconcileChildRunFailurePreservation`\
+      \ (4 tests): merge_conflict preserves conflict files, no false success on can_complete,\
+      \ worktree binding evidence preserved in artifact_refs for resolver, aborted\
+      \ status preserves error evidence\n   - `TestCleanupChildRunLifecycleBarriers`\
+      \ (5 tests): blocked while execution active, blocked when reconcile uncaptured,\
+      \ blocked on merge_conflict, forced cleanup succeeds, successful reconcile allows\
+      \ cleanup\n   - `TestBuildReconcileRecoveryState` (6 tests): merged has no conflicts,\
+      \ noop has no conflicts, merge_conflict preserves truthful evidence, aborted\
+      \ preserves error summary, protected path policy restored_with_evidence, artifact_refs\
+      \ non-empty on merge_conflict\n   - `TestReconcileRecoveryStateTypes` (2 tests):\
+      \ closure status superset compatibility, frozen immutability\n\n### Verification\n\
+      \n```\nRun: .venv/bin/python -m pytest tests/orchestration/test_runtime_reconcile_mechanics.py\
+      \ -v -> 20 passed in 6.97s\nRun: .venv/bin/python -m pytest tests/orchestration/test_runtime_parallel_child_run.py\
+      \ tests/orchestration/unit/test_runtime_lifecycle.py tests/orchestration/unit/test_runtime.py\
+      \ -v -> 57 passed in 19.81s\nRun: .venv/bin/python -m pytest tests/orchestration/\
+      \ -x --tb=short -> 1146 passed in 38.26s\n```\n\n### Spec Links\n\n- RFC-orch-drive.md\
+      \ §10.2 (capacity model), §11.3 (reconcile ownership), §11.4 (batch dispatch\
+      \ runtime integration)\n- ORCHESTRATION-PLANE-RUNTIME-WORKTREE-LIFECYCLE.md\
+      \ §9 (reconcile model), §12 (conflict handling), §13 (cleanup rules)\n- ORCHESTRATION-PLANE-OPERATOR-CONFLICT-RECOVERY.md\
+      \ §5, §6.2 (artifact preservation on failure)\n- ORCHESTRATION-PLANE-INTERFACES.md\
+      \ §4.3 (runtime interface)\n\n### Refs Read Confirmation\n\n- docs/RFC-orch-drive.md\
+      \ — sections 10.2, 11.3, 11.4 READ\n- docs/ORCHESTRATION-PLANE-INTERFACES.md\
+      \ — section 4.3 READ\n- docs/ORCHESTRATION-PLANE-CLI-CONFIG-OBSERVABILITY-DESIGN.md\
+      \ — sections 7.4, 7.5 READ\n- docs/ORCHESTRATION-PLANE-RUNTIME-WORKTREE-LIFECYCLE.md\
+      \ — sections 5-6, 9, 12-13, 17-18 READ\n- src/vectl/orchestration/runtime.py\
+      \ — full file READ (1981 lines)\n- src/vectl/orchestration/recovery.py — full\
+      \ file READ (801 lines)\n- src/vectl/orchestration/continuity_artifacts.py —\
+      \ full file READ (599 lines)\n- src/vectl/orchestration/contracts.py — relevant\
+      \ sections READ\n\n### NOT Done\n\n- No changes to `recovery.py` — the bridge\
+      \ from runtime reconcile state to full `RecoveryReport` is a separate concern\
+      \ for the recovery_cutover implementation phase.\n- No changes to `runtime.py`'s\
+      \ existing `begin_reconcile()` method behavior — only added the child-run-aware\
+      \ wrapper.\n- No CLI surface changes — the drive commands (`orch drive`, `orch\
+      \ drive-status`, etc.) are separate concerns for the driver implementation step.\n\
+      - No durable persistence of `ReconcileRecoveryState` to disk — the `ArtifactWriter`\
+      \ protocol is deferred per the existing GAP comment in continuity_artifacts.py."
   - id: orch_drive_runtime.verify-runtime-parallel-child-runs
     name: verify runtime parallel child runs
     status: pending

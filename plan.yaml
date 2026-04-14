@@ -83270,7 +83270,7 @@ phases:
       specs were silently narrowed.'
   - id: orch_drive_driver.reverify-driver-loop-remediation
     name: Re-verify driver loop remediation
-    status: pending
+    status: claimed
     description: 'Independently re-run the failed acceptance points from `orch_drive_driver.verify-driver-loop`
       after `orch_drive_driver.fix-driver-loop-blockers` lands.
 
@@ -83381,6 +83381,8 @@ phases:
     depends_on:
     - orch_drive_driver.fix-driver-loop-blockers
     agent: integration-verifier-tacit
+    claimed_by: integration-verifier-tacit
+    claimed_at: '2026-04-14T11:38:55.250342+00:00'
 - id: orch_drive_barriers
   name: Orchestration Drive Review / Resolver / Planner Barriers
   status: locked

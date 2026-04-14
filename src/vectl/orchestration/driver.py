@@ -17,12 +17,11 @@ from __future__ import annotations
 
 import time
 import uuid
-from dataclasses import dataclass, field
-from typing import TYPE_CHECKING, Literal, Protocol
+from dataclasses import dataclass
+from typing import TYPE_CHECKING, Protocol
 
 from vectl.orchestration.contracts import (
     BarrierReason,
-    ChildRunRef,
     ControlDecision,
     CoreSnapshot,
     DriveBarrier,
@@ -30,9 +29,6 @@ from vectl.orchestration.contracts import (
     DriveStatus,
     PlannerMutationBundle,
     PlannerRequest,
-    RecoveryAttempt,
-    RecoveryContinuity,
-    ReconcileResult,
     ResolutionCase,
     ResolutionCaseSource,
     ResolutionReport,
@@ -41,18 +37,11 @@ from vectl.orchestration.contracts import (
 )
 
 if TYPE_CHECKING:
-    from vectl.orchestration.control import Control, PlanAwareControl
-    from vectl.orchestration.core_adapter import CoreAdapter
+    from vectl.orchestration.control import PlanAwareControl
+    from vectl.orchestration.core_adapter import CoreAdapter, PlannerMutationApplier
     from vectl.orchestration.resolver import Resolver
     from vectl.orchestration.review_gate import ReviewGate
-    from vectl.orchestration.roster import Roster
     from vectl.orchestration.run_store import DriveStore
-    from vectl.orchestration.runtime import Runtime
-
-# Runtime imports needed for resolver-loop integration
-from vectl.orchestration.contracts import ResolutionCase, ResolutionCaseSource
-from vectl.orchestration.resolver import Resolver as ResolverType
-from vectl.orchestration.review_gate import ReviewGate as ReviewGateType
 
 
 # ---------------------------------------------------------------------
@@ -671,6 +660,112 @@ def _update_drive_record(
 
 
 # ---------------------------------------------------------------------
+# Planner-loop helper functions
+# ---------------------------------------------------------------------
+
+
+def _construct_bundle_from_request(
+    planner_request: PlannerRequest,
+) -> PlannerMutationBundle:
+    """Construct a PlannerMutationBundle from a planner request for barrier entry.
+
+    Authority: RFC-orch-drive.md section 13.2, 13.3
+
+    When the planner loop is triggered by a control decision with kind='replan',
+    the driver must enter the replan barrier. The bundle is synthesized from
+    the planner_request to establish the barrier context.
+
+    In a full integration with a planner child run, this bundle would come
+    from the planner child run output. For the single-pass integration, the
+    driver uses the planner_request to construct a placeholder bundle that
+    records the replan intent and affected steps.
+
+    Args:
+        planner_request: The planner request from the control decision.
+
+    Returns:
+        A PlannerMutationBundle capturing the replan intent.
+    """
+    return PlannerMutationBundle(
+        status="applyable",
+        summary=f"Planner request: {planner_request.reason}",
+        mutations=(),
+        affected_steps=planner_request.affected_steps,
+        evidence_refs=planner_request.evidence_refs,
+        safety_notes=planner_request.constraints,
+    )
+
+
+def _apply_planner_bundle_to_drive(
+    record: DriveRecord,
+    barrier: DriveBarrier,
+    bundle: PlannerMutationBundle,
+    post_decision: ControlDecision,
+    invalidated_lease_count: int = 0,
+) -> tuple[DriveStatus, DriveBarrier | None, str]:
+    """Resolve a PlannerMutationBundle into drive status transition.
+
+    Authority: RFC-orch-drive.md section 13.5
+    Authority: ORCHESTRATION-PLANE-INTERFACES.md section 4.1 (apply_planner_result)
+
+    Implements the planner continuation rules:
+        - ``applyable``: clear barrier → running (re-evaluate from refreshed state)
+        - ``operator_required``: transition to blocked_operator
+        - ``halt``: transition to halted
+
+    Args:
+        record: Current drive record (before bundle application).
+        barrier: Current barrier state.
+        bundle: Planner mutation bundle that was applied.
+        post_decision: Control decision after applying the bundle.
+        invalidated_lease_count: Number of leases that were invalidated.
+
+    Returns:
+        Tuple of (new_status, new_barrier, summary).
+    """
+    lease_note = (
+        f" ({invalidated_lease_count} leases invalidated)" if invalidated_lease_count > 0 else ""
+    )
+
+    if bundle.status == "applyable":
+        # Authority: RFC-orch-drive.md section 13.5
+        # "valid applyable bundle: apply, refresh, reopen scheduling"
+        new_status: DriveStatus = "running"
+        try:
+            validate_drive_transition(record.status, new_status)
+        except InvalidDriveTransitionError:
+            new_status = record.status
+        summary = f"planner mutations applied; barrier cleared{lease_note}"
+        if post_decision.kind == "dispatch_batch":
+            summary += f"; next: dispatch_batch steps={post_decision.step_ids}"
+        elif post_decision.kind == "wait":
+            summary += f"; next: wait ({post_decision.reason})"
+        elif post_decision.kind == "done":
+            summary += "; next: done"
+        return new_status, None, summary
+
+    if bundle.status == "operator_required":
+        # Authority: RFC-orch-drive.md section 13.5
+        new_status = "blocked_operator"
+        try:
+            validate_drive_transition(record.status, new_status)
+        except InvalidDriveTransitionError:
+            new_status = record.status
+        summary = f"planner requires operator intervention: {bundle.summary}"
+        return new_status, barrier, summary
+
+    # bundle.status == "halt"
+    # Authority: RFC-orch-drive.md section 13.5, 10.3
+    new_status = "halted"
+    try:
+        validate_drive_transition(record.status, new_status)
+    except InvalidDriveTransitionError:
+        new_status = record.status
+    summary = f"planner halted: {bundle.summary}"
+    return new_status, barrier, summary
+
+
+# ---------------------------------------------------------------------
 # Concrete Drive Driver
 # ---------------------------------------------------------------------
 
@@ -713,6 +808,7 @@ class ConcreteDriveDriver:
         control: PlanAwareControl,
         resolver: Resolver | None = None,
         review_gate: ReviewGate | None = None,
+        planner_mutation_applier: PlannerMutationApplier | None = None,
         max_parallelism: int = 4,
     ) -> None:
         self._drive_store = drive_store
@@ -720,6 +816,7 @@ class ConcreteDriveDriver:
         self._control = control
         self._resolver = resolver
         self._review_gate = review_gate
+        self._planner_mutation_applier = planner_mutation_applier
         self._max_parallelism = max(1, min(32, max_parallelism))
 
     # ------------------------------------------------------------------
@@ -869,6 +966,19 @@ class ConcreteDriveDriver:
         # Authority: ORCHESTRATION-PLANE-RESOLUTION-CONTRACT.md sections 2, 5, 6
         if decision.kind == "resolve" and self._resolver is not None:
             return self._handle_resolve_decision(
+                drive_id=drive_id,
+                record=record,
+                core=core,
+                roster=roster_snap,
+                runtime=runtime_snap,
+                decision=decision,
+            )
+
+        # --- Planner-loop integration ---
+        # Authority: RFC-orch-drive.md section 13, 5.6
+        # Authority: ORCHESTRATION-PLANE-INTERFACES.md section 4.1 (apply_planner_result)
+        if decision.kind == "replan" and self._planner_mutation_applier is not None:
+            return self._handle_replan_decision(
                 drive_id=drive_id,
                 record=record,
                 core=core,
@@ -1125,6 +1235,196 @@ class ConcreteDriveDriver:
             new_status = record.status
         summary = f"replan: {decision.reason} (barrier entered)"
         return new_status, barrier, summary
+
+    # ------------------------------------------------------------------
+    # Planner-loop integration
+    # ------------------------------------------------------------------
+
+    def _handle_replan_decision(
+        self,
+        drive_id: str,
+        record: DriveRecord,
+        core: CoreSnapshot,
+        roster: RosterSnapshot,
+        runtime: RuntimeSnapshot,
+        decision: ControlDecision,
+    ) -> DriveLoopResult:
+        """Handle a replan decision by entering barrier, applying planner mutations.
+
+        Authority: RFC-orch-drive.md section 13, 5.6
+        Authority: ORCHESTRATION-PLANE-INTERFACES.md section 4.1 (apply_planner_result)
+
+        This method implements the planner continuation loop:
+          1. Enter replan barrier (running → replanning) if not already in barrier
+          2. Construct a PlannerMutationBundle from the planner_request
+          3. Apply the bundle through vectl facade only
+          4. Invalidate superseded unstarted leases
+          5. Refresh authoritative state (mandatory after mutation)
+          6. Apply the bundle result through control.apply_planner_result()
+          7. Transition drive status per continuation rules
+          8. Persist updated drive state
+
+        The planner NEVER edits plan.yaml directly. All mutations flow
+        through the approved vectl facade surface.
+
+        Args:
+            drive_id: Drive identifier.
+            record: Current drive record.
+            core: Core snapshot at barrier entry.
+            roster: Roster snapshot at barrier entry.
+            runtime: Runtime snapshot at barrier entry.
+            decision: ControlDecision with kind='replan'.
+
+        Returns:
+            ``DriveLoopResult`` reflecting the post-planner drive state.
+        """
+        assert self._planner_mutation_applier is not None  # guarded by caller
+
+        # Step 1: Enter replan barrier if not already in one.
+        now = time.time()
+        if record.barrier is None or record.barrier.reason != "planner_needed":
+            barrier = DriveBarrier(
+                reason="planner_needed",
+                entered_at=now,
+                case_ids=decision.case_ids,
+                pending_resolver_run_id=None,
+                pending_planner_run_id=None,
+                active_child_run_ids_at_entry=record.active_child_run_ids,
+            )
+            validate_drive_transition(record.status, "replanning")
+            replanning_record = _update_drive_record(
+                record=record,
+                new_status="replanning",
+                barrier=barrier,
+                summary="entering replan barrier",
+            )
+        else:
+            barrier = record.barrier
+            replanning_record = record
+
+        # Step 2: Construct PlannerMutationBundle from the planner_request.
+        # Authority: RFC-orch-drive.md section 13.2, 13.3
+        planner_request = decision.planner_request
+        assert planner_request is not None  # replan invariant: planner_request present
+
+        bundle = _construct_bundle_from_request(planner_request)
+
+        # Step 3: Apply the bundle through vectl facade only.
+        # Authority: RFC-orch-drive.md section 13.4
+        # "Direct plan.yaml edits remain forbidden."
+        apply_result = self._planner_mutation_applier.apply_bundle(bundle)
+
+        if apply_result.failed_count > 0:
+            # Authority: RFC-orch-drive.md section 13.5
+            # "ordinary facade apply failure enters blocked_operator"
+            failed_desc = "; ".join(apply_result.failed_actions)
+            new_status: DriveStatus = "blocked_operator"
+            summary = (
+                f"planner apply failed: {apply_result.failed_count}/{len(bundle.mutations)} "
+                f"mutations failed: {failed_desc}"
+            )
+            updated = _update_drive_record(
+                record=replanning_record,
+                new_status=new_status,
+                barrier=barrier,
+                summary=summary,
+            )
+            self._drive_store.save_drive(updated)
+            return DriveLoopResult(
+                drive_id=drive_id,
+                status=new_status,
+                completed_steps=(),
+                active_child_run_ids=record.active_child_run_ids,
+                barrier=barrier,
+                summary=summary,
+            )
+
+        # Step 4: Invalidate superseded unstarted leases.
+        # Authority: RFC-orch-drive.md section 14.4
+        invalidated_ids = self._invalidate_superseded_leases(
+            drive_id=drive_id,
+            affected_step_ids=apply_result.affected_step_ids,
+        )
+
+        # Step 5: Refresh authoritative state (mandatory).
+        refreshed_core = self._core_adapter.snapshot(agent=replanning_record.agent or "default")
+        refreshed_roster = self._control.sources.roster.snapshot()
+        refreshed_runtime = self._control.sources.runtime.snapshot()
+
+        # Step 6: Apply planner result through control.
+        post_decision = self._control.apply_planner_result(
+            bundle=bundle,
+            core=refreshed_core,
+            roster=refreshed_roster,
+            runtime=refreshed_runtime,
+            drive=replanning_record,
+            barrier=barrier,
+        )
+
+        # Step 7: Transition drive status per continuation rules.
+        new_status, resolved_barrier, summary = _apply_planner_bundle_to_drive(
+            record=replanning_record,
+            barrier=barrier,
+            bundle=bundle,
+            post_decision=post_decision,
+            invalidated_lease_count=len(invalidated_ids),
+        )
+
+        updated = _update_drive_record(
+            record=replanning_record,
+            new_status=new_status,
+            barrier=resolved_barrier,
+            summary=summary,
+        )
+        self._drive_store.save_drive(updated)
+
+        return DriveLoopResult(
+            drive_id=drive_id,
+            status=new_status,
+            completed_steps=(),
+            active_child_run_ids=record.active_child_run_ids,
+            barrier=resolved_barrier,
+            summary=summary,
+        )
+
+    def _invalidate_superseded_leases(
+        self,
+        drive_id: str,
+        affected_step_ids: tuple[str, ...],
+    ) -> tuple[str, ...]:
+        """Invalidate leases for steps superseded by planner mutations.
+
+        Authority: RFC-orch-drive.md section 14.4
+        Authority: ORCHESTRATION-PLANE-INTERFACES.md section 5 (ownership matrix)
+
+        When a planner mutation adds, removes, or edits steps, any existing
+        active leases for affected steps that have not yet started (i.e. the
+        child run is still pending) must be invalidated. This prevents the
+        scheduler from dispatching work against a stale frontier.
+
+        Only pending (unstarted) leases are invalidated; leases for running
+        child runs are not touched (they are already in-flight).
+
+        Args:
+            drive_id: The drive whose leases to check.
+            affected_step_ids: Step IDs affected by planner mutations.
+
+        Returns:
+            Tuple of invalidated lease run IDs.
+        """
+        if not affected_step_ids:
+            return ()
+
+        invalidated: list[str] = []
+        for step_id in affected_step_ids:
+            released = self._drive_store.invalidate_leases_for_step(
+                drive_id=drive_id,
+                step_id=step_id,
+                reason="superseded",
+            )
+            invalidated.extend(lease.run_id for lease in released)
+
+        return tuple(invalidated)
 
     # ------------------------------------------------------------------
     # resume_drive

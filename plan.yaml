@@ -82349,7 +82349,7 @@ phases:
       - docs/ORCHESTRATION-PLANE-INTERFACES.md (ControlDecision/Control protocol semantics)'
   - id: orch_drive_control.gate-control-phase
     name: gate control phase
-    status: pending
+    status: claimed
     description: Gate review for orch_drive_control. Open only if control authority
       is widened cleanly enough that runtime and driver work can compose against the
       expanded scheduler contract.
@@ -82360,6 +82360,8 @@ phases:
     - orch_drive_control.same-plan-admission-rewrite
     - orch_drive_control.verify-control-decisions
     agent: gate-reviewer-tacit
+    claimed_by: gate-reviewer-tacit
+    claimed_at: '2026-04-14T03:38:23.226220+00:00'
 - id: orch_drive_runtime
   name: Orchestration Drive Runtime Parallel Child Runs
   status: locked

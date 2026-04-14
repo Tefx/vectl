@@ -82877,7 +82877,7 @@ phases:
       \ loop iterations\n- CLI surface for drive commands (out of scope)"
   - id: orch_drive_driver.phase-and-plan-auto-close
     name: phase and plan auto close
-    status: claimed
+    status: done
     description: 'Implementation step.
 
 
@@ -82910,6 +82910,54 @@ phases:
     agent: python-senior-tacit
     claimed_by: python-senior-tacit
     claimed_at: '2026-04-14T10:04:39.151256+00:00'
+    done_at: '2026-04-14T10:44:09.996636+00:00'
+    evidence: "## Evidence: Phase and Plan Auto-Close Implementation\n\n### What was\
+      \ done\nImplemented auto-close flow for phase and plan closure per RFC-orch-drive.md\
+      \ sections 17.2, 17.3.\n\n### Implementation Details\n\n1. **CoreAdapter protocol**\
+      \ (`src/vectl/orchestration/core_adapter.py`):\n   - Added `closeable_phase_ids()\
+      \ -> tuple[str, ...]`: Returns phase IDs where all steps are terminal and all\
+      \ dependency phases are complete.\n   - Added `complete_phase(phase_id, evidence)\
+      \ -> tuple[str, ...]`: Executes phase completion through the official vectl\
+      \ lifecycle surface.\n\n2. **PlanCoreAdapter** (`src/vectl/orchestration/core_adapter.py`):\n\
+      \   - `closeable_phase_ids()`: Scans plan phases, checking PhaseStatus (not\
+      \ DONE), dependency phases (all DONE), and step statuses (all DONE/SKIPPED).\n\
+      \   - `complete_phase()`: Delegates to `core.complete_phase()` with plan file\
+      \ CAS write.\n\n3. **DriveDriverImpl._auto_close_phases** (`src/vectl/orchestration/driver.py`):\n\
+      \   - Replaced no-op placeholder with full iterative close logic.\n   - Iterates:\
+      \ query closeable phases → complete each → track completed IDs → re-query for\
+      \ cascading unlocks → stop when no more phases can be closed.\n   - Tracks already-completed\
+      \ phase IDs via `closed_phase_ids: set[str]` to prevent re-attempts.\n   - Bounded\
+      \ to max 100 iterations to prevent infinite loops.\n   - Silently skips phases\
+      \ where `complete_phase()` raises (concurrent mutation protection).\n   - Evidence\
+      \ strings include drive_id for audit trail.\n\n### Test Coverage (19 new tests\
+      \ in `tests/orchestration/test_drive_autoclose.py`)\n\n**TestPhaseAutoClose**\
+      \ (6 tests):\n- Auto-close single phase\n- Auto-close multiple phases\n- Cascade\
+      \ unlock (alpha completes → beta unlocks)\n- No closeable phases = no-op\n-\
+      \ complete_phase failure doesn't crash the drive\n- Evidence includes drive_id\n\
+      \n**TestPlanClosure** (4 tests):\n- plan_complete=True + no active children\
+      \ → drive completed\n- plan_complete=False → stays running\n- plan_complete=True\
+      \ + active children → stays running\n- plan_complete=True + active barrier →\
+      \ not completed\n\n**TestAutoCloseDoesNotBypassGates** (6 tests):\n- review\
+      \ gate needs_fix → prevents completion\n- review gate needs_replan → prevents\
+      \ completion\n- review gate operator_required → prevents completion\n- reconcile\
+      \ merge_conflict → prevents completion\n- Full gate chain (reconcile=merged,\
+      \ review=pass) → allows completion\n- Auto-close only after all gates (structural\
+      \ correctness)\n\n**TestAutoCloseIteration** (3 tests):\n- Iterates until stable\
+      \ (cascade unlock)\n- Stops on no-progress (all complete_phase calls fail)\n\
+      - Bounded iterations (100 max)\n\n### Verification Commands & Output\n```\n\
+      $ uv run pytest tests/orchestration/test_drive_autoclose.py -v\n19 passed in\
+      \ 0.31s\n\n$ uv run pytest tests/orchestration/test_driver_loop.py -q\n42 passed\
+      \ in 0.60s\n\n$ uv run pytest tests/orchestration/ -q --ignore=tests/orchestration/test_persistence.py\n\
+      1207 passed in 97.47s\n```\n\n### Commit\nBranch: vectl/step-orch_drive_driver.driver-loop-core\n\
+      Commit: feat(orchestration): implement phase and plan auto-close\nFiles: 4 changed,\
+      \ 1087 insertions(+), 8 deletions(-)\n  - src/vectl/orchestration/core_adapter.py\
+      \ (+73 lines)\n  - src/vectl/orchestration/driver.py (+36 lines, replaced no-op)\n\
+      \  - tests/orchestration/test_driver_loop.py (+12 lines, updated _FakeCoreAdapter)\n\
+      \  - tests/orchestration/test_drive_autoclose.py (+966 lines, new file)\n\n\
+      ### NOT Done\n- Real PlanCoreAdapter integration test with actual plan.yaml\
+      \ file (out of scope — persistence step separate)\n- Auto-close CLI surface\
+      \ integration (out of scope — surfaces step separate)\n- Operator-blocked drive\
+      \ auto-close re-attempt logic (deferred to recovery step)"
   - id: orch_drive_driver.verify-driver-loop
     name: verify driver loop
     status: pending

@@ -88,6 +88,7 @@ from vectl.orchestration.dispatch_policy import (
     normalize_review_result,
 )
 from vectl.orchestration.driver import (
+    ConcreteDriveDriver,
     DriveAdmissionError,
     DriveLoopResult,
     DriveRecoverResult,
@@ -139,6 +140,7 @@ from vectl.orchestration.resolver_gateway import (
 )
 from vectl.orchestration.run_store import (
     CorruptJSONLError,
+    DriveStore,
     RunRecord,
     RunRegistry,
     RunRegistryInspectionView,
@@ -1810,6 +1812,37 @@ class OrchestrationApp:
     # Authority: docs/RFC-orch-drive.md sections 7, 10, 14, 15
     # -----------------------------------------------------------------
 
+    def _drive_store(self) -> DriveStore:
+        """Return a DriveStore rooted at the configured run store root.
+
+        Authority: docs/RFC-orch-drive.md section 8.1
+
+        The drive store shares the same root directory as the run registry
+        for co-located persistence.
+        """
+        config = self._effective_orchestration_config()
+        root = self._config.run_store_root or config.runtime.artifact_root
+        return DriveStore(store_root=Path(root) / "drives")
+
+    def _drive_driver(self) -> ConcreteDriveDriver:
+        """Return a ConcreteDriveDriver wired with the app's components.
+
+        Authority: docs/RFC-orch-drive.md sections 7, 10, 14, 15
+
+        The driver composes the drive store, core adapter, and control
+        to implement the four drive-surface entry points.
+        """
+        from vectl.orchestration.control import PlanAwareControl
+
+        if not isinstance(self._control, PlanAwareControl):
+            raise TypeError(f"drive requires PlanAwareControl; got {type(self._control).__name__}")
+        return ConcreteDriveDriver(
+            drive_store=self._drive_store(),
+            core_adapter=self._core_adapter,
+            control=self._control,
+            max_parallelism=4,
+        )
+
     def start_drive(
         self,
         *,
@@ -1831,10 +1864,15 @@ class OrchestrationApp:
             DriveStartResult with the drive identifier and initial state.
 
         Raises:
-            DriveAdmissionError: If an active drive already exists for this plan.
-            MaxParallelismError: If max_parallelism is outside [1, 32].
+            DriveAdmissionError: If an active drive exists for this plan.
+            MaxParallelismError: If ``max_parallelism`` is outside [1, 32].
         """
-        raise NotImplementedError("start_drive: drive orchestration loop not yet implemented")
+        plan_path = str(self._config.plan_path.resolve())
+        return self._drive_driver().start_drive(
+            plan_path=plan_path,
+            agent=agent or self._config.default_agent,
+            max_parallelism=max_parallelism,
+        )
 
     def run_drive_loop(self, drive_id: str) -> DriveLoopResult:
         """Execute one drive scheduling loop pass.
@@ -1847,7 +1885,7 @@ class OrchestrationApp:
         Returns:
             DriveLoopResult capturing the terminal or paused state.
         """
-        raise NotImplementedError("run_drive_loop: drive orchestration loop not yet implemented")
+        return self._drive_driver().run_drive_loop(drive_id)
 
     def resume_drive(self, drive_id: str) -> DriveResumeResult:
         """Resume an interrupted drive session.
@@ -1860,12 +1898,12 @@ class OrchestrationApp:
         Returns:
             DriveResumeResult with restored state.
         """
-        raise NotImplementedError("resume_drive: drive resume not yet implemented")
+        return self._drive_driver().resume_drive(drive_id)
 
     def recover_drive(self, drive_id: str, *, dry_run: bool = False) -> DriveRecoverResult:
         """Recover a drive from interrupted state.
 
-        Authority: docs/RFC-orch-drive.md section 15.2
+        Authority: docs/RFC-orch-drive.md section 15.2, 15.3
 
         Args:
             drive_id: The drive to recover.
@@ -1874,7 +1912,7 @@ class OrchestrationApp:
         Returns:
             DriveRecoverResult with recovery outcomes.
         """
-        raise NotImplementedError("recover_drive: drive recovery not yet implemented")
+        return self._drive_driver().recover_drive(drive_id, dry_run=dry_run)
 
     def drive_status(self, drive_id: str) -> DriveStatusResult:
         """Inspect current drive status.
@@ -1887,7 +1925,22 @@ class OrchestrationApp:
         Returns:
             DriveStatusResult with current drive state.
         """
-        raise NotImplementedError("drive_status: drive inspection not yet implemented")
+        store = self._drive_store()
+        record = store.load_drive(drive_id)
+        if record is None:
+            return DriveStatusResult(
+                drive_id=drive_id,
+                status="halted",
+                summary=f"drive {drive_id} not found",
+            )
+        return DriveStatusResult(
+            drive_id=record.drive_id,
+            status=record.status,
+            active_child_run_ids=record.active_child_run_ids,
+            frontier_step_ids=record.frontier_step_ids,
+            barrier=record.barrier,
+            summary=record.summary,
+        )
 
     def run(
         self,

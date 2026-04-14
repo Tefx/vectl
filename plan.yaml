@@ -82804,7 +82804,7 @@ phases:
       ## No BLOCKING issues. Runtime phase is ready for driver-loop composition.'
 - id: orch_drive_driver
   name: Orchestration Drive Loop
-  status: pending
+  status: in_progress
   gate: Driver session loop composes control/runtime/roster/resolver facts, persists
     barriers/frontier/progress, and auto-closes phases/plans only through authoritative
     surfaces.
@@ -82813,7 +82813,7 @@ phases:
   steps:
   - id: orch_drive_driver.driver-loop-core
     name: driver loop core
-    status: pending
+    status: claimed
     description: 'Implementation step.
 
 
@@ -82843,6 +82843,8 @@ phases:
     - docs/ORCHESTRATION-PLANE-INTERFACES.md
     - docs/ORCHESTRATION-PLANE-IMPLEMENTATION-DESIGN.md
     agent: python-senior-tacit
+    claimed_by: python-senior-tacit
+    claimed_at: '2026-04-14T09:21:39.717405+00:00'
   - id: orch_drive_driver.phase-and-plan-auto-close
     name: phase and plan auto close
     status: pending

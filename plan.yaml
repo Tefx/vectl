@@ -84268,7 +84268,7 @@ phases:
   steps:
   - id: orch_drive_surfaces.cli-drive-lifecycle-surface
     name: cli drive lifecycle surface
-    status: claimed
+    status: done
     description: 'Implementation step.
 
 
@@ -84297,6 +84297,59 @@ phases:
     agent: python-senior-tacit
     claimed_by: python-senior-tacit
     claimed_at: '2026-04-14T19:17:20.130198+00:00'
+    done_at: '2026-04-14T19:37:33.604232+00:00'
+    evidence: 'Artifact:
+
+      - commit on branch `vectl/step-orch_drive_surfaces.cli-drive-lifecycle-surface`:
+      fill drive lifecycle CLI surfaces/selectors/exit-code boundaries.
+
+      - Files: src/vectl/orch_app.py, src/vectl/cli.py, tests/orchestration/unit/test_cli_drive_lifecycle_surface.py
+      (new).
+
+
+      Verification:
+
+      - `uv run pytest tests/orchestration/unit/test_cli_drive_lifecycle_surface.py
+      -v` -> 26 passed.
+
+      - `uv run pytest tests/orchestration/unit/test_orch_app.py tests/orchestration/unit/test_drive_contracts.py
+      tests/orchestration/unit/test_driver_loop_proof.py tests/orchestration/unit/test_run_store_drive.py
+      -v` -> 205 passed.
+
+      - CLI help smoke: `vectl orch drive --help`, `drive-status --help`, `drive-runs
+      --help`, `drive-resume --help`, `drive-recover --help` all exit 0.
+
+
+      Spec link:
+
+      - docs/RFC-orch-drive.md (§7.1, §7.2, §7.4, §7.5)
+
+      - docs/ORCHESTRATION-PLANE-CLI-CONFIG-OBSERVABILITY-DESIGN.md (§6, §7.7)
+
+
+      ## refs Read Confirmation
+
+      - RFC, CLI design, and implementation design docs read with selector/exit-code
+      semantics extracted.
+
+
+      ## CLI Surface Snapshot
+
+      - drive / drive-status / drive-runs / drive-resume / drive-recover help surfaces
+      present and executable.
+
+
+      ## CLI Executability Matrix
+
+      - All listed drive lifecycle commands have handlers, `--help` exits 0, and smoke
+      checks pass.
+
+
+      ## Deviation Records
+
+      - contract_gap: switched status lookup to replay API (`replay_drive_state`)
+      where nonexistent `load_drive` path was implied; aligned with DriveStore API
+      and CLI contract.'
   - id: orch_drive_surfaces.inspection-and-control-surface
     name: inspection and control surface
     status: pending

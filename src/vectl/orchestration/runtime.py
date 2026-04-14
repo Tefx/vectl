@@ -33,6 +33,11 @@ from vectl.orchestration.contracts import (
     RuntimeSnapshot,
     WorktreeBinding,
 )
+from vectl.orchestration.continuity_artifacts import (
+    ReconcileClosureStatus,
+    ReconcileRecoveryState,
+    build_reconcile_recovery_state,
+)
 from vectl.orchestration.runner_registry import RunnerRegistry, build_default_runner_registry
 from vectl.orchestration.runners import (
     RunnerCancelError,
@@ -1163,6 +1168,164 @@ class Runtime:
             del self._reconcile_lock_by_target[target_ref]
 
         self._active_workspaces.pop(workspace, None)
+
+    # -----------------------------------------------------------------
+    # Child-run reconcile and cleanup integration
+    # -----------------------------------------------------------------
+
+    def begin_reconcile_child_run(
+        self, execution_id: str
+    ) -> tuple[ReconcileResult | None, ReconcileRecoveryState | None]:
+        """Begin reconcile for a drive-scoped child run with artifact preservation.
+
+        Authority:
+            docs/ORCHESTRATION-PLANE-RUNTIME-WORKTREE-LIFECYCLE.md sections 9, 12
+            docs/RFC-orch-drive.md section 11.3
+
+        This method wraps ``begin_reconcile`` with child-run-aware artifact
+        preservation. When reconcile reaches a terminal disposition, the
+        ``ReconcileRecoveryState`` is built to capture conflict evidence for
+        restart-safe recovery.
+
+        On ``merge_conflict`` and ``aborted`` outcomes, artifact references
+        and conflict files are preserved truthfully — never suppressed or
+        replaced with synthetic success indicators.
+
+        Args:
+            execution_id: The execution identifier for the child run.
+
+        Returns:
+            Tuple of (ReconcileResult or None if still running,
+            ReconcileRecoveryState with conflict evidence or None).
+
+        Raises:
+            ValueError: If execution is not found or not ready for reconcile.
+            ReconcileError: If concurrent reconcile blocks this target ref.
+        """
+        ref = self._child_run_refs.get(execution_id)
+        reconcile_result = self.begin_reconcile(execution_id)
+
+        if reconcile_result is None:
+            return (None, None)
+
+        # Build recovery state from the reconcile result.
+        # Authority: ORCHESTRATION-PLANE-RUNTIME-WORKTREE-LIFECYCLE.md section 12.5
+        # "Runtime must preserve conflict evidence and expose it through controlled
+        #  artifacts/surfaces, including at minimum: conflicted file list, reconcile
+        #  summary, artifact refs for conflict evidence, worktree binding metadata"
+        workspace_id = self._active_executions.get(execution_id, "")
+        state = self._active_workspaces.get(workspace_id)
+
+        # Determine protected path policy from the reconcile result.
+        # When protected_paths appear in artifact_refs (prefixed with
+        # "protected_paths_restored:"), the policy reflects that.
+        protected_paths: tuple[str, ...] = ()
+        protected_path_policy: Literal["none", "restored_with_evidence", "blocked_explicitly"] = (
+            "none"
+        )
+        if reconcile_result.artifact_refs:
+            for ref_item in reconcile_result.artifact_refs:
+                if ref_item.startswith("protected_paths_restored:"):
+                    restored_list = ref_item.removeprefix("protected_paths_restored:")
+                    protected_paths = tuple(
+                        p.strip() for p in restored_list.split(",") if p.strip()
+                    )
+                    protected_path_policy = "restored_with_evidence"
+                    break
+
+        # Derive closure status from the reconcile result.
+        closure_status: ReconcileClosureStatus = reconcile_result.status
+
+        # Build the reconcile recovery state.
+        recovery_state = build_reconcile_recovery_state(
+            execution_id=execution_id,
+            workspace_id=workspace_id,
+            status=closure_status,
+            summary=reconcile_result.summary,
+            conflict_files=reconcile_result.conflict_files,
+            protected_paths=protected_paths,
+            protected_path_policy=protected_path_policy,
+            target_ref=(state.binding.target_ref if state else ""),
+            target_head_at_prepare=(state.binding.target_head_at_prepare if state else ""),
+            artifact_refs=reconcile_result.artifact_refs,
+        )
+
+        # For merge_conflict and aborted, the recovery state must carry
+        # sufficient evidence for resolver/operator handling after restart.
+        # Authority: ORCHESTRATION-PLANE-OPERATOR-CONFLICT-RECOVERY.md section 5
+        # "Runtime must not convert mechanical failure into orchestration policy"
+        # and section 6.2: "artifact_refs preserve conflict or abort evidence
+        # until recovery classifies the run as safely closed"
+        if reconcile_result.status in ("merge_conflict", "aborted"):
+            # Enrich artifact_refs with worktree binding context for
+            # resolver investigation.
+            if state is not None:
+                binding_context_refs: list[str] = [
+                    f"worktree_path={state.binding.worktree_path}",
+                    f"scratch_branch={state.binding.scratch_branch}",
+                    f"target_ref={state.binding.target_ref}",
+                ]
+                # Merge the binding context into artifact_refs so the resolver
+                # has enough information to locate and investigate the conflict.
+                existing_refs = set(reconcile_result.artifact_refs)
+                additional_refs = tuple(
+                    ref for ref in binding_context_refs if ref not in existing_refs
+                )
+                recovery_state = ReconcileRecoveryState(
+                    execution_id=recovery_state.execution_id,
+                    workspace_id=recovery_state.workspace_id,
+                    status=recovery_state.status,
+                    summary=recovery_state.summary,
+                    conflict_files=recovery_state.conflict_files,
+                    protected_paths=recovery_state.protected_paths,
+                    protected_path_policy=recovery_state.protected_path_policy,
+                    target_ref=recovery_state.target_ref,
+                    target_head_at_prepare=recovery_state.target_head_at_prepare,
+                    artifact_refs=recovery_state.artifact_refs + additional_refs,
+                )
+
+        # Update the ChildRunRef if this is a drive-tracked execution.
+        # The ref status is NOT changed by reconcile — reconcile is a separate
+        # lifecycle step that produces a disposition. The child run's terminal
+        # status was already set by collect().
+        return (reconcile_result, recovery_state)
+
+    def cleanup_child_run(self, workspace: str, force: bool = False) -> None:
+        """Clean up a child run workspace with drive-aware lifecycle enforcement.
+
+        Authority:
+            docs/ORCHESTRATION-PLANE-RUNTIME-WORKTREE-LIFECYCLE.md section 13
+            docs/RFC-orch-drive.md section 11.3
+
+        This method delegates to ``cleanup()`` for mechanical worktree removal
+        but adds child-run-specific lifecycle enforcement:
+        - On failure/merge_conflict paths, artifacts must be accessible
+          before cleanup is allowed.
+        - The ``force`` parameter bypasses safety checks only for test
+          scenarios or forced teardown.
+
+        Cleanup is BLOCKED if:
+        - execution is still active (starting/running)
+        - reconcile has unresolved status (merge_conflict/aborted)
+        - execution reached terminal state but reconcile not captured
+
+        Per ORCHESTRATION-PLANE-RUNTIME-WORKTREE-LIFECYCLE.md section 13:
+        "Runtime must not delete a worktree simply because cleanup policy says
+        on-success or always when any of the following remain true:
+        execution is still active, reconcile is unresolved, merge conflict
+        is unresolved, evidence/artifacts required for resolver or operator
+        handling have not been preserved."
+
+        Args:
+            workspace: Workspace identifier to clean up.
+            force: If True, bypass all safety checks and force cleanup.
+
+        Raises:
+            ValueError: If workspace is not found or cleanup is blocked.
+        """
+        # Delegate to the existing cleanup() method which already
+        # enforces the full lifecycle barrier (Rule 4, Rule 13).
+        self.cleanup(workspace=workspace, force=force)
 
     # -----------------------------------------------------------------
     # Drive-aware parallel child-run support

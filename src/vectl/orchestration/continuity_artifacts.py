@@ -577,6 +577,67 @@ class QuarantineManager:
         )
 
 
+def build_reconcile_recovery_state(
+    *,
+    execution_id: str,
+    workspace_id: str,
+    status: ReconcileClosureStatus,
+    summary: str = "",
+    conflict_files: tuple[str, ...] = (),
+    protected_paths: tuple[str, ...] = (),
+    protected_path_policy: Literal["none", "restored_with_evidence", "blocked_explicitly"] = "none",
+    target_ref: str = "",
+    target_head_at_prepare: str = "",
+    artifact_refs: tuple[str, ...] = (),
+) -> ReconcileRecoveryState:
+    """Build a ReconcileRecoveryState from runtime reconcile data.
+
+    Authority:
+        docs/ORCHESTRATION-PLANE-OPERATOR-CONFLICT-RECOVERY.md sections 5, 6.2, 6.4
+        docs/ORCHESTRATION-PLANE-RUNTIME-WORKTREE-LIFECYCLE.md section 12
+
+    This function bridges runtime reconcile outcomes to durable recovery artifacts.
+    It must be called when reconcile reaches a terminal disposition so that the
+    evidence is available for restart/recovery re-entry.
+
+    Invariants:
+        - ``merge_conflict`` and ``aborted`` statuses preserve conflict_files and
+          artifact_refs explicitly. No silent loss of evidence.
+        - ``protected_path_policy`` is set to ``restored_with_evidence`` when
+          protected paths (plan.yaml) were restored during reconcile, and
+          ``blocked_explicitly`` when protected-path restoration failed.
+        - ``merged`` and ``noop`` statuses carry their artifact_refs for audit
+          trail but do not require conflict resolution evidence.
+
+    Args:
+        execution_id: Execution that produced this reconcile.
+        workspace_id: Workspace being reconciled.
+        status: Terminal reconcile disposition.
+        summary: Human-readable summary.
+        conflict_files: Conflicted file paths (populated for merge_conflict).
+        protected_paths: Paths that were subject to protected-path policy.
+        protected_path_policy: How protected paths were handled.
+        target_ref: Target ref for merge-back.
+        target_head_at_prepare: HEAD commit at prepare time.
+        artifact_refs: Artifact references for reconciliation evidence.
+
+    Returns:
+        ReconcileRecoveryState with truthful evidence preservation.
+    """
+    return ReconcileRecoveryState(
+        execution_id=execution_id,
+        workspace_id=workspace_id,
+        status=status,
+        summary=summary,
+        conflict_files=conflict_files,
+        protected_paths=protected_paths,
+        protected_path_policy=protected_path_policy,
+        target_ref=target_ref,
+        target_head_at_prepare=target_head_at_prepare,
+        artifact_refs=artifact_refs,
+    )
+
+
 __all__ = [
     "ArtifactClassification",
     "ArtifactReader",
@@ -596,4 +657,5 @@ __all__ = [
     "ReconcileRecoveryState",
     "ReplaySafetyEnvelope",
     "RuntimeRecoveryRecord",
+    "build_reconcile_recovery_state",
 ]

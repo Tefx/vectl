@@ -82219,7 +82219,7 @@ phases:
       - docs/ORCHESTRATION-PLANE-ARCHITECTURE.md (control responsibility)'
   - id: orch_drive_control.same-plan-admission-rewrite
     name: same plan admission rewrite
-    status: pending
+    status: claimed
     description: 'Implementation step.
 
 
@@ -82250,6 +82250,8 @@ phases:
     depends_on:
     - orch_drive_control.batch-frontier-decision-expansion
     agent: python-senior-tacit
+    claimed_by: python-senior-tacit
+    claimed_at: '2026-04-14T02:48:59.500797+00:00'
   - id: orch_drive_control.verify-control-decisions
     name: verify control decisions
     status: pending

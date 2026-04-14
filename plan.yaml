@@ -82219,7 +82219,7 @@ phases:
       - docs/ORCHESTRATION-PLANE-ARCHITECTURE.md (control responsibility)'
   - id: orch_drive_control.same-plan-admission-rewrite
     name: same plan admission rewrite
-    status: claimed
+    status: done
     description: 'Implementation step.
 
 
@@ -82252,6 +82252,48 @@ phases:
     agent: python-senior-tacit
     claimed_by: python-senior-tacit
     claimed_at: '2026-04-14T02:48:59.500797+00:00'
+    done_at: '2026-04-14T03:25:38.577324+00:00'
+    evidence: "```yaml\nstatus: done\nartifact: |\n  Implemented same-plan admission\
+      \ authority around active drive:\n  \n  1. **AdmissionAuthority** (run_store.py):\
+      \ Central admission gate with:\n     - resolve_or_create_drive(): Creates or\
+      \ resolves one active drive per plan.\n       Terminal drives do not block new\
+      \ creation. MaxParallelismError on [1,32] bounds.\n     - can_admit_run() /\
+      \ assert_can_admit_run(): Rejects standalone orch run\n       when an active\
+      \ drive owns the plan (DriveActiveRunBlockedError).\n       Current run (resume)\
+      \ is exempted. Terminal drives do not block.\n       Drive block takes priority\
+      \ over legacy SamePlanAdmissionError.\n     - can_admit_drive() / assert_can_admit_drive():\
+      \ Delegates to DriveStore.\n     - admit_child_run() / active_leases_for_drive()\
+      \ / invalidate_lease() /\n       invalidate_leases_for_step(): Scheduler-owned\
+      \ lease-addressable child-run admission.\n  \n  2. **SamePlanRunRejectedError**\
+      \ (control.py): Exception for orch run rejection\n     with drive_id context.\n\
+      \  \n  3. **start_drive()** (orch_app.py): Implemented (was NotImplementedError).\
+      \ Uses\n     resolve-or-create pattern. Persists frozen config on creation via\n\
+      \     DriveStore.freeze_drive_config_from_orch_config + save_drive_config_frozen.\n\
+      \  \n  4. **run() admission gate** (orch_app.py): When an active drive exists\
+      \ for\n     the plan, standalone runs are rejected with DriveActiveRunBlockedError.\n\
+      \     Current run (resume) is exempted.\n  \n  5. **test_admission.py**: 23\
+      \ tests across 4 classes:\n     - TestDriveResolveOrCreate (5): create, resolve,\
+      \ separate plans, terminal, bounds\n     - TestRunRejectedByActiveDrive (6):\
+      \ rejection, admission, assert, terminal, legacy, priority\n     - TestChildRunLeaseAdmission\
+      \ (5): create, active, invalidate, step, addressability\n     - TestAdmissionRegressions\
+      \ (7): terminal-new-drive, terminal-run, reload,\n       resume-exempt, drive-block-override-resume,\
+      \ halted-drive, frozen-config-round-trip\n\nverification: |\n  pytest tests/orchestration/test_admission.py:\
+      \ 23 passed in 0.15s\n  pytest tests/orchestration/: 1118 passed in 17.99s\n\
+      \  ruff check tests/orchestration/test_admission.py: No issues found\n\nspec:\
+      \ docs/RFC-orch-drive.md sections 7.1, 14.1, 14.2, 14.3, 14.4\n\ndesign_decisions:\n\
+      \  - resolve_or_create_drive does NOT persist frozen config (that is start_drive's\n\
+      \    responsibility per RFC 15.1). Test refactored from testing AdmissionAuthority\n\
+      \    for frozen config to testing DriveStore round-trip directly.\n  - Terminal\
+      \ drives never block new creation/rejection — only active drives do.\n  - Drive\
+      \ block takes priority over legacy SamePlanAdmissionError (RFC 14.1).\n  - Current-run\
+      \ resume is exempted from drive block (RFC 14.1 context).\n\nbugs_fixed:\n \
+      \ - test_terminal_drive_does_not_block_new_drive: Loop was re-using original\n\
+      \    drive_id but not terminalizing the newly-created drive from the previous\n\
+      \    iteration. Fixed by creating and terminalizing fresh in each iteration.\n\
+      \  - test_admission_authority_drive_creation_with_frozen_config: Test incorrectly\n\
+      \    expected resolve_or_create_drive to persist frozen config. Refactored to\n\
+      \    test DriveStore frozen config round-trip since that's the correct abstraction\
+      \ layer.\n\nnot_done: []\n```"
   - id: orch_drive_control.verify-control-decisions
     name: verify control decisions
     status: pending

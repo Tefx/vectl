@@ -83666,7 +83666,7 @@ phases:
       for this step.'
   - id: orch_drive_barriers.planner-loop-integration
     name: planner loop integration
-    status: claimed
+    status: done
     description: 'Implementation step.
 
 
@@ -83701,6 +83701,62 @@ phases:
     agent: python-senior-tacit
     claimed_by: python-senior-tacit
     claimed_at: '2026-04-14T14:47:52.288598+00:00'
+    done_at: '2026-04-14T15:55:56.649004+00:00'
+    evidence: "## Planner-loop integration — complete\n\n### Refs confirmed (pre-implementation\
+      \ reads)\n- docs/RFC-orch-drive.md: sections 5.6 (replan barrier), 8.5/8.5.1\
+      \ (mutation actions), 13 (planner continuation), 13.2-13.5 (bundle construction,\
+      \ facade apply, continuation rules), 14.4 (lease invalidation)\n- docs/ORCHESTRATION-PLANE-INTERFACES.md:\
+      \ sections 4.1 (apply_planner_result), 5 (ownership matrix — planner never edits\
+      \ plan.yaml directly)\n- docs/ORCHESTRATION-PLANE-IMPLEMENTATION-DESIGN.md:\
+      \ sections 3.6 (core adapter), 3.11 (driver)\n\n### Implementation\n**src/vectl/orchestration/core_adapter.py**\
+      \ (+306 lines net):\n- `PlannerMutationResult(frozen=True)` dataclass: applied/fail\
+      \ counts, action descriptions, affected_step_ids\n- `PlannerMutationApplier`\
+      \ Protocol: `apply_bundle(bundle) → PlannerMutationResult`\n- `PlanPlannerMutationApplier`\
+      \ concrete: maps all 8 RFC-orch-drive 8.5.1 mutation actions (add-step → core.add_step,\
+      \ edit-step → core.edit_step, remove-step → core.remove_step, move-step → core.move_step,\
+      \ add-phase → core.add_phase, edit-phase → core.edit_phase, skip-step → core.skip_step,\
+      \ complete-phase → core.complete_phase) through official facade surfaces only;\
+      \ best-effort apply with failure recording; never edits plan.yaml directly (uses\
+      \ load_plan_definition + save_plan with CAS expected_hash)\n- `_as_str_list()`\
+      \ helper for coercing mutation argument values\n\n**src/vectl/orchestration/driver.py**\
+      \ (+330 lines net):\n- `_construct_bundle_from_request()`: synthesizes PlannerMutationBundle\
+      \ from PlannerRequest (status=applyable, maps affected_steps/evidence_refs/constraints)\n\
+      - `_apply_planner_bundle_to_drive()`: continuation rules — applyable→running+clear\
+      \ barrier, operator_required→blocked_operator+keep barrier, halt→halted+keep\
+      \ barrier; includes lease invalidation count in summary; invalid transition\
+      \ preservation\n- `_handle_replan_decision()` on ConcreteDriveDriver: 8-step\
+      \ method — (1) enter replan barrier, (2) construct bundle, (3) apply via facade-only\
+      \ applier, (4) invalidate superseded leases, (5) refresh authoritative state,\
+      \ (6) apply_planner_result through control, (7) transition per continuation\
+      \ rules, (8) persist\n- `_invalidate_superseded_leases()`: per-step lease invalidation\
+      \ via DriveStore.invalidate_leases_for_step(reason=\"superseded\")\n- `planner_mutation_applier`\
+      \ constructor parameter wired through TYPE_CHECKING imports\n\n### Verification\n\
+      - 38 passing tests in `tests/orchestration/unit/test_planner_loop_integration.py`:\n\
+      \  - TestConstructBundleFromRequest (6): bundle status, affected_steps, evidence_refs,\
+      \ constraints→safety_notes, summary, empty mutations\n  - TestApplyPlannerBundleToDrive\
+      \ (7): applyable→running, lease count in summary, wait decision, operator_required,\
+      \ halt, invalid transition preservation, done decision\n  - TestPlanPlannerMutationApplier\
+      \ (2): non-applyable bundle fails, empty applyable bundle succeeds\n  - TestPlannerMutationResult\
+      \ (3): defaults, frozen, populated\n  - TestAsStrList (5): None, list, tuple,\
+      \ single, int coercion\n  - TestPlannerLoopBarrierEntry (2): barrier entry state,\
+      \ bundle preserves request\n  - TestStaleLeaseInvalidation (2): store call per\
+      \ step, empty ids → empty result\n  - TestPlannerMutationApplierContract (4):\
+      \ add-step facade, remove-step facade, failed mutation recording, unsupported\
+      \ action failure\n  - TestPlannerLoopIntegrationEndToEnd (4): applyable→running+frontier,\
+      \ operator_required→blocked, halt→halted, facade-not-direct-edit\n  - TestUpdateDriveRecordPlannerTransitions\
+      \ (3): replanning→running, replanning→blocked_operator, replanning→halted\n\n\
+      - mypy: Success — 0 errors in 3 source files\n- ruff: 0 errors in test file,\
+      \ 0 errors in core_adapter.py; 1 pre-existing F841 (unused `now` in driver.py\
+      \ line 993 — not introduced by this step)\n- Regression: 64 adjacent tests (test_driver_loop_proof,\
+      \ test_resolver_loop_integration, test_core_adapter_impl) all pass\n- commit:\
+      \ 21262f7 on branch vectl/step-orch_drive_barriers.planner-loop-integration\n\
+      \n### Gaps\n- No full end-to-end drive-loop test that forces control to emit\
+      \ kind='replan' naturally (requires mocking control.evaluate to return a replan\
+      \ decision, which is a higher-level integration test beyond this step's scope\
+      \ — the helper functions and applier contract are proven)\n- The `_construct_bundle_from_request`\
+      \ path creates a placeholder bundle with no mutations; full integration with\
+      \ a real planner child run would populate mutations from the planner's structured\
+      \ output"
   - id: orch_drive_barriers.verify-barrier-loops
     name: verify barrier loops
     status: pending

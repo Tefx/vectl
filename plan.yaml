@@ -83023,7 +83023,7 @@ phases:
     agent: gate-reviewer-tacit
   - id: orch_drive_driver.fix-driver-loop-blockers
     name: Fix driver loop blockers
-    status: pending
+    status: claimed
     description: 'Batched remediation for the failed driver-loop verification.
 
 
@@ -83173,6 +83173,8 @@ phases:
     depends_on:
     - orch_drive_driver.verify-driver-loop
     agent: python-senior-tacit
+    claimed_by: python-senior-tacit
+    claimed_at: '2026-04-14T11:01:50.291231+00:00'
   - id: orch_drive_driver.reverify-driver-loop-remediation
     name: Re-verify driver loop remediation
     status: pending

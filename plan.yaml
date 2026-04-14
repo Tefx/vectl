@@ -84042,7 +84042,7 @@ phases:
       - none'
   - id: orch_drive_barriers.reverify-mainline-barrier-integrations
     name: reverify mainline barrier integrations
-    status: claimed
+    status: done
     description: 'As an INDEPENDENT TESTER (integration-verifier-tacit), validate
       from mainline that the barrier-phase blockers are actually closed.
 
@@ -84083,6 +84083,133 @@ phases:
     agent: integration-verifier-tacit
     claimed_by: integration-verifier-tacit
     claimed_at: '2026-04-14T18:03:51.172177+00:00'
+    done_at: '2026-04-14T18:19:47.610282+00:00'
+    evidence: '## Re-Verification Evidence
+
+
+      ### refs Read Confirmation
+
+      - docs/RFC-orch-drive.md: READ (1318 lines). Full orchestration driver specification
+      with barrier semantics, planner loop, resolver loop.
+
+      - docs/ORCHESTRATION-PLANE-RESOLUTION-CONTRACT.md: READ (312 lines). Control↔resolver
+      contract, ResolutionReport continuation rules, planner_request extension.
+
+      - docs/ORCHESTRATION-PLANE-INTERFACES.md: READ (883 lines). Shared boundary
+      types, DriveRecord, DriveBarrier, PlannerAdapter, ReviewGate protocols.
+
+      - tools/vectl/README.md: NOT PRESENT. This is pre-existing documentation debt,
+      acknowledged in prior verification cycles (see docs/ORCH-OPERATOR-CUTOVER-VALIDATION-MIGRATION-STATE-AUDIT.md).
+      Not a barrier-phase blocker.
+
+
+      ### Acceptance Point Recheck
+
+
+      #### AP1: planner-loop production symbols present on mainline and wired
+
+      VERIFIED. Production symbols present:
+
+      - PlannerAdapter protocol (interfaces.py:369), exported (__init__.py:65,132)
+
+      - PlannerRequest, PlannerMutationItem, PlannerMutationBundle (contracts.py:546-626),
+      exported (__init__.py:24-27,123-127)
+
+      - Control.apply_planner_result() (control.py:182,574)
+
+      - ConcreteDriveDriver._handle_resolve_decision() (driver.py:932-1058) — full
+      resolver loop with planner_request→replanning transition
+
+      - ConcreteDriveDriver._enter_barrier_for_replan() (driver.py:1096)
+
+      - _apply_resolution_report_to_drive() (driver.py:541) — handles planner_request
+      extension
+
+      - OrchestrationApp._drive_driver (orch_app.py:1827) — wires ConcreteDriveDriver
+      with all components
+
+
+      Wiring verified: ReviewGate imported in driver.py:47,55; ConcreteDriveDriver
+      imported in orch_app.py:90-91; PlanAwareControl.apply_planner_result() called
+      by driver loop.
+
+
+      #### AP2: planner-loop integration tests present and passing
+
+      VERIFIED. 279 tests passed, 0 failed, 0 skipped across barrier-related test
+      suite.
+
+      Key planner-loop tests:
+
+      - test_control_drive.py::TestApplyPlannerResult — 5/5 PASS
+
+      - test_resolver_loop_integration.py::TestResolverContinuationSemantics::test_unblocked_with_planner_request_transitions_to_replanning
+      — PASS
+
+      - test_resolver_loop_integration.py::TestApplyResolutionReportToDrive::test_unblocked_with_planner_request_transitions_to_replanning
+      — PASS
+
+      - test_drive_contracts.py — TestPlannerMutationAction, TestPlannerBundleStatus,
+      TestPlannerRequest (6), TestPlannerMutationItem (5), TestPlannerMutationBundle
+      (5), TestPlannerAdapterProtocol (5) — ALL PASS
+
+
+      #### AP3: review-gate integration tests present and passing
+
+      VERIFIED. test_orch_app_routing_seam.py — 10/10 PASS.
+
+      All 4 ReviewOutcome→barrier transitions proven:
+
+      - needs_fix → resolution_case PASS
+
+      - needs_replan → resolution_case PASS
+
+      - operator_required → resolution_case PASS
+
+      - parse_failure → resolution_case PASS
+
+      Plus: review_pass → complete_step PASS, full lifecycle proof PASS
+
+
+      #### AP4: barrier phase blockers from prior gate are closed
+
+      VERIFIED. Both prior BLOCKING issues from gate rejection resolved:
+
+      - B1 ("Planner-loop integration production code and tests NOT merged to Main"):
+      NOW PRESENT on mainline — PlannerAdapter, PlannerMutationBundle, apply_planner_result,
+      _handle_resolve_decision, _enter_barrier_for_replan all present and wired
+
+      - B2 ("Review-gate integration test file NOT on Main"): NOW PRESENT — test_orch_app_routing_seam.py
+      with 10 integration tests covering all 4 review→barrier transitions
+
+
+      ### Gate Readiness Statement
+
+      The orch_drive_barriers phase has all four prior blockers resolved. Production
+      symbols are present on mainline, wired into ConcreteDriveDriver and OrchestrationApp,
+      and verified by 279 passing tests with 0 failures and 0 skips. The barrier loop
+      can enter barrier on resolve/replan decisions, invoke resolver, consume ResolutionReport
+      (including planner_request extension), transition to replanning, and handle
+      all four ReviewGateResult outcomes through the orch_app routing seam. No unresolved
+      blocker-class gaps remain.
+
+
+      ### Documentation Debt Check
+
+      - tools/vectl/README.md: ABSENT. This is pre-existing documentation debt, not
+      introduced by the barrier phase. Acknowledged in prior audit cycles. Non-blocking
+      for this gate.
+
+
+      ### Final Verdict
+
+      headline: PASS
+
+      proof_gap_status: NONE
+
+      blocking_status: CLOSED
+
+      gate_open_allowed: true'
 - id: orch_drive_surfaces
   name: Orchestration Drive CLI, Inspection, Control, Config, and Observability
   status: locked

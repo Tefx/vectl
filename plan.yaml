@@ -84352,7 +84352,7 @@ phases:
       and CLI contract.'
   - id: orch_drive_surfaces.inspection-and-control-surface
     name: inspection and control surface
-    status: claimed
+    status: done
     description: 'Implementation step.
 
 
@@ -84385,6 +84385,79 @@ phases:
     agent: python-senior-tacit
     claimed_by: python-senior-tacit
     claimed_at: '2026-04-14T19:38:49.690131+00:00'
+    done_at: '2026-04-14T21:10:07.085989+00:00'
+    evidence: "## Implementation Summary\n\nFilled in stub bodies for drive-scoped\
+      \ status/events/logs/artifacts/actions/case-list/case-show/case-respond and\
+      \ pause/unpause/stop control semantics. Child-run drill-down is explicit and\
+      \ bounded to the selected drive.\n\n### Files Modified\n\n1. **src/vectl/orchestration/inspection_queries.py**\
+      \ (+332 lines)\n   - Added `DriveInspectQuery` (dataclass) — drive-scoped query\
+      \ parameter schema\n   - Added `DriveInspectView` (dataclass) — drive-level\
+      \ aggregated inspection view\n   - Added `ChildRunScopeError` — raised when\
+      \ child-run selector doesn't belong to drive\n   - Added `validate_child_run_in_drive()`\
+      \ — per RFC §7.4 scope validation\n   - Added `query_drive_status()` — drive-status\
+      \ query using DriveStore.replay_drive_state\n   - Added `query_drive_events()`\
+      \ — drive-scoped events filtering\n   - Added `query_drive_logs()` — drive-scoped\
+      \ log line filtering\n   - Added `query_drive_artifacts()` — drive-scoped artifact\
+      \ collection from child runs\n   - Added `query_drive_actions()` — drive-scoped\
+      \ action reference filtering\n\n2. **src/vectl/orchestration/control_channel.py**\
+      \ (+84 lines)\n   - Added `send_drive_control()` — drive-scoped control (pause/unpause/stop)\n\
+      \   - Added `InvalidDriveControlMessageError` — drive control validation error\n\
+      \   - Added `drive.pause`, `drive.unpause`, `drive.stop` to allowed message\
+      \ types\n   - `send_drive_control` appends `force=true` marker for stop --force\
+      \ per RFC §7.3.1\n\n3. **src/vectl/cli.py** (+362 lines)\n   - Added `--child-run-id`\
+      \ option to all inspect commands (status, events, logs, artifacts, actions)\n\
+      \   - Added `DRIVE_ID` positional argument to inspect/case/control commands\
+      \ (replacing `RUN_ID` as primary selector)\n   - Changed `RUN_ID` from positional\
+      \ to `--run` option (backward-compat legacy selector)\n   - Added `_resolve_drive_selector_or_die()`\
+      \ — validates selector exclusivity per RFC §7.4\n   - Added `_validate_child_run_scope_or_die()`\
+      \ — validates child-run belongs to drive\n   - Drive-scoped defaults: when active\
+      \ drive exists and no other selector provided, auto-targets drive\n   - Stop\
+      \ `--force` semantics implemented per RFC §7.3.1 (immediate stop with force=true\
+      \ marker)\n   - Updated case-list to support drive-scoped query (blocked_case_ids\
+      \ from drive status)\n\n4. **src/vectl/orch_app.py** (+309 lines)\n   - Added\
+      \ `inspect_drive_status(drive_id, child_run_id)` — DriveInspectView\n   - Added\
+      \ `inspect_drive_events(drive_id, child_run_id, limit)` — InspectResult\n  \
+      \ - Added `inspect_drive_logs(drive_id, child_run_id)` — InspectResult\n   -\
+      \ Added `inspect_drive_artifacts(drive_id, child_run_id)` — InspectResult\n\
+      \   - Added `inspect_drive_actions(drive_id, child_run_id)` — InspectResult\n\
+      \   - Added `control_drive_pause(drive_id, reason)` — ControlResult\n   - Added\
+      \ `control_drive_unpause(drive_id, reason)` — ControlResult\n   - Added `control_drive_stop(drive_id,\
+      \ reason, force)` — ControlResult with force marker\n\n5. **tests/orchestration/unit/test_drive_queries.py**\
+      \ (NEW, 26 tests)\n   - TestDriveInspectQuery: 3 tests (minimal, child-run,\
+      \ pagination)\n   - TestDriveInspectView: 1 test (defaults)\n   - TestQueryDriveStatus:\
+      \ 3 tests (returns state, child-run selector, scope error)\n   - TestValidateChildRunInDrive:\
+      \ 4 tests (valid, invalid, cross-drive, boundary regression)\n   - TestQueryDriveEvents:\
+      \ 2 tests (drive filter, child-run filter)\n   - TestQueryDriveLogs: 2 tests\
+      \ (drive filter, child-run filter)\n   - TestQueryDriveActions: 1 test (child-run\
+      \ filter)\n   - TestSendDriveControl: 7 tests (pause, unpause, stop, force marker,\
+      \ no-force, reason, artifact preservation)\n   - TestChildRunScopeIsolation:\
+      \ 3 tests (cross-drive status, cross-drive artifacts, action scope)\n\n6. **tests/test_orch_cli_surface.py**\
+      \ (updated _FakeOrchApp)\n   - Added `has_active_drive_for_plan()`, drive-scoped\
+      \ inspection/control methods\n   - Fixed test assertions for exit code 3 (selector\
+      \ validation) and `--run` option\n\n### Verification Evidence\n\n```\n$ uv run\
+      \ pytest tests/orchestration/unit/test_drive_queries.py -v\n26 passed in 0.25s\n\
+      \n$ uv run pytest tests/orchestration/ -q\n1314 passed in 48.95s\n\n$ uv run\
+      \ pytest tests/test_orch_cli_surface.py -v\n9 passed in 0.73s\n\n$ uv run pytest\
+      \ tests/orchestration/ tests/test_orch_cli_surface.py -q\n1323 passed in 48.90s\n\
+      ```\n\nCLI surface executability verified for all commands:\n- `vectl orch status\
+      \ --help` → DRIVE_ID positional, --child-run-id option\n- `vectl orch events\
+      \ --help` → DRIVE_ID positional, --child-run-id option\n- `vectl orch logs --help`\
+      \ → DRIVE_ID positional, --child-run-id option\n- `vectl orch artifacts --help`\
+      \ → DRIVE_ID positional, --child-run-id option\n- `vectl orch actions --help`\
+      \ → DRIVE_ID positional, --child-run-id option\n- `vectl orch case list --help`\
+      \ → DRIVE_ID positional\n- `vectl orch pause --help` → DRIVE_ID positional\n\
+      - `vectl orch unpause --help` → DRIVE_ID positional\n- `vectl orch stop --help`\
+      \ → DRIVE_ID positional, --force with RFC §7.3.1 semantics\n- All commands also\
+      \ have `--run` option for legacy run-scoped selection\n\n### NOT Done\n- Did\
+      \ NOT implement the actual drive control loop that processes drive.pause/unpause/stop\
+      \ messages (that's the driver's job, out of scope)\n- Did NOT implement resolver/planner\
+      \ child-run cancellation on stop --force (driver-level scheduling, out of scope)\n\
+      - Did NOT add --child-run-id to case-show/case-respond (cases are addressed\
+      \ by case_id, not run_id)\n- Did NOT update the `orch case respond` DRIVE_ID\
+      \ positional argument interaction with case_id (case_respond still works by\
+      \ case_id primarily)\n- Pre-existing test failures in tests/repro/ (role profile\
+      \ override validation) and tests/test_runtime_context_vertical_slice.py (ControlDecision.step_id\
+      \ → step_ids) were NOT introduced by this step"
   - id: orch_drive_surfaces.config-and-observability-upgrades
     name: config and observability upgrades
     status: pending

@@ -83270,7 +83270,7 @@ phases:
       specs were silently narrowed.'
   - id: orch_drive_driver.reverify-driver-loop-remediation
     name: Re-verify driver loop remediation
-    status: claimed
+    status: done
     description: 'Independently re-run the failed acceptance points from `orch_drive_driver.verify-driver-loop`
       after `orch_drive_driver.fix-driver-loop-blockers` lands.
 
@@ -83383,6 +83383,26 @@ phases:
     agent: integration-verifier-tacit
     claimed_by: integration-verifier-tacit
     claimed_at: '2026-04-14T11:38:55.250342+00:00'
+    done_at: '2026-04-14T11:45:20.894340+00:00'
+    evidence: "## Re-Verification Evidence\n\n### refs Read Confirmation\n- docs/RFC-orch-drive.md\
+      \ — read.\n- docs/ORCHESTRATION-PLANE-IMPLEMENTATION-DESIGN.md — read.\n- tools/vectl/README.md\
+      \ — NOT PRESENT (confirmed absent in repo; tracked as non-blocking documentation\
+      \ debt).\n\n### Acceptance Point Recheck\n- `start_drive`: PASS — callable via\
+      \ app surface without NotImplementedError; returns DriveStartResult.\n- `run_drive_loop`:\
+      \ PASS — callable via app surface without NotImplementedError; returns DriveLoopResult\
+      \ with control-driven summary.\n- `resume_drive`: PASS — callable via app surface\
+      \ without NotImplementedError; returns DriveResumeResult.\n- `recover_drive`:\
+      \ PASS — callable via app surface without NotImplementedError; returns DriveRecoverResult\
+      \ (dry/wet behavior verified).\n\n### End-to-End Driver Loop Proof\n- Round-trip\
+      \ through orchestration app surface proved:\n  start_drive -> run_drive_loop\
+      \ -> resume_drive -> recover_drive\n- Observed concrete result objects at each\
+      \ call chain stage; no stub behavior.\n- Supporting verification suite: 28 passed,\
+      \ 0 failed, 0 skipped.\n\n### Gate Readiness Statement\n- headline: PASS\n-\
+      \ proof_gap_status: NONE\n- blocking_status: CLOSED\n- gate_open_allowed: true\n\
+      \n### Documentation Debt Check\n- `tools/vectl/README.md` remains absent; explicitly\
+      \ classified as non-blocking debt (spec coverage present under docs/).\n\n###\
+      \ Final Verdict\n- Remediation accepted; prior blocker-class acceptance points\
+      \ are closed with independent evidence."
 - id: orch_drive_barriers
   name: Orchestration Drive Review / Resolver / Planner Barriers
   status: locked

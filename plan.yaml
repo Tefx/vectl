@@ -82443,7 +82443,7 @@ phases:
       ## Verdict: PASS_WITH_DEBT — gate_open_allowed=true'
 - id: orch_drive_runtime
   name: Orchestration Drive Runtime Parallel Child Runs
-  status: in_progress
+  status: done
   gate: Runtime mechanics support real bounded parallel child runs, real worktrees,
     merge/reconcile handoff, and child-run lifecycle evidence before the full driver
     loop lands.
@@ -82697,7 +82697,7 @@ phases:
       - tools/vectl/README.md — NOT READ: file not present at path.'
   - id: orch_drive_runtime.gate-runtime-phase
     name: gate runtime phase
-    status: claimed
+    status: done
     description: Gate review for orch_drive_runtime. Open only if runtime mechanics
       are ready for driver-loop composition and real worktree child-run execution.
     verification: All runtime steps complete; independent verification found no unresolved
@@ -82709,9 +82709,102 @@ phases:
     agent: gate-reviewer-tacit
     claimed_by: gate-reviewer-tacit
     claimed_at: '2026-04-14T09:10:59.543559+00:00'
+    done_at: '2026-04-14T09:19:32.035791+00:00'
+    evidence: 'GATE REVIEW COMPLETE — PASS_WITH_DEBT
+
+
+      **Headline**: PASS_WITH_DEBT
+
+      **Blocking Status**: CLOSED
+
+      **Proof-Gap Status**: NONE
+
+      **Gate Open**: Allowed
+
+
+      ## Summary
+
+
+      The orch_drive_runtime phase delivers spec-aligned, well-tested implementation
+      of parallel child-run runtime mechanics, worktree merge/reconcile handoff, capacity
+      accounting with barrier exclusion, and drive-aware persistence. No BLOCKING
+      issues found.
+
+
+      ## Automated Gates
+
+      - Type checking: PASS
+
+      - Linting: PASS
+
+      - Test suite: PASS (258/258)
+
+      - Wiring audit: PASS — all drive-aware runtime types wired into control, projections,
+      run_store, driver
+
+      - Contract audit: PASS — no vacuous lambdas, no identity contracts, no @invar:allow
+      escapes
+
+      - Stub audit: PASS — no _Runtime/_Stub/_Placeholder classes found
+
+
+      ## Spec Alignment (E1)
+
+      - RFC §10.2 capacity model: IMPLEMENTED + TESTED
+
+      - RFC §11.4 batch dispatch: IMPLEMENTED (sequential prepare/start with immediate
+      durable ChildRunRef)
+
+      - RFC §11.3 reconcile ownership: IMPLEMENTED (begin_reconcile_child_run with
+      artifact preservation, cleanup_child_run blocks on unresolved)
+
+      - RFC §8.3 ChildRunRef: IMPLEMENTED (all required fields present)
+
+      - RFC §14.1 drive admission: IMPLEMENTED (one active drive per plan, SamePlanRunRejectedError
+      with exit code 2)
+
+      - RFC §10.2 barrier capacity exclusion: IMPLEMENTED + TESTED with regression
+      suite
+
+
+      ## Behavioral Proofs
+
+      - P1: Capacity exclusion for resolver/planner — PROVEN (TestCapacityAccounting)
+
+      - P2: Batch sequential dispatch — PROVEN (TestParallelChildRunPrepareStart)
+
+      - P3: Reconcile artifact preservation — PROVEN (test_runtime_reconcile_mechanics.py
+      + runtime.py can_complete)
+
+      - P4: ChildRunRef truthfulness — PROVEN (TestChildRunRefBookkeeping)
+
+      - P5: Drive admission — PROVEN (TestDriveAdmission)
+
+      - P6: No synthetic success masking — PROVEN (static code analysis)
+
+      - P7: Runtime mechanical-only boundary — PROVEN (docstring authority citations)
+
+
+      ## SHOULD_FIX (non-blocking)
+
+      - S1: tools/vectl/README.md is missing (referenced in gate required reading)
+
+      - S2: runtime.py is ~1966 lines, exceeds 300-line DX threshold (mitigated by
+      strong organization)
+
+
+      ## SUGGESTIONS
+
+      - G1: run_store.py could benefit from extracting DriveStore into its own module
+
+      - G2: DriveDriver is Protocol-only (intentional — implementation is orch_drive_driver
+      phase)
+
+
+      ## No BLOCKING issues. Runtime phase is ready for driver-loop composition.'
 - id: orch_drive_driver
   name: Orchestration Drive Loop
-  status: locked
+  status: pending
   gate: Driver session loop composes control/runtime/roster/resolver facts, persists
     barriers/frontier/progress, and auto-closes phases/plans only through authoritative
     surfaces.

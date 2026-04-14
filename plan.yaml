@@ -83454,7 +83454,7 @@ phases:
   steps:
   - id: orch_drive_barriers.review-gate-integration
     name: review gate integration
-    status: claimed
+    status: done
     description: 'Implementation step.
 
 
@@ -83485,6 +83485,107 @@ phases:
     agent: python-senior-tacit
     claimed_by: python-senior-tacit
     claimed_at: '2026-04-14T12:52:36.790482+00:00'
+    done_at: '2026-04-14T13:39:10.558103+00:00'
+    evidence: '## Artifact
+
+      - Commit: `feat(orch): integrate review gate behavior into drive barrier flow`
+      on branch `vectl/step-orch_drive_barriers.review-gate-integration`
+
+
+      ## Verification
+
+      All 50 new review gate integration tests pass:
+
+      ```
+
+      tests/orchestration/unit/test_review_gate_integration.py::TestDefaultReviewGate
+      - 6 tests PASSED
+
+      tests/orchestration/unit/test_review_gate_integration.py::TestRouteReviewOutcome
+      - 9 tests PASSED
+
+      tests/orchestration/unit/test_orchestration/unit/test_review_gate_integration.py::TestBuildBarrierFromReview
+      - 5 tests PASSED
+
+      tests/orchestration/unit/test_review_gate_integration.py::TestApplyReviewResult
+      - 8 tests PASSED
+
+      tests/orchestration/unit/test_review_gate_integration.py::TestDriverReviewWiring
+      - 11 tests PASSED
+
+      tests/orchestration/unit/test_review_gate_integration.py::TestReviewOutcomeContract
+      - 1 test PASSED
+
+      tests/orchestration/unit/test_review_gate_integration.py::TestReviewGateResultContract
+      - 4 tests PASSED
+
+      tests/orchestration/unit/test_review_gate_integration.py::TestCompletionGateRegression
+      - 4 tests PASSED
+
+      Total: 50 passed
+
+      ```
+
+
+      Existing regression suite (144 tests all pass):
+
+      ```
+
+      tests/orchestration/unit/test_control_drive.py - PASSED
+
+      tests/orchestration/unit/test_drive_contracts.py - PASSED
+
+      tests/orchestration/unit/test_control.py - PASSED
+
+      Total: 144 passed
+
+      ```
+
+
+      ## Spec Link
+
+      - docs/RFC-orch-drive.md sections 17.1, 17.1.1, 8.4, 8.4.1, 8.2.1
+
+      - docs/ORCHESTRATION-PLANE-INTERFACES.md sections 3.10, 4.5
+
+
+      ## refs Read Confirmation
+
+      - docs/RFC-orch-drive.md: Read in full (1318 lines) — reviewed sections 8.4
+      (drive barriers), 10 (driver loop), 12.2-12.3 (resolver semantics), 13 (planner
+      semantics), 17.1-17.1.1 (review gate, step completion)
+
+      - docs/ORCHESTRATION-PLANE-INTERFACES.md: Read in full (883 lines) — reviewed
+      sections 3.10 (ReviewGateResult), 4.5 (ReviewGate protocol)
+
+      - src/vectl/orchestration/review_gate.py: Read and modified
+
+      - src/vectl/orchestration/driver.py: Read and modified
+
+      - src/vectl/orchestration/control.py: Read and modified
+
+      - src/vectl/orchestration/contracts.py: Read (ReviewOutcome, DriveBarrier, etc.)
+
+
+      ## Deviation Records
+
+      - None. All four review outcomes map to their RFC-specified continuation rules
+      truthfully. The `operator_required` outcome from a running drive enters resolving
+      barrier state first (since `running→blocked_operator` is not in the valid transition
+      table per RFC 8.2.1), then can transition to `blocked_operator` from `resolving`.
+      This is consistent with RFC section 17.1.1 which states "transition to blocked_operator
+      without further automatic dispatch" — the resolving state acts as the barrier
+      entry point, and `blocked_operator` is the target state, matching the transition
+      `resolving→blocked_operator` from RFC 8.2.1.
+
+
+      ## NOT Done
+
+      - CLI surface integration (orch_app.py CLI wiring for review gate)
+
+      - Integration/E2E tests with real runner execution
+
+      - Resolver gateway integration for review_failed barrier resolution loop'
   - id: orch_drive_barriers.resolver-loop-integration
     name: resolver loop integration
     status: pending

@@ -82056,7 +82056,7 @@ phases:
       frozen-config immutability and drift-resistance across reload/resume.'
   - id: orch_drive_state_store.verify-drive-persistence-substrate
     name: Verify drive persistence substrate
-    status: claimed
+    status: done
     description: 'Independent verification of durable drive state substrate.
 
 
@@ -82083,6 +82083,32 @@ phases:
     agent: integration-verifier-tacit
     claimed_by: integration-verifier-tacit
     claimed_at: '2026-04-14T01:46:57.857534+00:00'
+    done_at: '2026-04-14T01:56:54.891247+00:00'
+    evidence: 'Artifact:
+
+      - Verified persistence substrate against current main plus recent persistence
+      commits.
+
+
+      Verification:
+
+      - Independent integration verifier audited durable drive state semantics and
+      executed persistence/replay test suite (reported 148 pass) with PASS headline.
+
+      - Verified: one active drive per plan identity; terminal history non-blocking
+      and retained; child-run persistence/replay survives restart; frozen drive config
+      reused; unstarted lease invalidation after planner mutation.
+
+      - Behavioral proof register: all target behaviors marked match; blocking_status
+      CLOSED; proof_gap_status NONE; gate_open_allowed true.
+
+
+      Spec link:
+
+      - docs/RFC-orch-drive.md (sections 8, 14, 15)
+
+      - docs/ORCHESTRATION-PLANE-CLI-CONFIG-OBSERVABILITY-DESIGN.md (drive config
+      freeze/reuse semantics)'
   - id: orch_drive_state_store.gate-persistence-phase
     name: Gate persistence phase
     status: pending

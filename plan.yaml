@@ -82960,7 +82960,7 @@ phases:
       \ auto-close re-attempt logic (deferred to recovery step)"
   - id: orch_drive_driver.verify-driver-loop
     name: verify driver loop
-    status: claimed
+    status: done
     description: 'Independent verification of the drive session loop.
 
 
@@ -82986,6 +82986,20 @@ phases:
     agent: integration-verifier-tacit
     claimed_by: integration-verifier-tacit
     claimed_at: '2026-04-14T10:47:44.831953+00:00'
+    done_at: '2026-04-14T11:01:21.391180+00:00'
+    evidence: "Artifact:\n- Independent verification report executed against current\
+      \ driver-loop surface.\n\nVerification:\n- Headline: FAIL; proof_gap_status:\
+      \ BLOCKING; blocking_status: OPEN; gate_open_allowed: false.\n- Confirmed blockers:\
+      \ app entrypoints (`start_drive`, `run_drive_loop`, `resume_drive`, `recover_drive`)\
+      \ raise NotImplementedError and no executable end-to-end driver-loop proof exists.\n\
+      - Command evidence included targeted and full orchestration suites; blocker\
+      \ persisted at driver-loop execution surface.\n\nIssue disposition:\n- blocker\
+      \ issues batched into remediation path via planner mutation:\n  - `orch_drive_driver.fix-driver-loop-blockers`\n\
+      \  - `orch_drive_driver.reverify-driver-loop-remediation`\n- Gate rewired to\
+      \ depend on re-verify step.\n\nSpec link:\n- docs/RFC-orch-drive.md\n- docs/ORCHESTRATION-PLANE-IMPLEMENTATION-DESIGN.md\n\
+      \n## refs Read Confirmation\n- docs/RFC-orch-drive.md — read.\n- docs/ORCHESTRATION-PLANE-IMPLEMENTATION-DESIGN.md\
+      \ — read.\n- tools/vectl/README.md — NOT READ: missing at expected path (tracked\
+      \ as non-blocking debt item)."
   - id: orch_drive_driver.gate-driver-phase
     name: gate driver phase
     status: pending

@@ -82296,7 +82296,7 @@ phases:
       \ layer.\n\nnot_done: []\n```"
   - id: orch_drive_control.verify-control-decisions
     name: verify control decisions
-    status: claimed
+    status: done
     description: 'Independent verification of batch/frontier control semantics.
 
 
@@ -82322,6 +82322,31 @@ phases:
     agent: integration-verifier-tacit
     claimed_by: integration-verifier-tacit
     claimed_at: '2026-04-14T03:28:14.411996+00:00'
+    done_at: '2026-04-14T03:38:08.464643+00:00'
+    evidence: 'Artifact:
+
+      - Independent control-decision verification report for current control/admission
+      implementation surface.
+
+
+      Verification:
+
+      - Targeted control/admission suite: 186 passed, 0 failed.
+
+      - Full orchestration unit suite: 1008 passed, 0 failed.
+
+      - Verified invariants: dispatch_batch constraints, capacity accounting, resolve/replan
+      branching, same-plan active-drive exclusion, done/halt/wait classifications.
+
+      - Gate indicators: headline PASS, proof_gap_status NONE, blocking_status CLOSED,
+      no product file modifications.
+
+
+      Spec link:
+
+      - docs/RFC-orch-drive.md (sections 9, 10, 12, 13)
+
+      - docs/ORCHESTRATION-PLANE-INTERFACES.md (ControlDecision/Control protocol semantics)'
   - id: orch_drive_control.gate-control-phase
     name: gate control phase
     status: pending

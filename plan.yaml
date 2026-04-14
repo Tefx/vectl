@@ -82622,7 +82622,7 @@ phases:
       \ protocol is deferred per the existing GAP comment in continuity_artifacts.py."
   - id: orch_drive_runtime.verify-runtime-parallel-child-runs
     name: verify runtime parallel child runs
-    status: claimed
+    status: done
     description: 'Independent verification of the widened runtime mechanics.
 
 
@@ -82648,6 +82648,53 @@ phases:
     agent: integration-verifier-tacit
     claimed_by: integration-verifier-tacit
     claimed_at: '2026-04-14T05:53:52.001324+00:00'
+    done_at: '2026-04-14T09:10:42.789707+00:00'
+    evidence: 'Artifact:
+
+      - Independent runtime verification report over current drive runtime + reconcile
+      substrate.
+
+
+      Verification:
+
+      - `uv run pytest tests/orchestration/test_runtime_parallel_child_run.py` ->
+      31 passed.
+
+      - `uv run pytest tests/orchestration/test_runtime_reconcile_mechanics.py` ->
+      20 passed.
+
+      - `uv run pytest tests/orchestration/unit/test_run_store_drive.py` -> 49 passed.
+
+      - `uv run pytest tests/orchestration/unit/test_drive_config_frozen.py tests/orchestration/unit/test_drive_contracts.py`
+      -> 99 passed.
+
+      - `uv run pytest tests/orchestration/unit/test_control_drive.py` -> 69 passed.
+
+      - `uv run pytest tests/orchestration/ -k "drive"` -> 222 passed.
+
+      - `uv run pytest tests/orchestration/` -> 1146 passed, 0 failed.
+
+      - Headline PASS; proof_gap_status NONE; blocking_status CLOSED; gate_open_allowed
+      true.
+
+      - Verified bounded parallel child-run mechanics, truthful bookkeeping, reconcile/artifact
+      preservation, and barrier-run capacity exclusion.
+
+
+      Spec link:
+
+      - docs/RFC-orch-drive.md (§8.2.1, §10.2, §11.2-§11.4, §14.1, §14.3-§14.4)
+
+      - docs/ORCHESTRATION-PLANE-INTERFACES.md (§3.4-§3.5, §4.3, §5.5)
+
+
+      ## refs Read Confirmation
+
+      - docs/RFC-orch-drive.md — read.
+
+      - docs/ORCHESTRATION-PLANE-INTERFACES.md — read.
+
+      - tools/vectl/README.md — NOT READ: file not present at path.'
   - id: orch_drive_runtime.gate-runtime-phase
     name: gate runtime phase
     status: pending

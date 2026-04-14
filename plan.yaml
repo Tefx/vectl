@@ -83588,7 +83588,7 @@ phases:
       - Resolver gateway integration for review_failed barrier resolution loop'
   - id: orch_drive_barriers.resolver-loop-integration
     name: resolver loop integration
-    status: claimed
+    status: done
     description: 'Implementation step.
 
 
@@ -83622,6 +83622,48 @@ phases:
     agent: python-senior-tacit
     claimed_by: python-senior-tacit
     claimed_at: '2026-04-14T14:03:47.536552+00:00'
+    done_at: '2026-04-14T14:47:27.896436+00:00'
+    evidence: 'Artifact:
+
+      - commit `4f8c3d9` on branch `vectl/step-orch_drive_barriers.resolver-loop-integration`.
+
+
+      Verification:
+
+      - `.venv/bin/python -m pytest tests/orchestration/unit/test_resolver_loop_integration.py
+      tests/orchestration/unit/test_driver_loop_proof.py tests/orchestration/unit/test_resolver.py
+      tests/orchestration/integration/test_control_resolver_contract.py tests/orchestration/unit/test_control_drive.py
+      tests/orchestration/unit/test_control.py` -> 155 passed, 0 failed.
+
+
+      Spec link:
+
+      - docs/RFC-orch-drive.md (§5.4, §8.4, §10, §12.2-§12.3)
+
+      - docs/ORCHESTRATION-PLANE-RESOLUTION-CONTRACT.md (§2, §3, §5, §6)
+
+      - docs/ORCHESTRATION-PLANE-INTERFACES.md (§3.8, §3.9, §4.1, §4.4, §5.3)
+
+
+      ## refs Read Confirmation
+
+      - RFC / resolution-contract / interfaces docs read with continuation/barrier
+      invariants extracted.
+
+
+      ## Deviation Records
+
+      - contract_gap: added optional `drive: DriveRecord | None = None` to ResolutionCase
+      in contracts.py to align with interfaces spec.
+
+      - contract_error: fixed resolver payload mapping to preserve `planner_request`
+      in reason-preservation path.
+
+
+      ## NOT Done
+
+      - planner invocation integration and real OpenCode E2E acceptance are out-of-scope
+      for this step.'
   - id: orch_drive_barriers.planner-loop-integration
     name: planner loop integration
     status: pending

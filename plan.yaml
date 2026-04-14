@@ -81956,7 +81956,7 @@ phases:
       active_child_run_ids.'
   - id: orch_drive_state_store.lease-and-freeze-persistence
     name: Implement scheduler-owned lease persistence and frozen drive parameters
-    status: claimed
+    status: done
     description: 'Implementation step.
 
 
@@ -82022,6 +82022,38 @@ phases:
     agent: python-senior-tacit
     claimed_by: python-senior-tacit
     claimed_at: '2026-04-13T21:33:28.500024+00:00'
+    done_at: '2026-04-14T01:46:42.806737+00:00'
+    evidence: '## refs Read Confirmation
+
+      - `src/vectl/orchestration/contracts.py` and `src/vectl/orchestration/run_store.py`
+      inspected; `tools/vectl/README.md` not found at expected path; RFC sections
+      used for lease/freeze semantics.
+
+
+      ## Expected-Red Proof
+
+      - Added regression tests for lease invalidation and frozen config reuse under
+      ambient config drift; no separate red invar artifact provided.
+
+
+      ## Implementation Evidence
+
+      - Files changed: src/vectl/orchestration/contracts.py; src/vectl/orchestration/run_store.py;
+      tests/orchestration/unit/test_drive_config_frozen.py.
+
+      - Implemented scheduler-owned lease persistence (`drive_id+step_id+run_id` ownership,
+      active/released/invalidated lifecycle), per-step invalidation for planner mutation
+      cases, and frozen drive config persistence captured once and reused by resume/recover.
+
+
+      ## Green Proof
+
+      - Targeted lease/config persistence suites pass (reported 148 tests incl. new
+      36 tests).
+
+      - High-risk paths exercised: same-plan admission blocking with active drive,
+      step-scoped lease invalidation while preserving unrelated/completed leases,
+      frozen-config immutability and drift-resistance across reload/resume.'
   - id: orch_drive_state_store.verify-drive-persistence-substrate
     name: Verify drive persistence substrate
     status: pending

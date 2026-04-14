@@ -82877,7 +82877,7 @@ phases:
       \ loop iterations\n- CLI surface for drive commands (out of scope)"
   - id: orch_drive_driver.phase-and-plan-auto-close
     name: phase and plan auto close
-    status: pending
+    status: claimed
     description: 'Implementation step.
 
 
@@ -82908,6 +82908,8 @@ phases:
     depends_on:
     - orch_drive_driver.driver-loop-core
     agent: python-senior-tacit
+    claimed_by: python-senior-tacit
+    claimed_at: '2026-04-14T10:04:39.151256+00:00'
   - id: orch_drive_driver.verify-driver-loop
     name: verify driver loop
     status: pending

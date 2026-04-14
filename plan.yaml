@@ -82991,12 +82991,21 @@ phases:
     status: pending
     description: Gate review for orch_drive_driver. Open only if the drive loop is
       durable, authoritative, and ready for review/resolver/planner barrier integration.
-    verification: All driver steps complete; independent verification found no unresolved
-      blockers in drive-loop or auto-close semantics.
+    verification: '- Driver-loop implementation evidence remains complete for core
+      loop and phase/plan auto-close work
+
+      - Remediation re-verification proves `start_drive`, `run_drive_loop`, `resume_drive`,
+      and `recover_drive` no longer raise `NotImplementedError`
+
+      - Remediation re-verification includes real end-to-end driver loop execution
+      proof through the orchestration app surface
+
+      - Any remaining `tools/vectl/README.md` gap is explicitly documented as non-blocking
+      debt with non-intersection rationale
+
+      - Ready for next phase'
     depends_on:
-    - orch_drive_driver.driver-loop-core
-    - orch_drive_driver.phase-and-plan-auto-close
-    - orch_drive_driver.verify-driver-loop
+    - orch_drive_driver.reverify-driver-loop-remediation
     agent: gate-reviewer-tacit
   - id: orch_drive_driver.fix-driver-loop-blockers
     name: Fix driver loop blockers

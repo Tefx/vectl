@@ -83759,7 +83759,7 @@ phases:
       \ output"
   - id: orch_drive_barriers.verify-barrier-loops
     name: verify barrier loops
-    status: pending
+    status: claimed
     description: 'Independent verification of review/resolver/planner barrier semantics.
 
 
@@ -83785,6 +83785,8 @@ phases:
     - orch_drive_barriers.resolver-loop-integration
     - orch_drive_barriers.planner-loop-integration
     agent: integration-verifier-tacit
+    claimed_by: integration-verifier-tacit
+    claimed_at: '2026-04-14T15:59:38.664544+00:00'
   - id: orch_drive_barriers.gate-barrier-phase
     name: gate barrier phase
     status: pending

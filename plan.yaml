@@ -83150,6 +83150,119 @@ phases:
     depends_on:
     - orch_drive_driver.verify-driver-loop
     agent: python-senior-tacit
+  - id: orch_drive_driver.reverify-driver-loop-remediation
+    name: Re-verify driver loop remediation
+    status: pending
+    description: 'Independently re-run the failed acceptance points from `orch_drive_driver.verify-driver-loop`
+      after `orch_drive_driver.fix-driver-loop-blockers` lands.
+
+
+      Work type: verification
+
+      step_type: verification
+
+      verification_scope: phase-check
+
+
+      This step rechecks the SAME acceptance points that previously failed and must
+      not relax the gate:
+
+      - the orchestration app surface methods `start_drive`, `run_drive_loop`, `resume_drive`,
+      and `recover_drive` are implemented and callable without `NotImplementedError`
+
+      - there is real end-to-end proof of driver-loop execution through the orchestration
+      app surface
+
+      - the `tools/vectl/README.md` gap is either fixed or explicitly confirmed as
+      non-blocking debt with clear disposition
+
+
+      Verification must be independent and evidence-driven. Do not rely on author
+      assertions alone.
+
+
+      ## Gate intent
+
+      - Preserve the original failed verification as historical evidence
+
+      - Replace forward progress gating with a fresh remediation verification result
+
+      - Only unlock `orch_drive_driver.gate-driver-phase` if this step proves the
+      blocker-class failures are actually closed'
+    verification: '- Re-run concrete checks against the same failed app-surface methods
+      and confirm no `NotImplementedError`
+
+      - Capture real end-to-end driver-loop execution proof through the orchestration
+      app surface
+
+      - Confirm proof_gap_status is no longer BLOCKING for the acceptance points covered
+      here
+
+      - Confirm gate_open_allowed can be true for this phase once this step passes
+
+      - Confirm `tools/vectl/README.md` status is either resolved or explicitly non-blocking
+      debt with rationale'
+    evidence_template: '## Re-Verification Evidence
+
+
+      ### refs Read Confirmation (MANDATORY)
+
+      For each ref in this step:
+
+      - <filename> — key passage or "NOT READ: <reason>"
+
+
+      If no refs were provided, state: "No refs for this step."
+
+
+      ### Acceptance Point Recheck
+
+      - `start_drive`: <pass/fail + command/proof>
+
+      - `run_drive_loop`: <pass/fail + command/proof>
+
+      - `resume_drive`: <pass/fail + command/proof>
+
+      - `recover_drive`: <pass/fail + command/proof>
+
+
+      ### End-to-End Driver Loop Proof
+
+      - Exact verification command:
+
+      ```text
+
+      <paste exact command>
+
+      ```
+
+      - Observed execution evidence: <logs/artifacts/assertions>
+
+      - Proof gap status: <BLOCKING cleared? explain>
+
+
+      ### Gate Readiness Statement
+
+      - gate_open_allowed: <true/false>
+
+      - Why: <brief rationale tied to observed proof>
+
+
+      ### Documentation Debt Check
+
+      - `tools/vectl/README.md` status: <present | still missing but non-blocking>
+
+      - Rationale/evidence: <brief>
+
+
+      ### Final Verdict
+
+      - Same failed acceptance points rechecked: <yes/no>
+
+      - Result: <PASS/FAIL>'
+    depends_on:
+    - orch_drive_driver.fix-driver-loop-blockers
+    agent: integration-verifier-tacit
 - id: orch_drive_barriers
   name: Orchestration Drive Review / Resolver / Planner Barriers
   status: locked

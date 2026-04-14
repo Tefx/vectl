@@ -1004,14 +1004,17 @@ class ResolutionCase:
     """
     Problem handed from control to resolver when normal flow does not close.
 
+    Authority: docs/ORCHESTRATION-PLANE-INTERFACES.md section 3.8
+
     Attributes:
-        case_id: Explicit identifier for the resolution case.
-        case_source: Coarse source tag for how the case arose.
         reason: Why normal flow is blocked.
-        summary: Optional bounded human-readable case summary.
         core: Current core snapshot.
         roster: Current roster snapshot.
         runtime: Current runtime snapshot.
+        case_id: Explicit identifier for the resolution case.
+        case_source: Coarse source tag for how the case arose.
+        summary: Optional bounded human-readable case summary.
+        drive: Optional drive record for drive-aware resolver context.
         blocked_step_ids: Optional blocked-step coordination context.
         artifact_refs: Optional evidence/artifact references preserved on the case.
     """
@@ -1023,6 +1026,7 @@ class ResolutionCase:
     case_id: str = ""
     case_source: ResolutionCaseSource = "unknown"
     summary: str | None = None
+    drive: DriveRecord | None = None
     blocked_step_ids: tuple[str, ...] = ()
     artifact_refs: tuple[str, ...] = ()
 

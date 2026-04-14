@@ -33,6 +33,8 @@ from vectl.orchestration.contracts import (
     RecoveryAttempt,
     RecoveryContinuity,
     ReconcileResult,
+    ResolutionCase,
+    ResolutionCaseSource,
     ResolutionReport,
     RosterSnapshot,
     RuntimeSnapshot,
@@ -46,6 +48,11 @@ if TYPE_CHECKING:
     from vectl.orchestration.roster import Roster
     from vectl.orchestration.run_store import DriveStore
     from vectl.orchestration.runtime import Runtime
+
+# Runtime imports needed for resolver-loop integration
+from vectl.orchestration.contracts import ResolutionCase, ResolutionCaseSource
+from vectl.orchestration.resolver import Resolver as ResolverType
+from vectl.orchestration.review_gate import ReviewGate as ReviewGateType
 
 
 # ---------------------------------------------------------------------
@@ -471,6 +478,199 @@ def _generate_drive_id() -> str:
 
 
 # ---------------------------------------------------------------------
+# Resolver-loop helper functions
+# ---------------------------------------------------------------------
+
+
+def _infer_case_source(decision: ControlDecision) -> ResolutionCaseSource:
+    """Infer the ResolutionCaseSource from a control decision.
+
+    Authority: ORCHESTRATION-PLANE-INTERFACES.md section 3.8
+    Authority: RFC-orch-drive.md section 8.4.1
+
+    Maps control decision context to the appropriate case source tag.
+    This is a heuristic mapping since the decision doesn't carry a
+    case_source directly — the reason text is used as a signal.
+
+    Args:
+        decision: Control decision with kind='resolve'.
+
+    Returns:
+        The inferred ResolutionCaseSource tag.
+    """
+    reason_lower = decision.reason.lower()
+    if "merge conflict" in reason_lower:
+        return "merge_conflict"
+    if "review" in reason_lower:
+        return "review_failed"
+    if "runtime" in reason_lower or "stall" in reason_lower or "fail" in reason_lower:
+        return "runtime_failure"
+    if "continuity" in reason_lower or "recovery" in reason_lower:
+        return "continuity_block"
+    if "ambiguit" in reason_lower or "authorit" in reason_lower:
+        return "authority_ambiguity"
+    return "unknown"
+
+
+def _barrier_reason_for_case_source(source: ResolutionCaseSource) -> BarrierReason:
+    """Map a ResolutionCaseSource to the corresponding BarrierReason.
+
+    Authority: RFC-orch-drive.md section 8.4.1
+
+    The barrier reason must match the canonical mapping defined in
+    the RFC. Not all case sources have a direct barrier reason;
+    unknown sources map to ``runtime_failure`` as the safest default.
+
+    Args:
+        source: Case source identifier.
+
+    Returns:
+        The corresponding barrier reason for drive barrier entry.
+    """
+    mapping: dict[ResolutionCaseSource, BarrierReason] = {
+        "runtime_failure": "runtime_failure",
+        "merge_conflict": "merge_conflict",
+        "review_failed": "review_failed",
+        "continuity_block": "recovery_gate",
+        "authority_ambiguity": "runtime_failure",
+        "unknown": "runtime_failure",
+    }
+    return mapping.get(source, "runtime_failure")
+
+
+def _apply_resolution_report_to_drive(
+    record: DriveRecord,
+    barrier: DriveBarrier,
+    report: ResolutionReport,
+    post_decision: ControlDecision,
+) -> tuple[DriveStatus, DriveBarrier | None, str]:
+    """Resolve a ResolutionReport into drive status transition.
+
+    Authority: RFC-orch-drive.md section 12.3
+    Authority: ORCHESTRATION-PLANE-RESOLUTION-CONTRACT.md sections 5, 6
+
+    Implements the resolver continuation rules:
+        - ``unblocked`` without planner_request: clear barrier → running
+        - ``unblocked`` with planner_request: clear barrier → replanning
+        - ``waiting``: keep resolving status, keep barrier
+        - ``operator_required``: transition to blocked_operator
+        - ``halt``: transition to halted
+
+    Args:
+        record: Current drive record (before report application).
+        barrier: Current barrier state.
+        report: Resolver report to apply.
+        post_decision: Control decision after applying the report.
+
+    Returns:
+        Tuple of (new_status, new_barrier, summary).
+    """
+    if report.status == "unblocked":
+        if report.planner_request is not None:
+            # Authority: RFC-orch-drive.md section 12.3
+            # If planner_request is present alongside status=unblocked,
+            # drive must transition directly from resolving to replanning
+            # without reopening the frontier in between.
+            new_status: DriveStatus = "replanning"
+            try:
+                validate_drive_transition(record.status, new_status)
+            except InvalidDriveTransitionError:
+                # If already in a valid state, keep it
+                new_status = record.status
+            new_barrier = DriveBarrier(
+                reason="planner_needed",
+                entered_at=barrier.entered_at,
+                case_ids=barrier.case_ids,
+                pending_resolver_run_id=None,
+                pending_planner_run_id=barrier.pending_planner_run_id,
+                active_child_run_ids_at_entry=barrier.active_child_run_ids_at_entry,
+            )
+            summary = f"resolver unblocked (planner requested): {report.summary}"
+            return new_status, new_barrier, summary
+
+        # Authority: RFC-orch-drive.md section 12.3
+        # unblocked without planner_request → clear barrier, continue
+        new_status = "running"
+        try:
+            validate_drive_transition(record.status, new_status)
+        except InvalidDriveTransitionError:
+            new_status = record.status
+        summary = f"resolver unblocked: {report.summary}"
+        return new_status, None, summary
+
+    if report.status == "waiting":
+        # Authority: RFC-orch-drive.md section 12.3
+        # Stay in resolving/waiting; do not dispatch new work.
+        new_status = "resolving"
+        try:
+            validate_drive_transition(record.status, new_status)
+        except InvalidDriveTransitionError:
+            # If already resolving, stay there
+            new_status = record.status
+        summary = f"resolver waiting: {report.summary}"
+        return new_status, barrier, summary
+
+    if report.status == "operator_required":
+        # Authority: RFC-orch-drive.md section 12.3
+        new_status = "blocked_operator"
+        try:
+            validate_drive_transition(record.status, new_status)
+        except InvalidDriveTransitionError:
+            new_status = record.status
+        summary = f"resolver requires operator: {report.summary}"
+        return new_status, barrier, summary
+
+    # report.status == "halt"
+    # Authority: RFC-orch-drive.md section 12.3, 10.3
+    new_status = "halted"
+    summary = f"resolver halt: {report.summary}"
+    try:
+        validate_drive_transition(record.status, new_status)
+    except InvalidDriveTransitionError:
+        new_status = record.status
+    return new_status, barrier, summary
+
+
+def _update_drive_record(
+    record: DriveRecord,
+    new_status: DriveStatus,
+    barrier: DriveBarrier | None,
+    summary: str,
+) -> DriveRecord:
+    """Create an updated DriveRecord with new status, barrier, and summary.
+
+    Helper to avoid repeated DriveRecord reconstruction across
+    the driver loop's branching paths.
+
+    Args:
+        record: Base drive record to update from.
+        new_status: New drive status.
+        barrier: New barrier state (may be None to clear barrier).
+        summary: New summary text.
+
+    Returns:
+        New DriveRecord instance with updated fields.
+    """
+    now = time.time()
+    return DriveRecord(
+        drive_id=record.drive_id,
+        plan_path=record.plan_path,
+        status=new_status,
+        started_at=record.started_at,
+        updated_at=now,
+        finished_at=now if new_status in TERMINAL_DRIVE_STATUSES else None,
+        agent=record.agent,
+        max_parallelism=record.max_parallelism,
+        active_child_run_ids=record.active_child_run_ids,
+        frontier_step_ids=record.frontier_step_ids,
+        blocked_case_ids=record.blocked_case_ids,
+        barrier=barrier,
+        operator_pause_state=record.operator_pause_state,
+        summary=summary,
+    )
+
+
+# ---------------------------------------------------------------------
 # Concrete Drive Driver
 # ---------------------------------------------------------------------
 
@@ -488,6 +688,21 @@ class ConcreteDriveDriver:
     It is a composition layer — not a fifth architecture component. The driver
     delegates plan-aware decisions to Control, persistence to DriveStore, and
     authority reads to CoreAdapter.
+
+    Resolver-loop integration (RFC-orch-drive.md section 12.3):
+        When control evaluates to ``kind='resolve'``, the driver creates a
+        ``ResolutionCase`` snapshot, invokes the resolver, and continues based
+        on the ``ResolutionReport`` status:
+
+        - ``unblocked``: refresh state, clear barrier, continue normal scheduling
+        - ``waiting``: stay in resolving/waiting; do not dispatch new work
+        - ``operator_required``: transition drive to ``blocked_operator``
+        - ``halt``: transition drive to ``halted``
+        - ``planner_request`` present: transition from resolving to replanning
+
+        Refresh-after-resolution is mandatory (ORCHESTRATION-PLANE-RESOLUTION-CONTRACT
+        section 6): control must re-read authoritative state and never trust
+        stale pre-resolution assumptions.
     """
 
     def __init__(
@@ -496,11 +711,15 @@ class ConcreteDriveDriver:
         drive_store: DriveStore,
         core_adapter: CoreAdapter,
         control: PlanAwareControl,
+        resolver: Resolver | None = None,
+        review_gate: ReviewGate | None = None,
         max_parallelism: int = 4,
     ) -> None:
         self._drive_store = drive_store
         self._core_adapter = core_adapter
         self._control = control
+        self._resolver = resolver
+        self._review_gate = review_gate
         self._max_parallelism = max(1, min(32, max_parallelism))
 
     # ------------------------------------------------------------------
@@ -588,12 +807,18 @@ class ConcreteDriveDriver:
         This method:
           1. Refreshes authoritative snapshots (core, roster, runtime, drive)
           2. Evaluates control decision
-          3. Persists updated drive state
-          4. Returns the loop result
+          3. If resolve: enter barrier, create ResolutionCase, invoke resolver,
+             consume report, refresh state, continue with decision semantics
+          4. If replan: enter barrier for planner transition
+          5. Persists updated drive state reflecting the decision
+          6. Returns the loop result
 
-        The actual child-run dispatch, reconciliation, and barrier resolution
-        are handled by the orchestration app layer that calls this method and
-        acts on the returned ControlDecision.
+        Resolver-loop integration (RFC-orch-drive.md section 12.3):
+            - ``unblocked``: refresh state, clear barrier, continue scheduling
+            - ``waiting``: stay in resolving status; do not dispatch new work
+            - ``operator_required``: transition drive to ``blocked_operator``
+            - ``halt``: transition drive to ``halted``
+            - ``planner_request`` present: transition from resolving to replanning
 
         Args:
             drive_id: The drive to run one loop pass for.
@@ -627,25 +852,39 @@ class ConcreteDriveDriver:
         # Evaluate control decision with drive context.
         drive_barrier = record.barrier
         open_case_ids = record.blocked_case_ids
+        roster_snap = self._control.sources.roster.snapshot()
+        runtime_snap = self._control.sources.runtime.snapshot()
 
         decision = self._control.evaluate(
             core=core,
-            roster=self._control.sources.roster.snapshot_value,
-            runtime=self._control.sources.runtime.snapshot_value,
+            roster=roster_snap,
+            runtime=runtime_snap,
             drive=record,
             barrier=drive_barrier,
             open_case_ids=open_case_ids,
         )
 
+        # --- Resolver-loop integration ---
+        # Authority: RFC-orch-drive.md section 12.3, 5.4
+        # Authority: ORCHESTRATION-PLANE-RESOLUTION-CONTRACT.md sections 2, 5, 6
+        if decision.kind == "resolve" and self._resolver is not None:
+            return self._handle_resolve_decision(
+                drive_id=drive_id,
+                record=record,
+                core=core,
+                roster=roster_snap,
+                runtime=runtime_snap,
+                decision=decision,
+            )
+
         # Persist updated drive state reflecting the decision.
         now = time.time()
         completed_steps: tuple[str, ...] = ()
         new_status = record.status
+        barrier = record.barrier
         summary = f"loop pass: decision={decision.kind}"
 
         if decision.kind == "dispatch_batch":
-            # Record the frontier decision; actual dispatch is the caller's
-            # responsibility (orch_app) via its existing dispatch paths.
             summary = (
                 f"dispatch_batch: steps={decision.step_ids} "
                 f"capacity_used={decision.capacity_used} "
@@ -662,24 +901,17 @@ class ConcreteDriveDriver:
         elif decision.kind == "wait":
             summary = f"wait: {decision.reason}"
         elif decision.kind == "resolve":
-            summary = f"resolve: case_ids={decision.case_ids}"
+            # No resolver available — enter barrier with case ids recorded
+            # but do NOT invoke resolver. The barrier entry still captures
+            # the case and transitions the drive to resolving status.
+            new_status, barrier, summary = self._enter_barrier_for_resolve(record, decision)
         elif decision.kind == "replan":
-            summary = f"replan: {decision.reason}"
+            new_status, barrier, summary = self._enter_barrier_for_replan(record, decision)
 
-        updated = DriveRecord(
-            drive_id=record.drive_id,
-            plan_path=record.plan_path,
-            status=new_status,
-            started_at=record.started_at,
-            updated_at=now,
-            finished_at=now if new_status in TERMINAL_DRIVE_STATUSES else None,
-            agent=record.agent,
-            max_parallelism=record.max_parallelism,
-            active_child_run_ids=record.active_child_run_ids,
-            frontier_step_ids=record.frontier_step_ids,
-            blocked_case_ids=record.blocked_case_ids,
-            barrier=record.barrier,
-            operator_pause_state=record.operator_pause_state,
+        updated = _update_drive_record(
+            record=record,
+            new_status=new_status,
+            barrier=barrier,
             summary=summary,
         )
         self._drive_store.save_drive(updated)
@@ -689,9 +921,210 @@ class ConcreteDriveDriver:
             status=new_status,
             completed_steps=completed_steps,
             active_child_run_ids=record.active_child_run_ids,
-            barrier=record.barrier,
+            barrier=barrier,
             summary=summary,
         )
+
+    # ------------------------------------------------------------------
+    # Resolver-loop integration
+    # ------------------------------------------------------------------
+
+    def _handle_resolve_decision(
+        self,
+        drive_id: str,
+        record: DriveRecord,
+        core: CoreSnapshot,
+        roster: RosterSnapshot,
+        runtime: RuntimeSnapshot,
+        decision: ControlDecision,
+    ) -> DriveLoopResult:
+        """Handle a resolve decision by invoking resolver and continuing.
+
+        Authority: RFC-orch-drive.md section 12.3
+        Authority: ORCHESTRATION-PLANE-RESOLUTION-CONTRACT.md sections 2, 5, 6
+
+        This method:
+          1. Enters barrier (running → resolving) if not already in barrier
+          2. Creates ResolutionCase snapshot from current state
+          3. Invokes resolver with the case
+          4. Consumes the ResolutionReport
+          5. Refreshes authoritative state (mandatory per RESOLUTION-CONTRACT §6)
+          6. Applies the report through control.apply_resolution()
+          7. Transitions drive status per continuation rules
+          8. Preserves evidence/artifacts on the case and report
+
+        Args:
+            drive_id: Drive identifier.
+            record: Current drive record.
+            core: Core snapshot at barrier entry.
+            roster: Roster snapshot at barrier entry.
+            runtime: Runtime snapshot at barrier entry.
+            decision: ControlDecision with kind='resolve'.
+
+        Returns:
+            ``DriveLoopResult`` reflecting the post-resolution drive state.
+        """
+        assert self._resolver is not None  # guarded by caller
+
+        # Step 1: Enter barrier if not already in one.
+        now = time.time()
+        if record.barrier is None:
+            barrier = DriveBarrier(
+                reason=_barrier_reason_for_case_source(_infer_case_source(decision)),
+                entered_at=now,
+                case_ids=decision.case_ids,
+                pending_resolver_run_id=None,
+                pending_planner_run_id=None,
+                active_child_run_ids_at_entry=record.active_child_run_ids,
+            )
+            validate_drive_transition(record.status, "resolving")
+            # Create an intermediate record reflecting the resolving state
+            # for correct transition validation in _apply_resolution_report_to_drive.
+            resolving_record = _update_drive_record(
+                record=record,
+                new_status="resolving",
+                barrier=barrier,
+                summary="entering resolver",
+            )
+        else:
+            barrier = record.barrier
+            resolving_record = record
+
+        # Step 2: Create ResolutionCase snapshot.
+        # Authority: ORCHESTRATION-PLANE-RESOLUTION-CONTRACT.md section 3.2
+        # "The case should be a snapshot of current known facts, not a
+        #  speculative action plan."
+        case = ResolutionCase(
+            case_id=decision.case_ids[0] if decision.case_ids else "",
+            case_source=_infer_case_source(decision),
+            reason=decision.reason,
+            summary=None,
+            core=core,
+            roster=roster,
+            runtime=runtime,
+            drive=record,
+            blocked_step_ids=tuple(sid for sid in core.blocked_step_ids),
+            artifact_refs=(),
+        )
+
+        # Step 3: Invoke resolver.
+        # Authority: ORCHESTRATION-PLANE-INTERFACES.md section 4.4
+        report = self._resolver.resolve(case)
+
+        # Step 4: Refresh authoritative state (mandatory).
+        # Authority: ORCHESTRATION-PLANE-RESOLUTION-CONTRACT.md section 6
+        # "After receiving a ResolutionReport, control must:
+        #  1. re-read the relevant authoritative and orchestration-plane state
+        #  2. not trust stale pre-resolution assumptions
+        #  3. resume normal evaluate() logic from refreshed state"
+        refreshed_core = self._core_adapter.snapshot(agent=resolving_record.agent or "default")
+        refreshed_roster = self._control.sources.roster.snapshot()
+        refreshed_runtime = self._control.sources.runtime.snapshot()
+
+        # Step 5: Apply resolution report through control.
+        post_decision = self._control.apply_resolution(
+            report=report,
+            core=refreshed_core,
+            roster=refreshed_roster,
+            runtime=refreshed_runtime,
+            drive=resolving_record,
+            barrier=barrier,
+        )
+
+        # Step 6: Transition drive status per continuation rules.
+        # Authority: RFC-orch-drive.md section 12.3
+        new_status, resolved_barrier, summary = _apply_resolution_report_to_drive(
+            record=resolving_record,
+            barrier=barrier,
+            report=report,
+            post_decision=post_decision,
+        )
+
+        updated = _update_drive_record(
+            record=resolving_record,
+            new_status=new_status,
+            barrier=resolved_barrier,
+            summary=summary,
+        )
+        self._drive_store.save_drive(updated)
+
+        return DriveLoopResult(
+            drive_id=drive_id,
+            status=new_status,
+            completed_steps=(),
+            active_child_run_ids=record.active_child_run_ids,
+            barrier=resolved_barrier,
+            summary=summary,
+        )
+
+    def _enter_barrier_for_resolve(
+        self,
+        record: DriveRecord,
+        decision: ControlDecision,
+    ) -> tuple[DriveStatus, DriveBarrier | None, str]:
+        """Enter barrier for resolve decision without resolver available.
+
+        Authority: RFC-orch-drive.md section 5.4, 8.4.1
+
+        Args:
+            record: Current drive record.
+            decision: ControlDecision with kind='resolve'.
+
+        Returns:
+            Tuple of (new_status, barrier, summary).
+        """
+        now = time.time()
+        barrier_reason = _barrier_reason_for_case_source(_infer_case_source(decision))
+        barrier = DriveBarrier(
+            reason=barrier_reason,
+            entered_at=now,
+            case_ids=decision.case_ids,
+            pending_resolver_run_id=None,
+            pending_planner_run_id=None,
+            active_child_run_ids_at_entry=record.active_child_run_ids,
+        )
+        new_status: DriveStatus = "resolving"
+        try:
+            validate_drive_transition(record.status, new_status)
+        except InvalidDriveTransitionError:
+            # If already in resolving or another barrier-compatible state,
+            # keep the current status but still update the barrier.
+            new_status = record.status
+        summary = f"resolve: case_ids={decision.case_ids} (barrier entered; no resolver wired)"
+        return new_status, barrier, summary
+
+    def _enter_barrier_for_replan(
+        self,
+        record: DriveRecord,
+        decision: ControlDecision,
+    ) -> tuple[DriveStatus, DriveBarrier | None, str]:
+        """Enter barrier for replan decision.
+
+        Authority: RFC-orch-drive.md section 5.6, 13
+
+        Args:
+            record: Current drive record.
+            decision: ControlDecision with kind='replan'.
+
+        Returns:
+            Tuple of (new_status, barrier, summary).
+        """
+        now = time.time()
+        barrier = DriveBarrier(
+            reason="planner_needed",
+            entered_at=now,
+            case_ids=decision.case_ids,
+            pending_resolver_run_id=None,
+            pending_planner_run_id=None,
+            active_child_run_ids_at_entry=record.active_child_run_ids,
+        )
+        new_status: DriveStatus = "replanning"
+        try:
+            validate_drive_transition(record.status, new_status)
+        except InvalidDriveTransitionError:
+            new_status = record.status
+        summary = f"replan: {decision.reason} (barrier entered)"
+        return new_status, barrier, summary
 
     # ------------------------------------------------------------------
     # resume_drive

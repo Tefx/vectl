@@ -157,6 +157,7 @@ def map_payload_to_report(case: ResolutionCase, payload: Mapping[str, object]) -
         summary=f"{case.reason} | {parsed_report.summary}",
         evidence_refs=parsed_report.evidence_refs,
         operator_message=parsed_report.operator_message,
+        planner_request=parsed_report.planner_request,
     )
 
 

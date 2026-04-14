@@ -84460,7 +84460,7 @@ phases:
       \ → step_ids) were NOT introduced by this step"
   - id: orch_drive_surfaces.config-and-observability-upgrades
     name: config and observability upgrades
-    status: claimed
+    status: pending
     description: 'Implementation step.
 
 
@@ -84503,8 +84503,6 @@ phases:
     depends_on:
     - orch_drive_surfaces.inspection-and-control-surface
     agent: python-senior-tacit
-    claimed_by: python-senior-tacit
-    claimed_at: '2026-04-14T21:12:19.441773+00:00'
   - id: orch_drive_surfaces.drive-cli-liveness-probe
     name: drive cli liveness probe
     status: pending

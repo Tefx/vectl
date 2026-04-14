@@ -83002,7 +83002,7 @@ phases:
       \ as non-blocking debt item)."
   - id: orch_drive_driver.gate-driver-phase
     name: gate driver phase
-    status: pending
+    status: claimed
     description: Gate review for orch_drive_driver. Open only if the drive loop is
       durable, authoritative, and ready for review/resolver/planner barrier integration.
     verification: '- Driver-loop implementation evidence remains complete for core
@@ -83021,6 +83021,8 @@ phases:
     depends_on:
     - orch_drive_driver.reverify-driver-loop-remediation
     agent: gate-reviewer-tacit
+    claimed_by: gate-reviewer-tacit
+    claimed_at: '2026-04-14T11:45:46.021871+00:00'
   - id: orch_drive_driver.fix-driver-loop-blockers
     name: Fix driver loop blockers
     status: done

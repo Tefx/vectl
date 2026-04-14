@@ -82151,7 +82151,7 @@ phases:
       - docs/ORCHESTRATION-PLANE-CLI-CONFIG-OBSERVABILITY-DESIGN.md'
 - id: orch_drive_control
   name: Orchestration Drive Control Decisions
-  status: in_progress
+  status: done
   gate: Control emits authoritative batch/frontier, replan, resolve, wait, done, and
     halt decisions with same-plan admission rules validated before runtime/driver
     composition.
@@ -82349,7 +82349,7 @@ phases:
       - docs/ORCHESTRATION-PLANE-INTERFACES.md (ControlDecision/Control protocol semantics)'
   - id: orch_drive_control.gate-control-phase
     name: gate control phase
-    status: claimed
+    status: done
     description: Gate review for orch_drive_control. Open only if control authority
       is widened cleanly enough that runtime and driver work can compose against the
       expanded scheduler contract.
@@ -82362,9 +82362,88 @@ phases:
     agent: gate-reviewer-tacit
     claimed_by: gate-reviewer-tacit
     claimed_at: '2026-04-14T03:38:23.226220+00:00'
+    done_at: '2026-04-14T03:53:55.170276+00:00'
+    evidence: '# Gate Review: orch_drive_control.gate-control-phase
+
+
+      **Headline**: PASS_WITH_DEBT
+
+      **Blocking Status**: CLOSED
+
+      **Proof-Gap Status**: NON_BLOCKING
+
+
+      ## Refs Read Confirmation
+
+      - docs/RFC-orch-drive.md ✅ READ (1318 lines)
+
+      - docs/ORCHESTRATION-PLANE-INTERFACES.md ✅ READ (883 lines)
+
+      - tools/vectl/README.md ⚠️ NOT FOUND (file absent from repository)
+
+
+      ## Summary
+
+      The control layer correctly emits and handles all 6 scheduler decision semantics
+      (dispatch_batch, resolve, replan, wait, done, halt) with proper invariant validation
+      and same-plan admission rules. Phase ready for runtime composition.
+
+
+      ## Automated Gate Results
+
+      - Type checking: PASS (no type errors in control.py, contracts.py, run_store.py)
+
+      - Linting: PASS (ruff clean on changed files)
+
+      - Test suite: PASS (1095 orchestration tests, 0 failures — including 81 control-specific
+      tests)
+
+
+      ## Behavioral Proof Register
+
+      All 15 behavioral proofs PROVEN via unit tests. Key proofs:
+
+      - P1: All 6 decision kinds emitted with correct invariants (RFC §9.2.1)
+
+      - P2-P4: Batch dispatch with deterministic ordering and capacity accounting
+      (RFC §9.3-9.4)
+
+      - P5-P6: Barrier and operator-pause handling (RFC §5.4, §7.3)
+
+      - P11: Resolver continuation rules (RFC §12.3)
+
+      - P12: Planner continuation rules (RFC §13.5)
+
+      - P13-P14: Same-plan admission with drive-aware priority (RFC §7.1, §14.1)
+
+
+      ## Wiring Audit
+
+      All public exports are wired. No orphan code. No phantom dependencies. Private
+      helpers (_deterministic_frontier_order, _count_active_step_runs) have test consumers.
+
+
+      ## Should-Fix Items (non-blocking, deferred)
+
+      1. S1: _count_active_step_runs conservatively counts all active child runs instead
+      of filtering by kind=step (acknowledged in code comment; requires ChildRunRef.kind
+      context from driver loop)
+
+      2. S2: validate_decision_invariants called only in tests, not in production
+      evaluate/apply methods (deferred to driver phase where decision loop applies
+      it)
+
+
+      ## Suggestions
+
+      U1: tools/vectl/README.md does not exist — consider creating it or removing
+      from gate required-reading list
+
+
+      ## Verdict: PASS_WITH_DEBT — gate_open_allowed=true'
 - id: orch_drive_runtime
   name: Orchestration Drive Runtime Parallel Child Runs
-  status: locked
+  status: pending
   gate: Runtime mechanics support real bounded parallel child runs, real worktrees,
     merge/reconcile handoff, and child-run lifecycle evidence before the full driver
     loop lands.

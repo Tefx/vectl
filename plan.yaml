@@ -82998,6 +82998,158 @@ phases:
     - orch_drive_driver.phase-and-plan-auto-close
     - orch_drive_driver.verify-driver-loop
     agent: gate-reviewer-tacit
+  - id: orch_drive_driver.fix-driver-loop-blockers
+    name: Fix driver loop blockers
+    status: pending
+    description: 'Batched remediation for the failed driver-loop verification.
+
+
+      Work type: defect_repair
+
+      step_type: implementation
+
+      verification_scope: phase-check
+
+
+      Fill in the orchestration app surface so `start_drive`, `run_drive_loop`, `resume_drive`,
+      and `recover_drive` no longer raise `NotImplementedError`, and wire them through
+      the authoritative driver-loop runtime/control/resolver surfaces used by this
+      phase.
+
+
+      This step addresses ALL currently reported blocker-class gaps from `orch_drive_driver.verify-driver-loop`,
+      not just the first failure.
+
+
+      ## Blockers to Fix (ALL of these, not just the first)
+
+      - App-surface `NotImplementedError` paths for `start_drive`, `run_drive_loop`,
+      `resume_drive`, and `recover_drive`
+
+      - Missing end-to-end driver loop execution proof path so the verifier can demonstrate
+      the real loop running through the orchestration app surface
+
+      - Missing `tools/vectl/README.md` documentation artifact, currently treated
+      as non-blocking debt; either add the document or make its status explicit in
+      evidence so the re-verify step can disposition it correctly without reopening
+      the same ambiguity
+
+
+      ## Root Cause vs Symptom
+
+      - Root cause: orchestration app surface methods remain stubbed or incompletely
+      wired, so the named runtime surface is not actually runnable end-to-end
+
+      - Symptom: verification hit `NotImplementedError` and could not collect runnable
+      driver-loop proof
+
+      - Why this fix is not surface-level: the scope includes real surface wiring
+      and runnable proof support, not exception suppression or fake test-only bypasses
+
+
+      ## Runtime / Entry Point obligations
+
+      - Preserve the orchestration app as a runnable external surface
+
+      - Ensure the real entry path can start or resume a drive loop and exercise at
+      least one end-to-end iteration through authoritative runtime state
+
+      - Do not silently narrow the work to helper internals only
+
+
+      ## Completion Criteria (stub exclusion)
+
+      This is an IMPLEMENTATION step. Stub-only completion is NOT acceptable.
+
+      Each deliverable MUST contain substantive logic that processes its inputs and
+      produces outputs that vary based on those inputs.
+
+
+      ## Known risks / sibling search
+
+      - Search all orchestration app surface entrypoints for analogous stubbed or
+      placeholder behavior beyond the four named methods
+
+      - Do not leave parallel recovery/start paths partially wired
+
+      - If documentation remains intentionally deferred, state why it is non-blocking
+      and why downstream gates are not intersected'
+    verification: '- Local implementation scope is complete for all four named orchestration
+      app surface methods
+
+      - Focused regression coverage or runnable checks exist for start/run/resume/recover
+      app-surface paths
+
+      - At least one real end-to-end driver loop execution path is now available for
+      independent re-verification
+
+      - Documentation debt for `tools/vectl/README.md` is either fixed or explicitly
+      dispositioned as non-blocking with non-intersection evidence'
+    evidence_template: '## Implementation Evidence
+
+
+      ### refs Read Confirmation (MANDATORY)
+
+      For each ref in this step:
+
+      - <filename> — key passage or "NOT READ: <reason>"
+
+
+      If no refs were provided, state: "No refs for this step."
+
+
+      ### Blocker Closure Report
+
+      - `start_drive`: <implemented path / file>
+
+      - `run_drive_loop`: <implemented path / file>
+
+      - `resume_drive`: <implemented path / file>
+
+      - `recover_drive`: <implemented path / file>
+
+
+      ### Runnable Proof Support Added
+
+      - Exact command or test enabling end-to-end driver-loop proof:
+
+      ```text
+
+      <paste exact command>
+
+      ```
+
+      - Real path exercised: <entrypoint -> app surface -> driver loop -> observable
+      effect>
+
+
+      ### Documentation Disposition
+
+      - `tools/vectl/README.md`: <added | intentionally deferred>
+
+      - If deferred: why non-blocking now, why remaining gates do not intersect it,
+      and who owns future closure if needed
+
+
+      ### Sibling Search
+
+      - Additional stubbed app-surface paths checked:
+
+      ```text
+
+      <paste search summary>
+
+      ```
+
+      - Remaining analogous gaps: <none | list>
+
+
+      ### Completion Summary
+
+      - Main blocker family closed: <yes/no with notes>'
+    depends_on:
+    - orch_drive_driver.verify-driver-loop
+    agent: python-senior-tacit
 - id: orch_drive_barriers
   name: Orchestration Drive Review / Resolver / Planner Barriers
   status: locked

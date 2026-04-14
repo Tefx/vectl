@@ -82452,7 +82452,7 @@ phases:
   steps:
   - id: orch_drive_runtime.parallel-child-run-runtime
     name: parallel child run runtime
-    status: claimed
+    status: done
     description: 'Implementation step.
 
 
@@ -82484,6 +82484,47 @@ phases:
     agent: python-senior-tacit
     claimed_by: python-senior-tacit
     claimed_at: '2026-04-14T03:55:32.459076+00:00'
+    done_at: '2026-04-14T05:31:15.492825+00:00'
+    evidence: 'Artifact:
+
+      - Commit `9ef4ea7` on branch `vectl/step-orch_drive_runtime.parallel-child-run-runtime`.
+
+      - Files changed: src/vectl/orchestration/runtime.py; tests/orchestration/test_runtime_parallel_child_run.py.
+
+
+      Verification:
+
+      - `.venv/bin/python -m pytest tests/orchestration/test_runtime_parallel_child_run.py
+      -v` -> 31 passed.
+
+      - `.venv/bin/python -m pytest tests/orchestration/unit/ -v` -> 1008 passed.
+
+      - Verified bounded parallel child-run prepare/start/collect behavior with truthful
+      run_id/session/workspace/artifact bookkeeping.
+
+      - Verified resolver/planner barrier runs do not consume ordinary frontier capacity.
+
+
+      Spec link:
+
+      - docs/RFC-orch-drive.md (§10.2 capacity model, §11.4 runtime integration)
+
+      - docs/ORCHESTRATION-PLANE-INTERFACES.md (§4.3 Runtime protocol)
+
+      - docs/ORCHESTRATION-PLANE-ARCHITECTURE.md (§5.3 Runtime responsibility)
+
+
+      ## refs Read Confirmation
+
+      - docs/RFC-orch-drive.md — read; capacity and runtime/run_id invariants extracted.
+
+      - docs/ORCHESTRATION-PLANE-INTERFACES.md — read; runtime mechanical-only boundary
+      extracted.
+
+      - docs/ORCHESTRATION-PLANE-ARCHITECTURE.md — read; runtime ownership boundary
+      extracted.
+
+      - tools/vectl/README.md — NOT READ: file absent at specified path.'
   - id: orch_drive_runtime.worktree-merge-reconcile-mechanics
     name: worktree merge reconcile mechanics
     status: pending

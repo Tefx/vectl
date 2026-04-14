@@ -493,7 +493,7 @@ def test_resolver_returns_bounded_report_for_all_status_values() -> None:
         )
 
         decision = control.apply_resolution_current(report)
-        assert decision.kind in ("dispatch", "wait", "done"), (
+        assert decision.kind in ("dispatch", "wait", "done", "halt", "replan"), (
             f"Control must map {status} to valid decision"
         )
 

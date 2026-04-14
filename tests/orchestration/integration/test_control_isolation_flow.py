@@ -305,8 +305,15 @@ def test_resolution_operator_required_maps_to_wait() -> None:
     assert "operator" in decision.reason.lower()
 
 
-def test_resolution_halt_maps_to_done() -> None:
-    """Verify resolution halt status maps to done decision."""
+def test_resolution_halt_maps_to_halt() -> None:
+    """Verify resolution halt status maps to halt decision with barrier_required.
+
+    Authority: RFC-orch-drive.md section 9.2.1 (halt invariant), section 10.3
+    (terminal states), section 12.2 (resolver output contract).
+
+    halt means the barrier is terminal and no new work may be admitted, which
+    is distinct from done (normal completion).
+    """
     control = PlanAwareControl(
         sources=ControlInputSources(
             core_adapter=_FakeCoreAdapter(_core()),
@@ -319,8 +326,9 @@ def test_resolution_halt_maps_to_done() -> None:
         ResolutionReport(status="halt", summary="unsafe divergence detected")
     )
 
-    assert decision.kind == "done"
+    assert decision.kind == "halt"
     assert "halted" in decision.reason.lower()
+    assert decision.barrier_required is True
 
 
 # === Isolation Semantics Propagation Tests ===

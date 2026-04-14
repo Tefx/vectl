@@ -704,14 +704,14 @@ def test_resolve_case_emits_explicit_operator_notification_events(
         ("unblocked", "dispatch", False),
         ("waiting", "wait", False),
         ("operator_required", "wait", True),
-        ("halt", "done", False),
+        ("halt", "halt", False),
     ],
 )
 def test_route_resolution_case_covers_all_resolver_outcomes(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
     status: Literal["unblocked", "waiting", "operator_required", "halt"],
-    expected_kind: Literal["dispatch", "wait", "done"],
+    expected_kind: Literal["dispatch", "wait", "done", "halt"],
     expected_notification: bool,
 ) -> None:
     app = _build_app(tmp_path)

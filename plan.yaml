@@ -82151,7 +82151,7 @@ phases:
       - docs/ORCHESTRATION-PLANE-CLI-CONFIG-OBSERVABILITY-DESIGN.md'
 - id: orch_drive_control
   name: Orchestration Drive Control Decisions
-  status: pending
+  status: in_progress
   gate: Control emits authoritative batch/frontier, replan, resolve, wait, done, and
     halt decisions with same-plan admission rules validated before runtime/driver
     composition.
@@ -82160,7 +82160,7 @@ phases:
   steps:
   - id: orch_drive_control.batch-frontier-decision-expansion
     name: batch frontier decision expansion
-    status: pending
+    status: claimed
     description: 'Implementation step.
 
 
@@ -82190,6 +82190,8 @@ phases:
     - docs/ORCHESTRATION-PLANE-INTERFACES.md
     - docs/ORCHESTRATION-PLANE-ARCHITECTURE.md
     agent: python-senior-tacit
+    claimed_by: python-senior-tacit
+    claimed_at: '2026-04-14T02:19:12.219899+00:00'
   - id: orch_drive_control.same-plan-admission-rewrite
     name: same plan admission rewrite
     status: pending

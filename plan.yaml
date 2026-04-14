@@ -83874,7 +83874,7 @@ phases:
       reviewer: gate-reviewer-tacit
   - id: orch_drive_barriers.fix-mainline-barrier-integrations
     name: fix mainline barrier integrations
-    status: claimed
+    status: done
     description: 'Fix ALL gate blockers preventing mainline barrier coverage from
       actually landing.
 
@@ -83945,6 +83945,101 @@ phases:
     agent: python-senior-tacit
     claimed_by: python-senior-tacit
     claimed_at: '2026-04-14T16:44:16.672493+00:00'
+    done_at: '2026-04-14T18:01:58.979783+00:00'
+    evidence: 'Artifact:
+
+      - commit 67767f5 feat(orch): restore planner-loop and review-gate barrier integrations
+      on mainline
+
+
+      Files landed/restored:
+
+      - src/vectl/orchestration/core_adapter.py: +304 lines — PlannerMutationResult,
+      PlannerMutationApplier Protocol, PlanPlannerMutationApplier (all 8 mutation
+      actions via vectl facades), _as_str_list helper
+
+      - src/vectl/orchestration/driver.py: +315 lines — _construct_bundle_from_request,
+      _apply_planner_bundle_to_drive, _handle_replan_decision, _invalidate_superseded_leases,
+      planner_mutation_applier constructor, planner-loop dispatch hook
+
+      - tests/orchestration/unit/test_planner_loop_integration.py: +1198 lines, 38
+      tests (new file, restored from commit 21262f7)
+
+      - tests/orchestration/unit/test_review_gate_integration.py: +527 lines, 20 tests
+      (new file, covers all 4 ReviewOutcome→barrier transitions)
+
+
+      Verification:
+
+      - `pytest tests/orchestration/unit/test_planner_loop_integration.py -v` → 38
+      passed
+
+      - `pytest tests/orchestration/unit/test_review_gate_integration.py -v` → 20
+      passed
+
+      - `pytest tests/orchestration/unit/ -x -q` → 1124 passed
+
+      - `pytest tests/orchestration/integration/ -x -q` → 87 passed
+
+      - `ruff check` on all modified/new files: only pre-existing `now` unused var
+      in driver.py (not from this change)
+
+      - Import verification: `python -c "from vectl.orchestration.core_adapter import
+      PlannerMutationResult, PlannerMutationApplier, PlanPlannerMutationApplier"`
+      → OK
+
+      - Import verification: `python -c "from vectl.orchestration.driver import ConcreteDriveDriver,
+      _construct_bundle_from_request, _apply_planner_bundle_to_drive"` → OK
+
+
+      Spec link:
+
+      - RFC-orch-drive.md sections 5.6 (planner part of scheduler loop), 8.5 (PlannerMutationBundle),
+      13 (Planner Semantics), 17.1.1 (Review outcome continuation rules)
+
+      - ORCHESTRATION-PLANE-INTERFACES.md sections 4.1 (Control.apply_planner_result),
+      4.5 (ReviewGate), 5 (ownership matrix)
+
+      - ORCHESTRATION-PLANE-RESOLUTION-CONTRACT.md sections 2-6 (resolver contract
+      informing planner-loop barrier patterns)
+
+
+      ## refs Read Confirmation
+
+      - docs/RFC-orch-drive.md: fully read (1318 lines)
+
+      - docs/ORCHESTRATION-PLANE-RESOLUTION-CONTRACT.md: fully read (312 lines)
+
+      - docs/ORCHESTRATION-PLANE-INTERFACES.md: fully read (883 lines)
+
+      - commit 21262f7 full diff reviewed for both core_adapter.py and driver.py
+
+      - src/vectl/orchestration/core_adapter.py, driver.py, review_gate.py, contracts.py:
+      all read before modification
+
+
+      ## Sibling Search
+
+      - Planner-loop symbols (PlannerMutationResult, PlannerMutationApplier, PlanPlannerMutationApplier,
+      _as_str_list, _construct_bundle_from_request, _apply_planner_bundle_to_drive,
+      _handle_replan_decision, _invalidate_superseded_leases): grep across all src/
+      and tests/ — found 0 matches before fix, now all present in core_adapter.py,
+      driver.py, and test_planner_loop_integration.py
+
+      - Review-gate symbols (ReviewGateResult, ReviewGate, ReviewOutcome, needs_replan,
+      needs_fix, operator_required, review_failed barrier): grep across all tests/orchestration/
+      — found existing coverage in test_contracts.py, test_dispatch_policy.py, test_orch_app.py,
+      test_control_drive.py, test_resolver_loop_integration.py, test_control_resolver_contract.py,
+      test_orch_app_routing_seam.py — but NO dedicated review-gate barrier transition
+      test file existed; test_review_gate_integration.py fills this gap
+
+      - No additional missing files or import registration gaps found for either blocker
+      family
+
+
+      ## Deviation Records
+
+      - none'
   - id: orch_drive_barriers.reverify-mainline-barrier-integrations
     name: reverify mainline barrier integrations
     status: pending

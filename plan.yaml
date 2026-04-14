@@ -83838,7 +83838,7 @@ phases:
       - tools/vectl/README.md — NOT FOUND (reported as missing per step instructions).'
   - id: orch_drive_barriers.gate-barrier-phase
     name: gate barrier phase
-    status: rejected
+    status: claimed
     description: Gate review for orch_drive_barriers. Open only if review failures,
       resolver cases, and planner mutation bundles all have truthful scheduler continuation
       semantics, and the batched mainline remediation path has been independently
@@ -83853,7 +83853,7 @@ phases:
     - orch_drive_barriers.reverify-mainline-barrier-integrations
     agent: gate-reviewer-tacit
     claimed_by: gate-reviewer-tacit
-    claimed_at: '2026-04-14T16:12:18.675997+00:00'
+    claimed_at: '2026-04-14T18:23:06.153475+00:00'
     done_at: '2026-04-14T16:36:57.417295+00:00'
     rejection_reason: 'Gate FAIL with 2 BLOCKING issues: (B1) Planner-loop integration
       production code and tests (commit 21262f7 with 302+ lines in core_adapter.py,

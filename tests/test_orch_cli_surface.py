@@ -184,6 +184,75 @@ class _FakeOrchApp:
         del status, legacy_run_id
         return _Result(success=True, message="advanced")
 
+    def has_active_drive_for_plan(self) -> str | None:
+        """Return None (no active drive) for fake app."""
+        return None
+
+    def inspect_drive_status(
+        self, *, drive_id: str, child_run_id: str | None = None
+    ) -> _InspectResult:
+        self.calls.append("inspect_drive_status")
+        del drive_id, child_run_id
+        return _InspectResult(view_type="status", data=("drive_status=running",))
+
+    def inspect_drive_events(
+        self, *, drive_id: str, child_run_id: str | None = None, limit: int = 100
+    ) -> _InspectResult:
+        self.calls.append("inspect_drive_events")
+        del drive_id, child_run_id, limit
+        return _InspectResult(view_type="events", data=("event=drive_event",))
+
+    def inspect_drive_logs(
+        self, *, drive_id: str, child_run_id: str | None = None
+    ) -> _InspectResult:
+        self.calls.append("inspect_drive_logs")
+        del drive_id, child_run_id
+        return _InspectResult(view_type="logs", data=("drive_log_line=1",))
+
+    def inspect_drive_artifacts(
+        self, *, drive_id: str, child_run_id: str | None = None
+    ) -> _InspectResult:
+        self.calls.append("inspect_drive_artifacts")
+        del drive_id, child_run_id
+        return _InspectResult(view_type="artifacts", data=("drive_artifact=a",))
+
+    def inspect_drive_actions(
+        self, *, drive_id: str, child_run_id: str | None = None
+    ) -> _InspectResult:
+        self.calls.append("inspect_drive_actions")
+        del drive_id, child_run_id
+        return _InspectResult(view_type="actions", data=("drive_action=pending",))
+
+    def control_drive_pause(self, *, drive_id: str, reason: str | None = None):
+        self.calls.append("control_drive_pause")
+        self.pause_reason = reason
+        del drive_id
+        return _Result(success=True, message="drive paused")
+
+    def control_drive_unpause(self, *, drive_id: str, reason: str | None = None):
+        self.calls.append("control_drive_unpause")
+        self.unpause_reason = reason
+        del drive_id
+        return _Result(success=True, message="drive unpaused")
+
+    def control_drive_stop(self, *, drive_id: str, reason: str | None = None, force: bool = False):
+        self.calls.append("control_drive_stop")
+        self.stop_reason = reason
+        self.stop_force = force
+        del drive_id
+        return _Result(success=True, message="drive stopped")
+
+    def drive_status(self, *, drive_id: str):
+        self.calls.append("drive_status")
+        del drive_id
+        return _Result(success=True, message="drive status")
+
+    def resolve_latest_drive_id(self) -> str | None:
+        return None
+
+    def _drive_store(self):
+        return None
+
 
 def test_orch_command_registration_matrix() -> None:
     orch_help = runner.invoke(app, ["orch", "--help"])
@@ -270,8 +339,8 @@ def test_orch_output_mode_conflict_is_rejected() -> None:
 
 def test_orch_resume_requires_selector() -> None:
     result = runner.invoke(app, ["orch", "resume"])
-    assert result.exit_code == 1
-    assert "Run selector required" in result.output
+    assert result.exit_code == 3
+    assert "explicit selector" in result.output
 
 
 def test_orch_inspect_actions_requires_selector() -> None:
@@ -312,11 +381,14 @@ def test_orch_control_and_config_flags_propagate_to_orch_app(monkeypatch) -> Non
 
 
 def test_orch_control_stop_forwards_explicit_run_id(monkeypatch) -> None:
+    """Stop command with --run uses legacy run-scoped path."""
     fake = _FakeOrchApp()
     monkeypatch.setattr("vectl.cli._build_orchestration_runtime_app", lambda plan: fake)
     monkeypatch.setattr("vectl.cli._step_id_for_run", lambda app_runtime, run_id: "s1")
 
-    result = runner.invoke(app, ["orch", "control", "stop", "r1", "--reason", "halt", "--force"])
+    result = runner.invoke(
+        app, ["orch", "control", "stop", "--run", "r1", "--reason", "halt", "--force"]
+    )
 
     assert result.exit_code == 0
     assert fake.stop_run_id == "r1"

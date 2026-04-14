@@ -77,6 +77,7 @@ from vectl.orchestration.control_channel import (
     ControlChannelMessage,
     FilesystemControlChannel,
     send_to_control,
+    send_drive_control,
 )
 from vectl.orchestration.dispatch_policy import (
     ConfigPromptRegistry,
@@ -106,10 +107,19 @@ from vectl.orchestration.events import (
 )
 from vectl.orchestration.inspection_queries import (
     CasesQueryImpl,
+    ChildRunScopeError,
+    DriveInspectQuery,
+    DriveInspectView,
     InspectQuery,
     RunsQueryImpl,
     query_cases,
+    query_drive_actions,
+    query_drive_artifacts,
+    query_drive_events,
+    query_drive_logs,
+    query_drive_status,
     query_runs,
+    validate_child_run_in_drive,
 )
 from vectl.orchestration.projections import replay_events_to_artifacts
 from vectl.orchestration.prompt_materialization import (
@@ -3945,6 +3955,305 @@ class OrchestrationApp:
         )
         return ControlResult(
             action="stop", success=True, message=f"Stop queued for {selected_run_id}"
+        )
+
+    # -----------------------------------------------------------------
+    # Drive-Scoped Inspection
+    # -----------------------------------------------------------------
+
+    def inspect_drive_status(
+        self,
+        drive_id: str,
+        child_run_id: str | None = None,
+    ) -> DriveInspectView:
+        """
+        Inspect drive-level status.
+
+        Authority: docs/RFC-orch-drive.md section 7.3
+
+        When child_run_id is provided, the result is scoped to that
+        child run within the drive. Per RFC §7.4, a mismatched child-run
+        selector raises ChildRunScopeError.
+
+        Args:
+            drive_id: The drive to inspect.
+            child_run_id: Optional child-run selector for drill-down.
+
+        Returns:
+            DriveInspectView with current drive state.
+
+        Raises:
+            ChildRunScopeError: If child_run_id does not belong to the drive.
+            OSError: Propagates drive store read failures.
+        """
+        store = self._drive_store()
+        query = DriveInspectQuery(
+            drive_id=drive_id,
+            child_run_id=child_run_id,
+            limit=100,
+            offset=0,
+        )
+        return query_drive_status(query, drive_store=store)
+
+    def inspect_drive_events(
+        self,
+        drive_id: str,
+        child_run_id: str | None = None,
+        limit: int = 100,
+    ) -> InspectResult:
+        """
+        Inspect drive-level events.
+
+        Authority: docs/RFC-orch-drive.md section 7.3
+
+        Args:
+            drive_id: The drive to inspect events for.
+            child_run_id: Optional child-run selector for drill-down.
+            limit: Maximum number of events to return.
+
+        Returns:
+            InspectResult with drive-scoped events.
+
+        Raises:
+            ChildRunScopeError: If child_run_id does not belong to the drive.
+            EventCorruptionError: If the event stream cannot be parsed.
+        """
+        from vectl.orchestration.run_store import DriveStoreError
+
+        store = self._drive_store()
+        if child_run_id is not None:
+            # Validate scope constraint per RFC §7.4
+            validate_child_run_in_drive(drive_id, child_run_id, drive_store=store)
+
+        events = load_event_jsonl(self._events_path())
+        query = DriveInspectQuery(
+            drive_id=drive_id,
+            child_run_id=child_run_id,
+            limit=limit,
+            offset=0,
+        )
+        filtered = query_drive_events(query, events=events)
+        data = tuple(
+            f"seq={getattr(e, 'seq', '')} event={getattr(e, 'kind', '')} "
+            f"step_id={getattr(e, 'step_id', '') or ''}"
+            for e in filtered
+        )
+        return InspectResult(view_type="events", data=data)
+
+    def inspect_drive_logs(
+        self,
+        drive_id: str,
+        child_run_id: str | None = None,
+    ) -> InspectResult:
+        """
+        Inspect drive-level logs.
+
+        Authority: docs/RFC-orch-drive.md section 7.3
+
+        Args:
+            drive_id: The drive to inspect logs for.
+            child_run_id: Optional child-run selector for drill-down.
+
+        Returns:
+            InspectResult with drive-scoped logs.
+
+        Raises:
+            ChildRunScopeError: If child_run_id does not belong to the drive.
+        """
+        store = self._drive_store()
+        if child_run_id is not None:
+            validate_child_run_in_drive(drive_id, child_run_id, drive_store=store)
+
+        child_runs = store.child_runs_for_drive(drive_id)
+        # Collect run IDs for log filtering
+        run_ids = tuple(ref.run_id for ref in child_runs)
+        if child_run_id is not None:
+            run_ids = (child_run_id,)
+
+        lines = self._text_log_path.read_text(encoding="utf-8").splitlines()
+        scoped = [line for line in lines if any(f"run_id={rid}" in line for rid in run_ids)]
+        return InspectResult(view_type="logs", data=tuple(scoped[-100:]))
+
+    def inspect_drive_artifacts(
+        self,
+        drive_id: str,
+        child_run_id: str | None = None,
+    ) -> InspectResult:
+        """
+        Inspect drive-level artifacts.
+
+        Authority: docs/RFC-orch-drive.md section 7.3
+
+        Collects artifact references from child runs belonging to the drive.
+
+        Args:
+            drive_id: The drive to inspect artifacts for.
+            child_run_id: Optional child-run selector for drill-down.
+
+        Returns:
+            InspectResult with drive-scoped artifacts.
+
+        Raises:
+            ChildRunScopeError: If child_run_id does not belong to the drive.
+        """
+        store = self._drive_store()
+        child_runs = store.child_runs_for_drive(drive_id)
+
+        if child_run_id is not None:
+            validate_child_run_in_drive(drive_id, child_run_id, drive_store=store)
+            child_runs = tuple(ref for ref in child_runs if ref.run_id == child_run_id)
+
+        query = DriveInspectQuery(
+            drive_id=drive_id,
+            child_run_id=child_run_id,
+        )
+        artifact_roots = (
+            self._run_registry(config=self._effective_orchestration_config()).store_root,
+        )
+        refs = query_drive_artifacts(query, child_runs, artifact_roots)
+        return InspectResult(view_type="artifacts", data=refs)
+
+    def inspect_drive_actions(
+        self,
+        drive_id: str,
+        child_run_id: str | None = None,
+    ) -> InspectResult:
+        """
+        Inspect drive-level actions.
+
+        Authority: docs/RFC-orch-drive.md section 7.3
+
+        Collects action references from child runs belonging to the drive.
+
+        Args:
+            drive_id: The drive to inspect actions for.
+            child_run_id: Optional child-run selector for drill-down.
+
+        Returns:
+            InspectResult with drive-scoped actions.
+
+        Raises:
+            ChildRunScopeError: If child_run_id does not belong to the drive.
+        """
+        store = self._drive_store()
+        if child_run_id is not None:
+            validate_child_run_in_drive(drive_id, child_run_id, drive_store=store)
+
+        child_runs = store.child_runs_for_drive(drive_id)
+        channel = FilesystemControlChannel(
+            runs_root=self._run_registry(config=self._effective_orchestration_config()).store_root,
+            max_pending_actions=self._effective_orchestration_config().operator.max_pending_actions,
+        )
+
+        rows: list[str] = []
+        for ref in child_runs:
+            if child_run_id is not None and ref.run_id != child_run_id:
+                continue
+            for status in ("pending", "applied", "rejected"):
+                for request in channel.list_requests(ref.run_id, status=status):
+                    rows.append(
+                        f"run_id={ref.run_id} status={status} "
+                        f"action_id={request.action_id} type={request.msg_type}"
+                    )
+
+        return InspectResult(view_type="actions", data=tuple(rows))
+
+    # -----------------------------------------------------------------
+    # Drive-Scoped Control
+    # -----------------------------------------------------------------
+
+    def control_drive_pause(
+        self,
+        drive_id: str,
+        reason: str | None = None,
+    ) -> ControlResult:
+        """
+        Pause a drive (stop dispatching new work).
+
+        Authority: docs/RFC-orch-drive.md section 7.3
+
+        Args:
+            drive_id: The drive to pause.
+            reason: Optional pause reason from operator.
+
+        Returns:
+            ControlResult with pause outcome.
+        """
+        send_drive_control(
+            drive_id=drive_id,
+            action="pause",
+            channel=self._control_channel(),
+            reason=reason,
+        )
+        return ControlResult(
+            action="pause", success=True, message=f"Pause queued for drive {drive_id}"
+        )
+
+    def control_drive_unpause(
+        self,
+        drive_id: str,
+        reason: str | None = None,
+    ) -> ControlResult:
+        """
+        Unpause a drive (resume dispatching).
+
+        Authority: docs/RFC-orch-drive.md section 7.3
+
+        Args:
+            drive_id: The drive to unpause.
+            reason: Optional unpause reason from operator.
+
+        Returns:
+            ControlResult with unpause outcome.
+        """
+        send_drive_control(
+            drive_id=drive_id,
+            action="unpause",
+            channel=self._control_channel(),
+            reason=reason,
+        )
+        return ControlResult(
+            action="unpause",
+            success=True,
+            message=f"Unpause queued for drive {drive_id}",
+        )
+
+    def control_drive_stop(
+        self,
+        drive_id: str,
+        reason: str | None = None,
+        force: bool = False,
+    ) -> ControlResult:
+        """
+        Stop a drive entirely.
+
+        Authority: docs/RFC-orch-drive.md section 7.3
+
+        With --force, requests immediate stop semantics per RFC §7.3.1:
+        - request cancellation of all active step child runs
+        - preserve child-run artifacts
+        - allow resolver/planner child runs to complete
+
+        Args:
+            drive_id: The drive to stop.
+            reason: Optional reason for stopping.
+            force: Request immediate stop semantics.
+
+        Returns:
+            ControlResult with stop outcome.
+        """
+        send_drive_control(
+            drive_id=drive_id,
+            action="stop",
+            channel=self._control_channel(),
+            reason=reason,
+            force=force,
+        )
+        suffix = " (force)" if force else ""
+        return ControlResult(
+            action="stop",
+            success=True,
+            message=f"Stop queued for drive {drive_id}{suffix}",
         )
 
     # -----------------------------------------------------------------

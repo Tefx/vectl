@@ -3,18 +3,20 @@ Joined read-query DTOs for runs, inspect, and case surfaces.
 
 Authority: docs/ORCHESTRATION-PLANE-IMPLEMENTATION-DESIGN.md section 3
 Authority: docs/ORCHESTRATION-PLANE-INTERFACES.md sections 3, 5
-(no dedicated section; uses contracts.py shared types)
+Authority: docs/RFC-orch-drive.md sections 7.3, 7.3.1 (drive-scoped control)
 
 Public surfaces (this module):
     - ControlChannelMessage   (message schema for control-channel communication)
     - ControlChannel          (protocol for control-channel send/receive)
     - send_to_control()      (convenience surface for sending to control channel)
+    - send_drive_control()   (drive-scoped control convenience surface)
     - InspectView             (joined read-query DTO for inspect surfaces)
     - CaseView               (joined read-query DTO for case/unresolved surfaces)
 
 Note: This module addresses the "joined read-query DTOs for runs, inspect, and
 case surfaces". The exact channel transport and query model are not yet
-specified; this module records interface anchors with documented gaps.
+specified; this module records interface anchors with documented gaps. Drive-
+scoped control (pause/unpause/stop) targets the drive rather than a single run.
 """
 
 from __future__ import annotations
@@ -53,6 +55,9 @@ _ALLOWED_CONTROL_MESSAGE_TYPES: frozenset[str] = frozenset(
         "control.pause",
         "control.unpause",
         "control.stop",
+        "drive.pause",
+        "drive.unpause",
+        "drive.stop",
     }
 )
 _DEFAULT_RUNS_ROOT = Path(".vectl/runs")
@@ -631,6 +636,79 @@ def send_to_control(
 
 
 # ---------------------------------------------------------------------
+# Drive-Scoped Control Convenience Function
+# ---------------------------------------------------------------------
+# Authority: docs/RFC-orch-drive.md section 7.3
+#
+# Drive-scoped control (pause/unpause/stop) targets the drive rather
+# than a single run. The drive_id is carried in the payload instead of
+# run_id, and stop --force appends a "force=true" marker.
+
+
+_ALLOWED_DRIVE_CONTROL_MESSAGE_TYPES: frozenset[str] = frozenset(
+    {
+        "drive.pause",
+        "drive.unpause",
+        "drive.stop",
+    }
+)
+
+
+class InvalidDriveControlMessageError(ControlChannelError):
+    """Raised when a drive-scoped control message is invalid."""
+
+
+def send_drive_control(
+    drive_id: str,
+    action: Literal["pause", "unpause", "stop"],
+    channel: FilesystemControlChannel,
+    *,
+    reason: str | None = None,
+    force: bool = False,
+) -> ActionRequest:
+    """
+    Send a drive-scoped control message through the control channel.
+
+    Authority: docs/RFC-orch-drive.md section 7.3
+
+    Drive-scoped control targets the drive rather than a single run.
+    The drive_id is carried as the first payload element. For stop
+    with --force, "force=true" is appended per RFC §7.3.1.
+
+    Args:
+        drive_id: The drive to target with this control message.
+        action: Control action — one of pause, unpause, stop.
+        channel: FilesystemControlChannel to persist the action.
+        reason: Optional operator reason for the action.
+        force: If True and action is "stop", request immediate stop
+            semantics per RFC §7.3.1. Ignored for pause/unpause.
+
+    Returns:
+        The persisted ActionRequest.
+
+    Raises:
+        InvalidDriveControlMessageError: If the action is invalid.
+        ControlChannelError: If persistence fails.
+    """
+    msg_type = f"drive.{action}"
+    payload_items: list[str] = [drive_id]
+    if reason is not None:
+        payload_items.append(reason)
+    if force and action == "stop":
+        payload_items.append("force=true")
+
+    message = ControlChannelMessage(
+        msg_type=msg_type,
+        sender="operator",
+        payload=tuple(payload_items),
+    )
+    # Validate message type through the existing send pipeline
+    channel.send(message)
+    # Reconstruct the ActionRequest from the message for the caller
+    return _request_from_message(message)
+
+
+# ---------------------------------------------------------------------
 # Inspect View — joined read-query DTO
 # ---------------------------------------------------------------------
 
@@ -703,6 +781,7 @@ __all__ = [
     "AcknowledgementStatus",
     "ControlChannelError",
     "InvalidControlChannelMessageError",
+    "InvalidDriveControlMessageError",
     "DuplicateActionError",
     "PendingActionLimitExceededError",
     "MalformedActionFileError",
@@ -711,6 +790,7 @@ __all__ = [
     "ActionAcknowledgement",
     "FilesystemControlChannel",
     "send_to_control",
+    "send_drive_control",
     "InspectView",
     "CaseView",
 ]

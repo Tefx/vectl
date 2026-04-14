@@ -83445,7 +83445,7 @@ phases:
       \ are closed with independent evidence."
 - id: orch_drive_barriers
   name: Orchestration Drive Review / Resolver / Planner Barriers
-  status: in_progress
+  status: done
   gate: Review failures, resolver cases, and planner mutation bundles are integrated
     into the scheduler barrier loop with truthful continuation rules before operator
     surfaces widen.
@@ -83838,7 +83838,7 @@ phases:
       - tools/vectl/README.md — NOT FOUND (reported as missing per step instructions).'
   - id: orch_drive_barriers.gate-barrier-phase
     name: gate barrier phase
-    status: claimed
+    status: done
     description: Gate review for orch_drive_barriers. Open only if review failures,
       resolver cases, and planner mutation bundles all have truthful scheduler continuation
       semantics, and the batched mainline remediation path has been independently
@@ -83854,7 +83854,55 @@ phases:
     agent: gate-reviewer-tacit
     claimed_by: gate-reviewer-tacit
     claimed_at: '2026-04-14T18:23:06.153475+00:00'
-    done_at: '2026-04-14T16:36:57.417295+00:00'
+    done_at: '2026-04-14T19:16:47.442036+00:00'
+    evidence: '## refs Read Confirmation
+
+      - docs/RFC-orch-drive.md, docs/ORCHESTRATION-PLANE-RESOLUTION-CONTRACT.md, docs/ORCHESTRATION-PLANE-INTERFACES.md
+      read and audited.
+
+      - tools/vectl/README.md missing (non-blocking documentation debt).
+
+
+      ## Gate Verdict
+
+      - headline: PASS
+
+      - proof_gap_status: NONE
+
+      - blocking_status: CLOSED
+
+      - gate_open_allowed: true
+
+
+      ## behavioral_proof_register
+
+      - ReviewOutcome->barrier transitions: PROVEN.
+
+      - Planner continuation rules (applyable/operator_required/halt): PROVEN.
+
+      - Resolver continuation + post-resolution refresh: PROVEN.
+
+      - Planner facade-only mutation application: PROVEN.
+
+      - Superseded lease invalidation: PROVEN.
+
+
+      ## Wiring audit summary
+
+      - Commit `c7e1d2e` landed missing planner-loop/review-gate artifacts on Main.
+
+      - Planner mutation applier path wired end-to-end through core facades.
+
+      - Driver replan dispatch/apply/invalidate flows present.
+
+      - Review-gate integration test surface present and passing.
+
+
+      ## Review notes
+
+      - Prior B1/B2 blockers closed after cherry-pick of remediation artifacts.
+
+      - Full orchestration gate run passed (1262 passed, 0 failed).'
     rejection_reason: 'Gate FAIL with 2 BLOCKING issues: (B1) Planner-loop integration
       production code and tests (commit 21262f7 with 302+ lines in core_adapter.py,
       316+ lines in driver.py, 38 tests) NOT merged to Main — drive can enter replan
@@ -84212,7 +84260,7 @@ phases:
       gate_open_allowed: true'
 - id: orch_drive_surfaces
   name: Orchestration Drive CLI, Inspection, Control, Config, and Observability
-  status: locked
+  status: pending
   gate: Drive-scoped CLI/control/inspection/config/event surfaces are runnable and
     independently probed before recovery and final real-runner acceptance.
   depends_on:

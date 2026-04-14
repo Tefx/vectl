@@ -1925,8 +1925,17 @@ class OrchestrationApp:
         Returns:
             DriveStatusResult with current drive state.
         """
+        from vectl.orchestration.run_store import DriveStoreError
+
         store = self._drive_store()
-        record = store.load_drive(drive_id)
+        try:
+            record = store.replay_drive_state(drive_id)
+        except DriveStoreError:
+            return DriveStatusResult(
+                drive_id=drive_id,
+                status="halted",
+                summary=f"drive {drive_id} not found",
+            )
         if record is None:
             return DriveStatusResult(
                 drive_id=drive_id,
@@ -1942,6 +1951,66 @@ class OrchestrationApp:
             summary=record.summary,
         )
 
+    def drive_runs(self, drive_id: str) -> tuple[Any, ...]:
+        """List child runs belonging to a drive.
+
+        Authority: docs/RFC-orch-drive.md section 7.2
+
+        Args:
+            drive_id: The drive whose child runs to list.
+
+        Returns:
+            Tuple of ChildRunRef dataclass instances for the drive.
+        """
+        from vectl.orchestration.run_store import DriveStoreError
+
+        store = self._drive_store()
+        try:
+            return store.child_runs_for_drive(drive_id)
+        except DriveStoreError:
+            return ()
+
+    def resolve_latest_drive_id(self) -> str | None:
+        """Resolve the most recently updated active drive ID.
+
+        Authority: docs/RFC-orch-drive.md section 7.5
+
+        Selects the most recently updated drive for the current plan.
+        If no active drive exists, falls back to the most recently
+        updated terminal drive. Returns None if no drives exist at all.
+
+        Returns:
+            The latest drive_id string, or None if no drives exist.
+        """
+        store = self._drive_store()
+        plan_path = str(self._config.plan_path.resolve())
+        active = store.active_drives()
+        for record in active:
+            if record.plan_path == plan_path:
+                return record.drive_id
+        all_drives = store.all_drives()
+        for record in all_drives:
+            if record.plan_path == plan_path:
+                return record.drive_id
+        if all_drives:
+            return all_drives[0].drive_id
+        return None
+
+    def has_active_drive_for_plan(self) -> str | None:
+        """Check whether an active drive exists for the current plan.
+
+        Authority: docs/RFC-orch-drive.md section 7.1
+
+        Returns:
+            The active drive_id if one exists, or None.
+        """
+        plan_path = str(self._config.plan_path.resolve())
+        store = self._drive_store()
+        active = store.active_drive_for_plan(plan_path)
+        if active is not None:
+            return active.drive_id
+        return None
+
     def run(
         self,
         step_id: str | None = None,
@@ -1951,6 +2020,13 @@ class OrchestrationApp:
         Start a new orchestration run.
 
         Authority: docs/ORCHESTRATION-PLANE-ARCHITECTURE.md section 6.1
+        Authority: docs/RFC-orch-drive.md section 7.1
+
+        If an active drive exists for the same plan, this method rejects
+        the run and returns an OrchestrationResult with success=False,
+        including the active drive_id and an instruction to use drive-scoped
+        commands instead.  Exit code boundary: callers should map this to
+        exit code 2 (per RFC §7.1: "exit code: 2").
 
         Args:
             step_id: Optional explicit step to run. None means auto-select next.
@@ -1962,6 +2038,22 @@ class OrchestrationApp:
         Raises:
             OSError: When frozen snapshot persistence fails.
         """
+        # Authority: RFC-orch-drive.md section 7.1
+        # "orch run must fail with exit code 2 if an active drive exists
+        #  for the same plan"
+        active_drive_id = self.has_active_drive_for_plan()
+        if active_drive_id is not None:
+            return OrchestrationResult(
+                success=False,
+                message=(
+                    f"Run rejected: active drive exists for this plan "
+                    f"(drive_id={active_drive_id}). "
+                    f"Use drive-scoped commands instead: "
+                    f"'vectl orch drive-status {active_drive_id}' or "
+                    f"'vectl orch drive-resume {active_drive_id}'"
+                ),
+            )
+
         resolved_config = self._effective_orchestration_config()
         resolved_agent = agent or self._config.default_agent
         try:

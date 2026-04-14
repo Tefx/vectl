@@ -746,6 +746,15 @@ def orch_run(
     """Start or resume an orchestration run.
 
     Contract authority: orch_app.py::OrchestrationApp.run()
+
+    Authority: docs/RFC-orch-drive.md section 7.1
+      - orch run must fail with exit code 2 if an active drive exists for
+        the same plan
+      - error text must include the active drive_id
+      - error text must instruct the operator to use drive-scoped commands
+
+    Selector safety authority: docs/ORCHESTRATION-PLANE-CLI-CONFIG-OBSERVABILITY-DESIGN.md §6
+      - exit 2 = not found / validation boundary for active-drive rejection
     """
     mode = _resolve_orch_output_mode(output=output, json_flag=json_flag, jsonl_flag=False)
     app_runtime = _build_orchestration_runtime_app_or_die(plan=plan)
@@ -766,6 +775,11 @@ def orch_run(
         _orch_internal_error(exc)
         return
     if not result.success:
+        # Authority: RFC-orch-drive.md section 7.1
+        # "orch run must fail with exit code 2 if an active drive exists"
+        message = result.message.lower()
+        if "active drive exists" in message or "drive_id=" in message:
+            _die(result.message, code=2)
         _orch_die_on_failure(result.message)
     _emit_orch_payload(result, mode)
 
@@ -1441,6 +1455,17 @@ OrchDryRunDriveOption = typer.Option(
 )
 
 
+def _resolve_latest_drive_id(app_runtime: Any) -> str | None:
+    """Resolve the latest drive ID from the orchestration app boundary.
+
+    Authority: docs/RFC-orch-drive.md section 7.5
+
+    Returns:
+        The latest drive_id, or None if no drives exist.
+    """
+    return app_runtime.resolve_latest_drive_id()
+
+
 @orch_app.command("drive")
 def orch_drive(
     agent: str | None = OrchAgentOption,
@@ -1458,6 +1483,8 @@ def orch_drive(
 
     Contract authority: orch_app.py::OrchestrationApp.start_drive()
     """
+    from vectl.orchestration.driver import DriveAdmissionError, MaxParallelismError
+
     mode = _resolve_orch_output_mode(output=output, json_flag=json_flag, jsonl_flag=False)
     app_runtime = _build_orchestration_runtime_app_or_die(plan=plan)
     if max_parallelism < 1 or max_parallelism > 32:
@@ -1470,6 +1497,19 @@ def orch_drive(
             agent=agent or "",
             max_parallelism=max_parallelism,
         )
+    except DriveAdmissionError as exc:
+        # Authority: RFC-orch-drive.md section 7.1
+        # "exit code: 2" + "error text must include the active drive_id"
+        _die(
+            f"Active drive already exists for this plan (drive_id={exc.active_drive_id}). "
+            f"Use drive-scoped commands instead: "
+            f"'vectl orch drive-status {exc.active_drive_id}'",
+            code=2,
+        )
+        return
+    except MaxParallelismError as exc:
+        _die(str(exc), code=2)
+        return
     except Exception as exc:
         _orch_internal_error(exc)
         return
@@ -1496,13 +1536,55 @@ def orch_drive_status(
         _die("Specify either DRIVE_ID or --latest, not both")
     if drive_id is None and not latest:
         _die("Drive status requires explicit selector: provide DRIVE_ID or --latest", code=3)
-    resolved_drive_id = drive_id or ""
+    resolved_drive_id = drive_id
+    if latest:
+        resolved_drive_id = _resolve_latest_drive_id(app_runtime)
+    if resolved_drive_id is None:
+        _die("No drives available for --latest selector", code=2)
     try:
         result = app_runtime.drive_status(drive_id=resolved_drive_id)
     except Exception as exc:
         _orch_internal_error(exc)
         return
+    if result.summary.startswith("drive ") and "not found" in result.summary:
+        _die(f"Drive not found: {resolved_drive_id}", code=2)
     _emit_orch_payload(result, mode)
+
+
+@orch_app.command("drive-runs")
+def orch_drive_runs(
+    drive_id: str | None = OrchDriveIdArgument,
+    latest: bool = OrchLatestOption,
+    json_flag: bool = OrchJsonOption,
+    output: OrchOutputMode = OrchOutputOption,
+    plan: Path | None = OrchPlanOption,
+) -> None:
+    """List child runs belonging to a drive.
+
+    Authority: docs/RFC-orch-drive.md section 7.2
+
+    Contract authority: orch_app.py::OrchestrationApp.drive_runs()
+    """
+    mode = _resolve_orch_output_mode(output=output, json_flag=json_flag, jsonl_flag=False)
+    app_runtime = _build_orchestration_runtime_app_or_die(plan=plan)
+    if drive_id is not None and latest:
+        _die("Specify either DRIVE_ID or --latest, not both")
+    if drive_id is None and not latest:
+        _die("Drive runs requires explicit selector: provide DRIVE_ID or --latest", code=3)
+    resolved_drive_id = drive_id
+    if latest:
+        resolved_drive_id = _resolve_latest_drive_id(app_runtime)
+    if resolved_drive_id is None:
+        _die("No drives available for --latest selector", code=2)
+    try:
+        runs = app_runtime.drive_runs(drive_id=resolved_drive_id)
+    except Exception as exc:
+        _orch_internal_error(exc)
+        return
+    if not runs:
+        _emit_orch_payload([], mode)
+        return
+    _emit_orch_payload(runs, mode)
 
 
 @orch_app.command("drive-resume")
@@ -1525,11 +1607,11 @@ def orch_drive_resume(
         _die("Specify either DRIVE_ID or --latest, not both")
     if drive_id is None and not latest:
         _die("Drive resume requires explicit selector: provide DRIVE_ID or --latest", code=3)
-    resolved_drive_id = drive_id or ""
-    if latest and not resolved_drive_id:
-        _die("No active drive available for --latest selector", code=2)
-    if not resolved_drive_id:
-        _die("Drive resume requires a DRIVE_ID or --latest selector")
+    resolved_drive_id = drive_id
+    if latest:
+        resolved_drive_id = _resolve_latest_drive_id(app_runtime)
+    if resolved_drive_id is None:
+        _die("No drives available for --latest selector", code=2)
     try:
         result = app_runtime.resume_drive(drive_id=resolved_drive_id)
     except Exception as exc:
@@ -1561,7 +1643,11 @@ def orch_drive_recover(
         _die("Specify either DRIVE_ID or --latest, not both")
     if drive_id is None and not latest:
         _die("Drive recover requires explicit selector: provide DRIVE_ID or --latest", code=3)
-    resolved_drive_id = drive_id or ""
+    resolved_drive_id = drive_id
+    if latest:
+        resolved_drive_id = _resolve_latest_drive_id(app_runtime)
+    if resolved_drive_id is None:
+        _die("No drives available for --latest selector", code=2)
     try:
         result = app_runtime.recover_drive(drive_id=resolved_drive_id, dry_run=dry_run)
     except Exception as exc:

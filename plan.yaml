@@ -83870,6 +83870,118 @@ phases:
         these are merged and verified.'
       timestamp: '2026-04-14T16:37:28.743411+00:00'
       reviewer: gate-reviewer-tacit
+  - id: orch_drive_barriers.fix-mainline-barrier-integrations
+    name: fix mainline barrier integrations
+    status: pending
+    description: 'Fix ALL gate blockers preventing mainline barrier coverage from
+      actually landing.
+
+
+      ## Blockers to Fix (ALL of these, not just the first)
+
+
+      ### B1: Planner-loop integration artifacts from commit 21262f7 are not effectively
+      landed on mainline
+
+      Locations: mainline integration surfaces for planner invocation, mutation-bundle
+      parsing/application, lease invalidation, and the corresponding production/tests
+      referenced by gate evidence.
+
+      Remediation: restore or land the missing planner-loop integration production
+      code and associated tests onto mainline exactly far enough to make the scheduler
+      barrier loop actually able to invoke planner flows, parse mutation bundles,
+      apply facades, and invalidate leases.
+
+      Grep hint: search mainline for the planner-loop integration symbols/files expected
+      from commit 21262f7 and reconcile every missing production/test artifact before
+      claiming done.
+
+      IMPORTANT: search for sibling omissions beyond the exact lines called out by
+      the gate evidence; do not stop after landing only one missing file.
+
+
+      ### B2: review-gate integration test file is missing from mainline
+
+      Locations: mainline review-gate integration test surface proving the 4 ReviewOutcome→barrier
+      transitions.
+
+      Remediation: restore or land the missing review-gate integration test file on
+      mainline and ensure it still targets the current barrier semantics rather than
+      a stale harness.
+
+      Grep hint: search mainline for review-gate barrier transition coverage and reconcile
+      the missing integration test file plus any adjacent registration/import gaps.
+
+
+      ## Completion Criteria
+
+      - ALL blocker artifacts are present on mainline, not just referenced by history
+
+      - planner-loop production path and its tests are effectively landed together
+
+      - review-gate integration test file is present and wired into the current test
+      surface
+
+      - sibling search completed for both blocker families
+
+      - this is an IMPLEMENTATION step; stub-only or note-only completion is not acceptable'
+    verification: '- Mainline now contains the planner-loop integration production
+      code/tests identified by gate evidence
+
+      - Mainline now contains the review-gate integration test file identified by
+      gate evidence
+
+      - Evidence names the restored/landed files and explains how both blocker families
+      were reconciled on mainline
+
+      - Evidence includes sibling-search results showing no remaining missing artifacts
+      for these blocker families'
+    depends_on:
+    - orch_drive_barriers.planner-loop-integration
+    - orch_drive_barriers.review-gate-integration
+    - orch_drive_barriers.verify-barrier-loops
+    agent: python-senior-tacit
+  - id: orch_drive_barriers.reverify-mainline-barrier-integrations
+    name: reverify mainline barrier integrations
+    status: pending
+    description: 'As an INDEPENDENT TESTER (integration-verifier-tacit), validate
+      from mainline that the barrier-phase blockers are actually closed.
+
+
+      YOUR GOAL IS TO FIND PROBLEMS, not to confirm it works.
+
+
+      Test for:
+
+      - planner-loop integration production code and tests from commit 21262f7 are
+      effectively present on mainline
+
+      - review-gate integration test coverage is present on mainline
+
+      - the landed artifacts are wired into the current barrier-loop verification
+      surface rather than existing as orphan files
+
+
+      Document ALL findings. A test that discovers issues is a SUCCESS.
+
+      Independence Level: L1
+
+
+      This is a post-remediation re-verification step and MUST prove green closure
+      for both blocker families.'
+    verification: '- expected_result: green
+
+      - Verify mainline contains the planner-loop integration production/test artifacts
+      cited by the gate rejection
+
+      - Verify mainline contains the review-gate integration test file cited by the
+      gate rejection
+
+      - Verify the current barrier-loop verification surface exercises or references
+      the restored artifacts with no unresolved blocker-class gaps'
+    depends_on:
+    - orch_drive_barriers.fix-mainline-barrier-integrations
+    agent: integration-verifier-tacit
 - id: orch_drive_surfaces
   name: Orchestration Drive CLI, Inspection, Control, Config, and Observability
   status: locked

@@ -84042,7 +84042,7 @@ phases:
       - none'
   - id: orch_drive_barriers.reverify-mainline-barrier-integrations
     name: reverify mainline barrier integrations
-    status: pending
+    status: claimed
     description: 'As an INDEPENDENT TESTER (integration-verifier-tacit), validate
       from mainline that the barrier-phase blockers are actually closed.
 
@@ -84081,6 +84081,8 @@ phases:
     depends_on:
     - orch_drive_barriers.fix-mainline-barrier-integrations
     agent: integration-verifier-tacit
+    claimed_by: integration-verifier-tacit
+    claimed_at: '2026-04-14T18:03:51.172177+00:00'
 - id: orch_drive_surfaces
   name: Orchestration Drive CLI, Inspection, Control, Config, and Observability
   status: locked

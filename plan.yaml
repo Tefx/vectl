@@ -83445,7 +83445,7 @@ phases:
       \ are closed with independent evidence."
 - id: orch_drive_barriers
   name: Orchestration Drive Review / Resolver / Planner Barriers
-  status: pending
+  status: in_progress
   gate: Review failures, resolver cases, and planner mutation bundles are integrated
     into the scheduler barrier loop with truthful continuation rules before operator
     surfaces widen.
@@ -83454,7 +83454,7 @@ phases:
   steps:
   - id: orch_drive_barriers.review-gate-integration
     name: review gate integration
-    status: pending
+    status: claimed
     description: 'Implementation step.
 
 
@@ -83483,6 +83483,8 @@ phases:
     - docs/RFC-orch-drive.md
     - docs/ORCHESTRATION-PLANE-INTERFACES.md
     agent: python-senior-tacit
+    claimed_by: python-senior-tacit
+    claimed_at: '2026-04-14T12:52:36.790482+00:00'
   - id: orch_drive_barriers.resolver-loop-integration
     name: resolver loop integration
     status: pending

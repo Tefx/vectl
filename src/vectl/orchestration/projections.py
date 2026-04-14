@@ -542,6 +542,34 @@ def _derive_state(
         if str(event.get("resolution_status", "")) == "operator_required":
             operator_required_case_count += 1
 
+        # Drive event family projection handling
+        if kind == "drive_status_changed":
+            drive_status = str(event.get("status", ""))
+            if drive_status in ("completed", "halted", "failed_unrecoverable", "stopped"):
+                finished_at = timestamp
+        elif kind == "child_run_admitted":
+            active_execution_count += 1
+        elif kind == "child_run_final":
+            active_execution_count = max(0, active_execution_count - 1)
+            child_status = str(event.get("status", ""))
+            if child_status == "success" and status == "running":
+                status = "success"
+            elif child_status in ("fail", "stall", "transport_error"):
+                transport_error_count += 1
+                if child_status == "transport_error":
+                    status = "transport_error"
+        elif kind == "drive_barrier_entered":
+            if "case_ids" in event:
+                case_ids_val = event.get("case_ids", [])
+                if isinstance(case_ids_val, (list, tuple)):
+                    open_case_count += len(case_ids_val)
+        elif kind == "drive_barrier_cleared":
+            resolution = str(event.get("resolution", ""))
+            if resolution in ("unblocked", "applied"):
+                resolution_count += 1
+        elif kind == "planner_applied":
+            resolution_count += 1
+
         if "open_case_count" in event:
             open_case_count = _as_int(event.get("open_case_count"), default=open_case_count)
         if "open_case_delta" in event:
@@ -851,21 +879,50 @@ def rebuild_drive_projection(
 
         raise DriveStoreError(f"no DriveRecord found for drive_id={drive_id!r}")
 
-    all_refs = store.child_runs_for_drive(drive_id)
-    active_refs = store.active_child_runs_for_drive(drive_id)
+    return _rebuild_drive_projection_from_records(
+        persisted, store.child_runs_for_drive(drive_id), store.active_child_runs_for_drive(drive_id)
+    )
 
-    active_ids = tuple(ref.run_id for ref in active_refs)
+
+def _rebuild_drive_projection_from_records(
+    persisted: object,
+    all_refs: tuple[object, ...],
+    active_refs: tuple[object, ...],
+) -> DriveProjection:
+    """Core projection logic, separated for testability without DriveStore.
+
+    Authority: docs/RFC-orch-drive.md sections 9, 10
+
+    Args:
+        persisted: The DriveRecord.
+        all_refs: All ChildRunRef entries for the drive.
+        active_refs: Active (pending/running) ChildRunRef entries for the drive.
+
+    Returns:
+        ``DriveProjection`` with rebuilt scheduling facts.
+    """
+    from vectl.orchestration.contracts import ChildRunRef, DriveBarrier, DriveRecord
+
+    if not isinstance(persisted, DriveRecord):
+        raise TypeError(f"persisted must be a DriveRecord instance, got {type(persisted).__name__}")
+
+    active_ids = tuple(ref.run_id for ref in active_refs if isinstance(ref, ChildRunRef))
 
     # Partition active child runs by step_id
     active_by_step: dict[str, list] = {}
     for ref in active_refs:
-        if ref.kind == "step" and ref.step_id:
+        if isinstance(ref, ChildRunRef) and ref.kind == "step" and ref.step_id:
             active_by_step.setdefault(ref.step_id, []).append(ref)
 
     # Partition terminal (success/fail/cancelled) child runs by step_id
     terminal_by_step: dict[str, list] = {}
     for ref in all_refs:
-        if ref.kind == "step" and ref.step_id and ref.status in ("success", "fail", "cancelled"):
+        if (
+            isinstance(ref, ChildRunRef)
+            and ref.kind == "step"
+            and ref.step_id
+            and ref.status in ("success", "fail", "cancelled")
+        ):
             terminal_by_step.setdefault(ref.step_id, []).append(ref)
 
     active_step_child_runs: tuple[tuple[str, tuple[object, ...]], ...] = tuple(
@@ -874,8 +931,6 @@ def rebuild_drive_projection(
     terminal_step_child_runs: tuple[tuple[str, tuple[object, ...]], ...] = tuple(
         (step_id, tuple(refs)) for step_id, refs in sorted(terminal_by_step.items())
     )
-
-    from vectl.orchestration.contracts import DriveBarrier
 
     barrier_value: DriveBarrier | None = persisted.barrier
 
@@ -893,6 +948,59 @@ def rebuild_drive_projection(
     )
 
 
+def replay_drive_events(
+    events: tuple[OrchestrationEventEnvelope | Mapping[str, object], ...],
+    artifact_root: Path,
+    drive_id: str,
+) -> ReplayResult:
+    """Replay drive-scoped events into drive projection state artifacts.
+
+    Authority: docs/RFC-orch-drive.md §16.3, §16.4
+              docs/ORCHESTRATION-PLANE-CLI-CONFIG-OBSERVABILITY-DESIGN.md §9.2
+
+    This function replays drive events and persists drive-level state
+    artifacts under ``<artifact_root>/drive/``. It extends the existing
+    FileProjectionReplay semantics to handle drive-scoped event envelopes
+    (those with a ``drive_id`` field).
+
+    Args:
+        events: Canonical drive events to replay.
+        artifact_root: Directory where projection artifacts are persisted.
+        drive_id: Drive identifier for scoping.
+
+    Returns:
+        ReplayResult with drive projection state and artifact metadata.
+    """
+    replay = FileProjectionReplay(events=events, artifact_root=artifact_root, run_id=drive_id)
+    result = replay.replay_result()
+
+    # Also persist drive-level summary artifacts per §16.4
+    drive_dir = artifact_root / "drive"
+    drive_dir.mkdir(parents=True, exist_ok=True)
+
+    # Build and write drive summary from last projected state
+    if replay._latest is not None:
+        latest = replay._latest
+        summary = {
+            "drive_id": drive_id,
+            "status": latest.status,
+            "active_execution_count": latest.active_execution_count,
+            "dispatch_count": latest.dispatch_count,
+            "resolution_count": latest.resolution_count,
+            "last_event_seq": latest.last_event_seq,
+        }
+        _write_json(drive_dir / "summary.json", summary)
+
+        frontier = {
+            "drive_id": drive_id,
+            "active_step_id": latest.active_step_id,
+            "open_case_count": latest.open_case_count,
+        }
+        _write_json(drive_dir / "frontier.json", frontier)
+
+    return result
+
+
 __all__ = [
     "PROJECTION_STALE",
     "RunStateView",
@@ -905,4 +1013,5 @@ __all__ = [
     "replay_events_to_artifacts",
     "DriveProjection",
     "rebuild_drive_projection",
+    "replay_drive_events",
 ]

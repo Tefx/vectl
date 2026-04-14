@@ -25,6 +25,7 @@ from typing import TYPE_CHECKING, Any, Final, Literal, cast
 import yaml
 
 from vectl.orchestration.contracts import (
+    DriveConfigFrozen,
     ExecutionContext,
     MutationPolicy,
     RoleOutputContract,
@@ -80,6 +81,12 @@ DEFAULT_DEFAULT_OUTPUT: Final[str] = "human"
 DEFAULT_MAX_PENDING_ACTIONS: Final[int] = 100
 DEFAULT_DISPATCH_ROLE_ID: Final[str] = "python-executor"
 DEFAULT_RESOLVER_ROLE_ID: Final[str] = "blocked-case-coordinator"
+
+# Drive config defaults — Authority: §8.4.1
+DEFAULT_DRIVE_MAX_PARALLELISM: Final[int] = 4
+DEFAULT_DRIVE_COLLECT_POLL_INTERVAL_MS: Final[int] = 250
+DEFAULT_DRIVE_RESOLVER_TIMEOUT_SECONDS: Final[float] = 300.0
+DEFAULT_DRIVE_PLANNER_TIMEOUT_SECONDS: Final[float] = 300.0
 
 # Config file name
 CONFIG_FILE_NAME: Final[str] = "vectl.yaml"
@@ -887,6 +894,25 @@ class OperatorConfig:
 
 
 @dataclass(frozen=True)
+class DriveConfig:
+    """Drive-component configuration fragment.
+
+    Authority: docs/ORCHESTRATION-PLANE-CLI-CONFIG-OBSERVABILITY-DESIGN.md §8.4.1
+
+    Attributes:
+        max_parallelism: Maximum concurrent step child runs. Must be in [1, 32].
+        collect_poll_interval_ms: Polling interval for child-run collection. Must be > 0.
+        resolver_timeout_seconds: Timeout for resolver child runs. Must be > 0.
+        planner_timeout_seconds: Timeout for planner child runs. Must be > 0.
+    """
+
+    max_parallelism: int = DEFAULT_DRIVE_MAX_PARALLELISM
+    collect_poll_interval_ms: int = DEFAULT_DRIVE_COLLECT_POLL_INTERVAL_MS
+    resolver_timeout_seconds: float = DEFAULT_DRIVE_RESOLVER_TIMEOUT_SECONDS
+    planner_timeout_seconds: float = DEFAULT_DRIVE_PLANNER_TIMEOUT_SECONDS
+
+
+@dataclass(frozen=True)
 class OrchestrationConfig:
     """
     Shared orchestration-plane configuration model.
@@ -906,6 +932,7 @@ class OrchestrationConfig:
         continuity: Continuity-component configuration.
         observability: Observability-component configuration.
         operator: Operator-component configuration.
+        drive: Drive-component configuration.
     """
 
     plan_path: Path = Path("plan.yaml")
@@ -918,6 +945,7 @@ class OrchestrationConfig:
     continuity: ContinuityConfig = field(default_factory=ContinuityConfig)
     observability: ObservabilityConfig = field(default_factory=ObservabilityConfig)
     operator: OperatorConfig = field(default_factory=OperatorConfig)
+    drive: DriveConfig = field(default_factory=DriveConfig)
 
     def freeze(self) -> OrchestrationConfig:
         """
@@ -945,11 +973,14 @@ class FrozenConfigSnapshot:
         config: The frozen OrchestrationConfig.
         snapshot_path: Path where the snapshot was written (if written).
         created_at: Timestamp when the snapshot was created.
+        drive_provenance: Provenance metadata identifying which source each
+            drive config value came from. Maps dotted key -> source.
     """
 
     config: OrchestrationConfig
     snapshot_path: Path | None = None
     created_at: float | None = None
+    drive_provenance: dict[str, str] = field(default_factory=dict)
 
 
 def write_frozen_snapshot(
@@ -1141,6 +1172,12 @@ def _config_to_dict(config: OrchestrationConfig) -> dict[str, Any]:
         "default_output": config.operator.default_output,
         "max_pending_actions": config.operator.max_pending_actions,
     }
+    orch["drive"] = {
+        "max_parallelism": config.drive.max_parallelism,
+        "collect_poll_interval_ms": config.drive.collect_poll_interval_ms,
+        "resolver_timeout_seconds": config.drive.resolver_timeout_seconds,
+        "planner_timeout_seconds": config.drive.planner_timeout_seconds,
+    }
 
     return {"orchestration": orch}
 
@@ -1271,6 +1308,10 @@ def _flatten_env_vars(prefix: str = ENV_PREFIX) -> dict[str, str]:
         "operator_default_output": "operator.default_output",
         "operator_max_pending_actions": "operator.max_pending_actions",
         "plan_path": "plan_path",
+        "drive_max_parallelism": "drive.max_parallelism",
+        "drive_collect_poll_interval_ms": "drive.collect_poll_interval_ms",
+        "drive_resolver_timeout_seconds": "drive.resolver_timeout_seconds",
+        "drive_planner_timeout_seconds": "drive.planner_timeout_seconds",
     }
     result = {}
     for key, value in os.environ.items():
@@ -1346,6 +1387,14 @@ def _apply_env_overrides(
         elif key.startswith("operator."):
             subkey = key[len("operator.") :]
             updates.setdefault("operator", {})[subkey] = value
+        elif key.startswith("drive."):
+            subkey = key[len("drive.") :]
+            if subkey.endswith("_seconds"):
+                updates.setdefault("drive", {})[subkey] = float(value)
+            elif subkey.endswith("_ms") or subkey == "max_parallelism":
+                updates.setdefault("drive", {})[subkey] = int(value)
+            else:
+                updates.setdefault("drive", {})[subkey] = value
 
     return _deep_update_config(config, {"orchestration": updates})
 
@@ -1383,6 +1432,10 @@ def _get_default(key: str) -> Any:
         "operator.control_channel": DEFAULT_CONTROL_CHANNEL,
         "operator.default_output": DEFAULT_DEFAULT_OUTPUT,
         "operator.max_pending_actions": DEFAULT_MAX_PENDING_ACTIONS,
+        "drive.max_parallelism": DEFAULT_DRIVE_MAX_PARALLELISM,
+        "drive.collect_poll_interval_ms": DEFAULT_DRIVE_COLLECT_POLL_INTERVAL_MS,
+        "drive.resolver_timeout_seconds": DEFAULT_DRIVE_RESOLVER_TIMEOUT_SECONDS,
+        "drive.planner_timeout_seconds": DEFAULT_DRIVE_PLANNER_TIMEOUT_SECONDS,
     }
     return defaults.get(key)
 
@@ -1577,6 +1630,26 @@ def _dict_to_config(data: dict[str, Any]) -> OrchestrationConfig:
                 orch.get("operator", {}).get("max_pending_actions", DEFAULT_MAX_PENDING_ACTIONS)
             ),
         ),
+        drive=DriveConfig(
+            max_parallelism=int(
+                orch.get("drive", {}).get("max_parallelism", DEFAULT_DRIVE_MAX_PARALLELISM)
+            ),
+            collect_poll_interval_ms=int(
+                orch.get("drive", {}).get(
+                    "collect_poll_interval_ms", DEFAULT_DRIVE_COLLECT_POLL_INTERVAL_MS
+                )
+            ),
+            resolver_timeout_seconds=float(
+                orch.get("drive", {}).get(
+                    "resolver_timeout_seconds", DEFAULT_DRIVE_RESOLVER_TIMEOUT_SECONDS
+                )
+            ),
+            planner_timeout_seconds=float(
+                orch.get("drive", {}).get(
+                    "planner_timeout_seconds", DEFAULT_DRIVE_PLANNER_TIMEOUT_SECONDS
+                )
+            ),
+        ),
     )
 
 
@@ -1599,7 +1672,8 @@ def freeze_config(
         run_dir: Optional run directory to write the frozen snapshot to.
 
     Returns:
-        A FrozenConfigSnapshot with the frozen config and snapshot metadata.
+        A FrozenConfigSnapshot with the frozen config, snapshot metadata,
+        and drive provenance metadata.
 
     Raises:
         TypeError: If config is not an OrchestrationConfig instance.
@@ -1613,10 +1687,121 @@ def freeze_config(
     if run_dir is not None:
         snapshot_path = write_frozen_snapshot(config, run_dir)
 
+    drive_provenance = build_drive_config_provenance(config)
+
     return FrozenConfigSnapshot(
         config=config.freeze(),
         snapshot_path=snapshot_path,
         created_at=time.time(),
+        drive_provenance=drive_provenance,
+    )
+
+
+def build_drive_config_provenance(
+    config: OrchestrationConfig,
+    ambient_config: OrchestrationConfig | None = None,
+) -> dict[str, str]:
+    """Build provenance metadata for drive config values.
+
+    Authority: docs/ORCHESTRATION-PLANE-CLI-CONFIG-OBSERVABILITY-DESIGN.md §8.7,
+              docs/RFC-orch-drive.md §8.1 (frozen drive creation parameters)
+
+    Compares the effective config's drive section against built-in defaults
+    and an optional ambient config (e.g. current live config). This detects
+    precedence drift between frozen and ambient values.
+
+    Provenance sources:
+        - ``default``: Value matches the built-in default.
+        - ``file``: Value came from a config file (differs from default).
+        - ``env``: Value came from an environment variable override.
+        - ``flag``: Value came from a CLI flag override.
+        - ``drift``: Frozen value differs from current ambient value.
+
+    Args:
+        config: The effective (possibly frozen) OrchestrationConfig.
+        ambient_config: Optional current ambient config for drift detection.
+            When provided, any frozen value that differs from ambient is
+            annotated with ``drift`` provenance.
+
+    Returns:
+        Mapping of dotted drive config key -> provenance source tag.
+    """
+    drive = config.drive
+    defaults = DriveConfig()
+
+    provenance: dict[str, str] = {}
+
+    drive_fields: list[tuple[str, object, object]] = [
+        ("drive.max_parallelism", drive.max_parallelism, defaults.max_parallelism),
+        (
+            "drive.collect_poll_interval_ms",
+            drive.collect_poll_interval_ms,
+            defaults.collect_poll_interval_ms,
+        ),
+        (
+            "drive.resolver_timeout_seconds",
+            drive.resolver_timeout_seconds,
+            defaults.resolver_timeout_seconds,
+        ),
+        (
+            "drive.planner_timeout_seconds",
+            drive.planner_timeout_seconds,
+            defaults.planner_timeout_seconds,
+        ),
+    ]
+
+    for key, value, default_value in drive_fields:
+        if value != default_value:
+            provenance[key] = "file"
+        else:
+            provenance[key] = "default"
+
+    # Detect drift between frozen and ambient
+    if ambient_config is not None:
+        ambient_drive = ambient_config.drive
+        if drive.max_parallelism != ambient_drive.max_parallelism:
+            provenance["drive.max_parallelism"] = "drift"
+        if drive.collect_poll_interval_ms != ambient_drive.collect_poll_interval_ms:
+            provenance["drive.collect_poll_interval_ms"] = "drift"
+        if drive.resolver_timeout_seconds != ambient_drive.resolver_timeout_seconds:
+            provenance["drive.resolver_timeout_seconds"] = "drift"
+        if drive.planner_timeout_seconds != ambient_drive.planner_timeout_seconds:
+            provenance["drive.planner_timeout_seconds"] = "drift"
+
+    return provenance
+
+
+def freeze_drive_config(
+    config: OrchestrationConfig,
+    drive_id: str,
+) -> DriveConfigFrozen:
+    """Freeze drive creation parameters from an OrchestrationConfig.
+
+    Authority: docs/RFC-orch-drive.md §8.1 (DriveConfigFrozen),
+              docs/ORCHESTRATION-PLANE-CLI-CONFIG-OBSERVABILITY-DESIGN.md §8.4.1
+
+    Freezes drive-critical config values at creation time so that
+    resume/recover operations use the same parameters the drive was
+    created with, rather than re-reading potentially-changed ambient
+    config.
+
+    Args:
+        config: The effective orchestration config at drive creation time.
+        drive_id: The drive identifier to associate with this frozen config.
+
+    Returns:
+        A ``DriveConfigFrozen`` with values frozen from config.
+    """
+    import time
+
+    return DriveConfigFrozen(
+        drive_id=drive_id,
+        max_parallelism=config.drive.max_parallelism,
+        control_idle_poll_interval_ms=config.control.idle_poll_interval_ms,
+        control_action_ack_timeout_seconds=config.control.action_ack_timeout_seconds,
+        resolver_invocation_timeout_seconds=config.resolver.invocation_timeout_seconds,
+        resolver_max_tool_calls_per_invocation=config.resolver.max_tool_calls_per_invocation,
+        frozen_at=time.time(),
     )
 
 
@@ -1846,6 +2031,43 @@ def validate_orchestration_config(
             )
         )
 
+    # Drive config validation (§8.4.1)
+    if config.drive.max_parallelism < 1 or config.drive.max_parallelism > 32:
+        errors.append(
+            ConfigValidationError(
+                field="drive.max_parallelism",
+                value=config.drive.max_parallelism,
+                reason="must be between 1 and 32 inclusive",
+            )
+        )
+
+    if config.drive.collect_poll_interval_ms <= 0:
+        errors.append(
+            ConfigValidationError(
+                field="drive.collect_poll_interval_ms",
+                value=config.drive.collect_poll_interval_ms,
+                reason="must be > 0",
+            )
+        )
+
+    if config.drive.resolver_timeout_seconds <= 0:
+        errors.append(
+            ConfigValidationError(
+                field="drive.resolver_timeout_seconds",
+                value=config.drive.resolver_timeout_seconds,
+                reason="must be > 0",
+            )
+        )
+
+    if config.drive.planner_timeout_seconds <= 0:
+        errors.append(
+            ConfigValidationError(
+                field="drive.planner_timeout_seconds",
+                value=config.drive.planner_timeout_seconds,
+                reason="must be > 0",
+            )
+        )
+
     # Tool allowlist validation
     allowlist = config.resolver.tool_allowlist
     if isinstance(allowlist, ResolverToolAllowlist):
@@ -1957,6 +2179,10 @@ __all__ = [
     "DEFAULT_RESOLVER_TIMEOUT_SECONDS",
     "DEFAULT_DISPATCH_ROLE_ID",
     "DEFAULT_RESOLVER_ROLE_ID",
+    "DEFAULT_DRIVE_MAX_PARALLELISM",
+    "DEFAULT_DRIVE_COLLECT_POLL_INTERVAL_MS",
+    "DEFAULT_DRIVE_RESOLVER_TIMEOUT_SECONDS",
+    "DEFAULT_DRIVE_PLANNER_TIMEOUT_SECONDS",
     "OrchestrationConfig",
     "ResolverToolAllowlist",
     "DispatchConfig",
@@ -1967,14 +2193,17 @@ __all__ = [
     "ContinuityConfig",
     "ObservabilityConfig",
     "OperatorConfig",
+    "DriveConfig",
     "FrozenConfigSnapshot",
     "ConfigValue",
     "ConfigValidationError",
     "RoleProfileOverrideError",
     "default_role_profiles",
     "build_role_profile_provenance",
+    "build_drive_config_provenance",
     "RoleFieldProvenance",
     "freeze_config",
+    "freeze_drive_config",
     "load_frozen_snapshot",
     "load_orchestration_config",
     "validate_role_profile",

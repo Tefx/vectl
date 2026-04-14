@@ -33,6 +33,7 @@ if TYPE_CHECKING:
 CanonicalToolFamily = Literal[
     "core",
     "orchestration",
+    "drive",
 ]
 """Known tool family identifier literals (from §8.4 canonical registry table)."""
 
@@ -40,6 +41,7 @@ CanonicalToolFamily = Literal[
 CANONICAL_TOOL_FAMILIES: Final[tuple[str, ...]] = (
     "core",
     "orchestration",
+    "drive",
 )
 """Tuple of currently known canonical tool family identifiers (§8.4)."""
 
@@ -53,6 +55,12 @@ _CANONICAL_TOOL_TO_FAMILY: Final[dict[str, str]] = {
     "read_events": "orchestration",
     "read_state": "orchestration",
     "read_case": "orchestration",
+    # Drive tool family — Authority: RFC-orch-drive §16.3
+    "drive_status": "drive",
+    "drive_events": "drive",
+    "drive_read_case": "drive",
+    "drive_frontier": "drive",
+    "drive_child_runs": "drive",
 }
 """Map of canonical tool names to their families (§8.4 registry table)."""
 
@@ -92,6 +100,17 @@ _CANONICAL_FAMILY_METADATA: Final[dict[str, ToolFamily]] = {
         family="orchestration",
         description="Orchestration-plane read surfaces",
         allowed_operations=("read_events", "read_state", "read_case"),
+    ),
+    "drive": ToolFamily(
+        family="drive",
+        description="Drive-plane read surfaces for resolver/planner inspection",
+        allowed_operations=(
+            "drive_status",
+            "drive_events",
+            "drive_read_case",
+            "drive_frontier",
+            "drive_child_runs",
+        ),
     ),
 }
 """Static metadata for canonical tool families."""

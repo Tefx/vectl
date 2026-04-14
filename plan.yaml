@@ -83841,7 +83841,8 @@ phases:
     status: rejected
     description: Gate review for orch_drive_barriers. Open only if review failures,
       resolver cases, and planner mutation bundles all have truthful scheduler continuation
-      semantics.
+      semantics, and the batched mainline remediation path has been independently
+      re-verified.
     verification: All barrier steps complete; independent verification found no unresolved
       blockers in review/resolver/planner integration.
     depends_on:
@@ -83849,6 +83850,7 @@ phases:
     - orch_drive_barriers.resolver-loop-integration
     - orch_drive_barriers.planner-loop-integration
     - orch_drive_barriers.verify-barrier-loops
+    - orch_drive_barriers.reverify-mainline-barrier-integrations
     agent: gate-reviewer-tacit
     claimed_by: gate-reviewer-tacit
     claimed_at: '2026-04-14T16:12:18.675997+00:00'

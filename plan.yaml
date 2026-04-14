@@ -82056,7 +82056,7 @@ phases:
       frozen-config immutability and drift-resistance across reload/resume.'
   - id: orch_drive_state_store.verify-drive-persistence-substrate
     name: Verify drive persistence substrate
-    status: pending
+    status: claimed
     description: 'Independent verification of durable drive state substrate.
 
 
@@ -82081,6 +82081,8 @@ phases:
     - orch_drive_state_store.run-store-drive-records
     - orch_drive_state_store.lease-and-freeze-persistence
     agent: integration-verifier-tacit
+    claimed_by: integration-verifier-tacit
+    claimed_at: '2026-04-14T01:46:57.857534+00:00'
   - id: orch_drive_state_store.gate-persistence-phase
     name: Gate persistence phase
     status: pending

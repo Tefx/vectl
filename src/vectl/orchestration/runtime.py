@@ -23,6 +23,9 @@ from typing import TYPE_CHECKING, Any, Generic, Literal, TypeVar, cast
 from vectl.models import IsolationMode
 from vectl.orchestration.contracts import (
     AgentExecutionState,
+    ChildRunKind,
+    ChildRunRef,
+    ChildRunStatus,
     ExecutionRequest,
     ExecutionResult,
     ReconcileDisposition,
@@ -266,6 +269,9 @@ _PROTECTED_RECONCILE_PATHS: frozenset[str] = frozenset({"plan.yaml"})
 # workspace cleanup is part of execution collection semantics.
 __all__ = [
     "AgentExecutionState",
+    "ChildRunKind",
+    "ChildRunRef",
+    "ChildRunStatus",
     "Failure",
     "ReconcileDisposition",
     "ReconcileError",
@@ -289,6 +295,12 @@ class _WorkspaceState:
         Restart-safe recovery must preserve enough metadata to reconstruct this
         state plus paused-routing and reconcile-evidence barriers before normal
         dispatch or completion is permitted again.
+
+    Drive-aware fields:
+        child_run_kind: When set, this workspace belongs to a drive child run
+            (step, resolver, or planner). Used for capacity accounting.
+        child_run_drive_id: The drive that owns this child run, if any.
+        child_run_ref: The durable ChildRunRef record for this workspace, if any.
     """
 
     workspace: str
@@ -299,6 +311,9 @@ class _WorkspaceState:
     reconcile_status: Literal[
         "pending", "active", "merged", "noop", "merge_conflict", "aborted"
     ] = "pending"
+    child_run_kind: ChildRunKind | None = None
+    child_run_drive_id: str | None = None
+    child_run_ref: ChildRunRef | None = None
 
 
 @dataclass
@@ -341,6 +356,11 @@ class Runtime:
     _conflicted_reconciles: set[str] = field(default_factory=set)
     _runner_registry: RunnerRegistry = field(default_factory=build_default_runner_registry)
     _runner_handles: dict[str, RunnerHandle] = field(default_factory=dict)
+    # Drive-aware child-run tracking: execution_id -> ChildRunRef
+    # This allows the runtime to count active step child runs per drive for
+    # capacity enforcement, and to produce durable child-run records.
+    # Authority: docs/RFC-orch-drive.md section 10.2, 11.4
+    _child_run_refs: dict[str, ChildRunRef] = field(default_factory=dict)
     _reconcile_lock: threading.Lock = field(default_factory=threading.Lock, repr=False)
     # Reconcile serialization lock per target ref.
     # Per ORCHESTRATION-PLANE-RUNTIME-WORKTREE-LIFECYCLE.md section 9.3:
@@ -1132,6 +1152,7 @@ class Runtime:
             self._active_executions.pop(state.execution_id, None)
             self._stalled_executions.discard(state.execution_id)
             self._runner_handles.pop(state.execution_id, None)
+            self._child_run_refs.pop(state.execution_id, None)
 
         self._pending_reconciles.discard(workspace)
         self._active_reconciles.discard(workspace)
@@ -1142,6 +1163,285 @@ class Runtime:
             del self._reconcile_lock_by_target[target_ref]
 
         self._active_workspaces.pop(workspace, None)
+
+    # -----------------------------------------------------------------
+    # Drive-aware parallel child-run support
+    # -----------------------------------------------------------------
+
+    def prepare_child_run(
+        self,
+        request: ExecutionRequest,
+        *,
+        drive_id: str,
+        kind: ChildRunKind = "step",
+    ) -> str:
+        """Prepare workspace for a drive-scoped child run.
+
+        Authority: docs/RFC-orch-drive.md section 11.4
+            Batch dispatch is a scheduler concern, not a separate runtime
+            authority. The scheduler forms a batch by issuing repeated
+            prepare() / start() calls in a stable order.
+
+        This method is the drive-aware equivalent of ``prepare()``. It
+        creates a workspace and tags it with the drive_id and child-run
+        kind for capacity accounting.
+
+        Capacity enforcement is a control concern, but runtime must
+        provide truthful bookkeeping so control can compute
+        ``capacity_remaining = max_parallelism - active_step_child_runs``.
+
+        Args:
+            request: The execution request.
+            drive_id: The drive this child run belongs to.
+            kind: Whether this is a step, resolver, or planner child run.
+
+        Returns:
+            Workspace identifier for use in ``start_child_run()`` and
+            ``cleanup()``.
+
+        Raises:
+            WorktreeError: If workspace creation fails.
+        """
+        workspace_id = self.prepare(request)
+
+        # Tag the workspace with drive context for child-run bookkeeping.
+        state = self._active_workspaces.get(workspace_id)
+        if state is not None:
+            state.child_run_kind = kind
+            state.child_run_drive_id = drive_id
+
+        return workspace_id
+
+    def start_child_run(
+        self,
+        request: ExecutionRequest,
+        workspace: str,
+        *,
+        drive_id: str,
+        kind: ChildRunKind = "step",
+        step_id: str | None = None,
+        case_id: str | None = None,
+        planner_request_id: str | None = None,
+    ) -> ChildRunRef:
+        """Start execution for a drive-scoped child run.
+
+        Authority: docs/RFC-orch-drive.md section 11.4
+            - ``start()`` returns the child-run execution identifier, and that
+              value becomes the authoritative ``ChildRunRef.run_id``
+            - Each successful start creates a durable child-run record
+              immediately
+            - If a later start fails, already-started child runs remain valid
+              and continue
+
+        This method is the drive-aware equivalent of ``start()``. It
+        launches the runner and returns a ``ChildRunRef`` for durable
+        persistence. The ``run_id`` on the returned ref is the same as
+        the ``execution_id`` returned by the underlying ``start()``.
+
+        Resolver and planner child runs are tracked separately from step
+        child runs and do not participate in normal frontier capacity
+        (per RFC-orch-drive.md section 10.2).
+
+        Args:
+            request: The execution request.
+            workspace: Workspace identifier from ``prepare_child_run()``.
+            drive_id: The drive this child run belongs to.
+            kind: Whether this is a step, resolver, or planner child run.
+            step_id: Step identifier (required when kind='step').
+            case_id: Case identifier (when kind='resolver').
+            planner_request_id: Planner request identifier (when kind='planner').
+
+        Returns:
+            ChildRunRef with truthful run_id, workspace, runner, and
+            session_id for durable persistence.
+
+        Raises:
+            ValueError: If workspace is not found or not prepared.
+            WorktreeError: If subprocess spawning fails.
+        """
+        execution_id = self.start(request=request, workspace=workspace)
+
+        # Resolve session_id from the runner handle.
+        state = self._active_workspaces.get(workspace)
+        session_id: str | None = None
+        if state is not None and state.execution_state is not None:
+            session_id = state.execution_state.session_id
+
+        # Compute artifact_root from workspace.
+        artifact_root = ""
+        if state is not None:
+            artifact_root = str(self.workspace_root / state.binding.step_id)
+
+        # Build the authoritative ChildRunRef.
+        # Authority: docs/RFC-orch-drive.md section 8.3
+        ref = ChildRunRef(
+            run_id=execution_id,
+            drive_id=drive_id,
+            kind=kind,
+            status="running",
+            step_id=step_id,
+            case_id=case_id,
+            planner_request_id=planner_request_id,
+            workspace=workspace,
+            runner=request.runner,
+            session_id=session_id,
+            artifact_root=artifact_root,
+        )
+
+        # Track the ChildRunRef in runtime for capacity accounting and
+        # child-run queries.
+        self._child_run_refs[execution_id] = ref
+
+        # Update workspace state with the ref.
+        if state is not None:
+            state.child_run_ref = ref
+
+        return ref
+
+    def collect_child_run(
+        self, execution_id: str
+    ) -> tuple[ExecutionResult | None, ChildRunRef | None]:
+        """Collect results from a drive-scoped child run.
+
+        This method combines the mechanical collection from ``collect()``
+        with updating the durable ``ChildRunRef`` status. When the
+        execution reaches a terminal status, the ``ChildRunRef`` is
+        updated to reflect the outcome.
+
+        The caller (driver) must persist the returned ``ChildRunRef``
+        through the drive store if it has changed.
+
+        Args:
+            execution_id: The execution identifier.
+
+        Returns:
+            Tuple of (ExecutionResult or None if still running,
+            updated ChildRunRef or None if no child-run context).
+        """
+        result = self.collect(execution_id)
+        ref = self._child_run_refs.get(execution_id)
+
+        if ref is None:
+            return (result, None)
+
+        # If the execution reached a terminal state, update the ChildRunRef.
+        if result is not None and ref.status in ("pending", "running"):
+            terminal_status = self._map_execution_status_to_child_run_status(result.status)
+            updated_ref = ChildRunRef(
+                run_id=ref.run_id,
+                drive_id=ref.drive_id,
+                kind=ref.kind,
+                status=terminal_status,
+                step_id=ref.step_id,
+                case_id=ref.case_id,
+                planner_request_id=ref.planner_request_id,
+                workspace=ref.workspace,
+                runner=ref.runner,
+                session_id=result.session_id or ref.session_id,
+                artifact_root=ref.artifact_root,
+            )
+            self._child_run_refs[execution_id] = updated_ref
+
+            # Update workspace state.
+            workspace_id = self._active_executions.get(execution_id)
+            if workspace_id is not None:
+                state = self._active_workspaces.get(workspace_id)
+                if state is not None:
+                    state.child_run_ref = updated_ref
+
+            return (result, updated_ref)
+
+        return (result, ref)
+
+    def active_step_child_run_count(self, drive_id: str) -> int:
+        """Count active step child runs for a given drive.
+
+        Authority: docs/RFC-orch-drive.md section 10.2
+            ``capacity_remaining = max_parallelism - active_step_child_runs``
+            ``active_step_child_runs`` is a computed projection over active
+            child runs where ``ChildRunRef.kind == "step"``. Resolver and
+            planner child runs are excluded from that count.
+
+        This method provides the truthful runtime bookkeeping that control
+        needs for capacity-aware dispatch decisions.
+
+        Args:
+            drive_id: The drive to count active step child runs for.
+
+        Returns:
+            Number of step child runs currently in active (pending/running)
+            status for the given drive.
+        """
+        count = 0
+        for ref in self._child_run_refs.values():
+            if (
+                ref.drive_id == drive_id
+                and ref.kind == "step"
+                and ref.status in ("pending", "running")
+            ):
+                count += 1
+        return count
+
+    def child_run_ref(self, execution_id: str) -> ChildRunRef | None:
+        """Get the ChildRunRef for a given execution.
+
+        Args:
+            execution_id: The execution identifier.
+
+        Returns:
+            The ChildRunRef if this execution is drive-tracked, else None.
+        """
+        return self._child_run_refs.get(execution_id)
+
+    def child_runs_for_drive(self, drive_id: str) -> tuple[ChildRunRef, ...]:
+        """Get all tracked child-run refs for a given drive.
+
+        Args:
+            drive_id: The drive to query.
+
+        Returns:
+            Tuple of all ChildRunRef entries for the drive, in no
+            guaranteed order.
+        """
+        return tuple(ref for ref in self._child_run_refs.values() if ref.drive_id == drive_id)
+
+    def active_child_runs_for_drive(self, drive_id: str) -> tuple[ChildRunRef, ...]:
+        """Get active (pending/running) child-run refs for a given drive.
+
+        Args:
+            drive_id: The drive to query.
+
+        Returns:
+            Tuple of active ChildRunRef entries for the drive.
+        """
+        return tuple(
+            ref
+            for ref in self._child_run_refs.values()
+            if ref.drive_id == drive_id and ref.status in ("pending", "running")
+        )
+
+    @staticmethod
+    def _map_execution_status_to_child_run_status(
+        status: Literal["success", "fail", "stall", "transport_error"],
+    ) -> ChildRunStatus:
+        """Map an ExecutionResult status to a ChildRunStatus.
+
+        ExecutionResult uses a subset of the ChildRunStatus values.
+        The mapping is one-to-one for the active terminal states.
+
+        Args:
+            status: The execution result status.
+
+        Returns:
+            The corresponding ChildRunStatus.
+        """
+        mapping: dict[str, ChildRunStatus] = {
+            "success": "success",
+            "fail": "fail",
+            "stall": "stall",
+            "transport_error": "transport_error",
+        }
+        return mapping.get(status, "fail")
 
 
 def _perform_reconcile(

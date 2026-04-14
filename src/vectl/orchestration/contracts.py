@@ -60,6 +60,8 @@ __all__ = [
     "DispatchSourceKind",
     "DispatchSpec",
     "DriveBarrier",
+    "DriveConfigFrozen",
+    "DriveLease",
     "DriveRecord",
     "DriveStatus",
     "ExecutionContext",
@@ -725,6 +727,88 @@ class DriveRecord:
     barrier: DriveBarrier | None = None
     operator_pause_state: Literal["active", "paused"] = "active"
     summary: str = ""
+
+
+@dataclass(frozen=True)
+class DriveLease:
+    """Scheduler-owned lease for a child run slot within a drive.
+
+    Authority: docs/RFC-orch-drive.md section 14.3
+
+    Lease ownership is ``drive_id + step_id + run_id``. A lease is created
+    when a child run is admitted into a drive and released when the child
+    run completes or when a planner mutation invalidates an unstarted lease.
+
+    Persistence rule:
+        ``DriveLease`` entries are persisted in the drive store's
+        ``leases.jsonl`` and are authoritative for scheduler ownership.
+        A lease with ``status="pending"`` that has no matching child run
+        in the active set is considered invalidated and may be released.
+
+    Attributes:
+        drive_id: Owning drive identifier.
+        step_id: Step this lease is for.
+        run_id: Child run identifier this lease is bound to.
+        status: Lease lifecycle status — ``active``, ``released``, or
+            ``invalidated``.
+        created_at: Unix timestamp when the lease was created.
+        released_at: Unix timestamp when the lease was released (if any).
+        released_reason: Why the lease was released (``completed``,
+            ``invalidated``, ``superseded``).
+    """
+
+    drive_id: str
+    step_id: str
+    run_id: str
+    status: Literal["active", "released", "invalidated"] = "active"
+    created_at: float = 0.0
+    released_at: float | None = None
+    released_reason: Literal["completed", "invalidated", "superseded"] | None = None
+
+
+@dataclass(frozen=True)
+class DriveConfigFrozen:
+    """Frozen drive creation parameters persisted on first drive creation.
+
+    Authority: docs/RFC-orch-drive.md sections 8.1, 15.1, 15.2
+
+    When a drive is first created, certain configuration parameters are
+    frozen and persisted alongside the drive. Resume and recover must use
+    these frozen parameters rather than re-reading ambient config, preventing
+    config drift between the time the drive was created and when it is
+    resumed or recovered.
+
+    This ensures that a drive created with ``max_parallelism=2`` continues
+    to enforce ``max_parallelism=2`` even if ambient config changes to
+    ``max_parallelism=8`` between runs.
+
+    Persistence rule:
+        ``DriveConfigFrozen`` is persisted in the drive store as
+        ``drive_config.json`` alongside the drive's JSONL indices. It is
+        immutable once written — a drive's frozen config never changes.
+
+    Attributes:
+        drive_id: Drive identifier this config belongs to.
+        max_parallelism: Maximum concurrent step child runs allowed.
+            Frozen from config at drive creation time.
+        control_idle_poll_interval_ms: Control idle poll interval in ms.
+            Frozen from config at drive creation time.
+        control_action_ack_timeout_seconds: Control action ack timeout in
+            seconds. Frozen from config at drive creation time.
+        resolver_invocation_timeout_seconds: Resolver invocation timeout in
+            seconds. Frozen from config at drive creation time.
+        resolver_max_tool_calls_per_invocation: Max resolver tool calls.
+            Frozen from config at drive creation time.
+        frozen_at: Unix timestamp when the config was frozen.
+    """
+
+    drive_id: str
+    max_parallelism: int = 4
+    control_idle_poll_interval_ms: int = 1000
+    control_action_ack_timeout_seconds: float = 5.0
+    resolver_invocation_timeout_seconds: float = 600.0
+    resolver_max_tool_calls_per_invocation: int = 100
+    frozen_at: float = 0.0
 
 
 @dataclass(frozen=True)

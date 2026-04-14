@@ -37,8 +37,7 @@ from vectl.orchestration.continuity_artifacts import (
     RuntimeRecoveryRecord,
 )
 
-if TYPE_CHECKING:
-    pass
+from vectl.orchestration.config import OrchestrationConfig
 
 
 # ---------------------------------------------------------------------
@@ -177,6 +176,8 @@ class LegacyContinuityMinimumError(RunStoreError):
 RunStatus = Literal["pending", "running", "success", "fail", "stall", "paused"]
 LegacyMigrationState = Literal["parallel", "preferred", "deprecated", "retired"]
 Liveness = Literal["alive", "stale", "unknown"]
+LeaseStatus = Literal["active", "released", "invalidated"]
+LeaseReleasedReason = Literal["completed", "invalidated", "superseded"]
 RetryObserver = Callable[[Path, int, Exception], None]
 
 _TERMINAL_STATUSES: frozenset[RunStatus] = frozenset({"success", "fail"})
@@ -1286,6 +1287,8 @@ from vectl.orchestration.contracts import (
     ChildRunRef,
     ChildRunStatus,
     DriveBarrier,
+    DriveConfigFrozen,
+    DriveLease,
     DriveRecord,
     DriveStatus,
 )
@@ -1293,6 +1296,8 @@ from vectl.orchestration.contracts import (
 _DRIVE_STORE_DIR = "drives"
 _DRIVES_INDEX_FILENAME = "drives.jsonl"
 _CHILD_RUNS_INDEX_FILENAME = "child_runs.jsonl"
+_LEASES_INDEX_FILENAME = "leases.jsonl"
+_DRIVE_CONFIG_FILENAME = "drive_config.json"
 
 TERMINAL_DRIVE_STATUSES: frozenset[DriveStatus] = frozenset(
     {"completed", "halted", "failed_unrecoverable", "stopped"}
@@ -1404,6 +1409,51 @@ def _deserialize_child_run_ref(payload: dict[str, object]) -> ChildRunRef:
     )
 
 
+def _deserialize_drive_lease(payload: dict[str, object]) -> DriveLease:
+    """Deserialize a DriveLease from a raw dict payload.
+
+    Authority: docs/RFC-orch-drive.md section 14.3
+    """
+    return DriveLease(
+        drive_id=str(payload.get("drive_id", "")),
+        step_id=str(payload.get("step_id", "")),
+        run_id=str(payload.get("run_id", "")),
+        status=cast(LeaseStatus, payload.get("status", "active")),
+        created_at=_coerce_float(payload.get("created_at")),
+        released_at=(
+            None
+            if payload.get("released_at") is None
+            else _coerce_float(payload.get("released_at"))
+        ),
+        released_reason=cast(
+            LeaseReleasedReason | None,
+            payload.get("released_reason"),
+        ),
+    )
+
+
+def _deserialize_drive_config_frozen(payload: dict[str, object]) -> DriveConfigFrozen:
+    """Deserialize a DriveConfigFrozen from a raw dict payload.
+
+    Authority: docs/RFC-orch-drive.md sections 8.1, 15.1
+    """
+    return DriveConfigFrozen(
+        drive_id=str(payload.get("drive_id", "")),
+        max_parallelism=_coerce_int(payload.get("max_parallelism")),
+        control_idle_poll_interval_ms=_coerce_int(payload.get("control_idle_poll_interval_ms")),
+        control_action_ack_timeout_seconds=_coerce_float(
+            payload.get("control_action_ack_timeout_seconds")
+        ),
+        resolver_invocation_timeout_seconds=_coerce_float(
+            payload.get("resolver_invocation_timeout_seconds")
+        ),
+        resolver_max_tool_calls_per_invocation=_coerce_int(
+            payload.get("resolver_max_tool_calls_per_invocation")
+        ),
+        frozen_at=_coerce_float(payload.get("frozen_at")),
+    )
+
+
 def _drive_sort_key(record: DriveRecord) -> tuple[float, str]:
     """Sort key for DriveRecord: (updated_at, drive_id)."""
     return (record.updated_at, record.drive_id)
@@ -1469,6 +1519,7 @@ class DriveStore:
         self._store_root = Path(store_root)
         self._drives_path = self._store_root / _DRIVES_INDEX_FILENAME
         self._child_runs_path = self._store_root / _CHILD_RUNS_INDEX_FILENAME
+        self._leases_path = self._store_root / _LEASES_INDEX_FILENAME
         self._max_append_retries = max_append_retries
         self._append_retry_delay_seconds = append_retry_delay_seconds
         self._append_retry_observer = append_retry_observer
@@ -1799,6 +1850,235 @@ class DriveStore:
         return tuple(ref.run_id for ref in active_refs)
 
     # -----------------------------------------------------------------
+    # Lease persistence (scheduler-owned lease ownership)
+    # -----------------------------------------------------------------
+    # Authority: docs/RFC-orch-drive.md section 14.3, 14.4
+    #
+    # Lease ownership is drive_id + step_id + run_id. A lease is created
+    # when a child run is admitted and released when the child run
+    # completes or when a planner mutation invalidates an unstarted lease.
+
+    def save_lease(self, lease: DriveLease) -> None:
+        """Persist a DriveLease to the append-only JSONL index.
+
+        Authority: docs/RFC-orch-drive.md section 14.3
+
+        Args:
+            lease: The DriveLease to persist.
+        """
+        _append_jsonl_with_retry(
+            self._leases_path,
+            asdict(lease),
+            max_retries=self._max_append_retries,
+            retry_delay_seconds=self._append_retry_delay_seconds,
+            retry_observer=self._append_retry_observer,
+        )
+
+    def lease_by_run_id(self, run_id: str) -> DriveLease | None:
+        """Look up the latest lease for a given run_id.
+
+        Args:
+            run_id: The child run identifier.
+
+        Returns:
+            The latest DriveLease for the run, or None if not found.
+        """
+        return self._latest_leases_by_run_id().get(run_id)
+
+    def active_leases_for_drive(self, drive_id: str) -> tuple[DriveLease, ...]:
+        """Return all active leases for a given drive.
+
+        Active leases have ``status="active"``.
+
+        Args:
+            drive_id: The drive identifier.
+
+        Returns:
+            Tuple of active DriveLease entries for the drive.
+        """
+        latest = self._latest_leases_by_run_id()
+        leases = [
+            lease
+            for lease in latest.values()
+            if lease.drive_id == drive_id and lease.status == "active"
+        ]
+        leases.sort(key=lambda lease: (lease.created_at, lease.run_id))
+        return tuple(leases)
+
+    def active_lease_for_step(self, drive_id: str, step_id: str) -> DriveLease | None:
+        """Return the active lease for a specific step within a drive, if any.
+
+        Args:
+            drive_id: The drive identifier.
+            step_id: The step identifier.
+
+        Returns:
+            The active DriveLease for the step, or None.
+        """
+        for lease in self.active_leases_for_drive(drive_id):
+            if lease.step_id == step_id:
+                return lease
+        return None
+
+    def invalidate_lease(
+        self, run_id: str, *, reason: LeaseReleasedReason = "invalidated"
+    ) -> DriveLease | None:
+        """Invalidate (release) an active lease by marking it with a terminal status.
+
+        Authority: docs/RFC-orch-drive.md section 14.4
+
+        Planner mutation may invalidate unstarted leases. If a mutation
+        supersedes a ready step that has not yet started, the lease must
+        be released before frontier reopens.
+
+        Args:
+            run_id: The child run identifier whose lease to invalidate.
+            reason: The reason for invalidation. Defaults to ``"invalidated"``.
+                Also accepts ``"superseded"`` for planner mutation cases.
+
+        Returns:
+            The released DriveLease, or None if no active lease was found.
+        """
+        existing = self.lease_by_run_id(run_id)
+        if existing is None or existing.status != "active":
+            return None
+        now = _current_timestamp()
+        released = DriveLease(
+            drive_id=existing.drive_id,
+            step_id=existing.step_id,
+            run_id=existing.run_id,
+            status="released",
+            created_at=existing.created_at,
+            released_at=now,
+            released_reason=reason,
+        )
+        self.save_lease(released)
+        return released
+
+    def invalidate_leases_for_step(
+        self, drive_id: str, step_id: str, *, reason: LeaseReleasedReason = "superseded"
+    ) -> tuple[DriveLease, ...]:
+        """Invalidate all active leases for a specific step within a drive.
+
+        Authority: docs/RFC-orch-drive.md section 14.4
+
+        Used when a planner mutation removes or replaces a step, releasing
+        any unstarted leases for that step cleanly.
+
+        Args:
+            drive_id: The drive identifier.
+            step_id: The step identifier whose leases to invalidate.
+            reason: The reason for invalidation. Defaults to ``"superseded"``.
+
+        Returns:
+            Tuple of DriveLease entries that were invalidated.
+        """
+        invalidated: list[DriveLease] = []
+        for lease in self.active_leases_for_drive(drive_id):
+            if lease.step_id == step_id:
+                released = self.invalidate_lease(lease.run_id, reason=reason)
+                if released is not None:
+                    invalidated.append(released)
+        return tuple(invalidated)
+
+    # -----------------------------------------------------------------
+    # Frozen drive config persistence
+    # -----------------------------------------------------------------
+    # Authority: docs/RFC-orch-drive.md sections 8.1, 15.1, 15.2
+    #
+    # Frozen drive config is written once on drive creation and never
+    # modified. Resume/recover must use the frozen config rather than
+    # re-reading ambient config, preventing config drift.
+
+    def save_drive_config_frozen(self, config: DriveConfigFrozen) -> None:
+        """Persist a frozen drive config, replacing any existing one.
+
+        Authority: docs/RFC-orch-drive.md sections 8.1, 15.1
+
+        Frozen config is written once at drive creation time and is
+        immutable. If called for a drive that already has a frozen config,
+        this method is a no-op (idempotent).
+
+        Args:
+            config: The DriveConfigFrozen to persist.
+        """
+        config_path = self._store_root / f"drive_{config.drive_id}_{_DRIVE_CONFIG_FILENAME}"
+        if config_path.exists():
+            # Frozen config is immutable; do not overwrite
+            return
+        config_path.parent.mkdir(parents=True, exist_ok=True)
+        config_path.write_text(
+            json.dumps(asdict(config), sort_keys=True, indent=2), encoding="utf-8"
+        )
+
+    def load_drive_config_frozen(self, drive_id: str) -> DriveConfigFrozen | None:
+        """Load the frozen drive config for a given drive.
+
+        Authority: docs/RFC-orch-drive.md sections 15.1, 15.2
+
+        Resume/recover must use the frozen config instead of re-reading
+        ambient configuration, preventing config drift between runs.
+
+        Args:
+            drive_id: The drive identifier whose frozen config to load.
+
+        Returns:
+            The DriveConfigFrozen if it exists, or None if not found.
+        """
+        config_path = self._store_root / f"drive_{drive_id}_{_DRIVE_CONFIG_FILENAME}"
+        if not config_path.exists():
+            return None
+        payload = json.loads(config_path.read_text(encoding="utf-8"))
+        if not isinstance(payload, dict):
+            raise CorruptJSONLError(
+                f"Malformed drive config frozen payload in {config_path}: expected object"
+            )
+        return _deserialize_drive_config_frozen(cast(dict[str, object], payload))
+
+    @classmethod
+    def freeze_drive_config_from_orch_config(
+        cls,
+        drive_id: str,
+        config: OrchestrationConfig,
+    ) -> DriveConfigFrozen:
+        """Create a DriveConfigFrozen from an OrchestrationConfig at drive creation time.
+
+        Authority: docs/RFC-orch-drive.md sections 8.1, 15.1
+
+        This captures the drive-relevant config parameters at the moment
+        of drive creation, ensuring resume/recover uses the same settings
+        that were in effect when the drive was first started.
+
+        Args:
+            drive_id: The drive identifier for the frozen config.
+            config: The OrchestrationConfig to freeze parameters from.
+
+        Returns:
+            A DriveConfigFrozen populated from the orchestration config.
+        """
+        return DriveConfigFrozen(
+            drive_id=drive_id,
+            max_parallelism=4,  # Default from DriveRecord; overridden by caller
+            control_idle_poll_interval_ms=config.control.idle_poll_interval_ms,
+            control_action_ack_timeout_seconds=config.control.action_ack_timeout_seconds,
+            resolver_invocation_timeout_seconds=config.resolver.invocation_timeout_seconds,
+            resolver_max_tool_calls_per_invocation=config.resolver.max_tool_calls_per_invocation,
+            frozen_at=_current_timestamp(),
+        )
+
+    def _latest_leases_by_run_id(self) -> dict[str, DriveLease]:
+        """Load all lease entries, returning latest per run_id."""
+        if not self._leases_path.exists():
+            return {}
+        entries = _read_jsonl(self._leases_path)
+        latest: dict[str, DriveLease] = {}
+        for payload in entries:
+            lease = _deserialize_drive_lease(payload)
+            # Later entries always win (append-order wins)
+            latest[lease.run_id] = lease
+        return latest
+
+    # -----------------------------------------------------------------
     # Internal index loading
     # -----------------------------------------------------------------
 
@@ -1873,4 +2153,6 @@ __all__ = [
     "DriveStoreError",
     "DriveAdmissionConflictError",
     "TERMINAL_DRIVE_STATUSES",
+    "LeaseStatus",
+    "LeaseReleasedReason",
 ]

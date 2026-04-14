@@ -82160,7 +82160,7 @@ phases:
   steps:
   - id: orch_drive_control.batch-frontier-decision-expansion
     name: batch frontier decision expansion
-    status: claimed
+    status: done
     description: 'Implementation step.
 
 
@@ -82192,6 +82192,31 @@ phases:
     agent: python-senior-tacit
     claimed_by: python-senior-tacit
     claimed_at: '2026-04-14T02:19:12.219899+00:00'
+    done_at: '2026-04-14T02:48:46.141507+00:00'
+    evidence: 'Artifact:
+
+      - Branch `vectl/step-orch_drive_control.batch-frontier-decision-expansion` with
+      control decision expansion and tests.
+
+
+      Verification:
+
+      - `uv run python -m pytest tests/orchestration/` -> 1095 passed, 0 failed.
+
+      - Confirmed full decision-kind surface emitted (`dispatch_batch|resolve|replan|wait|done|halt`),
+      deterministic frontier ordering, bounded capacity accounting, role binding coverage,
+      barrier_required semantics, and invariant validation.
+
+      - Resolver `halt` mapping corrected to ControlDecision kind `halt` with barrier_required=true.
+
+
+      Spec link:
+
+      - docs/RFC-orch-drive.md (sections 9, 10)
+
+      - docs/ORCHESTRATION-PLANE-INTERFACES.md (ControlDecision contract)
+
+      - docs/ORCHESTRATION-PLANE-ARCHITECTURE.md (control responsibility)'
   - id: orch_drive_control.same-plan-admission-rewrite
     name: same plan admission rewrite
     status: pending

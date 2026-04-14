@@ -22,6 +22,38 @@ from vectl.orchestration.contracts import (
     RuntimeSnapshot,
 )
 from vectl.orchestration.core_adapter import CoreAdapter
+from vectl.orchestration.run_store import AdmissionAuthority, DriveActiveRunBlockedError
+
+
+class SamePlanRunRejectedError(Exception):
+    """Raised when orch run is rejected because an active drive owns the plan.
+
+    Authority: docs/RFC-orch-drive.md section 7.1, 14.1
+
+    This error is distinct from DriveActiveRunBlockedError (which is a
+    RunStoreError for the store-level check). This error is raised at the
+    orchestration app / control layer when the admission authority determines
+    that a standalone run cannot proceed because a drive is active for the
+    same plan.
+
+    The canonical contract requires:
+        - exit code 2
+        - no --force override is permitted
+        - error text must include the active drive_id
+        - error text must instruct the operator to use drive-scoped commands
+
+    Attributes:
+        drive_id: The active drive that blocks the run.
+        plan_path: The plan path that the run was targeting.
+        message: Human-readable explanation.
+    """
+
+    def __init__(self, message: str, *, drive_id: str, plan_path: str) -> None:
+        super().__init__(message)
+        self.drive_id = drive_id
+        self.plan_path = plan_path
+        self.message = message
+
 
 DEFAULT_DISPATCH_ROLE = "python-executor"
 
@@ -789,5 +821,6 @@ __all__ = [
     "PlanAwareControl",
     "RosterSnapshotSource",
     "RuntimeSnapshotSource",
+    "SamePlanRunRejectedError",
     "validate_decision_invariants",
 ]

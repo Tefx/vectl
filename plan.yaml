@@ -83023,7 +83023,7 @@ phases:
     agent: gate-reviewer-tacit
   - id: orch_drive_driver.fix-driver-loop-blockers
     name: Fix driver loop blockers
-    status: claimed
+    status: done
     description: 'Batched remediation for the failed driver-loop verification.
 
 
@@ -83175,6 +83175,99 @@ phases:
     agent: python-senior-tacit
     claimed_by: python-senior-tacit
     claimed_at: '2026-04-14T11:01:50.291231+00:00'
+    done_at: '2026-04-14T11:29:04.407948+00:00'
+    evidence: '## Implementation Evidence
+
+
+      ### refs Read Confirmation
+
+      - `docs/RFC-orch-drive.md` — RFC defining the drive orchestration model, data
+      model, and transition table
+
+      - `docs/ORCHESTRATION-PLANE-IMPLEMENTATION-DESIGN.md` — Implementation design
+      defining ConcreteDriveDriver as composition layer
+
+      - `src/vectl/orchestration/driver.py` — Original contract-only module with DriveDriver
+      protocol and result types
+
+      - `src/vectl/orch_app.py` — Orchestration app composition root with NotImplementedError
+      stubs
+
+      - `src/vectl/orchestration/run_store.py` — DriveStore with persistence, admission
+      guard, projection replay
+
+      - `src/vectl/orchestration/control.py` — PlanAwareControl with drive-aware evaluate()
+
+      - `src/vectl/orchestration/contracts.py` — DriveRecord, DriveBarrier, DriveStatus,
+      ControlDecision
+
+      - `src/vectl/orchestration/projections.py` — rebuild_drive_projection for scheduler
+      state rebuild
+
+
+      ### Blocker Closure Report
+
+
+      - **start_drive**: `ConcreteDriveDriver.start_drive()` creates a DriveRecord,
+      validates admission via DriveStore.assert_can_admit_drive(), validates max_parallelism
+      [1,32], snapshots core for initial frontier, persists to DriveStore, returns
+      DriveStartResult. orch_app delegates via `_drive_driver().start_drive()`.
+
+      - **run_drive_loop**: `ConcreteDriveDriver.run_drive_loop()` loads drive state
+      from DriveStore.replay_drive_state(), evaluates control decision via PlanAwareControl.evaluate(drive=...),
+      persists updated DriveRecord, returns DriveLoopResult with status/summary. Terminal
+      drives return immediately. orch_app delegates via `_drive_driver().run_drive_loop()`.
+
+      - **resume_drive**: `ConcreteDriveDriver.resume_drive()` restores drive state
+      from DriveStore, rebuilds active child runs from child-run index, transitions
+      status to "running", persists updated record, returns DriveResumeResult with
+      restored_child_run_ids. orch_app delegates via `_drive_driver().resume_drive()`.
+
+      - **recover_drive**: `ConcreteDriveDriver.recover_drive()` rebuilds drive state
+      from persistence, classifies active vs terminal child runs, handles barrier
+      state transition (resolving/replanning/blocked_operator per barrier reason),
+      supports dry_run mode, persists updated record, returns DriveRecoverResult.
+      orch_app delegates via `_drive_driver().recover_drive(dry_run=...)`.
+
+
+      ### Runnable Proof Support Added
+
+      - **Exact command**: `uv run pytest tests/orchestration/unit/test_driver_loop_proof.py
+      -v`
+
+      - **Observed outcome**: 28 passed in 0.26s (all green)
+
+      - **Regression command**: `uv run pytest tests/orchestration/unit/ -x -q`
+
+      - **Regression outcome**: 1036 passed in 26.44s (all green)
+
+      - **CLI surface proof**: `uv run vectl orch drive --help` exits 0 with full
+      command surface; `drive-status`, `drive-resume`, `drive-recover` all have handlers
+      and show help.
+
+
+      ### Documentation Disposition
+
+      - `tools/vectl/README.md`: **Deferred** (non-blocking). The `tools/vectl/` directory
+      does not exist. Creating a README is a documentation concern outside the driver-loop
+      wiring scope. The blocker was NotImplementedError stubs, not missing documentation.
+      No downstream gate intersects this path.
+
+
+      ### Sibling Search
+
+      - Searched `src/vectl/orch_app.py` and `src/vectl/orchestration/driver.py` for
+      `raise NotImplementedError` — 0 matches found. All four drive app-surface stubs
+      have been replaced with real wiring.
+
+      - Searched `src/vectl/` for `NotImplementedError.*drive` — 0 matches. No additional
+      stubbed app-surface paths beyond the four named methods.
+
+
+      ## Deviation Records
+
+      - None. All implementations follow the contract types and RFC authority. No
+      specs were silently narrowed.'
   - id: orch_drive_driver.reverify-driver-loop-remediation
     name: Re-verify driver loop remediation
     status: pending

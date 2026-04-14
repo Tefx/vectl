@@ -83759,7 +83759,7 @@ phases:
       \ output"
   - id: orch_drive_barriers.verify-barrier-loops
     name: verify barrier loops
-    status: claimed
+    status: done
     description: 'Independent verification of review/resolver/planner barrier semantics.
 
 
@@ -83787,6 +83787,55 @@ phases:
     agent: integration-verifier-tacit
     claimed_by: integration-verifier-tacit
     claimed_at: '2026-04-14T15:59:38.664544+00:00'
+    done_at: '2026-04-14T16:12:03.061933+00:00'
+    evidence: 'Artifact:
+
+      - Independent verification of review/resolver/planner barrier loops and continuation
+      semantics.
+
+
+      Verification:
+
+      - `.venv/bin/python -m pytest tests/orchestration/unit/test_resolver_loop_integration.py
+      -v` -> 30 passed.
+
+      - `.venv/bin/python -m pytest tests/orchestration/unit/test_driver_loop_proof.py
+      -v` -> 28 passed.
+
+      - `.venv/bin/python -m pytest tests/orchestration/unit/test_control_drive.py
+      -v` -> 69 passed.
+
+      - `.venv/bin/python -m pytest tests/orchestration/integration/test_control_resolver_contract.py
+      -v` -> 7 passed.
+
+      - `.venv/bin/python -m pytest tests/orchestration/unit/test_resolver.py -v`
+      -> 9 passed.
+
+      - `.venv/bin/python -m pytest tests/orchestration/unit/test_drive_contracts.py
+      -v` -> 63 passed.
+
+      - `.venv/bin/python -m pytest tests/orchestration/unit/test_drive_config_frozen.py
+      -k "lease" -v` -> 22 passed.
+
+      - Headline PASS; proof_gap_status NONE; blocking_status CLOSED; gate_open_allowed
+      true.
+
+
+      Spec link:
+
+      - docs/RFC-orch-drive.md (§5.4, §8.4/§8.4.1, §10, §12, §13, §17.1.1)
+
+      - docs/ORCHESTRATION-PLANE-RESOLUTION-CONTRACT.md (§3.1, §3.2, §5.1, §6)
+
+      - docs/ORCHESTRATION-PLANE-INTERFACES.md (§3.4, §3.11, §3.12, §4.1, §4.4, §4.5,
+      §5.3)
+
+
+      ## refs Read Confirmation
+
+      - RFC / resolution-contract / interfaces docs read and cross-checked.
+
+      - tools/vectl/README.md — NOT FOUND (reported as missing per step instructions).'
   - id: orch_drive_barriers.gate-barrier-phase
     name: gate barrier phase
     status: pending

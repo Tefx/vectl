@@ -84260,7 +84260,7 @@ phases:
       gate_open_allowed: true'
 - id: orch_drive_surfaces
   name: Orchestration Drive CLI, Inspection, Control, Config, and Observability
-  status: pending
+  status: in_progress
   gate: Drive-scoped CLI/control/inspection/config/event surfaces are runnable and
     independently probed before recovery and final real-runner acceptance.
   depends_on:
@@ -84268,7 +84268,7 @@ phases:
   steps:
   - id: orch_drive_surfaces.cli-drive-lifecycle-surface
     name: cli drive lifecycle surface
-    status: pending
+    status: claimed
     description: 'Implementation step.
 
 
@@ -84295,6 +84295,8 @@ phases:
     - docs/ORCHESTRATION-PLANE-CLI-CONFIG-OBSERVABILITY-DESIGN.md
     - docs/ORCHESTRATION-PLANE-IMPLEMENTATION-DESIGN.md
     agent: python-senior-tacit
+    claimed_by: python-senior-tacit
+    claimed_at: '2026-04-14T19:17:20.130198+00:00'
   - id: orch_drive_surfaces.inspection-and-control-surface
     name: inspection and control surface
     status: pending

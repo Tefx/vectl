@@ -84460,7 +84460,7 @@ phases:
       \ → step_ids) were NOT introduced by this step"
   - id: orch_drive_surfaces.config-and-observability-upgrades
     name: config and observability upgrades
-    status: claimed
+    status: done
     description: 'Implementation step.
 
 
@@ -84505,6 +84505,94 @@ phases:
     agent: python-senior-tacit
     claimed_by: python-senior-tacit
     claimed_at: '2026-04-14T21:14:39.169869+00:00'
+    done_at: '2026-04-14T21:39:25.809108+00:00'
+    evidence: '## refs Read Confirmation
+
+
+      1. `docs/ORCHESTRATION-PLANE-CLI-CONFIG-OBSERVABILITY-DESIGN.md` — READ. Key
+      passage: §8.4.1 defines drive config extension (`max_parallelism: 4`, `collect_poll_interval_ms:
+      250`, `resolver_timeout_seconds: 300`, `planner_timeout_seconds: 300`); §8.7
+      defines provenance tracking sources (flag/env/file/default); §8.8 defines frozen
+      config snapshots; §9.3 defines event envelope schema (seq, prev_hash, entry_hash,
+      timestamp, kind, step_id, run_id, payload); §10.4 defines drive event family
+      (11 required event kinds: drive_started, drive_status_changed, drive_barrier_entered,
+      drive_barrier_cleared, planner_invoked, planner_applied, resolver_invoked, resolver_returned,
+      child_run_admitted, child_run_final, drive_final).
+
+
+      2. `docs/RFC-orch-drive.md` — READ. Key passage: §8.1 defines DriveRecord and
+      drive creation parameter freezing; §8.2 defines DriveStatus values and valid
+      transitions; §8.4 defines DriveBarrier with reason/entered_at/case_ids; §16.3
+      defines required drive-level event families and minimum event envelope; §16.4
+      defines required drive artifacts (drive/summary.json, drive/frontier.json);
+      §15.1-15.3 defines recovery semantics and conflict resolution precedence.
+
+
+      Artifact:
+
+      - Commit: 3decedd (cherry-picked from worktree commit 4695e3a92a958a8bf67a2384ac57531697a82ef9)
+
+
+      Verification:
+
+      - Run: `.venv/bin/python -m pytest tests/orchestration/ -v` -> 1371 passed,
+      0 failed in 52.14s
+
+      - Run: `.venv/bin/python -m pytest tests/orchestration/test_drive_events_config_observability.py
+      -v` -> 57 passed, 0 failed in 0.41s
+
+
+      Spec link:
+
+      - docs/ORCHESTRATION-PLANE-CLI-CONFIG-OBSERVABILITY-DESIGN.md §8.4.1 (drive
+      config), §8.7 (provenance), §8.8 (frozen snapshots), §9.3 (event envelopes),
+      §10.4 (drive event family)
+
+      - docs/RFC-orch-drive.md §8.1 (DriveRecord/freezing), §16.3 (drive events),
+      §16.4 (drive artifacts), §15.1-15.3 (recovery)
+
+
+      Files changed:
+
+      - src/vectl/orchestration/config.py
+
+      - src/vectl/orchestration/events.py
+
+      - src/vectl/orchestration/projections.py
+
+      - src/vectl/orchestration/tool_registry.py
+
+      - tests/orchestration/test_drive_events_config_observability.py
+
+      - tests/orchestration/unit/test_config_state_impl.py
+
+
+      Failure mode coverage:
+
+      - envelope hash / seq chain drift: `validate_drive_event_chain` detects non-monotonic
+      seq and prev_hash mismatch (covered in TestDriveEventChainIntegrity)
+
+      - missing drive event family members: test checks all 11 required members (TestDriveEventRegistry)
+
+      - replay/projection mismatch after restart: projection replay determinism and
+      child-run index precedence tests
+
+      - config precedence drift: frozen-vs-ambient provenance drift detection and
+      env override tests
+
+
+      Gaps/Notes:
+
+      - Did not implement drive-config JSONL persistence in DriveStore (freeze result
+      wiring remains driver-owned)
+
+      - Did not modify `run_store.py` (outside touch paths)
+
+      - `DriveEventEnvelope.to_orchestration_envelope` recomputes entry hash for canonical
+      payload conversion; chain validation should use consistent envelope type
+
+      - `resolver_invoked` and `resolver_returned` overlap with existing family by
+      spec design'
   - id: orch_drive_surfaces.drive-cli-liveness-probe
     name: drive cli liveness probe
     status: pending

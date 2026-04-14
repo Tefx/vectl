@@ -82622,7 +82622,7 @@ phases:
       \ protocol is deferred per the existing GAP comment in continuity_artifacts.py."
   - id: orch_drive_runtime.verify-runtime-parallel-child-runs
     name: verify runtime parallel child runs
-    status: pending
+    status: claimed
     description: 'Independent verification of the widened runtime mechanics.
 
 
@@ -82646,6 +82646,8 @@ phases:
     - orch_drive_runtime.parallel-child-run-runtime
     - orch_drive_runtime.worktree-merge-reconcile-mechanics
     agent: integration-verifier-tacit
+    claimed_by: integration-verifier-tacit
+    claimed_at: '2026-04-14T05:53:52.001324+00:00'
   - id: orch_drive_runtime.gate-runtime-phase
     name: gate runtime phase
     status: pending

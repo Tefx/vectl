@@ -83838,7 +83838,7 @@ phases:
       - tools/vectl/README.md — NOT FOUND (reported as missing per step instructions).'
   - id: orch_drive_barriers.gate-barrier-phase
     name: gate barrier phase
-    status: pending
+    status: claimed
     description: Gate review for orch_drive_barriers. Open only if review failures,
       resolver cases, and planner mutation bundles all have truthful scheduler continuation
       semantics.
@@ -83850,6 +83850,8 @@ phases:
     - orch_drive_barriers.planner-loop-integration
     - orch_drive_barriers.verify-barrier-loops
     agent: gate-reviewer-tacit
+    claimed_by: gate-reviewer-tacit
+    claimed_at: '2026-04-14T16:12:18.675997+00:00'
 - id: orch_drive_surfaces
   name: Orchestration Drive CLI, Inspection, Control, Config, and Observability
   status: locked

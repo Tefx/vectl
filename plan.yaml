@@ -84595,7 +84595,7 @@ phases:
       spec design'
   - id: orch_drive_surfaces.drive-cli-liveness-probe
     name: drive cli liveness probe
-    status: pending
+    status: claimed
     description: 'Independent runnable-surface probe.
 
 
@@ -84619,6 +84619,8 @@ phases:
     - orch_drive_surfaces.inspection-and-control-surface
     - orch_drive_surfaces.config-and-observability-upgrades
     agent: blind-tester-tacit
+    claimed_by: blind-tester-tacit
+    claimed_at: '2026-04-14T21:40:05.422552+00:00'
   - id: orch_drive_surfaces.gate-surfaces-phase
     name: gate surfaces phase
     status: pending

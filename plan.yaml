@@ -83445,7 +83445,7 @@ phases:
       \ are closed with independent evidence."
 - id: orch_drive_barriers
   name: Orchestration Drive Review / Resolver / Planner Barriers
-  status: in_progress
+  status: done
   gate: Review failures, resolver cases, and planner mutation bundles are integrated
     into the scheduler barrier loop with truthful continuation rules before operator
     surfaces widen.
@@ -83838,7 +83838,7 @@ phases:
       - tools/vectl/README.md — NOT FOUND (reported as missing per step instructions).'
   - id: orch_drive_barriers.gate-barrier-phase
     name: gate barrier phase
-    status: claimed
+    status: done
     description: Gate review for orch_drive_barriers. Open only if review failures,
       resolver cases, and planner mutation bundles all have truthful scheduler continuation
       semantics.
@@ -83852,9 +83852,72 @@ phases:
     agent: gate-reviewer-tacit
     claimed_by: gate-reviewer-tacit
     claimed_at: '2026-04-14T16:12:18.675997+00:00'
+    done_at: '2026-04-14T16:36:57.417295+00:00'
+    evidence: "## Gate Verdict: FAIL\n\n### Blocking Issues\n\n#### B1: Planner-loop\
+      \ integration code NOT merged to Main (BLOCKING)\n\nCommit `21262f7` (\"feat(orch):\
+      \ implement planner-loop integration for drive barriers\") contains the critical\
+      \ planner-loop production code:\n\n- `src/vectl/orchestration/core_adapter.py`:\
+      \ +304 lines (`PlannerMutationResult`, `PlannerMutationApplier` Protocol, `PlanPlannerMutationApplier`\
+      \ concrete, `_as_str_list` helper)\n- `src/vectl/orchestration/driver.py`: +316\
+      \ lines (`_construct_bundle_from_request`, `_apply_planner_bundle_to_drive`,\
+      \ `_handle_replan_decision`, `_invalidate_superseded_leases`, `planner_mutation_applier`\
+      \ constructor)\n- `tests/orchestration/unit/test_planner_loop_integration.py`:\
+      \ 38 tests (entirely new file, 1198 lines)\n\nThis commit is **NOT an ancestor\
+      \ of the Main branch**. The current Main (`bf18faf`) has:\n- `core_adapter.py`:\
+      \ 284 lines (should be ~586)\n- `driver.py`: 1381 lines (should be ~1697)\n\
+      - `test_planner_loop_integration.py`: MISSING\n\nImpact: The driver can *enter*\
+      \ a replan barrier state (setting `DriveStatus=\"replanning\"` and creating\
+      \ a `DriveBarrier` with `reason=\"planner_needed\"`), but it **cannot** actually\
+      \ invoke a planner, parse a mutation bundle, apply mutations through facades,\
+      \ or invalidate superseded leases. The complete planner-loop continuation path\
+      \ from RFC-orch-drive.md §13 is absent.\n\nThe `control.py::apply_planner_result`\
+      \ method exists (protocol + implementation), but the driver wiring that calls\
+      \ it (`_handle_replan_decision`) does not.\n\n**Remediation**: Merge commit\
+      \ `21262f7` to Main, re-run the full test suite including `test_planner_loop_integration.py`.\n\
+      \n#### B2: Review-gate integration test file NOT on Main (BLOCKING)\n\nThe `review-gate-integration`\
+      \ step claims 50 tests were added in `test_review_gate_integration.py`, but\
+      \ this file does not exist on the Main branch. The production code (`ReviewGateResult`,\
+      \ `ReviewGate` protocol, `route_review_outcome` mapping in `control.py`) and\
+      \ the key integration method `_handle_resolve_decision` in `driver.py` are present,\
+      \ but the specific review-gate-to-barrier integration tests proving that the\
+      \ four `ReviewOutcome` statuses map to correct scheduler behavior are unverifiable\
+      \ on Main.\n\nWhile `test_resolver_loop_integration.py` (30 tests) and `test_driver_loop_proof.py`\
+      \ (28 tests) exist and pass, they don't cover the review-gate-specific integration\
+      \ paths.\n\n**Remediation**: Merge the review-gate-integration test file to\
+      \ Main.\n\n#### B3: tools/vectl/README.md missing (SHOULD_FIX)\n\nThe verify-barrier-loops\
+      \ step included `tools/vectl/README.md` as a reference document and correctly\
+      \ reported it as missing. This is not architectural but should be tracked.\n\
+      \n### Summary of Evidence\n\n- All 1204 orchestration tests pass on Main\n-\
+      \ Resolver-loop integration is complete and production-ready on Main:\n  - `_handle_resolve_decision`\
+      \ properly creates ResolutionCase, invokes resolver, refreshes state, applies\
+      \ report\n  - `_apply_resolution_report_to_drive` implements all 4 continuation\
+      \ rules (unblocked, waiting, operator_required, halt)\n  - `_enter_barrier_for_resolve`\
+      \ and `_enter_barrier_for_replan` enter barrier states correctly\n- Review gate\
+      \ contract types (`ReviewGateResult`, `ReviewGate`, `ReviewOutcome`) are properly\
+      \ defined\n- Control decision model properly handles all 6 decision kinds including\
+      \ `resolve` and `replan`\n- Drive status transition table (`DRIVE_TRANSITIONS`)\
+      \ is complete and matches RFC §8.2.1\n- `PlannerRequest`, `PlannerMutationBundle`,\
+      \ `PlannerMutationItem` contracts are defined in `contracts.py`\n- `control.py`\
+      \ has `apply_planner_result` implementing continuation rules from RFC §13.5\n\
+      - BUT: the driver-level planner invocation, bundle parsing, facade-only mutation\
+      \ application, and lease invalidation are all MISSING from Main\n\n### Behavioral\
+      \ Proof Register\n\n| proof_id | requirement_ref | claim | status | gate_impact\
+      \ |\n|----------|----------------|------|--------|-------------|\n| P1 | RFC-orch-drive\
+      \ §12.3 | Resolver continuation rules correctly transition drive status | PROVEN\
+      \ | OPEN_OK |\n| P2 | RFC-orch-drive §8.4.1 | Barrier entry from non-closure\
+      \ creates correct barrier reason | PROVEN | OPEN_OK |\n| P3 | RFC-orch-drive\
+      \ §13.4 | Planner mutations are applied through vectl facades only | UNPROVEN\
+      \ | BLOCKING |\n| P4 | RFC-orch-drive §13.5 | Planner continuation rules (applyable→running,\
+      \ operator_required→blocked_operator, halt→halted) | UNPROVEN (protocol exists\
+      \ but driver wiring missing) | BLOCKING |\n| P5 | RFC-orch-drive §14.4 | Lease\
+      \ invalidation after planner mutation | UNPROVEN (code missing) | BLOCKING |\n\
+      | P6 | ORCHESTRATION-PLANE-RESOLUTION-CONTRACT §6 | Post-resolution state refresh\
+      \ is mandatory | PROVEN | OPEN_OK |\n| P7 | RFC-orch-drive §17.1.1 | Review\
+      \ outcome continuation rules | UNPROVEN (tests missing, production code present)\
+      \ | NON_BLOCKING |"
 - id: orch_drive_surfaces
   name: Orchestration Drive CLI, Inspection, Control, Config, and Observability
-  status: locked
+  status: pending
   gate: Drive-scoped CLI/control/inspection/config/event surfaces are runnable and
     independently probed before recovery and final real-runner acceptance.
   depends_on:

@@ -83874,7 +83874,7 @@ phases:
       reviewer: gate-reviewer-tacit
   - id: orch_drive_barriers.fix-mainline-barrier-integrations
     name: fix mainline barrier integrations
-    status: pending
+    status: claimed
     description: 'Fix ALL gate blockers preventing mainline barrier coverage from
       actually landing.
 
@@ -83943,6 +83943,8 @@ phases:
     - orch_drive_barriers.review-gate-integration
     - orch_drive_barriers.verify-barrier-loops
     agent: python-senior-tacit
+    claimed_by: python-senior-tacit
+    claimed_at: '2026-04-14T16:44:16.672493+00:00'
   - id: orch_drive_barriers.reverify-mainline-barrier-integrations
     name: reverify mainline barrier integrations
     status: pending

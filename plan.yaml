@@ -84352,7 +84352,7 @@ phases:
       and CLI contract.'
   - id: orch_drive_surfaces.inspection-and-control-surface
     name: inspection and control surface
-    status: pending
+    status: claimed
     description: 'Implementation step.
 
 
@@ -84383,6 +84383,8 @@ phases:
     depends_on:
     - orch_drive_surfaces.cli-drive-lifecycle-surface
     agent: python-senior-tacit
+    claimed_by: python-senior-tacit
+    claimed_at: '2026-04-14T19:38:49.690131+00:00'
   - id: orch_drive_surfaces.config-and-observability-upgrades
     name: config and observability upgrades
     status: pending

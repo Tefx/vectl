@@ -82813,7 +82813,7 @@ phases:
   steps:
   - id: orch_drive_driver.driver-loop-core
     name: driver loop core
-    status: claimed
+    status: done
     description: 'Implementation step.
 
 
@@ -82845,6 +82845,36 @@ phases:
     agent: python-senior-tacit
     claimed_by: python-senior-tacit
     claimed_at: '2026-04-14T09:21:39.717405+00:00'
+    done_at: '2026-04-14T10:03:43.845257+00:00'
+    evidence: "## Evidence: Driver Loop Core Implementation\n\n### What was done\n\
+      Implemented `DriveDriverImpl` in `src/vectl/orchestration/driver.py` with full\
+      \ drive loop behavior per RFC-orch-drive (sections 8-17) and ORCHESTRATION-PLANE-INTERFACES\
+      \ contracts.\n\n### Implementation Details\n1. **DriveDriverImpl**: Concrete\
+      \ class with `start_drive`, `run_drive_loop`, `resume_drive`, `recover_drive`\
+      \ entrypoints\n2. **validate_drive_transition**: Validates state transitions\
+      \ against DriveRecord lifecycle spec (unstarted→running, running→barrier/waiting/terminal,\
+      \ barrier→running/terminal, etc.)\n3. **InvalidDriveTransitionError**: Raised\
+      \ for invalid state transitions\n4. **Barrier helpers**: `_enter_barrier`, `_is_first_barrier_entry`,\
+      \ `_advance_frontier_from_barrier`, `_leave_barrier`\n5. **Circular import fix**:\
+      \ Moved `run_store` imports to TYPE_CHECKING/local scope to break circular dependency\
+      \ between driver.py ↔ run_store.py\n\n### Test Coverage\n- **New test file**:\
+      \ `tests/orchestration/test_driver_loop.py` — 42 tests\n  - Transition validation\
+      \ (valid + invalid)\n  - start_drive (fresh + resume)\n  - run_drive_loop iterations\
+      \ (snapshot refresh, control evaluation, child admission up to capacity, terminal\
+      \ child collection, barrier/pause/terminal exits)\n  - Barrier entry (first\
+      \ + subsequent, frontier advance)\n  - resume_drive from waiting/paused\n  -\
+      \ recover_drive from crashed/unknown\n  - Invalid terminal state rejection\n\
+      \  - Stale snapshot after barrier\n  - Capacity enforcement (MaxParallelismError\
+      \ handling)\n  - Control decision routing (pause, terminate, barrier, no-op)\n\
+      \n### Verification Commands & Output\n```\n$ uv run pytest tests/orchestration/test_driver_loop.py\
+      \ -q\n42 passed in 0.38s\n\n$ uv run pytest tests/orchestration/ -q --ignore=tests/orchestration/test_persistence.py\n\
+      1188 passed in 96.24s\n```\n\n### Commit\nBranch: vectl/step-orch_drive_driver.driver-loop-core\n\
+      Commit: 64444ab feat(orchestration): implement driver loop core with DriveDriverImpl\n\
+      Files: 2 changed, 2453 insertions(+), 8 deletions(-)\n  - src/vectl/orchestration/driver.py\
+      \ (+1598 lines)\n  - tests/orchestration/test_driver_loop.py (+855 lines, new\
+      \ file)\n\n### NOT Done\n- Integration/E2E tests with real persistence layer\
+      \ (out of scope — persistence step separate)\n- Performance benchmarks for drive\
+      \ loop iterations\n- CLI surface for drive commands (out of scope)"
   - id: orch_drive_driver.phase-and-plan-auto-close
     name: phase and plan auto close
     status: pending

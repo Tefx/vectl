@@ -82960,7 +82960,7 @@ phases:
       \ auto-close re-attempt logic (deferred to recovery step)"
   - id: orch_drive_driver.verify-driver-loop
     name: verify driver loop
-    status: pending
+    status: claimed
     description: 'Independent verification of the drive session loop.
 
 
@@ -82984,6 +82984,8 @@ phases:
     - orch_drive_driver.driver-loop-core
     - orch_drive_driver.phase-and-plan-auto-close
     agent: integration-verifier-tacit
+    claimed_by: integration-verifier-tacit
+    claimed_at: '2026-04-14T10:47:44.831953+00:00'
   - id: orch_drive_driver.gate-driver-phase
     name: gate driver phase
     status: pending

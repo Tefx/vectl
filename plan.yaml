@@ -87302,7 +87302,7 @@ phases:
     agent: spec-verifier-tacit
   - id: orch_drive_deep_review.architecture-review
     name: architecture review
-    status: pending
+    status: claimed
     description: 'Independent architecture review for the full scheduler.
 
 
@@ -87317,6 +87317,8 @@ phases:
     depends_on:
     - orch_drive_deep_review.wiring-audit
     agent: minimalist-architect-tacit
+    claimed_by: minimalist-architect-tacit
+    claimed_at: '2026-04-15T17:43:35.958868+00:00'
   - id: orch_drive_deep_review.black-box-drive-verification
     name: black box drive verification
     status: pending

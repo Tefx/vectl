@@ -86471,7 +86471,7 @@ phases:
       \ tests/test_runtime_context_vertical_slice.py -v` -> 23 passed"
   - id: orch_drive_live_acceptance.retest-full-plan-guard-failures
     name: Retest full-plan-guard failure families
-    status: pending
+    status: claimed
     description: 'Independent post-remediation retest for the batched failures from
       `orch_drive_live_acceptance.full-plan-guard`.
 
@@ -86550,6 +86550,8 @@ phases:
     depends_on:
     - orch_drive_live_acceptance.fix-full-plan-guard-failures
     agent: integration-verifier-tacit
+    claimed_by: integration-verifier-tacit
+    claimed_at: '2026-04-15T14:37:41.887076+00:00'
 - id: orch_drive_doc_sync
   name: Orchestration Drive Documentation Sync
   status: locked

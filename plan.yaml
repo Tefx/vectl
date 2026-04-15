@@ -86702,7 +86702,7 @@ phases:
       \  - PASS\n\ngate_open_allowed: true"
   - id: orch_drive_live_acceptance.fix-live-acceptance-blockers
     name: Fix live acceptance blocker batch
-    status: claimed
+    status: done
     description: 'Batched remediation for gate-live-acceptance-phase blockers. Fix
       the two CLI regressions caused by `uv run vectl` tempdir/cwd spawn assumptions
       in the recover and liveness repro surfaces, and close the missing/partial acceptance
@@ -86728,6 +86728,36 @@ phases:
     - orch_drive_live_acceptance.retest-recover-selector-contract
     claimed_by: python-senior-tacit
     claimed_at: '2026-04-15T16:44:27.234994+00:00'
+    done_at: '2026-04-15T16:52:36.514218+00:00'
+    evidence: "- CLI regression remediation surface:\n  - recover path files/tests\
+      \ updated:\n    - tests/repro/test_orch_cli_recovery_live.py (tempdir invocation\
+      \ now uses explicit `uv run --project <repo-root> vectl ...` resolution path)\n\
+      \  - liveness path files/tests updated:\n    - tests/repro/test_orch_liveness.py\
+      \ (tempdir invocation aligned to explicit project-scoped vectl execution)\n\
+      \  - why tempdir/cwd spawn assumption is removed/fixed:\n    - repro tests execute\
+      \ from fixture temp repos; bare `uv run vectl` implicitly binds to cwd and can\
+      \ fail resolution; explicit project binding removes cwd-coupling while preserving\
+      \ fixture runtime cwd.\n\n- Acceptance proof mapping:\n  - real worktree+merge\
+      \ -> acceptance proof map + harness references to live e2e/worktree merge tests\n\
+      \  - long-running parallel branches -> proof map includes long-runtime live\
+      \ tests and bounded parallelism class references\n  - merge conflict -> resolver\
+      \ -> continue|operator boundary -> proof mapping entries added/validated\n \
+      \ - review needs_replan -> planner mutation -> continue -> proof mapping entries\
+      \ added/validated\n  - runtime failure -> resolver -> continue -> structural\
+      \ + live proof references validated\n  - pause/unpause/stop under parallel child\
+      \ runs -> matrix/harness proof map includes control + live control scenarios\n\
+      \n- Files updated for proof infrastructure:\n  - tests/orchestration/helpers/__init__.py\n\
+      \  - tests/orchestration/helpers/opencode_drive_harness.py\n  - tests/orchestration/test_opencode_drive_acceptance_harness.py\n\
+      \  - tests/orchestration/test_opencode_drive_acceptance_matrix.py\n\n- Commands\
+      \ run during development:\n  - `.venv/bin/pytest tests/repro/test_orch_liveness.py\
+      \ -q`\n  - `.venv/bin/pytest tests/repro/test_orch_cli_recovery_live.py -q`\n\
+      \  - `.venv/bin/pytest tests/repro/test_orch_liveness.py tests/repro/test_orch_cli_recovery_live.py\
+      \ -q`\n  - `.venv/bin/pytest tests/orchestration/test_opencode_drive_acceptance_matrix.py\
+      \ tests/orchestration/test_opencode_drive_acceptance_harness.py -q`\n\n- Residual\
+      \ gaps / SPEC QUESTIONs:\n  - live/e2e proofs remain opt-in and env-gated; this\
+      \ step validates structural proof mapping and non-live checks without changing\
+      \ production contracts.\n\nArtifact:\n- Commit hash: 6c6e842 (cherry-picked\
+      \ from 3434ca8a03aeae9993b893c91f789aa359c3e344)"
   - id: orch_drive_live_acceptance.retest-live-acceptance-blockers
     name: Retest live acceptance blocker batch
     status: pending

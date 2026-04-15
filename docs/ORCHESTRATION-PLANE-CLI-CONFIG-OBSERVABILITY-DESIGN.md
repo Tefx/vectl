@@ -593,6 +593,24 @@ Recover drive state from durable drive and child-run artifacts.
 - `--child-run-id <RUN_ID>` is exclusive with positional `DRIVE_ID` and `--latest`
 - a child-run selector that does not belong to the selected drive must fail with exit code `2`
 - `orch run` must fail with exit code `2` if an active drive exists for the same plan
+
+#### Drive control commands
+
+```bash
+vectl orch pause [DRIVE_ID|--latest] [--reason TEXT]
+vectl orch unpause [DRIVE_ID|--latest]
+vectl orch stop [DRIVE_ID|--latest] [--reason TEXT] [--force]
+```
+
+`stop --force` semantics:
+- Request cancellation of all active **step** child runs through the runner cancellation surface
+- Preserve child-run artifacts even when cancellation is requested
+- Do NOT abruptly kill resolver or planner child runs; allow them to reach terminal report
+- If runner does not support cancellation, classify affected child run as `stall` and transition via normal barrier path
+- Once all active child runs are terminal or classified, transition drive to `stopped`
+
+---
+
 #### `vectl orch migration validate-cutover`
 
 Validate orchestration-plane cutover readiness.
@@ -1073,6 +1091,22 @@ Minimum drive event envelope:
 }
 ```
 
+Child-run-scoped events must include `child_run_id`:
+
+```json
+{
+  "seq": 43,
+  "prev_hash": "sha256:...",
+  "entry_hash": "sha256:...",
+  "timestamp": "2026-04-14T12:00:01Z",
+  "kind": "child_run_admitted",
+  "drive_id": "drv_01K...",
+  "run_id": "run_01A...",
+  "step_id": "core.verify",
+  "payload": {"step_id": "core.verify", "kind": "step"}
+}
+```
+
 ## 11. Implementation Notes
 
 ### 11.1 Config Loading Implementation
@@ -1090,6 +1124,23 @@ Events are emitted via the `EventSink` protocol defined in `events.py`.
 ### 11.4 Tool Registry Implementation
 
 The `tool_registry.py` module implements §8.4.
+
+### 11.5 Drive Implementation
+
+Drive commands are implemented in `src/vectl/cli.py` with delegation to:
+
+- `src/vectl/orch_app.py::OrchestrationApp` - Application facade
+- `src/vectl/orchestration/driver.py::ConcreteDriveDriver` - Drive loop implementation
+- `src/vectl/orchestration/run_store.py::DriveStore` - Drive persistence
+- `src/vectl/orchestration/control.py::PlanAwareControl` - Control decisions
+- `src/vectl/orchestration/events.py` - Drive event emission
+
+Drive commands available:
+- `vectl orch drive` - `orch_app.start_drive()`
+- `vectl orch drive-status` - `orch_app.drive_status()`
+- `vectl orch drive-runs` - `orch_app.drive_runs()`
+- `vectl orch drive-resume` - `orch_app.resume_drive()`
+- `vectl orch drive-recover` - `orch_app.recover_drive()`
 
 ---
 

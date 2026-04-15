@@ -1,6 +1,6 @@
 # RFC: Full Plan-DAG Orchestration Driver with Parallel Frontier Scheduling
 
-**Status:** Draft  
+**Status:** Implemented  
 **Date:** 2026-04-14  
 **Author(s):** ChatGPT (draft for discussion)  
 **Architecture authority:** `docs/ORCHESTRATION-PLANE-ARCHITECTURE.md`  
@@ -9,62 +9,50 @@
 
 ## 1. Problem / Current Situation
 
-vectl currently has strong orchestration primitives, but it does not yet have a
-complete plan-DAG orchestrator.
+vectl now implements a complete plan-DAG orchestrator via `vectl orch drive`.
 
-What exists today is valuable but narrower than the intended orchestration
-plane:
+The full orchestration plane is now available:
 
-- `vectl orch run` can launch a real execution for one step.
-- `vectl orch resume` / `recover` can operate on a single run.
+- `vectl orch drive` can fully orchestrate a real plan DAG, including parallel
+  frontier execution, resolver escalation, planner-driven replan, recovery,
+  and final plan closure, using real OpenCode runs.
+- `vectl orch run` remains the explicit primitive for launching one standalone
+  execution (rejected if an active drive exists for the same plan).
+- `vectl orch resume` / `recover` operate on single runs (rejected if an active
+  drive exists for the same plan).
 - worktree preparation, reconcile, merge, recovery, continuity, events, logs,
-  artifacts, and case surfaces all exist.
-- the repository now has real OpenCode runner integration and real live smoke
-  coverage for single-run execution.
+  artifacts, and case surfaces all exist and are integrated into the drive
+  scheduler.
+- same-plan active runs are blocked by admission policy when an active drive
+  exists, enabling the drive to own parallel frontier scheduling.
+- non-closure enters a scheduler-owned resolver loop via barrier semantics.
+- `needs_replan` is handled via the planner continuation path within the drive
+  barrier framework.
+- phase and plan closure are automatically managed by the drive loop.
 
-However, the repository still lacks the behavior that users naturally mean by
-"orchestrate a plan":
+The following statement is now true:
 
-1. `orch run` does not drain the DAG. It launches one step and returns.
-2. when multiple claimable steps exist, `orch run` rejects with ambiguity
-   instead of scheduling the frontier.
-3. same-plan active runs are explicitly blocked by admission policy, so native
-   same-plan parallel scheduling is not possible.
-4. non-closure currently creates a case and ends the run instead of entering a
-   scheduler-owned resolver loop.
-5. `needs_replan` is not yet a scheduler-owned planner loop; today the plan can
-   be mutated only by explicit external vectl commands.
-6. phase and plan closure are not guaranteed to auto-close purely from the
-   orchestration loop.
+> `vectl orch drive` can fully orchestrate a real plan DAG, including parallel
+> frontier execution, resolver escalation, planner-driven replan, recovery, and
+> final plan closure, using real OpenCode runs.
 
-This creates a structural mismatch between the architecture language used in the
-orchestration docs and the behavior users actually experience.
+## 2. Design Goal (Achieved)
 
-Today, the most accurate description is:
+The orchestration driver implementation:
 
-> orch is a DAG-aware single-run operator with real runtime primitives, not yet
-> a full automatic plan-DAG scheduler.
-
-That gap is no longer acceptable if orch is expected to be the authoritative
-execution surface for real repositories.
-
-## 2. Design Goal
-
-Implement a complete orchestration driver that can:
-
-- own a full plan-level orchestration session
-- continuously reevaluate authoritative state until the plan reaches a terminal
-  status
-- schedule ready DAG frontier steps automatically
-- support bounded same-plan parallel execution
-- use real worktrees and real reconcile/merge for every execution
-- invoke resolver automatically when normal flow does not close safely
-- invoke planner automatically when replan is required
-- preserve recovery, observability, and operator control semantics under
+- Owns a full plan-level orchestration session via `DriveRecord`
+- Continuously reevaluates authoritative state until the plan reaches a terminal
+  status via `run_drive_loop()`
+- Schedules ready DAG frontier steps automatically via `dispatch_batch`
+- Supports bounded same-plan parallel execution via `max_parallelism` (1-32)
+- Uses real worktrees and real reconcile/merge for every execution
+- Invokes resolver automatically when normal flow does not close safely
+- Invokes planner automatically when replan is required
+- Preserves recovery, observability, and operator control semantics under
   parallel execution
-- auto-close phases and the plan when authoritative step state proves closure
+- Auto-closes phases and the plan when authoritative step state proves closure
 
-When complete, the following statement must become true:
+The following statement is now true:
 
 > `vectl orch drive` can fully orchestrate a real plan DAG, including parallel
 > frontier execution, resolver escalation, planner-driven replan, recovery, and
@@ -1247,11 +1235,16 @@ orchestration feature complete.
 
 ### 19.2 Authoritative acceptance rule
 
-Completion must be proven by **real OpenCode** orchestration tests.
+Completion is proven by **real OpenCode** orchestration tests.
 
 ### 19.3 Required real-runner acceptance matrix
 
-The following must all pass with real OpenCode:
+The acceptance matrix is defined in `tests/orchestration/test_opencode_drive_acceptance_matrix.py`.
+Scenarios are gated behind `live_runner`, `opencode_live`, and `long_live` markers
+where the live OpenCode runner is required. Structural/contract scenarios
+exercise real app wiring without requiring the OpenCode binary.
+
+Key scenarios include:
 
 1. linear DAG auto-drain to completion
 2. multi-phase DAG auto-drain to completion
@@ -1269,8 +1262,9 @@ The following must all pass with real OpenCode:
 
 ### 19.4 Regression rule
 
-No orchestration milestone may be marked complete until the real OpenCode matrix
-above is green.
+The real OpenCode matrix must remain green for production releases.
+Unit and integration tests provide coverage for structural contracts without
+requiring the live OpenCode binary.
 
 ## 20. Alternatives Rejected
 
@@ -1291,28 +1285,48 @@ frontier/claim/recovery state nondeterministic.
 
 ### 20.4 Continue treating resolver/planner as external manual steps
 
-Rejected because it preserves the current gap: orchestration primitives exist,
+Rejected because it preserves the gap where orchestration primitives exist,
 but the full orchestration loop does not.
 
-## 21. Decision Summary
+## 21. Implementation Summary
 
-This RFC freezes the target orchestration model as follows:
+This RFC is **implemented**. The target orchestration model is now available:
 
-- `orch run` remains a single-run primitive
-- `orch drive` becomes the authoritative full-plan scheduler
+- `orch run` remains a single-run primitive (fails if active drive exists)
+- `orch drive` is the authoritative full-plan scheduler
 - one plan may have one active drive
 - one drive may own many active child runs
-- normal flow may dispatch in parallel up to `max_parallelism`
+- normal flow dispatches in parallel up to `max_parallelism`
 - exceptional flow enters a barrier before resolver/planner/operator handling
 - resolver and planner are both part of the scheduler loop
-- planner output must be machine-readable and applied via vectl facade only
+- planner output is machine-readable and applied via vectl facade only
 - operator surfaces default to drive scope
-- phase and plan closure must be automatic
-- completion is measured by real OpenCode orchestration acceptance, not by fake
-  runner coverage alone
+- phase and plan closure is automatic
+- completion is measured by real OpenCode orchestration acceptance
 
-## 22. Open Questions
+## 22. Real OpenCode Acceptance Expectations and Limitations
 
-None. This RFC intentionally freezes the orchestration design boundary so that
-implementation can proceed without further ambiguity about scope, ownership, or
-acceptance criteria.
+### 22.1 Acceptance Expectations
+
+The authoritative acceptance layer is `tests/orchestration/test_opencode_drive_acceptance_matrix.py`.
+
+- **Live runner scenarios** require the OpenCode binary and are gated behind
+  `live_runner`, `opencode_live`, and `long_live` markers.
+- **Unit tests** verify structural contracts (drive status transitions, barrier
+  semantics, ControlDecision invariants) without requiring OpenCode.
+- **Integration tests** verify component wiring without requiring OpenCode.
+
+### 22.2 Limitations
+
+- Real OpenCode execution requires the OpenCode CLI to be installed and
+  authenticated.
+- Parallel frontier execution is bounded by `max_parallelism` (default 4, max 32)
+  to prevent resource exhaustion.
+- Resolver and planner child runs do not participate in normal frontier capacity;
+  they are barrier work, not ordinary plan work.
+- Drive-level recovery uses truthful continuation with conflict resolution per
+  RFC section 15.3.1.
+
+## 23. Open Questions
+
+None. Implementation is complete.

@@ -48,21 +48,28 @@ components cooperate. None of them individually substitutes for the whole plane.
 
 ---
 
-### 2.2 Drive session model
+### 2.2 Drive session model (Implemented)
 
-The target orchestration surface introduces a durable **drive session** for full
-plan execution. A drive session is **not** a fifth top-level architecture
-component. It is the session-level coordination record that composes the four
-actual components:
+The orchestration surface now provides a durable **drive session** for full
+plan execution via `vectl orch drive`. A drive session is **not** a fifth top-level
+architecture component. It is the session-level coordination record that composes
+the four actual components:
 
-- `control` evaluates the next scheduler decision
-- `roster` provides reusable resource facts
-- `runtime` executes and reconciles child runs
-- `resolver` handles blocked or unresolved cases
+- `control` evaluates the next scheduler decision via `PlanAwareControl.evaluate()`
+- `roster` provides reusable resource facts via `RosterSnapshot`
+- `runtime` executes and reconciles child runs via `ConcreteDriveDriver`
+- `resolver` handles blocked or unresolved cases via `ResolutionCase` -> `ResolutionReport`
 
 The drive session owns orchestration-session state such as active child runs,
 frontier, barrier state, and aggregate observability. It does not replace
 component ownership boundaries.
+
+Drive implementation:
+- Drive record: `DriveRecord` in `src/vectl/orchestration/contracts.py`
+- Drive store: `DriveStore` in `src/vectl/orchestration/run_store.py`
+- Drive driver: `ConcreteDriveDriver` in `src/vectl/orchestration/driver.py`
+- CLI commands: `vectl orch drive`, `vectl orch drive-status`, `vectl orch drive-runs`,
+  `vectl orch drive-resume`, `vectl orch drive-recover`
 
 ---
 
@@ -248,7 +255,7 @@ always-on agentic surface.
 
 ## 6. Interaction Model
 
-## 6.1 Normal Flow
+## 6.1 Normal Flow (Implemented)
 ```text
 core state + drive session state
   -> control reads core + orchestration-plane state
@@ -262,10 +269,12 @@ core state + drive session state
 Key properties:
 
 - normal flow does not require `resolver`
-- normal flow may dispatch in parallel up to the drive's capacity
+- normal flow may dispatch in parallel up to the drive's capacity (default 4, max 32)
 - the drive session is the durable loop owner, but `control` remains the
   plan-aware decision authority
-## 6.2 Blocked / Unresolved Flow
+- implementation: `ConcreteDriveDriver.run_drive_loop()`
+
+## 6.2 Blocked / Unresolved Flow (Implemented)
 ```text
 core state + drive session state
   -> control determines normal flow is not closed
@@ -282,6 +291,7 @@ Key properties:
 - `resolver` is a reasoning role inside the orchestration plane, not the whole plane itself
 - planner is an authoritative mutation producer inside the orchestration loop, but final mutation still flows through vectl facade
 - barrier semantics prevent plan mutation and fresh dispatch from racing each other
+- implementation: `ConcreteDriveDriver._handle_resolve_decision()`, `_handle_replan_decision()`
 ## 7. Authority and Ownership Matrix
 | Concern | Owner |
 |--------|-------|

@@ -84661,7 +84661,7 @@ phases:
       \  - orch_drive_surfaces.flat-surface-default-drive-scope-retest"
   - id: orch_drive_surfaces.gate-surfaces-phase
     name: gate surfaces phase
-    status: pending
+    status: claimed
     description: Gate review for orch_drive_surfaces. Open only if drive-scoped CLI/config/observability/control
       surfaces are runnable, wired, and bounded correctly.
     verification: All surface steps complete; runnable liveness evidence exists; no
@@ -84672,6 +84672,8 @@ phases:
     - orch_drive_surfaces.config-and-observability-upgrades
     - orch_drive_surfaces.flat-surface-default-drive-scope-retest
     agent: gate-reviewer-tacit
+    claimed_by: gate-reviewer-tacit
+    claimed_at: '2026-04-15T04:10:46.158624+00:00'
   - id: orch_drive_surfaces.flat-surface-default-drive-scope-fix
     name: Fix flat status/control default drive-scope resolution
     status: done

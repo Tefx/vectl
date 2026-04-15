@@ -86370,7 +86370,7 @@ phases:
     depends_on:
     - orch_drive_live_acceptance.real-opencode-acceptance-harness
     - orch_drive_live_acceptance.real-opencode-acceptance-matrix
-    - orch_drive_live_acceptance.retest-full-plan-guard-failures
+    - orch_drive_live_acceptance.retest-recover-selector-contract
     agent: gate-reviewer-tacit
   - id: orch_drive_live_acceptance.fix-full-plan-guard-failures
     name: Fix full-plan-guard failure families

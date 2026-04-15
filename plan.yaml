@@ -84724,6 +84724,61 @@ phases:
     depends_on:
     - orch_drive_surfaces.drive-cli-liveness-probe
     agent: python-senior-tacit
+  - id: orch_drive_surfaces.flat-surface-default-drive-scope-retest
+    name: Retest flat status/control default drive-scope liveness
+    status: pending
+    description: 'Independent re-run of liveness proof for flat status/control surfaces
+      after drive-scope resolution fix.
+
+
+      Re-run the real CLI and specifically prove that default drive-scope resolution
+      now works on the flat surfaces that previously targeted single-run selectors.
+
+
+      Required commands:
+
+      - `orch status --latest --json`
+
+      - `orch control stop --latest --json`
+
+
+      Expected JSON scope assertions:
+
+      - each command reports drive-scoped targeting via `scope_kind: "drive"`
+
+      - each command includes the resolved active drive identifier key (`drive_id`
+      or equivalent documented scope key)
+
+      - no output falls back to single-run scope unless an explicit run selector is
+      provided
+
+
+      This retest is runnable-surface evidence, not handler-only evidence.'
+    verification: 'Expected result: green.
+
+      - Invoke `orch status --latest --json` and `orch control stop --latest --json`
+      against a live active drive.
+
+      - Confirm both commands resolve to drive scope by inspecting JSON `scope_kind`
+      and drive identifier keys.
+
+      - Confirm outputs reflect active-drive targeting and not child-run targeting
+      by default.
+
+      - Record exact command outputs as runnable proof.'
+    evidence_template: "## refs Read Confirmation (MANDATORY)\n\nFor each ref in this\
+      \ step:\n- <filename> — key passage or \"NOT READ: <reason>\"\n\nIf no refs\
+      \ were provided, state: \"No refs for this step.\"\n\n## Retest Report\n\n**Commands\
+      \ executed**\n```bash\norch status --latest --json\norch control stop --latest\
+      \ --json\n```\n\n**Actual outputs**\nPaste complete stdout/stderr for each command.\n\
+      \n**Scope assertions**\n- `orch status --latest --json` reports:\n  - `scope_kind:\
+      \ \"drive\"` = yes|no\n  - drive identifier key/value =\n- `orch control stop\
+      \ --latest --json` reports:\n  - `scope_kind: \"drive\"` = yes|no\n  - drive\
+      \ identifier key/value =\n\n**Negative assertion**\n- Evidence that neither\
+      \ command defaulted to single-run scope:\n\n**Headline**\n- PASS | FAIL\n"
+    depends_on:
+    - orch_drive_surfaces.flat-surface-default-drive-scope-fix
+    agent: blind-tester-tacit
 - id: orch_drive_recovery
   name: Orchestration Drive Resume, Recover, and Active-Control Semantics
   status: locked

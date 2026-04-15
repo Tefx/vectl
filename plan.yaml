@@ -86874,7 +86874,7 @@ phases:
       \ gate_open_allowed: true"
 - id: orch_drive_doc_sync
   name: Orchestration Drive Documentation Sync
-  status: pending
+  status: in_progress
   gate: Docs match implemented drive/session/control/recovery surfaces and the real
     OpenCode acceptance contract.
   depends_on:
@@ -86882,7 +86882,7 @@ phases:
   steps:
   - id: orch_drive_doc_sync.update-drive-docs
     name: update drive docs
-    status: pending
+    status: claimed
     description: 'Update documentation to match the implemented full scheduler.
 
 
@@ -86907,6 +86907,8 @@ phases:
     - docs/ORCHESTRATION-PLANE-RESOLUTION-CONTRACT.md
     - docs/ORCHESTRATION-PLANE-CLI-CONFIG-OBSERVABILITY-DESIGN.md
     agent: doc-reviewer-tacit
+    claimed_by: doc-reviewer-tacit
+    claimed_at: '2026-04-15T17:02:26.781353+00:00'
   - id: orch_drive_doc_sync.gate-doc-sync-phase
     name: gate doc sync phase
     status: pending

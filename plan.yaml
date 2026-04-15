@@ -87283,7 +87283,7 @@ phases:
       — pre-drive debt, not called by drive code paths'
   - id: orch_drive_deep_review.spec-conformance
     name: spec conformance
-    status: pending
+    status: claimed
     description: 'Independent spec-conformance audit for the implemented full scheduler.
 
 
@@ -87300,6 +87300,8 @@ phases:
     depends_on:
     - orch_drive_deep_review.wiring-audit
     agent: spec-verifier-tacit
+    claimed_by: spec-verifier-tacit
+    claimed_at: '2026-04-15T17:45:12.865101+00:00'
   - id: orch_drive_deep_review.architecture-review
     name: architecture review
     status: done

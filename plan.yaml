@@ -86702,7 +86702,7 @@ phases:
       \  - PASS\n\ngate_open_allowed: true"
   - id: orch_drive_live_acceptance.fix-live-acceptance-blockers
     name: Fix live acceptance blocker batch
-    status: pending
+    status: claimed
     description: 'Batched remediation for gate-live-acceptance-phase blockers. Fix
       the two CLI regressions caused by `uv run vectl` tempdir/cwd spawn assumptions
       in the recover and liveness repro surfaces, and close the missing/partial acceptance
@@ -86726,6 +86726,8 @@ phases:
       \ gaps / SPEC QUESTIONs:"
     depends_on:
     - orch_drive_live_acceptance.retest-recover-selector-contract
+    claimed_by: python-senior-tacit
+    claimed_at: '2026-04-15T16:44:27.234994+00:00'
   - id: orch_drive_live_acceptance.retest-live-acceptance-blockers
     name: Retest live acceptance blocker batch
     status: pending

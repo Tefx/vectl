@@ -149,6 +149,8 @@ class DriveStatusResult:
     Attributes:
         drive_id: Drive identifier.
         status: Current drive status.
+        scope_kind: Discriminator identifying this as a drive-scoped result.
+            Always ``"drive"`` for drive-level status results.
         active_child_run_ids: Currently active child runs.
         frontier_step_ids: Current claimable frontier.
         barrier: Current barrier, if active.
@@ -157,6 +159,7 @@ class DriveStatusResult:
 
     drive_id: str
     status: DriveStatus
+    scope_kind: str = "drive"
     active_child_run_ids: tuple[str, ...] = ()
     frontier_step_ids: tuple[str, ...] = ()
     barrier: DriveBarrier | None = None

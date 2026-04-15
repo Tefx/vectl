@@ -456,6 +456,8 @@ class DriveInspectView:
 
     Attributes:
         drive_id: The inspected drive identifier.
+        scope_kind: Discriminator identifying this as a drive-scoped view.
+            Always ``"drive"`` for drive-level inspection results.
         status: Current drive lifecycle status.
         active_child_run_ids: Currently active child run identifiers.
         frontier_step_ids: Ready DAG frontier step identifiers.
@@ -465,6 +467,7 @@ class DriveInspectView:
     """
 
     drive_id: str
+    scope_kind: str = "drive"
     status: str = ""
     active_child_run_ids: tuple[str, ...] = ()
     frontier_step_ids: tuple[str, ...] = ()

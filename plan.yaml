@@ -85090,7 +85090,7 @@ phases:
       **NOT Done:** No work on verify-recovery-and-active-control (next step).'
   - id: orch_drive_recovery.verify-recovery-and-active-control
     name: verify recovery and active control
-    status: pending
+    status: claimed
     description: 'Independent verification of resume/recover/control semantics under
       live drive state.
 
@@ -85115,6 +85115,8 @@ phases:
     - orch_drive_recovery.drive-resume-and-recover-semantics
     - orch_drive_recovery.active-control-under-parallel-child-runs
     agent: integration-verifier-tacit
+    claimed_by: integration-verifier-tacit
+    claimed_at: '2026-04-15T05:31:15.474032+00:00'
   - id: orch_drive_recovery.gate-recovery-phase
     name: gate recovery phase
     status: pending

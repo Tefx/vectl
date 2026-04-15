@@ -86760,7 +86760,7 @@ phases:
       \ from 3434ca8a03aeae9993b893c91f789aa359c3e344)"
   - id: orch_drive_live_acceptance.retest-live-acceptance-blockers
     name: Retest live acceptance blocker batch
-    status: claimed
+    status: done
     description: Rerun the blocker-focused acceptance and repro suites after the batched
       fix, then rerun the full test suite. This step is the authoritative regression
       check for the batched blocker remediation before the final live acceptance gate
@@ -86781,6 +86781,15 @@ phases:
     - orch_drive_live_acceptance.fix-live-acceptance-blockers
     claimed_by: integration-verifier-tacit
     claimed_at: '2026-04-15T16:53:13.795418+00:00'
+    done_at: '2026-04-15T17:00:56.108444+00:00'
+    evidence: "- Command 1: `uv run pytest tests/orchestration/test_opencode_drive_acceptance_matrix.py\
+      \ -q` -> 43 passed, 6 skipped, 0 failed\n- Command 2: `uv run pytest tests/repro/test_repair_continuity_black_box.py\
+      \ tests/repro/test_orch_liveness.py -q` -> 4 passed, 0 failed\n- Command 3:\
+      \ `uv run pytest tests/ -q` -> 2902 passed, 40 skipped, 0 failed, 1 warning\n\
+      - Gate intersection disposition:\n  - blocking-now: none\n  - non-blocking:\
+      \ env-gated skips + one deprecation warning\n  - rationale: all blocker-class\
+      \ surfaces are green in targeted and full-suite reruns\n- Headline: PASS\n-\
+      \ gate_open_allowed: true"
 - id: orch_drive_doc_sync
   name: Orchestration Drive Documentation Sync
   status: locked

@@ -84801,7 +84801,7 @@ phases:
       \ run/drive compatibility."
   - id: orch_drive_surfaces.flat-surface-default-drive-scope-retest
     name: Retest flat status/control default drive-scope liveness
-    status: claimed
+    status: done
     description: 'Independent re-run of liveness proof for flat status/control surfaces
       after drive-scope resolution fix.
 
@@ -84856,6 +84856,29 @@ phases:
     agent: blind-tester-tacit
     claimed_by: blind-tester-tacit
     claimed_at: '2026-04-15T04:05:44.228290+00:00'
+    done_at: '2026-04-15T04:10:17.551160+00:00'
+    evidence: "## refs Read Confirmation (MANDATORY)\n- tools/vectl/README.md — NOT\
+      \ FOUND in repo; root README.md reviewed instead for orch CLI surfaces.\n\n\
+      ## Retest Report\n**Commands executed**\n```bash\norch status --latest --json\n\
+      orch control stop --latest --json\n```\n\n**Actual outputs**\n`orch status --latest\
+      \ --json`:\n```json\n{\"active_child_run_ids\": [], \"blocked_case_ids\": [],\
+      \ \"child_runs\": [], \"drive_id\": \"drv_dbe9ed15721c4f1093a1280a98e4675e\"\
+      , \"frontier_step_ids\": [], \"scope_kind\": \"drive\", \"status\": \"running\"\
+      , \"summary\": \"drive started; frontier width=0\"}\n```\n\n`orch control stop\
+      \ --latest --json`:\n```json\n{\"action\": \"stop\", \"drive_id\": \"drv_dbe9ed15721c4f1093a1280a98e4675e\"\
+      , \"message\": \"Stop queued for drive drv_dbe9ed15721c4f1093a1280a98e4675e\"\
+      , \"scope_kind\": \"drive\", \"success\": true}\n```\n\n**Scope assertions**\n\
+      - `orch status --latest --json`:\n  - `scope_kind: \"drive\"` = yes\n  - drive\
+      \ identifier key/value = `drive_id: drv_dbe9ed15721c4f1093a1280a98e4675e`\n\
+      - `orch control stop --latest --json`:\n  - `scope_kind: \"drive\"` = yes\n\
+      \  - drive identifier key/value = `drive_id: drv_dbe9ed15721c4f1093a1280a98e4675e`\n\
+      \n**Negative assertion**\n- Neither command defaulted to single-run scope: both\
+      \ returned `scope_kind: \"drive\"` with top-level `drive_id`; no run_id field\
+      \ was emitted.\n\n**Headline**\n- PASS\n\nstep_intent: independent runnable\
+      \ retest for flat status/control default drive-scope resolution\nexpected_result:\
+      \ both commands resolve to drive scope\nobserved_result: both commands resolved\
+      \ to drive scope with drive_id\nfailure_alignment: N/A (pass)\nproduct_implementation_files_modified:\
+      \ no"
 - id: orch_drive_recovery
   name: Orchestration Drive Resume, Recover, and Active-Control Semantics
   status: locked

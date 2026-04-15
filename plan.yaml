@@ -85329,7 +85329,7 @@ phases:
       true'
   - id: orch_drive_recovery.gate-recovery-phase
     name: gate recovery phase
-    status: pending
+    status: claimed
     description: Gate review for orch_drive_recovery. Open only if resume/recover
       and active-control semantics are truthful under active drive concurrency.
     verification: All recovery steps complete; independent verification found no unresolved
@@ -85339,6 +85339,8 @@ phases:
     - orch_drive_recovery.active-control-under-parallel-child-runs
     - orch_drive_recovery.verify-recovery-and-active-control
     agent: gate-reviewer-tacit
+    claimed_by: gate-reviewer-tacit
+    claimed_at: '2026-04-15T05:47:22.900240+00:00'
 - id: orch_drive_live_acceptance
   name: Orchestration Drive Real OpenCode Acceptance
   status: locked

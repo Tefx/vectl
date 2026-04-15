@@ -84978,7 +84978,7 @@ phases:
       \ (next step)."
   - id: orch_drive_recovery.active-control-under-parallel-child-runs
     name: active control under parallel child runs
-    status: pending
+    status: claimed
     description: 'Implementation step.
 
 
@@ -85009,6 +85009,8 @@ phases:
     depends_on:
     - orch_drive_recovery.drive-resume-and-recover-semantics
     agent: python-senior-tacit
+    claimed_by: python-senior-tacit
+    claimed_at: '2026-04-15T05:10:00.098826+00:00'
   - id: orch_drive_recovery.verify-recovery-and-active-control
     name: verify recovery and active control
     status: pending

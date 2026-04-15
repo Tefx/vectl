@@ -84917,7 +84917,7 @@ phases:
   steps:
   - id: orch_drive_recovery.drive-resume-and-recover-semantics
     name: drive resume and recover semantics
-    status: claimed
+    status: done
     description: 'Implementation step.
 
 
@@ -84960,6 +84960,22 @@ phases:
     agent: python-senior-tacit
     claimed_by: python-senior-tacit
     claimed_at: '2026-04-15T04:41:44.057079+00:00'
+    done_at: '2026-04-15T05:09:51.348511+00:00'
+    evidence: "Implementation completed and committed on branch vectl/step-orch_drive_recovery.drive-resume-and-recover-semantics.\n\
+      \n**What was done:**\n- Rewrote `resume_drive` and `recover_drive` methods in\
+      \ `src/vectl/orchestration/driver.py` with truthful continuation semantics\n\
+      - Added helper methods: `_barrier_status`, `_recompute_frontier`, `_find_terminal_artifact`,\
+      \ `_check_child_run_liveness`, `_release_superseded_leases`\n- Added optional\
+      \ `run_registry` parameter to `ConcreteDriveDriver.__init__`\n- Created 26 tests\
+      \ in `tests/orchestration/unit/test_drive_recovery_semantics.py` covering:\n\
+      \  - Stale persisted running state with missing live process (failure mode 1)\n\
+      \  - Persisted running state with durable terminal artifact (failure mode 2)\n\
+      \  - Frontier recompute when core authority changed (failure mode 3)\n  - Open\
+      \ case requires barrier re-entry before frontier reopen (failure mode 4)\n \
+      \ - Barrier restoration, operator pause state, frontier recompute, dry run,\
+      \ transition validation, terminal drive handling\n\n**Verification:** All 26\
+      \ tests pass. Branch committed.\n\n**NOT Done:** No work on active-control-under-parallel-child-runs\
+      \ (next step)."
   - id: orch_drive_recovery.active-control-under-parallel-child-runs
     name: active control under parallel child runs
     status: pending

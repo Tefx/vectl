@@ -86651,7 +86651,7 @@ phases:
       \ -v` -> 3 passed"
   - id: orch_drive_live_acceptance.retest-recover-selector-contract
     name: Retest recover selector contract surface
-    status: pending
+    status: claimed
     description: 'Independent green retest for the recover selector contract blocker
       after `orch_drive_live_acceptance.fix-recover-selector-contract`.
 
@@ -86687,6 +86687,8 @@ phases:
     depends_on:
     - orch_drive_live_acceptance.fix-recover-selector-contract
     agent: integration-verifier-tacit
+    claimed_by: integration-verifier-tacit
+    claimed_at: '2026-04-15T14:51:58.746294+00:00'
 - id: orch_drive_doc_sync
   name: Orchestration Drive Documentation Sync
   status: locked

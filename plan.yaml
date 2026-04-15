@@ -86882,7 +86882,7 @@ phases:
   steps:
   - id: orch_drive_doc_sync.update-drive-docs
     name: update drive docs
-    status: claimed
+    status: done
     description: 'Update documentation to match the implemented full scheduler.
 
 
@@ -86909,6 +86909,50 @@ phases:
     agent: doc-reviewer-tacit
     claimed_by: doc-reviewer-tacit
     claimed_at: '2026-04-15T17:02:26.781353+00:00'
+    done_at: '2026-04-15T17:14:30.124937+00:00'
+    evidence: '## refs Read Confirmation
+
+      - docs/RFC-orch-drive.md — updated to implemented status and acceptance semantics
+
+      - docs/ORCHESTRATION-PLANE-INTERFACES.md — reviewed for contract alignment
+
+      - docs/ORCHESTRATION-PLANE-ARCHITECTURE.md — updated for implemented drive session
+      architecture
+
+      - docs/ORCHESTRATION-PLANE-IMPLEMENTATION-DESIGN.md — reviewed for implementation
+      alignment
+
+      - docs/ORCHESTRATION-PLANE-RESOLUTION-CONTRACT.md — reviewed for resolver/continuation
+      consistency
+
+      - docs/ORCHESTRATION-PLANE-CLI-CONFIG-OBSERVABILITY-DESIGN.md — updated for
+      selector/control/config/observability behavior
+
+
+      Artifact:
+
+      - Commit hash(es): eff7aeb (cherry-picked from c2036d4db1d1954ab58d94d463c5b282e64d143d)
+
+
+      Verification:
+
+      - Run: doc content checks for implemented status/selector semantics/architecture
+      markers -> passed
+
+
+      Files changed:
+
+      - docs/RFC-orch-drive.md
+
+      - docs/ORCHESTRATION-PLANE-CLI-CONFIG-OBSERVABILITY-DESIGN.md
+
+      - docs/ORCHESTRATION-PLANE-ARCHITECTURE.md
+
+
+      Gaps/Notes:
+
+      - No open doc gaps identified for drive lifecycle/selectors, continuation semantics,
+      frozen config, event/projection artifacts, and real OpenCode acceptance expectations.'
   - id: orch_drive_doc_sync.gate-doc-sync-phase
     name: gate doc sync phase
     status: pending

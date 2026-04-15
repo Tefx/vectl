@@ -84909,7 +84909,7 @@ phases:
       \ no"
 - id: orch_drive_recovery
   name: Orchestration Drive Resume, Recover, and Active-Control Semantics
-  status: in_progress
+  status: done
   gate: Drive resume/recover plus pause/unpause/stop under parallel child runs are
     truthful, durable, and independently verified before real-runner matrix execution.
   depends_on:
@@ -85802,7 +85802,7 @@ phases:
       \ — 663 lines added (15 tests proving end-to-end seam closure)"
   - id: orch_drive_recovery.retest-active-control-consumption-and-evidence
     name: Retest active-control consumption and evidence integrity
-    status: claimed
+    status: done
     description: 'Independent retest for the orch_drive_recovery remediation seam.
 
 
@@ -85914,9 +85914,67 @@ phases:
     agent: integration-verifier-tacit
     claimed_by: python-senior-tacit
     claimed_at: '2026-04-15T12:19:29.541958+00:00'
+    done_at: '2026-04-15T12:24:41.064114+00:00'
+    evidence: "## Retest Report\n\n**Tester**: python-senior-tacit\n**Independence\
+      \ Level**: L1\n\n### refs Read Confirmation\nRef: `tools/vectl/README.md` —\
+      \ noted but not directly relevant to this step's scope (step is about behavioral\
+      \ retest of a code seam, not vectl tooling). Read confirmation acknowledged.\n\
+      \n## Behavioral Proof Register\n\n| requirement_ref | behavior_claim | runtime_proof_expected\
+      \ | evidence_ref | status | closure_path | gate_decision_basis |\n|---|---|---|---|---|---|---|\n\
+      | RFC-orch-drive §7.3, §7.3.1 | Pause command consumed and sets `operator_pause_state=\"\
+      paused\"` | Test `test_pause_consumed_sets_operator_pause_state` passes; `operator_pause_state`\
+      \ transitions to \"paused\" | `src/vectl/orchestration/driver.py:1406-1445`\
+      \ (pause handler) | PASS | `tests/orchestration/unit/test_drive_control_consumption.py::TestDrivePauseConsumption`\
+      \ | Verified runtime path: channel → consume → state persist |\n| RFC-orch-drive\
+      \ §7.3, §7.3.1 | Pause consumed and acknowledged | Test `test_pause_consumed_acknowledged`\
+      \ passes; `acknowledge_applied` called on channel | `src/vectl/orchestration/driver.py:1441-1444`\
+      \ | PASS | `tests/orchestration/unit/test_drive_control_consumption.py::TestDrivePauseConsumption`\
+      \ | Ack explicitly called after save |\n| RFC-orch-drive §7.3 | Unpause command\
+      \ consumed and restores active state | Test `test_unpause_consumed_restores_active_state`\
+      \ passes; `operator_pause_state` set to \"active\" | `src/vectl/orchestration/driver.py:1447-1490`\
+      \ (unpause handler) | PASS | `tests/orchestration/unit/test_drive_control_consumption.py::TestDriveUnpauseConsumption`\
+      \ | Verified: clears pause state, returns to running |\n| RFC-orch-drive §7.3\
+      \ | Stop command consumed and is terminal | Test `test_stop_is_terminal` passes;\
+      \ stop transitions to \"stopped\" and is final | `src/vectl/orchestration/driver.py:1367-1404`\
+      \ (stop handler) | PASS | `tests/orchestration/unit/test_drive_control_consumption.py::TestDriveStopConsumptionTerminal`\
+      \ | Verified: terminal status in TERMINAL_DRIVE_STATUSES |\n| RFC-orch-drive\
+      \ §7.4 | Control requests consumed, not only queued | `_consume_drive_control`\
+      \ called at line 988 in `run_drive_loop` before control evaluation | `src/vectl/orchestration/driver.py:988`\
+      \ | PASS | Wire verification: method called at loop body start | The seam is\
+      \ closed: queue → consume → state change |\n\n## End-to-End Active-Control Proof\n\
+      \n- **Pause path command/test**: `test_pause_consumed_sets_operator_pause_state`\
+      \ — sends `drive.pause` via `FilesystemControlChannel`, `_consume_drive_control`\
+      \ reads it, applies `operator_pause_state=\"paused\"`, persists via `save_drive`,\
+      \ acknowledges via `acknowledge_applied`\n- **Pause path actual output/state\
+      \ transition**: PASS — record transitions `operator_pause_state` from any →\
+      \ \"paused\", status transitions to \"paused\" via `validate_drive_transition`\n\
+      - **Unpause path command/test**: `test_unpause_consumed_restores_active_state`\
+      \ — sends `drive.unpause`, `_consume_drive_control` reads it, sets `operator_pause_state=\"\
+      active\"`, transitions status back to \"running\" (or barrier-resumed status)\n\
+      - **Unpause path actual output/state transition**: PASS — record clears pause\
+      \ state, returns to \"running\" or barrier-appropriate status\n- **Stop path\
+      \ command/test**: `test_stop_is_terminal` — sends `drive.stop`, `_consume_drive_control`\
+      \ processes it terminally, transitions to \"stopped\"\n- **Stop path actual\
+      \ output/state transition**: PASS — terminal \"stopped\" status; no further\
+      \ transitions applicable\n\n## Evidence Integrity Audit\n\n- **Claimed production\
+      \ symbols present**:\n  - `ConcreteDriveDriver._consume_drive_control`: ✅ CONFIRMED\
+      \ at line 1315 of `driver.py`\n  - `ConcreteDriveDriver.__init__` parameter\
+      \ `control_channel`: ✅ CONFIRMED at line 843 of `driver.py`\n  - `_consume_drive_control`\
+      \ called in `run_drive_loop`: ✅ CONFIRMED at line 988\n  - `operator_pause_state`\
+      \ field on `DriveRecord`: ✅ CONFIRMED (existing field, used in pause/unpause\
+      \ handlers)\n- **Claimed tests present**: ✅ `tests/orchestration/unit/test_drive_control_consumption.py`\
+      \ exists with 15 tests across 7 test classes\n- **Any mismatch or fabricated\
+      \ claim detected**: NONE — all claims match actual code\n\n## Regression Check\n\
+      \n- `test_drive_control_consumption.py`: 15 passed in 0.20s\n- `test_driver_loop_proof.py`:\
+      \ 28 passed in 0.18s\n- Full orchestration test suite: 1426 passed in 61.44s,\
+      \ 0 failed, 0 errors\n\n## Gate Disposition\n\ngate_open_allowed: true\nreason:\
+      \ All behavioral proof obligations met. Production symbols verified present\
+      \ and wired. 15 targeted tests pass. 1426 orchestration tests pass with 0 failures.\
+      \ No regressions detected. The active-control consumption seam is closed end-to-end:\
+      \ queue → consume → state change → acknowledge.\n\n## Headline\n- PASS"
 - id: orch_drive_live_acceptance
   name: Orchestration Drive Real OpenCode Acceptance
-  status: locked
+  status: pending
   gate: 'Real OpenCode orchestration acceptance is the authoritative proof: mocks/shims
     alone cannot pass this phase.'
   depends_on:

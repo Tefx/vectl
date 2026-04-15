@@ -1,0 +1,117 @@
+scenarios:
+  - scenario_id: linear_dag_auto_drain
+    title: Linear DAG auto-drain with real OpenCode child runs
+    coverage:
+      - linear DAG auto-drain
+      - real worktree child runs with real merge back
+      - phase/plan auto-close
+    execution_mode: automated_live
+    runner: opencode
+    authoritative_surface: real_app_and_real_git_worktrees
+    notes: Exercises ordered step completion through the real drive loop.
+
+  - scenario_id: multi_phase_dag_auto_drain
+    title: Multi-phase DAG auto-drain across phase boundaries
+    coverage:
+      - multi-phase DAG auto-drain
+      - phase/plan auto-close
+    execution_mode: automated_live
+    runner: opencode
+    authoritative_surface: real_app_and_real_git_worktrees
+    notes: Proves drive closure is derived from authoritative plan state.
+
+  - scenario_id: parallel_ready_frontier_dispatch
+    title: Parallel ready frontier dispatch
+    coverage:
+      - parallel ready frontier dispatch
+      - real worktree child runs with real merge back
+    execution_mode: automated_live
+    runner: opencode
+    authoritative_surface: real_app_and_real_git_worktrees
+    notes: Uses a shared root with parallel children and a join node.
+
+  - scenario_id: bounded_parallelism_enforcement
+    title: Bounded parallelism enforcement
+    coverage:
+      - bounded parallelism enforcement
+      - long-running parallel branch execution
+    execution_mode: automated_live
+    runner: opencode
+    authoritative_surface: real_app_and_real_git_worktrees
+    notes: Holds more ready steps than capacity and asserts dispatch throttling.
+
+  - scenario_id: real_worktree_child_runs_with_real_merge_back
+    title: Worktree child runs merge back into the integration branch
+    coverage:
+      - real worktree child runs with real merge back
+    execution_mode: automated_live
+    runner: opencode
+    authoritative_surface: real_app_and_real_git_worktrees
+    notes: Uses git commits created inside linked worktrees and verifies merge evidence.
+
+  - scenario_id: long_running_parallel_branch_execution
+    title: Long-running parallel branch execution
+    coverage:
+      - long-running parallel branch execution
+      - parallel ready frontier dispatch
+    execution_mode: automated_live
+    runner: opencode
+    authoritative_surface: real_app_and_real_git_worktrees
+    notes: Uses deliberate long-running child runs to exercise collection while siblings remain active.
+
+  - scenario_id: runtime_failure_resolver_continue
+    title: Runtime failure enters resolver loop and continues
+    coverage:
+      - runtime failure -> resolver -> continue
+    execution_mode: barrier_live
+    runner: opencode
+    authoritative_surface: real_app_and_real_git_worktrees
+    notes: Encodes real failure and resolver continuation without mock resolver seams.
+
+  - scenario_id: merge_conflict_resolver_continue_or_operator_boundary
+    title: Merge conflict resolves via resolver or explicit operator boundary
+    coverage:
+      - merge conflict -> resolver -> continue|operator boundary
+    execution_mode: barrier_live
+    runner: opencode
+    authoritative_surface: real_app_and_real_git_worktrees
+    notes: Forces a real reconcile conflict and records whether continuation is automatic or operator-owned.
+
+  - scenario_id: review_needs_replan_planner_mutation_continue
+    title: Review needs_replan triggers planner mutation and continuation
+    coverage:
+      - review needs_replan -> planner mutation -> continue
+    execution_mode: barrier_live
+    runner: opencode
+    authoritative_surface: real_app_and_real_git_worktrees
+    notes: Encodes the replan barrier path and expects real planner mutation application.
+
+  - scenario_id: drive_resume_and_drive_recover
+    title: Drive resume and drive recover
+    coverage:
+      - drive resume and drive recover
+      - long-running parallel branch execution
+    execution_mode: automated_live
+    runner: opencode
+    authoritative_surface: real_app_and_real_git_worktrees
+    notes: Uses long-running child runs so resume and recover can be exercised against durable artifacts.
+
+  - scenario_id: pause_unpause_stop_under_parallel_child_runs
+    title: Pause, unpause, and stop under parallel child runs
+    coverage:
+      - pause/unpause/stop under parallel child runs
+      - bounded parallelism enforcement
+    execution_mode: automated_live
+    runner: opencode
+    authoritative_surface: real_app_and_real_git_worktrees
+    notes: Encodes drive-scoped control requests while active child runs remain in flight.
+
+  - scenario_id: phase_plan_auto_close
+    title: Phase and plan auto-close
+    coverage:
+      - phase/plan auto-close
+      - multi-phase DAG auto-drain
+    execution_mode: automated_live
+    runner: opencode
+    authoritative_surface: real_app_and_real_git_worktrees
+    notes: Confirms phase completion and final plan closure occur from scheduler-owned state refresh.

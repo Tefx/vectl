@@ -85338,6 +85338,7 @@ phases:
     - orch_drive_recovery.drive-resume-and-recover-semantics
     - orch_drive_recovery.active-control-under-parallel-child-runs
     - orch_drive_recovery.verify-recovery-and-active-control
+    - orch_drive_recovery.retest-active-control-consumption-and-evidence
     agent: gate-reviewer-tacit
     claimed_by: gate-reviewer-tacit
     claimed_at: '2026-04-15T05:47:22.900240+00:00'

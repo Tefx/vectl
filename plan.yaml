@@ -86955,7 +86955,7 @@ phases:
       frozen config, event/projection artifacts, and real OpenCode acceptance expectations.'
   - id: orch_drive_doc_sync.gate-doc-sync-phase
     name: gate doc sync phase
-    status: pending
+    status: claimed
     description: Gate review for orch_drive_doc_sync. Open only if docs now match
       the implemented full scheduler and its real OpenCode acceptance rule.
     verification: Doc sync complete; no blocking spec/document drift remains for the
@@ -86963,6 +86963,8 @@ phases:
     depends_on:
     - orch_drive_doc_sync.update-drive-docs
     agent: gate-reviewer-tacit
+    claimed_by: gate-reviewer-tacit
+    claimed_at: '2026-04-15T17:15:11.242578+00:00'
 - id: orch_drive_deep_review
   name: Orchestration Drive Deep Review
   status: locked

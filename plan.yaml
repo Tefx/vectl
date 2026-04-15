@@ -87015,7 +87015,7 @@ phases:
       \ Proof Gap Status: NONE\n### Gate Open Allowed: true"
 - id: orch_drive_deep_review
   name: Orchestration Drive Deep Review
-  status: pending
+  status: in_progress
   gate: Independent audit confirms wiring, spec conformance, architecture boundaries,
     black-box CLI behavior, and that the real OpenCode acceptance matrix is green
     and authoritative.
@@ -87024,7 +87024,7 @@ phases:
   steps:
   - id: orch_drive_deep_review.wiring-audit
     name: wiring audit
-    status: pending
+    status: claimed
     description: 'Full wiring audit for the full scheduler implementation.
 
 
@@ -87038,6 +87038,8 @@ phases:
     - docs/RFC-orch-drive.md
     - docs/ORCHESTRATION-PLANE-CLI-CONFIG-OBSERVABILITY-DESIGN.md
     agent: wiring-auditor
+    claimed_by: wiring-auditor
+    claimed_at: '2026-04-15T17:22:17.113889+00:00'
   - id: orch_drive_deep_review.spec-conformance
     name: spec conformance
     status: pending

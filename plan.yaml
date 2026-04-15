@@ -85566,7 +85566,7 @@ phases:
       - CLI surface verification (not a CLI-touching phase)'
   - id: orch_drive_recovery.fix-active-control-consumption-and-evidence
     name: Fix active-control consumption and evidence integrity
-    status: pending
+    status: claimed
     description: 'Batched remediation for downstream-blocking recovery debt in orch_drive_recovery.
 
 
@@ -85734,6 +85734,8 @@ phases:
     depends_on:
     - orch_drive_recovery.active-control-under-parallel-child-runs
     agent: python-senior-tacit
+    claimed_by: python-senior-tacit
+    claimed_at: '2026-04-15T11:21:45.790735+00:00'
   - id: orch_drive_recovery.retest-active-control-consumption-and-evidence
     name: Retest active-control consumption and evidence integrity
     status: pending

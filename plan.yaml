@@ -86354,7 +86354,7 @@ phases:
       logic but not to test fixture data.'
   - id: orch_drive_live_acceptance.gate-live-acceptance-phase
     name: gate live acceptance phase
-    status: pending
+    status: claimed
     description: 'Final implementation acceptance gate for orch_drive_live_acceptance.
 
 
@@ -86372,6 +86372,8 @@ phases:
     - orch_drive_live_acceptance.real-opencode-acceptance-matrix
     - orch_drive_live_acceptance.retest-recover-selector-contract
     agent: gate-reviewer-tacit
+    claimed_by: gate-reviewer-tacit
+    claimed_at: '2026-04-15T15:04:03.834018+00:00'
   - id: orch_drive_live_acceptance.fix-full-plan-guard-failures
     name: Fix full-plan-guard failure families
     status: done

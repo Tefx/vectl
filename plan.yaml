@@ -84674,7 +84674,7 @@ phases:
     agent: gate-reviewer-tacit
   - id: orch_drive_surfaces.flat-surface-default-drive-scope-fix
     name: Fix flat status/control default drive-scope resolution
-    status: claimed
+    status: done
     description: 'Fix ALL blocker-class flat selector gaps found by the liveness probe
       for drive-scoped default resolution.
 
@@ -84764,6 +84764,41 @@ phases:
     agent: python-senior-tacit
     claimed_by: python-senior-tacit
     claimed_at: '2026-04-15T03:21:18.704077+00:00'
+    done_at: '2026-04-15T04:05:21.096615+00:00'
+    evidence: "## refs Read Confirmation (MANDATORY)\n- `tools/vectl/README.md` —\
+      \ NOT FOUND at expected path. Used repo `README.md` and design RFC refs already\
+      \ attached to this phase. Key passage: orch command group and drive-scoped selector\
+      \ safety references.\n\n## Flat Surface Remediation Evidence\n\n### Root Cause\n\
+      Across flat CLI surfaces, drive-scoped branch used `run_id is None and not latest\
+      \ and has_active_drive_for_plan()` which excluded `--latest` from drive path\
+      \ and fell through to single-run path. Fixed by aligning selector logic to admit\
+      \ `latest` and active-drive default semantics.\n\n### Commands executed\n```bash\n\
+      .venv/bin/vectl orch status --help\n.venv/bin/vectl orch control stop --help\n\
+      .venv/bin/python -m pytest tests/orchestration/unit/test_flat_surface_drive_scope.py\
+      \ tests/orchestration/unit/test_cli_drive_lifecycle_surface.py -v\n.venv/bin/python\
+      \ -m pytest tests/orchestration/unit/ -q\n.venv/bin/python -m pytest tests/\
+      \ -q\n```\n\n### Command outputs\n- targeted unit test suite including new flat-surface\
+      \ scope tests: pass\n- orchestration unit suite: pass\n- full tests: reports\
+      \ 3 pre-existing unrelated failures (runtime context vertical slice, orch liveness,\
+      \ repair continuity black-box) per subagent evidence\n\n### Scope-key assertions\n\
+      - `orch status --latest --json` path now resolves through drive selector and\
+      \ returns drive-scoped view fields including `scope_kind: \"drive\"` and `drive_id`\
+      \ via drive inspect/status result models.\n- `orch control stop --latest --json`\
+      \ path now resolves through drive selector and enriches control payload with\
+      \ `scope_kind: \"drive\"` and `drive_id` via CLI helper.\n\n### Compatibility\
+      \ check\n- Explicit single-run selector path preserved (`--run <id>` still run-scoped).\n\
+      - `--run` with `--latest` exclusivity guard preserved.\n\n### Sibling search\n\
+      - Reviewed and fixed all flat surfaces with latest/default-drive selector patterns:\n\
+      \  - orch status\n  - orch inspect events/logs/artifacts/actions\n  - orch control\
+      \ pause/unpause/stop\n  - orch case list already correct\n- Remaining gaps:\
+      \ none identified in this family.\n\nArtifact:\n- Commit: a82faef (cherry-picked\
+      \ from worktree commit c3a128f)\n\nFiles changed:\n- src/vectl/cli.py\n- src/vectl/orchestration/driver.py\n\
+      - src/vectl/orchestration/inspection_queries.py\n- tests/orchestration/unit/test_flat_surface_drive_scope.py\n\
+      \nGaps/Notes:\n- Full end-to-end CLI invocation against a live active-drive\
+      \ fixture was deferred to dedicated retest step `orch_drive_surfaces.flat-surface-default-drive-scope-retest`.\n\
+      - Added `scope_kind=\"drive\"` as backward-compatible additive field on drive\
+      \ inspect/status dataclasses; control payload enrichment stays CLI-layer for\
+      \ run/drive compatibility."
   - id: orch_drive_surfaces.flat-surface-default-drive-scope-retest
     name: Retest flat status/control default drive-scope liveness
     status: pending

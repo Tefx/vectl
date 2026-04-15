@@ -86196,7 +86196,7 @@ phases:
       \ (6 tests, properly skipped)\n\ngate_open_allowed: true"
   - id: orch_drive_live_acceptance.full-plan-guard
     name: full plan guard
-    status: pending
+    status: claimed
     description: 'Full-plan-check boundary after the real acceptance harness lands.
 
 
@@ -86210,6 +86210,8 @@ phases:
     depends_on:
     - orch_drive_live_acceptance.real-opencode-acceptance-matrix
     agent: integration-verifier-tacit
+    claimed_by: integration-verifier-tacit
+    claimed_at: '2026-04-15T13:32:59.131016+00:00'
   - id: orch_drive_live_acceptance.gate-live-acceptance-phase
     name: gate live acceptance phase
     status: pending

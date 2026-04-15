@@ -22,6 +22,7 @@ import yaml
 from tests.live_smoke.helpers import live_runner, long_live, opencode_live
 from tests.orchestration.helpers import (
     MATRIX_FIXTURE_PATH,
+    REQUIRED_ACCEPTANCE_PROOF_MAP,
     REQUIRED_SCENARIO_IDS,
     OpenCodeDriveHarness,
     default_orchestrator_env,
@@ -97,6 +98,18 @@ class TestOpenCodeDriveAcceptanceMatrix:
         dumped = yaml.dump(payload, sort_keys=False)
         reloaded = yaml.safe_load(dumped)
         assert reloaded == payload
+
+    def test_required_coverage_classes_have_operator_readable_proof_map(self) -> None:
+        payload = yaml.safe_load(MATRIX_FIXTURE_PATH.read_text(encoding="utf-8"))
+        matrix_coverage = {
+            coverage
+            for scenario in payload["scenarios"]
+            for coverage in scenario.get("coverage", ())
+        }
+        assert matrix_coverage == set(REQUIRED_ACCEPTANCE_PROOF_MAP)
+        for coverage_class, refs in REQUIRED_ACCEPTANCE_PROOF_MAP.items():
+            assert refs, f"proof refs missing for {coverage_class}"
+            assert all(ref.startswith("tests/") and "::" in ref for ref in refs)
 
 
 class TestOpenCodeDriveHarnessFixtureWiring:

@@ -51,6 +51,56 @@ REQUIRED_SCENARIO_IDS: tuple[str, ...] = (
     "phase_plan_auto_close",
 )
 
+REQUIRED_ACCEPTANCE_PROOF_MAP: dict[str, tuple[str, ...]] = {
+    "linear DAG auto-drain": (
+        "tests/orchestration/test_opencode_drive_acceptance_matrix.py::TestLinearDAGAutoDrain::test_linear_dag_auto_drain_to_completion",
+        "tests/orchestration/test_opencode_drive_acceptance_matrix.py::TestLiveOpenCodeDriveMatrix::test_linear_drive_smoke_uses_real_opencode_runner",
+    ),
+    "multi-phase DAG auto-drain": (
+        "tests/orchestration/test_opencode_drive_acceptance_matrix.py::TestMultiPhaseDAGAutoDrain::test_multi_phase_drain_respects_phase_order",
+        "tests/orchestration/test_opencode_drive_acceptance_matrix.py::TestLiveOpenCodeDriveMatrix::test_phase_auto_close_with_real_app",
+    ),
+    "parallel ready frontier dispatch": (
+        "tests/orchestration/test_opencode_drive_acceptance_matrix.py::TestParallelReadyFrontierDispatch::test_parallel_frontier_dispatches_all_ready",
+    ),
+    "bounded parallelism enforcement": (
+        "tests/orchestration/test_opencode_drive_acceptance_matrix.py::TestBoundedParallelismEnforcement::test_bounded_parallelism_limits_dispatch",
+    ),
+    "real worktree child runs with real merge back": (
+        "tests/live_smoke/test_vectl_orchestrator_e2e_live.py::TestVectlOrchestratorE2ELive::test_full_orchestrator_flow_replan_resolve_and_merge",
+        "tests/orchestration/test_opencode_drive_acceptance_matrix.py::TestLiveOpenCodeDriveMatrix::test_linear_drive_smoke_uses_real_opencode_runner",
+    ),
+    "long-running parallel branch execution": (
+        "tests/live_smoke/test_opencode_long_runtime_live.py::TestOpenCodeLongRuntimeLive::test_opencode_long_runtime_with_session_resume",
+        "tests/orchestration/test_opencode_drive_acceptance_matrix.py::TestBoundedParallelismEnforcement::test_bounded_parallelism_limits_dispatch",
+    ),
+    "runtime failure -> resolver -> continue": (
+        "tests/orchestration/test_opencode_drive_acceptance_matrix.py::TestRuntimeFailureResolverContinue::test_runtime_failure_enters_barrier",
+        "tests/live_smoke/test_resolver_live.py::test_resolver_live_path_reaches_real_runner",
+    ),
+    "merge conflict -> resolver -> continue|operator boundary": (
+        "tests/live_smoke/test_vectl_orchestrator_e2e_live.py::TestVectlOrchestratorE2ELive::test_full_orchestrator_flow_replan_resolve_and_merge",
+        "tests/test_runtime_lifecycle.py::TestCleanupLifecycleEnforcement::test_get_unresolved_message_merge_conflict",
+    ),
+    "review needs_replan -> planner mutation -> continue": (
+        "tests/orchestration/unit/test_planner_loop_integration.py::TestPlannerLoopIntegrationEndToEnd::test_applyable_bundle_returns_to_running",
+        "tests/live_smoke/test_vectl_orchestrator_e2e_live.py::TestVectlOrchestratorE2ELive::test_full_orchestrator_flow_replan_resolve_and_merge",
+    ),
+    "drive resume and drive recover": (
+        "tests/orchestration/test_opencode_drive_acceptance_matrix.py::TestDriveResumeAndRecover::test_resume_restores_active_child_runs",
+        "tests/orchestration/test_opencode_drive_acceptance_matrix.py::TestLiveOpenCodeDriveMatrix::test_drive_recover_uses_real_app_surface",
+    ),
+    "pause/unpause/stop under parallel child runs": (
+        "tests/orchestration/test_opencode_drive_acceptance_matrix.py::TestPauseUnpauseStopControl::test_pause_transitions_to_paused_status",
+        "tests/orchestration/test_opencode_drive_acceptance_matrix.py::TestLiveOpenCodeDriveMatrix::test_control_pause_and_unpause_drive",
+        "tests/orchestration/test_opencode_drive_acceptance_matrix.py::TestLiveOpenCodeDriveMatrix::test_control_stop_drive",
+    ),
+    "phase/plan auto-close": (
+        "tests/orchestration/test_opencode_drive_acceptance_matrix.py::TestPhasePlanAutoClose::test_plan_complete_transitions_to_completed",
+        "tests/orchestration/test_opencode_drive_acceptance_matrix.py::TestLiveOpenCodeDriveMatrix::test_phase_auto_close_with_real_app",
+    ),
+}
+
 
 @dataclass(frozen=True)
 class DriveAcceptanceScenario:
@@ -302,6 +352,7 @@ __all__ = [
     "DriveAcceptanceScenario",
     "MATRIX_FIXTURE_PATH",
     "OpenCodeDriveHarness",
+    "REQUIRED_ACCEPTANCE_PROOF_MAP",
     "PROJECT_ROOT",
     "REQUIRED_SCENARIO_IDS",
     "default_orchestrator_env",

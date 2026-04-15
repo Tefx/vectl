@@ -17,6 +17,7 @@ Step: orch_drive_live_acceptance.real-opencode-acceptance-matrix
 
 from __future__ import annotations
 
+import importlib
 import time
 from dataclasses import dataclass
 from pathlib import Path
@@ -27,6 +28,8 @@ import yaml
 
 from tests.orchestration.helpers import (
     MATRIX_FIXTURE_PATH,
+    PROJECT_ROOT,
+    REQUIRED_ACCEPTANCE_PROOF_MAP,
     REQUIRED_SCENARIO_IDS,
     DriveAcceptanceScenario,
     OpenCodeDriveHarness,
@@ -188,6 +191,18 @@ def _make_driver(
 def _save_plan(root: Path, plan: dict[str, Any]) -> None:
     root.mkdir(parents=True, exist_ok=True)
     (root / "plan.yaml").write_text(yaml.dump(plan, sort_keys=False), encoding="utf-8")
+
+
+def _resolve_pytest_node(node_id: str) -> object:
+    parts = node_id.split("::")
+    file_part = parts[0]
+    module_path = PROJECT_ROOT / file_part
+    assert module_path.exists(), f"proof reference target missing: {module_path}"
+    module_name = file_part.removesuffix(".py").replace("/", ".")
+    obj: object = importlib.import_module(module_name)
+    for attr in parts[1:]:
+        obj = getattr(obj, attr)
+    return obj
 
 
 def _linear_plan() -> dict[str, Any]:
@@ -375,6 +390,41 @@ class TestMatrixFixtureCompleteness:
 
         missing = rfc_required - all_coverage
         assert not missing, f"coverage missing RFC-required classes: {missing}"
+
+    def test_required_classes_map_to_concrete_test_proof(self) -> None:
+        scenarios = load_drive_acceptance_matrix()
+        covered_classes = {coverage for scenario in scenarios for coverage in scenario.coverage}
+        assert covered_classes == set(REQUIRED_ACCEPTANCE_PROOF_MAP), (
+            "proof map must exactly cover matrix coverage classes\n"
+            f"  matrix-only: {covered_classes - set(REQUIRED_ACCEPTANCE_PROOF_MAP)}\n"
+            f"  proof-only: {set(REQUIRED_ACCEPTANCE_PROOF_MAP) - covered_classes}"
+        )
+
+        for coverage_class, node_ids in REQUIRED_ACCEPTANCE_PROOF_MAP.items():
+            assert node_ids, (
+                f"coverage class must name at least one concrete test: {coverage_class}"
+            )
+            for node_id in node_ids:
+                resolved = _resolve_pytest_node(node_id)
+                assert callable(resolved), (
+                    f"proof reference must resolve to a test callable: {node_id}"
+                )
+
+    def test_high_risk_classes_include_live_or_e2e_proof(self) -> None:
+        required_live_classes = {
+            "real worktree child runs with real merge back",
+            "long-running parallel branch execution",
+            "merge conflict -> resolver -> continue|operator boundary",
+            "review needs_replan -> planner mutation -> continue",
+            "runtime failure -> resolver -> continue",
+            "pause/unpause/stop under parallel child runs",
+        }
+        for coverage_class in required_live_classes:
+            refs = REQUIRED_ACCEPTANCE_PROOF_MAP[coverage_class]
+            assert any(
+                ref.startswith("tests/live_smoke/") or "::TestLiveOpenCodeDriveMatrix::" in ref
+                for ref in refs
+            ), f"high-risk class requires at least one live/e2e proof reference: {coverage_class}"
 
 
 class TestLinearDAGAutoDrain:

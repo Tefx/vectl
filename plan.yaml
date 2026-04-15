@@ -86374,7 +86374,7 @@ phases:
     agent: gate-reviewer-tacit
   - id: orch_drive_live_acceptance.fix-full-plan-guard-failures
     name: Fix full-plan-guard failure families
-    status: claimed
+    status: done
     description: 'Batched remediation for the authoritative failures discovered by
       `orch_drive_live_acceptance.full-plan-guard`.
 
@@ -86450,6 +86450,25 @@ phases:
     agent: python-executor
     claimed_by: python-executor
     claimed_at: '2026-04-15T14:11:44.800428+00:00'
+    done_at: '2026-04-15T14:37:12.004191+00:00'
+    evidence: "## refs Read Confirmation (MANDATORY)\n- No refs for this step.\n\n\
+      ## Batched Remediation Evidence\n- Updated files:\n  - tests/repro/test_orch_cli_case_lifecycle.py\n\
+      \  - tests/repro/test_orch_cli_recovery_faults.py\n  - tests/repro/test_orch_liveness.py\n\
+      \  - tests/test_runtime_context_vertical_slice.py\n\n- role profile sibling\
+      \ search results:\n  - stale `role_profiles.python-executor` fixture usages\
+      \ found in 3 repro test files; migrated to `role_profile_overrides.python-executor`\
+      \ override format.\n\n- recover selector sibling search results:\n  - stale\
+      \ recover `--step` usage not present in targeted failing tests after fixture\
+      \ alignment; recover selector assertions now consistent with current contract\
+      \ paths exercised in those tests.\n\n- ControlDecision attribute sibling search\
+      \ results:\n  - stale `decision.step_id` assertion found and fixed to `decision.step_ids`\
+      \ tuple form in runtime vertical-slice test.\n\n- Confirmation no completed\
+      \ upstream step definitions were changed:\n  - only test/fixture/assertion files\
+      \ were changed; no production API rollback introduced.\n\n- Residual blockers,\
+      \ if any:\n  - none detected in the previously failing family.\n\nArtifact:\n\
+      - Commit hash(es): 75ceec2\n\nVerification:\n- Run: `uv run pytest tests/repro/test_orch_cli_case_lifecycle.py\
+      \ tests/repro/test_orch_cli_recovery_faults.py tests/repro/test_orch_liveness.py\
+      \ tests/test_runtime_context_vertical_slice.py -v` -> 23 passed"
   - id: orch_drive_live_acceptance.retest-full-plan-guard-failures
     name: Retest full-plan-guard failure families
     status: pending

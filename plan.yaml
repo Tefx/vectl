@@ -86725,6 +86725,27 @@ phases:
       \ gaps / SPEC QUESTIONs:"
     depends_on:
     - orch_drive_live_acceptance.retest-recover-selector-contract
+  - id: orch_drive_live_acceptance.retest-live-acceptance-blockers
+    name: Retest live acceptance blocker batch
+    status: pending
+    description: Rerun the blocker-focused acceptance and repro suites after the batched
+      fix, then rerun the full test suite. This step is the authoritative regression
+      check for the batched blocker remediation before the final live acceptance gate
+      re-evaluates.
+    verification: 'Run exactly: `uv run pytest tests/orchestration/test_opencode_drive_acceptance_matrix.py
+      -q`; `uv run pytest tests/repro/test_repair_continuity_black_box.py tests/repro/test_orch_liveness.py
+      -q`; `uv run pytest tests/ -q`. Evidence must include an explicit gate-intersection
+      disposition stating whether any failures intersect the live-acceptance blocker
+      classes; if failures remain, classify each as blocking or non-blocking to gate-live-acceptance-phase
+      and justify the disposition.'
+    evidence_template: "- Command 1: `uv run pytest tests/orchestration/test_opencode_drive_acceptance_matrix.py\
+      \ -q`\n  - result:\n- Command 2: `uv run pytest tests/repro/test_repair_continuity_black_box.py\
+      \ tests/repro/test_orch_liveness.py -q`\n  - result:\n- Command 3: `uv run pytest\
+      \ tests/ -q`\n  - result:\n- Gate intersection disposition:\n  - blocker-class\
+      \ intersections observed: none | list\n  - if any remaining failures, blocking\
+      \ status for gate-live-acceptance-phase:\n  - rationale:"
+    depends_on:
+    - orch_drive_live_acceptance.fix-live-acceptance-blockers
 - id: orch_drive_doc_sync
   name: Orchestration Drive Documentation Sync
   status: locked

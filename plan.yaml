@@ -86874,7 +86874,7 @@ phases:
       \ gate_open_allowed: true"
 - id: orch_drive_doc_sync
   name: Orchestration Drive Documentation Sync
-  status: in_progress
+  status: done
   gate: Docs match implemented drive/session/control/recovery surfaces and the real
     OpenCode acceptance contract.
   depends_on:
@@ -86955,7 +86955,7 @@ phases:
       frozen config, event/projection artifacts, and real OpenCode acceptance expectations.'
   - id: orch_drive_doc_sync.gate-doc-sync-phase
     name: gate doc sync phase
-    status: claimed
+    status: done
     description: Gate review for orch_drive_doc_sync. Open only if docs now match
       the implemented full scheduler and its real OpenCode acceptance rule.
     verification: Doc sync complete; no blocking spec/document drift remains for the
@@ -86965,9 +86965,57 @@ phases:
     agent: gate-reviewer-tacit
     claimed_by: gate-reviewer-tacit
     claimed_at: '2026-04-15T17:15:11.242578+00:00'
+    done_at: '2026-04-15T17:20:15.188088+00:00'
+    evidence: "## Gate Review: Doc Sync Phase — PASS\n\n### Headline: PASS\n\n###\
+      \ Verification Checklist\n\n1. **Drive lifecycle commands and selector rules**\
+      \ ✅\n   - RFC §7: `vectl orch drive`, `drive-status`, `drive-runs`, `drive-resume`,\
+      \ `drive-recover` documented\n   - CLI doc §7.7: Full drive lifecycle family\
+      \ with flags, `--max-parallelism` (1-32, default 4), `--child-run-id` exclusivity,\
+      \ `--latest` selector\n   - Implementation: `cli.py` `orch_drive`, `orch_drive_status`,\
+      \ `orch_drive_runs`, `orch_drive_resume`, `orch_drive_recover`, `_resolve_drive_selector_or_die`,\
+      \ `_validate_child_run_scope_or_die` — all present and authority-referenced\n\
+      \n2. **Control/reReview/resolver/planner continuation semantics** ✅\n   - RFC\
+      \ §9: `ControlDecision` with `dispatch_batch`, `wait`, `resolve`, `replan`,\
+      \ `done`, `halt` — documented with invariants\n   - RFC §12: Resolver continuation\
+      \ rules (`unblocked`, `waiting`, `operator_required`, `halt`, planner_request)\n\
+      \   - RFC §13: Planner continuation rules (applyable, operator_required, halt)\n\
+      \   - Architecture doc §6.1 \"Normal Flow (Implemented)\" and §6.2 \"Blocked\
+      \ / Unresolved Flow (Implemented)\"\n   - `contracts.py::ControlDecision` invariants\
+      \ match RFC §9.2.1\n   - `ConcreteDriveDriver` docstring references RFC §12.3\
+      \ continuation rules\n   - `PlanAwareControl` enforces decision invariants per\
+      \ RFC\n\n3. **Drive config and frozen parameter semantics** ✅\n   - CLI doc\
+      \ §8.4.1: `orchestration.drive.max_parallelism`, `collect_poll_interval_ms`,\
+      \ `resolver_timeout_seconds`, `planner_timeout_seconds` with validation rules\n\
+      \   - \"Frozen on first `orch drive` creation and reused by drive resume/recover\"\
+      \ documented\n   - `AppConfig` implemented with these fields\n\n4. **Drive event\
+      \ families, artifacts, projection/replay** ✅\n   - CLI doc §10.4: Complete drive\
+      \ event family (`drive_started`, `drive_status_changed`, `drive_barrier_entered`,\
+      \ `drive_barrier_cleared`, `planner_invoked`, `planner_applied`, `resolver_invoked`,\
+      \ `resolver_returned`, `child_run_admitted`, `child_run_final`, `drive_final`)\
+      \ with envelope schemas\n   - RFC §16.3-16.4: Required event families and artifact\
+      \ layout\n   - `DriveStore` docstring references JSONL persistence layout and\
+      \ projection replay\n\n5. **Real OpenCode acceptance expectations and limitations**\
+      \ ✅\n   - RFC §19.2: \"Authoritative acceptance rule: Completion is proven by\
+      \ real OpenCode orchestration tests\"\n   - RFC §19.3: Acceptance matrix defined\
+      \ at `tests/orchestration/test_opencode_drive_acceptance_matrix.py`\n   - RFC\
+      \ §22: \"Real OpenCode Acceptance Expectations and Limitations\" section with\
+      \ live runner marker gating and documented limitations\n   - Test file exists\
+      \ with `TestLiveOpenCodeDriveMatrix` (live, gated) + structural tests covering\
+      \ §19.3 items #1-4,7,10-13\n\n6. **RFC status \"Implemented\"** ✅ — RFC line\
+      \ 3 and §21 both explicitly state implemented\n\n7. **Architecture doc \"(Implemented)\"\
+      \ annotations** ✅ — §2.2 and §6.1/§6.2 labeled\n\n8. **No stale single-run language\
+      \ in drive-scoped sections** ✅ — RFC §7.1 clearly states single-run primitives\
+      \ are rejected when active drive exists\n\n9. **Implementation surfaces match\
+      \ docs** ✅ — All RFC §18 surfaces (`contracts.py`, `control.py`, `driver.py`,\
+      \ `runtime.py`, `run_store.py`, `resolver.py`, `dispatch_policy.py`, `roster.py`,\
+      \ `projections.py`, `inspection_queries.py`, `orch_app.py`, `cli.py`) exist\
+      \ with matching authority cross-references\n\n10. **Cross-document references\
+      \ consistent** ✅ — RFC, Architecture, CLI/Config/Observability, and Implementation\
+      \ Design docs cross-reference correctly\n\n### Blocking Status: CLOSED\n###\
+      \ Proof Gap Status: NONE\n### Gate Open Allowed: true"
 - id: orch_drive_deep_review
   name: Orchestration Drive Deep Review
-  status: locked
+  status: pending
   gate: Independent audit confirms wiring, spec conformance, architecture boundaries,
     black-box CLI behavior, and that the real OpenCode acceptance matrix is green
     and authoritative.

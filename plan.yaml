@@ -84909,7 +84909,7 @@ phases:
       \ no"
 - id: orch_drive_recovery
   name: Orchestration Drive Resume, Recover, and Active-Control Semantics
-  status: pending
+  status: in_progress
   gate: Drive resume/recover plus pause/unpause/stop under parallel child runs are
     truthful, durable, and independently verified before real-runner matrix execution.
   depends_on:
@@ -84917,7 +84917,7 @@ phases:
   steps:
   - id: orch_drive_recovery.drive-resume-and-recover-semantics
     name: drive resume and recover semantics
-    status: pending
+    status: claimed
     description: 'Implementation step.
 
 
@@ -84958,6 +84958,8 @@ phases:
     - docs/RFC-orch-drive.md
     - docs/ORCHESTRATION-PLANE-INTERFACES.md
     agent: python-senior-tacit
+    claimed_by: python-senior-tacit
+    claimed_at: '2026-04-15T04:41:44.057079+00:00'
   - id: orch_drive_recovery.active-control-under-parallel-child-runs
     name: active control under parallel child runs
     status: pending

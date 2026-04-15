@@ -86372,6 +86372,82 @@ phases:
     - orch_drive_live_acceptance.real-opencode-acceptance-matrix
     - orch_drive_live_acceptance.full-plan-guard
     agent: gate-reviewer-tacit
+  - id: orch_drive_live_acceptance.fix-full-plan-guard-failures
+    name: Fix full-plan-guard failure families
+    status: pending
+    description: 'Batched remediation for the authoritative failures discovered by
+      `orch_drive_live_acceptance.full-plan-guard`.
+
+
+      Fix ALL of these issue families, not just the first:
+
+      1. role profile fixture migration — update failing fixtures from `role_profiles.python-executor`
+      to the supported `role_profile_overrides.python-executor` path so built-in role
+      validation failures are no longer shadowed.
+
+      2. recover CLI selector contract — update tests that still pass `--step` so
+      they use the current recover selector contract (`RUN_ID` or `--latest`).
+
+      3. ControlDecision API rename — update remaining test usage of `decision.step_id`
+      to `decision.step_ids`.
+
+
+      Search for siblings beyond the enumerated failing tests so the same stale surface
+      does not survive in adjacent fixtures/assertions.
+
+
+      ## Blocker families
+
+      - role_profiles shadowing built-in role validation failures (6 tests)
+
+      - recover CLI selector mismatch (2 tests)
+
+      - ControlDecision API rename mismatch (1 test)
+
+
+      ## Completion Criteria
+
+      - All failing test fixtures/assertions aligned to current contracts
+
+      - Sibling search completed for each mismatch family
+
+      - No production API rollback or compatibility widening is introduced; repair
+      the tests/fixtures to match the authoritative current surface.'
+    verification: '- Focused remediation covers all 3 authoritative failure families
+      from `orch_drive_live_acceptance.full-plan-guard`
+
+      - Sibling search evidence provided for role profile path usage, recover selector
+      usage, and ControlDecision attribute usage
+
+      - Scope remains test/fixture/assertion repair unless a directly adjacent helper
+      requires matching update'
+    evidence_template: '## refs Read Confirmation (MANDATORY)
+
+
+      For each ref in this step:
+
+      - <filename> — key passage or "NOT READ: <reason>"
+
+
+      If no refs were provided, state: "No refs for this step."
+
+
+      ## Batched Remediation Evidence
+
+      - Updated files:
+
+      - role profile sibling search results:
+
+      - recover selector sibling search results:
+
+      - ControlDecision attribute sibling search results:
+
+      - Confirmation no completed upstream step definitions were changed:
+
+      - Residual blockers, if any:'
+    depends_on:
+    - orch_drive_live_acceptance.full-plan-guard
+    agent: python-executor
 - id: orch_drive_doc_sync
   name: Orchestration Drive Documentation Sync
   status: locked

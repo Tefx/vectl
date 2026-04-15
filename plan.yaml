@@ -86584,7 +86584,7 @@ phases:
       \ gate's \"drive recover\" required matrix class)"
   - id: orch_drive_live_acceptance.fix-recover-selector-contract
     name: Fix recover selector contract test surface
-    status: pending
+    status: claimed
     description: 'Fix the blocker discovered by `orch_drive_live_acceptance.retest-full-plan-guard-failures`
       for the recover CLI supported surface.
 
@@ -86633,6 +86633,8 @@ phases:
     depends_on:
     - orch_drive_live_acceptance.retest-full-plan-guard-failures
     agent: python-executor
+    claimed_by: python-executor
+    claimed_at: '2026-04-15T14:47:58.295269+00:00'
   - id: orch_drive_live_acceptance.retest-recover-selector-contract
     name: Retest recover selector contract surface
     status: pending

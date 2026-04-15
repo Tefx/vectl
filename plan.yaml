@@ -87302,7 +87302,7 @@ phases:
     agent: spec-verifier-tacit
   - id: orch_drive_deep_review.architecture-review
     name: architecture review
-    status: claimed
+    status: done
     description: 'Independent architecture review for the full scheduler.
 
 
@@ -87319,6 +87319,39 @@ phases:
     agent: minimalist-architect-tacit
     claimed_by: minimalist-architect-tacit
     claimed_at: '2026-04-15T17:43:35.958868+00:00'
+    done_at: '2026-04-15T17:44:49.984653+00:00'
+    evidence: 'headline: PASS_WITH_DEBT
+
+      blocking_status: CLOSED
+
+      findings:
+
+      - drive remains session/composition model, not a fifth authority component
+
+      - control remains plan-aware decision authority
+
+      - runtime remains mechanical execution surface
+
+      - resolver remains bounded to blocked/unresolved reasoning
+
+      - planner mutation path remains through core/vectl facades; direct plan edits
+      prohibited
+
+      - truth surfaces and ownership boundaries align with architecture + implementation
+      design docs
+
+      - non-blocking debt: dependency-direction matrix could be more explicit about
+      forbidden reverse deps
+
+      verification:
+
+      - audited docs/ORCHESTRATION-PLANE-ARCHITECTURE.md
+
+      - audited docs/ORCHESTRATION-PLANE-IMPLEMENTATION-DESIGN.md
+
+      - cross-checked ownership, authority, and mutation-flow constraints
+
+      gate_open_allowed: true'
   - id: orch_drive_deep_review.black-box-drive-verification
     name: black box drive verification
     status: pending

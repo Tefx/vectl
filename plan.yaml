@@ -84634,6 +84634,96 @@ phases:
     - orch_drive_surfaces.config-and-observability-upgrades
     - orch_drive_surfaces.drive-cli-liveness-probe
     agent: gate-reviewer-tacit
+  - id: orch_drive_surfaces.flat-surface-default-drive-scope-fix
+    name: Fix flat status/control default drive-scope resolution
+    status: pending
+    description: 'Fix ALL blocker-class flat selector gaps found by the liveness probe
+      for drive-scoped default resolution.
+
+
+      ## Blockers to Fix (ALL of these, not just the first)
+
+      - `orch status --latest` still resolves through single-run selectors instead
+      of the active drive scope.
+
+      - `orch control stop --latest` still resolves through single-run selectors instead
+      of the active drive scope.
+
+
+      ## Root Cause vs Symptom
+
+      - Root cause: flat status/control selector resolution has not been bridged to
+      the active drive authority path used by drive-scoped commands.
+
+      - Symptom: flat surfaces succeed only for single-run selectors and fail to expose/target
+      the active drive by default.
+
+      - Why this fix is not surface-level: this step must align selector resolution
+      semantics across inspection and control flat surfaces, not patch one command
+      in isolation.
+
+
+      ## Required sibling search
+
+      - Inspect all flat CLI status/control selectors that advertise `--latest` or
+      equivalent default-active targeting.
+
+      - Confirm they resolve to active drive scope when the active object is a drive,
+      while preserving existing single-run behavior where explicitly selected.
+
+
+      ## Required commands to prove scope after implementation
+
+      - `orch status --latest --json`
+
+      - `orch control stop --latest --json`
+
+
+      ## Expected JSON scope assertions
+
+      - status output contains drive-scoped selector keys such as `scope_kind: "drive"`
+      and a drive identifier key (`drive_id` or equivalent documented active-drive
+      scope field).
+
+      - control output contains drive-scoped selector/control keys showing the acted-on
+      target is the active drive (`scope_kind: "drive"` plus `drive_id` or equivalent
+      documented field).
+
+
+      ## Completion Criteria (stub exclusion)
+
+      This is an IMPLEMENTATION step. Stub-only completion is NOT acceptable.
+
+      Each deliverable MUST contain substantive logic that processes selector inputs
+      and resolves flat status/control surfaces to active drive scope when appropriate.
+
+      Private stub classes or selector shims that bypass real active-drive resolution
+      do not satisfy this step.'
+    verification: '- Run targeted CLI verification covering `orch status --latest
+      --json` and `orch control stop --latest --json`.
+
+      - Show both commands resolve to active drive scope rather than single-run scope.
+
+      - Confirm JSON includes `scope_kind: "drive"` plus a drive identifier field
+      (`drive_id` or equivalent documented scope key).
+
+      - Confirm explicit single-run selectors still preserve prior behavior when a
+      run target is requested.'
+    evidence_template: "## refs Read Confirmation (MANDATORY)\n\nFor each ref in this\
+      \ step:\n- <filename> — key passage or \"NOT READ: <reason>\"\n\nIf no refs\
+      \ were provided, state: \"No refs for this step.\"\n\n## Flat Surface Remediation\
+      \ Evidence\n\n### Commands executed\n```bash\norch status --latest --json\n\
+      orch control stop --latest --json\n```\n\n### Command outputs\nPaste full stdout/stderr\
+      \ for both commands.\n\n### Scope-key assertions\n- `orch status --latest --json`:\n\
+      \  - `scope_kind` value:\n  - drive identifier key/value (`drive_id` or equivalent):\n\
+      - `orch control stop --latest --json`:\n  - `scope_kind` value:\n  - drive identifier\
+      \ key/value (`drive_id` or equivalent):\n\n### Compatibility check\n- Explicit\
+      \ single-run selector command exercised:\n- Output summary proving single-run\
+      \ targeting still works:\n\n### Sibling search\n- Other flat selector surfaces\
+      \ reviewed:\n- Remaining gaps: none | <list>\n"
+    depends_on:
+    - orch_drive_surfaces.drive-cli-liveness-probe
+    agent: python-senior-tacit
 - id: orch_drive_recovery
   name: Orchestration Drive Resume, Recover, and Active-Control Semantics
   status: locked

@@ -85090,7 +85090,7 @@ phases:
       **NOT Done:** No work on verify-recovery-and-active-control (next step).'
   - id: orch_drive_recovery.verify-recovery-and-active-control
     name: verify recovery and active control
-    status: claimed
+    status: done
     description: 'Independent verification of resume/recover/control semantics under
       live drive state.
 
@@ -85117,6 +85117,216 @@ phases:
     agent: integration-verifier-tacit
     claimed_by: integration-verifier-tacit
     claimed_at: '2026-04-15T05:31:15.474032+00:00'
+    done_at: '2026-04-15T05:45:25.755509+00:00'
+    evidence: '## Verification Report: orch_drive_recovery.verify-recovery-and-active-control
+
+
+      ### Step Intent
+
+      Independent verification of resume/recover/control semantics under live drive
+      state:
+
+      - truthful continuation precedence
+
+      - barrier re-entry before frontier reopen
+
+      - restored progress/pause/barrier state
+
+      - pause/unpause/stop under parallel child runs
+
+      - operator block on stabilization timeout
+
+
+      ### Expected Result
+
+      Green. Independent verifier confirms recovery/control semantics ready for real
+      OpenCode matrix execution.
+
+
+      ### Observed Result
+
+      **GREEN.** All 1411 orchestration tests pass (0 fail, 0 skip, 0 xfail) in the
+      isolated worktree.
+
+
+      ### Detailed Verification by Target
+
+
+      #### 1. Truthful Continuation Precedence (RFC-orch-drive.md §15.3.1)
+
+      Verified by `test_drive_recovery_semantics.py` (26 tests):
+
+      - `test_recover_classifies_stale_run_as_failed`: Persisted child run=`running`,
+      live process missing → live runtime fact wins, stale run classified as failed
+
+      - `test_recover_with_liveness_stale_marks_failed`: When liveness check returns
+      "stale", child run goes to `failed_child_run_ids`
+
+      - `test_recover_terminal_artifact_beats_stale_status`: Durable terminal artifact
+      beats stale in-memory running status
+
+      - `test_recover_conflict_terminal_artifact_in_registry`: RunRegistry terminal
+      artifact recognized as completed fact, not recovered
+
+      - `test_recover_recomputes_frontier_from_core`: Core authority > persisted frontier
+      cache (step.c removed from frontier)
+
+      - `test_resume_recomputes_frontier_from_core`: Resume also recomputes frontier
+      from live core authority
+
+
+      #### 2. Barrier Re-Entry Before Frontier Reopen (RFC-orch-drive.md §15.3.1)
+
+      - `test_recover_creates_barrier_for_open_cases`: Persisted barrier absent +
+      open case exists → recovery_gate barrier created, status → resolving
+
+      - `test_recover_preserves_existing_barrier`: Existing barrier preserved on recovery
+      (merge_conflict stays resolving)
+
+      - `test_resume_with_barrier_preserves_barrier`: Resume preserves active barrier
+      (runtime_failure stays resolving)
+
+      - `test_operator_pause_maps_to_blocked_operator`: `_barrier_status("operator_pause")
+      == "blocked_operator"` — operator pause enters blocked_operator barrier
+
+      - `test_planner_needed_maps_to_replanning`: `_barrier_status("planner_needed")
+      == "replanning"` — planner needed enters replanning barrier
+
+      - Dispatch recovery gate enforcement: 38 tests verify dispatch blocked when
+      recovery gate is active or operator notification is paused
+
+
+      #### 3. Restored Progress/Pause/Barrier State (RFC-orch-drive.md §15.1)
+
+      - `test_resume_with_operator_pause_preserves_pause`: Paused drive stays paused
+      on resume (operator_pause_state preserved)
+
+      - `test_resume_preserves_operator_pause_state`: Persisted `operator_pause_state="paused"`
+      preserved through resume
+
+      - `test_resume_with_planner_needed_preserves_replanning`: Replanning barrier
+      preserved on resume
+
+      - `test_resume_without_barrier_goes_running`: No-barrier resume correctly transitions
+      to running
+
+      - `test_recover_preserves_paused_operator_state`: Recovery preserves `operator_pause_state="paused"`
+
+      - `test_recover_preserves_active_operator_state`: Recovery of active drive preserves
+      `operator_pause_state="active"`
+
+      - `test_recover_transition_through_recovering`: Paused → recovering → blocked_operator
+      transition validated
+
+
+      #### 4. Pause/Unpause/Stop Under Parallel Child Runs
+
+      - `test_drive_recovery_semantics.py`: Terminal drive (completed/halted) resume
+      and recovery return terminal state unchanged
+
+      - `test_control_drive.py` (69 tests): Full control decision matrix including
+      operator_pause barrier, dispatch_batch capacity bounds, and all 6 decision kinds
+      under drive scope
+
+      - `test_runtime_parallel_child_run.py` (32 tests): Parallel child run capacity
+      accounting, isolation, barrier run capacity regression
+
+      - `test_barriers`: All barrier reasons (runtime_failure, merge_conflict, recovery_gate,
+      operator_pause) correctly yield wait/halt decisions
+
+      - `test_active_child_run_filtering`: Pending and running child runs tracked
+      as active; success/fail/stall/cancelled/transport_error correctly excluded
+
+
+      #### 5. Operator Block on Stabilization Timeout
+
+      - `test_operator_pause_blocks_dispatch_behavior`: Orch app operator_required
+      creates notification with paused routing state
+
+      - `test_blocked_operator_requires_unblock`: `blocked_operator → running` transition
+      requires explicit operator unblock (validated via `validate_drive_transition`)
+
+      - `test_operator_required_transitions_to_blocked_operator`: resolver and planner
+      operator_required both transition to blocked_operator
+
+      - `test_paused_operator_notification_blocks_after_recovery`: Dispatch blocked
+      after recovery when operator notification has paused routing state
+
+      - Drive status transition table validated: `blocked_operator → running` (operator
+      resumes), `blocked_operator → stopped` (operator stop), `blocked_operator →
+      recovering` (recovery requested)
+
+
+      ### refs Read Confirmation
+
+      - `docs/RFC-orch-drive.md` — sections 8.2.1 (valid transitions), 10 (driver
+      loop), 15 (recovery/resume semantics), 15.3.1 (conflict resolution policy)
+
+      - `docs/ORCHESTRATION-PLANE-CLI-CONFIG-OBSERVABILITY-DESIGN.md` — sections 7
+      (CLI surface), 8 (config), 9 (observability)
+
+
+      ### Verification Results
+
+      - `tests/orchestration/unit/test_drive_recovery_semantics.py`: 26 PASSED
+
+      - `tests/orchestration/unit/test_control_drive.py`: 69 PASSED
+
+      - `tests/orchestration/unit/test_dispatch_recovery_gate_enforcement.py`: 38
+      PASSED
+
+      - `tests/orchestration/unit/test_operator_pause_conflict_recovery_red.py`: 18
+      PASSED
+
+      - `tests/orchestration/test_runtime_parallel_child_run.py`: 32 PASSED
+
+      - `tests/orchestration/unit/test_driver_loop_proof.py`: 7 PASSED
+
+      - `tests/orchestration/unit/test_review_gate_integration.py`: 19 PASSED
+
+      - `tests/orchestration/unit/test_resolver_loop_integration.py`: 18 PASSED
+
+      - `tests/orchestration/unit/test_planner_loop_integration.py`: 18 PASSED
+
+      - `tests/orchestration/unit/test_run_store_drive.py`: 29 PASSED
+
+      - `tests/orchestration/unit/test_cli_drive_lifecycle_surface.py`: 26 PASSED
+
+      - **Total orchestration test suite: 1411 PASSED, 0 FAIL, 0 SKIP, 0 XFAIL**
+
+
+      ### Product Implementation Files Modified
+
+      - No. This is an independent verification step; no product code was modified.
+
+
+      ### Behavioral Proof Register
+
+      1. **Truthful continuation**: Conflict resolution policy fully implemented and
+      tested — live runtime facts beat stale persisted state, durable terminal artifacts
+      beat stale running status, core authority beats cached frontier.
+
+      2. **Barrier re-entry before frontier**: Open cases without persisted barrier
+      trigger `recovery_gate` barrier creation; existing barriers preserved; `_barrier_status`
+      mapping authoritative for all reason→status transitions.
+
+      3. **Restored progress/pause/barrier**: Resume and recover both preserve `operator_pause_state`,
+      `barrier.reason`, `barrier.case_ids`, and `frontier_step_ids` (latter recomputed
+      from live core).
+
+      4. **Pause/unpause/stop under parallel child runs**: Capacity accounting isolates
+      barrier runs from step capacity; dispatch blocked when paused operator notification
+      present; terminal drives return terminal state unchanged.
+
+      5. **Operator block on stabilization**: `blocked_operator` status enforced via
+      transition table; requires explicit unblock; dispatch and complete operations
+      blocked by paused operator notification and recovery gate; all transition paths
+      validated.
+
+
+      ### Gate Open Allowed
+
+      true'
   - id: orch_drive_recovery.gate-recovery-phase
     name: gate recovery phase
     status: pending

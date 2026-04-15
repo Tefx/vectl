@@ -84909,7 +84909,7 @@ phases:
       \ no"
 - id: orch_drive_recovery
   name: Orchestration Drive Resume, Recover, and Active-Control Semantics
-  status: done
+  status: in_progress
   gate: Drive resume/recover plus pause/unpause/stop under parallel child runs are
     truthful, durable, and independently verified before real-runner matrix execution.
   depends_on:
@@ -85563,9 +85563,179 @@ phases:
       - Runtime liveness proof (no server/daemon)
 
       - CLI surface verification (not a CLI-touching phase)'
+  - id: orch_drive_recovery.fix-active-control-consumption-and-evidence
+    name: Fix active-control consumption and evidence integrity
+    status: pending
+    description: 'Batched remediation for downstream-blocking recovery debt in orch_drive_recovery.
+
+
+      work_type: proof_closure
+
+      step_type: implementation
+
+      agent_source: default
+
+      provenance: out-of-step-origin + fabricated prior evidence
+
+      primary_blockers:
+
+      - Active-control pause/unpause/stop messages are queued but not consumed by
+      the drive loop to update DriveRecord.operator_pause_state end-to-end.
+
+      - Prior step evidence for orch_drive_recovery.active-control-under-parallel-child-runs
+      was fabricated and must be replaced with truthful implementation/evidence.
+
+
+      touch_paths:
+
+      - src/**/driver*.py
+
+      - src/**/control_channel*.py
+
+      - src/**/app*.py
+
+      - src/**/contracts*.py
+
+      - tests/**/test_*drive*.py
+
+      - tests/**/test_*control*.py
+
+
+      consumer_surfaces:
+
+      - OrchestrationApp control surface
+
+      - active drive loop runtime
+
+      - DriveRecord persistence / recovery semantics
+
+
+      state_strata:
+
+      - intent: queued pause/unpause/stop control messages
+
+      - resolved contract: drive loop consumes messages and applies authoritative
+      operator_pause_state transitions
+
+      - mutable runtime state: active DriveRecord and in-loop control state
+
+      - persistence: stored DriveRecord observed by resume/recover and downstream
+      acceptance
+
+
+      ## Blockers to Fix (ALL of these, not just the first)
+
+
+      ### Root Cause vs Symptom
+
+      - Root cause: the active-control surface currently proves only message enqueueing,
+      not driver-loop consumption/apply semantics, so the runtime and persisted DriveRecord
+      truth can diverge.
+
+      - Symptom: pause/unpause/stop requests enter the queue but do not produce authoritative
+      operator_pause_state transitions visible through the real drive loop path.
+
+      - Root cause (evidence): prior completion evidence asserted methods/tests that
+      do not exist, so the plan no longer has trustworthy proof for this seam.
+
+      - Why this fix is not surface-level: it must close the real end-to-end consumption/apply
+      path and replace fabricated evidence with truthful artifacts.
+
+
+      ### Required remediation
+
+      1. Wire queued pause/unpause/stop messages into the active driver loop so consumption
+      updates DriveRecord.operator_pause_state (and any stop-path semantics required
+      by the current contract) through the real runtime path.
+
+      2. Add or update focused regressions proving end-to-end consumption/application
+      under parallel child-run conditions.
+
+      3. Replace fabricated evidence with truthful evidence tied to real files, symbols,
+      and tests only.
+
+      4. If the existing contract is insufficient for stop semantics, document the
+      exact deviation and limit changes to the minimum necessary seam; do not invent
+      unrelated surface area.
+
+
+      ## Completion Criteria (stub exclusion)
+
+      This is an IMPLEMENTATION step. Stub-only completion is NOT acceptable.
+
+      Each deliverable MUST contain substantive logic that processes queued control
+      messages and produces DriveRecord state/output that varies based on those inputs.
+
+
+      ## Evidence requirements
+
+      - Name the exact production symbols changed.
+
+      - Name the exact tests added/updated.
+
+      - Provide truthful before/after seam summary for the previously fabricated claim.
+
+      - Explicitly state any remaining residual debt; do NOT claim absent methods/tests
+      exist.
+
+      '
+    verification: '- Main path: focused tests prove pause/unpause/stop messages are
+      consumed by the real drive loop and DriveRecord.operator_pause_state changes
+      are persisted/applied end-to-end.
+
+      - Failure path: regression covers queued-control message present but unapplied/stale-state
+      scenario and demonstrates the loop now consumes/applies it.
+
+      - Evidence integrity: changed symbols and tests named in evidence must exist
+      in the repo and correspond to modified files.
+
+      - No fabricated methods, dataclasses, or tests may be claimed.'
+    evidence_template: '## Remediation Evidence
+
+
+      ### refs Read Confirmation (MANDATORY)
+
+      If no refs were provided, state: "No refs for this step."
+
+
+      ### Behavioral seam closed
+
+      - Queue path exercised:
+
+      - Driver-loop consumption path exercised:
+
+      - DriveRecord fields changed:
+
+      - Stop semantics handled as:
+
+
+      ### Truthful artifact inventory
+
+      - Production symbols actually changed:
+
+      - Tests actually added/updated:
+
+      - Prior fabricated claims replaced/withdrawn:
+
+
+      ### Commands / outputs
+
+      - Exact targeted commands run:
+
+      - Key output excerpts:
+
+
+      ### Residuals
+
+      - Remaining debt or ambiguity:
+
+      '
+    depends_on:
+    - orch_drive_recovery.active-control-under-parallel-child-runs
+    agent: python-senior-tacit
 - id: orch_drive_live_acceptance
   name: Orchestration Drive Real OpenCode Acceptance
-  status: pending
+  status: locked
   gate: 'Real OpenCode orchestration acceptance is the authoritative proof: mocks/shims
     alone cannot pass this phase.'
   depends_on:

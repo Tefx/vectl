@@ -86111,7 +86111,7 @@ phases:
       - This step intentionally did not modify production orchestration code.'
   - id: orch_drive_live_acceptance.real-opencode-acceptance-matrix
     name: real opencode acceptance matrix
-    status: pending
+    status: claimed
     description: 'Independent real-runner verification step.
 
 
@@ -86129,6 +86129,8 @@ phases:
     depends_on:
     - orch_drive_live_acceptance.real-opencode-acceptance-harness
     agent: integration-verifier-tacit
+    claimed_by: integration-verifier-tacit
+    claimed_at: '2026-04-15T12:47:41.564405+00:00'
   - id: orch_drive_live_acceptance.full-plan-guard
     name: full plan guard
     status: pending

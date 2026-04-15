@@ -87283,7 +87283,7 @@ phases:
       — pre-drive debt, not called by drive code paths'
   - id: orch_drive_deep_review.spec-conformance
     name: spec conformance
-    status: claimed
+    status: done
     description: 'Independent spec-conformance audit for the implemented full scheduler.
 
 
@@ -87302,6 +87302,112 @@ phases:
     agent: spec-verifier-tacit
     claimed_by: spec-verifier-tacit
     claimed_at: '2026-04-15T17:45:12.865101+00:00'
+    done_at: '2026-04-15T17:52:06.674488+00:00'
+    evidence: "## Spec Conformance Audit: PASS_WITH_DEBT\n\n### headline: PASS_WITH_DEBT\n\
+      \nAll primary spec requirements are implemented. 7 areas audited against 4 primary\
+      \ reference documents. Implementation is substantially conformant with 5 PROVEN,\
+      \ 2 PARTIAL findings. No blockers.\n\n### requirement_evidence_table:\n\n- req:\
+      \ \"Drive lifecycle commands (§7 RFC-orch-drive)\"\n  status: PROVEN\n  evidence:\
+      \ |\n    All drive commands implemented: `orch drive`, `drive-status`, `drive-runs`,\
+      \ `drive-resume`, `drive-recover`.\n    Drive-scoped control commands (pause/unpause/stop)\
+      \ implemented with `--latest` semantics.\n    `DriveAdmissionError` enforces\
+      \ same-plan exclusion with exit code 2 and drive_id in message.\n    `MaxParallelismError`\
+      \ enforces [1,32] range. `--force` semantics for stop documented and implemented.\n\
+      \    Child-run drill-down via `--child-run-id` with exclusivity and drive-belonging\
+      \ validation.\n    `AdmissionAuthority` in run_store.py enforces §14.1 same-plan\
+      \ admission and §7.1 orch run rejection.\n    DEBT: CLI entrypoint surface parity\
+      \ is partially tested (integration test gap for `orch drive` CLI command itself).\n\
+      \n- req: \"Scheduler decisions (§9 RFC-orch-drive)\"\n  status: PROVEN\n  evidence:\
+      \ |\n    `PlanAwareControl.evaluate()` implements the full priority-ordered\
+      \ decision logic from §9:\n    1. Barrier active → wait, 2. Operator pause →\
+      \ halt, 3. Recovery gate → wait, 4. Open cases → resolve,\n    5. Unresolved\
+      \ core → resolve, 6. Plan-complete conflict → resolve, 7. Plan complete → done,\n\
+      \    8. Claimable steps → dispatch_batch, 9. Active work → wait, 10. Blocked\
+      \ → resolve.\n    `ControlDecision` dataclass matches §9.2.1 contract: kind,\
+      \ reason, step_ids, role_bindings, case_ids,\n    planner_request, capacity_used,\
+      \ capacity_remaining, barrier_required.\n    `validate_decision_invariants()`\
+      \ function enforces all invariants from §9.2.1.\n    `_deterministic_frontier_order()`\
+      \ implements §9.4 deterministic frontier ordering by step_id.\n    `dispatch_batch`\
+      \ includes step_ids, role_bindings, capacity tracking.\n    `vectl_decide` integration\
+      \ plan acknowledged in §9.5 — transitional dispatch alias preserved.\n\n- req:\
+      \ \"Recovery precedence (§15 RFC-orch-drive)\"\n  status: PROVEN\n  evidence:\
+      \ |\n    `ConcreteDriveDriver.recover_drive()` implements the full §15.3 recovery\
+      \ order:\n    1. Restore persisted drive state, 2. Restore child-run facts,\
+      \ 3. Reconcile live/runtime facts, 4. Re-enter barrier if needed, 5. Reopen\
+      \ scheduling only after coherent state.\n    §15.3.1 conflict resolution policy\
+      \ fully represented:\n    - `_check_child_run_liveness()` implements \"persisted\
+      \ running + no live process → stale\"\n    - `_find_terminal_artifact()` implements\
+      \ \"persisted running + terminal artifact → committed\"\n    - `_recompute_frontier()`\
+      \ implements \"persisted frontier vs core authority → core wins\"\n    - Open\
+      \ case barrier reentry implemented.\n    - `_release_superseded_leases()` implements\
+      \ \"persisted lease vs core done → core authority\"\n    `resume_drive()` implements\
+      \ §15.1: restores active child run set, barrier state, operator pause state,\
+      \ resolver/planner pending state (via barrier fields), aggregate progress summary.\n\
+      \    `DriveConfigFrozen` preserves creation-time parameters for resume/recover\
+      \ per §15.1, §8.4.1.\n    `_barrier_status()` function centralizes barrier-reason-to-status\
+      \ mapping consistent with §8.2.1 transitions.\n\n- req: \"Planner/resolver continuation\
+      \ (§12, §13 RFC-orch-drive)\"\n  status: PROVEN\n  evidence: |\n    Resolver\
+      \ continuation rules implemented in both `PlanAwareControl.apply_resolution()`\
+      \ and `_apply_resolution_report_to_drive()`:\n    - unblocked → clear barrier\
+      \ → running, with planner_request → replanning transition\n    - waiting → stay\
+      \ resolving (no dispatch)\n    - operator_required → blocked_operator\n    -\
+      \ halt → halted\n    Planner continuation rules implemented in `_apply_planner_bundle_to_drive()`:\n\
+      \    - applyable → clear barrier → running (re-evaluate from refreshed state)\n\
+      \    - operator_required → blocked_operator\n    - halt → halted\n    `PlannerMutationBundle`\
+      \ matches §8.5/8.5.1: status, summary, mutations[], affected_steps[], evidence_refs[],\
+      \ safety_notes[].\n    `PlannerMutationItem` action allowlist matches §13.4\
+      \ exactly: add-step, edit-step, remove-step, move-step, add-phase, edit-phase,\
+      \ skip-step, complete-phase.\n    `_infer_case_source()` maps control decisions\
+      \ to ResolutionCaseSource; `_barrier_reason_for_case_source()` implements §8.4.1\
+      \ mapping.\n    Refresh-after-resolution is mandatory: driver loop calls control.apply_resolution()\
+      \ with refreshed snapshots per Resolution Contract §6.\n\n- req: \"Drive-scoped\
+      \ selectors (§7.3, §7.4, §7.5, §16 RFC-orch-drive)\"\n  status: PROVEN\n  evidence:\
+      \ |\n    Drive-scoped default behavior implemented in inspection queries: `query_drive_status()`,\
+      \ `query_drive_events()`, `query_drive_logs()`, `query_drive_actions()`.\n \
+      \   `--child-run-id` exclusivity validated: `ValidateChildRunInDrive` tests\
+      \ confirm scope boundary never escapes drive.\n    `--latest` semantics implemented:\
+      \ select most recently updated drive for plan.\n    Child-run drill-down requires\
+      \ explicit `--child-run-id`; wrong-drive child raises exit code 2.\n    `orch\
+      \ run` rejection when active drive exists: `SamePlanRunRejectedError` with exit\
+      \ code 2, drive_id included, and instruction to use drive-scoped commands.\n\
+      \    Default scope is drive: §16.1 confirmed in inspection_queries.py.\n\n-\
+      \ req: \"Config freeze semantics (§8.4.1, §8.8 CLI-Config-Observability)\"\n\
+      \  status: PARTIAL\n  evidence: |\n    `DriveConfigFrozen` dataclass in contracts.py\
+      \ carries max_parallelism, control_idle_poll_interval_ms, control_action_ack_timeout_seconds,\
+      \ resolver_invocation_timeout_seconds, resolver_max_tool_calls_per_invocation,\
+      \ planner_timeout_seconds, frozen_at — matches §8.4.1 with an extra field (control_action_ack_timeout_seconds)\
+      \ beyond the RFC spec.\n    `DriveStore.save_drive_config_frozen()` and `load_drive_config_frozen()`\
+      \ implement persistence.\n    `DriveStore.freeze_drive_config_from_orch_config()`\
+      \ factory creates frozen config from ambient config at creation time.\n    Idempotent:\
+      \ re-saving is no-op per implementation.\n    `freeze_drive_config()` function\
+      \ in config.py freezes drive parameters.\n    `build_drive_config_provenance()`\
+      \ implements §8.7 provenance tracking with drift detection.\n    `FrozenConfigSnapshot`\
+      \ and `write_frozen_snapshot()` implement §8.8 config snapshot persistence.\n\
+      \    DEBT: §8.4.1 specifies `collect_poll_interval_ms` but implementation uses\
+      \ `control_idle_poll_interval_ms` and `control_action_ack_timeout_seconds` —\
+      \ field naming divergence from spec. Not a semantic gap, but a naming inconsistency.\n\
+      \    DEBT: `planner_timeout_seconds` is present in DriveConfigFrozen but not\
+      \ explicitly in §8.4.1 YAML spec (which only shows `resolver_timeout_seconds`).\
+      \ Minimal drift.\n\n- req: \"Drive event envelopes (§16.3 RFC-orch-drive, §10.4\
+      \ CLI-Config-Observability)\"\n  status: PARTIAL\n  evidence: |\n    `DRIVE_EVENT_KINDS`\
+      \ frozenset matches §16.3 exactly: drive_started, drive_status_changed, drive_barrier_entered,\
+      \ drive_barrier_cleared, planner_invoked, planner_applied, resolver_invoked,\
+      \ resolver_returned, child_run_admitted, child_run_final, drive_final — all\
+      \ 11 event kinds present and accounted for.\n    `DriveEventEnvelope` class\
+      \ implements the minimum drive event envelope per §10.4: seq, prev_hash, entry_hash,\
+      \ timestamp, kind, drive_id, run_id (nullable), step_id (nullable), payload\
+      \ — all required fields present.\n    Child-run-scoped events include `child_run_id`\
+      \ as documented in §10.4.\n    `validate_drive_event_chain()` implements monotonic\
+      \ seq and hash chain integrity per §9.3.\n    SHA-256 hash algorithm per §9.3.2\
+      \ implemented in `OrchestrationEventEnvelope.compute_entry_hash()`.\n    DEBT:\
+      \ §16.4 requires specific drive artifacts (drive/summary.json, drive/frontier.json,\
+      \ etc.) — projection/artifact persistence wiring exists in tests but the exact\
+      \ directory layout `.vectl/drives/<drive_id>/...` as specified in §16.4 is not\
+      \ yet fully materialized as a standalone artifact file set. This is a surface\
+      \ completeness gap, not a semantic gap.\n    DEBT: §10.2 run_registry event\
+      \ registry and §10.3 projection events are tested but not exhaustively verified\
+      \ for all run-level vs drive-level envelope field consistency.\n\n### blockers:\
+      \ []\n\n### gate_open_allowed: true"
   - id: orch_drive_deep_review.architecture-review
     name: architecture review
     status: done

@@ -86582,6 +86582,57 @@ phases:
       \ NOT runtime failures.\n- gate_open_allowed: false (1 blocker-class intersection:\
       \ `test_orch_recover_dry_run_json_is_supported_surface` directly intersects\
       \ gate's \"drive recover\" required matrix class)"
+  - id: orch_drive_live_acceptance.fix-recover-selector-contract
+    name: Fix recover selector contract test surface
+    status: pending
+    description: 'Fix the blocker discovered by `orch_drive_live_acceptance.retest-full-plan-guard-failures`
+      for the recover CLI supported surface.
+
+
+      Update recover-surface repro tests and any directly adjacent fixtures/helpers
+      so they match the current authoritative selector contract: `vectl orch recover`
+      requires an explicit selector (`--latest` or RUN_ID). Do not widen production
+      compatibility or restore the legacy implicit-selection surface.
+
+
+      Scope:
+
+      - Update `tests/repro/test_repair_continuity_black_box.py` for the current recover
+      selector contract
+
+      - Search directly adjacent recover-surface fixtures/assertions for the same
+      stale invocation pattern and align them if found
+
+      - Keep changes limited to tests/fixtures/helpers for recover-surface contract
+      alignment
+
+
+      ## Completion Criteria
+
+      - The recover dry-run JSON supported-surface test uses an explicit selector
+      matching the current contract
+
+      - Any sibling test/fixture using the same stale recover invocation pattern is
+      updated
+
+      - No production CLI rollback or compatibility widening is introduced'
+    verification: '- Recover-surface test/fixture updates are limited to the current
+      selector contract (`--latest` or RUN_ID`)
+
+      - Evidence identifies the updated repro test and any sibling fixture/assertion
+      search results
+
+      - Scope remains test/fixture/helper repair only'
+    evidence_template: "## refs Read Confirmation (MANDATORY)\n- No refs for this\
+      \ step.\n\n## Recover Selector Contract Repair Evidence\n- Updated files:\n\
+      \  - <path>\n- Primary failing surface updated:\n  - `tests/repro/test_repair_continuity_black_box.py::test_orch_recover_dry_run_json_is_supported_surface`\n\
+      - Sibling search results:\n  - <list additional recover-surface tests/fixtures\
+      \ checked and outcome, or `none found`>\n- Contract alignment statement:\n \
+      \ - Confirm the repaired tests now use explicit selector input (`--latest` or\
+      \ RUN_ID) and do not widen production behavior.\n"
+    depends_on:
+    - orch_drive_live_acceptance.retest-full-plan-guard-failures
+    agent: python-executor
 - id: orch_drive_doc_sync
   name: Orchestration Drive Documentation Sync
   status: locked

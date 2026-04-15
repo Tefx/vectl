@@ -86584,7 +86584,7 @@ phases:
       \ gate's \"drive recover\" required matrix class)"
   - id: orch_drive_live_acceptance.fix-recover-selector-contract
     name: Fix recover selector contract test surface
-    status: claimed
+    status: done
     description: 'Fix the blocker discovered by `orch_drive_live_acceptance.retest-full-plan-guard-failures`
       for the recover CLI supported surface.
 
@@ -86635,6 +86635,20 @@ phases:
     agent: python-executor
     claimed_by: python-executor
     claimed_at: '2026-04-15T14:47:58.295269+00:00'
+    done_at: '2026-04-15T14:51:32.566233+00:00'
+    evidence: "## refs Read Confirmation (MANDATORY)\n- No refs for this step.\n\n\
+      ## Recover Selector Contract Repair Evidence\n- Updated files:\n  - tests/repro/test_repair_continuity_black_box.py\n\
+      \n- Primary failing surface updated:\n  - `tests/repro/test_repair_continuity_black_box.py::test_orch_recover_dry_run_json_is_supported_surface`\n\
+      \  - Updated recover invocation to include explicit RUN_ID selector.\n\n- Sibling\
+      \ search results:\n  - Searched recover invocations for missing selector in\
+      \ repro tests.\n  - Found one intentional negative test (`test_orch_cli_selector_safety.py::test_recover_no_selector`)\
+      \ that should remain selector-missing and assert rejection.\n  - No other stale\
+      \ positive recover invocation patterns requiring fix.\n\n- Contract alignment\
+      \ statement:\n  - Repaired test now uses explicit selector input (RUN_ID), matching\
+      \ current recover contract (`--latest` or RUN_ID), with no production behavior\
+      \ widening.\n\nArtifact:\n- Commit hash(es): a3883b2 (cherry-picked from c2c6d77f3de25b8a815c11191cce51f847d0ef8e)\n\
+      \nVerification:\n- Run: `uv run pytest tests/repro/test_repair_continuity_black_box.py\
+      \ -v` -> 3 passed"
   - id: orch_drive_live_acceptance.retest-recover-selector-contract
     name: Retest recover selector contract surface
     status: pending

@@ -85802,7 +85802,7 @@ phases:
       \ — 663 lines added (15 tests proving end-to-end seam closure)"
   - id: orch_drive_recovery.retest-active-control-consumption-and-evidence
     name: Retest active-control consumption and evidence integrity
-    status: pending
+    status: claimed
     description: 'Independent retest for the orch_drive_recovery remediation seam.
 
 
@@ -85912,6 +85912,8 @@ phases:
     depends_on:
     - orch_drive_recovery.fix-active-control-consumption-and-evidence
     agent: integration-verifier-tacit
+    claimed_by: python-senior-tacit
+    claimed_at: '2026-04-15T12:19:29.541958+00:00'
 - id: orch_drive_live_acceptance
   name: Orchestration Drive Real OpenCode Acceptance
   status: locked

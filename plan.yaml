@@ -84260,7 +84260,7 @@ phases:
       gate_open_allowed: true'
 - id: orch_drive_surfaces
   name: Orchestration Drive CLI, Inspection, Control, Config, and Observability
-  status: in_progress
+  status: done
   gate: Drive-scoped CLI/control/inspection/config/event surfaces are runnable and
     independently probed before recovery and final real-runner acceptance.
   depends_on:
@@ -84661,7 +84661,7 @@ phases:
       \  - orch_drive_surfaces.flat-surface-default-drive-scope-retest"
   - id: orch_drive_surfaces.gate-surfaces-phase
     name: gate surfaces phase
-    status: claimed
+    status: done
     description: Gate review for orch_drive_surfaces. Open only if drive-scoped CLI/config/observability/control
       surfaces are runnable, wired, and bounded correctly.
     verification: All surface steps complete; runnable liveness evidence exists; no
@@ -84674,6 +84674,32 @@ phases:
     agent: gate-reviewer-tacit
     claimed_by: gate-reviewer-tacit
     claimed_at: '2026-04-15T04:10:46.158624+00:00'
+    done_at: '2026-04-15T04:41:14.529191+00:00'
+    evidence: "Artifact:\n- Gate review evidence from `gate-reviewer-tacit` (PASS_WITH_DEBT,\
+      \ blocking_status=CLOSED, proof_gap_status=NONE)\n- Independent blind liveness\
+      \ probe (`blind-tester-tacit` Mode D) executed before gate acceptance\n\nVerification:\n\
+      - Run: gate review static/dynamic verification suite (pyright/ruff/pytest +\
+      \ CLI surface matrix) -> PASS_WITH_DEBT, no blockers\n- Run: blind Mode D commands\
+      \ against live active drive -> PASS\n  - `vectl orch drive --json`\n  - `vectl\
+      \ orch status --latest --json`\n  - `vectl orch control stop --latest --json`\n\
+      \  - inspection surfaces (`events/actions/artifacts/logs --latest --json`)\n\
+      \nSpec link:\n- docs/RFC-orch-drive.md §7.1 §7.2 §7.3 §7.4 §7.5 §16.1\n- docs/ORCHESTRATION-PLANE-CLI-CONFIG-OBSERVABILITY-DESIGN.md\
+      \ §6 §7.7 §8.4\n\nGate decision synthesis:\n- headline: PASS_WITH_DEBT\n- blocking_status:\
+      \ CLOSED\n- proof_gap_status: NONE\n- gate_open_allowed: true\n\nBehavioral\
+      \ proof register summary:\n- `orch run` active-drive rejection proven\n- drive\
+      \ command family executability proven\n- `--latest` flat surfaces resolve to\
+      \ drive scope proven\n- control enrichment (`scope_kind`, `drive_id`) proven\n\
+      - exit-code contracts proven\n\nCLI executability matrix:\n- drive lifecycle\
+      \ family and flat status/control/inspection surfaces all executable with `--help`\
+      \ and smoke invocations\n- no command removals/regressions detected\n- no dangling\
+      \ command registrations detected\n\nIndependent blind liveness probe (Mode D):\n\
+      - `status --latest --json` output contained `scope_kind: \"drive\"` and `drive_id`\n\
+      - `control stop --latest --json` output contained `scope_kind: \"drive\"` and\
+      \ `drive_id`\n- no top-level `run_id` fallback observed\n- inspection surfaces\
+      \ executed without crash and returned valid JSON\n\nNon-blocking debt carried\
+      \ forward:\n- SHOULD_FIX: lint debt (unused imports/line-length/order)\n- SHOULD_FIX:\
+      \ `src/vectl/orchestration/driver.py` unused local variable (`now = time.time()`),\
+      \ no blocker for this phase gate"
   - id: orch_drive_surfaces.flat-surface-default-drive-scope-fix
     name: Fix flat status/control default drive-scope resolution
     status: done
@@ -84883,7 +84909,7 @@ phases:
       \ no"
 - id: orch_drive_recovery
   name: Orchestration Drive Resume, Recover, and Active-Control Semantics
-  status: locked
+  status: pending
   gate: Drive resume/recover plus pause/unpause/stop under parallel child runs are
     truthful, durable, and independently verified before real-runner matrix execution.
   depends_on:

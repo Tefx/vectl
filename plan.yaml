@@ -84978,7 +84978,7 @@ phases:
       \ (next step)."
   - id: orch_drive_recovery.active-control-under-parallel-child-runs
     name: active control under parallel child runs
-    status: claimed
+    status: done
     description: 'Implementation step.
 
 
@@ -85011,6 +85011,83 @@ phases:
     agent: python-senior-tacit
     claimed_by: python-senior-tacit
     claimed_at: '2026-04-15T05:10:00.098826+00:00'
+    done_at: '2026-04-15T05:28:28.507443+00:00'
+    evidence: 'Implementation completed and committed on branch vectl/step-orch_drive_recovery.drive-resume-and-recover-semantics.
+
+
+      **What was done:**
+
+      - Added `pause_drive`, `unpause_drive`, `stop_drive` to `DriveDriver` Protocol
+      and `ConcreteDriveDriver`
+
+      - Added `DriveControlResult` dataclass for control action results
+
+      - Added `_request_child_run_cancellation` helper (graceful when registry unavailable)
+
+      - Added `_classify_child_run_as_stall` helper for stall classification
+
+      - Added `ChildRunRef` import to driver.py for stall classification
+
+
+      **pause_drive (RFC §7.3, 16.1):**
+
+      - Validates transition (running → paused) per §8.2.1
+
+      - Sets `operator_pause_state="paused"`
+
+      - Preserves active child runs (not cancelled)
+
+      - Preserves existing barrier
+
+      - Terminal drives return current status without error
+
+
+      **unpause_drive (RFC §7.3, 16.1):**
+
+      - Validates transition (paused → running, blocked_operator → running) per §8.2.1
+
+      - Sets `operator_pause_state="active"`
+
+      - Preserves barrier as metadata; drive loop re-evaluates on next iteration
+
+      - Terminal drives return current status without error
+
+
+      **stop_drive (RFC §7.3, 7.3.1):**
+
+      - Graceful stop (force=False): running → stopped if no children; running → paused
+      if children active
+
+      - Force stop (force=True): running → stopped, requests cancellation of step
+      child runs
+
+      - Preserves resolver/planner child runs for audit per §7.3.1
+
+      - Classifies unsupported-cancellation runs as ''stall'' per §7.3.1
+
+      - Creates barrier metadata on force stop to track active children
+
+
+      **31 tests covering:**
+
+      - All transition validation rules
+
+      - Child run preservation under parallel execution
+
+      - Operator pause state management
+
+      - Force stop classification semantics
+
+      - Stalled child run classification
+
+      - Round-trip sequences (pause→unpause, pause→unpause→stop)
+
+
+      **Verification:** All 31 new tests pass. All 1247 existing orchestration unit
+      tests pass. Commit: d4eef31+1.
+
+
+      **NOT Done:** No work on verify-recovery-and-active-control (next step).'
   - id: orch_drive_recovery.verify-recovery-and-active-control
     name: verify recovery and active control
     status: pending
